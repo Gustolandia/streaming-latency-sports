@@ -14,9 +14,9 @@ def main():
     ap.add_argument("--group", default=None)
     ap.add_argument("--idle-seconds", type=int, default=15)
 
-    # --- sensitivity knobs (defaults match your CURRENT behavior) ---
+    # --- sensitivity knobs (defaults match current behavior) ---
     ap.add_argument("--consumer-timeout-ms", type=int, default=1000)
-    ap.add_argument("--poll-timeout-ms", type=int, default=1000, help="LOW-POLL sensitivity: e.g. 50")
+    ap.add_argument("--poll-timeout-ms", type=int, default=1000, help="e.g. 50")
     ap.add_argument("--max-poll-records", type=int, default=None)
 
     args = ap.parse_args()
@@ -60,8 +60,6 @@ def main():
             for _tp, msgs in records.items():
                 for msg in msgs:
                     v = msg.value
-
-                    # IMPORTANT: only keep messages from *this* run
                     if v.get("run_id") != args.run_id:
                         continue
 

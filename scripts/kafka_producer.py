@@ -1,6 +1,6 @@
 import argparse, csv, json, time, threading
-from pathlib import Path
 import pandas as pd
+from pathlib import Path
 from kafka import KafkaProducer
 
 def now_ns() -> int:
@@ -21,7 +21,7 @@ def main():
     ap.add_argument("--linger-ms", type=int, default=0)
     ap.add_argument("--batch-size", type=int, default=None, help="bytes; if omitted, use client default")
     ap.add_argument("--compression-type", default=None, choices=["gzip","snappy","lz4","zstd"])
-    ap.add_argument("--max-inflight", type=int, default=1, help="1 matches current sync-send behavior; >1 enables more in-flight requests")
+    ap.add_argument("--max-inflight", type=int, default=1, help="1 matches sync-send; >1 enables more in-flight requests")
 
     args = ap.parse_args()
 
@@ -58,9 +58,7 @@ def main():
     ack_lock = threading.Lock()
     errors = []
     err_lock = threading.Lock()
-
-    rows = []
-    pending = []  # list of futures
+    pending = []
 
     def on_ack(event_id: str):
         with ack_lock:
@@ -70,7 +68,7 @@ def main():
         with err_lock:
             errors.append((event_id, repr(exc)))
 
-    sent = 0
+    rows = []
     for _, r in plan.iterrows():
         event_id = str(r["event_id"])
         match_id = int(r["match_id"])
@@ -116,7 +114,6 @@ def main():
             "t_prod_send_ns": t_prod_send_ns,
             "t_broker_ack_ns": None,
         })
-        sent += 1
 
     for fut in pending:
         fut.get(timeout=30)
@@ -139,7 +136,7 @@ def main():
         w.writeheader()
         w.writerows(rows)
 
-    print(f"OK kafka producer: wrote {sent} rows -> {out_path}")
+    print(f"OK kafka producer: wrote {len(rows)} rows -> {out_path}")
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,3 @@
+plan,path,n_rows,n_cols,match_col,time_col,n_matches,time_min,time_max,time_span
+sf12_j0,data/processed/replay_plans/3bfbffe1de5750ebd47d770be0bb924a10cde54f/s2_multimatch_10_sf12_j0/combined_plan.csv,40660,16,match_id,t_emit_offset_s,10,0.0,717.0,717.0
+sf12_j2,data/processed/replay_plans/3bfbffe1de5750ebd47d770be0bb924a10cde54f/s2_multimatch_10_sf12_j2/combined_plan.csv,40660,16,match_id,t_emit_offset_s,10,-1.4613541829775407,717.464420111986,718.9257742949635

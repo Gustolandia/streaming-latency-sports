@@ -1,0 +1,11 @@
+=== PLAN A ===
+data/processed/replay_plans/3bfbffe1de5750ebd47d770be0bb924a10cde54f/s2_multimatch_10_sf12_j0/combined_plan.csv
+=== PLAN B ===
+data/processed/replay_plans/3bfbffe1de5750ebd47d770be0bb924a10cde54f/s2_multimatch_10_sf12_j2/combined_plan.csv
+
+Columns only in A (0): []
+Columns only in B (0): []
+Columns in both with dtype differences (0): []
+
+Inferred A match_col=match_id, time_col=t_emit_offset_s
+Inferred B match_col=match_id, time_col=t_emit_offset_s

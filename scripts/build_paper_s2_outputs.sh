@@ -86,7 +86,11 @@ df.to_csv("docs/results/paper_s2_meta_matrix.csv", index=False)
 print("Wrote docs/results/paper_s2_meta_matrix.csv")
 PY
 
-# 6) Environment snapshot
+# 6) Environment snapshot (freeze-time artifact; do not overwrite on rebuild)
+ENV_OUT="docs/results/paper_env_snapshot.txt"
+if [ -s "" ] && [ "0" != "1" ]; then
+  echo "SKIP:  already exists (freeze artifact). Set RECAPTURE_ENV=1 to overwrite."
+else
 {
   echo "=== GIT ==="
   git rev-parse HEAD
@@ -106,6 +110,7 @@ PY
   echo "=== OS/WSL ==="
   uname -a
   (lsb_release -a 2>/dev/null || true)
-} > docs/results/paper_env_snapshot.txt
+} > ""
+fi
 
 echo "DONE: built paper S2 outputs + meta matrix + env snapshot."

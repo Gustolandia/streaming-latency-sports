@@ -88,8 +88,8 @@ PY
 
 # 6) Environment snapshot (freeze-time artifact; do not overwrite on rebuild)
 ENV_OUT="docs/results/paper_env_snapshot.txt"
-if [ -s "" ] && [ "0" != "1" ]; then
-  echo "SKIP:  already exists (freeze artifact). Set RECAPTURE_ENV=1 to overwrite."
+if [ -s "$ENV_OUT" ] && [ "${RECAPTURE_ENV:-0}" != "1" ]; then
+  echo "SKIP: $ENV_OUT already exists (freeze artifact). Set RECAPTURE_ENV=1 to overwrite."
 else
 {
   echo "=== GIT ==="
@@ -110,7 +110,8 @@ else
   echo "=== OS/WSL ==="
   uname -a
   (lsb_release -a 2>/dev/null || true)
-} > ""
+} > "$ENV_OUT"
 fi
+
 
 echo "DONE: built paper S2 outputs + meta matrix + env snapshot."

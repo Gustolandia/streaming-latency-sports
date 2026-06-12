@@ -1,0 +1,3 @@
+backend,correction_propagation_latency_ms_p50,correction_propagation_latency_ms_p95,correction_propagation_latency_ms_p99,inconsistency_duration_ms_p50,inconsistency_duration_ms_p95,inconsistency_duration_ms_p99,n_corrections,n_base_events_with_corrections,correction_propagation_latency_ms_p50_ratio,correction_propagation_latency_ms_p95_ratio,correction_propagation_latency_ms_p99_ratio,inconsistency_duration_ms_p50_ratio,inconsistency_duration_ms_p95_ratio,inconsistency_duration_ms_p99_ratio
+kafka,2.55,1397.18,1722.48,2.55,1397.18,1722.48,89.0,89.0,317.56,1.31,1.14,317.56,1.31,1.14
+redis,809.77,1837.1,1958.07,809.77,1837.1,1958.07,89.0,89.0,317.56,1.31,1.14,317.56,1.31,1.14

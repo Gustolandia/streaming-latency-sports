@@ -3,6 +3,15 @@ import argparse, csv, json, time
 from pathlib import Path
 from kafka import KafkaConsumer
 
+# Enable coverage for subprocess execution if COVERAGE_PROCESS_START is set
+try:
+    import os
+    if os.environ.get('COVERAGE_PROCESS_START'):
+        import coverage
+        coverage.process_start()
+except Exception:
+    pass
+
 
 def now_ns() -> int:
     return time.perf_counter_ns()

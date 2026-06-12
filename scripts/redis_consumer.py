@@ -3,6 +3,15 @@ import argparse, csv, json, time
 from pathlib import Path
 import redis
 
+# Enable coverage for subprocess execution if COVERAGE_PROCESS_START is set
+try:
+    import os
+    if os.environ.get('COVERAGE_PROCESS_START'):
+        import coverage
+        coverage.process_start()
+except Exception:
+    pass
+
 
 def now_ns() -> int:
     return time.perf_counter_ns()
@@ -15,7 +24,7 @@ def main():
     ap.add_argument("--stream", default="sb:events")
     ap.add_argument("--host", default="localhost")
     ap.add_argument("--port", type=int, default=6379)
-    ap.add_argument("--group", default="sb-group")
+    ap.add_argument("--group", default=None)
     ap.add_argument("--consumer", default=None)
     ap.add_argument("--idle-seconds", type=int, default=15)
 
@@ -25,6 +34,9 @@ def main():
 
     args = ap.parse_args()
 
+    # Use per-run group default to prevent cross-run contamination
+    group_id = args.group or f"sb-group-{args.run_id}"
+    
     consumer_name = args.consumer or f"c-{args.run_id}"
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -38,7 +50,7 @@ def main():
 
     # create group if needed
     try:
-        r.xgroup_create(args.stream, args.group, id="0-0", mkstream=True)
+        r.xgroup_create(args.stream, group_id, id="0-0", mkstream=True)
     except Exception:
         pass  # group likely exists
 
@@ -89,7 +101,7 @@ def main():
 
         while True:
             resp = r.xreadgroup(
-                groupname=args.group,
+                groupname=group_id,
                 consumername=consumer_name,
                 streams={args.stream: ">"},
                 count=args.count,
@@ -112,7 +124,7 @@ def main():
 
                     # Filter to this run_id (prevents cross-run contamination when stream/group has old data)
                     if msg.get("run_id") != args.run_id:
-                        r.xack(args.stream, args.group, redis_id)
+                        r.xack(args.stream, group_id, redis_id)
                         continue
 
                     t_output_ns = now_ns()
@@ -158,7 +170,7 @@ def main():
                         f_out.flush()
 
                     # ack the message
-                    r.xack(args.stream, args.group, redis_id)
+                    r.xack(args.stream, group_id, redis_id)
 
     print(f"OK redis consumer: wrote {n} rows -> {out_path}")
     print(f"OK redis consumer: wrote {events_n} rows -> {events_path}")

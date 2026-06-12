@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Fix PATH to use Windows docker CLI which sees Docker Desktop containers
+export PATH="/mnt/c/PROGRA~1/Docker/Docker/resources/bin:$PATH"
+
 PLAN="${1:?combined_plan.csv path}"
 REPS="${2:?n reps}"
 SPEEDUP="${3:?speedup (e.g. 120)}"

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Fix PATH to use Docker Desktop's Linux-compatible docker script
+export PATH="/mnt/c/Program Files/Docker/Docker/resources/bin:$PATH"
+
 # Usage:
 #   scripts/run_kafka_trial.sh <RUN_ID> <PLAN_CSV> [SPEEDUP] [MAX_T_SIM] [BOOTSTRAP] [TOPIC]
 RUN_ID="${1:?run_id required}"
@@ -62,7 +65,7 @@ print(f"Wrote meta: {out}")
 PY
 
 echo "[0/4] ensuring topic exists: $TOPIC"
-docker exec -w /opt/kafka/bin broker sh -lc "./kafka-topics.sh --bootstrap-server broker:29092 --create --if-not-exists --topic '$TOPIC' --partitions 3 --replication-factor 1" >/dev/null
+cmd.exe /c docker exec -w /opt/kafka/bin broker sh -lc "./kafka-topics.sh --bootstrap-server broker:29092 --create --if-not-exists --topic $TOPIC --partitions 3 --replication-factor 1" >/dev/null 2>&1
 
 echo "[1/4] starting consumer..."
 python scripts/kafka_consumer.py \
@@ -71,7 +74,7 @@ python scripts/kafka_consumer.py \
   --out "runs/$RUN_ID/consumer.csv" \
   --bootstrap "$BOOTSTRAP" \
   --topic "$TOPIC" \
-  --idle-seconds 90 \
+  --idle-seconds 0 \
   > "runs/$RUN_ID/consumer.log" 2>&1 &
 CONS_PID=$!
 

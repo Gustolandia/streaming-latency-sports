@@ -4,6 +4,15 @@ import argparse
 import pandas as pd
 import numpy as np
 
+# Enable coverage for subprocess execution if COVERAGE_PROCESS_START is set
+try:
+    import os
+    if os.environ.get('COVERAGE_PROCESS_START'):
+        import coverage
+        coverage.process_start()
+except Exception:
+    pass
+
 def infer_col(df, candidates):
     for c in candidates:
         if c in df.columns:

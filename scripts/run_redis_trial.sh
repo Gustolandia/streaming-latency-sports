@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Fix PATH to use Windows docker CLI which sees Docker Desktop containers
+export PATH="/mnt/c/PROGRA~1/Docker/Docker/resources/bin:$PATH"
+
 # Usage:
 #   scripts/run_redis_trial.sh <RUN_ID> <PLAN_CSV> [SPEEDUP] [MAX_T_SIM] [HOST] [PORT] [STREAM] [GROUP]
 RUN_ID="${1:?run_id required}"
@@ -77,7 +80,7 @@ python scripts/redis_consumer.py \
   --out "runs/$RUN_ID/consumer.csv" \
   --host "$HOST" --port "$PORT" \
   --stream "$STREAM" --group "$GROUP" \
-  --idle-seconds 90 \
+  --idle-seconds 0 \
   > "runs/$RUN_ID/consumer.log" 2>&1 &
 CONS_PID=$!
 

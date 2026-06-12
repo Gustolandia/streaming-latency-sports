@@ -1,0 +1,58 @@
+﻿{
+    "max_t_sim":  600,
+    "plan_csv":  "data/processed/replay_plans/s2sf12j2/combined_plan.csv",
+    "speedup":  120,
+    "backend":  "kafka",
+    "code_sha256":  {
+                        "scripts/compute_tti.py":  "9f70bc584ad0283a9a8b19b5216bc914018dc087fd921db526d4adb79c1bd67a",
+                        "scripts/run_kafka_trial.ps1":  "8a3f12221af65bf23a1912f4e5963a545af8000ffba3037bb5fba1af85693cfe",
+                        "scripts/kafka_producer.py":  "e9f43a7516168eda649842a91a5f73524155c67950dfacc85b02a13df24b47a2",
+                        "scripts/kafka_consumer.py":  "b6af966921bdeadae411ea7ad45aa39d63bc777ec77a662abdc68b93ae61c568"
+                    },
+    "bootstrap":  "localhost:9092",
+    "topic":  "sb-events-s4_s2sf12j2_fast_corrections_kafka_rep1_20260612",
+    "git":  {
+                "head":  "4c390ddb439a1ae522ca7d0ab2c8fde69f999803",
+                "status_short":  [
+                                     "?? .coverage",
+                                     "?? .env",
+                                     "?? .venv/",
+                                     "?? runs/_paper_s4_parameter_sweep.txt",
+                                     "?? runs/s4_s2sf12_baseline_kafka_rep1_20260612/",
+                                     "?? runs/s4_s2sf12_baseline_redis_rep1_20260612/",
+                                     "?? runs/s4_s2sf12_fast_corrections_kafka_rep1_20260612/",
+                                     "?? runs/s4_s2sf12_fast_corrections_redis_rep1_20260612/",
+                                     "?? runs/s4_s2sf12_high_frequency_kafka_rep1_20260612/",
+                                     "?? runs/s4_s2sf12_high_frequency_redis_rep1_20260612/",
+                                     "?? runs/s4_s2sf12_high_speedup_kafka_rep1_20260612/",
+                                     "?? runs/s4_s2sf12_high_speedup_redis_rep1_20260612/",
+                                     "?? runs/s4_s2sf12_long_delay_kafka_rep1_20260612/",
+                                     "?? runs/s4_s2sf12_long_delay_redis_rep1_20260612/",
+                                     "?? runs/s4_s2sf12_low_frequency_kafka_rep1_20260612/",
+                                     "?? runs/s4_s2sf12_low_frequency_redis_rep1_20260612/",
+                                     "?? runs/s4_s2sf12_low_speedup_kafka_rep1_20260612/",
+                                     "?? runs/s4_s2sf12_low_speedup_redis_rep1_20260612/",
+                                     "?? runs/s4_s2sf12_short_delay_kafka_rep1_20260612/",
+                                     "?? runs/s4_s2sf12_short_delay_redis_rep1_20260612/",
+                                     "?? runs/s4_s2sf12j2_baseline_kafka_rep1_20260612/",
+                                     "?? runs/s4_s2sf12j2_baseline_redis_rep1_20260612/",
+                                     "?? runs/s4_s2sf12j2_high_frequency_kafka_rep1_20260612/",
+                                     "?? runs/s4_s2sf12j2_high_frequency_redis_rep1_20260612/",
+                                     "?? runs/s4_s2sf12j2_high_speedup_kafka_rep1_20260612/",
+                                     "?? runs/s4_s2sf12j2_high_speedup_redis_rep1_20260612/",
+                                     "?? runs/s4_s2sf12j2_long_delay_kafka_rep1_20260612/",
+                                     "?? runs/s4_s2sf12j2_long_delay_redis_rep1_20260612/",
+                                     "?? runs/s4_s2sf12j2_low_frequency_kafka_rep1_20260612/",
+                                     "?? runs/s4_s2sf12j2_low_frequency_redis_rep1_20260612/",
+                                     "?? runs/s4_s2sf12j2_low_speedup_kafka_rep1_20260612/",
+                                     "?? runs/s4_s2sf12j2_low_speedup_redis_rep1_20260612/",
+                                     "?? runs/s4_s2sf12j2_short_delay_kafka_rep1_20260612/",
+                                     "?? runs/s4_s2sf12j2_short_delay_redis_rep1_20260612/"
+                                 ]
+            },
+    "env":  {
+                "KAFKA_CONSUMER_OPTS":  null,
+                "KAFKA_PRODUCER_OPTS":  null
+            },
+    "run_id":  "s4_s2sf12j2_fast_corrections_kafka_rep1_20260612"
+}

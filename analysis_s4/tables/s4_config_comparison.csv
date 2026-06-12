@@ -1,0 +1,17 @@
+config,backend,tti_p50_mean,tti_p50_std,tti_p95_mean,tti_p95_std,tti_mean_mean,n_n_matched_sum
+baseline,kafka,5115.67,44.68,7854.93,102.71,5127.84,9108
+baseline,redis,3076.51,8.2,4055.37,15.48,3079.91,9108
+fast_corrections,kafka,5119.37,25.98,7808.17,1.05,5113.26,9822
+fast_corrections,redis,3106.14,17.06,4094.23,17.65,3102.77,9822
+high_frequency,kafka,4995.94,26.87,7855.33,48.87,5020.76,9822
+high_frequency,redis,3008.9,1.21,4224.65,9.88,3049.58,9822
+high_speedup,kafka,5193.44,74.53,7965.39,101.51,5195.72,9108
+high_speedup,redis,3174.56,0.32,4248.04,12.27,3180.28,9108
+long_delay,kafka,5047.09,29.97,7793.63,50.7,5052.72,9108
+long_delay,redis,3082.95,2.41,4061.14,18.58,3086.45,9108
+low_frequency,kafka,5085.61,10.45,7740.9,24.92,5091.22,9018
+low_frequency,redis,3097.29,5.07,4057.63,1.88,3098.77,9018
+low_speedup,kafka,4933.41,11.42,7438.99,15.67,4928.84,9108
+low_speedup,redis,2910.07,0.81,3693.82,6.55,2908.46,9108
+short_delay,kafka,5145.82,12.04,7808.18,45.56,5137.86,9108
+short_delay,redis,3073.13,5.76,4020.37,0.8,3078.55,9108

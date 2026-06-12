@@ -1,0 +1,924 @@
+{
+  "summary": {
+    "total_runs": 32,
+    "passed": 32,
+    "failed": 0,
+    "warnings": 96
+  },
+  "scenarios": {
+    "s2sf12": 16,
+    "s2sf12j2": 16
+  },
+  "configs": {
+    "baseline": 4,
+    "fast_corrections": 4,
+    "high_frequency": 4,
+    "high_speedup": 4,
+    "long_delay": 4,
+    "low_frequency": 4,
+    "low_speedup": 4,
+    "short_delay": 4
+  },
+  "backends": {
+    "kafka": 16,
+    "redis": 16
+  },
+  "runs": [
+    {
+      "run_id": "s4_s2sf12_baseline_kafka_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4554,
+        "consumer.csv": 4554,
+        "consumer_events.csv": 4554
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12",
+        "config": "baseline",
+        "backend": "kafka"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12_baseline_redis_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4554,
+        "consumer.csv": 4554,
+        "consumer_events.csv": 4554
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12",
+        "config": "baseline",
+        "backend": "redis"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12_fast_corrections_kafka_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4911,
+        "consumer.csv": 4911,
+        "consumer_events.csv": 4911
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12",
+        "config": "fast_corrections",
+        "backend": "kafka"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12_fast_corrections_redis_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4911,
+        "consumer.csv": 4911,
+        "consumer_events.csv": 4911
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12",
+        "config": "fast_corrections",
+        "backend": "redis"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12_high_frequency_kafka_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4911,
+        "consumer.csv": 4911,
+        "consumer_events.csv": 4911
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12",
+        "config": "high_frequency",
+        "backend": "kafka"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12_high_frequency_redis_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4911,
+        "consumer.csv": 4911,
+        "consumer_events.csv": 4911
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12",
+        "config": "high_frequency",
+        "backend": "redis"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12_high_speedup_kafka_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4554,
+        "consumer.csv": 4554,
+        "consumer_events.csv": 4554
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12",
+        "config": "high_speedup",
+        "backend": "kafka"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12_high_speedup_redis_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4554,
+        "consumer.csv": 4554,
+        "consumer_events.csv": 4554
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12",
+        "config": "high_speedup",
+        "backend": "redis"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12_long_delay_kafka_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4554,
+        "consumer.csv": 4554,
+        "consumer_events.csv": 4554
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12",
+        "config": "long_delay",
+        "backend": "kafka"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12_long_delay_redis_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4554,
+        "consumer.csv": 4554,
+        "consumer_events.csv": 4554
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12",
+        "config": "long_delay",
+        "backend": "redis"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12_low_frequency_kafka_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4509,
+        "consumer.csv": 4509,
+        "consumer_events.csv": 4509
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12",
+        "config": "low_frequency",
+        "backend": "kafka"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12_low_frequency_redis_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4509,
+        "consumer.csv": 4509,
+        "consumer_events.csv": 4509
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12",
+        "config": "low_frequency",
+        "backend": "redis"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12_low_speedup_kafka_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4554,
+        "consumer.csv": 4554,
+        "consumer_events.csv": 4554
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12",
+        "config": "low_speedup",
+        "backend": "kafka"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12_low_speedup_redis_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4554,
+        "consumer.csv": 4554,
+        "consumer_events.csv": 4554
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12",
+        "config": "low_speedup",
+        "backend": "redis"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12_short_delay_kafka_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4554,
+        "consumer.csv": 4554,
+        "consumer_events.csv": 4554
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12",
+        "config": "short_delay",
+        "backend": "kafka"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12_short_delay_redis_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4554,
+        "consumer.csv": 4554,
+        "consumer_events.csv": 4554
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12",
+        "config": "short_delay",
+        "backend": "redis"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12j2_baseline_kafka_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4554,
+        "consumer.csv": 4554,
+        "consumer_events.csv": 4554
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12j2",
+        "config": "baseline",
+        "backend": "kafka"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12j2_baseline_redis_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4554,
+        "consumer.csv": 4554,
+        "consumer_events.csv": 4554
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12j2",
+        "config": "baseline",
+        "backend": "redis"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12j2_fast_corrections_kafka_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4911,
+        "consumer.csv": 4911,
+        "consumer_events.csv": 4911
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12j2",
+        "config": "fast_corrections",
+        "backend": "kafka"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12j2_fast_corrections_redis_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4911,
+        "consumer.csv": 4911,
+        "consumer_events.csv": 4911
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12j2",
+        "config": "fast_corrections",
+        "backend": "redis"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12j2_high_frequency_kafka_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4911,
+        "consumer.csv": 4911,
+        "consumer_events.csv": 4911
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12j2",
+        "config": "high_frequency",
+        "backend": "kafka"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12j2_high_frequency_redis_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4911,
+        "consumer.csv": 4911,
+        "consumer_events.csv": 4911
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12j2",
+        "config": "high_frequency",
+        "backend": "redis"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12j2_high_speedup_kafka_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4554,
+        "consumer.csv": 4554,
+        "consumer_events.csv": 4554
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12j2",
+        "config": "high_speedup",
+        "backend": "kafka"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12j2_high_speedup_redis_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4554,
+        "consumer.csv": 4554,
+        "consumer_events.csv": 4554
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12j2",
+        "config": "high_speedup",
+        "backend": "redis"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12j2_long_delay_kafka_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4554,
+        "consumer.csv": 4554,
+        "consumer_events.csv": 4554
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12j2",
+        "config": "long_delay",
+        "backend": "kafka"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12j2_long_delay_redis_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4554,
+        "consumer.csv": 4554,
+        "consumer_events.csv": 4554
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12j2",
+        "config": "long_delay",
+        "backend": "redis"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12j2_low_frequency_kafka_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4509,
+        "consumer.csv": 4509,
+        "consumer_events.csv": 4509
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12j2",
+        "config": "low_frequency",
+        "backend": "kafka"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12j2_low_frequency_redis_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4509,
+        "consumer.csv": 4509,
+        "consumer_events.csv": 4509
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12j2",
+        "config": "low_frequency",
+        "backend": "redis"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12j2_low_speedup_kafka_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4554,
+        "consumer.csv": 4554,
+        "consumer_events.csv": 4554
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12j2",
+        "config": "low_speedup",
+        "backend": "kafka"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12j2_low_speedup_redis_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4554,
+        "consumer.csv": 4554,
+        "consumer_events.csv": 4554
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12j2",
+        "config": "low_speedup",
+        "backend": "redis"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12j2_short_delay_kafka_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4554,
+        "consumer.csv": 4554,
+        "consumer_events.csv": 4554
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12j2",
+        "config": "short_delay",
+        "backend": "kafka"
+      }
+    },
+    {
+      "run_id": "s4_s2sf12j2_short_delay_redis_rep1_20260612",
+      "status": "PASS",
+      "errors": [],
+      "warnings": [
+        "Missing percentile: p50",
+        "Missing percentile: p95",
+        "Missing percentile: p99"
+      ],
+      "files": {
+        "meta.json": true,
+        "producer.csv": true,
+        "consumer.csv": true,
+        "consumer_events.csv": true,
+        "tti_summary.json": true
+      },
+      "event_counts": {
+        "producer.csv": 4554,
+        "consumer.csv": 4554,
+        "consumer_events.csv": 4554
+      },
+      "s4_specific": {
+        "tti_summary": true,
+        "scenario": "s2sf12j2",
+        "config": "short_delay",
+        "backend": "redis"
+      }
+    }
+  ]
+}

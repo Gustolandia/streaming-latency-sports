@@ -1,0 +1,130 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Streaming Latency Benchmarks: Redis Streams vs Apache Kafka for Real-Time Sports Data Feeds"
+authors:
+  - family-names: "[LastName]"
+    given-names: "[FirstName]"
+    email: "[email@example.com]"
+    affiliation: "[Your Institution]"
+    orcid: "https://orcid.org/[your-orcid]"
+  # Add additional authors as needed
+description: "A comprehensive, reproducible benchmark suite that empirically evaluates how streaming architecture choices impact the timeliness and reliability of live football analytics using the publicly available StatsBomb open dataset (2003-2023)."
+version: "0.3.0-s3-scaffolding"
+url: "https://github.com/[your-org]/streaming-latency-sports"
+doi: "10.XXXX/jsa.XXXX"  # To be assigned by journal
+license: "MIT"
+keywords:
+  - streaming systems
+  - real-time analytics
+  - sports data
+  - apache kafka
+  - redis streams
+  - latency benchmarking
+  - time-to-insight
+  - actionability windows
+  - football analytics
+  - reproducible research
+date-released: "2026-01-01"
+preferred-citation:
+  title: "Streaming Latency Benchmarks: Redis Streams vs Apache Kafka for Real-Time Sports Data Feeds"
+  authors:
+    - family-names: "[LastName]"
+      given-names: "[FirstName]"
+  journal: "Journal of Sports Analytics"
+  year: 2026
+  volume: "TBD"
+  issue: "TBD"
+  page: "TBD"
+  doi: "10.XXXX/jsa.XXXX"
+  url: "https://doi.org/10.XXXX/jsa.XXXX"
+
+# Software citation
+preferred-citation:
+  title: "streaming-latency-sports: Benchmark suite for streaming systems with sports data"
+  authors:
+    - family-names: "[LastName]"
+      given-names: "[FirstName]"
+  year: 2026
+  publisher: "GitHub"
+  url: "https://github.com/[your-org]/streaming-latency-sports"
+  version: "0.3.0-s3-scaffolding"
+  commit: "05c1262"
+
+# Repository information
+repository: "https://github.com/[your-org]/streaming-latency-sports"
+repository-artifact: "https://github.com/[your-org]/streaming-latency-sports/archive/refs/tags/paper-s2-freeze-final.zip"
+
+# Dataset information
+dataset:
+  - title: "StatsBomb Open Data"
+    url: "https://github.com/statsbomb/open-data"
+    license: "CC-BY-NC-4.0"
+    description: "Publicly available football/soccer event data (2003-2023)"
+    version: "3bfbffe1de5750ebd47d770be0bb924a10cde54f"
+
+# Contact information
+contact:
+  - email: "[your-email@example.com]"
+    name: "[Your Name]"
+    affiliation: "[Your Institution]"
+
+# Additional identifiers
+identifiers:
+  - type: "github"
+    value: "streaming-latency-sports"
+  - type: "zenodo"
+    value: "TBD"  # Register at zenodo.org for DOI
+
+# References to related works
+references:
+  - title: "Apache Kafka: A Distributed Messaging System for Log Processing"
+    authors:
+      - family-names: "Kreps"
+        given-names: "Jay"
+      - family-names: "Narkhede"
+        given-names: "Neha"
+      - family-names: "Rao"
+        given-names: "Jun"
+    year: 2011
+    url: "https://kafka.apache.org/"
+    type: "software"
+  
+  - title: "Redis: A Persistent Key-Value Store with In-Memory Performance"
+    authors:
+      - family-names: "Sania"
+        given-names: "Salvatore"
+    year: 2009
+    url: "https://redis.io/"
+    type: "software"
+
+  - title: "StatsBomb Open Data"
+    authors:
+      - family-names: "StatsBomb"
+    year: 2018
+    url: "https://github.com/statsbomb/open-data"
+    type: "dataset"
+    license: "CC-BY-NC-4.0"
+
+# Funding information (if applicable)
+funding:
+  - funder: "[Funder Name]"
+    award: "[Award Number]"
+    url: "[Funder URL]"
+
+# Notes for users
+notes: |
+  This CFF file provides citation information for both the research paper and the software.
+  
+  **For citing the paper:**
+  Please use the preferred-citation entry with the journal citation once published.
+  
+  **For citing the software:**
+  Use the software-specific preferred-citation entry.
+  
+  **For citing the dataset:**
+  The StatsBomb Open Data is separately licensed under CC-BY-NC-4.0 and should be cited
+  according to their requirements: https://github.com/statsbomb/open-data
+  
+  **For reproducibility:**
+  All results can be reproduced from the committed artifacts in this repository.
+  See README.md for complete reproduction instructions.

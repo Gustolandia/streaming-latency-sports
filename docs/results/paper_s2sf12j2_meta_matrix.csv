@@ -1,0 +1,11 @@
+run,scenario,backend,plan_csv,speedup,max_t_sim,bootstrap,git_head,git_dirty,kafka_producer_opts,kafka_consumer_opts,redis_opts
+s2sf12j2_kafka_rep1_20260611_223638,s2sf12j2,kafka,data/processed/replay_plans/s2sf12j2/combined_plan.csv,120,600,localhost:9092,05c126228164b76f5cf3e31e45affa34adcc8e12,,,,
+s2sf12j2_kafka_rep2_20260611_223804,s2sf12j2,kafka,data/processed/replay_plans/s2sf12j2/combined_plan.csv,120,600,localhost:9092,05c126228164b76f5cf3e31e45affa34adcc8e12,,,,
+s2sf12j2_kafka_rep3_20260611_223930,s2sf12j2,kafka,data/processed/replay_plans/s2sf12j2/combined_plan.csv,120,600,localhost:9092,05c126228164b76f5cf3e31e45affa34adcc8e12,,,,
+s2sf12j2_kafka_rep4_20260611_224056,s2sf12j2,kafka,data/processed/replay_plans/s2sf12j2/combined_plan.csv,120,600,localhost:9092,05c126228164b76f5cf3e31e45affa34adcc8e12,,,,
+s2sf12j2_kafka_rep5_20260611_224223,s2sf12j2,kafka,data/processed/replay_plans/s2sf12j2/combined_plan.csv,120,600,localhost:9092,05c126228164b76f5cf3e31e45affa34adcc8e12,,,,
+s2sf12j2_redis_rep1_20260611_223725,s2sf12j2,redis,data/processed/replay_plans/s2sf12j2/combined_plan.csv,120,600,,05c126228164b76f5cf3e31e45affa34adcc8e12,,,,
+s2sf12j2_redis_rep2_20260611_223851,s2sf12j2,redis,data/processed/replay_plans/s2sf12j2/combined_plan.csv,120,600,,05c126228164b76f5cf3e31e45affa34adcc8e12,,,,
+s2sf12j2_redis_rep3_20260611_224018,s2sf12j2,redis,data/processed/replay_plans/s2sf12j2/combined_plan.csv,120,600,,05c126228164b76f5cf3e31e45affa34adcc8e12,,,,
+s2sf12j2_redis_rep4_20260611_224144,s2sf12j2,redis,data/processed/replay_plans/s2sf12j2/combined_plan.csv,120,600,,05c126228164b76f5cf3e31e45affa34adcc8e12,,,,
+s2sf12j2_redis_rep5_20260611_224311,s2sf12j2,redis,data/processed/replay_plans/s2sf12j2/combined_plan.csv,120,600,,05c126228164b76f5cf3e31e45affa34adcc8e12,,,,

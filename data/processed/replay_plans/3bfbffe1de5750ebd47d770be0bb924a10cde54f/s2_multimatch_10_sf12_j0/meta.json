@@ -1,0 +1,40 @@
+{
+  "commit": "3bfbffe1de5750ebd47d770be0bb924a10cde54f",
+  "match_ids": [
+    3895052,
+    3895060,
+    3895067,
+    3895074,
+    3895086,
+    3895095,
+    3895107,
+    3895113,
+    3895121,
+    3895134
+  ],
+  "n_matches": 10,
+  "n_events_total": 40660,
+  "speed_factor": 12.0,
+  "kickoff_jitter_max_s": 0.0,
+  "jitter_seed": 20260101,
+  "kickoff_offsets_s": {
+    "3895052": 0.0,
+    "3895060": 0.0,
+    "3895067": 0.0,
+    "3895074": 0.0,
+    "3895086": 0.0,
+    "3895095": 0.0,
+    "3895107": 0.0,
+    "3895113": 0.0,
+    "3895121": 0.0,
+    "3895134": 0.0
+  },
+  "inputs": {
+    "match_ids_file": "configs/s2_match_ids.txt",
+    "per_match_plan": "data/processed/replay_plans/3bfbffe1de5750ebd47d770be0bb924a10cde54f/match_<id>/replay_plan.csv"
+  },
+  "outputs": {
+    "combined_plan_csv": "data/processed/replay_plans/3bfbffe1de5750ebd47d770be0bb924a10cde54f/s2_multimatch_10_sf12_j0/combined_plan.csv",
+    "combined_plan_parquet": "data/processed/replay_plans/3bfbffe1de5750ebd47d770be0bb924a10cde54f/s2_multimatch_10_sf12_j0/combined_plan.parquet"
+  }
+}

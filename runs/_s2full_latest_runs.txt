@@ -1,0 +1,11 @@
+﻿
+runs\s2full_kafka_rep1_20260611_222158
+runs\s2full_redis_rep1_20260611_222247
+runs\s2full_kafka_rep2_20260611_222328
+runs\s2full_redis_rep2_20260611_222417
+runs\s2full_kafka_rep3_20260611_222458
+runs\s2full_redis_rep3_20260611_222546
+runs\s2full_kafka_rep4_20260611_222627
+runs\s2full_redis_rep4_20260611_222716
+runs\s2full_kafka_rep5_20260611_222757
+runs\s2full_redis_rep5_20260611_222845

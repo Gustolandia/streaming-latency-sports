@@ -1,0 +1,2 @@
+OK redis consumer: wrote 5137 rows -> runs\s3_s2full_redis_rep2_20260612\consumer.csv
+OK redis consumer: wrote 5137 rows -> runs\s3_s2full_redis_rep2_20260612\consumer_events.csv

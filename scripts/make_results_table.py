@@ -2,6 +2,15 @@ import argparse, json
 from pathlib import Path
 import pandas as pd
 
+# Enable coverage for subprocess execution if COVERAGE_PROCESS_START is set
+try:
+    import os
+    if os.environ.get('COVERAGE_PROCESS_START'):
+        import coverage
+        coverage.process_start()
+except Exception:
+    pass
+
 WINDOWS = ["100","250","500","1000","2000","5000"]
 
 def get_nested(d, path, default=None):

@@ -3,6 +3,15 @@ import pandas as pd
 from pathlib import Path
 from kafka import KafkaProducer
 
+# Enable coverage for subprocess execution if COVERAGE_PROCESS_START is set
+try:
+    import os
+    if os.environ.get('COVERAGE_PROCESS_START'):
+        import coverage
+        coverage.process_start()
+except Exception:
+    pass
+
 
 def now_ns() -> int:
     # perf_counter_ns() is monotonic and high-resolution (good for timing comparisons)
@@ -98,7 +107,7 @@ def main():
     corr_enabled = (
         args.s3_mode == "corrections"
         and int(args.corrections_every_k) > 0
-        and float(args.correction_delay_s) > 0.0
+        and float(args.correction_delay_s) >= 0.0  # Allow zero delay
     )
 
     # heap entries: (target_mono, seq, corr_event_id, corr_msg, corr_sched_ns, match_id, t_sim, t_emit_offset_s)

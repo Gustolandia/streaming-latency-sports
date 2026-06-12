@@ -1,0 +1,70 @@
+2025-12-31T18:48:59+00:00
+pwd=/mnt/c/Users/Gugar/Documents/streaming-latency-sports
+git=30c2c35d5b3a1440a6223533f4afa7e75c316797
+Linux Performance3 6.6.87.2-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Thu Jun  5 18:30:46 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+Python 3.12.3
+certifi==2025.11.12
+charset-normalizer==3.4.4
+idna==3.11
+kafka-python==2.3.0
+numpy==2.4.0
+pandas==2.3.3
+pyarrow==22.0.0
+python-dateutil==2.9.0.post0
+pytz==2025.2
+PyYAML==6.0.3
+redis==7.1.0
+requests==2.32.5
+six==1.17.0
+tqdm==4.67.1
+tzdata==2025.3
+urllib3==2.6.2
+
+---- DOCKER ----
+Docker version 27.3.1, build ce12230
+Docker Compose version v2.40.3-desktop.1
+NAME                               IMAGE                COMMAND                  SERVICE   CREATED       STATUS       PORTS
+broker                             apache/kafka:4.1.1   "/__cacert_entrypoin…"   broker    3 hours ago   Up 3 hours   0.0.0.0:9092->9092/tcp, [::]:9092->9092/tcp
+streaming-latency-sports-redis-1   redis:7              "docker-entrypoint.s…"   redis     3 hours ago   Up 3 hours   0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
+
+---- OFFICIAL RUNS ----
+runs/s2sf12_kafka_rep1_20251231_003409
+runs/s2sf12_kafka_rep1_20251231_161447
+runs/s2sf12_kafka_rep2_20251231_004012
+runs/s2sf12_kafka_rep2_20251231_162040
+runs/s2sf12_kafka_rep3_20251231_004613
+runs/s2sf12_kafka_rep3_20251231_162632
+runs/s2sf12_kafka_rep4_20251231_005215
+runs/s2sf12_kafka_rep4_20251231_163228
+runs/s2sf12_kafka_rep5_20251231_005817
+runs/s2sf12_kafka_rep5_20251231_163823
+runs/s2sf12_redis_rep1_20251231_003714
+runs/s2sf12_redis_rep1_20251231_161743
+runs/s2sf12_redis_rep2_20251231_004315
+runs/s2sf12_redis_rep2_20251231_162338
+runs/s2sf12_redis_rep3_20251231_004917
+runs/s2sf12_redis_rep3_20251231_162934
+runs/s2sf12_redis_rep4_20251231_005519
+runs/s2sf12_redis_rep4_20251231_163529
+runs/s2sf12_redis_rep5_20251231_010118
+runs/s2sf12_redis_rep5_20251231_164123
+runs/s2sf12j2_kafka_rep1_20251231_010431
+runs/s2sf12j2_kafka_rep1_20251231_164421
+runs/s2sf12j2_kafka_rep2_20251231_011033
+runs/s2sf12j2_kafka_rep2_20251231_165017
+runs/s2sf12j2_kafka_rep3_20251231_011635
+runs/s2sf12j2_kafka_rep3_20251231_165614
+runs/s2sf12j2_kafka_rep4_20251231_012238
+runs/s2sf12j2_kafka_rep4_20251231_170209
+runs/s2sf12j2_kafka_rep5_20251231_012837
+runs/s2sf12j2_kafka_rep5_20251231_170804
+runs/s2sf12j2_redis_rep1_20251231_010734
+runs/s2sf12j2_redis_rep1_20251231_164722
+runs/s2sf12j2_redis_rep2_20251231_011337
+runs/s2sf12j2_redis_rep2_20251231_165319
+runs/s2sf12j2_redis_rep3_20251231_011936
+runs/s2sf12j2_redis_rep3_20251231_165914
+runs/s2sf12j2_redis_rep4_20251231_012539
+runs/s2sf12j2_redis_rep4_20251231_170507
+runs/s2sf12j2_redis_rep5_20251231_013128
+runs/s2sf12j2_redis_rep5_20251231_171103

@@ -1,0 +1,39 @@
+2025-12-31T17:14:09+00:00
+pwd=/mnt/c/Users/Gugar/Documents/streaming-latency-sports
+git=2a405c7e906881c8b42f5530674bf49f223227db
+Linux Performance3 6.6.87.2-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Thu Jun  5 18:30:46 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+Python 3.12.3
+kafka-python_installed= True
+certifi==2025.11.12
+charset-normalizer==3.4.4
+idna==3.11
+kafka-python==2.3.0
+numpy==2.4.0
+pandas==2.3.3
+pyarrow==22.0.0
+python-dateutil==2.9.0.post0
+pytz==2025.2
+PyYAML==6.0.3
+redis==7.1.0
+requests==2.32.5
+six==1.17.0
+tqdm==4.67.1
+tzdata==2025.3
+urllib3==2.6.2
+
+---- DOCKER ----
+Docker version 27.3.1, build ce12230
+Docker Compose version v2.40.3-desktop.1
+NAME                               IMAGE                COMMAND                  SERVICE   CREATED          STATUS          PORTS
+broker                             apache/kafka:4.1.1   "/__cacert_entrypoin…"   broker    59 minutes ago   Up 59 minutes   0.0.0.0:9092->9092/tcp, [::]:9092->9092/tcp
+streaming-latency-sports-redis-1   redis:7              "docker-entrypoint.s…"   redis     59 minutes ago   Up 59 minutes   0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
+
+---- CODE SNAPSHOT (sha256) ----
+5c79d9ff6b6e4ae31685595ee8941214183a3f1159ec69aee1597b0419de4ae7  scripts/run_kafka_trial.sh
+e82ed312f4c7d20ae3ad00659239312aeb07442074fb9759264dfc700c18ef22  scripts/run_redis_trial.sh
+633a4b37d52f4323b9a03b37d990f9a68c5a3814c5aa1080bc32dfad03253c34  scripts/run_s2_variant_blocks.sh
+4c936cbcf61fc0f6700f424e8d7c338ab71822545f9fb0f76a8ff68763975987  scripts/kafka_producer.py
+7c48fa7e1ceb0b13e49dd66669c22a8f06ed10ca4e16e699c6fdab97a62a27dc  scripts/kafka_consumer.py
+338acbbd665f8f74e12dbb689f09cdf65c5c2906ec767311c699f5f4a7258d05  scripts/redis_producer.py
+5dc93304270ca31d8e0c8d667b69cec12699f34c5f008aeecc52f0daef9956c8  scripts/redis_consumer.py
+7a56ac23703409573b0e152cc6142cc188db40048aaa68aacd53c91b3a62c5b8  scripts/compute_tti.py

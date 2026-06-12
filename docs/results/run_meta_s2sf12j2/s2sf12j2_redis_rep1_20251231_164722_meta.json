@@ -1,0 +1,27 @@
+{
+  "backend": "redis",
+  "code_sha256": {
+    "scripts/compute_tti.py": "7a56ac23703409573b0e152cc6142cc188db40048aaa68aacd53c91b3a62c5b8",
+    "scripts/redis_consumer.py": "5dc93304270ca31d8e0c8d667b69cec12699f34c5f008aeecc52f0daef9956c8",
+    "scripts/redis_producer.py": "338acbbd665f8f74e12dbb689f09cdf65c5c2906ec767311c699f5f4a7258d05",
+    "scripts/run_redis_trial.sh": "e82ed312f4c7d20ae3ad00659239312aeb07442074fb9759264dfc700c18ef22"
+  },
+  "env": {
+    "REDIS_CONSUMER_OPTS": "",
+    "REDIS_PRODUCER_OPTS": ""
+  },
+  "git": {
+    "head": "2a405c7e906881c8b42f5530674bf49f223227db",
+    "status_short": "?? .env\n?? .gitignore\n?? configs/\n?? data/\n?? docker-compose.yml\n?? docs/\n?? scripts/compute_tti.py\n?? scripts/fetch_statsbomb.py\n?? scripts/make_multimatch_plan.py\n?? scripts/make_replay_plan.py\n?? scripts/make_results_table.py\n?? scripts/redis_consumer.py\n?? scripts/redis_producer.py\n?? scripts/run_s1_blocks.sh\n?? scripts/run_s2_blocks.sh\n?? scripts/summarize_runs.py\n?? scripts/tail_drilldown.py"
+  },
+  "max_t_sim": 999999,
+  "plan_csv": "data/processed/replay_plans/3bfbffe1de5750ebd47d770be0bb924a10cde54f/s2_multimatch_10_sf12_j2/combined_plan.csv",
+  "redis": {
+    "group": "sb-group:s2sf12j2_redis_rep1_20251231_164722",
+    "host": "localhost",
+    "port": 6379,
+    "stream": "s2sf12j2_redis_rep1_20251231_164722"
+  },
+  "run_id": "s2sf12j2_redis_rep1_20251231_164722",
+  "speedup": 12.0
+}

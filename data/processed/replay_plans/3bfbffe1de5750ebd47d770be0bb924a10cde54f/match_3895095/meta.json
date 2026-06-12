@@ -1,0 +1,12 @@
+{
+  "generated_at_utc": "2025-12-30T23:15:40.521209+00:00",
+  "commit": "3bfbffe1de5750ebd47d770be0bb924a10cde54f",
+  "match_id": 3895095,
+  "n_events": 4035,
+  "speed_factor": 120.0,
+  "raw_events_path": "data/raw/statsbomb/3bfbffe1de5750ebd47d770be0bb924a10cde54f/events/3895095.json",
+  "outputs": {
+    "csv_no_payload": "data/processed/replay_plans/3bfbffe1de5750ebd47d770be0bb924a10cde54f/match_3895095/replay_plan.csv",
+    "parquet_with_payload": "data/processed/replay_plans/3bfbffe1de5750ebd47d770be0bb924a10cde54f/match_3895095/replay_plan.parquet"
+  }
+}

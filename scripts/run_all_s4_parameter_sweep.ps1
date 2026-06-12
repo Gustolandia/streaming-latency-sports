@@ -13,7 +13,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 # S4 Parameter Matrix
-# 6 configurations x 2 scenarios x 2 backends = 24 runs
+# 8 configurations x 2 scenarios x 2 backends = 32 runs
 $scenarios = @(
     @{ prefix="s2sf12"; plan="data/processed/replay_plans/s2sf12/combined_plan.csv" },
     @{ prefix="s2sf12j2"; plan="data/processed/replay_plans/s2sf12j2/combined_plan.csv" }
@@ -40,7 +40,8 @@ $startTime = Get-Date
 
 Write-Host "=== S4 Parameter Sensitivity Analysis ===" -ForegroundColor Cyan
 Write-Host "Testing: speedup, corrections_every_k, correction_delay_s" -ForegroundColor Cyan
-Write-Host "Scenarios: $($scenarios.Count) ($($scenarios | ForEach-Object { $_.prefix } -join ', '))" -ForegroundColor Cyan
+$scenarioNames = $scenarios | ForEach-Object { $_.prefix }
+Write-Host "Scenarios: $($scenarios.Count) ($($scenarioNames -join ', '))" -ForegroundColor Cyan
 Write-Host "Configurations: $($configs.Count)" -ForegroundColor Cyan
 Write-Host "Backends: kafka, redis" -ForegroundColor Cyan
 Write-Host "Expected: $($scenarios.Count * $configs.Count * 2 * $REPS) total runs" -ForegroundColor Cyan
@@ -53,7 +54,7 @@ foreach ($scenario in $scenarios) {
         foreach ($backend in @("kafka", "redis")) {
             for ($i = 1; $i -le $REPS; $i++) {
                 $timestamp = Get-Date -Format 'yyyyMMdd'
-                $runId = "s4_${scenario.prefix}_${config.name}_${backend}_rep${i}_$timestamp"
+                $runId = "s4_$($scenario.prefix)_$($config.name)_$($backend)_rep$($i)_$timestamp"
                 $totalRuns++
                 
                 Write-Host "  [$totalRuns/$($scenarios.Count * $configs.Count * 2 * $REPS)] $(Get-Date -Format 'HH:mm:ss') Starting $runId (speedup=$($config.speedup), every_k=$($config.corrections_every_k), delay=$($config.correction_delay_s)s)"

@@ -1017,8 +1017,8 @@ pdflatex -interaction=nonstopmode manuscript.tex
 
 | Date | Version | Changes | Author |
 |------|---------|---------|--------|
-| 2026-06-13 | 1.0 | Initial revision plan | Vibe |
-| 2026-06-15 | 2.0 | Compact version - Common runs strategy | Vibe |
+| 2026-06-13 | 1.0 | Initial revision plan | Research Team |
+| 2026-06-15 | 2.0 | Compact version - Common runs strategy | Research Team |
 
 ---
 

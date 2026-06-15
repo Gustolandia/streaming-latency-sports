@@ -1421,7 +1421,7 @@ reproducibility_package/
 
 | Version | Date | Changes | Owner |
 |---------|------|---------|-------|
-| 1.0 | 2026-06-13 | Initial plan created | Vibe CLI |
+| 1.0 | 2026-06-13 | Initial plan created | Research Team |
 | | | | |
 
 ---

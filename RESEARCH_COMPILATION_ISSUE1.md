@@ -1059,16 +1059,16 @@ Tennis   Golf     Football  Baseball  Basketball
 
 | Date | Version | Changes | Author |
 |------|---------|---------|--------|
-| 2026-06-15 | 1.0 | Initial compilation | Vibe |
-| 2026-06-15 | 1.0 | Added academic foundations (CAP, PACELC, design patterns) | Vibe |
-| 2026-06-15 | 1.0 | Added industry benchmarks (Kafka vs Redis comparisons) | Vibe |
-| 2026-06-15 | 1.0 | Added sports domain analysis (latency requirements, actionability windows) | Vibe |
-| 2026-06-15 | 1.0 | Added technical dimensions (throughput, consistency, protocol, resources) | Vibe |
-| 2026-06-15 | 1.0 | Added economic perspectives (cost of latency, TCO) | Vibe |
-| 2026-06-15 | 1.0 | Added multi-sport comparison | Vibe |
-| 2026-06-15 | 1.0 | Synthesized 4 primary + 8 secondary RQs | Vibe |
-| 2026-06-15 | 1.0 | Formulated 16 primary + 24 extended hypotheses | Vibe |
-| 2026-06-15 | 1.0 | Created integration plan | Vibe |
+| 2026-06-15 | 1.0 | Initial compilation | Research Team |
+| 2026-06-15 | 1.0 | Added academic foundations (CAP, PACELC, design patterns) | Research Team |
+| 2026-06-15 | 1.0 | Added industry benchmarks (Kafka vs Redis comparisons) | Research Team |
+| 2026-06-15 | 1.0 | Added sports domain analysis (latency requirements, actionability windows) | Research Team |
+| 2026-06-15 | 1.0 | Added technical dimensions (throughput, consistency, protocol, resources) | Research Team |
+| 2026-06-15 | 1.0 | Added economic perspectives (cost of latency, TCO) | Research Team |
+| 2026-06-15 | 1.0 | Added multi-sport comparison | Research Team |
+| 2026-06-15 | 1.0 | Synthesized 4 primary + 8 secondary RQs | Research Team |
+| 2026-06-15 | 1.0 | Formulated 16 primary + 24 extended hypotheses | Research Team |
+| 2026-06-15 | 1.0 | Created integration plan | Research Team |
 
 ### 10.2 Sources Consulted
 
@@ -1126,7 +1126,7 @@ Tennis   Golf     Football  Baseball  Basketball
 
 | Date | Version | Author | Changes |
 |------|---------|--------|---------|
-| 2026-06-15 | 1.0 | Vibe | Initial broad research compilation |
+| 2026-06-15 | 1.0 | Research Team | Initial broad research compilation |
 
 ---
 

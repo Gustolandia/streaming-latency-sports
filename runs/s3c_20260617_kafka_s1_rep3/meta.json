@@ -1,0 +1,56 @@
+{
+  "run_id": "s3c_20260617_kafka_s1_rep3",
+  "git": {
+    "status_short": [
+      "?? docs/results/concurrency_concurrency_n10_20260617_150538/",
+      "?? docs/results/concurrency_concurrency_n10_20260617_150622/",
+      "?? docs/results/concurrency_concurrency_n10_20260617_150705/",
+      "?? docs/results/concurrency_concurrency_n1_20260617_150538/",
+      "?? docs/results/concurrency_concurrency_n1_20260617_150622/",
+      "?? docs/results/concurrency_concurrency_n1_20260617_150705/",
+      "?? docs/results/concurrency_concurrency_n20_20260617_150538/",
+      "?? docs/results/concurrency_concurrency_n20_20260617_150622/",
+      "?? docs/results/concurrency_concurrency_n20_20260617_150705/",
+      "?? docs/results/concurrency_concurrency_n5_20260617_150538/",
+      "?? docs/results/concurrency_concurrency_n5_20260617_150622/",
+      "?? docs/results/concurrency_concurrency_n5_20260617_150705/",
+      "?? runs/_concurrency_concurrency_n10_20260617_150538_runs.txt",
+      "?? runs/_concurrency_concurrency_n10_20260617_150622_runs.txt",
+      "?? runs/_concurrency_concurrency_n10_20260617_150705_runs.txt",
+      "?? runs/_concurrency_concurrency_n1_20260617_150538_runs.txt",
+      "?? runs/_concurrency_concurrency_n1_20260617_150622_runs.txt",
+      "?? runs/_concurrency_concurrency_n1_20260617_150705_runs.txt",
+      "?? runs/_concurrency_concurrency_n20_20260617_150538_runs.txt",
+      "?? runs/_concurrency_concurrency_n20_20260617_150622_runs.txt",
+      "?? runs/_concurrency_concurrency_n20_20260617_150705_runs.txt",
+      "?? runs/_concurrency_concurrency_n5_20260617_150538_runs.txt",
+      "?? runs/_concurrency_concurrency_n5_20260617_150622_runs.txt",
+      "?? runs/_concurrency_concurrency_n5_20260617_150705_runs.txt",
+      "?? runs/_s3c.err",
+      "?? runs/_s3c_20260617_runs.txt",
+      "?? runs/s3c_20260617_kafka_s1_rep1.log",
+      "?? runs/s3c_20260617_kafka_s1_rep1/",
+      "?? runs/s3c_20260617_kafka_s1_rep2.log",
+      "?? runs/s3c_20260617_kafka_s1_rep2/",
+      "?? runs/s3c_20260617_kafka_s1_rep3.log",
+      "?? scripts/run_s3_corrected.ps1"
+    ],
+    "head": "866915ae3a49fe2d5809af65b8944783fef286cc"
+  },
+  "backend": "kafka",
+  "plan_csv": "data\\processed\\replay_plans\\s1\\combined_plan.csv",
+  "bootstrap": "localhost:19092",
+  "code_sha256": {
+    "scripts/compute_tti.py": "9f70bc584ad0283a9a8b19b5216bc914018dc087fd921db526d4adb79c1bd67a",
+    "scripts/kafka_consumer.py": "9c35bb01eb6abf8dc6c7e63d6f12ca509d1e6e1cf21b21e9978c9b3a5c9d1087",
+    "scripts/kafka_producer.py": "5209b0109c4e76f30611d62bd26256f6c589160b15a6dbafdfa98deb62fa24bd",
+    "scripts/run_kafka_trial.ps1": "6904c5e3cdf08630e1493d571fba8b4e9a4d13aae5211f24f8c6ad84022059d4"
+  },
+  "topic": "sb-events-s3c_20260617_kafka_s1_rep3",
+  "speedup": 120,
+  "env": {
+    "KAFKA_CONSUMER_OPTS": null,
+    "KAFKA_PRODUCER_OPTS": null
+  },
+  "max_t_sim": 600
+}

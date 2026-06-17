@@ -1,0 +1,7 @@
+{
+  "total_runs": 30,
+  "total_corrections": 2472,
+  "avg_corrections_per_run": 82.4,
+  "correction_propagation_latency_p50_ms": 1461.2053999999998,
+  "correction_propagation_latency_mean_ms": 1195.9410249999999
+}

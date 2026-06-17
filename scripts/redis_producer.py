@@ -87,17 +87,11 @@ def main():
             # Address remap function to map Docker internal IPs to localhost
             # Docker redis-net uses 172.20.0.0/16
             def address_remap(node):
-                # Map internal Docker IPs to localhost with mapped ports
-                # sbl_redis1: 172.20.0.2:7000 -> localhost:7000
-                # sbl_redis2: 172.20.0.4:7001 -> localhost:7001
-                # sbl_redis3: 172.20.0.3:7002 -> localhost:7002
-                if node[0] == '172.20.0.2':
-                    return ('localhost', 7000)
-                elif node[0] == '172.20.0.3':
-                    return ('localhost', 7002)
-                elif node[0] == '172.20.0.4':
-                    return ('localhost', 7001)
-                return node
+                # Each cluster port is published to the same host port
+                # (7000:7000, 7001:7001, 7002:7002), so map any internal node
+                # address to localhost keeping its port. Robust to Docker IP
+                # reassignment / stale cluster topology.
+                return ('127.0.0.1', node[1])
             
             # Use localhost with the mapped host ports
             # sbl_redis1 -> localhost:7000, sbl_redis2 -> localhost:7001, sbl_redis3 -> localhost:7002
@@ -154,13 +148,9 @@ def main():
                 
                 # Address remap function to map Docker internal IPs to localhost
                 def address_remap(node):
-                    if node[0] == '172.20.0.2':
-                        return ('localhost', 7000)
-                    elif node[0] == '172.20.0.3':
-                        return ('localhost', 7002)
-                    elif node[0] == '172.20.0.4':
-                        return ('localhost', 7001)
-                    return node
+                    # Map any internal node address to localhost, keeping its
+                    # port (host publishes 7000/7001/7002 identically).
+                    return ('127.0.0.1', node[1])
                 
                 startup_nodes = [
                     ClusterNode(host='localhost', port=7000),

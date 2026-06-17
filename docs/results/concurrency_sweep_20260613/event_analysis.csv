@@ -1,0 +1,11 @@
+Scenario,Backend,Avg_Events,Match_Rate
+S1,Kafka,2561,100.0
+S1,Redis,2561,100.0
+S2,Kafka,4193,100.0
+S2,Redis,4193,100.0
+S3,Kafka,4121,100.0
+S3,Redis,4121,100.0
+S4,Kafka,4465,100.0
+S4,Redis,4465,100.0
+S5,Kafka,4655,100.0
+S5,Redis,4655,100.0

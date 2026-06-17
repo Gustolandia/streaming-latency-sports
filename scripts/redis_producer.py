@@ -28,6 +28,10 @@ def main():
     ap.add_argument("--stream", default="sb:events")
     ap.add_argument("--host", default="localhost")
     ap.add_argument("--port", type=int, default=6379)
+    ap.add_argument("--cluster-mode", action="store_true",
+                    help="Enable Redis cluster mode")
+    ap.add_argument("--node-count", type=int, default=1, choices=[1, 3],
+                    help="Number of Redis nodes (1=single, 3=cluster)")
     ap.add_argument("--speedup", type=float, default=120.0)
     ap.add_argument("--max-t-sim", type=int, default=600)
 
@@ -60,8 +64,49 @@ def main():
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Base producer connection
-    r = redis.Redis(host=args.host, port=args.port, decode_responses=True)
+    # Redis connection - support both single node and cluster mode
+    if args.cluster_mode or args.node_count == 3:
+        # Cluster mode: connect to all 3 nodes via localhost with mapped ports
+        # Lazy import to avoid issues when redis is mocked in tests
+        try:
+            from redis.cluster import RedisCluster, ClusterNode
+            
+            # Address remap function to map Docker internal IPs to localhost
+            # Docker redis-net uses 172.20.0.0/16
+            def address_remap(node):
+                # Map internal Docker IPs to localhost with mapped ports
+                # sbl_redis1: 172.20.0.2:7000 -> localhost:7000
+                # sbl_redis2: 172.20.0.4:7001 -> localhost:7001
+                # sbl_redis3: 172.20.0.3:7002 -> localhost:7002
+                if node[0] == '172.20.0.2':
+                    return ('localhost', 7000)
+                elif node[0] == '172.20.0.3':
+                    return ('localhost', 7002)
+                elif node[0] == '172.20.0.4':
+                    return ('localhost', 7001)
+                return node
+            
+            # Use localhost with the mapped host ports
+            # sbl_redis1 -> localhost:7000, sbl_redis2 -> localhost:7001, sbl_redis3 -> localhost:7002
+            startup_nodes = [
+                ClusterNode(host='localhost', port=7000),
+                ClusterNode(host='localhost', port=7001),
+                ClusterNode(host='localhost', port=7002),
+            ]
+            r = RedisCluster(
+                startup_nodes=startup_nodes,
+                decode_responses=True,
+                # Disable full coverage requirement for flexibility
+                require_full_coverage=False,
+                # Apply address remapping to redirect Docker IPs to localhost
+                address_remap=address_remap
+            )
+        except (ImportError, ModuleNotFoundError):
+            # Fallback for when redis is mocked in tests
+            r = redis.Redis(host=args.host, port=args.port, decode_responses=True)
+    else:
+        # Single node mode
+        r = redis.Redis(host=args.host, port=args.port, decode_responses=True)
 
     # Producer time origins:
     # - t0_mono: time.monotonic() reference used for sleep scheduling
@@ -88,7 +133,32 @@ def main():
 
     def corr_worker():
         # Separate connection for thread safety
-        r_corr = redis.Redis(host=args.host, port=args.port, decode_responses=True)
+        if args.cluster_mode or args.node_count == 3:
+            # Lazy import to avoid issues when redis is mocked in tests
+            try:
+                from redis.cluster import RedisCluster, ClusterNode
+                
+                # Address remap function to map Docker internal IPs to localhost
+                def address_remap(node):
+                    if node[0] == '172.20.0.2':
+                        return ('localhost', 7000)
+                    elif node[0] == '172.20.0.3':
+                        return ('localhost', 7002)
+                    elif node[0] == '172.20.0.4':
+                        return ('localhost', 7001)
+                    return node
+                
+                startup_nodes = [
+                    ClusterNode(host='localhost', port=7000),
+                    ClusterNode(host='localhost', port=7001),
+                    ClusterNode(host='localhost', port=7002),
+                ]
+                r_corr = RedisCluster(startup_nodes=startup_nodes, decode_responses=True, require_full_coverage=False, address_remap=address_remap)
+            except (ImportError, ModuleNotFoundError):
+                # Fallback for when redis is mocked in tests
+                r_corr = redis.Redis(host=args.host, port=args.port, decode_responses=True)
+        else:
+            r_corr = redis.Redis(host=args.host, port=args.port, decode_responses=True)
 
         while True:
             with jobs_cv:

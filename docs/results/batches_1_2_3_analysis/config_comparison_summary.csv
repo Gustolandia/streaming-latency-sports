@@ -1,0 +1,7 @@
+,,p50,p50,p95,p95,match_rate_pct,throughput_events_per_sec
+,,mean,std,mean,std,mean,mean
+backend,config,,,,,,
+kafka,cluster,17669.16,3821.02,31902.56,7429.19,100.0,7.05
+kafka,single,5513.93,906.74,8844.21,1964.09,100.0,6.91
+redis,cluster,12194.2,10206.27,15168.04,10333.99,100.0,6.91
+redis,single,3325.94,454.91,4646.68,1147.32,100.0,6.91

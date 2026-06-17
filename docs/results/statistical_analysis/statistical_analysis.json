@@ -1,0 +1,81 @@
+{
+  "alpha": 0.05,
+  "metric": "p50",
+  "comparisons": [
+    {
+      "label": "kafka_vs_redis_overall",
+      "test": "Mann-Whitney U",
+      "statistic": 2794.0,
+      "p_value": 1.842911765685727e-07,
+      "cohens_d": 0.502142279480054,
+      "hedges_g": 0.49894392101202817,
+      "effect": "medium",
+      "ci_a": [
+        9855.860277273807,
+        13327.224042892858
+      ],
+      "ci_b": [
+        5578.803768316945,
+        9941.331724749722
+      ],
+      "normal": false,
+      "equal_var": true,
+      "n_a": 60,
+      "n_b": 60,
+      "mean_a": 11591.542160083332,
+      "mean_b": 7760.067746533333,
+      "p_adjusted": 3.685823531371454e-07,
+      "reject_after_correction": true
+    },
+    {
+      "label": "kafka_vs_redis_cluster",
+      "test": "Mann-Whitney U",
+      "statistic": 600.0,
+      "p_value": 0.027086318388295935,
+      "cohens_d": 0.7104699448552577,
+      "hedges_g": 0.70124306245454,
+      "effect": "medium",
+      "ci_a": [
+        16242.365375019846,
+        19095.94727258015
+      ],
+      "ci_b": [
+        8383.114723336172,
+        16005.28388479716
+      ],
+      "normal": false,
+      "equal_var": false,
+      "n_a": 30,
+      "n_b": 30,
+      "mean_a": 17669.156323799998,
+      "mean_b": 12194.199304066666,
+      "p_adjusted": 0.027086318388295935,
+      "reject_after_correction": true
+    },
+    {
+      "label": "kafka_vs_redis_single",
+      "test": "Mann-Whitney U",
+      "statistic": 864.0,
+      "p_value": 9.75550113457629e-10,
+      "cohens_d": 3.050182938402324,
+      "hedges_g": 3.0105701729685275,
+      "effect": "large",
+      "ci_a": [
+        5175.344770333933,
+        5852.511222399398
+      ],
+      "ci_b": [
+        3156.0686210514514,
+        3495.8037569485496
+      ],
+      "normal": false,
+      "equal_var": false,
+      "n_a": 30,
+      "n_b": 30,
+      "mean_a": 5513.927996366666,
+      "mean_b": 3325.9361890000005,
+      "p_adjusted": 2.9266503403728867e-09,
+      "reject_after_correction": true
+    }
+  ]
+}

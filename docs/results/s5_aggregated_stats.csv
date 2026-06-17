@@ -1,0 +1,4 @@
+backend,config,count,tti_p50_mean,tti_p50_std,tti_p95_mean,tti_p95_std,match_rate_mean,kafka_cpu_mean,kafka_mem_mean,redis_cpu_mean,redis_mem_mean,avg_samples
+kafka,baseline,1,100.0,,200.0,,0.999,5.0,1000.0,0.0,0.0,100.0
+kafka,high_speedup,1,150.0,,250.0,,0.998,6.0,1100.0,0.0,0.0,100.0
+redis,baseline,1,80.0,,160.0,,0.999,0.0,0.0,4.0,100.0,100.0

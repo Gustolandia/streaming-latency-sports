@@ -11,11 +11,6 @@ services:
     networks:
       - redis-net
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "--port", "7000", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
 
   redis2:
     image: redis:7.2.4
@@ -29,11 +24,6 @@ services:
     networks:
       - redis-net
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "--port", "7001", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
 
   redis3:
     image: redis:7.2.4
@@ -47,31 +37,20 @@ services:
     networks:
       - redis-net
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "--port", "7002", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
 
   redis-cluster-init:
     image: redis:7.2.4
     container_name: sbl_redis_cluster_init
     depends_on:
-      redis1:
-        condition: service_healthy
-      redis2:
-        condition: service_healthy
-      redis3:
-        condition: service_healthy
+      - redis1
+      - redis2
+      - redis3
     command: >
       sh -c "
       echo 'Waiting for Redis nodes to be ready...' && \
-      sleep 5 && \
+      sleep 10 && \
       echo 'Creating Redis cluster...' && \
-      redis-cli --cluster create \
-        redis1:7000 redis2:7001 redis3:7002 \
-        --cluster-replicas 0 \
-        --cluster-yes && \
+      redis-cli --cluster create redis1:7000 redis2:7001 redis3:7002 --cluster-replicas 0 --cluster-yes && \
       echo 'Cluster created successfully!' || \
       (echo 'Cluster creation may have already been done, checking...' && \
        redis-cli --cluster check redis1:7000 && \

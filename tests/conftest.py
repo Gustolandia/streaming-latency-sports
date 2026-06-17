@@ -40,6 +40,8 @@ sys.modules['kafka.KafkaProducer'] = MagicMock()
 sys.modules['kafka.KafkaConsumer'] = MagicMock()
 sys.modules['redis'] = MagicMock()
 sys.modules['redis.Redis'] = MagicMock()
+sys.modules['redis.cluster'] = MagicMock()
+sys.modules['redis.cluster.RedisCluster'] = MagicMock()
 
 # Add scripts directory to path
 SCRIPTS_DIR = Path(__file__).parent.parent / "scripts"

@@ -1,0 +1,17 @@
+{
+  "overall": {
+    "target": 80,
+    "total": 80
+  },
+  "batch1": {
+    "run_list": "runs\\_batch1_runs.txt",
+    "total": 40,
+    "target": 40
+  },
+  "batch2": {
+    "run_list": "runs\\_batch2_runs.txt",
+    "total": 40,
+    "target": 40
+  },
+  "timestamp": "2026-06-15 22:57:42"
+}

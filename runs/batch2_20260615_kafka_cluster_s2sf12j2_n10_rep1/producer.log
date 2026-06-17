@@ -1,0 +1,61 @@
+Traceback (most recent call last):
+  File "C:\Users\Gugar\Documents\streaming-latency-sports\scripts\kafka_producer.py", line 306, in <module>
+    main()
+  File "C:\Users\Gugar\Documents\streaming-latency-sports\scripts\kafka_producer.py", line 92, in main
+    producer = KafkaProducer(**producer_kwargs)
+  File "C:\Users\Gugar\AppData\Roaming\Python\Python39\site-packages\kafka\producer\kafka.py", line 487, in __init__
+    client = self.config['kafka_client'](
+  File "C:\Users\Gugar\AppData\Roaming\Python\Python39\site-packages\kafka\client_async.py", line 266, in __init__
+    self.config['api_version'] = self.check_version()
+  File "C:\Users\Gugar\AppData\Roaming\Python\Python39\site-packages\kafka\client_async.py", line 1080, in check_version
+    raise Errors.NoBrokersAvailable()
+kafka.errors.NoBrokersAvailable: NoBrokersAvailable
+Traceback (most recent call last):
+  File "C:\Users\Gugar\Documents\streaming-latency-sports\scripts\kafka_producer.py", line 306, in <module>
+    main()
+  File "C:\Users\Gugar\Documents\streaming-latency-sports\scripts\kafka_producer.py", line 92, in main
+    producer = KafkaProducer(**producer_kwargs)
+  File "C:\Users\Gugar\AppData\Roaming\Python\Python39\site-packages\kafka\producer\kafka.py", line 487, in __init__
+    client = self.config['kafka_client'](
+  File "C:\Users\Gugar\AppData\Roaming\Python\Python39\site-packages\kafka\client_async.py", line 266, in __init__
+    self.config['api_version'] = self.check_version()
+  File "C:\Users\Gugar\AppData\Roaming\Python\Python39\site-packages\kafka\client_async.py", line 1080, in check_version
+    raise Errors.NoBrokersAvailable()
+kafka.errors.NoBrokersAvailable: NoBrokersAvailable
+Traceback (most recent call last):
+  File "C:\Users\Gugar\Documents\streaming-latency-sports\scripts\kafka_producer.py", line 306, in <module>
+    main()
+  File "C:\Users\Gugar\Documents\streaming-latency-sports\scripts\kafka_producer.py", line 92, in main
+    producer = KafkaProducer(**producer_kwargs)
+  File "C:\Users\Gugar\AppData\Roaming\Python\Python39\site-packages\kafka\producer\kafka.py", line 487, in __init__
+    client = self.config['kafka_client'](
+  File "C:\Users\Gugar\AppData\Roaming\Python\Python39\site-packages\kafka\client_async.py", line 266, in __init__
+    self.config['api_version'] = self.check_version()
+  File "C:\Users\Gugar\AppData\Roaming\Python\Python39\site-packages\kafka\client_async.py", line 1080, in check_version
+    raise Errors.NoBrokersAvailable()
+kafka.errors.NoBrokersAvailable: NoBrokersAvailable
+Traceback (most recent call last):
+  File "C:\Users\Gugar\Documents\streaming-latency-sports\scripts\kafka_producer.py", line 306, in <module>
+    main()
+  File "C:\Users\Gugar\Documents\streaming-latency-sports\scripts\kafka_producer.py", line 92, in main
+    producer = KafkaProducer(**producer_kwargs)
+  File "C:\Users\Gugar\AppData\Roaming\Python\Python39\site-packages\kafka\producer\kafka.py", line 487, in __init__
+    client = self.config['kafka_client'](
+  File "C:\Users\Gugar\AppData\Roaming\Python\Python39\site-packages\kafka\client_async.py", line 266, in __init__
+    self.config['api_version'] = self.check_version()
+  File "C:\Users\Gugar\AppData\Roaming\Python\Python39\site-packages\kafka\client_async.py", line 1080, in check_version
+    raise Errors.NoBrokersAvailable()
+kafka.errors.NoBrokersAvailable: NoBrokersAvailable
+Traceback (most recent call last):
+  File "C:\Users\Gugar\Documents\streaming-latency-sports\scripts\kafka_producer.py", line 306, in <module>
+    main()
+  File "C:\Users\Gugar\Documents\streaming-latency-sports\scripts\kafka_producer.py", line 92, in main
+    producer = KafkaProducer(**producer_kwargs)
+  File "C:\Users\Gugar\AppData\Roaming\Python\Python39\site-packages\kafka\producer\kafka.py", line 487, in __init__
+    client = self.config['kafka_client'](
+  File "C:\Users\Gugar\AppData\Roaming\Python\Python39\site-packages\kafka\client_async.py", line 266, in __init__
+    self.config['api_version'] = self.check_version()
+  File "C:\Users\Gugar\AppData\Roaming\Python\Python39\site-packages\kafka\client_async.py", line 1080, in check_version
+    raise Errors.NoBrokersAvailable()
+kafka.errors.NoBrokersAvailable: NoBrokersAvailable
+OK kafka producer: wrote 4465 rows -> runs\batch2_20260615_kafka_cluster_s2sf12j2_n10_rep1\producer.csv

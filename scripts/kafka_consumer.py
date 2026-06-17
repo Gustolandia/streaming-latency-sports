@@ -23,6 +23,8 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--topic", default="sb-events")
     ap.add_argument("--bootstrap", default="localhost:9092")
+    ap.add_argument("--broker-count", type=int, default=1, choices=[1, 3],
+                    help="Number of Kafka brokers (1=single, 3=cluster)")
     ap.add_argument("--group", default=None)
     ap.add_argument("--idle-seconds", type=int, default=15)
 
@@ -42,9 +44,15 @@ def main():
     events_path = Path("runs") / args.run_id / "consumer_events.csv"
     events_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # Multi-broker support: use different bootstrap servers based on broker count
+    if args.broker_count == 3:
+        bootstrap_servers = args.bootstrap if args.bootstrap else "kafka1:29092,kafka2:29092,kafka3:29092"
+    else:
+        bootstrap_servers = args.bootstrap if args.bootstrap else "localhost:9092"
+
     consumer = KafkaConsumer(
         args.topic,
-        bootstrap_servers=[args.bootstrap],
+        bootstrap_servers=bootstrap_servers,
         group_id=group_id,
         auto_offset_reset="earliest",
         enable_auto_commit=True,

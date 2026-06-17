@@ -12,7 +12,8 @@ param(
     [string]$GROUP = "sb-group:$RUN_ID",
     [switch]$CLUSTER_MODE = $false,
     [int]$NODE_COUNT = 1,
-    [string]$PRODUCER_EXTRA = ""
+    [string]$PRODUCER_EXTRA = "",
+    [int]$IDLE_SECONDS = 30
 )
 
 $ErrorActionPreference = "Stop"
@@ -87,7 +88,7 @@ Write-Host "[1/4] $(Get-Date -Format 'HH:mm:ss') starting consumer..."
 $consumerLog = "runs\$RUN_ID\consumer.log"
 
 # Build consumer command with output redirection
-$consumerCmd = "python scripts\redis_consumer.py --run-id $RUN_ID --out runs\$RUN_ID\consumer.csv --host $RedisHost --port $PORT --stream $STREAM --group $GROUP --idle-seconds 30"
+$consumerCmd = "python scripts\redis_consumer.py --run-id $RUN_ID --out runs\$RUN_ID\consumer.csv --host $RedisHost --port $PORT --stream $STREAM --group $GROUP --idle-seconds $IDLE_SECONDS"
 if ($CLUSTER_MODE -or $NODE_COUNT -eq 3) {
     $consumerCmd += " --cluster-mode"
 }

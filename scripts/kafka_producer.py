@@ -14,8 +14,12 @@ except Exception:
 
 
 def now_ns() -> int:
-    # perf_counter_ns() is monotonic and high-resolution (good for timing comparisons)
-    return time.perf_counter_ns()
+    # Wall-clock epoch nanoseconds. MUST be time.time_ns() (not perf_counter_ns):
+    # producer and consumer run as SEPARATE processes, and perf_counter's reference
+    # point is process-relative, so cross-process subtraction injects each process's
+    # launch offset into TTI/transport. time.time_ns() shares one epoch across
+    # processes on the same host, so consumer_ts - producer_ts is a valid latency.
+    return time.time_ns()
 
 
 def main():
@@ -92,8 +96,9 @@ def main():
     producer = KafkaProducer(**producer_kwargs)
 
     # Producer time origins:
-    # - t0_mono: time.monotonic() reference used for sleep scheduling
-    # - t0_wall_ns: perf_counter_ns() reference used to compute planned emit ns in the same monotonic domain
+    # - t0_mono: time.monotonic() reference used for sleep scheduling (intra-process)
+    # - t0_wall_ns: time.time_ns() wall-clock epoch used to compute planned emit ns;
+    #   shared epoch with the consumer process so TTI is a valid cross-process latency
     t0_wall_ns = now_ns()
     t0_mono = time.monotonic()
 

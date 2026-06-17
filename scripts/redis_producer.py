@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse, csv, json, time, threading, heapq
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pandas as pd
@@ -16,8 +17,12 @@ except Exception:
 
 
 def now_ns() -> int:
-    # perf_counter_ns() is monotonic and high-resolution (good for timing comparisons)
-    return time.perf_counter_ns()
+    # Wall-clock epoch nanoseconds. MUST be time.time_ns() (not perf_counter_ns):
+    # producer and consumer run as SEPARATE processes, and perf_counter's reference
+    # point is process-relative, so cross-process subtraction injects each process's
+    # launch offset into TTI/transport. time.time_ns() shares one epoch across
+    # processes on the same host, so consumer_ts - producer_ts is a valid latency.
+    return time.time_ns()
 
 
 def main():
@@ -34,6 +39,14 @@ def main():
                     help="Number of Redis nodes (1=single, 3=cluster)")
     ap.add_argument("--speedup", type=float, default=120.0)
     ap.add_argument("--max-t-sim", type=int, default=600)
+    ap.add_argument(
+        "--send-workers",
+        type=int,
+        default=16,
+        help="Concurrent XADD dispatch workers. >1 makes sends non-blocking so the "
+             "producer keeps the emission schedule (avoids load-generator saturation "
+             "at high speedup). 1 = legacy synchronous behavior.",
+    )
 
     # --- S3 knobs (no behavior change unless enabled) ---
     ap.add_argument(
@@ -110,7 +123,8 @@ def main():
 
     # Producer time origins:
     # - t0_mono: time.monotonic() reference used for sleep scheduling
-    # - t0_wall_ns: perf_counter_ns() reference used to compute planned emit ns in the same monotonic domain
+    # - t0_wall_ns: time.time_ns() wall-clock epoch used to compute planned emit ns;
+    #   shared epoch with the consumer process so TTI is a valid cross-process latency
     t0_wall_ns = now_ns()
     t0_mono = time.monotonic()
 
@@ -209,6 +223,31 @@ def main():
         t_corr = threading.Thread(target=corr_worker, daemon=True)
         t_corr.start()
 
+    # Non-blocking base-event dispatch pool so the producer keeps the emission
+    # schedule even when per-XADD round-trips are slower than the scheduled gap.
+    base_rows = []
+    base_lock = threading.Lock()
+    base_err = []
+
+    def _send_base(idx, event_id, match_id, t_sim, t_emit_offset_s, t_prod_sched_ns, payload):
+        try:
+            send_ns = now_ns()
+            redis_id = r.xadd(args.stream, {"value": payload})
+            ack_ns = now_ns()
+            row = {
+                "run_id": args.run_id, "backend": "redis", "stream": args.stream,
+                "event_id": event_id, "match_id": match_id, "t_sim_seconds": t_sim,
+                "t_emit_offset_s": t_emit_offset_s, "t_prod_sched_ns": t_prod_sched_ns,
+                "t_prod_send_ns": send_ns, "t_broker_ack_ns": ack_ns, "redis_id": redis_id,
+            }
+            with base_lock:
+                base_rows.append((idx, row))
+        except Exception as e:  # noqa: BLE001
+            with base_lock:
+                base_err.append(repr(e))
+
+    send_pool = ThreadPoolExecutor(max_workers=max(1, args.send_workers))
+
     with out_path.open("w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(
             f,
@@ -242,7 +281,6 @@ def main():
                 time.sleep(sleep_s)
 
             t_prod_sched_ns = t0_wall_ns + int((t_emit_offset_s / args.speedup) * 1e9)
-            t_prod_send_ns = now_ns()
 
             # stable S3 linkage id (does not change existing event_id semantics)
             s3_uid = f"{match_id}:{event_id}"
@@ -260,27 +298,13 @@ def main():
                 "s3_is_correction": False,
             }
 
-            # XADD acts like our "ack" for MVP purposes
-            redis_id = r.xadd(
-                args.stream,
-                {"value": json.dumps(msg, separators=(",", ":"), ensure_ascii=False)},
-            )
-            t_broker_ack_ns = now_ns()
-
-            w.writerow(
-                {
-                    "run_id": args.run_id,
-                    "backend": "redis",
-                    "stream": args.stream,
-                    "event_id": event_id,
-                    "match_id": match_id,
-                    "t_sim_seconds": t_sim,
-                    "t_emit_offset_s": t_emit_offset_s,
-                    "t_prod_sched_ns": t_prod_sched_ns,
-                    "t_prod_send_ns": t_prod_send_ns,
-                    "t_broker_ack_ns": t_broker_ack_ns,
-                    "redis_id": redis_id,
-                }
+            # Non-blocking dispatch: hand the XADD to the worker pool and continue,
+            # so the main loop stays on schedule. Send/ack times are stamped in the
+            # worker (valid transport latency), rows written in order after draining.
+            payload = json.dumps(msg, separators=(",", ":"), ensure_ascii=False)
+            send_pool.submit(
+                _send_base, i, event_id, match_id, t_sim, t_emit_offset_s,
+                t_prod_sched_ns, payload,
             )
             sent += 1
 
@@ -321,6 +345,14 @@ def main():
                         ),
                     )
                     jobs_cv.notify()
+
+        # drain base-event dispatch pool and write rows in original plan order
+        send_pool.shutdown(wait=True)
+        if base_err:
+            raise RuntimeError(f"Redis base send errors (first 5): {base_err[:5]}")
+        for _idx, row in sorted(base_rows, key=lambda kv: kv[0]):
+            w.writerow(row)
+        sent = len(base_rows)
 
         # finish corrections
         if corr_enabled:

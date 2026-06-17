@@ -71,10 +71,11 @@ Write-Host "Wrote meta: $metaPath"
 Write-Host "[0/4] $(Get-Date -Format 'HH:mm:ss') ensuring topic exists: $TOPIC"
 if ($BROKER_COUNT -gt 1) {
     # Multi-broker: use kafka1 container and replication factor 3
-    docker exec -w /opt/kafka/bin kafka1 sh -lc "./kafka-topics.sh --bootstrap-server kafka1:29092 --create --if-not-exists --topic '$TOPIC' --partitions 3 --replication-factor 3" 2>$null
+    # try/catch so best-effort topic-create stderr doesn't trip ErrorActionPreference=Stop
+    try { docker exec -w /opt/kafka/bin kafka1 sh -lc "./kafka-topics.sh --bootstrap-server kafka1:29092 --create --if-not-exists --topic '$TOPIC' --partitions 3 --replication-factor 3" 2>$null } catch {}
 } else {
     # Single broker: use broker container and replication factor 1
-    docker exec -w /opt/kafka/bin kafka1 sh -lc "./kafka-topics.sh --bootstrap-server kafka1:29092 --create --if-not-exists --topic '$TOPIC' --partitions 3 --replication-factor 1" 2>$null
+    try { docker exec -w /opt/kafka/bin kafka1 sh -lc "./kafka-topics.sh --bootstrap-server kafka1:29092 --create --if-not-exists --topic '$TOPIC' --partitions 3 --replication-factor 1" 2>$null } catch {}
 }
 Write-Host "  [0/4] Topic ensured"
 

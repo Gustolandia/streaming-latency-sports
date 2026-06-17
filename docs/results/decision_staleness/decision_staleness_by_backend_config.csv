@@ -1,0 +1,5 @@
+backend,config,decision_staleness_prob_s,mean_decisive_latency_ms,n_decisive
+kafka,cluster,1.5406758980898227,1956.0155434888889,2.8
+kafka,single,1.009556572790971,1245.7199946,2.8
+redis,cluster,4.0310965526257245,5030.412882377777,2.8
+redis,single,1.7682936365600406,2202.5005746,2.8

@@ -1,0 +1,222 @@
+
+=== BATCH 1: Kafka Single (30) + Redis Single (10) ===
+[Batch1: 1/40] batch1_20260615_kafka_single_s1_n5_rep1
+Wrote meta: runs\batch1_20260615_kafka_single_s1_n5_rep1\meta.json
+[0/4] 09:42:28 ensuring topic exists: sb-events-batch1_20260615_kafka_single_s1_n5_rep1
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+  [0/4] Topic ensured
+[1/4] 09:42:30 starting consumer...
+  [1/4] Consumer started, PID: 22464
+[2/4] 09:42:32 running producer...
+  [2/4] Producer completed
+[3/4] 09:42:37 waiting for consumer to finish...
+  [3/4] Consumer finished
+[4/4] 09:43:07 computing TTI...
+Computed TTI metrics: 2289/2289 events matched
+Wrote: runs\batch1_20260615_kafka_single_s1_n5_rep1\tti_summary.json
+DONE. Outputs:
+
+    Directory: C:\Users\Gugar\Documents\streaming-latency-sports\runs\batch1_20260615_kafka_single_s1_n5_rep1
+
+[32;1mMode   [0m[32;1m              LastWriteTime[0m[32;1m         Length[0m[32;1m Name[0m
+[32;1m----   [0m [32;1m             -------------[0m [32;1m        ------[0m [32;1m----[0m
+-a---          2026-06-16    09:43         551489 consumer_events.csv
+-a---          2026-06-16    09:43         384133 consumer.csv
+-a---          2026-06-16    09:43            201 consumer.log
+-a---          2026-06-16    09:42          74613 meta.json
+-a---          2026-06-16    09:42         439119 producer.csv
+-a---          2026-06-16    09:42            776 producer.log
+-a---          2026-06-16    09:43           1106 tti_summary.json
+-a---          2026-06-16    09:43            118 tti_summary.printed.json
+
+  [DONE]
+[Batch1: 2/40] batch1_20260615_kafka_single_s1_n5_rep2
+Wrote meta: runs\batch1_20260615_kafka_single_s1_n5_rep2\meta.json
+[0/4] 09:43:08 ensuring topic exists: sb-events-batch1_20260615_kafka_single_s1_n5_rep2
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+  [0/4] Topic ensured
+[1/4] 09:43:10 starting consumer...
+  [1/4] Consumer started, PID: 13832
+[2/4] 09:43:12 running producer...
+  [2/4] Producer completed
+[3/4] 09:43:17 waiting for consumer to finish...
+  [3/4] Consumer finished
+[4/4] 09:43:47 computing TTI...
+Computed TTI metrics: 2289/2289 events matched
+Wrote: runs\batch1_20260615_kafka_single_s1_n5_rep2\tti_summary.json
+DONE. Outputs:
+
+    Directory: C:\Users\Gugar\Documents\streaming-latency-sports\runs\batch1_20260615_kafka_single_s1_n5_rep2
+
+[32;1mMode   [0m[32;1m              LastWriteTime[0m[32;1m         Length[0m[32;1m Name[0m
+[32;1m----   [0m [32;1m             -------------[0m [32;1m        ------[0m [32;1m----[0m
+-a---          2026-06-16    09:43         551489 consumer_events.csv
+-a---          2026-06-16    09:43         384133 consumer.csv
+-a---          2026-06-16    09:43            201 consumer.log
+-a---          2026-06-16    09:43          74613 meta.json
+-a---          2026-06-16    09:43         439071 producer.csv
+-a---          2026-06-16    09:43            776 producer.log
+-a---          2026-06-16    09:43           1103 tti_summary.json
+-a---          2026-06-16    09:43            118 tti_summary.printed.json
+
+  [DONE]
+[Batch1: 3/40] batch1_20260615_kafka_single_s1_n10_rep1
+Wrote meta: runs\batch1_20260615_kafka_single_s1_n10_rep1\meta.json
+[0/4] 09:43:48 ensuring topic exists: sb-events-batch1_20260615_kafka_single_s1_n10_rep1
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+  [0/4] Topic ensured
+[1/4] 09:43:50 starting consumer...
+  [1/4] Consumer started, PID: 29172
+[2/4] 09:43:52 running producer...
+  [2/4] Producer completed
+[3/4] 09:43:57 waiting for consumer to finish...
+  [3/4] Consumer finished
+[4/4] 09:44:27 computing TTI...
+Computed TTI metrics: 2289/2289 events matched
+Wrote: runs\batch1_20260615_kafka_single_s1_n10_rep1\tti_summary.json
+DONE. Outputs:
+
+    Directory: C:\Users\Gugar\Documents\streaming-latency-sports\runs\batch1_20260615_kafka_single_s1_n10_rep1
+
+[32;1mMode   [0m[32;1m              LastWriteTime[0m[32;1m         Length[0m[32;1m Name[0m
+[32;1m----   [0m [32;1m             -------------[0m [32;1m        ------[0m [32;1m----[0m
+-a---          2026-06-16    09:44         556067 consumer_events.csv
+-a---          2026-06-16    09:44         388711 consumer.csv
+-a---          2026-06-16    09:44            203 consumer.log
+-a---          2026-06-16    09:43          74615 meta.json
+-a---          2026-06-16    09:43         443650 producer.csv
+-a---          2026-06-16    09:43            784 producer.log
+-a---          2026-06-16    09:44           1097 tti_summary.json
+-a---          2026-06-16    09:44            119 tti_summary.printed.json
+
+  [DONE]
+[Batch1: 4/40] batch1_20260615_kafka_single_s1_n10_rep2
+Wrote meta: runs\batch1_20260615_kafka_single_s1_n10_rep2\meta.json
+[0/4] 09:44:28 ensuring topic exists: sb-events-batch1_20260615_kafka_single_s1_n10_rep2
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+  [0/4] Topic ensured
+[1/4] 09:44:30 starting consumer...
+  [1/4] Consumer started, PID: 21652
+[2/4] 09:44:32 running producer...
+  [2/4] Producer completed
+[3/4] 09:44:37 waiting for consumer to finish...
+  [3/4] Consumer finished
+[4/4] 09:45:07 computing TTI...
+Computed TTI metrics: 2289/2289 events matched
+Wrote: runs\batch1_20260615_kafka_single_s1_n10_rep2\tti_summary.json
+DONE. Outputs:
+
+    Directory: C:\Users\Gugar\Documents\streaming-latency-sports\runs\batch1_20260615_kafka_single_s1_n10_rep2
+
+[32;1mMode   [0m[32;1m              LastWriteTime[0m[32;1m         Length[0m[32;1m Name[0m
+[32;1m----   [0m [32;1m             -------------[0m [32;1m        ------[0m [32;1m----[0m
+-a---          2026-06-16    09:45         556067 consumer_events.csv
+-a---          2026-06-16    09:45         388711 consumer.csv
+-a---          2026-06-16    09:45            203 consumer.log
+-a---          2026-06-16    09:44          74615 meta.json
+-a---          2026-06-16    09:44         443641 producer.csv
+-a---          2026-06-16    09:44            686 producer.log
+-a---          2026-06-16    09:45           1117 tti_summary.json
+-a---          2026-06-16    09:45            119 tti_summary.printed.json
+
+  [DONE]
+[Batch1: 5/40] batch1_20260615_kafka_single_s1_n20_rep1
+Wrote meta: runs\batch1_20260615_kafka_single_s1_n20_rep1\meta.json
+[0/4] 09:45:08 ensuring topic exists: sb-events-batch1_20260615_kafka_single_s1_n20_rep1
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+  [0/4] Topic ensured
+[1/4] 09:45:10 starting consumer...
+  [1/4] Consumer started, PID: 16800
+[2/4] 09:45:12 running producer...
+  [2/4] Producer completed
+[3/4] 09:45:17 waiting for consumer to finish...
+  [3/4] Consumer finished
+[4/4] 09:45:47 computing TTI...
+Computed TTI metrics: 2289/2289 events matched
+Wrote: runs\batch1_20260615_kafka_single_s1_n20_rep1\tti_summary.json
+DONE. Outputs:
+
+    Directory: C:\Users\Gugar\Documents\streaming-latency-sports\runs\batch1_20260615_kafka_single_s1_n20_rep1
+
+[32;1mMode   [0m[32;1m              LastWriteTime[0m[32;1m         Length[0m[32;1m Name[0m
+[32;1m----   [0m [32;1m             -------------[0m [32;1m        ------[0m [32;1m----[0m
+-a---          2026-06-16    09:45         556067 consumer_events.csv
+-a---          2026-06-16    09:45         388711 consumer.csv
+-a---          2026-06-16    09:45            203 consumer.log
+-a---          2026-06-16    09:45          74615 meta.json
+-a---          2026-06-16    09:45         443641 producer.csv
+-a---          2026-06-16    09:45            686 producer.log
+-a---          2026-06-16    09:45           1108 tti_summary.json
+-a---          2026-06-16    09:45            119 tti_summary.printed.json
+
+  [DONE]
+[Batch1: 6/40] batch1_20260615_kafka_single_s1_n20_rep2
+Wrote meta: runs\batch1_20260615_kafka_single_s1_n20_rep2\meta.json
+[0/4] 09:45:48 ensuring topic exists: sb-events-batch1_20260615_kafka_single_s1_n20_rep2
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+  [0/4] Topic ensured
+[1/4] 09:45:50 starting consumer...
+  [1/4] Consumer started, PID: 15864
+[2/4] 09:45:52 running producer...
+  [2/4] Producer completed
+[3/4] 09:45:57 waiting for consumer to finish...
+  [3/4] Consumer finished
+[4/4] 09:46:27 computing TTI...
+Computed TTI metrics: 2289/2289 events matched
+Wrote: runs\batch1_20260615_kafka_single_s1_n20_rep2\tti_summary.json
+DONE. Outputs:
+
+    Directory: C:\Users\Gugar\Documents\streaming-latency-sports\runs\batch1_20260615_kafka_single_s1_n20_rep2
+
+[32;1mMode   [0m[32;1m              LastWriteTime[0m[32;1m         Length[0m[32;1m Name[0m
+[32;1m----   [0m [32;1m             -------------[0m [32;1m        ------[0m [32;1m----[0m
+-a---          2026-06-16    09:46         556067 consumer_events.csv
+-a---          2026-06-16    09:46         388711 consumer.csv
+-a---          2026-06-16    09:46            203 consumer.log
+-a---          2026-06-16    09:45          74615 meta.json
+-a---          2026-06-16    09:45         443621 producer.csv
+-a---          2026-06-16    09:45            686 producer.log
+-a---          2026-06-16    09:46           1108 tti_summary.json
+-a---          2026-06-16    09:46            119 tti_summary.printed.json
+
+  [DONE]
+[Batch1: 7/40] batch1_20260615_kafka_single_s2_n5_rep1
+Wrote meta: runs\batch1_20260615_kafka_single_s2_n5_rep1\meta.json
+[0/4] 09:46:28 ensuring topic exists: sb-events-batch1_20260615_kafka_single_s2_n5_rep1
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+  [0/4] Topic ensured
+[1/4] 09:46:30 starting consumer...
+  [1/4] Consumer started, PID: 25020
+[2/4] 09:46:32 running producer...
+  [2/4] Producer completed
+[3/4] 09:46:40 waiting for consumer to finish...
+  [3/4] Consumer finished
+[4/4] 09:47:10 computing TTI...
+Computed TTI metrics: 4465/4465 events matched
+Wrote: runs\batch1_20260615_kafka_single_s2_n5_rep1\tti_summary.json
+DONE. Outputs:
+
+    Directory: C:\Users\Gugar\Documents\streaming-latency-sports\runs\batch1_20260615_kafka_single_s2_n5_rep1
+
+[32;1mMode   [0m[32;1m              LastWriteTime[0m[32;1m         Length[0m[32;1m Name[0m
+[32;1m----   [0m [32;1m             -------------[0m [32;1m        ------[0m [32;1m----[0m
+-a---          2026-06-16    09:47        1076689 consumer_events.csv
+-a---          2026-06-16    09:47         749189 consumer.csv
+-a---          2026-06-16    09:47            201 consumer.log
+-a---          2026-06-16    09:46          74613 meta.json
+-a---          2026-06-16    09:46         856443 producer.csv
+-a---          2026-06-16    09:46            679 producer.log
+-a---          2026-06-16    09:47           1129 tti_summary.json
+-a---          2026-06-16    09:47            118 tti_summary.printed.json
+
+  [DONE]
+[Batch1: 8/40] batch1_20260615_kafka_single_s2_n5_rep2
+Wrote meta: runs\batch1_20260615_kafka_single_s2_n5_rep2\meta.json
+[0/4] 09:47:11 ensuring topic exists: sb-events-batch1_20260615_kafka_single_s2_n5_rep2
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+  [0/4] Topic ensured
+[1/4] 09:47:13 starting consumer...
+  [1/4] Consumer started, PID: 19624
+[2/4] 09:47:15 running producer...
+  [2/4] Producer completed
+[3/4] 09:47:23 waiting for consumer to finish...

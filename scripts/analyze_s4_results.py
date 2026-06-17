@@ -40,10 +40,32 @@ def load_s4_metrics():
     
     # Extract run parameters from run_id
     # Format: s4_<scenario>_<config_name>_<backend>_rep<N>_<date>
-    df['scenario'] = df['run'].apply(lambda x: x.split('_')[1])
-    df['config_name'] = df['run'].apply(lambda x: x.split('_')[2])
-    df['backend'] = df['run'].apply(lambda x: x.split('_')[3])
-    df['rep'] = df['run'].apply(lambda x: int(x.split('_')[4].replace('rep', '')))
+    # Config names can have underscores (e.g., 'high_speedup', 'low_frequency')
+    def extract_run_info(run_id):
+        parts = run_id.split('_')
+        valid_backends = ["kafka", "redis"]
+        backend_idx = None
+        for i, part in enumerate(parts):
+            if part in valid_backends:
+                backend_idx = i
+                break
+        
+        if backend_idx is None or len(parts) < 5:
+            return pd.Series({'scenario': None, 'config_name': None, 'backend': None, 'rep': None})
+        
+        scenario = parts[1] if len(parts) > 1 else None
+        config_name = '_'.join(parts[2:backend_idx]) if backend_idx > 2 else None
+        backend = parts[backend_idx] if backend_idx else None
+        rep = parts[backend_idx + 1] if len(parts) > backend_idx + 1 else None
+        
+        if rep and rep.startswith('rep'):
+            rep = rep.replace('rep', '')
+        
+        return pd.Series({'scenario': scenario, 'config_name': config_name, 'backend': backend, 'rep': rep})
+    
+    run_info = df['run'].apply(extract_run_info)
+    df = pd.concat([df, run_info], axis=1)
+    df['rep'] = df['rep'].apply(lambda x: int(x) if x is not None and str(x).isdigit() else 0)
     
     # Parse percentile columns
     percentiles_cols = ['correction_propagation_latency_ms', 
@@ -79,6 +101,10 @@ def analyze_parameter_effects(df: pd.DataFrame):
     """Analyze effect of each parameter on metrics."""
     print("Analyzing parameter effects...")
     
+    # Check if required columns exist
+    if df.empty or len(df.columns) == 0:
+        return pd.DataFrame()
+    
     # Focus on key metrics
     metrics = [
         'correction_propagation_latency_ms_p50',
@@ -87,16 +113,26 @@ def analyze_parameter_effects(df: pd.DataFrame):
         'inconsistency_duration_ms_p95'
     ]
     
+    # Only use metrics that exist in the dataframe
+    available_metrics = [m for m in metrics if m in df.columns]
+    
     results = []
     
-    for parameter in ['speedup', 'corrections_every_k', 'correction_delay_s']:
-        for metric in metrics:
+    parameters = ['speedup', 'corrections_every_k', 'correction_delay_s']
+    for parameter in parameters:
+        if parameter not in df.columns:
+            continue
+        for metric in available_metrics:
             # Group by parameter value
-            grouped = df.groupby(parameter)[metric].agg(['mean', 'std', 'min', 'max', 'count'])
-            grouped = grouped.reset_index()
-            grouped['parameter'] = parameter
-            grouped['metric'] = metric
-            results.append(grouped)
+            try:
+                grouped = df.groupby(parameter)[metric].agg(['mean', 'std', 'min', 'max', 'count'])
+                grouped = grouped.reset_index()
+                grouped['parameter'] = parameter
+                grouped['metric'] = metric
+                results.append(grouped)
+            except Exception:
+                # Skip if grouping fails (e.g., no data for this parameter)
+                continue
     
     if results:
         effects_df = pd.concat(results, ignore_index=True)
@@ -201,24 +237,25 @@ def generate_summary_markdown(df: pd.DataFrame, effects_df: pd.DataFrame):
         f.write("## Key Findings\n\n")
         
         # Analyze each parameter
-        for parameter in ['speedup', 'corrections_every_k', 'correction_delay_s']:
-            f.write(f"### Effect of {parameter}\n\n")
-            
-            param_df = effects_df[effects_df['parameter'] == parameter]
-            if not param_df.empty:
-                f.write(f"| Metric | Mean | Std | Min | Max | Count |\n")
-                f.write(f"|--------|------|-----|-----|-----|-------|\n")
+        if not effects_df.empty and 'parameter' in effects_df.columns:
+            for parameter in ['speedup', 'corrections_every_k', 'correction_delay_s']:
+                f.write(f"### Effect of {parameter}\n\n")
                 
-                for _, row in param_df.iterrows():
-                    param_val = row[parameter]
-                    if parameter == 'correction_delay_s':
-                        param_val = f"{param_val:.1f}"
-                    else:
-                        param_val = int(param_val)
+                param_df = effects_df[effects_df['parameter'] == parameter]
+                if not param_df.empty:
+                    f.write(f"| Metric | Mean | Std | Min | Max | Count |\n")
+                    f.write(f"|--------|------|-----|-----|-----|-------|\n")
                     
-                    f.write(f"| {row['metric']} | {row['mean']:.2f} | {row['std']:.2f} | {row['min']:.2f} | {row['max']:.2f} | {int(row['count'])} |\n")
-            
-            f.write("\n")
+                    for _, row in param_df.iterrows():
+                        param_val = row[parameter]
+                        if parameter == 'correction_delay_s':
+                            param_val = f"{param_val:.1f}"
+                        else:
+                            param_val = int(param_val)
+                        
+                        f.write(f"| {row['metric']} | {row['mean']:.2f} | {row['std']:.2f} | {row['min']:.2f} | {row['max']:.2f} | {int(row['count'])} |\n")
+                
+                f.write("\n")
         
         # Figures
         f.write("## Figures\n\n")

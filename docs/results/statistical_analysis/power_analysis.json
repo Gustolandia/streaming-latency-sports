@@ -1,0 +1,26 @@
+{
+  "n_per_group": 20,
+  "alpha": 0.05,
+  "target_power": 0.8,
+  "backend": "statsmodels",
+  "by_effect_size": {
+    "small": {
+      "effect_size": 0.2,
+      "required_n_per_group": 394,
+      "achieved_power_at_n": 0.0946,
+      "adequately_powered": false
+    },
+    "medium": {
+      "effect_size": 0.5,
+      "required_n_per_group": 64,
+      "achieved_power_at_n": 0.3379,
+      "adequately_powered": false
+    },
+    "large": {
+      "effect_size": 0.8,
+      "required_n_per_group": 26,
+      "achieved_power_at_n": 0.6934,
+      "adequately_powered": false
+    }
+  }
+}

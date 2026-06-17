@@ -97,6 +97,8 @@ def gap_quantiles(df, plan_name, time_col):
     return out
 
 def by_match(df, plan_name, match_col, time_col):
+    if match_col is None:
+        return None
     g = df.groupby(match_col, dropna=False).size().rename("n_rows").reset_index()
     g["plan"] = plan_name
     if time_col and time_col in df.columns and pd.api.types.is_numeric_dtype(df[time_col]):

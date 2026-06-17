@@ -8,6 +8,7 @@ param(
     [int]$MAX_T_SIM = 600,
     [string]$BOOTSTRAP = "localhost:9092",
     [string]$TOPIC = "sb-events",
+    [int]$BROKER_COUNT = 1,
     [string]$PRODUCER_EXTRA = ""
 )
 
@@ -68,7 +69,13 @@ Write-Host "Wrote meta: $metaPath"
 
 # [0/4] ensuring topic exists
 Write-Host "[0/4] $(Get-Date -Format 'HH:mm:ss') ensuring topic exists: $TOPIC"
-docker exec -w /opt/kafka/bin broker sh -lc "./kafka-topics.sh --bootstrap-server broker:29092 --create --if-not-exists --topic '$TOPIC' --partitions 3 --replication-factor 1" 2>$null
+if ($BROKER_COUNT -gt 1) {
+    # Multi-broker: use kafka1 container and replication factor 3
+    docker exec -w /opt/kafka/bin kafka1 sh -lc "./kafka-topics.sh --bootstrap-server kafka1:29092 --create --if-not-exists --topic '$TOPIC' --partitions 3 --replication-factor 3" 2>$null
+} else {
+    # Single broker: use broker container and replication factor 1
+    docker exec -w /opt/kafka/bin kafka1 sh -lc "./kafka-topics.sh --bootstrap-server kafka1:29092 --create --if-not-exists --topic '$TOPIC' --partitions 3 --replication-factor 1" 2>$null
+}
 Write-Host "  [0/4] Topic ensured"
 
 # [1/4] starting consumer...
@@ -76,7 +83,7 @@ Write-Host "[1/4] $(Get-Date -Format 'HH:mm:ss') starting consumer..."
 $consumerLog = "runs\$RUN_ID\consumer.log"
 
 # Build consumer command with output redirection
-$consumerCmd = "python scripts\kafka_consumer.py --run-id $RUN_ID --out runs\$RUN_ID\consumer.csv --bootstrap $BOOTSTRAP --topic $TOPIC --idle-seconds 30"
+$consumerCmd = "python scripts\kafka_consumer.py --run-id $RUN_ID --out runs\$RUN_ID\consumer.csv --bootstrap $BOOTSTRAP --topic $TOPIC --idle-seconds 30 --broker-count $BROKER_COUNT"
 if ($env:KAFKA_CONSUMER_OPTS) {
     $consumerCmd = "$env:KAFKA_CONSUMER_OPTS $consumerCmd"
 }
@@ -91,7 +98,7 @@ Write-Host "[2/4] $(Get-Date -Format 'HH:mm:ss') running producer..."
 $producerLog = "runs\$RUN_ID\producer.log"
 
 # Build producer command with output redirection
-$producerCmd = "python scripts\kafka_producer.py --run-id $RUN_ID --plan-csv $PLAN_CSV --out runs\$RUN_ID\producer.csv --bootstrap $BOOTSTRAP --topic $TOPIC --speedup $SPEEDUP --max-t-sim $MAX_T_SIM $PRODUCER_EXTRA"
+$producerCmd = "python scripts\kafka_producer.py --run-id $RUN_ID --plan-csv $PLAN_CSV --out runs\$RUN_ID\producer.csv --bootstrap $BOOTSTRAP --topic $TOPIC --speedup $SPEEDUP --max-t-sim $MAX_T_SIM --broker-count $BROKER_COUNT $PRODUCER_EXTRA"
 if ($env:KAFKA_PRODUCER_OPTS) {
     $producerCmd = "$env:KAFKA_PRODUCER_OPTS $producerCmd"
 }

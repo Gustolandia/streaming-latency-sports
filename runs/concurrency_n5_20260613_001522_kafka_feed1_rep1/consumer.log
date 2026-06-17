@@ -1,0 +1,2 @@
+OK kafka consumer: wrote 2289 rows -> runs\concurrency_n5_20260613_001522_kafka_feed1_rep1\consumer.csv
+OK kafka consumer: wrote 2289 rows -> runs\concurrency_n5_20260613_001522_kafka_feed1_rep1\consumer_events.csv

@@ -1,0 +1,2 @@
+OK redis consumer: wrote 5037 rows -> runs\concurrency_n10_20260613_002229_redis_feed8_rep1\consumer.csv
+OK redis consumer: wrote 5037 rows -> runs\concurrency_n10_20260613_002229_redis_feed8_rep1\consumer_events.csv

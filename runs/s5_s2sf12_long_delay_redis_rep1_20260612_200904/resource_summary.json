@@ -1,0 +1,15 @@
+﻿{
+    "kafka_avg_cpu":  1.63,
+    "run_id":  "s5_s2sf12_long_delay_redis_rep1_20260612_200904",
+    "kafka_peak_mem":  1104.9,
+    "backend":  "redis",
+    "config":  "long_delay",
+    "kafka_avg_mem":  1104.9,
+    "redis_peak_cpu":  0.26,
+    "redis_avg_mem":  142.8,
+    "sample_count":  6,
+    "speedup":  120,
+    "kafka_peak_cpu":  1.85,
+    "redis_avg_cpu":  0.25,
+    "redis_peak_mem":  142.8
+}

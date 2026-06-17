@@ -1,0 +1,4 @@
+backend,config,scenario,speedup,corrections_every_k,correction_delay_s,tti_p50,tti_p95,tti_mean,tti_std,match_rate,n_producer_events,n_consumer_events,resource_kafka_avg_cpu,resource_kafka_avg_mem,resource_redis_avg_cpu,resource_redis_avg_mem,resource_sample_count
+kafka,baseline,s2sf12,120,50,2.0,100.0,200.0,120.0,10.0,0.999,1000,1000,5.0,1000.0,0.0,0.0,100
+kafka,high_speedup,s2sf12,240,50,2.0,150.0,250.0,180.0,20.0,0.998,1000,1000,6.0,1100.0,0.0,0.0,100
+redis,baseline,s2sf12,120,50,2.0,80.0,160.0,90.0,5.0,0.999,1000,1000,0.0,0.0,4.0,100.0,100

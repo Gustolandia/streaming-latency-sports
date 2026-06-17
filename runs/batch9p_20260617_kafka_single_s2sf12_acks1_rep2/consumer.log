@@ -1,0 +1,2 @@
+OK kafka consumer: wrote 4465 rows -> runs\batch9p_20260617_kafka_single_s2sf12_acks1_rep2\consumer.csv
+OK kafka consumer: wrote 4465 rows -> runs\batch9p_20260617_kafka_single_s2sf12_acks1_rep2\consumer_events.csv

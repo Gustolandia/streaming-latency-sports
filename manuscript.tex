@@ -39,7 +39,7 @@ This study presents a comprehensive, reproducible benchmark suite that empirical
 
 Unlike traditional comparisons, we frame the investigation around sports-specific decision-making requirements: How quickly can coaching staff, broadcasters, and betting platforms act on live event data? Our methodology introduces the Time-to-Insight (\tti{}) metric, which measures the interval from event occurrence to analytic output availability.
 
-With 40,660 real football events across 11 matches, our results show \redis{} Streams achieving consistently 40-55 percent lower median latency than \kafka{} across all scenarios (S1-S5), with both systems maintaining 100 percent event match rates. A comprehensive concurrency sweep (250 runs) demonstrates excellent scaling performance with stable \tti{} across N=5, 10, 20 concurrent feeds. All differences are statistically significant (p < 0.001).
+Using 40,660 real football events across 11 matches, and after correcting two instrumentation defects in earlier measurements (a process-relative cross-process clock and a saturating load generator), our corrected multi-broker matrix shows Apache \kafka{} achieving significantly lower median \tti{} than \redis{} Streams in both single-broker and clustered deployments (Holm--Bonferroni-corrected Mann--Whitney U, Cohen's $d=-1.18$ overall, large effect). Single-broker deployments outperform clustered ones for both systems, and stronger durability settings (\kafka{} \texttt{acks=all}; \redis{} \texttt{appendfsync always}) measurably increase latency. These findings reverse the conclusion of the initial, contaminated analysis and underscore the importance of measurement validity in cross-process streaming benchmarks.
 
 \end{abstract}
 
@@ -274,36 +274,113 @@ Distribution & Kolmogorov-Smirnov & Anderson-Darling \\
 \section{Results}
 \label{sec:results}
 
-\begin{figure}[htbp]
+\paragraph{Measurement validity note.} An initial analysis was invalidated by two
+instrumentation defects, since corrected: (i) the producer and consumer timestamped events
+with a process-relative monotonic clock, so cross-process latencies were inflated by each
+run's process-launch offset ($\sim$2~s); and (ii) a synchronous producer saturated at the
+$120\times$ replay speed, inflating scheduling lag to tens of seconds. After switching to a
+shared wall-clock (\texttt{time.time\_ns}) and a non-blocking producer, all runs were
+regenerated; the results below reflect the corrected measurements.
+
+\subsection{Architecture and Configuration (RQ1, RQ3)}
+
+Table~\ref{tab:matrix} reports median Time-to-Insight (TTI) and transport latency across the
+$2\times2$ backend/configuration matrix (5 scenarios, 3 replications per cell, single feed).
+Contrary to widely-cited industry comparisons, \kafka{} achieves significantly lower TTI
+than \redis{} in every configuration.
+
+\begin{table}[htbp]
 \centering
-\includegraphics[width=0.9\textwidth]{docs/results/concurrency_sweep_20260613/backend_boxplot.png}
-\caption{TTI p50 Distribution by Scenario and Backend.}
-\label{fig:boxplot}
-\end{figure}
+\caption{Median TTI and transport latency (p50) by backend and configuration (corrected).}
+\label{tab:matrix}
+\begin{tabular}{llcc}
+\toprule
+Backend & Config & Transport p50 (ms) & TTI p50 (ms) \\
+\midrule
+\kafka{} & single  & $\sim$0 & 426 \\
+\kafka{} & cluster & 944 & 1623 \\
+\redis{} & single  & 687 & 1232 \\
+\redis{} & cluster & 2712 & 3378 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.9\textwidth]{docs/results/concurrency_sweep_20260613/tti_scaling.png}
-\caption{TTI p50 vs Concurrency Level N.}
-\label{fig:scaling}
+\includegraphics[width=0.85\textwidth]{docs/results/corrected_figures/corrected_tti_by_backend_config.png}
+\caption{TTI (p50) distribution by backend and configuration (corrected 60-run matrix).}
+\label{fig:tti}
 \end{figure}
 
-\begin{figure}[htbp]
+Applying Mann--Whitney U tests with Holm--Bonferroni correction (Table~\ref{tab:stats}),
+\kafka{} is faster than \redis{} overall ($p_{\text{adj}}=0.005$, Cohen's $d=-1.18$, large)
+and within each configuration. Single-broker deployments outperform clustered ones for both
+backends (replication / cross-node overhead), with large effect sizes.
+
+\begin{table}[htbp]
 \centering
-\includegraphics[width=0.8\textwidth]{docs/results/concurrency_sweep_20260613/match_rate_bars.png}
-\caption{Event Match Rate by Scenario and Backend.}
-\label{fig:matchrate}
-\end{figure}
+\caption{Holm--Bonferroni-corrected comparisons on TTI p50 ($n=15$ per group).}
+\label{tab:stats}
+\begin{tabular}{lccc}
+\toprule
+Comparison & Test & $p_{\text{adj}}$ & Effect $d$ \\
+\midrule
+\kafka{} vs \redis{} (overall) & Mann--Whitney U & 0.0045 & $-1.18$ \\
+\kafka{} vs \redis{} (cluster) & Mann--Whitney U & 0.0002 & $-2.83$ \\
+\kafka{} vs \redis{} (single)  & Mann--Whitney U & 0.017 & $-1.02$ \\
+single vs cluster (\kafka{})   & Mann--Whitney U & 0.017 & $-1.54$ \\
+single vs cluster (\redis{})   & Mann--Whitney U & 0.0001 & $-3.08$ \\
+Scenario effect (\kafka{})     & Kruskal--Wallis & 0.017 & --- \\
+Scenario effect (\redis{})     & Kruskal--Wallis & 0.080 & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Consistency--Latency Trade-off (H31, H32)}
+
+Stronger durability guarantees cost latency, as hypothesised. For \kafka{},
+\texttt{acks=all} raises median TTI to 464~ms versus 346~ms for \texttt{acks=1}. For
+\redis{}, synchronising the append-only file on every write (\texttt{appendfsync always})
+raises median TTI to $\sim$14{,}600~ms versus 1{,}290~ms for \texttt{everysec} --- a far
+larger penalty, reflecting per-write disk synchronisation.
+
+\subsection{Scenario Sensitivity (RQ4)}
+
+TTI varies significantly across scenarios for \kafka{} (Kruskal--Wallis
+$p_{\text{adj}}=0.017$) but not significantly for \redis{} ($p_{\text{adj}}=0.080$).
 
 \section{Discussion}
 \label{sec:discussion}
 
-Redis shows 40-55 percent latency advantage. Both systems scale well.
+The corrected measurements reverse the conclusion suggested by the initial,
+instrumentation-contaminated analysis. With a shared wall-clock and a non-saturating
+producer, \kafka{} delivers lower end-to-end latency than \redis{} Streams for this
+workload, particularly in the clustered configuration where \redis{} Cluster incurs
+substantial cross-node overhead. This underscores a methodological lesson: cross-process
+latency benchmarks must use a clock that shares an epoch across processes, and the load
+generator must not itself become the bottleneck.
+
+For sports actionability, single-broker \kafka{} (median TTI 426~ms) approaches the
+$<$500~ms coaching threshold, whereas the clustered and \redis{} configurations exceed it
+under this $120\times$ compressed-replay load. Durability settings impose a measurable
+latency cost (H31, H32), most acutely for \redis{} \texttt{appendfsync always}.
+
+\paragraph{Limitations.} Each run is a single feed; true multi-feed concurrency (RQ2) and
+the S3 correction-propagation phase are being regenerated with the corrected
+instrumentation. Replay at $120\times$ stresses the pipeline beyond real-time event rates,
+so absolute latencies should be read in that light. A post-hoc power analysis indicates the
+study is adequately powered for the large effects observed but underpowered for small
+effects.
 
 \section{Conclusion}
 \label{sec:conclusion}
 
-Redis Streams provides clear advantage for low-latency sports analytics.
+Once a cross-process clock defect and a producer-saturation defect are corrected, Apache
+\kafka{} provides lower Time-to-Insight than \redis{} Streams for real-time sports event
+streaming, in both single-broker and clustered deployments, with single-broker fastest.
+Stronger durability settings increase latency for both systems. These corrected results
+overturn the project's initial finding and highlight the importance of measurement validity
+in streaming benchmarks.
 
 \begin{acks}
 Using StatsBomb open dataset. Open-source Apache Kafka and Redis projects. MIT License.

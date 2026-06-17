@@ -180,10 +180,29 @@ def load_run_metrics(runs_dir, pattern="batch*"):
     return pd.DataFrame(rows)
 
 
+def kruskal_test(groups, label):
+    """Kruskal-Wallis omnibus across >=2 non-empty groups (list of arrays)."""
+    groups = [np.asarray(g, dtype=float) for g in groups if len(g) > 0]
+    if len(groups) < 2:
+        return None
+    h, p = stats.kruskal(*groups)
+    return {
+        "label": label,
+        "test": "Kruskal-Wallis",
+        "statistic": float(h),
+        "p_value": float(p),
+        "k_groups": len(groups),
+        "n_total": int(sum(len(g) for g in groups)),
+    }
+
+
 def run_family(df, metric="p50", alpha=ALPHA):
-    """Run the family of comparisons and apply Holm-Bonferroni across all p-values."""
+    """Run the comparison family (RQ1, Issue-2 config effect, RQ4 scenario) and apply
+    Holm-Bonferroni across all p-values for FWER control."""
     comparisons = []
     if "backend" in df.columns and df["backend"].notna().any():
+        backends = sorted(b for b in df["backend"].dropna().unique())
+        # RQ1: kafka vs redis, overall and per config
         kafka = df[df["backend"] == "kafka"][metric].dropna()
         redis = df[df["backend"] == "redis"][metric].dropna()
         if len(kafka) >= 2 and len(redis) >= 2:
@@ -194,6 +213,21 @@ def run_family(df, metric="p50", alpha=ALPHA):
                 r = df[(df["backend"] == "redis") & (df["config"] == cfg)][metric].dropna()
                 if len(k) >= 2 and len(r) >= 2:
                     comparisons.append(compare_two_groups(k, r, f"kafka_vs_redis_{cfg}", alpha))
+            # Issue 2: single vs cluster, per backend
+            for b in backends:
+                single = df[(df["backend"] == b) & (df["config"] == "single")][metric].dropna()
+                cluster = df[(df["backend"] == b) & (df["config"] == "cluster")][metric].dropna()
+                if len(single) >= 2 and len(cluster) >= 2:
+                    comparisons.append(compare_two_groups(single, cluster, f"single_vs_cluster_{b}", alpha))
+        # RQ4: scenario effect (omnibus), per backend
+        if "scenario" in df.columns:
+            scenarios = sorted(s for s in df["scenario"].dropna().unique())
+            for b in backends:
+                groups = [df[(df["backend"] == b) & (df["scenario"] == s)][metric].dropna().values
+                          for s in scenarios]
+                kt = kruskal_test(groups, f"scenario_effect_{b}")
+                if kt is not None:
+                    comparisons.append(kt)
 
     corrected = holm_bonferroni([c["p_value"] for c in comparisons], alpha)
     for comp, adj in zip(comparisons, corrected):
@@ -224,9 +258,10 @@ def main(argv=None):
 
     print(f"Analyzed {len(df)} runs; {len(comparisons)} comparisons (Holm-Bonferroni corrected).")
     for c in comparisons:
+        effect = f" d={c['cohens_d']:.3f} ({c['effect']})" if "cohens_d" in c else ""
+        verdict = "reject H0" if c["reject_after_correction"] else "retain H0"
         print(f"  {c['label']}: {c['test']} p={c['p_value']:.4g} "
-              f"p_adj={c['p_adjusted']:.4g} d={c['cohens_d']:.3f} ({c['effect']}) "
-              f"-> {'reject H0' if c['reject_after_correction'] else 'retain H0'}")
+              f"p_adj={c['p_adjusted']:.4g}{effect} -> {verdict}")
     print(f"Wrote results to {out_dir}/")
     return 0
 

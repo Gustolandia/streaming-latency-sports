@@ -33,3 +33,6 @@ redis_data/
 
 # Stray shell-redirect artifact
 $null
+
+# Raw StatsBomb event JSONs (re-fetchable via scripts/fetch_statsbomb_events.sh)
+data/raw/statsbomb/*/events/

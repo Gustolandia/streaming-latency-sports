@@ -57,10 +57,10 @@
 | Measurement fixes (clock + producer saturation) | ✅ **Fixed, committed, validated** | `time.time_ns()`; non-blocking producer; robust cluster remap |
 | Corrected multi-broker matrix (60 runs) | ✅ **Complete** | kafka/redis × single/cluster × S1–S5 × 3 reps, single feed (`n1`); corrected code |
 | Test suite | ✅ **830 passing, 98% coverage** | every script ≥95% |
-| Persistence H31/H32 (acks / AOF) | 🚧 In progress | |
-| Concurrency sweep (RQ2, true N feeds) | ⬜ Re-run pending | old 250-run sweep contaminated |
-| S3 corrections | ⬜ Re-run pending | old `s3_*` runs contaminated |
-| Manuscript Results/Discussion + abstract | 🚧 Rewriting | must reflect the corrected (reversed) finding |
+| Persistence H31/H32 (acks / AOF) | ✅ Complete | 12 runs; both hypotheses supported |
+| Concurrency sweep (RQ2, true N feeds) | ✅ Complete | N=5/10/20 regenerated; TTI grows with N, Redis scales better |
+| S3 corrections | ✅ Complete | 30 runs regenerated; propagation p50 = 1,461 ms |
+| Manuscript Results/Discussion + abstract | ✅ Rewritten | reflects corrected, regime-dependent finding; compiles clean |
 | All prior runs (S1–S5, concurrency, S3, old 120 matrix) | ❌ **Invalidated** | contaminated by the clock bug; superseded/being replaced |
 
 ### 1.2 Primary objective
@@ -116,12 +116,18 @@ From the corrected 60-run matrix (Holm-Bonferroni, TTI p50, n=15/cell):
 | single  | ~0 ms (sub-ms) | 687 ms | 426 ms | 1,232 ms |
 | cluster | 944 ms | 2,712 ms | 1,623 ms | 3,378 ms |
 
-**Kafka is significantly *faster* than Redis** on TTI (overall p_adj = 0.0018,
-Cohen's *d* = −1.18 *large*; cluster d = −2.83; single d = −1.02) — the **opposite** of the
-pre-correction "Redis 40–55% / 71× faster" claim, which was an artifact of the clock bug.
-Single < cluster for both backends (cluster adds replication overhead). TTI now decomposes
-into a small producer scheduling lag (~300 ms, was ~44 s before the producer fix) plus
-real transport.
+**Kafka is significantly *faster* than Redis** on TTI for **single, isolated feeds**
+(overall p_adj = 0.0018, Cohen's *d* = −1.18 *large*; cluster d = −2.83; single d = −1.02)
+— the **opposite** of the pre-correction "Redis 40–55% / 71× faster" claim, which was an
+artifact of the clock bug. Single < cluster for both backends (replication overhead).
+
+**The ordering is regime-dependent, however.** Under **true multi-feed concurrency** (RQ2,
+N parallel feeds on a shared broker), TTI grows monotonically with N for both, and **Redis
+sustains lower TTI than Kafka** (e.g. N=20: Redis ~16.7 s vs Kafka ~32.9 s). So: Kafka for
+isolated low-latency feeds; Redis for many concurrent feeds. Durability (H31/H32) costs
+latency for both (Kafka acks=all 464 ms > acks=1 346 ms; Redis AOF always ~14.6 s ≫
+everysec 1.3 s). TTI now decomposes into a small producer scheduling lag (~300 ms, was
+~44 s before the producer fix) plus real transport.
 
 ---
 

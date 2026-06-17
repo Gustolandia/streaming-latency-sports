@@ -648,7 +648,7 @@ class TestBrokerCountAndClusterMode:
             assert result[1] is True
             # Verify broker_count was passed to command
             call_args = mock_run.call_args[0][0]
-            assert "--broker-count 3" in str(call_args)
+            assert "-BROKER_COUNT 3" in str(call_args)
 
     def test_run_trial_with_cluster_mode(self, temp_dir):
         """Test run_trial with cluster_mode parameter for Redis."""
@@ -673,8 +673,8 @@ class TestBrokerCountAndClusterMode:
             assert result[1] is True
             # Verify cluster_mode was passed to command
             call_args = mock_run.call_args[0][0]
-            assert "--cluster-mode" in str(call_args)
-            assert "--node-count 3" in str(call_args)
+            assert "-CLUSTER_MODE" in str(call_args)
+            assert "-NODE_COUNT 3" in str(call_args)
 
     def test_run_trial_broker_count_default(self, temp_dir):
         """Test run_trial with default broker_count (1)."""
@@ -697,4 +697,4 @@ class TestBrokerCountAndClusterMode:
             assert result[1] is True
             # Verify default broker_count=1 was passed
             call_args = mock_run.call_args[0][0]
-            assert "--broker-count 1" in str(call_args)
+            assert "-BROKER_COUNT 1" in str(call_args)

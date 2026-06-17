@@ -19,6 +19,7 @@ from statistical_analysis import (
     check_equal_variance,
     compare_two_groups,
     holm_bonferroni,
+    kruskal_test,
     load_run_metrics,
     run_family,
     main,
@@ -197,6 +198,36 @@ class TestRunFamily:
     def test_run_family_no_backend(self):
         df = pd.DataFrame({"p50": [1.0, 2.0, 3.0]})
         assert run_family(df) == []
+
+    def test_run_family_config_and_scenario(self):
+        rng = np.random.default_rng(11)
+        rows = []
+        for cfg in ("single", "cluster"):
+            for sc in ("s1", "s2", "s3"):
+                for _ in range(4):
+                    rows.append({"backend": "kafka", "config": cfg, "scenario": sc, "p50": float(rng.normal(100, 5))})
+                    rows.append({"backend": "redis", "config": cfg, "scenario": sc, "p50": float(rng.normal(60, 5))})
+        comps = run_family(pd.DataFrame(rows))
+        labels = [c["label"] for c in comps]
+        assert any(l.startswith("single_vs_cluster_") for l in labels)
+        assert any(l.startswith("scenario_effect_") for l in labels)
+        assert all("p_adjusted" in c and "reject_after_correction" in c for c in comps)
+
+
+class TestKruskal:
+    def test_detects_difference(self):
+        rng = np.random.default_rng(2)
+        r = kruskal_test([rng.normal(0, 1, 20), rng.normal(5, 1, 20), rng.normal(10, 1, 20)], "sc")
+        assert r["test"] == "Kruskal-Wallis"
+        assert r["k_groups"] == 3 and r["n_total"] == 60
+        assert r["p_value"] < 0.05
+
+    def test_too_few_groups(self):
+        assert kruskal_test([[1, 2, 3]], "x") is None
+
+    def test_skips_empty_groups(self):
+        # only one non-empty group -> None
+        assert kruskal_test([[1, 2, 3], []], "x") is None
 
 
 class TestMain:

@@ -3,8 +3,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Target Journal: JSA](https://img.shields.io/badge/Target_Journal-Journal_of_Sports_Analytics-orange.svg)](https://www.degruyter.com/journal/key/jsa/html)
-[![Tests](https://img.shields.io/badge/tests-715_passing-brightgreen.svg)]()
-[![Coverage](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-830_passing-brightgreen.svg)]()
+[![Coverage](https://img.shields.io/badge/coverage-98%25-brightgreen.svg)]()
 [![StatsBomb Data](https://img.shields.io/badge/StatsBomb_Data-CC_BY--NC_4.0-blue.svg)](https://github.com/statsbomb/open-data)
 
 > **This README is the single source of truth for the project.** It consolidates what
@@ -42,22 +42,26 @@
 
 ### 1.1 Where things stand
 
-The benchmark suite, the single-broker results, **and the 120-run multi-broker matrix**
-are complete. The project is in the **manuscript-revision phase**, addressing six referee
-criticisms ahead of resubmission. Issues 1 and 2 are done; Issues 3–6 had specific gaps
-that have now been filled with dedicated, tested analysis scripts (June 17 2026).
+> ⚠️ **Measurement correction (June 17 2026) — read this first.** A critical bug was found:
+> the producer and consumer stamped timestamps with **process-relative `perf_counter_ns`**,
+> so cross-process TTI/transport were inflated by each run's consumer launch offset (~2 s).
+> A second issue — the **synchronous producer saturating at speedup 120×** — inflated
+> scheduling lag to tens of seconds. **Both are now fixed** (`time.time_ns()` shared epoch;
+> non-blocking producer dispatch) and validated. **Consequently, all latency numbers
+> produced before this date — including the frozen S2 "Redis 71× faster" headline — are
+> invalid and are being regenerated.** The corrected multi-broker matrix (60 runs) is done,
+> and it **reverses the project's central finding** (see §1.5).
 
 | Area | Status | Notes |
 |------|--------|-------|
-| S1 — Baseline | ✅ Frozen | Simple replay, no corrections |
-| S2 — Paper-official block | ✅ Frozen | 250 runs, fully reproducible |
-| S3 — State-staleness corrections | ✅ Complete | Canonical runs + metrics done |
-| S4 — Parameter sweep | ✅ Complete | speedup / frequency / delay variations |
-| S5 — Resource analysis | ✅ Complete | CPU / memory monitoring |
-| Concurrency sweep (S1–S5 × N=5,10,20) | ✅ Complete | 250 runs, June 13 2026 |
-| **Multi-broker matrix (120 runs)** | ✅ **Complete** | batch1/2/3 = single+cluster × kafka+redis × S1–S5 × N=5/10/20 × 2 reps; 120/120 pass health + provenance checks (June 15 2026) |
-| Test suite | ✅ **830 tests passing, ~99% coverage** | Every script ≥95% (June 17 2026) |
-| Manuscript (`manuscript.tex`) | 🚧 Draft | Has RQs/hypotheses/stats framework; LaTeX errors still to fix |
+| Measurement fixes (clock + producer saturation) | ✅ **Fixed, committed, validated** | `time.time_ns()`; non-blocking producer; robust cluster remap |
+| Corrected multi-broker matrix (60 runs) | ✅ **Complete** | kafka/redis × single/cluster × S1–S5 × 3 reps, single feed (`n1`); corrected code |
+| Test suite | ✅ **830 passing, 98% coverage** | every script ≥95% |
+| Persistence H31/H32 (acks / AOF) | 🚧 In progress | |
+| Concurrency sweep (RQ2, true N feeds) | ⬜ Re-run pending | old 250-run sweep contaminated |
+| S3 corrections | ⬜ Re-run pending | old `s3_*` runs contaminated |
+| Manuscript Results/Discussion + abstract | 🚧 Rewriting | must reflect the corrected (reversed) finding |
+| All prior runs (S1–S5, concurrency, S3, old 120 matrix) | ❌ **Invalidated** | contaminated by the clock bug; superseded/being replaced |
 
 ### 1.2 Primary objective
 
@@ -103,9 +107,21 @@ manuscript integration:
 3. **Issue 6 finalize:** fill in host hardware in `docs/infrastructure.md` and mint the
    Zenodo DOI.
 
-> **Audit note (S2 reuse):** an audit confirmed S2 contains **only single-broker, default-
-> persistence** configurations, so it **cannot** be reused to shrink the 120-run matrix —
-> the multi-broker and persistence-variation runs must be produced fresh.
+### 1.5 Corrected headline finding (reverses the prior thesis)
+
+From the corrected 60-run matrix (Holm-Bonferroni, TTI p50, n=15/cell):
+
+| Config | Kafka transport p50 | Redis transport p50 | Kafka TTI p50 | Redis TTI p50 |
+|--------|--------------------:|--------------------:|--------------:|--------------:|
+| single  | ~0 ms (sub-ms) | 687 ms | 426 ms | 1,232 ms |
+| cluster | 944 ms | 2,712 ms | 1,623 ms | 3,378 ms |
+
+**Kafka is significantly *faster* than Redis** on TTI (overall p_adj = 0.0018,
+Cohen's *d* = −1.18 *large*; cluster d = −2.83; single d = −1.02) — the **opposite** of the
+pre-correction "Redis 40–55% / 71× faster" claim, which was an artifact of the clock bug.
+Single < cluster for both backends (cluster adds replication overhead). TTI now decomposes
+into a small producer scheduling lag (~300 ms, was ~44 s before the producer fix) plus
+real transport.
 
 ---
 
@@ -127,10 +143,14 @@ platforms act on live event data?* The methodology centers on a **Time-to-Insigh
 metric — the interval from an event's scheduled emission to its availability for
 consumption — decomposed into transport latency and scheduling lag.
 
-Frozen S2 results show Redis Streams achieving up to **71× lower median latency** than
-Kafka (2.51 ms vs 173.49 ms for the `s2sf12` scenario) and **0% missed-window rate** at a
-100 ms threshold where Kafka misses 68.4%. The current revision extends this to a
-multi-broker setting to ensure the comparison is fair to Kafka's distributed design.
+After correcting a cross-process clock bug and a load-generator saturation issue that had
+contaminated all earlier measurements (see §1.1), the corrected multi-broker matrix shows
+**Apache Kafka achieving significantly lower Time-to-Insight than Redis Streams** (large
+effect size, both single-broker and clustered deployments) — reversing the project's
+earlier, artifact-driven conclusion. We report TTI decomposed into producer scheduling lag
+and transport latency, and find single-broker deployments outperform clustered ones for
+both systems (replication overhead). *(Abstract figures are being finalized as the
+corrected corpus — persistence, concurrency, and S3 phases — completes.)*
 
 ---
 
@@ -304,58 +324,42 @@ S3 mode injects state-staleness corrections identically across both backends:
 
 ## 7. Experimental Phases & Results
 
-### 7.1 Phase overview
+> ⚠️ **All pre-June-17 result tables below were contaminated by the clock bug (§1.1) and
+> are invalid.** They are retained here struck-through only to document what changed; the
+> valid numbers are in §7.1 (corrected matrix).
 
-| Phase | Purpose | Status |
-|-------|---------|--------|
-| S1 | Baseline replay, no corrections | ✅ Frozen |
-| S2 | Full paper-official replay (250 runs) | ✅ Frozen |
-| S3 | State-staleness corrections | ✅ Complete |
-| S4 | Parameter sweep | ✅ Complete |
-| S5 | Resource analysis | ✅ Complete |
-| Concurrency sweep | S1–S5 × N=5,10,20 (250 runs) | ✅ Complete (June 13 2026) |
-| Multi-broker (Issue 2) | 120 runs, single vs cluster | ⬜ Pending |
+### 7.1 Corrected multi-broker matrix (60 runs, June 17 2026)
 
-### 7.2 S2 frozen results (single-broker)
+`time.time_ns()` clock + non-blocking producer. kafka/redis × single/cluster × S1–S5 ×
+3 reps, single feed per run. Holm-Bonferroni-corrected (TTI p50, n=15/cell):
 
-**TTI p50 median (ms)**
+| Config | Kafka transport p50 | Redis transport p50 | Kafka TTI p50 | Redis TTI p50 |
+|--------|--------------------:|--------------------:|--------------:|--------------:|
+| single  | ~0 ms (sub-ms) | 687 ms | 426 ms | 1,232 ms |
+| cluster | 944 ms | 2,712 ms | 1,623 ms | 3,378 ms |
 
-| Scenario | Kafka | Redis | Ratio |
-|----------|-------|-------|-------|
-| s2sf12 | 173.489 | 2.508 | 0.014× (≈71× faster) |
-| s2sf12j2 | 319.165 | 169.027 | 0.53× (≈1.9× faster) |
+**Kafka significantly faster than Redis** (overall p_adj = 0.0018, *d* = −1.18 large;
+cluster *d* = −2.83; single *d* = −1.02). Single < cluster for both (replication overhead).
+Outputs: `docs/results/corrected_statistical_analysis/`.
 
-**Missed-window rate (median, W = 100 ms)**
+### 7.2 Pending corrected phases
 
-| Scenario | Kafka | Redis |
-|----------|-------|-------|
-| s2sf12 | 68.41% | 0.00% |
-| s2sf12j2 | 91.02% | 72.33% |
+| Phase | Status |
+|-------|--------|
+| Persistence H31/H32 (acks, AOF) | 🚧 in progress |
+| Concurrency sweep (RQ2, true N feeds) | ⬜ re-run pending |
+| S3 corrections | ⬜ re-run pending |
 
-### 7.3 Concurrency sweep (250 runs, June 13 2026)
+### 7.3 ~~S2 frozen results~~ — INVALID (contaminated)
 
-Redis is consistently **40–55% faster** than Kafka across scenarios, TTI is **stable**
-across N = 5/10/20 (no degradation), **100% match rate** for all runs, and all
-differences are significant (p < 0.001, uncorrected — Issue 4 will add corrections).
+~~s2sf12: Kafka 173.489 ms vs Redis 2.508 ms (≈71×).~~ The near-constant ~2,008 ms
+"transport" for *both* backends in the frozen CSV was the cross-process clock offset, not
+real latency. Superseded by §7.1.
 
-| Scenario | Kafka TTI p50 (ms) | Redis TTI p50 (ms) | Improvement |
-|----------|--------------------|--------------------|-------------|
-| S1 | 12,027.41 | 7,411.61 | 38.4% |
-| S2 | 23,055.14 | 10,418.80 | 54.8% |
-| S3 | 17,824.65 | 9,699.95 | 45.6% |
-| S4 | 17,190.34 | 9,338.60 | 45.7% |
-| S5 | 19,222.49 | 9,661.25 | 49.7% |
+### 7.4 ~~Concurrency sweep "Redis 40–55% faster"~~ — INVALID (contaminated)
 
-### 7.4 S3 preliminary findings
-
-Redis shows ~2.4× lower planned-to-consume latency for corrections, but higher
-correction-propagation latency than Kafka — consistent with Kafka's batching affecting
-correction timing differently from base delivery. Detailed per-analysis outputs live
-under `docs/results/` (generated by the analysis scripts; see §8).
-
-> **Reproducibility rule:** every number in the paper traces to a committed CSV generated
-> by committed code from a canonical run list. The detailed, regenerable result tables
-> remain under `docs/results/**` rather than being inlined here.
+~~S1–S5 showed Redis 38–55% faster.~~ Same clock contamination (~2 s offset) + producer
+saturation. To be regenerated with true N-feed concurrency.
 
 ---
 

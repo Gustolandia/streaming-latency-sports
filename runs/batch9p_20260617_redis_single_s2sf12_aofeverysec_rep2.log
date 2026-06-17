@@ -1,0 +1,29 @@
+Wrote meta: runs\batch9p_20260617_redis_single_s2sf12_aofeverysec_rep2\meta.json
+[0/4] 16:05:18 cleaning Redis stream: sb:events:batch9p_20260617_redis_single_s2sf12_aofeverysec_rep2
+0
+  [0/4] Stream cleaned
+[1/4] 16:05:18 starting consumer...
+  [1/4] Consumer started, PID: 26284
+[2/4] 16:05:20 running producer...
+  [2/4] Producer completed
+[3/4] 16:05:22 waiting for consumer to finish...
+  [3/4] Consumer finished
+[4/4] 16:05:34 computing TTI...
+Computed TTI metrics: 4465/4465 events matched
+Wrote: runs\batch9p_20260617_redis_single_s2sf12_aofeverysec_rep2\tti_summary.json
+DONE. Outputs:
+
+    Directory: 
+C:\Users\Gugar\Documents\streaming-latency-sports\runs\batch9p_20260617_redis_single_s2sf12_aofeverysec_rep2
+
+[32;1mMode   [0m[32;1m              LastWriteTime[0m[32;1m         Length[0m[32;1m Name[0m
+[32;1m----   [0m [32;1m             -------------[0m [32;1m        ------[0m [32;1m----[0m
+-a---          2026-06-17    16:05        1325443 consumer_events.csv
+-a---          2026-06-17    16:05        1026060 consumer.csv
+-a---          2026-06-17    16:05            229 consumer.log
+-a---          2026-06-17    16:05           4226 meta.json
+-a---          2026-06-17    16:05        1178083 producer.csv
+-a---          2026-06-17    16:05            116 producer.log
+-a---          2026-06-17    16:05           1125 tti_summary.json
+-a---          2026-06-17    16:05            132 tti_summary.printed.json
+

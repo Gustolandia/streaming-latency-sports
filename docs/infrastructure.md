@@ -5,9 +5,9 @@ for the benchmark suite. It complements the per-run provenance recorded in every
 `runs/<run_id>/meta.json` and the automated checker
 `scripts/verify_reproducibility.py`.
 
-> Hardware note: exact host hardware (CPU model, core count, RAM, storage, NIC)
-> is **not** auto-captured in `meta.json` and is intentionally left as a
-> fill-in below rather than fabricated. Record the real values before archiving.
+> Hardware note: host hardware is not auto-captured in `meta.json`; the values in §3
+> below were measured on the benchmarking host (June 17 2026). All runs in the corrected
+> corpus were produced on this single machine.
 
 ---
 
@@ -18,25 +18,28 @@ for the benchmark suite. It complements the per-run provenance recorded in every
 | Apache Kafka | 4.1.1 (KRaft mode) | `apache/kafka:4.1.1` (see `docker-compose*.yml`) |
 | Redis | 7.2.4 | `redis:7.2.4` (see `docker-compose-redis-cluster.yml`) |
 | Python | 3.9.13 | local interpreter |
-| Docker | Docker Desktop | host |
-| OS | Windows 11 | host |
+| Docker | 29.5.3 (Docker Desktop) | host |
+| OS | Windows 11 Home (build 26200) | host |
 | Python deps | pinned | `requirements.txt` |
 
 ## 2. Deployment topologies
 
 | Config | Kafka | Redis |
 |--------|-------|-------|
-| Single | 1 broker, `localhost:9092` (`docker-compose.yml`) | 1 node, `localhost:6379` |
+| Single | 1 broker, `localhost:19092` (`docker-compose.yml`) | 1 node, `localhost:16379`, no persistence |
 | Cluster | 3 brokers, KRaft, RF=3, ports 9092/9093/9094 (`docker-compose-multibroker.yml`) | 3 nodes, cluster mode, AOF `everysec`, ports 7000–7002 (`docker-compose-redis-cluster.yml`) |
 
-## 3. Host hardware (fill in before archiving)
+The single and cluster stacks use disjoint host ports, so they run concurrently.
+
+## 3. Host hardware (measured, June 17 2026)
 
 | Property | Value |
 |----------|-------|
-| CPU | _e.g. model, cores, base/boost GHz_ |
-| RAM | _e.g. 64 GB_ |
-| Storage | _e.g. NVMe SSD_ |
-| Docker resource limits | _e.g. CPUs / memory allocated to Docker Desktop_ |
+| CPU | AMD Ryzen 9 6900HX, 8 cores / 16 threads @ 3.3 GHz |
+| RAM | 31.2 GB |
+| OS | Windows 11 Home, build 26200 |
+| Docker resources | 16 vCPUs, 15.2 GB memory allocated to Docker Desktop |
+| Storage | local SSD |
 
 ## 4. Reproducibility chain (the "no-guessing" principle)
 
@@ -65,23 +68,21 @@ python deep_health_check_final.py --pattern 'batch*'                    # deep i
 As of the 120-run multi-broker matrix (batches 1–3), all 120 runs pass the
 provenance check (`120/120 runs fully reproducible`).
 
-## 5. Reproducing the analysis
+## 5. Reproducing the corrected corpus and analysis
+
+The full, current step-by-step procedure (infra bring-up, the corrected
+`regenerate_corpus.ps1` / `run_persistence.ps1` / `run_s3_corrected.ps1` orchestrators, the
+concurrency runs, and all analyses) lives in
+[reproducibility/README.md](../reproducibility/README.md), with the exact pinned commit and
+per-file code checksums in `reproducibility/MANIFEST.json`.
+
+Analyses run on existing `runs/` without Docker, e.g.:
 
 ```bash
-python -m venv .venv && .venv\Scripts\Activate.ps1   # (or: source .venv/bin/activate)
-pip install -r requirements.txt
-
-# Multi-broker experiment matrix (single + cluster), if regenerating data:
-docker compose -f docker-compose-multibroker.yml up -d
-docker compose -f docker-compose-redis-cluster.yml up -d
-python run_all_concurrency_tests.py            # orchestrates the batch matrix
-
-# Analyses (read existing runs/ — no Docker needed):
-python scripts/analyze_batches_1_2_3.py        # TTI, config, throughput, message size
-python scripts/statistical_analysis.py         # Holm-Bonferroni, effect sizes, 95% CIs
-python scripts/power_analysis.py --n 20        # a-priori / post-hoc power
-python scripts/analyze_protocol_overhead.py    # message size + (de)serialization timing
-python scripts/analyze_actionability.py        # sports actionability + production comparison
+python scripts/statistical_analysis.py      --pattern 'batch9_20260617_*'
+python scripts/analyze_protocol_overhead.py --pattern 'batch9_20260617_*'
+python scripts/analyze_actionability.py     --pattern 'batch9_20260617_*'
+python scripts/power_analysis.py --n 15
 ```
 
 ## 6. Permanent archive (Zenodo) — checklist

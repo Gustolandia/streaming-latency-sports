@@ -361,6 +361,15 @@ faster (Section~\ref{sec:results}). The optimal backend is therefore regime-depe
 \kafka{} for isolated low-latency feeds, \redis{} for many concurrent feeds on shared
 infrastructure.
 
+\subsection{Fairness Controls and Sports Actionability (RQ3)}
+
+Message payloads are near-identical across backends (median $\sim$170~bytes), and
+serialization/deserialization overheads are negligible and comparable ($\sim$2.3/2.1~$\mu$s
+for \kafka{}, $\sim$2.4/2.2~$\mu$s for \redis{}), confirming the comparison is not biased by
+protocol or message-size differences. Mapping single-feed TTI to sports-actionability
+thresholds, single-broker \kafka{} meets the $<$500~ms coaching budget for 33\% of events
+versus 12\% for \redis{}, and the $<$5~s fan-application budget for 99.96\% versus 89\%.
+
 \section{Discussion}
 \label{sec:discussion}
 

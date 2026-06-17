@@ -39,7 +39,7 @@ def extract_s4_config_from_runid(run_id):
         if part in valid_backends:
             backend_idx = i
             break
-    if backend_idx is None or backend_idx < 3:
+    if backend_idx is None or len(parts) < 2:
         return {}
     config_map = {
         "baseline": {"speedup": 120, "corrections_every_k": 50, "correction_delay_s": 2.0},
@@ -51,9 +51,9 @@ def extract_s4_config_from_runid(run_id):
         "short_delay": {"speedup": 120, "corrections_every_k": 50, "correction_delay_s": 0.5},
         "fast_corrections": {"speedup": 120, "corrections_every_k": 10, "correction_delay_s": 0.5},
     }
-    scenario = parts[1] if len(parts) > 1 else None
-    config_name = "_".join(parts[2:backend_idx]) if backend_idx > 2 else None
-    backend = parts[backend_idx] if backend_idx else None
+    scenario = parts[0] if len(parts) > 0 else None
+    config_name = "_".join(parts[1:backend_idx]) if backend_idx > 1 else None
+    backend = parts[backend_idx] if backend_idx is not None else None
     return {"scenario": scenario, "config": config_name, "backend": backend, **config_map.get(config_name, {})}
 
 
@@ -120,14 +120,18 @@ def compute_s4_metrics_for_run(run_dir):
                         tti_percentiles[f"{field}_{key}"] = tti_data[field][key]
     n_producer = 0
     n_consumer = 0
-    for fname, count_var in [("producer.csv", "n_producer"), ("consumer.csv", "n_consumer")]:
+    for fname, target in [("producer.csv", "n_producer"), ("consumer.csv", "n_consumer")]:
         fpath = run_dir / fname
         if fpath.exists():
             try:
                 with open(fpath, encoding='utf-8-sig') as f:
                     reader = csv.reader(f)
                     next(reader, None)
-                    globals()[count_var] = sum(1 for _ in reader)
+                    count = sum(1 for _ in reader)
+                    if target == "n_producer":
+                        n_producer = count
+                    else:
+                        n_consumer = count
             except Exception:
                 pass
     # Get n_tti_values from various sources
@@ -153,7 +157,7 @@ def compute_s4_metrics_for_run(run_dir):
     # Add matched events info
     for key in ["n_produced", "n_consumed", "n_matched"]:
         if key in tti_data:
-            metrics[f"n_{key}"] = tti_data[key]
+            metrics[key] = tti_data[key]
     
     for key in ["plan_csv", "max_t_sim"]:
         if key in meta:

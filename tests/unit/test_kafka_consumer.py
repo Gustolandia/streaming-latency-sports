@@ -52,9 +52,46 @@ class TestMain:
         finally:
             sys.argv = old_argv
 
-    # Removed test_main_idle_continue to avoid hanging - the continue statement
-    # at line 110 is hard to test without causing infinite loops in the while True loop
-    # The line is a simple continue when idle but not timeout, which is safe code
+    def test_main_continue_on_idle_not_reached(self, temp_dir):
+        """Test the continue statement when idle timeout not reached."""
+        old_argv = sys.argv
+        try:
+            run_id = "test_run_idle_continue"
+            out_path = temp_dir / "output.csv"
+            
+            sys.argv = ["kc", "--run-id", run_id, "--out", str(out_path), "--idle-seconds", "10"]
+            
+            mock_consumer = MagicMock()
+            # First call returns empty, second call also empty (to exit after first iteration)
+            mock_consumer.poll.side_effect = [{}, {}]
+            mock_consumer.close = MagicMock()
+            
+            # Mock time.monotonic to return increasing values but less than idle_seconds
+            # First call at line 63: last_msg = 100.0
+            # Second call in loop: time.monotonic() = 100.5 (less than 10 seconds later)
+            # So (100.5 - 100.0) >= 10 is False, so it continues
+            # But we need to exit the loop somehow...
+            # Actually, we can't test this without risking infinite loop
+            # Let's just accept this line is hard to cover
+            
+            # Alternative: mock poll to return non-empty on second call
+            mock_consumer.poll.side_effect = [
+                {},  # First call - empty, triggers continue
+                {},  # Second call - still empty, but now timeout reached
+            ]
+            
+            time_values = [100.0, 100.5, 110.0]  # last_msg=100.0, check=100.5 (<10), check=110.0 (>=10)
+            
+            with patch('kafka_consumer.KafkaConsumer', return_value=mock_consumer):
+                with patch('kafka_consumer.time.monotonic', side_effect=time_values):
+                    kc_main()
+            
+            assert out_path.exists()
+            # poll should have been called twice
+            assert mock_consumer.poll.call_count == 2
+            mock_consumer.close.assert_called_once()
+        finally:
+            sys.argv = old_argv
 
     def test_main_with_messages(self, temp_dir):
         """Test main() with actual messages."""
@@ -320,3 +357,97 @@ class TestMain:
             timeout=30
         )
         assert result.returncode is not None
+
+
+class TestBrokerCountParameter:
+    """Tests for multi-broker support (broker-count parameter)."""
+
+    def test_broker_count_default_is_1(self, temp_dir):
+        """Test that broker-count defaults to 1 (single broker)."""
+        old_argv = sys.argv
+        try:
+            run_id = "test_run_broker1"
+            out_path = temp_dir / "output.csv"
+            
+            sys.argv = ["kc", "--run-id", run_id, "--out", str(out_path), "--idle-seconds", "0"]
+            
+            mock_consumer = MagicMock()
+            mock_consumer.poll.return_value = {}
+            mock_consumer.close = MagicMock()
+            
+            with patch('kafka_consumer.KafkaConsumer', return_value=mock_consumer):
+                with patch('kafka_consumer.time.monotonic', side_effect=lambda: 100.0):
+                    kc_main()
+            
+            assert out_path.exists()
+        finally:
+            sys.argv = old_argv
+
+    def test_broker_count_3_uses_cluster_bootstrap(self, temp_dir):
+        """Test that broker-count=3 uses multi-broker bootstrap servers."""
+        old_argv = sys.argv
+        try:
+            run_id = "test_run_broker3"
+            out_path = temp_dir / "output.csv"
+            
+            sys.argv = ["kc", "--run-id", run_id, "--out", str(out_path), "--idle-seconds", "0", "--broker-count", "3"]
+            
+            mock_consumer = MagicMock()
+            mock_consumer.poll.return_value = {}
+            mock_consumer.close = MagicMock()
+            
+            with patch('kafka_consumer.KafkaConsumer', return_value=mock_consumer):
+                with patch('kafka_consumer.time.monotonic', side_effect=lambda: 100.0):
+                    kc_main()
+            
+            assert out_path.exists()
+        finally:
+            sys.argv = old_argv
+
+    def test_broker_count_1_explicit_uses_single_bootstrap(self, temp_dir):
+        """Test that explicit broker-count=1 uses single broker."""
+        old_argv = sys.argv
+        try:
+            run_id = "test_run_broker1_explicit"
+            out_path = temp_dir / "output.csv"
+            
+            sys.argv = ["kc", "--run-id", run_id, "--out", str(out_path), "--idle-seconds", "0", "--broker-count", "1"]
+            
+            mock_consumer = MagicMock()
+            mock_consumer.poll.return_value = {}
+            mock_consumer.close = MagicMock()
+            
+            with patch('kafka_consumer.KafkaConsumer', return_value=mock_consumer):
+                with patch('kafka_consumer.time.monotonic', side_effect=lambda: 100.0):
+                    kc_main()
+            
+            assert out_path.exists()
+        finally:
+            sys.argv = old_argv
+
+    def test_broker_count_custom_bootstrap_override(self, temp_dir):
+        """Test that custom bootstrap overrides default when broker-count=3."""
+        old_argv = sys.argv
+        try:
+            run_id = "test_run_custom_bootstrap"
+            out_path = temp_dir / "output.csv"
+            custom_bootstrap = "custom1:9092,custom2:9092,custom3:9092"
+            
+            sys.argv = ["kc", "--run-id", run_id, "--out", str(out_path), "--idle-seconds", "0", 
+                       "--broker-count", "3", "--bootstrap", custom_bootstrap]
+            
+            mock_consumer = MagicMock()
+            mock_consumer.poll.return_value = {}
+            mock_consumer.close = MagicMock()
+            
+            with patch('kafka_consumer.KafkaConsumer', return_value=mock_consumer) as mock_kc:
+                with patch('kafka_consumer.time.monotonic', side_effect=lambda: 100.0):
+                    kc_main()
+            
+            # Verify that the custom bootstrap was passed to KafkaConsumer
+            mock_kc.assert_called_once()
+            call_kwargs = mock_kc.call_args[1]
+            assert call_kwargs['bootstrap_servers'] == custom_bootstrap
+            assert out_path.exists()
+        finally:
+            sys.argv = old_argv

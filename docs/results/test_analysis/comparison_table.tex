@@ -1,0 +1,13 @@
+\begin{table*}[t]
+\centering
+\caption{End-to-End Latency Comparison: Kafka vs Redis Streams}
+\label{tab:latency_comparison}
+\begin{tabular}{l l c c c c c}
+\toprule
+Scenario & Backend & Runs & TTI p50 (ms) & TTI p95 (ms) & TTI p99 (ms) & Events Matched \\
+\midrule
+s2 & Kafka & 5 & 6204.93 & 10036.79 & 10398.89 & 4465 \\
+s2 & Redis & 5 & 3473.34 & 4800.66 & 4921.31 & 4465 \\
+\bottomrule
+\end{tabular}
+\end{table*}

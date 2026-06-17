@@ -1,0 +1,15 @@
+﻿{
+    "kafka_avg_cpu":  1.52,
+    "run_id":  "s5_s2sf12_high_speedup_redis_rep1_20260612_200444",
+    "kafka_peak_mem":  1104.9,
+    "backend":  "redis",
+    "config":  "high_speedup",
+    "kafka_avg_mem":  1104.9,
+    "redis_peak_cpu":  0.25,
+    "redis_avg_mem":  138.3,
+    "sample_count":  4,
+    "speedup":  240,
+    "kafka_peak_cpu":  1.76,
+    "redis_avg_cpu":  0.24,
+    "redis_peak_mem":  138.3
+}

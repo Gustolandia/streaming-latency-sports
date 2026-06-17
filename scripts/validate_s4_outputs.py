@@ -34,6 +34,7 @@ class ValidationSummary:
     passed: int = 0
     failed: int = 0
     warnings: int = 0
+    errors: List[str] = field(default_factory=list)
     details: List[RunValidation] = field(default_factory=list)
     scenario_counts: Dict[str, int] = field(default_factory=dict)
     config_counts: Dict[str, int] = field(default_factory=dict)
@@ -143,24 +144,28 @@ def validate_run(run_dir: Path) -> RunValidation:
             with open(tti_path, encoding='utf-8-sig') as f:
                 tti_data = json.load(f)
             
-            # Check for S4-relevant metrics
-            result.s4_specific["tti_summary"] = True
-            
-            # Check matched events count
-            if "matched_events" in tti_data:
-                result.s4_specific["matched_events"] = tti_data["matched_events"]
-                expected = get_expected_events(run_dir.name)
-                if tti_data["matched_events"] != expected:
-                    result.warnings.append(
-                        f"Matched events ({tti_data['matched_events']}) != expected ({expected})"
-                    )
-            
-            # Check for percentiles
-            for p in ["p50", "p95", "p99"]:
-                if p in tti_data:
-                    result.s4_specific[p] = tti_data[p]
-                else:
-                    result.warnings.append(f"Missing percentile: {p}")
+            if not tti_data:
+                result.errors.append("tti_summary.json is empty")
+                result.status = "FAIL"
+            else:
+                # Check for S4-relevant metrics
+                result.s4_specific["tti_summary"] = True
+                
+                # Check matched events count
+                if "matched_events" in tti_data:
+                    result.s4_specific["matched_events"] = tti_data["matched_events"]
+                    expected = get_expected_events(run_dir.name)
+                    if tti_data["matched_events"] != expected:
+                        result.warnings.append(
+                            f"Matched events ({tti_data['matched_events']}) != expected ({expected})"
+                        )
+                
+                # Check for percentiles
+                for p in ["p50", "p95", "p99"]:
+                    if p in tti_data:
+                        result.s4_specific[p] = tti_data[p]
+                    else:
+                        result.warnings.append(f"Missing percentile: {p}")
                     
         except Exception as e:
             result.errors.append(f"tti_summary.json invalid: {e}")

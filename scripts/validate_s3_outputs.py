@@ -268,22 +268,25 @@ def validate_config_consistency(details: List[RunValidation]):
     print("=" * 80)
 
 
-if __name__ == "__main__":
+def main(argv=None):
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="Validate S3 output quality")
     parser.add_argument(
-        "--runlist", 
+        "--runlist",
         default="runs/_paper_s3_official_runs.txt",
         help="Path to run list file"
     )
-    args = parser.parse_args()
-    
+    args = parser.parse_args(argv)
+
     print("Validating S3 outputs...")
     print(f"Run list: {args.runlist}")
-    
+
     summary = validate_all_runs(Path(args.runlist))
     validate_config_consistency(summary.details)
-    
-    exit_code = print_summary(summary)
-    sys.exit(exit_code)
+
+    return print_summary(summary)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

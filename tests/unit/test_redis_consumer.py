@@ -14,6 +14,8 @@ sys.modules['kafka.KafkaConsumer'] = MagicMock()
 sys.modules['kafka.KafkaProducer'] = MagicMock()
 sys.modules['redis'] = MagicMock()
 sys.modules['redis.Redis'] = MagicMock()
+sys.modules['redis.cluster'] = MagicMock()
+sys.modules['redis.cluster.RedisCluster'] = MagicMock()
 
 SCRIPTS_DIR = Path(__file__).parent.parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
@@ -298,6 +300,32 @@ class TestMain:
     # Removed test_main_continue_hit to avoid hanging
     # Patching time.monotonic after module import doesn't work reliably
 
+    def test_main_continue_on_idle_not_reached(self, temp_dir):
+        """Test the continue statement when idle timeout not reached (line 133)."""
+        old_argv = sys.argv
+        try:
+            run_id = "test_run_continue"
+            out_path = temp_dir / "output.csv"
+            
+            sys.argv = ["rc", "--run-id", run_id, "--out", str(out_path), "--idle-seconds", "10"]
+            
+            mock_redis = MagicMock()
+            mock_redis.xreadgroup.side_effect = [None, None]  # Two empty responses
+            mock_redis.xgroup_create.side_effect = Exception("Group exists")
+            mock_redis.xack = MagicMock()
+            
+            # Mock time.monotonic: first call sets last_msg=100.0, second check=100.5 (<10), third check=110.0 (>=10)
+            time_values = [100.0, 100.5, 110.0]
+            
+            with patch('redis_consumer.redis.Redis', return_value=mock_redis):
+                with patch('redis_consumer.time.monotonic', side_effect=time_values):
+                    rc_main()
+            
+            assert out_path.exists()
+            assert mock_redis.xreadgroup.call_count == 2
+        finally:
+            sys.argv = old_argv
+
     def test_main_as_script(self, temp_dir):
         """Test line 171: if __name__ == '__main__' block by running as subprocess with coverage."""
         env = os.environ.copy()
@@ -318,4 +346,363 @@ class TestMain:
             timeout=30
         )
         assert result.returncode is not None
+
+
+class TestClusterModeParameter:
+    """Tests for Redis cluster mode support (cluster-mode and node-count parameters)."""
+
+    def test_default_uses_single_node(self, temp_dir):
+        """Test that default uses single Redis node."""
+        old_argv = sys.argv
+        try:
+            run_id = "test_run_single"
+            out_path = temp_dir / "output.csv"
+            
+            sys.argv = ["rc", "--run-id", run_id, "--out", str(out_path), "--idle-seconds", "0"]
+            
+            mock_redis = MagicMock()
+            mock_redis.xreadgroup.return_value = None
+            mock_redis.xgroup_create.side_effect = Exception("Group exists")
+            mock_redis.xack = MagicMock()
+            
+            with patch('redis_consumer.redis.Redis', return_value=mock_redis):
+                with patch('redis_consumer.time.monotonic', side_effect=lambda: 100.0):
+                    rc_main()
+            
+            assert out_path.exists()
+        finally:
+            sys.argv = old_argv
+
+    def test_cluster_mode_parameter_accepted(self, temp_dir):
+        """Test that cluster-mode parameter is accepted without errors."""
+        old_argv = sys.argv
+        try:
+            run_id = "test_run_cluster"
+            out_path = temp_dir / "output.csv"
+            
+            sys.argv = ["rc", "--run-id", run_id, "--out", str(out_path), "--idle-seconds", "0", "--cluster-mode"]
+            
+            mock_redis = MagicMock()
+            mock_redis.xreadgroup.return_value = None
+            mock_redis.xgroup_create.side_effect = Exception("Group exists")
+            mock_redis.xack = MagicMock()
+            
+            # Mock the cluster module and its RedisCluster class
+            # We need to set up the mock so that 'from redis.cluster import RedisCluster' works
+            mock_cluster_module = MagicMock()
+            mock_cluster_module.RedisCluster = MagicMock(return_value=mock_redis)
+            
+            with patch.dict('sys.modules', {'redis.cluster': mock_cluster_module}):
+                with patch('redis_consumer.redis.Redis', return_value=mock_redis):
+                    with patch('redis_consumer.time.monotonic', side_effect=lambda: 100.0):
+                        rc_main()
+            
+            assert out_path.exists()
+        finally:
+            sys.argv = old_argv
+
+    def test_node_count_3_parameter_accepted(self, temp_dir):
+        """Test that node-count=3 parameter is accepted without errors."""
+        old_argv = sys.argv
+        try:
+            run_id = "test_run_node3"
+            out_path = temp_dir / "output.csv"
+            
+            sys.argv = ["rc", "--run-id", run_id, "--out", str(out_path), "--idle-seconds", "0", "--node-count", "3"]
+            
+            mock_redis = MagicMock()
+            mock_redis.xreadgroup.return_value = None
+            mock_redis.xgroup_create.side_effect = Exception("Group exists")
+            mock_redis.xack = MagicMock()
+            
+            # Mock the cluster module and its RedisCluster class (node-count=3 triggers cluster mode)
+            mock_cluster_module = MagicMock()
+            mock_cluster_module.RedisCluster = MagicMock(return_value=mock_redis)
+            
+            with patch.dict('sys.modules', {'redis.cluster': mock_cluster_module}):
+                with patch('redis_consumer.redis.Redis', return_value=mock_redis):
+                    with patch('redis_consumer.time.monotonic', side_effect=lambda: 100.0):
+                        rc_main()
+            
+            assert out_path.exists()
+        finally:
+            sys.argv = old_argv
+
+    def test_node_count_1_uses_single_node(self, temp_dir):
+        """Test that node-count=1 uses single Redis node."""
+        old_argv = sys.argv
+        try:
+            run_id = "test_run_node1"
+            out_path = temp_dir / "output.csv"
+            
+            sys.argv = ["rc", "--run-id", run_id, "--out", str(out_path), "--idle-seconds", "0", "--node-count", "1"]
+            
+            mock_redis = MagicMock()
+            mock_redis.xreadgroup.return_value = None
+            mock_redis.xgroup_create.side_effect = Exception("Group exists")
+            mock_redis.xack = MagicMock()
+            
+            with patch('redis_consumer.redis.Redis', return_value=mock_redis):
+                with patch('redis_consumer.time.monotonic', side_effect=lambda: 100.0):
+                    rc_main()
+            
+            assert out_path.exists()
+        finally:
+            sys.argv = old_argv
+
+    def test_cluster_mode_fallback_to_single_node(self, temp_dir):
+        """Test that when RedisCluster import fails, it falls back to single Redis node."""
+        old_argv = sys.argv
+        try:
+            run_id = "test_run_fallback"
+            out_path = temp_dir / "output.csv"
+            
+            sys.argv = ["rc", "--run-id", run_id, "--out", str(out_path), "--idle-seconds", "0", "--cluster-mode"]
+            
+            mock_redis = MagicMock()
+            mock_redis.xreadgroup.return_value = None
+            mock_redis.xgroup_create.side_effect = Exception("Group exists")
+            mock_redis.xack = MagicMock()
+            
+            # Mock redis.cluster to raise ImportError, triggering fallback
+            mock_cluster_module = MagicMock()
+            mock_cluster_module.RedisCluster.side_effect = ImportError("Cannot import RedisCluster")
+            
+            with patch.dict('sys.modules', {'redis.cluster': mock_cluster_module}):
+                with patch('redis_consumer.redis.Redis', return_value=mock_redis):
+                    with patch('redis_consumer.time.monotonic', side_effect=lambda: 100.0):
+                        rc_main()
+            
+            # Should have fallen back to single Redis and still created output
+            assert out_path.exists()
+        finally:
+            sys.argv = old_argv
+
+    def test_main_cluster_mode_successful(self, temp_dir):
+        """Test cluster mode with successful RedisCluster creation to cover address_remap."""
+        old_argv = sys.argv
+        try:
+            run_id = "test_run_cluster"
+            out_path = temp_dir / "output.csv"
+            
+            sys.argv = ["rc", "--run-id", run_id, "--out", str(out_path), "--idle-seconds", "0", "--cluster-mode"]
+            
+            # Mock RedisCluster to be successfully created
+            mock_cluster = MagicMock()
+            mock_cluster.xreadgroup.return_value = None
+            mock_cluster.xgroup_create.side_effect = Exception("Group exists")
+            mock_cluster.xack = MagicMock()
+            
+            # Mock ClusterNode
+            mock_cluster_node = MagicMock()
+            mock_cluster_node_class = MagicMock(return_value=mock_cluster_node)
+            
+            # Mock redis.cluster module properly
+            mock_cluster_module = MagicMock()
+            mock_cluster_module.RedisCluster = MagicMock(return_value=mock_cluster)
+            mock_cluster_module.ClusterNode = mock_cluster_node_class
+            
+            with patch.dict('sys.modules', {'redis.cluster': mock_cluster_module}):
+                with patch('redis_consumer.redis.Redis'):
+                    with patch('redis_consumer.time.monotonic', side_effect=lambda: 100.0):
+                        rc_main()
+            
+            # Should have created output file successfully
+            assert out_path.exists()
+            # Check that RedisCluster was called with startup_nodes
+            mock_cluster_module.RedisCluster.assert_called_once()
+            call_kwargs = mock_cluster_module.RedisCluster.call_args[1]
+            assert 'startup_nodes' in call_kwargs
+            assert 'address_remap' in call_kwargs
+        finally:
+            sys.argv = old_argv
+
+    def test_main_as_script(self, temp_dir):
+        """Test that main() can be called as a script entry point."""
+        old_argv = sys.argv
+        try:
+            run_id = "test_run_script"
+            out_path = temp_dir / "output.csv"
+            
+            sys.argv = ["rc", "--run-id", run_id, "--out", str(out_path), "--idle-seconds", "0"]
+            
+            mock_redis = MagicMock()
+            mock_redis.xreadgroup.return_value = None
+            mock_redis.xgroup_create.side_effect = Exception("Group exists")
+            mock_redis.xack = MagicMock()
+            
+            with patch('redis_consumer.redis.Redis', return_value=mock_redis):
+                with patch('redis_consumer.time.monotonic', side_effect=lambda: 100.0):
+                    # This simulates calling the script directly
+                    import redis_consumer
+                    redis_consumer.main()
+            
+            assert out_path.exists()
+        finally:
+            sys.argv = old_argv
+
+    def test_address_remap_function(self):
+        """Test the address_remap function directly by simulating its behavior."""
+        # Since address_remap is defined inside main(), we test its logic here
+        # The function maps Docker IPs to localhost
+        def address_remap(node):
+            if node[0] == '172.20.0.2':
+                return ('localhost', 7000)
+            elif node[0] == '172.20.0.3':
+                return ('localhost', 7002)
+            elif node[0] == '172.20.0.4':
+                return ('localhost', 7001)
+            return node
+        
+        # Test the mappings
+        assert address_remap(('172.20.0.2', 7000)) == ('localhost', 7000)
+        assert address_remap(('172.20.0.3', 7002)) == ('localhost', 7002)
+        assert address_remap(('172.20.0.4', 7001)) == ('localhost', 7001)
+        # Test passthrough for other nodes
+        assert address_remap(('localhost', 6379)) == ('localhost', 6379)
+        assert address_remap(('192.168.1.1', 6379)) == ('192.168.1.1', 6379)
+
+    def test_startup_nodes_creation(self, temp_dir):
+        """Test that startup_nodes are created correctly for cluster mode."""
+        old_argv = sys.argv
+        try:
+            run_id = "test_run_nodes"
+            out_path = temp_dir / "output.csv"
+            
+            sys.argv = ["rc", "--run-id", run_id, "--out", str(out_path), "--idle-seconds", "0", "--cluster-mode"]
+            
+            # Mock RedisCluster to capture the startup_nodes
+            captured_startup_nodes = []
+            captured_address_remap = None
+            
+            def mock_redis_cluster(startup_nodes=None, **kwargs):
+                nonlocal captured_startup_nodes, captured_address_remap
+                captured_startup_nodes = startup_nodes
+                captured_address_remap = kwargs.get('address_remap')
+                mock_cluster = MagicMock()
+                mock_cluster.xreadgroup.return_value = None
+                mock_cluster.xgroup_create.side_effect = Exception("Group exists")
+                mock_cluster.xack = MagicMock()
+                return mock_cluster
+            
+            mock_cluster_module = MagicMock()
+            mock_cluster_module.RedisCluster = mock_redis_cluster
+            
+            with patch.dict('sys.modules', {'redis.cluster': mock_cluster_module}):
+                with patch('redis_consumer.redis.Redis'):
+                    with patch('redis_consumer.time.monotonic', side_effect=lambda: 100.0):
+                        rc_main()
+            
+            # Check that startup_nodes were created
+            assert captured_startup_nodes is not None
+            assert len(captured_startup_nodes) == 3
+            # Check that address_remap function was passed
+            assert captured_address_remap is not None
+            assert callable(captured_address_remap)
+        finally:
+            sys.argv = old_argv
+
+    def test_address_remap_function_docker_ips(self, temp_dir):
+        """Test the address_remap function with Docker IP addresses (covers lines 66-72)."""
+        from redis_consumer import main as rc_main
+        old_argv = sys.argv
+        try:
+            run_id = "test_run_remap"
+            out_path = temp_dir / "output.csv"
+            
+            sys.argv = ["rc", "--run-id", run_id, "--out", str(out_path), "--idle-seconds", "0", "--cluster-mode"]
+            
+            # Define the address_remap function locally to test it
+            def address_remap(node):
+                if node[0] == '172.20.0.2':
+                    return ('localhost', 7000)
+                elif node[0] == '172.20.0.3':
+                    return ('localhost', 7002)
+                elif node[0] == '172.20.0.4':
+                    return ('localhost', 7001)
+                return node
+            
+            # Test the function directly
+            assert address_remap(('172.20.0.2', 7000)) == ('localhost', 7000)
+            assert address_remap(('172.20.0.3', 7002)) == ('localhost', 7002)
+            assert address_remap(('172.20.0.4', 7001)) == ('localhost', 7001)
+            assert address_remap(('192.168.1.1', 6379)) == ('192.168.1.1', 6379)  # Not remapped
+            assert address_remap(('localhost', 7000)) == ('localhost', 7000)  # Already localhost
+            
+            # Now test that the function is used in cluster mode
+            mock_cluster = MagicMock()
+            mock_cluster.xreadgroup.return_value = None
+            mock_cluster.xgroup_create.side_effect = Exception("Group exists")
+            mock_cluster.xack = MagicMock()
+            
+            mock_cluster_node = MagicMock()
+            mock_cluster_node_class = MagicMock(return_value=mock_cluster_node)
+            
+            mock_cluster_module = MagicMock()
+            
+            # Capture the address_remap function that was passed
+            captured_address_remap = None
+            captured_startup_nodes = None
+            
+            def mock_redis_cluster(startup_nodes=None, decode_responses=False, address_remap=None, **kwargs):
+                nonlocal captured_address_remap, captured_startup_nodes
+                captured_startup_nodes = startup_nodes
+                captured_address_remap = address_remap
+                return mock_cluster
+            
+            mock_cluster_module.RedisCluster = mock_redis_cluster
+            mock_cluster_module.ClusterNode = mock_cluster_node_class
+            
+            with patch.dict('sys.modules', {'redis.cluster': mock_cluster_module}):
+                with patch('redis_consumer.redis.Redis'):
+                    with patch('redis_consumer.time.monotonic', side_effect=lambda: 100.0):
+                        rc_main()
+            
+            # Verify address_remap was passed
+            assert captured_address_remap is not None
+            # Test it with the actual Docker IPs
+            assert captured_address_remap(('172.20.0.2', 7000)) == ('localhost', 7000)
+            assert captured_address_remap(('172.20.0.3', 7002)) == ('localhost', 7002)
+            assert captured_address_remap(('172.20.0.4', 7001)) == ('localhost', 7001)
+            # Test the else case (line 72) - non-Docker IP should be returned as-is
+            assert captured_address_remap(('192.168.1.1', 6379)) == ('192.168.1.1', 6379)
+        finally:
+            sys.argv = old_argv
+
+    def test_empty_resp_continue(self, temp_dir):
+        """Test the continue statement when resp is empty (covers line 149)."""
+        from redis_consumer import main as rc_main
+        old_argv = sys.argv
+        try:
+            run_id = "test_run_empty"
+            out_path = temp_dir / "output.csv"
+            
+            sys.argv = ["rc", "--run-id", run_id, "--out", str(out_path), "--idle-seconds", "10"]  # Longer idle timeout
+            
+            mock_redis = MagicMock()
+            # Use a counter to return empty list for first few calls, then None
+            call_count = [0]
+            def xreadgroup_side_effect(*args, **kwargs):
+                call_count[0] += 1
+                if call_count[0] <= 5:
+                    return []  # Empty list - triggers continue
+                return None  # None - triggers break
+            
+            mock_redis.xreadgroup.side_effect = xreadgroup_side_effect
+            mock_redis.xgroup_create.side_effect = Exception("Group exists")
+            mock_redis.xack = MagicMock()
+            
+            # Use a function for monotonic that increments by a small amount each call
+            current_time = [100.0]
+            def monotonic_inc():
+                current_time[0] += 0.1
+                return current_time[0]
+            
+            with patch('redis_consumer.redis.Redis', return_value=mock_redis):
+                with patch('redis_consumer.time.monotonic', side_effect=monotonic_inc):
+                    rc_main()
+            
+            assert out_path.exists()
+        finally:
+            sys.argv = old_argv
 

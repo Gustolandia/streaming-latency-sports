@@ -10,6 +10,8 @@ param(
     [int]$PORT = 6379,
     [string]$STREAM = "sb:events:$RUN_ID",
     [string]$GROUP = "sb-group:$RUN_ID",
+    [switch]$CLUSTER_MODE = $false,
+    [int]$NODE_COUNT = 1,
     [string]$PRODUCER_EXTRA = ""
 )
 
@@ -70,8 +72,13 @@ Write-Host "Wrote meta: $metaPath"
 # Clean slate for this run
 Write-Host "[0/4] $(Get-Date -Format 'HH:mm:ss') cleaning Redis stream: $STREAM"
 # Use docker exec to run redis-cli since redis-cli is not available on Windows
-# The container name is streaming-latency-sports-redis-1
-docker exec streaming-latency-sports-redis-1 redis-cli DEL $STREAM 2>$null
+if ($CLUSTER_MODE -or $NODE_COUNT -eq 3) {
+    # Cluster mode: use redis1 container and cluster port
+    docker exec sbl_redis1 redis-cli --port 7000 DEL $STREAM 2>$null
+} else {
+    # Single node: use standard container
+    docker exec streaming-latency-sports-redis-1 redis-cli DEL $STREAM 2>$null
+}
 Write-Host "  [0/4] Stream cleaned"
 
 # [1/4] starting consumer...
@@ -80,6 +87,12 @@ $consumerLog = "runs\$RUN_ID\consumer.log"
 
 # Build consumer command with output redirection
 $consumerCmd = "python scripts\redis_consumer.py --run-id $RUN_ID --out runs\$RUN_ID\consumer.csv --host $RedisHost --port $PORT --stream $STREAM --group $GROUP --idle-seconds 30"
+if ($CLUSTER_MODE -or $NODE_COUNT -eq 3) {
+    $consumerCmd += " --cluster-mode"
+}
+if ($NODE_COUNT -ne 1) {
+    $consumerCmd += " --node-count $NODE_COUNT"
+}
 if ($env:REDIS_CONSUMER_OPTS) {
     $consumerCmd = "$env:REDIS_CONSUMER_OPTS $consumerCmd"
 }
@@ -94,7 +107,14 @@ Write-Host "[2/4] $(Get-Date -Format 'HH:mm:ss') running producer..."
 $producerLog = "runs\$RUN_ID\producer.log"
 
 # Build producer command with output redirection
-$producerCmd = "python scripts\redis_producer.py --run-id $RUN_ID --plan-csv $PLAN_CSV --out runs\$RUN_ID\producer.csv --host $RedisHost --port $PORT --stream $STREAM --speedup $SPEEDUP --max-t-sim $MAX_T_SIM $PRODUCER_EXTRA"
+$producerCmd = "python scripts\redis_producer.py --run-id $RUN_ID --plan-csv $PLAN_CSV --out runs\$RUN_ID\producer.csv --host $RedisHost --port $PORT --stream $STREAM --speedup $SPEEDUP --max-t-sim $MAX_T_SIM"
+if ($CLUSTER_MODE -or $NODE_COUNT -eq 3) {
+    $producerCmd += " --cluster-mode"
+}
+if ($NODE_COUNT -ne 1) {
+    $producerCmd += " --node-count $NODE_COUNT"
+}
+$producerCmd += " $PRODUCER_EXTRA"
 if ($env:REDIS_PRODUCER_OPTS) {
     $producerCmd = "$env:REDIS_PRODUCER_OPTS $producerCmd"
 }

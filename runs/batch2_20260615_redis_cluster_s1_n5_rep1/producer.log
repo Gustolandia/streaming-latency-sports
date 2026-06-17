@@ -1,0 +1,17 @@
+Traceback (most recent call last):
+  File "C:\Users\Gugar\Documents\streaming-latency-sports\scripts\redis_producer.py", line 310, in <module>
+    main()
+  File "C:\Users\Gugar\Documents\streaming-latency-sports\scripts\redis_producer.py", line 78, in main
+    r = RedisCluster(startup_nodes=startup_nodes, decode_responses=True)
+  File "C:\Users\Gugar\AppData\Roaming\Python\Python39\site-packages\redis\utils.py", line 196, in wrapper
+    return func(*args, **kwargs)
+  File "C:\Users\Gugar\AppData\Roaming\Python\Python39\site-packages\redis\utils.py", line 196, in wrapper
+    return func(*args, **kwargs)
+  File "C:\Users\Gugar\AppData\Roaming\Python\Python39\site-packages\redis\cluster.py", line 700, in __init__
+    self.nodes_manager = NodesManager(
+  File "C:\Users\Gugar\AppData\Roaming\Python\Python39\site-packages\redis\cluster.py", line 1474, in __init__
+    self.populate_startup_nodes(startup_nodes)
+  File "C:\Users\Gugar\AppData\Roaming\Python\Python39\site-packages\redis\cluster.py", line 1625, in populate_startup_nodes
+    self.startup_nodes[n.name] = n
+AttributeError: 'dict' object has no attribute 'name'
+OK redis producer: wrote 2289 base rows -> runs\batch2_20260615_redis_cluster_s1_n5_rep1\producer.csv

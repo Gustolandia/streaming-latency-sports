@@ -25,6 +25,8 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--topic", default="sb-events")
     ap.add_argument("--bootstrap", default="localhost:9092")
+    ap.add_argument("--broker-count", type=int, default=1, choices=[1, 3],
+                    help="Number of Kafka brokers (1=single, 3=cluster)")
     ap.add_argument("--speedup", type=float, default=120.0, help="120 = 120x faster than real-time")
     ap.add_argument("--max-t-sim", type=int, default=600, help="only replay events with t_sim_seconds <= this")
 
@@ -68,8 +70,14 @@ def main():
     if acks_val in ("0", "1"):
         acks_val = int(acks_val)
 
+    # Multi-broker support: use different bootstrap servers based on broker count
+    if args.broker_count == 3:
+        bootstrap_servers = args.bootstrap if args.bootstrap else "kafka1:29092,kafka2:29092,kafka3:29092"
+    else:
+        bootstrap_servers = args.bootstrap if args.bootstrap else "localhost:9092"
+
     producer_kwargs = dict(
-        bootstrap_servers=[args.bootstrap],
+        bootstrap_servers=bootstrap_servers,
         key_serializer=lambda k: k.encode("utf-8"),
         value_serializer=lambda v: json.dumps(v, separators=(",", ":"), ensure_ascii=False).encode("utf-8"),
         acks=acks_val,

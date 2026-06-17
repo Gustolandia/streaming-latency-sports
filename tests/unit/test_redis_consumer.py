@@ -612,22 +612,13 @@ class TestClusterModeParameter:
             
             sys.argv = ["rc", "--run-id", run_id, "--out", str(out_path), "--idle-seconds", "0", "--cluster-mode"]
             
-            # Define the address_remap function locally to test it
+            # Robust remap: any internal node address -> localhost, port preserved
             def address_remap(node):
-                if node[0] == '172.20.0.2':
-                    return ('localhost', 7000)
-                elif node[0] == '172.20.0.3':
-                    return ('localhost', 7002)
-                elif node[0] == '172.20.0.4':
-                    return ('localhost', 7001)
-                return node
-            
-            # Test the function directly
-            assert address_remap(('172.20.0.2', 7000)) == ('localhost', 7000)
-            assert address_remap(('172.20.0.3', 7002)) == ('localhost', 7002)
-            assert address_remap(('172.20.0.4', 7001)) == ('localhost', 7001)
-            assert address_remap(('192.168.1.1', 6379)) == ('192.168.1.1', 6379)  # Not remapped
-            assert address_remap(('localhost', 7000)) == ('localhost', 7000)  # Already localhost
+                return ('127.0.0.1', node[1])
+
+            assert address_remap(('172.20.0.2', 7000)) == ('127.0.0.1', 7000)
+            assert address_remap(('172.20.0.3', 7002)) == ('127.0.0.1', 7002)
+            assert address_remap(('172.20.0.4', 7001)) == ('127.0.0.1', 7001)
             
             # Now test that the function is used in cluster mode
             mock_cluster = MagicMock()
@@ -660,12 +651,12 @@ class TestClusterModeParameter:
             
             # Verify address_remap was passed
             assert captured_address_remap is not None
-            # Test it with the actual Docker IPs
-            assert captured_address_remap(('172.20.0.2', 7000)) == ('localhost', 7000)
-            assert captured_address_remap(('172.20.0.3', 7002)) == ('localhost', 7002)
-            assert captured_address_remap(('172.20.0.4', 7001)) == ('localhost', 7001)
-            # Test the else case (line 72) - non-Docker IP should be returned as-is
-            assert captured_address_remap(('192.168.1.1', 6379)) == ('192.168.1.1', 6379)
+            # Robust remap rewrites host to localhost, preserving the port,
+            # regardless of which internal IP holds which port.
+            assert captured_address_remap(('172.20.0.2', 7000)) == ('127.0.0.1', 7000)
+            assert captured_address_remap(('172.20.0.3', 7002)) == ('127.0.0.1', 7002)
+            assert captured_address_remap(('172.20.0.4', 7001)) == ('127.0.0.1', 7001)
+            assert captured_address_remap(('192.168.1.1', 6379)) == ('127.0.0.1', 6379)
         finally:
             sys.argv = old_argv
 

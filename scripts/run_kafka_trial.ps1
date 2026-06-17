@@ -9,7 +9,8 @@ param(
     [string]$BOOTSTRAP = "localhost:9092",
     [string]$TOPIC = "sb-events",
     [int]$BROKER_COUNT = 1,
-    [string]$PRODUCER_EXTRA = ""
+    [string]$PRODUCER_EXTRA = "",
+    [int]$IDLE_SECONDS = 30
 )
 
 $ErrorActionPreference = "Stop"
@@ -74,8 +75,8 @@ if ($BROKER_COUNT -gt 1) {
     # try/catch so best-effort topic-create stderr doesn't trip ErrorActionPreference=Stop
     try { docker exec -w /opt/kafka/bin kafka1 sh -lc "./kafka-topics.sh --bootstrap-server kafka1:29092 --create --if-not-exists --topic '$TOPIC' --partitions 3 --replication-factor 3" 2>$null } catch {}
 } else {
-    # Single broker: use broker container and replication factor 1
-    try { docker exec -w /opt/kafka/bin kafka1 sh -lc "./kafka-topics.sh --bootstrap-server kafka1:29092 --create --if-not-exists --topic '$TOPIC' --partitions 3 --replication-factor 1" 2>$null } catch {}
+    # Single broker: container is named 'broker', listener localhost:19092, RF=1
+    try { docker exec broker /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:19092 --create --if-not-exists --topic "$TOPIC" --partitions 3 --replication-factor 1 2>$null } catch {}
 }
 Write-Host "  [0/4] Topic ensured"
 
@@ -84,7 +85,7 @@ Write-Host "[1/4] $(Get-Date -Format 'HH:mm:ss') starting consumer..."
 $consumerLog = "runs\$RUN_ID\consumer.log"
 
 # Build consumer command with output redirection
-$consumerCmd = "python scripts\kafka_consumer.py --run-id $RUN_ID --out runs\$RUN_ID\consumer.csv --bootstrap $BOOTSTRAP --topic $TOPIC --idle-seconds 30 --broker-count $BROKER_COUNT"
+$consumerCmd = "python scripts\kafka_consumer.py --run-id $RUN_ID --out runs\$RUN_ID\consumer.csv --bootstrap $BOOTSTRAP --topic $TOPIC --idle-seconds $IDLE_SECONDS --broker-count $BROKER_COUNT"
 if ($env:KAFKA_CONSUMER_OPTS) {
     $consumerCmd = "$env:KAFKA_CONSUMER_OPTS $consumerCmd"
 }

@@ -217,7 +217,7 @@ class TestMain:
         try:
             os.chdir(temp_dir)
             sys.argv = ["s3m"]
-            s3_main()
+            s3_main([])
         finally:
             os.chdir(old_cwd)
             sys.argv = old_argv
@@ -231,7 +231,7 @@ class TestMain:
             os.chdir(temp_dir)
             sys.argv = ["s3m"]
             with pytest.raises(SystemExit):
-                s3_main()
+                s3_main([])
         finally:
             os.chdir(old_cwd)
             sys.argv = old_argv
@@ -249,7 +249,7 @@ class TestMain:
             os.chdir(temp_dir)
             sys.argv = ["s3m"]
             with pytest.raises(SystemExit):
-                s3_main()
+                s3_main([])
         finally:
             os.chdir(old_cwd)
             sys.argv = old_argv
@@ -264,7 +264,7 @@ class TestMain:
         try:
             os.chdir(temp_dir)
             sys.argv = ["s3m"]
-            s3_main()  # Should not fail
+            s3_main([])  # Should not fail
         finally:
             os.chdir(old_cwd)
             sys.argv = old_argv
@@ -279,7 +279,7 @@ class TestMain:
         try:
             os.chdir(temp_dir)
             sys.argv = ["s3m"]
-            s3_main()  # Should handle empty list gracefully
+            s3_main([])  # Should handle empty list gracefully
         finally:
             os.chdir(old_cwd)
             sys.argv = old_argv
@@ -306,7 +306,7 @@ class TestMain:
             os.chdir(temp_dir)
             sys.argv = ["s3m"]
             with pytest.raises(SystemExit):
-                s3_main()
+                s3_main([])
         finally:
             os.chdir(old_cwd)
             sys.argv = old_argv
@@ -338,7 +338,7 @@ class TestMain:
         try:
             os.chdir(temp_dir)
             sys.argv = ["s3m"]
-            s3_main()
+            s3_main([])
         finally:
             os.chdir(old_cwd)
             sys.argv = old_argv
@@ -391,7 +391,7 @@ class TestMain:
             os.chdir(temp_dir)
             sys.argv = ["s3m"]
             with patch('compute_s3_metrics.pd.DataFrame', side_effect=patched_dataframe):
-                s3_main()  # Should not crash, just skip the invalid JSON
+                s3_main([])  # Should not crash, just skip the invalid JSON
         finally:
             os.chdir(old_cwd)
             sys.argv = old_argv

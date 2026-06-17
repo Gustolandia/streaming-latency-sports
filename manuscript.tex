@@ -349,6 +349,18 @@ larger penalty, reflecting per-write disk synchronisation.
 TTI varies significantly across scenarios for \kafka{} (Kruskal--Wallis
 $p_{\text{adj}}=0.017$) but not significantly for \redis{} ($p_{\text{adj}}=0.080$).
 
+\subsection{Concurrency Scaling (RQ2)}
+
+Under true multi-feed concurrency on a single broker ($N$ parallel feeds replaying the
+s2sf12 scenario), median TTI increases monotonically with $N$ for both backends, rejecting
+the hypothesis of concurrency-independent latency: \kafka{} rises from 8.3~s ($N{=}5$) to
+13.1~s ($N{=}10$) to 32.9~s ($N{=}20$), and \redis{} from 4.2~s to 8.3~s to 16.7~s.
+Crucially, this high-concurrency regime \emph{reverses} the single-feed ordering: \redis{}
+sustains roughly half the TTI of \kafka{} as $N$ grows, even though single-feed \kafka{} is
+faster (Section~\ref{sec:results}). The optimal backend is therefore regime-dependent ---
+\kafka{} for isolated low-latency feeds, \redis{} for many concurrent feeds on shared
+infrastructure.
+
 \section{Discussion}
 \label{sec:discussion}
 
@@ -356,9 +368,12 @@ The corrected measurements reverse the conclusion suggested by the initial,
 instrumentation-contaminated analysis. With a shared wall-clock and a non-saturating
 producer, \kafka{} delivers lower end-to-end latency than \redis{} Streams for this
 workload, particularly in the clustered configuration where \redis{} Cluster incurs
-substantial cross-node overhead. This underscores a methodological lesson: cross-process
-latency benchmarks must use a clock that shares an epoch across processes, and the load
-generator must not itself become the bottleneck.
+substantial cross-node overhead. This single-feed advantage, however, \emph{reverses} under
+high concurrency (RQ2): with many parallel feeds on a shared broker, \redis{} sustains lower
+TTI than \kafka{}, so the practical recommendation is workload-dependent. The episode also
+underscores a methodological lesson: cross-process latency benchmarks must use a clock that
+shares an epoch across processes, and the load generator must not itself become the
+bottleneck.
 
 For sports actionability, single-broker \kafka{} (median TTI 426~ms) approaches the
 $<$500~ms coaching threshold, whereas the clustered and \redis{} configurations exceed it
@@ -376,11 +391,13 @@ effects.
 \label{sec:conclusion}
 
 Once a cross-process clock defect and a producer-saturation defect are corrected, Apache
-\kafka{} provides lower Time-to-Insight than \redis{} Streams for real-time sports event
-streaming, in both single-broker and clustered deployments, with single-broker fastest.
-Stronger durability settings increase latency for both systems. These corrected results
-overturn the project's initial finding and highlight the importance of measurement validity
-in streaming benchmarks.
+\kafka{} provides lower Time-to-Insight than \redis{} Streams for \emph{isolated} real-time
+sports feeds, in both single-broker and clustered deployments, with single-broker fastest.
+Under \emph{heavy multi-feed concurrency}, however, the ordering reverses in favour of
+\redis{}, and TTI grows with the number of feeds for both systems. Stronger durability
+settings increase latency for both. These corrected results overturn the project's initial
+finding, show that the optimal backend is workload-dependent, and highlight the importance
+of measurement validity in streaming benchmarks.
 
 \begin{acks}
 Using StatsBomb open dataset. Open-source Apache Kafka and Redis projects. MIT License.

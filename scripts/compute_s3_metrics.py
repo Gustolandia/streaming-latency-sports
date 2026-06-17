@@ -149,10 +149,17 @@ def compute_s3_metrics_for_run(run_id, events_df):
     return metrics
 
 
-def main():
-    runlist = Path("runs/_paper_s3_official_runs.txt")
+def main(argv=None):
+    import argparse
+    ap = argparse.ArgumentParser(description="Compute S3 correction-propagation metrics")
+    ap.add_argument("--runlist", default="runs/_paper_s3_official_runs.txt")
+    ap.add_argument("--out-csv", default="data/processed/results/paper_s3_official.csv")
+    ap.add_argument("--out-summary", default="docs/results/paper_s3_official_summary.json")
+    args = ap.parse_args(argv)
+
+    runlist = Path(args.runlist)
     if not runlist.exists():
-        raise SystemExit("Missing runs/_paper_s3_official_runs.txt")
+        raise SystemExit(f"Missing {runlist}")
 
     rows = []
     for rid in runlist.read_text().splitlines():
@@ -180,13 +187,13 @@ def main():
     # Build output DataFrame
     df = pd.DataFrame(rows)
     
-    out = Path("data/processed/results/paper_s3_official.csv")
+    out = Path(args.out_csv)
     out.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(out, index=False)
     print(f"Wrote {out}")
     
     # Also write a summary JSON for easier inspection
-    summary_path = Path("docs/results/paper_s3_official_summary.json")
+    summary_path = Path(args.out_summary)
     summary_path.parent.mkdir(parents=True, exist_ok=True)
     
     summary = {

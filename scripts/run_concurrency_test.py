@@ -48,16 +48,15 @@ def run_trial(run_id: str, plan_csv: str, backend: str, speedup: int, max_t_sim:
     if backend == 'kafka':
         if topic:
             cmd[-1] += f' -TOPIC "{topic}"'
-        else:
-            cmd[-1] += f' -BOOTSTRAP {bootstrap}'
-        cmd[-1] += f' --broker-count {broker_count}'
+        cmd[-1] += f' -BOOTSTRAP {bootstrap}'
+        cmd[-1] += f' -BROKER_COUNT {broker_count}'
     else:  # redis
         cmd[-1] += f' -RedisHost {redis_host} -PORT {redis_port}'
         if stream:
             cmd[-1] += f' -STREAM "{stream}"'
         if cluster_mode:
-            cmd[-1] += ' --cluster-mode'
-        cmd[-1] += f' --node-count {broker_count}'
+            cmd[-1] += ' -CLUSTER_MODE'
+        cmd[-1] += f' -NODE_COUNT {broker_count}'
     
     # Run the command
     try:

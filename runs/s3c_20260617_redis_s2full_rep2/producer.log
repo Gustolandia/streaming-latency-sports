@@ -1,0 +1,2 @@
+OK redis producer: wrote 5037 base rows -> runs\s3c_20260617_redis_s2full_rep2\producer.csv
+OK redis producer: wrote 100 correction rows -> runs\s3c_20260617_redis_s2full_rep2\producer.csv

@@ -14,7 +14,9 @@ except Exception:
 
 
 def now_ns() -> int:
-    return time.perf_counter_ns()
+    # Wall-clock epoch ns (time.time_ns), NOT perf_counter_ns: must share one epoch
+    # with the producer process so consumer_ts - producer_ts is a valid latency.
+    return time.time_ns()
 
 
 def main():

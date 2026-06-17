@@ -74,10 +74,11 @@ Write-Host "[0/4] $(Get-Date -Format 'HH:mm:ss') cleaning Redis stream: $STREAM"
 # Use docker exec to run redis-cli since redis-cli is not available on Windows
 if ($CLUSTER_MODE -or $NODE_COUNT -eq 3) {
     # Cluster mode: use redis1 container and cluster port
-    docker exec sbl_redis1 redis-cli --port 7000 DEL $STREAM 2>$null
+    # try/catch so best-effort cleanup stderr doesn't trip ErrorActionPreference=Stop
+    try { docker exec sbl_redis1 redis-cli --port 7000 DEL $STREAM 2>$null } catch {}
 } else {
     # Single node: use standard container
-    docker exec streaming-latency-sports-redis-1 redis-cli DEL $STREAM 2>$null
+    try { docker exec streaming-latency-sports-redis-1 redis-cli DEL $STREAM 2>$null } catch {}
 }
 Write-Host "  [0/4] Stream cleaned"
 

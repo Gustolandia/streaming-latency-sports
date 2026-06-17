@@ -25,7 +25,7 @@
 
 \title{Streaming Latency Benchmarks: \redis{} Streams vs Apache \kafka{} for Real-Time Sports Data Feeds}
 
-\author{John Smith\affilnum{1} \and Jane Doe\affilnum{2} \and Bob Johnson\affilnum{1}}
+\author{John Smith\affilnum{1}, Jane Doe\affilnum{2} and Bob Johnson\affilnum{1}}
 
 \affiliation{\affilnum{1}Department of Computer Science, University of Sports Analytics, Boston, MA, USA\\
 \affilnum{2}Sports Data Research Institute, Cambridge, MA, USA}
@@ -60,7 +60,7 @@ While numerous studies have compared these technologies, the literature lacks sp
 \subsection{Sports-Specific Latency Requirements}
 \label{sec:sports_requirements}
 
-Real-time sports analytics imposes domain-specific latency constraints that vary by use case and stakeholder. As summarized in Table\~\ref{tab:latency_requirements}, different applications demand fundamentally different performance characteristics. Betting platforms require sub-500ms latency for in-play odds updates, as even a 2-second delay can erode user trust and cost millions in missed wagers \cite{v2solutions2025,ververica2025}. Broadcasting applications can tolerate up to 3 seconds for live video synchronization \cite{dolby2025,promwad2025}, while coaching decision systems need $<$500ms to enable real-time tactical adjustments \cite{pappas2020,opta2023}.
+Real-time sports analytics imposes domain-specific latency constraints that vary by use case and stakeholder. As summarized in Table~\ref{tab:latency_requirements}, different applications demand fundamentally different performance characteristics. Betting platforms require sub-500ms latency for in-play odds updates, as even a 2-second delay can erode user trust and cost millions in missed wagers \cite{v2solutions2025,ververica2025}. Broadcasting applications can tolerate up to 3 seconds for live video synchronization \cite{dolby2025,promwad2025}, while coaching decision systems need $<$500ms to enable real-time tactical adjustments \cite{pappas2020real,opta2023}.
 
 The concept of an ``actionability window'' formalizes this requirement: the maximum latency within which insights can still influence decisions. Using an exponential decay model ($Value = V_0 \times e^{-\lambda \times latency}$), we estimate that at 500ms latency, only \textasciitilde60\% of coaching insight value remains, dropping to \textasciitilde13\% at 2000ms. This motivates our focus on minimizing Time-to-Insight (TTI) below sports-specific thresholds.
 
@@ -108,7 +108,7 @@ This study addresses four primary research questions that bridge the gap between
 \item[RQ4:] How do streaming system performance characteristics (TTI, throughput, resource usage) vary across different sports event scenarios (S1--S5), and what are the underlying sport-specific factors driving these differences?
 \end{description}
 
-These questions are motivated by fundamental gaps in the literature. While industry benchmarks suggest \redis{} offers 2--5\times lower latency than \kafka{} \cite{medium_benchmark_2025,github_benchmark_2025}, there is no sports-specific empirical validation. The CAP theorem \cite{brewer2012} and its extension PACELC \cite{abadi2012pacelc} predict inherent trade-offs between consistency and latency, but these have not been quantified in the streaming context. Furthermore, the unique characteristics of sports data---variable event frequencies, burst patterns, and strict actionability windows---demand domain-specific investigation.
+These questions are motivated by fundamental gaps in the literature. While industry benchmarks suggest \redis{} offers 2--5$\times$ lower latency than \kafka{} \cite{medium_benchmark_2025,github_benchmark_2025}, there is no sports-specific empirical validation. The CAP theorem \cite{brewer2012cap} and its extension PACELC \cite{abadi2012pacelc} predict inherent trade-offs between consistency and latency, but these have not been quantified in the streaming context. Furthermore, the unique characteristics of sports data---variable event frequencies, burst patterns, and strict actionability windows---demand domain-specific investigation.
 
 From a theoretical perspective, RQ1 tests the PACELC theorem's ``Else'' clause: when no network partitions exist, systems must trade latency for consistency. Technically, RQ2 examines the scalability of both architectures under realistic sports workloads. Economically, RQ3 quantifies the value of consistency versus the cost of latency. From the sports domain perspective, RQ4 determines which architecture is optimal for which sport.
 
@@ -188,7 +188,7 @@ For each research question, we formulate testable hypotheses grounded in theoret
 
 
 \paragraph{Statistical Framework}
-All hypotheses will be tested using the framework summarized in Section\~\ref{sec:stat_methods}. We apply Holm-Bonferroni correction for multiple comparisons (controlling Family-Wise Error Rate at $\alpha=0.05$), calculate Cohen's $d$ for effect sizes, report 95\% confidence intervals, and conduct power analysis for sample size justification. Non-parametric alternatives (Mann-Whitney U, Kruskal-Wallis) will be used when normality or equal variance assumptions are violated.
+All hypotheses will be tested using the framework summarized in Section~\ref{sec:stat_methods}. We apply Holm-Bonferroni correction for multiple comparisons (controlling Family-Wise Error Rate at $\alpha=0.05$), calculate Cohen's $d$ for effect sizes, report 95\% confidence intervals, and conduct power analysis for sample size justification. Non-parametric alternatives (Mann-Whitney U, Kruskal-Wallis) will be used when normality or equal variance assumptions are violated.
 
 
 \section{Literature Review}
@@ -250,7 +250,7 @@ We verify statistical assumptions for all tests:
 \end{itemize}
 
 \paragraph{Hypothesis Testing Matrix}
-Table\~\ref{tab:stat_tests} summarizes our statistical test selection framework.
+Table~\ref{tab:stat_tests} summarizes our statistical test selection framework.
 
 \begin{table}[htbp]
 \centering

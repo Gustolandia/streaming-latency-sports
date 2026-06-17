@@ -21,18 +21,17 @@
 
 \begin{document}
 
-\runninghead{Smith et al.}
+\runninghead{Ricou}
 
 \title{Streaming Latency Benchmarks: \redis{} Streams vs Apache \kafka{} for Real-Time Sports Data Feeds}
 
-\author{John Smith\affilnum{1}, Jane Doe\affilnum{2} and Bob Johnson\affilnum{1}}
+\author{Gustavo Pedro Ricou\affilnum{1}}
 
-\affiliation{\affilnum{1}Department of Computer Science, University of Sports Analytics, Boston, MA, USA\\
-\affilnum{2}Sports Data Research Institute, Cambridge, MA, USA}
+\affiliation{\affilnum{1}School of Computer Science and Statistics, Trinity College Dublin, Dublin, Ireland}
 
-\corrauth{John Smith, Department of Computer Science, University of Sports Analytics, 123 Analytics Way, Boston, MA 02115, USA.}
+\corrauth{Gustavo Pedro Ricou, School of Computer Science and Statistics, Trinity College Dublin, Dublin, Ireland.}
 
-\email{john.smith@sportsanalytics.edu}
+\email{pedrorig@tcd.ie}
 
 \begin{abstract}
 This study presents a comprehensive, reproducible benchmark suite that empirically evaluates how streaming architecture choices impact the timeliness and reliability of live football analytics. Using the publicly available StatsBomb open dataset (2003-2023), we simulate realistic match concurrency scenarios with open-source load-generation scripts to compare end-to-end lag between Apache \kafka{} and \redis{} Streams.
@@ -211,11 +210,49 @@ Our benchmark system comprises four components:
 \item Consumer: Python script receiving events and logging timestamps
 \end{itemize}
 
-\subsection{Dataset}
-StatsBomb open dataset (2003-2023): 40,660 real football events across 11 matches.
+\subsection{Dataset and Replay}
+We use the StatsBomb open dataset (2003--2023): 40,660 real football events across 11
+matches. Each match is preprocessed into a CSV \emph{replay plan} that records, per event,
+its scheduled emission offset. Five scenarios (S1, S2, S2full, S2sf12, S2sf12j2) vary the
+event subset and density. The producer replays a plan at a configurable speed-up factor
+(120$\times$ unless stated), emitting events on a compressed timeline; the consumer reads
+them and records receipt and output times.
 
 \subsection{Metrics}
-Primary metric: Time-to-Insight (TTI). Reported at percentiles: p50, p95, p99, max.
+The primary metric is Time-to-Insight (TTI), the interval from an event's \emph{scheduled}
+emission to its availability at the consumer. We decompose it as
+\[
+\mathrm{TTI} = \underbrace{(t_{\mathrm{send}}-t_{\mathrm{sched}})}_{\text{producer scheduling lag}}
+             + \underbrace{(t_{\mathrm{recv}}-t_{\mathrm{send}})}_{\text{transport latency}}
+             + (t_{\mathrm{out}}-t_{\mathrm{recv}}),
+\]
+isolating load-generator effects (scheduling lag) from broker transport. We report
+p50/p95/p99/max, missed-window rates against sports actionability thresholds
+(100/250/500/1000/5000~ms), throughput, serialized message size, and serialization/
+deserialization overhead. For S3 we additionally measure correction-propagation latency.
+
+\subsection{Measurement Validity}
+Because the producer and consumer are separate OS processes, cross-process timestamps must
+share a clock epoch. An earlier version of the suite stamped events with Python's
+\texttt{perf\_counter\_ns}, whose reference point is process-relative; subtracting the two
+processes' clocks injected the consumer's launch offset ($\sim$2~s) into every TTI and
+transport value, while a synchronous producer saturated at 120$\times$, inflating scheduling
+lag to tens of seconds. We therefore use \texttt{time.time\_ns} (a shared wall-clock epoch
+on a single host) for all cross-process timestamps and a non-blocking (asynchronously
+dispatched) producer so the load generator tracks the schedule. All reported results use the
+corrected instrumentation; the before/after contrast is itself a finding
+(Section~\ref{sec:discussion}).
+
+\subsection{Experimental Design}
+Experiments run on a single commodity host (8-core AMD Ryzen, 31~GB RAM) with \kafka{}
+4.1.1 (KRaft mode) and \redis{} 7.2.4 in Docker. The core matrix crosses backend
+(\kafka{}/\redis{}), configuration (single broker vs.\ 3-node cluster), scenario (S1--S5),
+and replication (3 reps): 60 single-feed runs. Three further sets isolate specific factors:
+\emph{persistence} (\kafka{} \texttt{acks}=1 vs.\ all; \redis{} \texttt{appendfsync}
+everysec vs.\ always), \emph{state-staleness corrections} (S3; one correction every 50th
+event, 2~s delay), and \emph{true multi-feed concurrency} ($N$=5/10/20 parallel feeds).
+Every run records full provenance (git commit, per-file SHA-256, configuration) in a
+\texttt{meta.json}, enabling end-to-end reproducibility.
 
 \subsection{Statistical Methods}
 \label{sec:stat_methods}

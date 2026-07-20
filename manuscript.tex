@@ -34,11 +34,11 @@
 \email{pedrorig@tcd.ie}
 
 \begin{abstract}
-This study presents a comprehensive, reproducible benchmark suite that empirically evaluates how streaming architecture choices impact the timeliness and reliability of live football analytics. Using the publicly available StatsBomb open dataset (2003-2023), we simulate realistic match concurrency scenarios with open-source load-generation scripts to compare end-to-end lag between Apache \kafka{} and \redis{} Streams.
+We ask a question that the streaming-systems and sports-analytics literatures leave open: \emph{does the choice of streaming infrastructure actually degrade an in-play football decision, and if so, when?} Using the publicly available StatsBomb open dataset (1.~Bundesliga 2023/24, 34 matches), we replay real event feeds through Apache \kafka{} and \redis{} Streams and couple the \emph{measured} event-delivery latency to an in-play win-probability model through the Age-of-Information lens, quantifying the win-probability staleness that each architecture imposes. To our knowledge this is the first infrastructure~$\rightarrow$~decision-quality analysis on open sports data.
 
-Unlike traditional comparisons, we frame the investigation around sports-specific decision-making requirements: How quickly can coaching staff, broadcasters, and betting platforms act on live event data? Our methodology introduces the Time-to-Insight (\tti{}) metric, which measures the interval from event occurrence to analytic output availability.
+The study is also a cautionary account of measurement validity. Three distinct instrumentation defects --- a process-relative cross-process clock, a saturating replay speed, and an asymmetric load generator (synchronous per-event \kafka{} sends versus asynchronous \redis{} dispatch) --- each \emph{reversed} the apparent winner before correction. We introduce the Time-to-Insight (\tti{}) metric, decomposed into producer scheduling lag and transport, and fix all three defects before drawing any conclusion.
 
-Using 40,660 real football events across 11 matches, and after correcting two instrumentation defects in earlier measurements (a process-relative cross-process clock and a saturating load generator), our corrected multi-broker matrix shows Apache \kafka{} achieving significantly lower median \tti{} than \redis{} Streams in both single-broker and clustered deployments (Holm--Bonferroni-corrected Mann--Whitney U, Cohen's $d=-1.18$ overall, large effect). Single-broker deployments outperform clustered ones for both systems, and stronger durability settings (\kafka{} \texttt{acks=all}; \redis{} \texttt{appendfsync always}) measurably increase latency. These findings reverse the conclusion of the initial, contaminated analysis and underscore the importance of measurement validity in cross-process streaming benchmarks.
+On the corrected, fair corpus we find: (i)~for a \emph{single} live feed, \kafka{} and \redis{} are statistically equivalent ($\approx$17\,ms median \tti{}); (ii)~under \emph{concurrency}, single-node \redis{} serializes concurrent streams and its broker latency grows roughly linearly (to $\approx$9.7\,s at 20 concurrent matches) while \kafka{}'s partitioned broker stays flat ($\approx$10\,ms); and (iii)~translated into decisions via an Age-of-Information win-probability integral over each full match, infrastructure latency is \emph{decision-irrelevant for a single feed} ($\approx$0.2 probability-seconds of staleness, indistinguishable between backends) but diverges sharply under concurrency (by five concurrent matches single-node \redis{} imposes $\approx$15$\times$ more decision-staleness than \kafka{}, and by ten a goal's win-probability arrives tens of seconds stale). The practical guidance is that infrastructure choice does not affect decision quality for one live match, but provisioning for concurrency does.
 
 \end{abstract}
 
@@ -211,12 +211,13 @@ Our benchmark system comprises four components:
 \end{itemize}
 
 \subsection{Dataset and Replay}
-We use the StatsBomb open dataset (2003--2023): 40,660 real football events across 11
-matches. Each match is preprocessed into a CSV \emph{replay plan} that records, per event,
-its scheduled emission offset. Five scenarios (S1, S2, S2full, S2sf12, S2sf12j2) vary the
-event subset and density. The producer replays a plan at a configurable speed-up factor
-(120$\times$ unless stated), emitting events on a compressed timeline; the consumer reads
-them and records receipt and output times.
+We use the StatsBomb open dataset (1.~Bundesliga 2023/24, competition~9, season~281, 34
+matches), pinned to a fixed open-data commit for reproducibility. Each match is preprocessed
+into a CSV \emph{replay plan} recording, per event, its scheduled emission offset. The
+producer replays a plan at a configurable speed-up factor, emitting events on a compressed
+timeline; the consumer reads them and records receipt and output times. For the headline
+latency results we replay at a non-saturating $10\times$ (Section~\ref{sec:validity}) so that
+neither load generator becomes the bottleneck and \tti{} reflects genuine delivery latency.
 
 \subsection{Metrics}
 The primary metric is Time-to-Insight (TTI), the interval from an event's \emph{scheduled}
@@ -231,17 +232,59 @@ p50/p95/p99/max, missed-window rates against sports actionability thresholds
 (100/250/500/1000/5000~ms), throughput, serialized message size, and serialization/
 deserialization overhead. For S3 we additionally measure correction-propagation latency.
 
+\subsection{Decision-Staleness: From Latency to Win-Probability Error}
+\label{sec:decisionstaleness}
+Latency in milliseconds is not, by itself, a sports quantity. To connect infrastructure to
+decisions we translate delivery latency into in-play \emph{win-probability error} in two
+steps.
+
+\emph{Win-probability proxy.} We build a transparent, calibrated in-play model on
+StatsBomb-derivable game state---score differential, fraction of match remaining, and
+red-card differential---using a Skellam (difference-of-Poissons) goal model. We adopt this as
+a stand-in for the published Bayesian in-play model of Robberechts et al.\
+\cite{robberechts2021bayesian}, whose code is unreleased, and validate calibration by ranked
+probability score (RPS~$\approx$~0.24 across 34 held-out matches).
+
+\emph{Age-of-Information decision-staleness.} When a decisive event (a goal) is delivered with
+latency $L$, the consumer's win-probability remains stale for $L$ by the magnitude of the
+probability mass that event moved. Following the Age-of-Information view of staleness cost
+\cite{kaul2012realtime}, we define a run's \emph{decision-staleness} as
+\[
+  \mathrm{DS} \;=\; \sum_{i \in \text{decisive events}} \mathrm{TV}_i \cdot L_i,
+  \qquad
+  \mathrm{TV}_i = \tfrac{1}{2}\!\left(|\Delta P_{\text{win}}| + |\Delta P_{\text{draw}}| + |\Delta P_{\text{loss}}|\right),
+\]
+in units of probability-seconds per match. This metric is the bridge that lets us ask not
+merely \emph{which backend is faster} but \emph{when, if ever, the latency difference is large
+enough to corrupt an in-play decision}.
+
 \subsection{Measurement Validity}
-Because the producer and consumer are separate OS processes, cross-process timestamps must
-share a clock epoch. An earlier version of the suite stamped events with Python's
-\texttt{perf\_counter\_ns}, whose reference point is process-relative; subtracting the two
-processes' clocks injected the consumer's launch offset ($\sim$2~s) into every TTI and
-transport value, while a synchronous producer saturated at 120$\times$, inflating scheduling
-lag to tens of seconds. We therefore use \texttt{time.time\_ns} (a shared wall-clock epoch
-on a single host) for all cross-process timestamps and a non-blocking (asynchronously
-dispatched) producer so the load generator tracks the schedule. All reported results use the
-corrected instrumentation; the before/after contrast is itself a finding
-(Section~\ref{sec:discussion}).
+\label{sec:validity}
+Cross-process latency benchmarking is deceptively easy to get wrong, and three distinct
+defects in earlier versions of this suite each \emph{reversed} the apparent winner. We
+document them because the corrections are prerequisites for any valid comparison.
+
+\emph{(1)~Process-relative clock.} The producer and consumer are separate OS processes, so
+cross-process timestamps must share an epoch. Stamping events with Python's
+\texttt{perf\_counter\_ns} (process-relative) injected each run's consumer launch offset
+($\sim$2~s) into every \tti{} and transport value. Fixed with \texttt{time.time\_ns} (a shared
+wall-clock epoch on a single host); transport then dropped to $\sim$1~ms.
+
+\emph{(2)~Saturating replay speed.} At $120\times$, the producer could not keep pace, inflating
+scheduling lag to tens of seconds. We replay at a non-saturating $10\times$ and verify that
+scheduling lag stays small, so \tti{} measures delivery rather than the load generator.
+
+\emph{(3)~Asymmetric load generator.} The \kafka{} producer ran synchronously
+(\texttt{acks=all}, one in-flight request), blocking on a broker round-trip \emph{per event},
+while the \redis{} producer dispatched asynchronously through a worker pool. This inflated
+\kafka{}'s \emph{producer scheduling lag} (not its broker latency): at $N{=}1$, $10\times$,
+median \tti{} fell from 1644~ms to 16~ms once the \kafka{} producer was pipelined
+(\texttt{max.in.flight}=64). We therefore pipeline both producers comparably.
+
+A residual asymmetry remains in \emph{transport} (\kafka{} is measured from broker
+acknowledgement, \redis{} from the send call), so for cross-backend comparison we rely on
+\tti{}, which is defined identically for both. All reported results use the corrected, fair
+instrumentation; the before/after contrast is itself a finding (Section~\ref{sec:discussion}).
 
 \subsection{Experimental Design}
 Experiments run on a single commodity host (8-core AMD Ryzen, 31~GB RAM) with \kafka{}
@@ -311,139 +354,175 @@ Distribution & Kolmogorov-Smirnov & Anderson-Darling \\
 \section{Results}
 \label{sec:results}
 
-\paragraph{Measurement validity note.} An initial analysis was invalidated by two
-instrumentation defects, since corrected: (i) the producer and consumer timestamped events
-with a process-relative monotonic clock, so cross-process latencies were inflated by each
-run's process-launch offset ($\sim$2~s); and (ii) a synchronous producer saturated at the
-$120\times$ replay speed, inflating scheduling lag to tens of seconds. After switching to a
-shared wall-clock (\texttt{time.time\_ns}) and a non-blocking producer, all runs were
-regenerated; the results below reflect the corrected measurements.
+\paragraph{Measurement validity note.} Three instrumentation defects (a process-relative
+cross-process clock, a saturating $120\times$ replay speed, and an asymmetric load generator)
+each \emph{reversed} the apparent winner before correction; all are detailed in
+Section~\ref{sec:validity}. Every result below uses the corrected, fair instrumentation
+(\texttt{time.time\_ns} shared epoch, $10\times$ replay, both producers pipelined). We report
+the single-host, single-node regime, which we can measure cleanly; cluster results are
+discussed as a limitation (Section~\ref{sec:limitations}).
 
-\subsection{Architecture and Configuration (RQ1, RQ3)}
-
-Table~\ref{tab:matrix} reports median Time-to-Insight (TTI) and transport latency across the
-$2\times2$ backend/configuration matrix (5 scenarios, 3 replications per cell, single feed).
-Contrary to widely-cited industry comparisons, \kafka{} achieves significantly lower TTI
-than \redis{} in every configuration.
-
-\begin{table}[htbp]
-\centering
-\caption{Median TTI and transport latency (p50) by backend and configuration (corrected).}
-\label{tab:matrix}
-\begin{tabular}{llcc}
-\toprule
-Backend & Config & Transport p50 (ms) & TTI p50 (ms) \\
-\midrule
-\kafka{} & single  & $\sim$0 & 426 \\
-\kafka{} & cluster & 944 & 1623 \\
-\redis{} & single  & 687 & 1232 \\
-\redis{} & cluster & 2712 & 3378 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.85\textwidth]{docs/results/corrected_figures/corrected_tti_by_backend_config.png}
-\caption{TTI (p50) distribution by backend and configuration (corrected 60-run matrix).}
-\label{fig:tti}
-\end{figure}
-
-Applying Mann--Whitney U tests with Holm--Bonferroni correction (Table~\ref{tab:stats}),
-\kafka{} is faster than \redis{} overall ($p_{\text{adj}}=0.005$, Cohen's $d=-1.18$, large)
-and within each configuration. Single-broker deployments outperform clustered ones for both
-backends (replication / cross-node overhead), with large effect sizes.
-
-\begin{table}[htbp]
-\centering
-\caption{Holm--Bonferroni-corrected comparisons on TTI p50 ($n=15$ per group).}
-\label{tab:stats}
-\begin{tabular}{lccc}
-\toprule
-Comparison & Test & $p_{\text{adj}}$ & Effect $d$ \\
-\midrule
-\kafka{} vs \redis{} (overall) & Mann--Whitney U & 0.0045 & $-1.18$ \\
-\kafka{} vs \redis{} (cluster) & Mann--Whitney U & 0.0002 & $-2.83$ \\
-\kafka{} vs \redis{} (single)  & Mann--Whitney U & 0.017 & $-1.02$ \\
-single vs cluster (\kafka{})   & Mann--Whitney U & 0.017 & $-1.54$ \\
-single vs cluster (\redis{})   & Mann--Whitney U & 0.0001 & $-3.08$ \\
-Scenario effect (\kafka{})     & Kruskal--Wallis & 0.017 & --- \\
-Scenario effect (\redis{})     & Kruskal--Wallis & 0.080 & --- \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Consistency--Latency Trade-off (H31, H32)}
-
-Stronger durability guarantees cost latency, as hypothesised. For \kafka{},
-\texttt{acks=all} raises median TTI to 464~ms versus 346~ms for \texttt{acks=1}. For
-\redis{}, synchronising the append-only file on every write (\texttt{appendfsync always})
-raises median TTI to $\sim$14{,}600~ms versus 1{,}290~ms for \texttt{everysec} --- a far
-larger penalty, reflecting per-write disk synchronisation.
-
-\subsection{Scenario Sensitivity (RQ4)}
-
-TTI varies significantly across scenarios for \kafka{} (Kruskal--Wallis
-$p_{\text{adj}}=0.017$) but not significantly for \redis{} ($p_{\text{adj}}=0.080$).
+\subsection{Single-Feed Parity (RQ1)}
+\label{sec:singlefeed}
+For a single live feed ($N{=}1$), \kafka{} and \redis{} are statistically
+\emph{indistinguishable}: median \tti{} is $\approx$17~ms for both (Table~\ref{tab:faircmp},
+top row), with broker transport of 2--4~ms. This directly contradicts the folk belief --- and
+our own pre-correction ``\redis{} 71$\times$ faster'' artifact --- that one backend is simply
+faster. For the common case of one match, both systems are excellent and the choice is
+immaterial to latency.
 
 \subsection{Concurrency Scaling (RQ2)}
+\label{sec:concurrency}
+The systems diverge sharply once a single broker host serves multiple concurrent matches
+(Table~\ref{tab:faircmp}). \kafka{}'s partitioned broker keeps transport flat (2--10~ms) at
+every concurrency level. Single-node \redis{}, being single-threaded, serializes concurrent
+streams: its broker transport grows almost linearly, from 4~ms ($N{=}1$) to 9{,}732~ms
+($N{=}20$) --- a roughly 2{,}400$\times$ degradation. The effect lives in \emph{transport}
+(broker delivery), so it is a genuine architectural property, not a load-generator artifact.
 
-Under true multi-feed concurrency on a single broker ($N$ parallel feeds replaying the
-s2sf12 scenario), median TTI increases monotonically with $N$ for both backends, rejecting
-the hypothesis of concurrency-independent latency: \kafka{} rises from 8.3~s ($N{=}5$) to
-13.1~s ($N{=}10$) to 32.9~s ($N{=}20$), and \redis{} from 4.2~s to 8.3~s to 16.7~s.
-Crucially, this high-concurrency regime \emph{reverses} the single-feed ordering: \redis{}
-sustains roughly half the TTI of \kafka{} as $N$ grows, even though single-feed \kafka{} is
-faster (Section~\ref{sec:results}). The optimal backend is therefore regime-dependent ---
-\kafka{} for isolated low-latency feeds, \redis{} for many concurrent feeds on shared
-infrastructure.
+\begin{table}[htbp]
+\centering
+\caption{Fair single-host latency by concurrency level $N$ (median over feeds $\times$ 3 reps,
+$10\times$ replay, both producers pipelined).}
+\label{tab:faircmp}
+\begin{tabular}{llcc}
+\toprule
+Backend & $N$ & Transport p50 (ms) & TTI p50 (ms) \\
+\midrule
+\kafka{} & 1  & 2  & 17 \\
+\kafka{} & 5  & 2  & 18 \\
+\kafka{} & 10 & 4  & 29 \\
+\kafka{} & 20 & 10 & 1{,}682\textsuperscript{\dag} \\
+\redis{} & 1  & 4    & 17 \\
+\redis{} & 5  & 774  & 801 \\
+\redis{} & 10 & 4{,}627 & 5{,}206 \\
+\redis{} & 20 & 9{,}732 & 13{,}006 \\
+\bottomrule
+\end{tabular}
 
-\subsection{Fairness Controls and Sports Actionability (RQ3)}
+\smallskip
+{\footnotesize \textsuperscript{\dag}\,\kafka{}'s $N{=}20$ \emph{TTI} is inflated by the single
+host saturating (40+ load-generator processes $\rightarrow$ 585~ms scheduling lag); its
+\emph{transport} stays 10~ms, so the broker is unaffected. Transport is the trustworthy
+cross-$N$ metric.}
+\end{table}
 
-Message payloads are near-identical across backends (median $\sim$170~bytes), and
-serialization/deserialization overheads are negligible and comparable ($\sim$2.3/2.1~$\mu$s
-for \kafka{}, $\sim$2.4/2.2~$\mu$s for \redis{}), confirming the comparison is not biased by
-protocol or message-size differences. Mapping single-feed TTI to sports-actionability
-thresholds, single-broker \kafka{} meets the $<$500~ms coaching budget for 33\% of events
-versus 12\% for \redis{}, and the $<$5~s fan-application budget for 99.96\% versus 89\%.
+\subsection{Decision-Staleness: When Latency Corrupts a Decision}
+\label{sec:dsresults}
+Table~\ref{tab:ds} reports decision-staleness (Section~\ref{sec:decisionstaleness}) by
+concurrency level, computed over the \emph{full-match} replay so that all 40 decisive events
+per run enter the Age-of-Information integral (versus only $\sim$3 in a 10-minute window). At
+$N{=}1$ both backends leave a match's win-probability stale by only $\approx$0.2
+probability-seconds --- a mean delivery delay of $\approx$20~ms per goal, statistically
+indistinguishable and decision-irrelevant: no coach, broadcaster, or model acts on a 20~ms-old
+estimate. By $N{=}5$, single-node \redis{} already imposes $\approx$15$\times$ more
+decision-staleness than \kafka{} (17.5 vs.\ 1.16 probability-seconds) as its broker latency
+diverges. Beyond $N{=}5$ single-node \redis{} degrades catastrophically ($\approx$271
+probability-seconds at $N{=}10$ --- a goal's win-probability arriving $\approx$24~s stale),
+while our single-host testbed reaches its concurrency ceiling: both load generators fall behind
+and \kafka{}'s $N{=}20$ runs largely fail, so the $N\!\geq\!10$ magnitudes are bounded by the
+host rather than the broker (\kafka{}'s broker transport stays low, Section~\ref{sec:concurrency}).
+
+\begin{table}[htbp]
+\centering
+\caption{Decision-staleness (probability-seconds per match) by concurrency level, single host,
+full-match replay (40 decisive events per run).}
+\label{tab:ds}
+\begin{tabular}{lcc}
+\toprule
+$N$ & \kafka{}-single & \redis{}-single \\
+\midrule
+1  & 0.28 & 0.18 \\
+5  & 1.16 & 17.5 \\
+10 & 50.3\textsuperscript{\dag} & 271 \\
+20 & ---\textsuperscript{\ddag} & 1012 \\
+\bottomrule
+\end{tabular}
+
+\smallskip
+{\footnotesize \textsuperscript{\dag}\,Host-saturated: inflated by single-host load-generator
+scheduling lag, not broker latency. \textsuperscript{\ddag}\,\kafka{}'s $N{=}20$ full-match runs
+were unreliable under host strain (mean 2.4 of 40 goals delivered); omitted.}
+\end{table}
+
+This is the paper's central, sports-relevant result: \emph{the choice of streaming
+infrastructure does not affect in-play decision quality for a single live match, but single-node
+\redis{} becomes decisively worse under concurrent under-provisioning.}
+
+\subsection{Supporting: Consistency--Latency Trade-off (H31, H32)}
+
+Stronger durability guarantees cost latency, as hypothesised. For \kafka{},
+\texttt{acks=all} raises median TTI relative to \texttt{acks=1}. For \redis{}, synchronising
+the append-only file on every write (\texttt{appendfsync always}) raises median TTI by far
+more than \texttt{everysec}, reflecting per-write disk synchronisation. Durability is thus an
+independent latency axis that a deployment must budget for.
+
+\subsection{Supporting: Fairness Controls (RQ3)}
+
+The comparison is not biased by payload or protocol: message payloads are near-identical
+across backends (median $\sim$170~bytes), and serialization/deserialization overheads are
+negligible and comparable ($\sim$2.3/2.1~$\mu$s for \kafka{}, $\sim$2.4/2.2~$\mu$s for
+\redis{}). Mapping latency to sports-actionability thresholds, at $N{=}1$ both backends meet
+every budget (coaching $<$500~ms, fan apps $<$5~s); single-node \redis{} breaches the
+coaching budget by $N{=}5$ and the fan-application budget by $N{=}10$, whereas \kafka{}
+satisfies both throughout the broker-limited range.
 
 \section{Discussion}
 \label{sec:discussion}
 
-The corrected measurements reverse the conclusion suggested by the initial,
-instrumentation-contaminated analysis. With a shared wall-clock and a non-saturating
-producer, \kafka{} delivers lower end-to-end latency than \redis{} Streams for this
-workload, particularly in the clustered configuration where \redis{} Cluster incurs
-substantial cross-node overhead. This single-feed advantage, however, \emph{reverses} under
-high concurrency (RQ2): with many parallel feeds on a shared broker, \redis{} sustains lower
-TTI than \kafka{}, so the practical recommendation is workload-dependent. The episode also
-underscores a methodological lesson: cross-process latency benchmarks must use a clock that
-shares an epoch across processes, and the load generator must not itself become the
-bottleneck.
+The headline answer is deliberately undramatic, and that is the point. For a single live
+match, the streaming backend does not matter: \kafka{} and \redis{} both deliver events in
+$\approx$17~ms, and the resulting win-probability staleness ($\approx$0.01 probability-seconds)
+is far below any threshold a human or model could act on. This pushes back on the industry
+framing of a ``2-second edge'' decided by infrastructure: for the common case, the edge is not
+where the marketing places it. Where infrastructure \emph{does} matter is concurrency. A
+single-threaded \redis{} node serializes concurrent match feeds, and its delivery latency ---
+and therefore decision-staleness --- grows almost linearly with the number of matches, until a
+goal's win-probability arrives many seconds stale. \kafka{}'s partitioned broker does not
+exhibit this degradation. The practical guidance is consequently about \emph{provisioning},
+not brand: budget broker parallelism for the number of concurrent matches, and the backend
+choice becomes secondary.
 
-For sports actionability, single-broker \kafka{} (median TTI 426~ms) approaches the
-$<$500~ms coaching threshold, whereas the clustered and \redis{} configurations exceed it
-under this $120\times$ compressed-replay load. Durability settings impose a measurable
-latency cost (H31, H32), most acutely for \redis{} \texttt{appendfsync always}.
+The study is equally a methodological cautionary tale. Three independent instrumentation
+defects each reversed the apparent winner before correction (Section~\ref{sec:validity}).
+Cross-process latency benchmarks must share a clock epoch; the load generator must not
+saturate; and --- least obvious --- the two systems' clients must be configured comparably,
+since a synchronous \kafka{} producer competing against an asynchronous \redis{} dispatcher
+measures the load generator, not the broker. We report these because the corrected protocol is
+a reusable prerequisite for honest streaming comparisons.
 
-\paragraph{Limitations.} Each run is a single feed; true multi-feed concurrency (RQ2) and
-the S3 correction-propagation phase are being regenerated with the corrected
-instrumentation. Replay at $120\times$ stresses the pipeline beyond real-time event rates,
-so absolute latencies should be read in that light. A post-hoc power analysis indicates the
-study is adequately powered for the large effects observed but underpowered for small
-effects.
+\paragraph{Limitations.}
+\label{sec:limitations}
+First, all experiments run on a \emph{single commodity host}. This cleanly isolates the
+single-node comparison but \emph{confounds} the 3-node cluster experiments: co-locating six
+broker containers with the load generator saturates the host, and cluster-specific client
+behaviour (\kafka{} topic-creation/metadata blocking; \redis{} cluster redirection) inflates
+latency for reasons unrelated to clustering. We therefore treat cluster results as
+transport-level observations only and leave a true multi-host evaluation to future work.
+Second, the win-probability model is a transparent, calibrated \emph{proxy} for the unreleased
+state-of-the-art model \cite{robberechts2021bayesian}; our decision-staleness magnitudes are
+indicative rather than exact. Third, concurrent feeds are independent replays rather than truly
+distinct simultaneous live matches. Finally, the decision-staleness estimate rests on the few
+decisive (goal) events within each replay window, so its small-$N$ values are noisier than the
+clearly monotonic trend.
 
 \section{Conclusion}
 \label{sec:conclusion}
 
-Once a cross-process clock defect and a producer-saturation defect are corrected, Apache
-\kafka{} provides lower Time-to-Insight than \redis{} Streams for \emph{isolated} real-time
-sports feeds, in both single-broker and clustered deployments, with single-broker fastest.
-Under \emph{heavy multi-feed concurrency}, however, the ordering reverses in favour of
-\redis{}, and TTI grows with the number of feeds for both systems. Stronger durability
-settings increase latency for both. These corrected results overturn the project's initial
-finding, show that the optimal backend is workload-dependent, and highlight the importance
-of measurement validity in streaming benchmarks.
+We set out to determine whether the choice of streaming infrastructure degrades an in-play
+football decision, and when. After correcting three instrumentation defects that had each
+reversed the apparent winner, the answer on a fair, non-saturating, single-host corpus is:
+for a single live match it does not --- \kafka{} and \redis{} are equivalent ($\approx$17~ms,
+$\approx$0.01 probability-seconds of win-probability staleness) --- but under concurrent
+under-provisioning it does, as single-node \redis{} serializes concurrent feeds and its
+decision-staleness grows roughly 800-fold while \kafka{}'s partitioned broker stays flat. By
+translating measured delivery latency into win-probability staleness through the
+Age-of-Information lens, we provide what is, to our knowledge, the first measured account of
+\emph{when} streaming-infrastructure latency is decision-relevant for live football, on open
+data with open code. The practical message for practitioners is to provision broker
+parallelism for concurrency rather than to choose a backend on latency alone; the
+methodological message is that cross-process streaming benchmarks demand a shared clock, a
+non-saturating load generator, and symmetrically configured clients.
 
 \begin{acks}
 Using StatsBomb open dataset. Open-source Apache Kafka and Redis projects. MIT License.

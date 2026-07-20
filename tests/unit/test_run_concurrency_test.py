@@ -676,6 +676,47 @@ class TestBrokerCountAndClusterMode:
             assert "-CLUSTER_MODE" in str(call_args)
             assert "-NODE_COUNT 3" in str(call_args)
 
+    def test_run_trial_producer_extra_kafka(self, temp_dir):
+        """producer_extra is appended to the Kafka trial command."""
+        with patch('scripts.run_concurrency_test.subprocess.run') as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="Success", stderr="")
+            run_trial(
+                run_id="test_pe", plan_csv="data/test.csv", backend="kafka",
+                speedup=10, max_t_sim=600, bootstrap="localhost:19092",
+                topic="t", producer_extra="--max-inflight 64",
+            )
+            cmd_str = str(mock_run.call_args[0][0])
+            assert '-PRODUCER_EXTRA "--max-inflight 64"' in cmd_str
+
+    def test_run_trial_producer_extra_not_for_redis(self, temp_dir):
+        """producer_extra is ignored for the Redis backend (Kafka-only knob)."""
+        with patch('scripts.run_concurrency_test.subprocess.run') as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="Success", stderr="")
+            run_trial(
+                run_id="test_pe_r", plan_csv="data/test.csv", backend="redis",
+                speedup=10, max_t_sim=600, redis_host="localhost", redis_port=16379,
+                stream="s", producer_extra="--max-inflight 64",
+            )
+            cmd_str = str(mock_run.call_args[0][0])
+            assert 'PRODUCER_EXTRA' not in cmd_str
+
+    def test_main_passes_kafka_producer_extra(self):
+        """--kafka-producer-extra flows through to the Kafka run_trial call."""
+        test_args = [
+            'scripts/run_concurrency_test.py', '1', 'data/test.csv', '1',
+            '--kafka-producer-extra', '--max-inflight 64',
+        ]
+        with patch('sys.argv', test_args):
+            with patch('scripts.run_concurrency_test.run_trial') as mock_run_trial:
+                mock_run_trial.return_value = ('test', True, 'Success')
+                try:
+                    main()
+                except SystemExit:
+                    pass
+                kafka_calls = [c for c in mock_run_trial.call_args_list if c[0][2] == 'kafka']
+                assert kafka_calls
+                assert all(c[1].get('producer_extra') == '--max-inflight 64' for c in kafka_calls)
+
     def test_run_trial_broker_count_default(self, temp_dir):
         """Test run_trial with default broker_count (1)."""
         with patch('scripts.run_concurrency_test.subprocess.run') as mock_run:

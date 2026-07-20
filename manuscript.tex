@@ -242,8 +242,20 @@ steps.
 StatsBomb-derivable game state---score differential, fraction of match remaining, and
 red-card differential---using a Skellam (difference-of-Poissons) goal model. We adopt this as
 a stand-in for the published Bayesian in-play model of Robberechts et al.\
-\cite{robberechts2021bayesian}, whose code is unreleased, and validate calibration by ranked
-probability score (RPS~$\approx$~0.24 across 34 held-out matches).
+\cite{robberechts2021bayesian}, whose code is unreleased. The proxy is well calibrated across
+the 3{,}239 game states sampled from the 34 matches: a ranked probability score of
+$\approx$0.24 and an expected calibration error of \textbf{0.054} --- predicted home-win
+probabilities track observed home-win frequencies to within a few percentage points
+(Figure~\ref{fig:wpcal}). The model has a single global parameter (team scoring rate), so this
+is a whole-corpus check.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.55\columnwidth]{docs/results/win_probability/wp_calibration.pdf}
+\caption{Reliability diagram for the in-play win-probability proxy (ECE~$=0.054$): predicted
+vs.\ observed home-win frequency across 3{,}239 sampled game states.}
+\label{fig:wpcal}
+\end{figure}
 
 \emph{Age-of-Information decision-staleness.} When a decisive event (a goal) is delivered with
 latency $L$, the consumer's win-probability remains stale for $L$ by the magnitude of the

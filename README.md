@@ -112,29 +112,20 @@ Every run additionally captures throughput, message sizes, protocol overhead, re
 usage and actionability metrics, which is what lets one matrix answer multiple referee
 concerns.
 
-### 1.3 The six referee issues
+### 1.3 How the original referee concerns are addressed
 
-| # | Criticism (paraphrased) | Severity | Solution status |
-|---|-------------------------|----------|-----------------|
-| **1** | No formal research questions or testable hypotheses; intro reads like a product description | High | ✅ **Done** — RQ1–RQ4, full hypothesis set, and stats framework already in `manuscript.tex` (§Introduction/Methods) |
-| **2** | Single-broker comparison is unfair to Kafka (a distributed system) | **Critical** | ✅ **Done** — 120-run single+cluster matrix executed & analyzed; `config_comparison` shows cluster vs single (cluster slower → replication overhead) |
-| **3** | No message-size / throughput / protocol-overhead controls → fairness unclear | High | ✅ Throughput + message size via `analyze_batches_1_2_3.py`; true serialized size + (de)serialization timing via `analyze_protocol_overhead.py` |
-| **4** | Inadequate stats: 15 t-tests, no correction, no effect sizes, no CIs, no power | **Critical** | ✅ `statistical_analysis.py` (Holm-Bonferroni, Cohen's *d* / Hedges' *g*, 95% CIs, assumption checks) + `power_analysis.py` — note: study is **underpowered for small/medium effects** (n≥64 needed for *d*=0.5) |
-| **5** | Sports angle feels post-hoc; no sports-specific latency requirements | High | ✅ `analyze_actionability.py` computes real actionability from `missed_window_rate` + production-system comparison (Redis 64% vs Kafka 29% of events under 5 s) |
-| **6** | Reproducibility claimed but infrastructure under-documented; no permanent archive | Medium | ✅ `docs/infrastructure.md` + `verify_reproducibility.py` (120/120 runs have complete provenance); Zenodo archive still to mint |
+The paper is now framed around the decision-degradation contribution (🎯 target) rather than
+"answering six criticisms," but each original concern is still handled — on the *fair*,
+artifact-free corpus:
 
-### 1.4 Immediate next actions
-
-The six issues are now substantively addressed in code/data. What remains is mostly
-manuscript integration:
-
-1. **Fold the new analysis outputs into `manuscript.tex`** — the corrected statistics
-   (`docs/results/statistical_analysis/`), the underpowered-for-small-effects caveat from
-   `power_analysis.py`, the real actionability + production comparison
-   (`docs/results/actionability/`), and the single-vs-cluster result.
-2. **Fix `manuscript.tex` LaTeX errors** and regenerate the PDF.
-3. **Issue 6 finalize:** fill in host hardware in `docs/infrastructure.md` and mint the
-   Zenodo DOI.
+| Referee concern | How it is addressed now |
+|---|---|
+| Intro reads like a product description; no RQs/hypotheses | RQ1–RQ4 + hypotheses + stats framework in `manuscript.tex` |
+| Single-broker comparison unfair to distributed Kafka | Single **and** cluster measured; cluster treated as a stated single-host limitation (a true multi-host test needs separate machines — §1.5) |
+| No message-size / protocol-overhead controls | Payload ~170 B and (de)serialization ~µs are near-identical across backends (`analyze_protocol_overhead.py`) |
+| Weak statistics | Holm–Bonferroni Mann–Whitney + Kruskal–Wallis + effect sizes on the fair corpus (`fair_statistics.py`); power caveat retained |
+| Sports angle feels post-hoc | The contribution **is** a sports quantity — win-probability decision-staleness (`win_probability.py` + `decision_staleness.py`), calibrated (ECE 0.054) |
+| Reproducibility under-documented | `docs/infrastructure.md`, per-run provenance (`verify_reproducibility.py`), and a regenerable `reproducibility/MANIFEST.json` (`generate_manifest.py`); Zenodo DOI still to mint |
 
 ### 1.5 Main claims (fair, artifact-free corpus)
 
@@ -408,8 +399,10 @@ We translate delivery latency into in-play **decision error** in two steps:
    model on StatsBomb-derivable game state (score differential, fraction of match remaining,
    red-card differential), built on a Skellam (difference-of-Poissons) goal model. It cites
    Robberechts et al. (SIGKDD 2021) as the established model (their code is unreleased) and is
-   validated by ranked probability score / calibration on held-out matches (RPS ≈ 0.24 over 34
-   matches).
+   validated by ranked probability score and a reliability diagram: **RPS ≈ 0.24** and
+   **ECE = 0.054** over 3,239 game states from the 34 matches (`scripts/wp_calibration.py` →
+   `docs/results/win_probability/wp_calibration.png`) — predicted win-probabilities track
+   observed frequencies to within a few percentage points.
 2. **Age-of-Information decision-staleness** (`scripts/decision_staleness.py`) — for each
    decisive event (goal), the consumer's win-probability is stale for the event's delivery
    latency *L* by the magnitude of the probability shift it caused. We define a run's

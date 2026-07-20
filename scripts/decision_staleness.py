@@ -22,6 +22,7 @@ import argparse
 import glob
 import json
 import os
+import re
 from pathlib import Path
 
 import numpy as np
@@ -30,10 +31,56 @@ import pandas as pd
 import win_probability as wp
 
 
+def infer_config(run_dir, name):
+    """single vs cluster. Prefer the run-name marker; fall back to meta.json bootstrap/port
+    (concurrency run-ids do not encode the config the way batch9 run-ids do)."""
+    if "cluster" in name:
+        return "cluster"
+    if "single" in name:
+        return "single"
+    try:
+        meta = json.load(open(Path(run_dir) / "meta.json", encoding="utf-8-sig"))
+    except (ValueError, OSError):
+        return "?"
+    backend = meta.get("backend", "")
+    if backend == "kafka":
+        bs = str(meta.get("bootstrap", ""))
+        if ":19092" in bs:
+            return "single"
+        if re.search(r":(9092|9093|9094)\b", bs):
+            return "cluster"
+    elif backend == "redis":
+        port = int((meta.get("redis") or {}).get("port", meta.get("port", 0)) or 0)
+        if port in (16379, 6379):
+            return "single"
+        if port in (7000, 7001, 7002):
+            return "cluster"
+    return "?"
+
+
+def parse_n(name):
+    """Concurrency level N from a run-id (e.g. ..._n5_... -> 5); default 1 if absent."""
+    m = re.search(r"n(\d+)", name)
+    return int(m.group(1)) if m else 1
+
+
+def run_max_t_sim(run_dir):
+    """Read meta.json max_t_sim for a run; 0 if unreadable. Used to separate full-match runs
+    from windowed runs that share a timestamp prefix."""
+    try:
+        meta = json.load(open(Path(run_dir) / "meta.json", encoding="utf-8-sig"))
+    except (ValueError, OSError):
+        return 0.0
+    try:
+        return float(meta.get("max_t_sim", 0))
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def goal_decision_shifts(events, team_rate=wp.DEFAULT_TEAM_RATE):
     """Map each goal event_id -> TV win-probability shift it caused, for one match."""
     home, away, goals, reds, match_len = wp.parse_match(events)
-    if not match_len:
+    if not match_len:  # pragma: no cover - parse_match floors match_len at MATCH_SECONDS (>0)
         return {}
     # ordered goal events with their event_id
     goal_seq = []
@@ -108,6 +155,9 @@ def main(argv=None):
     ap.add_argument("--pattern", default="batch9_20260617_*")
     ap.add_argument("--events-dir", required=True)
     ap.add_argument("--out", default="docs/results/decision_staleness")
+    ap.add_argument("--min-max-t-sim", type=float, default=0.0,
+                    help="Only include runs whose meta max_t_sim is >= this (used to select "
+                         "full-match runs from same-timestamp windowed runs). 0 disables.")
     args = ap.parse_args(argv)
 
     goal_shifts = build_goal_shifts(args.events_dir)
@@ -119,14 +169,17 @@ def main(argv=None):
     for run_dir in sorted(Path(args.runs_dir).glob(args.pattern)):
         if not run_dir.is_dir():
             continue
+        if args.min_max_t_sim > 0 and run_max_t_sim(run_dir) < args.min_max_t_sim:
+            continue
         res = run_decision_cost(run_dir, goal_shifts)
         if res is None:
             continue
         cost, n, mean_lat = res
         name = run_dir.name
         backend = "kafka" if "kafka" in name else "redis" if "redis" in name else "?"
-        config = "cluster" if "cluster" in name else "single" if "single" in name else "?"
+        config = infer_config(run_dir, name)
         rows.append({"run_id": name, "backend": backend, "config": config,
+                     "n_concurrency": parse_n(name),
                      "decision_staleness_prob_s": cost, "n_decisive": n,
                      "mean_decisive_latency_ms": mean_lat})
 
@@ -138,14 +191,17 @@ def main(argv=None):
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
     df.to_csv(out_dir / "decision_staleness_by_run.csv", index=False)
-    by = df.groupby(["backend", "config"])[["decision_staleness_prob_s", "mean_decisive_latency_ms", "n_decisive"]].mean()
+    metrics = ["decision_staleness_prob_s", "mean_decisive_latency_ms", "n_decisive"]
+    by = df.groupby(["backend", "config"])[metrics].mean()
     by.to_csv(out_dir / "decision_staleness_by_backend_config.csv")
+    by_n = df.groupby(["backend", "config", "n_concurrency"])[metrics].mean()
+    by_n.to_csv(out_dir / "decision_staleness_by_backend_config_n.csv")
     print(f"Analyzed {len(df)} runs; {int(df['n_decisive'].sum())} decisive deliveries total.")
     print(by.to_string())
     print(f"Wrote results to {out_dir}/")
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     import sys
     sys.exit(main())

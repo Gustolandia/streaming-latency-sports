@@ -366,7 +366,9 @@ discussed as a limitation (Section~\ref{sec:limitations}).
 \label{sec:singlefeed}
 For a single live feed ($N{=}1$), \kafka{} and \redis{} are statistically
 \emph{indistinguishable}: median \tti{} is $\approx$17~ms for both (Table~\ref{tab:faircmp},
-top row), with broker transport of 2--4~ms. This directly contradicts the folk belief --- and
+top row), with broker transport of 2--4~ms. A Mann--Whitney U test finds no significant
+difference in \tti{} ($p=0.69$) or in decision-staleness ($p=0.40$; both Holm--Bonferroni
+corrected across the concurrency family). This directly contradicts the folk belief --- and
 our own pre-correction ``\redis{} 71$\times$ faster'' artifact --- that one backend is simply
 faster. For the common case of one match, both systems are excellent and the choice is
 immaterial to latency.
@@ -379,6 +381,10 @@ every concurrency level. Single-node \redis{}, being single-threaded, serializes
 streams: its broker transport grows almost linearly, from 4~ms ($N{=}1$) to 9{,}732~ms
 ($N{=}20$) --- a roughly 2{,}400$\times$ degradation. The effect lives in \emph{transport}
 (broker delivery), so it is a genuine architectural property, not a load-generator artifact.
+The \tti{} difference is significant at every $N\!\geq\!5$ (Holm--Bonferroni-corrected
+Mann--Whitney, $p<10^{-5}$, rank-biserial $=1.0$ --- the two backends' distributions are
+completely separated), and Kruskal--Wallis confirms a concurrency effect for both
+($H_{\redis{}}=76 > H_{\kafka{}}=67$).
 
 \begin{table}[htbp]
 \centering
@@ -407,6 +413,14 @@ host saturating (40+ load-generator processes $\rightarrow$ 585~ms scheduling la
 cross-$N$ metric.}
 \end{table}
 
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.7\columnwidth]{docs/results/figures/latency_vs_concurrency.pdf}
+\caption{Broker transport latency (p50, log scale) vs.\ concurrent matches, single host.
+\kafka{} stays flat while single-node \redis{} grows roughly linearly.}
+\label{fig:latency}
+\end{figure}
+
 \subsection{Decision-Staleness: When Latency Corrupts a Decision}
 \label{sec:dsresults}
 Table~\ref{tab:ds} reports decision-staleness (Section~\ref{sec:decisionstaleness}) by
@@ -416,8 +430,9 @@ $N{=}1$ both backends leave a match's win-probability stale by only $\approx$0.2
 probability-seconds --- a mean delivery delay of $\approx$20~ms per goal, statistically
 indistinguishable and decision-irrelevant: no coach, broadcaster, or model acts on a 20~ms-old
 estimate. By $N{=}5$, single-node \redis{} already imposes $\approx$15$\times$ more
-decision-staleness than \kafka{} (17.5 vs.\ 1.16 probability-seconds) as its broker latency
-diverges. Beyond $N{=}5$ single-node \redis{} degrades catastrophically ($\approx$271
+decision-staleness than \kafka{} (17.5 vs.\ 1.16 probability-seconds; Holm--Bonferroni-corrected
+Mann--Whitney $p<10^{-5}$, versus no significant difference at $N{=}1$, $p=0.40$) as its broker
+latency diverges. Beyond $N{=}5$ single-node \redis{} degrades catastrophically ($\approx$271
 probability-seconds at $N{=}10$ --- a goal's win-probability arriving $\approx$24~s stale),
 while our single-host testbed reaches its concurrency ceiling: both load generators fall behind
 and \kafka{}'s $N{=}20$ runs largely fail, so the $N\!\geq\!10$ magnitudes are bounded by the
@@ -444,6 +459,15 @@ $N$ & \kafka{}-single & \redis{}-single \\
 scheduling lag, not broker latency. \textsuperscript{\ddag}\,\kafka{}'s $N{=}20$ full-match runs
 were unreliable under host strain (mean 2.4 of 40 goals delivered); omitted.}
 \end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.7\columnwidth]{docs/results/figures/decision_staleness_vs_concurrency.pdf}
+\caption{Decision-staleness (probability-seconds per match, log scale) vs.\ concurrent matches,
+full-match replay, single host. Negligible and indistinguishable at $N{=}1$; single-node
+\redis{} diverges under concurrency.}
+\label{fig:staleness}
+\end{figure}
 
 This is the paper's central, sports-relevant result: \emph{the choice of streaming
 infrastructure does not affect in-play decision quality for a single live match, but single-node

@@ -42,7 +42,7 @@ On the corrected, fair corpus we find: (i)~for a \emph{single} live feed, \kafka
 
 \end{abstract}
 
-\keywords{Streaming systems, real-time analytics, sports data, Apache Kafka, Redis Streams, latency benchmarking, Time-to-Insight, actionability windows, reproducible research, football analytics, research questions, hypotheses, statistical analysis}
+\keywords{Real-time sports analytics, football, in-play win probability, Age of Information, streaming systems, Apache Kafka, Redis Streams, latency benchmarking, decision quality, reproducible research}
 
 \maketitle
 
@@ -54,6 +54,8 @@ The rapid digitization of sports has created an insatiable demand for real-time 
 Two dominant technologies have emerged: Apache \kafka{} (originally developed at LinkedIn) and \redis{} Streams (introduced in Redis 5.0). \kafka{} is a distributed event streaming platform designed for high-throughput, fault-tolerant data pipelines. \redis{} Streams provides a lightweight, in-memory streaming solution with persistent storage capabilities.
 
 While numerous studies have compared these technologies, the literature lacks sports-specific evaluations. Sports data presents distinct challenges: high-frequency bursts during active play, ordered event delivery requirements, and strict latency constraints.
+
+\paragraph{Contributions.} This paper makes four contributions. (1)~We pose and answer, on open data, the question of \emph{when} streaming-infrastructure latency actually degrades an in-play football decision, by coupling measured event-delivery latency to a calibrated in-play win-probability model through the Age-of-Information lens---to our knowledge the first infrastructure~$\rightarrow$~decision-quality analysis in sports analytics. (2)~We provide a fair, artifact-free Apache \kafka{} vs.\ \redis{} Streams latency benchmark on the StatsBomb open dataset, with fully open load-generation code. (3)~We document three cross-process measurement defects---a process-relative clock, a saturating replay speed, and an asymmetric load generator---each of which reversed the apparent winner, offering a reusable protocol for honest streaming benchmarks. (4)~We show the practical consequence: for a single live match the backend choice is immaterial to decision quality, whereas provisioning for concurrency is decisive.
 
 
 \subsection{Sports-Specific Latency Requirements}
@@ -98,96 +100,53 @@ Use Case & Stakeholder & Latency Range & Critical Threshold \\
 \subsection{Research Questions}
 \label{sec:rqs}
 
-This study addresses four primary research questions that bridge the gap between streaming systems theory and sports domain requirements:
+This study addresses four research questions, culminating in the decision-quality question that motivates the paper:
 
 \begin{description}
-\item[RQ1:] How does streaming architecture choice (Apache \kafka{} vs \redis{} Streams) impact Time-to-Insight (TTI) for real-time sports data processing, and what are the underlying mechanisms driving this difference?
-\item[RQ2:] How does concurrency level (N=5, 10, 20 concurrent feeds) affect TTI, throughput, and resource utilization for each streaming architecture under realistic sports workloads, and what are the scalability limits?
-\item[RQ3:] What is the trade-off between latency (TTI), data consistency (match rate, ordering guarantees), and throughput across different streaming architectures, configurations, and persistence settings?
-\item[RQ4:] How do streaming system performance characteristics (TTI, throughput, resource usage) vary across different sports event scenarios (S1--S5), and what are the underlying sport-specific factors driving these differences?
+\item[RQ1 (single feed):] For a single live match feed, does the choice of streaming backend (Apache \kafka{} vs.\ \redis{} Streams) materially affect Time-to-Insight (\tti{})?
+\item[RQ2 (concurrency):] How does \tti{} scale as one broker host serves $N\in\{1,5,10,20\}$ concurrent match feeds, and do the two backends differ?
+\item[RQ3 (fairness and durability):] With payload and protocol overheads controlled for fairness, what latency cost do stronger durability settings (\kafka{} \texttt{acks=all}; \redis{} \texttt{appendfsync always}) impose?
+\item[RQ4 (decision degradation):] When measured delivery latency is translated into an in-play win-probability estimate through the Age-of-Information lens, does it degrade an in-play football decision, and in which regime does the effect become material?
 \end{description}
 
-These questions are motivated by fundamental gaps in the literature. While industry benchmarks suggest \redis{} offers 2--5$\times$ lower latency than \kafka{} \cite{medium_benchmark_2025,github_benchmark_2025}, there is no sports-specific empirical validation. The CAP theorem \cite{brewer2012cap} and its extension PACELC \cite{abadi2012pacelc} predict inherent trade-offs between consistency and latency, but these have not been quantified in the streaming context. Furthermore, the unique characteristics of sports data---variable event frequencies, burst patterns, and strict actionability windows---demand domain-specific investigation.
-
-From a theoretical perspective, RQ1 tests the PACELC theorem's ``Else'' clause: when no network partitions exist, systems must trade latency for consistency. Technically, RQ2 examines the scalability of both architectures under realistic sports workloads. Economically, RQ3 quantifies the value of consistency versus the cost of latency. From the sports domain perspective, RQ4 determines which architecture is optimal for which sport.
+These questions are motivated by gaps in the literature. Industry benchmarks suggest \redis{} offers 2--5$\times$ lower latency than \kafka{} \cite{medium_benchmark_2025,github_benchmark_2025}, but there is no sports-specific empirical validation, and---as our measurement-validity analysis shows---such benchmarks are easily confounded. The CAP theorem \cite{brewer2012cap} and its extension PACELC \cite{abadi2012pacelc} predict consistency--latency trade-offs (RQ3) that have not been quantified for these systems on sports workloads. Most importantly, while in-play win-probability models and the Age-of-Information view of staleness both exist (Section~\ref{sec:literature}), no prior work connects \emph{measured} infrastructure latency to in-play sports \emph{decision} error---the gap RQ4 fills.
 
 
 \subsection{Hypotheses}
 \label{sec:hypotheses}
 
-For each research question, we formulate testable hypotheses grounded in theoretical frameworks and industry observations.
+For each research question we state null and alternative hypotheses. Where an industry ``prior expectation'' exists we name it explicitly, because a central finding of this paper is that the corrected data \emph{refutes} the widely held prior---and that the uncorrected data appeared to confirm it only through instrumentation artifacts (Section~\ref{sec:validity}).
 
-\paragraph{RQ1: Architecture Impact}
+\paragraph{RQ1: Single-feed architecture impact}
 \begin{description}
-\item[$\mathbf{H_{01}}$:] $\mu_{TTI\_Kafka} = \mu_{TTI\_Redis}$ (No difference in median TTI between architectures)
-\item[$\mathbf{H_{11}}$:] $\mu_{TTI\_Kafka} > \mu_{TTI\_Redis}$ (Redis has significantly lower median TTI)
-\item[$\mathbf{H_{21}}$:] $\mu_{TTI\_Kafka} < \mu_{TTI\_Redis}$ (Kafka has lower median TTI)
+\item[$\mathbf{H_{01}}$:] $\mu_{\tti{},\kafka{}} = \mu_{\tti{},\redis{}}$ (no difference at $N{=}1$).
+\item[$\mathbf{H_{11}}$:] the two differ.
 \end{description}
+\noindent\textbf{Test:} Mann--Whitney U (Holm--Bonferroni corrected). \textbf{Prior expectation:} industry benchmarks \cite{medium_benchmark_2025,github_benchmark_2025} suggest \redis{} is 2--5$\times$ faster, i.e.\ a large difference favouring \redis{}. \textbf{Result (Section~\ref{sec:singlefeed}):} the corrected single-feed data does \emph{not} reject $\mathbf{H_{01}}$ ($p=0.69$)---the backends are at parity, refuting the prior.
 
-\noindent\textbf{Test:} Mann-Whitney U test (non-parametric, data violates normality)  
-\noindent\textbf{Rationale:} Industry benchmarks \cite{medium_benchmark_2025,github_benchmark_2025} and our S2 results show \redis{} achieving 40--55\% lower TTI. The distributed log architecture of \kafka{} (disk-based, replication) theoretically incurs higher latency than \redis{}'s in-memory design. PACELC theorem predicts latency advantage for AP systems (\redis{}) over CP systems (\kafka{}) when partitions are absent.  
-\noindent\textbf{Expected:} $\mathbf{H_{11}}$ (Redis significantly outperforms Kafka on TTI)  
-\noindent\textbf{Effect Size:} Large (Cohen's $d > 0.8$ based on S2 data)  
-\noindent\textbf{Power:} $>0.99$ at $\alpha=0.05$ with current sample size (40--50 runs per group)
-
-
-\paragraph{RQ2: Concurrency Scaling}
+\paragraph{RQ2: Concurrency scaling}
 \begin{description}
-\item[$\mathbf{H_{02}}$:] TTI is independent of concurrency level N
-\item[$\mathbf{H_{12}}$:] TTI increases monotonically with concurrency level N
-\item[$\mathbf{H_{22}}$:] TTI remains constant across N=5, 10, 20 (excellent scaling)
+\item[$\mathbf{H_{02}}$:] \tti{} is independent of the number of concurrent feeds $N$.
+\item[$\mathbf{H_{12}}$:] \tti{} increases with $N$, and the rate of increase differs by backend.
 \end{description}
+\noindent\textbf{Test:} Kruskal--Wallis across $N$; per-$N$ Mann--Whitney. \textbf{Prior expectation:} both systems are marketed as horizontally scalable, suggesting near-constant \tti{}. \textbf{Result (Section~\ref{sec:concurrency}):} $\mathbf{H_{12}}$---single-node \redis{} transport grows roughly linearly with $N$ while \kafka{} stays flat.
 
-\noindent\textbf{Test:} Kruskal-Wallis test (non-parametric one-way ANOVA)  
-\noindent\textbf{Rationale:} Both \kafka{} and \redis{} are designed for horizontal scaling. Our S2 results (250 runs) showed stable TTI across N=5, 10, 20. Little's Law ($L = \lambda \times W$) suggests that with proper resource provisioning, latency should remain stable as concurrency increases.  
-\noindent\textbf{Expected:} $\mathbf{H_{22}}$ (Excellent scaling with constant TTI)  
-\noindent\textbf{Effect Size:} Small ($d < 0.2$ expected)  
-\noindent\textbf{Power:} $\approx0.30$ for detecting $d=0.2$ (sample size may need expansion)
-
-
-\paragraph{RQ3: Latency-Consistency Trade-off}
+\paragraph{RQ3: Fairness and durability cost}
 \begin{description}
-\item[$\mathbf{H_{03}}$:] Match rate = 100\% for all configurations
-\item[$\mathbf{H_{13}}$:] Match rate $> 99.9\%$ for all configurations
-\item[$\mathbf{H_{23}}$:] Match rate varies by configuration
+\item[$\mathbf{H_{31}}$:] $\mu_{\tti{},\,\texttt{acks=all}} > \mu_{\tti{},\,\texttt{acks=1}}$ (\kafka{}: stronger durability costs latency).
+\item[$\mathbf{H_{32}}$:] $\mu_{\tti{},\,\texttt{appendfsync always}} > \mu_{\tti{},\,\texttt{everysec}}$ (\redis{}: same).
 \end{description}
+\noindent\textbf{Test:} Mann--Whitney U, after verifying that payload size and (de)serialization overhead are equivalent across backends so the comparison is fair. \textbf{Expected and found:} both hold.
 
-\noindent\textbf{Test:} Chi-square test or Fisher's exact test  
-\noindent\textbf{Rationale:} Our S2 results achieved 100\% match rate across all 250 runs. \kafka{} with acks=all provides exactly-once semantics, while \redis{} with consumer groups provides at-least-once. Both should achieve near-perfect data delivery.  
-\noindent\textbf{Expected:} $\mathbf{H_{13}}$ (All configurations achieve $>99.9\%$ match rate)
-
-\noindent Additionally, we test the consistency-latency trade-off:
+\paragraph{RQ4: Decision degradation (the contribution)}
 \begin{description}
-\item[$\mathbf{H_{31}}$:] $\mu_{TTI\_acks=all} > \mu_{TTI\_acks=1}$ (Kafka: strong consistency costs latency)
-\item[$\mathbf{H_{32}}$:] $\mu_{TTI\_AOF=always} > \mu_{TTI\_AOF=1s}$ (Redis: durability costs latency)
+\item[$\mathbf{H_{04}}$:] decision-staleness (Section~\ref{sec:decisionstaleness}) is independent of backend and concurrency---infrastructure latency does not translate into in-play decision error.
+\item[$\mathbf{H_{14}}$:] decision-staleness grows with delivery latency and diverges by backend under concurrency.
 \end{description}
-
-\noindent\textbf{Test:} Paired t-test or Wilcoxon signed-rank test  
-\noindent\textbf{Expected:} Both true (stronger guarantees = higher latency)
-
-
-\paragraph{RQ4: Sports-Specific Performance}
-\begin{description}
-\item[$\mathbf{H_{04}}$:] TTI distribution is the same across all scenarios
-\item[$\mathbf{H_{14}}$:] TTI distribution differs by scenario
-\end{description}
-
-\noindent\textbf{Test:} Kolmogorov-Smirnov test  
-\noindent\textbf{Rationale:} Scenarios S1--S5 have different event frequencies and burst patterns. Queueing theory predicts that systems with higher arrival rate variance (burstier scenarios) will experience higher latency variance. Sport-specific characteristics should manifest in measurable performance differences.  
-\noindent\textbf{Expected:} $\mathbf{H_{14}}$ (TTI differs by scenario)
-
-\noindent Additionally, we test scenario-specific hypotheses:
-\begin{description}
-\item[$\mathbf{H_{41}}$:] $\mu_{TTI\_S5} > \mu_{TTI\_S1}$ (Higher event frequency $\rightarrow$ higher latency)
-\item[$\mathbf{H_{42}}$:] $\sigma_{TTI\_S5} > \sigma_{TTI\_S1}$ (Higher burstiness $\rightarrow$ higher variance)
-\end{description}
-
-\noindent\textbf{Test:} One-way ANOVA or Kruskal-Wallis test  
-\noindent\textbf{Expected:} Both true (scenario characteristics affect performance)
-
+\noindent\textbf{Test:} per-$N$ Mann--Whitney and Kruskal--Wallis across $N$ on the Age-of-Information decision-staleness. \textbf{Expected and found (Section~\ref{sec:dsresults}):} $\mathbf{H_{14}}$---at $N{=}1$ decision-staleness is negligible and indistinguishable between backends ($p=0.40$), but single-node \redis{} imposes materially larger decision-staleness under concurrency.
 
 \paragraph{Statistical Framework}
-All hypotheses will be tested using the framework summarized in Section~\ref{sec:stat_methods}. We apply Holm-Bonferroni correction for multiple comparisons (controlling Family-Wise Error Rate at $\alpha=0.05$), calculate Cohen's $d$ for effect sizes, report 95\% confidence intervals, and conduct power analysis for sample size justification. Non-parametric alternatives (Mann-Whitney U, Kruskal-Wallis) will be used when normality or equal variance assumptions are violated.
+All hypotheses are tested using the framework in Section~\ref{sec:stat_methods}: Holm--Bonferroni correction for multiple comparisons (Family-Wise Error Rate at $\alpha=0.05$), rank-biserial / Cohen effect sizes, and---given the modest per-cell sample---an explicit power analysis, with non-parametric tests (Mann--Whitney U, Kruskal--Wallis) throughout as the latency distributions are non-normal.
 
 
 \section{Literature Review}
@@ -196,6 +155,10 @@ All hypotheses will be tested using the framework summarized in Section~\ref{sec
 Real-time data processing is essential across domains from finance to IoT. Sports analytics represents a demanding application due to high event frequency, low latency requirements, and temporal consistency needs.
 
 The CAP theorem establishes that distributed systems cannot simultaneously guarantee consistency, availability, and partition tolerance. \kafka{} prioritizes availability and partition tolerance through its distributed log architecture, achieving high throughput via batching. \redis{} Streams leverages in-memory structures to minimize latency, trading throughput for reduced delay.
+
+\paragraph{In-play win probability.} Estimating a team's probability of winning \emph{during} a match is an established sports-analytics task. For soccer, the state of the art is the Bayesian in-play model of Robberechts et al.\ \cite{robberechts2021bayesian}, which conditions on game state (score differential, time remaining, red cards, and rolling measures of chance creation) and is calibrated on large event corpora. Such models, however, are uniformly built and evaluated under the assumption that event data arrives \emph{instantly}; none accounts for the latency of the pipeline that delivers events to the model. Because the state-of-the-art model's implementation is not public, we use a transparent, calibrated proxy on StatsBomb-derivable game state (Section~\ref{sec:decisionstaleness}).
+
+\paragraph{Age of Information.} The Age-of-Information (AoI) literature formalizes the cost of \emph{stale} data: a monitor acting on information of age $L$ incurs an error that grows with $L$ \cite{kaul2012realtime}. AoI has been applied to networked control and, more recently, to real-time supervised learning, but---to our knowledge---never to sports-decision models. Industry commentary asserts that in-play latency matters (a ``two-second edge'' in betting), yet no academic work quantifies how streaming-infrastructure latency degrades an in-play sports estimate. This paper bridges the two literatures: it treats the win-probability shift caused by a decisive event as the quantity that goes stale, and integrates it against measured delivery latency to obtain a decision-staleness cost.
 
 
 \section{Methodology}
@@ -300,14 +263,18 @@ instrumentation; the before/after contrast is itself a finding (Section~\ref{sec
 
 \subsection{Experimental Design}
 Experiments run on a single commodity host (8-core AMD Ryzen, 31~GB RAM) with \kafka{}
-4.1.1 (KRaft mode) and \redis{} 7.2.4 in Docker. The core matrix crosses backend
-(\kafka{}/\redis{}), configuration (single broker vs.\ 3-node cluster), scenario (S1--S5),
-and replication (3 reps): 60 single-feed runs. Three further sets isolate specific factors:
-\emph{persistence} (\kafka{} \texttt{acks}=1 vs.\ all; \redis{} \texttt{appendfsync}
-everysec vs.\ always), \emph{state-staleness corrections} (S3; one correction every 50th
-event, 2~s delay), and \emph{true multi-feed concurrency} ($N$=5/10/20 parallel feeds).
-Every run records full provenance (git commit, per-file SHA-256, configuration) in a
-\texttt{meta.json}, enabling end-to-end reproducibility.
+4.1.1 (KRaft mode) and \redis{} 7.2.4 in Docker. The primary design is a \emph{concurrency
+sweep} crossing backend (\kafka{}/\redis{}), configuration (single broker vs.\ 3-node
+cluster), and concurrency $N\in\{1,5,10,20\}$ parallel match feeds, with 3 replications per
+cell, under the fair protocol (both producers pipelined, $10\times$ replay). We run it in two
+variants: a \emph{windowed} variant (first 10 minutes of match clock) that keeps the single
+host unsaturated so latency can be read cleanly to $N{=}20$, and a \emph{full-match} variant
+(single configuration) that delivers all decisive events so the decision-staleness integral
+is complete. A \emph{persistence} set isolates durability (\kafka{} \texttt{acks}=1 vs.\ all;
+\redis{} \texttt{appendfsync} everysec vs.\ always), and a \emph{state-staleness corrections}
+set (one correction every 50th event, 2~s delay) probes update propagation. Every run records
+full provenance (git commit, per-file SHA-256, configuration) in a \texttt{meta.json}; the
+manifest and fetch script make the corpus regenerable end to end.
 
 \subsection{Statistical Methods}
 \label{sec:stat_methods}
@@ -315,7 +282,7 @@ Every run records full provenance (git commit, per-file SHA-256, configuration) 
 We employ a rigorous statistical framework to test all hypotheses and ensure valid inferences.
 
 \paragraph{Multiple Comparisons Correction}
-With approximately 50 hypothesis tests across all research questions, we apply the \textbf{Holm-Bonferroni method} \cite{holm1979simple} to control the Family-Wise Error Rate (FWER) at $\alpha = 0.05$. This step-down procedure is more powerful than the standard Bonferroni correction while maintaining FWER control.
+Across the per-concurrency and durability comparisons (on the order of a dozen tests per metric family), we apply the \textbf{Holm-Bonferroni method} \cite{holm1979simple} to control the Family-Wise Error Rate (FWER) at $\alpha = 0.05$ within each family. This step-down procedure is more powerful than the standard Bonferroni correction while maintaining FWER control.
 
 \paragraph{Effect Size Calculation}
 For all significant findings, we report \textbf{Cohen's $d$} for comparing two means:
@@ -433,7 +400,7 @@ cross-$N$ metric.}
 \label{fig:latency}
 \end{figure}
 
-\subsection{Decision-Staleness: When Latency Corrupts a Decision}
+\subsection{Decision-Staleness: When Latency Corrupts a Decision (RQ4)}
 \label{sec:dsresults}
 Table~\ref{tab:ds} reports decision-staleness (Section~\ref{sec:decisionstaleness}) by
 concurrency level, computed over the \emph{full-match} replay so that all 40 decisive events

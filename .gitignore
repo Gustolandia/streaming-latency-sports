@@ -42,4 +42,5 @@ runs/concurrency_*/
 runs/batch9*/
 runs/_concurrency_*_runs.txt
 runs/_fair_*sweep.log
+runs/_fullmatch_single.log
 runs/fairtest_*/

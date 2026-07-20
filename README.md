@@ -180,8 +180,14 @@ concurrent matches** single-node Redis already imposes **~15× more** decision-s
 Kafka (17.5 vs 1.16); by 10 a goal's win-prob arrives **~24 s stale**. **The first measured
 answer to "when does streaming-infrastructure latency actually degrade an in-play football
 decision?"** — irrelevant for one feed, Redis-dominated and decision-corrupting under concurrency.
-(† host-saturated — single-host load-gen lag, not broker; ‡ Kafka N=20 full-match runs unreliable
-under host strain, omitted. The N≥10 magnitudes are bounded by our single host, not the broker.)
+
+**Formal tests** ([`docs/results/fair_statistics/`](docs/results/fair_statistics)) confirm it:
+Holm–Bonferroni-corrected Mann–Whitney finds **no** significant Kafka–Redis difference at N=1
+(latency *p*=0.69, decision-staleness *p*=0.40) but a **highly significant** difference at every
+N≥5 (*p*<10⁻⁵, rank-biserial=1.0 — complete separation), and Kruskal–Wallis confirms an N-effect
+for both backends. († host-saturated — single-host load-gen lag, not broker; ‡ Kafka N=20
+full-match runs unreliable under host strain, omitted. N≥10 magnitudes are bounded by our single
+host, not the broker.)
 
 **Supporting results.** Durability costs latency for both (Kafka `acks=all` > `acks=1`; Redis
 `appendfsync always` ≫ `everysec`). TTI decomposes into producer scheduling lag + transport +

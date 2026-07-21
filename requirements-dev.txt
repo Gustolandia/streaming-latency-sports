@@ -11,6 +11,9 @@ pytest>=7.0.0                  # test framework (8.x supported)
 pytest-cov>=3.0.0              # coverage, incl. --cov-branch (project bar: >=95% branch)
 pytest-xdist>=3.0.0            # optional: parallel test execution (-n auto)
 
+# --- Archival ---
+zenodo-client>=0.3.0           # CLI/API to deposit the release and mint the DOI (needs ZENODO_API_TOKEN)
+
 # --- Optional tooling (uncomment if you use it locally) ---
 # mypy>=0.900                  # static type checking
 # flake8>=4.0.0                # linting

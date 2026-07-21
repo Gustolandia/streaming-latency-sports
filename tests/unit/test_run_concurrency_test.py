@@ -11,7 +11,111 @@ from unittest.mock import MagicMock, patch, call
 
 import pytest
 
-from scripts.run_concurrency_test import run_trial, main
+from scripts.run_concurrency_test import run_trial, main, resolve_plans, plan_for_feed
+
+
+class TestDistinctMatchPlans:
+    """Per-match plan selection so each feed carries a different real match."""
+
+    def test_resolve_plans_empty_when_no_dir(self):
+        assert resolve_plans("", "default.csv") == []
+
+    def test_resolve_plans_finds_nested_replay_plans(self, temp_dir):
+        for mid in ("match_1", "match_2"):
+            d = temp_dir / mid
+            d.mkdir()
+            (d / "replay_plan.csv").write_text("row_idx\n1\n")
+        found = resolve_plans(str(temp_dir), "default.csv")
+        assert len(found) == 2 and all(f.endswith("replay_plan.csv") for f in found)
+
+    def test_resolve_plans_falls_back_to_flat_csvs(self, temp_dir):
+        (temp_dir / "a.csv").write_text("x\n")
+        (temp_dir / "b.csv").write_text("x\n")
+        assert len(resolve_plans(str(temp_dir), "default.csv")) == 2
+
+    def test_resolve_plans_empty_dir(self, temp_dir):
+        assert resolve_plans(str(temp_dir), "default.csv") == []
+
+    def test_plan_for_feed_uses_default_without_plans(self):
+        assert plan_for_feed([], 3, "default.csv") == "default.csv"
+
+    def test_plan_for_feed_assigns_distinct_and_wraps(self):
+        plans = ["m1.csv", "m2.csv", "m3.csv"]
+        assert [plan_for_feed(plans, f, "d.csv") for f in (1, 2, 3)] == plans
+        assert plan_for_feed(plans, 4, "d.csv") == "m1.csv"  # wraps
+
+    def test_main_passes_distinct_plans_per_feed(self, temp_dir):
+        for mid in ("match_1", "match_2"):
+            d = temp_dir / mid
+            d.mkdir()
+            (d / "replay_plan.csv").write_text("row_idx\n1\n")
+        test_args = ['scripts/run_concurrency_test.py', '5', 'data/test.csv', '1',
+                     '--plans-dir', str(temp_dir)]
+        with patch('sys.argv', test_args):
+            with patch('scripts.run_concurrency_test.run_trial') as mock_run_trial:
+                mock_run_trial.return_value = ('t', True, 'ok')
+                try:
+                    main()
+                except SystemExit:
+                    pass
+                used = {c[0][1] for c in mock_run_trial.call_args_list}
+                assert len(used) == 2  # two distinct match plans, wrapped over 5 feeds
+                assert all("replay_plan.csv" in u for u in used)
+
+    def test_trial_timeout_is_configurable(self, temp_dir):
+        # true real-time replays run as long as the window they replay, so 300s is not enough
+        with patch('scripts.run_concurrency_test.subprocess.run') as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+            run_trial(run_id="t", plan_csv="p.csv", backend="kafka", speedup=1,
+                      max_t_sim=600, trial_timeout=900)
+            assert mock_run.call_args[1]["timeout"] == 900
+
+    def test_trial_timeout_message_reports_value(self, temp_dir):
+        import subprocess as sp
+        with patch('scripts.run_concurrency_test.subprocess.run') as mock_run:
+            mock_run.side_effect = sp.TimeoutExpired("c", 900)
+            _, ok, msg = run_trial(run_id="t", plan_csv="p.csv", backend="kafka", speedup=1,
+                                   max_t_sim=600, trial_timeout=900)
+            assert ok is False and "900" in msg
+
+    def test_main_passes_trial_timeout(self):
+        test_args = ['scripts/run_concurrency_test.py', '1', 'data/test.csv', '1',
+                     '--trial-timeout', '900']
+        with patch('sys.argv', test_args):
+            with patch('scripts.run_concurrency_test.run_trial') as mock_run_trial:
+                mock_run_trial.return_value = ('t', True, 'ok')
+                try:
+                    main()
+                except SystemExit:
+                    pass
+                assert all(c[1].get('trial_timeout') == 900
+                           for c in mock_run_trial.call_args_list)
+
+    def test_fractional_speedup_supported(self):
+        # true real-time replay of a 120x-baked plan needs speedup = 1/120
+        test_args = ['scripts/run_concurrency_test.py', '1', 'data/test.csv', '1',
+                     '--speedup', '0.008333']
+        with patch('sys.argv', test_args):
+            with patch('scripts.run_concurrency_test.run_trial') as mock_run_trial:
+                mock_run_trial.return_value = ('t', True, 'ok')
+                try:
+                    main()
+                except SystemExit:
+                    pass
+                assert all(c[0][3] == pytest.approx(0.008333)
+                           for c in mock_run_trial.call_args_list)
+
+    def test_main_warns_and_falls_back_when_plans_dir_empty(self, temp_dir, capsys):
+        test_args = ['scripts/run_concurrency_test.py', '1', 'data/test.csv', '1',
+                     '--plans-dir', str(temp_dir)]
+        with patch('sys.argv', test_args):
+            with patch('scripts.run_concurrency_test.run_trial') as mock_run_trial:
+                mock_run_trial.return_value = ('t', True, 'ok')
+                try:
+                    main()
+                except SystemExit:
+                    pass
+                assert all(c[0][1] == 'data/test.csv' for c in mock_run_trial.call_args_list)
 
 
 class TestRunTrial:

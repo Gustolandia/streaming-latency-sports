@@ -4,7 +4,9 @@
 param(
     [Parameter(Mandatory=$true)][string]$RUN_ID,
     [Parameter(Mandatory=$true)][string]$PLAN_CSV,
-    [int]$SPEEDUP = 120,
+    # double, not int: a fractional speedup (e.g. 1/120 = 0.008333) cancels the factor already
+    # baked into a replay plan and gives a TRUE real-time replay. [int] silently truncated it to 0.
+    [double]$SPEEDUP = 120,
     [int]$MAX_T_SIM = 600,
     [string]$RedisHost = "localhost",
     [int]$PORT = 6379,

@@ -76,14 +76,21 @@ def per_n_tests(df, value_col, n_col):
 
 
 def kruskal_across_n(df, value_col, n_col):
-    """Kruskal-Wallis across N, per backend: is there any concurrency effect?"""
+    """Kruskal-Wallis across N, per backend: is there any concurrency effect?
+
+    Significance alone is misleading here: with tight variance a sub-millisecond shift can
+    reach p<1e-6 while being operationally irrelevant. We therefore also report the median at
+    each N and the last/first ratio, so the *magnitude* of any effect is visible beside its
+    p-value and the two can be judged separately.
+    """
     rows = []
     for backend in ("kafka", "redis"):
-        groups = []
+        groups, medians = [], []
         for n in sorted(df[n_col].dropna().unique()):
             vals = df[(df["backend"] == backend) & (df[n_col] == n)][value_col].dropna().values
             if len(vals) >= 2:
                 groups.append(vals)
+                medians.append((int(n), float(np.median(vals))))
         if len(groups) >= 2:
             try:
                 h, p = stats.kruskal(*groups)
@@ -93,8 +100,12 @@ def kruskal_across_n(df, value_col, n_col):
             if not np.isfinite(p):
                 # newer scipy returns nan instead of raising; treat as "no evidence"
                 p = 1.0
+            first, last = medians[0][1], medians[-1][1]
             rows.append({"backend": backend, "n_groups": len(groups), "H": float(h), "p": float(p),
-                         "significant": p < 0.05})
+                         "significant": p < 0.05,
+                         "medians": "; ".join(f"N={n}:{v:.4g}" for n, v in medians),
+                         "median_first": first, "median_last": last,
+                         "ratio_last_first": (last / first) if first else float("nan")})
     return pd.DataFrame(rows)
 
 

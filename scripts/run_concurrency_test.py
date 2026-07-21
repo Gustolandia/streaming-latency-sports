@@ -14,6 +14,7 @@ import argparse
 import glob
 import json
 import os
+import shlex
 import subprocess
 import sys
 import time
@@ -46,44 +47,73 @@ def plan_for_feed(plans: List[str], feed: int, default_plan: str) -> str:
     return plans[(feed - 1) % len(plans)]
 
 
+def trial_command(backend: str, run_id: str, plan_csv: str, speedup: float, max_t_sim: int,
+                  platform_name: str = None):
+    """Interpreter + script invocation for one trial, chosen by platform.
+
+    Returns a subprocess argv whose LAST element is the command string that callers append
+    backend flags to. Windows uses the .ps1 runners, POSIX the .sh runners; both accept the
+    same -FLAG names so everything downstream is platform-independent.
+    """
+    platform_name = platform_name if platform_name is not None else os.name
+    if platform_name == 'nt':
+        return ['powershell', '-ExecutionPolicy', 'Bypass', '-NoProfile', '-Command',
+                f'cd "{os.getcwd()}"; .\\scripts\\run_{backend}_trial.ps1 '
+                f'{run_id} "{plan_csv}" {speedup} {max_t_sim}']
+    return ['bash', f'scripts/run_{backend}_trial.sh',
+            run_id, plan_csv, str(speedup), str(max_t_sim)]
+
+
+def _append(cmd, text):
+    """Append a fragment to the command, handling both invocation styles.
+
+    PowerShell gets one long -Command string; bash gets discrete argv entries. Keeping this
+    in one place is what lets run_trial build flags without caring which platform it is on.
+    """
+    if cmd[0] == 'powershell':
+        cmd[-1] += text
+    else:
+        # shlex, not split(): values like -PRODUCER_EXTRA "--acks all" must stay one argv entry.
+        cmd.extend(shlex.split(text))
+    return cmd
+
+
 def run_trial(run_id: str, plan_csv: str, backend: str, speedup: float, max_t_sim: int,
               bootstrap: str = "localhost:9092", redis_host: str = "localhost",
               redis_port: int = 6379, topic: str = None, stream: str = None,
               broker_count: int = 1, cluster_mode: bool = False,
-              producer_extra: str = "", trial_timeout: int = 300) -> Tuple[str, bool, str]:
+              producer_extra: str = "", trial_timeout: int = 300,
+              consumer_extra: str = "", redis_cluster_nodes: str = "") -> Tuple[str, bool, str]:
     """
     Run a single trial (producer + consumer) for a specific backend.
     Returns (run_id, success, error_message)
     """
-    script_map = {
-        'kafka': 'run_kafka_trial.ps1',
-        'redis': 'run_redis_trial.ps1'
-    }
-    
-    script = script_map.get(backend)
-    if not script:
+    if backend not in ('kafka', 'redis'):
         return run_id, False, f"Unknown backend: {backend}"
-    
-    # Build command
-    cmd = [
-        'powershell', '-ExecutionPolicy', 'Bypass', '-NoProfile', '-Command',
-        f'cd "{os.getcwd()}"; .\\scripts\\{script} {run_id} "{plan_csv}" {speedup} {max_t_sim}'
-    ]
-    
+
+    # The trial runners exist in two forms with identical flag names: PowerShell for the
+    # Windows rig and bash for the Linux cloud hosts. Only the interpreter differs, so the
+    # flag-appending code below is shared.
+    cmd = trial_command(backend, run_id, plan_csv, speedup, max_t_sim)
+
     if backend == 'kafka':
         if topic:
-            cmd[-1] += f' -TOPIC "{topic}"'
-        cmd[-1] += f' -BOOTSTRAP {bootstrap}'
-        cmd[-1] += f' -BROKER_COUNT {broker_count}'
+            _append(cmd, f' -TOPIC "{topic}"')
+        _append(cmd, f' -BOOTSTRAP {bootstrap}')
+        _append(cmd, f' -BROKER_COUNT {broker_count}')
         if producer_extra:
-            cmd[-1] += f' -PRODUCER_EXTRA "{producer_extra}"'
+            _append(cmd, f' -PRODUCER_EXTRA "{producer_extra}"')
     else:  # redis
-        cmd[-1] += f' -RedisHost {redis_host} -PORT {redis_port}'
+        _append(cmd, f' -RedisHost {redis_host} -PORT {redis_port}')
         if stream:
-            cmd[-1] += f' -STREAM "{stream}"'
+            _append(cmd, f' -STREAM "{stream}"')
         if cluster_mode:
-            cmd[-1] += ' -CLUSTER_MODE'
-        cmd[-1] += f' -NODE_COUNT {broker_count}'
+            _append(cmd, ' -CLUSTER_MODE')
+        if redis_cluster_nodes:
+            _append(cmd, f' -CLUSTER_NODES "{redis_cluster_nodes}"')
+        _append(cmd, f' -NODE_COUNT {broker_count}')
+        if consumer_extra:
+            _append(cmd, f' -CONSUMER_EXTRA "{consumer_extra}"')
     
     # Run the command
     try:
@@ -111,8 +141,10 @@ def main():
     parser = argparse.ArgumentParser(
         description='Run concurrent Kafka vs Redis streaming benchmarks'
     )
-    parser.add_argument('concurrency', type=int, choices=[1, 5, 10, 20],
-                        help='Number of concurrent feeds (1, 5, 10, 20)')
+    parser.add_argument('concurrency', type=int,
+                        help='Number of concurrent feeds. Unrestricted: the high-connection '
+                             'sweep needs N in the hundreds to test per-client overhead, which '
+                             'a fixed choice list would have silently forbidden.')
     parser.add_argument('plan_csv', type=str,
                         help='Path to the replay plan CSV file')
     parser.add_argument('reps', type=int, default=1,
@@ -133,12 +165,18 @@ def main():
                         help='Number of brokers/nodes (1 or 3)')
     parser.add_argument('--cluster-mode', action='store_true',
                         help='Use cluster configuration')
+    parser.add_argument('--redis-cluster-nodes', type=str, default='',
+                        help='host:port list for a genuinely distributed Redis Cluster; '
+                             'without it the legacy single-host 7000/7001/7002 layout is used.')
     parser.add_argument('--kafka-producer-extra', type=str, default='',
                         help='Extra args appended to the Kafka producer (e.g. "--max-inflight 64") '
                              'so its load generator is pipelined comparably to the Redis worker pool.')
     parser.add_argument('--trial-timeout', type=int, default=300,
                         help='Per-trial subprocess timeout in seconds. Raise it for true '
                              'real-time replays, where wall time equals the replayed window.')
+    parser.add_argument('--redis-consumer-extra', type=str, default='',
+                        help='Extra args appended to the Redis consumer (e.g. "--ack-batch 200") '
+                             'to test whether batching acknowledgements removes the RTT bound.')
     parser.add_argument('--plans-dir', type=str, default='',
                         help='Directory of per-match replay plans (searched for **/replay_plan.csv). '
                              'When set, each feed replays a DIFFERENT match instead of N copies of '
@@ -211,7 +249,9 @@ def main():
                     stream=redis_stream,
                     broker_count=args.broker_count,
                     cluster_mode=args.cluster_mode,
-                    trial_timeout=args.trial_timeout
+                    trial_timeout=args.trial_timeout,
+                    consumer_extra=args.redis_consumer_extra,
+                        redis_cluster_nodes=args.redis_cluster_nodes
                 ))
             
             # Wait for all to complete

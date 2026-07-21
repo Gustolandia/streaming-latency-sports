@@ -113,6 +113,28 @@ class TestKruskal:
         assert out.iloc[0]["p"] == 1.0
         assert not bool(out.iloc[0]["significant"])
 
+    def test_reports_median_trend_beside_pvalue(self):
+        # A significant p with a trivial effect must be distinguishable from a large one:
+        # the magnitude columns are what separate them.
+        df = pd.DataFrame(
+            [{"backend": "kafka", "n": n, "v": v}
+             for n, vals in ((1, (1.00, 1.01, 0.99)), (10, (1.00, 1.02, 1.01)))
+             for v in vals])
+        row = kruskal_across_n(df, "v", "n").iloc[0]
+        assert row["medians"] == "N=1:1; N=10:1.01"
+        assert row["median_first"] == pytest.approx(1.00)
+        assert row["median_last"] == pytest.approx(1.01)
+        assert row["ratio_last_first"] == pytest.approx(1.01)
+
+    def test_ratio_guards_zero_baseline(self):
+        df = pd.DataFrame(
+            [{"backend": "kafka", "n": n, "v": v}
+             for n, vals in ((1, (0.0, 0.0, 0.0)), (10, (5.0, 6.0, 7.0)))
+             for v in vals])
+        row = kruskal_across_n(df, "v", "n").iloc[0]
+        assert row["median_first"] == 0.0
+        assert np.isnan(row["ratio_last_first"])
+
 
 class TestMain:
     def test_end_to_end(self, temp_dir, capsys):

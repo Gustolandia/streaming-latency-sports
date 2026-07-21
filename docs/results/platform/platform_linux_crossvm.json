@@ -1,0 +1,50 @@
+{
+  "broker_rtt": {
+    "redis": {
+      "errors": 0,
+      "host": "10.0.1.214",
+      "max_ms": 2.5182489999906466,
+      "median_ms": 0.3025759999957245,
+      "min_ms": 0.2588300000070376,
+      "port": 6379,
+      "reachable": true,
+      "trials": 30
+    }
+  },
+  "platform": {
+    "machine": "x86_64",
+    "platform": "Linux-6.8.0-1057-oracle-x86_64-with-glibc2.35",
+    "processor": "x86_64",
+    "python_implementation": "CPython",
+    "python_version": "3.10.12",
+    "release": "6.8.0-1057-oracle",
+    "system": "Linux"
+  },
+  "redis_ping_rtt": {
+    "host": "10.0.1.214",
+    "implied_ceiling_msgs_per_s": 4177.065820112975,
+    "max_ms": 1.6906949999793142,
+    "median_ms": 0.23940250000009655,
+    "min_ms": 0.19663100005118395,
+    "port": 6379,
+    "reachable": true,
+    "trials": 120
+  },
+  "sleep_10ms": {
+    "max_ms": 10.117170999990321,
+    "median_ms": 10.09168649997605,
+    "min_ms": 10.077222999996138,
+    "overshoot_median_ms": 0.09168649997604895,
+    "requested_ms": 10.0,
+    "trials": 30
+  },
+  "sleep_1ms": {
+    "max_ms": 1.1668660000054842,
+    "median_ms": 1.074505500014311,
+    "min_ms": 1.053490000003876,
+    "overshoot_median_ms": 0.07450550001431108,
+    "requested_ms": 1.0,
+    "trials": 300
+  },
+  "timer_resolution_ns": 209.99999605919584
+}

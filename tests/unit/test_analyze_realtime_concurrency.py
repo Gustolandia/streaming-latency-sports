@@ -127,6 +127,15 @@ class TestCollect:
         df = collect(runs, speedup=None)
         assert len(df) == 2
 
+    def test_run_glob_narrows_to_one_sweep(self, temp_dir):
+        # two sweeps share speedup/max_t_sim; the glob must separate them
+        runs = temp_dir / "runs"
+        _write_run(runs, 5, "kafka", 1, 1, ts="20260721_100000")
+        _write_run(runs, 5, "kafka", 1, 1, ts="20260721_200000")
+        assert len(collect(runs, speedup=10)) == 2
+        narrowed = collect(runs, speedup=10, run_glob="concurrency_n*_20260721_2000*_feed*_rep*")
+        assert len(narrowed) == 1 and "200000" in narrowed.iloc[0]["run_id"]
+
     def test_min_max_t_sim_filter(self, temp_dir):
         runs = temp_dir / "runs"
         _write_run(runs, 5, "kafka", 1, 1, max_t_sim=9000)   # full-match -> kept

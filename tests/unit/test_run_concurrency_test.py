@@ -12,6 +12,25 @@ from unittest.mock import MagicMock, patch, call
 import pytest
 
 from scripts.run_concurrency_test import run_trial, main, resolve_plans, plan_for_feed
+import scripts.run_concurrency_test as rct
+
+
+def _cmdstr(cmd):
+    """Render a trial command as one comparable string on either platform.
+
+    run_trial builds a single PowerShell -Command string on Windows and discrete argv
+    entries on POSIX. Tests assert on flags, not on the invocation style, so normalise
+    the argv form back to the quoted string form (values containing spaces re-quoted).
+    """
+    if hasattr(cmd, "args"):          # a mock call object
+        cmd = cmd.args[0] if cmd.args else cmd.kwargs.get("args", [])
+    if isinstance(cmd, str):
+        return cmd
+    cmd = list(cmd)
+    if cmd and cmd[0] == "powershell":
+        return cmd[-1]
+    return " ".join(f'"{c}"' if " " in str(c) else str(c) for c in cmd)
+
 
 
 class TestDistinctMatchPlans:
@@ -286,12 +305,13 @@ class TestRunTrial:
             cmd = call_args[0][0]
             
             # cmd is a list, check that it contains expected parts
-            assert 'powershell' in cmd
-            assert '-ExecutionPolicy' in cmd
-            assert 'Bypass' in cmd
+            # Interpreter depends on platform: .ps1 on Windows, .sh on Linux CI.
+            assert cmd[0] in ('powershell', 'bash')
+            # (interpreter-specific flags such as -ExecutionPolicy/Bypass only
+            # exist on the PowerShell path; the shared assertion is the script)
             # The command string is in the last element
-            cmd_str = cmd[-1]
-            assert 'run_kafka_trial.ps1' in cmd_str
+            cmd_str = _cmdstr(mock_run.call_args[0][0])
+            assert 'run_kafka_trial' in cmd_str
             assert 'test_kafka' in cmd_str
             assert 'data/test.csv' in cmd_str
             assert '120' in cmd_str
@@ -319,10 +339,11 @@ class TestRunTrial:
             cmd = call_args[0][0]
             
             # cmd is a list, check that it contains expected parts
-            assert 'powershell' in cmd
+            # Interpreter depends on platform: .ps1 on Windows, .sh on Linux CI.
+            assert cmd[0] in ('powershell', 'bash')
             # The command string is in the last element
-            cmd_str = cmd[-1]
-            assert 'run_redis_trial.ps1' in cmd_str
+            cmd_str = _cmdstr(mock_run.call_args[0][0])
+            assert 'run_redis_trial' in cmd_str
             assert 'test_redis' in cmd_str
             assert 'localhost' in cmd_str
             assert '6379' in cmd_str
@@ -516,21 +537,23 @@ class TestMain:
                     # Each feed should have 2 calls (kafka + redis)
                     assert mock_run_trial.call_count == n * 2
 
-    def test_main_invalid_concurrency_choice(self, temp_dir):
-        """Test that main rejects invalid concurrency choices."""
-        test_args = [
-            'scripts/run_concurrency_test.py',
-            '3',  # Invalid - not in [1, 5, 10, 20]
-            'data/test.csv',
-            '1'
-        ]
-        
-        with patch('sys.argv', test_args):
-            with pytest.raises(SystemExit) as exc_info:
+    def test_main_accepts_non_listed_concurrency(self, temp_dir):
+        """N is deliberately unrestricted now.
+
+        It used to be choices=[1,5,10,20]; the high-connection sweep needs N in the hundreds
+        to test per-client overhead, and a fixed list would have rejected it at the CLI.
+        """
+        plan = temp_dir / "p.csv"
+        plan.write_text("event_id,t_emit_offset_s" + chr(10))
+        test_args = ['scripts/run_concurrency_test.py', '3', str(plan), '1']
+        with patch('sys.argv', test_args), patch(
+                'scripts.run_concurrency_test.run_trial',
+                return_value=('r', True, 'ok')):
+            try:
                 main()
-            
-            # Should exit with code 2 (argument error)
-            assert exc_info.value.code == 2
+            except SystemExit as e:
+                # exiting 0 is fine; a parser rejection would exit 2
+                assert e.code in (0, None), f"N=3 rejected by the CLI (exit {e.code})"
 
     def test_main_multiple_repetitions(self, temp_dir):
         """Test that main runs multiple repetitions."""
@@ -752,7 +775,8 @@ class TestBrokerCountAndClusterMode:
             assert result[1] is True
             # Verify broker_count was passed to command
             call_args = mock_run.call_args[0][0]
-            assert "-BROKER_COUNT 3" in str(call_args)
+            # PowerShell joins flags into one string; bash keeps them as argv entries.
+            assert "-BROKER_COUNT 3" in _cmdstr(call_args)
 
     def test_run_trial_with_cluster_mode(self, temp_dir):
         """Test run_trial with cluster_mode parameter for Redis."""
@@ -777,8 +801,8 @@ class TestBrokerCountAndClusterMode:
             assert result[1] is True
             # Verify cluster_mode was passed to command
             call_args = mock_run.call_args[0][0]
-            assert "-CLUSTER_MODE" in str(call_args)
-            assert "-NODE_COUNT 3" in str(call_args)
+            assert "-CLUSTER_MODE" in _cmdstr(call_args)
+            assert "-NODE_COUNT 3" in _cmdstr(call_args)
 
     def test_run_trial_producer_extra_kafka(self, temp_dir):
         """producer_extra is appended to the Kafka trial command."""
@@ -789,7 +813,7 @@ class TestBrokerCountAndClusterMode:
                 speedup=10, max_t_sim=600, bootstrap="localhost:19092",
                 topic="t", producer_extra="--max-inflight 64",
             )
-            cmd_str = str(mock_run.call_args[0][0])
+            cmd_str = _cmdstr(mock_run.call_args[0][0])
             assert '-PRODUCER_EXTRA "--max-inflight 64"' in cmd_str
 
     def test_run_trial_producer_extra_not_for_redis(self, temp_dir):
@@ -801,7 +825,7 @@ class TestBrokerCountAndClusterMode:
                 speedup=10, max_t_sim=600, redis_host="localhost", redis_port=16379,
                 stream="s", producer_extra="--max-inflight 64",
             )
-            cmd_str = str(mock_run.call_args[0][0])
+            cmd_str = _cmdstr(mock_run.call_args[0][0])
             assert 'PRODUCER_EXTRA' not in cmd_str
 
     def test_main_passes_kafka_producer_extra(self):
@@ -842,4 +866,103 @@ class TestBrokerCountAndClusterMode:
             assert result[1] is True
             # Verify default broker_count=1 was passed
             call_args = mock_run.call_args[0][0]
-            assert "-BROKER_COUNT 1" in str(call_args)
+            assert "-BROKER_COUNT 1" in _cmdstr(call_args)
+
+
+class TestRedisConsumerExtra:
+    """Passthrough for the ack-batching mitigation (tests hypothesis H5's prediction P4)."""
+
+    def test_consumer_extra_appended_for_redis(self, temp_dir):
+        with patch('scripts.run_concurrency_test.subprocess.run') as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+            run_trial(run_id="t", plan_csv="p.csv", backend="redis", speedup=1, max_t_sim=600,
+                      stream="s", consumer_extra="--ack-batch 200")
+            assert '-CONSUMER_EXTRA "--ack-batch 200"' in _cmdstr(mock_run.call_args[0][0])
+
+    def test_consumer_extra_not_used_for_kafka(self, temp_dir):
+        with patch('scripts.run_concurrency_test.subprocess.run') as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+            run_trial(run_id="t", plan_csv="p.csv", backend="kafka", speedup=1, max_t_sim=600,
+                      topic="t", consumer_extra="--ack-batch 200")
+            assert "CONSUMER_EXTRA" not in str(mock_run.call_args[0][0])
+
+    def test_main_passes_redis_consumer_extra(self):
+        test_args = ['scripts/run_concurrency_test.py', '1', 'data/test.csv', '1',
+                     '--redis-consumer-extra', '--ack-batch 200']
+        with patch('sys.argv', test_args):
+            with patch('scripts.run_concurrency_test.run_trial') as mock_run_trial:
+                mock_run_trial.return_value = ('t', True, 'ok')
+                try:
+                    main()
+                except SystemExit:
+                    pass
+                redis_calls = [c for c in mock_run_trial.call_args_list if c[0][2] == 'redis']
+                assert redis_calls
+                assert all(c[1].get('consumer_extra') == '--ack-batch 200' for c in redis_calls)
+
+
+class TestPlatformDispatch:
+    """The orchestrator must drive the Windows rig and the Linux cloud hosts identically."""
+
+    def test_windows_uses_powershell_ps1(self):
+        cmd = rct.trial_command("redis", "r1", "p.csv", 120, 600, platform_name="nt")
+        assert cmd[0] == "powershell"
+        assert "run_redis_trial.ps1" in cmd[-1]
+        assert "r1" in cmd[-1]
+
+    def test_posix_uses_bash_sh(self):
+        cmd = rct.trial_command("kafka", "r1", "p.csv", 10, 600, platform_name="posix")
+        assert cmd[0] == "bash"
+        assert cmd[1] == "scripts/run_kafka_trial.sh"
+        assert cmd[2:] == ["r1", "p.csv", "10", "600"]
+
+    def test_defaults_to_current_platform(self):
+        cmd = rct.trial_command("redis", "r", "p", 1, 2)
+        assert cmd[0] in ("powershell", "bash")
+
+    def test_append_powershell_concatenates(self):
+        cmd = ["powershell", "-Command", "base"]
+        rct._append(cmd, ' -PORT 6379')
+        assert cmd[-1] == "base -PORT 6379"
+
+    def test_append_posix_splits_into_argv(self):
+        cmd = ["bash", "s.sh", "r"]
+        rct._append(cmd, ' -PORT 6379')
+        assert cmd == ["bash", "s.sh", "r", "-PORT", "6379"]
+
+    def test_append_posix_keeps_quoted_value_as_one_arg(self):
+        # -CONSUMER_EXTRA "--ack-batch 200" must survive as a single argv entry, or the
+        # treatment silently fails to reach the consumer - exactly the P4 false-refutation bug.
+        cmd = ["bash", "s.sh"]
+        rct._append(cmd, ' -CONSUMER_EXTRA "--ack-batch 200"')
+        assert cmd == ["bash", "s.sh", "-CONSUMER_EXTRA", "--ack-batch 200"]
+
+    def test_unknown_backend_rejected(self):
+        rid, ok, msg = rct.run_trial("r", "p.csv", "rabbitmq", 1, 60)
+        assert ok is False and "Unknown backend" in msg
+
+
+class TestArbitraryConcurrency:
+    """N must not be restricted to a fixed list: the high-connection sweep needs hundreds."""
+
+    def _parser_action(self):
+        import argparse
+        parsed = {}
+        real = argparse.ArgumentParser.add_argument
+
+        def spy(self_, *a, **k):
+            if a and a[0] == "concurrency":
+                parsed.update(k)
+            return real(self_, *a, **k)
+
+        return spy, parsed
+
+    def test_concurrency_has_no_choices_restriction(self, monkeypatch):
+        import argparse
+        spy, parsed = self._parser_action()
+        monkeypatch.setattr(argparse.ArgumentParser, "add_argument", spy)
+        monkeypatch.setattr(sys, "argv", ["prog", "--help"])
+        with pytest.raises(SystemExit):
+            rct.main()
+        assert parsed.get("choices") is None, "N is restricted; N=200 would be rejected"
+        assert parsed.get("type") is int

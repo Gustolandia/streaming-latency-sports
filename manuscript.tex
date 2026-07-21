@@ -49,7 +49,7 @@ The study is also a cautionary account of measurement validity. Four design defe
 
 Our central finding is that the answer turns on one condition, and not the one the literature emphasises. When broker and consumer are \emph{co-located}, \kafka{} and \redis{} are statistically \emph{equivalent} --- not merely indistinguishable: two one-sided tests against a pre-specified one-broadcast-frame margin establish equivalence at every concurrency level tested ($\approx$10\,ms median \tti{}), and a goal's win probability is stale by $\approx$0.014 probability-seconds regardless of backend. Equivalence here is not an absence of architecture. Isolating broker transport from load-generator scheduling lag --- which supplies 53--78\% of end-to-end latency and hides the effect --- \redis{}'s single-threaded serialization is plainly visible, rising 34\% across concurrency levels ($p=6.7\times10^{-12}$, complete rank separation) while \kafka{} stays flat. It amounts to 0.34\,ms. The difference test rejects equality and the equivalence test establishes equivalence, on the same data, and both are right. Football event data is intrinsically low-rate (0.44 events per second per match), so a single \redis{} node serves the equivalent of thousands of simultaneous matches before its single-threaded serialization becomes visible. Under those conditions infrastructure choice is irrelevant to decision quality, contradicting the industry framing of a latency-decided ``2-second edge''.
 
-Introducing network latency overturns this --- but not in the way a product comparison would suggest. Injecting one-way delay identically at both brokers, \kafka{}'s latency tracks the delay (94\,ms at 50\,ms injected) whereas single-node \redis{} amplifies it by three orders of magnitude (75\,s at 50\,ms injected), and equivalence fails outright beyond $\approx$5\,ms: at 20\,ms the decision-staleness gap is a factor of 275 (0.058 vs.\ 15.97 probability-seconds). We trace the collapse to a \emph{round-trip-bound consumption pattern} rather than to \redis{} itself. The consumer acknowledges each message and waits for the reply, capping its drain rate near $1/\mathrm{RTT}$; once that ceiling falls below the arrival rate the consumer accumulates an unbounded backlog. The account makes a quantitative prediction --- a threshold at $\mathrm{RTT}\approx1/\lambda\approx19$\,ms --- which a fine delay sweep confirms, and we then test it by intervention: batching the acknowledgements, a one-line change, removes the effect entirely (10.5\,s\,$\rightarrow$\,34\,ms at 20\,ms delay; 75\,s\,$\rightarrow$\,85\,ms at 50\,ms) and restores statistical equivalence with \kafka{}. The practical guidance is therefore about design and placement, not brand: any client that awaits a reply per message is capped at $1/\mathrm{RTT}$, \kafka{}'s client is immune only because it already batches, and a co-located testbed prices every such round trip at zero. Methodologically the episode adds a fifth caution to the four defects above: our first attempt at this intervention silently failed to apply, yielding a null result indistinguishable from a genuine refutation.
+Introducing network latency overturns this --- but not in the way a product comparison would suggest. Injecting one-way delay identically at both brokers, \kafka{}'s latency tracks the delay (94\,ms at 50\,ms injected) whereas single-node \redis{} amplifies it by three orders of magnitude (75\,s at 50\,ms injected), and equivalence fails outright beyond $\approx$5\,ms: at 20\,ms the decision-staleness gap is a factor of 275 (0.058 vs.\ 15.97 probability-seconds). We trace the collapse to a \emph{round-trip-bound consumption pattern} rather than to \redis{} itself. The consumer acknowledges each message and waits for the reply, capping its drain rate near $1/\mathrm{RTT}$; once that ceiling falls below the arrival rate the consumer accumulates an unbounded backlog. The account makes a quantitative prediction --- a threshold at $\mathrm{RTT}\approx1/\lambda\approx19$\,ms --- which a fine delay sweep confirms, and we then test it by intervention: batching the acknowledgements, a one-line change, removes the effect entirely (10.5\,s\,$\rightarrow$\,34\,ms at 20\,ms delay; 75\,s\,$\rightarrow$\,85\,ms at 50\,ms) and restores statistical equivalence with \kafka{} --- on that testbed. A four-host replication on a real inter-VM network then reproduced the collapse but \emph{not} the repair (87.6\,s unbatched vs 92.4\,s batched, with the accumulating-backlog signature absent), so we report the mechanism as established where we could manipulate it and open where we could not. The practical guidance is therefore about design and placement, not brand: any client that awaits a reply per message is capped at $1/\mathrm{RTT}$, \kafka{}'s client is immune only because it already batches, and a co-located testbed prices every such round trip at zero. Methodologically the episode adds a fifth caution to the four defects above: our first attempt at this intervention silently failed to apply, yielding a null result indistinguishable from a genuine refutation.
 
 \end{abstract}
 
@@ -66,7 +66,7 @@ Two dominant technologies have emerged: Apache \kafka{} (originally developed at
 
 While numerous studies have compared these technologies, the literature lacks sports-specific evaluations. Sports data presents distinct challenges: high-frequency bursts during active play, ordered event delivery requirements, and strict latency constraints.
 
-\paragraph{Contributions.} This paper makes four contributions. (1)~We pose and answer, on open data, the question of \emph{when} streaming-infrastructure latency actually degrades an in-play football decision, by coupling measured event-delivery latency to a calibrated in-play win-probability model through the Age-of-Information lens---to our knowledge the first infrastructure~$\rightarrow$~decision-quality analysis in sports analytics. (2)~We provide a fair, artifact-free Apache \kafka{} vs.\ \redis{} Streams latency benchmark on the StatsBomb open dataset, with fully open load-generation code. (3)~We document four design defects---a process-relative clock, a saturating replay speed, an asymmetric load generator, and a concurrency axis that was covertly a throughput axis---each of which reversed the apparent winner, offering a reusable protocol for honest streaming benchmarks. (4)~We identify the condition that actually decides the question, and the mechanism behind it: with consumers co-located the two backends are statistically equivalent, but a \emph{round-trip-bound consumption pattern}---acknowledging each message and awaiting the reply---caps a consumer's drain rate near $1/\mathrm{RTT}$, so ordinary network latency turns that equivalence into a factor-of-275 gap in decision staleness. We confirm the mechanism by intervention: batching the acknowledgements removes the gap entirely and restores equivalence, showing that what matters is the consumption pattern and the deployment topology, not the choice of product.
+\paragraph{Contributions.} This paper makes four contributions. (1)~We pose and answer, on open data, the question of \emph{when} streaming-infrastructure latency actually degrades an in-play football decision, by coupling measured event-delivery latency to a calibrated in-play win-probability model through the Age-of-Information lens---to our knowledge the first infrastructure~$\rightarrow$~decision-quality analysis in sports analytics. (2)~We provide a fair, artifact-free Apache \kafka{} vs.\ \redis{} Streams latency benchmark on the StatsBomb open dataset, with fully open load-generation code. (3)~We document four design defects---a process-relative clock, a saturating replay speed, an asymmetric load generator, and a concurrency axis that was covertly a throughput axis---each of which reversed the apparent winner, offering a reusable protocol for honest streaming benchmarks. (4)~We identify the condition that actually decides the question, and the mechanism behind it: with consumers co-located the two backends are statistically equivalent, but a \emph{round-trip-bound consumption pattern}---acknowledging each message and awaiting the reply---caps a consumer's drain rate near $1/\mathrm{RTT}$, so ordinary network latency turns that equivalence into a factor-of-275 gap in decision staleness. We test the mechanism by intervention: batching the acknowledgements removes the gap entirely on the single-host testbed, though a multi-host replication reproduces the collapse without the repair, so the account is demonstrated in one environment and unresolved in the other. What the evidence supports throughout is that the consumption pattern and the deployment topology, not the choice of product, are the design variables.
 
 
 \subsection{Sports-Specific Latency Requirements}
@@ -510,7 +510,8 @@ We verify statistical assumptions for all tests:
 
 \paragraph{Multiple-comparison families.} We state the families explicitly, since Holm's
 correction is only interpretable relative to them. Each metric family is the set of per-$N$
-\kafka{}-vs-edis{} comparisons at a single metric within a single corpus: three tests
+\kafka{}-vs-
+edis{} comparisons at a single metric within a single corpus: three tests
 ($N\in\{1,5,10\}$) for 	ti{}, three for transport, and three for decision-staleness. The
 Kruskal--Wallis tests across $N$ are single omnibus tests per backend and are not corrected.
 Equivalence tests are not part of any Holm family: TOST is a separate, pre-specified
@@ -998,6 +999,71 @@ Delay & \kafka{} \tti{} & \redis{} \tti{} & \kafka{} staleness & \redis{} stalen
 \end{tabular}
 \end{table*}
 
+\subsection{Multi-Host Replication: What Survives a Real Network}
+\label{sec:cloud}
+Every result above comes from one Windows host whose timer quantises emission to
+$\approx$15.6~ms and whose container network path costs $\approx$1~ms
+(Section~\ref{sec:methodology}). To separate our findings from that platform we rebuilt the
+testbed on four cloud virtual machines (three brokers, one driver; Linux, real inter-VM
+network), pinned the client libraries to the same versions, and repeated the study. The
+platform floors fall away: a requested 1~ms sleep now takes $1.06$~ms rather than $15.6$~ms, and
+an established-connection round trip to the broker is $0.22$~ms rather than $0.46$~ms. A genuine
+two-machine network is thus \emph{faster} than the original ``co-located'' path, which is the
+sharpest available statement of how much a testbed can distort a benchmark.
+
+\paragraph{The serialization effect replicates, and is not \redis{}-specific.} With the timer
+floor removed, producer scheduling lag falls from 4.9--11.0~ms to 0.19--1.34~ms, so \tti{} at
+last measures delivery. Broker transport still scales with concurrency, and more steeply for
+\redis{}: $0.45 \rightarrow 0.62 \rightarrow 3.27$~ms across $N\in\{1,5,10\}$ (a factor of
+$7.3$, Kruskal--Wallis $p=3.2\times10^{-12}$) against \kafka{}'s $0.47 \rightarrow 0.90
+\rightarrow 1.63$~ms (a factor of $3.5$, $p=2.0\times10^{-10}$). Two things differ from the
+single-host result and we flag both. First, \kafka{} is \emph{not} flat here; its
+sub-millisecond scaling was simply hidden under the old 1~ms floor, so the single-host claim
+that only \redis{} degrades was an artefact of measurement resolution. Second, the direction is
+not monotone in the backend: at $N{=}5$ \redis{} is significantly \emph{faster} than \kafka{}
+($0.62$ vs $0.90$~ms), and only at $N{=}10$ is it slower ($3.27$ vs $1.63$~ms). The
+scale-dependent conclusion survives; a simple ``\redis{} serializes, \kafka{} does not'' reading
+does not. All three levels remain equivalent under TOST by both the Welch and bootstrap
+procedures, since every difference is under $4$~ms against a $40$~ms margin.
+
+\paragraph{The acknowledgement intervention does \emph{not} replicate.} This is the result we
+least expected and it bears directly on Section~\ref{sec:netem}. Injecting 20~ms of one-way
+delay on the real path reproduces the collapse in magnitude---\redis{} reaches
+$3.1\times10^{4}$~ms against \kafka{}'s $78$~ms---but batching the acknowledgements does not
+repair it: median \tti{} is $87.6$~s unbatched and $92.4$~s batched, with \kafka{} unchanged at
+$78$~ms in both arms as a control. The manipulation was verified rather than assumed: each
+consumer logs its effective setting, and the two arms record \texttt{ack\_batch=1} and
+\texttt{ack\_batch=200} across 15 runs each. We also tested and rejected the obvious
+instrumentation explanation, that \texttt{netem}'s default 1{,}000-packet queue was dropping
+packets and triggering retransmission backoff; raising the limit to 200{,}000 changed nothing.
+
+The diagnostic that distinguishes the two environments is the within-run growth ratio. On the
+single host the unbatched 20~ms condition grew by $2.25\times$ through the run---the
+accumulating-backlog signature that the round-trip-bound account predicts. On the multi-host
+testbed the ratio is $1.08$ unbatched and $1.00$ batched: latency is a large but \emph{stable}
+offset, not a growing queue. Whatever imposes $\approx$88~s here is therefore not the
+$1/\mathrm{RTT}$ drain ceiling, because that mechanism necessarily produces growth and
+necessarily yields to batching. We have not identified it, and we decline to guess.
+
+We therefore restate the status of P4 honestly. The intervention establishes the mechanism
+\emph{on the single-host testbed}, where prediction, threshold and repair all cohere. It does
+not generalise to our multi-host configuration, where the failure is real, larger, and
+differently shaped. The round-trip-bound account should be read as demonstrated in one
+environment and open in the other, not as a settled explanation of network-induced collapse.
+
+\paragraph{Connections are not the constraint, and the cluster arm is finally reportable.}
+Holding the per-feed rate at true real time and varying only the number of concurrent
+connections, broker transport stays near 1~ms for both backends at $N=10$, $25$ and $50$
+(\kafka{} $1.01/0.97/0.73$~ms; \redis{} $0.84/0.65/0.74$~ms): there is no per-client cliff in
+the range a league could produce. At $N{=}100$ the measurement breaks down rather than the
+brokers---\kafka{}'s median transport is reported as $-6.4$~ms, an impossibility that can only
+mean the driver's timestamps are no longer trustworthy under 400 concurrent processes---so we
+report $N{\leq}50$ and discard $N{=}100$. This bounds, but does not vindicate, the
+match-equivalent extrapolation of Table~\ref{tab:regime}. Finally, with one broker node per host
+the 3-node cluster is no longer confounded by co-location: \redis{} Cluster delivers $1.65$~ms
+median \tti{} ($0.84$~ms transport) and \kafka{} $14.1$~ms ($1.05$~ms transport) at $N{=}5$,
+both comfortably inside every budget in Table~\ref{tab:latency_requirements}.
+
 \subsection{Supporting: Consistency--Latency Trade-off (H31, H32)}
 
 Stronger durability guarantees cost latency, as hypothesised. For \kafka{},
@@ -1188,8 +1254,13 @@ consumer that acknowledges each message and waits for the reply is capped at $1/
 when that ceiling drops below the arrival rate---at $\mathrm{RTT}\approx1/\lambda\approx19$~ms
 under our conditions, a threshold a fine delay sweep confirms---it accumulates a backlog that
 grows for as long as the match lasts. Batching those acknowledgements, a single line, recovers
-factors of $307$ and $882$ and restores equivalence with \kafka{}. The decisive evidence is
-thus an intervention, not a comparison.
+factors of $307$ and $882$ and restores equivalence with \kafka{}---on that testbed. On a
+multi-host replication with a genuine inter-VM network the collapse recurs but the repair does
+not, and the accumulating-backlog signature the account depends on is absent
+(Section~
+ef{sec:cloud}). The mechanism is therefore demonstrated where we could manipulate it
+and unresolved where we could not, which is a weaker claim than we set out to make and the one
+the data supports.
 
 By translating measured delivery latency into win-probability staleness through the
 Age-of-Information lens, we provide what is, to our knowledge, the first measured account of

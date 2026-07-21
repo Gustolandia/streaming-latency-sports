@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Target Journal: JSA](https://img.shields.io/badge/Target_Journal-Journal_of_Sports_Analytics-orange.svg)](https://www.degruyter.com/journal/key/jsa/html)
-[![Tests](https://img.shields.io/badge/tests-895_passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1044_passing-brightgreen.svg)]()
 [![Coverage](https://img.shields.io/badge/branch_coverage-%E2%89%A595%25-brightgreen.svg)]()
 [![StatsBomb Data](https://img.shields.io/badge/StatsBomb_Data-CC_BY--NC_4.0-blue.svg)](https://github.com/statsbomb/open-data)
 

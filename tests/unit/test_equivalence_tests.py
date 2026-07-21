@@ -14,6 +14,7 @@ from equivalence_tests import (
     tost,
     equivalence_by_n,
     main,
+    bootstrap_tost,
 )
 
 
@@ -114,3 +115,73 @@ class TestMain:
         csv = temp_dir / "thin.csv"
         pd.DataFrame({"backend": ["kafka", "redis"], "n": [9, 9], "v": [1.0, 1.1]}).to_csv(csv, index=False)
         assert main(["--by-run", str(csv), "--value-col", "v", "--n-col", "n"]) == 1
+
+
+class TestBootstrapTost:
+    def test_identical_samples_are_equivalent(self):
+        a = [10.0, 11.0, 10.5, 9.5, 10.2] * 4
+        r = bootstrap_tost(a, a, margin=40.0, n_boot=500)
+        assert r["boot_equivalent"] is True
+        assert r["boot_p_tost"] == 0.0
+        assert r["boot_ci90_lo"] <= 0.0 <= r["boot_ci90_hi"]
+
+    def test_far_apart_samples_not_equivalent(self):
+        a = [10.0, 11.0, 9.0] * 5
+        b = [500.0, 510.0, 490.0] * 5
+        r = bootstrap_tost(a, b, margin=40.0, n_boot=500)
+        assert r["boot_equivalent"] is False
+        assert r["boot_p_tost"] > 0.9
+
+    def test_is_deterministic_under_seed(self):
+        a = [1.0, 5.0, 2.0, 8.0, 3.0]; b = [2.0, 4.0, 3.0, 7.0, 2.5]
+        r1 = bootstrap_tost(a, b, 40.0, n_boot=300, seed=7)
+        r2 = bootstrap_tost(a, b, 40.0, n_boot=300, seed=7)
+        assert r1 == r2
+
+    def test_skew_can_diverge_from_welch(self):
+        # A heavy right tail is exactly where a normal-theory interval is least trustworthy;
+        # both must still return a well-formed verdict.
+        a = [1.0] * 19 + [1000.0]
+        b = [1.0] * 20
+        w = tost(a, b, margin=40.0)
+        r = bootstrap_tost(a, b, margin=40.0, n_boot=800)
+        assert isinstance(w["equivalent"], bool) and isinstance(r["boot_equivalent"], bool)
+
+    def test_reported_side_by_side_with_agreement_flag(self):
+        df = pd.DataFrame([{"backend": bk, "n": 5, "v": v}
+                           for bk, vals in (("kafka", [10, 11, 12, 10, 11]),
+                                            ("redis", [10, 11, 12, 10, 11]))
+                           for v in vals])
+        out = equivalence_by_n(df, "v", "n", 40.0, n_boot=300)
+        assert bool(out.iloc[0]["methods_agree"]) is True
+        for c in ("boot_ci90_lo", "boot_ci90_hi", "boot_p_tost", "boot_equivalent"):
+            assert c in out.columns
+
+    def test_small_cell_is_skipped(self):
+        # one run per backend cannot support a variance estimate, so the cell is dropped
+        df = pd.DataFrame([{"backend": "kafka", "n": 1, "v": 1.0},
+                           {"backend": "redis", "n": 1, "v": 2.0},
+                           {"backend": "kafka", "n": 5, "v": 1.0},
+                           {"backend": "kafka", "n": 5, "v": 1.5},
+                           {"backend": "redis", "n": 5, "v": 1.2},
+                           {"backend": "redis", "n": 5, "v": 1.4}])
+        out = equivalence_by_n(df, "v", "n", 40.0, n_boot=100)
+        assert list(out["n"]) == [5]
+
+    def test_main_reports_method_disagreement(self, temp_dir, capsys, monkeypatch):
+        import equivalence_tests as et
+        csv = temp_dir / "by_run.csv"
+        # Welch will call these equivalent (diff ~1 ms against a 40 ms margin); the
+        # bootstrap is mocked to disagree, which is the path under test.
+        pd.DataFrame([{"backend": bk, "n": 5, "v": v}
+                      for bk, vals in (("kafka", [10.0, 10.5, 9.5, 10.2, 10.1]),
+                                       ("redis", [11.0, 11.5, 10.5, 11.2, 11.1]))
+                      for v in vals]).to_csv(csv, index=False)
+        monkeypatch.setattr(et, "bootstrap_tost",
+                            lambda *a, **k: {"boot_diff": 0.0, "boot_ci90_lo": -1.0,
+                                             "boot_ci90_hi": 1.0, "boot_p_tost": 0.0,
+                                             "boot_equivalent": False})
+        rc = et.main(["--by-run", str(csv), "--value-col", "v", "--margin", "40",
+                      "--out", str(temp_dir / "eq"), "--n-boot", "100"])
+        assert rc == 0
+        assert "disagree" in capsys.readouterr().out

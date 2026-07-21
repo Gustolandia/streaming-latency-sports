@@ -237,21 +237,37 @@ drain rate from RTT. Predictions: (P1) instability when λ ≳ 1/RTT — at λ�
 **RTT_crit ≈ 19 ms**; (P2) below it latency is *flat* across a run, above it it *grows*
 (backlog); (P3) Kafka never grows; (P4) the threshold scales inversely with arrival rate.
 
-**P1–P3 confirmed** ([`docs/results/backlog/`](docs/results/backlog)) — last-quartile ÷
-first-quartile latency within each run:
+**All four predictions confirmed.** The proximate cause is one line: the consumer calls `XACK`
+**per message** and waits for the reply, so even a 200-entry read is followed by 200 sequential
+round trips.
 
-| delay | Kafka growth | Redis growth |
-|---:|---:|---:|
-| 0 ms | 0.88 | 0.91 |
-| 5 ms | 0.90 | 0.83 |
-| 20 ms | 0.92 | **2.25** |
-| 50 ms | 0.76 | **5.59** |
+*P1 — the knee sits where 1/RTT crosses λ≈53 ev/s (~19 ms)* — fine sweep
+([`docs/results/backlog/`](docs/results/backlog)), within-run latency growth:
 
-Kafka is flat everywhere; Redis is flat until the transition falls between 5 and 20 ms —
-bracketing the predicted ~19 ms. So the failure is **queue instability, not a per-event cost**.
-That also means the Redis numbers are **lower bounds set by our ~70 s replay**: at 50 ms the
-final quartile had already reached 127 s and was *still rising*, so a full-length match would
-diverge further. It is not a fixed penalty you can budget for.
+| RTT | ceiling | vs λ | Kafka | Redis |
+|---:|---:|:--|---:|---:|
+| 8 ms | 125/s | under | 0.75 | 0.73 |
+| 12 ms | 83/s | under | 0.57 | 0.87 |
+| 16 ms | 62/s | under | 0.34 | **1.90** |
+| 19 ms | 53/s | break-even | 0.22 | **2.20** |
+| 24 ms | 42/s | over | 0.17 | **3.47** |
+| 30 ms | 33/s | over | 0.16 | **4.37** |
+
+*P2/P3 — under overload latency **grows** through the run (backlog), and Kafka never does.*
+So the Redis figures are **lower bounds set by our ~70 s replay**: at 50 ms the final quartile
+had already reached 127 s and was *still rising*.
+
+*P4 (the decisive intervention) — batch the acks and the collapse disappears:*
+
+| delay | Kafka | Redis (ack per msg) | Redis (ack batched) | equivalent to Kafka? |
+|---:|---:|---:|---:|:--|
+| 20 ms | 44 ms | 10,525 ms | **34 ms** (307×) | ✅ *p*=4×10⁻¹⁹ |
+| 50 ms | 94 ms | 74,962 ms | **85 ms** (882×) | ✅ *p*=1×10⁻¹⁶ |
+
+**So this is not "Kafka beats Redis over a network."** It is a *consumption pattern* that is
+round-trip bound — free on loopback, catastrophic at 20 ms, and **fixed by one line**. Kafka is
+immune only because its client already batches (prefetch + timed offset commits). Guidance:
+**batch your acknowledgements, and benchmark with a realistic RTT.**
 
 **So the headline is conditional:** co-locate consumers and the backends are equivalent and
 decision-irrelevant; put a network hop in between and Kafka is strongly preferable, because by

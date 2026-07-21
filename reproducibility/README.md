@@ -52,7 +52,24 @@ python scripts/decision_staleness.py --pattern 'concurrency_n*' --min-max-t-sim 
 python scripts/wp_calibration.py --events-dir EV --out docs/results/win_probability                                        # RPS + ECE
 python scripts/fair_statistics.py --by-run docs/results/realtime_concurrency/realtime_concurrency_by_run.csv --value-col tti_p50 --config single --label tti_windowed_single --out docs/results/fair_statistics
 python scripts/make_fair_figures.py                                                                                        # figures
+python scripts/make_worked_example.py --events-dir EV                                                                      # worked example + figure
+python scripts/equivalence_tests.py --by-run docs/results/realtime_concurrency_distinct/realtime_concurrency_by_run.csv --value-col tti_p50 --margin 40 --config single --label tti_distinct --out docs/results/equivalence
+python scripts/equivalence_tests.py --by-run docs/results/decision_staleness_distinct/decision_staleness_by_run.csv --value-col decision_staleness_prob_s --n-col n_concurrency --margin 0.04 --config single --label ds_distinct --out docs/results/equivalence
+python scripts/wp_sensitivity.py --pattern 'concurrency_n*' --min-max-t-sim 9000 --events-dir EV --out docs/results/wp_sensitivity
 python scripts/generate_manifest.py                                                                                        # refresh MANIFEST.json
+```
+
+### Distinct-match, throughput and real-time protocols
+
+```bash
+PLANS=data/processed/replay_plans/<sha>          # contains match_*/replay_plan.csv
+# distinct matches: each feed carries a DIFFERENT real match (--speedup 1 cancels nothing;
+# the per-match plans already bake in 120x)
+python scripts/run_concurrency_test.py 10 "$FALLBACK" 3 --plans-dir "$PLANS" --speedup 1 --max-t-sim 9000 ...
+# throughput sweep: fix N, vary speedup to sweep aggregate events/second
+for S in 1 2 4 8 16; do python scripts/run_concurrency_test.py 10 "$FALLBACK" 3 --plans-dir "$PLANS" --speedup $S --max-t-sim 9000 ... ; done
+# TRUE real-time: 1/120 cancels the plan's baked 120x (600s of match clock = 10 min wall)
+python scripts/run_concurrency_test.py 5 "$FALLBACK" 2 --plans-dir "$PLANS" --speedup 0.008333 --max-t-sim 600 ...
 ```
 
 ## Zenodo archival (needs your Zenodo account token)

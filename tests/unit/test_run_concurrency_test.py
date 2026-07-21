@@ -843,3 +843,35 @@ class TestBrokerCountAndClusterMode:
             # Verify default broker_count=1 was passed
             call_args = mock_run.call_args[0][0]
             assert "-BROKER_COUNT 1" in str(call_args)
+
+
+class TestRedisConsumerExtra:
+    """Passthrough for the ack-batching mitigation (tests hypothesis H5's prediction P4)."""
+
+    def test_consumer_extra_appended_for_redis(self, temp_dir):
+        with patch('scripts.run_concurrency_test.subprocess.run') as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+            run_trial(run_id="t", plan_csv="p.csv", backend="redis", speedup=1, max_t_sim=600,
+                      stream="s", consumer_extra="--ack-batch 200")
+            assert '-CONSUMER_EXTRA "--ack-batch 200"' in str(mock_run.call_args[0][0])
+
+    def test_consumer_extra_not_used_for_kafka(self, temp_dir):
+        with patch('scripts.run_concurrency_test.subprocess.run') as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+            run_trial(run_id="t", plan_csv="p.csv", backend="kafka", speedup=1, max_t_sim=600,
+                      topic="t", consumer_extra="--ack-batch 200")
+            assert "CONSUMER_EXTRA" not in str(mock_run.call_args[0][0])
+
+    def test_main_passes_redis_consumer_extra(self):
+        test_args = ['scripts/run_concurrency_test.py', '1', 'data/test.csv', '1',
+                     '--redis-consumer-extra', '--ack-batch 200']
+        with patch('sys.argv', test_args):
+            with patch('scripts.run_concurrency_test.run_trial') as mock_run_trial:
+                mock_run_trial.return_value = ('t', True, 'ok')
+                try:
+                    main()
+                except SystemExit:
+                    pass
+                redis_calls = [c for c in mock_run_trial.call_args_list if c[0][2] == 'redis']
+                assert redis_calls
+                assert all(c[1].get('consumer_extra') == '--ack-batch 200' for c in redis_calls)

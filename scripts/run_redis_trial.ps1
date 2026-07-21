@@ -12,6 +12,7 @@ param(
     [int]$PORT = 6379,
     [string]$STREAM = "sb:events:$RUN_ID",
     [string]$GROUP = "sb-group:$RUN_ID",
+    [string]$CONSUMER_EXTRA = "",
     [switch]$CLUSTER_MODE = $false,
     [int]$NODE_COUNT = 1,
     [string]$PRODUCER_EXTRA = "",
@@ -96,6 +97,10 @@ if ($CLUSTER_MODE -or $NODE_COUNT -eq 3) {
 }
 if ($NODE_COUNT -ne 1) {
     $consumerCmd += " --node-count $NODE_COUNT"
+}
+if ($CONSUMER_EXTRA) {
+    # e.g. "--ack-batch 200": lets a caller change the consumer's round-trip behaviour
+    $consumerCmd += " $CONSUMER_EXTRA"
 }
 if ($env:REDIS_CONSUMER_OPTS) {
     $consumerCmd = "$env:REDIS_CONSUMER_OPTS $consumerCmd"

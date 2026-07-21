@@ -1,5 +1,5 @@
 {
-  "git_commit": "1535f31d8fef636ea7846cb6a8c1820f5c0545db",
+  "git_commit": "be8e3829c157aa6ac09dd1aa7dda90ca1d605dd6",
   "generated": "2026-07-21",
   "environment": "see docs/infrastructure.md",
   "protocol": {
@@ -15,9 +15,10 @@
     "win_probability": "Skellam proxy; RPS ~= 0.24, ECE = 0.054 over 3239 states (scripts/wp_calibration.py)",
     "dataset": "StatsBomb open data, 1. Bundesliga 2023/24 (comp 9, season 281), 34 matches; re-fetch via scripts/fetch_statsbomb_events.sh"
   },
-  "n_code_files": 46,
+  "n_code_files": 47,
   "code_sha256": {
     "scripts/analyze_actionability.py": "c7de98bcc57687f31c0d8eed75fa1ab22a4ec5189c3ceb990d5566796952d280",
+    "scripts/analyze_backlog.py": "b373b3c30eeddce68f66235ee00fbf11c09bc2ea37e28e99ba93cc0c667e4e08",
     "scripts/analyze_batches_1_2_3.py": "6f867925b786202c8eaa08fb0e31fa84b25532dc30518433719ebb1825f6a373",
     "scripts/analyze_concurrency_sweep.py": "0be805271a3fcbc73ca1c3650ca85ba01ecde90f0df5cdc2b0d3d977efd915a7",
     "scripts/analyze_protocol_overhead.py": "5cc7e37feaafa7b49f1c5393c4ffdd344fca91894e86a0f44b9225857756781b",

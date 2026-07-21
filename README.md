@@ -228,6 +228,31 @@ bound**, so each added millisecond is multiplied across thousands of sequential 
 Kafka amortises it across batched fetches. **A loopback benchmark cannot see this** — which is
 exactly why we ran it.
 
+**The mechanism, stated as a testable hypothesis (H5 in the paper).** The two clients consume
+differently: Redis's `XREADGROUP` is strictly request→response and returns as soon as *any*
+entry exists, so at realistic rates it fetches ~1 event per round trip regardless of its
+`COUNT=200` ceiling — a drain ceiling of **~1/RTT events/s**. Kafka's `poll()` serves from a
+**prefetched buffer** filled by pipelined fetches against a long-polling broker, decoupling
+drain rate from RTT. Predictions: (P1) instability when λ ≳ 1/RTT — at λ≈53 ev/s/feed that is
+**RTT_crit ≈ 19 ms**; (P2) below it latency is *flat* across a run, above it it *grows*
+(backlog); (P3) Kafka never grows; (P4) the threshold scales inversely with arrival rate.
+
+**P1–P3 confirmed** ([`docs/results/backlog/`](docs/results/backlog)) — last-quartile ÷
+first-quartile latency within each run:
+
+| delay | Kafka growth | Redis growth |
+|---:|---:|---:|
+| 0 ms | 0.88 | 0.91 |
+| 5 ms | 0.90 | 0.83 |
+| 20 ms | 0.92 | **2.25** |
+| 50 ms | 0.76 | **5.59** |
+
+Kafka is flat everywhere; Redis is flat until the transition falls between 5 and 20 ms —
+bracketing the predicted ~19 ms. So the failure is **queue instability, not a per-event cost**.
+That also means the Redis numbers are **lower bounds set by our ~70 s replay**: at 50 ms the
+final quartile had already reached 127 s and was *still rising*, so a full-length match would
+diverge further. It is not a fixed penalty you can budget for.
+
 **So the headline is conditional:** co-locate consumers and the backends are equivalent and
 decision-irrelevant; put a network hop in between and Kafka is strongly preferable, because by
 20 ms Redis imposes **275× more decision-staleness** — enough to corrupt an in-play decision.

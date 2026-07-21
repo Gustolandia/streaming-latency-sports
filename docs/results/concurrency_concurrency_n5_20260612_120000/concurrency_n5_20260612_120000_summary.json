@@ -2,6 +2,8 @@
   "concurrency": 5,
   "reps": 1,
   "plan_csv": "data/test.csv",
+  "plans_dir": "",
+  "distinct_match_plans": [],
   "speedup": 120,
   "max_t_sim": 600,
   "prefix": "concurrency_n5_20260612_120000",
@@ -14,5 +16,6 @@
   "redis_host": "localhost",
   "redis_port": 6379,
   "broker_count": 1,
-  "cluster_mode": false
+  "cluster_mode": false,
+  "trial_timeout": 300
 }

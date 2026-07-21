@@ -181,13 +181,19 @@ $\lambda \lesssim 1/\mathrm{RTT}$; above that threshold its consumer cannot drai
 events arrive and latency is governed by an accumulating backlog rather than by the delay
 itself, whereas \kafka{} remains stable at all tested delays.
 \end{description}
-\noindent This yields four falsifiable predictions. (P1)~A critical round-trip time near
-$1/\lambda$: at our $\lambda \approx 53$ events/s per feed, $\mathrm{RTT}_{\text{crit}} \approx
-19$~ms. (P2)~Below it, per-event latency is \emph{flat} across a run; above it, latency
-\emph{grows} as the run proceeds. (P3)~\kafka{} shows no such growth at any tested delay.
-(P4)~The threshold should scale inversely with arrival rate, and raising the events retrieved
-per round trip should restore stability at a given RTT. We test P1--P3 in
-Section~\ref{sec:netem}; P4 is left as the sharpest route to falsifying the account.
+\noindent The proximate cause in our implementation is an acknowledgement issued per message:
+the consumer calls \texttt{XACK} for each entry and waits for the reply before continuing, so
+even a read that returns two hundred entries is followed by two hundred sequential round trips.
+This is the idiomatic pattern in client tutorials, and on loopback it is free.
+
+This yields four falsifiable predictions. (P1)~A critical round-trip time near $1/\lambda$: at
+our $\lambda \approx 53$ events/s per feed, $\mathrm{RTT}_{\text{crit}} \approx 19$~ms.
+(P2)~Below it, per-event latency is \emph{flat} across a run; above it, latency \emph{grows} as
+the run proceeds. (P3)~\kafka{} shows no such growth at any tested delay. (P4)~Amortising the
+acknowledgements over many messages should remove the bound entirely and restore parity, since
+it is the only per-event round trip in the loop. All four are tested in
+Section~\ref{sec:netem}; P4 is the decisive one, because it is an intervention rather than an
+observation---if batching the acknowledgements does not help, the account is wrong.
 
 \paragraph{Statistical Framework}
 All hypotheses are tested using the framework in Section~\ref{sec:stat_methods}: Holm--Bonferroni correction for multiple comparisons (Family-Wise Error Rate at $\alpha=0.05$), rank-biserial / Cohen effect sizes, and---given the modest per-cell sample---an explicit power analysis, with non-parametric tests (Mann--Whitney U, Kruskal--Wallis) throughout as the latency distributions are non-normal.
@@ -551,8 +557,73 @@ latency is set by the backlog, which keeps growing while the feed runs, so the v
 are \emph{lower bounds fixed by our replay length}: our runs compress a match into roughly
 seventy seconds, and by the final quartile at 50~ms delay latency had already reached
 127~seconds and was still rising. A full-length live match would accumulate a proportionally
-larger backlog. The practical implication is that the failure is not a fixed penalty one can
-budget for but an unbounded divergence that worsens for as long as the match lasts.
+larger backlog. The failure is not a fixed penalty one can budget for but an unbounded
+divergence that worsens for as long as the match lasts.
+
+\paragraph{Locating the threshold (P1).} A coarse grid cannot distinguish a threshold from a
+gradual trend, so we swept the delay finely across the predicted crossing point
+(Table~\ref{tab:knee}). The prediction is quantitative: \redis{}'s ceiling is $1/\mathrm{RTT}$
+acknowledgement round trips per second, which falls below the arrival rate
+$\lambda \approx 53$~events/s at $\mathrm{RTT} \approx 19$~ms. Observed growth is flat at 8 and
+12~ms (0.73, 0.87), turns at 16~ms (1.90), and rises monotonically through 19, 24 and 30~ms
+(2.20, 3.47, 4.37). The knee therefore sits between 12 and 19~ms, bracketing the predicted
+value. \kafka{} declines throughout (0.75 down to 0.16) as start-up costs amortise, never
+entering the regime at all.
+
+\begin{table}[htbp]
+\centering
+\caption{Fine sweep across the predicted crossing point. ``Ceiling'' is $1/\mathrm{RTT}$
+acknowledgement round trips per second; the arrival rate is $\lambda\approx53$~events/s per
+feed. Growth is the within-run latency ratio of Table~\ref{tab:backlog}.}
+\label{tab:knee}
+\begin{tabular}{rrcrr}
+\toprule
+RTT & Ceiling & vs.\ $\lambda$ & \kafka{} growth & \redis{} growth \\
+\midrule
+8~ms  & 125/s & under & 0.75 & 0.73 \\
+12~ms &  83/s & under & 0.57 & 0.87 \\
+16~ms &  62/s & under & 0.34 & 1.90 \\
+19~ms &  53/s & \emph{break-even} & 0.22 & 2.20 \\
+24~ms &  42/s & over  & 0.17 & 3.47 \\
+30~ms &  33/s & over  & 0.16 & 4.37 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{The decisive test (P4): the failure is an implementation choice, not a technology.}
+P1--P3 are observational and consistent with the account, but only an intervention can
+establish it. We therefore changed one thing---acknowledging in batches of two hundred rather
+than one at a time---and repeated the two delays at which \redis{} had collapsed, holding
+everything else fixed. The effect is unambiguous (Table~\ref{tab:ackbatch}): median \tti{}
+falls from 10.5~seconds to 34~milliseconds at 20~ms delay and from 75~seconds to
+85~milliseconds at 50~ms, improvements of $307\times$ and $882\times$. The within-run growth
+ratio flips from divergence to stability (2.25~$\rightarrow$~0.49 and
+5.59~$\rightarrow$~0.25), and TOST re-establishes equivalence with \kafka{} at both delays
+($p=4\times10^{-19}$ and $1\times10^{-16}$).
+
+\begin{table}[htbp]
+\centering
+\caption{Intervention: batching acknowledgements at the delays where \redis{} had collapsed.
+One line of consumer code separates the two \redis{} columns.}
+\label{tab:ackbatch}
+\begin{tabular}{rrrrc}
+\toprule
+Delay & \kafka{} & \redis{} (ack per message) & \redis{} (ack batched) & Equivalent to \kafka{} \\
+\midrule
+20~ms & 44~ms & 10{,}525~ms & \textbf{34~ms}  & yes ($p=4\times10^{-19}$) \\
+50~ms & 94~ms & 74{,}962~ms & \textbf{85~ms}  & yes ($p=1\times10^{-16}$) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This reframes the result, and in our view improves it. What network latency exposes is not a
+deficiency of \redis{} Streams but a property of a \emph{consumption pattern}: any client that
+waits for a reply per message is capped near $1/\mathrm{RTT}$, exactly as the \redis{}
+documentation warns when it recommends pipelining. \kafka{} is not immune by virtue of being
+\kafka{}; it is immune because its client already batches---prefetching records and committing
+offsets on a timer---so no per-record round trip exists to be exposed. The practical statement
+is therefore about design rather than product: acknowledge in batches, and measure with a
+realistic RTT, because a co-located testbed prices every per-message round trip at zero.
 
 The consequence for equivalence is decisive. TOST still establishes equivalence at 0~ms
 ($p=6\times10^{-21}$) and, marginally, at 5~ms, but fails outright at 20 and 50~ms. Translated
@@ -834,8 +905,11 @@ seconds of decision staleness. The methodological
 message is twofold: cross-process streaming benchmarks demand a shared clock, a non-saturating
 load generator and symmetrically configured clients; a concurrency axis that is secretly a
 throughput axis will manufacture architectural differences the target domain never encounters;
-and a co-located testbed will conceal the one difference that matters most, because the cost of
-a round-trip-bound design is zero until the round trip is real.
+a co-located testbed will conceal the one difference that matters most, because the cost of a
+round-trip-bound design is zero until the round trip is real; and an intervention whose
+treatment silently fails to apply produces a null result indistinguishable from a genuine
+refutation---our first attempt at the batching experiment did exactly that, and was caught only
+by deliberately passing an invalid argument to confirm the manipulation had reached the client.
 
 \section*{Data and Code Availability}
 All code, replay plans, aggregated results and the analysis pipeline are openly available at

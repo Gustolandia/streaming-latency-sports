@@ -50,7 +50,8 @@ def run_trial(run_id: str, plan_csv: str, backend: str, speedup: float, max_t_si
               bootstrap: str = "localhost:9092", redis_host: str = "localhost",
               redis_port: int = 6379, topic: str = None, stream: str = None,
               broker_count: int = 1, cluster_mode: bool = False,
-              producer_extra: str = "", trial_timeout: int = 300) -> Tuple[str, bool, str]:
+              producer_extra: str = "", trial_timeout: int = 300,
+              consumer_extra: str = "") -> Tuple[str, bool, str]:
     """
     Run a single trial (producer + consumer) for a specific backend.
     Returns (run_id, success, error_message)
@@ -84,6 +85,8 @@ def run_trial(run_id: str, plan_csv: str, backend: str, speedup: float, max_t_si
         if cluster_mode:
             cmd[-1] += ' -CLUSTER_MODE'
         cmd[-1] += f' -NODE_COUNT {broker_count}'
+        if consumer_extra:
+            cmd[-1] += f' -CONSUMER_EXTRA "{consumer_extra}"'
     
     # Run the command
     try:
@@ -139,6 +142,9 @@ def main():
     parser.add_argument('--trial-timeout', type=int, default=300,
                         help='Per-trial subprocess timeout in seconds. Raise it for true '
                              'real-time replays, where wall time equals the replayed window.')
+    parser.add_argument('--redis-consumer-extra', type=str, default='',
+                        help='Extra args appended to the Redis consumer (e.g. "--ack-batch 200") '
+                             'to test whether batching acknowledgements removes the RTT bound.')
     parser.add_argument('--plans-dir', type=str, default='',
                         help='Directory of per-match replay plans (searched for **/replay_plan.csv). '
                              'When set, each feed replays a DIFFERENT match instead of N copies of '
@@ -211,7 +217,8 @@ def main():
                     stream=redis_stream,
                     broker_count=args.broker_count,
                     cluster_mode=args.cluster_mode,
-                    trial_timeout=args.trial_timeout
+                    trial_timeout=args.trial_timeout,
+                    consumer_extra=args.redis_consumer_extra
                 ))
             
             # Wait for all to complete

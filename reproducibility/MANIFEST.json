@@ -1,5 +1,5 @@
 {
-  "git_commit": "be8e3829c157aa6ac09dd1aa7dda90ca1d605dd6",
+  "git_commit": "8eb16e37e7d05df5d82c54d01a1c31cb5e68d2ed",
   "generated": "2026-07-21",
   "environment": "see docs/infrastructure.md",
   "protocol": {
@@ -47,9 +47,9 @@
     "scripts/make_results_table.py": "7d95ac2288cdcb7fca4178345d8b8335513c5d4c681be54ecf0ac2f1e6f96092",
     "scripts/make_worked_example.py": "9efd6dbd3cb2fa398ef1e09f4fb788f16ced6ceb536188f6e3cdb291e3583e52",
     "scripts/power_analysis.py": "980efd7586b36dda08eefe3b44786e9ceabb148b87fcd25ec2bc9b38b5e5aaec",
-    "scripts/redis_consumer.py": "cc9c7542a21381e9c217cae5560286ed6e4ffba8f9043237a45ed7c416751b02",
+    "scripts/redis_consumer.py": "99a198b79e8bdbfae70db6fb2fcff148924c6209e077c9a8b873bca0eeeec3c2",
     "scripts/redis_producer.py": "359c082e6ebe1b72e8f360a325d060514ba068b516d1e5124fe90af563437be1",
-    "scripts/run_concurrency_test.py": "b66be45f9b25bf424690439e258639129a012e8bb3df5af3dbaaccc902072b65",
+    "scripts/run_concurrency_test.py": "4d16dca655e85c0e96c448a76099ff91575a4674b11ad8bc6f9c67f9dbd97b12",
     "scripts/statistical_analysis.py": "1aad08c3b10350e51956916dac8b4f57eaad64d12c3005db23b0f4995bc31219",
     "scripts/validate_s3_outputs.py": "17f8c71ffea465df22ae2564af9cd17aed33f14218f6747b4ebfbaff812044c3",
     "scripts/validate_s4_outputs.py": "98ecd7bf776cd887e15608d693f43bb8b2469a4871d24b2b07d09835687e662f",

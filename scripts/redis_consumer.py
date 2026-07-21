@@ -37,6 +37,13 @@ def main():
     # optional knobs (kept simple / backward compatible)
     ap.add_argument("--count", type=int, default=200)
     ap.add_argument("--block-ms", type=int, default=1000)
+    # Redis is a request/response protocol: a client that waits for each reply is capped at
+    # ~1/RTT operations per second (see Redis "pipelining" docs). Acknowledging one message
+    # per XACK therefore makes consumption round-trip bound, which collapses under network
+    # latency. Batching acks amortises the RTT. Default 1 preserves the historical behaviour
+    # that the measured corpus used; >1 enables the mitigation.
+    ap.add_argument("--ack-batch", type=int, default=1,
+                    help="XACK this many messages per round trip (1 = ack every message)")
 
     args = ap.parse_args()
 
@@ -130,6 +137,8 @@ def main():
         )
         ew.writeheader()
 
+        pending_acks = []
+
         while True:
             resp = r.xreadgroup(
                 groupname=group_id,
@@ -140,6 +149,9 @@ def main():
             )
 
             if not resp:
+                if pending_acks:
+                    r.xack(args.stream, group_id, *pending_acks)
+                    pending_acks.clear()
                 if (time.monotonic() - last_msg) >= args.idle_seconds:
                     break
                 continue
@@ -200,8 +212,11 @@ def main():
                         f_events.flush()
                         f_out.flush()
 
-                    # ack the message
-                    r.xack(args.stream, group_id, redis_id)
+                    # ack the message (batched: see --ack-batch)
+                    pending_acks.append(redis_id)
+                    if len(pending_acks) >= max(1, args.ack_batch):
+                        r.xack(args.stream, group_id, *pending_acks)
+                        pending_acks.clear()
 
     print(f"OK redis consumer: wrote {n} rows -> {out_path}")
     print(f"OK redis consumer: wrote {events_n} rows -> {events_path}")

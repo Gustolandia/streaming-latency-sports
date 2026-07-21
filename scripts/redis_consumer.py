@@ -28,6 +28,10 @@ def main():
     ap.add_argument("--port", type=int, default=6379)
     ap.add_argument("--cluster-mode", action="store_true",
                     help="Enable Redis cluster mode")
+    ap.add_argument("--cluster-nodes", default="",
+                    help="Comma-separated host:port list for a genuinely distributed cluster "
+                         "(e.g. 10.0.1.1:7000,10.0.1.2:7000). Without it the legacy "
+                         "single-host 7000/7001/7002 layout is assumed.")
     ap.add_argument("--node-count", type=int, default=1, choices=[1, 3],
                     help="Number of Redis nodes (1=single, 3=cluster)")
     ap.add_argument("--group", default=None)
@@ -64,22 +68,12 @@ def main():
         # Lazy import to avoid issues when redis is mocked in tests
         try:
             from redis.cluster import RedisCluster, ClusterNode
-            
-            # Address remap function to map Docker internal IPs to localhost
-            # Docker redis-net uses 172.20.0.0/16
-            def address_remap(node):
-                # Each cluster port is published to the same host port
-                # (7000:7000, 7001:7001, 7002:7002), so map any internal node
-                # address to localhost keeping its port. Robust to Docker IP
-                # reassignment / stale cluster topology.
-                return ('127.0.0.1', node[1])
-            
-            startup_nodes = [
-                ClusterNode(host=args.host, port=7000),
-                ClusterNode(host=args.host, port=7001),
-                ClusterNode(host=args.host, port=7002),
-            ]
-            r = RedisCluster(startup_nodes=startup_nodes, decode_responses=True, address_remap=address_remap)
+            from redis_cluster_nodes import build_cluster_client
+
+            # Single-host layout (ports 7000/7001/7002 on one machine) remains the default;
+            # --cluster-nodes addresses a genuinely distributed cluster instead.
+            r = build_cluster_client(RedisCluster, ClusterNode, args.host,
+                                     getattr(args, "cluster_nodes", None), args.port)
         except (ImportError, ModuleNotFoundError):
             # Fallback for when redis is mocked in tests
             r = redis.Redis(host=args.host, port=args.port, decode_responses=True)
@@ -138,6 +132,15 @@ def main():
         ew.writeheader()
 
         pending_acks = []
+
+        # Manipulation check, recorded in every run's consumer.log. The acknowledgement-batching
+        # intervention has now silently failed to apply three times in this project - twice via
+        # a shell quoting bug and once via an unmatched script edit - and each time the result
+        # was a null indistinguishable from a genuine refutation. Logging the *effective* value
+        # makes "was the treatment applied?" answerable from the run artefacts alone.
+        print(f"CONFIG effective ack_batch={max(1, args.ack_batch)} "
+              f"count={args.count} block_ms={args.block_ms} "
+              f"cluster={bool(args.cluster_mode or args.node_count == 3)}", flush=True)
 
         while True:
             resp = r.xreadgroup(

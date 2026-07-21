@@ -58,8 +58,11 @@ def per_n_tests(df, value_col, n_col):
         try:
             u, p = stats.mannwhitneyu(k, r, alternative="two-sided")
         except ValueError:
-            # e.g. all values identical -> undefined
+            # older scipy raises on all-tied input
             u, p = float("nan"), 1.0
+        if not np.isfinite(p):
+            # newer scipy returns nan instead of raising; treat as "no evidence"
+            p = 1.0
         rows.append({
             "n": int(n), "kafka_median": float(np.median(k)), "redis_median": float(np.median(r)),
             "n_kafka": len(k), "n_redis": len(r), "U": float(u), "p": float(p),
@@ -85,7 +88,11 @@ def kruskal_across_n(df, value_col, n_col):
             try:
                 h, p = stats.kruskal(*groups)
             except ValueError:
+                # older scipy raises on all-tied input
                 h, p = float("nan"), 1.0
+            if not np.isfinite(p):
+                # newer scipy returns nan instead of raising; treat as "no evidence"
+                p = 1.0
             rows.append({"backend": backend, "n_groups": len(groups), "H": float(h), "p": float(p),
                          "significant": p < 0.05})
     return pd.DataFrame(rows)

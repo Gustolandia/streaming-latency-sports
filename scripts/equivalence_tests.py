@@ -70,8 +70,37 @@ def tost(a, b, margin):
             "p_tost": p_tost, "equivalent": bool(p_tost < 0.05)}
 
 
-def equivalence_by_n(df, value_col, n_col, margin):
-    """Run TOST per concurrency level; skip cells too small to estimate variance."""
+def bootstrap_tost(a, b, margin, n_boot=10000, seed=12345, conf=0.90):
+    """Distribution-free TOST via a percentile bootstrap of the mean difference.
+
+    The Welch procedure above assumes approximate normality of the difference in means. Our
+    latency samples are strongly right-skewed, which is also why every difference test in this
+    paper is a rank test -- so resting the *equivalence* claim on a normal-theory interval
+    would be inconsistent. Resampling each group independently makes no distributional
+    assumption, and equivalence is declared when the whole bootstrap interval lies inside the
+    margin, which is exactly the confidence-interval reading of TOST.
+    """
+    a = np.asarray(a, dtype=float)
+    b = np.asarray(b, dtype=float)
+    rng = np.random.default_rng(seed)
+    diffs = (rng.choice(a, (n_boot, len(a)), replace=True).mean(axis=1)
+             - rng.choice(b, (n_boot, len(b)), replace=True).mean(axis=1))
+    alpha = 1.0 - conf
+    lo, hi = np.quantile(diffs, [alpha / 2.0, 1.0 - alpha / 2.0])
+    # Bootstrap analogue of the TOST p-value: the larger tail mass falling outside the margin.
+    p = float(max(np.mean(diffs <= -margin), np.mean(diffs >= margin)))
+    return {"boot_diff": float(diffs.mean()), "boot_ci90_lo": float(lo),
+            "boot_ci90_hi": float(hi), "boot_p_tost": p,
+            "boot_equivalent": bool(lo > -margin and hi < margin)}
+
+
+def equivalence_by_n(df, value_col, n_col, margin, n_boot=10000, seed=12345):
+    """Run TOST per concurrency level; skip cells too small to estimate variance.
+
+    Reports the Welch result and the bootstrap result side by side. Where they disagree, the
+    bootstrap is the one to trust for skewed latency, and the disagreement is itself worth
+    reporting rather than hiding behind a single number.
+    """
     rows = []
     for n in sorted(df[n_col].dropna().unique()):
         sub = df[df[n_col] == n]
@@ -81,6 +110,8 @@ def equivalence_by_n(df, value_col, n_col, margin):
             continue
         res = {"n": int(n), "margin": float(margin)}
         res.update(tost(a, b, margin))
+        res.update(bootstrap_tost(a, b, margin, n_boot=n_boot, seed=seed))
+        res["methods_agree"] = bool(res["equivalent"] == res["boot_equivalent"])
         rows.append(res)
     return pd.DataFrame(rows)
 
@@ -96,6 +127,9 @@ def main(argv=None):
     ap.add_argument("--config", default=None)
     ap.add_argument("--label", default="metric")
     ap.add_argument("--out", default="docs/results/equivalence")
+    ap.add_argument("--n-boot", type=int, default=10000,
+                    help="bootstrap resamples for the distribution-free TOST")
+    ap.add_argument("--seed", type=int, default=12345, help="bootstrap seed (reproducibility)")
     args = ap.parse_args(argv)
 
     try:
@@ -109,7 +143,8 @@ def main(argv=None):
     if args.config and "config" in df.columns:
         df = df[df["config"] == args.config]
 
-    out = equivalence_by_n(df, args.value_col, args.n_col, args.margin)
+    out = equivalence_by_n(df, args.value_col, args.n_col, args.margin,
+                           n_boot=args.n_boot, seed=args.seed)
     if out.empty:
         print(f"Not enough data in {args.by_run} for TOST")
         return 1
@@ -120,7 +155,12 @@ def main(argv=None):
     print(f"== {args.label}: TOST equivalence (margin +/-{args.margin:g}) ==")
     print(out.to_string(index=False))
     n_eq = int(out["equivalent"].sum())
-    print(f"Equivalence established in {n_eq}/{len(out)} concurrency levels; wrote {out_dir}/")
+    n_boot_eq = int(out["boot_equivalent"].sum())
+    print(f"Equivalence (Welch) in {n_eq}/{len(out)} levels; "
+          f"(bootstrap) in {n_boot_eq}/{len(out)}; wrote {out_dir}/")
+    if not out["methods_agree"].all():
+        print("NOTE: Welch and bootstrap disagree somewhere - prefer the bootstrap on skewed "
+              "latency, and report the disagreement.")
     return 0
 
 

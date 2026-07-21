@@ -517,21 +517,23 @@ class TestMain:
                     # Each feed should have 2 calls (kafka + redis)
                     assert mock_run_trial.call_count == n * 2
 
-    def test_main_invalid_concurrency_choice(self, temp_dir):
-        """Test that main rejects invalid concurrency choices."""
-        test_args = [
-            'scripts/run_concurrency_test.py',
-            '3',  # Invalid - not in [1, 5, 10, 20]
-            'data/test.csv',
-            '1'
-        ]
-        
-        with patch('sys.argv', test_args):
-            with pytest.raises(SystemExit) as exc_info:
+    def test_main_accepts_non_listed_concurrency(self, temp_dir):
+        """N is deliberately unrestricted now.
+
+        It used to be choices=[1,5,10,20]; the high-connection sweep needs N in the hundreds
+        to test per-client overhead, and a fixed list would have rejected it at the CLI.
+        """
+        plan = temp_dir / "p.csv"
+        plan.write_text("event_id,t_emit_offset_s" + chr(10))
+        test_args = ['scripts/run_concurrency_test.py', '3', str(plan), '1']
+        with patch('sys.argv', test_args), patch(
+                'scripts.run_concurrency_test.run_trial',
+                return_value=('r', True, 'ok')):
+            try:
                 main()
-            
-            # Should exit with code 2 (argument error)
-            assert exc_info.value.code == 2
+            except SystemExit as e:
+                # exiting 0 is fine; a parser rejection would exit 2
+                assert e.code in (0, None), f"N=3 rejected by the CLI (exit {e.code})"
 
     def test_main_multiple_repetitions(self, temp_dir):
         """Test that main runs multiple repetitions."""
@@ -917,3 +919,29 @@ class TestPlatformDispatch:
     def test_unknown_backend_rejected(self):
         rid, ok, msg = rct.run_trial("r", "p.csv", "rabbitmq", 1, 60)
         assert ok is False and "Unknown backend" in msg
+
+
+class TestArbitraryConcurrency:
+    """N must not be restricted to a fixed list: the high-connection sweep needs hundreds."""
+
+    def _parser_action(self):
+        import argparse
+        parsed = {}
+        real = argparse.ArgumentParser.add_argument
+
+        def spy(self_, *a, **k):
+            if a and a[0] == "concurrency":
+                parsed.update(k)
+            return real(self_, *a, **k)
+
+        return spy, parsed
+
+    def test_concurrency_has_no_choices_restriction(self, monkeypatch):
+        import argparse
+        spy, parsed = self._parser_action()
+        monkeypatch.setattr(argparse.ArgumentParser, "add_argument", spy)
+        monkeypatch.setattr(sys, "argv", ["prog", "--help"])
+        with pytest.raises(SystemExit):
+            rct.main()
+        assert parsed.get("choices") is None, "N is restricted; N=200 would be rejected"
+        assert parsed.get("type") is int

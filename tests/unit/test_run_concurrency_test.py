@@ -287,12 +287,13 @@ class TestRunTrial:
             cmd = call_args[0][0]
             
             # cmd is a list, check that it contains expected parts
-            assert 'powershell' in cmd
+            # Interpreter depends on platform: .ps1 on Windows, .sh on Linux CI.
+            assert cmd[0] in ('powershell', 'bash')
             assert '-ExecutionPolicy' in cmd
             assert 'Bypass' in cmd
             # The command string is in the last element
             cmd_str = cmd[-1]
-            assert 'run_kafka_trial.ps1' in cmd_str
+            assert 'run_kafka_trial' in cmd_str
             assert 'test_kafka' in cmd_str
             assert 'data/test.csv' in cmd_str
             assert '120' in cmd_str
@@ -320,10 +321,11 @@ class TestRunTrial:
             cmd = call_args[0][0]
             
             # cmd is a list, check that it contains expected parts
-            assert 'powershell' in cmd
+            # Interpreter depends on platform: .ps1 on Windows, .sh on Linux CI.
+            assert cmd[0] in ('powershell', 'bash')
             # The command string is in the last element
             cmd_str = cmd[-1]
-            assert 'run_redis_trial.ps1' in cmd_str
+            assert 'run_redis_trial' in cmd_str
             assert 'test_redis' in cmd_str
             assert 'localhost' in cmd_str
             assert '6379' in cmd_str
@@ -755,7 +757,9 @@ class TestBrokerCountAndClusterMode:
             assert result[1] is True
             # Verify broker_count was passed to command
             call_args = mock_run.call_args[0][0]
-            assert "-BROKER_COUNT 3" in str(call_args)
+            # PowerShell joins flags into one string; bash keeps them as argv entries.
+            s = str(call_args).replace("', '", " ")
+            assert "-BROKER_COUNT 3" in s
 
     def test_run_trial_with_cluster_mode(self, temp_dir):
         """Test run_trial with cluster_mode parameter for Redis."""
@@ -780,7 +784,7 @@ class TestBrokerCountAndClusterMode:
             assert result[1] is True
             # Verify cluster_mode was passed to command
             call_args = mock_run.call_args[0][0]
-            assert "-CLUSTER_MODE" in str(call_args)
+            assert "-CLUSTER_MODE" in str(call_args).replace("', '", " ")
             assert "-NODE_COUNT 3" in str(call_args)
 
     def test_run_trial_producer_extra_kafka(self, temp_dir):

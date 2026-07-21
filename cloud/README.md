@@ -25,10 +25,20 @@ original "co-located" path. The co-location claim was measured on a worse path t
 
 ## Topology
 
-| host | shape | role |
-|---|---|---|
-| `sbl-broker` | VM.Standard.E2.1.Micro | Kafka / Redis broker |
-| `sbl-client` | VM.Standard.E2.1.Micro | producer + consumer |
+| host | shape | ocpu / RAM | role | cost |
+|---|---|---|---|---|
+| `sbl-b1` | VM.Standard.E5.Flex | 1 / 8 GB | broker (cluster node 1) | trial credit |
+| `sbl-b2` | VM.Standard.E5.Flex | 1 / 8 GB | broker (cluster node 2) | trial credit |
+| `sbl-b3` | VM.Standard.E5.Flex | 1 / 8 GB | broker (cluster node 3) | trial credit |
+| `sbl-drv` | VM.Standard.E5.Flex | 4 / 24 GB | producer + consumer driver | trial credit |
+| `sbl-broker` | VM.Standard.E2.1.Micro | 1/8 / 1 GB | spare broker | Always Free |
+| `sbl-client` | VM.Standard.E2.1.Micro | 1/8 / 1 GB | spare client | Always Free |
+
+The four E5 hosts are **paid shapes drawn against the 30-day trial credit**, at roughly
+**$0.31/hour ($7.34/day)** for the set. `VM.Standard.E4.Flex` was the cheaper first choice but
+is out of host capacity in London, as is `VM.Standard.A1.Flex`; `E5`, `E3` and `Standard3` have
+capacity. Stop the instances between campaigns to conserve credit, and terminate them when the
+paper is done - when the trial lapses these are reclaimed, while the two Micro hosts persist.
 
 Both in `uk-london-1` AD-3, VCN `10.0.0.0/16`, subnet `10.0.1.0/24`.
 Broker ports are reachable **only** from inside the VCN (security list); no broker is

@@ -1,6 +1,6 @@
 {
-  "git_commit": "213008420439d4132bb3a579c8835e7c9bb148d5",
-  "generated": "2026-07-20",
+  "git_commit": "aa2401265dc10c88273530397ef17334914f8ecf",
+  "generated": "2026-07-21",
   "environment": "see docs/infrastructure.md",
   "protocol": {
     "measurement_fixes": [
@@ -34,12 +34,12 @@
     "scripts/compute_s4_metrics.py": "b08ace7ba0095737d3d4f00f7201b0a79e9db92c3af148846982a79513dd651d",
     "scripts/compute_tti.py": "9f70bc584ad0283a9a8b19b5216bc914018dc087fd921db526d4adb79c1bd67a",
     "scripts/decision_staleness.py": "3bd80a4ec325cc17ec68e37e1cc1fdb0ae208a67afc90ac2f035431faf059e1e",
-    "scripts/fair_statistics.py": "8f540e85650a2cb89bc8a4fabe99b023267441b7ac8924eec5507377f3ac7953",
-    "scripts/generate_manifest.py": "46628373ee448c71d974f0bf6c56c18d0bea2ff894d37bd099ca5ccce7c63f58",
+    "scripts/fair_statistics.py": "b7fe87e1bf7e3a54a1ffbad1069a74562dce19565664c83c8d5bbee3d331b9d6",
+    "scripts/generate_manifest.py": "44a8309256309dc0c98932bcd617e98fd0cb9a37d83bd27f8ce4c70171edbdbf",
     "scripts/generate_manuscript_analysis.py": "beb389d3a1fdf602462af5b29566dae96e19836fd80819690bad61fda6685c5f",
     "scripts/kafka_consumer.py": "9c35bb01eb6abf8dc6c7e63d6f12ca509d1e6e1cf21b21e9978c9b3a5c9d1087",
     "scripts/kafka_producer.py": "5209b0109c4e76f30611d62bd26256f6c589160b15a6dbafdfa98deb62fa24bd",
-    "scripts/make_fair_figures.py": "49c79cb1ce40e18b6c3c44cfe4abdc1f0a45db07aa5be5b130d524ddc97d95f0",
+    "scripts/make_fair_figures.py": "272daca8131c8886e4aa400330f340ed6fd6ae52b297a5f4bb181de0cc1fff0f",
     "scripts/make_results_table.py": "7d95ac2288cdcb7fca4178345d8b8335513c5d4c681be54ecf0ac2f1e6f96092",
     "scripts/power_analysis.py": "980efd7586b36dda08eefe3b44786e9ceabb148b87fcd25ec2bc9b38b5e5aaec",
     "scripts/redis_consumer.py": "cc9c7542a21381e9c217cae5560286ed6e4ffba8f9043237a45ed7c416751b02",
@@ -51,11 +51,11 @@
     "scripts/verify_reproducibility.py": "58483434f7c7e7cb7f6c9c885ddbed32337d0958dbd01a81f523c437d5d5b592",
     "scripts/verify_run_quality.py": "1e983c1d605004f4c3d7136f60af9427ed47a093da4a4cd3e20bb632307c4516",
     "scripts/win_probability.py": "dc8f959839aeafddd6e5c9aaca4bf4bef58137c310072758dae60a014249a238",
-    "scripts/wp_calibration.py": "6b35fff9ebd08bc94c8675aaa6d87f680ff61fec3bdfc2bb6dde73fa09bf587f",
+    "scripts/wp_calibration.py": "95047e5a91dfe980efdeb374c91e851f2f70c1f1a7ded0ba2e4c0aa94ac1eb4e",
     "configs/s3_injections.yaml": "c5a95d185a8ab29a794575b147a61485c8ec4306cc3127dbc12da2c3378e3dbb",
     "docker-compose-multibroker.yml": "7f45e9ecd7e8c2867dc10790624cc61b22f570f478c5059b8fd3065874511933",
     "docker-compose-redis-cluster.yml": "76cb210206004297e47058eb5ddaccf9d69befd24275da92ecae7bc0891aa1bd",
     "docker-compose.yml": "1814d0eb571afcc8e90ebf7436068561776e3f4b6744071be7d30a52e5f5658b",
-    "requirements.txt": "50241e3928691fd75266305b721c7850b6d0b725706722b3ef1c6f1eae070678"
+    "requirements.txt": "88e762f29e4a88b1749596b0f0b687d3a2f24db824451092dc6715f1441802dd"
   }
 }

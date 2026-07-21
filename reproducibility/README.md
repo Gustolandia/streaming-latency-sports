@@ -52,13 +52,66 @@ python scripts/decision_staleness.py --pattern 'concurrency_n*' --min-max-t-sim 
 python scripts/wp_calibration.py --events-dir EV --out docs/results/win_probability                                        # RPS + ECE
 python scripts/fair_statistics.py --by-run docs/results/realtime_concurrency/realtime_concurrency_by_run.csv --value-col tti_p50 --config single --label tti_windowed_single --out docs/results/fair_statistics
 python scripts/make_fair_figures.py                                                                                        # figures
+python scripts/make_worked_example.py --events-dir EV                                                                      # worked example + figure
+python scripts/equivalence_tests.py --by-run docs/results/realtime_concurrency_distinct/realtime_concurrency_by_run.csv --value-col tti_p50 --margin 40 --config single --label tti_distinct --out docs/results/equivalence
+python scripts/equivalence_tests.py --by-run docs/results/decision_staleness_distinct/decision_staleness_by_run.csv --value-col decision_staleness_prob_s --n-col n_concurrency --margin 0.04 --config single --label ds_distinct --out docs/results/equivalence
+python scripts/wp_sensitivity.py --pattern 'concurrency_n*' --min-max-t-sim 9000 --events-dir EV --out docs/results/wp_sensitivity
 python scripts/generate_manifest.py                                                                                        # refresh MANIFEST.json
 ```
 
-## Zenodo archival (requires your account — not automatable here)
+### Distinct-match, throughput and real-time protocols
 
-1. Verify the working tree is clean and tagged: `git tag v1.0-corrected && git push --tags`.
-2. Bundle: `scripts/`, `tests/`, `configs/`, `docker-compose*.yml`, `requirements.txt`,
-   `data/processed/`, `runs/` (corrected `*_20260617*` + `batch9*` only), `manuscript.tex`
-   + assets, `docs/`.
-3. Upload to Zenodo, mint a DOI, and add the DOI badge to `README.md`.
+```bash
+PLANS=data/processed/replay_plans/<sha>          # contains match_*/replay_plan.csv
+# distinct matches: each feed carries a DIFFERENT real match (--speedup 1 cancels nothing;
+# the per-match plans already bake in 120x)
+python scripts/run_concurrency_test.py 10 "$FALLBACK" 3 --plans-dir "$PLANS" --speedup 1 --max-t-sim 9000 ...
+# throughput sweep: fix N, vary speedup to sweep aggregate events/second
+for S in 1 2 4 8 16; do python scripts/run_concurrency_test.py 10 "$FALLBACK" 3 --plans-dir "$PLANS" --speedup $S --max-t-sim 9000 ... ; done
+# TRUE real-time: 1/120 cancels the plan's baked 120x (600s of match clock = 10 min wall)
+python scripts/run_concurrency_test.py 5 "$FALLBACK" 2 --plans-dir "$PLANS" --speedup 0.008333 --max-t-sim 600 ...
+```
+
+## Zenodo archival (needs your Zenodo account token)
+
+A CLI is installed for this: [`zenodo-client`](https://pypi.org/project/zenodo-client/)
+(`pip install zenodo-client`, also in `requirements-dev.txt`). It reads your token from the
+environment, so the token never needs to be pasted into a file or shared.
+
+```bash
+# 0. one-off: create a Personal Access Token at https://zenodo.org/account/settings/applications/
+#    with the "deposit:actions" and "deposit:write" scopes, then export it:
+export ZENODO_API_TOKEN=...          # PowerShell:  $env:ZENODO_API_TOKEN="..."
+
+# 1. pin the exact state being archived
+python scripts/generate_manifest.py            # refresh MANIFEST.json
+git tag v1.0-decision-degradation && git push --tags
+
+# 2. bundle what a reader needs to reproduce the paper
+#    (raw StatsBomb events are excluded by design -- re-fetch with fetch_statsbomb_events.sh)
+git archive --format=zip --prefix=streaming-latency-sports/ \
+    -o streaming-latency-sports-v1.0.zip v1.0-decision-degradation
+
+# 3. create the deposition and mint the DOI (Python API; the CLI covers download/update)
+python - <<'PY'
+from zenodo_client import Zenodo
+z = Zenodo()                      # picks up ZENODO_API_TOKEN
+dep = z.create(
+    data={
+        "metadata": {
+            "title": "Latency-induced decision degradation in real-time football analytics",
+            "upload_type": "software",
+            "description": "Code, replay plans and analysis for the Kafka vs Redis Streams "
+                           "decision-staleness study (see README.md).",
+            "creators": [{"name": "Ricou, Gustavo Pedro",
+                          "affiliation": "Trinity College Dublin"}],
+        }
+    },
+    paths="streaming-latency-sports-v1.0.zip",
+)
+print("DOI:", dep.json()["doi"])
+PY
+```
+
+4. Add the returned DOI badge to `README.md` and cite it in `manuscript.tex`
+   (the Data/Code Availability statement).

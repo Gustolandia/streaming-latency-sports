@@ -1,0 +1,31 @@
+{
+  "title": "Latency-induced decision degradation in real-time football analytics: Redis Streams vs Apache Kafka on StatsBomb open data",
+  "upload_type": "software",
+  "license": "MIT",
+  "creators": [
+    {
+      "name": "Ricou, Gustavo Pedro",
+      "affiliation": "School of Computer Science and Statistics, Trinity College Dublin, Dublin, Ireland"
+    }
+  ],
+  "description": "<p>Code, replay plans, analysis and manuscript for a study of whether streaming-infrastructure latency degrades in-play football decisions.</p><p>Measured Apache Kafka vs Redis Streams event-delivery latency is coupled to a calibrated in-play win-probability model through the Age-of-Information lens, yielding a <em>decision-staleness</em> metric in probability-seconds per match. On a fair, artifact-free corpus in which each concurrent feed carries a distinct real match, the two backends are statistically <em>equivalent</em> (TOST against a one-broadcast-frame margin) at every concurrency level tested, and a goal's win probability is stale by about 0.014 probability-seconds regardless of backend. Redis's single-thread serialization is real but only appears near 2,100 events/second, equivalent to roughly 4,800 simultaneous real-time matches.</p><p>The repository also documents four measurement defects (a process-relative cross-process clock, a saturating replay speed, an asymmetric load generator, and a concurrency axis that was secretly a throughput axis), each of which reversed the apparent winner before correction.</p><p>Raw StatsBomb event JSONs are intentionally excluded and are re-fetchable from a pinned upstream commit via scripts/fetch_statsbomb_events.sh. See README.md and reproducibility/ for the full protocol.</p>",
+  "keywords": [
+    "real-time sports analytics",
+    "football",
+    "in-play win probability",
+    "Age of Information",
+    "streaming systems",
+    "Apache Kafka",
+    "Redis Streams",
+    "latency benchmarking",
+    "decision quality",
+    "reproducible research"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/statsbomb/open-data",
+      "relation": "isDerivedFrom",
+      "scheme": "url"
+    }
+  ]
+}

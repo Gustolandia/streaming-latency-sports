@@ -1,0 +1,2 @@
+n,margin,n_kafka,n_redis,mean_kafka,mean_redis,mean_diff,ci90_lo,ci90_hi,p_tost,equivalent
+5,40.0,15,15,93.81558026666666,72949.12930806667,-72855.31372779999,-75291.18057691249,-70419.4468786875,1.0,False

@@ -65,12 +65,12 @@ def load_tti(run_dir):
         return None
 
 
-def collect(runs_dir, speedup, min_max_t_sim=0.0):
+def collect(runs_dir, speedup, min_max_t_sim=0.0, run_glob="concurrency_n*_*_feed*_rep*"):
     """Return a DataFrame, one row per (concurrency) run that matches the target speedup
     (and, if min_max_t_sim>0, whose meta max_t_sim is at least that -- used to select the
     full-match runs from windowed runs that share a timestamp prefix)."""
     rows = []
-    for run_dir in sorted(Path(runs_dir).glob("concurrency_n*_*_feed*_rep*")):
+    for run_dir in sorted(Path(runs_dir).glob(run_glob)):
         if not run_dir.is_dir():
             continue
         m = re.search(r"concurrency_n(\d+)_\d{8}_\d{6}_(kafka|redis)_feed\d+_rep\d+$", run_dir.name)
@@ -118,13 +118,16 @@ def main(argv=None):
     ap.add_argument("--speedup", type=float, default=10.0,
                     help="Only include runs whose meta speedup matches this (None to include all)")
     ap.add_argument("--out", default="docs/results/realtime_concurrency")
+    ap.add_argument("--run-glob", default="concurrency_n*_*_feed*_rep*",
+                    help="Restrict to run directories matching this glob (e.g. a single sweep's "
+                         "prefix), so runs sharing speedup/max_t_sim stay separable.")
     ap.add_argument("--min-max-t-sim", type=float, default=0.0,
                     help="Only include runs whose meta max_t_sim >= this (e.g. 9000 to select "
                          "full-match runs). 0 disables.")
     args = ap.parse_args(argv)
 
     speedup = None if args.speedup < 0 else args.speedup
-    df = collect(args.runs_dir, speedup, args.min_max_t_sim)
+    df = collect(args.runs_dir, speedup, args.min_max_t_sim, args.run_glob)
     if df.empty:
         print(f"No concurrency runs at speedup={speedup} under {args.runs_dir}")
         return 1

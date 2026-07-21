@@ -68,6 +68,43 @@ class TestGoalShifts:
     def test_empty_match(self):
         assert goal_decision_shifts([]) == {}
 
+    def test_red_card_is_decisive(self):
+        # a dismissal moves the forecast (the WP model conditions on red-card differential),
+        # so it must contribute staleness like a goal does
+        ev = [_ev(0, 0, "A", "Starting XI", eid="s1"), _ev(0, 1, "B", "Starting XI", eid="s2"),
+              _ev(60, 0, "B", "Bad Behaviour", eid="red1",
+                  bad_behaviour={"card": {"name": "Red Card"}})]
+        shifts = goal_decision_shifts(ev)
+        assert "red1" in shifts and shifts["red1"] > 0
+
+    def test_second_yellow_counts_as_dismissal(self):
+        ev = [_ev(0, 0, "A", "Starting XI", eid="s1"), _ev(0, 1, "B", "Starting XI", eid="s2"),
+              _ev(70, 0, "A", "Bad Behaviour", eid="sy",
+                  bad_behaviour={"card": {"name": "Second Yellow"}})]
+        assert goal_decision_shifts(ev)["sy"] > 0
+
+    def test_yellow_card_is_not_decisive(self):
+        ev = [_ev(0, 0, "A", "Starting XI", eid="s1"), _ev(0, 1, "B", "Starting XI", eid="s2"),
+              _ev(30, 0, "A", "Bad Behaviour", eid="yellow",
+                  bad_behaviour={"card": {"name": "Yellow Card"}})]
+        assert goal_decision_shifts(ev) == {}
+
+    def test_red_cards_can_be_disabled(self):
+        ev = [_ev(0, 0, "A", "Starting XI", eid="s1"), _ev(0, 1, "B", "Starting XI", eid="s2"),
+              _ev(60, 0, "B", "Bad Behaviour", eid="red1",
+                  bad_behaviour={"card": {"name": "Red Card"}})]
+        assert goal_decision_shifts(ev, include_red_cards=False) == {}
+
+    def test_red_card_state_carries_into_later_goal(self):
+        # the goal's shift must be evaluated with the dismissal already in the game state
+        ev = [_ev(0, 0, "A", "Starting XI", eid="s1"), _ev(0, 1, "B", "Starting XI", eid="s2"),
+              _ev(40, 0, "B", "Bad Behaviour", eid="red1",
+                  bad_behaviour={"card": {"name": "Red Card"}}),
+              _goal(50, 0, "A", "g_after_red")]
+        shifts = goal_decision_shifts(ev)
+        assert set(shifts) == {"red1", "g_after_red"}
+        assert all(v > 0 for v in shifts.values())
+
 
 class TestBuildGoalShifts:
     def test_across_files(self, temp_dir):

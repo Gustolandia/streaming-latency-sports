@@ -57,7 +57,8 @@ Two dominant technologies have emerged: Apache \kafka{} (originally developed at
 
 While numerous studies have compared these technologies, the literature lacks sports-specific evaluations. Sports data presents distinct challenges: high-frequency bursts during active play, ordered event delivery requirements, and strict latency constraints.
 
-\paragraph{Contributions.} This paper makes four contributions. (1)~We pose and answer, on open data, the question of \emph{when} streaming-infrastructure latency actually degrades an in-play football decision, by coupling measured event-delivery latency to a calibrated in-play win-probability model through the Age-of-Information lens---to our knowledge the first infrastructure~$\rightarrow$~decision-quality analysis in sports analytics. (2)~We provide a fair, artifact-free Apache \kafka{} vs.\ \redis{} Streams latency benchmark on the StatsBomb open dataset, with fully open load-generation code. (3)~We document four design defects---a process-relative clock, a saturating replay speed, an asymmetric load generator, and a concurrency axis that was covertly a throughput axis---each of which reversed the apparent winner, offering a reusable protocol for honest streaming benchmarks. (4)~We identify the condition that actually decides the question: with consumers co-located the two backends are statistically equivalent, but because edis{} Streams consumption is round-trip bound, ordinary network latency turns that equivalence into a factor-of-275 gap in decision staleness, so placement rather than brand is the design variable that matters.
+\paragraph{Contributions.} This paper makes four contributions. (1)~We pose and answer, on open data, the question of \emph{when} streaming-infrastructure latency actually degrades an in-play football decision, by coupling measured event-delivery latency to a calibrated in-play win-probability model through the Age-of-Information lens---to our knowledge the first infrastructure~$\rightarrow$~decision-quality analysis in sports analytics. (2)~We provide a fair, artifact-free Apache \kafka{} vs.\ \redis{} Streams latency benchmark on the StatsBomb open dataset, with fully open load-generation code. (3)~We document four design defects---a process-relative clock, a saturating replay speed, an asymmetric load generator, and a concurrency axis that was covertly a throughput axis---each of which reversed the apparent winner, offering a reusable protocol for honest streaming benchmarks. (4)~We identify the condition that actually decides the question: with consumers co-located the two backends are statistically equivalent, but because 
+edis{} Streams consumption is round-trip bound, ordinary network latency turns that equivalence into a factor-of-275 gap in decision staleness, so placement rather than brand is the design variable that matters.
 
 
 \subsection{Sports-Specific Latency Requirements}
@@ -109,6 +110,7 @@ This study addresses four research questions, culminating in the decision-qualit
 \item[RQ2 (concurrency):] How does \tti{} scale as one broker host serves $N\in\{1,5,10,20\}$ concurrent match feeds, and do the two backends differ?
 \item[RQ3 (fairness and durability):] With payload and protocol overheads controlled for fairness, what latency cost do stronger durability settings (\kafka{} \texttt{acks=all}; \redis{} \texttt{appendfsync always}) impose?
 \item[RQ4 (decision degradation):] When measured delivery latency is translated into an in-play win-probability estimate through the Age-of-Information lens, does it degrade an in-play football decision, and in which regime does the effect become material?
+\item[RQ5 (deployment topology):] Does any equivalence established with co-located components survive when the consumer sits a network hop from the broker---and if not, what mechanism explains the difference?
 \end{description}
 
 These questions are motivated by gaps in the literature. Industry benchmarks suggest \redis{} offers 2--5$\times$ lower latency than \kafka{} \cite{medium_benchmark_2025,github_benchmark_2025}, but there is no sports-specific empirical validation, and---as our measurement-validity analysis shows---such benchmarks are easily confounded. The CAP theorem \cite{brewer2012cap} and its extension PACELC \cite{abadi2012pacelc} predict consistency--latency trade-offs (RQ3) that have not been quantified for these systems on sports workloads. Most importantly, while in-play win-probability models and the Age-of-Information view of staleness both exist (Section~\ref{sec:literature}), no prior work connects \emph{measured} infrastructure latency to in-play sports \emph{decision} error---the gap RQ4 fills.
@@ -159,6 +161,33 @@ grounds rather than fitted to the data: one broadcast video frame at 25\,fps ($4
 latency, and the staleness a maximal event (total-variation shift of $1.0$) accrues over one
 frame ($0.04$ probability-seconds) for decision-staleness. A difference smaller than a single
 frame cannot change what a coach, broadcaster or model does.
+
+\paragraph{RQ5: Round-trip-bound consumption (mechanism)}
+The two clients consume in structurally different ways, and we hypothesise that this---not
+broker throughput---governs their behaviour once a network hop is present. The \redis{}
+consumer issues a blocking \texttt{XREADGROUP} and cannot issue the next read until the
+previous reply returns; because the call returns as soon as \emph{any} entry is available, at
+realistic arrival rates it retrieves roughly one event per round trip irrespective of its
+\texttt{COUNT} ceiling. Its sustainable drain rate is therefore about $1/\mathrm{RTT}$ events
+per second. The \kafka{} consumer instead serves \texttt{poll()} from a locally prefetched
+buffer filled by pipelined fetch requests against a long-polling broker, so its drain rate is
+decoupled from RTT.
+
+\begin{description}
+\item[$\mathbf{H_{05}}$:] delivery latency rises additively with network delay for both
+systems (a fixed per-event cost).
+\item[$\mathbf{H_{15}}$:] \redis{} is queue-stable only while the per-feed arrival rate
+$\lambda \lesssim 1/\mathrm{RTT}$; above that threshold its consumer cannot drain as fast as
+events arrive and latency is governed by an accumulating backlog rather than by the delay
+itself, whereas \kafka{} remains stable at all tested delays.
+\end{description}
+\noindent This yields four falsifiable predictions. (P1)~A critical round-trip time near
+$1/\lambda$: at our $\lambda \approx 53$ events/s per feed, $\mathrm{RTT}_{\text{crit}} \approx
+19$~ms. (P2)~Below it, per-event latency is \emph{flat} across a run; above it, latency
+\emph{grows} as the run proceeds. (P3)~\kafka{} shows no such growth at any tested delay.
+(P4)~The threshold should scale inversely with arrival rate, and raising the events retrieved
+per round trip should restore stability at a given RTT. We test P1--P3 in
+Section~\ref{sec:netem}; P4 is left as the sharpest route to falsifying the account.
 
 \paragraph{Statistical Framework}
 All hypotheses are tested using the framework in Section~\ref{sec:stat_methods}: Holm--Bonferroni correction for multiple comparisons (Family-Wise Error Rate at $\alpha=0.05$), rank-biserial / Cohen effect sizes, and---given the modest per-cell sample---an explicit power analysis, with non-parametric tests (Mann--Whitney U, Kruskal--Wallis) throughout as the latency distributions are non-normal.
@@ -467,7 +496,7 @@ event rates of Table~\ref{tab:regime}.}
 \label{fig:latency}
 \end{figure}
 
-\subsection{Network Realism: the Condition That Breaks Equivalence}
+\subsection{Network Realism: the Condition That Breaks Equivalence (RQ5)}
 \label{sec:netem}
 Every result so far places producer, broker and consumer on one host, so transport traverses
 the loopback path. That is the sharpest objection available to the equivalence claim: a
@@ -483,14 +512,47 @@ at 20~ms of one-way delay its median \tti{} is 10.5~seconds, and at 50~ms it is 
 roughly 500$\times$ and 1{,}500$\times$ the delay actually injected. No run was truncated (all
 delivered the complete event set), so this is amplification, not loss.
 
-The mechanism is visible in that amplification factor. Dividing the events delivered by the
-observed transport implies an effective batch of about seven events per round trip at 20~ms
-and two to three at 50~ms: \redis{} Streams consumption is \emph{round-trip bound}, so each
-added millisecond of network latency is multiplied by the thousands of sequential
-request--response cycles a match requires. \kafka{}'s consumer fetches in batches and
-prefetches, so the same delay is amortised across many events and contributes once rather than
-per cycle. This is an architectural property of the two consumption models, not a tuning
-artefact, and it is invisible to any benchmark run on loopback.
+\paragraph{Testing the mechanism (RQ5).} The magnitudes are far too large to be a per-event
+cost---75~seconds cannot be assembled from 50~ms of delay applied once per event---so we test
+the round-trip-bound account of Section~\ref{sec:hypotheses} directly. Its distinguishing
+prediction is about the \emph{shape} of the latency series rather than its level: a fixed cost
+leaves per-event latency flat across a run, whereas a consumer that cannot drain as fast as
+events arrive accumulates a backlog, so latency grows as the run proceeds. Splitting each run
+into quartiles of scheduled emission time and comparing the last quartile's mean latency with
+the first's separates the two cleanly (Table~\ref{tab:backlog}).
+
+The prediction holds. \kafka{} shows no growth at any delay (ratios 0.76--0.92, i.e.\ mildly
+\emph{decreasing} as start-up costs amortise), consistent with P3. \redis{} is likewise flat at
+0 and 5~ms (0.91, 0.83) but grows by 2.3$\times$ at 20~ms and 5.6$\times$ at 50~ms, consistent
+with P2. The transition sits between 5 and 20~ms, bracketing the predicted
+$\mathrm{RTT}_{\text{crit}} \approx 1/\lambda \approx 19$~ms (P1). We therefore reject
+$\mathbf{H_{05}}$ in favour of $\mathbf{H_{15}}$: what breaks under network delay is not
+per-event cost but queue stability.
+
+\begin{table}[htbp]
+\centering
+\caption{Latency growth within a run (mean of the final quartile / first quartile, median over
+runs). A ratio near 1 is a stable fixed cost; above 1 indicates an accumulating backlog.}
+\label{tab:backlog}
+\begin{tabular}{rcccc}
+\toprule
+Delay & \kafka{} first$\rightarrow$last & growth & \redis{} first$\rightarrow$last & growth \\
+\midrule
+0~ms  & 15$\rightarrow$12~ms   & 0.88 & 12$\rightarrow$10~ms                 & 0.91 \\
+5~ms  & 17$\rightarrow$15~ms   & 0.90 & 52$\rightarrow$43~ms                 & 0.83 \\
+20~ms & 51$\rightarrow$44~ms   & 0.92 & 5.9$\rightarrow$15.0~s               & \textbf{2.25} \\
+50~ms & 125$\rightarrow$92~ms  & 0.76 & 22.3$\rightarrow$127.2~s             & \textbf{5.59} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This has a consequence for how the \redis{} figures should be read. Under instability the
+latency is set by the backlog, which keeps growing while the feed runs, so the values we report
+are \emph{lower bounds fixed by our replay length}: our runs compress a match into roughly
+seventy seconds, and by the final quartile at 50~ms delay latency had already reached
+127~seconds and was still rising. A full-length live match would accumulate a proportionally
+larger backlog. The practical implication is that the failure is not a fixed penalty one can
+budget for but an unbounded divergence that worsens for as long as the match lasts.
 
 The consequence for equivalence is decisive. TOST still establishes equivalence at 0~ms
 ($p=6\times10^{-21}$) and, marginally, at 5~ms, but fails outright at 20 and 50~ms. Translated

@@ -63,6 +63,15 @@ class TestPerN:
                            {"backend": "redis", "n": 9, "v": 2}])  # <2 each -> skipped
         assert per_n_tests(df, "v", "n").empty
 
+    def test_mannwhitney_nan_return_normalized(self, monkeypatch):
+        # newer scipy returns nan rather than raising; p must normalize to 1.0
+        import fair_statistics as fs
+        monkeypatch.setattr(fs.stats, "mannwhitneyu",
+                            lambda *a, **k: (float("nan"), float("nan")))
+        out = per_n_tests(_df(), "v", "n")
+        assert (out["p"] == 1.0).all()
+        assert not out["significant"].any()
+
     def test_mannwhitney_valueerror_branch(self, monkeypatch):
         # older scipy raises ValueError on all-tied input; guard maps it to p=1.0, U=nan
         import fair_statistics as fs
@@ -82,15 +91,27 @@ class TestKruskal:
         # redis has a big N-effect (10s vs 500s)
         assert bool(out[out["backend"] == "redis"].iloc[0]["significant"])
 
+    def test_kruskal_nan_return_normalized(self, monkeypatch):
+        # newer scipy returns nan rather than raising; p must normalize to 1.0
+        import fair_statistics as fs
+        monkeypatch.setattr(fs.stats, "kruskal",
+                            lambda *a, **k: (float("nan"), float("nan")))
+        out = kruskal_across_n(_df(), "v", "n")
+        assert (out["p"] == 1.0).all()
+        assert not out["significant"].any()
+
     def test_too_few_groups(self):
         df = pd.DataFrame([{"backend": "kafka", "n": 1, "v": i} for i in range(3)])  # 1 N-group
         assert kruskal_across_n(df, "v", "n").empty
 
-    def test_identical_values_valueerror(self):
+    def test_all_tied_input_is_not_significant(self):
+        # All-tied input is undefined for Kruskal-Wallis: older scipy raises ValueError,
+        # newer scipy returns nan. Either way we must report p=1.0 (no evidence).
         df = pd.DataFrame([{"backend": "kafka", "n": n, "v": 5.0}
                            for n in (1, 5) for _ in range(3)])
         out = kruskal_across_n(df, "v", "n")
         assert out.iloc[0]["p"] == 1.0
+        assert not bool(out.iloc[0]["significant"])
 
 
 class TestMain:

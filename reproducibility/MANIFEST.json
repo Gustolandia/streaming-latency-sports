@@ -1,5 +1,5 @@
 {
-  "git_commit": "525a7704914037e615e6d602edaa7742b2a6c01e",
+  "git_commit": "4a9498b694f6e89510365b0a4a6059383bd63629",
   "generated": "2026-07-21",
   "environment": "see docs/infrastructure.md",
   "protocol": {
@@ -15,7 +15,7 @@
     "win_probability": "Skellam proxy; RPS ~= 0.24, ECE = 0.054 over 3239 states (scripts/wp_calibration.py)",
     "dataset": "StatsBomb open data, 1. Bundesliga 2023/24 (comp 9, season 281), 34 matches; re-fetch via scripts/fetch_statsbomb_events.sh"
   },
-  "n_code_files": 40,
+  "n_code_files": 41,
   "code_sha256": {
     "scripts/analyze_actionability.py": "c7de98bcc57687f31c0d8eed75fa1ab22a4ec5189c3ceb990d5566796952d280",
     "scripts/analyze_batches_1_2_3.py": "6f867925b786202c8eaa08fb0e31fa84b25532dc30518433719ebb1825f6a373",
@@ -41,10 +41,11 @@
     "scripts/kafka_producer.py": "5209b0109c4e76f30611d62bd26256f6c589160b15a6dbafdfa98deb62fa24bd",
     "scripts/make_fair_figures.py": "272daca8131c8886e4aa400330f340ed6fd6ae52b297a5f4bb181de0cc1fff0f",
     "scripts/make_results_table.py": "7d95ac2288cdcb7fca4178345d8b8335513c5d4c681be54ecf0ac2f1e6f96092",
+    "scripts/make_worked_example.py": "97d32435a8786d1ef07a3abf5209cd827557d3d03593f505a7ec2d49fa6216df",
     "scripts/power_analysis.py": "980efd7586b36dda08eefe3b44786e9ceabb148b87fcd25ec2bc9b38b5e5aaec",
     "scripts/redis_consumer.py": "cc9c7542a21381e9c217cae5560286ed6e4ffba8f9043237a45ed7c416751b02",
     "scripts/redis_producer.py": "359c082e6ebe1b72e8f360a325d060514ba068b516d1e5124fe90af563437be1",
-    "scripts/run_concurrency_test.py": "ebc0e05a013d4f40aff0273017c9468ac67dec3c51844f17f16f36de8561fe1c",
+    "scripts/run_concurrency_test.py": "a4174afa039b31f08cc89995d6774b0bae4afc63ab04e797040a28b24b0277fe",
     "scripts/statistical_analysis.py": "1aad08c3b10350e51956916dac8b4f57eaad64d12c3005db23b0f4995bc31219",
     "scripts/validate_s3_outputs.py": "17f8c71ffea465df22ae2564af9cd17aed33f14218f6747b4ebfbaff812044c3",
     "scripts/validate_s4_outputs.py": "98ecd7bf776cd887e15608d693f43bb8b2469a4871d24b2b07d09835687e662f",

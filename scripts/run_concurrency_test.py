@@ -11,6 +11,7 @@ Usage:
 """
 
 import argparse
+import glob
 import json
 import os
 import subprocess
@@ -20,6 +21,29 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple
+
+
+def resolve_plans(plans_dir: str, default_plan: str) -> List[str]:
+    """Per-match replay plans for a 'distinct matches' sweep.
+
+    Without --plans-dir every feed replays the same plan, which makes N concurrent feeds N
+    copies of one match. Pointing at a directory of per-match plans instead lets each feed
+    carry a *different* real match, which is what a live multi-match feed actually looks like.
+    Returns [] when no per-match plans are found, so the caller falls back to default_plan.
+    """
+    if not plans_dir:
+        return []
+    found = sorted(glob.glob(os.path.join(plans_dir, "**", "replay_plan.csv"), recursive=True))
+    if not found:
+        found = sorted(glob.glob(os.path.join(plans_dir, "*.csv")))
+    return found
+
+
+def plan_for_feed(plans: List[str], feed: int, default_plan: str) -> str:
+    """Plan for feed number `feed` (1-based); wraps if fewer plans than feeds."""
+    if not plans:
+        return default_plan
+    return plans[(feed - 1) % len(plans)]
 
 
 def run_trial(run_id: str, plan_csv: str, backend: str, speedup: int, max_t_sim: int,
@@ -110,8 +134,20 @@ def main():
     parser.add_argument('--kafka-producer-extra', type=str, default='',
                         help='Extra args appended to the Kafka producer (e.g. "--max-inflight 64") '
                              'so its load generator is pipelined comparably to the Redis worker pool.')
+    parser.add_argument('--plans-dir', type=str, default='',
+                        help='Directory of per-match replay plans (searched for **/replay_plan.csv). '
+                             'When set, each feed replays a DIFFERENT match instead of N copies of '
+                             'the same plan, so concurrency means concurrent *matches*.')
 
     args = parser.parse_args()
+
+    plans = resolve_plans(args.plans_dir, args.plan_csv)
+    if args.plans_dir and not plans:
+        print(f"[WARNING] no per-match plans under {args.plans_dir}; falling back to {args.plan_csv}")
+    elif plans:
+        print(f"Distinct-match mode: {len(plans)} per-match plans "
+              f"({'wrapping, ' if args.concurrency > len(plans) else ''}"
+              f"{min(args.concurrency, len(plans))} distinct per rep)")
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     prefix = f"concurrency_n{args.concurrency}_{timestamp}"
@@ -132,13 +168,15 @@ def main():
             futures = []
             
             for feed in range(1, args.concurrency + 1):
+                # In distinct-match mode each feed carries a different real match.
+                feed_plan = plan_for_feed(plans, feed, args.plan_csv)
                 # Kafka trial
                 kafka_run_id = f"{prefix}_kafka_feed{feed}_rep{rep}"
                 kafka_topic = f"sb-events-n{args.concurrency}-feed{feed}-rep{rep}"
                 futures.append(executor.submit(
                     run_trial,
                     kafka_run_id,
-                    args.plan_csv,
+                    feed_plan,
                     'kafka',
                     args.speedup,
                     args.max_t_sim,
@@ -157,7 +195,7 @@ def main():
                 futures.append(executor.submit(
                     run_trial,
                     redis_run_id,
-                    args.plan_csv,
+                    feed_plan,
                     'redis',
                     args.speedup,
                     args.max_t_sim,
@@ -193,6 +231,8 @@ def main():
         'concurrency': args.concurrency,
         'reps': args.reps,
         'plan_csv': args.plan_csv,
+        'plans_dir': args.plans_dir,
+        'distinct_match_plans': plans,
         'speedup': args.speedup,
         'max_t_sim': args.max_t_sim,
         'prefix': prefix,

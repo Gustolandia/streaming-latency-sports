@@ -1,0 +1,29 @@
+{
+  "match_file": "3895320.json",
+  "event_id": "815b0d8f-5e2f-4186-975e-1d6b3034e4ce",
+  "minute": 95,
+  "tv_shift": 0.955029090328527,
+  "p_before": 0.0002606653507915488,
+  "p_after": 0.022485454835736496,
+  "dist_before": [
+    0.0002606653507915488,
+    0.022224789484944947,
+    0.9775145451642635
+  ],
+  "dist_after": [
+    0.022485454835736496,
+    0.955029090328527,
+    0.022485454835736513
+  ],
+  "scorer": "Bayer Leverkusen",
+  "home": "Bayer Leverkusen",
+  "away": "VfB Stuttgart",
+  "staleness_prob_s": {
+    "kafka": 0.011460349083942325,
+    "redis": 1.43922883912509
+  },
+  "latency_ms": {
+    "kafka": 12.0,
+    "redis": 1507.0
+  }
+}

@@ -12,6 +12,7 @@ from unittest.mock import MagicMock, patch, call
 import pytest
 
 from scripts.run_concurrency_test import run_trial, main, resolve_plans, plan_for_feed
+import scripts.run_concurrency_test as rct
 
 
 class TestDistinctMatchPlans:
@@ -875,3 +876,44 @@ class TestRedisConsumerExtra:
                 redis_calls = [c for c in mock_run_trial.call_args_list if c[0][2] == 'redis']
                 assert redis_calls
                 assert all(c[1].get('consumer_extra') == '--ack-batch 200' for c in redis_calls)
+
+
+class TestPlatformDispatch:
+    """The orchestrator must drive the Windows rig and the Linux cloud hosts identically."""
+
+    def test_windows_uses_powershell_ps1(self):
+        cmd = rct.trial_command("redis", "r1", "p.csv", 120, 600, platform_name="nt")
+        assert cmd[0] == "powershell"
+        assert "run_redis_trial.ps1" in cmd[-1]
+        assert "r1" in cmd[-1]
+
+    def test_posix_uses_bash_sh(self):
+        cmd = rct.trial_command("kafka", "r1", "p.csv", 10, 600, platform_name="posix")
+        assert cmd[0] == "bash"
+        assert cmd[1] == "scripts/run_kafka_trial.sh"
+        assert cmd[2:] == ["r1", "p.csv", "10", "600"]
+
+    def test_defaults_to_current_platform(self):
+        cmd = rct.trial_command("redis", "r", "p", 1, 2)
+        assert cmd[0] in ("powershell", "bash")
+
+    def test_append_powershell_concatenates(self):
+        cmd = ["powershell", "-Command", "base"]
+        rct._append(cmd, ' -PORT 6379')
+        assert cmd[-1] == "base -PORT 6379"
+
+    def test_append_posix_splits_into_argv(self):
+        cmd = ["bash", "s.sh", "r"]
+        rct._append(cmd, ' -PORT 6379')
+        assert cmd == ["bash", "s.sh", "r", "-PORT", "6379"]
+
+    def test_append_posix_keeps_quoted_value_as_one_arg(self):
+        # -CONSUMER_EXTRA "--ack-batch 200" must survive as a single argv entry, or the
+        # treatment silently fails to reach the consumer - exactly the P4 false-refutation bug.
+        cmd = ["bash", "s.sh"]
+        rct._append(cmd, ' -CONSUMER_EXTRA "--ack-batch 200"')
+        assert cmd == ["bash", "s.sh", "-CONSUMER_EXTRA", "--ack-batch 200"]
+
+    def test_unknown_backend_rejected(self):
+        rid, ok, msg = rct.run_trial("r", "p.csv", "rabbitmq", 1, 60)
+        assert ok is False and "Unknown backend" in msg

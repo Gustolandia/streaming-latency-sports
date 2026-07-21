@@ -47,7 +47,7 @@ We ask a question that the streaming-systems and sports-analytics literatures le
 
 The study is also a cautionary account of measurement validity. Four design defects --- a process-relative cross-process clock, a saturating replay speed, an asymmetric load generator (synchronous per-event \kafka{} sends versus asynchronous \redis{} dispatch), and a concurrency axis that was covertly a throughput axis --- each \emph{reversed} the apparent winner before correction. We introduce the Time-to-Insight (\tti{}) metric, decomposed into producer scheduling lag and transport, and fix all four defects before drawing any conclusion.
 
-Our central finding is that the answer turns on one condition, and not the one the literature emphasises. When broker and consumer are \emph{co-located}, \kafka{} and \redis{} are statistically \emph{equivalent} --- not merely indistinguishable: two one-sided tests against a pre-specified one-broadcast-frame margin establish equivalence at every concurrency level tested ($\approx$10\,ms median \tti{}), neither system shows a concurrency effect, and a goal's win probability is stale by $\approx$0.014 probability-seconds regardless of backend. Football event data is intrinsically low-rate (0.44 events per second per match), so a single \redis{} node serves the equivalent of thousands of simultaneous matches before its single-threaded serialization becomes visible. Under those conditions infrastructure choice is irrelevant to decision quality, contradicting the industry framing of a latency-decided ``2-second edge''.
+Our central finding is that the answer turns on one condition, and not the one the literature emphasises. When broker and consumer are \emph{co-located}, \kafka{} and \redis{} are statistically \emph{equivalent} --- not merely indistinguishable: two one-sided tests against a pre-specified one-broadcast-frame margin establish equivalence at every concurrency level tested ($\approx$10\,ms median \tti{}), and a goal's win probability is stale by $\approx$0.014 probability-seconds regardless of backend. Equivalence here is not an absence of architecture. Isolating broker transport from load-generator scheduling lag --- which supplies 53--78\% of end-to-end latency and hides the effect --- \redis{}'s single-threaded serialization is plainly visible, rising 34\% across concurrency levels ($p=6.7\times10^{-12}$, complete rank separation) while \kafka{} stays flat. It amounts to 0.34\,ms. The difference test rejects equality and the equivalence test establishes equivalence, on the same data, and both are right. Football event data is intrinsically low-rate (0.44 events per second per match), so a single \redis{} node serves the equivalent of thousands of simultaneous matches before its single-threaded serialization becomes visible. Under those conditions infrastructure choice is irrelevant to decision quality, contradicting the industry framing of a latency-decided ``2-second edge''.
 
 Introducing network latency overturns this --- but not in the way a product comparison would suggest. Injecting one-way delay identically at both brokers, \kafka{}'s latency tracks the delay (94\,ms at 50\,ms injected) whereas single-node \redis{} amplifies it by three orders of magnitude (75\,s at 50\,ms injected), and equivalence fails outright beyond $\approx$5\,ms: at 20\,ms the decision-staleness gap is a factor of 275 (0.058 vs.\ 15.97 probability-seconds). We trace the collapse to a \emph{round-trip-bound consumption pattern} rather than to \redis{} itself. The consumer acknowledges each message and waits for the reply, capping its drain rate near $1/\mathrm{RTT}$; once that ceiling falls below the arrival rate the consumer accumulates an unbounded backlog. The account makes a quantitative prediction --- a threshold at $\mathrm{RTT}\approx1/\lambda\approx19$\,ms --- which a fine delay sweep confirms, and we then test it by intervention: batching the acknowledgements, a one-line change, removes the effect entirely (10.5\,s\,$\rightarrow$\,34\,ms at 20\,ms delay; 75\,s\,$\rightarrow$\,85\,ms at 50\,ms) and restores statistical equivalence with \kafka{}. The practical guidance is therefore about design and placement, not brand: any client that awaits a reply per message is capped at $1/\mathrm{RTT}$, \kafka{}'s client is immune only because it already batches, and a co-located testbed prices every such round trip at zero. Methodologically the episode adds a fifth caution to the four defects above: our first attempt at this intervention silently failed to apply, yielding a null result indistinguishable from a genuine refutation.
 
@@ -141,7 +141,7 @@ For each research question we state null and alternative hypotheses. Where an in
 \item[$\mathbf{H_{02}}$:] \tti{} is independent of the number of concurrent feeds $N$.
 \item[$\mathbf{H_{12}}$:] \tti{} increases with $N$, and the rate of increase differs by backend.
 \end{description}
-\noindent\textbf{Test:} Kruskal--Wallis across $N$; per-$N$ Mann--Whitney. \textbf{Prior expectation:} both systems are marketed as horizontally scalable, suggesting near-constant \tti{}. \textbf{Result (Section~\ref{sec:concurrency}):} with each feed carrying a \emph{distinct} match at its true event rate, $\mathbf{H_{02}}$ is \emph{not} rejected for either backend ($p=0.70$ and $0.20$). An earlier design in which every feed replayed the same merged ten-match plan appeared to support $\mathbf{H_{12}}$, but its concurrency axis was covertly a throughput axis; the divergence it showed is a function of aggregate event rate, not of $N$ (Table~\ref{tab:regime}).
+\noindent\textbf{Test:} Kruskal--Wallis across $N$; per-$N$ Mann--Whitney. \textbf{Prior expectation:} both systems are marketed as horizontally scalable, suggesting near-constant \tti{}. \textbf{Result (Section~\ref{sec:concurrency}):} the answer depends on the metric, and we report both. On \tti{}, $\mathbf{H_{02}}$ is not rejected ($p=0.70$, $0.20$). On broker \emph{transport}, which is not swamped by load-generator scheduling lag, $\mathbf{H_{12}}$ holds decisively: \redis{} rises $34\%$ across $N$ ($p=6.7\times10^{-12}$) while \kafka{} is flat ($+0.3\%$). The effect is real but sub-millisecond, so the backends remain \emph{equivalent} within the pre-specified margin. Separately, an earlier design in which every feed replayed the same merged ten-match plan exaggerated this into a large effect, because its concurrency axis was covertly a throughput axis (Table~\ref{tab:regime}).
 
 \paragraph{RQ3: Fairness and durability cost}
 \begin{description}
@@ -254,10 +254,17 @@ emission to its availability at the consumer. We decompose it as
              + \underbrace{(t_{\mathrm{recv}}-t_{\mathrm{send}})}_{\text{transport latency}}
              + (t_{\mathrm{out}}-t_{\mathrm{recv}}),
 \]
-isolating load-generator effects (scheduling lag) from broker transport. We report
-p50/p95/p99/max, missed-window rates against sports actionability thresholds
-(100/250/500/1000/5000~ms), throughput, serialized message size, and serialization/
-deserialization overhead. For S3 we additionally measure correction-propagation latency.
+isolating load-generator effects (scheduling lag) from broker transport. The decomposition is
+not cosmetic: the two components answer different questions, and conflating them is how a
+broker difference can be hidden. \tti{} is the decision-relevant quantity, since it is the
+staleness a consumer actually experiences, and it is the metric the decision-staleness integral
+consumes. \emph{Transport}---consumer receipt minus broker acknowledgement, stamped identically
+for both backends---is the architecture-relevant quantity, because it excludes the load
+generator. Where the two disagree we report both and say which question each answers
+(Section~\ref{sec:concurrency}). We further report p50/p95/p99/max, missed-window rates against
+sports actionability thresholds (100/250/500/1000/5000~ms), throughput, serialized message size,
+and serialization/deserialization overhead. For S3 we additionally measure
+correction-propagation latency.
 
 \subsection{Decision-Staleness: From Latency to Win-Probability Error}
 \label{sec:decisionstaleness}
@@ -335,10 +342,43 @@ concurrency. Corrected by giving each feed a distinct match at its true event ra
 (Section~\ref{sec:concurrency}), the degradation disappears, and the genuine throughput effect
 is relocated to a dedicated sweep that varies event rate alone (Table~\ref{tab:regime}).
 
-A residual asymmetry remains in \emph{transport} (\kafka{} is measured from broker
-acknowledgement, \redis{} from the send call), so for cross-backend comparison we rely on
-\tti{}, which is defined identically for both. All reported results use the corrected, fair
+\emph{(5)~Reporting a broker comparison on a load-generator-dominated metric.} \tti{} is the
+right metric for the \emph{decision} question, because staleness is what a consumer actually
+experiences. It is the wrong metric for the \emph{architecture} question. In our corrected runs
+producer scheduling lag accounts for 53--78\% of \tti{} (Table~\ref{tab:decomp}), so a
+sub-millisecond difference in broker behaviour is outweighed roughly 25:1 by the load
+generator's own timing jitter. An earlier version of this paper concluded from \tti{} that
+neither backend showed any concurrency effect; on the broker-isolating metric that conclusion is
+false (Section~\ref{sec:concurrency}). We now report both metrics and match each to its
+question.
+
+Both backends stamp \texttt{t\_broker\_ack\_ns} --- the \kafka{} producer from its send
+callback, the \redis{} producer on return from \texttt{XADD} --- and transport is computed
+identically for both as consumer receipt minus broker acknowledgement. Transport is therefore a
+like-for-like broker comparison, up to the difference between an asynchronously dispatched
+callback and an inline command return. All reported results use the corrected, fair
 instrumentation; the before/after contrast is itself a finding (Section~\ref{sec:discussion}).
+
+\begin{table*}[htbp]
+\centering
+\caption{Decomposition of \tti{} at each concurrency level (p50, ms). Producer scheduling lag,
+an artefact of the load generator rather than of either broker, dominates the metric; broker
+transport is under a tenth of it.}
+\label{tab:decomp}
+\begin{tabular}{llrrrr}
+\toprule
+Backend & $N$ & \tti{} & Sched.\ lag & Transport & Lag \% of \tti{} \\
+\midrule
+\kafka{} & 1  & 11.38 & 8.22  & 0.999 & 72\% \\
+\kafka{} & 5  & 14.74 & 11.01 & 1.001 & 75\% \\
+\kafka{} & 10 &  9.17 & 4.89  & 1.002 & 53\% \\
+\midrule
+\redis{} & 1  & 10.31 & 8.01  & 1.006 & 78\% \\
+\redis{} & 5  &  8.45 & 6.00  & 1.197 & 71\% \\
+\redis{} & 10 & 11.66 & 8.82  & 1.346 & 76\% \\
+\bottomrule
+\end{tabular}
+\end{table*}
 
 \emph{Verifying that a treatment was applied.} A fifth defect is of a different kind, and we
 record it because it is the one most likely to survive peer review undetected. Our first run of
@@ -451,12 +491,59 @@ immaterial to latency.
 
 \subsection{Concurrency Scaling (RQ2)}
 \label{sec:concurrency}
-When each concurrent feed carries a \emph{different} real match at its true event rate, neither
-backend degrades and the two remain indistinguishable (Table~\ref{tab:faircmp}). Median \tti{}
-stays near 10~ms and broker transport near 1~ms from $N{=}1$ to $N{=}10$
-(Figure~\ref{fig:latency}); no per-$N$ comparison is significant (Holm--Bonferroni-corrected
-Mann--Whitney, $p=0.68$, $0.60$, $0.68$), and Kruskal--Wallis finds no concurrency effect for
-either system ($p=0.70$ for \kafka{}, $p=0.20$ for \redis{}).
+This question requires care about which metric answers it. On \tti{}, when each concurrent feed
+carries a \emph{different} real match at its true event rate, neither backend degrades and the
+two are equivalent (Table~\ref{tab:faircmp}): median \tti{} stays near 10~ms from $N{=}1$ to
+$N{=}10$ (Figure~\ref{fig:latency}), no per-$N$ comparison is significant
+(Holm--Bonferroni-corrected Mann--Whitney, $p=0.68$, $0.60$, $0.68$), and Kruskal--Wallis finds
+no concurrency effect ($p=0.70$ for \kafka{}, $p=0.20$ for \redis{}).
+
+That null, however, is a property of the metric as much as of the systems. Because producer
+scheduling lag supplies 53--78\% of \tti{} (Table~\ref{tab:decomp}), a sub-millisecond broker
+effect cannot survive it. Repeating the identical tests on \emph{transport}---consumer receipt
+minus broker acknowledgement, computed the same way for both backends---reverses the conclusion
+(Table~\ref{tab:transport}).
+
+\redis{} broker transport rises monotonically with concurrency, $1.006 \rightarrow 1.197
+\rightarrow 1.346$~ms, a $34\%$ increase that Kruskal--Wallis resolves at
+$p=6.7\times10^{-12}$. \kafka{} over the same range moves from $0.999$ to $1.002$~ms, an
+increase of $0.3\%$. The per-$N$ comparisons separate the backends completely at $N{\geq}5$
+(rank-biserial $=1.00$, i.e.\ every \redis{} run is slower than every \kafka{} run;
+Holm-corrected $p=6.5\times10^{-6}$ and $9.0\times10^{-11}$). The single-threaded serialization
+that Section~\ref{sec:literature} predicts on architectural grounds is therefore present,
+unambiguous, and detectable at entirely realistic concurrency---not only in the stress regime of
+Table~\ref{tab:regime}.
+
+The magnitude is what settles the practical question. The effect is $0.34$~ms at $N{=}10$:
+one $118$th of a video frame, three orders of magnitude inside the tightest budget in
+Table~\ref{tab:latency_requirements}, and invisible in decision-staleness. TOST accordingly
+establishes \emph{equivalence} within the pre-specified margin at every level even as
+Mann--Whitney rejects equality (Table~\ref{tab:transport}). Reporting both is the point: the two
+tests answer different questions, and here they answer them in opposite directions. The
+architectural difference is real and measurable; it is also, for this domain, of no
+consequence. A study reporting only the significance test would overstate the finding, and one
+reporting only \tti{} would miss it entirely.
+
+\begin{table*}[htbp]
+\centering
+\caption{Broker transport (p50, ms) by concurrency, measured identically for both backends.
+\redis{} scales with $N$ and \kafka{} does not; the backends are separated completely at
+$N{\geq}5$ yet remain equivalent within the pre-specified $40$~ms margin, because the effect is
+sub-millisecond.}
+\label{tab:transport}
+\begin{tabular}{rrrrrl}
+\toprule
+$N$ & \kafka{} & \redis{} & Diff & Mann--Whitney $p_{\text{Holm}}$ & TOST \\
+\midrule
+1  & 0.999 & 1.006 & $0.007$ & $1.0\times10^{-4}$  & equivalent \\
+5  & 1.001 & 1.197 & $0.196$ & $6.5\times10^{-6}$  & equivalent \\
+10 & 1.002 & 1.346 & $0.344$ & $9.0\times10^{-11}$ & equivalent \\
+\midrule
+\multicolumn{6}{l}{\footnotesize Across $N$ (Kruskal--Wallis): \kafka{} $+0.3\%$,
+$p=2.2\times10^{-7}$; \redis{} $+34\%$, $p=6.7\times10^{-12}$.} \\
+\bottomrule
+\end{tabular}
+\end{table*}
 
 This corrects an artefact of our own earlier design, and the correction is instructive. A
 sweep in which every feed replays the \emph{same} merged ten-match plan does show \redis{}
@@ -533,9 +620,10 @@ Kruskal--Wallis across $N$ is non-significant for both backends.}
 \centering
 \includegraphics[width=0.7\columnwidth]{docs/results/figures/latency_vs_concurrency.pdf}
 \caption{Broker transport latency (p50, log scale) vs.\ the number of \emph{distinct} concurrent
-matches, single host. Both backends remain near 1~ms and are statistically indistinguishable
-across the realistic range; \redis{}'s serialization only appears at the far higher aggregate
-event rates of Table~\ref{tab:regime}.}
+matches, single host. Both backends remain near 1~ms, but \redis{} rises $34\%$ across the range
+while \kafka{} is flat (Table~\ref{tab:transport}): the serialization effect is already present
+here, three orders of magnitude below the point where it would matter, and grows into the
+seconds only at the aggregate event rates of Table~\ref{tab:regime}.}
 \label{fig:latency}
 \end{figure}
 
@@ -910,8 +998,15 @@ The reason is worth stating plainly, because it is easy to lose in a benchmark. 
 data is \emph{sparse}: roughly 0.44 events per second per match. A broker that comfortably
 sustains thousands of events per second is being asked, by a realistic deployment, for a few
 hundred. Architectural differences that are entirely real---\redis{}'s single execution thread
-does serialize concurrent streams, and we measure it doing so---are therefore inert in this
-domain. We found this only by making the concurrent feeds carry \emph{distinct} matches: an
+does serialize concurrent streams, and we measure it doing so at $p=6.7\times10^{-12}$ with
+complete rank separation---are therefore inert in this domain, because the serialization amounts
+to $0.34$~ms. This is the cleanest illustration we can offer of why statistical significance and
+practical relevance must be reported together: on the same data, the difference-test rejects
+equality and the equivalence-test establishes equivalence, and both are correct. We found the
+effect at all only by decomposing \tti{}; had we reported the aggregate metric alone, as the
+streaming-benchmark literature typically does, we would have concluded---and initially did
+conclude---that no architectural difference existed. We found its true magnitude only by making
+the concurrent feeds carry \emph{distinct} matches: an
 earlier design in which every feed replayed the same ten-match merged plan produced an apparent
 ``\redis{} degrades with concurrency'' result that was really an artefact of packing ten
 matches into each feed. The lesson generalises beyond our study: a concurrency axis that is

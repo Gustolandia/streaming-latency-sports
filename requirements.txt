@@ -1,100 +1,27 @@
 # Streaming Latency Sports Benchmarks - Python Dependencies
 # =========================================================
-# This file lists all Python package dependencies for the benchmark suite.
-# 
-# Installation:
-#   pip install -r requirements.txt
-# 
-# For development:
-#   pip install -r requirements.txt -r requirements-dev.txt
+# Install:      pip install -r requirements.txt
+# With tests:   pip install -r requirements.txt -r requirements-dev.txt
 #
-# Version: 0.3.0-s3-scaffolding
-# Last updated: June 9, 2026
+# Python 3.9+ (developed on 3.9; CI also exercises 3.11).
+# Docker + Docker Compose v2 are needed to *run* the benchmarks, not to run the tests:
+# the unit tests mock the Kafka/Redis clients, so no broker is required.
 
----
-# CORE DEPENDENCIES (Required for all functionality)
----
+# --- Streaming clients ---
+kafka-python>=2.0.0,<3.0.0     # Apache Kafka client
+redis>=4.0.0,<5.0.0            # Redis client (Streams + Cluster)
 
-# Streaming clients
-kafka-python>=2.0.0,<3.0.0      # Apache Kafka Python client
-redis>=4.0.0,<5.0.0            # Redis Python client
+# --- Data processing ---
+pandas>=1.5.0,<3.0.0           # run/plan/result frames
+numpy>=1.21.0,<2.0.0           # numerics
 
-# Data processing
-pandas>=1.5.0,<3.0.0          # Data manipulation and analysis
-numpy>=1.21.0,<2.0.0          # Numerical computing
+# --- Statistics ---
+scipy>=1.10.0                  # Mann-Whitney U, Kruskal-Wallis, Skellam win-probability
 
-# File I/O
-pyarrow>=8.0.0,<15.0.0        # Apache Parquet support (optional for plans)
+# --- Visualization ---
+matplotlib>=3.5.0              # result + calibration figures (headless Agg backend)
+seaborn>=0.12.0                # styling for the batch/concurrency plots
 
----
-# OPTIONAL DEPENDENCIES (Install as needed)
-# To install all optional: pip install -r requirements-optional.txt
----
-
-# Visualization (for plotting results)
-# matplotlib>=3.5.0
-# seaborn>=0.12.0
-
-# Statistical analysis
-# scipy>=1.10.0
-# statsmodels>=0.13.0
-
-# CLI enhancements
-# rich>=13.0.0
-# typer>=0.7.0
-
----
-# DEVELOPMENT TOOLS (See requirements-dev.txt)
-# Not required for production use
----
-
-# Testing
-# pytest>=7.0.0
-# pytest-cov>=3.0.0
-
-# Code quality
-# mypy>=0.900
-# flake8>=4.0.0
-# black>=22.0.0
-# isort>=5.10.0
-
-# Documentation
-# mkdocs>=1.3.0
-# mkdocs-material>=8.0.0
-
----
-# NOTES
-# =====
-# 
-# 1. Python Version: This project requires Python 3.9 or higher
-#    - Recommended: Python 3.9, 3.10, or 3.11
-#    - WSL (Windows Subsystem for Linux) is recommended for best compatibility
-#
-# 2. System Dependencies:
-#    - Docker (for Kafka and Redis services)
-#    - Docker Compose v2.0+
-#    - Git
-#
-# 3. Installation on WSL (Recommended):
-#    wsl --install -d Ubuntu
-#    sudo apt update && sudo apt upgrade -y
-#    sudo apt install -y python3 python3-pip python3-venv git docker.io docker-compose
-#    git clone https://github.com/[your-org]/streaming-latency-sports.git
-#    cd streaming-latency-sports
-#    python3 -m venv .venv
-#    source .venv/bin/activate
-#    pip install -r requirements.txt
-#
-# 4. Starting Services:
-#    docker compose up -d
-#
-# 5. Version Pinning:
-#    Specific versions are pinned to ensure reproducibility.
-#    The ranges above allow for minor updates (bug fixes) while
-#    maintaining compatibility.
-#
-# 6. For Paper Reproduction:
-#    Use the exact versions from docs/results/paper_env_snapshot.txt
-#    to ensure identical results.
-#
----
+# --- File I/O / reporting ---
+pyarrow>=8.0.0,<15.0.0         # parquet replay plans
+tabulate>=0.8.10               # required by pandas .to_markdown() in generate_manuscript_analysis.py

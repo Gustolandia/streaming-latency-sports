@@ -139,8 +139,10 @@ def main():
     parser = argparse.ArgumentParser(
         description='Run concurrent Kafka vs Redis streaming benchmarks'
     )
-    parser.add_argument('concurrency', type=int, choices=[1, 5, 10, 20],
-                        help='Number of concurrent feeds (1, 5, 10, 20)')
+    parser.add_argument('concurrency', type=int,
+                        help='Number of concurrent feeds. Unrestricted: the high-connection '
+                             'sweep needs N in the hundreds to test per-client overhead, which '
+                             'a fixed choice list would have silently forbidden.')
     parser.add_argument('plan_csv', type=str,
                         help='Path to the replay plan CSV file')
     parser.add_argument('reps', type=int, default=1,

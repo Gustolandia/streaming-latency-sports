@@ -715,6 +715,17 @@ message is twofold: cross-process streaming benchmarks demand a shared clock, a 
 load generator and symmetrically configured clients; and a concurrency axis that is secretly a
 throughput axis will manufacture architectural differences the target domain never encounters.
 
+\section*{Data and Code Availability}
+All code, replay plans, aggregated results and the analysis pipeline are openly available at
+\url{https://github.com/Gustolandia/streaming-latency-sports}, archived at
+\texttt{[DOI to be inserted on release]}. The event data are the StatsBomb open dataset
+(1.~Bundesliga 2023/24), used under its CC~BY-NC~4.0 licence; the raw event JSONs are not
+redistributed here but are re-fetchable from a pinned upstream commit with the script
+\texttt{scripts/fetch\_statsbomb\_events.sh}, so the corpus is reconstructible exactly. Every
+run records its git commit and per-file SHA-256 in a \texttt{meta.json}, and
+\texttt{reproducibility/MANIFEST.json} pins the checksums of all code and configuration used to
+produce the reported results.
+
 \begin{acks}
 Using StatsBomb open dataset. Open-source Apache Kafka and Redis projects. MIT License.
 \end{acks}

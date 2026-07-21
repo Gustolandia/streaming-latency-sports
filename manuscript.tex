@@ -175,8 +175,7 @@ milliseconds, so $40$~ms is about four times the quantity being compared---and w
 a limitation rather than a strength. Equivalence within one frame is a claim about
 \emph{operational} indistinguishability, not about the systems being identical; a reader
 operating under a tighter budget should re-test at their own margin, and
-Section~
-ef{sec:concurrency} shows that on broker transport a strictly smaller margin would
+Section~\ref{sec:concurrency} shows that on broker transport a strictly smaller margin would
 \emph{not} be met. We report the margin, the observed difference and the interval in every
 case so the reader can apply their own threshold.
 
@@ -216,6 +215,14 @@ acknowledgements over many messages should remove the bound entirely and restore
 it is the only per-event round trip in the loop. All four are tested in
 Section~\ref{sec:netem}; P4 is the decisive one, because it is an intervention rather than an
 observation---if batching the acknowledgements does not help, the account is wrong.
+
+We state that criterion before reporting the outcome because it is met in one environment and
+\emph{failed} in another, and we hold ourselves to it. On the single host all four predictions
+are borne out. On a multi-host replication (Section~\ref{sec:cloud}) P4 fails: batching does
+not help, and P2's growth signature is absent. By the standard set here the round-trip-bound
+account is therefore confirmed for the single-host regime and refuted as a general explanation
+of network-induced collapse. We report it as such rather than retreating to a weaker claim
+that the original prediction would not have distinguished.
 
 \paragraph{Statistical Framework}
 All hypotheses are tested using the framework in Section~\ref{sec:stat_methods}: Holm--Bonferroni correction for multiple comparisons (Family-Wise Error Rate at $\alpha=0.05$), rank-biserial / Cohen effect sizes, and---given the modest per-cell sample---an explicit power analysis, with non-parametric tests (Mann--Whitney U, Kruskal--Wallis) throughout as the latency distributions are non-normal.
@@ -510,8 +517,7 @@ We verify statistical assumptions for all tests:
 
 \paragraph{Multiple-comparison families.} We state the families explicitly, since Holm's
 correction is only interpretable relative to them. Each metric family is the set of per-$N$
-\kafka{}-vs-
-edis{} comparisons at a single metric within a single corpus: three tests
+\kafka{}-vs-\redis{} comparisons at a single metric within a single corpus: three tests
 ($N\in\{1,5,10\}$) for 	ti{}, three for transport, and three for decision-staleness. The
 Kruskal--Wallis tests across $N$ are single omnibus tests per backend and are not corrected.
 Equivalence tests are not part of any Holm family: TOST is a separate, pre-specified
@@ -925,7 +931,9 @@ establish it. We therefore changed one thing---acknowledging in batches of two h
 than one at a time---and repeated the two delays at which \redis{} had collapsed, holding
 everything else fixed. The effect is unambiguous (Table~\ref{tab:ackbatch}): median \tti{}
 falls from 10.5~seconds to 34~milliseconds at 20~ms delay and from 75~seconds to
-85~milliseconds at 50~ms, improvements of $307\times$ and $882\times$. The within-run growth
+85~milliseconds at 50~ms, improvements of $307\times$ and $882\times$. (Section~\ref{sec:cloud} reports that this repair does \emph{not} reproduce
+on a multi-host testbed, which bounds the claim; we present the single-host result first
+because it is where the prediction was made and tested.) The within-run growth
 ratio flips from divergence to stability (2.25~$\rightarrow$~0.49 and
 5.59~$\rightarrow$~0.25), and TOST re-establishes equivalence with \kafka{} at both delays
 ($p=4\times10^{-19}$ and $1\times10^{-16}$).
@@ -984,7 +992,7 @@ the decision corruption this paper set out to detect.
 distinct matches), with the \redis{} consumer acknowledging \emph{per message}. \kafka{} tracks
 the delay; \redis{} amplifies it by two to three orders of magnitude. Equivalence (TOST,
 one-frame margin) survives only to $\approx$5~ms. Table~\ref{tab:ackbatch} shows that batching
-the acknowledgements restores equivalence at 20 and 50~ms.}
+the acknowledgements restores equivalence at 20 and 50~ms on this single-host testbed.}
 \label{tab:netem}
 \begin{tabular}{rrrrrc}
 \toprule
@@ -1113,7 +1121,10 @@ it is immune because its client already amortises---prefetching records and comm
 on a timer---so it has no per-record round trip left to expose. We regard the intervention as
 the load-bearing evidence here: changing one line, so that acknowledgements are batched,
 recovers a factor of $307$ and $882$ and restores equivalence, which no observational
-comparison could have established.
+comparison could have established. That conclusion is bounded by where we could manipulate it:
+on a multi-host replication the same intervention leaves the collapse untouched
+(Section~\ref{sec:cloud}), so the account explains our single-host result rather than
+network-induced failure in general.
 
 Two things follow. The first is a design rule that transfers beyond this study: with a
 co-located broker, per-message round trips are free and the pattern is invisible; at a realistic
@@ -1189,8 +1200,10 @@ bears directly on our network results: the delay in Section~\ref{sec:netem} is \
 injected with \texttt{tc netem} on a single host, so it reproduces the latency of a network hop
 but not its jitter, loss, reordering or bandwidth limits. The intervention (P4) establishes the
 causal direction firmly---the same delay, with only the acknowledgement pattern changed, yields
-a $307$--$882\times$ difference---but confirmation on genuinely separate hosts remains
-outstanding. Relatedly, the threshold $\mathrm{RTT}_{\text{crit}}\approx1/\lambda$ is a function
+a $307$--$882\times$ difference---but it does not survive replication on genuinely separate hosts, where the collapse recurs
+and batching does not repair it (Section~\ref{sec:cloud}). We therefore treat the
+synthetic-delay result as establishing the mechanism in a controlled setting, not as a general
+account of network-induced failure. Relatedly, the threshold $\mathrm{RTT}_{\text{crit}}\approx1/\lambda$ is a function
 of arrival rate, so the specific figure of $\approx$19~ms belongs to our replay conditions
 ($\lambda\approx53$~events/s per feed) and not to football in general; it is the
 \emph{relationship} that transfers, and a slower or faster feed moves the knee accordingly.
@@ -1257,8 +1270,7 @@ grows for as long as the match lasts. Batching those acknowledgements, a single 
 factors of $307$ and $882$ and restores equivalence with \kafka{}---on that testbed. On a
 multi-host replication with a genuine inter-VM network the collapse recurs but the repair does
 not, and the accumulating-backlog signature the account depends on is absent
-(Section~
-ef{sec:cloud}). The mechanism is therefore demonstrated where we could manipulate it
+(Section~\ref{sec:cloud}). The mechanism is therefore demonstrated where we could manipulate it
 and unresolved where we could not, which is a weaker claim than we set out to make and the one
 the data supports.
 

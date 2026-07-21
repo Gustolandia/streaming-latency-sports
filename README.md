@@ -86,10 +86,24 @@
 > equivalent** (TOST, one-frame margin) at every concurrency level, with no concurrency effect;
 > Redis's single-thread serialization only appears at ~2,100 events/s (~4,800 simultaneous
 > matches), far beyond any football deployment.
-> **Networked:** injecting delay equally at both brokers breaks that equivalence. Redis Streams
-> consumption is **round-trip bound**, so it amplifies delay 500–1,500× (75 s of TTI at 50 ms
-> injected) while Kafka tracks it (94 ms). By 20 ms, Redis imposes **275× more decision-staleness**
-> — decision-corrupting. **A loopback benchmark cannot see this.** See §1.5.
+> **Networked:** injecting delay equally at both brokers breaks that equivalence. Redis amplifies
+> delay 500–1,500× (75 s of TTI at 50 ms injected) while Kafka tracks it (94 ms). By 20 ms, Redis
+> imposes **275× more decision-staleness** — decision-corrupting. **A loopback benchmark cannot
+> see this.**
+>
+> **Multi-host replication (July 21 2026) — one claim confirmed, one not.** Repeating the study
+> on four cloud VMs over a real inter-VM network removes both single-host floors (a 1 ms sleep
+> now takes 1.06 ms, not 15.6 ms; broker RTT 0.22 ms, not 0.46 ms — a real two-machine network is
+> *faster* than the old "loopback").
+> * **Confirmed & sharpened:** the concurrency/serialization effect. Redis transport scales 7.3×
+>   across N=1..10 (p=3.2e-12) vs Kafka 3.5× (p=2.0e-10). But **Kafka is not flat** — that was an
+>   artefact of the old 1 ms floor — and at N=5 Redis is *faster* than Kafka. All levels remain
+>   TOST-equivalent.
+> * **NOT replicated:** the acknowledgement-batching repair. The 20 ms collapse recurs, but
+>   batching does not fix it (87.6 s → 92.4 s), the accumulating-backlog signature is absent
+>   (growth 1.08/1.00 vs 2.25 single-host), and the netem-drop explanation was tested and
+>   rejected. The round-trip-bound account is therefore **established on the single host and
+>   open on multi-host**. See §1.5 and the manuscript's Multi-Host Replication section.
 
 | Area | Status | Notes |
 |------|--------|-------|
@@ -102,7 +116,7 @@
 | **Network realism (`tc netem`)** | ✅ **Complete** | 0/5/20/50 ms injected equally → `docs/results/netem/`; **breaks equivalence ≥20 ms** |
 | Plan generation salvaged into main | ✅ **Complete** | `make_replay_plan.py` reproduces committed plans byte-for-byte |
 | Red cards as decisive events | ✅ **Complete** | dismissals move the WP model, so they now count |
-| Cluster claims | ⛔ **Withheld** | single-host co-location confounds them; not reported |
+| Cluster claims | ✅ **Reported** | 3-node, one broker per cloud host — confound removed (Redis Cluster 1.65 ms TTI, Kafka 14.1 ms at N=5) |
 | Test suite | ✅ **≥95% branch coverage** | every script in `scripts/` + root health checks |
 | Persistence H31/H32 (acks / AOF) | ✅ Complete | 12 runs; both hypotheses supported |
 | Manuscript reframe around decision-degradation | ✅ **Complete** | 11 pp, compiles clean |

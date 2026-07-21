@@ -77,40 +77,63 @@ def run_max_t_sim(run_dir):
         return 0.0
 
 
-def goal_decision_shifts(events, team_rate=wp.DEFAULT_TEAM_RATE):
-    """Map each goal event_id -> TV win-probability shift it caused, for one match."""
+def decisive_event_shifts(events, team_rate=wp.DEFAULT_TEAM_RATE, include_red_cards=True):
+    """Map each decisive event_id -> the TV win-probability shift it caused, for one match.
+
+    Decisive events are goals (including own goals, credited to the opponent) and, when
+    include_red_cards is set, dismissals. Red cards belong here because the win-probability
+    model already conditions on the red-card differential, so a dismissal moves the forecast
+    exactly as a goal does -- excluding them would under-count the staleness a feed can carry.
+    Events are processed in match order so that each shift is evaluated against the game state
+    prevailing at that moment.
+    """
     home, away, goals, reds, match_len = wp.parse_match(events)
     if not match_len:  # pragma: no cover - parse_match floors match_len at MATCH_SECONDS (>0)
         return {}
-    # ordered goal events with their event_id
-    goal_seq = []
+    # ordered decisive events: ("goal", scoring_team) or ("red", dismissed_team)
+    seq = []
     for e in events:
         et = e.get("type", {}).get("name")
         team = e.get("team", {}).get("name")
         t = wp.clock_seconds(e.get("minute", 0), e.get("second", 0))
         if et == "Shot" and e.get("shot", {}).get("outcome", {}).get("name") == "Goal":
-            goal_seq.append((e.get("id"), t, team))
+            seq.append((e.get("id"), t, "goal", team))
         elif et == "Own Goal Against":
-            goal_seq.append((e.get("id"), t, away if team == home else home))
+            seq.append((e.get("id"), t, "goal", away if team == home else home))
+        elif include_red_cards:
+            card = e.get("bad_behaviour", {}).get("card", {}).get("name")
+            if card in ("Red Card", "Second Yellow"):
+                seq.append((e.get("id"), t, "red", team))
 
     shifts = {}
     h, a = 0, 0
-    for eid, t, team in goal_seq:
+    rh, ra = 0, 0
+    for eid, t, kind, team in seq:
         frac_rem = max(0.0, (match_len - t) / match_len)
-        before = wp.win_probability(h - a, frac_rem, team_rate)
-        if team == home:
-            h += 1
-        else:
-            a += 1
-        after = wp.win_probability(h - a, frac_rem, team_rate)
+        before = wp.win_probability(h - a, frac_rem, team_rate, rh - ra)
+        if kind == "goal":
+            if team == home:
+                h += 1
+            else:
+                a += 1
+        else:  # dismissal
+            if team == home:
+                rh += 1
+            else:
+                ra += 1
+        after = wp.win_probability(h - a, frac_rem, team_rate, rh - ra)
         tv = 0.5 * sum(abs(b - c) for b, c in zip(before, after))
         if eid is not None:
             shifts[eid] = tv
     return shifts
 
 
+# Backwards-compatible alias: the metric started life goals-only.
+goal_decision_shifts = decisive_event_shifts
+
+
 def build_goal_shifts(events_dir, team_rate=wp.DEFAULT_TEAM_RATE):
-    """All goal event_id -> TV shift, across every match JSON in events_dir."""
+    """All decisive event_id -> TV shift, across every match JSON in events_dir."""
     shifts = {}
     for f in sorted(glob.glob(os.path.join(events_dir, "*.json"))):
         try:

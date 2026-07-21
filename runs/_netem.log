@@ -1,0 +1,21 @@
+===== NETEM delay=0ms 16:34:05 =====
+Prefix: concurrency_n5_20260721_163410
+Prefix: concurrency_n5_20260721_163410
+Successful: 30
+Failed: 0
+===== NETEM delay=5ms 16:39:45 =====
+Prefix: concurrency_n5_20260721_163949
+Prefix: concurrency_n5_20260721_163949
+Successful: 30
+Failed: 0
+===== NETEM delay=20ms 16:45:23 =====
+Prefix: concurrency_n5_20260721_164528
+Prefix: concurrency_n5_20260721_164528
+Successful: 30
+Failed: 0
+===== NETEM delay=50ms 16:51:57 =====
+Prefix: concurrency_n5_20260721_165206
+Prefix: concurrency_n5_20260721_165206
+Successful: 30
+Failed: 0
+===== NETEM SWEEP DONE 17:05:22 =====

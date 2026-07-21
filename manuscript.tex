@@ -38,7 +38,7 @@ We ask a question that the streaming-systems and sports-analytics literatures le
 
 The study is also a cautionary account of measurement validity. Three distinct instrumentation defects --- a process-relative cross-process clock, a saturating replay speed, and an asymmetric load generator (synchronous per-event \kafka{} sends versus asynchronous \redis{} dispatch) --- each \emph{reversed} the apparent winner before correction. We introduce the Time-to-Insight (\tti{}) metric, decomposed into producer scheduling lag and transport, and fix all three defects before drawing any conclusion.
 
-On the corrected corpus, with each concurrent feed carrying a \emph{different} real match at true per-match event rates, we find: (i)~\kafka{} and \redis{} are statistically indistinguishable at every concurrency level tested ($\approx$10\,ms median \tti{}; Holm--Bonferroni-corrected Mann--Whitney $p>0.5$ throughout), and neither exhibits a concurrency effect (Kruskal--Wallis $p=0.70$ and $0.20$); (ii)~single-node \redis{} \emph{does} serialize concurrent streams, but only far outside realistic load---football event data is intrinsically low-rate at 0.44 events per second per match, and expressing every tested load in simultaneous real-time match equivalents places the onset of \redis{} degradation at roughly 6{,}400 concurrent matches, whereas 1{,}200 are served in 1.4\,ms; and (iii)~translated into decisions through an Age-of-Information win-probability integral, a goal's win probability is stale by $\approx$0.014 probability-seconds ($\approx$12\,ms) irrespective of backend or concurrency. The practical conclusion is a quantified negative result: across the entire operating envelope a football deployment will ever encounter, streaming-infrastructure choice does not measurably degrade in-play decision quality, and backends should be selected on durability and operational grounds rather than latency.
+On the corrected corpus, with each concurrent feed carrying a \emph{different} real match at true per-match event rates, we find: (i)~\kafka{} and \redis{} are statistically indistinguishable at every concurrency level tested ($\approx$10\,ms median \tti{}; Holm--Bonferroni-corrected Mann--Whitney $p>0.5$ throughout), and neither exhibits a concurrency effect (Kruskal--Wallis $p=0.70$ and $0.20$); (ii)~single-node \redis{} \emph{does} serialize concurrent streams, but only far outside realistic load---football event data is intrinsically low-rate at 0.44 events per second per match, and a dedicated throughput sweep places the onset of \redis{} degradation near 2{,}100 events/s, equivalent to roughly 4{,}800 simultaneous matches, while 2{,}400 match equivalents are still served in 2.5\,ms; and (iii)~translated into decisions through an Age-of-Information win-probability integral, a goal's win probability is stale by $\approx$0.014 probability-seconds ($\approx$12\,ms) irrespective of backend or concurrency. The practical conclusion is a quantified negative result: across the entire operating envelope a football deployment will ever encounter, streaming-infrastructure choice does not measurably degrade in-play decision quality, and backends should be selected on durability and operational grounds rather than latency.
 
 \end{abstract}
 
@@ -144,6 +144,19 @@ For each research question we state null and alternative hypotheses. Where an in
 \item[$\mathbf{H_{14}}$:] decision-staleness grows with delivery latency and diverges by backend under concurrency.
 \end{description}
 \noindent\textbf{Test:} per-$N$ Mann--Whitney and Kruskal--Wallis across $N$ on the Age-of-Information decision-staleness. \textbf{Expected and found (Section~\ref{sec:dsresults}):} $\mathbf{H_{14}}$---at $N{=}1$ decision-staleness is negligible and indistinguishable between backends ($p=0.40$), but single-node \redis{} imposes materially larger decision-staleness under concurrency.
+
+\paragraph{Equivalence Testing}
+Our central claim is a \emph{negative} one, and a non-significant difference test does not
+support it: failing to reject equality is not evidence of equality, particularly at modest
+sample sizes. We therefore state the claim with two one-sided tests (TOST), which invert the
+burden of proof by testing $H_0: |\mu_{\kafka{}}-\mu_{\redis{}}| \geq \delta$ against
+$H_1: |\mu_{\kafka{}}-\mu_{\redis{}}| < \delta$; rejecting $H_0$ establishes equivalence within
+the margin $\delta$. Equivalently, the $90\%$ confidence interval of the difference must lie
+entirely inside $(-\delta, +\delta)$, and we report both. The margin is pre-specified on domain
+grounds rather than fitted to the data: one broadcast video frame at 25\,fps ($40$~ms) for
+latency, and the staleness a maximal event (total-variation shift of $1.0$) accrues over one
+frame ($0.04$ probability-seconds) for decision-staleness. A difference smaller than a single
+frame cannot change what a coach, broadcaster or model does.
 
 \paragraph{Statistical Framework}
 All hypotheses are tested using the framework in Section~\ref{sec:stat_methods}: Holm--Bonferroni correction for multiple comparisons (Family-Wise Error Rate at $\alpha=0.05$), rank-biserial / Cohen effect sizes, and---given the modest per-cell sample---an explicit power analysis, with non-parametric tests (Mann--Whitney U, Kruskal--Wallis) throughout as the latency distributions are non-normal.
@@ -373,33 +386,47 @@ for \redis{}).
 
 This corrects an artefact of our own earlier design, and the correction is instructive. A
 sweep in which every feed replays the \emph{same} merged ten-match plan does show \redis{}
-transport climbing steeply with $N$ (to 774~ms at $N{=}5$ and 9{,}732~ms at $N{=}20$) while
-\kafka{} stays flat. That effect is real, but it is driven by \emph{aggregate event rate}, not
-by the number of concurrent streams: the merged plan packs ten matches into every feed, so its
-``$N{=}5$'' applies roughly ten times the load of five real matches. Football event data is
-intrinsically low-rate---0.44 events per second per match---so expressing each tested load in
-simultaneous real-time match equivalents (Table~\ref{tab:regime}) locates the boundary
-honestly. Single-node \redis{} serves the rate of $\approx$1{,}200 simultaneous matches in
-1.4~ms and only degrades around $\approx$6{,}400. For scale, the top five European leagues
-field roughly fifty simultaneous matches on a busy weekend. \redis{}'s single-threaded
-serialization is therefore a genuine architectural property that is nonetheless irrelevant at
-any load a football operator will encounter.
+transport climbing steeply with $N$ while \kafka{} stays flat. That effect is real, but it is
+driven by \emph{aggregate event rate}, not by the number of concurrent streams: the merged plan
+packs ten matches into every feed, so its ``$N{=}5$'' applies roughly ten times the load of five
+real matches. Its concurrency axis was, in effect, a throughput axis in disguise.
+
+To locate the boundary properly we therefore ran a dedicated throughput sweep on a single
+consistent configuration---ten distinct matches, varying only the replay speed---so that
+aggregate event rate is the sole manipulated variable (Table~\ref{tab:regime}). Football event
+data is intrinsically low-rate (0.44 events per second per match), so we also express each load
+in simultaneous real-time match equivalents. Both systems sit near 1--2.5~ms up to
+$\approx$1{,}000 events/s, equivalent to some 2{,}400 simultaneous matches. The first sign of
+divergence appears at $\approx$2{,}100 events/s ($\approx$4{,}800 match equivalents), where
+\redis{} transport (492~ms) is roughly five times \kafka{}'s (93~ms)---this is the single-thread
+serialization penalty becoming visible. Beyond $\approx$4{,}000 events/s both collapse into
+seconds and the ordering is no longer stable (\kafka{} is momentarily the slower of the two),
+which tells us the single host has become the binding constraint and that those points no longer
+isolate broker behaviour. For scale, the top five European leagues field roughly fifty
+simultaneous matches on a busy weekend---three orders of magnitude below the divergence point.
 
 \begin{table}[htbp]
 \centering
-\caption{Where the architectural difference actually appears. Loads are expressed in
-simultaneous real-time match equivalents at 0.44 events/s per match.}
+\caption{Throughput sweep on one consistent configuration (ten distinct matches, replay speed
+varied). Loads are also expressed in simultaneous real-time match equivalents at 0.44 events/s
+per match. Divergence appears near 2{,}100 events/s; past $\approx$4{,}000 the host saturates
+and the ordering is no longer meaningful.}
 \label{tab:regime}
 \begin{tabular}{rrrr}
 \toprule
 Aggregate load & $\approx$ real-time matches & \kafka{} transport & \redis{} transport \\
 \midrule
-531 ev/s (10 distinct matches) & 1{,}200  & 1.0~ms  & 1.4~ms \\
-567 ev/s                       & 1{,}280  & 2~ms    & 4~ms \\
-2{,}835 ev/s                   & 6{,}400  & 2~ms    & 774~ms \\
-11{,}342 ev/s                  & 25{,}600 & 10~ms   & 9{,}732~ms \\
+531 ev/s     & 1{,}200  & 1.1~ms          & 1.5~ms \\
+1{,}062 ev/s & 2{,}400  & 1.7~ms          & 2.5~ms \\
+2{,}124 ev/s & 4{,}800  & 93~ms           & 492~ms \\
+4{,}248 ev/s & 9{,}600  & 4{,}598~ms\textsuperscript{\dag} & 3{,}775~ms\textsuperscript{\dag} \\
+8{,}496 ev/s & 19{,}200 & 4{,}442~ms\textsuperscript{\dag} & 5{,}793~ms\textsuperscript{\dag} \\
 \bottomrule
 \end{tabular}
+
+\smallskip
+{\footnotesize \textsuperscript{\dag}\,Host-saturated: both backends are in seconds and the
+ordering reverses, so these rows bound the testbed rather than the brokers.}
 \end{table}
 
 \begin{table}[htbp]
@@ -504,6 +531,73 @@ full-match replay, single host. Negligible and indistinguishable at $N{=}1$; sin
 \label{fig:staleness}
 \end{figure}
 
+\paragraph{Validation against true real time.} Every result above replays a compressed clock,
+which invites the objection that a ``real-time'' claim has been extrapolated from accelerated
+data. We therefore repeated the $N{=}5$ distinct-match condition at \emph{genuine} $1\times$
+speed, cancelling the factor baked into the replay plans so that ten minutes of match clock
+takes ten minutes of wall clock (confirmed by the runs' elapsed time). Median \tti{} is
+$15.5$~ms for \kafka{} and $13.8$~ms for \redis{}, against $14.7$ and $8.4$~ms in the compressed
+condition, and TOST again establishes equivalence within the one-frame margin
+($p=1.6\times10^{-13}$). Time compression therefore does not bias the comparison, and the
+conclusions carry to real-time operation.
+
+\paragraph{Equivalence, not merely absence of difference.} Because the claim is negative, we
+test it directly with TOST against the pre-specified margins of
+Section~\ref{sec:stat_methods}. Equivalence is established at \emph{every} concurrency level
+for both metrics (Table~\ref{tab:tost}): the $90\%$ confidence interval of the
+\kafka{}--\redis{} difference is at most $\pm 5$~ms against a $40$~ms margin for \tti{}, and at
+most $\pm 0.01$ against a $0.04$ probability-second margin for decision-staleness. We can
+therefore assert equivalence positively rather than merely reporting a failure to reject.
+
+\begin{table}[htbp]
+\centering
+\caption{TOST equivalence tests. In every cell the 90\% CI of the difference falls well inside
+the pre-specified margin, establishing equivalence.}
+\label{tab:tost}
+\begin{tabular}{llrrc}
+\toprule
+Metric & $N$ & Mean diff & 90\% CI & Equivalent \\
+\midrule
+\tti{} (ms, $\delta=40$)      & 1  & $+1.12$ & $[-1.56,\ 3.80]$ & yes \\
+                              & 5  & $+2.16$ & $[-0.70,\ 5.01]$ & yes \\
+                              & 10 & $-1.05$ & $[-3.07,\ 0.98]$ & yes \\
+\midrule
+Staleness (prob-s, $\delta=0.04$) & 1  & $+0.0020$ & $[-0.0011,\ 0.0051]$ & yes \\
+                              & 5  & $+0.0044$ & $[-0.0010,\ 0.0098]$ & yes \\
+                              & 10 & $-0.00001$ & $[-0.0039,\ 0.0039]$ & yes \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Robustness to the win-probability model.} The decision-staleness metric depends on a
+proxy model with one free parameter, so we sweep the per-team scoring rate from $1.0$ to $1.6$
+and recompute everything (Table~\ref{tab:sens}). The absolute staleness moves by about $12\%$
+across that range and calibration stays good throughout (ECE $0.049$--$0.062$), but the
+\kafka{}--\redis{} \emph{difference} is invariant to three decimal places
+($0.00101 \rightarrow 0.00103$ probability-seconds) and never approaches the equivalence
+margin. This is expected structurally---both backends are scored against the identical model,
+so it scales both sides of the comparison---and it means the conclusion does not rest on the
+proxy's particular calibration. A better win-probability model would change the reported
+magnitudes, not the finding that the backends are indistinguishable.
+
+\begin{table}[htbp]
+\centering
+\caption{Sensitivity to the win-probability proxy's scoring-rate parameter. The absolute
+staleness shifts; the between-backend difference does not.}
+\label{tab:sens}
+\begin{tabular}{ccccc}
+\toprule
+Scoring rate & ECE & \kafka{} staleness & \redis{} staleness & Difference \\
+\midrule
+1.00 & 0.062 & 0.0159 & 0.0149 & 0.00101 \\
+1.15 & 0.059 & 0.0153 & 0.0143 & 0.00102 \\
+1.30 & 0.054 & 0.0148 & 0.0138 & 0.00102 \\
+1.45 & 0.050 & 0.0144 & 0.0134 & 0.00103 \\
+1.60 & 0.049 & 0.0140 & 0.0130 & 0.00103 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 This is the paper's central, sports-relevant result, and it is a quantified negative one:
 \emph{across the entire operating envelope a football deployment will realistically encounter,
 the choice of streaming infrastructure does not measurably degrade in-play decision quality.}
@@ -579,14 +673,21 @@ transport-level observations only and leave a true multi-host evaluation to futu
 Second, the win-probability model is a transparent, calibrated \emph{proxy} for the unreleased
 state-of-the-art model \cite{robberechts2021bayesian}; our decision-staleness magnitudes are
 indicative rather than exact, although the null result is robust to the proxy's precise
-calibration because both backends are evaluated against the identical model. Third, concurrent
-feeds replay recorded matches on a compressed clock rather than consuming genuinely live
-sources; we mitigate the most damaging form of this by giving each feed a \emph{distinct}
-match, which is what revealed the throughput confound discussed in
-Section~\ref{sec:concurrency}. Fourth, our null result is a failure to reject rather than a
-proof of equivalence: a two-one-sided-tests procedure against a pre-specified indifference
-margin (for example, one video frame of staleness) would state it positively, and we regard
-that as the natural next step. Finally, the study covers football event data specifically; the
+calibration because both backends are evaluated against the identical model. Third, feeds replay recorded matches rather than consuming genuinely live
+sources. We mitigate the two damaging forms of this directly: each feed carries a
+\emph{distinct} match, which is what revealed the throughput confound of
+Section~\ref{sec:concurrency}, and the headline condition is repeated at true $1\times$ speed,
+which reproduces the compressed result. What remains unmodelled is the upstream annotation
+pipeline: real event feeds are produced by human or vendor annotation with latencies measured in
+seconds, which would dominate every transport number reported here. That does not weaken the
+conclusion---it strengthens it, since a component contributing seconds makes a difference of
+milliseconds between brokers even less consequential---but it does mean our figures bound the
+\emph{transport} contribution to staleness, not end-to-end feed freshness. Fourth, our equivalence claim is bounded by the margin we chose:
+TOST establishes that the backends differ by less than one broadcast frame, not that they are
+identical, and a stricter margin (say, one millisecond) would not be supported by these data.
+We regard a frame as the operationally meaningful threshold, but readers applying the result
+under tighter budgets should re-test at their own margin. Finally, the study covers football
+event data specifically; the
 conclusion that broker choice is immaterial follows from that domain's low event rate and
 should not be transferred to high-frequency telemetry such as ball- or limb-tracking streams,
 where the throughput regime is entirely different.
@@ -602,7 +703,7 @@ football produces. \kafka{} and \redis{} are statistically indistinguishable at 
 concurrency level tested ($\approx$10~ms median \tti{}, $\approx$0.014 probability-seconds of
 win-probability staleness, all $p>0.5$), and neither shows a concurrency effect. Single-node
 \redis{} does serialize concurrent streams, but only above an aggregate event rate equivalent
-to roughly 6{,}400 simultaneous real-time matches---two orders of magnitude beyond a busy
+to roughly 4{,}800 simultaneous real-time matches---two orders of magnitude beyond a busy
 league weekend, because football event data arrives at only 0.44 events per second per match.
 
 By translating measured delivery latency into win-probability staleness through the

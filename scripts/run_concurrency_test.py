@@ -83,7 +83,7 @@ def run_trial(run_id: str, plan_csv: str, backend: str, speedup: float, max_t_si
               redis_port: int = 6379, topic: str = None, stream: str = None,
               broker_count: int = 1, cluster_mode: bool = False,
               producer_extra: str = "", trial_timeout: int = 300,
-              consumer_extra: str = "") -> Tuple[str, bool, str]:
+              consumer_extra: str = "", redis_cluster_nodes: str = "") -> Tuple[str, bool, str]:
     """
     Run a single trial (producer + consumer) for a specific backend.
     Returns (run_id, success, error_message)
@@ -109,6 +109,8 @@ def run_trial(run_id: str, plan_csv: str, backend: str, speedup: float, max_t_si
             _append(cmd, f' -STREAM "{stream}"')
         if cluster_mode:
             _append(cmd, ' -CLUSTER_MODE')
+        if redis_cluster_nodes:
+            _append(cmd, f' -CLUSTER_NODES "{redis_cluster_nodes}"')
         _append(cmd, f' -NODE_COUNT {broker_count}')
         if consumer_extra:
             _append(cmd, f' -CONSUMER_EXTRA "{consumer_extra}"')
@@ -163,6 +165,9 @@ def main():
                         help='Number of brokers/nodes (1 or 3)')
     parser.add_argument('--cluster-mode', action='store_true',
                         help='Use cluster configuration')
+    parser.add_argument('--redis-cluster-nodes', type=str, default='',
+                        help='host:port list for a genuinely distributed Redis Cluster; '
+                             'without it the legacy single-host 7000/7001/7002 layout is used.')
     parser.add_argument('--kafka-producer-extra', type=str, default='',
                         help='Extra args appended to the Kafka producer (e.g. "--max-inflight 64") '
                              'so its load generator is pipelined comparably to the Redis worker pool.')
@@ -245,7 +250,8 @@ def main():
                     broker_count=args.broker_count,
                     cluster_mode=args.cluster_mode,
                     trial_timeout=args.trial_timeout,
-                    consumer_extra=args.redis_consumer_extra
+                    consumer_extra=args.redis_consumer_extra,
+                        redis_cluster_nodes=args.redis_cluster_nodes
                 ))
             
             # Wait for all to complete

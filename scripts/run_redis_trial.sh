@@ -23,6 +23,7 @@ if [ $# -gt 0 ] && [[ "$1" != -* ]]; then MAX_T_SIM="$1"; shift; fi
 
 HOST="localhost"; PORT=6379; STREAM=""; GROUP=""
 CONSUMER_EXTRA=""; PRODUCER_EXTRA=""; NODE_COUNT=1; CLUSTER_MODE=0; IDLE_SECONDS=30
+CLUSTER_NODES=""
 while [ $# -gt 0 ]; do
   case "$1" in
     -RedisHost|-REDISHOST) HOST="$2"; shift 2;;
@@ -33,6 +34,7 @@ while [ $# -gt 0 ]; do
     -PRODUCER_EXTRA) PRODUCER_EXTRA="$2"; shift 2;;
     -NODE_COUNT) NODE_COUNT="$2"; shift 2;;
     -IDLE_SECONDS) IDLE_SECONDS="$2"; shift 2;;
+    -CLUSTER_NODES) CLUSTER_NODES="$2"; shift 2;;
     -CLUSTER_MODE) CLUSTER_MODE=1; shift;;
     *) shift;;
   esac
@@ -82,6 +84,7 @@ redis-cli -h "$HOST" -p "$PORT" DEL "$STREAM" >/dev/null 2>&1 || true
 
 CLUSTER_FLAG=""
 [ "$CLUSTER_MODE" = "1" ] && CLUSTER_FLAG="--cluster-mode"
+[ -n "$CLUSTER_NODES" ] && CLUSTER_FLAG="$CLUSTER_FLAG --cluster-nodes $CLUSTER_NODES"
 
 echo "[1/4] $(date +%H:%M:%S) starting consumer..."
 # shellcheck disable=SC2086

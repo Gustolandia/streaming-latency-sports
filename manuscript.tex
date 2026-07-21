@@ -170,6 +170,16 @@ latency, and the staleness a maximal event (total-variation shift of $1.0$) accr
 frame ($0.04$ probability-seconds) for decision-staleness. A difference smaller than a single
 frame cannot change what a coach, broadcaster or model does.
 
+The margin is generous relative to the measurements---both backends deliver in roughly ten
+milliseconds, so $40$~ms is about four times the quantity being compared---and we regard that as
+a limitation rather than a strength. Equivalence within one frame is a claim about
+\emph{operational} indistinguishability, not about the systems being identical; a reader
+operating under a tighter budget should re-test at their own margin, and
+Section~
+ef{sec:concurrency} shows that on broker transport a strictly smaller margin would
+\emph{not} be met. We report the margin, the observed difference and the interval in every
+case so the reader can apply their own threshold.
+
 \paragraph{RQ5: Round-trip-bound consumption (mechanism)}
 The two clients consume in structurally different ways, and we hypothesise that this---not
 broker throughput---governs their behaviour once a network hop is present. The \redis{}
@@ -314,6 +324,20 @@ staleness cost
 in units of probability-seconds per match. This metric is the bridge that lets us ask not
 merely \emph{which backend is faster} but \emph{when, if ever, the latency difference is large
 enough to corrupt an in-play decision}.
+
+\paragraph{What this metric does and does not do.} We are explicit about its status, because it
+is easy to overclaim. For a fixed corpus of decisive events, $\mathrm{DS}$ is a \emph{weighted
+rescaling of measured latency}: both backends are scored against the identical model, so the
+per-event weights $\mathrm{TV}_i$ are common to both and the ordering of two systems under
+$\mathrm{DS}$ is the ordering under latency. It therefore adds no inferential power over a
+latency comparison, and our sensitivity analysis (Table~\ref{tab:sens}) demonstrates exactly
+this: the between-backend difference is invariant to three decimal places across the whole
+parameter sweep. The metric's contribution is one of \emph{interpretation and units}, not of
+statistical leverage. It converts an infrastructure quantity into a sports one, so that
+``12~ms'' becomes ``0.014 probability-seconds of misplaced forecast mass'' and can be judged
+against a decision rather than against a service-level target. That conversion is what lets us
+answer \emph{when} latency matters, and it is what the streaming-benchmark literature has never
+supplied---but it is a lens on the latency measurement, not an independent one.
 
 \subsection{Measurement Validity}
 \label{sec:validity}
@@ -484,26 +508,15 @@ We verify statistical assumptions for all tests:
 \item \textbf{Non-parametric Alternatives:} Mann-Whitney U (t-test), Kruskal-Wallis (ANOVA), Wilcoxon signed-rank (paired t-test)
 \end{itemize}
 
-\paragraph{Hypothesis Testing Matrix}
-Table~\ref{tab:stat_tests} summarizes our statistical test selection framework.
+\paragraph{Multiple-comparison families.} We state the families explicitly, since Holm's
+correction is only interpretable relative to them. Each metric family is the set of per-$N$
+\kafka{}-vs-edis{} comparisons at a single metric within a single corpus: three tests
+($N\in\{1,5,10\}$) for 	ti{}, three for transport, and three for decision-staleness. The
+Kruskal--Wallis tests across $N$ are single omnibus tests per backend and are not corrected.
+Equivalence tests are not part of any Holm family: TOST is a separate, pre-specified
+inferential claim with its own margin, not one of a set of exploratory comparisons.
 
-\begin{table*}[htbp]
-\centering
-\caption{Statistical Tests by Data Type and Comparison Type}
-\label{tab:stat_tests}
-\begin{tabular}{lcc}
-\toprule
-Comparison Type & Parametric Test & Non-Parametric Alternative \\
-\midrule
-2 Independent Groups & t-test & Mann-Whitney U \\
-$>$2 Independent Groups & ANOVA & Kruskal-Wallis \\
-Paired & Paired t-test & Wilcoxon signed-rank \\
-Proportions & Chi-square & Fisher's exact \\
-Correlation & Pearson & Spearman \\
-Distribution & Kolmogorov-Smirnov & Anderson-Darling \\
-\bottomrule
-\end{tabular}
-\end{table*}
+
 
 
 \section{Results}
@@ -933,10 +946,22 @@ Delay & \kafka{} & \redis{} (ack per message) & \redis{} (ack batched) & Equival
 \end{tabular}
 \end{table*}
 
-This reframes the result, and in our view improves it. What network latency exposes is not a
-deficiency of \redis{} Streams but a property of a \emph{consumption pattern}: any client that
-waits for a reply per message is capped near $1/\mathrm{RTT}$, exactly as the \redis{}
-documentation warns when it recommends pipelining. \kafka{} is not immune by virtue of being
+This reframes the result, and in our view improves it. We should be clear about what is and is
+not novel here. That a client awaiting a reply per request is capped near $1/\mathrm{RTT}$ is
+\emph{documented behaviour}: the \redis{} pipelining documentation states it explicitly and
+recommends batching for precisely this reason, and the pattern is a well-known anti-pattern
+among practitioners. We did not discover the mechanism; we wrote the idiomatic per-message
+acknowledgement that the tutorials show, and the network exposed it.
+
+What is new is the rest: that the anti-pattern is \emph{invisible to standard benchmarking
+practice}, because a co-located testbed prices the round trip at zero and certifies as
+equivalent two clients that differ by three orders of magnitude in deployment; that its
+threshold is predictable from the arrival rate ($\mathrm{RTT}_{\text{crit}} \approx 1/\lambda$)
+and we locate it empirically; and that its cost, expressed in decision terms rather than
+milliseconds, is a factor of 275 in win-probability staleness. The contribution is the
+quantification and the methodological warning, not the mechanism. What network latency exposes
+is therefore not a deficiency of \redis{} Streams but a property of a \emph{consumption
+pattern}: any client that waits for a reply per message is capped near $1/\mathrm{RTT}$. \kafka{} is not immune by virtue of being
 \kafka{}; it is immune because its client already batches---prefetching records and committing
 offsets on a timer---so no per-record round trip exists to be exposed. The practical statement
 is therefore about design rather than product: acknowledge in batches, and measure with a
@@ -1111,11 +1136,27 @@ sources. We mitigate the two damaging forms of this directly: each feed carries 
 \emph{distinct} match, which is what revealed the throughput confound of
 Section~\ref{sec:concurrency}, and the headline condition is repeated at true $1\times$ speed,
 which reproduces the compressed result. What remains unmodelled is the upstream annotation
-pipeline: real event feeds are produced by human or vendor annotation with latencies measured in
-seconds, which would dominate every transport number reported here. That does not weaken the
-conclusion---it strengthens it, since a component contributing seconds makes a difference of
-milliseconds between brokers even less consequential---but it does mean our figures bound the
-\emph{transport} contribution to staleness, not end-to-end feed freshness. Fifth, our equivalence claim is bounded by the margin we chose:
+pipeline, and it deserves more than a passing caveat because it is the \emph{dominant term}.
+Live football event data is produced by human or vendor annotation, and published accounts of
+such pipelines put the lag from on-pitch action to available event in the range of seconds
+\cite{pappas2020real,opta2023}. Set against that, the entire range this paper measures---from
+0.4~ms of broker transport to the 40~ms equivalence margin---is two to four orders of magnitude
+smaller.
+
+A reader is entitled to draw the sharp conclusion: if annotation contributes seconds, then for a
+co-located deployment the answer to ``does infrastructure choice degrade an in-play decision?''
+is \emph{no}, and it is knowable \emph{a priori} from the ratio of the two terms. We accept
+that, and we think it is the honest reading of our own null. What the measurements add is,
+first, the quantification that licenses the ratio argument at all---nobody had measured the
+transport term against a decision-relevant scale---and second, the demonstration that the
+conclusion is \emph{conditional}: once a network hop and a round-trip-bound consumer are
+present, transport stops being negligible and reaches 75~seconds, which is far larger than any
+annotation lag and would dominate rather than be dominated. The contribution is therefore
+better stated as locating the boundary at which the infrastructure term stops being ignorable
+than as discovering that it usually is. Our figures bound the \emph{transport} contribution to
+staleness, not end-to-end feed freshness, and an end-to-end account would need to measure
+annotation directly---which the open data does not permit, since StatsBomb events carry no
+annotation timestamps. Fifth, our equivalence claim is bounded by the margin we chose:
 TOST establishes that the backends differ by less than one broadcast frame, not that they are
 identical, and a stricter margin (say, one millisecond) would not be supported by these data.
 We regard a frame as the operationally meaningful threshold, but readers applying the result

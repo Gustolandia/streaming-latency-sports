@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Target Journal: JSA](https://img.shields.io/badge/Target_Journal-Journal_of_Sports_Analytics-orange.svg)](https://www.degruyter.com/journal/key/jsa/html)
-[![Tests](https://img.shields.io/badge/tests-895_passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1102_passing-brightgreen.svg)]()
 [![Coverage](https://img.shields.io/badge/branch_coverage-%E2%89%A595%25-brightgreen.svg)]()
 [![StatsBomb Data](https://img.shields.io/badge/StatsBomb_Data-CC_BY--NC_4.0-blue.svg)](https://github.com/statsbomb/open-data)
 
@@ -81,10 +81,29 @@
 >    matches — a concurrency axis that was secretly a throughput axis. Fixed by giving each feed a
 >    **distinct real match** (`--plans-dir`), which reversed the concurrency finding. See §1.5.
 >
-> **Current finding (artifact-free):** Kafka and Redis are **statistically equivalent** (TOST,
-> one-frame margin) at every concurrency level, and neither shows a concurrency effect. Redis's
-> single-thread serialization is real but only appears at ~2,100 events/s (~4,800 simultaneous
-> real-time matches) — orders of magnitude beyond any football deployment.
+> **Current finding (artifact-free) — and it is *conditional*:**
+> **Co-located** (broker and consumer on one host): Kafka and Redis are **statistically
+> equivalent** (TOST, one-frame margin) at every concurrency level, with no concurrency effect;
+> Redis's single-thread serialization only appears at ~2,100 events/s (~4,800 simultaneous
+> matches), far beyond any football deployment.
+> **Networked:** injecting delay equally at both brokers breaks that equivalence. Redis amplifies
+> delay 500–1,500× (75 s of TTI at 50 ms injected) while Kafka tracks it (94 ms). By 20 ms, Redis
+> imposes **275× more decision-staleness** — decision-corrupting. **A loopback benchmark cannot
+> see this.**
+>
+> **Multi-host replication (July 21 2026) — one claim confirmed, one not.** Repeating the study
+> on four cloud VMs over a real inter-VM network removes both single-host floors (a 1 ms sleep
+> now takes 1.06 ms, not 15.6 ms; broker RTT 0.22 ms, not 0.46 ms — a real two-machine network is
+> *faster* than the old "loopback").
+> * **Confirmed & sharpened:** the concurrency/serialization effect. Redis transport scales 7.3×
+>   across N=1..10 (p=3.2e-12) vs Kafka 3.5× (p=2.0e-10). But **Kafka is not flat** — that was an
+>   artefact of the old 1 ms floor — and at N=5 Redis is *faster* than Kafka. All levels remain
+>   TOST-equivalent.
+> * **NOT replicated:** the acknowledgement-batching repair. The 20 ms collapse recurs, but
+>   batching does not fix it (87.6 s → 92.4 s), the accumulating-backlog signature is absent
+>   (growth 1.08/1.00 vs 2.25 single-host), and the netem-drop explanation was tested and
+>   rejected. The round-trip-bound account is therefore **established on the single host and
+>   open on multi-host**. See §1.5 and the manuscript's Multi-Host Replication section.
 
 | Area | Status | Notes |
 |------|--------|-------|
@@ -94,9 +113,13 @@
 | Throughput sweep (locates the knee) | ✅ **Complete** | one config, speed varied → `docs/results/throughput/` |
 | Equivalence (TOST) + model sensitivity | ✅ **Complete** | equivalence 3/3 levels; difference invariant to the WP model |
 | True 1× real-time validation | ✅ **Complete** | `--speedup 0.008333` cancels the plan's baked 120× |
+| **Network realism (`tc netem`)** | ✅ **Complete** | 0/5/20/50 ms injected equally → `docs/results/netem/`; **breaks equivalence ≥20 ms** |
+| Plan generation salvaged into main | ✅ **Complete** | `make_replay_plan.py` reproduces committed plans byte-for-byte |
+| Red cards as decisive events | ✅ **Complete** | dismissals move the WP model, so they now count |
+| Cluster claims | ✅ **Reported** | 3-node, one broker per cloud host — confound removed (Redis Cluster 1.65 ms TTI, Kafka 14.1 ms at N=5) |
 | Test suite | ✅ **≥95% branch coverage** | every script in `scripts/` + root health checks |
 | Persistence H31/H32 (acks / AOF) | ✅ Complete | 12 runs; both hypotheses supported |
-| Manuscript reframe around decision-degradation | ✅ **Complete** | 10 pp, compiles clean |
+| Manuscript reframe around decision-degradation | ✅ **Complete** | 11 pp, compiles clean |
 | All pre-fix runs (S1–S5, old concurrency, 120 matrix, `batch9`) | ❌ **Invalidated** | superseded by the fair, distinct-match corpus |
 
 ### 1.2 Primary objective
@@ -119,6 +142,7 @@ specific way the measurement could lie:
 | TOST vs a pre-specified margin | mistaking "not detected" for "not there" |
 | WP scoring-rate sweep | the conclusion depending on the proxy model |
 | True 1× replay | the "real-time" claim resting on compressed time |
+| **Injected network delay** (`tc netem`) | a loopback testbed hiding a round-trip-bound design |
 
 ### 1.3 How the original referee concerns are addressed
 
@@ -198,6 +222,70 @@ streaming-infrastructure latency actually degrade an in-play football decision?"
 load a football operator will ever see.** The architectural difference is real but only bites
 at ~4,800 match-equivalents. Practical guidance: choose the backend on operational grounds
 (durability, ops familiarity, cost), not latency.
+
+**⚠️ The condition that breaks equivalence: network latency**
+([`docs/results/netem/`](docs/results/netem)). Everything above co-locates broker and consumer,
+so transport is loopback. Injecting one-way delay **identically at both brokers** (`tc netem`)
+does *not* affect them equally:
+
+| injected delay | Kafka TTI | Redis TTI | Kafka staleness | Redis staleness | Equivalent? |
+|---:|---:|---:|---:|---:|:--|
+| 0 ms | 12.1 ms | 10.5 ms | 0.018 | 0.019 prob·s | ✅ |
+| 5 ms | 15.5 ms | 42.8 ms | 0.022 | 0.051 prob·s | ✅ (marginal) |
+| 20 ms | 44.5 ms | **10,525 ms** | 0.058 | **15.97 prob·s** | ❌ |
+| 50 ms | 93.6 ms | **74,962 ms** | 0.119 | **110.1 prob·s** | ❌ |
+
+Kafka **tracks** the delay; single-node Redis **amplifies** it 500–1,500×. No run was truncated
+(all delivered the full event set), and the amplification implies an effective batch of ~7
+events per round trip at 20 ms and ~2.5 at 50 ms: **Redis Streams consumption is round-trip
+bound**, so each added millisecond is multiplied across thousands of sequential cycles, while
+Kafka amortises it across batched fetches. **A loopback benchmark cannot see this** — which is
+exactly why we ran it.
+
+**The mechanism, stated as a testable hypothesis (H5 in the paper).** The two clients consume
+differently: Redis's `XREADGROUP` is strictly request→response and returns as soon as *any*
+entry exists, so at realistic rates it fetches ~1 event per round trip regardless of its
+`COUNT=200` ceiling — a drain ceiling of **~1/RTT events/s**. Kafka's `poll()` serves from a
+**prefetched buffer** filled by pipelined fetches against a long-polling broker, decoupling
+drain rate from RTT. Predictions: (P1) instability when λ ≳ 1/RTT — at λ≈53 ev/s/feed that is
+**RTT_crit ≈ 19 ms**; (P2) below it latency is *flat* across a run, above it it *grows*
+(backlog); (P3) Kafka never grows; (P4) the threshold scales inversely with arrival rate.
+
+**All four predictions confirmed.** The proximate cause is one line: the consumer calls `XACK`
+**per message** and waits for the reply, so even a 200-entry read is followed by 200 sequential
+round trips.
+
+*P1 — the knee sits where 1/RTT crosses λ≈53 ev/s (~19 ms)* — fine sweep
+([`docs/results/backlog/`](docs/results/backlog)), within-run latency growth:
+
+| RTT | ceiling | vs λ | Kafka | Redis |
+|---:|---:|:--|---:|---:|
+| 8 ms | 125/s | under | 0.75 | 0.73 |
+| 12 ms | 83/s | under | 0.57 | 0.87 |
+| 16 ms | 62/s | under | 0.34 | **1.90** |
+| 19 ms | 53/s | break-even | 0.22 | **2.20** |
+| 24 ms | 42/s | over | 0.17 | **3.47** |
+| 30 ms | 33/s | over | 0.16 | **4.37** |
+
+*P2/P3 — under overload latency **grows** through the run (backlog), and Kafka never does.*
+So the Redis figures are **lower bounds set by our ~70 s replay**: at 50 ms the final quartile
+had already reached 127 s and was *still rising*.
+
+*P4 (the decisive intervention) — batch the acks and the collapse disappears:*
+
+| delay | Kafka | Redis (ack per msg) | Redis (ack batched) | equivalent to Kafka? |
+|---:|---:|---:|---:|:--|
+| 20 ms | 44 ms | 10,525 ms | **34 ms** (307×) | ✅ *p*=4×10⁻¹⁹ |
+| 50 ms | 94 ms | 74,962 ms | **85 ms** (882×) | ✅ *p*=1×10⁻¹⁶ |
+
+**So this is not "Kafka beats Redis over a network."** It is a *consumption pattern* that is
+round-trip bound — free on loopback, catastrophic at 20 ms, and **fixed by one line**. Kafka is
+immune only because its client already batches (prefetch + timed offset commits). Guidance:
+**batch your acknowledgements, and benchmark with a realistic RTT.**
+
+**So the headline is conditional:** co-locate consumers and the backends are equivalent and
+decision-irrelevant; put a network hop in between and Kafka is strongly preferable, because by
+20 ms Redis imposes **275× more decision-staleness** — enough to corrupt an in-play decision.
 
 **Validated at true 1× real time** ([`docs/results/realtime_1x/`](docs/results/realtime_1x)).
 Everything above replays a compressed clock, so we repeated N=5 at **genuine real time**
@@ -466,6 +554,19 @@ specifically to keep it honest:
 | `wp_sensitivity.py` | Does the conclusion depend on the win-probability proxy? (sweeps the scoring rate; the between-backend difference is invariant) |
 | `wp_calibration.py` | Is the proxy any good? (reliability diagram + ECE) |
 | `make_worked_example.py` | What does one goal's staleness actually look like? (Leverkusen's 95' equaliser) |
+
+**Decisive events** are goals (own goals credited to the opponent) **and red cards**. Dismissals
+belong in the metric because the win-probability model already conditions on the red-card
+differential, so a sending-off moves the forecast exactly as a goal does; excluding them would
+under-count the staleness a feed can carry. Events are replayed in match order, so a goal's
+shift is evaluated against the game state left by any earlier dismissal.
+
+**Regenerating the corpus from scratch.** The replay plans are shipped as data *and* as code:
+
+| Script | Produces |
+|---|---|
+| `make_replay_plan.py` | one match's plan from raw StatsBomb events (verified to reproduce the committed plans byte-for-byte) |
+| `make_multimatch_plan.py` | a merged multi-match plan (note: merging N matches into one feed multiplies that feed's event rate — the confound described in §1.5) |
 
 ---
 

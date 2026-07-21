@@ -1,0 +1,60 @@
+{
+  "broker_rtt": {
+    "kafka": {
+      "errors": 0,
+      "host": "localhost",
+      "max_ms": 27.8855999999994,
+      "median_ms": 9.907800000000133,
+      "min_ms": 3.1173000000004336,
+      "port": 19092,
+      "reachable": true,
+      "trials": 30
+    },
+    "redis": {
+      "errors": 0,
+      "host": "localhost",
+      "max_ms": 30.485300000000493,
+      "median_ms": 5.572199999999583,
+      "min_ms": 2.9959000000001623,
+      "port": 16379,
+      "reachable": true,
+      "trials": 30
+    }
+  },
+  "platform": {
+    "machine": "AMD64",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "processor": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD",
+    "python_implementation": "CPython",
+    "python_version": "3.9.13",
+    "release": "10",
+    "system": "Windows"
+  },
+  "redis_ping_rtt": {
+    "host": "localhost",
+    "implied_ceiling_msgs_per_s": 2171.7884678019213,
+    "max_ms": 2.3743999999998877,
+    "median_ms": 0.4604500000002787,
+    "min_ms": 0.34909999999932495,
+    "port": 16379,
+    "reachable": true,
+    "trials": 120
+  },
+  "sleep_10ms": {
+    "max_ms": 16.20020000000011,
+    "median_ms": 15.792599999999712,
+    "min_ms": 15.162699999999418,
+    "overshoot_median_ms": 5.792599999999712,
+    "requested_ms": 10.0,
+    "trials": 30
+  },
+  "sleep_1ms": {
+    "max_ms": 22.37279999999986,
+    "median_ms": 15.575099999999953,
+    "min_ms": 8.90499999999994,
+    "overshoot_median_ms": 14.575099999999953,
+    "requested_ms": 1.0,
+    "trials": 300
+  },
+  "timer_resolution_ns": 99.99999998899779
+}

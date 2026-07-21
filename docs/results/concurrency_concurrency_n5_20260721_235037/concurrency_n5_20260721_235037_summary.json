@@ -1,0 +1,24 @@
+{
+  "concurrency": 5,
+  "reps": 1,
+  "plan_csv": "data/test.csv",
+  "plans_dir": "C:\\Users\\Gugar\\AppData\\Local\\Temp\\tmpq2h98n7c",
+  "distinct_match_plans": [
+    "C:\\Users\\Gugar\\AppData\\Local\\Temp\\tmpq2h98n7c\\match_1\\replay_plan.csv",
+    "C:\\Users\\Gugar\\AppData\\Local\\Temp\\tmpq2h98n7c\\match_2\\replay_plan.csv"
+  ],
+  "speedup": 120,
+  "max_t_sim": 600,
+  "prefix": "concurrency_n5_20260721_235037",
+  "timestamp": "20260721_235037",
+  "run_list_file": "runs/_concurrency_concurrency_n5_20260721_235037_runs.txt",
+  "total_runs": 10,
+  "success_count": 10,
+  "failure_count": 0,
+  "kafka_bootstrap": "localhost:9092",
+  "redis_host": "localhost",
+  "redis_port": 6379,
+  "broker_count": 1,
+  "cluster_mode": false,
+  "trial_timeout": 300
+}

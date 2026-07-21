@@ -1,0 +1,18 @@
+{
+  "concurrency": 10,
+  "reps": 3,
+  "plan_csv": "data/processed/replay_plans/s2sf12/combined_plan.csv",
+  "speedup": 10,
+  "max_t_sim": 600,
+  "prefix": "concurrency_n10_20260617_221536",
+  "timestamp": "20260617_221536",
+  "run_list_file": "runs/_concurrency_concurrency_n10_20260617_221536_runs.txt",
+  "total_runs": 60,
+  "success_count": 60,
+  "failure_count": 0,
+  "kafka_bootstrap": "localhost:9092",
+  "redis_host": "localhost",
+  "redis_port": 7000,
+  "broker_count": 3,
+  "cluster_mode": true
+}

@@ -12,7 +12,8 @@ pytest-cov>=3.0.0              # coverage, incl. --cov-branch (project bar: >=95
 pytest-xdist>=3.0.0            # optional: parallel test execution (-n auto)
 
 # --- Archival ---
-zenodo-client>=0.3.0           # CLI/API to deposit the release and mint the DOI (needs ZENODO_API_TOKEN)
+zenodo-client>=0.3.0           # CLI/API helpers for Zenodo (needs ZENODO_API_TOKEN)
+requests>=2.28.0               # used by scripts/zenodo_deposit.py
 
 # --- Optional tooling (uncomment if you use it locally) ---
 # mypy>=0.900                  # static type checking

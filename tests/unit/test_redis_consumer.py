@@ -697,3 +697,54 @@ class TestClusterModeParameter:
         finally:
             sys.argv = old_argv
 
+
+
+class TestAckBatching:
+    """Redis is request/response: a client that waits per reply is capped near 1/RTT ops/s
+    (Redis 'pipelining' docs). Acking one message per XACK is therefore round-trip bound.
+    These tests pin the batching mitigation (hypothesis H5, prediction P4)."""
+
+    def _msgs(self, run_id, n):
+        return [("sb:events", [(f"m{i}", {"value": json.dumps(
+            {"run_id": run_id, "event_id": f"e{i}", "match_id": 1, "t_sim_seconds": i})})
+            for i in range(n)])]
+
+    def _run(self, temp_dir, extra_argv, n_msgs=5):
+        old_argv = sys.argv
+        try:
+            run_id = "ack_run"
+            out_path = temp_dir / "out.csv"
+            sys.argv = ["rc", "--run-id", run_id, "--out", str(out_path),
+                        "--idle-seconds", "0"] + extra_argv
+            mock_redis = MagicMock()
+            mock_redis.xgroup_create.side_effect = Exception("exists")
+            mock_redis.xreadgroup.side_effect = [self._msgs(run_id, n_msgs), None]
+            with patch('redis_consumer.redis.Redis', return_value=mock_redis):
+                with patch('redis_consumer.time.monotonic', side_effect=lambda: 100.0):
+                    rc_main()
+            return mock_redis
+        finally:
+            sys.argv = old_argv
+
+    def test_default_acks_every_message_individually(self, temp_dir):
+        r = self._run(temp_dir, [], n_msgs=5)
+        # one XACK round trip per message: the round-trip-bound behaviour we measured
+        assert r.xack.call_count == 5
+        assert all(len(c[0][2:]) == 1 for c in r.xack.call_args_list)
+
+    def test_batching_collapses_acks_into_one_round_trip(self, temp_dir):
+        r = self._run(temp_dir, ["--ack-batch", "200"], n_msgs=5)
+        # all five acknowledged in a single call (flushed when the stream drains)
+        assert r.xack.call_count == 1
+        assert len(r.xack.call_args_list[0][0][2:]) == 5
+
+    def test_partial_batch_is_flushed_not_lost(self, temp_dir):
+        # batch size 4 with 5 messages: one full batch plus a flushed remainder
+        r = self._run(temp_dir, ["--ack-batch", "4"], n_msgs=5)
+        acked = [i for c in r.xack.call_args_list for i in c[0][2:]]
+        assert sorted(acked) == sorted([f"m{i}" for i in range(5)])
+        assert r.xack.call_count == 2
+
+    def test_zero_batch_treated_as_one(self, temp_dir):
+        r = self._run(temp_dir, ["--ack-batch", "0"], n_msgs=3)
+        assert r.xack.call_count == 3

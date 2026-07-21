@@ -32,6 +32,16 @@ python -m venv .venv && .venv\Scripts\Activate.ps1      # (or source .venv/bin/a
 pip install -r requirements.txt
 bash scripts/fetch_statsbomb_events.sh                  # re-fetch the 34 match JSONs (pinned SHA)
 
+# Rebuild the replay plans from the raw events (the repo ships them as data, but they are
+# fully regenerable -- make_replay_plan.py reproduces the committed plans byte-for-byte):
+SHA=3bfbffe1de5750ebd47d770be0bb924a10cde54f
+for M in $(ls data/raw/statsbomb/$SHA/events | sed 's/.json//'); do
+  python scripts/make_replay_plan.py --commit $SHA --match-id $M --speed-factor 120
+done
+# optional: merge several matches into one feed (raises that feed's event rate N-fold)
+python scripts/make_multimatch_plan.py --commit $SHA --match-ids-file configs/s2_match_ids.txt \
+    --out-dir data/processed/replay_plans/s2sf12 --speed-factor 12
+
 # Single infra (localhost:19092 / 16379):
 docker compose -f docker-compose.yml up -d
 # Cluster infra (9092-9094 / 7000-7002; distinct ports, can coexist):
@@ -74,44 +84,28 @@ python scripts/run_concurrency_test.py 5 "$FALLBACK" 2 --plans-dir "$PLANS" --sp
 
 ## Zenodo archival (needs your Zenodo account token)
 
-A CLI is installed for this: [`zenodo-client`](https://pypi.org/project/zenodo-client/)
-(`pip install zenodo-client`, also in `requirements-dev.txt`). It reads your token from the
-environment, so the token never needs to be pasted into a file or shared.
+`scripts/zenodo_deposit.py` does the whole thing in one command. It reads the token from the
+environment, bundles only git-tracked files (so the NC-licensed raw StatsBomb events are
+excluded by design), and **leaves an unpublished draft** -- a published Zenodo record cannot be
+deleted, so the final click stays a human decision.
 
 ```bash
-# 0. one-off: create a Personal Access Token at https://zenodo.org/account/settings/applications/
-#    with the "deposit:actions" and "deposit:write" scopes, then export it:
-export ZENODO_API_TOKEN=...          # PowerShell:  $env:ZENODO_API_TOKEN="..."
+# 0. one-off: create a Personal Access Token at
+#    https://zenodo.org/account/settings/applications/  with scopes deposit:write + deposit:actions
+#    Put it in your SHELL ONLY -- never in a file in this repo.
+$env:ZENODO_API_TOKEN = "..."        # PowerShell   (bash: export ZENODO_API_TOKEN=...)
 
-# 1. pin the exact state being archived
-python scripts/generate_manifest.py            # refresh MANIFEST.json
+# 1. rehearse against the sandbox (separate account + token, throwaway DOIs)
+python scripts/zenodo_deposit.py --sandbox
+
+# 2. pin the exact state, then upload a real draft
+python scripts/generate_manifest.py
 git tag v1.0-decision-degradation && git push --tags
+python scripts/zenodo_deposit.py --ref v1.0-decision-degradation
 
-# 2. bundle what a reader needs to reproduce the paper
-#    (raw StatsBomb events are excluded by design -- re-fetch with fetch_statsbomb_events.sh)
-git archive --format=zip --prefix=streaming-latency-sports/ \
-    -o streaming-latency-sports-v1.0.zip v1.0-decision-degradation
-
-# 3. create the deposition and mint the DOI (Python API; the CLI covers download/update)
-python - <<'PY'
-from zenodo_client import Zenodo
-z = Zenodo()                      # picks up ZENODO_API_TOKEN
-dep = z.create(
-    data={
-        "metadata": {
-            "title": "Latency-induced decision degradation in real-time football analytics",
-            "upload_type": "software",
-            "description": "Code, replay plans and analysis for the Kafka vs Redis Streams "
-                           "decision-staleness study (see README.md).",
-            "creators": [{"name": "Ricou, Gustavo Pedro",
-                          "affiliation": "Trinity College Dublin"}],
-        }
-    },
-    paths="streaming-latency-sports-v1.0.zip",
-)
-print("DOI:", dep.json()["doi"])
-PY
+# 3. review the draft in the browser and hit Publish -> the DOI is issued then.
+#    (--publish skips the review; irreversible, so only if you are sure.)
 ```
 
-4. Add the returned DOI badge to `README.md` and cite it in `manuscript.tex`
-   (the Data/Code Availability statement).
+Then add the DOI to `README.md` (badge), `CITATION.cff`, and the manuscript's Data and Code
+Availability statement.

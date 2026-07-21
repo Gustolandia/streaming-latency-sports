@@ -22,10 +22,11 @@ from pathlib import Path
 from typing import List, Tuple
 
 
-def run_trial(run_id: str, plan_csv: str, backend: str, speedup: int, max_t_sim: int, 
-              bootstrap: str = "localhost:9092", redis_host: str = "localhost", 
+def run_trial(run_id: str, plan_csv: str, backend: str, speedup: int, max_t_sim: int,
+              bootstrap: str = "localhost:9092", redis_host: str = "localhost",
               redis_port: int = 6379, topic: str = None, stream: str = None,
-              broker_count: int = 1, cluster_mode: bool = False) -> Tuple[str, bool, str]:
+              broker_count: int = 1, cluster_mode: bool = False,
+              producer_extra: str = "") -> Tuple[str, bool, str]:
     """
     Run a single trial (producer + consumer) for a specific backend.
     Returns (run_id, success, error_message)
@@ -50,6 +51,8 @@ def run_trial(run_id: str, plan_csv: str, backend: str, speedup: int, max_t_sim:
             cmd[-1] += f' -TOPIC "{topic}"'
         cmd[-1] += f' -BOOTSTRAP {bootstrap}'
         cmd[-1] += f' -BROKER_COUNT {broker_count}'
+        if producer_extra:
+            cmd[-1] += f' -PRODUCER_EXTRA "{producer_extra}"'
     else:  # redis
         cmd[-1] += f' -RedisHost {redis_host} -PORT {redis_port}'
         if stream:
@@ -104,7 +107,10 @@ def main():
                         help='Number of brokers/nodes (1 or 3)')
     parser.add_argument('--cluster-mode', action='store_true',
                         help='Use cluster configuration')
-    
+    parser.add_argument('--kafka-producer-extra', type=str, default='',
+                        help='Extra args appended to the Kafka producer (e.g. "--max-inflight 64") '
+                             'so its load generator is pipelined comparably to the Redis worker pool.')
+
     args = parser.parse_args()
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -141,7 +147,8 @@ def main():
                     args.redis_port,
                     topic=kafka_topic,
                     broker_count=args.broker_count,
-                    cluster_mode=args.cluster_mode
+                    cluster_mode=args.cluster_mode,
+                    producer_extra=args.kafka_producer_extra
                 ))
                 
                 # Redis trial

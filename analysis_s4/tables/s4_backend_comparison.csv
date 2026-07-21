@@ -1,3 +1,0 @@
-backend,tti_p50_mean,tti_p50_std,tti_p50_min,tti_p50_max,tti_p95_mean,tti_p95_std,tti_p99_mean,tti_p99_std,tti_mean_mean,n_n_matched_sum
-kafka,5079.54,85.48,4925.33,5246.14,7783.19,154.72,8032.27,163.66,5083.53,74202
-redis,3066.19,75.37,2909.5,3174.78,4056.91,163.24,4144.16,170.03,3073.1,74202

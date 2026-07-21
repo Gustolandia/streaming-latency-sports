@@ -3,9 +3,25 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Target Journal: JSA](https://img.shields.io/badge/Target_Journal-Journal_of_Sports_Analytics-orange.svg)](https://www.degruyter.com/journal/key/jsa/html)
-[![Tests](https://img.shields.io/badge/tests-830_passing-brightgreen.svg)]()
-[![Coverage](https://img.shields.io/badge/coverage-98%25-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-895_passing-brightgreen.svg)]()
+[![Coverage](https://img.shields.io/badge/branch_coverage-%E2%89%A595%25-brightgreen.svg)]()
 [![StatsBomb Data](https://img.shields.io/badge/StatsBomb_Data-CC_BY--NC_4.0-blue.svg)](https://github.com/statsbomb/open-data)
+
+> ## 🎯 Current target — the original contribution
+>
+> **Latency-induced decision degradation in real-time football analytics.**
+> Couple *measured* Redis-vs-Kafka event-delivery latency (single vs. cluster, concurrent
+> live matches, near-real-time replay) to an **in-play win-probability model** through the
+> **Age-of-Information (AoI)** lens, and quantify the **win-probability error / actionable-edge
+> loss** that each streaming architecture and configuration imposes. To our knowledge this is
+> the **first infrastructure → decision-quality analysis on open StatsBomb data**.
+>
+> *Why this is publishable (Journal of Sports Analytics), not just a benchmark:* it yields a
+> **sports quantity** (degraded win-probability), bridges two literatures, and rests on citable
+> foundations — Robberechts et al. (SIGKDD 2021) for in-play soccer win-probability, and the
+> Age-of-Information line of work for staleness → decision error. The broker comparison is the
+> *independent variable*, not the point. **Honest scope:** an applied contribution; the WP model
+> is a transparent, calibrated proxy for the (unreleased) SOTA model; single-host infrastructure.
 
 > **This README is the single source of truth for the project.** It consolidates what
 > were previously ~18 separate planning, methodology, and status documents. Section 1
@@ -42,26 +58,39 @@
 
 ### 1.1 Where things stand
 
-> ⚠️ **Measurement correction (June 17 2026) — read this first.** A critical bug was found:
-> the producer and consumer stamped timestamps with **process-relative `perf_counter_ns`**,
-> so cross-process TTI/transport were inflated by each run's consumer launch offset (~2 s).
-> A second issue — the **synchronous producer saturating at speedup 120×** — inflated
-> scheduling lag to tens of seconds. **Both are now fixed** (`time.time_ns()` shared epoch;
-> non-blocking producer dispatch) and validated. **Consequently, all latency numbers
-> produced before this date — including the frozen S2 "Redis 71× faster" headline — are
-> invalid and are being regenerated.** The corrected multi-broker matrix (60 runs) is done,
-> and it **reverses the project's central finding** (see §1.5).
+> ⚠️ **Measurement corrections (June 17 2026) — read this first.** *Three* distinct
+> measurement bugs were found and fixed; each had distorted prior "winner" results, so **no
+> pre-fix latency number is treated as a finding.**
+>
+> 1. **Cross-process clock bug.** Producer and consumer stamped timestamps with
+>    process-relative `perf_counter_ns`, so cross-process TTI/transport were inflated by each
+>    run's consumer launch offset (~2 s). Fixed with `time.time_ns()` (shared epoch); transport
+>    dropped to ~1 ms.
+> 2. **Producer saturation at 120×.** The synchronous emit loop fell tens of seconds behind
+>    schedule. Mitigated by non-blocking dispatch and a non-saturating replay speed.
+> 3. **Kafka load-generator asymmetry.** The Kafka producer ran `--max-inflight 1, --acks all`
+>    — blocking on a broker round-trip *per event* — while the Redis producer dispatched
+>    asynchronously. This inflated Kafka's *producer scheduling lag* (not its broker latency):
+>    e.g. N=1 at 10× went from **TTI 1644 ms → 16 ms** once the Kafka producer was pipelined
+>    (`--max-inflight 64`). All earlier cross-backend comparisons (incl. the 60-run `batch9`
+>    matrix and the old 120× concurrency runs) are confounded by this and are being **regenerated
+>    under a fair, pipelined, non-saturating protocol** (`speedup=10`).
+>
+> **Fair-config finding (artifact-free, single-host, in progress):** for a *single* live feed
+> Kafka ≈ Redis (~17 ms); under **concurrency**, single-node Redis (single-threaded) serializes
+> concurrent streams and degrades sharply (~975 ms at N=5) while Kafka's partitioned broker stays
+> flat (~18 ms). Cluster sweep + decision-staleness recompute next. See §1.5.
 
 | Area | Status | Notes |
 |------|--------|-------|
-| Measurement fixes (clock + producer saturation) | ✅ **Fixed, committed, validated** | `time.time_ns()`; non-blocking producer; robust cluster remap |
-| Corrected multi-broker matrix (60 runs) | ✅ **Complete** | kafka/redis × single/cluster × S1–S5 × 3 reps, single feed (`n1`); corrected code |
-| Test suite | ✅ **830 passing, 98% coverage** | every script ≥95% |
+| Measurement fixes (clock + saturation + Kafka pipelining) | ✅ **Fixed, committed, validated** | `time.time_ns()`; non-blocking dispatch; `--max-inflight`; robust cluster remap |
+| **Original contribution** (WP proxy + AoI decision-staleness) | ✅ **Built & tested** | `win_probability.py` (RPS/ECE calibrated, 34 matches) + `decision_staleness.py`; see 🎯 target above |
+| Fair real-time concurrency sweep (`speedup=10`) | 🔄 **In progress** | single infra N∈{1,5,10,20} done; cluster sweep + recompute pending |
+| Test suite | ✅ **≥95% branch coverage** | every script in `scripts/` + root health checks |
 | Persistence H31/H32 (acks / AOF) | ✅ Complete | 12 runs; both hypotheses supported |
-| Concurrency sweep (RQ2, true N feeds) | ✅ Complete | N=5/10/20 regenerated; TTI grows with N, Redis scales better |
 | S3 corrections | ✅ Complete | 30 runs regenerated; propagation p50 = 1,461 ms |
-| Manuscript Results/Discussion + abstract | ✅ Rewritten | reflects corrected, regime-dependent finding; compiles clean |
-| All prior runs (S1–S5, concurrency, S3, old 120 matrix) | ❌ **Invalidated** | contaminated by the clock bug; superseded/being replaced |
+| Manuscript reframe around decision-degradation | 🔄 **In progress** | pending the fair corpus + recompute |
+| All pre-fix runs (S1–S5, old concurrency, 120 matrix, `batch9`) | ❌ **Invalidated** | confounded by the clock and/or Kafka-pipelining artifacts; superseded |
 
 ### 1.2 Primary objective
 
@@ -83,51 +112,83 @@ Every run additionally captures throughput, message sizes, protocol overhead, re
 usage and actionability metrics, which is what lets one matrix answer multiple referee
 concerns.
 
-### 1.3 The six referee issues
+### 1.3 How the original referee concerns are addressed
 
-| # | Criticism (paraphrased) | Severity | Solution status |
-|---|-------------------------|----------|-----------------|
-| **1** | No formal research questions or testable hypotheses; intro reads like a product description | High | ✅ **Done** — RQ1–RQ4, full hypothesis set, and stats framework already in `manuscript.tex` (§Introduction/Methods) |
-| **2** | Single-broker comparison is unfair to Kafka (a distributed system) | **Critical** | ✅ **Done** — 120-run single+cluster matrix executed & analyzed; `config_comparison` shows cluster vs single (cluster slower → replication overhead) |
-| **3** | No message-size / throughput / protocol-overhead controls → fairness unclear | High | ✅ Throughput + message size via `analyze_batches_1_2_3.py`; true serialized size + (de)serialization timing via `analyze_protocol_overhead.py` |
-| **4** | Inadequate stats: 15 t-tests, no correction, no effect sizes, no CIs, no power | **Critical** | ✅ `statistical_analysis.py` (Holm-Bonferroni, Cohen's *d* / Hedges' *g*, 95% CIs, assumption checks) + `power_analysis.py` — note: study is **underpowered for small/medium effects** (n≥64 needed for *d*=0.5) |
-| **5** | Sports angle feels post-hoc; no sports-specific latency requirements | High | ✅ `analyze_actionability.py` computes real actionability from `missed_window_rate` + production-system comparison (Redis 64% vs Kafka 29% of events under 5 s) |
-| **6** | Reproducibility claimed but infrastructure under-documented; no permanent archive | Medium | ✅ `docs/infrastructure.md` + `verify_reproducibility.py` (120/120 runs have complete provenance); Zenodo archive still to mint |
+The paper is now framed around the decision-degradation contribution (🎯 target) rather than
+"answering six criticisms," but each original concern is still handled — on the *fair*,
+artifact-free corpus:
 
-### 1.4 Immediate next actions
+| Referee concern | How it is addressed now |
+|---|---|
+| Intro reads like a product description; no RQs/hypotheses | RQ1–RQ4 + hypotheses + stats framework in `manuscript.tex` |
+| Single-broker comparison unfair to distributed Kafka | Single **and** cluster measured; cluster treated as a stated single-host limitation (a true multi-host test needs separate machines — §1.5) |
+| No message-size / protocol-overhead controls | Payload ~170 B and (de)serialization ~µs are near-identical across backends (`analyze_protocol_overhead.py`) |
+| Weak statistics | Holm–Bonferroni Mann–Whitney + Kruskal–Wallis + effect sizes on the fair corpus (`fair_statistics.py`); power caveat retained |
+| Sports angle feels post-hoc | The contribution **is** a sports quantity — win-probability decision-staleness (`win_probability.py` + `decision_staleness.py`), calibrated (ECE 0.054) |
+| Reproducibility under-documented | `docs/infrastructure.md`, per-run provenance (`verify_reproducibility.py`), and a regenerable `reproducibility/MANIFEST.json` (`generate_manifest.py`); Zenodo DOI still to mint |
 
-The six issues are now substantively addressed in code/data. What remains is mostly
-manuscript integration:
+### 1.5 Main claims (fair, artifact-free corpus)
 
-1. **Fold the new analysis outputs into `manuscript.tex`** — the corrected statistics
-   (`docs/results/statistical_analysis/`), the underpowered-for-small-effects caveat from
-   `power_analysis.py`, the real actionability + production comparison
-   (`docs/results/actionability/`), and the single-vs-cluster result.
-2. **Fix `manuscript.tex` LaTeX errors** and regenerate the PDF.
-3. **Issue 6 finalize:** fill in host hardware in `docs/infrastructure.md` and mint the
-   Zenodo DOI.
+All numbers below come from the **fair** sweep — both producers pipelined, replay at a
+non-saturating 10× — on the **single host, single node** (the regime we can measure cleanly).
+Latency is median (p50) over feeds × 3 reps; `transport` = broker delivery, `TTI` = end-to-end
+(identical definition for both backends). See [[measurement-artifacts]] for why every pre-fix
+number is excluded.
 
-### 1.5 Corrected headline finding (reverses the prior thesis)
+**Claim 1 — At a single live feed, Kafka and Redis are equivalent (~17 ms).** The folk belief
+(and our own contaminated "Redis 71× faster" headline) that one backend is simply faster is
+wrong: for one match they are statistically indistinguishable and both excellent for real time.
 
-From the corrected 60-run matrix (Holm-Bonferroni, TTI p50, n=15/cell):
+**Claim 2 — Under concurrency, single-node Redis serializes and degrades; Kafka stays flat.**
+Single-threaded Redis Streams cannot parallelize concurrent streams, so broker delivery grows
+~linearly with the number of concurrent matches, while Kafka's partitioned broker is flat:
 
-| Config | Kafka transport p50 | Redis transport p50 | Kafka TTI p50 | Redis TTI p50 |
-|--------|--------------------:|--------------------:|--------------:|--------------:|
-| single  | ~0 ms (sub-ms) | 687 ms | 426 ms | 1,232 ms |
-| cluster | 944 ms | 2,712 ms | 1,623 ms | 3,378 ms |
+| N (concurrent matches) | Kafka transport p50 | Redis transport p50 | Kafka TTI p50 | Redis TTI p50 |
+|---:|---:|---:|---:|---:|
+| 1  | 2 ms  | 4 ms     | 17 ms     | 17 ms      |
+| 5  | 2 ms  | 774 ms   | 18 ms     | 801 ms     |
+| 10 | 4 ms  | 4,627 ms | 29 ms     | 5,206 ms   |
+| 20 | 10 ms | 9,732 ms | 1,682 ms† | 13,006 ms  |
 
-**Kafka is significantly *faster* than Redis** on TTI for **single, isolated feeds**
-(overall p_adj = 0.0018, Cohen's *d* = −1.18 *large*; cluster d = −2.83; single d = −1.02)
-— the **opposite** of the pre-correction "Redis 40–55% / 71× faster" claim, which was an
-artifact of the clock bug. Single < cluster for both backends (replication overhead).
+† Kafka's N=20 *TTI* is inflated by the **single host** saturating (40+ load-gen processes →
+585 ms scheduling lag); its *transport* stays 10 ms, so the broker is fine. Transport is the
+trustworthy cross-N metric.
 
-**The ordering is regime-dependent, however.** Under **true multi-feed concurrency** (RQ2,
-N parallel feeds on a shared broker), TTI grows monotonically with N for both, and **Redis
-sustains lower TTI than Kafka** (e.g. N=20: Redis ~16.7 s vs Kafka ~32.9 s). So: Kafka for
-isolated low-latency feeds; Redis for many concurrent feeds. Durability (H31/H32) costs
-latency for both (Kafka acks=all 464 ms > acks=1 346 ms; Redis AOF always ~14.6 s ≫
-everysec 1.3 s). TTI now decomposes into a small producer scheduling lag (~300 ms, was
-~44 s before the producer fix) plus real transport.
+**Claim 3 (the contribution) — This latency only matters for *decisions* in a specific regime.**
+Decision-staleness (probability-seconds per match) via the Age-of-Information integral over the
+**full match** (all 40 decisive events per run, not the ~3 in a 10-min window):
+
+| N | Kafka-single | Redis-single |
+|---:|---:|---:|
+| 1  | 0.28  | 0.18 |
+| 5  | 1.16  | 17.5 |
+| 10 | 50.3† | 271  |
+| 20 | —‡    | 1012 |
+
+At a single feed both leave a match's win-probability stale by only ~0.2 prob·s (mean ~20 ms per
+goal — **decision-irrelevant**, pushing back on the industry "2-second edge" framing). By **5
+concurrent matches** single-node Redis already imposes **~15× more** decision-staleness than
+Kafka (17.5 vs 1.16); by 10 a goal's win-prob arrives **~24 s stale**. **The first measured
+answer to "when does streaming-infrastructure latency actually degrade an in-play football
+decision?"** — irrelevant for one feed, Redis-dominated and decision-corrupting under concurrency.
+
+**Formal tests** ([`docs/results/fair_statistics/`](docs/results/fair_statistics)) confirm it:
+Holm–Bonferroni-corrected Mann–Whitney finds **no** significant Kafka–Redis difference at N=1
+(latency *p*=0.69, decision-staleness *p*=0.40) but a **highly significant** difference at every
+N≥5 (*p*<10⁻⁵, rank-biserial=1.0 — complete separation), and Kruskal–Wallis confirms an N-effect
+for both backends. († host-saturated — single-host load-gen lag, not broker; ‡ Kafka N=20
+full-match runs unreliable under host strain, omitted. N≥10 magnitudes are bounded by our single
+host, not the broker.)
+
+**Supporting results.** Durability costs latency for both (Kafka `acks=all` > `acks=1`; Redis
+`appendfsync always` ≫ `everysec`). TTI decomposes into producer scheduling lag + transport +
+output; keeping scheduling lag small is what validates TTI as a latency.
+
+**Honest limitation — cluster.** On a single host the 3-node experiments are **confounded** and
+are *not* a main claim: Kafka-cluster transport stays clean (~3 ms, broker scales) but TTI is
+swamped by topic-creation/metadata blocking + 6 co-located broker containers saturating the host;
+Redis-cluster client redirection inflates even N=1. We report cluster *transport* only and flag
+true multi-host as future work.
 
 ---
 
@@ -137,26 +198,30 @@ everysec 1.3 s). TTI now decomposes into a small producer scheduling lag (~300 m
 > **Target journal:** *Journal of Sports Analytics* (planned submission Q1 2026)
 > **Keywords:** streaming systems, real-time analytics, sports data, Kafka, Redis Streams, latency benchmarking, Time-to-Insight, actionability windows, reproducible research
 
-This study presents a comprehensive, reproducible benchmark suite that empirically
-evaluates how streaming-architecture choices affect the timeliness and reliability of
-live football analytics. Using the publicly available **StatsBomb open dataset
-(2003–2023)** — 40,660 real events across 11 matches — we simulate realistic match
-concurrency and compare **end-to-end lag** between Apache Kafka and Redis Streams.
+We ask a question the streaming and sports-analytics literatures leave open: **does the
+choice of streaming infrastructure actually degrade an in-play football decision, and if so,
+when?** Using the **StatsBomb open dataset** (1. Bundesliga 2023/24, 34 matches), we replay
+real event feeds through Apache Kafka and Redis Streams and couple the *measured* delivery
+latency to an in-play **win-probability** model through the **Age-of-Information** lens,
+quantifying the win-probability staleness each architecture imposes. To our knowledge this is
+the first infrastructure → decision-quality analysis on open sports data.
 
-Rather than a generic "which is faster?" comparison, we frame the investigation around
-sports decision-making: *how quickly can coaching staff, broadcasters, and betting
-platforms act on live event data?* The methodology centers on a **Time-to-Insight (TTI)**
-metric — the interval from an event's scheduled emission to its availability for
-consumption — decomposed into transport latency and scheduling lag.
+Methodologically, the study is also a cautionary tale in measurement validity: three distinct
+instrumentation defects — a process-relative cross-process clock, a saturating replay speed,
+and an asymmetric load generator (synchronous per-event Kafka sends vs. asynchronous Redis
+dispatch) — each *reversed* the apparent winner before correction. We report the
+**Time-to-Insight (TTI)** metric decomposed into producer scheduling lag and transport, and
+fix all three before drawing any conclusion.
 
-After correcting a cross-process clock bug and a load-generator saturation issue that had
-contaminated all earlier measurements (see §1.1), the corrected multi-broker matrix shows
-**Apache Kafka achieving significantly lower Time-to-Insight than Redis Streams** (large
-effect size, both single-broker and clustered deployments) — reversing the project's
-earlier, artifact-driven conclusion. We report TTI decomposed into producer scheduling lag
-and transport latency, and find single-broker deployments outperform clustered ones for
-both systems (replication overhead). *(Abstract figures are being finalized as the
-corrected corpus — persistence, concurrency, and S3 phases — completes.)*
+On the corrected, fair corpus we find: (1) for a **single feed**, Kafka and Redis are
+**equivalent** (~17 ms median TTI); (2) under **concurrency**, single-node Redis serializes
+concurrent streams and its broker latency grows roughly linearly (to ~9.7 s at 20 concurrent
+matches) while Kafka's partitioned broker stays flat (~10 ms); and (3) translated into
+decisions, infrastructure latency is **decision-irrelevant for a single feed** (~0.01
+probability-seconds of staleness) but becomes **material under concurrent under-provisioning**
+(single-node Redis: ~12 probability-seconds — a goal's win-probability arriving ~15 s stale).
+The practical guidance: infrastructure choice does not affect decision quality for one live
+match, but provisioning for concurrency does.
 
 ---
 
@@ -326,46 +391,69 @@ S3 mode injects state-staleness corrections identically across both backends:
 `s3_uid` / `s3_rev` / `s3_is_correction` envelope. Config: `configs/s3_injections.yaml`
 (`seed=12345`, every-kth selection, k=50).
 
+### 6.5 Decision-staleness — the latency → decision bridge (primary contribution)
+
+We translate delivery latency into in-play **decision error** in two steps:
+
+1. **Win-probability proxy** (`scripts/win_probability.py`) — a transparent, calibrated in-play
+   model on StatsBomb-derivable game state (score differential, fraction of match remaining,
+   red-card differential), built on a Skellam (difference-of-Poissons) goal model. It cites
+   Robberechts et al. (SIGKDD 2021) as the established model (their code is unreleased) and is
+   validated by ranked probability score and a reliability diagram: **RPS ≈ 0.24** and
+   **ECE = 0.054** over 3,239 game states from the 34 matches (`scripts/wp_calibration.py` →
+   `docs/results/win_probability/wp_calibration.png`) — predicted win-probabilities track
+   observed frequencies to within a few percentage points.
+2. **Age-of-Information decision-staleness** (`scripts/decision_staleness.py`) — for each
+   decisive event (goal), the consumer's win-probability is stale for the event's delivery
+   latency *L* by the magnitude of the probability shift it caused. We define a run's
+   **decision-staleness cost** = Σ over decisive events of `TV_shift × L` (units:
+   probability-seconds per match), where `TV_shift = ½·(|ΔP_win| + |ΔP_draw| + |ΔP_loss|)`.
+
+This is the metric behind §1.5 Claim 3 and the paper's contribution: it converts an
+infrastructure quantity (latency) into a sports quantity (degraded win-probability).
+
 ---
 
 ## 7. Experimental Phases & Results
 
-> ⚠️ **All pre-June-17 result tables below were contaminated by the clock bug (§1.1) and
-> are invalid.** They are retained here struck-through only to document what changed; the
-> valid numbers are in §7.1 (corrected matrix).
+The **main results are in §1.5** (fair corpus). This section gives the supporting detail and
+records the superseded phases for transparency.
 
-### 7.1 Corrected multi-broker matrix (60 runs, June 17 2026)
+### 7.1 Primary — fair concurrency sweep + decision-staleness
 
-`time.time_ns()` clock + non-blocking producer. kafka/redis × single/cluster × S1–S5 ×
-3 reps, single feed per run. Holm-Bonferroni-corrected (TTI p50, n=15/cell):
+**Protocol:** both producers pipelined (Kafka `--max-inflight 64`; Redis async worker pool),
+replay at a non-saturating **10×**, N ∈ {1, 5, 10, 20} concurrent feeds, single + cluster, 3
+reps. The single-host result is the headline (§1.5, Claims 1–3). Outputs:
+`docs/results/realtime_concurrency/` (latency by backend/config/N) and
+`docs/results/decision_staleness_fair/` (decision-staleness by backend/config/N).
 
-| Config | Kafka transport p50 | Redis transport p50 | Kafka TTI p50 | Redis TTI p50 |
-|--------|--------------------:|--------------------:|--------------:|--------------:|
-| single  | ~0 ms (sub-ms) | 687 ms | 426 ms | 1,232 ms |
-| cluster | 944 ms | 2,712 ms | 1,623 ms | 3,378 ms |
+- **Latency** — Kafka transport flat (2–10 ms) across all N; single-node Redis transport grows
+  4 → 774 → 4,627 → 9,732 ms. At N=1, TTI parity (~17 ms).
+- **Decision-staleness** — negligible at N=1 (~0.01 prob·s, both); single-node Redis climbs to
+  ~12.5 prob·s at N=20 (~800×); Kafka stays ~0 (the N=20 value is a single-host load-gen
+  artifact, see §1.5†).
+- **Cluster** — reported as *transport only* + an explicit limitation; single-host co-location
+  confounds cluster TTI (§1.5).
 
-**Kafka significantly faster than Redis** (overall p_adj = 0.0018, *d* = −1.18 large;
-cluster *d* = −2.83; single *d* = −1.02). Single < cluster for both (replication overhead).
-Outputs: `docs/results/corrected_statistical_analysis/`.
+### 7.2 Supporting — durability and corrections
 
-### 7.2 Pending corrected phases
-
-| Phase | Status |
+| Phase | Result |
 |-------|--------|
-| Persistence H31/H32 (acks, AOF) | 🚧 in progress |
-| Concurrency sweep (RQ2, true N feeds) | ⬜ re-run pending |
-| S3 corrections | ⬜ re-run pending |
+| Persistence H31/H32 (acks, AOF) | ✅ Stronger durability costs latency for both (Kafka `acks=all` > `acks=1`; Redis `appendfsync always` ≫ `everysec`) |
+| S3 state-staleness corrections | ✅ 30 runs; correction propagation p50 ≈ 1,461 ms |
+| Scenario sensitivity (S1–S5) | ✅ Replay speed / correction frequency sweeps, supportive |
 
-### 7.3 ~~S2 frozen results~~ — INVALID (contaminated)
+### 7.3 Superseded / invalidated phases (kept for transparency)
 
-~~s2sf12: Kafka 173.489 ms vs Redis 2.508 ms (≈71×).~~ The near-constant ~2,008 ms
-"transport" for *both* backends in the frozen CSV was the cross-process clock offset, not
-real latency. Superseded by §7.1.
+All three were *reversed* by the measurement fixes in §1.1 — retained only to document the
+methodology lesson, **not** as findings:
 
-### 7.4 ~~Concurrency sweep "Redis 40–55% faster"~~ — INVALID (contaminated)
-
-~~S1–S5 showed Redis 38–55% faster.~~ Same clock contamination (~2 s offset) + producer
-saturation. To be regenerated with true N-feed concurrency.
+- ~~S2 frozen "Redis ≈71× faster"~~ — the ~2,008 ms "transport" was the cross-process clock
+  offset. **Invalid (clock bug).**
+- ~~Old concurrency sweep "Redis 40–55% faster" / 120× matrix~~ — clock offset + 120× producer
+  saturation. **Invalid.**
+- ~~`batch9` 60-run matrix "Kafka faster, d=−1.18"~~ — confounded by the Kafka load-generator
+  asymmetry (`max_inflight=1`). **Superseded by the fair sweep (§7.1).**
 
 ---
 
@@ -409,10 +497,11 @@ streaming-latency-sports/
 │       └── results/                # aggregated result CSVs (paper_*.csv)
 │
 ├── docs/
-│   └── results/                    # GENERATED analysis outputs (CSV/PNG/PDF/MD)
-│       ├── concurrency_sweep_20260613/
-│       ├── concurrency_analysis/ · batches_1_2_3_analysis/ · ...
-│       └── s5_complete_analysis.md, *_summary.csv, ...
+│   ├── infrastructure.md · literature_and_originality.md   # supporting docs
+│   └── results/                    # GENERATED analysis outputs (CSV/PNG/PDF)
+│       ├── realtime_concurrency/   # PRIMARY: fair sweep latency by backend/config/N
+│       ├── decision_staleness_fair/# PRIMARY: AoI decision-staleness by backend/config/N
+│       └── win_probability/ · actionability/ · ...         # supporting
 │
 ├── runs/                           # per-run outputs + canonical run lists
 │   ├── _paper_s2_official_runs.txt # canonical S2 list (frozen)

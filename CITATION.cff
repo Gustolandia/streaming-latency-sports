@@ -1,17 +1,17 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: "Streaming Latency Benchmarks: Redis Streams vs Apache Kafka for Real-Time Sports Data Feeds"
+title: "Latency-induced decision degradation in real-time football analytics: Redis Streams vs Apache Kafka on StatsBomb open data"
 authors:
-  - family-names: "[LastName]"
-    given-names: "[FirstName]"
-    email: "[email@example.com]"
-    affiliation: "[Your Institution]"
-    orcid: "https://orcid.org/[your-orcid]"
+  - family-names: "Ricou"
+    given-names: "Gustavo Pedro"
+    email: "pedrorig@tcd.ie"
+    affiliation: "School of Computer Science and Statistics, Trinity College Dublin"
+    # orcid: "https://orcid.org/0000-0000-0000-0000"   # add your ORCID if you have one
   # Add additional authors as needed
-description: "A comprehensive, reproducible benchmark suite that empirically evaluates how streaming architecture choices impact the timeliness and reliability of live football analytics using the publicly available StatsBomb open dataset (2003-2023)."
+description: "Does streaming-infrastructure latency degrade in-play football decisions? Measured Kafka vs Redis Streams delivery latency is coupled to a calibrated in-play win-probability model via the Age-of-Information lens, on StatsBomb open data."
 version: "0.3.0-s3-scaffolding"
-url: "https://github.com/[your-org]/streaming-latency-sports"
-doi: "10.XXXX/jsa.XXXX"  # To be assigned by journal
+url: "https://github.com/Gustolandia/streaming-latency-sports"
+# doi: "10.5281/zenodo.XXXXXXX"   # filled in once the Zenodo release is minted
 license: "MIT"
 keywords:
   - streaming systems
@@ -28,31 +28,31 @@ date-released: "2026-01-01"
 preferred-citation:
   title: "Streaming Latency Benchmarks: Redis Streams vs Apache Kafka for Real-Time Sports Data Feeds"
   authors:
-    - family-names: "[LastName]"
-      given-names: "[FirstName]"
+    - family-names: "Ricou"
+      given-names: "Gustavo Pedro"
   journal: "Journal of Sports Analytics"
   year: 2026
   volume: "TBD"
   issue: "TBD"
   page: "TBD"
-  doi: "10.XXXX/jsa.XXXX"
-  url: "https://doi.org/10.XXXX/jsa.XXXX"
+  # doi: filled in on acceptance / Zenodo mint
+  # url: filled in on acceptance / Zenodo mint
 
 # Software citation
 preferred-citation:
   title: "streaming-latency-sports: Benchmark suite for streaming systems with sports data"
   authors:
-    - family-names: "[LastName]"
-      given-names: "[FirstName]"
+    - family-names: "Ricou"
+      given-names: "Gustavo Pedro"
   year: 2026
   publisher: "GitHub"
-  url: "https://github.com/[your-org]/streaming-latency-sports"
+  url: "https://github.com/Gustolandia/streaming-latency-sports"
   version: "0.3.0-s3-scaffolding"
   commit: "05c1262"
 
 # Repository information
-repository: "https://github.com/[your-org]/streaming-latency-sports"
-repository-artifact: "https://github.com/[your-org]/streaming-latency-sports/archive/refs/tags/paper-s2-freeze-final.zip"
+repository: "https://github.com/Gustolandia/streaming-latency-sports"
+repository-artifact: "https://github.com/Gustolandia/streaming-latency-sports/archive/refs/tags/paper-s2-freeze-final.zip"
 
 # Dataset information
 dataset:
@@ -64,9 +64,9 @@ dataset:
 
 # Contact information
 contact:
-  - email: "[your-email@example.com]"
-    name: "[Your Name]"
-    affiliation: "[Your Institution]"
+  - email: "pedrorig@tcd.ie"
+    name: "Gustavo Pedro Ricou"
+    affiliation: "School of Computer Science and Statistics, Trinity College Dublin"
 
 # Additional identifiers
 identifiers:
@@ -106,10 +106,7 @@ references:
     license: "CC-BY-NC-4.0"
 
 # Funding information (if applicable)
-funding:
-  - funder: "[Funder Name]"
-    award: "[Award Number]"
-    url: "[Funder URL]"
+# funding: none declared
 
 # Notes for users
 notes: |

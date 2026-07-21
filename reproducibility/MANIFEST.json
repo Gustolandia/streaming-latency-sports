@@ -1,5 +1,5 @@
 {
-  "git_commit": "aa2401265dc10c88273530397ef17334914f8ecf",
+  "git_commit": "525a7704914037e615e6d602edaa7742b2a6c01e",
   "generated": "2026-07-21",
   "environment": "see docs/infrastructure.md",
   "protocol": {
@@ -34,7 +34,7 @@
     "scripts/compute_s4_metrics.py": "b08ace7ba0095737d3d4f00f7201b0a79e9db92c3af148846982a79513dd651d",
     "scripts/compute_tti.py": "9f70bc584ad0283a9a8b19b5216bc914018dc087fd921db526d4adb79c1bd67a",
     "scripts/decision_staleness.py": "3bd80a4ec325cc17ec68e37e1cc1fdb0ae208a67afc90ac2f035431faf059e1e",
-    "scripts/fair_statistics.py": "b7fe87e1bf7e3a54a1ffbad1069a74562dce19565664c83c8d5bbee3d331b9d6",
+    "scripts/fair_statistics.py": "542811b11ca1beec98167e4853d6513d98e6677a32d0593e34576674109517b1",
     "scripts/generate_manifest.py": "44a8309256309dc0c98932bcd617e98fd0cb9a37d83bd27f8ce4c70171edbdbf",
     "scripts/generate_manuscript_analysis.py": "beb389d3a1fdf602462af5b29566dae96e19836fd80819690bad61fda6685c5f",
     "scripts/kafka_consumer.py": "9c35bb01eb6abf8dc6c7e63d6f12ca509d1e6e1cf21b21e9978c9b3a5c9d1087",
@@ -56,6 +56,6 @@
     "docker-compose-multibroker.yml": "7f45e9ecd7e8c2867dc10790624cc61b22f570f478c5059b8fd3065874511933",
     "docker-compose-redis-cluster.yml": "76cb210206004297e47058eb5ddaccf9d69befd24275da92ecae7bc0891aa1bd",
     "docker-compose.yml": "1814d0eb571afcc8e90ebf7436068561776e3f4b6744071be7d30a52e5f5658b",
-    "requirements.txt": "88e762f29e4a88b1749596b0f0b687d3a2f24db824451092dc6715f1441802dd"
+    "requirements.txt": "d001761a3e7b5d59d18b93183aa266007bb84aec69adfb25ee8faa41bd43c516"
   }
 }

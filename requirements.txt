@@ -22,5 +22,6 @@ scipy>=1.10.0                  # Mann-Whitney U, Kruskal-Wallis, Skellam win-pro
 matplotlib>=3.5.0              # result + calibration figures (headless Agg backend)
 seaborn>=0.12.0                # styling for the batch/concurrency plots
 
-# --- File I/O ---
+# --- File I/O / reporting ---
 pyarrow>=8.0.0,<15.0.0         # parquet replay plans
+tabulate>=0.8.10               # required by pandas .to_markdown() in generate_manuscript_analysis.py

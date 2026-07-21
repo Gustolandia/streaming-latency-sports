@@ -1,0 +1,3 @@
+backend,config,n,tti_p50,tti_p95,transport_p50,transport_p95,schedlag_p50,n_runs
+kafka,single,5,93.596034,128.321734,24.9769,53.7022,8.2099,15
+redis,single,5,74961.990434,139707.16619399996,74900.2595,139635.69486,11.5309,15

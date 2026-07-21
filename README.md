@@ -81,10 +81,15 @@
 >    matches — a concurrency axis that was secretly a throughput axis. Fixed by giving each feed a
 >    **distinct real match** (`--plans-dir`), which reversed the concurrency finding. See §1.5.
 >
-> **Current finding (artifact-free):** Kafka and Redis are **statistically equivalent** (TOST,
-> one-frame margin) at every concurrency level, and neither shows a concurrency effect. Redis's
-> single-thread serialization is real but only appears at ~2,100 events/s (~4,800 simultaneous
-> real-time matches) — orders of magnitude beyond any football deployment.
+> **Current finding (artifact-free) — and it is *conditional*:**
+> **Co-located** (broker and consumer on one host): Kafka and Redis are **statistically
+> equivalent** (TOST, one-frame margin) at every concurrency level, with no concurrency effect;
+> Redis's single-thread serialization only appears at ~2,100 events/s (~4,800 simultaneous
+> matches), far beyond any football deployment.
+> **Networked:** injecting delay equally at both brokers breaks that equivalence. Redis Streams
+> consumption is **round-trip bound**, so it amplifies delay 500–1,500× (75 s of TTI at 50 ms
+> injected) while Kafka tracks it (94 ms). By 20 ms, Redis imposes **275× more decision-staleness**
+> — decision-corrupting. **A loopback benchmark cannot see this.** See §1.5.
 
 | Area | Status | Notes |
 |------|--------|-------|
@@ -94,9 +99,13 @@
 | Throughput sweep (locates the knee) | ✅ **Complete** | one config, speed varied → `docs/results/throughput/` |
 | Equivalence (TOST) + model sensitivity | ✅ **Complete** | equivalence 3/3 levels; difference invariant to the WP model |
 | True 1× real-time validation | ✅ **Complete** | `--speedup 0.008333` cancels the plan's baked 120× |
+| **Network realism (`tc netem`)** | ✅ **Complete** | 0/5/20/50 ms injected equally → `docs/results/netem/`; **breaks equivalence ≥20 ms** |
+| Plan generation salvaged into main | ✅ **Complete** | `make_replay_plan.py` reproduces committed plans byte-for-byte |
+| Red cards as decisive events | ✅ **Complete** | dismissals move the WP model, so they now count |
+| Cluster claims | ⛔ **Withheld** | single-host co-location confounds them; not reported |
 | Test suite | ✅ **≥95% branch coverage** | every script in `scripts/` + root health checks |
 | Persistence H31/H32 (acks / AOF) | ✅ Complete | 12 runs; both hypotheses supported |
-| Manuscript reframe around decision-degradation | ✅ **Complete** | 10 pp, compiles clean |
+| Manuscript reframe around decision-degradation | ✅ **Complete** | 11 pp, compiles clean |
 | All pre-fix runs (S1–S5, old concurrency, 120 matrix, `batch9`) | ❌ **Invalidated** | superseded by the fair, distinct-match corpus |
 
 ### 1.2 Primary objective
@@ -119,6 +128,7 @@ specific way the measurement could lie:
 | TOST vs a pre-specified margin | mistaking "not detected" for "not there" |
 | WP scoring-rate sweep | the conclusion depending on the proxy model |
 | True 1× replay | the "real-time" claim resting on compressed time |
+| **Injected network delay** (`tc netem`) | a loopback testbed hiding a round-trip-bound design |
 
 ### 1.3 How the original referee concerns are addressed
 
@@ -198,6 +208,29 @@ streaming-infrastructure latency actually degrade an in-play football decision?"
 load a football operator will ever see.** The architectural difference is real but only bites
 at ~4,800 match-equivalents. Practical guidance: choose the backend on operational grounds
 (durability, ops familiarity, cost), not latency.
+
+**⚠️ The condition that breaks equivalence: network latency**
+([`docs/results/netem/`](docs/results/netem)). Everything above co-locates broker and consumer,
+so transport is loopback. Injecting one-way delay **identically at both brokers** (`tc netem`)
+does *not* affect them equally:
+
+| injected delay | Kafka TTI | Redis TTI | Kafka staleness | Redis staleness | Equivalent? |
+|---:|---:|---:|---:|---:|:--|
+| 0 ms | 12.1 ms | 10.5 ms | 0.018 | 0.019 prob·s | ✅ |
+| 5 ms | 15.5 ms | 42.8 ms | 0.022 | 0.051 prob·s | ✅ (marginal) |
+| 20 ms | 44.5 ms | **10,525 ms** | 0.058 | **15.97 prob·s** | ❌ |
+| 50 ms | 93.6 ms | **74,962 ms** | 0.119 | **110.1 prob·s** | ❌ |
+
+Kafka **tracks** the delay; single-node Redis **amplifies** it 500–1,500×. No run was truncated
+(all delivered the full event set), and the amplification implies an effective batch of ~7
+events per round trip at 20 ms and ~2.5 at 50 ms: **Redis Streams consumption is round-trip
+bound**, so each added millisecond is multiplied across thousands of sequential cycles, while
+Kafka amortises it across batched fetches. **A loopback benchmark cannot see this** — which is
+exactly why we ran it.
+
+**So the headline is conditional:** co-locate consumers and the backends are equivalent and
+decision-irrelevant; put a network hop in between and Kafka is strongly preferable, because by
+20 ms Redis imposes **275× more decision-staleness** — enough to corrupt an in-play decision.
 
 **Validated at true 1× real time** ([`docs/results/realtime_1x/`](docs/results/realtime_1x)).
 Everything above replays a compressed clock, so we repeated N=5 at **genuine real time**
@@ -466,6 +499,19 @@ specifically to keep it honest:
 | `wp_sensitivity.py` | Does the conclusion depend on the win-probability proxy? (sweeps the scoring rate; the between-backend difference is invariant) |
 | `wp_calibration.py` | Is the proxy any good? (reliability diagram + ECE) |
 | `make_worked_example.py` | What does one goal's staleness actually look like? (Leverkusen's 95' equaliser) |
+
+**Decisive events** are goals (own goals credited to the opponent) **and red cards**. Dismissals
+belong in the metric because the win-probability model already conditions on the red-card
+differential, so a sending-off moves the forecast exactly as a goal does; excluding them would
+under-count the staleness a feed can carry. Events are replayed in match order, so a goal's
+shift is evaluated against the game state left by any earlier dismissal.
+
+**Regenerating the corpus from scratch.** The replay plans are shipped as data *and* as code:
+
+| Script | Produces |
+|---|---|
+| `make_replay_plan.py` | one match's plan from raw StatsBomb events (verified to reproduce the committed plans byte-for-byte) |
+| `make_multimatch_plan.py` | a merged multi-match plan (note: merging N matches into one feed multiplies that feed's event rate — the confound described in §1.5) |
 
 ---
 

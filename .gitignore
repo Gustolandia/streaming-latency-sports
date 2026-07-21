@@ -36,3 +36,11 @@ $null
 
 # Raw StatsBomb event JSONs (re-fetchable via scripts/fetch_statsbomb_events.sh)
 data/raw/statsbomb/*/events/
+
+# Bulky regenerable per-run outputs (orchestrators regenerate; aggregates kept in docs/results/)
+runs/concurrency_*/
+runs/batch9*/
+runs/_concurrency_*_runs.txt
+runs/_fair_*sweep.log
+runs/_fullmatch_single.log
+runs/fairtest_*/

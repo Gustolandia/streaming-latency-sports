@@ -8,11 +8,11 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 import pandas as pd
 
-# Mock matplotlib to avoid display issues
-sys.modules['matplotlib'] = MagicMock()
-sys.modules['matplotlib.pyplot'] = MagicMock()
-sys.modules['matplotlib.use'] = MagicMock()
-sys.modules['seaborn'] = MagicMock()
+# The script under test already selects the headless Agg backend, so real matplotlib works
+# without a display. We must NOT replace matplotlib in sys.modules -- doing so leaked a
+# MagicMock into every later test module that uses real matplotlib. Only seaborn (an optional
+# dependency that may be absent) is stubbed.
+sys.modules.setdefault('seaborn', MagicMock())
 
 SCRIPTS_DIR = Path(__file__).parent.parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))

@@ -118,3 +118,17 @@ class TestMain:
         runs.mkdir()
         rc = main(["--runs-dir", str(runs), "--pattern", "batch*"])
         assert rc == 1
+
+    def test_main_skips_nondir_and_incomplete(self, temp_dir, capsys):
+        # a file matching the pattern (skipped) and a run dir without producer.csv (None),
+        # plus one valid run so main still succeeds.
+        runs = temp_dir / "runs"
+        runs.mkdir()
+        (runs / "batch1_file_marker").write_text("not a dir")        # not is_dir -> skip
+        (runs / "batch1_empty_kafka_single").mkdir()                 # no producer.csv -> None
+        _write_producer(runs / "batch1_ok_kafka_single_s1_n5_rep1", 4)
+        out = temp_dir / "out"
+        rc = main(["--runs-dir", str(runs), "--pattern", "batch*",
+                   "--iterations", "2", "--out", str(out)])
+        assert rc == 0
+        assert (out / "protocol_overhead_by_run.csv").exists()

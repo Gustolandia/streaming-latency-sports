@@ -192,7 +192,11 @@ itself, whereas \kafka{} remains stable at all tested delays.
 \noindent The proximate cause in our implementation is an acknowledgement issued per message:
 the consumer calls \texttt{XACK} for each entry and waits for the reply before continuing, so
 even a read that returns two hundred entries is followed by two hundred sequential round trips.
-This is the idiomatic pattern in client tutorials, and on loopback it is free.
+This is the idiomatic pattern in client tutorials, and on loopback it is free --- measurably so:
+a \texttt{PING} round trip on an established connection to our \redis{} container has a median
+of $0.46$~ms (Section~\ref{sec:methodology}), a ceiling of $\approx$2{,}170 exchanges per second
+against a demand of $\lambda\approx53$. The pattern has forty-fold headroom until the round trip
+becomes real, at which point the same code has none.
 
 This yields four falsifiable predictions. (P1)~A critical round-trip time near $1/\lambda$: at
 our $\lambda \approx 53$ events/s per feed, $\mathrm{RTT}_{\text{crit}} \approx 19$~ms.
@@ -393,15 +397,51 @@ therefore treat manipulation checks---confirming that an intervention reached th
 test---as mandatory, and report the positive control alongside every intervention.
 
 \subsection{Experimental Design}
-Experiments run on a single commodity host (8-core AMD Ryzen, 31~GB RAM) with \kafka{}
-4.1.1 (KRaft mode) and \redis{} 7.2.4 in Docker. The primary design is a \emph{concurrency
+\paragraph{Platform disclosure.} Because several of our numbers turn out to be properties of
+the testbed rather than of either broker, we state it fully and measure the parts that bound
+our resolution (\texttt{scripts/platform\_probe.py}; raw output in
+\texttt{docs/results/platform/}). Experiments run on a single commodity host: Windows~11
+(build 10.0.26200), 8-core AMD Ryzen, 31~GB RAM, CPython 3.9.13. Producer and consumer are
+native Windows processes; \kafka{} 4.1.1 (KRaft mode) and \redis{} 7.2.4 run as Docker
+containers under Docker Desktop, whose engine executes in a WSL2 virtual machine
+(kernel 6.18.33.2-microsoft-standard-WSL2), reached through published ports
+(\texttt{localhost:19092} and \texttt{localhost:16379}). Three measured consequences follow,
+and each bounds a headline number:
+
+\begin{itemize}
+\item \emph{The emission clock is coarse.} \texttt{perf\_counter} resolves to 100~ns, but the
+      sleep primitive the replay loop waits on does not: a requested 1~ms sleep takes a median
+      of \textbf{15.6~ms}, and a requested 10~ms sleep also takes 15.6~ms. This is the classic
+      Windows timer tick. Emission is therefore quantised to a $\approx$15.6~ms grid, and a
+      uniform offset on that grid has a median of 7.8~ms --- which is essentially the producer
+      scheduling lag we measure (4.9--11.0~ms, Table~\ref{tab:decomp}). The dominant term in
+      \tti{} is thus the host's timer, not either broker.
+\item \emph{``Loopback'' is not loopback.} Traffic to a published container port traverses
+      Docker Desktop's port forwarder and the WSL2 virtual NIC. Establishing a TCP connection
+      costs a median 5.6~ms (\redis{}) and 9.9~ms (\kafka{}), far above a true loopback path,
+      which is consistent with the $\approx$1~ms floor under which broker transport never falls.
+\item \emph{The per-message round trip is $0.46$~ms.} On an \emph{established} connection a
+      \redis{} \texttt{PING} round trip has a median of $0.46$~ms, implying a ceiling of
+      $\approx$2{,}170 request/response exchanges per second. This is the baseline for the
+      round-trip-bound argument of Section~\ref{sec:netem}: at $\lambda\approx53$~events/s the
+      ceiling exceeds demand forty-fold on loopback, which is precisely why the per-message
+      acknowledgement pattern is free here and catastrophic at 20~ms.
+\end{itemize}
+
+\noindent The 15.6~ms quantisation also limits what the replay can reproduce: at our replay
+speed the mean interarrival time ($\approx$19~ms) is of the same order as the tick, so
+sub-tick burst structure within a match is not faithfully reproduced. This affects both
+backends identically and so does not bias the comparison, but it means our feeds are smoother
+than a real one.
+
+The primary design is a \emph{concurrency
 sweep} crossing backend (\kafka{}/\redis{}), configuration (single broker vs.\ 3-node
 cluster), and concurrency $N\in\{1,5,10\}$ parallel match feeds---each carrying a
 \emph{distinct} real match, drawn from the 34-match corpus, at its true event rate---with
 15--30 runs per backend per cell under the fair protocol (both producers pipelined, $10\times$
 replay). We run it in two
 variants: a \emph{windowed} variant (first 10 minutes of match clock) that keeps the single
-host unsaturated so latency can be read cleanly to $N{=}20$, and a \emph{full-match} variant
+host unsaturated so latency can be read cleanly across the range, and a \emph{full-match} variant
 (single configuration) that delivers all decisive events so the decision-staleness integral
 is complete. A \emph{persistence} set isolates durability (\kafka{} \texttt{acks}=1 vs.\ all;
 \redis{} \texttt{appendfsync} everysec vs.\ always), and a \emph{state-staleness corrections}
@@ -1038,7 +1078,17 @@ merely the corrected numbers, is what makes a streaming comparison honest.
 
 \paragraph{Limitations.}
 \label{sec:limitations}
-First, all experiments run on a \emph{single commodity host}. This cleanly isolates the
+First, the testbed bounds the resolution of every reported number. The host's sleep primitive
+quantises event emission to a $\approx$15.6~ms grid, which is what produces the several
+milliseconds of producer scheduling lag in \tti{}, and the container network path costs
+$\approx$1~ms even at rest. We therefore make no claim about sub-millisecond differences in
+\tti{}, and confine architectural comparison to transport, where both backends are stamped
+identically. A Linux host with a high-resolution timer and host networking would lower both
+floors; we would expect it to sharpen the transport separation we report in
+Table~\ref{tab:transport} rather than remove it, but we have not verified that, and it is the
+most obvious replication target.
+
+Second, all experiments run on a \emph{single commodity host}. This cleanly isolates the
 single-node comparison but \emph{confounds} the 3-node cluster experiments: co-locating six
 broker containers with the load generator saturates the host, and cluster-specific client
 behaviour (\kafka{} topic-creation/metadata blocking; \redis{} cluster redirection) inflates
@@ -1053,10 +1103,10 @@ outstanding. Relatedly, the threshold $\mathrm{RTT}_{\text{crit}}\approx1/\lambd
 of arrival rate, so the specific figure of $\approx$19~ms belongs to our replay conditions
 ($\lambda\approx53$~events/s per feed) and not to football in general; it is the
 \emph{relationship} that transfers, and a slower or faster feed moves the knee accordingly.
-Second, the win-probability model is a transparent, calibrated \emph{proxy} for the unreleased
+Third, the win-probability model is a transparent, calibrated \emph{proxy} for the unreleased
 state-of-the-art model \cite{robberechts2021bayesian}; our decision-staleness magnitudes are
 indicative rather than exact, although the null result is robust to the proxy's precise
-calibration because both backends are evaluated against the identical model. Third, feeds replay recorded matches rather than consuming genuinely live
+calibration because both backends are evaluated against the identical model. Fourth, feeds replay recorded matches rather than consuming genuinely live
 sources. We mitigate the two damaging forms of this directly: each feed carries a
 \emph{distinct} match, which is what revealed the throughput confound of
 Section~\ref{sec:concurrency}, and the headline condition is repeated at true $1\times$ speed,
@@ -1065,7 +1115,7 @@ pipeline: real event feeds are produced by human or vendor annotation with laten
 seconds, which would dominate every transport number reported here. That does not weaken the
 conclusion---it strengthens it, since a component contributing seconds makes a difference of
 milliseconds between brokers even less consequential---but it does mean our figures bound the
-\emph{transport} contribution to staleness, not end-to-end feed freshness. Fourth, our equivalence claim is bounded by the margin we chose:
+\emph{transport} contribution to staleness, not end-to-end feed freshness. Fifth, our equivalence claim is bounded by the margin we chose:
 TOST establishes that the backends differ by less than one broadcast frame, not that they are
 identical, and a stricter margin (say, one millisecond) would not be supported by these data.
 We regard a frame as the operationally meaningful threshold, but readers applying the result

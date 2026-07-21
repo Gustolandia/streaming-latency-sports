@@ -307,8 +307,8 @@ class TestRunTrial:
             # cmd is a list, check that it contains expected parts
             # Interpreter depends on platform: .ps1 on Windows, .sh on Linux CI.
             assert cmd[0] in ('powershell', 'bash')
-            assert cmd[0] in ('powershell', 'bash')
-            assert 'Bypass' in cmd
+            # (interpreter-specific flags such as -ExecutionPolicy/Bypass only
+            # exist on the PowerShell path; the shared assertion is the script)
             # The command string is in the last element
             cmd_str = _cmdstr(mock_run.call_args[0][0])
             assert 'run_kafka_trial' in cmd_str
@@ -877,7 +877,7 @@ class TestRedisConsumerExtra:
             mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
             run_trial(run_id="t", plan_csv="p.csv", backend="redis", speedup=1, max_t_sim=600,
                       stream="s", consumer_extra="--ack-batch 200")
-            assert '-CONSUMER_EXTRA "--ack-batch 200"' in str(mock_run.call_args[0][0])
+            assert '-CONSUMER_EXTRA "--ack-batch 200"' in _cmdstr(mock_run.call_args[0][0])
 
     def test_consumer_extra_not_used_for_kafka(self, temp_dir):
         with patch('scripts.run_concurrency_test.subprocess.run') as mock_run:

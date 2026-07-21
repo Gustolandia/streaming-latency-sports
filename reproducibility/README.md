@@ -55,10 +55,46 @@ python scripts/make_fair_figures.py                                             
 python scripts/generate_manifest.py                                                                                        # refresh MANIFEST.json
 ```
 
-## Zenodo archival (requires your account — not automatable here)
+## Zenodo archival (needs your Zenodo account token)
 
-1. Verify the working tree is clean and tagged: `git tag v1.0-corrected && git push --tags`.
-2. Bundle: `scripts/`, `tests/`, `configs/`, `docker-compose*.yml`, `requirements.txt`,
-   `data/processed/`, `runs/` (corrected `*_20260617*` + `batch9*` only), `manuscript.tex`
-   + assets, `docs/`.
-3. Upload to Zenodo, mint a DOI, and add the DOI badge to `README.md`.
+A CLI is installed for this: [`zenodo-client`](https://pypi.org/project/zenodo-client/)
+(`pip install zenodo-client`, also in `requirements-dev.txt`). It reads your token from the
+environment, so the token never needs to be pasted into a file or shared.
+
+```bash
+# 0. one-off: create a Personal Access Token at https://zenodo.org/account/settings/applications/
+#    with the "deposit:actions" and "deposit:write" scopes, then export it:
+export ZENODO_API_TOKEN=...          # PowerShell:  $env:ZENODO_API_TOKEN="..."
+
+# 1. pin the exact state being archived
+python scripts/generate_manifest.py            # refresh MANIFEST.json
+git tag v1.0-decision-degradation && git push --tags
+
+# 2. bundle what a reader needs to reproduce the paper
+#    (raw StatsBomb events are excluded by design -- re-fetch with fetch_statsbomb_events.sh)
+git archive --format=zip --prefix=streaming-latency-sports/ \
+    -o streaming-latency-sports-v1.0.zip v1.0-decision-degradation
+
+# 3. create the deposition and mint the DOI (Python API; the CLI covers download/update)
+python - <<'PY'
+from zenodo_client import Zenodo
+z = Zenodo()                      # picks up ZENODO_API_TOKEN
+dep = z.create(
+    data={
+        "metadata": {
+            "title": "Latency-induced decision degradation in real-time football analytics",
+            "upload_type": "software",
+            "description": "Code, replay plans and analysis for the Kafka vs Redis Streams "
+                           "decision-staleness study (see README.md).",
+            "creators": [{"name": "Ricou, Gustavo Pedro",
+                          "affiliation": "Trinity College Dublin"}],
+        }
+    },
+    paths="streaming-latency-sports-v1.0.zip",
+)
+print("DOI:", dep.json()["doi"])
+PY
+```
+
+4. Add the returned DOI badge to `README.md` and cite it in `manuscript.tex`
+   (the Data/Code Availability statement).

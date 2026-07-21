@@ -139,38 +139,51 @@ number is excluded.
 (and our own contaminated "Redis 71× faster" headline) that one backend is simply faster is
 wrong: for one match they are statistically indistinguishable and both excellent for real time.
 
-**Claim 2 — Under concurrency, single-node Redis serializes and degrades; Kafka stays flat.**
-Single-threaded Redis Streams cannot parallelize concurrent streams, so broker delivery grows
-~linearly with the number of concurrent matches, while Kafka's partitioned broker is flat:
+**Claim 2 — Across the entire *realistic* range, neither backend degrades, and they are
+statistically indistinguishable.** With each feed carrying a **different real match** at true
+per-match event rates, latency is flat and backend choice is undetectable:
 
-| N (concurrent matches) | Kafka transport p50 | Redis transport p50 | Kafka TTI p50 | Redis TTI p50 |
-|---:|---:|---:|---:|---:|
-| 1  | 2 ms  | 4 ms     | 17 ms     | 17 ms      |
-| 5  | 2 ms  | 774 ms   | 18 ms     | 801 ms     |
-| 10 | 4 ms  | 4,627 ms | 29 ms     | 5,206 ms   |
-| 20 | 10 ms | 9,732 ms | 1,682 ms† | 13,006 ms  |
+| N (distinct concurrent matches) | Kafka transport p50 | Redis transport p50 | Kafka TTI p50 | Redis TTI p50 | Kafka vs Redis |
+|---:|---:|---:|---:|---:|---|
+| 1  | 1.00 ms | 1.01 ms | 11.4 ms | 10.3 ms | n.s. (*p*=0.68) |
+| 5  | 1.00 ms | 1.20 ms | 14.7 ms | 8.4 ms  | n.s. (*p*=0.60) |
+| 10 | 1.00 ms | 1.35 ms | 9.2 ms  | 11.7 ms | n.s. (*p*=0.68) |
 
-† Kafka's N=20 *TTI* is inflated by the **single host** saturating (40+ load-gen processes →
-585 ms scheduling lag); its *transport* stays 10 ms, so the broker is fine. Transport is the
-trustworthy cross-N metric.
+Kruskal–Wallis finds **no concurrency effect for either backend** (Kafka *p*=0.70, Redis *p*=0.20).
+N=1 is powered at *n*=18 per backend.
 
-**Claim 3 (the contribution) — This latency only matters for *decisions* in a specific regime.**
-Decision-staleness (probability-seconds per match) via the Age-of-Information integral over the
-**full match** (all 40 decisive events per run, not the ~3 in a 10-min window):
+**Claim 2b — Redis *does* serialize, but only far outside realistic load.** Football event data
+is intrinsically low-rate: **0.44 events/second/match**. Expressing every tested load in
+*simultaneous real-time match equivalents* locates the boundary:
 
-| N | Kafka-single | Redis-single |
-|---:|---:|---:|
-| 1  | 0.28  | 0.18 |
-| 5  | 1.16  | 17.5 |
-| 10 | 50.3† | 271  |
-| 20 | —‡    | 1012 |
+| Aggregate load | ≈ real-time matches | Kafka transport | Redis transport |
+|---:|---:|---:|---:|
+| 531 ev/s (10 distinct matches) | ~1,200 | 1.0 ms | **1.4 ms** |
+| 567 ev/s | ~1,280 | 2 ms | 4 ms |
+| 2,835 ev/s | ~6,400 | 2 ms | **774 ms** |
+| 11,342 ev/s | ~25,600 | 10 ms | **9,732 ms** |
 
-At a single feed both leave a match's win-probability stale by only ~0.2 prob·s (mean ~20 ms per
-goal — **decision-irrelevant**, pushing back on the industry "2-second edge" framing). By **5
-concurrent matches** single-node Redis already imposes **~15× more** decision-staleness than
-Kafka (17.5 vs 1.16); by 10 a goal's win-prob arrives **~24 s stale**. **The first measured
-answer to "when does streaming-infrastructure latency actually degrade an in-play football
-decision?"** — irrelevant for one feed, Redis-dominated and decision-corrupting under concurrency.
+So a single Redis node comfortably serves the event rate of **~1,200 simultaneous real-time
+matches**; degradation only appears around **~6,400**. For scale, the top five European leagues
+field roughly 50 simultaneous matches on a busy weekend.
+
+**Claim 3 (the contribution) — Infrastructure latency does not degrade in-play football
+decisions in any realistic deployment.** Decision-staleness (probability-seconds per match),
+distinct matches, all decisive events:
+
+| N | Kafka-single | Redis-single | Kafka vs Redis |
+|---:|---:|---:|---|
+| 1  | 0.014 | 0.012 | n.s. (*p*=0.67) |
+| 5  | 0.018 | 0.014 | n.s. (*p*=0.67) |
+| 10 | 0.014 | 0.014 | n.s. (*p*=0.65) |
+
+A goal's win-probability is stale by ~0.014 prob·s (~12 ms) regardless of backend or
+concurrency — **decision-irrelevant**, and it directly contradicts the industry "2-second edge"
+framing across the whole realistic operating envelope. **The first measured answer to "when does
+streaming-infrastructure latency actually degrade an in-play football decision?" is: not at any
+load a football operator will ever see.** The architectural difference is real but only bites
+at ~6,400 match-equivalents. Practical guidance: choose the backend on operational grounds
+(durability, ops familiarity, cost), not latency.
 
 **Formal tests** ([`docs/results/fair_statistics/`](docs/results/fair_statistics)) confirm it:
 Holm–Bonferroni-corrected Mann–Whitney finds **no** significant Kafka–Redis difference at N=1

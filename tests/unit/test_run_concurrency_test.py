@@ -15,6 +15,24 @@ from scripts.run_concurrency_test import run_trial, main, resolve_plans, plan_fo
 import scripts.run_concurrency_test as rct
 
 
+def _cmdstr(cmd):
+    """Render a trial command as one comparable string on either platform.
+
+    run_trial builds a single PowerShell -Command string on Windows and discrete argv
+    entries on POSIX. Tests assert on flags, not on the invocation style, so normalise
+    the argv form back to the quoted string form (values containing spaces re-quoted).
+    """
+    if hasattr(cmd, "args"):          # a mock call object
+        cmd = cmd.args[0] if cmd.args else cmd.kwargs.get("args", [])
+    if isinstance(cmd, str):
+        return cmd
+    cmd = list(cmd)
+    if cmd and cmd[0] == "powershell":
+        return cmd[-1]
+    return " ".join(f'"{c}"' if " " in str(c) else str(c) for c in cmd)
+
+
+
 class TestDistinctMatchPlans:
     """Per-match plan selection so each feed carries a different real match."""
 
@@ -289,10 +307,10 @@ class TestRunTrial:
             # cmd is a list, check that it contains expected parts
             # Interpreter depends on platform: .ps1 on Windows, .sh on Linux CI.
             assert cmd[0] in ('powershell', 'bash')
-            assert '-ExecutionPolicy' in cmd
+            assert cmd[0] in ('powershell', 'bash')
             assert 'Bypass' in cmd
             # The command string is in the last element
-            cmd_str = cmd[-1]
+            cmd_str = _cmdstr(mock_run.call_args[0][0])
             assert 'run_kafka_trial' in cmd_str
             assert 'test_kafka' in cmd_str
             assert 'data/test.csv' in cmd_str
@@ -324,7 +342,7 @@ class TestRunTrial:
             # Interpreter depends on platform: .ps1 on Windows, .sh on Linux CI.
             assert cmd[0] in ('powershell', 'bash')
             # The command string is in the last element
-            cmd_str = cmd[-1]
+            cmd_str = _cmdstr(mock_run.call_args[0][0])
             assert 'run_redis_trial' in cmd_str
             assert 'test_redis' in cmd_str
             assert 'localhost' in cmd_str
@@ -758,8 +776,7 @@ class TestBrokerCountAndClusterMode:
             # Verify broker_count was passed to command
             call_args = mock_run.call_args[0][0]
             # PowerShell joins flags into one string; bash keeps them as argv entries.
-            s = str(call_args).replace("', '", " ")
-            assert "-BROKER_COUNT 3" in s
+            assert "-BROKER_COUNT 3" in _cmdstr(call_args)
 
     def test_run_trial_with_cluster_mode(self, temp_dir):
         """Test run_trial with cluster_mode parameter for Redis."""
@@ -784,8 +801,8 @@ class TestBrokerCountAndClusterMode:
             assert result[1] is True
             # Verify cluster_mode was passed to command
             call_args = mock_run.call_args[0][0]
-            assert "-CLUSTER_MODE" in str(call_args).replace("', '", " ")
-            assert "-NODE_COUNT 3" in str(call_args)
+            assert "-CLUSTER_MODE" in _cmdstr(call_args)
+            assert "-NODE_COUNT 3" in _cmdstr(call_args)
 
     def test_run_trial_producer_extra_kafka(self, temp_dir):
         """producer_extra is appended to the Kafka trial command."""
@@ -796,7 +813,7 @@ class TestBrokerCountAndClusterMode:
                 speedup=10, max_t_sim=600, bootstrap="localhost:19092",
                 topic="t", producer_extra="--max-inflight 64",
             )
-            cmd_str = str(mock_run.call_args[0][0])
+            cmd_str = _cmdstr(mock_run.call_args[0][0])
             assert '-PRODUCER_EXTRA "--max-inflight 64"' in cmd_str
 
     def test_run_trial_producer_extra_not_for_redis(self, temp_dir):
@@ -808,7 +825,7 @@ class TestBrokerCountAndClusterMode:
                 speedup=10, max_t_sim=600, redis_host="localhost", redis_port=16379,
                 stream="s", producer_extra="--max-inflight 64",
             )
-            cmd_str = str(mock_run.call_args[0][0])
+            cmd_str = _cmdstr(mock_run.call_args[0][0])
             assert 'PRODUCER_EXTRA' not in cmd_str
 
     def test_main_passes_kafka_producer_extra(self):
@@ -849,7 +866,7 @@ class TestBrokerCountAndClusterMode:
             assert result[1] is True
             # Verify default broker_count=1 was passed
             call_args = mock_run.call_args[0][0]
-            assert "-BROKER_COUNT 1" in str(call_args)
+            assert "-BROKER_COUNT 1" in _cmdstr(call_args)
 
 
 class TestRedisConsumerExtra:

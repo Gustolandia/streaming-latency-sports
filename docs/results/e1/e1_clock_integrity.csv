@@ -1,0 +1,9 @@
+condition,n_runs,n_trustworthy,worst_transport_ms,median_neg_fraction,usable
+concurrency_n10_20260722_004552_kafka,30,30,0.323885,0.0,True
+concurrency_n10_20260722_004552_redis,30,17,-4.779977,0.0,False
+concurrency_n12_20260722_004738_kafka,35,35,0.273527,0.0,True
+concurrency_n12_20260722_004738_redis,36,19,-3.358176,0.0,False
+concurrency_n1_20260722_003940_kafka,8,8,0.503117,0.0,True
+concurrency_n1_20260722_003940_redis,8,8,0.017828,0.0,True
+concurrency_n9_20260722_004407_kafka,27,27,0.378919,0.0,True
+concurrency_n9_20260722_004407_redis,27,20,-1.743823,0.0,False

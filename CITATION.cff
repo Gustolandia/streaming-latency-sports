@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: "Latency-induced decision degradation in real-time football analytics: Redis Streams vs Apache Kafka on StatsBomb open data"
+title: "A Message Cannot Arrive Before It Is Sent: physical-consistency auditing for streaming latency benchmarks"
 authors:
   - family-names: "Ricou"
     given-names: "Gustavo Pedro"
@@ -8,8 +8,8 @@ authors:
     affiliation: "School of Computer Science and Statistics, Trinity College Dublin"
     # orcid: "https://orcid.org/0000-0000-0000-0000"   # add your ORCID if you have one
   # Add additional authors as needed
-description: "Does streaming-infrastructure latency degrade in-play football decisions? Measured Kafka vs Redis Streams delivery latency is coupled to a calibrated in-play win-probability model via the Age-of-Information lens, on StatsBomb open data."
-version: "0.3.0-s3-scaffolding"
+description: "A streaming latency benchmark whose first complete answer was physically impossible, the consistency check that found it, and what survived. Kafka vs Redis Streams on a real sparse workload."
+version: "1.0.0-preprint"
 url: "https://github.com/Gustolandia/streaming-latency-sports"
 # doi: "10.5281/zenodo.XXXXXXX"   # filled in once the Zenodo release is minted
 license: "MIT"

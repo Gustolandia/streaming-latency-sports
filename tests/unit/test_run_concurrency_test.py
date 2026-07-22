@@ -396,8 +396,9 @@ class TestMain:
                     except SystemExit:
                         pass
                     
-                    # Check mkdir was called
-                    mock_dir.mkdir.assert_called()
+                    # The summary path is now Path(--out-dir) / "concurrency_<prefix>", so
+                    # mkdir lands on the joined path rather than on Path(...) itself.
+                    mock_dir.__truediv__.return_value.mkdir.assert_called()
 
     def test_main_creates_run_list_file(self, temp_dir):
         """Test that main creates run list file."""

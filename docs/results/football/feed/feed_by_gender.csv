@@ -1,0 +1,2 @@
+gender,n_events,duration_s,mean_rate_evs,peak_rate_evs,gap_p50_s,gap_p05_s,burstiness,n_matches
+male,3485.0,8465.0,0.40991434884190625,2.7,1.0,0.0,6.45866417069646,480

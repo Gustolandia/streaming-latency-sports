@@ -79,8 +79,12 @@ CONS_PID=$!
 
 sleep 2
 echo "[2/4] $(date +%H:%M:%S) running producer..."
+# KAFKA_PRODUCER_SCRIPT lets a campaign swap the client library without touching the
+# orchestrator. Used by cloud/campaigns/m1_client_ab.sh to run the identical experiment
+# against confluent-kafka, which is how "Kafka" is separated from "kafka-python".
+KAFKA_PRODUCER_SCRIPT="${KAFKA_PRODUCER_SCRIPT:-scripts/kafka_producer.py}"
 # shellcheck disable=SC2086
-"$PY" scripts/kafka_producer.py ${KAFKA_PRODUCER_OPTS:-} \
+"$PY" "$KAFKA_PRODUCER_SCRIPT" ${KAFKA_PRODUCER_OPTS:-} \
   --run-id "$RUN_ID" --plan-csv "$PLAN_CSV" --out "runs/$RUN_ID/producer.csv" \
   --bootstrap "$BOOTSTRAP" --topic "$TOPIC" \
   --speedup "$SPEEDUP" --max-t-sim "$MAX_T_SIM" --broker-count "$BROKER_COUNT" \

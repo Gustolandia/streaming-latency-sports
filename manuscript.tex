@@ -315,11 +315,11 @@ statistics exists, and it is a prerequisite for every claim that follows.
 \subsection{Arrival rate and burstiness}
 \label{sec:burstiness}
 
-Football event data is sparse: a match yields a median of $3{,}485$ events over roughly
-$8{,}465$ seconds of match clock, a mean arrival rate of \textbf{0.41 events per second}. This
+Football event data is sparse: a match yields a median of $3{,}507$ events over roughly
+$8{,}412$ seconds of match clock, a mean arrival rate of \textbf{0.415 events per second}. This
 is the figure the streaming literature would use to size a pipeline, and it is misleading.
 Measured over a sliding ten-second window, the same feeds peak at \textbf{2.7 events per
-second} --- a peak-to-mean ratio of \textbf{6.5} (Table~\ref{tab:feedstats}). Half of all
+second} --- a peak-to-mean ratio of \textbf{6.45} (Table~\ref{tab:feedstats}). Half of all
 inter-arrival gaps are at or below one second, and the fifth percentile is indistinguishable
 from zero: events cluster, because football clusters. A restart, a sequence of quick passes, a
 goal and its surrounding play all emit in tight groups separated by long quiet periods.
@@ -340,16 +340,24 @@ would give.}
 \toprule
 Scope & Matches & Mean rate (ev/s) & Peak rate (ev/s) & Peak/mean \\
 \midrule
-All competitions & 480 & 0.41 & 2.7 & 6.5 \\
-Premier League   & 418 & 0.41 & 2.6 & 6.5 \\
-1.~Bundesliga    &  34 & 0.47 & 2.9 & 6.0 \\
-Ligue 1          &  28 & 0.45 & 2.8 & 6.2 \\
+All competitions & 3{,}315 & 0.415 & 2.70 & 6.45 \\
+La Liga & 867 & 0.434 & 2.70 & 6.31 \\
+Ligue 1 & 435 & 0.430 & 2.70 & 6.32 \\
+Premier League & 418 & 0.407 & 2.60 & 6.50 \\
+Serie A & 380 & 0.423 & 2.70 & 6.35 \\
+1.~Bundesliga & 340 & 0.423 & 2.70 & 6.42 \\
+FA Women's Super League & 326 & 0.397 & 2.60 & 6.55 \\
+FIFA World Cup & 128 & 0.404 & 2.65 & 6.61 \\
+Women's World Cup & 116 & 0.386 & 2.60 & 6.82 \\
+Indian Super League & 115 & 0.346 & 2.60 & 7.64 \\
+African Cup of Nations & 52 & 0.342 & 2.55 & 7.89 \\
 \bottomrule
 \end{tabular}
 
 \smallskip
-{\footnotesize Peak rate is the maximum over any sliding ten-second window. Figures are
-recomputed over the full corpus in the released artefacts.}
+{\footnotesize Peak rate is the maximum over any sliding ten-second window. Computed over all 3{,}315 matches. The sparsest competitions are the burstiest -- the African
+Cup of Nations and Indian Super League have the lowest mean rates and the highest peak-to-mean
+ratios -- so a low average is not a licence to provision for the average.}
 \end{table}
 
 \subsection{Concurrency has a ceiling, and it can be measured}
@@ -734,6 +742,63 @@ corrected, fair instrumentation (\texttt{time.time\_ns} shared epoch, $10\times$
 producers pipelined, distinct matches per feed). We report the single-host, single-node regime,
 which we can measure cleanly; cluster results are discussed as a limitation
 (Section~\ref{sec:limitations}).
+
+\subsection{Broker Latency at Real Football Concurrency}
+\label{sec:e1}
+
+The concurrency levels are those derived in Section~\ref{sec:realconcurrency} rather than chosen
+by hand: $N \in \{1, 9, 10, 12\}$, spanning the median slot occupancy, the structural
+league-matchday bound and the largest simultaneity observed in the corpus. Each feed carries a
+\emph{distinct} real match, replayed at true real-time rate. Real-time replay is not merely the
+ecologically correct choice; it is also the only regime in which our instrument is sound, since
+accelerated replay starves the driver and inverts timestamps (defect~6). Every run reported here
+passes the clock-integrity gate: 202 runs were measured, 164 retained, and all Kafka conditions
+passed in full.
+
+Broker transport is flat and indistinguishable across the entire realistic range
+(Table~\ref{tab:e1}). Neither backend shows a significant concurrency effect
+(Kruskal--Wallis $p=0.061$ for \kafka{}, $p=0.091$ for \redis{}), and the ratio of the largest
+to the smallest median is $1.06$ and $1.17$ respectively. Two one-sided tests against a
+\textbf{1~ms} margin --- proportionate to a measurement of order one millisecond, rather than the
+40~ms video frame used earlier --- establish equivalence at $N=9$, $10$ and $12$ under all three
+estimators. At $N=1$ the three disagree, and we report that rather than resolve it: only eight
+runs per backend survived gating there, and the interval is correspondingly wide.
+
+\begin{table}[htbp]
+\centering
+\caption{Broker transport (median, ms) at concurrency levels derived from real kick-off
+schedules, true real-time replay, after clock-integrity gating. Equivalence is tested against a
+1~ms margin proportionate to the measurement.}
+\label{tab:e1}
+\begin{tabular}{rrrrl}
+\toprule
+$N$ & \kafka{} & \redis{} & HL shift & Equivalent within 1~ms \\
+\midrule
+1  & 0.792 & 0.721 & $+0.081$ & methods disagree (8 runs/backend) \\
+9  & 0.802 & 0.807 & $+0.021$ & yes (all three estimators) \\
+10 & 1.000 & 0.855 & $+0.116$ & yes \\
+12 & 0.839 & 0.844 & $+0.053$ & yes \\
+\midrule
+\multicolumn{5}{l}{\footnotesize Across $N$: \kafka{} $p=0.061$, \redis{} $p=0.091$; neither
+significant.} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This result supersedes an earlier version of this analysis which reported \redis{} transport
+rising by $34\%$ across concurrency. That analysis rested on $10\times$-accelerated runs, which
+the integrity gate rejects with $5$--$14\%$ of timestamps inverted; the apparent trend was a
+property of a starved load generator, not of either broker. We report the supersession rather
+than silently substituting the corrected numbers, because the episode is the clearest instance
+in this study of an artefact surviving until an explicit physical check was applied to it.
+
+\paragraph{What the measurement cannot say.} \kafka{}'s end-to-end \tti{} is approximately
+$105$~ms at every level, of which about $103$~ms is producer scheduling lag. That is the
+load-generator tail of defect~5 appearing as a near-constant offset at real-time rates, and it
+is a property of our Python replay harness rather than of \kafka{}. It is the reason the broker
+comparison is carried by transport rather than by \tti{}, and it means this study cannot make a
+claim about end-to-end latency achievable by a production \kafka{} pipeline --- only about the
+broker's contribution to it.
 
 \subsection{Single-Feed Parity (RQ1)}
 \label{sec:singlefeed}

@@ -17,6 +17,7 @@ from make_paper_figures import (  # noqa: E402
     plot_workload,
     plot_concurrency,
     plot_integrity,
+    plot_model,
     plot_network,
     _read,
     _save,
@@ -115,6 +116,16 @@ class TestPlots:
         assert len(sens_ax.get_lines()) >= 1
         assert "1 of 5 runs clean" in hist_ax.get_title()
 
+    def test_model_diagram_draws_both_panels(self, axes_pair):
+        """Panel (a) is a schematic; panel (b) must show the H1 overlap argument."""
+        plot_model(axes_pair)
+        mech_ax, h1_ax = axes_pair
+        assert not mech_ax.axison, "the mechanism panel is a schematic, not a plot"
+        assert len(h1_ax.get_lines()) >= 1, "the Delta density"
+        # Two threshold markers: one small T_true, one large.
+        assert len([ln for ln in h1_ax.get_lines() if ln.get_linestyle() == "--"]) == 2
+        assert len(h1_ax.collections) == 2, "the two shaded inversion regions"
+
     def test_network_marks_the_batching_fix(self, ax):
         plot_network(ax)
         assert ax.get_yscale() == "log"
@@ -154,8 +165,8 @@ class TestMain:
     def test_renders_every_figure(self, temp_dir, capsys):
         assert main(self._inputs(temp_dir)) == 0
         out = temp_dir / "figs"
-        for stem in ("pipeline_schematic", "workload_profile", "kickoff_concurrency",
-                     "integrity_audit", "network_delay"):
+        for stem in ("pipeline_schematic", "measurement_model", "workload_profile",
+                     "kickoff_concurrency", "integrity_audit", "network_delay"):
             assert (out / f"{stem}.pdf").exists(), stem
         assert "skipped" not in capsys.readouterr().out
 

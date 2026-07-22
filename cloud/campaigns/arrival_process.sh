@@ -39,11 +39,15 @@ for ARRIVAL in constant poisson bursty; do
   python3 scripts/make_synthetic_plan.py --arrival "$ARRIVAL" --rate "$RATE" \
     --duration "$DURATION" --out "$PLAN_DIR/replay_plan.csv"
 
-  banner "E-H arrival=$ARRIVAL rate=$RATE"
+  # Synthetic plans are uncompressed, real ones are 120x. Derive both so the two plan
+  # families cannot silently diverge.
+  SPEEDUP_RT=$(assert_plan_rate "$PLAN_DIR/replay_plan.csv" 1)
+  SPEEDUP_10=$(assert_plan_rate "$PLAN_DIR/replay_plan.csv" 10)
+  banner "E-H arrival=$ARRIVAL rate=$RATE speedup=$SPEEDUP_RT"
   # N=1 at true real time: the condition in which the offset was observed. Holding N=1 keeps
   # the driver unsaturated, so this measures the arrival process and not scheduler contention.
   python3 scripts/run_concurrency_test.py 1 "$PLAN_DIR/replay_plan.csv" "$REPS" \
-    --speedup 1 --max-t-sim "$DURATION" \
+    --speedup "$SPEEDUP_RT" --max-t-sim "$DURATION" \
     --kafka-bootstrap "$KAFKA_BOOTSTRAP" --redis-host "$REDIS_HOST" --redis-port "$REDIS_PORT" \
     --plans-dir "$SYN_DIR/$ARRIVAL" \
     --kafka-producer-extra "--max-inflight 64 --trace-loop $OUT/trace_${ARRIVAL}.csv" \
@@ -53,7 +57,7 @@ for ARRIVAL in constant poisson bursty; do
   # the within-campaign control for it rather than a comparison across campaigns.
   banner "E-H arrival=$ARRIVAL accelerated 10x"
   python3 scripts/run_concurrency_test.py 1 "$PLAN_DIR/replay_plan.csv" "$REPS" \
-    --speedup 10 --max-t-sim "$DURATION" \
+    --speedup "$SPEEDUP_10" --max-t-sim "$DURATION" \
     --kafka-bootstrap "$KAFKA_BOOTSTRAP" --redis-host "$REDIS_HOST" --redis-port "$REDIS_PORT" \
     --plans-dir "$SYN_DIR/$ARRIVAL" --kafka-producer-extra "--max-inflight 64" \
     --out-dir "$OUT/${ARRIVAL}_10x" --trial-timeout 1800 2>&1 | tail -2

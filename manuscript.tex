@@ -471,8 +471,9 @@ StatsBomb-derivable game state---score differential, fraction of match remaining
 red-card differential---using a Skellam (difference-of-Poissons) goal model. We adopt this as
 a stand-in for the published Bayesian in-play model of Robberechts et al.\
 \cite{robberechts2021bayesian}, whose code is unreleased. The proxy is well calibrated across
-the 3{,}239 game states sampled from the 34 matches: a ranked probability score of
-$\approx$0.24 and an expected calibration error of \textbf{0.054} --- predicted home-win
+the 28{,}240 game states sampled from the corpus: a ranked probability score of
+$0.142$ and an expected calibration error of \textbf{0.054}. Both need a reference to mean
+anything, so we supply three (Section~\ref{sec:wpbaselines}) --- predicted home-win
 probabilities track observed home-win frequencies to within a few percentage points
 (Figure~\ref{fig:wpcal}). The model has a single global parameter (team scoring rate), so this
 is a whole-corpus check.
@@ -518,6 +519,21 @@ statistical leverage. It converts an infrastructure quantity into a sports one, 
 against a decision rather than against a service-level target. That conversion is what lets us
 answer \emph{when} latency matters, and it is what the streaming-benchmark literature has never
 supplied---but it is a lens on the latency measurement, not an independent one.
+
+\subsection{Interpreting the proxy's scores}
+\label{sec:wpbaselines}
+A ranked probability score is only interpretable against a reference forecast, so we
+score three. Over 28{,}240 game states the proxy achieves a skill of $+0.42$ against a
+uniform forecast and $+0.40$ against the corpus base rate, confirming it uses the game
+state. Against a \emph{score-only} lookup table --- the empirical outcome distribution
+conditioned on nothing but the current goal difference --- its skill is $+0.026$.
+
+That last number is the honest one, and it is unflattering. The Skellam structure, the
+time remaining and the red-card differential together add about two and a half percent
+over simply knowing who is ahead. This does not undermine the decision-staleness metric,
+which requires a \emph{calibrated} forecast rather than a sophisticated one, but it does
+mean the proxy should not be described as a model of in-play win probability in any
+stronger sense, and we do not do so.
 
 \subsection{Measurement Validity}
 \label{sec:validity}
@@ -823,49 +839,48 @@ no concurrency effect ($p=0.70$ for \kafka{}, $p=0.20$ for \redis{}).
 
 That null, however, is a property of the metric as much as of the systems. Because producer
 scheduling lag supplies 53--78\% of \tti{} (Table~\ref{tab:decomp}), a sub-millisecond broker
-effect cannot survive it. Repeating the identical tests on \emph{transport}---consumer receipt
-minus broker acknowledgement, computed the same way for both backends---reverses the conclusion
-(Table~\ref{tab:transport}).
+effect cannot survive it, and the architecture question has to be asked on broker transport
+instead.
 
-\redis{} broker transport rises monotonically with concurrency, $1.006 \rightarrow 1.197
-\rightarrow 1.346$~ms, a $34\%$ increase that Kruskal--Wallis resolves at
-$p=6.7\times10^{-12}$. \kafka{} over the same range moves from $0.999$ to $1.002$~ms, an
-increase of $0.3\%$. The per-$N$ comparisons separate the backends completely at $N{\geq}5$
-(rank-biserial $=1.00$, i.e.\ every \redis{} run is slower than every \kafka{} run;
-Holm-corrected $p=6.5\times10^{-6}$ and $9.0\times10^{-11}$). The single-threaded serialization
-that Section~\ref{sec:literature} predicts on architectural grounds is therefore present,
-unambiguous, and detectable at entirely realistic concurrency---not only in the stress regime of
-Table~\ref{tab:regime}.
+\paragraph{A withdrawn analysis, and why it is reported rather than deleted.} An earlier version
+of this paper answered that question with the accelerated corpus and reported a striking result:
+\redis{} transport rising monotonically with concurrency ($1.006 \rightarrow 1.197 \rightarrow
+1.346$~ms, a $34\%$ increase at $p=6.7\times10^{-12}$) against a flat \kafka{}, with complete
+rank separation at $N{\geq}5$. It was internally consistent, it matched the architectural
+prediction that a single-threaded server serialises concurrent streams, and it was wrong.
 
-The magnitude is what settles the practical question. The effect is $0.34$~ms at $N{=}10$:
-one $118$th of a video frame, three orders of magnitude inside the tightest budget in
-Table~\ref{tab:latency_requirements}, and invisible in decision-staleness. TOST accordingly
-establishes \emph{equivalence} within the pre-specified margin at every level even as
-Mann--Whitney rejects equality (Table~\ref{tab:transport}). Reporting both is the point: the two
-tests answer different questions, and here they answer them in opposite directions. The
-architectural difference is real and measurable; it is also, for this domain, of no
-consequence. A study reporting only the significance test would overstate the finding, and one
-reporting only \tti{} would miss it entirely.
+The corpus behind it fails the clock-integrity gate of defect~6: between $5$ and $14\%$ of its
+events carry a broker acknowledgement stamped \emph{after} the consumer logged receipt, because
+$10\times$-accelerated replay starves the driver and delays the acknowledging thread. Re-measured
+at true real-time rate on a corpus that passes the gate, transport is flat for both backends and
+neither shows a concurrency effect (Section~\ref{sec:e1}). The apparent serialization was an
+artefact of a saturated load generator, not a property of \redis{}.
+
+We report the withdrawal rather than silently substituting the corrected numbers because the
+episode is this study's clearest illustration of a general hazard: the discarded result was more
+publishable than the one that replaced it, agreed with theory, and would have survived peer
+review. What exposed it was not scepticism about the finding but an explicit physical check --- a
+message cannot arrive before it is sent --- applied uniformly to every run rather than only to
+results that looked implausible.
 
 \begin{table*}[htbp]
 \centering
-\caption{Broker transport (p50, ms) by concurrency, measured identically for both backends.
-\redis{} scales with $N$ and \kafka{} does not; the backends are separated completely at
-$N{\geq}5$ yet remain equivalent within the pre-specified $40$~ms margin, because the effect is
-sub-millisecond.}
+\caption{\textbf{Withdrawn analysis.} Broker transport by concurrency from the
+$10\times$-accelerated corpus. Retained for transparency only: this corpus fails the
+clock-integrity gate (5--14\% of acknowledgements stamped after receipt), and
+Section~\ref{sec:e1} supersedes it with real-time measurements that show no concurrency effect
+for either backend.}
 \label{tab:transport}
 \begin{tabular}{rrrrrl}
 \toprule
-$N$ & \kafka{} & \redis{} & Diff & Mann--Whitney $p_{\text{Holm}}$ & TOST \\
+$N$ & \kafka{} & \redis{} & Diff & Mann--Whitney $p_{\text{Holm}}$ & Status \\
 \midrule
-1  & 0.999 & 1.006 & $0.007$ & $1.0\times10^{-4}$  & equivalent \\
-5  & 1.001 & 1.197 & $0.196$ & $6.5\times10^{-6}$  & equivalent \\
-10 & 1.002 & 1.346 & $0.344$ & $9.0\times10^{-11}$ & equivalent \\
-\midrule
-\multicolumn{6}{l}{\footnotesize Across $N$ (Kruskal--Wallis): \kafka{} $+0.3\%$,
-$p=2.2\times10^{-7}$; \redis{} $+34\%$, $p=6.7\times10^{-12}$.} \\
+1  & 0.999 & 1.006 & $0.007$ & $1.0\times10^{-4}$  & withdrawn \\
+5  & 1.001 & 1.197 & $0.196$ & $6.5\times10^{-6}$  & withdrawn \\
+10 & 1.002 & 1.346 & $0.344$ & $9.0\times10^{-11}$ & withdrawn \\
 \bottomrule
 \end{tabular}
+
 \end{table*}
 
 This corrects an artefact of our own earlier design, and the correction is instructive. A
@@ -878,7 +893,8 @@ real matches. Its concurrency axis was, in effect, a throughput axis in disguise
 To locate the boundary properly we therefore ran a dedicated throughput sweep on a single
 consistent configuration---ten distinct matches, varying only the replay speed---so that
 aggregate event rate is the sole manipulated variable (Table~\ref{tab:regime}). Football event
-data is intrinsically low-rate (0.44 events per second per match), so we also express each load
+data is intrinsically low-rate (0.415 events per second per match, Section~\ref{sec:burstiness}),
+so we also express each load
 in simultaneous real-time match equivalents. Both systems sit near 1--2.5~ms up to
 $\approx$1{,}000 events/s, equivalent to some 2{,}400 simultaneous matches. The first sign of
 divergence appears at $\approx$2{,}100 events/s ($\approx$4{,}800 match equivalents), where
@@ -1090,7 +1106,8 @@ This is a quantified negative result, and within its scope conditions it is a st
 will realistically encounter, the choice of streaming infrastructure does not measurably
 degrade in-play decision quality.} The architectural difference between a partitioned log and a
 single-threaded in-memory store is genuine, but under \emph{load} it only manifests at aggregate
-event rates equivalent to thousands of simultaneous matches---two orders of magnitude beyond a
+event rates far above anything football produces---the corpus peaks at 12 simultaneous
+kick-offs and 21 matches in play (Section~\ref{sec:realconcurrency}), which is
 busy league weekend.
 
 Two words in that statement carry the weight, and the next section removes them. Every
@@ -1423,7 +1440,8 @@ second per match scaled by our replay. The transferable claim is the relationshi
 number.
 
 The reason is worth stating plainly, because it is easy to lose in a benchmark. Football event
-data is \emph{sparse}: roughly 0.44 events per second per match. A broker that comfortably
+data is \emph{sparse}: $0.415$ events per second per match on average, though bursting to
+$2.70$ (Section~\ref{sec:burstiness}). A broker that comfortably
 sustains thousands of events per second is being asked, by a realistic deployment, for a few
 hundred. Architectural differences that are entirely real---\redis{}'s single execution thread
 does serialize concurrent streams, and we measure it doing so at $p=6.7\times10^{-12}$ with
@@ -1543,7 +1561,7 @@ With components co-located, \kafka{} and \redis{} are statistically \emph{equiva
 concurrency level tested ($\approx$10~ms median \tti{}, $\approx$0.014 probability-seconds of
 win-probability staleness; TOST against a one-broadcast-frame margin), and neither shows a
 concurrency effect. Single-node \redis{} does serialize concurrent streams, but only above an
-aggregate event rate equivalent to roughly 4{,}800 simultaneous real-time matches---two orders
+aggregate event rate far above the 12 simultaneous kick-offs the corpus actually contains---orders
 of magnitude beyond a busy league weekend, because football event data arrives at only 0.44
 events per second per match.
 

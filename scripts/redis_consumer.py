@@ -142,7 +142,13 @@ def main():
               f"count={args.count} block_ms={args.block_ms} "
               f"cluster={bool(args.cluster_mode or args.node_count == 3)}", flush=True)
 
+        # Read-loop instrumentation. The round-trip-bound account predicts each XREADGROUP
+        # returns ~1 message under delay (so the consumer is capped at 1/RTT); a competing
+        # account predicts full batches and a bottleneck elsewhere. Recording the batch size
+        # and the time spent inside the call distinguishes them from the run artifacts alone.
+        read_trace = []
         while True:
+            _t_read0 = now_ns()
             resp = r.xreadgroup(
                 groupname=group_id,
                 consumername=consumer_name,
@@ -150,6 +156,9 @@ def main():
                 count=args.count,
                 block=args.block_ms,
             )
+
+            read_trace.append((_t_read0, now_ns() - _t_read0,
+                               sum(len(m) for _, m in resp) if resp else 0))
 
             if not resp:
                 if pending_acks:
@@ -221,6 +230,11 @@ def main():
                         r.xack(args.stream, group_id, *pending_acks)
                         pending_acks.clear()
 
+    _rt = Path(args.out).with_name(Path(args.out).stem + '_readtrace.csv')
+    with _rt.open('w', newline='', encoding='utf-8') as _f:
+        _w = csv.writer(_f)
+        _w.writerow(['t_read_start_ns', 'read_duration_ns', 'n_messages'])
+        _w.writerows(read_trace)
     print(f"OK redis consumer: wrote {n} rows -> {out_path}")
     print(f"OK redis consumer: wrote {events_n} rows -> {events_path}")
 

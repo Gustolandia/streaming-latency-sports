@@ -1,0 +1,9 @@
+run,arm,n_events,tti_median_ms,reads,nonempty_reads,msgs_per_read_median,read_ms_median
+e5c_unbatched_1,unbatched,414,4137.8961065,13,4,106.5,31.947035
+e5c_unbatched_2,unbatched,414,4133.9465075,13,4,106.5,31.9730235
+e5c_unbatched_3,unbatched,414,4138.2015215,13,4,106.5,31.9723535
+e5b_unbatched,unbatched,414,4138.001111,16,4,106.5,31.9583965
+e5c_batched_1,batched,414,102.9574305,37,25,16.0,20.50337
+e5c_batched_2,batched,414,103.3306375,37,25,16.0,20.526525
+e5c_batched_3,batched,414,103.0330845,37,25,16.0,20.51105
+e5b_batched,batched,414,103.086961,40,25,16.0,20.506685

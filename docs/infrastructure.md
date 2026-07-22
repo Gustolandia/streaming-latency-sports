@@ -91,5 +91,5 @@ python scripts/power_analysis.py --n 15
 - [ ] Freeze the branch and tag a release.
 - [ ] Bundle: `scripts/`, `tests/`, `configs/`, `docker-compose*.yml`,
       `requirements.txt`, `runs/` (or a documented subset), `data/processed/`,
-      `manuscript.tex` + assets, this `docs/` tree.
+      `paper.tex` + assets, this `docs/` tree.
 - [ ] Upload to Zenodo, mint a DOI, add the DOI badge to `README.md`.

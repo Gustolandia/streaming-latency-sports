@@ -2,30 +2,41 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![Target Journal: JSA](https://img.shields.io/badge/Target_Journal-Journal_of_Sports_Analytics-orange.svg)](https://www.degruyter.com/journal/key/jsa/html)
-[![Tests](https://img.shields.io/badge/tests-1207_passing-brightgreen.svg)]()
+[![Target: ICPE/DEBS](https://img.shields.io/badge/Target-ICPE%20%2F%20DEBS-orange.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1228_passing-brightgreen.svg)]()
 [![Coverage](https://img.shields.io/badge/branch_coverage-%E2%89%A595%25-brightgreen.svg)]()
 [![StatsBomb Data](https://img.shields.io/badge/StatsBomb_Data-CC_BY--NC_4.0-blue.svg)](https://github.com/statsbomb/open-data)
 
 > ## 🎯 Current target — the contribution
 >
-> **A latency benchmark, and the physical-consistency gate that invalidated its first answer.**
-> We compare Redis Streams and Apache Kafka on real StatsBomb match feeds (2003–2023) at
-> concurrency derived from actual kick-off schedules — then audit every one of our own 2,266
-> runs against a constraint no statistic supplies: *a message cannot be received before it is
-> sent*. That audit condemned **58% of the corpus**, including every condition behind a large,
-> significant, theory-confirming result we were about to publish.
+> **Paper:** [`paper.tex`](paper.tex) — *A Message Cannot Arrive Before It Is Sent:
+> Physical-Consistency Auditing for Streaming Latency Benchmarks*. ACM format, targeting
+> **ICPE / DEBS**. This is a **systems paper**; the football workload is the setting that
+> produced the finding, not the contribution.
 >
-> *Why this is publishable, not just a benchmark:* the discarded result was **more** publishable
-> than the one that replaced it. It agreed with architectural theory, survived six prior rounds
-> of correction, and would have passed review. The gate is ~170 lines of open code
-> ([`clock_integrity.py`](scripts/clock_integrity.py)), it generalises to any cross-process
-> latency measurement, and we are not aware of a streaming benchmark that currently reports one.
+> **The original question** was: *compare end-to-end lag between Redis Streams and Apache Kafka
+> for real-time sports data feeds, under varying concurrency, using the StatsBomb open dataset
+> (2003–2023).* We answered it, and the answer was physically impossible.
 >
-> **Inside the gate the original question still gets an answer:** Redis Streams delivers 20×
-> lower end-to-end lag (5.2 ms vs 105.5 ms) at every concurrency football produces — but the
-> brokers are equivalent within 1 ms, the gap is a *client* property that exists only at
-> football's sparse arrival rate, and a network hop reverses the ordering entirely.
+> Broker delay subtracts a timestamp taken in the producer process from one taken in the
+> consumer process, so it admits a check no statistic supplies: **it cannot be negative**.
+> Applying that check to every run — not just the ones that looked wrong — rejected **1,321 of
+> 2,266 runs (58%)**, including every run behind a large, significant, theory-confirming result
+> we were about to publish.
+>
+> **Three results survive, and none is the one we set out to find:**
+> 1. The brokers are **equivalent within 1 ms** and neither degrades with concurrency — robust
+>    to the audit's own unequal retention (bounded in [`retention_bias.py`](scripts/retention_bias.py)).
+> 2. The end-to-end difference lives in **client code, not the broker**, and exists *only* at the
+>    workload's sparse arrival rate — replay ten times faster and it vanishes, which is the
+>    regime every synthetic-publisher benchmark measures.
+> 3. Each system has **one client setting worth 1–2 orders of magnitude**, both free on a
+>    co-located testbed and therefore invisible to how such settings are normally evaluated.
+>
+> **Why the JSA framing was retired.** Football is sparse (0.415 ev/s, ≤12 concurrent matches) —
+> four orders of magnitude below where either broker strains. Every latency question aimed at
+> this domain returns "doesn't matter", and it is right to. The work is a systems contribution;
+> a sports-analytics paper would need a football question, not a latency one.
 
 > **This README is the single source of truth for the project.** It consolidates what
 > were previously ~18 separate planning, methodology, and status documents. Section 1
@@ -47,7 +58,7 @@
 9. [Quick Start & Running Benchmarks](#9-quick-start--running-benchmarks)
 10. [Testing & Quality](#10-testing--quality)
 11. [Reproducibility](#11-reproducibility)
-12. [Manuscript & Paper Preparation](#12-manuscript--paper-preparation)
+12. [Paper Preparation](#12-manuscript--paper-preparation)
 13. [Contributing](#13-contributing)
 14. [Citation](#14-citation)
 15. [License](#15-license)
@@ -58,7 +69,7 @@
 
 ## 1. Current State & Objectives
 
-**Last updated:** July 22, 2026 · **Branch:** `feat/network-realism-and-reproducible-plans` · **Target:** *Journal of Sports Analytics*
+**Last updated:** July 22, 2026 · **Branch:** `main` · **Target:** *ICPE / DEBS* (systems venue; the JSA framing was retired — see the header)
 
 ### 1.1 Where things stand
 
@@ -232,36 +243,33 @@ From 3,315 StatsBomb matches across 52 competition-seasons (2003–2023), via
 
 ## 2. Abstract
 
-> **Title:** *Streaming Latency Benchmarks for Real-Time Football Feeds: Redis Streams versus
-> Apache Kafka, and the Physical-Consistency Gate That Invalidated Our First Answer*
-> **Target journal:** *Journal of Sports Analytics*
-> **Keywords:** streaming systems, real-time sports analytics, Kafka, Redis Streams, latency
-> benchmarking, measurement validity, reproducible research
+> **Title:** *A Message Cannot Arrive Before It Is Sent: Physical-Consistency Auditing for
+> Streaming Latency Benchmarks, and What It Left of a Kafka-versus-Redis Comparison*
+> **Target:** ICPE / DEBS (ACM sigconf, `paper.tex`)
+> **Keywords:** streaming systems, latency benchmarking, measurement validity, Apache Kafka,
+> Redis Streams, reproducibility
 
-Live football analytics runs on streaming middleware, and the choice between Apache Kafka and
-Redis Streams is usually made on grey-literature benchmarks conducted at arrival rates no sport
-produces. We benchmark the two on the **StatsBomb open dataset (2003–2023;** 52
-competition-seasons, 3,315 matches**)**, driving each broker with real match feeds replayed at
-their true event rate, at concurrency levels derived from real kick-off schedules, with open
-load-generation code.
+We set out to answer an ordinary question: for a real-time sports data feed, does the choice
+between Apache Kafka and Redis Streams affect end-to-end delay, and how does that change with
+the number of concurrent feeds? We built the benchmark, drove it with 3,315 real football
+matches at their true event rate, and obtained a clean answer — Redis broker delay rising
+monotonically with concurrency while Kafka stayed flat, *p*=9.0×10⁻¹¹, no overlap between the
+two systems' run distributions, exactly as a single-threaded server should behave.
 
-Our first campaign produced a complete and theory-confirming answer: Redis transport rising
-monotonically with concurrency while Kafka stayed flat, *p*=6.7×10⁻¹², complete rank separation.
-It was wrong. Auditing every run against a physical constraint — a broker cannot acknowledge a
-message after the consumer has logged receiving it — condemned **862 of 1,382** single-host runs
-and **459 of 884** multi-host runs. The inversions are invisible in every summary statistic. We
-report this as the study's primary finding, define the gate as a stated rule, and re-run the
-study inside it.
+It was an artefact. Broker delay subtracts a timestamp taken in the producer process from one
+taken in the consumer process, so it admits a check no statistic supplies: the result cannot be
+negative. Applying that check to every run rejected **1,321 of 2,266 runs**, including every run
+behind the finding above. The rejected data is invisible to conventional inspection: medians
+stay positive, intervals stay narrow, effect sizes stay large, and the direction agrees with
+theory.
 
-What survives answers the original question. On **end-to-end lag** Redis Streams is decisively
-better: median **5.2 ms against Kafka's 105.5 ms**, at every concurrency level football produces
-(N ≤ 12), a factor of 20. On **broker transport** the two are statistically equivalent within
-1 ms (0.84 vs 0.80 ms) and neither degrades with concurrency. The gap is therefore a *client*
-property, not a broker one, and it appears only at football's sparse arrival rate — under 10×
-replay it vanishes, which is precisely why conventional benchmarks miss it. The ordering reverses
-under network delay, where Kafka tracks the injected latency (78 ms at 20 ms delay) while Redis
-collapses to 31 seconds through a round-trip-bound acknowledgement pattern; batching the
-acknowledgements recovers 40.2× at realistic load, and unexplainedly fails to at 5× that load.
+Three results survive and none is the one we set out to find. The two brokers are statistically
+equivalent within 1 ms and neither degrades across the concurrency range, robustly to the
+unequal retention the check itself introduces. The end-to-end difference lives entirely in
+client code rather than in either broker, and exists **only** at the workload's sparse arrival
+rate — replay ten times faster and it disappears, which is the regime every synthetic-publisher
+benchmark measures. And each system has exactly one client setting worth one to two orders of
+magnitude in delay, both free on a co-located testbed.
 
 ---
 
@@ -537,7 +545,7 @@ streaming-latency-sports/
 ├── requirements.txt                # Python dependencies
 ├── .env                            # local environment (SB_COMMIT, etc.) — not committed
 │
-├── manuscript.tex                  # SAGE LaTeX manuscript (draft)
+├── paper.tex                       # ACM paper (ICPE/DEBS target)
 ├── manuscript_references.bib       # bibliography (15 references)
 ├── sagej.cls · SageH.bst · SageV.bst   # SAGE journal template assets
 ├── temp_manuscript_template/       # SAGE template working copies
@@ -722,23 +730,23 @@ specification and a Zenodo archive are planned under Issue 6.
 
 ## 12. Manuscript & Paper Preparation
 
-The manuscript targets the *Journal of Sports Analytics* using the SAGE LaTeX template.
+The paper targets **ICPE / DEBS** using the ACM `acmart` class (`sigconf`). The earlier SAGE / Journal of Sports Analytics framing was retired; see the header for why.
 
 | Asset | Purpose |
 |-------|---------|
-| `manuscript.tex` | Main manuscript (Intro, Lit Review, Methodology, Results, Discussion, Conclusion) |
+| `paper.tex` | The paper (ACM sigconf; Intro, Related Work, Setting, Method, First Answer, Audit, Results, Discussion) |
 | `manuscript_references.bib` | Bibliography |
-| `sagej.cls` | SAGE journal class |
+| `acmart.cls` | ACM article class (from TeX Live/MiKTeX) |
 | `SageH.bst` / `SageV.bst` | SAGE Harvard / Vancouver bibliography styles |
 | `temp_manuscript_template/` | SAGE template working copies |
 
 **Build:**
 
 ```bash
-pdflatex -interaction=nonstopmode manuscript.tex
-bibtex manuscript.aux
-pdflatex -interaction=nonstopmode manuscript.tex
-pdflatex -interaction=nonstopmode manuscript.tex
+pdflatex -interaction=nonstopmode paper.tex
+bibtex paper
+pdflatex -interaction=nonstopmode paper.tex
+pdflatex -interaction=nonstopmode paper.tex
 ```
 
 **Status:** compiles clean — 0 errors, 0 undefined references or citations, no overfull boxes,
@@ -801,7 +809,7 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 @article{streaming_latency_sports_2026,
   title   = {Streaming Latency Benchmarks: Redis Streams vs Apache Kafka for Real-Time Sports Data Feeds},
   author  = {[To be completed]},
-  journal = {Journal of Sports Analytics},
+  note    = {Preprint; targeting ICPE/DEBS},
   year    = {2026}
 }
 ```
@@ -872,7 +880,7 @@ Repository structure, `.gitignore`, StatsBomb integration, initial fetch/plan sc
 
 ## 17. Appendix: Acronyms & File Types
 
-**Acronyms:** JSA = Journal of Sports Analytics · TTI = Time-to-Insight · SLO = Service
+**Acronyms:** TTI = Time-to-Insight · ICPE = Int. Conf. on Performance Engineering · DEBS = Distributed and Event-Based Systems · SLO = Service
 Level Objective · S1–S5 = experimental phases · AOF = Append-Only File (Redis) · KRaft =
 Kafka Raft metadata mode · RF = replication factor · FWER = family-wise error rate ·
 xG = expected goals.
@@ -883,4 +891,4 @@ storage · `.py` scripts · `.ps1` PowerShell runners · `.sh` bash scripts · `
 
 ---
 
-*Single-source README · last updated June 17, 2026 · target: Journal of Sports Analytics, Q1 2026.*
+*Single-source README · last updated July 22, 2026 · target: ICPE / DEBS.*

@@ -26,4 +26,11 @@ fi
 
 echo "=== depth suite start $(date -u +%FT%TZ) ==="
 bash cloud/campaigns/depth_suite.sh
+echo "=== depth suite finished $(date -u +%FT%TZ) ==="
+
+# The arrival-process campaign runs last because it is the external-validity extension rather
+# than the load-bearing evidence: if the credit or the machine runs out, this is the arm to
+# lose. It also needs an unsaturated driver, so it must not overlap the depth suite.
+echo "=== arrival-process campaign start $(date -u +%FT%TZ) ==="
+bash cloud/campaigns/arrival_process.sh
 echo "=== chain complete $(date -u +%FT%TZ) ==="

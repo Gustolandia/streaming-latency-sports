@@ -139,3 +139,34 @@ class TestBundle:
         out = zd.build_bundle(temp_dir / "d" / "b.zip", ref="v1.0")
         assert out.exists()
         assert "git" in called["cmd"][0] and "v1.0" in called["cmd"]
+
+    def test_nc_derived_data_is_excluded_from_the_record(self, temp_dir, monkeypatch):
+        """The record is MIT; StatsBomb-derived replay plans are CC BY-NC and cannot ship in it.
+
+        Enforced through a git pathspec rather than by pruning the zip afterwards, so a file
+        added under that path later is excluded automatically instead of silently included.
+        """
+        called = {}
+
+        def fake_run(cmd, **kw):
+            called["cmd"] = cmd
+            Path(cmd[cmd.index("-o") + 1]).write_bytes(b"zip")
+            return MagicMock(returncode=0)
+
+        monkeypatch.setattr(zd.subprocess, "run", fake_run)
+        zd.build_bundle(temp_dir / "b.zip")
+        cmd = called["cmd"]
+        assert "data/processed/replay_plans" in zd.NC_DERIVED_PATHS
+        assert ":(exclude)data/processed/replay_plans" in cmd
+        assert cmd.index("--") < cmd.index(":(exclude)data/processed/replay_plans"), \
+            "pathspecs must follow the -- separator or git treats them as refs"
+
+    def test_exclusions_are_configurable(self, temp_dir, monkeypatch):
+        called = {}
+        monkeypatch.setattr(zd.subprocess, "run",
+                            lambda cmd, **kw: (called.__setitem__("cmd", cmd),
+                                               Path(cmd[cmd.index("-o") + 1]).write_bytes(b"z"),
+                                               MagicMock(returncode=0))[-1])
+        zd.build_bundle(temp_dir / "b.zip", exclude=("secret/",))
+        assert ":(exclude)secret/" in called["cmd"]
+        assert ":(exclude)data/processed/replay_plans" not in called["cmd"]

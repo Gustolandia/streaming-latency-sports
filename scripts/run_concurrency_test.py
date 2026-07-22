@@ -171,6 +171,9 @@ def main():
     parser.add_argument('--kafka-producer-extra', type=str, default='',
                         help='Extra args appended to the Kafka producer (e.g. "--max-inflight 64") '
                              'so its load generator is pipelined comparably to the Redis worker pool.')
+    parser.add_argument('--out-dir', type=str,
+                        default=os.environ.get('SBL_OUT_DIR', 'docs/results'),
+                        help='Directory for the run summary; configurable so tests do not write into the repo.')
     parser.add_argument('--trial-timeout', type=int, default=300,
                         help='Per-trial subprocess timeout in seconds. Raise it for true '
                              'real-time replays, where wall time equals the replayed window.')
@@ -296,7 +299,7 @@ def main():
         'trial_timeout': args.trial_timeout
     }
     
-    output_dir = Path(f"docs/results/concurrency_{prefix}")
+    output_dir = Path(args.out_dir) / f"concurrency_{prefix}"
     output_dir.mkdir(parents=True, exist_ok=True)
     
     with open(output_dir / f"{prefix}_summary.json", 'w', encoding='utf-8') as f:

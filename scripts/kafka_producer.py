@@ -60,6 +60,14 @@ def main():
     ap.add_argument("--batch-size", type=int, default=None, help="bytes; if omitted, use client default")
     ap.add_argument("--compression-type", default=None, choices=["gzip", "snappy", "lz4", "zstd"])
     ap.add_argument("--max-inflight", type=int, default=1, help="1 matches sync-send; >1 enables more in-flight requests")
+    # Diagnostic for the ~103 ms scheduling lag seen at true real-time replay (M1).
+    # schedlag = t_send - t_sched tells us the loop was late but not *why*. This splits it:
+    #   wake_late_ms  how late time.sleep() returned relative to the planned emission
+    #   produce_ms    how long the send call itself blocked
+    # If wake_late is ~0 and produce_ms is ~103, the cost is in the client's send path; if
+    # wake_late is already ~103, the loop was behind before it ever called the client.
+    ap.add_argument("--trace-loop", default=None,
+                    help="write per-event loop timing to this CSV (diagnostic; off by default)")
 
     args = ap.parse_args()
 
@@ -177,6 +185,7 @@ def main():
 
     # ---- main send loop ----
     rows = []
+    trace = []
     for i, r in plan.iterrows():
         event_id = str(r["event_id"])
         match_id = int(r["match_id"])
@@ -188,6 +197,7 @@ def main():
         sleep_s = target_mono - time.monotonic()
         if sleep_s > 0:
             time.sleep(sleep_s)
+        t_wake_ns = now_ns()
 
         t_prod_sched_ns = t0_wall_ns + int((t_emit_offset_s / args.speedup) * 1e9)
         t_prod_send_ns = now_ns()
@@ -218,6 +228,19 @@ def main():
             pending.append(fut)
             if len(pending) >= args.max_inflight:
                 pending.pop(0).get(timeout=30)
+
+        if args.trace_loop:
+            t_after_produce_ns = now_ns()
+            trace.append({
+                "event_id": event_id,
+                "client": "kafka-python",
+                "t_target_ns": t_prod_sched_ns,
+                "t_wake_ns": t_wake_ns,
+                "t_send_ns": t_prod_send_ns,
+                "t_after_produce_ns": t_after_produce_ns,
+                "wake_late_ms": (t_wake_ns - t_prod_sched_ns) / 1e6,
+                "produce_ms": (t_after_produce_ns - t_prod_send_ns) / 1e6,
+            })
 
         rows.append(
             {
@@ -303,6 +326,18 @@ def main():
         )
         w.writeheader()
         w.writerows(rows)
+
+    if args.trace_loop:
+        # Namespaced by run id: at N>1 every feed is its own producer process, and they would
+        # otherwise race to write the same file.
+        tp = Path(args.trace_loop)
+        tp = tp.with_name(f"{tp.stem}_{args.run_id}{tp.suffix}")
+        tp.parent.mkdir(parents=True, exist_ok=True)
+        with tp.open("w", newline="", encoding="utf-8") as f:
+            tw = csv.DictWriter(f, fieldnames=list(trace[0].keys()) if trace else ["event_id"])
+            tw.writeheader()
+            tw.writerows(trace)
+        print(f"OK loop trace: wrote {len(trace)} rows -> {tp}")
 
     print(f"OK kafka producer: wrote {len(rows)} rows -> {out_path}")
 

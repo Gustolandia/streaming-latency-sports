@@ -2,7 +2,7 @@
 """
 Issue 4 - Rigorous statistical analysis utilities.
 
-Backs the statistical framework claimed in manuscript.tex with actually-computed
+Backs the statistical framework claimed in paper.tex with actually-computed
 values: Holm-Bonferroni correction for multiple comparisons (FWER control),
 effect sizes (Cohen's d, Hedges' g), 95% confidence intervals, and assumption
 checks (Shapiro-Wilk normality, Levene equal-variance) driving automatic

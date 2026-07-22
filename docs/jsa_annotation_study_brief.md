@@ -1,5 +1,12 @@
 # Agent brief: measuring live football event-feed freshness (JSA paper 2)
 
+> **SUPERSEDED — not recommended.** This brief was written to rescue a Journal of Sports
+> Analytics outcome from the streaming-latency work. On checking the literature it does not hold
+> up: the general question (how stale data degrades inference) is a mature Age-of-Information
+> literature, and football is close to the worst sport to ask a latency question about, because
+> its win probability is driven by two or three discrete events per match. Retained as a record
+> of the reasoning, not as a plan. See the README for why the systems framing was chosen instead.
+
 Copy everything below the line into a fresh agent session. It is written to stand alone.
 
 ---

@@ -15,6 +15,8 @@ from equivalence_tests import (
     equivalence_by_n,
     main,
     bootstrap_tost,
+    hodges_lehmann,
+    hl_tost,
 )
 
 
@@ -185,3 +187,52 @@ class TestBootstrapTost:
                       "--out", str(temp_dir / "eq"), "--n-boot", "100"])
         assert rc == 0
         assert "disagree" in capsys.readouterr().out
+
+
+class TestHodgesLehmann:
+    def test_shift_of_identical_samples_is_zero(self):
+        a = [1.0, 2.0, 3.0, 4.0]
+        assert hodges_lehmann(a, a) == pytest.approx(0.0)
+
+    def test_recovers_a_known_shift(self):
+        a = [10.0, 11.0, 12.0, 13.0]
+        b = [5.0, 6.0, 7.0, 8.0]
+        assert hodges_lehmann(a, b) == pytest.approx(5.0)
+
+    def test_resists_a_heavy_tail_that_moves_the_mean(self):
+        # This is the whole point. One extreme value drags the mean but not the HL shift -
+        # exactly the Kafka scheduling-lag situation.
+        a = [1.0] * 19 + [1000.0]
+        b = [1.0] * 20
+        assert np.mean(a) - np.mean(b) > 45
+        assert hodges_lehmann(a, b) == pytest.approx(0.0)
+
+    def test_empty_inputs(self):
+        assert np.isnan(hodges_lehmann([], [1.0]))
+        assert np.isnan(hodges_lehmann([1.0], []))
+
+
+class TestHlTost:
+    def test_identical_samples_equivalent(self):
+        a = [10.0, 11.0, 10.5, 9.5, 10.2] * 4
+        r = hl_tost(a, a, margin=1.0, n_boot=300)
+        assert r["hl_equivalent"] is True and r["hl_p_tost"] == 0.0
+
+    def test_far_apart_not_equivalent(self):
+        r = hl_tost([10.0] * 12, [500.0] * 12, margin=1.0, n_boot=300)
+        assert r["hl_equivalent"] is False and r["hl_p_tost"] > 0.9
+
+    def test_deterministic_under_seed(self):
+        a = [1.0, 5.0, 2.0, 8.0, 3.0]; b = [2.0, 4.0, 3.0, 7.0, 2.5]
+        assert hl_tost(a, b, 5.0, n_boot=200, seed=7) == hl_tost(a, b, 5.0, n_boot=200, seed=7)
+
+    def test_reported_alongside_the_other_methods(self):
+        df = pd.DataFrame([{"backend": bk, "n": 5, "v": v}
+                           for bk, vals in (("kafka", [10, 11, 12, 10, 11]),
+                                            ("redis", [10, 11, 12, 10, 11]))
+                           for v in vals])
+        # margin comfortably wider than the sampling noise so all three methods agree
+        out = equivalence_by_n(df, "v", "n", 5.0, n_boot=300)
+        for c in ("hl_shift", "hl_ci90_lo", "hl_ci90_hi", "hl_p_tost", "hl_equivalent"):
+            assert c in out.columns
+        assert bool(out.iloc[0]["methods_agree"]) is True

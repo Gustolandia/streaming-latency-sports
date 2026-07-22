@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Target Journal: JSA](https://img.shields.io/badge/Target_Journal-Journal_of_Sports_Analytics-orange.svg)](https://www.degruyter.com/journal/key/jsa/html)
-[![Tests](https://img.shields.io/badge/tests-1188_passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1207_passing-brightgreen.svg)]()
 [![Coverage](https://img.shields.io/badge/branch_coverage-%E2%89%A595%25-brightgreen.svg)]()
 [![StatsBomb Data](https://img.shields.io/badge/StatsBomb_Data-CC_BY--NC_4.0-blue.svg)](https://github.com/statsbomb/open-data)
 
@@ -753,6 +753,19 @@ figures (1.35 ms) in the abstract, while the conclusion quoted a different value
 quantity. Source-level proofreading missed it three times. The suite also asserts that no
 condemned figure appears anywhere without being marked as condemned, and that the abstract and
 conclusion agree on the headline.
+
+**⚠️ Bibliography audit (July 2026).** Ten entries in `manuscript_references.bib` could not be
+located in any publisher, arXiv or index record when checked — among them `pappas2020real`,
+`opta2023`, `zhang2021tti`, `pandey2021comparative`, `zhang2022redis`, `he2020performance`,
+`gai2020kafka`, `carbone2015benchmark`, `wright2022machine` and `link2021deep`, plus several
+philosophy-of-computing entries that were never load-bearing. **The manuscript no longer cites
+any of them.** Twelve verified references were added in their place (Lamport 1978; Mills 1991;
+Corbett et al. 2013; Jain 1991; Schuirmann 1987; Lakens 2017; Hodges & Lehmann 1963; Efron 1979;
+Mann & Whitney 1947; Kruskal & Wallis 1952; Pappalardo et al. 2019; Mohammad 2025), and two
+existing entries were corrected — `redis2017streams` had the author misspelled, and
+`kafka_analysis_2025` was attributed to "Anonymous" when the arXiv record names Muzeeb Mohammad.
+The stale entries are left in the `.bib` rather than deleted so the removal is auditable; they
+are simply uncited. **Verify every remaining citation before submission.**
 
 **Remaining before submission:** mint the Zenodo DOI (`scripts/zenodo_deposit.py` stops at an
 unpublished draft by design — publishing is an irreversible public action and is left to a

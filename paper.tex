@@ -217,16 +217,30 @@ same operating-system clock on one machine --- but of \emph{when the timestamp i
 thread descheduled between the event and the call recording it stamps a time later than the
 event, and under CPU saturation that delay routinely exceeds the interval being measured.
 
-Closest to our contribution rather than our instrument, Chandrasekar and
-Kramberger~\cite{chandrasekar2026bias} identify a systemic client-side measurement bias in
-production LLM inference benchmarks --- a single-process client that cannot keep up under
-concurrency and inflates the latencies it reports --- and model it as an M/G/1 queue. That is
-the same family of failure as ours, and we adopt their queueing framing in
-Section~\ref{sec:model}. One difference decides how each can be caught. Their bias is a
-\emph{one-sided inflation}: the reported number is wrong but remains physically possible, so
-detecting it requires a better instrument or an independent reference. Ours \emph{violates
-causality}, and is therefore detectable from the measurement itself, at no cost and with no
-reference. That self-detectability, not the existence of load-induced bias, is what we build on.
+Two 2026 results sit close to ours and we are explicit about what each already establishes.
+Chandrasekar and Kramberger~\cite{chandrasekar2026bias} identify a systemic client-side
+measurement bias in production LLM inference benchmarks --- a single-process client that cannot
+keep up under concurrency and inflates the latencies it reports --- and model it as an M/G/1
+queue, a framing we adopt in Section~\ref{sec:model}. Sharma et al.~\cite{sharma2026causality}
+go further in our direction: they report \emph{negative timing spans} in a multi-node inference
+pipeline, including one built on \kafka{}, and show that causality violations emerge from a few
+milliseconds of clock skew while the system continues to function correctly.
+
+We therefore do not claim that causality-violating measurements are a new observation. Three
+things remain open after that work, and they are what this paper supplies. First, Sharma et al.
+\emph{inject} clock skew between nodes; our violations arise with no skew at all, on a single
+machine where both processes read the same clock, purely from scheduler delay in reaching the
+clock. That is a harder failure to defend against, because synchronising clocks does not remove
+it. Second, neither paper states a detection rule, applies it uniformly, or reports what
+fraction of a campaign it rejects. Third, and most importantly, neither relates violation
+probability to the magnitude of the quantity being measured. Section~\ref{sec:model} derives
+that relation and Section~\ref{sec:property} shows what follows from it: the check is least
+forgiving exactly where a benchmark is most delicate.
+
+One further difference decides how each failure can be caught at all. A load-induced inflation
+is wrong but physically possible, so detecting it needs a better instrument or an independent
+reference. A causality violation is self-detecting, at no cost and with no reference. That
+property, rather than the existence of load-induced bias, is what we build on.
 
 Jain~\cite{jain1991art} sets out the standard requirement that an instrument be validated on the
 system it will measure. The check in Section~\ref{sec:gate} is a cheap, specific instance of that

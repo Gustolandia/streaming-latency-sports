@@ -101,4 +101,24 @@ for MODE in callback inline; do
 done
 unset KAFKA_PRODUCER_SCRIPT
 
+# ---- E-F: replication boost at N=1 ----------------------------------------
+# The one threat that more runs genuinely fixes. The N=1 cell has 8 surviving runs per system,
+# which cannot support inference and is the cell where the three equivalence procedures
+# disagree. 30 replications resolves it or shows the disagreement is real.
+banner "E-F N=1 replication boost"
+REPS=30 run_at_load "ef/n1_power" 4 0 1
+
+# ---- E-G: co-located vs distributed, at matched load -----------------------
+# Construct validity. Our attribution of inversions to scheduler delay rather than clock skew
+# is an inference, and on the multi-host testbed producer and consumer sit on different hosts,
+# where skew is not excluded. Running the identical condition with both processes on ONE host
+# (same clock, so skew is impossible by construction) and comparing inversion rates separates
+# the two explanations: if rates match, skew is not the cause.
+banner "E-G co-located (skew impossible by construction)"
+KAFKA_BOOTSTRAP_SAVE="$KAFKA_BOOTSTRAP"; REDIS_HOST_SAVE="$REDIS_HOST"
+run_at_load "eg/colocated" 2 2 5
+banner "E-G distributed (same load, skew possible)"
+KAFKA_BOOTSTRAP="$KAFKA_BOOTSTRAP_SAVE"; REDIS_HOST="$REDIS_HOST_SAVE"
+run_at_load "eg/distributed" 2 2 5
+
 banner "DEPTH_SUITE_COMPLETE"

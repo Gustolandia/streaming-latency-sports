@@ -47,3 +47,8 @@ runs/fairtest_*/
 
 # Cloud testbed addresses (ephemeral, per-provisioning)
 cloud/hosts.env
+paper.aux
+paper.log
+paper.out
+paper.bbl
+paper.blg

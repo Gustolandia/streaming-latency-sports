@@ -1,10 +1,14 @@
-% paper.tex - ACM sigconf format, targeting ICPE / DEBS.
+% paper.tex - ACM acmsmall (journal) format, targeting ACM TOMPECS.
 % Build: pdflatex paper && bibtex paper && pdflatex paper && pdflatex paper
 %
 % This supersedes manuscript.tex (SAGE / Journal of Sports Analytics). The football workload
 % is retained as the setting that produced the finding, not as the contribution.
+%
+% TOMPECS charter explicitly solicits work on experimental design, instrumentation techniques,
+% verification and validation, statistical analysis and workload characterisation. This paper
+% sits in the first four.
 
-\documentclass[sigconf,nonacm]{acmart}
+\documentclass[acmsmall,nonacm]{acmart}
 
 \usepackage{booktabs}
 \usepackage{multirow}
@@ -13,6 +17,7 @@
 
 \settopmatter{printacmref=false}
 \renewcommand\footnotetextcopyrightpermission[1]{}
+\acmJournal{TOMPECS}
 
 \newcommand{\kafka}{Kafka}
 \newcommand{\redis}{Redis}

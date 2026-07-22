@@ -217,6 +217,17 @@ same operating-system clock on one machine --- but of \emph{when the timestamp i
 thread descheduled between the event and the call recording it stamps a time later than the
 event, and under CPU saturation that delay routinely exceeds the interval being measured.
 
+Closest to our contribution rather than our instrument, Chandrasekar and
+Kramberger~\cite{chandrasekar2026bias} identify a systemic client-side measurement bias in
+production LLM inference benchmarks --- a single-process client that cannot keep up under
+concurrency and inflates the latencies it reports --- and model it as an M/G/1 queue. That is
+the same family of failure as ours, and we adopt their queueing framing in
+Section~\ref{sec:model}. One difference decides how each can be caught. Their bias is a
+\emph{one-sided inflation}: the reported number is wrong but remains physically possible, so
+detecting it requires a better instrument or an independent reference. Ours \emph{violates
+causality}, and is therefore detectable from the measurement itself, at no cost and with no
+reference. That self-detectability, not the existence of load-induced bias, is what we build on.
+
 Jain~\cite{jain1991art} sets out the standard requirement that an instrument be validated on the
 system it will measure. The check in Section~\ref{sec:gate} is a cheap, specific instance of that
 for cross-process delay.
@@ -360,6 +371,73 @@ either
 A condition is usable only if all of its runs survive. Where a condition is partly rejected we
 report the retention rate, and Section~\ref{sec:retention} bounds the selection this introduces.
 The tool exits non-zero when any run fails, so a campaign script can stop on it.
+
+\subsection{A model of the failure, and what it predicts}
+\label{sec:model}
+
+A rule that rejects runs is only useful if one can say \emph{when} it will fire. This subsection
+states the model that makes that prediction, because it is what converts the check from a
+hygiene step into something a reader can apply to their own measurement without repeating our
+experiment.
+
+Every timestamp is taken by software some interval after the physical event it claims to mark,
+because the thread that reads the clock must first be scheduled. Writing those stamping delays
+as $\delta_{\mathrm{ack}}$ and $\delta_{\mathrm{recv}}$,
+
+\begin{equation}
+T_{\mathrm{measured}} = T_{\mathrm{true}} + \Delta ,
+\qquad \Delta \equiv \delta_{\mathrm{recv}} - \delta_{\mathrm{ack}} ,
+\label{eq:model}
+\end{equation}
+
+\noindent so an inversion occurs exactly when $\Delta < -T_{\mathrm{true}}$, and
+
+\begin{equation}
+\Pr[\text{inversion}] = F_{\Delta}(-T_{\mathrm{true}}) .
+\label{eq:inversion}
+\end{equation}
+
+Figure~\ref{fig:model} draws both halves of this. Panel (a) shows the mechanism: the
+acknowledgement is stamped late enough that the consumer's receipt timestamp precedes it, even
+though the message plainly arrived after it was sent. Panel (b) shows the consequence that
+matters for benchmark design.
+
+Equation~\ref{eq:inversion} says something that is easy to miss and, we think, the most useful
+thing in this paper. 	extbf{Inversion probability is a property of the quantity being measured, not
+only of the machine.} The same instrument, on the same host, under the same load, is more
+likely to be invalid when measuring a small latency than a large one, because a fixed
+distribution of $\Delta$ overlaps a small $T_{\mathrm{true}}$ almost entirely and a large one
+hardly at all. This is why our network-delay arm, where transport is tens of seconds, passes the
+check on every run while same-hardware arms measuring one millisecond fail wholesale.
+
+Two further predictions follow, and Section~\ref{sec:discussion} states the experiments that test
+them.
+
+\paragraph{Utilisation.} $\delta$ is the waiting time of a runnable thread. Treating the CPU as
+a server, the Pollaczek--Khinchine result for an M/G/1 queue gives mean waiting time growing as
+$\rho/(1-\rho)$ in utilisation $\rho$. The spread of $\Delta$ should therefore be small and flat
+at low utilisation and grow sharply near saturation: a \emph{knee}, not a linear ramp. This is
+the same framing Chandrasekar and Kramberger~\cite{chandrasekar2026bias} apply to client-side
+bias in inference benchmarks.
+
+\paragraph{Asymmetry.} It is $\mathrm{E}[\Delta]$, not its variance, that biases a
+\emph{comparison}. Symmetric instrumentation gives $\mathrm{E}[\Delta] \approx 0$: noise, no
+systematic error. Asymmetric instrumentation does not --- and if two systems under comparison
+stamp differently, the instrument manufactures a difference between them. This is precisely our
+situation: \kafka{}'s producer stamps the acknowledgement in an asynchronous callback,
+\redis{}'s on return from a blocking command. It is the most plausible account of how our first
+result set acquired a large, significant, entirely spurious effect.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{docs/results/figures/measurement_model.pdf}
+\caption{(a)~How a positive latency is measured as negative: each side stamps its clock some
+interval after the event, and if the producer's delay exceeds the true transport plus the
+consumer's delay, the difference inverts. (b)~Why the check bites hardest on small effects. The
+same distribution of stamping asymmetry $\Delta$ inverts most of a small $T_{\mathrm{true}}$ and
+almost none of a large one.}
+\label{fig:model}
+\end{figure}
 
 \subsection{Statistics}
 \label{sec:stats}

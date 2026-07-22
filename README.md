@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Target: ICPE/DEBS](https://img.shields.io/badge/Target-ICPE%20%2F%20DEBS-orange.svg)]()
-[![Tests](https://img.shields.io/badge/tests-1228_passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-912_passing-brightgreen.svg)]()
 [![Coverage](https://img.shields.io/badge/branch_coverage-%E2%89%A595%25-brightgreen.svg)]()
 [![StatsBomb Data](https://img.shields.io/badge/StatsBomb_Data-CC_BY--NC_4.0-blue.svg)](https://github.com/statsbomb/open-data)
 

@@ -402,3 +402,15 @@ requires_redis = pytest.mark.skipif(
     not shutil.which("redis-cli"),
     reason="Redis not available"
 )
+
+
+@pytest.fixture(autouse=True)
+def _isolate_repo_writes(temp_dir, monkeypatch):
+    """Keep the test suite from writing artefacts into the repository.
+
+    run_concurrency_test.py wrote its run summary to a hard-coded docs/results/ path, so every
+    test that exercised main() left a real directory behind; several hundred accumulated and
+    showed up as an uncommitted diff. The script now honours SBL_OUT_DIR, which this fixture
+    points at a per-test temporary directory.
+    """
+    monkeypatch.setenv("SBL_OUT_DIR", str(temp_dir / "results"))

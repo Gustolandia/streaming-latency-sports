@@ -43,7 +43,10 @@ def main():
 
     # --- S3: consumer event log (for staleness + correction metrics) ---
     # Contract used by scripts/build_paper_s3_outputs.sh + scripts/compute_s3_metrics.py
-    events_path = Path("runs") / args.run_id / "consumer_events.csv"
+    # Sibling of --out, not a hard-coded runs/<run_id>/. In a real trial --out is
+    # runs/<run_id>/consumer.csv so the resolved path is unchanged; under test it stays
+    # in the temporary directory instead of overwriting tracked files.
+    events_path = Path(args.out).with_name(Path(args.out).stem + "_events.csv")
     events_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Multi-broker support: use different bootstrap servers based on broker count

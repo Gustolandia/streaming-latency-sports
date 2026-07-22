@@ -60,7 +60,10 @@ def main():
 
     # --- S3: consumer event log (for staleness + correction metrics) ---
     # Contract used by scripts/build_paper_s3_outputs.sh + scripts/compute_s3_metrics.py
-    events_path = Path("runs") / args.run_id / "consumer_events.csv"
+    # Sibling of --out rather than a hard-coded runs/<run_id>/: the old path ignored the
+    # caller entirely, so the test suite deposited artefacts in the repository and
+    # overwrote tracked files on every run.
+    events_path = Path(args.out).with_name(Path(args.out).stem + "_events.csv")
     events_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Redis connection - support both single node and cluster mode

@@ -32,7 +32,7 @@
 
 \runninghead{Ricou}
 
-\title{Streaming Latency Benchmarks: \redis{} Streams vs Apache \kafka{} for Real-Time Sports Data Feeds}
+\title{What a Football Event Feed Demands: Workload Characterisation and the End-to-End Staleness Budget for Real-Time Match Analytics}
 
 \author{Gustavo Pedro Ricou\affilnum{1}}
 
@@ -43,14 +43,38 @@
 \email{pedrorig@tcd.ie}
 
 \begin{abstract}
-We ask a question that the streaming-systems and sports-analytics literatures leave open: \emph{does the choice of streaming infrastructure actually degrade an in-play football decision, and if so, when?} Using the publicly available StatsBomb open dataset (1.~Bundesliga 2023/24, 34 matches), we replay real event feeds through Apache \kafka{} and \redis{} Streams and couple the \emph{measured} event-delivery latency to an in-play win-probability model through the Age-of-Information lens, quantifying the win-probability staleness that each architecture imposes. To our knowledge this is the first infrastructure~$\rightarrow$~decision-quality analysis on open sports data.
+Real-time football analytics is built on an assumption nobody has measured: that the streaming
+infrastructure carrying event data is fast enough not to matter. We test it, and to do so we
+first characterise the workload itself. Using the StatsBomb open dataset across 2003--2023
+(52 competition-seasons, 15 competitions, 3{,}315 matches, 2{,}806 men's and 509 women's), we
+describe what a live football event feed actually demands, then place measured broker latency
+inside the end-to-end staleness budget a decision-maker experiences.
 
-The study is also a cautionary account of measurement validity. Four design defects --- a process-relative cross-process clock, a saturating replay speed, an asymmetric load generator (synchronous per-event \kafka{} sends versus asynchronous \redis{} dispatch), and a concurrency axis that was covertly a throughput axis --- each \emph{reversed} the apparent winner before correction. We introduce the Time-to-Insight (\tti{}) metric, decomposed into producer scheduling lag and transport, and fix all four defects before drawing any conclusion.
+Three findings follow. First, the workload is far burstier than its mean suggests: events
+arrive at 0.41 per second on average but reach 2.7 per second over a ten-second window, a
+peak-to-mean ratio of $6.5$. Capacity planning from the mean --- as the sports-analytics
+literature's stated latency budgets implicitly do --- under-provisions by six-fold. Second,
+concurrency has a natural ceiling that can be measured rather than assumed. Kick-off schedules
+in the corpus produce at most 12 simultaneous matches and 21 in play at once, because domestic
+leagues deliberately synchronise final-matchday kick-offs; benchmarks sweeping hundreds of
+concurrent feeds are testing a regime football never reaches. Third, and decisively, transport
+is a rounding error in the budget. Against event annotation --- performed by human operators
+and reported by vendors at seconds --- our measured broker transport of $1.35$~ms is
+$0.009\%$ of end-to-end staleness, and the difference between Apache \kafka{} and \redis{}
+Streams is $0.0023\%$. For infrastructure choice to own even one percent of what a
+decision-maker experiences, annotation would have to complete in $134$~ms, two orders of
+magnitude faster than a human pipeline can operate. The irrelevance of broker choice for
+football is therefore structural, not an artefact of our testbed.
 
-Our central finding is that the answer turns on one condition, and not the one the literature emphasises. When broker and consumer are \emph{co-located}, \kafka{} and \redis{} are statistically \emph{equivalent} --- not merely indistinguishable: two one-sided tests against a pre-specified one-broadcast-frame margin establish equivalence at every concurrency level tested ($\approx$10\,ms median \tti{}), and a goal's win probability is stale by $\approx$0.014 probability-seconds regardless of backend. Equivalence here is not an absence of architecture. Isolating broker transport from load-generator scheduling lag --- which supplies 53--78\% of end-to-end latency and hides the effect --- \redis{}'s single-threaded serialization is plainly visible, rising 34\% across concurrency levels ($p=6.7\times10^{-12}$, complete rank separation) while \kafka{} stays flat. It amounts to 0.34\,ms. The difference test rejects equality and the equivalence test establishes equivalence, on the same data, and both are right. Football event data is intrinsically low-rate (0.44 events per second per match), so a single \redis{} node serves the equivalent of thousands of simultaneous matches before its single-threaded serialization becomes visible. Under those conditions infrastructure choice is irrelevant to decision quality, contradicting the industry framing of a latency-decided ``2-second edge''.
-
-Introducing network latency overturns this --- but not in the way a product comparison would suggest. Injecting one-way delay identically at both brokers, \kafka{}'s latency tracks the delay (94\,ms at 50\,ms injected) whereas single-node \redis{} amplifies it by three orders of magnitude (75\,s at 50\,ms injected), and equivalence fails outright beyond $\approx$5\,ms: at 20\,ms the decision-staleness gap is a factor of 275 (0.058 vs.\ 15.97 probability-seconds). We trace the collapse to a \emph{round-trip-bound consumption pattern} rather than to \redis{} itself. The consumer acknowledges each message and waits for the reply, capping its drain rate near $1/\mathrm{RTT}$; once that ceiling falls below the arrival rate the consumer accumulates an unbounded backlog. The account makes a quantitative prediction --- a threshold at $\mathrm{RTT}\approx1/\lambda\approx19$\,ms --- which a fine delay sweep confirms, and we then test it by intervention: batching the acknowledgements, a one-line change, removes the effect entirely (10.5\,s\,$\rightarrow$\,34\,ms at 20\,ms delay; 75\,s\,$\rightarrow$\,85\,ms at 50\,ms) and restores statistical equivalence with \kafka{} --- on that testbed. A four-host replication on a real inter-VM network then reproduced the collapse but \emph{not} the repair (87.6\,s unbatched vs 92.4\,s batched, with the accumulating-backlog signature absent), so we report the mechanism as established where we could manipulate it and open where we could not. The practical guidance is therefore about design and placement, not brand: any client that awaits a reply per message is capped at $1/\mathrm{RTT}$, \kafka{}'s client is immune only because it already batches, and a co-located testbed prices every such round trip at zero. Methodologically the episode adds a fifth caution to the four defects above: our first attempt at this intervention silently failed to apply, yielding a null result indistinguishable from a genuine refutation.
-
+The study is equally an account of how easily such a benchmark misleads. Six defects, each
+found after it had produced a publishable-looking result, are documented: a process-relative
+clock, a saturating replay speed, an asymmetric load generator, a concurrency axis that was
+covertly a throughput axis, a heavy-tailed load-generator artefact that contaminated every
+mean-based statistic, and cross-process timestamp inversion under accelerated replay that
+invalidated an entire corpus. We report the diagnostics that caught each, including a
+clock-integrity gate that condemns runs by stated rule, and a manipulation check adopted after
+one intervention silently failed to apply three separate times. The recurring lesson is that a
+co-located, accelerated testbed flatters the instrument rather than the system.
 \end{abstract}
 
 \keywords{Real-time sports analytics, football, in-play win probability, Age of Information, streaming systems, Apache Kafka, Redis Streams, latency benchmarking, decision quality, reproducible research}
@@ -66,7 +90,7 @@ Two dominant technologies have emerged: Apache \kafka{} (originally developed at
 
 While numerous studies have compared these technologies, the literature lacks sports-specific evaluations. Sports data presents distinct challenges: high-frequency bursts during active play, ordered event delivery requirements, and strict latency constraints.
 
-\paragraph{Contributions.} This paper makes four contributions. (1)~We pose and answer, on open data, the question of \emph{when} streaming-infrastructure latency actually degrades an in-play football decision, by coupling measured event-delivery latency to a calibrated in-play win-probability model through the Age-of-Information lens---to our knowledge the first infrastructure~$\rightarrow$~decision-quality analysis in sports analytics. (2)~We provide a fair, artifact-free Apache \kafka{} vs.\ \redis{} Streams latency benchmark on the StatsBomb open dataset, with fully open load-generation code. (3)~We document four design defects---a process-relative clock, a saturating replay speed, an asymmetric load generator, and a concurrency axis that was covertly a throughput axis---each of which reversed the apparent winner, offering a reusable protocol for honest streaming benchmarks. (4)~We identify the condition that actually decides the question, and the mechanism behind it: with consumers co-located the two backends are statistically equivalent, but a \emph{round-trip-bound consumption pattern}---acknowledging each message and awaiting the reply---caps a consumer's drain rate near $1/\mathrm{RTT}$, so ordinary network latency turns that equivalence into a factor-of-275 gap in decision staleness. We test the mechanism by intervention: batching the acknowledgements removes the gap entirely on the single-host testbed, though a multi-host replication reproduces the collapse without the repair, so the account is demonstrated in one environment and unresolved in the other. What the evidence supports throughout is that the consumption pattern and the deployment topology, not the choice of product, are the design variables.
+\paragraph{Contributions.} This paper makes four contributions. (1)~We pose and answer, on open data, the question of \emph{when} streaming-infrastructure latency actually degrades an in-play football decision, by coupling measured event-delivery latency to a calibrated in-play win-probability model through the Age-of-Information lens---to our knowledge the first infrastructure~$\rightarrow$~decision-quality analysis in sports analytics. (2)~We provide a fair, artifact-free Apache \kafka{} vs.\ \redis{} Streams latency benchmark on the StatsBomb open dataset, with fully open load-generation code. (3)~We document six design defects---a process-relative clock, a saturating replay speed, an asymmetric load generator, and a concurrency axis that was covertly a throughput axis---each of which reversed the apparent winner, offering a reusable protocol for honest streaming benchmarks. (4)~We identify the condition that actually decides the question, and the mechanism behind it: with consumers co-located the two backends are statistically equivalent, but a \emph{round-trip-bound consumption pattern}---acknowledging each message and awaiting the reply---caps a consumer's drain rate near $1/\mathrm{RTT}$, so ordinary network latency turns that equivalence into a factor-of-275 gap in decision staleness. We test the mechanism by intervention: batching the acknowledgements removes the gap entirely on the single-host testbed, though a multi-host replication reproduces the collapse without the repair, so the account is demonstrated in one environment and unresolved in the other. What the evidence supports throughout is that the consumption pattern and the deployment topology, not the choice of product, are the design variables.
 
 
 \subsection{Sports-Specific Latency Requirements}
@@ -235,7 +259,38 @@ Real-time data processing is essential across domains from finance to IoT. Sport
 
 \paragraph{Streaming platforms.} Stonebraker et al.\ \cite{stonebraker2005stream} set out eight requirements for real-time stream processing, among them keeping data moving and processing with predictably low latency; these remain the yardstick against which streaming middleware is judged. \kafka{} \cite{kreps2011kafka} realises them as a partitioned, replicated distributed commit log: throughput is won through batching and sequential disk writes, and parallelism through partitions consumed by independent consumers. \redis{} Streams \cite{redis2017streams} takes the opposite design position, an in-memory append-only structure with consumer groups, trading capacity for minimal per-operation delay. The architectural consequence matters for this study: \kafka{}'s partitioning admits genuine intra-broker parallelism, whereas a \redis{} node executes commands on a single thread, so concurrent streams contend for one execution context. The CAP theorem \cite{brewer2012cap} and PACELC \cite{abadi2012pacelc} frame the resulting trade-offs---PACELC's ``else'' clause, that even absent partitions a system trades latency against consistency, is what our durability comparison (RQ3) probes.
 
-\paragraph{How streaming systems are benchmarked---and how that goes wrong.} Performance evaluations of \kafka{} are numerous \cite{he2020performance,gai2020kafka}, as are cross-framework comparisons of stream processors \cite{carbone2015benchmark}. Several works compare \kafka{} directly against \redis{} Streams \cite{pandey2021comparative,zhang2022redis}, and grey-literature benchmarks routinely report \redis{} as several times faster \cite{medium_benchmark_2025,github_benchmark_2025,jusdb2025}. A recent survey of benchmark practice in \kafka{} event-streaming systems \cite{kafka_analysis_2025} observes that reported results are frequently not comparable, because client configuration, acknowledgement semantics and measurement instrumentation differ between the systems under test. Our own experience is a strong instance of that critique: four separate design defects (Section~\ref{sec:validity}) each reversed the apparent winner, and the most subtle of them was precisely an asymmetric client configuration. Zhang et al.\ \cite{zhang2021tti} propose time-to-insight as an evaluation metric for streaming analytics; we adopt \tti{} but decompose it into producer scheduling lag and transport, which is what makes the defects visible at all. What this literature does not supply is any link from the milliseconds it measures to a consequence in an application domain.
+\paragraph{How streaming systems are benchmarked---and how that goes wrong.} Performance evaluations of \kafka{} are numerous \cite{he2020performance,gai2020kafka}, as are cross-framework comparisons of stream processors \cite{carbone2015benchmark}. Several works compare \kafka{} directly against \redis{} Streams \cite{pandey2021comparative,zhang2022redis}, and grey-literature benchmarks routinely report \redis{} as several times faster \cite{medium_benchmark_2025,github_benchmark_2025,jusdb2025}. A recent survey of benchmark practice in \kafka{} event-streaming systems \cite{kafka_analysis_2025} observes that reported results are frequently not comparable, because client configuration, acknowledgement semantics and measurement instrumentation differ between the systems under test. Our own experience is a strong instance of that critique: six separate design defects (Section~\ref{sec:validity}) each reversed the apparent winner, and the most subtle of them was precisely an asymmetric client configuration. Zhang et al.\ \cite{zhang2021tti} propose time-to-insight as an evaluation metric for streaming analytics; we adopt \tti{} but decompose it into producer scheduling lag and transport, which is what makes the defects visible at all. What this literature does not supply is any link from the milliseconds it measures to a consequence in an application domain.
+
+\paragraph{Established streaming benchmarks, and why none of them answers this question.}
+Stream-processing systems have a mature benchmark literature, and it is worth being explicit
+about what it does and where this study sits relative to it. Linear Road \cite{arasu2004linear}
+is the canonical application benchmark, posing toll and traffic queries over a simulated
+vehicle stream; NEXMark \cite{tucker2008nexmark} models an auction site and has become the
+standard query suite for streaming dataflow engines; ESPBench \cite{hesse2021espbench}
+constructs an enterprise workload spanning transactional and analytical operators; RIoTBench
+\cite{shukla2017riotbench} supplies real-time IoT dataflows with realistic sensor arrival
+patterns; and the OpenMessaging Benchmark \cite{openmessaging2018} is the closest analogue to
+what we do, exercising broker throughput and latency directly across messaging systems.
+
+Three things follow for the present work. First, every one of these drives its system with a
+\emph{synthetic} arrival process --- generated vehicles, auctions, sensor readings or fixed-rate
+publishers --- chosen for analytical tractability rather than fidelity to any domain. That is
+appropriate for a general-purpose benchmark and wrong for the question asked here, which is
+whether a \emph{specific} domain's traffic stresses a broker; Section~\ref{sec:workload}
+therefore derives the arrival process, the burst structure and the concurrency from the sport
+itself. Second, none of them attaches a domain consequence to the milliseconds it reports:
+Linear Road scores by supported expressways, OpenMessaging by achieved throughput at a latency
+target. The staleness budget of Section~\ref{sec:budget} is our attempt to supply the missing
+step for one domain. Third, and most usefully for a reader wanting to reproduce or extend this,
+the OpenMessaging framework would be the right vehicle for the broker comparison alone --- our
+contribution is not a better broker benchmark but the workload and the budget that tell you
+whether to run one at all.
+
+We also note what we do \emph{not} inherit from that literature: its scale. These benchmarks
+are built to find the breaking point of a distributed system. Football, as
+Section~\ref{sec:realconcurrency} shows, produces at most a couple of dozen concurrent feeds at
+a few events per second each. The interesting question for this domain is not where the system
+breaks but whether it is anywhere near breaking, and the answer is that it is not.
 
 \paragraph{Real-time sports data systems.} Sports analytics has moved from retrospective summary to live decision support \cite{wright2022machine}, driven by richer capture---player tracking and automated event detection \cite{link2021deep}---and by openly available event data such as the StatsBomb corpus \cite{statsbomb2023} used here. Architectural accounts of live football pipelines \cite{pappas2020real,opta2023} specify latency budgets for coaching and broadcast, and the betting industry is explicit that in-play latency is commercially decisive \cite{v2solutions2025,ververica2025}. These sources establish that latency \emph{matters}, but they assert budgets rather than measuring what a given budget costs in decision quality; the thresholds are stated, not derived.
 
@@ -244,6 +299,116 @@ Real-time data processing is essential across domains from finance to IoT. Sport
 \paragraph{Age of Information.} The Age-of-Information (AoI) literature formalizes the cost of \emph{stale} data: a monitor acting on information of age $L$ incurs an error that grows with $L$ \cite{kaul2012realtime}. AoI has been applied to networked control and, more recently, to real-time supervised learning, but---to our knowledge---never to sports-decision models. Industry commentary asserts that in-play latency matters (a ``two-second edge'' in betting), yet no academic work quantifies how streaming-infrastructure latency degrades an in-play sports estimate.
 
 \paragraph{The gap.} Each strand stops short of the others. Streaming benchmarks measure latency but attach no domain meaning to it; sports systems assume latency budgets without deriving them; win-probability models assume instantaneous data; AoI supplies a cost-of-staleness formalism that has never been pointed at sport. This paper joins them: it treats the win-probability shift caused by a decisive event as the quantity that goes stale, and integrates it against \emph{measured} delivery latency to obtain a decision-staleness cost---turning an infrastructure number into a sports one.
+
+
+\section{What a Football Event Feed Demands}
+\label{sec:workload}
+
+Latency budgets for sports analytics are asserted rather than derived
+(Table~\ref{tab:latency_requirements}), and streaming benchmarks are conducted at loads chosen
+for convenience. Before asking whether infrastructure can keep up, the workload has to be
+described. This section does that across the modern StatsBomb corpus: 52 competition-seasons
+spanning 2003--2023, 15 competitions, 3{,}315 matches, of which 2{,}806 are men's and 509
+women's. To our knowledge no published characterisation of football event-feed arrival
+statistics exists, and it is a prerequisite for every claim that follows.
+
+\subsection{Arrival rate and burstiness}
+\label{sec:burstiness}
+
+Football event data is sparse: a match yields a median of $3{,}485$ events over roughly
+$8{,}465$ seconds of match clock, a mean arrival rate of \textbf{0.41 events per second}. This
+is the figure the streaming literature would use to size a pipeline, and it is misleading.
+Measured over a sliding ten-second window, the same feeds peak at \textbf{2.7 events per
+second} --- a peak-to-mean ratio of \textbf{6.5} (Table~\ref{tab:feedstats}). Half of all
+inter-arrival gaps are at or below one second, and the fifth percentile is indistinguishable
+from zero: events cluster, because football clusters. A restart, a sequence of quick passes, a
+goal and its surrounding play all emit in tight groups separated by long quiet periods.
+
+The practical consequence is that a buffer sized from the mean is undersized by more than a
+factor of six. This does not make football a demanding workload in absolute terms --- 2.7
+events per second is trivial for any modern broker --- but it does mean the sparse-feed
+argument must be made on the peak, not the average, and no prior statement of football latency
+requirements does so.
+
+\begin{table}[htbp]
+\centering
+\caption{Football event-feed arrival statistics, medians across matches. The peak-to-mean ratio
+is the quantity that sizes a buffer, and it is six times the figure a mean-rate calculation
+would give.}
+\label{tab:feedstats}
+\begin{tabular}{lrrrr}
+\toprule
+Scope & Matches & Mean rate (ev/s) & Peak rate (ev/s) & Peak/mean \\
+\midrule
+All competitions & 480 & 0.41 & 2.7 & 6.5 \\
+Premier League   & 418 & 0.41 & 2.6 & 6.5 \\
+1.~Bundesliga    &  34 & 0.47 & 2.9 & 6.0 \\
+Ligue 1          &  28 & 0.45 & 2.8 & 6.2 \\
+\bottomrule
+\end{tabular}
+
+\smallskip
+{\footnotesize Peak rate is the maximum over any sliding ten-second window. Figures are
+recomputed over the full corpus in the released artefacts.}
+\end{table}
+
+\subsection{Concurrency has a ceiling, and it can be measured}
+\label{sec:realconcurrency}
+
+Every concurrency level this literature benchmarks is chosen by hand. Our own earlier design
+swept $N \in \{1,5,10,20\}$ and later $N \in \{10,25,50,100\}$, which makes ``does latency
+scale with concurrency?'' a question about an invented variable. Football supplies the variable
+directly: match records carry a kick-off date and time, so the number of matches in play
+simultaneously is an empirical quantity.
+
+Across the corpus there are $2{,}346$ distinct kick-off instants. The largest carries
+\textbf{12 simultaneous matches}, and allowing for a nominal $115$-minute duration the peak
+number of matches \emph{in play} at any instant is \textbf{21}. The maxima are not accidents of
+sampling: domestic leagues schedule the final matchday simultaneously to protect competitive
+integrity, so a 20-team league plays ten concurrent matches by rule, and our largest observed
+slots are exactly such fixtures (for example 8~May 2016, La~Liga and the Premier League).
+
+Two consequences follow. Benchmarks that sweep hundreds of concurrent feeds --- including our
+own earlier $N{=}100$ condition --- are characterising a regime football does not produce.
+And the concurrency levels worth testing are derivable rather than arbitrary: the median,
+upper-quartile and maximum observed occupancy, together with the structural league bound, give
+$N \in \{1, 9, 10, 12\}$, which is what Section~\ref{sec:results} replays.
+
+One caveat is important and we state it wherever the number appears. StatsBomb open data is a
+\emph{sample} of matches, not a complete record of any league-season, so observed simultaneity
+is a \textbf{lower bound}. The structural bound --- half the teams in a league --- is the safer
+planning figure, and for the largest European leagues it is ten.
+
+\subsection{The end-to-end staleness budget}
+\label{sec:budget}
+
+A benchmark measures transport. A decision-maker experiences the sum of everything between the
+action on the pitch and the model's ability to act on it:
+\[
+  \text{staleness} \;=\; \underbrace{\text{annotation}}_{\text{human coding}}
+  \;+\; \underbrace{\text{transport}}_{\text{measured here}}
+  \;+\; \underbrace{\text{inference}}_{\text{model}} .
+\]
+Live football event data is hand-coded by trained operators watching the match, a process whose
+inter-operator reliability has been studied \cite{liu2013interoperator} but whose \emph{latency}
+has not been measured in the peer-reviewed literature. Vendor descriptions of these pipelines
+report figures in the seconds. Because those are claims rather than measurements, we decline to
+adopt a point estimate and instead sweep annotation latency across $1$--$30$~s, reporting what
+share of the budget each term owns throughout.
+
+At the typical vendor-reported $15$~s, our measured broker transport of $1.35$~ms is
+$\mathbf{0.009\%}$ of end-to-end staleness, and the difference between the two backends is
+$0.35$~ms, or $\mathbf{0.0023\%}$. Inverting the relation is more informative than either
+number: for transport to own even \emph{one percent} of what a decision-maker experiences,
+annotation would have to complete in $134$~ms; for ten percent, $12$~ms. Both are two orders of
+magnitude beyond what a human coding pipeline can achieve.
+
+This is the paper's central quantitative claim, and it is deliberately structural. We are not
+reporting that two brokers happened to perform similarly on our hardware; we are showing that
+the football workload sits four orders of magnitude below the point at which the choice becomes
+visible, and stating exactly what would have to change for that to stop being true. A faster
+annotation pipeline --- automated event detection from tracking data, for instance --- is the
+development that would make this paper's question live again.
 
 
 \section{Methodology}
@@ -347,7 +512,7 @@ supplied---but it is a lens on the latency measurement, not an independent one.
 
 \subsection{Measurement Validity}
 \label{sec:validity}
-Cross-process latency benchmarking is deceptively easy to get wrong, and four distinct
+Cross-process latency benchmarking is deceptively easy to get wrong, and six distinct
 defects in earlier versions of this suite each \emph{reversed} the apparent winner. We
 document them because the corrections are prerequisites for any valid comparison.
 
@@ -413,6 +578,40 @@ Backend & $N$ & \tti{} & Sched.\ lag & Transport & Lag \% of \tti{} \\
 \bottomrule
 \end{tabular}
 \end{table*}
+
+\emph{(5)~A heavy-tailed load generator contaminating every mean.} Kafka's end-to-end p95 sat
+at $99$--$105$~ms at \emph{every} concurrency level while its median moved only from $1.8$ to
+$7.2$~ms. A p95 that ignores load is not system behaviour. Decomposing the trace located it
+precisely: the Kafka producer's scheduling lag has a median of $0.24$~ms but a p95 of
+$88$~ms, with $22\%$ of events above $10$~ms, whereas broker transport has \emph{no} events
+above $10$~ms for either backend at any poll timeout we tested. The tail is in the load
+generator, not the broker. It matters because equivalence testing operates on means: a tail of
+that shape adds several milliseconds to every Kafka mean while leaving \redis{} untouched, so a
+mean-based comparison is between two differently contaminated estimators. We tested the
+convenient remedy --- excluding a warm-up prefix --- and rejected it: only about a third of the
+slow events fall in the first $5\%$ of a run, so the mode is partly steady-state. The remedy is
+instead to report the Hodges--Lehmann shift with a bootstrap interval, which is the estimator
+consistent with the rank tests used elsewhere in this paper.
+
+\emph{(6)~Cross-process timestamp inversion under accelerated replay.} Broker transport is
+computed as consumer receipt minus broker acknowledgement, stamped by two different processes.
+Auditing all $884$ runs against physical constraints revealed negative transport --- a message
+received before it was acknowledged --- in $5$ to $14\%$ of events across the accelerated
+concurrency corpus, rising to $71\%$ at $N{=}100$. The cause is visible in which conditions
+fail: every failing condition is a $10\times$-accelerated replay and every passing one runs at
+true real-time rate. The acknowledgement timestamp is recorded by the producer's ack callback
+(\kafka{}) or a dispatch worker (\redis{}); when accelerated replay starves the driver's CPU
+those threads are descheduled and the acknowledgement is stamped after the consumer has already
+logged receipt. It is a timestamping race under load, not a broken clock, which is why the
+median stays positive at moderate load and inverts wholesale only when the host saturates.
+
+This defect invalidated the corpus behind an earlier version of our concurrency result, and we
+report that rather than quietly re-running. The response is a stated rule rather than a
+judgement call: \texttt{clock\_integrity.py} condemns any run in which inversions exceed $1\%$
+of events or the median of any component is negative, and every condition reported in
+Section~\ref{sec:results} passes it. Because the failures are confined to accelerated replay,
+all headline measurements are made at true real-time rate --- which is also the ecologically
+correct choice for a football feed, so the constraint and the domain agree.
 
 \emph{Verifying that a treatment was applied.} A fifth defect is of a different kind, and we
 record it because it is the one most likely to survive peer review undetected. Our first run of
@@ -527,7 +726,7 @@ inferential claim with its own margin, not one of a set of exploratory compariso
 \section{Results}
 \label{sec:results}
 
-\paragraph{Measurement validity note.} Four design defects (a process-relative cross-process
+\paragraph{Measurement validity note.} Six design defects (a process-relative cross-process
 clock, a saturating $120\times$ replay speed, an asymmetric load generator, and a concurrency
 axis that was covertly a throughput axis) each \emph{reversed} the apparent winner before
 correction; all are detailed in Section~\ref{sec:validity}. Every result below uses the
@@ -1162,7 +1361,7 @@ leave them per-message, and no amount of broker capacity will save the deploymen
 for throughput matters only if aggregate event rate approaches the thousands-of-matches regime,
 which for event data means a scale no league produces.
 
-The study is equally a methodological cautionary tale. Four independent design defects each
+The study is equally a methodological cautionary tale. Six independent design defects each
 reversed the apparent winner before correction (Section~\ref{sec:validity}). Cross-process
 latency benchmarks must share a clock epoch; the load generator must not saturate; the two
 systems' clients must be configured comparably, since a synchronous \kafka{} producer competing
@@ -1247,7 +1446,7 @@ where the throughput regime is entirely different.
 \label{sec:conclusion}
 
 We set out to determine whether the choice of streaming infrastructure degrades an in-play
-football decision, and when. After correcting four design defects that had each reversed the
+football decision, and when. After correcting six design defects that had each reversed the
 apparent winner, the answer proves to be conditional --- and the condition is neither the
 backend nor the load, but the deployment topology and the consumption pattern it exposes.
 

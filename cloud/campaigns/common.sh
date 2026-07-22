@@ -48,3 +48,25 @@ netem () {
 }
 
 banner () { echo "=== $* $(date +%H:%M:%S) ==="; }
+
+# --- replay rate -----------------------------------------------------------
+# Plans from make_replay_plan.py carry a baked-in 120x compression, so --speedup 1 replays at
+# 120x, not real time. Synthetic plans carry none, so for those --speedup 1 IS real time. The
+# same flag means different things depending on the plan, and getting it wrong is silent: the
+# run completes and the numbers look plausible. A whole campaign was lost to this.
+#
+# Never hard-code a speedup. Derive it:
+#     SPEEDUP=$(speedup_for "$PLAN" 1)     # true real time
+#     SPEEDUP=$(speedup_for "$PLAN" 10)    # ten times real time
+speedup_for () {
+  python3 scripts/plan_speedup.py "$1" --rate "${2:-1}" --quiet
+}
+
+# Fail fast if a plan's compression cannot be read, rather than running at an unintended rate.
+assert_plan_rate () {
+  local plan="$1" rate="${2:-1}"
+  local s
+  s=$(speedup_for "$plan" "$rate") || { echo "FATAL: cannot derive speedup for $plan"; exit 1; }
+  case "$s" in ''|0|0.000000) echo "FATAL: nonsensical speedup '$s' for $plan"; exit 1;; esac
+  echo "$s"
+}

@@ -21,6 +21,7 @@
 REPS="${REPS:-6}"
 LEVELS="${LEVELS:-1 9}"
 TRACE_DIR="${TRACE_DIR:-docs/results/m1_client}"
+MAXT="${MAXT:-180}"
 mkdir -p "$TRACE_DIR"
 
 python3 -c "import confluent_kafka; print('confluent-kafka', confluent_kafka.version())" \
@@ -45,10 +46,12 @@ for N in $LEVELS; do
       export KAFKA_PRODUCER_SCRIPT=scripts/kafka_producer.py
     fi
     banner "M1 N=$N client=$CLIENT reps=$REPS"
-    # --speedup 1 is the regime the anomaly lives in; --max-t-sim 600 keeps a run to ten
-    # minutes of match clock so the whole sweep fits comfortably inside the trial credit.
+    # The anomaly lives in the TRUE real-time regime, which is the whole point of this
+    # campaign. Derived, not hard-coded: --speedup 1 would replay at 120x and measure
+    # the accelerated regime instead -- the exact mistake that cost the first attempt.
+    SPEEDUP_RT=$(assert_plan_rate "$PLAN" 1)
     python3 scripts/run_concurrency_test.py "$N" "$PLAN" "$REPS" \
-      --speedup 1 --max-t-sim 600 \
+      --speedup "$SPEEDUP_RT" --max-t-sim "$MAXT" \
       --kafka-bootstrap "$KAFKA_BOOTSTRAP" --redis-host "$REDIS_HOST" --redis-port "$REDIS_PORT" \
       --plans-dir "$PLANS_DIR" \
       --kafka-producer-extra "--max-inflight 64 --trace-loop $TRACE_DIR/trace_${CLIENT}_n${N}.csv" \

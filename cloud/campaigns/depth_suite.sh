@@ -16,8 +16,11 @@
 
 OUT="${OUT:-docs/results/depth}"
 REPS="${REPS:-3}"
-MAXT="${MAXT:-300}"
-mkdir -p "$OUT"/{ea,ea2,eb,ec,trace}
+MAXT="${MAXT:-180}"
+mkdir -p "$OUT"/{ea,ea2,eb,ec,ef,eg,trace}
+# Derived, never hard-coded: these plans are 120x compressed (see common.sh).
+SPEEDUP_RT=$(assert_plan_rate "$PLAN" 1)
+banner "replay-rate check: --speedup $SPEEDUP_RT is true real time; window ${MAXT}s"
 
 command -v stress-ng >/dev/null || { echo "installing stress-ng"; sudo apt-get install -y -qq stress-ng >/dev/null 2>&1 || true; }
 NCORES=$(nproc)
@@ -44,7 +47,7 @@ run_at_load () {
 
   taskset -c "0-$((cores-1))" \
     python3 scripts/run_concurrency_test.py "$n" "$PLAN" "$REPS" \
-      --speedup 1 --max-t-sim "$MAXT" \
+      --speedup "$SPEEDUP_RT" --max-t-sim "$MAXT" \
       --kafka-bootstrap "$KAFKA_BOOTSTRAP" --redis-host "$REDIS_HOST" --redis-port "$REDIS_PORT" \
       --plans-dir "$PLANS_DIR" --kafka-producer-extra "--max-inflight 64" \
       --out-dir "$OUT/$tag" --trial-timeout 1800 $extra 2>&1 | tail -2
@@ -63,7 +66,7 @@ run_at_load () {
 # competing work for the same cores.
 for CORES in 1 2 4; do
   [ "$CORES" -le "$NCORES" ] || continue
-  for BG in 0 1 2 4; do
+  for BG in 0 2 4; do
     banner "E-A cores=$CORES bg=$BG"
     run_at_load "ea/c${CORES}_b${BG}" "$CORES" "$BG" 5
   done

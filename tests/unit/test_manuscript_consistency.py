@@ -103,11 +103,18 @@ class TestE1Benchmark:
         return _rows("e1", "e1_by_run_gated.csv")
 
     def test_retention_matches_the_integrity_record(self, tex):
+        """Both counts must appear, and close together, so the retention rate is legible.
+
+        Matched on the numbers rather than on a fixed sentence: the prose gets rewritten,
+        the arithmetic should not.
+        """
         ci = _rows("e1", "e1_clock_integrity.csv")
         measured = sum(int(r["n_runs"]) for r in ci)
         retained = sum(int(r["n_trustworthy"]) for r in ci)
         assert retained == len(self._gated())
-        assert f"Of {measured}" in tex and f"{retained} survive gating" in tex
+        near = [m.start() for m in re.finditer(str(measured), tex)
+                if str(retained) in tex[m.start():m.start() + 200]]
+        assert near, f"{measured} measured / {retained} retained not stated together"
 
     @pytest.mark.parametrize("backend,decimals", [("kafka", 1), ("redis", 1)])
     def test_pooled_end_to_end_lag(self, tex, backend, decimals):
@@ -165,6 +172,57 @@ class TestAckBatchingIntervention:
                 assert _contains_number(tex, st.median(float(r[col]) for r in sub), 0)
 
 
+class TestThresholdSensitivity:
+    """Section 6.3's sensitivity table must match the rule the gate actually applies.
+
+    Added after the figure disproved an earlier claim in the manuscript: we had asserted the
+    inversion-rate distribution was bimodal, so the 1% threshold did not matter. It is not
+    bimodal and the threshold does matter for the run count, so the paper now reports the
+    sensitivity curve. These tests keep the printed table tied to the computation.
+    """
+
+    THRESHOLDS = [(0.0, 1278), (0.001, 1086), (0.002, 1037), (0.005, 937),
+                  (0.01, 862), (0.02, 763), (0.05, 594), (0.10, 445), (0.20, 265)]
+
+    @pytest.fixture(scope="class")
+    def by_run(self):
+        import pandas as pd
+        return pd.read_csv(RESULTS / "integrity_windows" / "clock_integrity_by_run.csv")
+
+    def test_curve_matches_the_gate_rule(self, by_run):
+        import sys
+        sys.path.insert(0, str(REPO / "scripts"))
+        from make_paper_figures import condemned_at
+        for threshold, expected in self.THRESHOLDS:
+            assert condemned_at(by_run, threshold) == expected, threshold
+
+    def test_the_chosen_threshold_is_the_one_reported(self, by_run, tex):
+        import sys
+        sys.path.insert(0, str(REPO / "scripts"))
+        from make_paper_figures import condemned_at
+        rejected = condemned_at(by_run, 0.01)
+        audit = _rows("integrity_windows", "clock_integrity_by_condition.csv")
+        assert rejected == sum(int(r["n_runs"]) - int(r["n_trustworthy"]) for r in audit)
+        assert _contains_number(tex, rejected, 0)
+
+    def test_every_row_of_the_sensitivity_table_appears(self, tex):
+        for _, count in self.THRESHOLDS:
+            assert _contains_number(tex, count, 0), count
+
+    def test_bimodality_is_never_asserted(self, tex):
+        """The word may appear only where the paper says the distribution is *not* bimodal.
+
+        An earlier revision used bimodality to argue the threshold did not matter. Figure 4a
+        shows the rates spread continuously over three decades, so any unqualified use of the
+        word would be a false claim.
+        """
+        low = tex.lower()
+        for m in re.finditer("bimodal", low):
+            window = low[max(0, m.start() - 300):m.start() + 300]
+            assert "it is not" in window or "not (" in window, (
+                f"bimodality asserted without negation at offset {m.start()}")
+
+
 class TestStalenessBudget:
     """Section 7.6 must be computed from the surviving delivery measurement."""
 
@@ -186,9 +244,9 @@ class TestStalenessBudget:
 class TestNoWithdrawnFigureIsQuotedAsLive:
     """The specific defect that motivated this file."""
 
-    WITHDRAWN_TRANSPORT = "1.346"   # Redis N=10 from the condemned accelerated corpus
-    CONDEMNATION = ("condemned", "withdraw", "artefact", "invalid", "it was wrong",
-                    "subsequently condemned", "fails the clock-integrity gate")
+    WITHDRAWN_TRANSPORT = "1.346"   # Redis N=10 from the rejected accelerated corpus
+    CONDEMNATION = ("condemned", "rejected", "withdraw", "artefact", "invalid",
+                    "it was wrong", "fails the clock-integrity")
 
     def test_withdrawn_transport_is_always_marked_as_condemned(self, tex):
         """The figure may be quoted -- the paper's argument requires it -- but never neutrally.
@@ -211,10 +269,11 @@ class TestNoWithdrawnFigureIsQuotedAsLive:
             assert self.WITHDRAWN_TRANSPORT not in section, (
                 f"a condemned measurement is quoted in the {name}")
 
-    def test_every_condemned_table_says_so(self, tex):
-        """Tables built on condemned data must carry the word in their caption."""
-        start = tex.index(r"\caption{\textbf{The first result set, subsequently condemned.}")
-        assert "condemned" in tex[start:tex.index(r"\label{tab:withdrawn}")]
+    def test_the_withdrawn_table_caption_says_it_is_invalid(self, tex):
+        """The table of invalid results must be labelled as such in its own caption."""
+        label = tex.index(r"\label{tab:withdrawn}")
+        caption = tex[tex.rindex(r"\caption{", 0, label):label]
+        assert any(w in caption.lower() for w in self.CONDEMNATION), caption[:120]
 
     def test_abstract_and_conclusion_agree_on_the_headline(self, tex):
         abstract = tex[tex.index(r"\begin{abstract}"):tex.index(r"\end{abstract}")]

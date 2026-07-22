@@ -32,7 +32,7 @@
 
 \runninghead{Ricou}
 
-\title{Streaming Latency Benchmarks for Real-Time Football Feeds: \redis{} Streams versus Apache \kafka{}, and the Physical-Consistency Gate That Invalidated Our First Answer}
+\title{Streaming Latency Benchmarks for Real-Time Football Feeds: \redis{} Streams versus Apache \kafka{}, and the Consistency Check That Overturned Our First Answer}
 
 \author{Gustavo Pedro Ricou\affilnum{1}}
 
@@ -43,165 +43,341 @@
 \email{pedrorig@tcd.ie}
 
 \begin{abstract}
-Live football analytics runs on streaming middleware, and the choice between Apache \kafka{}
-and \redis{} Streams is usually made on grey-literature benchmarks conducted at arrival rates
-no sport produces. We benchmark the two on the StatsBomb open dataset (2003--2023;
-52~competition-seasons, 3{,}315 matches), driving each broker with real match feeds replayed
-at their true event rate, at concurrency levels derived from real kick-off schedules rather
-than chosen by hand, with open load-generation code.
+\textbf{Aim.} Live football analytics depends on streaming middleware, and teams choose between
+Apache \kafka{} and \redis{} Streams using benchmarks run at data rates no sport produces. We set
+out to compare the two on real football feeds, under the number of simultaneous matches football
+actually generates.
 
-Our first campaign produced a complete and theory-confirming answer: \redis{} transport rising
-monotonically with concurrency while \kafka{} stayed flat, $p=6.7\times10^{-12}$, complete rank
-separation, exactly as a single-threaded server should behave. It was wrong. Auditing every run
-against a physical constraint --- a broker cannot acknowledge a message after the consumer has
-logged receiving it --- condemned $862$ of $1{,}382$ single-host runs and $459$ of $884$
-multi-host runs. The inversions are invisible in every summary statistic: medians stay
-plausible, confidence intervals stay tight, and the effect agrees with theory. We report this
-as the study's primary finding, define the gate as a stated rule
-(\texttt{clock\_integrity.py}), and re-run the study inside it.
+\textbf{What we did.} We replayed 3{,}315 matches from the StatsBomb open dataset (2003--2023) at
+their true event rate through both systems, on a four-machine cloud testbed, with open
+load-generation code. We measured $2{,}266$ runs in total.
 
-What survives answers the original question, with a different emphasis than we expected. On
-\emph{end-to-end} lag \redis{} Streams is decisively better: median $5.2$~ms against
-\kafka{}'s $105.5$~ms, at every concurrency level football produces ($N \le 12$), a factor of
-$20$. On \emph{broker transport} the two are statistically equivalent within $1$~ms
-($0.84$ vs $0.80$~ms) and neither degrades with concurrency. The gap is therefore not a broker
-property but a client one: it lives entirely in the producer send path, and it appears only at
-football's sparse arrival rate --- under $10\times$-accelerated replay it vanishes, which is
-precisely why conventional benchmarks miss it. The ordering reverses under network delay,
-where \kafka{} tracks the injected latency ($78$~ms at $20$~ms delay) while \redis{} collapses
-to $31$~seconds through a round-trip-bound acknowledgement pattern; batching the
-acknowledgements recovers a factor of $40.2$ at realistic load, and unexplainedly fails to at
-$5\times$ that load, which we report as an open question. Each system has exactly one
-client-side setting that moves latency by one to two orders of magnitude, and neither is the
-documented default.
+\textbf{The unexpected result.} Our first complete answer was physically impossible. It showed
+\redis{} slowing down as matches were added while \kafka{} stayed flat, with very strong
+statistical support. Checking every run against a simple physical rule --- a message cannot
+arrive before it is sent --- showed that $58\%$ of our runs contained impossible timestamps,
+including every run behind that finding. The faulty runs looked completely normal in every
+summary statistic we or a reviewer would inspect.
+
+\textbf{The expected results.} After discarding the faulty runs, the two brokers are equivalent
+to within one millisecond and neither slows down as matches are added, which is what the
+sport's low data rate predicts. Two practical differences remain: end-to-end delay is 20 times
+lower for \redis{} ($5.2$ vs $105.5$~ms), caused by the client rather than the broker; and this
+reverses when the consumer sits across a network, where \kafka{} stays under $100$~ms and
+\redis{} reaches $31$~seconds unless one line of consumer code is changed.
 \end{abstract}
 
 \keywords{Real-time sports analytics, football, streaming systems, Apache Kafka, Redis Streams,
-latency benchmarking, measurement validity, reproducible research, Age of Information}
+latency benchmarking, measurement validity, reproducible research}
 
 \maketitle
 
 \section{Introduction}
 \label{sec:intro}
 
-A live football analytics pipeline --- an in-play odds engine, a coaching dashboard, a
-broadcast statistics overlay --- moves event data from an annotation source to a model through
-streaming middleware. Two products dominate that role. Apache \kafka{} \cite{kreps2011kafka} is
-a partitioned, replicated distributed commit log built for durable high-throughput pipelines.
-\redis{} Streams \cite{redis2017streams} is an in-memory append-only structure with consumer
-groups, built for minimal per-operation delay. Practitioners choose between them largely on
-grey-literature benchmarks that report \redis{} as two to five times faster
-\cite{medium_benchmark_2025,github_benchmark_2025,jusdb2025}, none of which is conducted on a
-sports workload and most of which is not reproducible.
+Live football analytics products --- in-play odds engines, coaching dashboards, broadcast
+statistics overlays --- all share the same shape. Events are recorded as the match happens, sent
+across a network, and delivered to a model that must react before the moment passes. The software
+that carries those events is called a message broker, and two products dominate the role.
+
+Apache \kafka{} \cite{kreps2011kafka} stores messages in a partitioned, replicated log written to
+disk. It is designed for durability and high throughput. \redis{} Streams
+\cite{redis2017streams} keeps messages in memory in an append-only structure. It is designed for
+minimum delay on each operation. Practitioners generally choose between them using published
+comparisons that report \redis{} as two to five times faster
+\cite{medium_benchmark_2025,github_benchmark_2025,jusdb2025}. None of those comparisons uses a
+sports workload, and most cannot be reproduced.
 
 This paper asks the practical question directly. Using the StatsBomb open dataset
-\cite{statsbomb2023} across 2003--2023 and open load-generation scripts, we compare end-to-end
-lag for the two backends under the concurrency a football feed actually produces, and we ask
-where any difference comes from, under what deployment conditions it reverses, and what it
-costs to configure each system correctly.
+\cite{statsbomb2023} and open load-generation scripts, we compare end-to-end delay for the two
+systems at the number of simultaneous matches football actually produces. We then ask three
+follow-up questions that a practitioner needs answered: where in the pipeline does any difference
+come from, under which deployment conditions does the answer change, and how much configuration
+effort does each system demand.
 
-\paragraph{The result we obtained first, and why this paper is not that paper.}
-Our initial campaign returned a clean answer. \redis{} broker transport rose monotonically with
-concurrency ($1.006 \rightarrow 1.197 \rightarrow 1.346$~ms across $N \in \{1,5,10\}$,
-Mann--Whitney $p=6.7\times10^{-12}$ after Holm correction, complete rank separation at
-$N \geq 5$) while \kafka{} stayed flat within $0.3\%$. The result was internally consistent
-across $1{,}382$ runs, survived a fairness audit of payload sizes and client configuration, and
-matched the architectural prediction that a single-threaded server serialises concurrent
-streams. It would have been the paper.
+\subsection{The answer we obtained first}
 
-It was an artefact. Broker transport is computed as consumer receipt minus broker
-acknowledgement, two timestamps taken in two processes. A message cannot be received before it
-is acknowledged, so a negative transport value is not noise but proof that the instrument has
-failed. Auditing every run against that constraint --- rather than only the runs whose results
-looked implausible --- condemned $862$ of $1{,}382$ single-host runs and $459$ of $884$
-multi-host runs, including every condition behind the finding above.
+Our first campaign returned a clean result. \redis{}'s broker delay rose steadily as we added
+concurrent matches ($1.006 \rightarrow 1.197 \rightarrow 1.346$~ms across one, five and ten
+feeds), while \kafka{} stayed flat to within $0.3\%$. Every comparison was statistically
+significant after correction for multiple testing, the strongest at $p = 9.0\times10^{-11}$, and
+at five feeds and above the two systems' results did not overlap at all.
 
-The failure mode is the reason we make it the centre of the paper rather than a footnote.
-Timestamp inversion under load is invisible to every check a referee would apply. The medians
-stay positive and physically plausible; the confidence intervals stay tight; the effect sizes
-are large; the direction agrees with theory. Only about $5$ to $14\%$ of individual events
-invert, which is enough to bias a median by a fraction of a millisecond in a measurement whose
-whole effect is a fraction of a millisecond, and not enough to disturb any aggregate a reader
-would inspect. A benchmark can therefore produce a complete, coherent, theoretically congenial
-and entirely false result set, and no amount of statistical care will reveal it. A check
-against physical constraints will, and it has to be applied to every condition by rule.
+The finding was not only significant, it was explicable. A \redis{} server executes commands on a
+single thread, so concurrent streams must queue for one execution context, whereas \kafka{}
+divides a topic into partitions that can be served in parallel. Our measurement appeared to
+reproduce the textbook difference between the two designs, in the expected direction and at the
+expected scale.
 
-\paragraph{Contributions.}
+It was an artefact. We compute broker delay by subtracting the time the broker confirmed a
+message from the time the consumer received it. Those two times are recorded by two different
+programs. A message cannot arrive before it is sent, so a negative value is not measurement
+noise; it is proof that the instrument has failed. We checked every run in the study against that
+rule --- not only the runs whose results looked odd --- and found impossible timestamps in $862$
+of $1{,}382$ single-machine runs and $459$ of $884$ multi-machine runs. That included every run
+behind the result above.
+
+\subsection{Why we make this the centre of the paper}
+
+Timestamp inversion of this kind is invisible to every check a reader would apply. The medians
+stay positive and plausible. The confidence intervals stay narrow. The effect sizes are large and
+the direction matches theory. Only $5$ to $14\%$ of individual events invert, which is enough to
+shift a median by a fraction of a millisecond in a measurement whose entire effect is a fraction
+of a millisecond, and far too little to make any summary look wrong.
+
+A benchmark can therefore produce a complete, internally consistent and entirely false set of
+results, and no amount of statistical care will expose it. Only a check against a physical
+constraint will, and it has to be applied to every condition as a rule rather than to the
+conditions that look suspicious.
+
+\subsection{Contributions}
+
 \begin{enumerate}
-\item \textbf{A clock-integrity gate for cross-process latency benchmarks}, stated as a rule
-      rather than a judgement, applied uniformly to all $2{,}266$ runs in this study, released
-      as under two hundred lines of open code. We report what it condemns, why the condemned data
-      looked correct, and the general property that makes such benchmarks fragile: the gate
-      binds hardest exactly where the measured effect is smallest (Section~\ref{sec:audit}).
-\item \textbf{The benchmark itself, inside the gate.} At the concurrency levels football
-      produces, \redis{} Streams delivers a median end-to-end lag of $5.2$~ms against
-      \kafka{}'s $105.5$~ms, while the two brokers' own transport is equivalent within $1$~ms
-      and neither degrades with concurrency (Section~\ref{sec:e1}).
-\item \textbf{An attribution and a configuration account.} The $20\times$ end-to-end gap is a
-      property of the client send path at football's sparse arrival rate, not of either broker,
-      and it disappears under accelerated replay. Each system has exactly one client-side
-      setting that moves latency by one to two orders of magnitude ---
-      \kafka{}'s \texttt{max.in.flight}, $103\times$; \redis{}'s acknowledgement batching,
-      $40\times$ --- and neither is the value the documentation's introductory example uses
-      (Sections~\ref{sec:netdelay} and~\ref{sec:config}).
-\item \textbf{A workload characterisation of football event feeds} across 3{,}315 matches,
-      which supplies the arrival rate, burst structure and concurrency levels the benchmark is
-      driven at, and which we believe has not been published before
-      (Section~\ref{sec:workload}).
+\item \textbf{A clock-integrity check for streaming benchmarks}, stated as a rule rather than a
+judgement, applied to all $2{,}266$ runs in this study and released as open code. We report what
+it rejects, why the rejected data looked correct, and one property that makes such benchmarks
+fragile in general: the check bites hardest exactly where the measured effect is smallest
+(Section~\ref{sec:audit}).
+\item \textbf{The benchmark itself, inside the check.} At football's real concurrency levels,
+\redis{} Streams delivers a median end-to-end delay of $5.2$~ms against \kafka{}'s $105.5$~ms,
+while the two brokers themselves are equivalent to within one millisecond and neither slows down
+as matches are added (Section~\ref{sec:e1}).
+\item \textbf{An explanation and a configuration account.} The twentyfold difference comes from
+the client library, not the broker, and it only appears at football's low event rate. Each system
+has exactly one client setting worth one to two orders of magnitude in delay, and in each case
+the introductory example in the documentation uses the slow value
+(Sections~\ref{sec:attribution} and~\ref{sec:config}).
+\item \textbf{A description of the football event feed as a workload}, covering 3{,}315 matches,
+which supplies the event rate, burst structure and concurrency levels the benchmark is driven at
+(Section~\ref{sec:workload}).
 \end{enumerate}
 
-\paragraph{Structure.} Section~\ref{sec:literature} positions the work against the streaming
-benchmark literature. Section~\ref{sec:workload} characterises the workload and derives the
-experimental parameters from it. Section~\ref{sec:methodology} describes the two testbeds, the
-metrics, the gate and the statistics. Section~\ref{sec:firstanswer} presents the first result
-set in full; Section~\ref{sec:audit} audits it; Section~\ref{sec:results} reports what
-survives. Section~\ref{sec:discussion} answers the practical question and states what remains
-open.
-
-\subsection{Research Questions}
+\subsection{Research questions}
 \label{sec:rqs}
 
 \begin{description}
-\item[RQ1 (end-to-end lag):] Replaying real match feeds at their true event rate, what
-end-to-end lag do Apache \kafka{} and \redis{} Streams deliver, and do they differ?
-\item[RQ2 (concurrency):] Does that lag change across the concurrency levels football actually
-produces, and does either backend degrade faster than the other?
-\item[RQ3 (attribution):] Where in the pipeline does any difference live --- in broker
-transport, or in the client path either side of it?
-\item[RQ4 (deployment conditions):] Does the answer survive a network hop between consumer and
-broker, and what mechanism governs the failure when it does not?
-\item[RQ5 (measurement validity):] How much of a conventionally conducted benchmark of this
-kind survives an explicit physical-consistency check, and what does the condemned portion look
-like beforehand?
+\item[RQ1 (delay):] Replaying real match feeds at their true event rate, what end-to-end delay do
+\kafka{} and \redis{} Streams deliver, and do they differ?
+\item[RQ2 (concurrency):] Does that delay change across the number of simultaneous matches
+football produces, and does either system degrade faster than the other?
+\item[RQ3 (cause):] Where does any difference come from --- the broker itself, or the client
+software on either side of it?
+\item[RQ4 (deployment):] Does the answer survive when the consumer sits across a network, and
+what explains the failure if it does not?
+\item[RQ5 (validity):] How much of a benchmark conducted in the usual way survives an explicit
+physical-consistency check, and what does the rejected portion look like beforehand?
 \end{description}
 
-RQ5 is not a robustness appendix. It is answered first, in
-Sections~\ref{sec:firstanswer}--\ref{sec:audit}, because its answer determines which evidence
-RQ1--RQ4 may draw on.
+We answer RQ5 first, in Sections~\ref{sec:firstanswer} and~\ref{sec:audit}, because its answer
+decides which evidence RQ1--RQ4 are allowed to use.
 
-\subsection{Sports latency requirements}
-\label{sec:sports_requirements}
+\subsection{How the paper is organised}
 
-Real-time sports analytics imposes latency constraints that vary by stakeholder
-(Table~\ref{tab:latency_requirements}). Betting platforms require sub-500~ms updates for in-play
-odds \cite{v2solutions2025,ververica2025}; broadcast overlays tolerate up to a few seconds
-\cite{dolby2025,promwad2025}; coaching decision support is quoted at under $500$~ms
-\cite{pappas2020real,opta2023}. These budgets are \emph{asserted} by practitioners rather than
-derived from any measurement of what missing them costs, and we use them as the practitioner
-context our results are interpreted against, not as a success criterion. One consequence is
-worth stating at the outset: every configuration we measure in Section~\ref{sec:results} meets
-every budget in the table, and the interesting differences between the two systems are two
-orders of magnitude below the tightest of them --- until a network hop is introduced, at which
-point one configuration misses every budget by four orders of magnitude.
+Section~\ref{sec:literature} reviews the four literatures this work draws on and states what each
+supplies. Section~\ref{sec:workload} describes the football event feed as a workload and derives
+the experiment's parameters from it. Section~\ref{sec:methodology} describes the testbeds, the
+measurements and the integrity check. Section~\ref{sec:firstanswer} presents the first result set
+in full, Section~\ref{sec:audit} audits it, and Section~\ref{sec:results} reports what survives.
+Section~\ref{sec:discussion} gives practical guidance and states what remains unresolved.
+
+
+\section{Background and Related Work}
+\label{sec:literature}
+
+This study sits between four literatures. We set out what each contributes, and what it does not
+supply, so that every assumption made later has a stated source.
+
+\subsection{The two systems, and how their clients work}
+\label{sec:lit_systems}
+
+Stonebraker et al.\ \cite{stonebraker2005stream} set out eight requirements for real-time stream
+processing, including keeping data moving and processing it with predictably low delay. These
+remain the standard against which streaming middleware is judged.
+
+\kafka{} \cite{kreps2011kafka} implements them as a distributed commit log. A topic is divided
+into partitions; each partition is an ordered, append-only sequence written to disk and
+replicated. Throughput comes from batching writes and reading sequentially; parallelism comes
+from assigning partitions to independent consumers. \redis{} Streams \cite{redis2017streams}
+takes the opposite position: an in-memory append-only structure with consumer groups, trading
+storage capacity for the lowest possible delay per operation.
+
+One architectural consequence matters throughout this paper. A \redis{} server executes commands
+on a single thread, so concurrent streams contend for one execution context, whereas \kafka{}'s
+partitioning permits genuine parallelism inside a broker. This is the prediction our invalid first
+result appeared to confirm (Section~\ref{sec:firstanswer}), and it is why that result was
+persuasive.
+
+A second consequence concerns the client libraries rather than the servers, and it turns out to
+matter more. Both systems place substantial machinery on the client side. A \kafka{} producer
+does not send each record immediately; it appends the record to an in-memory batch which a
+background sender thread transmits, governed by settings including \texttt{linger.ms} (how long
+to wait for a batch to fill) and \texttt{max.in.flight.requests.per.connection} (how many
+unacknowledged requests may be outstanding). A \kafka{} consumer likewise serves \texttt{poll()}
+from a locally prefetched buffer and commits its position on a timer. A \redis{} Streams consumer
+by contrast issues an explicit blocking read (\texttt{XREADGROUP}) and an explicit acknowledgement
+(\texttt{XACK}) per message, each of which is a separate request and reply. Vendor documentation
+for both systems discusses these settings
+\cite{confluent2025kafka,redis2025performance}. Our results in
+Sections~\ref{sec:attribution} and~\ref{sec:netdelay} turn on them.
+
+The CAP theorem \cite{brewer2012cap} and its extension PACELC \cite{abadi2012pacelc} frame the
+durability--latency trade-off both systems expose. PACELC's ``else'' clause --- that even without
+a network partition a system trades latency against consistency --- is what our durability
+comparison probes.
+
+\subsection{How streaming systems are benchmarked}
+\label{sec:lit_bench}
+
+Stream processing has a mature benchmark literature. Linear Road \cite{arasu2004linear} is the
+canonical application benchmark, posing tolling and traffic queries over a simulated stream of
+vehicles. NEXMark \cite{tucker2008nexmark} models an online auction and has become the standard
+query suite for streaming dataflow engines. ESPBench \cite{hesse2021espbench} constructs an
+enterprise workload spanning transactional and analytical operators. RIoTBench
+\cite{shukla2017riotbench} supplies Internet-of-Things dataflows with realistic sensor arrival
+patterns. The OpenMessaging Benchmark \cite{openmessaging2018} is the closest analogue to this
+work, measuring broker throughput and delay directly across messaging systems.
+
+Three observations follow, and each shapes a design decision here.
+
+First, every one of these benchmarks drives its system with a \emph{synthetic} arrival process
+--- generated vehicles, auctions, sensor readings, or fixed-rate publishers --- chosen for
+analytical tractability rather than fidelity to a domain. That is the right choice for a
+general-purpose benchmark and the wrong one here. Our central explanatory result
+(Section~\ref{sec:attribution}) is that the difference between the two systems appears at
+football's low event rate and \emph{disappears} when the same data is replayed ten times faster.
+A fixed-rate synthetic publisher would have reported no difference at all.
+
+Second, these benchmarks are built to locate the point at which a distributed system breaks.
+Football does not come close to one, as Section~\ref{sec:workload} shows, so the interesting
+question for this domain is not where the system breaks but whether it is anywhere near breaking.
+
+Third, and most relevant to this paper, a recent survey of benchmark practice in \kafka{}
+event-streaming systems \cite{mohammad2025kafka} observes that published results are frequently
+not comparable, because client configuration, acknowledgement semantics and measurement
+instrumentation differ between the systems under test. Our experience is a strong instance of
+that critique and extends it in one direction: we find that comparable \emph{configuration} is
+not sufficient, because the measurement instrument itself can fail silently under load. We are
+not aware of a streaming benchmark that reports what fraction of its runs it discarded on
+integrity grounds. Given our findings, we take that to be a gap in reporting practice rather than
+evidence that the problem is rare.
+
+\subsection{Measuring time across processes}
+\label{sec:lit_clocks}
+
+The failure at the centre of this paper is a timing failure, and the distributed systems
+literature supplies the vocabulary for it.
+
+Lamport \cite{lamport1978time} established that in a distributed system there is no single
+physical time, only a partial order induced by causality: if event $a$ can influence event $b$
+then $a$ must precede $b$ in any correct account. Our check is the simplest possible application
+of that principle. A broker's acknowledgement of a message causally precedes the consumer's
+receipt of it, so a measurement in which receipt is timestamped earlier is not a small error but
+a violation of the causal order, and any conclusion drawn from it is unsupported.
+
+In practice, systems approximate physical time using clock synchronisation protocols, of which
+the Network Time Protocol \cite{mills1991ntp} is the most widely deployed. Spanner
+\cite{corbett2013spanner} takes the further step of exposing clock \emph{uncertainty} to the
+application through an explicit interval API, on the grounds that a system which pretends to know
+the time exactly will eventually be wrong in a way it cannot detect. Our situation is milder ---
+both of our processes run on one machine and read the same operating-system clock, so there is no
+synchronisation error to speak of --- and this is precisely why the failure is instructive. The
+inversion arises not from clock skew but from \emph{when the timestamp is taken}: a thread that
+is descheduled between the event it is recording and the call that records it will stamp a time
+later than the event. Under CPU saturation this delay is routinely larger than the interval being
+measured.
+
+Jain \cite{jain1991art} sets out the standard methodology for computer systems performance
+measurement, including the requirement that an instrument be validated on the system it will
+measure. The check we describe in Section~\ref{sec:gate} is best understood as a specific,
+cheap instrument validation for cross-process delay measurement.
+
+\subsection{Football event data as a workload}
+\label{sec:lit_football}
+
+Live football event data is produced by trained human operators who watch the match and record
+each action through specialised software. Pappalardo et al.\ \cite{pappalardo2019public}, in
+releasing a large public event dataset, describe this collection process directly. Liu et al.\
+\cite{liu2013interoperator} measured its reliability: two independent groups of experienced
+operators coding the same Spanish league match reached very good agreement on team events (Cohen's
+$\kappa$ of $0.92$ and $0.94$), with a mean difference in recorded event time of
+$0.06 \pm 0.04$~s.
+
+Two things follow for this study. The reliability result establishes that event data is accurate
+enough for the timing comparisons we make, since operator disagreement about \emph{when} an event
+occurred is around $60$~ms and our replay uses the recorded times identically for both systems.
+But no peer-reviewed measurement exists of how long the annotation pipeline takes end to end ---
+that is, the delay between an action on the pitch and the corresponding event becoming available
+to a consumer. Vendor descriptions of these pipelines report figures in seconds. Because those
+are claims rather than measurements, we do not adopt a point estimate; we sweep the value across a
+range and report what share of the budget each component owns throughout
+(Section~\ref{sec:budget}).
+
+The StatsBomb open dataset \cite{statsbomb2023} used here is a sample of matches released for
+research, covering multiple competitions and seasons. We treat it as a sample throughout, which
+constrains the concurrency claim in Section~\ref{sec:realconcurrency}.
+
+\subsection{Latency requirements in sport, and where they come from}
+\label{sec:lit_requirements}
+
+Practitioner sources state latency budgets for live sports applications. Betting operators
+require updates within a few hundred milliseconds for in-play odds
+\cite{v2solutions2025,ververica2025}; broadcast overlays tolerate up to a few seconds
+\cite{dolby2025,promwad2025}. Table~\ref{tab:latency_requirements} collects these.
+
+We must be explicit about the status of that table, because a reader could reasonably mistake it
+for measured evidence. Every figure in it is \emph{asserted} by a vendor or industry source, not
+derived from any published measurement of what missing the budget costs. We use it as the
+practitioner context our results are interpreted against, and not as a criterion of success. One
+consequence is worth stating at the outset: every configuration we measure soundly meets every
+budget in the table, and the interesting differences between the two systems are two orders of
+magnitude below the tightest of them --- until a network hop is introduced, at which point one
+configuration misses every budget by four orders of magnitude.
+
+We also draw on the Age-of-Information framing \cite{kaul2012realtime}, which formalises the cost
+of acting on stale data: a monitor acting on information of age $L$ incurs an error that grows
+with $L$. We use this only to express our measured milliseconds on a decision-relevant scale in
+Section~\ref{sec:budget}. For that expression we need an in-play win-probability model. The state
+of the art for soccer is the Bayesian model of Robberechts et al.\ \cite{robberechts2021bayesian},
+whose implementation is not public; we therefore use a transparent calibrated stand-in and are
+explicit about its limitations.
+
+\subsection{Statistical methods}
+\label{sec:lit_stats}
+
+Latency distributions are strongly non-normal, so we use rank-based tests throughout: the
+Mann--Whitney U test \cite{mann1947test} for two-group comparisons and the Kruskal--Wallis test
+\cite{kruskal1952use} across concurrency levels, with Holm's step-down procedure
+\cite{holm1979simple} controlling the family-wise error rate.
+
+Several of our claims are negative --- that two systems do \emph{not} differ. Failing to reject a
+null hypothesis is not evidence for it, so we state those claims using the two one-sided tests
+procedure \cite{schuirmann1987tost}, which reverses the burden of proof by testing whether the
+difference is smaller than a pre-specified margin. Lakens \cite{lakens2017equivalence} gives an
+accessible treatment and the practical guidance we follow on choosing margins. As a point
+estimate of the difference between two systems we use the Hodges--Lehmann shift
+\cite{hodges1963estimates}, the median of all pairwise differences, with confidence intervals
+from the percentile bootstrap \cite{efron1979bootstrap}. Section~\ref{sec:stat_methods} explains
+why we moved to this estimator from a difference of means.
+
+\subsection{What is missing, and what this paper adds}
+
+Streaming benchmarks measure delay but use synthetic workloads and do not report integrity
+audits. Sports systems literature asserts latency budgets without measuring the transport term
+inside them. The football event-data literature characterises annotation accuracy but not
+pipeline delay. This paper measures the transport term on a real football workload, reports the
+integrity audit that most of our own measurements failed, and states what a practitioner should
+do as a result.
 
 \begin{table*}[htbp]
 \centering
-\caption{Sports analytics latency requirements by use case and stakeholder, as asserted in the
-practitioner literature. These are stated budgets, not measured costs of missing them.}
+\caption{Latency budgets for live sports applications as asserted in vendor and practitioner
+sources. These are stated targets, not measured costs of missing them, and we use them as
+context rather than as a success criterion. Sources:
+\cite{v2solutions2025,ververica2025,dolby2025,promwad2025}.}
 \label{tab:latency_requirements}
 \begin{tabular}{lccc}
 \toprule
-Use Case & Stakeholder & Latency Range & Critical Threshold \\
+Use Case & Stakeholder & Stated Range & Stated Threshold \\
 \midrule
 \multicolumn{4}{l}{\textbf{Betting Platforms}} \\
 \hspace{1em}Live Odds Update & Betting Platform & 100--500ms & \textbf{$<$ 500ms} \\
@@ -212,129 +388,65 @@ Use Case & Stakeholder & Latency Range & Critical Threshold \\
 \hspace{1em}Live Stats Overlay & Broadcaster & 100--1000ms & \textbf{$<$ 1000ms} \\
 \hspace{1em}Interactive Features & Broadcaster & 200--500ms & \textbf{$<$ 500ms} \\
 \midrule
-\multicolumn{4}{l}{\textbf{Coaching}} \\
-\hspace{1em}Tactical Adjustment & Coach & 200--800ms & \textbf{$<$ 800ms} \\
-\hspace{1em}Player Substitution & Coach & 500--1500ms & \textbf{$<$ 1500ms} \\
-\midrule
 \multicolumn{4}{l}{\textbf{Fan Applications}} \\
 \hspace{1em}Push Notifications & Fan & 1000--3000ms & \textbf{$<$ 3000ms} \\
 \hspace{1em}Live Updates & Fan & 500--2000ms & \textbf{$<$ 2000ms} \\
-\midrule
-\multicolumn{4}{l}{\textbf{Post-Match Analysis}} \\
-\hspace{1em}Initial Analysis & Analyst & 5000--10000ms & \textbf{$<$ 10000ms} \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
 
-\section{Related Work}
-\label{sec:literature}
-
-\paragraph{Streaming platforms.} Stonebraker et al.\ \cite{stonebraker2005stream} set out eight
-requirements for real-time stream processing, among them keeping data moving and processing
-with predictably low latency. \kafka{} \cite{kreps2011kafka} realises them as a partitioned,
-replicated commit log: throughput through batching and sequential disk writes, parallelism
-through partitions. \redis{} Streams \cite{redis2017streams} takes the opposite position, an
-in-memory append-only structure trading capacity for minimal per-operation delay. The
-architectural consequence matters here: \kafka{}'s partitioning admits genuine intra-broker
-parallelism, whereas a \redis{} node executes commands on a single thread, so concurrent streams
-contend for one execution context. That prediction is what our first, invalid result set
-appeared to confirm. The CAP theorem \cite{brewer2012cap} and PACELC \cite{abadi2012pacelc}
-frame the durability--latency trade-off both systems expose.
-
-\paragraph{How streaming systems are benchmarked, and how it goes wrong.} Evaluations of
-\kafka{} are numerous \cite{he2020performance,gai2020kafka}, as are cross-framework comparisons
-\cite{carbone2015benchmark}. Several works compare \kafka{} against \redis{} Streams directly
-\cite{pandey2021comparative,zhang2022redis}. A recent survey of benchmark practice in \kafka{}
-event-streaming systems \cite{kafka_analysis_2025} observes that reported results are frequently
-not comparable, because client configuration, acknowledgement semantics and measurement
-instrumentation differ between the systems under test. This study is a strong instance of that
-critique, and extends it: we find that comparability of \emph{configuration} is not sufficient,
-because the instrumentation itself can fail silently under load. Zhang et al.\
-\cite{zhang2021tti} propose time-to-insight as an evaluation metric; we adopt it but decompose
-it, which is what makes the failure visible at all.
-
-\paragraph{Established benchmarks, and why none answers this question.} Linear Road
-\cite{arasu2004linear} is the canonical streaming application benchmark, posing toll and traffic
-queries over a simulated vehicle stream; NEXMark \cite{tucker2008nexmark} models an auction site
-and has become the standard query suite for dataflow engines; ESPBench
-\cite{hesse2021espbench} constructs an enterprise workload spanning transactional and analytical
-operators; RIoTBench \cite{shukla2017riotbench} supplies IoT dataflows with realistic sensor
-arrival patterns; and the OpenMessaging Benchmark \cite{openmessaging2018} is the closest
-analogue to this work, exercising broker throughput and latency directly across messaging
-systems.
-
-Three things follow. First, each drives its system with a \emph{synthetic} arrival process
-chosen for analytical tractability rather than fidelity to a domain. That is correct for a
-general-purpose benchmark and wrong for the question asked here; Section~\ref{sec:workload}
-derives the arrival process from the sport instead. This is not a stylistic preference: our
-central attribution result (Section~\ref{sec:e1}) is that the difference between the two
-backends appears at football's sparse arrival rate and \emph{vanishes} when the same corpus is
-replayed ten times faster. A fixed-rate synthetic publisher would have reported no difference.
-Second, these benchmarks are built to find a distributed system's breaking point, and football
-does not approach one. Third, none reports a physical-consistency audit of its own timestamps.
-We are not aware of a streaming benchmark that publishes what fraction of its runs it discarded
-on integrity grounds, which given our findings we take to be a gap in reporting practice rather
-than evidence that the problem is rare.
-
-\paragraph{Real-time sports data systems.} Sports analytics has moved from retrospective
-summary to live decision support \cite{wright2022machine}, driven by richer capture
-\cite{link2021deep} and by open event data \cite{statsbomb2023}. Architectural accounts of live
-football pipelines \cite{pappas2020real,opta2023} specify latency budgets for coaching and
-broadcast, and the betting industry is explicit that in-play latency is commercially decisive
-\cite{v2solutions2025,ververica2025}. These sources establish that latency matters; they assert
-budgets rather than measuring the transport term inside them.
-
-\paragraph{Staleness and decision cost.} The Age-of-Information literature formalises the cost
-of stale data: a monitor acting on information of age $L$ incurs an error growing with $L$
-\cite{kaul2012realtime}. For soccer, the state of the art in in-play win probability is the
-Bayesian model of Robberechts et al.\ \cite{robberechts2021bayesian}, calibrated on large event
-corpora and, like all such models, built under the assumption that event data arrives
-instantly. We use this framing lightly, in Section~\ref{sec:budget}, to express our measured
-milliseconds on a decision-relevant scale --- and we are explicit that it converts units rather
-than adding inferential power.
-
-
-\section{What a Football Event Feed Demands}
+\section{The Football Event Feed as a Workload}
 \label{sec:workload}
 
-The parameters of a latency benchmark --- arrival rate, burst structure, number of concurrent
-feeds --- are usually chosen for convenience. Because our central attribution result turns on
-the arrival rate being football's rather than a generator's, we derive all three from the
-corpus first. We use the StatsBomb open dataset across 2003--2023: 52 competition-seasons,
-15 competitions, 3{,}315 matches, of which 2{,}806 are men's and 509 women's, fetched from a
-pinned upstream commit by \texttt{scripts/fetch\_statsbomb\_corpus.py}.
+A latency benchmark needs three parameters: how fast events arrive, how bursty they are, and how
+many feeds run at once. These are usually chosen for convenience. Because our main explanatory
+result depends on the arrival rate being football's rather than a generator's, we derive all
+three from the data first.
+
+We use the StatsBomb open dataset across 2003--2023: 52 competition-seasons, 15 competitions and
+3{,}315 matches, of which 2{,}806 are men's and 509 women's. The corpus is fetched from a pinned
+upstream commit by \texttt{scripts/fetch\_statsbomb\_corpus.py}, so it can be reconstructed
+exactly.
 
 \subsection{Arrival rate and burstiness}
 \label{sec:burstiness}
 
-Football event data is sparse. A match yields a median of $3{,}507$ events over roughly
-$8{,}412$ seconds of match clock, a mean arrival rate of \textbf{0.415 events per second}. That
-is the figure a capacity calculation would use, and it understates the requirement: measured
-over a sliding ten-second window the same feeds peak at \textbf{2.70 events per second}, a
-peak-to-mean ratio of \textbf{6.45} (Table~\ref{tab:feedstats}). Half of all inter-arrival gaps
-are at or below one second and the fifth percentile is indistinguishable from zero. Events
-cluster because football clusters: a restart, a sequence of quick passes, a goal and its
-surrounding play emit in tight groups separated by long quiet periods.
+Football event data is sparse. A match produces a median of $3{,}507$ events over roughly
+$8{,}412$ seconds of match clock, a mean rate of \textbf{0.415 events per second}
+(Figure~\ref{fig:workload}a). That is the number a capacity calculation would use, and on its own
+it is misleading. Measured over a sliding ten-second window, the same feeds peak at
+\textbf{2.70 events per second}. The ratio of peak to mean is \textbf{6.45}
+(Figure~\ref{fig:workload}b, Table~\ref{tab:feedstats}). Half of all gaps between events are one
+second or shorter, and the fifth percentile is indistinguishable from zero. Events cluster because
+football clusters: a restart, a sequence of quick passes, a goal and the play around it all
+arrive in tight groups separated by long quiet periods.
 
-The structure is remarkably stable across the corpus. Every competition sits between $0.35$ and
-$0.44$ events per second with a peak-to-mean ratio between $6.2$ and $7.9$, and the men's and
-women's game differ by less than seven percent on both ($0.419$ vs $0.392$ events per second;
-ratio $6.43$ vs $6.61$). The sparsest competitions are the burstiest --- the African Cup of
-Nations and Indian Super League have the lowest mean rates and the highest ratios --- so a low
-average is not licence to provision for the average.
+The pattern is stable across the corpus. Every competition falls between $0.35$ and $0.44$ events
+per second with a peak-to-mean ratio between $6.2$ and $7.9$, and the men's and women's game
+differ by less than seven percent on both measures. The sparsest competitions are the burstiest:
+the African Cup of Nations and the Indian Super League have the lowest mean rates and the highest
+ratios, so a low average is not a licence to provision for the average.
 
-Two consequences carry into the rest of the paper. A buffer sized from the mean is undersized
-more than six-fold. And, more importantly for what follows, an idle-to-busy duty cycle this
-extreme is exactly the regime in which a client that must wake from idle pays for doing so on
-every burst; Section~\ref{sec:e1} measures a $103$~ms cost of precisely that shape.
+Two consequences carry into the rest of the paper. A buffer sized from the mean is undersized by
+more than a factor of six. More importantly, a feed that is idle most of the time and busy in
+short bursts is exactly the pattern under which a client that must wake from idle pays that cost
+on every burst. Section~\ref{sec:attribution} measures a $103$~ms cost of precisely that shape.
+
+\begin{figure*}[htbp]
+\centering
+\includegraphics[width=\textwidth]{docs/results/figures/workload_profile.pdf}
+\caption{The football event feed as a workload, across 3{,}315 StatsBomb matches from 2003--2023.
+(a)~Mean arrival rate per match. The distribution is tight around $0.415$ events per second, a
+very low rate for a message broker. (b)~The ratio of peak rate (over any ten-second window) to
+mean rate. Provisioning from the mean under-provisions by more than sixfold.}
+\label{fig:workload}
+\end{figure*}
 
 \begin{table*}[htbp]
 \centering
-\caption{Football event-feed arrival statistics, medians across matches, from 3{,}315 StatsBomb
-matches spanning 2003--2023. Peak rate is the maximum over any sliding ten-second window. The
-peak-to-mean ratio is the quantity that sizes a buffer, and it is more than six times the
-figure a mean-rate calculation gives.}
+\caption{Football event-feed arrival statistics, medians across matches. Peak rate is the maximum
+over any sliding ten-second window. The peak-to-mean ratio is the quantity that sizes a buffer.}
 \label{tab:feedstats}
 \begin{tabular}{lrrrr}
 \toprule
@@ -359,31 +471,43 @@ Women's football & 509 & 0.392 & 2.60 & 6.61 \\
 \end{tabular}
 \end{table*}
 
-\subsection{How many feeds run at once}
+\subsection{How many matches run at once}
 \label{sec:realconcurrency}
 
-Every concurrency level in this literature is chosen by hand; our own earlier design swept
-$N \in \{1,5,10,20\}$ and later $N \in \{10,25,50,100\}$, which makes ``does latency scale with
-concurrency?'' a question about an invented variable. Football supplies the variable directly,
-because match records carry a kick-off date and time.
+Concurrency levels in this literature are chosen by hand. Our own earlier design swept one, five,
+ten and twenty feeds, and later ten, twenty-five, fifty and one hundred. That makes ``does delay
+scale with concurrency?'' a question about an invented variable. Football supplies the variable
+directly, because match records carry a kick-off date and time.
 
 Across 2{,}346 distinct kick-off instants in the corpus, the largest carries \textbf{12
-simultaneous matches}, and allowing for a nominal $115$-minute duration the peak number of
-matches \emph{in play} at any instant is \textbf{21}. The median slot carries one match. The
-maxima are not sampling accidents: domestic leagues schedule the final matchday simultaneously
-to protect competitive integrity, so a 20-team league plays ten concurrent matches by rule, and
-our largest observed slots are exactly such fixtures. We therefore benchmark at
-$N \in \{1, 9, 10, 12\}$: the median slot, the upper quartile of occupancy, the structural
-league-matchday bound, and the largest simultaneity observed.
+simultaneous matches}, and allowing for a nominal $115$-minute match the peak number of matches
+\emph{in play} at any instant is \textbf{21} (Figure~\ref{fig:concurrency}). The median slot
+carries one match. These maxima are not accidents of sampling: domestic leagues schedule the
+final matchday simultaneously to protect competitive integrity, so a 20-team league plays ten
+concurrent matches by rule, and our largest observed slots are exactly such fixtures.
 
-Two caveats bound this, and we restate them wherever the numbers are used. StatsBomb open data
-is a \emph{sample} of matches, not a complete record of any league-season, so observed
-simultaneity is a \textbf{lower bound}; the structural bound --- half the teams in a league ---
-is the safer planning figure. And the bound is \emph{per league}. A feed platform serving many
-leagues and tiers at once faces their sum, which on a European Saturday afternoon runs to
-hundreds of matches. Our concurrency result should therefore be read as characterising a
-single-competition consumer, and the connection sweep of Section~\ref{sec:conncluster} is the
-arm that speaks, imperfectly, to the multi-league case.
+We therefore benchmark at $N \in \{1, 9, 10, 12\}$: the median slot, the upper quartile of
+occupancy, the structural league-matchday bound, and the largest simultaneity observed.
+
+Two limits on this must be restated wherever the numbers are used. First, StatsBomb open data is a
+\emph{sample} of matches, not a complete record of any league-season, so observed simultaneity is
+a \textbf{lower bound}; the structural bound of half the teams in a league is the safer planning
+figure. Second, that bound is \emph{per league}. A commercial feed platform serving many leagues
+and divisions at once faces their sum, which on a European Saturday afternoon runs into the
+hundreds of matches. Our concurrency result therefore describes a consumer of a single
+competition. The connection experiment of Section~\ref{sec:conncluster} is the arm that would
+speak to the multi-league case, and it is the arm the integrity check largely removed.
+
+\begin{figure*}[htbp]
+\centering
+\includegraphics[width=\textwidth]{docs/results/figures/kickoff_concurrency.pdf}
+\caption{Concurrency derived from real kick-off schedules rather than chosen by hand.
+(a)~Distribution of the number of matches sharing a kick-off instant, over 2{,}346 slots; the
+largest carries twelve. (b)~Number of matches simultaneously in play, allowing a 115-minute
+match; the peak is 21. Both panels use a log count axis. Football never approaches the hundreds
+of concurrent feeds that general-purpose streaming benchmarks sweep.}
+\label{fig:concurrency}
+\end{figure*}
 
 
 \section{Method}
@@ -392,380 +516,490 @@ arm that speaks, imperfectly, to the multi-league case.
 \subsection{Two testbeds, both disclosed}
 \label{sec:testbeds}
 
-Several of our earlier numbers turned out to be properties of a testbed rather than of either
-broker, so we state both fully and measure the parts that bound resolution
-(\texttt{scripts/platform\_probe.py}; raw output in \texttt{docs/results/platform/}).
+Several numbers in earlier versions of this work turned out to be properties of the machine
+rather than of either broker, so we state both testbeds fully and measure the parts that limit
+resolution (\texttt{scripts/platform\_probe.py}; raw output in \texttt{docs/results/platform/}).
 
-\emph{Testbed A (single host).} Windows~11 (build 10.0.26200), 8-core AMD Ryzen, 31~GB RAM,
-CPython 3.9.13. Producer and consumer are native Windows processes; \kafka{}~4.1.1 (KRaft) and
-\redis{}~7.2.4 run as Docker containers under Docker Desktop, whose engine executes in a WSL2
-virtual machine, reached through published ports. Two measured floors bound everything measured
-here: a requested 1~ms sleep takes a median of \textbf{15.6~ms} (the Windows timer tick), so
-event emission is quantised to a $\approx$15.6~ms grid; and establishing a TCP connection to a
-published container port costs a median $5.6$~ms (\redis{}) and $9.9$~ms (\kafka{}), far above a
-true loopback path, consistent with the $\approx$1~ms floor under which transport never falls.
+\emph{Testbed A (single machine).} Windows~11 (build 10.0.26200), 8-core AMD Ryzen, 31~GB RAM,
+CPython 3.9.13. The producer and consumer are native Windows processes; \kafka{}~4.1.1 and
+\redis{}~7.2.4 run in Docker containers whose engine executes inside a WSL2 virtual machine,
+reached through published ports. Two measured floors bound everything measured here. A requested
+1~ms sleep takes a median of \textbf{15.6~ms}, because of the Windows timer tick, so event
+emission is quantised to a roughly 15.6~ms grid. And opening a TCP connection to a published
+container port costs a median of $5.6$~ms for \redis{} and $9.9$~ms for \kafka{}, far above a
+genuine loopback path.
 
-\emph{Testbed B (multi-host).} Four Oracle Cloud \texttt{VM.Standard.E5.Flex} virtual machines
-in \texttt{uk-london-1} --- three brokers, one driver --- on Ubuntu 22.04 (kernel
-6.8.0-oracle), CPython 3.10.12, communicating over the tenancy's private network. Client
-library versions are pinned identically to Testbed~A. Both platform floors fall away: a
-requested 1~ms sleep takes $1.06$~ms, and an established-connection round trip to the broker is
-$0.22$~ms on the same host and $0.24$~ms across VMs (implying a ceiling of $\approx$4{,}200
-request/response exchanges per second, against a demand of well under one). A genuine two-machine
-network is thus \emph{faster} than Testbed~A's ``co-located'' path, which is the sharpest
-available statement of how much a testbed can distort a benchmark.
+\emph{Testbed B (four machines).} Four Oracle Cloud \texttt{VM.Standard.E5.Flex} virtual machines
+in the London region --- three brokers and one driver --- running Ubuntu 22.04 and CPython
+3.10.12, communicating over the tenancy's private network. Client library versions are pinned
+identically to Testbed~A. Both floors disappear: a requested 1~ms sleep takes $1.06$~ms, and a
+round trip to the broker on an established connection is $0.22$~ms on the same host and
+$0.24$~ms across machines. A genuine two-machine network is therefore \emph{faster} than
+Testbed~A's ``co-located'' path, which is the sharpest statement we can offer of how much a
+testbed can distort a benchmark.
 
-All results reported as findings in Section~\ref{sec:results} come from Testbed~B.
-Testbed~A appears in Section~\ref{sec:firstanswer} because it produced the result set this
-paper is about, and its floors are part of why.
+Every result reported as a finding in Section~\ref{sec:results} comes from Testbed~B. Testbed~A
+appears in Section~\ref{sec:firstanswer} because it produced the result set this paper is about.
 
 \subsection{Replay and load generation}
 \label{sec:replay}
 
-Each match is preprocessed into a CSV \emph{replay plan} recording, per event, its scheduled
-emission offset (\texttt{scripts/make\_replay\_plan.py}). A producer replays a plan at a
-configurable speed-up factor; a consumer reads events and records receipt and output times. In
-the concurrency sweep each of the $N$ feeds carries a \emph{distinct} real match at its true
-event rate, which matters: an earlier design in which every feed replayed the same merged
-ten-match plan made the concurrency axis covertly a throughput axis, raising the aggregate event
-rate roughly tenfold per step (Section~\ref{sec:defects}).
+Each match is preprocessed into a CSV \emph{replay plan} that records, for every event, the time
+at which it should be emitted (\texttt{scripts/make\_replay\_plan.py}). A producer replays a plan
+at a configurable speed-up factor; a consumer reads the events and records when they arrive.
 
-Replay speed is itself a treatment in this study rather than a convenience. Headline results are
-at true real-time ($1\times$), which is both the ecologically correct choice and, as
-Section~\ref{sec:audit} shows, the only regime in which the instrument is sound. Where we report
-$10\times$ results we say so and give their gate status.
+In the concurrency experiment each of the $N$ feeds carries a \emph{distinct} real match at its
+true event rate. This matters. An earlier design gave every feed the same merged ten-match plan,
+which meant that raising $N$ raised the total event rate roughly tenfold per step: the
+concurrency axis was covertly a throughput axis.
 
-\subsection{Metrics}
+Replay speed is a treatment in this study rather than a convenience. Headline results are at true
+real time, which is both the ecologically correct choice and, as Section~\ref{sec:audit} shows,
+the only regime in which our instrument is sound. Where we report accelerated results we say so
+and give their integrity status.
+
+\subsection{What we measure}
 \label{sec:metrics}
 
-The primary metric is Time-to-Insight (\tti{}), the interval from an event's \emph{scheduled}
-emission to its availability at the consumer --- the end-to-end lag of the paper's title. We
-decompose it as
-\[
-\mathrm{TTI} = \underbrace{(t_{\mathrm{send}}-t_{\mathrm{sched}})}_{\text{producer scheduling lag}}
-             + \underbrace{(t_{\mathrm{recv}}-t_{\mathrm{ack}})}_{\text{broker transport}}
-             + \text{(residual)} ,
-\]
-where $t_{\mathrm{ack}}$ is the broker acknowledgement, stamped by the \kafka{} producer from
-its send callback and by the \redis{} producer on return from \texttt{XADD}. The decomposition
-is not cosmetic and it is the reason this study reaches a different conclusion from its own
-first draft: \tti{} answers the deployment question (what staleness does a consumer
-experience?) while transport answers the architecture question (which broker is faster?), and
-the two have opposite answers here. We report both throughout and say which question each
-addresses. We further report p95, throughput, payload size and (de)serialisation overhead.
+The primary measure is \textbf{Time-to-Insight} (\tti{}): the interval from an event's scheduled
+emission to its availability at the consumer. This is the end-to-end delay of the paper's title.
+We decompose it into two parts that answer different questions
+(Figure~\ref{fig:pipeline}):
 
-\subsection{The clock-integrity gate}
+\[
+\mathrm{TTI} = \underbrace{(t_{\mathrm{send}}-t_{\mathrm{sched}})}_{\text{scheduling lag}}
+             + \underbrace{(t_{\mathrm{recv}}-t_{\mathrm{ack}})}_{\text{broker transport}}
+             + \text{(residual)} .
+\]
+
+\emph{Scheduling lag} is the delay between when an event was due to be sent and when the producer
+actually issued the send. It measures the client and the load generator. \emph{Broker transport}
+is the delay between the broker acknowledging a message and the consumer receiving it. It
+measures the broker. \tti{} is what a consumer experiences; transport is what distinguishes the
+two products. The distinction is not cosmetic, and it is the reason this paper reaches a
+different conclusion from its own first draft: for football feeds the two measures have opposite
+answers, and we report both.
+
+The acknowledgement time $t_{\mathrm{ack}}$ is recorded by the \kafka{} producer from its send
+callback and by the \redis{} producer on return from \texttt{XADD}. It is therefore stamped in
+the \emph{producer} process, while $t_{\mathrm{recv}}$ is stamped in the \emph{consumer} process.
+That is the subtraction that can go wrong.
+
+\begin{figure*}[htbp]
+\centering
+\includegraphics[width=\textwidth]{docs/results/figures/pipeline_schematic.pdf}
+\caption{The replay pipeline, the four timestamps we record, and the intervals each measure
+spans. Scheduling lag is measured entirely inside the producer process. Broker transport
+subtracts a time recorded by the producer from a time recorded by the consumer, which is why it
+can come out negative when either process is delayed --- the failure this paper is about.}
+\label{fig:pipeline}
+\end{figure*}
+
+\subsection{The clock-integrity check}
 \label{sec:gate}
 
-Because transport subtracts a timestamp taken in one process from a timestamp taken in another,
-it admits a check no statistic can supply: the result cannot be negative. A message cannot
-arrive before it is sent.
+Because transport subtracts a timestamp taken in one process from one taken in another, it admits
+a check that no statistic can supply: the result cannot be negative. A message cannot arrive
+before it is sent \cite{lamport1978time}.
 
-We implement this as a stated rule in \texttt{scripts/clock\_integrity.py}, fixed before the
-final campaign and applied uniformly to every run in the study, including runs whose results
-looked entirely reasonable. A run is \textbf{condemned} if either
+We implement this as a stated rule in \texttt{scripts/clock\_integrity.py}, fixed before the final
+campaign and applied to every run in the study, including runs whose results looked entirely
+reasonable. A run is \textbf{rejected} if either:
+
 \begin{enumerate}
-\item more than $1\%$ of its events carry a negative transport value, or
-\item the median of any latency component is negative.
+\item more than $1\%$ of its events carry a negative value in any latency component, or
+\item the median of any component is negative.
 \end{enumerate}
-A condition is reported as \emph{usable} only if every one of its runs survives; where a
-condition is partially condemned we report the surviving runs and state the retention rate, and
-where the retention is low enough to constitute selection we say so. The tool exits non-zero
-when any run fails, so a campaign script can gate on it.
 
-The $1\%$ threshold is a calibration choice and we make it explicit. Zero tolerance would
-condemn runs for a single scheduler hiccup; a looser threshold admits corpora whose medians are
-already biased. We chose $1\%$ because the observed distribution is strongly bimodal --- passing
-conditions sit at $0.0\%$ inverted, failing ones at $5$--$14\%$ and above --- so the result is
-insensitive to the exact cut anywhere in that gap. Section~\ref{sec:audit} reports the
-distribution that justifies this.
+A condition is reported as usable only if all of its runs survive. Where a condition is partly
+rejected we report the surviving runs and state the retention rate, and where retention is low
+enough to constitute selection we say so. The tool exits with a non-zero status when any run
+fails, so a campaign script can stop on it.
+
+\paragraph{On the choice of threshold.} The $1\%$ figure is a judgement, and we report its
+consequences rather than defending it as obvious. Section~\ref{sec:threshold} gives the full
+sensitivity analysis. In summary: the threshold materially changes how many individual runs are
+rejected, but it does not change which conditions are usable or which conclusions survive, across
+the whole range from zero tolerance to $20\%$.
 
 \subsection{Statistical methods}
 \label{sec:stat_methods}
 
-Latency distributions are non-normal, so difference tests are non-parametric: Mann--Whitney~U
-per condition, Kruskal--Wallis across concurrency levels, with rank-biserial effect sizes.
+\paragraph{Tests.} Latency distributions are non-normal, so difference tests are rank-based:
+Mann--Whitney U \cite{mann1947test} per condition, Kruskal--Wallis \cite{kruskal1952use} across
+concurrency levels, with rank-biserial effect sizes.
 
-\paragraph{Estimator.} We report the \textbf{Hodges--Lehmann} shift with a percentile bootstrap
-interval as the primary estimator of a between-backend difference, rather than a difference of
-means. This is a correction to our own earlier practice and is forced by the data: the \kafka{}
-producer's scheduling lag is heavy-tailed (median $0.24$~ms, p95 $88$~ms in the single-host
-corpus), so a mean-based comparison contrasts two differently contaminated estimators. The
-Hodges--Lehmann shift is also the estimator consistent with the rank tests used elsewhere.
-Where the three procedures (Welch, bootstrap, Hodges--Lehmann) disagree we report the
-disagreement rather than selecting one.
+\paragraph{Estimator.} We report the Hodges--Lehmann shift \cite{hodges1963estimates} with a
+percentile bootstrap interval \cite{efron1979bootstrap} as the primary estimate of the difference
+between two systems, rather than a difference of means. This corrects our own earlier practice
+and is forced by the data: the \kafka{} producer's scheduling lag is heavily skewed (median
+$0.24$~ms but 95th percentile $88$~ms in the single-machine corpus), so a mean-based comparison
+contrasts two differently contaminated estimators. The Hodges--Lehmann shift is also the estimator
+consistent with the rank tests used elsewhere. Where the three procedures --- Welch, bootstrap and
+Hodges--Lehmann --- disagree, we report the disagreement rather than choosing one.
 
-\paragraph{Equivalence.} Several of our claims are negative, and failing to reject equality is
-not evidence of equality. We state those claims with two one-sided tests, testing
-$H_0: |\theta_{\kafka{}}-\theta_{\redis{}}| \geq \delta$ against the alternative that the
-difference is smaller; equivalently, the $90\%$ confidence interval of the difference must lie
-entirely inside $(-\delta,+\delta)$. We report both.
+\paragraph{Equivalence.} Several claims here are negative. Because failing to reject equality is
+not evidence of equality, we state those claims using two one-sided tests
+\cite{schuirmann1987tost,lakens2017equivalence}: the $90\%$ confidence interval of the difference
+must lie entirely inside $(-\delta,+\delta)$ for the systems to be declared equivalent within
+$\delta$.
 
-\paragraph{Margins.} Margins are fixed before testing and chosen proportionate to the quantity
-being compared, which is a change from our earlier practice of applying a single margin to
-every metric. For \emph{broker transport}, a measurement of order one millisecond, the margin is
-$\delta = 1$~ms. For \emph{end-to-end \tti{}}, the decision-relevant quantity, the margin is one
-broadcast video frame at 25\,fps, $\delta = 40$~ms, on the grounds that a difference smaller
-than one frame cannot change what a coach, broadcaster or model does. We report the margin, the
-observed difference and the interval in every case so a reader may apply their own threshold,
-and we note explicitly where a stricter margin would not be met.
+\paragraph{Margins.} Margins are fixed before testing and chosen in proportion to the quantity
+compared, which is a change from our earlier practice of applying one margin to every measure.
+For \emph{broker transport}, a quantity of order one millisecond, $\delta = 1$~ms. For
+\emph{end-to-end \tti{}}, $\delta = 40$~ms, one broadcast video frame at 25 frames per second, on
+the grounds that a difference smaller than one frame cannot change what a coach, broadcaster or
+model does. We report the margin, the observed difference and the interval in every case, and we
+note explicitly where a stricter margin would not be met.
 
-\paragraph{Multiple comparisons.} Holm--Bonferroni \cite{holm1979simple} controls the
-family-wise error rate at $\alpha=0.05$ within each family. The families are declared over the
-design actually executed: for the concurrency benchmark, the four per-$N$ \kafka{}-vs-\redis{}
-comparisons at $N \in \{1,9,10,12\}$ on transport constitute one family; the two
-Kruskal--Wallis tests across $N$ are single omnibus tests, one per backend, and are not
-corrected; the network-delay arm forms a separate family of four. Equivalence tests are
-pre-specified inferential claims with their own margins and are not members of any Holm family.
+\paragraph{Multiple comparisons.} Holm's procedure \cite{holm1979simple} controls the family-wise
+error rate at $\alpha = 0.05$ within each family. Families are declared over the design actually
+executed: the four per-$N$ comparisons on transport form one family; the two Kruskal--Wallis
+tests are single omnibus tests, one per system, and are not corrected; the network-delay arm forms
+a separate family. Equivalence tests are pre-specified claims with their own margins and are not
+members of any family.
 
-\paragraph{Power.} Per-cell samples range from 8 to 35 surviving runs. At $n=8$ per backend
-($N=1$, the most heavily gated cell) power is below $0.4$ even for large effects, and we treat
-that cell as descriptive; we say so where it appears. Cells at $n \geq 19$ reach power above
-$0.75$ for large effects.
+\paragraph{Power.} Surviving samples range from 8 to 35 runs per cell. At eight runs per system
+--- the $N{=}1$ cell, which the integrity check reduced most --- power is below $0.4$ even for
+large effects \cite{cohen1988statistical}, and we treat that cell as descriptive and say so
+wherever it appears. Cells with 19 or more runs reach power above $0.75$ for large effects.
+
+\subsection{A map of the study}
+\label{sec:studymap}
+
+Because a substantial part of this study is reported as invalid, Table~\ref{tab:studymap} states
+up front which experiment supports which claim and which experiments were rejected.
+
+\begin{table*}[htbp]
+\centering
+\caption{Map of the study. Every arm is listed, including those the integrity check rejected, so
+that the evidence behind each claim can be traced. ``Retained'' is runs surviving the check.}
+\label{tab:studymap}
+\begin{tabular}{llllr l}
+\toprule
+Arm & Testbed & Replay & Retained & Supports \\
+\midrule
+Workload characterisation & --- & --- & n/a & Sections~\ref{sec:burstiness},
+\ref{sec:realconcurrency} \\
+Concurrency $N \in \{1,9,10,12\}$ & B & real time & 164/201 & RQ1, RQ2, RQ3
+(Section~\ref{sec:e1}) \\
+Network delay 5/20/50~ms & B & $10\times$ & \redis{} 45/45; \kafka{} 41/45 & RQ4
+(Section~\ref{sec:netdelay}) \\
+Acknowledgement batching, $N{=}1$ & B & real time & 8/8 & RQ4
+(Section~\ref{sec:netdelay}) \\
+Acknowledgement batching, $N{=}5$ & B & $10\times$ & \redis{} 60/60 & unexplained null
+(Section~\ref{sec:netdelay}) \\
+Connections $N{=}10$ & B & real time & \kafka{} 10/10; \redis{} 7/10 &
+Section~\ref{sec:conncluster} \\
+\midrule
+\multicolumn{5}{l}{\emph{Rejected by the integrity check; reported but supporting no claim}} \\
+Concurrency $N \in \{1,5,10\}$ & A & $10\times$ & 0 conditions & RQ5
+(Section~\ref{sec:firstanswer}) \\
+Throughput sweep & A & varied & 0 conditions & --- \\
+Synthetic network delay & A & $10\times$ & 0 conditions & --- \\
+Concurrency $N \in \{1,5,10\}$ & B & $10\times$ & 0--2 of 15--30 runs & --- \\
+Connections $N \in \{25,50,100\}$ & B & real time & 8--24 of 25--100 runs & --- \\
+Three-node cluster & B & $10\times$ & 0/15 both systems & --- \\
+Durability (\texttt{acks}, \texttt{appendfsync}) & A & $10\times$ & 0 conditions & direction only
+\\
+\bottomrule
+\end{tabular}
+\end{table*}
 
 
 \section{The Answer We Obtained First}
 \label{sec:firstanswer}
 
-This section reports the study as it stood before the gate existed. We present it in full,
-rather than describing it, for two reasons: it is the evidence for RQ5, and a reader cannot
+This section reports the study as it stood before the integrity check existed. We present it in
+full rather than describing it, for two reasons. It is the evidence for RQ5. And a reader cannot
 judge how convincing an invalid result set can be from a summary of one.
 
 \subsection{The result}
 \label{sec:withdrawnresult}
 
-On Testbed~A, replaying distinct real matches at $10\times$ across $N \in \{1,5,10\}$ with
-15--30 runs per cell and both producers pipelined, broker transport separated the two backends
-cleanly (Table~\ref{tab:withdrawn}). \redis{} rose monotonically, $1.006 \rightarrow 1.197
-\rightarrow 1.346$~ms, a $34\%$ increase across the range. \kafka{} was flat to within $0.3\%$.
-Every per-$N$ comparison was significant after Holm correction, the largest at
-$p=9.0\times10^{-11}$, and at $N \geq 5$ the two backends' run distributions did not overlap at
-all.
+On Testbed~A, replaying distinct real matches at ten times real speed across one, five and ten
+concurrent feeds with 15 to 30 runs per cell and both producers pipelined, broker transport
+separated the two systems cleanly (Table~\ref{tab:withdrawn}). \redis{} rose steadily from
+$1.006$ to $1.346$~ms, an increase of $34\%$ across the range. \kafka{} was flat to within
+$0.3\%$. Every comparison was significant after Holm correction, the strongest at
+$p = 9.0\times10^{-11}$, and at five feeds and above the two systems' run distributions did not
+overlap at all.
 
-The finding was not merely significant, it was \emph{explicable}. A \redis{} node executes
-commands on a single thread, so concurrent streams contend for one execution context, whereas
-\kafka{}'s partitioning admits real parallelism. The measurement reproduced the textbook
-architectural distinction between the two products, at the scale one would predict, with the
+The finding was not merely significant, it was explicable, for the architectural reason set out in
+Section~\ref{sec:lit_systems}. The measurement appeared to reproduce the textbook distinction
+between a single-threaded server and a partitioned log, at the scale one would predict and in the
 direction one would predict.
 
 \begin{table*}[htbp]
 \centering
-\caption{\textbf{The first result set, subsequently condemned.} Broker transport (p50, ms) by
-concurrency on Testbed~A at $10\times$ replay. Every cell here fails the clock-integrity gate of
-Section~\ref{sec:gate}; the table is retained because the paper's argument is about how
-convincing it looks, not about its content. Section~\ref{sec:e1} supersedes it.}
+\caption{\textbf{The first result set, later rejected.} Broker transport (median, ms) by
+concurrency on Testbed~A at $10\times$ replay. Every cell fails the clock-integrity check of
+Section~\ref{sec:gate}. The table is retained because this paper's argument concerns how
+convincing it looks, not its content. Section~\ref{sec:e1} supersedes it.}
 \label{tab:withdrawn}
 \begin{tabular}{rrrrrl}
 \toprule
-$N$ & \kafka{} & \redis{} & Diff & Mann--Whitney $p_{\text{Holm}}$ & Gate \\
+$N$ & \kafka{} & \redis{} & Difference & Mann--Whitney $p_{\text{Holm}}$ & Integrity \\
 \midrule
-1  & 0.999 & 1.006 & $0.007$ & $1.0\times10^{-4}$  & condemned \\
-5  & 1.001 & 1.197 & $0.196$ & $6.5\times10^{-6}$  & condemned \\
-10 & 1.002 & 1.346 & $0.344$ & $9.0\times10^{-11}$ & condemned \\
+1  & 0.999 & 1.006 & $0.007$ & $1.0\times10^{-4}$  & rejected \\
+5  & 1.001 & 1.197 & $0.196$ & $6.5\times10^{-6}$  & rejected \\
+10 & 1.002 & 1.346 & $0.344$ & $9.0\times10^{-11}$ & rejected \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
-\subsection{The checks it passed}
+\subsection{The checks it had already passed}
 \label{sec:defects}
 
 The corpus behind Table~\ref{tab:withdrawn} was not naive. It was the product of five earlier
-corrections, each of which had reversed the apparent winner, and each of which we had found by
-the ordinary means of inspecting implausible results:
+corrections, each of which had reversed the apparent winner, and each of which we found by the
+ordinary means of investigating a result that looked wrong.
 
 \begin{enumerate}
 \item \emph{A process-relative clock.} Stamping cross-process events with Python's
-\texttt{perf\_counter\_ns} injected each run's consumer launch offset ($\sim$2~s) into every
-measurement. Fixed with \texttt{time.time\_ns}, a shared wall-clock epoch; transport then fell
-to $\sim$1~ms.
-\item \emph{A saturating replay speed.} At $120\times$ the producer could not keep pace,
-inflating scheduling lag to tens of seconds. Reduced to a nominally non-saturating $10\times$.
-\item \emph{An asymmetric load generator.} The \kafka{} producer ran synchronously
-(\texttt{acks=all}, one in-flight request), blocking on a broker round trip per event, while the
-\redis{} producer dispatched asynchronously through a worker pool. At $N{=}1$ median \tti{} fell
-from $1{,}644$~ms to $16$~ms once the \kafka{} producer was pipelined
-(\texttt{max.in.flight}=64). Both producers are now pipelined comparably.
+\texttt{perf\_counter\_ns}, which measures from an arbitrary origin per process, injected each
+run's consumer start-up offset (about two seconds) into every measurement. Fixed by using
+\texttt{time.time\_ns}, a shared wall-clock epoch; transport then fell to about one millisecond.
+\item \emph{A saturating replay speed.} At 120 times real speed the producer could not keep pace,
+inflating scheduling lag to tens of seconds. Reduced to a nominally non-saturating ten times.
+\item \emph{An asymmetric load generator.} The \kafka{} producer ran synchronously, blocking on a
+broker round trip for every event, while the \redis{} producer dispatched asynchronously through
+a worker pool. At one feed, median \tti{} fell from $1{,}644$~ms to $16$~ms once the \kafka{}
+producer was pipelined. Both producers are now configured comparably.
 \item \emph{A concurrency axis that was covertly a throughput axis.} Giving every feed the same
-merged ten-match plan raised aggregate event rate roughly tenfold per concurrency step. Corrected
+merged ten-match plan raised the aggregate event rate roughly tenfold per concurrency step. Fixed
 by giving each feed a distinct match at its true rate.
-\item \emph{A heavy-tailed load generator contaminating every mean.} \kafka{}'s end-to-end p95
-sat at $99$--$105$~ms at \emph{every} concurrency level while its median moved from $1.8$ to
-$7.2$~ms. A p95 that ignores load is not system behaviour; decomposition located it in the
-producer's scheduling lag, not in transport. Remedied by switching to the Hodges--Lehmann
-estimator (Section~\ref{sec:stat_methods}) rather than by excluding a warm-up prefix, which we
-tested and rejected because only about a third of the slow events fall in the first $5\%$ of a
-run.
+\item \emph{A heavy tail contaminating every mean.} \kafka{}'s end-to-end 95th percentile sat at
+$99$--$105$~ms at \emph{every} concurrency level while its median moved only from $1.8$ to
+$7.2$~ms. A 95th percentile that ignores load is not system behaviour. Decomposition located it in
+the producer's scheduling lag rather than in transport. We addressed it by moving to the
+Hodges--Lehmann estimator rather than by excluding a warm-up period, which we tested and rejected
+because only about a third of the slow events fall in the first $5\%$ of a run.
 \end{enumerate}
 
-We also verified that the comparison was not biased by payload or protocol: message payloads are
-near-identical across backends (median $\sim$170~bytes) and (de)serialisation overheads are
-negligible and comparable ($\sim$2.3/2.1~$\mu$s for \kafka{}, $\sim$2.4/2.2~$\mu$s for
-\redis{}).
+We also verified that the comparison was not biased by message size or protocol: payloads are
+near-identical across systems (median about 170 bytes) and serialisation costs are negligible and
+comparable (about 2.3 and 2.1 microseconds for \kafka{}, 2.4 and 2.2 for \redis{}).
 
-A sixth defect belongs here because it shaped our subsequent protocol. Our first run of the
-acknowledgement-batching intervention of Section~\ref{sec:netdelay} reported no improvement
-whatsoever --- a clean, publishable-looking refutation of our own hypothesis. The treatment had
-never reached the consumer: the orchestration script accepted the flag but, owing to a silently
-failed edit, never appended it to the command line. We detected this only by deliberately
-passing a syntactically invalid argument and observing that the consumer did not reject it. A
-null produced by an unapplied treatment is indistinguishable, in the data, from a genuine
-refutation, so every intervention reported here now carries a manipulation check that aborts the
-campaign if the treatment is not accepted, and the consumer logs its effective configuration per
-run.
+A sixth problem belongs here because it shaped our later protocol. Our first run of the
+acknowledgement-batching experiment of Section~\ref{sec:netdelay} reported no improvement at all
+--- a clean, publishable-looking refutation of our own hypothesis. In fact the treatment had never
+reached the consumer: the orchestration script accepted the option but, because of a failed edit,
+never passed it on. We detected this only by deliberately supplying an invalid option and
+observing that the consumer did not reject it. A null result produced by a treatment that was
+never applied is indistinguishable, in the data, from a genuine one. Every experiment reported
+here now carries a manipulation check that stops the campaign if the treatment is not accepted,
+and the consumer logs its effective configuration for each run.
 
-The point of this enumeration is not the corrections. It is that a corpus which had survived six
-of them, a fairness audit, and a full battery of rank tests, effect sizes and Holm correction,
-was still wholly invalid --- and nothing in its output said so.
+The point of this list is not the corrections themselves. It is that a corpus which had survived
+six of them, a fairness audit, and a full battery of rank tests, effect sizes and multiplicity
+correction, was still entirely invalid --- and nothing in its output said so.
 
 
-\section{The Audit}
+\section{The Integrity Audit}
 \label{sec:audit}
 
-\subsection{What the gate condemns}
+\subsection{What the check rejects}
+\label{sec:auditresults}
 
-Applying the rule of Section~\ref{sec:gate} uniformly to all $2{,}266$ runs in the study gives
-Table~\ref{tab:audit}. On Testbed~A, $862$ of $1{,}382$ runs ($62.4\%$) are condemned and only
-$8$ of $76$ conditions survive intact. On Testbed~B, $459$ of $884$ runs ($51.9\%$) are
-condemned and $13$ of $40$ conditions survive. Not one condition behind
-Table~\ref{tab:withdrawn} survives.
+Applying the rule of Section~\ref{sec:gate} to all $2{,}266$ runs gives Table~\ref{tab:audit}. On
+Testbed~A, $862$ of $1{,}382$ runs are rejected and only $8$ of $76$ conditions survive intact. On
+Testbed~B, $459$ of $884$ runs are rejected and $13$ of $40$ conditions survive. No condition
+behind Table~\ref{tab:withdrawn} survives.
 
 \begin{table*}[htbp]
 \centering
-\caption{Clock-integrity audit of every run in the study. A run is condemned if more than $1\%$
-of its events carry a negative broker transport --- a physical impossibility --- or if any
-component median is negative. A condition is usable only if all of its runs survive.}
+\caption{Clock-integrity audit of every run in the study. A run is rejected if more than $1\%$ of
+its events carry a negative value in any latency component, or if any component median is
+negative. A condition is usable only if all of its runs survive.}
 \label{tab:audit}
 \begin{tabular}{lrrrrr}
 \toprule
-Corpus & Runs & Condemned & \% & Conditions & Usable \\
+Corpus & Runs & Rejected & \% & Conditions & Usable \\
 \midrule
-Testbed~A (single host, Windows) & 1{,}382 & 862 & 62.4\% & 76 & 8 \\
-Testbed~B (multi-host, cloud)    &   884 & 459 & 51.9\% & 40 & 13 \\
+Testbed~A (single machine) & 1{,}382 & 862 & 62.4\% & 76 & 8 \\
+Testbed~B (four machines)  &   884 & 459 & 51.9\% & 40 & 13 \\
 \midrule
-Total                            & 2{,}266 & 1{,}321 & 58.3\% & 116 & 21 \\
+Total                      & 2{,}266 & 1{,}321 & 58.3\% & 116 & 21 \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
 \subsection{Why it fails, and why it looked fine}
 
-The cause is legible in \emph{which} conditions fail. Every condemned condition in the
-concurrency corpus is a $10\times$-accelerated replay; every condition replayed at true
-real-time rate passes. The acknowledgement timestamp is recorded by the producer's ack callback
-(\kafka{}) or a dispatch worker (\redis{}). When accelerated replay starves the driver's CPU,
-those threads are descheduled and the acknowledgement is stamped \emph{after} the consumer has
-already logged receipt. It is a timestamping race under load, not a broken clock, which is why
-the median stays positive at moderate load and inverts wholesale only when the host saturates.
-At $N{=}100$ in the connection sweep the failure becomes gross enough to see without the gate:
-\kafka{}'s median transport is reported as $-6.4$~ms.
+The cause is visible in \emph{which} conditions fail. Every rejected condition in the concurrency
+corpus was replayed at ten times real speed; every condition replayed at true real time passes.
+
+The mechanism follows from Section~\ref{sec:lit_clocks}. The acknowledgement time is recorded by
+the producer's callback thread. When accelerated replay saturates the driver machine's CPU, that
+thread is descheduled, and by the time it runs and reads the clock the consumer has already
+recorded receiving the message. The result is a negative transport value. It is a timestamping
+race under load, not a broken or unsynchronised clock, which is why medians stay positive at
+moderate load and invert wholesale only when the machine saturates. At one hundred connections in
+our connection sweep the failure becomes gross enough to see without any check at all: \kafka{}'s
+median transport is reported as $-6.4$~ms.
 
 The reason the corpus looked healthy is arithmetic. In the conditions behind
 Table~\ref{tab:withdrawn}, between $5$ and $14\%$ of individual events invert. That is enough to
 displace a median by a few tenths of a millisecond --- in a measurement whose entire effect is
 $0.34$~ms --- and far too little to make any aggregate look wrong. Every median stays positive.
-Every confidence interval stays tight. The bias is also \emph{asymmetric} between backends,
-because the two clients stamp the acknowledgement differently (an asynchronously dispatched
-callback versus an inline command return), so it manufactures a between-backend difference where
-none exists. The result was a large, significant, theory-confirming effect assembled almost
-entirely out of instrument failure.
+Every confidence interval stays narrow. The bias is also \emph{asymmetric} between the two
+systems, because their clients record the acknowledgement differently: \kafka{} from an
+asynchronous callback, \redis{} on return from a blocking command. An asymmetric bias between two
+arms of a comparison manufactures a difference where none exists. The result was a large,
+significant, theory-confirming effect assembled almost entirely out of instrument failure.
+
+\subsection{How much the threshold matters}
+\label{sec:threshold}
+
+We had initially expected the distribution of inversion rates to be clearly bimodal, with sound
+runs at zero and broken runs at obviously high rates, which would have made the $1\%$ threshold
+an uncontroversial choice. It is not (Figure~\ref{fig:audit}a). Only $104$ of $1{,}382$ runs are
+completely clean, and the remainder spread over three orders of magnitude with no natural gap.
+The threshold is therefore a real decision, and we report its consequences
+(Table~\ref{tab:threshold}, Figure~\ref{fig:audit}b).
+
+Two things follow, and they point in different directions. The threshold strongly affects
+\emph{how many runs} are rejected: from $92.5\%$ at zero tolerance to $19.2\%$ at a very
+permissive $20\%$. But it does not affect \emph{which conditions are usable}, and therefore does
+not affect any conclusion in this paper. A condition is usable only if all of its runs survive,
+and even at a $5\%$ threshold the accelerated concurrency arms retain only $32$ to $77\%$ of their
+runs, so no such condition qualifies at any threshold we considered. The withdrawal of
+Table~\ref{tab:withdrawn} therefore holds across the entire range.
+
+We prefer to report this than to claim a robustness the data does not show. A reader who thinks
+$1\%$ too strict or too lenient can read the consequence directly from
+Table~\ref{tab:threshold}.
+
+\begin{table}[htbp]
+\centering
+\caption{Sensitivity of the audit to the rejection threshold, on the 1{,}382 runs of Testbed~A.
+The threshold changes how many runs are rejected but not which conditions are usable, because a
+condition requires all of its runs to survive.}
+\label{tab:threshold}
+\begin{tabular}{rrr}
+\toprule
+Threshold & Runs rejected & \% of runs \\
+\midrule
+0\% (zero tolerance) & 1{,}278 & 92.5 \\
+0.1\%  & 1{,}086 & 78.6 \\
+0.2\%  & 1{,}037 & 75.0 \\
+0.5\%  &   937 & 67.8 \\
+\textbf{1\% (used here)} & \textbf{862} & \textbf{62.4} \\
+2\%    &   763 & 55.2 \\
+5\%    &   594 & 43.0 \\
+10\%   &   445 & 32.2 \\
+20\%   &   265 & 19.2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure*}[htbp]
+\centering
+\includegraphics[width=\textwidth]{docs/results/figures/integrity_audit.pdf}
+\caption{The integrity audit on Testbed~A's 1{,}382 runs. (a)~Distribution of the worst
+component's inversion rate per run. Only 104 runs are completely clean and the rest spread over
+three orders of magnitude, so there is no natural threshold. (b)~Share of runs rejected as a
+function of the threshold. The choice matters for the run count and not for any conclusion, since
+a usable condition requires every one of its runs to survive.}
+\label{fig:audit}
+\end{figure*}
 
 \subsection{The property that makes this general}
 \label{sec:gateproperty}
 
-One feature of Table~\ref{tab:audit} deserves emphasis because it transfers beyond this study.
-The gate is a test against zero, so it condemns a measurement in proportion to how close that
-measurement sits to zero. Our network-delay arm, where \redis{} transport is tens of
-\emph{seconds}, passes the gate almost perfectly ($15/15$ runs at every injected delay) on
-exactly the same hardware, in the same campaign, minutes apart from conditions that fail
-outright. A few milliseconds of timestamping race is invisible against a 31-second effect and
-fatal against a 0.34-millisecond one.
+One feature of the audit deserves emphasis because it transfers beyond this study. The check is a
+test against zero, so it rejects a measurement in proportion to how close that measurement sits to
+zero. Our network-delay arm, where \redis{} transport is tens of \emph{seconds}, passes the check
+almost perfectly --- 15 runs out of 15 at every injected delay --- on the same hardware, in the
+same campaign, minutes apart from conditions that fail outright. A few milliseconds of
+timestamping race is invisible against a 31-second effect and fatal against a
+0.34-millisecond one.
 
-The gate therefore binds hardest precisely where the scientific question is most delicate. This
-inverts the intuition that large, clean, highly significant effects are the trustworthy ones: in
-cross-process latency measurement, an effect of the same order as the instrument's own noise
-floor is the one most likely to be manufactured by it, and significance offers no protection
-because the artefact is systematic rather than random. We recommend that streaming benchmarks
-report an integrity audit alongside their results as a matter of course, and we note that we are
-not aware of one that currently does.
+The check therefore bites hardest exactly where the scientific question is most delicate. This
+inverts a common intuition: that a large, clean, highly significant effect is the trustworthy
+kind. In cross-process delay measurement, an effect of the same order as the instrument's own
+noise floor is the one most likely to have been manufactured by it, and statistical significance
+offers no protection, because the artefact is systematic rather than random.
+
+We recommend that streaming benchmarks report an integrity audit alongside their results as a
+matter of course, in the way a survey reports its response rate.
 
 \subsection{What we therefore withdraw}
 \label{sec:withdrawn}
 
 We withdraw the entire Testbed~A arm: the concurrency comparison, the throughput sweep, the
-synthetic-\texttt{netem} network arm, the acknowledgement-batching intervention conducted there,
-and the decision-staleness aggregates computed from them. On Testbed~B we withdraw the
-$10\times$ concurrency sweep, the connection sweep above $N{=}10$, and the three-node cluster
-arm, which fails at $0/15$ runs in both backends and therefore supports no claim at all.
+synthetic network-delay arm, the acknowledgement experiment conducted there, and the
+decision-staleness aggregates computed from them. On Testbed~B we withdraw the accelerated
+concurrency sweep, the connection sweep above ten connections, and the three-node cluster arm,
+which fails on every run in both systems and therefore supports nothing.
 
-We report the withdrawal at this length rather than quietly rebuilding the paper around the
-surviving data, because the withdrawn result is the paper's most transferable finding. It was
-more publishable than the result that replaced it.
+We report this at length rather than quietly rebuilding the paper around the surviving data,
+because the withdrawn result is this study's most transferable finding. It was more publishable
+than the result that replaced it.
 
 
 \section{Results}
 \label{sec:results}
 
-Everything in this section is measured on Testbed~B and passes the gate of
+Everything in this section is measured on Testbed~B and passes the check of
 Section~\ref{sec:gate}. Each table states its retention.
 
-\subsection{End-to-end lag at real football concurrency (RQ1, RQ2)}
+\subsection{End-to-end delay at real football concurrency (RQ1, RQ2)}
 \label{sec:e1}
 
-Concurrency levels are those derived in Section~\ref{sec:realconcurrency},
-$N \in \{1,9,10,12\}$, each feed carrying a distinct real match at true real-time rate. Of 201
-runs measured, 164 survive gating. \kafka{} passes in full at every level ($8/8$, $27/27$,
-$30/30$, $35/35$); \redis{} passes in full at $N{=}1$ and is screened per run above it ($20/27$,
-$17/30$, $19/36$), which we flag as partial selection and account for in the interpretation
-below.
+Concurrency levels are those derived in Section~\ref{sec:realconcurrency}, $N \in \{1,9,10,12\}$,
+each feed carrying a distinct real match at true real time. Of 201 runs measured, 164 survive the
+integrity check. \kafka{} passes in full at every level (8, 27, 30 and 35 runs); \redis{} passes
+in full at one feed and is screened run by run above it (20 of 27, 17 of 30, 19 of 36), which we
+flag as partial selection and account for below.
 
-\paragraph{The headline: \redis{} delivers a twentyfold lower end-to-end lag.} Median \tti{} is
-$105.5$~ms for \kafka{} and $5.2$~ms for \redis{}, pooled across levels, and the separation is
-flat and complete at every concurrency level tested (Table~\ref{tab:e1},
-Figure~\ref{fig:e1}a). Not a single \kafka{} run falls below $104$~ms; not a single \redis{} run
-exceeds $11$~ms. Both clear every practitioner budget in
+\paragraph{\redis{} delivers a twentyfold lower end-to-end delay.} Median \tti{} is $105.5$~ms for
+\kafka{} and $5.2$~ms for \redis{}, pooled across levels, and the separation is complete at every
+concurrency level tested (Table~\ref{tab:e1}, Figure~\ref{fig:e1}a). No \kafka{} run falls below
+$104$~ms and no \redis{} run exceeds $11$~ms. Both systems clear every budget in
 Table~\ref{tab:latency_requirements}, but with very different headroom: \kafka{} meets the
-tightest of them --- in-play betting at $200$~ms --- by a factor of two, while \redis{} meets it
-by a factor of forty.
+tightest of them, in-play betting at $200$~ms, by a factor of two, while \redis{} meets it by a
+factor of forty.
 
-\paragraph{Neither broker degrades with concurrency.} Broker transport is flat across the entire
-realistic range (Table~\ref{tab:e1}): Kruskal--Wallis gives $p=0.061$ for \kafka{} and $p=0.091$
-for \redis{}, neither significant, and the ratio of largest to smallest median is $1.06$ and
-$1.17$ respectively. \textbf{H\textsubscript{02}}, that \tti{} is independent of $N$, is not
-rejected for either backend on either metric. This directly contradicts
-Table~\ref{tab:withdrawn}, and the contradiction is the audit's doing rather than a difference of
-interpretation.
+\paragraph{Neither system slows down as matches are added.} Broker transport is flat across the
+entire realistic range. Kruskal--Wallis gives $p = 0.061$ for \kafka{} and $p = 0.091$ for
+\redis{}, neither significant, and the ratio of largest to smallest median is $1.06$ and $1.17$
+respectively. This directly contradicts Table~\ref{tab:withdrawn}, and the contradiction is the
+audit's doing rather than a difference of interpretation.
 
-\paragraph{The two brokers are equivalent within one millisecond.} At $N \in \{9,10,12\}$ all
+\paragraph{The two brokers are equivalent to within one millisecond.} At $N \in \{9,10,12\}$ all
 three procedures agree that transport is equivalent within the $1$~ms margin, with
 Hodges--Lehmann shifts of $0.021$, $0.116$ and $0.053$~ms. At $N{=}1$ the procedures disagree:
-Hodges--Lehmann establishes equivalence ($0.081$~ms shift) while the mean-based and bootstrap
-procedures do not, because a single \kafka{} run carries a $6.3$~ms startup outlier that moves
-the mean to $1.49$~ms. With eight runs per backend we report the disagreement rather than
-resolve it. $N{=}1$ is also the only level at which the difference test is significant
-($p_{\text{Holm}}=0.019$, rank-biserial $-0.81$), which given $n=8$ and a $0.07$~ms median
+Hodges--Lehmann establishes equivalence with a shift of $0.081$~ms, while the mean-based and
+bootstrap procedures do not, because a single \kafka{} run carries a $6.3$~ms start-up outlier
+that pulls the mean to $1.49$~ms. With eight runs per system we report the disagreement rather
+than resolving it. $N{=}1$ is also the only level at which the difference test is significant
+($p_{\text{Holm}} = 0.019$, rank-biserial $-0.81$), which given eight runs and a $0.07$~ms median
 difference we read as a small-sample artefact rather than a finding.
 
 \begin{table*}[htbp]
 \centering
-\caption{End-to-end lag and its decomposition at the concurrency levels football produces,
-Testbed~B, true real-time replay, after clock-integrity gating (164 of 202 runs retained).
+\caption{End-to-end delay and its decomposition at the concurrency levels football produces.
+Testbed~B, true real-time replay, after the integrity check (164 of 201 runs retained).
 Equivalence is tested on transport against a $1$~ms margin proportionate to the measurement.}
 \label{tab:e1}
 \begin{tabular}{rrrrrrrl}
 \toprule
-& \multicolumn{2}{c}{\tti{} p50 (ms)} & \multicolumn{2}{c}{Sched.\ lag p50 (ms)}
-& \multicolumn{2}{c}{Transport p50 (ms)} & \\
+& \multicolumn{2}{c}{\tti{} median (ms)} & \multicolumn{2}{c}{Scheduling lag (ms)}
+& \multicolumn{2}{c}{Transport (ms)} & \\
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
 $N$ & \kafka{} & \redis{} & \kafka{} & \redis{} & \kafka{} & \redis{}
 & Transport equivalent within 1~ms \\
 \midrule
-1  & 105.3 & 5.0 & 103.0 & 1.4 & 0.792 & 0.721 & procedures disagree (8 runs/backend) \\
+1  & 105.3 & 5.0 & 103.0 & 1.4 & 0.792 & 0.721 & procedures disagree (8 runs/system) \\
 9  & 105.5 & 5.4 & 103.0 & 1.9 & 0.802 & 0.807 & yes (all three) \\
 10 & 105.3 & 5.8 & 102.8 & 2.0 & 1.000 & 0.855 & yes (all three) \\
 12 & 105.7 & 5.3 & 102.9 & 1.7 & 0.839 & 0.844 & yes (all three) \\
 \midrule
 \multicolumn{8}{l}{\footnotesize Pooled: \kafka{} \tti{} $105.5$~ms (100 runs), \redis{}
-$5.2$~ms (64 runs). Across $N$: \kafka{} $p=0.061$, \redis{} $p=0.091$; neither significant.} \\
+$5.2$~ms (64 runs). Across $N$: \kafka{} $p = 0.061$, \redis{} $p = 0.091$; neither
+significant.} \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -773,82 +1007,85 @@ $5.2$~ms (64 runs). Across $N$: \kafka{} $p=0.061$, \redis{} $p=0.091$; neither 
 \begin{figure*}[htbp]
 \centering
 \includegraphics[width=\textwidth]{docs/results/figures/e1_end_to_end_lag.pdf}
-\caption{End-to-end lag at real football concurrency, Testbed~B, gated. (a)~\redis{} delivers a
-median \tti{} around $5$~ms against \kafka{}'s $105$~ms, flat across every concurrency level
-football produces. (b)~The same runs decomposed: the twentyfold gap lies entirely in producer
-scheduling lag, while the two brokers' own transport is separated by well under a millisecond.
-Log scale on both panels.}
+\caption{End-to-end delay at real football concurrency, Testbed~B, after the integrity check.
+(a)~\redis{} delivers a median around $5$~ms against \kafka{}'s $105$~ms, flat across every
+concurrency level football produces. (b)~The same runs decomposed. The twentyfold difference lies
+entirely in producer scheduling lag; the two brokers' own transport is separated by well under a
+millisecond. Log scale on both panels.}
 \label{fig:e1}
 \end{figure*}
 
-\subsection{Where the gap actually is (RQ3)}
+\subsection{Where the difference actually comes from (RQ3)}
 \label{sec:attribution}
 
-\tti{} and transport give opposite answers, and the decomposition says why
-(Figure~\ref{fig:e1}b). Of \kafka{}'s $105.5$~ms, \textbf{$102.9$~ms is producer scheduling
-lag} --- the interval between an event's scheduled emission and the producer actually issuing
-the send --- against \redis{}'s $1.8$~ms. Broker transport is $0.84$~ms and $0.80$~ms
-respectively. The entire twentyfold difference is upstream of both brokers.
+\tti{} and transport give opposite answers, and the decomposition explains why
+(Figure~\ref{fig:e1}b). Of \kafka{}'s $105.5$~ms, \textbf{$102.9$~ms is producer scheduling lag},
+against \redis{}'s $1.8$~ms. Broker transport is $0.84$~ms and $0.80$~ms respectively. The entire
+twentyfold difference occurs before either broker is involved.
 
 Three properties of this offset are measured, and together they rule out the obvious
-explanations. It is \emph{constant}: p50 and p95 of \tti{} differ by under $0.05$~ms within a
-run, so every event pays it, not a tail. It is \emph{invariant to concurrency}: $103.0$, $103.0$,
-$102.8$, $102.9$~ms at $N = 1, 9, 10, 12$, so it is not contention. And, decisively, it is
-\emph{a function of arrival rate}: replaying the identical corpus, code and hosts at $10\times$
-reduces \kafka{}'s scheduling lag from $103$~ms to $0.19$--$1.01$~ms and its \tti{} to
-$1.8$--$7.2$~ms.
+explanations:
 
-The explanation most consistent with all three is that the \kafka{} client's sender thread must
-wake from idle to dispatch a record, and pays a fixed wakeup cost of order 100~ms when the
-producer queue has been empty --- which, at football's $0.415$ events per second, is before
-essentially every event. Under $10\times$ replay events arrive closely enough that the sender is
-never idle and the cost disappears. We flag that this attribution is inferred from the three
-measured properties rather than from direct instrumentation of the client's internals, and we
-state it as the leading hypothesis rather than an established mechanism; distinguishing it from a
+\begin{itemize}
+\item It is \emph{constant}. The 50th and 95th percentiles of \tti{} differ by under $0.05$~ms
+within a run, so every event pays it. It is not a tail effect.
+\item It is \emph{unaffected by concurrency}: $103.0$, $103.0$, $102.8$ and $102.9$~ms at one,
+nine, ten and twelve feeds. It is not contention.
+\item It \emph{depends on the arrival rate}. Replaying the identical data, code and machines at
+ten times real speed reduces \kafka{}'s scheduling lag from $103$~ms to between $0.19$ and
+$1.01$~ms, and its \tti{} to between $1.8$ and $7.2$~ms.
+\end{itemize}
+
+The explanation most consistent with all three is that the \kafka{} client's background sender
+thread must wake from idle to dispatch a record and pays a fixed cost of order 100~ms when the
+producer queue has been empty --- which, at football's $0.415$ events per second, is the case
+before essentially every event. Under accelerated replay events arrive closely enough that the
+sender is never idle, and the cost disappears. We flag that this explanation is inferred from the
+three measured properties rather than from instrumentation of the client's internals. We state it
+as the leading hypothesis rather than an established mechanism; separating it from a
 metadata-refresh or retry-backoff timer would require client-level tracing we did not perform.
 
-What does not depend on the mechanism is the consequence, and it is the paper's sharpest
-methodological result after the gate itself. \textbf{The difference between these two systems on
-a football feed exists only at football's arrival rate.} A benchmark that drives them with a
-dense synthetic publisher --- which is to say every benchmark in Section~\ref{sec:literature} ---
-measures the regime in which the difference is absent and reports parity. The sparse,
-bursty duty cycle characterised in Section~\ref{sec:burstiness} is not a detail of ecological
-validity; it is the condition under which the effect exists at all.
+What does not depend on the mechanism is the consequence, and it is this paper's sharpest
+methodological result after the integrity check itself. \textbf{The difference between these two
+systems on a football feed exists only at football's arrival rate.} A benchmark that drives them
+with a dense synthetic publisher --- which is to say every benchmark in
+Section~\ref{sec:lit_bench} --- measures the regime in which the difference is absent, and
+reports parity. The sparse, bursty, mostly-idle pattern described in Section~\ref{sec:burstiness}
+is not a nicety of ecological validity; it is the condition under which the effect exists at all.
 
 \subsection{The condition that reverses the ordering (RQ4)}
 \label{sec:netdelay}
 
-Every result so far places consumer and broker on separate hosts but on a fast private network.
-We therefore injected one-way egress delay at both brokers with \texttt{tc netem} (5, 20 and
-50~ms, applied identically to both) and repeated the $N{=}5$ condition. The \redis{} arm passes
-the gate in full at every delay ($15/15$), for the reason given in
+Every result so far places consumer and broker on separate machines but on a fast private
+network. We therefore injected one-way delay at both brokers using \texttt{tc netem}, at 5, 20 and
+50~ms applied identically to each, and repeated the five-feed condition. The \redis{} arm passes
+the integrity check in full at every delay, for the reason given in
 Section~\ref{sec:gateproperty}: the effect is four orders of magnitude larger than the
-instrument's noise floor. The \kafka{} arm passes at $15/15$, $14/15$ and $12/15$.
+instrument's noise floor.
 
-The ordering reverses completely (Table~\ref{tab:netem}). \kafka{} tracks the injected delay
-almost additively, its transport rising $5.6 \rightarrow 20.8 \rightarrow 44.9$~ms against
-injected $5 \rightarrow 20 \rightarrow 50$~ms. \redis{} collapses: $4.6$~seconds at 5~ms of
-delay, $31.3$~seconds at 20~ms, $102.5$~seconds at 50~ms --- roughly $900\times$, $1{,}560\times$
-and $2{,}050\times$ the delay actually injected. No run was truncated, so this is amplification,
-not loss. Against Table~\ref{tab:latency_requirements}, \kafka{} at 20~ms of delay still meets
-every budget in the table; \redis{} misses all of them by four orders of magnitude.
+The ordering reverses completely (Table~\ref{tab:netem}, Figure~\ref{fig:netem}). \kafka{} tracks
+the injected delay almost additively, its transport rising from $5.6$ to $20.8$ to $44.9$~ms
+against injected delays of 5, 20 and 50~ms. \redis{} collapses: $4.6$~seconds at 5~ms of delay,
+$31.3$~seconds at 20~ms and $102.5$~seconds at 50~ms, roughly $900$, $1{,}560$ and $2{,}050$ times
+the delay actually injected. No run was truncated, so this is amplification rather than loss.
+Against Table~\ref{tab:latency_requirements}, \kafka{} at 20~ms of delay still meets every budget
+listed; \redis{} misses all of them by four orders of magnitude.
 
 \begin{table*}[htbp]
 \centering
-\caption{Injected one-way broker egress delay, applied identically to both systems, $N{=}5$,
-Testbed~B. \kafka{} tracks the delay; \redis{} amplifies it by three orders of magnitude. Gate
-retention is given per cell; the \redis{} arm passes in full because the effect is far larger
-than the instrument's floor (Section~\ref{sec:gateproperty}). The 0~ms row is condemned in both
-backends and is shown only to mark the absence of a usable baseline in this arm.}
+\caption{Injected one-way broker delay, applied identically to both systems, five feeds,
+Testbed~B. \kafka{} tracks the delay; \redis{} amplifies it by three orders of magnitude.
+Integrity retention is given per cell. The zero-delay row is rejected in both systems and is
+shown only to mark the absence of a usable baseline in this arm.}
 \label{tab:netem}
 \begin{tabular}{rrrrrrr}
 \toprule
 Injected & \multicolumn{2}{c}{\kafka{}} & \multicolumn{2}{c}{\redis{}}
-& \multicolumn{2}{c}{Gate (runs retained)} \\
+& \multicolumn{2}{c}{Retained} \\
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
-delay & \tti{} p50 & Transport p50 & \tti{} p50 & Transport p50 & \kafka{} & \redis{} \\
+delay & \tti{} & Transport & \tti{} & Transport & \kafka{} & \redis{} \\
 \midrule
-0~ms  & \multicolumn{2}{c}{\emph{condemned}} & \multicolumn{2}{c}{\emph{condemned}} & 0/15 & 0/15 \\
+0~ms  & \multicolumn{2}{c}{\emph{rejected}} & \multicolumn{2}{c}{\emph{rejected}} & 0/15 & 0/15 \\
 5~ms  & 12.4~ms  & 5.6~ms  & 4{,}651~ms   & 4{,}645~ms   & 14/15 & 15/15 \\
 20~ms & 77.8~ms  & 20.8~ms & 31{,}401~ms  & 31{,}268~ms  & 12/15 & 15/15 \\
 50~ms & 336.6~ms & 44.9~ms & 103{,}143~ms & 102{,}460~ms & 15/15 & 15/15 \\
@@ -856,28 +1093,40 @@ delay & \tti{} p50 & Transport p50 & \tti{} p50 & Transport p50 & \kafka{} & \re
 \end{tabular}
 \end{table*}
 
-\paragraph{The mechanism, and an intervention that tests it.} Magnitudes of this size cannot be
-a per-event cost: $102$~seconds cannot be assembled from $50$~ms applied once per event. The
-account we test is a \emph{round-trip-bound consumption pattern}. Our \redis{} consumer
-acknowledges each entry with \texttt{XACK} and waits for the reply before continuing --- the
-idiomatic pattern in client tutorials --- so a read returning two hundred entries is followed by
-two hundred sequential round trips. On a fast network this is free: an established-connection
-\texttt{PING} costs $0.22$~ms, a ceiling of $\approx$4{,}200 exchanges per second against a
-demand of well under one. At $20$~ms it has no headroom at all. \kafka{}'s consumer serves
-\texttt{poll()} from a locally prefetched buffer and commits offsets on a timer, so no per-record
-round trip exists to be exposed.
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{docs/results/figures/network_delay.pdf}
+\caption{The condition that reverses the ordering. \kafka{} tracks the injected delay; \redis{}
+with per-message acknowledgement amplifies it by three orders of magnitude. The star marks the
+same \redis{} consumer with acknowledgements batched two hundred at a time, at one feed and true
+real time: the collapse disappears. Log vertical scale.}
+\label{fig:netem}
+\end{figure}
 
-This is testable by intervention rather than observation, and we pre-specified the criterion:
-if amortising the acknowledgements does not help, the account is wrong. At $N{=}1$ under true
+\paragraph{The explanation, and an experiment that tests it.} Numbers of this size cannot be a
+per-event cost: $102$ seconds cannot be assembled from $50$~ms applied once per event. The account
+we test is a \emph{round-trip-bound consumption pattern}. Our \redis{} consumer acknowledges each
+entry with \texttt{XACK} and waits for the reply before continuing --- the idiomatic pattern in
+client tutorials --- so a read returning two hundred entries is followed by two hundred sequential
+round trips. On a fast network this is free: a round trip on an established connection costs
+$0.22$~ms, a ceiling of about $4{,}200$ exchanges per second against a demand of well under one
+per second. At 20~ms it has no headroom at all. The queueing statement is elementary
+\cite{kleinrock1975queueing}: once the service rate falls below the arrival rate the queue grows
+without bound, and the delay is then set by the accumulated backlog rather than by the network.
+\kafka{}'s consumer serves \texttt{poll()} from a prefetched buffer and commits its position on a
+timer, so it has no per-record round trip to expose.
+
+This is testable by intervention rather than observation, and we stated the criterion in advance:
+if amortising the acknowledgements does not help, the account is wrong. At one feed under true
 real-time replay --- the realistic football condition --- batching acknowledgements in groups of
 two hundred takes median \tti{} from $4{,}138$~ms to $103$~ms, a factor of \textbf{40.2},
-replicated four times with a spread of $4$~ms in the unbatched arm and $0.4$~ms in the batched
-one (Table~\ref{tab:ack}).
+replicated four times with a spread of $4$~ms in the unbatched arm and $0.4$~ms in the batched one
+(Table~\ref{tab:ack}).
 
-Read-loop instrumentation confirms the mechanism directly and corrects its shape. We had
-supposed the consumer was capped near one message per round trip. It is not: under delay each
-\texttt{XREADGROUP} returns a \emph{full} batch, a median of $106$ messages, in about $32$~ms.
-The bound is entirely in the acknowledgement path. With per-message acknowledgement the consumer
+Instrumenting the consumer's read loop confirms the mechanism and corrects its shape. We had
+supposed the consumer was limited to about one message per round trip. It is not: under delay each
+\texttt{XREADGROUP} returns a \emph{full} batch, a median of 106 messages, in about $32$~ms. The
+constraint is entirely in the acknowledgement path. With per-message acknowledgement the consumer
 spends roughly $200 \times 20$~ms $= 4$~s acknowledging each batch, issuing no reads at all
 meanwhile: across a whole match it completes 13 reads, of which 4 return data, each finding a
 large accumulated backlog. With acknowledgements amortised the same consumer performs 37 reads
@@ -885,318 +1134,324 @@ returning a median of 16 messages each, and keeps pace.
 
 \begin{table*}[htbp]
 \centering
-\caption{The acknowledgement-batching intervention. At $N{=}1$ real-time --- the football
-condition --- batching recovers a factor of $40.2$ and read-loop instrumentation shows why. At
-$N{=}5$ under $10\times$ replay the same intervention, with a passing manipulation check and full
-gate retention, produces no improvement; we report this as unexplained. Read-loop columns are
-recorded per run and are available only for the $N{=}1$ arm.}
+\caption{The acknowledgement-batching experiment. At one feed and true real time --- the football
+condition --- batching recovers a factor of $40.2$, and read-loop instrumentation shows why. At
+five feeds under accelerated replay the same change, with a passing manipulation check and full
+integrity retention, produces no improvement; we report this as unexplained. Read-loop columns
+were recorded only for the one-feed arm.}
 \label{tab:ack}
 \begin{tabular}{llrrrrr}
 \toprule
-Condition & Arm & \tti{} p50 & Reads & Non-empty & Msgs/read & Improvement \\
+Condition & Arm & \tti{} median & Reads & Non-empty & Msgs/read & Improvement \\
 \midrule
-\multirow{2}{*}{$N{=}1$, real-time, 20~ms delay}
+\multirow{2}{*}{1 feed, real time, 20~ms delay}
  & per-message & 4{,}138~ms & 13 & 4  & 106 & \multirow{2}{*}{\textbf{40.2$\times$}} \\
  & batched (200) & \textbf{103~ms} & 37 & 25 & 16 & \\
 \midrule
-\multirow{2}{*}{$N{=}5$, $10\times$, 20~ms delay}
+\multirow{2}{*}{5 feeds, $10\times$, 20~ms delay}
  & per-message & 68{,}960~ms & --- & --- & --- & \multirow{2}{*}{none (0.94$\times$)} \\
  & batched (200) & 73{,}598~ms & --- & --- & --- & \\
 \midrule
-\multirow{2}{*}{$N{=}5$, $10\times$, 50~ms delay}
+\multirow{2}{*}{5 feeds, $10\times$, 50~ms delay}
  & per-message & 87{,}624~ms & --- & --- & --- & \multirow{2}{*}{none (0.95$\times$)} \\
  & batched (200) & 92{,}386~ms & --- & --- & --- & \\
 \midrule
-\multicolumn{7}{l}{\footnotesize $N{=}1$ replicates: unbatched $4137.9/4133.9/4138.2/4138.0$~ms;
+\multicolumn{7}{l}{\footnotesize One-feed replicates: unbatched $4137.9/4133.9/4138.2/4138.0$~ms;
 batched $103.0/103.3/103.0/103.1$~ms.} \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
-\paragraph{An open question we do not resolve.} At $N{=}5$ under $10\times$ replay the same
-intervention does nothing: $68{,}960 \rightarrow 73{,}598$~ms at 20~ms of delay and
-$87{,}624 \rightarrow 92{,}386$~ms at 50~ms, both marginally \emph{worse} batched
-(Table~\ref{tab:ack}). We report this prominently because the obvious explanations do not
-survive inspection. The treatment was applied: the campaign script runs a manipulation check
-that aborts if the flag is not accepted, and the consumer logs its effective acknowledgement
-batch size per run. The measurement is sound: the \redis{} arm passes the gate at $15/15$ in all
-four cells. The host is not saturated in general: \kafka{} in the very same runs sits at
-$78$~ms. An earlier version of this paper explained the null away as a gate failure; that
-explanation is false, and we withdraw it.
+\paragraph{An open question we do not resolve.} At five feeds under accelerated replay the same
+change does nothing: $68{,}960 \rightarrow 73{,}598$~ms at 20~ms of delay and
+$87{,}624 \rightarrow 92{,}386$~ms at 50~ms, both marginally \emph{worse} when batched. We report
+this prominently because the obvious explanations do not survive inspection. The treatment was
+applied: the campaign script runs a manipulation check that stops if the option is not accepted,
+and the consumer logs its effective batch size for every run. The measurement is sound: the
+\redis{} arm passes the integrity check on all 15 runs in each of the four cells. The machine is
+not saturated in general: \kafka{} in the very same runs sits at $78$~ms. An earlier version of
+this paper explained the null away as an integrity failure. That explanation is false and we
+withdraw it.
 
-The account we find most plausible is that at $5$ feeds $\times$ $10\times$ replay the consumer
-is far outside the stable regime in both arms, so the binding constraint has moved somewhere the
-acknowledgement path no longer dominates --- but we did not instrument the read loop in that arm
-and cannot demonstrate it. We therefore claim the round-trip-bound mechanism \emph{at realistic
+The account we find most plausible is that at five feeds and ten times real speed the consumer is
+far outside the stable regime in both arms, so the binding constraint has moved somewhere the
+acknowledgement path no longer dominates. But we did not instrument the read loop in that arm and
+cannot demonstrate it. We therefore claim the round-trip-bound mechanism \emph{at realistic
 football load}, where we have both the intervention and the read-loop evidence, and we state
 plainly that its behaviour at five times that load is unexplained. It is the most important open
 question this study leaves.
 
-\subsection{Connections and clustering (partial)}
+\subsection{Connections and clustering}
 \label{sec:conncluster}
 
-Holding per-feed rate at real time and varying only the number of concurrent connections,
-transport stays near $1$~ms for both backends at $N{=}10$ (\kafka{} $1.01$~ms, gate $10/10$;
-\redis{} $0.84$~ms, gate $7/10$), and end-to-end lag preserves the ordering of
-Section~\ref{sec:e1} ($105.4$ vs $5.3$~ms). Above $N{=}10$ the gate condemns both backends
-($21/25$, $24/48$, $18/97$ for \kafka{}; $8/25$, $16/50$, $28/100$ for \redis{}), and at $N{=}100$
-the failure is gross: \kafka{}'s median transport is reported as $-6.4$~ms. We therefore report
-no result above $N{=}10$ for this arm. This is a real limitation, because it is the arm that
-would speak to a multi-league feed platform (Section~\ref{sec:realconcurrency}), and it is the
-clearest instance in the study of the gate removing an answer we wanted rather than one we
-disliked.
+Holding the per-feed rate at real time and varying only the number of concurrent connections,
+transport stays near one millisecond for both systems at ten connections (\kafka{} $1.01$~ms,
+10 of 10 runs retained; \redis{} $0.84$~ms, 7 of 10), and end-to-end delay preserves the ordering
+of Section~\ref{sec:e1} ($105.4$ against $5.3$~ms). Above ten connections the check rejects both
+systems, and at one hundred the failure is gross: \kafka{}'s median transport is reported as
+$-6.4$~ms. We therefore report no result above ten connections for this arm.
 
-The three-node cluster arm fails at $0/15$ runs in both backends and supports no claim. We
-report its existence, and nothing from it.
+This is a real limitation, because it is the arm that would speak to a multi-league feed platform
+(Section~\ref{sec:realconcurrency}). It is also the clearest instance in this study of the check
+removing an answer we wanted rather than one we disliked.
+
+The three-node cluster arm fails on every run in both systems and supports no claim. We report its
+existence and nothing from it.
 
 \subsection{Durability}
 \label{sec:durability}
 
-Stronger durability costs latency in both systems, as expected under PACELC
-\cite{abadi2012pacelc}: \kafka{}'s \texttt{acks=all} raises median \tti{} relative to
-\texttt{acks=1}, and \redis{}'s \texttt{appendfsync always} raises it substantially relative to
-\texttt{everysec}, reflecting per-write disk synchronisation. The quantitative comparison was
-measured only on Testbed~A and is therefore withdrawn; we report the qualitative direction,
-which the surviving data does not contradict, and note that a durability-focused replication on
-Testbed~B is the most obvious extension of this work.
+Stronger durability costs delay in both systems, as PACELC predicts \cite{abadi2012pacelc}:
+\kafka{}'s \texttt{acks=all} raises median \tti{} relative to \texttt{acks=1}, and \redis{}'s
+\texttt{appendfsync always} raises it substantially relative to \texttt{everysec}, reflecting a
+disk synchronisation on every write. The quantitative comparison was measured only on Testbed~A
+and is therefore withdrawn. We report the direction, which the surviving data does not
+contradict, and note that a durability replication on Testbed~B is the most obvious extension of
+this work.
 
 \subsection{Putting the numbers on a decision scale}
 \label{sec:budget}
 
-A benchmark measures transport; a decision-maker experiences everything between the action on
-the pitch and the model's ability to act on it:
+A benchmark measures transport. A decision-maker experiences everything between the action on the
+pitch and the model's ability to act on it:
 \[
   \text{staleness} = \underbrace{\text{annotation}}_{\text{human coding}}
   + \underbrace{\text{delivery}}_{\text{measured here}}
   + \underbrace{\text{inference}}_{\text{model}} .
 \]
-Live football event data is hand-coded by trained operators watching the match, a process whose
-inter-operator reliability has been studied \cite{liu2013interoperator} but whose \emph{latency}
-has not been measured in the peer-reviewed literature; vendor descriptions report figures in the
-seconds. Because those are claims rather than measurements we decline a point estimate and sweep
-annotation from $1$ to $30$~s, and we set inference to zero, which flatters the delivery term
-rather than the reverse.
 
-At a vendor-typical $15$~s of annotation, \kafka{}'s measured $105.5$~ms of delivery is
+As set out in Section~\ref{sec:lit_football}, no peer-reviewed measurement of annotation delay
+exists, so we sweep it from 1 to 30 seconds rather than adopting a vendor point estimate, and we
+set inference to zero, which flatters the delivery term rather than the reverse.
+
+At a vendor-typical 15 seconds of annotation, \kafka{}'s measured $105.5$~ms of delivery is
 $0.70\%$ of end-to-end staleness and \redis{}'s $5.2$~ms is $0.03\%$; the choice between them is
 worth $100.2$~ms, or $\mathbf{0.66\%}$. Inverting the relation is more informative: for delivery
-to own even one percent of what a decision-maker experiences, annotation must complete within
-$10.4$~s, and for ten percent, within $0.95$~s. The first of those is inside the range vendors
+to own even one percent of what a decision-maker experiences, annotation would have to complete
+within $10.4$~s, and for ten percent, within $0.95$~s. The first is inside the range vendors
 already claim; the second is what automated event detection from tracking data would have to
 achieve.
 
-The comparison looks different again if one asks about the brokers rather than the pipeline.
-Broker transport of $0.84$~ms is $0.006\%$ of the same budget and the difference between the two
+The comparison looks different again if one asks about the brokers rather than the whole pipeline.
+Broker transport of $0.84$~ms is $0.006\%$ of the same budget, and the difference between the two
 brokers is $0.04$~ms, or $0.0003\%$ --- four orders of magnitude below visibility. This is the
-honest form of the ``infrastructure does not matter'' claim: \emph{broker} choice is
-structurally irrelevant for football, while \emph{client} configuration is worth two thirds of a
-percent, and a misconfigured consumer behind a network hop is worth more than the entire
-annotation budget.
+honest form of the claim that infrastructure does not matter for football: \emph{broker} choice is
+structurally irrelevant, \emph{client} configuration is worth two thirds of a percent, and a
+misconfigured consumer behind a network hop is worth more than the entire annotation budget.
 
-Expressed on a decision scale, a decisive event delivered with latency $L$ leaves the consumer's
-forecast wrong by the probability mass that event moved, for $L$ seconds
-\cite{kaul2012realtime}. The largest forecast move in our corpus is a 95th-minute equaliser that
-shifts the win/draw/loss distribution by $0.955$ in total variation. At \redis{}'s $5.2$~ms that
-event costs $0.005$ probability-seconds; at \kafka{}'s $105.5$~ms, $0.101$; at the $31.4$~s a
-round-trip-bound consumer suffers behind a 20~ms hop, $30$~probability-seconds. The first two
-are decision-irrelevant and the third is not. We note that this conversion changes units rather
-than adding inferential power --- both backends are scored against the identical model, so the
-ordering under it is the ordering under latency --- and we report it as interpretation, not as
-an independent result. The underlying win-probability proxy is calibrated (expected calibration
-error $0.054$ over 28{,}240 game states) but modest: its skill over a lookup table conditioned on
-nothing but the current goal difference is $+0.026$, so it should be read as a calibrated
-yardstick, not as a model of in-play win probability in any stronger sense.
+Expressed on a decision scale, an event delivered with delay $L$ leaves the consumer's forecast
+wrong by the probability mass that event moved, for $L$ seconds \cite{kaul2012realtime}. The
+largest forecast move in our corpus is a 95th-minute equaliser that shifts the win/draw/loss
+distribution by $0.955$ in total variation. At \redis{}'s $5.2$~ms that event costs $0.005$
+probability-seconds; at \kafka{}'s $105.5$~ms, $0.101$; and at the $31.4$~s a round-trip-bound
+consumer suffers behind a 20~ms hop, about $30$ probability-seconds. The first two are
+decision-irrelevant and the third is not.
+
+We note two limits on this conversion. It changes units rather than adding inferential power:
+both systems are scored against the identical model, so the ordering under it is the ordering
+under delay. And the win-probability model behind it is a calibrated stand-in for the unreleased
+state of the art \cite{robberechts2021bayesian} --- its expected calibration error is $0.054$
+over 28{,}240 game states, but its skill over a lookup table conditioned on nothing but the
+current goal difference is only $+0.026$. It should be read as a calibrated yardstick, not as a
+model of in-play win probability in any stronger sense.
 
 
 \section{Discussion}
 \label{sec:discussion}
 
-\subsection{Which system, under what conditions}
+\subsection{Which system, under which conditions}
 \label{sec:which}
 
-The question the project set out to answer has a conditional answer, and the conditions are
-knowable in advance (Table~\ref{tab:decision}).
+The question the project set out to answer has a conditional answer, and the conditions can be
+known in advance (Table~\ref{tab:decision}).
 
-\emph{For a co-located or same-network deployment at football's event rates --- the common case
---- \redis{} Streams is the better choice on latency}, by a factor of twenty on end-to-end lag.
-The caveat is that this is a client-path property rather than a broker property, so a \kafka{}
-deployment that tunes its producer out of the idle-wakeup regime should close most of the gap;
-we did not achieve that, and a reader who does would find the two systems equivalent, since the
-brokers themselves are equivalent within one millisecond.
+\emph{For a deployment on one network at football's event rates --- the common case --- \redis{}
+Streams is the better choice on delay}, by a factor of twenty end to end. The caveat is that this
+is a property of the client rather than the broker, so a \kafka{} deployment that tunes its
+producer out of the idle-wakeup regime should close most of the gap. We did not achieve that, and
+a reader who does would find the two systems equivalent, since the brokers themselves are
+equivalent to within one millisecond.
 
-\emph{For any deployment where a consumer sits a meaningful network hop from the broker,
-\kafka{} is the safer choice} --- not because its broker is faster, but because its client
-already amortises what \redis{}'s idiomatic consumer does per message. A \redis{} deployment can
-match it, and the fix is one line, but the failure mode if you do not apply it is catastrophic
-and silent on a local testbed.
+\emph{For any deployment where a consumer sits across a meaningful network, \kafka{} is the safer
+choice} --- not because its broker is faster, but because its client already amortises what
+\redis{}'s idiomatic consumer does per message. A \redis{} deployment can match it, and the fix is
+one line, but the failure if you do not apply it is severe and invisible on a local testbed.
 
-\emph{Neither is under strain from football.} Concurrency up to the twelve simultaneous matches
-the sport produces changes nothing for either system, and both meet every published latency
+\emph{Neither system is under strain from football.} Concurrency up to the twelve simultaneous
+matches the sport produces changes nothing for either, and both meet every published latency
 budget in every configuration we could measure soundly.
 
 \begin{table*}[htbp]
 \centering
-\caption{Which backend, under what condition, on the evidence of this study. ``Effort'' is the
-number of non-default client settings required to reach the stated latency.}
+\caption{Which system, under which condition, on the evidence of this study. ``Configuration
+effort'' is the number of non-default client settings needed to reach the stated delay.}
 \label{tab:decision}
 \begin{tabular}{llll}
 \toprule
-Condition & Better choice & Margin & Effort to configure \\
+Condition & Better choice & Margin & Configuration effort \\
 \midrule
-Single feed, same network      & \redis{} & $5$ vs $105$~ms \tti{} & \redis{}: none; \kafka{}: 1 setting, unresolved \\
-$N \le 12$ feeds, same network & \redis{} & unchanged across $N$   & as above \\
-Broker capability alone        & neither  & equivalent within 1~ms & --- \\
-Consumer across a network hop  & \kafka{} & $78$~ms vs $31$~s at 20~ms & \redis{}: 1 setting, $40\times$ \\
-Durability required            & untested on the surviving testbed & --- & both expose one setting \\
-$N > 12$, multi-league scale   & not established (arm condemned) & --- & --- \\
+Single feed, one network      & \redis{} & $5$ vs $105$~ms end to end & \redis{}: none;
+\kafka{}: 1 setting, unresolved \\
+Up to 12 feeds, one network   & \redis{} & unchanged across $N$   & as above \\
+Broker capability alone       & neither  & equivalent within 1~ms & --- \\
+Consumer across a network     & \kafka{} & $78$~ms vs $31$~s at 20~ms & \redis{}: 1 setting,
+$40\times$ \\
+Durability required           & \multicolumn{2}{l}{not tested on the surviving testbed} & both
+expose one setting \\
+More than 12 feeds            & \multicolumn{2}{l}{not established (arm rejected)} & --- \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
-\subsection{How hard each is to configure}
+\subsection{How hard each system is to configure}
 \label{sec:config}
 
 A latency comparison that ignores configuration effort misstates the engineering choice, so we
-report what it actually took. The finding is symmetric and, we think, the most practically
-useful result in the paper after the gate.
+report what it actually took. The finding is symmetric, and we think it is the most practically
+useful result in the paper after the integrity check.
 
-\textbf{Each system has exactly one client-side setting that moves latency by one to two orders
-of magnitude, and in each case the idiomatic introductory example uses the slow value.} For
-\kafka{} it is producer pipelining: with one in-flight request per connection --- which is what
-you get if you follow the synchronous send example --- median \tti{} at $N{=}1$ was $1{,}644$~ms;
-with \texttt{max.in.flight}=64 it was $16$~ms, a factor of $103$. For \redis{} it is
+\textbf{Each system has exactly one client setting that moves delay by one to two orders of
+magnitude, and in each case the introductory example in the documentation uses the slow value.}
+For \kafka{} it is producer pipelining: with one outstanding request per connection, which is what
+a synchronous send example gives you, median \tti{} at one feed was $1{,}644$~ms; with
+\texttt{max.in.flight} set to 64 it was $16$~ms, a factor of 103. For \redis{} it is
 acknowledgement batching: the per-message \texttt{XACK} that every tutorial shows costs
 $4{,}138$~ms behind a 20~ms hop, and batching two hundred at a time costs $103$~ms, a factor of
-$40.2$.
+40.2.
 
-Both defects share a property that makes them hard to catch: they are \emph{free on a local
-testbed}. Pipelining does not matter when the broker round trip is $0.2$~ms; acknowledgement
-batching does not matter when the round trip is $0.2$~ms either. A benchmark conducted on
-loopback prices both at zero and will certify as equivalent two clients that differ by two
-orders of magnitude in deployment. This is the practical corollary of
-Section~\ref{sec:gateproperty}: the conditions under which a testbed is convenient are the
-conditions under which it is least informative.
+Both share a property that makes them hard to catch: they are \emph{free on a local testbed}.
+Pipelining does not matter when the broker round trip is $0.2$~ms, and neither does
+acknowledgement batching. A benchmark conducted on loopback prices both at zero and will therefore
+certify as equivalent two clients that differ by two orders of magnitude in deployment. This is
+the practical corollary of Section~\ref{sec:gateproperty}: the conditions that make a testbed
+convenient are the conditions that make it least informative.
 
-Beyond these, the systems differ in the \emph{shape} of their configuration surface rather than
-its size. \kafka{}'s latency-relevant settings (\texttt{acks}, \texttt{linger.ms},
-\texttt{max.in.flight}, \texttt{batch.size}, consumer \texttt{poll} timeout) are numerous,
+Beyond these, the two systems differ in the \emph{shape} of their configuration surface rather
+than its size. \kafka{}'s delay-relevant settings (\texttt{acks}, \texttt{linger.ms},
+\texttt{max.in.flight}, \texttt{batch.size}, and the consumer poll timeout) are numerous,
 documented together, and mostly safe to leave alone once pipelining is enabled. \redis{}'s are
-fewer (\texttt{COUNT}, \texttt{BLOCK}, \texttt{appendfsync}, acknowledgement granularity) but the
-consequential one is not a setting at all --- it is a property of how the application's read
-loop is written, which no configuration audit will surface. We also note one operational
-asymmetry we hit directly: our own \redis{} cluster client hard-coded loopback addresses for
-cluster node discovery, which made a genuinely distributed cluster impossible to test until we
-fixed the client (\texttt{scripts/redis\_cluster\_nodes.py}). That is a defect in our code, but
-it is the kind of defect a co-located testbed never reveals.
+fewer (\texttt{COUNT}, \texttt{BLOCK}, \texttt{appendfsync}, and acknowledgement granularity) but
+the consequential one is not a setting at all. It is a property of how the application's read loop
+is written, which no configuration audit will surface.
+
+We also note one operational asymmetry we hit directly. Our own \redis{} cluster client had
+loopback addresses hard-coded for cluster node discovery, which made a genuinely distributed
+cluster impossible to test until we fixed the client. That is a defect in our code rather than in
+\redis{}, but it is exactly the kind of defect a co-located testbed never reveals.
 
 \subsection{Methodological implications}
 \label{sec:methodimplications}
 
 Three recommendations follow, in decreasing order of confidence.
 
-First, \textbf{report a physical-consistency audit}. Any latency computed as a difference of
-timestamps taken in different processes admits a sign check, and that check is free. We
-condemned $58\%$ of our own runs with it, and every condemned run had passed every conventional
+First, \textbf{report a physical-consistency audit}. Any delay computed as a difference of
+timestamps taken in different processes admits a sign check, and that check costs nothing. We
+rejected $58\%$ of our own runs with it, and every rejected run had passed every conventional
 check we knew to apply. We would encourage reviewers to ask for the audit, and authors to report
 the retention rate the way a survey reports its response rate.
 
 Second, \textbf{drive the benchmark at the domain's arrival rate, not a convenient one}. Our
-central attribution result exists only at football's $0.415$ events per second and vanishes at
-$4.15$. This is the opposite of the usual concern: the risk of an unrealistically \emph{slow}
-workload is normally thought to be that it fails to stress the system, but here the realistic
-rate exposed a difference the accelerated rate concealed. Sparse, bursty, idle-dominated
-workloads are their own regime.
+central explanatory result exists only at football's $0.415$ events per second and vanishes at ten
+times that. This is the opposite of the usual concern. An unrealistically \emph{slow} workload is
+normally thought to risk failing to stress the system; here the realistic rate exposed a
+difference that the accelerated rate concealed. Sparse, bursty, mostly-idle workloads are their
+own regime.
 
 Third, \textbf{measure at a realistic round-trip time, and treat interventions as interventions}.
 The two configuration defects of Section~\ref{sec:config} are both invisible on loopback, and the
-one intervention we ran without a manipulation check produced a clean false null. Both problems
-are cheap to prevent and expensive to discover.
+one experiment we ran without a manipulation check produced a clean false null. Both problems are
+cheap to prevent and expensive to discover.
 
 \subsection{Limitations}
 \label{sec:limitations}
 
-\emph{The surviving evidence is narrower than the design.} The gate removed the throughput
-sweep, the connection sweep above $N{=}10$, the cluster arm, the durability quantification and
-the whole of Testbed~A. Two consequences are substantive: we cannot characterise behaviour at
-multi-league concurrency, which is the regime a commercial feed platform occupies; and our
-durability comparison is qualitative.
+\emph{The surviving evidence is narrower than the design.} The integrity check removed the
+throughput sweep, the connection sweep above ten connections, the cluster arm, the durability
+quantification and the whole of Testbed~A. Two consequences are substantive. We cannot characterise
+behaviour at multi-league concurrency, which is the regime a commercial feed platform occupies.
+And our durability comparison is qualitative.
 
 \emph{The $103$~ms \kafka{} offset is attributed, not proven.} We measure that it is constant,
-concurrency-invariant and rate-dependent, which rules out contention and tail effects and is
-consistent with an idle-sender wakeup, but we did not instrument the client internals. If it is
-a property of the \texttt{kafka-python} client rather than of \kafka{}, then our end-to-end
-result is a statement about that client, and we have said so in
-Section~\ref{sec:attribution}. It reproduced across both testbeds, four concurrency levels and
-164 runs, so it is not an accident of one machine; it may still be an accident of one library.
+unaffected by concurrency and dependent on arrival rate, which rules out contention and tail
+effects and is consistent with an idle-sender wakeup, but we did not instrument the client
+internals. If it is a property of the Python \kafka{} client rather than of \kafka{} itself, then
+our end-to-end result is a statement about that client, and we say so in
+Section~\ref{sec:attribution}. It reproduced across both testbeds, four concurrency levels and 164
+runs, so it is not an accident of one machine; it may still be an accident of one library.
 
-\emph{The $N{=}5$ acknowledgement null is unexplained}, as set out in
+\emph{The five-feed acknowledgement null is unexplained}, as set out in
 Section~\ref{sec:netdelay}. We prefer to leave it visible rather than resolve it by assumption.
 
 \emph{The concurrency ceiling is a lower bound.} StatsBomb open data samples matches rather than
-enumerating league-seasons, and the structural bound is per league. Our $N \le 12$ result
-characterises a single-competition consumer.
+enumerating league-seasons, and the structural bound is per league. Our result to twelve feeds
+describes a consumer of a single competition.
 
-\emph{The decision-scale conversion is a lens, not a second measurement.} It changes units;
-it adds no inferential power, and the win-probability proxy behind it is calibrated but modest.
+\emph{The decision-scale conversion is a lens, not a second measurement.} It changes units, adds
+no inferential power, and the win-probability model behind it is calibrated but modest.
 
 \emph{Replay is not live capture.} Feeds replay recorded matches, and the upstream annotation
-pipeline is unmodelled --- deliberately, since it is the dominant term and no peer-reviewed
-measurement of it exists. Our figures bound the delivery contribution to staleness, not
-end-to-end feed freshness.
+pipeline is not modelled --- deliberately, since it is the dominant term and no peer-reviewed
+measurement of it exists. Our figures bound the delivery contribution to staleness, not end-to-end
+feed freshness.
 
 
 \section{Conclusion}
 \label{sec:conclusion}
 
-We set out to benchmark \redis{} Streams against Apache \kafka{} for real-time football feeds,
-on open data, at concurrency levels derived from the sport rather than chosen by hand. We
-obtained a complete answer, and it was physically impossible.
+We set out to benchmark \redis{} Streams against Apache \kafka{} for real-time football feeds, on
+open data, at concurrency levels derived from the sport rather than chosen by hand. We obtained a
+complete answer, and it was physically impossible.
 
-The audit that discovered this is the paper's principal contribution. A negative broker
-transport --- a message received before it was sent --- is proof of instrument failure, and
-checking for it condemned $1{,}321$ of our $2{,}266$ runs, including every condition behind a
-large, significant, theory-confirming result about \redis{} serialising concurrent streams. The
-condemned corpus passed every conventional check: plausible medians, tight intervals, large
-effect sizes, correct architectural direction, six prior rounds of correction. It failed only
-against arithmetic. We report the gate as a short, open, reusable script, and we note the
-property that makes it general: because it is a test against zero, it binds hardest exactly
-where the measured effect is smallest, which is to say on the delicate comparisons that
-benchmark papers exist to make.
+The audit that discovered this is the paper's principal contribution. A negative broker transport
+--- a message received before it was sent --- is proof of instrument failure, and checking for it
+rejected $1{,}321$ of our $2{,}266$ runs, including every condition behind a large, significant,
+theory-confirming result about \redis{} slowing down under concurrency. The rejected corpus had
+passed every conventional check: plausible medians, narrow intervals, large effect sizes, the
+architecturally expected direction, and six prior rounds of correction. It failed only against
+arithmetic. We report the check as a short, open, reusable script, and we note the property that
+makes it general: because it is a test against zero, it bites hardest exactly where the measured
+effect is smallest, which is to say on the delicate comparisons that benchmark papers exist to
+make.
 
-Inside the gate, the original question has an answer. At every concurrency level football
-produces, \redis{} Streams delivers a median end-to-end lag of $5.2$~ms against \kafka{}'s
-$105.5$~ms, and neither degrades with concurrency. But the brokers themselves are statistically
-equivalent within one millisecond: the twentyfold gap is entirely in the client send path, and
-it exists only at football's sparse arrival rate --- replay the same corpus ten times faster and
-it disappears. The ordering reverses behind a network hop, where \kafka{} tracks the injected
-delay while a round-trip-bound \redis{} consumer amplifies $20$~ms into $31$~seconds, until its
-acknowledgements are batched, which recovers a factor of $40.2$ at realistic load and,
+Inside the check, the original question has an answer. At every concurrency level football
+produces, \redis{} Streams delivers a median end-to-end delay of $5.2$~ms against \kafka{}'s
+$105.5$~ms, and neither system slows down as matches are added. But the brokers themselves are
+statistically equivalent to within one millisecond. The twentyfold difference lies entirely in the
+client send path, and it exists only at football's sparse arrival rate: replay the same data ten
+times faster and it disappears. The ordering reverses behind a network hop, where \kafka{} tracks
+the injected delay while a round-trip-bound \redis{} consumer turns $20$~ms into $31$~seconds ---
+until its acknowledgements are batched, which recovers a factor of $40.2$ at realistic load and,
 unexplainedly, nothing at five times that load.
 
 The practical message is therefore about configuration rather than product. Each system has one
-client-side setting worth one to two orders of magnitude in latency; in each case the idiomatic
+client setting worth one to two orders of magnitude in delay; in each case the introductory
 example uses the slow value; and both are free on a local testbed, which is where such settings
-are usually evaluated. Choose \redis{} Streams for a same-network football feed, choose \kafka{}
+are usually evaluated. Choose \redis{} Streams for a football feed on one network, choose \kafka{}
 if a consumer sits across a network you do not control, and in either case measure at the
-domain's real arrival rate, at a realistic round-trip time, and with a check that your
-timestamps obey causality.
+domain's real arrival rate, at a realistic round-trip time, and with a check that your timestamps
+obey causality.
 
 
 \section*{Data and Code Availability}
 All code, replay plans, aggregated results and the analysis pipeline are openly available at
 \url{https://github.com/Gustolandia/streaming-latency-sports}, archived at
 \texttt{[DOI to be inserted on release]}. The event data are the StatsBomb open dataset, used
-under its CC~BY-NC~4.0 licence; raw event JSONs are not redistributed but are re-fetchable from
-a pinned upstream commit (\texttt{3bfbffe1de5750ebd47d770be0bb924a10cde54f}) with
+under its CC~BY-NC~4.0 licence; raw event files are not redistributed but are re-fetchable from a
+pinned upstream commit (\texttt{3bfbffe1de5750ebd47d770be0bb924a10cde54f}) with
 \texttt{scripts/fetch\_statsbomb\_corpus.py}, so the 52 competition-season corpus is
-reconstructible exactly. The workload characterisation of Section~\ref{sec:workload} is produced
-by \texttt{scripts/characterize\_feed.py} and \texttt{scripts/kickoff\_concurrency.py}, the
-budget of Section~\ref{sec:budget} by \texttt{scripts/staleness\_budget.py}, and the audit of
-Section~\ref{sec:audit} by \texttt{scripts/clock\_integrity.py}. Cloud campaign scripts are in
-\texttt{cloud/campaigns/}, parameterised so a fresh testbed needs only a hosts file. Every run
-records its git commit and per-file SHA-256 in a \texttt{meta.json}, and
+reconstructible exactly.
+
+The workload characterisation of Section~\ref{sec:workload} is produced by
+\texttt{scripts/characterize\_feed.py} and \texttt{scripts/kickoff\_concurrency.py}; the budget of
+Section~\ref{sec:budget} by \texttt{scripts/staleness\_budget.py}; the audit of
+Section~\ref{sec:audit} by \texttt{scripts/clock\_integrity.py}; and every figure by
+\texttt{scripts/make\_paper\_figures.py} and \texttt{scripts/make\_e1\_figure.py}. Cloud campaign
+scripts are in \texttt{cloud/campaigns/}, parameterised so that a fresh testbed needs only a
+hosts file. Every run records its git commit and per-file SHA-256 in a \texttt{meta.json}, and
 \texttt{reproducibility/MANIFEST.json} pins the checksums of all code and configuration used to
-produce the reported results.
+produce the reported results. A regression test
+(\texttt{tests/unit/test\_manuscript\_consistency.py}) recomputes every headline figure in this
+paper from the committed result files and fails if the manuscript and the data disagree.
 
 \begin{acks}
 Using StatsBomb open dataset. Open-source Apache Kafka and Redis projects. MIT License.

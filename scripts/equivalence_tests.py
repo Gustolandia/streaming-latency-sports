@@ -94,6 +94,42 @@ def bootstrap_tost(a, b, margin, n_boot=10000, seed=12345, conf=0.90):
             "boot_equivalent": bool(lo > -margin and hi < margin)}
 
 
+def hodges_lehmann(a, b):
+    """Median of all pairwise differences a_i - b_j: the rank-based location shift.
+
+    This is the estimator that matches the Mann-Whitney tests used throughout, and it is what
+    the equivalence claim should rest on. The mean does not: Kafka's producer scheduling lag
+    carries a heavy tail (median 0.24 ms but p95 88 ms, 22% of events over 10 ms) which inflates
+    every Kafka mean while leaving Redis untouched, so a mean-based comparison is between two
+    differently-contaminated estimators.
+    """
+    a = np.asarray(a, dtype=float)
+    b = np.asarray(b, dtype=float)
+    if len(a) == 0 or len(b) == 0:
+        return float("nan")
+    return float(np.median(np.subtract.outer(a, b).ravel()))
+
+
+def hl_tost(a, b, margin, n_boot=10000, seed=12345, conf=0.90):
+    """TOST on the Hodges-Lehmann shift, with a percentile bootstrap interval.
+
+    Distribution-free in both the estimator and the interval, so a heavy tail in one group
+    cannot manufacture or destroy equivalence the way a mean-based test can.
+    """
+    a = np.asarray(a, dtype=float)
+    b = np.asarray(b, dtype=float)
+    rng = np.random.default_rng(seed)
+    shifts = np.empty(n_boot)
+    for i in range(n_boot):
+        shifts[i] = hodges_lehmann(rng.choice(a, len(a), replace=True),
+                                   rng.choice(b, len(b), replace=True))
+    alpha = 1.0 - conf
+    lo, hi = np.quantile(shifts, [alpha / 2.0, 1.0 - alpha / 2.0])
+    p = float(max(np.mean(shifts <= -margin), np.mean(shifts >= margin)))
+    return {"hl_shift": hodges_lehmann(a, b), "hl_ci90_lo": float(lo), "hl_ci90_hi": float(hi),
+            "hl_p_tost": p, "hl_equivalent": bool(lo > -margin and hi < margin)}
+
+
 def equivalence_by_n(df, value_col, n_col, margin, n_boot=10000, seed=12345):
     """Run TOST per concurrency level; skip cells too small to estimate variance.
 
@@ -111,7 +147,9 @@ def equivalence_by_n(df, value_col, n_col, margin, n_boot=10000, seed=12345):
         res = {"n": int(n), "margin": float(margin)}
         res.update(tost(a, b, margin))
         res.update(bootstrap_tost(a, b, margin, n_boot=n_boot, seed=seed))
-        res["methods_agree"] = bool(res["equivalent"] == res["boot_equivalent"])
+        res.update(hl_tost(a, b, margin, n_boot=min(n_boot, 2000), seed=seed))
+        res["methods_agree"] = bool(res["equivalent"] == res["boot_equivalent"]
+                                    == res["hl_equivalent"])
         rows.append(res)
     return pd.DataFrame(rows)
 

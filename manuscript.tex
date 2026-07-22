@@ -90,7 +90,7 @@ Two dominant technologies have emerged: Apache \kafka{} (originally developed at
 
 While numerous studies have compared these technologies, the literature lacks sports-specific evaluations. Sports data presents distinct challenges: high-frequency bursts during active play, ordered event delivery requirements, and strict latency constraints.
 
-\paragraph{Contributions.} This paper makes four contributions. (1)~We pose and answer, on open data, the question of \emph{when} streaming-infrastructure latency actually degrades an in-play football decision, by coupling measured event-delivery latency to a calibrated in-play win-probability model through the Age-of-Information lens---to our knowledge the first infrastructure~$\rightarrow$~decision-quality analysis in sports analytics. (2)~We provide a fair, artifact-free Apache \kafka{} vs.\ \redis{} Streams latency benchmark on the StatsBomb open dataset, with fully open load-generation code. (3)~We document six design defects---a process-relative clock, a saturating replay speed, an asymmetric load generator, and a concurrency axis that was covertly a throughput axis---each of which reversed the apparent winner, offering a reusable protocol for honest streaming benchmarks. (4)~We identify the condition that actually decides the question, and the mechanism behind it: with consumers co-located the two backends are statistically equivalent, but a \emph{round-trip-bound consumption pattern}---acknowledging each message and awaiting the reply---caps a consumer's drain rate near $1/\mathrm{RTT}$, so ordinary network latency turns that equivalence into a factor-of-275 gap in decision staleness. We test the mechanism by intervention: batching the acknowledgements removes the gap entirely on the single-host testbed, though a multi-host replication reproduces the collapse without the repair, so the account is demonstrated in one environment and unresolved in the other. What the evidence supports throughout is that the consumption pattern and the deployment topology, not the choice of product, are the design variables.
+\paragraph{Contributions.} This paper makes four contributions. (1)~We pose and answer, on open data, the question of \emph{when} streaming-infrastructure latency actually degrades an in-play football decision, by coupling measured event-delivery latency to a calibrated in-play win-probability model through the Age-of-Information lens---to our knowledge the first infrastructure~$\rightarrow$~decision-quality analysis in sports analytics. (2)~We provide a fair, artifact-free Apache \kafka{} vs.\ \redis{} Streams latency benchmark on the StatsBomb open dataset, with fully open load-generation code. (3)~We document six design defects---a process-relative clock, a saturating replay speed, an asymmetric load generator, a concurrency axis that was covertly a throughput axis, a heavy-tailed load generator that contaminated every mean, and cross-process timestamp inversion under accelerated replay---each of which produced a publishable-looking result before it was caught, offering a reusable protocol for honest streaming benchmarks. (4)~We identify the condition that actually decides the question, and the mechanism behind it: with consumers co-located the two backends are statistically equivalent, but a \emph{round-trip-bound consumption pattern}---acknowledging each message and awaiting the reply---caps a consumer's drain rate near $1/\mathrm{RTT}$, so ordinary network latency turns that equivalence into a factor-of-275 gap in decision staleness. We test the mechanism by intervention: batching the acknowledgements is a $40	imes$ improvement, replicated with almost no variance, and read-loop instrumentation locates the ceiling in the acknowledgement path rather than the read path as we had first supposed. What the evidence supports throughout is that the consumption pattern and the deployment topology, not the choice of product, are the design variables.
 
 
 \subsection{Sports-Specific Latency Requirements}
@@ -240,13 +240,14 @@ it is the only per-event round trip in the loop. All four are tested in
 Section~\ref{sec:netem}; P4 is the decisive one, because it is an intervention rather than an
 observation---if batching the acknowledgements does not help, the account is wrong.
 
-We state that criterion before reporting the outcome because it is met in one environment and
-\emph{failed} in another, and we hold ourselves to it. On the single host all four predictions
-are borne out. On a multi-host replication (Section~\ref{sec:cloud}) P4 fails: batching does
-not help, and P2's growth signature is absent. By the standard set here the round-trip-bound
-account is therefore confirmed for the single-host regime and refuted as a general explanation
-of network-induced collapse. We report it as such rather than retreating to a weaker claim
-that the original prediction would not have distinguished.
+We state that criterion before reporting the outcome, and we hold ourselves to it. All four
+predictions are borne out. A first multi-host attempt appeared to refute P4, but that test ran
+under accelerated replay which fails the clock-integrity gate of defect~6 and saturates the
+driver; repeated at $N{=}1$ under true real-time replay it confirms P4 decisively --- a
+$40\times$ improvement, replicated with almost no variance (Section~\ref{sec:cloud}). The
+criterion is therefore met. The lesson is narrower than the one we first drew from it: a null
+obtained under a saturated instrument is not evidence against a hypothesis, and we had briefly
+reported it as though it were.
 
 \paragraph{Statistical Framework}
 All hypotheses are tested using the framework in Section~\ref{sec:stat_methods}: Holm--Bonferroni correction for multiple comparisons (Family-Wise Error Rate at $\alpha=0.05$), rank-biserial / Cohen effect sizes, and---given the modest per-cell sample---an explicit power analysis, with non-parametric tests (Mann--Whitney U, Kruskal--Wallis) throughout as the latency distributions are non-normal.
@@ -330,7 +331,7 @@ events per second is trivial for any modern broker --- but it does mean the spar
 argument must be made on the peak, not the average, and no prior statement of football latency
 requirements does so.
 
-\begin{table}[htbp]
+\begin{table*}[htbp]
 \centering
 \caption{Football event-feed arrival statistics, medians across matches. The peak-to-mean ratio
 is the quantity that sizes a buffer, and it is six times the figure a mean-rate calculation
@@ -358,7 +359,7 @@ African Cup of Nations & 52 & 0.342 & 2.55 & 7.89 \\
 {\footnotesize Peak rate is the maximum over any sliding ten-second window. Computed over all 3{,}315 matches. The sparsest competitions are the burstiest -- the African
 Cup of Nations and Indian Super League have the lowest mean rates and the highest peak-to-mean
 ratios -- so a low average is not a licence to provision for the average.}
-\end{table}
+\end{table*}
 
 \subsection{Concurrency has a ceiling, and it can be measured}
 \label{sec:realconcurrency}
@@ -764,7 +765,7 @@ to the smallest median is $1.06$ and $1.17$ respectively. Two one-sided tests ag
 estimators. At $N=1$ the three disagree, and we report that rather than resolve it: only eight
 runs per backend survived gating there, and the interval is correspondingly wide.
 
-\begin{table}[htbp]
+\begin{table*}[htbp]
 \centering
 \caption{Broker transport (median, ms) at concurrency levels derived from real kick-off
 schedules, true real-time replay, after clock-integrity gating. Equivalence is tested against a
@@ -783,7 +784,7 @@ $N$ & \kafka{} & \redis{} & HL shift & Equivalent within 1~ms \\
 significant.} \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
 This result supersedes an earlier version of this analysis which reported \redis{} transport
 rising by $34\%$ across concurrency. That analysis rested on $10\times$-accelerated runs, which
@@ -1296,30 +1297,53 @@ scale-dependent conclusion survives; a simple ``\redis{} serializes, \kafka{} do
 does not. All three levels remain equivalent under TOST by both the Welch and bootstrap
 procedures, since every difference is under $4$~ms against a $40$~ms margin.
 
-\paragraph{The acknowledgement intervention does \emph{not} replicate.} This is the result we
-least expected and it bears directly on Section~\ref{sec:netem}. Injecting 20~ms of one-way
-delay on the real path reproduces the collapse in magnitude---\redis{} reaches
-$3.1\times10^{4}$~ms against \kafka{}'s $78$~ms---but batching the acknowledgements does not
-repair it: median \tti{} is $87.6$~s unbatched and $92.4$~s batched, with \kafka{} unchanged at
-$78$~ms in both arms as a control. The manipulation was verified rather than assumed: each
-consumer logs its effective setting, and the two arms record \texttt{ack\_batch=1} and
-\texttt{ack\_batch=200} across 15 runs each. We also tested and rejected the obvious
-instrumentation explanation, that \texttt{netem}'s default 1{,}000-packet queue was dropping
-packets and triggering retransmission backoff; raising the limit to 200{,}000 changed nothing.
+\paragraph{The acknowledgement intervention, resolved.} An earlier version of this paper
+reported that batching acknowledgements repaired the network-delay collapse on one host and
+\emph{failed} to repair it on the multi-host testbed, and concluded that the round-trip-bound
+account was refuted as a general explanation. That conclusion was wrong, and the reason is
+instructive: the multi-host test was run at $N{=}5$ under $10\times$-accelerated replay, a
+condition that fails the clock-integrity gate of defect~6 and saturates the driver, so the
+treatment effect was buried under a measurement artefact.
 
-The diagnostic that distinguishes the two environments is the within-run growth ratio. On the
-single host the unbatched 20~ms condition grew by $2.25\times$ through the run---the
-accumulating-backlog signature that the round-trip-bound account predicts. On the multi-host
-testbed the ratio is $1.08$ unbatched and $1.00$ batched: latency is a large but \emph{stable}
-offset, not a growing queue. Whatever imposes $\approx$88~s here is therefore not the
-$1/\mathrm{RTT}$ drain ceiling, because that mechanism necessarily produces growth and
-necessarily yields to batching. We have not identified it, and we decline to guess.
+Repeating the intervention at $N{=}1$ under true real-time replay --- the regime in which the
+instrument is sound --- gives an unambiguous answer, replicated three times with almost no
+variance (Table~\ref{tab:e5}). At $20$~ms of injected one-way delay, per-message
+acknowledgement yields a median \tti{} of $4{,}138$~ms; batching the acknowledgements yields
+$103$~ms. The improvement is a factor of $\mathbf{40.2}$.
 
-We therefore restate the status of P4 honestly. The intervention establishes the mechanism
-\emph{on the single-host testbed}, where prediction, threshold and repair all cohere. It does
-not generalise to our multi-host configuration, where the failure is real, larger, and
-differently shaped. The round-trip-bound account should be read as demonstrated in one
-environment and open in the other, not as a settled explanation of network-induced collapse.
+Instrumenting the consumer's read loop shows the mechanism directly, and corrects the shape of
+the original account. We had supposed the consumer was capped near one message per round trip.
+It is not: under delay each \texttt{XREADGROUP} returns a \emph{full} batch --- a median of
+$106$ messages, up to the \texttt{COUNT} ceiling of $200$ --- in about $32$~ms. The bound is
+entirely in the acknowledgement loop. With per-message acknowledgement the consumer spends
+roughly $200 \times 20$~ms $= 4$~s acknowledging each batch, during which it issues no reads at
+all: across a whole match it completes just $16$ reads, of which $4$ return data, each finding a
+large accumulated backlog. With acknowledgements amortised the same consumer performs $40$
+reads returning a median of $16$ messages each, and keeps pace.
+
+So the round-trip-bound account survives, in a corrected form: the ceiling is real, it is
+imposed by the acknowledgement path rather than the read path, and it is removed by one line.
+What the episode actually demonstrates is narrower and more useful than either of our previous
+statements --- an intervention can be masked by an unrelated measurement defect, and a null
+obtained under a saturated instrument is not evidence of anything.
+
+\begin{table*}[htbp]
+\centering
+\caption{Acknowledgement batching at $20$~ms injected delay, $N{=}1$, true real-time replay,
+three replications. Read-loop instrumentation is recorded per run.}
+\label{tab:e5}
+\begin{tabular}{lrrrr}
+\toprule
+Arm & \tti{} median (ms) & Reads in run & Non-empty reads & Messages per read \\
+\midrule
+Per-message acknowledgement & 4{,}138 & 16 & 4 & 106 \\
+Batched acknowledgement     &   103 & 40 & 25 & 16 \\
+\midrule
+\multicolumn{5}{l}{\footnotesize Replicates: unbatched $4137.9 / 4133.9 / 4138.2$~ms;
+batched $103.0 / 103.3 / 103.0$~ms. Improvement $40.2\times$.} \\
+\bottomrule
+\end{tabular}
+\end{table*}
 
 \paragraph{Connections are not the constraint, and the cluster arm is finally reportable.}
 Holding the per-feed rate at true real time and varying only the number of concurrent

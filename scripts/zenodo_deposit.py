@@ -29,12 +29,27 @@ LIVE = "https://zenodo.org/api"
 SANDBOX = "https://sandbox.zenodo.org/api"
 
 
-def build_bundle(out_zip, ref="HEAD", prefix="streaming-latency-sports/"):
-    """Archive the tracked tree at `ref` with git, so gitignored data is excluded by design."""
+# Paths excluded from the archive for licensing reasons. The replay plans are derived from the
+# StatsBomb open dataset, which is CC BY-NC 4.0; a derivative of NC-licensed data cannot be
+# redistributed inside an MIT-licensed record. They are regenerable byte-for-byte from the
+# pinned upstream commit with scripts/make_replay_plan.py, so excluding them costs nothing in
+# reproducibility and keeps the record's licence honest.
+NC_DERIVED_PATHS = ("data/processed/replay_plans",)
+
+
+def build_bundle(out_zip, ref="HEAD", prefix="streaming-latency-sports/", exclude=NC_DERIVED_PATHS):
+    """Archive the tracked tree at `ref` with git, so gitignored data is excluded by design.
+
+    `exclude` additionally drops paths that must not appear in the record. git pathspec magic
+    (":(exclude)") is used rather than post-processing the zip, so the exclusion is applied by
+    git itself and cannot be silently defeated by a later file being added under that path.
+    """
     out = Path(out_zip)
     out.parent.mkdir(parents=True, exist_ok=True)
+    pathspecs = ["."] + [f":(exclude){p}" for p in exclude]
     subprocess.run(
-        ["git", "archive", "--format=zip", f"--prefix={prefix}", "-o", str(out), ref],
+        ["git", "archive", "--format=zip", f"--prefix={prefix}", "-o", str(out), ref,
+         "--", *pathspecs],
         check=True, capture_output=True,
     )
     return out

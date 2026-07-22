@@ -124,6 +124,66 @@ def plot_concurrency(axes, slots, timeline):
 
 
 # --------------------------------------------------------------------------- audit
+def plot_model(axes):
+    """The measurement-failure model, drawn rather than only stated.
+
+    (a) why inversion happens: measured transport is the true value displaced by the asymmetry
+        in stamping delay, so it goes negative whenever that asymmetry exceeds the true value.
+    (b) why the check bites hardest on small effects (H1): the same Delta distribution overlaps
+        a small T_true almost entirely and a large one hardly at all.
+    """
+    mech_ax, h1_ax = axes
+
+    # --- (a) the mechanism, as a timeline
+    mech_ax.set_xlim(0, 10)
+    mech_ax.set_ylim(0, 3.2)
+    mech_ax.axis("off")
+    for y, label, colour in ((2.3, "producer", KAFKA), (0.9, "consumer", REDIS)):
+        mech_ax.annotate("", xy=(9.4, y), xytext=(0.6, y),
+                         arrowprops=dict(arrowstyle="->", color=GREY, linewidth=1.2))
+        mech_ax.text(0.5, y + 0.22, label, fontsize=8, color=colour, ha="left")
+
+    # physical events (true), and the later moments the software actually reads the clock
+    mech_ax.plot([2.4], [2.3], marker="|", markersize=14, color=KAFKA)
+    mech_ax.text(2.4, 2.62, "ack arrives", fontsize=7, ha="center")
+    mech_ax.plot([4.6], [2.3], marker="o", markersize=6, color=KAFKA)
+    mech_ax.text(4.6, 2.62, r"clock read $\rightarrow t_{ack}$", fontsize=7, ha="center")
+    mech_ax.annotate("", xy=(4.6, 2.3), xytext=(2.4, 2.3),
+                     arrowprops=dict(arrowstyle="<->", color="#b22222", linewidth=1.2))
+    mech_ax.text(3.5, 2.02, r"$\delta_{ack}$", fontsize=8, color="#b22222", ha="center")
+
+    mech_ax.plot([3.4], [0.9], marker="|", markersize=14, color=REDIS)
+    mech_ax.text(3.3, 0.42, "message received", fontsize=7, ha="right")
+    mech_ax.plot([4.0], [0.9], marker="o", markersize=6, color=REDIS)
+    mech_ax.text(4.6, 0.42, r"clock read $\rightarrow t_{recv}$", fontsize=7, ha="center")
+    mech_ax.annotate("", xy=(4.0, 0.9), xytext=(3.4, 0.9),
+                     arrowprops=dict(arrowstyle="<->", color="#b22222", linewidth=1.2))
+    mech_ax.text(3.7, 1.02, r"$\delta_{recv}$", fontsize=8, color="#b22222", ha="center")
+
+    mech_ax.text(5.0, 1.55,
+                 r"$T_{meas}=t_{recv}-t_{ack}<0$" "\n"
+                 r"even though $T_{true}>0$",
+                 fontsize=8, color="#b22222", ha="left", va="center")
+
+    # --- (b) why small effects are fragile
+    x = np.linspace(-6, 6, 400)
+    delta = np.exp(-0.5 * (x / 1.6) ** 2)
+    h1_ax.plot(x, delta, color=GREY, linewidth=1.8)
+    h1_ax.fill_between(x, 0, delta, where=(x < -0.5), color="#b22222", alpha=0.45)
+    h1_ax.axvline(-0.5, color=KAFKA, linewidth=1.6, linestyle="--")
+    h1_ax.axvline(-4.0, color=REDIS, linewidth=1.6, linestyle="--")
+    h1_ax.fill_between(x, 0, delta, where=(x < -4.0), color=REDIS, alpha=0.55)
+    h1_ax.text(0.6, 0.70, r"small $T_{true}$" "\n(much of $\\Delta$ inverts it)",
+               fontsize=7.5, color=KAFKA)
+    h1_ax.text(-5.9, 0.28, r"large $T_{true}$" "\n(almost none does)",
+               fontsize=7.5, color=REDIS)
+    h1_ax.set_xlabel(r"stamping asymmetry $\Delta$ (ms)")
+    h1_ax.set_ylabel("density")
+    h1_ax.set_yticks([])
+    h1_ax.set_title("(b) H1: inversion risk falls as the measured quantity grows", fontsize=9)
+    mech_ax.set_title("(a) how a positive latency is measured as negative", fontsize=9)
+
+
 SENSITIVITY_THRESHOLDS = (0.0, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.10, 0.20)
 
 
@@ -245,6 +305,12 @@ def main(argv=None):
         plot_pipeline(ax)
         return _save(fig, out, "pipeline_schematic")
 
+    def _model():
+        fig, axes = plt.subplots(1, 2, figsize=(10, 3.4))
+        plot_model(axes)
+        fig.tight_layout()
+        return _save(fig, out, "measurement_model")
+
     def _workload():
         fig, axes = plt.subplots(1, 2, figsize=(10, 3.6))
         plot_workload(axes, profiles)
@@ -275,6 +341,7 @@ def main(argv=None):
     integrity = _read(args.integrity_csv)
 
     render("pipeline_schematic", [], _pipeline)
+    render("measurement_model", [], _model)
     render("workload_profile", [profiles], _workload)
     render("kickoff_concurrency", [slots, timeline], _concurrency)
     render("integrity_audit", [integrity], _integrity)

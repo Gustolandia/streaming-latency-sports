@@ -284,8 +284,7 @@ for both backends---is the architecture-relevant quantity, because it excludes t
 generator. Where the two disagree we report both and say which question each answers
 (Section~\ref{sec:concurrency}). We further report p50/p95/p99/max, missed-window rates against
 sports actionability thresholds (100/250/500/1000/5000~ms), throughput, serialized message size,
-and serialization/deserialization overhead. For S3 we additionally measure
-correction-propagation latency.
+and serialization/deserialization overhead.
 
 \subsection{Decision-Staleness: From Latency to Win-Probability Error}
 \label{sec:decisionstaleness}
@@ -475,8 +474,7 @@ variants: a \emph{windowed} variant (first 10 minutes of match clock) that keeps
 host unsaturated so latency can be read cleanly across the range, and a \emph{full-match} variant
 (single configuration) that delivers all decisive events so the decision-staleness integral
 is complete. A \emph{persistence} set isolates durability (\kafka{} \texttt{acks}=1 vs.\ all;
-\redis{} \texttt{appendfsync} everysec vs.\ always), and a \emph{state-staleness corrections}
-set (one correction every 50th event, 2~s delay) probes update propagation. Every run records
+\redis{} \texttt{appendfsync} everysec vs.\ always). Every run records
 full provenance (git commit, per-file SHA-256, configuration) in a \texttt{meta.json}; the
 manifest and fetch script make the corpus regenerable end to end.
 

@@ -1,0 +1,19 @@
+#cloud-config
+package_update: true
+packages:
+  - docker.io
+  - docker-compose-v2
+  - python3-pip
+  - python3-venv
+  - iproute2
+  - chrony
+runcmd:
+  - systemctl enable --now docker
+  - usermod -aG docker ubuntu
+  # The host firewall on Oracle Ubuntu images blocks everything but SSH by default;
+  # intra-VCN traffic is already restricted by the security list, so open it here.
+  - iptables -I INPUT 1 -s 10.0.0.0/16 -j ACCEPT
+  - netfilter-persistent save || true
+  - pip3 install --break-system-packages kafka-python redis pandas numpy || pip3 install kafka-python redis pandas numpy
+  # High-resolution timing matters: this testbed exists to escape a 15.6 ms tick.
+  - timedatectl set-ntp true || true

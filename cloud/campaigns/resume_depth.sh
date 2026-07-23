@@ -20,8 +20,12 @@
 # trigger, but the guards are kept as defence in depth.
 #
 # Usage:  nohup bash cloud/campaigns/resume_depth.sh > resume.log 2>&1 &
-set -uo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+# common.sh sets `set -euo pipefail`. Turn OFF -e for this long campaign: a single failing
+# trial, or a pkill that finds nothing to kill (which returns non-zero), must NOT abort the
+# whole run. This is the bug that killed the first resume -- the very first reap's pkill
+# matched nothing, exited 1, and -e took the script down right after the E-B banner.
+set +e
 
 OUT="${OUT:-docs/results/depth}"
 REPS="${REPS:-3}"
@@ -35,8 +39,10 @@ banner "resume: --speedup $SPEEDUP_RT (true real time), window ${MAXT}s, trial-t
 
 # Kill any stray producers/consumers from a prior trial. Safe only between trials, never during.
 reap () {
-  pkill -f "kafka_producer.py|redis_producer.py|kafka_consumer.py|redis_consumer.py" 2>/dev/null
-  pkill -f "util_sampler.py" 2>/dev/null
+  # `|| true` on every pkill: it exits non-zero when nothing matches, which is the normal case
+  # before the first trial and must not be treated as an error.
+  pkill -f "kafka_producer.py|redis_producer.py|kafka_consumer.py|redis_consumer.py" 2>/dev/null || true
+  pkill -f "util_sampler.py" 2>/dev/null || true
   sleep 2
 }
 

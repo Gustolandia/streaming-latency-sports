@@ -17,22 +17,34 @@
 #
 # Usage:  bash cloud/campaigns/m1_client_ab.sh
 . "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+# common.sh sets `set -euo pipefail`. Turn both off: a single failing trial must not abort the
+# campaign, and -- the bug that silently killed this whole campaign in the resume -- pipefail
+# made the manipulation check below inherit the exit 2 of `python --definitely-bad` even though
+# grep matched, so the check falsely reported failure and M1 produced no data.
+set +e
+set +o pipefail
 
 REPS="${REPS:-6}"
 LEVELS="${LEVELS:-1 9}"
 TRACE_DIR="${TRACE_DIR:-docs/results/m1_client}"
 MAXT="${MAXT:-180}"
-mkdir -p "$TRACE_DIR"
+mkdir -p "$TRACE_DIR/results" "$TRACE_DIR/trace"
+
+# common.sh's PLAN comes from `find data`, which now returns a synthetic uncompressed plan left
+# by the arrival campaign. Force a real 120x-compressed match plan.
+PLAN=$(find data/processed/replay_plans -name replay_plan.csv | head -1)
+PLANS_DIR="$(dirname "$(dirname "$PLAN")")"
+: "${PLAN:?no real match plan found}"
 
 python3 -c "import confluent_kafka; print('confluent-kafka', confluent_kafka.version())" \
   || { echo "confluent-kafka not installed: pip3 install confluent-kafka"; exit 1; }
 
-# Manipulation check: the swap must actually take effect. Without this we would be comparing
-# kafka-python against itself and reporting a null. This project has produced exactly that
-# failure before, from an option that was silently dropped.
-if KAFKA_PRODUCER_SCRIPT=scripts/kafka_producer_confluent.py \
-   python3 scripts/kafka_producer_confluent.py --run-id x --plan-csv /dev/null \
-     --out /tmp/x.csv --definitely-bad 2>&1 | grep -q "unrecognized arguments: --definitely-bad"; then
+# Manipulation check, capture-then-grep so the failing python exit code (argparse returns 2 for
+# the deliberately-bad flag) cannot be mistaken for the check failing.
+CHECK=$(KAFKA_PRODUCER_SCRIPT=scripts/kafka_producer_confluent.py \
+        python3 scripts/kafka_producer_confluent.py --run-id x --plan-csv /dev/null \
+          --out /tmp/x.csv --definitely-bad 2>&1)
+if echo "$CHECK" | grep -q "unrecognized arguments: --definitely-bad"; then
   echo "MANIPULATION_CHECK_OK: confluent producer parses its own CLI"
 else
   echo "MANIPULATION_CHECK_FAILED - aborting"; exit 1

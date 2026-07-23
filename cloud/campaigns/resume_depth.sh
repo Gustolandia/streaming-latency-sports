@@ -43,6 +43,7 @@ reap () {
   # before the first trial and must not be treated as an error.
   pkill -f "kafka_producer.py|redis_producer.py|kafka_consumer.py|redis_consumer.py" 2>/dev/null || true
   pkill -f "util_sampler.py" 2>/dev/null || true
+  pkill -9 -x stress-ng 2>/dev/null || true
   sleep 2
 }
 
@@ -56,7 +57,9 @@ run_at_load () {
   reap  # clear anything left by the previous trial before starting
 
   if [ "$bg" -gt 0 ]; then
-    stress-ng --cpu "$bg" --timeout 3600s >/dev/null 2>&1 &
+    # --timeout 900s (not 3600s) as a backstop: if the explicit kill below is ever missed,
+    # the load self-clears in 15 min rather than an hour.
+    stress-ng --cpu "$bg" --timeout 900s >/dev/null 2>&1 &
     stress_pid=$!
     sleep 2
   fi
@@ -76,8 +79,12 @@ run_at_load () {
   local rc=${PIPESTATUS[0]}
   [ "$rc" = 124 ] && echo "  NOTE: phase $tag hit its shell timeout (${ceiling}s) and was killed"
 
-  kill -TERM "$sampler_pid" 2>/dev/null; wait "$sampler_pid" 2>/dev/null
-  [ -n "$stress_pid" ] && { kill "$stress_pid" 2>/dev/null; wait "$stress_pid" 2>/dev/null; }
+  # NEVER `wait` on stress-ng: it has its own --timeout, so if a graceful kill is missed the
+  # wait blocks for the full timeout. This was the stall that ruined the first resume -- one
+  # condition, then a 60-minute block. Kill hard and do not wait; the workers are just load.
+  kill -TERM "$sampler_pid" 2>/dev/null; wait "$sampler_pid" 2>/dev/null || true
+  [ -n "$stress_pid" ] && kill -9 "$stress_pid" 2>/dev/null
+  pkill -9 -x stress-ng 2>/dev/null || true
   printf 'tag,cores,bg_workers,n_feeds,reps\n%s,%s,%s,%s,%s\n' "$tag" "$cores" "$bg" "$n" "$reps" \
     > "$OUT/$tag/condition.csv"
   reap  # and clean up after, so orphans cannot stall the next trial

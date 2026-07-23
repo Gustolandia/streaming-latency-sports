@@ -29,7 +29,7 @@ from pathlib import Path
 # measurement_model lives beside this file.
 import sys
 sys.path.insert(0, str(Path(__file__).parent))
-from measurement_model import check_h1, check_h2  # noqa: E402
+from measurement_model import check_h1, check_h2, spearman  # noqa: E402
 
 
 def run_inversion(run_dir):
@@ -109,22 +109,40 @@ def delay_from_tag(cond_dir):
     return float(m.group(1)) if m else None
 
 
+def n_from_tag(cond_dir):
+    """Process count parsed from an E-A2 condition directory name (n1, n3, n6, n12)."""
+    m = re.search(r"n(\d+)$", os.path.basename(cond_dir.rstrip("/")))
+    return int(m.group(1)) if m else None
+
+
 def collect(depth_dir, runs_dir):
-    """Build the E-B (H1) and E-A (H2) tables from the completed depth runs."""
-    eb, ea = [], []
+    """Build the E-B (H1), E-A/E-A-sat (H2) and E-A2 (H4) tables from the completed runs.
+
+    E-A-sat supersedes E-A where present: the first E-A never reached saturation, so if the
+    saturation rerun exists its data is used for H2 instead.
+    """
+    eb, ea, ea2 = [], [], []
     for cond in sorted(glob.glob(os.path.join(depth_dir, "eb", "d*"))):
         inv = condition_inversion(cond, runs_dir)
         d = delay_from_tag(cond)
         if inv is not None and d is not None:
             eb.append({"t_true_ms": d, "inversion_rate": inv})
-    for cond in sorted(glob.glob(os.path.join(depth_dir, "ea", "*"))):
+
+    ea_phase = "ea_sat" if glob.glob(os.path.join(depth_dir, "ea_sat", "*")) else "ea"
+    for cond in sorted(glob.glob(os.path.join(depth_dir, ea_phase, "*"))):
         if not os.path.isdir(cond):
             continue
         inv = condition_inversion(cond, runs_dir)
         rho = median_rho(cond)
         if inv is not None and rho is not None:
             ea.append({"rho": rho, "inversion_rate": inv})
-    return eb, ea
+
+    for cond in sorted(glob.glob(os.path.join(depth_dir, "ea2", "n*"))):
+        inv = condition_inversion(cond, runs_dir)
+        n = n_from_tag(cond)
+        if inv is not None and n is not None:
+            ea2.append({"n_feeds": n, "inversion_rate": inv})
+    return eb, ea, ea2
 
 
 def _write(rows, path, fields):
@@ -142,7 +160,7 @@ def main(argv=None):
     ap.add_argument("--out", default="docs/results/depth/model")
     args = ap.parse_args(argv)
 
-    eb, ea = collect(args.depth_dir, args.runs_dir)
+    eb, ea, ea2 = collect(args.depth_dir, args.runs_dir)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
@@ -152,6 +170,9 @@ def main(argv=None):
     print("== E-A: utilisation sweep (H2) ==")
     for r in sorted(ea, key=lambda x: x["rho"]):
         print(f"  rho {r['rho']:.3f}  ->  inversion rate {r['inversion_rate']:.4f}")
+    print("== E-A2: process-count sweep (H4) ==")
+    for r in sorted(ea2, key=lambda x: x["n_feeds"]):
+        print(f"  N={r['n_feeds']:2d}  ->  inversion rate {r['inversion_rate']:.4f}")
 
     verdicts = {}
     if len(eb) >= 3:
@@ -160,6 +181,11 @@ def main(argv=None):
     if len(ea) >= 3:
         _write(ea, out / "ea_utilisation.csv", ["rho", "inversion_rate"])
         verdicts["H2"] = check_h2(pd.DataFrame(ea))
+    if len(ea2) >= 3:
+        _write(ea2, out / "ea2_process_count.csv", ["n_feeds", "inversion_rate"])
+        rho = spearman([r["n_feeds"] for r in ea2], [r["inversion_rate"] for r in ea2])
+        verdicts["H4"] = {"hypothesis": "H4 oversubscription rule", "n_points": len(ea2),
+                          "spearman": rho, "supported": bool(rho > 0)}
 
     print("\n== VERDICTS ==")
     for key, v in verdicts.items():
@@ -169,7 +195,7 @@ def main(argv=None):
         if key == "H2":
             print(f"   shape: R^2 M/G/1 {v['r2_mg1']:.3f} vs linear {v['r2_linear']:.3f}")
     if not verdicts:
-        print("insufficient data for either hypothesis")
+        print("insufficient data for any hypothesis")
         return 1
     return 0
 

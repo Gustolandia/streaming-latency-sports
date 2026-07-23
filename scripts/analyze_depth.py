@@ -128,14 +128,20 @@ def collect(depth_dir, runs_dir):
         if inv is not None and d is not None:
             eb.append({"t_true_ms": d, "inversion_rate": inv})
 
-    ea_phase = "ea_sat" if glob.glob(os.path.join(depth_dir, "ea_sat", "*")) else "ea"
-    for cond in sorted(glob.glob(os.path.join(depth_dir, ea_phase, "*"))):
-        if not os.path.isdir(cond):
-            continue
-        inv = condition_inversion(cond, runs_dir)
-        rho = median_rho(cond)
-        if inv is not None and rho is not None:
-            ea.append({"rho": rho, "inversion_rate": inv})
+    # H2 uses the saturation sweep plus the knee-fill when present; both measure system-wide
+    # utilisation with no core pinning, so they pool. The original `ea` phase is used only as a
+    # fallback: it was taskset-pinned while utilisation was measured across all cores, so its
+    # rho is diluted and not comparable.
+    ea_phases = [p for p in ("ea_sat", "ea_knee")
+                 if glob.glob(os.path.join(depth_dir, p, "*"))] or ["ea"]
+    for phase in ea_phases:
+        for cond in sorted(glob.glob(os.path.join(depth_dir, phase, "*"))):
+            if not os.path.isdir(cond):
+                continue
+            inv = condition_inversion(cond, runs_dir)
+            rho = median_rho(cond)
+            if inv is not None and rho is not None:
+                ea.append({"rho": rho, "inversion_rate": inv})
 
     for cond in sorted(glob.glob(os.path.join(depth_dir, "ea2", "n*"))):
         inv = condition_inversion(cond, runs_dir)

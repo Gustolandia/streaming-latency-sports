@@ -65,6 +65,54 @@ def run_inversion(run_dir):
         return 0, 0
 
 
+def run_transport_median(run_dir):
+    """Median broker transport in ms for one run, from raw per-event data.
+
+    Same join as run_inversion, but keeps the values rather than counting negatives, so the
+    between-backend difference can be compared across stamping modes (H3).
+    """
+    cons = os.path.join(run_dir, "consumer_events.csv")
+    prod = os.path.join(run_dir, "producer.csv")
+    if not (os.path.exists(cons) and os.path.exists(prod)):
+        return None
+    ack = {}
+    try:
+        with open(prod, newline="", encoding="utf-8") as fh:
+            for r in csv.DictReader(fh):
+                v = r.get("t_broker_ack_ns")
+                if v not in (None, "", "None"):
+                    ack[r["event_id"]] = int(v)
+        vals = []
+        with open(cons, newline="", encoding="utf-8") as fh:
+            for r in csv.DictReader(fh):
+                a = ack.get(r["event_id"])
+                recv = r.get("t_consume_ns")
+                if a is None or recv in (None, "", "None"):
+                    continue
+                vals.append((int(recv) - a) / 1e6)
+        return st.median(vals) if vals else None
+    except (ValueError, KeyError, OSError):
+        return None
+
+
+def condition_transport_by_backend(cond_dir, runs_dir):
+    """Median transport per backend for a condition, as {'kafka': ms, 'redis': ms}."""
+    ts = condition_timestamp(cond_dir)
+    if not ts:
+        return {}
+    out = {}
+    for backend in ("kafka", "redis"):
+        vals = []
+        for run in glob.glob(os.path.join(runs_dir, f"concurrency_{ts}_{backend}_*")):
+            if os.path.isdir(run):
+                m = run_transport_median(run)
+                if m is not None:
+                    vals.append(m)
+        if vals:
+            out[backend] = st.median(vals)
+    return out
+
+
 def condition_timestamp(cond_dir):
     """The run-id timestamp a condition's trials share, read from its concurrency subdir."""
     for sub in glob.glob(os.path.join(cond_dir, "concurrency_concurrency_*")):
@@ -179,6 +227,27 @@ def main(argv=None):
     print("== E-A2: process-count sweep (H4) ==")
     for r in sorted(ea2, key=lambda x: x["n_feeds"]):
         print(f"  N={r['n_feeds']:2d}  ->  inversion rate {r['inversion_rate']:.4f}")
+
+    # H3: does the between-backend difference depend on how the acknowledgement is stamped?
+    print("== E-C2: stamping comparison (H3) ==")
+    h3 = {}
+    for mode in ("callback", "inline"):
+        cond = os.path.join(args.depth_dir, "ec2", mode)
+        if not os.path.isdir(cond):
+            continue
+        t = condition_transport_by_backend(cond, args.runs_dir)
+        if "kafka" in t and "redis" in t:
+            diff = t["kafka"] - t["redis"]
+            h3[mode] = diff
+            print(f"  {mode:9s}: kafka {t['kafka']:.3f} ms, redis {t['redis']:.3f} ms, "
+                  f"difference {diff:+.3f} ms")
+    if len(h3) == 2:
+        shrink = abs(h3["callback"]) - abs(h3["inline"])
+        print(f"  |difference| callback {abs(h3['callback']):.3f} -> inline "
+              f"{abs(h3['inline']):.3f} ms  (change {shrink:+.3f})")
+        print(f"  H3 stamping rule: {'SUPPORTED' if shrink > 0 else 'NOT SUPPORTED'} "
+              f"(the between-backend gap "
+              f"{'shrinks' if shrink > 0 else 'does not shrink'} under the alternative stamp)")
 
     verdicts = {}
     if len(eb) >= 3:

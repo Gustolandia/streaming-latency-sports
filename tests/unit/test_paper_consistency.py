@@ -530,6 +530,47 @@ class TestPoweredTransportReplication:
         assert "refines" in e1.lower(), "the powered run refines rather than contradicts E1"
 
 
+class TestMixtureStructure:
+    """H9 falsified, H10 (mixture) supported, from the pre-registered E-A3 campaign."""
+
+    def test_the_mixture_table_matches_the_conditions_csv(self, tex):
+        rows = _rows("model", "collapse_conditions.csv")
+        assert len(rows) == 9, "the campaign has nine load levels"
+        section = tex[tex.index(r"\label{tab:mixture}"):]
+        section = section[:section.index(r"\end{table}")]
+        for r in rows:
+            assert _contains_number(section, float(r["inversion"]), 3), \
+                f"inversion {r['inversion']} at rho={r['rho']} missing from the table"
+        # clustering holds at every load, and the table rounds it to one decimal
+        assert all(float(r["runs_z_median"]) < -2 for r in rows)
+
+    def test_the_core_and_tail_growth_ratio_is_stated(self, tex):
+        rows = sorted(_rows("model", "collapse_conditions.csv"), key=lambda r: float(r["rho"]))
+        idle, knee = rows[0], next(r for r in rows if 0.85 < float(r["rho"]) < 0.9)
+        core_growth = float(knee["sigma_core"]) / float(idle["sigma_core"])
+        tail_growth = float(knee["inversion"]) / float(idle["inversion"])
+        assert 4 < core_growth < 6, f"core grows {core_growth:.1f}x, paper says ~5"
+        assert 50 < tail_growth < 70, f"tail grows {tail_growth:.1f}x, paper says ~60"
+        section = tex[tex.index(r"\label{sec:mixture}"):tex.index(r"\label{sec:network}")]
+        assert "60" in section and "12" in section, "the tail:core ratio must be stated"
+
+    def test_the_collapse_is_reported_falsified(self, tex):
+        section = tex[tex.index(r"\label{sec:mixture}"):tex.index(r"\label{sec:network}")]
+        low = section.lower()
+        assert "falsified" in low, "the scale-family collapse must be reported falsified"
+        assert "pre-register" in low, "and pre-registered as expected"
+        assert "mixture" in low
+
+    def test_the_fdelta_reproduction_boundary_is_honest(self, tex):
+        section = tex[tex.index(r"\label{sec:mixture}"):tex.index(r"\label{sec:network}")]
+        rows = _rows("model", "fdelta_reproduction.csv")
+        below = [r for r in rows if float(r["rho_new"]) < 0.96]
+        overlap = sum(1 for r in below if r["ci_overlap"] == "True")
+        assert overlap == 12 and len(below) == 17, "below-saturation reproduction is 12/17"
+        assert "12" in section and "17" in section
+        assert "degenerate" in section.lower(), "the rho=1 degeneracy must be named"
+
+
 class TestClusteringConstructCheck:
     """Inversions cluster in time (runs test z << 0): scheduling, not quantisation."""
 

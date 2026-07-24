@@ -1182,6 +1182,72 @@ Utilisation $\rho$ & Inversion rate \\
 \end{tabular}
 \end{table}
 
+\subsection{The shape of \texorpdfstring{$\Delta$}{Delta}: a mixture, not a scale family}
+\label{sec:mixture}
+
+Equation~\ref{eq:inversion} treats $\Delta$ as a single distribution. That is a leading-order
+picture, and a dedicated campaign --- nine load levels from idle to oversubscription, $25$ runs
+each, pre-registered before it ran --- shows what it omits. We asked the strongest form of the
+model: if $\Delta$ were a scale family, differing across load only by a scale $\sigma(\rho)$, then
+inversion probability would depend on the measured quantity only through the standardised distance
+$z = T_{\mathrm{true}}/\sigma$, and every condition's standardised tail would fall on one curve.
+It does not. At a matched $z \approx 3$ the tail mass ranges over $23\times$ across load levels, far
+outside sampling error. \textbf{The scale-family hypothesis is falsified}, as we pre-registered we
+expected it would be.
+
+What replaces it is a mixture, and the same campaign measures its two parts separately
+(Table~\ref{tab:mixture}). From idle to the knee the \emph{core} of the distribution --- its
+inter-quartile width, the ordinary stamping jitter --- grows only $5\times$, while the \emph{tail}
+that actually produces inversions grows $60\times$: a ratio of $12$ to $1$. Load barely widens the
+core; it multiplies the weight of a rare heavy tail. That tail is the descheduling event of
+Section~\ref{sec:threats}: at every load, idle included, the inversions within a run are
+temporally clustered (Wald--Wolfowitz $z$ from $-6.9$ to $-4.3$, all far below zero), so they
+arrive in bursts of consecutive events, not independently. The mixture unifies three otherwise
+loose observations --- the clustering, the faster-than-quadratic growth of variance, and the
+failed collapse --- under one mechanism: $\Delta$ is a narrow jitter core plus a rare
+descheduling tail whose \emph{weight}, not width, load controls.
+
+This refines rather than unseats the rules. H1, H2 and H4 all concern the tail's growth and stand;
+what the mixture adds is that a benchmark's risk near the noise floor is governed by that tail, so
+the single-$\Delta$ reading of Equation~\ref{eq:inversion} \emph{understates} risk at low load,
+where the core is tight but the tail is already non-empty.
+
+\paragraph{Recovering the tail without a reference clock, and where it reproduces.} Because
+inversion rate at a threshold \emph{is} a quantile of $\Delta$'s tail, the tail can be read off
+inversion counts alone --- an instrument-quality estimate needing no reference clock. The honest
+test of it is not internal consistency but reproduction: do the recovered tail quantiles agree
+between two independent campaigns at matched utilisation? Below saturation they do --- $12$ of
+$17$ matched quantiles overlap at $90\%$, and every one of the deep pre-knee quantiles does. The
+failures are all at $\rho = 1$, where the coordinate is degenerate --- eight, ten and twelve
+background workers all read as full utilisation while representing different degrees of
+overload --- so the two campaigns are not in fact at matched load there. The recovered curve
+reproduces wherever utilisation is a meaningful coordinate and stops when it stops being one,
+which is the correct boundary for the method rather than a defect in it.
+
+\begin{table}[t]
+\caption{The mixture, measured across nine load levels ($25$ runs each, pre-registered). The
+core width $\sigma_{\mathrm{core}} = \mathrm{IQR}/1.349$ grows $5\times$ from idle to the knee;
+the inversion rate --- the tail --- grows $60\times$. Inversions are temporally clustered at
+every load (runs-test $z$). The three $\rho=1$ rows are distinct oversubscription levels that the
+utilisation coordinate cannot separate.}
+\label{tab:mixture}
+\begin{tabular}{rrrr}
+\toprule
+Utilisation $\rho$ & Core $\sigma_{\mathrm{core}}$ (ms) & Inversion rate & Clustering $z$ \\
+\midrule
+0.003 & 0.126 & 0.004 & $-6.8$ \\
+0.253 & 0.138 & 0.004 & $-6.8$ \\
+0.504 & 0.180 & 0.006 & $-6.8$ \\
+0.628 & 0.181 & 0.024 & $-6.9$ \\
+0.753 & 0.238 & 0.076 & $-5.7$ \\
+0.878 & 0.631 & 0.224 & $-4.9$ \\
+1.000 & 1.224 & 0.371 & $-4.3$ \\
+1.000 & 1.293 & 0.317 & $-4.7$ \\
+1.000 & 1.710 & 0.261 & $-4.4$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{The condition that reverses the ordering}
 \label{sec:network}
 

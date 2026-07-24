@@ -226,25 +226,36 @@ def main(argv=None):
         print(f"  N={r['n_feeds']:2d}  ->  inversion rate {r['inversion_rate']:.4f}")
 
     # H3: does the between-backend difference depend on how the acknowledgement is stamped?
-    print("== E-C2: stamping comparison (H3) ==")
+    # ec3 is the real test -- kafka_producer.py's own --ack-stamp, so `inline` genuinely stamps
+    # on the calling thread the way redis_producer.py does. ec2 is the earlier attempt, which
+    # compared kafka-python against confluent-kafka; both stamp in callbacks, so it never
+    # created the symmetric condition and can only be reported as untested. Prefer ec3.
+    h3_phase = "ec3" if glob.glob(os.path.join(args.depth_dir, "ec3", "*")) else "ec2"
+    symmetric = h3_phase == "ec3"
+    print(f"== E-C3: stamping comparison (H3) ==" if symmetric
+          else "== E-C2: stamping comparison (H3, asymmetric pair -- untested) ==")
     h3 = {}
     for mode in ("callback", "inline"):
-        cond = os.path.join(args.depth_dir, "ec2", mode)
-        if not os.path.isdir(cond):
-            continue
-        t = condition_transport_by_backend(cond, args.runs_dir)
-        if "kafka" in t and "redis" in t:
-            diff = t["kafka"] - t["redis"]
-            h3[mode] = diff
-            print(f"  {mode:9s}: kafka {t['kafka']:.3f} ms, redis {t['redis']:.3f} ms, "
-                  f"difference {diff:+.3f} ms")
+        cond = os.path.join(args.depth_dir, h3_phase, mode)
+        if os.path.isdir(cond):
+            t = condition_transport_by_backend(cond, args.runs_dir)
+            if "kafka" in t and "redis" in t:
+                diff = t["kafka"] - t["redis"]
+                h3[mode] = diff
+                print(f"  {mode:9s}: kafka {t['kafka']:.3f} ms, redis {t['redis']:.3f} ms, "
+                      f"difference {diff:+.3f} ms")
     if len(h3) == 2:
         shrink = abs(h3["callback"]) - abs(h3["inline"])
         print(f"  |difference| callback {abs(h3['callback']):.3f} -> inline "
               f"{abs(h3['inline']):.3f} ms  (change {shrink:+.3f})")
-        print(f"  H3 stamping rule: {'SUPPORTED' if shrink > 0 else 'NOT SUPPORTED'} "
-              f"(the between-backend gap "
-              f"{'shrinks' if shrink > 0 else 'does not shrink'} under the alternative stamp)")
+        if symmetric:
+            print(f"  H3 stamping rule: {'SUPPORTED' if shrink > 0 else 'NOT SUPPORTED'} "
+                  f"(the between-backend gap "
+                  f"{'shrinks' if shrink > 0 else 'does not shrink'} when both endpoints stamp "
+                  f"on the calling thread)")
+        else:
+            print("  H3 stamping rule: UNTESTED (both arms stamp in callbacks, so the "
+                  "symmetric condition was never created)")
 
     verdicts = {}
     if len(eb) >= 3:

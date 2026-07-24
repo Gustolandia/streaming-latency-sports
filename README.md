@@ -2,8 +2,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![Target: ICPE/DEBS](https://img.shields.io/badge/Target-ICPE%20%2F%20DEBS-orange.svg)]()
-[![Tests](https://img.shields.io/badge/tests-941_passing-brightgreen.svg)]()
+[![Target: TOMPECS](https://img.shields.io/badge/Target-ACM%20TOMPECS-orange.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1016_passing-brightgreen.svg)]()
 [![Coverage](https://img.shields.io/badge/branch_coverage-%E2%89%A595%25-brightgreen.svg)]()
 [![StatsBomb Data](https://img.shields.io/badge/StatsBomb_Data-CC_BY--NC_4.0-blue.svg)](https://github.com/statsbomb/open-data)
 
@@ -11,7 +11,7 @@
 >
 > **Paper:** [`paper.tex`](paper.tex) — *A Message Cannot Arrive Before It Is Sent:
 > Physical-Consistency Auditing for Streaming Latency Benchmarks*. ACM format, targeting
-> **ICPE / DEBS**. This is a **systems paper**; the football workload is the setting that
+> **ACM TOMPECS**. This is a **systems paper**; the football workload is the setting that
 > produced the finding, not the contribution.
 >
 > **The original question** was: *compare end-to-end lag between Redis Streams and Apache Kafka
@@ -24,12 +24,17 @@
 > 2,266 runs (58%)**, including every run behind a large, significant, theory-confirming result
 > we were about to publish.
 >
-> **Three results survive, and none is the one we set out to find:**
+> **Then a second headline failed too, and we withdrew it.** A twentyfold end-to-end gap we had
+> reported turned out to be a per-run **start-up cost** read as a per-event constant: the runs
+> behind it matched a *median of seven events each*. The integrity check does **not** catch that
+> one — those runs are all causally consistent. Causal consistency is necessary, not sufficient.
+>
+> **What survives:**
 > 1. The brokers are **equivalent within 1 ms** and neither degrades with concurrency — robust
 >    to the audit's own unequal retention (bounded in [`retention_bias.py`](scripts/retention_bias.py)).
-> 2. The end-to-end difference lives in **client code, not the broker**, and exists *only* at the
->    workload's sparse arrival rate — replay ten times faster and it vanishes, which is the
->    regime every synthetic-publisher benchmark measures.
+> 2. The failure model's rules are **measured, not just derived**: inversions fall as the
+>    measured quantity grows (ρ=−0.80), rise with process count (ρ=+0.80), and follow M/G/1
+>    waiting in utilisation (ρ=0.98, R² 0.945 vs 0.640 linear) with the predicted knee.
 > 3. Each system has **one client setting worth 1–2 orders of magnitude**, both free on a
 >    co-located testbed and therefore invisible to how such settings are normally evaluated.
 >
@@ -69,11 +74,11 @@
 
 ## 1. Current State & Objectives
 
-**Last updated:** July 22, 2026 · **Branch:** `main` · **Target:** *ICPE / DEBS* (systems venue; the JSA framing was retired — see the header)
+**Last updated:** July 24, 2026 · **Branch:** `main` · **Target:** *ACM TOMPECS* (systems venue; the JSA framing was retired — see the header)
 
 ### 1.1 Where things stand
 
-> ## ⚠️ Read this first: most of this project's measurements are condemned
+> ## ⚠️ Read this first: two headline results were withdrawn
 >
 > Broker transport is computed as *consumer receipt − broker acknowledgement*, two timestamps
 > taken in two processes. A negative value is not noise — it is proof that the instrument
@@ -111,31 +116,58 @@ All numbers below are from **Testbed B** (four Oracle Cloud VMs, real inter-VM n
 real-time replay, after gating. Concurrency levels are **derived from real kick-off schedules**
 (§1.4), not chosen by hand.
 
-**Claim 1 — On end-to-end lag, Redis Streams wins by 20×, at every concurrency level football
-produces.** Median TTI 5.2 ms vs Kafka's 105.5 ms; 164 of 201 runs retained.
+**Claim 1 — The brokers are equivalent within 1 ms, and neither degrades with concurrency.**
+Kruskal–Wallis across N: Kafka *p*=0.061, Redis *p*=0.091 — neither significant. TOST against a
+1 ms margin establishes equivalence at N=9/10/12 under all three procedures (Welch, bootstrap,
+Hodges–Lehmann). At N=1 the procedures disagree and we report the disagreement: *n*=8 per
+backend, and one Kafka run carries a 6.3 ms startup outlier. Robust to the audit's own unequal
+retention (bounded in [`retention_bias.py`](scripts/retention_bias.py)).
 
-| N | Kafka TTI | Redis TTI | Kafka sched. lag | Redis sched. lag | Kafka transport | Redis transport |
-|---:|---:|---:|---:|---:|---:|---:|
-| 1  | 105.3 ms | 5.0 ms | 103.0 ms | 1.4 ms | 0.792 ms | 0.721 ms |
-| 9  | 105.5 ms | 5.4 ms | 103.0 ms | 1.9 ms | 0.802 ms | 0.807 ms |
-| 10 | 105.3 ms | 5.8 ms | 102.8 ms | 2.0 ms | 1.000 ms | 0.855 ms |
-| 12 | 105.7 ms | 5.3 ms | 102.9 ms | 1.7 ms | 0.839 ms | 0.844 ms |
+| N | Kafka transport | Redis transport | HL shift |
+|---:|---:|---:|---:|
+| 1  | 0.792 ms | 0.721 ms | +0.081 ms |
+| 9  | 0.802 ms | 0.807 ms | +0.021 ms |
+| 10 | 1.000 ms | 0.855 ms | +0.116 ms |
+| 12 | 0.839 ms | 0.844 ms | +0.053 ms |
 
-No Kafka run falls below 104 ms; no Redis run exceeds 11 ms.
+> ### ⚠️ Claim 2 — WITHDRAWN: the 20× end-to-end gap was a start-up cost
+>
+> We previously reported Kafka TTI 105.5 ms vs Redis 5.2 ms, with 102.9 ms of it producer
+> scheduling lag, described as *constant — every event pays it*. **That does not reproduce.**
+>
+> A controlled re-run (N=1, true real time, same driver and broker) gives Kafka a median
+> scheduling lag of **1.59 ms** with a **103.5 ms maximum**. Two independent instrumentation
+> paths agree (per-event loop trace and per-run summary).
+>
+> **The cause is in our own data:** the E1 runs matched a **median of seven events each** (745
+> events across 100 Kafka runs). Those seven are the match's opening burst, emitted right after
+> producer start. Kafka's first send pays metadata fetch and topic creation; Redis's `XADD` to a
+> new stream does not. With seven events and one start-up cost, **that cost *is* the median** —
+> which is exactly why E1 reads 103 ms for Kafka and 1.75 ms for Redis *on the very same events*.
+>
+> It also retro-explains the three properties we offered as evidence, each of which a per-run
+> cost predicts equally well: *constant* within a run, *concurrency-invariant* (one per run
+> regardless of N), and *rate-dependent* (acceleration packs in more events and dilutes it).
+>
+> **The integrity gate does not catch this.** Every one of those runs is causally consistent,
+> nothing is negative, and the medians are stable to three significant figures across a hundred
+> runs — the artefact is deterministic, so it reproduces beautifully. Causal consistency is
+> necessary and not sufficient. A percentile over single-digit samples describes the harness,
+> not the system.
 
-**Claim 2 — But the brokers themselves are equivalent within 1 ms, and neither degrades with
-concurrency.** Kruskal–Wallis across N: Kafka *p*=0.061, Redis *p*=0.091 — neither significant.
-TOST against a 1 ms margin establishes equivalence at N=9/10/12 under all three procedures
-(Welch, bootstrap, Hodges–Lehmann). At N=1 the procedures disagree and we report the
-disagreement: *n*=8 per backend, and one Kafka run carries a 6.3 ms startup outlier.
+**Claim 3 — The measurement-failure model's rules, measured.** Four rules were derived from the
+model (`docs/measurement_model.md`) and pre-registered with falsification criteria before the
+data existed:
 
-**Claim 3 — The 20× gap is a client property, and it exists only at football's arrival rate.**
-Of Kafka's 105.5 ms, **102.9 ms is producer scheduling lag**. That offset is *constant*
-(p50≈p95 within a run), *concurrency-invariant* (103.0/103.0/102.8/102.9 ms), and
-**rate-dependent**: replay the identical corpus, code and hosts at 10× and it falls to
-0.19–1.01 ms. Leading hypothesis — the Kafka client's sender thread pays a fixed wakeup cost
-when the producer queue has been idle, which at 0.415 events/second is before essentially every
-event. *Attributed from three measured properties, not from client-internal tracing.*
+| | Rule | Result |
+|---|---|---|
+| **H1** | inversions fall as the measured quantity grows | ✅ ρ = **−0.80** |
+| **H2** | inversions follow M/G/1 waiting in utilisation | ✅ ρ = **0.98**, R² **0.945** vs 0.640 linear |
+| **H4** | inversions rise with concurrent process count | ✅ ρ = **+0.80** |
+| **H3** | asymmetric stamping biases the comparison | ⚠️ **untested** — both clients stamp in callbacks |
+
+H2's knee is measured, not just derived: inversion rate is flat (0.007–0.022) to ρ=0.5, then
+climbs to 0.047 / 0.132 / 0.207 at ρ = 0.63 / 0.75 / 0.88, reaching 0.21–0.26 at saturation.
 
 > **The methodological consequence:** a benchmark driven by a dense synthetic publisher measures
 > the regime in which this difference is *absent*. Realistic arrival rate is not a nicety here —
@@ -457,10 +489,11 @@ We translate delivery latency into in-play **decision error** in two steps:
    probability-seconds per match), where `TV_shift = ½·(|ΔP_win| + |ΔP_draw| + |ΔP_loss|)`.
 
 Worked on the gated numbers: the largest forecast move in the corpus is a 95th-minute equaliser
-shifting the outcome distribution by 0.955 in total variation. At Redis's 5.2 ms that costs
-0.005 probability-seconds; at Kafka's 105.5 ms, 0.101; at the 31.4 s a round-trip-bound consumer
-suffers behind a 20 ms hop, **30 probability-seconds**. The first two are decision-irrelevant and
-the third is not.
+shifting the outcome distribution by 0.955 in total variation. At the ~0.8 ms broker transport
+both systems deliver, that event costs under 0.001 probability-seconds; at the 31.4 s a
+round-trip-bound consumer suffers behind a 20 ms hop, **30 probability-seconds**. The first is
+decision-irrelevant and the second is not. (The earlier version of this worked example used the
+105.5 ms / 5.2 ms end-to-end figures, which are **withdrawn** — see §1.2 Claim 2.)
 
 The proxy is calibrated (ECE 0.054 over 28,240 game states) but **modest**: its skill over a
 lookup table conditioned on nothing but the current goal difference is **+0.026**. It is a
@@ -730,7 +763,7 @@ specification and a Zenodo archive are planned under Issue 6.
 
 ## 12. Manuscript & Paper Preparation
 
-The paper targets **ICPE / DEBS** using the ACM `acmart` class (`sigconf`). The earlier SAGE / Journal of Sports Analytics framing was retired; see the header for why.
+The paper targets **ACM TOMPECS** using the ACM `acmart` class (`sigconf`). The earlier SAGE / Journal of Sports Analytics framing was retired; see the header for why.
 
 | Asset | Purpose |
 |-------|---------|

@@ -55,11 +55,10 @@ def run_inversion(run_dir):
             for r in csv.DictReader(fh):
                 a = ack.get(r["event_id"])
                 recv = r.get("t_consume_ns")
-                if a is None or recv in (None, "", "None"):
-                    continue
-                tot += 1
-                if int(recv) - a < 0:
-                    neg += 1
+                if a is not None and recv not in (None, "", "None"):
+                    tot += 1
+                    if int(recv) - a < 0:
+                        neg += 1
         return neg, tot
     except (ValueError, KeyError, OSError):
         return 0, 0
@@ -87,9 +86,8 @@ def run_transport_median(run_dir):
             for r in csv.DictReader(fh):
                 a = ack.get(r["event_id"])
                 recv = r.get("t_consume_ns")
-                if a is None or recv in (None, "", "None"):
-                    continue
-                vals.append((int(recv) - a) / 1e6)
+                if a is not None and recv not in (None, "", "None"):
+                    vals.append((int(recv) - a) / 1e6)
         return st.median(vals) if vals else None
     except (ValueError, KeyError, OSError):
         return None
@@ -184,12 +182,11 @@ def collect(depth_dir, runs_dir):
                  if glob.glob(os.path.join(depth_dir, p, "*"))] or ["ea"]
     for phase in ea_phases:
         for cond in sorted(glob.glob(os.path.join(depth_dir, phase, "*"))):
-            if not os.path.isdir(cond):
-                continue
-            inv = condition_inversion(cond, runs_dir)
-            rho = median_rho(cond)
-            if inv is not None and rho is not None:
-                ea.append({"rho": rho, "inversion_rate": inv})
+            if os.path.isdir(cond):
+                inv = condition_inversion(cond, runs_dir)
+                rho = median_rho(cond)
+                if inv is not None and rho is not None:
+                    ea.append({"rho": rho, "inversion_rate": inv})
 
     for cond in sorted(glob.glob(os.path.join(depth_dir, "ea2", "n*"))):
         inv = condition_inversion(cond, runs_dir)

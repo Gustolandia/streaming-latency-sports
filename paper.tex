@@ -57,8 +57,10 @@ equivalent within $1$~ms and neither degrades across the concurrency range, a co
 is robust to the unequal retention the check itself introduces. A second headline --- a
 twentyfold end-to-end gap between the systems --- also failed to reproduce, and we withdraw it:
 the runs behind it matched a median of seven events each, so a one-off producer start-up cost
-was being reported as a per-event constant. That second withdrawal is instructive precisely
-because the integrity check does not catch it; a benchmark can be causally consistent,
+was being reported as a per-event constant. A sweep over the observation window settles which it
+is, by counting rather than averaging: lengthening the run multiplies its events several-fold
+while the number of affected events stays at four. That second withdrawal is instructive
+precisely because the integrity check does not catch it; a benchmark can be causally consistent,
 gate-clean, and still measure its own start-up.
 
 Four falsifiable rules derived from a model of the failure are then tested directly. Inversion
@@ -169,9 +171,13 @@ and~\ref{sec:rules}). From a model of the failure we derive that inversion proba
 $F_{\Delta}(-T_{\mathrm{true}})$ and test the consequences: it falls as the measured quantity
 grows, rises with concurrent process count, and follows M/G/1 waiting time in utilisation. All
 three hold. This converts the central property from an observation into a measured law.
-\item \textbf{A second withdrawal} (Section~\ref{sec:attribution}): a twentyfold end-to-end gap
-we had reported, and built a recommendation on, turned out to be a per-run start-up cost read as
-a per-event constant, because the runs behind it matched a median of seven events. The integrity
+\item \textbf{A second withdrawal, and a test that would have caught it}
+(Section~\ref{sec:attribution}): a twentyfold end-to-end gap we had reported, and built a
+recommendation on, turned out to be a per-run start-up cost read as a per-event constant, because
+the runs behind it matched a median of seven events. We give a controlled discriminator ---
+sweep the observation window and count the affected events rather than averaging them, since a
+per-run cost holds that count fixed while a per-event one grows it --- and trace the cost to a
+single blocking first \texttt{produce()} and the four events that queue behind it. The integrity
 check does \emph{not} catch this, which is the point: causal consistency is necessary and not
 sufficient, and a percentile over single-digit samples describes the harness rather than the
 system.
@@ -767,6 +773,50 @@ window gives a median producer scheduling lag of $1.59$~ms for \kafka{}, not $10
 trace and the per-run summary. The $103$~ms is real, but it is paid once per run, not once per
 event.
 
+\paragraph{A controlled test that separates the two.} A median cannot distinguish a per-run cost
+from a per-event one, because how much of the cost the median sees depends on how many events the
+run contains --- which is precisely what misled us. The quantity that \emph{does} separate them is
+the \emph{number} of affected events per run. A per-run cost predicts that number is fixed however
+long the run gets; a per-event constant predicts it grows with the run. We therefore replayed the
+same match at true real time under three observation windows, holding everything else fixed, and
+counted events waking more than $50$~ms late (Table~\ref{tab:window}).
+
+The count does not move. Lengthening the window multiplies the events per run several-fold while
+the number of late events stays at four, so the share of events paying the cost falls in inverse
+proportion. \redis{}, run in the same sweep on the same events, has \emph{no} late events and no
+blocking send at any window.
+
+\paragraph{The mechanism, read directly off the loop trace.} The per-event trace shows the same
+five-event signature in every \kafka{} run, at every window:
+
+\begin{quote}
+\small
+\begin{tabular}{rrr}
+\toprule
+event & wake late (ms) & send blocked (ms) \\
+\midrule
+0 & 0.17 & \textbf{102.60} \\
+1 & \textbf{102.96} & 0.07 \\
+2 & \textbf{103.08} & 0.05 \\
+3 & \textbf{103.17} & 0.04 \\
+4 & \textbf{103.30} & 0.05 \\
+5 & 0.94 & 0.27 \\
+6 & 1.42 & 0.06 \\
+\bottomrule
+\end{tabular}
+\end{quote}
+
+The first \texttt{produce()} blocks for $102.6$~ms fetching metadata and creating the topic. The
+replay loop is single-threaded, so the four events due while it is blocked --- the kickoff burst,
+all stamped at $t_{\mathrm{sim}}{=}0$ --- wake roughly $103$~ms late and then send in tens of
+microseconds. From event~5 the loop is in steady state at about $1$~ms. One cost, paid once, is
+charged to five events; the sixth event onward pays nothing. \redis{} shows no such prologue
+because \texttt{XADD} to a new stream creates it in the same round trip.
+
+This closes the arithmetic. E1 matched a median of seven events per run, five of which fall inside
+that prologue. A median over seven events of which five carry a $103$~ms one-off \emph{is}
+$103$~ms.
+
 \paragraph{Why the original corpus could not see that.} The E1 runs behind
 Table~\ref{tab:e1} matched a \textbf{median of seven events each} --- $745$ events across $100$
 \kafka{} runs. Those seven are the match's opening burst, all scheduled at $t_{\mathrm{sim}}{=}0$
@@ -796,6 +846,28 @@ harness.
 Section~\ref{sec:gate} and is measured over the same events for both systems --- \kafka{} and
 \redis{} remain equivalent within one millisecond (Section~\ref{sec:e1}). We make no end-to-end
 claim. The twentyfold figure is withdrawn.
+
+\begin{table}[t]
+\caption{The observation-window sweep that separates a per-run cost from a per-event one. Same
+match, same driver, same broker, $N{=}1$, true real-time replay; only the window changes. Events
+per run grow with the window, but the number waking more than $50$~ms late does not, and exactly
+one send blocks. \redis{}, measured on the same events, has neither. Counts are medians over
+three replicates.}
+\label{tab:window}
+\begin{tabular}{lrrrrrr}
+\toprule
+& Window & Events & \multicolumn{2}{c}{Scheduling lag (ms)} & Events $>50$~ms & Blocking \\
+\cmidrule(lr){4-5}
+& (s) & per run & median & max & late & sends \\
+\midrule
+\kafka{} &  60 &  57 & 1.57 & 103.5 & 4 & 1 \\
+         & 180 & 148 & 1.60 & 103.4 & 4 & 1 \\
+\midrule
+\redis{} &  60 &  57 & 1.50 &  17.4 & 0 & 0 \\
+         & 180 & 148 & 1.56 &  20.5 & 0 & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{figure}[t]
 \centering
@@ -1003,6 +1075,12 @@ would have caught our second withdrawal (Section~\ref{sec:attribution}) and the 
 not: a median over seven events is a statement about the harness, not the system, and it looks
 its most convincing when the artefact is deterministic enough to repeat across a hundred runs.
 Any percentile computed over single-digit samples should be labelled as such.
+\item \textbf{Before attributing an offset to every event, vary the run length and count.}
+Lengthen the observation window by a known factor and count how many events exceed the offset,
+rather than re-computing the average. A per-run cost holds that count fixed while the run grows;
+a per-event one grows it in proportion. The two are indistinguishable in any percentile, which is
+why we report the count. In our sweep the count stayed at four while events per run grew several
+times over (Table~\ref{tab:window}).
 \item \textbf{Where retention differs between arms, bound the selection it introduces.}
 Unequal rejection is itself a bias, and Section~\ref{sec:retention} gives the worst-case
 imputation we use.
@@ -1030,6 +1108,15 @@ Where a consumer sits across a network, audit the \emph{consumption pattern} bef
 product. A client that acknowledges per message and waits for the reply converts ordinary network
 delay into seconds of staleness; batching removes it. \kafka{} is not immune by virtue of being
 \kafka{}, but because its client already amortises.
+
+One practical asymmetry survives our withdrawal, and it is a start-up property rather than a
+steady-state one. A \kafka{} producer's first \texttt{produce()} blocks for roughly $100$~ms
+while it fetches metadata and creates the topic (Section~\ref{sec:attribution}); \redis{}'s
+\texttt{XADD} creates the stream in the same round trip and blocks for under a millisecond. On a
+long-lived producer this is paid once and is irrelevant. It matters in two situations: where
+producers are short-lived --- one per match, per request, or per serverless invocation --- and
+where the events that matter most arrive first, as a kickoff burst does. In both, pre-create the
+topic and issue a warm-up send before the feed opens.
 
 \subsection{Threats to validity}
 \label{sec:threats}

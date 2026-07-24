@@ -844,6 +844,11 @@ turns a value negative and the consistency check passed both corpora that carrie
 guarantees a corpus is not \emph{catastrophically} wrong; resolving a $0.07$~ms instrument
 artefact still took a controlled experiment.
 
+An independent replication confirms it. A second powered campaign, run days apart with the same
+protocol, gives Hodges--Lehmann shifts of $0.397$, $0.412$ and $0.413$~ms at $N = 1, 9, 12$ ---
+inside the $90\%$ interval of the first campaign at every level, with overlapping intervals
+throughout. The $0.41$~ms advantage is not a fluctuation of one campaign.
+
 This refines E1 rather than contradicting it, and it sharpens the contradiction with
 Table~\ref{tab:first}: the accelerated corpus reported \redis{} \emph{degrading} with concurrency;
 the powered real-time measurement finds \redis{} uniformly \emph{faster} and flat. The reversal is
@@ -1137,7 +1142,8 @@ does --- and run it against \redis{} under matched load, both at one in-flight r
 $0.071$~ms it loses comes entirely from \kafka{}'s side: \kafka{}'s median transport drops from
 $0.392$ to $0.322$~ms while \redis{}'s holds at $0.106$. Removing the callback removed a
 $0.07$~ms systematic offset that was being charged to the broker rather than to the instrument.
-\textbf{Supported.}
+An independent replication with half again as many runs reproduces it: the gap falls from
+$+0.276$ to $+0.237$~ms, again entirely on \kafka{}'s side. \textbf{Supported.}
 
 This is the rule with the most direct bearing on the paper's own first result. The spurious
 effect the audit rejected was a between-system difference; H3 shows that even after the audit, an

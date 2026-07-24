@@ -1,93 +1,266 @@
-# Reproducibility Package (Issue 6)
+# Reproducibility Package
 
-This directory documents the frozen, corrected artifact for the manuscript. It pins the
-exact code, environment, and datasets so the corrected results can be regenerated.
+This directory pins the frozen artefact for the manuscript so its results can be regenerated:
+the exact code, environment, datasets and per-run provenance.
 
-- **Git commit:** see `MANIFEST.json` (`git_commit`).
-- **Environment:** [docs/infrastructure.md](../docs/infrastructure.md) (host hardware,
-  Docker/Kafka/Redis/Python versions, deployment topologies).
-- **Per-file code checksums:** `MANIFEST.json` (`code_sha256`).
-- **Per-run provenance:** every `runs/<id>/meta.json` (git head, code SHA-256, config);
-  verify with `python scripts/verify_reproducibility.py --pattern '<prefix>*' --verbose`.
+**Paper:** [`paper.tex`](../paper.tex) — *A Message Cannot Arrive Before It Is Sent:
+Physical-Consistency Auditing for Streaming Latency Benchmarks, and What It Left of a
+Kafka-versus-Redis Comparison* (ACM `acmart`, targeting **ACM TOMPECS**). This is a **systems /
+measurement-methodology paper**; the football workload is the setting that produced the finding,
+not the contribution. The earlier Journal of Sports Analytics framing (decision-staleness,
+Age-of-Information, win-probability) has been **retired** — do not reintroduce it here.
 
-## The fair corpus (primary — pipelined, non-saturating)
+- **Git commit:** see [`MANIFEST.json`](MANIFEST.json) (`git_commit`).
+- **Environment:** [docs/infrastructure.md](../docs/infrastructure.md) (host hardware, both
+  testbeds, Docker/Kafka/Redis/Python versions, deployment topologies).
+- **Per-file code checksums:** [`MANIFEST.json`](MANIFEST.json) (`code_sha256`); regenerate with
+  `python scripts/generate_manifest.py`.
+- **Per-run provenance:** every `runs/<id>/meta.json` (git head, code SHA-256, config); verify
+  with `python scripts/verify_reproducibility.py --pattern '<prefix>*' --verbose`.
 
-The headline results use the **fair** protocol: both producers pipelined (Kafka
-`--max-inflight 64`; Redis async worker pool) at a non-saturating `--speedup 10`. Runs are
-distinguished by their `meta.json` (`speedup`, `max_t_sim`), not by prefix.
+## What the paper claims, and what the artefact must show
 
-| Dataset | Selector | Purpose |
-|---------|----------|---------|
-| Latency sweep (windowed) | `speedup=10`, `max_t_sim=600`, single+cluster, N∈{1,5,10,20}, 3 reps | latency vs. N (Kafka flat, Redis grows) |
-| Decision-staleness (full-match) | `speedup=10`, `max_t_sim=9000`, single, N∈{1,5,10,20}, 3 reps | all 40 goals → per-match AoI integral |
+The study set out to compare Apache Kafka and Redis Streams for a real-time football feed under
+varying concurrency. The first campaign returned a clean, significant, theory-confirming result
+(Redis broker transport rising with concurrency, Kafka flat, *p* = 9.0×10⁻¹¹). **It was an
+artefact**, and the artefact here exists to make that legible rather than to hide it.
 
-> Every pre-fix corpus (the `batch9_*` matrix, the 120× concurrency runs, the frozen S2) is
-> **superseded** — contaminated by the cross-process clock and/or the Kafka load-generator
-> asymmetry. Do not mix them with the fair corpus.
+### The integrity audit (the contribution)
 
-## Reproduce from scratch
+Broker transport is `t_cons_recv_ns − t_broker_ack_ns` — a consumer-process timestamp minus a
+producer-process one. A message cannot arrive before it is sent, so a **negative** value is not
+noise but proof the instrument failed. [`scripts/clock_integrity.py`](../scripts/clock_integrity.py)
+applies that as a stated rule to **every** run, not only the ones that looked wrong:
+
+> A run is **rejected** if more than **1 %** of its events carry a negative value in any latency
+> component, or if the **median** of any component is negative. A condition is usable only if all
+> of its runs survive. (`TOLERANCE_MS = 0.001`, `MAX_NEGATIVE_FRACTION = 0.01`.) The tool exits
+> non-zero, so a campaign script can gate on it.
+
+Applied to all **2,266** runs it rejects **1,321 (58.3 %)**, including every run behind the first
+result:
+
+| Corpus | Runs | Rejected | Conditions | Usable | Audit CSV |
+|---|---:|---:|---:|---:|---|
+| Testbed A (single host, Windows) | 1,382 | 862 (62.4 %) | 76 | 8 | `docs/results/integrity_windows/clock_integrity_by_condition.csv` |
+| Testbed B (four Oracle Cloud VMs) | 884 | 459 (51.9 %) | 40 | 13 | `docs/results/integrity_by_condition.csv` |
+| **Total** | **2,266** | **1,321 (58.3 %)** | 116 | 21 | |
+
+The threshold is a real decision (the inversion-rate distribution is **not** bimodal — only 104
+of 1,382 Testbed A runs are completely clean), so the paper reports its sensitivity rather than
+asserting robustness: rejection ranges from **92.5 %** at zero tolerance to **19.2 %** at a
+permissive 20 %, and no threshold in that range changes which conditions are usable
+(§6.3, `clock_integrity_by_run.csv`).
+
+### Two withdrawals
+
+Both are reported in full, because the paper's argument is what invalid data looks like.
+
+1. **The concurrency finding is withdrawn.** The first result set (Table 1: Redis transport
+   1.006 → 1.197 → 1.346 ms across N, Kafka flat, complete rank separation) fails the audit on
+   **every** condition behind it. The inversions are invisible in aggregate — 5–14 % of events
+   invert, enough to bias a 0.34 ms effect and far too little to disturb any median or interval a
+   reviewer inspects.
+2. **The twentyfold end-to-end gap is withdrawn.** A Kafka-vs-Redis TTI gap (≈105 ms vs ≈5 ms,
+   with ≈103 ms of it producer scheduling lag) was reported, attributed to client code, and built
+   into a recommendation. It does **not** reproduce: it is a per-run **start-up cost** read as a
+   per-event constant. The runs behind it matched a **median of seven events each**, and Kafka's
+   first `produce()` blocks ≈102.6 ms fetching metadata and creating the topic, so the four
+   kickoff events due while it blocks inherit that wait. A window sweep settles it by counting
+   rather than averaging (§ below). **The integrity check does *not* catch this one** — every
+   such run is causally consistent. Causal consistency is necessary, not sufficient.
+
+The audit also removes, as withdrawn arms: the entire Testbed A corpus; the Testbed B accelerated
+(non-real-time) concurrency sweep; the connection sweep above ten connections (at N=100 Kafka's
+median transport reads **−6.4 ms**); and the three-node cluster arm (0/15 runs, both backends).
+
+### What survives (all from Testbed B, all gated)
+
+- **Broker transport equivalence.** With each feed carrying a distinct real match at true real
+  time, N ∈ {1, 9, 10, 12}, **164 of 201 runs** survive. Transport is flat across the range —
+  Kruskal–Wallis *p* = 0.061 (Kafka) and 0.091 (Redis), neither significant; largest/smallest
+  median ratio 1.06 and 1.17 — and the two systems are **equivalent within 1 ms** at N ∈ {9,10,12}
+  under all three procedures (Welch, bootstrap, Hodges–Lehmann), with HL shifts of 0.021, 0.116
+  and 0.053 ms. At N=1 the procedures disagree (n=8, one Kafka run carries a 6.3 ms start-up
+  outlier) and the disagreement is reported, not resolved. Robust to the audit's own unequal
+  retention — a worst-case imputation bound holds while retention exceeds one half, and the
+  tightest cell (N=12) sits at 52.8 %, only 2.8 points above breakdown
+  (`docs/results/e1/`, [`scripts/retention_bias.py`](../scripts/retention_bias.py)).
+  *Caveat, per the paper's Limitations:* a small, underpowered replication at a **verified** real-
+  time rate (three N=1 runs) gives Kafka transport 0.45 ms against Redis's 0.09 ms — a fivefold
+  gap where E1 reports near-equality, both below their E1 values. Three runs settle nothing and
+  the windows differ, so no conclusion is drawn; a properly powered verified-rate replication is
+  the first extension this work needs.
+- **The window sweep** that separates a per-run cost from a per-event one
+  (`docs/results/window/window_sweep.csv`, [`scripts/analyze_window.py`](../scripts/analyze_window.py)).
+  Same match, driver and broker, N=1, true real time, only the window varying. Both arms are
+  loop-traced, so the counts come from one instrument:
+
+  | Window | Events emitted | Kafka sched. lag p50 / max | Kafka events >50 ms late | Kafka blocking sends | Redis late / blocking |
+  |---:|---:|---|---:|---:|---|
+  | 60 s  | 57  | 1.56 / 103.4 ms | **4** | **1** | 0 / 0 |
+  | 180 s | 148 | 1.61 / 103.5 ms | **4** | **1** | 0 / 0 |
+  | 600 s | 507 | 1.58 / 103.5 ms | **4** | **1** | 0 / 0 |
+
+  Events emitted grow **8.9×**; the affected count does not move, so the share paying the cost
+  falls from 7.0 % to 0.8 % — the signature of a once-per-run cost. A per-event constant would
+  have grown the count and held the median at 103 ms.
+- **The failure model's four rules, measured** (pre-registered, tested on gated conditions;
+  `docs/results/model/`, [`scripts/measurement_model.py`](../scripts/measurement_model.py) and
+  H3 via [`scripts/analyze_depth.py`](../scripts/analyze_depth.py) → `ec3_stamping.csv`):
+
+  | | Rule | Result |
+  |---|---|---|
+  | **H1** | inversion rate falls as the measured quantity grows | ✅ ρ = **−0.80** |
+  | **H2** | inversion follows M/G/1 waiting in utilisation | ✅ ρ = **0.98**, R² **0.945** vs 0.640 linear (predicted knee) |
+  | **H3** | asymmetric stamping biases the *comparison* | ✅ gap **+0.286 → +0.215 ms** (−25 %), Kafka 0.392 → 0.322, Redis holds ≈0.106 |
+  | **H4** | inversion rises with concurrent process count | ✅ ρ = **+0.80** |
+
+- **The configuration result.** Each system has exactly one client-side setting worth one to two
+  orders of magnitude, and each documentation example uses the slow value: Kafka producer
+  pipelining (`max.in.flight` 1 → 64: 1,644 ms → 16 ms, **103×**) and Redis consumer ack
+  batching (per-message `XACK` → 200 at a time: 4,138 ms → 103 ms, **40.2×**). Both are **free on
+  a co-located testbed**, so a loopback benchmark certifies as equivalent two clients that differ
+  by two orders of magnitude in deployment. (The `tc netem` arm behind the ack-batching mechanism
+  passes the audit 15/15 on the Redis side at every injected delay, precisely because its effect
+  is tens of seconds — far above the instrument's floor.)
+
+### Rate-provenance disclosure (paper §6.5)
+
+Replay plans built by [`scripts/make_replay_plan.py`](../scripts/make_replay_plan.py) carry a
+**baked-in 120× time compression**: `t_emit_offset_s = t_sim_seconds / 120`. So `--speedup 1`
+against such a plan is **120×, not real time**; true real time needs `--speedup ≈ 0.008333`
+(1/120). The flag's meaning depends on which plan it is pointed at, and getting it wrong is
+silent. **No surviving artefact records the achieved replay rate of any reported run**, and the
+records that do exist for the earliest (E1) corpus disagree.
+
+Two things follow, both of which the artefact must reflect:
+
+- The reported Testbed B results (E1, and the verified-rate window/replication runs) are at a
+  **verified true-real-time rate**, derived from the plan by
+  [`scripts/plan_speedup.py`](../scripts/plan_speedup.py) (`--rate 1`) and checked against elapsed
+  wall time (`plan_speedup.py --verify <producer.csv> --max-t-sim <window>`), not asserted from a
+  flag.
+- E1's rate is **recovered from the data, not documented**: 15 Kafka runs that matched exactly
+  eight events read a median scheduling lag of **52.34 ms** (range 51.60–53.01), which is the mean
+  of a fast and a slow event and so requires exactly four of eight to be late — the count the loop
+  trace gives at true real time, and inconsistent with 120× or 1200× (which would read ≈103 ms).
+  The audit and both withdrawals are unaffected by the gap either way; the rate is stated as an
+  inference throughout.
+
+The lesson the protocol now carries: **record the achieved rate, per run, next to the results —
+not the flag that was meant to produce it.**
+
+## Reproduce
+
+The full data-generation pipeline (fetch → plan → replay → audit → analyse) is documented below.
+Note that every **reported** number comes from **Testbed B**, four Oracle Cloud VMs on a real
+inter-VM network (see [docs/infrastructure.md](../docs/infrastructure.md)); regenerating the raw
+per-run corpus therefore needs that infrastructure. The committed per-run data under `runs/` and
+the aggregated CSVs under `docs/results/` are the frozen corpus, and the analysis + figure scripts
+recompute every table and figure in the paper from them without any broker at all.
 
 ```bash
 python -m venv .venv && .venv\Scripts\Activate.ps1      # (or source .venv/bin/activate)
 pip install -r requirements.txt
-bash scripts/fetch_statsbomb_events.sh                  # re-fetch the 34 match JSONs (pinned SHA)
+```
 
-# Rebuild the replay plans from the raw events (the repo ships them as data, but they are
-# fully regenerable -- make_replay_plan.py reproduces the committed plans byte-for-byte):
+### 1. Fetch the StatsBomb corpus (pinned)
+
+```bash
+python scripts/fetch_statsbomb_corpus.py --dry-run                 # size it first
+python scripts/fetch_statsbomb_corpus.py --out data/raw/statsbomb  # pinned commit is inside the script
+```
+
+`fetch_statsbomb_corpus.py` replaces the old single-season `fetch_statsbomb_events.sh`: it pulls
+the whole modern corpus (52 competition-seasons, 3,315 matches, 2003–2023) keyed to open-data
+commit `3bfbffe1de5750ebd47d770be0bb924a10cde54f`. Raw JSON is **not** redistributed (it is
+gigabytes, CC BY-NC-4.0); the replay plans derived from it are committed.
+
+### 2. Rebuild the replay plans (regenerable byte-for-byte)
+
+```bash
 SHA=3bfbffe1de5750ebd47d770be0bb924a10cde54f
 for M in $(ls data/raw/statsbomb/$SHA/events | sed 's/.json//'); do
   python scripts/make_replay_plan.py --commit $SHA --match-id $M --speed-factor 120
 done
-# optional: merge several matches into one feed (raises that feed's event rate N-fold)
-python scripts/make_multimatch_plan.py --commit $SHA --match-ids-file configs/s2_match_ids.txt \
-    --out-dir data/processed/replay_plans/s2sf12 --speed-factor 12
-
-# Single infra (localhost:19092 / 16379):
-docker compose -f docker-compose.yml up -d
-# Cluster infra (9092-9094 / 7000-7002; distinct ports, can coexist):
-docker compose -f docker-compose-multibroker.yml up -d
-docker compose -f docker-compose-redis-cluster.yml up -d
-
-# Fair latency sweep (windowed, single infra):
-for N in 1 5 10 20; do python scripts/run_concurrency_test.py $N data/processed/replay_plans/s2sf12/combined_plan.csv 3 \
-  --speedup 10 --kafka-bootstrap localhost:19092 --redis-port 16379 --kafka-producer-extra "--max-inflight 64"; done
-# Full-match decision-staleness sweep (add --max-t-sim 9000):
-for N in 1 5 10 20; do python scripts/run_concurrency_test.py $N data/processed/replay_plans/s2sf12/combined_plan.csv 3 \
-  --speedup 10 --max-t-sim 9000 --kafka-bootstrap localhost:19092 --redis-port 16379 --kafka-producer-extra "--max-inflight 64"; done
-
-# Analyses (EV = data/raw/statsbomb/<sha>/events):
-python scripts/analyze_realtime_concurrency.py --speedup 10 --out docs/results/realtime_concurrency                       # windowed latency
-python scripts/analyze_realtime_concurrency.py --speedup 10 --min-max-t-sim 9000 --out docs/results/realtime_concurrency_fullmatch
-python scripts/decision_staleness.py --pattern 'concurrency_n*' --min-max-t-sim 9000 --events-dir EV --out docs/results/decision_staleness_fullmatch
-python scripts/wp_calibration.py --events-dir EV --out docs/results/win_probability                                        # RPS + ECE
-python scripts/fair_statistics.py --by-run docs/results/realtime_concurrency/realtime_concurrency_by_run.csv --value-col tti_p50 --config single --label tti_windowed_single --out docs/results/fair_statistics
-python scripts/make_fair_figures.py                                                                                        # figures
-python scripts/make_worked_example.py --events-dir EV                                                                      # worked example + figure
-python scripts/equivalence_tests.py --by-run docs/results/realtime_concurrency_distinct/realtime_concurrency_by_run.csv --value-col tti_p50 --margin 40 --config single --label tti_distinct --out docs/results/equivalence
-python scripts/equivalence_tests.py --by-run docs/results/decision_staleness_distinct/decision_staleness_by_run.csv --value-col decision_staleness_prob_s --n-col n_concurrency --margin 0.04 --config single --label ds_distinct --out docs/results/equivalence
-python scripts/wp_sensitivity.py --pattern 'concurrency_n*' --min-max-t-sim 9000 --events-dir EV --out docs/results/wp_sensitivity
-python scripts/generate_manifest.py                                                                                        # refresh MANIFEST.json
 ```
 
-### Distinct-match, throughput and real-time protocols
+The repo ships eleven `match_<id>/replay_plan.csv` plans under
+`data/processed/replay_plans/$SHA/`; `--speed-factor 120` reproduces the committed plans
+byte-for-byte (this is the baked-in compression disclosed in §6.5). Each feed in the concurrency
+experiment carries a **distinct** real match — an earlier design merged matches into one feed,
+which turned the concurrency axis covertly into a throughput axis and is not used.
+
+### 3. Derive and verify the true-real-time replay rate
 
 ```bash
-PLANS=data/processed/replay_plans/<sha>          # contains match_*/replay_plan.csv
-# distinct matches: each feed carries a DIFFERENT real match (--speedup 1 cancels nothing;
-# the per-match plans already bake in 120x)
-python scripts/run_concurrency_test.py 10 "$FALLBACK" 3 --plans-dir "$PLANS" --speedup 1 --max-t-sim 9000 ...
-# throughput sweep: fix N, vary speedup to sweep aggregate events/second
-for S in 1 2 4 8 16; do python scripts/run_concurrency_test.py 10 "$FALLBACK" 3 --plans-dir "$PLANS" --speedup $S --max-t-sim 9000 ... ; done
-# TRUE real-time: 1/120 cancels the plan's baked 120x (600s of match clock = 10 min wall)
-python scripts/run_concurrency_test.py 5 "$FALLBACK" 2 --plans-dir "$PLANS" --speedup 0.008333 --max-t-sim 600 ...
+PLAN=data/processed/replay_plans/$SHA/match_3895052/replay_plan.csv
+python scripts/plan_speedup.py "$PLAN" --rate 1        # prints --speedup ≈ 0.008333 (= 1/120)
+# after a run, confirm the achieved rate against wall time (must be ~1.0x):
+python scripts/plan_speedup.py "$PLAN" --verify runs/<run_id>/producer.csv --max-t-sim 600
 ```
+
+### 4. Replay on the multi-host testbed (Testbed B), then audit
+
+```bash
+# Distinct match per feed, true real time, Kafka producer pipelined. N is the concurrency;
+# --plans-dir hands each feed a different match (the positional plan is only a fallback).
+for N in 1 9 10 12; do
+  python scripts/run_concurrency_test.py $N "$PLAN" 3 \
+    --plans-dir data/processed/replay_plans/$SHA \
+    --speedup 0.008333 --max-t-sim 600 \
+    --kafka-producer-extra "--max-inflight 64" \
+    --kafka-bootstrap <broker>:9092 --redis-host <broker> --redis-port 6379
+done
+
+# Apply the consistency check to every run, before looking at any result:
+python scripts/clock_integrity.py --runs-dir runs --run-glob 'concurrency_n*' \
+    --out docs/results/integrity
+```
+
+### 5. Recompute the paper's tables and figures (no broker needed)
+
+```bash
+# Surviving comparison + retention bound (E1):
+python scripts/retention_bias.py \
+    --by-run-csv docs/results/e1/e1_by_run_gated.csv \
+    --integrity-csv docs/results/e1/e1_clock_integrity.csv --out docs/results/e1
+# The model's rules (H1/H2/H4) and the symmetric-stamping test (H3):
+python scripts/measurement_model.py --out docs/results/model
+python scripts/analyze_depth.py --depth-dir docs/results/depth --runs-dir runs --out docs/results/model
+# The window sweep that discriminates per-run from per-event:
+python scripts/analyze_window.py --window-dir docs/results/window --runs-dir runs \
+    --out docs/results/window/window_sweep.csv
+# Workload characterisation (arrival rate, burstiness, kick-off concurrency):
+python scripts/characterize_feed.py --events-dir data/raw/statsbomb/$SHA/events   # -> docs/results/football/feed/
+python scripts/kickoff_concurrency.py                                             # -> docs/results/football/concurrency/
+# Figures, then refresh the manifest:
+python scripts/make_paper_figures.py
+python scripts/make_e1_figure.py
+python scripts/make_window_figure.py
+python scripts/generate_manifest.py
+```
+
+Run the script with `--help` for the full option set; each writes into `docs/results/`.
+
+### 6. Verify the paper agrees with the data
+
+```bash
+python -m pytest tests/unit/test_paper_consistency.py -q   # recomputes every headline number
+python scripts/verify_reproducibility.py --pattern 'concurrency_n*' --verbose
+```
+
+`test_paper_consistency.py` recomputes each figure in `paper.tex` from the CSV that produced it
+and fails if the two disagree, so a re-run that changes the data cannot silently desynchronise the
+paper.
 
 ## Zenodo archival (needs your Zenodo account token)
 
 `scripts/zenodo_deposit.py` does the whole thing in one command. It reads the token from the
-environment, bundles only git-tracked files (so the NC-licensed raw StatsBomb events are
-excluded by design), and **leaves an unpublished draft** -- a published Zenodo record cannot be
-deleted, so the final click stays a human decision.
+environment, bundles only git-tracked files (so the NC-licensed raw StatsBomb events are excluded
+by design), and **leaves an unpublished draft** — a published Zenodo record cannot be deleted, so
+the final click stays a human decision.
 
 ```bash
 # 0. one-off: create a Personal Access Token at
@@ -100,12 +273,12 @@ python scripts/zenodo_deposit.py --sandbox
 
 # 2. pin the exact state, then upload a real draft
 python scripts/generate_manifest.py
-git tag v1.0-decision-degradation && git push --tags
-python scripts/zenodo_deposit.py --ref v1.0-decision-degradation
+git tag v1.0-consistency-audit && git push --tags
+python scripts/zenodo_deposit.py --ref v1.0-consistency-audit
 
 # 3. review the draft in the browser and hit Publish -> the DOI is issued then.
 #    (--publish skips the review; irreversible, so only if you are sure.)
 ```
 
-Then add the DOI to `README.md` (badge), `CITATION.cff`, and the manuscript's Data and Code
-Availability statement.
+Then add the DOI to the top-level `README.md` (badge), `CITATION.cff`, and the manuscript's
+Artefact Availability statement.

@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Target: TOMPECS](https://img.shields.io/badge/Target-ACM%20TOMPECS-orange.svg)]()
-[![Tests](https://img.shields.io/badge/tests-1084_passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1127_passing-brightgreen.svg)]()
 [![Coverage](https://img.shields.io/badge/branch_coverage-%E2%89%A595%25-brightgreen.svg)]()
 [![StatsBomb Data](https://img.shields.io/badge/StatsBomb_Data-CC_BY--NC_4.0-blue.svg)](https://github.com/statsbomb/open-data)
 
@@ -32,9 +32,11 @@
 > **What survives:**
 > 1. The brokers are **equivalent within 1 ms** and neither degrades with concurrency — robust
 >    to the audit's own unequal retention (bounded in [`retention_bias.py`](scripts/retention_bias.py)).
-> 2. The failure model's rules are **measured, not just derived**: inversions fall as the
->    measured quantity grows (ρ=−0.80), rise with process count (ρ=+0.80), and follow M/G/1
->    waiting in utilisation (ρ=0.98, R² 0.945 vs 0.640 linear) with the predicted knee.
+> 2. The failure model's four rules are **measured, not just derived**: inversions fall as the
+>    measured quantity grows (ρ=−0.80), rise with process count (ρ=+0.80), follow M/G/1 waiting
+>    in utilisation (ρ=0.98, R² 0.945 vs 0.640 linear) with the predicted knee, and — the rule
+>    that bears on our own first result — a symmetric instrument shrinks the residual
+>    between-system gap by 25% (+0.286→+0.215 ms), entirely on the asymmetric side.
 > 3. Each system has **one client setting worth 1–2 orders of magnitude**, both free on a
 >    co-located testbed and therefore invisible to how such settings are normally evaluated.
 >

@@ -235,6 +235,7 @@ def main(argv=None):
     print(f"== E-C3: stamping comparison (H3) ==" if symmetric
           else "== E-C2: stamping comparison (H3, asymmetric pair -- untested) ==")
     h3 = {}
+    h3_rows = []
     for mode in ("callback", "inline"):
         cond = os.path.join(args.depth_dir, h3_phase, mode)
         if os.path.isdir(cond):
@@ -242,6 +243,8 @@ def main(argv=None):
             if "kafka" in t and "redis" in t:
                 diff = t["kafka"] - t["redis"]
                 h3[mode] = diff
+                h3_rows.append({"stamp": mode, "kafka_ms": round(t["kafka"], 4),
+                                "redis_ms": round(t["redis"], 4), "difference_ms": round(diff, 4)})
                 print(f"  {mode:9s}: kafka {t['kafka']:.3f} ms, redis {t['redis']:.3f} ms, "
                       f"difference {diff:+.3f} ms")
     if len(h3) == 2:
@@ -253,6 +256,9 @@ def main(argv=None):
                   f"(the between-backend gap "
                   f"{'shrinks' if shrink > 0 else 'does not shrink'} when both endpoints stamp "
                   f"on the calling thread)")
+            # Written whatever the verdict: it is the measurement, not the confirmation.
+            _write(h3_rows, out / "ec3_stamping.csv",
+                   ["stamp", "kafka_ms", "redis_ms", "difference_ms"])
         else:
             print("  H3 stamping rule: UNTESTED (both arms stamp in callbacks, so the "
                   "symmetric condition was never created)")

@@ -359,26 +359,26 @@ class TestSecondWithdrawalIsStated:
                                               int(rows[60]["trace_events"]))
         assert f"{grew:.1f}" in tex, f"the growth factor {grew:.1f}x must be stated"
 
-    def test_no_unmeasured_count_is_reported_as_zero(self, tex):
-        """Redis had no loop trace, so its count cells must be absent, not zero.
+    def test_redis_counts_are_measured_zeros_not_dashes(self, tex):
+        """Both arms are now loop-traced, so Redis's zeros are a measurement, not an absence.
 
-        An unmeasured count and a measured zero look identical in a table, and the analysis
-        used to default the missing one to 0. In a paper about instruments manufacturing
-        differences, printing that would have been the paper's own thesis happening to it.
+        The em-dash placeholder belonged to the earlier one-armed campaign. Its return would
+        mean the untraced data had crept back in.
         """
-        table = tex[tex.index(r"\label{tab:window}"):]
-        table = table[:table.index(r"\end{table}")]
-        redis_rows = [ln for ln in table.splitlines() if "&" in ln and "---" in ln]
-        assert len(redis_rows) == 3, "expected three Redis rows with unmeasured counts"
-        assert "not measured" in table, "the em-dash must be explained in the caption"
-        assert "absent rather than zero" in table
+        # The caption precedes the label, so slice the whole table environment around it.
+        lbl = tex.index(r"\label{tab:window}")
+        table = tex[tex.rindex(r"\begin{table}", 0, lbl):tex.index(r"\end{table}", lbl)]
+        assert "---" not in table, "no unmeasured-count placeholder may remain in the table"
+        # Three Redis rows, each ending in the measured "0 & 0" counts.
+        assert table.count("& 0 & 0") >= 3, "each Redis window row must show measured 0 late, 0 blocking"
+        assert "both arms" in table.lower() or "same instrument" in table.lower()
 
-    def test_the_instrumentation_asymmetry_is_a_stated_limitation(self, tex):
-        limits = tex[tex.index(r"\label{sec:limitations}"):]
-        limits = limits[:limits.index(r"\section{Conclusion}")]
-        low = limits.lower()
-        assert "one arm" in low and "loop trace" in low
-        assert "25" in limits, "the weaker claim the data does support must be given"
+    def test_the_one_armed_instrumentation_is_recorded_as_fixed(self, tex):
+        """The failure is worth keeping in the text, but as something we corrected."""
+        section = tex[tex.index(r"\label{sec:attribution}"):tex.index(r"\label{sec:rules}")]
+        low = section.lower()
+        assert "no trace" in low or "carried no trace" in low
+        assert "re-ran both arms" in low or "re-ran both" in low
 
     def test_limitations_do_not_still_call_the_offset_unattributed(self, tex):
         """The pre-withdrawal text said the offset was 'attributed, not proven' and that a
@@ -388,6 +388,47 @@ class TestSecondWithdrawalIsStated:
         low = limits.lower()
         assert "attributed, not proven" not in low
         assert "underway" not in low, "no limitation may point at work that has since finished"
+
+
+class TestH3IsMeasuredAndSupported:
+    """H3 was untested for two campaigns; E-C3 finally created the symmetric condition."""
+
+    def test_the_h3_table_matches_the_committed_csv(self, tex):
+        rows = {r["stamp"]: r for r in _rows("model", "ec3_stamping.csv")}
+        assert set(rows) == {"callback", "inline"}
+        for r in rows.values():
+            assert _contains_number(tex, float(r["kafka_ms"]), 3)
+            assert _contains_number(tex, abs(float(r["difference_ms"])), 3)
+
+    def test_the_gap_shrinks_and_only_on_kafkas_side(self, tex):
+        """The prediction is specific: symmetric stamping shrinks the gap from Kafka's side."""
+        rows = {r["stamp"]: r for r in _rows("model", "ec3_stamping.csv")}
+        cb, inl = rows["callback"], rows["inline"]
+        assert abs(float(inl["difference_ms"])) < abs(float(cb["difference_ms"]))
+        # Kafka moves; Redis does not.
+        assert float(cb["kafka_ms"]) - float(inl["kafka_ms"]) > 0.03
+        assert abs(float(cb["redis_ms"]) - float(inl["redis_ms"])) < 0.01
+
+    def test_the_paper_reports_h3_supported_not_untested(self, tex):
+        rules = tex[tex.index(r"\label{sec:rules}"):tex.index(r"\label{sec:network}")]
+        h3 = rules[rules.index("H3, the asymmetry rule"):]
+        h3 = h3[:h3.index(r"\paragraph") if r"\paragraph" in h3[20:] else len(h3)]
+        assert r"\textbf{Supported.}" in h3, "H3 must now be reported as supported"
+        assert "untested" not in h3.split("Two earlier attempts")[0].lower()
+
+    def test_the_25_percent_reduction_is_stated(self, tex):
+        rows = {r["stamp"]: r for r in _rows("model", "ec3_stamping.csv")}
+        reduction = 1 - abs(float(rows["inline"]["difference_ms"])) / abs(
+            float(rows["callback"]["difference_ms"]))
+        assert 0.20 < reduction < 0.30, f"reduction is {reduction:.0%}, paper says ~25%"
+        assert "25" in tex
+
+    def test_the_scorecard_says_all_four_hold(self, tex):
+        # The contribution item, not the abstract's first mention of the rules.
+        item = tex[tex.index(r"\textbf{Four falsifiable rules, derived and measured}"):]
+        item = item[:item.index(r"\item")]
+        assert "All four hold" in item
+        assert "All three hold" not in tex
 
     def test_the_argument_holds_at_every_candidate_replay_rate(self, tex):
         """The withdrawal must not depend on the rate the artefacts cannot supply.
@@ -436,11 +477,11 @@ class TestMeasuredRules:
         for token in ("0.945", "0.640"):                # H2 model-vs-linear fit
             assert token in section, f"missing R^2 {token}"
 
-    def test_h3_is_reported_as_untested_not_refuted(self, tex):
+    def test_all_four_rules_are_reported_supported(self, tex):
         section = tex[tex.index(r"\label{sec:rules}"):tex.index(r"\label{sec:network}")]
-        low = section.lower()
-        assert "untested" in low
-        assert "refuted" in low, "the untested/refuted distinction must be drawn explicitly"
+        # One \textbf{Supported.} per rule, H1 through H4.
+        assert section.count(r"\textbf{Supported.}") == 4
+        assert "NOT SUPPORTED" not in section.upper().replace("NOT SUPPORTED IF", "")
 
 
 class TestRateProvenanceIsDisclosed:

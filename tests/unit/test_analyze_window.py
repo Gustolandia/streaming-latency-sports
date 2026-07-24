@@ -217,11 +217,28 @@ class TestCollect:
         row = collect(str(temp_dir / "window"), str(temp_dir / "runs"))[0]
         assert row["trace_events"] == 57 and row["slow_wake"] == 5
 
-    def test_a_window_without_traces_still_reports_its_percentiles(self, temp_dir):
+    def test_an_untraced_window_reports_percentiles_but_no_counts(self, temp_dir):
+        """None, not zero: an untraced backend has not been measured to have no late events.
+
+        Defaulting to 0 is how the paper's first window table came to report Redis as having
+        zero blocking sends, which nobody had observed -- Redis simply had no loop trace.
+        """
         _make_condition(temp_dir, 60, "n1_20260724_010000", slow=None)
         row = collect(str(temp_dir / "window"), str(temp_dir / "runs"))[0]
         assert row["schedlag_p50"] == pytest.approx(1.5)
-        assert row["trace_runs"] == 0 and row["slow_wake"] == 0
+        assert row["trace_runs"] == 0
+        assert row["slow_wake"] is None and row["slow_produce"] is None
+        assert row["trace_events"] is None
+
+    def test_an_untraced_window_prints_as_untraced_not_as_zero(self, temp_dir, capsys):
+        _make_condition(temp_dir, 60, "n1_20260724_010000", slow=None)
+        _make_condition(temp_dir, 600, "n1_20260724_020000", slow=None)
+        main(["--window-dir", str(temp_dir / "window"), "--runs-dir", str(temp_dir / "runs"),
+              "--out", str(temp_dir / "o.csv")])
+        out = capsys.readouterr().out
+        assert "(no loop trace)" in out
+        assert "blocking sends=" not in out
+        assert "VERDICT: INCONCLUSIVE" in out
 
     def test_ignores_stray_files(self, temp_dir):
         _make_condition(temp_dir, 60, "n1_20260724_010000")

@@ -589,3 +589,73 @@ class TestClusterModeParameter:
 
 
 
+
+
+class TestTraceLoop:
+    """The per-event loop trace, mirroring kafka_producer.py --trace-loop.
+
+    This exists so the two producers can be compared on the same instrument. Before it, the
+    window sweep could count Kafka's blocking first send but had nothing to compare against,
+    and the analysis defaulted the Redis counts to zero -- which reads in a table as "Redis
+    never blocks" when it actually means "Redis was never measured".
+    """
+
+    @staticmethod
+    def _plan(temp_dir, n=3):
+        pd.DataFrame({
+            "event_id": [f"e{i}" for i in range(n)],
+            "match_id": [1] * n,
+            "t_sim_seconds": [0] * n,
+            "t_emit_offset_s": [0.0] * n,
+            "row_idx": list(range(n)),
+        }).to_csv(temp_dir / "plan.csv", index=False)
+
+    @staticmethod
+    def _run(temp_dir, extra):
+        mock_redis = MagicMock()
+        mock_redis.xadd = MagicMock(return_value="rid1")
+        with patch('redis.Redis', return_value=mock_redis):
+            old_argv, old_cwd = sys.argv, os.getcwd()
+            try:
+                os.chdir(temp_dir)
+                sys.argv = ["rp", "--run-id", "tr", "--plan-csv", "plan.csv",
+                            "--out", "prod.csv"] + extra
+                rp_main()
+            finally:
+                os.chdir(old_cwd)
+                sys.argv = old_argv
+
+    def test_writes_the_same_columns_as_the_kafka_trace(self, temp_dir):
+        """The analysis reads both files with one parser, so the schemas must agree."""
+        self._plan(temp_dir)
+        self._run(temp_dir, ["--trace-loop", "loop.csv"])
+        t = pd.read_csv(temp_dir / "loop_tr.csv")
+        assert list(t.columns) == ["event_id", "client", "t_target_ns", "t_wake_ns",
+                                   "t_send_ns", "t_after_produce_ns", "wake_late_ms",
+                                   "produce_ms"]
+        assert len(t) == 3
+        assert (t["client"] == "redis-py").all()
+
+    def test_is_namespaced_by_run_id(self, temp_dir):
+        """At N>1 each feed is its own process; unnamespaced files would race."""
+        self._plan(temp_dir)
+        self._run(temp_dir, ["--trace-loop", "traces/loop.csv"])
+        assert (temp_dir / "traces" / "loop_tr.csv").exists()
+        assert not (temp_dir / "traces" / "loop.csv").exists()
+
+    def test_off_by_default(self, temp_dir):
+        self._plan(temp_dir)
+        self._run(temp_dir, [])
+        assert list(temp_dir.glob("*loop*")) == []
+
+    def test_an_empty_plan_still_writes_a_header(self, temp_dir):
+        self._plan(temp_dir)
+        self._run(temp_dir, ["--trace-loop", "loop.csv", "--max-t-sim", "-1"])
+        assert (temp_dir / "loop_tr.csv").read_text(encoding="utf-8").strip() == "event_id"
+
+    def test_timings_are_non_negative_and_ordered(self, temp_dir):
+        self._plan(temp_dir)
+        self._run(temp_dir, ["--trace-loop", "loop.csv"])
+        t = pd.read_csv(temp_dir / "loop_tr.csv")
+        assert (t["t_after_produce_ns"] >= t["t_send_ns"]).all()
+        assert (t["produce_ms"] >= 0).all()

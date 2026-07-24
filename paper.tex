@@ -781,10 +781,20 @@ long the run gets; a per-event constant predicts it grows with the run. We there
 same match at true real time under three observation windows, holding everything else fixed, and
 counted events waking more than $50$~ms late (Table~\ref{tab:window}).
 
-The count does not move. Lengthening the window multiplies the events per run several-fold while
-the number of late events stays at four, so the share of events paying the cost falls in inverse
-proportion. \redis{}, run in the same sweep on the same events, has \emph{no} late events and no
-blocking send at any window.
+The count does not move. Going from the $60$~s window to the $600$~s window multiplies the
+events emitted by $8.9$ --- $57$ to $507$ --- while the number waking more than $50$~ms late
+stays at exactly four and exactly one send blocks, so the share of events paying the cost falls
+from $7.0\%$ to $0.8\%$. The median is flat at $1.6$~ms throughout and the maximum flat at
+$103.5$~ms: the cost is present in every run and dilutes in every run, which is the signature of
+something paid once. Had it been a per-event constant, the count would have grown with the window
+and the median would have stayed at $103$~ms.
+
+\redis{} was run in the same sweep on the same events. We report its percentiles and not its
+counts: its producer carried no loop trace in this campaign, so we can say its worst event at any
+window is under $25$~ms --- nothing resembling a $103$~ms prologue --- but we cannot report a
+count of zero, because zero is what we would have printed had we not measured at all. That
+asymmetry is our own, in a paper about asymmetric instrumentation, and
+Section~\ref{sec:limitations} records it.
 
 \paragraph{The mechanism, read directly off the loop trace.} The per-event trace shows the same
 five-event signature in every \kafka{} run, at every window:
@@ -868,23 +878,33 @@ claim. The twentyfold figure is withdrawn.
 \begin{table}[t]
 \caption{The observation-window sweep that separates a per-run cost from a per-event one. Same
 match, same driver, same broker, $N{=}1$, true real-time replay; only the window changes. Events
-per run grow with the window, but the number waking more than $50$~ms late does not, and exactly
-one send blocks. \redis{}, measured on the same events, has neither. Counts are medians over
-three replicates.}
+emitted grow $8.9\times$ across the sweep, but the number waking more than $50$~ms late does not
+move, and exactly one send blocks in every run. Counts are medians over three replicates, taken
+from the per-event loop trace; percentiles come from the per-run summary, so the two columns are
+independent instruments.}
 \label{tab:window}
-\begin{tabular}{lrrrrrr}
+\begin{tabular}{lrrrrrrr}
 \toprule
-& Window & Events & \multicolumn{2}{c}{Scheduling lag (ms)} & Events $>50$~ms & Blocking \\
-\cmidrule(lr){4-5}
-& (s) & per run & median & max & late & sends \\
+& Window & \multicolumn{2}{c}{Events} & \multicolumn{2}{c}{Scheduling lag (ms)}
+& Events $>50$ & Blocking \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}
+& (s) & emitted & matched & median & max & ms late & sends \\
 \midrule
-\kafka{} &  60 &  57 & 1.57 & 103.5 & 4 & 1 \\
-         & 180 & 148 & 1.60 & 103.4 & 4 & 1 \\
+\kafka{} &  60 &  57 &  57 & 1.57 & 103.5 & 4 & 1 \\
+         & 180 & 148 & 148 & 1.60 & 103.4 & 4 & 1 \\
+         & 600 & 507 & 465 & 1.59 & 103.5 & 4 & 1 \\
 \midrule
-\redis{} &  60 &  57 & 1.50 &  17.4 & 0 & 0 \\
-         & 180 & 148 & 1.56 &  20.5 & 0 & 0 \\
+\redis{} &  60 & 57  &  57 & 1.50 &  17.4 & --- & --- \\
+         & 180 & 148 & 148 & 1.56 &  20.5 & --- & --- \\
+         & 600 & 507 & 465 & 1.53 &  24.8 & --- & --- \\
 \bottomrule
 \end{tabular}
+
+\vspace{2pt}
+\footnotesize \emph{---}: not measured. The \redis{} producer carried no loop trace in this
+campaign, so its counts are absent rather than zero; see Section~\ref{sec:limitations}. Its
+\emph{maximum} is measured, and at no window does any \redis{} event exceed $25$~ms, so it
+has nothing resembling \kafka{}'s $103$~ms prologue.
 \end{table}
 
 \begin{figure}[t]
@@ -1188,12 +1208,27 @@ analysis of Section~\ref{sec:threshold} exists partly to compensate.
 sweep, the connection sweep above ten, the cluster arm, the durability quantification and all of
 Testbed~A. We cannot characterise behaviour at the concurrency a multi-tenant platform would see.
 
-\emph{The $103$~ms offset is attributed, not proven.} It is constant, concurrency-invariant and
-rate-dependent, which rules out contention and tail effects, but we did not instrument the client
-internals. If it is a property of one library rather than of \kafka{}, our end-to-end result is a
-statement about that library. It reproduced across both testbeds, four concurrency levels and 164
-runs, so it is not an accident of one machine; it may be an accident of one library, and a
-controlled client comparison is underway.
+\emph{We instrumented one arm of a two-arm comparison.} The window sweep that settles
+Section~\ref{sec:attribution} counts affected events from a per-event loop trace, and only the
+\kafka{} producer wrote one; the \redis{} producer had no equivalent flag and the orchestrator
+had no way to pass it. So Table~\ref{tab:window} reports \redis{}'s percentiles and not its
+counts. We record this rather than quietly reporting zeros, because zero is exactly what an
+unmeasured count looks like, and because a paper arguing that asymmetric instrumentation
+manufactures between-system differences is the last place it should pass unremarked. Both
+producers now write the same trace schema. What the existing data does support is the weaker
+claim we make: \redis{}'s worst single event at any window is under $25$~ms, so whatever it pays
+at start-up is not of the same order.
+
+\emph{The mechanism is established for our client, not for \kafka{} in general.} The blocking
+first \texttt{produce()} is visible in the loop trace of every run
+(Section~\ref{sec:attribution}), so for this client the attribution is direct rather than
+inferred. Whether a different client, or a pre-created topic, or a broker configured against
+auto-creation would pay the same cost, we did not test. The practitioner advice in
+Section~\ref{sec:discussion} is written to be safe either way.
+
+\emph{H3 is the one rule we state without a measurement}, for the reason given in
+Section~\ref{sec:rules}: the experiment we ran compared two clients that both stamp in
+callbacks, so the symmetric condition it needs was never created.
 
 \emph{The five-feed acknowledgement null is unexplained}, as set out in
 Section~\ref{sec:network}.

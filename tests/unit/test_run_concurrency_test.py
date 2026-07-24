@@ -6,6 +6,7 @@ Tests the concurrency test orchestration script.
 import json
 import os
 import sys
+import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch, call
 
@@ -817,17 +818,47 @@ class TestBrokerCountAndClusterMode:
             cmd_str = _cmdstr(mock_run.call_args[0][0])
             assert '-PRODUCER_EXTRA "--max-inflight 64"' in cmd_str
 
-    def test_run_trial_producer_extra_not_for_redis(self, temp_dir):
-        """producer_extra is ignored for the Redis backend (Kafka-only knob)."""
+    def test_run_trial_producer_extra_redis(self, temp_dir):
+        """producer_extra reaches the Redis trial too.
+
+        It used to be dropped here, which made the knob Kafka-only. That is how a diagnostic
+        (--trace-loop) came to be enabled on one arm of a two-arm comparison while the other
+        arm was reported as though it had been measured.
+        """
         with patch('scripts.run_concurrency_test.subprocess.run') as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="Success", stderr="")
             run_trial(
                 run_id="test_pe_r", plan_csv="data/test.csv", backend="redis",
                 speedup=10, max_t_sim=600, redis_host="localhost", redis_port=16379,
-                stream="s", producer_extra="--max-inflight 64",
+                stream="s", producer_extra="--trace-loop t.csv",
             )
             cmd_str = _cmdstr(mock_run.call_args[0][0])
-            assert 'PRODUCER_EXTRA' not in cmd_str
+            assert '-PRODUCER_EXTRA "--trace-loop t.csv"' in cmd_str
+
+    def test_run_trial_omits_producer_extra_when_empty(self, temp_dir):
+        for backend, kw in (("kafka", {"topic": "t"}), ("redis", {"stream": "s"})):
+            with patch('scripts.run_concurrency_test.subprocess.run') as mock_run:
+                mock_run.return_value = MagicMock(returncode=0, stdout="Success", stderr="")
+                run_trial(run_id="x", plan_csv="d.csv", backend=backend,
+                          speedup=10, max_t_sim=600, producer_extra="", **kw)
+                assert 'PRODUCER_EXTRA' not in _cmdstr(mock_run.call_args[0][0])
+
+    def test_main_passes_redis_producer_extra(self):
+        """--redis-producer-extra flows through to the Redis run_trial call, not the Kafka one."""
+        with patch('scripts.run_concurrency_test.run_trial') as mock_trial:
+            mock_trial.return_value = ("r", True, "ok")
+            with patch('sys.argv', ['rct', '1', 'plan.csv', '1',
+                                    '--redis-producer-extra', '--trace-loop w.csv',
+                                    '--out-dir', tempfile.mkdtemp()]):
+                try:
+                    main()
+                except SystemExit:
+                    pass
+            redis_calls = [c for c in mock_trial.call_args_list
+                           if 'redis' in c.args or c.kwargs.get('backend') == 'redis']
+            assert redis_calls, "no Redis trial was launched"
+            assert any(c.kwargs.get('producer_extra') == '--trace-loop w.csv'
+                       for c in redis_calls)
 
     def test_main_passes_kafka_producer_extra(self):
         """--kafka-producer-extra flows through to the Kafka run_trial call."""

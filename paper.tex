@@ -807,23 +807,41 @@ event & wake late (ms) & send blocked (ms) \\
 \end{quote}
 
 The first \texttt{produce()} blocks for $102.6$~ms fetching metadata and creating the topic. The
-replay loop is single-threaded, so the four events due while it is blocked --- the kickoff burst,
-all stamped at $t_{\mathrm{sim}}{=}0$ --- wake roughly $103$~ms late and then send in tens of
-microseconds. From event~5 the loop is in steady state at about $1$~ms. One cost, paid once, is
-charged to five events; the sixth event onward pays nothing. \redis{} shows no such prologue
-because \texttt{XADD} to a new stream creates it in the same round trip.
+replay loop is single-threaded, so every event due while it is blocked wakes roughly $103$~ms
+late and then sends in tens of microseconds. There are exactly four of them, and the reason is
+the sport rather than the harness: this plan's first five events all carry
+$t_{\mathrm{sim}}{=}0$, because a kickoff is recorded as a pass, a ball receipt and a carry
+inside the same second. That is not particular to this match --- every one of the eleven plans
+in our corpus opens with at least five events at $t_{\mathrm{sim}}{=}0$. A football feed
+therefore delivers its densest burst precisely when the producer is coldest, which is the worst
+possible alignment for a start-up cost and the reason it lands in the median rather than the
+tail. From event~5 the loop is in steady state at about $1$~ms. One cost, paid once, is charged
+to five events; the sixth onward pays nothing. \redis{} shows no such prologue because
+\texttt{XADD} to a new stream creates it in the same round trip.
 
-This closes the arithmetic. E1 matched a median of seven events per run, five of which fall inside
-that prologue. A median over seven events of which five carry a $103$~ms one-off \emph{is}
-$103$~ms.
+That closes it. Five events carry the cost, seven were matched, and the median of seven values of
+which at least four are $103$~ms \emph{is} $103$~ms. The published figure is the arithmetic of
+its own prologue.
 
-\paragraph{Why the original corpus could not see that.} The E1 runs behind
-Table~\ref{tab:e1} matched a \textbf{median of seven events each} --- $745$ events across $100$
-\kafka{} runs. Those seven are the match's opening burst, all scheduled at $t_{\mathrm{sim}}{=}0$
-and emitted immediately after producer start-up. When a run contains seven events and one
-start-up cost, that cost \emph{is} the median. \redis{} shows $1.75$~ms on the very same seven
+\paragraph{Why the original corpus could not see that, and how we know.} The E1 runs behind
+Table~\ref{tab:e1} replayed the first $600$~s of match time, which in this plan holds
+\textbf{507 events}. They matched a \textbf{median of seven} --- $745$ events across $100$
+\kafka{} runs, a match rate near one percent. The window was not the problem; the join was. And
+the seven that survived it are not a random seven.
+
+That last claim is arithmetic rather than inference. Those runs report a median producer
+scheduling lag of $102.93$~ms over seven values, and a median of seven values at $102.93$~ms
+requires \emph{at least four of the seven} to be $102.93$~ms or greater. The loop trace says
+exactly how many events per run are ever that late: four (Table~\ref{tab:window}), and always the
+same four --- those due while the first send blocks. The matched set must therefore consist
+almost entirely of the prologue. The plan's first five events are all stamped at
+$t_{\mathrm{sim}}{=}0$, so they are the first candidates a consumer sees and the first a lossy
+join keeps.
+
+The failure thus compounds: a sample of seven is small, but a sample of seven \emph{selected
+towards the contaminated events} is worse than small. \redis{} reports $1.75$~ms on the same
 events because opening a stream with \texttt{XADD} does not pay what \kafka{}'s first send pays
-in metadata fetch and topic creation.
+in metadata fetch and topic creation, so the same selection costs it nothing.
 
 This also explains the three properties we previously offered as evidence, and each of them is
 equally consistent with a start-up cost: a per-run constant looks \emph{constant} within a run;

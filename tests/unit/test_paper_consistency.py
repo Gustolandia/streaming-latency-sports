@@ -32,6 +32,21 @@ def _rows(*parts):
         return list(csv.DictReader(fh))
 
 
+def _replayed_plan_t_sim():
+    """Event times of the plan the single-feed campaigns actually replayed.
+
+    run_concurrency_test.resolve_plans sorts the plans directory and plan_for_feed hands feed i
+    plans[(i-1) % len(plans)], so feed 1 always gets the first plan in sort order. Reading any
+    other plan would silently compare the paper against a match that was never replayed.
+    """
+    import glob
+    plans = sorted(glob.glob(str(REPO / "data" / "processed" / "replay_plans" /
+                                 "*" / "match_*" / "replay_plan.csv")))
+    assert plans, "no replay plan committed to check against"
+    with open(plans[0], encoding="utf-8", errors="replace") as fh:
+        return [float(r["t_sim_seconds"]) for r in csv.DictReader(fh)]
+
+
 def _contains_number(tex, value, decimals):
     """True if `value` appears in the paper at the given precision.
 
@@ -271,6 +286,62 @@ class TestSecondWithdrawalIsStated:
         med = stat.median(int(r["n_matched"]) for r in gated if r["backend"] == "kafka")
         assert med == 7, f"expected a median of 7 events per run, got {med}"
         assert "seven events" in tex.lower()
+
+    def test_the_507_emitted_events_match_the_replay_plan(self, tex):
+        """The window was not the cause: the plan holds 507 events in the span E1 replayed.
+
+        E1 ran --max-t-sim 600 against a 120x-compressed plan. If that span really did contain
+        only seven events the withdrawal argument would be about window choice; it contains 507,
+        so the seven are a join failure, and the paper must state a number that can be checked.
+        """
+        t_sim = _replayed_plan_t_sim()
+        assert sum(1 for t in t_sim if t <= 600) == 507
+        assert "507" in tex
+
+    def test_the_windows_in_the_sweep_table_match_the_plan(self, tex):
+        """57 and 148 events per run are properties of the plan, not of the harness.
+
+        This is the check that the right plan is being read at all: the sweep passed both a
+        positional plan (match_3895074) and --plans-dir, and --plans-dir wins, so feed 1 replayed
+        plans[0] = match_3895052. Those two matches hold different numbers of events (46/112
+        against 57/148), so agreeing with the measured events-per-run confirms the selection.
+        """
+        t_sim = _replayed_plan_t_sim()
+        for window, expected in ((60, 57), (180, 148)):
+            got = sum(1 for t in t_sim if t <= window)
+            assert got == expected, f"{window}s window: plan holds {got}, paper says {expected}"
+
+    def test_five_events_share_the_kickoff_timestamp(self, tex):
+        """Why exactly four events queue behind the blocking send: the kickoff burst is five."""
+        assert sum(1 for t in _replayed_plan_t_sim() if t == 0.0) == 5
+        assert "first five events" in tex
+
+    def test_the_kickoff_burst_is_general_not_one_match(self, tex):
+        """The paper generalises from this plan, so the generalisation must hold on all of them."""
+        import glob
+        counts = []
+        for p in sorted(glob.glob(str(REPO / "data" / "processed" / "replay_plans" /
+                                      "*" / "match_*" / "replay_plan.csv"))):
+            with open(p, encoding="utf-8", errors="replace") as fh:
+                counts.append(sum(1 for r in csv.DictReader(fh)
+                                  if float(r["t_sim_seconds"]) == 0.0))
+        assert len(counts) >= 10, "too few plans to support a claim about matches in general"
+        assert min(counts) >= 5, f"a match opened with fewer than five events at t=0: {counts}"
+
+    def test_the_median_arithmetic_is_stated_and_holds(self, tex):
+        """A median of seven values at 102.93 ms needs at least four of them that high.
+
+        This is what makes the selection claim arithmetic rather than a guess, so both the
+        premise and the count must survive a change to the data.
+        """
+        import statistics as stat
+        gated = [r for r in _rows("e1", "e1_by_run_gated.csv") if r["backend"] == "kafka"]
+        med_lag = stat.median(float(r["schedlag_p50"]) for r in gated)
+        med_n = stat.median(int(r["n_matched"]) for r in gated)
+        assert med_lag == pytest.approx(102.93, abs=0.005)
+        # For an odd count n, the median is the (n+1)/2-th value, so that many are >= it.
+        assert (med_n + 1) / 2 == 4
+        assert "at least four" in tex.lower()
 
     def test_the_check_is_not_claimed_to_catch_it(self, tex):
         """Honesty about the limit of our own instrument is the point of this section."""

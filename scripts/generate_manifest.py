@@ -2,8 +2,8 @@
 """
 generate_manifest.py
 Regenerate reproducibility/MANIFEST.json from the current tree so it never goes stale:
-SHA-256 of every code/config file, the current git commit, and a description of the corpora
-and fair measurement protocol. Run this after changing any script.
+SHA-256 of every code/config file, the current git commit, and a description of the corpus
+and the measurement protocol behind the paper. Run this after changing any script.
 
 CLI:
     python scripts/generate_manifest.py [--root .] [--out reproducibility/MANIFEST.json]
@@ -20,20 +20,51 @@ from pathlib import Path
 # Globs (relative to --root) whose SHA-256 pins the reproducible pipeline.
 CODE_GLOBS = ["scripts/*.py", "configs/*.yaml", "docker-compose*.yml", "requirements.txt"]
 
-# Descriptive record of the corpora + the fair measurement protocol behind the paper.
+# Descriptive record of the corpus + the measurement protocol behind the paper
+# (A Message Cannot Arrive Before It Is Sent, ACM TOMPECS). Kept in sync with
+# reproducibility/README.md and paper.tex; the JSA framing (decision-staleness / win-probability)
+# is retired and must not be reintroduced here.
 PROTOCOL = {
+    "paper": "A Message Cannot Arrive Before It Is Sent: Physical-Consistency Auditing for "
+             "Streaming Latency Benchmarks (ACM TOMPECS). The Journal of Sports Analytics framing "
+             "(decision-staleness / Age-of-Information / win-probability) is retired.",
+    "integrity_audit": "scripts/clock_integrity.py rejects a run when >1% of its events invert "
+                       "(negative transport or scheduling lag) or any component median is "
+                       "negative; applied to all 2266 runs, 1321 rejected (58.3%).",
     "measurement_fixes": [
         "cross-process clock -> time.time_ns() shared epoch",
-        "non-saturating 10x replay (was 120x)",
+        "verified true real-time replay (--speedup derived from the plan by plan_speedup.py, "
+        "~0.008333 = 1/120; achieved rate checked against elapsed wall time)",
         "both producers pipelined (Kafka --max-inflight; Redis async worker pool)",
+        "distinct real match per feed (--plans-dir), so concurrency is not covertly throughput",
     ],
-    "fair_corpus": {
-        "latency (windowed, max_t_sim=600)": "concurrency_n{1,5,10,20}_*_{kafka,redis}, single+cluster, 3 reps",
-        "decision_staleness (full-match, max_t_sim=9000)": "concurrency_n{1,5,10,20}_*, single, 3 reps, all 40 goals",
+    "reported_corpus": {
+        "testbed": "Testbed B, four Oracle Cloud VMs on a real inter-VM network; every reported "
+                   "number passes clock_integrity.py",
+        "E1 transport equivalence (true real-time, N in {1,9,10,12})": "docs/results/e1/, "
+            "164/201 runs retained; brokers equivalent within 1 ms, neither degrades with concurrency",
+        "window sweep (per-run vs per-event start-up cost)": "docs/results/window/window_sweep.csv",
+        "model rules H1/H2/H3/H4": "docs/results/model/",
+        "audit": "docs/results/integrity_windows/ (Testbed A) and "
+                 "docs/results/integrity_by_condition.csv (Testbed B)",
     },
-    "win_probability": "Skellam proxy; RPS ~= 0.24, ECE = 0.054 over 3239 states (scripts/wp_calibration.py)",
-    "dataset": "StatsBomb open data, 1. Bundesliga 2023/24 (comp 9, season 281), 34 matches; "
-               "re-fetch via scripts/fetch_statsbomb_events.sh",
+    "withdrawn": [
+        "the concurrency finding (Redis transport rising with N, Kafka flat, p=9.0e-11): every "
+        "run behind it fails the audit",
+        "the 20x end-to-end gap: a per-run start-up cost read as a per-event constant (the runs "
+        "matched a median of 7 events); the audit does NOT catch this one",
+        "the entire Testbed A corpus, the accelerated concurrency sweep, the connection sweep "
+        "above 10 connections, and the 3-node cluster arm",
+    ],
+    "rate_provenance": "No surviving artefact records an achieved replay rate; plans carry a "
+                       "baked-in 120x compression, so --speedup 1 means 120x rather than real "
+                       "time. The reported cloud runs are at a verified true-real-time rate; "
+                       "E1's rate is recovered from a 52.34 ms diagnostic cell. See paper "
+                       "Section 6.5.",
+    "dataset": "StatsBomb open data, 52 competition-seasons / 3,315 matches (2003-2023), pinned "
+               "to commit 3bfbffe1de5750ebd47d770be0bb924a10cde54f; re-fetch via "
+               "scripts/fetch_statsbomb_corpus.py. Eleven per-match replay plans are committed "
+               "under data/processed/replay_plans/<sha>/.",
 }
 
 

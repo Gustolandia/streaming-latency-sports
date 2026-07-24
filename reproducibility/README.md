@@ -76,21 +76,26 @@ median transport reads **−6.4 ms**); and the three-node cluster arm (0/15 runs
 
 ### What survives (all from Testbed B, all gated)
 
-- **Broker transport equivalence.** With each feed carrying a distinct real match at true real
-  time, N ∈ {1, 9, 10, 12}, **164 of 201 runs** survive. Transport is flat across the range —
-  Kruskal–Wallis *p* = 0.061 (Kafka) and 0.091 (Redis), neither significant; largest/smallest
-  median ratio 1.06 and 1.17 — and the two systems are **equivalent within 1 ms** at N ∈ {9,10,12}
-  under all three procedures (Welch, bootstrap, Hodges–Lehmann), with HL shifts of 0.021, 0.116
-  and 0.053 ms. At N=1 the procedures disagree (n=8, one Kafka run carries a 6.3 ms start-up
-  outlier) and the disagreement is reported, not resolved. Robust to the audit's own unequal
-  retention — a worst-case imputation bound holds while retention exceeds one half, and the
-  tightest cell (N=12) sits at 52.8 %, only 2.8 points above breakdown
-  (`docs/results/e1/`, [`scripts/retention_bias.py`](../scripts/retention_bias.py)).
-  *Caveat, per the paper's Limitations:* a small, underpowered replication at a **verified** real-
-  time rate (three N=1 runs) gives Kafka transport 0.45 ms against Redis's 0.09 ms — a fivefold
-  gap where E1 reports near-equality, both below their E1 values. Three runs settle nothing and
-  the windows differ, so no conclusion is drawn; a properly powered verified-rate replication is
-  the first extension this work needs.
+- **Broker transport: equivalent within 1 ms, but not a tie.** With each feed carrying a distinct
+  real match at true real time, N ∈ {1, 9, 10, 12}, **164 of 201** E1 runs survive; transport is
+  flat (Kruskal–Wallis *p* = 0.061 Kafka, 0.091 Redis) and near-equal between systems
+  (`docs/results/e1/`). But that E1 comparison is computed over the same **seven-event** opening
+  burst as the withdrawn scheduling lag — underpowered and drawn from the least representative part
+  of the match: its HL shifts wander (0.021 / 0.116 / 0.053 ms) and its N=1 estimators disagree, so
+  it cannot resolve a sub-millisecond difference and the paper does not rest the claim on it.
+  A **powered replication** at a verified true-real-time rate, over a **median of 127 events/run**
+  (not seven), N ∈ {1, 9, 12} with 15 replicates each (`docs/results/transport_rt/`), resolves what
+  E1 could not: Kafka ≈ **0.54 ms** vs Redis ≈ **0.11 ms** — a Hodges–Lehmann shift of **0.41 ms**
+  (0.409 / 0.418 / 0.420 at N = 1 / 9 / 12; 90 % CI width ±0.006 ms; *p* < 10⁻²⁶). The two systems
+  are **equivalent within 1 ms** at every N under all three estimators (Welch, bootstrap, HL) **yet
+  cleanly distinguishable** — Redis's in-memory `XADD` is reproducibly ~0.41 ms faster per
+  operation, and the shift is flat across concurrency, so neither degrades. About **0.07 ms** of
+  that gap is the H3 asymmetric acknowledgement stamp (the instrument, not the broker), leaving a
+  true broker-transport difference near **0.34 ms**. This refines E1 rather than contradicting it,
+  and sharpens the contradiction with the withdrawn accelerated corpus, which had reported Redis
+  *degrading* with concurrency. Robust to the audit's unequal retention — a worst-case bound holds
+  while retention exceeds one half; the tightest cell (N=12) sits at 52.8 %, 2.8 points above
+  breakdown ([`scripts/retention_bias.py`](../scripts/retention_bias.py)).
 - **The window sweep** that separates a per-run cost from a per-event one
   (`docs/results/window/window_sweep.csv`, [`scripts/analyze_window.py`](../scripts/analyze_window.py)).
   Same match, driver and broker, N=1, true real time, only the window varying. Both arms are
@@ -111,10 +116,17 @@ median transport reads **−6.4 ms**); and the three-node cluster arm (0/15 runs
 
   | | Rule | Result |
   |---|---|---|
-  | **H1** | inversion rate falls as the measured quantity grows | ✅ ρ = **−0.80** |
+  | **H1** | inversion rate falls as the measured quantity grows | ✅ ρ = **−0.80**; the robust evidence is the clean contrast (co-located ~0.5 ms fails wholesale, network arm at tens of seconds passes 15/15), *not* the netem slope, which confounds *T*ₜᵣᵤₑ with backlog-driven variance and is not leaned on |
   | **H2** | inversion follows M/G/1 waiting in utilisation | ✅ ρ = **0.98**, R² **0.945** vs 0.640 linear (predicted knee) |
   | **H3** | asymmetric stamping biases the *comparison* | ✅ gap **+0.286 → +0.215 ms** (−25 %), Kafka 0.392 → 0.322, Redis holds ≈0.106 |
   | **H4** | inversion rises with concurrent process count | ✅ ρ = **+0.80** |
+
+  A construct check (**H8**) rules out the rival explanation that the inversions are independent
+  clock quantisation: a Wald–Wolfowitz runs test on the sequence of inversion signs finds them
+  strongly **clustered** (median *z* ≈ −6.9 co-located, −6.8 idle, −5.1 saturated — clustering
+  present even with no background load), the signature of a shared scheduling delay rather than
+  per-event quantisation ([`scripts/analyze_moments.py`](../scripts/analyze_moments.py) →
+  `inversion_clustering.csv`, `variance_law.csv`).
 
 - **The configuration result.** Each system has exactly one client-side setting worth one to two
   orders of magnitude, and each documentation example uses the slow value: Kafka producer
@@ -219,6 +231,11 @@ python scripts/clock_integrity.py --runs-dir runs --run-glob 'concurrency_n*' \
     --out docs/results/integrity
 ```
 
+The **powered transport replication** (Table `tab:transport` in the paper) is the same harness at
+the same verified rate, run at N ∈ {1, 9, 12} with 15 replicates and matched over the full match
+window (a median of 127 events per run, not the seven-event opening burst the 600 s E1 join kept);
+its aggregated output is committed under `docs/results/transport_rt/`.
+
 ### 5. Recompute the paper's tables and figures (no broker needed)
 
 ```bash
@@ -229,6 +246,8 @@ python scripts/retention_bias.py \
 # The model's rules (H1/H2/H4) and the symmetric-stamping test (H3):
 python scripts/measurement_model.py --out docs/results/model
 python scripts/analyze_depth.py --depth-dir docs/results/depth --runs-dir runs --out docs/results/model
+# The clustering construct check (H8) + variance law that rule out clock quantisation:
+python scripts/analyze_moments.py --out docs/results/model
 # The window sweep that discriminates per-run from per-event:
 python scripts/analyze_window.py --window-dir docs/results/window --runs-dir runs \
     --out docs/results/window/window_sweep.csv

@@ -6,18 +6,22 @@ cost that a short observation window mistakes for one.
 
 The E1 corpus behind the paper's original headline matched a median of seven events per run.
 Those events are the match's opening burst, emitted immediately after producer start, and
-Kafka's first send pays metadata fetch and topic creation while Redis's XADD does not. If that
-is the mechanism, the MEDIAN scheduling lag must fall as the window grows and steady-state
-events dilute the one-off cost, while the MAXIMUM stays near 103 ms because the cost is still
-paid once. If instead the offset is a genuine per-event constant, the median stays put.
+Kafka's first send pays metadata fetch and topic creation while Redis's XADD does not.
 
-Reads the per-run tti_summary.json written by each trial, so the verdict does not depend on the
-loop trace.
+The verdict is decided on the NUMBER of affected events per run, not on the median. A per-run
+start-up cost predicts that number is fixed however long the run gets; a per-event constant
+predicts it grows with the run. The median cannot separate the two on its own, because how much
+of the cost the median sees depends entirely on how many events the run contains -- which is
+exactly the trap the original result fell into.
+
+Reads the per-run tti_summary.json for the percentiles and the per-event loop traces for the
+counts, so the reported medians and the verdict come from independent instrumentation.
 
 CLI:
     python scripts/analyze_window.py --window-dir docs/results/window --runs-dir runs
 """
 import argparse
+import csv
 import glob
 import json
 import os
@@ -65,29 +69,71 @@ def window_stats(cond_dir, runs_dir, backend):
     }
 
 
-def verdict(rows, drop_factor=5.0):
+def trace_stats(window_dir, window_s, backend="kafka", threshold_ms=50.0):
+    """Per-run counts of affected events, read from the per-event loop traces.
+
+    Two columns matter. `produce_ms` is how long the send call itself blocked: the first send
+    pays metadata fetch and topic creation. `wake_late_ms` is how late the loop woke for an
+    event: while the single-threaded loop sits inside that first blocking send, every event due
+    in the meantime wakes late by roughly the same amount. The first is the cause, the second is
+    what the paper measured.
+    """
+    pat = os.path.join(window_dir, f"trace_w{int(window_s)}_*_{backend}_*.csv")
+    runs = []
+    for path in sorted(glob.glob(pat)):
+        wake, produce = [], []
+        try:
+            with open(path, newline="", encoding="utf-8") as fh:
+                for r in csv.DictReader(fh):
+                    try:
+                        wake.append(float(r["wake_late_ms"]))
+                        produce.append(float(r["produce_ms"]))
+                    except (KeyError, TypeError, ValueError):
+                        continue
+        except OSError:
+            continue
+        if wake:
+            runs.append((len(wake),
+                         sum(1 for x in wake if x > threshold_ms),
+                         sum(1 for x in produce if x > threshold_ms)))
+    if not runs:
+        return None
+    return {
+        "trace_runs": len(runs),
+        "trace_events": int(st.median([r[0] for r in runs])),
+        "slow_wake": st.median([r[1] for r in runs]),
+        "slow_produce": st.median([r[2] for r in runs]),
+    }
+
+
+def verdict(rows, growth_factor=2.0, tolerance=1.5):
     """Per-event constant, or per-run start-up cost?
 
-    A start-up cost predicts the median falls sharply as the window grows while the maximum
-    stays high. A per-event constant predicts the median is flat.
+    Decided on the count of affected events. If the run grows by a factor and the count does not
+    follow, the cost is paid per run; if the count grows with it, every event pays.
     """
-    ordered = sorted(rows, key=lambda r: r["window_s"])
-    if len(ordered) < 2:
-        return "INCONCLUSIVE", "need at least two windows"
-    first, last = ordered[0], ordered[-1]
-    if last["schedlag_p50"] <= 0:
-        return "INCONCLUSIVE", "zero median at the widest window"
-    drop = first["schedlag_p50"] / last["schedlag_p50"]
-    if drop >= drop_factor:
+    usable = [r for r in sorted(rows, key=lambda r: r["window_s"]) if r.get("slow_wake")]
+    if len(usable) < 2:
+        return "INCONCLUSIVE", "need at least two windows with per-event traces"
+    first, last = usable[0], usable[-1]
+    grew = last["trace_events"] / first["trace_events"]
+    if grew < growth_factor:
+        return "INCONCLUSIVE", (f"the run only grew {grew:.1f}x between the narrowest and widest "
+                                f"window, too little to separate the two explanations")
+    scaled = last["slow_wake"] / first["slow_wake"]
+    common = (f"events per run grew {grew:.1f}x ({first['trace_events']} to "
+              f"{last['trace_events']}) while the number waking more than 50 ms late went "
+              f"{first['slow_wake']:.0f} to {last['slow_wake']:.0f}")
+    if scaled <= tolerance:
         return ("START-UP COST",
-                f"median falls {drop:.0f}x from the {first['window_s']:g}s window "
-                f"({first['schedlag_p50']:.1f} ms over {first['events_per_run']} events) to the "
-                f"{last['window_s']:g}s window ({last['schedlag_p50']:.2f} ms over "
-                f"{last['events_per_run']} events), while the maximum stays at "
-                f"{last['schedlag_max']:.0f} ms: the cost is paid once per run, not per event")
-    return ("PER-EVENT CONSTANT",
-            f"median only changes {drop:.1f}x across the window range, so the offset is not "
-            f"explained by dilution of a one-off cost")
+                f"{common}: the count is fixed, so the cost is paid once per run and the share "
+                f"of events paying it falls from {first['slow_wake'] / first['trace_events']:.1%}"
+                f" to {last['slow_wake'] / last['trace_events']:.1%}")
+    if scaled >= grew / tolerance:
+        return ("PER-EVENT CONSTANT",
+                f"{common}: the count grows with the run, so every event pays")
+    return ("INCONCLUSIVE",
+            f"{common}: the count grows, but neither in proportion nor flat")
 
 
 def collect(window_dir, runs_dir, backend="kafka"):
@@ -99,6 +145,8 @@ def collect(window_dir, runs_dir, backend="kafka"):
         s = window_stats(cond, runs_dir, backend)
         if m and s:
             s["window_s"] = float(m.group(1))
+            s.update(trace_stats(window_dir, s["window_s"], backend)
+                     or {"trace_runs": 0, "trace_events": 0, "slow_wake": 0, "slow_produce": 0})
             rows.append(s)
     return rows
 
@@ -123,16 +171,19 @@ def main(argv=None):
         for r in sorted(rows, key=lambda x: x["window_s"]):
             print(f"  window {r['window_s']:5.0f}s  runs={r['runs']}  "
                   f"events/run={r['events_per_run']:4d}  "
-                  f"schedlag p50={r['schedlag_p50']:8.2f} ms  max={r['schedlag_max']:8.1f} ms")
+                  f"schedlag p50={r['schedlag_p50']:8.2f} ms  max={r['schedlag_max']:8.1f} ms  "
+                  f"events >50 ms late={r['slow_wake']:4.1f}  "
+                  f"blocking sends={r['slow_produce']:4.1f}")
         if backend == "kafka":
             tag, why = verdict(rows)
             print(f"\n== VERDICT: {tag} ==\n  {why}\n")
             out = Path(args.out)
             out.parent.mkdir(parents=True, exist_ok=True)
-            import csv
             with out.open("w", newline="", encoding="utf-8") as fh:
                 w = csv.DictWriter(fh, fieldnames=["window_s", "runs", "events_per_run",
-                                                   "schedlag_p50", "schedlag_max"])
+                                                   "schedlag_p50", "schedlag_max",
+                                                   "trace_runs", "trace_events",
+                                                   "slow_wake", "slow_produce"])
                 w.writeheader()
                 w.writerows(sorted(rows, key=lambda x: x["window_s"]))
     return 0

@@ -251,6 +251,18 @@ def main(argv=None):
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
+    with (out / "collapse_conditions.csv").open("w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=["condition", "rho", "n_events", "n_runs", "mu",
+                                           "sigma_core", "inversion", "runs_z_median"])
+        w.writeheader()
+        for name, s in sorted(new.items(), key=lambda kv: kv[1]["rho"] or 0):
+            w.writerow({"condition": name, "rho": s["rho"], "n_events": s["n_events"],
+                        "n_runs": s["n_runs"], "mu": round(s["mu"], 4),
+                        "sigma_core": round(s["sigma_core"], 4),
+                        "inversion": round(s["tails"][0.0], 5),
+                        "runs_z_median": round(s["runs_z_median"], 3)
+                        if s["runs_z_median"] is not None else ""})
+
     pts = collapse_points(new)
     with (out / "collapse_points.csv").open("w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=["condition", "rho", "threshold_ms", "z",

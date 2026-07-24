@@ -530,6 +530,33 @@ class TestPoweredTransportReplication:
         assert "refines" in e1.lower(), "the powered run refines rather than contradicts E1"
 
 
+class TestIndependentReplications:
+    """Each headline result has a second, independent campaign confirming it."""
+
+    def test_transport_shift_reproduces_within_the_first_campaigns_ci(self, tex):
+        orig = {int(r["n"]): r for r in _rows("transport_rt", "transport_realtime_tost.csv")}
+        rep = {int(r["n"]): r for r in _rows("transport_rt2", "transport_realtime_tost.csv")}
+        assert set(rep) == {1, 9, 12}
+        for n in (1, 9, 12):
+            o_lo, o_hi = float(orig[n]["hl_ci90_lo"]), float(orig[n]["hl_ci90_hi"])
+            r_lo, r_hi = float(rep[n]["hl_ci90_lo"]), float(rep[n]["hl_ci90_hi"])
+            assert max(o_lo, r_lo) <= min(o_hi, r_hi), f"N={n} campaign CIs must overlap"
+            assert rep[n]["hl_equivalent"] == "True"
+        for token in ("0.397", "0.412", "0.413"):   # the replication shifts, as printed
+            assert token in tex
+
+    def test_h3_reproduces_in_an_independent_campaign(self, tex):
+        rows = {r["stamp"]: r for r in _rows("depth_rep2/model", "ec3_stamping.csv")}
+        assert set(rows) == {"callback", "inline"}
+        cb, inl = abs(float(rows["callback"]["difference_ms"])), abs(float(rows["inline"]["difference_ms"]))
+        assert inl < cb, "the symmetric stamp must again shrink the gap"
+        # Kafka moves, Redis does not, as in the first campaign.
+        assert float(rows["callback"]["kafka_ms"]) - float(rows["inline"]["kafka_ms"]) > 0.02
+        assert abs(float(rows["callback"]["redis_ms"]) - float(rows["inline"]["redis_ms"])) < 0.01
+        for token in ("0.276", "0.237"):
+            assert token in tex
+
+
 class TestMixtureStructure:
     """H9 falsified, H10 (mixture) supported, from the pre-registered E-A3 campaign."""
 

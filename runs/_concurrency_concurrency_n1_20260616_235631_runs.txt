@@ -1,2 +1,0 @@
-runs/kafka_run
-runs/redis_run

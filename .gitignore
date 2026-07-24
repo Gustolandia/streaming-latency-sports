@@ -45,6 +45,16 @@ runs/_fair_*sweep.log
 runs/_fullmatch_single.log
 runs/fairtest_*/
 
+# Raw per-run output. 7.9 GB and ~2,000 files when tracked, which made the repository
+# unarchivable and the reproducibility claim hollow. The evidence the paper cites lives in the
+# aggregated CSVs under docs/results/, which ARE tracked and which the consistency tests pin;
+# the raw runs are regenerable from the campaign scripts in cloud/campaigns/.
+runs/
+
+# Superseded Testbed A corpus (withdrawn in full -- see paper Section 6.7). Kept on disk as
+# provenance for the audit's rejection counts, not tracked.
+docs/results/concurrency_concurrency_*/
+
 # Cloud testbed addresses (ephemeral, per-provisioning)
 cloud/hosts.env
 paper.aux

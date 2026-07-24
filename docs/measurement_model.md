@@ -101,10 +101,24 @@ acknowledgement in an **asynchronous callback**; Redis stamps it on **return fro
 command**. Different stamping paths, different `E[Δ]`, and therefore a spurious between-system
 difference that no amount of statistical care removes.
 
-*Test:* **E-C**. Add a producer variant that stamps the acknowledgement inline (synchronously)
+*Test:* **E-C3**. Add a producer variant that stamps the acknowledgement inline (synchronously)
 so both arms are symmetric, and run both variants at the same load. H3 predicts the
 between-system difference shrinks toward zero under symmetric stamping while the *noise* does
 not. Falsified if the difference persists.
+
+> **Two earlier attempts did not test this.** E-C and E-C2 compared `kafka-python` against
+> `confluent-kafka`. **Both of those stamp in a delivery callback**, so the comparison was
+> between two *asymmetric* implementations and the symmetric condition was never created. They
+> are reported as *untested*, not as evidence either way. The one thing they do establish is a
+> side-finding: the gap is stable across two independent client implementations, which argues it
+> is a real difference rather than an artefact of one stamping path.
+>
+> **E-C3** creates the condition properly, using `kafka_producer.py --ack-stamp inline` (added
+> for this purpose), which stamps on the *calling thread* the moment the send future resolves —
+> structurally what `XADD` does. Both arms run at `--max-inflight 1`, since inline stamping
+> requires it and the arms must otherwise be identical. See
+> [preregistration_depth.md](preregistration_depth.md) for the amendment recording this before
+> the campaign ran.
 
 ### H4 — Oversubscription rule
 
@@ -132,7 +146,7 @@ the same `T_true`, which matches what we observed (62.4% vs 51.9% rejected).
 > stamping, or a shared hardware counter (as in Cloudprofiler's TSC calibration), should
 > eliminate `E[Δ]` while leaving `Var[Δ]` load-dependent.
 
-*Test:* **E-C** provides the same-process arm. Falsified if bias persists under symmetric
+*Test:* **E-C3** provides the same-process arm. Falsified if bias persists under symmetric
 stamping.
 
 ---
@@ -144,7 +158,7 @@ stamping.
 | **E-A** | H2 | driver cores (`taskset` 1/2/4) × background load (0/25/50/75/95%) | workload, `T_true` | inversion rate, bias vs `ρ` |
 | **E-A2** | H4 | feed count `N` at constant aggregate rate | aggregate ev/s | inversion rate vs process count |
 | **E-B** | H1 | injected delay 0.2/1/5/20/50 ms (`tc netem`) | `ρ`, workload | inversion rate vs `T_true` |
-| **E-C** | H3, H6 | stamping mode (callback vs inline) × backend | `ρ`, workload | `E[Δ]`, between-system bias |
+| **E-C3** | H3, H6 | stamping mode (callback vs inline) × backend | `ρ`, workload | `E[Δ]`, between-system bias |
 | **E-D** | H5 | platform (Windows/Linux) | — | re-analysis, no new runs |
 
 **Direct measurement of `Δ`.** E-C also instruments both stamping paths so `δ_ack` and `δ_recv`

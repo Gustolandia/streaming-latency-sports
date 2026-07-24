@@ -40,7 +40,7 @@
 We set out to answer an ordinary question: for a real-time sports data feed, does the choice
 between Apache \kafka{} and \redis{} Streams affect end-to-end delay, and how does that change
 with the number of concurrent feeds? We built the benchmark, drove it with 3{,}315 real football
-matches at their true event rate, and obtained a clean answer --- \redis{} broker delay rising
+matches on their recorded event schedule, and obtained a clean answer --- \redis{} broker delay rising
 monotonically with concurrency while \kafka{} stayed flat, $p=9.0\times10^{-11}$, no overlap
 between the two systems' run distributions, exactly as a single-threaded server should behave.
 

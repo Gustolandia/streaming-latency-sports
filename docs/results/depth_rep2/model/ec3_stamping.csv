@@ -1,0 +1,3 @@
+stamp,kafka_ms,redis_ms,difference_ms
+callback,0.3862,0.1102,0.276
+inline,0.3443,0.1075,0.2367

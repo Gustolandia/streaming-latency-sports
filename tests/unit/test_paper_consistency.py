@@ -530,6 +530,46 @@ class TestPoweredTransportReplication:
         assert "refines" in e1.lower(), "the powered run refines rather than contradicts E1"
 
 
+class TestClusteringConstructCheck:
+    """Inversions cluster in time (runs test z << 0): scheduling, not quantisation."""
+
+    def test_the_clustering_z_values_match_the_csv(self, tex):
+        rows = {r["condition"]: float(r["median_z"]) for r in
+                _rows("model", "inversion_clustering.csv")}
+        assert rows, "the clustering CSV must exist"
+        for z in rows.values():
+            assert z < -2, "every reported condition must be clustered"
+            assert _contains_number(tex, round(z, 1), 1)
+
+    def test_the_paper_uses_it_against_the_quantisation_rival(self, tex):
+        threats = tex[tex.index(r"Construct validity: the check may not measure"):]
+        para = threats[:threats.index(r"\paragraph")]
+        low = para.lower()
+        assert "quantis" in low, "the quantisation rival must be named"
+        assert "runs test" in low or "wald" in low, "the test must be named"
+        assert "cluster" in low, "the clustering finding must be stated"
+        assert "no background load" in low or "idle" in low, \
+            "must note clustering holds without background load"
+
+
+class TestNetemConfoundIsDisclosed:
+    """The injected-delay sweep confounds T_true with backlog, so H1's slope is not leaned on."""
+
+    def test_the_variance_inflation_is_stated(self, tex):
+        threats = tex[tex.index("injected-delay sweep is not a clean"):]
+        para = threats[:threats.index(r"\paragraph")]
+        assert "9{,}200" in para or "9200" in para, "the variance blow-up must be quantified"
+        assert "confound" in para.lower()
+
+    def test_h1_does_not_lean_on_the_confounded_slope(self, tex):
+        rules = tex[tex.index("H1, the effect-size rule"):]
+        h1 = rules[:rules.index(r"\paragraph{H2")]
+        low = h1.lower()
+        assert "do not lean on its slope" in low or "not lean on" in low
+        assert "co-located" in low and "network arm" in low, \
+            "H1 must lead with the clean contrast"
+
+
 class TestRateProvenanceIsDisclosed:
     """The replay rate of the earliest corpus is not recoverable, and the paper must say so.
 

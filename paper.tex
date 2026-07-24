@@ -1089,11 +1089,15 @@ Section~\ref{sec:model} derived $\Pr[\text{inversion}] = F_{\Delta}(-T_{\mathrm{
 consequences. Each was pre-registered with its falsification criterion before the data existed,
 and each is tested here on conditions that pass the check.
 
-\paragraph{H1, the effect-size rule.} Holding load fixed and moving the measured quantity with
-injected delay, inversion rate falls as $T_{\mathrm{true}}$ grows: $0.076$, $0.114$, $0.070$,
-$0.034$, $0.050$ at $0$, $1$, $5$, $20$ and $50$~ms ($\rho_s = -0.80$, $n=5$). The trend is
-downward but not monotone --- the $1$~ms point rises above the $0$~ms one --- so we report the
-rank correlation rather than claiming a clean ordering. \textbf{Supported.}
+\paragraph{H1, the effect-size rule.} The strongest evidence is the widest contrast, and it is
+clean: the co-located arm measuring $T_{\mathrm{true}} \approx 0.5$~ms fails wholesale, while the
+network arm measuring tens of seconds passes every run on the same hardware
+(Section~\ref{sec:property}). Across the intermediate range, a \texttt{netem} delay sweep gives
+inversion rates $0.076$, $0.114$, $0.070$, $0.034$, $0.050$ at $0$, $1$, $5$, $20$ and $50$~ms
+($\rho_s = -0.80$, $n=5$); we report the rank correlation rather than a clean ordering, and we do
+not lean on its slope, because injected delay also inflates variance and so confounds
+$T_{\mathrm{true}}$ with backlog (Section~\ref{sec:threats}). The direction is consistent across
+both the clean contrast and the confounded sweep. \textbf{Supported.}
 
 \paragraph{H2, the utilisation rule.} Sweeping background load from idle to oversubscription,
 with no core pinning so the measured utilisation is the right denominator, inversion rate is
@@ -1368,10 +1372,19 @@ proof that \emph{something} is wrong, but our attribution of it to scheduler del
 the clock is an inference. Two rival explanations are available. Clock skew is ruled out
 directly for Testbed~A, where both processes read the same operating-system clock; it is not
 ruled out on Testbed~B, where producer and consumer may sit on different hosts, and there we
-rely on the co-located conditions failing at rates comparable to the distributed ones. Coarse
-kernel timestamp granularity would also produce inversions; Section~\ref{sec:testbeds} reports
-the measured granularity on both platforms. We regard the Testbed~A attribution as well
-supported and the Testbed~B attribution as probable rather than established.
+rely on the co-located conditions failing at rates comparable to the distributed ones.
+
+Coarse kernel timestamp granularity would also produce inversions, and that rival makes a
+different prediction we can test. Quantisation acts on each event independently, so its inversions
+would be scattered at random through a run; a descheduling event, by contrast, makes a
+\emph{consecutive run} of events wake late together. A Wald--Wolfowitz runs test on the sequence
+of inversion signs separates the two: independence gives $z \approx 0$, clustering $z \ll 0$.
+Across conditions the inversions are strongly clustered --- median $z = -6.9$ at the co-located
+floor, $-6.8$ idle, $-5.1$ saturated --- and the clustering is present even with no background
+load, so it is intrinsic to the stamping path rather than induced by contention. This is the
+signature of a shared scheduling delay, not of independent quantisation, and Section~\ref{sec:testbeds}
+additionally reports the measured timer granularity on both platforms. We regard the Testbed~A
+attribution as well supported and the Testbed~B attribution as probable rather than established.
 
 \paragraph{Internal validity: the audit selects.} The check rejects unequally between arms, so
 the surviving corpus is not a random sample of the measured one. This is the most serious
@@ -1398,6 +1411,19 @@ window (Section~\ref{sec:attribution}). Reproducibility across runs distinguishe
 effect from a noisy one; it does not distinguish a system effect from a harness effect, and we
 treated it as though it did. Every percentile in this paper is now reported with the events per
 run behind it.
+
+\paragraph{Construct validity: the injected-delay sweep is not a clean effect-size manipulation.}
+H1's quantitative slope (Section~\ref{sec:rules}) is estimated from a \texttt{tc netem} delay
+sweep, on the assumption that injecting $d$~ms of delay simply raises $T_{\mathrm{true}}$ by $d$.
+It does not: on our bursty feed, a per-delivery delay builds a queue, so the measured transport
+\emph{variance} climbs from $10~\text{ms}^2$ at zero delay to $9{,}200~\text{ms}^2$ at $50$~ms ---
+a clean offset would leave it unchanged. The delay sweep therefore confounds $T_{\mathrm{true}}$
+with backlog-driven jitter, and we do not lean on its fitted slope. H1's robust evidence is the
+comparison it does not confound: the co-located arm, where $T_{\mathrm{true}} \approx 0.5$~ms,
+fails wholesale, while the network arm, where $T_{\mathrm{true}}$ is tens of seconds, passes
+$15/15$ on the same hardware (Section~\ref{sec:property}). Testing the fine-grained slope cleanly
+would need a constant-offset instrument that does not perturb the queue --- a run we flag as
+future work.
 
 \paragraph{Conclusion validity: multiplicity and pre-specification.} Holm families are declared
 over the design actually executed rather than chosen afterwards, and equivalence margins were

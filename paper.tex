@@ -457,15 +457,19 @@ distribution of $\Delta$ overlaps a small $T_{\mathrm{true}}$ almost entirely an
 hardly at all. This is why our network-delay arm, where transport is tens of seconds, passes the
 check on every run while same-hardware arms measuring one millisecond fail wholesale.
 
-Two further predictions follow, and Section~\ref{sec:discussion} states the experiments that test
-them.
+Three further predictions follow --- on utilisation, on process count, and on instrument
+asymmetry --- and Section~\ref{sec:rules} reports the experiments that test them.
 
-\paragraph{Utilisation.} $\delta$ is the waiting time of a runnable thread. Treating the CPU as
-a server, the Pollaczek--Khinchine result for an M/G/1 queue gives mean waiting time growing as
-$\rho/(1-\rho)$ in utilisation $\rho$. The spread of $\Delta$ should therefore be small and flat
-at low utilisation and grow sharply near saturation: a \emph{knee}, not a linear ramp. This is
-the same framing Chandrasekar and Kramberger~\cite{chandrasekar2026bias} apply to client-side
-bias in inference benchmarks.
+\paragraph{Utilisation, and what drives it.} $\delta$ is the waiting time of a runnable thread.
+Treating the CPU as a server, the Pollaczek--Khinchine result for an M/G/1 queue gives mean
+waiting time growing as $\rho/(1-\rho)$ in utilisation $\rho$. The spread of $\Delta$ should
+therefore be small and flat at low utilisation and grow sharply near saturation: a \emph{knee},
+not a linear ramp. This is the same framing Chandrasekar and
+Kramberger~\cite{chandrasekar2026bias} apply to client-side bias in inference benchmarks. A
+corollary sharpens it into a second prediction: $\rho$ is set by the number of \emph{runnable
+threads} per core, not by the offered event rate, so at a \emph{fixed} aggregate rate, adding
+concurrent producer/consumer processes should raise inversion rate --- the failure follows
+process count, not load.
 
 \paragraph{Asymmetry.} It is $\mathrm{E}[\Delta]$, not its variance, that biases a
 \emph{comparison}. Symmetric instrumentation gives $\mathrm{E}[\Delta] \approx 0$: noise, no
@@ -834,7 +838,11 @@ that a properly powered instrument resolves and a seven-event one cannot. The sh
 across concurrency ($0.409$, $0.418$, $0.420$~ms at $N = 1, 9, 12$), so neither system degrades.
 A part of even this residual is the instrument rather than the broker: Section~\ref{sec:rules}
 shows that $0.07$~ms of the gap is the asymmetric acknowledgement stamp, leaving a true
-broker-transport difference near $0.34$~ms.
+broker-transport difference near $0.34$~ms. That $0.07$~ms is a concrete instance of the blind
+spot of Section~\ref{sec:blindspot}: it is a bias smaller than the quantity measured, so it never
+turns a value negative and the consistency check passed both corpora that carried it. The check
+guarantees a corpus is not \emph{catastrophically} wrong; resolving a $0.07$~ms instrument
+artefact still took a controlled experiment.
 
 This refines E1 rather than contradicting it, and it sharpens the contradiction with
 Table~\ref{tab:first}: the accelerated corpus reported \redis{} \emph{degrading} with concurrency;
@@ -1085,9 +1093,10 @@ Broker transport, the lower series in (b), is unaffected and is what the paper c
 \subsection{The model's rules, measured}
 \label{sec:rules}
 
-Section~\ref{sec:model} derived $\Pr[\text{inversion}] = F_{\Delta}(-T_{\mathrm{true}})$ and four
-consequences. Each was pre-registered with its falsification criterion before the data existed,
-and each is tested here on conditions that pass the check.
+Section~\ref{sec:model} derived $\Pr[\text{inversion}] = F_{\Delta}(-T_{\mathrm{true}})$ --- the
+effect-size rule itself --- and three further consequences, on utilisation, process count and
+instrument asymmetry. Each was pre-registered with its falsification criterion before the data
+existed, and all four are tested here on conditions that pass the check.
 
 \paragraph{H1, the effect-size rule.} The strongest evidence is the widest contrast, and it is
 clean: the co-located arm measuring $T_{\mathrm{true}} \approx 0.5$~ms fails wholesale, while the
@@ -1502,8 +1511,9 @@ orders of magnitude, both free on the co-located testbeds where such settings ar
 evaluated. And the model of the failure now carries measured
 rules rather than a derivation: inversion probability falls as the measured quantity grows,
 rises with concurrent process count, and follows M/G/1 waiting time in utilisation with the
-predicted knee. The check binds hardest where the effect is smallest, and we can now say so with
-a curve rather than an anecdote.
+predicted knee; and a symmetric instrument removes a quarter of the residual between-system
+difference, the same asymmetry that manufactured our first result in the large. The check binds
+hardest where the effect is smallest, and we can now say so with a curve rather than an anecdote.
 
 One smaller episode makes the same point from the other side. Checking our own provenance, we
 found that no surviving artefact recorded the replay rate of the earliest corpus, and that the

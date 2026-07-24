@@ -1223,7 +1223,8 @@ company silently. Ours parted company by a factor of $120$ because the plans car
 compression the flag did not know about (Section~\ref{sec:rateprovenance}). Derive the setting
 from the workload rather than assuming it, verify the achieved rate against elapsed wall time
 before the campaign rather than after, and write the verified figure into an artefact that
-outlives the raw data. We can no longer state the rate of our own earliest corpus.
+outlives the raw data. We had to reconstruct the rate of our own earliest corpus by arithmetic on
+its results, which happened to be possible and will not always be.
 \item \textbf{Before attributing an offset to every event, vary the run length and count.}
 Lengthen the observation window by a known factor and count how many events exceed the offset,
 rather than re-computing the average. A per-run cost holds that count fixed while the run grows;
@@ -1392,6 +1393,15 @@ rules rather than a derivation: inversion probability falls as the measured quan
 rises with concurrent process count, and follows M/G/1 waiting time in utilisation with the
 predicted knee. The check binds hardest where the effect is smallest, and we can now say so with
 a curve rather than an anecdote.
+
+One smaller episode makes the same point from the other side. Checking our own provenance, we
+found that no surviving artefact recorded the replay rate of the earliest corpus, and that the
+records we did have disagreed. We recovered it anyway --- the start-up cost is a wall-clock
+constant, so the number of events it swallows encodes the rate, and one cell of fifteen runs
+reading $52.34$~ms where both modes are $1.6$ and $103.5$ fixes it at four late events and hence
+at true real time. That is the same instrument as the sign check: a physical constraint deciding
+what the bookkeeping could not. It is also luck, and no basis for a method. The rule is to write
+the number down.
 
 The original question turned out to be the least interesting thing we could have asked. That is
 worth stating plainly, because the path from it to the results above ran entirely through

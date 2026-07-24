@@ -174,7 +174,75 @@ conditional on the covariate being available.
 across workloads and libraries (needs different workloads and libraries), or pre-specification
 (needs this document).
 
-## 4. Deviations
+## 4. Amendment (2026-07-24): collapse suite (E-A3) and replications
+
+Recorded **before** the E-A3 campaign and the two replication campaigns below were launched.
+The commit timestamp is the evidence. Pilot analyses on the *existing* corpus are disclosed
+inline, because two of the hypotheses were motivated by them; the campaign below is the
+out-of-sample test.
+
+### H9 — scale-family collapse
+
+**Prediction (the model's strong form):** inversion probability depends on the measured quantity
+only through the standardised distance `z = T_true / σ_core`, where `σ_core = IQR/1.349` of the
+condition's measured transport. If Δ is a scale family across load, per-condition standardised
+left tails coincide: one curve, all conditions.
+
+**Pilot disclosure:** on the existing corpus the collapse FAILS — at matched `z ≈ 3.2–4.4` the
+tail mass spans 0.003–0.069 across conditions, a ~25× spread far outside sampling error. We
+therefore *expect falsification*, and pre-register the test anyway because the failure is the
+informative outcome: it implies Δ is a mixture, not a scale family.
+
+**Test:** on fresh E-A3 data, per condition compute `σ_core` and tail mass beyond thresholds
+`c ∈ {0, 0.5, 1, 2, 5}` ms below zero. Supported if log tail mass at matched `z` agrees across
+conditions within bootstrap CIs; falsified if it spreads by more than ~3× at matched `z`.
+
+**If falsified (expected):** report as the mixture-structure finding H10, and state in the paper
+that the single-variable rule of thumb (Eq. 2 with a fixed Δ) understates risk at low load.
+
+### H10 — mixture structure (core + rare tail)
+
+**Prediction:** Δ is a mixture of a narrow core (stamping jitter) and a rare heavy tail
+(descheduling events). Load moves the tail *weight* faster than the core *width*: below the
+knee, `σ_core` grows slowly while inversion (tail mass) can grow sharply; and inversions remain
+temporally clustered (H8) at every load.
+
+**Test:** on E-A3, per condition report (`σ_core`, tail mass, runs-test z). Supported if the
+ratio of tail-mass growth to core-width growth from idle to the knee exceeds 3×, and median
+runs-test z < −2 wherever both sign classes exist. Falsified if core width and tail mass track
+each other proportionally (that would *support* the scale family instead).
+
+### F_Δ recovery — between-campaign reproduction (the non-circular test)
+
+Recovering `F_Δ`'s left tail from inversion rates at shifted thresholds is circular when
+compared against the same events. The non-circular test is **reproduction across independent
+campaigns**: the recovered tail quantiles at matched utilisation must agree between the earlier
+`ea_sat`/`ea_knee` campaign and the new E-A3 campaign, within bootstrap CIs, at every matched
+`ρ` (±0.05). Supported if they agree at all matched levels; falsified otherwise. If supported,
+the recovered curve is published as the instrument-quality curve: tail quantiles of Δ per `ρ`,
+obtained with no reference clock.
+
+### E-A3 design
+
+`N = 5` feeds, distinct real matches, true real-time rate derived from the plan and verified;
+window 180 s; **5 replicates**; background load `bg ∈ {0, 2, 4, 5, 6, 7, 8, 10, 12}` workers on
+8 cores (pre-knee, knee, saturation); no core pinning; `util_sampler` recording achieved `ρ`;
+raw per-event producer/consumer data retained. Both backends run; the Δ analyses use the Kafka
+arm (same as the original suite), the Redis arm is retained for symmetry.
+
+### Replications (reviewer robustness)
+
+- **E-C4** replicates the H3 stamping comparison exactly (same arms, same load, same
+  `--max-inflight 1`) with **15 replicates per arm** in an independent campaign, written to
+  `docs/results/depth_rep2/ec3/`. The H3 verdict must reproduce: `|d_inline| < |d_callback|`.
+- **Transport replication #2** repeats the powered transport comparison (`N ∈ {1,9,12}`,
+  verified true real time) with 8 replicates in an independent campaign, written to
+  `docs/results/transport_rt2/`. The HL shift must fall inside the first campaign's 90% CI at
+  every N, i.e. reproduce ≈ +0.41 ms.
+- The window sweep already has two independent campaigns (`window/`, `window2/`) and is not
+  re-run.
+
+## 5. Deviations
 
 Any departure from the above will be recorded here, dated, with the reason, before the affected
 result is reported.

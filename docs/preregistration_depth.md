@@ -58,6 +58,47 @@ spread of per-run values is not correspondingly reduced.
 **Falsified if:** the shift is unchanged, or both shift and spread fall together (which would
 indicate the intervention simply reduced load).
 
+#### Amendment (2026-07-24): E-C and E-C2 did not test this; E-C3 does
+
+Recorded before E-C3 was run, and after E-C2's data was in hand.
+
+Both earlier attempts compared `kafka-python` against `confluent-kafka`. **Both of those clients
+stamp the acknowledgement in a delivery callback.** The comparison was therefore between two
+*asymmetric* implementations, and the symmetric condition the hypothesis requires was never
+created. E-C2's result (gap `+0.396` ms against `+0.452` ms) is reported as *untested*, not as
+evidence either way. The one thing it does establish is a side-finding: the gap is stable across
+two independent client implementations, which argues it is a real difference rather than an
+artefact of one stamping path.
+
+The asymmetry that matters is inside our own harness:
+
+| | where `t_broker_ack_ns` is taken | thread |
+|---|---|---|
+| `redis_producer.py` | immediately after blocking `XADD` returns | the calling thread |
+| `kafka_producer.py` | in the delivery callback | the client's I/O thread |
+
+**E-C3** creates the symmetric condition with `kafka_producer.py --ack-stamp inline`, which
+stamps on the calling thread the moment the send future resolves — structurally what `XADD`
+does. Two arms, `callback` and `inline`, both at `--max-inflight 1` (inline requires it, so the
+callback arm must match or the arms differ in two ways), both against Redis, both under identical
+background load. Load is deliberately non-zero: the predicted effect is a thread-scheduling
+delay, so an idle machine is the condition least likely to show it.
+
+**Quantity:** `d = median(kafka transport) − median(redis transport)`, per arm.
+
+**Supported if:** `|d_inline| < |d_callback|`.
+
+**Falsified if:** `|d_inline| ≥ |d_callback|`.
+
+**Direction is not assumed.** Inline stamping is symmetric with Redis by construction, but
+whether it moves Kafka's stamp earlier or later than the callback depends on when the client's
+I/O thread runs callbacks relative to resolving the future. The hypothesis is about the *size*
+of the between-system gap, not its sign, and the result is reported whichever way it falls.
+
+**If falsified:** H3 is reported as refuted rather than untested, and the paper's claim that
+asymmetric instrumentation manufactures a between-system difference is downgraded to a
+mechanism we can motivate but not demonstrate. The other three rules stand independently.
+
 ### H4 — oversubscription rule
 
 **Prediction:** at constant aggregate event rate, inversion rate rises with process count.

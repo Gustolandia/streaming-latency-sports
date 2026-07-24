@@ -241,6 +241,9 @@ class TestMain:
         assert "H9" in out and "H10" in out and "F-Delta reproduction" in out
         assert (temp_dir / "model" / "collapse_points.csv").exists()
         assert (temp_dir / "model" / "fdelta_reproduction.csv").exists()
+        conds = list(csv.DictReader(open(temp_dir / "model" / "collapse_conditions.csv")))
+        assert [c["condition"] for c in conds] == ["ea3/bg0", "ea3/bg7"]  # sorted by rho
+        assert float(conds[0]["runs_z_median"]) < -2
 
     def test_missing_new_phase(self, temp_dir, capsys):
         (temp_dir / "depth").mkdir()

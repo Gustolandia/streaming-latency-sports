@@ -484,6 +484,52 @@ class TestMeasuredRules:
         assert "NOT SUPPORTED" not in section.upper().replace("NOT SUPPORTED IF", "")
 
 
+class TestPoweredTransportReplication:
+    """Claim 1 is refined by a powered replication over ~127 events/run, not E1's seven.
+
+    The finding is a both-and: TOST-equivalent within 1 ms at every N, yet a tight reproducible
+    ~0.41 ms Hodges-Lehmann shift (Kafka slower). Both halves must survive a data change.
+    """
+
+    def test_the_transport_table_matches_the_committed_summary(self, tex):
+        rows = {r["n"]: r for r in _rows("transport_rt", "transport_realtime_summary.csv")}
+        assert set(rows) == {"1", "9", "12"}
+        for r in rows.values():
+            assert _contains_number(tex, float(r["kafka_transport_p50"]), 3)
+            assert _contains_number(tex, float(r["redis_transport_p50"]), 3)
+
+    def test_the_hl_shifts_match_the_tost_output(self, tex):
+        tost = {int(r["n"]): r for r in _rows("transport_rt", "transport_realtime_tost.csv")}
+        assert set(tost) == {1, 9, 12}
+        for n, r in tost.items():
+            # Equivalent within 1 ms by every estimator...
+            assert r["equivalent"] == "True"
+            assert r["boot_equivalent"] == "True"
+            assert r["hl_equivalent"] == "True"
+            # ...yet the shift is a real ~0.41 ms, tightly bounded, Kafka slower.
+            shift = float(r["hl_shift"])
+            assert 0.40 < shift < 0.43, f"N={n} HL shift {shift} outside the reported range"
+            assert _contains_number(tex, round(shift, 3), 3)
+
+    def test_redis_is_faster_and_the_effect_is_flat(self, tex):
+        tost = {int(r["n"]): float(r["hl_shift"]) for r in
+                _rows("transport_rt", "transport_realtime_tost.csv")}
+        assert all(s > 0 for s in tost.values()), "Kafka must be the slower system at every N"
+        assert max(tost.values()) - min(tost.values()) < 0.05, "the shift must be flat in N"
+
+    def test_the_paper_states_both_halves(self, tex):
+        e1 = tex[tex.index(r"\label{sec:e1}"):tex.index(r"\label{sec:attribution}")]
+        low = e1.lower()
+        assert "not" in low and "indistinguishable" in low, "the 'not a tie' half must be stated"
+        assert "equivalent within" in low, "the within-margin half must be stated"
+        assert "127 events" in e1 or "127$ events" in e1, "the powered sample size must be given"
+        assert "seven events" in low, "the contrast with E1's seven events must be drawn"
+
+    def test_the_measurement_supersedes_not_contradicts_e1(self, tex):
+        e1 = tex[tex.index(r"\label{sec:e1}"):tex.index(r"\label{sec:attribution}")]
+        assert "refines" in e1.lower(), "the powered run refines rather than contradicts E1"
+
+
 class TestRateProvenanceIsDisclosed:
     """The replay rate of the earliest corpus is not recoverable, and the paper must say so.
 

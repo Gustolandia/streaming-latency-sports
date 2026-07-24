@@ -722,18 +722,45 @@ reconstructed afterwards specifies \texttt{--speedup 10}, and the flag's meaning
 $21$~hours later the same day. E1 was replayed at $1\times$, $120\times$ or $1200\times$, and we
 cannot say which.
 
-What this does and does not touch is worth being exact about. The audit itself is unaffected: a
-negative transport is causally impossible at any replay rate, and the rejection counts are
-arithmetic on the surviving per-event data. The withdrawal in Section~\ref{sec:attribution} is
-also unaffected, and deliberately so --- we give the argument in a form that holds at every
-acceleration, since at any of the three candidate rates the blocking prologue spans more
-simulated time than the matched sample covers, so the whole matched sample sits inside it. The
-rules of Section~\ref{sec:rules} were measured after the pre-flight existed, at a derived and
-verified rate. What the gap does touch is the \emph{external validity} of
-Section~\ref{sec:e1}: we cannot claim its equivalence result was obtained at football's true
-event rate, only that both arms met the same rate, whatever it was.
-Section~\ref{sec:limitations} carries the consequence, and Section~\ref{sec:protocol} the rule
-that would have prevented it.
+\paragraph{The rate is recoverable from the measurements, if not from the metadata.} Having
+argued all paper that a physical constraint can decide what record-keeping cannot, we applied the
+same move here, and it works. The start-up cost of Section~\ref{sec:attribution} is a clock: it
+lasts a fixed $102.6$~ms of \emph{wall} time, so the number of events it swallows depends
+directly on the replay rate. Counting how many events per run carry it therefore reads the rate
+back out of the data.
+
+The E1 runs sort into cells by how many events they matched, and one cell is diagnostic. Fifteen
+\kafka{} runs matched exactly eight events, and their median scheduling lag is
+$\mathbf{52.34}$~ms (range $51.60$--$53.01$) --- not $103$~ms, and not $1.6$~ms. A median of
+eight values is the mean of the fourth and fifth. The only way to land midway between the two
+modes is for exactly four of the eight to be late, so the fourth value is a fast event and the
+fifth a slow one: $(1.59 + 103.5)/2 = 52.6$~ms against $52.34$ observed. Four is also exactly
+what the loop trace shows at a verified real-time rate (Table~\ref{tab:window}), and it is what
+the plan predicts, since five events share $t_{\mathrm{sim}}{=}0$ and the first of them pays the
+block rather than inheriting it.
+
+That cell excludes the accelerated alternatives outright. At $120\times$ the prologue spans
+$12.3$~s of match time and holds $16$ events; at $1200\times$, $123$~s and $112$ events. Under
+either, all eight matched events would be inside it and the cell would read $103$~ms. It reads
+half that. \textbf{E1 was replayed at true real time}, the commit record was right, and the
+campaign script reconstructed afterwards describes a different, earlier campaign. The remaining
+cells agree: runs matching five or seven events read $103$~ms, as four late events out of five or
+seven must give.
+
+We leave the disclosure standing rather than deleting it, for two reasons. The recovery was
+available only because the artefact we were chasing happened to be a wall-clock constant with a
+sharp signature; a reader should not have to reconstruct an experimental parameter by arithmetic
+on its results, and next time there may be nothing to reconstruct it from. And the exercise makes
+the protocol rule concrete: what was missing was one number, written down once.
+
+\paragraph{What the gap touched.} The audit is unaffected either way: a negative transport is
+causally impossible at any replay rate, and the rejection counts are arithmetic on surviving
+per-event data. The withdrawal in Section~\ref{sec:attribution} is unaffected by construction ---
+we give the argument in a form that holds at every candidate rate. The rules of
+Section~\ref{sec:rules} were measured after the pre-flight existed, at a derived and verified
+rate. Section~\ref{sec:e1}'s external validity is restored by the recovery above, though we now
+state it as an inference from the data rather than as a property of the campaign we can document.
+Section~\ref{sec:protocol} carries the rule that would have made all of this unnecessary.
 
 \subsection{The property that makes this general}
 \label{sec:property}
@@ -766,9 +793,10 @@ All results below come from Testbed~B and pass the check. Each states its retent
 \subsection{The brokers are equivalent and neither degrades}
 \label{sec:e1}
 
-At the concurrency levels the workload produces, with each feed carrying a distinct real match,
-164 of 201 runs survive. Both arms were replayed at the same rate; what that rate was is no
-longer recoverable, for the reason given in Section~\ref{sec:rateprovenance}. Broker transport is flat across the range: Kruskal--
+At the concurrency levels the workload produces, with each feed carrying a distinct real match at
+true real time, 164 of 201 runs survive. That the replay was at true real time is an inference
+from the runs themselves rather than a documented setting, for the reason and by the argument
+given in Section~\ref{sec:rateprovenance}. Broker transport is flat across the range: Kruskal--
 Wallis gives $p = 0.061$ for \kafka{} and $p = 0.091$ for \redis{}, neither significant, with a
 largest-to-smallest median ratio of $1.06$ and $1.17$ (Table~\ref{tab:e1}). At $N \in
 \{9,10,12\}$ all three procedures agree that transport is equivalent within $1$~ms, with
@@ -812,12 +840,18 @@ practitioner recommendation on it.
 That gap does not survive re-measurement, and the reason is a second instance of this paper's
 own thesis. We report it at length for the same reason we reported the first.
 
-\paragraph{The offset is a start-up cost, not a per-event constant.} Repeating the identical
-condition ($N{=}1$, true real-time replay, same driver, same broker) but observing a longer
-window gives a median producer scheduling lag of $1.59$~ms for \kafka{}, not $103$~ms --- with a
-\emph{maximum} of $103.5$~ms. Two independent instrumentation paths agree: the per-event loop
-trace and the per-run summary. The $103$~ms is real, but it is paid once per run, not once per
-event.
+\paragraph{The offset is a start-up cost, not a per-event constant.} Re-measuring at $N{=}1$ on
+the same driver and the same broker, at a replay rate derived from the plan and verified against
+elapsed wall time, gives a median producer scheduling lag of $1.59$~ms for \kafka{}, not
+$103$~ms --- with a \emph{maximum} of $103.5$~ms. Two independent instrumentation paths agree:
+the per-event loop trace and the per-run summary. The $103$~ms is real, but it is paid once per
+run, not once per event.
+
+We cannot call this a repetition of E1's condition, because E1's replay rate is not recoverable
+(Section~\ref{sec:rateprovenance}). That is why the argument below does not rest on the
+comparison between the two campaigns at all. It rests on a sweep that is internally controlled
+--- one campaign, one rate, one match, only the window varying --- and on an arithmetic
+relation that holds at every rate E1 could have used.
 
 \paragraph{A controlled test that separates the two.} A median cannot distinguish a per-run cost
 from a per-event one, because how much of the cost the median sees depends on how many events the
@@ -898,6 +932,30 @@ The failure thus compounds: a sample of seven is small, but a sample of seven \e
 towards the contaminated events} is worse than small. \redis{} reports $1.75$~ms on the same
 events because opening a stream with \texttt{XADD} does not pay what \kafka{}'s first send pays
 in metadata fetch and topic creation, so the same selection costs it nothing.
+
+\paragraph{Why not knowing E1's replay rate does not matter here.} The blocking first send lasts
+$102.6$~ms of \emph{wall} time, so at a replay rate of $R$ times real time it spans $0.103R$
+seconds of \emph{match} time. Evaluating that against the plan for each rate E1 could have run
+at:
+
+\begin{quote}
+\small
+\begin{tabular}{rrr}
+\toprule
+Replay rate & Match time spanned & Events inside the prologue \\
+\midrule
+$1\times$    & $0.10$~s   & 5 \\
+$120\times$  & $12.3$~s   & 16 \\
+$1200\times$ & $123.1$~s  & 112 \\
+\bottomrule
+\end{tabular}
+\end{quote}
+
+E1 matched between $5$ and $11$ events per run. At every one of the three candidate rates the
+prologue already contains at least that many events, so the entire matched sample falls inside
+it and its median is the start-up cost --- which is what the corpus reports. The conclusion is
+therefore insensitive to the one parameter we cannot recover, and the acceleration only changes
+how badly the sample is selected, not whether it is.
 
 This also explains the three properties we previously offered as evidence, and each of them is
 equally consistent with a start-up cost: a per-run constant looks \emph{constant} within a run;
@@ -1261,15 +1319,18 @@ analysis of Section~\ref{sec:threshold} exists partly to compensate.
 sweep, the connection sweep above ten, the cluster arm, the durability quantification and all of
 Testbed~A. We cannot characterise behaviour at the concurrency a multi-tenant platform would see.
 
-\emph{We cannot state the replay rate of our own E1 corpus}, for the reason set out in
-Section~\ref{sec:rateprovenance}. Both arms ran at the same rate, so the comparison between them
-is internally valid; but the claim that the equivalence holds \emph{at football's true event
-rate} is not supported by artefacts that survive, and we do not make it. Three runs at a derived
-and verified real-time rate do not reproduce E1's near-equality --- \kafka{} transport reads
-$0.45$~ms against \redis{}'s $0.09$~ms, with both systems below their E1 values, which is what an
-idle driver would look like if E1 had been accelerated enough to load it. Three runs settle
-nothing, and a properly powered replication at a verified rate is the first thing this work needs
-next.
+\emph{E1's replay rate is inferred, not documented.} Section~\ref{sec:rateprovenance} recovers it
+from the data and the recovery is, we think, sound, but it is an inference from a
+$52.34$~ms median in one cell rather than a setting anyone recorded. A reader who does not accept
+the inference should read Section~\ref{sec:e1} as establishing that both arms met the same rate,
+which is all the between-system comparison needs.
+
+\emph{A small replication at a verified rate does not match E1's transport figures.} Three
+$N{=}1$ runs give \kafka{} transport $0.45$~ms against \redis{}'s $0.09$~ms --- a fivefold gap
+where E1 reports near-equality --- with both systems below their E1 values. Three runs settle
+nothing and the conditions differ in window length, so we draw no conclusion from it; but we
+record it rather than omit it, because it is the one observation we have that points away from
+Section~\ref{sec:e1}, and a properly powered replication is the first thing this work needs next.
 
 \emph{We instrumented one arm of a two-arm comparison.} The window sweep that settles
 Section~\ref{sec:attribution} counts affected events from a per-event loop trace, and only the

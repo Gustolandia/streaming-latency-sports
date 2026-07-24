@@ -389,6 +389,30 @@ class TestSecondWithdrawalIsStated:
         assert "attributed, not proven" not in low
         assert "underway" not in low, "no limitation may point at work that has since finished"
 
+    def test_the_argument_holds_at_every_candidate_replay_rate(self, tex):
+        """The withdrawal must not depend on the rate the artefacts cannot supply.
+
+        The blocking send lasts 102.6 ms of wall time, so at R times real time it spans 0.103R
+        seconds of match time. At each of 1x, 120x and 1200x that span must already contain at
+        least as many events as E1 matched (5-11), or the whole matched sample would not sit
+        inside the prologue and the argument would need the rate after all.
+        """
+        t_sim = sorted(_replayed_plan_t_sim())
+        median_matched = 7   # the cell that carries the reported 103 ms
+        expected = {1: 5, 120: 16, 1200: 112}
+        for rate, want in expected.items():
+            inside = sum(1 for t in t_sim if t <= 0.1026 * rate)
+            assert inside == want, f"{rate}x: plan gives {inside} events, paper says {want}"
+            # The first event pays the block in produce_ms rather than inheriting it, so the
+            # number of LATE events is one fewer than the prologue holds. The median of the
+            # matched sample is late whenever that count reaches ceil(n/2).
+            late = inside - 1
+            assert late >= -(-median_matched // 2), (
+                f"at {rate}x only {late} events run late, too few to carry the median of "
+                f"{median_matched}: the argument no longer covers this rate")
+        for rate in expected:
+            assert str(rate) in tex
+
     def test_the_check_is_not_claimed_to_catch_it(self, tex):
         """Honesty about the limit of our own instrument is the point of this section."""
         section = tex[tex.index(r"\label{sec:attribution}"):tex.index(r"\label{sec:rules}")]
@@ -473,13 +497,36 @@ class TestRateProvenanceIsDisclosed:
         section = tex[tex.index(r"\label{sec:rateprovenance}"):]
         section = section[:section.index(r"\subsection{The property")]
         low = section.lower()
-        assert "audit itself is unaffected" in low
+        assert "audit is unaffected" in low
         assert "external validity" in low
 
-    def test_e1_no_longer_claims_true_real_time(self, tex):
+    def test_the_rate_is_recovered_from_the_diagnostic_cell(self, tex):
+        """The 52.34 ms cell is what identifies the rate, so it must survive a data change.
+
+        A median of eight values is the mean of the fourth and fifth. Landing midway between
+        1.6 ms and 103.5 ms requires exactly four of the eight to be late -- which is the count
+        the loop trace gives at a verified real-time rate. Under 120x or 1200x the prologue
+        would swallow all eight and the cell would read ~103 ms.
+        """
+        import statistics as stat
+        cell = [float(r["schedlag_p50"]) for r in _rows("e1", "e1_by_run_gated.csv")
+                if r["backend"] == "kafka" and int(r["n_matched"]) == 8]
+        assert len(cell) == 15, f"the diagnostic cell has {len(cell)} runs, paper says 15"
+        med = stat.median(cell)
+        assert med == pytest.approx(52.34, abs=0.005)
+        assert min(cell) == pytest.approx(51.60, abs=0.005)
+        assert max(cell) == pytest.approx(53.01, abs=0.005)
+        # Midway between the two modes, and far from either.
+        assert 40 < med < 65, "the cell must sit between the modes for the argument to work"
+        for token in ("52.34", "51.60", "53.01"):
+            assert token in tex, f"{token} must appear in the paper"
+
+    def test_e1_states_the_rate_as_an_inference(self, tex):
+        """Recovered, not documented -- and the paper must not blur the two."""
         e1 = tex[tex.index(r"\label{sec:e1}"):tex.index(r"\label{sec:attribution}")]
-        assert "true real time" not in e1.lower(), "E1 must not assert a rate it cannot show"
-        assert "rateprovenance" in e1, "E1 must point at the disclosure"
+        assert "true real time" in e1.lower()
+        assert "inference" in e1.lower(), "the rate must be flagged as inferred"
+        assert "rateprovenance" in e1, "E1 must point at the recovery argument"
 
     def test_the_protocol_gained_the_rule_that_would_have_prevented_it(self, tex):
         protocol = tex[tex.index(r"\label{sec:protocol}"):]

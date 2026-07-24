@@ -154,6 +154,30 @@ def check_h2(df, rho_col="rho", rate_col="inversion_rate"):
     }
 
 
+def runs_test_z(signs):
+    """H8, the clustering rule. Wald-Wolfowitz runs test on a sequence of inversion signs.
+
+    If timestamp inversions came from independent clock quantisation, their signs would be an
+    i.i.d. sequence and the number of runs would match the independence expectation (z ~ 0). If
+    instead a single descheduling event makes a *run* of consecutive events wake late together --
+    the scheduling mechanism this paper argues for -- inversions cluster and there are fewer runs
+    than expected, giving z << 0.
+
+    `signs` is a per-event sequence in emission order; entries <= 0 are inversions, > 0 are not.
+    Zeros are dropped. Returns z, or None if either class is too small to test.
+    """
+    s = [1 if x > 0 else -1 for x in signs]
+    n1 = sum(1 for x in s if x > 0)
+    n2 = len(s) - n1
+    if n1 < 2 or n2 < 2:
+        return None
+    runs = 1 + sum(1 for a, b in zip(s, s[1:]) if a != b)
+    n = n1 + n2
+    mu = 1.0 + 2.0 * n1 * n2 / n
+    var = 2.0 * n1 * n2 * (2.0 * n1 * n2 - n) / (n * n * (n - 1.0))
+    return float((runs - mu) / (var ** 0.5)) if var > 0 else None
+
+
 # --------------------------------------------------------------------------- driver
 def _load(path):
     p = Path(path) if path else None

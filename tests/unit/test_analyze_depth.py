@@ -279,7 +279,7 @@ class TestMain:
             _condition(tmp, "ea2", tag, ts, {"kafka": vals})
         # H3: both stamping modes, two backends each.
         for mode, ts in [("callback", "n5_20260101_130000"), ("inline", "n5_20260101_130001")]:
-            _condition(tmp, "ec2", mode, ts, {"kafka": [0.6], "redis": [0.2]})
+            _condition(tmp, "ec3", mode, ts, {"kafka": [0.6], "redis": [0.2]})
         return ["--depth-dir", str(tmp / "depth"), "--runs-dir", str(tmp / "runs"),
                 "--out", str(tmp / "model")]
 
@@ -304,14 +304,67 @@ class TestMain:
     def test_a_stamping_mode_with_only_one_backend_is_not_compared(self, temp_dir, capsys):
         """H3 needs both backends in the same mode; a half-finished mode must not be reported."""
         from analyze_depth import main
-        _condition(temp_dir, "ec2", "callback", "n5_20260101_140000",
+        _condition(temp_dir, "ec3", "callback", "n5_20260101_140000",
                    {"kafka": [0.6], "redis": [0.2]})
-        _condition(temp_dir, "ec2", "inline", "n5_20260101_140001", {"kafka": [0.6]})
+        _condition(temp_dir, "ec3", "inline", "n5_20260101_140001", {"kafka": [0.6]})
         main(["--depth-dir", str(temp_dir / "depth"), "--runs-dir", str(temp_dir / "runs"),
               "--out", str(temp_dir / "model")])
         out = capsys.readouterr().out
         assert "callback" in out
         assert "H3 stamping rule" not in out
+
+    def test_h3_is_supported_when_the_symmetric_stamp_shrinks_the_gap(self, temp_dir, capsys):
+        from analyze_depth import main
+        _condition(temp_dir, "ec3", "callback", "n5_20260101_150000",
+                   {"kafka": [0.60], "redis": [0.20]})
+        _condition(temp_dir, "ec3", "inline", "n5_20260101_150001",
+                   {"kafka": [0.25], "redis": [0.20]})
+        main(["--depth-dir", str(temp_dir / "depth"), "--runs-dir", str(temp_dir / "runs"),
+              "--out", str(temp_dir / "model")])
+        out = capsys.readouterr().out
+        assert "E-C3" in out
+        assert "H3 stamping rule: SUPPORTED" in out
+        assert "calling thread" in out
+
+    def test_h3_is_not_supported_when_the_gap_survives_the_symmetric_stamp(self, temp_dir,
+                                                                          capsys):
+        from analyze_depth import main
+        _condition(temp_dir, "ec3", "callback", "n5_20260101_160000",
+                   {"kafka": [0.60], "redis": [0.20]})
+        _condition(temp_dir, "ec3", "inline", "n5_20260101_160001",
+                   {"kafka": [0.90], "redis": [0.20]})
+        main(["--depth-dir", str(temp_dir / "depth"), "--runs-dir", str(temp_dir / "runs"),
+              "--out", str(temp_dir / "model")])
+        assert "H3 stamping rule: NOT SUPPORTED" in capsys.readouterr().out
+
+    def test_the_old_asymmetric_pair_is_reported_as_untested(self, temp_dir, capsys):
+        """ec2 compared two callback-stamping clients, so no verdict is available from it."""
+        from analyze_depth import main
+        _condition(temp_dir, "ec2", "callback", "n5_20260101_170000",
+                   {"kafka": [0.60], "redis": [0.20]})
+        _condition(temp_dir, "ec2", "inline", "n5_20260101_170001",
+                   {"kafka": [0.25], "redis": [0.20]})
+        main(["--depth-dir", str(temp_dir / "depth"), "--runs-dir", str(temp_dir / "runs"),
+              "--out", str(temp_dir / "model")])
+        out = capsys.readouterr().out
+        assert "E-C2" in out and "untested" in out
+        assert "SUPPORTED" not in out
+
+    def test_ec3_supersedes_ec2_when_both_are_present(self, temp_dir, capsys):
+        from analyze_depth import main
+        _condition(temp_dir, "ec2", "callback", "n5_20260101_180000",
+                   {"kafka": [9.0], "redis": [0.2]})
+        _condition(temp_dir, "ec2", "inline", "n5_20260101_180001",
+                   {"kafka": [9.0], "redis": [0.2]})
+        _condition(temp_dir, "ec3", "callback", "n5_20260101_180002",
+                   {"kafka": [0.60], "redis": [0.20]})
+        _condition(temp_dir, "ec3", "inline", "n5_20260101_180003",
+                   {"kafka": [0.25], "redis": [0.20]})
+        main(["--depth-dir", str(temp_dir / "depth"), "--runs-dir", str(temp_dir / "runs"),
+              "--out", str(temp_dir / "model")])
+        out = capsys.readouterr().out
+        assert "E-C3" in out and "E-C2" not in out
+        assert "kafka 0.600" in out          # the ec3 numbers, not the ec2 decoys
 
     def test_returns_one_when_there_is_nothing_to_fit(self, temp_dir, capsys):
         from analyze_depth import main

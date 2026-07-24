@@ -1,4 +1,11 @@
-"""Complete tests for kafka_producer.py - 100% branch coverage."""
+"""Tests for kafka_producer.py - 99% branch coverage (all but the coverage-subprocess hook).
+
+Note on patching: the module does `from kafka import KafkaProducer` at import time, so tests
+that need the send future to behave like a real one must patch `kafka_producer.KafkaProducer`.
+Patching `kafka.KafkaProducer` leaves the module holding the import-time MagicMock, whose
+futures never fire callbacks and never raise -- which silently skips the error, drain, trace and
+stamping paths.
+"""
 import pytest
 import pandas as pd
 import sys
@@ -659,3 +666,215 @@ class TestBrokerCountParameter:
                 sys.argv = old_argv
         
         assert out_path.exists()
+
+
+class TestAckStamp:
+    """H3, the asymmetry rule: where the acknowledgement timestamp is taken.
+
+    Default is the delivery callback, which runs on the client's I/O thread and so waits for
+    that thread to be scheduled. `inline` stamps on the calling thread the moment the send
+    future resolves, which is what redis_producer.py does after XADD returns. The point of the
+    flag is that a Kafka-vs-Redis comparison otherwise compares two instruments as well as two
+    brokers, so both paths are pinned here rather than only the default.
+    """
+
+    @staticmethod
+    def _plan(temp_dir, n=2):
+        pd.DataFrame({
+            "event_id": [f"e{i}" for i in range(n)],
+            "match_id": [1] * n,
+            "t_sim_seconds": [0] * n,
+            "t_emit_offset_s": [0.0] * n,
+            "row_idx": list(range(n)),
+        }).to_csv(temp_dir / "plan.csv", index=False)
+
+    @staticmethod
+    def _run(temp_dir, extra):
+        """Run the producer with a future that never fires its callback.
+
+        A MagicMock future would accept add_callback and do nothing, so a test that only
+        checked for a written file would pass in both modes. Instead the fake future records
+        the callbacks it was given and never invokes them: under `callback` no stamp can
+        appear, under `inline` the stamp must appear anyway.
+        """
+        registered = []
+
+        class Fut:
+            def add_callback(self, cb):
+                registered.append(cb)
+
+            def add_errback(self, cb):
+                pass
+
+            def get(self, timeout=None):
+                return MagicMock()
+
+        mock_producer = MagicMock()
+        mock_producer.send = MagicMock(side_effect=lambda *a, **k: Fut())
+
+        # kafka_producer binds KafkaProducer at import time (`from kafka import ...`), so the
+        # patch has to target that name; patching kafka.KafkaProducer leaves it untouched.
+        with patch('kafka_producer.KafkaProducer', return_value=mock_producer):
+            old_argv, old_cwd = sys.argv, os.getcwd()
+            try:
+                os.chdir(temp_dir)
+                sys.argv = ["kp", "--run-id", "tr", "--plan-csv", "plan.csv",
+                            "--out", "prod.csv"] + extra
+                kp_main()
+            finally:
+                os.chdir(old_cwd)
+                sys.argv = old_argv
+        return pd.read_csv(temp_dir / "prod.csv"), registered
+
+    def test_inline_stamps_without_the_callback_ever_firing(self, temp_dir):
+        self._plan(temp_dir)
+        df, registered = self._run(temp_dir, ["--ack-stamp", "inline", "--max-inflight", "1"])
+        assert registered == []                       # no delivery callback is registered at all
+        assert df["t_broker_ack_ns"].notna().all()     # yet every event is stamped
+        assert (df["t_broker_ack_ns"] >= df["t_prod_send_ns"]).all()
+
+    def test_callback_mode_registers_the_callback_and_stamps_nowhere_else(self, temp_dir):
+        self._plan(temp_dir)
+        df, registered = self._run(temp_dir, ["--ack-stamp", "callback"])
+        assert len(registered) == 2                   # one per event
+        assert df["t_broker_ack_ns"].isna().all()      # the fake future never fires them
+
+    def test_callback_is_the_default(self, temp_dir):
+        self._plan(temp_dir)
+        _, registered = self._run(temp_dir, [])
+        assert len(registered) == 2
+
+    def test_inline_refuses_more_than_one_in_flight(self, temp_dir):
+        """Above one in-flight request the blocking get() resolves an older event, so an inline
+        stamp would silently belong to the wrong one. That must fail, not produce a run."""
+        self._plan(temp_dir)
+        with pytest.raises(SystemExit):
+            self._run(temp_dir, ["--ack-stamp", "inline", "--max-inflight", "4"])
+
+    def test_rejected_before_any_output_is_written(self, temp_dir):
+        self._plan(temp_dir)
+        with pytest.raises(SystemExit):
+            self._run(temp_dir, ["--ack-stamp", "inline", "--max-inflight", "2"])
+        assert not (temp_dir / "prod.csv").exists()
+
+
+class TestPathsThatNeedARealFuture:
+    """Paths that a bare MagicMock future silently skips.
+
+    `from kafka import KafkaProducer` binds the name at import, so patching `kafka.KafkaProducer`
+    leaves the module using the import-time mock: send() returns a MagicMock whose get() never
+    raises and whose callbacks never fire. These tests patch `kafka_producer.KafkaProducer` and
+    supply a future that behaves like a real one.
+    """
+
+    @staticmethod
+    def _plan(temp_dir, n):
+        pd.DataFrame({
+            "event_id": [f"e{i}" for i in range(n)],
+            "match_id": [1] * n,
+            "t_sim_seconds": [0] * n,
+            "t_emit_offset_s": [0.0] * n,
+            "row_idx": list(range(n)),
+        }).to_csv(temp_dir / "plan.csv", index=False)
+
+    @staticmethod
+    def _producer(fire_callbacks=True, fail=False):
+        gets = []
+
+        class Fut:
+            def __init__(self):
+                self._cbs, self._ebs = [], []
+
+            def add_callback(self, cb):
+                self._cbs.append(cb)
+
+            def add_errback(self, cb):
+                self._ebs.append(cb)
+
+            def get(self, timeout=None):
+                gets.append(self)
+                if fail:
+                    for cb in self._ebs:
+                        cb(RuntimeError("broker refused"))
+                elif fire_callbacks:
+                    for cb in self._cbs:
+                        cb(MagicMock())
+                return MagicMock()
+
+        p = MagicMock()
+        p.send = MagicMock(side_effect=lambda *a, **k: Fut())
+        return p, gets
+
+    @staticmethod
+    def _run(temp_dir, producer, extra):
+        with patch('kafka_producer.KafkaProducer', return_value=producer):
+            old_argv, old_cwd = sys.argv, os.getcwd()
+            try:
+                os.chdir(temp_dir)
+                sys.argv = ["kp", "--run-id", "tr", "--plan-csv", "plan.csv",
+                            "--out", "prod.csv"] + extra
+                kp_main()
+            finally:
+                os.chdir(old_cwd)
+                sys.argv = old_argv
+
+    def test_a_delivery_error_aborts_the_run(self, temp_dir):
+        """An errback that fires must surface, not leave a CSV of unstamped rows behind."""
+        self._plan(temp_dir, 2)
+        producer, _ = self._producer(fail=True)
+        with pytest.raises(RuntimeError, match="broker refused"):
+            self._run(temp_dir, producer, [])
+
+    def test_callback_stamps_every_event_when_it_fires(self, temp_dir):
+        self._plan(temp_dir, 3)
+        producer, _ = self._producer()
+        self._run(temp_dir, producer, ["--ack-stamp", "callback"])
+        df = pd.read_csv(temp_dir / "prod.csv")
+        assert df["t_broker_ack_ns"].notna().all()
+
+    def test_more_than_one_in_flight_drains_the_oldest_send(self, temp_dir):
+        """Above the window the loop blocks on the oldest future, so gets trail sends by two."""
+        self._plan(temp_dir, 5)
+        producer, gets = self._producer()
+        self._run(temp_dir, producer, ["--max-inflight", "2"])
+        assert len(gets) == 5                      # 3 during the loop, 2 draining at the end
+        assert pd.read_csv(temp_dir / "prod.csv").shape[0] == 5
+
+    def test_trace_loop_is_written_and_namespaced_by_run_id(self, temp_dir):
+        self._plan(temp_dir, 2)
+        producer, _ = self._producer()
+        self._run(temp_dir, producer, ["--trace-loop", "traces/loop.csv"])
+        out = temp_dir / "traces" / "loop_tr.csv"
+        assert out.exists()
+        t = pd.read_csv(out)
+        assert len(t) == 2
+        assert {"wake_late_ms", "produce_ms", "client"} <= set(t.columns)
+
+    def test_trace_loop_with_no_events_still_writes_a_header(self, temp_dir):
+        self._plan(temp_dir, 1)
+        producer, _ = self._producer()
+        self._run(temp_dir, producer, ["--trace-loop", "loop.csv", "--max-t-sim", "-1"])
+        assert (temp_dir / "loop_tr.csv").read_text(encoding="utf-8").strip() == "event_id"
+
+    def test_corrections_are_stamped_inline_too(self, temp_dir):
+        """The corrections scheduler is a second thread; it must honour the stamping mode so a
+        run cannot mix an inline base stamp with a callback correction stamp."""
+        self._plan(temp_dir, 2)
+        producer, _ = self._producer(fire_callbacks=False)
+        self._run(temp_dir, producer, [
+            "--ack-stamp", "inline", "--max-inflight", "1",
+            "--s3-mode", "corrections", "--corrections-every-k", "1",
+            "--correction-delay-s", "0.0"])
+        df = pd.read_csv(temp_dir / "prod.csv")
+        assert len(df) == 4                              # two base events, two corrections
+        assert df["t_broker_ack_ns"].notna().all()       # no callback ever fired
+
+    def test_corrections_keep_the_callback_path_when_asked(self, temp_dir):
+        self._plan(temp_dir, 2)
+        producer, _ = self._producer(fire_callbacks=False)
+        self._run(temp_dir, producer, [
+            "--s3-mode", "corrections", "--corrections-every-k", "1",
+            "--correction-delay-s", "0.0"])
+        df = pd.read_csv(temp_dir / "prod.csv")
+        assert len(df) == 4
+        assert df["t_broker_ack_ns"].isna().all()        # callbacks registered, never fired

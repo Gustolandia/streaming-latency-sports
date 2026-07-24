@@ -68,8 +68,24 @@ def main():
     # wake_late is already ~103, the loop was behind before it ever called the client.
     ap.add_argument("--trace-loop", default=None,
                     help="write per-event loop timing to this CSV (diagnostic; off by default)")
+    # H3, the asymmetry rule. By default the acknowledgement is stamped in the client's I/O
+    # thread when the delivery callback fires, so the stamp waits for that thread to be
+    # scheduled. redis_producer.py stamps inline on the calling thread the moment XADD returns,
+    # and never pays that wait. Comparing the two systems therefore compares two different
+    # instruments as well as two different brokers. `--ack-stamp inline` removes the asymmetry:
+    # it stamps on the calling thread immediately after the send future resolves, which is what
+    # XADD does. It requires --max-inflight 1, because only then does the blocking get() resolve
+    # the event just sent.
+    ap.add_argument("--ack-stamp", default="callback", choices=["callback", "inline"],
+                    help="where t_broker_ack_ns is taken: in the delivery callback (default, "
+                         "asymmetric with Redis) or inline on the calling thread (symmetric)")
 
     args = ap.parse_args()
+
+    if args.ack_stamp == "inline" and args.max_inflight > 1:
+        # Fail loudly rather than silently emit a run with no acknowledgement stamps at all:
+        # above one in-flight request the blocking get() resolves an older event, not this one.
+        ap.error("--ack-stamp inline requires --max-inflight 1")
 
     plan = pd.read_csv(args.plan_csv)
     plan = plan[plan["t_sim_seconds"] <= args.max_t_sim].copy()
@@ -159,9 +175,12 @@ def main():
             # Send outside lock
             t_prod_send_ns = now_ns()
             fut = producer.send(args.topic, key=corr_event_id, value=corr_msg)
-            fut.add_callback(lambda _meta, eid=corr_event_id: on_ack(eid))
+            if args.ack_stamp == "callback":
+                fut.add_callback(lambda _meta, eid=corr_event_id: on_ack(eid))
             fut.add_errback(lambda exc, eid=corr_event_id: on_err(eid, exc))
             fut.get(timeout=30)
+            if args.ack_stamp == "inline":
+                on_ack(corr_event_id)
 
             corr_rows.append(
                 {
@@ -219,11 +238,16 @@ def main():
         }
 
         fut = producer.send(args.topic, key=event_id, value=msg)
-        fut.add_callback(lambda _meta, eid=event_id: on_ack(eid))
+        if args.ack_stamp == "callback":
+            fut.add_callback(lambda _meta, eid=event_id: on_ack(eid))
         fut.add_errback(lambda exc, eid=event_id: on_err(eid, exc))
 
         if args.max_inflight <= 1:
             fut.get(timeout=30)
+            if args.ack_stamp == "inline":
+                # Symmetric with redis_producer.py: the calling thread stamps the moment the
+                # broker's acknowledgement is in hand, with no second thread in the path.
+                on_ack(event_id)
         else:
             pending.append(fut)
             if len(pending) >= args.max_inflight:

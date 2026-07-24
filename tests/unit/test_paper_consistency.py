@@ -300,3 +300,55 @@ class TestMeasuredRules:
         low = section.lower()
         assert "untested" in low
         assert "refuted" in low, "the untested/refuted distinction must be drawn explicitly"
+
+
+class TestNoMangledMacros:
+    r"""Source-level LaTeX that silently renders as literal text.
+
+    A backslash lost in a heredoc turns \textbf{X} into a tab plus extbf{X}. LaTeX compiles it
+    without error or warning -- the tab is whitespace and extbf{X} is ordinary text -- so the
+    build is clean, the reference check passes, and the rendered page reads "extbfInversion
+    probability is a property...". That shipped, and was found by reading the PDF.
+
+    Note what the residue actually looks like: the backslash is not merely dropped, it is
+    consumed together with the letter after it. \textbf becomes TAB + extbf, not textbf. So
+    scanning for macro names missing a backslash finds nothing at all. What every instance of
+    this bug does leave behind is a control character, because the escapes a shell or a Python
+    string interprets -- \t \b \f \v \a \r -- each produce one. A LaTeX source has no
+    legitimate use for any of them, which makes their absence a complete check rather than a
+    list of the cases someone happened to think of.
+    """
+
+    # The characters those escapes produce, with the macros each one eats the front of.
+    RESIDUES = {
+        "\t": "\\t: textbf, texttt, tti, toprule, tabular",
+        "\x08": "\\b: begin, bottomrule, bibliography",
+        "\x0c": "\\f: frac, footnote, figure",
+        "\x0b": "\\v: vspace, vfill",
+        "\x07": "\\a: acmJournal, alpha",
+        "\r": "\\r: ref, right, rho, rule",
+        "\x00": "\\0: null",
+    }
+
+    def test_the_source_contains_no_control_characters(self, tex):
+        """Line endings excluded: splitlines drops them, so only in-line residue registers."""
+        offenders = []
+        for lineno, line in enumerate(tex.splitlines(), start=1):
+            for ch, which in self.RESIDUES.items():
+                if ch in line:
+                    offenders.append(f"line {lineno}: {which}")
+        assert offenders == [], f"mangled macro left a control character: {offenders}"
+
+    def test_the_guard_catches_the_bug_it_was_written_for(self, tmp_path):
+        """The text that actually shipped, so the check cannot rot into a no-op."""
+        broken = "thing in this paper. " + chr(9) + "extbf{Inversion probability is a property"
+        assert any(ch in broken for ch in self.RESIDUES)
+
+    def test_the_guard_accepts_correct_markup(self):
+        good = "thing in this paper. " + chr(92) + "textbf{Inversion probability is a property}"
+        assert not any(ch in good for ch in self.RESIDUES)
+
+    def test_every_residue_is_recognised(self):
+        """Each escape a heredoc or a Python string would interpret is covered."""
+        for esc in ("\t", "\b", "\f", "\v", "\a", "\r", "\0"):
+            assert esc in self.RESIDUES, f"unhandled escape residue {esc!r}"

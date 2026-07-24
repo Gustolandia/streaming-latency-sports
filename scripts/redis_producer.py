@@ -71,6 +71,16 @@ def main():
         default=0.0,
         help="S3 corrections: wall delay after base planned emit time (seconds)",
     )
+    # Mirrors kafka_producer.py --trace-loop, and exists so the two can be compared on the
+    # same instrument. Without it the window sweep could count Kafka's blocking first send
+    # but had nothing to compare it against, and reporting Redis as "zero blocking sends"
+    # would have been the absence of a measurement rather than a measurement.
+    #   wake_late_ms  how late time.sleep() returned relative to the planned emission
+    #   produce_ms    how long the dispatch of the send blocked the emission loop
+    # Redis dispatches XADD to a worker pool, so produce_ms is the time to hand it off, not
+    # the round trip; that is the quantity comparable to Kafka's produce() return.
+    ap.add_argument("--trace-loop", default=None,
+                    help="write per-event loop timing to this CSV (diagnostic; off by default)")
 
     args = ap.parse_args()
 
@@ -193,6 +203,7 @@ def main():
 
     # Non-blocking base-event dispatch pool so the producer keeps the emission
     # schedule even when per-XADD round-trips are slower than the scheduled gap.
+    trace = []
     base_rows = []
     base_lock = threading.Lock()
     base_err = []
@@ -247,6 +258,7 @@ def main():
             sleep_s = target_mono - time.monotonic()
             if sleep_s > 0:
                 time.sleep(sleep_s)
+            t_wake_ns = now_ns()
 
             t_prod_sched_ns = t0_wall_ns + int((t_emit_offset_s / args.speedup) * 1e9)
 
@@ -270,11 +282,25 @@ def main():
             # so the main loop stays on schedule. Send/ack times are stamped in the
             # worker (valid transport latency), rows written in order after draining.
             payload = json.dumps(msg, separators=(",", ":"), ensure_ascii=False)
+            t_prod_send_ns = now_ns()
             send_pool.submit(
                 _send_base, i, event_id, match_id, t_sim, t_emit_offset_s,
                 t_prod_sched_ns, payload,
             )
             sent += 1
+
+            if args.trace_loop:
+                t_after_produce_ns = now_ns()
+                trace.append({
+                    "event_id": event_id,
+                    "client": "redis-py",
+                    "t_target_ns": t_prod_sched_ns,
+                    "t_wake_ns": t_wake_ns,
+                    "t_send_ns": t_prod_send_ns,
+                    "t_after_produce_ns": t_after_produce_ns,
+                    "wake_late_ms": (t_wake_ns - t_prod_sched_ns) / 1e6,
+                    "produce_ms": (t_after_produce_ns - t_prod_send_ns) / 1e6,
+                })
 
             # schedule correction (S3) deterministically by row index (every k-th base event)
             if corr_enabled and ((i + 1) % int(args.corrections_every_k) == 0):
@@ -336,6 +362,18 @@ def main():
             # write correction rows (same CSV schema)
             for row in corr_rows:
                 w.writerow(row)
+
+    if args.trace_loop:
+        # Namespaced by run id, as in kafka_producer.py: at N>1 every feed is its own producer
+        # process and they would otherwise race to write the same file.
+        tp = Path(args.trace_loop)
+        tp = tp.with_name(f"{tp.stem}_{args.run_id}{tp.suffix}")
+        tp.parent.mkdir(parents=True, exist_ok=True)
+        with tp.open("w", newline="", encoding="utf-8") as f:
+            tw = csv.DictWriter(f, fieldnames=list(trace[0].keys()) if trace else ["event_id"])
+            tw.writeheader()
+            tw.writerows(trace)
+        print(f"OK loop trace: wrote {len(trace)} rows -> {tp}")
 
     print(f"OK redis producer: wrote {sent} base rows -> {out_path}")
     if corr_enabled:

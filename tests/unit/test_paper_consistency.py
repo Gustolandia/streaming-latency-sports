@@ -343,6 +343,52 @@ class TestSecondWithdrawalIsStated:
         assert (med_n + 1) / 2 == 4
         assert "at least four" in tex.lower()
 
+    def test_the_window_table_matches_the_sweep_csv(self, tex):
+        """Every Kafka row in Table 5 is recomputed from the committed sweep output."""
+        rows = {int(float(r["window_s"])): r for r in _rows("window", "window_sweep.csv")}
+        assert set(rows) == {60, 180, 600}
+        for w, r in rows.items():
+            assert _contains_number(tex, float(r["schedlag_p50"]), 2)
+            assert _contains_number(tex, float(r["schedlag_max"]), 1)
+            assert str(r["events_per_run"]) in tex
+            assert str(r["trace_events"]) in tex
+        # The finding itself: the count is fixed while the run grows.
+        assert {int(r["slow_wake"]) for r in rows.values()} == {4}
+        assert {int(r["slow_produce"]) for r in rows.values()} == {1}
+        grew = rows[600]["trace_events"] and (int(rows[600]["trace_events"]) /
+                                              int(rows[60]["trace_events"]))
+        assert f"{grew:.1f}" in tex, f"the growth factor {grew:.1f}x must be stated"
+
+    def test_no_unmeasured_count_is_reported_as_zero(self, tex):
+        """Redis had no loop trace, so its count cells must be absent, not zero.
+
+        An unmeasured count and a measured zero look identical in a table, and the analysis
+        used to default the missing one to 0. In a paper about instruments manufacturing
+        differences, printing that would have been the paper's own thesis happening to it.
+        """
+        table = tex[tex.index(r"\label{tab:window}"):]
+        table = table[:table.index(r"\end{table}")]
+        redis_rows = [ln for ln in table.splitlines() if "&" in ln and "---" in ln]
+        assert len(redis_rows) == 3, "expected three Redis rows with unmeasured counts"
+        assert "not measured" in table, "the em-dash must be explained in the caption"
+        assert "absent rather than zero" in table
+
+    def test_the_instrumentation_asymmetry_is_a_stated_limitation(self, tex):
+        limits = tex[tex.index(r"\label{sec:limitations}"):]
+        limits = limits[:limits.index(r"\section{Conclusion}")]
+        low = limits.lower()
+        assert "one arm" in low and "loop trace" in low
+        assert "25" in limits, "the weaker claim the data does support must be given"
+
+    def test_limitations_do_not_still_call_the_offset_unattributed(self, tex):
+        """The pre-withdrawal text said the offset was 'attributed, not proven' and that a
+        client comparison was 'underway'. Both were overtaken by the loop trace and by M1."""
+        limits = tex[tex.index(r"\label{sec:limitations}"):]
+        limits = limits[:limits.index(r"\section{Conclusion}")]
+        low = limits.lower()
+        assert "attributed, not proven" not in low
+        assert "underway" not in low, "no limitation may point at work that has since finished"
+
     def test_the_check_is_not_claimed_to_catch_it(self, tex):
         """Honesty about the limit of our own instrument is the point of this section."""
         section = tex[tex.index(r"\label{sec:attribution}"):tex.index(r"\label{sec:rules}")]

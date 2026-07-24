@@ -105,6 +105,8 @@ def run_trial(run_id: str, plan_csv: str, backend: str, speedup: float, max_t_si
             _append(cmd, f' -PRODUCER_EXTRA "{producer_extra}"')
     else:  # redis
         _append(cmd, f' -RedisHost {redis_host} -PORT {redis_port}')
+        if producer_extra:
+            _append(cmd, f' -PRODUCER_EXTRA "{producer_extra}"')
         if stream:
             _append(cmd, f' -STREAM "{stream}"')
         if cluster_mode:
@@ -177,6 +179,11 @@ def main():
     parser.add_argument('--trial-timeout', type=int, default=300,
                         help='Per-trial subprocess timeout in seconds. Raise it for true '
                              'real-time replays, where wall time equals the replayed window.')
+    parser.add_argument('--redis-producer-extra', type=str, default='',
+                        help='Extra args appended to the Redis producer (e.g. "--trace-loop t.csv"). '
+                             'Its counterpart --kafka-producer-extra existed alone for a while, '
+                             'which meant a diagnostic could be enabled on one arm of a two-arm '
+                             'comparison and the other arm silently reported as if measured.')
     parser.add_argument('--redis-consumer-extra', type=str, default='',
                         help='Extra args appended to the Redis consumer (e.g. "--ack-batch 200") '
                              'to test whether batching acknowledgements removes the RTT bound.')
@@ -252,6 +259,7 @@ def main():
                     stream=redis_stream,
                     broker_count=args.broker_count,
                     cluster_mode=args.cluster_mode,
+                    producer_extra=args.redis_producer_extra,
                     trial_timeout=args.trial_timeout,
                     consumer_extra=args.redis_consumer_extra,
                         redis_cluster_nodes=args.redis_cluster_nodes

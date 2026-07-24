@@ -145,8 +145,14 @@ def collect(window_dir, runs_dir, backend="kafka"):
         s = window_stats(cond, runs_dir, backend)
         if m and s:
             s["window_s"] = float(m.group(1))
+            # None, not zero. A backend with no loop trace has not been measured to have no
+            # late events -- it has not been measured at all, and printing 0 there would
+            # manufacture a finding out of missing instrumentation. redis_producer.py was
+            # untraced when this sweep ran, and the first draft of this table duly reported
+            # Redis as having zero blocking sends, which was not something anyone had observed.
             s.update(trace_stats(window_dir, s["window_s"], backend)
-                     or {"trace_runs": 0, "trace_events": 0, "slow_wake": 0, "slow_produce": 0})
+                     or {"trace_runs": 0, "trace_events": None,
+                         "slow_wake": None, "slow_produce": None})
             rows.append(s)
     return rows
 
@@ -169,11 +175,13 @@ def main(argv=None):
             continue
         print(f"== {backend}: scheduling lag against observation window ==")
         for r in sorted(rows, key=lambda x: x["window_s"]):
+            counted = (f"events >50 ms late={r['slow_wake']:4.1f}  "
+                       f"blocking sends={r['slow_produce']:4.1f}"
+                       if r["slow_wake"] is not None else "(no loop trace)")
             print(f"  window {r['window_s']:5.0f}s  runs={r['runs']}  "
                   f"events/run={r['events_per_run']:4d}  "
                   f"schedlag p50={r['schedlag_p50']:8.2f} ms  max={r['schedlag_max']:8.1f} ms  "
-                  f"events >50 ms late={r['slow_wake']:4.1f}  "
-                  f"blocking sends={r['slow_produce']:4.1f}")
+                  f"{counted}")
         if backend == "kafka":
             tag, why = verdict(rows)
             print(f"\n== VERDICT: {tag} ==\n  {why}\n")

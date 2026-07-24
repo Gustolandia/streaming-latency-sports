@@ -135,15 +135,39 @@ retention (bounded in [`retention_bias.py`](scripts/retention_bias.py)).
 > We previously reported Kafka TTI 105.5 ms vs Redis 5.2 ms, with 102.9 ms of it producer
 > scheduling lag, described as *constant — every event pays it*. **That does not reproduce.**
 >
-> A controlled re-run (N=1, true real time, same driver and broker) gives Kafka a median
+> A controlled re-run (N=1, verified true real time, same driver and broker) gives Kafka a median
 > scheduling lag of **1.59 ms** with a **103.5 ms maximum**. Two independent instrumentation
 > paths agree (per-event loop trace and per-run summary).
 >
-> **The cause is in our own data:** the E1 runs matched a **median of seven events each** (745
-> events across 100 Kafka runs). Those seven are the match's opening burst, emitted right after
-> producer start. Kafka's first send pays metadata fetch and topic creation; Redis's `XADD` to a
-> new stream does not. With seven events and one start-up cost, **that cost *is* the median** —
-> which is exactly why E1 reads 103 ms for Kafka and 1.75 ms for Redis *on the very same events*.
+> **The discriminator is a count, not an average.** A median cannot separate a per-run cost from
+> a per-event one, because how much of it the median sees depends on how many events the run
+> holds — which is precisely what misled us. Sweeping the observation window at a verified
+> real-time rate:
+>
+> | Window | Events emitted | Sched. lag p50 | max | Events >50 ms late | Blocking sends |
+> |---|---|---|---|---|---|
+> | 60 s | 57 | 1.57 ms | 103.5 ms | **4** | **1** |
+> | 180 s | 148 | 1.60 ms | 103.4 ms | **4** | **1** |
+> | 600 s | 507 | 1.59 ms | 103.5 ms | **4** | **1** |
+>
+> Events grow **8.9×**; the count does not move. The share of events paying the cost falls from
+> 7.0% to 0.8%. A per-event constant would have grown the count and held the median at 103 ms.
+>
+> **The cause is in our own data, and the argument is arithmetic.** E1 replayed the first 600 s
+> of match time, which in that plan holds **507 events**. It matched a **median of seven** — a
+> match rate near one percent, so the window was never the problem, the join was. And a median of
+> seven values at 102.93 ms requires **at least four of the seven** to be that high. The loop
+> trace says exactly how many events per run are ever that late: four, always the same four,
+> those due while the first send blocks. So the matched set is almost entirely the prologue.
+>
+> The mechanism, straight off the trace and identical in every run: event 0's first `produce()`
+> blocks **102.6 ms** on metadata fetch and topic creation; the replay loop is single-threaded, so
+> the four events due meanwhile wake ~103 ms late and then send in tens of microseconds; from
+> event 5 it is steady state at ~1 ms. That the burst is exactly five is the sport, not the
+> harness — every one of the eleven plans opens with at least five events at `t_sim=0`, because a
+> kickoff is a pass, a ball receipt and a carry inside one second. A football feed delivers its
+> densest burst precisely when the producer is coldest. Redis's `XADD` creates the stream in the
+> same round trip and shows no prologue.
 >
 > It also retro-explains the three properties we offered as evidence, each of which a per-run
 > cost predicts equally well: *constant* within a run, *concurrency-invariant* (one per run
@@ -284,7 +308,7 @@ From 3,315 StatsBomb matches across 52 competition-seasons (2003–2023), via
 We set out to answer an ordinary question: for a real-time sports data feed, does the choice
 between Apache Kafka and Redis Streams affect end-to-end delay, and how does that change with
 the number of concurrent feeds? We built the benchmark, drove it with 3,315 real football
-matches at their true event rate, and obtained a clean answer — Redis broker delay rising
+matches on their recorded event schedule, and obtained a clean answer — Redis broker delay rising
 monotonically with concurrency while Kafka stayed flat, *p*=9.0×10⁻¹¹, no overlap between the
 two systems' run distributions, exactly as a single-threaded server should behave.
 
@@ -295,19 +319,31 @@ behind the finding above. The rejected data is invisible to conventional inspect
 stay positive, intervals stay narrow, effect sizes stay large, and the direction agrees with
 theory.
 
-Three results survive and none is the one we set out to find. The two brokers are statistically
-equivalent within 1 ms and neither degrades across the concurrency range, robustly to the
-unequal retention the check itself introduces. The end-to-end difference lives entirely in
-client code rather than in either broker, and exists **only** at the workload's sparse arrival
-rate — replay ten times faster and it disappears, which is the regime every synthetic-publisher
-benchmark measures. And each system has exactly one client setting worth one to two orders of
-magnitude in delay, both free on a co-located testbed.
+What survives is narrower than what we set out to find, and one more claim fell after the audit.
+The two brokers are statistically equivalent within 1 ms on broker transport and neither degrades
+across the concurrency range, robustly to the unequal retention the check itself introduces. Each
+system has exactly one client setting worth one to two orders of magnitude in delay, both free on
+a co-located testbed.
+
+**Withdrawn.** An earlier version reported a twentyfold end-to-end gap, attributed it to client
+code, and built a recommendation on it. It does not reproduce. The runs behind it matched a
+median of seven events each, and a one-off producer start-up cost was being read as a per-event
+constant — Kafka's first `produce()` blocks ~103 ms on metadata fetch and topic creation, and the
+four kickoff events due while it blocks inherit that wait. A window sweep settles it by counting
+rather than averaging: emitted events per run grow 8.9× while the number waking more than 50 ms
+late stays at exactly four. The integrity check does **not** catch this one, which is the point.
+
+**Also disclosed:** we cannot state the replay rate of the earliest cloud corpus. Plans carry a
+baked-in 120× compression, so `--speedup 1` means 120×, not real time; the flag's semantics were
+corrected 21 hours after those runs were made, and no surviving artefact records an achieved
+rate. Both arms met the same rate, so the comparison is internally valid, but "at football's true
+event rate" is not a claim the artefacts support. See §6.5 of the paper.
 
 ---
 
 ## 3. Research Questions
 
-- **RQ1 (end-to-end lag)** — Replaying real match feeds at their true event rate, what
+- **RQ1 (end-to-end lag)** — Replaying real match feeds on their recorded event schedule, what
   end-to-end lag do Kafka and Redis Streams deliver, and do they differ?
 - **RQ2 (concurrency)** — Does that lag change across the concurrency levels football actually
   produces, and does either backend degrade faster?

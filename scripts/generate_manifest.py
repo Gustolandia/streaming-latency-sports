@@ -41,10 +41,16 @@ PROTOCOL = {
     "reported_corpus": {
         "testbed": "Testbed B, four Oracle Cloud VMs on a real inter-VM network; every reported "
                    "number passes clock_integrity.py",
-        "E1 transport equivalence (true real-time, N in {1,9,10,12})": "docs/results/e1/, "
-            "164/201 runs retained; brokers equivalent within 1 ms, neither degrades with concurrency",
+        "E1 transport (true real-time, N in {1,9,10,12})": "docs/results/e1/, 164/201 runs "
+            "retained; transport flat and near-equal, but underpowered (median 7 events/run), so "
+            "the equivalence claim does not rest on it",
+        "powered transport replication (verified real-time, N in {1,9,12}, 15 reps, median 127 "
+        "events/run)": "docs/results/transport_rt/; Kafka ~0.54 ms vs Redis ~0.11 ms, HL shift "
+            "0.41 ms (p<1e-26): equivalent within 1 ms but not a tie -- Redis reproducibly faster "
+            "and flat across concurrency; ~0.07 ms of the gap is the H3 asymmetric stamp",
         "window sweep (per-run vs per-event start-up cost)": "docs/results/window/window_sweep.csv",
-        "model rules H1/H2/H3/H4": "docs/results/model/",
+        "model rules H1/H2/H3/H4 + H8 clustering construct check": "docs/results/model/ "
+            "(measurement_model.py, analyze_depth.py, analyze_moments.py)",
         "audit": "docs/results/integrity_windows/ (Testbed A) and "
                  "docs/results/integrity_by_condition.csv (Testbed B)",
     },

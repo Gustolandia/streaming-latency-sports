@@ -1,5 +1,5 @@
 {
-  "git_commit": "7c607f00eeae88593ef9ab2a4625c5f6251809cf",
+  "git_commit": "03d938e475106d6b6720507aba939fcdb30979c4",
   "generated": "2026-07-24",
   "environment": "see docs/infrastructure.md",
   "protocol": {
@@ -13,9 +13,10 @@
     ],
     "reported_corpus": {
       "testbed": "Testbed B, four Oracle Cloud VMs on a real inter-VM network; every reported number passes clock_integrity.py",
-      "E1 transport equivalence (true real-time, N in {1,9,10,12})": "docs/results/e1/, 164/201 runs retained; brokers equivalent within 1 ms, neither degrades with concurrency",
+      "E1 transport (true real-time, N in {1,9,10,12})": "docs/results/e1/, 164/201 runs retained; transport flat and near-equal, but underpowered (median 7 events/run), so the equivalence claim does not rest on it",
+      "powered transport replication (verified real-time, N in {1,9,12}, 15 reps, median 127 events/run)": "docs/results/transport_rt/; Kafka ~0.54 ms vs Redis ~0.11 ms, HL shift 0.41 ms (p<1e-26): equivalent within 1 ms but not a tie -- Redis reproducibly faster and flat across concurrency; ~0.07 ms of the gap is the H3 asymmetric stamp",
       "window sweep (per-run vs per-event start-up cost)": "docs/results/window/window_sweep.csv",
-      "model rules H1/H2/H3/H4": "docs/results/model/",
+      "model rules H1/H2/H3/H4 + H8 clustering construct check": "docs/results/model/ (measurement_model.py, analyze_depth.py, analyze_moments.py)",
       "audit": "docs/results/integrity_windows/ (Testbed A) and docs/results/integrity_by_condition.csv (Testbed B)"
     },
     "withdrawn": [
@@ -26,12 +27,13 @@
     "rate_provenance": "No surviving artefact records an achieved replay rate; plans carry a baked-in 120x compression, so --speedup 1 means 120x rather than real time. The reported cloud runs are at a verified true-real-time rate; E1's rate is recovered from a 52.34 ms diagnostic cell. See paper Section 6.5.",
     "dataset": "StatsBomb open data, 52 competition-seasons / 3,315 matches (2003-2023), pinned to commit 3bfbffe1de5750ebd47d770be0bb924a10cde54f; re-fetch via scripts/fetch_statsbomb_corpus.py. Eleven per-match replay plans are committed under data/processed/replay_plans/<sha>/."
   },
-  "n_code_files": 47,
+  "n_code_files": 48,
   "code_sha256": {
     "scripts/analyze_backlog.py": "130d7d0cf77ff7fb8800a8afa9f4c95b1ef4f24597b100421b6e9343c137b227",
     "scripts/analyze_concurrency_sweep.py": "0be805271a3fcbc73ca1c3650ca85ba01ecde90f0df5cdc2b0d3d977efd915a7",
     "scripts/analyze_depth.py": "899d20d3b05076c0d1a237dfd91b75dffdd1313fa33203e519fbc2dc2629024a",
     "scripts/analyze_m1_client.py": "a59d7af98f3cf35b6c9929e5451ba1bfe05abecbcedc0b8c7a5c2be6e3de3098",
+    "scripts/analyze_moments.py": "673b55c6246a2e4771c993cc349da9c5456506fa57b8102afd7e9189b9b147de",
     "scripts/analyze_protocol_overhead.py": "b91e24b710f17487cef5cb631d70ab3859698caca98e91fe55f1040f72fee795",
     "scripts/analyze_realtime_concurrency.py": "92a44eba45f4630770f8c3fa619fdb8ae8acf2df1ff793a86011bf17a820bfc7",
     "scripts/analyze_window.py": "323374f86019741d353c3d26f994dd56c39949eac9b62698d03bae917e7e924e",
@@ -45,7 +47,7 @@
     "scripts/equivalence_tests.py": "aac8d7f08fc7eeb55ec458e8a3c72c9b3d3a60793bedc6600291c3da40b7e763",
     "scripts/fair_statistics.py": "0b9d803d316f893530de8e4f4c976657cd0e428bf56aeb69d1aa9f374a1e099e",
     "scripts/fetch_statsbomb_corpus.py": "61d8f3d25ad3f2fde411da48d16866fe511ff2265570d690f288a05b9b2fff40",
-    "scripts/generate_manifest.py": "9f38e1a3a028c32c3ef4abba3226a7e9f53d8e47daa3028f35332308c9de5049",
+    "scripts/generate_manifest.py": "fd008e11f79c9f1921e917c33ee8e265aacf86178c6a5ac76e3dc5737b715e20",
     "scripts/kafka_consumer.py": "98748e047033a6a1dc3bd425d662b4f2166296fa8f87275d887f9d832bdefa2d",
     "scripts/kafka_producer.py": "f3a40dec8d4d5a3f080a9e202be634185dce694f10052c3b4d5061053745dc64",
     "scripts/kafka_producer_confluent.py": "eb5add72b30ffe7117589dec93a4c99525837615ba6c19889bd90bf55eab8086",
@@ -56,7 +58,7 @@
     "scripts/make_replay_plan.py": "89598d6d272af340220e215a49f3f0180fb13797c336cf4935831f1adfedd06a",
     "scripts/make_synthetic_plan.py": "b2dcacb197d29a24782a0ccabe418a584ac2f77c565dd0eac518b92e1ed05dd6",
     "scripts/make_window_figure.py": "9b0041e7fd3aa2e6f0ba8932776479ea461a1fcdf2c08c7683b63ddea2a54b19",
-    "scripts/measurement_model.py": "f355563ddcaa522bc78fa7234d982607dc12dc6144a444b7cf477d99f524b02f",
+    "scripts/measurement_model.py": "a54abf2bcb2cc0937891ff4d135f3ce6acd8df2a15b9076e22ada88240678b60",
     "scripts/plan_speedup.py": "7dd8fb16f8e4fe68dcd1db2990b8ef5061117491b4328f85fc85e912c6bbbe77",
     "scripts/platform_probe.py": "f9648788bd790d74acd62ed2eae0313c4c7bbdc320f01d9cb7bfc7765a4a62e5",
     "scripts/power_analysis.py": "91a603937b7f6e3e812faaa5d5bc855c8852eb62d527d8320b0082cf395f77b3",

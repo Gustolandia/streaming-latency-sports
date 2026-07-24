@@ -249,16 +249,54 @@ class TestNoRejectedFigureIsQuotedAsLive:
         assert any(w in caption.lower() for w in self.CONDEMNATION), caption[:120]
 
 
-class TestAttributionIsNotOverclaimed:
-    """The 103 ms offset is inferred, not instrumented, and the paper must say so."""
+class TestSecondWithdrawalIsStated:
+    """The 103 ms offset is withdrawn: it was a per-run start-up cost, not a per-event constant.
 
-    def test_the_mechanism_is_flagged_as_unproven(self, tex):
-        section = tex[tex.index(r"\label{sec:attribution}"):tex.index(r"\label{sec:network}")]
-        assert "inferred" in section.lower()
-        assert "in progress" in section.lower() or "underway" in section.lower()
+    The runs behind it matched a median of seven events each, so the start-up cost WAS the
+    median. This is the paper's second withdrawal and the one its own integrity check does not
+    catch, so the text must state it plainly rather than hedge it.
+    """
+
+    def test_the_withdrawal_is_explicit(self, tex):
+        section = tex[tex.index(r"\label{sec:attribution}"):tex.index(r"\label{sec:rules}")]
+        low = section.lower()
+        assert "withdraw" in low, "the end-to-end gap must be explicitly withdrawn"
+        assert "start-up" in low or "startup" in low, "the real mechanism must be named"
+        assert "seven events" in low, "the events-per-run cause must be stated"
+
+    def test_the_events_per_run_figure_matches_the_data(self, tex):
+        """The median events-per-run behind E1 is what makes the withdrawal argument."""
+        import statistics as stat
+        gated = _rows("e1", "e1_by_run_gated.csv")
+        med = stat.median(int(r["n_matched"]) for r in gated if r["backend"] == "kafka")
+        assert med == 7, f"expected a median of 7 events per run, got {med}"
+        assert "seven events" in tex.lower()
+
+    def test_the_check_is_not_claimed_to_catch_it(self, tex):
+        """Honesty about the limit of our own instrument is the point of this section."""
+        section = tex[tex.index(r"\label{sec:attribution}"):tex.index(r"\label{sec:rules}")]
+        assert "does not catch" in section.lower()
 
     def test_no_product_recommendation_rests_on_it(self, tex):
-        """We must not tell practitioners to choose a product on an unexplained constant."""
+        """We must not tell practitioners to choose a product on a withdrawn measurement."""
         discussion = tex[tex.index(r"\subsection{For practitioners}"):]
-        head = discussion[:discussion.index(r"\subsection{Limitations}")]
+        head = discussion[:discussion.index(r"\subsection{Threats to validity}")]
         assert "equivalent within a millisecond" in head
+        assert "twentyfold" not in head.lower(), "withdrawn claim must not drive guidance"
+
+
+class TestMeasuredRules:
+    """Section 7.3 must report the model's rules with the values actually measured."""
+
+    def test_h1_h2_h4_values_appear(self, tex):
+        section = tex[tex.index(r"\label{sec:rules}"):tex.index(r"\label{sec:network}")]
+        for token in ("-0.80", "0.98", "+0.80"):        # H1, H2, H4 rank correlations
+            assert token in section, f"missing rank correlation {token}"
+        for token in ("0.945", "0.640"):                # H2 model-vs-linear fit
+            assert token in section, f"missing R^2 {token}"
+
+    def test_h3_is_reported_as_untested_not_refuted(self, tex):
+        section = tex[tex.index(r"\label{sec:rules}"):tex.index(r"\label{sec:network}")]
+        low = section.lower()
+        assert "untested" in low
+        assert "refuted" in low, "the untested/refuted distinction must be drawn explicitly"

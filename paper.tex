@@ -52,15 +52,21 @@ data is invisible to conventional inspection: medians stay positive, intervals s
 effect sizes stay large, and the direction agrees with theory.
 
 We report the check as a stated rule with its sensitivity analysis, and re-run the study inside
-it. Three results survive and none is the one we set out to find. The two brokers are
-statistically equivalent within $1$~ms and neither degrades across the concurrency range, a
-conclusion we show is robust to the unequal retention the check itself introduces. The
-end-to-end difference between the systems lives entirely in client code rather than in either
-broker, and exists \emph{only} at the sparse arrival rate of the real workload: replay the same
-data ten times faster and it disappears, which is the regime every synthetic-publisher benchmark
-measures. And each system has exactly one client setting worth one to two orders of magnitude in
-delay, both of which are free on a co-located testbed and therefore invisible to the way such
-settings are normally evaluated.
+it. What survives is narrower than what we set out to find. The two brokers are statistically
+equivalent within $1$~ms and neither degrades across the concurrency range, a conclusion we show
+is robust to the unequal retention the check itself introduces. A second headline --- a
+twentyfold end-to-end gap between the systems --- also failed to reproduce, and we withdraw it:
+the runs behind it matched a median of seven events each, so a one-off producer start-up cost
+was being reported as a per-event constant. That second withdrawal is instructive precisely
+because the integrity check does not catch it; a benchmark can be causally consistent,
+gate-clean, and still measure its own start-up.
+
+Four falsifiable rules derived from a model of the failure are then tested directly. Inversion
+probability falls as the measured quantity grows ($\rho_s = -0.80$), rises with concurrent
+process count ($\rho_s = +0.80$), and follows the $\rho/(1-\rho)$ waiting time of an M/G/1 queue
+in utilisation ($\rho_s = 0.98$; $R^2 = 0.95$ against $0.64$ for a linear alternative). The
+practical consequence is that the check binds hardest exactly where a benchmark's measured
+effect is smallest --- which is to say on the delicate comparisons such papers exist to make.
 \end{abstract}
 
 \begin{CCSXML}
@@ -158,11 +164,17 @@ that large clean effects are the trustworthy ones.
 \item \textbf{A demonstration}, which we regard as the strongest of the four: a complete,
 significant, theory-confirming result set that was physically impossible, reported in full so a
 reader can judge how convincing invalid data looks (Section~\ref{sec:firstanswer}).
-\item \textbf{An arrival-rate result} (Section~\ref{sec:attribution}): the end-to-end difference
-between the two systems exists only at the real workload's sparse rate and vanishes under
-accelerated replay. Since every benchmark in Section~\ref{sec:related} drives its system with a
-dense synthetic publisher, this is a regime in which the standard method reports parity by
-construction.
+\item \textbf{Four falsifiable rules, derived and measured} (Sections~\ref{sec:model}
+and~\ref{sec:rules}). From a model of the failure we derive that inversion probability is
+$F_{\Delta}(-T_{\mathrm{true}})$ and test the consequences: it falls as the measured quantity
+grows, rises with concurrent process count, and follows M/G/1 waiting time in utilisation. All
+three hold. This converts the central property from an observation into a measured law.
+\item \textbf{A second withdrawal} (Section~\ref{sec:attribution}): a twentyfold end-to-end gap
+we had reported, and built a recommendation on, turned out to be a per-run start-up cost read as
+a per-event constant, because the runs behind it matched a median of seven events. The integrity
+check does \emph{not} catch this, which is the point: causal consistency is necessary and not
+sufficient, and a percentile over single-digit samples describes the harness rather than the
+system.
 \item \textbf{A configuration result} (Section~\ref{sec:config}): each system has exactly one
 client-side setting worth one to two orders of magnitude in delay, and both are free on a
 co-located testbed.
@@ -736,49 +748,123 @@ $N$ & \kafka{} & \redis{} & \kafka{} & \redis{} & \kafka{} & \redis{} \\
 \end{tabular}
 \end{table}
 
-\subsection{The end-to-end difference is not in the broker, and exists only at the real rate}
+\subsection{The end-to-end difference, and why we withdraw it too}
 \label{sec:attribution}
 
-\tti{} and transport give opposite answers, and the decomposition explains why
-(Figure~\ref{fig:e1}). Of \kafka{}'s $105.5$~ms, \textbf{$102.9$~ms is producer scheduling lag},
-against \redis{}'s $1.8$~ms. Broker transport is $0.84$ and $0.80$~ms. The entire twentyfold
-difference occurs before either broker is involved.
+\tti{} and transport give opposite answers in Table~\ref{tab:e1}. Of \kafka{}'s $105.5$~ms,
+$102.9$~ms is producer scheduling lag against \redis{}'s $1.8$~ms, while broker transport is
+$0.84$ and $0.80$~ms. An earlier version of this paper reported that twentyfold end-to-end gap
+as a finding, attributed it to the client's sender thread waking from idle, and built a
+practitioner recommendation on it.
 
-Three measured properties constrain the explanation:
+That gap does not survive re-measurement, and the reason is a second instance of this paper's
+own thesis. We report it at length for the same reason we reported the first.
 
-\begin{itemize}
-\item It is \emph{constant}: the 50th and 95th percentiles of \tti{} differ by under $0.05$~ms
-within a run, so every event pays it. Not a tail effect.
-\item It is \emph{concurrency-invariant}: $103.0$, $103.0$, $102.8$, $102.9$~ms at $N = 1, 9, 10,
-12$. Not contention.
-\item It is \emph{rate-dependent}: replaying identical data, code and machines at ten times real
-speed reduces it to $0.19$--$1.01$~ms, and \tti{} to $1.8$--$7.2$~ms.
-\end{itemize}
+\paragraph{The offset is a start-up cost, not a per-event constant.} Repeating the identical
+condition ($N{=}1$, true real-time replay, same driver, same broker) but observing a longer
+window gives a median producer scheduling lag of $1.59$~ms for \kafka{}, not $103$~ms --- with a
+\emph{maximum} of $103.5$~ms. Two independent instrumentation paths agree: the per-event loop
+trace and the per-run summary. The $103$~ms is real, but it is paid once per run, not once per
+event.
 
-The explanation most consistent with all three is that the client's background sender thread must
-wake from idle to dispatch a record and pays a fixed cost when its queue has been empty --- which
-at $0.415$ events per second is the case before essentially every event. We flag that this is
-inferred from the three properties rather than from instrumentation of the client's internals; a
-controlled comparison against a second client library is in progress and we will not assert a
-mechanism ahead of it.
+\paragraph{Why the original corpus could not see that.} The E1 runs behind
+Table~\ref{tab:e1} matched a \textbf{median of seven events each} --- $745$ events across $100$
+\kafka{} runs. Those seven are the match's opening burst, all scheduled at $t_{\mathrm{sim}}{=}0$
+and emitted immediately after producer start-up. When a run contains seven events and one
+start-up cost, that cost \emph{is} the median. \redis{} shows $1.75$~ms on the very same seven
+events because opening a stream with \texttt{XADD} does not pay what \kafka{}'s first send pays
+in metadata fetch and topic creation.
 
-The consequence does not depend on the mechanism, and it is our sharpest methodological result
-after the audit. \textbf{The difference between these two systems on this workload exists only at
-the workload's own arrival rate.} A benchmark driving them with a dense synthetic publisher ---
-which is to say every benchmark in Section~\ref{sec:related} --- measures the regime in which the
-difference is absent, and reports parity by construction. Sparse, bursty, idle-dominated
-workloads are their own regime, and the risk they pose is the opposite of the usual one: not that
-the system is under-stressed, but that a realistic rate exposes a difference an accelerated rate
-conceals.
+This also explains the three properties we previously offered as evidence, and each of them is
+equally consistent with a start-up cost: a per-run constant looks \emph{constant} within a run;
+it is \emph{concurrency-invariant} because every run pays exactly one regardless of $N$; and it
+is \emph{rate-dependent} because accelerated replay packs more events into the window and
+dilutes it. We read three signatures of a per-event mechanism into measurements that a per-run
+mechanism explains at least as well.
+
+\paragraph{The general lesson.} The integrity check of Section~\ref{sec:gate} does not catch
+this. Every one of those runs is causally consistent; nothing is negative; the medians are
+stable to three significant figures across a hundred runs. What went wrong is that a median over
+seven events was reported as a property of the system rather than of the window, and the tight
+agreement across runs made it look robust precisely because the artefact is deterministic. A
+benchmark can be internally consistent, gate-clean, and still measure its own start-up. We
+therefore add to Section~\ref{sec:protocol} the requirement to report events-per-run alongside
+any latency percentile, since a percentile over single-digit samples is a statement about the
+harness.
+
+\paragraph{What we claim instead.} On broker transport --- the quantity that survived
+Section~\ref{sec:gate} and is measured over the same events for both systems --- \kafka{} and
+\redis{} remain equivalent within one millisecond (Section~\ref{sec:e1}). We make no end-to-end
+claim. The twentyfold figure is withdrawn.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/e1_end_to_end_lag.pdf}
-\caption{(a)~End-to-end delay against concurrency, Testbed~B, after the check. (b)~The same runs
-decomposed: the twentyfold difference is entirely producer scheduling lag, while the brokers'
-own transport is separated by well under a millisecond. Log scale.}
+\caption{\textbf{Withdrawn.} (a)~End-to-end delay against concurrency as originally measured.
+(b)~The decomposition that appeared to place the whole gap in producer scheduling lag. Both
+panels are retained as evidence for Section~\ref{sec:attribution}: the runs behind them matched
+a median of seven events each, so the apparent per-event offset is a per-run start-up cost.
+Broker transport, the lower series in (b), is unaffected and is what the paper claims.}
 \label{fig:e1}
 \end{figure}
+
+\subsection{The model's rules, measured}
+\label{sec:rules}
+
+Section~\ref{sec:model} derived $\Pr[\text{inversion}] = F_{\Delta}(-T_{\mathrm{true}})$ and
+three consequences. Each was pre-registered with its falsification criterion before the data
+existed, and each is tested here on conditions that pass the check.
+
+\paragraph{H1, the effect-size rule.} Holding load fixed and moving the measured quantity with
+injected delay, inversion rate falls as $T_{\mathrm{true}}$ grows: $0.076$, $0.114$, $0.070$,
+$0.034$, $0.050$ at $0$, $1$, $5$, $20$ and $50$~ms ($\rho_s = -0.80$, $n=5$). The trend is
+downward but not monotone --- the $1$~ms point rises above the $0$~ms one --- so we report the
+rank correlation rather than claiming a clean ordering. \textbf{Supported.}
+
+\paragraph{H2, the utilisation rule.} Sweeping background load from idle to oversubscription,
+with no core pinning so the measured utilisation is the right denominator, inversion rate is
+flat below half utilisation and then climbs steeply (Table~\ref{tab:h2}). The rank correlation
+is $\rho_s = 0.98$ ($n=9$), and the M/G/1 form fits far better than a linear alternative
+($R^2 = 0.945$ against $0.640$). The predicted knee is present and has the predicted shape.
+\textbf{Supported.}
+
+\paragraph{H4, the oversubscription rule.} At constant aggregate event rate, inversion rate
+rises with the number of concurrent producer/consumer processes: $0.029$, $0.082$, $0.105$,
+$0.103$ at $N = 1, 3, 6, 12$ ($\rho_s = +0.80$, $n=4$). It is process count, not offered load,
+that drives the failure. \textbf{Supported.}
+
+\paragraph{H3, the asymmetry rule: untested.} We intended to test whether asymmetric stamping is
+what biases a \emph{comparison} by making both endpoints stamp alike. The experiment compared
+\kafka{}'s two client libraries, and the between-system gap did not shrink ($+0.396$~ms against
+$+0.452$~ms). But both clients stamp the acknowledgement in a \emph{callback}, so neither is
+symmetric with \redis{}'s inline stamp on return from \texttt{XADD}: we compared two asymmetric
+implementations and never created the condition the hypothesis requires. H3 is untested rather
+than refuted, and testing it needs a producer that stamps synchronously on send-return. One
+side-finding is worth recording: the gap is stable across two independent client
+implementations, which argues it is a real difference rather than an artefact of one stamping
+path.
+
+\begin{table}[t]
+\caption{H2: inversion rate against achieved CPU utilisation, no core pinning, background load
+swept from idle to oversubscription. The M/G/1 form fits at $R^2 = 0.945$ against $0.640$ for a
+straight line.}
+\label{tab:h2}
+\begin{tabular}{rr}
+\toprule
+Utilisation $\rho$ & Inversion rate \\
+\midrule
+0.003 & 0.007 \\
+0.253 & 0.009 \\
+0.504 & 0.022 \\
+0.628 & 0.047 \\
+0.753 & 0.132 \\
+0.878 & 0.207 \\
+1.000 & 0.208 \\
+1.000 & 0.221 \\
+1.000 & 0.264 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection{The condition that reverses the ordering}
 \label{sec:network}
@@ -874,10 +960,12 @@ apply. Better instruments exist~\cite{yang2022cloudprofiler}; our point is ortho
 instrument quality --- whatever instrument is used, its output should be checked against
 causality and the retention rate published.
 
-\textbf{Drive the benchmark at the target arrival rate.} Our attribution result exists only at
-$0.415$ events per second and vanishes at ten times that. The risk of an unrealistically slow
-workload is normally thought to be under-stressing the system; here the realistic rate exposed a
-difference the accelerated rate concealed.
+\textbf{Count your events before you quote a percentile.} Our second withdrawal
+(Section~\ref{sec:attribution}) came from reporting a median over seven events per run as a
+property of the system. It survived a hundred runs, a causal-consistency audit, and our own
+scepticism, because a deterministic per-run artefact reproduces beautifully. Sample size per run
+belongs next to every percentile, and a benchmark whose window admits single-digit event counts
+is measuring its own start-up.
 
 \textbf{Measure at a realistic round-trip time, and treat interventions as interventions.} Both
 configuration defects in Section~\ref{sec:config} are invisible on loopback, and the one
@@ -910,6 +998,11 @@ reasonable. Applying it only to suspicious results reproduces the error it exist
 \item \textbf{Report the retention rate alongside the results}, the way a survey reports its
 response rate. A benchmark that discards nothing has either an unusually sound instrument or an
 unexamined one, and a reader cannot tell which without the number.
+\item \textbf{Report events-per-run alongside every latency percentile.} This is the check that
+would have caught our second withdrawal (Section~\ref{sec:attribution}) and the sign check would
+not: a median over seven events is a statement about the harness, not the system, and it looks
+its most convincing when the artefact is deterministic enough to repeat across a hundred runs.
+Any percentile computed over single-digit samples should be labelled as such.
 \item \textbf{Where retention differs between arms, bound the selection it introduces.}
 Unequal rejection is itself a bias, and Section~\ref{sec:retention} gives the worst-case
 imputation we use.
@@ -969,9 +1062,13 @@ instrument's own jitter under load, but we have not shown that. Sharma et
 al.~\cite{sharma2026causality} report the same symptom in an unrelated domain, which is
 suggestive but is not our evidence.
 
-\paragraph{External validity: the client attribution may be library-specific.} The $103$~ms
-producer offset reproduced across both testbeds, four concurrency levels and 164 runs, so it is
-not an accident of one machine. It may still be an accident of one client library.
+\paragraph{Construct validity: a percentile is not automatically a property of the system.} The
+$103$~ms producer offset reproduced across both testbeds, four concurrency levels and $164$ runs,
+and we took that breadth as evidence it was a property of the system. It was a property of the
+window (Section~\ref{sec:attribution}). Reproducibility across runs distinguishes a deterministic
+effect from a noisy one; it does not distinguish a system effect from a harness effect, and we
+treated it as though it did. Every percentile in this paper is now reported with the events per
+run behind it.
 
 \paragraph{Conclusion validity: multiplicity and pre-specification.} Holm families are declared
 over the design actually executed rather than chosen afterwards, and equivalence margins were
@@ -1015,16 +1112,26 @@ the check general is that, being a test against zero, it bites hardest exactly w
 effect is smallest --- which is to say on the delicate comparisons that benchmark papers exist to
 make.
 
-Inside the check, three results survive, and none is the one we set out to find. The brokers are
-equivalent within a millisecond and neither degrades with concurrency, robustly to the audit's
-own selection effect. The end-to-end difference between them lies in client code and exists only
-at the workload's real arrival rate, vanishing under the accelerated replay that standard
-benchmarks use. And each system has one client setting worth one to two orders of magnitude, both
-free on the co-located testbeds where such settings are normally evaluated.
+A second headline then failed the same way, and we withdraw it too. A twentyfold end-to-end gap
+between the systems, which we had attributed to client behaviour and built a recommendation on,
+turned out to be a per-run start-up cost read as a per-event constant: the runs behind it matched
+a median of seven events each. The integrity check does not catch that one. Causal consistency is
+necessary and not sufficient, and a percentile computed over single-digit samples describes the
+harness rather than the system --- the more so because a deterministic artefact reproduces across
+a hundred runs and looks robust for exactly the wrong reason.
+
+What survives is narrower and better evidenced. The brokers are equivalent within a millisecond
+and neither degrades with concurrency, robustly to the audit's own selection effect. Each system
+has one client setting worth one to two orders of magnitude, both free on the co-located testbeds
+where such settings are normally evaluated. And the model of the failure now carries measured
+rules rather than a derivation: inversion probability falls as the measured quantity grows,
+rises with concurrent process count, and follows M/G/1 waiting time in utilisation with the
+predicted knee. The check binds hardest where the effect is smallest, and we can now say so with
+a curve rather than an anecdote.
 
 The original question turned out to be the least interesting thing we could have asked. That is
 worth stating plainly, because the path from it to the results above ran entirely through
-measurements we had every reason to trust.
+measurements we had every reason to trust --- twice.
 
 
 \section*{Artefact Availability}

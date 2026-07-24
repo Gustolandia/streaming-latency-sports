@@ -419,6 +419,76 @@ class TestMeasuredRules:
         assert "refuted" in low, "the untested/refuted distinction must be drawn explicitly"
 
 
+class TestRateProvenanceIsDisclosed:
+    """The replay rate of the earliest corpus is not recoverable, and the paper must say so.
+
+    Plans carry a baked-in 120x compression, so --speedup 1 means 120x, not real time. No
+    committed artefact records the rate of any run. For E1 the surviving evidence conflicts:
+    the commit says true real time, the reconstructed script says --speedup 10. A paper that
+    audits its own data for physical impossibility cannot quietly assert a rate it cannot show.
+    """
+
+    def test_the_section_exists_and_states_the_compression(self, tex):
+        assert r"\label{sec:rateprovenance}" in tex
+        section = tex[tex.index(r"\label{sec:rateprovenance}"):]
+        section = section[:section.index(r"\subsection{The property")]
+        assert "120" in section, "the baked-in compression factor must be given"
+        assert "1200" in section, "all three candidate rates must be named"
+
+    def test_no_surviving_artefact_records_an_achieved_replay_rate(self):
+        """The claim in that section, checked against the repo rather than asserted.
+
+        A file recording the nominal --speedup flag does not record a rate: converting one to
+        the other needs the plan's baked-in compression. So a header carrying `speedup` is only
+        a counterexample if the plan it names still exists. One does carry it -- a superseded
+        Testbed A scenario -- and its plan is gone, which is why the paper says "achieved".
+        """
+        import glob
+        for path in glob.glob(str(RESULTS / "**" / "*.csv"), recursive=True):
+            with open(path, encoding="utf-8", errors="replace") as fh:
+                reader = csv.DictReader(fh)
+                if not reader.fieldnames or "speedup" not in [
+                        f.lower() for f in reader.fieldnames]:
+                    continue
+                for row in reader:
+                    plan = row.get("plan_csv") or row.get("plan") or ""
+                    # Recoverable only if the file names a plan AND that plan still exists,
+                    # since the compression lives in the plan.
+                    assert not (plan and (REPO / plan).exists()), (
+                        f"{path} names a surviving plan ({plan}), so its achieved rate IS "
+                        f"recoverable -- the paper's claim needs narrowing")
+
+    def test_the_reported_cloud_corpora_record_no_rate_at_all(self):
+        """E1 and the integrity audit are what the paper's results rest on."""
+        import glob
+        reported = glob.glob(str(RESULTS / "e1" / "*.csv")) + [
+            str(RESULTS / "integrity_by_condition.csv")]
+        for path in reported:
+            with open(path, encoding="utf-8", errors="replace") as fh:
+                header = fh.readline().lower()
+            assert "speedup" not in header, f"{path} records a rate; narrow the paper's claim"
+
+    def test_what_the_gap_does_not_touch_is_stated(self, tex):
+        """A disclosure that does not bound its own scope is not useful to a reader."""
+        section = tex[tex.index(r"\label{sec:rateprovenance}"):]
+        section = section[:section.index(r"\subsection{The property")]
+        low = section.lower()
+        assert "audit itself is unaffected" in low
+        assert "external validity" in low
+
+    def test_e1_no_longer_claims_true_real_time(self, tex):
+        e1 = tex[tex.index(r"\label{sec:e1}"):tex.index(r"\label{sec:attribution}")]
+        assert "true real time" not in e1.lower(), "E1 must not assert a rate it cannot show"
+        assert "rateprovenance" in e1, "E1 must point at the disclosure"
+
+    def test_the_protocol_gained_the_rule_that_would_have_prevented_it(self, tex):
+        protocol = tex[tex.index(r"\label{sec:protocol}"):]
+        protocol = protocol[:protocol.index(r"\subsection{For practitioners}")]
+        low = protocol.lower()
+        assert "achieved rate" in low
+        assert "elapsed wall time" in low
+
+
 class TestNoMangledMacros:
     r"""Source-level LaTeX that silently renders as literal text.
 

@@ -1,5 +1,0 @@
-,p50,p50,p50,p50,p95,p95,p99,p99,mean,mean,match_rate_pct,match_rate_pct,throughput_events_per_sec,throughput_events_per_sec,avg_msg_size_bytes,avg_msg_size_bytes
-,mean,std,min,max,mean,std,mean,std,mean,std,mean,min,mean,std,mean,std
-backend,,,,,,,,,,,,,,,,
-kafka,11591.54,6718.92,3862.74,23581.55,20373.39,12814.04,21166.09,13372.06,11638.71,6732.02,100.0,100.0,6.98,1.72,198.23,25.22
-redis,7760.07,8443.8,2655.08,27348.81,9907.36,9015.62,10107.49,9071.49,7786.97,8446.67,100.0,100.0,6.91,1.6,216.9,6.63

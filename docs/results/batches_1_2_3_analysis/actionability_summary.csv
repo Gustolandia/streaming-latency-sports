@@ -1,5 +1,0 @@
-,pct_under_100ms,pct_under_100ms,pct_under_500ms,pct_under_500ms,pct_under_1s,pct_under_1s,pct_under_5s,pct_under_5s
-,mean,std,mean,std,mean,std,mean,std
-backend,,,,,,,,
-kafka,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
-redis,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0

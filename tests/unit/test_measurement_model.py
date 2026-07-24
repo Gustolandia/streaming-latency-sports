@@ -16,6 +16,7 @@ from measurement_model import (  # noqa: E402
     spearman,
     mg1_waiting,
     fit_mg1,
+    runs_test_z,
     check_h1,
     check_h2,
     _load,
@@ -138,6 +139,34 @@ class TestRecoverDeltaQuantiles:
         out = recover_delta_quantiles([5.0, 0.2, 1.0], [0.10, 0.60, 0.35])
         assert list(out["t_true_ms"]) == [0.2, 1.0, 5.0], "must be sorted by T_true"
         assert list(out["delta_exceeds_t_prob"]) == [0.60, 0.35, 0.10]
+
+
+class TestRunsTestZ:
+    """H8: inversions cluster in time (z << 0), the signature of a shared descheduling event."""
+
+    def test_perfectly_clustered_is_strongly_negative(self):
+        # all inversions first, then all non-inversions: the fewest possible runs
+        signs = [-1] * 20 + [1] * 20
+        z = runs_test_z(signs)
+        assert z is not None and z < -5
+
+    def test_alternating_is_strongly_positive(self):
+        signs = [-1, 1] * 20                            # the most possible runs
+        assert runs_test_z(signs) > 5
+
+    def test_independent_is_near_zero(self):
+        rng = np.random.default_rng(0)
+        signs = [1 if x > 0.5 else -1 for x in rng.random(2000)]
+        z = runs_test_z(signs)
+        assert abs(z) < 3, "an i.i.d. sequence should not look clustered"
+
+    def test_zeros_count_as_inversions(self):
+        # zero transport is not a positive value, so it is on the inversion side
+        assert runs_test_z([0, 0, 1, 1]) is not None
+
+    def test_none_when_a_class_is_too_small(self):
+        assert runs_test_z([1, 1, 1, 1, -1]) is None   # only one inversion
+        assert runs_test_z([]) is None
 
 
 class TestLoad:

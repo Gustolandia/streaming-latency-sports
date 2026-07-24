@@ -36,7 +36,9 @@
 >    measured quantity grows (ρ=−0.80), rise with process count (ρ=+0.80), follow M/G/1 waiting
 >    in utilisation (ρ=0.98, R² 0.945 vs 0.640 linear) with the predicted knee, and — the rule
 >    that bears on our own first result — a symmetric instrument shrinks the residual
->    between-system gap by 25% (+0.286→+0.215 ms), entirely on the asymmetric side.
+>    between-system gap by 25% (+0.286→+0.215 ms), entirely on the asymmetric side. A construct
+>    check confirms the mechanism is scheduling, not clock quantisation: inversions cluster in
+>    time (runs-test z≈−6), even at idle.
 > 3. Each system has **one client setting worth 1–2 orders of magnitude**, both free on a
 >    co-located testbed and therefore invisible to how such settings are normally evaluated.
 >
@@ -118,19 +120,27 @@ All numbers below are from **Testbed B** (four Oracle Cloud VMs, real inter-VM n
 real-time replay, after gating. Concurrency levels are **derived from real kick-off schedules**
 (§1.4), not chosen by hand.
 
-**Claim 1 — The brokers are equivalent within 1 ms, and neither degrades with concurrency.**
-Kruskal–Wallis across N: Kafka *p*=0.061, Redis *p*=0.091 — neither significant. TOST against a
-1 ms margin establishes equivalence at N=9/10/12 under all three procedures (Welch, bootstrap,
-Hodges–Lehmann). At N=1 the procedures disagree and we report the disagreement: *n*=8 per
-backend, and one Kafka run carries a 6.3 ms startup outlier. Robust to the audit's own unequal
-retention (bounded in [`retention_bias.py`](scripts/retention_bias.py)).
+**Claim 1 — The brokers are equivalent within 1 ms, but *not* indistinguishable — Redis is
+reproducibly ~0.41 ms faster on transport.** The original E1 corpus reported them near-equal, but
+its transport medians rest on the same **median of seven events per run** as the withdrawn
+scheduling lag (the opening burst), so it is under-powered. A **powered replication** at a
+verified real-time rate over a median of **127 events per run** (N∈{1,9,12}, 15 reps) resolves
+what E1 could not:
 
-| N | Kafka transport | Redis transport | HL shift |
+| N | Kafka transport | Redis transport | HL shift [90% CI] |
 |---:|---:|---:|---:|
-| 1  | 0.792 ms | 0.721 ms | +0.081 ms |
-| 9  | 0.802 ms | 0.807 ms | +0.021 ms |
-| 10 | 1.000 ms | 0.855 ms | +0.116 ms |
-| 12 | 0.839 ms | 0.844 ms | +0.053 ms |
+| 1  | 0.512 ms | 0.099 ms | +0.409 [0.394, 0.421] |
+| 9  | 0.539 ms | 0.115 ms | +0.418 [0.412, 0.424] |
+| 12 | 0.540 ms | 0.114 ms | +0.420 [0.414, 0.425] |
+
+TOST at a 1 ms margin passes at every N by all three estimators (Welch, bootstrap,
+Hodges–Lehmann), so the brokers are **equivalent within the margin**; yet the HL shift is a
+tight, reproducible **+0.41 ms** (Kafka slower, *p*<10⁻²⁶), flat across concurrency, so they are
+**not a statistical tie**. Against a seconds-scale annotation budget, 0.41 ms is parts in 100,000
+— noise for choosing a broker — but Redis's in-memory `XADD` really is several times faster per
+operation than Kafka's replicated-log append (the grey-lit direction), and ~0.07 ms of the gap is
+the callback instrument (H3), leaving a true broker difference near 0.34 ms. This *refines* E1 and
+sharpens the reversal of the withdrawn accelerated result, which had had Redis **degrading** with N.
 
 > ### ⚠️ Claim 2 — WITHDRAWN: the 20× end-to-end gap was a start-up cost
 >

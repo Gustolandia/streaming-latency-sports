@@ -54,7 +54,10 @@ effect sizes stay large, and the direction agrees with theory.
 We report the check as a stated rule with its sensitivity analysis, and re-run the study inside
 it. What survives is narrower than what we set out to find. The two brokers are statistically
 equivalent within $1$~ms and neither degrades across the concurrency range, a conclusion we show
-is robust to the unequal retention the check itself introduces. A second headline --- a
+is robust to the unequal retention the check itself introduces, though a powered replication at a
+verified rate resolves what the original corpus could not: a small, tight, reproducible
+$0.41$~ms transport advantage for \redis{}, well inside the millisecond margin but not the
+statistical tie the first measurement suggested. A second headline --- a
 twentyfold end-to-end gap between the systems --- also failed to reproduce, and we withdraw it:
 the runs behind it matched a median of seven events each, so a one-off producer start-up cost
 was being reported as a per-event constant. A sweep over the observation window settles which it
@@ -794,22 +797,49 @@ in both systems.
 
 All results below come from Testbed~B and pass the check. Each states its retention.
 
-\subsection{The brokers are equivalent and neither degrades}
+\subsection{The brokers are equivalent within a millisecond, but not indistinguishable}
 \label{sec:e1}
 
-At the concurrency levels the workload produces, with each feed carrying a distinct real match at
-true real time, 164 of 201 runs survive. That the replay was at true real time is an inference
-from the runs themselves rather than a documented setting, for the reason and by the argument
-given in Section~\ref{sec:rateprovenance}. Broker transport is flat across the range: Kruskal--
-Wallis gives $p = 0.061$ for \kafka{} and $p = 0.091$ for \redis{}, neither significant, with a
-largest-to-smallest median ratio of $1.06$ and $1.17$ (Table~\ref{tab:e1}). At $N \in
-\{9,10,12\}$ all three procedures agree that transport is equivalent within $1$~ms, with
-Hodges--Lehmann shifts of $0.021$, $0.116$ and $0.053$~ms; Section~\ref{sec:retention} shows this
-survives the audit's selection effect. At $N{=}1$ the procedures disagree, because one \kafka{}
-run carries a $6.3$~ms start-up outlier that pulls the mean; with eight runs per system we report
-the disagreement rather than resolving it.
+The original E1 corpus, replaying distinct real matches at the concurrency the workload produces,
+retains $164$ of $201$ runs and reports broker transport flat across the range and near-equal
+between systems (Table~\ref{tab:e1}); Kruskal--Wallis finds no significant concurrency effect in
+either backend ($p = 0.061$ for \kafka{}, $p = 0.091$ for \redis{}). Its replay rate is an
+inference from the runs rather than a documented setting, recovered by the argument in
+Section~\ref{sec:rateprovenance} as true real time. We could rest the equivalence claim on E1, but
+we do not, for a reason Section~\ref{sec:attribution} makes unavoidable: those runs matched a
+\emph{median of seven events each}. The transport comparison is computed over the same seven-event
+opening burst as the scheduling lag we withdraw, so it is both under-powered and drawn from the
+least representative part of the match. On seven events per run a sub-millisecond difference cannot
+be resolved, and E1 does not resolve one --- its Hodges--Lehmann shifts wander ($0.021$, $0.116$,
+$0.053$~ms) and its $N{=}1$ estimators disagree. That E1 finds the two systems ``equal'' is as much
+a statement about seven events as about the brokers.
 
-This directly contradicts Table~\ref{tab:first}, and the contradiction is the audit's doing.
+\paragraph{A powered replication.} We therefore re-measured transport directly, at a replay rate
+derived from the plan and verified against wall time, over a median of $127$ events per run rather
+than seven, at $N \in \{1, 9, 12\}$ with $15$ replicates each (Table~\ref{tab:transport}). The
+picture is sharper and it is not the one E1 painted. Broker transport is \kafka{} $\approx
+0.54$~ms against \redis{} $\approx 0.11$~ms: a Hodges--Lehmann shift of $0.41$~ms, \kafka{}
+slower, with a bootstrap $90\%$ interval of width $\pm 0.006$~ms and $p < 10^{-26}$ at every $N$.
+The two systems are \emph{not} statistically indistinguishable; \redis{}'s in-memory \texttt{XADD}
+really is several times faster per operation than \kafka{}'s replicated-log append, which is the
+direction the grey-literature comparisons report.
+
+And yet the same three estimators --- Welch, percentile bootstrap and Hodges--Lehmann --- agree
+that the difference is \emph{equivalent within one millisecond} at every $N$, because $0.41$~ms is
+comfortably inside that margin. Both statements are true and neither is idle: against the
+seconds-scale human annotation latency that dominates any live sports feed's end-to-end budget, a
+$0.41$~ms broker difference is parts in $100{,}000$, so for choosing a broker it is noise; but it
+is a real, tight, reproducible effect
+that a properly powered instrument resolves and a seven-event one cannot. The shift is also flat
+across concurrency ($0.409$, $0.418$, $0.420$~ms at $N = 1, 9, 12$), so neither system degrades.
+A part of even this residual is the instrument rather than the broker: Section~\ref{sec:rules}
+shows that $0.07$~ms of the gap is the asymmetric acknowledgement stamp, leaving a true
+broker-transport difference near $0.34$~ms.
+
+This refines E1 rather than contradicting it, and it sharpens the contradiction with
+Table~\ref{tab:first}: the accelerated corpus reported \redis{} \emph{degrading} with concurrency;
+the powered real-time measurement finds \redis{} uniformly \emph{faster} and flat. The reversal is
+the audit's doing, and the measurement's.
 
 \begin{table}[t]
 \caption{End-to-end delay and its decomposition, Testbed~B, after the consistency check (164 of
@@ -828,6 +858,25 @@ $N$ & \kafka{} & \redis{} & \kafka{} & \redis{} & \kafka{} & \redis{} \\
 9  & 105.5 & 5.4 & 103.0 & 1.9 & 0.802 & 0.807 \\
 10 & 105.3 & 5.8 & 102.8 & 2.0 & 1.000 & 0.855 \\
 12 & 105.7 & 5.3 & 102.9 & 1.7 & 0.839 & 0.844 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\caption{Powered transport replication at a verified true-real-time rate, over a median of $127$
+events per run (not the seven of Table~\ref{tab:e1}), $15$ replicates per cell. Medians in ms; the
+Hodges--Lehmann shift is $\kafka{}-\redis{}$ with a percentile-bootstrap $90\%$ interval. The
+brokers are equivalent within $1$~ms at every $N$ (all three estimators) yet cleanly
+distinguishable: \redis{} is $\approx 0.41$~ms faster, and the shift does not grow with
+concurrency.}
+\label{tab:transport}
+\begin{tabular}{rrrrr}
+\toprule
+$N$ & Events/run & \kafka{} & \redis{} & HL shift [90\% CI] \\
+\midrule
+1  & 148 & 0.512 & 0.099 & $0.409$ $[0.394, 0.421]$ \\
+9  & 121 & 0.539 & 0.115 & $0.418$ $[0.412, 0.424]$ \\
+12 & 127 & 0.540 & 0.114 & $0.420$ $[0.414, 0.425]$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1040,11 +1089,15 @@ Section~\ref{sec:model} derived $\Pr[\text{inversion}] = F_{\Delta}(-T_{\mathrm{
 consequences. Each was pre-registered with its falsification criterion before the data existed,
 and each is tested here on conditions that pass the check.
 
-\paragraph{H1, the effect-size rule.} Holding load fixed and moving the measured quantity with
-injected delay, inversion rate falls as $T_{\mathrm{true}}$ grows: $0.076$, $0.114$, $0.070$,
-$0.034$, $0.050$ at $0$, $1$, $5$, $20$ and $50$~ms ($\rho_s = -0.80$, $n=5$). The trend is
-downward but not monotone --- the $1$~ms point rises above the $0$~ms one --- so we report the
-rank correlation rather than claiming a clean ordering. \textbf{Supported.}
+\paragraph{H1, the effect-size rule.} The strongest evidence is the widest contrast, and it is
+clean: the co-located arm measuring $T_{\mathrm{true}} \approx 0.5$~ms fails wholesale, while the
+network arm measuring tens of seconds passes every run on the same hardware
+(Section~\ref{sec:property}). Across the intermediate range, a \texttt{netem} delay sweep gives
+inversion rates $0.076$, $0.114$, $0.070$, $0.034$, $0.050$ at $0$, $1$, $5$, $20$ and $50$~ms
+($\rho_s = -0.80$, $n=5$); we report the rank correlation rather than a clean ordering, and we do
+not lean on its slope, because injected delay also inflates variance and so confounds
+$T_{\mathrm{true}}$ with backlog (Section~\ref{sec:threats}). The direction is consistent across
+both the clean contrast and the confounded sweep. \textbf{Supported.}
 
 \paragraph{H2, the utilisation rule.} Sweeping background load from idle to oversubscription,
 with no core pinning so the measured utilisation is the right denominator, inversion rate is
@@ -1290,9 +1343,12 @@ says what would be needed to make it quantitative.
 \subsection{For practitioners}
 
 The brokers themselves are equivalent within a millisecond for any workload resembling this one,
-and neither degrades across its concurrency range. Selection should therefore rest on durability
-semantics, operational familiarity and cost --- not on published latency benchmarks conducted at
-rates the deployment will never see.
+and neither degrades across its concurrency range. \redis{} does hold a real, reproducible
+transport advantage --- about $0.4$~ms per operation (Section~\ref{sec:e1}), the direction the
+grey literature reports --- but at four parts in $100{,}000$ of a seconds-scale end-to-end budget
+it cannot be the basis for a choice. Selection should rest on durability semantics, operational
+familiarity and cost --- not on a sub-millisecond transport gap, and not on published latency
+benchmarks conducted at rates the deployment will never see.
 
 Where a consumer sits across a network, audit the \emph{consumption pattern} before choosing a
 product. A client that acknowledges per message and waits for the reply converts ordinary network
@@ -1316,10 +1372,19 @@ proof that \emph{something} is wrong, but our attribution of it to scheduler del
 the clock is an inference. Two rival explanations are available. Clock skew is ruled out
 directly for Testbed~A, where both processes read the same operating-system clock; it is not
 ruled out on Testbed~B, where producer and consumer may sit on different hosts, and there we
-rely on the co-located conditions failing at rates comparable to the distributed ones. Coarse
-kernel timestamp granularity would also produce inversions; Section~\ref{sec:testbeds} reports
-the measured granularity on both platforms. We regard the Testbed~A attribution as well
-supported and the Testbed~B attribution as probable rather than established.
+rely on the co-located conditions failing at rates comparable to the distributed ones.
+
+Coarse kernel timestamp granularity would also produce inversions, and that rival makes a
+different prediction we can test. Quantisation acts on each event independently, so its inversions
+would be scattered at random through a run; a descheduling event, by contrast, makes a
+\emph{consecutive run} of events wake late together. A Wald--Wolfowitz runs test on the sequence
+of inversion signs separates the two: independence gives $z \approx 0$, clustering $z \ll 0$.
+Across conditions the inversions are strongly clustered --- median $z = -6.9$ at the co-located
+floor, $-6.8$ idle, $-5.1$ saturated --- and the clustering is present even with no background
+load, so it is intrinsic to the stamping path rather than induced by contention. This is the
+signature of a shared scheduling delay, not of independent quantisation, and Section~\ref{sec:testbeds}
+additionally reports the measured timer granularity on both platforms. We regard the Testbed~A
+attribution as well supported and the Testbed~B attribution as probable rather than established.
 
 \paragraph{Internal validity: the audit selects.} The check rejects unequally between arms, so
 the surviving corpus is not a random sample of the measured one. This is the most serious
@@ -1346,6 +1411,19 @@ window (Section~\ref{sec:attribution}). Reproducibility across runs distinguishe
 effect from a noisy one; it does not distinguish a system effect from a harness effect, and we
 treated it as though it did. Every percentile in this paper is now reported with the events per
 run behind it.
+
+\paragraph{Construct validity: the injected-delay sweep is not a clean effect-size manipulation.}
+H1's quantitative slope (Section~\ref{sec:rules}) is estimated from a \texttt{tc netem} delay
+sweep, on the assumption that injecting $d$~ms of delay simply raises $T_{\mathrm{true}}$ by $d$.
+It does not: on our bursty feed, a per-delivery delay builds a queue, so the measured transport
+\emph{variance} climbs from $10~\text{ms}^2$ at zero delay to $9{,}200~\text{ms}^2$ at $50$~ms ---
+a clean offset would leave it unchanged. The delay sweep therefore confounds $T_{\mathrm{true}}$
+with backlog-driven jitter, and we do not lean on its fitted slope. H1's robust evidence is the
+comparison it does not confound: the co-located arm, where $T_{\mathrm{true}} \approx 0.5$~ms,
+fails wholesale, while the network arm, where $T_{\mathrm{true}}$ is tens of seconds, passes
+$15/15$ on the same hardware (Section~\ref{sec:property}). Testing the fine-grained slope cleanly
+would need a constant-offset instrument that does not perturb the queue --- a run we flag as
+future work.
 
 \paragraph{Conclusion validity: multiplicity and pre-specification.} Holm families are declared
 over the design actually executed rather than chosen afterwards, and equivalence margins were
@@ -1417,9 +1495,11 @@ harness rather than the system --- the more so because a deterministic artefact 
 a hundred runs and looks robust for exactly the wrong reason.
 
 What survives is narrower and better evidenced. The brokers are equivalent within a millisecond
-and neither degrades with concurrency, robustly to the audit's own selection effect. Each system
-has one client setting worth one to two orders of magnitude, both free on the co-located testbeds
-where such settings are normally evaluated. And the model of the failure now carries measured
+and neither degrades with concurrency, robustly to the audit's own selection effect --- though a
+powered replication resolves inside that margin a real $0.41$~ms advantage for \redis{} that the
+original seven-event corpus reported as a tie. Each system has one client setting worth one to two
+orders of magnitude, both free on the co-located testbeds where such settings are normally
+evaluated. And the model of the failure now carries measured
 rules rather than a derivation: inversion probability falls as the measured quantity grows,
 rises with concurrent process count, and follows M/G/1 waiting time in utilisation with the
 predicted knee. The check binds hardest where the effect is smallest, and we can now say so with

@@ -325,6 +325,12 @@ class TestMain:
         assert "E-C3" in out
         assert "H3 stamping rule: SUPPORTED" in out
         assert "calling thread" in out
+        # A supported H3 is persisted for the paper to pin against.
+        import csv as _csv
+        rows = list(_csv.DictReader(open(temp_dir / "model" / "ec3_stamping.csv")))
+        assert [r["stamp"] for r in rows] == ["callback", "inline"]
+        assert float(rows[0]["difference_ms"]) == pytest.approx(0.40)
+        assert float(rows[1]["difference_ms"]) == pytest.approx(0.05)
 
     def test_h3_is_not_supported_when_the_gap_survives_the_symmetric_stamp(self, temp_dir,
                                                                           capsys):
@@ -336,6 +342,9 @@ class TestMain:
         main(["--depth-dir", str(temp_dir / "depth"), "--runs-dir", str(temp_dir / "runs"),
               "--out", str(temp_dir / "model")])
         assert "H3 stamping rule: NOT SUPPORTED" in capsys.readouterr().out
+        # The measurement is persisted whatever the verdict -- it is data, not confirmation.
+        rows = list(csv.DictReader(open(temp_dir / "model" / "ec3_stamping.csv")))
+        assert float(rows[1]["difference_ms"]) > float(rows[0]["difference_ms"])
 
     def test_the_old_asymmetric_pair_is_reported_as_untested(self, temp_dir, capsys):
         """ec2 compared two callback-stamping clients, so no verdict is available from it."""

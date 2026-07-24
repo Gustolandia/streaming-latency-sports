@@ -99,6 +99,23 @@ of the between-system gap, not its sign, and the result is reported whichever wa
 asymmetric instrumentation manufactures a between-system difference is downgraded to a
 mechanism we can motivate but not demonstrate. The other three rules stand independently.
 
+#### Outcome (2026-07-24): SUPPORTED
+
+E-C3 ran both arms against Redis at `--max-inflight 1` under matched background load. Median
+broker transport (`docs/results/model/ec3_stamping.csv`):
+
+| Stamp | Kafka | Redis | Difference |
+|---|---|---|---|
+| `callback` (asymmetric) | 0.392 ms | 0.106 ms | **+0.286 ms** |
+| `inline` (symmetric) | 0.322 ms | 0.107 ms | **+0.215 ms** |
+
+`|d_inline| = 0.215 < |d_callback| = 0.286`, a 25% reduction, so **H3 is supported**. The
+prediction was specific and it held: the shrinkage is entirely on Kafka's side (0.392 → 0.322 ms)
+while Redis is unchanged (0.106 → 0.107 ms), which is what removing the callback-thread
+scheduling delay from the Kafka stamp — and only the Kafka stamp — must produce. The `+0.215 ms`
+residual is the true between-system transport difference; the extra `+0.071 ms` in the callback
+arm was the instrument.
+
 ### H4 — oversubscription rule
 
 **Prediction:** at constant aggregate event rate, inversion rate rises with process count.

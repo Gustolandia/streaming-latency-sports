@@ -66,9 +66,11 @@ gate-clean, and still measure its own start-up.
 Four falsifiable rules derived from a model of the failure are then tested directly. Inversion
 probability falls as the measured quantity grows ($\rho_s = -0.80$), rises with concurrent
 process count ($\rho_s = +0.80$), and follows the $\rho/(1-\rho)$ waiting time of an M/G/1 queue
-in utilisation ($\rho_s = 0.98$; $R^2 = 0.95$ against $0.64$ for a linear alternative). The
-practical consequence is that the check binds hardest exactly where a benchmark's measured
-effect is smallest --- which is to say on the delicate comparisons such papers exist to make.
+in utilisation ($\rho_s = 0.98$; $R^2 = 0.95$ against $0.64$ for a linear alternative); and a
+symmetric instrument shrinks the residual between-system difference by a quarter, entirely on the
+side whose stamp was asymmetric. The practical consequence is that the check binds hardest
+exactly where a benchmark's measured effect is smallest --- which is to say on the delicate
+comparisons such papers exist to make.
 \end{abstract}
 
 \begin{CCSXML}
@@ -168,9 +170,11 @@ significant, theory-confirming result set that was physically impossible, report
 reader can judge how convincing invalid data looks (Section~\ref{sec:firstanswer}).
 \item \textbf{Four falsifiable rules, derived and measured} (Sections~\ref{sec:model}
 and~\ref{sec:rules}). From a model of the failure we derive that inversion probability is
-$F_{\Delta}(-T_{\mathrm{true}})$ and test the consequences: it falls as the measured quantity
-grows, rises with concurrent process count, and follows M/G/1 waiting time in utilisation. All
-three hold. This converts the central property from an observation into a measured law.
+$F_{\Delta}(-T_{\mathrm{true}})$ and test its consequences: it falls as the measured quantity
+grows, rises with concurrent process count, follows M/G/1 waiting time in utilisation, and --- the
+rule that bears directly on our own first result --- an asymmetric instrument leaves a
+between-system difference that a symmetric one removes. All four hold. This converts the central
+property from an observation into a measured law.
 \item \textbf{A second withdrawal, and a test that would have caught it}
 (Section~\ref{sec:attribution}): a twentyfold end-to-end gap we had reported, and built a
 recommendation on, turned out to be a per-run start-up cost read as a per-event constant, because
@@ -869,12 +873,13 @@ $103.5$~ms: the cost is present in every run and dilutes in every run, which is 
 something paid once. Had it been a per-event constant, the count would have grown with the window
 and the median would have stayed at $103$~ms.
 
-\redis{} was run in the same sweep on the same events. We report its percentiles and not its
-counts: its producer carried no loop trace in this campaign, so we can say its worst event at any
-window is under $25$~ms --- nothing resembling a $103$~ms prologue --- but we cannot report a
-count of zero, because zero is what we would have printed had we not measured at all. That
-asymmetry is our own, in a paper about asymmetric instrumentation, and
-Section~\ref{sec:limitations} records it.
+\redis{} was run in the same sweep on the same events, with the same loop trace, and has
+\emph{no} events waking more than $50$~ms late and \emph{no} blocking send at any window. Its
+worst single event anywhere is under $25$~ms. Instrumenting both arms identically matters here for
+a reason internal to this paper: an earlier version of this table reported \redis{}'s counts as
+zero when its producer in fact carried no trace, which is the absence of a measurement dressed as
+one --- exactly the failure the paper is about. We added the trace to the \redis{} producer and
+re-ran both arms together.
 
 \paragraph{The mechanism, read directly off the loop trace.} The per-event trace shows the same
 five-event signature in every \kafka{} run, at every window:
@@ -951,11 +956,11 @@ $1200\times$ & $123.1$~s  & 112 \\
 \end{tabular}
 \end{quote}
 
-E1 matched between $5$ and $11$ events per run. At every one of the three candidate rates the
-prologue already contains at least that many events, so the entire matched sample falls inside
-it and its median is the start-up cost --- which is what the corpus reports. The conclusion is
-therefore insensitive to the one parameter we cannot recover, and the acceleration only changes
-how badly the sample is selected, not whether it is.
+E1 matched a median of seven events per run. At every one of the three candidate rates the
+prologue already contains at least four events --- enough to carry the median of seven --- so the
+matched sample's median is the start-up cost, which is what the corpus reports. The conclusion is
+therefore insensitive to the replay rate; Section~\ref{sec:rateprovenance} goes on to recover
+that rate from the same start-up cost, but the withdrawal does not depend on the recovery.
 
 This also explains the three properties we previously offered as evidence, and each of them is
 equally consistent with a start-up cost: a per-run constant looks \emph{constant} within a run;
@@ -981,11 +986,12 @@ claim. The twentyfold figure is withdrawn.
 
 \begin{table}[t]
 \caption{The observation-window sweep that separates a per-run cost from a per-event one. Same
-match, same driver, same broker, $N{=}1$, true real-time replay; only the window changes. Events
-emitted grow $8.9\times$ across the sweep, but the number waking more than $50$~ms late does not
-move, and exactly one send blocks in every run. Counts are medians over three replicates, taken
-from the per-event loop trace; percentiles come from the per-run summary, so the two columns are
-independent instruments.}
+match, same driver, same broker, $N{=}1$, true real-time replay; only the window changes. Both
+producers are loop-traced, so the counts for the two systems come from the same instrument.
+Events emitted grow $8.9\times$ across the sweep, but the number of \kafka{} events waking more
+than $50$~ms late does not move, and exactly one send blocks in every run; \redis{} has neither
+at any window. Counts are medians over three replicates from the per-event trace; percentiles
+come from the per-run summary.}
 \label{tab:window}
 \begin{tabular}{lrrrrrrr}
 \toprule
@@ -994,22 +1000,27 @@ independent instruments.}
 \cmidrule(lr){3-4}\cmidrule(lr){5-6}
 & (s) & emitted & matched & median & max & ms late & sends \\
 \midrule
-\kafka{} &  60 &  57 &  57 & 1.57 & 103.5 & 4 & 1 \\
-         & 180 & 148 & 148 & 1.60 & 103.4 & 4 & 1 \\
-         & 600 & 507 & 465 & 1.59 & 103.5 & 4 & 1 \\
+\kafka{} &  60 &  57 &  57 & 1.56 & 103.4 & 4 & 1 \\
+         & 180 & 148 & 148 & 1.61 & 103.5 & 4 & 1 \\
+         & 600 & 507 & 465 & 1.58 & 103.5 & 4 & 1 \\
 \midrule
-\redis{} &  60 & 57  &  57 & 1.50 &  17.4 & --- & --- \\
-         & 180 & 148 & 148 & 1.56 &  20.5 & --- & --- \\
-         & 600 & 507 & 465 & 1.53 &  24.8 & --- & --- \\
+\redis{} &  60 & 57  &  57 & 1.50 &  17.4 & 0 & 0 \\
+         & 180 & 148 & 148 & 1.56 &  20.4 & 0 & 0 \\
+         & 600 & 507 & 465 & 1.53 &  24.8 & 0 & 0 \\
 \bottomrule
 \end{tabular}
-
-\vspace{2pt}
-\footnotesize \emph{---}: not measured. The \redis{} producer carried no loop trace in this
-campaign, so its counts are absent rather than zero; see Section~\ref{sec:limitations}. Its
-\emph{maximum} is measured, and at no window does any \redis{} event exceed $25$~ms, so it
-has nothing resembling \kafka{}'s $103$~ms prologue.
 \end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{docs/results/figures/window_sweep.pdf}
+\caption{The window sweep, as a picture. (a)~Events emitted per run grow $8.9\times$ while the
+number waking more than $50$~ms late stays at four --- a per-event constant would put the two
+series on parallel lines. (b)~The same fact as a proportion: the share of events paying the cost
+falls as $1/\mathrm{events}$, the dilution a once-per-run cost predicts. \redis{}, on the same
+events, has no affected events at any window.}
+\label{fig:window}
+\end{figure}
 
 \begin{figure}[t]
 \centering
@@ -1025,9 +1036,9 @@ Broker transport, the lower series in (b), is unaffected and is what the paper c
 \subsection{The model's rules, measured}
 \label{sec:rules}
 
-Section~\ref{sec:model} derived $\Pr[\text{inversion}] = F_{\Delta}(-T_{\mathrm{true}})$ and
-three consequences. Each was pre-registered with its falsification criterion before the data
-existed, and each is tested here on conditions that pass the check.
+Section~\ref{sec:model} derived $\Pr[\text{inversion}] = F_{\Delta}(-T_{\mathrm{true}})$ and four
+consequences. Each was pre-registered with its falsification criterion before the data existed,
+and each is tested here on conditions that pass the check.
 
 \paragraph{H1, the effect-size rule.} Holding load fixed and moving the measured quantity with
 injected delay, inversion rate falls as $T_{\mathrm{true}}$ grows: $0.076$, $0.114$, $0.070$,
@@ -1047,16 +1058,45 @@ rises with the number of concurrent producer/consumer processes: $0.029$, $0.082
 $0.103$ at $N = 1, 3, 6, 12$ ($\rho_s = +0.80$, $n=4$). It is process count, not offered load,
 that drives the failure. \textbf{Supported.}
 
-\paragraph{H3, the asymmetry rule: untested.} We intended to test whether asymmetric stamping is
-what biases a \emph{comparison} by making both endpoints stamp alike. The experiment compared
-\kafka{}'s two client libraries, and the between-system gap did not shrink ($+0.396$~ms against
-$+0.452$~ms). But both clients stamp the acknowledgement in a \emph{callback}, so neither is
-symmetric with \redis{}'s inline stamp on return from \texttt{XADD}: we compared two asymmetric
-implementations and never created the condition the hypothesis requires. H3 is untested rather
-than refuted, and testing it needs a producer that stamps synchronously on send-return. One
-side-finding is worth recording: the gap is stable across two independent client
-implementations, which argues it is a real difference rather than an artefact of one stamping
-path.
+\paragraph{H3, the asymmetry rule.} The model says that what biases a \emph{comparison} is
+$\mathrm{E}[\Delta]$, and that it is non-zero only when the two endpoints stamp differently. Our
+two systems do: \redis{} stamps the acknowledgement on the calling thread the instant
+\texttt{XADD} returns, while \kafka{} stamps it in a delivery callback that runs on the client's
+I/O thread and must first be scheduled. So the prediction is specific --- making \kafka{} stamp
+the same way \redis{} does should shrink the between-system gap, and shrink it from \kafka{}'s
+side.
+
+Two earlier attempts did not test this: both compared \kafka{}'s two client libraries, and both
+of those stamp in callbacks, so the symmetric condition was never created, and we treat them as
+untested rather than as evidence. Here we add an inline-stamping mode to the \kafka{} producer that
+stamps on the calling thread the moment the send resolves --- structurally what \texttt{XADD}
+does --- and run it against \redis{} under matched load, both at one in-flight request
+(Table~\ref{tab:h3}). The gap falls from $+0.286$ to $+0.215$~ms, a $25\%$ reduction, and the
+$0.071$~ms it loses comes entirely from \kafka{}'s side: \kafka{}'s median transport drops from
+$0.392$ to $0.322$~ms while \redis{}'s holds at $0.106$. Removing the callback removed a
+$0.07$~ms systematic offset that was being charged to the broker rather than to the instrument.
+\textbf{Supported.}
+
+This is the rule with the most direct bearing on the paper's own first result. The spurious
+effect the audit rejected was a between-system difference; H3 shows that even after the audit, an
+asymmetric stamp leaves a smaller one behind, in the same direction, on the same pair of systems.
+An equal instrument is not a nicety.
+
+\begin{table}[t]
+\caption{H3: median broker transport under the two stamping modes, both arms at one in-flight
+request under matched load. \texttt{callback} is the default asymmetric instrument; \texttt{inline}
+stamps \kafka{} on the calling thread as \redis{} already does. The between-system gap shrinks,
+and the shrinkage is entirely on \kafka{}'s side.}
+\label{tab:h3}
+\begin{tabular}{lrrr}
+\toprule
+Stamp & \kafka{} (ms) & \redis{} (ms) & Difference (ms) \\
+\midrule
+\texttt{callback} (asymmetric) & 0.392 & 0.106 & $+0.286$ \\
+\texttt{inline} (symmetric)    & 0.322 & 0.107 & $+0.215$ \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{table}[t]
 \caption{H2: inversion rate against achieved CPU utilisation, no core pinning, background load
@@ -1333,17 +1373,6 @@ nothing and the conditions differ in window length, so we draw no conclusion fro
 record it rather than omit it, because it is the one observation we have that points away from
 Section~\ref{sec:e1}, and a properly powered replication is the first thing this work needs next.
 
-\emph{We instrumented one arm of a two-arm comparison.} The window sweep that settles
-Section~\ref{sec:attribution} counts affected events from a per-event loop trace, and only the
-\kafka{} producer wrote one; the \redis{} producer had no equivalent flag and the orchestrator
-had no way to pass it. So Table~\ref{tab:window} reports \redis{}'s percentiles and not its
-counts. We record this rather than quietly reporting zeros, because zero is exactly what an
-unmeasured count looks like, and because a paper arguing that asymmetric instrumentation
-manufactures between-system differences is the last place it should pass unremarked. Both
-producers now write the same trace schema. What the existing data does support is the weaker
-claim we make: \redis{}'s worst single event at any window is under $25$~ms, so whatever it pays
-at start-up is not of the same order.
-
 \emph{The mechanism is established for our client, not for \kafka{} in general.} The blocking
 first \texttt{produce()} is visible in the loop trace of every run
 (Section~\ref{sec:attribution}), so for this client the attribution is direct rather than
@@ -1351,9 +1380,11 @@ inferred. Whether a different client, or a pre-created topic, or a broker config
 auto-creation would pay the same cost, we did not test. The practitioner advice in
 Section~\ref{sec:discussion} is written to be safe either way.
 
-\emph{H3 is the one rule we state without a measurement}, for the reason given in
-Section~\ref{sec:rules}: the experiment we ran compared two clients that both stamp in
-callbacks, so the symmetric condition it needs was never created.
+\emph{H3 is measured at one operating point.} The symmetric-stamping comparison
+(Section~\ref{sec:rules}) was run at one in-flight request and one load level, because inline
+stamping requires the single in-flight setting. The direction and the one-sidedness of the effect
+are what the model predicts, but we do not characterise how the $0.07$~ms offset scales with load
+or pipelining.
 
 \emph{The five-feed acknowledgement null is unexplained}, as set out in
 Section~\ref{sec:network}.

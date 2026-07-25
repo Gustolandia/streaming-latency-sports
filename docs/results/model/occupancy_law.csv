@@ -1,0 +1,4 @@
+law,holds,detail
+L1_floor_is_idle,True,idle=0.00352;floor=0.004522613065326633;ratio=1.2848332571950662
+L2_ceiling_below_one,True,ceiling=0.37052;consistency=1.107426452583342
+L3_geometry_provisional,True,spread_worse=None/None

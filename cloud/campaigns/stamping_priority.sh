@@ -110,10 +110,15 @@ run_cell () {
   reap
 }
 
-# Two load levels where inversions are common enough to measure a fall, crossed with two arms.
+# Load levels where inversions are common enough to measure a fall, crossed with two arms.
 # Arms are interleaved per load level rather than run in blocks, so any drift over the campaign
 # hits both arms rather than being confounded with the manipulation.
-for PCT in 75 88; do
+#
+# LEVELS is overridable so the campaign can be extended without a second copy of this file. The
+# first run used "75 88"; re-running with other levels adds points to the same design, and
+# re-running with 75 or 88 again is an independent replication of a published cell rather than a
+# new claim. OUT must be set to a fresh directory when extending, or the cells collide.
+for PCT in ${LEVELS:-75 88}; do
   banner "E-A5 cpu-load=${PCT}% BASELINE (ordinary priority)"
   run_cell "$PCT" "base" ""
   banner "E-A5 cpu-load=${PCT}% ELEVATED (SCHED_FIFO 80)"

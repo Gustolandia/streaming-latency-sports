@@ -221,3 +221,77 @@ class TestMain:
                      "--priority", str(_priority(temp_dir, REAL_PRIO)),
                      "--out", str(temp_dir / "o")]) == 1
         assert "no usable rows" in capsys.readouterr().out
+
+
+class TestGeometryFromConditionName:
+    """E-A6 runs both geometries inside ONE campaign, so geometry lives in the condition name.
+
+    A phase-level rule would label every E-A6 cell identically and silently destroy the only
+    controlled test of L3 in the corpus -- the comparison would still run, still print pairs,
+    and still reach a verdict, all of it meaningless. That is the failure mode these tests exist
+    to prevent.
+    """
+
+    def test_condition_suffix_wins_over_the_phase(self, temp_dir):
+        rows = [("ea6", "k6_conc", 0.7531, 0.08241), ("ea6", "k6_spread", 0.7531, 0.17085)]
+        loaded = load_pooled(str(_pooled(temp_dir, rows)))
+        by = {r["condition"]: r["geometry"] for r in loaded}
+        assert by["k6_conc"] == "concentrated" and by["k6_spread"] == "spread"
+
+    def test_phase_is_used_when_the_name_says_nothing(self, temp_dir):
+        rows = [("ea4", "l70", 0.7032, 0.11089), ("ea3", "bg6", 0.7531, 0.07638)]
+        loaded = load_pooled(str(_pooled(temp_dir, rows)))
+        by = {r["condition"]: r["geometry"] for r in loaded}
+        assert by["l70"] == "spread" and by["bg6"] == "concentrated"
+
+    def test_a_within_campaign_pair_is_reported_as_controlled(self, temp_dir):
+        """The decisive comparison: identical rho, one campaign, geometry the only difference."""
+        rows = [("ea6", "k6_conc", 0.7531, 0.08241), ("ea6", "k6_spread", 0.7531, 0.17085)]
+        r = law_geometry(load_pooled(str(_pooled(temp_dir, rows))))
+        assert r["n_controlled"] == 1 and r["controlled_spread_worse"] == 1
+        assert r["holds"] and not r["provisional"]
+
+    def test_cross_campaign_pairs_leave_the_result_provisional(self, temp_dir):
+        """Without a single campaign running both arms, every pair carries a day's difference."""
+        rows = [("ea3", "bg6", 0.7531, 0.07638), ("ea4", "l75", 0.7531, 0.17085)]
+        r = law_geometry(load_pooled(str(_pooled(temp_dir, rows))))
+        assert r["n_controlled"] == 0 and r["provisional"]
+
+    def test_a_controlled_pair_alone_can_carry_the_law(self, temp_dir):
+        """No dominating pair here -- rho is identical -- so `holds` must rest on the
+        controlled pair, which is the stronger evidence anyway."""
+        rows = [("ea6", "k6_conc", 0.7531, 0.08241), ("ea6", "k6_spread", 0.7531, 0.17085)]
+        r = law_geometry(load_pooled(str(_pooled(temp_dir, rows))))
+        assert r["n_dominating"] == 0 and r["holds"]
+
+
+class TestControlledOutputPaths:
+    """The controlled/cross-campaign split changes what main() prints, so both paths run."""
+
+    def test_main_reports_controlled_pairs(self, temp_dir, capsys):
+        rows = REAL + [("ea6", "k6_conc", 0.7531, 0.08241),
+                       ("ea6", "k6_spread", 0.7531, 0.17085)]
+        main(["--pooled", str(_pooled(temp_dir, rows)),
+              "--priority", str(_priority(temp_dir, REAL_PRIO)),
+              "--out", str(temp_dir / "o")])
+        out = capsys.readouterr().out
+        assert "CONTROLLED pairs" in out
+        assert "1/1 controlled pairs" in out
+        assert "PROVISIONAL" not in out
+
+    def test_main_flags_provisional_without_controlled_pairs(self, temp_dir, capsys):
+        main(["--pooled", str(_pooled(temp_dir, REAL)),
+              "--priority", str(_priority(temp_dir, REAL_PRIO)),
+              "--out", str(temp_dir / "o")])
+        assert "PROVISIONAL" in capsys.readouterr().out
+
+    def test_main_reports_geometry_not_supported(self, temp_dir, capsys):
+        """Both geometries on one rising curve in rho: no contradiction to report."""
+        rows = [("ea3", "a", 0.60, 0.05), ("ea3", "b", 0.80, 0.15),
+                ("ea4", "c", 0.70, 0.10), ("ea4", "d", 0.90, 0.25),
+                ("ea4", "e", 0.96, 0.30), ("ea4", "f", 0.98, 0.31),
+                ("ea3", "g", 0.0025, 0.0037)]
+        main(["--pooled", str(_pooled(temp_dir, rows)),
+              "--priority", str(_priority(temp_dir, REAL_PRIO)),
+              "--out", str(temp_dir / "o")])
+        assert "NOT SUPPORTED" in capsys.readouterr().out

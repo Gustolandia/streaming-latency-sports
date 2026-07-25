@@ -542,6 +542,55 @@ class TestPoweredTransportReplication:
         assert "refines" in e1.lower(), "the powered run refines rather than contradicts E1"
 
 
+class TestNarrativeArc:
+    """The paper must read as one story: broker question -> impossible answer -> what survives.
+
+    Each rewrite risks leaving a section orphaned from that arc, so the joints are pinned here
+    rather than left to proofreading, which has already missed this class of drift three times.
+    """
+
+    def test_the_abstract_follows_the_stated_shape(self, tex):
+        abstract = tex[tex.index(r"\begin{abstract}"):tex.index(r"\end{abstract}")]
+        for beat in ("What we set out to do", "What we found instead",
+                     "What we think is happening", "What the measurements say"):
+            assert beat in abstract, f"abstract is missing the '{beat}' beat"
+        # Humble about the original question rather than selling it.
+        assert "modest" in abstract.lower()
+
+    def test_results_are_ordered_by_consequence_not_chronology(self, tex):
+        """The transferable science leads; the two-broker answer follows."""
+        order = [tex.index("\\label{" + lbl + "}")
+                 for lbl in ("sec:rules", "sec:mixture", "sec:e1", "sec:attribution")]
+        assert order == sorted(order), \
+            "Section 7 must run rules -> mixture -> brokers -> withdrawal"
+        intro = _section(tex, "sec:results")
+        assert "consequence rather than by chronology" in intro, \
+            "the ordering must be declared, not left implicit"
+
+    def test_the_conclusion_carries_every_headline(self, tex):
+        conclusion = tex[tex.index(r"\section{Conclusion}"):]
+        low = conclusion.lower()
+        for claim, token in (("the audit", "1{,}321"), ("the second withdrawal", "withdraw"),
+                             ("the mixture correction", "mixture"),
+                             ("the broker answer", "0.41")):
+            assert token.lower() in low, f"conclusion omits {claim}"
+
+    def test_the_story_returns_to_the_original_question(self, tex):
+        conclusion = tex[tex.index(r"\section{Conclusion}"):]
+        low = conclusion.lower()
+        assert "began by asking" in low or "we set out" in low
+        assert "barely matters" in low or "least interesting" in low, \
+            "the ending must be honest about what the original question was worth"
+
+    def test_method_gives_the_reader_the_map_and_the_settings(self, tex):
+        """Two things a referee needs to check the work rather than trust it."""
+        assert r"\label{fig:expmap}" in tex, "the experiment map must exist"
+        assert r"\label{tab:config}" in tex, "the configuration table must exist"
+        config = _section(tex, "sec:config_table")
+        assert "learned" in config.lower(), \
+            "settings discovered through a defect must be marked as such"
+
+
 class TestIndependentReplications:
     """Each headline result has a second, independent campaign confirming it."""
 

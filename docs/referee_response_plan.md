@@ -83,7 +83,27 @@ first seven of each run. The prediction is sharp: all-events reproduces the powe
 **If the prediction fails**, we have a second unexplained instability and must withdraw E1's
 transport row rather than re-label it.
 
-**Status:** campaign queued (2/2 in the referee chain).
+**Status: RESOLVED.** The prediction held, on both the shift and the absolute level — the latter
+was not forced by the former, so it is a second independent check.
+
+| N | runs | all-events shift | prologue shift | E1's reported shifts |
+|---|---|---|---|---|
+| 1 | 5 | +0.381 | +0.088 | 0.021 |
+| 9 | 45 | +0.417 | +0.129 | 0.116 |
+| 12 | 55 | +0.414 | +0.248 | 0.053 |
+
+All-events reproduces the powered 0.41 ms. The prologue reproduces E1's near-equality, and its
+absolute medians land on E1's too — Kafka 0.83–1.02 against E1's 0.79–1.00, Redis 0.74–0.81
+against 0.72–0.86. One set of runs, two windows, both published answers.
+
+So E1 was measuring the opening burst, during which both systems pay the start-up cost of §7.5
+and a 0.41 ms difference is swamped. The campaigns never contradicted each other. §7.4 now carries
+the reconciliation (Table `tab:e1rep`) and §8.5's limitation is replaced by it — E1's transport row
+is **re-labelled as a prologue measurement, not withdrawn**.
+
+*What this does not establish:* the window is shown to be sufficient to produce the disagreement,
+not to be the only difference between the campaigns. E1's replay rate remains inferred. The
+limitation says so.
 
 ---
 
@@ -123,7 +143,30 @@ law `ρ^k` and an exponential — and report all R² values. Then downgrade the 
 data supports. The defensible statement is "superlinear growth with a knee near saturation",
 not "the M/G/1 form specifically". Re-run the fit on pre-saturation points only.
 
-**Status:** local work, in progress.
+**Status: form withdrawn; knee sweep running to see whether measurement can restore it.**
+The refit found an exponential fits the published Table 7 *better* than M/G/1 (0.961 against
+0.945), so the functional form is withdrawn and only the shape — superlinear with a knee — is
+retained. The pre-registered criterion is reported unchanged rather than quietly restated.
+
+**A second finding the referee did not ask for, but which bears on the same complaint.** Chasing
+the replacement model exposed the same unfalsifiability one level down. The two-state model's
+stated form `P(inv) = p(ρ)·S` has *no content* on the ρ axis: with `p` free, any monotone rate
+curve can be written that way. Constraining `p` to a power law makes it testable and it fits
+poorly (R² 0.65). The variant that does fit —
+`p(ρ)·S(T_true/σ(ρ))`, R² 0.9905 against 0.9811 for a fitted exponential — wins only because it
+reads σ and μ, and **freezing σ improves the fit to 0.9982**. On our ladder σ rises monotonically
+with ρ, so the two are collinear and no fit can separate them.
+
+That is a limit of the *design*, not the analysis. `scripts/fit_two_state.py` reports it and
+declines to claim the model; §7.3 now states the load axis as untested rather than supported.
+
+**E-A5 (queued):** break the collinearity by experiment. `SCHED_FIFO` on the stamping processes
+cuts occupancy while leaving utilisation untouched — occupancy predicts the inversion rate
+collapses ~50×, utilisation-only models predict no change because ρ does not move. This is the
+manipulation netem should have been: netem cancelled in the subtraction, scheduling priority acts
+on the stamping threads themselves. `analyze_stamping_priority.py` runs the manipulation check
+first and withholds the comparison if ρ differs between arms, which is the E-B2 lesson applied in
+advance rather than after.
 
 ---
 
@@ -190,13 +233,21 @@ attempted. M4 and M5 need honest downgrading rather than new experiments.
 | Issue | Severity | Kind | State |
 |---|---|---|---|
 | M1 external validation | decisive | audit | **PARTIAL** — OMB source audited, §6.7 |
-| M1 empirical closure | decisive | run | queued — OMB instrumented discard count |
-| M3 clean effect size | keystone | run | running (E-B2, d1 of 5) |
-| M2 E1 discrepancy | major | run | queued behind E-B2 |
+| M1 empirical closure | decisive | run | queued behind knee sweep (Maven 3.9.9 installed) |
+| M3 clean effect size | keystone | run | **DONE** — manipulation check FAILED; H1's intermediate points withdrawn |
+| M2 E1 discrepancy | major | run | **RESOLVED** — same runs give both answers; E1 measured the prologue |
 | M4 M/G/1 downgrade | major | analysis | **DONE** — form withdrawn |
-| M4 knee resolution | major | run | queued — can the form be restored? |
+| M4 knee resolution | major | run | running (E-A4, cond 3 of 7) |
+| M4 replacement model | major | analysis | **DONE** — unidentifiable on our ladder; §7.3 says untested |
+| M4 occupancy manipulation | major | run | queued (E-A5) — the test that can decide it |
 | M5 provenance reliance | major | writing | **DONE** — §7.3 inverted |
 | M6 sample sizes | major | writing | **DONE** — Table 5 |
 | M7 workload justification | major | writing | **DONE** — §3 rewritten |
 | Minor: figure `\%` | minor | local | **DONE** |
+| Minor: dangling `\ref`s | minor | local | **DONE** — 3 invented labels fixed; test added |
 | Minor: length, caption, "sound" | minor | local | pending |
+
+**Run queue on `sbl-drv`, in order:** E-A4 knee resolution (running) → OMB discard count →
+E-A5 stamping priority. Each chain waits on every CPU consumer, not just its predecessor, because
+E-A5's design requires utilisation to be equal across its two arms and a stray Maven build inside
+one arm would fail the manipulation check.

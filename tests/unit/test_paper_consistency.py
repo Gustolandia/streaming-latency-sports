@@ -671,7 +671,38 @@ class TestTwoStateModel:
         section = " ".join(_section(tex, "sec:twostate").lower().split())
         assert "exploratory" in section
         assert "found this by looking at the data" in section
-        assert "schedstat" in section, "the decisive unrun test must be named"
+        assert "real-time priority" in section, "the decisive unrun test must be named"
+
+    def test_the_load_axis_is_not_claimed(self, tex):
+        """The bare form is a tautology in rho, and the section must say so before using it.
+
+        With p unconstrained, any monotone rate curve is p(rho)*S under p = rate/S. The paper
+        already withdrew the M/G/1 form for being unfalsifiable, so adopting a replacement that
+        cannot fail would be the worse error. The fitted variant beats its comparators only by
+        reading sigma and mu, and freezing sigma IMPROVES the fit -- so the section must report
+        the load axis as untested rather than supported.
+        """
+        section = " ".join(_section(tex, "sec:twostate").lower().split())
+        assert "tautology" in section, "the empty form must be named as empty"
+        assert "no content" in section
+        assert "untested" in section, "the load axis must not be claimed as supported"
+        assert "0.9982" in section, "the ablation that undercuts the fit must be reported"
+
+    def test_the_fit_numbers_match_the_artefact(self, tex):
+        rows = {r["model"]: float(r["r2_log"]) for r in _rows("model", "two_state_fit.csv")}
+        assert rows, "the fit artefact must exist"
+        section = _section(tex, "sec:twostate")
+        for model in ("two_state_corrected", "exp(k rho)", "(rho/(1-rho))^k"):
+            assert model in rows, f"{model} must be fitted"
+            assert _contains_number(section, rows[model], 4), \
+                f"{model} R2 {rows[model]} is not quoted in the paper"
+
+    def test_the_corrected_form_does_not_win_in_the_artefact(self):
+        """A guard on the conclusion, not the prose: if a rerun ever makes sigma carry the fit,
+        the paper's 'untested' wording becomes wrong and must be revisited deliberately."""
+        rows = {r["model"]: float(r["r2_log"]) for r in _rows("model", "two_state_fit.csv")}
+        assert rows["two_state_simple"] < rows["two_state_corrected"], \
+            "the simple parametric form should still fit worse"
 
     def test_clustering_is_offered_as_the_motivating_fact(self, tex):
         section = " ".join(_section(tex, "sec:twostate").lower().split())
@@ -992,3 +1023,34 @@ class TestNoMangledMacros:
         """Each escape a heredoc or a Python string would interpret is covered."""
         for esc in ("\t", "\b", "\f", "\v", "\a", "\r", "\0"):
             assert esc in self.RESIDUES, f"unhandled escape residue {esc!r}"
+
+
+class TestCrossReferencesResolve:
+    r"""Every \ref must point at a \label that exists.
+
+    Written after three references were added naming sections that had never existed
+    (sec:knee, sec:cleanslope, tab:claims). LaTeX renders those as bold "??" rather than
+    failing, so a source-level check is what catches them. The rendered-PDF sweep this
+    repository already runs found the earlier macro-mangling bugs but would report these
+    only as two question marks among thirty pages.
+    """
+
+    REF = re.compile(r"\\(?:ref|autoref|eqref)\{([^}]+)\}")
+    LABEL = re.compile(r"\\label\{([^}]+)\}")
+
+    def test_no_reference_is_dangling(self, tex):
+        labels = set(self.LABEL.findall(tex))
+        dangling = sorted({r for r in self.REF.findall(tex) if r not in labels})
+        assert dangling == [], f"\ref to labels that do not exist: {dangling}"
+
+    def test_no_label_is_defined_twice(self, tex):
+        """Duplicates make \ref resolve to whichever came last, silently."""
+        found = self.LABEL.findall(tex)
+        dupes = sorted({lab for lab in found if found.count(lab) > 1})
+        assert dupes == [], f"labels defined more than once: {dupes}"
+
+    def test_the_guard_catches_an_invented_label(self):
+        """The exact failure that prompted this test, so it cannot rot into a no-op."""
+        broken = r"see Section~\ref{sec:knee}. \label{sec:rules} text"
+        labels = set(self.LABEL.findall(broken))
+        assert [r for r in self.REF.findall(broken) if r not in labels] == ["sec:knee"]

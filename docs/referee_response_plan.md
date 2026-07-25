@@ -166,11 +166,12 @@ attempted. M4 and M5 need honest downgrading rather than new experiments.
 
 | Issue | Severity | Kind | State |
 |---|---|---|---|
-| M1 external validation | decisive | run | in progress (JDK) |
-| M3 clean effect size | keystone | run | **running** |
-| M2 E1 discrepancy | major | run | queued |
-| M4 M/G/1 downgrade | major | analysis | in progress |
-| M5 provenance reliance | major | writing | pending |
-| M6 sample sizes | major | writing | pending |
-| M7 workload justification | major | writing | pending |
-| Minor (figure, length, caption) | minor | local | pending |
+| M1 external validation | decisive | run/audit | **DONE** — OMB audited, §6.7 |
+| M3 clean effect size | keystone | run | running (E-B2, d1 of 5) |
+| M2 E1 discrepancy | major | run | queued behind E-B2 |
+| M4 M/G/1 downgrade | major | analysis | **DONE** — form withdrawn |
+| M5 provenance reliance | major | writing | **DONE** — §7.3 inverted |
+| M6 sample sizes | major | writing | **DONE** — Table 5 |
+| M7 workload justification | major | writing | **DONE** — §3 rewritten |
+| Minor: figure `\%` | minor | local | **DONE** |
+| Minor: length, caption, "sound" | minor | local | pending |

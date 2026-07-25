@@ -594,7 +594,7 @@ class TestExternalHarnessEvidence:
         assert "artefact of the instrument" in section
 
     def test_the_null_result_matches_its_artefact(self, tex):
-        rows = _rows("external", "omb_discards.csv")
+        rows = _rows("external", "omb_loaded_result.csv")
         assert rows, "the OMB run artefact must exist"
         assert int(rows[0]["discarded_nonpositive"]) == 0, \
             "a non-zero count would make the paper's null wrong"

@@ -20,3 +20,18 @@ The campaign now has three defences, and the first is the one that matters:
 2. **Verify both workers answer** before the benchmark starts, rather than discovering it after.
 3. **Ship a self-contained distribution** (the packaged tarball), so the classpath cannot be
    half-present.
+
+## Also invalid: `omb_discards.INVALID.csv` (embedded run, first attempt)
+
+Reported `discarded_nonpositive=0`. **That zero is vacuous and reached a draft of the paper as a
+genuine bounded negative.**
+
+The run died about four seconds in with a `NullPointerException` in `FilePayloadReader.load`:
+OMB reads its payload from a file, and `payloadFile` was absent from the workload YAML.
+`messageSize` alone is honoured only by a path this configuration did not take. No latency was
+ever measured — zero `Pub rate` lines — and the script wrote a count anyway, because a benchmark
+that never runs discards nothing.
+
+It was caught only because an output-validation gate written for the *distributed* variant made
+the missing one here obvious. Superseded by `../omb_loaded_result.csv`, which records 6,000
+discards under 88% load with `valid=1` and 24 `Pub rate` lines.

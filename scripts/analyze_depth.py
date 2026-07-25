@@ -94,7 +94,18 @@ def run_transport_median(run_dir):
 
 
 def condition_transport_by_backend(cond_dir, runs_dir):
-    """Median transport per backend for a condition, as {'kafka': ms, 'redis': ms}."""
+    """Median transport per backend, as {'kafka': ms, 'redis': ms, 'kafka_n_runs': k, ...}.
+
+    The estimator is the median of per-run medians, not the median of pooled events. That is
+    deliberate -- runs differ in length, and pooling would weight a long run more heavily than a
+    short one -- and it is recorded here because recomputing this quantity with the pooled
+    estimator gives a visibly different answer (0.204 against 0.215 ms for the inline arm).
+
+    The run counts are returned alongside because the artefact this feeds carried four medians
+    and no sample size at all. A reader had no way to tell whether it came from twenty runs or
+    from a script that failed and wrote defaults, which is exactly the gap that let a benchmark
+    that never executed report a discard count of zero.
+    """
     ts = condition_timestamp(cond_dir)
     if not ts:
         return {}
@@ -108,6 +119,7 @@ def condition_transport_by_backend(cond_dir, runs_dir):
                     vals.append(m)
         if vals:
             out[backend] = st.median(vals)
+            out[f"{backend}_n_runs"] = len(vals)
     return out
 
 
@@ -244,7 +256,9 @@ def main(argv=None):
                 diff = t["kafka"] - t["redis"]
                 h3[mode] = diff
                 h3_rows.append({"stamp": mode, "kafka_ms": round(t["kafka"], 4),
-                                "redis_ms": round(t["redis"], 4), "difference_ms": round(diff, 4)})
+                                "redis_ms": round(t["redis"], 4), "difference_ms": round(diff, 4),
+                                "n_runs_kafka": t.get("kafka_n_runs", 0),
+                                "n_runs_redis": t.get("redis_n_runs", 0)})
                 print(f"  {mode:9s}: kafka {t['kafka']:.3f} ms, redis {t['redis']:.3f} ms, "
                       f"difference {diff:+.3f} ms")
     if len(h3) == 2:
@@ -258,7 +272,8 @@ def main(argv=None):
                   f"on the calling thread)")
             # Written whatever the verdict: it is the measurement, not the confirmation.
             _write(h3_rows, out / "ec3_stamping.csv",
-                   ["stamp", "kafka_ms", "redis_ms", "difference_ms"])
+                   ["stamp", "kafka_ms", "redis_ms", "difference_ms",
+                    "n_runs_kafka", "n_runs_redis"])
         else:
             print("  H3 stamping rule: UNTESTED (both arms stamp in callbacks, so the "
                   "symmetric condition was never created)")

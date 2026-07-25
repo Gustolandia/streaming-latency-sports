@@ -993,9 +993,10 @@ than take our word for it (commit \texttt{5b1fa70}, 7~April 2026).
 \texttt{LocalWorker.java}:294 the end-to-end latency is
 \texttt{now\,-\,publishTimestamp}, where \texttt{now} is a clock read in the \emph{consumer}
 process and \texttt{publishTimestamp} arrives with the message. In the \kafka{} driver that
-timestamp is \texttt{record.timestamp()}, which under \kafka{}'s default
-\texttt{CreateTime} semantics was written on the \emph{producer} host; the benchmark does not
-override that default anywhere in its configuration. The subtraction therefore spans two
+timestamp is \texttt{record.timestamp()}, which under \kafka{}'s default \texttt{CreateTime}
+semantics is the one written by the \emph{producer}~\cite{kafka2015kip32} --- and therefore, in a
+distributed deployment, on the producer's host. The benchmark does not override that default
+anywhere in its configuration. The subtraction therefore spans two
 processes and, in a distributed deployment, two machines' clocks --- the same construction that
 produced $1{,}321$ impossible runs here.
 
@@ -1276,10 +1277,14 @@ the powered real-time measurement finds \redis{} uniformly \emph{faster} and fla
 the audit's doing, and the measurement's.
 
 \begin{table}[t]
-\caption{End-to-end delay and its decomposition, Testbed~B, after the consistency check (164 of
-201 runs retained). Medians, ms. The replay rate is identical across both arms but not recorded
-in the surviving artefacts (Section~\ref{sec:rateprovenance}); the scheduling-lag columns are
-withdrawn (Section~\ref{sec:attribution}) and retained only as evidence for that withdrawal.}
+\caption{\textbf{Historical corpus; the scheduling-lag columns are withdrawn.} End-to-end delay
+and its decomposition, Testbed~B, after the consistency check (164 of 201 runs retained).
+Medians, ms. \textbf{The \tti{} and scheduling-lag columns record a per-run start-up cost, not a
+per-event property, and are retained only as evidence for the withdrawal in
+Section~\ref{sec:attribution}; they should not be read as system behaviour.} The transport columns
+are computed over the same seven-event opening burst and are superseded by the powered
+measurement of Table~\ref{tab:transport}. The replay rate was not recorded and is recovered as
+true real time in Section~\ref{sec:rateprovenance}.}
 \label{tab:e1}
 \begin{tabular}{rrrrrrr}
 \toprule
@@ -1647,7 +1652,7 @@ should be reported with its sensitivity (Section~\ref{sec:threshold}); what matt
 it is fixed in advance and applied to every condition, including those whose results look
 reasonable. Applying it only to suspicious results reproduces the error it exists to prevent.
 \item \textbf{Report the retention rate alongside the results}, the way a survey reports its
-response rate. A benchmark that discards nothing has either an unusually sound instrument or an
+response rate. A benchmark that discards nothing has either an unusually clean instrument or an
 unexamined one, and a reader cannot tell which without the number.
 \item \textbf{Report events-per-run alongside every latency percentile.} This is the check that
 would have caught our second withdrawal (Section~\ref{sec:attribution}) and the sign check would
@@ -1783,7 +1788,7 @@ sweep, the connection sweep above ten, the cluster arm, the durability quantific
 Testbed~A. We cannot characterise behaviour at the concurrency a multi-tenant platform would see.
 
 \emph{E1's replay rate is inferred, not documented.} Section~\ref{sec:rateprovenance} recovers it
-from the data and the recovery is, we think, sound, but it is an inference from a
+from the data and the recovery is, we think, correct, but it is an inference from a
 $52.34$~ms median in one cell rather than a setting anyone recorded. A reader who does not accept
 the inference should read Section~\ref{sec:e1} as establishing that both arms met the same rate,
 which is all the between-system comparison needs.

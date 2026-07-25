@@ -29,10 +29,14 @@ L3  UTILISATION DOES NOT DETERMINE THE RATE; CORE AVAILABILITY DOES.
     mechanism is whether the stamping thread finds a core, spread load must invert more at equal
     rho, and the gap must close as rho approaches 1 where neither leaves a free core.
 
-    Across our existing campaigns this holds -- spread at rho=0.703 inverts more (0.111) than
-    concentrated at rho=0.753 (0.069-0.076) -- but those are different campaigns on different
-    days, so it is suggestive and NOT established here. E-A6 tests it within one campaign. This
-    script reports the cross-campaign comparison as provisional and says so in its output.
+    E-A6 tested this within one campaign, and it held at all three levels: at matched rho,
+    spread load inverts 1.88x, 2.07x and 1.06x more than concentrated. The middle pair sits at
+    rho = 0.7531 in BOTH arms -- identical to four decimals -- and the rates differ twofold. A
+    function of rho returns one value for one input, so utilisation cannot be the variable.
+    The gap closes at the top (1.06x at rho ~ 0.88), which is what "can the thread find a free
+    core" predicts: at seven of eight cores busy, one free core is nearly as bad as none.
+
+    Cross-campaign pairs are still reported, separately and as the weaker evidence they are.
 
 Given L1 and L2, occupancy becomes measurable rather than fitted: p = (rate - C0) / (S - C0).
 That inversion is only meaningful if p lands in [0,1] and rises monotonically with load, which is
@@ -53,6 +57,28 @@ CEILING_MAX = 0.60       # L2: a "ceiling" above this is not a ceiling worth cla
 SPREAD_PHASES = {"ea4", "ea6"}   # duty-cycle campaigns; everything else is whole-core
 
 
+def geometry_of(phase, condition):
+    """Which load geometry a condition used.
+
+    Two encodings, because they arose from different campaigns and both must be read.
+
+    The condition NAME wins when it says so. E-A6 runs both geometries inside one campaign --
+    `k5_conc` against `k5_spread` -- precisely so the comparison is within-campaign rather than
+    across days, and a phase-level rule cannot see that distinction at all. Reading geometry
+    from the phase alone would have labelled every E-A6 cell identically and silently destroyed
+    the only controlled test of L3 we have.
+
+    Otherwise fall back to the campaign: E-A4 used duty-cycled load on every core (spread),
+    while the earlier ladders loaded whole cores and left the rest free (concentrated).
+    """
+    c = (condition or "").lower()
+    if c.endswith("_spread"):
+        return "spread"
+    if c.endswith("_conc"):
+        return "concentrated"
+    return "spread" if phase in SPREAD_PHASES else "concentrated"
+
+
 def load_pooled(path):
     rows = []
     with open(path, newline="", encoding="utf-8") as fh:
@@ -62,9 +88,10 @@ def load_pooled(path):
             except (KeyError, ValueError, TypeError):
                 continue
             phase = r.get("phase", "")
-            rows.append({"phase": phase, "condition": r.get("condition", ""),
+            condition = r.get("condition", "")
+            rows.append({"phase": phase, "condition": condition,
                          "rho": rho, "inversion": inv,
-                         "geometry": "spread" if phase in SPREAD_PHASES else "concentrated"})
+                         "geometry": geometry_of(phase, condition)})
     return sorted(rows, key=lambda r: r["rho"])
 
 
@@ -132,20 +159,33 @@ def law_geometry(pooled, tol=0.02):
     conc = [r for r in pooled if r["geometry"] == "concentrated" and r["rho"] < 0.999]
     if not spread or not conc:
         return {"testable": False, "why": "need both geometries below saturation"}
-    matched, dominating = [], []
+    matched, dominating, controlled = [], [], []
     for s in spread:
         for c in conc:
             rec = {"rho_spread": s["rho"], "rho_conc": c["rho"],
                    "inv_spread": s["inversion"], "inv_conc": c["inversion"],
+                   "phase": s["phase"] if s["phase"] == c["phase"] else "cross",
                    "ratio": s["inversion"] / c["inversion"] if c["inversion"] else None}
             if abs(c["rho"] - s["rho"]) <= tol:
-                matched.append(dict(rec, spread_worse=s["inversion"] > c["inversion"]))
+                rec = dict(rec, spread_worse=s["inversion"] > c["inversion"])
+                matched.append(rec)
+                # A pair from ONE campaign is the controlled comparison: same day, same
+                # machine, same protocol, only the geometry differing. Cross-campaign pairs
+                # carry every difference between two days as well, so they are suggestive
+                # where these are decisive, and mixing them would understate the evidence.
+                if s["phase"] == c["phase"]:
+                    controlled.append(rec)
             elif s["rho"] < c["rho"] and s["inversion"] > c["inversion"]:
                 dominating.append(rec)
+    ctrl_worse = sum(1 for r in controlled if r["spread_worse"])
     return {"testable": True, "matched": matched, "dominating": dominating,
-            "n_matched": len(matched), "n_dominating": len(dominating),
+            "controlled": controlled, "n_matched": len(matched),
+            "n_dominating": len(dominating), "n_controlled": len(controlled),
+            "controlled_spread_worse": ctrl_worse,
             # One dominating pair is enough: it is a contradiction, not a majority vote.
-            "holds": len(dominating) >= 1, "provisional": True}
+            "holds": len(dominating) >= 1 or ctrl_worse > 0,
+            # Only provisional while no single campaign has run both geometries.
+            "provisional": not controlled}
 
 
 def implied_occupancy(pooled, floor, ceiling):
@@ -212,16 +252,25 @@ def main(argv=None):
             print("  reading that ceiling IS S: the chance a preemption residual outlasts the")
             print("  true transport. It is a measured quantity, not a fitted asymptote.")
 
-    print("\n== L3: geometry, not utilisation (PROVISIONAL: cross-campaign) ==")
+    # The header used to hard-code "PROVISIONAL", which was right until E-A6 ran both
+    # geometries in one campaign. A caveat that cannot be retired is not a caveat, it is
+    # boilerplate, so it now follows the data.
+    print("\n== L3: geometry, not utilisation ==")
     l3 = law_geometry(pooled)
     if not l3["testable"]:
         print(f"  not testable: {l3['why']}")
     else:
-        print(f"  matched pairs (|d rho| <= 0.02): {l3['n_matched']}")
-        for p in l3["matched"]:
-            arrow = "spread worse" if p["spread_worse"] else "concentrated worse"
-            print(f"    rho {p['rho_spread']:.4f}/{p['rho_conc']:.4f}: "
-                  f"spread {p['inv_spread']:.5f} vs conc {p['inv_conc']:.5f}  ({arrow})")
+        if l3["n_controlled"]:
+            print(f"  CONTROLLED pairs, both geometries in ONE campaign at matched rho: "
+                  f"{l3['n_controlled']}")
+            for p in l3["controlled"]:
+                mark = "spread worse" if p["spread_worse"] else "concentrated worse"
+                fac = (p["inv_spread"] / p["inv_conc"]) if p["inv_conc"] else float("inf")
+                print(f"    [{p['phase']}] rho {p['rho_spread']:.4f}/{p['rho_conc']:.4f}: "
+                      f"spread {p['inv_spread']:.5f} vs conc {p['inv_conc']:.5f}  "
+                      f"({fac:.2f}x, {mark})")
+        print(f"  other matched pairs (|d rho| <= 0.02, cross-campaign): "
+              f"{l3['n_matched'] - l3['n_controlled']}")
         print(f"  DOMINATING pairs (spread at LOWER rho inverts MORE): {l3['n_dominating']}")
         for p in l3["dominating"]:
             print(f"    spread rho={p['rho_spread']:.4f} inv={p['inv_spread']:.5f}  beats  "
@@ -229,11 +278,19 @@ def main(argv=None):
                   f"({p['ratio']:.2f}x at lower load)")
         print(f"  -> {'SUPPORTED' if l3['holds'] else 'NOT SUPPORTED'}")
         if l3["holds"]:
-            print("  A dominating pair is a contradiction, not a majority vote: no monotone")
-            print("  function of rho can give a higher rate at a lower rho and a lower rate at")
-            print("  a higher one. The whole family is refuted by one such pair.")
-        print("  Provisional: these pairs come from different campaigns on different days.")
-        print("  E-A6 runs both geometries in one campaign at matched rho to settle it.")
+            if l3["n_controlled"]:
+                print(f"  {l3['controlled_spread_worse']}/{l3['n_controlled']} controlled pairs "
+                      f"have spread load inverting more at the SAME utilisation.")
+                print("  Same day, same machine, same protocol, only the arrangement of the")
+                print("  load differing. Utilisation cannot be the variable: at matched rho it")
+                print("  predicts one number and two are observed.")
+            if l3["n_dominating"]:
+                print("  A dominating pair is a contradiction rather than a majority vote: no")
+                print("  monotone function of rho gives a higher rate at a lower rho and a")
+                print("  lower rate at a higher one. One such pair refutes the whole family.")
+        if l3["provisional"]:
+            print("  PROVISIONAL: no single campaign has run both geometries, so every pair")
+            print("  above carries the differences between two days as well.")
 
     rows, occ = ([], {"valid": False})
     if l1.get("testable") and l2.get("testable"):

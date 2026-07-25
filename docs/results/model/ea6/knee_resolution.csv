@@ -1,0 +1,7 @@
+phase,condition,rho,inversion_rate
+ea6,k5_spread,0.625,0.03786
+ea6,k5_conc,0.6284,0.0201
+ea6,k6_conc,0.7531,0.08241
+ea6,k6_spread,0.7531,0.17085
+ea6,k7_conc,0.8778,0.22814
+ea6,k7_spread,0.8809,0.24154

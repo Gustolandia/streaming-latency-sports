@@ -69,12 +69,12 @@ cat > "$OUT/runqlat.bt" <<'BT'
 tracepoint:sched:sched_wakeup,
 tracepoint:sched:sched_wakeup_new
 {
-  if (str(args->comm) == "python3") { @qt[args->pid] = nsecs; }
+  if (args->comm == "python3") { @qt[args->pid] = nsecs; }
 }
 
 tracepoint:sched:sched_switch
 {
-  if (args->prev_state == 0 && str(args->prev_comm) == "python3") {
+  if (args->prev_state == 0 && args->prev_comm == "python3") {
     @qt[args->prev_pid] = nsecs;
   }
   $t = @qt[args->next_pid];
@@ -88,9 +88,24 @@ tracepoint:sched:sched_switch
     delete(@qt[args->next_pid]);
   }
 }
-
-END { clear(@qt); }
 BT
+
+# The first attempt at this campaign ran both cells and recorded NOTHING. The script used
+# str(args->comm), which bpftrace 0.14 rejects because comm is already a string, and an END
+# block, which fails on this kernel with "Could not resolve symbol: END_trigger". Neither error
+# stopped the campaign: it dutifully ran the workload twice against a probe that never attached.
+#
+# So the probe is now compiled and smoke-tested first. An instrument that produces no data is
+# not a null result, it is no experiment, and finding that out afterwards costs an hour.
+banner "verifying the probe attaches and records before spending cells on it"
+sudo timeout 8 bpftrace "$OUT/runqlat.bt" > "$OUT/probe_check.txt" 2>"$OUT/probe_check.err"
+if ! grep -q "^@count:" "$OUT/probe_check.txt"; then
+  echo "FATAL: the probe recorded nothing in 8 seconds."
+  head -5 "$OUT/probe_check.err"
+  echo "Refusing to run cells against an instrument that is not working."
+  exit 1
+fi
+echo "probe ok: $(grep '^@count:' "$OUT/probe_check.txt")"
 
 reap () {
   pkill -f "kafka_producer.py|redis_producer.py|kafka_consumer.py|redis_consumer.py" 2>/dev/null
@@ -137,8 +152,13 @@ run_cell () {
   sudo chown -R "$(id -u):$(id -g)" runs "$OUT" 2>/dev/null
   printf 'tag,arm,sched_wrap,cpu_load_pct,n_feeds,reps,max_t_sim,traced\n%s,%s,%s,%s,5,%s,%s,1\n' \
     "$tag" "$arm" "${wrap:-none}" "$LOAD_PCT" "$REPS" "$MAXT" > "$OUT/$tag/condition.csv"
-  echo "  histogram lines: $(wc -l < "$OUT/$tag/runqlat.txt" 2>/dev/null || echo 0)"
-  grep -E "over_500us|over_1000us|over_2000us|@count" "$OUT/$tag/runqlat.txt" 2>/dev/null
+  if grep -q "^@count:" "$OUT/$tag/runqlat.txt" 2>/dev/null; then
+    echo "  TRACE OK"
+    grep -E "^@(count|over_)" "$OUT/$tag/runqlat.txt"
+  else
+    echo "  TRACE EMPTY for $tag -- this cell records no distribution"
+    head -3 "$OUT/$tag/runqlat.err" 2>/dev/null
+  fi
   reap
 }
 

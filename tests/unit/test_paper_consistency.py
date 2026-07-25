@@ -578,6 +578,19 @@ class TestExternalHarnessEvidence:
         section = _section(tex, "sec:external")
         assert "5b1fa70" in section, "the audited commit must be named for checkability"
 
+    def test_the_criticism_is_fair_to_the_software(self, tex):
+        """We criticise a widely used project by name, so the charitable reading must be given.
+
+        The filter guards an HdrHistogram Recorder, which rejects negatives -- almost certainly
+        defensive rather than evasive. Saying so is both fairer and a stronger point: the failure
+        is a reasonable local fix with a non-local consequence.
+        """
+        # LaTeX hard-wraps prose, so collapse whitespace before matching phrases.
+        section = " ".join(_section(tex, "sec:external").lower().split())
+        assert "defensive rather than evasive" in section
+        assert "hdrhistogram" in section, "the reason for the guard must be given"
+        assert "not describing carelessness" in section
+
     def test_the_conclusion_carries_the_external_evidence(self, tex):
         conclusion = tex[tex.index(r"\section{Conclusion}"):]
         low = conclusion.lower()

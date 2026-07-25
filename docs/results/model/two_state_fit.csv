@@ -1,0 +1,5 @@
+model,r2_log,params,covariates
+two_state_simple,0.6534,C=1.75;C0=0.00363;S=0.0849,rho
+two_state_corrected,0.9905,C=7.50;a=5.943;C0=0.00389,rho;sigma;mu
+exp(k rho),0.9811,k=9.25,rho
+(rho/(1-rho))^k,0.8863,k=1.25,rho

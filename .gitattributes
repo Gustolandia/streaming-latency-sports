@@ -1,0 +1,15 @@
+# Shell scripts must check out with LF even on Windows.
+#
+# core.autocrlf=true otherwise gives the Windows working tree CRLF copies. Git stores LF and the
+# cloud hosts pull LF, so campaigns run correctly -- but only as long as deployment goes through
+# git. Copying a working-tree script straight to a Linux driver ships the CRLF version, and bash
+# then fails to parse it ("syntax error near unexpected token $'in\r'"). That happened once, to
+# the two trial runners, while a campaign was live.
+#
+# Pinning eol=lf makes the working-tree copy identical to the stored one, so scp is safe too.
+*.sh text eol=lf
+
+# Same reasoning for the other files that are read by Linux tooling.
+*.yaml text eol=lf
+*.yml text eol=lf
+Dockerfile* text eol=lf

@@ -130,11 +130,18 @@ class TestVerdict:
         assert "beats the best alternative" in v["reason"]
 
     def test_withdrawal_stands_when_the_data_is_exponential(self, temp_dir):
+        """Data generated FROM an exponential, with coverage above rho=0.90.
+
+        This asserted "indistinguishable" until E-A4 ran. That was too weak: given points where
+        the forms diverge, exponential data does not merely fail to support M/G/1, it tells the
+        two apart and rules M/G/1 out. The verdict now says so, and the withdrawal still stands
+        either way.
+        """
         _ladder(temp_dir, [0.25, 0.5, 0.75, 0.88, 0.95, 0.98], "exp")
         rows = collect(str(temp_dir / "depth"), str(temp_dir / "runs"), ["ea4"])
         v = verdict(rows)
-        assert not v["restored"]
-        assert "indistinguishable" in v["reason"]
+        assert not v["restored"] and v["refuted"]
+        assert "M/G/1 is the one refuted" in v["reason"]
 
     def test_cannot_discriminate_without_high_points(self, temp_dir):
         """Even perfectly M/G/1-shaped data below the knee must not restore the claim."""
@@ -169,3 +176,50 @@ class TestMain:
                      "--runs-dir", str(temp_dir / "runs"),
                      "--phases", "ea4", "--out", str(temp_dir / "model")]) == 1
         assert "insufficient conditions" in capsys.readouterr().out
+
+
+class TestDecisiveLossIsReportedAsRefutation:
+    """A wide M/G/1 loss must not be reported as 'indistinguishable'.
+
+    Both outcomes fail the restoration rule, but they are not the same finding. Before E-A4 the
+    honest statement was that the sweep could not separate the forms. After it, with points to
+    rho=0.99, M/G/1 scored -0.047 against an exponential's 0.934 -- the forms ARE separated and
+    M/G/1 is the one that lost. Reporting that as a null would understate the result in our own
+    favour, which is the direction most in need of a guard.
+    """
+
+    def _rows(self, pairs):
+        return [{"phase": "ea4", "condition": f"l{int(r*100)}", "rho": r, "inversion_rate": v}
+                for r, v in pairs]
+
+    def test_a_wide_loss_is_flagged_as_refuted(self):
+        # Saturating data: rises fast then flattens, which is what E-A4 actually measured.
+        pairs = [(0.25, 0.004), (0.50, 0.006), (0.70, 0.111), (0.80, 0.220),
+                 (0.88, 0.228), (0.92, 0.240), (0.95, 0.297), (0.99, 0.329)]
+        v = verdict(self._rows(pairs))
+        assert not v["restored"] and v["refuted"]
+        assert "M/G/1 is the one refuted" in v["reason"]
+        assert "indistinguishable" not in v["reason"]
+
+    def test_a_narrow_loss_is_still_reported_as_indistinguishable(self):
+        """Where the forms genuinely cannot be told apart, the weaker wording is correct.
+
+        Built by averaging an M/G/1 curve and an exponential one, so neither fits well and
+        neither loses by much -- the situation the softer sentence was written for.
+        """
+        import math
+        pairs = []
+        for r in (0.25, 0.50, 0.70, 0.80, 0.88, 0.92, 0.95, 0.99):
+            mg1 = 0.004 * (r / (1 - r))
+            expo = 0.004 * math.exp(4.0 * r)
+            pairs.append((r, (mg1 + expo) / 2))
+        v = verdict(self._rows(pairs))
+        assert not v["restored"]
+        assert not v["refuted"], f"loss was wider than expected: {v['reason']}"
+        assert "indistinguishable" in v["reason"]
+
+    def test_insufficient_coverage_still_takes_priority(self):
+        """With nothing above rho=0.90 the sweep cannot speak, whatever the fit says."""
+        pairs = [(0.25, 0.004), (0.50, 0.006), (0.70, 0.111), (0.80, 0.220)]
+        v = verdict(self._rows(pairs))
+        assert not v["restored"] and "did not reach the interval" in v["reason"]

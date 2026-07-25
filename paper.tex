@@ -65,14 +65,20 @@ specifically, because an exponential fits it equally well. Finally, because a fa
 have made is a cautionary tale rather than a finding, we audited a benchmark we did not write:
 the OpenMessaging Benchmark computes the same cross-process difference and then admits a sample
 to its histogram only if it is positive, without counting what it drops --- so the exposure is a
-property of a widely used measurement design, and that design cannot report the problem. The fifth result corrects the model, and we think it is the most useful thing here after the
+property of a widely used measurement design, and that design cannot report the problem. We then
+instrumented that discard and ran the benchmark, and it dropped nothing; we report the null,
+which bounds the claim to the audit rather than extending it. The fifth result corrects the
+model, and we think it is the most useful thing here after the
 audit itself. $\Delta$ is not one distribution but two --- a narrow jitter core plus a rare tail
 from descheduling --- and load multiplies the tail's \emph{weight} ($60\times$) far faster than
 the core's \emph{width} ($5\times$). Inversions also arrive in bursts of consecutive events, which
 no single distribution can produce. Both follow if the thread that records the time is simply
-\emph{not running} some fraction $p(\rho)$ of the time: the failure is a rare state rather than a
-wide distribution, which changes the mitigation from a better clock to a thread that cannot be
-preempted. Of the original
+\emph{not running} some fraction of the time, and we tested that directly rather than by fitting:
+holding utilisation fixed to $0.001$ and merely raising the stamping threads' scheduling
+priority cuts the inversion rate by $39$ to $54$ times. The failure is a rare state, not a wide
+distribution, and not a function of load --- which changes the mitigation from a better clock to
+a thread that cannot be preempted. The same experiment refutes our own load-axis prediction along
+with the queueing one. Of the original
 question, what survives is modest and we report it as such: the two brokers sit within one
 millisecond of each other, with a small, reproducible $0.41$~ms transport advantage for
 \redis{} that is real but negligible against a feed whose human annotation latency is measured in
@@ -188,7 +194,11 @@ source-level audit of the OpenMessaging Benchmark, at a named commit and with fi
 given, finds it computes end-to-end latency as the same cross-process --- in a distributed
 deployment, cross-\emph{host} --- timestamp difference, and then admits a sample to its histogram
 only when that difference is positive, with no counter for what it discards. The failure mode is
-therefore designed into a widely used benchmark, and its output cannot reveal it. We report this
+therefore designed into a widely used benchmark, and its output cannot reveal it. We then made
+that discard visible --- one counter in the existing guard's \texttt{else} branch, nothing else
+changed --- and ran the benchmark: it discarded nothing, under conditions (one host, one JVM, no
+competing load) we now know to be the easy ones. The null is reported because we fixed both
+readings before running. We report this
 as a source audit rather than a measurement, and say plainly what that does and does not
 establish.
 \item \textbf{A correction to our own model} (Section~\ref{sec:mixture}), pre-registered before
@@ -1030,13 +1040,31 @@ paths where such benchmarks are usually run --- ours measures broker transport a
 $0.5$~ms --- that is not an edge case but a large share of the samples, and the reported
 distribution is truncated from below at $1$~ms.
 
-We are careful about what this does and does not show. It is a source audit, not a measurement:
-we have not run the benchmark and observed samples being dropped, and we do not claim any
-published result obtained with it is wrong. What it establishes is narrower and, we think,
-sufficient --- the failure mode is a property of a widely used benchmark's measurement design,
-not a peculiarity of our harness, and that benchmark's output cannot reveal it. That is why we
-recommend an integrity audit as routine practice, and why we think the recommendation is
-addressed to the field rather than to ourselves.
+\paragraph{We then ran it, and it discarded nothing.} A source audit is not a measurement, so we
+made the discards observable and ran the benchmark. The obvious experiment is impossible --- the
+violations never reach the output, because the guard removes them inside the harness --- so we
+added one counter, incremented in the existing guard's \texttt{else} branch, and changed nothing
+else: not the latency computation, not the guard's condition, not any reported statistic. The
+patch is in the artefact. We then ran the benchmark otherwise unmodified against our \kafka{} broker for
+three minutes at $500$ messages per second.
+
+It discarded \textbf{zero} samples. We fixed both readings before running, so this one counts as
+it stands: on this deployment the failure mode did not occur. It bounds our claim rather than
+supporting it, and we would rather report the run than not have mentioned it.
+
+The bound is worth stating precisely, because it is narrower than it first appears. It ran here in its embedded single-worker mode, so both stamps came from one JVM on one host, removing
+the cross-host clock offset that produced most of our own violations; and it ran without
+competing load, which Section~\ref{sec:twostate} shows is the condition that governs the rate. At
+our own idle floor of about $0.4\%$, a run of this length would have yielded a few hundred
+discards; it yielded none. So the honest summary is that we have not reproduced the failure in the
+OpenMessaging Benchmark, under conditions chosen to be easy for it.
+
+What survives is therefore the narrower claim, and we let it stay narrow. The guard exists, it is
+silent, and it is uncounted --- that is established at source, and it means a deployment which
+does suffer the failure could not tell. Whether any published OpenMessaging Benchmark result is affected, we do
+not know and do not claim. That asymmetry is the reason we recommend an integrity audit as
+routine practice: the cost of running one is small, and the alternative is a benchmark that
+cannot report its own failure.
 
 \subsection{What we withdraw}
 
@@ -1353,8 +1381,8 @@ other, and the corrected form's advantage is bought by reading two more measured
 competitors are given. This is a limit of the experimental design, not of the analysis, and no
 further work on these data can lift it.
 
-\paragraph{The experiment that would settle it.} The way out is to move one of the two and hold
-the other fixed. Raising the stamping processes to real-time priority makes them preempt the
+\paragraph{The experiment that settles it.} The way out is to move one of the two and hold the
+other fixed. Raising the stamping processes to real-time priority makes them preempt the
 background load rather than queue behind it, so occupancy falls sharply while utilisation does
 not move --- the same stressor is doing the same work. The two readings then separate by an order
 of magnitude: an occupancy mechanism predicts the inversion rate collapses toward the
@@ -1364,12 +1392,60 @@ predicts no change at all, because $\rho$ is unchanged by construction.
 This is also the manipulation our delay injection should have been. Injecting delay at the broker
 failed because it delayed the acknowledgement path and the delivery path equally and cancelled in
 the subtraction (Section~\ref{sec:rules}, Table~\ref{tab:eb2}); scheduling priority has no such
-symmetry, because
-it acts on the stamping threads themselves, which is where the model locates the failure. The
-campaign and its analysis are in the artefact, with the manipulation check --- utilisation must
-match across arms, or the comparison is withheld --- fixed in advance. At the time of writing it
-is queued but not yet reported, so on the load axis this model's standing is \emph{untested}
-rather than supported, and Table~\ref{tab:power} records it that way.
+symmetry, because it acts on the stamping threads themselves, which is where the model locates
+the failure.
+
+The result is unambiguous (Table~\ref{tab:ea5}). Utilisation held to within $0.001$ at both
+levels, so the manipulation check --- fixed in advance, and empowered to withhold the comparison
+--- passes. The inversion rate fell from $0.132$ to $0.0034$ at $\rho = 0.75$ and from $0.305$ to
+$0.0057$ at $\rho = 0.88$: factors of $39$ and $54$, with disjoint Wilson intervals. The two
+residual rates land on the running-state floor the model names in advance, $C_0 \approx 0.004$.
+
+\emph{This refutes every account in which the inversion rate is a function of utilisation.} M/G/1
+and a fitted exponential in $\rho$ both predict no change here, because $\rho$ did not change.
+The rate changed by a factor of fifty. Whatever the correct load model is, $\rho$ is not its
+variable --- and that single fact reorganises the rest of this section.
+
+\begin{table}[t]
+\caption{\textbf{Occupancy, not utilisation.} Stamping processes at ordinary priority versus
+\texttt{SCHED\_FIFO}, with the background load unchanged. Utilisation is measured in both arms,
+not assumed: it matches to $0.001$, so the manipulation moved occupancy alone. The inversion rate
+falls by a factor of $39$--$54$ to the running-state floor. Utilisation-only models predict no
+change.}
+\label{tab:ea5}
+\begin{tabular}{lrrrrr}
+\toprule
+& \multicolumn{2}{c}{Utilisation $\rho$} & \multicolumn{2}{c}{Inversion rate} & \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Load & ordinary & real-time & ordinary & real-time & factor \\
+\midrule
+$75\%$ & 0.7531 & 0.7525 & 0.1320 & 0.0034 & $39\times$ \\
+$88\%$ & 0.8809 & 0.8812 & 0.3049 & 0.0057 & $54\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Both load-axis predictions failed, including ours.} The knee sweep placed conditions
+at achieved $\rho$ of $0.881$, $0.920$, $0.950$, $0.970$ and $0.990$, where the candidate forms
+diverge most; the earlier ladder stopped at $0.878$ and everything above it collapsed onto a
+degenerate $\rho = 1.000$, which is why Section~\ref{sec:rules} could not settle the question.
+With those points in hand, M/G/1 fits \emph{worse than the mean} ($R^2 = -0.05$ against a fitted
+exponential's $0.93$). The withdrawal does not merely stand: the forms are now separated, and
+M/G/1 is the one ruled out.
+
+The bounded prediction fared better but also failed. Over $\rho = 0.881$ to $0.990$ the rate grew
+by a factor of $1.44$. M/G/1 predicted $13.8$; the bracket we registered before the sweep
+predicted $2.45$--$3.07$. The rate saturates, as a bounded mechanism requires --- but harder than
+our own extrapolation allowed, and a prediction that misses low is still a prediction that
+missed. We report it as a failure rather than as the nearer of two misses.
+
+The two failures have one cause, and E-A5 names it. Our bracket was still parameterised in
+$\rho$, through $p = \rho^C$; E-A5 shows $\rho$ does not determine occupancy. A second sign of
+the same thing sits inside the sweep: duty-cycled load at $\rho = 0.703$ produces a
+\emph{higher} inversion rate ($0.111$) than steady load at $\rho = 0.753$ ($0.076$). Same
+utilisation axis, different scheduling behaviour, different answer. What survives is the
+mechanism --- occupancy, established by manipulation --- and not any curve in $\rho$, ours
+included.
 
 \subsection{The brokers are equivalent within a millisecond, but not indistinguishable}
 \label{sec:e1}
@@ -2004,6 +2080,21 @@ first \texttt{produce()} is visible in the loop trace of every run
 inferred. Whether a different client, or a pre-created topic, or a broker configured against
 auto-creation would pay the same cost, we did not test. The practitioner advice in
 Section~\ref{sec:discussion} is written to be safe either way.
+
+\emph{The occupancy result is a mechanism, not a load model.} Section~\ref{sec:twostate} shows by
+manipulation that the inversion rate follows stamping-thread occupancy rather than utilisation,
+and that is the strongest causal claim in this paper. It is not a formula. We can say the rate
+falls fifty-fold when the stamping thread stops being preempted; we cannot say what the rate will
+be at a given load, and both attempts to write one --- M/G/1 and our own bounded bracket ---
+failed against the sweep. A practitioner should read this as ``keep the stamping thread runnable
+and measure what you get'', not as a curve to substitute into a budget.
+
+\emph{The external replication is a null, and a weak one.} The instrumented OpenMessaging
+Benchmark discarded nothing (Section~\ref{sec:external}), but it ran on one host, in one JVM, and
+without competing load --- the conditions our own results identify as least likely to produce the
+failure. The run therefore neither confirms nor refutes the exposure in that harness; it is
+reported because it was pre-registered, not because it settles anything. A distributed,
+loaded replication is the obvious next step and we did not run it.
 
 \emph{H3 is measured at one operating point.} The symmetric-stamping comparison
 (Section~\ref{sec:rules}) was run at one in-flight request and one load level, because inline

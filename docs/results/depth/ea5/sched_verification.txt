@@ -1,0 +1,12 @@
+# Manipulation verification for E-A5, captured live during the ELEVATED arm.
+# The wrap is "sudo chrt -f 80", so each stamping process has a sudo parent that
+# execs chrt, which sets the policy and execs python3. Only the python3 processes
+# read the clock; the sudo parents wait. Both match a pgrep on the script name, so a
+# partial sample can look like a half-applied manipulation. It is not.
+captured_utc=2026-07-25T07:58:44Z
+cell=l75_rt
+
+comm,policy,count
+bash,SCHED_OTHER,12
+python3,SCHED_FIFO,20
+sudo,SCHED_OTHER,20

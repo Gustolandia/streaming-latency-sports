@@ -234,3 +234,44 @@ class TestMain:
     def test_missing_directory(self, temp_dir, capsys):
         assert main(["--depth", str(temp_dir / "nope")]) == 1
         assert "missing campaign directory" in capsys.readouterr().out
+
+
+class TestArmDrivenToZero:
+    """The real-time arm recorded exactly ZERO inversions in E-A9.
+
+    An earlier version required inversion > 0 for a row to be usable, which dropped that arm and
+    reported UNDECIDED while the base arm was showing a clean quantitative match. An arm driven
+    to the floor is the strongest form of the predicted direction; discarding it for being
+    awkward to divide by is the wrong instinct.
+    """
+    OK = {"checked": True, "ok": True}
+
+    def _real(self):
+        return [{"arm": "base", "p_tail": 0.18068, "inversion": 0.23149},
+                {"arm": "rt", "p_tail": 0.01845, "inversion": 0.0}]
+
+    def test_the_level_match_survives_a_zero_arm(self):
+        v = verdict(self._real(), self.OK)
+        assert v["decided"] and v["levels_ok"]
+        assert v["outcome"] == "LEVEL MATCH, RATIO UNTESTABLE"
+        assert v["base_level"] == pytest.approx(0.78, abs=0.01)
+
+    def test_the_ratio_test_is_undefined_not_passed(self):
+        """With no finite inversion ratio there is nothing to compare the tail ratio against.
+        Reporting that as a pass would claim a test that was never run."""
+        v = verdict(self._real(), self.OK)
+        assert v["ratio_ok"] is None and v["rt_floored"]
+
+    def test_the_tail_ratio_is_still_reported(self):
+        v = verdict(self._real(), self.OK)
+        assert v["tail_ratio"] == pytest.approx(9.79, abs=0.05)
+
+    def test_a_zero_arm_with_a_bad_level_is_a_mismatch(self):
+        rows = [{"arm": "base", "p_tail": 0.99, "inversion": 0.01},
+                {"arm": "rt", "p_tail": 0.5, "inversion": 0.0}]
+        assert verdict(rows, self.OK)["outcome"] == "LEVEL MISMATCH"
+
+    def test_a_zero_base_arm_gives_nothing_to_account_for(self):
+        rows = [{"arm": "base", "p_tail": 0.18, "inversion": 0.0},
+                {"arm": "rt", "p_tail": 0.02, "inversion": 0.0}]
+        assert not verdict(rows, self.OK)["decided"]

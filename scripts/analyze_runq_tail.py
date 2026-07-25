@@ -142,22 +142,45 @@ def verdict(rows, check):
     if not check.get("ok", False):
         return {"decided": False,
                 "why": "the instrument changed the measurement; comparison withheld"}
-    usable = [r for r in rows if r["p_tail"] is not None and r["inversion"] > 0]
-    if len(usable) < 2:
-        return {"decided": False, "why": "need both arms with a traced tail"}
+    # A row with ZERO inversions is informative, not unusable. Excluding it -- as an earlier
+    # version did, by requiring inversion > 0 -- threw away the real-time arm entirely and
+    # reported UNDECIDED while the base arm was showing a clean quantitative match. An arm that
+    # drove the rate to the floor is the strongest possible version of the predicted direction,
+    # and it must be reported as that rather than discarded for being inconvenient to divide by.
+    usable = [r for r in rows if r["p_tail"] is not None]
     base = next((r for r in usable if r["arm"] == "base"), None)
     rt = next((r for r in usable if r["arm"] == "rt"), None)
     if base is None or rt is None:
-        return {"decided": False, "why": "need both a base and an rt arm"}
-    inv_ratio = base["inversion"] / rt["inversion"]
+        return {"decided": False, "why": "need both a base and an rt arm with a traced tail"}
+    if base["inversion"] <= 0:
+        return {"decided": False, "why": "no inversions in the base arm to account for"}
+
     tail_ratio = (base["p_tail"] / rt["p_tail"]) if rt["p_tail"] > 0 else float("inf")
+    rt_floored = rt["inversion"] <= 0
+    inv_ratio = float("inf") if rt_floored else base["inversion"] / rt["inversion"]
+
+    # The LEVEL test is what the tracing was for: does P(stall > T_true) predict the rate?
+    # It is applied per arm, and an arm at zero cannot be scored on it.
+    scored = [r for r in usable if r["inversion"] > 0]
     levels_ok = all(
-        1 / MATCH_FACTOR <= (r["p_tail"] / r["inversion"]) <= MATCH_FACTOR for r in usable)
-    ratio_ok = (1 / MATCH_FACTOR) <= (tail_ratio / inv_ratio) <= MATCH_FACTOR
+        1 / MATCH_FACTOR <= (r["p_tail"] / r["inversion"]) <= MATCH_FACTOR for r in scored)
+    base_level = base["p_tail"] / base["inversion"]
+    # With the rt arm at zero there is no finite inversion ratio to compare the tail ratio
+    # against, so the ratio test is undefined rather than passed.
+    ratio_ok = (None if rt_floored
+                else (1 / MATCH_FACTOR) <= (tail_ratio / inv_ratio) <= MATCH_FACTOR)
+
+    if rt_floored:
+        outcome = "LEVEL MATCH, RATIO UNTESTABLE" if levels_ok else "LEVEL MISMATCH"
+    elif levels_ok and ratio_ok:
+        outcome = "MATCH"
+    elif ratio_ok:
+        outcome = "WRONG SCALE"
+    else:
+        outcome = "REFUTED"
     return {"decided": True, "inv_ratio": inv_ratio, "tail_ratio": tail_ratio,
-            "levels_ok": levels_ok, "ratio_ok": ratio_ok,
-            "outcome": ("MATCH" if levels_ok and ratio_ok
-                        else "WRONG SCALE" if ratio_ok else "REFUTED")}
+            "levels_ok": levels_ok, "ratio_ok": ratio_ok, "rt_floored": rt_floored,
+            "base_level": base_level, "n_scored": len(scored), "outcome": outcome}
 
 
 def main(argv=None):

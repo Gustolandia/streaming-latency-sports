@@ -65,9 +65,14 @@ specifically, because an exponential fits it equally well. Finally, because a fa
 have made is a cautionary tale rather than a finding, we audited a benchmark we did not write:
 the OpenMessaging Benchmark computes the same cross-process difference and then admits a sample
 to its histogram only if it is positive, without counting what it drops --- so the exposure is a
-property of a widely used measurement design, and that design cannot report the problem. The fifth result corrects the model: $\Delta$ is not one distribution but two, a
-narrow jitter core plus a rare tail from descheduling, and load multiplies the tail's
-\emph{weight} ($60\times$) far faster than the core's \emph{width} ($5\times$). Of the original
+property of a widely used measurement design, and that design cannot report the problem. The fifth result corrects the model, and we think it is the most useful thing here after the
+audit itself. $\Delta$ is not one distribution but two --- a narrow jitter core plus a rare tail
+from descheduling --- and load multiplies the tail's \emph{weight} ($60\times$) far faster than
+the core's \emph{width} ($5\times$). Inversions also arrive in bursts of consecutive events, which
+no single distribution can produce. Both follow if the thread that records the time is simply
+\emph{not running} some fraction $p(\rho)$ of the time: the failure is a rare state rather than a
+wide distribution, which changes the mitigation from a better clock to a thread that cannot be
+preempted. Of the original
 question, what survives is modest and we report it as such: the two brokers sit within one
 millisecond of each other, with a small, reproducible $0.41$~ms transport advantage for
 \redis{} that is real but negligible against a feed whose human annotation latency is measured in
@@ -1060,15 +1065,46 @@ effect-size rule itself --- and three further consequences, on utilisation, proc
 instrument asymmetry. Each was pre-registered with its falsification criterion before the data
 existed, and all four are tested here on conditions that pass the check.
 
-\paragraph{H1, the effect-size rule.} The strongest evidence is the widest contrast, and it is
-clean: the co-located arm measuring $T_{\mathrm{true}} \approx 0.5$~ms fails wholesale, while the
-network arm measuring tens of seconds passes every run on the same hardware
-(Section~\ref{sec:property}). Across the intermediate range, a \texttt{netem} delay sweep gives
-inversion rates $0.076$, $0.114$, $0.070$, $0.034$, $0.050$ at $0$, $1$, $5$, $20$ and $50$~ms
-($\rho_s = -0.80$, $n=5$); we report the rank correlation rather than a clean ordering, and we do
-not lean on its slope, because injected delay also inflates variance and so confounds
-$T_{\mathrm{true}}$ with backlog (Section~\ref{sec:threats}). The direction is consistent across
-both the clean contrast and the confounded sweep. \textbf{Supported.}
+\paragraph{H1, the effect-size rule --- on one contrast, because the other manipulation does not
+work.} The evidence is the widest contrast, and it is clean: the co-located arm measuring
+$T_{\mathrm{true}} \approx 0.5$~ms fails wholesale, while the network arm measuring tens of
+seconds passes every run on the same hardware (Section~\ref{sec:property}). Five orders of
+magnitude in the measured quantity, one instrument, opposite outcomes. \textbf{Supported.}
+
+\emph{We withdraw the intermediate points, and the reason is worth more than they were.} An
+earlier version supported H1 additionally with a \texttt{netem} delay sweep, reporting a rank
+correlation across injected delays of $0$ to $50$~ms. We then re-ran that sweep at a verified
+real-time rate with a manipulation check, and the check failed --- not because the treatment was
+too weak, but because it does not act on the quantity at all. Injecting delay at the broker moves
+end-to-end \tti{} almost exactly as commanded ($3.72 \to 23.61$~ms across $0 \to 20$~ms) while
+broker transport stays flat ($0.535 \to 0.482$~ms; Table~\ref{tab:eb2}).
+
+The cause is that the delay is \textbf{common-mode}. It delays the acknowledgement travelling
+broker-to-producer and the record travelling broker-to-consumer by the same amount, and transport
+is the \emph{difference} of stamps taken at those two arrivals, so the injected delay cancels
+exactly. A manipulation can be applied correctly, verified present at the interface, and still not
+touch the quantity under study --- which is the same lesson as the rest of this paper, arriving
+this time in our own experimental design rather than in our instrument. The original sweep's
+correlation was therefore never an effect-size relationship, and we report the sweep only as the
+negative result it is.
+
+\begin{table}[t]
+\caption{Why the delay sweep is not an effect-size manipulation. Injected one-way delay at the
+broker, verified present at the interface, at a verified true real-time rate. \tti{} tracks the
+injection; broker transport does not move, because the same delay is added to both arrivals whose
+difference defines it.}
+\label{tab:eb2}
+\begin{tabular}{rrrr}
+\toprule
+Injected delay & \tti{} median & Transport median & Transport IQR \\
+\midrule
+0~ms  &  3.72~ms & 0.535~ms & 0.162~ms \\
+1~ms  &  4.67~ms & 0.508~ms & 0.166~ms \\
+5~ms  &  8.66~ms & 0.494~ms & 0.159~ms \\
+20~ms & 23.61~ms & 0.480~ms & 0.150~ms \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \paragraph{H2, the utilisation rule --- with the functional form withdrawn.} Sweeping background
 load from idle to oversubscription, with no core pinning so the measured utilisation is the right
@@ -1228,6 +1264,74 @@ Utilisation $\rho$ & Core $\sigma_{\mathrm{core}}$ (ms) & Inversion rate & Clust
 \bottomrule
 \end{tabular}
 \end{table}
+
+\subsection{What the mixture is: a rare state, not a wide distribution}
+\label{sec:twostate}
+
+Section~\ref{sec:model} models $\Delta$ as one distribution. Three results have now cut against
+that: the scale family is falsified, the M/G/1 form is withdrawn, and the manipulation we used to
+probe the effect-size axis turns out not to act on it. This section states what we think replaces
+it. We separate carefully what the data forces from what we inferred by looking at it.
+
+\paragraph{The observation no single distribution can produce.} Inversions \emph{cluster in
+time}: Wald--Wolfowitz $z$ from $-4.3$ to $-6.9$ at every load, idle included
+(Table~\ref{tab:mixture}). They arrive in runs of consecutive events. A distribution --- of any
+shape, however heavy its tail --- describes how \emph{large} a delay is and says nothing about
+\emph{which} events receive one. Clustering is a statement about time, and it is the fact the
+old model had no way to use.
+
+\paragraph{The model.} Suppose the stamping thread is in one of two states. When \emph{running},
+it reads the clock promptly and the delay is ordinary jitter: a narrow core of width
+$\sigma_c$. When \emph{preempted}, it is off-CPU, and every event that becomes ready during that
+interval inherits the residual time until it is rescheduled. Writing $p$ for the fraction of time
+preempted and $S(t)$ for the survival function of that residual,
+
+\begin{equation}
+\Pr[\text{inversion} \mid T_{\mathrm{true}}] \;=\; p(\rho)\;S(T_{\mathrm{true}}) .
+\label{eq:twostate}
+\end{equation}
+
+The failure is then a \emph{rare state}, not a wide distribution. Load does not mainly stretch the
+delay; it changes how often the thread that must record the time is not running.
+
+\paragraph{What it accounts for.} Clustering follows by construction: being preempted is an
+\emph{interval}, so the events inside it are corrupted together and a two-state process cannot
+help but cluster. The $60\times$ growth in tail weight against $5\times$ in core width is two
+different parameters moving --- $\sigma_c$ belongs to the running state, $p$ to the scheduler.
+The scale family fails because a scale family has one parameter and here two move at very
+different rates. And the M/G/1-versus-exponential question dissolves: the load dependence lives
+in $p(\rho)$, a busy fraction bounded in $[0,1]$, which both candidate forms approximate over the
+sampled range while neither is the mechanism.
+
+\paragraph{A prediction that points the opposite way.} The two structures disagree
+geometrically. A scale family changes $\sigma$, so its tail curves \emph{rescale horizontally};
+Equation~\ref{eq:twostate} changes $p$, so its curves \emph{shift vertically and stay parallel} on
+a log scale. Taking the log ratio of two conditions' tail masses at several thresholds, the
+two-state model predicts a constant, independent of the threshold.
+
+Restricting to tail estimates backed by at least $20$ events --- nine far-tail points resting on
+five to eight events are excluded, as they carry log-scale errors larger than the effect --- the
+median spread of that log ratio across conditions is $\mathbf{0.29}$, a factor of $1.34$, with a
+worst case of $0.91$. Set against the $23\times$ failure of the scale-family collapse, the tail
+curves are close to parallel. The two conditions with the largest spreads sit at intermediate
+load, where the residual distribution is plausibly still shifting, so the honest statement is
+$\Pr[\text{inv}] = p(\rho)\,S(c;\rho)$ with $p$ varying fast and $S$ slowly: separability is a
+good first-order description rather than an exact law.
+
+\paragraph{What this is worth, and what it is not.} It is mechanistic where the old account was
+descriptive --- ``risk rises with utilisation'' is a correlation; ``the stamping thread is
+preempted a $p(\rho)$ fraction of the time, and every event arriving in that window is corrupted
+together'' names the moving part. It is also actionable in a way a distributional model is not:
+if the failure is occupancy, the mitigation is not a better clock but keeping the stamping thread
+runnable --- a dedicated core, a raised priority, or a stamping path the workload cannot preempt.
+
+But we found this by looking at the data. The separability test above is exploratory, and
+Section~\ref{sec:limitations} says so; a confirmatory version is pre-registered in the artefact.
+Two states is also the smallest model consistent with what we see, not a claim about what the
+kernel does. The decisive test we have not yet run is to measure $p$ \emph{independently} --- from
+run-queue wait in \texttt{/proc/\textless pid\textgreater/schedstat} --- and check it against the
+$p$ inferred from tail mass. If those disagree, the model is wrong in a way no amount of curve
+fitting would reveal, and that is the experiment we would run next.
 
 \subsection{The brokers are equivalent within a millisecond, but not indistinguishable}
 \label{sec:e1}
@@ -1873,6 +1977,18 @@ roughly twelve times faster than it widens the core. We pre-registered that test
 simpler form to fail, and it did. The practical reading is less comfortable than the tidy version:
 a benchmark can sit at a load where its numbers look tight, because the core is narrow, while the
 tail that will corrupt them is already growing underneath.
+
+The fact that forced a mechanism rather than a curve was the clustering. Inversions arrive in runs
+of consecutive events at every load, idle included, and no distribution predicts that --- a
+distribution says how large a delay is, never which events receive one. What does predict it is a
+thread that is periodically \emph{not running}: being preempted is an interval, so the events
+inside it are corrupted together. On that reading the mixture is not two distributions but two
+states, load sets how often the instrument is in the bad one, and the tail curves at different
+loads should be parallel rather than rescaled --- which is what we find, a median factor of $1.34$
+against the scale family's $23$. We reached this by looking at our data and say so; the
+confirmatory test, and a way to measure the occupancy directly from run-queue statistics rather
+than infer it, are pre-registered in the artefact. If it holds, the advice it implies is not a
+better clock but a stamping thread the workload cannot preempt.
 
 A paper that only ever audits its own mistakes proves that its authors are careless, not that
 its method is needed. So we turned the argument outward. The OpenMessaging

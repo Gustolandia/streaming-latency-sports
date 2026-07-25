@@ -482,12 +482,15 @@ class TestH3IsMeasuredAndSupported:
 class TestMeasuredRules:
     """Section 7.3 must report the model's rules with the values actually measured."""
 
-    def test_h1_h2_h4_values_appear(self, tex):
+    def test_h2_h4_values_appear(self, tex):
+        """H1 no longer quotes a rank correlation: its sweep was withdrawn, not merely doubted."""
         section = _section(tex, "sec:rules")
-        for token in ("-0.80", "0.98", "+0.80"):        # H1, H2, H4 rank correlations
+        for token in ("0.98", "+0.80"):                 # H2, H4 rank correlations
             assert token in section, f"missing rank correlation {token}"
         for token in ("0.945", "0.640"):                # H2 model-vs-linear fit
             assert token in section, f"missing R^2 {token}"
+        assert "-0.80" not in section, \
+            "the withdrawn netem rank correlation must not reappear"
 
     def test_all_four_rules_are_reported_supported(self, tex):
         section = _section(tex, "sec:rules")
@@ -641,6 +644,45 @@ class TestH2FormIsWithdrawn:
                     f"{name} names M/G/1 without withdrawing the form claim"
 
 
+class TestTwoStateModel:
+    """The replacement model must match its artefact and stay honest about its status."""
+
+    def test_the_separability_numbers_match_the_csv(self, tex):
+        rows = _rows("model", "separability.csv")
+        assert rows, "the separability artefact must exist"
+        spreads = sorted(float(r["spread"]) for r in rows)
+        median = spreads[len(spreads) // 2]
+        worst = max(spreads)
+        section = _section(tex, "sec:twostate")
+        assert _contains_number(section, median, 2), f"median spread {median} not in the paper"
+        assert _contains_number(section, worst, 2), f"worst spread {worst} not in the paper"
+        # The claim is only meaningful against the scale family's failure.
+        assert "23" in section, "the scale-family comparison must be stated"
+
+    def test_the_mechanism_and_its_prediction_are_stated(self, tex):
+        section = " ".join(_section(tex, "sec:twostate").lower().split())
+        assert "preempted" in section and "running" in section
+        assert "rare state" in section, "the central claim must be stated plainly"
+        assert "vertically" in section and "horizontal" in section, \
+            "the discriminating geometric prediction must be given"
+
+    def test_the_exploratory_status_is_admitted(self, tex):
+        """We found this by looking at the data; the paper must not present it as confirmed."""
+        section = " ".join(_section(tex, "sec:twostate").lower().split())
+        assert "exploratory" in section
+        assert "found this by looking at the data" in section
+        assert "schedstat" in section, "the decisive unrun test must be named"
+
+    def test_clustering_is_offered_as_the_motivating_fact(self, tex):
+        section = " ".join(_section(tex, "sec:twostate").lower().split())
+        assert "cluster" in section
+        rows = _rows("model", "inversion_clustering.csv")
+        for r in rows:
+            assert float(r["median_z"]) < -2
+        # The paper quotes the range, which must bracket the measured values.
+        assert "-4.3" in section and "-6.9" in section
+
+
 class TestNarrativeArc:
     """The paper must read as one story: broker question -> impossible answer -> what survives.
 
@@ -788,13 +830,26 @@ class TestNetemConfoundIsDisclosed:
         assert "9{,}200" in para or "9200" in para, "the variance blow-up must be quantified"
         assert "confound" in para.lower()
 
-    def test_h1_does_not_lean_on_the_confounded_slope(self, tex):
+    def test_h1_rests_only_on_the_contrast_the_manipulation_cannot_spoil(self, tex):
+        """The netem sweep is withdrawn outright: it does not act on T_true at all.
+
+        Delay injected at the broker reaches the acknowledgement and the record equally, so it
+        cancels in their difference. A test that merely checked for hedging would let the old
+        correlation creep back; this one requires the withdrawal and its reason.
+        """
         rules = tex[tex.index("H1, the effect-size rule"):]
-        h1 = rules[:rules.index(r"\paragraph{H2")]
-        low = h1.lower()
-        assert "do not lean on its slope" in low or "not lean on" in low
-        assert "co-located" in low and "network arm" in low, \
-            "H1 must lead with the clean contrast"
+        h1 = " ".join(rules[:rules.index(r"\paragraph{H2")].lower().split())
+        assert "withdraw the intermediate points" in h1
+        assert "common-mode" in h1, "the reason the manipulation fails must be named"
+        assert "co-located" in h1 and "network arm" in h1, \
+            "H1 must rest on the clean five-order-of-magnitude contrast"
+
+    def test_the_common_mode_evidence_matches_the_measurement(self, tex):
+        """TTI tracks the injected delay; transport does not. Both halves must be shown."""
+        table = tex[tex.index(r"\label{tab:eb2}"):]
+        table = table[:table.index(r"\end{table}")]
+        for token in ("3.72", "23.61", "0.535", "0.480"):
+            assert token in table, f"{token} missing from the common-mode table"
 
 
 class TestRateProvenanceIsDisclosed:

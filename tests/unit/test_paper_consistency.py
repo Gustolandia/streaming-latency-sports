@@ -1110,3 +1110,55 @@ class TestCrossReferencesResolve:
         broken = r"see Section~\ref{sec:knee}. \label{sec:rules} text"
         labels = set(self.LABEL.findall(broken))
         assert [r for r in self.REF.findall(broken) if r not in labels] == ["sec:knee"]
+
+
+class TestLoadGeometryAndTtrue:
+    """The two results the audit found missing from the manuscript entirely.
+
+    Both were collected, analysed and committed, and neither appeared in the paper. A number
+    that exists only in a CSV is not a finding, and the gap was invisible to every check we had
+    -- the consistency tests verify that what the paper says matches the data, and say nothing
+    about data the paper never mentions.
+    """
+
+    def test_the_geometry_result_is_in_the_paper(self, tex):
+        section = _section(tex, "sec:twostate")
+        rows = _rows("model", "ea6", "knee_resolution.csv")
+        assert rows, "the E-A6 artefact must exist"
+        by = {r["condition"]: float(r["inversion_rate"]) for r in rows}
+        for cond in ("k6_conc", "k6_spread"):
+            assert _contains_number(section, by[cond], 4), f"{cond} rate missing from the paper"
+
+    def test_the_identical_utilisation_is_stated(self, tex):
+        """The whole force of the result is that rho is the SAME in both arms at k=6."""
+        rows = _rows("model", "ea6", "knee_resolution.csv")
+        rho = {r["condition"]: float(r["rho"]) for r in rows}
+        assert rho["k6_conc"] == rho["k6_spread"], "the artefact must show identical rho"
+        section = " ".join(_section(tex, "sec:twostate").split())
+        assert "0.7531" in section and "identical to four decimals" in section
+
+    def test_the_ttrue_sweep_is_in_the_paper(self, tex):
+        section = _section(tex, "sec:twostate")
+        rows = _rows("model", "ttrue_sweep.csv")
+        assert rows, "the E-A10 artefact must exist"
+        for r in rows:
+            assert _contains_number(section, float(r["transport_ms"]), 3), \
+                f"pad {r['pad_bytes']} transport missing"
+            assert _contains_number(section, float(r["inversion"]), 4), \
+                f"pad {r['pad_bytes']} inversion missing"
+
+    def test_the_ttrue_direction_is_stated_as_counterintuitive(self, tex):
+        """A slower path being a MORE reliable measurement is the discriminating claim; if the
+        paper states it as ordinary, the reader misses why it is evidence."""
+        section = " ".join(_section(tex, "sec:twostate").lower().split())
+        assert "slower" in section and "more reliable" in section
+        assert "against the observed fall" in section or "against its own confound" in section
+
+    def test_the_ttrue_sweep_manipulation_actually_worked(self):
+        """Guards the precondition, not the prose: if a re-run failed to move transport, the
+        inversion rates in the paper would mean nothing."""
+        rows = _rows("model", "ttrue_sweep.csv")
+        t = [float(r["transport_ms"]) for r in rows]
+        inv = [float(r["inversion"]) for r in rows]
+        assert t[-1] / t[0] > 10, "padding must have lengthened transport substantially"
+        assert inv[-1] < inv[0], "the inversion rate must have fallen"

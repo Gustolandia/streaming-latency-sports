@@ -1162,3 +1162,45 @@ class TestLoadGeometryAndTtrue:
         inv = [float(r["inversion"]) for r in rows]
         assert t[-1] / t[0] > 10, "padding must have lengthened transport substantially"
         assert inv[-1] < inv[0], "the inversion rate must have fallen"
+
+
+class TestConcurrentWork:
+    """Sharma et al. (arXiv:2604.21361) report the same observable from a different cause.
+
+    Their baseline is that with clocks aligned, NO negative spans occur -- which is what licenses
+    reading their 3-5 ms onset as a safety threshold. We see ~23% with no skew available to
+    blame. The paper must state both the convergence and the qualification, and must not
+    overstate the disagreement: their measurements are not in doubt, only the generalisation a
+    reader would draw from them.
+    """
+
+    def test_the_concurrent_work_is_cited(self, tex):
+        assert "sharma2026causality" in tex, "concurrent work on the same failure must be cited"
+
+    def test_their_threshold_is_stated_accurately(self, tex):
+        section = " ".join(_section(tex, "sec:related_time").split())
+        assert "$5$~ms" in section or "5~ms" in section, "their onset must be given"
+        assert "$3$~ms" in section or "3~ms" in section
+
+    def test_our_measured_offset_is_compared_to_their_skew(self, tex):
+        """The qualification only lands if the numbers are put side by side."""
+        section = " ".join(_section(tex, "sec:related_time").split())
+        assert "0.067" in section, "our measured inter-host offset must be quoted"
+        assert "load" in section.lower(), "the difference between the settings must be named"
+
+    def test_the_disagreement_is_scoped_to_the_generalisation(self, tex):
+        """We must not imply their measurements are wrong; only that the safe-threshold
+        reading does not survive load."""
+        section = " ".join(_section(tex, "sec:related_time").lower().split())
+        assert "qualifies" in section or "would be wrong on a loaded machine" in section
+
+    def test_the_scheduler_mechanism_is_cited(self, tex):
+        """L3 presumes a runnable thread does not simply migrate to an idle core. That
+        presumption needs a source, and it has one."""
+        assert "lozi2016wastedcores" in tex
+        section = " ".join(_section(tex, "sec:related_tail").split())
+        assert "work conservation" in section or "cores stay idle" in section
+
+    def test_the_tail_index_is_not_claimed_as_a_constant(self, tex):
+        section = " ".join(_section(tex, "sec:related_tail").lower().split())
+        assert "one fitted value from one campaign" in section

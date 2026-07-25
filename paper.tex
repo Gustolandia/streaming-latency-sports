@@ -278,6 +278,32 @@ addresses precisely the inadequacy we encountered --- that millisecond-grade syn
 too coarse to profile modern streaming engines --- by calibrating time-stamp counters across
 nodes during quiescent periods, reaching roughly $92\,\mu$s accuracy.
 
+\paragraph{Concurrent work reaches the same observable by a different route.} While this study
+was in progress, Sharma et al.~\cite{sharma2026causality} reported the same failure in
+distributed AI inference pipelines, and their terminology converges with ours: they count
+\emph{negative timing spans}, defined as timestamps implying that events were received before
+they were sent. They inject clock skew at the application level across a Kafka and a ZeroMQ
+pipeline and find a threshold --- no violations at $0$, $1$, $2$ or $3$~ms of skew, clear
+violations from $5$~ms upward. They also propose a binary \texttt{causality\_health} signal that
+declares loss of causal trust when any violation occurs in a rolling window, which is
+independently the same instinct as the gate in Section~
+ef{sec:gate}. Two groups arriving at the
+same check from different directions is, we think, the strongest available argument that the
+practice is missing rather than merely unfashionable.
+
+Our result qualifies theirs in one respect that matters for practice. Their baseline establishes
+that with clocks properly aligned, \emph{no negative spans occur} --- the finding that licenses
+reading their onset region as a safety threshold. We observe inversion rates near $23\%$ with no
+clock skew available to blame: our transport measurement takes both stamps on a single host, and
+the inter-host offset on our testbed measures $0.067$~ms, twenty times below their lowest tested
+skew and fifty times below their onset. The difference is load. Their pipeline runs on hosts with
+``sufficient memory to support inference workloads without swapping or resource contention'';
+ours sit at $88\%$ utilisation, where Section~
+ef{sec:twostate} shows the scheduler supplies
+stalls far longer than the interval being measured. A deployment that keeps skew under $3$~ms and
+concludes it is safe would be wrong on a loaded machine, and the mechanism that makes it wrong
+needs no skew at all.
+
 We therefore make a narrower claim than "nobody has considered this". The accuracy problem is
 recognised and better instruments exist. What appears to be missing is the \emph{practice}: an
 audit applied uniformly to every run of a campaign, with the rejection rate reported the way a
@@ -331,6 +357,26 @@ for cross-process delay.
 Our model treats the stamping delay $\delta$ as scheduler waiting time, and
 Section~\ref{sec:mixture} finds it has two components rather than one. Both the framing and the
 correction are anticipated by the tail-latency literature.
+
+\paragraph{Why the thread waits while cores look free.} Section~ef{sec:twostate} finds that
+spread load starves the stamping thread more than concentrated load at identical utilisation,
+which presumes that a runnable thread does not simply migrate to whichever core is idle. That
+presumption is not ours: Lozi et al.~\cite{lozi2016wastedcores} document four distinct Linux
+scheduler bugs under which cores stay idle \emph{for seconds} while runnable threads sit in
+another core's run queue, and note that conventional testing was ineffective at finding them
+because throughput looks healthy throughout. Our measurement is a consequence of that behaviour
+observed on the instrument rather than on the workload: if work conservation held exactly, a
+stamping thread would never wait while a core was free, and the geometry contrast of
+Table~ef{tab:ea6} would have to be flat. It is not flat, and it converges only where no core
+is free to migrate to.
+
+That literature also supplies the shape. Section~ef{sec:twostate} measures a tail index near
+$0.34$, meaning the stall distribution has neither a finite mean nor a finite variance, which is
+why the cumulative scheduler counters could not account for the effect --- they estimate a
+quantity that does not exist. Interference-driven tails of this severity are consistent with what
+the tail-latency literature reports, though we know of no prior measurement of the index itself
+for run-queue delay, and we report ours as one fitted value from one campaign rather than as a
+constant of the system.
 
 Li et al.~\cite{li2014tales} decompose the tail latency of three Linux servers into hardware,
 operating-system and application-level sources, and report the finding that matters most for us:

@@ -107,30 +107,53 @@ class TestLoadCells:
 
 
 class TestVerdict:
-    def test_reports_the_correction_when_duration_moves_and_occupancy_does_not(self):
-        rows = [{"occ_fall": 1.75, "med_fall": 20.0}]
-        v = verdict(rows)
-        assert v["decided"] and v["model_corrected"]
-        assert not v["occupancy_prediction_held"] and v["duration_explains"]
+    """The verdict rests on the AGGREGATE, not the per-process median.
 
-    def test_reports_the_original_prediction_holding(self):
-        """If occupancy really had fallen tenfold, the script must say so instead."""
-        v = verdict([{"occ_fall": 15.0, "med_fall": 20.0}])
-        assert v["occupancy_prediction_held"] and not v["model_corrected"]
+    The median falls 20-143x on the real data while the aggregate falls 3-5x. Judging on the
+    median would let skew across processes masquerade as a stronger mechanism, so these tests
+    pin the conservative choice in place.
+    """
 
-    def test_reports_neither_when_nothing_moves(self):
-        v = verdict([{"occ_fall": 1.1, "med_fall": 1.2}])
-        assert v["decided"] and not v["model_corrected"]
-        assert not v["duration_explains"] and not v["occupancy_prediction_held"]
+    def test_a_high_median_does_not_rescue_a_low_aggregate(self):
+        """The real case: median moves a lot, aggregate does not. Must NOT be called sufficient."""
+        v = verdict([{"occ_fall": 1.95, "agg_fall": 4.19, "med_fall": 81.5, "slice_ratio": 2.5}])
+        assert v["decided"] and not v["aggregate_explains"]
+        assert v["skewed"], "a median 20x the aggregate must be flagged as skewed"
+        assert not v["occupancy_prediction_held"]
+
+    def test_a_large_aggregate_fall_is_sufficient(self):
+        v = verdict([{"occ_fall": 1.9, "agg_fall": 25.0, "med_fall": 30.0, "slice_ratio": 1.1}])
+        assert v["aggregate_explains"] and not v["skewed"]
+
+    def test_reports_the_occupancy_prediction_holding(self):
+        v = verdict([{"occ_fall": 15.0, "agg_fall": 20.0, "med_fall": 22.0, "slice_ratio": 1.0}])
+        assert v["occupancy_prediction_held"]
+
+    def test_flags_when_the_thread_is_scheduled_less_often(self):
+        """'It waits as often, just more briefly' is false when the slice count drops."""
+        v = verdict([{"occ_fall": 2.0, "agg_fall": 5.0, "med_fall": 10.0, "slice_ratio": 3.99}])
+        assert not v["scheduled_as_often"]
+
+    def test_equal_slice_counts_are_reported_as_scheduled_as_often(self):
+        v = verdict([{"occ_fall": 2.0, "agg_fall": 5.0, "med_fall": 10.0, "slice_ratio": 1.0}])
+        assert v["scheduled_as_often"]
 
     def test_undecided_without_rows(self):
         assert not verdict([])["decided"]
 
     def test_uses_the_median_across_levels(self):
-        rows = [{"occ_fall": 1.5, "med_fall": 30.0}, {"occ_fall": 2.0, "med_fall": 10.0},
-                {"occ_fall": 1.8, "med_fall": 20.0}]
+        rows = [{"occ_fall": 1.5, "agg_fall": 3.0, "med_fall": 30.0, "slice_ratio": 1.0},
+                {"occ_fall": 2.0, "agg_fall": 5.0, "med_fall": 10.0, "slice_ratio": 1.0},
+                {"occ_fall": 1.8, "agg_fall": 4.0, "med_fall": 20.0, "slice_ratio": 1.0}]
         v = verdict(rows)
-        assert v["occupancy_fall"] == pytest.approx(1.8) and v["duration_fall"] == pytest.approx(20.0)
+        assert v["occupancy_fall"] == pytest.approx(1.8)
+        assert v["aggregate_fall"] == pytest.approx(4.0)
+
+    def test_target_fall_is_adjustable(self):
+        """If the inversion result were smaller, a 5x aggregate would suffice."""
+        row = [{"occ_fall": 2.0, "agg_fall": 5.0, "med_fall": 6.0, "slice_ratio": 1.0}]
+        assert not verdict(row)["aggregate_explains"]
+        assert verdict(row, target_fall=8.0)["aggregate_explains"]
 
 
 class TestCompare:
@@ -138,6 +161,7 @@ class TestCompare:
         cells = load_cells(_arms(temp_dir, "l75", BASE, RT))
         r = compare("l75", cells["l75"])
         assert r["occ_fall"] > 1 and r["med_fall"] == pytest.approx(25.0, rel=1e-3)
+        assert r["agg_fall"] > 1 and r["wait_fall"] > 1
         assert r["slice_ratio"] == pytest.approx(1.0, rel=1e-6)
 
     def test_zero_denominator_gives_infinity_not_a_crash(self, temp_dir):
@@ -154,7 +178,8 @@ class TestMain:
         rc = main(["--depth", str(temp_dir), "--out", str(temp_dir / "o")])
         out = capsys.readouterr().out
         assert rc == 0
-        assert "MODEL CORRECTED BY MEASUREMENT" in out and "FAILED" in out
+        assert "NEITHER QUANTITY ACCOUNTS" in out and "FAILED" in out
+        assert "SKEWED" in out, "the median/aggregate divergence must be flagged"
         rows = list(csv.DictReader(open(temp_dir / "o" / "stall_duration.csv")))
         assert rows[0]["level"] == "l75"
 
@@ -164,14 +189,32 @@ class TestMain:
         _arms(temp_dir, "l75", base, rt)
         main(["--depth", str(temp_dir), "--out", str(temp_dir / "o")])
         out = capsys.readouterr().out
-        assert "HELD" in out and "MODEL CORRECTED" not in out
+        assert "prediction held" in out
 
     def test_end_to_end_reports_no_mechanism(self, temp_dir, capsys):
         base = {100: (1_000_000, 1_000_000, 5)}
         rt = {200: (1_000_000, 900_000, 5)}
         _arms(temp_dir, "l75", base, rt)
         main(["--depth", str(temp_dir), "--out", str(temp_dir / "o")])
-        assert "not established by these counters" in capsys.readouterr().out
+        assert "NEITHER QUANTITY ACCOUNTS" in capsys.readouterr().out
+
+    def test_end_to_end_reports_stall_length_carrying_the_result(self, temp_dir, capsys):
+        """Occupancy fails but the AGGREGATE stall length is large: the corrected model wins
+        on the conservative statistic, which is the only way it is allowed to win."""
+        base = {100: (1_000_000, 1_000_000, 1), 101: (1_000_000, 1_000_000, 1)}
+        rt = {200: (1_000_000, 900_000, 50), 201: (1_000_000, 900_000, 50)}
+        _arms(temp_dir, "l75", base, rt)
+        main(["--depth", str(temp_dir), "--out", str(temp_dir / "o")])
+        out = capsys.readouterr().out
+        assert "stall length carries the result" in out
+        assert "NEITHER QUANTITY" not in out
+
+    def test_end_to_end_notes_a_dropped_slice_count(self, temp_dir, capsys):
+        base = {100: (1_000_000, 1_250_000, 20)}
+        rt = {200: (1_000_000, 500_000, 5)}      # scheduled 4x less often
+        _arms(temp_dir, "l75", base, rt)
+        main(["--depth", str(temp_dir), "--out", str(temp_dir / "o")])
+        assert "LESS often" in capsys.readouterr().out
 
     def test_missing_directory(self, temp_dir, capsys):
         assert main(["--depth", str(temp_dir / "nope")]) == 1

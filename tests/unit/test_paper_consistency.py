@@ -1137,6 +1137,43 @@ class TestLoadGeometryAndTtrue:
         section = " ".join(_section(tex, "sec:twostate").split())
         assert "0.7531" in section and "identical to four decimals" in section
 
+    def test_the_uniform_denominator_claim_holds_across_every_campaign(self, tex):
+        """Section 6 states every inversion rate is over 2,985 events. Check it against the files.
+
+        The claim earns something specific -- that every rate comparison is at equal n, so a
+        ratio between cells cannot come from one resting on more data. That is only worth stating
+        if it is true everywhere, so this test reads every rate artefact rather than a sample. A
+        campaign added later with a different run count must either match or move the sentence.
+        """
+        import csv as _csv
+        import glob as _glob
+        offenders = []
+        for path in sorted(_glob.glob(str(RESULTS / "model" / "**" / "*.csv"), recursive=True)):
+            with open(path, newline="", encoding="utf-8") as fh:
+                rows = list(_csv.DictReader(fh))
+            if not rows:
+                continue
+            cols = [c for c in rows[0] if c in ("n_events", "n_base", "n_rt")]
+            for r in rows:
+                for c in cols:
+                    v = (r.get(c) or "").strip()
+                    if v and v != "2985":
+                        offenders.append(f"{Path(path).name}:{c}={v}")
+        # variance_law is the one artefact on a different footing: it is not an inversion rate,
+        # so the sentence does not cover it and it must not be silently folded in.
+        offenders = [o for o in offenders if not o.startswith("variance_law")]
+        assert not offenders, f"the uniform-n sentence is false for: {offenders}"
+
+    def test_the_mechanism_campaigns_appear_in_the_power_table(self, tex):
+        """tab:power says what each claim rests on, and had stopped before the mechanism.
+
+        The four campaigns that decided the mechanism were carrying results in the text with no
+        row here, which is the same gap an earlier audit found in the experiment map.
+        """
+        section = " ".join(_section(tex, "sec:stats").split())
+        for campaign in ("E-A5", "E-A6", "E-A9", "E-A10"):
+            assert campaign in section, f"{campaign} missing from the power table"
+
     def test_the_geometry_z_scores_are_recomputed_from_the_counts(self, tex):
         """The z values in tab:ea6 must follow from the recorded counts, not from memory.
 

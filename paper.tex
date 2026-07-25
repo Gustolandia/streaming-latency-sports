@@ -747,6 +747,14 @@ survives, and its tightest cell clears that line by $2.8$ points. That argument 
 E1 corpus alone. Every campaign run after it retains all of its runs, so no later claim depends
 on the bound.
 
+Every inversion rate reported in Section~\ref{sec:results} is a proportion over $2{,}985$ matched
+events per cell --- 25 runs of the same replay plan, and identical in every campaign and every
+arm. That uniformity is worth stating once rather than repeating in each table: it means every
+rate comparison in this paper, within a campaign or across two of them, is made at equal $n$, so
+a ratio between two cells cannot be an artefact of one resting on more data than the other. The
+per-cell counts are carried in the released artefacts alongside the rates, and the paper's tables
+are regenerated from those files.
+
 \begin{table}[t]
 \caption{What each claim rests on. E1 is the only corpus where retention is a live concern; the
 campaigns after it retain every run, so the breakdown-point argument of
@@ -763,6 +771,10 @@ H2 utilisation shape (\ref{sec:rules}) & E-A, E-A3 & 25 per load level \\
 H4 process count (\ref{sec:rules}) & E-A2 & 15 per level \\
 H3 asymmetry (\ref{sec:rules}) & E-C3, replicated E-C4 & 10, then 15 per arm \\
 Mixture structure (\ref{sec:mixture}) & E-A3, nine levels & 25 per level \\
+Scheduling, not utilisation (\ref{sec:twostate}) & E-A5, E-A5b, E-A7 & 25 per arm \\
+Load geometry (\ref{sec:twostate}) & E-A6, both geometries & 25 per arm \\
+Traced run-queue tail (\ref{sec:twostate}) & E-A9 & 25 per arm \\
+$T_{\mathrm{true}}$ sweep (\ref{sec:twostate}) & E-A10, four payloads & 25 per level \\
 Broker transport (\ref{sec:e1}) & powered, replicated & 15, then 8 per cell \\
 Start-up withdrawal (\ref{sec:attribution}) & window sweep, twice & 3 per window \\
 \midrule

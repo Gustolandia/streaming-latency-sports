@@ -107,11 +107,15 @@ banner "verifying the probe attaches and records before spending cells on it"
 #
 # A guard that cannot fail is not a guard. This one generates the traffic it needs and requires
 # an actual count, which is the same discipline the campaign applies to its own results.
-( python3 -c "
+# NOT in a subshell: `( cmd & )` detaches the job, so $! is never set in this shell, and under
+# `set -u` reading it aborts the campaign. The first version did exactly that and killed E-A9b
+# before a single cell ran. It failed closed rather than open, which is the right direction for
+# a guard to fail, but it still cost the run.
+python3 -c "
 import time
 for _ in range(900):
     time.sleep(0.01)
-" >/dev/null 2>&1 & )
+" >/dev/null 2>&1 &
 PROBE_PID=$!
 sleep 1
 sudo timeout 8 bpftrace "$OUT/runqlat.bt" > "$OUT/probe_check.txt" 2>"$OUT/probe_check.err"

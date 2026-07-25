@@ -159,10 +159,18 @@ def main(argv=None):
     if not v["decided"]:
         print(f"UNDECIDED: {v['why']}")
     elif v["supports"] == "occupancy":
-        print("OCCUPANCY MECHANISM SUPPORTED")
+        print("SCHEDULING MECHANISM SUPPORTED")
         print(f"  {v['why']}.")
         print("  Utilisation-only models (M/G/1, exp(k rho)) predict no change here and are")
         print("  contradicted: rho was held fixed and the rate moved anyway.")
+        print("")
+        print("  Scope, because an earlier version of this line said OCCUPANCY and that")
+        print("  claimed more than the experiment shows. What is established here is that the")
+        print("  rate follows the stamping thread's SCHEDULING rather than the machine's")
+        print("  utilisation. WHICH scheduling property is a separate question, and the")
+        print("  measured counters (analyze_stall_duration.py) say it is not time-average")
+        print("  occupancy: that moves only about 2x while the rate moves 40x. Stall")
+        print("  DURATION moves further, and E-A9 traces the distribution to settle it.")
     else:
         print("UTILISATION MECHANISM SUPPORTED; the two-state occupancy account is contradicted")
         print(f"  {v['why']}.")

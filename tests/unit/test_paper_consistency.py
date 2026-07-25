@@ -593,11 +593,21 @@ class TestExternalHarnessEvidence:
         assert "never runs discards nothing" in section or "never ran" in section
         assert "artefact of the instrument" in section
 
-    def test_the_null_result_matches_its_artefact(self, tex):
+    def test_the_result_matches_its_artefact(self, tex):
+        """Guards the count AND the evidence that the run happened.
+
+        The earlier version of this test asserted the count was ZERO, which was true of a run
+        that never executed. Asserting a number is not enough when the number can be produced
+        by the instrument failing, so valid and pub_lines are checked too: a benchmark that
+        emitted no latency output must never have its count quoted.
+        """
         rows = _rows("external", "omb_loaded_result.csv")
         assert rows, "the OMB run artefact must exist"
-        assert int(rows[0]["discarded_nonpositive"]) == 0, \
-            "a non-zero count would make the paper's null wrong"
+        r = rows[0]
+        assert r["valid"] == "1", "a run that produced no output must not be quoted"
+        assert int(r["pub_lines"]) > 0, "the benchmark must have produced latency output"
+        assert int(r["discarded_nonpositive"]) == 6000
+        assert r["load_pct"] == "88", "an idle run would not have found this"
 
     def test_the_commit_is_named(self, tex):
         section = _section(tex, "sec:external")

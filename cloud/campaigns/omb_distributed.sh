@@ -62,8 +62,25 @@ JH=$(ls -d /usr/lib/jvm/java-17-openjdk-* 2>/dev/null | head -1)
 export JAVA_HOME="$JH"; export PATH="$JH/bin:$PATH"
 MVN="${MVN:-$(command -v /usr/local/bin/mvn || command -v mvn)}"
 
+# Every remote call is bounded in time and gets -n. On 2026-07-25 the worker-start ssh hung for
+# 33 minutes: both workers had in fact come up (Javalin logged "has started" on each), but the
+# ssh that launched the client one never returned, so the campaign never reached its polling
+# stage. Meanwhile the background load timed out, so even an unblocked run would have measured
+# an UNLOADED machine -- the one condition this campaign exists to avoid. A hang is a different
+# failure from a bad result, and the output-validation guard does not cover it.
+#
+# -n detaches stdin. The timeout means no single remote call can stall the campaign again.
 remote_client () {
-  ssh -i "$SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+  timeout 120 ssh -n -i "$SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+      -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 \
+      "ubuntu@$CLIENT" "$@"
+}
+
+# Launching a long-lived remote process is the case that hung, so it gets -f as well: ssh
+# backgrounds itself after authenticating and returns immediately, instead of waiting for a
+# channel the detached JVM may keep open.
+remote_client_detached () {
+  timeout 60 ssh -n -f -i "$SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
       -o ConnectTimeout=10 "ubuntu@$CLIENT" "$@"
 }
 
@@ -111,7 +128,7 @@ remote_client "rm -rf ~/ombdist && mkdir -p ~/ombdist && \
 banner "background load on both hosts (${LOAD_PCT}% duty)"
 stress-ng --cpu "$(nproc)" --cpu-load "$LOAD_PCT" \
   --timeout $(( DURATION_MIN * 60 + 600 ))s >/dev/null 2>&1 &
-remote_client "nohup stress-ng --cpu 2 --cpu-load $LOAD_PCT \
+remote_client_detached "nohup stress-ng --cpu 2 --cpu-load $LOAD_PCT \
   --timeout $(( DURATION_MIN * 60 + 600 ))s >/dev/null 2>&1 & echo started" >/dev/null 2>&1
 sleep 5
 
@@ -119,7 +136,7 @@ DRV_PRIV=$(ip -4 addr show | grep -oE 'inet 10\.[0-9.]+' | head -1 | awk '{print
 banner "starting workers: driver $DRV_PRIV and client $CLIENT"
 ( cd "$OMB" && setsid nohup bin/benchmark-worker -p "$WORKER_PORT" -sp "$STATS_PORT" \
     > "$PWD/../sbl/$OUT/omb_worker_driver.log" 2>&1 < /dev/null & )
-remote_client "cd ~/ombdist && HEAP_OPTS='-Xms192m -Xmx320m' setsid nohup \
+remote_client_detached "cd ~/ombdist && HEAP_OPTS='-Xms192m -Xmx320m' setsid nohup \
   bin/benchmark-worker -p $WORKER_PORT -sp $STATS_PORT > ~/omb_worker_client.log 2>&1 < /dev/null &" \
   >/dev/null 2>&1
 

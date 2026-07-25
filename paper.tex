@@ -1452,12 +1452,79 @@ our own extrapolation allowed, and a prediction that misses low is still a predi
 missed. We report it as a failure rather than as the nearer of two misses.
 
 The two failures have one cause, and E-A5 names it. Our bracket was still parameterised in
-$\rho$, through $p = \rho^C$; E-A5 shows $\rho$ does not determine occupancy. A second sign of
-the same thing sits inside the sweep: duty-cycled load at $\rho = 0.703$ produces a
-\emph{higher} inversion rate ($0.111$) than steady load at $\rho = 0.753$ ($0.076$). Same
-utilisation axis, different scheduling behaviour, different answer. What survives is the
-mechanism --- occupancy, established by manipulation --- and not any curve in $\rho$, ours
-included.
+$\rho$, through $p = \rho^C$; E-A5 shows $\rho$ does not determine occupancy. What survives is
+the mechanism --- established by manipulation --- and not any curve in $\rho$, ours included.
+
+\paragraph{Utilisation is not the variable, shown at identical utilisation.} The cleanest
+demonstration does not need a curve at all. Two loads can reach the same $\rho$ by different
+means: \texttt{--cpu k} runs $k$ cores flat out and leaves $C-k$ genuinely free, while
+\texttt{--cpu C --cpu-load P} duty-cycles every core and leaves none. If the mechanism is whether
+the stamping thread can find a core, the second should be worse at equal $\rho$. We ran both in
+one campaign, interleaved, at utilisations quantised to $k/C$ so the two arms could match
+(Table~\ref{tab:ea6}).
+
+At $k=6$ the achieved utilisation is $0.7531$ in \emph{both} arms --- identical to four decimals
+--- and the inversion rates differ by a factor of $2.07$. A function of $\rho$ returns one value
+for one input, so $\rho$ cannot be the variable, and this is not an inference across campaigns
+run on different days: same machine, same protocol, same hour, only the arrangement of the load
+differing. The gap closes at $k=7$ ($1.06\times$), which is the mechanism showing itself rather
+than a weaker result: with seven of eight cores busy, one free core is nearly as useless as none.
+
+\begin{table}[t]
+\caption{\textbf{Same utilisation, different rate.} Both load geometries in one campaign.
+Concentrated load leaves $C-k$ cores free; spread load duty-cycles all of them and leaves none.
+At $k=6$ the two arms sit at the same $\rho$ to four decimals and the rates differ twofold. The
+convergence at $k=7$ is predicted: one free core out of eight is nearly none.}
+\label{tab:ea6}
+\begin{tabular}{rrrrrr}
+\toprule
+& \multicolumn{2}{c}{Achieved $\rho$} & \multicolumn{2}{c}{Inversion rate} & \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+$k/C$ & concentrated & spread & concentrated & spread & ratio \\
+\midrule
+$5/8$ & 0.6284 & 0.6250 & 0.0201 & 0.0379 & $1.88\times$ \\
+$6/8$ & 0.7531 & 0.7531 & 0.0824 & 0.1709 & $2.07\times$ \\
+$7/8$ & 0.8778 & 0.8809 & 0.2281 & 0.2415 & $1.06\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{The other side of the inequality, and it moves the rate the wrong way.} Every
+manipulation so far acts on the stall distribution. The mechanism also predicts something about
+$T_{\mathrm{true}}$, and that prediction is uncomfortable: a \emph{slower} path should be a
+\emph{more reliable} measurement, because the same stalls now have a longer interval to outrun.
+
+We lengthened $T_{\mathrm{true}}$ by padding the payload, which adds serialisation and transfer
+time without touching the scheduler (Table~\ref{tab:ea10}). Transport rose $76.9\times$, from
+$0.70$ to $53.9$~ms, and the inversion rate \emph{fell} $4.1\times$, monotonically, with
+utilisation held to a $0.012$ spread. Any account in which inversions track how hard the system
+is working predicts the opposite, since larger payloads are strictly more work --- and the
+serialisation cost pushes $\rho$ slightly \emph{up} across the sweep, against the observed fall.
+The effect is measured against its own confound.
+
+This also constrains the stall distribution sharply. A $77\times$ increase in the threshold
+bought only a $4.1\times$ reduction in rate, so $\Pr[\text{stall} > 53.9~\mathrm{ms}]$ is merely
+four times smaller than $\Pr[\text{stall} > 0.70~\mathrm{ms}]$. The tail barely thins across two
+orders of magnitude, which is why the mean-based counters above could not account for the effect
+and why the direct trace was necessary.
+
+\begin{table}[t]
+\caption{\textbf{A slower path is a more reliable measurement.} Payload padding lengthens the
+true transport without touching the scheduler. Utilisation is held to a $0.012$ spread; the
+serialisation cost pushes it slightly up, against the predicted direction. Both quantities move
+monotonically, in opposite directions.}
+\label{tab:ea10}
+\begin{tabular}{rrrr}
+\toprule
+Padding (B) & $\rho$ & Transport (ms) & Inversion rate \\
+\midrule
+0 & 0.8809 & 0.701 & 0.2603 \\
+4\,096 & 0.8822 & 2.381 & 0.1906 \\
+65\,536 & 0.8847 & 14.638 & 0.0888 \\
+262\,144 & 0.8930 & 53.898 & 0.0637 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection{The brokers are equivalent within a millisecond, but not indistinguishable}
 \label{sec:e1}
@@ -2189,8 +2256,13 @@ minus a timestamp written on the producer host, and then records the sample only
 positive, counting nothing that it drops. The exposure is therefore designed into the most widely
 used cross-broker benchmark, and --- this is the part that matters --- its reported distribution
 is conditioned on the violation not having happened, so no amount of care in reading its output
-would reveal it. We did not run it, and we claim no published result is wrong. We claim only that
-the check we are recommending is not addressed to ourselves.
+would reveal it.
+
+We then instrumented that discard and ran it. Under load it dropped $6{,}000$ end-to-end samples
+in three minutes, about $6.7\%$ of the run, and reported a healthy-looking latency summary
+alongside. We still claim no published result is wrong, because we have audited no deployment but
+our own. What we now know is that the failure is reachable, large, and unreported in software
+nobody in this study wrote --- so the check we are recommending is not addressed to ourselves.
 
 One smaller episode makes the same point from the other side. Checking our own provenance, we
 found that no surviving artefact recorded the replay rate of the earliest corpus, and that the

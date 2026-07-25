@@ -15,9 +15,11 @@ external/omb_loaded_result.csv,VERIFIED,valid=1 on all 1 rows
 football/feed/feed_summary.csv,VERIFIED,"n_events<=3,507"
 integrity_windows/clock_integrity_by_condition.csv,VERIFIED,n_runs<=60
 model/collapse_conditions.csv,VERIFIED,"n_events<=2,985; n_runs<=25"
+model/ea6/knee_resolution.csv,VERIFIED,"n_events<=2,985; n_runs<=25"
 model/ec3_stamping.csv,VERIFIED,n_runs_kafka<=10; n_runs_redis<=10
 model/inversion_clustering.csv,VERIFIED,n_runs<=15
 model/stamping_priority.csv,VERIFIED,"n_base<=2,985; n_rt<=2,985"
+model/ttrue_sweep.csv,VERIFIED,"n_events<=2,985"
 transport_rt/transport_realtime_summary.csv,VERIFIED,n<=12
 transport_rt/transport_realtime_tost.csv,VERIFIED,n<=12
 transport_rt2/transport_realtime_tost.csv,VERIFIED,n<=12

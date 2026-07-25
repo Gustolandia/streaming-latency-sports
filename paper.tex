@@ -37,55 +37,42 @@
 \email{pedrorig@tcd.ie}
 
 \begin{abstract}
-\textbf{What we set out to do.} We wanted to answer an ordinary question for anyone building a
-live sports feed: does the choice between Apache \kafka{} and \redis{} Streams change end-to-end
-delay, and does the answer shift as more matches run at once? We built the benchmark and drove it
-with 3{,}315 real football matches on their recorded event schedule.
+\textbf{What we set out to do.} Answer an ordinary question for anyone building a live sports
+feed: does the choice between Apache \kafka{} and \redis{} Streams change end-to-end delay, and
+does the answer shift as more matches run at once? We drove the benchmark with $3{,}315$ real
+football matches on their recorded event schedule.
 
 \textbf{What we found instead.} Our first answer was clean, significant, and impossible. Broker
-delay is a difference of two timestamps taken in two processes, so it admits one check that no
-statistic supplies: it cannot be negative. Applying that check to \emph{every} run, rather than
-only to runs that looked wrong, rejected $1{,}321$ of $2{,}266$ --- including every run behind the
-result we were about to publish. Nothing in the rejected data looks wrong in aggregate: medians
-stay positive, intervals stay narrow, effect sizes stay large, and the direction agrees with
-theory.
+delay is a difference of two timestamps taken in two processes, so it admits one check no
+statistic supplies: it cannot be negative. Applying that check to \emph{every} run rather than
+only to runs that looked wrong rejected $1{,}321$ of $2{,}266$, including every run behind the
+result we were about to publish. Nothing in the rejected data looks wrong in aggregate --- medians
+stay positive, intervals stay narrow, effect sizes stay large.
 
-\textbf{What we think is happening.} We model the failure as $T_{\mathrm{measured}} =
-T_{\mathrm{true}} + \Delta$, where $\Delta$ is the difference between the two stamping delays, so
-a run is corrupted exactly when $\Delta < -T_{\mathrm{true}}$. That predicts four things we can
-falsify, and a fifth we did not expect.
+\textbf{What we think is happening.} The failure is in the instrument, not the systems under
+test. An inversion occurs when a scheduling stall separates an event from the clock read that
+timestamps it, and outlasts the interval being measured: $\Pr[\text{inversion}] =
+\Pr[\text{stall} > T_{\mathrm{true}}]$.
 
-\textbf{What the measurements say.} All four rules hold by their pre-registered criteria:
-inversion risk falls as the measured quantity grows ($\rho_s = -0.80$), rises with concurrent
-process count ($\rho_s = +0.80$), grows superlinearly with utilisation and knees near saturation
-($\rho_s = 0.98$), and shrinks by a quarter when the instrument is made symmetric --- entirely on
-the side whose stamp was asymmetric. One claim we had made does not survive a fairer test and we
-withdraw it: our data shows the queue-like \emph{shape} but cannot single out the M/G/1 form
-specifically, because an exponential fits it equally well. Finally, because a failure only we
-have made is a cautionary tale rather than a finding, we audited a benchmark we did not write:
-the OpenMessaging Benchmark computes the same cross-process difference and then admits a sample
-to its histogram only if it is positive, without counting what it drops --- so the exposure is a
-property of a widely used measurement design, and that design cannot report the problem. We then
-instrumented that discard and ran the benchmark under load, and it silently dropped $6{,}000$
-end-to-end samples --- about $6.7\%$ --- while reporting a latency distribution that looks
-entirely healthy. The failure mode is therefore not ours alone. The fifth result corrects the
-model, and we think it is the most useful thing here after the
-audit itself. $\Delta$ is not one distribution but two --- a narrow jitter core plus a rare tail
-from descheduling --- and load multiplies the tail's \emph{weight} ($60\times$) far faster than
-the core's \emph{width} ($5\times$). Inversions also arrive in bursts of consecutive events, which
-no single distribution can produce. Both follow if the thread that records the time is simply
-\emph{not running} some fraction of the time, and we tested that directly rather than by fitting:
-holding utilisation fixed to $0.001$ and merely raising the stamping threads' scheduling
-priority cuts the inversion rate by $39$ to $54$ times. The failure is a rare state, not a wide
-distribution, and not a function of load --- which changes the mitigation from a better clock to
-a thread that cannot be preempted. The same experiment refutes our own load-axis prediction along
-with the queueing one. Of the original
-question, what survives is modest and we report it as such: the two brokers sit within one
-millisecond of each other, with a small, reproducible $0.41$~ms transport advantage for
-\redis{} that is real but negligible against a feed whose human annotation latency is measured in
-seconds. We also withdraw a second headline of our own along the way. The practical consequence
-is uncomfortable and general: this check binds hardest exactly where a benchmark's measured
-effect is smallest, which is to say on the delicate comparisons such papers exist to make.
+\textbf{What the measurements say.} We manipulate both sides. Raising the stamping threads to
+real-time priority at \emph{fixed} utilisation cuts the inversion rate $7$ to $76\times$ across
+five campaigns; lengthening the true transport $77\times$ by padding the payload cuts it further,
+so a slower path is a \emph{more reliable} measurement --- a sign no account based on system
+stress predicts. Two loads at identical utilisation, differing only in how they spread across
+cores, give rates $2.07\times$ apart, so utilisation is not the variable. A kernel trace closes
+the loop: the measured probability that a run-queue stall outlasts the true transport is $0.181$
+against an observed rate of $0.231$, unfitted. The stall distribution's tail index is near
+$0.34$, so it has no finite mean, and instruments built on averages are structurally blind to
+this failure. We withdraw two claims of our own, including an M/G/1 form our own data refutes
+once measured where the candidates diverge. Because a failure only we have made is a cautionary
+tale rather than a finding, we instrumented a benchmark we did not write: under load the
+OpenMessaging Benchmark silently discarded $6{,}000$ end-to-end samples, about $6.7\%$ of the run,
+while reporting a healthy-looking latency summary. Of the original question, what survives is
+modest --- the brokers sit within a millisecond, with a reproducible $0.41$~ms advantage for
+\redis{} that is real and negligible beside a feed whose human annotation latency is measured in
+seconds. The general consequence is uncomfortable: this check binds hardest exactly where a
+benchmark's measured effect is smallest, which is to say on the delicate comparisons such papers
+exist to make.
 \end{abstract}
 
 \begin{CCSXML}
@@ -358,7 +345,8 @@ Our model treats the stamping delay $\delta$ as scheduler waiting time, and
 Section~\ref{sec:mixture} finds it has two components rather than one. Both the framing and the
 correction are anticipated by the tail-latency literature.
 
-\paragraph{Why the thread waits while cores look free.} Section~ef{sec:twostate} finds that
+\paragraph{Why the thread waits while cores look free.} Section~
+ef{sec:twostate} finds that
 spread load starves the stamping thread more than concentrated load at identical utilisation,
 which presumes that a runnable thread does not simply migrate to whichever core is idle. That
 presumption is not ours: Lozi et al.~\cite{lozi2016wastedcores} document four distinct Linux
@@ -367,10 +355,12 @@ another core's run queue, and note that conventional testing was ineffective at 
 because throughput looks healthy throughout. Our measurement is a consequence of that behaviour
 observed on the instrument rather than on the workload: if work conservation held exactly, a
 stamping thread would never wait while a core was free, and the geometry contrast of
-Table~ef{tab:ea6} would have to be flat. It is not flat, and it converges only where no core
+Table~
+ef{tab:ea6} would have to be flat. It is not flat, and it converges only where no core
 is free to migrate to.
 
-That literature also supplies the shape. Section~ef{sec:twostate} measures a tail index near
+That literature also supplies the shape. Section~
+ef{sec:twostate} measures a tail index near
 $0.34$, meaning the stall distribution has neither a finite mean nor a finite variance, which is
 why the cumulative scheduler counters could not account for the effect --- they estimate a
 quantity that does not exist. Interference-driven tails of this severity are consistent with what
@@ -1049,6 +1039,7 @@ that decide whether this failure can occur and whether anyone would see it. We r
 at source level, with file and line, so a reader can check it against the upstream commit rather
 than take our word for it (commit \texttt{5b1fa70}, 7~April 2026).
 
+\begin{sloppypar}
 \emph{It computes the same quantity the same way.} In
 \texttt{LocalWorker.java}:294 the end-to-end latency is
 \texttt{now\,-\,publishTimestamp}, where \texttt{now} is a clock read in the \emph{consumer}
@@ -1059,6 +1050,7 @@ distributed deployment, on the producer's host. The benchmark does not override 
 anywhere in its configuration. The subtraction therefore spans two
 processes and, in a distributed deployment, two machines' clocks --- the same construction that
 produced $1{,}321$ impossible runs here.
+\end{sloppypar}
 
 \emph{And it discards the evidence.} In \texttt{WorkerStats.java}:95 the sample is admitted to
 the histogram only \texttt{if (endToEndLatencyMicros > 0)}. The message is still counted as
@@ -1079,7 +1071,7 @@ the way a survey reports its response rate --- is not merely unpublished but unr
 completed run.
 
 A third consequence is arithmetic rather than causal, and it bites at the fast end.
-\texttt{System.currentTimeMillis()} has millisecond resolution, so any delivery faster than one
+\texttt{System.\allowbreak currentTimeMillis()} has millisecond resolution, so any delivery faster than one
 millisecond differences to exactly zero and is discarded by the same guard. On the co-located
 paths where such benchmarks are usually run --- ours measures broker transport at $0.1$ to
 $0.5$~ms --- that is not an edge case but a large share of the samples, and the reported
@@ -1513,24 +1505,33 @@ At $k=6$ the achieved utilisation is $0.7531$ in \emph{both} arms --- identical 
 --- and the inversion rates differ by a factor of $2.07$. A function of $\rho$ returns one value
 for one input, so $\rho$ cannot be the variable, and this is not an inference across campaigns
 run on different days: same machine, same protocol, same hour, only the arrangement of the load
-differing. The gap closes at $k=7$ ($1.06\times$), which is the mechanism showing itself rather
-than a weaker result: with seven of eight cores busy, one free core is nearly as useless as none.
+differing. Each cell rests on 2\,985 matched events, so the separation is decisive on its own
+terms: a two-proportion test gives $z=10.3$ at $k=6$, and the Wilson intervals do not overlap.
+
+The gap closes at $k=7$ ($1.06\times$), which is the mechanism showing itself rather than a
+weaker result: with seven of eight cores busy, one free core is nearly as useless as none. With
+the counts in hand this is a stronger statement than a small ratio. At $k=7$ the two geometries
+are \emph{not distinguishable at all} ($z=1.22$, intervals overlapping) at the same sample size
+that separated them at $z=10.3$ one step earlier. The prediction was convergence, and what the
+data show is convergence to a null rather than to a residual difference we lacked the power to
+resolve.
 
 \begin{table}[t]
 \caption{\textbf{Same utilisation, different rate.} Both load geometries in one campaign.
 Concentrated load leaves $C-k$ cores free; spread load duty-cycles all of them and leaves none.
 At $k=6$ the two arms sit at the same $\rho$ to four decimals and the rates differ twofold. The
-convergence at $k=7$ is predicted: one free core out of eight is nearly none.}
+convergence at $k=7$ is predicted: one free core out of eight is nearly none. Every cell is 2\,985
+matched events over 25 runs; $z$ is a two-proportion test between the arms of that row.}
 \label{tab:ea6}
-\begin{tabular}{rrrrrr}
+\begin{tabular}{rrrrrrr}
 \toprule
-& \multicolumn{2}{c}{Achieved $\rho$} & \multicolumn{2}{c}{Inversion rate} & \\
+& \multicolumn{2}{c}{Achieved $\rho$} & \multicolumn{2}{c}{Inversion rate} & & \\
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}
-$k/C$ & concentrated & spread & concentrated & spread & ratio \\
+$k/C$ & concentrated & spread & concentrated & spread & ratio & $z$ \\
 \midrule
-$5/8$ & 0.6284 & 0.6250 & 0.0201 & 0.0379 & $1.88\times$ \\
-$6/8$ & 0.7531 & 0.7531 & 0.0824 & 0.1709 & $2.07\times$ \\
-$7/8$ & 0.8778 & 0.8809 & 0.2281 & 0.2415 & $1.06\times$ \\
+$5/8$ & 0.6284 & 0.6250 & 0.0201 & 0.0379 & $1.88\times$ & 4.09 \\
+$6/8$ & 0.7531 & 0.7531 & 0.0824 & 0.1709 & $2.07\times$ & 10.27 \\
+$7/8$ & 0.8778 & 0.8809 & 0.2281 & 0.2415 & $1.06\times$ & 1.22 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -2330,11 +2331,13 @@ the data could not violate.
 
 
 \section*{Artefact Availability}
+\begin{sloppypar}
 All code, replay plans, aggregated results and analysis are available at
 \url{https://github.com/Gustolandia/streaming-latency-sports}. Event data is the StatsBomb open
 dataset under CC~BY-NC~4.0; raw files are not redistributed but are re-fetchable from a pinned
 upstream commit. Every run records its git commit and per-file SHA-256. A regression suite
 recomputes every figure in this paper from committed data and fails if paper and data disagree.
+\end{sloppypar}
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{manuscript_references}

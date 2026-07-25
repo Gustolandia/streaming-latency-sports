@@ -1137,6 +1137,37 @@ class TestLoadGeometryAndTtrue:
         section = " ".join(_section(tex, "sec:twostate").split())
         assert "0.7531" in section and "identical to four decimals" in section
 
+    def test_the_geometry_z_scores_are_recomputed_from_the_counts(self, tex):
+        """The z values in tab:ea6 must follow from the recorded counts, not from memory.
+
+        The artefact carried a rate and no denominator until an audit caught it. A ratio of two
+        proportions with no n behind it cannot be checked by anyone, including us -- so the
+        counts are now recorded, and this test recomputes every z the paper prints.
+        """
+        import math
+        rows = {r["condition"]: r for r in _rows("model", "ea6", "knee_resolution.csv")}
+        section = " ".join(_section(tex, "sec:twostate").split())
+        for k, expected in (("k5", 4.09), ("k6", 10.27), ("k7", 1.22)):
+            a, b = rows[f"{k}_conc"], rows[f"{k}_spread"]
+            ka, na = int(a["n_inversions"]), int(a["n_events"])
+            kb, nb = int(b["n_inversions"]), int(b["n_events"])
+            assert na > 0 and nb > 0, f"{k}: the artefact must record a denominator"
+            pp = (ka + kb) / (na + nb)
+            z = (kb / nb - ka / na) / math.sqrt(pp * (1 - pp) * (1 / na + 1 / nb))
+            assert abs(z - expected) < 0.01, f"{k}: z recomputes to {z:.2f}, paper prints {expected}"
+            assert f"{expected}" in section, f"{k}: z={expected} missing from the paper"
+
+    def test_the_k7_convergence_is_reported_as_a_null(self, tex):
+        """k=7 is the predicted convergence. Reporting it as 'smaller' understates it.
+
+        At equal n, k=6 separates at z=10.27 and k=7 does not separate at all. That distinguishes
+        a confirmed convergence from insufficient power, and the paper must not blur the two.
+        """
+        section = " ".join(_section(tex, "sec:twostate").split())
+        assert "not distinguishable" in section or "indistinguishable" in section, \
+            "the k=7 null must be stated as a null"
+        assert "2\\,985" in section or "2985" in section, "the sample size must be stated"
+
     def test_the_ttrue_sweep_is_in_the_paper(self, tex):
         section = _section(tex, "sec:twostate")
         rows = _rows("model", "ttrue_sweep.csv")

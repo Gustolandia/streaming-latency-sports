@@ -37,6 +37,21 @@ ROWS = [
      "start-up cost vs\nper-event constant"),
     ("transport\n(x2)", "feeds, powered", "verified real-time rate",
      "broker transport,\nequivalence + shift"),
+    # The campaigns that decided the mechanism. Added after an audit found the closing note's
+    # claim -- that every claim in Section 7 traces to a row -- had quietly become false: five
+    # campaigns were carrying results in the text with no row here at all.
+    ("E-A5/A5b/A7\nstamping priority", "SCHED_FIFO on the stamping threads",
+     "utilisation, to 0.003", "scheduling, not utilisation\n(5 replications, 7-76x)"),
+    ("E-A6\nload geometry", "cores free vs all duty-cycled", "achieved utilisation",
+     "utilisation is not the variable\n(2.07x at identical load)"),
+    ("E-A9\nrun-queue trace", "nothing: observation only", "load, priority arm",
+     "P(stall > true transport)\npredicts the rate, unfitted"),
+    ("E-A10\ntransport sweep", "payload size; true transport 77x", "load, hosts, code path",
+     "the other side of the\ninequality; tail index"),
+    ("E-A8\nco-location", "broker on the driver", "utilisation, to 0.002",
+     "nothing: transport did not\nmove, so it is withheld"),
+    ("OMB\nexternal", "instrumented discard counter", "our broker, under load",
+     "the exposure is not\nours alone"),
 ]
 
 CAMPAIGN = "#1f77b4"
@@ -74,8 +89,8 @@ def draw(ax):
             ax.plot([0.15, 9.85], [y - 0.5] * 2, color="#dddddd", lw=0.6)
 
     ax.text(5.0, -0.42,
-            "Every claim in Section 7 traces to one row. No row both generates and tests "
-            "the same hypothesis.",
+            "Every claim in Section 7 traces to one row. No row both generates and tests the "
+            "same hypothesis, and a row that settled nothing says so.",
             ha="center", va="center", fontsize=8, style="italic", color="#444444")
 
 

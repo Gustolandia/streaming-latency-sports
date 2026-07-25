@@ -49,17 +49,26 @@ campaigns. The **effect** reproduces; the **level** drifts day to day.
 
 E-A6 ran both load geometries in one campaign at matched utilisation.
 
-| k/8 | ρ concentrated | ρ spread | concentrated | spread | ratio |
-|---|---|---|---|---|---|
-| 5 | 0.6284 | 0.6250 | 0.0201 | 0.0379 | 1.88× |
-| 6 | **0.7531** | **0.7531** | 0.0824 | 0.1709 | **2.07×** |
-| 7 | 0.8778 | 0.8809 | 0.2281 | 0.2415 | 1.06× |
+| k/8 | ρ concentrated | ρ spread | concentrated | spread | ratio | z |
+|---|---|---|---|---|---|---|
+| 5 | 0.6284 | 0.6250 | 0.0201 | 0.0379 | 1.88× | 4.09 |
+| 6 | **0.7531** | **0.7531** | 0.0824 | 0.1709 | **2.07×** | **10.27** |
+| 7 | 0.8778 | 0.8809 | 0.2281 | 0.2415 | 1.06× | 1.22 |
+
+Every cell: 2,985 matched events over 25 runs. `z` is a two-proportion test between that row's
+two arms.
 
 At k=6 the utilisation is identical to four decimals and the rates differ twofold. A function of
 ρ returns one value for one input, so ρ cannot be the variable. Spread load (every core
 duty-cycled, none free) starves the stamping thread more than concentrated load (k cores flat
 out, C−k genuinely free); the two converge at k=7, where one free core out of eight is nearly as
 useless as none — which is the mechanism showing itself, not a weaker result.
+
+**The convergence is a null, not a small effect.** At k=7 the arms are statistically
+indistinguishable (z=1.22, Wilson intervals overlapping) at the *same* sample size that separated
+them at z=10.27 one step earlier. The mechanism predicted the geometries would stop differing
+once no core is free either way; they stopped differing, rather than differing by an amount too
+small to resolve.
 
 *Falsified by:* the geometries agreeing at every level. They agreed only where predicted.
 

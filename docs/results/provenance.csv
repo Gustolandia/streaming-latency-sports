@@ -1,0 +1,24 @@
+artefact,verdict,detail
+external/harness_audit.csv,AUDIT,"source audit: provenance is file+line at a named commit, not a run"
+e1/e1_transport_kruskal_across_n.csv,DERIVED,"computed from e1/e1_by_run_gated.csv, which is VERIFIED"
+football/concurrency/concurrency_summary.csv,DERIVED,"computed from football/feed/feed_summary.csv, which is VERIFIED"
+model/fdelta_reproduction.csv,DERIVED,"computed from model/collapse_conditions.csv, which is VERIFIED"
+model/separability.csv,DERIVED,"computed from model/collapse_points.csv, which is VERIFIED"
+model/two_state_fit.csv,DERIVED,"computed from model/collapse_conditions.csv, which is VERIFIED"
+depth_rep2/model/ec3_stamping.csv,VERIFIED,n_runs_kafka<=30; n_runs_redis<=30
+e1/e1_by_run_gated.csv,VERIFIED,n<=12; n_matched<=11
+e1/e1_clock_integrity.csv,VERIFIED,n_runs<=36
+e1/e1_retention_bias.csv,VERIFIED,n<=12
+e1/e1_transport_kafka_vs_redis_by_n.csv,VERIFIED,n<=12
+e5/e5_ack_batching.csv,VERIFIED,n_events<=414
+external/omb_loaded_result.csv,VERIFIED,valid=1 on all 1 rows
+football/feed/feed_summary.csv,VERIFIED,"n_events<=3,507"
+integrity_windows/clock_integrity_by_condition.csv,VERIFIED,n_runs<=60
+model/collapse_conditions.csv,VERIFIED,"n_events<=2,985; n_runs<=25"
+model/ec3_stamping.csv,VERIFIED,n_runs_kafka<=10; n_runs_redis<=10
+model/inversion_clustering.csv,VERIFIED,n_runs<=15
+model/stamping_priority.csv,VERIFIED,"n_base<=2,985; n_rt<=2,985"
+transport_rt/transport_realtime_summary.csv,VERIFIED,n<=12
+transport_rt/transport_realtime_tost.csv,VERIFIED,n<=12
+transport_rt2/transport_realtime_tost.csv,VERIFIED,n<=12
+window/window_sweep.csv,VERIFIED,events_per_run<=465; runs<=3; trace_events<=507

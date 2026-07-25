@@ -174,11 +174,22 @@ consumerConfig: |
   enable.auto.commit=false
 EOF
 
+# OMB's distributed mode reads the payload from a FILE; messageSize alone is only honoured by
+# the embedded single-worker path. Attempt 4 died with a NullPointerException inside
+# FilePayloadReader.load because payloadFile was unset -- the benchmark ran for fifteen seconds
+# and produced no latency at all. The validation guard caught it and wrote valid=0 rather than a
+# zero discard count, which is the behaviour that matters, but the run was still lost.
+PAYLOAD="$PWD/$OUT/omb_payload_200b.data"
+python3 -c "open('$PAYLOAD','wb').write(b'x' * 200)"
+[ -s "$PAYLOAD" ] || { write_invalid "could not create the payload file"; exit 1; }
+echo "payload file: $PAYLOAD ($(stat -c %s "$PAYLOAD") bytes)"
+
 cat > "$OUT/omb_workload_dist.yaml" <<EOF
 name: sbl-audit-distributed
 topics: 1
 partitionsPerTopic: 1
 messageSize: 200
+payloadFile: "${PAYLOAD}"
 subscriptionsPerTopic: 1
 consumerPerSubscription: 1
 producersPerTopic: 1

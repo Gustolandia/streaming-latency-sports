@@ -35,7 +35,30 @@ established. If it passes, that is also publishable and materially changes the f
 check would then be a guard against a failure mode that careful harnesses already avoid, and we
 would say so.
 
-**Status:** in progress. Blocked on JDK install; not blocking the other campaigns.
+**Status: PARTIAL, and the gap matters.** The source audit (§6.7) establishes that OMB computes
+the same cross-process difference and discards non-positive samples uncounted. That is real
+evidence and it is checkable, but it is a *code audit*, not the *measurement* the referee asked
+for.
+
+**Why the obvious experiment is impossible.** You cannot apply the check to OMB's output, because
+the violations never reach the output — the guard drops them inside the harness. This is a
+consequence of the finding itself, not an excuse. The only empirical route is to make the
+discards observable and then run the real benchmark.
+
+**Queued (E-X, `omb_discard_count.sh`):** add ONE counter to `WorkerStats.java`, in the `else`
+branch of the existing guard, and log it. The latency computation, the guard's condition and
+every reported statistic are untouched — we only surface a quantity OMB already computes and
+throws away. The patch is recorded as a diff alongside the result so a reader can see exactly what
+changed. Then run OMB against our broker and report how many end-to-end samples it discarded in a
+run whose reported distribution looks healthy.
+
+**Both outcomes stated in advance.** A non-zero count is the strongest form of the M1 evidence:
+the failure occurs in a harness we did not write, on real hardware, invisibly. A zero count is a
+real negative that bounds the claim to the conditions where it happens, and we report it as such
+rather than quietly dropping the run.
+
+Queued behind the latency campaigns: Maven and a 500 msg/s benchmark are both CPU-heavy, and E-B2
+is measuring load-sensitive inversion rates, so they must not overlap.
 
 ---
 
@@ -166,7 +189,8 @@ attempted. M4 and M5 need honest downgrading rather than new experiments.
 
 | Issue | Severity | Kind | State |
 |---|---|---|---|
-| M1 external validation | decisive | run/audit | **DONE** — OMB audited, §6.7 |
+| M1 external validation | decisive | audit | **PARTIAL** — OMB source audited, §6.7 |
+| M1 empirical closure | decisive | run | queued — OMB instrumented discard count |
 | M3 clean effect size | keystone | run | running (E-B2, d1 of 5) |
 | M2 E1 discrepancy | major | run | queued behind E-B2 |
 | M4 M/G/1 downgrade | major | analysis | **DONE** — form withdrawn |

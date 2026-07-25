@@ -1,0 +1,2 @@
+tag,requested_cpu_load_pct,arm,sched_wrap,n_feeds,reps,max_t_sim
+l75_rt,75,rt,sudo chrt -f 80,5,5,180

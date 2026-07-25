@@ -39,6 +39,9 @@ from measurement_model import fit_mg1, spearman  # noqa: E402
 
 # A win smaller than this in R^2 is not a discrimination, it is noise.
 MARGIN = 0.02
+# A loss this large is not 'we could not tell': the sweep reached the interval where the
+# forms diverge and M/G/1 came last. Reported as a refutation rather than a null.
+DECISIVE_LOSS = 0.20
 
 
 def condition_timestamp(cond_dir):
@@ -138,7 +141,20 @@ def verdict(rows, margin=MARGIN):
             f"with points up to rho={cov['max_rho']}, M/G/1 beats the best alternative "
             f"({fit['best_alternative']}) by {fit['r2_mg1'] - best:.3f} in R^2, above the "
             f"{margin} margin"), "coverage": cov, "fit": fit, "spearman": rho_s}
-    return {"restored": False, "reason": (
+    # Two very different outcomes both fail the restoration rule, and reporting them with one
+    # sentence would understate the stronger one. "Indistinguishable" was the pre-sweep situation:
+    # too few points above rho=0.90 for the forms to separate. Once the sweep DOES reach that
+    # interval and M/G/1 loses by a wide margin, the forms have been distinguished -- against
+    # M/G/1. Saying "indistinguishable" there would be a weaker and less accurate claim than the
+    # data supports, in our own favour, which is the direction that most needs guarding.
+    if best - fit["r2_mg1"] >= DECISIVE_LOSS:
+        return {"restored": False, "refuted": True, "reason": (
+            f"M/G/1 R^2 {fit['r2_mg1']:.3f} against {fit['best_alternative']} {best:.3f}: with "
+            f"points up to rho={cov['max_rho']} the forms ARE now distinguished, and M/G/1 is "
+            f"the one refuted -- it fits worse than the alternative by "
+            f"{best - fit['r2_mg1']:.3f} in R^2 where the two should diverge most"),
+            "coverage": cov, "fit": fit, "spearman": rho_s}
+    return {"restored": False, "refuted": False, "reason": (
         f"M/G/1 R^2 {fit['r2_mg1']:.3f} against {fit['best_alternative']} {best:.3f}: margin "
         f"{fit['r2_mg1'] - best:+.3f} does not exceed {margin}, so the forms remain "
         f"indistinguishable even where they should diverge"),

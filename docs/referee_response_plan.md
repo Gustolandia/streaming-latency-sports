@@ -233,13 +233,13 @@ attempted. M4 and M5 need honest downgrading rather than new experiments.
 | Issue | Severity | Kind | State |
 |---|---|---|---|
 | M1 external validation | decisive | audit | **PARTIAL** — OMB source audited, §6.7 |
-| M1 empirical closure | decisive | run | queued behind knee sweep (Maven 3.9.9 installed) |
+| M1 empirical closure | decisive | run | **DONE, NULL** — instrumented OMB discarded 0; reported as a bound, not support |
 | M3 clean effect size | keystone | run | **DONE** — manipulation check FAILED; H1's intermediate points withdrawn |
 | M2 E1 discrepancy | major | run | **RESOLVED** — same runs give both answers; E1 measured the prologue |
 | M4 M/G/1 downgrade | major | analysis | **DONE** — form withdrawn |
-| M4 knee resolution | major | run | running (E-A4, cond 3 of 7) |
+| M4 knee resolution | major | run | **DONE** — 5 points at rho 0.88–0.99; M/G/1 now REFUTED (R² −0.05 vs exponential 0.93) |
 | M4 replacement model | major | analysis | **DONE** — unidentifiable on our ladder; §7.3 says untested |
-| M4 occupancy manipulation | major | run | queued (E-A5) — the test that can decide it |
+| M4 occupancy manipulation | major | run | **DONE** — occupancy SUPPORTED: rho held to 0.001, rate fell 39– 54x |
 | M5 provenance reliance | major | writing | **DONE** — §7.3 inverted |
 | M6 sample sizes | major | writing | **DONE** — Table 5 |
 | M7 workload justification | major | writing | **DONE** — §3 rewritten |

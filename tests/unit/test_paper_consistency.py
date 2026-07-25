@@ -570,12 +570,29 @@ class TestExternalHarnessEvidence:
         assert "endtoendlatencymicros > 0" in section, "the positive-only filter must be quoted"
         assert "no counter" in section or "not merely unpublished" in section
 
-    def test_the_claim_is_scoped_as_a_source_audit(self, tex):
-        """We did not run it; the paper must not imply otherwise."""
-        section = _section(tex, "sec:external").lower()
-        assert "not a measurement" in section or "source audit" in section
-        assert "have not run" in section
-        assert "no published result" in section or "is wrong" in section
+    def test_the_claim_is_scoped_to_what_the_audit_shows(self, tex):
+        """The audit is a source finding; the run that followed it returned nothing.
+
+        This asserted "have not run" until we ran it. The scoping requirement has not gone away,
+        it has moved: the paper must still stop at the design flaw and must not upgrade a null
+        into support. Both halves are checked, and so is the admission that the run was made
+        under conditions favourable to the harness -- one host, one JVM, no competing load --
+        because a null obtained on easy conditions is weak evidence and saying so is the point.
+        """
+        # Collapse whitespace: LaTeX hard-wraps, so an assertion on a phrase spanning a line
+        # break fails against source that reads perfectly well.
+        section = " ".join(_section(tex, "sec:external").lower().split())
+        assert "source audit" in section or "not a measurement" in section
+        assert "discarded zero" in section or "discarded nothing" in section
+        assert "bounds our claim" in section, "a null must not be read as support"
+        assert "competing load" in section, "the conditions must be admitted as the easy ones"
+        assert "do not know and do not claim" in section or "is wrong" in section
+
+    def test_the_null_result_matches_its_artefact(self, tex):
+        rows = _rows("external", "omb_discards.csv")
+        assert rows, "the OMB run artefact must exist"
+        assert int(rows[0]["discarded_nonpositive"]) == 0, \
+            "a non-zero count would make the paper's null wrong"
 
     def test_the_commit_is_named(self, tex):
         section = _section(tex, "sec:external")
@@ -685,8 +702,32 @@ class TestTwoStateModel:
         section = " ".join(_section(tex, "sec:twostate").lower().split())
         assert "tautology" in section, "the empty form must be named as empty"
         assert "no content" in section
-        assert "untested" in section, "the load axis must not be claimed as supported"
         assert "0.9982" in section, "the ablation that undercuts the fit must be reported"
+
+    def test_our_own_failed_prediction_is_reported_as_a_failure(self, tex):
+        """E-A5 vindicated the mechanism; the load-axis prediction still missed, and the
+        section must not let the first quietly cover the second.
+
+        Registered before the sweep: 2.45-3.07 over rho 0.88 -> 0.99. Observed: 1.44. That is
+        outside the band, so it failed -- being nearer than M/G/1's 13.8 does not make it a hit.
+        """
+        section = " ".join(_section(tex, "sec:twostate").lower().split())
+        assert "1.44" in section, "the observed growth must be stated"
+        assert "2.45" in section, "the prediction it missed must be stated beside it"
+        assert "failed" in section
+
+    def test_the_occupancy_result_matches_its_artefact(self, tex):
+        rows = _rows("model", "stamping_priority.csv")
+        assert rows, "the E-A5 artefact must exist"
+        section = _section(tex, "sec:twostate")
+        for r in rows:
+            assert r["confounded"] == "False", "a confounded cell must not be reported"
+            # Utilisation equality is the premise of the whole comparison.
+            assert abs(float(r["rho_base"]) - float(r["rho_rt"])) <= 0.05
+            assert _contains_number(section, float(r["inv_base"]), 4), \
+                f"{r['level']} baseline rate missing from the paper"
+            assert _contains_number(section, float(r["inv_rt"]), 4), \
+                f"{r['level']} real-time rate missing from the paper"
 
     def test_the_fit_numbers_match_the_artefact(self, tex):
         rows = {r["model"]: float(r["r2_log"]) for r in _rows("model", "two_state_fit.csv")}

@@ -68,7 +68,8 @@ class TestPlumbing:
         cond = _cond(temp_dir, "ea4", "l0", "n5_20260101_000000", 0.95, 0.25)
         assert condition_timestamp(str(cond)) == "n5_20260101_000000"
         assert median_rho(str(cond)) == 0.95
-        assert condition_inversion(str(cond), str(temp_dir / "runs")) == 0.25
+        inv = condition_inversion(str(cond), str(temp_dir / "runs"))
+        assert inv == {"inversion_rate": 0.25, "n_inversions": 50, "n_events": 200, "n_runs": 1}
 
     def test_missing_pieces_are_none(self, temp_dir):
         d = temp_dir / "bare"

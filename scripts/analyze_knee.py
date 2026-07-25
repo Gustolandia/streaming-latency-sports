@@ -70,7 +70,7 @@ def condition_inversion(cond_dir, runs_dir, backend="kafka"):
     ts = condition_timestamp(cond_dir)
     if not ts:
         return None
-    neg = tot = 0
+    neg = tot = n_runs = 0
     for run in glob.glob(os.path.join(runs_dir, f"concurrency_{ts}_{backend}_*")):
         prod = os.path.join(run, "producer.csv")
         cons = os.path.join(run, "consumer_events.csv")
@@ -98,7 +98,13 @@ def condition_inversion(cond_dir, runs_dir, backend="kafka"):
                         neg += 1
         except (ValueError, KeyError, OSError):
             continue
-    return (neg / tot) if tot else None
+        n_runs += 1
+    if not tot:
+        return None
+    # The counts travel with the rate. A rate alone cannot be audited: 0.17 from 300 events and
+    # 0.17 from 300,000 are the same number and not the same evidence, and the geometry result
+    # quotes a ratio between two of these cells.
+    return {"inversion_rate": neg / tot, "n_inversions": neg, "n_events": tot, "n_runs": n_runs}
 
 
 def collect(depth_dir, runs_dir, phases):
@@ -112,7 +118,10 @@ def collect(depth_dir, runs_dir, phases):
             inv = condition_inversion(cond, runs_dir)
             if rho is not None and inv is not None:
                 rows.append({"phase": phase, "condition": os.path.basename(cond),
-                             "rho": round(rho, 4), "inversion_rate": round(inv, 5)})
+                             "rho": round(rho, 4),
+                             "inversion_rate": round(inv["inversion_rate"], 5),
+                             "n_inversions": inv["n_inversions"], "n_events": inv["n_events"],
+                             "n_runs": inv["n_runs"]})
     return sorted(rows, key=lambda r: r["rho"])
 
 
@@ -178,7 +187,8 @@ def main(argv=None):
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     with (out / "knee_resolution.csv").open("w", newline="", encoding="utf-8") as fh:
-        w = csv.DictWriter(fh, fieldnames=["phase", "condition", "rho", "inversion_rate"])
+        w = csv.DictWriter(fh, fieldnames=["phase", "condition", "rho", "inversion_rate",
+                                           "n_inversions", "n_events", "n_runs"])
         w.writeheader()
         w.writerows(rows)
 

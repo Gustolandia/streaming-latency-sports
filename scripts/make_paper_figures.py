@@ -166,21 +166,36 @@ def plot_model(axes):
                  fontsize=8, color="#b22222", ha="left", va="center")
 
     # --- (b) why small effects are fragile
-    x = np.linspace(-6, 6, 400)
-    delta = np.exp(-0.5 * (x / 1.6) ** 2)
-    h1_ax.plot(x, delta, color=GREY, linewidth=1.8)
-    h1_ax.fill_between(x, 0, delta, where=(x < -0.5), color="#b22222", alpha=0.45)
+    #
+    # This panel used to draw Delta as a single Gaussian, which was the model the paper held
+    # when the figure was made and has since WITHDRAWN. A bell curve is the wrong picture in the
+    # way that matters most: it has a finite mean and a thin tail, so it makes inversions look
+    # like a mild consequence of a wide distribution. The measured stall distribution has a
+    # tail index near 0.34 -- no finite mean, no finite variance -- and the inversion rate falls
+    # only as T_true^-0.34, which is why a 77-fold increase in the measured interval buys barely
+    # a fourfold reduction in risk. Drawn on a log density so the tail is visible at all.
+    x = np.linspace(-6, 6, 800)
+    core = 0.985 * np.exp(-0.5 * (x / 0.22) ** 2)          # RUNNING: narrow jitter core
+    tail = 0.015 * (1.0 + np.abs(x) / 0.5) ** (-1.34)      # PREEMPTED: heavy residual tail
+    delta = core + tail
+    h1_ax.semilogy(x, delta, color=GREY, linewidth=1.8)
+    h1_ax.fill_between(x, 1e-4, delta, where=(x < -0.5), color="#b22222", alpha=0.35)
     h1_ax.axvline(-0.5, color=KAFKA, linewidth=1.6, linestyle="--")
     h1_ax.axvline(-4.0, color=REDIS, linewidth=1.6, linestyle="--")
-    h1_ax.fill_between(x, 0, delta, where=(x < -4.0), color=REDIS, alpha=0.55)
-    h1_ax.text(0.6, 0.70, r"small $T_{true}$" "\n(much of $\\Delta$ inverts it)",
+    h1_ax.fill_between(x, 1e-4, delta, where=(x < -4.0), color=REDIS, alpha=0.55)
+    h1_ax.set_ylim(1e-4, 2.0)
+    h1_ax.text(0.7, 0.20, r"small $T_{true}$" "\n(much of $\\Delta$ inverts it)",
                fontsize=7.5, color=KAFKA)
-    h1_ax.text(-5.9, 0.28, r"large $T_{true}$" "\n(almost none does)",
+    h1_ax.text(-5.9, 0.02, r"large $T_{true}$" "\nstill inverts:\nthe tail barely thins",
                fontsize=7.5, color=REDIS)
+    h1_ax.annotate("narrow core\n(thread running)", xy=(0.15, 0.85), xytext=(2.4, 0.45),
+                   fontsize=7, color=GREY, ha="left", va="center",
+                   arrowprops=dict(arrowstyle="->", color=GREY, lw=0.8))
     h1_ax.set_xlabel(r"stamping asymmetry $\Delta$ (ms)")
-    h1_ax.set_ylabel("density")
+    h1_ax.set_ylabel("density (log)")
     h1_ax.set_yticks([])
-    h1_ax.set_title("(b) H1: inversion risk falls as the measured quantity grows", fontsize=9)
+    h1_ax.set_title(r"(b) a heavy tail, not a bell: $P(\mathrm{inv}) \propto T_{true}^{-0.34}$",
+                    fontsize=9)
     mech_ax.set_title("(a) how a positive latency is measured as negative", fontsize=9)
 
 

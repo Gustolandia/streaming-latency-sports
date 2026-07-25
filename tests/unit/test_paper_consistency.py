@@ -542,6 +542,49 @@ class TestPoweredTransportReplication:
         assert "refines" in e1.lower(), "the powered run refines rather than contradicts E1"
 
 
+class TestExternalHarnessEvidence:
+    """The paper's answer to its decisive referee objection must match its artefact.
+
+    The claim is specific -- named commit, named files, named lines -- precisely so a reader can
+    check it. If the paper and the audit CSV ever drift apart, the claim becomes unverifiable,
+    which is worse than not making it.
+    """
+
+    @staticmethod
+    def _rows():
+        return _rows("external", "harness_audit.csv")
+
+    def test_the_cited_files_and_lines_match_the_audit(self, tex):
+        section = _section(tex, "sec:external")
+        for r in self._rows():
+            fname = r["file"].split("/")[-1]
+            assert fname in section, f"{fname} is in the audit but not cited in the paper"
+            assert r["line"] in section, f"line {r['line']} ({fname}) not cited"
+
+    def test_both_properties_are_stated(self, tex):
+        section = _section(tex, "sec:external").lower()
+        assert "publishtimestamp" in section, "the cross-process subtraction must be quoted"
+        assert "endtoendlatencymicros > 0" in section, "the positive-only filter must be quoted"
+        assert "no counter" in section or "not merely unpublished" in section
+
+    def test_the_claim_is_scoped_as_a_source_audit(self, tex):
+        """We did not run it; the paper must not imply otherwise."""
+        section = _section(tex, "sec:external").lower()
+        assert "not a measurement" in section or "source audit" in section
+        assert "have not run" in section
+        assert "no published result" in section or "is wrong" in section
+
+    def test_the_commit_is_named(self, tex):
+        section = _section(tex, "sec:external")
+        assert "5b1fa70" in section, "the audited commit must be named for checkability"
+
+    def test_the_conclusion_carries_the_external_evidence(self, tex):
+        conclusion = tex[tex.index(r"\section{Conclusion}"):]
+        low = conclusion.lower()
+        assert "openmessaging" in low, "the decisive evidence must reach the conclusion"
+        assert "did not run" in low or "not addressed to ourselves" in low
+
+
 class TestH2FormIsWithdrawn:
     """H2's functional form is withdrawn: the data cannot separate M/G/1 from an exponential.
 

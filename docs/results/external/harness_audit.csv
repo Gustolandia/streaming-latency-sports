@@ -1,0 +1,3 @@
+harness,kind,file,line,evidence
+OpenMessaging Benchmark,cross_process_latency,benchmark-framework/src/main/java/io/openmessaging/benchmark/worker/LocalWorker.java,294,long endToEndLatencyMicros = TimeUnit.MILLISECONDS.toMicros(now - publishTimestamp);
+OpenMessaging Benchmark,positive_only_filter,benchmark-framework/src/main/java/io/openmessaging/benchmark/worker/WorkerStats.java,95,if (endToEndLatencyMicros > 0) {

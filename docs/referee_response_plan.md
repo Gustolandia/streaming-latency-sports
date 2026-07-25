@@ -194,6 +194,7 @@ attempted. M4 and M5 need honest downgrading rather than new experiments.
 | M3 clean effect size | keystone | run | running (E-B2, d1 of 5) |
 | M2 E1 discrepancy | major | run | queued behind E-B2 |
 | M4 M/G/1 downgrade | major | analysis | **DONE** — form withdrawn |
+| M4 knee resolution | major | run | queued — can the form be restored? |
 | M5 provenance reliance | major | writing | **DONE** — §7.3 inverted |
 | M6 sample sizes | major | writing | **DONE** — Table 5 |
 | M7 workload justification | major | writing | **DONE** — §3 rewritten |

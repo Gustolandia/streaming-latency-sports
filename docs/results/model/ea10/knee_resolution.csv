@@ -1,0 +1,5 @@
+phase,condition,rho,inversion_rate
+ea10,pad0,0.8809,0.2603
+ea10,pad4096,0.8822,0.19062
+ea10,pad65536,0.8847,0.08878
+ea10,pad262144,0.893,0.06365

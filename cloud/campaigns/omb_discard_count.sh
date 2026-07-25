@@ -127,11 +127,22 @@ consumerConfig: |
   enable.auto.commit=false
 EOF
 
+# OMB reads the payload from a FILE. Without payloadFile the run dies in
+# FilePayloadReader.load with a NullPointerException about four seconds in, having
+# produced no latency at all -- and the discard count is then 0 because nothing was
+# ever measured. Every run of this campaign failed that way, including the first,
+# whose zero was reported in the manuscript as a genuine null.
+PAYLOAD="$PWD/$OUT/omb_payload_200b.data"
+python3 -c "open('$PAYLOAD','wb').write(b'x' * 200)"
+[ -s "$PAYLOAD" ] || { echo "FATAL: could not create the payload file"; exit 1; }
+echo "payload file: $PAYLOAD ($(stat -c %s "$PAYLOAD") bytes)"
+
 cat > "$OUT/omb_workload.yaml" <<EOF
 name: sbl-audit
 topics: 1
 partitionsPerTopic: 1
 messageSize: 200
+payloadFile: "${PAYLOAD}"
 subscriptionsPerTopic: 1
 consumerPerSubscription: 1
 producersPerTopic: 1
@@ -140,19 +151,48 @@ consumerBacklogSizeGB: 0
 testDurationMinutes: ${DURATION_MIN}
 EOF
 
-banner "running OMB against ${KAFKA_BOOTSTRAP} for ${DURATION_MIN} min"
+# LOAD_PCT puts the machine under the condition that produces inversions at all.
+# E-A5 and E-A9 show the rate is governed by scheduling stalls, which an idle
+# machine does not have; testing for this failure at idle is close to testing under
+# conditions chosen to hide it. Distributed mode would add the cross-host CLOCK
+# channel, but chrony measures the driver-to-broker offset at about 0.067 ms, far
+# below the millisecond resolution OMB reports in, so that channel cannot drive its
+# samples negative here whatever we do. Occupancy can, and embedded mode reaches it.
+if [ "${LOAD_PCT:-0}" != "0" ]; then
+  banner "background load at ${LOAD_PCT}% duty on $(nproc) cores"
+  stress-ng --cpu "$(nproc)" --cpu-load "$LOAD_PCT" \
+    --timeout $(( DURATION_MIN * 60 + 600 ))s >/dev/null 2>&1 &
+  STRESS_PID=$!
+  trap 'kill -9 "$STRESS_PID" 2>/dev/null; pkill -9 -x stress-ng 2>/dev/null' EXIT
+  sleep 5
+fi
+
+banner "running OMB against ${KAFKA_BOOTSTRAP} for ${DURATION_MIN} min (load ${LOAD_PCT:-0}%)"
 ( cd "$OMB" && timeout $(( DURATION_MIN * 60 + 300 )) \
     bin/benchmark --drivers "$PWD/../sbl/$OUT/omb_driver.yaml" \
     "$PWD/../sbl/$OUT/omb_workload.yaml" 2>&1 ) | tee "$OUT/omb_stdout.log" | tail -25
+
+banner "validating that the benchmark actually ran"
+PUB=$(grep -c "Pub rate" "$OUT/omb_stdout.log" 2>/dev/null)
+FAILED=$(grep -c "Failed to run the workload" "$OUT/omb_stdout.log" 2>/dev/null)
+echo "  'Pub rate' lines: $PUB   failure lines: $FAILED"
+if [ "${PUB:-0}" -lt 1 ] || [ "${FAILED:-0}" -gt 0 ]; then
+  printf 'harness,mode,valid,discarded_nonpositive,reason,duration_min,load_pct\n' > "$OUT/omb_loaded_result.csv"
+  printf '%s,embedded,0,,"no latency output (pub=%s failures=%s)",%s,%s\n' \
+    "OpenMessaging Benchmark" "$PUB" "$FAILED" "$DURATION_MIN" "${LOAD_PCT:-0}" \
+    >> "$OUT/omb_loaded_result.csv"
+  echo "NO VALID RUN: the benchmark produced no latency output; no count reported"
+  exit 1
+fi
 
 banner "what OMB discarded without recording"
 grep -c "SBL_DISCARDED_NONPOSITIVE" "$OUT/omb_stdout.log" > /dev/null 2>&1
 LAST=$(grep -o "SBL_DISCARDED_NONPOSITIVE total=[0-9]*" "$OUT/omb_stdout.log" | tail -1 | grep -o "[0-9]*$")
 LAST=${LAST:-0}
-printf 'harness,discarded_nonpositive,duration_min,bootstrap\n%s,%s,%s,%s\n' \
-  "OpenMessaging Benchmark" "$LAST" "$DURATION_MIN" "$KAFKA_BOOTSTRAP" \
-  > "$OUT/omb_discards.csv"
+printf 'harness,mode,valid,discarded_nonpositive,pub_lines,duration_min,load_pct,bootstrap\n%s,%s,1,%s,%s,%s,%s,%s\n' \
+  "OpenMessaging Benchmark" "embedded" "$LAST" "$PUB" "$DURATION_MIN" "${LOAD_PCT:-0}" \
+  "$KAFKA_BOOTSTRAP" > "$OUT/omb_loaded_result.csv"
 echo "DISCARDED NON-POSITIVE SAMPLES: $LAST"
-cat "$OUT/omb_discards.csv"
+cat "$OUT/omb_loaded_result.csv"
 
 banner "OMB_DISCARD_COUNT_COMPLETE"

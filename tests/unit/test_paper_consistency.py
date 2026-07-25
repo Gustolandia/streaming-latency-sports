@@ -542,6 +542,49 @@ class TestPoweredTransportReplication:
         assert "refines" in e1.lower(), "the powered run refines rather than contradicts E1"
 
 
+class TestH2FormIsWithdrawn:
+    """H2's functional form is withdrawn: the data cannot separate M/G/1 from an exponential.
+
+    The pre-registered criterion (beat a straight line) still passes and is still reported as
+    such. What is withdrawn is the stronger claim we had made from it. A referee raised this and
+    the refit confirmed it, so the paper must not drift back to asserting the M/G/1 form.
+    """
+
+    @staticmethod
+    def _table():
+        """Table 7's (rho, inversion rate) rows, as the paper prints them."""
+        return ([0.003, 0.253, 0.504, 0.628, 0.753, 0.878, 1.000, 1.000, 1.000],
+                [0.007, 0.009, 0.022, 0.047, 0.132, 0.207, 0.208, 0.221, 0.264])
+
+    def test_an_exponential_fits_the_published_table_at_least_as_well(self):
+        import sys
+        sys.path.insert(0, str(REPO / "scripts"))
+        from measurement_model import fit_mg1
+        rho, inv = self._table()
+        fit = fit_mg1(rho, inv)
+        # Pre-registered test still passes...
+        assert fit["r2_mg1"] > fit["r2_linear"]
+        # ...but the form is not discriminated against a fair alternative.
+        assert not fit["mg1_better"], "if this passes, the withdrawal must be revisited"
+        assert fit["best_alternative"] == "exponential"
+
+    def test_the_paper_withdraws_the_form_and_keeps_the_shape(self, tex):
+        rules = _section(tex, "sec:rules")
+        low = rules.lower()
+        assert "withdraw" in low, "the functional-form claim must be withdrawn in the text"
+        assert "superlinear" in low, "the surviving claim is the shape"
+        assert "0.961" in rules, "the exponential's fit must be reported"
+
+    def test_abstract_and_conclusion_do_not_assert_the_mg1_form(self, tex):
+        for name, part in (("abstract", tex[tex.index(r"\begin{abstract}"):
+                                            tex.index(r"\end{abstract}")]),
+                           ("conclusion", tex[tex.index(r"\section{Conclusion}"):])):
+            low = part.lower()
+            if "m/g/1" in low:
+                assert "withdraw" in low or "cannot" in low, \
+                    f"{name} names M/G/1 without withdrawing the form claim"
+
+
 class TestNarrativeArc:
     """The paper must read as one story: broker question -> impossible answer -> what survives.
 

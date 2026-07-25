@@ -99,6 +99,37 @@ class TestFitMg1:
         fit = fit_mg1([1.0, 1.2], [0.5, 0.6])
         assert not fit["mg1_better"]
 
+    def test_reports_every_alternative_it_fits(self):
+        rho = np.array([0.1, 0.3, 0.5, 0.7, 0.9])
+        fit = fit_mg1(rho, 0.01 * mg1_waiting(rho))
+        for key in ("r2_linear", "r2_power", "r2_exponential", "power_k", "exp_k"):
+            assert not np.isnan(fit[key]), f"{key} must be fitted, not skipped"
+        assert fit["best_alternative"] in ("linear", "power", "exponential")
+
+    def test_an_exponential_is_not_mistaken_for_mg1(self):
+        """The referee's objection: beating only a LINE is close to guaranteed.
+
+        Exponential growth is convex and turns upward near saturation, so it beats a line
+        easily. If the data is genuinely exponential, mg1_better must be False even though
+        R^2(M/G/1) still comfortably exceeds R^2(linear).
+        """
+        rho = np.array([0.1, 0.3, 0.5, 0.7, 0.9])
+        fit = fit_mg1(rho, 0.002 * np.exp(4.5 * rho))
+        assert fit["r2_mg1"] > fit["r2_linear"], "would still pass the weak pre-registered test"
+        assert not fit["mg1_better"], "but must not claim the M/G/1 form specifically"
+        assert fit["best_alternative"] == "exponential"
+
+    def test_mg1_better_requires_beating_all_alternatives(self):
+        rho = np.array([0.1, 0.3, 0.5, 0.7, 0.9])
+        fit = fit_mg1(rho, 0.01 * mg1_waiting(rho))
+        assert fit["mg1_better"]
+        assert fit["r2_mg1"] > fit["r2_best_alternative"]
+
+    def test_zero_rates_do_not_break_the_log_fits(self):
+        """A condition with no inversions at all must not make the power/exp fits explode."""
+        fit = fit_mg1([0.2, 0.4, 0.6, 0.8], [0.0, 0.0, 0.01, 0.05])
+        assert not np.isnan(fit["r2_mg1"])
+
 
 class TestH1:
     def _frame(self, rates):

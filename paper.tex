@@ -1299,9 +1299,7 @@ delay; it changes how often the thread that must record the time is not running.
 help but cluster. The $60\times$ growth in tail weight against $5\times$ in core width is two
 different parameters moving --- $\sigma_c$ belongs to the running state, $p$ to the scheduler.
 The scale family fails because a scale family has one parameter and here two move at very
-different rates. And the M/G/1-versus-exponential question dissolves: the load dependence lives
-in $p(\rho)$, a busy fraction bounded in $[0,1]$, which both candidate forms approximate over the
-sampled range while neither is the mechanism.
+different rates.
 
 \paragraph{A prediction that points the opposite way.} The two structures disagree
 geometrically. A scale family changes $\sigma$, so its tail curves \emph{rescale horizontally};
@@ -1328,10 +1326,50 @@ runnable --- a dedicated core, a raised priority, or a stamping path the workloa
 But we found this by looking at the data. The separability test above is exploratory, and
 Section~\ref{sec:limitations} says so; a confirmatory version is pre-registered in the artefact.
 Two states is also the smallest model consistent with what we see, not a claim about what the
-kernel does. The decisive test we have not yet run is to measure $p$ \emph{independently} --- from
-run-queue wait in \texttt{/proc/\textless pid\textgreater/schedstat} --- and check it against the
-$p$ inferred from tail mass. If those disagree, the model is wrong in a way no amount of curve
-fitting would reveal, and that is the experiment we would run next.
+kernel does.
+
+\paragraph{On the load axis the model is a tautology, and we say so before using it.} Read as an
+account of how the inversion rate depends on $\rho$, Equation~\ref{eq:twostate} has no content.
+With $p$ unconstrained, \emph{any} monotone rate curve can be written as $p(\rho)\,S$ by setting
+$p = \text{rate}/S$. Its content is on the threshold axis, which is where we tested it above and
+where it passed. We are explicit about this because Section~\ref{sec:rules} withdraws the M/G/1
+form for being indistinguishable from its alternatives, and a replacement that cannot fail would
+be a worse error than the one it replaces.
+
+Constraining $p$ to a power law in $\rho$ makes it testable, and it fits our ladder poorly
+($R^2 = 0.65$ in log space). What fits is the form obtained by restoring the quantity the
+separability test divides out. That test standardises thresholds by $\sigma$; an inversion
+requires the residual to exceed $T_{\mathrm{true}}$, so the standardised threshold is
+$T_{\mathrm{true}}/\sigma(\rho)$, and since $\sigma$ grows fivefold across the ladder the
+threshold slides toward zero as load rises. Both factors then climb with load:
+$\Pr[\text{inv}] = p(\rho)\,S\!\left(T_{\mathrm{true}}/\sigma(\rho)\right)$, which reaches
+$R^2 = 0.9905$ against $0.9811$ for a fitted exponential in $\rho$ and $0.8863$ for
+$(\rho/(1-\rho))^k$, at three free parameters each.
+
+\emph{That lead is not evidence, and we do not report it as a result.} Freezing $\sigma$ at its
+mean and refitting \emph{improves} the fit, to $R^2 = 0.9982$. On our ladder $\sigma$ rises
+monotonically with $\rho$: the two regressors move together, so no fit can credit one over the
+other, and the corrected form's advantage is bought by reading two more measured columns than its
+competitors are given. This is a limit of the experimental design, not of the analysis, and no
+further work on these data can lift it.
+
+\paragraph{The experiment that would settle it.} The way out is to move one of the two and hold
+the other fixed. Raising the stamping processes to real-time priority makes them preempt the
+background load rather than queue behind it, so occupancy falls sharply while utilisation does
+not move --- the same stressor is doing the same work. The two readings then separate by an order
+of magnitude: an occupancy mechanism predicts the inversion rate collapses toward the
+running-state floor, near $0.004$, while any account in which the rate is a function of $\rho$
+predicts no change at all, because $\rho$ is unchanged by construction.
+
+This is also the manipulation our delay injection should have been. Injecting delay at the broker
+failed because it delayed the acknowledgement path and the delivery path equally and cancelled in
+the subtraction (Section~\ref{sec:rules}, Table~\ref{tab:eb2}); scheduling priority has no such
+symmetry, because
+it acts on the stamping threads themselves, which is where the model locates the failure. The
+campaign and its analysis are in the artefact, with the manipulation check --- utilisation must
+match across arms, or the comparison is withheld --- fixed in advance. At the time of writing it
+is queued but not yet reported, so on the load axis this model's standing is \emph{untested}
+rather than supported, and Table~\ref{tab:power} records it that way.
 
 \subsection{The brokers are equivalent within a millisecond, but not indistinguishable}
 \label{sec:e1}

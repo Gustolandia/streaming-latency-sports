@@ -1003,7 +1003,16 @@ produced $1{,}321$ impossible runs here.
 \emph{And it discards the evidence.} In \texttt{WorkerStats.java}:95 the sample is admitted to
 the histogram only \texttt{if (endToEndLatencyMicros > 0)}. The message is still counted as
 received one line earlier, but a non-positive latency is dropped, and no counter anywhere in the
-harness records how many were dropped. Two consequences follow. The reported latency distribution
+harness records how many were dropped.
+
+We think this guard is defensive rather than evasive, and that is what makes it worth reporting.
+The recorder is an \texttt{HdrHistogram} \texttt{Recorder}, which rejects negative values, so a
+programmer who has seen one crash learns to filter for positives before recording. It is the
+reasonable local fix. Its non-local consequence is that the one observation which would prove the
+instrument had failed is the exact observation the guard removes --- and because the filter is
+undocumented and uncounted, nothing downstream can tell that it fired. We are not describing
+carelessness. We are describing a defensive reflex that, applied to a cross-process span, quietly
+converts a detectable failure into an invisible one. Two consequences follow. The reported latency distribution
 is \emph{conditioned on being positive}, so a causality violation cannot appear in the output
 even in principle. And the retention rate --- the statistic we argue belongs beside every result,
 the way a survey reports its response rate --- is not merely unpublished but unrecoverable from a
@@ -1854,8 +1863,8 @@ rises with concurrent process count, and grows superlinearly in utilisation with
 knee; and a symmetric instrument removes a quarter of the residual between-system difference, the
 same asymmetry that manufactured our first result in the large. We had also claimed the M/G/1
 form specifically, and withdraw that: tested against a fitted exponential rather than only
-against a straight line, our data cannot tell the two apart. The check binds hardest where the
-effect is smallest, and we can now say so with a curve rather than an anecdote.
+against a straight line, our data cannot tell the two apart. What was an anecdote at the start of
+this work is now a curve.
 
 A dedicated campaign then corrected the model we had just confirmed. Treating the stamping
 asymmetry $\Delta$ as a single distribution is only a leading-order account: it is a mixture of a

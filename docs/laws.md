@@ -106,6 +106,32 @@ is 0.18 (E-A9). **Inversions come from rare, very long stalls, not typical ones.
 mean-based counters could not account for the effect, and it was predicted from E-A10 before
 E-A9 measured it.
 
+### A rule, not only a mechanism: the tail index
+
+E-A10 varies `T_true` at fixed load, so it probes the stall distribution's shape directly. If
+run-queue delay has a heavy tail with index `alpha`, then `P(stall > t) ~ C·t^-alpha`, and the
+inversion rate is a power law in `T_true` with no free load parameter:
+
+```
+P(inversion) = 0.238 · T_true^(-0.339)      [T_true in ms]      R² = 0.9898, 4 points, 77× span
+```
+
+**`alpha = 0.34` is below 1, so the stall distribution has no finite mean and no finite
+variance.** That is the useful part. It does not merely restate that the mean-based counters in
+E-A7 failed to explain the effect — it explains *why* they could not: the sample mean of such a
+distribution wanders with sample size instead of converging, so an instrument built on averages
+is **structurally** blind to this failure rather than unluckily insensitive to it.
+
+*Independent check.* The rule predicts `P(stall > 0.5 ms) = 0.301`. E-A9's kernel trace measures
+**0.181**. Ratio 1.66 — same order, from a fitted payload sweep and a `sched_switch` trace that
+share no data, no instrument and no estimator. The rule over-predicts, which is the expected
+direction: not every stall lands on a stamping instant, so the observed rate should sit below the
+probability that a sufficiently long stall occurred at all.
+
+*Limits, stated plainly.* Four points, one campaign, one load level. `alpha` is fitted, not
+derived. E-A10b replicates the sweep; until it reports, this is a rule with one measurement
+behind it and the 1.66× gap is unexplained rather than accounted for.
+
 ### L1 — the real-time floor is the idle rate
 
 Loaded at real-time priority: 0.0049. Unloaded at ordinary priority: 0.0035. Ratio 1.38. Two

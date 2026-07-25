@@ -1722,6 +1722,14 @@ predicted knee; and a symmetric instrument removes a quarter of the residual bet
 difference, the same asymmetry that manufactured our first result in the large. The check binds
 hardest where the effect is smallest, and we can now say so with a curve rather than an anecdote.
 
+A dedicated campaign then corrected the model we had just confirmed. Treating the stamping
+asymmetry $\Delta$ as a single distribution is only a leading-order account: it is a mixture of a
+narrow jitter core and a rare tail from descheduling, and load multiplies the tail's weight
+roughly twelve times faster than it widens the core. We pre-registered that test expecting the
+simpler form to fail, and it did. The practical reading is less comfortable than the tidy version:
+a benchmark can sit at a load where its numbers look tight, because the core is narrow, while the
+tail that will corrupt them is already growing underneath.
+
 One smaller episode makes the same point from the other side. Checking our own provenance, we
 found that no surviving artefact recorded the replay rate of the earliest corpus, and that the
 records we did have disagreed. We recovered it anyway --- the start-up cost is a wall-clock
@@ -1731,9 +1739,14 @@ at true real time. That is the same instrument as the sign check: a physical con
 what the bookkeeping could not. It is also luck, and no basis for a method. The rule is to write
 the number down.
 
-The original question turned out to be the least interesting thing we could have asked. That is
-worth stating plainly, because the path from it to the results above ran entirely through
-measurements we had every reason to trust --- twice.
+We began by asking which of two brokers is faster for a football feed. The honest answer is that
+it barely matters --- \redis{} holds a reproducible $0.41$~ms advantage that is real, and
+negligible beside the seconds a human annotator takes to enter the event. That question turned
+out to be the least interesting thing we could have asked. We report the road from it in full,
+including two withdrawals and a model we had to correct, because the path ran entirely through
+measurements we had every reason to trust --- twice --- and because the instrument that finally
+settled each of them was not a better clock or a larger sample, but a physical constraint that
+the data could not violate.
 
 
 \section*{Artefact Availability}

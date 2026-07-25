@@ -570,23 +570,28 @@ class TestExternalHarnessEvidence:
         assert "endtoendlatencymicros > 0" in section, "the positive-only filter must be quoted"
         assert "no counter" in section or "not merely unpublished" in section
 
-    def test_the_claim_is_scoped_to_what_the_audit_shows(self, tex):
-        """The audit is a source finding; the run that followed it returned nothing.
+    def test_the_claim_is_scoped_to_what_the_run_shows(self, tex):
+        """The result is now positive, so the scoping requirement moves rather than lapses.
 
-        This asserted "have not run" until we ran it. The scoping requirement has not gone away,
-        it has moved: the paper must still stop at the design flaw and must not upgrade a null
-        into support. Both halves are checked, and so is the admission that the run was made
-        under conditions favourable to the harness -- one host, one JVM, no competing load --
-        because a null obtained on easy conditions is weak evidence and saying so is the point.
+        This assertion has changed twice. It began as "we have not run it", became "a null must
+        not be read as support", and is now "a positive result must not be read as more than it
+        is". The constant is that the section states exactly what was established and stops:
+        the discard happens, it is large, it is unreported -- and whether any PUBLISHED result
+        is affected remains unclaimed, because we audited no deployment but our own.
         """
-        # Collapse whitespace: LaTeX hard-wraps, so an assertion on a phrase spanning a line
-        # break fails against source that reads perfectly well.
         section = " ".join(_section(tex, "sec:external").lower().split())
-        assert "source audit" in section or "not a measurement" in section
-        assert "discarded zero" in section or "discarded nothing" in section
-        assert "bounds our claim" in section, "a null must not be read as support"
-        assert "competing load" in section, "the conditions must be admitted as the easy ones"
-        assert "do not know and do not claim" in section or "is wrong" in section
+        assert "6{,}000" in section or "6,000" in section, "the count must be stated"
+        assert "6.7" in section, "the share of the run must be stated"
+        assert "do not claim" in section, "the unaudited scope must stay unclaimed"
+        assert "88" in section, "the load must be stated; an idle run would not have found it"
+
+    def test_the_vacuous_zero_is_disclosed(self, tex):
+        """The first attempt reported zero because the benchmark never ran, and that number
+        reached a draft. A paper about instruments that fail silently cannot quietly drop its
+        own instance of exactly that; the section must own it."""
+        section = " ".join(_section(tex, "sec:external").lower().split())
+        assert "never runs discards nothing" in section or "never ran" in section
+        assert "artefact of the instrument" in section
 
     def test_the_null_result_matches_its_artefact(self, tex):
         rows = _rows("external", "omb_discards.csv")

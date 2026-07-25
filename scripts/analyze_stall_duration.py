@@ -12,32 +12,37 @@ falls only from 0.557 to 0.319, a factor of 1.75. Nothing like tenfold, and nowh
 to explain a 39x change in inversions. Had `p` remained inferred from the inversion rate, the
 model would have agreed with itself and we would never have found this out.
 
-What the counters do show is that SCHED_FIFO barely changes how OFTEN the thread waits -- the
-timeslice counts are almost identical, 466k against 464k -- and changes enormously how LONG each
-wait lasts. Dividing the wait time by the timeslice count gives the mean wait per scheduling
-event, and the per-process median of that falls twentyfold, from 0.369 ms to 0.018 ms.
+The counters point at stall LENGTH rather than stall FREQUENCY -- but they do not get far enough
+to close the argument, and an earlier draft of this file said they did. That draft quoted the
+per-process median, which falls 20x at 75% load and 143x at 88%, and concluded that a twentyfold
+cut in stall duration explains a fortyfold cut in inversions. Two things are wrong with it.
 
-That is the quantity an inversion actually depends on. An inversion needs ONE stall longer than
-T_true, which for broker transport here is around 0.5 ms. Under ordinary priority the median
-stall is 0.37 ms and the ninetieth percentile is 1.35 ms, so a large share of stalls clear the
-bar. Under SCHED_FIFO the ninetieth percentile is 0.18 ms and almost none do. A twentyfold cut
-in stall DURATION explains a fortyfold cut in inversions; a 1.75-fold cut in total waiting does
-not.
+First, there are two ways to measure stall length and they disagree by an order of magnitude:
 
-So the model's variable was wrong, and wrong in a way that explains the earlier failures. Total
-occupancy is a time-average; inversions are a tail event. Every curve we fitted in rho was a
-curve in the wrong quantity, which is why M/G/1 failed, why a fitted exponential fitted no better
-for any principled reason, and why our own bounded bracket missed. The corrected statement is:
+    aggregate (total wait / total slices)   0.246 -> 0.076 ms   3.25x     [75% load]
+    median across processes                 0.369 -> 0.018 ms  20.0x
 
-    P(inversion) ~ (rate of scheduling stalls) x P(stall duration > T_true)
+A gap that wide means the distribution across processes is heavily skewed -- a few processes
+carry most of the waiting -- so the median describes a typical process, not the system, and it
+cannot be quoted as though it were the aggregate. On the aggregate the fall is 3-5x. Against a
+39-66x fall in the inversion rate, that is NOT sufficient either.
 
-and the second factor is what scheduling priority moves.
+Second, the draft claimed the thread "is scheduled almost as many times". That holds at 75% load
+(466k against 464k, ratio 1.00) and fails at 88% (435k against 109k, ratio 3.99).
 
-WHAT THIS DOES NOT ESTABLISH. wait/slices is a MEAN per scheduling event, not a distribution.
-schedstat gives cumulative totals only, so the tail beyond that mean is not observed and the
-p90 figures here are percentiles ACROSS PROCESSES of a per-process mean, which is a coarser
-thing than the per-stall distribution the mechanism is about. Resolving the stall distribution
-itself needs sched_switch tracing, which we have not run.
+So the honest position is: occupancy moves about 2x, mean stall length 3-5x, and the inversion
+rate moves 40x. NEITHER measured quantity accounts for it.
+
+That is a limit of the instrument rather than an absence of mechanism, and the limit is
+structural. schedstat carries cumulative totals, so every quantity derived from it is a MEAN. An
+inversion is a TAIL event -- it needs one stall longer than T_true, about 0.5 ms here. A mean
+cannot bound a tail. These counters therefore constrain the explanation without resolving it.
+
+What survives is the direction: stall length moves far more than stall frequency does, and
+occupancy -- the time-average the model was built on -- is clearly not the variable. That is
+still enough to explain why every curve fitted in rho failed, since those were curves in a
+time-average of a quantity whose tail is what matters. Resolving it needs the stall DISTRIBUTION,
+from sched_switch tracing, which we have not run and which is the next measurement to make.
 
 CLI:
     python scripts/analyze_stall_duration.py --depth docs/results/depth/ea7 \
@@ -50,7 +55,7 @@ from collections import defaultdict
 from pathlib import Path
 
 OCCUPANCY_PREDICTED = 10.0   # the pre-registered fall in p; recorded so the miss is visible
-DURATION_SUPPORTS = 5.0      # a stall-duration fall of at least this backs the corrected model
+INVERSION_FALL = 40.0        # the fall in the inversion rate any mechanism here must explain
 
 
 def load_cell(path):
@@ -95,6 +100,7 @@ def load_cell(path):
     return {"occupancy": tot_w / (tot_w + tot_c),
             "slices": tot_s,
             "mean_wait_ms": tot_w / tot_s / 1e6,
+            "total_wait_s": tot_w / 1e9, "total_cpu_s": tot_c / 1e9,
             "median_wait_ms": st.median(means) if means else float("nan"),
             "p90_wait_ms": means[int(0.9 * (len(means) - 1))] if means else float("nan"),
             "max_wait_ms": max(means) if means else float("nan"),
@@ -123,26 +129,49 @@ def compare(level, arms):
     return {"level": level,
             "occ_base": b["occupancy"], "occ_rt": r["occupancy"],
             "occ_fall": ratio(b["occupancy"], r["occupancy"]),
+            "agg_base_ms": b["mean_wait_ms"], "agg_rt_ms": r["mean_wait_ms"],
+            "agg_fall": ratio(b["mean_wait_ms"], r["mean_wait_ms"]),
             "med_base_ms": b["median_wait_ms"], "med_rt_ms": r["median_wait_ms"],
             "med_fall": ratio(b["median_wait_ms"], r["median_wait_ms"]),
+            "wait_fall": ratio(b["total_wait_s"], r["total_wait_s"]),
             "p90_base_ms": b["p90_wait_ms"], "p90_rt_ms": r["p90_wait_ms"],
             "slices_base": b["slices"], "slices_rt": r["slices"],
             "slice_ratio": ratio(b["slices"], r["slices"])}
 
 
-def verdict(rows):
-    """Which quantity moved: the amount of waiting, or the length of each wait."""
+def verdict(rows, target_fall=INVERSION_FALL):
+    """Which quantity moved, judged on the CONSERVATIVE statistic.
+
+    Two measures of stall length disagree badly, and the disagreement is itself the finding. The
+    aggregate mean wait per scheduling event (total wait / total slices) falls 3-5x. The median
+    ACROSS PROCESSES of each process's own mean falls 20-143x. A gap that wide means the
+    distribution across processes is heavily skewed -- a few processes carry most of the waiting
+    -- so the median is not representative of the aggregate and must not be quoted as though it
+    were.
+
+    The verdict therefore rests on the aggregate, the number skew cannot inflate, with the median
+    reported beside it. On the aggregate, NEITHER occupancy (about 2x) NOR mean stall length
+    (3-5x) comes close to accounting for the 39-66x fall in the inversion rate.
+
+    That is a statement about what these counters can see, not an absence of mechanism. schedstat
+    carries cumulative totals, so it yields means, and an inversion is a TAIL event: it needs one
+    stall longer than T_true. A mean cannot bound a tail.
+    """
     if not rows:
         return {"decided": False, "why": "no level has both arms"}
     occ = st.median([r["occ_fall"] for r in rows])
+    agg = st.median([r["agg_fall"] for r in rows])
     med = st.median([r["med_fall"] for r in rows])
+    sl = st.median([r["slice_ratio"] for r in rows])
     return {"decided": True,
-            "occupancy_fall": occ,
-            "duration_fall": med,
+            "occupancy_fall": occ, "aggregate_fall": agg, "median_fall": med,
+            "slice_ratio": sl,
+            # A median far above the aggregate means skew, not a stronger effect.
+            "skewed": med >= 3 * agg,
             "occupancy_prediction_held": occ >= OCCUPANCY_PREDICTED,
-            "duration_explains": med >= DURATION_SUPPORTS,
-            # The correction only stands if duration moved and occupancy did not.
-            "model_corrected": med >= DURATION_SUPPORTS and occ < OCCUPANCY_PREDICTED}
+            # Conservative: the aggregate must carry at least half the inversion result alone.
+            "aggregate_explains": agg >= target_fall / 2,
+            "scheduled_as_often": sl < 1.5}
 
 
 def main(argv=None):
@@ -165,9 +194,13 @@ def main(argv=None):
     for r in rows:
         print(f"  {r['level']}: occupancy {r['occ_base']:.4f} -> {r['occ_rt']:.4f}"
               f"   fall {r['occ_fall']:.2f}x")
-    print("\n== how LONG each wait lasts (mean per scheduling event) ==")
+    print("\n== how LONG each wait lasts ==")
+    print("   aggregate = total wait / total slices. median = across processes, of each")
+    print("   process's own mean. They diverge when a few processes carry the waiting.")
     for r in rows:
-        print(f"  {r['level']}: median {r['med_base_ms']:.4f} -> {r['med_rt_ms']:.4f} ms"
+        print(f"  {r['level']}: aggregate {r['agg_base_ms']:.4f} -> {r['agg_rt_ms']:.4f} ms"
+              f"   fall {r['agg_fall']:.2f}x")
+        print(f"       median    {r['med_base_ms']:.4f} -> {r['med_rt_ms']:.4f} ms"
               f"   fall {r['med_fall']:.1f}x     p90 {r['p90_base_ms']:.3f} -> "
               f"{r['p90_rt_ms']:.3f} ms")
     print("\n== how often it is scheduled at all ==")
@@ -180,22 +213,35 @@ def main(argv=None):
     if not v["decided"]:
         print(f"UNDECIDED: {v['why']}")
     else:
-        print(f"occupancy fell {v['occupancy_fall']:.2f}x "
-              f"(pre-registered: at least {OCCUPANCY_PREDICTED:.0f}x)"
-              f"  -> {'HELD' if v['occupancy_prediction_held'] else 'FAILED'}")
-        print(f"stall duration fell {v['duration_fall']:.1f}x")
-        if v["model_corrected"]:
-            print("\nMODEL CORRECTED BY MEASUREMENT.")
-            print("  Priority does not stop the thread waiting -- it waits almost as often,")
-            print("  and is scheduled almost as many times. It makes each wait shorter.")
-            print("  An inversion needs ONE stall longer than T_true, so what governs it is")
-            print("  the stall DURATION distribution, not the time-average occupancy.")
-            print("  Every curve we fitted in rho was a curve in the wrong quantity.")
-        elif v["occupancy_prediction_held"]:
-            print("\nThe original prediction held: occupancy itself fell as predicted.")
+        print(f"the inversion rate falls about {INVERSION_FALL:.0f}x (E-A5, E-A5b).")
+        print(f"  occupancy               {v['occupancy_fall']:.2f}x   "
+              f"(pre-registered >= {OCCUPANCY_PREDICTED:.0f}x -> "
+              f"{'HELD' if v['occupancy_prediction_held'] else 'FAILED'})")
+        print(f"  stall length, aggregate {v['aggregate_fall']:.2f}x   "
+              f"-> {'sufficient' if v['aggregate_explains'] else 'NOT sufficient'}")
+        print(f"  stall length, median    {v['median_fall']:.1f}x"
+              + ("   SKEWED: not representative of the aggregate" if v["skewed"] else ""))
+        if not v["scheduled_as_often"]:
+            print(f"  NOTE: under real-time priority the thread is also scheduled "
+                  f"{v['slice_ratio']:.2f}x LESS often,")
+            print("        so 'it waits as often, just more briefly' does not hold at "
+                  "every level.")
+        if v["occupancy_prediction_held"]:
+            print("\nThe pre-registered occupancy prediction held.")
+        elif v["aggregate_explains"]:
+            print("\nOccupancy failed and stall length carries the result on the conservative")
+            print("statistic: an inversion needs one stall longer than T_true, not a high")
+            print("time-average of waiting.")
         else:
-            print("\nNeither quantity moved enough to explain the inversion result;")
-            print("the mechanism is not established by these counters.")
+            print("\nNEITHER QUANTITY ACCOUNTS FOR THE RESULT on the conservative statistic.")
+            print("  Occupancy moves about 2x and mean stall length 3-5x, against a 40x fall")
+            print("  in inversions. The per-process median moves far more, but it is skewed")
+            print("  and must not be quoted as if it were the aggregate.")
+            print("  This is a limit of the instrument, not an absence of mechanism. schedstat")
+            print("  carries cumulative totals, so it yields MEANS, and an inversion is a TAIL")
+            print("  event -- one stall beyond T_true. A mean cannot bound a tail. These")
+            print("  counters constrain the explanation without resolving it; resolving it")
+            print("  needs the stall DISTRIBUTION, from sched_switch tracing, not yet run.")
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)

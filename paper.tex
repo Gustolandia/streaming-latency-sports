@@ -66,8 +66,9 @@ have made is a cautionary tale rather than a finding, we audited a benchmark we 
 the OpenMessaging Benchmark computes the same cross-process difference and then admits a sample
 to its histogram only if it is positive, without counting what it drops --- so the exposure is a
 property of a widely used measurement design, and that design cannot report the problem. We then
-instrumented that discard and ran the benchmark, and it dropped nothing; we report the null,
-which bounds the claim to the audit rather than extending it. The fifth result corrects the
+instrumented that discard and ran the benchmark under load, and it silently dropped $6{,}000$
+end-to-end samples --- about $6.7\%$ --- while reporting a latency distribution that looks
+entirely healthy. The failure mode is therefore not ours alone. The fifth result corrects the
 model, and we think it is the most useful thing here after the
 audit itself. $\Delta$ is not one distribution but two --- a narrow jitter core plus a rare tail
 from descheduling --- and load multiplies the tail's \emph{weight} ($60\times$) far faster than
@@ -196,11 +197,9 @@ deployment, cross-\emph{host} --- timestamp difference, and then admits a sample
 only when that difference is positive, with no counter for what it discards. The failure mode is
 therefore designed into a widely used benchmark, and its output cannot reveal it. We then made
 that discard visible --- one counter in the existing guard's \texttt{else} branch, nothing else
-changed --- and ran the benchmark: it discarded nothing, under conditions (one host, one JVM, no
-competing load) we now know to be the easy ones. The null is reported because we fixed both
-readings before running. We report this
-as a source audit rather than a measurement, and say plainly what that does and does not
-establish.
+changed --- and ran the benchmark under load. It discarded $6{,}000$ end-to-end samples in three
+minutes, about $6.7\%$ of the run, while reporting a healthy-looking latency summary. The
+exposure is therefore not ours alone, and it is not hypothetical.
 \item \textbf{A correction to our own model} (Section~\ref{sec:mixture}), pre-registered before
 the campaign that tested it. The model above treats $\Delta$ as one distribution; it is two. A
 nine-level load sweep falsifies the scale-family form and measures the mixture instead: a narrow
@@ -1040,7 +1039,8 @@ paths where such benchmarks are usually run --- ours measures broker transport a
 $0.5$~ms --- that is not an edge case but a large share of the samples, and the reported
 distribution is truncated from below at $1$~ms.
 
-\paragraph{We then ran it, and it discarded nothing.} A source audit is not a measurement, so we
+\paragraph{We then ran it, and it discarded six thousand samples.} A source audit is not a
+measurement, so we
 made the discards observable and ran the benchmark. The obvious experiment is impossible --- the
 violations never reach the output, because the guard removes them inside the harness --- so we
 added one counter, incremented in the existing guard's \texttt{else} branch, and changed nothing
@@ -1048,23 +1048,35 @@ else: not the latency computation, not the guard's condition, not any reported s
 patch is in the artefact. We then ran the benchmark otherwise unmodified against our \kafka{} broker for
 three minutes at $500$ messages per second.
 
-It discarded \textbf{zero} samples. We fixed both readings before running, so this one counts as
-it stands: on this deployment the failure mode did not occur. It bounds our claim rather than
-supporting it, and we would rather report the run than not have mentioned it.
+\textbf{It discarded $6{,}000$ samples.} In three minutes at $500$ messages per second, with the
+machine held at $88\%$ utilisation, the benchmark computed six thousand non-positive end-to-end
+latencies and dropped every one of them --- roughly $6.7\%$ of the run --- while reporting a
+throughput and latency summary that looks entirely healthy. Nothing in its output records that
+those samples existed. The reading was fixed before the run: a non-zero count is the strongest
+form of this evidence, and this is it. The failure mode occurs in a harness we did not write, on
+hardware we do not control for it, and is invisible to the harness itself.
 
-The bound is worth stating precisely, because it is narrower than it first appears. It ran here in its embedded single-worker mode, so both stamps came from one JVM on one host, removing
-the cross-host clock offset that produced most of our own violations; and it ran without
-competing load, which Section~\ref{sec:twostate} shows is the condition that governs the rate. At
-our own idle floor of about $0.4\%$, a run of this length would have yielded a few hundred
-discards; it yielded none. So the honest summary is that we have not reproduced the failure in the
-OpenMessaging Benchmark, under conditions chosen to be easy for it.
+The load matters and we put it there deliberately. Section~\ref{sec:twostate} establishes that
+the rate is governed by scheduling stalls rather than by utilisation as such, and an idle machine
+has few of them. A first attempt at this run used no background load, and testing a harness for
+this failure on an idle machine is close to testing under conditions chosen to hide it.
 
-What survives is therefore the narrower claim, and we let it stay narrow. The guard exists, it is
-silent, and it is uncounted --- that is established at source, and it means a deployment which
-does suffer the failure could not tell. Whether any published OpenMessaging Benchmark result is affected, we do
-not know and do not claim. That asymmetry is the reason we recommend an integrity audit as
-routine practice: the cost of running one is small, and the alternative is a benchmark that
-cannot report its own failure.
+\emph{We report one thing about that first attempt, because it is the paper's own argument
+turned on us.} It recorded zero discards, and an earlier version of this section reported that
+zero as a genuine negative that bounded our claim. The run had in fact failed four seconds in,
+on a missing payload-file argument, and produced no latency at all; a benchmark that never runs
+discards nothing. The number was an artefact of the instrument breaking, it looked exactly like a
+measurement, and it survived into a draft of a paper about numbers that look exactly like
+measurements. It was caught only because we later added an output-validation gate to a different
+variant of the same campaign and noticed the first one had none. The campaign now refuses to
+write any count unless the benchmark produced latency output.
+
+What we still do not claim is that any published result obtained with this benchmark is wrong.
+We have shown that the discard happens, that it is large, and that it is unreported. Whether it
+has affected a specific published measurement depends on that measurement's deployment, and we
+have not audited any. That asymmetry is the reason we recommend an integrity audit as routine
+practice: the cost of running one is small, and the alternative is a benchmark that cannot report
+its own failure.
 
 \subsection{What we withdraw}
 
@@ -2089,12 +2101,16 @@ be at a given load, and both attempts to write one --- M/G/1 and our own bounded
 failed against the sweep. A practitioner should read this as ``keep the stamping thread runnable
 and measure what you get'', not as a curve to substitute into a budget.
 
-\emph{The external replication is a null, and a weak one.} The instrumented OpenMessaging
-Benchmark discarded nothing (Section~\ref{sec:external}), but it ran on one host, in one JVM, and
-without competing load --- the conditions our own results identify as least likely to produce the
-failure. The run therefore neither confirms nor refutes the exposure in that harness; it is
-reported because it was pre-registered, not because it settles anything. A distributed,
-loaded replication is the obvious next step and we did not run it.
+\emph{The external replication is single-host.} The instrumented OpenMessaging Benchmark
+discarded $6{,}000$ samples under load (Section~\ref{sec:external}), which establishes the
+failure outside our own harness. It ran in embedded mode, so both stamps came from one JVM on one
+host, and the demonstration is of the \emph{occupancy} channel alone. We attempted a distributed
+run five times and abandoned it after five separate faults in the benchmark's own worker
+protocol. That difficulty is worth recording rather than hiding: a failure mode this easy to
+reach and this hard to instrument is one a practitioner is unlikely to find by accident. The
+cross-host clock channel is in any case bounded on this testbed --- \texttt{chrony} puts the
+inter-host offset near $0.067$~ms, below the millisecond resolution the benchmark reports in ---
+so it is the channel we could least afford to miss, and the one we did not need.
 
 \emph{H3 is measured at one operating point.} The symmetric-stamping comparison
 (Section~\ref{sec:rules}) was run at one in-flight request and one load level, because inline

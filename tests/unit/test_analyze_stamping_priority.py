@@ -123,9 +123,12 @@ class TestMain:
 
     def test_reports_occupancy_support(self, temp_dir, capsys):
         rc, out = self._run(temp_dir, capsys, _stats(0.877, 0.224), _stats(0.881, 0.004))
-        assert rc == 0 and "OCCUPANCY MECHANISM SUPPORTED" in out
+        assert rc == 0 and "SCHEDULING MECHANISM SUPPORTED" in out
         rows = list(csv.DictReader(open(temp_dir / "o" / "stamping_priority.csv")))
         assert rows[0]["level"] == "l88" and float(rows[0]["ratio"]) < 0.1
+        # The verdict must not overstate WHICH scheduling property is responsible: the
+        # measured counters rule out time-average occupancy as the quantitative explanation.
+        assert "separate question" in out and "not time-average" in out
 
     def test_reports_utilisation_support(self, temp_dir, capsys):
         _, out = self._run(temp_dir, capsys, _stats(0.877, 0.224), _stats(0.879, 0.223))

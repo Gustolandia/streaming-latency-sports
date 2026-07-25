@@ -91,12 +91,14 @@ def plot_share(ax, df):
     ax.set_xticks(df["window_s"])
     ax.set_xticklabels([f"{int(w)}" for w in df["window_s"]])
     ax.set_xlabel("Observation window (s)")
-    ax.set_ylabel("Share of events paying the cost (\\%)")
+    # Plain "%": matplotlib renders without usetex, so a LaTeX-escaped percent would print
+    # the backslash literally on the axis.
+    ax.set_ylabel("Share of events paying the cost (%)")
     ax.set_title("(b) Dilution, not absence")
     ax.grid(True, alpha=0.3)
     ax.legend()
     for w, s in zip(df["window_s"], share):
-        ax.annotate(f"{s:.1f}\\%", xy=(w, s), xytext=(0, 8), textcoords="offset points",
+        ax.annotate(f"{s:.1f}%", xy=(w, s), xytext=(0, 8), textcoords="offset points",
                     ha="center", fontsize=8)
 
 

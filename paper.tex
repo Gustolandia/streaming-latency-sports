@@ -55,11 +55,13 @@ T_{\mathrm{true}} + \Delta$, where $\Delta$ is the difference between the two st
 a run is corrupted exactly when $\Delta < -T_{\mathrm{true}}$. That predicts four things we can
 falsify, and a fifth we did not expect.
 
-\textbf{What the measurements say.} All four rules hold: inversion risk falls as the measured
-quantity grows ($\rho_s = -0.80$), rises with concurrent process count ($\rho_s = +0.80$), follows
-the $\rho/(1-\rho)$ waiting time of an M/G/1 queue in utilisation ($\rho_s = 0.98$), and shrinks
-by a quarter when the instrument is made symmetric --- entirely on the side whose stamp was
-asymmetric. The fifth result corrects the model: $\Delta$ is not one distribution but two, a
+\textbf{What the measurements say.} All four rules hold by their pre-registered criteria:
+inversion risk falls as the measured quantity grows ($\rho_s = -0.80$), rises with concurrent
+process count ($\rho_s = +0.80$), grows superlinearly with utilisation and knees near saturation
+($\rho_s = 0.98$), and shrinks by a quarter when the instrument is made symmetric --- entirely on
+the side whose stamp was asymmetric. One claim we had made does not survive a fairer test and we
+withdraw it: our data shows the queue-like \emph{shape} but cannot single out the M/G/1 form
+specifically, because an exponential fits it equally well. The fifth result corrects the model: $\Delta$ is not one distribution but two, a
 narrow jitter core plus a rare tail from descheduling, and load multiplies the tail's
 \emph{weight} ($60\times$) far faster than the core's \emph{width} ($5\times$). Of the original
 question, what survives is modest and we report it as such: the two brokers sit within one
@@ -953,12 +955,30 @@ not lean on its slope, because injected delay also inflates variance and so conf
 $T_{\mathrm{true}}$ with backlog (Section~\ref{sec:threats}). The direction is consistent across
 both the clean contrast and the confounded sweep. \textbf{Supported.}
 
-\paragraph{H2, the utilisation rule.} Sweeping background load from idle to oversubscription,
-with no core pinning so the measured utilisation is the right denominator, inversion rate is
-flat below half utilisation and then climbs steeply (Table~\ref{tab:h2}). The rank correlation
-is $\rho_s = 0.98$ ($n=9$), and the M/G/1 form fits far better than a linear alternative
-($R^2 = 0.945$ against $0.640$). The predicted knee is present and has the predicted shape.
+\paragraph{H2, the utilisation rule --- with the functional form withdrawn.} Sweeping background
+load from idle to oversubscription, with no core pinning so the measured utilisation is the right
+denominator, inversion rate is flat below half utilisation and then climbs steeply
+(Table~\ref{tab:h2}). The rank correlation is $\rho_s = 0.98$ ($n=9$). By the pre-registered
+criterion --- the M/G/1 form must fit better than a linear alternative --- the rule passes
+comfortably ($R^2 = 0.945$ against $0.640$), and we report that verdict as it was specified.
 \textbf{Supported.}
+
+\emph{But the functional form does not survive a fairer test, and we withdraw it.} Beating a
+straight line is close to guaranteed for any function that turns upward near saturation, so it is
+a weak discriminator. Refitting against convex alternatives whose exponents are themselves fitted
+--- a power law $\rho^k$ and an exponential $e^{k\rho}$ --- an \emph{exponential fits this data
+slightly better than M/G/1 does} ($R^2 = 0.961$ against $0.945$). On the independent nine-level
+sweep of Section~\ref{sec:mixture} the ordering reverses ($0.958$ against $0.897$). Two campaigns
+disagree about which convex form is best, and the margins are of the same size as the
+disagreement, which is the signature of data that cannot discriminate between them at all.
+
+What the data supports is therefore the \emph{shape} and not the \emph{mechanism}: inversion rate
+grows superlinearly in utilisation with a knee near saturation. It does not single out queueing
+theory. We had claimed the M/G/1 form specifically because we had only tested it against a
+straight line; that claim is withdrawn, and Pollaczek--Khinchine remains in
+Section~\ref{sec:model} as the motivation for the prediction rather than as a fitted result.
+Distinguishing the forms would need points spaced to separate a pole at $\rho = 1$ from smooth
+exponential growth, which our nine levels are not.
 
 \paragraph{H4, the oversubscription rule.} At constant aggregate event rate, inversion rate
 rises with the number of concurrent producer/consumer processes: $0.029$, $0.082$, $0.105$,
@@ -1717,10 +1737,12 @@ original seven-event corpus reported as a tie. Each system has one client settin
 orders of magnitude, both free on the co-located testbeds where such settings are normally
 evaluated. And the model of the failure now carries measured
 rules rather than a derivation: inversion probability falls as the measured quantity grows,
-rises with concurrent process count, and follows M/G/1 waiting time in utilisation with the
-predicted knee; and a symmetric instrument removes a quarter of the residual between-system
-difference, the same asymmetry that manufactured our first result in the large. The check binds
-hardest where the effect is smallest, and we can now say so with a curve rather than an anecdote.
+rises with concurrent process count, and grows superlinearly in utilisation with the predicted
+knee; and a symmetric instrument removes a quarter of the residual between-system difference, the
+same asymmetry that manufactured our first result in the large. We had also claimed the M/G/1
+form specifically, and withdraw that: tested against a fitted exponential rather than only
+against a straight line, our data cannot tell the two apart. The check binds hardest where the
+effect is smallest, and we can now say so with a curve rather than an anecdote.
 
 A dedicated campaign then corrected the model we had just confirmed. Treating the stamping
 asymmetry $\Delta$ as a single distribution is only a leading-order account: it is a mixture of a

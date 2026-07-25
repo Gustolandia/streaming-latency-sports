@@ -114,43 +114,106 @@ def mg1_waiting(rho, scale=1.0):
 
 
 def fit_mg1(rho, inversion_rate):
-    """Least-squares scale for the M/G/1 shape, and its fit against a linear alternative.
+    """Fit the M/G/1 shape against a family of alternatives, not just a straight line.
 
-    H2 is a claim about *shape*: if inversion rate grows as rho/(1-rho) it should beat a straight
-    line. Reporting both R^2 values is what makes the claim falsifiable rather than decorative.
+    H2 is a claim about *shape*. Comparing rho/(1-rho) only against a LINE is a weak test: any
+    convex increasing function beats a line on data that turns upward near saturation, so a win
+    there is close to guaranteed and says little about queueing specifically. A referee made
+    exactly this objection, and it is correct.
+
+    We therefore also fit two convex alternatives that a non-queueing mechanism could produce --
+    a power law rho^k (shape without a pole) and an exponential exp(k*rho) -- each with its
+    exponent fitted, and report every R^2. The honest claim is only as strong as the margin over
+    the BEST alternative, so `mg1_better` now means "beats all of them", and `best_alternative`
+    names the runner-up so the margin can be read directly.
+
+    Saturated points are excluded throughout: at rho >= 1 the M/G/1 predictor is infinite, and
+    including them would let the pole win by construction.
     """
     rho = np.asarray(rho, float)
     y = np.asarray(inversion_rate, float)
-    ok = (rho < 1.0) & np.isfinite(y)
+    ok = (rho < 1.0) & np.isfinite(y) & (rho > 0.0)
+    nan = float("nan")
     if ok.sum() < 3:
-        return {"scale": float("nan"), "r2_mg1": float("nan"), "r2_linear": float("nan"),
-                "mg1_better": False}
+        return {"scale": nan, "r2_mg1": nan, "r2_linear": nan, "r2_power": nan,
+                "r2_exponential": nan, "power_k": nan, "exp_k": nan,
+                "best_alternative": None, "r2_best_alternative": nan, "mg1_better": False}
 
-    x_q = mg1_waiting(rho[ok])
-    scale = float((x_q * y[ok]).sum() / (x_q ** 2).sum()) if (x_q ** 2).sum() else float("nan")
+    r, yy = rho[ok], y[ok]
 
     def r2(pred):
-        ss_res = ((y[ok] - pred) ** 2).sum()
-        ss_tot = ((y[ok] - y[ok].mean()) ** 2).sum()
-        return float(1 - ss_res / ss_tot) if ss_tot else float("nan")
+        ss_res = ((yy - pred) ** 2).sum()
+        ss_tot = ((yy - yy.mean()) ** 2).sum()
+        return float(1 - ss_res / ss_tot) if ss_tot else nan
 
-    r2_q = r2(scale * x_q)
-    slope = float((rho[ok] * y[ok]).sum() / (rho[ok] ** 2).sum()) if (rho[ok] ** 2).sum() else 0.0
-    r2_l = r2(slope * rho[ok])
-    return {"scale": scale, "r2_mg1": r2_q, "r2_linear": r2_l,
-            "mg1_better": bool(r2_q > r2_l)}
+    def scaled(basis):
+        """Least-squares scale for a one-parameter shape through the origin."""
+        denom = (basis ** 2).sum()
+        s = float((basis * yy).sum() / denom) if denom else nan
+        return s, r2(s * basis)
+
+    x_q = mg1_waiting(r)
+    scale, r2_q = scaled(x_q)
+    _, r2_l = scaled(r)
+
+    # Power law rho^k: fit k on the log-log slope, then the scale by least squares.
+    pos = yy > 0
+    if pos.sum() >= 2 and np.ptp(np.log(r[pos])) > 0:
+        lx, ly = np.log(r[pos]), np.log(yy[pos])
+        power_k = float(((lx - lx.mean()) * (ly - ly.mean())).sum() / ((lx - lx.mean()) ** 2).sum())
+        _, r2_p = scaled(r ** power_k)
+    else:
+        power_k, r2_p = nan, nan
+
+    # Exponential exp(k*rho): fit k on the log-linear slope, then the scale by least squares.
+    if pos.sum() >= 2 and np.ptp(r[pos]) > 0:
+        ly = np.log(yy[pos])
+        rp = r[pos]
+        exp_k = float(((rp - rp.mean()) * (ly - ly.mean())).sum() / ((rp - rp.mean()) ** 2).sum())
+        _, r2_e = scaled(np.exp(exp_k * r))
+    else:
+        exp_k, r2_e = nan, nan
+
+    alts = {"linear": r2_l, "power": r2_p, "exponential": r2_e}
+    usable = {k: v for k, v in alts.items() if not np.isnan(v)}
+    best_name = max(usable, key=usable.get) if usable else None
+    best_r2 = usable[best_name] if best_name else nan
+
+    return {"scale": scale, "r2_mg1": r2_q, "r2_linear": r2_l, "r2_power": r2_p,
+            "r2_exponential": r2_e, "power_k": power_k, "exp_k": exp_k,
+            "best_alternative": best_name, "r2_best_alternative": best_r2,
+            # Beats every alternative, not merely the weakest one.
+            "mg1_better": bool(not np.isnan(r2_q) and (best_name is None or r2_q > best_r2))}
 
 
 def check_h2(df, rho_col="rho", rate_col="inversion_rate"):
-    """H2: inversion rate follows scheduler waiting time, with a knee near saturation."""
+    """H2: inversion rate follows scheduler waiting time, with a knee near saturation.
+
+    Two verdicts, deliberately separated.
+
+    `supported` is the PRE-REGISTERED criterion: R^2(M/G/1) > R^2(linear) with a positive rank
+    correlation. We do not change a pre-registered rule after seeing the data, so this is
+    reported exactly as it was specified.
+
+    `form_discriminated` is a post-hoc robustness check the pre-registration did not require and
+    which a referee rightly asked for: does the M/G/1 form also beat a *fair* convex alternative
+    (a fitted power law, a fitted exponential)? Beating only a straight line is close to
+    guaranteed for any function that turns upward near saturation. Where this is False, the
+    honest reading is that the data supports superlinear growth with a knee but cannot single out
+    queueing theory as the mechanism.
+    """
     fit = fit_mg1(df[rho_col], df[rate_col])
     rho = spearman(df[rho_col], df[rate_col])
+    pre_registered = bool(not np.isnan(fit["r2_mg1"]) and not np.isnan(fit["r2_linear"])
+                          and fit["r2_mg1"] > fit["r2_linear"]
+                          and not np.isnan(rho) and rho > 0)
     return {
         "hypothesis": "H2 utilisation rule",
         "n_points": int(len(df)),
         "spearman": rho,
         **fit,
-        "supported": bool(fit["mg1_better"] and not np.isnan(rho) and rho > 0),
+        "supported": pre_registered,
+        "form_discriminated": bool(fit["mg1_better"]),
     }
 
 

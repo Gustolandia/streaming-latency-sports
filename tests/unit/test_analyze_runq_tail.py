@@ -1,0 +1,236 @@
+"""Tests for scripts/analyze_runq_tail.py - target >=95% branch coverage.
+
+This is the closing test of the mechanism, so the tests are built around the ways it could
+flatter it. Data is synthesised for each of the three pre-registered outcomes and each must be
+recognised, including REFUTED. The instrument check is tested for its ability to withhold a
+result that would otherwise look like a clean match.
+"""
+import csv
+from pathlib import Path
+import sys
+from unittest.mock import patch
+
+import pytest
+
+SCRIPTS_DIR = Path(__file__).parent.parent.parent / "scripts"
+sys.path.insert(0, str(SCRIPTS_DIR))
+
+import analyze_runq_tail as art  # noqa: E402
+from analyze_runq_tail import (  # noqa: E402
+    parse_bpftrace,
+    tail_probability,
+    instrument_check,
+    verdict,
+    main,
+)
+
+# A realistic bpftrace dump: log2 histogram plus the exact threshold counters.
+DUMP = """Attaching 4 probes...
+
+@usecs:
+[0]                  100 |@@@@                                    |
+[1]                  400 |@@@@@@@@@@@@@@@@                        |
+[2, 4)               900 |@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@    |
+[4, 8)               600 |@@@@@@@@@@@@@@@@@@@@@@@@                |
+[512, 1K)            180 |@@@@@@@                                 |
+[1K, 2K)              20 |@                                       |
+
+@count: 2200
+@over_500us: 200
+@over_1000us: 20
+"""
+
+
+def _cell(tmp, tag, dump=DUMP):
+    d = tmp / tag
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "runqlat.txt").write_text(dump, encoding="utf-8")
+    return d
+
+
+def _stats(rho, inv, n=3000):
+    return {"rho": rho, "n_events": n, "n_runs": 5, "mu": 0.6, "sigma_core": 0.2,
+            "tails": {0.0: inv}, "runs_z_median": -5.0}
+
+
+class TestParse:
+    def test_binary_suffixes_are_parsed(self, temp_dir):
+        """A dump whose whole tail is suffixed. Dropping these would understate the tail and
+        could turn a match into an apparent refutation, so it is asserted directly."""
+        dump = "\n".join(["@usecs:", "[4, 8)  10 |@|", "[1K, 2K)  7 |@|",
+                          "[2M, 4M)  3 |@|", ""])
+        p = parse_bpftrace(_cell(temp_dir, "s", dump) / "runqlat.txt")
+        assert (1024, 2048, 7) in p["hist"] and (2097152, 4194304, 3) in p["hist"]
+        assert p["total"] == 20
+
+    def test_reads_histogram_and_counters(self, temp_dir):
+        p = parse_bpftrace(_cell(temp_dir, "x") / "runqlat.txt")
+        assert p["counters"]["count"] == 2200
+        assert p["counters"]["over_500us"] == 200
+        # The K/M/G suffixes must be parsed, not dropped: these are the tail buckets.
+        assert (512, 1024, 180) in p["hist"]
+        assert (1024, 2048, 20) in p["hist"]
+
+    def test_missing_file_returns_none(self, temp_dir):
+        assert parse_bpftrace(temp_dir / "nope.txt") is None
+
+    def test_empty_dump_returns_none(self, temp_dir):
+        assert parse_bpftrace(_cell(temp_dir, "e", "Attaching 4 probes...\n\n")
+                              / "runqlat.txt") is None
+
+    def test_total_falls_back_to_the_histogram(self, temp_dir):
+        d = _cell(temp_dir, "n", "@usecs:\n[0]   5 |@|\n[2, 4)   7 |@|\n")
+        assert parse_bpftrace(d / "runqlat.txt")["total"] == 12
+
+
+class TestTailProbability:
+    def test_prefers_the_exact_counter(self, temp_dir):
+        p = parse_bpftrace(_cell(temp_dir, "x") / "runqlat.txt")
+        val, how = tail_probability(p, 500)
+        assert val == pytest.approx(200 / 2200) and how == "exact counter"
+
+    def test_falls_back_to_the_histogram_and_understates(self, temp_dir):
+        """No counter for this threshold: only whole buckets above it are counted, which can
+        only make the tail look SMALLER. A match found this way is not an estimator artefact."""
+        p = parse_bpftrace(_cell(temp_dir, "x") / "runqlat.txt")
+        val, how = tail_probability(p, 256)
+        assert how == "histogram lower bound"
+        assert val == pytest.approx(200 / 2200)      # the 512 and 1K buckets only
+
+    def test_no_events_gives_none(self):
+        assert tail_probability({"hist": [], "counters": {}, "total": 0}, 500)[0] is None
+
+    def test_none_input_gives_none(self):
+        assert tail_probability(None, 500)[0] is None
+
+
+class TestInstrumentCheck:
+    def test_passes_when_tracing_does_not_move_the_rate(self):
+        c = instrument_check({"inversion": 0.2300}, 0.2214)
+        assert c["checked"] and c["ok"] and c["drift"] < 0.25
+
+    def test_fails_when_tracing_moves_the_rate(self):
+        """A trace that changes the measurement describes a different machine."""
+        c = instrument_check({"inversion": 0.5000}, 0.2214)
+        assert c["checked"] and not c["ok"]
+
+    def test_not_checked_without_a_baseline(self):
+        assert not instrument_check({"inversion": 0.23}, None)["checked"]
+
+    def test_not_checked_without_a_base_arm(self):
+        assert not instrument_check(None, 0.2214)["checked"]
+
+
+class TestVerdict:
+    OK = {"checked": True, "ok": True}
+
+    def _rows(self, p_base, inv_base, p_rt, inv_rt):
+        return [{"arm": "base", "p_tail": p_base, "inversion": inv_base},
+                {"arm": "rt", "p_tail": p_rt, "inversion": inv_rt}]
+
+    def test_match_when_tail_tracks_the_rate_in_level_and_ratio(self):
+        v = verdict(self._rows(0.22, 0.22, 0.005, 0.005), self.OK)
+        assert v["decided"] and v["outcome"] == "MATCH"
+
+    def test_wrong_scale_when_only_the_ratio_reproduces(self):
+        """Tail is 10x the inversion rate in both arms: right ratio, wrong level."""
+        v = verdict(self._rows(2.2, 0.22, 0.05, 0.005), self.OK)
+        assert v["outcome"] == "WRONG SCALE" and v["ratio_ok"] and not v["levels_ok"]
+
+    def test_refuted_when_the_tail_barely_moves(self):
+        """The outcome that goes against the paper's own account."""
+        v = verdict(self._rows(0.22, 0.22, 0.20, 0.005), self.OK)
+        assert v["outcome"] == "REFUTED"
+
+    def test_withheld_when_the_instrument_perturbed_the_measurement(self):
+        v = verdict(self._rows(0.22, 0.22, 0.005, 0.005), {"checked": True, "ok": False})
+        assert not v["decided"] and "instrument changed" in v["why"]
+
+    def test_needs_both_arms(self):
+        rows = [{"arm": "base", "p_tail": 0.2, "inversion": 0.2}]
+        assert not verdict(rows, self.OK)["decided"]
+
+    def test_needs_a_traced_tail_in_each_arm(self):
+        rows = [{"arm": "base", "p_tail": None, "inversion": 0.2},
+                {"arm": "rt", "p_tail": 0.005, "inversion": 0.005}]
+        assert not verdict(rows, self.OK)["decided"]
+
+    def test_zero_rt_tail_does_not_divide(self):
+        v = verdict(self._rows(0.22, 0.22, 0.0, 0.005), self.OK)
+        assert v["decided"] and v["tail_ratio"] == float("inf")
+
+
+class TestMain:
+    def _run(self, temp_dir, capsys, base_inv, rt_inv, untraced=0.2214, dumps=None):
+        d = temp_dir / "ea9"
+        _cell(d, "l88_base", (dumps or {}).get("base", DUMP))
+        _cell(d, "l88_rt", (dumps or {}).get("rt", DUMP))
+        stats = [_stats(0.88, base_inv), _stats(0.88, rt_inv)]
+        with patch.object(art, "condition_stats", side_effect=stats):
+            rc = main(["--depth", str(d), "--runs", "runs", "--untraced-base", str(untraced),
+                       "--out", str(temp_dir / "o")])
+        return rc, capsys.readouterr().out
+
+    def test_reports_a_match(self, temp_dir, capsys):
+        rt_dump = DUMP.replace("@over_500us: 200", "@over_500us: 11")
+        rc, out = self._run(temp_dir, capsys, 0.2300, 0.0050, dumps={"rt": rt_dump})
+        assert rc == 0 and "MATCH" in out
+        rows = list(csv.DictReader(open(temp_dir / "o" / "runq_tail.csv")))
+        assert len(rows) == 2 and rows[0]["estimator"] == "exact counter"
+
+    def test_reports_refuted(self, temp_dir, capsys):
+        _, out = self._run(temp_dir, capsys, 0.2300, 0.0050)   # identical dumps: tail unmoved
+        assert "REFUTED" in out
+
+    def test_withholds_when_tracing_perturbed_the_run(self, temp_dir, capsys):
+        _, out = self._run(temp_dir, capsys, 0.5000, 0.0050)
+        assert "PERTURBED" in out and "UNDECIDED" in out
+
+    def test_runs_without_an_untraced_baseline(self, temp_dir, capsys):
+        d = temp_dir / "ea9"
+        _cell(d, "l88_base"); _cell(d, "l88_rt")
+        with patch.object(art, "condition_stats",
+                          side_effect=[_stats(0.88, 0.23), _stats(0.88, 0.005)]):
+            main(["--depth", str(d), "--runs", "runs", "--out", str(temp_dir / "o")])
+        out = capsys.readouterr().out
+        assert "not checked" in out and "UNDECIDED" in out
+
+    def test_skips_arms_without_run_data(self, temp_dir, capsys):
+        d = temp_dir / "ea9"
+        _cell(d, "l88_base"); _cell(d, "l88_rt")
+        with patch.object(art, "condition_stats", return_value=None):
+            rc = main(["--depth", str(d), "--runs", "runs", "--out", str(temp_dir / "o")])
+        assert rc == 1 and "no arm has both" in capsys.readouterr().out
+
+    def test_ignores_unknown_arm_directories(self, temp_dir, capsys):
+        d = temp_dir / "ea9"
+        _cell(d, "l88_base"); _cell(d, "l88_rt"); _cell(d, "l88_other")
+        (d / "notes.txt").write_text("x", encoding="utf-8")
+        with patch.object(art, "condition_stats",
+                          side_effect=[_stats(0.88, 0.23), _stats(0.88, 0.005)]):
+            main(["--depth", str(d), "--runs", "runs", "--out", str(temp_dir / "o")])
+        rows = list(csv.DictReader(open(temp_dir / "o" / "runq_tail.csv")))
+        assert {r["arm"] for r in rows} == {"base", "rt"}
+
+    def test_reports_wrong_scale_end_to_end(self, temp_dir, capsys):
+        """Ratio reproduces, absolute level does not. The honest middle outcome."""
+        base = DUMP.replace("@over_500us: 200", "@over_500us: 2000").replace(
+            "@count: 2200", "@count: 2200")
+        rt = DUMP.replace("@over_500us: 200", "@over_500us: 44")
+        _, out = self._run(temp_dir, capsys, 0.2300, 0.0050,
+                           dumps={"base": base, "rt": rt})
+        assert "RIGHT RATIO, WRONG LEVEL" in out
+
+    def test_arm_directory_without_a_trace_is_skipped(self, temp_dir, capsys):
+        """A cell whose bpftrace output never appeared must not be silently counted."""
+        d = temp_dir / "ea9"
+        (d / "l88_base").mkdir(parents=True)          # no runqlat.txt
+        _cell(d, "l88_rt")
+        with patch.object(art, "condition_stats", return_value=_stats(0.88, 0.005)):
+            main(["--depth", str(d), "--runs", "runs", "--out", str(temp_dir / "o")])
+        rows = list(csv.DictReader(open(temp_dir / "o" / "runq_tail.csv")))
+        assert [r["arm"] for r in rows] == ["rt"]
+
+    def test_missing_directory(self, temp_dir, capsys):
+        assert main(["--depth", str(temp_dir / "nope")]) == 1
+        assert "missing campaign directory" in capsys.readouterr().out

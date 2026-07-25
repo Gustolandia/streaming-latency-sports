@@ -878,3 +878,52 @@ class TestPathsThatNeedARealFuture:
         df = pd.read_csv(temp_dir / "prod.csv")
         assert len(df) == 4
         assert df["t_broker_ack_ns"].isna().all()        # callbacks registered, never fired
+
+
+class TestPayloadPadding:
+    """--pad-bytes lengthens the TRUE transport, which is the manipulation E-A10 needs.
+
+    The mechanism E-A9 tests is P(scheduling stall > T_true). That predicts a bigger payload
+    lowers the inversion rate at fixed load, because the same stall distribution faces a higher
+    bar. The padding must therefore actually reach the wire, and must be constant rather than
+    random -- compressible filler keeps the wire size a function of the flag rather than of the
+    entropy of whatever the generator produced.
+    """
+
+    def _run(self, temp_dir, extra):
+        pd.DataFrame({"event_id": ["e1"], "match_id": [1], "t_sim_seconds": [0],
+                      "t_emit_offset_s": [0.0], "row_idx": [0]}).to_csv(
+            temp_dir / "plan.csv", index=False)
+        sent = []
+        mock = MagicMock()
+        mock.send = MagicMock(side_effect=lambda topic, key=None, value=None: (
+            sent.append(value), MagicMock())[1])
+        with patch('kafka_producer.KafkaProducer', return_value=mock):
+            old_argv, old_cwd = sys.argv, os.getcwd()
+            try:
+                os.chdir(temp_dir)
+                sys.argv = ["kp", "--run-id", "tr", "--plan-csv", "plan.csv",
+                            "--out", "prod.csv"] + extra
+                kp_main()
+            finally:
+                os.chdir(old_cwd)
+                sys.argv = old_argv
+        return sent
+
+    def test_default_leaves_the_payload_untouched(self, temp_dir):
+        sent = self._run(temp_dir, [])
+        assert sent and "pad" not in sent[0], "padding must be opt-in"
+
+    def test_padding_reaches_the_message(self, temp_dir):
+        sent = self._run(temp_dir, ["--pad-bytes", "4096"])
+        assert sent and len(sent[0]["pad"]) == 4096
+
+    def test_padding_is_constant_not_random(self, temp_dir):
+        """Random filler would make the compressed wire size vary run to run, so the
+        manipulation would not be the one the campaign describes."""
+        a = self._run(temp_dir, ["--pad-bytes", "512"])
+        b = self._run(temp_dir, ["--pad-bytes", "512"])
+        assert a[0]["pad"] == b[0]["pad"]
+
+    def test_zero_is_the_same_as_omitting(self, temp_dir):
+        assert "pad" not in self._run(temp_dir, ["--pad-bytes", "0"])[0]

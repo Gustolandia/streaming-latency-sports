@@ -1384,6 +1384,51 @@ protocol, gives Hodges--Lehmann shifts of $0.397$, $0.412$ and $0.413$~ms at $N 
 inside the $90\%$ interval of the first campaign at every level, with overlapping intervals
 throughout. The $0.41$~ms advantage is not a fluctuation of one campaign.
 
+\paragraph{Why E1 saw near-equality, tested directly.} The two campaigns disagree by more than
+power: E1 puts both systems near $0.8$~ms and within $0.1$~ms of each other, while the powered
+campaign puts them at $0.53$ and $0.11$~ms and $0.41$~ms apart. Attributing that to seven events
+is an explanation only if it survives being checked, so we checked it. If the difference is the
+observation window and nothing else, then restricting the \emph{powered} runs to their first seven
+events --- in emission order, the same events E1 would have caught --- must reproduce E1, and the
+same runs must give the powered answer over their full length. That is a prediction with one free
+parameter fixed in advance, and it can fail.
+
+It does not fail (Table~\ref{tab:e1rep}). Over all events the runs give shifts of $0.381$,
+$0.417$ and $0.414$~ms, reproducing the powered $0.41$~ms. Over their first seven they give
+$0.088$, $0.129$ and $0.248$~ms --- E1's wandering near-equality, and of the same magnitude as
+E1's own $0.021$, $0.116$ and $0.053$~ms. The \emph{absolute} medians match as well, which the
+shift alone does not force: the prologue puts \kafka{} at $0.83$--$1.02$~ms and \redis{} at
+$0.74$--$0.81$~ms, against E1's $0.79$--$1.00$ and $0.72$--$0.86$. One set of runs, one rate, one
+protocol, two windows, both published answers.
+
+So E1 is not wrong and the campaigns do not contradict each other. E1 measured the opening burst,
+during which both systems are slow for the reason Section~\ref{sec:attribution} establishes ---
+topic auto-creation, connection setup, and the first blocking \texttt{produce()} --- and that
+shared start-up cost swamps a $0.41$~ms difference. As the run lengthens the cost dilutes, and
+the brokers' steady-state separation emerges. The seven-event corpus answered a question about
+start-up while appearing to answer one about brokers, which is the same failure of window
+selection as Section~\ref{sec:attribution}, one level up.
+
+\begin{table}[t]
+\caption{The same runs reproduce both published answers. Transport medians (ms) from the powered
+campaign, computed over every event and over each run's first seven events in emission order ---
+the window E1 saw. The all-events columns reproduce the powered $0.41$~ms shift; the prologue
+columns reproduce E1's near-equality (Table~\ref{tab:e1}) in both shift and absolute level. The
+window, not the brokers, accounts for the disagreement.}
+\label{tab:e1rep}
+\begin{tabular}{rrrrrrrr}
+\toprule
+& & \multicolumn{3}{c}{All events} & \multicolumn{3}{c}{First $7$ (prologue)} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}
+$N$ & Runs & \kafka{} & \redis{} & Shift & \kafka{} & \redis{} & Shift \\
+\midrule
+1  & 5  & 0.476 & 0.095 & 0.381 & 0.831 & 0.743 & 0.088 \\
+9  & 45 & 0.533 & 0.116 & 0.417 & 0.939 & 0.810 & 0.129 \\
+12 & 55 & 0.527 & 0.113 & 0.414 & 1.018 & 0.769 & 0.248 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 This refines E1 rather than contradicting it, and it sharpens the contradiction with
 Table~\ref{tab:first}: the accelerated corpus reported \redis{} \emph{degrading} with concurrency;
 the powered real-time measurement finds \redis{} uniformly \emph{faster} and flat. The reversal is
@@ -1395,9 +1440,10 @@ and its decomposition, Testbed~B, after the consistency check (164 of 201 runs r
 Medians, ms. \textbf{The \tti{} and scheduling-lag columns record a per-run start-up cost, not a
 per-event property, and are retained only as evidence for the withdrawal in
 Section~\ref{sec:attribution}; they should not be read as system behaviour.} The transport columns
-are computed over the same seven-event opening burst and are superseded by the powered
-measurement of Table~\ref{tab:transport}. The replay rate was not recorded and is recovered as
-true real time in Section~\ref{sec:rateprovenance}.}
+are computed over the same seven-event opening burst, and so measure start-up rather than
+steady state: Table~\ref{tab:e1rep} reproduces them from the powered runs by restricting those
+runs to the same window. For steady-state transport see Table~\ref{tab:transport}. The replay
+rate was not recorded and is recovered as true real time in Section~\ref{sec:rateprovenance}.}
 \label{tab:e1}
 \begin{tabular}{rrrrrrr}
 \toprule
@@ -1906,12 +1952,13 @@ $52.34$~ms median in one cell rather than a setting anyone recorded. A reader wh
 the inference should read Section~\ref{sec:e1} as establishing that both arms met the same rate,
 which is all the between-system comparison needs.
 
-\emph{A small replication at a verified rate does not match E1's transport figures.} Three
-$N{=}1$ runs give \kafka{} transport $0.45$~ms against \redis{}'s $0.09$~ms --- a fivefold gap
-where E1 reports near-equality --- with both systems below their E1 values. Three runs settle
-nothing and the conditions differ in window length, so we draw no conclusion from it; but we
-record it rather than omit it, because it is the one observation we have that points away from
-Section~\ref{sec:e1}, and a properly powered replication is the first thing this work needs next.
+\emph{The E1 reconciliation is an explanation, not a re-run of E1.} Table~\ref{tab:e1rep} shows
+that restricting the powered runs to their opening seven events reproduces E1's figures in both
+shift and absolute level, which is why we no longer treat the two campaigns as contradictory. But
+it demonstrates that the window is \emph{sufficient} to produce the disagreement, not that it is
+the only difference between the campaigns: E1 ran on a corpus whose replay rate we infer rather
+than read, and we cannot rule out that some other difference contributes as well. What we can say
+is that no additional cause needs to be invoked.
 
 \emph{The mechanism is established for our client, not for \kafka{} in general.} The blocking
 first \texttt{produce()} is visible in the loop trace of every run

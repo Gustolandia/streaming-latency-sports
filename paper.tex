@@ -61,7 +61,11 @@ process count ($\rho_s = +0.80$), grows superlinearly with utilisation and knees
 ($\rho_s = 0.98$), and shrinks by a quarter when the instrument is made symmetric --- entirely on
 the side whose stamp was asymmetric. One claim we had made does not survive a fairer test and we
 withdraw it: our data shows the queue-like \emph{shape} but cannot single out the M/G/1 form
-specifically, because an exponential fits it equally well. The fifth result corrects the model: $\Delta$ is not one distribution but two, a
+specifically, because an exponential fits it equally well. Finally, because a failure only we
+have made is a cautionary tale rather than a finding, we audited a benchmark we did not write:
+the OpenMessaging Benchmark computes the same cross-process difference and then admits a sample
+to its histogram only if it is positive, without counting what it drops --- so the exposure is a
+property of a widely used measurement design, and that design cannot report the problem. The fifth result corrects the model: $\Delta$ is not one distribution but two, a
 narrow jitter core plus a rare tail from descheduling, and load multiplies the tail's
 \emph{weight} ($60\times$) far faster than the core's \emph{width} ($5\times$). Of the original
 question, what survives is modest and we report it as such: the two brokers sit within one
@@ -174,6 +178,14 @@ grows, rises with concurrent process count, follows M/G/1 waiting time in utilis
 rule that bears directly on our own first result --- an asymmetric instrument leaves a
 between-system difference that a symmetric one removes. All four hold. This converts the central
 property from an observation into a measured law.
+\item \textbf{Evidence that the exposure is not ours alone} (Section~\ref{sec:external}). A
+source-level audit of the OpenMessaging Benchmark, at a named commit and with file and line
+given, finds it computes end-to-end latency as the same cross-process --- in a distributed
+deployment, cross-\emph{host} --- timestamp difference, and then admits a sample to its histogram
+only when that difference is positive, with no counter for what it discards. The failure mode is
+therefore designed into a widely used benchmark, and its output cannot reveal it. We report this
+as a source audit rather than a measurement, and say plainly what that does and does not
+establish.
 \item \textbf{A correction to our own model} (Section~\ref{sec:mixture}), pre-registered before
 the campaign that tested it. The model above treats $\Delta$ as one distribution; it is two. A
 nine-level load sweep falsifies the scale-family form and measures the mixture instead: a narrow
@@ -915,8 +927,52 @@ fatal against a $0.34$-millisecond one.
 The check therefore bites hardest exactly where the scientific question is most delicate. This
 inverts a common intuition. In cross-process delay measurement, an effect of the same order as
 the instrument's own noise floor is the one most likely to have been manufactured by it, and
-statistical significance offers no protection because the artefact is systematic. We recommend
-that streaming benchmarks report an integrity audit as a matter of course.
+statistical significance offers no protection because the artefact is systematic.
+
+\subsection{The same exposure in a benchmark we did not write}
+\label{sec:external}
+
+Everything above concerns our own corpus, which invites the obvious objection: we have shown
+that \emph{we} made a mistake, not that anyone else is exposed to it. So we audited a harness we
+did not write --- the OpenMessaging Benchmark~\cite{openmessaging2018}, the most widely used
+cross-broker benchmark and one we cite in Section~\ref{sec:related} --- for the two properties
+that decide whether this failure can occur and whether anyone would see it. We report the audit
+at source level, with file and line, so a reader can check it against the upstream commit rather
+than take our word for it (commit \texttt{5b1fa70}, 7~April 2026).
+
+\emph{It computes the same quantity the same way.} In
+\texttt{LocalWorker.java}:294 the end-to-end latency is
+\texttt{now\,-\,publishTimestamp}, where \texttt{now} is a clock read in the \emph{consumer}
+process and \texttt{publishTimestamp} arrives with the message. In the \kafka{} driver that
+timestamp is \texttt{record.timestamp()}, which under \kafka{}'s default
+\texttt{CreateTime} semantics was written on the \emph{producer} host; the benchmark does not
+override that default anywhere in its configuration. The subtraction therefore spans two
+processes and, in a distributed deployment, two machines' clocks --- the same construction that
+produced $1{,}321$ impossible runs here.
+
+\emph{And it discards the evidence.} In \texttt{WorkerStats.java}:95 the sample is admitted to
+the histogram only \texttt{if (endToEndLatencyMicros > 0)}. The message is still counted as
+received one line earlier, but a non-positive latency is dropped, and no counter anywhere in the
+harness records how many were dropped. Two consequences follow. The reported latency distribution
+is \emph{conditioned on being positive}, so a causality violation cannot appear in the output
+even in principle. And the retention rate --- the statistic we argue belongs beside every result,
+the way a survey reports its response rate --- is not merely unpublished but unrecoverable from a
+completed run.
+
+A third consequence is arithmetic rather than causal, and it bites at the fast end.
+\texttt{System.currentTimeMillis()} has millisecond resolution, so any delivery faster than one
+millisecond differences to exactly zero and is discarded by the same guard. On the co-located
+paths where such benchmarks are usually run --- ours measures broker transport at $0.1$ to
+$0.5$~ms --- that is not an edge case but a large share of the samples, and the reported
+distribution is truncated from below at $1$~ms.
+
+We are careful about what this does and does not show. It is a source audit, not a measurement:
+we have not run the benchmark and observed samples being dropped, and we do not claim any
+published result obtained with it is wrong. What it establishes is narrower and, we think,
+sufficient --- the failure mode is a property of a widely used benchmark's measurement design,
+not a peculiarity of our harness, and that benchmark's output cannot reveal it. That is why we
+recommend an integrity audit as routine practice, and why we think the recommendation is
+addressed to the field rather than to ourselves.
 
 \subsection{What we withdraw}
 
@@ -1751,6 +1807,16 @@ roughly twelve times faster than it widens the core. We pre-registered that test
 simpler form to fail, and it did. The practical reading is less comfortable than the tidy version:
 a benchmark can sit at a load where its numbers look tight, because the core is narrow, while the
 tail that will corrupt them is already growing underneath.
+
+A paper that only ever audits its own mistakes proves that its authors are careless, not that
+its method is needed. So we turned the argument outward. The OpenMessaging
+Benchmark~\cite{openmessaging2018} computes end-to-end latency as a consumer-side clock read
+minus a timestamp written on the producer host, and then records the sample only if it is
+positive, counting nothing that it drops. The exposure is therefore designed into the most widely
+used cross-broker benchmark, and --- this is the part that matters --- its reported distribution
+is conditioned on the violation not having happened, so no amount of care in reading its output
+would reveal it. We did not run it, and we claim no published result is wrong. We claim only that
+the check we are recommending is not addressed to ourselves.
 
 One smaller episode makes the same point from the other side. Checking our own provenance, we
 found that no surviving artefact recorded the replay rate of the earliest corpus, and that the

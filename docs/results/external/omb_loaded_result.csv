@@ -1,0 +1,2 @@
+harness,mode,valid,discarded_nonpositive,pub_lines,duration_min,load_pct,bootstrap
+OpenMessaging Benchmark,embedded,1,6000,24,3,88,10.0.1.221:19092

@@ -98,14 +98,33 @@ BT
 # So the probe is now compiled and smoke-tested first. An instrument that produces no data is
 # not a null result, it is no experiment, and finding that out afterwards costs an hour.
 banner "verifying the probe attaches and records before spending cells on it"
+# The first version of this guard passed on a probe that recorded nothing, twice over.
+#
+#   * it tested `grep -q "^@count:"`, which matches the LINE and not a non-zero VALUE, so
+#     "@count: 0" satisfied it;
+#   * it sampled an idle machine, where there is no python3 traffic to observe, so zero was
+#     the correct answer to the wrong question.
+#
+# A guard that cannot fail is not a guard. This one generates the traffic it needs and requires
+# an actual count, which is the same discipline the campaign applies to its own results.
+( python3 -c "
+import time
+for _ in range(900):
+    time.sleep(0.01)
+" >/dev/null 2>&1 & )
+PROBE_PID=$!
+sleep 1
 sudo timeout 8 bpftrace "$OUT/runqlat.bt" > "$OUT/probe_check.txt" 2>"$OUT/probe_check.err"
-if ! grep -q "^@count:" "$OUT/probe_check.txt"; then
-  echo "FATAL: the probe recorded nothing in 8 seconds."
+kill "$PROBE_PID" 2>/dev/null
+PROBE_COUNT=$(grep -oE '^@count: [0-9]+' "$OUT/probe_check.txt" 2>/dev/null | grep -oE '[0-9]+$')
+PROBE_COUNT=${PROBE_COUNT:-0}
+if [ "$PROBE_COUNT" -lt 100 ]; then
+  echo "FATAL: the probe recorded $PROBE_COUNT events in 8 seconds against live traffic."
   head -5 "$OUT/probe_check.err"
   echo "Refusing to run cells against an instrument that is not working."
   exit 1
 fi
-echo "probe ok: $(grep '^@count:' "$OUT/probe_check.txt")"
+echo "probe ok: $PROBE_COUNT events in 8s"
 
 reap () {
   pkill -f "kafka_producer.py|redis_producer.py|kafka_consumer.py|redis_consumer.py" 2>/dev/null

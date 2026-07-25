@@ -41,7 +41,16 @@ DURATION_MIN="${DURATION_MIN:-3}"
 mkdir -p "$OUT"
 
 [ -d "$OMB" ] || { echo "FATAL: no OMB checkout at $OMB"; exit 1; }
-command -v mvn >/dev/null || { echo "FATAL: maven not installed"; exit 1; }
+
+# OMB enforces Maven >= 3.8.6; Ubuntu ships 3.6.3, which fails the enforcer plugin before
+# compiling anything. Prefer an explicitly installed newer Maven when one is present.
+MVN="${MVN:-$(command -v /usr/local/bin/mvn || command -v mvn)}"
+[ -n "$MVN" ] || { echo "FATAL: maven not installed"; exit 1; }
+MVN_VER=$("$MVN" -version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+echo "using maven $MVN_VER at $MVN"
+case "$MVN_VER" in
+  3.[0-7].*|3.8.[0-5]) echo "FATAL: OMB requires maven >= 3.8.6, found $MVN_VER"; exit 1;;
+esac
 
 WS="$OMB/benchmark-framework/src/main/java/io/openmessaging/benchmark/worker/WorkerStats.java"
 [ -f "$WS" ] || { echo "FATAL: WorkerStats.java not found"; exit 1; }
@@ -96,7 +105,7 @@ diff -u "$OUT/WorkerStats.java.orig" "$WS" > "$OUT/omb_patch.diff"
 echo "patch recorded at $OUT/omb_patch.diff"
 
 banner "building OMB (this is CPU-heavy; no latency campaign may be running)"
-( cd "$OMB" && mvn -q -B -DskipTests package 2>&1 | tail -20 )
+( cd "$OMB" && "$MVN" -q -B -DskipTests package 2>&1 | tail -20 )
 JAR=$(find "$OMB" -name "benchmark-framework-*.jar" -not -name "*sources*" | head -1)
 [ -n "$JAR" ] || { echo "FATAL: build produced no jar"; exit 1; }
 echo "built: $JAR"

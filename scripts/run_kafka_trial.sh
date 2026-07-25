@@ -33,6 +33,14 @@ done
 [ -n "$TOPIC" ] || TOPIC="sb-events-$RUN_ID"
 
 PY="${PYTHON:-python3}"
+# SBL_SCHED_WRAP prefixes the two processes that read the clock, so a campaign can change how
+# often the stamping thread is preempted WITHOUT changing system utilisation. That separation is
+# the whole point: rho and the residual width move together across a load ladder, so no curve fit
+# can tell an occupancy mechanism from a utilisation one. Setting this to e.g. "sudo chrt -f 80"
+# moves occupancy alone and breaks the collinearity. Empty by default, so every existing campaign
+# behaves exactly as before. Applied to producer AND consumer because the measured transport is
+# a difference of stamps taken in the two.
+SCHED_WRAP="${SBL_SCHED_WRAP:-}"
 mkdir -p "runs/$RUN_ID"
 
 "$PY" - "$RUN_ID" "$PLAN_CSV" "$SPEEDUP" "$MAX_T_SIM" "$BOOTSTRAP" "$TOPIC" <<'PY'
@@ -71,7 +79,7 @@ PY
 
 echo "[1/4] $(date +%H:%M:%S) starting consumer..."
 # shellcheck disable=SC2086
-"$PY" scripts/kafka_consumer.py ${KAFKA_CONSUMER_OPTS:-} \
+$SCHED_WRAP "$PY" scripts/kafka_consumer.py ${KAFKA_CONSUMER_OPTS:-} \
   --run-id "$RUN_ID" --out "runs/$RUN_ID/consumer.csv" \
   --bootstrap "$BOOTSTRAP" --topic "$TOPIC" --idle-seconds "$IDLE_SECONDS" \
   --broker-count "$BROKER_COUNT" $CONSUMER_EXTRA > "runs/$RUN_ID/consumer.log" 2>&1 &
@@ -84,7 +92,7 @@ echo "[2/4] $(date +%H:%M:%S) running producer..."
 # against confluent-kafka, which is how "Kafka" is separated from "kafka-python".
 KAFKA_PRODUCER_SCRIPT="${KAFKA_PRODUCER_SCRIPT:-scripts/kafka_producer.py}"
 # shellcheck disable=SC2086
-"$PY" "$KAFKA_PRODUCER_SCRIPT" ${KAFKA_PRODUCER_OPTS:-} \
+$SCHED_WRAP "$PY" "$KAFKA_PRODUCER_SCRIPT" ${KAFKA_PRODUCER_OPTS:-} \
   --run-id "$RUN_ID" --plan-csv "$PLAN_CSV" --out "runs/$RUN_ID/producer.csv" \
   --bootstrap "$BOOTSTRAP" --topic "$TOPIC" \
   --speedup "$SPEEDUP" --max-t-sim "$MAX_T_SIM" --broker-count "$BROKER_COUNT" \

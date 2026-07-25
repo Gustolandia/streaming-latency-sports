@@ -82,13 +82,17 @@ PY
 # Clean slate; redis-cli may be absent on the driver, so failure here is non-fatal.
 redis-cli -h "$HOST" -p "$PORT" DEL "$STREAM" >/dev/null 2>&1 || true
 
+# See run_kafka_trial.sh for why this hook exists: it moves stamping-thread occupancy without
+# moving system utilisation, which is the one manipulation a load ladder cannot make.
+SCHED_WRAP="${SBL_SCHED_WRAP:-}"
+
 CLUSTER_FLAG=""
 [ "$CLUSTER_MODE" = "1" ] && CLUSTER_FLAG="--cluster-mode"
 [ -n "$CLUSTER_NODES" ] && CLUSTER_FLAG="$CLUSTER_FLAG --cluster-nodes $CLUSTER_NODES"
 
 echo "[1/4] $(date +%H:%M:%S) starting consumer..."
 # shellcheck disable=SC2086
-"$PY" scripts/redis_consumer.py ${REDIS_CONSUMER_OPTS:-} \
+$SCHED_WRAP "$PY" scripts/redis_consumer.py ${REDIS_CONSUMER_OPTS:-} \
   --run-id "$RUN_ID" --out "runs/$RUN_ID/consumer.csv" \
   --host "$HOST" --port "$PORT" --stream "$STREAM" --group "$GROUP" \
   --idle-seconds "$IDLE_SECONDS" --node-count "$NODE_COUNT" $CLUSTER_FLAG \
@@ -98,7 +102,7 @@ CONS_PID=$!
 sleep 1
 echo "[2/4] $(date +%H:%M:%S) running producer..."
 # shellcheck disable=SC2086
-"$PY" scripts/redis_producer.py ${REDIS_PRODUCER_OPTS:-} \
+$SCHED_WRAP "$PY" scripts/redis_producer.py ${REDIS_PRODUCER_OPTS:-} \
   --run-id "$RUN_ID" --plan-csv "$PLAN_CSV" --out "runs/$RUN_ID/producer.csv" \
   --host "$HOST" --port "$PORT" --stream "$STREAM" \
   --speedup "$SPEEDUP" --max-t-sim "$MAX_T_SIM" --node-count "$NODE_COUNT" $CLUSTER_FLAG \

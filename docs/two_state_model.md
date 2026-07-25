@@ -110,6 +110,60 @@ P(inversion | c, ρ) = p(ρ) · S(c ; ρ)
 with `p` varying fast and `S` slowly. Separability is a good first-order approximation, not an
 exact law, and we should say so.
 
+## 5a. Correction: the load axis, and what the ladder cannot decide
+
+§3 writes `P(inversion | T_true) = p(rho) * S(T_true)`. Read as a model of how the rate depends on
+load, **that equation has no content**, and it should not have been written without saying so:
+with `p` left free, any monotone rate curve can be expressed as `p(rho) * S` by setting
+`p = rate/S`. Its content is on the *threshold* axis, which is where §5 tests it and where it
+passed. The paper has already withdrawn one functional form for being unfalsifiable; the
+replacement must not repeat it.
+
+Given a *parametric* `p` the form becomes testable, and `scripts/fit_two_state.py` tests it:
+
+| model (3 free parameters each) | R² in log space | inputs |
+|---|---|---|
+| two-state, `S` fixed, `p = rho^C` | 0.6534 | rho |
+| two-state, `S(mu/(a*sigma))` | **0.9905** | rho, sigma, mu |
+| `floor + exp(k rho)` | 0.9811 | rho |
+| `floor + (rho/(1-rho))^k` | 0.8863 | rho |
+
+The corrected form comes from restoring what the separability test divided out. That test works on
+*standardised* thresholds `z = c/sigma`. An inversion needs the residual to exceed `T_true`, so in
+standardised units the threshold is `T_true/sigma(rho)` — and `sigma` grows 5× across the ladder,
+so the threshold slides toward zero as load rises. Both factors climb with load:
+
+```
+P(inversion | rho) = p(rho) * S( T_true / sigma(rho) )
+```
+
+**But the lead is not evidence, and the script says so.** Freeze `sigma` at its mean and refit:
+R² *improves* to 0.9982, a residual ratio of 0.19. On this ladder `sigma` rises monotonically with
+`rho`, so the two move together and no fit can credit one over the other. The corrected form's
+higher R² is bought with two extra columns, not with mechanism.
+
+That is a limit of the **experimental design**, not of the analysis, and no further work on these
+data can lift it. Which is what E-A5 is for.
+
+## 5b. E-A5: the decisive experiment (queued, not yet run)
+
+Break the collinearity by moving occupancy while holding utilisation fixed. Raising the stamping
+processes to `SCHED_FIFO` makes them preempt the background load instead of queueing behind it;
+`p` falls sharply, `rho` does not move, because the same stressor does the same work.
+
+This is also the manipulation netem should have been. Injecting delay at the broker failed because
+it delayed the acknowledgement and delivery paths equally and cancelled in the subtraction (§1).
+Scheduling priority has no such symmetry — it acts on the stamping threads themselves.
+
+| mechanism | prediction |
+|---|---|
+| occupancy (two-state) | rate collapses toward `C0 ≈ 0.004`, order 50× at high load, `rho` unchanged |
+| utilisation (M/G/1, `exp(k rho)`) | rate is a function of `rho`; `rho` is unchanged, so **no change** |
+
+An order of magnitude apart, so it is decisive either way. `scripts/analyze_stamping_priority.py`
+runs the manipulation check first and **withholds the comparison** if `rho` differs between arms
+by more than 5 points — the lesson E-B2 taught at the cost of a campaign.
+
 ## 6. Merits
 
 **It is mechanistic rather than descriptive.** "Inversion risk rises with utilisation" is a
@@ -134,6 +188,11 @@ mechanism observed in the *instrument* rather than the system.
 **It was found by looking at the data.** The separability test in §5 is exploratory. It must be
 repeated on data collected afterwards before it can be reported as confirmed, and the
 pre-registration below exists for that reason.
+
+**On the load axis it is currently unidentified.** §5a: the simplified equation is a tautology,
+and the corrected one cannot be separated from a plain exponential in `rho` because `sigma` and
+`rho` are collinear on our ladder. Until E-A5 reports, the model's standing on this axis is *not
+yet tested*, which is weaker than "supported" and must be written that way.
 
 **`p` and `S` are not separately observed.** Both are inferred from the same tail. Measuring `p`
 independently — from scheduler statistics, run-queue occupancy, or `sched_switch` tracing —

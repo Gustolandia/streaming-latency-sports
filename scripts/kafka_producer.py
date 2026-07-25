@@ -58,6 +58,14 @@ def main():
     ap.add_argument("--acks", default="all", choices=["0", "1", "all"])
     ap.add_argument("--linger-ms", type=int, default=0)
     ap.add_argument("--batch-size", type=int, default=None, help="bytes; if omitted, use client default")
+    # Payload padding exists to move T_true, the quantity the transport measurement is OF.
+    # E-A9 frames the mechanism as P(scheduling stall > T_true), which predicts that a LARGER
+    # payload -- and so a longer true transport -- lowers the inversion rate at fixed load,
+    # because the same stall distribution now has a higher bar to clear. Padding is the
+    # cleanest way to vary it: same hosts, same load, same code path, only the bytes differ.
+    ap.add_argument("--pad-bytes", type=int, default=0,
+                    help="pad each message with this many filler bytes to lengthen true "
+                         "transport; 0 (default) leaves the payload untouched")
     ap.add_argument("--compression-type", default=None, choices=["gzip", "snappy", "lz4", "zstd"])
     ap.add_argument("--max-inflight", type=int, default=1, help="1 matches sync-send; >1 enables more in-flight requests")
     # Diagnostic for the ~103 ms scheduling lag seen at true real-time replay (M1).
@@ -236,6 +244,10 @@ def main():
             "s3_rev": 1,
             "s3_is_correction": False,
         }
+        if args.pad_bytes > 0:
+            # A constant string, not random bytes: compression would otherwise vary the wire
+            # size between runs and make the manipulation something other than what it says.
+            msg["pad"] = "x" * args.pad_bytes
 
         fut = producer.send(args.topic, key=event_id, value=msg)
         if args.ack_stamp == "callback":

@@ -43,6 +43,11 @@ def main():
                     help="Number of Redis nodes (1=single, 3=cluster)")
     ap.add_argument("--speedup", type=float, default=120.0)
     ap.add_argument("--max-t-sim", type=int, default=600)
+    # Mirrors kafka_producer.py: pad the payload to lengthen the TRUE transport, so that
+    # P(scheduling stall > T_true) can be tested against a moving T_true at fixed load.
+    ap.add_argument("--pad-bytes", type=int, default=0,
+                    help="pad each message with this many filler bytes to lengthen true "
+                         "transport; 0 (default) leaves the payload untouched")
     ap.add_argument(
         "--send-workers",
         type=int,
@@ -277,6 +282,10 @@ def main():
                 "s3_rev": 1,
                 "s3_is_correction": False,
             }
+            if args.pad_bytes > 0:
+                # Constant filler, not random: compression would otherwise vary the wire size
+                # between runs and the manipulation would not be the one described.
+                msg["pad"] = "x" * args.pad_bytes
 
             # Non-blocking dispatch: hand the XADD to the worker pool and continue,
             # so the main loop stays on schedule. Send/ack times are stamped in the

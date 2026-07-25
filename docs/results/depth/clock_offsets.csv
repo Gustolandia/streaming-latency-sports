@@ -1,0 +1,9 @@
+host,source,measurement,value,unit,captured_utc
+driver,chronyc,"System time","0.000021354 seconds fast of NTP time",,2026-07-25T16:05:38Z
+driver,chronyc,"Last offset","+0.000011023 seconds",,2026-07-25T16:05:38Z
+driver,chronyc,"RMS offset","0.000133095 seconds",,2026-07-25T16:05:38Z
+driver,chronyc,"Root delay","0.004091487 seconds",,2026-07-25T16:05:38Z
+driver,chronyc,"Root dispersion","0.004154956 seconds",,2026-07-25T16:05:38Z
+broker,chronyc,"System time","0.000045595 seconds slow of NTP time",,2026-07-25T16:05:38Z
+broker,chronyc,"Last offset","+0.000070410 seconds",,2026-07-25T16:05:38Z
+broker,chronyc,"RMS offset","0.000108486 seconds",,2026-07-25T16:05:38Z

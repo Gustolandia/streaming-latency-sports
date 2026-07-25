@@ -1,37 +1,45 @@
 #!/usr/bin/env bash
 # E-X2: run the OpenMessaging Benchmark under the conditions that actually produce the failure.
 #
-# The first OMB run (omb_discard_count.sh) discarded zero samples, and the paper reports that
-# null. But it ran in the easiest possible configuration: one host, one JVM, no competing load.
-# E-A5 has since shown that the inversion rate is governed by whether the stamping thread is
-# running -- at an idle machine our own rate is 0.4%, and under load it reaches 30%. Testing a
-# harness for this failure on an idle single host is close to testing it under conditions chosen
-# to hide it, which is why the limitations section named this run as the obvious next step.
+# The first OMB run (omb_discard_count.sh) discarded zero, and the paper reports that null. But
+# it ran in the easiest possible configuration: one host, one JVM, no competing load. E-A5 has
+# since shown the inversion rate is governed by whether the stamping thread is running -- 0.4% at
+# idle, 30% under load. Testing a harness for this failure on an idle single host is close to
+# testing under conditions chosen to hide it.
 #
 # Two channels can drive an end-to-end sample negative, and the first run exercised neither:
+#   OCCUPANCY  the thread reading the clock is preempted. Needs competing CPU load.
+#   CLOCK      producer stamps on host A, consumer reads on host B, clocks disagree. Needs
+#              workers on different machines. OMB's default CreateTime makes the publish stamp
+#              the producer's.
+# This campaign turns both on.
 #
-#   OCCUPANCY  the thread that reads the clock is preempted between the event and the read.
-#              Needs competing CPU load. E-A5 establishes this is the dominant channel for us.
-#   CLOCK      the producer stamps on host A, the consumer reads on host B, and the two clocks
-#              disagree. Needs the workers on different machines. OMB's own default,
-#              CreateTime, makes the publish timestamp the producer's.
+# ---------------------------------------------------------------------------------------------
+# THE FIRST ATTEMPT PRODUCED A NUMBER THAT MEANT NOTHING, AND THIS VERSION EXISTS TO PREVENT IT.
 #
-# This campaign turns both on: an OMB worker on the driver and another on sbl-client over the
-# private network, with background load on both, against the same broker. Everything else is
-# unchanged from the first run, including the single added counter in WorkerStats.java.
+# On 2026-07-25 this script shipped OMB's built jars to the client with rsync but NOT its Maven
+# dependency tree, which bin/benchmark-worker puts on the classpath. The client worker died with
+# NoClassDefFoundError, the coordinator aborted with "Connection refused", no latency was ever
+# measured -- and the script then wrote discarded_nonpositive=0, because a harness that never ran
+# discards nothing. That zero would have been read as a second null under hard conditions. It is
+# precisely the failure this paper is about: a number that looks like a measurement and is an
+# artefact of the instrument failing.
 #
-# PRE-REGISTERED, as before, because the interesting outcome must not be chosen afterwards:
-#   count > 0  -- the failure occurs in a harness we did not write, on real hardware, and is
-#                 invisible in that harness's own output. This is the strongest form of the M1
-#                 evidence and it closes the referee's decisive objection.
+# Three defences, in order of importance:
+#   1. VALIDATE THE OUTPUT BEFORE WRITING ANY RESULT. The benchmark must have produced real
+#      latency output. If it did not, this script writes a row marked invalid and exits non-zero.
+#      No run, no number.
+#   2. VERIFY BOTH WORKERS ARE ALIVE FIRST. Poll each worker's HTTP endpoint and abort before
+#      the benchmark rather than discovering it afterwards.
+#   3. SHIP A SELF-CONTAINED DISTRIBUTION. The packaged tarball carries its own dependencies, so
+#      the classpath cannot be half-present.
+# ---------------------------------------------------------------------------------------------
+#
+# PRE-REGISTERED, unchanged:
+#   count > 0  -- the failure occurs in a harness we did not write, on real hardware, invisibly.
 #   count == 0 -- a second null, now under conditions we have shown are hard rather than easy.
-#                 That materially strengthens the negative and we would report it as such: the
-#                 design flaw is real and demonstrated at source, but we could not make it bite.
-#
-# WHAT THIS DOES NOT CONTROL. sbl-client has 2 cores and under 1 GB of RAM, so its worker runs
-# with a small heap and the offered rate is kept modest. The load we add to the client competes
-# with the OMB worker on a small machine, which is the point, but it also means this is not a
-# throughput measurement and must not be read as one. We report discards, nothing else.
+#                 That strengthens the negative and would be reported as such.
+#   no valid run -- reported as no result. Not as a zero.
 #
 # Usage:  nohup bash cloud/campaigns/omb_distributed.sh > omb_distributed.log 2>&1 &
 . "$(dirname "${BASH_SOURCE[0]}")/common.sh"
@@ -43,73 +51,95 @@ DURATION_MIN="${DURATION_MIN:-5}"
 CLIENT="${CLIENT_PRIV:-10.0.1.122}"
 WORKER_PORT="${WORKER_PORT:-8080}"
 STATS_PORT="${STATS_PORT:-8081}"
-LOAD_PCT="${LOAD_PCT:-88}"     # the level at which E-A5 measured a 30% inversion rate for us
+LOAD_PCT="${LOAD_PCT:-88}"
 mkdir -p "$OUT"
 
+WS="$OMB/benchmark-framework/src/main/java/io/openmessaging/benchmark/worker/WorkerStats.java"
 [ -d "$OMB" ] || { echo "FATAL: no OMB checkout at $OMB"; exit 1; }
+grep -q "sblNonPositiveLatency" "$WS" || { echo "FATAL: discard counter not in source"; exit 1; }
 JH=$(ls -d /usr/lib/jvm/java-17-openjdk-* 2>/dev/null | head -1)
 [ -n "$JH" ] || { echo "FATAL: no JDK 17 on the driver"; exit 1; }
 export JAVA_HOME="$JH"; export PATH="$JH/bin:$PATH"
-
-JAR=$(find "$OMB" -name "benchmark-framework-*.jar" -not -name "*sources*" | head -1)
-[ -n "$JAR" ] || { echo "FATAL: OMB not built; run omb_discard_count.sh first"; exit 1; }
-grep -q "sblNonPositiveLatency" \
-  "$OMB/benchmark-framework/src/main/java/io/openmessaging/benchmark/worker/WorkerStats.java" \
-  || { echo "FATAL: the discard counter is not in the source; refusing to run"; exit 1; }
+MVN="${MVN:-$(command -v /usr/local/bin/mvn || command -v mvn)}"
 
 remote_client () {
   ssh -i "$SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
       -o ConnectTimeout=10 "ubuntu@$CLIENT" "$@"
 }
 
-banner "checking sbl-client"
-remote_client "hostname && nproc" || { echo "FATAL: cannot reach client at $CLIENT"; exit 1; }
-
-banner "provisioning JDK 17 on the client (headless, no desktop pulls)"
-remote_client "command -v java >/dev/null && java -version 2>&1 | head -1" \
-  || remote_client "sudo DEBIAN_FRONTEND=noninteractive apt-get -qq update && \
-                    sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install -y openjdk-17-jre-headless" \
-  || { echo "FATAL: JDK install on client failed"; exit 1; }
-remote_client "java -version 2>&1 | head -1" || { echo "FATAL: no java on client"; exit 1; }
-
-banner "shipping the built OMB tree to the client"
-remote_client "mkdir -p ~/omb" >/dev/null 2>&1
-rsync -az --delete -e "ssh -i $SSH_KEY -o BatchMode=yes -o StrictHostKeyChecking=accept-new" \
-  "$OMB/" "ubuntu@$CLIENT:~/omb/" 2>&1 | tail -2 \
-  || { echo "FATAL: rsync of OMB to client failed"; exit 1; }
+write_invalid () {   # $1 = why
+  printf 'harness,mode,valid,discarded_nonpositive,reason,duration_min,load_pct\n%s,%s,0,,%s,%s,%s\n' \
+    "OpenMessaging Benchmark" "distributed+loaded" "\"$1\"" "$DURATION_MIN" "$LOAD_PCT" \
+    > "$OUT/omb_distributed_result.csv"
+  echo "NO VALID RUN: $1"
+  echo "wrote $OUT/omb_distributed_result.csv marked invalid; no count is reported"
+}
 
 cleanup () {
-  echo "cleaning up workers and load"
-  pkill -f "benchmark-worker" 2>/dev/null
+  pkill -f "io.openmessaging.benchmark.worker.BenchmarkWorker" 2>/dev/null
   pkill -9 -x stress-ng 2>/dev/null
-  remote_client "pkill -f benchmark-worker; pkill -9 -x stress-ng" >/dev/null 2>&1
+  remote_client "pkill -f io.openmessaging.benchmark.worker.BenchmarkWorker; pkill -9 -x stress-ng" \
+    >/dev/null 2>&1
   sleep 2
 }
 trap cleanup EXIT
-
 cleanup
 
-banner "starting background load on BOTH hosts (${LOAD_PCT}% duty, all cores)"
-stress-ng --cpu "$(nproc)" --cpu-load "$LOAD_PCT" --timeout $(( DURATION_MIN * 60 + 600 ))s \
-  >/dev/null 2>&1 &
+banner "rebuilding the packaged distribution so the patch is definitely in it"
+( cd "$OMB" && "$MVN" -q -B -DskipTests package 2>&1 | tail -5 )
+TARBALL=$(ls -t "$OMB"/package/target/*-bin.tar.gz 2>/dev/null | head -1)
+[ -n "$TARBALL" ] || { write_invalid "packaged tarball not produced"; exit 1; }
+echo "tarball: $TARBALL ($(du -h "$TARBALL" | cut -f1))"
+
+banner "provisioning the client"
+remote_client "command -v java >/dev/null" \
+  || remote_client "sudo DEBIAN_FRONTEND=noninteractive apt-get -qq update && \
+       sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install -y openjdk-17-jre-headless" \
+  || { write_invalid "JDK install on client failed"; exit 1; }
+remote_client "java -version 2>&1 | head -1" || { write_invalid "no java on client"; exit 1; }
+
+# A self-contained distribution: its lib/ carries every dependency, so the classpath cannot be
+# half-present the way the rsync of a build tree left it.
+scp -i "$SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+    "$TARBALL" "ubuntu@$CLIENT:/tmp/omb-bin.tar.gz" >/dev/null 2>&1 \
+  || { write_invalid "could not copy the distribution to the client"; exit 1; }
+remote_client "rm -rf ~/ombdist && mkdir -p ~/ombdist && \
+               tar xzf /tmp/omb-bin.tar.gz -C ~/ombdist --strip-components=1 && \
+               ls ~/ombdist/lib | wc -l" \
+  || { write_invalid "could not unpack the distribution on the client"; exit 1; }
+
+banner "background load on both hosts (${LOAD_PCT}% duty)"
+stress-ng --cpu "$(nproc)" --cpu-load "$LOAD_PCT" \
+  --timeout $(( DURATION_MIN * 60 + 600 ))s >/dev/null 2>&1 &
 remote_client "nohup stress-ng --cpu 2 --cpu-load $LOAD_PCT \
-  --timeout $(( DURATION_MIN * 60 + 600 ))s >/dev/null 2>&1 &" >/dev/null 2>&1
+  --timeout $(( DURATION_MIN * 60 + 600 ))s >/dev/null 2>&1 & echo started" >/dev/null 2>&1
 sleep 5
 
-banner "starting OMB workers: driver and $CLIENT"
-( cd "$OMB" && nohup bin/benchmark-worker -p "$WORKER_PORT" -sp "$STATS_PORT" \
-    > "$PWD/../sbl/$OUT/omb_worker_driver.log" 2>&1 & )
-remote_client "cd ~/omb && JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 \
-  HEAP_OPTS='-Xms256m -Xmx384m' nohup bin/benchmark-worker -p $WORKER_PORT -sp $STATS_PORT \
-  > ~/omb_worker_client.log 2>&1 &" >/dev/null 2>&1
-sleep 25
-
 DRV_PRIV=$(ip -4 addr show | grep -oE 'inet 10\.[0-9.]+' | head -1 | awk '{print $2}')
-echo "driver private ip: $DRV_PRIV"
-for w in "$DRV_PRIV:$WORKER_PORT" "$CLIENT:$WORKER_PORT"; do
-  code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 "http://$w/counters-stats" 2>/dev/null)
-  echo "  worker $w -> HTTP ${code:-none}"
+banner "starting workers: driver $DRV_PRIV and client $CLIENT"
+( cd "$OMB" && setsid nohup bin/benchmark-worker -p "$WORKER_PORT" -sp "$STATS_PORT" \
+    > "$PWD/../sbl/$OUT/omb_worker_driver.log" 2>&1 < /dev/null & )
+remote_client "cd ~/ombdist && HEAP_OPTS='-Xms192m -Xmx320m' setsid nohup \
+  bin/benchmark-worker -p $WORKER_PORT -sp $STATS_PORT > ~/omb_worker_client.log 2>&1 < /dev/null &" \
+  >/dev/null 2>&1
+
+# DEFENCE 2: neither worker may be assumed up. Poll until both answer or give up loudly.
+banner "waiting for both workers to answer"
+UP_DRV=0; UP_CLI=0
+for i in $(seq 1 30); do
+  sleep 5
+  [ "$UP_DRV" = 1 ] || curl -sf --max-time 4 "http://$DRV_PRIV:$WORKER_PORT/counters-stats" \
+      >/dev/null 2>&1 && UP_DRV=1
+  [ "$UP_CLI" = 1 ] || curl -sf --max-time 4 "http://$CLIENT:$WORKER_PORT/counters-stats" \
+      >/dev/null 2>&1 && UP_CLI=1
+  [ "$UP_DRV" = 1 ] && [ "$UP_CLI" = 1 ] && break
 done
+echo "  driver worker up: $UP_DRV   client worker up: $UP_CLI"
+if [ "$UP_DRV" != 1 ] || [ "$UP_CLI" != 1 ]; then
+  echo "--- client worker log ---"; remote_client "tail -15 ~/omb_worker_client.log" 2>/dev/null
+  write_invalid "a worker never came up (driver=$UP_DRV client=$UP_CLI); benchmark not attempted"
+  exit 1
+fi
 
 cat > "$OUT/omb_driver_dist.yaml" <<EOF
 name: Kafka
@@ -127,8 +157,6 @@ consumerConfig: |
   enable.auto.commit=false
 EOF
 
-# One producer and one consumer, forced onto separate workers by OMB's round-robin assignment,
-# so the publish stamp and the receive stamp are taken on different machines.
 cat > "$OUT/omb_workload_dist.yaml" <<EOF
 name: sbl-audit-distributed
 topics: 1
@@ -149,21 +177,31 @@ banner "running distributed OMB for ${DURATION_MIN} min under ${LOAD_PCT}% load 
       "$PWD/../sbl/$OUT/omb_workload_dist.yaml" 2>&1 ) \
   | tee "$OUT/omb_dist_stdout.log" | tail -20
 
+# DEFENCE 1: no valid run, no number. A benchmark that aborted discards nothing, and that zero
+# would be indistinguishable from a real negative in the CSV.
+banner "validating that the benchmark actually ran"
+PUB=$(grep -c "Pub rate" "$OUT/omb_dist_stdout.log" 2>/dev/null)
+AGG=$(grep -c "Aggregated" "$OUT/omb_dist_stdout.log" 2>/dev/null)
+FAIL=$(grep -c "Failed to run the workload\|ConnectException" "$OUT/omb_dist_stdout.log" 2>/dev/null)
+echo "  'Pub rate' lines: $PUB   'Aggregated' lines: $AGG   failure lines: $FAIL"
+if [ "${PUB:-0}" -lt 1 ] || [ "${FAIL:-0}" -gt 0 ]; then
+  write_invalid "benchmark produced no latency output (pub=$PUB agg=$AGG failures=$FAIL)"
+  exit 1
+fi
+
 banner "collecting discards from both workers"
 remote_client "cat ~/omb_worker_client.log" > "$OUT/omb_worker_client.log" 2>/dev/null
-D_DRV=$(grep -o "SBL_DISCARDED_NONPOSITIVE total=[0-9]*" "$OUT/omb_worker_driver.log" 2>/dev/null \
-        | tail -1 | grep -o "[0-9]*$")
-D_CLI=$(grep -o "SBL_DISCARDED_NONPOSITIVE total=[0-9]*" "$OUT/omb_worker_client.log" 2>/dev/null \
-        | tail -1 | grep -o "[0-9]*$")
-D_RUN=$(grep -o "SBL_DISCARDED_NONPOSITIVE total=[0-9]*" "$OUT/omb_dist_stdout.log" 2>/dev/null \
-        | tail -1 | grep -o "[0-9]*$")
+d_of () { grep -o "SBL_DISCARDED_NONPOSITIVE total=[0-9]*" "$1" 2>/dev/null \
+            | tail -1 | grep -o "[0-9]*$"; }
+D_DRV=$(d_of "$OUT/omb_worker_driver.log"); D_CLI=$(d_of "$OUT/omb_worker_client.log")
+D_RUN=$(d_of "$OUT/omb_dist_stdout.log")
 D_DRV=${D_DRV:-0}; D_CLI=${D_CLI:-0}; D_RUN=${D_RUN:-0}
-TOTAL=$(( D_DRV > D_CLI ? D_DRV : D_CLI )); [ "$D_RUN" -gt "$TOTAL" ] && TOTAL=$D_RUN
+TOTAL=$D_DRV; [ "$D_CLI" -gt "$TOTAL" ] && TOTAL=$D_CLI; [ "$D_RUN" -gt "$TOTAL" ] && TOTAL=$D_RUN
 
-printf 'harness,mode,discarded_nonpositive,driver_worker,client_worker,duration_min,load_pct,bootstrap\n%s,%s,%s,%s,%s,%s,%s,%s\n' \
-  "OpenMessaging Benchmark" "distributed+loaded" "$TOTAL" "$D_DRV" "$D_CLI" \
-  "$DURATION_MIN" "$LOAD_PCT" "$KAFKA_BOOTSTRAP" > "$OUT/omb_discards_distributed.csv"
-echo "DISCARDED NON-POSITIVE SAMPLES: $TOTAL  (driver $D_DRV, client $D_CLI)"
-cat "$OUT/omb_discards_distributed.csv"
+printf 'harness,mode,valid,discarded_nonpositive,driver_worker,client_worker,pub_lines,duration_min,load_pct,bootstrap\n%s,%s,1,%s,%s,%s,%s,%s,%s,%s\n' \
+  "OpenMessaging Benchmark" "distributed+loaded" "$TOTAL" "$D_DRV" "$D_CLI" "$PUB" \
+  "$DURATION_MIN" "$LOAD_PCT" "$KAFKA_BOOTSTRAP" > "$OUT/omb_distributed_result.csv"
+echo "VALID RUN. DISCARDED NON-POSITIVE SAMPLES: $TOTAL  (driver $D_DRV, client $D_CLI)"
+cat "$OUT/omb_distributed_result.csv"
 
 banner "OMB_DISTRIBUTED_COMPLETE"

@@ -1,0 +1,6 @@
+condition,reference,n_thresholds,mean_log_ratio,spread
+ea3/bg12,ea3/bg10,4,-0.103,0.2622
+ea3/bg5,ea3/bg10,3,-2.6989,0.293
+ea3/bg6,ea3/bg10,3,-1.7315,0.9135
+ea3/bg7,ea3/bg10,4,-0.5789,0.5952
+ea3/bg8,ea3/bg10,4,0.117,0.0883

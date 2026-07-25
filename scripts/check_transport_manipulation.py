@@ -33,5 +33,13 @@ if len(names) >= 2:
     for b in ("kafka", "redis"):
         x, y = res.get((a, b)), res.get((c, b))
         if x and y:
-            print("  %s: T_true %.4f -> %.4f ms   (%.2fx shorter in %s)"
-                  % (b, x, y, x / y, c))
+            # Direction-neutral wording. This tool was written for co-location, where the
+            # second arm was expected to be FASTER, and it printed "shorter" unconditionally.
+            # Used on the padding sweep, where the second arm is expected SLOWER, that label
+            # inverted the meaning of a correct number.
+            if y > x:
+                print("  %s: T_true %.4f -> %.4f ms   (%.2fx LONGER in %s)"
+                      % (b, x, y, y / x, c))
+            else:
+                print("  %s: T_true %.4f -> %.4f ms   (%.2fx shorter in %s)"
+                      % (b, x, y, x / y, c))

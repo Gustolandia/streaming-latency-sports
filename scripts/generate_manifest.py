@@ -49,8 +49,28 @@ PROTOCOL = {
             "0.41 ms (p<1e-26): equivalent within 1 ms but not a tie -- Redis reproducibly faster "
             "and flat across concurrency; ~0.07 ms of the gap is the H3 asymmetric stamp",
         "window sweep (per-run vs per-event start-up cost)": "docs/results/window/window_sweep.csv",
+        "E1 reconciliation (E1-REP)": "docs/results/e1_rep/e1_replication.csv; the SAME powered "
+            "runs give the 0.41 ms shift over all events and E1's near-equality over their first "
+            "seven in emission order (0.088/0.129/0.248 ms), matching E1 in absolute level too. "
+            "E1 measured the opening burst; its transport row is re-labelled, not withdrawn",
+        "knee resolution (E-A4)": "docs/results/depth/ea4/; a duty-cycle load ladder "
+            "(stress-ng --cpu-load) reaching achieved rho 0.8812/0.9204/0.9501/0.9701/0.9900, "
+            "which is where M/G/1 and the bounded alternatives diverge ~8x. The earlier ladder "
+            "stopped at 0.878 and everything above collapsed onto a degenerate rho=1.000, which "
+            "is why the M/G/1 form could not be falsified before",
+        "stamping priority (E-A5)": "docs/results/depth/ea5/; occupancy moved via SCHED_FIFO on "
+            "the stamping processes at unchanged utilisation, to separate an occupancy mechanism "
+            "from a utilisation one. sched_verification.txt records that the manipulation applied "
+            "(20 python3 at SCHED_FIFO 80; the SCHED_OTHER entries are their sudo parents). The "
+            "analysis withholds any comparison whose two arms differ in rho by more than 5 points",
         "model rules H1/H2/H3/H4 + H8 clustering construct check": "docs/results/model/ "
             "(measurement_model.py, analyze_depth.py, analyze_moments.py)",
+        "load-dependence model selection": "docs/results/model/two_state_fit.csv and "
+            "two_state_prediction.csv (fit_two_state.py). The two-state form P = p(rho)*S has no "
+            "content on the rho axis with p free -- any monotone rate curve can be written that "
+            "way -- and the variant that does fit leads only because it reads sigma and mu: "
+            "freezing sigma IMPROVES the fit (residual ratio 0.19), because sigma and rho are "
+            "collinear on this ladder. Reported as unidentified, not supported",
         "audit": "docs/results/integrity_windows/ (Testbed A) and "
                  "docs/results/integrity_by_condition.csv (Testbed B)",
     },
@@ -61,6 +81,14 @@ PROTOCOL = {
         "matched a median of 7 events); the audit does NOT catch this one",
         "the entire Testbed A corpus, the accelerated concurrency sweep, the connection sweep "
         "above 10 connections, and the 3-node cluster arm",
+        "the M/G/1 functional form for H2: refitting against a power law and an exponential "
+        "found the exponential fits the published table BETTER (R2 0.961 vs 0.945). Only the "
+        "shape survives -- superlinear growth with a knee near saturation",
+        "H1's intermediate effect-size points: the E-B2 sweep FAILED its own manipulation check. "
+        "netem at the broker is common-mode -- it delays the acknowledgement path and the "
+        "delivery path equally, so it cancels in the difference that defines transport. TTI "
+        "tracked the injection (3.72 -> 23.61 ms) while transport stayed flat (0.535 -> 0.480). "
+        "The co-located-versus-network contrast survives, because it needs no manipulation",
     ],
     "rate_provenance": "No surviving artefact records an achieved replay rate; plans carry a "
                        "baked-in 120x compression, so --speedup 1 means 120x rather than real "

@@ -32,6 +32,19 @@ def _rows(*parts):
         return list(csv.DictReader(fh))
 
 
+def _section(tex, label):
+    """The text of one \\subsection, found by its label and read to the next heading.
+
+    Slicing between two labels assumes they appear in a fixed order, which broke every time the
+    paper was reordered. This finds the section itself, so a test says what it means -- "in the
+    section about X" -- and survives the sections being rearranged.
+    """
+    start = tex.index("\\label{" + label + "}")
+    nxt = [i for i in (tex.find("\n\\subsection", start), tex.find("\n\\section", start))
+           if i != -1]
+    return tex[start:min(nxt)] if nxt else tex[start:]
+
+
 def _replayed_plan_t_sim():
     """Event times of the plan the single-feed campaigns actually replayed.
 
@@ -273,7 +286,7 @@ class TestSecondWithdrawalIsStated:
     """
 
     def test_the_withdrawal_is_explicit(self, tex):
-        section = tex[tex.index(r"\label{sec:attribution}"):tex.index(r"\label{sec:rules}")]
+        section = _section(tex, "sec:attribution")
         low = section.lower()
         assert "withdraw" in low, "the end-to-end gap must be explicitly withdrawn"
         assert "start-up" in low or "startup" in low, "the real mechanism must be named"
@@ -375,7 +388,7 @@ class TestSecondWithdrawalIsStated:
 
     def test_the_one_armed_instrumentation_is_recorded_as_fixed(self, tex):
         """The failure is worth keeping in the text, but as something we corrected."""
-        section = tex[tex.index(r"\label{sec:attribution}"):tex.index(r"\label{sec:rules}")]
+        section = _section(tex, "sec:attribution")
         low = section.lower()
         assert "no trace" in low or "carried no trace" in low
         assert "re-ran both arms" in low or "re-ran both" in low
@@ -383,8 +396,7 @@ class TestSecondWithdrawalIsStated:
     def test_limitations_do_not_still_call_the_offset_unattributed(self, tex):
         """The pre-withdrawal text said the offset was 'attributed, not proven' and that a
         client comparison was 'underway'. Both were overtaken by the loop trace and by M1."""
-        limits = tex[tex.index(r"\label{sec:limitations}"):]
-        limits = limits[:limits.index(r"\section{Conclusion}")]
+        limits = _section(tex, "sec:limitations")
         low = limits.lower()
         assert "attributed, not proven" not in low
         assert "underway" not in low, "no limitation may point at work that has since finished"
@@ -410,7 +422,7 @@ class TestH3IsMeasuredAndSupported:
         assert abs(float(cb["redis_ms"]) - float(inl["redis_ms"])) < 0.01
 
     def test_the_paper_reports_h3_supported_not_untested(self, tex):
-        rules = tex[tex.index(r"\label{sec:rules}"):tex.index(r"\label{sec:network}")]
+        rules = _section(tex, "sec:rules")
         h3 = rules[rules.index("H3, the asymmetry rule"):]
         h3 = h3[:h3.index(r"\paragraph") if r"\paragraph" in h3[20:] else len(h3)]
         assert r"\textbf{Supported.}" in h3, "H3 must now be reported as supported"
@@ -456,7 +468,7 @@ class TestH3IsMeasuredAndSupported:
 
     def test_the_check_is_not_claimed_to_catch_it(self, tex):
         """Honesty about the limit of our own instrument is the point of this section."""
-        section = tex[tex.index(r"\label{sec:attribution}"):tex.index(r"\label{sec:rules}")]
+        section = _section(tex, "sec:attribution")
         assert "does not catch" in section.lower()
 
     def test_no_product_recommendation_rests_on_it(self, tex):
@@ -471,14 +483,14 @@ class TestMeasuredRules:
     """Section 7.3 must report the model's rules with the values actually measured."""
 
     def test_h1_h2_h4_values_appear(self, tex):
-        section = tex[tex.index(r"\label{sec:rules}"):tex.index(r"\label{sec:network}")]
+        section = _section(tex, "sec:rules")
         for token in ("-0.80", "0.98", "+0.80"):        # H1, H2, H4 rank correlations
             assert token in section, f"missing rank correlation {token}"
         for token in ("0.945", "0.640"):                # H2 model-vs-linear fit
             assert token in section, f"missing R^2 {token}"
 
     def test_all_four_rules_are_reported_supported(self, tex):
-        section = tex[tex.index(r"\label{sec:rules}"):tex.index(r"\label{sec:network}")]
+        section = _section(tex, "sec:rules")
         # One \textbf{Supported.} per rule, H1 through H4.
         assert section.count(r"\textbf{Supported.}") == 4
         assert "NOT SUPPORTED" not in section.upper().replace("NOT SUPPORTED IF", "")
@@ -518,7 +530,7 @@ class TestPoweredTransportReplication:
         assert max(tost.values()) - min(tost.values()) < 0.05, "the shift must be flat in N"
 
     def test_the_paper_states_both_halves(self, tex):
-        e1 = tex[tex.index(r"\label{sec:e1}"):tex.index(r"\label{sec:attribution}")]
+        e1 = _section(tex, "sec:e1")
         low = e1.lower()
         assert "not" in low and "indistinguishable" in low, "the 'not a tie' half must be stated"
         assert "equivalent within" in low, "the within-margin half must be stated"
@@ -526,7 +538,7 @@ class TestPoweredTransportReplication:
         assert "seven events" in low, "the contrast with E1's seven events must be drawn"
 
     def test_the_measurement_supersedes_not_contradicts_e1(self, tex):
-        e1 = tex[tex.index(r"\label{sec:e1}"):tex.index(r"\label{sec:attribution}")]
+        e1 = _section(tex, "sec:e1")
         assert "refines" in e1.lower(), "the powered run refines rather than contradicts E1"
 
 
@@ -564,7 +576,6 @@ class TestMixtureStructure:
         rows = _rows("model", "collapse_conditions.csv")
         assert len(rows) == 9, "the campaign has nine load levels"
         section = tex[tex.index(r"\label{tab:mixture}"):]
-        section = section[:section.index(r"\end{table}")]
         for r in rows:
             assert _contains_number(section, float(r["inversion"]), 3), \
                 f"inversion {r['inversion']} at rho={r['rho']} missing from the table"
@@ -578,18 +589,18 @@ class TestMixtureStructure:
         tail_growth = float(knee["inversion"]) / float(idle["inversion"])
         assert 4 < core_growth < 6, f"core grows {core_growth:.1f}x, paper says ~5"
         assert 50 < tail_growth < 70, f"tail grows {tail_growth:.1f}x, paper says ~60"
-        section = tex[tex.index(r"\label{sec:mixture}"):tex.index(r"\label{sec:network}")]
+        section = _section(tex, "sec:mixture")
         assert "60" in section and "12" in section, "the tail:core ratio must be stated"
 
     def test_the_collapse_is_reported_falsified(self, tex):
-        section = tex[tex.index(r"\label{sec:mixture}"):tex.index(r"\label{sec:network}")]
+        section = _section(tex, "sec:mixture")
         low = section.lower()
         assert "falsified" in low, "the scale-family collapse must be reported falsified"
         assert "pre-register" in low, "and pre-registered as expected"
         assert "mixture" in low
 
     def test_the_fdelta_reproduction_boundary_is_honest(self, tex):
-        section = tex[tex.index(r"\label{sec:mixture}"):tex.index(r"\label{sec:network}")]
+        section = _section(tex, "sec:mixture")
         rows = _rows("model", "fdelta_reproduction.csv")
         below = [r for r in rows if float(r["rho_new"]) < 0.96]
         overlap = sum(1 for r in below if r["ci_overlap"] == "True")
@@ -649,8 +660,7 @@ class TestRateProvenanceIsDisclosed:
 
     def test_the_section_exists_and_states_the_compression(self, tex):
         assert r"\label{sec:rateprovenance}" in tex
-        section = tex[tex.index(r"\label{sec:rateprovenance}"):]
-        section = section[:section.index(r"\subsection{The property")]
+        section = _section(tex, "sec:rateprovenance")
         assert "120" in section, "the baked-in compression factor must be given"
         assert "1200" in section, "all three candidate rates must be named"
 
@@ -689,8 +699,7 @@ class TestRateProvenanceIsDisclosed:
 
     def test_what_the_gap_does_not_touch_is_stated(self, tex):
         """A disclosure that does not bound its own scope is not useful to a reader."""
-        section = tex[tex.index(r"\label{sec:rateprovenance}"):]
-        section = section[:section.index(r"\subsection{The property")]
+        section = _section(tex, "sec:rateprovenance")
         low = section.lower()
         assert "audit is unaffected" in low
         assert "external validity" in low
@@ -718,14 +727,13 @@ class TestRateProvenanceIsDisclosed:
 
     def test_e1_states_the_rate_as_an_inference(self, tex):
         """Recovered, not documented -- and the paper must not blur the two."""
-        e1 = tex[tex.index(r"\label{sec:e1}"):tex.index(r"\label{sec:attribution}")]
+        e1 = _section(tex, "sec:e1")
         assert "true real time" in e1.lower()
         assert "inference" in e1.lower(), "the rate must be flagged as inferred"
         assert "rateprovenance" in e1, "E1 must point at the recovery argument"
 
     def test_the_protocol_gained_the_rule_that_would_have_prevented_it(self, tex):
-        protocol = tex[tex.index(r"\label{sec:protocol}"):]
-        protocol = protocol[:protocol.index(r"\subsection{For practitioners}")]
+        protocol = _section(tex, "sec:protocol")
         low = protocol.lower()
         assert "achieved rate" in low
         assert "elapsed wall time" in low

@@ -37,43 +37,37 @@
 \email{pedrorig@tcd.ie}
 
 \begin{abstract}
-We set out to answer an ordinary question: for a real-time sports data feed, does the choice
-between Apache \kafka{} and \redis{} Streams affect end-to-end delay, and how does that change
-with the number of concurrent feeds? We built the benchmark, drove it with 3{,}315 real football
-matches on their recorded event schedule, and obtained a clean answer --- \redis{} broker delay rising
-monotonically with concurrency while \kafka{} stayed flat, $p=9.0\times10^{-11}$, no overlap
-between the two systems' run distributions, exactly as a single-threaded server should behave.
+\textbf{What we set out to do.} We wanted to answer an ordinary question for anyone building a
+live sports feed: does the choice between Apache \kafka{} and \redis{} Streams change end-to-end
+delay, and does the answer shift as more matches run at once? We built the benchmark and drove it
+with 3{,}315 real football matches on their recorded event schedule.
 
-It was an artefact. Broker delay subtracts a timestamp taken in the producer process from one
-taken in the consumer process, so it admits a check no statistic supplies: the result cannot be
-negative. Applying that check to every run, rather than to the runs whose results looked wrong,
-rejected $1{,}321$ of $2{,}266$ runs, including every run behind the finding above. The rejected
-data is invisible to conventional inspection: medians stay positive, intervals stay narrow,
-effect sizes stay large, and the direction agrees with theory.
+\textbf{What we found instead.} Our first answer was clean, significant, and impossible. Broker
+delay is a difference of two timestamps taken in two processes, so it admits one check that no
+statistic supplies: it cannot be negative. Applying that check to \emph{every} run, rather than
+only to runs that looked wrong, rejected $1{,}321$ of $2{,}266$ --- including every run behind the
+result we were about to publish. Nothing in the rejected data looks wrong in aggregate: medians
+stay positive, intervals stay narrow, effect sizes stay large, and the direction agrees with
+theory.
 
-We report the check as a stated rule with its sensitivity analysis, and re-run the study inside
-it. What survives is narrower than what we set out to find. The two brokers are statistically
-equivalent within $1$~ms and neither degrades across the concurrency range, a conclusion we show
-is robust to the unequal retention the check itself introduces, though a powered replication at a
-verified rate resolves what the original corpus could not: a small, tight, reproducible
-$0.41$~ms transport advantage for \redis{}, well inside the millisecond margin but not the
-statistical tie the first measurement suggested. A second headline --- a
-twentyfold end-to-end gap between the systems --- also failed to reproduce, and we withdraw it:
-the runs behind it matched a median of seven events each, so a one-off producer start-up cost
-was being reported as a per-event constant. A sweep over the observation window settles which it
-is, by counting rather than averaging: lengthening the run multiplies its events several-fold
-while the number of affected events stays at four. That second withdrawal is instructive
-precisely because the integrity check does not catch it; a benchmark can be causally consistent,
-gate-clean, and still measure its own start-up.
+\textbf{What we think is happening.} We model the failure as $T_{\mathrm{measured}} =
+T_{\mathrm{true}} + \Delta$, where $\Delta$ is the difference between the two stamping delays, so
+a run is corrupted exactly when $\Delta < -T_{\mathrm{true}}$. That predicts four things we can
+falsify, and a fifth we did not expect.
 
-Four falsifiable rules derived from a model of the failure are then tested directly. Inversion
-probability falls as the measured quantity grows ($\rho_s = -0.80$), rises with concurrent
-process count ($\rho_s = +0.80$), and follows the $\rho/(1-\rho)$ waiting time of an M/G/1 queue
-in utilisation ($\rho_s = 0.98$; $R^2 = 0.95$ against $0.64$ for a linear alternative); and a
-symmetric instrument shrinks the residual between-system difference by a quarter, entirely on the
-side whose stamp was asymmetric. The practical consequence is that the check binds hardest
-exactly where a benchmark's measured effect is smallest --- which is to say on the delicate
-comparisons such papers exist to make.
+\textbf{What the measurements say.} All four rules hold: inversion risk falls as the measured
+quantity grows ($\rho_s = -0.80$), rises with concurrent process count ($\rho_s = +0.80$), follows
+the $\rho/(1-\rho)$ waiting time of an M/G/1 queue in utilisation ($\rho_s = 0.98$), and shrinks
+by a quarter when the instrument is made symmetric --- entirely on the side whose stamp was
+asymmetric. The fifth result corrects the model: $\Delta$ is not one distribution but two, a
+narrow jitter core plus a rare tail from descheduling, and load multiplies the tail's
+\emph{weight} ($60\times$) far faster than the core's \emph{width} ($5\times$). Of the original
+question, what survives is modest and we report it as such: the two brokers sit within one
+millisecond of each other, with a small, reproducible $0.41$~ms transport advantage for
+\redis{} that is real but negligible against a feed whose human annotation latency is measured in
+seconds. We also withdraw a second headline of our own along the way. The practical consequence
+is uncomfortable and general: this check binds hardest exactly where a benchmark's measured
+effect is smallest, which is to say on the delicate comparisons such papers exist to make.
 \end{abstract}
 
 \begin{CCSXML}
@@ -168,7 +162,7 @@ against a physical constraint exposes it, and it must be applied to every condit
 threshold sensitivity reported rather than asserted (Section~\ref{sec:audit}). We show the audit
 binds hardest exactly where the measured effect is smallest, which inverts the usual intuition
 that large clean effects are the trustworthy ones.
-\item \textbf{A demonstration}, which we regard as the strongest of the four: a complete,
+\item \textbf{A demonstration}, which we regard as the strongest of these: a complete,
 significant, theory-confirming result set that was physically impossible, reported in full so a
 reader can judge how convincing invalid data looks (Section~\ref{sec:firstanswer}).
 \item \textbf{Four falsifiable rules, derived and measured} (Sections~\ref{sec:model}
@@ -178,6 +172,13 @@ grows, rises with concurrent process count, follows M/G/1 waiting time in utilis
 rule that bears directly on our own first result --- an asymmetric instrument leaves a
 between-system difference that a symmetric one removes. All four hold. This converts the central
 property from an observation into a measured law.
+\item \textbf{A correction to our own model} (Section~\ref{sec:mixture}), pre-registered before
+the campaign that tested it. The model above treats $\Delta$ as one distribution; it is two. A
+nine-level load sweep falsifies the scale-family form and measures the mixture instead: a narrow
+jitter core whose width grows $5\times$ from idle to the knee, and a rare descheduling tail whose
+weight grows $60\times$. The consequence for a practitioner is sharper than the leading-order
+model suggests --- a benchmark can sit where its measurements look tight while the tail that
+corrupts them is already growing.
 \item \textbf{A second withdrawal, and a test that would have caught it}
 (Section~\ref{sec:attribution}): a twentyfold end-to-end gap we had reported, and built a
 recommendation on, turned out to be a per-run start-up cost read as a per-event constant, because
@@ -210,6 +211,15 @@ requirements these evaluate against.
 Two properties of this body of work matter here. Each drives its system with a synthetic arrival
 process chosen for analytical tractability. And none, to our knowledge, reports what fraction of
 its runs it discarded on integrity grounds.
+
+The specific comparison we began with is, as far as we can establish, unpublished in the
+peer-reviewed literature. Practitioner comparisons of \kafka{} against \redis{}
+Streams~\cite{medium_benchmark_2025,github_benchmark_2025,jusdb2025} are numerous and
+disagree with one another --- some report \redis{} several times faster on throughput, others
+report \kafka{} better in the tail --- and none states a replay rate, a rejection rule, or an
+equivalence margin. That absence is what made the original question look worth asking, and it is
+also why Section~\ref{sec:e1} reports both halves of our own answer rather than the flattering
+half.
 
 There is precedent for the kind of result we report. Schroeder et
 al.~\cite{schroeder2006open} showed that whether a load generator is open or closed --- a
@@ -275,9 +285,43 @@ is wrong but physically possible, so detecting it needs a better instrument or a
 reference. A causality violation is self-detecting, at no cost and with no reference. That
 property, rather than the existence of load-induced bias, is what we build on.
 
+A third 2026 result approaches the same problem from the opposite direction and supports the
+premise we build on. Swami and Chougule~\cite{swami2026observability} show, for edge inference
+systems, that deployment interference corrupts not only the timing being measured but the
+\emph{timing observability infrastructure that measures it}, and that the two failures occur
+independently. They propose no detection rule and report no rejection rate, so the practice gap
+above is unaffected; what they establish is that a measurement instrument failing under exactly
+the load it is deployed to measure is not peculiar to our harness or our domain.
+
 Jain~\cite{jain1991art} sets out the standard requirement that an instrument be validated on the
 system it will measure. The check in Section~\ref{sec:gate} is a cheap, specific instance of that
 for cross-process delay.
+
+\subsection{Where scheduling delay comes from, and why it is not one distribution}
+\label{sec:related_tail}
+
+Our model treats the stamping delay $\delta$ as scheduler waiting time, and
+Section~\ref{sec:mixture} finds it has two components rather than one. Both the framing and the
+correction are anticipated by the tail-latency literature.
+
+Li et al.~\cite{li2014tales} decompose the tail latency of three Linux servers into hardware,
+operating-system and application-level sources, and report the finding that matters most for us:
+measured tails are \emph{substantially worse} than a queueing model alone predicts, with the
+excess traced to interference from background processes, request re-ordering under constrained
+concurrency, interrupt routing, power management and NUMA effects. A single-parameter M/G/1
+description is therefore a leading-order account, not a complete one --- which is precisely what
+Section~\ref{sec:mixture} measures directly on the instrument rather than on the system under
+test. Their background-interference mechanism also predicts the temporal signature we observe: a
+core blocked by another task delays not one event but every event arriving in that interval, so
+the resulting failures should appear in consecutive bursts. Section~\ref{sec:threats} tests that
+prediction and finds exactly this clustering.
+
+Our contribution here is therefore not the observation that scheduling delay is heavy-tailed,
+which is established, but that this shape propagates into the \emph{measurement} of an unrelated
+quantity, and that load moves the tail's weight far faster than the core's width
+(Table~\ref{tab:mixture}). The practical consequence is specific: a benchmark can sit at a
+utilisation where its measurements look tight --- the core is narrow --- while the tail that
+actually corrupts them is already growing.
 
 \subsection{Statistical methods}
 
@@ -395,6 +439,89 @@ result in Section~\ref{sec:attribution}.
 Critically, $t_{\mathrm{ack}}$ is stamped in the \emph{producer} process (from \kafka{}'s send
 callback, or on return from \redis{}'s \texttt{XADD}) while $t_{\mathrm{recv}}$ is stamped in the
 \emph{consumer}. That subtraction is the one that can go wrong.
+
+\subsection{The experiments, and what each one settles}
+\label{sec:expmap}
+
+Our campaigns accumulated over three months, each added in response to a defect or a question the
+previous one raised, so their names do not reveal their logic. Figure~\ref{fig:expmap} states it
+in one place: what each campaign manipulates, what it holds fixed, and which claim it is the
+evidence for. Two properties of that map are deliberate. Every claim in Section~\ref{sec:results}
+traces to exactly one row, so a reader can check that nothing is asserted without an experiment
+behind it. And no row both generates and tests the same hypothesis: where a pilot analysis
+suggested a hypothesis, a fresh campaign tests it, and Section~\ref{sec:mixture} says so
+explicitly.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{docs/results/figures/experiment_map.pdf}
+\caption{The experiment map. Each campaign manipulates one variable, holds the others fixed, and
+settles one claim. The delay sweep is marked confounded because injecting delay also inflates
+variance (Section~\ref{sec:threats}), so we use it for direction only.}
+\label{fig:expmap}
+\end{figure}
+
+\subsection{Configuration, and why each setting is what it is}
+\label{sec:config_table}
+
+Mohammad~\cite{mohammad2025kafka} finds that published \kafka{} comparisons are frequently not
+comparable because client configuration and acknowledgement semantics differ silently between the
+systems being compared. We therefore state every setting that can move a latency number, with the
+reason it holds the value it does (Table~\ref{tab:config}). Two of these were not chosen but
+\emph{learned}: the pipelining setting and the acknowledgement-batching setting each cost us a
+result before we understood them, and both are the subject of Section~\ref{sec:config}.
+
+The general principle is that the two clients must be equalised on \emph{semantics}, not on
+parameter names. \kafka{} and \redis{} expose different knobs, and matching them syntactically is
+what produces the asymmetries this paper is about. Concretely, \kafka{}'s producer buffers and
+pipelines by default while our \redis{} producer dispatches to a worker pool; leaving
+\texttt{max-inflight} at $1$ makes the \kafka{} client wait for a broker round trip per event
+while the \redis{} client does not, which is not a broker difference but a harness difference.
+
+\begin{table}[t]
+\caption{Every configuration that can move a latency number, and why it holds that value.
+Settings marked \emph{learned} were discovered by a defect they caused, not chosen in advance.}
+\label{tab:config}
+\small
+\begin{tabular}{llp{0.52\columnwidth}}
+\toprule
+Setting & Value & Why \\
+\midrule
+\multicolumn{3}{l}{\emph{\kafka{} producer}} \\
+\texttt{acks} & \texttt{all} & Durability semantics matched to \redis{}'s synchronous
+\texttt{XADD}; weaker acknowledgement would compare different guarantees. \\
+\texttt{linger.ms} & $0$ & No artificial batching delay; the workload is sparse, so any linger
+would dominate the quantity measured. \\
+\texttt{max-inflight} & $64$ & \emph{Learned.} At the default $1$ the client blocks on a round
+trip per event, making the comparison one of harnesses rather than brokers
+(Section~\ref{sec:config}). \\
+\texttt{compression} & none & Football events are small JSON; compression would add CPU to the
+path being timed for no representative benefit. \\
+\texttt{ack-stamp} & \texttt{callback} & Default, and deliberately asymmetric with \redis{};
+Section~\ref{sec:rules} measures what the asymmetry costs by also running \texttt{inline}. \\
+\midrule
+\multicolumn{3}{l}{\emph{\redis{} producer}} \\
+send workers & pool & Non-blocking dispatch so the emission loop keeps schedule; send and
+acknowledgement are stamped in the worker, preserving a valid transport span. \\
+\midrule
+\multicolumn{3}{l}{\emph{Consumers}} \\
+\redis{} \texttt{ack-batch} & $200$ & \emph{Learned.} Acknowledging per message adds one network
+round trip per message, which at $20$~ms of delay is the difference between $103$~ms and
+$4{,}138$~ms (Section~\ref{sec:config}). \\
+\redis{} \texttt{count} & $200$ & Read batch; matched to the acknowledgement batch so neither
+dominates. \\
+\kafka{} \texttt{poll-timeout} & $1000$~ms & Client already amortises fetches; no per-record
+round trip exists to remove. \\
+\midrule
+\multicolumn{3}{l}{\emph{Replay}} \\
+speed-up & derived & \emph{Learned.} Plans carry a baked-in $120\times$ compression, so the flag
+is not the rate; it is derived from the plan and verified against wall time before every campaign
+(Section~\ref{sec:rateprovenance}). \\
+window & $60$--$600$~s & Swept deliberately: the number of events a run contains is itself a
+variable, and Section~\ref{sec:attribution} is the reason. \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{figure}[t]
 \centering
@@ -801,6 +928,172 @@ in both systems.
 
 All results below come from Testbed~B and pass the check. Each states its retention.
 
+We order this section by consequence rather than by chronology. The rules of the failure model
+(Section~\ref{sec:rules}) and the shape of $\Delta$ (Section~\ref{sec:mixture}) come first,
+because they are what transfers to a benchmark that is not ours. The answer to the question we
+originally asked (Section~\ref{sec:e1}) comes after, because it is the narrowest thing here: it
+holds for two brokers on one workload, and the honest version of it is modest. The second
+withdrawal (Section~\ref{sec:attribution}) follows the broker result it corrects.
+
+\subsection{The model's rules, measured}
+\label{sec:rules}
+
+Section~\ref{sec:model} derived $\Pr[\text{inversion}] = F_{\Delta}(-T_{\mathrm{true}})$ --- the
+effect-size rule itself --- and three further consequences, on utilisation, process count and
+instrument asymmetry. Each was pre-registered with its falsification criterion before the data
+existed, and all four are tested here on conditions that pass the check.
+
+\paragraph{H1, the effect-size rule.} The strongest evidence is the widest contrast, and it is
+clean: the co-located arm measuring $T_{\mathrm{true}} \approx 0.5$~ms fails wholesale, while the
+network arm measuring tens of seconds passes every run on the same hardware
+(Section~\ref{sec:property}). Across the intermediate range, a \texttt{netem} delay sweep gives
+inversion rates $0.076$, $0.114$, $0.070$, $0.034$, $0.050$ at $0$, $1$, $5$, $20$ and $50$~ms
+($\rho_s = -0.80$, $n=5$); we report the rank correlation rather than a clean ordering, and we do
+not lean on its slope, because injected delay also inflates variance and so confounds
+$T_{\mathrm{true}}$ with backlog (Section~\ref{sec:threats}). The direction is consistent across
+both the clean contrast and the confounded sweep. \textbf{Supported.}
+
+\paragraph{H2, the utilisation rule.} Sweeping background load from idle to oversubscription,
+with no core pinning so the measured utilisation is the right denominator, inversion rate is
+flat below half utilisation and then climbs steeply (Table~\ref{tab:h2}). The rank correlation
+is $\rho_s = 0.98$ ($n=9$), and the M/G/1 form fits far better than a linear alternative
+($R^2 = 0.945$ against $0.640$). The predicted knee is present and has the predicted shape.
+\textbf{Supported.}
+
+\paragraph{H4, the oversubscription rule.} At constant aggregate event rate, inversion rate
+rises with the number of concurrent producer/consumer processes: $0.029$, $0.082$, $0.105$,
+$0.103$ at $N = 1, 3, 6, 12$ ($\rho_s = +0.80$, $n=4$). It is process count, not offered load,
+that drives the failure. \textbf{Supported.}
+
+\paragraph{H3, the asymmetry rule.} The model says that what biases a \emph{comparison} is
+$\mathrm{E}[\Delta]$, and that it is non-zero only when the two endpoints stamp differently. Our
+two systems do: \redis{} stamps the acknowledgement on the calling thread the instant
+\texttt{XADD} returns, while \kafka{} stamps it in a delivery callback that runs on the client's
+I/O thread and must first be scheduled. So the prediction is specific --- making \kafka{} stamp
+the same way \redis{} does should shrink the between-system gap, and shrink it from \kafka{}'s
+side.
+
+Two earlier attempts did not test this: both compared \kafka{}'s two client libraries, and both
+of those stamp in callbacks, so the symmetric condition was never created, and we treat them as
+untested rather than as evidence. Here we add an inline-stamping mode to the \kafka{} producer that
+stamps on the calling thread the moment the send resolves --- structurally what \texttt{XADD}
+does --- and run it against \redis{} under matched load, both at one in-flight request
+(Table~\ref{tab:h3}). The gap falls from $+0.286$ to $+0.215$~ms, a $25\%$ reduction, and the
+$0.071$~ms it loses comes entirely from \kafka{}'s side: \kafka{}'s median transport drops from
+$0.392$ to $0.322$~ms while \redis{}'s holds at $0.106$. Removing the callback removed a
+$0.07$~ms systematic offset that was being charged to the broker rather than to the instrument.
+An independent replication with half again as many runs reproduces it: the gap falls from
+$+0.276$ to $+0.237$~ms, again entirely on \kafka{}'s side. \textbf{Supported.}
+
+This is the rule with the most direct bearing on the paper's own first result. The spurious
+effect the audit rejected was a between-system difference; H3 shows that even after the audit, an
+asymmetric stamp leaves a smaller one behind, in the same direction, on the same pair of systems.
+An equal instrument is not a nicety.
+
+\begin{table}[t]
+\caption{H3: median broker transport under the two stamping modes, both arms at one in-flight
+request under matched load. \texttt{callback} is the default asymmetric instrument; \texttt{inline}
+stamps \kafka{} on the calling thread as \redis{} already does. The between-system gap shrinks,
+and the shrinkage is entirely on \kafka{}'s side.}
+\label{tab:h3}
+\begin{tabular}{lrrr}
+\toprule
+Stamp & \kafka{} (ms) & \redis{} (ms) & Difference (ms) \\
+\midrule
+\texttt{callback} (asymmetric) & 0.392 & 0.106 & $+0.286$ \\
+\texttt{inline} (symmetric)    & 0.322 & 0.107 & $+0.215$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\caption{H2: inversion rate against achieved CPU utilisation, no core pinning, background load
+swept from idle to oversubscription. The M/G/1 form fits at $R^2 = 0.945$ against $0.640$ for a
+straight line.}
+\label{tab:h2}
+\begin{tabular}{rr}
+\toprule
+Utilisation $\rho$ & Inversion rate \\
+\midrule
+0.003 & 0.007 \\
+0.253 & 0.009 \\
+0.504 & 0.022 \\
+0.628 & 0.047 \\
+0.753 & 0.132 \\
+0.878 & 0.207 \\
+1.000 & 0.208 \\
+1.000 & 0.221 \\
+1.000 & 0.264 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{The shape of \texorpdfstring{$\Delta$}{Delta}: a mixture, not a scale family}
+\label{sec:mixture}
+
+Equation~\ref{eq:inversion} treats $\Delta$ as a single distribution. That is a leading-order
+picture, and a dedicated campaign --- nine load levels from idle to oversubscription, $25$ runs
+each, pre-registered before it ran --- shows what it omits. We asked the strongest form of the
+model: if $\Delta$ were a scale family, differing across load only by a scale $\sigma(\rho)$, then
+inversion probability would depend on the measured quantity only through the standardised distance
+$z = T_{\mathrm{true}}/\sigma$, and every condition's standardised tail would fall on one curve.
+It does not. At a matched $z \approx 3$ the tail mass ranges over $23\times$ across load levels, far
+outside sampling error. \textbf{The scale-family hypothesis is falsified}, as we pre-registered we
+expected it would be.
+
+What replaces it is a mixture, and the same campaign measures its two parts separately
+(Table~\ref{tab:mixture}). From idle to the knee the \emph{core} of the distribution --- its
+inter-quartile width, the ordinary stamping jitter --- grows only $5\times$, while the \emph{tail}
+that actually produces inversions grows $60\times$: a ratio of $12$ to $1$. Load barely widens the
+core; it multiplies the weight of a rare heavy tail. That tail is the descheduling event of
+Section~\ref{sec:threats}: at every load, idle included, the inversions within a run are
+temporally clustered (Wald--Wolfowitz $z$ from $-6.9$ to $-4.3$, all far below zero), so they
+arrive in bursts of consecutive events, not independently. The mixture unifies three otherwise
+loose observations --- the clustering, the faster-than-quadratic growth of variance, and the
+failed collapse --- under one mechanism: $\Delta$ is a narrow jitter core plus a rare
+descheduling tail whose \emph{weight}, not width, load controls.
+
+This refines rather than unseats the rules. H1, H2 and H4 all concern the tail's growth and stand;
+what the mixture adds is that a benchmark's risk near the noise floor is governed by that tail, so
+the single-$\Delta$ reading of Equation~\ref{eq:inversion} \emph{understates} risk at low load,
+where the core is tight but the tail is already non-empty.
+
+\paragraph{Recovering the tail without a reference clock, and where it reproduces.} Because
+inversion rate at a threshold \emph{is} a quantile of $\Delta$'s tail, the tail can be read off
+inversion counts alone --- an instrument-quality estimate needing no reference clock. The honest
+test of it is not internal consistency but reproduction: do the recovered tail quantiles agree
+between two independent campaigns at matched utilisation? Below saturation they do --- $12$ of
+$17$ matched quantiles overlap at $90\%$, and every one of the deep pre-knee quantiles does. The
+failures are all at $\rho = 1$, where the coordinate is degenerate --- eight, ten and twelve
+background workers all read as full utilisation while representing different degrees of
+overload --- so the two campaigns are not in fact at matched load there. The recovered curve
+reproduces wherever utilisation is a meaningful coordinate and stops when it stops being one,
+which is the correct boundary for the method rather than a defect in it.
+
+\begin{table}[t]
+\caption{The mixture, measured across nine load levels ($25$ runs each, pre-registered). The
+core width $\sigma_{\mathrm{core}} = \mathrm{IQR}/1.349$ grows $5\times$ from idle to the knee;
+the inversion rate --- the tail --- grows $60\times$. Inversions are temporally clustered at
+every load (runs-test $z$). The three $\rho=1$ rows are distinct oversubscription levels that the
+utilisation coordinate cannot separate.}
+\label{tab:mixture}
+\begin{tabular}{rrrr}
+\toprule
+Utilisation $\rho$ & Core $\sigma_{\mathrm{core}}$ (ms) & Inversion rate & Clustering $z$ \\
+\midrule
+0.003 & 0.126 & 0.004 & $-6.8$ \\
+0.253 & 0.138 & 0.004 & $-6.8$ \\
+0.504 & 0.180 & 0.006 & $-6.8$ \\
+0.628 & 0.181 & 0.024 & $-6.9$ \\
+0.753 & 0.238 & 0.076 & $-5.7$ \\
+0.878 & 0.631 & 0.224 & $-4.9$ \\
+1.000 & 1.224 & 0.371 & $-4.3$ \\
+1.000 & 1.293 & 0.317 & $-4.7$ \\
+1.000 & 1.710 & 0.261 & $-4.4$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection{The brokers are equivalent within a millisecond, but not indistinguishable}
 \label{sec:e1}
 
@@ -904,7 +1197,8 @@ as a finding, attributed it to the client's sender thread waking from idle, and 
 practitioner recommendation on it.
 
 That gap does not survive re-measurement, and the reason is a second instance of this paper's
-own thesis. We report it at length for the same reason we reported the first.
+own thesis. We report it at length for the same reason we reported the first, and we retain the
+figure that once carried it (Figure~\ref{fig:e1}) rather than deleting the evidence.
 
 \paragraph{The offset is a start-up cost, not a per-event constant.} Re-measuring at $N{=}1$ on
 the same driver and the same broker, at a replay rate derived from the plan and verified against
@@ -1094,165 +1388,6 @@ a median of seven events each, so the apparent per-event offset is a per-run sta
 Broker transport, the lower series in (b), is unaffected and is what the paper claims.}
 \label{fig:e1}
 \end{figure}
-
-\subsection{The model's rules, measured}
-\label{sec:rules}
-
-Section~\ref{sec:model} derived $\Pr[\text{inversion}] = F_{\Delta}(-T_{\mathrm{true}})$ --- the
-effect-size rule itself --- and three further consequences, on utilisation, process count and
-instrument asymmetry. Each was pre-registered with its falsification criterion before the data
-existed, and all four are tested here on conditions that pass the check.
-
-\paragraph{H1, the effect-size rule.} The strongest evidence is the widest contrast, and it is
-clean: the co-located arm measuring $T_{\mathrm{true}} \approx 0.5$~ms fails wholesale, while the
-network arm measuring tens of seconds passes every run on the same hardware
-(Section~\ref{sec:property}). Across the intermediate range, a \texttt{netem} delay sweep gives
-inversion rates $0.076$, $0.114$, $0.070$, $0.034$, $0.050$ at $0$, $1$, $5$, $20$ and $50$~ms
-($\rho_s = -0.80$, $n=5$); we report the rank correlation rather than a clean ordering, and we do
-not lean on its slope, because injected delay also inflates variance and so confounds
-$T_{\mathrm{true}}$ with backlog (Section~\ref{sec:threats}). The direction is consistent across
-both the clean contrast and the confounded sweep. \textbf{Supported.}
-
-\paragraph{H2, the utilisation rule.} Sweeping background load from idle to oversubscription,
-with no core pinning so the measured utilisation is the right denominator, inversion rate is
-flat below half utilisation and then climbs steeply (Table~\ref{tab:h2}). The rank correlation
-is $\rho_s = 0.98$ ($n=9$), and the M/G/1 form fits far better than a linear alternative
-($R^2 = 0.945$ against $0.640$). The predicted knee is present and has the predicted shape.
-\textbf{Supported.}
-
-\paragraph{H4, the oversubscription rule.} At constant aggregate event rate, inversion rate
-rises with the number of concurrent producer/consumer processes: $0.029$, $0.082$, $0.105$,
-$0.103$ at $N = 1, 3, 6, 12$ ($\rho_s = +0.80$, $n=4$). It is process count, not offered load,
-that drives the failure. \textbf{Supported.}
-
-\paragraph{H3, the asymmetry rule.} The model says that what biases a \emph{comparison} is
-$\mathrm{E}[\Delta]$, and that it is non-zero only when the two endpoints stamp differently. Our
-two systems do: \redis{} stamps the acknowledgement on the calling thread the instant
-\texttt{XADD} returns, while \kafka{} stamps it in a delivery callback that runs on the client's
-I/O thread and must first be scheduled. So the prediction is specific --- making \kafka{} stamp
-the same way \redis{} does should shrink the between-system gap, and shrink it from \kafka{}'s
-side.
-
-Two earlier attempts did not test this: both compared \kafka{}'s two client libraries, and both
-of those stamp in callbacks, so the symmetric condition was never created, and we treat them as
-untested rather than as evidence. Here we add an inline-stamping mode to the \kafka{} producer that
-stamps on the calling thread the moment the send resolves --- structurally what \texttt{XADD}
-does --- and run it against \redis{} under matched load, both at one in-flight request
-(Table~\ref{tab:h3}). The gap falls from $+0.286$ to $+0.215$~ms, a $25\%$ reduction, and the
-$0.071$~ms it loses comes entirely from \kafka{}'s side: \kafka{}'s median transport drops from
-$0.392$ to $0.322$~ms while \redis{}'s holds at $0.106$. Removing the callback removed a
-$0.07$~ms systematic offset that was being charged to the broker rather than to the instrument.
-An independent replication with half again as many runs reproduces it: the gap falls from
-$+0.276$ to $+0.237$~ms, again entirely on \kafka{}'s side. \textbf{Supported.}
-
-This is the rule with the most direct bearing on the paper's own first result. The spurious
-effect the audit rejected was a between-system difference; H3 shows that even after the audit, an
-asymmetric stamp leaves a smaller one behind, in the same direction, on the same pair of systems.
-An equal instrument is not a nicety.
-
-\begin{table}[t]
-\caption{H3: median broker transport under the two stamping modes, both arms at one in-flight
-request under matched load. \texttt{callback} is the default asymmetric instrument; \texttt{inline}
-stamps \kafka{} on the calling thread as \redis{} already does. The between-system gap shrinks,
-and the shrinkage is entirely on \kafka{}'s side.}
-\label{tab:h3}
-\begin{tabular}{lrrr}
-\toprule
-Stamp & \kafka{} (ms) & \redis{} (ms) & Difference (ms) \\
-\midrule
-\texttt{callback} (asymmetric) & 0.392 & 0.106 & $+0.286$ \\
-\texttt{inline} (symmetric)    & 0.322 & 0.107 & $+0.215$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{table}[t]
-\caption{H2: inversion rate against achieved CPU utilisation, no core pinning, background load
-swept from idle to oversubscription. The M/G/1 form fits at $R^2 = 0.945$ against $0.640$ for a
-straight line.}
-\label{tab:h2}
-\begin{tabular}{rr}
-\toprule
-Utilisation $\rho$ & Inversion rate \\
-\midrule
-0.003 & 0.007 \\
-0.253 & 0.009 \\
-0.504 & 0.022 \\
-0.628 & 0.047 \\
-0.753 & 0.132 \\
-0.878 & 0.207 \\
-1.000 & 0.208 \\
-1.000 & 0.221 \\
-1.000 & 0.264 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{The shape of \texorpdfstring{$\Delta$}{Delta}: a mixture, not a scale family}
-\label{sec:mixture}
-
-Equation~\ref{eq:inversion} treats $\Delta$ as a single distribution. That is a leading-order
-picture, and a dedicated campaign --- nine load levels from idle to oversubscription, $25$ runs
-each, pre-registered before it ran --- shows what it omits. We asked the strongest form of the
-model: if $\Delta$ were a scale family, differing across load only by a scale $\sigma(\rho)$, then
-inversion probability would depend on the measured quantity only through the standardised distance
-$z = T_{\mathrm{true}}/\sigma$, and every condition's standardised tail would fall on one curve.
-It does not. At a matched $z \approx 3$ the tail mass ranges over $23\times$ across load levels, far
-outside sampling error. \textbf{The scale-family hypothesis is falsified}, as we pre-registered we
-expected it would be.
-
-What replaces it is a mixture, and the same campaign measures its two parts separately
-(Table~\ref{tab:mixture}). From idle to the knee the \emph{core} of the distribution --- its
-inter-quartile width, the ordinary stamping jitter --- grows only $5\times$, while the \emph{tail}
-that actually produces inversions grows $60\times$: a ratio of $12$ to $1$. Load barely widens the
-core; it multiplies the weight of a rare heavy tail. That tail is the descheduling event of
-Section~\ref{sec:threats}: at every load, idle included, the inversions within a run are
-temporally clustered (Wald--Wolfowitz $z$ from $-6.9$ to $-4.3$, all far below zero), so they
-arrive in bursts of consecutive events, not independently. The mixture unifies three otherwise
-loose observations --- the clustering, the faster-than-quadratic growth of variance, and the
-failed collapse --- under one mechanism: $\Delta$ is a narrow jitter core plus a rare
-descheduling tail whose \emph{weight}, not width, load controls.
-
-This refines rather than unseats the rules. H1, H2 and H4 all concern the tail's growth and stand;
-what the mixture adds is that a benchmark's risk near the noise floor is governed by that tail, so
-the single-$\Delta$ reading of Equation~\ref{eq:inversion} \emph{understates} risk at low load,
-where the core is tight but the tail is already non-empty.
-
-\paragraph{Recovering the tail without a reference clock, and where it reproduces.} Because
-inversion rate at a threshold \emph{is} a quantile of $\Delta$'s tail, the tail can be read off
-inversion counts alone --- an instrument-quality estimate needing no reference clock. The honest
-test of it is not internal consistency but reproduction: do the recovered tail quantiles agree
-between two independent campaigns at matched utilisation? Below saturation they do --- $12$ of
-$17$ matched quantiles overlap at $90\%$, and every one of the deep pre-knee quantiles does. The
-failures are all at $\rho = 1$, where the coordinate is degenerate --- eight, ten and twelve
-background workers all read as full utilisation while representing different degrees of
-overload --- so the two campaigns are not in fact at matched load there. The recovered curve
-reproduces wherever utilisation is a meaningful coordinate and stops when it stops being one,
-which is the correct boundary for the method rather than a defect in it.
-
-\begin{table}[t]
-\caption{The mixture, measured across nine load levels ($25$ runs each, pre-registered). The
-core width $\sigma_{\mathrm{core}} = \mathrm{IQR}/1.349$ grows $5\times$ from idle to the knee;
-the inversion rate --- the tail --- grows $60\times$. Inversions are temporally clustered at
-every load (runs-test $z$). The three $\rho=1$ rows are distinct oversubscription levels that the
-utilisation coordinate cannot separate.}
-\label{tab:mixture}
-\begin{tabular}{rrrr}
-\toprule
-Utilisation $\rho$ & Core $\sigma_{\mathrm{core}}$ (ms) & Inversion rate & Clustering $z$ \\
-\midrule
-0.003 & 0.126 & 0.004 & $-6.8$ \\
-0.253 & 0.138 & 0.004 & $-6.8$ \\
-0.504 & 0.180 & 0.006 & $-6.8$ \\
-0.628 & 0.181 & 0.024 & $-6.9$ \\
-0.753 & 0.238 & 0.076 & $-5.7$ \\
-0.878 & 0.631 & 0.224 & $-4.9$ \\
-1.000 & 1.224 & 0.371 & $-4.3$ \\
-1.000 & 1.293 & 0.317 & $-4.7$ \\
-1.000 & 1.710 & 0.261 & $-4.4$ \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 \subsection{The condition that reverses the ordering}
 \label{sec:network}

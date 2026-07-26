@@ -2343,8 +2343,13 @@ with backlog-driven jitter, and we do not lean on its fitted slope. H1's robust 
 comparison it does not confound: the co-located arm, where $T_{\mathrm{true}} \approx 0.5$~ms,
 fails wholesale, while the network arm, where $T_{\mathrm{true}}$ is tens of seconds, passes
 $15/15$ on the same hardware (Section~\ref{sec:property}). Testing the fine-grained slope cleanly
-would need a constant-offset instrument that does not perturb the queue --- a run we flag as
-future work.
+needs an instrument that lengthens $T_{\mathrm{true}}$ without perturbing the scheduler, which
+netem is not. The payload sweep of Section~\ref{sec:twostate} is that instrument by another
+route: padding adds serialisation and transfer time without contending for the run queue, and it
+moves $T_{\mathrm{true}}$ by $77\times$ against netem's confounded range. It is not a perfect
+constant offset either --- serialisation pushes utilisation slightly \emph{up}, which works
+against the observed direction rather than for it --- but it is clean enough to carry the claim
+netem could not, which is why the $T_{\mathrm{true}}$ result rests on it and not on this sweep.
 
 \paragraph{The mechanism is established; the quantity is not predicted.} The clearest limit on
 this work is what it still cannot do. We can say what causes an inversion, manipulate it on both

@@ -41,7 +41,10 @@ COUNT_COLUMNS = ("n_events", "n_runs", "n", "n_base", "n_rt", "n_matched", "even
                  # `runs` and `events_per_run`, which are sample sizes under different names.
                  # A checker that misses them raises a false alarm, and false alarms are how a
                  # check stops being read.
-                 "runs", "events_per_run", "trace_runs", "trace_events")
+                 "runs", "events_per_run", "trace_runs", "trace_events",
+                 # colocation.csv records its counts per arm. Same lesson as above, one campaign
+                 # later: the sample size was present and the checker did not recognise the name.
+                 "n_remote", "n_colocated")
 
 # Artefacts that are not measurements at all. A source audit's provenance is a file, a line and
 # a commit, not a sample size, and demanding a run count of it would be a category error. It is
@@ -58,6 +61,11 @@ DERIVED = {
     "model/fdelta_reproduction.csv": "model/collapse_conditions.csv",
     "e1/e1_transport_kruskal_across_n.csv": "e1/e1_by_run_gated.csv",
     "football/concurrency/concurrency_summary.csv": "football/feed/feed_summary.csv",
+    # The tail index is a fit over the payload sweep; it has no runs of its own, and the
+    # n_points it does carry describes the fit rather than a sample.
+    "model/tail_index.csv": "model/ttrue_sweep.csv",
+    # L1/L2 are computed over the priority campaigns; the counts live in those files.
+    "model/occupancy_law.csv": "model/stamping_priority.csv",
 }
 # An explicit validity gate set by the producing script after checking for real output.
 VALID_COLUMNS = ("valid",)

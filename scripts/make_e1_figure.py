@@ -118,7 +118,7 @@ def main(argv=None):
         print("no rows to plot")
         return 1
 
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4.2))
+    fig, axes = plt.subplots(2, 1, figsize=(5.5, 5.0))
     plot_tti(axes[0], med)
     plot_decomposition(axes[1], med)
     fig.tight_layout()

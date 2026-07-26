@@ -46,7 +46,7 @@ NEG_FRACTION_LIMIT = 0.01
 
 FIELDS = [
     "run_id", "campaign", "started", "backend", "config", "feeds", "speedup", "plan",
-    "git_head", "has_code_hashes",
+    "host", "git_head", "n_code_files",
     "n_produced", "n_consumed", "n_matched",
     "transport_median_ms", "tti_median_ms",
     "n_negative_transport", "frac_negative_transport", "integrity",
@@ -225,10 +225,11 @@ def build(runs_dir, results_dir, fast=False, progress=None):
             "feeds": feeds_of(name, meta),
             "speedup": meta.get("speedup") if meta.get("speedup") is not None else "",
             "plan": os.path.basename(str(meta.get("plan_csv") or "")),
+            "host": (meta.get("host_platform") or {}).get("node", ""),
             # `or ""` rather than a default: the key exists and is null on some cloud runs,
             # and a default only fires when the key is absent.
             "git_head": ((meta.get("git") or {}).get("head") or "")[:12],
-            "has_code_hashes": bool(meta.get("code_sha256")),
+            "n_code_files": len(meta.get("code_sha256") or {}),
             "n_produced": _count_lines(os.path.join(d, "producer.csv")),
             "n_consumed": _count_lines(os.path.join(d, "consumer_events.csv")),
             "n_matched": tr["n_matched"] if tr else "",
@@ -273,6 +274,44 @@ def archive_metadata(runs_dir, out_path):
     return n, skipped
 
 
+CONDITION_FIELDS = ["prefix", "timestamp", "concurrency", "reps", "speedup", "max_t_sim",
+                    "plan_csv", "total_runs", "success_count", "failure_count", "source"]
+
+
+def index_conditions(results_dir):
+    """One row per orchestrator invocation, from its <prefix>_summary.json.
+
+    This is the only record of trials that were launched and failed: a failed trial writes no run
+    directory, so it is invisible to the run index and to every aggregate. Keeping the launched
+    and failed counts is what lets a reader tell "we ran 20 and report 20" from "we ran 20, two
+    died, and we report 18".
+    """
+    rows = []
+    for path in sorted(glob.glob(os.path.join(results_dir, "**", "*_summary.json"),
+                                 recursive=True)):
+        try:
+            with open(path, encoding="utf-8-sig") as fh:
+                d = json.load(fh)
+        except (OSError, ValueError):
+            continue
+        if "total_runs" not in d:
+            continue          # not an orchestrator summary
+        rows.append({
+            "prefix": d.get("prefix", ""),
+            "timestamp": d.get("timestamp", ""),
+            "concurrency": d.get("concurrency", ""),
+            "reps": d.get("reps", ""),
+            "speedup": d.get("speedup", ""),
+            "max_t_sim": d.get("max_t_sim", ""),
+            "plan_csv": os.path.basename(str(d.get("plan_csv") or "")),
+            "total_runs": d.get("total_runs", 0),
+            "success_count": d.get("success_count", 0),
+            "failure_count": d.get("failure_count", 0),
+            "source": os.path.relpath(path, results_dir).replace("\\", "/"),
+        })
+    return rows
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Build the permanent per-run index")
     ap.add_argument("--runs", default="runs")
@@ -282,6 +321,8 @@ def main(argv=None):
                     help="skip the raw-CSV pass; integrity is then 'not-assessed'")
     ap.add_argument("--archive-meta", default=None,
                     help="also write every meta.json to this gzipped JSONL, one run per line")
+    ap.add_argument("--conditions", default=None,
+                    help="also index the orchestrator condition summaries to this CSV")
     ap.add_argument("--progress", type=int, default=100)
     args = ap.parse_args(argv)
 
@@ -304,6 +345,17 @@ def main(argv=None):
     for k in sorted(by):
         print(f"  {k:20s} {by[k]:6,}")
     print(f"  {'named by no aggregate':20s} {unused:6,}")
+
+    if args.conditions:
+        crows = index_conditions(args.results)
+        with open(args.conditions, "w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=CONDITION_FIELDS)
+            w.writeheader()
+            w.writerows(crows)
+        launched = sum(r["total_runs"] or 0 for r in crows)
+        failed = sum(r["failure_count"] or 0 for r in crows)
+        print(f"wrote {args.conditions}: {len(crows):,} conditions, "
+              f"{launched:,} trials launched, {failed:,} failed")
 
     if args.archive_meta:
         n, skipped = archive_metadata(args.runs, args.archive_meta)

@@ -1,5 +1,5 @@
 {
-  "git_commit": "55b846ed2648ccec0ffdc4efa72a1c6b842021f0",
+  "git_commit": "c9fdbd3349c8410d7b520c357b428017837cc9d3",
   "generated": "2026-07-26",
   "environment": "see docs/infrastructure.md",
   "protocol": {
@@ -33,7 +33,7 @@
     "rate_provenance": "No surviving artefact records an achieved replay rate; plans carry a baked-in 120x compression, so --speedup 1 means 120x rather than real time. The reported cloud runs are at a verified true-real-time rate; E1's rate is recovered from a 52.34 ms diagnostic cell. See paper Section 6.5.",
     "dataset": "StatsBomb open data, 52 competition-seasons / 3,315 matches (2003-2023), pinned to commit 3bfbffe1de5750ebd47d770be0bb924a10cde54f; re-fetch via scripts/fetch_statsbomb_corpus.py. Eleven per-match replay plans are committed under data/processed/replay_plans/<sha>/."
   },
-  "n_code_files": 69,
+  "n_code_files": 71,
   "code_sha256": {
     "scripts/analyze_backlog.py": "130d7d0cf77ff7fb8800a8afa9f4c95b1ef4f24597b100421b6e9343c137b227",
     "scripts/analyze_clean_sweep.py": "d33add24b5058303d3fa7933f2d516a74fee562cc70830206a42c916e1249ddb",
@@ -55,6 +55,7 @@
     "scripts/analyze_ttrue_sweep.py": "65c1c474ba389dfc7646939c11f463fdf351f95feec0800fbd6626e8ecb208bf",
     "scripts/analyze_window.py": "b155a5cec26448543f702c74e0bdd6517b142078fbe811ff3d95ef54be5a0eba",
     "scripts/audit_external_harness.py": "c911d429c152d4e934b3039780242b15445e428f8bc737e06ad7c89f89b2f818",
+    "scripts/build_runs_index.py": "6c0cb1ed76d8ace3128c855f3713bc3690de249665b97cc4dd5dcdffbadb3804",
     "scripts/characterize_feed.py": "ac61a57fce1f821b100694f2995355e1f3b172a7e42bb37d2f203715609868f4",
     "scripts/check_concurrency_health.py": "51cab42212a6182da50f1925a83663a452f2359cb84e0d135100bf2e4184071e",
     "scripts/check_knee_prediction.py": "9dd8d8e1e907764a857abb7fe0ba975694f369cfd5b5c144cfdea4ac763024ad",
@@ -82,6 +83,7 @@
     "scripts/make_replay_plan.py": "89598d6d272af340220e215a49f3f0180fb13797c336cf4935831f1adfedd06a",
     "scripts/make_synthetic_plan.py": "2c0ea9dde0dc1e16778000842cbc18e2efcc8dd59158dee0eb107f65fa629c1b",
     "scripts/make_window_figure.py": "e2d1c8d8d0f29b65a5f940935f648b6e0a20fedbeef27637086aa603f31ae897",
+    "scripts/mark_load_bearing.py": "9f19177470e0d302d1de87a14be141c35ba3c19c5cc3164e1a94238e3a2f49a1",
     "scripts/measurement_model.py": "bcbdc39428d24f30382251d00e3a8260d1e67111a08e85f76b94941c94a1725f",
     "scripts/mutation_check.py": "202ab8944ecf04ad020731ec62702adb25c2b26e8ede6ccb520ef8e5db31891e",
     "scripts/plan_speedup.py": "d6fd1ee25139405df34f8d10ed91bba537f5ebf45b27dabb2e95f6f9429daa89",
@@ -94,7 +96,7 @@
     "scripts/run_concurrency_test.py": "e1589cc7379f2a36f61980b108c381043852cc2faf7760eca0f2f19ad43a0500",
     "scripts/schedstat_sampler.py": "406ba84132f6a19e66d8d67a841c9931d66052b8eab96d4bdf89358bd8c19182",
     "scripts/statistical_analysis.py": "ac390f976062e8006d96a285f7cdbef8b7f8beed012a838bd38e52c9ccc02ccf",
-    "scripts/trace_table_numbers.py": "943db80763447e75a6fda07d1f50e69f2a4470b1eb53dd19ef0f99b8d6fd0806",
+    "scripts/trace_table_numbers.py": "c14e068e2b1e74eab5be3459c884934e5eec05177e6929109bd6459e26f41cf9",
     "scripts/util_sampler.py": "3d89f2170700382c9562e1e31ea005d4212574e7e51637359533f80c98189e04",
     "scripts/verify_reproducibility.py": "58483434f7c7e7cb7f6c9c885ddbed32337d0958dbd01a81f523c437d5d5b592",
     "scripts/verify_run_provenance.py": "8b8749b2c2c63eebf327eef58cc4dae29837dfc6924af23ef2e8e133bebd259f",

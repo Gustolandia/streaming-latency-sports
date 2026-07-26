@@ -1026,19 +1026,43 @@ campaign script reconstructed afterwards describes a different, earlier campaign
 cells agree: runs matching five or seven events read $103$~ms, as four late events out of five or
 seven must give.
 
+\emph{The inference has since been checked against the original script, and it holds.} Archiving
+the cloud driver before releasing it turned up the campaign as actually invoked, in a shell script
+in the operator's home directory that no part of the repository had ever referenced. It specifies
+\texttt{-{}-speedup 0.008333} --- $1/120$, against a plan already compressed $120\times$, which is
+true real time --- and its log's first line, \texttt{E1 N=1 reps=8 00:39:40}, names the run
+directory the E1 artefact's first row still points at. The arithmetic above and the flag agree.
+
+We report that as a check rather than as the answer, because the order matters. The rate was
+determined from the measurements while the metadata was genuinely unavailable, and the script
+surfaced afterwards, by luck, from a machine that was about to be switched off. What the
+agreement establishes is not that E1's provenance was fine all along --- it was not --- but that
+the recovery method returns the right answer when there is an answer to check it against. That is
+the one thing a physical-constraint argument can rarely demonstrate about itself.
+
+The same script also explains a feature we had described and not accounted for. It passes
+\texttt{-{}-max-t-sim 2}: two seconds of match time per run. The median of seven matched events
+that makes E1 under-powered, and that Section~\ref{sec:attribution} treats as an opening burst,
+is that window. The burst is real and is why those seven events are the densest in the match; the
+reason there were only seven is that the campaign asked for two seconds.
+
 We leave the disclosure standing rather than deleting it, for two reasons. The recovery was
 available only because the artefact we were chasing happened to be a wall-clock constant with a
-sharp signature; a reader should not have to reconstruct an experimental parameter by arithmetic
-on its results, and next time there may be nothing to reconstruct it from. And the exercise makes
-the protocol rule concrete: what was missing was one number, written down once.
+sharp signature, and the confirmation only because a virtual machine had not yet been destroyed;
+a reader should not have to reconstruct an experimental parameter by arithmetic on its results,
+and next time there may be nothing to reconstruct it from and nothing left to check it against.
+And the exercise makes the protocol rule concrete: what was missing was one number, written down
+once.
 
 \paragraph{What the gap touched.} The audit is unaffected either way: a negative transport is
 causally impossible at any replay rate, and the rejection counts are arithmetic on surviving
 per-event data. The withdrawal in Section~\ref{sec:attribution} is unaffected by construction ---
 we give the argument in a form that holds at every candidate rate. The rules of
 Section~\ref{sec:rules} were measured after the pre-flight existed, at a derived and verified
-rate. Section~\ref{sec:e1}'s external validity is restored by the recovery above, though we now
-state it as an inference from the data rather than as a property of the campaign we can document.
+rate. Section~\ref{sec:e1}'s external validity is restored by the recovery above, and the
+recovered script now documents it as well --- though the inference stood on its own before the
+script appeared, and is what we would still be relying on had the machine been released a day
+earlier.
 Section~\ref{sec:protocol} carries the rule that would have made all of this unnecessary.
 
 \subsection{The property that makes this general}

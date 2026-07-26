@@ -519,8 +519,10 @@ timeout, then compute TTI per feed and aggregate with full provenance.
 
 S3 mode injects state-staleness corrections identically across both backends:
 `--s3-mode corrections`, `--corrections-every-k 50`, `--correction-delay-s 2.0`, with a
-`s3_uid` / `s3_rev` / `s3_is_correction` envelope. Config: `configs/s3_injections.yaml`
-(`seed=12345`, every-kth selection, k=50).
+`s3_uid` / `s3_rev` / `s3_is_correction` envelope. The flags are the whole interface — an
+accompanying `configs/s3_injections.yaml` existed but no code ever read it, and it was removed
+with the rest of the S-era scaffolding. The producers still support the mode; every S3 *result*
+belongs to Testbed A and is withdrawn (§1.1).
 
 ### 6.5 Decision-staleness — removed with the sports framing
 
@@ -603,9 +605,6 @@ streaming-latency-sports/
 ├── docker-compose.yml              # single-broker Kafka + Redis
 ├── docker-compose-multibroker.yml  # 3 Kafka brokers (KRaft)        — Issue 2
 ├── docker-compose-redis-cluster.yml# 3 Redis nodes (cluster)        — Issue 2
-│
-├── configs/
-│   └── s3_injections.yaml          # S3 correction config
 │
 ├── scripts/                        # producers, consumers, metrics, analysis (see §10)
 │   ├── kafka_producer.py · kafka_consumer.py

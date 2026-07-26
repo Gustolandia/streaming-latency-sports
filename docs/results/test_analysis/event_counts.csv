@@ -1,3 +1,0 @@
-backend,scenario,Avg Producer Events,Avg Consumer Events,Avg Matched Events,Total Matched Events,Match Rate (%)
-kafka,s2,4465.0,4465.0,4465.0,22325.0,100.0
-redis,s2,4465.0,4465.0,4465.0,22325.0,100.0

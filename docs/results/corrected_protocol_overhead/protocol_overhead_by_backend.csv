@@ -1,3 +1,0 @@
-backend,msg_size_p50,serialize_ns_p50,deserialize_ns_p50
-kafka,169.8,2322.8333333333335,2101.5
-redis,169.8,2402.0,2193.1666666666665

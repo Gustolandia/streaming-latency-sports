@@ -1,3 +1,0 @@
-run_id,backend,scenario,concurrency,plan_csv,tti_ms_p50,tti_ms_p95,tti_ms_p99,tti_ms_max,tti_ms_mean,tti_ms_std,tti_ms_min,n_producer,n_consumer,n_matched,transport_latency_ms_p50
-concurrency_n1_20260612_215928_redis_feed1_rep1,redis,concurrency,1,data/processed/replay_plans/s2sf12/combined_plan.csv,2185.033845,2323.3171890000003,2334.827188,2338.105967,2184.585592035959,89.57756304034335,2023.8565,584,584,584,2011.92945
-concurrency_n1_20260612_215928_kafka_feed1_rep1,kafka,concurrency,1,data/processed/replay_plans/s2sf12/combined_plan.csv,2551.9946449999998,2928.211389,2961.232657,2970.067967,2555.431543234589,238.47789372517087,2144.2451,584,584,584,2022.3775

@@ -2310,6 +2310,20 @@ $15/15$ on the same hardware (Section~\ref{sec:property}). Testing the fine-grai
 would need a constant-offset instrument that does not perturb the queue --- a run we flag as
 future work.
 
+\paragraph{The mechanism is established; the quantity is not predicted.} The clearest limit on
+this work is what it still cannot do. We can say what causes an inversion, manipulate it on both
+sides, and predict the rate to within $22\%$ in the one cell where we traced the scheduler
+directly. We cannot write down the rate a benchmark will suffer at a given load on a given
+machine. Two attempts failed and are reported above: M/G/1 fits worse than the mean once the
+sweep reaches the range where forms diverge, and our own registered bracket missed a $1.44\times$
+growth by predicting $2.45$--$3.07\times$. Both failed for the same reason --- both were
+parameterised in $\rho$, and $\rho$ is not the variable. The tail-index rule
+(Equation~\ref{eq:tailindex}) is the nearest thing we have to a quantitative law, and it carries
+no load term at all: it predicts how the rate scales with $T_{\mathrm{true}}$, not what the rate
+is. So the practical guidance this paper supports is a check to run, not a number to look up. A
+reader wanting to know whether their own measurement is exposed must measure it, which is
+precisely why we argue the check should be routine rather than the model be trusted.
+
 \paragraph{Conclusion validity: multiplicity and pre-specification.} Holm families are declared
 over the design actually executed rather than chosen afterwards, and equivalence margins were
 fixed before testing. The threshold in the check was fixed before the final campaign but

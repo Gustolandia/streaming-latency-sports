@@ -1,11 +1,29 @@
 # The OpenMessaging Benchmark audit
 
-Section 6.7 of the paper claims that an instrumented OpenMessaging Benchmark discarded 6,000
-end-to-end samples — about 6.7% of a three-minute run at 500 msg/s under 88% load — while
-reporting a healthy latency summary and no counter of any kind.
+> **Superseded, 2026-07-26.** This directory holds the *original* single run, in which an
+> instrumented OpenMessaging Benchmark discarded 6,000 end-to-end samples — about 6.7% of three
+> minutes at 500 msg/s under 88% load. Section 6.7 read those 6,000 as the same causality
+> violation the paper reports. **That reading is withdrawn.** A sign-separated sweep across 15
+> cells found **zero negative samples in roughly 420,000 discards**, with a discard share that
+> falls as load rises. Every discard was a millisecond-tick collision, not a causality violation.
+>
+> The files here are kept unchanged, and `omb_discard_evidence.txt` deliberately so: every one of
+> its eleven counter lines reads `sample_micros=0`, and the Pub-rate lines beside them show a
+> median publish latency of 0.4–0.5 ms. The refutation and its mechanism were both in this
+> directory from the day it was committed. What was missing was not data but a reason to look at
+> the sign, because the statistic we chose to report — one unsigned total — did not have one.
+> Regenerating this file would replace the primary record of the withdrawal with a file edited
+> after the fact.
+>
+> Current evidence: `docs/results/external/` (the sweeps), `docs/results/external/omb_retention.csv`
+> (what the benchmark reported against how much data survived), and `referee_response_plan.md`, R1.
 
-Everything needed to check that claim is in this directory. Until it was collected here, the
-source modification behind it existed only in a working tree on a cloud VM.
+The source-level audit is unaffected and never depended on the run: the guard admits only positive
+samples, nothing counts the drops, the reported distribution is conditioned on being positive, and
+the retention rate is unrecoverable from a completed run.
+
+Everything needed to check the original claim is in this directory. Until it was collected here,
+the source modification behind it existed only in a working tree on a cloud VM.
 
 | file | what it is |
 |---|---|

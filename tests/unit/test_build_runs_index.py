@@ -306,3 +306,69 @@ class TestMetadataArchive:
               "--out", str(tmp_path / "i.csv"), "--progress", "0",
               "--archive-meta", str(tmp_path / "m.jsonl.gz")])
         assert "meta.json" in capsys.readouterr().out
+
+
+class TestConditionsIndex:
+    """A failed trial writes no run directory. This index is the only place it survives."""
+
+    def _summary(self, tmp, name, total, success, failure, extra=None):
+        d = tmp / "res" / name
+        d.mkdir(parents=True, exist_ok=True)
+        body = {"prefix": name, "timestamp": "20260101_000000", "concurrency": 5,
+                "reps": 2, "speedup": 1.0, "max_t_sim": 180, "plan_csv": "a/b/plan.csv",
+                "total_runs": total, "success_count": success, "failure_count": failure}
+        body.update(extra or {})
+        (d / f"{name}_summary.json").write_text(json.dumps(body), encoding="utf-8")
+
+    def test_failed_trials_are_recorded(self, tmp_path):
+        from build_runs_index import index_conditions
+        self._summary(tmp_path, "c1", 20, 18, 2)
+        rows = index_conditions(str(tmp_path / "res"))
+        assert len(rows) == 1
+        assert rows[0]["total_runs"] == 20 and rows[0]["failure_count"] == 2
+        assert rows[0]["success_count"] == 18
+
+    def test_the_source_file_is_named(self, tmp_path):
+        from build_runs_index import index_conditions
+        self._summary(tmp_path, "c1", 1, 1, 0)
+        assert rows_src(index_conditions(str(tmp_path / "res"))).endswith("c1_summary.json")
+
+    def test_a_json_without_total_runs_is_not_a_condition(self, tmp_path):
+        """Other *_summary.json files exist. Only orchestrator summaries have total_runs."""
+        from build_runs_index import index_conditions
+        d = tmp_path / "res"
+        d.mkdir()
+        (d / "other_summary.json").write_text(json.dumps({"p50_ms": 1.2}), encoding="utf-8")
+        assert index_conditions(str(d)) == []
+
+    def test_malformed_summaries_are_skipped_not_fatal(self, tmp_path):
+        from build_runs_index import index_conditions
+        d = tmp_path / "res"
+        d.mkdir()
+        (d / "bad_summary.json").write_text("{oops", encoding="utf-8")
+        self._summary(tmp_path, "good", 5, 5, 0)
+        rows = index_conditions(str(d))
+        assert len(rows) == 1 and rows[0]["prefix"] == "good"
+
+    def test_the_plan_is_reduced_to_a_basename(self, tmp_path):
+        from build_runs_index import index_conditions
+        self._summary(tmp_path, "c1", 1, 1, 0)
+        assert index_conditions(str(tmp_path / "res"))[0]["plan_csv"] == "plan.csv"
+
+    def test_a_null_plan_does_not_crash(self, tmp_path):
+        from build_runs_index import index_conditions
+        self._summary(tmp_path, "c1", 1, 1, 0, extra={"plan_csv": None})
+        assert index_conditions(str(tmp_path / "res"))[0]["plan_csv"] == ""
+
+    def test_the_cli_reports_launched_and_failed(self, tmp_path, capsys):
+        self._summary(tmp_path, "c1", 20, 18, 2)
+        (tmp_path / "runs").mkdir()
+        main(["--runs", str(tmp_path / "runs"), "--results", str(tmp_path / "res"),
+              "--out", str(tmp_path / "i.csv"), "--progress", "0", "--fast",
+              "--conditions", str(tmp_path / "c.csv")])
+        out = capsys.readouterr().out
+        assert "20 trials launched" in out and "2 failed" in out
+
+
+def rows_src(rows):
+    return rows[0]["source"]

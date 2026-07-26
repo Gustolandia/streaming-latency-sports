@@ -1137,6 +1137,29 @@ class TestLoadGeometryAndTtrue:
         section = " ".join(_section(tex, "sec:twostate").split())
         assert "0.7531" in section and "identical to four decimals" in section
 
+    def test_every_float_is_referenced_from_the_text(self, tex):
+        """A figure, table or equation no sentence points to is a float the reader never meets.
+
+        LaTeX does not warn about this: an unreferenced label is perfectly legal, and the float
+        still typesets. fig:window -- the whole picture of the window sweep, the evidence for a
+        withdrawal -- sat unreferenced for exactly that reason. Section labels are exempt: those
+        are routinely defined for navigation without being cited.
+        """
+        labels = set(re.findall(r"\\label\{((?:fig|tab|eq):[^}]*)\}", tex))
+        referenced = set(re.findall(r"\\ref\{([^}]*)\}", tex))
+        orphans = sorted(labels - referenced)
+        assert not orphans, f"floats defined but never referenced: {orphans}"
+
+    def test_no_reference_lost_its_backslash(self, tex):
+        """`\\ref` mangled to `ef` renders as garbage and raises no LaTeX error.
+
+        Five of these shipped in the built PDF as "efsec:gate" and similar. The cause is a
+        heredoc reading the \\r of \\ref as a carriage return, so the residue characteristically
+        begins a line.
+        """
+        residue = re.findall(r"(?m)^(?:ef|exttt|extbf|mph|ite|abel)\{[^}]*\}", tex)
+        assert not residue, f"macros whose backslash was eaten: {residue[:5]}"
+
     def test_the_uniform_denominator_claim_holds_across_every_campaign(self, tex):
         """Section 6 states every inversion rate is over 2,985 events. Check it against the files.
 

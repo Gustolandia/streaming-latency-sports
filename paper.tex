@@ -1130,6 +1130,22 @@ We withdraw the entire Testbed~A arm, and on Testbed~B the accelerated concurren
 connection sweep above ten connections, and the three-node cluster arm, which fails on every run
 in both systems.
 
+\paragraph{A manipulation that did not manipulate, and what it cost.} We also withhold a
+co-location campaign (E-A8). The intent was to shorten $T_{\mathrm{true}}$ by removing the
+network hop --- the opposite of the payload sweep, and a useful check that the
+$T_{\mathrm{true}}$ result is not an artefact of how we lengthened it. It did not work. Moving
+the broker onto the driver made transport \emph{longer} at idle, $0.512 \to 0.573$~ms, because it
+traded network latency for CPU contention on the same cores; under $88\%$ load it moved transport
+by $1.03\times$, which is no manipulation at all. The inversion rates duly failed to separate
+(intervals overlapping in both cells). Reporting those rates as a null would misdescribe the
+experiment: nothing was manipulated, so nothing was tested. We record it because the pattern is
+itself informative. Two of our three attempts on this axis failed for structurally similar
+reasons --- netem delayed both paths and cancelled in the difference, co-location traded one
+delay for another --- which suggests $T_{\mathrm{true}}$ is a quantity that resists manipulation
+in a shared-resource system, because every route to shortening it lengthens something else. The
+payload sweep worked because padding adds serialisation without contending for the scheduler, and
+we were fortunate that it does.
+
 
 \section{What Survives}
 \label{sec:results}
@@ -1660,6 +1676,26 @@ data. The rule over-predicts, which is the expected direction, since not every s
 stamping instant. We state the limits plainly: $\alpha$ is fitted from four points in one
 campaign at one load level, not derived, and the $1.66\times$ gap is unexplained rather than
 accounted for. We report this as a rule with one measurement behind it.
+
+\paragraph{Two bounds the rate respects, and where each comes from.} The mechanism
+predicts a floor and the data supply a ceiling, and both are measured rather than fitted.
+
+\emph{The floor is the idle rate.} If inversions come from stalls, then a stamping thread that
+cannot be made to wait should invert at the rate of a machine with nothing else running. Two
+unrelated campaigns give the comparison: the real-time arms under load settle at $0.0049$, and an
+\emph{unloaded} host at ordinary priority measures $0.0035$ --- a ratio of $1.38$. Heavy load with
+a runnable stamping thread looks, to this measurement, almost exactly like no load at all. The
+residue is not zero because a real-time thread still waits occasionally, which is why the model
+carries a floor term rather than predicting zero.
+
+\emph{The ceiling is physical, and it is not one.} Saturating the machine does not drive the
+inversion rate toward unity. It saturates near $0.371$, and the three campaigns that reach
+saturation agree to within $1.11\times$. This matters for interpretation rather than for
+magnitude. Writing the rate as $P = p \cdot S$, where $p$ is the probability that a stall is long
+enough and $S$ the share of events exposed to one, a ceiling measured at $0.37$ estimates $S$
+directly: even with every core saturated, roughly two events in three are stamped without ever
+being preempted. $S$ is therefore a measured property of the workload's timing against the
+scheduler's, not a free asymptote fitted to make a curve close.
 
 \subsection{The brokers are equivalent within a millisecond, but not indistinguishable}
 \label{sec:e1}

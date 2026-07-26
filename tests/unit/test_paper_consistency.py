@@ -1185,8 +1185,17 @@ class TestLoadGeometryAndTtrue:
         traced, observed = float(base["p_tail"]), float(base["inversion"])
         gap = abs(observed - traced) / observed
         assert 0.215 < gap < 0.225, f"agreement recomputes to {gap:.1%}"
-        assert f"{round(gap * 100)}" in " ".join(tex.split()), \
-            f"the paper must quote {round(gap * 100)}% for the traced/observed agreement"
+        # In the sentence that makes the comparison. "22" occurs elsewhere in the manuscript,
+        # so a document-wide search passed a paper claiming the two agreed to 52%.
+        flat = " ".join(tex.split())
+        marker = "they agree to"
+        assert marker in flat, "the traced/observed comparison must be stated"
+        sentence = flat[flat.index(marker):][:120]
+        assert f"{round(gap * 100)}" in sentence, (
+            f"the agreement sentence must say {round(gap * 100)}%, recomputed from runq_tail.csv")
+        # The two values it compares belong in the same sentence as the percentage.
+        assert f"{traced:.3f}" in sentence and f"{observed:.3f}" in sentence, \
+            "the sentence must carry both measurements it is comparing"
 
     def test_the_discussion_recommends_the_mitigation_the_data_support(self, tex):
         """The paper measures a mitigation with a 7-80x effect and did not recommend it.
@@ -1345,6 +1354,11 @@ class TestLoadGeometryAndTtrue:
         # so the sentence does not cover it and it must not be silently folded in.
         offenders = [o for o in offenders if not o.startswith("variance_law")]
         assert not offenders, f"the uniform-n sentence is false for: {offenders}"
+        # And the sentence must quote the number the artefacts actually carry. Checking only the
+        # CSVs left the manuscript free to state any denominator it liked.
+        stats = " ".join(_section(tex, "sec:stats").split())
+        assert "2{,}985" in stats or "2\\,985" in stats, \
+            "Section 6 must state the shared denominator the artefacts show"
 
     def test_the_mechanism_campaigns_appear_in_the_power_table(self, tex):
         """tab:power says what each claim rests on, and had stopped before the mechanism.
@@ -1396,7 +1410,13 @@ class TestLoadGeometryAndTtrue:
         assert abs(z_orig) < 1.96 <= abs(z_rep), (
             f"k7 z: original {z_orig:.2f}, replication {z_rep:.2f} -- if these now agree, the "
             "withdrawal text needs revisiting")
-        assert "withdraw" in section, "the stronger k=7 reading must be withdrawn in the text"
+        # Bind the withdrawal to the sentence carrying the replication's own numbers. The
+        # word "withdraw" also appears in the M/G/1 paragraph of this section, so looking for it
+        # anywhere passed a manuscript in which the k=7 withdrawal had been deleted.
+        window = section[section.find("1.19"):][:420]
+        assert window, "the replication's k=7 ratio must appear in the text"
+        assert "withdraw" in window, (
+            "the k=7 withdrawal must be stated where the replication's numbers are given")
         assert "2\\,985" in section or "2985" in section, "the sample size must be stated"
 
     def test_the_geometry_replication_reproduces_the_load_bearing_cell(self, tex):
@@ -1410,9 +1430,12 @@ class TestLoadGeometryAndTtrue:
         r_o = float(orig["k6_spread"]["inversion_rate"]) / float(orig["k6_conc"]["inversion_rate"])
         r_r = float(rep["k6_spread"]["inversion_rate"]) / float(rep["k6_conc"]["inversion_rate"])
         assert abs(r_o - r_r) < 0.15, f"k6 ratio {r_o:.2f} vs {r_r:.2f} -- no longer a replication"
-        section = " ".join(_section(tex, "sec:twostate").split())
+        # In the table specifically. Both ratios also appear in the surrounding prose, so a
+        # section-wide search passed a manuscript whose table said 2.77x.
+        table = tex[tex.index(r"\label{tab:ea6}"):]
+        table = table[:table.index(r"\end{table}")]
         for v in (f"{r_o:.2f}", f"{r_r:.2f}"):
-            assert v in section, f"ratio {v} missing from the paper"
+            assert v in table, f"ratio {v} missing from tab:ea6"
 
     def test_the_ttrue_sweep_is_in_the_paper(self, tex):
         section = _section(tex, "sec:twostate")

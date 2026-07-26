@@ -444,12 +444,22 @@ class TestH3IsMeasuredAndSupported:
         assert 0.20 < reduction < 0.30, f"reduction is {reduction:.0%}, paper says ~25%"
         assert "25" in tex
 
-    def test_the_scorecard_says_all_four_hold(self, tex):
-        # The contribution item, not the abstract's first mention of the rules.
-        item = tex[tex.index(r"\textbf{Four falsifiable rules, derived and measured}"):]
+    def test_the_scorecard_does_not_still_claim_the_withdrawn_form(self, tex):
+        """This test used to assert "All four hold", and by doing so enforced a refuted claim.
+
+        One of the four was that inversion probability follows M/G/1 waiting time in utilisation.
+        The paper refutes it: extended to the utilisation range where the candidate forms
+        diverge, M/G/1 fits worse than the mean. The contribution item said all four held, and
+        this test kept it that way -- a test pinned to prose rather than to a result will defend
+        the prose after the result has moved.
+        """
+        item = tex[tex.index(r"\textbf{Falsifiable rules, derived and measured}"):]
         item = item[:item.index(r"\item")]
-        assert "All four hold" in item
-        assert "All three hold" not in tex
+        assert "All four hold" not in item, "the contributions list still claims all four rules"
+        assert "M/G/1" in item and "withdraw" in item, \
+            "the contributions list must state the M/G/1 withdrawal where it made the claim"
+        # And the refutation must be the one the artefact supports, not merely a hedge.
+        assert "worse than the mean" in item
 
     def test_the_argument_holds_at_every_candidate_replay_rate(self, tex):
         """The withdrawal must not depend on the rate the artefacts cannot supply.

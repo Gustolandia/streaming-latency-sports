@@ -1617,3 +1617,51 @@ class TestConcurrentWork:
     def test_the_tail_index_is_not_claimed_as_a_constant(self, tex):
         section = " ".join(_section(tex, "sec:related_tail").lower().split())
         assert "one fitted value from one campaign" in section
+
+
+class TestRecoveredProvenance:
+    """The E1 replay rate was inferred, then confirmed by a script recovered off the driver.
+
+    The paper reports both, in that order, and the order is the point: the inference stood alone
+    before the script appeared. These tests keep the reported flag tied to the recovered file so
+    the confirmation cannot drift into a claim the artefact does not support.
+    """
+
+    ADHOC = REPO / "reproducibility" / "campaign_logs" / "early_adhoc"
+
+    def test_the_quoted_speedup_matches_the_recovered_script(self, tex):
+        script = (self.ADHOC / "e1.sh").read_text(encoding="utf-8")
+        m = re.search(r"--speedup\s+([0-9.]+)", script)
+        assert m, "the recovered e1.sh no longer names a speedup"
+        flag = m.group(1)
+        assert flag in " ".join(tex.split()), \
+            f"the paper must quote the recovered flag {flag}"
+        # 1/120 against a plan already compressed 120x is true real time.
+        assert abs(float(flag) - 1 / 120) < 1e-5, \
+            f"{flag} is not 1/120; the true-real-time reading needs revisiting"
+
+    def test_the_max_t_sim_window_is_reported(self, tex):
+        """--max-t-sim 2 is why E1 matched seven events. The paper had described the symptom."""
+        script = (self.ADHOC / "e1.sh").read_text(encoding="utf-8")
+        m = re.search(r"--max-t-sim\s+(\d+)", script)
+        assert m and m.group(1) == "2"
+        flat = " ".join(tex.split())
+        assert "max-t-sim" in flat.replace("-{}-", "--"), \
+            "the window that produced the seven-event runs must be named"
+
+    def test_the_recovered_log_names_the_first_e1_run(self, tex):
+        """The link between script and corpus: its log's first run is the artefact's first row."""
+        log = (self.ADHOC / "e1.log").read_text(encoding="utf-8")
+        first = _rows("e1", "e1_by_run_gated.csv")[0]["run_id"]
+        stamp = re.search(r"concurrency_n\d+_(\d{8}_\d{6})", first).group(1)
+        assert stamp.replace("_", "") in log.replace("_", "").replace(":", ""), \
+            f"the E1 artefact's first run {first} is not in the recovered log"
+
+    def test_the_paper_keeps_the_inference_ahead_of_the_confirmation(self, tex):
+        """Reporting only the flag would hide that the rate was determined without it."""
+        section = " ".join(_section(tex, "sec:rateprovenance").split())
+        infer = section.find("recoverable from the measurements")
+        confirm = section.find("checked against the original script")
+        assert -1 < infer < confirm, \
+            "the inference must be presented before the script that confirms it"
+        assert "by luck" in section, "the confirmation's provenance must stay honest"

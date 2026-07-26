@@ -176,6 +176,28 @@ class TestInvalidReason:
     def test_no_result_row_is_a_reason(self, tmp_path):
         assert invalid_reason(str(tmp_path), "load_sweep", {}) == "no result row written"
 
+    def test_a_measured_cell_with_no_receipt_is_valid(self, tmp_path):
+        """l95_rep2: the benchmark ran and the script died before writing the row."""
+        counts = {"kept": "93381", "discarded_zero": "27311", "discarded_negative": "0"}
+        assert invalid_reason(str(tmp_path), "load_sweep", {}, counts, "shutdown_hook") == ""
+
+    def test_a_quantised_count_does_not_rescue_a_missing_receipt(self, tmp_path):
+        counts = {"kept": "50000", "discarded_zero": "50000", "discarded_negative": "0"}
+        assert invalid_reason(str(tmp_path), "load_sweep", {}, counts,
+                              "periodic_quantised") == "no result row written"
+
+    def test_an_all_zero_summary_does_not_count_as_measured(self, tmp_path):
+        """A hook that fired in a JVM which recorded nothing is not a measurement."""
+        counts = {"kept": "0", "discarded_zero": "0", "discarded_negative": "0"}
+        assert invalid_reason(str(tmp_path), "load_sweep", {}, counts,
+                              "shutdown_hook") == "no result row written"
+
+    def test_an_explicit_campaign_failure_still_wins_over_a_summary(self, tmp_path):
+        """If the campaign's own gate rejected the run, the log does not overrule it."""
+        counts = {"kept": "93381", "discarded_zero": "27311", "discarded_negative": "0"}
+        assert invalid_reason(str(tmp_path), "load_sweep", {"valid": "0"}, counts,
+                              "shutdown_hook") == "campaign marked valid=0"
+
     def test_a_good_cell_has_no_reason(self, tmp_path):
         assert invalid_reason(str(tmp_path), "load_sweep", {"valid": "1"}) == ""
 
@@ -225,10 +247,23 @@ class TestIndexCell:
         row = index_cell(str(d), "c")
         assert row["valid"] == "0" and row["invalid_reason"] == "campaign marked valid=0"
 
-    def test_a_cell_with_no_result_row_is_invalid_with_a_reason(self, tmp_path):
-        d = make_cell(tmp_path, "c", "l0_rep1", result=None)
+    def test_a_cell_with_no_result_row_but_a_real_summary_is_recovered(self, tmp_path):
+        """The l95_rep2 case end to end: the measurement is in the log, so the row is valid."""
+        d = make_cell(tmp_path, "c", "l95_rep2", result=None)
+        row = index_cell(str(d), "c")
+        assert row["valid"] == "1" and row["invalid_reason"] == ""
+        assert row["kept"] == "1821" and row["discarded_negative"] == "0"
+
+    def test_a_cell_with_neither_a_row_nor_a_summary_is_invalid(self, tmp_path):
+        d = make_cell(tmp_path, "c", "l0_rep1", result=None, log="nothing useful")
         row = index_cell(str(d), "c")
         assert row["valid"] == "0" and row["invalid_reason"] == "no result row written"
+
+    def test_hashing_can_be_skipped_for_interim_indexing(self, tmp_path):
+        d = make_cell(tmp_path, "c", "l0_rep1")
+        row = index_cell(str(d), "c", hash_logs=False)
+        assert row["stdout_sha256"] == ""
+        assert row["stdout_bytes"] > 0 and row["kept"] == "1821"
 
     def test_a_missing_warmup_key_is_recorded_as_the_default_not_as_none(self, tmp_path):
         """OMB warms up for a minute unless told otherwise, and our early cells never told it.

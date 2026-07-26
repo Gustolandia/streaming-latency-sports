@@ -1773,6 +1773,13 @@ $103.5$~ms: the cost is present in every run and dilutes in every run, which is 
 something paid once. Had it been a per-event constant, the count would have grown with the window
 and the median would have stayed at $103$~ms.
 
+A once-per-producer cost of this kind is documented upstream: a \kafka{} producer performs a
+metadata lookup before its first send to a topic it has not yet cached~\cite{kafka2020kip526}.
+We did not isolate that call, so we do not claim it \emph{is} the mechanism --- the window sweep
+constrains the cost's \emph{shape}, not its origin. We note it because the shape we measure and
+the shape the client documents agree, and because a reader deciding whether this generalises
+beyond our testbed should know the behaviour is a property of the client rather than of our rig.
+
 \redis{} was run in the same sweep on the same events, with the same loop trace, and has
 \emph{no} events waking more than $50$~ms late and \emph{no} blocking send at any window. Its
 worst single event anywhere is under $25$~ms. Instrumenting both arms identically matters here for

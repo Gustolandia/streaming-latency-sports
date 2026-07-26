@@ -42,8 +42,8 @@ ROWS = [
     # campaigns were carrying results in the text with no row here at all.
     ("E-A5/A5b/A7\nstamping priority", "SCHED_FIFO on the stamping threads",
      "utilisation, to 0.003", "scheduling, not utilisation\n(8 pairs, 7-80x)"),
-    ("E-A6\nload geometry", "cores free vs all duty-cycled", "achieved utilisation",
-     "utilisation is not the variable\n(2.07x at identical load)"),
+    ("E-A6 / E-A6b\nload geometry", "cores free vs all duty-cycled", "achieved utilisation",
+     "utilisation is not the variable\n(2.07x, then 2.05x, at rho 0.7531)"),
     ("E-A9\nrun-queue trace", "nothing: observation only", "load, priority arm",
      "P(stall > true transport)\npredicts the rate, unfitted"),
     ("E-A10\ntransport sweep", "payload size; true transport 77x", "load, hosts, code path",

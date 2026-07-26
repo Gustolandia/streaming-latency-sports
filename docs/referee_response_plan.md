@@ -838,3 +838,43 @@ quantity — with nothing in its output to say so.
 cells are running. If levels 50–95 reproduce closely, the effect is specific to the near-tick
 configuration at idle and must be scoped that way. The threshold for the verdict (10 points) was
 fixed before any of this pass existed.
+
+### The replication pass, complete: a three-replicate median is a coin flip
+
+Fifteen cells, identical configuration to the first sweep, run three to five hours later.
+
+| load | median A | spread A | median B | spread B | \|delta\| |
+|---|---|---|---|---|---|
+| 0% | 1.51% | 99.17 | 99.98% | 3.58 | **98.47** |
+| 50% | 76.32% | 33.19 | 4.79% | 95.59 | **71.52** |
+| 75% | 95.59% | 75.46 | 94.70% | 49.93 | 0.89 |
+| 88% | 95.22% | 72.23 | 94.53% | 43.12 | 0.69 |
+| 95% | 77.37% | 68.21 | 23.71% | 73.05 | **53.66** |
+
+30 cells, retention from 0.83% to 100%, **zero negative samples throughout**.
+
+**Three of five levels fail to reproduce, by 54 to 98 points. Two agree within one point.** That
+mixture is the result, and it is worse than uniform failure would be: uniform failure is at least
+detectable. Here, a practitioner running one pass has a 40% chance of a per-level median that
+would reproduce and a 60% chance of one that would move by half the scale — **with nothing
+available inside that pass to say which they have.**
+
+The within-pass spreads say why. Four of the ten level-passes span 43 to 99 points; the individual
+cells are close to unpredictable. A median of three such draws is not an estimate of a stable
+quantity, and when two such medians happen to agree — as at 75% and 88%, where both passes landed
+high — that is coincidence rather than convergence.
+
+**Correction to an earlier reading in this document.** At n=2 in pass B, level 50's replicates
+agreed to 1.06 points, and this was briefly read as "replicates agree tightly within a pass while
+passes differ" — an attractive and much sharper claim. The third replicate took that spread to
+95.59 points. The sharper claim is withdrawn; the plain one survives.
+
+**What the paper should say.** Not "OMB's discard rate varies", which understates it, and not
+"replicates agree while passes do not", which is false. The claim is: *the fraction of samples
+behind this benchmark's reported latency summary is not reproducible at three replicates, agreeing
+between passes at some conditions and moving by half the available range at others, with no signal
+in the output distinguishing the two.* And it applies to our own first sweep, whose per-level
+numbers must therefore be reported as draws rather than as a curve.
+
+**Unaffected, again:** zero negatives across all 30 cells. The withdrawal of the causality reading
+has not moved through any of this.

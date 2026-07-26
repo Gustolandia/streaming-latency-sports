@@ -256,6 +256,18 @@ def main(argv=None):
             print("  ratio reproduces -- but the absolute probabilities do not line up. Not")
             print("  every stall lands on a stamping instant, so a constant factor between the")
             print("  two is expected; we report it rather than fitting it away.")
+        elif v["outcome"] == "LEVEL MATCH, RATIO UNTESTABLE":
+            # This branch existed in verdict() and not here, so a positive result printed as
+            # REFUTED -- the strongest negative the script can emit. A reader taking the
+            # printed line at face value would have concluded the mechanism had failed.
+            print("\nLEVEL MATCH, RATIO UNTESTABLE. P(stall > T_true) tracks the inversion")
+            print("  rate in the arm that has one. The real-time arm recorded zero inversions,")
+            print("  so the between-arm ratio has no finite value to test against and the")
+            print("  ratio question is undefined here rather than answered either way.")
+        elif v["outcome"] == "LEVEL MISMATCH":
+            print("\nLEVEL MISMATCH. The traced tail and the inversion rate differ by more than")
+            print(f"  {MATCH_FACTOR:g}x in the arm that has inversions, and the real-time arm is at")
+            print("  zero so the ratio cannot be tested. The level claim fails on these data.")
         else:
             print("\nREFUTED. The traced tail does not move with the inversion rate.")
             print("  The scheduling account cannot be carried by these data and the")

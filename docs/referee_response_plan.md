@@ -775,3 +775,31 @@ long the queue takes to build — deterministic, hence the 1.5-point agreement b
 **The discrimination itself still rests where it always did: on the sign.** Zero negative samples
 in roughly 420,000 discards, at every load level and every message size. No dose-response argument
 is needed for that, and none of this changes it.
+
+### Size sweep complete: instability is confined to the near-tick regime
+
+All eight cells, exit 0.
+
+| size | rep 1 | rep 2 | spread | reported e2e p50 | regime |
+|---|---|---|---|---|---|
+| 200 B | 100% | 0.36% | **99.6 pts** | 1.0 ms | on the tick |
+| 4 KB | 10.94% | 100% | **89.1 pts** | 1.0 ms | on the tick |
+| 64 KB | 35.92% | 34.42% | 1.5 pts | 519 / 235 ms | above |
+| 256 KB | 100% | 100% | **0.0 pts** | 42,973 ms | far above |
+
+Zero negative samples at every size.
+
+Both sizes whose latency sits far above one tick reproduce to within 1.5 points. Both sizes whose
+reported median is exactly 1.0 ms swing across nearly the entire range. **The irreproducibility is
+a property of the near-tick regime, not of the benchmark generally** — which is worth stating
+precisely, because "OMB is unreliable" would be too strong and "OMB discards samples" too weak.
+
+The accurate claim: *when the measured path is fast enough that its true latency lands near the
+resolution of the timestamp being subtracted, the fraction of samples surviving the guard is not
+reproducible between runs of an identical configuration, and the reported summary does not
+indicate which case obtained.* That is the regime every co-located broker benchmark runs in, and
+it is the regime this paper's own transport measurements occupy at 0.1–0.5 ms.
+
+This also retires the message-size sweep as a discrimination instrument, which it never managed to
+be, and repurposes it as what it turned out to be good for: a demonstration that the instability
+has a location.

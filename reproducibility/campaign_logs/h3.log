@@ -1,0 +1,15 @@
+driver clear at 2026-07-24T03:18:59Z; starting H3
+manipulation check OK: flag present and guard fires
+=== H3 stamping: speedup 0.008333, window 180s, 5 reps, 8 cores 03:19:30 ===
+=== E-C3 ack-stamp=callback 03:19:30 ===
+Summary: docs/results/depth/ec3/callback/concurrency_concurrency_n2_20260724_031934/concurrency_n2_20260724_031934_summary.json
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/h3_stamping.sh: line 75: 155869 Killed                  stress-ng --cpu 2 --timeout 1800s > /dev/null 2>&1
+=== E-C3 ack-stamp=inline 03:37:14 ===
+Summary: docs/results/depth/ec3/inline/concurrency_concurrency_n2_20260724_033718/concurrency_n2_20260724_033718_summary.json
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/h3_stamping.sh: line 75: 158516 Killed                  stress-ng --cpu 2 --timeout 1800s > /dev/null 2>&1
+=== H3_STAMPING_COMPLETE 03:54:58 ===
+chain finished at 2026-07-24T03:54:58Z

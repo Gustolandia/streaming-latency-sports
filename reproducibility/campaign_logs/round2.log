@@ -1,0 +1,74 @@
+=== round 2 starting 2026-07-25T09:17:24Z ===
+=== [1/3] E-A6 load geometry 2026-07-25T09:17:54Z ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/load_geometry.sh: line 65: 315265 Killed                  stress-ng "$@" --timeout 3600s > /dev/null 2>&1
+=== E-A6 k=7/8 CONCENTRATED (7 cores flat out, 1 free) 10:29:09 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/load_geometry.sh: line 65: 317153 Killed                  stress-ng "$@" --timeout 3600s > /dev/null 2>&1
+=== E-A6 k=7/8 SPREAD (all 8 cores at 88% duty) 10:46:59 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/load_geometry.sh: line 65: 319651 Killed                  stress-ng "$@" --timeout 3600s > /dev/null 2>&1
+=== LOAD_GEOMETRY_COMPLETE 11:04:48 ===
+=== [2/3] E-A5b stamping priority, extra levels 2026-07-25T11:05:18Z ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/stamping_priority.sh: line 81: 331298 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$pct" --timeout 3600s > /dev/null 2>&1
+=== E-A5 cpu-load=88% BASELINE (ordinary priority) 12:52:11 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/stamping_priority.sh: line 81: 333297 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$pct" --timeout 3600s > /dev/null 2>&1
+=== E-A5 cpu-load=88% ELEVATED (SCHED_FIFO 80) 13:10:01 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/stamping_priority.sh: line 81: 335161 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$pct" --timeout 3600s > /dev/null 2>&1
+=== STAMPING_PRIORITY_COMPLETE 13:27:50 ===
+=== [3/3] OMB distributed + loaded 2026-07-25T13:28:20Z ===
+	at java.base/java.lang.Thread.run(Thread.java:840)
+Caused by: java.net.ConnectException: Connection refused: /10.0.1.122:8080
+	at org.asynchttpclient.netty.channel.NettyConnectListener.onFailure(NettyConnectListener.java:179)
+	... 20 more
+Caused by: io.netty.channel.AbstractChannel$AnnotatedConnectException: Connection refused: /10.0.1.122:8080
+Caused by: java.net.ConnectException: Connection refused
+	at java.base/sun.nio.ch.Net.pollConnect(Native Method)
+	at java.base/sun.nio.ch.Net.pollConnectNow(Net.java:684)
+	at java.base/sun.nio.ch.SocketChannelImpl.finishConnect(SocketChannelImpl.java:946)
+	at io.netty.channel.socket.nio.NioSocketChannel.doFinishConnect(NioSocketChannel.java:330)
+	at io.netty.channel.nio.AbstractNioChannel$AbstractNioUnsafe.finishConnect(AbstractNioChannel.java:334)
+	at io.netty.channel.nio.NioEventLoop.processSelectedKey(NioEventLoop.java:707)
+	at io.netty.channel.nio.NioEventLoop.processSelectedKeysOptimized(NioEventLoop.java:655)
+	at io.netty.channel.nio.NioEventLoop.processSelectedKeys(NioEventLoop.java:581)
+	at io.netty.channel.nio.NioEventLoop.run(NioEventLoop.java:493)
+	at io.netty.util.concurrent.SingleThreadEventExecutor$4.run(SingleThreadEventExecutor.java:989)
+	at io.netty.util.internal.ThreadExecutorMap$2.run(ThreadExecutorMap.java:74)
+	at io.netty.util.concurrent.FastThreadLocalRunnable.run(FastThreadLocalRunnable.java:30)
+	at java.base/java.lang.Thread.run(Thread.java:840)
+=== collecting discards from both workers 13:42:01 ===
+DISCARDED NON-POSITIVE SAMPLES: 0  (driver 0, client 0)
+harness,mode,discarded_nonpositive,driver_worker,client_worker,duration_min,load_pct,bootstrap
+OpenMessaging Benchmark,distributed+loaded,0,0,0,5,88,10.0.1.221:19092
+=== OMB_DISTRIBUTED_COMPLETE 13:42:05 ===
+cleaning up workers and load
+=== round 2 analyses 2026-07-25T16:04:45Z ===
+== manipulation check: utilisation must be equal across arms ==
+  l60: rho 0.606 (base) vs 0.603 (rt)  [ok]
+  l70: rho 0.703 (base) vs 0.703 (rt)  [ok]
+  l88: rho 0.881 (base) vs 0.881 (rt)  [ok]
+  l95: rho 0.950 (base) vs 0.950 (rt)  [ok]
+
+== inversion rate, ordinary vs real-time stamping ==
+  l60: 0.04590 (n=2985) -> 0.00168 (n=2985)   ratio 0.036   intervals disjoint
+  l70: 0.10318 (n=2985) -> 0.01441 (n=2985)   ratio 0.140   intervals disjoint
+  l88: 0.22144 (n=2985) -> 0.00335 (n=2985)   ratio 0.015   intervals disjoint
+  l95: 0.29380 (n=2985) -> 0.00369 (n=2985)   ratio 0.013   intervals disjoint
+
+== verdict ==
+OCCUPANCY MECHANISM SUPPORTED
+  the inversion rate collapsed at every level while utilisation held.
+  Utilisation-only models (M/G/1, exp(k rho)) predict no change here and are
+  contradicted: rho was held fixed and the rate moved anyway.
+
+wrote docs/results/model/stamping_priority.csv
+=== round 2 finished 2026-07-25T16:04:45Z ===

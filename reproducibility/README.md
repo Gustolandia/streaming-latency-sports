@@ -371,6 +371,31 @@ copied to it. Every Testbed B run instead carries the SHA-256 of each script it 
 is why the index has both a `git_head` and an `n_code_files` column. An empty `git_head` on a
 cloud run is not a missing provenance record; it is a different one.
 
+### 5d. The cloud archive — pulled off the VMs before they are released
+
+Every reported result comes from Testbed B, which is four rented VMs. The indexes above are
+summaries; the evidence behind them lived only on `sbl-drv`. It has been pulled down and
+verified by SHA-256 against the source:
+
+| archive | contents | compressed |
+|---|---|---|
+| `cloud_archive/sbl_runs.tgz` | all 5,998 run directories | 95.7 MB (676 MB raw) |
+| `cloud_archive/sbl_docs_results.tgz` | the driver's `docs/results`, incl. every depth condition | 15.2 MB (83 MB raw) |
+| `cloud_archive/sbl_logs.tgz` | the 24 chain logs | 101 KB |
+| `cloud_archive/omb_stdout.log.gz` | the 28 MB OMB run log | 0.4 MB |
+
+`cloud_archive/` is gitignored — it is ~800 MB of raw evidence, and the tracked summary of it is
+`runs_index_cloud.csv` plus `run_metadata_cloud.jsonl.gz`. Extraction was verified: 5,998 run
+directories out, 5,998 rows in the index.
+
+Three things from it *are* tracked, because they are small and because nothing else records them:
+
+- [`campaign_logs/`](campaign_logs/) — the 24 chain logs, 101 KB, including the ones recording
+  campaigns that aborted
+- [`../external/omb/`](../external/omb/) — the OpenMessaging Benchmark patch, its output, and the
+  configs. The source modification behind Section 6.7 existed only in a working tree on the VM
+- `runs_index_cloud.csv`, `run_metadata_cloud.jsonl.gz` — described above
+
 ### Which runs anything actually depends on
 
 `used_by` answers a narrower question than it looks like it answers: it flags runs a tracked

@@ -1,0 +1,49 @@
+round 2 clear at 2026-07-25T16:05:08Z; starting E-A7
+driver,chronyc,"Last offset","+0.000011023 seconds",,2026-07-25T16:05:38Z
+driver,chronyc,"RMS offset","0.000133095 seconds",,2026-07-25T16:05:38Z
+driver,chronyc,"Root delay","0.004091487 seconds",,2026-07-25T16:05:38Z
+driver,chronyc,"Root dispersion","0.004154956 seconds",,2026-07-25T16:05:38Z
+broker,chronyc,"System time","0.000045595 seconds slow of NTP time",,2026-07-25T16:05:38Z
+broker,chronyc,"Last offset","+0.000070410 seconds",,2026-07-25T16:05:38Z
+broker,chronyc,"RMS offset","0.000108486 seconds",,2026-07-25T16:05:38Z
+=== occupancy measured: speedup 0.008333, 180s, 5 reps, 8 cores 16:05:39 ===
+=== E-A7 cpu-load=75% BASELINE (ordinary priority, p measured) 16:05:39 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/occupancy_measured.sh: line 111: 339674 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$pct" --timeout 3600s > /dev/null 2>&1
+  schedstat samples: 32868
+=== E-A7 cpu-load=75% ELEVATED (SCHED_FIFO 80, p measured) 16:23:28 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/occupancy_measured.sh: line 111: 341957 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$pct" --timeout 3600s > /dev/null 2>&1
+  schedstat samples: 65010
+=== E-A7 cpu-load=88% BASELINE (ordinary priority, p measured) 16:41:18 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/occupancy_measured.sh: line 111: 343945 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$pct" --timeout 3600s > /dev/null 2>&1
+  schedstat samples: 32777
+=== E-A7 cpu-load=88% ELEVATED (SCHED_FIFO 80, p measured) 16:59:08 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/occupancy_measured.sh: line 111: 346386 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$pct" --timeout 3600s > /dev/null 2>&1
+  schedstat samples: 64676
+=== OCCUPANCY_MEASURED_COMPLETE 17:16:58 ===
+restored kernel.sched_schedstats=0
+=== E-A7 analysis ===
+== manipulation check: utilisation must be equal across arms ==
+  l75: rho 0.755 (base) vs 0.754 (rt)  [ok]
+  l88: rho 0.882 (base) vs 0.882 (rt)  [ok]
+
+== inversion rate, ordinary vs real-time stamping ==
+  l75: 0.15042 (n=2985) -> 0.00436 (n=2985)   ratio 0.029   intervals disjoint
+  l88: 0.25260 (n=2985) -> 0.00536 (n=2985)   ratio 0.021   intervals disjoint
+
+== verdict ==
+OCCUPANCY MECHANISM SUPPORTED
+  the inversion rate collapsed at every level while utilisation held.
+  Utilisation-only models (M/G/1, exp(k rho)) predict no change here and are
+  contradicted: rho was held fixed and the rate moved anyway.
+
+wrote docs/results/model/stamping_priority.csv
+=== schedstats restored to: 0 ===
+ea7 finished at 2026-07-25T17:16:58Z

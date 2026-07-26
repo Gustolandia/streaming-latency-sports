@@ -1,0 +1,16 @@
+driver clear at 2026-07-25T05:20:07Z; starting OMB discard count
+=== OMB discard counter: patching /home/ubuntu/omb/benchmark-framework/src/main/java/io/openmessaging/benchmark/worker/WorkerStats.java 05:20:37 ===
+patched: one counter, one else branch, guard condition unchanged
+patch recorded at docs/results/external/omb_patch.diff
+=== building OMB (this is CPU-heavy; no latency campaign may be running) 05:20:37 ===
+[ERROR] Rule 0: org.apache.maven.plugins.enforcer.RequireMavenVersion failed with message:
+Detected Maven Version: 3.6.3 is not in the allowed range [3.8.6,).
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-enforcer-plugin:3.1.0:enforce (enforce-maven-version) on project messaging-benchmark: Some Enforcer rules have failed. Look above for specific messages explaining why the rule failed. -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
+FATAL: build produced no jar
+omb chain finished at 2026-07-25T05:20:48Z

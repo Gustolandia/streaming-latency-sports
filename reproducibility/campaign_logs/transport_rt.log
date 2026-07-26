@@ -1,0 +1,17 @@
+driver clear at 2026-07-24T04:41:07Z; starting powered transport comparison
+=== transport at true real time: speedup 0.008333, 180s, 15 reps, 8 cores 04:41:37 ===
+=== N=1 04:41:37 ===
+Summary: docs/results/transport_rt/n1/concurrency_concurrency_n1_20260724_044139/concurrency_n1_20260724_044139_summary.json
+
+[SUCCESS] All runs completed successfully!
+=== N=9 05:34:32 ===
+Summary: docs/results/transport_rt/n9/concurrency_concurrency_n9_20260724_053434/concurrency_n9_20260724_053434_summary.json
+
+[SUCCESS] All runs completed successfully!
+=== N=12 06:27:49 ===
+  [OK] concurrency_n12_20260724_062751_redis_feed1_rep13: Completed in 211.3s
+  [OK] concurrency_n12_20260724_062751_redis_feed12_rep13: Completed in 211.2s
+  [OK] concurrency_n12_20260724_062751_kafka_feed1_rep13: Completed in 212.0s
+  NOTE: N=12 hit shell timeout (8400s)
+=== TRANSPORT_REALTIME_COMPLETE 08:47:53 ===
+chain finished at 2026-07-24T08:47:53Z

@@ -1,0 +1,29 @@
+=== follow-up: speedup 0.008333, window 180s, 8 cores 21:22:59 ===
+=== 1/2 M1 CLIENT A/B 21:22:59 ===
+confluent-kafka 2.15.0
+MANIPULATION_CHECK_OK: confluent producer parses its own CLI
+=== M1 N=1 client=kafka-python reps=6 21:23:00 ===
+Run list: runs/_concurrency_concurrency_n1_20260723_212300_runs.txt
+Summary: docs/results/m1_client/results/concurrency_concurrency_n1_20260723_212300/concurrency_n1_20260723_212300_summary.json
+
+[SUCCESS] All runs completed successfully!
+=== M1 N=1 client=confluent reps=6 21:44:08 ===
+Run list: runs/_concurrency_concurrency_n1_20260723_214409_runs.txt
+Summary: docs/results/m1_client/results/concurrency_concurrency_n1_20260723_214409/concurrency_n1_20260723_214409_summary.json
+
+[SUCCESS] All runs completed successfully!
+=== M1_COMPLETE 22:05:17 ===
+=== M1_DONE 22:05:17 ===
+=== E-A-knee bg=5 (of 8 cores) 22:05:17 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/followup_m1_knee.sh: line 43: 144587 Killed                  stress-ng --cpu "$bg" --timeout 900s > /dev/null 2>&1
+=== E-A-knee bg=6 (of 8 cores) 22:16:00 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/followup_m1_knee.sh: line 43: 145827 Killed                  stress-ng --cpu "$bg" --timeout 900s > /dev/null 2>&1
+=== E-A-knee bg=7 (of 8 cores) 22:26:43 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/followup_m1_knee.sh: line 43: 146991 Killed                  stress-ng --cpu "$bg" --timeout 900s > /dev/null 2>&1
+=== FOLLOWUP_COMPLETE 22:37:27 ===

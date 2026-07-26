@@ -341,6 +341,20 @@ the number can never be recomputed — it becomes a claim resting on a directory
 The index keeps, per run, the matched-event count, the negative-transport count, the fraction and
 the verdict, so the audit stays checkable run by run after the events themselves are gone.
 
+**This column is transport only, and the paper's audit is not.** The audit applies the same >1%
+rule to three components — broker transport, producer scheduling lag and consumer output — and
+condemns a run if *any* of them fails. That is where 1,321 of 2,266 comes from, and it lives in
+[`../docs/results/integrity_windows/`](../docs/results/integrity_windows/) (Testbed A, 1,382 runs,
+862 condemned, 76 conditions) and
+[`../docs/results/integrity_by_condition.csv`](../docs/results/integrity_by_condition.csv)
+(Testbed B, 884 runs, 459 condemned, 40 conditions). Both recompute exactly from the committed
+per-run data.
+
+The index sees only transport, over a different population — every run directory on disk, not the
+audited corpora — so it reports 366 of 1,690 locally. **The two numbers are not comparable and
+neither is wrong.** The column is called `transport_integrity` rather than `integrity` for that
+reason.
+
 `not-assessed` is deliberately **not** a pass:
 
 | verdict | meaning |

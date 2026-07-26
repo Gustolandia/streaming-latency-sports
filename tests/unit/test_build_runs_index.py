@@ -90,7 +90,7 @@ class TestIntegrity:
         """--fast skips the raw pass. Every row must then say so rather than defaulting."""
         _run(tmp_path, "r7", [("a", 100)], [("a", 50)])          # would be condemned
         rows = build(str(tmp_path / "runs"), str(tmp_path / "none"), fast=True)
-        assert rows[0]["integrity"] == "not-assessed"
+        assert rows[0]["transport_integrity"] == "not-assessed"
         assert rows[0]["frac_negative_transport"] == ""
 
 
@@ -178,7 +178,7 @@ class TestCLI:
         rows = list(csv.DictReader(out.open(encoding="utf-8")))
         from build_runs_index import FIELDS
         assert list(rows[0]) == FIELDS
-        assert rows[0]["backend"] == "redis" and rows[0]["integrity"] == "usable"
+        assert rows[0]["backend"] == "redis" and rows[0]["transport_integrity"] == "usable"
 
     def test_the_summary_counts_each_verdict(self, tmp_path, capsys):
         _run(tmp_path, "good", [("a", 100)], [("a", 200)])

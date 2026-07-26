@@ -182,6 +182,32 @@ class TestMain:
         _, out = self._run(temp_dir, capsys, 0.2300, 0.0050)   # identical dumps: tail unmoved
         assert "REFUTED" in out
 
+    def test_two_levels_in_one_directory_are_refused(self, temp_dir, capsys):
+        """E-A9b writes l75 and l88 into one directory, and the script picked whichever arm
+        sorted first. Given the 88% baseline it compared the 75% traced arm against it, reported
+        42.3% drift and withheld everything -- a spurious verdict from a comparison across load
+        levels that nobody asked for."""
+        d = temp_dir / "ea9b"
+        for tag in ("l75_base", "l75_rt", "l88_base", "l88_rt"):
+            _cell(d, tag, DUMP)
+        rc = main(["--depth", str(d), "--runs", "runs", "--untraced-base", "0.2214",
+                   "--out", str(temp_dir / "o")])
+        out = capsys.readouterr().out
+        assert rc == 1
+        assert "2 load levels" in out and "l75" in out and "l88" in out
+        # The refusal message explains itself using the word "verdict", so look for the
+        # section header the script prints when it actually reaches one.
+        assert "== verdict ==" not in out, "no verdict may be reached for a refused directory"
+        assert "PERTURBED" not in out, "no instrument check may run across levels either"
+
+    def test_an_unknown_level_is_an_error(self, temp_dir, capsys):
+        d = temp_dir / "ea9b"
+        _cell(d, "l75_base", DUMP)
+        _cell(d, "l75_rt", DUMP)
+        assert main(["--depth", str(d), "--runs", "runs", "--level", "l99",
+                     "--out", str(temp_dir / "o")]) == 1
+        assert "no such level" in capsys.readouterr().out
+
     def test_a_zero_arm_prints_its_own_verdict_not_REFUTED(self, temp_dir, capsys):
         """verdict() had a branch for the zero arm and the printer did not.
 

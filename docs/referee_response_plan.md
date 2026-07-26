@@ -929,3 +929,36 @@ between. The *general* bimodality claim was withdrawn earlier and stays withdraw
 spanning many configurations, nine lie between 5% and 95%. What is emerging is the *local* version
 at this one near-tick configuration, which the withdrawal note explicitly left open. chain7 takes
 it to n=19 at exactly this configuration, which is what would settle it. Not claimed until then.
+
+### Three passes, 45 cells: one level of five reproduces
+
+| load | pass A (warmup 1) | pass B (warmup 1) | pass C (warmup 0) | range |
+|---|---|---|---|---|
+| 0% | 1.51% | 99.98% | 100.00% | **98.5** |
+| 50% | 76.32% | 4.79% | 99.31% | **94.5** |
+| 75% | 95.59% | 94.70% | 75.82% | **19.8** |
+| 88% | 95.22% | 94.53% | 95.18% | 0.7 |
+| 95% | 77.37% | 23.71% | 94.99% | **71.3** |
+
+45 cells. **Zero negative samples.**
+
+**The third pass falsified an agreement.** At two passes, levels 75 and 88 agreed within a point,
+and this document recorded that as coincidence rather than convergence "where both passes landed
+high". Pass C moved level 75 by 19.8 points. Only level 88 survives all three. Adding a pass
+turning a reproducible level into an unreproducible one is what coincidence does; convergence does
+the opposite.
+
+So the two-pass result understated it. **One per-level median in five reproduces across three
+passes**, and four move by 19.8 to 98.5 points.
+
+**Caveat on pass C.** It differs from A and B in one respect: warmup is disabled. That was shown
+not to shift the retention fraction — the level-0 cells span the same range with and without it,
+and only the sample count changes — so it is treated as a third pass. A referee is entitled to
+discount it to a two-pass comparison, which still gives 98.5 and 71.5 point movements at two of
+five levels.
+
+**What this settles for the paper.** No per-level retention figure from this benchmark is
+publishable at three replicates, and the appearance of reproducibility at one or two levels is not
+evidence against that — it is what a quantity spanning 0.83% to 100% does occasionally. Our own
+first sweep's per-level table must be reported as draws, not as a response curve. That was already
+the conclusion at two passes; the third makes it unarguable.

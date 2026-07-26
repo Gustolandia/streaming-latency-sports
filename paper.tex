@@ -1446,8 +1446,10 @@ if the failure is occupancy, the mitigation is not a better clock but keeping th
 runnable --- a dedicated core, a raised priority, or a stamping path the workload cannot preempt.
 
 But we found this by looking at the data. The separability test above is exploratory, and
-Section~\ref{sec:limitations} says so; a confirmatory version is pre-registered in the artefact.
-Two states is also the smallest model consistent with what we see, not a claim about what the
+Section~\ref{sec:limitations} says so. We therefore pre-registered a confirmatory version and ran
+it: the campaigns that follow in this section are that test, and the decisive one --- raising the
+stamping threads to real-time priority at fixed utilisation --- is reported immediately below.
+Two states remains the smallest model consistent with what we see, not a claim about what the
 kernel does.
 
 \paragraph{On the load axis the model is a tautology, and we say so before using it.} Read as an
@@ -1455,8 +1457,9 @@ account of how the inversion rate depends on $\rho$, Equation~\ref{eq:twostate} 
 With $p$ unconstrained, \emph{any} monotone rate curve can be written as $p(\rho)\,S$ by setting
 $p = \text{rate}/S$. Its content is on the threshold axis, which is where we tested it above and
 where it passed. We are explicit about this because Section~\ref{sec:rules} withdraws the M/G/1
-form for being indistinguishable from its alternatives, and a replacement that cannot fail would
-be a worse error than the one it replaces.
+form --- and, once the sweep reached the utilisation range where the candidate forms diverge,
+refutes it outright --- so a replacement that cannot fail would be a worse error than the one it
+replaces.
 
 Constraining $p$ to a power law in $\rho$ makes it testable, and it fits our ladder poorly
 ($R^2 = 0.65$ in log space). What fits is the form obtained by restoring the quantity the

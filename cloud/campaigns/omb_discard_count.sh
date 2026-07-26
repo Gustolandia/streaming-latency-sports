@@ -197,6 +197,7 @@ producersPerTopic: 1
 producerRate: ${PRODUCER_RATE:-500}
 consumerBacklogSizeGB: 0
 testDurationMinutes: ${DURATION_MIN}
+warmupDurationMinutes: ${WARMUP_MIN:-1}
 EOF
 
 # LOAD_PCT puts the machine under the condition that produces inversions at all.

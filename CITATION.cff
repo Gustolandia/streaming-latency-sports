@@ -25,12 +25,18 @@ keywords:
   - football analytics
   - reproducible research
 date-released: "2026-01-01"
+# The paper. Under CFF the top-level block above already describes the software, so this key
+# describes the work a reader should cite instead -- and there must be exactly one of it. There
+# were two, and because CFF is YAML the second silently overwrote the first: the paper citation
+# was discarded at parse time and "Cite this repository" emitted a scaffolding version instead.
 preferred-citation:
-  title: "Streaming Latency Benchmarks: Redis Streams vs Apache Kafka for Real-Time Sports Data Feeds"
+  type: article
+  title: "A Message Cannot Arrive Before It Is Sent: Physical-Consistency Auditing for Streaming Latency Benchmarks, and What It Left of a Kafka-versus-Redis Comparison"
   authors:
     - family-names: "Ricou"
       given-names: "Gustavo Pedro"
-  journal: "Journal of Sports Analytics"
+      affiliation: "School of Computer Science and Statistics, Trinity College Dublin"
+  journal: "ACM Transactions on Modeling and Performance Evaluation of Computing Systems"
   year: 2026
   volume: "TBD"
   issue: "TBD"
@@ -38,21 +44,8 @@ preferred-citation:
   # doi: filled in on acceptance / Zenodo mint
   # url: filled in on acceptance / Zenodo mint
 
-# Software citation
-preferred-citation:
-  title: "streaming-latency-sports: Benchmark suite for streaming systems with sports data"
-  authors:
-    - family-names: "Ricou"
-      given-names: "Gustavo Pedro"
-  year: 2026
-  publisher: "GitHub"
-  url: "https://github.com/Gustolandia/streaming-latency-sports"
-  version: "0.3.0-s3-scaffolding"
-  commit: "05c1262"
-
 # Repository information
 repository: "https://github.com/Gustolandia/streaming-latency-sports"
-repository-artifact: "https://github.com/Gustolandia/streaming-latency-sports/archive/refs/tags/paper-s2-freeze-final.zip"
 
 # Dataset information
 dataset:
@@ -91,7 +84,7 @@ references:
   
   - title: "Redis: A Persistent Key-Value Store with In-Memory Performance"
     authors:
-      - family-names: "Sania"
+      - family-names: "Sanfilippo"
         given-names: "Salvatore"
     year: 2009
     url: "https://redis.io/"
@@ -113,11 +106,11 @@ notes: |
   This CFF file provides citation information for both the research paper and the software.
   
   **For citing the paper:**
-  Please use the preferred-citation entry with the journal citation once published.
-  
+  Use the preferred-citation entry; volume, issue and pages are filled in on acceptance.
+
   **For citing the software:**
-  Use the software-specific preferred-citation entry.
-  
+  Use the top-level entry (title, version, DOI), which is what CFF describes by default.
+
   **For citing the dataset:**
   The StatsBomb Open Data is separately licensed under CC-BY-NC-4.0 and should be cited
   according to their requirements: https://github.com/statsbomb/open-data

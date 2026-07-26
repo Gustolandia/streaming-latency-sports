@@ -1,9 +1,11 @@
-# Streaming Latency Benchmarks: Redis Streams vs Apache Kafka for Real-Time Sports Data Feeds
+# A Message Cannot Arrive Before It Is Sent
+
+*Physical-consistency auditing for streaming latency benchmarks, and what it left of a Kafka-versus-Redis comparison.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Target: TOMPECS](https://img.shields.io/badge/Target-ACM%20TOMPECS-orange.svg)]()
-[![Tests](https://img.shields.io/badge/tests-1284_passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-1612_passing-brightgreen.svg)]()
 [![Coverage](https://img.shields.io/badge/branch_coverage-%E2%89%A595%25-brightgreen.svg)]()
 [![StatsBomb Data](https://img.shields.io/badge/StatsBomb_Data-CC_BY--NC_4.0-blue.svg)](https://github.com/statsbomb/open-data)
 
@@ -32,13 +34,18 @@
 > **What survives:**
 > 1. The brokers are **equivalent within 1 ms** and neither degrades with concurrency — robust
 >    to the audit's own unequal retention (bounded in [`retention_bias.py`](scripts/retention_bias.py)).
-> 2. The failure model's four rules are **measured, not just derived**: inversions fall as the
->    measured quantity grows (ρ=−0.80), rise with process count (ρ=+0.80), follow M/G/1 waiting
->    in utilisation (ρ=0.98, R² 0.945 vs 0.640 linear) with the predicted knee, and — the rule
->    that bears on our own first result — a symmetric instrument shrinks the residual
->    between-system gap by 25% (+0.286→+0.215 ms), entirely on the asymmetric side. A construct
->    check confirms the mechanism is scheduling, not clock quantisation: inversions cluster in
->    time (runs-test z≈−6), even at idle.
+> 2. The mechanism is **established by manipulation, on both sides of the inequality**:
+>    `P(inversion) = P(scheduling stall > T_true)`. Raising the stamping threads to `SCHED_FIFO`
+>    at *fixed* utilisation collapses the rate 7–76× across five campaigns; two load geometries
+>    at **identical ρ to four decimals** differ 2.07× (z=10.3), so utilisation cannot be the
+>    variable; lengthening true transport 77× *lowers* the rate 4.1×, which no stress-based
+>    account predicts; and a `sched_switch` trace predicts the measured rate to within 30%,
+>    unfitted. The stall distribution has tail index **α≈0.34** — no finite mean or variance,
+>    which is why mean-based counters are structurally blind to this failure.
+>    *Withdrawn:* the M/G/1 functional form. Once the sweep reached ρ where the candidate forms
+>    diverge, M/G/1 fit **worse than the mean** (R² −0.05 vs a fitted exponential's 0.93). An
+>    earlier revision of this README advertised it as a surviving rule; it is refuted, not merely
+>    unsupported.
 > 3. Each system has **one client setting worth 1–2 orders of magnitude**, both free on a
 >    co-located testbed and therefore invisible to how such settings are normally evaluated.
 >
@@ -78,7 +85,7 @@
 
 ## 1. Current State & Objectives
 
-**Last updated:** July 24, 2026 · **Branch:** `main` · **Target:** *ACM TOMPECS* (systems venue; the JSA framing was retired — see the header)
+**Last updated:** July 26, 2026 · **Branch:** `main` · **Target:** *ACM TOMPECS* (systems venue; the JSA framing was retired — see the header)
 
 ### 1.1 Where things stand
 
@@ -198,12 +205,16 @@ data existed:
 | | Rule | Result |
 |---|---|---|
 | **H1** | inversions fall as the measured quantity grows | ✅ ρ = **−0.80** |
-| **H2** | inversions follow M/G/1 waiting in utilisation | ✅ ρ = **0.98**, R² **0.945** vs 0.640 linear |
+| **H2** | inversions follow M/G/1 waiting in utilisation | ❌ **refuted.** The early ladder stopped at ρ=0.878 and could not separate the forms. Extending it to ρ=0.990, where they diverge, M/G/1 fits *worse than the mean* (R² −0.05 vs a fitted exponential's 0.93) |
 | **H4** | inversions rise with concurrent process count | ✅ ρ = **+0.80** |
-| **H3** | asymmetric stamping biases the comparison | ⚠️ **untested** — both clients stamp in callbacks |
+| **H3** | asymmetric stamping biases the comparison | ✅ **replicated** (E-C3, then E-C4). Gap **+0.286 → +0.215 ms** (−25%), moving entirely on the asymmetric side: Kafka 0.392 → 0.322, Redis holds ≈0.106 |
 
-H2's knee is measured, not just derived: inversion rate is flat (0.007–0.022) to ρ=0.5, then
-climbs to 0.047 / 0.132 / 0.207 at ρ = 0.63 / 0.75 / 0.88, reaching 0.21–0.26 at saturation.
+The *monotone* dependence on utilisation is measured and survives the refutation above — it is
+only the M/G/1 functional form that fails. The rate is flat (0.007–0.022) to ρ=0.5, then climbs
+to 0.047 / 0.132 / 0.207 at ρ = 0.63 / 0.75 / 0.88, reaching 0.21–0.26 at saturation. Later
+campaigns show why the curve was never the mechanism: at **identical ρ** two load geometries
+differ 2.07×, so ρ cannot be the variable, and a function of ρ cannot return two values for one
+input. See [`docs/laws.md`](docs/laws.md).
 
 > **The methodological consequence:** a benchmark driven by a dense synthetic publisher measures
 > the regime in which this difference is *absent*. Realistic arrival rate is not a nicety here —
@@ -626,10 +637,8 @@ streaming-latency-sports/
 ├── requirements.txt                # Python dependencies
 ├── .env                            # local environment (SB_COMMIT, etc.) — not committed
 │
-├── paper.tex                       # ACM paper (ICPE/DEBS target)
-├── manuscript_references.bib       # bibliography (15 references)
-├── sagej.cls · SageH.bst · SageV.bst   # SAGE journal template assets
-├── temp_manuscript_template/       # SAGE template working copies
+├── paper.tex                       # ACM paper (TOMPECS target, acmart/acmsmall)
+├── manuscript_references.bib       # bibliography (37 entries, 36 cited)
 │
 ├── docker-compose.yml              # single-broker Kafka + Redis
 ├── docker-compose-multibroker.yml  # 3 Kafka brokers (KRaft)        — Issue 2
@@ -811,15 +820,13 @@ specification and a Zenodo archive are planned under Issue 6.
 
 ## 12. Manuscript & Paper Preparation
 
-The paper targets **ACM TOMPECS** using the ACM `acmart` class (`sigconf`). The earlier SAGE / Journal of Sports Analytics framing was retired; see the header for why.
+The paper targets **ACM TOMPECS** using the ACM `acmart` class (`acmsmall`). The earlier SAGE / Journal of Sports Analytics framing was retired; see the header for why.
 
 | Asset | Purpose |
 |-------|---------|
-| `paper.tex` | The paper (ACM sigconf; Intro, Related Work, Setting, Method, First Answer, Audit, Results, Discussion) |
+| `paper.tex` | The paper (ACM `acmart`, `acmsmall`; Intro, Related Work, Setting, Method, First Answer, Audit, Results, Discussion) |
 | `manuscript_references.bib` | Bibliography |
 | `acmart.cls` | ACM article class (from TeX Live/MiKTeX) |
-| `SageH.bst` / `SageV.bst` | SAGE Harvard / Vancouver bibliography styles |
-| `temp_manuscript_template/` | SAGE template working copies |
 
 **Build:**
 
@@ -828,11 +835,19 @@ pdflatex -interaction=nonstopmode paper.tex
 bibtex paper
 pdflatex -interaction=nonstopmode paper.tex
 pdflatex -interaction=nonstopmode paper.tex
+python scripts/check_rendered_pdf.py paper.pdf
 ```
 
+That last step reads the *rendered* PDF rather than the source. A dropped backslash turns
+`\ref{tab:ea6}` into the literal text `ef{tab:ea6}` and `\texttt{x}` into `exttt{x}`; LaTeX
+reports no error, the source still looks plausible, and the defect appears only in the output.
+That failure reached the manuscript three times here, twice past a full source-level check, which
+is why the check now runs on the artefact a reader actually receives.
+
 **Status:** compiles clean — 0 errors, 0 undefined references or citations, no overfull boxes,
-14 pages. Title: *Streaming Latency Benchmarks for Real-Time Football Feeds: Redis Streams
-versus Apache Kafka, and the Physical-Consistency Gate That Invalidated Our First Answer*.
+40 pages. Title: *A Message Cannot Arrive Before It Is Sent — Physical-Consistency Auditing for
+Streaming Latency Benchmarks, and What It Left of a Kafka-versus-Redis Comparison*. Formatted
+with `acmart` (`acmsmall`) for ACM TOMPECS.
 
 **Every headline number is pinned to its artefact** by
 `tests/unit/test_manuscript_consistency.py`, which recomputes the figures from the committed

@@ -117,7 +117,7 @@ median transport reads **−6.4 ms**); and the three-node cluster arm (0/15 runs
   | | Rule | Result |
   |---|---|---|
   | **H1** | inversion rate falls as the measured quantity grows | ✅ ρ = **−0.80**; the robust evidence is the clean contrast (co-located ~0.5 ms fails wholesale, network arm at tens of seconds passes 15/15), *not* the netem slope, which confounds *T*ₜᵣᵤₑ with backlog-driven variance and is not leaned on |
-  | **H2** | inversion follows M/G/1 waiting in utilisation | ✅ ρ = **0.98**, R² **0.945** vs 0.640 linear (predicted knee) |
+  | **H2** | inversion follows M/G/1 waiting in utilisation | ❌ **refuted** once the sweep reached ρ=0.990, where the candidate forms diverge: M/G/1 fits *worse than the mean* (R² −0.05 vs a fitted exponential's 0.93). The monotone rank correlation survives; the functional form does not |
   | **H3** | asymmetric stamping biases the *comparison* | ✅ gap **+0.286 → +0.215 ms** (−25 %), Kafka 0.392 → 0.322, Redis holds ≈0.106 |
   | **H4** | inversion rises with concurrent process count | ✅ ρ = **+0.80** |
 

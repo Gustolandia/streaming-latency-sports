@@ -616,3 +616,25 @@ fitting a curve to coin flips.
 
 Load is best presented as one of the things that moves the median latency across the tick, not as
 a variable with a smooth effect on the discard rate.
+
+### Caveat on the message-size sweep's largest cell
+
+Offered load at 500 msg/s, by message size:
+
+| size | offered | note |
+|---|---|---|
+| 200 B | 0.8 Mb/s | |
+| 4 KB | 16.4 Mb/s | |
+| 64 KB | 262.1 Mb/s | clean discriminator |
+| 256 KB | **1048.6 Mb/s** | at or near link capacity |
+
+The 256 KB cell is a different regime, not a larger point on the same curve. If it retains
+everything, that is consistent with resolution but also with queueing under a saturated link:
+latency would balloon because the pipe is full, not because serialising a larger message crosses
+the tick. The two are indistinguishable in that cell, so it cannot carry the discrimination.
+
+**64 KB is the cell to read.** At 262 Mb/s there is no saturation, and serialisation alone adds
+enough latency to clear a millisecond on a 1 Gb/s path. If retention there is consistently high
+across reps while 200 B remains bimodal, resolution is supported without a confound.
+
+Recorded before the cell ran, so the reading is not chosen after seeing it.

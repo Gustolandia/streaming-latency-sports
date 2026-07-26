@@ -803,3 +803,38 @@ it is the regime this paper's own transport measurements occupy at 0.1–0.5 ms.
 This also retires the message-size sweep as a discrimination instrument, which it never managed to
 be, and repurposes it as what it turned out to be good for: a demonstration that the instability
 has a location.
+
+### Replicates that agree with each other are not a reproducible measurement
+
+`load_sweep_p2` re-runs the identical sweep. Level 0 has now completed in both passes and the
+first comparison is available (the other four levels are still running).
+
+| load | pass A median | pass A spread | pass B median | pass B spread | \|delta\| |
+|---|---|---|---|---|---|
+| 0% | 1.51% | 99.17 pts | **99.98%** | **3.58 pts** | **98.47 pts** |
+
+The three-replicate median moved from 1.51% to 99.98% between two passes of a configuration
+identical in every respect we control.
+
+**The spreads are the important column.** Pass A's three replicates span nearly the whole range,
+so an experimenter would see the instability immediately. Pass B's three replicates agree to
+**3.58 points**. Someone who ran only pass B would report "retention 99.98%, n=3, spread 3.6%" —
+a tight, confident, entirely reasonable-looking measurement — and it sits 98 points from what the
+same configuration produced an hour earlier.
+
+So the usual defence does not work here. **Replicates agreeing with one another is not evidence
+that the measurement is reproducible**, because the quantity is not noisy around a stable value:
+it is stable *within* a pass and different *between* passes. Averaging more replicates inside a
+pass buys nothing, and reporting their spread as an uncertainty actively misleads — it is a
+measure of within-pass agreement being read as between-pass reproducibility.
+
+**This lands on our own first sweep.** The per-level discard shares in R1 above are three draws
+from a quantity that does not settle, and must be reported as such rather than as a response
+curve against load. It is also the cleanest instance of this paper's own thesis so far: an
+instrument that looks precise, reports a confident summary, and is not measuring a stable
+quantity — with nothing in its output to say so.
+
+**Caveat, stated because only one level is in.** This is one level of five; the remaining twelve
+cells are running. If levels 50–95 reproduce closely, the effect is specific to the near-tick
+configuration at idle and must be scoped that way. The threshold for the verdict (10 points) was
+fixed before any of this pass existed.

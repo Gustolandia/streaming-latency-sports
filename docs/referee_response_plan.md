@@ -897,3 +897,35 @@ restating against the test phase alone.
 
 Recorded now so the reading is not chosen after the fact — the same discipline that made the
 64 KB pre-registration falsifiable, and it duly falsified.
+
+### No-warmup sweep: the prediction holds, and the warmup concern is closed
+
+Level 0 complete in all three passes of the identical configuration, differing only in warmup:
+
+| pass | warmup | retention | samples/cell |
+|---|---|---|---|
+| A | 1 min | 1.51%, 0.83%, 100.00% | 120,423 |
+| B | 1 min | 100.00%, 96.42%, 99.98% | 120,456 |
+| no-warmup | 0 | 100.00%, 0.38%, 100.00% | 90,259 |
+
+**Both halves of the prediction hold.** Samples per cell fall to ~90,000, exactly the 30,000 the
+warmup minute contributed, and the retention fraction is not systematically shifted — the
+no-warmup cells span the same range as the warmup ones.
+
+**This closes a concern raised earlier in this document.** The commit that added `WARMUP_MIN`
+argued the headline was "conservative by accident": that pre-JIT warmup samples, being slower,
+would clear the tick more often, inflate retention and understate the discard rate. **That was
+wrong.** Warmup samples were sub-tick too, so including them changed the denominator and not the
+fraction. Every retention figure computed with warmup included stands as reported, and nothing
+needs restating.
+
+Worth recording that the worry did not pan out, rather than quietly dropping it. The fix was still
+right — the counter and OMB's percentiles should cover the same samples — but it corrected a
+bookkeeping mismatch, not a bias.
+
+**A local bimodality is now visible and is not yet claimed.** The nine runs above, sorted, are
+0.38, 0.83, 1.51, 96.42, 99.98, 100, 100, 100, 100 — four below 2%, five above 96%, nothing
+between. The *general* bimodality claim was withdrawn earlier and stays withdrawn: across 21 cells
+spanning many configurations, nine lie between 5% and 95%. What is emerging is the *local* version
+at this one near-tick configuration, which the withdrawal note explicitly left open. chain7 takes
+it to n=19 at exactly this configuration, which is what would settle it. Not claimed until then.

@@ -1,0 +1,7 @@
+host_a,host_b,bound_ms,resolution_ms,verdict
+broker1,broker2,6.778092,1.0,VISIBLE
+broker1,broker3,9.015159,1.0,VISIBLE
+broker1,driver,8.062276,1.0,VISIBLE
+broker2,broker3,7.638219,1.0,VISIBLE
+broker2,driver,6.685337,1.0,VISIBLE
+broker3,driver,8.922403,1.0,VISIBLE

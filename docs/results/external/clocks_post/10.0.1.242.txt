@@ -1,0 +1,13 @@
+Reference ID    : 55C7D663 (server1.quickdrivingtestcancellations.net)
+Stratum         : 2
+Ref time (UTC)  : Sun Jul 26 22:00:49 2026
+System time     : 0.000021930 seconds fast of NTP time
+Last offset     : -0.000011608 seconds
+RMS offset      : 0.000087285 seconds
+Frequency       : 32.203 ppm slow
+Residual freq   : -0.000 ppm
+Skew            : 0.001 ppm
+Root delay      : 0.003822257 seconds
+Root dispersion : 0.000789448 seconds
+Update interval : 1037.3 seconds
+Leap status     : Normal

@@ -1,0 +1,13 @@
+Reference ID    : 53D9A62D (83.217.166.45)
+Stratum         : 2
+Ref time (UTC)  : Sun Jul 26 22:00:35 2026
+System time     : 0.000065545 seconds fast of NTP time
+Last offset     : -0.000007370 seconds
+RMS offset      : 0.000178075 seconds
+Frequency       : 26.263 ppm slow
+Residual freq   : -0.000 ppm
+Skew            : 0.016 ppm
+Root delay      : 0.004007513 seconds
+Root dispersion : 0.001981004 seconds
+Update interval : 1044.3 seconds
+Leap status     : Normal

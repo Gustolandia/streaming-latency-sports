@@ -40,13 +40,20 @@ import re
 
 SUMMARY_RE = re.compile(
     r"SBL_DISCARD_SUMMARY\s+kept=(\d+)\s+zero=(\d+)\s+negative=(\d+)")
+
+# OMB's own progress lines carry PUBLISH latency, and unlike the end-to-end figure it is NOT
+# quantised to the millisecond grid -- it is measured inside one process, from send to ack, and
+# prints to one decimal. That makes it an independent probe of where the path sits relative to a
+# tick. If retention really is P(true latency >= one tick), publish latency should predict it,
+# using data every run already wrote down.
+PUB_LAT_RE = re.compile(r"Pub Latency \(ms\) avg:\s*([\d.]+)\s*-\s*50%:\s*([\d.]+)")
 RESULT_JSON_RE = re.compile(r"omb_workload-[A-Za-z]+-[\d-]+\.json")
 
 TAIL_BYTES = 512 * 1024
 
 FIELDS = ("campaign", "cell", "kept", "discarded_zero", "discarded_negative",
           "retention_pct", "omb_p50_ms", "omb_p99_ms", "omb_max_ms", "omb_avg_ms",
-          "result_json")
+          "pub_lat_p50_ms", "pub_lat_avg_ms", "result_json")
 
 
 def read_tail(path, nbytes=TAIL_BYTES):
@@ -87,6 +94,15 @@ def parse_cell(cell_dir, omb_dir):
     except (OSError, ValueError):
         return None
 
+    # Median of the per-interval publish medians: one number for the run, robust to a slow start.
+    pubs = PUB_LAT_RE.findall(text)
+    pub_p50 = pub_avg = None
+    if pubs:
+        p50s = sorted(float(b) for _a, b in pubs)
+        avgs = sorted(float(a) for a, _b in pubs)
+        pub_p50 = p50s[len(p50s) // 2]
+        pub_avg = avgs[len(avgs) // 2]
+
     seen = kept + zero + neg
     return {
         "campaign": os.path.basename(os.path.dirname(cell_dir)),
@@ -97,6 +113,7 @@ def parse_cell(cell_dir, omb_dir):
         "omb_p99_ms": last_of(d, "endToEndLatency99pct"),
         "omb_max_ms": last_of(d, "endToEndLatencyMax"),
         "omb_avg_ms": last_of(d, "endToEndLatencyAvg"),
+        "pub_lat_p50_ms": pub_p50, "pub_lat_avg_ms": pub_avg,
         "result_json": names[-1],
     }
 
@@ -175,6 +192,19 @@ def report(rows):
     print(f"reported p50 takes {len(distinct_p50)} distinct value(s): "
           f"{', '.join(str(v) for v in distinct_p50)}")
     print(f"negative samples across every cell: {negs}")
+
+    # The independent check: publish latency is sub-millisecond and unquantised, so it can say
+    # where the path sits relative to a tick without borrowing the quantised number's assumptions.
+    pubs = [r["pub_lat_p50_ms"] for r in rows]
+    rho_pub = spearman(pubs, pcts)
+    if rho_pub is not None:
+        print()
+        print(f"Spearman(publish latency p50, retention) = {rho_pub:+.3f}")
+        if rho_pub > 0.5:
+            print("  Publish latency is measured in one process and is NOT quantised to the")
+            print("  millisecond grid. That it predicts retention is independent support for")
+            print("  retention being P(true latency >= one tick): the slower the path, the more")
+            print("  samples clear a tick and survive the guard.")
 
     rho = spearman(pcts, avgs)
     if rho is not None:

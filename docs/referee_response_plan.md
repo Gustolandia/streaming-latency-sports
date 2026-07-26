@@ -673,3 +673,44 @@ the shape:
 It instead measures the run-to-run distribution of retention at a fixed setting, which is the
 honest version of the same question and is worth having either way: how much does the fraction of
 data behind OMB's headline number vary when nothing is changed?
+
+### The simple resolution model is insufficient, and the 64 KB pre-registration was wrong
+
+Two corrections and a new experiment.
+
+**64 KB is not a clean discriminator.** It was pre-registered above as the cell to read, on the
+grounds that 262 Mb/s offers no saturation. `s65536_rep1` reports p50 = 519 ms and p99 = 1097 ms:
+the path is badly backed up. Saturation begins at 64 KB, not 256 KB, so the message-size sweep has
+**no** uncontaminated cell — 200 B and 4 KB sit on the tick, and everything above is queue-limited.
+That cell also retains only 35.92% despite half-second latency, which a resolution model cannot
+produce; it is the queue building during the run. The size sweep cannot carry the discrimination
+and will not be used for it.
+
+**Retention is not explained by path speed.** OMB's own publish latency — measured in one process
+and *not* quantised to the millisecond grid — sits at **0.3 to 0.4 ms across all 19 unsaturated
+cells**, while retention over those same cells ranges from 0.36% to 100%. Spearman is +0.415,
+which on a predictor with a 0.1 ms spread is not a mechanism. So `retention = P(true latency ≥ one
+tick)`, filed above as the corrected model, does not survive either. A constant path cannot
+produce a 275-fold swing in what survives a threshold on that path.
+
+**Candidate mechanism: phase, not speed.** The producer is paced at 500 msg/s — one send every
+**2.000 ms**, an exact integer number of millisecond ticks. If sends are phase-locked to the clock
+grid, every sample in a run sits at the same offset within its millisecond, so either nearly all
+of them cross a tick boundary before delivery or nearly none do. That produces all-or-nothing
+retention at a fixed configuration, which is what the data show, and it produces it *without*
+requiring the latency to change.
+
+**chain8 tests it, with predictions recorded before the run:**
+
+| rate | interval | commensurate? | prediction |
+|---|---|---|---|
+| 500 msg/s | 2.000 ms | yes | retention near 0% or near 100%, unstable across reps |
+| 457 msg/s | 2.188 ms | no | intermediate and **stable** across reps |
+| 383 msg/s | 2.611 ms | no | intermediate and **stable** across reps |
+
+Four reps each, warmup disabled so the counter and OMB's percentiles share a denominator. If all
+three rates behave alike, the phase hypothesis is wrong and this section will say so.
+
+**None of this touches the withdrawal.** Zero negatives in ~420,000 discards is a statement about
+sign, and no mechanism debate reaches it. Nor does it touch the retention/reported-average
+relationship, which is −0.541 with the saturated cell excluded and −0.540 with it included.

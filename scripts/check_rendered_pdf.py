@@ -51,6 +51,11 @@ CHECKS = (
      "a note to self that was never resolved"),
     ("empty citation", r"\[\s*,|,\s*\]",
      "a citation list with a missing key"),
+    # A command-line flag whose two hyphens were set as one en-dash. \texttt{--cpu} ligatures in
+    # the monospace font, so the paper printed a flag nobody could type. Only visible in the
+    # rendered output: the source is correct, and TeX reports nothing.
+    ("hyphen ligature in a flag", r"–(?:cpu|speedup|plans|max|kafka|redis|out|trial|no)\b",
+     "a CLI flag's double hyphen was set as an en-dash"),
 )
 
 

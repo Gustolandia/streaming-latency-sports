@@ -2406,12 +2406,14 @@ original seven-event corpus reported as a tie. Each system has one client settin
 orders of magnitude, both free on the co-located testbeds where such settings are normally
 evaluated. And the model of the failure now carries measured
 rules rather than a derivation: inversion probability falls as the measured quantity grows,
-rises with concurrent process count, and grows superlinearly in utilisation with the predicted
-knee; and a symmetric instrument removes a quarter of the residual between-system difference, the
-same asymmetry that manufactured our first result in the large. We had also claimed the M/G/1
-form specifically, and withdraw that: tested against a fitted exponential rather than only
-against a straight line, our data cannot tell the two apart. What was an anecdote at the start of
-this work is now a curve.
+rises with concurrent process count, and rises monotonically with utilisation; and a symmetric
+instrument removes a quarter of the residual between-system difference, the same asymmetry that
+manufactured our first result in the large. We had also claimed the M/G/1 form specifically, and
+withdraw it --- not as undecided but as refuted. Extending the sweep to the utilisation range
+where the candidate forms actually diverge, M/G/1 fits \emph{worse than the mean} ($R^2 = -0.05$
+against a fitted exponential's $0.93$). Our own bounded prediction failed on the same data.
+What was an anecdote at the start of this work is now a mechanism, and the curve we thought we
+were fitting turned out not to be the thing that matters.
 
 A dedicated campaign then corrected the model we had just confirmed. Treating the stamping
 asymmetry $\Delta$ as a single distribution is only a leading-order account: it is a mixture of a
@@ -2428,10 +2430,22 @@ thread that is periodically \emph{not running}: being preempted is an interval, 
 inside it are corrupted together. On that reading the mixture is not two distributions but two
 states, load sets how often the instrument is in the bad one, and the tail curves at different
 loads should be parallel rather than rescaled --- which is what we find, a median factor of $1.34$
-against the scale family's $23$. We reached this by looking at our data and say so; the
-confirmatory test, and a way to measure the occupancy directly from run-queue statistics rather
-than infer it, are pre-registered in the artefact. If it holds, the advice it implies is not a
-better clock but a stamping thread the workload cannot preempt.
+against the scale family's $23$. We reached this by looking at our data and say so, and then ran
+the confirmatory tests we had pre-registered.
+
+They hold, and they decide the mechanism by manipulation rather than by fit. Raising the stamping
+threads to real-time priority at \emph{fixed} utilisation collapses the inversion rate by $7$ to
+$80\times$ across eight matched pairs. Two loads reaching \emph{identical} utilisation by
+different geometries --- cores left free against every core duty-cycled --- differ by $2.07\times$,
+and a function of $\rho$ cannot return two values for one input, so $\rho$ is not the variable.
+Lengthening the true transport $77\times$ \emph{lowers} the rate, the sign no account based on
+system stress predicts. And the occupancy we had been forced to infer is now measured directly: a
+kernel trace of run-queue delay predicts the observed inversion rate to within $22\%$ with
+nothing fitted between them. The stall distribution's tail index is near $0.34$, below one, so it
+has no finite mean --- which is why the cumulative counters we tried first could not account for
+the effect, and why an instrument built on averages is structurally rather than accidentally
+blind to it. The advice this implies is not a better clock but a stamping thread the workload
+cannot preempt.
 
 A paper that only ever audits its own mistakes proves that its authors are careless, not that
 its method is needed. So we turned the argument outward. The OpenMessaging

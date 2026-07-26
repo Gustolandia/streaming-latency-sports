@@ -273,8 +273,7 @@ they were sent. They inject clock skew at the application level across a Kafka a
 pipeline and find a threshold --- no violations at $0$, $1$, $2$ or $3$~ms of skew, clear
 violations from $5$~ms upward. They also propose a binary \texttt{causality\_health} signal that
 declares loss of causal trust when any violation occurs in a rolling window, which is
-independently the same instinct as the gate in Section~
-ef{sec:gate}. Two groups arriving at the
+independently the same instinct as the gate in Section~\ref{sec:gate}. Two groups arriving at the
 same check from different directions is, we think, the strongest available argument that the
 practice is missing rather than merely unfashionable.
 
@@ -285,8 +284,7 @@ clock skew available to blame: our transport measurement takes both stamps on a 
 the inter-host offset on our testbed measures $0.067$~ms, twenty times below their lowest tested
 skew and fifty times below their onset. The difference is load. Their pipeline runs on hosts with
 ``sufficient memory to support inference workloads without swapping or resource contention'';
-ours sit at $88\%$ utilisation, where Section~
-ef{sec:twostate} shows the scheduler supplies
+ours sit at $88\%$ utilisation, where Section~\ref{sec:twostate} shows the scheduler supplies
 stalls far longer than the interval being measured. A deployment that keeps skew under $3$~ms and
 concludes it is safe would be wrong on a loaded machine, and the mechanism that makes it wrong
 needs no skew at all.
@@ -345,8 +343,7 @@ Our model treats the stamping delay $\delta$ as scheduler waiting time, and
 Section~\ref{sec:mixture} finds it has two components rather than one. Both the framing and the
 correction are anticipated by the tail-latency literature.
 
-\paragraph{Why the thread waits while cores look free.} Section~
-ef{sec:twostate} finds that
+\paragraph{Why the thread waits while cores look free.} Section~\ref{sec:twostate} finds that
 spread load starves the stamping thread more than concentrated load at identical utilisation,
 which presumes that a runnable thread does not simply migrate to whichever core is idle. That
 presumption is not ours: Lozi et al.~\cite{lozi2016wastedcores} document four distinct Linux
@@ -355,12 +352,10 @@ another core's run queue, and note that conventional testing was ineffective at 
 because throughput looks healthy throughout. Our measurement is a consequence of that behaviour
 observed on the instrument rather than on the workload: if work conservation held exactly, a
 stamping thread would never wait while a core was free, and the geometry contrast of
-Table~
-ef{tab:ea6} would have to be flat. It is not flat, and it converges only where no core
+Table~\ref{tab:ea6} would have to be flat. It is not flat, and it converges only where no core
 is free to migrate to.
 
-That literature also supplies the shape. Section~
-ef{sec:twostate} measures a tail index near
+That literature also supplies the shape. Section~\ref{sec:twostate} measures a tail index near
 $0.34$, meaning the stall distribution has neither a finite mean nor a finite variance, which is
 why the cumulative scheduler counters could not account for the effect --- they estimate a
 quantity that does not exist. Interference-driven tails of this severity are consistent with what

@@ -264,3 +264,202 @@ of what was settled and by what:
 **Run queue: empty.** Every chain listed here has finished. The replications (E-A6b, E-A10b,
 E-A9b) completed 2026-07-26; see [`../docs/laws.md`](laws.md) for what each settled and what
 each would have to show to be falsified.
+
+---
+
+# Round 2 — internal referee review, 2026-07-26
+
+The first round closed. Before resubmitting, the manuscript was reviewed again from the position
+of a rigorous TOMPECS referee specialising in performance measurement. That review is recorded
+here in full, followed by the response plan.
+
+**Recommendation received: MAJOR REVISION**, reject if M1–M3 cannot be met.
+
+## The review
+
+### M1 — The headline contribution may be a lint rule, not a research result
+
+The central artefact is: a duration computed from two timestamps cannot be negative; check it.
+The paper calls the check "elementary" (§5), says it "costs nothing" (§8.1), and concedes "better
+instruments exist… our point is orthogonal to instrument quality" (§8.1). If the check is
+elementary, costs nothing, and is orthogonal to instrument quality, the contribution reduces to
+*we observed that practitioners do not do an obvious thing.* That is a community-service note,
+not obviously a TOMPECS paper.
+
+§6.5's property is the actual intellectual contribution and it sits in half a page: measurement
+validity degrades precisely as the measured effect approaches the instrument's noise floor, so
+the most delicate comparisons are the least trustworthy, and significance offers no protection
+because the artefact is systematic. **Restructure the paper around that, not around the check.**
+
+### M2 — Every mechanism result rests on one machine
+
+§7.3 — priority at fixed ρ (7–80×, 8 pairs), two geometries at ρ identical to four decimals
+(2.07×, 2.05×), the payload sweep, the kernel trace — all from four VMs of one shape
+(`VM.Standard.E5.Flex`), one kernel (`6.8.0-1057-oracle`), one CPython. The paper nonetheless
+reports α ≈ 0.34 and "no finite mean" as though characterising Linux scheduling. It characterises
+one kernel on one instance type under stress-ng. The tail index is four points per campaign at a
+single load level; two campaigns agreeing to 1.5% shows reproducibility, not generality.
+
+**Replicate the geometry contrast and the payload sweep on a materially different machine, or
+systematically downgrade the language.**
+
+### M3 — External validity rests on a single 3-minute run
+
+`omb_loaded_result.csv` records one run: embedded mode, 88% load, 3 minutes, 6,000 discards. That
+single run answers "is anyone but you exposed?", the objection the authors call decisive. The
+source audit is solid; the empirical claim is n=1, one load, one mode, distributed unreported.
+**A load sweep with replication, both brokers. The discard count as a function of load is the
+interesting result and is missing.**
+
+### S1 — The 58% is partly an artefact of a poor rig
+
+Testbed A is Windows + Docker Desktop + WSL2, 15.6 ms timer quantum, 5.6–9.9 ms TCP connect.
+Sub-millisecond transport cannot be measured there at all, so "58% rejected" substantially reports
+*we built an unsuitable rig*. Testbed B's 51.9% is the defensible figure. **Lead with it.**
+
+### S2 — The instrument perturbs the measurement, and this is under-weighted
+
+All three traced real-time arms recorded zero inversions where the untraced twin recorded 15/2985.
+The authors found their own instrument changing what it observes, report it honestly, then set the
+consequences aside. The ordinary arm is also affected — the two traced 88% values are the lowest
+of six — and the instrument check cannot resolve an effect below ~15%. **An untraced control in
+the same session as each traced arm.**
+
+### S3 — The mechanism does not predict, and the paper knows it
+
+Two attempts failed (M/G/1 at R²=−0.05; the authors' own bracket 2.45–3.07× against 1.44×). With
+M1, a reader may ask what is left. The T_true dependence is the answer — a slower path is a more
+reliable measurement, directly actionable and counter-intuitive — and it is one subsection among
+many. **Promote it.**
+
+### S4 — The residual sign flips and the explanation was withdrawn
+
+Ratios 0.78, 1.06, 1.32. "Agreement to within a third, unfitted" is weaker than §7.3's framing
+implies, on three arms.
+
+### S5 — Churn
+
+Two headline withdrawals, M/G/1 refuted, the authors' own bracket failed, co-location withheld, a
+k=7 null withdrawn, a directional argument withdrawn. Each correction is creditable; collectively
+they invite the question of what survives the next replication. **State which claims are settled
+and which are expected to move.**
+
+### S6 — The football workload is vestigial
+
+Conceded in §3. It contributes sparsity and a dense kickoff burst, both obtainable synthetically.
+3,315 matches characterised to justify replaying eleven is disproportionate.
+
+### Minor
+
+0.41 ms reported as "real and negligible" — develop it or cut it to a sentence; `not-assessed` vs
+`condemned` still invites comparing 366 to 862; no Holm family declared for the §7.3 campaigns;
+§7.3 is ~9 pages and should split established from exploratory; ρ to four decimals implies
+precision the day-to-day drift (0.221–0.305) does not have.
+
+### What the referee credits
+
+The §7.3 manipulation design; the T_true sweep as the best experiment in the paper; reporting the
+withheld arm; the OMB source audit; reproducibility infrastructure above field norm.
+
+---
+
+## Response plan
+
+Ordered so the machines are working while the prose is rewritten. Runs first, corrections during.
+
+### Phase R — runs and machines (start immediately)
+
+**VM actions.**
+
+| instance | role | action | why |
+|---|---|---|---|
+| `sbl-drv` | driver | **keep** | runs R1, R2 |
+| `sbl-b1` (10.0.1.221) | Kafka + Redis | **keep** | the only broker every reported campaign uses |
+| `sbl-b2` (10.0.1.242) | cluster node 2 | **stop** | used only by `cluster.sh`; that arm is withdrawn (§7 "fails on every run in both systems") |
+| `sbl-b3` (10.0.1.140) | cluster node 3 | **stop** | same |
+| *new* `sbl-arm-drv` | ARM driver | **provision** | M2 |
+| *new* `sbl-arm-b1` | ARM broker | **provision** | M2 |
+
+Stopping b2/b3 is reversible and halves the running compute. The cluster arm is withdrawn, so
+nothing current needs them; if the arm is ever revived they can be restarted.
+
+For M2 the second platform must be *materially* different or it does not answer the objection.
+`VM.Standard.A1.Flex` (Ampere Altra, aarch64) is the right choice: different ISA, different
+scheduler tuning, different core count — and Always Free eligible, so likely no additional cost.
+`E4.Flex` would be a weaker contrast (same architecture, same family). Capacity for A1 was
+unavailable in `uk-london-1` at first provisioning; retry, and if it is still out, try another
+home-region AD before falling back to E4.
+
+**R1 — OMB load sweep (answers M3).** `omb_discard_count.sh` already parameterises `LOAD_PCT`.
+Sweep 0/50/75/88/95, three repetitions each, both Kafka and Redis drivers. Records discard count,
+publish rate and the reported latency summary per cell. The deliverable is *discards as a function
+of load*, which is a result rather than an existence proof. Runs on `sbl-drv`; ~4 h.
+
+**R2 — untraced controls (answers S2).** For every traced arm, an identical untraced arm in the
+same session, interleaved rather than run days apart. Both load levels, both priority arms:
+8 cells. This is what makes the traced/observed comparison defensible and settles whether the
+ordinary arm is perturbed as well as the real-time one. Runs on `sbl-drv` after R1; ~3 h.
+
+**R3 — second-platform replication (answers M2).** On the ARM pair, repeat exactly two campaigns:
+the load-geometry contrast (`load_geometry.sh`) and the payload sweep (`ttrue_sweep.sh`). These
+two carry the claims that most outrun their support — "ρ is not the variable" and "α < 1, no
+finite mean". Everything else in §7.3 can stay scoped to one platform if these transfer.
+
+*Falsification stated in advance:* if the geometry contrast is flat on ARM, "utilisation is not
+the variable" is a property of one kernel's scheduler and must be said that way. If α comes back
+materially different — say above 1 — the no-finite-mean claim does not generalise and becomes a
+platform-specific observation. Either outcome is reportable and neither invalidates the check.
+
+### Phase C — corrections, in parallel with Phase R
+
+**C1 — restructure around §6.5 (M1).** Promote the noise-floor property from a subsection to the
+paper's organising claim. The check becomes the instrument that demonstrates it, not the
+contribution. Retitle and rewrite the abstract's third beat accordingly.
+
+**C2 — promote the T_true dependence (S3).** It is the actionable finding and the only one that is
+counter-intuitive. Lift it out of the §7.3 sequence and give it its own subsection adjacent to
+§6.5, since it is the same property viewed from the other side.
+
+**C3 — lead the audit with Testbed B (S1).** Report 51.9% as the headline rate and Testbed A's
+62.4% as an illustration of platform unsuitability, with the 15.6 ms quantum stated at the point
+of first use rather than in §4.1 only.
+
+**C4 — scope §7.3 explicitly (M2).** Until R3 reports, every mechanism claim carries the platform.
+If R3 transfers, replace with the two-platform statement; if it does not, the scoping stays and
+the abstract says so.
+
+**C5 — split §7.3 (minor).** Established-by-manipulation in one subsection; the exploratory
+two-state model in another, clearly marked.
+
+**C6 — declare a Holm family for §7.3 (minor).** The mechanism campaigns involve many implicit
+comparisons with no family currently declared.
+
+**C7 — settle the 0.41 ms (minor).** Either develop the architectural reading (in-memory append vs
+replicated log) or reduce it to one sentence. Currently it is given a table and called negligible.
+
+**C8 — a settled/unsettled register (S5).** A short table stating which claims we regard as
+closed, which are one-campaign, and which we expect to move. This answers the churn objection
+directly rather than hoping the reader does not count.
+
+**C9 — the football question (S6).** Keep the workload, cut §3 to the two properties that matter —
+sparsity and the kickoff burst — and say plainly that a synthetic generator would serve, retaining
+the real corpus only because the concurrency levels are derived from real kickoff schedules.
+
+**C10 — ρ precision (minor).** Report ρ to the precision the matching supports within a campaign,
+and state the between-campaign drift alongside, so four decimals cannot be read as absolute
+accuracy.
+
+### Sequencing
+
+```
+now         stop sbl-b2, sbl-b3          (console; reversible)
+now         start R1 on sbl-drv          (~4 h)
+now         C1, C2, C3 in parallel       (prose; no machine needed)
++4 h        start R2 on sbl-drv          (~3 h)
++4 h        C5, C6, C7, C8, C9, C10
+on ARM      provision, then R3           (~6 h once the pair is up)
+after R3    C4 resolves either way; rebuild; full verification
+```
+
+C1–C3 are the ones that change the paper's shape and do not depend on any run. They should be
+done while R1 is going, not after.

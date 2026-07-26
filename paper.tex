@@ -1538,32 +1538,51 @@ run on different days: same machine, same protocol, same hour, only the arrangem
 differing. Each cell rests on 2\,985 matched events, so the separation is decisive on its own
 terms: a two-proportion test gives $z=10.3$ at $k=6$, and the Wilson intervals do not overlap.
 
-The gap closes at $k=7$ ($1.06\times$), which is the mechanism showing itself rather than a
-weaker result: with seven of eight cores busy, one free core is nearly as useless as none. With
-the counts in hand this is a stronger statement than a small ratio. At $k=7$ the two geometries
-are \emph{not distinguishable at all} ($z=1.22$, intervals overlapping) at the same sample size
-that separated them at $z=10.3$ one step earlier. The prediction was convergence, and what the
-data show is convergence to a null rather than to a residual difference we lacked the power to
-resolve.
+The gap narrows sharply at $k=7$ ($1.06\times$), which is the mechanism showing itself rather
+than a weaker result: with seven of eight cores busy, one free core is nearly as useless as none.
+
+\emph{We ran the whole campaign again, and it corrects us on one point.} The replication (E-A6b,
+right-hand columns of Table~\ref{tab:ea6}) reproduces the load-bearing cell almost exactly: at
+$k=6$ it again finds both arms at $\rho = 0.7531$ --- identical to four decimals in all four arms
+across the two campaigns --- and a ratio of $2.05\times$ against the original $2.07\times$. The
+central claim is therefore replicated, at matched utilisation, on a different day.
+
+Two cells behave less tidily and we report them rather than the average. At $k=5$ the effect
+reproduces in direction but not in size ($1.88\times$, then $4.61\times$), consistent with the
+day-to-day level drift we document for the $88\%$ baseline. At $k=7$ the convergence itself is
+what fails to settle: the first campaign found the two geometries statistically indistinguishable
+($z=1.22$, intervals overlapping), and on that basis an earlier draft of this section reported
+the convergence as reaching a null. The replication does not support that. It finds a small but
+clearly resolved difference ($1.19\times$, $z=3.46$, intervals disjoint), so we withdraw the
+stronger reading. What both campaigns agree on is the \emph{shape}: a twofold separation at
+$k=6$ collapsing to near-parity at $k=7$. Whether it closes to exactly zero is not established
+by these data, and the mechanism does not require that it should --- seven busy cores out of
+eight leave a little slack, not none.
 
 \begin{table}[t]
 \caption{\textbf{Same utilisation, different rate.} Both load geometries in one campaign.
 Concentrated load leaves $C-k$ cores free; spread load duty-cycles all of them and leaves none.
-At $k=6$ the two arms sit at the same $\rho$ to four decimals and the rates differ twofold. The
-convergence at $k=7$ is predicted: one free core out of eight is nearly none. Every cell is 2\,985
-matched events over 25 runs; $z$ is a two-proportion test between the arms of that row.}
+At $k=6$ the two arms sit at the same $\rho$ to four decimals ---
+in \emph{both} campaigns --- and the rates differ twofold in both. Every cell is 2\,985 matched
+events over 25 runs; $z$ is a two-proportion test between the arms of that row. The $k=7$ row is
+where the two campaigns disagree: the original cannot separate the geometries there, the
+replication can, and we withdraw the stronger reading (text).}
 \label{tab:ea6}
-\begin{tabular}{rrrrrrr}
+\begin{tabular}{rrrrrrrr}
 \toprule
-& \multicolumn{2}{c}{Achieved $\rho$} & \multicolumn{2}{c}{Inversion rate} & & \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-5}
-$k/C$ & concentrated & spread & concentrated & spread & ratio & $z$ \\
+& \multicolumn{3}{c}{E-A6 (original)} & \multicolumn{3}{c}{E-A6b (replication)} & \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+$k/C$ & conc. & spread & $z$ & conc. & spread & $z$ & ratios \\
 \midrule
-$5/8$ & 0.6284 & 0.6250 & 0.0201 & 0.0379 & $1.88\times$ & 4.09 \\
-$6/8$ & 0.7531 & 0.7531 & 0.0824 & 0.1709 & $2.07\times$ & 10.27 \\
-$7/8$ & 0.8778 & 0.8809 & 0.2281 & 0.2415 & $1.06\times$ & 1.22 \\
+$5/8$ & 0.0201 & 0.0379 & 4.09  & 0.0111 & 0.0509 & 8.89 & $1.88\times$, $4.61\times$ \\
+$6/8$ & 0.0824 & 0.1709 & 10.27 & 0.0600 & 0.1229 & 8.44 & $2.07\times$, $2.05\times$ \\
+$7/8$ & 0.2281 & 0.2415 & 1.22  & 0.1973 & 0.2342 & 3.46 & $1.06\times$, $1.19\times$ \\
 \bottomrule
 \end{tabular}
+
+\vspace{2pt}
+\footnotesize Achieved $\rho$, $k=6$: $0.7531$ in all four arms. $k=5$: $0.6284$/$0.6250$ and
+$0.6284$/$0.6259$. $k=7$: $0.8778$/$0.8809$ and $0.8778$/$0.8822$.
 \end{table}
 
 \paragraph{The other side of the inequality, and it moves the rate the wrong way.} Every

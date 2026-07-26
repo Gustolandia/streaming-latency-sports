@@ -27,6 +27,15 @@ def tex():
     return PAPER.read_text(encoding="utf-8")
 
 
+def _two_prop_z(row_a, row_b):
+    """Two-proportion z between two cells that each record inversions and events."""
+    import math
+    ka, na = int(row_a["n_inversions"]), int(row_a["n_events"])
+    kb, nb = int(row_b["n_inversions"]), int(row_b["n_events"])
+    pp = (ka + kb) / (na + nb)
+    return (kb / nb - ka / na) / math.sqrt(pp * (1 - pp) * (1 / na + 1 / nb))
+
+
 def _rows(*parts):
     with open(RESULTS.joinpath(*parts), encoding="utf-8") as fh:
         return list(csv.DictReader(fh))
@@ -1304,29 +1313,56 @@ class TestLoadGeometryAndTtrue:
         proportions with no n behind it cannot be checked by anyone, including us -- so the
         counts are now recorded, and this test recomputes every z the paper prints.
         """
-        import math
-        rows = {r["condition"]: r for r in _rows("model", "ea6", "knee_resolution.csv")}
         section = " ".join(_section(tex, "sec:twostate").split())
-        for k, expected in (("k5", 4.09), ("k6", 10.27), ("k7", 1.22)):
-            a, b = rows[f"{k}_conc"], rows[f"{k}_spread"]
-            ka, na = int(a["n_inversions"]), int(a["n_events"])
-            kb, nb = int(b["n_inversions"]), int(b["n_events"])
-            assert na > 0 and nb > 0, f"{k}: the artefact must record a denominator"
-            pp = (ka + kb) / (na + nb)
-            z = (kb / nb - ka / na) / math.sqrt(pp * (1 - pp) * (1 / na + 1 / nb))
-            assert abs(z - expected) < 0.01, f"{k}: z recomputes to {z:.2f}, paper prints {expected}"
-            assert f"{expected}" in section, f"{k}: z={expected} missing from the paper"
+        campaigns = {
+            ("ea6",): (("k5", 4.09), ("k6", 10.27), ("k7", 1.22)),
+            ("ea6b",): (("k5", 8.89), ("k6", 8.44), ("k7", 3.46)),
+        }
+        for (phase,), expectations in campaigns.items():
+            rows = {r["condition"]: r for r in _rows("model", phase, "knee_resolution.csv")}
+            for k, expected in expectations:
+                a, b = rows[f"{k}_conc"], rows[f"{k}_spread"]
+                assert int(a["n_events"]) > 0, f"{phase}/{k}: no denominator recorded"
+                z = _two_prop_z(a, b)
+                assert abs(z - expected) < 0.01, \
+                    f"{phase}/{k}: z recomputes to {z:.2f}, paper prints {expected}"
+                assert f"{expected}" in section, \
+                    f"{phase}/{k}: z={expected} missing from the paper"
 
-    def test_the_k7_convergence_is_reported_as_a_null(self, tex):
-        """k=7 is the predicted convergence. Reporting it as 'smaller' understates it.
+    def test_the_k7_null_is_withdrawn_because_the_replication_refutes_it(self, tex):
+        """An earlier draft read k=7 as convergence to a null. E-A6b does not support that.
 
-        At equal n, k=6 separates at z=10.27 and k=7 does not separate at all. That distinguishes
-        a confirmed convergence from insufficient power, and the paper must not blur the two.
+        The original campaign could not separate the geometries at k=7 (z=1.22). The replication
+        separates them (z=3.46, intervals disjoint). One campaign finding no difference and
+        another finding one is not a null; it is an unsettled cell, and the paper must say so
+        rather than quote the campaign that agreed with us.
         """
         section = " ".join(_section(tex, "sec:twostate").split())
-        assert "not distinguishable" in section or "indistinguishable" in section, \
-            "the k=7 null must be stated as a null"
+        orig = {r["condition"]: r for r in _rows("model", "ea6", "knee_resolution.csv")}
+        rep = {r["condition"]: r for r in _rows("model", "ea6b", "knee_resolution.csv")}
+        z_orig = _two_prop_z(orig["k7_conc"], orig["k7_spread"])
+        z_rep = _two_prop_z(rep["k7_conc"], rep["k7_spread"])
+        # The premise of the withdrawal: the two campaigns really do disagree at k=7.
+        assert abs(z_orig) < 1.96 <= abs(z_rep), (
+            f"k7 z: original {z_orig:.2f}, replication {z_rep:.2f} -- if these now agree, the "
+            "withdrawal text needs revisiting")
+        assert "withdraw" in section, "the stronger k=7 reading must be withdrawn in the text"
         assert "2\\,985" in section or "2985" in section, "the sample size must be stated"
+
+    def test_the_geometry_replication_reproduces_the_load_bearing_cell(self, tex):
+        """k=6 carries the claim: identical rho, twofold difference. It must replicate."""
+        orig = {r["condition"]: r for r in _rows("model", "ea6", "knee_resolution.csv")}
+        rep = {r["condition"]: r for r in _rows("model", "ea6b", "knee_resolution.csv")}
+        # Identical utilisation in all four arms is what makes the cell decisive.
+        rhos = {orig["k6_conc"]["rho"], orig["k6_spread"]["rho"],
+                rep["k6_conc"]["rho"], rep["k6_spread"]["rho"]}
+        assert len(rhos) == 1, f"k6 rho must match across all four arms, got {rhos}"
+        r_o = float(orig["k6_spread"]["inversion_rate"]) / float(orig["k6_conc"]["inversion_rate"])
+        r_r = float(rep["k6_spread"]["inversion_rate"]) / float(rep["k6_conc"]["inversion_rate"])
+        assert abs(r_o - r_r) < 0.15, f"k6 ratio {r_o:.2f} vs {r_r:.2f} -- no longer a replication"
+        section = " ".join(_section(tex, "sec:twostate").split())
+        for v in (f"{r_o:.2f}", f"{r_r:.2f}"):
+            assert v in section, f"ratio {v} missing from the paper"
 
     def test_the_ttrue_sweep_is_in_the_paper(self, tex):
         section = _section(tex, "sec:twostate")

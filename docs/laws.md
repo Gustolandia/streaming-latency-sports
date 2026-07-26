@@ -66,11 +66,27 @@ duty-cycled, none free) starves the stamping thread more than concentrated load 
 out, C−k genuinely free); the two converge at k=7, where one free core out of eight is nearly as
 useless as none — which is the mechanism showing itself, not a weaker result.
 
-**The convergence is a null, not a small effect.** At k=7 the arms are statistically
-indistinguishable (z=1.22, Wilson intervals overlapping) at the *same* sample size that separated
-them at z=10.27 one step earlier. The mechanism predicted the geometries would stop differing
-once no core is free either way; they stopped differing, rather than differing by an amount too
-small to resolve.
+**Replicated (E-A6b), and it corrects one reading.** The whole campaign was run again:
+
+| k/8 | ratio E-A6 | z | ratio E-A6b | z |
+|---|---|---|---|---|
+| 5 | 1.88× | 4.09 | 4.61× | 8.89 |
+| 6 | **2.07×** | **10.27** | **2.05×** | **8.44** |
+| 7 | 1.06× | 1.22 | 1.19× | 3.46 |
+
+The load-bearing cell replicates almost exactly: at k=6 both arms sit at ρ=0.7531 in *both*
+campaigns — identical to four decimals across all four arms — and the ratio is 2.07× against
+2.05×.
+
+*Withdrawn:* an earlier reading of k=7 as *convergence to a null*. The first campaign could not
+separate the geometries there (z=1.22, intervals overlapping); the replication separates them
+(z=3.46, intervals disjoint). One campaign finding nothing and another finding something is an
+unsettled cell, not a null. What both agree on is the shape — a twofold separation at k=6
+collapsing to near-parity at k=7. Whether it closes to exactly zero is not established, and the
+mechanism does not require it: seven busy cores out of eight leave a little slack, not none.
+
+*Also unsettled:* k=5 reproduces in direction but not magnitude (1.88× then 4.61×), consistent
+with the day-to-day level drift documented for the 88% baseline.
 
 *Falsified by:* the geometries agreeing at every level. They agreed only where predicted.
 

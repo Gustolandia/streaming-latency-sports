@@ -1,0 +1,31 @@
+=== phase d0 delay=0ms 20:50:44 ===
+Run list: runs/_concurrency_concurrency_n5_20260721_205044_runs.txt
+Summary: docs/results/concurrency_concurrency_n5_20260721_205044/concurrency_n5_20260721_205044_summary.json
+
+[SUCCESS] All runs completed successfully!
+=== phase d5 delay=5ms 20:52:24 ===
+Run list: runs/_concurrency_concurrency_n5_20260721_205224_runs.txt
+Summary: docs/results/concurrency_concurrency_n5_20260721_205224/concurrency_n5_20260721_205224_summary.json
+
+[SUCCESS] All runs completed successfully!
+=== phase d20 delay=20ms 20:54:21 ===
+Run list: runs/_concurrency_concurrency_n5_20260721_205421_runs.txt
+Summary: docs/results/concurrency_concurrency_n5_20260721_205421/concurrency_n5_20260721_205421_summary.json
+
+[SUCCESS] All runs completed successfully!
+=== phase d50 delay=50ms 20:57:58 ===
+Run list: runs/_concurrency_concurrency_n5_20260721_205758_runs.txt
+Summary: docs/results/concurrency_concurrency_n5_20260721_205758/concurrency_n5_20260721_205758_summary.json
+
+[SUCCESS] All runs completed successfully!
+=== phase p4_d20 delay=20ms 21:05:40 ===
+                               [--redis-consumer-extra REDIS_CONSUMER_EXTRA]
+                               [--plans-dir PLANS_DIR]
+                               {1,5,10,20} plan_csv reps
+run_concurrency_test.py: error: argument --redis-consumer-extra: expected one argument
+=== phase p4_d50 delay=50ms 21:05:40 ===
+                               [--redis-consumer-extra REDIS_CONSUMER_EXTRA]
+                               [--plans-dir PLANS_DIR]
+                               {1,5,10,20} plan_csv reps
+run_concurrency_test.py: error: argument --redis-consumer-extra: expected one argument
+CAMPAIGN2_COMPLETE 21:05:41

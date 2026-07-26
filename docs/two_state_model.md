@@ -1,5 +1,12 @@
 # A model that fits: two-state stamping
 
+> **Status: partly superseded.** Written before the campaigns that decided the mechanism. Its
+> load-axis reasoning is replaced by [laws.md](laws.md), which reports the manipulations: at
+> identical utilisation two load geometries differ 2.07x and 2.05x, so no function of `rho` --
+> including the ones argued for below -- can be the mechanism. The two-state framing itself
+> survives and is what the paper reports; the parts that parameterise it in `rho` do not.
+
+
 The paper's model treats the stamping asymmetry `Δ` as one distribution. Three results have now
 falsified or undermined parts of that picture, and this document states the replacement, the
 evidence for it, and — because the replacement was found by looking at data — exactly which part

@@ -311,45 +311,92 @@ rests on it, and a reproduction attempt that finds ~0.004 there has not contradi
 
 ### 5c. The run index — what survives the raw data
 
-`runs/` held 8.4 GB of per-event CSVs on one laptop and 676 MB more on the cloud driver, and not
-one file of it was tracked. The aggregated CSVs named 1,546 run ids between them across 57 files;
-1,445 local runs appeared in none of them. So the honest answer to "which runs produced this
-paper" was a directory on a machine, which is the same provenance gap Section 7.4 of the paper
-reports having found in its own history.
+`runs/` held 8.4 GB of per-event CSVs on the Testbed A host and 676 MB more on the Testbed B
+driver, and **not one file of it was tracked**. The aggregated CSVs named 1,546 run ids between
+them across 57 files; 1,445 local runs appeared in none of them. So the honest answer to "which
+runs produced this paper" was a directory on a machine — the same provenance gap Section 7.4 of
+the paper reports having found in its own history, reproduced at the level of the repository.
 
-Two tracked files close it. Both are built by
-[`../scripts/build_runs_index.py`](../scripts/build_runs_index.py).
+Four tracked files close it, two per testbed, all built by
+[`../scripts/build_runs_index.py`](../scripts/build_runs_index.py):
 
-| file | what it holds |
-|---|---|
-| `runs_index.csv` | one row per run: identity, campaign, backend, topology, feeds, plan, git commit, event counts, median transport, **and the clock-integrity verdict** |
-| `run_metadata.jsonl.gz` | every `meta.json`, one JSON per line — the per-file SHA-256 of the code each run executed. 1,662 runs in 185 KB |
+| file | testbed | runs |
+|---|---|---|
+| `runs_index.csv` · `run_metadata.jsonl.gz` | A (single host) | 1,690 |
+| `runs_index_cloud.csv` · `run_metadata_cloud.jsonl.gz` | B (Oracle Cloud driver) | 5,998 |
+
+**7,688 runs, 1.76 MB.** The `.csv` carries one row per run — identity, campaign, backend,
+topology, feeds, plan, host, event counts, median transport, and the clock-integrity verdict. The
+`.jsonl.gz` carries every `meta.json` verbatim, one JSON per line, including the per-file SHA-256
+of the code that run executed.
 
 ```bash
 python scripts/build_runs_index.py --archive-meta reproducibility/run_metadata.jsonl.gz
 python scripts/build_runs_index.py --fast          # skip the raw pass; integrity reads not-assessed
 ```
 
-**Why the integrity column had to be extracted before anything was deleted.** The audit that
-rejects 1,321 of 2,266 runs is computed *from* `producer.csv` and `consumer_events.csv`. Delete
-those and the number can never be recomputed — it becomes a claim resting on a deleted directory.
-The index carries, per run, the matched-event count, the negative-transport count, the fraction,
-and the verdict under the paper's rule, so the audit remains checkable at the level of the
-individual run after the events themselves are gone.
+**Why the integrity column had to be extracted before anything was deleted.** The audit rejecting
+1,321 of 2,266 runs is computed *from* `producer.csv` and `consumer_events.csv`. Delete those and
+the number can never be recomputed — it becomes a claim resting on a directory nobody can inspect.
+The index keeps, per run, the matched-event count, the negative-transport count, the fraction and
+the verdict, so the audit stays checkable run by run after the events themselves are gone.
 
-The verdict vocabulary distinguishes four states, and *not-assessed* is deliberately not a pass:
+`not-assessed` is deliberately **not** a pass:
 
 | verdict | meaning |
 |---|---|
 | `usable` | ≤1% of matched events negative and a positive median |
-| `condemned` | fails the rule |
+| `condemned` | fails that rule |
 | `no-matched-events` | the run produced nothing to assess |
-| `not-assessed` | the raw CSVs were absent or `--fast` was used — **not** a clean bill |
+| `not-assessed` | raw CSVs absent, or `--fast` was used — not a clean bill |
 
-**Local corpus at the time of writing:** 1,690 runs — 1,151 usable, 366 condemned, 105 with no
-matched events, 68 not assessed. 204 are named by no aggregate CSV, i.e. they were run and never
-used; the index records them anyway, because "this run happened and went nowhere" is a fact worth
-keeping and is exactly what gets lost when a directory is cleaned up.
+| | Testbed A | Testbed B |
+|---|---|---|
+| usable | 1,151 | 1,937 |
+| condemned | 366 | 3,976 |
+| no matched events | 105 | 44 |
+| not assessed | 68 | 41 |
+| named by no aggregate | 204 | 5,422 |
+
+**Read the two condemned columns differently.** On Testbed A a condemned run is a failed
+measurement. On Testbed B most condemned runs are the mechanism campaigns, which *deliberately*
+drive the inversion rate to 10–30% in order to study it — the condemned median negative fraction
+there is 0.116 against 0.0000 for the usable runs, a clean bimodal split rather than a quality
+problem. A run being condemned means its transport measurement is unusable, not that the run was
+wasted.
+
+**The two testbeds record provenance differently, and the index shows which.** Testbed A runs
+carry a git commit; Testbed B runs do not, because the driver has no clone — the scripts were
+copied to it. Every Testbed B run instead carries the SHA-256 of each script it executed, which
+is why the index has both a `git_head` and an `n_code_files` column. An empty `git_head` on a
+cloud run is not a missing provenance record; it is a different one.
+
+### Which runs anything actually depends on
+
+`used_by` answers a narrower question than it looks like it answers: it flags runs a tracked
+aggregate CSV *names*. The campaigns that decide the mechanism name none of theirs. `analyze_knee`,
+`analyze_runq_tail`, `analyze_ttrue_sweep` and the rest find their runs by matching a timestamp
+taken from a condition directory against `runs/concurrency_<ts>_<backend>_*`, so every run behind
+the geometry contrast, the payload sweep and the kernel trace has an empty `used_by`. Reading that
+column as "unused" would have selected precisely the load-bearing data for deletion.
+
+[`../scripts/mark_load_bearing.py`](../scripts/mark_load_bearing.py) adds `load_bearing` and
+`load_bearing_why`, resolving both routes and recording which one applied:
+
+| | Testbed A | Testbed B |
+|---|---|---|
+| load-bearing | 1,486 | 5,690 |
+| via a named aggregate | 1,486 | 576 |
+| via a condition directory | 0 | **5,114** |
+| nothing depends on it | 204 | 308 |
+
+The 5,114 in that third row are the runs `used_by` alone would have missed — 90% of everything
+the cloud testbed contributes.
+
+**Nothing is pruned on the strength of this.** 512 runs across both testbeds have nothing
+depending on them; their summaries stay in the index either way, because "this run happened and
+went nowhere" is the fact a directory cleanup destroys and the fact that makes a rejection rate
+mean anything.
 
 ### 6. Verify the paper agrees with the data
 

@@ -182,6 +182,30 @@ class TestMain:
         _, out = self._run(temp_dir, capsys, 0.2300, 0.0050)   # identical dumps: tail unmoved
         assert "REFUTED" in out
 
+    def test_a_zero_arm_prints_its_own_verdict_not_REFUTED(self, temp_dir, capsys):
+        """verdict() had a branch for the zero arm and the printer did not.
+
+        Everything that was not MATCH or WRONG SCALE fell through to "REFUTED. The traced tail
+        does not move with the inversion rate." So a LEVEL MATCH -- the positive result -- was
+        announced as the strongest negative the script can emit. The E-A9b 75% level hit exactly
+        this, and reading the printed line rather than the CSV would have retracted a finding
+        that had not failed.
+        """
+        rt_dump = DUMP.replace("@over_500us: 200", "@over_500us: 11")
+        _, out = self._run(temp_dir, capsys, 0.2300, 0.0, dumps={"rt": rt_dump})
+        assert "LEVEL MATCH, RATIO UNTESTABLE" in out
+        assert "REFUTED" not in out
+        assert "undefined here rather than answered" in out
+
+    def test_a_zero_arm_with_a_bad_level_prints_mismatch_not_REFUTED(self, temp_dir, capsys):
+        """The other zero-arm outcome needs its own wording too, for the same reason."""
+        base_dump = DUMP.replace("@over_500us: 200", "@over_500us: 995")
+        rt_dump = DUMP.replace("@over_500us: 200", "@over_500us: 11")
+        _, out = self._run(temp_dir, capsys, 0.0100, 0.0,
+                           dumps={"base": base_dump, "rt": rt_dump}, untraced=0.0100)
+        assert "LEVEL MISMATCH" in out
+        assert "REFUTED" not in out
+
     def test_withholds_when_tracing_perturbed_the_run(self, temp_dir, capsys):
         _, out = self._run(temp_dir, capsys, 0.5000, 0.0050)
         assert "PERTURBED" in out and "UNDECIDED" in out

@@ -39,7 +39,13 @@ RESULT_FIELDS = ("harness", "mode", "valid", "discarded_total", "discarded_zero"
                  "discarded_negative", "most_negative_micros", "kept", "pub_lines",
                  "duration_min", "load_pct", "bootstrap")
 
-CELL_RE = re.compile(r"^(?P<axis>[ls])(?P<level>\d+)_rep(?P<rep>\d+)$")
+CELL_RE = re.compile(r"^(?P<axis>[lsr])(?P<level>\d+)_rep(?P<rep>\d+)$")
+
+# The prefix a campaign uses for its cell directories decides which axis the cell belongs to. A
+# campaign whose prefix is missing here is indexed with a blank axis, which quietly removes it
+# from every per-axis analysis -- so a new campaign must be added here at the same time as its
+# cell-naming scheme, not after someone notices its results are absent.
+AXIS_BY_PREFIX = {"l": "load_pct", "s": "message_size", "r": "producer_rate"}
 
 SUMMARY_RE = re.compile(
     r"SBL_DISCARD_SUMMARY\s+kept=(?P<kept>\d+)\s+zero=(?P<zero>\d+)\s+"
@@ -73,12 +79,12 @@ def read_tail(path, nbytes=TAIL_BYTES):
 
 
 def parse_cell_name(name):
-    """`l88_rep2` -> load level 88, rep 2. `s4096_rep1` -> message size 4096, rep 1."""
+    """`l88_rep2` -> load 88%. `s4096_rep1` -> message size 4096. `r457_rep3` -> rate 457."""
     m = CELL_RE.match(name)
     if not m:
         return {"axis": "", "level": "", "rep": ""}
-    axis = "load_pct" if m.group("axis") == "l" else "message_size"
-    return {"axis": axis, "level": m.group("level"), "rep": m.group("rep")}
+    return {"axis": AXIS_BY_PREFIX[m.group("axis")], "level": m.group("level"),
+            "rep": m.group("rep")}
 
 
 def parse_workload(path):

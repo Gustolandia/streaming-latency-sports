@@ -20,13 +20,23 @@ from omb_retention_table import (  # noqa: E402
 )
 
 
+def pub_lines(*p50s, avg=0.9):
+    """OMB's per-interval progress lines, which carry unquantised publish latency."""
+    return "".join(
+        f"INFO WorkloadGenerator - Pub rate 500.0 msg/s | "
+        f"Pub Latency (ms) avg: {avg} - 50%: {v} - 99%: 4.3 - Max: 18.3\n"
+        for v in p50s)
+
+
 def make_cell(root, campaign, name, *, kept=1821, zero=118608, neg=0,
-              stamp="2026-07-26-14-44-01", omb_dir=None, result=None, write_json=True):
+              stamp="2026-07-26-14-44-01", omb_dir=None, result=None, write_json=True,
+              pub=None):
     d = root / campaign / name
     d.mkdir(parents=True, exist_ok=True)
     jname = f"omb_workload-Kafka-{stamp}.json"
     (d / "omb_stdout.log").write_text(
         "filler\n" * 20
+        + (pub if pub is not None else "")
         + f"INFO Benchmark - Writing test result into {jname}\n"
         + f"SBL_DISCARD_SUMMARY kept={kept} zero={zero} negative={neg} "
           "most_negative_micros=0\n",
@@ -105,6 +115,21 @@ class TestJoin:
         (omb / "omb_workload-Kafka-2026-07-26-14-44-01.json").write_text("{", encoding="utf-8")
         assert parse_cell(str(d), str(omb)) is None
 
+    def test_publish_latency_is_the_median_of_the_interval_medians(self, tmp_path):
+        """One number per run, robust to a slow first interval."""
+        omb = tmp_path / "omb"
+        d = make_cell(tmp_path / "ext", "c", "l0_rep1", omb_dir=omb,
+                      pub=pub_lines(9.9, 0.3, 0.4, 0.4, 0.5))
+        row = parse_cell(str(d), str(omb))
+        assert row["pub_lat_p50_ms"] == pytest.approx(0.4)
+        assert row["pub_lat_avg_ms"] == pytest.approx(0.9)
+
+    def test_a_cell_with_no_progress_lines_has_no_publish_latency(self, tmp_path):
+        omb = tmp_path / "omb"
+        d = make_cell(tmp_path / "ext", "c", "l0_rep1", omb_dir=omb)
+        row = parse_cell(str(d), str(omb))
+        assert row["pub_lat_p50_ms"] is None and row["pub_lat_avg_ms"] is None
+
     def test_a_summary_of_all_zeros_gives_blank_retention_not_a_crash(self, tmp_path):
         omb = tmp_path / "omb"
         d = make_cell(tmp_path / "ext", "c", "l0_rep1", kept=0, zero=0, neg=0, omb_dir=omb)
@@ -119,6 +144,14 @@ class TestCollect:
         rows = collect(str(ext), str(omb))
         assert [(r["campaign"], r["cell"]) for r in rows] == [
             ("load_sweep", "l0_rep1"), ("resolution", "s200_rep1")]
+
+    def test_a_new_axis_prefix_is_collected_without_being_enumerated(self, tmp_path):
+        """The rate-phase campaign uses r500_rep1; an enumerated glob dropped it silently."""
+        omb, ext = tmp_path / "omb", tmp_path / "ext"
+        make_cell(ext, "rate_phase", "r500_rep1", omb_dir=omb, stamp="2026-07-26-18-00-00")
+        make_cell(ext, "rate_phase", "r457_rep1", omb_dir=omb, stamp="2026-07-26-18-10-00")
+        rows = collect(str(ext), str(omb))
+        assert {r["cell"] for r in rows} == {"r457_rep1", "r500_rep1"}
 
     def test_unjoinable_cells_are_skipped_silently(self, tmp_path):
         omb, ext = tmp_path / "omb", tmp_path / "ext"
@@ -202,6 +235,36 @@ class TestReportAndCLI:
         assert rho is not None and rho < -0.5
         assert "Spearman(retention, reported average) = -" in out
         assert "higher latency the more data it drops" in out
+
+    def test_publish_latency_predicting_retention_is_reported_as_independent(self, tmp_path,
+                                                                            capsys):
+        """If a sub-millisecond, unquantised probe tracks retention, say why that matters."""
+        ext, omb = tmp_path / "ext", tmp_path / "omb"
+        spec = [("l0_rep1", 200, 100000, 0.2), ("l0_rep2", 30000, 90000, 0.4),
+                ("l0_rep3", 80000, 40000, 0.6), ("l0_rep4", 119000, 1000, 0.8)]
+        for i, (name, kept, zero, p) in enumerate(spec):
+            make_cell(ext, "c", name, kept=kept, zero=zero, omb_dir=omb,
+                      stamp=f"2026-07-26-19-{i:02d}-00", pub=pub_lines(p),
+                      result={"endToEndLatency50pct": [1.0], "endToEndLatencyAvg": [1.1]})
+        rho = report(collect(str(ext), str(omb)))
+        out = capsys.readouterr().out
+        assert "Spearman(publish latency p50, retention) = +1.000" in out
+        assert "independent support" in out
+        # These cells share one reported average, so the retention/average correlation is
+        # undefined -- correctly None. The publish probe is independent of it, which is the point.
+        assert rho is None
+
+    def test_a_weak_publish_correlation_prints_no_explanation(self, tmp_path, capsys):
+        """A 0.1 ms spread predicting nothing must not be dressed up as a mechanism."""
+        ext, omb = tmp_path / "ext", tmp_path / "omb"
+        spec = [("l0_rep1", 200, 100000, 0.4), ("l0_rep2", 30000, 90000, 0.3),
+                ("l0_rep3", 80000, 40000, 0.4), ("l0_rep4", 119000, 1000, 0.3)]
+        for i, (name, kept, zero, p) in enumerate(spec):
+            make_cell(ext, "c", name, kept=kept, zero=zero, omb_dir=omb,
+                      stamp=f"2026-07-26-20-{i:02d}-00", pub=pub_lines(p),
+                      result={"endToEndLatency50pct": [1.0], "endToEndLatencyAvg": [1.1]})
+        report(collect(str(ext), str(omb)))
+        assert "independent support" not in capsys.readouterr().out
 
     def test_a_positive_correlation_prints_no_explanation(self, tmp_path, capsys):
         """The narrative line is asserted by the data, not printed unconditionally."""

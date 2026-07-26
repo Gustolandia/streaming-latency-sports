@@ -29,6 +29,12 @@ class TestScan:
         (r"the value \ref{tab:ea6} appears", "raw macro escape"),
         ("printed as ef{tab:ea6} instead", "lost-backslash residue"),
         ("the file exttt{LocalWorker.java} at", "lost-backslash residue"),
+        # No braces: LaTeX eats them as grouping, so this is what a mangled \ref actually
+        # looks like in the output. The first version of the check missed exactly this and
+        # passed a manuscript carrying five of them.
+        ("as shown in Section efsec:twostate the rate", "lost-backslash residue"),
+        ("the geometry contrast of Table eftab:ea6 would", "lost-backslash residue"),
+        ("see Figure effig:map for the layout", "lost-backslash residue"),
         (r"a line break\n reached the text", "literal newline escape"),
         ("TODO rewrite this paragraph", "placeholder left in"),
         ("citation [12, ] is short one key", "empty citation"),

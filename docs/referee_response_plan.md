@@ -1035,3 +1035,38 @@ retention ranges 278-fold; the reported median takes two values; the reported av
 *inversely* with the amount of data behind it. An instrument whose headline is insensitive to a
 278-fold change in its evidence, and whose secondary statistic moves the wrong way, is not
 reporting the quantity its users think it is.
+
+### The bimodality question, settled at n=18
+
+Eighteen runs at a strictly identical configuration — 200 B, 0% background load, 3 minutes,
+1 minute warmup — drawn from four campaigns run across nine hours. Retention, sorted:
+
+```
+0.36  0.41  0.44  0.83  1.00  1.51  2.62  2.91  7.34
+39.39  96.42  99.98  99.99  99.99  100.00  100.00  100.00  100.00
+```
+
+| band | <2% | 2–10% | 10–90% | ≥90% |
+|---|---|---|---|---|
+| runs | 6 | 3 | 1 | 8 |
+
+**Both earlier positions were partly wrong, and the resolution is specific.** "Two modes with
+nothing between them" is false — four runs land between 2% and 90%. But the general claim that
+retention is simply continuous understates what happens *at this configuration*: **14 of 18 runs
+(78%) land within two points of an extreme.** The distribution is strongly bimodal with a sparse
+middle, and the two statements are compatible because they are about different things — across
+configurations retention sweeps continuously; at a configuration sitting on the tick it piles up
+at the ends.
+
+**The median of these 18 runs is 23.4%.** Only one run in eighteen landed between 10% and 90%. The
+central summary describes a region where almost nothing occurs, which is the sharpest single fact
+here: reporting a median retention for this benchmark names a value it essentially never produces.
+
+**What this means for §6.7.** The claim is not that OMB's discard rate is noisy. It is that at a
+sub-millisecond path the benchmark tends to keep either nearly all of its samples or nearly none,
+that which one it does is not determined by anything the operator sets, and that its reported
+summary is the same either way. Adding replicates does not converge on a usable central value
+because there is no central value to converge on.
+
+Consistent with the three-pass result: a three-replicate median of a distribution like this is a
+draw from the ends, which is why per-level medians moved 54–98 points between passes.

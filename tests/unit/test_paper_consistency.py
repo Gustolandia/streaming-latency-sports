@@ -1225,28 +1225,90 @@ class TestLoadGeometryAndTtrue:
                 assert _contains_number(table, float(r["inversion"]), 4), \
                     f"{phase} pad {r['pad_bytes']} inversion missing from tab:ea10"
 
-    def test_the_traced_agreement_percentage_is_recomputed(self, tex):
-        """The paper quotes an agreement figure in three places. It must be the computed one.
+    def test_every_traced_arm_agreement_is_recomputed(self, tex):
+        """Three ordinary arms now, across two campaigns and two load levels.
 
-        docs/laws.md said 30% where the artefacts give 21.9%; a looser bound is still true but
-        two documents quoting different numbers for one comparison is how a wrong one survives.
+        The paper used to quote one, at 22% low, and read the sign of that residual as a puzzle.
+        With three the sign is inconsistent -- 0.78, 1.06, 1.32 -- so the claim is agreement to
+        within a third with no resolvable bias, and every ratio must come from its artefact.
         """
-        rows = {r["arm"]: r for r in _rows("model", "runq_tail.csv")}
-        base = rows["base"]
-        traced, observed = float(base["p_tail"]), float(base["inversion"])
-        gap = abs(observed - traced) / observed
-        assert 0.215 < gap < 0.225, f"agreement recomputes to {gap:.1%}"
-        # In the sentence that makes the comparison. "22" occurs elsewhere in the manuscript,
-        # so a document-wide search passed a paper claiming the two agreed to 52%.
-        flat = " ".join(tex.split())
-        marker = "they agree to"
-        assert marker in flat, "the traced/observed comparison must be stated"
-        sentence = flat[flat.index(marker):][:120]
-        assert f"{round(gap * 100)}" in sentence, (
-            f"the agreement sentence must say {round(gap * 100)}%, recomputed from runq_tail.csv")
-        # The two values it compares belong in the same sentence as the percentage.
-        assert f"{traced:.3f}" in sentence and f"{observed:.3f}" in sentence, \
-            "the sentence must carry both measurements it is comparing"
+        # Literal paths, not a loop over tuples: verify_run_provenance discovers quoted
+        # artefacts by matching literal arguments to _rows(), so _rows(*src) would hide these
+        # two files from the provenance check entirely.
+        sources = {
+            "E-A9 88%":  _rows("model", "runq_tail.csv"),
+            "E-A9b 75%": _rows("model", "ea9b_l75", "runq_tail.csv"),
+            "E-A9b 88%": _rows("model", "ea9b_l88", "runq_tail.csv"),
+        }
+        table = tex[tex.index(r"\label{tab:ea9}"):]
+        table = table[:table.index(r"\end{table}")]
+        ratios = []
+        for name, rows in sources.items():
+            base = [r for r in rows if r["arm"] == "base"][0]
+            rt = [r for r in rows if r["arm"] == "rt"][0]
+            ratio = float(base["p_tail"]) / float(base["inversion"])
+            ratios.append(ratio)
+            assert f"{ratio:.2f}" in table, f"{name}: ratio {ratio:.2f} missing from tab:ea9"
+            # Every traced real-time arm reads exactly zero; that is the artefact claim.
+            assert float(rt["inversion"]) == 0.0, f"{name}: rt arm is no longer zero"
+        assert all(1 / 3 <= r <= 3 for r in ratios), f"ratios {ratios} outside the stated band"
+        # And in the sentence that lists them. Checking only the table let a mutated prose
+        # sentence through, which is where a reader actually meets the claim.
+        listed = " ".join(f"${r:.2f}$" for r in sorted(ratios))
+        flat_sec = " ".join(_section(tex, "sec:twostate").split())
+        for r in ratios:
+            assert f"${r:.2f}$" in flat_sec, f"ratio {r:.2f} missing from the prose"
+        assert listed.split()[0] in flat_sec, "the ratios must be listed together"
+        # The sign is not consistent, so the paper must not claim a direction.
+        assert min(ratios) < 1 < max(ratios), \
+            "ratios no longer straddle 1; the 'no consistent sign' claim needs revisiting"
+        section = " ".join(_section(tex, "sec:twostate").split())
+        assert "no consistent sign" in section, "the scatter must be described as scatter"
+
+    def test_the_withheld_arm_is_shown_and_marked(self, tex):
+        """The replication's 88% arm fails the instrument check. It is reported anyway.
+
+        Withholding a comparison is not a reason to hide a measurement -- especially this one,
+        whose ratio is the closest agreement in the table. Reporting only the arms that passed
+        would leave a reader unable to see that our own rule excluded one.
+        """
+        section = " ".join(_section(tex, "sec:twostate").split())
+        # "withheld" alone appears in the caption too. Bind it to the sentence carrying the
+        # drift, which is the claim: our own rule excluded this arm.
+        # Anchor on the prose that states the drift. "withheld" alone also appears in the
+        # caption and the footnote, so looking for it anywhere passed a mutated caption.
+        assert "a drift of $28" in section, "the measured drift must be stated in prose"
+        idx = section.index("a drift of $28")
+        window = section[max(0, idx - 600):idx + 400]
+        assert "25" in window, "the pre-fixed tolerance must sit with the drift it exceeded"
+        assert "withheld" in window, "the consequence must sit with the drift"
+        # And the table must mark it, since a reader scanning the numbers may never
+        # reach the prose. The footnote is a separate claim from the paragraph.
+        table = tex[tex.index(r"\label{tab:ea9}"):]
+        table = table[:table.index(r"\end{table}")]
+        assert "withheld by the instrument check" in table, \
+            "the table must mark the withheld arm as withheld"
+        assert "shown, not used" in table, \
+            "the table must say the withheld arm is shown but not relied on"
+
+    def test_the_real_time_zero_is_resolved_as_a_tracing_artefact(self, tex):
+        """One zero was unexplained. Three, against an untraced twin that shows 15/2985, are not."""
+        all_rows = (_rows("model", "runq_tail.csv")
+                    + _rows("model", "ea9b_l75", "runq_tail.csv")
+                    + _rows("model", "ea9b_l88", "runq_tail.csv"))
+        zeros = sum(1 for r in all_rows if r["arm"] == "rt" and float(r["inversion"]) == 0.0)
+        assert zeros == 3, f"expected three zero real-time arms, found {zeros}"
+        control = [r for r in _rows("model", "ea9_notrace", "untraced_control.csv")
+                   if r["condition"] == "l88_rt"][0]
+        assert float(control["inversion_rate"]) > 0, \
+            "the untraced twin must be non-zero for the artefact argument to hold"
+        section = " ".join(_section(tex, "sec:twostate").split())
+        # A single required phrase. An `or` of three acceptable wordings passes as soon as any
+        # one of them survives, so deleting the attribution left the test green.
+        assert "is an artefact of the instrument" in section, \
+            "the real-time zero must be attributed to the instrument, not left open"
+        assert "unexplained" not in section.split("real-time arm's zero")[-1][:400], \
+            "the zero must not still be described as unexplained"
 
     def test_the_discussion_recommends_the_mitigation_the_data_support(self, tex):
         """The paper measures a mitigation with a 7-80x effect and did not recommend it.

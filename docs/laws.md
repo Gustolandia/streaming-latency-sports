@@ -123,13 +123,45 @@ both campaigns. The levels sit slightly lower in the replication, the shape does
 ### The traced tail predicts the rate
 
 E-A9 traced `sched_wakeup`/`sched_switch` and computed P(run-queue delay > T_true) directly.
+E-A9b repeated it at two load levels.
 
-| arm | traced events | P(stall > 0.5 ms) | inversion rate | ratio |
-|---|---|---|---|---|
-| ordinary | 551,956 | 0.1807 | 0.2315 | **0.78** |
-| real-time | 570,591 | 0.0185 | 0.0000 | — |
+| campaign | arm | load | traced events | P(stall>0.5ms) | inversion | ratio |
+|---|---|---|---|---|---|---|
+| E-A9  | ordinary  | 88% | 551,956 | 0.1807 | 0.2315 | **0.78** |
+| E-A9  | real-time | 88% | 570,591 | 0.0185 | 0.0000 | — |
+| E-A9b | ordinary  | 75% | 709,819 | 0.1681 | 0.1276 | **1.32** |
+| E-A9b | real-time | 75% | 641,308 | 0.0162 | 0.0000 | — |
+| E-A9b | ordinary  | 88% | 687,986 | 0.2069 | 0.1956 | *1.06*† |
+| E-A9b | real-time | 88% | 649,788 | 0.0159 | 0.0000 | — |
 
-A traced scheduler quantity predicts the measured inversion rate to within 22%, unfitted.
+† withheld by the instrument check (28% drift against a 25% rule fixed in advance); shown, not
+used.
+
+A traced scheduler quantity predicts the measured inversion rate to **within a third** across
+three ordinary arms — 0.78, 1.06, 1.32 — unfitted.
+
+**The residual has no consistent sign, and we withdraw the reading that it did.** On one arm the
+traced probability sat 22% *below* the rate, and we called that the opposite of what the simplest
+account predicts. With three arms it is 22% low, 6% high and 32% high. That was scatter, not a
+direction.
+
+### The real-time zero is a tracing artefact — settled
+
+All **three** traced real-time arms recorded exactly zero inversions in 2,985 events. The
+untraced twin of one of them (`ea9_notrace`, the first E-A9 attempt whose probe never attached)
+recorded **15**. At that rate, P(zero in one arm) = 3e-7; in all three, ~1e-20.
+
+Attaching BPF to `sched_switch` **suppresses the inversions in the real-time arm**. Previously
+listed as open ("either that arm genuinely differed or tracing perturbed it"); three arms
+separate the two.
+
+The same direction appears in the ordinary arm — the two traced 88% values are the lower two of
+the six we have — but the between-campaign spread there (0.196–0.305) is too wide to conclude it.
+
+*This is the paper's own thesis arriving uninvited:* we attached an instrument to measure why an
+instrument was failing, and it changed what it came to observe, in the arm where the quantity was
+smallest. Nothing rests on that arm's level, so it costs nothing — but a kernel tracer is not a
+free observer.
 
 *The instrument check is weaker than we first reported.* The campaign's own untraced twin exists
 — the first attempt, whose probe never attached, kept as `ea9_notrace` and run ~2h earlier. It
@@ -240,7 +272,7 @@ quantity resists manipulation because every route to shortening it lengthens som
 
 - **What sets the level.** The mechanism predicts the rate to within 22% in one arm. There is no
   formula for the rate at a given load, and two attempts to write one have failed.
-- **The real-time arm's zero** (above) needs an untraced control before its level is trusted.
+- ~~The real-time arm's zero needs an untraced control~~ — **settled**: three traced arms read zero against an untraced twin's 15/2985. It is a tracing artefact.
 - **Distributed OMB.** Five attempts, five distinct faults in the benchmark's worker protocol.
   The cross-host clock channel is bounded independently at ~0.067 ms — below OMB's millisecond
   resolution — so the untested channel is the one least able to matter here.

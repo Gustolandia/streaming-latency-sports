@@ -1,8 +1,8 @@
 artefact,verdict,detail
-model/ea10b/tail_index.csv,UNVERIFIABLE,"9 rows, no sample-size or validity column"
 external/harness_audit.csv,AUDIT,"source audit: provenance is file+line at a named commit, not a run"
 e1/e1_transport_kruskal_across_n.csv,DERIVED,"computed from e1/e1_by_run_gated.csv, which is VERIFIED"
 football/concurrency/concurrency_summary.csv,DERIVED,"computed from football/feed/feed_summary.csv, which is VERIFIED"
+model/ea10b/tail_index.csv,DERIVED,"computed from model/ea10b/ttrue_sweep.csv, which is VERIFIED"
 model/fdelta_reproduction.csv,DERIVED,"computed from model/collapse_conditions.csv, which is VERIFIED"
 model/occupancy_law.csv,DERIVED,"computed from model/stamping_priority.csv, which is VERIFIED"
 model/separability.csv,DERIVED,"computed from model/collapse_points.csv, which is VERIFIED"

@@ -647,7 +647,8 @@ T_{\mathrm{measured}} = T_{\mathrm{true}} + \Delta ,
 \label{eq:inversion}
 \end{equation}
 
-Figure~\ref{fig:model} draws both halves of this. Panel (a) shows the mechanism: the
+Figure~\ref{fig:model} draws both halves of Equations~\ref{eq:model} and~\ref{eq:inversion}.
+Panel (a) shows the mechanism: the
 acknowledgement is stamped late enough that the consumer's receipt timestamp precedes it, even
 though the message plainly arrived after it was sent. Panel (b) shows the consequence that
 matters for benchmark design.
@@ -1760,10 +1761,10 @@ long the run gets; a per-event constant predicts it grows with the run. We there
 same match at true real time under three observation windows, holding everything else fixed, and
 counted events waking more than $50$~ms late (Table~\ref{tab:window}).
 
-The count does not move. Going from the $60$~s window to the $600$~s window multiplies the
-events emitted by $8.9$ --- $57$ to $507$ --- while the number waking more than $50$~ms late
-stays at exactly four and exactly one send blocks, so the share of events paying the cost falls
-from $7.0\%$ to $0.8\%$. The median is flat at $1.6$~ms throughout and the maximum flat at
+The count does not move (Figure~\ref{fig:window}). Going from the $60$~s window to the $600$~s
+window multiplies the events emitted by $8.9$ --- $57$ to $507$ --- while the number waking more
+than $50$~ms late stays at exactly four and exactly one send blocks, so the share of events
+paying the cost falls from $7.0\%$ to $0.8\%$. The median is flat at $1.6$~ms throughout and the maximum flat at
 $103.5$~ms: the cost is present in every run and dilutes in every run, which is the signature of
 something paid once. Had it been a per-event constant, the count would have grown with the window
 and the median would have stayed at $103$~ms.

@@ -39,8 +39,9 @@
 \begin{abstract}
 \textbf{What we set out to do.} Answer an ordinary question for anyone building a live sports
 feed: does the choice between Apache \kafka{} and \redis{} Streams change end-to-end delay, and
-does the answer shift as more matches run at once? We drove the benchmark with $3{,}315$ real
-football matches on their recorded event schedule.
+does the answer shift as more matches run at once? We characterise the workload across $3{,}315$
+real matches and drive the benchmark by replaying eleven of them --- a real slot of simultaneous
+kickoffs --- on their recorded event schedules.
 
 \textbf{What we found instead.} Our first answer was clean, significant, and impossible. Broker
 delay is a difference of two timestamps taken in two processes, so it admits one check no
@@ -496,7 +497,12 @@ Each match is preprocessed into a replay plan recording, per event, the time at 
 be emitted. A producer replays a plan at a configurable speed-up; a consumer records arrivals. In
 the concurrency experiment each of the $N$ feeds carries a \emph{distinct} real match at its true
 rate: an earlier design gave every feed the same merged ten-match plan, which made the
-concurrency axis covertly a throughput axis.
+concurrency axis covertly a throughput axis. The plan corpus holds eleven matches, taken from one
+real slot of simultaneous kickoffs, so the mapping is one-to-one at every level we report except
+$N{=}12$, where the twelfth feed reuses the first plan. We state this because ``distinct'' is
+otherwise exact and the one exception is load-bearing for nothing: the repeated plan is replayed
+by a separate producer against the same broker, so it adds a feed's worth of connections and
+events either way.
 
 The primary measure is \textbf{Time-to-Insight} (\tti{}), from an event's scheduled emission to
 its availability at the consumer. We decompose it (Figure~\ref{fig:pipeline}):

@@ -49,6 +49,12 @@ class TestCellName:
         assert parse_cell_name("s4096_rep1") == {"axis": "message_size", "level": "4096",
                                                  "rep": "1"}
 
+    def test_producer_rate_axis(self):
+        """chain8 names its cells r500_rep1. An unknown prefix indexes with a blank axis, which
+        removes the whole campaign from every per-axis analysis without saying so."""
+        assert parse_cell_name("r457_rep3") == {"axis": "producer_rate", "level": "457",
+                                               "rep": "3"}
+
     def test_an_unrecognised_name_is_blank_not_an_error(self):
         """A cell whose directory we did not name still gets a row."""
         assert parse_cell_name("smoke") == {"axis": "", "level": "", "rep": ""}

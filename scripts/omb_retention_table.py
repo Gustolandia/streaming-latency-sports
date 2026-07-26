@@ -119,14 +119,17 @@ def parse_cell(cell_dir, omb_dir):
 
 
 def collect(root, omb_dir):
+    # Any `<something>_rep<n>` directory, rather than an enumerated list of axis prefixes. The
+    # rate-phase campaign names its cells r500_rep1, and an enumerated glob silently omitted them
+    # -- a whole campaign missing from the table with nothing to indicate it. parse_cell already
+    # rejects anything that is not a joinable cell, so the broad glob costs nothing.
     rows = []
-    for pattern in ("*/l*_rep*", "*/s*_rep*"):
-        for cell in glob.glob(os.path.join(root, pattern)):
-            if not os.path.isdir(cell):
-                continue
-            row = parse_cell(cell, omb_dir)
-            if row:
-                rows.append(row)
+    for cell in glob.glob(os.path.join(root, "*", "*_rep*")):
+        if not os.path.isdir(cell):
+            continue
+        row = parse_cell(cell, omb_dir)
+        if row:
+            rows.append(row)
     rows.sort(key=lambda r: (r["campaign"], r["cell"]))
     return rows
 

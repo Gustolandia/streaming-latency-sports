@@ -64,6 +64,7 @@ DERIVED = {
     # The tail index is a fit over the payload sweep; it has no runs of its own, and the
     # n_points it does carry describes the fit rather than a sample.
     "model/tail_index.csv": "model/ttrue_sweep.csv",
+    "model/ea10b/tail_index.csv": "model/ea10b/ttrue_sweep.csv",
     # L1/L2 are computed over the priority campaigns; the counts live in those files.
     "model/occupancy_law.csv": "model/stamping_priority.csv",
 }

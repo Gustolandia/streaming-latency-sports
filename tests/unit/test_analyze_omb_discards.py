@@ -15,8 +15,78 @@ SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 from analyze_omb_discards import (  # noqa: E402
-    NEGATIVE_FLOOR, load, main, summarise, verdict,
+    NEGATIVE_FLOOR, load, load_ledger, main, summarise, verdict,
 )
+
+
+LEDGER_FIELDS = ("campaign", "cell", "axis", "level", "rep", "valid", "invalid_reason",
+                 "kept", "discarded_zero", "discarded_negative", "most_negative_micros",
+                 "count_source")
+
+
+def write_ledger(path, rows):
+    """rows: (axis, level, kept, zero, neg, valid, count_source) tuples."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh)
+        w.writerow(LEDGER_FIELDS)
+        for axis, level, kept, zero, neg, valid, src in rows:
+            w.writerow(["c", f"x{level}", axis, level, "1", valid, "", kept, zero, neg,
+                        0, src])
+
+
+class TestLedgerSource:
+    """The ledger reads each cell's log directly, so it survives a harness that died mid-cell."""
+
+    def test_a_cell_missing_from_the_combined_csv_is_still_analysed(self, tmp_path):
+        p = tmp_path / "ledger.csv"
+        write_ledger(p, [("load_pct", "95", 31991, 88643, 0, "1", "shutdown_hook"),
+                         ("load_pct", "95", 93381, 27311, 0, "1", "shutdown_hook")])
+        rows = load_ledger(str(p), "load_pct")
+        assert len(rows) == 2
+        assert {r["kept"] for r in rows} == {"31991", "93381"}
+
+    def test_the_level_is_exposed_under_the_axis_name(self, tmp_path):
+        p = tmp_path / "ledger.csv"
+        write_ledger(p, [("load_pct", "88", 10, 90, 0, "1", "shutdown_hook")])
+        assert load_ledger(str(p), "load_pct")[0]["load_pct"] == "88"
+
+    def test_the_other_axis_is_not_mixed_in(self, tmp_path):
+        p = tmp_path / "ledger.csv"
+        write_ledger(p, [("load_pct", "0", 10, 90, 0, "1", "shutdown_hook"),
+                         ("message_size", "4096", 10, 90, 0, "1", "shutdown_hook")])
+        assert len(load_ledger(str(p), "load_pct")) == 1
+        assert len(load_ledger(str(p), "message_size")) == 1
+
+    def test_invalid_cells_are_excluded(self, tmp_path):
+        p = tmp_path / "ledger.csv"
+        write_ledger(p, [("load_pct", "0", 10, 90, 0, "0", "shutdown_hook")])
+        assert load_ledger(str(p), "load_pct") == []
+
+    def test_quantised_counts_are_refused(self, tmp_path):
+        """Periodic totals round to 10,000 and cannot carry a share."""
+        p = tmp_path / "ledger.csv"
+        write_ledger(p, [("load_pct", "0", 10, 90, 0, "1", "periodic_quantised"),
+                         ("load_pct", "0", 10, 90, 0, "1", "absent")])
+        assert load_ledger(str(p), "load_pct") == []
+
+    def test_the_cli_reads_a_ledger_and_reaches_a_verdict(self, tmp_path, capsys):
+        p = tmp_path / "ledger.csv"
+        write_ledger(p, [("load_pct", "0", 1000, 59000, 0, "1", "shutdown_hook"),
+                         ("load_pct", "88", 20000, 6000, 0, "1", "shutdown_hook")])
+        assert main(["--ledger", str(p)]) == 0
+        out = capsys.readouterr().out
+        assert "RESOLUTION" in out and "ledger" in out
+
+    def test_a_ledger_with_only_one_axis_is_not_an_error(self, tmp_path, capsys):
+        p = tmp_path / "ledger.csv"
+        write_ledger(p, [("load_pct", "0", 1000, 59000, 0, "1", "shutdown_hook"),
+                         ("load_pct", "88", 20000, 6000, 0, "1", "shutdown_hook")])
+        assert main(["--ledger", str(p)]) == 0
+        assert "message size" not in capsys.readouterr().out
+
+    def test_a_missing_ledger_is_an_error(self, tmp_path):
+        assert main(["--ledger", str(tmp_path / "absent.csv")]) == 1
 
 
 def _rows(axis, spec):
@@ -103,6 +173,7 @@ class TestCLI:
     def test_nothing_to_do_is_an_error(self, capsys):
         assert main([]) == 1
         assert "nothing to do" in capsys.readouterr().out
+
 
     def test_a_missing_file_is_an_error(self, tmp_path):
         assert main(["--sweep", str(tmp_path / "absent.csv")]) == 1

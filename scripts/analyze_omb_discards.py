@@ -49,6 +49,33 @@ def load(path):
         return list(csv.DictReader(fh))
 
 
+def load_ledger(path, axis):
+    """Sweep rows rebuilt from the campaign ledger rather than the combined CSV.
+
+    The combined CSV is appended to by the campaign script after each cell. A cell whose script
+    dies between finishing the benchmark and writing its row is therefore absent from the
+    analysis while its measurement sits intact in its log -- which is what happened to l95_rep2,
+    a run with 24 publish-rate lines and an exact shutdown summary that never reached the CSV.
+
+    The ledger is built by reading each cell's log directly, so it does not depend on any script
+    having survived long enough to report. Reading the analysis off it makes a crashed harness
+    lose a cell's *timing*, not its result.
+
+    Only cells whose counts came from the shutdown hook are admitted: the periodic lines are
+    quantised to 10,000 and cannot carry a share.
+    """
+    rows = []
+    for r in load(path):
+        if r.get("axis") != axis or r.get("valid") != "1":
+            continue
+        if r.get("count_source") != "shutdown_hook":
+            continue
+        out = dict(r)
+        out[axis] = r.get("level", "")
+        rows.append(out)
+    return rows
+
+
 def summarise(rows, axis):
     """Per level of `axis`: totals, the zero share, and the negative share."""
     by = {}
@@ -145,22 +172,35 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Classify what OMB discards")
     ap.add_argument("--sweep", default=None, help="the load sweep CSV")
     ap.add_argument("--resolution", default=None, help="the message-size sweep CSV")
+    ap.add_argument("--ledger", default=None,
+                    help="external campaign ledger; read instead of the combined CSVs, so a "
+                         "cell whose script died after measuring is not lost")
     ap.add_argument("--out", default=None, help="write the per-level summary here")
     args = ap.parse_args(argv)
 
-    if not args.sweep and not args.resolution:
-        print("nothing to do: pass --sweep and/or --resolution")
+    if not args.sweep and not args.resolution and not args.ledger:
+        print("nothing to do: pass --sweep, --resolution and/or --ledger")
         return 1
 
+    sources = []
+    if args.ledger:
+        sources = [(args.ledger, "load_pct", "background load (ledger)"),
+                   (args.ledger, "message_size", "message size (ledger)")]
+    else:
+        sources = [(args.sweep, "load_pct", "background load"),
+                   (args.resolution, "message_size", "message size")]
+
     results = []
-    for path, axis, label in ((args.sweep, "load_pct", "background load"),
-                              (args.resolution, "message_size", "message size")):
+    for path, axis, label in sources:
         if not path:
             continue
         if not os.path.exists(path):
             print(f"missing: {path}")
             return 1
-        rows = load(path)
+        rows = load_ledger(path, axis) if args.ledger else load(path)
+        if args.ledger and not rows:
+            # A ledger legitimately holds only one axis; that is not an error.
+            continue
         if not rows:
             print(f"{path} has no data rows -- every cell failed, which is not a result")
             return 1

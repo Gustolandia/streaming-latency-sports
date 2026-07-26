@@ -1137,6 +1137,38 @@ class TestLoadGeometryAndTtrue:
         section = " ".join(_section(tex, "sec:twostate").split())
         assert "0.7531" in section and "identical to four decimals" in section
 
+    def test_the_traced_tail_result_is_actually_in_the_body(self, tex):
+        """The abstract's fourth headline claim had no section behind it.
+
+        E-A9 was quoted in the abstract, listed in the power table, and forward-referenced from
+        related work -- and Section 7.3 never reported it. An abstract may summarise the body;
+        it may not be the only place a result appears.
+        """
+        section = " ".join(_section(tex, "sec:twostate").split())
+        rows = {r["arm"]: r for r in _rows("model", "runq_tail.csv")}
+        base = rows["base"]
+        assert _contains_number(section, float(base["p_tail"]), 3), \
+            "the traced stall probability is missing from the body"
+        assert _contains_number(section, float(base["inversion"]), 3), \
+            "the observed rate it is compared against is missing from the body"
+        assert "551" in section and "570" in section, "the traced event counts are missing"
+        # The zero arm must be reported, and reported as not load-bearing.
+        assert "zero" in section.lower(), "the real-time arm's zero must be disclosed"
+
+    def test_the_tail_index_rule_is_in_the_body_with_its_limits(self, tex):
+        """alpha < 1 is the paper's explanation for why mean-based counters fail. It must appear
+        where the mechanism is argued, not only in the abstract, and it must carry its caveats."""
+        section = " ".join(_section(tex, "sec:twostate").split())
+        vals = {r["quantity"]: r["value"] for r in _rows("model", "tail_index.csv")}
+        assert f"{float(vals['C']):.3f}" in section, "the fitted prefactor is missing"
+        assert f"{abs(float(vals['alpha'])):.3f}" in section, "the fitted exponent is missing"
+        assert "finite mean" in section, "the alpha < 1 consequence must be stated"
+        # The cross-check against the independent trace, and the honest gap.
+        assert f"{float(vals['predicted_p_tail']):.3f}" in section, "the predicted value is missing"
+        assert f"{float(vals['cross_check_ratio']):.2f}" in section, "the cross-check ratio is missing"
+        assert "fitted" in section and "not derived" in section, \
+            "the fit's limits must be stated where the rule is claimed"
+
     def test_the_priority_collapse_range_is_recomputed_from_every_pair(self, tex):
         """The abstract quotes a range. It must be the range the artefacts actually contain.
 

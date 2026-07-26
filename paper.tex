@@ -1581,6 +1581,86 @@ Padding (B) & $\rho$ & Transport (ms) & Inversion rate \\
 \end{tabular}
 \end{table}
 
+\paragraph{Closing the loop: measuring the stall distribution directly.} Every result so
+far infers the scheduler's behaviour from the inversion rate it produces. The mechanism says
+something stronger and directly checkable --- that the inversion rate should equal the probability
+that a run-queue stall outlasts the interval being measured --- so we measured that probability
+without reference to the inversions at all. Using \texttt{bpftrace} on the \texttt{sched\_wakeup}
+and \texttt{sched\_switch} tracepoints, we recorded the delay between a stamping thread becoming
+runnable and reaching a core, for every such transition in the run, and computed
+$\Pr[\text{stall} > 0.5\,\text{ms}]$ against the measured transport of that cell
+(Table~\ref{tab:ea9}).
+
+The two quantities share no instrument, no estimator and no data: one is a count of negative
+transports in application CSVs, the other a kernel histogram of scheduler transitions. In the
+ordinary arm they agree to $22\%$ --- $0.181$ traced against $0.231$ observed --- with nothing
+fitted between them. We take the direction of the residual seriously rather than only its size:
+the traced probability sits \emph{below} the observed rate, which is the opposite of what the
+simplest reading predicts, since not every stall should land on a stamping instant. We do not
+have an account of that gap, and record it as the open quantity it is.
+
+\emph{The instrument check came first.} Tracing a system to measure its scheduling behaviour is
+exactly the kind of intervention that can create what it observes. Before using the traced
+numbers we compared the traced cell's inversion rate against the untraced measurement of the same
+condition: $0.2315$ against $0.2214$, a difference of $4.6\%$, well inside the day-to-day
+variation of the $88\%$ baseline reported above. BPF did not move what it measured.
+
+\emph{One arm did not behave, and we report it.} The real-time arm recorded \emph{zero}
+inversions in $2{,}985$ events. Against the running-state floor of roughly $0.004$ seen in every
+other real-time cell, the chance of observing none is about $6{\times}10^{-6}$. Either that arm
+genuinely differed or tracing perturbed it, and our instrument check covered only the ordinary
+arm, so we cannot separate the two. The traced tail in that arm did fall by $9.8\times$, so the
+\emph{direction} is consistent with every other priority manipulation; the \emph{level} is not
+established, and no claim in this paper rests on it.
+
+\begin{table}[t]
+\caption{\textbf{A kernel trace predicts the inversion rate, unfitted.} $\Pr[\text{stall} >
+T_{\mathrm{true}}]$ from \texttt{sched\_wakeup}/\texttt{sched\_switch}, against the inversion rate
+measured from application timestamps in the same cell. The two share no instrument and no
+estimator. The real-time arm's zero is reported but not relied on (text).}
+\label{tab:ea9}
+\begin{tabular}{lrrrr}
+\toprule
+Arm & $\rho$ & Traced events & $\Pr[\text{stall} > 0.5\,\text{ms}]$ & Inversion rate \\
+\midrule
+ordinary  & 0.8822 & $551{,}956$ & 0.181 & 0.231 \\
+real-time & 0.8819 & $570{,}591$ & 0.018 & 0.000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{A rule with no free load parameter, and what its exponent means.} The payload sweep
+varies $T_{\mathrm{true}}$ at fixed load, so it probes the shape of the stall distribution
+directly rather than its response to stress. If run-queue delay has a heavy tail with index
+$\alpha$, then $\Pr[\text{stall} > t] \sim C t^{-\alpha}$, and the inversion rate should be a
+power law in $T_{\mathrm{true}}$ with no load term at all. Fitting the four points of
+Table~\ref{tab:ea10}:
+%
+\begin{equation}
+\Pr[\text{inversion}] = 0.238 \; T_{\mathrm{true}}^{-0.339},
+\qquad R^2 = 0.990 \text{ over a } 77\times \text{ span.}
+\label{eq:tailindex}
+\end{equation}
+
+\noindent\textbf{The exponent is below one, so the stall distribution has neither a finite mean
+nor a finite variance.} That is the part worth stating carefully, because it converts an
+observation into an explanation. Section~\ref{sec:twostate} found that cumulative scheduler
+counters --- means of occupancy and of stall length --- moved by factors of two to five against a
+fortyfold change in the inversion rate. With $\alpha < 1$ that failure is not bad luck in the
+choice of counter. The sample mean of such a distribution does not converge as samples
+accumulate; it wanders with sample size. An instrument built on averages is therefore
+\emph{structurally} unable to see this failure, not merely insensitive to it, and no amount of
+additional sampling repairs it.
+
+Equation~\ref{eq:tailindex} and the kernel trace were produced by different campaigns, on
+different instruments, and can be checked against each other. The rule predicts
+$\Pr[\text{stall} > 0.5\,\text{ms}] = 0.301$; the trace measures $0.181$. The ratio is $1.66$ ---
+the same order, from a fitted payload sweep and a \texttt{sched\_switch} histogram sharing no
+data. The rule over-predicts, which is the expected direction, since not every stall lands on a
+stamping instant. We state the limits plainly: $\alpha$ is fitted from four points in one
+campaign at one load level, not derived, and the $1.66\times$ gap is unexplained rather than
+accounted for. We report this as a rule with one measurement behind it.
+
 \subsection{The brokers are equivalent within a millisecond, but not indistinguishable}
 \label{sec:e1}
 

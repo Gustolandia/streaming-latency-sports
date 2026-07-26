@@ -51,8 +51,8 @@ PERIODIC_RE = re.compile(r"SBL_DISCARD_(?:ZERO|NEGATIVE) total=(\d+)")
 
 FIELDS = ("campaign", "cell", "axis", "level", "rep", "valid", "invalid_reason",
           "kept", "discarded_zero", "discarded_negative", "most_negative_micros",
-          "zero_share", "message_size_b", "producer_rate", "duration_min", "load_pct",
-          "bootstrap", "count_source", "stdout_bytes", "stdout_sha256", "mtime_utc")
+          "zero_share", "message_size_b", "producer_rate", "duration_min", "warmup_min",
+          "load_pct", "bootstrap", "count_source", "stdout_bytes", "stdout_sha256", "mtime_utc")
 
 
 def sha256_of(path):
@@ -83,8 +83,12 @@ def parse_cell_name(name):
 
 def parse_workload(path):
     """The few scalars we set. A hand-rolled reader beats a YAML dependency for eleven keys."""
+    # warmupDurationMinutes decides whether a cell's counts are comparable with OMB's own
+    # reported percentiles. Our counters never reset, so they span warmup and test; OMB resets
+    # its histograms at the boundary. A cell that ran with a warmup is counting more samples than
+    # the distribution it is being compared against, so the setting belongs in the ledger.
     want = {"messageSize": "message_size_b", "producerRate": "producer_rate",
-            "testDurationMinutes": "duration_min"}
+            "testDurationMinutes": "duration_min", "warmupDurationMinutes": "warmup_min"}
     out = {}
     try:
         with open(path, encoding="utf-8") as fh:
@@ -179,7 +183,14 @@ def index_cell(cell_dir, campaign):
     row["stdout_bytes"] = size
     row["stdout_sha256"] = digest
 
-    row.update(parse_workload(os.path.join(cell_dir, "omb_workload.yaml")))
+    workload_path = os.path.join(cell_dir, "omb_workload.yaml")
+    row.update(parse_workload(workload_path))
+    # The cells run before the setting was made explicit have no key at all, and OMB's default of
+    # one minute applied to them silently. Recording that as blank would read as "no warmup",
+    # which is the opposite of what happened, so it is marked as the default rather than left to
+    # be guessed from the run date.
+    if not row["warmup_min"] and os.path.exists(workload_path):
+        row["warmup_min"] = "1(default)"
     row["zero_share"] = zero_share(row["kept"], row["discarded_zero"],
                                    row["discarded_negative"])
 

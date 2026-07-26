@@ -61,6 +61,11 @@ class TestParsers:
         assert parse_workload(str(p)) == {"message_size_b": "200", "producer_rate": "500",
                                           "duration_min": "3"}
 
+    def test_an_explicit_warmup_is_read(self, tmp_path):
+        p = tmp_path / "w.yaml"
+        p.write_text(WORKLOAD + "warmupDurationMinutes: 0\n", encoding="utf-8")
+        assert parse_workload(str(p))["warmup_min"] == "0"
+
     def test_a_missing_workload_is_empty(self, tmp_path):
         assert parse_workload(str(tmp_path / "absent.yaml")) == {}
 
@@ -224,6 +229,24 @@ class TestIndexCell:
         d = make_cell(tmp_path, "c", "l0_rep1", result=None)
         row = index_cell(str(d), "c")
         assert row["valid"] == "0" and row["invalid_reason"] == "no result row written"
+
+    def test_a_missing_warmup_key_is_recorded_as_the_default_not_as_none(self, tmp_path):
+        """OMB warms up for a minute unless told otherwise, and our early cells never told it.
+
+        Leaving this blank would read as 'no warmup', which is the opposite of what happened --
+        and it is the difference between counting 120,000 samples and 90,000.
+        """
+        d = make_cell(tmp_path, "c", "l0_rep1")
+        assert index_cell(str(d), "c")["warmup_min"] == "1(default)"
+
+    def test_an_explicit_zero_warmup_is_not_overwritten_by_the_default(self, tmp_path):
+        d = make_cell(tmp_path, "c", "l0_rep1",
+                      workload=WORKLOAD + "warmupDurationMinutes: 0\n")
+        assert index_cell(str(d), "c")["warmup_min"] == "0"
+
+    def test_a_cell_with_no_workload_file_claims_no_warmup_either_way(self, tmp_path):
+        d = make_cell(tmp_path, "c", "l0_rep1", workload=None)
+        assert index_cell(str(d), "c")["warmup_min"] == ""
 
     def test_the_mtime_is_recorded(self, tmp_path):
         d = make_cell(tmp_path, "c", "l0_rep1")

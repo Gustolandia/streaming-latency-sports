@@ -583,3 +583,36 @@ still discriminates -- it just cannot rest on the baseline cell alone.
 **Queued as chain7:** ten more reps at the identical configuration, fifteen in total, with nothing
 else varying. The variable under study is the run-to-run variation itself, so the design holds
 everything else fixed on purpose.
+
+### Correction to the R1 trend statement
+
+R1 above reports the zero share as falling with load, on the three levels available when it was
+written: 98.49% → 23.68% → 4.41%. With all five levels indexed, the medians are:
+
+| load | 0% | 50% | 75% | 88% | 95% |
+|---|---|---|---|---|---|
+| zero share | 98.49% | 23.68% | 4.41% | 4.78% | 22.63% |
+
+**That is not monotone.** It falls to a minimum around 75–88% and rises again at 95%. The
+first-to-last comparison the classifier uses is still a fall, and the verdict is unchanged and
+unambiguous — RESOLUTION, zero negatives across every level — but "the zero share falls with load"
+overstates what these numbers show, and the paper must not say it.
+
+The bimodality addendum explains why. Each level is the median of three cells, and each cell is
+drawn from a two-point distribution — near 0% retention or near 100%. A median of three such
+draws is itself close to bimodal, so the level-to-level pattern reflects how many of three cells
+happened to land above the tick, not a smooth response to load. Reading a trend into it would be
+fitting a curve to coin flips.
+
+**The defensible statements**, in order of strength:
+
+1. Zero negative samples in ~420,000 discards, at every load level. *(Decisive for the withdrawal;
+   independent of the bimodality.)*
+2. Retention at a fixed configuration is bimodal, near 0% or near 100%, with nothing between.
+   *(chain7 establishes this properly at n=15.)*
+3. The reported p50 does not move with retention; the reported average moves inversely with it
+   (Spearman −0.644). *(Both from the 16-cell join, and both robust to the bimodality — indeed
+   the bimodality is what gives the correlation its range.)*
+
+Load is best presented as one of the things that moves the median latency across the tick, not as
+a variable with a smooth effect on the discard rate.

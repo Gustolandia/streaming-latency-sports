@@ -714,3 +714,35 @@ three rates behave alike, the phase hypothesis is wrong and this section will sa
 **None of this touches the withdrawal.** Zero negatives in ~420,000 discards is a statement about
 sign, and no mechanism debate reaches it. Nor does it touch the retention/reported-average
 relationship, which is −0.541 with the saturated cell excluded and −0.540 with it included.
+
+### An accidental positive control for the phase hypothesis
+
+The 64 KB cells were written off above as saturated and uninterpretable. They are saturated, but
+they are not uninformative, and what they show arrived before chain8 was built to look for it.
+
+| size | rep 1 | rep 2 | spread | reported e2e p50 | pub p50 |
+|---|---|---|---|---|---|
+| 200 B | 100% | 0.36% | **99.6 pts** | 1.0 ms both | 0.4 / 0.3 ms |
+| 4 KB | 10.94% | 100% | **89.1 pts** | 1.0 ms both | 0.4 / 0.4 ms |
+| 64 KB | 35.92% | 34.42% | **1.5 pts** | 519 / 235 ms | 0.6 / 0.6 ms |
+
+Retention is **stable to 1.5 points** at 64 KB even though the two runs' reported end-to-end
+medians differ by 2.2× — 519 ms against 235 ms. At 200 B and 4 KB, where the reported median is
+identical at 1.0 ms in all four runs, retention spans nearly the whole range.
+
+That is backwards for any model in which retention tracks latency, and it is what the phase
+hypothesis predicts. Queueing at 64 KB makes delivery times large and irregular, which dephases
+samples relative to the millisecond grid; a dephased population crosses tick boundaries at a rate
+set by the *distribution*, so retention becomes a stable intermediate fraction. At 200 B the path
+is fast and the producer is paced on an exact 2.000 ms interval, so samples stay phase-locked and
+the whole run falls on one side of a boundary or the other.
+
+**This is support, not proof.** Saturation and dephasing are confounded here: the 64 KB runs
+differ from the small-message runs in both, and this pair was not designed to separate them.
+chain8 does separate them — it holds message size and load fixed and varies only whether the
+producer's interval is commensurate with the millisecond grid. If retention there is unstable at
+500 msg/s and stable at 457 and 383, the mechanism is phase and saturation was never needed. If it
+is unstable at all three, the phase hypothesis is wrong and this table is a coincidence.
+
+Recorded now, with the prediction already filed, so that the reading of chain8 cannot be chosen
+after seeing it.

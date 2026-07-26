@@ -81,6 +81,39 @@ class TestParsers:
         p.write_text("OMB,embedded,1\n", encoding="utf-8")
         assert parse_result_csv(str(p))["kept"] == ""
 
+    def test_an_older_narrower_schema_is_mapped_by_its_own_header(self, tmp_path):
+        """The `smoke` cell's real shape. Positional mapping put the bootstrap under `kept`
+        and a 1 under `discarded_negative`, inventing a causality violation."""
+        p = tmp_path / "r.csv"
+        p.write_text(
+            "harness,mode,valid,discarded_nonpositive,reason,duration_min,load_pct\n"
+            "OpenMessaging Benchmark,embedded,1,12,,3,0\n", encoding="utf-8")
+        r = parse_result_csv(str(p))
+        assert r["valid"] == "1" and r["duration_min"] == "3" and r["load_pct"] == "0"
+        assert r.get("discarded_negative", "") == ""
+        assert r.get("kept", "") == ""
+
+    def test_an_unknown_column_is_not_adopted(self, tmp_path):
+        p = tmp_path / "r.csv"
+        p.write_text("harness,mode,valid,some_future_column\nOMB,embedded,1,xyz\n",
+                     encoding="utf-8")
+        assert "some_future_column" not in parse_result_csv(str(p))
+
+    def test_the_current_schema_still_maps(self, tmp_path):
+        p = tmp_path / "r.csv"
+        p.write_text(
+            "harness,mode,valid,discarded_total,discarded_zero,discarded_negative,"
+            "most_negative_micros,kept,pub_lines,duration_min,load_pct,bootstrap\n"
+            + RESULT_ROW + "\n", encoding="utf-8")
+        r = parse_result_csv(str(p))
+        assert r["kept"] == "1821" and r["discarded_zero"] == "118608"
+        assert r["bootstrap"] == "10.0.1.221:19092"
+
+    def test_a_header_with_no_data_row_falls_back(self, tmp_path):
+        p = tmp_path / "r.csv"
+        p.write_text("harness,mode,valid\n", encoding="utf-8")
+        assert parse_result_csv(str(p))["harness"] == "harness"
+
     def test_a_missing_result_is_empty(self, tmp_path):
         assert parse_result_csv(str(tmp_path / "absent.csv")) == {}
 

@@ -102,7 +102,18 @@ def parse_workload(path):
 
 
 def parse_result_csv(path):
-    """The single header-less row written by the campaign script."""
+    """The row the campaign script wrote, mapped by ITS OWN header.
+
+    Earlier versions of the campaign wrote a different and shorter column set -- an invalid cell
+    still writes `harness,mode,valid,discarded_nonpositive,reason,duration_min,load_pct`. Mapping
+    such a row positionally onto today's twelve fields shifts every column: in the `smoke` cell it
+    put the bootstrap string under `kept` and a `1` under `discarded_negative`, inventing a
+    causality violation out of a schema assumption. That is the failure this project is about,
+    committed by the instrument built to detect it.
+
+    The header is in the file. Use it, and fall back to positional mapping only when there is no
+    recognisable header to use.
+    """
     try:
         with open(path, newline="", encoding="utf-8") as fh:
             rows = [r for r in csv.reader(fh) if r]
@@ -110,6 +121,14 @@ def parse_result_csv(path):
         return {}
     if not rows:
         return {}
+
+    header = [c.strip() for c in rows[0]]
+    if "harness" in header and len(rows) > 1:
+        row = rows[-1]
+        by_name = {k: (row[i] if i < len(row) else "") for i, k in enumerate(header)}
+        # Only fields this ledger knows about; an unrecognised column is not silently adopted.
+        return {k: v for k, v in by_name.items() if k in RESULT_FIELDS}
+
     row = rows[-1]
     return {k: (row[i] if i < len(row) else "") for i, k in enumerate(RESULT_FIELDS)}
 

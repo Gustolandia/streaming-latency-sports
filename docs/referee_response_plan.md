@@ -463,3 +463,78 @@ after R3    C4 resolves either way; rebuild; full verification
 
 C1–C3 are the ones that change the paper's shape and do not depend on any run. They should be
 done while R1 is going, not after.
+
+---
+
+# R1 outcome — the OMB claim does not survive its own sweep (2026-07-26)
+
+Phase R's first run was the sign-separated discard sweep, queued to settle referee **M3**
+("external validity rests on a single 3-minute run"). It settled more than that. The claim it
+was meant to strengthen is not supported, and the paper must change before anything else in
+Phase C is worth doing.
+
+## What was run
+
+`cloud/campaigns/omb_load_sweep.sh` — five background-load levels (0, 50, 75, 88, 95%), three
+replicates each, three minutes per cell, against Kafka on `sbl-b1`. The counter that produced
+the manuscript's $6{,}000$ was a single total with no sign. It is now four counters — zero,
+negative, most-negative, kept — printed exactly by a JVM shutdown hook rather than sampled from
+progress lines that quantise to 10,000.
+
+## What it found
+
+| background load | kept | discarded zero | discarded negative |
+|---|---|---|---|
+| 0%  |  1.51% | 98.49% | **0.000%** |
+| 50% | 76.32% | 23.68% | **0.000%** |
+| 75% | 95.59% |  4.41% | **0.000%** |
+
+**Zero negative samples in roughly 420,000 discards.** And the zero-share *falls* as load rises.
+Both point the same way, and it is not our way: our own mechanism predicts inversions become
+*more* common under load, because that is what Section~\ref{sec:twostate} establishes. A discard
+population that thins out as the machine gets busier is a tick collision — the arithmetic
+consequence the manuscript already describes at §6.7, lines 1125–1130 — not a causality
+violation.
+
+Corroborating, from `check_omb_quantisation.py`: OMB's own reported percentiles are whole
+milliseconds in 36 of 40 cases, and three runs report p50 = p95 = p99 = max = 1.0. That is not a
+narrow distribution. It is a distribution with one value in it.
+
+## What survives, what falls, what gets stronger
+
+**Survives — the entire source audit.** None of it depends on the sweep:
+
+- end-to-end latency is a cross-process (in a distributed deployment, cross-host) timestamp
+  difference, at the named commit, file and line;
+- `if (endToEndLatencyMicros > 0)` admits only positive samples and nothing counts the drops;
+- the reported distribution is therefore *conditioned on being positive*, so a causality
+  violation cannot appear in its output even in principle;
+- the retention rate is not merely unpublished but unrecoverable from a completed run.
+
+**Falls — the empirical attribution, and only that.** "It discarded $6{,}000$ samples" is true;
+"those were our failure mode" is not. Four sites inherit the bad inference and must change
+together: abstract (l. 70), contributions (l. 202), limitations (l. 2525), conclusion (l. 2631).
+
+**Gets stronger — the resolution finding.** §6.7 already predicted this consequence and called
+it "a large share of the samples". It is now measured, swept, and worse than predicted: at idle,
+OMB computed a latency summary from **1.5%** of its samples and reported nothing about the other
+98.5%. That is a better claim than the one it replaces — more defensible, more damning, and
+squarely the paper's own §6.5 thesis that instruments conceal their own failures. It also lands
+on the harness rather than on us.
+
+## Still to land before §6.7 is rewritten
+
+- `omb_resolution_test.sh` — message size 200 B → 256 KB, the decisive discriminator. Resolution
+  predicts the zero-share collapses once latency clears one tick; causality is indifferent to
+  message size. **Chained, fires on sweep exit.**
+- Reps 4–6 per load level → `load_sweep_p2`. At 0% load the three reps gave 98.5%, 99.2% and
+  0.003%; that bimodality is what a tick boundary looks like, but three reps cannot establish
+  it. **Chained.**
+- `index_external_campaigns.py` over every cell, so the campaign is in a ledger like our own runs.
+
+## Consequence for the referee's M3
+
+M3 asked for more than one 3-minute run. It now has 15, and will have 38. The answer to M3 is
+no longer "here is more of the same evidence" but "the additional evidence overturned the
+reading, and we corrected it" — which is the better answer to give, and the one this paper is
+in a poor position to refuse.

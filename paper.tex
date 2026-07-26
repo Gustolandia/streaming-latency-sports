@@ -1622,19 +1622,22 @@ orders of magnitude, which is why the mean-based counters above could not accoun
 and why the direct trace was necessary.
 
 \begin{table}[t]
-\caption{\textbf{A slower path is a more reliable measurement.} Payload padding lengthens the
-true transport without touching the scheduler. Utilisation is held to a $0.012$ spread; the
+\caption{\textbf{A slower path is a more reliable measurement, twice.} Payload padding lengthens
+the true transport without touching the scheduler. Utilisation is held to a $0.012$ spread; the
 serialisation cost pushes it slightly up, against the predicted direction. Both quantities move
-monotonically, in opposite directions.}
+monotonically, in opposite directions, in both campaigns: transport spans $76.9\times$ and
+$76.8\times$, the rate falls $4.09\times$ and $4.26\times$. Each cell is 2\,985 events.}
 \label{tab:ea10}
-\begin{tabular}{rrrr}
+\begin{tabular}{rrrrrr}
 \toprule
-Padding (B) & $\rho$ & Transport (ms) & Inversion rate \\
+& \multicolumn{2}{c}{E-A10} & \multicolumn{2}{c}{E-A10b} & \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+Padding (B) & Transport (ms) & Inversion & Transport (ms) & Inversion & $\rho$ span \\
 \midrule
-0 & 0.8809 & 0.701 & 0.2603 \\
-4\,096 & 0.8822 & 2.381 & 0.1906 \\
-65\,536 & 0.8847 & 14.638 & 0.0888 \\
-262\,144 & 0.8930 & 53.898 & 0.0637 \\
+0        & 0.701  & 0.2603 & 0.761  & 0.2338 & 0.881--0.882 \\
+4\,096   & 2.381  & 0.1906 & 2.474  & 0.1652 & 0.882--0.883 \\
+65\,536  & 14.638 & 0.0888 & 16.059 & 0.0784 & 0.885--0.885 \\
+262\,144 & 53.898 & 0.0637 & 58.482 & 0.0549 & 0.893--0.895 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1710,14 +1713,26 @@ accumulate; it wanders with sample size. An instrument built on averages is ther
 \emph{structurally} unable to see this failure, not merely insensitive to it, and no amount of
 additional sampling repairs it.
 
+\emph{The exponent replicates.} E-A10b repeats the sweep end to end on a different day. Fitting
+its four points independently gives $\alpha = 0.344$ against the original $0.339$ --- agreement to
+$1.5\%$ --- with $R^2 = 0.995$. The prefactor moves more ($0.238$ against $0.216$), which is what
+one expects when the level drifts and the shape does not, and it is the shape that carries the
+claim: $\alpha$ is below one in both campaigns, so both say the stall distribution has no finite
+mean. The rule therefore rests on two measurements rather than one.
+
 Equation~\ref{eq:tailindex} and the kernel trace were produced by different campaigns, on
 different instruments, and can be checked against each other. The rule predicts
 $\Pr[\text{stall} > 0.5\,\text{ms}] = 0.301$; the trace measures $0.181$. The ratio is $1.66$ ---
 the same order, from a fitted payload sweep and a \texttt{sched\_switch} histogram sharing no
-data. The rule over-predicts, which is the expected direction, since not every stall lands on a
-stamping instant. We state the limits plainly: $\alpha$ is fitted from four points in one
-campaign at one load level, not derived, and the $1.66\times$ gap is unexplained rather than
-accounted for. We report this as a rule with one measurement behind it.
+data. Refitting on the replication gives $0.274$ against the same traced $0.181$, a ratio of
+$1.52$: the gap narrows slightly and does not close. The rule over-predicts in both, which is the
+expected direction, since not every stall lands on a stamping instant.
+
+We state the limits plainly. $\alpha$ is fitted, not derived, from four points per campaign at
+one load level, and the residual factor of about $1.6$ between the rule and the trace is
+unexplained rather than accounted for. What the replication buys is that the exponent is a
+property of the system rather than of one afternoon's measurement; what it does not buy is a
+derivation, or an account of the gap.
 
 \paragraph{Two bounds the rate respects, and where each comes from.} The mechanism
 predicts a floor and the data supply a ceiling, and both are measured rather than fitted.

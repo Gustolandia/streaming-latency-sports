@@ -1174,6 +1174,36 @@ class TestLoadGeometryAndTtrue:
         if plans:
             assert len(plans) == 11, f"the corpus holds {len(plans)} plans; the paper says eleven"
 
+    def test_the_tail_index_replicates_and_the_paper_says_so(self, tex):
+        """alpha carried the paper's explanation for why mean-based counters fail, on one fit.
+
+        E-A10b refits it independently. Both values must be below one -- that is what "no finite
+        mean" rests on -- and the paper must quote both rather than the flattering one.
+        """
+        orig = {r["quantity"]: r["value"] for r in _rows("model", "tail_index.csv")}
+        rep = {r["quantity"]: r["value"] for r in _rows("model", "ea10b", "tail_index.csv")}
+        a_o, a_r = float(orig["alpha"]), float(rep["alpha"])
+        assert a_o < 1 and a_r < 1, "the no-finite-mean claim needs alpha < 1 in both campaigns"
+        assert abs(a_o - a_r) / a_o < 0.05, \
+            f"alpha {a_o} vs {a_r} is no longer a replication; the text must be rewritten"
+        section = " ".join(_section(tex, "sec:twostate").split())
+        assert f"{a_r:.3f}" in section, "the replication's exponent must be quoted"
+        # The prefactor moves more than the exponent, and the paper must not hide that.
+        assert f"{float(rep['C']):.3f}" in section, "the replication's prefactor must be quoted"
+
+    def test_the_ttrue_replication_is_in_the_table(self, tex):
+        """Both campaigns' transports and rates belong in tab:ea10, not just the better one."""
+        table = tex[tex.index(r"\label{tab:ea10}"):]
+        table = table[:table.index(r"\end{table}")]
+        for phase in (("model", "ttrue_sweep.csv"), ("model", "ea10b", "ttrue_sweep.csv")):
+            rows = _rows(*phase)
+            assert len(rows) == 4, f"{phase}: expected four payload levels"
+            for r in rows:
+                assert _contains_number(table, float(r["transport_ms"]), 3), \
+                    f"{phase} pad {r['pad_bytes']} transport missing from tab:ea10"
+                assert _contains_number(table, float(r["inversion"]), 4), \
+                    f"{phase} pad {r['pad_bytes']} inversion missing from tab:ea10"
+
     def test_the_traced_agreement_percentage_is_recomputed(self, tex):
         """The paper quotes an agreement figure in three places. It must be the computed one.
 

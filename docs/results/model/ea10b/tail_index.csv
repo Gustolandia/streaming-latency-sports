@@ -1,0 +1,10 @@
+quantity,value,detail
+alpha,0.3437,tail index of the stall distribution
+C,0.2159,"prefactor, T_true in ms"
+r2_log,0.9951,"4 points, 77x span"
+n_points,4,sweep conditions used
+finite_mean,False,alpha > 1
+finite_variance,False,alpha > 2
+traced_p_tail,0.18068,kernel trace at 0.5 ms
+predicted_p_tail,0.27399,from the fitted rule
+cross_check_ratio,1.516,predicted / traced

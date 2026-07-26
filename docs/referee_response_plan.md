@@ -1002,3 +1002,36 @@ attempted five times and abandoned after five faults in the benchmark's own work
 now six, across two months of the campaign and two different fault modes. That is a reportable
 observation about OMB rather than an embarrassment: its distributed mode did not survive six
 attempts by someone reading its source.
+
+### Settled headline figures for §6.7 (53 cells joined, 49 unsaturated)
+
+Four cells ran with the link saturated (reported p50 of 235 ms to 43 s) and are excluded: they are
+a different regime and their inclusion only dilutes the result. The remaining 49 are the regime
+every co-located broker benchmark occupies, and the one this paper's own transport measurements
+sit in.
+
+| quantity | across 49 unsaturated cells |
+|---|---|
+| retention | **0.36% to 100.00%** — a 278-fold range |
+| reported p50 | **exactly two values: 1.0 and 2.0 ms** |
+| reported average | 1.000 to 11.503 ms |
+| publish latency p50 (unquantised) | **0.3 to 0.4 ms** |
+| Spearman(retention, reported average) | **−0.681** |
+| Spearman(publish latency, retention) | **+0.075** |
+| negative samples | **0** |
+
+**Excluding the saturated cells strengthens the finding**, from −0.505 to −0.681. They were
+diluting it, which is the opposite of the usual worry about dropping inconvenient data, and is
+worth saying explicitly since dropping cells always invites the question.
+
+**The mechanism question is settled negatively.** Publish latency is measured inside one process
+and is not quantised to the millisecond grid, so it is a clean probe of how fast the path actually
+was. It spans 0.1 ms while retention spans 278-fold, and their rank correlation is **+0.075**. The
+path did not change. Whatever decides how much of its data OMB keeps, it is not how fast the
+messages were.
+
+**The three numbers to print together**, because each is weak alone and they are damning jointly:
+retention ranges 278-fold; the reported median takes two values; the reported average moves
+*inversely* with the amount of data behind it. An instrument whose headline is insensitive to a
+278-fold change in its evidence, and whose secondary statistic moves the wrong way, is not
+reporting the quantity its users think it is.

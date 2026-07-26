@@ -1,0 +1,68 @@
+=== chain start 2026-07-24T11:46:56Z ===
+--- 1/3 E-A3 collapse suite ---
+=== collapse suite: speedup 0.008333, window 180s, 5 reps, 8 cores 11:46:56 ===
+=== E-A3 bg=0 (of 8 cores) 11:46:56 ===
+
+[SUCCESS] All runs completed successfully!
+=== E-A3 bg=2 (of 8 cores) 12:04:38 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/collapse_suite.sh: line 45: 212429 Killed                  stress-ng --cpu "$bg" --timeout 3600s > /dev/null 2>&1
+=== E-A3 bg=4 (of 8 cores) 12:22:24 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/collapse_suite.sh: line 45: 214376 Killed                  stress-ng --cpu "$bg" --timeout 3600s > /dev/null 2>&1
+=== E-A3 bg=5 (of 8 cores) 12:40:10 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/collapse_suite.sh: line 45: 216392 Killed                  stress-ng --cpu "$bg" --timeout 3600s > /dev/null 2>&1
+=== E-A3 bg=6 (of 8 cores) 12:57:57 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/collapse_suite.sh: line 45: 218375 Killed                  stress-ng --cpu "$bg" --timeout 3600s > /dev/null 2>&1
+=== E-A3 bg=7 (of 8 cores) 13:15:44 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/collapse_suite.sh: line 45: 220403 Killed                  stress-ng --cpu "$bg" --timeout 3600s > /dev/null 2>&1
+=== E-A3 bg=8 (of 8 cores) 13:33:32 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/collapse_suite.sh: line 45: 222368 Killed                  stress-ng --cpu "$bg" --timeout 3600s > /dev/null 2>&1
+=== E-A3 bg=10 (of 8 cores) 13:51:21 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/collapse_suite.sh: line 45: 224465 Killed                  stress-ng --cpu "$bg" --timeout 3600s > /dev/null 2>&1
+=== E-A3 bg=12 (of 8 cores) 14:09:10 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/collapse_suite.sh: line 45: 226407 Killed                  stress-ng --cpu "$bg" --timeout 3600s > /dev/null 2>&1
+=== COLLAPSE_SUITE_COMPLETE 14:27:01 ===
+--- 2/3 E-C4: H3 replication, 15 reps/arm ---
+manipulation check OK: flag present and guard fires
+=== H3 stamping: speedup 0.008333, window 180s, 15 reps, 8 cores 14:27:31 ===
+=== E-C3 ack-stamp=callback 14:27:31 ===
+Summary: docs/results/depth_rep2/ec3/callback/concurrency_concurrency_n2_20260724_142735/concurrency_n2_20260724_142735_summary.json
+
+[SUCCESS] All runs completed successfully!
+=== E-C3 ack-stamp=inline 15:20:30 ===
+Summary: docs/results/depth_rep2/ec3/inline/concurrency_concurrency_n2_20260724_152034/concurrency_n2_20260724_152034_summary.json
+
+[SUCCESS] All runs completed successfully!
+=== H3_STAMPING_COMPLETE 16:13:29 ===
+--- 3/3 transport replication #2, 8 reps ---
+=== transport at true real time: speedup 0.008333, 180s, 8 reps, 8 cores 16:13:59 ===
+=== N=1 16:13:59 ===
+Summary: docs/results/transport_rt2/n1/concurrency_concurrency_n1_20260724_161402/concurrency_n1_20260724_161402_summary.json
+
+[SUCCESS] All runs completed successfully!
+=== N=9 16:42:15 ===
+Summary: docs/results/transport_rt2/n9/concurrency_concurrency_n9_20260724_164217/concurrency_n9_20260724_164217_summary.json
+
+[SUCCESS] All runs completed successfully!
+=== N=12 17:10:42 ===
+  [OK] concurrency_n12_20260724_171044_redis_feed3_rep5: Completed in 149.2s
+  [OK] concurrency_n12_20260724_171044_kafka_feed3_rep5: Completed in 150.0s
+  [OK] concurrency_n12_20260724_171044_kafka_feed6_rep5: Completed in 155.1s
+  NOTE: N=12 hit shell timeout (4620s)
+=== TRANSPORT_REALTIME_COMPLETE 18:27:46 ===
+=== ALL_QUEUED_CAMPAIGNS_COMPLETE 2026-07-24T18:27:46Z ===

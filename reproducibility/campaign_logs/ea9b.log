@@ -1,0 +1,76 @@
+=== ea9b chain starting 2026-07-25T19:36:26Z ===
+kept the untraced first attempt as ea9_notrace (valid inversion rates, no histogram)
+=== E-A9 rerun with a working probe 2026-07-25T20:56:58Z ===
+=== provisioning bpftrace 20:56:58 ===
+bpftrace v0.14.0
+=== verifying the probe attaches and records before spending cells on it 20:56:58 ===
+probe ok: @count: 0
+=== stall distribution: speedup 0.008333, 180s, 5 reps, load 88% 20:57:06 ===
+=== E-A9 88% BASELINE (ordinary priority, run-queue delay traced) 20:57:06 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/stall_distribution.sh: line 122: 381176 Killed                  sudo pkill -9 -f bpftrace 2> /dev/null
+cloud/campaigns/stall_distribution.sh: line 122: 378637 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$LOAD_PCT" --timeout 3600s > /dev/null 2>&1
+  TRACE OK
+@count: 551956
+@over_1000us: 87124
+@over_2000us: 74801
+@over_500us: 99730
+=== E-A9 88% ELEVATED (SCHED_FIFO 80, run-queue delay traced) 21:15:11 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/stall_distribution.sh: line 122: 383553 Killed                  sudo pkill -9 -f bpftrace 2> /dev/null
+cloud/campaigns/stall_distribution.sh: line 122: 381199 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$LOAD_PCT" --timeout 3600s > /dev/null 2>&1
+  TRACE OK
+@count: 570591
+@over_1000us: 9563
+@over_2000us: 8429
+@over_500us: 10528
+=== STALL_DISTRIBUTION_COMPLETE 21:33:20 ===
+ea9 rerun rc=0
+=== E-A9 analysis ===
+== did tracing change what we measured? ==
+  traced baseline 0.23149 vs untraced 0.22140   drift 4.6%   [ok]
+
+== P(run-queue delay > 0.5 ms) against the measured inversion rate ==
+  l88_base: rho 0.8822   traced events 551,956
+      P(tail) 0.18068   inversion 0.23149   ratio 0.78   (exact counter)
+  l88_rt: rho 0.8819   traced events 570,591
+      P(tail) 0.01845   inversion 0.00000   ratio n/a   (exact counter)
+
+== verdict ==
+UNDECIDED: need both arms with a traced tail
+
+wrote docs/results/model/runq_tail.csv
+=== OMB attempt 4 2026-07-25T21:33:53Z ===
+198
+=== background load on both hosts (88% duty) 21:34:30 ===
+=== starting workers: driver 10.0.1.218 and client 10.0.1.122 21:34:35 ===
+=== waiting for both workers to answer 21:34:35 ===
+  driver worker up: 1   client worker up: 1
+=== running distributed OMB for 5 min under 88% load on both hosts 21:35:01 ===
+21:35:03.538 [main] INFO DistributedWorkersEnsemble - Workers list - consumers: http://10.0.1.122:8080
+21:35:03.544 [main] INFO Benchmark - --------------- WORKLOAD : sbl-audit-distributed --- DRIVER : Kafka---------------
+21:35:07.191 [main] INFO WorkloadGenerator - Created 1 topics in 90.04888 ms
+21:35:08.091 [main] INFO WorkloadGenerator - Created 1 consumers in 895.853085 ms
+21:35:08.132 [main] INFO WorkloadGenerator - Created 1 producers in 39.752377 ms
+21:35:08.132 [main] INFO WorkloadGenerator - Waiting for consumers to be ready
+21:35:08.298 [main] INFO WorkloadGenerator - Waiting for topics to be ready -- Sent: 0, Received: 0
+21:35:10.307 [main] INFO WorkloadGenerator - Waiting for topics to be ready -- Sent: 1, Received: 0
+21:35:12.318 [main] INFO WorkloadGenerator - Waiting for topics to be ready -- Sent: 1, Received: 1
+21:35:12.319 [main] INFO WorkloadGenerator - All consumers are ready
+21:35:12.320 [main] ERROR Benchmark - Failed to run the workload 'sbl-audit-distributed' for driver '/home/ubuntu/omb/../sbl/docs/results/external/omb_driver_dist.yaml'
+java.lang.NullPointerException: null
+	at java.io.File.<init>(File.java:278) ~[?:?]
+	at io.openmessaging.benchmark.utils.payload.FilePayloadReader.load(FilePayloadReader.java:34) ~[classes/:?]
+	at io.openmessaging.benchmark.WorkloadGenerator.run(WorkloadGenerator.java:145) ~[classes/:?]
+	at io.openmessaging.benchmark.Benchmark.lambda$main$0(Benchmark.java:173) ~[classes/:?]
+	at java.util.ArrayList.forEach(ArrayList.java:1511) ~[?:?]
+	at io.openmessaging.benchmark.Benchmark.lambda$main$1(Benchmark.java:153) ~[classes/:?]
+	at java.util.TreeMap.forEach(TreeMap.java:1282) [?:?]
+	at io.openmessaging.benchmark.Benchmark.main(Benchmark.java:151) [classes/:?]
+=== validating that the benchmark actually ran 21:35:16 ===
+  'Pub rate' lines: 0   'Aggregated' lines: 0   failure lines: 1
+NO VALID RUN: benchmark produced no latency output (pub=0 agg=0 failures=1)
+wrote docs/results/external/omb_distributed_result.csv marked invalid; no count is reported
+=== ea9b chain finished 2026-07-25T21:35:19Z rc=1 ===

@@ -1,0 +1,32 @@
+driver clear at 2026-07-25T05:21:15Z; starting knee resolution
+=== knee resolution: speedup 0.008333, 180s, 5 reps, 8 cores 05:21:45 ===
+=== E-A4 cpu-load=70% (of 8 cores) 05:21:45 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/knee_resolution.sh: line 62: 280078 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$pct" --timeout 3600s > /dev/null 2>&1
+=== E-A4 cpu-load=80% (of 8 cores) 05:39:33 ===
+
+[WARNING] 10 runs failed. Check logs for details.
+cloud/campaigns/knee_resolution.sh: line 62: 282806 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$pct" --timeout 3600s > /dev/null 2>&1
+=== E-A4 cpu-load=88% (of 8 cores) 05:56:52 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/knee_resolution.sh: line 62: 285184 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$pct" --timeout 3600s > /dev/null 2>&1
+=== E-A4 cpu-load=92% (of 8 cores) 06:14:41 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/knee_resolution.sh: line 62: 288322 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$pct" --timeout 3600s > /dev/null 2>&1
+=== E-A4 cpu-load=95% (of 8 cores) 06:32:30 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/knee_resolution.sh: line 62: 290152 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$pct" --timeout 3600s > /dev/null 2>&1
+=== E-A4 cpu-load=97% (of 8 cores) 06:50:20 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/knee_resolution.sh: line 62: 292004 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$pct" --timeout 3600s > /dev/null 2>&1
+=== E-A4 cpu-load=99% (of 8 cores) 07:08:09 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/knee_resolution.sh: line 62: 293868 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$pct" --timeout 3600s > /dev/null 2>&1
+=== KNEE_RESOLUTION_COMPLETE 07:25:59 ===
+knee chain finished at 2026-07-25T07:25:59Z

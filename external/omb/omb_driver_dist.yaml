@@ -1,0 +1,13 @@
+name: Kafka
+driverClass: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
+replicationFactor: 1
+topicConfig: |
+  min.insync.replicas=1
+commonConfig: |
+  bootstrap.servers=10.0.1.221:19092
+producerConfig: |
+  acks=all
+  linger.ms=0
+consumerConfig: |
+  auto.offset.reset=earliest
+  enable.auto.commit=false

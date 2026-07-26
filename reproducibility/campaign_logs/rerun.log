@@ -1,0 +1,33 @@
+=== reruns: speedup 0.008333, window 180s, 8 cores 16:50:22 ===
+=== E-A-sat bg=0 (of 8 cores) 16:50:22 ===
+
+[SUCCESS] All runs completed successfully!
+=== E-A-sat bg=2 (of 8 cores) 17:01:02 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/rerun_h2_h3.sh: line 47: 133206 Killed                  stress-ng --cpu "$bg" --timeout 900s > /dev/null 2>&1
+=== E-A-sat bg=4 (of 8 cores) 17:11:44 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/rerun_h2_h3.sh: line 47: 134338 Killed                  stress-ng --cpu "$bg" --timeout 900s > /dev/null 2>&1
+=== E-A-sat bg=8 (of 8 cores) 17:22:26 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/rerun_h2_h3.sh: line 47: 135558 Killed                  stress-ng --cpu "$bg" --timeout 900s > /dev/null 2>&1
+=== E-A-sat bg=12 (of 8 cores) 17:33:10 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/rerun_h2_h3.sh: line 47: 136668 Killed                  stress-ng --cpu "$bg" --timeout 900s > /dev/null 2>&1
+=== E-A-sat bg=16 (of 8 cores) 17:43:55 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/rerun_h2_h3.sh: line 47: 137893 Killed                  stress-ng --cpu "$bg" --timeout 900s > /dev/null 2>&1
+=== E-C2 stamping=callback 17:54:41 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/rerun_h2_h3.sh: line 47: 139086 Killed                  stress-ng --cpu "$bg" --timeout 900s > /dev/null 2>&1
+=== E-C2 stamping=inline 18:05:33 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/rerun_h2_h3.sh: line 47: 139866 Killed                  stress-ng --cpu "$bg" --timeout 900s > /dev/null 2>&1
+=== RERUNS_COMPLETE 18:16:23 ===

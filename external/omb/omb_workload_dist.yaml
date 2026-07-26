@@ -1,0 +1,11 @@
+name: sbl-audit-distributed
+topics: 1
+partitionsPerTopic: 1
+messageSize: 200
+payloadFile: "/home/ubuntu/sbl/docs/results/external/omb_payload_200b.data"
+subscriptionsPerTopic: 1
+consumerPerSubscription: 1
+producersPerTopic: 1
+producerRate: 500
+consumerBacklogSizeGB: 0
+testDurationMinutes: 5

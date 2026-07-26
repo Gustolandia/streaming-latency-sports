@@ -1,0 +1,20 @@
+driver clear at 2026-07-25T07:28:13Z; starting E-A5 stamping priority
+=== stamping priority: speedup 0.008333, 180s, 5 reps, 8 cores 07:28:43 ===
+=== E-A5 cpu-load=75% BASELINE (ordinary priority) 07:28:43 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/stamping_priority.sh: line 81: 295956 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$pct" --timeout 3600s > /dev/null 2>&1
+=== E-A5 cpu-load=75% ELEVATED (SCHED_FIFO 80) 07:46:32 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/stamping_priority.sh: line 81: 298327 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$pct" --timeout 3600s > /dev/null 2>&1
+=== E-A5 cpu-load=88% BASELINE (ordinary priority) 08:04:20 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/stamping_priority.sh: line 81: 302344 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$pct" --timeout 3600s > /dev/null 2>&1
+=== E-A5 cpu-load=88% ELEVATED (SCHED_FIFO 80) 08:22:10 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/stamping_priority.sh: line 81: 304232 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$pct" --timeout 3600s > /dev/null 2>&1
+=== STAMPING_PRIORITY_COMPLETE 08:39:59 ===
+ea5 finished at 2026-07-25T08:39:59Z

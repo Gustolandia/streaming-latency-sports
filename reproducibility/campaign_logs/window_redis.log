@@ -1,0 +1,17 @@
+driver clear at 2026-07-24T03:55:11Z; starting traced window sweep
+manipulation check OK: both producers traceable, orchestrator carries it to both arms
+=== window sweep (both arms traced): speedup 0.008333, 3 reps 03:55:41 ===
+=== window 60s 03:55:41 ===
+Summary: docs/results/window2/w60/concurrency_concurrency_n1_20260724_035543/concurrency_n1_20260724_035543_summary.json
+
+[SUCCESS] All runs completed successfully!
+=== window 180s 04:00:20 ===
+Summary: docs/results/window2/w180/concurrency_concurrency_n1_20260724_040022/concurrency_n1_20260724_040022_summary.json
+
+[SUCCESS] All runs completed successfully!
+=== window 600s 04:10:58 ===
+Summary: docs/results/window2/w600/concurrency_concurrency_n1_20260724_041100/concurrency_n1_20260724_041100_summary.json
+
+[SUCCESS] All runs completed successfully!
+=== WINDOW_SWEEP_BOTH_ARMS_COMPLETE 04:41:07 ===
+chain finished at 2026-07-24T04:41:07Z

@@ -1137,6 +1137,27 @@ class TestLoadGeometryAndTtrue:
         section = " ".join(_section(tex, "sec:twostate").split())
         assert "0.7531" in section and "identical to four decimals" in section
 
+    def test_the_priority_collapse_range_is_recomputed_from_every_pair(self, tex):
+        """The abstract quotes a range. It must be the range the artefacts actually contain.
+
+        It was not: the upper bound read 76x where the 95%-load pair gives 79.7x, an arithmetic
+        slip in docs/laws.md that propagated into the abstract and the README. It understated
+        our own effect, which is the direction least likely to be questioned and therefore the
+        one worth pinning to a computation.
+        """
+        ratios = []
+        for name in ("stamping_priority", "stamping_priority_ea5b", "stamping_priority_ea7"):
+            for r in _rows("model", f"{name}.csv"):
+                base, rt = float(r["inv_base"]), float(r["inv_rt"])
+                if rt > 0:
+                    ratios.append(base / rt)
+        assert len(ratios) == 8, f"expected 8 matched pairs, found {len(ratios)}"
+        abstract = " ".join(re.search(r"\\begin\{abstract\}(.*?)\\end\{abstract\}",
+                                      tex, re.S).group(1).split())
+        lo, hi = min(ratios), max(ratios)
+        assert f"${round(lo)}$ to ${round(hi)}" in abstract, (
+            f"artefacts give {lo:.1f}x-{hi:.1f}x; abstract does not state that range")
+
     def test_every_float_is_referenced_from_the_text(self, tex):
         """A figure, table or equation no sentence points to is a float the reader never meets.
 

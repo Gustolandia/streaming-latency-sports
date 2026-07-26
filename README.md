@@ -36,7 +36,7 @@
 >    to the audit's own unequal retention (bounded in [`retention_bias.py`](scripts/retention_bias.py)).
 > 2. The mechanism is **established by manipulation, on both sides of the inequality**:
 >    `P(inversion) = P(scheduling stall > T_true)`. Raising the stamping threads to `SCHED_FIFO`
->    at *fixed* utilisation collapses the rate 7–76× across five campaigns; two load geometries
+>    at *fixed* utilisation collapses the rate 7–80× across eight matched pairs; two load geometries
 >    at **identical ρ to four decimals** differ 2.07× (z=10.3), so utilisation cannot be the
 >    variable; lengthening true transport 77× *lowers* the rate 4.1×, which no stress-based
 >    account predicts; and a `sched_switch` trace predicts the measured rate to within 30%,

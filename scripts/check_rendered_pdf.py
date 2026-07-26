@@ -38,7 +38,12 @@ CHECKS = (
      "a non-breaking space that reached the output as a literal character"),
     ("raw macro escape", r"\\(?:ref|cite|texttt|emph|label|textbf|section)",
      "a backslash survived into the output, so the macro never ran"),
-    ("lost-backslash residue", r"exttt\{|\bmph\{|\bextbf\{|ectionef|\bef\{",
+    # The braces must NOT be required here. LaTeX consumes `{` and `}` as grouping characters,
+    # so a mangled `\ref{sec:gate}` renders as "efsec:gate" with no brace surviving into the
+    # output. An earlier version of this check demanded `ef\{` and therefore passed a manuscript
+    # carrying five broken cross-references -- the exact failure the script exists to catch.
+    ("lost-backslash residue",
+     r"\bef(?:sec|tab|fig|eq|app|alg):|exttt|\bmph\{|\bextbf\{|ectionef|\bef\{|\bite\{",
      "the backslash was eaten and the macro name printed as text"),
     ("literal newline escape", r"\\n\b",
      "a Python-style escape reached the manuscript, usually via a heredoc"),

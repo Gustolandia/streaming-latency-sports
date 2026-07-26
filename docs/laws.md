@@ -117,7 +117,7 @@ E-A9 traced `sched_wakeup`/`sched_switch` and computed P(run-queue delay > T_tru
 | ordinary | 551,956 | 0.1807 | 0.2315 | **0.78** |
 | real-time | 570,591 | 0.0185 | 0.0000 | — |
 
-A traced scheduler quantity predicts the measured inversion rate to within 30%, unfitted. The
+A traced scheduler quantity predicts the measured inversion rate to within 22%, unfitted. The
 instrument check passed first: the traced baseline differs from the untraced measurement of the
 same cell by 4.6%, so BPF did not move what it measured.
 
@@ -203,7 +203,7 @@ quantity resists manipulation because every route to shortening it lengthens som
 
 ## Still open
 
-- **What sets the level.** The mechanism predicts the rate to within 30% in one arm. There is no
+- **What sets the level.** The mechanism predicts the rate to within 22% in one arm. There is no
   formula for the rate at a given load, and two attempts to write one have failed.
 - **The real-time arm's zero** (above) needs an untraced control before its level is trusted.
 - **Distributed OMB.** Five attempts, five distinct faults in the benchmark's worker protocol.

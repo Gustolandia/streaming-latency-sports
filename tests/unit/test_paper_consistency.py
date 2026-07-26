@@ -1174,6 +1174,20 @@ class TestLoadGeometryAndTtrue:
         if plans:
             assert len(plans) == 11, f"the corpus holds {len(plans)} plans; the paper says eleven"
 
+    def test_the_traced_agreement_percentage_is_recomputed(self, tex):
+        """The paper quotes an agreement figure in three places. It must be the computed one.
+
+        docs/laws.md said 30% where the artefacts give 21.9%; a looser bound is still true but
+        two documents quoting different numbers for one comparison is how a wrong one survives.
+        """
+        rows = {r["arm"]: r for r in _rows("model", "runq_tail.csv")}
+        base = rows["base"]
+        traced, observed = float(base["p_tail"]), float(base["inversion"])
+        gap = abs(observed - traced) / observed
+        assert 0.215 < gap < 0.225, f"agreement recomputes to {gap:.1%}"
+        assert f"{round(gap * 100)}" in " ".join(tex.split()), \
+            f"the paper must quote {round(gap * 100)}% for the traced/observed agreement"
+
     def test_the_discussion_recommends_the_mitigation_the_data_support(self, tex):
         """The paper measures a mitigation with a 7-80x effect and did not recommend it.
 

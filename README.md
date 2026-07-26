@@ -522,67 +522,27 @@ S3 mode injects state-staleness corrections identically across both backends:
 `s3_uid` / `s3_rev` / `s3_is_correction` envelope. Config: `configs/s3_injections.yaml`
 (`seed=12345`, every-kth selection, k=50).
 
-### 6.5 Decision-staleness — expressing milliseconds on a decision scale
+### 6.5 Decision-staleness — removed with the sports framing
 
-⚠️ **Status: a lens, not a second measurement.** For a fixed corpus of decisive events this
-metric is a *weighted rescaling of measured latency* — both backends are scored against the
-identical model, so the ordering under it is the ordering under latency. It adds interpretation
-and units, not inferential power, and the manuscript says so. The single-host decision-staleness
-**aggregates are withdrawn** with the rest of Testbed A (§1.3); what the manuscript retains is
-the per-event conversion applied to the gated numbers.
+**This analysis is no longer part of the work.** It translated delivery latency into in-play
+decision error through a calibrated win-probability proxy and an age-of-information staleness
+cost, and it belonged to the Journal of Sports Analytics framing described in the header. When
+that framing was retired the five scripts behind it (`win_probability.py`, `wp_calibration.py`,
+`wp_sensitivity.py`, `decision_staleness.py`, `make_worked_example.py`) and their result
+directories were deleted in commit `67efbfa`, along with 28 other obsolete scripts.
 
-We translate delivery latency into in-play **decision error** in two steps:
+They are recoverable from git history if anyone wants them, and the reason they went is worth
+recording rather than hiding: the conversion was a *weighted rescaling of measured latency*.
+Both backends were scored against the identical model, so the ordering under the staleness
+metric was the ordering under latency. It added interpretation and units, not inferential power
+— and once the paper became a systems paper about measurement validity, interpretation in
+football units was no longer what the results needed.
 
-1. **Win-probability proxy** (`scripts/win_probability.py`) — a transparent, calibrated in-play
-   model on StatsBomb-derivable game state (score differential, fraction of match remaining,
-   red-card differential), built on a Skellam (difference-of-Poissons) goal model. It cites
-   Robberechts et al. (SIGKDD 2021) as the established model (their code is unreleased) and is
-   validated by ranked probability score and a reliability diagram: **RPS = 0.142** and
-   **ECE = 0.054** over 28,240 game states (`scripts/wp_calibration.py` →
-   `docs/results/win_probability/wp_calibration.png`) — predicted win-probabilities track
-   observed frequencies to within a few percentage points.
-2. **Age-of-Information decision-staleness** (`scripts/decision_staleness.py`) — for each
-   decisive event (goal), the consumer's win-probability is stale for the event's delivery
-   latency *L* by the magnitude of the probability shift it caused. We define a run's
-   **decision-staleness cost** = Σ over decisive events of `TV_shift × L` (units:
-   probability-seconds per match), where `TV_shift = ½·(|ΔP_win| + |ΔP_draw| + |ΔP_loss|)`.
-
-Worked on the gated numbers: the largest forecast move in the corpus is a 95th-minute equaliser
-shifting the outcome distribution by 0.955 in total variation. At the ~0.8 ms broker transport
-both systems deliver, that event costs under 0.001 probability-seconds; at the 31.4 s a
-round-trip-bound consumer suffers behind a 20 ms hop, **30 probability-seconds**. The first is
-decision-irrelevant and the second is not. (The earlier version of this worked example used the
-105.5 ms / 5.2 ms end-to-end figures, which are **withdrawn** — see §1.2 Claim 2.)
-
-The proxy is calibrated (ECE 0.054 over 28,240 game states) but **modest**: its skill over a
-lookup table conditioned on nothing but the current goal difference is **+0.026**. It is a
-calibrated yardstick, not a model of in-play win probability in any stronger sense, and the
-manuscript describes it that way.
-
-**Supporting analyses.** Because the headline is a *negative* result, three scripts exist
-specifically to keep it honest:
-
-| Script | Question it answers |
-|---|---|
-| `equivalence_tests.py` | Is this equivalence, or just failure to detect? (TOST vs a pre-specified one-frame margin) |
-| `wp_sensitivity.py` | Does the conclusion depend on the win-probability proxy? (sweeps the scoring rate; the between-backend difference is invariant) |
-| `wp_calibration.py` | Is the proxy any good? (reliability diagram + ECE) |
-| `make_worked_example.py` | What does one goal's staleness actually look like? (Leverkusen's 95' equaliser) |
-
-**Decisive events** are goals (own goals credited to the opponent) **and red cards**. Dismissals
-belong in the metric because the win-probability model already conditions on the red-card
-differential, so a sending-off moves the forecast exactly as a goal does; excluding them would
-under-count the staleness a feed can carry. Events are replayed in match order, so a goal's
-shift is evaluated against the game state left by any earlier dismissal.
-
-**Regenerating the corpus from scratch.** The replay plans are shipped as data *and* as code:
-
-| Script | Produces |
-|---|---|
-| `make_replay_plan.py` | one match's plan from raw StatsBomb events (verified to reproduce the committed plans byte-for-byte) |
-| `make_multimatch_plan.py` | a merged multi-match plan (note: merging N matches into one feed multiplies that feed's event rate — the concurrency/throughput confound described in §7.3) |
-
----
+What survives from that line of work is the observation that makes the sports setting worth
+mentioning at all: football event feeds are sparse (0.415 ev/s, at most ~12 concurrent matches)
+and their end-to-end budget is dominated by human annotation measured in seconds, so a
+sub-millisecond broker difference cannot matter to the domain. That is stated in the paper as
+the reason the original question has a boring answer, and it needs no win-probability model.
 
 ## 7. Experimental Phases & Results
 
@@ -669,8 +629,6 @@ streaming-latency-sports/
 │   ├── infrastructure.md · literature_and_originality.md   # supporting docs
 │   └── results/                    # GENERATED analysis outputs (CSV/PNG/PDF)
 │       ├── realtime_concurrency/   # PRIMARY: fair sweep latency by backend/config/N
-│       ├── decision_staleness_fair/# PRIMARY: AoI decision-staleness by backend/config/N
-│       └── win_probability/ · actionability/ · ...         # supporting
 │
 ├── runs/                           # per-run outputs + canonical run lists
 │   ├── _paper_s2_official_runs.txt # canonical S2 list (frozen)
@@ -850,7 +808,7 @@ Streaming Latency Benchmarks, and What It Left of a Kafka-versus-Redis Compariso
 with `acmart` (`acmsmall`) for ACM TOMPECS.
 
 **Every headline number is pinned to its artefact** by
-`tests/unit/test_manuscript_consistency.py`, which recomputes the figures from the committed
+`tests/unit/test_paper_consistency.py`, which recomputes the figures from the committed
 CSVs and fails if the manuscript and the data disagree. That test exists because an earlier
 revision withdrew an entire measurement arm as invalid and then kept quoting one of its
 figures (1.35 ms) in the abstract, while the conclusion quoted a different value for the same
@@ -941,7 +899,7 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 - **Jul 22** — **Manuscript rebuilt around the clock-integrity finding.** Retitled; the audit
   is now Sections 5–6 rather than a caveat. Every result section rewritten against gated data
   only; the withdrawn arm is presented as evidence for RQ5 instead of as an apology. Added
-  `tests/unit/test_manuscript_consistency.py` (21 tests) pinning every headline number to its
+  `tests/unit/test_paper_consistency.py` (21 tests) pinning every headline number to its
   CSV, plus `scripts/make_e1_figure.py` (+13 tests). Corrected a claim we had got wrong: the
   N=5 acknowledgement-batching null is **not** a gate failure — that arm passes 15/15 — so it
   is now reported as an unexplained open question. Recomputed the staleness budget from gated

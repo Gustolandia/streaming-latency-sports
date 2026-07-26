@@ -1,0 +1,14 @@
+Warning: Permanently added '10.0.1.140' (ED25519) to the list of known hosts.
+Reference ID    : B97DBE38 (prod-ntp-3.ntp1.ps5.canonical.com)
+Stratum         : 3
+Ref time (UTC)  : Sun Jul 26 16:47:37 2026
+System time     : 0.000001808 seconds slow of NTP time
+Last offset     : +0.000001209 seconds
+RMS offset      : 0.000087408 seconds
+Frequency       : 16.043 ppm slow
+Residual freq   : +0.000 ppm
+Skew            : 0.022 ppm
+Root delay      : 0.006863366 seconds
+Root dispersion : 0.001335748 seconds
+Update interval : 521.9 seconds
+Leap status     : Normal

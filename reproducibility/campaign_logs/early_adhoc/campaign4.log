@@ -1,0 +1,7 @@
+=== cluster N=5 21:11:42 ===
+Failed: 15
+Run list: runs/_concurrency_concurrency_n5_20260721_211142_runs.txt
+Summary: docs/results/concurrency_concurrency_n5_20260721_211142/concurrency_n5_20260721_211142_summary.json
+
+[WARNING] 15 runs failed. Check logs for details.
+CAMPAIGN4_COMPLETE 21:13:23

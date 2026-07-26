@@ -1,0 +1,19 @@
+=== arm unbatched 22:18:04 ===
+
+[SUCCESS] All runs completed successfully!
+--- netem stats after unbatched:
+awk: cmd. line:1: {print \}
+awk: cmd. line:1:        ^ backslash not last character on line
+awk: cmd. line:1: {print \}
+awk: cmd. line:1:        ^ syntax error
+Command line is not complete. Try option "help"
+=== arm batched 22:23:46 ===
+
+[SUCCESS] All runs completed successfully!
+--- netem stats after batched:
+awk: cmd. line:1: {print \}
+awk: cmd. line:1:        ^ backslash not last character on line
+awk: cmd. line:1: {print \}
+awk: cmd. line:1:        ^ syntax error
+Command line is not complete. Try option "help"
+P4B_DONE 22:29:31

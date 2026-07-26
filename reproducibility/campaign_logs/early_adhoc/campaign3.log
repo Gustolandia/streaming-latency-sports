@@ -1,0 +1,21 @@
+=== connections N=10 21:06:06 ===
+Run list: runs/_concurrency_concurrency_n10_20260721_210606_runs.txt
+Summary: docs/results/concurrency_concurrency_n10_20260721_210606/concurrency_n10_20260721_210606_summary.json
+
+[SUCCESS] All runs completed successfully!
+=== connections N=25 21:11:39 ===
+                               [--redis-consumer-extra REDIS_CONSUMER_EXTRA]
+                               [--plans-dir PLANS_DIR]
+                               {1,5,10,20} plan_csv reps
+run_concurrency_test.py: error: argument concurrency: invalid choice: 25 (choose from 1, 5, 10, 20)
+=== connections N=50 21:11:39 ===
+                               [--redis-consumer-extra REDIS_CONSUMER_EXTRA]
+                               [--plans-dir PLANS_DIR]
+                               {1,5,10,20} plan_csv reps
+run_concurrency_test.py: error: argument concurrency: invalid choice: 50 (choose from 1, 5, 10, 20)
+=== connections N=100 21:11:39 ===
+                               [--redis-consumer-extra REDIS_CONSUMER_EXTRA]
+                               [--plans-dir PLANS_DIR]
+                               {1,5,10,20} plan_csv reps
+run_concurrency_test.py: error: argument concurrency: invalid choice: 100 (choose from 1, 5, 10, 20)
+CAMPAIGN3_COMPLETE 21:11:39

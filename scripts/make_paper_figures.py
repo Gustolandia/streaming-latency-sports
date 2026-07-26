@@ -46,32 +46,32 @@ ACK_UNBATCHED_TTI_MS = 4138.0
 # --------------------------------------------------------------------------- schematic
 def plot_pipeline(ax):
     """Draw the replay pipeline, its four timestamps, and the intervals they define."""
-    boxes = [(0.5, "Producer\n(replay)"), (4.0, "Broker\n(Kafka / Redis)"), (7.5, "Consumer")]
+    boxes = [(0.2, "Producer\n(replay)"), (3.8, "Broker\n(Kafka/Redis)"), (7.4, "Consumer")]
     for x, label in boxes:
-        ax.add_patch(plt.Rectangle((x, 1.6), 2.0, 0.9, facecolor="white",
+        ax.add_patch(plt.Rectangle((x, 1.6), 2.4, 0.9, facecolor="white",
                                    edgecolor=GREY, linewidth=1.4))
-        ax.text(x + 1.0, 2.05, label, ha="center", va="center", fontsize=9)
-    for x0, x1 in ((2.5, 4.0), (6.0, 7.5)):
+        ax.text(x + 1.2, 2.05, label, ha="center", va="center", fontsize=8.5)
+    for x0, x1 in ((2.65, 3.8), (6.25, 7.4)):
         ax.annotate("", xy=(x1, 2.05), xytext=(x0, 2.05),
                     arrowprops=dict(arrowstyle="->", color=GREY, linewidth=1.2))
 
-    stamps = [(0.9, r"$t_{\rm sched}$", "planned"), (2.4, r"$t_{\rm send}$", "producer"),
-              (4.6, r"$t_{\rm ack}$", "producer"), (7.6, r"$t_{\rm recv}$", "consumer")]
+    stamps = [(0.6, r"$t_{\rm sched}$", "planned"), (2.4, r"$t_{\rm send}$", "producer"),
+              (4.4, r"$t_{\rm ack}$", "producer"), (7.6, r"$t_{\rm recv}$", "consumer")]
     for x, sym, proc in stamps:
         ax.plot([x, x], [1.35, 1.6], color=GREY, linewidth=1.0)
         ax.text(x, 1.20, sym, ha="center", va="top", fontsize=9)
-        ax.text(x, 0.92, proc, ha="center", va="top", fontsize=7, color=GREY, style="italic")
+        ax.text(x, 0.98, proc, ha="center", va="top", fontsize=6.5, color=GREY, style="italic")
 
-    spans = [(0.9, 2.4, 0.55, "scheduling lag"), (4.6, 7.6, 0.55, "broker transport"),
-             (0.9, 7.6, 0.15, "end-to-end TTI")]
+    spans = [(0.6, 2.4, 0.42, "scheduling lag"), (4.4, 7.6, 0.42, "broker transport"),
+             (0.6, 7.6, 0.05, "end-to-end TTI")]
     for x0, x1, y, label in spans:
         ax.annotate("", xy=(x1, y), xytext=(x0, y),
                     arrowprops=dict(arrowstyle="<->", color="black", linewidth=1.0))
-        ax.text((x0 + x1) / 2, y + 0.07, label, ha="center", fontsize=8)
+        ax.text((x0 + x1) / 2, y + 0.06, label, ha="center", fontsize=7.5)
 
-    ax.text(6.1, 3.15, r"broker transport spans two processes' clocks "
+    ax.text(5.0, 3.20, r"broker transport spans two processes' clocks "
                        r"$\Rightarrow$ it can come out negative",
-            ha="center", va="top", fontsize=8, color="#b22222")
+            ha="center", va="top", fontsize=7.5, color="#b22222")
     ax.set_xlim(0, 10)
     ax.set_ylim(0, 3.3)
     ax.axis("off")
@@ -184,11 +184,11 @@ def plot_model(axes):
     h1_ax.axvline(-4.0, color=REDIS, linewidth=1.6, linestyle="--")
     h1_ax.fill_between(x, 1e-4, delta, where=(x < -4.0), color=REDIS, alpha=0.55)
     h1_ax.set_ylim(1e-4, 2.0)
-    h1_ax.text(0.7, 0.20, r"small $T_{true}$" "\n(much of $\\Delta$ inverts it)",
+    h1_ax.text(0.9, 0.055, r"small $T_{true}$" "\n(much of $\\Delta$ inverts it)",
                fontsize=7.5, color=KAFKA)
     h1_ax.text(-5.9, 0.02, r"large $T_{true}$" "\nstill inverts:\nthe tail barely thins",
                fontsize=7.5, color=REDIS)
-    h1_ax.annotate("narrow core\n(thread running)", xy=(0.15, 0.85), xytext=(2.4, 0.45),
+    h1_ax.annotate("narrow core\n(thread running)", xy=(0.15, 0.85), xytext=(2.2, 0.55),
                    fontsize=7, color=GREY, ha="left", va="center",
                    arrowprops=dict(arrowstyle="->", color=GREY, lw=0.8))
     h1_ax.set_xlabel(r"stamping asymmetry $\Delta$ (ms)")
@@ -316,12 +316,12 @@ def main(argv=None):
         written.extend(draw())
 
     def _pipeline():
-        fig, ax = plt.subplots(figsize=(9, 2.8))
+        fig, ax = plt.subplots(figsize=(5.5, 2.25))
         plot_pipeline(ax)
         return _save(fig, out, "pipeline_schematic")
 
     def _model():
-        fig, axes = plt.subplots(1, 2, figsize=(10, 3.4))
+        fig, axes = plt.subplots(2, 1, figsize=(5.5, 5.0))
         plot_model(axes)
         fig.tight_layout()
         return _save(fig, out, "measurement_model")
@@ -339,7 +339,7 @@ def main(argv=None):
         return _save(fig, out, "kickoff_concurrency")
 
     def _integrity():
-        fig, axes = plt.subplots(1, 2, figsize=(10, 3.6))
+        fig, axes = plt.subplots(2, 1, figsize=(5.5, 4.8))
         plot_integrity(axes, integrity)
         fig.tight_layout()
         return _save(fig, out, "integrity_audit")

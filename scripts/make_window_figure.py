@@ -110,7 +110,7 @@ def main(argv=None):
 
     df = load(args.sweep_csv)
     plt.rcParams.update({"font.size": 10, "text.usetex": False})
-    fig, axes = plt.subplots(1, 2, figsize=(9.5, 3.6))
+    fig, axes = plt.subplots(2, 1, figsize=(5.5, 4.8))
     plot_counts(axes[0], df)
     plot_share(axes[1], df)
     fig.tight_layout()

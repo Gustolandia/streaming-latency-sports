@@ -106,6 +106,18 @@ spread. **A slower path is a more reliable measurement.** Any account in which i
 system stress predicts the opposite, since larger payloads are strictly more work — and the
 serialisation confound pushes ρ *up*, against the result.
 
+**Replicated (E-A10b).** The whole sweep ran again on a different day:
+
+| pad (B) | transport E-A10 | inversion | transport E-A10b | inversion |
+|---|---|---|---|---|
+| 0 | 0.701 ms | 0.2603 | 0.761 ms | 0.2338 |
+| 4 096 | 2.381 ms | 0.1906 | 2.474 ms | 0.1652 |
+| 65 536 | 14.638 ms | 0.0888 | 16.059 ms | 0.0784 |
+| 262 144 | 53.898 ms | 0.0637 | 58.482 ms | 0.0549 |
+
+Transport spans 76.9× and 76.8×; the rate falls 4.09× and 4.26×. Monotone in both directions in
+both campaigns. The levels sit slightly lower in the replication, the shape does not move.
+
 *Falsified by:* the rate rising, or not moving, as T_true grew.
 
 ### The traced tail predicts the rate
@@ -155,9 +167,21 @@ share no data, no instrument and no estimator. The rule over-predicts, which is 
 direction: not every stall lands on a stamping instant, so the observed rate should sit below the
 probability that a sufficiently long stall occurred at all.
 
-*Limits, stated plainly.* Four points, one campaign, one load level. `alpha` is fitted, not
-derived. E-A10b replicates the sweep; until it reports, this is a rule with one measurement
-behind it and the 1.66× gap is unexplained rather than accounted for.
+**The exponent replicates.** Fitting E-A10b's four points independently:
+
+| campaign | alpha | C | R² | predicted P(stall>0.5ms) | vs traced 0.181 |
+|---|---|---|---|---|---|
+| E-A10 | 0.3387 | 0.2377 | 0.9898 | 0.301 | 1.66× |
+| E-A10b | 0.3437 | 0.2159 | 0.9951 | 0.274 | 1.52× |
+
+`alpha` agrees to 1.5%, and is below 1 in both — so both campaigns say the stall distribution has
+no finite mean. The prefactor moves more, which is what a drifting level and a fixed shape look
+like, and it is the shape that carries the claim.
+
+*Limits, stated plainly.* Four points per campaign, one load level. `alpha` is fitted, not
+derived, and the residual factor of ~1.6 between the rule and the kernel trace is unexplained
+rather than accounted for. The replication buys that the exponent is a property of the system
+rather than of one afternoon; it does not buy a derivation or an account of the gap.
 
 ### L1 — the real-time floor is the idle rate
 

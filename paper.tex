@@ -2180,6 +2180,7 @@ will surface.
 \label{sec:discussion}
 
 \subsection{For benchmark authors}
+\label{sec:authors}
 
 \textbf{Report a physical-consistency audit.} Any delay computed as a difference of timestamps
 taken in different processes admits a sign check, and the check costs nothing. We rejected $58\%$
@@ -2198,6 +2199,18 @@ is measuring its own start-up.
 \textbf{Measure at a realistic round-trip time, and treat interventions as interventions.} Both
 configuration defects in Section~\ref{sec:config} are invisible on loopback, and the one
 intervention we ran without a manipulation check produced a clean false null.
+
+\textbf{Make the timestamping path unpreemptable, and say that you did.} This is the one
+mitigation our measurements support directly rather than by inference. Raising the stamping
+threads to real-time priority, with the background load untouched, cut the inversion rate by $7$
+to $80\times$ across eight matched pairs and left it at the rate an idle machine shows
+(Section~\ref{sec:twostate}). The cost is a scheduling policy on the measurement path only, not a
+faster clock, a different broker or a quieter machine --- and the effect is large enough that a
+harness which does not do this is measuring its own scheduler along with the system under test.
+Two caveats keep it honest. The floor is not zero, so this reduces exposure rather than removing
+it, and the check of Section~\ref{sec:gate} is still needed afterwards. And a real-time stamping
+thread changes the system it measures; where that is unacceptable, the alternative is to report
+the retention rate and let a reader judge, not to assume the exposure is absent.
 
 \subsection{Applying the check to another benchmark}
 \label{sec:protocol}

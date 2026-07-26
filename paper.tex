@@ -2554,8 +2554,14 @@ the data could not violate.
 All code, replay plans, aggregated results and analysis are available at
 \url{https://github.com/Gustolandia/streaming-latency-sports}. Event data is the StatsBomb open
 dataset under CC~BY-NC~4.0; raw files are not redistributed but are re-fetchable from a pinned
-upstream commit. Every run records its git commit and per-file SHA-256. A regression suite
-recomputes every figure in this paper from committed data and fails if paper and data disagree.
+upstream commit. Every run records its git commit and per-file SHA-256. The plots are regenerated
+from committed CSVs by scripts in the repository, and a consistency suite recomputes the
+manuscript's quoted quantities from those CSVs and fails if paper and data disagree. We state its
+reach exactly, because a claim of total coverage would be the kind of claim this paper is about:
+the suite checks the values it names, which include every headline number, every table this paper
+argues from, and the sample size behind each; it does not enumerate every digit in every table. A
+companion script reports which table cells rest on a recomputing test rather than on a value
+stored verbatim in an artefact, so the boundary is visible rather than assumed.
 \end{sloppypar}
 
 \bibliographystyle{ACM-Reference-Format}

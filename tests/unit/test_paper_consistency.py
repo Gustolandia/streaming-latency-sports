@@ -1137,6 +1137,20 @@ class TestLoadGeometryAndTtrue:
         section = " ".join(_section(tex, "sec:twostate").split())
         assert "0.7531" in section and "identical to four decimals" in section
 
+    def test_the_two_corpora_are_not_conflated(self, tex):
+        """3,315 matches are characterised; eleven are replayed. The abstract merged them.
+
+        It said the benchmark was driven with 3,315 real matches. The plan corpus holds eleven.
+        The larger number is the workload characterisation and belongs only to that claim.
+        """
+        abstract = " ".join(re.search(r"\\begin\{abstract\}(.*?)\\end\{abstract\}",
+                                      tex, re.S).group(1).split())
+        assert "characterise" in abstract, "the abstract must say 3,315 is a characterisation"
+        assert "eleven" in abstract, "the abstract must say how many matches drive the benchmark"
+        plans = sorted((REPO / "data" / "processed" / "replay_plans").glob("*/match_*"))
+        if plans:
+            assert len(plans) == 11, f"the corpus holds {len(plans)} plans; the paper says eleven"
+
     def test_the_measured_floor_and_ceiling_are_reported(self, tex):
         """L1 and L2 are verified in occupancy_law.csv and were reported nowhere in the paper.
 

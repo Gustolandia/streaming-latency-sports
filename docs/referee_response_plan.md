@@ -746,3 +746,32 @@ is unstable at all three, the phase hypothesis is wrong and this table is a coin
 
 Recorded now, with the prediction already filed, so that the reading of chain8 cannot be chosen
 after seeing it.
+
+### The completed size sweep: a dose-response, but not a discrimination
+
+| size | retention | reported e2e p50 | achieved rate | regime |
+|---|---|---|---|---|
+| 200 B | 100% / 0.36% | 1.0 ms | 500 msg/s | on the tick |
+| 4 KB | 10.94% / 100% | 1.0 ms | 500 msg/s | on the tick |
+| 64 KB | 35.92% / 34.42% | 519 / 235 ms | 556 / 510 msg/s | queue building |
+| 256 KB | 100% | 42,973 ms | **113 msg/s** | saturated |
+
+At 256 KB the producer achieves 113 msg/s against 500 requested and latency reaches 43 seconds.
+Retention is exactly 100%.
+
+**This softens the earlier dismissal.** The 256 KB cell was written off above as uninterpretable.
+It is uninterpretable *for the discrimination* — resolution and causality both predict no zero-
+valued samples when latency is enormous, so it separates nothing. But it does confirm the
+resolution mechanism's dose-response: when latency unambiguously clears one tick, the guard
+discards nothing. Combined with the near-tick cells, where retention swings across the full range,
+the sweep shows retention going to 100% as latency leaves the tick behind, which is what the
+mechanism requires.
+
+The 64 KB pair sits between and is now explicable: those runs contain a fast opening phase, before
+the queue builds, whose samples fall below the tick and are discarded, followed by a slow phase
+whose samples are kept. About a third of each run is the slow phase, and that ratio is set by how
+long the queue takes to build — deterministic, hence the 1.5-point agreement between reps.
+
+**The discrimination itself still rests where it always did: on the sign.** Zero negative samples
+in roughly 420,000 discards, at every load level and every message size. No dose-response argument
+is needed for that, and none of this changes it.

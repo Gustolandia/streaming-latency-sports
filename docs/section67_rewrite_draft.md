@@ -1,134 +1,108 @@
-# §6.7 rewrite — working draft
+# §6.7 rewrite — working draft (revision 2, 2026-07-26 18:30Z)
 
-**Status: draft. Not applied to `paper.tex`.** Numbers for the 88% and 95% levels and the whole
-message-size sweep are still landing; every figure below marked `[PENDING]` is a placeholder and
-must be replaced from the committed CSV before this goes near the manuscript. Nothing here is to
-be quoted until this header is removed.
+**Status: draft. Not applied to `paper.tex`.** Revision 1 of this file was written before most of
+the evidence existed and asserted several things since withdrawn. Those are listed at the bottom
+under "must not appear" so they cannot creep back in.
 
-## What changes and what does not
+## What is settled
 
-The source audit — currently §6.7 up to and including the paragraph at l. 1125–1130 — **does not
-change at all.** It never depended on the run. Specifically these survive verbatim:
+Each of these rests on completed measurements and has survived every cell that has landed since.
 
-- end-to-end latency is a cross-process, and in a distributed deployment cross-host, timestamp
-  difference, at the named commit, file and line;
-- `if (endToEndLatencyMicros > 0)` admits only positive samples, and nothing counts the drops;
-- the reported distribution is therefore conditioned on being positive, so a causality violation
-  cannot appear in the output even in principle;
-- the retention rate is not merely unpublished but unrecoverable from a completed run;
-- the arithmetic consequence at the fast end (l. 1125–1130), which this rewrite promotes from a
-  predicted consequence to a measured one.
+**S1 — Zero negative samples.** Roughly 420,000 discarded end-to-end samples across 15 load-sweep
+cells, 8 message-size cells and the replication pass so far. Not one is negative. The most
+negative end-to-end latency observed at any load, at any message size, is 0 µs. *This is what
+carries the withdrawal, and it is a statement about sign that no mechanism argument can touch.*
 
-What changes is the paragraph beginning *"We then ran it, and it discarded six thousand
-samples"* (l. 1132) through *"...cannot report its own failure"* (l. 1169), and the four sites
-that inherit its inference: abstract l. 70, contributions l. 202, limitations l. 2525,
-conclusion l. 2631.
+**S2 — Retention spans the full range.** The share of samples surviving OMB's
+`if (endToEndLatencyMicros > 0)` guard ranges from **0.36% to 100%** across cells. Nine of the
+first 21 lie between 5% and 95%; it is a continuous range, not two modes.
 
-## Replacement prose
+**S3 — The reported median does not track it.** Across the 16-cell join, reported p50 takes two
+values — 1.0 and 2.0 ms. One cell computed its summary from 998 samples and another from 120,425;
+both report 1.0 ms. Nothing in OMB's output distinguishes them.
 
-> **We then ran it, and it discarded almost everything.** A source audit is not a measurement, so
-> we made the discards observable and ran the benchmark. The obvious experiment is impossible ---
-> the violations never reach the output, because the guard removes them inside the harness --- so
-> we added counters in the existing guard's `else` branch and changed nothing else: not the
-> latency computation, not the guard's condition, not any reported statistic. The patch is in the
-> artefact.
->
-> An earlier version of this section reported a single such run, at $88\%$ background load, in
-> which the benchmark discarded $6{,}000$ samples, and read that as the same causality violation
-> we report in Section~\ref{sec:gate}. That reading was wrong, and the counter that produced it
-> could not have distinguished the two: it was one total with no sign. Both a causality violation
-> and a sub-millisecond delivery fail `> 0`, and they were counted together.
->
-> We therefore split the counter --- zero, negative, most-negative, kept --- and swept background
-> load from idle to $95\%$, three replicates per level, three minutes per cell.
->
-> [TABLE: load level x kept / zero / negative, five levels]
->
-> **In roughly [PENDING]$\,$000 discarded samples there was not one negative.** The most negative
-> end-to-end latency observed at any load was $0$~$\mu$s. And the discarded share falls as the
-> machine gets busier: at idle the benchmark discarded $98.49\%$ of its samples, at $75\%$ load
-> $4.41\%$. Our own mechanism predicts the opposite direction --- Section~\ref{sec:twostate}
-> establishes that inversions track scheduling stalls, which become *more* frequent under load,
-> not less. A discard population that thins out as the machine fills up is not our failure mode.
->
-> It is the arithmetic one, and it is the consequence described three paragraphs above. Kafka's
-> `CreateTime` timestamp has millisecond resolution, so on a path whose true latency is a
-> fraction of a millisecond most samples compute to exactly zero, fail the `> 0` guard, and
-> disappear. Loading the machine lengthens the path past one tick, and the samples reappear. That
-> is why the zero share falls with load, and it is why it falls back again when [message-size
-> result PENDING].
->
-> The benchmark's own output corroborates this without any instrumentation from us. Across eight
-> runs it reports $32$ percentile values --- p50, p95, p99 and max --- and **every one of them is
-> a whole number of milliseconds.** The only fractional statistics it reports are the averages,
-> which is the one column that could be fractional, being a mean of integers. Three runs report
-> p50 = p95 = p99 = max = $1.0$. That is not a narrow latency distribution. It is a distribution
-> with a single value in it, printed to three decimal places.
->
-> **The refutation was in our own artefact.** We should say where this evidence was, because it
-> was not anywhere new. The counter we added printed one line per thousand discards, and each
-> line carried the sample that triggered it. All eleven lines committed with the original run
-> read `sample_micros=0`. Beside them, the benchmark's own progress output reported a median
-> publish latency of $0.4$--$0.5$~ms --- sub-millisecond, which is exactly the condition under
-> which a millisecond-resolution timestamp difference collapses to zero. The number that refutes
-> the causality reading, and the mechanism that explains it, were both in the artefact from the
-> day we committed it. What we lacked was not data but a reason to look at the sign, and the
-> total we had chosen to report did not have one. We record this because it is the same failure
-> the paper is about, one level up: a summary statistic that concealed the distinction that
-> mattered, in an instrument we built ourselves to detect exactly that.
->
-> **What this costs us, and what it does not.** We withdraw the claim that the OpenMessaging
-> Benchmark was observed discarding causality violations. We did not observe that. What we
-> observed is worse for the benchmark and weaker for us, and both halves of that sentence should
-> be stated plainly. At idle, this benchmark computed its reported latency distribution from
-> $1.51\%$ of the samples it took, discarded the other $98.49\%$ without counting them, and
-> printed a throughput and latency summary that looks entirely healthy. A reader of that output
-> cannot tell. Neither could we, until we patched it.
->
-> The audit above stands unchanged, because it never rested on this run. The guard is real, it is
-> uncounted, and the distribution it produces is conditioned on the violation not having
-> occurred. What we can no longer say is that we have seen the violation happen in software we
-> did not write. The exposure is demonstrated by construction; the occurrence is not.
+**S4 — The reported average moves the wrong way.** Spearman(retention, reported average) = −0.54.
+Discarding everything below one tick removes the *fast* samples, so the mean is taken over the
+surviving slow tail. The benchmark reports a higher latency the more data it discards.
 
-## Why this is the better section
+**S5 — The instability has a location.** Message sizes whose latency sits far above one tick
+reproduce tightly (64 KB: 35.92% vs 34.42%; 256 KB: 100% vs 100%). Sizes whose reported median is
+exactly 1.0 ms swing across nearly the whole range (200 B: 100% vs 0.36%; 4 KB: 10.94% vs 100%).
+The irreproducibility is a property of the near-tick regime, not of the benchmark generally.
 
-Three reasons, worth being explicit about since the change was forced rather than chosen.
+**S6 — Path speed does not explain it.** OMB's own publish latency — measured within one process
+and *not* quantised to the millisecond grid — sits at 0.3–0.4 ms across all 19 unsaturated cells
+while retention over those same cells ranges from 0.36% to 100%. A predictor with a 0.1 ms spread
+cannot explain a 275-fold swing.
 
-1. It is the paper's own thesis, applied to the paper. §6.5 argues that instruments conceal
-   their own failures and that a healthy-looking summary is not evidence of a healthy
-   measurement. A benchmark reporting a confident latency distribution computed from 1.5% of its
-   data is a cleaner instance of that than a discard count ever was.
-2. It is harder to dismiss. "Six thousand samples in one three-minute run" invites the response
-   that one run proves little --- which is exactly what referee M3 said. Fifteen cells across
-   five load levels, with a mechanism that predicts the direction of the trend and a second sweep
-   that moves it deliberately, does not.
-3. The withdrawal is itself evidence for the method. We built a gate, pointed it at our own
-   headline external result, and it failed the result. A paper arguing for routine integrity
-   audits is in a poor position to report only the audits that came out well --- and this is the
-   second claim we have withdrawn this way, after the M/G/1 form.
+**S7 — Replicates that agree are not a reproducible measurement.** *(Level 0 only so far; four
+levels pending.)* The identical sweep run twice gave a three-replicate median of 1.51% in pass A
+and 99.98% in pass B. Pass B's three replicates agree to 3.58 points. An experimenter running only
+pass B would report a tight, confident measurement 98 points away from what the same configuration
+produced an hour earlier.
+
+## The claim the section should make
+
+> An instrumented OpenMessaging Benchmark, run against our broker on a sub-millisecond path,
+> computes its reported latency distribution from between 0.36% and 100% of the samples it takes,
+> depending on the run, and reports the same median either way. It counts nothing that it drops.
+> The fraction that survives is not reproducible between passes of an identical configuration, and
+> replicates within a pass can agree closely while the pass itself is 98 points from its
+> predecessor — so the usual defence of averaging replicates and quoting their spread does not
+> detect it and actively misleads.
+
+That is stronger than the claim it replaces, and it is about the number a reader actually sees
+rather than about a counter only we can read.
+
+## What we withdraw, and why the section must say so
+
+Section 6.7 reported that an instrumented OMB "discarded 6,000 end-to-end samples" and read those
+as the same causality violation this paper reports. **The reading is withdrawn.** The counter
+behind it was a single unsigned total; both a causality violation and a sub-millisecond delivery
+fail `> 0`, and it counted them together.
+
+The refutation was in our own artefact from the day it was committed. All eleven counter lines in
+`external/omb/omb_discard_evidence.txt` read `sample_micros=0`, and the Pub-rate lines beside them
+show a median publish latency of 0.4–0.5 ms. What was missing was not data but a reason to look at
+the sign, because the statistic we chose to report did not have one. That belongs in the section:
+it is the paper's own subject, one level up.
+
+**The source audit is unaffected** and never depended on the run — the guard admits only positive
+samples, nothing counts the drops, the reported distribution is conditioned on being positive, and
+the retention rate is unrecoverable from a completed run.
+
+## Still open — do not write these until they land
+
+- **Cross-host negatives** (chain5). The clock bound on this testbed is 12.3 ms against a 1 ms
+  timestamp, so a negative is possible. Single-host cannot settle it.
+- **Mechanism** (chain8). Phase against the millisecond grid is the candidate: the producer is
+  paced at exactly 2.000 ms. Predictions are filed; if all three rates behave alike it is wrong.
+- **Retention variance at n=15** (chain7).
+- **S7 at levels 50–95** (chain3 step 2, running).
+
+## Must not appear — withdrawn during this work
+
+1. *"The zero share falls with load."* Five levels are 98.49, 23.68, 4.41, 4.78, 22.63 — not
+   monotone. Read from three levels before the other two existed.
+2. *"Retention is bimodal / a threshold with nothing between."* Nine of 21 cells lie between 5%
+   and 95%. Read from five observations at one configuration.
+3. *"64 KB is the clean discriminator."* It is saturated: p50 = 519 ms, p99 = 1097 ms.
+4. *"Retention = P(true latency ≥ one tick)."* Refuted by S6 — the path is flat while retention
+   swings.
+5. *Anything treating the message-size sweep as discriminating resolution from causality.* It
+   never could; both predict no zeros at high latency. It shows a dose-response, nothing more.
 
 ## Sites to update together
 
-| site | line | current | change |
-|---|---|---|---|
-| abstract | 70 | "silently discarded $6{,}000$ end-to-end samples, about $6.7\%$" | the resolution finding: reported a distribution from a small fraction of its samples |
-| contributions | 202 | "It discarded $6{,}000$ end-to-end samples in three minutes" | same, plus the sweep |
-| related work | 243 | "its runs it discarded on integrity grounds" | check wording survives |
-| limitations | 2525 | "discarded $6{,}000$ samples under load ... establishes the failure outside our own harness" | **must change**: it no longer establishes that |
-| conclusion | 2631 | "Under load it dropped $6{,}000$ end-to-end samples" | the resolution finding |
-| §7 requirements | 2332–2342 | retention-rate recommendation | unaffected, and strengthened |
-| `docs/laws.md` | 241–242 | "discarded **6,000** ... The exposure is not ours alone" | **must change**, incl. the heading |
-| `docs/referee_response_plan.md` | 236 | status board: M1 empirical closure **CLOSED** | reopen, then close on the new finding |
-| `external/omb/README.md` | 4 | "about 6.7% of a three-minute run" | rewrite to the resolution finding |
-| `external/omb/omb_discard_evidence.txt` | 12 | raw counter output | **keep exactly as is** — it is the primary record, and it is what refutes the claim |
-
-`README.md` and `reproducibility/README.md` are clean — the claim did not propagate there.
-
-The `omb_discard_evidence.txt` row matters: the instinct is to regenerate it alongside the
-rewrite, and that would be wrong. Every line in it reads `sample_micros=0`. It is the evidence
-against the claim it was committed to support, and it should stay byte-for-byte so a reader can
-verify the withdrawal from the original artefact rather than from a file we touched afterwards.
-
-The limitations entry is the one to be most careful with. It currently uses the OMB run to argue
-the failure is not ours alone. After this change the source audit carries that claim and the run
-does not, so the sentence has to be rebuilt rather than edited.
+| site | line | change |
+|---|---|---|
+| abstract | 70 | replace the 6,000 with the retention finding |
+| contributions | 202 | same, plus the sweep |
+| related work | 243 | check wording survives |
+| limitations | 2525 | **rebuild** — the run no longer establishes the failure outside our harness; the source audit does |
+| conclusion | 2631 | replace the 6,000 |
+| §7 requirements | 2332–2342 | unaffected, and strengthened |
+| `docs/laws.md` | 241 | **done** |
+| status board | 236 | **done** |
+| `external/omb/README.md` | 4 | **done** |
+| `external/omb/omb_discard_evidence.txt` | — | **keep byte-for-byte** — it is the primary record of the refutation |

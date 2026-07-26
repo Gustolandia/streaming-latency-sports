@@ -878,3 +878,22 @@ numbers must therefore be reported as draws rather than as a curve.
 
 **Unaffected, again:** zero negatives across all 30 cells. The withdrawal of the causality reading
 has not moved through any of this.
+
+### Prediction for the no-warmup sweep, recorded before it finishes
+
+chain4 repeats the load sweep with `warmupDurationMinutes: 0`, so the discard counter and OMB's
+reported percentiles finally cover the same samples.
+
+The first instinct is that removing the warmup should lower retention: warmup runs before the JIT
+settles, its samples are slower, and slower samples clear the tick and survive. **That is wrong on
+this data.** `l0_rep1` kept 1,821 samples out of 120,429 — far fewer than the ~30,000 the warmup
+minute alone contributes at 500 msg/s. If warmup samples had survived preferentially, retention
+could not have been that low. They were discarded too, so warmup latency was also sub-tick.
+
+**Prediction: total samples per cell fall from ~120,000 to ~90,000, and the retention fraction is
+roughly unchanged.** If retention instead shifts systematically, the warmup phase was contributing
+differently from the test phase and every retention figure computed with warmup included needs
+restating against the test phase alone.
+
+Recorded now so the reading is not chosen after the fact — the same discipline that made the
+64 KB pre-registration falsifiable, and it duly falsified.

@@ -1174,6 +1174,28 @@ class TestLoadGeometryAndTtrue:
         if plans:
             assert len(plans) == 11, f"the corpus holds {len(plans)} plans; the paper says eleven"
 
+    def test_the_discussion_recommends_the_mitigation_the_data_support(self, tex):
+        """The paper measures a mitigation with a 7-80x effect and did not recommend it.
+
+        Section 8.1 told benchmark authors to audit, to count events, and to use a realistic
+        RTT -- all sound, none of them the thing our own manipulation shows works. The
+        recommendation must also carry its two limits, or it overstates what the floor allows.
+        """
+        section = " ".join(_section(tex, "sec:authors").split())
+        assert "unpreemptable" in section or "real-time priority" in section, \
+            "the measured mitigation must be recommended"
+        ratios = []
+        for name in ("stamping_priority", "stamping_priority_ea5b", "stamping_priority_ea7"):
+            for r in _rows("model", f"{name}.csv"):
+                if float(r["inv_rt"]) > 0:
+                    ratios.append(float(r["inv_base"]) / float(r["inv_rt"]))
+        assert f"${round(min(ratios))}$" in section and f"${round(max(ratios))}" in section, \
+            "the recommendation must quote the effect its artefacts show"
+        # It reduces exposure; it does not remove it, and it perturbs what it measures.
+        assert "not zero" in section, "the floor must be stated as non-zero"
+        assert "changes the system it measures" in section, \
+            "the perturbation caveat must accompany the recommendation"
+
     def test_the_measured_floor_and_ceiling_are_reported(self, tex):
         """L1 and L2 are verified in occupancy_law.csv and were reported nowhere in the paper.
 

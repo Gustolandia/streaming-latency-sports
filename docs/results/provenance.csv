@@ -21,6 +21,7 @@ model/collapse_conditions.csv,VERIFIED,"n_events<=2,985; n_runs<=25"
 model/colocation.csv,VERIFIED,"n_colocated<=2,985; n_remote<=2,985"
 model/ea6/knee_resolution.csv,VERIFIED,"n_events<=2,985; n_runs<=25"
 model/ea6b/knee_resolution.csv,VERIFIED,"n_events<=2,985; n_runs<=25"
+model/ea9_notrace/untraced_control.csv,VERIFIED,"n_events<=2,985; n_runs<=25"
 model/ec3_stamping.csv,VERIFIED,n_runs_kafka<=10; n_runs_redis<=10
 model/inversion_clustering.csv,VERIFIED,n_runs<=15
 model/runq_tail.csv,VERIFIED,"n_events<=2,985; traced_events<=570,591"

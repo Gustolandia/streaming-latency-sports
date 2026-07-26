@@ -1174,6 +1174,27 @@ class TestLoadGeometryAndTtrue:
         if plans:
             assert len(plans) == 11, f"the corpus holds {len(plans)} plans; the paper says eleven"
 
+    def test_the_instrument_check_uses_the_campaigns_own_control(self, tex):
+        """The check compared the traced cell against a different campaign's arm.
+
+        E-A9's own untraced twin exists: the first attempt, whose probe never attached, whose
+        inversion rates are valid, run about two hours before the traced one. Against that the
+        difference is 14.8%, not the 4.6% an earlier version reported against E-A5b. Comparing a
+        measurement to whichever other measurement agrees with it is not a control.
+        """
+        traced = [r for r in _rows("model", "runq_tail.csv") if r["arm"] == "base"][0]
+        control = [r for r in _rows("model", "ea9_notrace", "untraced_control.csv")
+                   if r["condition"] == "l88_base"][0]
+        t, c = float(traced["inversion"]), float(control["inversion_rate"])
+        gap = abs(t - c) / c
+        assert 0.14 < gap < 0.16, f"traced/untraced gap recomputes to {gap:.1%}"
+        section = " ".join(_section(tex, "sec:twostate").split())
+        assert f"{c:.4f}" in section, "the untraced control's rate must be quoted"
+        assert f"{gap * 100:.1f}" in section, f"the paper must state the {gap:.1%} gap"
+        # And it must not present that gap as a clean result.
+        assert "cannot say anything tighter" in section or "not resolvable" in section, \
+            "the limit of the control must be stated, not just the number"
+
     def test_the_tail_index_replicates_and_the_paper_says_so(self, tex):
         """alpha carried the paper's explanation for why mean-based counters fail, on one fit.
 

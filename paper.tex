@@ -1660,11 +1660,26 @@ the traced probability sits \emph{below} the observed rate, which is the opposit
 simplest reading predicts, since not every stall should land on a stamping instant. We do not
 have an account of that gap, and record it as the open quantity it is.
 
-\emph{The instrument check came first.} Tracing a system to measure its scheduling behaviour is
-exactly the kind of intervention that can create what it observes. Before using the traced
-numbers we compared the traced cell's inversion rate against the untraced measurement of the same
-condition: $0.2315$ against $0.2214$, a difference of $4.6\%$, well inside the day-to-day
-variation of the $88\%$ baseline reported above. BPF did not move what it measured.
+\emph{The instrument check, and what it can and cannot rule out.} Tracing a system to measure its
+scheduling behaviour is exactly the kind of intervention that can create what it observes, so the
+traced cell has an untraced twin. Our first attempt at this campaign ran with a probe that failed
+to attach: the histogram was empty, but the inversion rates are valid, and we kept that run as the
+control. It measured $0.2717$ against the traced run's $0.2315$ --- the traced rate is $14.8\%$
+\emph{lower}, two hours apart, same design.
+
+We report that rather than a flattering comparison, because an earlier version of this section
+compared the traced cell against a different campaign's $88\%$ arm ($0.2214$) and called the
+$4.6\%$ gap a clean bill of health. The honest reading is weaker. The ordinary $88\%$ arm has been
+measured five times across these campaigns and spans $0.221$ to $0.305$, a factor of $1.38$; the
+traced value sits inside that spread, and so does its untraced twin. So we can say that tracing
+did not move the rate by more than the drift already present between campaigns, and we cannot say
+anything tighter than that. A tracing effect smaller than about $15\%$ is not resolvable with
+this control.
+
+What that limits is the \emph{level}, which no claim here rests on. The comparison in
+Table~\ref{tab:ea9} is between two quantities measured in the \emph{same} run --- a kernel
+histogram and a count of negative transports over the same events --- so a common perturbation of
+that run moves both and leaves their agreement intact.
 
 \emph{One arm did not behave, and we report it.} The real-time arm recorded \emph{zero}
 inversions in $2{,}985$ events. Against the running-state floor of roughly $0.004$ seen in every

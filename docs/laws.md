@@ -30,7 +30,9 @@ stated as a mechanism rather than a correlation.
 ### The rate follows scheduling, not utilisation
 
 Raising the stamping threads to `SCHED_FIFO` at **fixed** utilisation collapses the inversion
-rate. Five campaigns, utilisation matched to 0.003 or better in every cell:
+rate. Eight matched ordinary/real-time pairs across three campaigns (E-A5, E-A5b, E-A7), spanning
+five load levels, utilisation matched to 0.003 or better in every cell. One pair per level is
+shown; the range over all eight is **7.2× to 79.7×**:
 
 | load | ρ ordinary | ρ real-time | ordinary | real-time | fall |
 |---|---|---|---|---|---|
@@ -38,7 +40,7 @@ rate. Five campaigns, utilisation matched to 0.003 or better in every cell:
 | 70% | 0.7032 | 0.7025 | 0.1032 | 0.0144 | 7× |
 | 75% | 0.7531 | 0.7525 | 0.1320 | 0.0034 | 39× |
 | 88% | 0.8809 | 0.8812 | 0.2214 | 0.0034 | 66× |
-| 95% | 0.9501 | 0.9501 | 0.2938 | 0.0037 | 76× |
+| 95% | 0.9501 | 0.9501 | 0.2938 | 0.0037 | 80× |
 
 *Falsified by:* the rate not moving when only priority changes. It moved every time.
 

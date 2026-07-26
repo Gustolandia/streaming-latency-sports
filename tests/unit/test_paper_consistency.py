@@ -1137,6 +1137,39 @@ class TestLoadGeometryAndTtrue:
         section = " ".join(_section(tex, "sec:twostate").split())
         assert "0.7531" in section and "identical to four decimals" in section
 
+    def test_the_measured_floor_and_ceiling_are_reported(self, tex):
+        """L1 and L2 are verified in occupancy_law.csv and were reported nowhere in the paper.
+
+        Both are load-bearing for interpretation rather than magnitude: the floor says a
+        real-time thread under load measures like an idle machine, and the ceiling estimates the
+        share of events exposed to a stall, which is what makes P = p*S a measurement rather
+        than a fitted asymptote.
+        """
+        section = " ".join(_section(tex, "sec:twostate").split())
+        detail = {r["law"]: r["detail"] for r in _rows("model", "occupancy_law.csv")}
+        parts = dict(kv.split("=") for kv in detail["L1_floor_is_idle"].split(";"))
+        assert _contains_number(section, float(parts["idle"]), 4), "the idle rate is missing"
+        assert _contains_number(section, float(parts["floor"]), 4), "the real-time floor is missing"
+        assert _contains_number(section, float(parts["ratio"]), 2), "the L1 ratio is missing"
+        c = dict(kv.split("=") for kv in detail["L2_ceiling_below_one"].split(";"))
+        assert _contains_number(section, float(c["ceiling"]), 3), "the ceiling is missing"
+        assert _contains_number(section, float(c["consistency"]), 2), \
+            "the across-campaign agreement on the ceiling is missing"
+
+    def test_the_colocation_null_is_reported_as_a_failed_manipulation(self, tex):
+        """E-A8 appeared in the experiment map and nowhere in the text.
+
+        It matters that it is described as a manipulation that did not manipulate. Reporting its
+        overlapping inversion rates as a null would claim a test we did not perform.
+        """
+        tex_flat = " ".join(tex.split())
+        row = [r for r in _rows("model", "colocation.csv") if r["load"] == "0"][0]
+        for field in ("t_remote_ms", "t_colocated_ms"):
+            assert _contains_number(tex_flat, float(row[field]), 3), \
+                f"co-location {field} missing from the paper"
+        assert "E-A8" in tex_flat, "the withheld campaign must be named"
+        assert row["disjoint"] == "False", "artefact must show the rates did not separate"
+
     def test_the_traced_tail_result_is_actually_in_the_body(self, tex):
         """The abstract's fourth headline claim had no section behind it.
 

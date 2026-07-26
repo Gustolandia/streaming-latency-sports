@@ -982,7 +982,7 @@ weaker without it.
 
 Replay plans built from StatsBomb carry a \textbf{baked-in $120\times$ time compression}: a
 plan's emission offset is already the match time divided by $120$. The producer's
-\texttt{--speedup} flag then multiplies that. So \texttt{--speedup 1} against such a plan is
+\texttt{-{}-speedup} flag then multiplies that. So \texttt{-{}-speedup 1} against such a plan is
 \emph{not} real time, it is $120\times$; true real time needs $1/120$. The same flag means
 different things depending on which plan it is pointed at, and getting it wrong is silent: the
 run completes, the wall time looks unremarkable, and the numbers stay plausible. We lost a
@@ -991,13 +991,13 @@ the achieved rate against elapsed wall time.
 
 The part we cannot repair is retrospective. \textbf{No surviving artefact records the achieved
 replay rate of any run we report.} Several superseded Testbed~A scenarios record the nominal
-\texttt{--speedup} \emph{flag}, which is not the same thing: converting a flag to a rate requires
+\texttt{-{}-speedup} \emph{flag}, which is not the same thing: converting a flag to a rate requires
 the plan's compression, and every plan those files name has since been deleted. Everywhere else
 the orchestrator
 wrote \texttt{speedup} into a per-campaign summary that lived beside the raw per-run data, and
 for the earliest corpora only the aggregated CSVs were kept. For the E1 corpus of Section~\ref{sec:e1} the surviving evidence is contradictory: the
 commit that introduced it states the runs were made at true real time, the campaign script
-reconstructed afterwards specifies \texttt{--speedup 10}, and the flag's meaning was corrected
+reconstructed afterwards specifies \texttt{-{}-speedup 10}, and the flag's meaning was corrected
 $21$~hours later the same day. E1 was replayed at $1\times$, $120\times$ or $1200\times$, and we
 cannot say which.
 
@@ -1542,8 +1542,8 @@ the mechanism --- established by manipulation --- and not any curve in $\rho$, o
 
 \paragraph{Utilisation is not the variable, shown at identical utilisation.} The cleanest
 demonstration does not need a curve at all. Two loads can reach the same $\rho$ by different
-means: \texttt{--cpu k} runs $k$ cores flat out and leaves $C-k$ genuinely free, while
-\texttt{--cpu C --cpu-load P} duty-cycles every core and leaves none. If the mechanism is whether
+means: \texttt{-{}-cpu k} runs $k$ cores flat out and leaves $C-k$ genuinely free, while
+\texttt{-{}-cpu C -{}-cpu-load P} duty-cycles every core and leaves none. If the mechanism is whether
 the stamping thread can find a core, the second should be worse at equal $\rho$. We ran both in
 one campaign, interleaved, at utilisations quantised to $k/C$ so the two arms could match
 (Table~\ref{tab:ea6}).

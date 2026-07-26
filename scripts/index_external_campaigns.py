@@ -114,7 +114,7 @@ def parse_result_csv(path):
     return {k: (row[i] if i < len(row) else "") for i, k in enumerate(RESULT_FIELDS)}
 
 
-def parse_counts(cell_dir):
+def parse_counts(cell_dir, hash_logs=True):
     """Counts plus where they came from.
 
     The shutdown hook prints exact totals once at exit. The periodic lines fire every 10,000, so
@@ -127,7 +127,11 @@ def parse_counts(cell_dir):
         return {}, "absent", 0, ""
     text = read_tail(log)
     size = os.path.getsize(log)
-    digest = sha256_of(log)
+    # Hashing reads the whole log. Interim indexing runs while cells are being measured on the
+    # same host, and a few hundred megabytes of disk reads during a latency measurement is
+    # exactly the kind of self-inflicted perturbation this project exists to complain about.
+    # The tail read above is a few kilobytes and is safe; the hash waits for the campaign to end.
+    digest = sha256_of(log) if hash_logs else ""
 
     hits = list(SUMMARY_RE.finditer(text))
     if hits:
@@ -151,18 +155,34 @@ def zero_share(kept, zero, negative):
     return "" if seen <= 0 else round(z / seen, 6)
 
 
-def invalid_reason(cell_dir, campaign, result):
-    """Why a cell carries no measurement. Empty string means it does."""
+def invalid_reason(cell_dir, campaign, result, counts=None, source=""):
+    """Why a cell carries no measurement. Empty string means it does.
+
+    The result CSV is written by the campaign script *after* the benchmark finishes, so a script
+    that dies in between leaves a directory with a complete measurement in its log and no row.
+    That is not an invalid cell; it is a valid cell with a missing receipt, and cell l95_rep2 --
+    24 publish-rate lines, an exact summary of kept=93381 zero=27311 negative=0 -- is one.
+    Treating the missing receipt as the verdict would discard a real measurement, which is the
+    error this whole ledger exists to prevent.
+
+    An exact shutdown summary reporting samples is therefore sufficient on its own: the hook only
+    runs in a JVM that started, and non-zero counts only exist if the benchmark recorded latency.
+    """
     if campaign.upper() == "INVALID" or "INVALID" in os.path.basename(cell_dir).upper():
         return "marked INVALID by the campaign"
     if result.get("valid") == "0":
         return "campaign marked valid=0"
+    measured = bool(counts) and source == "shutdown_hook" and any(
+        (counts.get(k) or "0") != "0"
+        for k in ("kept", "discarded_zero", "discarded_negative"))
     if not result:
+        if measured:
+            return ""
         return "no result row written"
     return ""
 
 
-def index_cell(cell_dir, campaign):
+def index_cell(cell_dir, campaign, hash_logs=True):
     name = os.path.basename(cell_dir)
     row = {k: "" for k in FIELDS}
     row["campaign"] = campaign
@@ -175,7 +195,7 @@ def index_cell(cell_dir, campaign):
         if result.get(key):
             row[key] = result[key]
 
-    counts, source, size, digest = parse_counts(cell_dir)
+    counts, source, size, digest = parse_counts(cell_dir, hash_logs=hash_logs)
     # The log is the primary source: the result CSV is derived from it by the campaign script, so
     # when they disagree the log wins and the disagreement is worth seeing.
     row.update(counts)
@@ -194,7 +214,7 @@ def index_cell(cell_dir, campaign):
     row["zero_share"] = zero_share(row["kept"], row["discarded_zero"],
                                    row["discarded_negative"])
 
-    reason = invalid_reason(cell_dir, campaign, result)
+    reason = invalid_reason(cell_dir, campaign, result, counts, source)
     row["invalid_reason"] = reason
     row["valid"] = "0" if reason else (result.get("valid") or "1")
 
@@ -215,7 +235,7 @@ def is_cell(path):
                for f in ("omb_stdout.log", "omb_loaded_result.csv", "omb_workload.yaml"))
 
 
-def walk(root):
+def walk(root, hash_logs=True):
     """Campaign directories one level under root; cells one level under those.
 
     A campaign that wrote its cell straight into the campaign directory is handled too, so a
@@ -229,12 +249,12 @@ def walk(root):
         if not os.path.isdir(cdir):
             continue
         if is_cell(cdir):
-            rows.append(index_cell(cdir, campaign))
+            rows.append(index_cell(cdir, campaign, hash_logs=hash_logs))
             continue
         for cell in sorted(os.listdir(cdir)):
             cell_dir = os.path.join(cdir, cell)
             if is_cell(cell_dir):
-                rows.append(index_cell(cell_dir, campaign))
+                rows.append(index_cell(cell_dir, campaign, hash_logs=hash_logs))
     return rows
 
 
@@ -242,9 +262,12 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Index external-harness campaign cells")
     ap.add_argument("--root", default="docs/results/external")
     ap.add_argument("--out", default="docs/results/external_campaigns_index.csv")
+    ap.add_argument("--no-hash", action="store_true",
+                    help="skip the SHA-256 of each log; safe to run while cells are "
+                         "being measured on the same host")
     args = ap.parse_args(argv)
 
-    rows = walk(args.root)
+    rows = walk(args.root, hash_logs=not args.no_hash)
     if not rows:
         print(f"no campaign cells under {args.root}")
         return 1
@@ -263,7 +286,8 @@ def main(argv=None):
     print(f"  invalid          : {len(rows) - valid}")
     print(f"  exact counts     : {exact}")
     print(f"  quantised/absent : {len(rows) - exact}")
-    print(f"  logs covered     : {total_bytes / (1 << 20):.0f} MiB, hashed")
+    hashed = "hashed" if not args.no_hash else "NOT hashed (--no-hash)"
+    print(f"  logs covered     : {total_bytes / (1 << 20):.0f} MiB, {hashed}")
     print(f"wrote {args.out}")
     return 0
 

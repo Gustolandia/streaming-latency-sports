@@ -24,6 +24,52 @@ every campaign. `hosts.env` is gitignored: addresses are ephemeral per provision
 | `cluster.sh` | E3 | one broker node per host; needs `BROKER2_PRIV`/`BROKER3_PRIV` |
 | `netem_sweep.sh` | E4 | injected delay on a genuine inter-VM path |
 | `p4_ack_batching.sh` | E4b | both arms, with a manipulation check that aborts on failure |
+| `transport_realtime.sh` | E4-RT | broker transport at a *verified* true real-time replay rate, properly powered |
+| `e1_replication.sh` | E1-REP | replicates the original E1 configuration exactly (referee issue M2) |
+| `clean_effect_size.sh` | E-B2 | the clean effect-size sweep (referee issue M3) |
+| `window_sweep.sh` | E-W | is the ~103 ms Kafka producer offset per-event or paid once per run? |
+| `window_sweep_redis.sh` | E-W | the Redis arm of the same sweep, loop trace enabled |
+
+### The campaigns that decided the mechanism
+
+These manipulate the machine rather than replaying against it, and several need `sudo`.
+Section 5b of [`../../reproducibility/README.md`](../../reproducibility/README.md) gives the
+analysis command for each.
+
+| script | arm | what it manipulates |
+|---|---|---|
+| `stamping_priority.sh` | E-A5 | stamping-thread occupancy at **fixed** utilisation — the decisive test |
+| `load_geometry.sh` | E-A6 | where the load sits, at equal utilisation: cores free vs all duty-cycled |
+| `occupancy_measured.sh` | E-A7 | measures the occupancy the earlier arms could only infer |
+| `colocated_control.sh` | E-A8 | broker onto the driver. Withheld: it lengthened transport instead |
+| `stall_distribution.sh` | E-A9 | nothing — traces the run-queue delay distribution with `bpftrace` |
+| `ttrue_sweep.sh` | E-A10 | payload size, to move $T_{true}$ and watch the rate move the other way |
+| `collapse_suite.sh` | E-A3 | a dense utilisation sweep with enough replication to test H9/H10 |
+| `knee_resolution.sh` | E-A4 | extends the ladder past ρ=0.90, where the candidate forms diverge |
+| `h3_stamping.sh` | H3 | ack stamp callback vs inline — the asymmetry rule |
+| `arrival_process.sh` | E-H | does the effect follow arrival *rate*, or football specifically? |
+
+### External replication
+
+| script | arm | notes |
+|---|---|---|
+| `omb_discard_count.sh` | E-X | runs the OpenMessaging Benchmark and counts what it silently discards |
+| `omb_distributed.sh` | E-X2 | the distributed variant. Five attempts, five distinct faults; not reported |
+
+### Orchestration and one-offs
+
+Kept because they record what was actually run and in what order, which is how several results
+are dated. They are not general-purpose entry points.
+
+| script | purpose |
+|---|---|
+| `run_all.sh` | full sequence: depth suite, then M1, then the extra runs |
+| `depth_suite.sh` | campaign D, the depth experiments |
+| `resume_depth.sh` | resumes the depth suite after the wedge on 2026-07-23 |
+| `rerun_h2_h3.sh` | reruns for the two hypotheses the first depth suite did not settle |
+| `m1_client_ab.sh` | M1: is the ~103 ms lag a property of Kafka, or of `kafka-python`? |
+| `chain_after_m1.sh` | waits for the M1 A/B to finish, then starts the depth suite |
+| `followup_m1_knee.sh` | M1 client attribution plus the H2 knee-fill |
 
 ## Two guards worth keeping
 

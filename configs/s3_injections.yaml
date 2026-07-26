@@ -1,7 +1,0 @@
-# Deterministic correction injection config for S3B
-seed: 12345
-correction_delay_s: 2.0
-# selection_rule: e.g. "every_kth_shot" or "hash(event_uid)%N==0"
-selection:
-  method: every_kth
-  k: 50

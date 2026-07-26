@@ -638,3 +638,38 @@ enough latency to clear a millisecond on a 1 Gb/s path. If retention there is co
 across reps while 200 B remains bimodal, resolution is supported without a confound.
 
 Recorded before the cell ran, so the reading is not chosen after seeing it.
+
+### Correction to the bimodality addendum
+
+The addendum above calls the discard rate "a threshold, not a rate" and says retention has "two
+modes, nothing between them". **That is withdrawn.** It rested on five observations at one
+configuration. Across all 21 measured cells retention is spread across the full range:
+
+| retention | <5% | 5–25% | 25–75% | 75–95% | ≥95% |
+|---|---|---|---|---|---|
+| cells | 4 | 3 | 3 | 3 | 8 |
+
+Values in order: 0.36, 0.83, 1.51, 1.81, 10.94, 20.21, 23.13, 26.52, 35.92, 66.21, 76.32, 77.37,
+94.72, 95.22, 95.36, 95.59, 95.67, 99.40, 100.00, 100.00, 100.00. Nine of 21 lie between 5% and
+95%. The message-size cells that prompted the correction — 4 KB at 10.94% and 64 KB at 35.92% —
+are squarely intermediate.
+
+**The right model is simpler and was available all along.** Retention is just
+`P(true latency ≥ one tick)`. As the latency distribution moves relative to the 1 ms grid, that
+probability sweeps continuously from 0 to 1. Near the boundary it is exquisitely sensitive, which
+is why five runs at 200 B and 0% load — a configuration sitting almost exactly on the tick — gave
+0.36%, 0.83%, 1.51%, 100% and 100% and looked like two modes. With five samples, wide-and-
+continuous is not distinguishable from bimodal, and I should not have claimed it was.
+
+**What is unaffected.** Every load-bearing statement survives, because none of them depended on
+the shape:
+
+1. Zero negatives in ~420,000 discards, at every level. The withdrawal rests on the sign.
+2. Retention ranges from 0.36% to 100% across cells — the *range* is the finding, not its shape.
+3. Reported p50 does not track retention; reported average moves inversely with it
+   (Spearman −0.644).
+
+**What chain7 now settles.** Fifteen reps at one configuration was queued to establish bimodality.
+It instead measures the run-to-run distribution of retention at a fixed setting, which is the
+honest version of the same question and is worth having either way: how much does the fraction of
+data behind OMB's headline number vary when nothing is changed?

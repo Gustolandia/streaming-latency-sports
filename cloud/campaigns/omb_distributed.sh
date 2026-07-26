@@ -56,7 +56,7 @@ mkdir -p "$OUT"
 
 WS="$OMB/benchmark-framework/src/main/java/io/openmessaging/benchmark/worker/WorkerStats.java"
 [ -d "$OMB" ] || { echo "FATAL: no OMB checkout at $OMB"; exit 1; }
-grep -q "sblNonPositiveLatency" "$WS" || { echo "FATAL: discard counter not in source"; exit 1; }
+grep -q "sblZeroLatency" "$WS" || { echo "FATAL: discard counter not in source"; exit 1; }
 JH=$(ls -d /usr/lib/jvm/java-17-openjdk-* 2>/dev/null | head -1)
 [ -n "$JH" ] || { echo "FATAL: no JDK 17 on the driver"; exit 1; }
 export JAVA_HOME="$JH"; export PATH="$JH/bin:$PATH"
@@ -219,17 +219,50 @@ fi
 
 banner "collecting discards from both workers"
 remote_client "cat ~/omb_worker_client.log" > "$OUT/omb_worker_client.log" 2>/dev/null
-d_of () { grep -o "SBL_DISCARDED_NONPOSITIVE total=[0-9]*" "$1" 2>/dev/null \
-            | tail -1 | grep -o "[0-9]*$"; }
-D_DRV=$(d_of "$OUT/omb_worker_driver.log"); D_CLI=$(d_of "$OUT/omb_worker_client.log")
-D_RUN=$(d_of "$OUT/omb_dist_stdout.log")
-D_DRV=${D_DRV:-0}; D_CLI=${D_CLI:-0}; D_RUN=${D_RUN:-0}
-TOTAL=$D_DRV; [ "$D_CLI" -gt "$TOTAL" ] && TOTAL=$D_CLI; [ "$D_RUN" -gt "$TOTAL" ] && TOTAL=$D_RUN
+# Each worker JVM runs its own shutdown hook over its own share of the samples, so a field's
+# campaign total is the SUM across workers. The previous version took the MAX across the two
+# worker logs and the coordinator's stdout, which drops whichever worker saw fewer -- tolerable
+# when the output was a single unsigned total, wrong now that the sign carries the finding.
+f_of () {  # f_of <log> <field>  -- the field from that log's exact shutdown summary
+  grep -o "SBL_DISCARD_SUMMARY .*" "$1" 2>/dev/null | tail -1 \
+    | grep -oE "$2=-?[0-9]+" | grep -oE -- "-?[0-9]+$"
+}
+DRV_LOG="$OUT/omb_worker_driver.log"; CLI_LOG="$OUT/omb_worker_client.log"
 
-printf 'harness,mode,valid,discarded_nonpositive,driver_worker,client_worker,pub_lines,duration_min,load_pct,bootstrap\n%s,%s,1,%s,%s,%s,%s,%s,%s,%s\n' \
-  "OpenMessaging Benchmark" "distributed+loaded" "$TOTAL" "$D_DRV" "$D_CLI" "$PUB" \
+Z_DRV=$(f_of "$DRV_LOG" zero);     Z_CLI=$(f_of "$CLI_LOG" zero)
+N_DRV=$(f_of "$DRV_LOG" negative); N_CLI=$(f_of "$CLI_LOG" negative)
+K_DRV=$(f_of "$DRV_LOG" kept);     K_CLI=$(f_of "$CLI_LOG" kept)
+M_DRV=$(f_of "$DRV_LOG" most_negative_micros); M_CLI=$(f_of "$CLI_LOG" most_negative_micros)
+Z_DRV=${Z_DRV:-0}; Z_CLI=${Z_CLI:-0}; N_DRV=${N_DRV:-0}; N_CLI=${N_CLI:-0}
+K_DRV=${K_DRV:-0}; K_CLI=${K_CLI:-0}; M_DRV=${M_DRV:-0}; M_CLI=${M_CLI:-0}
+
+ZERO=$((Z_DRV + Z_CLI)); NEG=$((N_DRV + N_CLI)); KEPT=$((K_DRV + K_CLI))
+TOTAL=$((ZERO + NEG))
+MOSTNEG=$M_DRV; [ "$M_CLI" -lt "$MOSTNEG" ] && MOSTNEG=$M_CLI
+
+# A worker that produced no summary at all is not the same as one that discarded nothing, and
+# the difference is exactly the artefact that invalidated the first distributed attempt.
+SUMS=0
+[ -n "$(f_of "$DRV_LOG" kept)" ] && SUMS=$((SUMS + 1))
+[ -n "$(f_of "$CLI_LOG" kept)" ] && SUMS=$((SUMS + 1))
+if [ "$SUMS" -lt 2 ]; then
+  echo "WARNING: only $SUMS of 2 workers reported a shutdown summary; counts are a lower bound"
+fi
+
+printf 'harness,mode,valid,discarded_total,discarded_zero,discarded_negative,most_negative_micros,kept,worker_summaries,driver_worker_zero,client_worker_zero,pub_lines,duration_min,load_pct,bootstrap\n%s,%s,1,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
+  "OpenMessaging Benchmark" "distributed+loaded" "$TOTAL" "$ZERO" "$NEG" "$MOSTNEG" "$KEPT" \
+  "$SUMS" "$Z_DRV" "$Z_CLI" "$PUB" \
   "$DURATION_MIN" "$LOAD_PCT" "$KAFKA_BOOTSTRAP" > "$OUT/omb_distributed_result.csv"
-echo "VALID RUN. DISCARDED NON-POSITIVE SAMPLES: $TOTAL  (driver $D_DRV, client $D_CLI)"
+
+echo "VALID RUN. zero=$ZERO  negative=$NEG  most_negative=${MOSTNEG}us  kept=$KEPT"
+# The single-host sweep found zero negatives in ~420,000 discards, every one a tick collision.
+# Cross-host is where the clocks can genuinely disagree, so this is the line that matters.
+if [ "$NEG" -gt 0 ]; then
+  echo "NEGATIVE SAMPLES PRESENT: $NEG across two hosts, worst ${MOSTNEG}us -- a cross-host"
+  echo "  causality violation, not a resolution artefact."
+else
+  echo "NO NEGATIVE SAMPLES: every discard was a millisecond-tick collision, as single-host."
+fi
 cat "$OUT/omb_distributed_result.csv"
 
 banner "OMB_DISTRIBUTED_COMPLETE"

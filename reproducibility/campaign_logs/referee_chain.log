@@ -1,0 +1,32 @@
+=== referee chain start 2026-07-25T00:22:33Z ===
+--- 1/2 E-B2: clean effect-size sweep (referee M3) ---
+=== clean effect-size sweep: speedup 0.008333 (true real time), 180s, 5 reps 00:22:33 ===
+=== E-B2 delay=0ms 00:22:33 ===
+
+[SUCCESS] All runs completed successfully!
+=== E-B2 delay=1ms 00:40:19 ===
+
+[SUCCESS] All runs completed successfully!
+=== E-B2 delay=5ms 00:58:04 ===
+
+[SUCCESS] All runs completed successfully!
+=== E-B2 delay=20ms 01:15:49 ===
+
+[SUCCESS] All runs completed successfully!
+=== E-B2 delay=50ms 01:36:28 ===
+
+[WARNING] 6 runs failed. Check logs for details.
+=== CLEAN_EFFECT_SIZE_COMPLETE 02:12:40 ===
+--- 2/2 E1-REP: E1 configuration replication (referee M2) ---
+=== E1 replication: speedup 0.008333, window 600s (E1's), 5 reps 02:13:11 ===
+=== E1-REP N=1 02:13:11 ===
+
+[SUCCESS] All runs completed successfully!
+=== E1-REP N=9 03:03:22 ===
+
+[SUCCESS] All runs completed successfully!
+=== E1-REP N=12 03:56:05 ===
+
+[WARNING] 10 runs failed. Check logs for details.
+=== E1_REPLICATION_COMPLETE 05:19:30 ===
+=== REFEREE_CHAIN_COMPLETE 2026-07-25T05:19:30Z ===

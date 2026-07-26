@@ -1,0 +1,29 @@
+diff --git a/benchmark-framework/src/main/java/io/openmessaging/benchmark/worker/WorkerStats.java b/benchmark-framework/src/main/java/io/openmessaging/benchmark/worker/WorkerStats.java
+index 68b9d53..b182c4e 100644
+--- a/benchmark-framework/src/main/java/io/openmessaging/benchmark/worker/WorkerStats.java
++++ b/benchmark-framework/src/main/java/io/openmessaging/benchmark/worker/WorkerStats.java
+@@ -31,6 +31,11 @@ public class WorkerStats {
+ 
+     private final OpStatsLogger publishDelayLatencyStats;
+ 
++    // Added for an external audit: counts end-to-end samples the guard below discards.
++    // Does not change what OMB measures or reports.
++    private final java.util.concurrent.atomic.AtomicLong sblNonPositiveLatency =
++            new java.util.concurrent.atomic.AtomicLong();
++
+     private final Recorder endToEndLatencyRecorder = new Recorder(TimeUnit.HOURS.toMicros(12), 5);
+     private final Recorder endToEndCumulativeLatencyRecorder =
+             new Recorder(TimeUnit.HOURS.toMicros(12), 5);
+@@ -96,6 +101,12 @@ public class WorkerStats {
+             endToEndCumulativeLatencyRecorder.recordValue(endToEndLatencyMicros);
+             endToEndLatencyRecorder.recordValue(endToEndLatencyMicros);
+             endToEndLatencyStats.registerSuccessfulEvent(endToEndLatencyMicros, TimeUnit.MICROSECONDS);
++        } else {
++            long n = sblNonPositiveLatency.incrementAndGet();
++            if (n <= 5 || n % 1000 == 0) {
++                System.err.println("SBL_DISCARDED_NONPOSITIVE total=" + n
++                        + " sample_micros=" + endToEndLatencyMicros);
++            }
+         }
+     }
+ 

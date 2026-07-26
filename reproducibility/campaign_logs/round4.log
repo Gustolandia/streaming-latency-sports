@@ -1,0 +1,52 @@
+=== round 4 starting 2026-07-25T17:13:16Z ===
+=== [1/2] E-A9 run-queue delay distribution 2026-07-25T19:06:47Z ===
+=== provisioning bpftrace 19:06:48 ===
+bpftrace v0.14.0
+=== stall distribution: speedup 0.008333, 180s, 5 reps, load 88% 19:06:55 ===
+=== E-A9 88% BASELINE (ordinary priority, run-queue delay traced) 19:06:55 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/stall_distribution.sh: line 107: 366046 Killed                  sudo pkill -9 -f bpftrace 2> /dev/null
+cloud/campaigns/stall_distribution.sh: line 107: 363770 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$LOAD_PCT" --timeout 3600s > /dev/null 2>&1
+  histogram lines: 0
+=== E-A9 88% ELEVATED (SCHED_FIFO 80, run-queue delay traced) 19:25:00 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/stall_distribution.sh: line 107: 368747 Killed                  sudo pkill -9 -f bpftrace 2> /dev/null
+cloud/campaigns/stall_distribution.sh: line 107: 366070 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$LOAD_PCT" --timeout 3600s > /dev/null 2>&1
+  histogram lines: 0
+cloud/campaigns/stall_distribution.sh: line 153: 368766 Killed                  sudo pkill -9 -f bpftrace 2> /dev/null
+cloud/campaigns/stall_distribution.sh: line 154: sampler_pid: unbound variable
+=== [2/2] E-A10 T_true sweep 2026-07-25T19:43:42Z ===
+=== T_true sweep: speedup 0.008333, 180s, 5 reps, load 88% 19:43:42 ===
+=== E-A10 pad=0 bytes at 88% load 19:43:42 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/ttrue_sweep.sh: line 59: 369009 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$LOAD_PCT" --timeout 3600s > /dev/null 2>&1
+=== E-A10 pad=4096 bytes at 88% load 20:01:32 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/ttrue_sweep.sh: line 59: 371349 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$LOAD_PCT" --timeout 3600s > /dev/null 2>&1
+=== E-A10 pad=65536 bytes at 88% load 20:19:22 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/ttrue_sweep.sh: line 59: 373842 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$LOAD_PCT" --timeout 3600s > /dev/null 2>&1
+=== E-A10 pad=262144 bytes at 88% load 20:37:12 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/ttrue_sweep.sh: line 59: 376308 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$LOAD_PCT" --timeout 3600s > /dev/null 2>&1
+=== TTRUE_SWEEP_COMPLETE 20:55:04 ===
+=== round 4 analyses 2026-07-25T20:55:36Z ===
+== E-A4: pooled utilisation ladder ==
+  rho=0.8809  inversion=0.26030  (ea10/pad0)
+  rho=0.8822  inversion=0.19062  (ea10/pad4096)
+  rho=0.8847  inversion=0.08878  (ea10/pad65536)
+  rho=0.8930  inversion=0.06365  (ea10/pad262144)
+
+  points above rho=0.90: 0  (max rho 0.893)
+  R^2  M/G/1 -0.1567 | linear -0.0170 | power 0.8041 | exponential 0.8025
+  rank correlation with utilisation: -1.000
+
+== FUNCTIONAL FORM: WITHDRAWAL STANDS ==
+  only 0 condition(s) above rho=0.90 (max 0.893): the sweep did not reach the interval where the forms disagree, so it cannot discriminate
+=== round 4 finished 2026-07-25T20:55:36Z ===

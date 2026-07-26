@@ -62,3 +62,8 @@ paper.log
 paper.out
 paper.bbl
 paper.blg
+
+# Bulk run data pulled off the cloud driver before the VMs are released.
+# The tracked summary of every run is reproducibility/runs_index*.csv and
+# run_metadata*.jsonl.gz; this is the raw evidence behind it, ~800 MB.
+cloud_archive/

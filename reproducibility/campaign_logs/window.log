@@ -1,0 +1,11 @@
+=== window sweep: speedup 0.008333 (true real time), windows: 60 180 600 02:33:08 ===
+=== E-W window=60s 02:33:08 ===
+
+[SUCCESS] All runs completed successfully!
+=== E-W window=180s 02:37:46 ===
+
+[SUCCESS] All runs completed successfully!
+=== E-W window=600s 02:48:25 ===
+
+[SUCCESS] All runs completed successfully!
+=== WINDOW_SWEEP_COMPLETE 03:18:33 ===

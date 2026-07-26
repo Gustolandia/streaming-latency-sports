@@ -1,0 +1,78 @@
+E-A5 clear at 2026-07-25T08:40:11Z
+=== E-A5 result ===
+== manipulation check: utilisation must be equal across arms ==
+  l75: rho 0.753 (base) vs 0.752 (rt)  [ok]
+  l88: rho 0.881 (base) vs 0.881 (rt)  [ok]
+
+== inversion rate, ordinary vs real-time stamping ==
+  l75: 0.13199 (n=2985) -> 0.00335 (n=2985)   ratio 0.025   intervals disjoint
+  l88: 0.30486 (n=2985) -> 0.00570 (n=2985)   ratio 0.019   intervals disjoint
+
+== verdict ==
+OCCUPANCY MECHANISM SUPPORTED
+  the inversion rate collapsed at every level while utilisation held.
+  Utilisation-only models (M/G/1, exp(k rho)) predict no change here and are
+  contradicted: rho was held fixed and the rate moved anyway.
+
+wrote docs/results/model/stamping_priority.csv
+=== knee resolution (M4) ===
+  rho=0.2525  inversion=0.00503  (ea_sat/bg2)
+  rho=0.2525  inversion=0.00402  (ea3/bg2)
+  rho=0.5037  inversion=0.00279  (ea_sat/bg4)
+  rho=0.5037  inversion=0.00637  (ea3/bg4)
+  rho=0.6284  inversion=0.01284  (ea_knee/bg5)
+  rho=0.6284  inversion=0.02446  (ea3/bg5)
+  rho=0.7032  inversion=0.11089  (ea4/l70)  <- new
+  rho=0.7531  inversion=0.06924  (ea_knee/bg6)
+  rho=0.7531  inversion=0.07638  (ea3/bg6)
+  rho=0.8025  inversion=0.22037  (ea4/l80)  <- new
+  rho=0.8775  inversion=0.22379  (ea3/bg7)
+  rho=0.8778  inversion=0.20994  (ea_knee/bg7)
+  rho=0.8812  inversion=0.22781  (ea4/l88)  <- new
+  rho=0.9204  inversion=0.23953  (ea4/l92)  <- new
+  rho=0.9501  inversion=0.29715  (ea4/l95)  <- new
+  rho=0.9701  inversion=0.29313  (ea4/l97)  <- new
+  rho=0.9900  inversion=0.32864  (ea4/l99)  <- new
+  rho=1.0000  inversion=0.25349  (ea_sat/bg12)
+  rho=1.0000  inversion=0.28587  (ea_sat/bg16)
+  rho=1.0000  inversion=0.33110  (ea_sat/bg8)
+  rho=1.0000  inversion=0.31658  (ea3/bg10)
+  rho=1.0000  inversion=0.26064  (ea3/bg12)
+  rho=1.0000  inversion=0.37052  (ea3/bg8)
+
+  points above rho=0.90: 4  (max rho 0.99)
+  R^2  M/G/1 -0.0465 | linear 0.5941 | power 0.4697 | exponential 0.9337
+  rank correlation with utilisation: 0.964
+
+== FUNCTIONAL FORM: WITHDRAWAL STANDS ==
+  M/G/1 R^2 -0.047 against exponential 0.934: margin -0.980 does not exceed 0.02, so the forms remain indistinguishable even where they should diverge
+=== installing JDK 17 for OMB ===
+jdk17 installed
+JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+=== OMB discard count (M1) ===
+08:42:21.670 [main] INFO Metrics - Closing reporter org.apache.kafka.common.metrics.JmxReporter
+08:42:21.670 [main] INFO Metrics - Metrics reporters closed
+08:42:21.670 [main] INFO AppInfoParser - App info kafka.producer for producer-1 unregistered
+08:42:21.761 [main] INFO ConsumerCoordinator - [Consumer clientId=consumer-sub-000-nafu3Zk-1, groupId=sub-000-nafu3Zk] Revoke previously assigned partitions test-topic-0000000-U--C40g-0
+08:42:21.762 [main] INFO ConsumerCoordinator - [Consumer clientId=consumer-sub-000-nafu3Zk-1, groupId=sub-000-nafu3Zk] Member consumer-sub-000-nafu3Zk-1-7921610c-fed2-404b-af4a-39d388ec9801 sending LeaveGroup request to coordinator 10.0.1.221:19092 (id: 2147483646 rack: null) due to the consumer is being closed
+08:42:21.762 [main] INFO ConsumerCoordinator - [Consumer clientId=consumer-sub-000-nafu3Zk-1, groupId=sub-000-nafu3Zk] Resetting generation and member id due to: consumer pro-actively leaving the group
+08:42:21.762 [main] INFO ConsumerCoordinator - [Consumer clientId=consumer-sub-000-nafu3Zk-1, groupId=sub-000-nafu3Zk] Request joining group due to: consumer pro-actively leaving the group
+08:42:22.060 [main] INFO Metrics - Metrics scheduler closed
+08:42:22.061 [main] INFO Metrics - Closing reporter org.apache.kafka.common.metrics.JmxReporter
+08:42:22.061 [main] INFO Metrics - Metrics reporters closed
+08:42:22.062 [main] INFO AppInfoParser - App info kafka.consumer for consumer-sub-000-nafu3Zk-1 unregistered
+08:42:22.062 [main] INFO KafkaProducer - [Producer clientId=producer-1] Closing the Kafka producer with timeoutMillis = 9223372036854775807 ms.
+08:42:22.062 [main] INFO Metrics - Metrics scheduler closed
+08:42:22.062 [main] INFO Metrics - Closing reporter org.apache.kafka.common.metrics.JmxReporter
+08:42:22.062 [main] INFO Metrics - Metrics reporters closed
+08:42:22.063 [main] INFO AppInfoParser - App info kafka.producer for producer-1 unregistered
+08:42:22.063 [kafka-admin-client-thread | adminclient-1] INFO AppInfoParser - App info kafka.admin.client for adminclient-1 unregistered
+08:42:22.064 [kafka-admin-client-thread | adminclient-1] INFO Metrics - Metrics scheduler closed
+08:42:22.064 [kafka-admin-client-thread | adminclient-1] INFO Metrics - Closing reporter org.apache.kafka.common.metrics.JmxReporter
+08:42:22.064 [kafka-admin-client-thread | adminclient-1] INFO Metrics - Metrics reporters closed
+=== what OMB discarded without recording 08:50:18 ===
+DISCARDED NON-POSITIVE SAMPLES: 0
+harness,discarded_nonpositive,duration_min,bootstrap
+OpenMessaging Benchmark,0,3,10.0.1.221:19092
+=== OMB_DISCARD_COUNT_COMPLETE 08:50:18 ===
+post-ea5 chain finished at 2026-07-25T08:50:18Z

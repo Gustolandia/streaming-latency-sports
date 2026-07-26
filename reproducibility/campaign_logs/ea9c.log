@@ -1,0 +1,38 @@
+=== ea9c starting 2026-07-25T23:30:53Z ===
+--- traced level 75% 2026-07-26T01:59:26Z ---
+@over_1000us: 103387
+@over_2000us: 87846
+@over_500us: 119299
+=== E-A9 75% ELEVATED (SCHED_FIFO 80, run-queue delay traced) 02:17:40 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/stall_distribution.sh: line 145: 418220 Killed                  sudo pkill -9 -f bpftrace 2> /dev/null
+cloud/campaigns/stall_distribution.sh: line 145: 415581 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$LOAD_PCT" --timeout 3600s > /dev/null 2>&1
+  TRACE OK
+@count: 641308
+@over_1000us: 9508
+@over_2000us: 8389
+@over_500us: 10395
+=== STALL_DISTRIBUTION_COMPLETE 02:35:49 ===
+level 75% rc=0
+--- traced level 88% 2026-07-26T02:36:22Z ---
+@over_1000us: 125513
+@over_2000us: 109777
+@over_500us: 142342
+=== E-A9 88% ELEVATED (SCHED_FIFO 80, run-queue delay traced) 02:54:36 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/stall_distribution.sh: line 145: 423824 Killed                  sudo pkill -9 -f bpftrace 2> /dev/null
+cloud/campaigns/stall_distribution.sh: line 145: 421211 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$LOAD_PCT" --timeout 3600s > /dev/null 2>&1
+  TRACE OK
+@count: 649788
+@over_1000us: 9502
+@over_2000us: 8461
+@over_500us: 10304
+=== STALL_DISTRIBUTION_COMPLETE 03:12:45 ===
+level 88% rc=0
+=== E-A9b analysis 2026-07-26T03:13:18Z ===
+this directory holds 2 load levels: l75, l88
+Pass --level to choose one. The instrument check and the verdict are both
+per-level, so analysing them together would compare arms across levels.
+=== ea9c finished 2026-07-26T03:13:18Z ===

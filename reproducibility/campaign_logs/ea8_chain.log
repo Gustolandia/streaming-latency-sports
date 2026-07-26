@@ -1,0 +1,25 @@
+everything clear at 2026-07-25T17:17:25Z; starting E-A8 co-located control
+=== co-located control: speedup 0.008333, 180s, 5 reps 17:17:55 ===
+=== E-A8 REMOTE broker, idle  (the paper's usual configuration) 17:17:55 ===
+
+[SUCCESS] All runs completed successfully!
+=== E-A8 REMOTE broker, 88% load 17:35:39 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/colocated_control.sh: line 104: 351913 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$pct" --timeout 3600s > /dev/null 2>&1
+=== starting co-located Kafka + Redis on the driver 17:53:28 ===
+sbl_local_broker Up 25 seconds
+sbl_local_redis Up 38 seconds
+=== E-A8 CO-LOCATED broker, idle  (the cleanest T_true this testbed can give) 17:54:11 ===
+
+[SUCCESS] All runs completed successfully!
+=== E-A8 CO-LOCATED broker, 88% load 18:11:54 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/colocated_control.sh: line 104: 358210 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$pct" --timeout 3600s > /dev/null 2>&1
+co-located brokers removed
+=== COLOCATED_CONTROL_COMPLETE 18:29:41 ===
+co-located brokers removed
+ea8 finished at 2026-07-25T18:29:41Z
+=== containers left behind (should be none) ===
+  none

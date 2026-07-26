@@ -1,0 +1,57 @@
+=== run_all start 2026-07-22T21:57:59Z on sbl-drv ===
+cores=8  mem=23GB
+=== PRE-FLIGHT 21:57:59 ===
+plan            : data/processed/replay_plans/3bfbffe1de5750ebd47d770be0bb924a10cde54f/match_3895074/replay_plan.csv
+derived speedup : 0.008333 (true real time)
+running one short real-time trial to verify the rate...
+Summary: docs/results/preflight/concurrency_concurrency_n1_20260722_215759/concurrency_n1_20260722_215759_summary.json
+
+[SUCCESS] All runs completed successfully!
+replay-rate check: OK
+  events        : 57 (0.966 ev/s)
+  wall elapsed  : 59.0s
+  expected wall : 60.0s (60s of match clock at 1x)
+  ratio         : 0.98x
+=== PRE-FLIGHT PASSED 21:59:31 ===
+=== 1/3 DEPTH SUITE 21:59:31 ===
+=== replay-rate check: --speedup 0.008333 is true real time; window 180s 21:59:31 ===
+=== depth suite starting on 8 cores 21:59:31 ===
+=== E-A cores=1 bg=0 21:59:31 ===
+
+[SUCCESS] All runs completed successfully!
+=== E-A cores=1 bg=2 22:10:25 ===
+
+[SUCCESS] All runs completed successfully!
+=== E-A cores=1 bg=4 23:10:28 ===
+
+[SUCCESS] All runs completed successfully!
+=== E-A cores=2 bg=0 00:10:31 ===
+
+[SUCCESS] All runs completed successfully!
+=== E-A cores=2 bg=2 00:21:18 ===
+
+[SUCCESS] All runs completed successfully!
+=== E-A cores=2 bg=4 01:21:21 ===
+
+[SUCCESS] All runs completed successfully!
+=== E-A cores=4 bg=0 02:21:24 ===
+
+[SUCCESS] All runs completed successfully!
+=== E-A cores=4 bg=2 02:32:04 ===
+
+[SUCCESS] All runs completed successfully!
+=== E-A cores=4 bg=4 03:32:07 ===
+
+[SUCCESS] All runs completed successfully!
+=== E-A2 N=1 (constant aggregate rate) 04:32:10 ===
+
+[SUCCESS] All runs completed successfully!
+=== E-A2 N=3 (constant aggregate rate) 04:42:48 ===
+
+[SUCCESS] All runs completed successfully!
+=== E-A2 N=6 (constant aggregate rate) 04:53:26 ===
+
+[SUCCESS] All runs completed successfully!
+=== E-A2 N=12 (constant aggregate rate) 05:04:08 ===
+
+[WARNING] 6 runs failed. Check logs for details.

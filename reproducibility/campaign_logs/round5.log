@@ -1,0 +1,73 @@
+=== round 5 starting 2026-07-25T22:58:26Z ===
+=== [1/3] E-A9b traced tail, 75% and 88% 2026-07-25T22:58:56Z ===
+--- traced level 75% ---
+=== provisioning bpftrace 22:58:56 ===
+bpftrace v0.14.0
+=== verifying the probe attaches and records before spending cells on it 22:58:56 ===
+cloud/campaigns/stall_distribution.sh: line 115: $!: unbound variable
+--- traced level 88% ---
+=== provisioning bpftrace 22:58:56 ===
+bpftrace v0.14.0
+=== verifying the probe attaches and records before spending cells on it 22:58:56 ===
+cloud/campaigns/stall_distribution.sh: line 115: $!: unbound variable
+--- E-A9b analysis, both levels ---
+no arm has both a traced histogram and usable run data
+=== [2/3] E-A6b load geometry repeat 2026-07-25T22:59:26Z ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/load_geometry.sh: line 65: 395891 Killed                  stress-ng "$@" --timeout 3600s > /dev/null 2>&1
+=== E-A6 k=7/8 CONCENTRATED (7 cores flat out, 1 free) 00:10:45 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/load_geometry.sh: line 65: 398251 Killed                  stress-ng "$@" --timeout 3600s > /dev/null 2>&1
+=== E-A6 k=7/8 SPREAD (all 8 cores at 88% duty) 00:28:34 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/load_geometry.sh: line 65: 400936 Killed                  stress-ng "$@" --timeout 3600s > /dev/null 2>&1
+=== LOAD_GEOMETRY_COMPLETE 00:46:25 ===
+  rho=0.6284  inversion=0.01106  (ea6b/k5_conc)
+  rho=0.7531  inversion=0.05997  (ea6b/k6_conc)
+  rho=0.7531  inversion=0.12295  (ea6b/k6_spread)
+  rho=0.8778  inversion=0.19732  (ea6b/k7_conc)
+  rho=0.8822  inversion=0.23417  (ea6b/k7_spread)
+
+  points above rho=0.90: 0  (max rho 0.8822)
+  R^2  M/G/1 0.9009 | linear 0.3328 | power 0.9068 | exponential 0.8976
+  rank correlation with utilisation: 0.928
+
+== FUNCTIONAL FORM: WITHDRAWAL STANDS ==
+  only 0 condition(s) above rho=0.90 (max 0.8822): the sweep did not reach the interval where the forms disagree, so it cannot discriminate
+=== [3/3] E-A10b T_true sweep repeat 2026-07-26T00:46:55Z ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/ttrue_sweep.sh: line 59: 405628 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$LOAD_PCT" --timeout 3600s > /dev/null 2>&1
+=== E-A10 pad=65536 bytes at 88% load 01:22:36 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/ttrue_sweep.sh: line 59: 408081 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$LOAD_PCT" --timeout 3600s > /dev/null 2>&1
+=== E-A10 pad=262144 bytes at 88% load 01:40:27 ===
+
+[SUCCESS] All runs completed successfully!
+cloud/campaigns/ttrue_sweep.sh: line 59: 410244 Killed                  stress-ng --cpu "$NCORES" --cpu-load "$LOAD_PCT" --timeout 3600s > /dev/null 2>&1
+=== TTRUE_SWEEP_COMPLETE 01:58:18 ===
+== the sweep ==
+       pad     rho  transport  inversion   events
+         0  0.8822     0.7613    0.23384     2985
+      4096  0.8825     2.4737    0.16516     2985
+     65536  0.8850    16.0585    0.07839     2985
+    262144  0.8950    58.4817    0.05494     2985
+
+== manipulation check: did padding lengthen T_true? ==
+  transport 0.7613 -> 58.4817 ms (76.82x)   [ok]
+  utilisation spread across the sweep: 0.013
+
+== verdict ==
+  transport rose 76.82x, inversion rate moved 0.23x   intervals disjoint
+
+MECHANISM SUPPORTED ON A SIGN NOTHING ELSE PREDICTS.
+  A slower path is a MORE reliable measurement: the same stall distribution
+  now has a longer interval to outrun. An account in which inversions track
+  system stress predicts the opposite, since bigger payloads are more work.
+
+wrote docs/results/model/ea10b/ttrue_sweep.csv
+=== round 5 finished 2026-07-26T01:58:51Z ===

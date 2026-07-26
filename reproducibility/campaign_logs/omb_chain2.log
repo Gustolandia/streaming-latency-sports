@@ -1,0 +1,18 @@
+driver clear at 2026-07-25T07:26:41Z; starting OMB discard count
+using maven 3.9.9 at /usr/local/bin/mvn
+=== OMB discard counter: patching /home/ubuntu/omb/benchmark-framework/src/main/java/io/openmessaging/benchmark/worker/WorkerStats.java 07:27:11 ===
+already patched
+patch recorded at docs/results/external/omb_patch.diff
+=== building OMB (this is CPU-heavy; no latency campaign may be running) 07:27:11 ===
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:compile (default-compile) on project driver-api: Fatal error compiling: error: release version 17 not supported -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException
+[ERROR] 
+[ERROR] After correcting the problems, you can resume the build with the command
+[ERROR]   mvn <args> -rf :driver-api
+FATAL: build produced no jar
+omb retry finished at 2026-07-25T07:27:18Z

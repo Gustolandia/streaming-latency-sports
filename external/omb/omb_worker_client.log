@@ -1,0 +1,2 @@
+Error: Unable to initialize main class io.openmessaging.benchmark.worker.BenchmarkWorker
+Caused by: java.lang.NoClassDefFoundError: com/beust/jcommander/ParameterException

@@ -1,0 +1,38 @@
+=== round 3 starting 2026-07-25T18:30:22Z ===
+=== [1/3] E-A6 load geometry: the inversion rates ===
+== E-A4: pooled utilisation ladder ==
+  rho=0.6250  inversion=0.03786  (ea6/k5_spread)
+  rho=0.6284  inversion=0.02010  (ea6/k5_conc)
+  rho=0.7531  inversion=0.08241  (ea6/k6_conc)
+  rho=0.7531  inversion=0.17085  (ea6/k6_spread)
+  rho=0.8778  inversion=0.22814  (ea6/k7_conc)
+  rho=0.8809  inversion=0.24154  (ea6/k7_spread)
+
+  points above rho=0.90: 0  (max rho 0.8809)
+  R^2  M/G/1 0.8516 | linear 0.3554 | power 0.8544 | exponential 0.8308
+  rank correlation with utilisation: 0.928
+
+== FUNCTIONAL FORM: WITHDRAWAL STANDS ==
+  only 0 condition(s) above rho=0.90 (max 0.8809): the sweep did not reach the interval where the forms disagree, so it cannot discriminate
+=== [2/3] E-A8 co-located control ===
+== E-A4: pooled utilisation ladder ==
+  rho=0.0025  inversion=0.00335  (ea8/remote_l0)
+  rho=0.0050  inversion=0.00436  (ea8/colocated_l0)
+  rho=0.8812  inversion=0.25930  (ea8/remote_l88)
+  rho=0.8825  inversion=0.25997  (ea8/colocated_l88)
+
+  points above rho=0.90: 0  (max rho 0.8825)
+  R^2  M/G/1 0.9995 | linear 0.9998 | power 1.0000 | exponential 1.0000
+  rank correlation with utilisation: 1.000
+
+== FUNCTIONAL FORM: WITHDRAWAL STANDS ==
+  only 0 condition(s) above rho=0.90 (max 0.8825): the sweep did not reach the interval where the forms disagree, so it cannot discriminate
+=== [3/3] distributed OMB, retry with the validation guard ===
+=== rebuilding the packaged distribution so the patch is definitely in it 18:30:57 ===
+tarball: /home/ubuntu/omb/package/target/openmessaging-benchmark-0.0.1-SNAPSHOT-bin.tar.gz (236M)
+=== provisioning the client 18:31:13 ===
+openjdk version "17.0.19" 2026-04-21
+198
+=== background load on both hosts (88% duty) 18:31:31 ===
+=== starting workers: driver 10.0.1.218 and client 10.0.1.122 18:31:36 ===
+=== round 3 finished 2026-07-25T19:05:17Z ===

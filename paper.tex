@@ -171,13 +171,27 @@ that large clean effects are the trustworthy ones.
 \item \textbf{A demonstration}, which we regard as the strongest of these: a complete,
 significant, theory-confirming result set that was physically impossible, reported in full so a
 reader can judge how convincing invalid data looks (Section~\ref{sec:firstanswer}).
-\item \textbf{Four falsifiable rules, derived and measured} (Sections~\ref{sec:model}
+\item \textbf{Falsifiable rules, derived and measured} (Sections~\ref{sec:model}
 and~\ref{sec:rules}). From a model of the failure we derive that inversion probability is
 $F_{\Delta}(-T_{\mathrm{true}})$ and test its consequences: it falls as the measured quantity
-grows, rises with concurrent process count, follows M/G/1 waiting time in utilisation, and --- the
-rule that bears directly on our own first result --- an asymmetric instrument leaves a
-between-system difference that a symmetric one removes. All four hold. This converts the central
-property from an observation into a measured law.
+grows, rises with concurrent process count, rises monotonically with utilisation, and --- the rule
+that bears directly on our own first result --- an asymmetric instrument leaves a between-system
+difference that a symmetric one removes. Those hold. We had also claimed the M/G/1 \emph{form}
+specifically, and we withdraw it: extended to the utilisation range where the candidate forms
+diverge, M/G/1 fits worse than the mean. The withdrawal is part of the contribution, because what
+replaces it is not a better curve.
+\item \textbf{The mechanism, established by manipulation}
+(Section~\ref{sec:twostate}): an inversion occurs when a scheduling stall outlasts the interval
+being measured, and we manipulate both sides of that inequality.
+Raising the stamping threads to real-time priority at \emph{fixed} utilisation collapses the rate
+$7$ to $80\times$ across eight matched pairs. Two loads reaching \emph{identical} utilisation ---
+to four decimals, in two campaigns --- by different core geometries differ by $2.07\times$ and
+$2.05\times$, so utilisation cannot be the variable. Lengthening the true transport $77\times$
+\emph{lowers} the rate, the sign no stress-based account predicts. A kernel trace of run-queue
+delay then predicts the observed rate to within $22\%$ with nothing fitted between them, and puts
+the stall distribution's tail index near $0.34$ --- below one, so it has no finite mean, which is
+why an instrument built on averages is structurally rather than accidentally blind to this
+failure.
 \item \textbf{Evidence that the exposure is not ours alone} (Section~\ref{sec:external}). A
 source-level audit of the OpenMessaging Benchmark, at a named commit and with file and line
 given, finds it computes end-to-end latency as the same cross-process --- in a distributed

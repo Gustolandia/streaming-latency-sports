@@ -309,6 +309,48 @@ zero inversions in 2,985 events where every other real-time cell shows ~0.004. W
 determine whether that arm genuinely differed or tracing perturbed it, no claim in the paper
 rests on it, and a reproduction attempt that finds ~0.004 there has not contradicted us.
 
+### 5c. The run index — what survives the raw data
+
+`runs/` held 8.4 GB of per-event CSVs on one laptop and 676 MB more on the cloud driver, and not
+one file of it was tracked. The aggregated CSVs named 1,546 run ids between them across 57 files;
+1,445 local runs appeared in none of them. So the honest answer to "which runs produced this
+paper" was a directory on a machine, which is the same provenance gap Section 7.4 of the paper
+reports having found in its own history.
+
+Two tracked files close it. Both are built by
+[`../scripts/build_runs_index.py`](../scripts/build_runs_index.py).
+
+| file | what it holds |
+|---|---|
+| `runs_index.csv` | one row per run: identity, campaign, backend, topology, feeds, plan, git commit, event counts, median transport, **and the clock-integrity verdict** |
+| `run_metadata.jsonl.gz` | every `meta.json`, one JSON per line — the per-file SHA-256 of the code each run executed. 1,662 runs in 185 KB |
+
+```bash
+python scripts/build_runs_index.py --archive-meta reproducibility/run_metadata.jsonl.gz
+python scripts/build_runs_index.py --fast          # skip the raw pass; integrity reads not-assessed
+```
+
+**Why the integrity column had to be extracted before anything was deleted.** The audit that
+rejects 1,321 of 2,266 runs is computed *from* `producer.csv` and `consumer_events.csv`. Delete
+those and the number can never be recomputed — it becomes a claim resting on a deleted directory.
+The index carries, per run, the matched-event count, the negative-transport count, the fraction,
+and the verdict under the paper's rule, so the audit remains checkable at the level of the
+individual run after the events themselves are gone.
+
+The verdict vocabulary distinguishes four states, and *not-assessed* is deliberately not a pass:
+
+| verdict | meaning |
+|---|---|
+| `usable` | ≤1% of matched events negative and a positive median |
+| `condemned` | fails the rule |
+| `no-matched-events` | the run produced nothing to assess |
+| `not-assessed` | the raw CSVs were absent or `--fast` was used — **not** a clean bill |
+
+**Local corpus at the time of writing:** 1,690 runs — 1,151 usable, 366 condemned, 105 with no
+matched events, 68 not assessed. 204 are named by no aggregate CSV, i.e. they were run and never
+used; the index records them anyway, because "this run happened and went nowhere" is a fact worth
+keeping and is exactly what gets lost when a directory is cleaned up.
+
 ### 6. Verify the paper agrees with the data
 
 ```bash

@@ -49,8 +49,12 @@ MUTATIONS = [
      "The floor is not zero", "The floor is zero"),
     ("break a cross-reference",
      "Figure~\\ref{fig:window}", "Figure~\\ref{fig:nosuch}"),
-    ("wrong traced-tail agreement",
-     "they agree to $22\\%$", "they agree to $52\\%$"),
+    ("wrong traced-tail ratio",
+     "$0.78$, $1.06$ and $1.32$", "$0.78$, $1.06$ and $3.32$"),
+    ("hide the withheld arm",
+     "withheld by the instrument check", "confirmed by the instrument check"),
+    ("re-open the settled real-time zero",
+     "is an artefact of the instrument", "is unexplained"),
 ]
 
 

@@ -61,8 +61,8 @@ eight matched pairs spanning five load levels; lengthening the true transport $7
 so a slower path is a \emph{more reliable} measurement --- a sign no account based on system
 stress predicts. Two loads at identical utilisation, differing only in how they spread across
 cores, give rates $2.07\times$ apart, so utilisation is not the variable. A kernel trace closes
-the loop: the measured probability that a run-queue stall outlasts the true transport is $0.181$
-against an observed rate of $0.231$, unfitted. The stall distribution's tail index is near
+the loop: across three arms at two load levels, the measured probability that a run-queue stall
+outlasts the true transport predicts the observed inversion rate to within a third, unfitted. The stall distribution's tail index is near
 $0.34$, so it has no finite mean, and instruments built on averages are structurally blind to
 this failure. We withdraw two claims of our own, including an M/G/1 form our own data refutes
 once measured where the candidates diverge. Because a failure only we have made is a cautionary
@@ -188,8 +188,8 @@ $7$ to $80\times$ across eight matched pairs. Two loads reaching \emph{identical
 to four decimals, in two campaigns --- by different core geometries differ by $2.07\times$ and
 $2.05\times$, so utilisation cannot be the variable. Lengthening the true transport $77\times$
 \emph{lowers} the rate, the sign no stress-based account predicts. A kernel trace of run-queue
-delay then predicts the observed rate to within $22\%$ with nothing fitted between them, and puts
-the stall distribution's tail index near $0.34$ --- below one, so it has no finite mean, which is
+delay then predicts the observed rate to within a third, in three arms at two load levels, with
+nothing fitted between them, and puts the stall distribution's tail index near $0.34$ --- below one, so it has no finite mean, which is
 why an instrument built on averages is structurally rather than accidentally blind to this
 failure.
 \item \textbf{Evidence that the exposure is not ours alone} (Section~\ref{sec:external}). A
@@ -1653,12 +1653,19 @@ $\Pr[\text{stall} > 0.5\,\text{ms}]$ against the measured transport of that cell
 (Table~\ref{tab:ea9}).
 
 The two quantities share no instrument, no estimator and no data: one is a count of negative
-transports in application CSVs, the other a kernel histogram of scheduler transitions. In the
-ordinary arm they agree to $22\%$ --- $0.181$ traced against $0.231$ observed --- with nothing
-fitted between them. We take the direction of the residual seriously rather than only its size:
-the traced probability sits \emph{below} the observed rate, which is the opposite of what the
-simplest reading predicts, since not every stall should land on a stamping instant. We do not
-have an account of that gap, and record it as the open quantity it is.
+transports in application CSVs, the other a kernel histogram of scheduler transitions. We have
+since run the campaign again at two load levels, so there are three ordinary arms rather than
+one, and they agree with their traced tails to within about $30\%$ in every case: ratios of
+$0.78$, $1.06$ and $1.32$ (Table~\ref{tab:ea9}), with nothing fitted between them.
+
+The replication matters for more than the count. On the single arm we had first, the traced
+probability sat $22\%$ \emph{below} the observed rate, and we wrote that this was the opposite of
+what the simplest reading predicts --- not every stall lands on a stamping instant, so the
+probability that one occurred should exceed the rate at which they corrupt a measurement. With
+three arms the residual has no consistent sign: it is $22\%$ low at one, $6\%$ high at another,
+$32\%$ high at the third. What we reported as a directional puzzle was scatter. The honest
+statement is that a traced scheduler quantity predicts an application-level failure rate to
+within a third, unfitted, and that we cannot resolve any bias inside that.
 
 \emph{The instrument check, and what it can and cannot rule out.} Tracing a system to measure its
 scheduling behaviour is exactly the kind of intervention that can create what it observes, so the
@@ -1681,28 +1688,69 @@ Table~\ref{tab:ea9} is between two quantities measured in the \emph{same} run --
 histogram and a count of negative transports over the same events --- so a common perturbation of
 that run moves both and leaves their agreement intact.
 
-\emph{One arm did not behave, and we report it.} The real-time arm recorded \emph{zero}
-inversions in $2{,}985$ events. Against the running-state floor of roughly $0.004$ seen in every
-other real-time cell, the chance of observing none is about $6{\times}10^{-6}$. Either that arm
-genuinely differed or tracing perturbed it, and our instrument check covered only the ordinary
-arm, so we cannot separate the two. The traced tail in that arm did fall by $9.8\times$, so the
-\emph{direction} is consistent with every other priority manipulation; the \emph{level} is not
-established, and no claim in this paper rests on it.
+\emph{The gate fired on our own replication, and we report the arm it withheld.} The check is a
+rule fixed in advance: a traced arm whose inversion rate differs from its untraced comparator by
+more than $25\%$ is not compared. The replication's $88\%$ arm measures $0.1956$ against the same
+untraced control's $0.2717$ --- a drift of $28\%$ --- so its verdict is withheld by the same
+mechanism that admitted the original. Its numbers are in Table~\ref{tab:ea9} because withholding
+a comparison is not a reason to hide a measurement, and because the ratio it would have
+contributed, $1.06$, is the closest agreement in the table. Reporting only the arms that passed
+would leave a reader with three ratios and no idea that one of them is inadmissible under our own
+rule.
+
+\emph{The real-time arm's zero is an artefact of the instrument, and the replication settles
+it.} Every traced real-time arm we have run --- three of them, across two campaigns and two load
+levels --- recorded \emph{zero} inversions in $2{,}985$ events. The untraced twin of one of those
+arms recorded $15$. Under that rate the chance of a single traced arm showing none is
+$3{\times}10^{-7}$, and of all three about $10^{-20}$.
+
+We first reported this as unresolved: either the arm genuinely differed or tracing perturbed it,
+and one measurement could not separate the two. Three can. Attaching BPF to
+\texttt{sched\_switch} suppresses the inversions in the real-time arm, and the effect is not
+subtle --- it removes all of them. The direction is consistent with the ordinary arm, where the
+two traced measurements are the lower two of the six we have at $88\%$, though there the drift
+between campaigns is wide enough that the same conclusion cannot be drawn.
+
+This is the paper's own thesis arriving uninvited. We attached an instrument to measure why an
+instrument was failing, and the second instrument changed the thing it came to observe --- in the
+arm where the quantity was smallest, which is exactly where Section~\ref{sec:property} says a
+measurement is most exposed. It costs us nothing here, because no claim rests on the real-time
+arm's level, and it is worth stating plainly rather than leaving in a footnote: a kernel tracer
+is not a free observer.
 
 \begin{table}[t]
-\caption{\textbf{A kernel trace predicts the inversion rate, unfitted.} $\Pr[\text{stall} >
-T_{\mathrm{true}}]$ from \texttt{sched\_wakeup}/\texttt{sched\_switch}, against the inversion rate
-measured from application timestamps in the same cell. The two share no instrument and no
-estimator. The real-time arm's zero is reported but not relied on (text).}
+\caption{\textbf{A kernel trace predicts the inversion rate, unfitted, in every arm that has
+one.} $\Pr[\text{stall} > T_{\mathrm{true}}]$ from
+\texttt{sched\_wakeup}/\texttt{sched\_switch}, against the inversion rate measured from
+application timestamps in the \emph{same} cell; the two share no instrument and no estimator.
+Every cell is 2\,985 events. The three ordinary arms agree with their traced tails to within
+about a third, with no consistent sign. Every real-time arm reads exactly zero where the
+untraced control of the E-A9 pair reads $15/2985$; that is a tracing artefact, not a floor
+(text). The E-A9b $88\%$ arm is \emph{withheld} by the instrument check --- $28\%$ drift against
+a $25\%$ rule fixed in advance --- and is shown because a withheld comparison is still a
+measurement.}
 \label{tab:ea9}
-\begin{tabular}{lrrrr}
+\begin{tabular}{llrrrrl}
 \toprule
-Arm & $\rho$ & Traced events & $\Pr[\text{stall} > 0.5\,\text{ms}]$ & Inversion rate \\
+Campaign & Arm & Load & $\rho$ & Traced events & $\Pr[\text{stall}>0.5\,\text{ms}]$ / rate & Ratio \\
 \midrule
-ordinary  & 0.8822 & $551{,}956$ & 0.181 & 0.231 \\
-real-time & 0.8819 & $570{,}591$ & 0.018 & 0.000 \\
+E-A9  & ordinary  & 88\% & 0.8822 & $551{,}956$ & 0.181 / 0.231 & 0.78 \\
+E-A9  & real-time & 88\% & 0.8819 & $570{,}591$ & 0.018 / 0.000 & --- \\
+\midrule
+E-A9b & ordinary  & 75\% & 0.7543 & $709{,}819$ & 0.168 / 0.128 & 1.32 \\
+E-A9b & real-time & 75\% & 0.7531 & $641{,}308$ & 0.016 / 0.000 & --- \\
+E-A9b & ordinary  & 88\% & 0.8825 & $687{,}986$ & 0.207 / 0.196 & \emph{1.06}$^{\dagger}$ \\
+E-A9b & real-time & 88\% & 0.8822 & $649{,}788$ & 0.016 / 0.000 & --- \\
+\midrule
+\multicolumn{6}{l}{\emph{untraced control} (E-A9's own first attempt, probe never attached)}
+& \\
+---   & ordinary  & 88\% & 0.8812 & --- & --- / 0.272 & --- \\
+---   & real-time & 88\% & 0.8809 & --- & --- / 0.005 & --- \\
 \bottomrule
 \end{tabular}
+
+\vspace{2pt}
+\footnotesize $^{\dagger}$ withheld by the instrument check; shown, not used.
 \end{table}
 
 \paragraph{A rule with no free load parameter, and what its exponent means.} The payload sweep
@@ -2396,7 +2444,7 @@ netem could not, which is why the $T_{\mathrm{true}}$ result rests on it and not
 
 \paragraph{The mechanism is established; the quantity is not predicted.} The clearest limit on
 this work is what it still cannot do. We can say what causes an inversion, manipulate it on both
-sides, and predict the rate to within $22\%$ in the one cell where we traced the scheduler
+sides, and predict the rate to within a third in the three arms where we traced the scheduler
 directly. We cannot write down the rate a benchmark will suffer at a given load on a given
 machine. Two attempts failed and are reported above: M/G/1 fits worse than the mean once the
 sweep reaches the range where forms diverge, and our own registered bracket missed a $1.44\times$
@@ -2538,8 +2586,10 @@ different geometries --- cores left free against every core duty-cycled --- diff
 and a function of $\rho$ cannot return two values for one input, so $\rho$ is not the variable.
 Lengthening the true transport $77\times$ \emph{lowers} the rate, the sign no account based on
 system stress predicts. And the occupancy we had been forced to infer is now measured directly: a
-kernel trace of run-queue delay predicts the observed inversion rate to within $22\%$ with
-nothing fitted between them. The stall distribution's tail index is near $0.34$, below one, so it
+kernel trace of run-queue delay predicts the observed inversion rate to within a third, in
+three arms at two load levels, with nothing fitted between them --- and, in the arm where the
+rate is smallest, the tracer removes the effect it came to observe, which is this paper's own
+argument arriving uninvited. The stall distribution's tail index is near $0.34$, below one, so it
 has no finite mean --- which is why the cumulative counters we tried first could not account for
 the effect, and why an instrument built on averages is structurally rather than accidentally
 blind to it. The advice this implies is not a better clock but a stamping thread the workload

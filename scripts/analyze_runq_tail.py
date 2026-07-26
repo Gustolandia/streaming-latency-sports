@@ -190,6 +190,10 @@ def main(argv=None):
     ap.add_argument("--runs", default="runs")
     ap.add_argument("--t-true-ms", type=float, default=0.5,
                     help="true broker transport; the threshold a stall must beat")
+    ap.add_argument("--level", default=None,
+                    help="analyse one load level only, e.g. l75. Required when the campaign "
+                         "directory holds more than one, because the instrument check and the "
+                         "verdict are both per-level.")
     ap.add_argument("--untraced-base", type=float, default=None,
                     help="inversion rate for the same cell measured WITHOUT tracing")
     ap.add_argument("--out", default="docs/results/model")
@@ -200,12 +204,30 @@ def main(argv=None):
         return 1
     thr_us = args.t_true_ms * 1000.0
 
+    # One load level at a time. A campaign directory may hold several (E-A9b holds l75 and
+    # l88), and both the instrument check and the verdict compare a base arm against an rt arm
+    # at the SAME level -- so picking whichever arm sorted first, as this did, silently
+    # compares across levels and reports the result as if it meant something.
+    levels = sorted({d.name.rpartition("_")[0] for d in Path(args.depth).glob("l*_*")
+                     if d.is_dir() and d.name.rpartition("_")[2] in ("base", "rt")})
+    if args.level:
+        if args.level not in levels:
+            print(f"no such level {args.level!r}; found {levels}")
+            return 1
+        levels = [args.level]
+    elif len(levels) > 1:
+        print(f"this directory holds {len(levels)} load levels: {', '.join(levels)}")
+        print("Pass --level to choose one. The instrument check and the verdict are both")
+        print("per-level, so analysing them together would compare arms across levels.")
+        return 1
+    wanted = set(levels)
+
     arms = []
     for d in sorted(Path(args.depth).glob("l*_*")):
         if not d.is_dir():
             continue
         arm = d.name.rpartition("_")[2]
-        if arm not in ("base", "rt"):
+        if arm not in ("base", "rt") or d.name.rpartition("_")[0] not in wanted:
             continue
         a = load_arm(args.depth, d.name, args.runs)
         if a:

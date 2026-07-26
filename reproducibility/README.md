@@ -263,6 +263,52 @@ python scripts/generate_manifest.py
 
 Run the script with `--help` for the full option set; each writes into `docs/results/`.
 
+### 5b. Reproduce the mechanism campaigns (broker + a Linux host you can load)
+
+These are the campaigns that decide the mechanism, and they are the only ones that need to
+manipulate the machine rather than replay against it. Each is a shell script under
+`cloud/campaigns/`; each writes cells into `docs/results/depth/<phase>/` and is analysed by a
+script under `scripts/`.
+
+```bash
+# Priority at FIXED utilisation: the manipulation that separates scheduling from load.
+# Needs sudo for chrt. LEVELS is a comma-separated list of background load percentages.
+LEVELS=60,70,75,88,95 bash cloud/campaigns/stamping_priority.sh
+python scripts/analyze_occupancy_law.py --out docs/results/model      # L1 floor, L2 ceiling
+
+# Load geometry: same utilisation reached two ways (k cores flat out vs all cores duty-cycled).
+OUT=docs/results/depth/ea6 bash cloud/campaigns/load_geometry.sh
+python scripts/analyze_knee.py --phases ea6 --depth-dir docs/results/depth \
+    --runs-dir runs --out docs/results/model/ea6
+
+# The other side of the inequality: lengthen T_true by padding the payload.
+OUT=docs/results/depth/ea10 bash cloud/campaigns/ttrue_sweep.sh
+python scripts/analyze_ttrue_sweep.py --depth docs/results/depth/ea10 --runs runs \
+    --out docs/results/model
+python scripts/fit_tail_index.py --sweep docs/results/model/ttrue_sweep.csv \
+    --out docs/results/model                                          # alpha, and whether a mean exists
+
+# The kernel trace. Needs bpftrace and sudo; the campaign refuses to run if its probe
+# records fewer than 100 events, because a probe that attaches to an idle machine
+# returns zero and zero is the correct answer to the wrong question.
+LOAD_PCT=88 OUT=docs/results/depth/ea9 bash cloud/campaigns/stall_distribution.sh
+python scripts/analyze_runq_tail.py --depth docs/results/depth/ea9 --runs runs \
+    --untraced-base 0.2214 --t-true-ms 0.5 --out docs/results/model
+```
+
+**Expect the levels to drift and the effects to hold.** Every one of these has been run at least
+twice, and the pattern is consistent: the ratios reproduce, the absolute rates do not. The 88%
+ordinary baseline ranges 0.221–0.305 across four campaigns; the geometry contrast at matched
+utilisation gives 2.07× and then 2.05×; the tail index gives 0.339 and then 0.344. If your
+absolute rates differ from the tables and your ratios do not, that is the expected outcome on
+different hardware, not a failed reproduction. See [`docs/laws.md`](../docs/laws.md), which states
+each result with the observation that would falsify it.
+
+**One arm is not reproducible and we say so.** The real-time arm of the kernel trace recorded
+zero inversions in 2,985 events where every other real-time cell shows ~0.004. We could not
+determine whether that arm genuinely differed or tracing perturbed it, no claim in the paper
+rests on it, and a reproduction attempt that finds ~0.004 there has not contradicted us.
+
 ### 6. Verify the paper agrees with the data
 
 ```bash

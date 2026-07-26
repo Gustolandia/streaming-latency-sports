@@ -232,22 +232,35 @@ attempted. M4 and M5 need honest downgrading rather than new experiments.
 
 | Issue | Severity | Kind | State |
 |---|---|---|---|
-| M1 external validation | decisive | audit | **PARTIAL** — OMB source audited, §6.7 |
-| M1 empirical closure | decisive | run | **DONE, NULL** — instrumented OMB discarded 0; reported as a bound, not support |
-| M3 clean effect size | keystone | run | **DONE** — manipulation check FAILED; H1's intermediate points withdrawn |
+| M1 external validation | decisive | audit | **CLOSED** — OMB source audited at a named commit, §6.7 |
+| M1 empirical closure | decisive | run | **CLOSED** — instrumented OMB discards **6,000** samples (~6.7%) under 88% load while reporting a healthy latency summary |
+| M3 clean effect size | keystone | run | **DONE** — manipulation check FAILED; H1's intermediate points withdrawn. Superseded by E-A10, which moves *T*ₜᵣᵤₑ 77× without perturbing the scheduler |
 | M2 E1 discrepancy | major | run | **RESOLVED** — same runs give both answers; E1 measured the prologue |
 | M4 M/G/1 downgrade | major | analysis | **DONE** — form withdrawn |
-| M4 knee resolution | major | run | **DONE** — 5 points at rho 0.88–0.99; M/G/1 now REFUTED (R² −0.05 vs exponential 0.93) |
+| M4 knee resolution | major | run | **DONE** — 5 points at rho 0.88–0.99; M/G/1 REFUTED (R² −0.05 vs exponential 0.93) |
 | M4 replacement model | major | analysis | **DONE** — unidentifiable on our ladder; §7.3 says untested |
-| M4 occupancy manipulation | major | run | **DONE** — occupancy SUPPORTED: rho held to 0.001, rate fell 39– 54x |
+| M4 occupancy manipulation | major | run | **DONE, EXTENDED** — 8 matched pairs across E-A5/A5b/A7, rho held to 0.003, rate falls **7–80×** |
 | M5 provenance reliance | major | writing | **DONE** — §7.3 inverted |
-| M6 sample sizes | major | writing | **DONE** — Table 5 |
+| M6 sample sizes | major | writing | **DONE** — Table 5, plus a uniform 2,985-event denominator stated once |
 | M7 workload justification | major | writing | **DONE** — §3 rewritten |
 | Minor: figure `\%` | minor | local | **DONE** |
-| Minor: dangling `\ref`s | minor | local | **DONE** — 3 invented labels fixed; test added |
-| Minor: length, caption, "sound" | minor | local | pending |
+| Minor: dangling `\ref`s | minor | local | **DONE** — 3 invented labels fixed, then 5 more found in the *rendered* PDF; test added |
+| Minor: length, caption, "sound" | minor | local | **DONE** |
 
-**Run queue on `sbl-drv`, in order:** E-A4 knee resolution (running) → OMB discard count →
-E-A5 stamping priority. Each chain waits on every CPU consumer, not just its predecessor, because
-E-A5's design requires utilisation to be equal across its two arms and a stray Maven build inside
-one arm would fail the manipulation check.
+### Beyond the referee's list
+
+The response ran past the issues raised. Recorded here because the board is the project's index
+of what was settled and by what:
+
+| Question | Campaign | Outcome |
+|---|---|---|
+| Is it scheduling or utilisation? | E-A5/A5b/A7 | scheduling — 7–80× at fixed rho, 8 pairs |
+| Does *where* the load sits matter? | E-A6, E-A6b | yes — 2.07× and 2.05× at rho identical to 4 dp |
+| What happens if *T*ₜᵣᵤₑ grows? | E-A10, E-A10b | rate **falls** 4.1× and 4.3× over a 77× span |
+| What is the stall distribution's shape? | E-A10 fit | tail index α ≈ 0.339, 0.344 — **no finite mean** |
+| Does a kernel trace predict the rate? | E-A9, E-A9b | yes, to within a third across three arms, unfitted |
+| Can the broker be moved closer? | E-A8 | no — co-location *lengthened* transport; withheld |
+
+**Run queue: empty.** Every chain listed here has finished. The replications (E-A6b, E-A10b,
+E-A9b) completed 2026-07-26; see [`../docs/laws.md`](laws.md) for what each settled and what
+each would have to show to be falsified.

@@ -233,7 +233,7 @@ attempted. M4 and M5 need honest downgrading rather than new experiments.
 | Issue | Severity | Kind | State |
 |---|---|---|---|
 | M1 external validation | decisive | audit | **CLOSED** — OMB source audited at a named commit, §6.7 |
-| M1 empirical closure | decisive | run | **CLOSED** — instrumented OMB discards **6,000** samples (~6.7%) under 88% load while reporting a healthy latency summary |
+| M1 empirical closure | decisive | run | **REOPENED then RE-CLOSED on different evidence** (2026-07-26). The 6,000 were not causality violations: 0 negatives in ~420k discards. Closed instead on retention — OMB reports a latency summary from 0.83–100% of its samples with no indication which, and its reported average *rises* as retention falls (Spearman −0.644). See R1 below. |
 | M3 clean effect size | keystone | run | **DONE** — manipulation check FAILED; H1's intermediate points withdrawn. Superseded by E-A10, which moves *T*ₜᵣᵤₑ 77× without perturbing the scheduler |
 | M2 E1 discrepancy | major | run | **RESOLVED** — same runs give both answers; E1 measured the prologue |
 | M4 M/G/1 downgrade | major | analysis | **DONE** — form withdrawn |

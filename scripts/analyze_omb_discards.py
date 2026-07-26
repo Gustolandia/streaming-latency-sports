@@ -49,7 +49,7 @@ def load(path):
         return list(csv.DictReader(fh))
 
 
-def load_ledger(path, axis):
+def load_ledger(path, axis, campaigns=None):
     """Sweep rows rebuilt from the campaign ledger rather than the combined CSV.
 
     The combined CSV is appended to by the campaign script after each cell. A cell whose script
@@ -63,12 +63,21 @@ def load_ledger(path, axis):
 
     Only cells whose counts came from the shutdown hook are admitted: the periodic lines are
     quantised to 10,000 and cannot carry a share.
+
+    `campaigns` restricts which campaigns contribute. Cells are named by axis and level, not by
+    experiment, so a campaign that repeats one configuration many times -- the bimodality run is
+    ten cells at load 0% -- reads as ten more observations of that level and silently outweighs
+    the three each other level has. Those are different experiments and pooling them makes the
+    per-level medians incomparable, so the caller says which campaigns it means.
     """
+    wanted = set(campaigns) if campaigns else None
     rows = []
     for r in load(path):
         if r.get("axis") != axis or r.get("valid") != "1":
             continue
         if r.get("count_source") != "shutdown_hook":
+            continue
+        if wanted is not None and r.get("campaign") not in wanted:
             continue
         out = dict(r)
         out[axis] = r.get("level", "")
@@ -175,6 +184,10 @@ def main(argv=None):
     ap.add_argument("--ledger", default=None,
                     help="external campaign ledger; read instead of the combined CSVs, so a "
                          "cell whose script died after measuring is not lost")
+    ap.add_argument("--campaign", action="append", default=None,
+                    help="restrict --ledger to these campaigns; repeatable. Without it every "
+                         "campaign contributes, and a repeat-one-configuration campaign will "
+                         "outweigh the sweep at whichever level it used")
     ap.add_argument("--out", default=None, help="write the per-level summary here")
     args = ap.parse_args(argv)
 
@@ -197,7 +210,7 @@ def main(argv=None):
         if not os.path.exists(path):
             print(f"missing: {path}")
             return 1
-        rows = load_ledger(path, axis) if args.ledger else load(path)
+        rows = (load_ledger(path, axis, args.campaign) if args.ledger else load(path))
         if args.ledger and not rows:
             # A ledger legitimately holds only one axis; that is not an error.
             continue

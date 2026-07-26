@@ -25,13 +25,15 @@ LEDGER_FIELDS = ("campaign", "cell", "axis", "level", "rep", "valid", "invalid_r
 
 
 def write_ledger(path, rows):
-    """rows: (axis, level, kept, zero, neg, valid, count_source) tuples."""
+    """rows: (axis, level, kept, zero, neg, valid, count_source[, campaign]) tuples."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh)
         w.writerow(LEDGER_FIELDS)
-        for axis, level, kept, zero, neg, valid, src in rows:
-            w.writerow(["c", f"x{level}", axis, level, "1", valid, "", kept, zero, neg,
+        for row in rows:
+            axis, level, kept, zero, neg, valid, src = row[:7]
+            campaign = row[7] if len(row) > 7 else "c"
+            w.writerow([campaign, f"x{level}", axis, level, "1", valid, "", kept, zero, neg,
                         0, src])
 
 
@@ -87,6 +89,46 @@ class TestLedgerSource:
 
     def test_a_missing_ledger_is_an_error(self, tmp_path):
         assert main(["--ledger", str(tmp_path / "absent.csv")]) == 1
+
+    def test_a_repeat_campaign_does_not_silently_outweigh_the_sweep(self, tmp_path):
+        """chain7 puts ten cells at load 0%. Pooled, level 0 gets 11 cells and 88% gets one."""
+        p = tmp_path / "ledger.csv"
+        rows = [("load_pct", "0", 1000, 59000, 0, "1", "shutdown_hook", "load_sweep"),
+                ("load_pct", "88", 20000, 6000, 0, "1", "shutdown_hook", "load_sweep")]
+        rows += [("load_pct", "0", 500, 60000, 0, "1", "shutdown_hook", "bimodality")
+                 for _ in range(10)]
+        write_ledger(p, rows)
+
+        pooled = load_ledger(str(p), "load_pct")
+        assert len(pooled) == 12
+        sweep_only = load_ledger(str(p), "load_pct", ["load_sweep"])
+        assert len(sweep_only) == 2
+        assert {r["campaign"] for r in sweep_only} == {"load_sweep"}
+
+    def test_several_campaigns_can_be_selected(self, tmp_path):
+        p = tmp_path / "ledger.csv"
+        write_ledger(p, [
+            ("load_pct", "0", 1, 1, 0, "1", "shutdown_hook", "load_sweep"),
+            ("load_pct", "0", 1, 1, 0, "1", "shutdown_hook", "load_sweep_p2"),
+            ("load_pct", "0", 1, 1, 0, "1", "shutdown_hook", "bimodality")])
+        rows = load_ledger(str(p), "load_pct", ["load_sweep", "load_sweep_p2"])
+        assert {r["campaign"] for r in rows} == {"load_sweep", "load_sweep_p2"}
+
+    def test_an_empty_campaign_list_means_no_filter(self, tmp_path):
+        p = tmp_path / "ledger.csv"
+        write_ledger(p, [("load_pct", "0", 1, 1, 0, "1", "shutdown_hook", "anything")])
+        assert len(load_ledger(str(p), "load_pct", [])) == 1
+
+    def test_the_cli_passes_the_filter_through(self, tmp_path, capsys):
+        p = tmp_path / "ledger.csv"
+        write_ledger(p, [
+            ("load_pct", "0", 1000, 59000, 0, "1", "shutdown_hook", "load_sweep"),
+            ("load_pct", "88", 20000, 6000, 0, "1", "shutdown_hook", "load_sweep"),
+            ("load_pct", "0", 1, 99999, 0, "1", "shutdown_hook", "bimodality")])
+        assert main(["--ledger", str(p), "--campaign", "load_sweep"]) == 0
+        out = capsys.readouterr().out
+        # Level 0 is the load_sweep cell alone: 59000/60000 = 98.33%, not dragged by bimodality.
+        assert "98.33%" in out
 
 
 def _rows(axis, spec):

@@ -237,10 +237,29 @@ The rate saturates at 0.37, not near 1, and three campaigns reaching saturation 
 1.11×. Under `P = p·S` with `p` a probability, that ceiling estimates `S` — a measured quantity
 rather than a fitted asymptote.
 
-### The exposure is not ours alone
+### A benchmark reports a latency summary from a small and unstated fraction of its samples
 
-The instrumented OpenMessaging Benchmark discarded **6,000** end-to-end samples (~6.7%) in three
-minutes at 500 msg/s under 88% load, with no counter and a healthy-looking latency summary.
+*Revised 2026-07-26. This entry previously read "The exposure is not ours alone" and reported
+6,000 discarded samples as the same causality violation we report. The sign-separated sweep
+refutes that: **zero negatives in ~420,000 discards**, and a discard share that FALLS as load
+rises. Every discard was a millisecond-tick collision. See `referee_response_plan.md`, R1.*
+
+Across 16 cells of the instrumented OpenMessaging Benchmark, retention — the share of end-to-end
+samples surviving its `if (endToEndLatencyMicros > 0)` guard — ranges from **0.83% to 100%**, a
+120-fold spread. The reported p50 takes two values, 1.0 and 2.0 ms, and does not track retention:
+one cell computed its summary from 998 samples and another from 120,425, and both report a median
+of 1.0 ms.
+
+The reported **average** moves, and it moves the wrong way:
+**Spearman(retention, reported average) = −0.644**. Discarding everything below one tick removes
+the *fast* samples, so the mean is taken over the surviving slow tail. The benchmark reports a
+higher latency the more data it discards, and reports nothing about having discarded it.
+
+The source-level finding is unchanged and never depended on the run: the guard admits only
+positive samples, nothing counts the drops, the reported distribution is conditioned on being
+positive, and the retention rate is unrecoverable from a completed run.
+
+Source: `docs/results/external/omb_retention.csv`, `scripts/omb_retention_table.py`.
 
 ---
 

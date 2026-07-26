@@ -1,4 +1,4 @@
-run_id,campaign,started,backend,config,feeds,speedup,plan,host,git_head,n_code_files,n_produced,n_consumed,n_matched,transport_median_ms,tti_median_ms,n_negative_transport,frac_negative_transport,integrity,used_by,load_bearing,load_bearing_why
+run_id,campaign,started,backend,config,feeds,speedup,plan,host,git_head,n_code_files,n_produced,n_consumed,n_matched,transport_median_ms,tti_median_ms,n_negative_transport,frac_negative_transport,transport_integrity,used_by,load_bearing,load_bearing_why
 concurrency_n12_20260723_050408_kafka_feed10_rep1,concurrency,2026-07-23T05:04:08Z,kafka,kafka-single,12,0.008333,replay_plan.csv,sbl-drv,,4,144,144,144,0.610897,,1,0.006944,usable,,yes,condition:depth
 concurrency_n12_20260723_050408_kafka_feed10_rep2,concurrency,2026-07-23T05:04:08Z,kafka,kafka-single,12,0.008333,replay_plan.csv,sbl-drv,,4,144,144,144,0.590792,,4,0.027778,condemned,,yes,condition:depth
 concurrency_n12_20260723_050408_kafka_feed10_rep3,concurrency,2026-07-23T05:04:08Z,kafka,kafka-single,12,0.008333,replay_plan.csv,sbl-drv,,4,144,144,144,0.60921,,3,0.020833,condemned,,yes,condition:depth

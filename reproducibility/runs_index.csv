@@ -1,4 +1,4 @@
-run_id,campaign,started,backend,config,feeds,speedup,plan,host,git_head,n_code_files,n_produced,n_consumed,n_matched,transport_median_ms,tti_median_ms,n_negative_transport,frac_negative_transport,integrity,used_by,load_bearing,load_bearing_why
+run_id,campaign,started,backend,config,feeds,speedup,plan,host,git_head,n_code_files,n_produced,n_consumed,n_matched,transport_median_ms,tti_median_ms,n_negative_transport,frac_negative_transport,transport_integrity,used_by,load_bearing,load_bearing_why
 ack_run,ack-probe,,,,,,,,,0,,3,,,,,,not-assessed,,no,
 batch9_20260617_kafka_cluster_s1_n1_rep1,s2-batch,,kafka,cluster,1,120,combined_plan.csv,,2a74434fa524,4,2289,2289,2289,1211.8617,,0,0.0,usable,,no,
 batch9_20260617_kafka_cluster_s1_n1_rep2,s2-batch,,kafka,cluster,1,120,combined_plan.csv,,2a74434fa524,4,2289,2289,2289,850.2738,,0,0.0,usable,,no,

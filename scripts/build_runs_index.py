@@ -21,8 +21,9 @@ Each row carries:
   provenance   git head, and whether meta.json recorded per-file code hashes
   size         events produced, consumed, matched
   measurement  median transport (ms), median TTI (ms) where available
-  integrity    negative-transport count and fraction, and the pass/fail verdict under the
-               paper's rule (>1% of events negative, or a negative component median)
+  integrity    negative-transport count and fraction, and the verdict under the >1% rule
+               applied to TRANSPORT ONLY. The paper's audit also tests scheduling lag and
+               output, so its counts are larger and are not comparable to this column
   usage        whether any tracked aggregate CSV names this run, so an unused run is visibly
                unused rather than silently absent
 
@@ -49,7 +50,7 @@ FIELDS = [
     "host", "git_head", "n_code_files",
     "n_produced", "n_consumed", "n_matched",
     "transport_median_ms", "tti_median_ms",
-    "n_negative_transport", "frac_negative_transport", "integrity",
+    "n_negative_transport", "frac_negative_transport", "transport_integrity",
     "used_by",
 ]
 
@@ -166,7 +167,14 @@ def transport_and_integrity(run_dir):
 
 
 def verdict(tr):
-    """The paper's gate. Unknown when the raw data was not read, never silently 'pass'."""
+    """The gate applied to TRANSPORT ONLY. Unknown when unread, never silently 'pass'.
+
+    The paper's audit is broader: it applies the same >1% rule to producer scheduling lag and
+    consumer output as well, and condemns a run if any component fails. That audit lives in
+    docs/results/integrity_windows/ (Testbed A) and docs/results/integrity_by_condition.csv
+    (Testbed B) and is the authoritative one -- 1,321 of 2,266. This column is narrower by
+    construction and its counts are not comparable to those.
+    """
     if tr is None:
         return "not-assessed"
     if not tr["n_matched"]:
@@ -239,7 +247,7 @@ def build(runs_dir, results_dir, fast=False, progress=None):
                                     else "")),
             "n_negative_transport": tr["n_negative"] if tr else "",
             "frac_negative_transport": tr["frac_negative"] if tr else "",
-            "integrity": verdict(tr),
+            "transport_integrity": verdict(tr),
             "used_by": ";".join(sorted(used.get(name, []))[:3]),
         })
         if progress and i % progress == 0:
@@ -339,7 +347,7 @@ def main(argv=None):
 
     by = {}
     for r in rows:
-        by[r["integrity"]] = by.get(r["integrity"], 0) + 1
+        by[r["transport_integrity"]] = by.get(r["transport_integrity"], 0) + 1
     unused = sum(1 for r in rows if not r["used_by"])
     print(f"wrote {args.out}: {len(rows):,} runs")
     for k in sorted(by):

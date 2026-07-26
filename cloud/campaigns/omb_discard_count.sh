@@ -57,6 +57,14 @@ WS="$OMB/benchmark-framework/src/main/java/io/openmessaging/benchmark/worker/Wor
 
 banner "OMB discard counter: patching $WS"
 
+# Revert to pristine before patching. The patch matches the upstream guard body verbatim, so
+# applying it to an already-patched file fails -- which is exactly what happened when the counter
+# was split and the "already patched" sentinel still named the old field. Reverting makes this
+# step idempotent regardless of what the fields are called, and it is safe because the only local
+# modification to this file is the one we make here.
+( cd "$OMB" && git checkout -- benchmark-framework/src/main/java/io/openmessaging/benchmark/worker/WorkerStats.java ) \
+  || { echo "FATAL: could not revert WorkerStats.java to pristine"; exit 1; }
+
 # Record exactly what we changed, so the paper can state it and a reader can check it.
 cp "$WS" "$OUT/WorkerStats.java.orig"
 
@@ -65,7 +73,7 @@ import io, sys, re
 p = sys.argv[1]
 s = io.open(p, encoding="utf-8").read()
 
-if "sblNonPositiveLatency" in s:
+if "sblZeroLatency" in s:
     print("already patched"); raise SystemExit(0)
 
 # One counter field, placed with the other private fields.
@@ -76,14 +84,28 @@ field = ("    // Added for an external audit: counts the end-to-end samples the 
          "    // resolution artefact. Negative means the receive stamp precedes the publish stamp\n"
          "    // and is a causality violation. A single counter conflates the two, which is the\n"
          "    // mistake this replaces. Does not change what OMB measures or reports.\n"
-         "    private final java.util.concurrent.atomic.AtomicLong sblZeroLatency =\n"
+         "    // STATIC: an embedded run builds several WorkerStats, and per-instance counters\n"
+         "    // split the totals between them. Static also lets the shutdown hook below read\n"
+         "    // them without a call site inside OMB.\n"
+         "    static final java.util.concurrent.atomic.AtomicLong sblZeroLatency =\n"
          "            new java.util.concurrent.atomic.AtomicLong();\n"
-         "    private final java.util.concurrent.atomic.AtomicLong sblNegativeLatency =\n"
+         "    static final java.util.concurrent.atomic.AtomicLong sblNegativeLatency =\n"
          "            new java.util.concurrent.atomic.AtomicLong();\n"
-         "    private final java.util.concurrent.atomic.AtomicLong sblMostNegative =\n"
+         "    static final java.util.concurrent.atomic.AtomicLong sblMostNegative =\n"
          "            new java.util.concurrent.atomic.AtomicLong();\n"
-         "    private final java.util.concurrent.atomic.AtomicLong sblKept =\n"
-         "            new java.util.concurrent.atomic.AtomicLong();\n\n")
+         "    static final java.util.concurrent.atomic.AtomicLong sblKept =\n"
+         "            new java.util.concurrent.atomic.AtomicLong();\n"
+         "    // Exact totals at exit. The periodic lines below are progress only: they fire\n"
+         "    // every 10,000, so reading the last one gives a total quantised to 10,000.\n"
+         "    static {\n"
+         "        Runtime.getRuntime().addShutdownHook(new Thread(() -> {\n"
+         "            System.err.println(\"SBL_DISCARD_SUMMARY kept=\" + sblKept.get()\n"
+         "                    + \" zero=\" + sblZeroLatency.get()\n"
+         "                    + \" negative=\" + sblNegativeLatency.get()\n"
+         "                    + \" most_negative_micros=\" + sblMostNegative.get());\n"
+         "            System.err.flush();\n"
+         "        }));\n"
+         "    }\n\n")
 assert anchor in s, "field anchor not found"
 s = s.replace(anchor, field + anchor, 1)
 
@@ -121,16 +143,6 @@ assert old in s, "guard body not found verbatim"
 s = s.replace(old, new, 1)
 # A final summary, emitted when OMB dumps its own stats, so a cell with few discards still
 # reports its totals rather than leaving them to be inferred from absent periodic lines.
-sum_anchor = "    public void resetLatencies() {"
-if sum_anchor in s:
-    summary = ("    public void sblPrintDiscardSummary() {\n"
-               "        System.err.println(\"SBL_DISCARD_SUMMARY kept=\" + sblKept.get()\n"
-               "                + \" zero=\" + sblZeroLatency.get()\n"
-               "                + \" negative=\" + sblNegativeLatency.get()\n"
-               "                + \" most_negative_micros=\" + sblMostNegative.get());\n"
-               "    }\n\n")
-    s = s.replace(sum_anchor, summary + sum_anchor, 1)
-
 io.open(p, "w", encoding="utf-8").write(s)
 print("patched: sign-separated counters, guard condition unchanged")
 PY
@@ -222,10 +234,25 @@ if [ "${PUB:-0}" -lt 1 ] || [ "${FAILED:-0}" -gt 0 ]; then
 fi
 
 banner "what OMB discarded without recording"
-ZERO=$(grep -o "SBL_DISCARD_ZERO total=[0-9]*" "$OUT/omb_stdout.log" | tail -1 | grep -oE "[0-9]+$")
-NEG=$(grep -o "SBL_DISCARD_NEGATIVE total=[0-9]*" "$OUT/omb_stdout.log" | tail -1 | grep -oE "[0-9]+$")
-KEPT=$(grep -oE "kept=[0-9]+" "$OUT/omb_stdout.log" | tail -1 | grep -oE "[0-9]+$")
-MOSTNEG=$(grep -oE "most_negative=-?[0-9]+" "$OUT/omb_stdout.log" | tail -1 | grep -oE "\-?[0-9]+$")
+# Prefer the shutdown hook's exact totals. The periodic lines fire every 10,000 and every
+# 1,000, so falling back to them quantises the answer -- three runs with different true totals
+# all reported 50000 that way. A cell that produced no summary is reported as such rather than
+# silently downgraded.
+SUMMARY=$(grep -o "SBL_DISCARD_SUMMARY .*" "$OUT/omb_stdout.log" | tail -1)
+if [ -n "$SUMMARY" ]; then
+  ZERO=$(echo "$SUMMARY"    | grep -oE "zero=[0-9]+"                 | grep -oE "[0-9]+")
+  NEG=$(echo "$SUMMARY"     | grep -oE "negative=[0-9]+"             | grep -oE "[0-9]+")
+  KEPT=$(echo "$SUMMARY"    | grep -oE "kept=[0-9]+"                 | grep -oE "[0-9]+")
+  MOSTNEG=$(echo "$SUMMARY" | grep -oE "most_negative_micros=-?[0-9]+" | grep -oE "\-?[0-9]+$")
+  EXACT=exact
+else
+  echo "WARNING: no shutdown summary; falling back to periodic lines (quantised to 10,000)"
+  ZERO=$(grep -o "SBL_DISCARD_ZERO total=[0-9]*" "$OUT/omb_stdout.log" | tail -1 | grep -oE "[0-9]+$")
+  NEG=$(grep -o "SBL_DISCARD_NEGATIVE total=[0-9]*" "$OUT/omb_stdout.log" | tail -1 | grep -oE "[0-9]+$")
+  KEPT=$(grep -oE "kept=[0-9]+" "$OUT/omb_stdout.log" | tail -1 | grep -oE "[0-9]+$")
+  MOSTNEG=$(grep -oE "most_negative=-?[0-9]+" "$OUT/omb_stdout.log" | tail -1 | grep -oE "\-?[0-9]+$")
+  EXACT=quantised
+fi
 ZERO=${ZERO:-0}; NEG=${NEG:-0}; KEPT=${KEPT:-0}; MOSTNEG=${MOSTNEG:-0}
 LAST=$((ZERO + NEG))
 LAST=${LAST:-0}
@@ -233,7 +260,7 @@ printf 'harness,mode,valid,discarded_total,discarded_zero,discarded_negative,mos
   "OpenMessaging Benchmark" "embedded" "$LAST" "$ZERO" "$NEG" "$MOSTNEG" "$KEPT" \
   "$PUB" "$DURATION_MIN" "${LOAD_PCT:-0}" \
   "$KAFKA_BOOTSTRAP" > "$OUT/omb_loaded_result.csv"
-echo "DISCARDED: total=$LAST  zero=$ZERO  negative=$NEG  most_negative=${MOSTNEG}us  kept=$KEPT"
+echo "DISCARDED [${EXACT}]: total=$LAST  zero=$ZERO  negative=$NEG  most_negative=${MOSTNEG}us  kept=$KEPT"
 # The distinction the single counter hid: zero is a millisecond-tick collision, negative is a
 # causality violation. Only the second is the failure this project is about.
 if [ "$NEG" = "0" ] && [ "$ZERO" != "0" ]; then

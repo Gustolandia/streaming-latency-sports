@@ -70,9 +70,19 @@ if "sblNonPositiveLatency" in s:
 
 # One counter field, placed with the other private fields.
 anchor = "    private final Recorder endToEndLatencyRecorder"
-field = ("    // Added for an external audit: counts end-to-end samples the guard below discards.\n"
-         "    // Does not change what OMB measures or reports.\n"
-         "    private final java.util.concurrent.atomic.AtomicLong sblNonPositiveLatency =\n"
+field = ("    // Added for an external audit: counts the end-to-end samples the guard below\n"
+         "    // discards, SEPARATED BY SIGN. Zero means publish and receive fell in the same\n"
+         "    // millisecond tick (record.timestamp() is ms-resolution under CreateTime) and is a\n"
+         "    // resolution artefact. Negative means the receive stamp precedes the publish stamp\n"
+         "    // and is a causality violation. A single counter conflates the two, which is the\n"
+         "    // mistake this replaces. Does not change what OMB measures or reports.\n"
+         "    private final java.util.concurrent.atomic.AtomicLong sblZeroLatency =\n"
+         "            new java.util.concurrent.atomic.AtomicLong();\n"
+         "    private final java.util.concurrent.atomic.AtomicLong sblNegativeLatency =\n"
+         "            new java.util.concurrent.atomic.AtomicLong();\n"
+         "    private final java.util.concurrent.atomic.AtomicLong sblMostNegative =\n"
+         "            new java.util.concurrent.atomic.AtomicLong();\n"
+         "    private final java.util.concurrent.atomic.AtomicLong sblKept =\n"
          "            new java.util.concurrent.atomic.AtomicLong();\n\n")
 assert anchor in s, "field anchor not found"
 s = s.replace(anchor, field + anchor, 1)
@@ -84,20 +94,45 @@ old = """        if (endToEndLatencyMicros > 0) {
             endToEndLatencyStats.registerSuccessfulEvent(endToEndLatencyMicros, TimeUnit.MICROSECONDS);
         }"""
 new = """        if (endToEndLatencyMicros > 0) {
+            sblKept.incrementAndGet();
             endToEndCumulativeLatencyRecorder.recordValue(endToEndLatencyMicros);
             endToEndLatencyRecorder.recordValue(endToEndLatencyMicros);
             endToEndLatencyStats.registerSuccessfulEvent(endToEndLatencyMicros, TimeUnit.MICROSECONDS);
+        } else if (endToEndLatencyMicros == 0) {
+            long z = sblZeroLatency.incrementAndGet();
+            if (z <= 3 || z % 10000 == 0) {
+                System.err.println("SBL_DISCARD_ZERO total=" + z
+                        + " kept=" + sblKept.get());
+            }
         } else {
-            long n = sblNonPositiveLatency.incrementAndGet();
+            long n = sblNegativeLatency.incrementAndGet();
+            long prev = sblMostNegative.get();
+            if (endToEndLatencyMicros < prev) {
+                sblMostNegative.set(endToEndLatencyMicros);
+            }
             if (n <= 5 || n % 1000 == 0) {
-                System.err.println("SBL_DISCARDED_NONPOSITIVE total=" + n
-                        + " sample_micros=" + endToEndLatencyMicros);
+                System.err.println("SBL_DISCARD_NEGATIVE total=" + n
+                        + " sample_micros=" + endToEndLatencyMicros
+                        + " most_negative=" + sblMostNegative.get()
+                        + " kept=" + sblKept.get());
             }
         }"""
 assert old in s, "guard body not found verbatim"
 s = s.replace(old, new, 1)
+# A final summary, emitted when OMB dumps its own stats, so a cell with few discards still
+# reports its totals rather than leaving them to be inferred from absent periodic lines.
+sum_anchor = "    public void resetLatencies() {"
+if sum_anchor in s:
+    summary = ("    public void sblPrintDiscardSummary() {\n"
+               "        System.err.println(\"SBL_DISCARD_SUMMARY kept=\" + sblKept.get()\n"
+               "                + \" zero=\" + sblZeroLatency.get()\n"
+               "                + \" negative=\" + sblNegativeLatency.get()\n"
+               "                + \" most_negative_micros=\" + sblMostNegative.get());\n"
+               "    }\n\n")
+    s = s.replace(sum_anchor, summary + sum_anchor, 1)
+
 io.open(p, "w", encoding="utf-8").write(s)
-print("patched: one counter, one else branch, guard condition unchanged")
+print("patched: sign-separated counters, guard condition unchanged")
 PY
 [ $? -eq 0 ] || { echo "FATAL: patch failed"; exit 1; }
 
@@ -132,8 +167,9 @@ EOF
 # produced no latency at all -- and the discard count is then 0 because nothing was
 # ever measured. Every run of this campaign failed that way, including the first,
 # whose zero was reported in the manuscript as a genuine null.
-PAYLOAD="$PWD/$OUT/omb_payload_200b.data"
-python3 -c "open('$PAYLOAD','wb').write(b'x' * 200)"
+MESSAGE_SIZE="${MESSAGE_SIZE:-200}"
+PAYLOAD="$PWD/$OUT/omb_payload_${MESSAGE_SIZE}b.data"
+python3 -c "open('$PAYLOAD','wb').write(b'x' * ${MESSAGE_SIZE})"
 [ -s "$PAYLOAD" ] || { echo "FATAL: could not create the payload file"; exit 1; }
 echo "payload file: $PAYLOAD ($(stat -c %s "$PAYLOAD") bytes)"
 
@@ -141,12 +177,12 @@ cat > "$OUT/omb_workload.yaml" <<EOF
 name: sbl-audit
 topics: 1
 partitionsPerTopic: 1
-messageSize: 200
+messageSize: ${MESSAGE_SIZE}
 payloadFile: "${PAYLOAD}"
 subscriptionsPerTopic: 1
 consumerPerSubscription: 1
 producersPerTopic: 1
-producerRate: 500
+producerRate: ${PRODUCER_RATE:-500}
 consumerBacklogSizeGB: 0
 testDurationMinutes: ${DURATION_MIN}
 EOF
@@ -186,13 +222,23 @@ if [ "${PUB:-0}" -lt 1 ] || [ "${FAILED:-0}" -gt 0 ]; then
 fi
 
 banner "what OMB discarded without recording"
-grep -c "SBL_DISCARDED_NONPOSITIVE" "$OUT/omb_stdout.log" > /dev/null 2>&1
-LAST=$(grep -o "SBL_DISCARDED_NONPOSITIVE total=[0-9]*" "$OUT/omb_stdout.log" | tail -1 | grep -o "[0-9]*$")
+ZERO=$(grep -o "SBL_DISCARD_ZERO total=[0-9]*" "$OUT/omb_stdout.log" | tail -1 | grep -oE "[0-9]+$")
+NEG=$(grep -o "SBL_DISCARD_NEGATIVE total=[0-9]*" "$OUT/omb_stdout.log" | tail -1 | grep -oE "[0-9]+$")
+KEPT=$(grep -oE "kept=[0-9]+" "$OUT/omb_stdout.log" | tail -1 | grep -oE "[0-9]+$")
+MOSTNEG=$(grep -oE "most_negative=-?[0-9]+" "$OUT/omb_stdout.log" | tail -1 | grep -oE "\-?[0-9]+$")
+ZERO=${ZERO:-0}; NEG=${NEG:-0}; KEPT=${KEPT:-0}; MOSTNEG=${MOSTNEG:-0}
+LAST=$((ZERO + NEG))
 LAST=${LAST:-0}
-printf 'harness,mode,valid,discarded_nonpositive,pub_lines,duration_min,load_pct,bootstrap\n%s,%s,1,%s,%s,%s,%s,%s\n' \
-  "OpenMessaging Benchmark" "embedded" "$LAST" "$PUB" "$DURATION_MIN" "${LOAD_PCT:-0}" \
+printf 'harness,mode,valid,discarded_total,discarded_zero,discarded_negative,most_negative_micros,kept,pub_lines,duration_min,load_pct,bootstrap\n%s,%s,1,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
+  "OpenMessaging Benchmark" "embedded" "$LAST" "$ZERO" "$NEG" "$MOSTNEG" "$KEPT" \
+  "$PUB" "$DURATION_MIN" "${LOAD_PCT:-0}" \
   "$KAFKA_BOOTSTRAP" > "$OUT/omb_loaded_result.csv"
-echo "DISCARDED NON-POSITIVE SAMPLES: $LAST"
+echo "DISCARDED: total=$LAST  zero=$ZERO  negative=$NEG  most_negative=${MOSTNEG}us  kept=$KEPT"
+# The distinction the single counter hid: zero is a millisecond-tick collision, negative is a
+# causality violation. Only the second is the failure this project is about.
+if [ "$NEG" = "0" ] && [ "$ZERO" != "0" ]; then
+  echo "NOTE: every discard was exactly zero -- resolution artefact, NOT a causality violation"
+fi
 cat "$OUT/omb_loaded_result.csv"
 
 banner "OMB_DISCARD_COUNT_COMPLETE"

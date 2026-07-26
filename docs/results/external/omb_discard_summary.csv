@@ -1,0 +1,10 @@
+axis,level,n_cells,kept_share,zero_share,negative_share,negatives,most_negative_micros
+background load (ledger),0,9,0.99979,0.00021,0.0,0,0
+background load (ledger),50,9,0.76318,0.23682,0.0,0,0
+background load (ledger),75,9,0.94702,0.05298,0.0,0,0
+background load (ledger),88,9,0.95182,0.04818,0.0,0,0
+background load (ledger),95,9,0.94722,0.05278,0.0,0,0
+message size (ledger),200,2,0.50179,0.49821,0.0,0,0
+message size (ledger),4096,2,0.5547,0.4453,0.0,0,0
+message size (ledger),65536,2,0.3517,0.6483,0.0,0,0
+message size (ledger),262144,2,1.0,0.0,0.0,0,0

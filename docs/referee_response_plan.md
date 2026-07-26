@@ -962,3 +962,43 @@ publishable at three replicates, and the appearance of reproducibility at one or
 evidence against that — it is what a quantity spanning 0.83% to 100% does occasionally. Our own
 first sweep's per-level table must be reported as draws, not as a response curve. That was already
 the conclusion at two passes; the third makes it unarguable.
+
+### The cross-host run failed for the sixth time, and the gate held
+
+`omb_distributed.sh` ran at 22:11Z and did not produce a measurement. The result row reads:
+
+```
+OpenMessaging Benchmark,distributed+loaded,0,,"benchmark produced no latency output (pub=3 agg=0 failures=1)",5,88
+```
+
+`IllegalArgumentException` at `HttpWorkerClient.java:194`, inside `Preconditions.checkArgument` —
+the coordinator failing on a worker's HTTP response.
+
+**Three things to record separately.**
+
+*The defences worked.* Both workers answered before the benchmark started, so the classpath fault
+that invalidated the 2026-07-25 attempt is genuinely fixed by shipping the packaged tarball. When
+the run died, the output-validation gate refused to write a count and marked the row `valid=0`
+with the reason. **No number was fabricated.** That gate exists because the first attempt wrote a
+vacuous zero that reached a draft of this paper.
+
+*It got further than before.* Earlier attempts died at worker startup. This one ran about thirty
+seconds and emitted three publish-rate lines before the coordinator failed parsing a worker
+response.
+
+*A testable hypothesis.* Both hosts are pinned at 88% CPU by the campaign's own background load,
+and the failure is in a worker HTTP response. Starved worker threads would explain it.
+
+**chain9 tests it, and the test is worth running regardless.** Removing the background load does
+not make a cross-host run useless. The load exists to provoke *scheduling* stalls — the occupancy
+channel. The cross-host question is about the *clock* channel, and the measured bound between
+these hosts (8.709 ms immediately before this run, against a 1 ms timestamp) does not depend on
+CPU load. An unloaded distributed run still tests whether cross-host subtraction produces negative
+samples. chain9 runs unloaded, then at 50%; if unloaded succeeds and 50% fails, the cause is load
+and the paper can say so instead of only that the attempts failed.
+
+**The manuscript's count needs updating either way.** §8 currently says the distributed run was
+attempted five times and abandoned after five faults in the benchmark's own worker protocol. It is
+now six, across two months of the campaign and two different fault modes. That is a reportable
+observation about OMB rather than an embarrassment: its distributed mode did not survive six
+attempts by someone reading its source.

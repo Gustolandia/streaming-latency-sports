@@ -41,7 +41,7 @@ ROWS = [
     # claim -- that every claim in Section 7 traces to a row -- had quietly become false: five
     # campaigns were carrying results in the text with no row here at all.
     ("E-A5/A5b/A7\nstamping priority", "SCHED_FIFO on the stamping threads",
-     "utilisation, to 0.003", "scheduling, not utilisation\n(5 replications, 7-76x)"),
+     "utilisation, to 0.003", "scheduling, not utilisation\n(8 pairs, 7-80x)"),
     ("E-A6\nload geometry", "cores free vs all duty-cycled", "achieved utilisation",
      "utilisation is not the variable\n(2.07x at identical load)"),
     ("E-A9\nrun-queue trace", "nothing: observation only", "load, priority arm",

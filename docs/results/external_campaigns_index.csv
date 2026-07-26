@@ -1,0 +1,24 @@
+campaign,cell,axis,level,rep,valid,invalid_reason,kept,discarded_zero,discarded_negative,most_negative_micros,zero_share,message_size_b,producer_rate,duration_min,warmup_min,load_pct,bootstrap,count_source,stdout_bytes,stdout_sha256,mtime_utc
+exact1,exact1,,,,1,,1093,59145,0,0,0.981855,200,500,1,1(default),0,10.0.1.221:19092,shutdown_hook,11776822,,2026-07-26T14:35:22Z
+idem1,idem1,,,,1,,266,50000,0,0,0.994708,200,500,1,1(default),0,10.0.1.221:19092,none_in_log,11770374,,2026-07-26T14:20:51Z
+idem2,idem2,,,,1,,2967,50000,0,0,0.943984,200,500,1,1(default),0,10.0.1.221:19092,none_in_log,11782555,,2026-07-26T14:27:10Z
+load_sweep,l0_rep1,load_pct,0,1,1,,1821,118608,0,0,0.984879,200,500,3,1(default),0,10.0.1.221:19092,shutdown_hook,31481853,,2026-07-26T14:44:23Z
+load_sweep,l0_rep2,load_pct,0,2,1,,998,119414,0,0,0.991712,200,500,3,1(default),0,10.0.1.221:19092,shutdown_hook,31506204,,2026-07-26T14:52:53Z
+load_sweep,l0_rep3,load_pct,0,3,1,,120425,4,0,0,3.3e-05,200,500,3,1(default),0,10.0.1.221:19092,shutdown_hook,31414118,,2026-07-26T15:01:23Z
+load_sweep,l50_rep1,load_pct,50,1,1,,91982,28542,0,0,0.236816,200,500,3,1(default),50,10.0.1.221:19092,shutdown_hook,34867600,,2026-07-26T15:09:58Z
+load_sweep,l50_rep2,load_pct,50,2,1,,79813,40728,0,0,0.337877,200,500,3,1(default),50,10.0.1.221:19092,shutdown_hook,30652524,,2026-07-26T15:18:34Z
+load_sweep,l50_rep3,load_pct,50,3,1,,119783,722,0,0,0.005991,200,500,3,1(default),50,10.0.1.221:19092,shutdown_hook,31176913,,2026-07-26T15:27:09Z
+load_sweep,l75_rep1,load_pct,75,1,1,,115348,5222,0,0,0.043311,200,500,3,1(default),75,10.0.1.221:19092,shutdown_hook,29193812,,2026-07-26T15:35:45Z
+load_sweep,l75_rep2,load_pct,75,2,1,,24376,96259,0,0,0.797936,200,500,3,1(default),75,10.0.1.221:19092,shutdown_hook,29694573,,2026-07-26T15:44:21Z
+load_sweep,l75_rep3,load_pct,75,3,1,,115233,5318,0,0,0.044114,200,500,3,1(default),75,10.0.1.221:19092,shutdown_hook,28989725,,2026-07-26T15:52:55Z
+load_sweep,l88_rep1,load_pct,88,1,1,,115130,5600,0,0,0.046384,200,500,3,1(default),88,10.0.1.221:19092,shutdown_hook,28904473,,2026-07-26T16:01:30Z
+load_sweep,l88_rep2,load_pct,88,2,1,,27913,92750,0,0,0.76867,200,500,3,1(default),88,10.0.1.221:19092,shutdown_hook,29606085,,2026-07-26T16:10:06Z
+load_sweep,l88_rep3,load_pct,88,3,1,,114944,5768,0,0,0.047783,200,500,3,1(default),88,10.0.1.221:19092,shutdown_hook,28659091,,2026-07-26T16:18:42Z
+load_sweep,l95_rep1,load_pct,95,1,1,,31991,88643,0,0,0.734809,200,500,3,1(default),95,10.0.1.221:19092,shutdown_hook,29657441,,2026-07-26T16:27:17Z
+load_sweep,l95_rep2,load_pct,95,2,1,,93381,27311,0,0,0.226287,200,500,3,1(default),,,shutdown_hook,28676680,,2026-07-26T16:27:53Z
+load_sweep,l95_rep3,load_pct,95,3,1,,114365,6369,0,0,0.052752,200,500,3,1,95,10.0.1.221:19092,shutdown_hook,28259391,,2026-07-26T16:44:28Z
+resolution,s200_rep1,message_size,200,1,1,,120434,0,0,0,0.0,200,500,3,1,0,10.0.1.221:19092,shutdown_hook,31489803,,2026-07-26T16:53:40Z
+resolution,s200_rep2,message_size,200,2,1,,431,120002,0,0,0.996421,200,500,3,1,0,10.0.1.221:19092,shutdown_hook,31513147,,2026-07-26T17:02:00Z
+resolution,s4096_rep1,message_size,4096,1,0,no result row written,,,,,,4096,500,3,1,,,periodic_quantised,16724,,2026-07-26T17:02:19Z
+smoke,l0_rep1,load_pct,0,1,1,,,,,,,200,500,1,1(default),0,10.0.1.221:19092,none_in_log,11784661,,2026-07-26T13:18:48Z
+smoke2,l0_rep1,load_pct,0,1,1,,975,50000,0,0,0.980873,200,500,1,1(default),0,10.0.1.221:19092,none_in_log,11767227,,2026-07-26T14:06:23Z

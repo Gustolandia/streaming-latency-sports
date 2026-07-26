@@ -545,3 +545,41 @@ M3 asked for more than one 3-minute run. It now has 15, and will have 38. The an
 no longer "here is more of the same evidence" but "the additional evidence overturned the
 reading, and we corrected it" — which is the better answer to give, and the one this paper is
 in a poor position to refuse.
+
+## R1 addendum — the discard rate is a threshold, not a rate (2026-07-26)
+
+The message-size sweep's first two cells changed what the finding is. Both ran at 200 B and 0%
+background load, three minutes each, identical in every configured respect. `s200_rep1` discarded
+**nothing** — 120,434 samples kept. `s200_rep2` discarded **99.64%** — 431 kept.
+
+With the three load-sweep cells at the same configuration, five observations of retention at one
+fixed setting:
+
+| run | retention |
+|---|---|
+| l0_rep1 | 1.51% |
+| l0_rep2 | 0.83% |
+| l0_rep3 | 100% |
+| s200_rep1 | 100% |
+| s200_rep2 | 0.36% |
+
+Two modes, nothing between them. That is not a noisy rate; it is a **threshold**. Either the
+median latency falls below one millisecond tick, and nearly every sample computes to zero and is
+discarded, or it reaches one tick and nearly none are. Which side a run lands on is decided by
+system state finer than anything the workload controls.
+
+**What this does to the claim.** It makes it stronger and simpler. The statement is no longer
+"OMB discards a large share of its samples under some conditions", which invites a question about
+which conditions. It is: *at a fixed configuration, this benchmark's reported latency summary is a
+coin flip between being computed from essentially all of its samples and essentially none of them,
+and its output does not say which.* Both outcomes print a healthy-looking summary with a median of
+1.0 ms.
+
+**What it does to the message-size test.** It weakens its power at the small end without touching
+the conclusion. Large messages should clear one tick deterministically and retain everything; the
+200 B baseline is a coin flip, so a two-rep comparison against it is underpowered. The size sweep
+still discriminates -- it just cannot rest on the baseline cell alone.
+
+**Queued as chain7:** ten more reps at the identical configuration, fifteen in total, with nothing
+else varying. The variable under study is the run-to-run variation itself, so the design holds
+everything else fixed on purpose.

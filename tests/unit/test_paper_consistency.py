@@ -722,7 +722,11 @@ class TestTwoStateModel:
         section = " ".join(_section(tex, "sec:twostate").lower().split())
         assert "exploratory" in section
         assert "found this by looking at the data" in section
-        assert "real-time priority" in section, "the decisive unrun test must be named"
+        # The decisive test was un-run when this section was written and has since been run;
+        # the section must name it and point forward rather than leave it pending.
+        assert "real-time priority" in section, "the decisive test must be named"
+        assert "ran it" in section or "reported immediately below" in section,             "the confirmatory test is no longer pending and the text must not say it is"
+        assert "pre-registered in the artefact" not in section,             "the confirmatory version was run; it is not still sitting in the artefact"
 
     def test_the_load_axis_is_not_claimed(self, tex):
         """The bare form is a tautology in rho, and the section must say so before using it.

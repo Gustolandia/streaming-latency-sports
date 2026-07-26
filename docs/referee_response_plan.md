@@ -496,9 +496,16 @@ population that thins out as the machine gets busier is a tick collision — the
 consequence the manuscript already describes at §6.7, lines 1125–1130 — not a causality
 violation.
 
-Corroborating, from `check_omb_quantisation.py`: OMB's own reported percentiles are whole
-milliseconds in 36 of 40 cases, and three runs report p50 = p95 = p99 = max = 1.0. That is not a
-narrow distribution. It is a distribution with one value in it.
+Corroborating, from `check_omb_quantisation.py`: 36 of the 40 reported latency values across
+eight runs are whole milliseconds. Split by column the result is sharper than that aggregate.
+**Every one of the 32 percentile values — p50, p95, p99 and max — is a whole millisecond.** The
+only four fractional values are the averages, and a mean of integers is expected to be
+fractional; it is the one statistic that can be. Three runs report p50 = p95 = p99 = max = 1.0.
+That is not a narrow distribution. It is a distribution with one value in it, reported to three
+decimal places.
+
+State the 32-of-32 form in the paper rather than the 36-of-40 form. The aggregate dilutes the
+finding with the one column that could not have shown it.
 
 ## What survives, what falls, what gets stronger
 

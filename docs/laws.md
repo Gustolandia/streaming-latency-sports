@@ -129,9 +129,20 @@ E-A9 traced `sched_wakeup`/`sched_switch` and computed P(run-queue delay > T_tru
 | ordinary | 551,956 | 0.1807 | 0.2315 | **0.78** |
 | real-time | 570,591 | 0.0185 | 0.0000 | — |
 
-A traced scheduler quantity predicts the measured inversion rate to within 22%, unfitted. The
-instrument check passed first: the traced baseline differs from the untraced measurement of the
-same cell by 4.6%, so BPF did not move what it measured.
+A traced scheduler quantity predicts the measured inversion rate to within 22%, unfitted.
+
+*The instrument check is weaker than we first reported.* The campaign's own untraced twin exists
+— the first attempt, whose probe never attached, kept as `ea9_notrace` and run ~2h earlier. It
+measures **0.2717** against the traced run's 0.2315: the traced rate is **14.8% lower**. An
+earlier version compared against a *different* campaign's 88% arm (0.2214) and called the 4.6%
+gap a clean bill of health. Honest reading: the 88% ordinary arm spans 0.221–0.305 across five
+campaigns (1.38×), and both the traced value and its twin sit inside that spread — so tracing did
+not move the rate by more than the drift already there, and **a tracing effect below ~15% is not
+resolvable with this control**.
+
+That limits the *level*, which nothing rests on. The 0.181-vs-0.231 comparison is between two
+quantities measured in the **same run**, so a common perturbation moves both and leaves their
+agreement intact.
 
 *Open:* the real-time arm recorded exactly zero inversions. Under the usual floor (~0.004) the
 chance of that in 2985 events is 6.4 × 10⁻⁶, so either that arm genuinely differed or tracing

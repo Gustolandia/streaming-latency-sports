@@ -1,5 +1,5 @@
 {
-  "git_commit": "21f98359869cfa39c09c14246765b45f4d297cfb",
+  "git_commit": "55b846ed2648ccec0ffdc4efa72a1c6b842021f0",
   "generated": "2026-07-26",
   "environment": "see docs/infrastructure.md",
   "protocol": {
@@ -33,7 +33,7 @@
     "rate_provenance": "No surviving artefact records an achieved replay rate; plans carry a baked-in 120x compression, so --speedup 1 means 120x rather than real time. The reported cloud runs are at a verified true-real-time rate; E1's rate is recovered from a 52.34 ms diagnostic cell. See paper Section 6.5.",
     "dataset": "StatsBomb open data, 52 competition-seasons / 3,315 matches (2003-2023), pinned to commit 3bfbffe1de5750ebd47d770be0bb924a10cde54f; re-fetch via scripts/fetch_statsbomb_corpus.py. Eleven per-match replay plans are committed under data/processed/replay_plans/<sha>/."
   },
-  "n_code_files": 70,
+  "n_code_files": 69,
   "code_sha256": {
     "scripts/analyze_backlog.py": "130d7d0cf77ff7fb8800a8afa9f4c95b1ef4f24597b100421b6e9343c137b227",
     "scripts/analyze_clean_sweep.py": "d33add24b5058303d3fa7933f2d516a74fee562cc70830206a42c916e1249ddb",
@@ -100,7 +100,6 @@
     "scripts/verify_run_provenance.py": "8b8749b2c2c63eebf327eef58cc4dae29837dfc6924af23ef2e8e133bebd259f",
     "scripts/verify_run_quality.py": "1e983c1d605004f4c3d7136f60af9427ed47a093da4a4cd3e20bb632307c4516",
     "scripts/zenodo_deposit.py": "83fc0561c01a0520f29c00a7e270e8126dfb313f5df9da0db55d6afd7ffe7536",
-    "configs/s3_injections.yaml": "c5a95d185a8ab29a794575b147a61485c8ec4306cc3127dbc12da2c3378e3dbb",
     "docker-compose-multibroker.yml": "669f5226d68d7385260a83a4952b69e09f97e04613b9c70f4dbfe9f1e18cc209",
     "docker-compose-redis-cluster.yml": "c60215b673e13713d9d476af704d213553e733af64864c060f15019732668b7e",
     "docker-compose.yml": "1814d0eb571afcc8e90ebf7436068561776e3f4b6744071be7d30a52e5f5658b",

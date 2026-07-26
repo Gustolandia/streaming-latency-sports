@@ -1,5 +1,12 @@
 # Infrastructure & Reproducibility (Issue 6)
 
+> **Status: this describes Testbed A, whose results the paper withdraws in full.** The hardware
+> in §3 is the single Windows host every S-era run was produced on, and the paper's audit rejects
+> that entire arm (§7 "What we withdraw"). Every result the paper *reports* comes from Testbed B
+> — four Oracle Cloud VMs on a real inter-VM network — which is documented in
+> [`cloud/README.md`](../cloud/README.md), not here. The software stack in §1 and the
+> reproducibility chain in §4 still apply to both; the host in §3 does not.
+
 This document specifies the software environment and the reproducibility chain
 for the benchmark suite. It complements the per-run provenance recorded in every
 `runs/<run_id>/meta.json` and the automated checker

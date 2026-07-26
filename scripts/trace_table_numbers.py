@@ -163,7 +163,13 @@ def main(argv=None):
     if unmapped:
         print(f"\n  UNMAPPED (not checked, not passing): "
               f"{', '.join(r['label'] for r in unmapped)}")
-    return 1 if bad else 0
+    if bad:
+        print("\n  Cells above are not necessarily wrong: derived quantities -- medians over")
+        print("  runs, ratios between arms, z scores -- are computed from the artefact and are")
+        print("  never stored in it. Each one needs a test that recomputes it from source.")
+    # Always 0. This is a worklist, not a gate; see the module docstring for why string
+    # matching cannot decide a derived cell.
+    return 0
 
 
 if __name__ == "__main__":

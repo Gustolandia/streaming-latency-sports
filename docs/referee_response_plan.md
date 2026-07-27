@@ -1385,3 +1385,41 @@ one intermediate in nine is a model with a stated exception rather than a clean 
 
 **Still UNDECIDED, correctly.** Every rate measured is either `q=1` or `q>64`. The quantisation
 refinement — spread ~ `100/q` — remains untested until chain14 supplies `q` = 2, 3, 4, 8.
+
+### The quantisation prediction was wrong in its observable, and the correction is sharper
+
+`q=2` (400 msg/s, 2.500 ms) returned **50.42, 50.45, 50.88, 53.53** — a spread of 3.1,
+indistinguishable from the incommensurate rates. **The prediction that spread falls as `100/q` is
+refuted**, and the analyser returns BINARY on the evidence.
+
+**Why it was wrong, from the same model.** A 2.500 ms interval against a 1 ms tick puts sends at
+phases 0 and 0.5 alternately. A three-minute run at 400 msg/s makes ~72,000 sends, so *every run
+visits both phases in equal proportion*. Retention is therefore the average over the `q` phases,
+which is the same in every run — stable, not spread. The instability at `q=1` arises for the
+opposite reason: a single phase is fixed for the whole run and varies *between* runs with the
+start offset.
+
+So the phase account survives; our derived observable did not. Restated:
+
+> With `q` phases visited, retention is the fraction of those `q` phases whose delivery crosses a
+> tick boundary — hence a **multiple of `1/q`**, stable across runs. Only `q=1` makes retention a
+> single phase's outcome, and therefore a coin flip between 0 and 1.
+
+**`q=2` cannot discriminate between this and the binary account.** Quantised-to-halves gives
+$0.5$; the continuous prediction `T_true/τ` also gives $0.5$, since `T_true ≈ 0.5` ms. Both predict
+what we measured, which is why the arm was uninformative and would have been whichever way it fell.
+
+**`q=3` discriminates, and is recorded before it lands.** At 300 msg/s (3.333 ms):
+
+| account | predicted retention |
+|---|---|
+| binary / continuous | $\approx 50\%$, matching every incommensurate rate |
+| quantised to $1/q$ | $\approx 33\%$ or $\approx 67\%$ — a third or two thirds, **not** a half |
+
+A result near $50\%$ refutes quantisation and leaves the rule binary: only exact multiples matter.
+A result near $33$ or $67\%$ establishes it. `q=4` (800 msg/s) and `q=8` (889 msg/s) follow, where
+quantisation predicts values on the $1/4$ and $1/8$ grids.
+
+This is a correction to our own prediction, made before the discriminating data and stated as
+such. The first version was falsified by `q=2`; we are not rescuing it but replacing the observable
+with the one the model actually implies, and naming the measurement that decides between them.

@@ -8,31 +8,38 @@ quantum produces bimodal, irreproducible retention, while an incommensurate rate
 fraction. That is a binary distinction and it is not the whole rule.
 
 Write the producer's interval over the tick as a fraction p/q in lowest terms. After q sends the
-phase within the tick returns to where it began, so the producer visits exactly q distinct phases.
-The prediction that follows:
+phase within the tick returns to where it began, so the producer visits exactly q distinct phases,
+and retention -- a count of crossing phases over q -- lands on one of the two grid points that
+bracket `T_true / tau`.
 
-    retention takes one of (q+1) values,  and  replicate spread falls roughly as 100/q
+`q = 1` (an exact multiple) gives all-or-nothing retention. Large `q` gives an effectively
+continuous phase and a stable retention at `T_true / tau`. The interesting region is in between,
+and it is the region no measurement had covered when this was written.
 
-`q = 1` (an exact multiple) gives all-or-nothing retention and a spread near 100 points. Large `q`
-gives an effectively continuous phase and a spread near zero, with retention at `T_true / tau`.
-The interesting region is in between, and it is the region no measurement had covered when this
-was written.
+WHAT THE SPREAD PREDICTION ACTUALLY IS, because we got it wrong first. The obvious form is
+`spread ~ 100/q`, and this script said exactly that. It is not a point prediction: 100/q is the
+CELL WIDTH, an upper bound reached only when `T_true / tau` sits midway between two grid points,
+because only then do replicates realise both bracketing points. When it sits ON a grid point, one
+point takes nearly every run and the spread collapses toward zero:
 
-This script computes `q` from each campaign's producer rate, groups the measured retentions, and
-reports spread against `q` so the relation can be read directly. It does not fit anything: the
-prediction is `spread ~ 100/q` and the table either shows that or does not.
+    spread -> 100/q   when T_true/tau is mid-cell
+    spread -> 0       when T_true/tau is on a grid point
 
-Not every `q` can test that prediction. A grid is indistinguishable from the continuum whenever the
-continuous value `T_true / tau` happens to land on it, because then both hypotheses predict the same
-retention. At this operating point `T_true / tau` is close to 0.5, so every even `q` is degenerate --
-1/2, 2/4 and 4/8 are the same number -- and only odd `q` can separate the hypotheses. Such arms are
-excluded from the verdict and reported as degenerate rather than as failures.
+Stated as a point prediction, the even-q arms looked like failures and we introduced a degeneracy
+exclusion for them -- pre-registered and defensible, but unnecessary. Stated correctly, an on-grid
+arm IS a prediction of a flat arm, so q=2 and q=4 became evidence for the model rather than cases
+to excuse. One formula covers every arm. `grid_distance_pts` and the `degenerate` flag survive as
+descriptive outputs; nothing is excluded on their basis any more.
 
-That exclusion is a prediction, not a rescue. It was derived from the q=4 arm and committed in
-79b8672 at 14:09Z on 2026-07-27, which is *before* the first odd-q cell was measured at 15:06Z; the
-odd-q arms were then run precisely because the rule said they would discriminate. The distance below
-is measured against the observed continuous value and the observed replicate noise, so nothing here
-is tuned by hand.
+The verdict is therefore a classification with no tolerance to choose. Each arm is predicted to
+show the full cell width or to collapse; "spread above half the cell width" says which it did. The
+position is measured against the cell half-width rather than a fixed noise floor, which makes every
+call identical whether the continuous value is estimated pooled or separately at each rate -- the
+sensitivity that exposed the original error is gone.
+
+One guard remains, and it is about power rather than about the model: spread is a range statistic,
+so an arm needs enough replicates to realise both branches before a flat result means anything.
+See MIN_REPLICATES_FOR_FULL.
 
 CLI:
     python scripts/analyze_phase_quantisation.py --ledger docs/results/external_campaigns_index.csv
@@ -110,6 +117,18 @@ def cell_position(q, continuous_pct):
 # Above this fraction of the half-cell, both bracketing grid points are realistically reachable
 # and the arm can show its full spread; below it, replicates pile onto one point.
 MIDCELL_FRACTION = 0.5
+
+# A "full spread" prediction is only testable if the arm has enough replicates to realise *both*
+# bracketing grid points. Spread is a range statistic, so a single branch produces zero spread no
+# matter how right the model is: at 300 msg/s only one replicate in five took the upper branch, so
+# two replicates would show a flat arm about two thirds of the time by luck alone. Below this
+# count a flat observation is uninformative and must be reported as underpowered rather than as a
+# refutation -- otherwise an unfinished arm reads as evidence against.
+#
+# This is a statement about statistical power, not about the model, and the threshold depends only
+# on n, which is known before any measurement is taken. A "flat" prediction needs no such guard:
+# observing the full cell width when the model says flat is decisive at any n.
+MIN_REPLICATES_FOR_FULL = 3
 
 
 def predicted_spread(q, continuous_pct):
@@ -207,6 +226,12 @@ def group_by_rate(cells, tick_ms=1.0):
         g["observed_full"] = (
             (g["spread"] > g["cell_width"] / 2.0)
             if (g["commensurate"] and g["spread"] is not None and g["cell_width"]) else None)
+        # A flat result on a full-predicted arm with too few replicates says nothing either way.
+        # Note the asymmetry: a *full* result is always informative, so only the flat case is
+        # withheld, and an underpowered arm that shows full spread still counts.
+        g["underpowered"] = bool(
+            g["predicted_full"] and g["observed_full"] is False
+            and g["n"] < MIN_REPLICATES_FOR_FULL)
     return out
 
 
@@ -223,7 +248,8 @@ def verdict(groups):
     """
     usable = [g for g in groups if g["spread"] is not None and g["q"]]
     testable = [g for g in usable if g["commensurate"] and g.get("predicted_full") is not None
-                and g.get("observed_full") is not None]
+                and g.get("observed_full") is not None and not g.get("underpowered")]
+    underpowered = [g for g in usable if g.get("underpowered")]
     large = [g for g in usable if not g["commensurate"]]
 
     if not large:
@@ -231,8 +257,13 @@ def verdict(groups):
                 "why": ("no incommensurate rate measured, so the continuous value is unknown and "
                         "no grid position can be computed")}
     if not testable:
-        return {"decided": False,
-                "why": "no commensurate rate with replicates; the quantisation rule is untested"}
+        why = "no commensurate rate with replicates; the quantisation rule is untested"
+        if underpowered:
+            why = ("every commensurate arm is underpowered: " + ", ".join(
+                "q=%d at n=%d" % (g["q"], g["n"]) for g in underpowered)
+                + " predict a full cell width but have too few replicates to realise both "
+                  "bracketing points, so a flat result is uninformative")
+        return {"decided": False, "underpowered": underpowered, "why": why}
 
     ordered = sorted(testable, key=lambda g: g["q"])
     agree = [g for g in ordered if g["predicted_full"] == g["observed_full"]]
@@ -242,26 +273,28 @@ def verdict(groups):
     # constant prediction is not evidence for the model that produced it.
     kinds = {g["predicted_full"] for g in ordered}
     if len(kinds) < 2:
-        return {"decided": False, "disagree": disagree,
+        return {"decided": False, "disagree": disagree, "underpowered": underpowered,
                 "why": (f"all {len(ordered)} arms predict the same class, so agreement with them "
                         f"would not distinguish this model from a constant")}
 
+    lowpower = (" ; underpowered and set aside: " + ", ".join(
+        "q=%d at n=%d" % (g["q"], g["n"]) for g in underpowered)) if underpowered else ""
     detail = ", ".join(
         "q=%d %s/%s" % (g["q"], "full" if g["predicted_full"] else "flat",
                         "full" if g["observed_full"] else "flat") for g in ordered)
 
     if not disagree:
-        return {"decided": True, "outcome": "QUANTISED", "disagree": disagree,
+        return {"decided": True, "outcome": "QUANTISED", "disagree": disagree, "underpowered": underpowered,
                 "why": (f"all {len(ordered)} arms show the spread their grid position predicts "
-                        f"(predicted/observed: {detail})")}
+                        f"(predicted/observed: {detail})" + lowpower)}
     if len(agree) <= len(ordered) / 2.0:
-        return {"decided": True, "outcome": "REFUTED", "disagree": disagree,
+        return {"decided": True, "outcome": "REFUTED", "disagree": disagree, "underpowered": underpowered,
                 "why": (f"only {len(agree)} of {len(ordered)} arms match "
-                        f"(predicted/observed: {detail})")}
-    return {"decided": True, "outcome": "UNCLEAR", "disagree": disagree,
+                        f"(predicted/observed: {detail})" + lowpower)}
+    return {"decided": True, "outcome": "UNCLEAR", "disagree": disagree, "underpowered": underpowered,
             "why": (f"{len(agree)} of {len(ordered)} arms match; q = "
                     + ", ".join(str(g["q"]) for g in disagree) + " do not "
-                    f"(predicted/observed: {detail})")}
+                    f"(predicted/observed: {detail})" + lowpower)}
 
 
 def report(groups):

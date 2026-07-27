@@ -1,12 +1,27 @@
 """Tests for analyze_phase_quantisation.
 
 The script decides whether the phase effect is binary (commensurate or not) or quantised by the
-denominator q. The verdict that matters most is UNDECIDED: with only q=1 and large-q rates
-measured, the quantisation rule is untested, and a tool that announced a rule from those two
-points would be doing what this paper spends a section warning against.
+denominator q. The verdicts that matter most are the ones that decline to decide: with only q=1 and
+large-q rates measured, or with every arm predicting the same class, a tool that announced a rule
+anyway would be doing what this paper spends a section warning against.
 
-The exact-fraction arithmetic is also load-bearing. 2.000 and 2.188 must not both round to
-"close enough to 2", which is why the denominator is computed with Fraction rather than floats.
+The exact-fraction arithmetic is load-bearing. 2.000 and 2.188 must not both round to "close enough
+to 2", which is why the denominator is computed with Fraction rather than floats.
+
+Two of these test classes exist because the analysis was wrong before it was right, and each pins
+the corrected behaviour so it cannot quietly regress:
+
+- TestDegeneracy: `spread ~ 100/q` is an upper bound, not a point prediction. An arm whose
+  continuous value sits on a grid point is predicted to be FLAT, so the even-q arms are evidence
+  for the model rather than exceptions needing exclusion. The tests assert the rule is stated
+  generally -- at T_true/tau = 1/3 it must be q=3 that goes blind and q=2 that discriminates, not
+  a hardcoded parity check fitted to this dataset.
+
+- TestPower: spread is a range statistic, so an arm needs enough replicates to realise both
+  bracketing grid points before a flat result means anything. Without that guard an unfinished arm
+  reads as a refutation, which is exactly what the 600 msg/s arm did at n=2. The guard is
+  deliberately asymmetric -- a full-spread result is decisive at any n -- and a test asserts it
+  cannot be used to excuse a well-powered miss.
 """
 import csv
 import sys
@@ -309,6 +324,68 @@ class TestDegeneracy:
         assert fields[4] == "-", "cell position should be absent too"
 
 
+class TestPower:
+    """An arm with too few replicates cannot refute a full-spread prediction.
+
+    Spread is a range statistic: one branch gives zero spread however right the model is. At
+    300 msg/s only one replicate in five took the upper branch, so two replicates would show a flat
+    arm about two thirds of the time by luck. Counting that as a miss would let an unfinished arm
+    read as evidence against -- which is exactly what happened to the 600 msg/s arm mid-collection.
+    """
+
+    def test_a_flat_result_on_too_few_replicates_is_set_aside(self, tmp_path):
+        p = tmp_path / "l.csv"
+        write_ledger(p, [(500, 1.0), (500, 99.0),       # q=1 full, well powered
+                         (400, 50.0), (400, 52.0),      # q=2 on grid -> flat
+                         (600, 34.0), (600, 34.3),      # q=3 full predicted, n=2, came out flat
+                         (457, 49.0), (457, 50.0)])
+        g = {x["rate"]: x for x in group_by_rate(load_rate_cells(str(p)))}
+        assert g[600]["underpowered"] is True
+        v = verdict(group_by_rate(load_rate_cells(str(p))))
+        assert v["outcome"] == "QUANTISED"
+        assert not any(x["rate"] == 600 for x in v["disagree"])
+        assert "underpowered and set aside: q=3 at n=2" in v["why"]
+
+    def test_enough_replicates_makes_a_flat_result_count_against(self, tmp_path):
+        """The guard must not simply excuse every inconvenient arm."""
+        p = tmp_path / "l.csv"
+        write_ledger(p, [(500, 1.0), (500, 99.0),
+                         (400, 50.0), (400, 52.0),
+                         (600, 34.0), (600, 34.1), (600, 34.2), (600, 34.3), (600, 34.4),
+                         (457, 49.0), (457, 50.0)])
+        g = {x["rate"]: x for x in group_by_rate(load_rate_cells(str(p)))}
+        assert g[600]["underpowered"] is False
+        v = verdict(group_by_rate(load_rate_cells(str(p))))
+        assert v["outcome"] in ("UNCLEAR", "REFUTED")
+        assert any(x["rate"] == 600 for x in v["disagree"])
+
+    def test_a_full_result_is_informative_at_any_n(self, tmp_path):
+        """The asymmetry: only the flat case is withheld, never the decisive one."""
+        p = tmp_path / "l.csv"
+        write_ledger(p, [(500, 1.0), (500, 99.0),
+                         (400, 20.0), (400, 80.0),      # q=2 on grid but full spread -- a MISS
+                         (457, 49.0), (457, 50.0)])
+        g = {x["rate"]: x for x in group_by_rate(load_rate_cells(str(p)))}
+        assert g[400]["underpowered"] is False, "a full result must never be set aside"
+        v = verdict(group_by_rate(load_rate_cells(str(p))))
+        assert any(x["rate"] == 400 for x in v["disagree"])
+
+    def test_an_all_underpowered_run_is_undecided_and_says_why(self, tmp_path):
+        p = tmp_path / "l.csv"
+        write_ledger(p, [(600, 34.0), (600, 34.3),      # the only commensurate arm, n=2, flat
+                         (457, 49.0), (457, 50.0)])
+        v = verdict(group_by_rate(load_rate_cells(str(p))))
+        assert not v["decided"]
+        assert "underpowered" in v["why"] and "q=3 at n=2" in v["why"]
+
+    def test_underpowered_arms_are_reported_not_hidden(self, tmp_path):
+        p = tmp_path / "l.csv"
+        write_ledger(p, [(500, 1.0), (500, 99.0), (400, 50.0), (400, 52.0),
+                         (600, 34.0), (600, 34.3), (457, 49.0), (457, 50.0)])
+        v = verdict(group_by_rate(load_rate_cells(str(p))))
+        assert [g["rate"] for g in v["underpowered"]] == [600]
+
+
 class TestVerdict:
     def _from(self, tmp_path, rows):
         p = tmp_path / "v.csv"
@@ -335,7 +412,7 @@ class TestVerdict:
         assert v["disagree"] == []
 
     def test_a_full_arm_that_comes_out_flat_is_a_miss(self, tmp_path):
-        v = self._from(tmp_path, [(500, 49.0), (500, 50.0),      # q=1 mid -> full, but flat
+        v = self._from(tmp_path, [(500, 49.0), (500, 50.0), (500, 50.5),  # q=1 full, but flat
                                   (400, 50.0), (400, 52.0),      # q=2 grid -> flat, is flat
                                   (457, 49.0), (457, 50.0)])
         assert v["decided"]
@@ -343,7 +420,7 @@ class TestVerdict:
         assert any(g["q"] == 1 for g in v["disagree"])
 
     def test_everything_wrong_is_refuted_not_unclear(self, tmp_path):
-        v = self._from(tmp_path, [(500, 49.0), (500, 50.0),      # q=1 mid -> full, but flat
+        v = self._from(tmp_path, [(500, 49.0), (500, 50.0), (500, 50.5),  # q=1 full, but flat
                                   (400, 20.0), (400, 80.0),      # q=2 grid -> flat, but full
                                   (457, 49.0), (457, 50.0)])
         assert v["outcome"] == "REFUTED"
@@ -389,7 +466,7 @@ class TestCLI:
             self, tmp_path, capsys):
         """Reaching a verdict is not the same as reaching *that* verdict."""
         p = tmp_path / "l.csv"
-        write_ledger(p, [(500, 49.0), (500, 50.0),      # q=1 mid-cell -> full, but flat  MISS
+        write_ledger(p, [(500, 49.0), (500, 50.0), (500, 50.5),  # q=1 full, but flat -- MISS
                          (400, 50.0), (400, 52.0),      # q=2 on grid  -> flat, is flat
                          (300, 40.0), (300, 74.0),      # q=3 mid-cell -> full, is full
                          (457, 49.0), (457, 50.0)])

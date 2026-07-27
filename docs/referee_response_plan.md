@@ -1110,3 +1110,42 @@ manipulation nobody would run by accident.
 **What it does not do:** it does not resurrect the causality reading. Zero negatives, across every
 cell in every campaign. The mechanism explains which samples OMB *discards*, not any sample
 arriving before it was sent.
+
+### Rate-phase experiment complete: three arms, and the two dephased arms agree
+
+| rate | interval | exact multiple of 1 ms? | retention per replicate | spread |
+|---|---|---|---|---|
+| 500/s | 2.000 ms | **EXACT** | 0.47, 1.51, 18.02, 99.99 | **99.5 pts** |
+| 457/s | 2.188 ms | no | 48.77, 49.50, 49.69, 50.87 | 2.1 pts |
+| 383/s | 2.611 ms | no | 50.28, 51.46, 53.13 | 2.8 pts |
+
+Zero negatives in all twelve cells.
+
+**Only the commensurate rate is unstable.** That was the prediction, filed before the run, and it
+holds with a 35-fold difference in spread.
+
+**The stronger test is that the two dephased arms agree with each other.** Their intervals differ
+by 19% — 2.188 ms against 2.611 ms — and their retention medians differ by under two points
+(49.60 and 51.46). If retention were a function of the pacing interval, those arms would separate.
+Under the phase model it is a function of `latency / tick` alone, and the interval only determines
+*whether* the samples dephase, not *what* the dephased fraction is. The arms had to agree, and
+they do.
+
+**Both land at ≈50%, which fixes the latency.** `latency / tick ≈ 0.5` with a 1 ms tick implies a
+true end-to-end latency near 0.5 ms — independently consistent with the unquantised publish-latency
+probe (0.3–0.4 ms plus consumer-side delivery). Three separate routes to the same number:
+the dephased retention fraction, the publish-latency probe, and this project's own transport
+measurements at 0.1–0.5 ms.
+
+**The mechanism is therefore established, not inferred:**
+
+> The OpenMessaging Benchmark's end-to-end guard discards samples whose millisecond-grained
+> timestamp difference is zero. Whether a given sample crosses a tick boundary depends on its
+> phase within the millisecond, and OMB paces its producer at a fixed interval. When that interval
+> is an exact multiple of the timestamp resolution — as it is at the common rate of 500 msg/s —
+> every sample in a run holds the same phase, so a run discards nearly all of its samples or
+> nearly none, unpredictably. When the interval is incommensurate, samples dephase and a stable
+> `latency / tick` fraction survives. The reported latency summary is the same in all cases.
+
+**Not the causality claim.** Zero negatives, every cell, every campaign. This governs which samples
+are discarded, not any sample arriving before it was sent.

@@ -1357,3 +1357,31 @@ If it holds, the rule is considerably more useful than "avoid round rates": it s
 governed by the *arithmetic* relationship between pacing and clock, that a rate need not be an
 integer multiple to be dangerous, and that safety comes from a large denominator rather than from
 any particular rate.
+
+### B2 complete: seven rates, a 30-fold separation, and one anomaly worth keeping
+
+| group | rate | interval | q | n | spread |
+|---|---|---|---|---|---|
+| commensurate | 1000/s | 1.000 ms | 1 | 3 | **99.3** |
+| commensurate | 500/s | 2.000 ms | 1 | 4 | **99.5** |
+| commensurate | 250/s | 4.000 ms | 1 | 3 | **58.6** |
+| incommensurate | 611/s | 1.637 ms | >64 | 2 | 3.1 |
+| incommensurate | 457/s | 2.188 ms | >64 | 4 | 2.1 |
+| incommensurate | 383/s | 2.611 ms | >64 | 4 | 2.8 |
+| incommensurate | 333/s | 3.003 ms | >64 | 3 | 3.1 |
+
+**The incommensurate group is the stronger half of this result.** Four rates, four different
+intervals, spreads of 2.1 to 3.1, and all four sitting at $46$--$54\%$ retention. That is the
+`T_true/τ` prediction holding across a group rather than at one point, and it is what a
+dependence on the *interval* could not produce.
+
+**The 250 msg/s anomaly is reported, not averaged away.** Its three replicates are 41.39, 99.53
+and 99.99 — two at the top and one intermediate, giving 58.6 rather than the ~99 of the other two
+exact multiples. Under a strict one-phase model an intermediate value should not occur. The likely
+causes are OMB's rate limiter jittering slightly off exactly 4.000 ms, or the phase drifting over
+the longer interval; we have not separated them. The paper should state this rather than quote a
+mean of the three commensurate spreads, because a model that predicts all-or-nothing and delivers
+one intermediate in nine is a model with a stated exception rather than a clean one.
+
+**Still UNDECIDED, correctly.** Every rate measured is either `q=1` or `q>64`. The quantisation
+refinement — spread ~ `100/q` — remains untested until chain14 supplies `q` = 2, 3, 4, 8.

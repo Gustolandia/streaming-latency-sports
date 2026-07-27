@@ -1680,6 +1680,29 @@ $q \approx 5$–$7$ for three-minute runs, matching cells-crossed $\propto q$. B
 sweep is now the direct manipulation of that crossover — at $1$ minute the $q{=}1$ arms should
 purify, at $10$ minutes smear — and it was pre-registered as P5 before any of this was known.
 
+### Block C interim (21:52Z): the crossover moves between passes, and P1's premise fails with it
+
+The fresh $300$/s arm: $34.12$, $51.03$, $51.44$, $55.53$, $55.93$ — one replicate on the lower
+branch, **four mid-cell**, where the morning's pass at the identical configuration put all five
+branch-adjacent ($34.86$–$41.13$, $65.35$). Same $q$, same rate, hours apart, different regime:
+whatever sets the phase walk varies **between runs and between passes**, not only with $q$.
+
+**Consequence for P1, recorded rather than fudged:** the registered branch-count binomial
+presupposes branch-classifiable replicates. A value at $51.44$ in a $\{33.3, 66.7\}$ grid belongs
+to no branch, so the classification the test needs does not exist for this arm. P1 is therefore
+**not evaluable as registered** on the pooled $q=3$ data. An informal pooled binomial computed
+before this was recognised (classifying $>50$ as upper) is discarded, not reported — it would
+count mid-cell smear as branch membership.
+
+**The system clock is exonerated.** `chronyc tracking` on the driver: residual frequency
+$+0.013$ ppm, skew $0.039$ ppm — the disciplined clock walks $\sim 7\,\mu$s over a three-minute
+run, two orders of magnitude below the $\sim 180\,\mu$s of within-run phase spread the smeared
+arm implies. The live suspect for $\varepsilon$ is the producer's pacing loop itself (JVM timer
+and GC behaviour), which nothing yet measures per run. From 22:02Z a logger records the chrony
+state each minute (`chrony_freq_logger.sh`, output inside the backed-up results tree) so every
+remaining cell joins to the clock record; the pacing-loop contribution remains open and is the
+right target for a dedicated instrument if the duration sweep does not settle it.
+
 **chain17** (55 cells, launched 17:16Z 2026-07-27) repeats the one defected cell, fills every arm
 to $n\ge5$, and tests six pre-registered predictions — P1 branch binomial at pooled $q{=}3$;
 P2/P3 second rates for $q{=}5$ (1250/s, the first arm with $p<q$) and $q{=}7$ (700/s); P4 that

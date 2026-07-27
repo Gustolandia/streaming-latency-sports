@@ -1149,3 +1149,40 @@ measurements at 0.1–0.5 ms.
 
 **Not the causality claim.** Zero negatives, every cell, every campaign. This governs which samples
 are discarded, not any sample arriving before it was sent.
+
+### Correction: the retention/average correlation is not a headline number
+
+Filed earlier today as a settled headline: *Spearman(retention, reported average) = −0.681 across
+49 unsaturated cells.* With the bimodality and rate-phase campaigns indexed, the same statistic
+reads:
+
+| subset | n | ρ |
+|---|---|---|
+| all joined | 75 | −0.160 |
+| unsaturated | 71 | −0.236 |
+| phase-locked only | 63 | **−0.350** |
+| dephased arms only | 8 | +0.152 |
+
+**−0.681 is withdrawn as a quotable figure.** It was computed on 49 cells whose configurations
+happened to favour it; adding 14 more at a single configuration halved it. A rank correlation that
+moves from −0.68 to −0.35 on a change of sample composition is not measuring a stable relationship,
+and printing the most favourable of those numbers would be precisely the selective reporting this
+paper objects to.
+
+**What survives.** The direction is negative in every aggregate subset, and the *mechanism* for it
+is sound — discarding sub-tick samples removes fast ones and lifts the mean. So the qualitative
+statement stands: *the reported average rises as retention falls, which is the opposite of what a
+reader would infer from a "samples were dropped" caveat.* The magnitude does not, and no ρ should
+be printed as a headline.
+
+**A prediction I will not claim as confirmed.** I expected the dephased arms to show no
+truncation bias, because there whether a sample survives depends on phase, which is independent of
+its latency — a speed-neutral filter. Their ρ is +0.152, which is the right side of zero. But those
+eight cells have reported averages spanning 1.0000 to 1.0058 ms: there is essentially no variance
+to correlate. The result is uninformative, not supportive, and reading it as support would be
+finding a prediction in noise.
+
+**The three claims that carry §6.7 do not depend on any of this**: retention spans 0.36% to 100%;
+the reported p50 takes two values across that range; and zero negative samples in every cell of
+every campaign. Those are counts and ranges, not correlations, which is why they have not moved
+all day.

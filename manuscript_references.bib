@@ -346,3 +346,30 @@
   publisher={ACM},
   address={London, United Kingdom}
 }
+
+% ---------------------------------------------------------------------------
+% Resolution, discarded samples and sampling artefacts (Section 2.3)
+% ---------------------------------------------------------------------------
+
+@misc{tene2015latency,
+  title={How {NOT} to Measure Latency},
+  author={Tene, Gil},
+  year={2015},
+  note={Coined ``coordinated omission'': a load generator whose measurement
+        thread blocks during a stall never takes the samples that would have
+        been worst, so reported percentiles are optimistic by orders of
+        magnitude. The failure reported in Section~\ref{sec:external} is its
+        mirror image --- the samples are taken and then discarded downstream.
+        Talk, Strange Loop / QCon.}
+}
+
+@misc{tene2015hdrhistogram,
+  title={{HdrHistogram}: A High Dynamic Range Histogram},
+  author={Tene, Gil},
+  year={2015},
+  note={Records values with configurable precision and rejects negative
+        values. Ships an explicit correction for coordinated omission
+        (recordValueWithExpectedInterval) and none for resolution-driven
+        discard. Used by the OpenMessaging Benchmark.
+        Available at hdrhistogram.org}
+}

@@ -393,10 +393,47 @@ of an identical configuration, moving 54–98 points at the others. At one confi
 three replicates agreeing to 3.58 points and sitting 98 points from the same configuration hours
 earlier.
 
+## B5 — quantisation law  *(ESTABLISHED for odd q; the rate-independence test is still running)*
+
+B2 is binary and that is not the whole rule. Write the send interval over the quantum as a fraction
+in lowest terms, Δ/τ = p/q. After q sends the phase returns to where it started, so the producer
+visits exactly **q** distinct phases and retention can take only q+1 values. Replicate spread
+therefore falls as **100/q**, and B2 is just the q=1 corner of it.
+
+| rate | Δ/τ | q | measured spread | 100/q |
+|---|---|---|---|---|
+| 1000/s | 1/1 | 1 | 99.3 pts | 100.0 |
+| 500/s | 2/1 | 1 | 99.5 pts | 100.0 |
+| 300/s | 10/3 | **3** | **30.5 pts** | **33.3** |
+| 625/s | 8/5 | **5** | **17.9 pts** | **20.0** |
+| 457, 383, 611, 889/s | irrational-ish | >64 | 1.7–3.1 pts | ~0 |
+
+**Not every q can test this.** A grid is indistinguishable from the continuum whenever the
+continuous value T_true/τ lands *on* it, because then both hypotheses predict the same retention.
+Measured here, T_true/τ = 0.495 — a half — so every **even** q is degenerate: 1/2, 2/4 and 4/8 are
+the same number. q=2 and q=4 duly sat at 50% with no spread, and neither counts for or against.
+This is a property of the operating point, not of parity: at T_true/τ = 1/3 it would be q=3 that
+goes blind and q=2 that discriminates.
+
+The degeneracy was derived from q=4 and committed at 14:09Z on 2026-07-27; the first q=5 cell was
+measured at 15:06Z. The odd-q arms were run *because* the rule said they would separate.
+
+**One prediction of ours failed here and the record keeps it.** We wrote "q=5 → 2 of 5 phases cross
+→ 40%". The median came out at 46.6%. The error was naming one branch of a two-branch prediction:
+with T_true/τ at a half, 2 *or* 3 phases cross depending on the run's initial phase, giving 40% *or*
+60%. The replicates — 40.7, 42.1, 46.6, 55.5, 58.6 — are bimodal about the grid exactly as the rule
+requires. **The grid held; the point we picked on it did not.**
+
+**What would falsify what is left:** q=7 at 875/s predicts a spread of ≈14.3 (n=1 so far), and q=3
+repeated at 600/s — half the interval of 300/s, same denominator — must reproduce ≈33. If it does
+not, the governing variable is the rate and not q, and B5 shrinks back to B2.
+
 ## What follows for practice
 
 1. Do not pace a load generator at a rate commensurate with the timestamp quantum; dither if the
    rate is fixed. *(from B2)*
+1a. "Not an exact multiple" is not enough — safety comes from a **large denominator**, and a rate
+   like 300/s is nearly as dangerous as 500/s. *(from B5)*
 2. Publish the retention rate. *(from B3 — it is unrecoverable from a completed run)*
 3. Publish the timestamp resolution beside the measured latency. *(from the unifying statement —
    the failure is governed by their ratio)*

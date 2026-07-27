@@ -1705,6 +1705,36 @@ grid they move toward $\theta$, and the propensity to leave is not a function of
 chrony log covers the $625$/s arm's tail and everything after (from 22:02Z); the smeared $300$/s
 arm predates it.
 
+### Block D first half (23:07Z): P6a partially fired, and the arms lined up name the numerator
+
+$300$/s at $32$ KB: $62.06$, $69.17$, $69.19$, $69.23$, $75.69$. Flat as predicted (spread $13.6$
+against a half-width of $16.7$) — but pinned at $69.2$, not $66.67$: three replicates agreeing to
+$0.06$ points, $2.5$ off the grid vertex, displaced toward $\theta(32\text{K}) \approx 0.70$. The
+registered falsifier ("centres off $66.7$") fires on the letter; the displacement-toward-$\theta$
+signature is the same one every arm shows.
+
+**Recorded at 23:15Z, before Block E runs: the smearing tracks $p$, not $q$.** Across all eleven
+commensurate arms, every arm that smeared mid-cell has $p = 10$ ($300 = 10/3$, $700 = 10/7$,
+$900 = 10/9$) and no arm with $p \le 8$ smeared ($1000, 500, 250, 600, 625, 800, 875, 1250$ all
+hold their grids, with displacement growing mildly in $p$). Mechanism: per-send pacer jitter
+proportional to the sleep interval gives jitter in grid-cell units $= \text{slop} \times p$,
+since $\Delta / (\tau/q) = p$ identically. This **supersedes the cells-crossed-$\propto q$ walk
+account** of 20:35Z, which cannot explain $625$/s ($q=5$) holding cleanly while $300$/s ($q=3$)
+smeared the same evening.
+
+**Block E is the discriminator, and the two accounts disagree in direction.** At $500$/s
+($p=2$, $q=1$):
+- *walk account (= registered P5):* $1$-minute runs purify, $10$-minute runs smear
+  ($\sim 3$ cells crossed);
+- *jitter account (this note):* both durations hold near-pure branches $\{0, 100\}$ — the jitter
+  is per-send and duration-independent, and $p=2$ is small.
+
+If duration moves the intermediates, the walk survives and P5 stands; if duration does nothing
+and branches stay pure, P5 is falsified and the numerator law takes its place. For the $64$ KB arm
+(running now): the class model says full $\{66.7, 100\}$ with $P(\text{upper}) = 0.56$; the jitter
+account allows mid-heavy displacement toward $\theta(64\text{K}) \approx 0.85$ — overlapping
+ranges, so it discriminates only if cleanly bimodal on the grid points.
+
 **The system clock is exonerated.** `chronyc tracking` on the driver: residual frequency
 $+0.013$ ppm, skew $0.039$ ppm — the disciplined clock walks $\sim 7\,\mu$s over a three-minute
 run, two orders of magnitude below the $\sim 180\,\mu$s of within-run phase spread the smeared

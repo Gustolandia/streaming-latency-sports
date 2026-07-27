@@ -295,3 +295,94 @@ quantity resists manipulation because every route to shortening it lengthens som
 - **Distributed OMB.** Five attempts, five distinct faults in the benchmark's worker protocol.
   The cross-host clock channel is bounded independently at ~0.067 ms — below OMB's millisecond
   resolution — so the untested channel is the one least able to matter here.
+
+---
+
+# Family B — the resolution failure mode (2026-07-27)
+
+Everything above concerns Mode A: the clock read displaced from the event by a scheduling stall,
+governed by `P(inversion) = P(stall > T_true)`. This family concerns a second, independent way the
+same class of measurement fails, governed by a different instrument timescale against the same
+`T_true`.
+
+## The unifying statement
+
+Both families compare **an instrument timescale against the interval being measured**:
+
+| | instrument timescale | failure when | consequence |
+|---|---|---|---|
+| **A** | scheduling stall | stall > `T_true` | the difference goes negative — an *impossible* measurement |
+| **B** | timestamp quantum τ | τ > `T_true` | the difference computes to zero — a *deleted* measurement |
+
+Both therefore worsen as `T_true` shrinks, which is why both bind hardest on the fast paths and
+small differences that broker comparisons exist to resolve. **This is the paper's general claim.**
+
+## B1 — retention law  *(DERIVED; test in progress)*
+
+Under **dephased** sampling, a sample survives a positivity guard only if its delivery crosses a
+tick boundary. With send phases uniform within the tick:
+
+```
+retention = min(1, T_true / τ)
+```
+
+**Status: derived, one point confirmed, insufficiently tested.** Three independent dephased arms
+(457 msg/s, 383 msg/s, and a fresh 457 msg/s campaign) all sit at 50–53%, implying
+`T_true ≈ 0.5 ms` against `τ = 1 ms`. That agrees with two independent estimates: OMB's own
+unquantised publish latency (0.3–0.4 ms plus consumer delivery) and this project's transport
+measurements (0.1–0.5 ms).
+
+**Why it is not yet a law.** All three points sit at essentially one `T_true`. The payload sweep
+intended to vary `T_true` used sizes too small to move it: 200 B → 2 KB spans a predicted 1.5
+points against ~2 points of replicate noise. Observed 52.03 / 50.32 / 53.37 against predicted
+52.0 / 52.7 / 53.5 — consistent, uninformative. The discriminating cells (32 KB → 78%, 64 KB →
+100%) are running.
+
+## B2 — commensurability law  *(ESTABLISHED by manipulation)*
+
+If the producer's send interval Δ is an **exact multiple** of the timestamp quantum τ, every
+sample in a run shares a phase, and retention becomes bimodal and irreproducible. If Δ is
+incommensurate with τ, samples dephase and B1 applies.
+
+| rate | Δ | Δ/τ | retention spread |
+|---|---|---|---|
+| 500/s | 2.000 ms | **2 exactly** | **99.5 pts** |
+| 457/s | 2.188 ms | 2.188 | 2.1 pts |
+| 383/s | 2.611 ms | 2.611 | 2.8 pts |
+
+**The decisive test is not that the locked arm is unstable — it is that the two dephased arms agree
+with each other.** Their intervals differ by 19%; their medians by under 2 points. Retention as a
+function of the interval would separate them; retention as `T_true/τ` requires them to agree.
+
+*Confirmation pending:* 1000 msg/s (1.000 ms) and 250 msg/s (4.000 ms) predicted bimodal; 333 and
+611 msg/s predicted stable. If the new exact multiples are stable, B2 is wrong.
+
+## B3 — summary insensitivity  *(ESTABLISHED)*
+
+The reported percentiles of a quantised measurement do not track retention. Across 49 unsaturated
+cells, retention spans **0.36%–100%** (278-fold) while the reported p50 takes **two values**
+(1.0, 2.0 ms). One cell summarised 998 samples, another 120,425; both reported 1.0 ms.
+
+Corollary, and the sharper form: **the benchmark's own output already states the problem.** All 32
+percentile values across eight runs are whole milliseconds; three runs report
+p50 = p95 = p99 = max = 1.0. A distribution with one value in it, printed to three decimals.
+
+## B4 — non-convergence under phase locking  *(ESTABLISHED)*
+
+Where B2 applies, a k-replicate median does not converge, because the quantity has no central
+value. Measured: per-level median retention reproduced at **1 load level in 5** across three passes
+of an identical configuration, moving 54–98 points at the others. At one configuration, n=18 gives
+6 runs below 2%, 8 above 90%, 4 between — median 23.4%, a value 1 run in 18 produced.
+
+**Practical corollary:** within-pass agreement is not evidence of reproducibility. One pass had
+three replicates agreeing to 3.58 points and sitting 98 points from the same configuration hours
+earlier.
+
+## What follows for practice
+
+1. Do not pace a load generator at a rate commensurate with the timestamp quantum; dither if the
+   rate is fixed. *(from B2)*
+2. Publish the retention rate. *(from B3 — it is unrecoverable from a completed run)*
+3. Publish the timestamp resolution beside the measured latency. *(from the unifying statement —
+   the failure is governed by their ratio)*
+4. Do not let three replicates stand in for reproducibility. *(from B4)*

@@ -1070,3 +1070,43 @@ because there is no central value to converge on.
 
 Consistent with the three-pass result: a three-replicate median of a distribution like this is a
 draw from the ends, which is why per-level medians moved 54–98 points between passes.
+
+### The mechanism, established by manipulation: phase, not speed
+
+chain8 held message size, load, duration and host fixed and varied only the producer's send
+interval relative to the millisecond grid. Predictions were filed before the run.
+
+| rate | interval | commensurate with 1 ms? | retention per replicate | spread |
+|---|---|---|---|---|
+| 500/s | 2.000 ms | **yes** | 0.47, 1.51, 18.02, 99.99 | **99.5 pts** |
+| 457/s | 2.188 ms | no | 48.77, 49.69, 50.87 | **2.1 pts** |
+
+*(383/s pending.)* Zero negatives in both arms.
+
+**The prediction held.** A producer paced on an exact multiple of the timestamp resolution
+produces retention spanning almost the whole range; the same benchmark, same path, same load, at a
+rate incommensurate with that resolution produces retention stable to two points.
+
+**And the stable value is the one the model requires.** If samples are uniform in phase, the
+fraction whose delivery crosses a tick boundary — and therefore computes to a non-zero
+millisecond difference and survives the guard — is `latency / tick`. The 457 arm sits at
+**≈50%**, implying a true end-to-end latency near **0.5 ms**. That is where the independent,
+unquantised publish-latency probe put it: 0.3–0.4 ms publish, plus consumer-side delivery. The
+quantitative agreement was not predicted in advance and is the strongest part of this result.
+
+**What it explains.** Everything anomalous in this section falls out of it:
+
+- why retention at a fixed configuration is strongly bimodal (phase-locked samples move together,
+  so a run lands at one end or the other);
+- why a three-replicate median moved 54–98 points between passes (each pass draws from the ends);
+- why publish latency predicts retention at ρ = +0.075 (the path speed genuinely does not change);
+- why the 64 KB cells were stable at ~35% (queueing dephases the samples, exactly as an
+  incommensurate rate does deliberately).
+
+**This is the standard the paper applies elsewhere** — §7.3 establishes its own mechanism by
+manipulating both sides rather than by fitting. The same standard is now met here, and by a
+manipulation nobody would run by accident.
+
+**What it does not do:** it does not resurrect the causality reading. Zero negatives, across every
+cell in every campaign. The mechanism explains which samples OMB *discards*, not any sample
+arriving before it was sent.

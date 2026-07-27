@@ -19,9 +19,10 @@ SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 from check_paper_omb_numbers import (  # noqa: E402
-    OMB_SUBSET_PATTERNS, find_quoted_discard_totals, find_quoted_run_counts,
-    load_cells, main, measured,
+    DERIVED_MACROS, OMB_SUBSET_PATTERNS, find_quoted_discard_totals, find_quoted_run_counts,
+    find_undermined_macros, load_cells, main, measured,
 )
+from emit_paper_numbers import render  # noqa: E402
 
 LEDGER_FIELDS = ("campaign", "cell", "valid", "count_source",
                  "kept", "discarded_zero", "discarded_negative")
@@ -131,32 +132,122 @@ class TestDiscardExtraction:
     def test_no_total_quoted_is_empty(self):
         assert find_quoted_discard_totals("no numbers here\n") == []
 
+    def test_a_total_wrapped_onto_the_next_line_is_found(self):
+        """The defect this check was blind to.
+
+        Two of the manuscript's four discard totals were written with a LaTeX line break between
+        the number and the word `discarded`. A line-by-line scan saw neither, so the check
+        reported "2 sites, both stale" when the truth was "4 sites, and I can only see half of
+        them". A gate that under-reports its own coverage is worse than no gate.
+        """
+        src = ("and our own earlier reading of these discards: in roughly $420{,}000$\n"
+               "discarded samples there is not one negative\n")
+        assert find_quoted_discard_totals(src) == [(420000, 1)]
+
+    def test_line_numbers_survive_the_whole_source_scan(self):
+        src = "filler\n" * 9 + "in $1{,}000$ discarded samples\n"
+        assert find_quoted_discard_totals(src) == [(1000, 10)]
+
+    def test_a_sentence_boundary_still_stops_the_match(self):
+        """Scanning the whole source must not let a match run across unrelated sentences."""
+        src = "we saw $12{,}345$ events. Much later the run discarded something\n"
+        assert find_quoted_discard_totals(src) == []
+
+
+class TestDerivationIsStillInPlace:
+    def test_a_manuscript_using_both_macros_is_clean(self):
+        src = "Across $\\ombRuns$ runs, $\\ombDiscarded$ discarded samples\n"
+        assert find_undermined_macros(src) == []
+
+    def test_a_dropped_macro_is_named(self):
+        assert find_undermined_macros("Across $\\ombRuns$ runs\n") == ["ombDiscarded"]
+
+    def test_every_derived_macro_is_checked(self):
+        assert set(find_undermined_macros("nothing\n")) == set(DERIVED_MACROS)
+
 
 class TestCLI:
-    def _setup(self, tmp_path, paper_text, rows):
+    """The contract changed when the numbers became derived.
+
+    The old question was "does the digit in the manuscript match the ledger?". A digit that
+    matches today is still a defect, because it matches by coincidence and the next campaign
+    silently invalidates it. The question is now "is the manuscript still deriving this at all?",
+    and a hand-typed number fails even when it is arithmetically right.
+    """
+
+    # A manuscript that derives its numbers properly. Used wherever the test is about something
+    # other than the derivation itself.
+    DERIVED = ("Across $\\ombRuns$ instrumented runs\n"
+               "in $\\ombDiscarded$ discarded samples there is not one negative\n")
+
+    def _setup(self, tmp_path, paper_text, rows, generated=None):
         led = tmp_path / "ledger.csv"
         write_ledger(led, rows)
         pap = tmp_path / "paper.tex"
         pap.write_text(paper_text, encoding="utf-8")
-        return ["--ledger", str(led), "--paper", str(pap)]
+        gen = tmp_path / "paper_numbers.tex"
+        if generated is None:
+            generated = render(measured(load_cells(str(led))))
+        gen.write_text(generated, encoding="utf-8")
+        return ["--ledger", str(led), "--paper", str(pap), "--generated", str(gen)]
 
-    def test_matching_numbers_pass(self, tmp_path, capsys):
-        args = self._setup(tmp_path, "Across $2$ instrumented runs\n",
+    def test_a_derived_manuscript_passes(self, tmp_path, capsys):
+        args = self._setup(tmp_path, self.DERIVED,
                            [("load_sweep", 10, 90, 0), ("load_sweep", 20, 80, 0)])
         assert main(args) == 0
         assert "match the ledger" in capsys.readouterr().out
 
-    def test_a_stale_run_count_fails(self, tmp_path, capsys):
-        args = self._setup(tmp_path, "Across $80$ instrumented runs\n",
+    def test_a_hand_typed_run_count_fails_even_when_it_is_correct(self, tmp_path, capsys):
+        """The core of the new contract: right-today is not the same as right."""
+        args = self._setup(tmp_path,
+                           self.DERIVED + "Across $1$ instrumented runs\n",
                            [("load_sweep", 10, 90, 0)])
         assert main(args) == 1
         out = capsys.readouterr().out
-        assert "MISMATCH" in out and "paper 80, ledger 1" in out
+        assert "hand-typed" in out
+        assert "will not stay that way" in out
+        assert "use \\ombRuns" in out
+
+    def test_a_hand_typed_run_count_that_is_also_wrong_names_the_ledger(self, tmp_path, capsys):
+        args = self._setup(tmp_path, self.DERIVED + "Across $80$ instrumented runs\n",
+                           [("load_sweep", 10, 90, 0)])
+        assert main(args) == 1
+        assert "ledger: 1" in capsys.readouterr().out
+
+    def test_a_hand_typed_discard_total_fails(self, tmp_path, capsys):
+        args = self._setup(tmp_path, self.DERIVED + "roughly $100{,}000$ discarded samples\n",
+                           [("load_sweep", 5, 99000, 0)])
+        assert main(args) == 1
+        assert "use \\ombDiscarded" in capsys.readouterr().out
+
+    def test_dropping_a_macro_is_caught(self, tmp_path, capsys):
+        """A manuscript that stops using the macro has gone back to typing the number."""
+        args = self._setup(tmp_path, "Across $\\ombRuns$ instrumented runs\n",
+                           [("load_sweep", 10, 90, 0)])
+        assert main(args) == 1
+        out = capsys.readouterr().out
+        assert "\\ombDiscarded" in out and "NOT USED" in out
+
+    def test_a_stale_generated_file_is_caught(self, tmp_path, capsys):
+        """The failure mode the macros create: paper consistent with a file, file behind reality."""
+        args = self._setup(tmp_path, self.DERIVED, [("load_sweep", 10, 90, 0)],
+                           generated="\\newcommand{\\ombRuns}{999}\n")
+        assert main(args) == 1
+        out = capsys.readouterr().out
+        assert "STALE" in out and "regenerate with" in out
+
+    def test_a_missing_generated_file_is_caught(self, tmp_path, capsys):
+        led = tmp_path / "l.csv"
+        write_ledger(led, [("load_sweep", 10, 90, 0)])
+        pap = tmp_path / "p.tex"
+        pap.write_text(self.DERIVED, encoding="utf-8")
+        assert main(["--ledger", str(led), "--paper", str(pap),
+                     "--generated", str(tmp_path / "absent.tex")]) == 1
+        assert "run scripts/emit_paper_numbers.py" in capsys.readouterr().out
 
     def test_a_negative_sample_fails_loudly(self, tmp_path, capsys):
         """The one number that invalidates the withdrawal the section is built on."""
-        args = self._setup(tmp_path, "Across $1$ instrumented runs\n",
-                           [("load_sweep", 10, 80, 3)])
+        args = self._setup(tmp_path, self.DERIVED, [("load_sweep", 10, 80, 3)])
         assert main(args) == 1
         out = capsys.readouterr().out
         assert "NEGATIVE SAMPLES PRESENT" in out
@@ -164,19 +255,33 @@ class TestCLI:
 
     def test_a_subset_larger_than_the_total_is_impossible(self, tmp_path, capsys):
         args = self._setup(tmp_path,
-                           "Across $1$ instrumented runs\n"
-                           "Across the $49$ runs on an unsaturated path\n",
+                           self.DERIVED + "Across the $49$ runs on an unsaturated path\n",
                            [("load_sweep", 10, 90, 0)])
         assert main(args) == 1
         assert "IMPOSSIBLE" in capsys.readouterr().out
 
-    def test_rounding_slack_accepts_a_rounded_total(self, tmp_path, capsys):
+    def test_a_plausible_subset_is_reported_without_failing(self, tmp_path, capsys):
+        """A smaller number here is legitimate and must not be forced to equal the total."""
         args = self._setup(tmp_path,
-                           "Across $1$ instrumented runs\n"
-                           "roughly $100{,}000$ discarded samples\n",
-                           [("load_sweep", 5, 99000, 0)])
+                           self.DERIVED + "Across the $1$ runs on an unsaturated path\n",
+                           [("load_sweep", 10, 90, 0), ("load_sweep", 20, 80, 0)])
         assert main(args) == 0
-        assert "within rounding" in capsys.readouterr().out
+        assert "verify separately" in capsys.readouterr().out
+
+    def test_a_malformed_count_does_not_take_the_check_down(self, tmp_path, capsys):
+        """A single unparseable cell must not stop the gate from reporting the rest."""
+        led = tmp_path / "l.csv"
+        with led.open("w", newline="", encoding="utf-8") as fh:
+            w = csv.writer(fh)
+            w.writerow(LEDGER_FIELDS)
+            w.writerow(["load_sweep", "bad", "1", "shutdown_hook", "x", "y", ""])
+            w.writerow(["load_sweep", "ok", "1", "shutdown_hook", "10", "90", "0"])
+        pap = tmp_path / "p.tex"
+        pap.write_text(self.DERIVED, encoding="utf-8")
+        gen = tmp_path / "g.tex"
+        gen.write_text(render(measured(load_cells(str(led)))), encoding="utf-8")
+        assert main(["--ledger", str(led), "--paper", str(pap), "--generated", str(gen)]) == 0
+        assert "admissible runs        : 2" in capsys.readouterr().out
 
     def test_a_missing_ledger_is_an_error(self, tmp_path, capsys):
         assert main(["--ledger", str(tmp_path / "no.csv"),
@@ -191,8 +296,9 @@ class TestCLI:
         assert main(["--ledger", str(led), "--paper", str(pap)]) == 1
         assert "nothing to check against" in capsys.readouterr().out
 
-    def test_a_paper_quoting_nothing_still_reports_the_measurements(self, tmp_path, capsys):
-        args = self._setup(tmp_path, "no numbers at all\n", [("load_sweep", 10, 90, 0)])
+    def test_the_measurements_are_reported_even_when_the_paper_is_silent(self, tmp_path, capsys):
+        args = self._setup(tmp_path, self.DERIVED, [("load_sweep", 10, 90, 0)])
         assert main(args) == 0
         out = capsys.readouterr().out
-        assert "(none found)" in out and "admissible runs" in out
+        assert "admissible runs" in out
+        assert "none -- every run count comes from" in out

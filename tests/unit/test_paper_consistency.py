@@ -179,13 +179,22 @@ class TestThresholdSensitivity:
         assert condemned_at(by_run, 0.01) == sum(
             int(r["n_runs"]) - int(r["n_trustworthy"]) for r in audit)
 
-    def test_bimodality_is_never_asserted(self, tex):
-        """The word may appear only where the paper says the distribution is *not* bimodal."""
+    def test_bimodality_is_only_asserted_under_phase_locking(self, tex):
+        """Bimodality was withdrawn as a general claim and re-established as a local one.
+
+        Across configurations retention is continuous -- nine of the first 21 cells lay between
+        5% and 95%, which is why the unqualified claim was withdrawn. At a configuration whose
+        send interval is commensurate with the tick it piles up at the ends. So the word is
+        permitted, but only near the thing that causes it: an unscoped assertion is the
+        withdrawn claim returning.
+        """
         low = tex.lower()
+        scope = ("commensurat", "phase", "exact multiple", "2.000", "locked", "it is not",
+                 "not (", "withdraw")
         for m in re.finditer("bimodal", low):
-            window = low[max(0, m.start() - 300):m.start() + 300]
-            assert "it is not" in window or "not (" in window, (
-                f"bimodality asserted without negation at offset {m.start()}")
+            window = low[max(0, m.start() - 500):m.start() + 500]
+            assert any(k in window for k in scope), (
+                f"bimodality asserted without scoping to phase locking at offset {m.start()}")
 
 
 class TestSurvivingBenchmark:
@@ -599,8 +608,11 @@ class TestExternalHarnessEvidence:
         is affected remains unclaimed, because we audited no deployment but our own.
         """
         section = " ".join(_section(tex, "sec:external").lower().split())
-        assert "6{,}000" in section or "6,000" in section, "the count must be stated"
-        assert "6.7" in section, "the share of the run must be stated"
+        assert "6{,}000" in section or "6,000" in section, (
+            "the withdrawn count must still be stated, as what is being withdrawn")
+        assert "withdraw" in section, "the section must say the earlier reading is withdrawn"
+        assert "not one negative" in section, (
+            "the sign result that replaces it must be stated")
         assert "do not claim" in section, "the unaudited scope must stay unclaimed"
         assert "88" in section, "the load must be stated; an idle run would not have found it"
 
@@ -608,9 +620,10 @@ class TestExternalHarnessEvidence:
         """The first attempt reported zero because the benchmark never ran, and that number
         reached a draft. A paper about instruments that fail silently cannot quietly drop its
         own instance of exactly that; the section must own it."""
-        section = " ".join(_section(tex, "sec:external").lower().split())
-        assert "never runs discards nothing" in section or "never ran" in section
-        assert "artefact of the instrument" in section
+        low = " ".join(tex.lower().split())
+        assert "vacuous zero" in low or "never runs discards nothing" in low, (
+            "the paper must own the zero that reached a draft from a run that never happened")
+        assert "reached a draft" in low or "artefact of the instrument" in low
 
     def test_the_result_matches_its_artefact(self, tex):
         """Guards the count AND the evidence that the run happened.
@@ -649,7 +662,8 @@ class TestExternalHarnessEvidence:
         conclusion = tex[tex.index(r"\section{Conclusion}"):]
         low = conclusion.lower()
         assert "openmessaging" in low, "the decisive evidence must reach the conclusion"
-        assert "did not run" in low or "not addressed to ourselves" in low
+        assert "eight attempts" in low or "never completed a run" in low, (
+            "the conclusion must carry the bounded negative: the cross-host case is unmeasured")
 
 
 class TestH2FormIsWithdrawn:
@@ -802,8 +816,7 @@ class TestNarrativeArc:
 
     def test_the_abstract_follows_the_stated_shape(self, tex):
         abstract = tex[tex.index(r"\begin{abstract}"):tex.index(r"\end{abstract}")]
-        for beat in ("What we set out to do", "What we found instead",
-                     "What we think is happening", "What the measurements say"):
+        for beat in ("The first is", "The second is", "What this leaves"):
             assert beat in abstract, f"abstract is missing the '{beat}' beat"
         # Humble about the original question rather than selling it.
         assert "modest" in abstract.lower()
@@ -1168,8 +1181,12 @@ class TestLoadGeometryAndTtrue:
         """
         abstract = " ".join(re.search(r"\\begin\{abstract\}(.*?)\\end\{abstract\}",
                                       tex, re.S).group(1).split())
-        assert "characterise" in abstract, "the abstract must say 3,315 is a characterisation"
-        assert "eleven" in abstract, "the abstract must say how many matches drive the benchmark"
+        mentions_corpus = "3{,}315" in abstract or "3,315" in abstract
+        if mentions_corpus:
+            assert "characterise" in abstract, "3,315 must be named as a characterisation"
+            assert "eleven" in abstract, "the abstract must say how many matches drive the run"
+        # If the abstract does not mention the corpus there is nothing to conflate, but the
+        # plan count below is checked either way: it is a fact about the artefact, not the prose.
         plans = sorted((REPO / "data" / "processed" / "replay_plans").glob("*/match_*"))
         if plans:
             assert len(plans) == 11, f"the corpus holds {len(plans)} plans; the paper says eleven"

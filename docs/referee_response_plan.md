@@ -1271,3 +1271,52 @@ contribution is the *interaction*: quantised timestamps, plus a producer paced a
 interval, plus a positivity guard, together produce sample retention that is bimodal, run-to-run
 irreproducible, and invisible in the reported summary. We have found no report of that
 combination, and it occurs at 500 msg/s — a rate a benchmark user would choose for being round.
+
+---
+
+# Campaign status, 2026-07-27 03:00Z
+
+**Ledger: 90 cells, 88 valid, 0 negative samples.** The negative count has not moved from zero
+across every campaign, which is what the withdrawal rests on and the only number that would change
+the paper's conclusion if it did.
+
+| campaign | cells | what it settles |
+|---|---|---|
+| `load_sweep` | 15 | the load axis; zero negatives |
+| `load_sweep_p2` | 15 | replication pass 2 — medians reproduce at 1 level in 5 |
+| `load_sweep_nowarmup` | 15 | matched denominators; warmup is bookkeeping, not bias |
+| `resolution` | 8 | instability is confined to the near-tick regime |
+| `rate_phase` | 12 | **B2 established** — commensurate pacing is the variable |
+| `bimodality` | 10 | n=18 at one configuration; median 23.4% occurs once in 18 |
+| `tprobe` | 10/24 | **B1 under test** — retention vs `T_true` at a dephased rate |
+| `rate_phase2` | 0/12 | B2 confirmation at two more exact multiples |
+| smoke/idem/exact | 5 | pre-hook cells, excluded from analysis by rule |
+
+## What the paper is waiting on
+
+**B1 (`retention = min(1, T_true/τ)`)** is the one open quantitative claim. The three payload
+levels so far are consistent but uninformative --- predicted spread 1.5 points against ~2 points
+of replicate noise, because 200 B to 2 KB moves `T_true` by only microseconds:
+
+| payload | observed | predicted |
+|---|---|---|
+| 200 B | 52.03% | 52.0% (anchor) |
+| 1 KB | 50.32% | 52.7% |
+| 2 KB | 53.37% | 53.5% |
+
+chain12's cells are the discriminating ones: **32 KB predicts 78%, 64 KB predicts 100%.** If
+retention stays near 50% while the path demonstrably slows, B1 is refuted and the agreement of
+three dephased arms at ~50% was coincidence.
+
+**B2 confirmation** needs `rate_phase2`: 1000 msg/s (1.000 ms) and 250 msg/s (4.000 ms) predicted
+bimodal, 333 and 611 predicted stable. If the new exact multiples are stable, B2 is wrong.
+
+## Manuscript state
+
+Rewritten and committed: title, abstract, introduction, contributions, related work (including the
+coordinated-omission and dithering placement), the external-instrumentation methodology, §6.7 in
+full, the phase table, and the two new recommendations.
+
+Not yet written, because they depend on the above: the retention-law figure, the conclusion, and
+the final build with the rendered-PDF check. Equation~\ref{eq:retention} is currently in the paper
+labelled a *derived prediction*, and stays that way unless chain12 confirms it.

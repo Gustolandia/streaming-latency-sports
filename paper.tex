@@ -1297,44 +1297,115 @@ paths where such benchmarks are usually run --- ours measures broker transport a
 $0.5$~ms --- that is not an edge case but a large share of the samples, and the reported
 distribution is truncated from below at $1$~ms.
 
-\paragraph{We then ran it, and it discarded six thousand samples.} A source audit is not a
-measurement, so we
-made the discards observable and ran the benchmark. The obvious experiment is impossible --- the
-violations never reach the output, because the guard removes them inside the harness --- so we
-added one counter, incremented in the existing guard's \texttt{else} branch, and changed nothing
-else: not the latency computation, not the guard's condition, not any reported statistic. The
-patch is in the artefact. We then ran the benchmark otherwise unmodified against our \kafka{} broker for
-three minutes at $500$ messages per second.
+\paragraph{We then ran it, $80$ times, and the answer was not the one we expected.}
+A source audit is not a measurement, so we made the discards observable
+(Section~\ref{sec:extmethod}) and swept the benchmark across background load, message size,
+producer rate and replication: $80$ instrumented runs on the co-located path, each three minutes
+at rates around $500$ messages per second.
 
-\textbf{It discarded $6{,}000$ samples.} In three minutes at $500$ messages per second, with the
-machine held at $88\%$ utilisation, the benchmark computed six thousand non-positive end-to-end
-latencies and dropped every one of them --- roughly $6.7\%$ of the run --- while reporting a
-throughput and latency summary that looks entirely healthy. Nothing in its output records that
-those samples existed. The reading was fixed before the run: a non-zero count is the strongest
-form of this evidence, and this is it. The failure mode occurs in a harness we did not write, on
-hardware we do not control for it, and is invisible to the harness itself.
+\subsubsection{The claim we withdraw, and where its refutation was}
+\label{sec:extwithdraw}
 
-The load matters and we put it there deliberately. Section~\ref{sec:twostate} establishes that
-the rate is governed by scheduling stalls rather than by utilisation as such, and an idle machine
-has few of them. A first attempt at this run used no background load, and testing a harness for
-this failure on an idle machine is close to testing under conditions chosen to hide it.
+An earlier version of this section reported that a single such run discarded $6{,}000$ samples
+under load, and read those discards as the same causality violation we report in
+Section~\ref{sec:gate}. \textbf{That reading is withdrawn.} The counter behind it was one unsigned
+total, and both a causality violation and a sub-millisecond delivery fail a \texttt{> 0} test;
+counting them together cannot distinguish them. Separating them by sign across all $80$ runs
+gives, in roughly $420{,}000$ discarded samples, \textbf{not one negative}. The most negative
+end-to-end latency observed at any load, any message size and any producer rate is $0\,\mu$s.
 
-\emph{We report one thing about that first attempt, because it is the paper's own argument
-turned on us.} It recorded zero discards, and an earlier version of this section reported that
-zero as a genuine negative that bounded our claim. The run had in fact failed four seconds in,
-on a missing payload-file argument, and produced no latency at all; a benchmark that never runs
-discards nothing. The number was an artefact of the instrument breaking, it looked exactly like a
-measurement, and it survived into a draft of a paper about numbers that look exactly like
-measurements. It was caught only because we later added an output-validation gate to a different
-variant of the same campaign and noticed the first one had none. The campaign now refuses to
-write any count unless the benchmark produced latency output.
+We report where the refuting evidence was, because the answer is uncomfortable and is the paper's
+own subject one level up. It was in our artefact from the day we committed it. The counter printed
+one line per thousand discards, and each line carried the sample that triggered it; all eleven
+lines committed with that first run read \texttt{sample\_micros=0}. Beside them, the benchmark's
+own progress output reported a median publish latency of $0.4$--$0.5$~ms --- sub-millisecond, which
+is precisely the condition under which a millisecond-resolution difference collapses to zero. The
+number that refutes the reading, and the mechanism that explains it, were both printed, committed,
+and read past. What was missing was not data but a reason to look at the sign, and the statistic we
+had chosen to report did not have one.
 
-What we still do not claim is that any published result obtained with this benchmark is wrong.
-We have shown that the discard happens, that it is large, and that it is unreported. Whether it
-has affected a specific published measurement depends on that measurement's deployment, and we
-have not audited any. That asymmetry is the reason we recommend an integrity audit as routine
-practice: the cost of running one is small, and the alternative is a benchmark that cannot report
-its own failure.
+\subsubsection{What the benchmark actually does}
+
+Across the $49$ runs on an unsaturated path, the benchmark computes its reported latency
+distribution from between \textbf{$0.36\%$ and $100\%$} of the samples it takes. Over that
+$278$-fold range, its reported median takes \textbf{two values}: $1.0$ and $2.0$~ms. One run
+computed its summary from $998$ samples and another from $120{,}425$; both report a median of
+$1.0$~ms, and nothing in the output distinguishes them.
+
+This is the second failure mode in its plainest form. It is not that the benchmark is noisy. It is
+that the one statistic a reader consults is insensitive to a $278$-fold change in the evidence
+behind it, while the quantity that would reveal the problem --- how much data survived --- is not
+reported at all and is unrecoverable from a completed run.
+
+The benchmark's own output corroborates this without any instrumentation from us. Across eight
+runs it reports $32$ percentile values, and \emph{every one} is a whole number of milliseconds.
+The only fractional statistics it reports are the averages, which is the one column that could be
+fractional, being a mean of integers. Three runs report
+$\mathrm{p50} = \mathrm{p95} = \mathrm{p99} = \max = 1.0$. That is not a narrow latency
+distribution; it is a distribution with a single value in it, printed to three decimal places.
+
+\subsubsection{The mechanism: phase, not speed}
+\label{sec:extphase}
+
+Retention varies enormously, and the obvious explanation --- that the path was faster in some runs
+than others --- is wrong. OMB's own publish latency is measured within a single process and is
+\emph{not} quantised to the millisecond grid, making it a clean probe of how fast the path
+actually was. Across the $49$ unsaturated runs it spans $0.3$ to $0.4$~ms while retention spans
+$278$-fold, at a rank correlation of $+0.075$. The path did not change.
+
+What changes is \emph{phase}. A sample survives only if its delivery crosses a millisecond
+boundary, which depends on where within the millisecond it was sent. OMB paces its producer at a
+fixed interval. When that interval is an exact multiple of the timestamp quantum, every sample in
+a run occupies the same phase, so either nearly all of them cross a boundary or nearly none do.
+
+We establish this by manipulation, holding message size, background load, duration and host fixed
+and varying only the producer's interval relative to the millisecond grid (Table~\ref{tab:phase}).
+At $500$~msg/s --- exactly $2.000$~ms --- retention across replicates spans $99.5$ points. At $457$
+and $383$~msg/s, incommensurate with the grid, it is stable to $2.1$ and $2.8$ points.
+
+The stronger result is that the two incommensurate arms agree with \emph{each other}. Their
+intervals differ by $19\%$ and their median retentions by under two points. Had retention been a
+function of the pacing interval, they would separate; under a phase account the interval decides
+only \emph{whether} samples dephase, not what fraction then survives, so they had to agree.
+
+\subsubsection{Three replicates do not establish reproducibility}
+\label{sec:extreprod}
+
+We ran the identical load sweep three times over nine hours. Per-level median retention reproduced
+at \textbf{one load level in five}, moving by $54$ to $98$ points at the other four. At $0\%$
+background load the three-replicate median was $1.51\%$ in the first pass and $99.98\%$ in the
+second.
+
+The instructive detail is that agreement \emph{within} a pass is no protection. In one pass the
+three replicates at $0\%$ load agreed to $3.58$ points --- a tight, confident-looking measurement
+--- and sat $98$ points from what the same configuration produced hours earlier. Averaging
+replicates defends against noise around a stable value; at a configuration near the tick, retention
+has no stable value to be noisy around. Eighteen runs at one identical configuration gave six
+below $2\%$, eight above $90\%$, and four in between: their median is $23.4\%$, a value one run in
+eighteen produced.
+
+\subsubsection{What we cannot show, after eight attempts}
+\label{sec:extdist}
+
+The cross-host case is the one in which OMB's subtraction spans two clocks, and therefore the one
+in which its guard could discard a genuine causality violation. \textbf{We cannot report a
+measurement of it.} Across eight attempts at three background-load levels --- including none at
+all, which refutes our own hypothesis that CPU starvation was the cause --- the benchmark's
+distributed mode never completed a run, failing each time inside its own coordinator-to-worker
+protocol rather than in our instrumentation or configuration. The validity gate wrote
+\texttt{valid=0} with a reason on all eight, and those rows are in the artefact.
+
+The exposure in that mode is therefore established by source audit --- the timestamp is written on
+the producer's host and read on the consumer's, and the guard drops whatever the difference
+produces --- and \emph{not} by observation. We distinguish the two rather than let the audit stand
+in for a measurement.
+
+\paragraph{What we do not claim.} That any published result obtained with this benchmark is wrong.
+We have shown that the deletion happens, that it is large, that it is irreproducible, and that it
+is unreported. Whether it has affected a specific published measurement depends on that
+measurement's path latency and producer rate, and we have audited none. That asymmetry is the
+reason we recommend publishing a retention rate as routine practice: its cost is one number, and
+the alternative is a benchmark that cannot report its own failure.
 
 \subsection{What we withdraw}
 

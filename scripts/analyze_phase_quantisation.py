@@ -22,6 +22,18 @@ This script computes `q` from each campaign's producer rate, groups the measured
 reports spread against `q` so the relation can be read directly. It does not fit anything: the
 prediction is `spread ~ 100/q` and the table either shows that or does not.
 
+Not every `q` can test that prediction. A grid is indistinguishable from the continuum whenever the
+continuous value `T_true / tau` happens to land on it, because then both hypotheses predict the same
+retention. At this operating point `T_true / tau` is close to 0.5, so every even `q` is degenerate --
+1/2, 2/4 and 4/8 are the same number -- and only odd `q` can separate the hypotheses. Such arms are
+excluded from the verdict and reported as degenerate rather than as failures.
+
+That exclusion is a prediction, not a rescue. It was derived from the q=4 arm and committed in
+79b8672 at 14:09Z on 2026-07-27, which is *before* the first odd-q cell was measured at 15:06Z; the
+odd-q arms were then run precisely because the rule said they would discriminate. The distance below
+is measured against the observed continuous value and the observed replicate noise, so nothing here
+is tuned by hand.
+
 CLI:
     python scripts/analyze_phase_quantisation.py --ledger docs/results/external_campaigns_index.csv
 """
@@ -38,6 +50,46 @@ RATE_CAMPAIGNS = ("rate_phase", "rate_phase2", "rate_q")
 # phase pattern repeats only after 500 sends, which within a three-minute run at these rates is
 # indistinguishable from never.
 MAX_MEANINGFUL_Q = 64
+
+# Fallback replicate noise, in retention points, used only when there are too few incommensurate
+# rates to measure it. The incommensurate pool is the natural yardstick: those rates visit every
+# phase, so their replicate scatter is the noise floor against which a grid must be resolved.
+DEFAULT_NOISE_PTS = 5.0
+
+
+def continuous_retention(groups):
+    """The retention an incommensurate rate settles at, as a percentage, or None.
+
+    This is the measured `T_true / tau`: with a phase that never repeats, the retained fraction is
+    just the fraction of the quantum the true latency spans. It is measured rather than assumed
+    because the whole degeneracy test depends on where it actually falls.
+    """
+    vals = [x for g in groups if not g["commensurate"] for x in g["retentions"]]
+    if not vals:
+        return None
+    vals.sort()
+    n = len(vals)
+    return vals[n // 2] if n % 2 else 0.5 * (vals[n // 2 - 1] + vals[n // 2])
+
+
+def continuous_noise_pts(groups, default=DEFAULT_NOISE_PTS):
+    """Replicate scatter among incommensurate rates, as a half-range in retention points."""
+    spreads = [g["spread"] for g in groups
+               if not g["commensurate"] and g["spread"] is not None]
+    if not spreads:
+        return default
+    return max(0.5 * max(spreads), 0.5)
+
+
+def grid_distance_pts(q, continuous_pct):
+    """Distance from the continuous value to the nearest point of the (q+1)-point grid, in points.
+
+    Large means the two hypotheses predict visibly different retentions and the arm can test them.
+    Near zero means they predict the same number and the arm cannot, however it lands.
+    """
+    if not q or q <= 0 or continuous_pct is None:
+        return None
+    return min(abs(continuous_pct - 100.0 * i / q) for i in range(q + 1))
 
 
 def phase_denominator(rate_hz, tick_ms=1.0):
@@ -95,6 +147,15 @@ def group_by_rate(cells, tick_ms=1.0):
             "spread": (max(v) - min(v)) if len(v) > 1 else None,
             "predicted_spread": (100.0 / q) if (q and q <= MAX_MEANINGFUL_Q) else 0.0,
         })
+
+    # Second pass: an arm is degenerate when the measured continuous value sits within replicate
+    # noise of the grid it is supposed to be distinguished from.
+    cont = continuous_retention(out)
+    noise = continuous_noise_pts(out)
+    for g in out:
+        d = grid_distance_pts(g["q"], cont) if g["commensurate"] else None
+        g["grid_distance"] = d
+        g["degenerate"] = bool(g["commensurate"] and d is not None and d <= noise)
     return out
 
 
@@ -113,6 +174,18 @@ def verdict(groups):
                 "why": ("only q=1 and large-q rates measured; the binary distinction is "
                         "established but the quantisation rule is untested")}
 
+    degenerate = [g for g in mid if g.get("degenerate")]
+    mid = [g for g in mid if not g.get("degenerate")]
+    excluded = ("; excluded q = " + ", ".join(str(g["q"]) for g in sorted(
+        degenerate, key=lambda g: g["q"])) + " as degenerate at this operating point"
+        ) if degenerate else ""
+
+    if not mid:
+        return {"decided": False, "degenerate": degenerate,
+                "why": ("every intermediate rate measured is degenerate -- the continuous value "
+                        "lands on each of their grids, so none of them can separate the "
+                        "hypotheses however it lands" + excluded)}
+
     q1 = sum(g["spread"] for g in small) / len(small)
     qn = sum(g["spread"] for g in large) / len(large)
     ordered = sorted(mid, key=lambda g: g["q"])
@@ -128,33 +201,47 @@ def verdict(groups):
 
     if near_top == len(ordered) and near_predicted < len(ordered):
         return {"decided": True, "outcome": "BINARY (any rational is dangerous)",
-                "why": (f"all {len(ordered)} intermediate rates sit within {TOL:.0f} points of the "
-                        f"exact-multiple spread ({q1:.1f}), not on a 1/q curve")}
+                "degenerate": degenerate,
+                "why": (f"all {len(ordered)} discriminating rates sit within {TOL:.0f} points of "
+                        f"the exact-multiple spread ({q1:.1f}), not on a 1/q curve" + excluded)}
     if near_bottom == len(ordered) and near_predicted < len(ordered):
         return {"decided": True, "outcome": "BINARY (only exact multiples matter)",
-                "why": (f"all {len(ordered)} intermediate rates sit within {TOL:.0f} points of the "
-                        f"incommensurate spread ({qn:.1f})")}
+                "degenerate": degenerate,
+                "why": (f"all {len(ordered)} discriminating rates sit within {TOL:.0f} points of "
+                        f"the incommensurate spread ({qn:.1f})" + excluded)}
     if near_predicted == len(ordered):
-        return {"decided": True, "outcome": "QUANTISED",
-                "why": (f"every intermediate rate's spread falls within {TOL:.0f} points of "
+        return {"decided": True, "outcome": "QUANTISED", "degenerate": degenerate,
+                "why": (f"every discriminating rate's spread falls within {TOL:.0f} points of "
                         f"100/q, across q = "
-                        + ", ".join(str(g["q"]) for g in ordered))}
-    return {"decided": True, "outcome": "UNCLEAR",
-            "why": (f"{near_predicted} of {len(ordered)} intermediate rates match 100/q; the "
-                    f"others sit at neither extreme")}
+                        + ", ".join(str(g["q"]) for g in ordered) + excluded)}
+    return {"decided": True, "outcome": "UNCLEAR", "degenerate": degenerate,
+            "why": (f"{near_predicted} of {len(ordered)} discriminating rates match 100/q; the "
+                    f"others sit at neither extreme" + excluded)}
 
 
 def report(groups):
+    cont = continuous_retention(groups)
+    noise = continuous_noise_pts(groups)
     print("== retention spread against the phase denominator q ==\n")
+    if cont is not None:
+        print(f"continuous value (incommensurate median): {cont:.1f}%   "
+              f"replicate noise: {noise:.1f} pts")
+        print(f"an arm is degenerate when its grid passes within {noise:.1f} pts of {cont:.1f}%\n")
     print(f"{'rate':>8s} {'interval':>10s} {'q':>5s} {'n':>3s} "
-          f"{'spread':>8s} {'~100/q':>8s}  retentions")
+          f"{'spread':>8s} {'~100/q':>8s} {'gridgap':>8s}  retentions")
     for g in groups:
         qs = str(g["q"]) if g["commensurate"] else f">{MAX_MEANINGFUL_Q}"
         sp = "-" if g["spread"] is None else f"{g['spread']:.1f}"
         pr = f"{g['predicted_spread']:.1f}" if g["commensurate"] else "~0"
+        gd = "-" if g.get("grid_distance") is None else f"{g['grid_distance']:.1f}"
+        if g.get("degenerate"):
+            gd += "*"
         vals = " ".join(f"{x:.2f}" for x in g["retentions"][:6])
         print(f"{g['rate']:>7d}/s {g['interval_ms']:>9.3f}m {qs:>5s} {g['n']:>3d} "
-              f"{sp:>8s} {pr:>8s}  {vals}")
+              f"{sp:>8s} {pr:>8s} {gd:>8s}  {vals}")
+    if any(g.get("degenerate") for g in groups):
+        print("\n  * degenerate: the continuous value lands on this grid, so quantised and")
+        print("    continuous predict the same retention and the arm cannot decide between them.")
 
     v = verdict(groups)
     print("\n== verdict ==")
@@ -193,10 +280,13 @@ def main(argv=None):
         os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
         with open(args.out, "w", newline="", encoding="utf-8") as fh:
             w = csv.writer(fh)
-            w.writerow(["rate_hz", "interval_ms", "q", "commensurate", "n",
-                        "spread_pts", "predicted_spread_pts", "retentions"])
+            w.writerow(["rate_hz", "interval_ms", "q", "commensurate", "degenerate",
+                        "grid_distance_pts", "n", "spread_pts", "predicted_spread_pts",
+                        "retentions"])
             for g in groups:
+                gd = g.get("grid_distance")
                 w.writerow([g["rate"], round(g["interval_ms"], 4), g["q"], g["commensurate"],
+                            bool(g.get("degenerate")), "" if gd is None else round(gd, 3),
                             g["n"], "" if g["spread"] is None else round(g["spread"], 3),
                             round(g["predicted_spread"], 3),
                             " ".join(f"{x:.3f}" for x in g["retentions"])])

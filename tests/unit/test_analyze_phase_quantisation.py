@@ -95,6 +95,19 @@ class TestLoading:
         write_ledger(p, [(500, 50.0), (500, 50.0, "load_sweep")])
         assert len(load_rate_cells(str(p))) == 1
 
+    def test_chain17_rate_cells_merge_into_the_arms(self, tmp_path):
+        """`ultimate` extends the existing arms; its payload/duration companions must not.
+
+        A 1-minute or 32 KB replicate slipping into a rate arm would corrupt the very spread the
+        analysis tests, so the exclusion of the companion campaigns is load-bearing, not tidiness.
+        """
+        p = tmp_path / "l.csv"
+        write_ledger(p, [(500, 50.0), (500, 60.0, "ultimate"),
+                         (500, 70.0, "ultimate_dur1"), (500, 80.0, "ultimate_dur10"),
+                         (500, 90.0, "ultimate_pay300")])
+        got = load_rate_cells(str(p))
+        assert sorted(c["retention"] for c in got) == [50.0, 60.0]
+
     def test_invalid_and_quantised_cells_excluded(self, tmp_path):
         p = tmp_path / "l.csv"
         write_ledger(p, [(500, 50.0, "rate_phase", "0"),

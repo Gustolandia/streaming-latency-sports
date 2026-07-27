@@ -29,6 +29,13 @@ node)
     -e KAFKA_LOG_DIRS=/tmp/kraft-cluster-logs -e CLUSTER_ID=NkU3OEVBNTcwNTJENDM2Qw \
     -e KAFKA_NUM_PARTITIONS=3 -e KAFKA_DEFAULT_REPLICATION_FACTOR=3 \
     -e KAFKA_AUTO_CREATE_TOPICS_ENABLE=true -e KAFKA_HEAP_OPTS="-Xms1G -Xmx1G" \
+    `# Retention caps -- see the note in brokers.sh. KAFKA_LOG_DIRS is inside the container,` \
+    `# so without these the writable layer grows until the root filesystem is full and the` \
+    `# broker dies with exit 1. Replication factor 3 here means three copies of every segment,` \
+    `# so this host fills three times faster than the single-node case that already did.` \
+    -e KAFKA_LOG_RETENTION_MS=900000 \
+    -e KAFKA_LOG_RETENTION_BYTES=2147483648 \
+    -e KAFKA_LOG_SEGMENT_BYTES=268435456 \
     apache/kafka:4.1.1 >/dev/null
   echo "node $ID up on $PRIV" ;;
 form)

@@ -1423,3 +1423,37 @@ quantisation predicts values on the $1/4$ and $1/8$ grids.
 This is a correction to our own prediction, made before the discriminating data and stated as
 such. The first version was falsified by `q=2`; we are not rescuing it but replacing the observable
 with the one the model actually implies, and naming the measurement that decides between them.
+
+### q=3 decides it: retention is quantised to the 1/q grid
+
+The measurement named in advance as discriminating has landed. At 300 msg/s (3.333 ms, `q=3`),
+five replicates gave **34.9, 36.7, 39.4, 41.1, 65.4**.
+
+| | values | vs the incommensurate range |
+|---|---|---|
+| `q=3` | 34.9, 36.7, 39.4, 41.1, 65.4 | **all five fall outside 46.5–53.8** |
+| incommensurate (4 rates, 14 cells) | pooled median $50.46\%$ | range $46.5$–$53.8$ |
+
+**Four of five sit entirely below the incommensurate range and the fifth entirely above it, with
+no overlap.** The binary account predicts `q=3` behaves like any other non-integer rate, at
+$\approx 50\%$. It does not.
+
+**The mechanism works out arithmetically.** With phases at $0$, $1/3$, $2/3$ and
+`T_true ≈ 0.5` ms against a $1$ ms tick: phase $0$ delivers at $0.5$ (no crossing), phase $1/3$ at
+$0.833$ (no crossing), phase $2/3$ at $1.167$ (**crosses**). Retention $= 1/3$ — where four of five
+landed. The fifth, at $65.4\%$, is $2/3$, which requires two of three phases to cross and
+therefore `T_true` slightly above $0.667$. So a small between-run drift in `T_true` moves a run
+between grid points, which is the same between-run mechanism as `q=1` with three landing places
+instead of two.
+
+**Deviation from the nearest grid point grows with `q`:** $0.0$ at `q=1`, $0.9$ at `q=2`, $3.4$ at
+`q=3`. Finer grids are harder to hit against fixed jitter, which is the expected direction.
+
+**Scorecard for this prediction.** The observable we first published — spread falling as `100/q` —
+was **refuted by `q=2`**. Re-derived from the same model, the observable is retention on the `1/q`
+grid, and `q=2` was identified *in advance* as unable to discriminate, since $1/2$ and
+`T_true/τ ≈ 0.5` coincide. `q=3` was named as the deciding case before it ran, with both outcomes
+stated. It supports quantisation.
+
+`q=4` (800 msg/s) and `q=8` (889 msg/s) remain: quantisation predicts values on the quarters and
+eighths grids and, in particular, still away from $50\%$ for `q=4` unless the run lands on $2/4$.

@@ -407,6 +407,59 @@ Jain~\cite{jain1991art} sets out the standard requirement that an instrument be 
 system it will measure. The check in Section~\ref{sec:gate} is a cheap, specific instance of that
 for cross-process delay.
 
+\subsection{Resolution, discarded samples, and sampling artefacts}
+\label{sec:related_resolution}
+
+The second failure mode we report (Section~\ref{sec:external}) is not about \emph{when} a
+timestamp is taken but about \emph{how finely} it can express the answer, and about what a
+benchmark does with the samples that fall below that granularity. Three literatures sit close to
+it. None reports it, and we are specific about the relation to each.
+
+\paragraph{Coordinated omission is the closest neighbour, and is the mirror image.}
+Tene's \emph{coordinated omission}~\cite{tene2015latency} is the canonical result that a load
+generator can be systematically optimistic: a synchronous measurement thread blocks while the
+system under test stalls, so the samples that would have been worst are never taken at all, and
+reported percentiles are wrong by orders of magnitude. The failure we report inverts every clause
+of that description. The samples \emph{are} taken and the latency \emph{is} computed; what removes
+them is a guard downstream that rejects the result. Coordinated omission loses the slow tail; this
+loses the fast bulk. Both end with a confident summary computed over a biased subset, which is why
+they belong together --- and why treating them as the same thing would be wrong, since a
+correction for one does nothing about the other.
+
+That last point is not hypothetical. The benchmark we instrument records into an
+\texttt{HdrHistogram}~\cite{tene2015hdrhistogram}, which ships explicit machinery for coordinated
+omission in the form of \texttt{recordValueWithExpectedInterval}. The ecosystem therefore already
+carries a correction for the known sampling bias and none for this one. There is a further irony
+worth stating plainly: \texttt{HdrHistogram} rejects negative values, which is a sound defence
+against the failure of Section~\ref{sec:gate}, and it is precisely that defence which motivates
+the positivity guard whose \texttt{else} branch silently deletes the sub-tick samples. A
+protection against one measurement artefact created the conditions for another.
+
+\paragraph{Dithering: the remedy is old, and belongs to a different field.}
+Breaking periodic sampling artefacts by randomising or offsetting the sampling instant is standard
+practice in signal processing, where dithered measurement rates are used precisely to separate
+genuine components from aliasing products. Our incommensurate-rate arms are dithering, arrived at
+as a diagnostic rather than borrowed as a technique. The recommendation we make to benchmark
+authors in Section~\ref{sec:forauthors} is therefore not new technology but an old one never
+applied here: do not pace a load generator at a rate commensurate with the resolution of the clock
+you are subtracting, and if the rate is fixed by the experiment, dither it.
+
+\paragraph{Granularity is discussed as staleness, not as deletion.}
+The relationship between a fixed send interval and a coarser clock tick is recognised in the
+timing literature, but as a bound on how \emph{stale} a reading may be. What is missing is the
+consequence when a positivity guard sits downstream of the subtraction: staleness becomes
+deletion, and because the phase is common to every sample in a run, the deletion is
+all-or-nothing across the whole run rather than a uniform thinning of it.
+
+\paragraph{What we claim as new, stated narrowly.} Not that timestamp quantisation is unknown; it
+is elementary, and Cloudprofiler~\cite{yang2022cloudprofiler} exists because millisecond
+granularity is understood to be too coarse for this class of system. The contribution is the
+\emph{interaction}: a quantised timestamp, plus a producer paced at an interval commensurate with
+that quantum, plus a guard that admits only positive differences, together produce a retention
+fraction that is bimodal, irreproducible between runs of an identical configuration, and invisible
+in the reported summary. We have found no report of that combination, and it occurs at
+$500$~msg/s, a rate whose only distinction is that it is round.
+
 \subsection{Where scheduling delay comes from, and why it is not one distribution}
 \label{sec:related_tail}
 

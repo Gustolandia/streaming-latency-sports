@@ -426,21 +426,25 @@ loses the fast bulk. Both end with a confident summary computed over a biased su
 they belong together --- and why treating them as the same thing would be wrong, since a
 correction for one does nothing about the other.
 
+\begin{sloppypar}
 That last point is not hypothetical. The benchmark we instrument records into an
-\texttt{HdrHistogram}~\cite{tene2015hdrhistogram}, which ships explicit machinery for coordinated
-omission in the form of \texttt{recordValueWithExpectedInterval}. The ecosystem therefore already
+\texttt{Hdr\allowbreak Histogram}~\cite{tene2015hdrhistogram}, which ships explicit machinery for
+coordinated omission in the form of
+\texttt{record\allowbreak Value\allowbreak With\allowbreak Expected\allowbreak Interval}. The
+ecosystem therefore already
 carries a correction for the known sampling bias and none for this one. There is a further irony
 worth stating plainly: \texttt{HdrHistogram} rejects negative values, which is a sound defence
 against the failure of Section~\ref{sec:gate}, and it is precisely that defence which motivates
 the positivity guard whose \texttt{else} branch silently deletes the sub-tick samples. A
 protection against one measurement artefact created the conditions for another.
+\end{sloppypar}
 
 \paragraph{Dithering: the remedy is old, and belongs to a different field.}
 Breaking periodic sampling artefacts by randomising or offsetting the sampling instant is standard
 practice in signal processing, where dithered measurement rates are used precisely to separate
 genuine components from aliasing products. Our incommensurate-rate arms are dithering, arrived at
 as a diagnostic rather than borrowed as a technique. The recommendation we make to benchmark
-authors in Section~\ref{sec:forauthors} is therefore not new technology but an old one never
+authors in Section~\ref{sec:authors} is therefore not new technology but an old one never
 applied here: do not pace a load generator at a rate commensurate with the resolution of the clock
 you are subtracting, and if the rate is fixed by the experiment, dither it.
 

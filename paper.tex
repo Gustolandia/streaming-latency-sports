@@ -1363,10 +1363,44 @@ and varying only the producer's interval relative to the millisecond grid (Table
 At $500$~msg/s --- exactly $2.000$~ms --- retention across replicates spans $99.5$ points. At $457$
 and $383$~msg/s, incommensurate with the grid, it is stable to $2.1$ and $2.8$ points.
 
+\begin{table}[t]
+\caption{Retention against the producer's send interval, with message size, background load,
+duration and host held fixed. Only the commensurate rate is unstable, and the two incommensurate
+rates agree with each other despite intervals differing by $19\%$. Predictions were recorded
+before the runs.}
+\label{tab:phase}
+\small
+\begin{tabular}{@{}rlcl r@{}}
+\toprule
+Rate & Interval & Multiple of tick? & Retention per replicate & Spread \\
+\midrule
+$500$/s & $2.000$~ms & \textbf{exact} & $0.47$, $1.51$, $18.02$, $99.99$ & $99.5$ \\
+$457$/s & $2.188$~ms & no & $48.77$, $49.50$, $49.69$, $50.87$ & $2.1$ \\
+$383$/s & $2.611$~ms & no & $50.28$, $51.46$, $53.13$ & $2.8$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 The stronger result is that the two incommensurate arms agree with \emph{each other}. Their
 intervals differ by $19\%$ and their median retentions by under two points. Had retention been a
 function of the pacing interval, they would separate; under a phase account the interval decides
 only \emph{whether} samples dephase, not what fraction then survives, so they had to agree.
+
+\paragraph{A quantitative form, and the reason it is stated as a prediction.} If send phases are
+uniform within the tick, a sample survives exactly when its delivery crosses a boundary, which for
+a true latency $T_{\mathrm{true}}$ below one tick $\tau$ occurs with probability
+$T_{\mathrm{true}}/\tau$. Hence
+\begin{equation}
+\label{eq:retention}
+\text{retention} \;=\; \min\!\left(1,\; \frac{T_{\mathrm{true}}}{\tau}\right)
+\qquad\text{(dephased sampling).}
+\end{equation}
+Both incommensurate arms sit near $50\%$, which with $\tau = 1$~ms implies
+$T_{\mathrm{true}} \approx 0.5$~ms --- agreeing with the unquantised publish-latency probe above,
+and with this project's own transport measurements of $0.1$ to $0.5$~ms. Three routes to one
+number is suggestive, but it is a single point on a line, and we report
+Equation~\ref{eq:retention} as a derived prediction rather than a measured law until it is tested
+across a range of $T_{\mathrm{true}}$ at a dephased rate.
 
 \subsubsection{Three replicates do not establish reproducibility}
 \label{sec:extreprod}

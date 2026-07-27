@@ -853,6 +853,65 @@ almost none of a large one.}
 \label{fig:model}
 \end{figure}
 
+\subsection{Instrumenting a benchmark we did not write}
+\label{sec:extmethod}
+
+The second failure mode is measured in the OpenMessaging Benchmark rather than in our harness, so
+the instrument is a patch to somebody else's code and its design needs stating.
+
+\paragraph{What the patch does, and what it deliberately does not.} At the named commit, a sample
+is admitted to the histogram only by \texttt{if (endToEndLatencyMicros > 0)}. We add counters in
+the existing \texttt{else} branch and change nothing else: not the latency computation, not the
+guard's condition, not any reported statistic. The benchmark's own output is therefore exactly
+what it would have been unpatched, which is the property that lets us set its published summary
+beside the retention behind it. The diff is in the artefact.
+
+\paragraph{The counters must distinguish sign, and an earlier version did not.} Both a causality
+violation and a sub-millisecond delivery fail a \texttt{> 0} test. A single unsigned total cannot
+tell them apart, and we initially reported one, drawing a conclusion the sign-separated data later
+refuted (Section~\ref{sec:extwithdraw}). The counters are now four --- zero, negative,
+most-negative, kept --- and the distinction between them carries the finding.
+
+\paragraph{Counts must be exact, which required two corrections.} The counters are declared
+\texttt{static}: an embedded run constructs several \texttt{WorkerStats} instances, and
+per-instance counters silently split the totals between them. Totals are printed once by a JVM
+shutdown hook rather than read from periodic progress lines, because those fire every $10{,}000$
+discards and reading the last one quantises the answer to a multiple of $10{,}000$ --- three runs
+with genuinely different totals all reported $50{,}000$ that way. Every cell records which source
+its counts came from, and cells whose counts are quantised are excluded from every analysis by
+rule rather than by inspection.
+
+\paragraph{A validity gate that refuses to report a number.} A benchmark that fails to run
+discards nothing, and a zero from such a run looks exactly like a measured zero. Our first
+distributed attempt wrote \texttt{discarded=0} after the worker died on a classpath fault, and
+that vacuous zero reached a draft of this paper as a genuine negative result. The campaign now
+validates before writing: the run must have produced publish-rate output and no failure lines, and
+if it did not, the row is written \texttt{valid=0} with the reason and no count. The gate has
+since refused eight distributed attempts (Section~\ref{sec:extdist}), and its refusals are in the
+artefact alongside its acceptances.
+
+\paragraph{Denominators.} OMB warms up for one minute by default, resets its histograms at that
+boundary, and reports percentiles over the test phase alone; our counters are never reset and
+would otherwise span both. We make the setting explicit and report a matched sweep with warmup
+disabled. It changes the sample count per cell from $\approx120{,}000$ to $\approx90{,}000$ and
+leaves the retention fraction unchanged, so the figures computed with warmup included stand.
+
+\paragraph{Campaign design.} Retention at a fixed configuration proved not to have a stable
+central value (Section~\ref{sec:extreprod}), which dictates the design: every claim is made over
+whole distributions of replicates rather than over a summary of them, and the axes are swept one
+at a time with everything else held fixed --- background load, message size, producer rate, and
+the warmup setting --- because the variable that turned out to matter was one we did not initially
+think to hold fixed.
+
+\paragraph{Every run is indexed, including the failures.} Each cell is one row in a ledger built by
+reading the cell's own log rather than a receipt written afterwards, recording configuration,
+counts, whether the counts are exact, and the size and \textsc{sha-256} of the log they came from.
+This is not bookkeeping for its own sake: it recovered a valid cell whose script died between
+finishing the benchmark and writing its result row --- a cell that is the median of its load level
+--- and it exposed a fabricated negative sample that our own indexer had produced by mapping an
+older result schema positionally. A campaign that silently drops its failures is a selection of the
+runs that worked, which is the failure this paper is about, one level up.
+
 \subsection{Statistics}
 \label{sec:stats}
 

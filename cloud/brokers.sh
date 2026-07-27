@@ -24,5 +24,14 @@ docker run -d --name broker -p 19092:19092 \
   -e KAFKA_NUM_PARTITIONS=1 -e KAFKA_DEFAULT_REPLICATION_FACTOR=1 \
   -e KAFKA_AUTO_CREATE_TOPICS_ENABLE=true \
   -e KAFKA_HEAP_OPTS="-Xms1G -Xmx1G" \
+  `# Retention caps. KAFKA_LOG_DIRS above points INSIDE the container, so segments accumulate` \
+  `# in the writable layer with no volume and nothing reclaiming them. On 2026-07-27 a campaign` \
+  `# of ~100 three-minute cells filled a 45 GB root filesystem, the broker died with exit 1, and` \
+  `# every subsequent cell failed to connect. Without these, the disk is a silent countdown whose` \
+  `# length depends only on how many runs you do. 15 minutes and 2 GB are far more than any` \
+  `# single cell needs and cannot accumulate.` \
+  -e KAFKA_LOG_RETENTION_MS=900000 \
+  -e KAFKA_LOG_RETENTION_BYTES=2147483648 \
+  -e KAFKA_LOG_SEGMENT_BYTES=268435456 \
   apache/kafka:4.1.1 >/dev/null
 sleep 20; docker ps --format '{{.Names}} {{.Status}}'

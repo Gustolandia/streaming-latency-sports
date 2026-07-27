@@ -1659,6 +1659,27 @@ three different outcomes for it.**
 The discriminator is *where* the cluster sits: $44.4$ versus $46.7$, against replicate noise of
 $1$–$3$. Whichever wins is recorded; the other two lose their point.
 
+**Outcome (21:09Z): no account wins cleanly, and the separation is itself the finding.** The arm:
+$44.53$, $47.07$, $47.38$, $49.41$, $51.46$ — spread $6.9$, mean $47.97$. The registered P4
+passes the binary class test on its letter ($6.9 > 5.56$) while missing its substance: the upper
+branch at $55.6$ never appears. Rate-local pinning at $44.4$ is refuted outright (mean $3.5$
+away). The drift account is closest — mean $1.29$ from $\theta_{\mathrm{local}}$, no grid
+structure — but its spread bound ($\lesssim 5$) was exceeded. We note the binary flat/full test
+gave opposite calls to $700$/s ($6.5 <$ half-width $7.15$: flat) and $900$/s ($6.9 >$ half-width
+$5.56$: full) on nearly identical spreads: the classification is fragile precisely at the
+crossover, which is evidence the crossover is where these arms live.
+
+A further datum against the linear $\theta$ trend: the $700$ and $900$/s means are $47.82$ and
+$47.97$ — flat near $48$ where the trend says they should differ by $1.5$. If $\theta$ plateaus
+at $\approx 48$ above $700$/s, then $1250$/s's cluster at $41$ is six points *below* continuous
+and P2's arm becomes grid evidence after all. chain17b's direct measurement at $1053$ and $1219$/s
+decides this without extrapolation.
+
+**Where Block B leaves the model:** the quantised→continuous crossover is real and sits at
+$q \approx 5$–$7$ for three-minute runs, matching cells-crossed $\propto q$. Block E's duration
+sweep is now the direct manipulation of that crossover — at $1$ minute the $q{=}1$ arms should
+purify, at $10$ minutes smear — and it was pre-registered as P5 before any of this was known.
+
 **chain17** (55 cells, launched 17:16Z 2026-07-27) repeats the one defected cell, fills every arm
 to $n\ge5$, and tests six pre-registered predictions — P1 branch binomial at pooled $q{=}3$;
 P2/P3 second rates for $q{=}5$ (1250/s, the first arm with $p<q$) and $q{=}7$ (700/s); P4 that

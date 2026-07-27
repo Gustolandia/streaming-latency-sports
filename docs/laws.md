@@ -393,7 +393,7 @@ of an identical configuration, moving 54–98 points at the others. At one confi
 three replicates agreeing to 3.58 points and sitting 98 points from the same configuration hours
 earlier.
 
-## B5 — quantisation law  *(ESTABLISHED, 8/8 arms; the rate-independence test is still running)*
+## B5 — quantisation law  *(ESTABLISHED, 9/9 arms including the rate-independence control)*
 
 B2 is binary and that is not the whole rule. Write the send interval over the quantum as a fraction
 in lowest terms, Δ/τ = p/q. After q sends the phase returns to where it started, so the producer
@@ -445,9 +445,20 @@ exact multiple is only q=1 if the pacing is exact for the whole run; over three 
 few parts per million walks the phase across a boundary mid-run. The grid that governs retention is
 the one the pacing *realises*, not the one the nominal rate implies.
 
-**What would falsify what is left:** q=3 repeated at 600/s — half the interval of 300/s, same
-denominator — must reproduce a full-cell spread of ≈33. If it does not, the governing variable is
-the rate and not q, and B5 shrinks back to B2.
+**The rate-independence control passed, and it is exact.** q=3 repeated at 600/s — half the
+interval of 300/s, same denominator — was pre-registered to reproduce a full-cell spread of ≈33,
+failing which the governing variable would have been the rate and B5 would shrink back to B2.
+Measured (n=4; a fifth run lost its shutdown hook and is excluded by rule, tracked as invalid):
+
+| rate | interval | q | retentions | spread |
+|---|---|---|---|---|
+| 300/s | 3.333 ms | 3 | 34.86 36.72 39.42 41.13 **65.35** | 30.5 |
+| 600/s | 1.667 ms | 3 | 33.97 34.29 34.90 **66.67** | 32.7 |
+
+Not merely the same spread — the same **grid points**. The q=3 grid is {33.3, 66.7}, and 600/s put
+three replicates on the lower branch and one at 66.67, which is 2/3 to two decimal places. Two
+rates an octave apart land on the same two-point set because they share a denominator. **q is the
+governing variable; the rate that carries it is irrelevant.** Verdict: QUANTISED, 9 of 9 arms.
 
 ## What follows for practice
 

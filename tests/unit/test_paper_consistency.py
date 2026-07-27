@@ -581,7 +581,7 @@ class TestQuantisationTable:
         return [c.strip() for c in m.group(1).split("&")]
 
     @pytest.mark.parametrize("rate,q", [(1000, 1), (500, 1), (250, 1), (400, 2),
-                                        (300, 3), (800, 4), (625, 5), (875, 7)])
+                                        (300, 3), (600, 3), (800, 4), (625, 5), (875, 7)])
     def test_the_denominator_is_the_arithmetic_one(self, tex, rate, q):
         """q is arithmetic, so it can be checked without any measurement at all."""
         from fractions import Fraction
@@ -589,7 +589,7 @@ class TestQuantisationTable:
         cells = self._quoted_row(tex, rate)
         assert cells[1] == "$%d$" % q, "row for %d/s quotes q=%s" % (rate, cells[1])
 
-    @pytest.mark.parametrize("rate", [1000, 500, 250, 400, 300, 800, 625, 875])
+    @pytest.mark.parametrize("rate", [1000, 500, 250, 400, 300, 600, 800, 625, 875])
     def test_replicate_count_and_spread_match_the_ledger(self, tex, arms, rate):
         if rate not in arms:
             pytest.skip("no cells for %d msg/s in the ledger" % rate)
@@ -603,14 +603,14 @@ class TestQuantisationTable:
             "row for %d/s quotes spread %s, ledger gives %.1f" % (rate, cells[6], spread)
 
     @pytest.mark.parametrize("rate,width", [(1000, 100.0), (500, 100.0), (250, 100.0),
-                                            (400, 50.0), (300, 33.3), (800, 25.0),
-                                            (625, 20.0), (875, 14.3)])
+                                            (400, 50.0), (300, 33.3), (600, 33.3),
+                                            (800, 25.0), (625, 20.0), (875, 14.3)])
     def test_cell_width_is_100_over_q(self, tex, rate, width):
         cells = self._quoted_row(tex, rate)
         assert float(cells[3].strip("$")) == pytest.approx(width, abs=0.05)
 
     @pytest.mark.parametrize("rate,q", [(1000, 1), (500, 1), (250, 1), (400, 2),
-                                        (300, 3), (800, 4), (625, 5), (875, 7)])
+                                        (300, 3), (600, 3), (800, 4), (625, 5), (875, 7)])
     def test_the_position_is_recomputed_not_taken_on_trust(self, tex, arms, q, rate):
         """The position column must come back out of the ledger too.
 
@@ -634,7 +634,7 @@ class TestQuantisationTable:
     def test_the_predicted_class_follows_from_the_quoted_position(self, tex):
         """`full` above the mid-cell threshold, `flat` below -- no row may contradict its own
         position column."""
-        for rate in (1000, 500, 250, 400, 300, 800, 625, 875):
+        for rate in (1000, 500, 250, 400, 300, 600, 800, 625, 875):
             cells = self._quoted_row(tex, rate)
             position = float(cells[4].strip("$"))
             predicted = cells[5]
@@ -644,7 +644,7 @@ class TestQuantisationTable:
 
     def test_every_quoted_arm_agrees_with_its_prediction(self, tex, arms):
         """The paper's claim is that all of them match; that must be true of the printed rows."""
-        for rate in (1000, 500, 250, 400, 300, 800, 625, 875):
+        for rate in (1000, 500, 250, 400, 300, 600, 800, 625, 875):
             if rate not in arms:
                 continue
             cells = self._quoted_row(tex, rate)

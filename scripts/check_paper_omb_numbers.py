@@ -254,6 +254,9 @@ def main(argv=None):
 
     print()
     print("== the generated macros against the ledger ==")
+    # Imported here, not at module scope, and deliberately so: emit_paper_numbers imports
+    # load_cells and measured from this module, so a top-level import would be circular. Moving
+    # this to the top of the file will break both scripts.
     from emit_paper_numbers import render  # noqa: E402
     if not os.path.exists(args.generated):
         print("  missing: %s -- run scripts/emit_paper_numbers.py" % args.generated)

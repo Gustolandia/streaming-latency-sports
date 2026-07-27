@@ -1320,3 +1320,40 @@ full, the phase table, and the two new recommendations.
 Not yet written, because they depend on the above: the retention-law figure, the conclusion, and
 the final build with the rendered-PDF check. Equation~\ref{eq:retention} is currently in the paper
 labelled a *derived prediction*, and stays that way unless chain12 confirms it.
+
+## What is the rule? A quantisation prediction, recorded before the run (2026-07-27)
+
+Commensurability is established: two exact multiples give replicate spreads near 99 points
+(500 msg/s at 99.5, 1000 msg/s at 99.3), two incommensurate rates give 2.1 and 2.8. But that only
+shows *that* commensurability matters, not *what the rule is* — everything measured sits at one
+extreme or the other.
+
+**The phase account predicts something sharper.** Write the producer's interval over the tick as a
+fraction `p/q` in lowest terms. A producer paced at that interval visits exactly **`q` distinct
+phases** within the tick, because after `q` sends the phase returns to where it started. So
+retention should be **quantised into `q+1` possible levels**, and the replicate spread should fall
+roughly as `100/q`:
+
+| interval/tick | fraction | q | predicted retention levels | predicted spread |
+|---|---|---|---|---|
+| 2.000 | 2/1 | 1 | 0 or 100 | ~99 *(measured 99.5)* |
+| 1.000 | 1/1 | 1 | 0 or 100 | ~99 *(measured 99.3)* |
+| 2.500 | 5/2 | 2 | 0, 50, 100 | ~50 |
+| 3.333 | 10/3 | 3 | 0, 33, 67, 100 | ~33 |
+| 1.250 | 5/4 | 4 | 0, 25, 50, 75, 100 | ~25 |
+| 1.125 | 9/8 | 8 | eight levels | ~12 |
+| 2.188 | large `q` | — | continuous at `T/τ` | ~2 *(measured 2.1)* |
+
+**chain14 tests it** at 400, 300, 800 and 889 msg/s — `q` = 2, 3, 4, 8 — with **five replicates
+each** rather than three, because distinguishing `q+1` discrete levels from a continuum requires
+enough draws to see the gaps and three cannot show a gap.
+
+**Both falsifying outcomes are stated in advance.** If the spread stays near 99 for every rational
+rate regardless of `q`, the rule is simply "integer or not" and the quantisation prediction is
+wrong. If it stays near 2 for everything except exact integers, likewise. Either would leave B2
+standing as a binary distinction and this refinement withdrawn.
+
+If it holds, the rule is considerably more useful than "avoid round rates": it says the damage is
+governed by the *arithmetic* relationship between pacing and clock, that a rate need not be an
+integer multiple to be dangerous, and that safety comes from a large denominator rather than from
+any particular rate.

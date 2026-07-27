@@ -2649,7 +2649,32 @@ it is fixed in advance and applied to every condition, including those whose res
 reasonable. Applying it only to suspicious results reproduces the error it exists to prevent.
 \item \textbf{Report the retention rate alongside the results}, the way a survey reports its
 response rate. A benchmark that discards nothing has either an unusually clean instrument or an
-unexamined one, and a reader cannot tell which without the number.
+unexamined one, and a reader cannot tell which without the number. Count \emph{both} causes
+separately: a sample rejected for being negative is an instrument failure, and a sample rejected
+for computing to zero is a resolution failure. A single unsigned total cannot distinguish them,
+and we drew a wrong conclusion from one that could not (Section~\ref{sec:extwithdraw}).
+
+\item \textbf{Compare the timestamp's resolution against the latency you expect to measure, and
+publish both.} This is the ratio that governs the second failure mode, and neither number alone
+conveys it. A millisecond-grained clock on a path the experimenter believes is sub-millisecond is
+a stated problem, not a latent one.
+
+\item \textbf{Read your own reported percentiles for quantisation. This costs nothing and needs no
+patch.} If every percentile a benchmark prints is a whole multiple of its clock's quantum, the
+measurement has no resolution below that quantum and the distribution is an artefact of the grid.
+In the benchmark we audited, all $32$ percentile values across eight runs were whole milliseconds,
+and three runs reported $\mathrm{p50} = \mathrm{p95} = \mathrm{p99} = \max = 1.0$ --- a
+distribution with one value in it, printed to three decimal places, in output anybody could have
+read. We found it only after instrumenting the source, which was unnecessary.
+
+\item \textbf{Check whether your load generator's send interval is commensurate with that
+quantum, and change it if it is.} A fixed interval that divides evenly into the timestamp
+resolution puts every sample in a run at the same phase within it, which makes the surviving
+fraction bimodal and irreproducible rather than merely small (Section~\ref{sec:extphase}). The
+diagnostic is arithmetic on two numbers you already know. The remedy is to choose an incommensurate
+rate, or to dither the send instant where the rate is fixed by the experiment. Note that the rate
+most likely to be chosen --- a round number such as $500$~msg/s --- is the one most likely to be
+commensurate with a millisecond clock.
 \item \textbf{Report events-per-run alongside every latency percentile.} This is the check that
 would have caught our second withdrawal (Section~\ref{sec:attribution}) and the sign check would
 not: a median over seven events is a statement about the harness, not the system, and it looks

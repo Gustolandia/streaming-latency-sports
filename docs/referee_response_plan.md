@@ -1621,6 +1621,20 @@ condition from dither theory is the design rule our recommendation reduces to; c
 omission stays the nearest benchmarking relative. We find no prior application of orbit occupancy
 to benchmark sample retention.
 
+**Interim, recorded at arm completion (19:38Z): P2's falsifier fired.** The $1250$/s arm ($q=5$,
+the first with $p<q$) came out $40.66$, $40.90$, $41.28$, $42.00$, $48.26$ — spread $7.6$, which
+is **flat** where P2 said full with branches $\{40, 60\}$. By the pre-registered letter, P2
+failed, and the record keeps it that way. The shape of the failure points at an auxiliary
+assumption rather than the grid: four replicates hug the $2/5$ point within $1.3$ points (tighter
+than any incommensurate arm's scatter), and P2 was computed from the *pooled* $\theta = 0.495$
+while our own measured $\theta$-trend extrapolates to $\approx 0.44$ at $1250$/s — under which
+$\operatorname{frac}(q\theta) = 0.20$ predicts exactly the observed pinning. But no incommensurate
+arm exists above $889$/s, so that extrapolation is unmeasured. **chain17b** (queued behind
+chain17, readings recorded in its header before it runs) measures $\theta$ at $1053$ and $1219$/s:
+$\theta \gtrsim 47\%$ means P2 genuinely missed and the model loses the point; $\theta \approx
+44\%$ means the trend holds and the miss was the extrapolation; $\theta \approx 41$–$42\%$ makes
+the $1250$/s arm degenerate and uninformative either way.
+
 **chain17** (55 cells, launched 17:16Z 2026-07-27) repeats the one defected cell, fills every arm
 to $n\ge5$, and tests six pre-registered predictions — P1 branch binomial at pooled $q{=}3$;
 P2/P3 second rates for $q{=}5$ (1250/s, the first arm with $p<q$) and $q{=}7$ (700/s); P4 that

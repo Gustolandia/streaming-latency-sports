@@ -1486,3 +1486,52 @@ is thin for a law. Two more exist at integer rates, and **chain15 runs both**:
 Both predictions are recorded before the runs, and both are clear of the incommensurate range
 ($46.5$–$53.8$). **If either lands at $\approx 50\%$, the `q=3` result was a coincidence and
 quantisation is withdrawn.**
+
+### `q=5` landed: the rule survived and my stated grid point did not
+
+Five replicates at $625$/s: $40.71$, $42.11$, $46.58$, $55.50$, $58.60$. **The median is $46.6\%$,
+which is inside the incommensurate range and $6.6$ points off the $40\%$ I recorded above. That
+specific prediction failed and I am not going to describe it as anything else.**
+
+What failed was the grid point, not the grid. The error is in the phrase "$2$ of $5$": with
+$T_{\mathrm{true}}/\tau$ measured at $0.495$ — indistinguishable from a half — the number of phases
+that cross a tick boundary is $2$ *or* $3$ depending on where the run's initial phase falls, so a
+replicate is predicted at $40\%$ **or** $60\%$, averaging near $50$. I wrote down one of the two
+branches and called it the prediction. The five replicates are $40.7, 42.1$ (the $2/5$ branch),
+$55.5, 58.6$ (the $3/5$ branch), and one crossing at $46.6$ — bimodal about the grid, which is what
+the rule actually says.
+
+The statistic that does test the rule without needing to know which branch a run takes is replicate
+spread, and it was pre-registered independently, in the header of
+`scripts/analyze_phase_quantisation.py`: *"retention takes one of $(q+1)$ values, and replicate
+spread falls roughly as $100/q$."* Against that:
+
+| rate | q | measured spread | $100/q$ | |
+|---|---|---|---|---|
+| 1000/s | 1 | $99.3$ | $100.0$ | ✓ |
+| 500/s | 1 | $99.5$ | $100.0$ | ✓ |
+| 300/s | **3** | $30.5$ | $33.3$ | ✓ |
+| 625/s | **5** | $17.9$ | $20.0$ | ✓ |
+| 400/s | 2 | $17.6$ | $50.0$ | degenerate |
+| 800/s | 4 | $7.2$ | $25.0$ | degenerate |
+| incommensurate | $>64$ | $1.7$–$3.1$ | $\approx 0$ | ✓ |
+
+Four discriminating denominators, each within $3$ points of $100/q$ across a range of $100$ points.
+
+**The degeneracy exclusion is load-bearing, so its timing matters.** It was derived from the $q=4$
+arm and committed in `79b8672` at 14:09Z on 2026-07-27; the first $q=5$ cell was measured at 15:06Z,
+$57$ minutes later. The odd-$q$ arms exist *because* the rule predicted they would discriminate. It
+is now encoded in the analyser as the general statement rather than as "skip even $q$" — an arm is
+degenerate when the *measured* continuous value passes within *measured* replicate noise of its
+grid. At this operating point that selects the even $q$; at $T_{\mathrm{true}}/\tau = 1/3$ it would
+select $q=3$ instead and leave $q=2$ discriminating, which is the behaviour a test asserts.
+
+The margins are not close. The degenerate grids pass $0.5$ points from the continuous value against
+a noise floor of $1.6$; the discriminating ones sit at $16.2$ ($q=3$), $9.5$ ($q=5$) and $6.6$
+($q=7$). No arm is near the threshold, so the verdict does not depend on where it was set.
+
+**Still open.** $q=7$ has one replicate ($42.95\%$, against a $3/7 = 42.86\%$ grid point — close
+enough to be worth nothing at $n=1$); its test is spread $\approx 14.3$. And chain16 repeats $q=3$
+at $600$/s, half the interval of $300$/s, to separate the denominator from the rate carrying it.
+**If $600$/s does not reproduce the $300$/s spread of $\approx 33$, then $q$ is not the governing
+variable and this generalises no further than the rate it was found at.**

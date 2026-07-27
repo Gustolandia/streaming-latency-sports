@@ -25,9 +25,9 @@
 
 \begin{document}
 
-\title{A Message Cannot Arrive Before It Is Sent}
-\subtitle{Physical-Consistency Auditing for Streaming Latency Benchmarks, and What It Left of a
-\kafka{}-versus-\redis{} Comparison}
+\title{When the Interval Is Smaller Than the Instrument}
+\subtitle{Two Ways Streaming Latency Benchmarks Fail on Sub-Millisecond Paths, and What They Left
+of a \kafka{}-versus-\redis{} Comparison}
 
 \author{Gustavo Pedro Ricou}
 \affiliation{%
@@ -37,43 +37,47 @@
 \email{pedrorig@tcd.ie}
 
 \begin{abstract}
-\textbf{What we set out to do.} Answer an ordinary question for anyone building a live sports
-feed: does the choice between Apache \kafka{} and \redis{} Streams change end-to-end delay, and
-does the answer shift as more matches run at once? We characterise the workload across $3{,}315$
-real matches and drive the benchmark by replaying eleven of them --- a real slot of simultaneous
-kickoffs --- on their recorded event schedules.
+Streaming brokers are compared on latencies of tenths of a millisecond using instruments whose own
+timescales are larger than that. We report two consequences, both of which leave the benchmark's
+output looking healthy, and both of which are governed by the same ratio: the instrument's
+timescale divided by the interval being measured.
 
-\textbf{What we found instead.} Our first answer was clean, significant, and impossible. Broker
-delay is a difference of two timestamps taken in two processes, so it admits one check no
-statistic supplies: it cannot be negative. Applying that check to \emph{every} run rather than
-only to runs that looked wrong rejected $1{,}321$ of $2{,}266$, including every run behind the
-result we were about to publish. Nothing in the rejected data looks wrong in aggregate --- medians
-stay positive, intervals stay narrow, effect sizes stay large.
+\textbf{The first is that the measurement can violate causality.} Broker delay is a difference of
+two timestamps taken in two processes, so it admits one check no statistic supplies: it cannot be
+negative. Applying that check to \emph{every} run rather than only to runs that looked wrong
+rejected $1{,}321$ of $2{,}266$, including every run behind the result we were about to publish.
+Nothing in the rejected data looks wrong in aggregate --- medians stay positive, intervals stay
+narrow, effect sizes stay large. The cause is not clock skew: an inversion occurs when a
+scheduling stall separates an event from the clock read that timestamps it and outlasts the
+interval being measured, $\Pr[\text{inversion}] = \Pr[\text{stall} > T_{\mathrm{true}}]$. We
+manipulate both sides. Real-time priority at \emph{fixed} utilisation cuts the rate $7$ to
+$80\times$ across eight matched pairs; lengthening the true transport $77\times$ cuts it further,
+so a slower path is a \emph{more reliable} measurement. A kernel trace predicts the observed rate
+to within a third, unfitted. The stall distribution's tail index is near $0.34$, so it has no
+finite mean and instruments built on averages are structurally blind to this failure.
 
-\textbf{What we think is happening.} The failure is in the instrument, not the systems under
-test. An inversion occurs when a scheduling stall separates an event from the clock read that
-timestamps it, and outlasts the interval being measured: $\Pr[\text{inversion}] =
-\Pr[\text{stall} > T_{\mathrm{true}}]$.
+\textbf{The second is that the measurement can be silently deleted, and this one is not ours.} We
+instrumented the OpenMessaging Benchmark, which computes end-to-end latency from
+millisecond-grained timestamps and admits a sample only if the difference is positive, counting
+nothing that it drops. Across $80$ runs we find it computes its reported latency distribution from
+between $0.36\%$ and $100\%$ of the samples it takes, and reports the same median either way ---
+two distinct values across a $278$-fold change in the evidence behind them. Which case obtains is
+decided by a variable no operator sets: whether the producer's send interval is commensurate with
+the timestamp resolution. At $500$~msg/s --- an interval of exactly $2.000$~ms, and a rate chosen
+for being round --- every sample in a run shares a phase, and retention across replicates spans
+$99.5$ points. At $457$ and $383$~msg/s it is stable to $2$ points. A three-replicate median, the
+standard defence, reproduces at one load level in five across three passes of an identical
+configuration.
 
-\textbf{What the measurements say.} We manipulate both sides. Raising the stamping threads to
-real-time priority at \emph{fixed} utilisation cuts the inversion rate $7$ to $80\times$ across
-eight matched pairs spanning five load levels; lengthening the true transport $77\times$ by padding the payload cuts it further,
-so a slower path is a \emph{more reliable} measurement --- a sign no account based on system
-stress predicts. Two loads at identical utilisation, differing only in how they spread across
-cores, give rates $2.07\times$ apart, so utilisation is not the variable. A kernel trace closes
-the loop: across three arms at two load levels, the measured probability that a run-queue stall
-outlasts the true transport predicts the observed inversion rate to within a third, unfitted. The stall distribution's tail index is near
-$0.34$, so it has no finite mean, and instruments built on averages are structurally blind to
-this failure. We withdraw two claims of our own, including an M/G/1 form our own data refutes
-once measured where the candidates diverge. Because a failure only we have made is a cautionary
-tale rather than a finding, we instrumented a benchmark we did not write: under load the
-OpenMessaging Benchmark silently discarded $6{,}000$ end-to-end samples, about $6.7\%$ of the run,
-while reporting a healthy-looking latency summary. Of the original question, what survives is
-modest --- the brokers sit within a millisecond, with a reproducible $0.41$~ms advantage for
+\textbf{What this leaves.} We withdraw three claims, including an M/G/1 form our own data refutes
+and our own earlier reading of these discards as causality violations: in roughly $420{,}000$
+discarded samples there is not one negative. Of the original question --- does the choice between
+Apache \kafka{} and \redis{} Streams change delay for a live football feed --- what survives is
+modest: the brokers sit within a millisecond, with a reproducible $0.41$~ms advantage for
 \redis{} that is real and negligible beside a feed whose human annotation latency is measured in
-seconds. The general consequence is uncomfortable: this check binds hardest exactly where a
-benchmark's measured effect is smallest, which is to say on the delicate comparisons such papers
-exist to make.
+seconds. The general consequence is uncomfortable, and it is the same for both failure modes: they
+bind hardest exactly where the measured effect is smallest, which is to say on the delicate
+comparisons such papers exist to make.
 \end{abstract}
 
 \begin{CCSXML}
@@ -90,8 +94,9 @@ exist to make.
 \ccsdesc[500]{Computer systems organization~Distributed architectures}
 \ccsdesc[500]{Software and its engineering~Software performance}
 
-\keywords{streaming systems, latency benchmarking, measurement validity, Apache Kafka,
-Redis Streams, reproducibility}
+\keywords{streaming systems, latency benchmarking, measurement validity, timestamp resolution,
+quantisation, sampling artefacts, causality violation, Apache Kafka, Redis Streams,
+reproducibility}
 
 \maketitle
 
@@ -147,18 +152,56 @@ against that constraint --- rather than only the runs whose results looked impla
 rejected $862$ of $1{,}382$ single-machine runs and $459$ of $884$ multi-machine runs, including
 every run behind the result above.
 
-\subsection{Why the failure is worth a paper}
+\subsection{A second failure, in software we did not write}
+\label{sec:intro_modeb}
 
-Timestamp inversion under load is invisible to the checks a reviewer would apply. Medians stay
-positive and plausible. Confidence intervals stay narrow. Effect sizes are large and the
-direction agrees with theory. Only $5$ to $14\%$ of individual events invert, which is enough to
-displace a median by a fraction of a millisecond in a measurement whose entire effect is a
-fraction of a millisecond, and far too little to make any aggregate look wrong.
+A failure only we have made is a cautionary tale rather than a finding, so we instrumented the
+OpenMessaging Benchmark~\cite{openmessaging2018}, the most widely used cross-broker benchmark, and
+ran it against our own broker. It computes end-to-end latency from \kafka{}'s \texttt{CreateTime}
+timestamps, which are millisecond-grained, and admits a sample to its histogram only if the
+difference is positive. Nothing counts what fails that test.
 
-A benchmark can therefore produce a complete, internally consistent and entirely false result
-set. No amount of statistical care exposes it, because the contamination is systematic rather
-than random: greater care produces tighter intervals around the wrong number. Only a check
-against a physical constraint exposes it, and it must be applied to every condition as a rule.
+On a path whose true latency is a fraction of a millisecond, most differences are exactly zero.
+Across $80$ instrumented runs the benchmark computed its reported latency distribution from
+between $0.36\%$ and $100\%$ of the samples it took, and reported a median of $1.0$ or $2.0$~ms
+either way: two distinct values across a $278$-fold change in how much evidence stood behind them.
+
+The variable that decides which case obtains is not one an operator sets, or could reasonably
+suspect. A load generator paces its producer at a fixed interval. When that interval is an exact
+multiple of the timestamp resolution, every sample in a run occupies the same phase within the
+millisecond, so either nearly all of them cross a tick boundary before delivery or nearly none do.
+At $500$~msg/s the interval is exactly $2.000$~ms and retention across replicates spans $99.5$
+points; at $457$ and $383$~msg/s, incommensurate with the tick, it is stable to $2$ points. The
+rate that breaks the measurement is the round number a user would pick.
+
+\subsection{Why these failures are worth a paper}
+
+Neither failure is visible in the output that a reviewer, or the benchmark's own authors, would
+examine.
+
+For the inversions, medians stay positive and plausible, confidence intervals stay narrow, effect
+sizes are large and the direction agrees with theory. Only $5$ to $14\%$ of individual events
+invert --- enough to displace a median by a fraction of a millisecond in a measurement whose
+entire effect is a fraction of a millisecond, and far too little to make any aggregate look wrong.
+A benchmark can therefore produce a complete, internally consistent and entirely false result set.
+No amount of statistical care exposes it, because the contamination is systematic rather than
+random: greater care produces tighter intervals around the wrong number.
+
+For the deletions, the summary is not merely plausible but \emph{stable}: the same median is
+reported whether the benchmark kept everything or almost nothing, so the one statistic that would
+reveal the problem is the one statistic that does not move. The usual defence fails too. A
+three-replicate median --- the standard protection against run-to-run noise --- reproduced at one
+load level in five across three passes of an identical configuration, because the quantity being
+averaged does not have a central value to converge on.
+
+\paragraph{The two share a governing ratio.} In both cases a timescale belonging to the instrument
+is compared against $T_{\mathrm{true}}$, the interval under measurement. For the inversions it is
+a scheduling stall, and the failure occurs when the stall exceeds $T_{\mathrm{true}}$. For the
+deletions it is the timestamp's resolution, and the failure occurs when the tick exceeds
+$T_{\mathrm{true}}$. Both therefore worsen as $T_{\mathrm{true}}$ shrinks --- which is to say, both
+bind hardest on exactly the fast paths that broker comparisons are written about, and on exactly
+the small differences those comparisons exist to resolve. That is the paper's general claim, and
+we regard it as more consequential than either mechanism alone.
 
 \subsection{Contributions}
 
@@ -192,16 +235,29 @@ delay then predicts the observed rate to within a third, in three arms at two lo
 nothing fitted between them, and puts the stall distribution's tail index near $0.34$ --- below one, so it has no finite mean, which is
 why an instrument built on averages is structurally rather than accidentally blind to this
 failure.
-\item \textbf{Evidence that the exposure is not ours alone} (Section~\ref{sec:external}). A
-source-level audit of the OpenMessaging Benchmark, at a named commit and with file and line
-given, finds it computes end-to-end latency as the same cross-process --- in a distributed
-deployment, cross-\emph{host} --- timestamp difference, and then admits a sample to its histogram
-only when that difference is positive, with no counter for what it discards. The failure mode is
-therefore designed into a widely used benchmark, and its output cannot reveal it. We then made
-that discard visible --- one counter in the existing guard's \texttt{else} branch, nothing else
-changed --- and ran the benchmark under load. It discarded $6{,}000$ end-to-end samples in three
-minutes, about $6.7\%$ of the run, while reporting a healthy-looking latency summary. The
-exposure is therefore not ours alone, and it is not hypothetical.
+\item \textbf{A second failure mode, in a benchmark we did not write, with its mechanism
+established by manipulation} (Section~\ref{sec:external}). A source-level audit of the
+OpenMessaging Benchmark, at a named commit and with file and line given, finds it computes
+end-to-end latency as the same cross-process --- in a distributed deployment, cross-\emph{host}
+--- timestamp difference, and admits a sample only when that difference is positive, with no
+counter for what it discards. We made the discard visible and swept it across $80$ runs. Three
+results follow. \emph{(i)} The benchmark computes its reported distribution from between $0.36\%$
+and $100\%$ of its samples, reporting a median of $1.0$ or $2.0$~ms in every case: the headline is
+insensitive to a $278$-fold change in the evidence behind it. \emph{(ii)} Which case obtains is
+decided by whether the producer's send interval is commensurate with the timestamp resolution. We
+establish this by manipulation, holding size, load, duration and host fixed: at an interval of
+exactly $2.000$~ms retention spans $99.5$ points across replicates, while two incommensurate rates
+are stable to $2$ points and agree with \emph{each other} to under $2$ points despite intervals
+differing by $19\%$. \emph{(iii)} The standard defence does not work --- a three-replicate median
+reproduces at one load level in five across three passes of an identical configuration.
+\item \textbf{A withdrawal of our own strongest external claim} (Section~\ref{sec:external}). An
+earlier version of this work reported those discards as the same causality violation we report in
+Section~\ref{sec:gate}, on a counter that could not distinguish sign. In roughly $420{,}000$
+discarded samples there is not one negative. We report where the refuting evidence was: in our own
+artefact, from the day we committed it, in a field we had printed and not read. The exposure in
+the cross-host case remains established by source audit and \emph{not} by observation --- across
+eight attempts at three background-load levels the benchmark's distributed mode never completed a
+run --- and we distinguish the two.
 \item \textbf{A correction to our own model} (Section~\ref{sec:mixture}), pre-registered before
 the campaign that tested it. The model above treats $\Delta$ as one distribution; it is two. A
 nine-level load sweep falsifies the scale-family form and measures the mixture instead: a narrow

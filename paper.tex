@@ -2831,16 +2831,26 @@ be at a given load, and both attempts to write one --- M/G/1 and our own bounded
 failed against the sweep. A practitioner should read this as ``keep the stamping thread runnable
 and measure what you get'', not as a curve to substitute into a budget.
 
-\emph{The external replication is single-host.} The instrumented OpenMessaging Benchmark
-discarded $6{,}000$ samples under load (Section~\ref{sec:external}), which establishes the
-failure outside our own harness. It ran in embedded mode, so both stamps came from one JVM on one
-host, and the demonstration is of the \emph{occupancy} channel alone. We attempted a distributed
-run five times and abandoned it after five separate faults in the benchmark's own worker
-protocol. That difficulty is worth recording rather than hiding: a failure mode this easy to
-reach and this hard to instrument is one a practitioner is unlikely to find by accident. The
-cross-host clock channel is in any case bounded on this testbed --- \texttt{chrony} puts the
-inter-host offset near $0.067$~ms, below the millisecond resolution the benchmark reports in ---
-so it is the channel we could least afford to miss, and the one we did not need.
+\emph{The external evidence is single-host, and the cross-host case is unmeasured.} The
+$80$-run campaign of Section~\ref{sec:external} ran in embedded mode, so both stamps came from one
+JVM on one host. That is sufficient for the resolution failure, which needs no second clock --- the
+quantum is a property of the timestamp, not of the network --- but it means the cross-host channel
+is established by source audit and not by observation. We attempted a distributed run eight times,
+at three background-load levels including none at all, and the benchmark's own
+coordinator-to-worker protocol failed on every one; the load-starvation hypothesis we formed after
+the first failures is refuted by the unloaded attempts failing identically. That difficulty is
+worth recording rather than hiding, and it cuts both ways: a failure mode this hard to instrument
+is one a practitioner is unlikely to find by accident, and a distributed mode that does not
+complete a run in eight attempts by readers of its source is itself a fact about the state of the
+tooling.
+
+We are also explicit that the clock bound on this testbed does \emph{not} rule the channel out.
+\texttt{chrony} reports inter-host offsets near $0.1$~ms, which is comfortably sub-tick --- but the
+bound it places on its own error, root dispersion plus half the root delay, is $4$ to $7$~ms per
+host, so a pair may disagree by up to $12$~ms against a $1$~ms timestamp. An operator checking
+whether cross-host subtraction is safe reads the offset line and concludes it cannot happen; the
+figure that bounds the disagreement is two orders of magnitude larger and three lines further down
+the same output. The channel is therefore open on this testbed, and we could not measure it.
 
 \emph{H3 is measured at one operating point.} The symmetric-stamping comparison
 (Section~\ref{sec:rules}) was run at one in-flight request and one load level, because inline

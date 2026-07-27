@@ -30,8 +30,15 @@ import sys
 # quoting a run count that included them would misdescribe what the section reports.
 PAPER_CAMPAIGNS = {
     "load_sweep", "load_sweep_p2", "load_sweep_nowarmup", "resolution",
-    "rate_phase", "rate_phase2", "bimodality", "tprobe",
+    "rate_phase", "rate_phase2", "rate_q", "bimodality", "tprobe",
+    "ultimate", "ultimate_pay300", "ultimate_dur1", "ultimate_dur10",
 }
+
+# `rate_q` was initially left out, which made the count wrong in a way worth recording. The
+# quantisation table in Section 6.7 draws its arms from `rate_q` as well as `rate_phase`, and every
+# `rate_q` cell is the same three-minute instrumented run on the same co-located path as the rest.
+# Excluding it meant the manuscript described a campaign it had already reported more of -- the
+# precise failure this checker exists to catch, committed by the checker's own configuration.
 
 # A cell only carries a claim if its counts came from the shutdown hook; the periodic lines are
 # quantised to 10,000 (see index_external_campaigns.py).

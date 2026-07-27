@@ -1635,6 +1635,30 @@ $\theta \gtrsim 47\%$ means P2 genuinely missed and the model loses the point; $
 44\%$ means the trend holds and the miss was the extrapolation; $\theta \approx 41$–$42\%$ makes
 the $1250$/s arm degenerate and uninformative either way.
 
+**Interim, recorded at arm completion (20:28Z): P3's falsifier fired too — and its shape names
+the missing term.** The $700$/s arm ($q=7$): $44.18$, $45.62$, $48.89$, $49.77$, $50.65$ — spread
+$6.5$ against a half-width of $7.15$, flat where P3 said full. Unlike P2's pinning, these values
+sit *mid-cell*, smeared toward $\theta$. Looking back across every commensurate arm with this in
+hand: **every replicate in the design is displaced from its grid point toward $\theta$, by amounts
+that grow with $q$.** The model's own drift term says why: phase walked per run is
+$\varepsilon T$ independent of rate, so grid cells crossed per run is
+$\varepsilon T q/\tau \propto q$ — at $5$ ppm, $\approx 0.9$ cells at $q{=}1$, $2.7$ at $q{=}3$,
+$6.3$ at $q{=}7$. A $q=7$ run averages over $\sim 6$ branch segments and the quantised structure
+washes toward the continuum. The quantised and continuous regimes are joined by a drift-set
+crossover, and $700$/s sits at it ($875$/s, same $q$, spread $10.7$, is marginal).
+
+**Recorded at 20:35Z, before the $900$/s arm completes (~35 min out): the three accounts predict
+three different outcomes for it.**
+
+| account | prediction for $900$/s ($q=9$, $\theta_{\mathrm{local}} = 46.7\%$) |
+|---|---|
+| class model, pooled $\theta{=}.495$ (the registered P4) | full: spread ${\approx}11.1$, branches $\{44.4, 55.6\}$ |
+| class model, rate-local $\theta$ | flat, **pinned on the $4/9 = 44.4$ grid point** |
+| drift crossover (this note) | flat-ish, spread $\lesssim 5$, **clustered at $\theta \approx 46.7$, off-grid** |
+
+The discriminator is *where* the cluster sits: $44.4$ versus $46.7$, against replicate noise of
+$1$–$3$. Whichever wins is recorded; the other two lose their point.
+
 **chain17** (55 cells, launched 17:16Z 2026-07-27) repeats the one defected cell, fills every arm
 to $n\ge5$, and tests six pre-registered predictions — P1 branch binomial at pooled $q{=}3$;
 P2/P3 second rates for $q{=}5$ (1250/s, the first arm with $p<q$) and $q{=}7$ (700/s); P4 that

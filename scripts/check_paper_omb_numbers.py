@@ -122,27 +122,47 @@ def find_quoted_run_counts(src, patterns=None):
 def find_quoted_discard_totals(src):
     """Discard totals quoted near the word 'discarded', in either form the paper uses.
 
-    Two forms must both be recognised, and an earlier version handled only the first:
-    a LaTeX-separated integer with any number of groups (`$3{,}538{,}341$`), and a
-    rounded figure in millions (`$3.5$ million`). The single-separator pattern silently
-    matched nothing once the total passed a million, which is precisely when the number
-    needed checking most.
+    Three defects have been found in this one function, each one a number the check passed over
+    in silence:
+
+    1. A single-separator pattern stopped matching once the total passed a million -- exactly
+       when it most needed checking. Fixed by allowing repeated groups.
+    2. `$3.5$ million` was not recognised at all, so a rounded figure could say anything.
+    3. Line-by-line scanning missed every occurrence where LaTeX wrapped between the number and
+       the word `discarded`. Two of the paper's four discard totals were written that way, so a
+       check that reported "2 sites, both stale" was really "4 sites, and I can only see half".
+
+    The scan is therefore over the whole source with newlines treated as ordinary whitespace,
+    and line numbers are recovered from the match offset.
     """
     out = []
-    exact = re.compile(r"\$(\d{1,3}(?:\{,\}\d{3})+)\$[^.\n]{0,40}?discarded")
-    millions = re.compile(r"\$([\d.]+)\$\s*million[^.\n]{0,40}?discarded")
-    for i, line in enumerate(src.splitlines(), 1):
-        for m in exact.finditer(line):
-            out.append((int(m.group(1).replace("{,}", "")), i))
-        for m in millions.finditer(line):
-            out.append((int(round(float(m.group(1)) * 1_000_000)), i))
-    return out
+    exact = re.compile(r"\$(\d{1,3}(?:\{,\}\d{3})+)\$[^.]{0,40}?discarded", re.S)
+    millions = re.compile(r"\$([\d.]+)\$\s*million[^.]{0,40}?discarded", re.S)
+    for pat, conv in ((exact, lambda g: int(g.replace("{,}", ""))),
+                      (millions, lambda g: int(round(float(g) * 1_000_000)))):
+        for m in pat.finditer(src):
+            out.append((conv(m.group(1)), src.count("\n", 0, m.start()) + 1))
+    return sorted(out, key=lambda t: t[1])
+
+
+# Once a quantity is derived into a macro, a bare digit reappearing in its place is a regression:
+# someone has gone back to typing the number by hand, and it will go stale again. These are the
+# macros the manuscript is expected to use for quantities that move with the campaign.
+DERIVED_MACROS = ("ombRuns", "ombDiscarded")
+
+
+def find_undermined_macros(src, macros=DERIVED_MACROS):
+    """Macros the paper should be using but no longer does."""
+    return [name for name in macros if ("\\" + name) not in src]
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Check Section 6.7's numbers against the ledger")
     ap.add_argument("--ledger", default="docs/results/external_campaigns_index.csv")
     ap.add_argument("--paper", default="paper.tex")
+    ap.add_argument("--generated", default=os.path.join("docs", "generated",
+                                                        "paper_numbers.tex"),
+                    help="the LaTeX macro file emit_paper_numbers.py writes")
     ap.add_argument("--tolerance-pct", type=float, default=0.0,
                     help="allowed relative slack on rounded totals, e.g. 2 for 2%%")
     args = ap.parse_args(argv)
@@ -169,33 +189,42 @@ def main(argv=None):
 
     failures = []
 
-    print("== run counts quoted in %s ==" % args.paper)
-    quoted = find_quoted_run_counts(src)
-    if not quoted:
-        print("  (none found)")
-    for val, line in quoted:
-        ok = val == m["n_runs"]
-        print("  line %-5d quotes %-5d %s" % (line, val, "OK" if ok else
-                                              "MISMATCH (ledger: %d)" % m["n_runs"]))
-        if not ok:
-            failures.append("run count at line %d: paper %d, ledger %d"
-                            % (line, val, m["n_runs"]))
+    print("== is the manuscript still deriving these numbers? ==")
+    absent = find_undermined_macros(src)
+    for name in DERIVED_MACROS:
+        if name in absent:
+            print("  \\%-14s NOT USED -- the manuscript has stopped deriving this" % name)
+            failures.append("paper no longer uses \\%s; the number is being typed by hand again"
+                            % name)
+        else:
+            print("  \\%-14s in use" % name)
 
     print()
-    print("== discard totals quoted ==")
+    print("== hand-typed run counts (there should be none) ==")
+    quoted = find_quoted_run_counts(src)
+    if not quoted:
+        print("  none -- every run count comes from \\ombRuns")
+    for val, line in quoted:
+        # A literal here is a regression even when it happens to be correct today: it is correct
+        # by coincidence, and the next campaign will make it wrong silently.
+        agrees = " (agrees with the ledger today, but will not stay that way)" \
+            if val == m["n_runs"] else " (ledger: %d)" % m["n_runs"]
+        print("  line %-5d hand-typed %-5d%s" % (line, val, agrees))
+        failures.append("run count typed by hand at line %d (%d); use \\ombRuns" % (line, val))
+
+    print()
+    print("== hand-typed discard totals (there should be none) ==")
     dq = find_quoted_discard_totals(src)
     if not dq:
-        print("  (none found)")
+        print("  none -- every discard total comes from \\ombDiscarded")
     for val, line in dq:
-        # These are quoted as "roughly", so a rounded figure is expected; check the rounding is
-        # still honest rather than demanding equality.
-        slack = max(args.tolerance_pct / 100.0 * m["discarded_total"], 5000)
-        ok = abs(val - m["discarded_total"]) <= slack
-        print("  line %-5d quotes %-8d %s" % (line, val, "OK (within rounding)" if ok else
-                                              "MISMATCH (ledger: %d)" % m["discarded_total"]))
-        if not ok:
-            failures.append("discard total at line %d: paper %d, ledger %d"
-                            % (line, val, m["discarded_total"]))
+        agrees = " (agrees with the ledger today, but will not stay that way)" \
+            if abs(val - m["discarded_total"]) <= max(
+                args.tolerance_pct / 100.0 * m["discarded_total"], 0) \
+            else " (ledger: %d)" % m["discarded_total"]
+        print("  line %-5d hand-typed %-9d%s" % (line, val, agrees))
+        failures.append("discard total typed by hand at line %d (%d); use \\ombDiscarded"
+                        % (line, val))
 
     print()
     print("== unsaturated-subset counts (a legitimately smaller number) ==")
@@ -222,6 +251,23 @@ def main(argv=None):
         print("  withdrawal it justifies must be revisited before anything else in this paper.")
         failures.append("ledger contains %d negative samples; paper claims none"
                         % m["negatives"])
+
+    print()
+    print("== the generated macros against the ledger ==")
+    from emit_paper_numbers import render  # noqa: E402
+    if not os.path.exists(args.generated):
+        print("  missing: %s -- run scripts/emit_paper_numbers.py" % args.generated)
+        failures.append("%s does not exist" % args.generated)
+    else:
+        with open(args.generated, encoding="utf-8") as fh:
+            have = fh.read().replace("\r\n", "\n")
+        if have != render(m):
+            print("  STALE: %s disagrees with the ledger" % args.generated)
+            print("  regenerate with: python scripts/emit_paper_numbers.py")
+            failures.append("%s is stale" % args.generated)
+        else:
+            print("  %s matches (%d runs, %d discarded)"
+                  % (args.generated, m["n_runs"], m["discarded_total"]))
 
     print()
     if failures:

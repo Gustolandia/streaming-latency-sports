@@ -1231,3 +1231,43 @@ it is checkable: the campaign script, the eight invalid rows and their reasons a
 **Also worth one line in §6.7:** a benchmark whose distributed mode does not survive eight attempts
 by readers of its source is itself a data point about the state of measurement practice this paper
 is describing.
+
+## Literature position for the resolution failure mode (2026-07-27)
+
+Searched for prior work on the second failure mode. Three bodies of work are close; none reports
+it, and the relationship to each should be stated rather than left for a referee to raise.
+
+**Coordinated omission (Tene, ~2013) — the closest, and a different mechanism.** CO is the
+canonical "your load generator is lying to you" result: a synchronous measurement thread blocks
+while the system under test stalls, so the worst samples are *never taken*, and reported
+percentiles are optimistic by orders of magnitude. Ours is the mirror image: the samples *are*
+taken, computed, and then **discarded by a guard** because a quantised subtraction returned zero.
+CO loses the slow tail; this loses the fast bulk. Both end in a confident summary computed from a
+biased subset, which is why they belong in the same paragraph — and why conflating them would be
+wrong.
+
+The sharpest connection: **OMB records into an HdrHistogram**, and HdrHistogram ships explicit
+machinery for CO (`recordSingleValueWithExpectedInterval`). The ecosystem has a correction for the
+known sampling bias and none for this one — and it is HdrHistogram's rejection of negative values
+that motivates the `> 0` guard in the first place. A defence against one measurement artefact
+created the conditions for another.
+
+**Dithering (signal processing, decades old) — the fix already exists elsewhere.** Breaking
+periodic sampling artefacts by randomising or offsetting the sampling instant is standard
+practice; the literature explicitly uses dithered measurement rates to distinguish true signal
+components from aliasing products. Our incommensurate-rate arms *are* dithering, arrived at as a
+diagnostic. The recommendation to benchmark authors is therefore not novel technology but a known
+technique never applied here: **do not pace a load generator at a rate commensurate with your
+timestamp resolution, and if you must, dither it.**
+
+**Clock granularity vs. pulse rate.** The relationship between a send interval and tick
+granularity is noted in the timing literature in terms of *staleness* (a 3 ms pulse on a 1 ms tick
+can be 2 ms stale). What is not reported is the consequence when a positivity guard sits
+downstream: staleness becomes *deletion*, and because the phase is locked, deletion is
+all-or-nothing across a whole run.
+
+**The novelty claim, stated narrowly.** Not "quantisation is unknown" — it is elementary. The
+contribution is the *interaction*: quantised timestamps, plus a producer paced at a commensurate
+interval, plus a positivity guard, together produce sample retention that is bimodal, run-to-run
+irreproducible, and invisible in the reported summary. We have found no report of that
+combination, and it occurs at 500 msg/s — a rate a benchmark user would choose for being round.

@@ -317,6 +317,12 @@ Both families compare **an instrument timescale against the interval being measu
 Both therefore worsen as `T_true` shrinks, which is why both bind hardest on the fast paths and
 small differences that broker comparisons exist to resolve. **This is the paper's general claim.**
 
+Within Family B there is a second unification, one level down: B1–B5 are regimes of a single
+rotation-orbit model — retention is the occupancy of an arc of width `T_true/τ` by the orbit of
+`φ → φ + Δ mod τ`, with B1 the expectation of the branch law at every q, B2 its q=1 corner, and
+the drift intermediates its third regime. Stated, checked against all existing arms, and
+pre-registered for chain17 in [general_model.md](general_model.md).
+
 ## B1 — retention law  *(ESTABLISHED, 2026-07-27)*
 
 Under **dephased** sampling, a sample survives a positivity guard only if its delivery crosses a

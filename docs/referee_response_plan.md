@@ -1602,3 +1602,30 @@ shutdown hook printing the authoritative totals (`valid=0`, `none_in_log` in the
 periodic counters sat near $67\%$ mid-run — the upper branch again — but periodic lines are
 quantised and non-authoritative, so it contributes nothing. The arm stands at $n=4$ with both
 branches realised, above the power threshold the analyser enforces.
+
+### The general model, and chain17 — pre-registered before any of its cells ran
+
+The Family-B laws are unified in `docs/general_model.md`: retention is the occupancy of an arc of
+width $\theta = T_{\mathrm{true}}/\tau$ by the orbit of the rotation
+$\varphi \mapsto \varphi + \Delta \bmod \tau$. Rational $\Delta/\tau = p/q$ gives a $q$-point
+orbit — a run retains $\lfloor q\theta\rfloor/q$ or $\lceil q\theta\rceil/q$ with
+$P(\text{upper}) = \operatorname{frac}(q\theta)$ — and the continuous law B1 is the *expectation*
+of that at every $q$, not only its large-$q$ limit. Checked retrospectively against all $39$
+commensurate replicates: pooled mean retention $49.9\%$ against a weighted $\theta$ of $49.0\%$,
+and no arm rejects the branch binomial. Pacing drift is the third regime: a branch flips mid-run
+once $N\varepsilon\Delta$ spans a grid cell ($\varepsilon^* \approx 1/(pN)$, a few ppm at $q=1$),
+which is where the $41.4$, $18.0$ and $46.6$ intermediates live.
+
+Literature: Weyl equidistribution and the three-distance theorem carry the mathematics; Schuchman's
+condition from dither theory is the design rule our recommendation reduces to; coordinated
+omission stays the nearest benchmarking relative. We find no prior application of orbit occupancy
+to benchmark sample retention.
+
+**chain17** (55 cells, launched 17:16Z 2026-07-27) repeats the one defected cell, fills every arm
+to $n\ge5$, and tests six pre-registered predictions — P1 branch binomial at pooled $q{=}3$;
+P2/P3 second rates for $q{=}5$ (1250/s, the first arm with $p<q$) and $q{=}7$ (700/s); P4 that
+$q{=}9$ (900/s) *discriminates* under the class test where the superseded median test said it
+could not; P5 the drift crossover under a duration sweep; P6 the payload$\times q$ interaction at
+$300$/s — $32$ KB pins the arm flat at $66.7\%$ ($\operatorname{frac}(q\theta)=0.055$), $64$ KB
+frees it to the full $\{66.7, 100\}$ spread ($\operatorname{frac}=0.56$). Falsifiers for each are
+stated in `docs/general_model.md` before any cell ran.

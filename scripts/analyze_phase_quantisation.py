@@ -50,8 +50,11 @@ import os
 from fractions import Fraction
 
 # Campaigns whose cells vary the producer rate at a fixed payload. Others vary something else and
-# would contribute rates that differ in more than phase.
-RATE_CAMPAIGNS = ("rate_phase", "rate_phase2", "rate_q")
+# would contribute rates that differ in more than phase. chain17's `ultimate` belongs here; its
+# payload and duration companions (`ultimate_pay300`, `ultimate_dur1`, `ultimate_dur10`) are
+# deliberately absent -- mixing payloads or durations into the rate arms would corrupt exactly the
+# spreads this analysis exists to test, and each is analysed against its own prediction instead.
+RATE_CAMPAIGNS = ("rate_phase", "rate_phase2", "rate_q", "ultimate")
 
 # Below this, a rate is treated as commensurate with the tick. A denominator of 500 means the
 # phase pattern repeats only after 500 sends, which within a three-minute run at these rates is

@@ -3035,6 +3035,15 @@ sub-millisecond path is exposed to both at once, and neither is visible in what 
 no published result is wrong, because we have audited no deployment but our own. What we know is
 that both failures are reachable, large, and unreported in software nobody in this study wrote.
 
+One boundary on that belongs here rather than in a footnote. The cross-host case --- where the
+subtraction spans two clocks and could therefore delete a genuine causality violation rather than a
+tick collision --- we could not measure. Across eight attempts at three background-load levels,
+including none at all, the benchmark's distributed mode never completed a run, failing each time
+inside its own coordinator-to-worker protocol. Its exposure there rests on reading the source, not
+on observing it, and we distinguish the two. That a widely used benchmark's distributed mode does
+not survive eight attempts by readers of its own source is, separately, a fact about the state of
+the tooling this literature depends on.
+
 One smaller episode makes the same point from the other side. Checking our own provenance, we
 found that no surviving artefact recorded the replay rate of the earliest corpus, and that the
 records we did have disagreed. We recovered it anyway --- the start-up cost is a wall-clock

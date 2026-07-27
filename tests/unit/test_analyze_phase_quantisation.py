@@ -137,11 +137,23 @@ class TestGrouping:
         write_ledger(p, [(500, 50.0)])
         assert group_by_rate(load_rate_cells(str(p)))[0]["spread"] is None
 
-    def test_predicted_spread_is_100_over_q(self, tmp_path):
+    def test_cell_width_is_100_over_q(self, tmp_path):
         p = tmp_path / "l.csv"
         write_ledger(p, [(400, 10.0), (400, 60.0)])
         g = group_by_rate(load_rate_cells(str(p)))[0]
-        assert g["q"] == 2 and g["predicted_spread"] == pytest.approx(50.0)
+        assert g["q"] == 2 and g["cell_width"] == pytest.approx(50.0)
+
+    def test_no_incommensurate_rate_means_no_prediction_not_a_zero(self, tmp_path):
+        """Without a continuous value there is no cell position, so nothing is predicted.
+
+        Printing 0.0 here would claim a flat arm was expected, which is a measurement that was
+        never made.
+        """
+        p = tmp_path / "l.csv"
+        write_ledger(p, [(400, 10.0), (400, 60.0)])
+        g = group_by_rate(load_rate_cells(str(p)))[0]
+        assert g["predicted_spread"] is None
+        assert g["predicted_full"] is None
 
 
 class TestDegeneracy:
@@ -200,97 +212,148 @@ class TestDegeneracy:
         assert grid_distance_pts(None, 50.0) is None
         assert grid_distance_pts(3, None) is None
 
-    def test_even_arms_are_flagged_and_odd_arms_are_not(self, tmp_path):
+    def test_even_arms_sit_on_the_grid_and_odd_arms_do_not(self, tmp_path):
         p = tmp_path / "l.csv"
         write_ledger(p, [(457, 49.0), (457, 50.0),      # continuous ~49.5
                          (400, 50.0), (400, 68.0),      # q=2 -> grid passes through 50
                          (300, 35.0), (300, 65.0)])     # q=3 -> nearest grid point is 33.3
         g = {x["rate"]: x for x in group_by_rate(load_rate_cells(str(p)))}
-        assert g[400]["degenerate"] is True
-        assert g[300]["degenerate"] is False
+        assert g[400]["cell_fraction"] < 0.1        # on a grid point
+        assert g[300]["cell_fraction"] > 0.9        # nearly midway
 
-    def test_a_degenerate_arm_does_not_count_against_quantisation(self, tmp_path):
-        """q=2 sitting at the continuous value is silence, not evidence against."""
+    def test_an_on_grid_arm_is_predicted_flat_and_counts_when_it_is(self, tmp_path):
+        """The correction that matters.
+
+        Under the earlier formulation `spread ~ 100/q` was treated as a point prediction, so a
+        flat q=2 arm looked like a failure and had to be excluded to save the law. It is not a
+        failure: sitting on a grid point is exactly the condition that predicts a flat arm, so it
+        is evidence *for* the model and is counted as such.
+        """
         p = tmp_path / "l.csv"
-        write_ledger(p, [(500, 1.0), (500, 99.0),       # q=1 -> spread 98
-                         (400, 50.0), (400, 52.0),      # q=2 degenerate, spread 2 (not 50)
-                         (300, 40.0), (300, 74.0),      # q=3 -> spread 34 ~ 33.3
+        write_ledger(p, [(500, 1.0), (500, 99.0),       # q=1 mid-cell  -> full
+                         (400, 50.0), (400, 52.0),      # q=2 on grid   -> flat
+                         (300, 40.0), (300, 74.0),      # q=3 mid-cell  -> full
                          (457, 49.0), (457, 50.0)])
+        g = {x["rate"]: x for x in group_by_rate(load_rate_cells(str(p)))}
+        assert g[400]["predicted_full"] is False and g[400]["observed_full"] is False
         v = verdict(group_by_rate(load_rate_cells(str(p))))
         assert v["outcome"] == "QUANTISED"
-        assert "excluded q = 2" in v["why"]
+        assert "q=2 flat/flat" in v["why"]
 
-    def test_excluding_everything_is_undecided_not_confirmed(self, tmp_path):
-        """The exclusion must never be able to manufacture a verdict from no evidence."""
+    def test_an_on_grid_arm_that_shows_full_spread_refutes(self, tmp_path):
+        """The model has to be able to fail, and this is the shape of its failure."""
         p = tmp_path / "l.csv"
         write_ledger(p, [(500, 1.0), (500, 99.0),
-                         (400, 50.0), (400, 52.0),      # q=2 degenerate
-                         (800, 49.0), (800, 51.0),      # q=4 degenerate
+                         (400, 20.0), (400, 80.0),      # q=2 on grid but spread 60
+                         (457, 49.0), (457, 50.0)])
+        g = {x["rate"]: x for x in group_by_rate(load_rate_cells(str(p)))}
+        assert g[400]["predicted_full"] is False and g[400]["observed_full"] is True
+        v = verdict(group_by_rate(load_rate_cells(str(p))))
+        assert v["outcome"] in ("UNCLEAR", "REFUTED")
+        assert "q=2 flat/full" in v["why"]
+
+    def test_a_uniform_prediction_cannot_confirm_the_model(self, tmp_path):
+        """Agreeing with a prediction that never varies is not evidence."""
+        p = tmp_path / "l.csv"
+        write_ledger(p, [(500, 1.0), (500, 99.0),       # q=1 full
+                         (300, 40.0), (300, 74.0),      # q=3 full
                          (457, 49.0), (457, 50.0)])
         v = verdict(group_by_rate(load_rate_cells(str(p))))
         assert not v["decided"]
-        assert "degenerate" in v["why"]
+        assert "would not distinguish this model from a constant" in v["why"]
 
-    def test_the_table_shows_the_gap_that_justifies_each_exclusion(self, tmp_path, capsys):
+    def test_the_table_shows_the_cell_position_behind_each_call(self, tmp_path, capsys):
         p = tmp_path / "l.csv"
         write_ledger(p, [(500, 1.0), (500, 99.0), (400, 50.0), (400, 52.0),
                          (457, 49.0), (457, 50.0)])
         report(group_by_rate(load_rate_cells(str(p))))
         out = capsys.readouterr().out
-        assert "gridgap" in out
+        assert "incell" in out
         assert "continuous value" in out
-        assert "cannot decide between them" in out
+        assert "flat/flat" in out
 
-    def test_the_footnote_stays_away_when_nothing_is_degenerate(self, tmp_path, capsys):
+    def test_a_mismatch_is_marked_in_the_table(self, tmp_path, capsys):
         p = tmp_path / "l.csv"
-        write_ledger(p, [(500, 1.0), (500, 99.0), (300, 40.0), (300, 74.0),
+        write_ledger(p, [(500, 1.0), (500, 99.0), (400, 20.0), (400, 80.0),
                          (457, 49.0), (457, 50.0)])
         report(group_by_rate(load_rate_cells(str(p))))
-        assert "cannot decide between them" not in capsys.readouterr().out
+        assert "MISS" in capsys.readouterr().out
 
-    def test_degeneracy_reaches_the_csv(self, tmp_path):
+    def test_the_cell_position_reaches_the_csv(self, tmp_path):
         p = tmp_path / "l.csv"
         out = tmp_path / "q.csv"
         write_ledger(p, [(500, 1.0), (500, 99.0), (400, 50.0), (400, 52.0),
                          (457, 49.0), (457, 50.0)])
         main(["--ledger", str(p), "--out", str(out)])
         rows = {r["rate_hz"]: r for r in csv.DictReader(out.open(encoding="utf-8"))}
-        assert rows["400"]["degenerate"] == "True"
-        assert float(rows["400"]["grid_distance_pts"]) < 1.0
-        assert rows["500"]["degenerate"] == "False"
+        assert float(rows["400"]["cell_fraction"]) < 0.1
+        assert rows["400"]["predicted_full"] == "False"
+        assert rows["400"]["observed_full"] == "False"
+        assert rows["500"]["predicted_full"] == "True"
+
+    def test_a_missing_prediction_prints_as_missing_not_as_zero(self, tmp_path, capsys):
+        """No incommensurate arm means no continuous value, so no prediction exists.
+
+        Printing 0.0 would assert that a flat arm was expected -- a claim about a measurement
+        never taken. It must render as absent, and it must not crash on the None either.
+        """
+        p = tmp_path / "l.csv"
+        write_ledger(p, [(400, 10.0), (400, 60.0)])
+        report(group_by_rate(load_rate_cells(str(p))))
+        row = [ln for ln in capsys.readouterr().out.splitlines() if ln.strip().startswith("400/s")]
+        assert row, "the arm should still be listed"
+        # Columns: rate q n width incell pred spread call ... -- check the prediction column
+        # itself, since "0.0" appears as a substring of the 50.0 width and spread either way.
+        fields = row[0].split()
+        assert fields[5] == "-", "prediction should be absent, not zero: %r" % row[0]
+        assert fields[4] == "-", "cell position should be absent too"
 
 
 class TestVerdict:
-    def _g(self, *specs):
-        """specs: (q_rate, spread)"""
-        return [{"rate": r, "q": phase_denominator(r), "spread": s,
-                 "commensurate": phase_denominator(r) <= MAX_MEANINGFUL_Q}
-                for r, s in specs]
+    def _from(self, tmp_path, rows):
+        p = tmp_path / "v.csv"
+        write_ledger(p, rows)
+        return verdict(group_by_rate(load_rate_cells(str(p))))
 
-    def test_only_the_extremes_is_undecided(self):
-        """The state this tool was written in: a rule announced here would be unfounded."""
-        v = verdict(self._g((500, 99.0), (457, 2.0)))
-        assert not v["decided"] and "untested" in v["why"]
-
-    def test_no_incommensurate_rate_is_undecided(self):
-        v = verdict(self._g((500, 99.0), (400, 50.0)))
+    def test_without_an_incommensurate_rate_nothing_can_be_said(self, tmp_path):
+        """No continuous value means no cell position, so no arm has a prediction."""
+        v = self._from(tmp_path, [(500, 1.0), (500, 99.0), (400, 20.0), (400, 70.0)])
         assert not v["decided"]
+        assert "continuous value is unknown" in v["why"]
 
-    def test_a_falling_spread_is_quantised(self):
-        v = verdict(self._g((500, 99.0), (400, 50.0), (300, 33.0), (800, 25.0), (457, 2.0)))
+    def test_without_a_commensurate_rate_the_rule_is_untested(self, tmp_path):
+        v = self._from(tmp_path, [(457, 49.0), (457, 50.0), (383, 51.0), (383, 52.0)])
+        assert not v["decided"]
+        assert "untested" in v["why"]
+
+    def test_both_classes_matching_is_quantised(self, tmp_path):
+        v = self._from(tmp_path, [(500, 1.0), (500, 99.0),      # q=1 mid  -> full, is full
+                                  (400, 50.0), (400, 52.0),      # q=2 grid -> flat, is flat
+                                  (300, 40.0), (300, 74.0),      # q=3 mid  -> full, is full
+                                  (457, 49.0), (457, 50.0)])
         assert v["outcome"] == "QUANTISED"
+        assert v["disagree"] == []
 
-    def test_intermediate_q_behaving_like_multiples_is_binary(self):
-        v = verdict(self._g((500, 99.0), (400, 97.0), (300, 96.0), (457, 2.0)))
-        assert v["outcome"].startswith("BINARY (any rational")
+    def test_a_full_arm_that_comes_out_flat_is_a_miss(self, tmp_path):
+        v = self._from(tmp_path, [(500, 49.0), (500, 50.0),      # q=1 mid -> full, but flat
+                                  (400, 50.0), (400, 52.0),      # q=2 grid -> flat, is flat
+                                  (457, 49.0), (457, 50.0)])
+        assert v["decided"]
+        assert v["outcome"] in ("UNCLEAR", "REFUTED")
+        assert any(g["q"] == 1 for g in v["disagree"])
 
-    def test_intermediate_q_behaving_like_incommensurate_is_binary(self):
-        v = verdict(self._g((500, 99.0), (400, 3.0), (300, 4.0), (457, 2.0)))
-        assert v["outcome"].startswith("BINARY (only exact")
+    def test_everything_wrong_is_refuted_not_unclear(self, tmp_path):
+        v = self._from(tmp_path, [(500, 49.0), (500, 50.0),      # q=1 mid -> full, but flat
+                                  (400, 20.0), (400, 80.0),      # q=2 grid -> flat, but full
+                                  (457, 49.0), (457, 50.0)])
+        assert v["outcome"] == "REFUTED"
 
-    def test_disordered_intermediates_are_unclear(self):
-        v = verdict(self._g((500, 99.0), (400, 20.0), (300, 80.0), (457, 2.0)))
-        assert v["outcome"] == "UNCLEAR"
+    def test_the_verdict_names_every_arm_and_both_of_its_classes(self, tmp_path):
+        """A reader must be able to check the call without rerunning anything."""
+        v = self._from(tmp_path, [(500, 1.0), (500, 99.0), (400, 50.0), (400, 52.0),
+                                  (300, 40.0), (300, 74.0), (457, 49.0), (457, 50.0)])
+        for frag in ("q=1 full/full", "q=2 flat/flat", "q=3 full/full"):
+            assert frag in v["why"]
 
 
 class TestCLI:
@@ -309,13 +372,13 @@ class TestCLI:
         main(["--ledger", str(p)])
         assert "rule is arithmetic" not in capsys.readouterr().out
 
-    def test_the_quantised_narrative_prints_when_the_curve_holds(self, tmp_path, capsys):
+    def test_the_quantised_narrative_prints_when_every_arm_matches(self, tmp_path, capsys):
         """The payoff sentence: safety comes from a large denominator, not a chosen rate."""
         p = tmp_path / "l.csv"
-        write_ledger(p, [(500, 1.0), (500, 99.0),          # q=1  -> spread 98
-                         (400, 25.0), (400, 74.0),          # q=2  -> spread 49
-                         (300, 40.0), (300, 74.0),          # q=3  -> spread 34
-                         (457, 50.0), (457, 52.0)])         # large q -> spread 2
+        write_ledger(p, [(500, 1.0), (500, 99.0),           # q=1 mid-cell  -> full, is full
+                         (400, 50.0), (400, 52.0),          # q=2 on grid   -> flat, is flat
+                         (300, 40.0), (300, 74.0),          # q=3 mid-cell  -> full, is full
+                         (457, 49.0), (457, 50.0)])         # large q       -> continuous
         assert main(["--ledger", str(p)]) == 0
         out = capsys.readouterr().out
         assert "QUANTISED" in out
@@ -326,12 +389,13 @@ class TestCLI:
             self, tmp_path, capsys):
         """Reaching a verdict is not the same as reaching *that* verdict."""
         p = tmp_path / "l.csv"
-        write_ledger(p, [(500, 1.0), (500, 99.0),
-                         (300, 20.0), (300, 80.0),      # q=3 spread 60, nowhere near 33.3
+        write_ledger(p, [(500, 49.0), (500, 50.0),      # q=1 mid-cell -> full, but flat  MISS
+                         (400, 50.0), (400, 52.0),      # q=2 on grid  -> flat, is flat
+                         (300, 40.0), (300, 74.0),      # q=3 mid-cell -> full, is full
                          (457, 49.0), (457, 50.0)])
         report(group_by_rate(load_rate_cells(str(p))))
         out = capsys.readouterr().out
-        assert "UNCLEAR" in out
+        assert "UNCLEAR" in out              # 2 of 3 match: short of confirmed, short of refuted
         assert "rule is arithmetic" not in out
 
     def test_a_missing_ledger_is_an_error(self, tmp_path, capsys):

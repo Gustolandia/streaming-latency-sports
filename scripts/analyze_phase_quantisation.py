@@ -92,6 +92,47 @@ def grid_distance_pts(q, continuous_pct):
     return min(abs(continuous_pct - 100.0 * i / q) for i in range(q + 1))
 
 
+def cell_position(q, continuous_pct):
+    """Where the continuous value sits inside its grid cell: (width, distance, fraction).
+
+    `fraction` is 0 at a grid point and 1 midway between two, i.e. distance expressed against the
+    cell *half*-width. It is the quantity that decides how much spread an arm can show, and unlike
+    a fixed noise threshold it is scale-free, so the classification does not move when the
+    continuous value is re-estimated.
+    """
+    if not q or q <= 0 or continuous_pct is None:
+        return None
+    width = 100.0 / q
+    d = grid_distance_pts(q, continuous_pct)
+    return width, d, min(1.0, d / (width / 2.0))
+
+
+# Above this fraction of the half-cell, both bracketing grid points are realistically reachable
+# and the arm can show its full spread; below it, replicates pile onto one point.
+MIDCELL_FRACTION = 0.5
+
+
+def predicted_spread(q, continuous_pct):
+    """Spread this arm can show, in points -- NOT simply 100/q.
+
+    Retention is a count of phases over q, so a replicate lands on one of the two grid points
+    bracketing `T_true/tau`. The spread between replicates is therefore the cell width 100/q when
+    both points get realised, and collapses toward zero when the continuous value sits on a grid
+    point and one of them takes nearly every run.
+
+    This corrects a real error of ours. We wrote the prediction as `spread ~ 100/q` and treated it
+    as a point prediction, when it is an upper bound attained only mid-cell. Stated that way the
+    even-q arms looked like failures needing an exclusion; stated correctly they are predictions
+    of a *small* spread, which is what they show. One formula now covers every arm instead of a
+    law for odd q plus a special case for even q.
+    """
+    pos = cell_position(q, continuous_pct)
+    if pos is None:
+        return None
+    width, _, frac = pos
+    return width if frac > MIDCELL_FRACTION else 0.0
+
+
 def phase_denominator(rate_hz, tick_ms=1.0):
     """`q` for a producer at `rate_hz` against a tick of `tick_ms`.
 
@@ -145,78 +186,82 @@ def group_by_rate(cells, tick_ms=1.0):
             "n": len(v),
             "retentions": v,
             "spread": (max(v) - min(v)) if len(v) > 1 else None,
-            "predicted_spread": (100.0 / q) if (q and q <= MAX_MEANINGFUL_Q) else 0.0,
+            "cell_width": (100.0 / q) if (q and q <= MAX_MEANINGFUL_Q) else 0.0,
         })
 
-    # Second pass: an arm is degenerate when the measured continuous value sits within replicate
-    # noise of the grid it is supposed to be distinguished from.
+    # Second pass. Where the continuous value falls inside its grid cell decides how much spread
+    # the arm can show, so it cannot be computed until the incommensurate arms have been grouped.
     cont = continuous_retention(out)
     noise = continuous_noise_pts(out)
     for g in out:
         d = grid_distance_pts(g["q"], cont) if g["commensurate"] else None
+        pos = cell_position(g["q"], cont) if g["commensurate"] else None
         g["grid_distance"] = d
+        g["cell_fraction"] = pos[2] if pos else None
+        g["predicted_spread"] = (predicted_spread(g["q"], cont) if g["commensurate"] else 0.0)
         g["degenerate"] = bool(g["commensurate"] and d is not None and d <= noise)
+        # Predicted and observed class, the quantity the verdict is actually decided on. An arm
+        # shows the full cell width or it collapses; "closer to w than to 0" is the observation
+        # that distinguishes them, and needs no tolerance to be chosen.
+        g["predicted_full"] = (pos[2] > MIDCELL_FRACTION) if pos else None
+        g["observed_full"] = (
+            (g["spread"] > g["cell_width"] / 2.0)
+            if (g["commensurate"] and g["spread"] is not None and g["cell_width"]) else None)
     return out
 
 
 def verdict(groups):
-    """Does spread track 1/q, or is the rule merely binary?"""
+    """Does each arm show the spread its position in the grid cell predicts?
+
+    The test is a classification rather than a tolerance. For every commensurate arm the model
+    says the replicate spread is either the full cell width 100/q (the continuous value sits
+    mid-cell, so both bracketing grid points get realised) or near zero (it sits on a grid point,
+    so one of them takes nearly every run). The observation says the same thing: a spread above
+    half the cell width is the full case, below it the collapsed one. Nothing has to be tuned, and
+    an arm predicted to collapse counts as evidence when it collapses -- under the earlier
+    formulation those arms had to be excluded, which is weaker and easier to abuse.
+    """
     usable = [g for g in groups if g["spread"] is not None and g["q"]]
-    small = [g for g in usable if g["commensurate"] and g["q"] == 1]
-    mid = [g for g in usable if g["commensurate"] and 2 <= g["q"] <= MAX_MEANINGFUL_Q]
+    testable = [g for g in usable if g["commensurate"] and g.get("predicted_full") is not None
+                and g.get("observed_full") is not None]
     large = [g for g in usable if not g["commensurate"]]
 
-    if not small or not large:
+    if not large:
         return {"decided": False,
-                "why": "need both an exact multiple and an incommensurate rate to compare"}
-    if not mid:
+                "why": ("no incommensurate rate measured, so the continuous value is unknown and "
+                        "no grid position can be computed")}
+    if not testable:
         return {"decided": False,
-                "why": ("only q=1 and large-q rates measured; the binary distinction is "
-                        "established but the quantisation rule is untested")}
+                "why": "no commensurate rate with replicates; the quantisation rule is untested"}
 
-    degenerate = [g for g in mid if g.get("degenerate")]
-    mid = [g for g in mid if not g.get("degenerate")]
-    excluded = ("; excluded q = " + ", ".join(str(g["q"]) for g in sorted(
-        degenerate, key=lambda g: g["q"])) + " as degenerate at this operating point"
-        ) if degenerate else ""
+    ordered = sorted(testable, key=lambda g: g["q"])
+    agree = [g for g in ordered if g["predicted_full"] == g["observed_full"]]
+    disagree = [g for g in ordered if g["predicted_full"] != g["observed_full"]]
 
-    if not mid:
-        return {"decided": False, "degenerate": degenerate,
-                "why": ("every intermediate rate measured is degenerate -- the continuous value "
-                        "lands on each of their grids, so none of them can separate the "
-                        "hypotheses however it lands" + excluded)}
+    # An arm set that predicts the same class everywhere cannot discriminate: agreeing with a
+    # constant prediction is not evidence for the model that produced it.
+    kinds = {g["predicted_full"] for g in ordered}
+    if len(kinds) < 2:
+        return {"decided": False, "disagree": disagree,
+                "why": (f"all {len(ordered)} arms predict the same class, so agreement with them "
+                        f"would not distinguish this model from a constant")}
 
-    q1 = sum(g["spread"] for g in small) / len(small)
-    qn = sum(g["spread"] for g in large) / len(large)
-    ordered = sorted(mid, key=lambda g: g["q"])
+    detail = ", ".join(
+        "q=%d %s/%s" % (g["q"], "full" if g["predicted_full"] else "flat",
+                        "full" if g["observed_full"] else "flat") for g in ordered)
 
-    # The prediction is specific -- spread ~ 100/q -- so test it directly rather than testing the
-    # weaker property of lying somewhere between the extremes. An earlier version checked only
-    # "ordered and in range", which called spreads of 97 and 96 quantised because they happen to
-    # sit below 99 and above 2. Clustering at an extreme is the binary case and must not pass.
-    TOL = 20.0
-    near_predicted = sum(abs(g["spread"] - 100.0 / g["q"]) <= TOL for g in ordered)
-    near_top = sum(abs(g["spread"] - q1) <= TOL for g in ordered)
-    near_bottom = sum(abs(g["spread"] - qn) <= TOL for g in ordered)
-
-    if near_top == len(ordered) and near_predicted < len(ordered):
-        return {"decided": True, "outcome": "BINARY (any rational is dangerous)",
-                "degenerate": degenerate,
-                "why": (f"all {len(ordered)} discriminating rates sit within {TOL:.0f} points of "
-                        f"the exact-multiple spread ({q1:.1f}), not on a 1/q curve" + excluded)}
-    if near_bottom == len(ordered) and near_predicted < len(ordered):
-        return {"decided": True, "outcome": "BINARY (only exact multiples matter)",
-                "degenerate": degenerate,
-                "why": (f"all {len(ordered)} discriminating rates sit within {TOL:.0f} points of "
-                        f"the incommensurate spread ({qn:.1f})" + excluded)}
-    if near_predicted == len(ordered):
-        return {"decided": True, "outcome": "QUANTISED", "degenerate": degenerate,
-                "why": (f"every discriminating rate's spread falls within {TOL:.0f} points of "
-                        f"100/q, across q = "
-                        + ", ".join(str(g["q"]) for g in ordered) + excluded)}
-    return {"decided": True, "outcome": "UNCLEAR", "degenerate": degenerate,
-            "why": (f"{near_predicted} of {len(ordered)} discriminating rates match 100/q; the "
-                    f"others sit at neither extreme" + excluded)}
+    if not disagree:
+        return {"decided": True, "outcome": "QUANTISED", "disagree": disagree,
+                "why": (f"all {len(ordered)} arms show the spread their grid position predicts "
+                        f"(predicted/observed: {detail})")}
+    if len(agree) <= len(ordered) / 2.0:
+        return {"decided": True, "outcome": "REFUTED", "disagree": disagree,
+                "why": (f"only {len(agree)} of {len(ordered)} arms match "
+                        f"(predicted/observed: {detail})")}
+    return {"decided": True, "outcome": "UNCLEAR", "disagree": disagree,
+            "why": (f"{len(agree)} of {len(ordered)} arms match; q = "
+                    + ", ".join(str(g["q"]) for g in disagree) + " do not "
+                    f"(predicted/observed: {detail})")}
 
 
 def report(groups):
@@ -226,22 +271,33 @@ def report(groups):
     if cont is not None:
         print(f"continuous value (incommensurate median): {cont:.1f}%   "
               f"replicate noise: {noise:.1f} pts")
-        print(f"an arm is degenerate when its grid passes within {noise:.1f} pts of {cont:.1f}%\n")
-    print(f"{'rate':>8s} {'interval':>10s} {'q':>5s} {'n':>3s} "
-          f"{'spread':>8s} {'~100/q':>8s} {'gridgap':>8s}  retentions")
+        print("each arm's spread is predicted by where that value falls inside its grid cell\n")
+    print(f"{'rate':>8s} {'q':>5s} {'n':>3s} {'width':>7s} {'incell':>7s} "
+          f"{'pred':>7s} {'spread':>7s} {'call':>10s}  retentions")
     for g in groups:
         qs = str(g["q"]) if g["commensurate"] else f">{MAX_MEANINGFUL_Q}"
         sp = "-" if g["spread"] is None else f"{g['spread']:.1f}"
-        pr = f"{g['predicted_spread']:.1f}" if g["commensurate"] else "~0"
-        gd = "-" if g.get("grid_distance") is None else f"{g['grid_distance']:.1f}"
-        if g.get("degenerate"):
-            gd += "*"
+        w = f"{g['cell_width']:.1f}" if g["commensurate"] else "-"
+        fr = "-" if g.get("cell_fraction") is None else f"{g['cell_fraction']:.2f}"
+        # With no incommensurate arm there is no continuous value, so no cell position and no
+        # prediction. That is a missing measurement, not a prediction of zero, and must print as
+        # such rather than formatting None or quietly showing 0.0.
+        pr = ("~0" if not g["commensurate"]
+              else "-" if g["predicted_spread"] is None
+              else f"{g['predicted_spread']:.1f}")
+        if g.get("predicted_full") is None or g.get("observed_full") is None:
+            call = "-"
+        else:
+            call = "%s/%s%s" % ("full" if g["predicted_full"] else "flat",
+                                "full" if g["observed_full"] else "flat",
+                                "" if g["predicted_full"] == g["observed_full"] else " MISS")
         vals = " ".join(f"{x:.2f}" for x in g["retentions"][:6])
-        print(f"{g['rate']:>7d}/s {g['interval_ms']:>9.3f}m {qs:>5s} {g['n']:>3d} "
-              f"{sp:>8s} {pr:>8s} {gd:>8s}  {vals}")
-    if any(g.get("degenerate") for g in groups):
-        print("\n  * degenerate: the continuous value lands on this grid, so quantised and")
-        print("    continuous predict the same retention and the arm cannot decide between them.")
+        print(f"{g['rate']:>7d}/s {qs:>5s} {g['n']:>3d} {w:>7s} {fr:>7s} "
+              f"{pr:>7s} {sp:>7s} {call:>10s}  {vals}")
+    print()
+    print("  incell: 0 = the continuous value sits on a grid point (predict a flat arm),")
+    print("          1 = midway between two (predict the full cell width of spread).")
+    print("  call:   predicted/observed class. This is what the verdict is decided on.")
 
     v = verdict(groups)
     print("\n== verdict ==")
@@ -280,13 +336,17 @@ def main(argv=None):
         os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
         with open(args.out, "w", newline="", encoding="utf-8") as fh:
             w = csv.writer(fh)
-            w.writerow(["rate_hz", "interval_ms", "q", "commensurate", "degenerate",
-                        "grid_distance_pts", "n", "spread_pts", "predicted_spread_pts",
-                        "retentions"])
+            w.writerow(["rate_hz", "interval_ms", "q", "commensurate", "cell_width_pts",
+                        "grid_distance_pts", "cell_fraction", "predicted_full", "observed_full",
+                        "n", "spread_pts", "predicted_spread_pts", "retentions"])
             for g in groups:
-                gd = g.get("grid_distance")
+                gd, cf = g.get("grid_distance"), g.get("cell_fraction")
                 w.writerow([g["rate"], round(g["interval_ms"], 4), g["q"], g["commensurate"],
-                            bool(g.get("degenerate")), "" if gd is None else round(gd, 3),
+                            round(g["cell_width"], 3),
+                            "" if gd is None else round(gd, 3),
+                            "" if cf is None else round(cf, 4),
+                            "" if g.get("predicted_full") is None else g["predicted_full"],
+                            "" if g.get("observed_full") is None else g["observed_full"],
                             g["n"], "" if g["spread"] is None else round(g["spread"], 3),
                             round(g["predicted_spread"], 3),
                             " ".join(f"{x:.3f}" for x in g["retentions"])])

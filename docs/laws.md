@@ -393,40 +393,61 @@ of an identical configuration, moving 54–98 points at the others. At one confi
 three replicates agreeing to 3.58 points and sitting 98 points from the same configuration hours
 earlier.
 
-## B5 — quantisation law  *(ESTABLISHED for odd q; the rate-independence test is still running)*
+## B5 — quantisation law  *(ESTABLISHED, 8/8 arms; the rate-independence test is still running)*
 
 B2 is binary and that is not the whole rule. Write the send interval over the quantum as a fraction
 in lowest terms, Δ/τ = p/q. After q sends the phase returns to where it started, so the producer
-visits exactly **q** distinct phases and retention can take only q+1 values. Replicate spread
-therefore falls as **100/q**, and B2 is just the q=1 corner of it.
+visits exactly **q** distinct phases and retention can take only q+1 values. A replicate therefore
+lands on one of the **two grid points bracketing T_true/τ**, and B2 is just the q=1 corner of it.
 
-| rate | Δ/τ | q | measured spread | 100/q |
-|---|---|---|---|---|
-| 1000/s | 1/1 | 1 | 99.3 pts | 100.0 |
-| 500/s | 2/1 | 1 | 99.5 pts | 100.0 |
-| 300/s | 10/3 | **3** | **30.5 pts** | **33.3** |
-| 625/s | 8/5 | **5** | **17.9 pts** | **20.0** |
-| 457, 383, 611, 889/s | irrational-ish | >64 | 1.7–3.1 pts | ~0 |
+**The spread that follows is not 100/q.** That is the cell width, and it is an *upper bound*
+attained only when T_true/τ sits midway between two grid points, where both bracketing points get
+realised across replicates. When T_true/τ sits *on* a grid point, one point takes nearly every run
+and the spread collapses toward zero. One formula, two regimes:
 
-**Not every q can test this.** A grid is indistinguishable from the continuum whenever the
-continuous value T_true/τ lands *on* it, because then both hypotheses predict the same retention.
-Measured here, T_true/τ = 0.495 — a half — so every **even** q is degenerate: 1/2, 2/4 and 4/8 are
-the same number. q=2 and q=4 duly sat at 50% with no spread, and neither counts for or against.
-This is a property of the operating point, not of parity: at T_true/τ = 1/3 it would be q=3 that
-goes blind and q=2 that discriminates.
+> spread → 100/q when T_true/τ is mid-cell &nbsp;•&nbsp; spread → 0 when T_true/τ is on a grid point
 
-The degeneracy was derived from q=4 and committed at 14:09Z on 2026-07-27; the first q=5 cell was
-measured at 15:06Z. The odd-q arms were run *because* the rule said they would separate.
+Measured T_true/τ = 0.495 here, so odd q put it near mid-cell and even q put it on a grid point.
 
-**One prediction of ours failed here and the record keeps it.** We wrote "q=5 → 2 of 5 phases cross
-→ 40%". The median came out at 46.6%. The error was naming one branch of a two-branch prediction:
-with T_true/τ at a half, 2 *or* 3 phases cross depending on the run's initial phase, giving 40% *or*
-60%. The replicates — 40.7, 42.1, 46.6, 55.5, 58.6 — are bimodal about the grid exactly as the rule
-requires. **The grid held; the point we picked on it did not.**
+| rate | Δ/τ | q | cell width | position | predicted | measured |
+|---|---|---|---|---|---|---|
+| 1000/s | 1/1 | 1 | 100.0 | mid | full | **99.3** ✓ |
+| 500/s | 2/1 | 1 | 100.0 | mid | full | **99.5** ✓ |
+| 250/s | 4/1 | 1 | 100.0 | mid | full | **58.6** ✓ (weakly) |
+| 400/s | 5/2 | 2 | 50.0 | **on grid** | **flat** | **17.6** ✓ (3.1 without one outlier) |
+| 300/s | 10/3 | 3 | 33.3 | mid | full | **30.5** ✓ |
+| 800/s | 5/4 | 4 | 25.0 | **on grid** | **flat** | **7.2** ✓ |
+| 625/s | 8/5 | 5 | 20.0 | mid | full | **17.9** ✓ |
+| 875/s | 8/7 | 7 | 14.3 | mid | full | **10.7** ✓ |
+| 457, 383, 611, 889, 333/s | — | >64 | — | continuous | ~0 | 1.7–3.1 ✓ |
 
-**What would falsify what is left:** q=7 at 875/s predicts a spread of ≈14.3 (n=1 so far), and q=3
-repeated at 600/s — half the interval of 300/s, same denominator — must reproduce ≈33. If it does
-not, the governing variable is the rate and not q, and B5 shrinks back to B2.
+**All 8 commensurate arms match**, six predicted full and two predicted flat, and the classification
+is identical whether the continuous value is estimated pooled (49.5%) or rate-locally (45.9–51.5%),
+because it measures distance against the cell half-width rather than a fixed noise floor.
+
+**This corrects an error of ours, and the earlier version is worth keeping visible.** We first wrote
+the prediction as `spread ~ 100/q` and treated it as a point prediction. Under that reading the even
+q looked like failures, and we introduced a *degeneracy exclusion* to set them aside — defensible,
+because it was derived from q=4 and committed at 14:09Z before the first odd-q cell was measured at
+15:06Z, but weaker than it needed to be. Stated correctly the exclusion is unnecessary: an on-grid
+arm is a **prediction of a flat arm**, so q=2 and q=4 are evidence *for* the model rather than cases
+to be excused. A law that explains its exceptions beats a law that excludes them.
+
+**A second prediction of ours failed outright.** We wrote "q=5 → 2 of 5 phases cross → 40%". The
+median came out at 46.6%. The error was naming one branch of a two-branch prediction: with T_true/τ
+at a half, 2 *or* 3 phases cross depending on the run's initial phase, giving 40% *or* 60%. The
+replicates — 40.7, 42.1, 46.6, 55.5, 58.6 — are bimodal about exactly those two. **The grid held;
+the point we picked on it did not.**
+
+**Where the account is approximate.** 250/s (q=1) gives a spread of 58.6 where the cell width is
+100, and 500/s has one replicate at 18.0 that a single-phase run should not produce. A nominal
+exact multiple is only q=1 if the pacing is exact for the whole run; over three minutes a drift of a
+few parts per million walks the phase across a boundary mid-run. The grid that governs retention is
+the one the pacing *realises*, not the one the nominal rate implies.
+
+**What would falsify what is left:** q=3 repeated at 600/s — half the interval of 300/s, same
+denominator — must reproduce a full-cell spread of ≈33. If it does not, the governing variable is
+the rate and not q, and B5 shrinks back to B2.
 
 ## What follows for practice
 

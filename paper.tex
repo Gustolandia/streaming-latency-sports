@@ -1456,6 +1456,136 @@ replicate noise, so the ratio is scatter over a small denominator. The two unmar
 signal-to-noise ratio near $20$ and carry the result.}
 \end{table}
 
+\subsubsection{Commensurability is not binary: retention is quantised by the denominator}
+\label{sec:extquant}
+
+Section~\ref{sec:extphase} separates two cases, an exact multiple and an incommensurate rate, and
+that separation is real but it is not the rule. Write the send interval over the tick as a fraction
+in lowest terms,
+\[
+\frac{\Delta}{\tau} \;=\; \frac{p}{q}, \qquad \gcd(p,q) = 1 .
+\]
+After $q$ sends the phase within the tick returns to where it started, so a producer visits exactly
+$q$ distinct phases however long it runs. Retention is then a count of crossing phases over $q$, so
+a single run lands on one of the two grid points that bracket $T_{\mathrm{true}}/\tau$. An exact
+multiple is $q=1$, the corner where a run is all-or-nothing; an incommensurate rate is $q$ so large
+that the phase set is effectively continuous. Everything between is a grid, and the coarser the grid
+the worse the reproducibility.
+
+\paragraph{What the replicate spread does, and does not, predict.} It is tempting to write the
+prediction as ``spread $\approx 100/q$'', and we did. That is wrong, and the way it is wrong matters
+because it is the difference between a rule with exceptions and a rule without any. The quantity
+$100/q$ is the \emph{cell width}. It is an upper bound, reached only when $T_{\mathrm{true}}/\tau$
+falls midway between two grid points, because only then do replicates realise both bracketing points.
+When $T_{\mathrm{true}}/\tau$ falls \emph{on} a grid point, one point takes nearly every run and the
+spread collapses toward zero. One statement covers both:
+\begin{equation}
+\label{eq:quant}
+\text{spread} \;\longrightarrow\;
+\begin{cases}
+100/q & \text{when } T_{\mathrm{true}}/\tau \text{ sits mid-cell,}\\[2pt]
+0 & \text{when } T_{\mathrm{true}}/\tau \text{ sits on a grid point.}
+\end{cases}
+\end{equation}
+The measured continuous value is $T_{\mathrm{true}}/\tau = 0.495$, a half to within replicate noise.
+A half lies on every even grid ($1/2$, $2/4$, $4/8$) and never on an odd one, so at this operating
+point the odd denominators are predicted to show their full cell width and the even ones to show
+almost none. That is a prediction about specific arms before they are run, not a description after.
+
+\paragraph{Every arm behaves as its position predicts.} Table~\ref{tab:quantisation} states, for each
+rate, the cell width $100/q$, where the continuous value sits inside its cell, the resulting
+prediction, and the measured spread. The test needs no tolerance: an arm either shows the full cell
+width or collapses, and a spread above half the cell width separates the two.
+
+\begin{table}[t]
+\caption{Replicate spread against the phase denominator $q$, at fixed payload, load, duration and
+host. \emph{Position} is the distance from the measured continuous value to the nearest grid point,
+expressed against the cell half-width: $0$ means it sits on a grid point, $1$ midway between two.
+Because position is scale-free, every call below is unchanged whether the continuous value is
+estimated pooled ($49.5\%$) or separately at each rate ($45.9$--$51.5\%$).}
+\label{tab:quantisation}
+\small
+\begin{tabular}{@{}rlrrrrlr@{}}
+\toprule
+rate & $\Delta/\tau$ & $q$ & $n$ & width & position & predicted & spread \\
+\midrule
+$1000$/s & $1/1$  & $1$ & $3$ & $100.0$ & $0.99$ & full & $99.3$ \\
+$500$/s  & $2/1$  & $1$ & $4$ & $100.0$ & $0.99$ & full & $99.5$ \\
+$250$/s  & $4/1$  & $1$ & $3$ & $100.0$ & $0.99$ & full & $58.6$ \\
+$400$/s  & $5/2$  & $2$ & $5$ & $50.0$  & $0.02$ & flat & $17.6$ \\
+$300$/s  & $10/3$ & $3$ & $5$ & $33.3$  & $0.97$ & full & $30.5$ \\
+$800$/s  & $5/4$  & $4$ & $5$ & $25.0$  & $0.04$ & flat & $7.2$  \\
+$625$/s  & $8/5$  & $5$ & $5$ & $20.0$  & $0.95$ & full & $17.9$ \\
+$875$/s  & $8/7$  & $7$ & $5$ & $14.3$  & $0.93$ & full & $10.7$ \\
+\midrule
+\multicolumn{8}{@{}l}{\emph{incommensurate --- phase set effectively continuous}} \\
+$889$/s  & $1000/889$ & ${>}64$ & $5$ & --- & --- & $\approx 0$ & $1.7$ \\
+$457$/s  & ---    & ${>}64$ & $4$ & --- & --- & $\approx 0$ & $2.1$ \\
+$383$/s  & ---    & ${>}64$ & $4$ & --- & --- & $\approx 0$ & $2.8$ \\
+$333$/s  & ---    & ${>}64$ & $3$ & --- & --- & $\approx 0$ & $3.1$ \\
+$611$/s  & ---    & ${>}64$ & $3$ & --- & --- & $\approx 0$ & $3.1$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All eight commensurate arms match, six predicting the full cell width and two predicting a flat one.
+Both classes are represented, which matters: agreement with a prediction that never varies would not
+distinguish this account from a constant.
+
+\paragraph{We report the correction because the first version was weaker and we published it to
+ourselves.} Treating $100/q$ as a point prediction made the even denominators look like failures, and
+we introduced an exclusion for them --- an arm cannot test a grid the continuous value sits on, so
+$q=2$ and $q=4$ were set aside. That exclusion was defensible and pre-registered: it was derived from
+the $q=4$ result and committed at 14:09Z on 2026-07-27, and the first cell of the first odd-$q$ arm
+was measured at 15:06Z, so the odd denominators were run \emph{because} the rule said they would
+separate. It was also unnecessary. Under Equation~\ref{eq:quant} an on-grid arm is a prediction of a
+flat arm, so $q=2$ and $q=4$ are evidence \emph{for} the account rather than cases to be excused. We
+had reached for a law that excluded its exceptions when one that explains them was available.
+
+What exposed it was checking whether the exclusion survived re-estimating one of its own inputs. The
+continuous value is not constant across rate --- it runs $51.2\%$ at $333$~msg/s down to $47.5\%$ at
+$889$, a trend of $4.15$ points against a replicate noise of $1.55$ --- and under a rate-local
+estimate $q=4$ ceased to be degenerate and became a failure. A classification that flips on that
+choice is not a classification. Measuring position against the cell half-width instead of a fixed
+noise floor removes the sensitivity: every call in Table~\ref{tab:quantisation} is the same under
+either estimate.
+
+\paragraph{A second prediction of ours failed, and no reading of it rescues the number.} We recorded,
+before running it, that $q=5$ would put $2$ of $5$ phases across a boundary and so retain about
+$40\%$. The five replicates gave a median of $46.6\%$ --- inside the incommensurate range and $6.6$
+points from what we wrote down. The error was again naming one branch of a two-branch prediction:
+with $T_{\mathrm{true}}/\tau$ at a half, $2$ \emph{or} $3$ phases cross depending on where a run's
+initial phase falls, so a replicate is predicted at $40\%$ or $60\%$ and the average of many is near
+$50$. The five values --- $40.7$, $42.1$, $46.6$, $55.5$, $58.6$ --- are bimodal about exactly those
+two branches, which is what the account requires and what no continuous account produces. The grid
+held; the point we picked on it did not.
+
+\paragraph{Where the account is approximate, stated rather than trimmed.} Three observations sit
+outside it. The $q=1$ arm at $250$~msg/s spreads $58.6$ points where the cell width is $100$, and one
+replicate at $500$~msg/s sits at $18.0$; a run confined to a single phase can produce neither. We
+read this as the limit of the idealisation: a nominal rate is $q=1$ only if the pacing is exact for
+the whole run, and over three minutes a drift of a few parts per million walks the phase across a
+boundary part-way through. The grid that governs retention is the one the pacing realises, not the
+one the nominal rate implies. Third, $q=2$'s spread of $17.6$ rests on a single replicate at $68.0$;
+the other four span $3.1$ points, which is the incommensurate noise level and exactly what an on-grid
+arm should show. We report the spread over all five rather than the four that agree.
+
+\paragraph{The relation is exact, not approximate, and one arm shows it directly.} At $889$~msg/s the
+interval over the tick is $1000/889 = 1.12486$, which is $0.00014$ from $9/8$ --- a ratio a
+practitioner would round to a small denominator without hesitation. It behaves as fully continuous
+($1.7$ points of spread). The reason is that $q$ matters relative to the number of samples in a run:
+$889$ phases visited over $160{,}000$ sends is dense coverage, while $3$ phases is a grid no amount of
+running will fill in. Being \emph{near} a simple fraction confers none of its danger, and the quantity
+that governs the damage is the exact denominator, not the decimal that approximates it.
+
+\paragraph{What this costs an experimenter.} The practical reading of Section~\ref{sec:extphase} would
+be to avoid round rates. That defence is insufficient. At $300$~msg/s the interval is $3.333$~ms,
+which is not a multiple of the tick and does not look dangerous, and its replicate spread is $30.5$
+points against $2$ to $3$ points at incommensurate rates a few percent away. Safety comes from a large
+denominator, not from avoiding exact multiples, and the denominator is not visible in the rate an
+operator types. A rate is dangerous in proportion to how few distinct phases it visits inside the
+clock's quantum.
+
 \subsubsection{Three replicates do not establish reproducibility}
 \label{sec:extreprod}
 

@@ -1390,21 +1390,58 @@ intervals differ by $19\%$ and their median retentions by under two points. Had 
 function of the pacing interval, they would separate; under a phase account the interval decides
 only \emph{whether} samples dephase, not what fraction then survives, so they had to agree.
 
-\paragraph{A quantitative form, and the reason it is stated as a prediction.} If send phases are
-uniform within the tick, a sample survives exactly when its delivery crosses a boundary, which for
-a true latency $T_{\mathrm{true}}$ below one tick $\tau$ occurs with probability
-$T_{\mathrm{true}}/\tau$. Hence
+\paragraph{A quantitative form, derived and then measured.} If send phases are uniform within the
+tick, a sample survives exactly when its delivery crosses a boundary, which for a true latency
+$T_{\mathrm{true}}$ below one tick $\tau$ occurs with probability $T_{\mathrm{true}}/\tau$. Hence
 \begin{equation}
 \label{eq:retention}
 \text{retention} \;=\; \min\!\left(1,\; \frac{T_{\mathrm{true}}}{\tau}\right)
 \qquad\text{(dephased sampling).}
 \end{equation}
 Both incommensurate arms sit near $50\%$, which with $\tau = 1$~ms implies
-$T_{\mathrm{true}} \approx 0.5$~ms --- agreeing with the unquantised publish-latency probe above,
+$T_{\mathrm{true}} \approx 0.5$~ms --- agreeing with the unquantised publish-latency probe above
 and with this project's own transport measurements of $0.1$ to $0.5$~ms. Three routes to one
-number is suggestive, but it is a single point on a line, and we report
-Equation~\ref{eq:retention} as a derived prediction rather than a measured law until it is tested
-across a range of $T_{\mathrm{true}}$ at a dephased rate.
+number is suggestive, but it is one point on a line, so we tested the equation by moving
+$T_{\mathrm{true}}$ while holding the rate incommensurate (Table~\ref{tab:retentionlaw}).
+
+Retention rises $33.3$ points across the sweep, against a largest within-level spread of $2.6$
+points. Inverting Equation~\ref{eq:retention} gives an implied $T_{\mathrm{true}}$ per level, and
+at the two payloads large enough for serialisation to be measurable that implied latency rises
+\emph{linearly} with payload: the increment per byte is $0.630$ at $32$~KB and $0.638$ at
+$64$~KB, two independent estimates agreeing to $1.3\%$ and corresponding to an effective path of
+about $1.6$~Gb/s.
+
+We report the two smallest steps as uninformative rather than omitting them. At $1$ and $2$~KB the
+payload differs from baseline by under $2$~KB, so the predicted change in $T_{\mathrm{true}}$ is
+smaller than the replicate noise; dividing that by the payload delta yields $-2.600$ and $0.908$,
+which is scatter amplified by a small denominator and not evidence against the relation. The
+sweep discriminates only where the manipulation is large enough to exceed the noise, which is a
+property of our chosen sizes rather than of the law --- our first attempt at this sweep used sizes
+that were all in that regime and settled nothing.
+
+\begin{table}[t]
+\caption{Retention against payload at $457$~msg/s, incommensurate with the millisecond grid so
+samples stay dephased. Implied $T_{\mathrm{true}}$ inverts Equation~\ref{eq:retention}. The final
+column is the increment in implied latency per byte of added payload, relative to the $200$~B
+baseline; the two smallest steps are noise-dominated and marked.}
+\label{tab:retentionlaw}
+\small
+\begin{tabular}{@{}rlrrl@{}}
+\toprule
+Payload & Retention (3 reps) & Median & Implied $T_{\mathrm{true}}$ & $\Delta T$/byte \\
+\midrule
+$200$~B & $51.08$, $52.03$, $52.88$ & $52.03\%$ & $0.520$~ms & baseline \\
+$1$~KB & $50.11$, $50.32$, $51.47$ & $50.32\%$ & $0.503$~ms & $-2.600$\rlap{$^\dagger$} \\
+$2$~KB & $52.13$, $54.62$ & $53.37\%$ & $0.534$~ms & $0.908$\rlap{$^\dagger$} \\
+$32$~KB & $68.01$, $68.44$, $69.40$ & $68.44\%$ & $0.684$~ms & $\mathbf{0.630}$ \\
+$64$~KB & $84.21$, $85.36$, $86.82$ & $85.36\%$ & $0.854$~ms & $\mathbf{0.638}$ \\
+\bottomrule
+\end{tabular}
+
+\smallskip
+{\footnotesize $^\dagger$ payload delta under $2$~KB; the predicted change is below replicate
+noise, so the ratio is scatter over a small denominator.}
+\end{table}
 
 \subsubsection{Three replicates do not establish reproducibility}
 \label{sec:extreprod}

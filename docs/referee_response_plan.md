@@ -1694,6 +1694,17 @@ to no branch, so the classification the test needs does not exist for this arm. 
 before this was recognised (classifying $>50$ as upper) is discarded, not reported — it would
 count mid-cell smear as branch membership.
 
+**And then the fresh $625$/s arm contradicted the global-walk account (22:25Z).** Forty minutes
+after $300$/s smeared, $q=5$ at $625$/s came out *cleanly bimodal on its grid*: $41.07$, $41.96$
+against the $40$ branch; $57.02$, $59.05$, $60.04$ against the $60$ — spread $19.0$ of a possible
+$20$, tighter on the branches than the morning's pass. If the evening's phase walk were a shared
+environmental drift, the higher $q$ should smear *more*, not hold. The walk therefore varies
+per-run or couples to the arm in a way none of the three accounts predicts. What survives every
+observation so far is only the weaker, still-falsifiable statement: **when replicates leave the
+grid they move toward $\theta$, and the propensity to leave is not a function of $q$ alone.** The
+chrony log covers the $625$/s arm's tail and everything after (from 22:02Z); the smeared $300$/s
+arm predates it.
+
 **The system clock is exonerated.** `chronyc tracking` on the driver: residual frequency
 $+0.013$ ppm, skew $0.039$ ppm — the disciplined clock walks $\sim 7\,\mu$s over a three-minute
 run, two orders of magnitude below the $\sim 180\,\mu$s of within-run phase spread the smeared

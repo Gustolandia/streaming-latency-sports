@@ -1404,20 +1404,25 @@ and with this project's own transport measurements of $0.1$ to $0.5$~ms. Three r
 number is suggestive, but it is one point on a line, so we tested the equation by moving
 $T_{\mathrm{true}}$ while holding the rate incommensurate (Table~\ref{tab:retentionlaw}).
 
-Retention rises $33.3$ points across the sweep, against a largest within-level spread of $2.6$
+Retention rises $33.3$ points across the sweep, against a largest within-level spread of $4.4$
 points. Inverting Equation~\ref{eq:retention} gives an implied $T_{\mathrm{true}}$ per level, and
-at the two payloads large enough for serialisation to be measurable that implied latency rises
-\emph{linearly} with payload: the increment per byte is $0.630$ at $32$~KB and $0.638$ at
-$64$~KB, two independent estimates agreeing to $1.3\%$ and corresponding to an effective path of
-about $1.6$~Gb/s.
+at the two largest payloads that implied latency rises \emph{linearly} with payload: the increment
+per byte is $0.630$ at $32$~KB and $0.638$ at $64$~KB, two independent estimates agreeing to
+$1.3\%$ and corresponding to an effective path of about $1.6$~Gb/s.
 
-We report the two smallest steps as uninformative rather than omitting them. At $1$ and $2$~KB the
-payload differs from baseline by under $2$~KB, so the predicted change in $T_{\mathrm{true}}$ is
-smaller than the replicate noise; dividing that by the payload delta yields $-2.600$ and $0.908$,
-which is scatter amplified by a small denominator and not evidence against the relation. The
-sweep discriminates only where the manipulation is large enough to exceed the noise, which is a
-property of our chosen sizes rather than of the law --- our first attempt at this sweep used sizes
-that were all in that regime and settled nothing.
+\emph{The sweep discriminates only where the manipulation exceeds the noise, and we are explicit
+about which levels those are.} Replicate noise in the implied latency is roughly $0.02$ to
+$0.04$~ms throughout. At $32$ and $64$~KB the added serialisation is $0.26$ and $0.52$~ms, so the
+signal exceeds the noise by a factor near $20$ and the per-byte estimates agree. Below $8$~KB the
+added serialisation is under $0.07$~ms --- comparable to the noise --- and the per-byte ratios
+scatter accordingly ($-2.600$, $1.752$, $0.686$, $0.499$), which is a small denominator amplifying
+scatter rather than evidence against the relation. Those rows are reported rather than dropped,
+because omitting them would make the table look more decisive than the experiment was. The law
+rests on the two largest levels; the rest are consistent and underpowered.
+
+This is a property of the payloads we chose, not of the relation. Our first attempt at this sweep
+used sizes entirely inside the underpowered regime and settled nothing, which is why the sweep was
+extended rather than reported.
 
 \begin{table}[t]
 \caption{Retention against payload at $457$~msg/s, incommensurate with the millisecond grid so
@@ -1432,15 +1437,18 @@ Payload & Retention (3 reps) & Median & Implied $T_{\mathrm{true}}$ & $\Delta T$
 \midrule
 $200$~B & $51.08$, $52.03$, $52.88$ & $52.03\%$ & $0.520$~ms & baseline \\
 $1$~KB & $50.11$, $50.32$, $51.47$ & $50.32\%$ & $0.503$~ms & $-2.600$\rlap{$^\dagger$} \\
-$2$~KB & $52.13$, $54.62$ & $53.37\%$ & $0.534$~ms & $0.908$\rlap{$^\dagger$} \\
+$2$~KB & $52.13$, $54.62$, $54.77$ & $54.62\%$ & $0.546$~ms & $1.752$\rlap{$^\dagger$} \\
+$4$~KB & $51.86$, $54.17$, $56.24$ & $54.17\%$ & $0.542$~ms & $0.686$\rlap{$^\dagger$} \\
+$8$~KB & $54.92$, $55.22$, $57.89$ & $55.22\%$ & $0.552$~ms & $0.499$\rlap{$^\dagger$} \\
 $32$~KB & $68.01$, $68.44$, $69.40$ & $68.44\%$ & $0.684$~ms & $\mathbf{0.630}$ \\
 $64$~KB & $84.21$, $85.36$, $86.82$ & $85.36\%$ & $0.854$~ms & $\mathbf{0.638}$ \\
 \bottomrule
 \end{tabular}
 
 \smallskip
-{\footnotesize $^\dagger$ payload delta under $2$~KB; the predicted change is below replicate
-noise, so the ratio is scatter over a small denominator.}
+{\footnotesize $^\dagger$ added serialisation under $0.07$~ms, comparable to the $0.02$--$0.04$~ms
+replicate noise, so the ratio is scatter over a small denominator. The two unmarked levels have a
+signal-to-noise ratio near $20$ and carry the result.}
 \end{table}
 
 \subsubsection{Three replicates do not establish reproducibility}

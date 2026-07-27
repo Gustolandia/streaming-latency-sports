@@ -67,12 +67,14 @@ millisecond-grained timestamps and admits a sample only if the difference is pos
 nothing that it drops. Across $\ombRuns$ runs we find it computes its reported latency distribution from
 between $0.36\%$ and $100\%$ of the samples it takes, and reports the same median either way ---
 two distinct values across a $278$-fold change in the evidence behind them. Which case obtains is
-decided by a variable no operator sets: whether the producer's send interval is commensurate with
-the timestamp resolution. At $500$~msg/s --- an interval of exactly $2.000$~ms, and a rate chosen
-for being round --- every sample in a run shares a phase, and retention across replicates spans
-$99.5$ points. At $457$ and $383$~msg/s it is stable to $2$ points. A three-replicate median, the
-standard defence, reproduces at one load level in five across three passes of an identical
-configuration.
+decided by a variable no operator sets: how few distinct phases the producer's send interval visits
+within the timestamp quantum. Write that interval over the quantum as $p/q$ in lowest terms and the
+producer visits exactly $q$ phases, so the replicate spread is governed by $q$ alone --- $99.5$
+points at $500$~msg/s ($q=1$, an interval of exactly $2.000$~ms, a rate chosen for being round),
+$30.5$ points at $300$~msg/s ($q=3$, which is not a multiple of the tick at all and does not look
+dangerous), and $2$ to $3$ points wherever the denominator is large. Avoiding round rates is
+therefore not a defence. A three-replicate median, the standard defence against the instability,
+reproduces at one load level in five across three passes of an identical configuration.
 
 \textbf{What this leaves.} We withdraw three claims, including an M/G/1 form our own data refutes
 and our own earlier reading of these discards as causality violations: in $\ombDiscarded$
@@ -249,11 +251,16 @@ counter for what it discards. We made the discard visible and swept it across $\
 results follow. \emph{(i)} The benchmark computes its reported distribution from between $0.36\%$
 and $100\%$ of its samples, reporting a median of $1.0$ or $2.0$~ms in every case: the headline is
 insensitive to a $278$-fold change in the evidence behind it. \emph{(ii)} Which case obtains is
-decided by whether the producer's send interval is commensurate with the timestamp resolution. We
-establish this by manipulation, holding size, load, duration and host fixed: at an interval of
-exactly $2.000$~ms retention spans $99.5$ points across replicates, while two incommensurate rates
-are stable to $2$ points and agree with \emph{each other} to under $2$ points despite intervals
-differing by $19\%$. \emph{(iii)} The standard defence does not work --- a three-replicate median
+decided by arithmetic the operator never sees. Writing the send interval over the timestamp quantum
+as $p/q$ in lowest terms, the producer visits exactly $q$ phases, and $q$ alone fixes how far
+replicates can spread. We establish this by manipulation, holding size, load, duration and host
+fixed: at an interval of exactly $2.000$~ms ($q=1$) retention spans $99.5$ points across replicates,
+while two incommensurate rates are stable to $2$ points and agree with \emph{each other} to under
+$2$ points despite intervals differing by $19\%$. Across eight denominators the measured spread is
+the one each arm's position in its grid predicts, in every case
+(Section~\ref{sec:extquant}) --- so the rule is a gradient rather than the binary that
+``commensurate or not'' suggests, and $300$~msg/s, a multiple of nothing, spreads $30.5$ points.
+\emph{(iii)} The standard defence does not work --- a three-replicate median
 reproduces at one load level in five across three passes of an identical configuration.
 \item \textbf{A withdrawal of our own strongest external claim} (Section~\ref{sec:external}). An
 earlier version of this work reported those discards as the same causality violation we report in
@@ -450,8 +457,11 @@ practice in signal processing, where dithered measurement rates are used precise
 genuine components from aliasing products. Our incommensurate-rate arms are dithering, arrived at
 as a diagnostic rather than borrowed as a technique. The recommendation we make to benchmark
 authors in Section~\ref{sec:authors} is therefore not new technology but an old one never
-applied here: do not pace a load generator at a rate commensurate with the resolution of the clock
-you are subtracting, and if the rate is fixed by the experiment, dither it.
+applied here: do not pace a load generator at a rate whose interval divides the clock's resolution
+into few distinct phases, and if the rate is fixed by the experiment, dither it. Dithering is the
+stronger of the two, because ``incommensurate'' is not a property a practitioner can read off a
+rate --- what matters is the denominator in lowest terms, and $300$~msg/s hides a denominator of
+$3$ behind an interval of $3.333$~ms.
 
 \paragraph{Granularity is discussed as staleness, not as deletion.}
 The relationship between a fixed send interval and a coarser clock tick is recognised in the
@@ -463,11 +473,14 @@ all-or-nothing across the whole run rather than a uniform thinning of it.
 \paragraph{What we claim as new, stated narrowly.} Not that timestamp quantisation is unknown; it
 is elementary, and Cloudprofiler~\cite{yang2022cloudprofiler} exists because millisecond
 granularity is understood to be too coarse for this class of system. The contribution is the
-\emph{interaction}: a quantised timestamp, plus a producer paced at an interval commensurate with
-that quantum, plus a guard that admits only positive differences, together produce a retention
-fraction that is bimodal, irreproducible between runs of an identical configuration, and invisible
-in the reported summary. We have found no report of that combination, and it occurs at
-$500$~msg/s, a rate whose only distinction is that it is round.
+\emph{interaction}: a quantised timestamp, plus a producer whose send interval visits few phases
+within that quantum, plus a guard that admits only positive differences, together produce a
+retention fraction that is bimodal, irreproducible between runs of an identical configuration, and
+invisible in the reported summary. We have found no report of that combination. Nor have we found
+the quantitative form: that the damage is set by the denominator of the interval-to-quantum ratio
+in lowest terms, so that it is a graded property of an arithmetic relationship rather than a
+property of ``round'' rates. It occurs at $500$~msg/s, whose only distinction is that it is round,
+and it occurs nearly as strongly at $300$~msg/s, which is a multiple of nothing.
 
 \subsection{Where scheduling delay comes from, and why it is not one distribution}
 \label{sec:related_tail}
@@ -2771,15 +2784,23 @@ it, and the check of Section~\ref{sec:gate} is still needed afterwards. And a re
 thread changes the system it measures; where that is unacceptable, the alternative is to report
 the retention rate and let a reader judge, not to assume the exposure is absent.
 
-\textbf{Do not pace the load generator at a rate commensurate with your clock's resolution, and
-publish the retention rate.} This is the mitigation the second failure mode supports directly, and
-it is the cheapest recommendation in this paper: change a number in a configuration file. A
-producer paced at a fixed interval that divides evenly into the timestamp quantum puts every
-sample in a run at the same phase within the quantum, so a run keeps nearly all of its samples or
-nearly none, and which one is not determined by anything the experimenter set
-(Section~\ref{sec:extphase}). At $500$~msg/s --- an interval of exactly $2.000$~ms against a
-millisecond clock, and a rate whose only distinction is that it is round --- retention across
-replicates spanned $99.5$ points. At $457$ and $383$~msg/s it was stable to $2$ points.
+\textbf{Dither the load generator's send instant, and publish the retention rate.} This is the
+mitigation the second failure mode supports directly, and it is the cheapest recommendation in this
+paper: change a number in a configuration file. A producer paced at a fixed interval that divides
+evenly into the timestamp quantum puts every sample in a run at the same phase within the quantum,
+so a run keeps nearly all of its samples or nearly none, and which one is not determined by
+anything the experimenter set (Section~\ref{sec:extphase}). At $500$~msg/s --- an interval of
+exactly $2.000$~ms against a millisecond clock, and a rate whose only distinction is that it is
+round --- retention across replicates spanned $99.5$ points. At $457$ and $383$~msg/s it was stable
+to $2$ points.
+
+We phrase the recommendation as dithering rather than as ``pick an incommensurate rate'' because
+the latter is harder to apply than it sounds. The damage is set by the denominator $q$ of the
+interval-to-quantum ratio in lowest terms, and $q$ is not visible in the rate an operator types:
+$300$~msg/s gives $3.333$~ms, which is a multiple of nothing and still spread $30.5$ points across
+replicates, while $889$~msg/s sits $0.00014$ from $9/8$ and behaves perfectly well
+(Section~\ref{sec:extquant}). A rate that merely looks irregular is not enough; dithering removes
+the shared phase whatever the arithmetic happens to be.
 
 The remedy is old and belongs to signal processing, where dithering the sampling instant is the
 standard way to keep a periodic artefact from masquerading as a signal. Applied here it means one
@@ -2847,14 +2868,16 @@ and three runs reported $\mathrm{p50} = \mathrm{p95} = \mathrm{p99} = \max = 1.0
 distribution with one value in it, printed to three decimal places, in output anybody could have
 read. We found it only after instrumenting the source, which was unnecessary.
 
-\item \textbf{Check whether your load generator's send interval is commensurate with that
-quantum, and change it if it is.} A fixed interval that divides evenly into the timestamp
-resolution puts every sample in a run at the same phase within it, which makes the surviving
-fraction bimodal and irreproducible rather than merely small (Section~\ref{sec:extphase}). The
-diagnostic is arithmetic on two numbers you already know. The remedy is to choose an incommensurate
-rate, or to dither the send instant where the rate is fixed by the experiment. Note that the rate
-most likely to be chosen --- a round number such as $500$~msg/s --- is the one most likely to be
-commensurate with a millisecond clock.
+\item \textbf{Put your send interval over the timestamp quantum, reduce the fraction, and look at
+the denominator.} A fixed interval that visits few phases within the quantum puts nearly every
+sample in a run at one of them, which makes the surviving fraction bimodal and irreproducible
+rather than merely small (Sections~\ref{sec:extphase} and~\ref{sec:extquant}). The diagnostic is
+arithmetic on two numbers you already know, but it is the reduced denominator $q$ that matters, not
+whether the interval looks round: $500$~msg/s gives $q=1$ and spread $99.5$ points, and
+$300$~msg/s gives $q=3$ and spread $30.5$, while $889$~msg/s --- which sits $0.00014$ away from
+$9/8$ --- gives a denominator in the hundreds and is stable to $1.7$. A small $q$ is the hazard;
+proximity to a simple fraction is not. The remedy is to dither the send instant, which works
+without having to get the arithmetic right.
 \item \textbf{Report events-per-run alongside every latency percentile.} This is the check that
 would have caught our second withdrawal (Section~\ref{sec:attribution}) and the sign check would
 not: a median over seven events is a statement about the harness, not the system, and it looks

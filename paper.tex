@@ -23,6 +23,11 @@
 \newcommand{\redis}{Redis}
 \newcommand{\tti}{TTI}
 
+% Campaign counts, derived from the ledger by scripts/emit_paper_numbers.py rather than typed
+% here. They were previously written out by hand in eleven places and went stale in all eleven at
+% once. A paper arguing that benchmarks misreport their own sample counts cannot afford to.
+\input{docs/generated/paper_numbers}
+
 \begin{document}
 
 \title{When the Interval Is Smaller Than the Instrument}
@@ -59,7 +64,7 @@ finite mean and instruments built on averages are structurally blind to this fai
 \textbf{The second is that the measurement can be silently deleted, and this one is not ours.} We
 instrumented the OpenMessaging Benchmark, which computes end-to-end latency from
 millisecond-grained timestamps and admits a sample only if the difference is positive, counting
-nothing that it drops. Across $80$ runs we find it computes its reported latency distribution from
+nothing that it drops. Across $\ombRuns$ runs we find it computes its reported latency distribution from
 between $0.36\%$ and $100\%$ of the samples it takes, and reports the same median either way ---
 two distinct values across a $278$-fold change in the evidence behind them. Which case obtains is
 decided by a variable no operator sets: whether the producer's send interval is commensurate with
@@ -70,7 +75,7 @@ standard defence, reproduces at one load level in five across three passes of an
 configuration.
 
 \textbf{What this leaves.} We withdraw three claims, including an M/G/1 form our own data refutes
-and our own earlier reading of these discards as causality violations: in roughly $420{,}000$
+and our own earlier reading of these discards as causality violations: in $\ombDiscarded$
 discarded samples there is not one negative. Of the original question --- does the choice between
 Apache \kafka{} and \redis{} Streams change delay for a live football feed --- what survives is
 modest: the brokers sit within a millisecond, with a reproducible $0.41$~ms advantage for
@@ -162,7 +167,7 @@ timestamps, which are millisecond-grained, and admits a sample to its histogram 
 difference is positive. Nothing counts what fails that test.
 
 On a path whose true latency is a fraction of a millisecond, most differences are exactly zero.
-Across $80$ instrumented runs the benchmark computed its reported latency distribution from
+Across $\ombRuns$ instrumented runs the benchmark computed its reported latency distribution from
 between $0.36\%$ and $100\%$ of the samples it took, and reported a median of $1.0$ or $2.0$~ms
 either way: two distinct values across a $278$-fold change in how much evidence stood behind them.
 
@@ -240,7 +245,7 @@ established by manipulation} (Section~\ref{sec:external}). A source-level audit 
 OpenMessaging Benchmark, at a named commit and with file and line given, finds it computes
 end-to-end latency as the same cross-process --- in a distributed deployment, cross-\emph{host}
 --- timestamp difference, and admits a sample only when that difference is positive, with no
-counter for what it discards. We made the discard visible and swept it across $80$ runs. Three
+counter for what it discards. We made the discard visible and swept it across $\ombRuns$ runs. Three
 results follow. \emph{(i)} The benchmark computes its reported distribution from between $0.36\%$
 and $100\%$ of its samples, reporting a median of $1.0$ or $2.0$~ms in every case: the headline is
 insensitive to a $278$-fold change in the evidence behind it. \emph{(ii)} Which case obtains is
@@ -252,7 +257,7 @@ differing by $19\%$. \emph{(iii)} The standard defence does not work --- a three
 reproduces at one load level in five across three passes of an identical configuration.
 \item \textbf{A withdrawal of our own strongest external claim} (Section~\ref{sec:external}). An
 earlier version of this work reported those discards as the same causality violation we report in
-Section~\ref{sec:gate}, on a counter that could not distinguish sign. In roughly $420{,}000$
+Section~\ref{sec:gate}, on a counter that could not distinguish sign. In $\ombDiscarded$
 discarded samples there is not one negative. We report where the refuting evidence was: in our own
 artefact, from the day we committed it, in a field we had printed and not read. The exposure in
 the cross-host case remains established by source audit and \emph{not} by observation --- across
@@ -1301,10 +1306,10 @@ paths where such benchmarks are usually run --- ours measures broker transport a
 $0.5$~ms --- that is not an edge case but a large share of the samples, and the reported
 distribution is truncated from below at $1$~ms.
 
-\paragraph{We then ran it, $80$ times, and the answer was not the one we expected.}
+\paragraph{We then ran it, $\ombRuns$ times, and the answer was not the one we expected.}
 A source audit is not a measurement, so we made the discards observable
 (Section~\ref{sec:extmethod}) and swept the benchmark across background load, message size,
-producer rate and replication: $80$ instrumented runs on the co-located path, each three minutes
+producer rate and replication: $\ombRuns$ instrumented runs on the co-located path, each three minutes
 at rates around $500$ messages per second.
 
 \subsubsection{The claim we withdraw, and where its refutation was}
@@ -1314,8 +1319,8 @@ An earlier version of this section reported that a single such run discarded $6{
 under load, and read those discards as the same causality violation we report in
 Section~\ref{sec:gate}. \textbf{That reading is withdrawn.} The counter behind it was one unsigned
 total, and both a causality violation and a sub-millisecond delivery fail a \texttt{> 0} test;
-counting them together cannot distinguish them. Separating them by sign across all $80$ runs
-gives, in roughly $420{,}000$ discarded samples, \textbf{not one negative}. The most negative
+counting them together cannot distinguish them. Separating them by sign across all $\ombRuns$ runs
+gives, in $\ombDiscarded$ discarded samples, \textbf{not one negative}. The most negative
 end-to-end latency observed at any load, any message size and any producer rate is $0\,\mu$s.
 
 We report where the refuting evidence was, because the answer is uncomfortable and is the paper's
@@ -2902,7 +2907,7 @@ failed against the sweep. A practitioner should read this as ``keep the stamping
 and measure what you get'', not as a curve to substitute into a budget.
 
 \emph{The external evidence is single-host, and the cross-host case is unmeasured.} The
-$80$-run campaign of Section~\ref{sec:external} ran in embedded mode, so both stamps came from one
+$\ombRuns$-run campaign of Section~\ref{sec:external} ran in embedded mode, so both stamps came from one
 JVM on one host. That is sufficient for the resolution failure, which needs no second clock --- the
 quantum is a property of the timestamp, not of the network --- but it means the cross-host channel
 is established by source audit and not by observation. We attempted a distributed run eight times,
@@ -3013,12 +3018,12 @@ its method is needed. So we turned the argument outward, and found a second fail
 not ours and not the one we went looking for. The OpenMessaging
 Benchmark~\cite{openmessaging2018} computes end-to-end latency as a consumer-side clock read minus
 a timestamp written on the producer host, and records the sample only if it is positive, counting
-nothing that it drops. We instrumented that guard and ran the benchmark $80$ times.
+nothing that it drops. We instrumented that guard and ran the benchmark $\ombRuns$ times.
 
 \emph{What we expected to find, we did not.} We had reported that a single such run discarded
 $6{,}000$ samples under load, and read those as the same causality violation we report above. The
-counter behind that reading could not distinguish sign. Separated across all $80$ runs, roughly
-$420{,}000$ discarded samples contain \emph{not one negative}. We withdraw the claim, and record
+counter behind that reading could not distinguish sign. Separated across all $\ombRuns$ runs,
+$\ombDiscarded$ discarded samples contain \emph{not one negative}. We withdraw the claim, and record
 where its refutation was: in our own committed artefact, in a field we had printed and never read.
 What was missing was not data but a reason to look at the sign, and the statistic we had chosen to
 report did not have one.

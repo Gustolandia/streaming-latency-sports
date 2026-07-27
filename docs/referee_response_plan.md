@@ -1535,3 +1535,51 @@ enough to be worth nothing at $n=1$); its test is spread $\approx 14.3$. And cha
 at $600$/s, half the interval of $300$/s, to separate the denominator from the rate carrying it.
 **If $600$/s does not reproduce the $300$/s spread of $\approx 33$, then $q$ is not the governing
 variable and this generalises no further than the rate it was found at.**
+
+### The prediction was an upper bound, and stating it as a point prediction cost us the even arms
+
+Checking whether the degeneracy classification survives using a *rate-local* continuous value rather
+than the pooled median turned up something larger. The continuous value is not constant across rate:
+it runs $51.2\%$ at $333$/s down to $47.5\%$ at $889$/s, a linear trend of $4.15$ points across the
+range against a replicate noise of $1.55$ ($R^2 = 0.78$). Under the pooled value $q=4$ is degenerate;
+under the rate-local one it is not, and it would then be a *failure*. A result that flips on that
+choice is not a result.
+
+Working out why exposed the real error. **`spread = 100/q` is not what the model predicts.** A
+replicate lands on one of the two grid points bracketing $T_{\mathrm{true}}/\tau$, so $100/q$ is the
+*cell width* — an upper bound, attained only when the continuous value sits midway between two grid
+points and both get realised. When it sits *on* a grid point, one point takes nearly every run and
+the spread collapses toward zero.
+
+That single correction removes the need for the exclusion entirely:
+
+| rate | q | width | position in cell | predicted | observed | |
+|---|---|---|---|---|---|---|
+| 1000/s | 1 | 100.0 | mid (0.99) | full | 99.3 | ✓ |
+| 500/s | 1 | 100.0 | mid (0.99) | full | 99.5 | ✓ |
+| 250/s | 1 | 100.0 | mid (0.99) | full | 58.6 | ✓ |
+| 400/s | 2 | 50.0 | **on grid (0.02)** | **flat** | 17.6 | ✓ |
+| 300/s | 3 | 33.3 | mid (0.97) | full | 30.5 | ✓ |
+| 800/s | 4 | 25.0 | **on grid (0.04)** | **flat** | 7.2 | ✓ |
+| 625/s | 5 | 20.0 | mid (0.95) | full | 17.9 | ✓ |
+| 875/s | 7 | 14.3 | mid (0.93) | full | 10.7 | ✓ |
+
+**All eight arms match, six predicting full spread and two predicting flat.** The verdict is now a
+classification with no tolerance to choose: an arm shows the full cell width or it collapses, and
+"spread above half the cell width" separates them. Because the position is measured against the cell
+*half-width* rather than a fixed noise floor, every call is identical under the pooled and the
+rate-local continuous value — the sensitivity that started this is gone.
+
+The earlier framing was defensible and is still in the git history: the exclusion was derived from
+$q=4$ and committed before the first odd-$q$ cell was measured. But it was weaker than the evidence
+warranted. **An on-grid arm is a prediction of a flat arm, so $q=2$ and $q=4$ are evidence for the
+model, not cases to be excused.** We had a law that excluded its exceptions where one that explains
+them was available, and we only found it because we went looking for whether a classification would
+survive re-estimating one of its inputs.
+
+*Recorded as a caveat rather than smoothed over:* $q=2$'s spread of $17.6$ is driven by a single
+replicate at $68.0$; the other four span $3.1$ points, which is the incommensurate noise level and
+exactly what an on-grid arm should show. And $250$/s ($q=1$) gives $58.6$ where the width is $100$,
+with $500$/s showing one replicate at $18.0$ — a run at a single phase cannot produce either. A
+nominal exact multiple is only $q=1$ if the pacing is exact for the whole run, and over three minutes
+it is not.

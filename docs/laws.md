@@ -317,7 +317,7 @@ Both families compare **an instrument timescale against the interval being measu
 Both therefore worsen as `T_true` shrinks, which is why both bind hardest on the fast paths and
 small differences that broker comparisons exist to resolve. **This is the paper's general claim.**
 
-## B1 — retention law  *(DERIVED; test in progress)*
+## B1 — retention law  *(ESTABLISHED, 2026-07-27)*
 
 Under **dephased** sampling, a sample survives a positivity guard only if its delivery crosses a
 tick boundary. With send phases uniform within the tick:
@@ -326,17 +326,32 @@ tick boundary. With send phases uniform within the tick:
 retention = min(1, T_true / τ)
 ```
 
-**Status: derived, one point confirmed, insufficiently tested.** Three independent dephased arms
-(457 msg/s, 383 msg/s, and a fresh 457 msg/s campaign) all sit at 50–53%, implying
-`T_true ≈ 0.5 ms` against `τ = 1 ms`. That agrees with two independent estimates: OMB's own
-unquantised publish latency (0.3–0.4 ms plus consumer delivery) and this project's transport
-measurements (0.1–0.5 ms).
+**Confirmed by moving `T_true` at a fixed incommensurate rate (457 msg/s), n=3 per level:**
 
-**Why it is not yet a law.** All three points sit at essentially one `T_true`. The payload sweep
-intended to vary `T_true` used sizes too small to move it: 200 B → 2 KB spans a predicted 1.5
-points against ~2 points of replicate noise. Observed 52.03 / 50.32 / 53.37 against predicted
-52.0 / 52.7 / 53.5 — consistent, uninformative. The discriminating cells (32 KB → 78%, 64 KB →
-100%) are running.
+| payload | retention | implied `T_true` | ΔT per byte |
+|---|---|---|---|
+| 200 B | 52.03% | 0.520 ms | baseline |
+| 1 KB | 50.32% | 0.503 ms | −2.600 † |
+| 2 KB | 53.37% | 0.534 ms | 0.908 † |
+| **32 KB** | **68.44%** | 0.684 ms | **0.630** |
+| **64 KB** | **85.36%** | 0.854 ms | **0.638** |
+
+† payload delta under 2 KB; predicted change is below replicate noise, so the ratio is scatter
+over a small denominator. Reported rather than dropped.
+
+**Retention rises 33.3 points against a largest within-level spread of 2.6** — a 13:1 ratio. The
+stronger result is that the implied `T_true` rises **linearly** in payload wherever the
+manipulation exceeds the noise: 0.630 and 0.638 per byte, two independent estimates agreeing to
+1.3%, implying an effective path near 1.6 Gb/s.
+
+**What this cost and what it did not.** The pre-registered prediction of 78% at 32 KB assumed
+exactly 1 Gb/s and was 8.7 points high. The *law* survived; the *assumed link speed* did not, and
+is now measured from the data. A first attempt at this sweep used payloads entirely inside the
+noise-dominated regime and settled nothing — the design fault was ours, not the law's.
+
+Cross-checks on `T_true ≈ 0.5 ms` at baseline: OMB's own unquantised publish latency (0.3–0.4 ms
+plus consumer delivery), this project's transport measurements (0.1–0.5 ms), and the dephased
+retention itself. Three routes, one number.
 
 ## B2 — commensurability law  *(ESTABLISHED by manipulation)*
 

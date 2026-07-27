@@ -1457,3 +1457,32 @@ stated. It supports quantisation.
 
 `q=4` (800 msg/s) and `q=8` (889 msg/s) remain: quantisation predicts values on the quarters and
 eighths grids and, in particular, still away from $50\%$ for `q=4` unless the run lands on $2/4$.
+
+### Only odd `q` can discriminate — a design fault in our own sweep
+
+`q=4` (800 msg/s) returned **44.7, 49.9, 50.4, 50.4**: sitting at $50\%$, deviation $0.4$ from the
+quarters grid. That is not a failure of quantisation. With `T_true ≈ 0.5` ms and phases at
+$0, \tfrac14, \tfrac12, \tfrac34$, exactly two deliver past a boundary, so retention $= 2/4 = 0.5$
+--- which is *also* the continuous prediction `T_true/τ`.
+
+**Every even `q` is degenerate at this operating point**, because $0.5$ lies on every even grid:
+$1/2$, $2/4$ and $4/8$ are all the continuous value. Our sweep chose `q` = 2, 3, 4, 8 — three of
+them even. **`q=3` was the only discriminating arm in the entire sweep**, and `q=8` will be
+degenerate as well when it lands.
+
+This is a design fault of ours and it is the same one as the payload sweep, where the first
+attempt used sizes entirely inside the noise-dominated regime. In both cases the manipulation was
+chosen without checking whether it could separate the hypotheses at the operating point we were
+measuring at.
+
+`q=3` did decide it — five of five outside the incommensurate range — but one discriminating point
+is thin for a law. Two more exist at integer rates, and **chain15 runs both**:
+
+| rate | interval | q | phases crossing | predicted retention |
+|---|---|---|---|---|
+| 625/s | $1.600$ ms $= 8/5$ | **5** | $2$ of $5$ | $\approx 40\%$ |
+| 875/s | $1.143$ ms $= 8/7$ | **7** | $3$ of $7$ | $\approx 43\%$ |
+
+Both predictions are recorded before the runs, and both are clear of the incommensurate range
+($46.5$–$53.8$). **If either lands at $\approx 50\%$, the `q=3` result was a coincidence and
+quantisation is withdrawn.**

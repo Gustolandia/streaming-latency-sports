@@ -2482,6 +2482,38 @@ it, and the check of Section~\ref{sec:gate} is still needed afterwards. And a re
 thread changes the system it measures; where that is unacceptable, the alternative is to report
 the retention rate and let a reader judge, not to assume the exposure is absent.
 
+\textbf{Do not pace the load generator at a rate commensurate with your clock's resolution, and
+publish the retention rate.} This is the mitigation the second failure mode supports directly, and
+it is the cheapest recommendation in this paper: change a number in a configuration file. A
+producer paced at a fixed interval that divides evenly into the timestamp quantum puts every
+sample in a run at the same phase within the quantum, so a run keeps nearly all of its samples or
+nearly none, and which one is not determined by anything the experimenter set
+(Section~\ref{sec:extphase}). At $500$~msg/s --- an interval of exactly $2.000$~ms against a
+millisecond clock, and a rate whose only distinction is that it is round --- retention across
+replicates spanned $99.5$ points. At $457$ and $383$~msg/s it was stable to $2$ points.
+
+The remedy is old and belongs to signal processing, where dithering the sampling instant is the
+standard way to keep a periodic artefact from masquerading as a signal. Applied here it means one
+of two things: choose a rate incommensurate with the quantum, or, where the rate is fixed by the
+experiment, add a small random offset to each send so the phase is not shared. Neither costs
+anything, and either converts an unpredictable retention into a predictable one.
+
+Two things must be published alongside it, because neither is recoverable afterwards. The
+\emph{retention rate}, for the same reason a survey reports its response rate: without it, a
+latency summary computed from $0.4\%$ of the samples is typographically identical to one computed
+from all of them. And the \emph{timestamp resolution beside the measured latency}, because the
+failure is governed by their ratio --- a benchmark reporting whole-millisecond percentiles on a
+path it believes is sub-millisecond has stated the problem in its own output, if anyone reads the
+two numbers together.
+
+\textbf{Do not let three replicates stand in for reproducibility.} We ran an identical sweep three
+times over nine hours. Per-level median retention reproduced at one load level in five, moving by
+$54$ to $98$ points at the others (Section~\ref{sec:extreprod}). Averaging replicates protects
+against noise around a stable value; it does nothing when the quantity has no stable value to be
+noisy around, and the agreement of replicates within one pass is not evidence that it does. Where
+a quantity may behave this way, the defensible report is the distribution of replicates, not a
+central estimate of it.
+
 \subsection{Applying the check to another benchmark}
 \label{sec:protocol}
 

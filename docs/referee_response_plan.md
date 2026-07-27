@@ -1186,3 +1186,48 @@ finding a prediction in noise.
 the reported p50 takes two values across that range; and zero negative samples in every cell of
 every campaign. Those are counts and ranges, not correlations, which is why they have not moved
 all day.
+
+### The cross-host question is not answerable with this benchmark, and that is the finding
+
+The load-starvation hypothesis is **refuted**. OMB's distributed mode fails identically with no
+background load at all.
+
+| attempt | load | outcome |
+|---|---|---|
+| 1–5 (July) | 88% | five separate faults in the worker protocol |
+| 6 (chain5) | 88% | `IllegalArgumentException` at `HttpWorkerClient:194`, pub=3 agg=0 |
+| 7 (chain9) | **0%** | identical fault, pub=2 agg=0 |
+| 8 (chain9) | 50% | identical fault, pub=2 agg=0 |
+
+Eight attempts, three load levels including none at all, and the same failure inside OMB's own
+coordinator-to-worker HTTP protocol. The hypothesis that 88% CPU was starving the worker threads
+was reasonable and is wrong.
+
+**What was fixed and stayed fixed.** The classpath fault that invalidated the first attempt is
+genuinely gone — the packaged tarball ships its own dependencies, and both workers answered their
+health check before every one of the last three runs. These are not failures to launch. The
+benchmark starts, publishes for a few seconds, and then its coordinator fails parsing a worker
+response.
+
+**The gate held eight times out of eight.** Every failed attempt wrote `valid=0` with the pub,
+aggregate and failure counts that justified it. No count was ever reported from a run that did not
+produce latency. That gate exists because the very first attempt wrote a vacuous `discarded=0`
+that reached a draft of this paper as "a second null under hard conditions".
+
+**How the paper should state it.** Not as a gap in our diligence and not as an aside:
+
+> The cross-host case is the one in which OMB's end-to-end subtraction spans two clocks, and it is
+> therefore the case in which its guard could discard a genuine causality violation. We cannot
+> report a measurement of it. Across eight attempts at three background-load levels, the
+> benchmark's distributed mode did not complete a run on our testbed, failing each time inside its
+> own coordinator-to-worker protocol rather than in our instrumentation or configuration. The
+> exposure in that mode is established by source audit — the timestamp is written on the producer
+> host and read on the consumer host, and the guard drops what the difference produces — but not by
+> observation, and we distinguish the two.
+
+That is a stronger position than a single successful distributed run would have given us, because
+it is checkable: the campaign script, the eight invalid rows and their reasons are in the artefact.
+
+**Also worth one line in §6.7:** a benchmark whose distributed mode does not survive eight attempts
+by readers of its source is itself a data point about the state of measurement practice this paper
+is describing.

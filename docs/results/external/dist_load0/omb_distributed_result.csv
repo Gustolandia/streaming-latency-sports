@@ -1,0 +1,2 @@
+harness,mode,valid,discarded_nonpositive,reason,duration_min,load_pct
+OpenMessaging Benchmark,distributed+loaded,0,,"benchmark produced no latency output (pub=2 agg=0 failures=1)",4,0

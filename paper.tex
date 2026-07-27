@@ -2925,19 +2925,39 @@ blind to it. The advice this implies is not a better clock but a stamping thread
 cannot preempt.
 
 A paper that only ever audits its own mistakes proves that its authors are careless, not that
-its method is needed. So we turned the argument outward. The OpenMessaging
-Benchmark~\cite{openmessaging2018} computes end-to-end latency as a consumer-side clock read
-minus a timestamp written on the producer host, and then records the sample only if it is
-positive, counting nothing that it drops. The exposure is therefore designed into the most widely
-used cross-broker benchmark, and --- this is the part that matters --- its reported distribution
-is conditioned on the violation not having happened, so no amount of care in reading its output
-would reveal it.
+its method is needed. So we turned the argument outward, and found a second failure mode that is
+not ours and not the one we went looking for. The OpenMessaging
+Benchmark~\cite{openmessaging2018} computes end-to-end latency as a consumer-side clock read minus
+a timestamp written on the producer host, and records the sample only if it is positive, counting
+nothing that it drops. We instrumented that guard and ran the benchmark $80$ times.
 
-We then instrumented that discard and ran it. Under load it dropped $6{,}000$ end-to-end samples
-in three minutes, about $6.7\%$ of the run, and reported a healthy-looking latency summary
-alongside. We still claim no published result is wrong, because we have audited no deployment but
-our own. What we now know is that the failure is reachable, large, and unreported in software
-nobody in this study wrote --- so the check we are recommending is not addressed to ourselves.
+\emph{What we expected to find, we did not.} We had reported that a single such run discarded
+$6{,}000$ samples under load, and read those as the same causality violation we report above. The
+counter behind that reading could not distinguish sign. Separated across all $80$ runs, roughly
+$420{,}000$ discarded samples contain \emph{not one negative}. We withdraw the claim, and record
+where its refutation was: in our own committed artefact, in a field we had printed and never read.
+What was missing was not data but a reason to look at the sign, and the statistic we had chosen to
+report did not have one.
+
+\emph{What is there instead is worse for the benchmark and better evidenced.} It computes its
+reported latency distribution from between $0.36\%$ and $100\%$ of the samples it takes, and
+reports a median of $1.0$ or $2.0$~ms in every case --- a headline insensitive to a $278$-fold
+change in the evidence behind it, beside a retention rate that is unreported and unrecoverable
+from a completed run. Which case obtains is set by a variable no operator chooses: whether the
+producer's send interval is commensurate with the timestamp resolution. We show this by
+manipulation. At $500$~msg/s, an interval of exactly $2.000$~ms, retention across replicates spans
+$99.5$ points; at $457$ and $383$~msg/s it is stable to two, and those two arms agree with
+\emph{each other} despite intervals differing by $19\%$ --- which a dependence on the interval
+could not produce and a dependence on phase requires. The standard defence fails as well: a
+three-replicate median reproduced at one load level in five across three passes of an identical
+configuration, because the quantity has no central value to converge on.
+
+So the two failure modes are one phenomenon seen twice. Both compare a timescale belonging to the
+instrument against the interval under measurement --- a scheduling stall in the first case, a clock
+tick in the second --- and both therefore worsen as that interval shrinks. A benchmark on a
+sub-millisecond path is exposed to both at once, and neither is visible in what it prints. We claim
+no published result is wrong, because we have audited no deployment but our own. What we know is
+that both failures are reachable, large, and unreported in software nobody in this study wrote.
 
 One smaller episode makes the same point from the other side. Checking our own provenance, we
 found that no surviving artefact recorded the replay rate of the earliest corpus, and that the
@@ -2950,12 +2970,22 @@ the number down.
 
 We began by asking which of two brokers is faster for a football feed. The honest answer is that
 it barely matters --- \redis{} holds a reproducible $0.41$~ms advantage that is real, and
-negligible beside the seconds a human annotator takes to enter the event. That question turned
-out to be the least interesting thing we could have asked. We report the road from it in full,
-including two withdrawals and a model we had to correct, because the path ran entirely through
-measurements we had every reason to trust --- twice --- and because the instrument that finally
-settled each of them was not a better clock or a larger sample, but a physical constraint that
-the data could not violate.
+negligible beside the seconds a human annotator takes to enter the event. That question turned out
+to be the least interesting thing we could have asked.
+
+What replaced it is a condition rather than a comparison. When the interval you are measuring
+approaches a timescale belonging to your instrument, the measurement fails in ways the measurement
+cannot report: it goes negative, or it disappears, and in both cases the summary that reaches the
+reader is plausible, stable, and wrong. That condition is not exotic. It is the ordinary operating
+point of every co-located broker benchmark, because the whole point of such a benchmark is that
+the path is fast --- and it is precisely on the small differences those benchmarks exist to
+resolve that both failures bite hardest.
+
+We report the road in full, including three withdrawals and a model we had to correct, because the
+path ran entirely through measurements we had every reason to trust, and because what settled each
+of them was never a better clock or a larger sample. It was a constraint the data could not
+violate: a latency cannot be negative, and a benchmark cannot summarise samples it has thrown
+away. Both are free to check. Neither was being checked.
 
 
 \section*{Artefact Availability}

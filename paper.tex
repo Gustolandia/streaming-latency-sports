@@ -256,8 +256,9 @@ as $p/q$ in lowest terms, the producer visits exactly $q$ phases, and $q$ alone 
 replicates can spread. We establish this by manipulation, holding size, load, duration and host
 fixed: at an interval of exactly $2.000$~ms ($q=1$) retention spans $99.5$ points across replicates,
 while two incommensurate rates are stable to $2$ points and agree with \emph{each other} to under
-$2$ points despite intervals differing by $19\%$. Across eight denominators the measured spread is
-the one each arm's position in its grid predicts, in every case
+$2$ points despite intervals differing by $19\%$. Across nine rate arms spanning six denominators
+the measured spread is the one each arm's position in its grid predicts, in every case, and the
+same $q$ at two rates an octave apart lands on the same grid points
 (Section~\ref{sec:extquant}) --- so the rule is a gradient rather than the binary that
 ``commensurate or not'' suggests, and $300$~msg/s, a multiple of nothing, spreads $30.5$ points.
 \emph{(iii)} The standard defence does not work --- a three-replicate median
@@ -1527,6 +1528,7 @@ $500$/s  & $2/1$  & $1$ & $4$ & $100.0$ & $0.99$ & full & $99.5$ \\
 $250$/s  & $4/1$  & $1$ & $3$ & $100.0$ & $0.99$ & full & $58.6$ \\
 $400$/s  & $5/2$  & $2$ & $5$ & $50.0$  & $0.02$ & flat & $17.6$ \\
 $300$/s  & $10/3$ & $3$ & $5$ & $33.3$  & $0.97$ & full & $30.5$ \\
+$600$/s  & $5/3$  & $3$ & $4$ & $33.3$  & $0.97$ & full & $32.7$ \\
 $800$/s  & $5/4$  & $4$ & $5$ & $25.0$  & $0.04$ & flat & $7.2$  \\
 $625$/s  & $8/5$  & $5$ & $5$ & $20.0$  & $0.95$ & full & $17.9$ \\
 $875$/s  & $8/7$  & $7$ & $5$ & $14.3$  & $0.93$ & full & $10.7$ \\
@@ -1541,9 +1543,20 @@ $611$/s  & ---    & ${>}64$ & $3$ & --- & --- & $\approx 0$ & $3.1$ \\
 \end{tabular}
 \end{table}
 
-All eight commensurate arms match, six predicting the full cell width and two predicting a flat one.
-Both classes are represented, which matters: agreement with a prediction that never varies would not
-distinguish this account from a constant.
+All nine commensurate arms match, seven predicting the full cell width and two predicting a flat
+one. Both classes are represented, which matters: agreement with a prediction that never varies
+would not distinguish this account from a constant.
+
+\paragraph{The denominator, not the rate that carries it.} Every denominator above appears at one
+rate, so the table alone cannot separate ``retention is set by $q$'' from ``each rate happens to
+behave this way''. The control we pre-registered for this is the $600$~msg/s arm: an interval of
+$1.667$~ms $= 5/3$, the same $q=3$ as $300$~msg/s at \emph{half} the interval, recorded in advance
+to land near $33\%$ --- failing which the governing variable would be the rate and the rule would
+not generalise. It landed at $33.97$, $34.29$, $34.90$ and $66.67$ ($n=4$; a fifth run lost its
+shutdown-hook totals and is excluded by rule). That is not merely the predicted spread: it is the
+same two-point set. The $q=3$ grid is $\{1/3, 2/3\}$, and the fourth replicate's $66.67\%$ is $2/3$
+to two decimal places, matching the $65.35$ that $300$~msg/s produced on the same branch. Two rates
+an octave apart land on the same grid because they share a denominator.
 
 \paragraph{We report the correction because the first version was weaker and we published it to
 ourselves.} Treating $100/q$ as a point prediction made the even denominators look like failures, and

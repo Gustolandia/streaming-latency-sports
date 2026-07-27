@@ -1583,3 +1583,22 @@ exactly what an on-grid arm should show. And $250$/s ($q=1$) gives $58.6$ where 
 with $500$/s showing one replicate at $18.0$ — a run at a single phase cannot produce either. A
 nominal exact multiple is only $q=1$ if the pacing is exact for the whole run, and over three minutes
 it is not.
+
+### chain16 landed: the rate-independence control passes, on the exact grid points
+
+Pre-registered: *"If it lands near 33% the governing variable is q and not the rate. If it lands
+near 50% like the incommensurate rates, or anywhere off the thirds grid, then q=3 at 300 msg/s was
+a property of that rate and quantisation does not generalise."*
+
+Measured at $600$/s ($1.667$ ms $= 5/3$, the same $q=3$ at half the interval of $300$/s):
+$33.97$, $34.29$, $34.90$, $66.67$ — spread $32.7$ against a cell width of $33.3$. Three replicates
+on the lower branch of the $\{1/3, 2/3\}$ grid and one at $66.67$, which is $2/3$ to two decimal
+places. $300$/s had landed $34.86$–$41.13$ with one at $65.35$. Two rates an octave apart produce
+the same two-point set because they share a denominator: **the governing variable is $q$, and the
+rate that carries it is irrelevant.** Verdict: QUANTISED, $9$ of $9$ arms.
+
+A fifth replicate ran and is excluded by rule: its JVM ended at the result-JSON write without the
+shutdown hook printing the authoritative totals (`valid=0`, `none_in_log` in the ledger). Its
+periodic counters sat near $67\%$ mid-run — the upper branch again — but periodic lines are
+quantised and non-authoritative, so it contributes nothing. The arm stands at $n=4$ with both
+branches realised, above the power threshold the analyser enforces.

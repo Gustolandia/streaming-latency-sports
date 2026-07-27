@@ -527,6 +527,146 @@ class TestMeasuredRules:
         assert "NOT SUPPORTED" not in section.upper().replace("NOT SUPPORTED IF", "")
 
 
+class TestQuantisationTable:
+    """Every value in the quantisation table must come back out of the ledger.
+
+    This table is the evidence for the paper's most general claim -- that the damage is set by the
+    reduced denominator q -- and it was typed in by hand from a script's stdout. That is exactly
+    the transcription step that put "80 runs" in nine places while the ledger held 108, so the
+    numbers are recomputed here rather than proofread.
+    """
+
+    RATE_CAMPAIGNS = ("rate_phase", "rate_phase2", "rate_q")
+
+    @pytest.fixture(scope="class")
+    def arms(self):
+        """rate -> sorted retention percentages, from the committed ledger."""
+        path = RESULTS / "external_campaigns_index.csv"
+        if not path.exists():
+            pytest.skip("campaign ledger not present")
+        by = {}
+        with path.open(encoding="utf-8") as fh:
+            for r in csv.DictReader(fh):
+                if (r.get("campaign") not in self.RATE_CAMPAIGNS
+                        or r.get("valid") != "1"
+                        or r.get("count_source") != "shutdown_hook"):
+                    continue
+                try:
+                    kept = int(r.get("kept") or 0)
+                    zero = int(r.get("discarded_zero") or 0)
+                    neg = int(r.get("discarded_negative") or 0)
+                    rate = int(r.get("level") or 0)
+                except (TypeError, ValueError):
+                    continue
+                seen = kept + zero + neg
+                if seen > 0 and rate > 0:
+                    by.setdefault(rate, []).append(100.0 * kept / seen)
+        return {k: sorted(v) for k, v in by.items()}
+
+    def _table(self, tex):
+        """The quantisation table's body, isolated by its own label.
+
+        Scoping to the section is not enough: Table 8 in the same section also has a `$500$/s`
+        row, and a section-wide search silently matched that one instead. A test that reads the
+        wrong table is worse than no test, because it still passes for the wrong reason.
+        """
+        at = tex.index(r"\label{tab:quantisation}")
+        end = tex.index(r"\end{tabular}", at)
+        return tex[at:end]
+
+    def _quoted_row(self, tex, rate):
+        """The table row for one rate: [ratio, q, n, width, position, predicted, spread]."""
+        m = re.search(r"^\$%d\$/s\s*&(.+?)\\\\" % rate, self._table(tex), re.M)
+        assert m, "no table row for %d msg/s" % rate
+        return [c.strip() for c in m.group(1).split("&")]
+
+    @pytest.mark.parametrize("rate,q", [(1000, 1), (500, 1), (250, 1), (400, 2),
+                                        (300, 3), (800, 4), (625, 5), (875, 7)])
+    def test_the_denominator_is_the_arithmetic_one(self, tex, rate, q):
+        """q is arithmetic, so it can be checked without any measurement at all."""
+        from fractions import Fraction
+        assert (Fraction(1000, 1) / Fraction(rate)).denominator == q
+        cells = self._quoted_row(tex, rate)
+        assert cells[1] == "$%d$" % q, "row for %d/s quotes q=%s" % (rate, cells[1])
+
+    @pytest.mark.parametrize("rate", [1000, 500, 250, 400, 300, 800, 625, 875])
+    def test_replicate_count_and_spread_match_the_ledger(self, tex, arms, rate):
+        if rate not in arms:
+            pytest.skip("no cells for %d msg/s in the ledger" % rate)
+        vals = arms[rate]
+        cells = self._quoted_row(tex, rate)
+        assert cells[2] == "$%d$" % len(vals), \
+            "row for %d/s quotes n=%s, ledger has %d" % (rate, cells[2], len(vals))
+        spread = max(vals) - min(vals)
+        quoted = float(cells[6].strip("$"))
+        assert quoted == pytest.approx(spread, abs=0.05), \
+            "row for %d/s quotes spread %s, ledger gives %.1f" % (rate, cells[6], spread)
+
+    @pytest.mark.parametrize("rate,width", [(1000, 100.0), (500, 100.0), (250, 100.0),
+                                            (400, 50.0), (300, 33.3), (800, 25.0),
+                                            (625, 20.0), (875, 14.3)])
+    def test_cell_width_is_100_over_q(self, tex, rate, width):
+        cells = self._quoted_row(tex, rate)
+        assert float(cells[3].strip("$")) == pytest.approx(width, abs=0.05)
+
+    @pytest.mark.parametrize("rate,q", [(1000, 1), (500, 1), (250, 1), (400, 2),
+                                        (300, 3), (800, 4), (625, 5), (875, 7)])
+    def test_the_position_is_recomputed_not_taken_on_trust(self, tex, arms, q, rate):
+        """The position column must come back out of the ledger too.
+
+        Mutation-testing this class showed the gap: changing the position *and* the predicted
+        class together left the row internally consistent, so every other test still passed. A
+        column nothing recomputes is a column that can drift.
+        """
+        from fractions import Fraction
+        inc = [x for r, v in arms.items()
+               for x in v if (Fraction(1000, 1) / Fraction(r)).denominator > 64]
+        if not inc:
+            pytest.skip("no incommensurate cells")
+        continuous = st.median(inc)
+        width = 100.0 / q
+        d = min(abs(continuous - 100.0 * i / q) for i in range(q + 1))
+        expected = min(1.0, d / (width / 2.0))
+        quoted = float(self._quoted_row(tex, rate)[4].strip("$"))
+        assert quoted == pytest.approx(expected, abs=0.02), \
+            "row for %d/s quotes position %.2f, ledger gives %.2f" % (rate, quoted, expected)
+
+    def test_the_predicted_class_follows_from_the_quoted_position(self, tex):
+        """`full` above the mid-cell threshold, `flat` below -- no row may contradict its own
+        position column."""
+        for rate in (1000, 500, 250, 400, 300, 800, 625, 875):
+            cells = self._quoted_row(tex, rate)
+            position = float(cells[4].strip("$"))
+            predicted = cells[5]
+            expected = "full" if position > 0.5 else "flat"
+            assert predicted == expected, \
+                "row for %d/s has position %.2f but predicts %s" % (rate, position, predicted)
+
+    def test_every_quoted_arm_agrees_with_its_prediction(self, tex, arms):
+        """The paper's claim is that all of them match; that must be true of the printed rows."""
+        for rate in (1000, 500, 250, 400, 300, 800, 625, 875):
+            if rate not in arms:
+                continue
+            cells = self._quoted_row(tex, rate)
+            width = float(cells[3].strip("$"))
+            spread = max(arms[rate]) - min(arms[rate])
+            observed = "full" if spread > width / 2.0 else "flat"
+            assert cells[5] == observed, \
+                "%d/s predicts %s but the ledger shows %s (spread %.1f, width %.1f)" % (
+                    rate, cells[5], observed, spread, width)
+
+    def test_the_continuous_value_quoted_is_the_incommensurate_median(self, tex, arms):
+        from fractions import Fraction
+        inc = [x for rate, v in arms.items()
+               for x in v if (Fraction(1000, 1) / Fraction(rate)).denominator > 64]
+        if not inc:
+            pytest.skip("no incommensurate cells")
+        assert st.median(inc) == pytest.approx(49.5, abs=0.5), \
+            "sec:extquant states T_true/tau = 0.495; ledger median is %.2f%%" % st.median(inc)
+        section = _section(tex, "sec:external")
+        assert "0.495" in section
+
+
 class TestPoweredTransportReplication:
     """Claim 1 is refined by a powered replication over ~127 events/run, not E1's seven.
 

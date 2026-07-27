@@ -1735,6 +1735,16 @@ and branches stay pure, P5 is falsified and the numerator law takes its place. F
 account allows mid-heavy displacement toward $\theta(64\text{K}) \approx 0.85$ — overlapping
 ranges, so it discriminates only if cleanly bimodal on the grid points.
 
+**Block D complete (23:49Z): P6's central contrast confirmed.** The $64$ KB arm: $73.06$,
+$83.80$, $94.87$, $96.83$, $99.78$ — spread $26.7$ against a half-width of $16.7$, **full**, with
+the upper vertex hit at $99.78$. The registered flat$\to$full flip at fixed rate and $q$ —
+$\operatorname{frac}(q\theta)$ moving $0.055 \to 0.56$ — landed on both halves: spread $13.6$
+pinned at $32$ KB, $26.7$ freed at $64$ KB. Payload moves $\theta$; $\theta$'s position in the
+grid cell decides flat or full; nothing else changed. The letter-level residuals (the $2.4$-point
+pin displacement at $32$ KB; the $64$ KB lower cluster dressed to $73$–$84$) are the $p=10$
+displacement-toward-$\theta$ that every arm shows. P6 stands as the model's cleanest surviving
+prediction, delivered through the noisiest pacing regime of the campaign.
+
 **The system clock is exonerated.** `chronyc tracking` on the driver: residual frequency
 $+0.013$ ppm, skew $0.039$ ppm — the disciplined clock walks $\sim 7\,\mu$s over a three-minute
 run, two orders of magnitude below the $\sim 180\,\mu$s of within-run phase spread the smeared

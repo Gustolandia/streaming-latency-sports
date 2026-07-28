@@ -1745,6 +1745,35 @@ A quantitative displacement prediction from a measured jitter statistic does not
 harness of Section~\ref{sec:generality} records the statistic per run and is where one would be
 built.
 
+\subsection{Generality: the pattern without the stack}
+\label{sec:generality}
+
+Everything above is one benchmark, one driver, one language runtime, so the law could in
+principle be a property of that code path rather than of the pattern it implements. The referee
+campaign closes that gap from two directions, pre-registered before any cell ran.
+
+\paragraph{No JVM anywhere.} A $200$-line Python harness implements the pattern and nothing
+else: a producer paced at a fixed rate stamps each message with \texttt{int(time()*1000)} ---
+the same millisecond quantum as Java's \texttt{currentTimeMillis} --- ships it through
+\redis{} Streams, and the consumer applies OMB's guard verbatim, with the sign counted. The
+harness also records what no instrument of ours had measured: the pacer's own jitter, as the
+offset of every send from its scheduled instant. Registered predictions: the $q{=}1$ arm
+all-or-nothing, the $q{=}3$ arm on the thirds grid, the incommensurate arm stable at the
+harness's own $\theta$; falsifier, a $q{=}1$ arm unimodal mid-scale or an incommensurate arm
+bimodal.
+
+The incommensurate arm measures $\theta_{\mathrm{py}} = 29.5$\% --- the Python/\redis{} path
+is faster than OMB's --- and every commensurate replicate lands where that value orders it. At
+$500$~msg/s ($q=1$): $0.00$, $0.02$, $0.02$, $100.00$ --- all-or-nothing, both branches
+realised, in a stack with no JVM, no Kafka and no shared code with OMB. At $300$~msg/s
+($q=3$, grid $\{0, 1/3, 2/3, 1\}$ with $\theta_{\mathrm{py}}$ near the $1/3$ vertex): $2.68$ on
+the zero branch and $33.63$, $33.66$, $36.05$ on the $1/3$ vertex. Zero negative differences in
+$1.5$ million single-clock samples, as causality requires. Measured pacer jitter is
+$67$--$69\,\mu$s at p90 --- the per-run number the open questions of
+Section~\ref{sec:extopen} need, now an observable. In plain terms: the deletion law is a
+property of three lines of logic --- quantise, subtract, keep-if-positive --- and follows that
+logic into any language it is written in.
+
 \subsection{Three replicates do not establish reproducibility}
 \label{sec:extreprod}
 

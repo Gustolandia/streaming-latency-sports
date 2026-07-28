@@ -68,7 +68,7 @@ class TestApiCalls:
 
 class TestMain:
     def _patch(self, monkeypatch, temp_dir, published=None):
-        monkeypatch.setattr(zd, "build_bundle", lambda z, ref="HEAD", prefix="": _mk(temp_dir))
+        monkeypatch.setattr(zd, "build_bundle", lambda z, ref="HEAD", prefix="", **kw: _mk(temp_dir))
         monkeypatch.setattr(zd, "create_deposition",
                             lambda *a, **k: {"id": 42, "links": {"bucket": "b",
                                                                  "html": "https://z/deposit/42"}})
@@ -108,7 +108,7 @@ class TestMain:
         monkeypatch.setenv("ZENODO_API_TOKEN", "tok")
         seen = {}
 
-        monkeypatch.setattr(zd, "build_bundle", lambda z, ref="HEAD", prefix="": _mk(temp_dir))
+        monkeypatch.setattr(zd, "build_bundle", lambda z, ref="HEAD", prefix="", **kw: _mk(temp_dir))
         monkeypatch.setattr(zd, "upload_file", lambda *a, **k: {})
 
         def cap(api, token, metadata, session=None):
@@ -170,3 +170,29 @@ class TestBundle:
         zd.build_bundle(temp_dir / "b.zip", exclude=("secret/",))
         assert ":(exclude)secret/" in called["cmd"]
         assert ":(exclude)data/processed/replay_plans" not in called["cmd"]
+
+
+class TestPathRestriction:
+    """The dataset record archives only the measurement paths; a bundle that silently included
+    the whole tree would duplicate the software record and double the licence surface."""
+
+    def test_paths_restrict_the_archive(self, tmp_path):
+        import zipfile
+        import zenodo_deposit as zd
+        out = tmp_path / "data.zip"
+        zd.build_bundle(str(out), ref="HEAD", paths=("docs/results",))
+        names = zipfile.ZipFile(out).namelist()
+        assert names, "the restricted bundle must not be empty"
+        assert all("/docs/results/" in n or n.endswith("/") for n in names), \
+            "only docs/results content may appear"
+        assert not any("/scripts/" in n for n in names)
+
+    def test_default_paths_cover_the_tree(self, tmp_path):
+        import zipfile
+        import zenodo_deposit as zd
+        out = tmp_path / "all.zip"
+        zd.build_bundle(str(out), ref="HEAD")
+        names = zipfile.ZipFile(out).namelist()
+        assert any("/scripts/" in n for n in names)
+        assert not any("replay_plans" in n for n in names), \
+            "the NC-derived plans must stay excluded"

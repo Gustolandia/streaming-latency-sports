@@ -170,8 +170,12 @@ sign-separated discards, and pacer-jitter percentiles.
 \section{S4: OpenMessaging distributed mode, failure diagnostics}
 \label{supp:distdiag}
 
-Populated from the diagnosed attempts of the referee campaign (chain 18, block E): per attempt,
-the OMB version, the coordinator and worker logs, and the extracted failure signature. See
-\texttt{docs/results/external/dist\_diag/} in the artefact.
+Eleven attempts in total never produced a measurement. The three diagnosed attempts of the
+referee campaign (chain 18, block E) fail identically at OMB commit \texttt{5b1fa70}:
+\texttt{java.util.concurrent.CompletionException} wrapping
+\texttt{java.lang.IllegalArgumentException} in the coordinator--worker path, before any workload
+starts. Per attempt, the version, full coordinator and worker logs, and the extracted signature
+are archived in \texttt{docs/results/external/dist\_diag/}; a draft upstream report is at
+\texttt{docs/omb\_distributed\_issue.md} (not filed --- filing is the author's action).
 
 \end{document}

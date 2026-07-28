@@ -1737,11 +1737,17 @@ pass and $700$~msg/s --- both with $p = 10$; no arm with $p \le 8$ detached, and
 evening that $300$~msg/s detached, $625$~msg/s ($p = 8$) produced its cleanest two-branch split of
 the study. Suggestive; a census of two is not a law.
 
-\emph{Mobility between passes.} The same $300$~msg/s configuration was branch-adjacent in the
-morning and detached in the evening. Passes were hours apart, so epoch and arm are confounded;
-the disciplined clock is exonerated (residual $0.013$~ppm), the pacing loop is the suspect, and
-the controlled interleaving that separates arm from epoch is reported in
-Section~\ref{sec:generality}.
+\emph{Mobility between passes, now measured under control.} The same $300$~msg/s configuration
+was branch-adjacent in the morning and detached in the evening; passes were hours apart, so
+epoch and arm were confounded. The controlled test interleaves the two arms A/B/A/B within one
+session --- four pairs of ($300$, $625$)~msg/s --- and \textbf{both arms hold their grids}:
+$300$~msg/s at $37.40$, $38.21$, $39.86$ on the lower vertex and $67.41$ on the upper;
+$625$~msg/s at $42.97$ and $55.91$--$60.18$. No arm detached. The detachment is therefore a
+property of the \emph{epoch}, not of the arm, and the numerator census above loses its
+same-evening contrast --- which cuts the kernel conjecture's strongest support and is reported
+accordingly. What remains established is that some sessions produce a detached regime and
+others do not, at fixed configuration; the disciplined clock is exonerated throughout (residual
+$0.013$~ppm), and the pacing loop's state remains the open suspect.
 
 \emph{Branch suppression.} The formal residual analysis (Section~\ref{sec:extinference}) finds
 mean retention \emph{below} $\theta$ at every $q \ge 3$ arm, and the rank correlation of

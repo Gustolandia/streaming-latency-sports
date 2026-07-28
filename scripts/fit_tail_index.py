@@ -49,8 +49,12 @@ def load_sweep(path):
             except (KeyError, ValueError, TypeError):
                 continue
             if t > 0 and p > 0:
+                try:
+                    n_events = int(r.get("n_events") or 0)
+                except (TypeError, ValueError):
+                    n_events = 0
                 rows.append({"pad_bytes": int(r.get("pad_bytes", 0)),
-                             "transport_ms": t, "inversion": p})
+                             "transport_ms": t, "inversion": p, "n_events": n_events})
     return sorted(rows, key=lambda r: r["transport_ms"])
 
 
@@ -77,6 +81,61 @@ def fit_power_law(rows):
 def moments_exist(alpha):
     """What a tail index implies about the distribution's moments."""
     return {"mean": alpha > 1.0, "variance": alpha > 2.0}
+
+
+def uncertainty(rows, iters=20000, seed=11):
+    """The uncertainty the point estimate was published without (referee M5).
+
+    The estimator is ordinary least squares of log P(inversion) on log T_true over the payload
+    sweep's levels -- a regression slope, not a Hill estimator over raw stalls, and the report
+    must say so. Two uncertainties are computed, both from the sweep's own structure:
+
+    - a parametric bootstrap that resamples each level's inversion count as Binomial(n_events,
+      p_observed) and refits, giving a percentile CI that carries the per-level sampling error;
+    - leave-one-out refits, giving the sensitivity of the slope to any single level, which with
+      four levels is the honest fragility number.
+
+    The moment conclusion is re-evaluated against the CI: 'no finite mean' is claimed only if
+    the upper bound stays below 1; if the CI crosses 1 the manuscript's claim must weaken to
+    'consistent with an infinite mean', and this function is what decides which sentence is
+    licensed.
+    """
+    import random
+    fit = fit_power_law(rows)
+    if fit is None:
+        return None
+    rng = random.Random(seed)
+    boots = []
+    for _ in range(iters):
+        sim = []
+        for r in rows:
+            n = int(r.get("n_events") or 0)
+            if n <= 0:
+                sim.append(dict(r))
+                continue
+            # Normal approximation to Binomial(n, p): at n ~ 3000 its error is orders below the
+            # level-to-level scatter the CI exists to carry.
+            p = r["inversion"]
+            mu, sd = n * p, math.sqrt(n * p * (1 - p))
+            k = min(n, max(0, int(round(rng.gauss(mu, sd)))))
+            s = dict(r)
+            s["inversion"] = max(k, 1) / n
+            sim.append(s)
+        f = fit_power_law(sim)
+        if f is not None:
+            boots.append(f["alpha"])
+    boots.sort()
+    lo = boots[int(0.025 * len(boots))] if boots else None
+    hi = boots[int(0.975 * len(boots))] if boots else None
+    loo = []
+    for i in range(len(rows)):
+        f = fit_power_law([r for j, r in enumerate(rows) if j != i])
+        if f is not None:
+            loo.append(f["alpha"])
+    return {"alpha": fit["alpha"], "ci_lo": lo, "ci_hi": hi,
+            "loo_min": min(loo) if loo else None, "loo_max": max(loo) if loo else None,
+            "mean_claim_licensed": (hi is not None and hi < 1.0
+                                    and (not loo or max(loo) < 1.0))}
 
 
 def cross_check(fit, traced_path, threshold_ms):

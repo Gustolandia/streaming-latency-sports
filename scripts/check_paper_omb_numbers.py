@@ -32,6 +32,7 @@ PAPER_CAMPAIGNS = {
     "load_sweep", "load_sweep_p2", "load_sweep_nowarmup", "resolution",
     "rate_phase", "rate_phase2", "rate_q", "bimodality", "tprobe",
     "ultimate", "ultimate_pay300", "ultimate_dur1", "ultimate_dur10",
+    "ultimate_redis", "ultimate_alt",
 }
 
 # `rate_q` was initially left out, which made the count wrong in a way worth recording. The

@@ -1,0 +1,34 @@
+{
+  "title": "When the Interval Is Smaller Than the Instrument: measurement dataset (campaign ledgers, per-cell counters, harness results, clock-discipline log)",
+  "upload_type": "dataset",
+  "version": "1.0.0",
+  "license": "MIT",
+  "creators": [
+    {
+      "name": "Ricou, Gustavo Pedro",
+      "affiliation": "School of Computer Science and Statistics, Trinity College Dublin, Dublin, Ireland"
+    }
+  ],
+  "description": "<p>The measurement dataset behind the accompanying software record: every aggregated result the paper's claims are recomputed from.</p><p>Contents: the campaign ledger (one row per instrumented-benchmark cell: configuration, sign-separated discard counters, log size and SHA-256 of the source log); per-cell counter extracts; the Python-harness results (per-cell counts with sign-separated discards and per-run pacer-jitter percentiles, same-host and cross-host); the grid-membership inference output; the minute-by-minute clock-discipline log; the distributed-mode failure diagnostics; and the per-experiment CSVs for the inversion-mode campaigns (audit, priority, geometry, payload, trace).</p><p>Headline totals at v1: 223 instrumented OpenMessaging Benchmark runs; Kafka-driver corpus 10,913,263 discarded samples with 0 negatives; Redis-driver corpus 619,229 with 41,403 negatives, every one exactly -1000 microseconds. The schema is documented in the software record's supplement (S3).</p><p><strong>Data note.</strong> No StatsBomb event data is included. Aggregate workload statistics derived from it remain subject to StatsBomb's CC BY-NC 4.0 terms with attribution; all latency measurements are MIT.</p>",
+  "keywords": [
+    "latency measurements",
+    "benchmark dataset",
+    "measurement validity",
+    "timestamp quantisation",
+    "Apache Kafka",
+    "Redis Streams",
+    "OpenMessaging Benchmark"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/Gustolandia/streaming-latency-sports",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://github.com/statsbomb/open-data",
+      "relation": "isDerivedFrom",
+      "scheme": "url"
+    }
+  ]
+}

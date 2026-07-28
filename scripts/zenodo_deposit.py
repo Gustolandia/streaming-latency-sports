@@ -37,7 +37,8 @@ SANDBOX = "https://sandbox.zenodo.org/api"
 NC_DERIVED_PATHS = ("data/processed/replay_plans",)
 
 
-def build_bundle(out_zip, ref="HEAD", prefix="streaming-latency-sports/", exclude=NC_DERIVED_PATHS):
+def build_bundle(out_zip, ref="HEAD", prefix="streaming-latency-sports/",
+                 exclude=NC_DERIVED_PATHS, paths=(".",)):
     """Archive the tracked tree at `ref` with git, so gitignored data is excluded by design.
 
     `exclude` additionally drops paths that must not appear in the record. git pathspec magic
@@ -46,7 +47,7 @@ def build_bundle(out_zip, ref="HEAD", prefix="streaming-latency-sports/", exclud
     """
     out = Path(out_zip)
     out.parent.mkdir(parents=True, exist_ok=True)
-    pathspecs = ["."] + [f":(exclude){p}" for p in exclude]
+    pathspecs = list(paths) + [f":(exclude){p}" for p in exclude]
     subprocess.run(
         ["git", "archive", "--format=zip", f"--prefix={prefix}", "-o", str(out), ref,
          "--", *pathspecs],
@@ -92,6 +93,9 @@ def main(argv=None):
     ap.add_argument("--ref", default="HEAD", help="git ref to archive (e.g. a release tag)")
     ap.add_argument("--zip", default="dist/streaming-latency-sports.zip")
     ap.add_argument("--metadata", default=".zenodo.json")
+    ap.add_argument("--paths", nargs="+", default=["."],
+                    help="restrict the archive to these tracked paths (e.g. the data-only "
+                         "record: docs/results reproducibility)")
     ap.add_argument("--publish", action="store_true",
                     help="publish immediately instead of leaving a draft (IRREVERSIBLE)")
     args = ap.parse_args(argv)
@@ -105,7 +109,7 @@ def main(argv=None):
         return 1
 
     api = SANDBOX if args.sandbox else LIVE
-    bundle = build_bundle(args.zip, args.ref)
+    bundle = build_bundle(args.zip, args.ref, paths=tuple(args.paths))
     print(f"Bundled {args.ref} -> {bundle} ({bundle.stat().st_size/1e6:.1f} MB)")
 
     dep = create_deposition(api, token, load_metadata(args.metadata))

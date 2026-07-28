@@ -1,6 +1,7 @@
 {
-  "title": "A Message Cannot Arrive Before It Is Sent: physical-consistency auditing for streaming latency benchmarks",
+  "title": "When the Interval Is Smaller Than the Instrument: code and analysis for two failure modes of streaming latency benchmarks",
   "upload_type": "software",
+  "version": "1.0.0",
   "license": "MIT",
   "creators": [
     {
@@ -8,17 +9,25 @@
       "affiliation": "School of Computer Science and Statistics, Trinity College Dublin, Dublin, Ireland"
     }
   ],
-  "description": "<p>Code, measurements, analysis and paper for a study of measurement validity in streaming latency benchmarks.</p><p>We set out to compare Apache Kafka and Redis Streams for a real-time sports data feed and obtained a clean, statistically strong, theory-confirming answer. It was physically impossible: broker transport subtracts a timestamp taken in the producer process from one taken in the consumer process, and a check against that causal constraint rejected 1,321 of 2,266 runs, including every run behind the headline result.</p><p>The archive contains the consistency check itself, the full audit including the rejected corpus, the surviving comparison, and a regression suite that recomputes every figure in the paper from committed data and fails if paper and data disagree.</p><p><strong>Data note.</strong> No StatsBomb event data is redistributed here. Replay plans derived from it are excluded from this record and are regenerable byte-for-byte from a pinned upstream commit using the included scripts. Aggregate workload statistics computed from that dataset are included and remain subject to StatsBomb's CC BY-NC 4.0 terms with attribution; all code and all latency measurements are MIT.</p>",
+  "description": "<p>Code, analysis and manuscript for a study of two failure modes of sub-millisecond streaming latency benchmarking, both governed by one ratio: the instrument's timescale over the interval being measured.</p><p><strong>Mode A (inversion):</strong> cross-process latency is a two-clock difference and cannot be negative; applied to every run, that check rejected 1,321 of 2,266, including every run behind a statistically clean result we were about to publish. The mechanism is scheduling, established by manipulation, with a stall tail index near 0.34 (no finite mean).</p><p><strong>Mode B (deletion):</strong> the OpenMessaging Benchmark silently deletes every sample whose millisecond-quantised difference is not positive. Across 223 instrumented runs it computed its reported distribution from 0.36% to 100% of the samples it took, reporting the same median either way. Retention obeys a grid law in the reduced fraction of send interval over timestamp quantum, confirmed by a pre-registered payload manipulation, reproduced by a 200-line Python harness with no JVM, and measured across two clocks. The sign channel caught 41,403 genuine one-tick causality violations being absorbed by the same guard.</p><p>The archive contains the instrumentation, every campaign script and ledger, the analysis suite (2,000+ checks that recompute the manuscript's numbers from committed data and fail if paper and data disagree), the manuscript, and its supplement.</p><p><strong>Data note.</strong> No StatsBomb event data is redistributed. Replay plans derived from it are excluded from this record and regenerable byte-for-byte from a pinned upstream commit with the included scripts. All code and all latency measurements are MIT.</p>",
   "keywords": [
-    "streaming systems",
-    "latency benchmarking",
     "measurement validity",
+    "latency benchmarking",
+    "timestamp resolution",
+    "quantisation",
+    "sampling artefacts",
+    "causality violation",
     "reproducibility",
+    "streaming systems",
     "Apache Kafka",
-    "Redis Streams",
-    "performance evaluation"
+    "Redis Streams"
   ],
   "related_identifiers": [
+    {
+      "identifier": "https://github.com/Gustolandia/streaming-latency-sports",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    },
     {
       "identifier": "https://github.com/statsbomb/open-data",
       "relation": "isDerivedFrom",

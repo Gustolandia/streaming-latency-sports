@@ -133,3 +133,49 @@ them is committed (`analyze_phase_quantisation.py`, plus the branch-count binomi
 regimes to the one physical parameter (T_true). A model failure in any single prediction is
 reported as such; P6 failing while P1–P4 hold would indicate θ is not payload-portable across
 rates, which is itself a finding about the θ_local trend.
+
+---
+
+## chain17 outcomes (recorded 2026-07-28, 01:06Z ALL DONE; 55/55 cells valid, 0 negatives)
+
+Judged by the falsifiers stated above, with every interim reading timestamped in
+`docs/referee_response_plan.md` before the next block ran.
+
+| prediction | outcome |
+|---|---|
+| **P1** branch binomial | **not evaluable as registered** — mid-cell replicates (the evening 300/s arm: 51.03–55.93 in a {33.3, 66.7} grid) have no branch to be counted in; the classification the test presupposes does not exist for smeared arms |
+| **P2** 1250/s full {40, 60} | **falsifier fired** (flat: 40.66–42.00 + 48.26, pinned on the 2/5 vertex) — interpretation pends chain17b's θ probe, running now |
+| **P3** 700/s full {42.9, 57.1} | **falsifier fired** (flat at 6.5, smeared mid-cell toward θ) |
+| **P4** 900/s full ≈11.1 | letter of the class test passed (6.9 > 5.56) with its substance absent — the 55.6 branch never appeared; the three-way pre-registration (20:35Z) showed no account clean |
+| **P5** intermediates rise with duration | **falsified** — 1-min / 3-min / 10-min at 500/s gave 1 / 1 / 0 intermediates; duration does nothing |
+| **P6** payload×q: 32 KB pins flat, 64 KB frees full | **confirmed** — spread 13.6 (tri-cluster 69.17–69.23) → 26.7 (upper vertex hit at 99.78); frac(qθ) 0.055 → 0.56 flipped the class exactly as registered, at fixed rate and q, through the noisiest pacing of the campaign. The one letter-miss: the 32 KB pin sits 2.4 above the vertex, displaced toward θ |
+
+### What chain17 adds to the model (v3)
+
+Two regularities emerged mid-run, each pre-registered before the block that then tested it:
+
+1. **Displacement toward θ is universal.** Every commensurate arm's replicates sit off their grid
+   points *toward* θ, from +0.7 (1250/s) to full mid-cell smear. Grid occupancy is convolved with
+   a jitter kernel; the vertices survive as attractors, not as the values themselves.
+2. **The kernel width tracks p, not q, and not duration.** All three arms that smeared have
+   p = 10 (300 = 10/3, 700 = 10/7, 900 = 10/9); no arm with p ≤ 8 smeared; and the duration sweep
+   was flat (P5's falsification). Mechanism consistent with per-send pacer jitter proportional to
+   the sleep interval: jitter in cell units = slop × p, since Δ/(τ/q) = p identically. Registered
+   23:11Z, confirmed in direction by Block E. The cells-crossed-∝-q walk account of 20:35Z is
+   dead: it cannot explain 625/s (q=5) holding cleanly while 300/s (q=3) smeared the same
+   evening, and its duration dependence failed.
+3. **The regime is mobile between passes at fixed configuration** (300/s branch-adjacent in the
+   morning, mid-cell in the evening), which folds B4's irreproducibility one level deeper: not
+   only does a phase-locked run have no central value, the *kind* of distribution it draws from
+   moves on a timescale of hours. The chrony record (from 22:02Z) exonerates the disciplined
+   clock; the pacer itself is unmeasured and is the right target for a dedicated instrument.
+
+**The statement that survives everything measured so far:** retention is the occupancy of an arc
+of width θ by a q-point grid convolved with a pacing-jitter kernel; the kernel's width in cell
+units grows with p and varies between runs; E[retention] = θ at every q; and θ's position within
+the grid cell decides flat or full — the one lever an experimenter controls (payload → θ) moved
+it both ways on command (P6).
+
+**Still open:** the θ probe above 889/s (chain17b, running); a per-run pacer-jitter instrument;
+and the branch-probability law P(upper) = frac(qθ), untestable until arms can be conditioned on
+a quiet pacing regime.

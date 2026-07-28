@@ -451,6 +451,16 @@ exact multiple is only q=1 if the pacing is exact for the whole run; over three 
 few parts per million walks the phase across a boundary mid-run. The grid that governs retention is
 the one the pacing *realises*, not the one the nominal rate implies.
 
+**chain17 (2026-07-28) refined this law rather than overturning it.** The grid's vertices are
+attractors, not the values themselves: every arm's replicates sit displaced from their grid points
+*toward* T_true/τ, by a jitter kernel whose width in cell units tracks the **numerator p** (all
+three arms with p=10 smeared mid-cell; no arm with p≤8 did) and is independent of run duration
+(1/3/10-minute sweep flat — the walk account died there). The regime is also mobile between passes
+at fixed configuration. The law's sharpest confirmation survived all of it: payload moves T_true/τ,
+and its position in the grid cell flipped the 300/s arm flat→full on command (spread 13.6 pinned
+at 32 KB → 26.7 with the upper vertex hit at 64 KB). Full record: general_model.md, chain17
+outcomes.
+
 **The rate-independence control passed, and it is exact.** q=3 repeated at 600/s — half the
 interval of 300/s, same denominator — was pre-registered to reproduce a full-cell spread of ≈33,
 failing which the governing variable would have been the rate and B5 would shrink back to B2.

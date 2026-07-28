@@ -54,12 +54,21 @@ def macros(m):
 
     Names are deliberately verbose. A macro called `\\n` in a 3000-line manuscript is a trap, and
     a macro whose name does not say which campaign it counts is the same trap one level up.
+
+    The Kafka/Redis split exists because the negative-sample story is scoped: the withdrawal
+    rests on the Kafka-driver corpus staying at zero negatives, while the Redis-driver
+    replication caught real ones. One unsplit total let a claim about one corpus be silently
+    contradicted by the other.
     """
     out = [
         ("ombRuns", str(m["n_runs"])),
         ("ombDiscarded", latex_thousands(m["discarded_total"])),
         ("ombKept", latex_thousands(m["kept_total"])),
-        ("ombNegatives", str(m["negatives"])),
+        ("ombNegatives", latex_thousands(m["negatives"])),
+        ("ombKafkaDiscarded", latex_thousands(m["kafka_discarded"])),
+        ("ombKafkaNegatives", latex_thousands(m["kafka_negatives"])),
+        ("ombRedisDiscarded", latex_thousands(m["redis_discarded"])),
+        ("ombRedisNegatives", latex_thousands(m["redis_negatives"])),
     ]
     if m["retention_min"] is not None:
         out.append(("ombRetentionMin", "%.2f" % m["retention_min"]))

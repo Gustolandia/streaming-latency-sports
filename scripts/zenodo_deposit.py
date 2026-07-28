@@ -112,7 +112,24 @@ def main(argv=None):
     bundle = build_bundle(args.zip, args.ref, paths=tuple(args.paths))
     print(f"Bundled {args.ref} -> {bundle} ({bundle.stat().st_size/1e6:.1f} MB)")
 
-    dep = create_deposition(api, token, load_metadata(args.metadata))
+    try:
+        dep = create_deposition(api, token, load_metadata(args.metadata))
+    except requests.HTTPError as e:
+        code = e.response.status_code if e.response is not None else None
+        if code in (401, 403):
+            site = "sandbox.zenodo.org" if args.sandbox else "zenodo.org"
+            print(f"{code} from {site}: the token was rejected.")
+            print("Two usual causes:")
+            print("  1. Wrong site. Sandbox and production have SEPARATE accounts and")
+            print("     tokens; a zenodo.org token does not work on the sandbox and vice")
+            print(f"     versa. Mint one at https://{site}/account/settings/applications/tokens/new/")
+            print("  2. Missing scopes. The token needs 'deposit:write' (and")
+            print("     'deposit:actions' only for API publishing; the browser click")
+            print("     needs neither).")
+            print("This script only creates a DRAFT, which you can delete, so rehearsing")
+            print("on the sandbox is optional -- running against the real site is safe.")
+            return 1
+        raise
     upload_file(api, token, dep, bundle)
     print(f"Uploaded to draft deposition {dep['id']}")
 

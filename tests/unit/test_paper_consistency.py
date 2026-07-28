@@ -462,7 +462,7 @@ class TestH3IsMeasuredAndSupported:
         this test kept it that way -- a test pinned to prose rather than to a result will defend
         the prose after the result has moved.
         """
-        item = tex[tex.index(r"\textbf{Falsifiable rules, derived and measured}"):]
+        item = tex[tex.index(r"\textbf{Falsifiable rules, one of them withdrawn}"):]
         item = item[:item.index(r"\item")]
         assert "All four hold" not in item, "the contributions list still claims all four rules"
         assert "M/G/1" in item and "withdraw" in item, \
@@ -1068,10 +1068,13 @@ class TestNarrativeArc:
 
     def test_the_abstract_follows_the_stated_shape(self, tex):
         abstract = tex[tex.index(r"\begin{abstract}"):tex.index(r"\end{abstract}")]
-        for beat in ("The first is", "The second is", "What this leaves"):
+        for beat in ("First, the measurement", "Second, the measurement", "The audit"):
             assert beat in abstract, f"abstract is missing the '{beat}' beat"
-        # Humble about the original question rather than selling it.
-        assert "modest" in abstract.lower()
+        # The refocus is enforced here: secondary results stay out of the abstract by design.
+        assert "0.41" not in abstract, "the broker shift is a secondary result; not in the abstract"
+        assert "M/G/1" not in abstract, "withdrawn-model detail is not abstract material"
+        # And each failure mode carries its plain-language register.
+        assert abstract.count("In practice:") >= 2
 
     def test_results_are_ordered_by_consequence_not_chronology(self, tex):
         """The transferable science leads; the two-broker answer follows."""
@@ -1684,7 +1687,8 @@ class TestLoadGeometryAndTtrue:
         abstract = " ".join(re.search(r"\\begin\{abstract\}(.*?)\\end\{abstract\}",
                                       tex, re.S).group(1).split())
         lo, hi = min(ratios), max(ratios)
-        assert f"${round(lo)}$ to ${round(hi)}" in abstract, (
+        assert (f"${round(lo)}$ to ${round(hi)}" in abstract
+                or f"${round(lo)}$--${round(hi)}" in abstract), (
             f"artefacts give {lo:.1f}x-{hi:.1f}x; abstract does not state that range")
 
     def test_every_float_is_referenced_from_the_text(self, tex):

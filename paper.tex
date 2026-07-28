@@ -1528,7 +1528,7 @@ $500$/s  & $2/1$  & $1$ & $4$ & $100.0$ & $0.99$ & full & $99.5$ \\
 $250$/s  & $4/1$  & $1$ & $3$ & $100.0$ & $0.99$ & full & $58.6$ \\
 $400$/s  & $5/2$  & $2$ & $5$ & $50.0$  & $0.02$ & flat & $17.6$ \\
 $300$/s  & $10/3$ & $3$ & $5$ & $33.3$  & $0.97$ & full & $30.5$ \\
-$600$/s  & $5/3$  & $3$ & $4$ & $33.3$  & $0.97$ & full & $32.7$ \\
+$600$/s  & $5/3$  & $3$ & $5$ & $33.3$  & $0.97$ & full & $32.7$ \\
 $800$/s  & $5/4$  & $4$ & $5$ & $25.0$  & $0.04$ & flat & $7.2$  \\
 $625$/s  & $8/5$  & $5$ & $5$ & $20.0$  & $0.95$ & full & $17.9$ \\
 $875$/s  & $8/7$  & $7$ & $5$ & $14.3$  & $0.93$ & full & $10.7$ \\
@@ -1552,11 +1552,13 @@ rate, so the table alone cannot separate ``retention is set by $q$'' from ``each
 behave this way''. The control we pre-registered for this is the $600$~msg/s arm: an interval of
 $1.667$~ms $= 5/3$, the same $q=3$ as $300$~msg/s at \emph{half} the interval, recorded in advance
 to land near $33\%$ --- failing which the governing variable would be the rate and the rule would
-not generalise. It landed at $33.97$, $34.29$, $34.90$ and $66.67$ ($n=4$; a fifth run lost its
-shutdown-hook totals and is excluded by rule). That is not merely the predicted spread: it is the
-same two-point set. The $q=3$ grid is $\{1/3, 2/3\}$, and the fourth replicate's $66.67\%$ is $2/3$
-to two decimal places, matching the $65.35$ that $300$~msg/s produced on the same branch. Two rates
-an octave apart land on the same grid because they share a denominator.
+not generalise. It landed at $33.97$, $34.29$, $34.90$, $65.86$ and $66.67$: three replicates on
+the $1/3$ branch and two on the $2/3$ branch, nothing between. (The fifth replicate's
+shutdown-hook totals arrived after our first read and the cell was briefly excluded by rule; the
+recovered value, $65.86$, was on the upper branch.) That is not merely the predicted spread: it is
+the same two-point set. The $q=3$ grid is $\{1/3, 2/3\}$, and $66.67\%$ is $2/3$ to two decimal
+places, matching the $65.35$ that $300$~msg/s produced on the same branch. Two rates an octave
+apart land on the same grid because they share a denominator.
 
 \paragraph{We report the correction because the first version was weaker and we published it to
 ourselves.} Treating $100/q$ as a point prediction made the even denominators look like failures, and
@@ -1611,6 +1613,84 @@ points against $2$ to $3$ points at incommensurate rates a few percent away. Saf
 denominator, not from avoiding exact multiples, and the denominator is not visible in the rate an
 operator types. A rate is dangerous in proportion to how few distinct phases it visits inside the
 clock's quantum.
+
+\subsubsection{A comprehensive campaign: the grid survives as attractors}
+\label{sec:extcomp}
+
+The quantisation results above rest on arms of three to six replicates collected as the rule was
+being found. We therefore ran one further campaign designed in advance to stress it: $63$ cells in
+a single overnight sequence --- every arm brought to $n \ge 5$, six new denominators and rates,
+a payload manipulation, a duration sweep, and a direct measurement of the continuous value at the
+high-rate end. Six predictions were registered with falsifiers before launch, and interim readings
+were committed before each successive block ran. Every cell completed validly, and the ledger now
+holds $\ombRuns$ instrumented runs whose $\ombDiscarded$ discarded samples contain
+$\ombNegatives$ negatives. One prediction was confirmed, three had their falsifiers fire, one was
+not evaluable, and one split its accounts; we report all six.
+
+\paragraph{The confirmation is the one that manipulates the physics.} Payload moves
+$T_{\mathrm{true}}$ (Table~\ref{tab:retentionlaw}), so it moves $\theta$'s position within the
+grid cell, and Equation~\ref{eq:quant} then dictates the arm's class with nothing else changed.
+Measured at $457$~msg/s, $\theta(32\,\text{KB}) = 0.685$ and $\theta(64\,\text{KB}) = 0.853$; at
+$300$~msg/s ($q=3$) these give $\operatorname{frac}(q\theta) = 0.055$ (on the $2/3$ grid point:
+predict a flat arm pinned there) and $0.56$ (mid-cell: predict the full width back). The
+registered prediction was that one manipulation would move the arm onto a grid point and off it.
+It did: at $32$~KB the five replicates were $62.06$, $69.17$, $69.19$, $69.23$, $75.69$ --- spread
+$13.6$, three replicates agreeing to $0.06$ points --- and at $64$~KB they were $73.06$, $83.80$,
+$94.87$, $96.83$, $99.78$ --- spread $26.7$, the upper vertex hit to a quarter point. The flat-full
+boundary at half the cell width ($16.7$) is crossed in the predicted direction by both halves. One
+registered detail failed: the $32$~KB pin sits at $69.2$, not on the vertex at $66.67$ --- a
+displacement toward $\theta$ that the next paragraph makes systematic.
+
+\paragraph{Vertices are attractors, not the values themselves.} Across every commensurate arm in
+the study, replicates sit off their grid points \emph{toward} the continuous value, by amounts
+ranging from under a point to complete detachment. Two arms detached outright --- a majority of
+replicates further than $3$ points from any vertex: $300$~msg/s in the evening pass ($34.12$,
+$51.03$, $51.44$, $55.53$, $55.93$) and $700$~msg/s ($44.18$--$50.65$, spread $6.5$ against a
+cell width of $14.3$). Both have $p = 10$ in $\Delta/\tau = p/q$; no arm with $p \le 8$ detached,
+and the same evening that $300$~msg/s detached, $625$~msg/s ($p=8$, $q=5$) produced its cleanest
+bimodal split of the study ($41.07$, $41.96$ $\mid$ $57.02$, $59.05$, $60.04$). The phase
+disturbance, in units of the grid cell, is therefore governed by the \emph{numerator}: per-send
+pacing jitter proportional to the send interval contributes $\Delta / (\tau/q) = p$ cells of
+disturbance identically, independent of $q$ and of duration.
+
+\paragraph{Duration does nothing, which kills the natural alternative.} If the phase disturbance
+were a cumulative drift walk, it would scale with run length. Registered before the block ran:
+intermediates should rise with duration. Measured at $500$~msg/s ($q=1$, $p=2$) over one, three
+and ten minutes: intermediate counts $1$, $1$, $0$, with branch values pinned to the vertices at
+every duration ($0.43$, $1.11$, $100.00$ at ten minutes). The prediction was falsified, the walk
+account with it, and what stands is per-send jitter: a disturbance applied at each send, not
+accumulated across them.
+
+\paragraph{The regime itself is mobile.} The same $300$~msg/s configuration produced
+branch-adjacent replicates in the morning pass ($34.86$--$41.13$, $65.35$) and a detached arm in
+the evening. Section~\ref{sec:extreprod}'s irreproducibility therefore reaches one level deeper
+than retention values: the \emph{distribution family} a configuration draws from moves on a
+timescale of hours. The disciplined system clock is exonerated --- its residual frequency error
+during the campaign was $0.013$~ppm, two orders below what the detachment implies --- leaving the
+producer's own pacing loop, which no instrument in this study measures per run, as the identified
+open question.
+
+\paragraph{The continuous value plateaus, and one miss stands.} Two incommensurate arms at
+$1053$ and $1219$~msg/s, run to interpret the campaign's remaining anomaly, measured
+$\theta = 47.2\%$ and $48.2\%$: the downward trend visible between $333$ and $889$~msg/s does not
+continue, and the linear extrapolation on which one registered prediction relied is refuted. With
+the measured $\theta \approx 0.48$, the $1250$~msg/s arm ($\Delta < \tau$, $q=5$, $p=4$) was
+predicted mid-cell and full, with two upper-branch replicates expected of five; it produced none,
+pinning instead on the $2/5$ vertex ($40.66$--$42.00$, plus one at $48.26$) --- an outcome of
+probability $\approx 0.08$ under the branch law, recorded as a miss. The same arm sits six to
+seven points below the continuous value measured beside it, which no continuous account produces:
+the grid is present even where the branch-probability law under-delivers. The reconciliation we
+flag as post-hoc and untested --- a jitter kernel narrower than the half-cell suppresses
+realisation of the minority branch rather than merely displacing values --- is a prediction for a
+future campaign, not a claim of this one.
+
+\paragraph{What survives.} Retention is the occupancy of an arc of width $\theta$ by a $q$-point
+grid convolved with a pacing-jitter kernel; the kernel's width in cell units grows with $p$ and
+varies between runs and passes; the expectation over phase is $\theta$ at every $q$; and
+$\theta$'s position within the cell decides a flat or full arm --- the one lever an experimenter
+controls, and the campaign's one cleanly confirmed prediction, moved it both ways on command. The
+practical recommendation of Section~\ref{sec:authors} is unchanged and strengthened: dithering
+the send instant removes the entire structure, kernel and grid alike, whatever the arithmetic.
 
 \subsubsection{Three replicates do not establish reproducibility}
 \label{sec:extreprod}

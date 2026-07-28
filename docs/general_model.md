@@ -176,6 +176,16 @@ units grows with p and varies between runs; E[retention] = θ at every q; and θ
 the grid cell decides flat or full — the one lever an experimenter controls (payload → θ) moved
 it both ways on command (P6).
 
-**Still open:** the θ probe above 889/s (chain17b, running); a per-run pacer-jitter instrument;
-and the branch-probability law P(upper) = frac(qθ), untestable until arms can be conditioned on
-a quiet pacing regime.
+**The θ probe resolved (chain17b, ALL DONE 02:14Z).** θ(1053) = 47.15%, θ(1219) = 48.18% — the
+linear trend's extrapolation (44.3 at 1219) is refuted; θ plateaus at ≈48% above 700/s. By the
+reading recorded in the chain's header before it ran, **P2 stands as a genuine miss**: with
+θ ≈ 0.48, the model predicted a full arm at 1250/s with P(upper) = 0.40 and got zero upper values
+in five (probability ≈ 0.08). The same arm is strong evidence *against* the continuum — four
+replicates pinned on the 2/5 vertex, 6–7 points below the measured local θ. The reconciling
+observation, flagged as post-hoc: a jitter kernel narrower than the half-cell does not merely
+displace values, it suppresses realisation of the minority branch, so P(upper) < frac(qθ)
+systematically. That would also explain the upper-branch deficits at q=3 pooled and at 875/s. It
+is a prediction for a future campaign, not a claim.
+
+**Still open:** a per-run pacer-jitter instrument; the branch-suppression form of the kernel; and
+the branch-probability law, untestable until arms can be conditioned on a quiet pacing regime.

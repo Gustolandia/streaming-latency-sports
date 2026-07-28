@@ -667,6 +667,118 @@ class TestQuantisationTable:
         assert "0.495" in section
 
 
+class TestChain17Claims:
+    """Every checkable sentence of sec:extcomp, recomputed from the committed ledger.
+
+    The section reports one confirmed prediction, three fired falsifiers, one not-evaluable and
+    one split. The numbers below are the ones a referee can check, and each is derived here so
+    the prose cannot drift from the data that produced it.
+    """
+
+    @pytest.fixture(scope="class")
+    def cells(self):
+        path = RESULTS / "external_campaigns_index.csv"
+        if not path.exists():
+            pytest.skip("campaign ledger not present")
+        out = []
+        with path.open(encoding="utf-8") as fh:
+            for r in csv.DictReader(fh):
+                if r.get("valid") != "1" or r.get("count_source") != "shutdown_hook":
+                    continue
+                try:
+                    kept = int(r.get("kept") or 0)
+                    zero = int(r.get("discarded_zero") or 0)
+                except (TypeError, ValueError):
+                    continue
+                if kept + zero:
+                    out.append((r["campaign"], r["cell"], 100.0 * kept / (kept + zero)))
+        return out
+
+    def _arm(self, cells, campaign, prefix):
+        return sorted(v for c, cell, v in cells if c == campaign and cell.startswith(prefix))
+
+    def test_p6_crosses_the_flat_full_boundary_in_both_directions(self, tex, cells):
+        """The campaign's one confirmed prediction: 32 KB pins, 64 KB frees, threshold 16.7."""
+        k32 = self._arm(cells, "ultimate_pay300", "s32768")
+        k64 = self._arm(cells, "ultimate_pay300", "s65536")
+        if not k32 or not k64:
+            pytest.skip("payload arms not in ledger")
+        half = 100.0 / 3 / 2
+        assert max(k32) - min(k32) < half < max(k64) - min(k64)
+        assert max(k32) - min(k32) == pytest.approx(13.6, abs=0.1)
+        assert max(k64) - min(k64) == pytest.approx(26.7, abs=0.1)
+        section = _section(tex, "sec:external")
+        assert "13.6" in section and "26.7" in section
+
+    def test_the_32k_pin_is_a_tri_cluster_off_the_vertex(self, cells):
+        """Three replicates within 0.06 points of each other, ~2.5 above 66.67."""
+        k32 = self._arm(cells, "ultimate_pay300", "s32768")
+        if not k32:
+            pytest.skip("payload arm not in ledger")
+        trio = [v for v in k32 if 69.0 < v < 69.4]
+        assert len(trio) == 3 and max(trio) - min(trio) < 0.1
+
+    def test_duration_does_nothing(self, tex, cells):
+        """Intermediate counts 1 / 1 / 0 across one, three and ten minutes at 500/s."""
+        d1 = self._arm(cells, "ultimate_dur1", "r500")
+        d10 = self._arm(cells, "ultimate_dur10", "r500")
+        d3 = sorted(v for c, cell, v in cells
+                    if c in ("rate_phase", "rate_phase2", "ultimate") and cell.startswith("r500"))
+        if not d1 or not d10:
+            pytest.skip("duration arms not in ledger")
+        inter = lambda v: sum(1 for x in v if 5 < x < 95)
+        assert (inter(d1), inter(d3), inter(d10)) == (1, 1, 0)
+        assert "$1$, $1$, $0$" in _section(tex, "sec:external")
+
+    def test_the_detached_arms_both_have_p_ten(self, cells):
+        """Detached = a majority of an arm's replicates >3 points from every grid vertex."""
+        from fractions import Fraction
+        detached = []
+        for rate in (1250, 900, 700, 625, 300):
+            v = self._arm(cells, "ultimate", "r%d_" % rate)
+            if len(v) < 4:
+                continue
+            frac = Fraction(1000, 1) / Fraction(rate)
+            q = frac.denominator
+            grid = [100.0 * i / q for i in range(q + 1)]
+            off = sum(1 for x in v if min(abs(x - g) for g in grid) > 3.0)
+            if off > len(v) / 2.0:
+                detached.append((rate, frac.numerator))
+        assert {r for r, p in detached} == {300, 700}
+        assert all(p == 10 for r, p in detached)
+
+    def test_the_same_evening_contrast(self, cells):
+        """625/s (p=8) held its grid while 300/s (p=10) detached, hours apart is not the excuse."""
+        v625 = self._arm(cells, "ultimate", "r625_")
+        v300 = self._arm(cells, "ultimate", "r300_")
+        if not v625 or not v300:
+            pytest.skip("evening arms not in ledger")
+        near = lambda v, grid: sum(1 for x in v if min(abs(x - g) for g in grid) <= 3.0)
+        assert near(v625, [0, 20, 40, 60, 80, 100]) >= 4
+        assert near(v300, [0, 100.0 / 3, 200.0 / 3, 100]) <= 1
+
+    def test_theta_plateaus_at_the_high_rate_end(self, tex, cells):
+        """The probe medians sit at 47-48; the refuted linear extrapolation said under 45.6."""
+        for rate, med in ((1053, 47.15), (1219, 48.18)):
+            v = self._arm(cells, "ultimate", "r%d_" % rate)
+            if not v:
+                pytest.skip("probe arm not in ledger")
+            got = v[len(v) // 2] if len(v) % 2 else 0.5 * (v[len(v) // 2 - 1] + v[len(v) // 2])
+            assert got == pytest.approx(med, abs=0.05)
+            assert got > 46.0
+        section = _section(tex, "sec:external")
+        assert "47.2" in section and "48.2" in section
+
+    def test_the_1250_miss_is_stated_with_its_probability(self, tex, cells):
+        v = self._arm(cells, "ultimate", "r1250_")
+        if not v:
+            pytest.skip("1250 arm not in ledger")
+        # Four of five pinned near the 2/5 vertex, none on the 3/5 branch.
+        assert sum(1 for x in v if abs(x - 40.0) < 2.5) == 4
+        assert sum(1 for x in v if x > 55.0) == 0
+        assert "0.08" in _section(tex, "sec:external")
+
+
 class TestPoweredTransportReplication:
     """Claim 1 is refined by a powered replication over ~127 events/run, not E1's seven.
 

@@ -11,7 +11,7 @@ authors:
 description: "Two failure modes of sub-millisecond latency benchmarking: causality-violating inversions from scheduling stalls, and silent sample deletion governed by a grid law in the send-interval-to-timestamp-quantum ratio. Code, campaigns, and a suite that recomputes every figure from committed data."
 version: "1.0.0"
 url: "https://github.com/Gustolandia/streaming-latency-sports"
-# doi: "10.5281/zenodo.XXXXXXX"   # filled in once the Zenodo release is minted
+doi: "10.5281/zenodo.21650032"
 license: "MIT"
 keywords:
   - streaming systems
@@ -24,14 +24,14 @@ keywords:
   - actionability windows
   - football analytics
   - reproducible research
-date-released: "2026-01-01"
+date-released: "2026-07-27"
 # The paper. Under CFF the top-level block above already describes the software, so this key
 # describes the work a reader should cite instead -- and there must be exactly one of it. There
 # were two, and because CFF is YAML the second silently overwrote the first: the paper citation
 # was discarded at parse time and "Cite this repository" emitted a scaffolding version instead.
 preferred-citation:
   type: article
-  title: "A Message Cannot Arrive Before It Is Sent: Physical-Consistency Auditing for Streaming Latency Benchmarks, and What It Left of a Kafka-versus-Redis Comparison"
+  title: "When the Interval Is Smaller Than the Instrument: Two Ways Streaming Latency Benchmarks Fail on Sub-Millisecond Paths, and the Arithmetic That Decides What They Keep"
   authors:
     - family-names: "Ricou"
       given-names: "Gustavo Pedro"
@@ -41,8 +41,8 @@ preferred-citation:
   volume: "TBD"
   issue: "TBD"
   page: "TBD"
-  # doi: filled in on acceptance / Zenodo mint
-  # url: filled in on acceptance / Zenodo mint
+  # doi: publisher DOI, filled in on acceptance (the Zenodo DOI above is the software's)
+  # url: filled in on acceptance
 
 # Repository information
 repository: "https://github.com/Gustolandia/streaming-latency-sports"
@@ -65,8 +65,10 @@ contact:
 identifiers:
   - type: "github"
     value: "streaming-latency-sports"
-  - type: "zenodo"
-    value: "TBD"  # Register at zenodo.org for DOI
+  - type: "doi"
+    value: "10.5281/zenodo.21650031"  # concept DOI (code, all versions); v1.0.0 is 10.5281/zenodo.21650032
+  - type: "doi"
+    value: "10.5281/zenodo.21650064"  # concept DOI (dataset, all versions); v1.0.0 is 10.5281/zenodo.21650065
 
 # References to related works
 references:

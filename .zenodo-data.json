@@ -21,6 +21,11 @@
   ],
   "related_identifiers": [
     {
+      "identifier": "10.5281/zenodo.21650032",
+      "relation": "isSupplementTo",
+      "scheme": "doi"
+    },
+    {
       "identifier": "https://github.com/Gustolandia/streaming-latency-sports",
       "relation": "isSupplementTo",
       "scheme": "url"

@@ -464,12 +464,13 @@ outcomes.
 **The rate-independence control passed, and it is exact.** q=3 repeated at 600/s — half the
 interval of 300/s, same denominator — was pre-registered to reproduce a full-cell spread of ≈33,
 failing which the governing variable would have been the rate and B5 would shrink back to B2.
-Measured (n=4; a fifth run lost its shutdown hook and is excluded by rule, tracked as invalid):
+Measured (the fifth replicate's shutdown-hook totals arrived late; the recovered value, 65.86,
+was on the upper branch):
 
 | rate | interval | q | retentions | spread |
 |---|---|---|---|---|
 | 300/s | 3.333 ms | 3 | 34.86 36.72 39.42 41.13 **65.35** | 30.5 |
-| 600/s | 1.667 ms | 3 | 33.97 34.29 34.90 **66.67** | 32.7 |
+| 600/s | 1.667 ms | 3 | 33.97 34.29 34.90 **65.86 66.67** | 32.7 |
 
 Not merely the same spread — the same **grid points**. The q=3 grid is {33.3, 66.7}, and 600/s put
 three replicates on the lower branch and one at 66.67, which is 2/3 to two decimal places. Two

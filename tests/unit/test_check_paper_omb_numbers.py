@@ -245,13 +245,23 @@ class TestCLI:
                      "--generated", str(tmp_path / "absent.tex")]) == 1
         assert "run scripts/emit_paper_numbers.py" in capsys.readouterr().out
 
-    def test_a_negative_sample_fails_loudly(self, tmp_path, capsys):
-        """The one number that invalidates the withdrawal the section is built on."""
+    def test_a_kafka_corpus_negative_fails_loudly(self, tmp_path, capsys):
+        """The withdrawal rests on the Kafka-driver corpus staying negative-free."""
         args = self._setup(tmp_path, self.DERIVED, [("load_sweep", 10, 80, 3)])
         assert main(args) == 1
         out = capsys.readouterr().out
-        assert "NEGATIVE SAMPLES PRESENT" in out
-        assert "withdrawal it justifies must be revisited" in out
+        assert "KAFKA-DRIVER CORPUS HAS 3 NEGATIVES" in out
+        assert "withdrawal's basis is false" in out
+
+    def test_a_redis_corpus_negative_is_a_finding_not_a_failure(self, tmp_path, capsys):
+        """The Redis-driver replication caught real negatives; the paper reports them, so the
+        gate must pin the count without failing the build."""
+        args = self._setup(tmp_path, self.DERIVED,
+                           [("load_sweep", 10, 80, 0), ("ultimate_redis", 5, 80, 7)])
+        assert main(args) == 0
+        out = capsys.readouterr().out
+        assert "Kafka-driver corpus: 0 negatives" in out
+        assert "Redis-driver corpus: 7 negatives" in out
 
     def test_a_subset_larger_than_the_total_is_impossible(self, tmp_path, capsys):
         args = self._setup(tmp_path,

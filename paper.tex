@@ -72,10 +72,13 @@ of its own measurements, the report is indistinguishable from one computed from 
 a three-replicate median reproduced at one load level in five.
 
 \textbf{The audit that decides between the failure modes is a sign bit.} Our own earlier reading
-of the deletions as causality violations was wrong: separated by sign, $\ombDiscarded$ discarded
-samples contain not one negative. Both failure modes bind hardest where the measured effect is
-smallest --- on the comparisons such benchmarks exist to make. The remedy is one line: dither the
-send instant, and publish the retention rate.
+of the deletions as causality violations was wrong: separated by sign, the Kafka-driver corpus's
+$\ombKafkaDiscarded$ discarded samples contain not one negative. The same instrument then caught
+the real thing: replicated through OMB's Redis driver, the guard silently absorbed
+$\ombRedisNegatives$ genuine negatives --- every one exactly one tick, half of one entire run ---
+and the output records no trace of either. Both failure modes bind hardest where the measured
+effect is smallest --- on the comparisons such benchmarks exist to make. The remedy is one line:
+dither the send instant, and publish the retention rate.
 \end{abstract}
 
 \begin{CCSXML}
@@ -227,8 +230,11 @@ three-replicate median reproduced at one load level in five, because at these co
 quantity has no central value to converge on.
 \item \textbf{A sign audit that refuted our own strongest external claim}
 (Section~\ref{sec:external}). An earlier version of this work read those discards as causality
-violations, on a counter that could not distinguish sign. Separated by sign: $\ombDiscarded$
-discarded samples, not one negative. The refuting evidence had been in our own artefact from the
+violations, on a counter that could not distinguish sign. Separated by sign: the Kafka-driver
+corpus's $\ombKafkaDiscarded$ discarded samples, not one negative --- and the same channel then
+caught $\ombRedisNegatives$ genuine one-tick negatives in the Redis-driver replication
+(Section~\ref{sec:generality}), which the guard absorbs indistinguishably from sub-tick
+deletions. The refuting evidence had been in our own artefact from the
 day we committed it, in a field we had printed and not read. The cross-host exposure remains
 established by source audit, not observation --- the benchmark's distributed mode never completed
 a run in eight attempts --- and we distinguish the two.
@@ -1334,7 +1340,10 @@ under load, and read those discards as the same causality violation we report in
 Section~\ref{sec:gate}. \textbf{That reading is withdrawn.} The counter behind it was one unsigned
 total, and both a causality violation and a sub-millisecond delivery fail a \texttt{> 0} test;
 counting them together cannot distinguish them. Separating them by sign across all $\ombRuns$ runs
-gives, in $\ombDiscarded$ discarded samples, \textbf{not one negative}. The most negative
+gives, in the Kafka-driver corpus's $\ombKafkaDiscarded$ discarded samples,
+\textbf{not one negative}. (The Redis-driver replication later caught real ones ---
+Section~\ref{sec:generality} --- which sharpens rather than weakens this withdrawal: the guard
+absorbs both kinds without distinction, and only the sign channel says which.) The most negative
 end-to-end latency observed at any load, any message size and any producer rate is $0\,\mu$s.
 
 We report where the refuting evidence was, because the answer is uncomfortable and is the paper's
@@ -1773,6 +1782,25 @@ $67$--$69\,\mu$s at p90 --- the per-run number the open questions of
 Section~\ref{sec:extopen} need, now an observable. In plain terms: the deletion law is a
 property of three lines of logic --- quantise, subtract, keep-if-positive --- and follows that
 logic into any language it is written in.
+
+\paragraph{A second client through the same guard, and the guard's first genuine catches.}
+OMB's Redis driver exercises a different client code path through the same framework stamps and
+guard. The grid classes reproduce: at $500$~msg/s all three replicates pin to the lower branch
+($0.004$--$0.018\%$); at $300$~msg/s the replicates sit on the $\{0, 1/3\}$ vertices, one at
+$33.300\%$; and the incommensurate arm shows this path's $\theta$ to be volatile between runs
+($12.9$ against $40.9\%$). Then the sign channel, silent through $\ombKafkaDiscarded$
+Kafka-driver discards, caught the real thing: $\ombRedisNegatives$ negatives, every one exactly
+$-1000\,\mu$s --- the minimum the quantum can express --- of which $41{,}397$ fell in a single
+run where they were \emph{half of all samples taken}, beside six kept. The driver's clock
+discipline was clean at every logged minute of the affected windows (residual $0.000$~ppm), so
+the candidate mechanism is sub-millisecond skew between the stamping threads' views of the
+realtime clock in a virtualised guest, amplified to a full tick by quantisation; we flag it as a
+candidate, not a conclusion. The operational fact does not wait for the mechanism: the
+benchmark's output for that run is six samples and no trace that half its measurements violated
+causality as measured. The two failure modes of this paper meet in one counter, and only the
+sign instrumentation separates them. In plain terms: the same guard that deletes your fastest
+measurements will also, on the wrong day, delete the evidence that your clocks disagreed --- and
+the report looks identical either way.
 
 \paragraph{The cross-host case, measured at last.} With the harness's producer on one host and
 its consumer on another, the subtraction spans two chrony-disciplined clocks (measured offset
@@ -3344,8 +3372,11 @@ nothing that it drops. We instrumented that guard and ran the benchmark $\ombRun
 
 \emph{What we expected to find, we did not.} We had reported that a single such run discarded
 $6{,}000$ samples under load, and read those as the same causality violation we report above. The
-counter behind that reading could not distinguish sign. Separated across all $\ombRuns$ runs,
-$\ombDiscarded$ discarded samples contain \emph{not one negative}. We withdraw the claim, and record
+counter behind that reading could not distinguish sign. Separated by sign across the Kafka-driver
+corpus, $\ombKafkaDiscarded$ discarded samples contain \emph{not one negative} --- while the
+Redis-driver replication caught $\ombRedisNegatives$ genuine one-tick negatives that the same
+guard absorbed without trace, half of one run's samples among them. We withdraw the original
+claim, and record
 where its refutation was: in our own committed artefact, in a field we had printed and never read.
 What was missing was not data but a reason to look at the sign, and the statistic we had chosen to
 report did not have one.

@@ -48,39 +48,34 @@ output looking healthy, and both governed by one ratio: the instrument's timesca
 interval being measured.
 
 \textbf{First, the measurement can violate causality.} Broker delay is a difference of two
-timestamps taken in two processes, so it cannot be negative --- a check no summary statistic
-supplies. Applied to \emph{every} run, it rejected $1{,}321$ of $2{,}266$, including every run
-behind the result we were about to publish; the rejected data looks healthy in aggregate. The
-cause is not clock skew but scheduling: an inversion occurs when a stall separates an event from
-the clock read that timestamps it, $\Pr[\text{inversion}] = \Pr[\text{stall} >
-T_{\mathrm{true}}]$. Manipulating both sides confirms it --- real-time priority at fixed
-utilisation cuts the rate $7$--$80\times$; slowing the path $77\times$ cuts it further, so a
-slower path is a more reliable measurement. The stall tail index is near $0.34$: no finite mean,
-so average-based instruments are structurally blind to it. In practice: the numbers a dashboard
-shows can be produced by the scheduler, not the network, and no amount of averaging reveals this.
+timestamps taken in two processes, so it cannot be negative. Applied to \emph{every} run, that
+check rejected $1{,}321$ of $2{,}266$, including every run behind the result we were about to
+publish; the rejected data looks healthy in aggregate. The cause is scheduling, not clock skew:
+$\Pr[\text{inversion}] = \Pr[\text{stall} > T_{\mathrm{true}}]$, confirmed by manipulating both
+sides --- real-time priority at fixed utilisation cuts the rate $7$--$80\times$; slowing the path
+$77\times$ cuts it further. The stall tail index is near $0.34$: no finite mean, so average-based
+instruments are structurally blind. In practice: a dashboard's numbers can be produced by the
+scheduler, not the network, and averaging cannot reveal it.
 
-\textbf{Second, the measurement can be silently deleted, in software we did not write.} We
-instrumented the OpenMessaging Benchmark, which computes latency from millisecond-grained
-timestamps and keeps a sample only if the difference is positive, counting nothing it drops.
-Across $\ombRuns$ instrumented runs it computed its reported distribution from between $0.36\%$
-and $100\%$ of the samples it took --- and reported the same median either way. The retained
-fraction obeys arithmetic no operator sees: write the send interval over the timestamp
-quantum $\tau$ as $p/q$ in lowest terms, and a run retains one of the $q{+}1$ grid fractions bracketing
-$T_{\mathrm{true}}/\tau$, with the expectation equal to $T_{\mathrm{true}}/\tau$ at every $q$. The
-law is causal, not correlational: raising payload moves $T_{\mathrm{true}}/\tau$ onto a grid point
-and off it, and the arm's replicate spread collapsed ($13.6$ points, three replicates agreeing to
-$0.06$) and re-opened ($26.7$ points) on command. Technically: the benchmark's output is a
-deterministic function of an arithmetic relationship between two timescales, dressed in pacing
-jitter. In practice: a tool can report sub-millisecond latency from $0.4\%$ of its own
-measurements, the report looks identical to one computed from all of them, and a three-replicate
-median --- the standard defence --- reproduced at one load level in five.
+\textbf{Second, the measurement can be silently deleted, in software we did not write.} The
+OpenMessaging Benchmark computes latency from millisecond timestamps and keeps a sample only if
+the difference is positive, counting nothing it drops. Instrumented over $\ombRuns$ runs, it
+computed its reported distribution from between $0.36\%$ and $100\%$ of the samples it took ---
+and reported the same median either way. The retained fraction obeys arithmetic no operator
+sees: with the send interval over the timestamp quantum $\tau$ written $p/q$ in lowest terms, a
+run retains one of the $q{+}1$ grid fractions bracketing $T_{\mathrm{true}}/\tau$, whose
+expectation is $T_{\mathrm{true}}/\tau$ at every $q$. The law is causal: raising payload moves
+$T_{\mathrm{true}}/\tau$ onto a grid point and off it, and replicate spread collapsed ($13.6$
+points) and re-opened ($26.7$) on command --- and it is not the stack: a $200$-line Python
+harness reproduces the grid. In practice: a tool can report sub-millisecond latency from $0.4\%$
+of its own measurements, the report is indistinguishable from one computed from all of them, and
+a three-replicate median reproduced at one load level in five.
 
 \textbf{The audit that decides between the failure modes is a sign bit.} Our own earlier reading
-of the deletions as causality violations was wrong, and the instrument that showed it is the
-simplest in the paper: separated by sign, $\ombDiscarded$ discarded samples contain not one
-negative. Both failure modes bind hardest exactly where the measured effect is smallest --- on the
-delicate comparisons such benchmarks exist to make. The remedy costs one line: dither the send
-instant, and publish the retention rate.
+of the deletions as causality violations was wrong: separated by sign, $\ombDiscarded$ discarded
+samples contain not one negative. Both failure modes bind hardest where the measured effect is
+smallest --- on the comparisons such benchmarks exist to make. The remedy is one line: dither the
+send instant, and publish the retention rate.
 \end{abstract}
 
 \begin{CCSXML}

@@ -1584,7 +1584,25 @@ with $500$/s showing one replicate at $18.0$ — a run at a single phase cannot 
 nominal exact multiple is only $q=1$ if the pacing is exact for the whole run, and over three minutes
 it is not.
 
-### chain16 landed: the rate-independence control passes, on the exact grid points
+### chain18 block C interim (12:38Z): the sign channel catches its first genuine negatives
+
+The OMB **Redis-driver** arm produced the campaign's first negative samples: six, across two
+cells (`r300_rep1`: 5, `r500_rep3`: 1), **every one exactly $-1000\,\mu$s** — one tick, the
+minimum the quantum can express, never more. The driver-side clock record over the affected
+windows is smooth (residual $0.000$ ppm, offset gliding $1.7\,\mu$s/min), so a per-minute
+chrony event does not explain them. Both stamps are framework-side on one host, so the candidate
+mechanism is sub-millisecond cross-thread/vCPU realtime-clock skew in the virtualised guest —
+micro-scale Mode-A inversions whose apparent magnitude quantisation amplifies to a full tick.
+
+**What this does and does not change.** The withdrawal stands and sharpens: the original claim
+was that OMB's $\sim$6,000 discards per run under load were causality violations; the measured
+reality is 6 negatives in $\sim$8.6M discards, sub-tick deletion overwhelmingly, genuine
+inversion at the parts-per-million level. The "not one negative" sentences must be scoped to the
+Kafka-driver corpus (which remains at zero), and the Redis-driver catch becomes a finding: the
+guard absorbs real causality violations and sub-tick deletions into one indistinguishable
+counter, which no output of the benchmark separates. Numbers and text update when block C's
+counts are final; the gate will enforce the scoped claim (Kafka corpus $= 0$; Redis corpus
+$=$ the documented count with magnitude $-1000\,\mu$s).
 
 Pre-registered: *"If it lands near 33% the governing variable is q and not the rate. If it lands
 near 50% like the incommensurate rates, or anywhere off the thirds grid, then q=3 at 300 msg/s was

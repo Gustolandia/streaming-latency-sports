@@ -157,7 +157,22 @@ JAR=$(find "$OMB" -name "benchmark-framework-*.jar" -not -name "*sources*" | hea
 [ -n "$JAR" ] || { echo "FATAL: build produced no jar"; exit 1; }
 echo "built: $JAR"
 
-# Minimal driver + workload: OMB's own Kafka driver, pointed at our broker.
+# Minimal driver + workload. DRIVER=kafka (default) uses OMB's Kafka driver; DRIVER=redis uses
+# OMB's Redis driver against the same broker host -- a different client code path through the
+# same framework guard, which is the generality test referee concern M1 asks for. The guard and
+# the millisecond stamps live in benchmark-framework, not in either driver, so the deletion law's
+# prediction is: same grid, either driver.
+DRIVER="${DRIVER:-kafka}"
+if [ "$DRIVER" = "redis" ]; then
+cat > "$OUT/omb_driver.yaml" <<EOF
+name: Redis
+driverClass: io.openmessaging.benchmark.driver.redis.RedisBenchmarkDriver
+redisHost: ${REDIS_HOST:-10.0.1.221}
+redisPort: ${REDIS_PORT:-6379}
+jedisPoolMaxTotal: 8
+jedisPoolMaxIdle: 8
+EOF
+else
 cat > "$OUT/omb_driver.yaml" <<EOF
 name: Kafka
 driverClass: io.openmessaging.benchmark.driver.kafka.KafkaBenchmarkDriver
@@ -173,6 +188,7 @@ consumerConfig: |
   auto.offset.reset=earliest
   enable.auto.commit=false
 EOF
+fi
 
 # OMB reads the payload from a FILE. Without payloadFile the run dies in
 # FilePayloadReader.load with a NullPointerException about four seconds in, having

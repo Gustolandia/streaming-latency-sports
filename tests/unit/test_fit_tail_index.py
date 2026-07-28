@@ -170,3 +170,64 @@ class TestMain:
         sweep = _sweep(temp_dir, [(0, 0.7, 0.26), (1, 2.4, 0.19)])
         assert main(["--sweep", str(sweep), "--out", str(temp_dir / "o")]) == 1
         assert "at least 3 usable points" in capsys.readouterr().out
+
+
+class TestUncertainty:
+    """Referee M5: the point estimate must carry its CI and its fragility.
+
+    The estimator is a four-point log-log OLS slope, so the honest uncertainties are a
+    parametric bootstrap over each level's binomial sampling error and a leave-one-out range.
+    The gate that matters: the 'no finite mean' sentence is licensed only when the CI's upper
+    bound and every leave-one-out refit stay below 1.
+    """
+
+    def _rows(self, alpha, n_events=3000):
+        from fit_tail_index import load_sweep
+        rows = []
+        for pad, t, inv in _from_alpha(alpha):
+            rows.append({"pad_bytes": pad, "transport_ms": t, "inversion": inv,
+                         "n_events": n_events})
+        return rows
+
+    def test_ci_brackets_the_generating_alpha(self):
+        from fit_tail_index import uncertainty
+        u = uncertainty(self._rows(0.34), iters=2000)
+        assert u["ci_lo"] < 0.34 < u["ci_hi"]
+        assert u["loo_min"] <= u["alpha"] <= u["loo_max"]
+
+    def test_heavy_tail_claim_licensed_only_below_one(self):
+        from fit_tail_index import uncertainty
+        assert uncertainty(self._rows(0.34), iters=1500)["mean_claim_licensed"] is True
+        assert uncertainty(self._rows(1.30), iters=1500)["mean_claim_licensed"] is False
+
+    def test_zero_event_counts_fall_back_to_the_point_fit(self):
+        """No n_events means no binomial model; the bootstrap must not fabricate one."""
+        from fit_tail_index import uncertainty
+        u = uncertainty(self._rows(0.34, n_events=0), iters=200)
+        # Every resample equals the original data, so the CI collapses onto the estimate.
+        assert u["ci_lo"] == pytest.approx(u["alpha"], abs=1e-9)
+        assert u["ci_hi"] == pytest.approx(u["alpha"], abs=1e-9)
+
+    def test_too_few_points_yields_none(self):
+        from fit_tail_index import uncertainty
+        assert uncertainty(self._rows(0.34)[:2], iters=100) is None
+
+    def test_the_real_sweep_licenses_the_papers_sentence(self):
+        """The committed artefact, gated: alpha ~ 0.34 with CI and LOO below one."""
+        from fit_tail_index import load_sweep, uncertainty
+        path = Path(__file__).parent.parent.parent / "docs" / "results" / "model" / "ttrue_sweep.csv"
+        if not path.exists():
+            pytest.skip("sweep artefact not present")
+        u = uncertainty(load_sweep(str(path)), iters=3000)
+        assert u["alpha"] == pytest.approx(0.339, abs=0.01)
+        assert u["ci_hi"] < 1.0 and u["loo_max"] < 1.0
+        assert u["mean_claim_licensed"] is True
+
+    def test_malformed_n_events_reads_as_zero(self, tmp_path):
+        from fit_tail_index import load_sweep
+        p = tmp_path / "s.csv"
+        with p.open("w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=["pad_bytes", "transport_ms", "inversion", "n_events"])
+            w.writeheader()
+            w.writerow({"pad_bytes": 0, "transport_ms": 0.7, "inversion": 0.2, "n_events": "n/a"})
+        assert load_sweep(str(p))[0]["n_events"] == 0

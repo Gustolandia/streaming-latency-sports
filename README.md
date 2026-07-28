@@ -5,9 +5,17 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Target: TOMPECS](https://img.shields.io/badge/Target-ACM%20TOMPECS-orange.svg)]()
-[![Tests](https://img.shields.io/badge/tests-1612_passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-2085_passing-brightgreen.svg)]()
 [![Coverage](https://img.shields.io/badge/branch_coverage-%E2%89%A595%25-brightgreen.svg)]()
 [![StatsBomb Data](https://img.shields.io/badge/StatsBomb_Data-CC_BY--NC_4.0-blue.svg)](https://github.com/statsbomb/open-data)
+[![DOI (code)](https://img.shields.io/badge/DOI_code-10.5281%2Fzenodo.21650032-blue.svg)](https://doi.org/10.5281/zenodo.21650032)
+[![DOI (data)](https://img.shields.io/badge/DOI_data-10.5281%2Fzenodo.21650065-blue.svg)](https://doi.org/10.5281/zenodo.21650065)
+
+> **Archived versions (Zenodo).** v1.0.0 of the code and analysis:
+> [10.5281/zenodo.21650032](https://doi.org/10.5281/zenodo.21650032) · measurement dataset:
+> [10.5281/zenodo.21650065](https://doi.org/10.5281/zenodo.21650065). Concept DOIs (always
+> resolve to the latest version): code [10.5281/zenodo.21650031](https://doi.org/10.5281/zenodo.21650031),
+> data [10.5281/zenodo.21650064](https://doi.org/10.5281/zenodo.21650064).
 
 > ## 🎯 Current target — the contribution
 >

@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: "A Message Cannot Arrive Before It Is Sent: physical-consistency auditing for streaming latency benchmarks"
+title: "When the Interval Is Smaller Than the Instrument: two failure modes of streaming latency benchmarks"
 authors:
   - family-names: "Ricou"
     given-names: "Gustavo Pedro"
@@ -8,8 +8,8 @@ authors:
     affiliation: "School of Computer Science and Statistics, Trinity College Dublin"
     # orcid: "https://orcid.org/0000-0000-0000-0000"   # add your ORCID if you have one
   # Add additional authors as needed
-description: "A streaming latency benchmark whose first complete answer was physically impossible, the consistency check that found it, and what survived. Kafka vs Redis Streams on a real sparse workload."
-version: "1.0.0-preprint"
+description: "Two failure modes of sub-millisecond latency benchmarking: causality-violating inversions from scheduling stalls, and silent sample deletion governed by a grid law in the send-interval-to-timestamp-quantum ratio. Code, campaigns, and a suite that recomputes every figure from committed data."
+version: "1.0.0"
 url: "https://github.com/Gustolandia/streaming-latency-sports"
 # doi: "10.5281/zenodo.XXXXXXX"   # filled in once the Zenodo release is minted
 license: "MIT"

@@ -208,8 +208,11 @@ class TestTokenRejection:
         meta = tmp_path / "m.json"
         meta.write_text(json.dumps({"title": "t"}), encoding="utf-8")
         monkeypatch.setenv("ZENODO_API_TOKEN", "x")
-        monkeypatch.setattr(zd, "build_bundle", lambda z, ref="HEAD", prefix="", **kw:
-                            (tmp_path / "b.zip").write_bytes(b"z") or (tmp_path / "b.zip"))
+        def fake_bundle(z, ref="HEAD", prefix="", **kw):
+            out = tmp_path / "b.zip"
+            out.write_bytes(b"z")
+            return out
+        monkeypatch.setattr(zd, "build_bundle", fake_bundle)
         resp = requests.Response()
         resp.status_code = 403
 

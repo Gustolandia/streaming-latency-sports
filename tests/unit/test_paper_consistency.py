@@ -27,6 +27,14 @@ def tex():
     return PAPER.read_text(encoding="utf-8")
 
 
+@pytest.fixture(scope="module")
+def supp():
+    """The supplementary document. Content moved out of the main text lives here; the submission
+    package is main + supplement, so artefact-tied pins may satisfy in either."""
+    path = REPO / "supplement.tex"
+    return path.read_text(encoding="utf-8") if path.exists() else ""
+
+
 def _two_prop_z(row_a, row_b):
     """Two-proportion z between two cells that each record inversions and events."""
     import math
@@ -42,15 +50,24 @@ def _rows(*parts):
 
 
 def _section(tex, label):
-    """The text of one \\subsection, found by its label and read to the next heading.
+    """The text of one sectional unit, found by its label and read to its own kind of boundary.
 
     Slicing between two labels assumes they appear in a fixed order, which broke every time the
-    paper was reordered. This finds the section itself, so a test says what it means -- "in the
-    section about X" -- and survives the sections being rearranged.
+    paper was reordered. This finds the unit itself, so a test says what it means -- "in the
+    section about X" -- and survives rearrangement. The boundary depends on the unit's level: a
+    \\subsection ends at the next \\subsection or \\section, but a \\section spans its own
+    subsections and ends only at the next \\section -- which mattered the day sec:external was
+    promoted to a top-level section and every test scoped to it silently shrank to its preamble.
     """
     start = tex.index("\\label{" + label + "}")
-    nxt = [i for i in (tex.find("\n\\subsection", start), tex.find("\n\\section", start))
-           if i != -1]
+    head = tex.rfind("\\section{", 0, start)
+    subhead = tex.rfind("\\subsection{", 0, start)
+    is_section = head > subhead
+    if is_section:
+        nxt = [i for i in (tex.find("\n\\section", start),) if i != -1]
+    else:
+        nxt = [i for i in (tex.find("\n\\subsection", start), tex.find("\n\\section", start))
+               if i != -1]
     return tex[start:min(nxt)] if nxt else tex[start:]
 
 
@@ -1902,23 +1919,23 @@ class TestRecoveredProvenance:
 
     ADHOC = REPO / "reproducibility" / "campaign_logs" / "early_adhoc"
 
-    def test_the_quoted_speedup_matches_the_recovered_script(self, tex):
+    def test_the_quoted_speedup_matches_the_recovered_script(self, tex, supp):
         script = (self.ADHOC / "e1.sh").read_text(encoding="utf-8")
         m = re.search(r"--speedup\s+([0-9.]+)", script)
         assert m, "the recovered e1.sh no longer names a speedup"
         flag = m.group(1)
-        assert flag in " ".join(tex.split()), \
-            f"the paper must quote the recovered flag {flag}"
+        assert flag in " ".join((tex + supp).split()), \
+            f"the submission (main or supplement S1) must quote the recovered flag {flag}"
         # 1/120 against a plan already compressed 120x is true real time.
         assert abs(float(flag) - 1 / 120) < 1e-5, \
             f"{flag} is not 1/120; the true-real-time reading needs revisiting"
 
-    def test_the_max_t_sim_window_is_reported(self, tex):
+    def test_the_max_t_sim_window_is_reported(self, tex, supp):
         """--max-t-sim 2 is why E1 matched seven events. The paper had described the symptom."""
         script = (self.ADHOC / "e1.sh").read_text(encoding="utf-8")
         m = re.search(r"--max-t-sim\s+(\d+)", script)
         assert m and m.group(1) == "2"
-        flat = " ".join(tex.split())
+        flat = " ".join((tex + supp).split())
         assert "max-t-sim" in flat.replace("-{}-", "--"), \
             "the window that produced the seven-event runs must be named"
 
@@ -1930,9 +1947,13 @@ class TestRecoveredProvenance:
         assert stamp.replace("_", "") in log.replace("_", "").replace(":", ""), \
             f"the E1 artefact's first run {first} is not in the recovered log"
 
-    def test_the_paper_keeps_the_inference_ahead_of_the_confirmation(self, tex):
-        """Reporting only the flag would hide that the rate was determined without it."""
-        section = " ".join(_section(tex, "sec:rateprovenance").split())
+    def test_the_paper_keeps_the_inference_ahead_of_the_confirmation(self, tex, supp):
+        """Reporting only the flag would hide that the rate was determined without it.
+
+        The full episode moved to supplement S1; the ordering obligation moved with it, and the
+        main-text summary must still tell the reader the episode exists."""
+        assert "supplementary material" in _section(tex, "sec:rateprovenance").lower()
+        section = " ".join(supp.split())
         infer = section.find("recoverable from the measurements")
         confirm = section.find("checked against the original script")
         assert -1 < infer < confirm, \

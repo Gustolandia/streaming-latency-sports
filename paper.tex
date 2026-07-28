@@ -31,8 +31,8 @@
 \begin{document}
 
 \title{When the Interval Is Smaller Than the Instrument}
-\subtitle{Two Ways Streaming Latency Benchmarks Fail on Sub-Millisecond Paths, and What They Left
-of a \kafka{}-versus-\redis{} Comparison}
+\subtitle{Two Ways Streaming Latency Benchmarks Fail on Sub-Millisecond Paths, and the Arithmetic
+That Decides What They Keep}
 
 \author{Gustavo Pedro Ricou}
 \affiliation{%
@@ -44,47 +44,43 @@ of a \kafka{}-versus-\redis{} Comparison}
 \begin{abstract}
 Streaming brokers are compared on latencies of tenths of a millisecond using instruments whose own
 timescales are larger than that. We report two consequences, both of which leave the benchmark's
-output looking healthy, and both of which are governed by the same ratio: the instrument's
-timescale divided by the interval being measured.
+output looking healthy, and both governed by one ratio: the instrument's timescale over the
+interval being measured.
 
-\textbf{The first is that the measurement can violate causality.} Broker delay is a difference of
-two timestamps taken in two processes, so it admits one check no statistic supplies: it cannot be
-negative. Applying that check to \emph{every} run rather than only to runs that looked wrong
-rejected $1{,}321$ of $2{,}266$, including every run behind the result we were about to publish.
-Nothing in the rejected data looks wrong in aggregate --- medians stay positive, intervals stay
-narrow, effect sizes stay large. The cause is not clock skew: an inversion occurs when a
-scheduling stall separates an event from the clock read that timestamps it and outlasts the
-interval being measured, $\Pr[\text{inversion}] = \Pr[\text{stall} > T_{\mathrm{true}}]$. We
-manipulate both sides. Real-time priority at \emph{fixed} utilisation cuts the rate $7$ to
-$80\times$ across eight matched pairs; lengthening the true transport $77\times$ cuts it further,
-so a slower path is a \emph{more reliable} measurement. A kernel trace predicts the observed rate
-to within a third, unfitted. The stall distribution's tail index is near $0.34$, so it has no
-finite mean and instruments built on averages are structurally blind to this failure.
+\textbf{First, the measurement can violate causality.} Broker delay is a difference of two
+timestamps taken in two processes, so it cannot be negative --- a check no summary statistic
+supplies. Applied to \emph{every} run, it rejected $1{,}321$ of $2{,}266$, including every run
+behind the result we were about to publish; the rejected data looks healthy in aggregate. The
+cause is not clock skew but scheduling: an inversion occurs when a stall separates an event from
+the clock read that timestamps it, $\Pr[\text{inversion}] = \Pr[\text{stall} >
+T_{\mathrm{true}}]$. Manipulating both sides confirms it --- real-time priority at fixed
+utilisation cuts the rate $7$--$80\times$; slowing the path $77\times$ cuts it further, so a
+slower path is a more reliable measurement. The stall tail index is near $0.34$: no finite mean,
+so average-based instruments are structurally blind to it. In practice: the numbers a dashboard
+shows can be produced by the scheduler, not the network, and no amount of averaging reveals this.
 
-\textbf{The second is that the measurement can be silently deleted, and this one is not ours.} We
-instrumented the OpenMessaging Benchmark, which computes end-to-end latency from
-millisecond-grained timestamps and admits a sample only if the difference is positive, counting
-nothing that it drops. Across $\ombRuns$ runs we find it computes its reported latency distribution from
-between $0.36\%$ and $100\%$ of the samples it takes, and reports the same median either way ---
-two distinct values across a $278$-fold change in the evidence behind them. Which case obtains is
-decided by a variable no operator sets: how few distinct phases the producer's send interval visits
-within the timestamp quantum. Write that interval over the quantum as $p/q$ in lowest terms and the
-producer visits exactly $q$ phases, so the replicate spread is governed by $q$ alone --- $99.5$
-points at $500$~msg/s ($q=1$, an interval of exactly $2.000$~ms, a rate chosen for being round),
-$30.5$ points at $300$~msg/s ($q=3$, which is not a multiple of the tick at all and does not look
-dangerous), and $2$ to $3$ points wherever the denominator is large. Avoiding round rates is
-therefore not a defence. A three-replicate median, the standard defence against the instability,
-reproduces at one load level in five across three passes of an identical configuration.
+\textbf{Second, the measurement can be silently deleted, in software we did not write.} We
+instrumented the OpenMessaging Benchmark, which computes latency from millisecond-grained
+timestamps and keeps a sample only if the difference is positive, counting nothing it drops.
+Across $\ombRuns$ instrumented runs it computed its reported distribution from between $0.36\%$
+and $100\%$ of the samples it took --- and reported the same median either way. The retained
+fraction obeys arithmetic no operator sees: write the send interval over the timestamp quantum as
+$p/q$ in lowest terms, and a run retains one of the $q{+}1$ grid fractions bracketing
+$T_{\mathrm{true}}/\tau$, with the expectation equal to $T_{\mathrm{true}}/\tau$ at every $q$. The
+law is causal, not correlational: raising payload moves $T_{\mathrm{true}}/\tau$ onto a grid point
+and off it, and the arm's replicate spread collapsed ($13.6$ points, three replicates agreeing to
+$0.06$) and re-opened ($26.7$ points) on command. Technically: the benchmark's output is a
+deterministic function of an arithmetic relationship between two timescales, dressed in pacing
+jitter. In practice: a tool can report sub-millisecond latency from $0.4\%$ of its own
+measurements, the report looks identical to one computed from all of them, and a three-replicate
+median --- the standard defence --- reproduced at one load level in five.
 
-\textbf{What this leaves.} We withdraw three claims, including an M/G/1 form our own data refutes
-and our own earlier reading of these discards as causality violations: in $\ombDiscarded$
-discarded samples there is not one negative. Of the original question --- does the choice between
-Apache \kafka{} and \redis{} Streams change delay for a live football feed --- what survives is
-modest: the brokers sit within a millisecond, with a reproducible $0.41$~ms advantage for
-\redis{} that is real and negligible beside a feed whose human annotation latency is measured in
-seconds. The general consequence is uncomfortable, and it is the same for both failure modes: they
-bind hardest exactly where the measured effect is smallest, which is to say on the delicate
-comparisons such papers exist to make.
+\textbf{The audit that decides between the failure modes is a sign bit.} Our own earlier reading
+of the deletions as causality violations was wrong, and the instrument that showed it is the
+simplest in the paper: separated by sign, $\ombDiscarded$ discarded samples contain not one
+negative. Both failure modes bind hardest exactly where the measured effect is smallest --- on the
+delicate comparisons such benchmarks exist to make. The remedy costs one line: dither the send
+instant, and publish the retention rate.
 \end{abstract}
 
 \begin{CCSXML}
@@ -212,85 +208,68 @@ we regard it as more consequential than either mechanism alone.
 
 \subsection{Contributions}
 
+Ordered by what we regard as strongest. The first two are, to our knowledge, new; the remainder
+support, mechanise, or correct them.
+
 \begin{enumerate}
+\item \textbf{A deletion law for benchmark samples, established by manipulation}
+(Section~\ref{sec:external}). A source-level audit of the OpenMessaging Benchmark, at a named
+commit with file and line, finds it computes end-to-end latency from millisecond-grained
+timestamps and admits a sample only when the difference is positive, with no counter for what it
+discards. We made the discard visible across $\ombRuns$ instrumented runs. \emph{(i)} The
+benchmark computed its reported distribution from between $0.36\%$ and $100\%$ of the samples it
+took, and reported a median of $1.0$ or $2.0$~ms in every case: the headline is insensitive to a
+$278$-fold change in the evidence behind it. \emph{(ii)} The retained fraction obeys arithmetic
+the operator never sees: writing the send interval over the timestamp quantum as $p/q$ in lowest
+terms, a run retains one of the $q{+}1$ grid fractions bracketing $T_{\mathrm{true}}/\tau$, the
+expectation over replicates equals $T_{\mathrm{true}}/\tau$ at every $q$, and across twelve
+commensurate arms spanning seven denominators every arm behaves as its grid position predicts
+(Sections~\ref{sec:extquant}--\ref{sec:extcomp}). \emph{(iii)} The law is causal: raising payload
+moves $T_{\mathrm{true}}/\tau$ onto a grid vertex and off it, and the arm's spread collapsed
+($13.6$ points, three replicates within $0.06$) and re-opened ($26.7$) on command --- one
+manipulated variable, both directions, pre-registered. \emph{(iv)} The standard defence fails: a
+three-replicate median reproduced at one load level in five, because at these configurations the
+quantity has no central value to converge on.
+\item \textbf{A sign audit that refuted our own strongest external claim}
+(Section~\ref{sec:external}). An earlier version of this work read those discards as causality
+violations, on a counter that could not distinguish sign. Separated by sign: $\ombDiscarded$
+discarded samples, not one negative. The refuting evidence had been in our own artefact from the
+day we committed it, in a field we had printed and not read. The cross-host exposure remains
+established by source audit, not observation --- the benchmark's distributed mode never completed
+a run in eight attempts --- and we distinguish the two.
 \item \textbf{A physical-consistency audit for cross-process latency benchmarks}
-(Section~\ref{sec:gate}), stated as a rule, applied uniformly to all $2{,}266$ runs, with its
-threshold sensitivity reported rather than asserted (Section~\ref{sec:audit}). We show the audit
-binds hardest exactly where the measured effect is smallest, which inverts the usual intuition
-that large clean effects are the trustworthy ones.
-\item \textbf{A demonstration}, which we regard as the strongest of these: a complete,
-significant, theory-confirming result set that was physically impossible, reported in full so a
-reader can judge how convincing invalid data looks (Section~\ref{sec:firstanswer}).
-\item \textbf{Falsifiable rules, derived and measured} (Sections~\ref{sec:model}
-and~\ref{sec:rules}). From a model of the failure we derive that inversion probability is
-$F_{\Delta}(-T_{\mathrm{true}})$ and test its consequences: it falls as the measured quantity
-grows, rises with concurrent process count, rises monotonically with utilisation, and --- the rule
-that bears directly on our own first result --- an asymmetric instrument leaves a between-system
-difference that a symmetric one removes. Those hold. We had also claimed the M/G/1 \emph{form}
-specifically, and we withdraw it: extended to the utilisation range where the candidate forms
-diverge, M/G/1 fits worse than the mean. The withdrawal is part of the contribution, because what
-replaces it is not a better curve.
-\item \textbf{The mechanism, established by manipulation}
+(Section~\ref{sec:gate}), stated as a rule, applied uniformly to all $2{,}266$ runs, threshold
+sensitivity reported (Section~\ref{sec:audit}). It rejected a complete, significant,
+theory-confirming result set that was physically impossible, reported in full so a reader can
+judge how convincing invalid data looks (Section~\ref{sec:firstanswer}). The audit binds hardest
+exactly where the measured effect is smallest, inverting the intuition that large clean effects
+are the trustworthy ones.
+\item \textbf{The inversion mechanism, established by manipulation}
 (Section~\ref{sec:twostate}): an inversion occurs when a scheduling stall outlasts the interval
-being measured, and we manipulate both sides of that inequality.
-Raising the stamping threads to real-time priority at \emph{fixed} utilisation collapses the rate
-$7$ to $80\times$ across eight matched pairs. Two loads reaching \emph{identical} utilisation ---
-to four decimals, in two campaigns --- by different core geometries differ by $2.07\times$ and
-$2.05\times$, so utilisation cannot be the variable. Lengthening the true transport $77\times$
-\emph{lowers} the rate, the sign no stress-based account predicts. A kernel trace of run-queue
-delay then predicts the observed rate to within a third, in three arms at two load levels, with
-nothing fitted between them, and puts the stall distribution's tail index near $0.34$ --- below one, so it has no finite mean, which is
-why an instrument built on averages is structurally rather than accidentally blind to this
-failure.
-\item \textbf{A second failure mode, in a benchmark we did not write, with its mechanism
-established by manipulation} (Section~\ref{sec:external}). A source-level audit of the
-OpenMessaging Benchmark, at a named commit and with file and line given, finds it computes
-end-to-end latency as the same cross-process --- in a distributed deployment, cross-\emph{host}
---- timestamp difference, and admits a sample only when that difference is positive, with no
-counter for what it discards. We made the discard visible and swept it across $\ombRuns$ runs. Three
-results follow. \emph{(i)} The benchmark computes its reported distribution from between $0.36\%$
-and $100\%$ of its samples, reporting a median of $1.0$ or $2.0$~ms in every case: the headline is
-insensitive to a $278$-fold change in the evidence behind it. \emph{(ii)} Which case obtains is
-decided by arithmetic the operator never sees. Writing the send interval over the timestamp quantum
-as $p/q$ in lowest terms, the producer visits exactly $q$ phases, and $q$ alone fixes how far
-replicates can spread. We establish this by manipulation, holding size, load, duration and host
-fixed: at an interval of exactly $2.000$~ms ($q=1$) retention spans $99.5$ points across replicates,
-while two incommensurate rates are stable to $2$ points and agree with \emph{each other} to under
-$2$ points despite intervals differing by $19\%$. Across nine rate arms spanning six denominators
-the measured spread is the one each arm's position in its grid predicts, in every case, and the
-same $q$ at two rates an octave apart lands on the same grid points
-(Section~\ref{sec:extquant}) --- so the rule is a gradient rather than the binary that
-``commensurate or not'' suggests, and $300$~msg/s, a multiple of nothing, spreads $30.5$ points.
-\emph{(iii)} The standard defence does not work --- a three-replicate median
-reproduces at one load level in five across three passes of an identical configuration.
-\item \textbf{A withdrawal of our own strongest external claim} (Section~\ref{sec:external}). An
-earlier version of this work reported those discards as the same causality violation we report in
-Section~\ref{sec:gate}, on a counter that could not distinguish sign. In $\ombDiscarded$
-discarded samples there is not one negative. We report where the refuting evidence was: in our own
-artefact, from the day we committed it, in a field we had printed and not read. The exposure in
-the cross-host case remains established by source audit and \emph{not} by observation --- across
-eight attempts at three background-load levels the benchmark's distributed mode never completed a
-run --- and we distinguish the two.
-\item \textbf{A correction to our own model} (Section~\ref{sec:mixture}), pre-registered before
-the campaign that tested it. The model above treats $\Delta$ as one distribution; it is two. A
-nine-level load sweep falsifies the scale-family form and measures the mixture instead: a narrow
-jitter core whose width grows $5\times$ from idle to the knee, and a rare descheduling tail whose
-weight grows $60\times$. The consequence for a practitioner is sharper than the leading-order
-model suggests --- a benchmark can sit where its measurements look tight while the tail that
-corrupts them is already growing.
-\item \textbf{A second withdrawal, and a test that would have caught it}
-(Section~\ref{sec:attribution}): a twentyfold end-to-end gap we had reported, and built a
-recommendation on, turned out to be a per-run start-up cost read as a per-event constant, because
-the runs behind it matched a median of seven events. We give a controlled discriminator ---
-sweep the observation window and count the affected events rather than averaging them, since a
-per-run cost holds that count fixed while a per-event one grows it --- and trace the cost to a
-single blocking first \texttt{produce()} and the four events that queue behind it. The integrity
-check does \emph{not} catch this, which is the point: causal consistency is necessary and not
-sufficient, and a percentile over single-digit samples describes the harness rather than the
-system.
-\item \textbf{A configuration result} (Section~\ref{sec:config}): each system has exactly one
-client-side setting worth one to two orders of magnitude in delay, and both are free on a
-co-located testbed.
+being measured. Real-time priority at \emph{fixed} utilisation collapses the rate $7$--$80\times$
+across eight matched pairs; identical utilisation reached by different core geometries differs
+$2.07\times$, so utilisation is not the variable; lengthening the true transport $77\times$
+\emph{lowers} the rate, a sign no stress-based account predicts. An unfitted kernel trace
+predicts the observed rate to within a third and puts the stall tail index near $0.34$ --- no
+finite mean, so average-based instruments are structurally blind to this failure.
+\item \textbf{Falsifiable rules, one of them withdrawn} (Sections~\ref{sec:model}
+and~\ref{sec:rules}): inversion probability is $F_{\Delta}(-T_{\mathrm{true}})$, and its tested
+consequences hold. The M/G/1 \emph{form} we had claimed is withdrawn --- extended to where the
+candidate forms diverge, it fits worse than the mean --- and what replaces it is measured, not
+fitted: $\Delta$ is a mixture of a narrow jitter core (width $\times 5$ from idle to knee) and a
+rare descheduling tail (weight $\times 60$), pre-registered before the campaign that tested it
+(Section~\ref{sec:mixture}).
+\item \textbf{A second withdrawal, with the test that would have caught it}
+(Section~\ref{sec:attribution}): a twentyfold end-to-end gap we had reported was a per-run
+start-up cost read as a per-event constant, on runs with a median of seven events. The
+discriminator: sweep the window and \emph{count} affected events --- a per-run cost holds the
+count fixed. Causal consistency is necessary, not sufficient; a percentile over single-digit
+samples describes the harness.
+\item \textbf{Secondary results}, stated here once: the brokers we set out to compare sit within
+a millisecond of each other with a reproducible $0.41$~ms shift (Section~\ref{sec:e1}); each has
+one client-side setting worth one to two orders of magnitude, free on a co-located testbed
+(Section~\ref{sec:config}). Neither number survives the two failure modes above with enough
+precision to guide a purchase, and neither appears in our abstract by design.
 \end{enumerate}
 
 
@@ -312,7 +291,10 @@ process chosen for analytical tractability. And none, to our knowledge, reports 
 its runs it discarded on integrity grounds.
 
 The specific comparison we began with is, as far as we can establish, unpublished in the
-peer-reviewed literature. Practitioner comparisons of \kafka{} against \redis{}
+peer-reviewed literature. The nearest peer-reviewed relative is Dobbelaere and Esmaili's \kafka{}
+versus RabbitMQ study~\cite{dobbelaere2017kafka}, which reports latencies at millisecond
+resolution without a retention or rejection accounting --- the practice our second failure mode
+shows to be unsafe below the tick. Practitioner comparisons of \kafka{} against \redis{}
 Streams~\cite{medium_benchmark_2025,github_benchmark_2025,jusdb2025} are numerous and
 disagree with one another --- some report \redis{} several times faster on throughput, others
 report \kafka{} better in the tail --- and none states a replay rate, a rejection rule, or an
@@ -452,17 +434,21 @@ the positivity guard whose \texttt{else} branch silently deletes the sub-tick sa
 protection against one measurement artefact created the conditions for another.
 \end{sloppypar}
 
-\paragraph{Dithering: the remedy is old, and belongs to a different field.}
-Breaking periodic sampling artefacts by randomising or offsetting the sampling instant is standard
-practice in signal processing, where dithered measurement rates are used precisely to separate
-genuine components from aliasing products. Our incommensurate-rate arms are dithering, arrived at
-as a diagnostic rather than borrowed as a technique. The recommendation we make to benchmark
-authors in Section~\ref{sec:authors} is therefore not new technology but an old one never
-applied here: do not pace a load generator at a rate whose interval divides the clock's resolution
-into few distinct phases, and if the rate is fixed by the experiment, dither it. Dithering is the
-stronger of the two, because ``incommensurate'' is not a property a practitioner can read off a
-rate --- what matters is the denominator in lowest terms, and $300$~msg/s hides a denominator of
-$3$ behind an interval of $3.333$~ms.
+\paragraph{The mathematics of the retention law is a century old; its application here is not.}
+Write the send interval over the timestamp quantum as $\Delta/\tau$. If the ratio is irrational,
+Weyl's equidistribution theorem~\cite{weyl1916gleichverteilung} makes the send phases uniform and
+retention converge to $T_{\mathrm{true}}/\tau$; if rational with denominator $q$, the phase orbit
+is exactly $q$ points, and the three-distance theorem~\cite{sos1958distribution} governs the
+finite-orbit structure between those regimes. Both results are standard in Diophantine
+approximation; we find no application of either to benchmark sample retention. The remedy is
+equally old: Schuchman's condition~\cite{schuchman1964dither} states that dither uniform over one
+quantum makes quantisation error independent of the input, and the non-subtractive dither
+theory of Wannamaker et al.~\cite{wannamaker2000dither} generalises it. ``Choose an
+incommensurate rate'' is an ad-hoc approximation to that theorem; ``dither the send instant'' is
+the theorem, which is why Section~\ref{sec:authors} recommends the latter. The arithmetic also
+explains why the folklore defence fails: what matters is the denominator in lowest terms, and
+$300$~msg/s hides a denominator of $3$ behind an interval of $3.333$~ms that looks safely
+irregular.
 
 \paragraph{Granularity is discussed as staleness, not as deletion.}
 The relationship between a fixed send interval and a coarser clock tick is recognised in the
@@ -482,6 +468,52 @@ the quantitative form: that the damage is set by the denominator of the interval
 in lowest terms, so that it is a graded property of an arithmetic relationship rather than a
 property of ``round'' rates. It occurs at $500$~msg/s, whose only distinction is that it is round,
 and it occurs nearly as strongly at $300$~msg/s, which is a multiple of nothing.
+
+\paragraph{Run-to-run instability has a supporting literature, and it is on our side.}
+The irreproducibility we measure --- three-replicate medians reproducing at one load level in
+five, and the distribution \emph{family} itself moving between passes of an identical
+configuration (Section~\ref{sec:extcomp}) --- sits in a line of work showing that benchmark
+variability is structural, not noise. Mytkowicz et al.~\cite{mytkowicz2009wrong} showed that
+factors as innocuous as link order and environment-variable size flip published conclusions;
+Georges et al.~\cite{georges2007rigorous} that JVM results without confidence intervals routinely
+mislead; Barrett et al.~\cite{barrett2017warmup} that virtual machines frequently never reach the
+steady state their benchmarks assume, so the distribution being sampled is itself non-stationary
+--- the closest published analogue of our regime mobility. Maricq et
+al.~\cite{maricq2018taming} found hundreds of trials necessary for stable comparisons on real
+hardware, and Kalibera and Jones~\cite{kalibera2013rigorous} supply the replication framework.
+Against this stands common practice rather than any contrary finding: the surveyed norm of a
+handful of repetitions~\cite{vanderkouwe2019sok,hoefler2015scientific} presumes a stable
+distribution that our phase-locked configurations demonstrably lack. We add the mechanism: at
+these configurations the instability is not variance around a value but a two-point support
+whose weights move, so no replicate count converges (Section~\ref{sec:extreprod}).
+
+\paragraph{Result by result.} For each headline result, the nearest support and the nearest
+constraint we can find:
+\begin{itemize}
+\item \emph{Deletion law and grid structure} (Sections~\ref{sec:extquant}--\ref{sec:extcomp}).
+  Supported mathematically by equidistribution and dither
+  theory~\cite{weyl1916gleichverteilung,sos1958distribution,schuchman1964dither}; no empirical
+  study reports a benchmark's retained fraction, so the nearest contradiction is implicit ---
+  every published OMB-derived latency figure~\cite{openmessaging2018} assumes retention near
+  $100\%$, an assumption our $0.36\%$--$100\%$ range refutes for sub-tick paths.
+\item \emph{Summary insensitivity} (Section~\ref{sec:extwithdraw}). Supported in spirit by
+  Ousterhout's injunction to measure beneath the summary~\cite{ousterhout2018deeper} and by
+  reporting standards that require sample counts~\cite{hoefler2015scientific}; contradicted by no
+  study, but silently contradicted by every report of a latency percentile without the count
+  behind it.
+\item \emph{Irreproducibility and regime mobility} (Sections~\ref{sec:extreprod},
+  \ref{sec:extcomp}). Supported
+  by~\cite{mytkowicz2009wrong,georges2007rigorous,barrett2017warmup,maricq2018taming};
+  constrained by the same literature's remedy --- more replicates --- which our two-point
+  supports show cannot converge here.
+\item \emph{Scheduling-stall inversions} (Sections~\ref{sec:gate}--\ref{sec:model}). Supported
+  by the tail-latency and scheduler literature~\cite{li2014tales,dean2013tail,lozi2016wastedcores}
+  and by the concurrent negative-span reports~\cite{sharma2026causality}; qualified by Sharma et
+  al.'s skew-threshold reading, which our zero-skew inversions show is unsafe under load.
+\item \emph{The sign audit} (Section~\ref{sec:extwithdraw}). Ten million discarded samples, not
+  one negative. Nothing in the literature contradicts a count; what it refuted was our own prior
+  claim, which is the point of publishing it.
+\end{itemize}
 
 \subsection{Where scheduling delay comes from, and why it is not one distribution}
 \label{sec:related_tail}
@@ -506,8 +538,9 @@ That literature also supplies the shape. Section~\ref{sec:twostate} measures a t
 $0.34$, meaning the stall distribution has neither a finite mean nor a finite variance, which is
 why the cumulative scheduler counters could not account for the effect --- they estimate a
 quantity that does not exist. Interference-driven tails of this severity are consistent with what
-the tail-latency literature reports, though we know of no prior measurement of the index itself
-for run-queue delay, and we report ours as one fitted value from one campaign rather than as a
+the tail-latency literature reports, from the datacentre scale~\cite{dean2013tail} down to single
+hosts~\cite{li2014tales}, though we know of no prior measurement of the index itself for
+run-queue delay, and we report ours as one fitted value from one campaign rather than as a
 constant of the system.
 
 Li et al.~\cite{li2014tales} decompose the tail latency of three Linux servers into hardware,
@@ -934,6 +967,29 @@ finishing the benchmark and writing its result row --- a cell that is the median
 --- and it exposed a fabricated negative sample that our own indexer had produced by mapping an
 older result schema positionally. A campaign that silently drops its failures is a selection of the
 runs that worked, which is the failure this paper is about, one level up.
+
+\paragraph{The full record, stated once.} The external campaign totals $\ombRuns$ instrumented
+runs in twelve named sub-campaigns: four load sweeps, a resolution sweep, a payload sweep at an
+incommensurate rate, a bimodality series ($n{=}18$ at one configuration), two rate-phase sweeps,
+the rate-independence control, a $63$-cell comprehensive campaign (arms to $n \ge 5$, three new
+denominators, a payload$\times$grid manipulation, a duration sweep, and a two-rate probe of the
+continuous value), and a distributed-mode series that never completed a run in eight attempts and
+is reported as exactly that. Six predictions for the comprehensive campaign were registered with
+falsifiers before it launched, and each interim reading was committed to the version-controlled
+record before the block that followed; three registered predictions failed and are reported
+beside the one that passed. From 22:02 UTC on the final night a once-per-minute log of the
+driver's clock discipline (residual frequency, skew, offset) runs alongside every cell, so each
+run joins to the clock state during it.
+
+\paragraph{Verification of the manuscript itself.} Every quantity this paper states from the
+campaign is recomputed from the committed ledger by an automated suite ($2{,}000$-plus checks,
+branch coverage of the analysis code at or above $95\%$), including every row of
+Tables~\ref{tab:phase}--\ref{tab:quantisation} and every checkable sentence of
+Section~\ref{sec:extcomp}; run counts and discard totals are generated into the text from the
+ledger rather than typed, after an earlier draft was found quoting a count stale in nine places
+at once. The rendered PDF is checked separately from the source, which has caught defects the
+compiler passes. The suite is mutation-tested: corrupting a table value, or a value and its
+derived classification together, fails a check.
 
 \subsection{Statistics}
 \label{sec:stats}
@@ -1367,6 +1423,10 @@ fractional, being a mean of integers. Three runs report
 $\mathrm{p50} = \mathrm{p95} = \mathrm{p99} = \max = 1.0$. That is not a narrow latency
 distribution; it is a distribution with a single value in it, printed to three decimal places.
 
+In plain terms: two reports can look identical --- same median, same neat percentiles --- while
+one rests on a hundred and twenty thousand measurements and the other on a residue of under a
+thousand, and no reader, however careful, can tell which they are holding.
+
 \subsubsection{The mechanism: phase, not speed}
 \label{sec:extphase}
 
@@ -1427,7 +1487,11 @@ Retention rises $33.3$ points across the sweep, against a largest within-level s
 points. Inverting Equation~\ref{eq:retention} gives an implied $T_{\mathrm{true}}$ per level, and
 at the two largest payloads that implied latency rises \emph{linearly} with payload: the increment
 per byte is $0.630$ at $32$~KB and $0.638$ at $64$~KB, two independent estimates agreeing to
-$1.3\%$ and corresponding to an effective path of about $1.6$~Gb/s.
+$1.3\%$ and corresponding to an effective path of about $1.6$~Gb/s. Technically, the retained
+fraction is itself a measurement of the true latency in units of the clock tick. In plain terms:
+the faster the system, the more of its own evidence this benchmark throws away --- a
+half-millisecond path loses half, and a path fast enough to be worth bragging about loses nearly
+everything.
 
 \emph{The sweep discriminates only where the manipulation exceeds the noise, and we are explicit
 about which levels those are.} Replicate noise in the implied latency is roughly $0.02$ to
@@ -3278,14 +3342,18 @@ report did not have one.
 reported latency distribution from between $0.36\%$ and $100\%$ of the samples it takes, and
 reports a median of $1.0$ or $2.0$~ms in every case --- a headline insensitive to a $278$-fold
 change in the evidence behind it, beside a retention rate that is unreported and unrecoverable
-from a completed run. Which case obtains is set by a variable no operator chooses: whether the
-producer's send interval is commensurate with the timestamp resolution. We show this by
-manipulation. At $500$~msg/s, an interval of exactly $2.000$~ms, retention across replicates spans
-$99.5$ points; at $457$ and $383$~msg/s it is stable to two, and those two arms agree with
-\emph{each other} despite intervals differing by $19\%$ --- which a dependence on the interval
-could not produce and a dependence on phase requires. The standard defence fails as well: a
-three-replicate median reproduced at one load level in five across three passes of an identical
-configuration, because the quantity has no central value to converge on.
+from a completed run. The retained fraction obeys arithmetic no operator sees: written over the
+timestamp quantum in lowest terms, $\Delta/\tau = p/q$, a run retains one of the $q{+}1$ grid
+fractions bracketing $T_{\mathrm{true}}/\tau$, and the expectation over replicates is
+$T_{\mathrm{true}}/\tau$ at every $q$. The decisive test manipulated the one physical variable in
+that expression: raising payload moved $T_{\mathrm{true}}/\tau$ onto a grid vertex and off it,
+and the arm's replicate spread collapsed and re-opened on command, as registered before the runs.
+In plain terms: how much of its own data this benchmark keeps is decided by a fraction between
+two timescales its operator never chose, it can be almost none, and the printed result does not
+change when it is. The standard defence fails as well: a three-replicate median reproduced at one
+load level in five across three passes of an identical configuration, because the quantity has no
+central value to converge on --- and the comprehensive campaign showed the distribution
+\emph{family} itself moves between passes, so no replicate count converges.
 
 So the two failure modes are one phenomenon seen twice. Both compare a timescale belonging to the
 instrument against the interval under measurement --- a scheduling stall in the first case, a clock

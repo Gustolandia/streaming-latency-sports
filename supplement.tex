@@ -7,6 +7,7 @@
 \renewcommand\footnotetextcopyrightpermission[1]{}
 \newcommand{\kafka}{Kafka}
 \newcommand{\redis}{Redis}
+\newcommand{\tti}{TTI}
 \input{docs/generated/paper_numbers}
 \begin{document}
 \title{Supplementary Material: When the Interval Is Smaller Than the Instrument}
@@ -27,7 +28,7 @@ section --- what moved here, from where, and when --- is indexed in the artefact
 \label{supp:rateprovenance}
 
 Auditing the corpus turned the same scrutiny on our own record-keeping, and it did not survive
-it either. We report the finding here because the protocol in Section~\ref{sec:protocol} is
+it either. We report the finding here because the protocol in the main text's protocol section is
 weaker without it.
 
 Replay plans built from StatsBomb carry a \textbf{baked-in $120\times$ time compression}: a
@@ -45,7 +46,7 @@ replay rate of any run we report.} Several superseded Testbed~A scenarios record
 the plan's compression, and every plan those files name has since been deleted. Everywhere else
 the orchestrator
 wrote \texttt{speedup} into a per-campaign summary that lived beside the raw per-run data, and
-for the earliest corpora only the aggregated CSVs were kept. For the E1 corpus of Section~\ref{sec:e1} the surviving evidence is contradictory: the
+for the earliest corpora only the aggregated CSVs were kept. For the E1 corpus of the main text's powered-transport section the surviving evidence is contradictory: the
 commit that introduced it states the runs were made at true real time, the campaign script
 reconstructed afterwards specifies \texttt{-{}-speedup 10}, and the flag's meaning was corrected
 $21$~hours later the same day. E1 was replayed at $1\times$, $120\times$ or $1200\times$, and we
@@ -53,7 +54,7 @@ cannot say which.
 
 \paragraph{The rate is recoverable from the measurements, if not from the metadata.} Having
 argued all paper that a physical constraint can decide what record-keeping cannot, we applied the
-same move here, and it works. The start-up cost of Section~\ref{sec:attribution} is a clock: it
+same move here, and it works. The start-up cost of the main text's attribution section is a clock: it
 lasts a fixed $102.6$~ms of \emph{wall} time, so the number of events it swallows depends
 directly on the replay rate. Counting how many events per run carry it therefore reads the rate
 back out of the data.
@@ -64,7 +65,7 @@ $\mathbf{52.34}$~ms (range $51.60$--$53.01$) --- not $103$~ms, and not $1.6$~ms.
 eight values is the mean of the fourth and fifth. The only way to land midway between the two
 modes is for exactly four of the eight to be late, so the fourth value is a fast event and the
 fifth a slow one: $(1.59 + 103.5)/2 = 52.6$~ms against $52.34$ observed. Four is also exactly
-what the loop trace shows at a verified real-time rate (Table~\ref{tab:window}), and it is what
+what the loop trace shows at a verified real-time rate (the window table in the main text), and it is what
 the plan predicts, since five events share $t_{\mathrm{sim}}{=}0$ and the first of them pays the
 block rather than inheriting it.
 
@@ -92,7 +93,7 @@ the one thing a physical-constraint argument can rarely demonstrate about itself
 
 The same script also explains a feature we had described and not accounted for. It passes
 \texttt{-{}-max-t-sim 2}: two seconds of match time per run. The median of seven matched events
-that makes E1 under-powered, and that Section~\ref{sec:attribution} treats as an opening burst,
+that makes E1 under-powered, and that the main text's attribution section treats as an opening burst,
 is that window. The burst is real and is why those seven events are the densest in the match; the
 reason there were only seven is that the campaign asked for two seconds.
 
@@ -106,14 +107,14 @@ once.
 
 \paragraph{What the gap touched.} The audit is unaffected either way: a negative transport is
 causally impossible at any replay rate, and the rejection counts are arithmetic on surviving
-per-event data. The withdrawal in Section~\ref{sec:attribution} is unaffected by construction ---
+per-event data. The withdrawal in the main text's attribution section is unaffected by construction ---
 we give the argument in a form that holds at every candidate rate. The rules of
-Section~\ref{sec:rules} were measured after the pre-flight existed, at a derived and verified
-rate. Section~\ref{sec:e1}'s external validity is restored by the recovery above, and the
+the main text's rules section were measured after the pre-flight existed, at a derived and verified
+rate. the main text's powered-transport section's external validity is restored by the recovery above, and the
 recovered script now documents it as well --- though the inference stood on its own before the
 script appeared, and is what we would still be relying on had the machine been released a day
 earlier.
-Section~\ref{sec:protocol} carries the rule that would have made all of this unnecessary.
+the main text's protocol section carries the rule that would have made all of this unnecessary.
 
 
 
@@ -125,7 +126,7 @@ Moved from the main text's mixture development: the load-axis post-mortem in ful
 \paragraph{Both load-axis predictions failed, including ours.} The knee sweep placed conditions
 at achieved $\rho$ of $0.881$, $0.920$, $0.950$, $0.970$ and $0.990$, where the candidate forms
 diverge most; the earlier ladder stopped at $0.878$ and everything above it collapsed onto a
-degenerate $\rho = 1.000$, which is why Section~\ref{sec:rules} could not settle the question.
+degenerate $\rho = 1.000$, which is why the main text's rules section could not settle the question.
 With those points in hand, M/G/1 fits \emph{worse than the mean} ($R^2 = -0.05$ against a fitted
 exponential's $0.93$). The withdrawal does not merely stand: the forms are now separated, and
 M/G/1 is the one ruled out.
@@ -177,5 +178,58 @@ referee campaign (chain 18, block E) fail identically at OMB commit \texttt{5b1f
 starts. Per attempt, the version, full coordinator and worker logs, and the extracted signature
 are archived in \texttt{docs/results/external/dist\_diag/}; a draft upstream report is at
 \texttt{docs/omb\_distributed\_issue.md} (not filed --- filing is the author's action).
+
+\section{S5: The E1 reconciliation, in full}
+\label{supp:e1rec}
+
+\begin{table}[t]
+\caption{The same runs reproduce both published answers. Transport medians (ms) from the powered
+campaign, computed over every event and over each run's first seven events in emission order ---
+the window E1 saw. The all-events columns reproduce the powered $0.41$~ms shift; the prologue
+columns reproduce E1's near-equality (the main text) in both shift and absolute level. The
+window, not the brokers, accounts for the disagreement.}
+\label{tab:e1rep}
+\begin{tabular}{rrrrrrrr}
+\toprule
+& & \multicolumn{3}{c}{All events} & \multicolumn{3}{c}{First $7$ (prologue)} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}
+$N$ & Runs & \kafka{} & \redis{} & Shift & \kafka{} & \redis{} & Shift \\
+\midrule
+1  & 5  & 0.476 & 0.095 & 0.381 & 0.831 & 0.743 & 0.088 \\
+9  & 45 & 0.533 & 0.116 & 0.417 & 0.939 & 0.810 & 0.129 \\
+12 & 55 & 0.527 & 0.113 & 0.414 & 1.018 & 0.769 & 0.248 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Moved from the main text's powered-transport section: the complete windowed re-analysis showing E1's near-equality is the observation window and nothing else.
+
+\paragraph{Why E1 saw near-equality, tested directly.} The two campaigns disagree by more than
+power: E1 puts both systems near $0.8$~ms and within $0.1$~ms of each other, while the powered
+campaign puts them at $0.53$ and $0.11$~ms and $0.41$~ms apart. Attributing that to seven events
+is an explanation only if it survives being checked, so we checked it. If the difference is the
+observation window and nothing else, then restricting the \emph{powered} runs to their first seven
+events --- in emission order, the same events E1 would have caught --- must reproduce E1, and the
+same runs must give the powered answer over their full length. That is a prediction with one free
+parameter fixed in advance, and it can fail.
+
+It does not fail (Table~\ref{tab:e1rep}). Over all events the runs give shifts of $0.381$,
+$0.417$ and $0.414$~ms, reproducing the powered $0.41$~ms. Over their first seven they give
+$0.088$, $0.129$ and $0.248$~ms --- E1's wandering near-equality, and of the same magnitude as
+E1's own $0.021$, $0.116$ and $0.053$~ms. The \emph{absolute} medians match as well, which the
+shift alone does not force: the prologue puts \kafka{} at $0.83$--$1.02$~ms and \redis{} at
+$0.74$--$0.81$~ms, against E1's $0.79$--$1.00$ and $0.72$--$0.86$. One set of runs, one rate, one
+protocol, two windows, both published answers.
+
+So E1 is not wrong and the campaigns do not contradict each other. E1 measured the opening burst,
+during which both systems are slow for the reason the main text's attribution section establishes ---
+topic auto-creation, connection setup, and the first blocking \texttt{produce()} --- and that
+shared start-up cost swamps a $0.41$~ms difference. As the run lengthens the cost dilutes, and
+the brokers' steady-state separation emerges. The seven-event corpus answered a question about
+start-up while appearing to answer one about brokers, which is the same failure of window
+selection as the main text's attribution section, one level up.
+
+
+
 
 \end{document}

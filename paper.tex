@@ -1774,6 +1774,22 @@ Section~\ref{sec:extopen} need, now an observable. In plain terms: the deletion 
 property of three lines of logic --- quantise, subtract, keep-if-positive --- and follows that
 logic into any language it is written in.
 
+\paragraph{The cross-host case, measured at last.} With the harness's producer on one host and
+its consumer on another, the subtraction spans two chrony-disciplined clocks (measured offset
+$\approx 0.07$~ms) --- the configuration OMB's own distributed mode never let us observe
+(Section~\ref{sec:extdist}). Registered before the block ran: zero negatives, the offset being
+far below $T_{\mathrm{true}}$; any negative at rest would have been the first observed
+cross-clock inversion of this study. Measured, across $1.5$ million two-clock samples: zero
+negatives, and the grid intact --- $500$~msg/s all-or-nothing with both branches ($0.05$,
+$100.00$, $99.99$, $0.05$), $300$~msg/s on its vertices ($0.33$ $\mid$ $33.41$, $33.44$,
+$33.63$). The incommensurate arm adds the finding the two-clock case owns: its retention wanders
+monotonically from $13.4$ to $27.0\%$ across four replicates where the same arm on one clock
+held to $0.8$ points --- the signature of inter-host offset drift at the tenth-of-a-millisecond
+scale entering $T_{\mathrm{true}}$. Cross-host, the deleted fraction is therefore coupled to
+the synchronisation state of the clocks at run time, and nothing in the benchmark's output
+records either. In plain terms: on two machines, how much data the tool keeps depends on how
+well the clocks happened to agree that minute.
+
 \subsection{Three replicates do not establish reproducibility}
 \label{sec:extreprod}
 
@@ -1790,21 +1806,28 @@ has no stable value to be noisy around. Eighteen runs at one identical configura
 below $2\%$, eight above $90\%$, and four in between: their median is $23.4\%$, a value one run in
 eighteen produced.
 
-\subsection{What we cannot show, after eight attempts}
+\subsection{What OMB's own distributed mode cannot show, after eleven attempts}
 \label{sec:extdist}
 
 The cross-host case is the one in which OMB's subtraction spans two clocks, and therefore the one
-in which its guard could discard a genuine causality violation. \textbf{We cannot report a
-measurement of it.} Across eight attempts at three background-load levels --- including none at
-all, which refutes our own hypothesis that CPU starvation was the cause --- the benchmark's
-distributed mode never completed a run, failing each time inside its own coordinator-to-worker
-protocol rather than in our instrumentation or configuration. The validity gate wrote
-\texttt{valid=0} with a reason on all eight, and those rows are in the artefact.
+in which its guard could discard a genuine causality violation. \textbf{OMB's own distributed
+mode cannot report a measurement of it.} Across eleven attempts --- eight at three
+background-load levels including none at all, which refutes our own hypothesis that CPU
+starvation was the cause, and three further attempts run with full diagnostics for this revision
+--- the benchmark's distributed mode never completed a run, failing each time inside its own
+coordinator-to-worker protocol rather than in our instrumentation or configuration. The validity
+gate wrote \texttt{valid=0} with a reason on every attempt; per-attempt versions, logs and
+failure signatures are archived in the artefact and summarised in supplementary material S4, and
+a draft upstream report accompanies them.
 
-The exposure in that mode is therefore established by source audit --- the timestamp is written on
-the producer's host and read on the consumer's, and the guard drops whatever the difference
-produces --- and \emph{not} by observation. We distinguish the two rather than let the audit stand
-in for a measurement.
+The exposure of OMB-in-distributed-mode is therefore established by source audit --- the
+timestamp is written on the producer's host and read on the consumer's, and the guard drops
+whatever the difference produces --- and \emph{not} by observing that binary. What \emph{is} now
+observed is the pattern itself across two hosts: the harness of Section~\ref{sec:generality}
+runs the identical stamp-subtract-guard logic over two disciplined clocks and measures zero
+negatives, an intact grid, and a deleted fraction coupled to clock-offset drift. The two
+statements are complementary and we keep them distinct: the pattern's cross-host behaviour is
+measured; OMB's own distributed binary remains unmeasurable by us.
 
 \paragraph{What we do not claim.} That any published result obtained with this benchmark is wrong.
 We have shown that the deletion happens, that it is large, that it is irreproducible, and that it

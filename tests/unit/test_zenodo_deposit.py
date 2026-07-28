@@ -196,3 +196,29 @@ class TestPathRestriction:
         assert any("/scripts/" in n for n in names)
         assert not any("replay_plans" in n for n in names), \
             "the NC-derived plans must stay excluded"
+
+
+class TestTokenRejection:
+    def test_403_prints_site_and_scope_guidance(self, tmp_path, monkeypatch, capsys):
+        """A rejected token must explain itself: wrong-site tokens are the usual cause and a
+        traceback teaches nothing."""
+        import json
+        import requests
+        import zenodo_deposit as zd
+        meta = tmp_path / "m.json"
+        meta.write_text(json.dumps({"title": "t"}), encoding="utf-8")
+        monkeypatch.setenv("ZENODO_API_TOKEN", "x")
+        monkeypatch.setattr(zd, "build_bundle", lambda z, ref="HEAD", prefix="", **kw:
+                            (tmp_path / "b.zip").write_bytes(b"z") or (tmp_path / "b.zip"))
+        resp = requests.Response()
+        resp.status_code = 403
+
+        def boom(*a, **k):
+            raise requests.HTTPError(response=resp)
+        monkeypatch.setattr(zd, "create_deposition", boom)
+        rc = zd.main(["--sandbox", "--metadata", str(meta), "--zip", str(tmp_path / "b.zip")])
+        out = capsys.readouterr().out
+        assert rc == 1
+        assert "SEPARATE accounts" in out
+        assert "deposit:write" in out
+        assert "sandbox.zenodo.org" in out

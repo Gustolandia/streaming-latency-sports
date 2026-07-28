@@ -1,0 +1,177 @@
+% Supplementary material for "When the Interval Is Smaller Than the Instrument".
+% NOT part of the main submission: this document accompanies the paper as supplementary
+% material only. Each section is indexed in docs/supplement_index.md, which records what moved
+% here from which revision of the main text, so nothing is lost.
+\documentclass[manuscript,screen,review]{acmart}
+\settopmatter{printacmref=false}
+\renewcommand\footnotetextcopyrightpermission[1]{}
+\newcommand{\kafka}{Kafka}
+\newcommand{\redis}{Redis}
+\input{docs/generated/paper_numbers}
+\begin{document}
+\title{Supplementary Material: When the Interval Is Smaller Than the Instrument}
+\author{Gustavo Pedro Ricou}
+\affiliation{%
+  \institution{School of Computer Science and Statistics, Trinity College Dublin}
+  \city{Dublin}
+  \country{Ireland}}
+\email{pedrorig@tcd.ie}
+\maketitle
+
+This document is supplementary material and is not part of the main submission. Main-text
+references of the form ``supplementary material S$n$'' resolve here. The provenance of every
+section --- what moved here, from where, and when --- is indexed in the artefact at
+\texttt{docs/supplement\_index.md}.
+
+\section{S1: The replay-rate provenance gap, in full}
+\label{supp:rateprovenance}
+
+Auditing the corpus turned the same scrutiny on our own record-keeping, and it did not survive
+it either. We report the finding here because the protocol in Section~\ref{sec:protocol} is
+weaker without it.
+
+Replay plans built from StatsBomb carry a \textbf{baked-in $120\times$ time compression}: a
+plan's emission offset is already the match time divided by $120$. The producer's
+\texttt{-{}-speedup} flag then multiplies that. So \texttt{-{}-speedup 1} against such a plan is
+\emph{not} real time, it is $120\times$; true real time needs $1/120$. The same flag means
+different things depending on which plan it is pointed at, and getting it wrong is silent: the
+run completes, the wall time looks unremarkable, and the numbers stay plausible. We lost a
+campaign to it before adding a pre-flight that derives the value from the plan and then checks
+the achieved rate against elapsed wall time.
+
+The part we cannot repair is retrospective. \textbf{No surviving artefact records the achieved
+replay rate of any run we report.} Several superseded Testbed~A scenarios record the nominal
+\texttt{-{}-speedup} \emph{flag}, which is not the same thing: converting a flag to a rate requires
+the plan's compression, and every plan those files name has since been deleted. Everywhere else
+the orchestrator
+wrote \texttt{speedup} into a per-campaign summary that lived beside the raw per-run data, and
+for the earliest corpora only the aggregated CSVs were kept. For the E1 corpus of Section~\ref{sec:e1} the surviving evidence is contradictory: the
+commit that introduced it states the runs were made at true real time, the campaign script
+reconstructed afterwards specifies \texttt{-{}-speedup 10}, and the flag's meaning was corrected
+$21$~hours later the same day. E1 was replayed at $1\times$, $120\times$ or $1200\times$, and we
+cannot say which.
+
+\paragraph{The rate is recoverable from the measurements, if not from the metadata.} Having
+argued all paper that a physical constraint can decide what record-keeping cannot, we applied the
+same move here, and it works. The start-up cost of Section~\ref{sec:attribution} is a clock: it
+lasts a fixed $102.6$~ms of \emph{wall} time, so the number of events it swallows depends
+directly on the replay rate. Counting how many events per run carry it therefore reads the rate
+back out of the data.
+
+The E1 runs sort into cells by how many events they matched, and one cell is diagnostic. Fifteen
+\kafka{} runs matched exactly eight events, and their median scheduling lag is
+$\mathbf{52.34}$~ms (range $51.60$--$53.01$) --- not $103$~ms, and not $1.6$~ms. A median of
+eight values is the mean of the fourth and fifth. The only way to land midway between the two
+modes is for exactly four of the eight to be late, so the fourth value is a fast event and the
+fifth a slow one: $(1.59 + 103.5)/2 = 52.6$~ms against $52.34$ observed. Four is also exactly
+what the loop trace shows at a verified real-time rate (Table~\ref{tab:window}), and it is what
+the plan predicts, since five events share $t_{\mathrm{sim}}{=}0$ and the first of them pays the
+block rather than inheriting it.
+
+That cell excludes the accelerated alternatives outright. At $120\times$ the prologue spans
+$12.3$~s of match time and holds $16$ events; at $1200\times$, $123$~s and $112$ events. Under
+either, all eight matched events would be inside it and the cell would read $103$~ms. It reads
+half that. \textbf{E1 was replayed at true real time}, the commit record was right, and the
+campaign script reconstructed afterwards describes a different, earlier campaign. The remaining
+cells agree: runs matching five or seven events read $103$~ms, as four late events out of five or
+seven must give.
+
+\emph{The inference has since been checked against the original script, and it holds.} Archiving
+the cloud driver before releasing it turned up the campaign as actually invoked, in a shell script
+in the operator's home directory that no part of the repository had ever referenced. It specifies
+\texttt{-{}-speedup 0.008333} --- $1/120$, against a plan already compressed $120\times$, which is
+true real time --- and its log's first line, \texttt{E1 N=1 reps=8 00:39:40}, names the run
+directory the E1 artefact's first row still points at. The arithmetic above and the flag agree.
+
+We report that as a check rather than as the answer, because the order matters. The rate was
+determined from the measurements while the metadata was genuinely unavailable, and the script
+surfaced afterwards, by luck, from a machine that was about to be switched off. What the
+agreement establishes is not that E1's provenance was fine all along --- it was not --- but that
+the recovery method returns the right answer when there is an answer to check it against. That is
+the one thing a physical-constraint argument can rarely demonstrate about itself.
+
+The same script also explains a feature we had described and not accounted for. It passes
+\texttt{-{}-max-t-sim 2}: two seconds of match time per run. The median of seven matched events
+that makes E1 under-powered, and that Section~\ref{sec:attribution} treats as an opening burst,
+is that window. The burst is real and is why those seven events are the densest in the match; the
+reason there were only seven is that the campaign asked for two seconds.
+
+We leave the disclosure standing rather than deleting it, for two reasons. The recovery was
+available only because the artefact we were chasing happened to be a wall-clock constant with a
+sharp signature, and the confirmation only because a virtual machine had not yet been destroyed;
+a reader should not have to reconstruct an experimental parameter by arithmetic on its results,
+and next time there may be nothing to reconstruct it from and nothing left to check it against.
+And the exercise makes the protocol rule concrete: what was missing was one number, written down
+once.
+
+\paragraph{What the gap touched.} The audit is unaffected either way: a negative transport is
+causally impossible at any replay rate, and the rejection counts are arithmetic on surviving
+per-event data. The withdrawal in Section~\ref{sec:attribution} is unaffected by construction ---
+we give the argument in a form that holds at every candidate rate. The rules of
+Section~\ref{sec:rules} were measured after the pre-flight existed, at a derived and verified
+rate. Section~\ref{sec:e1}'s external validity is restored by the recovery above, and the
+recovered script now documents it as well --- though the inference stood on its own before the
+script appeared, and is what we would still be relying on had the machine been released a day
+earlier.
+Section~\ref{sec:protocol} carries the rule that would have made all of this unnecessary.
+
+
+
+\section{S2: The load-axis post-mortem, in full}
+\label{supp:loadaxis}
+
+Moved from the main text's mixture development: the load-axis post-mortem in full. The main text keeps the admissions and the numbers.
+
+\paragraph{Both load-axis predictions failed, including ours.} The knee sweep placed conditions
+at achieved $\rho$ of $0.881$, $0.920$, $0.950$, $0.970$ and $0.990$, where the candidate forms
+diverge most; the earlier ladder stopped at $0.878$ and everything above it collapsed onto a
+degenerate $\rho = 1.000$, which is why Section~\ref{sec:rules} could not settle the question.
+With those points in hand, M/G/1 fits \emph{worse than the mean} ($R^2 = -0.05$ against a fitted
+exponential's $0.93$). The withdrawal does not merely stand: the forms are now separated, and
+M/G/1 is the one ruled out.
+
+The bounded prediction fared better but also failed. Over $\rho = 0.881$ to $0.990$ the rate grew
+by a factor of $1.44$. M/G/1 predicted $13.8$; the bracket we registered before the sweep
+predicted $2.45$--$3.07$. The rate saturates, as a bounded mechanism requires --- but harder than
+our own extrapolation allowed, and a prediction that misses low is still a prediction that
+missed. We report it as a failure rather than as the nearer of two misses.
+
+The two failures have one cause, and E-A5 names it. Our bracket was still parameterised in
+$\rho$, through $p = \rho^C$; E-A5 shows $\rho$ does not determine occupancy. What survives is
+the mechanism --- established by manipulation --- and not any curve in $\rho$, ours included.
+
+
+\section{S3: The campaign ledger schema}
+\label{supp:ledger}
+
+One row per cell of every instrumented-benchmark campaign,
+\texttt{docs/results/external\_campaigns\_index.csv}:
+
+\begin{itemize}
+\item \texttt{campaign}, \texttt{cell} --- sub-campaign directory and cell name; the cell name
+  encodes the swept axis (\texttt{l} load percent, \texttt{s} message size, \texttt{r} producer
+  rate) and replicate number, e.g.\ \texttt{r625\_rep3}.
+\item \texttt{level} --- the numeric value of the swept axis.
+\item \texttt{valid} --- 1 if the cell's counts are usable under the pre-stated rule; 0 rows are
+  retained with a reason, never deleted.
+\item \texttt{count\_source} --- \texttt{shutdown\_hook} for exact end-of-run counters;
+  \texttt{periodic\_quantised} for in-run lines (quantised to $10^4$, excluded from analysis);
+  \texttt{none\_in\_log} when no counters were written.
+\item \texttt{kept}, \texttt{discarded\_zero}, \texttt{discarded\_negative} --- the instrumented
+  guard's three counters, separated by sign.
+\item \texttt{log\_bytes}, \texttt{log\_sha256} --- size and hash of the run log the row was
+  built from, so any row can be re-derived and checked against its source.
+\end{itemize}
+
+The Python-harness campaigns (no JVM, Section on generality in the main text) use the same cell
+naming and publish \texttt{docs/results/external/harness\_results.csv} with per-cell counts,
+sign-separated discards, and pacer-jitter percentiles.
+
+\section{S4: OpenMessaging distributed mode, failure diagnostics}
+\label{supp:distdiag}
+
+Populated from the diagnosed attempts of the referee campaign (chain 18, block E): per attempt,
+the OMB version, the coordinator and worker logs, and the extracted failure signature. See
+\texttt{docs/results/external/dist\_diag/} in the artefact.
+
+\end{document}

@@ -64,8 +64,8 @@ instrumented the OpenMessaging Benchmark, which computes latency from millisecon
 timestamps and keeps a sample only if the difference is positive, counting nothing it drops.
 Across $\ombRuns$ instrumented runs it computed its reported distribution from between $0.36\%$
 and $100\%$ of the samples it took --- and reported the same median either way. The retained
-fraction obeys arithmetic no operator sees: write the send interval over the timestamp quantum as
-$p/q$ in lowest terms, and a run retains one of the $q{+}1$ grid fractions bracketing
+fraction obeys arithmetic no operator sees: write the send interval over the timestamp
+quantum $\tau$ as $p/q$ in lowest terms, and a run retains one of the $q{+}1$ grid fractions bracketing
 $T_{\mathrm{true}}/\tau$, with the expectation equal to $T_{\mathrm{true}}/\tau$ at every $q$. The
 law is causal, not correlational: raising payload moves $T_{\mathrm{true}}/\tau$ onto a grid point
 and off it, and the arm's replicate spread collapsed ($13.6$ points, three replicates agreeing to
@@ -97,9 +97,9 @@ instant, and publish the retention rate.
 \ccsdesc[500]{Computer systems organization~Distributed architectures}
 \ccsdesc[500]{Software and its engineering~Software performance}
 
-\keywords{streaming systems, latency benchmarking, measurement validity, timestamp resolution,
-quantisation, sampling artefacts, causality violation, Apache Kafka, Redis Streams,
-reproducibility}
+\keywords{measurement validity, latency benchmarking, timestamp resolution, quantisation,
+sampling artefacts, causality violation, reproducibility, streaming systems, Apache Kafka,
+Redis Streams}
 
 \maketitle
 
@@ -269,7 +269,7 @@ samples describes the harness.
 a millisecond of each other with a reproducible $0.41$~ms shift (Section~\ref{sec:e1}); each has
 one client-side setting worth one to two orders of magnitude, free on a co-located testbed
 (Section~\ref{sec:config}). Neither number survives the two failure modes above with enough
-precision to guide a purchase, and neither appears in our abstract by design.
+precision to guide a purchase.
 \end{enumerate}
 
 
@@ -1224,93 +1224,19 @@ $N$ & \redis{} retained & Shift (ms) & Worst case & Equivalent \\
 \label{sec:rateprovenance}
 
 Auditing the corpus turned the same scrutiny on our own record-keeping, and it did not survive
-it either. We report the finding here because the protocol in Section~\ref{sec:protocol} is
-weaker without it.
-
-Replay plans built from StatsBomb carry a \textbf{baked-in $120\times$ time compression}: a
-plan's emission offset is already the match time divided by $120$. The producer's
-\texttt{-{}-speedup} flag then multiplies that. So \texttt{-{}-speedup 1} against such a plan is
-\emph{not} real time, it is $120\times$; true real time needs $1/120$. The same flag means
-different things depending on which plan it is pointed at, and getting it wrong is silent: the
-run completes, the wall time looks unremarkable, and the numbers stay plausible. We lost a
-campaign to it before adding a pre-flight that derives the value from the plan and then checks
-the achieved rate against elapsed wall time.
-
-The part we cannot repair is retrospective. \textbf{No surviving artefact records the achieved
-replay rate of any run we report.} Several superseded Testbed~A scenarios record the nominal
-\texttt{-{}-speedup} \emph{flag}, which is not the same thing: converting a flag to a rate requires
-the plan's compression, and every plan those files name has since been deleted. Everywhere else
-the orchestrator
-wrote \texttt{speedup} into a per-campaign summary that lived beside the raw per-run data, and
-for the earliest corpora only the aggregated CSVs were kept. For the E1 corpus of Section~\ref{sec:e1} the surviving evidence is contradictory: the
-commit that introduced it states the runs were made at true real time, the campaign script
-reconstructed afterwards specifies \texttt{-{}-speedup 10}, and the flag's meaning was corrected
-$21$~hours later the same day. E1 was replayed at $1\times$, $120\times$ or $1200\times$, and we
-cannot say which.
-
-\paragraph{The rate is recoverable from the measurements, if not from the metadata.} Having
-argued all paper that a physical constraint can decide what record-keeping cannot, we applied the
-same move here, and it works. The start-up cost of Section~\ref{sec:attribution} is a clock: it
-lasts a fixed $102.6$~ms of \emph{wall} time, so the number of events it swallows depends
-directly on the replay rate. Counting how many events per run carry it therefore reads the rate
-back out of the data.
-
-The E1 runs sort into cells by how many events they matched, and one cell is diagnostic. Fifteen
-\kafka{} runs matched exactly eight events, and their median scheduling lag is
-$\mathbf{52.34}$~ms (range $51.60$--$53.01$) --- not $103$~ms, and not $1.6$~ms. A median of
-eight values is the mean of the fourth and fifth. The only way to land midway between the two
-modes is for exactly four of the eight to be late, so the fourth value is a fast event and the
-fifth a slow one: $(1.59 + 103.5)/2 = 52.6$~ms against $52.34$ observed. Four is also exactly
-what the loop trace shows at a verified real-time rate (Table~\ref{tab:window}), and it is what
-the plan predicts, since five events share $t_{\mathrm{sim}}{=}0$ and the first of them pays the
-block rather than inheriting it.
-
-That cell excludes the accelerated alternatives outright. At $120\times$ the prologue spans
-$12.3$~s of match time and holds $16$ events; at $1200\times$, $123$~s and $112$ events. Under
-either, all eight matched events would be inside it and the cell would read $103$~ms. It reads
-half that. \textbf{E1 was replayed at true real time}, the commit record was right, and the
-campaign script reconstructed afterwards describes a different, earlier campaign. The remaining
-cells agree: runs matching five or seven events read $103$~ms, as four late events out of five or
-seven must give.
-
-\emph{The inference has since been checked against the original script, and it holds.} Archiving
-the cloud driver before releasing it turned up the campaign as actually invoked, in a shell script
-in the operator's home directory that no part of the repository had ever referenced. It specifies
-\texttt{-{}-speedup 0.008333} --- $1/120$, against a plan already compressed $120\times$, which is
-true real time --- and its log's first line, \texttt{E1 N=1 reps=8 00:39:40}, names the run
-directory the E1 artefact's first row still points at. The arithmetic above and the flag agree.
-
-We report that as a check rather than as the answer, because the order matters. The rate was
-determined from the measurements while the metadata was genuinely unavailable, and the script
-surfaced afterwards, by luck, from a machine that was about to be switched off. What the
-agreement establishes is not that E1's provenance was fine all along --- it was not --- but that
-the recovery method returns the right answer when there is an answer to check it against. That is
-the one thing a physical-constraint argument can rarely demonstrate about itself.
-
-The same script also explains a feature we had described and not accounted for. It passes
-\texttt{-{}-max-t-sim 2}: two seconds of match time per run. The median of seven matched events
-that makes E1 under-powered, and that Section~\ref{sec:attribution} treats as an opening burst,
-is that window. The burst is real and is why those seven events are the densest in the match; the
-reason there were only seven is that the campaign asked for two seconds.
-
-We leave the disclosure standing rather than deleting it, for two reasons. The recovery was
-available only because the artefact we were chasing happened to be a wall-clock constant with a
-sharp signature, and the confirmation only because a virtual machine had not yet been destroyed;
-a reader should not have to reconstruct an experimental parameter by arithmetic on its results,
-and next time there may be nothing to reconstruct it from and nothing left to check it against.
-And the exercise makes the protocol rule concrete: what was missing was one number, written down
-once.
-
-\paragraph{What the gap touched.} The audit is unaffected either way: a negative transport is
-causally impossible at any replay rate, and the rejection counts are arithmetic on surviving
-per-event data. The withdrawal in Section~\ref{sec:attribution} is unaffected by construction ---
-we give the argument in a form that holds at every candidate rate. The rules of
-Section~\ref{sec:rules} were measured after the pre-flight existed, at a derived and verified
-rate. Section~\ref{sec:e1}'s external validity is restored by the recovery above, and the
-recovered script now documents it as well --- though the inference stood on its own before the
-script appeared, and is what we would still be relying on had the machine been released a day
-earlier.
-Section~\ref{sec:protocol} carries the rule that would have made all of this unnecessary.
+it either: no surviving artefact records the achieved replay rate of the earliest corpus.
+Replay plans carry a baked-in $120\times$ compression that the producer's flag then multiplies,
+so the candidate rates are $1\times$, $120\times$ and $1200\times$, and the records that exist
+disagree. The rate was recovered from a physical constraint: the client's start-up cost is a
+wall-clock constant, so the number of events it swallows encodes the rate, and one diagnostic
+cell whose median reads $52.34$~ms (range $51.60$--$53.01$ across fifteen runs) --- midway
+between the two modes at $1.6$ and $103.5$~ms ---
+fixes it at four late events and hence at true real time. What the gap touches is bounded: the
+audit is unaffected, since causal impossibility holds at any rate; the withdrawal of
+Section~\ref{sec:attribution} is stated in a form that holds at every candidate rate; and
+Section~\ref{sec:e1}'s external validity is restored by the recovery. The full episode ---
+recovery arithmetic, per-claim exposure, the disagreeing records --- is supplementary material
+S1. The rule it produced --- write the number down --- is in Section~\ref{sec:protocol}.
 
 \subsection{The property that makes this general}
 \label{sec:property}
@@ -1327,7 +1253,30 @@ inverts a common intuition. In cross-process delay measurement, an effect of the
 the instrument's own noise floor is the one most likely to have been manufactured by it, and
 statistical significance offers no protection because the artefact is systematic.
 
-\subsection{The same exposure in a benchmark we did not write}
+\subsection{What we withdraw}
+
+We withdraw the entire Testbed~A arm, and on Testbed~B the accelerated concurrency sweep, the
+connection sweep above ten connections, and the three-node cluster arm, which fails on every run
+in both systems.
+
+\paragraph{A manipulation that did not manipulate, and what it cost.} We also withhold a
+co-location campaign (E-A8). The intent was to shorten $T_{\mathrm{true}}$ by removing the
+network hop --- the opposite of the payload sweep, and a useful check that the
+$T_{\mathrm{true}}$ result is not an artefact of how we lengthened it. It did not work. Moving
+the broker onto the driver made transport \emph{longer} at idle, $0.512 \to 0.573$~ms, because it
+traded network latency for CPU contention on the same cores; under $88\%$ load it moved transport
+by $1.03\times$, which is no manipulation at all. The inversion rates duly failed to separate
+(intervals overlapping in both cells). Reporting those rates as a null would misdescribe the
+experiment: nothing was manipulated, so nothing was tested. We record it because the pattern is
+itself informative. Two of our three attempts on this axis failed for structurally similar
+reasons --- netem delayed both paths and cancelled in the difference, co-location traded one
+delay for another --- which suggests $T_{\mathrm{true}}$ is a quantity that resists manipulation
+in a shared-resource system, because every route to shortening it lengthens something else. The
+payload sweep worked because padding adds serialisation without contending for the scheduler, and
+we were fortunate that it does.
+
+
+\section{The Second Failure Mode: Deletion in a Benchmark We Did Not Write}
 \label{sec:external}
 
 Everything above concerns our own corpus, which invites the obvious objection: we have shown
@@ -1382,7 +1331,7 @@ A source audit is not a measurement, so we made the discards observable
 producer rate and replication: $\ombRuns$ instrumented runs on the co-located path, each three minutes
 at rates around $500$ messages per second.
 
-\subsubsection{The claim we withdraw, and where its refutation was}
+\subsection{The claim we withdraw, and where its refutation was}
 \label{sec:extwithdraw}
 
 An earlier version of this section reported that a single such run discarded $6{,}000$ samples
@@ -1403,7 +1352,7 @@ number that refutes the reading, and the mechanism that explains it, were both p
 and read past. What was missing was not data but a reason to look at the sign, and the statistic we
 had chosen to report did not have one.
 
-\subsubsection{What the benchmark actually does}
+\subsection{What the benchmark actually does}
 
 Across the $49$ runs on an unsaturated path, the benchmark computes its reported latency
 distribution from between \textbf{$0.36\%$ and $100\%$} of the samples it takes. Over that
@@ -1427,7 +1376,7 @@ In plain terms: two reports can look identical --- same median, same neat percen
 one rests on a hundred and twenty thousand measurements and the other on a residue of under a
 thousand, and no reader, however careful, can tell which they are holding.
 
-\subsubsection{The mechanism: phase, not speed}
+\subsection{The mechanism: phase, not speed}
 \label{sec:extphase}
 
 Retention varies enormously, and the obvious explanation --- that the path was faster in some runs
@@ -1490,7 +1439,7 @@ per byte is $0.630$ at $32$~KB and $0.638$ at $64$~KB, two independent estimates
 $1.3\%$ and corresponding to an effective path of about $1.6$~Gb/s. Technically, the retained
 fraction is itself a measurement of the true latency in units of the clock tick. In plain terms:
 the faster the system, the more of its own evidence this benchmark throws away --- a
-half-millisecond path loses half, and a path fast enough to be worth bragging about loses nearly
+half-millisecond path loses half, and a path fast enough to be the selling point loses nearly
 everything.
 
 \emph{The sweep discriminates only where the manipulation exceeds the noise, and we are explicit
@@ -1534,7 +1483,7 @@ replicate noise, so the ratio is scatter over a small denominator. The two unmar
 signal-to-noise ratio near $20$ and carry the result.}
 \end{table}
 
-\subsubsection{Commensurability is not binary: retention is quantised by the denominator}
+\subsection{Commensurability is not binary: retention is quantised by the denominator}
 \label{sec:extquant}
 
 Section~\ref{sec:extphase} separates two cases, an exact multiple and an incommensurate rate, and
@@ -1580,7 +1529,7 @@ width or collapses, and a spread above half the cell width separates the two.
 host. \emph{Position} is the distance from the measured continuous value to the nearest grid point,
 expressed against the cell half-width: $0$ means it sits on a grid point, $1$ midway between two.
 Because position is scale-free, every call below is unchanged whether the continuous value is
-estimated pooled ($49.5\%$) or separately at each rate ($45.9$--$51.5\%$).}
+estimated pooled ($49.5\%$) or separately at each rate ($45.9$--$51.5\%$): position is distance over the cell \emph{half-width}, so rescaling $\theta$ moves every gap and every threshold together. $^{\dagger}$already in lowest terms.}
 \label{tab:quantisation}
 \small
 \begin{tabular}{@{}rlrrrrlr@{}}
@@ -1598,7 +1547,7 @@ $625$/s  & $8/5$  & $5$ & $5$ & $20.0$  & $0.95$ & full & $17.9$ \\
 $875$/s  & $8/7$  & $7$ & $5$ & $14.3$  & $0.93$ & full & $10.7$ \\
 \midrule
 \multicolumn{8}{@{}l}{\emph{incommensurate --- phase set effectively continuous}} \\
-$889$/s  & $1000/889$ & ${>}64$ & $5$ & --- & --- & $\approx 0$ & $1.7$ \\
+$889$/s  & $1000/889^{\dagger}$ & ${>}64$ & $5$ & --- & --- & $\approx 0$ & $1.7$ \\
 $457$/s  & ---    & ${>}64$ & $4$ & --- & --- & $\approx 0$ & $2.1$ \\
 $383$/s  & ---    & ${>}64$ & $4$ & --- & --- & $\approx 0$ & $2.8$ \\
 $333$/s  & ---    & ${>}64$ & $3$ & --- & --- & $\approx 0$ & $3.1$ \\
@@ -1678,7 +1627,30 @@ denominator, not from avoiding exact multiples, and the denominator is not visib
 operator types. A rate is dangerous in proportion to how few distinct phases it visits inside the
 clock's quantum.
 
-\subsubsection{A comprehensive campaign: the grid survives as attractors}
+\subsection{The inference the median cannot supply}
+\label{sec:extinference}
+
+A quantity with two-point support breaks the replicate median, and the branch-count test we
+registered first presupposed branch-classifiable replicates that smeared arms do not have. The
+replacement is pre-specified in full and committed with the artefact
+(\texttt{grid\_membership\_test.py}; per-arm output in \texttt{grid\_membership.csv}). The
+statistic is the arm's mean distance to its nearest grid vertex, normalised by the cell width
+$100/q$. The null is the continuum: replicates drawn Normal$(\theta_{\mathrm{local}}, \sigma)$,
+with $\theta_{\mathrm{local}}$ the rate-local continuous value and $\sigma = 1.2$ points the
+pooled replicate noise of the incommensurate arms --- both measured, neither fitted to the arm
+under test. The p-value is one-sided by Monte Carlo, small distances favouring the grid.
+
+Of twelve commensurate arms, ten are powered --- the null and the grid predict separably --- and
+\textbf{nine of the ten reject the continuum}, seven at the Monte-Carlo floor of
+$2.5\times10^{-4}$, including arms whose binary flat/full classification had read as smeared;
+the tenth ($900$~msg/s) rejects at $0.044$. The two unpowered arms are the degenerate ones
+($400$ and $800$~msg/s, whose grids pass through $\theta$), and the test reports them as
+undecidable rather than counting them for either side. Where every replicate lies within $3$
+points of a vertex the arm is branch-classifiable and the upper-branch weight carries an exact
+Clopper--Pearson interval in the artefact. In plain terms: judged by a test that cannot be
+fooled by a value with no centre, the grid is present in every arm that could show it.
+
+\subsection{A comprehensive campaign: the grid survives as attractors}
 \label{sec:extcomp}
 
 The quantisation results above rest on arms of three to six replicates collected as the rule was
@@ -1691,6 +1663,16 @@ holds $\ombRuns$ instrumented runs whose $\ombDiscarded$ discarded samples conta
 $\ombNegatives$ negatives. One prediction was confirmed, three had their falsifiers fire, one was
 not evaluable, and one split its accounts; we report all six.
 
+\begin{figure}[t]
+\includegraphics[width=\columnwidth]{docs/results/figures/payload_flip.pdf}
+\caption{The campaign's confirmed prediction. (a) Retention replicates at $300$~msg/s ($q=3$)
+by payload, against the thirds grid: $200$~B straddles both branches, $32$~KB pins near the
+$2/3$ vertex, $64$~KB re-opens to the upper cell. (b) Replicate spread against
+$\operatorname{frac}(q\theta)$: the flat/full boundary at half the cell width is crossed in both
+directions by the one manipulated variable.}
+\label{fig:payloadflip}
+\end{figure}
+
 \paragraph{The confirmation is the one that manipulates the physics.} Payload moves
 $T_{\mathrm{true}}$ (Table~\ref{tab:retentionlaw}), so it moves $\theta$'s position within the
 grid cell, and Equation~\ref{eq:quant} then dictates the arm's class with nothing else changed.
@@ -1698,65 +1680,77 @@ Measured at $457$~msg/s, $\theta(32\,\text{KB}) = 0.685$ and $\theta(64\,\text{K
 $300$~msg/s ($q=3$) these give $\operatorname{frac}(q\theta) = 0.055$ (on the $2/3$ grid point:
 predict a flat arm pinned there) and $0.56$ (mid-cell: predict the full width back). The
 registered prediction was that one manipulation would move the arm onto a grid point and off it.
-It did: at $32$~KB the five replicates were $62.06$, $69.17$, $69.19$, $69.23$, $75.69$ --- spread
+It did (Figure~\ref{fig:payloadflip}): at $32$~KB the five replicates were $62.06$, $69.17$, $69.19$, $69.23$, $75.69$ --- spread
 $13.6$, three replicates agreeing to $0.06$ points --- and at $64$~KB they were $73.06$, $83.80$,
 $94.87$, $96.83$, $99.78$ --- spread $26.7$, the upper vertex hit to a quarter point. The flat-full
 boundary at half the cell width ($16.7$) is crossed in the predicted direction by both halves. One
 registered detail failed: the $32$~KB pin sits at $69.2$, not on the vertex at $66.67$ --- a
 displacement toward $\theta$ that the next paragraph makes systematic.
 
-\paragraph{Vertices are attractors, not the values themselves.} Across every commensurate arm in
-the study, replicates sit off their grid points \emph{toward} the continuous value, by amounts
-ranging from under a point to complete detachment. Two arms detached outright --- a majority of
-replicates further than $3$ points from any vertex: $300$~msg/s in the evening pass ($34.12$,
-$51.03$, $51.44$, $55.53$, $55.93$) and $700$~msg/s ($44.18$--$50.65$, spread $6.5$ against a
-cell width of $14.3$). Both have $p = 10$ in $\Delta/\tau = p/q$; no arm with $p \le 8$ detached,
-and the same evening that $300$~msg/s detached, $625$~msg/s ($p=8$, $q=5$) produced its cleanest
-bimodal split of the study ($41.07$, $41.96$ $\mid$ $57.02$, $59.05$, $60.04$). The phase
-disturbance, in units of the grid cell, is therefore governed by the \emph{numerator}: per-send
-pacing jitter proportional to the send interval contributes $\Delta / (\tau/q) = p$ cells of
-disturbance identically, independent of $q$ and of duration.
-
 \paragraph{Duration does nothing, which kills the natural alternative.} If the phase disturbance
 were a cumulative drift walk, it would scale with run length. Registered before the block ran:
 intermediates should rise with duration. Measured at $500$~msg/s ($q=1$, $p=2$) over one, three
 and ten minutes: intermediate counts $1$, $1$, $0$, with branch values pinned to the vertices at
-every duration ($0.43$, $1.11$, $100.00$ at ten minutes). The prediction was falsified, the walk
-account with it, and what stands is per-send jitter: a disturbance applied at each send, not
-accumulated across them.
-
-\paragraph{The regime itself is mobile.} The same $300$~msg/s configuration produced
-branch-adjacent replicates in the morning pass ($34.86$--$41.13$, $65.35$) and a detached arm in
-the evening. Section~\ref{sec:extreprod}'s irreproducibility therefore reaches one level deeper
-than retention values: the \emph{distribution family} a configuration draws from moves on a
-timescale of hours. The disciplined system clock is exonerated --- its residual frequency error
-during the campaign was $0.013$~ppm, two orders below what the detachment implies --- leaving the
-producer's own pacing loop, which no instrument in this study measures per run, as the identified
-open question.
+every duration ($0.43$, $1.11$, $100.00$ at ten minutes). Under the walk account's own
+quantitative reading --- roughly three cells crossed per ten-minute run, so intermediates in at
+least two of three replicates --- the observed $0$ of $3$ has probability at most
+$(1/3)^3 \approx 0.04$. The prediction was falsified, the walk account with it, and what stands
+is per-send jitter: a disturbance applied at each send, not accumulated across them.
 
 \paragraph{The continuous value plateaus, and one miss stands.} Two incommensurate arms at
 $1053$ and $1219$~msg/s, run to interpret the campaign's remaining anomaly, measured
-$\theta = 47.2\%$ and $48.2\%$: the downward trend visible between $333$ and $889$~msg/s does not
-continue, and the linear extrapolation on which one registered prediction relied is refuted. With
-the measured $\theta \approx 0.48$, the $1250$~msg/s arm ($\Delta < \tau$, $q=5$, $p=4$) was
-predicted mid-cell and full, with two upper-branch replicates expected of five; it produced none,
-pinning instead on the $2/5$ vertex ($40.66$--$42.00$, plus one at $48.26$) --- an outcome of
-probability $\approx 0.08$ under the branch law, recorded as a miss. The same arm sits six to
-seven points below the continuous value measured beside it, which no continuous account produces:
-the grid is present even where the branch-probability law under-delivers. The reconciliation we
-flag as post-hoc and untested --- a jitter kernel narrower than the half-cell suppresses
-realisation of the minority branch rather than merely displacing values --- is a prediction for a
-future campaign, not a claim of this one.
+$\theta = 47.2\%$ (replicates $45.6$--$48.6$) and $48.2\%$ ($46.4$--$51.0$): the downward trend
+visible between $333$ and $889$~msg/s does not continue, and the linear extrapolation on which
+one registered prediction relied is refuted --- on two arms of four replicates, which is what
+this evidence is. With the measured $\theta \approx 0.48$, the $1250$~msg/s arm
+($\Delta < \tau$, $q=5$, $p=4$) was predicted mid-cell and full, with two upper-branch
+replicates expected of five; it produced none, pinning instead on the $2/5$ vertex
+($40.66$--$42.00$, plus one at $48.26$) --- an outcome of probability $\approx 0.08$ under the
+branch law, recorded as a miss. The same arm sits six to seven points below the continuous value
+measured beside it, which no continuous account produces: the grid is present even where the
+branch-probability law under-delivers.
 
 \paragraph{What survives.} Retention is the occupancy of an arc of width $\theta$ by a $q$-point
-grid convolved with a pacing-jitter kernel; the kernel's width in cell units grows with $p$ and
-varies between runs and passes; the expectation over phase is $\theta$ at every $q$; and
+grid, dressed by pacing jitter; the expectation over phase is $\theta$ at every $q$; and
 $\theta$'s position within the cell decides a flat or full arm --- the one lever an experimenter
-controls, and the campaign's one cleanly confirmed prediction, moved it both ways on command. The
-practical recommendation of Section~\ref{sec:authors} is unchanged and strengthened: dithering
-the send instant removes the entire structure, kernel and grid alike, whatever the arithmetic.
+controls, and the campaign's one cleanly confirmed prediction, moved it both ways on command.
+The practical recommendation of Section~\ref{sec:authors} is unchanged and strengthened:
+dithering the send instant removes the entire structure, whatever the arithmetic.
 
-\subsubsection{Three replicates do not establish reproducibility}
+\subsection{Open questions raised by the campaign}
+\label{sec:extopen}
+
+Three observations from the campaign are consistent with a single conjecture --- a per-send
+jitter kernel whose width in cell units grows with the numerator $p$ of $\Delta/\tau$ --- and
+none of them is established. We separate them from the results above deliberately: they are
+post-hoc, the pacer they implicate is measured only in the non-JVM replication of
+Section~\ref{sec:generality}, and one of our own follow-up tests cuts against the conjecture.
+
+\emph{Displacement toward $\theta$.} Replicates sit off their grid vertices toward the
+continuous value, from under a point to complete detachment. The two arms that detached outright
+(a majority of replicates more than $3$ points from every vertex) are $300$~msg/s in the evening
+pass and $700$~msg/s --- both with $p = 10$; no arm with $p \le 8$ detached, and the same
+evening that $300$~msg/s detached, $625$~msg/s ($p = 8$) produced its cleanest two-branch split of
+the study. Suggestive; a census of two is not a law.
+
+\emph{Mobility between passes.} The same $300$~msg/s configuration was branch-adjacent in the
+morning and detached in the evening. Passes were hours apart, so epoch and arm are confounded;
+the disciplined clock is exonerated (residual $0.013$~ppm), the pacing loop is the suspect, and
+the controlled interleaving that separates arm from epoch is reported in
+Section~\ref{sec:generality}.
+
+\emph{Branch suppression.} The formal residual analysis (Section~\ref{sec:extinference}) finds
+mean retention \emph{below} $\theta$ at every $q \ge 3$ arm, and the rank correlation of
+$|$residual$|$ with $p$ is negative ($-0.8$), not the positive association a
+displacement-scaling kernel predicts --- the sign is dominated by branch-weight sampling at
+$q=1$. What the residuals do support is minority-branch suppression: a kernel narrower than the
+half-cell keeps runs on the nearest vertex, depressing the upper-branch weight below
+$\operatorname{frac}(q\theta)$, which would also account for the $1250$~msg/s miss above.
+A quantitative displacement prediction from a measured jitter statistic does not yet exist; the
+harness of Section~\ref{sec:generality} records the statistic per run and is where one would be
+built.
+
+\subsection{Three replicates do not establish reproducibility}
 \label{sec:extreprod}
 
 We ran the identical load sweep three times over nine hours. Per-level median retention reproduced
@@ -1772,7 +1766,7 @@ has no stable value to be noisy around. Eighteen runs at one identical configura
 below $2\%$, eight above $90\%$, and four in between: their median is $23.4\%$, a value one run in
 eighteen produced.
 
-\subsubsection{What we cannot show, after eight attempts}
+\subsection{What we cannot show, after eight attempts}
 \label{sec:extdist}
 
 The cross-host case is the one in which OMB's subtraction spans two clocks, and therefore the one
@@ -1794,29 +1788,6 @@ is unreported. Whether it has affected a specific published measurement depends 
 measurement's path latency and producer rate, and we have audited none. That asymmetry is the
 reason we recommend publishing a retention rate as routine practice: its cost is one number, and
 the alternative is a benchmark that cannot report its own failure.
-
-\subsection{What we withdraw}
-
-We withdraw the entire Testbed~A arm, and on Testbed~B the accelerated concurrency sweep, the
-connection sweep above ten connections, and the three-node cluster arm, which fails on every run
-in both systems.
-
-\paragraph{A manipulation that did not manipulate, and what it cost.} We also withhold a
-co-location campaign (E-A8). The intent was to shorten $T_{\mathrm{true}}$ by removing the
-network hop --- the opposite of the payload sweep, and a useful check that the
-$T_{\mathrm{true}}$ result is not an artefact of how we lengthened it. It did not work. Moving
-the broker onto the driver made transport \emph{longer} at idle, $0.512 \to 0.573$~ms, because it
-traded network latency for CPU contention on the same cores; under $88\%$ load it moved transport
-by $1.03\times$, which is no manipulation at all. The inversion rates duly failed to separate
-(intervals overlapping in both cells). Reporting those rates as a null would misdescribe the
-experiment: nothing was manipulated, so nothing was tested. We record it because the pattern is
-itself informative. Two of our three attempts on this axis failed for structurally similar
-reasons --- netem delayed both paths and cancelled in the difference, co-location traded one
-delay for another --- which suggests $T_{\mathrm{true}}$ is a quantity that resists manipulation
-in a shared-resource system, because every route to shortening it lengthens something else. The
-payload sweep worked because padding adds serialisation without contending for the scheduler, and
-we were fortunate that it does.
-
 
 \section{What Survives}
 \label{sec:results}
@@ -2173,23 +2144,7 @@ $88\%$ & 0.8809 & 0.8812 & 0.3049 & 0.0057 & $54\times$ \\
 \end{tabular}
 \end{table}
 
-\paragraph{Both load-axis predictions failed, including ours.} The knee sweep placed conditions
-at achieved $\rho$ of $0.881$, $0.920$, $0.950$, $0.970$ and $0.990$, where the candidate forms
-diverge most; the earlier ladder stopped at $0.878$ and everything above it collapsed onto a
-degenerate $\rho = 1.000$, which is why Section~\ref{sec:rules} could not settle the question.
-With those points in hand, M/G/1 fits \emph{worse than the mean} ($R^2 = -0.05$ against a fitted
-exponential's $0.93$). The withdrawal does not merely stand: the forms are now separated, and
-M/G/1 is the one ruled out.
-
-The bounded prediction fared better but also failed. Over $\rho = 0.881$ to $0.990$ the rate grew
-by a factor of $1.44$. M/G/1 predicted $13.8$; the bracket we registered before the sweep
-predicted $2.45$--$3.07$. The rate saturates, as a bounded mechanism requires --- but harder than
-our own extrapolation allowed, and a prediction that misses low is still a prediction that
-missed. We report it as a failure rather than as the nearer of two misses.
-
-The two failures have one cause, and E-A5 names it. Our bracket was still parameterised in
-$\rho$, through $p = \rho^C$; E-A5 shows $\rho$ does not determine occupancy. What survives is
-the mechanism --- established by manipulation --- and not any curve in $\rho$, ours included.
+\paragraph{Both load-axis predictions failed, including ours.} The knee sweep placed conditions where the candidate load laws diverge; M/G/1 fitted worse than the mean ($R^2 = -0.05$ against a fitted exponential's $0.93$), and our own registered bracket missed a $1.44\times$ growth by predicting $2.45$--$3.07\times$. Both were parameterised in $\rho$, and $\rho$ is not the variable. The full post-mortem is supplementary material S2.
 
 \paragraph{Utilisation is not the variable, shown at identical utilisation.} The cleanest
 demonstration does not need a curve at all. Two loads can reach the same $\rho$ by different
@@ -2417,6 +2372,14 @@ Table~\ref{tab:ea10}:
 \label{eq:tailindex}
 \end{equation}
 
+The estimator is ordinary least squares of $\log \Pr$ on $\log T_{\mathrm{true}}$ over the
+sweep's four payload levels --- a regression slope, not a Hill estimator over raw stalls, and
+its uncertainty is carried accordingly: a parametric bootstrap resampling each level's inversion
+count as Binomial($n \approx 3{,}000$, $\hat p$) gives $\alpha = 0.339$, $95\%$ CI
+$[0.309, 0.372]$, and leave-one-out refits span $[0.330, 0.359]$, so no single level carries the
+slope. The claim that follows is licensed by a gate in the artefact, not by assertion: it is
+made only while the interval's upper bound stays below one.
+
 \noindent\textbf{The exponent is below one, so the stall distribution has neither a finite mean
 nor a finite variance.} That is the part worth stating carefully, because it converts an
 observation into an explanation. Section~\ref{sec:twostate} found that cumulative scheduler
@@ -2490,7 +2453,9 @@ system degrades across the range.
 
 \paragraph{The powered measurement.} We measured transport directly, at a replay rate
 derived from the plan and verified against wall time, over a median of $127$ events per run rather
-than seven, at $N \in \{1, 9, 12\}$ with $15$ replicates each (Table~\ref{tab:transport}). The
+than seven, at $N \in \{1, 9, 12\}$ with $15$ replicates each (Table~\ref{tab:transport}). Every
+run is audit-surviving, and the instrument stamps in microseconds on one clock, so neither
+failure mode of this paper touches the numbers that follow. The
 picture is sharper and it is not the one E1 painted. Broker transport is \kafka{} $\approx
 0.54$~ms against \redis{} $\approx 0.11$~ms: a Hodges--Lehmann shift of $0.41$~ms, \kafka{}
 slower, with a bootstrap $90\%$ interval of width $\pm 0.006$~ms and $p < 10^{-26}$ at every $N$.
@@ -3402,7 +3367,7 @@ away. Both are free to check. Neither was being checked.
 
 \section*{Artefact Availability}
 \begin{sloppypar}
-All code, replay plans, aggregated results and analysis are available at
+A supplementary document (\texttt{supplement.tex}, compiled separately) holds material moved out of the main text under the length constraint; it is not part of the main submission, and \texttt{docs/supplement\_index.md} in the artefact records what moved where so nothing is lost. All code, replay plans, aggregated results and analysis are available at
 \url{https://github.com/Gustolandia/streaming-latency-sports}. Event data is the StatsBomb open
 dataset under CC~BY-NC~4.0; raw files are not redistributed but are re-fetchable from a pinned
 upstream commit. Every run records its git commit and per-file SHA-256. The plots are regenerated

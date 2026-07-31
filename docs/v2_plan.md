@@ -102,7 +102,9 @@ The referee-anticipating section (David's clock questions all point here). Conte
   Setting 71→50, authors' table 73→50, first-answer checks → list, instrumenting 82→65.
   Aligns with David's readability point; do together with A1.
 - B2. M/G/1 one-clause fix: "a framing we adopt as a leading-order account and, on the
-  load axis, ultimately refute" (§2 near \cite{chandrasekar2026bias}).
+  load axis, ultimately refute" (§2 near \cite{chandrasekar2026bias}). **No longer
+  optional**: promised by email to the framing's author (2026-07-28), who replied with
+  interest and asked for the link on announcement.
 
 ## C. Pending inputs before execution
 - C1. Dinh's review (offered; review-this-week asked). Fold in on arrival.

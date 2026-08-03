@@ -24,6 +24,9 @@ subsection may be organised around them.
 - **Tier 4 — confirmations of others' results.** One sentence in results, cite and move on.
 - **Tier 5 — other nulls.** One sentence in results; tables/detail to supplement.
 
+**Tie-break rule (author, 2026-08): demote.** If a result might be a null, it is a null;
+if a call is borderline between tiers, take the lower. Cleaner paper beats fuller paper.
+
 ### Tier assignment (v1 results → v2 treatment)
 
 | Result | Tier | v2 treatment |
@@ -37,11 +40,11 @@ subsection may be organised around them.
 | Guard source audit: silent discard, no counter (WorkerStats.java:95); institutionalised upstream (KIP-489, HdrHistogram contract — A10) | 2 | Compact subsection with the grey-lit anchors |
 | Fair-config finding: one client setting per system worth 1–2 orders, invisible co-located | 2 | Short subsection |
 | Dither + publish-the-retention-rate remedy | 2 | Closing of results + abstract's final line (kept: it is the paper's actionable output) |
-| θ plateau ~48% above 700/s | 2 (low) | One paragraph, no subsection |
+| θ plateau ~48% above 700/s | 5 (demoted from borderline 2 by the tie-break rule) | One sentence |
 | Kafka corpus: **zero** negatives in 10,913,263 discards — refutes our own earlier reading | 3 | Abstract-eligible (kept); framed as audit outcome |
 | M/G/1 fitted worse than the mean where forms diverge — contradiction of the adopted framing (B2 clause, committed) | 3 | Pointed paragraph in results + the §2 clause; NOT in abstract (currently barred by test — keep barred: contradiction is of a framing we adopted, weakest of the T3 set) |
 | Withdrawal of the twentyfold gap (start-up cost misread) + 58% of own corpus rejected incl. every run behind the first result | 3 | Kept in abstract beat 1 (it is the audit's credential); compact in results |
-| OMB distributed mode fails identically 11/11 | 3 (borderline 5 — author's call) | One paragraph + supplement S4; not in abstract |
+| OMB distributed mode fails identically 11/11 | 5 (demoted from borderline 3 by the tie-break rule) | One sentence; diagnostics stay in supplement S4 and the upstream issue draft |
 | Broker equivalence within 1 ms; no degradation with concurrency | 4 | One sentence in results (already out of abstract, test-enforced) |
 | Scheduling-induced timestamp error exists (Sharma et al. / Cloudprofiler line) | 4 | One sentence with citations; our law stays T2 |
 | Grid law instantiates known mathematics (Weyl, three-distance, Schuchman/Wannamaker) | 4 | One sentence anchoring, in the law's subsection |

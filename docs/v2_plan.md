@@ -106,6 +106,14 @@ The referee-anticipating section (David's clock questions all point here). Conte
   optional**: promised by email to the framing's author (2026-07-28), who replied with
   interest and asked for the link on announcement.
 
+### A10. Fold in the grey-literature review
+docs/grey_literature_review.md (surveyed Aug 2026) — §2 additions (Tene, Shipilev, Heiser,
+OMB issue #247, KIP-489, HdrHistogram contract), the Redpanda–Confluent dispute as the
+stakes anecdote, the CO-vs-Mode-B distinction sentence, and AWS ClockBound / Meta PTP as
+industry direction inside the A8 better-clock subsection. Its §E gap statement strengthens
+the paper's "the practice is missing" claim: OMB fixed coordinated omission in the very
+file whose guard we audit. Re-read the four starred sources in full before citing.
+
 ## C. Pending inputs before execution
 - C1. Dinh's review (offered; review-this-week asked). Fold in on arrival.
 - C2. arXiv announcement → v1.0.2 metadata pass (arXiv ID into README/CITATION) — separate

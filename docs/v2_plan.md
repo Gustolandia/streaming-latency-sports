@@ -9,6 +9,54 @@ Reviewer names are kept to first names here; acknowledgements in v2 with permiss
 
 ---
 
+## Stratification policy (governs every section below)
+
+Author's instruction, 2026-08. Every result is assigned a tier; **space, placement and
+emphasis are proportional to tier**. Only tiers 1–3 may appear in the abstract. Tiers 4–5
+get exactly one sentence in the results (detail may live in the supplement), and no
+subsection may be organised around them.
+
+- **Tier 1 — biggest novel original discoveries.** Own the abstract, the introduction's
+  first page, and the largest share of results.
+- **Tier 2 — medium original discoveries.** Full subsections, no headline billing.
+- **Tier 3 — hyper-surprising nulls and contradictions of other papers.** Abstract-eligible;
+  reported with full evidence but framed as audit outcomes, not headline discoveries.
+- **Tier 4 — confirmations of others' results.** One sentence in results, cite and move on.
+- **Tier 5 — other nulls.** One sentence in results; tables/detail to supplement.
+
+### Tier assignment (v1 results → v2 treatment)
+
+| Result | Tier | v2 treatment |
+|---|---|---|
+| Grid retention law: retention snaps to the q-grid, E[retention]=θ at every q; causal (payload flip pins/frees classes); stack-independent (no-JVM harness reproduces) | 1 | Largest share of results; abstract beat 2 |
+| One governing ratio (instrument timescale / measured interval) unifying both failure modes | 1 | Title + abstract framing; intro page 1 |
+| Sign channel as audit: 41,403 genuine one-tick negatives caught inside the guard, half of one run, absorbed without trace — the two modes meet in one counter | 1 | Abstract beat 3; full subsection |
+| Inversion mechanism law P[inversion]=P[stall>T_true], established by manipulation (SCHED_FIFO 7–80×; equal-ρ 2.07×; transport ×77 → rate ÷4.1; unfitted trace within 30%) | 2 | Full subsection; abstract beat 1 keeps its two strongest numbers only |
+| Stall tail index α≈0.34 → no finite mean → mean-based counters structurally blind | 2 | Paragraph inside mechanism subsection; one abstract clause |
+| Cross-host: retention coupled to clock-sync state (13.4→27.0% drift under sub-tick offset) | 2 | Subsection (feeds better-clock A8) |
+| Guard source audit: silent discard, no counter (WorkerStats.java:95); institutionalised upstream (KIP-489, HdrHistogram contract — A10) | 2 | Compact subsection with the grey-lit anchors |
+| Fair-config finding: one client setting per system worth 1–2 orders, invisible co-located | 2 | Short subsection |
+| Dither + publish-the-retention-rate remedy | 2 | Closing of results + abstract's final line (kept: it is the paper's actionable output) |
+| θ plateau ~48% above 700/s | 2 (low) | One paragraph, no subsection |
+| Kafka corpus: **zero** negatives in 10,913,263 discards — refutes our own earlier reading | 3 | Abstract-eligible (kept); framed as audit outcome |
+| M/G/1 fitted worse than the mean where forms diverge — contradiction of the adopted framing (B2 clause, committed) | 3 | Pointed paragraph in results + the §2 clause; NOT in abstract (currently barred by test — keep barred: contradiction is of a framing we adopted, weakest of the T3 set) |
+| Withdrawal of the twentyfold gap (start-up cost misread) + 58% of own corpus rejected incl. every run behind the first result | 3 | Kept in abstract beat 1 (it is the audit's credential); compact in results |
+| OMB distributed mode fails identically 11/11 | 3 (borderline 5 — author's call) | One paragraph + supplement S4; not in abstract |
+| Broker equivalence within 1 ms; no degradation with concurrency | 4 | One sentence in results (already out of abstract, test-enforced) |
+| Scheduling-induced timestamp error exists (Sharma et al. / Cloudprofiler line) | 4 | One sentence with citations; our law stays T2 |
+| Grid law instantiates known mathematics (Weyl, three-distance, Schuchman/Wannamaker) | 4 | One sentence anchoring, in the law's subsection |
+| Football workload sparsity → domain latency questions return "doesn't matter" | 4 | One sentence in Setting/results |
+| Pre-registration outcomes P1 (not evaluable), P4 (three-way split), P5 (falsified), P2/P3 (falsifiers fired) | 5 | One sentence each in the pre-registration paragraph; table stays in supplement |
+| Jitter-kernel conjecture killed by the alternation test | 5 | One sentence (kept: it documents self-correction) |
+| Load-axis functional-form details beyond the M/G/1 verdict (exponential R²=0.93 etc.) | 5 | One sentence; curves to supplement |
+
+Consequences to verify at execution: the v1 abstract is already tier-compliant (its four
+beats are T1/T1/T3/T2-remedy; equivalence and M/G/1 already barred by tests). The main
+structural work is **shrinking T4/T5 material currently holding paragraph-or-more space**
+and rebalancing §8 so T2 mechanism content does not outweigh T1 grid-law content. Extend
+the consistency suite: a tier-policy test asserting the T4/T5 topics above appear at most
+once outside the supplement and never in the abstract.
+
 ## A. From David's quick-read review (2026-07-28)
 
 The single most valuable property of this review: four of his seven factual questions

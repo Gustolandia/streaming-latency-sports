@@ -31,14 +31,15 @@ if a call is borderline between tiers, take the lower. Cleaner paper beats fulle
 
 | Result | Tier | v2 treatment |
 |---|---|---|
-| Grid retention law: retention snaps to the q-grid, E[retention]=θ at every q; causal (payload flip pins/frees classes); stack-independent (no-JVM harness reproduces) | 1 | Largest share of results; abstract beat 2 |
+| Grid retention law: retention snaps to the q-grid, E[retention]=θ at every q; causal (payload flip pins/frees classes); stack-independent (no-JVM harness reproduces) | 1 | Largest share of results; abstract beat 2. The grid-membership inference (9/10 powered arms reject the continuum null) is folded here as **evidence**, not billed as a separate result |
 | One governing ratio (instrument timescale / measured interval) unifying both failure modes | 1 | Title + abstract framing; intro page 1 |
 | Sign channel as audit: 41,403 genuine one-tick negatives caught inside the guard, half of one run, absorbed without trace — the two modes meet in one counter | 1 | Abstract beat 3; full subsection |
 | Inversion mechanism law P[inversion]=P[stall>T_true], established by manipulation (SCHED_FIFO 7–80×; equal-ρ 2.07×; transport ×77 → rate ÷4.1; unfitted trace within 30%) | 2 | Full subsection; abstract beat 1 keeps its two strongest numbers only |
 | Stall tail index α≈0.34 → no finite mean → mean-based counters structurally blind | 2 | Paragraph inside mechanism subsection; one abstract clause |
 | Cross-host: retention coupled to clock-sync state (13.4→27.0% drift under sub-tick offset) | 2 | Subsection (feeds better-clock A8) |
+| Cross-host zero negatives in 1.5M two-clock samples (registered prediction, confirmed) | 5 | One sentence as a result; it may still be *used* as elimination evidence inside T2 subsections — billing does not follow evidence use |
 | Guard source audit: silent discard, no counter (WorkerStats.java:95); institutionalised upstream (KIP-489, HdrHistogram contract — A10) | 2 | Compact subsection with the grey-lit anchors |
-| Fair-config finding: one client setting per system worth 1–2 orders, invisible co-located | 2 | Short subsection |
+| Fair-config finding, **narrowed**: the original half is the invisibility claim (the setting's cost is free on a co-located testbed, so standard evaluation cannot see it); the "settings matter, 1–2 orders" half confirms vendor-documented behaviour and is T4 on its own | 2 (invisibility claim only) | Short subsection led by the invisibility claim; the known half gets one cited sentence inside it, no space of its own |
 | Dither + publish-the-retention-rate remedy | 2 | Closing of results + abstract's final line (kept: it is the paper's actionable output) |
 | θ plateau ~48% above 700/s | 5 (demoted from borderline 2 by the tie-break rule) | One sentence |
 | Kafka corpus: **zero** negatives in 10,913,263 discards — refutes our own earlier reading | 3 | Abstract-eligible (kept); framed as audit outcome |
@@ -48,17 +49,33 @@ if a call is borderline between tiers, take the lower. Cleaner paper beats fulle
 | Broker equivalence within 1 ms; no degradation with concurrency | 4 | One sentence in results (already out of abstract, test-enforced) |
 | Scheduling-induced timestamp error exists (Sharma et al. / Cloudprofiler line) | 4 | One sentence with citations; our law stays T2 |
 | Grid law instantiates known mathematics (Weyl, three-distance, Schuchman/Wannamaker) | 4 | One sentence anchoring, in the law's subsection |
-| Football workload sparsity → domain latency questions return "doesn't matter" | 4 | One sentence in Setting/results |
+| Football workload sparsity → domain latency questions return "doesn't matter" | 5 (refiled from 4: a confirmation requires someone else's result to confirm, and none exists — this is our own null) | One sentence in Setting/results (unchanged) |
 | Pre-registration outcomes P1 (not evaluable), P4 (three-way split), P5 (falsified), P2/P3 (falsifiers fired) | 5 | One sentence each in the pre-registration paragraph; table stays in supplement |
 | Jitter-kernel conjecture killed by the alternation test | 5 | One sentence (kept: it documents self-correction) |
 | Load-axis functional-form details beyond the M/G/1 verdict (exponential R²=0.93 etc.) | 5 | One sentence; curves to supplement |
 
-Consequences to verify at execution: the v1 abstract is already tier-compliant (its four
-beats are T1/T1/T3/T2-remedy; equivalence and M/G/1 already barred by tests). The main
-structural work is **shrinking T4/T5 material currently holding paragraph-or-more space**
-and rebalancing §8 so T2 mechanism content does not outweigh T1 grid-law content. Extend
-the consistency suite: a tier-policy test asserting the T4/T5 topics above appear at most
-once outside the supplement and never in the abstract.
+Consequences to verify at execution: the v1 abstract is already tier-compliant — its four
+beats are (T2 mechanism evidence + T3 withdrawal credential) / T1 grid law / T1 sign
+channel / T2 remedy, all within tiers 1–3; equivalence and M/G/1 stay barred by test. The
+main structural work is **shrinking T4/T5 material currently holding paragraph-or-more
+space** and rebalancing §8 so T2 mechanism content does not outweigh T1 grid-law content.
+Extend the consistency suite: a tier-policy test asserting the T4/T5 topics above appear
+at most once outside the supplement and never in the abstract.
+
+### Strict verification pass (2026-08-04)
+
+Every row re-audited against the definitions plus the demote rule. Changes made:
+football sparsity **refiled T4→T5** (category error — there is no prior result to
+confirm; it is our null; treatment unchanged); **cross-host zero negatives added
+explicitly as T5** (a predicted-and-confirmed null was implicitly riding inside a T2 row;
+made explicit so it cannot hold paragraph space as a "finding"); **grid-membership
+inference folded into the T1 grid-law row** (evidence for a discovery, not a second
+discovery — no double billing); **fair-config narrowed** (its vendor-documented half is
+T4 and loses independent space; only the invisibility claim keeps T2). Examined and
+deliberately kept: the sign channel at T1 (not borderline — it is the paper's most
+striking empirical event and the abstract's climax) and the governing ratio at T1 (the
+demonstrated thesis, not a framing convenience). No T4/T5 item retains more than one
+sentence outside the supplement.
 
 ## A. From David's quick-read review (2026-07-28)
 

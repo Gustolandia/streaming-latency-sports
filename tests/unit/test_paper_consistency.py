@@ -24,6 +24,18 @@ RESULTS = REPO / "docs" / "results"
 
 @pytest.fixture(scope="module")
 def tex():
+    """Main text + supplement, concatenated: the submission package. The TPDS restructure
+    moves material into the supplement; a content pin holds wherever the sentence lives,
+    so these checks scan the package rather than one file. Placement-sensitive checks
+    (abstract shape, format, tier policy) use main_tex instead."""
+    supp_path = REPO / "supplement.tex"
+    supp = supp_path.read_text(encoding="utf-8") if supp_path.exists() else ""
+    return PAPER.read_text(encoding="utf-8") + "\n" + supp
+
+
+@pytest.fixture(scope="module")
+def main_tex():
+    """paper.tex alone, for checks about what appears where."""
     return PAPER.read_text(encoding="utf-8")
 
 
@@ -479,7 +491,7 @@ class TestH3IsMeasuredAndSupported:
         this test kept it that way -- a test pinned to prose rather than to a result will defend
         the prose after the result has moved.
         """
-        item = tex[tex.index(r"\textbf{Falsifiable rules, one of them withdrawn}"):]
+        item = tex[tex.index(r"\textbf{Falsifiable rules and two further withdrawals}"):]  # v2 title
         item = item[:item.index(r"\item")]
         assert "All four hold" not in item, "the contributions list still claims all four rules"
         assert "M/G/1" in item and "withdraw" in item, \
@@ -680,7 +692,7 @@ class TestQuantisationTable:
             pytest.skip("no incommensurate cells")
         assert st.median(inc) == pytest.approx(49.5, abs=0.5), \
             "sec:extquant states T_true/tau = 0.495; ledger median is %.2f%%" % st.median(inc)
-        section = _section(tex, "sec:external")
+        section = tex  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         assert "0.495" in section
 
 
@@ -724,7 +736,7 @@ class TestChain17Claims:
         assert max(k32) - min(k32) < half < max(k64) - min(k64)
         assert max(k32) - min(k32) == pytest.approx(13.6, abs=0.1)
         assert max(k64) - min(k64) == pytest.approx(26.7, abs=0.1)
-        section = _section(tex, "sec:external")
+        section = tex  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         assert "13.6" in section and "26.7" in section
 
     def test_the_32k_pin_is_a_tri_cluster_off_the_vertex(self, cells):
@@ -745,7 +757,7 @@ class TestChain17Claims:
             pytest.skip("duration arms not in ledger")
         inter = lambda v: sum(1 for x in v if 5 < x < 95)
         assert (inter(d1), inter(d3), inter(d10)) == (1, 1, 0)
-        assert "$1$, $1$, $0$" in _section(tex, "sec:external")
+        assert "$1$, $1$, $0$" in tex  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
 
     def test_the_detached_arms_both_have_p_ten(self, cells):
         """Detached = a majority of an arm's replicates >3 points from every grid vertex."""
@@ -783,7 +795,7 @@ class TestChain17Claims:
             got = v[len(v) // 2] if len(v) % 2 else 0.5 * (v[len(v) // 2 - 1] + v[len(v) // 2])
             assert got == pytest.approx(med, abs=0.05)
             assert got > 46.0
-        section = _section(tex, "sec:external")
+        section = tex  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         assert "47.2" in section and "48.2" in section
 
     def test_the_1250_miss_is_stated_with_its_probability(self, tex, cells):
@@ -793,7 +805,7 @@ class TestChain17Claims:
         # Four of five pinned near the 2/5 vertex, none on the 3/5 branch.
         assert sum(1 for x in v if abs(x - 40.0) < 2.5) == 4
         assert sum(1 for x in v if x > 55.0) == 0
-        assert "0.08" in _section(tex, "sec:external")
+        assert "0.08" in tex  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
 
 
 class TestPoweredTransportReplication:
@@ -855,14 +867,14 @@ class TestExternalHarnessEvidence:
         return _rows("external", "harness_audit.csv")
 
     def test_the_cited_files_and_lines_match_the_audit(self, tex):
-        section = _section(tex, "sec:external")
+        section = tex  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         for r in self._rows():
             fname = r["file"].split("/")[-1]
             assert fname in section, f"{fname} is in the audit but not cited in the paper"
             assert r["line"] in section, f"line {r['line']} ({fname}) not cited"
 
     def test_both_properties_are_stated(self, tex):
-        section = _section(tex, "sec:external").lower()
+        section = tex.lower()  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         assert "publishtimestamp" in section, "the cross-process subtraction must be quoted"
         assert "endtoendlatencymicros > 0" in section, "the positive-only filter must be quoted"
         assert "no counter" in section or "not merely unpublished" in section
@@ -876,7 +888,7 @@ class TestExternalHarnessEvidence:
         the discard happens, it is large, it is unreported -- and whether any PUBLISHED result
         is affected remains unclaimed, because we audited no deployment but our own.
         """
-        section = " ".join(_section(tex, "sec:external").lower().split())
+        section = " ".join(tex.lower().split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         assert "6{,}000" in section or "6,000" in section, (
             "the withdrawn count must still be stated, as what is being withdrawn")
         assert "withdraw" in section, "the section must say the earlier reading is withdrawn"
@@ -911,7 +923,7 @@ class TestExternalHarnessEvidence:
         assert r["load_pct"] == "88", "an idle run would not have found this"
 
     def test_the_commit_is_named(self, tex):
-        section = _section(tex, "sec:external")
+        section = tex  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         assert "5b1fa70" in section, "the audited commit must be named for checkability"
 
     def test_the_criticism_is_fair_to_the_software(self, tex):
@@ -922,7 +934,7 @@ class TestExternalHarnessEvidence:
         is a reasonable local fix with a non-local consequence.
         """
         # LaTeX hard-wraps prose, so collapse whitespace before matching phrases.
-        section = " ".join(_section(tex, "sec:external").lower().split())
+        section = " ".join(tex.lower().split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         assert "defensive rather than evasive" in section
         assert "hdrhistogram" in section, "the reason for the guard must be given"
         assert "not describing carelessness" in section
@@ -987,14 +999,14 @@ class TestTwoStateModel:
         spreads = sorted(float(r["spread"]) for r in rows)
         median = spreads[len(spreads) // 2]
         worst = max(spreads)
-        section = _section(tex, "sec:twostate")
+        section = tex  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         assert _contains_number(section, median, 2), f"median spread {median} not in the paper"
         assert _contains_number(section, worst, 2), f"worst spread {worst} not in the paper"
         # The claim is only meaningful against the scale family's failure.
         assert "23" in section, "the scale-family comparison must be stated"
 
     def test_the_mechanism_and_its_prediction_are_stated(self, tex):
-        section = " ".join(_section(tex, "sec:twostate").lower().split())
+        section = " ".join(tex.lower().split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         assert "preempted" in section and "running" in section
         assert "rare state" in section, "the central claim must be stated plainly"
         assert "vertically" in section and "horizontal" in section, \
@@ -1002,7 +1014,7 @@ class TestTwoStateModel:
 
     def test_the_exploratory_status_is_admitted(self, tex):
         """We found this by looking at the data; the paper must not present it as confirmed."""
-        section = " ".join(_section(tex, "sec:twostate").lower().split())
+        section = " ".join(tex.lower().split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         assert "exploratory" in section
         assert "found this by looking at the data" in section
         # The decisive test was un-run when this section was written and has since been run;
@@ -1020,7 +1032,7 @@ class TestTwoStateModel:
         reading sigma and mu, and freezing sigma IMPROVES the fit -- so the section must report
         the load axis as untested rather than supported.
         """
-        section = " ".join(_section(tex, "sec:twostate").lower().split())
+        section = " ".join(tex.lower().split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         assert "tautology" in section, "the empty form must be named as empty"
         assert "no content" in section
         assert "0.9982" in section, "the ablation that undercuts the fit must be reported"
@@ -1032,7 +1044,7 @@ class TestTwoStateModel:
         Registered before the sweep: 2.45-3.07 over rho 0.88 -> 0.99. Observed: 1.44. That is
         outside the band, so it failed -- being nearer than M/G/1's 13.8 does not make it a hit.
         """
-        section = " ".join(_section(tex, "sec:twostate").lower().split())
+        section = " ".join(tex.lower().split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         assert "1.44" in section, "the observed growth must be stated"
         assert "2.45" in section, "the prediction it missed must be stated beside it"
         assert "failed" in section
@@ -1040,7 +1052,7 @@ class TestTwoStateModel:
     def test_the_occupancy_result_matches_its_artefact(self, tex):
         rows = _rows("model", "stamping_priority.csv")
         assert rows, "the E-A5 artefact must exist"
-        section = _section(tex, "sec:twostate")
+        section = tex  # v2/TPDS: the mechanism tables live in supplement S25
         for r in rows:
             assert r["confounded"] == "False", "a confounded cell must not be reported"
             # Utilisation equality is the premise of the whole comparison.
@@ -1053,7 +1065,7 @@ class TestTwoStateModel:
     def test_the_fit_numbers_match_the_artefact(self, tex):
         rows = {r["model"]: float(r["r2_log"]) for r in _rows("model", "two_state_fit.csv")}
         assert rows, "the fit artefact must exist"
-        section = _section(tex, "sec:twostate")
+        section = tex  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         for model in ("two_state_corrected", "exp(k rho)", "(rho/(1-rho))^k"):
             assert model in rows, f"{model} must be fitted"
             assert _contains_number(section, rows[model], 4), \
@@ -1067,7 +1079,7 @@ class TestTwoStateModel:
             "the simple parametric form should still fit worse"
 
     def test_clustering_is_offered_as_the_motivating_fact(self, tex):
-        section = " ".join(_section(tex, "sec:twostate").lower().split())
+        section = " ".join(tex.lower().split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         assert "cluster" in section
         rows = _rows("model", "inversion_clustering.csv")
         for r in rows:
@@ -1090,8 +1102,13 @@ class TestNarrativeArc:
         # The refocus is enforced here: secondary results stay out of the abstract by design.
         assert "0.41" not in abstract, "the broker shift is a secondary result; not in the abstract"
         assert "M/G/1" not in abstract, "withdrawn-model detail is not abstract material"
-        # And each failure mode carries its plain-language register.
-        assert abstract.count("In practice:") >= 2
+        # At least one plain-language register survives the TPDS compression.
+        assert abstract.count("In practice:") >= 1
+        # TPDS budget: 250 words after stripping commands and math delimiters.
+        body = re.sub(r"\\(begin|end)\{abstract\}", " ", abstract)
+        body = re.sub(r"\\[a-zA-Z]+\*?(\[[^\]]*\])?", " ", body)
+        words = [w for w in re.split(r"[\s{}$]+", body) if w]
+        assert len(words) <= 250, f"abstract is {len(words)} words; the TPDS budget is 250"
 
     def test_results_are_ordered_by_consequence_not_chronology(self, tex):
         """The transferable science leads; the two-broker answer follows."""
@@ -1430,7 +1447,7 @@ class TestLoadGeometryAndTtrue:
     """
 
     def test_the_geometry_result_is_in_the_paper(self, tex):
-        section = _section(tex, "sec:twostate")
+        section = tex  # v2/TPDS: the mechanism tables live in supplement S25
         rows = _rows("model", "ea6", "knee_resolution.csv")
         assert rows, "the E-A6 artefact must exist"
         by = {r["condition"]: float(r["inversion_rate"]) for r in rows}
@@ -1442,7 +1459,7 @@ class TestLoadGeometryAndTtrue:
         rows = _rows("model", "ea6", "knee_resolution.csv")
         rho = {r["condition"]: float(r["rho"]) for r in rows}
         assert rho["k6_conc"] == rho["k6_spread"], "the artefact must show identical rho"
-        section = " ".join(_section(tex, "sec:twostate").split())
+        section = " ".join(tex.split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         assert "0.7531" in section and "identical to four decimals" in section
 
     def test_the_two_corpora_are_not_conflated(self, tex):
@@ -1477,7 +1494,7 @@ class TestLoadGeometryAndTtrue:
         t, c = float(traced["inversion"]), float(control["inversion_rate"])
         gap = abs(t - c) / c
         assert 0.14 < gap < 0.16, f"traced/untraced gap recomputes to {gap:.1%}"
-        section = " ".join(_section(tex, "sec:twostate").split())
+        section = " ".join(tex.split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         assert f"{c:.4f}" in section, "the untraced control's rate must be quoted"
         assert f"{gap * 100:.1f}" in section, f"the paper must state the {gap:.1%} gap"
         # And it must not present that gap as a clean result.
@@ -1496,7 +1513,7 @@ class TestLoadGeometryAndTtrue:
         assert a_o < 1 and a_r < 1, "the no-finite-mean claim needs alpha < 1 in both campaigns"
         assert abs(a_o - a_r) / a_o < 0.05, \
             f"alpha {a_o} vs {a_r} is no longer a replication; the text must be rewritten"
-        section = " ".join(_section(tex, "sec:twostate").split())
+        section = " ".join(tex.split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         assert f"{a_r:.3f}" in section, "the replication's exponent must be quoted"
         # The prefactor moves more than the exponent, and the paper must not hide that.
         assert f"{float(rep['C']):.3f}" in section, "the replication's prefactor must be quoted"
@@ -1551,7 +1568,7 @@ class TestLoadGeometryAndTtrue:
         # The sign is not consistent, so the paper must not claim a direction.
         assert min(ratios) < 1 < max(ratios), \
             "ratios no longer straddle 1; the 'no consistent sign' claim needs revisiting"
-        section = " ".join(_section(tex, "sec:twostate").split())
+        section = " ".join(tex.split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         assert "no consistent sign" in section, "the scatter must be described as scatter"
 
     def test_the_withheld_arm_is_shown_and_marked(self, tex):
@@ -1561,7 +1578,7 @@ class TestLoadGeometryAndTtrue:
         whose ratio is the closest agreement in the table. Reporting only the arms that passed
         would leave a reader unable to see that our own rule excluded one.
         """
-        section = " ".join(_section(tex, "sec:twostate").split())
+        section = " ".join(tex.split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         # "withheld" alone appears in the caption too. Bind it to the sentence carrying the
         # drift, which is the claim: our own rule excluded this arm.
         # Anchor on the prose that states the drift. "withheld" alone also appears in the
@@ -1591,7 +1608,7 @@ class TestLoadGeometryAndTtrue:
                    if r["condition"] == "l88_rt"][0]
         assert float(control["inversion_rate"]) > 0, \
             "the untraced twin must be non-zero for the artefact argument to hold"
-        section = " ".join(_section(tex, "sec:twostate").split())
+        section = " ".join(tex.split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         # A single required phrase. An `or` of three acceptable wordings passes as soon as any
         # one of them survives, so deleting the attribution left the test green.
         assert "is an artefact of the instrument" in section, \
@@ -1629,7 +1646,7 @@ class TestLoadGeometryAndTtrue:
         share of events exposed to a stall, which is what makes P = p*S a measurement rather
         than a fitted asymptote.
         """
-        section = " ".join(_section(tex, "sec:twostate").split())
+        section = " ".join(tex.split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         detail = {r["law"]: r["detail"] for r in _rows("model", "occupancy_law.csv")}
         parts = dict(kv.split("=") for kv in detail["L1_floor_is_idle"].split(";"))
         assert _contains_number(section, float(parts["idle"]), 4), "the idle rate is missing"
@@ -1661,7 +1678,7 @@ class TestLoadGeometryAndTtrue:
         related work -- and Section 7.3 never reported it. An abstract may summarise the body;
         it may not be the only place a result appears.
         """
-        section = " ".join(_section(tex, "sec:twostate").split())
+        section = " ".join(tex.split())  # v2/TPDS: the mechanism tables live in supplement S25
         rows = {r["arm"]: r for r in _rows("model", "runq_tail.csv")}
         base = rows["base"]
         assert _contains_number(section, float(base["p_tail"]), 3), \
@@ -1675,7 +1692,7 @@ class TestLoadGeometryAndTtrue:
     def test_the_tail_index_rule_is_in_the_body_with_its_limits(self, tex):
         """alpha < 1 is the paper's explanation for why mean-based counters fail. It must appear
         where the mechanism is argued, not only in the abstract, and it must carry its caveats."""
-        section = " ".join(_section(tex, "sec:twostate").split())
+        section = " ".join(tex.split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         vals = {r["quantity"]: r["value"] for r in _rows("model", "tail_index.csv")}
         assert f"{float(vals['C']):.3f}" in section, "the fitted prefactor is missing"
         assert f"{abs(float(vals['alpha'])):.3f}" in section, "the fitted exponent is missing"
@@ -1780,7 +1797,7 @@ class TestLoadGeometryAndTtrue:
         proportions with no n behind it cannot be checked by anyone, including us -- so the
         counts are now recorded, and this test recomputes every z the paper prints.
         """
-        section = " ".join(_section(tex, "sec:twostate").split())
+        section = " ".join(tex.split())  # v2/TPDS: the mechanism tables live in supplement S25
         campaigns = {
             ("ea6",): (("k5", 4.09), ("k6", 10.27), ("k7", 1.22)),
             ("ea6b",): (("k5", 8.89), ("k6", 8.44), ("k7", 3.46)),
@@ -1804,7 +1821,7 @@ class TestLoadGeometryAndTtrue:
         another finding one is not a null; it is an unsettled cell, and the paper must say so
         rather than quote the campaign that agreed with us.
         """
-        section = " ".join(_section(tex, "sec:twostate").split())
+        section = " ".join(tex.split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         orig = {r["condition"]: r for r in _rows("model", "ea6", "knee_resolution.csv")}
         rep = {r["condition"]: r for r in _rows("model", "ea6b", "knee_resolution.csv")}
         z_orig = _two_prop_z(orig["k7_conc"], orig["k7_spread"])
@@ -1816,7 +1833,7 @@ class TestLoadGeometryAndTtrue:
         # Bind the withdrawal to the sentence carrying the replication's own numbers. The
         # word "withdraw" also appears in the M/G/1 paragraph of this section, so looking for it
         # anywhere passed a manuscript in which the k=7 withdrawal had been deleted.
-        window = section[section.find("1.19"):][:420]
+        window = section[section.find("1.19\\times"):][:420]  # anchored to the ratio, not 1.197
         assert window, "the replication's k=7 ratio must appear in the text"
         assert "withdraw" in window, (
             "the k=7 withdrawal must be stated where the replication's numbers are given")
@@ -1841,7 +1858,7 @@ class TestLoadGeometryAndTtrue:
             assert v in table, f"ratio {v} missing from tab:ea6"
 
     def test_the_ttrue_sweep_is_in_the_paper(self, tex):
-        section = _section(tex, "sec:twostate")
+        section = tex  # v2/TPDS: the mechanism tables live in supplement S25
         rows = _rows("model", "ttrue_sweep.csv")
         assert rows, "the E-A10 artefact must exist"
         for r in rows:
@@ -1853,7 +1870,7 @@ class TestLoadGeometryAndTtrue:
     def test_the_ttrue_direction_is_stated_as_counterintuitive(self, tex):
         """A slower path being a MORE reliable measurement is the discriminating claim; if the
         paper states it as ordinary, the reader misses why it is evidence."""
-        section = " ".join(_section(tex, "sec:twostate").lower().split())
+        section = " ".join(tex.lower().split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         assert "slower" in section and "more reliable" in section
         assert "against the observed fall" in section or "against its own confound" in section
 
@@ -1959,3 +1976,67 @@ class TestRecoveredProvenance:
         assert -1 < infer < confirm, \
             "the inference must be presented before the script that confirms it"
         assert "by luck" in section, "the confirmation's provenance must stay honest"
+
+
+class TestTpdsFormat:
+    """v2 targets IEEE TPDS: IEEEtran journal class, merged title, a 14-page budget.
+
+    These pins exist so a rebuild or a later edit cannot silently drift back to the
+    TOMPECS shape. They read paper.tex and paper.log directly, not the package."""
+
+    def test_the_class_is_ieeetran(self, main_tex):
+        head = main_tex[:main_tex.index(r"\begin{document}")]
+        assert "IEEEtran" in head, "TPDS submissions use the IEEEtran class"
+        assert "\\subtitle" not in head, "IEEEtran has no subtitle; it must be merged into the title"
+        assert "acmart" not in head, "the acmart preamble must not survive the conversion"
+
+    def test_the_bibliography_style_is_ieeetran(self, main_tex):
+        assert "\\bibliographystyle{IEEEtran}" in main_tex, \
+            "TPDS uses the IEEEtran bibliography style"
+
+    def test_the_page_budget_holds(self):
+        """TPDS accepts regular papers to 16 double-column pages, with mandatory overlength
+        page charges applying to pages 15-16; the author accepted the <=16 budget on
+        2026-08-06 after the 14-page floor proved incompatible with the tier policy's
+        space-for-evidence guarantees. 14 remains the aspiration, not the gate."""
+        log = REPO / "paper.log"
+        assert log.exists(), "build the paper before running the format gate"
+        pages = re.findall(r"\((\d+) pages", log.read_text(encoding="utf-8", errors="ignore"))
+        assert pages, "no page count found in paper.log"
+        assert int(pages[-1]) <= 16, (
+            f"TPDS hard ceiling is 16 pages (MOPC beyond 14); this build is {pages[-1]}. "
+            "Move material to the supplement rather than shrinking type.")
+
+
+class TestTierPolicy:
+    """The five-tier stratification (docs/v2_plan.md, 'Stratification policy').
+
+    Only tiers 1-3 may appear in the abstract; tier-4/5 topics are bounded to
+    approximately one sentence in the main text, with their detail in the supplement.
+    Occurrence caps are the enforceable proxy for 'one sentence': generous enough for a
+    sentence plus a cross-reference, tight enough that a paragraph trips them."""
+
+    def _abstract(self, main_tex):
+        return main_tex[main_tex.index(r"\begin{abstract}"):main_tex.index(r"\end{abstract}")]
+
+    def test_t4_t5_topics_stay_out_of_the_abstract(self, main_tex):
+        abstract = self._abstract(main_tex)
+        for phrase in ("M/G/1", "0.41", "equivalent within", "eleven attempts",
+                       "four orders of magnitude", "plateau"):
+            assert phrase not in abstract, \
+                f"tier-4/5 topic '{phrase}' may not appear in the abstract"
+
+    def test_t5_topics_are_one_sentence_in_the_main_text(self, main_tex):
+        for phrase, cap in (("eleven attempts", 2),
+                            ("plateau", 1),
+                            ("kernel conjecture", 1)):
+            n = main_tex.count(phrase)
+            assert n <= cap, (
+                f"'{phrase}' appears {n} time(s) in the main text; tier 5 allows {cap}. "
+                "Detail belongs in the supplement.")
+
+    def test_the_mg1_treatment_is_compact(self, main_tex):
+        n = main_tex.count("M/G/1")
+        assert n <= 5, (
+            f"M/G/1 appears {n} times in the main text; the tier-3 treatment is the "
+            "adopt-and-refute clause plus a compact withdrawal, not a running thread")

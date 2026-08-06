@@ -46,7 +46,7 @@
   author={Yerrapragada, Praneeth},
   year={2025},
   url={https://github.com/praneethys/kafka-bullmq-benchmark},
-  note={Includes white paper with methodology; Accessed: June 15, 2026}
+  note={Accessed: June 15, 2026}
 }
 
 @misc{jusdb2025,
@@ -95,7 +95,6 @@
   pages={480--491},
   year={2004},
   publisher={VLDB Endowment},
-  address={Toronto, Canada}
 }
 
 @techreport{tucker2008nexmark,
@@ -113,7 +112,6 @@
   pages={201--212},
   year={2021},
   publisher={ACM},
-  address={Virtual Event, France}
 }
 
 @article{shukla2017riotbench,
@@ -130,8 +128,7 @@
   title={The {OpenMessaging} Benchmark Framework},
   author={{OpenMessaging Project, Linux Foundation}},
   year={2018},
-  note={Open standard, multi-platform messaging performance benchmark.
-        Available at openmessaging.cloud/docs/benchmarks/}
+  note={Available at openmessaging.cloud/docs/benchmarks/}
 }
 
 % ---------------------------------------------------------------------------
@@ -179,7 +176,6 @@
   author={Jain, Raj},
   year={1991},
   publisher={Wiley},
-  address={New York, NY, USA}
 }
 
 @article{schuirmann1987tost,
@@ -272,7 +268,6 @@
   pages={239--252},
   year={2006},
   publisher={ACM},
-  address={Pisa, Italy}
 }
 
 @article{chandrasekar2026bias,
@@ -298,7 +293,6 @@
   year={2014},
   publisher={ACM},
   doi={10.1145/2670979.2670988},
-  address={Seattle, WA, USA}
 }
 
 @article{swami2026observability,
@@ -314,8 +308,7 @@
   author={{Apache Kafka}},
   year={2015},
   howpublished={Apache Software Foundation, Kafka Improvement Proposal},
-  note={Defines CreateTime (timestamp set by the producer) and LogAppendTime
-        (overwritten by the broker); CreateTime is the default}
+  note={Defines the default producer-set CreateTime}
 }
 
 @misc{kafka2020kip526,
@@ -344,7 +337,6 @@
   year      = {2016},
   doi       = {10.1145/2901318.2901326},
   publisher={ACM},
-  address={London, United Kingdom}
 }
 
 % ---------------------------------------------------------------------------
@@ -355,23 +347,14 @@
   title={How {NOT} to Measure Latency},
   author={Tene, Gil},
   year={2015},
-  note={Coined ``coordinated omission'': a load generator whose measurement
-        thread blocks during a stall never takes the samples that would have
-        been worst, so reported percentiles are optimistic by orders of
-        magnitude. The failure reported in Section~\ref{sec:external} is its
-        mirror image --- the samples are taken and then discarded downstream.
-        Talk, Strange Loop / QCon.}
+  note={Talk, Strange Loop / QCon; coined ``coordinated omission''.}
 }
 
 @misc{tene2015hdrhistogram,
   title={{HdrHistogram}: A High Dynamic Range Histogram},
   author={Tene, Gil},
   year={2015},
-  note={Records values with configurable precision and rejects negative
-        values. Ships an explicit correction for coordinated omission
-        (recordValueWithExpectedInterval) and none for resolution-driven
-        discard. Used by the OpenMessaging Benchmark.
-        Available at hdrhistogram.org}
+  note={Used by the OpenMessaging Benchmark; available at hdrhistogram.org.}
 }
 
 @inproceedings{mytkowicz2009wrong,
@@ -503,4 +486,39 @@
   year      = {2019},
   pages     = {310--325},
   publisher = {IEEE}
+}
+
+@misc{ieee1588,
+  author       = {{IEEE}},
+  title        = {{IEEE} Standard for a Precision Clock Synchronization Protocol for Networked Measurement and Control Systems},
+  howpublished = {IEEE Std 1588-2019},
+  year         = {2020},
+  note         = {Revision of IEEE Std 1588-2008}
+}
+
+@inproceedings{paxson1998calibrating,
+  author    = {Paxson, Vern},
+  title     = {On Calibrating Measurements of Packet Transit Times},
+  booktitle = {Proceedings of the ACM SIGMETRICS Joint International Conference on Measurement and Modeling of Computer Systems},
+  year      = {1998},
+  pages     = {11--21},
+  publisher = {ACM}
+}
+
+@inproceedings{moon1999estimation,
+  author    = {Moon, Sue B. and Skelly, Paul and Towsley, Don},
+  title     = {Estimation and Removal of Clock Skew from Network Delay Measurements},
+  booktitle = {Proceedings of IEEE INFOCOM},
+  year      = {1999},
+  pages     = {227--234},
+  publisher = {IEEE}
+}
+
+@inproceedings{geng2018huygens,
+  author    = {Geng, Yilong and Liu, Shiyu and Yin, Zi and Naik, Ashish and Prabhakar, Balaji and Rosenblum, Mendel and Vahdat, Amin},
+  title     = {Exploiting a Natural Network Effect for Scalable, Fine-Grained Clock Synchronization},
+  booktitle = {Proceedings of the 15th USENIX Symposium on Networked Systems Design and Implementation (NSDI)},
+  year      = {2018},
+  pages     = {81--94},
+  publisher = {USENIX Association}
 }

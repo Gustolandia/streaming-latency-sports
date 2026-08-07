@@ -4,9 +4,8 @@
 % This supersedes manuscript.tex (SAGE / Journal of Sports Analytics). The football workload
 % is retained as the setting that produced the finding, not as the contribution.
 %
-% TOMPECS charter explicitly solicits work on experimental design, instrumentation techniques,
-% verification and validation, statistical analysis and workload characterisation. This paper
-% sits in the first four.
+% TPDS remit: measurement and evaluation of parallel and distributed systems; the
+% remit paragraph closing Section I argues the fit explicitly (referee round 1, M2).
 
 \documentclass[10pt,journal]{IEEEtran}
 
@@ -15,6 +14,7 @@
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage[hidelinks]{hyperref}
+\def\UrlBreaks{\do\/\do\-\do\_\do\.\do\=\do\&\do\?}
 
 \newcommand{\kafka}{Kafka}
 \newcommand{\redis}{Redis}
@@ -269,8 +269,8 @@ concern when the instrument is software on a loaded machine.
 Lamport~\cite{lamport1978time} established that a distributed system has no single
 physical time, only a causal partial order; our check is its simplest application ---
 an acknowledgement causally precedes receipt. The engineering problem is well known --- NTP~\cite{mills1991ntp}, Spanner's
-exposed clock \emph{uncertainty}~\cite{corbett2013spanner}, and, closest to our
-setting, Cloudprofiler~\cite{yang2022cloudprofiler} calibrating cross-node counters to
+exposed clock \emph{uncertainty}~\cite{corbett2013spanner}, and, closest to us,
+Cloudprofiler~\cite{yang2022cloudprofiler} calibrating cross-node counters to
 ${\sim}92\,\mu$s because millisecond synchronisation is too coarse for streaming
 engines.
 
@@ -362,8 +362,8 @@ correction are anticipated by the tail-latency literature.
 spread load starves the stamping thread more than concentrated load at identical
 utilisation, presuming a runnable thread does not simply migrate to an idle core. That
 presumption is not ours: work-conservation violations are documented for CFS-era
-schedulers~\cite{lozi2016wastedcores} (ours is EEVDF; under exact work conservation
-Table~\ref{tab:mechanism}'s geometry contrast would be flat, and it is not), and
+schedulers~\cite{lozi2016wastedcores} (ours is EEVDF; under exact work conservation the geometry contrast of
+Table~\ref{tab:mechanism}, Section~\ref{sec:twostate}, would be flat, and it is not), and
 interference-driven tails run from datacentre scale~\cite{dean2013tail} to single
 hosts~\cite{li2014tales}, whose background-interference mechanism predicts the
 consecutive corrupted events we test and find in Section~\ref{sec:mixture} (engagement in
@@ -421,10 +421,9 @@ $5.6$--$9.9$~ms. \emph{Testbed B (four machines).} Four Oracle Cloud
 \texttt{VM.Standard.E5.Flex} instances (three brokers, one driver), Ubuntu 22.04 on
 kernel \texttt{6.8.0-1057-oracle} (EEVDF scheduler), CPython 3.10, private network,
 client libraries pinned identically. Both floors disappear (1~ms
-sleep: $1.06$~ms; broker round trip: $0.22$~ms local, $0.24$~ms across machines): a
-genuine two-machine network is \emph{faster} than Testbed~A's co-located path, the
-sharpest statement we can offer of how much a testbed distorts a benchmark. Every result
-reported as a finding comes from Testbed~B.
+sleep: $1.06$~ms; broker round trip: $0.22$~ms local, $0.24$~ms across machines): a genuine two-machine network is
+\emph{faster} than Testbed~A's co-located path --- the sharpest statement we can offer
+of how much a testbed distorts a benchmark. Every finding comes from Testbed~B.
 
 \paragraph{The measurement at a glance.}
 Topologies: our harness runs producer and consumer as separate \emph{processes} on
@@ -527,7 +526,7 @@ $\Delta < -T_{\mathrm{true}}$ (Figure~\ref{fig:model}a), and
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.7\columnwidth]{docs/results/figures/measurement_model.pdf}
+\includegraphics[width=0.8\columnwidth]{docs/results/figures/measurement_model.pdf}
 \caption{(a)~How a positive latency is measured as negative: each side stamps its clock
 some interval after the event, and if the producer's delay exceeds the true transport plus
 the consumer's delay, the difference inverts. (b)~Why the check bites hardest on small
@@ -589,9 +588,9 @@ the same test, and an earlier unsigned total drew a conclusion the data later re
 produce output --- a benchmark that fails to run discards nothing, its zero looking
 exactly like a measured zero; it has refused eight distributed attempts. Warmup is
 disabled and reported with a matched sweep, axes are swept one at a time, and every run,
-failures included, is one ledger row with configuration, sign-separated counts, and the
-log's size and \textsc{sha}-256 (gate refusals, warmup sweep and two counting defects we
-found and fixed: supplementary material S16).
+failures included, is one ledger row with configuration,
+sign-separated counts, and the log's size and \textsc{sha}-256 (refusals, warmup sweep
+and two counting defects found and fixed: supplementary material S16).
 
 \subsection{Statistics}
 \label{sec:stats}
@@ -678,8 +677,10 @@ arms --- \kafka{} passes $100\%$ of concurrency runs while \redis{} passes $53$-
 and since inversion is caused by driver saturation the surviving \redis{} runs are plausibly
 the less-loaded ones, a bias running exactly toward our reported equivalence. The rejected
 values are unrecoverable, so we bound instead: imputing every rejected \redis{} run at a
-hypothetical value, equivalence survives at every level and no imputed value up to $1$~second
-breaks it (supplementary material S23). The defence is structural and so is its limit: the
+hypothetical value, equivalence survives at
+every level and no imputed value up to $1$~second breaks it (supplementary material S23);
+where rejected values survive, observation replaces this bound
+(Section~\ref{sec:e1}). The defence is structural and so is its limit: the
 Hodges--Lehmann estimator has a breakdown point of one half, our tightest cell sits at
 $52.8\%$ retention --- $2.8$ points above breakdown --- and had retention fallen below one
 half we would have withdrawn the cell.
@@ -715,8 +716,9 @@ artefact is systematic.
 \subsection{What we withdraw}
 
 We withdraw the entire Testbed~A arm, and on Testbed~B the accelerated concurrency
-sweep, the connection sweep above ten, and the three-node cluster arm, which fails on
-every run in both systems.
+sweep, the connection
+sweep above ten, and the three-node cluster arm (failing on every run in both
+systems).
 
 \emph{A manipulation that did not manipulate.} We also withhold a co-location
 campaign (E-A8): moving the broker onto the driver traded network latency for CPU
@@ -927,7 +929,7 @@ falsifiers fired, one not evaluable, one split --- all six reported.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.8\columnwidth]{docs/results/figures/payload_flip.pdf}
+\includegraphics[width=\columnwidth]{docs/results/figures/payload_flip.pdf}
 \caption{The campaign's confirmed prediction. (a)~Retention replicates at $300$~msg/s
 ($q=3$) by payload, against the thirds grid: $200$~B straddles both branches, $32$~KB pins
 near the $2/3$ vertex, $64$~KB re-opens to the upper cell. (b)~Replicate spread against
@@ -1189,14 +1191,14 @@ value for one input.}
 \begin{tabular}{llrrr}
 \toprule
 Manipulation & Cell & \multicolumn{2}{c}{Inversion rate} & Factor \\
-\cmidrule(lr){3-4}
- & & arm A & arm B & \\
 \midrule
+ & & ordinary & real-time & \\
 Real-time priority & $75\%$ load & 0.1320 & 0.0034 & $39\times$ \\
 Real-time priority & $88\%$ load & 0.3049 & 0.0057 & $54\times$ \\
 \midrule
-Geometry, conc.\ vs spread & $k{=}6$, original & 0.0824 & 0.1709 & $2.07\times$ \\
-Geometry, conc.\ vs spread & $k{=}6$, replication & 0.0600 & 0.1229 & $2.05\times$ \\
+ & & concentrated & spread & \\
+Geometry & $k{=}6$, original & 0.0824 & 0.1709 & $2.07\times$ \\
+Geometry & $k{=}6$, replication & 0.0600 & 0.1229 & $2.05\times$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1266,8 +1268,8 @@ an instrument built on averages is \emph{structurally} unable to see this failur
 the compare-mean-and-median diagnostic had nothing stable to compare. The referee-round
 check runs on the traced histogram itself: the per-wakeup survival's windowed log--log
 index is $0.332$ over $0.25$--$2$~ms --- indistinguishable from the fitted $0.339$, which
-also replicates across days ($0.344$) --- and rises past $4$ beyond $4$~ms (artefact
-\texttt{traced\_tail\_slope.csv}). Equation~\ref{eq:tailindex} is therefore an
+also replicates across days ($0.344$) --- and rises past $4$ beyond $4$~ms (artefact \texttt{traced\_tail\_slope.csv};
+one traced arm of one campaign --- the replication kept no raw histogram). Equation~\ref{eq:tailindex} is therefore an
 effective law of the payload span --- fitted, not derived, from four points per campaign
 --- and not a constant of the machine; we withdraw an earlier draft's unconditional
 infinite-moment reading. The steepening is the direction of the level disagreement ---
@@ -1394,9 +1396,9 @@ configuration audit will surface.
 
 \textbf{Report a physical-consistency audit.} Any cross-process timestamp difference
 admits a sign check that costs nothing; it rejected $58\%$ of our own runs, every one
-having passed every conventional check we knew. Whatever the
-instrument~\cite{yang2022cloudprofiler}, check its output against causality and publish
-the retention rate.
+having passed every conventional check we knew. Better instruments
+exist~\cite{yang2022cloudprofiler}; whatever the instrument, check its output against
+causality and publish the retention rate.
 
 \textbf{Count your events before you quote a percentile.} Our second withdrawal came
 from reporting a median over seven events per run as a property of the system; it
@@ -1480,8 +1482,8 @@ rather than in a dedicated study.
 The brokers are equivalent within a millisecond for any workload resembling this one,
 neither degrades with concurrency, and \redis{}'s real $0.4$~ms advantage
 (Section~\ref{sec:e1}) is four parts in $100{,}000$ of a seconds-scale budget: select on
-durability semantics, operational familiarity and cost, and where a consumer sits across
-a network audit the \emph{consumption pattern} --- per-message acknowledgement converts
+durability semantics, operational familiarity and cost, and where a consumer sits across a network, audit the \emph{consumption
+pattern} --- per-message acknowledgement converts
 ordinary network delay into seconds of staleness; batching removes it.
 
 One start-up asymmetry survives our withdrawal: \kafka{}'s first \texttt{produce()}
@@ -1525,12 +1527,12 @@ The audit removed the throughput sweep, the connection sweep above ten, the clus
 and all of Testbed~A, so the surviving evidence is narrower than the design; E1's replay
 rate is inferred (a reader rejecting the inference should rest the broker result on the
 powered campaigns); and the blocking-first-\texttt{produce()} mechanism is established
-for our client, not \kafka{} in general. The occupancy result is a mechanism, not a load model: we can say what collapses the
-inversion rate fifty-fold, not what the rate will be at a given load --- both attempts at
-a formula failed against the sweep. The external campaign ran in embedded mode, so OMB's
-own distributed binary remains unmeasured by us, and \texttt{chrony}'s error bound on
-this testbed ($4$ to $7$~ms root dispersion per host) leaves the cross-host channel open
-rather than ruled out.
+for our client, not \kafka{} in general. The occupancy result is a mechanism, not a load model: we can say what
+collapses the inversion rate fifty-fold, not what the rate will be at a given load (both
+formula attempts failed against the sweep). The external campaign ran in embedded mode, so OMB's
+own distributed binary remains unmeasured by us, and \texttt{chrony}'s error bound here
+($4$--$7$~ms root dispersion per host) leaves the cross-host channel open rather than
+ruled out.
 The symmetric-stamping comparison ran at one
 operating point; the five-feed acknowledgement null is unexplained; one workload (full
 statements: supplementary material S22).
@@ -1547,8 +1549,9 @@ including a significant, theory-confirming result that had passed six rounds of
 correction, and the mechanism is scheduling, not clocks, established by manipulation on
 both sides of $\Pr[\text{stall} > T_{\mathrm{true}}]$. The second mode is not ours:
 the OpenMessaging Benchmark deletes every sample whose millisecond-quantised difference
-is not positive, and it computed its distribution from $0.36\%$ to $100\%$ of the
-samples it took, same median either way, retention obeying the grid law of
+is not positive, and it computed its
+distribution from $0.36\%$ to $100\%$ of its samples, same median either way, retention
+obeying the grid law of
 Section~\ref{sec:extquant} causally and stack-independently. The sign audit joins the
 modes: $\ombKafkaDiscarded$ Kafka-driver discards contain \emph{not one negative} ---
 refuting our own earlier reading --- while the Redis-driver replication caught
@@ -1582,18 +1585,18 @@ The measurement campaigns ran on Oracle Cloud Infrastructure.
 \section*{Artefact Availability}
 \begin{sloppypar}
 A supplementary document, compiled from the same commit, holds material moved under
-the length constraint; \texttt{docs/supplement\_index.md} records what moved where. Version 1.0.0 of the code and analysis: archived at \url{https://doi.org/10.5281/zenodo.21650032}, the measurement dataset at \url{https://doi.org/10.5281/zenodo.21650065}, and all code, replay plans and aggregated results at
+the length constraint (\texttt{docs/supplement\_index.md} records what moved
+where). Version 1.0.0 of the code and analysis: archived at \url{https://doi.org/10.5281/zenodo.21650032}, the measurement dataset at \url{https://doi.org/10.5281/zenodo.21650065}, and all code, replay plans and aggregated results at
 \url{https://github.com/Gustolandia/streaming-latency-sports}. Event data is the StatsBomb open dataset
 under CC~BY-NC~4.0, not redistributed but re-fetchable from a pinned upstream commit
-(commercial replications must obtain their own event licence; the pipeline is
-licence-agnostic);
+(commercial replications must license the events; the pipeline is licence-agnostic);
 every run records its git commit and per-file SHA-256; plots are regenerated from
-committed CSVs, and a consistency suite recomputes the manuscript's quoted quantities
-from those CSVs, failing if paper and data disagree. We state its reach exactly --- a claim
-of total coverage would be the kind of claim this paper is about: the suite checks the
-values it names (every headline number, every table argued from, the sample size behind
-each), not every digit in every table; a companion script marks which cells rest on a
-recomputing test, keeping the boundary visible.
+committed CSVs, and a consistency suite recomputes the quoted quantities from those
+CSVs, failing if paper and data disagree. We state its reach exactly --- a claim
+of total coverage would be the kind of claim this paper is about: the suite
+checks the values it names (every headline number, every table argued from, each sample
+size), not every digit in every table; a companion script marks which cells rest on a
+recomputing test.
 \end{sloppypar}
 
 \bibliographystyle{IEEEtran}

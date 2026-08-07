@@ -31,7 +31,7 @@ date-released: "2026-07-27"
 # was discarded at parse time and "Cite this repository" emitted a scaffolding version instead.
 preferred-citation:
   type: article
-  title: "When the Interval Is Smaller Than the Instrument: Two Ways Streaming Latency Benchmarks Fail on Sub-Millisecond Paths, and the Arithmetic That Decides What They Keep"
+  title: "When the Interval Is Smaller Than the Instrument: Two Ways Streaming Latency Benchmarks Fail on Sub-Millisecond Paths"
   authors:
     - family-names: "Ricou"
       given-names: "Gustavo Pedro"

@@ -1,7 +1,7 @@
 {
   "title": "When the Interval Is Smaller Than the Instrument: code and analysis for two failure modes of streaming latency benchmarks",
   "upload_type": "software",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "license": "MIT",
   "creators": [
     {
@@ -9,7 +9,7 @@
       "affiliation": "School of Computer Science and Statistics, Trinity College Dublin, Dublin, Ireland"
     }
   ],
-  "description": "<p>Code, analysis and manuscript for a study of two failure modes of sub-millisecond streaming latency benchmarking, both governed by one ratio: the instrument's timescale over the interval being measured.</p><p><strong>Mode A (inversion):</strong> cross-process latency is a two-clock difference and cannot be negative; applied to every run, that check rejected 1,321 of 2,266, including every run behind a statistically clean result we were about to publish. The mechanism is scheduling, established by manipulation, with a stall tail index near 0.34 (no finite mean).</p><p><strong>Mode B (deletion):</strong> the OpenMessaging Benchmark silently deletes every sample whose millisecond-quantised difference is not positive. Across 223 instrumented runs it computed its reported distribution from 0.36% to 100% of the samples it took, reporting the same median either way. Retention obeys a grid law in the reduced fraction of send interval over timestamp quantum, confirmed by a pre-registered payload manipulation, reproduced by a 200-line Python harness with no JVM, and measured across two clocks. The sign channel caught 41,403 genuine one-tick causality violations being absorbed by the same guard.</p><p>The archive contains the instrumentation, every campaign script and ledger, the analysis suite (2,000+ checks that recompute the manuscript's numbers from committed data and fail if paper and data disagree), the manuscript, and its supplement.</p><p><strong>Data note.</strong> No StatsBomb event data is redistributed. Replay plans derived from it are excluded from this record and regenerable byte-for-byte from a pinned upstream commit with the included scripts. All code and all latency measurements are MIT.</p>",
+  "description": "<p>Code, analysis and manuscript for a study of two failure modes of sub-millisecond streaming latency benchmarking, both governed by one ratio: the instrument's timescale over the interval being measured.</p><p><strong>Mode A (inversion):</strong> cross-process latency is a two-clock difference and cannot be negative; applied to every run, that check rejected 1,321 of 2,266, including every run behind a statistically clean result we were about to publish. The mechanism is scheduling, not clock skew, established by manipulation: real-time priority on the stamping threads collapses the inversion rate by 39x and 54x at fixed utilisation, and two core geometries at identical utilisation differ by 2.07x.</p><p><strong>Mode B (deletion):</strong> the OpenMessaging Benchmark silently deletes every sample whose millisecond-quantised difference is not positive. Across 223 instrumented runs it computed its reported distribution from 0.36% to 100% of the samples it took, reporting the same median either way. Retention obeys a grid law in the reduced fraction of send interval over timestamp quantum, confirmed by a pre-registered payload manipulation, reproduced by a 200-line Python harness with no JVM, and measured across two clocks. The sign channel caught 41,403 genuine one-tick causality violations being absorbed by the same guard.</p><p><strong>What changed in v2.</strong> The manuscript was restructured for IEEE TPDS (IEEEtran, 16 pages, with a companion supplement compiled from the same commit) and taken through two rounds of adversarial review. Three changes are substantive rather than editorial. (1) A second, independent estimator for the stall tail: a windowed log-log index of 0.332 over 0.25-2 ms recovered from a traced bpftrace histogram, against 0.339 fitted from the payload sweep, rising past 4 beyond 4 ms. The exponent is therefore reported as an effective law of the payload span, not a constant of the machine, and <em>an earlier draft's unconditional infinite-moment reading is withdrawn</em>. (2) The powered transport comparison was found to have consumed audit-condemned runs; the primary artefacts are now audit-gated, the defect is disclosed in the text, and re-admitting the condemned runs moves the Hodges-Lehmann shift by at most 0.003 ms (0.017 ms in the replication). (3) A condition-level threshold sweep confirms that no cell of the first result set becomes fully usable at any audit threshold up to 20%. The consistency suite now carries 2,121 tests.</p><p>The archive contains the instrumentation, every campaign script and ledger, the analysis suite that recomputes the manuscript's numbers from committed data and fails if paper and data disagree, the manuscript, and its supplement.</p><p><strong>Data note.</strong> No StatsBomb event data is redistributed. Replay plans derived from it are excluded from this record and regenerable byte-for-byte from a pinned upstream commit with the included scripts.</p><p><strong>Licence carve-out.</strong> The code is released under the MIT Licence, and the data compilation and documentation in this record under CC BY 4.0. The manuscript files (<code>paper.pdf</code>, <code>paper.tex</code>, <code>supplement.pdf</code>, <code>supplement.tex</code>) are &copy; the author, are expressly <em>not</em> released under CC BY, and are included here as a data complement pending journal publication. This record is not a preprint venue; the preprint is on arXiv and is linked as a related identifier when announced.</p>",
   "keywords": [
     "measurement validity",
     "latency benchmarking",
@@ -24,8 +24,13 @@
   ],
   "related_identifiers": [
     {
-      "identifier": "10.5281/zenodo.21650065",
+      "identifier": "10.5281/zenodo.21836326",
       "relation": "isSupplementedBy",
+      "scheme": "doi"
+    },
+    {
+      "identifier": "10.5281/zenodo.21650032",
+      "relation": "isNewVersionOf",
       "scheme": "doi"
     },
     {

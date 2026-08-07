@@ -301,7 +301,20 @@ def main(argv=None):
     ap.add_argument("--out", default="docs/results/figures")
     ap.add_argument("--only", default=None,
                     help="render a single figure by stem, for testing")
+    ap.add_argument("--font-scale", type=float, default=1.0,
+                    help="multiply every matplotlib font size; used to regenerate "
+                         "figures for reduced print widths (TPDS round 2, minor 3)")
     args = ap.parse_args(argv)
+    if args.font_scale != 1.0:
+        for key in ("font.size", "axes.titlesize", "axes.labelsize",
+                    "xtick.labelsize", "ytick.labelsize", "legend.fontsize"):
+            base = plt.rcParams[key]
+            if isinstance(base, str):      # named sizes like 'medium' resolve via font.size
+                continue
+            plt.rcParams[key] = base * args.font_scale
+        plt.rcParams["font.size"] = plt.rcParams["font.size"] if isinstance(
+            plt.rcParams["font.size"], (int, float)) else 10.0
+        plt.rcParams["font.size"] = float(plt.rcParams["font.size"])
     out = Path(args.out)
 
     written, missing = [], []

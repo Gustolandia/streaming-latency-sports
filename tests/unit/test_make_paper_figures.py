@@ -184,3 +184,15 @@ class TestMain:
         captured = capsys.readouterr().out
         assert "skipped workload_profile: input missing" in captured
         assert (temp_dir / "figs" / "network_delay.pdf").exists(), "others still render"
+
+    def test_font_scale_scales_numeric_rc_sizes(self, temp_dir):
+        import matplotlib.pyplot as plt
+        base = float(plt.rcParams["font.size"])
+        args = self._inputs(temp_dir) + ["--only", "measurement_model",
+                                         "--font-scale", "1.5"]
+        try:
+            assert main(args) == 0
+            assert float(plt.rcParams["font.size"]) == pytest.approx(base * 1.5)
+            assert (temp_dir / "figs" / "measurement_model.pdf").exists()
+        finally:
+            plt.rcParams["font.size"] = base

@@ -174,3 +174,34 @@ cell.
 answers can silently rot: the sensitivity numbers, the traced slopes, the threshold
 sweep, the exhibit placement, the preprint markers and the register count are all
 recomputed from committed artefacts on every run.*
+
+---
+
+# Round-2 addendum: the eleven welcomed minors
+
+1. **Page-15 whitespace** — gone: the flush-bottom stretch before the Conclusion is
+   absorbed; both columns of p.15 now fill evenly (verified visually on the final build).
+2. **Reference [3] URL typography** — a `UrlBreaks` declaration now lets bibliography
+   URLs break at slashes, hyphens and dots; [3] wraps inside the margins and the archived
+   snapshot is recorded by timestamp and ID only.
+3. **Figure legibility** — Figure 1 was *regenerated* at 1.5x internal font sizes (a new
+   `--font-scale` option in the committed figure script, with a test) and is shown at
+   0.8 column width; Figure 2 is restored to full column width, per the option you
+   offered. Both are comfortably legible at print size on the final build.
+4. **Table I** — the column heads now name the arms per block ("ordinary / real-time";
+   "concentrated / spread").
+5. **§IX-A citation placement** — reads "Better instruments exist [19]; whatever the
+   instrument, check its output against causality…".
+6. **§IX-D** — comma added after "network."
+7. **§II-D** — the forward reference now reads "Table I, Section VIII-C."
+8. **Traced-slope scope** — §VIII-C(g) now states "one traced arm of one campaign — the
+   replication kept no raw histogram."
+9. **Two-regime symmetry** — §VI-B closes its imputation bound with "where rejected
+   values survive, observation replaces this bound (Section VIII-D)."
+10. **Artefact Availability** — the block flows as one paragraph; the URL-wrap artefact
+    is resolved by the same `UrlBreaks` fix as item 2.
+11. **Final files** — biography, photo, funding statement and the filed upstream issue
+    number remain with the author, as you noted.
+
+The paper remains exactly 16 pages; the full suite (2,121 tests including the new
+figure-script test) is green.

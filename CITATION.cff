@@ -9,9 +9,9 @@ authors:
     # orcid: "https://orcid.org/0000-0000-0000-0000"   # add your ORCID if you have one
   # Add additional authors as needed
 description: "Two failure modes of sub-millisecond latency benchmarking: causality-violating inversions from scheduling stalls, and silent sample deletion governed by a grid law in the send-interval-to-timestamp-quantum ratio. Code, campaigns, and a suite that recomputes every figure from committed data."
-version: "1.0.0"
+version: "2.0.0"
 url: "https://github.com/Gustolandia/streaming-latency-sports"
-doi: "10.5281/zenodo.21650032"
+doi: "10.5281/zenodo.21836305"
 license: "MIT"
 keywords:
   - streaming systems
@@ -24,7 +24,7 @@ keywords:
   - actionability windows
   - football analytics
   - reproducible research
-date-released: "2026-07-27"
+date-released: "2026-08-07"
 # The paper. Under CFF the top-level block above already describes the software, so this key
 # describes the work a reader should cite instead -- and there must be exactly one of it. There
 # were two, and because CFF is YAML the second silently overwrote the first: the paper citation
@@ -36,7 +36,7 @@ preferred-citation:
     - family-names: "Ricou"
       given-names: "Gustavo Pedro"
       affiliation: "School of Computer Science and Statistics, Trinity College Dublin"
-  journal: "ACM Transactions on Modeling and Performance Evaluation of Computing Systems"
+  journal: "IEEE Transactions on Parallel and Distributed Systems"
   year: 2026
   volume: "TBD"
   issue: "TBD"
@@ -66,9 +66,9 @@ identifiers:
   - type: "github"
     value: "streaming-latency-sports"
   - type: "doi"
-    value: "10.5281/zenodo.21650031"  # concept DOI (code, all versions); v1.0.0 is 10.5281/zenodo.21650032
+    value: "10.5281/zenodo.21650031"  # concept DOI (code, all versions); v2.0.0 is 10.5281/zenodo.21836305
   - type: "doi"
-    value: "10.5281/zenodo.21650064"  # concept DOI (dataset, all versions); v1.0.0 is 10.5281/zenodo.21650065
+    value: "10.5281/zenodo.21650064"  # concept DOI (dataset, all versions); v2.0.0 is 10.5281/zenodo.21836326
 
 # References to related works
 references:

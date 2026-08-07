@@ -21,13 +21,14 @@ from pathlib import Path
 CODE_GLOBS = ["scripts/*.py", "configs/*.yaml", "docker-compose*.yml", "requirements.txt"]
 
 # Descriptive record of the corpus + the measurement protocol behind the paper
-# (A Message Cannot Arrive Before It Is Sent, ACM TOMPECS). Kept in sync with
+# (When the Interval Is Smaller Than the Instrument, IEEE TPDS). Kept in sync with
 # reproducibility/README.md and paper.tex; the JSA framing (decision-staleness / win-probability)
-# is retired and must not be reintroduced here.
+# and the earlier ACM TOMPECS framing are retired and must not be reintroduced here.
 PROTOCOL = {
-    "paper": "A Message Cannot Arrive Before It Is Sent: Physical-Consistency Auditing for "
-             "Streaming Latency Benchmarks (ACM TOMPECS). The Journal of Sports Analytics framing "
-             "(decision-staleness / Age-of-Information / win-probability) is retired.",
+    "paper": "When the Interval Is Smaller Than the Instrument: Two Ways Streaming Latency "
+             "Benchmarks Fail on Sub-Millisecond Paths (IEEE TPDS). The Journal of Sports "
+             "Analytics framing (decision-staleness / Age-of-Information / win-probability) is "
+             "retired, as is the earlier ACM TOMPECS formatting.",
     "integrity_audit": "scripts/clock_integrity.py rejects a run when >1% of its events invert "
                        "(negative transport or scheduling lag) or any component median is "
                        "negative; applied to all 2266 runs, 1321 rejected (58.3%).",
@@ -44,10 +45,13 @@ PROTOCOL = {
         "E1 transport (true real-time, N in {1,9,10,12})": "docs/results/e1/, 164/201 runs "
             "retained; transport flat and near-equal, but underpowered (median 7 events/run), so "
             "the equivalence claim does not rest on it",
-        "powered transport replication (verified real-time, N in {1,9,12}, 15 reps, median 127 "
-        "events/run)": "docs/results/transport_rt/; Kafka ~0.54 ms vs Redis ~0.11 ms, HL shift "
-            "0.41 ms (p<1e-26): equivalent within 1 ms but not a tie -- Redis reproducibly faster "
-            "and flat across concurrency; ~0.07 ms of the gap is the H3 asymmetric stamp",
+        "powered transport replication (verified real-time, N in {1,9,12}, 15 reps, median 125 "
+        "matched events/run, audit-gated)": "docs/results/transport_rt/ and transport_rt2/, "
+            "*_gated.csv; Kafka ~0.54 ms vs Redis ~0.11 ms, HL shift 0.41 ms (p<1e-26): "
+            "equivalent within 1 ms but not a tie -- Redis reproducibly faster and flat across "
+            "concurrency; ~0.07 ms of the gap is the H3 asymmetric stamp. The primary artefacts "
+            "are gated: the ungated originals had consumed audit-condemned runs; re-admitting "
+            "them moves the shift by at most 0.003 ms (0.017 in the replication).",
         "window sweep (per-run vs per-event start-up cost)": "docs/results/window/window_sweep.csv",
         "E1 reconciliation (E1-REP)": "docs/results/e1_rep/e1_replication.csv; the SAME powered "
             "runs give the 0.41 ms shift over all events and E1's near-equality over their first "

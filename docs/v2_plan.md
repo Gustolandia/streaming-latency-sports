@@ -216,3 +216,11 @@ credential strengthens.
 4. Post as arXiv v2 (replacement), update Zenodo (new version deposit → new DOIs,
    cross-links carry via .zenodo.json), tag v1.1.0.
 5. Then the journal reformat fork (TOMPECS vs TPDS/TC decision with Dinh).
+
+### Tier review — referee round 2 (2026-08-07)
+Eleven welcomed minors, all presentational; **no tier reassignments and no claim
+changes.** Registers audited after the edits: one "In plain language" (SS1) and exactly
+the two referee-endorsed "In plain terms" instances survive — the Feynman principle
+holds. Exhibits: fig:model regenerated at 1.5x internal fonts (new --font-scale option
+in make_paper_figures.py) and shown at 0.8\columnwidth; fig:payloadflip restored to full
+column width; Table I heads name the arms per block.

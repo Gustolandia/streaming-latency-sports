@@ -809,21 +809,23 @@ class TestChain17Claims:
 
 
 class TestPoweredTransportReplication:
-    """Claim 1 is refined by a powered replication over ~127 events/run, not E1's seven.
+    """Claim 1 is refined by a powered replication over ~125 audit-gated events/run.
 
     The finding is a both-and: TOST-equivalent within 1 ms at every N, yet a tight reproducible
     ~0.41 ms Hodges-Lehmann shift (Kafka slower). Both halves must survive a data change.
+    Referee round 1 (M5): the fixtures point at the GATED artefacts -- the originals were
+    aggregated before the audit verdicts were wired into the cloud index.
     """
 
     def test_the_transport_table_matches_the_committed_summary(self, tex):
-        rows = {r["n"]: r for r in _rows("transport_rt", "transport_realtime_summary.csv")}
+        rows = {r["n"]: r for r in _rows("transport_rt", "transport_realtime_summary_gated.csv")}
         assert set(rows) == {"1", "9", "12"}
         for r in rows.values():
             assert _contains_number(tex, float(r["kafka_transport_p50"]), 3)
             assert _contains_number(tex, float(r["redis_transport_p50"]), 3)
 
     def test_the_hl_shifts_match_the_tost_output(self, tex):
-        tost = {int(r["n"]): r for r in _rows("transport_rt", "transport_realtime_tost.csv")}
+        tost = {int(r["n"]): r for r in _rows("transport_rt", "transport_realtime_gated_tost.csv")}
         assert set(tost) == {1, 9, 12}
         for n, r in tost.items():
             # Equivalent within 1 ms by every estimator...
@@ -837,7 +839,7 @@ class TestPoweredTransportReplication:
 
     def test_redis_is_faster_and_the_effect_is_flat(self, tex):
         tost = {int(r["n"]): float(r["hl_shift"]) for r in
-                _rows("transport_rt", "transport_realtime_tost.csv")}
+                _rows("transport_rt", "transport_realtime_gated_tost.csv")}
         assert all(s > 0 for s in tost.values()), "Kafka must be the slower system at every N"
         assert max(tost.values()) - min(tost.values()) < 0.05, "the shift must be flat in N"
 
@@ -846,7 +848,7 @@ class TestPoweredTransportReplication:
         low = e1.lower()
         assert "not" in low and "indistinguishable" in low, "the 'not a tie' half must be stated"
         assert "equivalent within" in low, "the within-margin half must be stated"
-        assert "127 events" in e1 or "127$ events" in e1, "the powered sample size must be given"
+        assert "125 events" in e1 or "125$ events" in e1, "the powered sample size must be given"
         assert "seven events" in low, "the contrast with E1's seven events must be drawn"
 
     def test_the_measurement_supersedes_not_contradicts_e1(self, tex):
@@ -1148,8 +1150,8 @@ class TestIndependentReplications:
     """Each headline result has a second, independent campaign confirming it."""
 
     def test_transport_shift_reproduces_within_the_first_campaigns_ci(self, tex):
-        orig = {int(r["n"]): r for r in _rows("transport_rt", "transport_realtime_tost.csv")}
-        rep = {int(r["n"]): r for r in _rows("transport_rt2", "transport_realtime_tost.csv")}
+        orig = {int(r["n"]): r for r in _rows("transport_rt", "transport_realtime_gated_tost.csv")}
+        rep = {int(r["n"]): r for r in _rows("transport_rt2", "transport_realtime_gated_tost.csv")}
         assert set(rep) == {1, 9, 12}
         for n in (1, 9, 12):
             o_lo, o_hi = float(orig[n]["hl_ci90_lo"]), float(orig[n]["hl_ci90_hi"])
@@ -1770,6 +1772,9 @@ class TestLoadGeometryAndTtrue:
                     v = (r.get(c) or "").strip()
                     if v and v != "2985":
                         offenders.append(f"{Path(path).name}:{c}={v}")
+        # traced_tail_slope counts kernel-traced wakeups, not inversion-rate cells, so the
+        # uniform-2,985 sentence does not cover it either (added TPDS round 1, M4b).
+        offenders = [o for o in offenders if not o.startswith("traced_tail_slope")]
         # variance_law is the one artefact on a different footing: it is not an inversion rate,
         # so the sentence does not cover it and it must not be silently folded in.
         offenders = [o for o in offenders if not o.startswith("variance_law")]
@@ -1976,6 +1981,83 @@ class TestRecoveredProvenance:
         assert -1 < infer < confirm, \
             "the inference must be presented before the script that confirms it"
         assert "by luck" in section, "the confirmation's provenance must stay honest"
+
+
+class TestRefereeRoundOne:
+    """The TPDS round-1 revision's claims must match the artefacts that answer them.
+
+    M1: three exhibits live in the MAIN text. M4: the traced-slope numbers the paper
+    quotes are recomputed from traced_tail_slope.csv. M5: the retention counts and
+    sensitivity numbers quoted in Section 8.4 match gate_sensitivity.csv. Q5: the
+    condition-level threshold sentence matches the sweep artefact. M6/M7/minors:
+    scoping and marker phrases exist where promised in the response letter.
+    """
+
+    def test_the_three_exhibits_are_in_the_main_text(self, main_tex):
+        assert "measurement_model.pdf" in main_tex, "the model figure must be in the paper"
+        assert "payload_flip.pdf" in main_tex, "the flip figure must be in the paper"
+        assert r"\label{tab:mechanism}" in main_tex, "the mechanism table must be in the paper"
+
+    def test_the_traced_slope_quotes_match_the_artefact(self, tex):
+        rows = _rows("model", "traced_tail_slope.csv")
+        windows = {(r["lo_us"], r["hi_us"]): float(r["index"])
+                   for r in rows if r["kind"] == "window"}
+        near, far = windows[("256", "2048")], windows[("4096", "32768")]
+        assert _contains_number(tex, near, 3), "the near-decade traced index is missing"
+        assert far > 4.0, "the far tail must steepen past 4 for the paper's sentence"
+        low = " ".join(tex.split()).lower()
+        assert "effective law of the payload span" in low or "effective exponent" in low, \
+            "the narrowed reading must replace the unconditional infinite-moment claim"
+        assert "not a constant of the machine" in low
+
+    def test_the_powered_retention_counts_match_the_gate_artefact(self, tex):
+        cells = {r["n"]: r for r in _rows("transport_rt", "gate_sensitivity.csv")}
+        for n in ("1", "9", "12"):
+            c = cells[n]
+            frag = f"${c['redis_usable']}/{c['redis_total']}$"
+            assert frag in tex, f"Redis retention {frag} must be stated for N={n}"
+            assert abs(float(c["hl_gate_delta_ms"])) <= 0.003, \
+                "the paper claims the gate moves the shift by at most 0.003 ms"
+            if c["flip_v_ms"]:
+                assert float(c["flip_v_ms"]) >= 0.55, \
+                    "the paper claims the flip point is at least 0.55 ms"
+        assert "below one half" in " ".join(tex.split()), \
+            "the two below-breakdown cells must be acknowledged"
+
+    def test_the_threshold_sentence_matches_the_sweep(self, tex):
+        rows = _rows("integrity_windows", "first_result_threshold_sweep.csv")
+        assert all(r["usable"] == "False" for r in rows), \
+            "a first-result cell became usable; Section 6.2's sentence is now false"
+        best = max((r for r in rows if r["threshold"] == "0.2"),
+                   key=lambda r: int(r["n_pass"]))
+        assert f"${best['n_pass']}$ of ${best['n_runs']}$" in tex, \
+            "the quoted best-cell endpoint must match the artefact"
+
+    def test_the_embedded_mode_scoping_is_present(self, main_tex):
+        abstract = main_tex[main_tex.index(r"\begin{abstract}"):
+                            main_tex.index(r"\end{abstract}")]
+        assert "embedded-mode" in abstract, "the abstract must scope the deletion claims"
+        audit = main_tex[main_tex.index("The Second Failure Mode"):]
+        assert "embedded mode" in audit[:2500], "Section 7's opening must scope the audit"
+
+    def test_the_preprints_are_marked(self, main_tex):
+        for key in ("sharma2026causality", "chandrasekar2026bias",
+                    "swami2026observability", "mohammad2025kafka"):
+            first = main_tex.index(key)
+            window = main_tex[max(0, first - 300):first + 100].lower()
+            assert "preprint" in window, f"{key} must be marked as a preprint at first cite"
+
+    def test_the_kernel_and_scheduler_are_named(self, main_tex):
+        assert "6.8.0-1057-oracle" in main_tex, "the kernel version must be stated"
+        assert "EEVDF" in main_tex, "the scheduler must be named"
+
+    def test_the_remit_paragraph_exists(self, main_tex):
+        low = " ".join(main_tex.split()).lower()
+        assert "measurement substrate" in low, "the TPDS-remit paragraph must be present"
+
+    def test_the_register_is_thinned_to_two(self, main_tex):
+        assert main_tex.count("In plain terms") == 2, \
+            "the referee asked for exactly the two endorsed instances"
 
 
 class TestTpdsFormat:

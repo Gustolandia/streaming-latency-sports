@@ -1,0 +1,4 @@
+n,kafka_usable,kafka_total,redis_usable,redis_total,redis_retention_pct,hl_all_ms,hl_gated_ms,hl_gate_delta_ms,flip_v_ms,condemned_redis_median_ms,condemned_redis_max_ms,max_frac_negative
+1,15,15,8,15,53.3,0.4095,0.4084,-0.0011,,0.098,0.11,0.0704
+9,111,134,59,135,43.7,0.4181,0.4156,-0.0025,0.6,0.111,0.702,0.0704
+12,118,165,61,165,37.0,0.4197,0.417,-0.0027,0.6,0.112,0.711,0.0704

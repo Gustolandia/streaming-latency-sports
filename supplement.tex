@@ -175,6 +175,17 @@ starts. Per attempt, the version, full coordinator and worker logs, and the extr
 are archived in \texttt{docs/results/external/dist\_diag/}; a draft upstream report is at
 \texttt{docs/omb\_distributed\_issue.md} (not filed --- filing is the author's action).
 
+
+\paragraph{Moved from the main text (TPDS round 1).} The cross-host case is the one in which OMB's subtraction spans two clocks, and its own
+distributed mode never completed a run in our hands --- eleven attempts, all failing
+identically inside its coordinator-to-worker protocol, including with no background load at
+all, which refutes our own load-starvation hypothesis. Its cross-host exposure therefore rests on
+source audit, the pattern itself measured across two clocks in
+the main text (per-attempt record and draft upstream report:
+supplementary material S4). We do not claim any published result obtained with this
+benchmark is wrong: exposure depends on a deployment's path latency and producer rate,
+and we audited none --- why we recommend publishing a retention rate as routine practice,
+at the cost of one number.
 \section{S5: The E1 reconciliation, in full}
 
 \begin{table}[t]
@@ -234,8 +245,8 @@ selection as the main text's attribution section, one level up.
 \emph{What this claim rests on.} We state the evidential basis first, because an earlier version
 of this section rested it on the wrong corpus. The load-bearing measurement is a powered
 replication at a replay rate that is \emph{derived from the plan and verified against wall time
-before the campaign runs} --- a documented setting, not an inferred one --- over a median of $127$
-events per run. The original E1 corpus (Table~\ref{tab:e1}) is reported afterwards, as the
+before the campaign runs} --- a documented setting, not an inferred one --- over a median of $125$
+audit-surviving events per run. The original E1 corpus (Table~\ref{tab:e1}) is reported afterwards, as the
 historical measurement it is, for two reasons that disqualify it from carrying the claim: its
 replay rate is an inference --- recovered in the main text as true real time,
 but inferred from the runs rather than recorded --- and it matched a \emph{median of seven events
@@ -249,10 +260,13 @@ concurrency in either backend ($p = 0.061$ for \kafka{}, $p = 0.091$ for \redis{
 system degrades across the range.
 
 \paragraph{The powered measurement.} We measured transport directly, at a replay rate
-derived from the plan and verified against wall time, over a median of $127$ events per run rather
-than seven, at $N \in \{1, 9, 12\}$ with $15$ replicates each (Table~\ref{tab:transport}). Every
-run is audit-surviving, and the instrument stamps in microseconds on one clock, so neither
-failure mode of this paper touches the numbers that follow. The
+derived from the plan and verified against wall time, over a median of $125$ events per run rather
+than seven, at $N \in \{1, 9, 12\}$ with $15$ replicates each (Table~\ref{tab:transport}).
+The numbers are computed over audit-surviving runs only --- the campaign's own retention,
+the gate's effect on every estimate (at most $0.003$~ms on the shift) and the worst-case
+imputation flip point are Table~\ref{tab:gatesens} in S34 --- and the instrument stamps
+in microseconds on one clock, so neither failure mode of this paper touches the numbers
+that follow. The
 picture is sharper and it is not the one E1 painted. Broker transport is \kafka{} $\approx
 0.54$~ms against \redis{} $\approx 0.11$~ms: a Hodges--Lehmann shift of $0.41$~ms, \kafka{}
 slower, with a bootstrap $90\%$ interval of width $\pm 0.006$~ms and $p < 10^{-26}$ at every $N$.
@@ -267,7 +281,8 @@ seconds-scale human annotation latency that dominates any live sports feed's end
 broker difference is parts in $100{,}000$ of the end-to-end path, so for choosing a broker it is noise; but it
 is a real, tight, reproducible effect
 that a properly powered instrument resolves and a seven-event one cannot. The shift is also flat
-across concurrency ($0.409$, $0.418$, $0.420$~ms at $N = 1, 9, 12$), so neither system degrades.
+across concurrency ($0.408$, $0.416$, $0.417$~ms at $N = 1, 9, 12$, audit-gated;
+S34), so neither system degrades.
 A part of even this residual is the instrument rather than the broker: the main text
 shows that $0.07$~ms of the gap is the asymmetric acknowledgement stamp, leaving a true
 broker-transport difference near $0.34$~ms. That $0.07$~ms is a concrete instance of the blind
@@ -314,8 +329,8 @@ $N$ & \kafka{} & \redis{} & \kafka{} & \redis{} & \kafka{} & \redis{} \\
 \end{tabular}
 \end{table}
 \begin{table}[t]
-\caption{Powered transport replication at a verified true-real-time rate, over a median of $127$
-events per run (not the seven of the main text), $15$ replicates per cell. Medians in ms; the
+\caption{Powered transport replication at a verified true-real-time rate, over a median of $125$
+events per run (not the seven of the main text), audit-gated (S34). Medians in ms; the
 Hodges--Lehmann shift is $\kafka{}-\redis{}$ with a percentile-bootstrap $90\%$ interval. The
 brokers are equivalent within $1$~ms at every $N$ (all three estimators) yet cleanly
 distinguishable: \redis{} is $\approx 0.41$~ms faster, and the shift does not grow with
@@ -325,9 +340,9 @@ concurrency.}
 \toprule
 $N$ & Events/run & \kafka{} & \redis{} & HL shift [90\% CI] \\
 \midrule
-1  & 148 & 0.512 & 0.099 & $0.409$ $[0.394, 0.421]$ \\
-9  & 121 & 0.539 & 0.115 & $0.418$ $[0.412, 0.424]$ \\
-12 & 127 & 0.540 & 0.114 & $0.420$ $[0.414, 0.425]$ \\
+1  & 148 & 0.512 & 0.102 & $0.408$ $[0.389, 0.419]$ \\
+9  & 112 & 0.542 & 0.120 & $0.416$ $[0.408, 0.423]$ \\
+12 & 121 & 0.540 & 0.114 & $0.417$ $[0.408, 0.424]$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -552,6 +567,13 @@ Broker transport, the lower series in (b), is unaffected and is what the paper c
 \end{figure}
 
 
+
+
+\paragraph{The benchmark's own output corroborates the insensitivity (moved from the main text, TPDS round 1).} The benchmark's own output corroborates this without our instrumentation: across
+eight runs all $32$ reported percentiles are whole milliseconds (only the averages, means
+of integers, are fractional), and three runs report
+$\mathrm{p50} = \mathrm{p95} = \mathrm{p99} = \max = 1.0$ --- not a narrow distribution
+but one with a single value in it, printed to three decimal places.
 
 \section{S8. The first corpus's prior corrections (moved from the main text)}
 
@@ -1023,6 +1045,16 @@ at once. The rendered PDF is checked separately from the source, which has caugh
 compiler passes. The suite is mutation-tested: corrupting a table value, or a value and its
 derived classification together, fails a check.
 
+
+\paragraph{Moved from the main text (TPDS round 1).} A validity gate refuses to report a number from a
+run that did not demonstrably produce output --- a benchmark that fails to run discards
+nothing, its zero looking exactly like a measured zero; the gate has refused eight
+distributed attempts, refusals archived beside its acceptances. Warmup is disabled
+and reported with a matched sweep (retention unchanged; samples
+$\approx 120{,}000 \to \approx 90{,}000$), axes are swept one at a time, and every run,
+failures included, is one ledger row recording configuration, sign-separated counts, and
+the log's size and \textsc{sha}-256. Two counting defects we found and fixed, and what
+the ledger's indexing exposed, are supplementary material S16.
 \section{S17. The transfer procedure with its incidents (moved from the main text)}
 
 The check is worth reporting only if it transfers, so we state it as a procedure rather than as
@@ -1111,6 +1143,22 @@ measuring milliseconds on a loaded machine is in the dangerous region; one measu
 running well below saturation, is not. That is a rule of thumb, and the main text
 says what would be needed to make it quantitative.
 
+
+\paragraph{Moved from the main text (TPDS round 1).} The check transfers to any latency computed across execution contexts --- most
+end-to-end measurements in this literature. The load-bearing rules:
+(1)~identify every span whose endpoints are stamped by different execution contexts, and
+check those; (4)~reject by a rule stated before looking at results, and report its
+sensitivity; (5)~report the retention rate beside the results, counting rejection causes
+separately (negative $=$ instrument failure; computes-to-zero $=$ resolution failure);
+(8)~put the send interval over the timestamp quantum, reduce the fraction, and read the
+denominator --- small $q$ is the hazard, dithering removes it; (10)~record the
+achieved rate, per run, verified against elapsed wall time, next to the results --- not
+the flag meant to produce it; (12)~where retention differs between arms, bound the selection.
+Rules (2), (3), (6), (7), (9) and (11) are stated, each with the incident that taught it,
+in supplementary material S17. The cost is one pass over data the harness already
+produces; our implementation is under two hundred lines and runs in seconds over
+$2{,}266$ runs, which is why we argue it belongs in routine practice rather than in a
+dedicated study.
 \section{S18. Related work in full: variability literature and the result-by-result map (moved from the main text)}
 
 \paragraph{Run-to-run instability has a supporting literature, and it is on our side.}
@@ -1180,6 +1228,20 @@ quantity, and that load moves the tail's weight far faster than the core's width
 utilisation where its measurements look tight --- the core is narrow --- while the tail that
 actually corrupts them is already growing.
 
+
+\paragraph{Moved from the main text (TPDS round 1).} That presumption is not ours: Lozi et al.~\cite{lozi2016wastedcores} document Linux
+scheduler bugs under which cores stay idle \emph{for seconds} while runnable threads
+queue elsewhere, invisible to conventional testing because throughput stays healthy. Under
+exact work conservation a stamping thread would never wait while a core was free, and the
+geometry contrast of the table in supplementary material S25 would have to be flat; it is
+not, and it converges only where no core is free to migrate to.
+
+Li et al.~\cite{li2014tales} decompose Linux tail latency into hardware, OS and
+application sources, report measured tails \emph{substantially worse} than a queueing
+model alone predicts --- precisely the excess our instrument measures --- and their
+background-interference mechanism predicts the temporal signature we observe, consecutive
+corrupted events, tested and found in the main text (full engagement:
+supplementary material S18).
 \section{S19. Provenance-gap episode and the co-location withholding (moved from the main text)}
 
 \subsection{A gap in our own provenance}
@@ -1703,32 +1765,10 @@ E-A9b & real-time & 88\% & 0.8822 & $649{,}788$ & 0.016 / 0.000 & --- \\
 \footnotesize $^{\dagger}$ withheld by the instrument check; shown, not used.
 \end{table}
 
-\section{S26. The model figure, the flip figure, and the first result set (moved from the main text)}
+\section{S26. The first result set (the model and flip figures were promoted to the main text in the TPDS round-1 revision)}
 
-Figure~\ref{fig:model} draws the inversion mechanism and its consequence; Figure~\ref{fig:payloadflip} shows the payload manipulation crossing the flat--full boundary in both directions; Table~\ref{tab:first} is the first,
-rejected result set in full.
+Table~\ref{tab:first} is the first, rejected result set in full.
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{docs/results/figures/measurement_model.pdf}
-\caption{(a)~How a positive latency is measured as negative: each side stamps its clock some
-interval after the event, and if the producer's delay exceeds the true transport plus the
-consumer's delay, the difference inverts. (b)~Why the check bites hardest on small effects. The
-same distribution of stamping asymmetry $\Delta$ inverts most of a small $T_{\mathrm{true}}$ and
-almost none of a large one.}
-\label{fig:model}
-\end{figure}
-
-
-\begin{figure}[t]
-\includegraphics[width=\columnwidth]{docs/results/figures/payload_flip.pdf}
-\caption{The campaign's confirmed prediction. (a) Retention replicates at $300$~msg/s ($q=3$)
-by payload, against the thirds grid: $200$~B straddles both branches, $32$~KB pins near the
-$2/3$ vertex, $64$~KB re-opens to the upper cell. (b) Replicate spread against
-$\operatorname{frac}(q\theta)$: the flat/full boundary at half the cell width is crossed in both
-directions by the one manipulated variable.}
-\label{fig:payloadflip}
-\end{figure}
 
 
 \begin{table}[t]
@@ -1876,6 +1916,21 @@ Delay & \kafka{} \tti{} & \kafka{} transp. & \redis{} \tti{} & \redis{} transp. 
 \end{tabular}
 \end{table}
 
+
+\paragraph{Moved from the main text (TPDS round 1).} Magnitudes of this size cannot be a per-event cost; the account we test is a
+round-trip-bound consumption pattern: our \redis{} consumer acknowledges each entry with
+\texttt{XACK} and waits --- the idiomatic tutorial pattern --- so a read of two hundred
+entries is followed by two hundred sequential round trips, free at $0.22$~ms per trip and
+hopeless at $20$~ms, where service rate falls below arrival rate and delay is set by
+backlog~\cite{kleinrock1975queueing}; \kafka{}'s consumer serves from a prefetched
+buffer and commits on a timer, no per-record round trip to expose.
+
+The falsification criterion was stated in advance: if amortising the acknowledgements
+does not help, the account is wrong. At one feed under true real-time replay, batching them
+in groups of two hundred takes median \tti{} from $4{,}138$~ms to $103$~ms --- a factor of
+$\mathbf{40.2}$, replicated four times --- and read-loop instrumentation corrects the
+shape: each \texttt{XREADGROUP} returns a full batch (median 106 messages in ${\sim}32$~ms),
+so the constraint is entirely in the acknowledgement path.
 \section{S31. The spread rule and the grid-membership inference in full (moved from the main text)}
 
 \paragraph{What the replicate spread does, and does not, predict.} It is tempting to write
@@ -1932,6 +1987,14 @@ points of a vertex the arm is branch-classifiable and the upper-branch weight ca
 Clopper--Pearson interval in the artefact. In plain terms: judged by a test that cannot be
 fooled by a value with no centre, the grid is present in every arm that could show it.
 
+
+\paragraph{Moved from the main text (TPDS round 1).} A quantity with two-point support breaks the replicate median, so a pre-specified
+grid-membership statistic (committed with the artefact) tests each arm's distance to its
+nearest vertex against a measured continuum null: of twelve commensurate arms ten are
+powered, \textbf{nine of the ten reject the continuum} --- seven at the Monte-Carlo floor
+of $2.5\times10^{-4}$, the tenth at $0.044$ --- and the two degenerate arms are reported
+as undecidable. Judged by a test that cannot be fooled by a value with no centre, the grid
+is present in every arm that could show it (method: supplementary material S31).
 \section{S32. The mechanism narrative in full (moved from the main text)}
 \noindent\textbf{The exponent is below one, so the stall distribution has neither a
 finite mean nor a finite variance.} That converts an observation into an explanation:
@@ -2100,4 +2163,38 @@ branch-probability law under-delivers. The payload sweep succeeded where co-loca
 
 \bibliographystyle{IEEEtran}
 \bibliography{manuscript_references}
+\section{S34. Referee-round sensitivity artefacts (TPDS round 1)}
+
+Three artefacts added in the round-1 revision, each recomputable by a committed script.
+Table~\ref{tab:gatesens} applies the audit gate to the powered transport campaigns and
+bounds the selection the gate introduces (\texttt{powered\_gate\_sensitivity.py}); the
+condition-level threshold sweep behind the main text's Section~6.2 sentence is
+\texttt{first\_result\_threshold\_sweep.csv} (no first-result cell fully usable at any
+threshold up to $20\%$; best cell $23/30$); the traced survival slopes behind the main
+text's effective-exponent statement are \texttt{traced\_tail\_slope.csv} (windowed
+log--log index $0.332$ over $0.25$--$2$~ms, $4.128$ over $4$--$32$~ms).
+
+\begin{table}[t]
+\caption{The audit gate applied to the powered transport campaigns. ``Flip $V^*$'' is the
+smallest value at which imputing every condemned \redis{} run at $V^*$ would flip the
+Hodges--Lehmann shift's sign; the condemned runs' observed medians centre on
+$0.10$--$0.12$~ms.}
+\label{tab:gatesens}
+\centering
+\small
+\begin{tabular}{llrrrrr}
+\toprule
+Campaign & $N$ & \redis{} ret.\ (\%) & HL all & HL gated & $\Delta$ & Flip $V^*$ \\
+\midrule
+powered     & 1  & 53.3 & 0.4095 & 0.4084 & $-0.0011$ & --- \\
+powered     & 9  & 43.7 & 0.4181 & 0.4156 & $-0.0025$ & 0.60 \\
+powered     & 12 & 37.0 & 0.4197 & 0.4170 & $-0.0027$ & 0.60 \\
+replication & 1  & 25.0 & 0.3969 & 0.3807 & $-0.0162$ & 0.55 \\
+replication & 9  & 45.8 & 0.4120 & 0.4137 & $+0.0017$ & 0.60 \\
+replication & 12 & 39.8 & 0.4132 & 0.4157 & $+0.0025$ & 0.55 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
 \end{document}

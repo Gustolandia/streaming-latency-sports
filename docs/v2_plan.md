@@ -174,13 +174,28 @@ The referee-anticipating section (David's clock questions all point here). Conte
   optional**: promised by email to the framing's author (2026-07-28), who replied with
   interest and asked for the link on announcement.
 
-### A10. Fold in the grey-literature review
-docs/grey_literature_review.md (surveyed Aug 2026) — §2 additions (Tene, Shipilev, Heiser,
-OMB issue #247, KIP-489, HdrHistogram contract), the Redpanda–Confluent dispute as the
-stakes anecdote, the CO-vs-Mode-B distinction sentence, and AWS ClockBound / Meta PTP as
-industry direction inside the A8 better-clock subsection. Its §E gap statement strengthens
-the paper's "the practice is missing" claim: OMB fixed coordinated omission in the very
-file whose guard we audit. Re-read the four starred sources in full before citing.
+### A10. Fold in the grey-literature review — **DONE (2026-08-07, TPDS round-1 revision)**
+docs/grey_literature_review.md (surveyed 2026-08-03; verification pass 2026-08-07 fetched
+the four starred sources in full — see its §G log). Applied in the revision: Tene and the
+CO-vs-Mode-B distinction (§2.4, since v2); HdrHistogram contract (§2.4/§7); **KIP-489**
+one sentence beside the WorkerStats guard (`kafka2019kip489`); **AWS ClockBound + Meta
+PTP** one sentence in the better-clock subsection (`aws2023clockbound`, `meta2022ptp`);
+archived (Wayback) URLs added to the two grey comparisons that have snapshots (the GitHub
+repo has none — the repository name is its durable identifier). Deferred with reasons
+recorded in the review's §F: Shipilev, OMB #247 (upstream-issue draft in the response
+letter instead), the Redpanda–Confluent stakes anecdote (page budget; queued if a referee
+opens the door).
+
+### Tier review — referee round 1 (2026-08-07)
+Checked every referee-driven change against the tier table; **no tier reassignments.**
+Three notes: (1) the tail-index infinite-moment phrasing is *narrowed within its T2
+mechanism row* (traced histogram shows the survival steepens beyond 4 ms, so alpha = 0.34
+becomes an effective span exponent — demote-on-doubt applied to the wording, not the
+tier); (2) the powered 0.41 ms shift stays T4 (confirmation/secondary) and gains a
+selection-robustness defence (gate on/off <= 0.017 ms; flip point >= 0.55 ms vs condemned
+observed medians ~0.10-0.12 ms); (3) the threshold-sensitivity sentence is now
+condition-level artefact-verified (first_result_threshold_sweep.csv) — the T3 withdrawal
+credential strengthens.
 
 ## C. Pending inputs before execution
 - C1. Dinh's review (offered; review-this-week asked). Fold in on arrival.

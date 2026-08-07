@@ -54,3 +54,19 @@ carries its own IEEEtran bibliography for the citations that travelled with the 
 
 The compiled supplement states on its first page that it is not part of the main submission.
 Referee report that drove this split: `REFEREE_REPORT_SIMULATED.md` (untracked).
+
+## TPDS round-1 revision (2026-08-07)
+
+Three exhibits moved **out of** the supplement into the main text at the referee's request
+(M1): the two-panel model figure and the payload flip figure (formerly S26) and a compact
+mechanism table digesting the S25 occupancy/geometry tables (`tab:mechanism`, new). In the
+other direction, compact stubs in the main text now point at full paragraphs appended to
+S4 (distributed-mode body), S7 (benchmark-output corroboration), S16 (gate/warmup/ledger
+detail), S17 (transfer-procedure rules), S18 (Lozi/Li literature engagement), S29
+(reversal account + falsification), S31 (grid-membership inference), each marked
+"Moved from the main text (TPDS round 1)". **S34** (new) holds the referee-round
+sensitivity artefacts: the audit gate applied to the powered transport campaigns
+(`gate_sensitivity.csv`, `transport_realtime_*_gated.csv`), the condition-level threshold
+sweep (`first_result_threshold_sweep.csv`), and the traced survival slopes
+(`traced_tail_slope.csv`). The powered-transport S5/S6 tables now carry the **gated**
+numbers; the ungated originals remain in the artefact tree as the historical record.

@@ -817,10 +817,12 @@ reports no error, the source still looks plausible, and the defect appears only 
 That failure reached the manuscript three times here, twice past a full source-level check, which
 is why the check now runs on the artefact a reader actually receives.
 
-**Status:** compiles clean — 0 errors, 0 undefined references or citations, no overfull boxes,
-exactly 16 pages (the TPDS ceiling, test-enforced), with a 39-page supplement. Title: *When the
-Interval Is Smaller Than the Instrument — Two Ways Streaming Latency Benchmarks Fail on
-Sub-Millisecond Paths*. Formatted with `IEEEtran` (journal, 10pt) for IEEE TPDS.
+**Status:** compiles clean — 0 errors, 0 undefined references or citations, exactly 16 pages (the
+TPDS ceiling, test-enforced), with a 39-page supplement. One known overfull box remains: Table I
+(`tab:mechanism`) is 12.34pt wider than the column, which does not visibly break the rendered
+page but is not zero and is recorded here rather than rounded away. Title: *When the Interval Is
+Smaller Than the Instrument — Two Ways Streaming Latency Benchmarks Fail on Sub-Millisecond
+Paths*. Formatted with `IEEEtran` (journal, 10pt) for IEEE TPDS.
 
 **Every headline number is pinned to its artefact** by
 `tests/unit/test_paper_consistency.py`, which recomputes the figures from the committed

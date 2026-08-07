@@ -1,28 +1,32 @@
-# A Message Cannot Arrive Before It Is Sent
+# When the Interval Is Smaller Than the Instrument
 
-*Physical-consistency auditing for streaming latency benchmarks, and what it left of a Kafka-versus-Redis comparison.*
+*Two ways streaming latency benchmarks fail on sub-millisecond paths, and what they left of a Kafka-versus-Redis comparison.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![Target: TOMPECS](https://img.shields.io/badge/Target-ACM%20TOMPECS-orange.svg)]()
-[![Tests](https://img.shields.io/badge/tests-2085_passing-brightgreen.svg)]()
+[![Target: TPDS](https://img.shields.io/badge/Target-IEEE%20TPDS-orange.svg)]()
+[![Tests](https://img.shields.io/badge/tests-2121_passing-brightgreen.svg)]()
 [![Coverage](https://img.shields.io/badge/branch_coverage-%E2%89%A595%25-brightgreen.svg)]()
 [![StatsBomb Data](https://img.shields.io/badge/StatsBomb_Data-CC_BY--NC_4.0-blue.svg)](https://github.com/statsbomb/open-data)
-[![DOI (code)](https://img.shields.io/badge/DOI_code-10.5281%2Fzenodo.21650032-blue.svg)](https://doi.org/10.5281/zenodo.21650032)
-[![DOI (data)](https://img.shields.io/badge/DOI_data-10.5281%2Fzenodo.21650065-blue.svg)](https://doi.org/10.5281/zenodo.21650065)
+[![DOI (code)](https://img.shields.io/badge/DOI_code-10.5281%2Fzenodo.21836305-blue.svg)](https://doi.org/10.5281/zenodo.21836305)
+[![DOI (data)](https://img.shields.io/badge/DOI_data-10.5281%2Fzenodo.21836326-blue.svg)](https://doi.org/10.5281/zenodo.21836326)
 
-> **Archived versions (Zenodo).** v1.0.0 of the code and analysis:
-> [10.5281/zenodo.21650032](https://doi.org/10.5281/zenodo.21650032) · measurement dataset:
-> [10.5281/zenodo.21650065](https://doi.org/10.5281/zenodo.21650065). Concept DOIs (always
+> **Archived versions (Zenodo).** v2.0.0 of the code and analysis:
+> [10.5281/zenodo.21836305](https://doi.org/10.5281/zenodo.21836305) · measurement dataset:
+> [10.5281/zenodo.21836326](https://doi.org/10.5281/zenodo.21836326). Concept DOIs (always
 > resolve to the latest version): code [10.5281/zenodo.21650031](https://doi.org/10.5281/zenodo.21650031),
 > data [10.5281/zenodo.21650064](https://doi.org/10.5281/zenodo.21650064).
+> v1.0.0 was the arXiv-submission state: code
+> [10.5281/zenodo.21650032](https://doi.org/10.5281/zenodo.21650032), data
+> [10.5281/zenodo.21650065](https://doi.org/10.5281/zenodo.21650065).
 
 > ## 🎯 Current target — the contribution
 >
-> **Paper:** [`paper.tex`](paper.tex) — *A Message Cannot Arrive Before It Is Sent:
-> Physical-Consistency Auditing for Streaming Latency Benchmarks*. ACM format, targeting
-> **ACM TOMPECS**. This is a **systems paper**; the football workload is the setting that
-> produced the finding, not the contribution.
+> **Paper:** [`paper.tex`](paper.tex) — *When the Interval Is Smaller Than the Instrument:
+> Two Ways Streaming Latency Benchmarks Fail on Sub-Millisecond Paths*. IEEE format
+> (`IEEEtran`, journal), targeting **IEEE TPDS**, with a companion `supplement.tex`. This is a
+> **systems paper**; the football workload is the setting that produced the finding, not the
+> contribution.
 >
 > **The original question** was: *compare end-to-end lag between Redis Streams and Apache Kafka
 > for real-time sports data feeds, under varying concurrency, using the StatsBomb open dataset
@@ -93,7 +97,7 @@
 
 ## 1. Current State & Objectives
 
-**Last updated:** July 26, 2026 · **Branch:** `main` · **Target:** *ACM TOMPECS* (systems venue; the JSA framing was retired — see the header)
+**Last updated:** August 7, 2026 · **Branch:** `main` · **Target:** *IEEE TPDS* (systems venue; the JSA and TOMPECS framings were retired — see the header)
 
 ### 1.1 Where things stand
 
@@ -607,8 +611,8 @@ streaming-latency-sports/
 ├── requirements.txt                # Python dependencies
 ├── .env                            # local environment (SB_COMMIT, etc.) — not committed
 │
-├── paper.tex                       # ACM paper (TOMPECS target, acmart/acmsmall)
-├── manuscript_references.bib       # bibliography (37 entries, 36 cited)
+├── paper.tex                       # IEEE paper (TPDS target, IEEEtran journal) + supplement.tex
+├── manuscript_references.bib       # bibliography (64 entries, 58 cited in the paper)
 │
 ├── docker-compose.yml              # single-broker Kafka + Redis
 ├── docker-compose-multibroker.yml  # 3 Kafka brokers (KRaft)        — Issue 2
@@ -785,13 +789,17 @@ specification and a Zenodo archive are planned under Issue 6.
 
 ## 12. Manuscript & Paper Preparation
 
-The paper targets **ACM TOMPECS** using the ACM `acmart` class (`acmsmall`). The earlier SAGE / Journal of Sports Analytics framing was retired; see the header for why.
+The paper targets **IEEE TPDS** using the IEEE `IEEEtran` class (`journal`, 10pt). The earlier
+SAGE / Journal of Sports Analytics and ACM TOMPECS framings were retired; see the header for why.
+TPDS enforces a hard page ceiling, so the manuscript is held at exactly 16 pages by a test gate
+and the overflow lives in a companion supplement compiled from the same commit.
 
 | Asset | Purpose |
 |-------|---------|
-| `paper.tex` | The paper (ACM `acmart`, `acmsmall`; Intro, Related Work, Setting, Method, First Answer, Audit, Results, Discussion) |
+| `paper.tex` | The paper (`IEEEtran`, journal; Intro, Related Work, Setting, Method, First Answer, Audit, Second Failure Mode, What Survives, Discussion, Conclusion) |
+| `supplement.tex` | Companion supplement S1–S34 (`docs/supplement_index.md` maps what moved where) |
 | `manuscript_references.bib` | Bibliography |
-| `acmart.cls` | ACM article class (from TeX Live/MiKTeX) |
+| `IEEEtran.cls` | IEEE article class (from TeX Live/MiKTeX) |
 
 **Build:**
 
@@ -810,9 +818,9 @@ That failure reached the manuscript three times here, twice past a full source-l
 is why the check now runs on the artefact a reader actually receives.
 
 **Status:** compiles clean — 0 errors, 0 undefined references or citations, no overfull boxes,
-40 pages. Title: *A Message Cannot Arrive Before It Is Sent — Physical-Consistency Auditing for
-Streaming Latency Benchmarks, and What It Left of a Kafka-versus-Redis Comparison*. Formatted
-with `acmart` (`acmsmall`) for ACM TOMPECS.
+exactly 16 pages (the TPDS ceiling, test-enforced), with a 39-page supplement. Title: *When the
+Interval Is Smaller Than the Instrument — Two Ways Streaming Latency Benchmarks Fail on
+Sub-Millisecond Paths*. Formatted with `IEEEtran` (journal, 10pt) for IEEE TPDS.
 
 **Every headline number is pinned to its artefact** by
 `tests/unit/test_paper_consistency.py`, which recomputes the figures from the committed

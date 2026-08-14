@@ -75,3 +75,9 @@ produced all of this is [`../../cloud/campaigns/omb_discard_count.sh`](../../clo
 which regenerates the patch, rebuilds, runs, and refuses to write a count unless the run produced
 publish output — a guard added after an earlier version reported a zero from a run that had died
 four seconds in.
+
+`docs/results/external/omb_patch.diff` (zero bytes) is empty because at capture time the
+workspace `WorkerStats.java` was identical to `.orig` — the patch had not been applied in that
+workspace; the actual instrumentation patch is tracked here as `workerstats_discard_counter.patch`
+(1,629 bytes), and the empty file stays tracked rather than deleted, because a capture that
+failed is part of the record.

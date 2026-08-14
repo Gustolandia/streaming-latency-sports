@@ -1,6 +1,12 @@
 # Referee response plan
 
-A demanding referee recommended **reject in present form** for the TOMPECS submission. This
+> All referee reports referenced in this document are internal reviews, authored
+> within the project as QA before any journal submission. The manuscript has
+> never been submitted to TOMPECS, TPDS, or any other journal; no verdict below was issued
+> by a journal or its reviewers.
+
+A demanding internal review recommended **reject in present form** for the
+then-TOMPECS-targeted draft. This
 document is the response plan: every issue raised, what we are doing about it, and the current
 state. It supersedes the earlier "Phase 5" plan item, which described a manuscript rebuild that
 has since happened.

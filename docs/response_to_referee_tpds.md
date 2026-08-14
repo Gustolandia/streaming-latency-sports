@@ -1,4 +1,10 @@
-# Response to Reviewer — TPDS round 1
+# Response to simulated referee report — TPDS-standard round 1
+
+> **Internal QA artefact — simulated review.** The "referee reports" answered below were
+> adversarial reviews generated inside the project, before any journal submission, to
+> stress-test the manuscript against TPDS standards (source report:
+> `REFEREE_REPORT_TPDS_SIMULATED.md`, kept untracked). The paper has not been submitted to
+> IEEE TPDS; no text here originates from, or is addressed to, any real reviewer or journal.
 
 Manuscript: *When the Interval Is Smaller Than the Instrument: Two Ways Streaming Latency
 Benchmarks Fail on Sub-Millisecond Paths* (title shortened per your minor 1).
@@ -178,7 +184,7 @@ recomputed from committed artefacts on every run.*
 
 ---
 
-# Round-2 addendum: the eleven welcomed minors
+# Round-2 addendum: the eleven welcomed minors (simulated round 2, same internal process)
 
 1. **Page-15 whitespace** — gone: the flush-bottom stretch before the Conclusion is
    absorbed; both columns of p.15 now fill evenly (verified visually on the final build).

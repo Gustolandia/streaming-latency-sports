@@ -166,7 +166,8 @@ cell.
 > report discards (zero/negative separately, since a negative difference is evidence of
 > clock trouble that this guard currently hides — cf. KIP-489's NaN convention). We are
 > happy to contribute the counter patch we used for instrumentation; measurement write-up
-> and per-run data: [Zenodo DOI 10.5281/zenodo.21650032].
+> and per-run data: [Zenodo DOI 10.5281/zenodo.21836305 (code and write-up),
+> 10.5281/zenodo.21836326 (measurement dataset)].
 
 ---
 *Every change above is enforced by the repository's consistency suite (new class

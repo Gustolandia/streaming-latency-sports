@@ -67,3 +67,20 @@ paper.blg
 # The tracked summary of every run is reproducibility/runs_index*.csv and
 # run_metadata*.jsonl.gz; this is the raw evidence behind it, ~800 MB.
 cloud_archive/
+
+# Deposit bundles built by scripts/zenodo_deposit.py, and the supplement's build log
+# (paper.log is above; campaign .log files under reproducibility/ stay tracked)
+dist/
+supplement.log
+
+# Working documents: correspondence state, process journals, and the simulated
+# adversarial referee reports used as internal QA. Deliberately never part of the
+# public record (see README Section 12 on the simulated-review process).
+docs/outreach_candidates.md
+docs/v2_execution_log.md
+docs/v3_plan.md
+REFEREE_REPORT_SIMULATED.md
+REFEREE_REPORT_TPDS_SIMULATED.md
+
+# Claude Code local state
+.claude/

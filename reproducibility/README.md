@@ -3,12 +3,12 @@
 This directory pins the frozen artefact for the manuscript so its results can be regenerated:
 the exact code, environment, datasets and per-run provenance.
 
-**Paper:** [`paper.tex`](../paper.tex) — *A Message Cannot Arrive Before It Is Sent:
-Physical-Consistency Auditing for Streaming Latency Benchmarks, and What It Left of a
-Kafka-versus-Redis Comparison* (ACM `acmart`, targeting **ACM TOMPECS**). This is a **systems /
-measurement-methodology paper**; the football workload is the setting that produced the finding,
-not the contribution. The earlier Journal of Sports Analytics framing (decision-staleness,
-Age-of-Information, win-probability) has been **retired** — do not reintroduce it here.
+**Paper:** [`paper.tex`](../paper.tex) — *When the Interval Is Smaller Than the Instrument: Two
+Ways Streaming Latency Benchmarks Fail on Sub-Millisecond Paths* (IEEE `IEEEtran`, targeting
+**IEEE TPDS**). This is a **systems / measurement-methodology paper**; the football workload is
+the setting that produced the finding, not the contribution. The earlier Journal of Sports
+Analytics framing (decision-staleness, Age-of-Information, win-probability) has been **retired**
+— do not reintroduce it here.
 
 - **Git commit:** see [`MANIFEST.json`](MANIFEST.json) (`git_commit`).
 - **Environment:** [docs/infrastructure.md](../docs/infrastructure.md) (host hardware, both
@@ -448,12 +448,20 @@ python scripts/verify_reproducibility.py --pattern 'concurrency_n*' --verbose
 and fails if the two disagree, so a re-run that changes the data cannot silently desynchronise the
 paper.
 
-## Zenodo archival (needs your Zenodo account token)
+## Zenodo archival (published)
 
-`scripts/zenodo_deposit.py` does the whole thing in one command. It reads the token from the
-environment, bundles only git-tracked files (so the NC-licensed raw StatsBomb events are excluded
-by design), and **leaves an unpublished draft** — a published Zenodo record cannot be deleted, so
-the final click stays a human decision.
+**Done.** The deposits were published on 2026-08-07 as **v2.0.0**, built from the git tag
+`v2.0.0`: code at DOI [10.5281/zenodo.21836305](https://doi.org/10.5281/zenodo.21836305), data at
+DOI [10.5281/zenodo.21836326](https://doi.org/10.5281/zenodo.21836326).
+
+`scripts/zenodo_deposit.py` — which built them — remains the tool for future versions. It does
+the whole thing in one command: it reads the token from the environment, bundles only git-tracked
+files (so the NC-licensed raw StatsBomb events are excluded by design), and **leaves an
+unpublished draft** — a published Zenodo record cannot be deleted, so the final click stays a
+human decision. The code zip additionally excludes `data/processed/replay_plans/`: the plans are
+CC BY-NC derivatives of the StatsBomb data, so the git repository tracks them but the
+MIT-licensed zip cannot ship them; they regenerate byte-for-byte with
+[`scripts/make_replay_plan.py`](../scripts/make_replay_plan.py) (step 2 above).
 
 ```bash
 # 0. one-off: create a Personal Access Token at
@@ -464,14 +472,14 @@ $env:ZENODO_API_TOKEN = "..."        # PowerShell   (bash: export ZENODO_API_TOK
 # 1. rehearse against the sandbox (separate account + token, throwaway DOIs)
 python scripts/zenodo_deposit.py --sandbox
 
-# 2. pin the exact state, then upload a real draft
+# 2. pin the exact state, then upload a real draft (v2.0.0 was built exactly this way)
 python scripts/generate_manifest.py
-git tag v1.0-consistency-audit && git push --tags
-python scripts/zenodo_deposit.py --ref v1.0-consistency-audit
+git tag vX.Y.Z && git push --tags
+python scripts/zenodo_deposit.py --ref vX.Y.Z
 
 # 3. review the draft in the browser and hit Publish -> the DOI is issued then.
 #    (--publish skips the review; irreversible, so only if you are sure.)
 ```
 
-Then add the DOI to the top-level `README.md` (badge), `CITATION.cff`, and the manuscript's
-Artefact Availability statement.
+Then add the new version's DOI to the top-level `README.md` (badge), `CITATION.cff`, and the
+manuscript's Artefact Availability statement.

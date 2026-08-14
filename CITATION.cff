@@ -8,7 +8,7 @@ authors:
     affiliation: "School of Computer Science and Statistics, Trinity College Dublin"
     # orcid: "https://orcid.org/0000-0000-0000-0000"   # add your ORCID if you have one
   # Add additional authors as needed
-description: "Two failure modes of sub-millisecond latency benchmarking: causality-violating inversions from scheduling stalls, and silent sample deletion governed by a grid law in the send-interval-to-timestamp-quantum ratio. Code, campaigns, and a suite that recomputes every figure from committed data."
+abstract: "Two failure modes of sub-millisecond latency benchmarking: causality-violating inversions from scheduling stalls, and silent sample deletion governed by a grid law in the send-interval-to-timestamp-quantum ratio. Code, campaigns, and a suite that recomputes every figure from committed data."
 version: "2.0.0"
 url: "https://github.com/Gustolandia/streaming-latency-sports"
 doi: "10.5281/zenodo.21836305"
@@ -40,31 +40,24 @@ preferred-citation:
   year: 2026
   volume: "TBD"
   issue: "TBD"
-  page: "TBD"
+  pages: "TBD"
   # doi: publisher DOI, filled in on acceptance (the Zenodo DOI above is the software's)
   # url: filled in on acceptance
 
 # Repository information
 repository: "https://github.com/Gustolandia/streaming-latency-sports"
 
-# Dataset information
-dataset:
-  - title: "StatsBomb Open Data"
-    url: "https://github.com/statsbomb/open-data"
-    license: "CC-BY-NC-4.0"
-    description: "Publicly available football/soccer event data (2003-2023)"
-    version: "3bfbffe1de5750ebd47d770be0bb924a10cde54f"
-
 # Contact information
 contact:
-  - email: "pedrorig@tcd.ie"
-    name: "Gustavo Pedro Ricou"
+  - family-names: "Ricou"
+    given-names: "Gustavo Pedro"
+    email: "pedrorig@tcd.ie"
     affiliation: "School of Computer Science and Statistics, Trinity College Dublin"
 
 # Additional identifiers
 identifiers:
-  - type: "github"
-    value: "streaming-latency-sports"
+  - type: "url"
+    value: "https://github.com/Gustolandia/streaming-latency-sports"
   - type: "doi"
     value: "10.5281/zenodo.21650031"  # concept DOI (code, all versions); v2.0.0 is 10.5281/zenodo.21836305
   - type: "doi"
@@ -97,26 +90,10 @@ references:
       - family-names: "StatsBomb"
     year: 2018
     url: "https://github.com/statsbomb/open-data"
-    type: "dataset"
+    type: "data"
     license: "CC-BY-NC-4.0"
+    version: "3bfbffe1de5750ebd47d770be0bb924a10cde54f"
+    notes: "Publicly available football/soccer event data (2003-2023)"
 
 # Funding information (if applicable)
 # funding: none declared
-
-# Notes for users
-notes: |
-  This CFF file provides citation information for both the research paper and the software.
-  
-  **For citing the paper:**
-  Use the preferred-citation entry; volume, issue and pages are filled in on acceptance.
-
-  **For citing the software:**
-  Use the top-level entry (title, version, DOI), which is what CFF describes by default.
-
-  **For citing the dataset:**
-  The StatsBomb Open Data is separately licensed under CC-BY-NC-4.0 and should be cited
-  according to their requirements: https://github.com/statsbomb/open-data
-  
-  **For reproducibility:**
-  All results can be reproduced from the committed artifacts in this repository.
-  See README.md for complete reproduction instructions.

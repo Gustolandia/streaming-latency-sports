@@ -6,6 +6,8 @@ change v2 should make, with its source noted. It will be revised as further feed
 (second reviewer pass pending; arXiv readers after announcement) and only then executed.
 
 Reviewer names are kept to first names here; acknowledgements in v2 with permission.
+The "referee rounds" referenced below are the project's simulated internal reviews
+(see docs/referee_response_letter.md), not journal correspondence.
 
 ---
 
@@ -171,8 +173,7 @@ The referee-anticipating section (David's clock questions all point here). Conte
   Aligns with David's readability point; do together with A1.
 - B2. M/G/1 one-clause fix: "a framing we adopt as a leading-order account and, on the
   load axis, ultimately refute" (§2 near \cite{chandrasekar2026bias}). **No longer
-  optional**: promised by email to the framing's author (2026-07-28), who replied with
-  interest and asked for the link on announcement.
+  optional**: committed to the framing's author.
 
 ### A10. Fold in the grey-literature review — **DONE (2026-08-07, TPDS round-1 revision)**
 docs/grey_literature_review.md (surveyed 2026-08-03; verification pass 2026-08-07 fetched
@@ -198,12 +199,11 @@ condition-level artefact-verified (first_result_threshold_sweep.csv) — the T3 
 credential strengthens.
 
 ## C. Pending inputs before execution
-- C1. Dinh's review (offered; review-this-week asked). Fold in on arrival.
+- C1. A second external review has been offered; fold in on arrival.
 - C2. arXiv announcement → v1.0.2 metadata pass (arXiv ID into README/CITATION) — separate
   from v2 and can happen first.
 - C3. Any second pass from David (invited in reply).
-- C4. Decide acknowledgements (permissions) and whether any contribution crosses into
-  co-authorship before v2 is posted.
+- C4. Settle acknowledgements and authorship before v2 is posted.
 
 ## D. Execution checklist (when feedback window closes)
 1. Implement A-items, then B-items, keeping every meaning-pin the consistency suite
@@ -215,7 +215,7 @@ credential strengthens.
    "58 pages" comment line for the arXiv replacement.
 4. Post as arXiv v2 (replacement), update Zenodo (new version deposit → new DOIs,
    cross-links carry via .zenodo.json), tag v1.1.0.
-5. Then the journal reformat fork (TOMPECS vs TPDS/TC decision with Dinh).
+5. Then the journal reformat fork (TOMPECS vs TPDS/TC decision, folding external advice).
 
 ### Tier review — referee round 2 (2026-08-07)
 Eleven welcomed minors, all presentational; **no tier reassignments and no claim

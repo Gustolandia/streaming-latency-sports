@@ -20,6 +20,12 @@
 > [10.5281/zenodo.21650032](https://doi.org/10.5281/zenodo.21650032), data
 > [10.5281/zenodo.21650065](https://doi.org/10.5281/zenodo.21650065).
 
+> **Frozen vs. living.** The Zenodo records above are the immutable version of record: built
+> from git tag `v2.0.0` (commit `bebabec`), with SHA256 manifests of every file. This repository
+> is the living copy and moves ahead of them. To verify the paper's claims against the exact
+> data behind them, use the Zenodo zips or `git checkout v2.0.0`; the concept DOIs always
+> resolve to the newest archived version.
+
 > ## 🎯 Current target — the contribution
 >
 > **Paper:** [`paper.tex`](paper.tex) — *When the Interval Is Smaller Than the Instrument:
@@ -43,6 +49,17 @@
 > behind it matched a *median of seven events each*. The integrity check does **not** catch that
 > one — those runs are all causally consistent. Causal consistency is necessary, not sufficient.
 >
+> **The title's second failure mode is not that withdrawal — it lives in software we did not
+> write: silent sample deletion.** The OpenMessaging Benchmark admits a sample only if a
+> millisecond-quantised difference is positive, and counts nothing it drops. Across **223
+> instrumented runs** it computed its distribution from **0.36% to 100%** of the samples it
+> took, with the same reported median either way; retention follows the grid arithmetic of the
+> send-interval-to-quantum ratio, not chance. The audit deciding whether the discards are benign
+> is a sign bit: the Kafka-driver corpus's discards contain not one negative, while the
+> Redis-driver replication caught **41,403 genuine one-tick negatives**, absorbed without trace.
+> Artifacts: [`external/omb/`](external/omb/) and the measurement data record
+> [10.5281/zenodo.21836326](https://doi.org/10.5281/zenodo.21836326).
+>
 > **What survives:**
 > 1. The brokers are **equivalent within 1 ms** and neither degrades with concurrency — robust
 >    to the audit's own unequal retention (bounded in [`retention_bias.py`](scripts/retention_bias.py)).
@@ -52,8 +69,11 @@
 >    at **identical ρ to four decimals** differ 2.07× (z=10.3), so utilisation cannot be the
 >    variable; lengthening true transport 77× *lowers* the rate 4.1×, which no stress-based
 >    account predicts; and a `sched_switch` trace predicts the measured rate to within 30%,
->    unfitted. The stall distribution has tail index **α≈0.34** — no finite mean or variance,
->    which is why mean-based counters are structurally blind to this failure.
+>    unfitted. The stall distribution's **effective span exponent is ≈0.33–0.34** over the
+>    measured 0.25–2 ms span, steepening beyond ~4 ms; across that span the sample mean is
+>    dominated by the largest stalls observed, which is why mean-based counters are structurally
+>    blind to this failure. An earlier draft's unconditional infinite-moment ("no finite mean or
+>    variance") reading is withdrawn.
 >    *Withdrawn:* the M/G/1 functional form. Once the sweep reached ρ where the candidate forms
 >    diverge, M/G/1 fit **worse than the mean** (R² −0.05 vs a fitted exponential's 0.93). An
 >    earlier revision of this README advertised it as a surviving rule; it is refuted, not merely
@@ -97,7 +117,7 @@
 
 ## 1. Current State & Objectives
 
-**Last updated:** August 7, 2026 · **Branch:** `main` · **Target:** *IEEE TPDS* (systems venue; the JSA and TOMPECS framings were retired — see the header)
+**Last updated:** August 14, 2026 · **Branch:** `main` · **Target:** *IEEE TPDS* (systems venue; the JSA and TOMPECS framings were retired — see the header)
 
 ### 1.1 Where things stand
 
@@ -119,7 +139,7 @@
 > exits non-zero so campaigns can gate on it.
 >
 > **What this cost us.** Our headline result had been *"Redis transport rises 34% with
-> concurrency (p=6.7e-12, complete rank separation) while Kafka stays flat"* — internally
+> concurrency (p=9.0×10⁻¹¹, complete rank separation) while Kafka stays flat"* — internally
 > consistent across 1,382 runs, matching the textbook prediction that a single-threaded server
 > serialises concurrent streams, and surviving six prior rounds of correction. **Every condition
 > behind it fails the gate.** The inversions are invisible in aggregate: only 5–14% of individual
@@ -334,9 +354,9 @@ From 3,315 StatsBomb matches across 52 competition-seasons (2003–2023), via
 
 ## 2. Abstract
 
-> **Title:** *A Message Cannot Arrive Before It Is Sent: Physical-Consistency Auditing for
-> Streaming Latency Benchmarks, and What It Left of a Kafka-versus-Redis Comparison*
-> **Target:** ICPE / DEBS (ACM sigconf, `paper.tex`)
+> **Title:** *When the Interval Is Smaller Than the Instrument: Two Ways Streaming Latency
+> Benchmarks Fail on Sub-Millisecond Paths*
+> **Target:** IEEE TPDS (`IEEEtran`, journal, `paper.tex`)
 > **Keywords:** streaming systems, latency benchmarking, measurement validity, Apache Kafka,
 > Redis Streams, reproducibility
 
@@ -423,6 +443,11 @@ RQ5 is answered *first*, because its answer determines which evidence RQ1–RQ4 
 Fetch with `scripts/fetch_statsbomb_corpus.py` (resumable, integrity-checked). Raw JSON is
 **not** redistributed here; it is re-fetchable exactly from the pinned commit, and
 `make_replay_plan.py` regenerates the committed plans byte-for-byte.
+
+The Zenodo code archive ([10.5281/zenodo.21836305](https://doi.org/10.5281/zenodo.21836305))
+**excludes** `data/processed/replay_plans/` — the plans are CC BY-NC 4.0 derivatives of
+StatsBomb data and cannot ship inside the MIT-licensed record. Regenerate them byte-for-byte
+with `scripts/make_replay_plan.py` against the pinned upstream commit.
 
 ### Preprocessing & replay plans
 
@@ -596,7 +621,7 @@ revealed the problem.
 - ~~Old concurrency sweep / 120× matrix~~ — clock offset plus producer saturation. **Invalid.**
 - ~~`batch9` 60-run matrix "Kafka faster, d=−1.18"~~ — Kafka load-generator asymmetry
   (`max_inflight=1` blocking per event). **Invalid.**
-- ~~"Redis transport rises 34% with concurrency, *p*=6.7e-12, complete rank separation"~~ —
+- ~~"Redis transport rises 34% with concurrency, *p*=9.0×10⁻¹¹, complete rank separation"~~ —
   **condemned by the clock-integrity gate.** This one passed every check above, agreed with
   architectural theory, and was the intended headline. See §1.1.
 
@@ -633,11 +658,15 @@ streaming-latency-sports/
 ├── data/
 │   ├── raw/statsbomb/3bfbffe1.../  # source JSON (40,660 events)
 │   └── processed/
-│       ├── replay_plans/{s1,s2,s2full,s2sf12,s2sf12j2}/combined_plan.csv
+│       ├── replay_plans/3bfbffe1.../match_<id>/replay_plan.csv   # eleven plans, one dir per match
 │       └── results/                # aggregated result CSVs (paper_*.csv)
 │
 ├── docs/
-│   ├── infrastructure.md · literature_and_originality.md   # supporting docs
+│   ├── infrastructure.md · laws.md · measurement_model.md        # environment + the model
+│   ├── general_model.md · two_state_model.md · grey_literature_review.md
+│   ├── preregistration_depth.md · omb_distributed_issue.md · supplement_index.md
+│   ├── section67_rewrite_draft.md · v2_plan.md                   # working drafts
+│   ├── referee_response_plan.md · response_to_referee_tpds.md · referee_response_letter.md
 │   └── results/                    # GENERATED analysis outputs (CSV/PNG/PDF)
 │       ├── realtime_concurrency/   # PRIMARY: fair sweep latency by backend/config/N
 │
@@ -663,36 +692,45 @@ streaming-latency-sports/
 ### Setup
 
 ```bash
-git clone https://github.com/<your-org>/streaming-latency-sports.git
+git clone https://github.com/Gustolandia/streaming-latency-sports.git
 cd streaming-latency-sports
 python -m venv .venv && source .venv/bin/activate    # or .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 docker compose up -d                                  # single-broker Kafka + Redis
 ```
 
+For a faster clone use `git clone --filter=blob:none <url>` — the history carries superseded
+run outputs.
+
 ### Single trial
 
 ```bash
+SHA=3bfbffe1de5750ebd47d770be0bb924a10cde54f
+PLAN=data/processed/replay_plans/$SHA/match_3895052/replay_plan.csv
+
 # Kafka
-python scripts/kafka_producer.py --run-id my_run --plan-csv data/processed/replay_plans/s2sf12/combined_plan.csv --out runs/my_run
+python scripts/kafka_producer.py --run-id my_run --plan-csv "$PLAN" --out runs/my_run
 python scripts/kafka_consumer.py --run-id my_run --out runs/my_run
 
 # Redis
-python scripts/redis_producer.py --run-id my_run --plan-csv data/processed/replay_plans/s2sf12/combined_plan.csv --out runs/my_run
+python scripts/redis_producer.py --run-id my_run --plan-csv "$PLAN" --out runs/my_run
 python scripts/redis_consumer.py --run-id my_run --out runs/my_run
 ```
 
 ### Windows / PowerShell runners (with timestamped debug output)
 
 ```powershell
-./scripts/run_kafka_trial.ps1 my_run_001 data/processed/replay_plans/s2sf12/combined_plan.csv
-./scripts/run_redis_trial.ps1 my_run_001 data/processed/replay_plans/s2sf12/combined_plan.csv
+./scripts/run_kafka_trial.ps1 my_run_001 data/processed/replay_plans/3bfbffe1de5750ebd47d770be0bb924a10cde54f/match_3895052/replay_plan.csv
+./scripts/run_redis_trial.ps1 my_run_001 data/processed/replay_plans/3bfbffe1de5750ebd47d770be0bb924a10cde54f/match_3895052/replay_plan.csv
 ```
 
 ### Concurrency test
 
 ```bash
-python scripts/run_concurrency_test.py 5 data/processed/replay_plans/s2sf12/combined_plan.csv 3
+# --plans-dir hands each feed a distinct real match (the positional plan is only a fallback);
+# see reproducibility/README.md §4 for the full Testbed B invocation (rate, pipelining, gate).
+python scripts/run_concurrency_test.py 5 "$PLAN" 3 \
+    --plans-dir data/processed/replay_plans/$SHA
 ```
 
 ### Multi-broker (Issue 2)
@@ -707,7 +745,7 @@ python scripts/redis_producer.py  --cluster-mode --node-count 3 --run-id r_clust
 ### S3 corrections
 
 ```bash
-python scripts/kafka_producer.py --run-id s3_test --plan-csv .../combined_plan.csv \
+python scripts/kafka_producer.py --run-id s3_test --plan-csv "$PLAN" \
     --s3-mode corrections --corrections-every-k 50 --correction-delay-s 2.0
 ```
 
@@ -715,11 +753,12 @@ python scripts/kafka_producer.py --run-id s3_test --plan-csv .../combined_plan.c
 
 ## 10. Testing & Quality
 
-**Current state (June 17 2026): 830 tests passing, 99% total coverage, every script ≥95%.**
-This includes the Issue 3–6 gap-filler scripts (`statistical_analysis.py`,
-`power_analysis.py`, `analyze_protocol_overhead.py`, `analyze_actionability.py`,
-`verify_reproducibility.py`) and the root health-check scripts (`verify_all_runs.py`,
-`deep_health_check_final.py`).
+**Current state (August 2026): 2,121 tests passing, every script ≥95% branch coverage.**
+The June 17 2026 snapshot (830 tests, 99% total coverage) included the Issue 3–6 gap-filler
+scripts (`statistical_analysis.py`, `power_analysis.py`, `analyze_protocol_overhead.py`,
+`analyze_actionability.py`, `verify_reproducibility.py`) and the root health-check scripts
+(`verify_all_runs.py`, `deep_health_check_final.py`); the v2 campaign-analysis scripts are
+held to the same standard.
 
 ```bash
 python -m pytest tests/ -q                               # run all tests
@@ -727,7 +766,7 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing   # with coverag
 python -m pytest tests/ --cov=scripts --cov-report=html  # HTML report → htmlcov/
 ```
 
-### Per-script coverage
+### Per-script coverage (June 2026 snapshot; later scripts meet the same gate)
 
 | Script | Coverage | Script | Coverage |
 |--------|----------|--------|----------|
@@ -782,8 +821,11 @@ Each run directory contains full provenance:
 `runs/_paper_s3_official_runs.txt`, and the concurrency-sweep lists.
 
 **Environment (reference):** Docker Desktop, Apache Kafka 4.1.1, Redis 7.2.4,
-Python 3.9.13, dependencies pinned in `requirements.txt`. A full hardware/software
-specification and a Zenodo archive are planned under Issue 6.
+Python 3.9.13 (development now also runs on 3.12), dependencies pinned in
+`requirements.txt`. The full hardware/software specification is in
+[`docs/infrastructure.md`](docs/infrastructure.md), and the Zenodo archive exists
+(v2.0.0, 2026-08-07: code [10.5281/zenodo.21836305](https://doi.org/10.5281/zenodo.21836305),
+data [10.5281/zenodo.21836326](https://doi.org/10.5281/zenodo.21836326)).
 
 ---
 
@@ -821,7 +863,7 @@ is why the check now runs on the artefact a reader actually receives.
 TPDS ceiling, test-enforced), with a 39-page supplement. One known overfull box remains: Table I
 (`tab:mechanism`) is 12.34pt wider than the column, which does not visibly break the rendered
 page but is not zero and is recorded here rather than rounded away. Title: *When the Interval Is
-Smaller Than the Instrument — Two Ways Streaming Latency Benchmarks Fail on Sub-Millisecond
+Smaller Than the Instrument: Two Ways Streaming Latency Benchmarks Fail on Sub-Millisecond
 Paths*. Formatted with `IEEEtran` (journal, 10pt) for IEEE TPDS.
 
 **Every headline number is pinned to its artefact** by
@@ -846,9 +888,19 @@ existing entries were corrected — `redis2017streams` had the author misspelled
 The stale entries are left in the `.bib` rather than deleted so the removal is auditable; they
 are simply uncited. **Verify every remaining citation before submission.**
 
-**Remaining before submission:** mint the Zenodo DOI (`scripts/zenodo_deposit.py` stops at an
-unpublished draft by design — publishing is an irreversible public action and is left to a
-human).
+**Archival (done 2026-08-07):** the Zenodo records are minted and published — v2.0.0 code
+[10.5281/zenodo.21836305](https://doi.org/10.5281/zenodo.21836305) and data
+[10.5281/zenodo.21836326](https://doi.org/10.5281/zenodo.21836326). `scripts/zenodo_deposit.py`
+stops at an unpublished draft by design — publishing is an irreversible public action, and the
+final click was a human one.
+
+**Adversarial review rehearsal.** Before submission, the manuscript was stress-tested through
+simulated adversarial referee rounds authored inside the project
+([`docs/referee_response_plan.md`](docs/referee_response_plan.md),
+[`docs/response_to_referee_tpds.md`](docs/response_to_referee_tpds.md),
+[`docs/referee_response_letter.md`](docs/referee_response_letter.md)). These are internal QA
+artefacts written to journal standards; the paper has not yet been submitted to any venue, and
+no document in this repository contains real journal correspondence.
 
 **Data Availability Statement:** all benchmark results, configs, and scripts are in this
 repository; the StatsBomb dataset is public under CC BY-NC-4.0. Reproduction needs only
@@ -877,11 +929,12 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 ## 14. Citation
 
 ```bibtex
-@article{streaming_latency_sports_2026,
-  title   = {Streaming Latency Benchmarks: Redis Streams vs Apache Kafka for Real-Time Sports Data Feeds},
-  author  = {[To be completed]},
-  note    = {Preprint; targeting ICPE/DEBS},
-  year    = {2026}
+@article{ricou2026interval,
+  author  = {Ricou, Gustavo Pedro},
+  title   = {When the Interval Is Smaller Than the Instrument: Two Ways Streaming Latency Benchmarks Fail on Sub-Millisecond Paths},
+  year    = {2026},
+  note    = {Manuscript targeting IEEE Transactions on Parallel and Distributed Systems;
+             code and data archived at \url{https://doi.org/10.5281/zenodo.21836305}}
 }
 ```
 
@@ -905,6 +958,8 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 | Component | License |
 |-----------|---------|
 | Custom code, docs, results | MIT |
+| Manuscript files (`paper.tex`/`.pdf`, `supplement.tex`/`.pdf`) | © the author, **not** MIT — pending journal publication |
+| Replay plans (`data/processed/replay_plans/`, StatsBomb-derived) | CC BY-NC 4.0 |
 | StatsBomb data | CC BY-NC-4.0 |
 | Third-party libraries | Various (see `requirements.txt`) |
 
@@ -912,7 +967,23 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 
 ## 16. Changelog
 
-### Unreleased — July 2026 (revision phase)
+### 2.0.0 — 2026-08-07 — TPDS restructure + Zenodo deposit
+Manuscript restructured for **IEEE TPDS** (`IEEEtran` journal, 16-page ceiling test-enforced,
+39-page companion supplement); the OMB silent-deletion arm (the paper's second failure mode)
+integrated. Zenodo v2.0.0 archived from tag `v2.0.0` (commit `bebabec`) with SHA256 manifests:
+code [10.5281/zenodo.21836305](https://doi.org/10.5281/zenodo.21836305), data
+[10.5281/zenodo.21836326](https://doi.org/10.5281/zenodo.21836326). 2,121 tests green.
+
+### 1.0.1 — 2026-07-28 — Zenodo DOIs wired in
+The minted v1 Zenodo DOIs wired into `CITATION.cff`, README badges and the paper; software and
+dataset records cross-linked.
+
+### 1.0.0 — 2026-07-28 — arXiv-submission state, first Zenodo archive
+The arXiv-submission state of the manuscript; first Zenodo records (code
+[10.5281/zenodo.21650032](https://doi.org/10.5281/zenodo.21650032), data
+[10.5281/zenodo.21650065](https://doi.org/10.5281/zenodo.21650065)).
+
+### July 2026 (revision phase; released in v1.0.0)
 - **Jul 22** — **Manuscript rebuilt around the clock-integrity finding.** Retitled; the audit
   is now Sections 5–6 rather than a caveat. Every result section rewritten against gated data
   only; the withdrawn arm is presented as evidence for RQ5 instead of as an apology. Added
@@ -951,7 +1022,7 @@ Repository structure, `.gitignore`, StatsBomb integration, initial fetch/plan sc
 
 ## 17. Appendix: Acronyms & File Types
 
-**Acronyms:** TTI = Time-to-Insight · ICPE = Int. Conf. on Performance Engineering · DEBS = Distributed and Event-Based Systems · SLO = Service
+**Acronyms:** TTI = Time-to-Insight · TPDS = IEEE Transactions on Parallel and Distributed Systems · OMB = OpenMessaging Benchmark · SLO = Service
 Level Objective · S1–S5 = experimental phases · AOF = Append-Only File (Redis) · KRaft =
 Kafka Raft metadata mode · RF = replication factor · FWER = family-wise error rate ·
 xG = expected goals.
@@ -962,4 +1033,4 @@ storage · `.py` scripts · `.ps1` PowerShell runners · `.sh` bash scripts · `
 
 ---
 
-*Single-source README · last updated July 22, 2026 · target: ICPE / DEBS.*
+*Single-source README · last updated August 14, 2026 · target: IEEE TPDS.*

@@ -2,7 +2,7 @@
 % NOT part of the main submission: this document accompanies the paper as supplementary
 % material only. Each section is indexed in docs/supplement_index.md, which records what moved
 % here from which revision of the main text, so nothing is lost.
-\documentclass[manuscript,screen,review]{acmart}
+\documentclass[manuscript,screen,review,nonacm]{acmart}
 \settopmatter{printacmref=false}
 \renewcommand\footnotetextcopyrightpermission[1]{}
 \newcommand{\kafka}{Kafka}
@@ -835,7 +835,8 @@ the workload cannot preempt, not a better clock. But we found this by looking at
 separability test is exploratory (the main text), so we pre-registered a confirmatory version and ran it: the campaigns below, the decisive
 one being real-time priority at fixed utilisation. Two states is the smallest model consistent with the data, not a kernel claim.
 
-\paragraph{On the load axis the model is a tautology, and we say so before using it.} Read as a function of $ho$ alone the model has no content: with $p$
+\paragraph{On the load axis the model is a tautology, and we say so before using it.} Read as a function of $
+ho$ alone the model has no content: with $p$
 unconstrained, any monotone rate curve can be written $p(\rho)\,S$; the model's content is on
 the threshold axis, where it passed. Constraining $p$ to a power law fits poorly ($R^2 = 0.65$
 in log space). The form that restores the divided-out $\sigma$,
@@ -1101,7 +1102,7 @@ read. We found it only after instrumenting the source, which was unnecessary.
 \item \textbf{Put your send interval over the timestamp quantum, reduce the fraction, and look at
 the denominator.} A fixed interval that visits few phases within the quantum puts nearly every
 sample in a run at one of them, which makes the surviving fraction bimodal and irreproducible
-rather than merely small (Sections~the main text and~the main text). The diagnostic is
+rather than merely small (in the main text). The diagnostic is
 arithmetic on two numbers you already know, but it is the reduced denominator $q$ that matters, not
 whether the interval looks round: $500$~msg/s gives $q=1$ and spread $99.5$ points, and
 $300$~msg/s gives $q=3$ and spread $30.5$, while $889$~msg/s --- which sits $0.00014$ away from
@@ -1182,7 +1183,7 @@ whose weights move, so no replicate count converges (the main text).
 \paragraph{Result by result.} For each headline result, the nearest support and the nearest
 constraint we can find:
 \begin{itemize}
-\item \emph{Deletion law and grid structure} (Sections~the main text--the main text).
+\item \emph{Deletion law and grid structure} (in the main text).
   Supported mathematically by equidistribution and dither
   theory~\cite{weyl1916gleichverteilung,sos1958distribution,schuchman1964dither}; no empirical
   study reports a benchmark's retained fraction, so the nearest contradiction is implicit ---
@@ -1193,12 +1194,12 @@ constraint we can find:
   reporting standards that require sample counts~\cite{hoefler2015scientific}; contradicted by no
   study, but silently contradicted by every report of a latency percentile without the count
   behind it.
-\item \emph{Irreproducibility and regime mobility} (Sections~the main text,
+\item \emph{Irreproducibility and regime mobility} (the main text,
   the main text). Supported
   by~\cite{mytkowicz2009wrong,georges2007rigorous,barrett2017warmup,maricq2018taming};
   constrained by the same literature's remedy --- more replicates --- which our two-point
   supports show cannot converge here.
-\item \emph{Scheduling-stall inversions} (Sections~the main text--the main text). Supported
+\item \emph{Scheduling-stall inversions} (in the main text). Supported
   by the tail-latency and scheduler literature~\cite{li2014tales,dean2013tail,lozi2016wastedcores}
   and by the concurrent negative-span reports~\cite{sharma2026causality}; qualified by Sharma et
   al.'s skew-threshold reading, which our zero-skew inversions show is unsafe under load.
@@ -1787,41 +1788,12 @@ $N$ & \kafka{} & \redis{} & Difference & $p_{\text{Holm}}$ \\
 \end{tabular}
 \end{table}
 
-\section{S27. The grid table (moved from the main text)}
+\section{S27. The grid table (returned to the main text)}
 
-Table~\ref{tab:quantisation} states, for every commensurate and incommensurate arm, the cell width, cell position, prediction and measured replicate spread.
-
-\begin{table}[t]
-\caption{Replicate spread against the phase denominator $q$, at fixed payload, load, duration and
-host. \emph{Position} is the distance from the measured continuous value to the nearest grid point,
-expressed against the cell half-width: $0$ means it sits on a grid point, $1$ midway between two.
-Because position is scale-free, every call below is unchanged whether the continuous value is
-estimated pooled ($49.5\%$) or separately at each rate ($45.9$--$51.5\%$): position is distance over the cell \emph{half-width}, so rescaling $\theta$ moves every gap and every threshold together. $^{\dagger}$already in lowest terms.}
-\label{tab:quantisation}
-\small
-\begin{tabular}{@{}rlrrrrlr@{}}
-\toprule
-rate & $\Delta/\tau$ & $q$ & $n$ & width & position & predicted & spread \\
-\midrule
-$1000$/s & $1/1$  & $1$ & $3$ & $100.0$ & $0.99$ & full & $99.3$ \\
-$500$/s  & $2/1$  & $1$ & $4$ & $100.0$ & $0.99$ & full & $99.5$ \\
-$250$/s  & $4/1$  & $1$ & $3$ & $100.0$ & $0.99$ & full & $58.6$ \\
-$400$/s  & $5/2$  & $2$ & $5$ & $50.0$  & $0.02$ & flat & $17.6$ \\
-$300$/s  & $10/3$ & $3$ & $5$ & $33.3$  & $0.97$ & full & $30.5$ \\
-$600$/s  & $5/3$  & $3$ & $5$ & $33.3$  & $0.97$ & full & $32.7$ \\
-$800$/s  & $5/4$  & $4$ & $5$ & $25.0$  & $0.04$ & flat & $7.2$  \\
-$625$/s  & $8/5$  & $5$ & $5$ & $20.0$  & $0.95$ & full & $17.9$ \\
-$875$/s  & $8/7$  & $7$ & $5$ & $14.3$  & $0.93$ & full & $10.7$ \\
-\midrule
-\multicolumn{8}{@{}l}{\emph{incommensurate --- phase set effectively continuous}} \\
-$889$/s  & $1000/889^{\dagger}$ & ${>}64$ & $5$ & --- & --- & $\approx 0$ & $1.7$ \\
-$457$/s  & ---    & ${>}64$ & $4$ & --- & --- & $\approx 0$ & $2.1$ \\
-$383$/s  & ---    & ${>}64$ & $4$ & --- & --- & $\approx 0$ & $2.8$ \\
-$333$/s  & ---    & ${>}64$ & $3$ & --- & --- & $\approx 0$ & $3.1$ \\
-$611$/s  & ---    & ${>}64$ & $3$ & --- & --- & $\approx 0$ & $3.1$ \\
-\bottomrule
-\end{tabular}
-\end{table}
+The table of replicate spread against the phase denominator $q$, which this section
+previously held, is back in the main text: the reviewer of v2.5 was right that
+load-bearing evidence should not sit in supplementary material. It is not duplicated
+here.
 
 \section{S28. The mechanism campaign paragraphs in full (moved from the main text)}
 
@@ -1978,10 +1950,15 @@ parameters measured, neither fitted to the arm under test; the p-value is one-si
 Monte Carlo.
 
 Of twelve commensurate arms, ten are powered --- the null and the grid predict separably --- and
-\textbf{nine of the ten reject the continuum}, seven at the Monte-Carlo floor of
-$2.5\times10^{-4}$, including arms whose binary flat/full classification had read as smeared;
-the tenth ($900$~msg/s) rejects at $0.044$. The two unpowered arms are the degenerate ones
-($400$ and $800$~msg/s, whose grids pass through $\theta$), and the test reports them as
+\textbf{$\gridReject$ of the $\gridPowered$ reject the continuum after Holm correction},
+eight at the Monte-Carlo floor of
+$2.5\times10^{-4}$, including arms whose binary flat/full classification had read as smeared.
+The tenth ($\gridUnresolvedRate$~msg/s) rejects at $\gridUnresolvedRaw$ raw and at
+$\gridUnresolvedHolm$ corrected, so it does not reject: an earlier version of this document
+and of the main-text table counted it as a rejection while the caption claimed the
+correction had been applied. That is now fixed in the only durable way, by generating the
+table from the artefact. The two unpowered arms are the degenerate ones
+(\gridFlatRates~msg/s, whose grids pass through $\theta$), and the test reports them as
 undecidable rather than counting them for either side. Where every replicate lies within $3$
 points of a vertex the arm is branch-classifiable and the upper-branch weight carries an exact
 Clopper--Pearson interval in the artefact. In plain terms: judged by a test that cannot be
@@ -1991,34 +1968,58 @@ fooled by a value with no centre, the grid is present in every arm that could sh
 \paragraph{Moved from the main text (TPDS round 1).} A quantity with two-point support breaks the replicate median, so a pre-specified
 grid-membership statistic (committed with the artefact) tests each arm's distance to its
 nearest vertex against a measured continuum null: of twelve commensurate arms ten are
-powered, \textbf{nine of the ten reject the continuum} --- seven at the Monte-Carlo floor
-of $2.5\times10^{-4}$, the tenth at $0.044$ --- and the two degenerate arms are reported
-as undecidable. Judged by a test that cannot be fooled by a value with no centre, the grid
+powered, \textbf{$\gridReject$ of the $\gridPowered$ reject the continuum after Holm
+correction} --- eight at the Monte-Carlo floor of $2.5\times10^{-4}$, the tenth
+unresolved --- and the two degenerate arms are reported as undecidable. Judged by a test that cannot be fooled by a value with no centre, the grid
 is present in every arm that could show it (method: supplementary material S31).
 \section{S32. The mechanism narrative in full (moved from the main text)}
-\noindent\textbf{The exponent is below one, so the stall distribution has neither a
-finite mean nor a finite variance.} That converts an observation into an explanation:
-cumulative scheduler counters --- means of occupancy and stall length --- moved by factors
-of two to five against a fortyfold change in the inversion rate, and with $\alpha < 1$
-that is not bad luck in the choice of counter, since the sample mean of such a distribution
-wanders with sample size rather than converging. An instrument built on averages is
-therefore
-\emph{structurally} unable to see this failure, not merely insensitive to it, and no amount of
-additional sampling repairs it. The standard practitioner diagnostic --- compare mean and
-median, investigate when they disagree --- is unavailable here for the same reason: with
-$\alpha < 1$ the mean half of that comparison estimates a quantity that does not exist.
 
-\emph{The exponent replicates, cross-checks, and has stated limits.} E-A10b repeats the
-sweep on a different day: $\alpha = 0.344$ against $0.339$ (agreement to $1.5\%$,
-$R^2 = 0.995$); the prefactor drifts ($0.238$ against $0.216$), the shape does not, and the
-shape carries the claim.
-Checked against the kernel trace --- different campaign, different instrument, no shared
-data --- the main text predicts $\Pr[\text{stall} > 0.5\,\text{ms}] = 0.301$ against
-the traced $0.181$, over-predicting by $1.66\times$
-($1.52\times$ on the replication), the expected direction since not every stall lands on a
-stamping instant. The limits, plainly: $\alpha$ is fitted, not derived, from four points per
-campaign at one load level; the residual factor of $1.6$ is unexplained; replication buys
-that the exponent is a property of the system, not a derivation of it.
+\paragraph{The payload-sweep fit, demoted here from the main text.} Over a $77\times$
+payload span, least squares of $\log \Pr$ on $\log T_{\mathrm{true}}$ over four payload
+levels gives
+\begin{equation}
+\Pr[\text{inversion}] = 0.238 \; T_{\mathrm{true}}^{-\tailExponent},
+\qquad R^2 = \tailRsq ,
+\label{eq:tailindex}
+\end{equation}
+with a Student-$t$ $95\%$ interval on the exponent of $\tailExponentCI$ at two degrees of
+freedom. E-A10b repeats the sweep on a different day and returns $0.344$ against $0.339$;
+the prefactor drifts ($0.238$ against $0.216$). Four points do not earn an equation in a
+main text, which is why this one is here.
+
+\paragraph{What we withdraw about it, and why.} Two claims previously made around
+Equation~\ref{eq:tailindex} do not survive, and both were withdrawn in the TC revision.
+
+The first is the infinite-moment reading --- ``the exponent is below one, so the stall
+distribution has neither a finite mean nor a finite variance''. A slope fitted to four
+application-level points over one decade of $T_{\mathrm{true}}$ does not license a
+statement about the moments of the underlying stall distribution, which is a different
+object measured over a different range. What we should have written, and now do, is the
+weaker and sufficient claim: over the decade that matters the survival declines so slowly
+that a mean-based counter is a poor instrument. That is enough to explain the observation
+it was invoked for --- cumulative scheduler counters moving by factors of two to five
+against a fortyfold change in the inversion rate --- without asserting that a moment fails
+to exist.
+
+The second is the traced cross-check. We reported that the per-wakeup survival's windowed
+log--log index, $0.332$ over $0.25$--$2$~ms, was ``indistinguishable'' from the fitted
+$\tailExponent$ and therefore confirmed it independently. It is not, and it does not.
+Estimated properly on the same histogram of $\tracedEvents$ wakeups
+(\texttt{scripts/tail\_index\_traced.py}), the exceedance index over $0.5$--$2$~ms is
+$\tracedExcAlpha$ ($\tracedExcCI$, Wilson on the nested counts) while grouped maximum
+likelihood over the same decade returns $\tracedMleAlpha$ ($\tracedMleCI$, profile
+likelihood). Two estimators of one quantity cannot differ sixfold unless the model is
+wrong, and it is: the per-octave indices over that window run $\tracedOctaveA$ and then
+$\tracedOctaveB$, where a power law would give the same value twice. The $0.332$ was
+ordinary least squares through four nested survival points, which returns a number whether
+or not the points lie on a line. The agreement with $\tailExponent$ was a coincidence of
+window and estimator, and we should not have offered it as a confirmation.
+
+The prediction check against the trace is unaffected and stands: the main text predicts
+$\Pr[\text{stall} > 0.5\,\text{ms}] = 0.301$ against the traced $0.181$, over-predicting by
+$1.66\times$ ($1.52\times$ on the replication), the expected direction since not every
+stall lands on a stamping instant. That comparison is between two probabilities, not
+between two fitted exponents, and it needs no power law to be meaningful.
 
 \paragraph{The confirmation is the one that manipulates the physics.} Payload moves
 $T_{\mathrm{true}}$, so it moves $\theta$'s grid position, and the main text
@@ -2170,9 +2171,13 @@ Table~\ref{tab:gatesens} applies the audit gate to the powered transport campaig
 bounds the selection the gate introduces (\texttt{powered\_gate\_sensitivity.py}); the
 condition-level threshold sweep behind the main text's Section~6.2 sentence is
 \texttt{first\_result\_threshold\_sweep.csv} (no first-result cell fully usable at any
-threshold up to $20\%$; best cell $23/30$); the traced survival slopes behind the main
-text's effective-exponent statement are \texttt{traced\_tail\_slope.csv} (windowed
-log--log index $0.332$ over $0.25$--$2$~ms, $4.128$ over $4$--$32$~ms).
+threshold up to $20\%$; best cell $23/30$); the traced survival slopes that used to back
+the main text's effective-exponent statement are \texttt{traced\_tail\_slope.csv} (windowed
+log--log index $0.332$ over $0.25$--$2$~ms, $4.128$ over $4$--$32$~ms). That last artefact
+is retained for the record but is \emph{superseded}: the slopes in it are least-squares fits
+through nested survival points with no interval, and S32 explains why they do not estimate
+what we claimed they estimated. The estimators that replace them are in
+\texttt{scripts/tail\_index\_traced.py}.
 
 \begin{table}[t]
 \caption{The audit gate applied to the powered transport campaigns. ``Flip $V^*$'' is the
@@ -2195,6 +2200,135 @@ replication & 12 & 39.8 & 0.4132 & 0.4157 & $+0.0025$ & 0.55 \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+
+
+\section{S35. How these results were reached: the chronology, and everything withdrawn}
+
+The main text is organised around what the evidence supports. This section holds what that
+reorganisation displaced: the order in which the work happened, every claim withdrawn, and
+the pre-registrations that failed. It is kept in full because an audit's credibility rests on
+its own failures being visible, and because a reader checking whether the corrections were
+real should not have to take the summary on trust.
+
+\subsection{S35.1. The answer we obtained first, and why it was wrong}
+\label{sec:attribution}
+
+The study began as a broker comparison on a live sports feed. The first complete result set
+was monotone in concurrency, significant after correction ($p = 9.0\times10^{-11}$), and had
+a tidy architectural story: a twentyfold end-to-end gap between the two brokers. It passed
+replicate counts, effect sizes, corrected significance and sanity plots.
+
+Two independent defects destroyed it. The sign check of the main text's consistency check rejected $862$ of the $1{,}382$ runs on that testbed, including every
+run behind the headline. Separately, the twentyfold gap itself was a per-run start-up cost
+read as a per-event constant: the median was taken over as few as seven events per run, and a
+deterministic per-run artefact reproduces across a hundred runs beautifully. The second
+defect is the more instructive one, because the run data were causally consistent throughout.
+Causal consistency is necessary, not sufficient.
+
+\subsection{S35.2. The claim about the benchmark that we withdrew}
+\label{sec:firstanswer}
+
+An earlier version of this work read the OpenMessaging Benchmark's discards as causality
+violations. They are not. The instrumented counter we had added could not distinguish sign,
+and separating it showed the Kafka-driver corpus's $\ombKafkaDiscarded$ discarded samples
+contain not one negative: they are resolution failures, samples whose true delivery was
+faster than the timestamp quantum. The refuting evidence had been in our own artefact from
+the day we committed it, in a field we had printed and not read. The same separated channel
+then caught $\ombRedisNegatives$ genuine negatives in the Redis-driver replication, which is
+the result the main text reports.
+
+We also called the mechanism behind those Redis-driver negatives a \emph{candidate} --- a
+sub-millisecond skew between two views of a virtualised clock --- and hedged it as such
+through the TC round-one draft. The hedge was unnecessary, and reading the driver removes
+it. \texttt{RedisBenchmarkConsumer.java} takes the publish timestamp from
+\texttt{entry.getID().getTime()}, the stream-entry identifier the Redis \emph{server}
+assigns on \texttt{XADD}, while the Kafka driver uses a producer-set stamp. The Redis span
+is therefore a difference between two millisecond-floored clocks on two hosts, for which
+$-1000\,\mu$s is the only negative value expressible; the Kafka span floors two stamps
+differenced inside one JVM, and never goes negative. The corpus matches both predictions
+exactly. Hedging a claim the source code settles is its own kind of imprecision, and the
+main text now states the mechanism.
+
+\subsection{S35.3. The causality framing, withdrawn in this version}
+
+Through version~2 this paper described its first failure mode as a causality violation, on the
+argument that an acknowledgement causally precedes a receipt. That argument is wrong, and a
+reader pointed it out. The broker's append precedes both the producer's receipt of the
+acknowledgement and the consumer's receipt of the record; those are two branches of one
+cause, and neither precedes the other. A negative difference between them is therefore
+possible without any physical impossibility, and is in fact routine when the producer's
+callback thread is descheduled.
+
+We settled the question on the corpus rather than by argument. Every archived run that joins
+producer and consumer events was recounted, span by span
+(\texttt{scripts/recount\_spans.py}, output committed as
+\texttt{docs/results/span\_recount.csv}). Over $\spanEvents$ events in $\spanRuns$ runs, the
+acknowledgement-referenced span is negative $\spanNegAck$ times and the send-referenced span
+is negative $\spanNegSend$ times. Nothing in the corpus arrived before it was sent.
+
+What changed as a result: the framing, the justification of the gate, and the claim that the
+failure is self-detecting. What did not change: the rejection counts, which are unaltered as
+numbers and now described as reference-stamp failures; and every manipulation result in the
+main text's mechanism section, which rests on moving scheduling and observing the
+rate move, not on what the negatives are called.
+
+\subsection{S35.4. The M/G/1 form, withdrawn}
+
+We adopted an M/G/1 waiting-time framing as a leading-order account of the stall, following
+its use for benchmark bias elsewhere, and pre-registered it as a hypothesis with a falsifier.
+Extended to the region where the candidate forms diverge ($\rho = 0.881$--$0.990$), the M/G/1
+form fitted \emph{worse than the mean}: $R^2 = -0.05$, against a fitted exponential's $0.93$.
+Our own registered bracket also missed, predicting $2.45$--$3.07\times$ growth against a
+measured $1.44\times$. Both candidates were parameterised in $\rho$, and the real-time-priority
+experiment shows $\rho$ is not the variable. The Pollaczek--Khinchine result remains the
+motivation for expecting a heavy waiting tail; it is not a fitted result here.
+
+\subsection{S35.5. The traced tail-index cross-check, withdrawn}
+
+Referee review of the TC submission asked for the traced tail index to be estimated with an
+interval rather than eyeballed from a slope. Doing so refuted the cross-check it was meant
+to strengthen, and the claim is withdrawn; S32 gives the numbers and the argument. In
+summary: two proper estimators on the same histogram disagree sixfold because the survival
+is not a power law over the window we quoted, and the agreement we reported between the
+traced index and the payload-sweep exponent was a coincidence of window and estimator. The
+payload-sweep fit itself is unchanged and is now reported in S32 rather than in the main
+text, since four points do not earn an equation there. The mechanism results are untouched:
+none of them rests on the value of an exponent, only on the direction the rate moves when
+$T_{\mathrm{true}}$ moves, which is measured and monotone.
+
+This is the third occasion on which a number in this work survived internal review and
+failed the first time it was estimated with an interval attached. We record that pattern
+because it is the argument of the paper turned on its author: a statistic that carries no
+uncertainty is not yet a measurement.
+
+\subsection{S35.6. Pre-registration outcomes}
+
+Six predictions were registered with falsifiers before the comprehensive campaign. One was
+confirmed (the payload flip, the main text's payload-flip figure); three falsifiers fired;
+one was not evaluable once smeared arms appeared, because the branch-count statistic it
+relied on has no value on a continuum; and one split. The jitter-kernel conjecture advanced
+after that campaign was killed by a subsequent alternation test. The plateau observation at
+$1053$ and $1219$~msg/s refuted the linear extrapolation that one registered prediction had
+assumed.
+
+\subsection{S35.7. A gap in our own provenance}
+\label{sec:rateprovenance}
+
+For part of the campaign the achieved send rate was recorded from the configuration flag
+rather than measured against elapsed wall time, and for a subset of runs the two disagreed.
+The affected conditions were re-derived from per-event timestamps and the ledger corrected;
+the incident is the reason rule~(10) of the main text's checklist exists in the form it does.
+It is also the reason the main text reports measured pacer jitter rather than a configured
+rate.
+
+\subsection{S35.8. The distributed-mode gap}
+\label{sec:extdist}
+
+The OpenMessaging Benchmark's distributed mode failed to complete a run on every attempt we
+made, across two release versions. The cross-host exposure of that particular tool therefore
+rests on reading its source together with our own two-host harness, not on running the tool
+itself cross-host. Diagnostics are in the upstream issue draft accompanying this artefact.
 
 
 \end{document}

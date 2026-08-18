@@ -831,15 +831,17 @@ data [10.5281/zenodo.21836326](https://doi.org/10.5281/zenodo.21836326)).
 
 ## 12. Manuscript & Paper Preparation
 
-The paper targets **IEEE TPDS** using the IEEE `IEEEtran` class (`journal`, 10pt). The earlier
-SAGE / Journal of Sports Analytics and ACM TOMPECS framings were retired; see the header for why.
-TPDS enforces a hard page ceiling, so the manuscript is held at exactly 16 pages by a test gate
-and the overflow lives in a companion supplement compiled from the same commit.
+The paper targets **IEEE Transactions on Computers** using the IEEE `IEEEtran` class
+(`journal`, 10pt). The earlier SAGE / Journal of Sports Analytics, ACM TOMPECS and IEEE TPDS
+framings were retired; see the header for why. TC allows regular papers 10-12 double-column
+pages *including references and biography*, and caps references at 45, so the manuscript is
+held inside that budget by test gates and the overflow lives in a companion supplement
+compiled from the same commit.
 
 | Asset | Purpose |
 |-------|---------|
 | `paper.tex` | The paper (`IEEEtran`, journal; Intro, Related Work, Setting, Method, First Answer, Audit, Second Failure Mode, What Survives, Discussion, Conclusion) |
-| `supplement.tex` | Companion supplement S1–S34 (`docs/supplement_index.md` maps what moved where) |
+| `supplement.tex` | Companion supplement S1–S35 (`docs/supplement_index.md` maps what moved where) |
 | `manuscript_references.bib` | Bibliography |
 | `IEEEtran.cls` | IEEE article class (from TeX Live/MiKTeX) |
 
@@ -859,12 +861,20 @@ reports no error, the source still looks plausible, and the defect appears only 
 That failure reached the manuscript three times here, twice past a full source-level check, which
 is why the check now runs on the artefact a reader actually receives.
 
-**Status:** compiles clean — 0 errors, 0 undefined references or citations, exactly 16 pages (the
-TPDS ceiling, test-enforced), with a 39-page supplement. One known overfull box remains: Table I
-(`tab:mechanism`) is 12.34pt wider than the column, which does not visibly break the rendered
-page but is not zero and is recorded here rather than rounded away. Title: *When the Interval Is
-Smaller Than the Instrument: Two Ways Streaming Latency Benchmarks Fail on Sub-Millisecond
-Paths*. Formatted with `IEEEtran` (journal, 10pt) for IEEE TPDS.
+**Status:** compiles clean — 0 errors, 0 undefined references or citations, 0 overfull boxes,
+10 pages against TC's 10–12 budget, exactly 45 references against TC's cap of 45, and a
+188–200 word abstract against TC's 100–200 range, with a 41-page supplement. Title: *When the
+Interval Is Smaller Than the Instrument: Two Ways Streaming Latency Benchmarks Fail on
+Sub-Millisecond Paths*. Formatted with `IEEEtran` (journal, 10pt) for IEEE Transactions on
+Computers.
+
+Two of the four gates write as well as check. `scripts/emit_paper_numbers.py` generates both
+`docs/generated/paper_numbers.tex` (the macros the manuscript quotes) and
+`docs/generated/grid_table.tex` (Table II in full), and `--check` fails the build if either
+disagrees with the artefacts. The table is generated because the transcribed version drifted
+from the correction its own caption claimed: it printed raw permutation p-values under a
+caption promising Holm correction, and one arm changed verdict between the two. A number that
+reaches the page without passing through a script is the one that goes wrong.
 
 **Every headline number is pinned to its artefact** by
 `tests/unit/test_paper_consistency.py`, which recomputes the figures from the committed

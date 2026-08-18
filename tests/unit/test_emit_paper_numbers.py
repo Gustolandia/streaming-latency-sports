@@ -17,6 +17,7 @@ import pytest
 SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
+import emit_paper_numbers as epn  # noqa: E402
 from emit_paper_numbers import (  # noqa: E402
     HEADER, latex_thousands, macros, main, render,
 )
@@ -121,42 +122,47 @@ class TestRender:
 class TestCLI:
     def test_it_writes_the_file_and_lists_what_it_wrote(self, tmp_path, capsys):
         led, out = tmp_path / "l.csv", tmp_path / "gen" / "n.tex"
+        tbl = tmp_path / "gen" / "t.tex"
         write_ledger(led, [("load_sweep", 10, 90, 0)])
-        assert main(["--ledger", str(led), "--out", str(out)]) == 0
+        assert main(["--ledger", str(led), "--out", str(out), "--table", str(tbl)]) == 0
         assert "\\newcommand{\\ombRuns}{1}" in out.read_text(encoding="utf-8")
         assert "ombRuns" in capsys.readouterr().out
 
     def test_it_creates_the_parent_directory(self, tmp_path):
         led, out = tmp_path / "l.csv", tmp_path / "a" / "b" / "c" / "n.tex"
+        tbl = tmp_path / "a" / "b" / "c" / "t.tex"
         write_ledger(led, [("load_sweep", 10, 90, 0)])
-        assert main(["--ledger", str(led), "--out", str(out)]) == 0
+        assert main(["--ledger", str(led), "--out", str(out), "--table", str(tbl)]) == 0
         assert out.exists()
 
     def test_check_passes_on_a_current_file(self, tmp_path, capsys):
         led, out = tmp_path / "l.csv", tmp_path / "n.tex"
+        tbl = tmp_path / "t.tex"
         write_ledger(led, [("load_sweep", 10, 90, 0)])
-        main(["--ledger", str(led), "--out", str(out)])
-        assert main(["--ledger", str(led), "--out", str(out), "--check"]) == 0
-        assert "matches the ledger" in capsys.readouterr().out
+        main(["--ledger", str(led), "--out", str(out), "--table", str(tbl)])
+        assert main(["--ledger", str(led), "--out", str(out), "--table", str(tbl), "--check"]) == 0
+        assert "match the artefacts" in capsys.readouterr().out
 
     def test_check_fails_once_the_ledger_moves(self, tmp_path, capsys):
         """The whole point: this is what catches a campaign landing after the last build."""
         led, out = tmp_path / "l.csv", tmp_path / "n.tex"
+        tbl = tmp_path / "t.tex"
         write_ledger(led, [("load_sweep", 10, 90, 0)])
-        main(["--ledger", str(led), "--out", str(out)])
+        main(["--ledger", str(led), "--out", str(out), "--table", str(tbl)])
         write_ledger(led, [("load_sweep", 10, 90, 0), ("load_sweep", 20, 80, 0)])
-        assert main(["--ledger", str(led), "--out", str(out), "--check"]) == 1
+        assert main(["--ledger", str(led), "--out", str(out), "--table", str(tbl), "--check"]) == 1
         out_txt = capsys.readouterr().out
         assert "STALE" in out_txt and "regenerate with" in out_txt
 
     def test_check_writes_nothing(self, tmp_path):
         """A check that repaired the file would always pass and never report anything."""
         led, out = tmp_path / "l.csv", tmp_path / "n.tex"
+        tbl = tmp_path / "t.tex"
         write_ledger(led, [("load_sweep", 10, 90, 0)])
-        main(["--ledger", str(led), "--out", str(out)])
+        main(["--ledger", str(led), "--out", str(out), "--table", str(tbl)])
         before = out.read_text(encoding="utf-8")
         write_ledger(led, [("load_sweep", 10, 90, 0), ("load_sweep", 20, 80, 0)])
-        main(["--ledger", str(led), "--out", str(out), "--check"])
+        main(["--ledger", str(led), "--out", str(out), "--table", str(tbl), "--check"])
         assert out.read_text(encoding="utf-8") == before
 
     def test_check_on_a_file_that_does_not_exist_says_how_to_make_it(self, tmp_path, capsys):
@@ -168,12 +174,13 @@ class TestCLI:
     def test_crlf_in_the_committed_file_is_not_a_difference(self, tmp_path):
         """The working tree is CRLF on Windows; that must not read as a stale file."""
         led, out = tmp_path / "l.csv", tmp_path / "n.tex"
+        tbl = tmp_path / "t.tex"
         write_ledger(led, [("load_sweep", 10, 90, 0)])
-        main(["--ledger", str(led), "--out", str(out)])
+        main(["--ledger", str(led), "--out", str(out), "--table", str(tbl)])
         body = out.read_text(encoding="utf-8")
         with out.open("w", encoding="utf-8", newline="") as fh:
             fh.write(body.replace("\n", "\r\n"))
-        assert main(["--ledger", str(led), "--out", str(out), "--check"]) == 0
+        assert main(["--ledger", str(led), "--out", str(out), "--table", str(tbl), "--check"]) == 0
 
     def test_a_bare_filename_needs_no_parent_directory(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -217,3 +224,97 @@ class TestAgainstTheRealLedger:
         assert "\\input{docs/generated/paper_numbers}" in src
         for name in ("ombRuns", "ombDiscarded"):
             assert ("\\" + name) in src, "%s is emitted but the manuscript ignores it" % name
+
+
+class TestTheRefereeDrivenMacroGroups:
+    """The macro groups added for the TC revision.
+
+    Each exists because a number reached the page without passing through this script and
+    turned out to be wrong: the grid table printed uncorrected p-values under a caption
+    claiming correction, the retention sentence quoted a denominator no artefact contained,
+    and the traced tail index was a slope with no interval. The behaviour under a missing
+    artefact matters as much as the happy path, because a group that silently returns
+    nothing leaves an undefined macro in the manuscript, and the build must fail loudly
+    rather than typeset the macro name.
+    """
+
+    def test_grid_macros_report_the_corrected_count(self):
+        got = dict(epn.grid_macros())
+        assert got["gridArms"] == "12"
+        assert got["gridPowered"] == "10"
+        assert got["gridReject"] == "9"
+        assert got["gridUnresolvedRate"] == "900"
+        assert float(got["gridUnresolvedRaw"]) < 0.05 < float(got["gridUnresolvedHolm"])
+
+    def test_the_generated_table_prints_corrected_values_only(self):
+        body = epn.render_grid_table()
+        assert r"p_{\mathrm{Holm}}" in body, "the column must say which p it shows"
+        assert "0.044" not in body, "the raw value must not survive into the table"
+        assert "not resolved" in body, "the unresolved arm must be labelled as such"
+        assert body.count(r"\\") == 13, "twelve arms plus the header row"
+
+    def test_retention_macros_supply_the_denominator_the_text_lost(self):
+        got = dict(epn.retention_macros())
+        assert got["ombMedianCells"] == "75"
+        assert got["ombGridMedianCells"] == "71"
+        assert got["ombRetentionFold"] == "279"
+
+    def test_traced_macros_carry_intervals_not_bare_points(self):
+        got = dict(epn.traced_macros())
+        assert "$--$" in got["tracedExcCI"] and "$--$" in got["tracedMleCI"]
+        assert float(got["tracedMleAlpha"]) > float(got["tracedExcAlpha"])
+
+    def test_tost_macros_print_the_result_the_text_asserted(self):
+        got = dict(epn.tost_macros())
+        assert got["tostMargin"] == "1"
+        assert "$--$" in got["tostHLCI"]
+
+    def test_tost_macros_are_absent_when_the_artefact_is(self, tmp_path):
+        assert epn.tost_macros(str(tmp_path / "nope.csv")) == []
+
+    def test_tost_macros_are_absent_when_the_artefact_is_headers_only(self, tmp_path):
+        p = tmp_path / "t.csv"
+        p.write_text("n,margin,hl_shift,hl_ci90_lo,hl_ci90_hi\n", encoding="utf-8")
+        assert epn.tost_macros(str(p)) == []
+
+    @pytest.mark.parametrize("group", ["grid_macros", "retention_macros", "traced_macros"])
+    def test_each_group_degrades_to_empty_when_its_artefact_is_unreadable(self, group,
+                                                                          monkeypatch):
+        """A checkout without the results tree still emits the campaign numbers. The
+        manuscript's own consistency tests are what forbid quoting a macro that then does
+        not exist."""
+        import stat_intervals
+        import tail_index_traced
+        for mod, name in ((stat_intervals, "grid_cells"),
+                          (stat_intervals, "retention_cells"),
+                          (tail_index_traced, "report")):
+            monkeypatch.setattr(mod, name, lambda *a, **k: (_ for _ in ()).throw(OSError))
+        assert getattr(epn, group)() == []
+
+    def test_traced_macros_are_empty_when_the_named_histogram_is_absent(self, monkeypatch):
+        import tail_index_traced
+        monkeypatch.setattr(tail_index_traced, "report", lambda *a, **k: [])
+        assert epn.traced_macros() == []
+
+    def test_grid_macros_omit_the_unresolved_names_when_every_arm_resolves(self, monkeypatch):
+        import stat_intervals
+        monkeypatch.setattr(stat_intervals, "grid_cells", lambda *a, **k: [
+            {"rate_hz": 1, "p": 1, "q": 1, "n": 5, "d_observed": 0.1, "d_null": 0.4,
+             "p_raw": 0.001, "p_holm": 0.003, "powered": True, "verdict": "grid"}])
+        got = dict(epn.grid_macros())
+        assert got["gridReject"] == "1"
+        assert "gridUnresolvedRate" not in got
+        assert "gridFlatRates" not in got, "no flat arms means no flat-arm macro"
+
+    def test_retention_macros_are_empty_when_no_cell_reports_a_grid_median(self, monkeypatch):
+        import stat_intervals
+        monkeypatch.setattr(stat_intervals, "retention_cells", lambda *a, **k: [
+            {"campaign": "x", "cell": "y", "retention_pct": 50.0, "p50_ms": 235.0,
+             "pub_p50_ms": 0.3, "kept": 10}])
+        assert epn.retention_macros() == []
+
+    def test_every_macro_the_manuscript_inputs_is_uniquely_named(self):
+        from check_paper_omb_numbers import load_cells, measured
+        cells = load_cells("docs/results/external_campaigns_index.csv")
+        names = [n for n, _ in epn.all_pairs(measured(cells))]
+        assert len(names) == len(set(names)), "a duplicate \newcommand would fail the build"

@@ -1,9 +1,9 @@
-@article{kreps2011kafka,
-  title={Kafka: a distributed messaging system for log processing},
-  author={Kreps, Jay and Narkhede, Neha and Rao, Jun},
-  journal={Proceedings of the 6th ACM Symposium on Networked Systems Design and Implementation},
-  year={2011},
-  publisher={ACM}
+@inproceedings{kreps2011kafka,
+  title     = {Kafka: a Distributed Messaging System for Log Processing},
+  author    = {Kreps, Jay and Narkhede, Neha and Rao, Jun},
+  booktitle = {Proc.\ 6th Int. Workshop on Networking Meets Databases (NetDB)},
+  year      = {2011},
+  pages     = {1--7}
 }
 
 @article{redis2017streams,
@@ -128,7 +128,7 @@
   title={The {OpenMessaging} Benchmark Framework},
   author={{OpenMessaging Project, Linux Foundation}},
   year={2018},
-  note={Available at openmessaging.cloud/docs/benchmarks/}
+  note={Available at openmessaging.cloud/docs/benchmarks/; accessed 19 August 2026}
 }
 
 % ---------------------------------------------------------------------------
@@ -333,10 +333,11 @@
   title     = {The {L}inux Scheduler: a Decade of Wasted Cores},
   author    = {Lozi, Jean-Pierre and Lepers, Baptiste and Funston, Justin and
                Gaud, Fabien and Qu{\'e}ma, Vivien and Fedorova, Alexandra},
-  booktitle = {Proc.\ 11th ACM EuroSys},
+  booktitle = {Proc.\ 11th European Conf. Computer Systems (EuroSys)},
   year      = {2016},
+  pages     = {1--16},
   doi       = {10.1145/2901318.2901326},
-  publisher={ACM},
+  publisher = {ACM}
 }
 
 % ---------------------------------------------------------------------------
@@ -591,4 +592,220 @@
   title  = {How Precision Time Protocol Is Being Deployed at {Meta}},
   howpublished = {Meta Engineering Blog},
   year   = {2022}
+}
+
+@inproceedings{kuperberg2009timermeter,
+  author    = {Kuperberg, Michael and Krogmann, Martin and Reussner, Ralf H.},
+  title     = {{TimerMeter}: Quantifying Properties of Software Timers for System Analysis},
+  booktitle = {Proc. 6th Int. Conf. Quantitative Evaluation of Systems (QEST)},
+  pages     = {85--94},
+  year      = {2009}
+}
+
+@article{bristot2025timerlat,
+  author  = {Bristot de Oliveira, Daniel and Casini, Daniel and Lelli, Juri and Cucinotta, Tommaso},
+  title   = {Timerlat: Real-Time {Linux} Scheduling Latency Measurements, Tracing, and Analysis},
+  journal = {IEEE Trans. Comput.},
+  volume  = {74},
+  number  = {8},
+  pages   = {2608--2620},
+  year    = {2025}
+}
+
+@inproceedings{kogias2019lancet,
+  author    = {Kogias, Marios and Mallon, Stephen and Bugnion, Edouard},
+  title     = {{Lancet}: A Self-Correcting Latency Measuring Tool},
+  booktitle = {Proc. USENIX Annual Technical Conf. (ATC)},
+  pages     = {881--896},
+  year      = {2019}
+}
+
+@incollection{kundel2024p4sta,
+  author    = {Kundel, Ralf},
+  title     = {{P4STA}: High Precision Network Function Benchmarking},
+  booktitle = {Accelerating Network Functions Using Reconfigurable Hardware},
+  publisher = {Springer},
+  pages     = {93--115},
+  year      = {2024}
+}
+
+@misc{openmessaging_pr56,
+  author       = {Guo, Sijie},
+  title        = {Avoid adding negative metric values (pull request \#56)},
+  howpublished = {OpenMessaging Benchmark, commit ebb5d6b8},
+  month        = mar,
+  year         = {2018},
+  note         = {\url{https://github.com/openmessaging/benchmark/pull/56}; accessed 18 August 2026}
+}
+
+@inproceedings{kuperberg2011timers,
+  author    = {Kuperberg, Michael and Krogmann, Martin and Reussner, Ralf H.},
+  title     = {Metric-based Selection of Timer Methods for Accurate Measurements},
+  booktitle = {Proceedings of the 2nd ACM/SPEC International Conference on Performance Engineering (ICPE)},
+  pages     = {151--162},
+  month     = mar,
+  year      = {2011}
+}
+
+@article{danzig1990highres,
+  author  = {Danzig, Peter B. and Melvin, Stephen},
+  title   = {High Resolution Timing with Low Resolution Clocks and a Microsecond Resolution Timer for Sun Workstations},
+  journal = {ACM SIGOPS Operating Systems Review},
+  volume  = {24},
+  number  = {1},
+  pages   = {23--26},
+  month   = jan,
+  year    = {1990}
+}
+
+@techreport{rfc2330,
+  author      = {Paxson, Vern and Almes, Guy and Mahdavi, Jamshid and Mathis, Matt},
+  title       = {Framework for {IP} Performance Metrics},
+  institution = {Internet Engineering Task Force},
+  type        = {RFC},
+  number      = {2330},
+  month       = may,
+  year        = {1998}
+}
+
+@techreport{rfc2679,
+  author      = {Almes, Guy and Kalidindi, Sunil and Zekauskas, Matthew},
+  title       = {A One-way Delay Metric for {IPPM}},
+  institution = {Internet Engineering Task Force},
+  type        = {RFC},
+  number      = {2679},
+  month       = sep,
+  year        = {1999}
+}
+
+@misc{tene2013omission,
+  author       = {Tene, Gil},
+  title        = {On coordinated omission},
+  howpublished = {mechanical-sympathy mailing list},
+  month        = aug,
+  year         = {2013},
+  note         = {\url{https://groups.google.com/g/mechanical-sympathy/c/icNZJejUHfE}; accessed 18 August 2026}
+}
+
+@misc{ycsb_issue41,
+  author       = {Wied, Michael},
+  title        = {Sub-millisecond latencies are reported as taking 0 milliseconds (issue \#41)},
+  howpublished = {Yahoo! Cloud Serving Benchmark},
+  month        = oct,
+  year         = {2011},
+  note         = {\url{https://github.com/brianfrankcooper/YCSB/issues/41}; fixed in 0.2.0 by adopting microsecond histograms}
+}
+
+% ---------------------------------------------------------------------------
+% Added for the TC revision, in answer to the referee's prior-art report.
+% Each entry was verified against the primary source, not a secondary listing.
+% ---------------------------------------------------------------------------
+
+@inproceedings{villain2012probing,
+  author    = {Villain, Benjamin and Davis, Matthew and Ridoux, Julien and
+               Veitch, Darryl and Normand, Nicolas},
+  title     = {Probing the Latencies of Software Timestamping},
+  booktitle = {Proc. IEEE Int. Symp. Precision Clock Synchronization for
+               Measurement, Control and Communication (ISPCS)},
+  year      = {2012},
+  pages     = {1--6},
+  note      = {DTrace breakdown against a DAG hardware reference; reports
+               software stamps that ``do not respect causality'' under load}
+}
+
+@inproceedings{hoefler2015benchmarking,
+  author    = {Hoefler, Torsten and Belli, Roberto},
+  title     = {Scientific Benchmarking of Parallel Computing Systems: Twelve
+               Ways to Tell the Masses When Reporting Performance Results},
+  booktitle = {Proc. Int. Conf. High Performance Computing, Networking, Storage
+               and Analysis (SC)},
+  year      = {2015},
+  publisher = {ACM},
+  pages     = {73:1--73:12}
+}
+
+@techreport{nist2009stopwatch,
+  author      = {Gust, Jeff C. and Graham, Robert M. and Lombardi, Michael A.},
+  title       = {Stopwatch and Timer Calibrations (2009 Edition)},
+  institution = {National Institute of Standards and Technology},
+  type        = {NIST Special Publication},
+  number      = {960-12},
+  year        = {2009},
+  note        = {Uncertainty budget carrying both operator reaction time and
+                 display resolution; resolution dominates for short intervals}
+}
+
+@book{gregg2019bpf,
+  author    = {Gregg, Brendan},
+  title     = {BPF Performance Tools: Linux System and Application
+               Observability},
+  publisher = {Addison-Wesley},
+  year      = {2019},
+  note      = {\texttt{runqlat}, the run-queue latency histogram used here}
+}
+
+@techreport{rfc3432,
+  author      = {Raisanen, Vilho and Grotefeld, Glenn and Morton, Al},
+  title       = {Network Performance Measurement with Periodic Streams},
+  institution = {Internet Engineering Task Force},
+  type        = {RFC},
+  number      = {3432},
+  year        = {2002},
+  month       = nov,
+  note        = {Mandates a randomised start so a periodic stream does not
+                 synchronise with other periodic behaviour}
+}
+
+@inproceedings{mccanne1993randomized,
+  author    = {McCanne, Steven and Torek, Chris},
+  title     = {A Randomized Sampling Clock for {CPU} Utilization Estimation and
+               Code Profiling},
+  booktitle = {Proc. USENIX Winter Technical Conf.},
+  year      = {1993},
+  pages     = {387--394}
+}
+
+@techreport{rfc7679,
+  author      = {Almes, Guy and Kalidindi, Sunil and Zekauskas, Matthew and
+                 Morton, Al},
+  title       = {A One-Way Delay Metric for {IPPM}},
+  institution = {Internet Engineering Task Force},
+  type        = {RFC},
+  number      = {7679},
+  year        = {2016},
+  month       = jan,
+  note        = {Obsoletes RFC 2679. Section 3.5 keeps negative values as
+                 distribution data rather than discarding them}
+}
+
+@misc{omb_pr398,
+  author       = {Downs, Travis},
+  title        = {Grow buffer if histogram can't fit (pull request \#398)},
+  howpublished = {OpenMessaging Benchmark, commit 4eb2327c},
+  year         = {2023},
+  month        = dec,
+  note         = {Fixes issue \#369: truncated histogram serialisation silently
+                 discarded most latency samples. \url{https://github.com/openmessaging/benchmark/pull/398};
+                 accessed 19 August 2026}
+}
+
+@misc{omb_redis_driver,
+  author       = {{OpenMessaging Project}},
+  title        = {\texttt{RedisBenchmarkConsumer.java}, line 72},
+  howpublished = {OpenMessaging Benchmark, \texttt{driver-redis}},
+  year         = {2026},
+  note         = {Takes the publish timestamp from
+                  \texttt{entry.getID().getTime()}, the Redis server's
+                  stream-entry clock, not the producer's.
+                  \url{https://github.com/openmessaging/benchmark};
+                  accessed 19 August 2026}
+}
+
+@article{swami2026prereg,
+  author  = {Swami, Aditya and Sonawane, Nikhil},
+  title   = {Wire-Level Interrupt-to-Decision Latency in Edge Inference: A
+             Pre-Registered Measurement Study},
+  journal = {arXiv preprint arXiv:2606.00524},
+  year    = {2026},
+  month   = may
 }

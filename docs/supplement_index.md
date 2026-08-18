@@ -70,3 +70,42 @@ sensitivity artefacts: the audit gate applied to the powered transport campaigns
 sweep (`first_result_threshold_sweep.csv`), and the traced survival slopes
 (`traced_tail_slope.csv`). The powered-transport S5/S6 tables now carry the **gated**
 numbers; the ungated originals remain in the artefact tree as the historical record.
+
+## TC referee round (2026-08-19)
+
+The submission was retargeted to IEEE Transactions on Computers and then reviewed against
+that journal's standards. Ten items were raised; the ones that moved material are recorded
+here so the provenance chain stays unbroken.
+
+**Into the supplement.**
+
+- **S32** gained the four-point payload-sweep fit (`eq:tailindex`, the effective exponent
+  with its Student-*t* interval), demoted out of the main text. Four points do not earn a
+  displayed equation in a 10-page journal article; the direction of the effect, which is
+  what the mechanism argument uses, stays in the main text.
+- **S32** also gained the two withdrawals attached to that fit. The infinite-moment reading
+  ("alpha below one, so no finite mean") is withdrawn: a slope through four
+  application-level points does not license a statement about the moments of the stall
+  distribution. The traced cross-check is withdrawn: re-estimated properly on the same
+  histogram, an exceedance index and a grouped-likelihood index differ sixfold because the
+  survival is not a power law over that window, and the previously quoted agreement was a
+  coincidence of window and estimator.
+- **S35.5** (new) records that withdrawal in the chronology. The subsections that followed
+  renumbered by one (provenance gap 35.6 → 35.7, distributed mode 35.7 → 35.8).
+- **S35.2** gained the Redis-driver mechanism. The negatives were previously hedged as a
+  "candidate" clock artefact; the driver settles it, and the hedge is gone.
+- **S34** now marks `traced_tail_slope.csv` as *superseded* rather than as supporting
+  evidence, and names the script that replaces it.
+
+**Corrected in place.**
+
+- **S31**'s grid-membership counts now come from the corrected p-values. One arm (900 msg/s)
+  had been counted as a rejection under a caption claiming Holm correction; corrected, it
+  does not reject, and it is now reported as unresolved. The main-text table is generated
+  from the artefact (`docs/generated/grid_table.tex`) so the two cannot diverge again.
+- Four doubled cross-references left by an earlier neutralisation pass ("the main text's the
+  main text's ...") were repaired.
+
+**Format.** The document class gained `nonacm`. The supplement had been carrying
+"Manuscript submitted to ACM" on all forty pages while being submitted to an IEEE journal,
+which is not a rule violation but is exactly what a Computer Society prescreener looks for.

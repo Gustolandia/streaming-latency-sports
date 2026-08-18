@@ -170,7 +170,7 @@ time, only a causal partial order, and that order matters here in a way this wor
 right only in the present version: an acknowledgement received by the producer and a record
 received by the consumer are two branches descending from the broker's append, so neither
 precedes the other. The engineering problem of agreeing clocks is well
-known~\cite{mills1991ntp,ieee1588,geng2018huygens}, and instruments built to beat it exist.
+known~\cite{ieee1588,geng2018huygens}, and instruments built to beat it exist.
 Cloudprofiler~\cite{yang2022cloudprofiler} calibrates cross-node counters to
 ${\sim}92\,\mu$s precisely because millisecond synchronisation is too coarse for streaming
 engines; Lancet~\cite{kogias2019lancet} uses NIC timestamps, verifies statistically that
@@ -322,7 +322,7 @@ declining.
 \label{sec:model}
 Every timestamp is taken some interval after the physical event it claims to mark, because
 the thread that reads the clock must first be scheduled. This is not the cost of the clock
-call, which is small and separately measurable~\cite{kuperberg2011timers}; it is the
+call, which is small and separately measurable~\cite{kuperberg2009timermeter}; it is the
 delay before the call runs at all. Writing $\delta$ for those stamping delays,
 \begin{equation}
 T_{\mathrm{measured}} = T_{\mathrm{true}} + \Delta ,

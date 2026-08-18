@@ -109,3 +109,26 @@ here so the provenance chain stays unbroken.
 **Format.** The document class gained `nonacm`. The supplement had been carrying
 "Manuscript submitted to ACM" on all forty pages while being submitted to an IEEE journal,
 which is not a rule violation but is exactly what a Computer Society prescreener looks for.
+
+## Internal review round 2 (2026-08-19)
+
+Nineteen items (R1–R19). Those that moved or relabelled supplement material:
+
+- **S32** gained the reinterpretation that replaced the withdrawn tail index. The traced
+  histogram is not heavy-tailed and not merely "not a power law": it is multi-modal, with a
+  mode at 2–4 ms carrying about a tenth of all wakeups and a *light* tail (α ≈ 2) beyond it.
+  The mode sits at the EEVDF base slice for an eight-vCPU instance, which makes it the
+  two-state model's preempted state observed directly. A bootstrap goodness-of-fit
+  (p < 0.0004 over 2,500 replicates) replaces "two estimators disagree" as the evidence
+  that the power law is wrong.
+- **Every review-history label was relabelled.** Nine sections read "TPDS round 1" and three
+  passages referred to "the TC submission" or "the TC revision". Read cold, that implies
+  the manuscript was reviewed at two journals. It has been reviewed at none: those were
+  adversarial reviews conducted inside the project before submission. The front matter now
+  says so explicitly, and the labels read "internal review, round N".
+- **S31** and the S35 chronology are unchanged in substance; only the round labels moved.
+- The dither lineage in S18 gained McCanne & Torek, cut from the main text to hold the
+  45-reference cap.
+
+Nothing was moved *into* the supplement in this round. The four-point payload fit stays in
+S32 where round 1 put it.

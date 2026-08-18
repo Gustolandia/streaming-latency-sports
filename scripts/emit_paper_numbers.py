@@ -75,6 +75,7 @@ def macros(m):
     ]
     if m["retention_min"] is not None:
         out.append(("ombRetentionMin", "%.2f" % m["retention_min"]))
+        out.append(("ombRetentionMinExact", "%.4f" % m["retention_min"]))
     if m["retention_max"] is not None:
         out.append(("ombRetentionMax", "%.2f" % m["retention_max"]))
     return out
@@ -284,6 +285,28 @@ def traced_macros():
             ("tracedOctaveA", "%.2f" % r["octaves"][0][1]),
             ("tracedOctaveB", "%.2f" % r["octaves"][1][1]),
         ]
+    top = [m for m in r.get("modes", []) if m[0] >= 1024]
+    if top:
+        lo, _, share, ratio = max(top, key=lambda m: m[1])
+        out += [
+            ("tracedModeLo", "%.0f" % (lo / 1024.0)),
+            ("tracedModeHi", "%.0f" % (2 * lo / 1024.0)),
+            ("tracedModeShare", "%.1f" % (100 * share)),
+            ("tracedModeRatio", "%.1f" % ratio),
+            ("tracedModes", str(len(r.get("modes", [])))),
+        ]
+    if "tail_alpha" in r:
+        out += [
+            ("tracedTailAlpha", "%.2f" % r["tail_alpha"]),
+            ("tracedTailCI", "%.2f$--$%.2f" % (r["tail_lo"], r["tail_hi"])),
+            ("tracedTailFrom", "%.0f" % (r["tail_from_us"] / 1024.0)),
+        ]
+    if "gof_p" in r and r["gof_boot"]:
+        out += [
+            ("tracedGofP", ("<%.4f" % (1.0 / r["gof_boot"])) if r["gof_p"] == 0
+             else "%.3f" % r["gof_p"]),
+            ("tracedGofBoot", latex_thousands(r["gof_boot"])),
+        ]
     return out
 
 
@@ -313,9 +336,56 @@ def tost_macros(path=os.path.join("docs", "results", "transport_rt",
     ]
 
 
+def mechanism_macros():
+    """Quantities the manuscript stated in words that the artefacts state as numbers.
+
+    Each of these was quoted wrongly at least once: the harness totals as a round "1.5
+    million" that matches neither topology; the inversion ceiling as a claim about how many
+    threads are unpreempted; the idle-to-knee growth as "mass beyond one millisecond" when
+    the artefact holds an inversion rate; and the tracer's own effect not at all.
+    """
+    try:
+        import stat_intervals
+    except ImportError:  # pragma: no cover - ships beside this file
+        return []
+    out = []
+    try:
+        h = stat_intervals.harness_cells()
+        for key, name in (("one_clock", "OneClock"), ("cross_host", "CrossHost")):
+            if key in h:
+                out += [("harness%sSamples" % name, latex_thousands(h[key]["sent"])),
+                        ("harness%sNegatives" % name, latex_thousands(h[key]["negatives"])),
+                        ("harness%sRuns" % name, str(h[key]["runs"]))]
+    except (OSError, KeyError, ValueError):
+        pass
+    try:
+        b = stat_intervals.occupancy_bounds()
+        if "ceiling" in b:
+            out.append(("invCeiling", "%.2f" % b["ceiling"]))
+    except (OSError, KeyError, ValueError):
+        pass
+    try:
+        g = stat_intervals.load_growth()
+        if g:
+            out += [("coreGrowth", "%.0f" % g["core_growth"]),
+                    ("invGrowth", "%.0f" % g["inv_growth"])]
+    except (OSError, KeyError, ValueError):
+        pass
+    try:
+        o = stat_intervals.observer_effect()
+        if o:
+            out += [("untracedRate", "%.3f" % o["untraced"]),
+                    ("tracedRate", "%.3f" % o["traced"]),
+                    ("observerZ", "%.1f" % o["z"])]
+    except (OSError, KeyError, ValueError):
+        pass
+    return out
+
+
 def all_pairs(m):
     return (list(macros(m)) + span_macros() + stat_macros() + grid_macros()
-            + retention_macros() + traced_macros() + tost_macros())
+            + retention_macros() + traced_macros() + tost_macros()
+            + mechanism_macros())
 
 
 def render(m):

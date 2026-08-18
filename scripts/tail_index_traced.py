@@ -43,6 +43,7 @@ import glob
 import json
 import math
 import os
+import random
 import re
 import sys
 
@@ -61,6 +62,10 @@ PROFILE_DROP = 1.9207295
 # the index is a different number and the manuscript says so.
 WINDOW_LO_US = 256
 WINDOW_HI_US = 2048
+
+# Above the mode the survival is a different object; the manuscript reports it separately
+# rather than folding it into a single index that describes neither region.
+TAIL_LO_US = 4096
 
 _SUFFIX = {"": 1, "K": 1024, "M": 1024 * 1024, "G": 1024 * 1024 * 1024}
 _BIN_RE = re.compile(r"^\[(\d+)([KMG]?)(?:,\s*(\d+)([KMG]?)\))?\]?\s+(\d+)")
@@ -221,6 +226,105 @@ def octave_indices(bins):
     return out
 
 
+def modes(bins):
+    """Local maxima of the bucket counts, as [(lo_us, count, share, ratio_to_lower), ...].
+
+    A power law is monotone decreasing, so any interior local maximum falsifies it before
+    any index is estimated. This is the check that turns "the two estimators disagree" into
+    "the distribution has a mode there", which is a statement about the machine rather than
+    about the estimators.
+    """
+    total = sum(b[2] for b in bins) or 1
+    out = []
+    for i in range(1, len(bins) - 1):
+        lo, _, n = bins[i]
+        if n > bins[i - 1][2] and n > bins[i + 1][2]:
+            below = bins[i - 1][2]
+            out.append((lo, n, n / total, (n / below) if below else float("inf")))
+    return out
+
+
+def _fitted_cdf(alpha, edges):
+    lo, hi = edges[0], edges[-1]
+    norm = lo ** -alpha - hi ** -alpha
+    return [(lo ** -alpha - e ** -alpha) / norm for e in edges]
+
+
+def binned_ks(bins, alpha):
+    """Kolmogorov-Smirnov distance between the bucket counts and the fitted tail.
+
+    Evaluated at the bucket edges, which is where an interval-censored sample supports a
+    CDF comparison at all.
+    """
+    edges = [b[0] for b in bins] + [bins[-1][1]]
+    n = sum(b[2] for b in bins)
+    fit = _fitted_cdf(alpha, edges)
+    emp, cum = [0.0], 0
+    for _, _, c in bins:
+        cum += c
+        emp.append(cum / n)
+    return max(abs(e - f) for e, f in zip(emp, fit))
+
+
+def _binomial(rng, n, p):
+    """One binomial draw. Exact where the interpreter offers it, normal-approximate above
+    the regime where that matters, Bernoulli below it."""
+    if p <= 0 or n <= 0:
+        return 0
+    if p >= 1:
+        return n
+    exact = getattr(rng, "binomialvariate", None)
+    if exact is not None:
+        return exact(n, p)
+    if n * p > 30:  # pragma: no cover - only on interpreters without binomialvariate
+        k = int(round(rng.gauss(n * p, math.sqrt(n * p * (1 - p)))))
+        return max(0, min(n, k))
+    return sum(1 for _ in range(n) if rng.random() < p)  # pragma: no cover
+
+
+def _multinomial(rng, n, probs):
+    """Conditional-binomial multinomial draw, so a bootstrap replicate costs one draw per
+    bucket rather than one per observation."""
+    out, left, remaining = [], n, 1.0
+    for p in probs[:-1]:
+        k = _binomial(rng, left, min(1.0, p / remaining)) if remaining > 0 else 0
+        out.append(k)
+        left -= k
+        remaining -= p
+    out.append(left)
+    return out
+
+
+def gof_pvalue(bins, n_boot=2500, seed=20260819):
+    """Semi-parametric bootstrap goodness of fit for the binned power law.
+
+    Two estimators disagreeing is evidence that a model is wrong, but it is not a test. This
+    is the test the binned-power-law literature uses: fit, measure the KS distance, then draw
+    replicates *from the fitted model*, refit each, and ask how often the fitted model
+    produces a fit at least as bad as the one observed. A small p rejects the power law.
+
+    Returns (d_observed, p_value, alpha, n_boot_used).
+    """
+    alpha, _, _, n = binned_pareto_mle(bins)
+    d_obs = binned_ks(bins, alpha)
+    edges = [b[0] for b in bins] + [bins[-1][1]]
+    fit = _fitted_cdf(alpha, edges)
+    probs = [fit[i + 1] - fit[i] for i in range(len(bins))]
+    rng = random.Random(seed)
+    worse, used = 0, 0
+    for _ in range(n_boot):
+        counts = _multinomial(rng, n, probs)
+        synth = [(bins[i][0], bins[i][1], counts[i]) for i in range(len(bins))]
+        try:
+            a_s, _, _, _ = binned_pareto_mle(synth)
+        except ValueError:  # pragma: no cover - a replicate with one populated bucket
+            continue
+        used += 1
+        if binned_ks(synth, a_s) >= d_obs:
+            worse += 1
+    return d_obs, (worse / used if used else float("nan")), alpha, used
+
+
 def traced_histograms(root=RESULTS):
     """Every committed runqlat dump, as (tag, path), sorted for a stable report."""
     pattern = os.path.join(root, "depth", "*", "*", "runqlat.txt")
@@ -247,7 +351,15 @@ def estimate(path):
         "mle_n": n,
         "traced_events": counters.get("count"),
         "octaves": octave_indices(win),
+        "modes": modes(bins),
     }
+    above = [b for b in bins if b[0] >= TAIL_LO_US]
+    if len(above) >= 2:
+        a, alo, ahi, an = binned_pareto_mle(above)
+        out.update({"tail_alpha": a, "tail_lo": alo, "tail_hi": ahi, "tail_n": an,
+                    "tail_from_us": TAIL_LO_US})
+    d, pval, _, used = gof_pvalue(win)
+    out.update({"gof_d": d, "gof_p": pval, "gof_boot": used})
     if "over_500us" in counters and "over_2000us" in counters:
         ex, exlo, exhi = exceedance_index(counters["over_500us"], counters["over_2000us"],
                                           500.0, 2000.0)

@@ -2042,7 +2042,7 @@ class TestConcurrentWork:
         """What replaced the exponent must itself be scoped: the tail section keeps a
         window and an estimator, not a constant."""
         section = " ".join(_section(tex, "sec:tail").lower().split())
-        assert "not a power law" in section
+        assert "it is not a heavy tail" in section,             "round 2 replaced 'not a power law' with the multimodal reading"
         assert "we withdraw the claim" in section
 
 
@@ -2190,8 +2190,7 @@ class TestRefereeRoundOne:
         assert "embedded mode" in audit[:2500], "Section 7's opening must scope the audit"
 
     def test_the_preprints_are_marked(self, main_tex):
-        for key in ("sharma2026causality", "chandrasekar2026bias",
-                    "swami2026observability"):
+        for key in ("sharma2026causality", "chandrasekar2026bias", "swami2026prereg"):
             # mohammad2025kafka dropped from the citation list in v2.5: the grey-literature
             # engagement it anchored moved to supplementary material, and an uncited key
             # cannot carry a preprint marker.
@@ -2436,3 +2435,125 @@ class TestPriorArtCredits:
         assert "rfc2330" in authors, "randomised probe timing is long-standing advice"
         assert "kogias2019lancet" in authors, \
             "Lancet already verifies the achieved load; say what we add"
+
+
+class TestRefereeRoundTwo:
+    """Pins for the second internal review (REFEREE_REPORT_TC_R2_SIMULATED.md, 2026-08-19).
+
+    Round 1's fixes introduced four of round 2's defects: a denominator borrowed from one
+    population and printed against another, a paraphrase of NIST that inverted its own
+    budget, an over-read of Villain, and a bibliography entry with the wrong author names.
+    That pattern is the reason these are pins and not a checklist -- a correction that is
+    not gated is a correction with a half-life.
+    """
+
+    def test_the_abstract_pairs_its_range_with_the_population_it_came_from(self, main_tex):
+        """R1. 0.36% is the minimum over the cells whose summary we captured, not over the
+        whole ledger, whose minimum is two orders of magnitude smaller."""
+        abstract = main_tex[main_tex.index(r"\begin{abstract}"):
+                            main_tex.index(r"\end{abstract}")]
+        assert r"\ombGridRetentionMin" in abstract
+        assert r"\ombGridMedianCells" in abstract, \
+            "the range must be quoted against the population it was computed on"
+        assert r"\ombRuns" not in abstract.split(r"\ombGridRetentionMin")[0][-400:], \
+            "the ledger-wide run count must not stand as the denominator for that range"
+
+    def test_every_harness_total_comes_from_the_ledger(self, main_tex):
+        """R2. Two hand-typed "1.5 million" figures matched no artefact."""
+        assert "1.5$ million" not in main_tex and "1.5 million" not in main_tex
+        assert r"\harnessOneClockSamples" in main_tex
+        assert r"\harnessCrossHostSamples" in main_tex
+
+    def test_the_saturation_claim_is_about_the_rate_not_about_occupancy(self, main_tex):
+        """R3. A ceiling on the inversion rate is not a count of unpreempted threads."""
+        low = " ".join(main_tex.split()).lower()
+        assert "two events in three are still stamped unpreempted" not in low
+        assert r"\invCeiling" in main_tex
+
+    def test_the_idle_to_knee_growth_names_what_grew(self, main_tex):
+        """R4. The artefact holds an inversion rate, not a mass beyond one millisecond."""
+        assert "mass beyond one millisecond" not in main_tex
+        assert r"\coreGrowth" in main_tex and r"\invGrowth" in main_tex
+
+    def test_the_inter_host_offset_is_one_number(self, main_tex):
+        """R6. It was given as 0.067 ms, 0.07 ms and "near 0.1 ms" in three places."""
+        body = " ".join(main_tex.split())
+        assert "{\approx}0.07$~ms" not in body
+        assert "near $0.1$~ms" not in body
+        assert body.count("$0.067$~ms") >= 1
+
+    def test_the_nist_paraphrase_matches_what_nist_says(self, main_tex):
+        """R8. NIST's own budget has reaction time dominating resolution by two orders of
+        magnitude; its short-interval remark is about the rated accuracy."""
+        low = " ".join(main_tex.split()).lower()
+        assert "resolution dominates" not in low
+        assert "rated accuracy" in low
+
+    def test_the_villain_characterisation_matches_the_source(self, main_tex):
+        """R9. The violation is on the outgoing socket path and is present unstressed;
+        scheduling is named as a general host-latency source, not as its cause."""
+        section = " ".join(_section(main_tex, "sec:related_time").split())
+        assert "outgoing socket" in section
+        assert "under every stress pattern including none" in section
+        assert "named process scheduling as the cause" not in section
+
+    def test_the_traced_histogram_is_reported_as_multimodal(self, main_tex):
+        """R15. "Heavy tail" is retired; the mode at the scheduler slice replaces it."""
+        low = " ".join(main_tex.split()).lower()
+        # The phrase may survive only inside the sentence that retires it.
+        for hit in range(len(low)):
+            hit = low.find("heavy tail", hit)
+            if hit < 0:
+                break
+            assert "not a heavy tail" in low[max(0, hit - 12):hit + 10],                 "the withdrawn characterisation must not survive except as a withdrawal"
+        for macro in (r"\tracedModes", r"\tracedModeShare", r"\tracedModeRatio",
+                      r"\tracedTailAlpha", r"\tracedGofP"):
+            assert macro in main_tex, f"{macro} must carry the new reading"
+        assert "scheduler" in low and "slice" in low
+
+    def test_the_goodness_of_fit_is_reported_not_just_the_disagreement(self, main_tex):
+        """Two estimators disagreeing is evidence; the bootstrap is the test."""
+        section = " ".join(_section(main_tex, "sec:tail").split())
+        assert r"\tracedGofP" in section and r"\tracedGofBoot" in section
+
+    def test_the_binned_estimator_credits_its_source(self, main_tex):
+        """R15(a). The grouped MLE on log2 bins is Virkar and Clauset's."""
+        assert "virkar2014power" in main_tex
+
+    def test_the_tracer_discloses_its_filter_and_its_own_effect(self, main_tex):
+        """R16. Both were in the artefact tree and neither was in the paper."""
+        assert r"sched\_wakeup" in main_tex and r"sched\_switch" in main_tex
+        for macro in (r"\untracedRate", r"\tracedRate", r"\observerZ"):
+            assert macro in main_tex
+
+    def test_the_broker_comparison_names_the_span_it_uses(self, main_tex):
+        """R18. Section III-C calls that span a proxy; Section VI must not quietly forget."""
+        section = " ".join(_section(main_tex, "sec:results").split())
+        assert "transport\nproxy" in section or "transport proxy" in section
+
+    def test_the_stream_benchmark_literature_is_engaged(self, main_tex):
+        """R14. A paper positioned against streaming benchmarks must cite them."""
+        for key in ("karimov2018benchmarking", "vandongen2020evaluation", "fruth2021telltale"):
+            assert key in main_tex, f"{key} is expected by a TC reader"
+
+    def test_the_sync_state_rule_credits_its_standard(self, main_tex):
+        """R13. OWAMP has attached an error estimate to every timestamp since 2006."""
+        assert "rfc4656" in main_tex
+        section = " ".join(_section(main_tex, "sec:authors").split())
+        assert "OWAMP" in section
+
+    def test_the_corrected_bibliography_entries_stay_corrected(self):
+        bib = (REPO / "manuscript_references.bib").read_text(encoding="utf-8")
+        assert "Swami, Akul and Sonawane, Dnyaneshwar" in bib, "R10: verified author names"
+        assert "Swami, Aditya" not in bib
+        assert "Wiederhold, Mike" in bib and "Wied, Michael" not in bib, "R11"
+        assert "151--156" in bib and "151--162" not in bib, "R12: ICPE 2011 page range"
+
+    def test_the_supplement_does_not_imply_a_journal_review_history(self, supp):
+        """R17. Nine "TPDS round 1" labels and three "TC submission/revision" phrases read
+        as two prior journal reviews. There were none; they were internal."""
+        flat = " ".join(supp.split())
+        assert "TPDS" not in flat
+        for phrase in ("TC submission", "TC revision", "TC round-one"):
+            assert phrase not in flat
+        assert "has not been submitted to, or reviewed by, any journal" in flat

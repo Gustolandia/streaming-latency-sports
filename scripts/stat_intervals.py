@@ -206,6 +206,93 @@ def retention_cells(path=os.path.join("external", "omb_retention.csv")):
              "kept": int(r["kept"])} for r in rows]
 
 
+def harness_cells(path=os.path.join("external", "harness_results.csv")):
+    """The independent Python harness, split by topology.
+
+    The manuscript quoted "1.5 million samples" twice, once for each topology, and the
+    artefact holds neither figure: it is 905,040 on one clock and 905,040 across two, zero
+    negatives in each. A hand-typed round number in a paper about miscounted samples is the
+    one defect this project cannot afford, so both totals are read from the ledger.
+    """
+    rows = _rows(*path.split(os.sep))
+    out = {}
+    for key in (False, True):
+        cells = [r for r in rows if (r["cross_host"].strip().lower() == "true") is key]
+        if not cells:
+            continue
+        out["cross_host" if key else "one_clock"] = {
+            "runs": len(cells),
+            "sent": sum(int(r["sent"]) for r in cells),
+            "kept": sum(int(r["kept"]) for r in cells),
+            "negatives": sum(int(r["discarded_negative"]) for r in cells),
+        }
+    return out
+
+
+def occupancy_bounds(path=os.path.join("model", "occupancy_law.csv")):
+    """The floor and ceiling of the inversion rate, as the two-state model bounds them.
+
+    Read because the manuscript turned the ceiling into a statement about occupancy: "two
+    events in three are still stamped unpreempted" is not what a rate ceiling of 0.37 says.
+    Under Equation 6 an event can be stamped by a preempted thread and still not invert,
+    whenever the stall is shorter than the interval being measured.
+    """
+    out = {}
+    for r in _rows(*path.split(os.sep)):
+        for part in r["detail"].split(";"):
+            if "=" in part:
+                k, v = part.split("=", 1)
+                try:
+                    out[k.strip()] = float(v)
+                except ValueError:
+                    pass
+    return out
+
+
+def load_growth(path=os.path.join("model", "collapse_conditions.csv"),
+                idle="ea3/bg0", knee="ea3/bg7"):
+    """Idle-to-knee growth in the fitted core width and in the inversion rate.
+
+    The manuscript described the second of these as "the mass beyond one millisecond",
+    which is not the quantity the artefact holds. It is the inversion rate: the mass of the
+    stamping asymmetry beyond -T_true, at the T_true of that campaign.
+    """
+    rows = {r["condition"]: r for r in _rows(*path.split(os.sep))}
+    if idle not in rows or knee not in rows:
+        return {}
+    a, b = rows[idle], rows[knee]
+    return {
+        "core_idle": float(a["sigma_core"]), "core_knee": float(b["sigma_core"]),
+        "core_growth": float(b["sigma_core"]) / float(a["sigma_core"]),
+        "inv_idle": float(a["inversion"]), "inv_knee": float(b["inversion"]),
+        "inv_growth": float(b["inversion"]) / float(a["inversion"]),
+        "rho_knee": float(b["rho"]),
+    }
+
+
+def observer_effect(traced=os.path.join("model", "runq_tail.csv"),
+                    untraced=os.path.join("model", "ea9_notrace", "untraced_control.csv"),
+                    condition="l88_base"):
+    """The tracer's own effect on the rate it is used to predict.
+
+    A BPF probe on every context switch is not free, and the campaign measured what it
+    costs by running the same cell untraced. The manuscript never reported the comparison,
+    which is an omission in a paper whose subject is instruments that change what they
+    measure.
+    """
+    tr = {r["tag"]: r for r in _rows(*traced.split(os.sep))}
+    un = {r["condition"]: r for r in _rows(*untraced.split(os.sep))}
+    if condition not in tr or condition not in un:
+        return {}
+    t, u = tr[condition], un[condition]
+    n_t, n_u = int(t["n_events"]), int(u["n_events"])
+    k_t = round(float(t["inversion"]) * n_t)
+    k_u = int(u["n_inversions"])
+    z, _ = ratio_z(k_u, n_u, k_t, n_t)
+    return {"traced": k_t / n_t, "untraced": k_u / n_u, "n": n_t, "z": z,
+            "ratio": (k_u / n_u) / (k_t / n_t)}
+
+
 def _rows(*parts):
     with open(os.path.join(RESULTS, *parts), encoding="utf-8") as fh:
         return list(csv.DictReader(fh))

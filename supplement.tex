@@ -24,6 +24,13 @@ references of the form ``supplementary material S$n$'' resolve here. The provena
 section --- what moved here, from where, and when --- is indexed in the artefact at
 \texttt{docs/supplement\_index.md}.
 
+Several sections below refer to ``internal review'' rounds and to material moved between
+revisions. These were adversarial reviews conducted within the project before submission,
+against the standards of the venues considered; the manuscript has not been submitted to,
+or reviewed by, any journal. They are recorded because the corrections they produced are
+part of the evidence, and because an audit whose own failures are hidden is worth less than
+one whose are not.
+
 \section{S1: The replay-rate provenance gap, in full}
 
 Auditing the corpus turned the same scrutiny on our own record-keeping, and it did not survive
@@ -176,7 +183,7 @@ are archived in \texttt{docs/results/external/dist\_diag/}; a draft upstream rep
 \texttt{docs/omb\_distributed\_issue.md} (not filed --- filing is the author's action).
 
 
-\paragraph{Moved from the main text (TPDS round 1).} The cross-host case is the one in which OMB's subtraction spans two clocks, and its own
+\paragraph{Moved from the main text (internal review, round 1).} The cross-host case is the one in which OMB's subtraction spans two clocks, and its own
 distributed mode never completed a run in our hands --- eleven attempts, all failing
 identically inside its coordinator-to-worker protocol, including with no background load at
 all, which refutes our own load-starvation hypothesis. Its cross-host exposure therefore rests on
@@ -569,7 +576,7 @@ Broker transport, the lower series in (b), is unaffected and is what the paper c
 
 
 
-\paragraph{The benchmark's own output corroborates the insensitivity (moved from the main text, TPDS round 1).} The benchmark's own output corroborates this without our instrumentation: across
+\paragraph{The benchmark's own output corroborates the insensitivity (moved from the main text, internal review, round 1).} The benchmark's own output corroborates this without our instrumentation: across
 eight runs all $32$ reported percentiles are whole milliseconds (only the averages, means
 of integers, are fractional), and three runs report
 $\mathrm{p50} = \mathrm{p95} = \mathrm{p99} = \max = 1.0$ --- not a narrow distribution
@@ -1047,7 +1054,7 @@ compiler passes. The suite is mutation-tested: corrupting a table value, or a va
 derived classification together, fails a check.
 
 
-\paragraph{Moved from the main text (TPDS round 1).} A validity gate refuses to report a number from a
+\paragraph{Moved from the main text (internal review, round 1).} A validity gate refuses to report a number from a
 run that did not demonstrably produce output --- a benchmark that fails to run discards
 nothing, its zero looking exactly like a measured zero; the gate has refused eight
 distributed attempts, refusals archived beside its acceptances. Warmup is disabled
@@ -1145,7 +1152,7 @@ running well below saturation, is not. That is a rule of thumb, and the main tex
 says what would be needed to make it quantitative.
 
 
-\paragraph{Moved from the main text (TPDS round 1).} The check transfers to any latency computed across execution contexts --- most
+\paragraph{Moved from the main text (internal review, round 1).} The check transfers to any latency computed across execution contexts --- most
 end-to-end measurements in this literature. The load-bearing rules:
 (1)~identify every span whose endpoints are stamped by different execution contexts, and
 check those; (4)~reject by a rule stated before looking at results, and report its
@@ -1185,7 +1192,9 @@ constraint we can find:
 \begin{itemize}
 \item \emph{Deletion law and grid structure} (in the main text).
   Supported mathematically by equidistribution and dither
-  theory~\cite{weyl1916gleichverteilung,sos1958distribution,schuchman1964dither}; no empirical
+  theory~\cite{weyl1916gleichverteilung,sos1958distribution,schuchman1964dither}, and
+  practised in profiling since randomised sampling clocks were introduced to break exactly
+  this kind of synchronisation~\cite{mccanne1993randomized}; no empirical
   study reports a benchmark's retained fraction, so the nearest contradiction is implicit ---
   every published OMB-derived latency figure~\cite{openmessaging2018} assumes retention near
   $100\%$, an assumption our $0.36\%$--$100\%$ range refutes for sub-tick paths.
@@ -1230,7 +1239,7 @@ utilisation where its measurements look tight --- the core is narrow --- while t
 actually corrupts them is already growing.
 
 
-\paragraph{Moved from the main text (TPDS round 1).} That presumption is not ours: Lozi et al.~\cite{lozi2016wastedcores} document Linux
+\paragraph{Moved from the main text (internal review, round 1).} That presumption is not ours: Lozi et al.~\cite{lozi2016wastedcores} document Linux
 scheduler bugs under which cores stay idle \emph{for seconds} while runnable threads
 queue elsewhere, invisible to conventional testing because throughput stays healthy. Under
 exact work conservation a stamping thread would never wait while a core was free, and the
@@ -1766,7 +1775,7 @@ E-A9b & real-time & 88\% & 0.8822 & $649{,}788$ & 0.016 / 0.000 & --- \\
 \footnotesize $^{\dagger}$ withheld by the instrument check; shown, not used.
 \end{table}
 
-\section{S26. The first result set (the model and flip figures were promoted to the main text in the TPDS round-1 revision)}
+\section{S26. The first result set (the model and flip figures were promoted to the main text in the round-1 internal revision)}
 
 Table~\ref{tab:first} is the first, rejected result set in full.
 
@@ -1889,7 +1898,7 @@ Delay & \kafka{} \tti{} & \kafka{} transp. & \redis{} \tti{} & \redis{} transp. 
 \end{table}
 
 
-\paragraph{Moved from the main text (TPDS round 1).} Magnitudes of this size cannot be a per-event cost; the account we test is a
+\paragraph{Moved from the main text (internal review, round 1).} Magnitudes of this size cannot be a per-event cost; the account we test is a
 round-trip-bound consumption pattern: our \redis{} consumer acknowledges each entry with
 \texttt{XACK} and waits --- the idiomatic tutorial pattern --- so a read of two hundred
 entries is followed by two hundred sequential round trips, free at $0.22$~ms per trip and
@@ -1965,7 +1974,7 @@ Clopper--Pearson interval in the artefact. In plain terms: judged by a test that
 fooled by a value with no centre, the grid is present in every arm that could show it.
 
 
-\paragraph{Moved from the main text (TPDS round 1).} A quantity with two-point support breaks the replicate median, so a pre-specified
+\paragraph{Moved from the main text (internal review, round 1).} A quantity with two-point support breaks the replicate median, so a pre-specified
 grid-membership statistic (committed with the artefact) tests each arm's distance to its
 nearest vertex against a measured continuum null: of twelve commensurate arms ten are
 powered, \textbf{$\gridReject$ of the $\gridPowered$ reject the continuum after Holm
@@ -1988,7 +1997,7 @@ the prefactor drifts ($0.238$ against $0.216$). Four points do not earn an equat
 main text, which is why this one is here.
 
 \paragraph{What we withdraw about it, and why.} Two claims previously made around
-Equation~\ref{eq:tailindex} do not survive, and both were withdrawn in the TC revision.
+Equation~\ref{eq:tailindex} do not survive, and both were withdrawn in the round-2 internal revision.
 
 The first is the infinite-moment reading --- ``the exponent is below one, so the stall
 distribution has neither a finite mean nor a finite variance''. A slope fitted to four
@@ -2010,7 +2019,9 @@ $\tracedExcAlpha$ ($\tracedExcCI$, Wilson on the nested counts) while grouped ma
 likelihood over the same decade returns $\tracedMleAlpha$ ($\tracedMleCI$, profile
 likelihood). Two estimators of one quantity cannot differ sixfold unless the model is
 wrong, and it is: the per-octave indices over that window run $\tracedOctaveA$ and then
-$\tracedOctaveB$, where a power law would give the same value twice. The $0.332$ was
+$\tracedOctaveB$, where a power law would give the same value twice. A bootstrap
+goodness-of-fit drawn from the fitted model itself agrees: $p \tracedGofP$ over
+$\tracedGofBoot$ replicates. The $0.332$ was
 ordinary least squares through four nested survival points, which returns a number whether
 or not the points lie on a line. The agreement with $\tailExponent$ was a coincidence of
 window and estimator, and we should not have offered it as a confirmation.
@@ -2020,6 +2031,28 @@ $\Pr[\text{stall} > 0.5\,\text{ms}] = 0.301$ against the traced $0.181$, over-pr
 $1.66\times$ ($1.52\times$ on the replication), the expected direction since not every
 stall lands on a stamping instant. That comparison is between two probabilities, not
 between two fitted exponents, and it needs no power law to be meaningful.
+
+\paragraph{What the histogram says instead, which is better.} Asking what shape the data
+do have, rather than which index to quote, gives the mechanism its most direct evidence.
+The bucket counts are not monotone, so no power law can describe them: there are
+$\tracedModes$ local maxima. The first is the jitter core of a running thread; the second a
+broad hump in the hundreds of microseconds; the third is a \emph{mode} at
+$\tracedModeLo$--$\tracedModeHi$~ms carrying $\tracedModeShare\%$ of all wakeups and
+standing $\tracedModeRatio\times$ above its lower neighbour. Beyond it the survival is
+light and ordinary: grouped maximum likelihood above $\tracedTailFrom$~ms gives
+$\tracedTailAlpha$ ($\tracedTailCI$), a finite variance.
+
+The mode's position is not arbitrary. On an eight-vCPU instance the EEVDF base slice is
+$0.75\,\mathrm{ms} \times (1 + \lfloor\log_2 8\rfloor) = 3$~ms; run-to-parity holds a woken
+thread off the CPU until the incumbent has exhausted that slice unless it wins the
+wakeup-preemption check, and with the high-resolution tick disabled the expiry is observed
+at the ordinary tick. A stamping thread descheduled at the wrong moment therefore reads its
+clock roughly a slice late. That is the second state of the main text's two-state model,
+observed directly, at the constant the scheduler is configured with --- which is a stronger
+statement than any tail index would have been, and it is what replaced the withdrawn one.
+The constants should be read off the image under test (\texttt{base\_slice\_ns} and
+\texttt{CONFIG\_HZ}) rather than assumed from the kernel version, and we report them as the
+explanation the mode's location supports rather than as an independently measured cause.
 
 \paragraph{The confirmation is the one that manipulates the physics.} Payload moves
 $T_{\mathrm{true}}$, so it moves $\theta$'s grid position, and the main text
@@ -2164,9 +2197,9 @@ branch-probability law under-delivers. The payload sweep succeeded where co-loca
 
 \bibliographystyle{IEEEtran}
 \bibliography{manuscript_references}
-\section{S34. Referee-round sensitivity artefacts (TPDS round 1)}
+\section{S34. Referee-round sensitivity artefacts (internal review, round 1)}
 
-Three artefacts added in the round-1 revision, each recomputable by a committed script.
+Three artefacts added in the round-1 internal revision, each recomputable by a committed script.
 Table~\ref{tab:gatesens} applies the audit gate to the powered transport campaigns and
 bounds the selection the gate introduces (\texttt{powered\_gate\_sensitivity.py}); the
 condition-level threshold sweep behind the main text's Section~6.2 sentence is
@@ -2240,7 +2273,7 @@ the result the main text reports.
 
 We also called the mechanism behind those Redis-driver negatives a \emph{candidate} --- a
 sub-millisecond skew between two views of a virtualised clock --- and hedged it as such
-through the TC round-one draft. The hedge was unnecessary, and reading the driver removes
+through the round-1 internal draft. The hedge was unnecessary, and reading the driver removes
 it. \texttt{RedisBenchmarkConsumer.java} takes the publish timestamp from
 \texttt{entry.getID().getTime()}, the stream-entry identifier the Redis \emph{server}
 assigns on \texttt{XADD}, while the Kafka driver uses a producer-set stamp. The Redis span
@@ -2286,7 +2319,7 @@ motivation for expecting a heavy waiting tail; it is not a fitted result here.
 
 \subsection{S35.5. The traced tail-index cross-check, withdrawn}
 
-Referee review of the TC submission asked for the traced tail index to be estimated with an
+The round-2 internal review asked for the traced tail index to be estimated with an
 interval rather than eyeballed from a slope. Doing so refuted the cross-check it was meant
 to strengthen, and the claim is withdrawn; S32 gives the numbers and the argument. In
 summary: two proper estimators on the same histogram disagree sixfold because the survival

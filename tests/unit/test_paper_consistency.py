@@ -2339,6 +2339,18 @@ class TestTransactionsOnComputers:
         assert "physics" in bio and "Universidade do Porto" in bio
         assert "currently pursuing" in bio, "the degree in progress is still distinguished"
 
+    def test_the_research_statement_covers_the_programme_not_one_paper(self):
+        """The author's public preprint record shows the same thesis in a second field:
+        a routine normalising convention removing part of what it should scale. Stating
+        the programme is stronger than stating one field, and costs nothing -- but it must
+        remain an interest, never a claim about a specific paper (see the pin below)."""
+        tex = (REPO / "paper.tex").read_text(encoding="utf-8")
+        bio = tex[tex.index(r"\begin{IEEEbiographynophoto}"):
+                  tex.index(r"\end{IEEEbiographynophoto}")]
+        assert "measurement validity" in bio
+        assert "sports analytics" in bio, "the second strand is part of the programme"
+        assert "pre-registration" in bio and "physical-consistency" in bio
+
     def test_the_biography_claims_no_publications(self, main_tex):
         """IEEE biographies list degrees, positions and interests, not individual papers.
         The author's prior article is not peer reviewed and a further manuscript is under

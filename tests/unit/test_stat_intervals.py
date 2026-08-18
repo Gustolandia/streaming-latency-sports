@@ -272,3 +272,49 @@ class TestReaderRobustness:
     def test_a_geometry_phase_with_one_arm_is_skipped_not_half_reported(self, monkeypatch):
         monkeypatch.setattr(si, "geometry_cells", lambda phase="ea6": [("k6_conc", 1, 10)])
         assert "Geometry" not in si.report()
+
+
+class TestRoundTwoReaders:
+    """Readers added because the manuscript stated four things the artefacts contradict.
+
+    Each test names the wrong claim it replaces, so a later edit that reintroduces the
+    claim fails here rather than in review.
+    """
+
+    def test_the_harness_totals_are_not_one_and_a_half_million(self):
+        """The manuscript said "1.5 million samples" for the one-clock harness and again
+        for the cross-host one. Neither topology has that count."""
+        h = si.harness_cells()
+        assert set(h) == {"one_clock", "cross_host"}
+        assert h["one_clock"]["sent"] == 905_040
+        assert h["cross_host"]["sent"] == 905_040
+        assert h["one_clock"]["sent"] != 1_500_000
+
+    def test_neither_topology_recorded_a_negative(self):
+        h = si.harness_cells()
+        assert h["one_clock"]["negatives"] == 0
+        assert h["cross_host"]["negatives"] == 0
+
+    def test_the_inversion_rate_has_a_ceiling_below_one_half(self):
+        """"Fully saturated, two events in three are still stamped unpreempted" confused a
+        rate ceiling with an occupancy. The ceiling is what the artefact holds."""
+        b = si.occupancy_bounds()
+        assert 0.3 < b["ceiling"] < 0.4
+        assert b["floor"] < b["ceiling"]
+
+    def test_idle_to_knee_growth_is_the_inversion_rate_not_a_tail_mass(self):
+        g = si.load_growth()
+        assert g["core_growth"] == pytest.approx(5.0, abs=0.1)
+        assert g["inv_growth"] == pytest.approx(61, abs=1)
+        assert g["rho_knee"] == pytest.approx(0.877, abs=0.001)
+
+    def test_the_tracer_perturbs_the_rate_it_is_used_to_predict(self):
+        """The campaign measured this and the manuscript never reported it."""
+        o = si.observer_effect()
+        assert o["untraced"] > o["traced"], "tracing suppresses the rate here"
+        assert o["z"] > 2, "the perturbation is larger than sampling noise"
+        assert 1.0 < o["ratio"] < 1.5
+
+    def test_a_missing_condition_returns_nothing_rather_than_half_a_result(self):
+        assert si.observer_effect(condition="does_not_exist") == {}
+        assert si.load_growth(idle="nope", knee="also_nope") == {}

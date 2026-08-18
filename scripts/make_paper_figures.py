@@ -160,6 +160,21 @@ def plot_model(axes):
     mech_ax.text(2.3, 2.02, "scheduling\nlag", fontsize=6, color=GREY, ha="center",
                  va="top", linespacing=0.9)
 
+    # The broker's append, and the two branches descending from it.
+    #
+    # Without this the panel is a left-to-right sequence of four events on two lines, which
+    # invites precisely the reading Section III-C exists to refute: that the acknowledgement
+    # causally precedes the record's arrival. It does not. Both descend from the append and
+    # neither precedes the other, which is why their difference may be negative with no
+    # physical impossibility. A figure for that section has to show the fork.
+    mech_ax.plot([2.95], [1.6], marker="D", markersize=5.5, color=GREY)
+    mech_ax.text(2.95, 1.36, "broker\nappend", fontsize=6.5, color=GREY, ha="center",
+                 va="top", linespacing=0.95)
+    for tip_x, tip_y in ((3.62, 2.24), (4.62, 0.96)):
+        mech_ax.annotate("", xy=(tip_x, tip_y), xytext=(3.05, 1.6),
+                         arrowprops=dict(arrowstyle="->", color=GREY, linewidth=0.9,
+                                         linestyle=(0, (3, 2))))
+
     # physical events (true), and the later moments the software actually reads the clock
     mech_ax.plot([3.7], [2.3], marker="|", markersize=14, color=KAFKA)
     mech_ax.text(3.7, 2.62, "ack arrives", fontsize=7, ha="center")
@@ -184,40 +199,53 @@ def plot_model(axes):
 
     # --- (b) why small effects are fragile
     #
-    # This panel used to draw Delta as a single Gaussian, which was the model the paper held
-    # when the figure was made and has since WITHDRAWN. A bell curve is the wrong picture in the
-    # way that matters most: it has a finite mean and a thin tail, so it makes inversions look
-    # like a mild consequence of a wide distribution. The measured stall distribution is heavy
-    # enough that a 77-fold increase in the measured interval buys barely a fourfold reduction
-    # in risk. Drawn on a log density so the tail is visible at all.
+    # This panel has now been wrong twice, in opposite directions, and both errors were the
+    # same error: drawing a shape the data had not been asked about.
     #
-    # The title asserted "P(inv) proportional to T^-0.34" until the TC revision. It no longer
-    # does, and the shape here is illustrative rather than fitted: estimated properly on the
-    # traced histogram (scripts/tail_index_traced.py) the survival is NOT a power law over the
-    # decade that matters -- an exceedance index of 0.21 against a grouped-likelihood 1.19,
-    # with per-octave indices two orders of magnitude apart. A figure must not assert an
-    # exponent the text withdraws, so it now states only the qualitative claim it can support.
-    x = np.linspace(-6, 6, 800)
-    core = 0.985 * np.exp(-0.5 * (x / 0.22) ** 2)          # RUNNING: narrow jitter core
-    tail = 0.015 * (1.0 + np.abs(x) / 0.5) ** (-1.34)      # PREEMPTED: heavy residual tail
-    delta = core + tail
+    #   v1 drew Delta as a single Gaussian -- a finite mean and a thin tail, which makes
+    #      inversions look like a mild consequence of a wide distribution.
+    #   v2 replaced it with a monotone heavy tail and titled it "P(inv) ~ T^-0.34".
+    #
+    # Estimated properly on the traced histogram (scripts/tail_index_traced.py) the stall
+    # distribution is neither. It is multi-modal, and the mode that matters sits at the
+    # EEVDF base slice -- 0.75 ms * (1 + ilog2(8)) = 3 ms on these instances -- carrying
+    # about a tenth of all wakeups, with a LIGHT tail (alpha ~ 2) beyond it. So Delta, which
+    # is the difference of two stamping delays, has a narrow core when the callback thread
+    # is running and a lobe near -3 ms when it is not. That is Equation 6 made visible:
+    # p(rho) sets the lobe's weight, S(T_true) decides how much of it lies beyond -T_true.
+    #
+    # The shape below is schematic -- two components with the measured mode's location, not
+    # a fit -- and the caption says so. What it must get right, and now does, is that
+    # raising T_true past the lobe removes most of the inversion risk rather than "barely
+    # thinning" it, which is the direction the payload sweep measures.
+    x = np.linspace(-6, 6, 1200)
+    core = 0.70 * np.exp(-0.5 * (x / 0.22) ** 2)            # RUNNING: narrow jitter core
+    lobe = 0.30 * np.exp(-0.5 * ((x + 3.0) / 0.60) ** 2)    # PREEMPTED: at the 3 ms slice
+    # A flat-ish background so the density stays on the axis across the whole range: both
+    # threads can stall, so there is mass on the positive side too, and a curve that falls
+    # off the bottom of the plot would claim otherwise.
+    delta = core + lobe + 2.0e-3 * (1.0 + np.abs(x) / 1.0) ** (-1.4)
     h1_ax.semilogy(x, delta, color=GREY, linewidth=1.8)
-    h1_ax.fill_between(x, 1e-4, delta, where=(x < -0.5), color="#b22222", alpha=0.35)
+    h1_ax.fill_between(x, 1e-4, delta, where=(x < -0.5), color="#b22222", alpha=0.28)
+    h1_ax.fill_between(x, 1e-4, delta, where=(x < -4.0), color=REDIS, alpha=0.55)
     h1_ax.axvline(-0.5, color=KAFKA, linewidth=1.6, linestyle="--")
     h1_ax.axvline(-4.0, color=REDIS, linewidth=1.6, linestyle="--")
-    h1_ax.fill_between(x, 1e-4, delta, where=(x < -4.0), color=REDIS, alpha=0.55)
     h1_ax.set_ylim(1e-4, 2.0)
-    h1_ax.text(0.9, 0.055, r"small $T_{true}$" "\n(much of $\\Delta$ inverts it)",
-               fontsize=7.5, color=KAFKA)
-    h1_ax.text(-5.9, 0.02, r"large $T_{true}$" "\nstill inverts:\nthe tail barely thins",
-               fontsize=7.5, color=REDIS)
-    h1_ax.annotate("narrow core\n(thread running)", xy=(0.15, 0.85), xytext=(2.2, 0.55),
+    h1_ax.set_xlim(-6, 6)
+    h1_ax.text(-5.85, 1.55, r"large $T_{true}$:" "\npast the lobe,\nlittle left",
+               fontsize=7, color=REDIS, linespacing=1.05, va="top")
+    h1_ax.text(0.95, 0.22, r"small $T_{true}$:" "\nthe whole lobe\ninverts it",
+               fontsize=7, color=KAFKA, linespacing=1.05, va="top")
+    h1_ax.annotate("core\n(thread running)", xy=(0.20, 0.70), xytext=(2.9, 0.70),
                    fontsize=7, color=GREY, ha="left", va="center",
+                   arrowprops=dict(arrowstyle="->", color=GREY, lw=0.8))
+    h1_ax.annotate("preempted lobe\nat the scheduler slice", xy=(-3.0, 0.31),
+                   xytext=(-0.28, 0.011), fontsize=7, color=GREY, ha="left", va="center",
                    arrowprops=dict(arrowstyle="->", color=GREY, lw=0.8))
     h1_ax.set_xlabel(r"stamping asymmetry $\Delta$ (ms)")
     h1_ax.set_ylabel("density (log)")
     h1_ax.set_yticks([])
-    h1_ax.set_title(r"(b) a heavy tail, not a bell: raising $T_{true}$ barely thins it",
+    h1_ax.set_title(r"(b) which intervals invert is decided by the preempted lobe",
                     fontsize=9)
     mech_ax.set_title("(a) how a positive latency is measured as negative", fontsize=9)
 

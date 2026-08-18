@@ -94,7 +94,7 @@
   booktitle={Proceedings of the 30th International Conference on Very Large Data Bases (VLDB)},
   pages={480--491},
   year={2004},
-  publisher={VLDB Endowment},
+  publisher={VLDB Endowment}
 }
 
 @techreport{tucker2008nexmark,
@@ -111,7 +111,7 @@
   booktitle={Proceedings of the ACM/SPEC International Conference on Performance Engineering},
   pages={201--212},
   year={2021},
-  publisher={ACM},
+  publisher={ACM}
 }
 
 @article{shukla2017riotbench,
@@ -175,7 +175,7 @@
          Design, Measurement, Simulation, and Modeling},
   author={Jain, Raj},
   year={1991},
-  publisher={Wiley},
+  publisher={Wiley}
 }
 
 @article{schuirmann1987tost,
@@ -267,7 +267,7 @@
              Implementation (NSDI)},
   pages={239--252},
   year={2006},
-  publisher={ACM},
+  publisher={ACM}
 }
 
 @article{chandrasekar2026bias,
@@ -292,7 +292,7 @@
   booktitle={Proc.\ ACM SoCC},
   year={2014},
   publisher={ACM},
-  doi={10.1145/2670979.2670988},
+  doi={10.1145/2670979.2670988}
 }
 
 @article{swami2026observability,
@@ -624,7 +624,9 @@
   author    = {Kundel, Ralf},
   title     = {{P4STA}: High Precision Network Function Benchmarking},
   booktitle = {Accelerating Network Functions Using Reconfigurable Hardware},
-  publisher = {Springer},
+  series    = {Springer Theses},
+  publisher = {Springer Nature Switzerland},
+  doi       = {10.1007/978-3-031-52872-9_4},
   pages     = {93--115},
   year      = {2024}
 }
@@ -642,7 +644,7 @@
   author    = {Kuperberg, Michael and Krogmann, Martin and Reussner, Ralf H.},
   title     = {Metric-based Selection of Timer Methods for Accurate Measurements},
   booktitle = {Proceedings of the 2nd ACM/SPEC International Conference on Performance Engineering (ICPE)},
-  pages     = {151--162},
+  pages     = {151--156},
   month     = mar,
   year      = {2011}
 }
@@ -688,12 +690,12 @@
 }
 
 @misc{ycsb_issue41,
-  author       = {Wied, Michael},
+  author       = {Wiederhold, Mike},
   title        = {Sub-millisecond latencies are reported as taking 0 milliseconds (issue \#41)},
   howpublished = {Yahoo! Cloud Serving Benchmark},
   month        = oct,
   year         = {2011},
-  note         = {\url{https://github.com/brianfrankcooper/YCSB/issues/41}; fixed in 0.2.0 by adopting microsecond histograms}
+  note         = {\url{https://github.com/brianfrankcooper/YCSB/issues/41}; fixed by pull request \#42 and released in 0.1.4}
 }
 
 % ---------------------------------------------------------------------------
@@ -732,7 +734,7 @@
   number      = {960-12},
   year        = {2009},
   note        = {Uncertainty budget carrying both operator reaction time and
-                 display resolution; resolution dominates for short intervals}
+                 display resolution}
 }
 
 @book{gregg2019bpf,
@@ -751,9 +753,7 @@
   type        = {RFC},
   number      = {3432},
   year        = {2002},
-  month       = nov,
-  note        = {Mandates a randomised start so a periodic stream does not
-                 synchronise with other periodic behaviour}
+  month       = nov
 }
 
 @inproceedings{mccanne1993randomized,
@@ -802,10 +802,69 @@
 }
 
 @article{swami2026prereg,
-  author  = {Swami, Aditya and Sonawane, Nikhil},
-  title   = {Wire-Level Interrupt-to-Decision Latency in Edge Inference: A
-             Pre-Registered Measurement Study},
+  author  = {Swami, Akul and Sonawane, Dnyaneshwar},
+  title   = {Wire-Level Interrupt-to-Decision Latency of On-Sensor {MLC} versus Host
+             Inference on the {NVIDIA} {J}etson {O}rin {N}ano: A Pre-Registered
+             Measurement Study},
   journal = {arXiv preprint arXiv:2606.00524},
   year    = {2026},
   month   = may
+}
+
+% ---------------------------------------------------------------------------
+% Added for the TC revision, round 2. Each verified against the primary source.
+% ---------------------------------------------------------------------------
+
+@techreport{rfc4656,
+  author      = {Shalunov, Stanislav and Teitelbaum, Benjamin and Karp, Anatoly and
+                 Boote, Jeff W. and Zekauskas, Matthew J.},
+  title       = {A One-way Active Measurement Protocol ({OWAMP})},
+  institution = {Internet Engineering Task Force},
+  type        = {RFC},
+  number      = {4656},
+  year        = {2006},
+  month       = sep
+}
+
+@inproceedings{karimov2018benchmarking,
+  author    = {Karimov, Jeyhun and Rabl, Tilmann and Katsifodimos, Asterios and
+               Samarev, Roman and Heiskanen, Henri and Markl, Volker},
+  title     = {Benchmarking Distributed Stream Data Processing Systems},
+  booktitle = {Proc.\ IEEE 34th Int. Conf. Data Engineering (ICDE)},
+  year      = {2018},
+  pages     = {1507--1518},
+  doi       = {10.1109/ICDE.2018.00169}
+}
+
+@article{vandongen2020evaluation,
+  author  = {Van Dongen, Giselle and Van den Poel, Dirk},
+  title   = {Evaluation of Stream Processing Frameworks},
+  journal = {IEEE Trans. Parallel Distrib. Syst.},
+  volume  = {31},
+  number  = {8},
+  pages   = {1845--1858},
+  year    = {2020},
+  doi     = {10.1109/TPDS.2020.2978480}
+}
+
+@inproceedings{fruth2021telltale,
+  author    = {Fruth, Michael and Scherzinger, Stefanie and Mauerer, Wolfgang and
+               Ramsauer, Ralf},
+  title     = {Tell-Tale Tail Latencies: Pitfalls and Perils in Database Benchmarking},
+  booktitle = {Performance Evaluation and Benchmarking (TPCTC)},
+  publisher = {Springer},
+  year      = {2021},
+  pages     = {119--134},
+  doi       = {10.1007/978-3-030-94437-7_8}
+}
+
+@article{virkar2014power,
+  author  = {Virkar, Yogesh and Clauset, Aaron},
+  title   = {Power-law Distributions in Binned Empirical Data},
+  journal = {The Annals of Applied Statistics},
+  volume  = {8},
+  number  = {1},
+  pages   = {89--119},
+  year    = {2014},
+  doi     = {10.1214/13-AOAS710}
 }

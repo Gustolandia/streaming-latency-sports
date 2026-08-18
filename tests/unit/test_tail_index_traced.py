@@ -311,3 +311,78 @@ class TestDegenerateInputs:
         out = capsys.readouterr().out
         assert "grouped Pareto MLE" in out
         assert "exceedance" not in out
+
+
+class TestModes:
+    """The check that turned "the estimators disagree" into "the distribution has a mode"."""
+
+    def test_a_monotone_power_law_has_no_interior_mode(self):
+        assert tit.modes(pareto_buckets(0.8, 256, 8192)) == []
+
+    def test_it_finds_an_injected_mode(self):
+        bins = [(256, 512, 100), (512, 1024, 20), (1024, 2048, 90), (2048, 4096, 10)]
+        got = tit.modes(bins)
+        assert [m[0] for m in got] == [1024]
+        assert got[0][3] == pytest.approx(4.5)
+
+    def test_the_share_is_of_the_whole_sample(self):
+        bins = [(256, 512, 10), (512, 1024, 70), (1024, 2048, 20)]
+        assert tit.modes(bins)[0][2] == pytest.approx(0.7)
+
+    def test_edges_are_not_reported_as_modes(self):
+        """A first or last bucket has only one neighbour, so it cannot be shown to be a
+        local maximum of the distribution rather than of the window."""
+        assert tit.modes([(256, 512, 99), (512, 1024, 1)]) == []
+
+    def test_the_committed_histogram_is_multimodal_at_the_scheduler_slice(self):
+        """The manuscript's claim, pinned to the artefact. A re-run that removed the mode
+        would falsify Section V-G, and this test should fail rather than let it stand."""
+        est = tit.estimate(dict(tit.traced_histograms())["ea9/l88_base"])
+        assert len(est["modes"]) >= 3
+        slice_mode = [m for m in est["modes"] if m[0] == 2048]
+        assert slice_mode, "the 2-4 ms mode is the paper's mechanism evidence"
+        _, _, share, ratio = slice_mode[0]
+        assert share > 0.09 and ratio > 4
+
+    def test_above_the_mode_the_tail_is_light(self):
+        """alpha near 2 means a finite variance, which is the opposite of what the earlier
+        "heavy tail" language claimed."""
+        est = tit.estimate(dict(tit.traced_histograms())["ea9/l88_base"])
+        assert est["tail_alpha"] > 1.5
+        assert est["tail_lo"] < est["tail_alpha"] < est["tail_hi"]
+
+
+class TestGoodnessOfFit:
+    def test_a_true_power_law_is_not_rejected(self):
+        """The test must be able to fail to reject, or it proves nothing when it rejects."""
+        _, p, _, used = tit.gof_pvalue(pareto_buckets(0.7, 256, 8192, n=20_000), n_boot=200)
+        assert used == 200
+        assert p > 0.05
+
+    def test_the_committed_window_is_rejected(self):
+        bins = tit.window(tit.parse_runqlat(
+            open(dict(tit.traced_histograms())["ea9/l88_base"], encoding="utf-8").read())[0])
+        d, p, _, used = tit.gof_pvalue(bins, n_boot=200)
+        assert d > 0.01
+        assert p < 0.05, "the power law must be rejected on the manuscript's window"
+
+    def test_it_is_deterministic_for_a_fixed_seed(self):
+        bins = pareto_buckets(0.7, 256, 4096, n=5_000)
+        assert tit.gof_pvalue(bins, n_boot=50)[1] == tit.gof_pvalue(bins, n_boot=50)[1]
+
+    def test_the_ks_distance_is_zero_on_a_perfectly_fitted_sample(self):
+        bins = pareto_buckets(1.0, 256, 4096, n=10 ** 7)
+        alpha, _, _, _ = tit.binned_pareto_mle(bins)
+        assert tit.binned_ks(bins, alpha) < 1e-4
+
+    def test_the_multinomial_preserves_the_total(self):
+        import random as _r
+        rng = _r.Random(1)
+        assert sum(tit._multinomial(rng, 1000, [0.2, 0.3, 0.5])) == 1000
+
+    def test_the_binomial_handles_degenerate_probabilities(self):
+        import random as _r
+        rng = _r.Random(1)
+        assert tit._binomial(rng, 10, 0.0) == 0
+        assert tit._binomial(rng, 10, 1.0) == 10
+        assert tit._binomial(rng, 0, 0.5) == 0

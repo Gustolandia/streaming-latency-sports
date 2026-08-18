@@ -753,7 +753,7 @@ python scripts/kafka_producer.py --run-id s3_test --plan-csv "$PLAN" \
 
 ## 10. Testing & Quality
 
-**Current state (August 2026): 2,121 tests passing, every script ≥95% branch coverage.**
+**Current state (August 2026): 2,275 tests passing, every script ≥95% branch coverage.**
 The June 17 2026 snapshot (830 tests, 99% total coverage) included the Issue 3–6 gap-filler
 scripts (`statistical_analysis.py`, `power_analysis.py`, `analyze_protocol_overhead.py`,
 `analyze_actionability.py`, `verify_reproducibility.py`) and the root health-check scripts
@@ -862,8 +862,8 @@ That failure reached the manuscript three times here, twice past a full source-l
 is why the check now runs on the artefact a reader actually receives.
 
 **Status:** compiles clean — 0 errors, 0 undefined references or citations, 0 overfull boxes,
-10 pages against TC's 10–12 budget, exactly 45 references against TC's cap of 45, and a
-188–200 word abstract against TC's 100–200 range, with a 41-page supplement. Title: *When the
+11 pages against TC's 10–12 budget, exactly 45 references against TC's cap of 45, and a
+195-word abstract against TC's 100–200 range, with a 41-page supplement. Title: *When the
 Interval Is Smaller Than the Instrument: Two Ways Streaming Latency Benchmarks Fail on
 Sub-Millisecond Paths*. Formatted with `IEEEtran` (journal, 10pt) for IEEE Transactions on
 Computers.
@@ -982,7 +982,7 @@ Manuscript restructured for **IEEE TPDS** (`IEEEtran` journal, 16-page ceiling t
 39-page companion supplement); the OMB silent-deletion arm (the paper's second failure mode)
 integrated. Zenodo v2.0.0 archived from tag `v2.0.0` (commit `bebabec`) with SHA256 manifests:
 code [10.5281/zenodo.21836305](https://doi.org/10.5281/zenodo.21836305), data
-[10.5281/zenodo.21836326](https://doi.org/10.5281/zenodo.21836326). 2,121 tests green.
+[10.5281/zenodo.21836326](https://doi.org/10.5281/zenodo.21836326). 2,275 tests green.
 
 ### 1.0.1 — 2026-07-28 — Zenodo DOIs wired in
 The minted v1 Zenodo DOIs wired into `CITATION.cff`, README badges and the paper; software and

@@ -2359,6 +2359,34 @@ class TestCausalityFramingIsWithdrawn:
                        main_tex.index(r"\label{fig:model}")]
         assert "one clock" in fig, "the figure caption must say it too"
 
+    def test_fig1_marks_the_producers_own_stamps_on_its_timeline(self, main_tex):
+        """v3 correspondence item A1 (Kunkel): a reader could not place the acknowledgement
+        in the producer's own sequence because Fig. 1(a) showed only the ack and the receive
+        while Eq. (1) is written in t_sched and t_send.
+
+        This pin exists because the plan of record said the redraw was done when it was
+        not: docs/tc_plan.md recorded "Fig. 1 redrawn (t_sched, t_send added)" against a
+        figure that still showed neither. A claim that a figure was changed is checked
+        here against the figure, in three places -- the drawing source, the rendered
+        figure file the paper includes, and the caption that names them.
+        """
+        source = (REPO / "scripts" / "make_paper_figures.py").read_text(encoding="utf-8")
+        body = source[source.index("def plot_model("):source.index("def plot_", source.index("def plot_model(") + 1)]
+        for sym in ("t_{sched}", "t_{send}"):
+            assert sym in body, f"plot_model() must draw {sym} on the producer timeline"
+
+        from pypdf import PdfReader
+        rendered = PdfReader(str(REPO / "docs" / "results" / "figures" /
+                                 "measurement_model.pdf")).pages[0].extract_text()
+        flat = "".join(rendered.split())  # subscripts and line breaks collapse on extraction
+        for token in ("tsched", "tsend", "schedulinglag"):
+            assert token in flat, f"the committed figure file must render {token!r}"
+
+        fig = main_tex[main_tex.index(r"\label{fig:model}") - 1500:
+                       main_tex.index(r"\label{fig:model}")]
+        assert r"t_{\mathrm{sched}}" in fig and r"t_{\mathrm{send}}" in fig, \
+            "the caption must name the two stamps the panel now shows"
+
     def test_the_send_referenced_span_result_is_stated(self, main_tex):
         assert r"\spanNegSend" in main_tex, \
             "the send-referenced count must come from the recount artefact"

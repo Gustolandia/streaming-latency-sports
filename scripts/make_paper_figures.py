@@ -170,10 +170,16 @@ def plot_model(axes):
     # This panel used to draw Delta as a single Gaussian, which was the model the paper held
     # when the figure was made and has since WITHDRAWN. A bell curve is the wrong picture in the
     # way that matters most: it has a finite mean and a thin tail, so it makes inversions look
-    # like a mild consequence of a wide distribution. The measured stall distribution has a
-    # tail index near 0.34 -- no finite mean, no finite variance -- and the inversion rate falls
-    # only as T_true^-0.34, which is why a 77-fold increase in the measured interval buys barely
-    # a fourfold reduction in risk. Drawn on a log density so the tail is visible at all.
+    # like a mild consequence of a wide distribution. The measured stall distribution is heavy
+    # enough that a 77-fold increase in the measured interval buys barely a fourfold reduction
+    # in risk. Drawn on a log density so the tail is visible at all.
+    #
+    # The title asserted "P(inv) proportional to T^-0.34" until the TC revision. It no longer
+    # does, and the shape here is illustrative rather than fitted: estimated properly on the
+    # traced histogram (scripts/tail_index_traced.py) the survival is NOT a power law over the
+    # decade that matters -- an exceedance index of 0.21 against a grouped-likelihood 1.19,
+    # with per-octave indices two orders of magnitude apart. A figure must not assert an
+    # exponent the text withdraws, so it now states only the qualitative claim it can support.
     x = np.linspace(-6, 6, 800)
     core = 0.985 * np.exp(-0.5 * (x / 0.22) ** 2)          # RUNNING: narrow jitter core
     tail = 0.015 * (1.0 + np.abs(x) / 0.5) ** (-1.34)      # PREEMPTED: heavy residual tail
@@ -194,7 +200,7 @@ def plot_model(axes):
     h1_ax.set_xlabel(r"stamping asymmetry $\Delta$ (ms)")
     h1_ax.set_ylabel("density (log)")
     h1_ax.set_yticks([])
-    h1_ax.set_title(r"(b) a heavy tail, not a bell: $P(\mathrm{inv}) \propto T_{true}^{-0.34}$",
+    h1_ax.set_title(r"(b) a heavy tail, not a bell: raising $T_{true}$ barely thins it",
                     fontsize=9)
     mech_ax.set_title("(a) how a positive latency is measured as negative", fontsize=9)
 

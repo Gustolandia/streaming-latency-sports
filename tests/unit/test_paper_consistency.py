@@ -2322,7 +2322,31 @@ class TestTransactionsOnComputers:
             "TC counts a biography in the page budget; the paper must carry one"
         bio = main_tex[main_tex.index(r"\begin{IEEEbiographynophoto}"):
                        main_tex.index(r"\end{IEEEbiographynophoto}")]
+        # The source count runs a little above the rendered count (macros and escapes
+        # expand to one token), so the slack is upward only; the rendered biography is
+        # what TC counts and it is 140 words.
         assert len(bio.split()) <= 160, "TC allows at most 145 words of biography"
+
+    def test_the_biography_states_the_degrees_already_held(self, main_tex):
+        """It read "is completing the M.Sc. degree", which understated the author to the
+        point of inaccuracy: an M.Sc. and a Higher Diploma are already held, both with
+        first-class honours, on top of a physics degree. A reader weighs that in the first
+        clause, so it has to be right."""
+        bio = main_tex[main_tex.index(r"\begin{IEEEbiographynophoto}"):
+                       main_tex.index(r"\end{IEEEbiographynophoto}")]
+        assert "is completing the M.Sc." not in bio, "the earlier understatement"
+        assert "first-class honours" in bio
+        assert "physics" in bio and "Universidade do Porto" in bio
+        assert "currently pursuing" in bio, "the degree in progress is still distinguished"
+
+    def test_the_biography_claims_no_publications(self, main_tex):
+        """IEEE biographies list degrees, positions and interests, not individual papers.
+        The author's prior article is not peer reviewed and a further manuscript is under
+        review; neither may be presented as a credential here."""
+        bio = main_tex[main_tex.index(r"\begin{IEEEbiographynophoto}"):
+                       main_tex.index(r"\end{IEEEbiographynophoto}")]
+        for word in ("published", "publication", "under review", "forthcoming", "preprint"):
+            assert word not in bio.lower(), f"the biography must not claim {word!r}"
 
 
 class TestCausalityFramingIsWithdrawn:

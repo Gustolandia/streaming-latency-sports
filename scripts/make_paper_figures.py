@@ -135,32 +135,49 @@ def plot_model(axes):
     mech_ax, h1_ax = axes
 
     # --- (a) the mechanism, as a timeline
-    mech_ax.set_xlim(0, 10)
+    #
+    # A reader (Kunkel, v3 correspondence, item A1) could not place the acknowledgement in
+    # the producer's own sequence because the panel showed only the ack and the receive,
+    # while Eq. (1) is written in t_sched and t_send. Both now sit on the producer timeline
+    # to the left of the acknowledgement, with the scheduling-lag bracket that ties them to
+    # Eq. (1). The start-at-ack framing of the inversion itself is unchanged: the failure
+    # is between the two clock reads, and that is what the red bracket still marks.
+    mech_ax.set_xlim(0, 10.4)
     mech_ax.set_ylim(0, 3.2)
     mech_ax.axis("off")
     for y, label, colour in ((2.3, "producer", KAFKA), (0.9, "consumer", REDIS)):
-        mech_ax.annotate("", xy=(9.4, y), xytext=(0.6, y),
+        mech_ax.annotate("", xy=(9.9, y), xytext=(1.4, y),
                          arrowprops=dict(arrowstyle="->", color=GREY, linewidth=1.2))
-        mech_ax.text(0.5, y + 0.22, label, fontsize=8, color=colour, ha="left")
+        mech_ax.text(0.15, y, label, fontsize=8, color=colour, ha="left", va="center")
+
+    # the producer's own two stamps, taken before the acknowledgement exists
+    for x, sym in ((1.9, r"$t_{sched}$"), (2.7, r"$t_{send}$")):
+        mech_ax.plot([x], [2.3], marker="o", markersize=5, color=KAFKA,
+                     markerfacecolor="white", markeredgewidth=1.2)
+        mech_ax.text(x, 2.62, sym, fontsize=7, ha="center", color=KAFKA)
+    mech_ax.annotate("", xy=(2.7, 2.3), xytext=(1.9, 2.3),
+                     arrowprops=dict(arrowstyle="<->", color=GREY, linewidth=0.9))
+    mech_ax.text(2.3, 2.02, "scheduling\nlag", fontsize=6, color=GREY, ha="center",
+                 va="top", linespacing=0.9)
 
     # physical events (true), and the later moments the software actually reads the clock
-    mech_ax.plot([2.4], [2.3], marker="|", markersize=14, color=KAFKA)
-    mech_ax.text(2.4, 2.62, "ack arrives", fontsize=7, ha="center")
-    mech_ax.plot([4.6], [2.3], marker="o", markersize=6, color=KAFKA)
-    mech_ax.text(4.6, 2.62, r"clock read $\rightarrow t_{ack}$", fontsize=7, ha="center")
-    mech_ax.annotate("", xy=(4.6, 2.3), xytext=(2.4, 2.3),
+    mech_ax.plot([3.7], [2.3], marker="|", markersize=14, color=KAFKA)
+    mech_ax.text(3.7, 2.62, "ack arrives", fontsize=7, ha="center")
+    mech_ax.plot([5.9], [2.3], marker="o", markersize=6, color=KAFKA)
+    mech_ax.text(5.9, 2.62, r"clock read $\rightarrow t_{ack}$", fontsize=7, ha="center")
+    mech_ax.annotate("", xy=(5.9, 2.3), xytext=(3.7, 2.3),
                      arrowprops=dict(arrowstyle="<->", color="#b22222", linewidth=1.2))
-    mech_ax.text(3.5, 2.02, r"$\delta_{ack}$", fontsize=8, color="#b22222", ha="center")
+    mech_ax.text(4.8, 2.02, r"$\delta_{ack}$", fontsize=8, color="#b22222", ha="center")
 
-    mech_ax.plot([3.4], [0.9], marker="|", markersize=14, color=REDIS)
-    mech_ax.text(3.3, 0.42, "message received", fontsize=7, ha="right")
-    mech_ax.plot([4.0], [0.9], marker="o", markersize=6, color=REDIS)
-    mech_ax.text(4.6, 0.42, r"clock read $\rightarrow t_{recv}$", fontsize=7, ha="center")
-    mech_ax.annotate("", xy=(4.0, 0.9), xytext=(3.4, 0.9),
+    mech_ax.plot([4.7], [0.9], marker="|", markersize=14, color=REDIS)
+    mech_ax.text(4.6, 0.42, "message received", fontsize=7, ha="right")
+    mech_ax.plot([5.3], [0.9], marker="o", markersize=6, color=REDIS)
+    mech_ax.text(5.9, 0.42, r"clock read $\rightarrow t_{recv}$", fontsize=7, ha="center")
+    mech_ax.annotate("", xy=(5.3, 0.9), xytext=(4.7, 0.9),
                      arrowprops=dict(arrowstyle="<->", color="#b22222", linewidth=1.2))
-    mech_ax.text(3.7, 1.02, r"$\delta_{recv}$", fontsize=8, color="#b22222", ha="center")
+    mech_ax.text(5.0, 1.02, r"$\delta_{recv}$", fontsize=8, color="#b22222", ha="center")
 
-    mech_ax.text(5.0, 1.55,
+    mech_ax.text(6.3, 1.55,
                  r"$T_{meas}=t_{recv}-t_{ack}<0$" "\n"
                  r"even though $T_{true}>0$",
                  fontsize=8, color="#b22222", ha="left", va="center")

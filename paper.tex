@@ -342,7 +342,9 @@ giving
 \caption{(a)~How a positive latency is measured as negative, on one clock: each side stamps
 some interval after its event, and if the producer's callback delay exceeds the true
 delivery plus the consumer's delay, the difference inverts. The record is not early; the
-acknowledgement stamp is late. (b)~Why the check bites hardest on small effects: the same
+acknowledgement stamp is late. The producer's own stamps, $t_{\mathrm{sched}}$ and
+$t_{\mathrm{send}}$, precede the acknowledgement, and the span referenced to them never
+inverts (Table~\ref{tab:spans}). (b)~Why the check bites hardest on small effects: the same
 distribution of stamping asymmetry $\Delta$ inverts most of a small $T_{\mathrm{true}}$ and
 almost none of a large one.}
 \label{fig:model}

@@ -2348,7 +2348,8 @@ class TestTransactionsOnComputers:
         bio = tex[tex.index(r"\begin{IEEEbiographynophoto}"):
                   tex.index(r"\end{IEEEbiographynophoto}")]
         assert "measurement validity" in bio
-        assert "sports analytics" in bio, "the second strand is part of the programme"
+        for strand in ("computer systems", "environmental measurement", "sports analytics"):
+            assert strand in bio, f"{strand} is part of the stated programme"
         assert "pre-registration" in bio and "physical-consistency" in bio
 
     def test_the_biography_claims_no_publications(self, main_tex):

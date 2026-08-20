@@ -12,12 +12,19 @@ SCRIPTS_DIR = Path(__file__).parent.parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 from audit_external_harness import (  # noqa: E402
+    DISCARD_COUNTER,
+    classify,
     scan,
     has_discard_counter,
     verdict,
     source_files,
     main,
 )
+
+
+def has_discard_counter_line(line):
+    """Whether a single line is evidence that discards are counted."""
+    return bool(DISCARD_COUNTER.search(line))
 
 # Cross-process subtraction, positive-only filter, no counter: the OMB shape.
 EXPOSED_SILENT = """
@@ -233,3 +240,72 @@ class TestTheCommittedOpenMessagingFinding:
     def test_the_evidence_is_attributable(self):
         assert all(r["harness"] == "OpenMessaging Benchmark" and int(r["line"]) > 0
                    for r in self._rows())
+
+
+class TestSuppressionClass:
+    """The third disposal: substitute a value and leave the sample count untouched.
+
+    This class was added after auditing beyond the JVM. It matters more than the filter,
+    because a filter at least leaves a hole in the counts; a substitution leaves an output
+    that looks complete and is wrong.
+    """
+
+    def test_a_ternary_substitution_is_suppression(self):
+        # blktrace btt: every inverted stage interval becomes one nanosecond.
+        assert classify("return (from < to) ? (to - from) : 1;") == ["silent_suppression"]
+
+    def test_a_sign_guard_on_a_time_variable_is_suppression(self):
+        # fio: a negative interval returns zero, under a question-marked guess at the cause.
+        assert classify("if (sec < 0 || (sec == 0 && nsec < 0))") == ["silent_suppression"]
+
+    def test_a_floor_clamp_is_suppression(self):
+        # Both classes, correctly: it is a cross-process subtraction *and* a clamp on the result.
+        assert set(classify("v = Math.max(0, now - publishTimestamp);")) == {
+            "cross_process_latency", "silent_suppression"}
+
+    def test_a_nan_substitution_is_suppression(self):
+        assert classify("latencyMs = Double.NaN;") == ["silent_suppression"]
+
+    def test_an_ordinary_subtraction_is_not_suppression(self):
+        assert "silent_suppression" not in classify("total = end - start;")
+
+    def test_an_ordinary_ternary_is_not_suppression(self):
+        assert "silent_suppression" not in classify("x = flag ? a : b;")
+
+    def test_suppression_without_a_counter_gets_its_own_verdict(self):
+        findings = [{"kind": "cross_process_latency", "file": "g.c", "line": 1, "evidence": ""},
+                    {"kind": "silent_suppression", "file": "g.c", "line": 2, "evidence": ""}]
+        tag, why = verdict(findings, counted=False)
+        assert tag == "EXPOSED, AND REPAIRED"
+        assert "nothing is missing from the output" in why
+
+    def test_suppression_that_is_counted_falls_through_to_the_milder_verdict(self):
+        findings = [{"kind": "cross_process_latency", "file": "g.c", "line": 1, "evidence": ""},
+                    {"kind": "silent_suppression", "file": "g.c", "line": 2, "evidence": ""}]
+        tag, _ = verdict(findings, counted=True)
+        assert tag != "EXPOSED, AND REPAIRED"
+
+
+class TestPatternsAddedForNonJvmSources:
+    """Each of these was added because a real harness used a spelling the tool could not see."""
+
+    def test_erlang_short_circuit_guard_is_a_positive_filter(self):
+        line = "E2ELatency > 0 andalso inc_counter(Prometheus, publish_latency, E2ELatency),"
+        assert "positive_only_filter" in classify(line)
+
+    def test_erlang_system_time_subtraction_is_cross_process(self):
+        assert "cross_process_latency" in classify("E2ELatency = os:system_time(millisecond) - TS,")
+
+    def test_a_discard_metric_named_for_samples_counts_as_a_counter(self):
+        # Rezolus names the noun it counts "samples", not "count".
+        assert has_discard_counter_line('name = "scheduler_discarded_samples",')
+
+    def test_an_unrelated_sample_name_is_not_a_counter(self):
+        assert not has_discard_counter_line('name = "scheduler_runqueue_latency",')
+
+    def test_c_and_erlang_sources_are_now_walked(self, tmp_path):
+        (tmp_path / "a.c").write_text("return (from < to) ? (to - from) : 1;\n", encoding="utf-8")
+        (tmp_path / "b.erl").write_text("X > 0 andalso ok,\n", encoding="utf-8")
+        (tmp_path / "c.txt").write_text("ignored\n", encoding="utf-8")
+        names = {Path(p).name for p in source_files(str(tmp_path))}
+        assert names == {"a.c", "b.erl"}

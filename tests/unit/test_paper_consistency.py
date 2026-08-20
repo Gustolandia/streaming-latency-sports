@@ -11,6 +11,7 @@ Targets paper.tex (ACM, systems venue). The superseded SAGE manuscript is gone; 
 retired when the broker comparison turned out to be the least interesting result in the study.
 """
 import csv
+import sys
 import re
 import statistics as st
 from pathlib import Path
@@ -59,6 +60,22 @@ def _two_prop_z(row_a, row_b):
 def _rows(*parts):
     with open(RESULTS.joinpath(*parts), encoding="utf-8") as fh:
         return list(csv.DictReader(fh))
+
+
+def _emitted_macros():
+    """The committed ledger, as (name, value) pairs.
+
+    Tests that want to know what a number renders as must read it here rather than search the
+    .tex for a digit string: a macro's value is not visible at the call site, and searching for
+    the digits instead has already produced one test that passed by matching an unrelated
+    decimal in a nearby table.
+    """
+    out = []
+    path = REPO / "docs" / "generated" / "paper_numbers.tex"
+    for m in re.finditer(r"\\newcommand\{\\(\w+)\}\{(.*?)\}\s*$", path.read_text(encoding="utf-8"),
+                         re.M):
+        out.append((m.group(1), m.group(2)))
+    return out
 
 
 def _section(tex, label):
@@ -1234,7 +1251,17 @@ class TestMixtureStructure:
         assert 4 < core_growth < 6, f"core grows {core_growth:.1f}x, paper says ~5"
         assert 50 < tail_growth < 70, f"tail grows {tail_growth:.1f}x, paper says ~60"
         section = _section(tex, "sec:mixture")
-        assert "60" in section and "12" in section, "the tail:core ratio must be stated"
+        # This assertion used to read `"60" in section and "12" in section`, and it passed for
+        # the wrong reason: those digits were substrings of the decimals 0.0600 and 0.1229 in
+        # the geometry table, not the ratios at all. Macro-ising that table removed the
+        # accidental match and exposed it. Both growth factors reach the page as macros, so
+        # what the test must check is that the macros are used *and* that the ledger's values
+        # for them are the ones the artefact implies.
+        assert "\\coreGrowth" in section, "the core growth factor must be stated, via the ledger"
+        assert "\\invGrowth" in section, "the tail growth factor must be stated, via the ledger"
+        emitted = dict(_emitted_macros())
+        assert emitted["coreGrowth"] == "%.0f" % core_growth
+        assert emitted["invGrowth"] == "%.0f" % tail_growth
 
     @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; mixture-structure detail is supplement-only")
 
@@ -2190,10 +2217,11 @@ class TestRefereeRoundOne:
         assert "embedded mode" in audit[:2500], "Section 7's opening must scope the audit"
 
     def test_the_preprints_are_marked(self, main_tex):
-        for key in ("sharma2026causality", "chandrasekar2026bias", "swami2026prereg"):
-            # mohammad2025kafka dropped from the citation list in v2.5: the grey-literature
-            # engagement it anchored moved to supplementary material, and an uncited key
-            # cannot carry a preprint marker.
+        # swami2026prereg dropped in the round-3 revision, for the same reason
+        # mohammad2025kafka went in v2.5 and by the same rule: it anchored a single clause,
+        # TC caps the reference list at 45, and HP AN 162-1 had to fit. An uncited key
+        # cannot carry a preprint marker.
+        for key in ("sharma2026causality", "chandrasekar2026bias"):
             first = main_tex.index(key)
             window = main_tex[max(0, first - 300):first + 100].lower()
             assert "preprint" in window, f"{key} must be marked as a preprint at first cite"
@@ -2305,12 +2333,39 @@ class TestTransactionsOnComputers:
         assert n <= 45, f"TC caps references at 45; the paper cites {n}"
 
     def test_the_abstract_is_within_the_journals_word_range(self, main_tex):
-        raw = main_tex[main_tex.index(r"\begin{abstract}") + 16:
-                       main_tex.index(r"\end{abstract}")]
-        words = len(re.sub(r"\\[a-zA-Z]+\{?|[${}\\]", " ", raw).split())
-        # The source count runs above the rendered count because macros expand to one word;
-        # the rendered abstract is what the journal counts, so allow the slack upward only.
-        assert 100 <= words <= 215, f"abstract is {words} source words; TC wants 100-200"
+        """Counted on the rendered page, because that is what a copy editor counts.
+
+        This test used to strip macros out of the source and allow up to 215 on the theory
+        that the source always over-counts. The theory is wrong for this abstract: its
+        macros expand to single tokens like "738,730", so source and rendered land within a
+        word or two of each other, and the slack let a genuinely 208-word abstract pass as
+        compliant. Read the PDF instead: no slack, no theory.
+
+        The extractor matters as much as the source. `pypdf` drops inter-word spaces on this
+        page and returns 186 where `pdftotext` returns 198 -- an under-count, which is the
+        dangerous direction for a cap. `pdftotext -layout` is wrong here too, for the
+        opposite reason: it interleaves the two body columns and swallows the delimiter.
+        Plain `pdftotext` on page one gives the abstract in reading order, dehyphenated,
+        which is what a copy editor would count.
+        """
+        import shutil
+        import subprocess
+        import tempfile
+        pdf = REPO / "paper.pdf"
+        if not pdf.is_file():
+            pytest.skip("paper.pdf not built")
+        if not shutil.which("pdftotext"):
+            pytest.skip("pdftotext not available")
+        out = Path(tempfile.mkstemp(suffix=".txt")[1])
+        subprocess.run(["pdftotext", "-q", "-nopgbrk", "-f", "1", "-l", "1",
+                        str(pdf), str(out)], check=True)
+        page = out.read_text(encoding="utf-8", errors="replace")
+        i, j = page.find("Abstract"), page.find("Index Terms")
+        assert i >= 0 and j > i, "could not delimit the rendered abstract"
+        body = re.sub(r"^Abstract\s*[-–—]*", "", page[i:j]).strip()
+        words = [w for w in body.split() if re.search(r"[A-Za-z0-9]", w)]
+        assert 100 <= len(words) <= 200, \
+            f"abstract is {len(words)} rendered words; TC wants 100-200"
 
     def test_the_running_head_names_the_right_journal(self, main_tex):
         assert r"\markboth{IEEE Transactions on Computers}" in main_tex
@@ -2464,7 +2519,9 @@ class TestPriorArtCredits:
     def test_the_textbook_half_of_the_ratio_is_conceded(self, main_tex):
         section = _section(main_tex, "sec:related_resolution")
         assert "textbook" in section.lower()
-        for key in ("kuperberg2011timers", "danzig1990highres"):
+        # danzig1990highres dropped in round 3 to make room inside the 45-reference cap;
+        # kuperberg2011timers is cited twice and carries "textbook" alone.
+        for key in ("kuperberg2011timers",):
             assert key in section, f"{key} anchors the conceded half of the ratio claim"
 
     def test_the_dither_lineage_is_acknowledged(self, main_tex):

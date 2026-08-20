@@ -868,3 +868,115 @@
   year    = {2014},
   doi     = {10.1214/13-AOAS710}
 }
+
+@techreport{hp1970tia,
+  author      = {{Hewlett-Packard}},
+  title       = {Time Interval Averaging},
+  institution = {Hewlett-Packard Company},
+  type        = {Application Note},
+  number      = {162-1},
+  year        = {1970},
+  note        = {Part no.\ 02-5952-0766. The note carries no printed date; it cites the
+                 \emph{HP Journal} of April 1970, which bounds it from below}
+}
+
+@misc{fio_gettime,
+  author       = {Axboe, Jens},
+  title        = {{fio}: Flexible {I/O} Tester --- \texttt{gettime.c}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/axboe/fio}; \texttt{ntime\_since},
+                  \texttt{utime\_since} and \texttt{mtime\_since\_tv} each return zero for a
+                  negative interval, under the comment ``time warp bug on some kernels?''.
+                  Read 2026-08-20}
+}
+
+@misc{emqtt_bench,
+  author       = {{EMQ Technologies}},
+  title        = {\texttt{emqtt-bench}: {MQTT} benchmark tool --- \texttt{src/emqtt\_bench.erl}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/emqx/emqtt-bench}; a millisecond cross-process
+                  difference recorded under the guard \texttt{E2ELatency > 0} with no counter
+                  for the rejected samples. Read 2026-08-20}
+}
+
+@misc{rezolus,
+  author       = {{IOP Systems}},
+  title        = {Rezolus: systems performance telemetry --- \texttt{scheduler\_discarded\_samples}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/iopsystems/rezolus}; the metric counts samples
+                  discarded ``because the two timestamps arrived out of order across CPUs''.
+                  Read 2026-08-20}
+}
+
+@misc{btt_inlines,
+  author       = {Brunelle, Alan D.},
+  title        = {\texttt{blktrace}/\texttt{btt} --- \texttt{btt/inlines.h}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\texttt{tdelta()} returns one nanosecond when the stage timestamps are out
+                  of order: \texttt{return (from < to) ? (to - from) : 1;}. Read 2026-08-20}
+}
+
+@book{millsap2003oracle,
+  author    = {Millsap, Cary and Holt, Jeff},
+  title     = {Optimizing {Oracle} Performance},
+  publisher = {O'Reilly},
+  address   = {Sebastopol, CA},
+  year      = {2003},
+  isbn      = {059600527X},
+  note      = {Section 7.7, ``Quantization Error''}
+}
+
+@techreport{etsi102250,
+  author      = {{ETSI}},
+  title       = {Speech and Multimedia Transmission Quality ({STQ}); {QoS} Aspects for
+                 Popular Services in Mobile Networks; Part 4: Requirements for Quality of
+                 Service Measurement Equipment},
+  institution = {European Telecommunications Standards Institute},
+  type        = {Technical Specification},
+  number      = {TS 102 250-4 V2.3.1},
+  year        = {2019},
+  month       = nov,
+  note        = {Clause 5.1, General requirement for data logging}
+}
+
+@article{hunold2016reproducible,
+  author  = {Hunold, Sascha and Carpen-Amarie, Alexandra},
+  title   = {Reproducible {MPI} Benchmarking Is Still Not as Easy as You Think},
+  journal = {IEEE Transactions on Parallel and Distributed Systems},
+  volume  = {27},
+  number  = {12},
+  pages   = {3617--3630},
+  year    = {2016},
+  doi     = {10.1109/TPDS.2016.2539167}
+}
+
+@misc{osu_microbenchmarks,
+  author       = {{Network-Based Computing Laboratory, Ohio State University}},
+  title        = {{OSU} Micro-Benchmarks 7.5 --- \texttt{osu\_latency}},
+  howpublished = {\url{https://mvapich.cse.ohio-state.edu/benchmarks/}},
+  year         = {2025},
+  note         = {\texttt{c/mpi/pt2pt/standard/osu\_latency.c} divides the round trip by two;
+                  the documentation reports ``average one-way latency''. Read 2026-08-20}
+}
+
+@misc{netpipe,
+  author       = {Turner, Dave and Chen, Xuehua},
+  title        = {{NetPIPE}: A Network Protocol Independent Performance Evaluator},
+  howpublished = {\url{https://netpipe.cs.ksu.edu/}},
+  year         = {2025},
+  note         = {``Latencies are calculated by dividing the round trip time in half for
+                  small messages''. Read 2026-08-20}
+}
+
+@misc{intel_imb,
+  author       = {{Intel Corporation}},
+  title        = {Intel {MPI} Benchmarks --- \texttt{PingPong}},
+  howpublished = {Intel MPI Library User Guide},
+  year         = {2021},
+  note         = {``Reported timings --- time${}=\Delta t/2$''; the companion
+                  \texttt{PingPing} reports the unhalved time. Read 2026-08-20}
+}

@@ -318,3 +318,50 @@ class TestTheRefereeDrivenMacroGroups:
         cells = load_cells("docs/results/external_campaigns_index.csv")
         names = [n for n, _ in epn.all_pairs(measured(cells))]
         assert len(names) == len(set(names)), "a duplicate \newcommand would fail the build"
+
+
+class TestRegistryMacros:
+    """The audited-harness survey reaches the page as counts, not adjectives.
+
+    Section II says how many independent harnesses dispose of an inverted sample without
+    counting it. That sentence used to be a claim about the field backed by prose; it is now
+    a fold over committed evidence whose labels are recomputed on every build. These tests
+    exist so that loosening a classifier pattern cannot quietly change what the paper says.
+    """
+
+    def test_the_counts_come_from_the_committed_registry(self):
+        import harness_registry
+        got = dict(epn.registry_macros())
+        s = harness_registry.summary()
+        assert got["harnessAudited"] == str(s["harnesses"])
+        assert got["harnessSilent"] == str(s["n_silent"])
+
+    def test_the_survey_covers_more_than_one_vendor_and_language(self):
+        got = dict(epn.registry_macros())
+        assert int(got["harnessVendors"]) >= 4
+        assert int(got["harnessLanguages"]) >= 3
+
+    def test_both_disposal_classes_are_represented(self):
+        got = dict(epn.registry_macros())
+        assert int(got["harnessFilters"]) >= 2
+        assert int(got["harnessSuppressors"]) >= 2
+
+    def test_at_least_one_harness_counts_its_discards(self):
+        """Without a counterexample the survey would be an advertisement."""
+        assert int(dict(epn.registry_macros())["harnessCounting"]) >= 1
+
+    def test_silent_never_exceeds_the_harnesses_audited(self):
+        got = dict(epn.registry_macros())
+        assert int(got["harnessSilent"]) <= int(got["harnessAudited"])
+
+    def test_a_missing_registry_yields_no_macros_rather_than_wrong_ones(self, monkeypatch):
+        import harness_registry
+        monkeypatch.setattr(harness_registry, "summary",
+                            lambda *a, **k: (_ for _ in ()).throw(OSError("gone")))
+        assert epn.registry_macros() == []
+
+    def test_the_group_is_wired_into_the_emitted_file(self):
+        names = {n for n, _ in epn.all_pairs(measured(load_cells(
+            Path(__file__).parent.parent.parent / "docs" / "results"
+            / "external_campaigns_index.csv")))}
+        assert {"harnessAudited", "harnessSilent"} <= names

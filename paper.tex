@@ -234,7 +234,9 @@ conclusion from it~\cite{millsap2003oracle}: an event shorter than the resolutio
 either one tick or zero according to whether it crosses a tick boundary --- our
 Equation~\ref{eq:retention} --- and coarse timing survives this in aggregate \emph{because}
 the two signed errors cancel. A guard that admits only positive samples removes one of the
-two signs, and with it the cancellation the defence depends on.
+two signs, and with it the cancellation the defence depends on; Supplement~S41 sets this
+beside the GUM's rectangular model and the oldest statistical statement that discarding
+zeros is not free.
 
 The mathematics of the interaction is older still, and it is not ours. Counter metrology
 settled it for time-interval averaging half a century ago, and Hewlett-Packard's
@@ -1000,7 +1002,9 @@ dropped~\cite{rfc4656}. Conformance testing asks for it too: ETSI's specificatio
 mobile-network measurement equipment states that ``[m]easurement cycles which are removed
 from the measured data have to be reported''~\cite{etsi102250}. Count discards separated by
 sign: negative means the reference stamp failed, computes-to-zero means the resolution
-failed, and one unsigned total cannot distinguish them~\cite{rfc7679}.
+failed, and one unsigned total cannot distinguish them~\cite{rfc7679}. Neither half is
+unprecedented: Supplements~S39 and~S40 name tools that already publish what they could not
+measure, and standards that state our rule's form for other domains.
 
 \textbf{Record the achieved rate, not the flag meant to produce it.} Verify it per run
 against elapsed wall time. The send schedule is an experimental variable in Mode B, not a
@@ -1062,7 +1066,9 @@ leaves the cross-host channel open rather than ruled out. It is not what produce
 general.
 
 \label{sec:limitations}
-\paragraph{Scope, and the alternatives eliminated} The mechanism requires a stamping path that can be preempted. Designs that pin a thread to
+\paragraph{Scope, and the alternatives eliminated} Three widely used runtimes document this structure without drawing its consequence for a
+cross-process subtraction (Supplement~S38).
+The mechanism requires a stamping path that can be preempted. Designs that pin a thread to
 a dedicated core and busy-poll, or that stamp in hardware, remove the state
 Equation~\ref{eq:twostate} depends on, and we make no claim about them. Within our own
 setting the alternatives are each eliminated: clock skew (one clock by construction on the

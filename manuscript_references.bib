@@ -980,3 +980,125 @@
   note         = {``Reported timings --- time${}=\Delta t/2$''; the companion
                   \texttt{PingPing} reports the unhalved time. Read 2026-08-20}
 }
+
+@misc{sockperf,
+  author       = {{Mellanox Technologies}},
+  title        = {\texttt{sockperf}: network benchmarking utility},
+  howpublished = {\url{https://github.com/Mellanox/sockperf}},
+  year         = {2026},
+  note         = {The run summary prints \texttt{SentMessages}, \texttt{ReceivedMessages}
+                  and \texttt{SkippedMessages} beside the latency percentiles, and a
+                  dropped/duplicated/out-of-order line derived from sequence numbers.
+                  Read 2026-08-20}
+}
+
+@misc{otlp_exphisto,
+  author       = {{OpenTelemetry Authors}},
+  title        = {{OpenTelemetry} Metrics Data Model --- Exponential Histogram: Zero Count
+                  and Zero Threshold},
+  howpublished = {\url{https://opentelemetry.io/docs/specs/otel/metrics/data-model/}},
+  year         = {2026},
+  note         = {\texttt{zero\_count} holds values at or below a zero threshold, including
+                  ``values that have been rounded to zero''; \texttt{count} is defined to
+                  include it. Read 2026-08-20}
+}
+
+@misc{fio_howto,
+  author       = {Axboe, Jens},
+  title        = {\texttt{fio} {HOWTO} --- interpreting the output},
+  howpublished = {\url{https://fio.readthedocs.io/}},
+  year         = {2026},
+  note         = {For asynchronous ioengines completion latency runs ``to when the I/O's
+                  completion was reaped by fio''. Read 2026-08-20}
+}
+
+@misc{hip_events,
+  author       = {{Advanced Micro Devices}},
+  title        = {{HIP} Runtime {API}: Event Management},
+  howpublished = {\url{https://rocm.docs.amd.com/projects/HIP/en/latest/}},
+  year         = {2026},
+  note         = {Under \texttt{hipEventElapsedTime()}: ``the time that the event recorded
+                  may be significantly after the host calls hipEventRecord()''.
+                  Read 2026-08-20}
+}
+
+@misc{cuda_bpg,
+  author       = {{NVIDIA Corporation}},
+  title        = {{CUDA} {C++} Best Practices Guide, Using {CUDA} {GPU} Timers},
+  howpublished = {\url{https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/}},
+  year         = {2026},
+  note         = {Section 9.1.2: ``The device will record a timestamp for the event when it
+                  reaches that event in the stream.'' Read 2026-08-20}
+}
+
+@misc{librdkafka,
+  author       = {{Confluent}},
+  title        = {\texttt{librdkafka} introduction --- delivery reports},
+  howpublished = {\url{https://github.com/confluentinc/librdkafka}},
+  year         = {2026},
+  note         = {The delivery-report callback \texttt{dr\_msg\_cb} is served by
+                  \texttt{rd\_kafka\_poll()} and other queue-serving calls, so it runs on
+                  the application's thread rather than asynchronously. Read 2026-08-20}
+}
+
+@misc{specjms2007,
+  author       = {{Standard Performance Evaluation Corporation}},
+  title        = {{SPECjms2007} Run and Reporting Rules, Version 1.0},
+  howpublished = {\url{https://www.spec.org/jms2007/docs/RunRules.html}},
+  year         = {2014},
+  note         = {Clause 3.6.2 records delivery time as a histogram of default granularity
+                  $100$~ms; the only timing-quality requirement is clause 3.2's $100$~ms
+                  bound on inter-node clock agreement. Read 2026-08-20}
+}
+
+@article{sachs2009specjms,
+  author  = {Sachs, Kai and Kounev, Samuel and Bacon, Jean and Buchmann, Alejandro P.},
+  title   = {Performance Evaluation of Message-Oriented Middleware Using the {SPECjms2007}
+             Benchmark},
+  journal = {Performance Evaluation},
+  volume  = {66},
+  number  = {8},
+  pages   = {410--434},
+  year    = {2009},
+  doi     = {10.1016/j.peva.2009.01.003}
+}
+
+@misc{specpower_method,
+  author       = {{Standard Performance Evaluation Corporation}},
+  title        = {{SPEC} Power and Performance Benchmark Methodology, Version 2.3},
+  howpublished = {\url{https://www.spec.org/power/docs/SPEC-Power_and_Performance_Methodology.pdf}},
+  year         = {2025},
+  note         = {Clause 8.2.2, Power Reporting: the benchmark ``should report the number of
+                  samples that may have a return value `Unknown''' and those exceeding the
+                  maximum allowed uncertainty. Read 2026-08-20}
+}
+
+@misc{coremark_pro,
+  author       = {{EEMBC}},
+  title        = {{CoreMark-PRO} run rules},
+  howpublished = {\url{https://github.com/eembc/coremark-pro}},
+  year         = {2026},
+  note         = {``Each workload must run for at least 1000 times the minimum timer
+                  resolution.'' Plain CoreMark instead sets an absolute ten-second floor.
+                  Read 2026-08-20}
+}
+
+@article{pratt1959zeros,
+  author  = {Pratt, John W.},
+  title   = {Remarks on Zeros and Ties in the {Wilcoxon} Signed Rank Procedures},
+  journal = {Journal of the American Statistical Association},
+  volume  = {54},
+  number  = {287},
+  pages   = {655--667},
+  year    = {1959},
+  doi     = {10.1080/01621459.1959.10501526}
+}
+
+@misc{jcgm100,
+  author       = {{Joint Committee for Guides in Metrology}},
+  title        = {Evaluation of Measurement Data --- Guide to the Expression of Uncertainty
+                  in Measurement ({JCGM} 100:2008)},
+  howpublished = {\url{https://www.bipm.org/documents/20126/2071204/JCGM_100_2008_E.pdf}},
+  year         = {2008},
+  note         = {Clause F.2.2.1, ``The resolution of a digital indication''. Read 2026-08-20}
+}

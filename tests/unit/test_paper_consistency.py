@@ -2579,6 +2579,38 @@ class TestRefereeRoundTwo:
         section = " ".join(_section(main_tex, "sec:authors").split())
         assert "OWAMP" in section
 
+    def test_the_scheduler_constants_are_presented_as_derived(self, main_tex):
+        """The testbed is being reclaimed and these were never captured from it, so they
+        come from the published kernel package plus the campaign's own k/rho. That is a
+        derivation, and the text must not dress it as a measurement -- the paper's whole
+        argument is that an unverifiable number is not yet one."""
+        section = " ".join(_section(main_tex, "sec:tail").split())
+        assert "derived" in section
+        assert "not measured" in section
+        for macro in (r"\testbedCpus", r"\sliceFactor", r"\baseSliceMs", r"\kernelHz",
+                      r"\tickMs"):
+            assert macro in main_tex, f"{macro} must come from the pipeline"
+        assert "measured directly and at" not in section, "the earlier wording overclaimed"
+
+    def test_the_derivation_states_what_it_cannot_prove(self, main_tex):
+        section = " ".join(_section(main_tex, "sec:tail").split())
+        assert "strong evidence rather than proof" in section
+
+    def test_the_kernel_config_artefact_is_committed_with_its_hash(self):
+        path = REPO / "docs" / "results" / "env" / "kernel_config_6.8.0-1057-oracle.txt"
+        assert path.exists(), "the derivation's input must ship with the paper"
+        raw = path.read_text(encoding="utf-8")
+        assert "sha256" in raw and "CONFIG_HZ=1000" in raw
+
+    def test_the_core_pinning_is_disclosed(self, main_tex):
+        """User instruction, 2026-08-20: measurement always perturbs, so say where it did.
+        One early phase pinned the load generator while utilisation was measured across all
+        cores; it feeds no reported result, and the paper now says so."""
+        section = " ".join(_section(main_tex, "sec:testbeds").split())
+        assert "pinned the load generator" in section
+        assert "excluded from every result" in section
+        assert "no core pinning" in section
+
     def test_the_corrected_bibliography_entries_stay_corrected(self):
         bib = (REPO / "manuscript_references.bib").read_text(encoding="utf-8")
         assert "Swami, Akul and Sonawane, Dnyaneshwar" in bib, "R10: verified author names"

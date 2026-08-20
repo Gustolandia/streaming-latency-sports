@@ -2042,7 +2042,10 @@ standing $\tracedModeRatio\times$ above its lower neighbour. Beyond it the survi
 light and ordinary: grouped maximum likelihood above $\tracedTailFrom$~ms gives
 $\tracedTailAlpha$ ($\tracedTailCI$), a finite variance.
 
-The mode's position is not arbitrary. On an eight-vCPU instance the EEVDF base slice is
+The mode's position is not arbitrary. On this machine --- one host, \testbedCpus{} online
+CPUs, recorded as ``8 cores'' in the campaign log itself and recovered independently from
+the geometry
+conditions' own $k/ho$ rather than from a shape description -- the EEVDF base slice is
 $0.75\,\mathrm{ms} \times (1 + \lfloor\log_2 8\rfloor) = 3$~ms; run-to-parity holds a woken
 thread off the CPU until the incumbent has exhausted that slice unless it wins the
 wakeup-preemption check, and with the high-resolution tick disabled the expiry is observed

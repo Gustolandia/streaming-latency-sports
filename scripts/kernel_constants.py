@@ -22,10 +22,20 @@ So every input here is public and every step is arithmetic a reader can repeat:
                        ran, committed with its SHA256 at
                        docs/results/env/kernel_config_6.8.0-1057-oracle.txt
 
-  online CPU count     from the campaign's own data, not from a spec sheet. The geometry
-                       conditions load k of the machine's cores and record the achieved
-                       utilisation rho; k/rho recovers the total, and it does so six times
-                       independently (7.95-8.00).
+  online CPU count     from two independent sources that agree. The campaigns wrote the
+                       count down as they ran ("(of 8 cores)", "k=7/8 CONCENTRATED (7 cores
+                       flat out, 1 free)"), 29 such statements across the logs; and the
+                       geometry conditions imply it, since each loads k cores and records
+                       the achieved utilisation rho, so k/rho recovers the total six times
+                       over (7.95-8.00). One is what the operator told stress-ng, the other
+                       is what the utilisation measurement implies.
+
+                       This machine is the cloud driver (sbl-drv), not the workstation that
+                       produced the withdrawn first result: every mechanism campaign runs
+                       from cloud/campaigns/ and every cloud run records node=sbl-drv with
+                       kernel 6.8.0-1057-oracle. The distinction matters because the two
+                       testbeds have different CPU counts and different kernels, and the
+                       constants below belong to the machine that produced the histogram.
 
   base slice           from the kernel's own formula in v6.8 kernel/sched/fair.c, applied to
                        that CPU count.
@@ -121,12 +131,46 @@ def cpus_from_geometry(path=GEOMETRY):
     return est
 
 
+CAMPAIGN_LOGS = os.path.join("reproducibility", "campaign_logs")
+
+# The cloud campaigns announce the machine they are loading, e.g.
+#   "=== E-A6 k=7/8 CONCENTRATED (7 cores flat out, 1 free) ==="
+#   "=== E-A4 cpu-load=70% (of 8 cores) ==="
+_STATED_TOTAL = re.compile(r"\(of (\d+) cores\)|k=\d+/(\d+)")
+
+
+def cores_from_campaign_logs(log_dir=CAMPAIGN_LOGS):
+    """The core count the campaigns wrote down while they were running.
+
+    This is direct evidence rather than inference, and it is the reason the CPU count does
+    not rest on k/rho alone. The two are independent: one is what the operator told
+    stress-ng, the other is what the utilisation measurement implies. They agree.
+
+    Returns a Counter of stated totals, so a disagreement between campaigns would be
+    visible rather than averaged away.
+    """
+    import collections
+    counts = collections.Counter()
+    if not os.path.isdir(log_dir):
+        return counts
+    for name in sorted(os.listdir(log_dir)):
+        if not name.endswith(".log"):
+            continue
+        with open(os.path.join(log_dir, name), encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                for a, b in _STATED_TOTAL.findall(line):
+                    counts[int(a or b)] += 1
+    return counts
+
+
 def constants():
     """Every derived quantity, with the inputs it came from."""
     cfg = read_config()
     hz = int(cfg["CONFIG_HZ"])
     est = cpus_from_geometry()
     ncpus = int(round(sum(est) / len(est)))
+    stated = cores_from_campaign_logs()
+    stated_total = stated.most_common(1)[0][0] if stated else None
     factor = sysctl_factor(ncpus)
     slice_ns = base_slice_ns(ncpus)
     return {
@@ -136,6 +180,9 @@ def constants():
         "cpus": ncpus,
         "cpu_estimates": est,
         "cpu_spread": max(est) - min(est),
+        "cpus_stated_in_logs": stated_total,
+        "cpus_stated_mentions": sum(stated.values()),
+        "cpus_agree": stated_total is None or stated_total == ncpus,
         "sysctl_factor": factor,
         "base_slice_ns": slice_ns,
         "base_slice_ms": slice_ns / 1e6,

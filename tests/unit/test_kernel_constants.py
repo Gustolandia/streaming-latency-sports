@@ -104,3 +104,34 @@ class TestDerivedConstants:
         import json
         assert kc.main(["--json"]) == 0
         assert json.loads(capsys.readouterr().out)["base_slice_ns"] == 3_000_000
+
+
+class TestTheCountHasTwoIndependentSources:
+    """Raised by the author, 2026-08-20: is the 8 this machine, or a pool, or the old
+    workstation? The workstation had 8 cores and 16 threads, so attaching its count to the
+    cloud kernel would have been a real error. It is not: the mechanism campaigns run from
+    cloud/campaigns/ and every cloud run records node=sbl-drv on 6.8.0-1057-oracle.
+    """
+
+    def test_the_campaigns_wrote_the_count_down_while_running(self):
+        stated = kc.cores_from_campaign_logs()
+        assert stated, "the logs state the machine they loaded; that is direct evidence"
+        assert stated.most_common(1)[0][0] == 8
+
+    def test_the_two_sources_agree(self):
+        """One is what the operator told stress-ng, the other is what the utilisation
+        measurement implies. Agreement is the point; disagreement would be a finding."""
+        c = kc.constants()
+        assert c["cpus_stated_in_logs"] == c["cpus"] == 8
+        assert c["cpus_agree"] is True
+        assert c["cpus_stated_mentions"] >= 20
+
+    def test_a_missing_log_directory_degrades_rather_than_crashes(self, tmp_path):
+        assert kc.cores_from_campaign_logs(str(tmp_path)) == {}
+
+    def test_the_measured_utilisation_rules_out_a_sixteen_thread_machine(self):
+        """The discriminator. Loading 7 cores measured rho = 0.878, which is 7/8. On the
+        workstation's 16 threads the same load would have read 7/16 = 0.44."""
+        est = kc.cpus_from_geometry()
+        assert all(abs(e - 8) < 0.1 for e in est)
+        assert not any(abs(e - 16) < 1.0 for e in est)

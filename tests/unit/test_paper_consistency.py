@@ -2629,6 +2629,22 @@ class TestRefereeRoundTwo:
         assert "excluded from every result" in section
         assert "no core pinning" in section
 
+    def test_the_reporting_standard_trio_is_cited_together(self, main_tex):
+        """Author decision, 2026-08-20: restore Georges/Buytaert/Eeckhout, drop Weyl from
+        the main text to stay inside TC's hard cap of 45. Georges et al. is the canonical
+        statistically-rigorous-reporting paper and a TC reviewer from that community expects
+        it; the outreach that reached Eeckhout cited it, so its absence was also an
+        accident of the reference budget rather than a judgement."""
+        flat = " ".join(main_tex.split())
+        group = "\\cite{georges2007rigorous,hoefler2015benchmarking,kalibera2013rigorous}"
+        assert group in flat, "the three reporting-standard references are cited as one group"
+
+    def test_weyl_left_the_main_text_but_not_the_package(self, main_tex, supp):
+        """The cap forced a choice, not a deletion: the supplement has its own bibliography
+        with no limit, and the equidistribution lineage lives there."""
+        assert "weyl1916gleichverteilung" not in main_tex
+        assert "weyl1916gleichverteilung" in supp,             "dropping a citation from the main text must not lose it from the submission"
+
     def test_the_corrected_bibliography_entries_stay_corrected(self):
         bib = (REPO / "manuscript_references.bib").read_text(encoding="utf-8")
         assert "Swami, Akul and Sonawane, Dnyaneshwar" in bib, "R10: verified author names"

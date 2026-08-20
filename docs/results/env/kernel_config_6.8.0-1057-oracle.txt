@@ -1,0 +1,35 @@
+# Kernel build configuration of the testbed, from the published Ubuntu package.
+#
+# WHY THIS FILE EXISTS. The manuscript needs two scheduler constants. They were never
+# captured from the running machines, and the machines themselves are Oracle Cloud
+# instances whose free-trial tenancy reclaims them after 2026-09-18. Rather than read
+# them off a private VM -- a number no reader could check -- they are taken from the
+# published package for the exact kernel the campaign ran, so anyone can repeat this.
+#
+# PROVENANCE
+#   kernel release (recorded per run in reproducibility/run_metadata_cloud.jsonl.gz):
+#     6.8.0-1057-oracle
+#   source package:
+#     linux-buildinfo-6.8.0-1057-oracle_6.8.0-1057.58~22.04.1_amd64.deb
+#     http://archive.ubuntu.com/ubuntu/pool/main/l/linux-oracle-6.8/
+#     retrieved 2026-08-20
+#   deb sha256:    0b130c68dafd09d5aeb79afc09d9cc837d8de598e907eb3c23107d8a00baecac
+#   config sha256: 523ec9aa610c3316bf7472598e445d4ae629b2d3feb3170837044d7057ddd144
+#   config path inside the package:
+#     ./usr/lib/linux/6.8.0-1057-oracle/config
+#
+# To verify: download the .deb, extract that path, sha256 it, and grep the lines below.
+#
+# NOTE. These are BUILD-TIME values, compiled into the kernel; they are what the machine
+# ran. Runtime tunables are a separate question -- see scripts/kernel_constants.py, which
+# derives the EEVDF base slice, and the note there on why no tuning was applied.
+
+CONFIG_NO_HZ_COMMON=y
+CONFIG_NO_HZ_FULL=y
+CONFIG_HIGH_RES_TIMERS=y
+CONFIG_PREEMPT_NONE_BUILD=y
+CONFIG_PREEMPT_NONE=y
+CONFIG_SMP=y
+CONFIG_HZ_1000=y
+CONFIG_HZ=1000
+CONFIG_SCHED_HRTICK=y

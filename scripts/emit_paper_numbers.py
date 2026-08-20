@@ -142,6 +142,29 @@ def stat_macros():
             ("rt%sFactor" % name, "%.0f" % round(ratio)),
             ("rt%sZ" % name, "%.1f" % z),
         ]
+    # The geometry half of Table III was typed by hand while the priority half above came
+    # from this function. Both halves make the same kind of claim from the same kind of
+    # artefact, so both belong here: four rates, four intervals, two factors and two z's that
+    # a re-run can move. Found while adding the figure that plots these same cells.
+    for phase, name in (("ea6", "GeomOrig"), ("ea6b", "GeomRepl")):
+        try:
+            cells = stat_intervals.geometry_cells(phase)
+        except (OSError, KeyError, ValueError):
+            continue
+        if len(cells) != 2:
+            continue
+        (_, kc, nc), (_, ks, ns) = cells
+        clo, chi = stat_intervals.wilson(kc, nc)
+        slo, shi = stat_intervals.wilson(ks, ns)
+        z, ratio = stat_intervals.ratio_z(ks, ns, kc, nc)
+        out += [
+            ("%sConc" % name, "%.4f" % (kc / nc)),
+            ("%sConcCI" % name, "%.4f$--$%.4f" % (clo, chi)),
+            ("%sSpread" % name, "%.4f" % (ks / ns)),
+            ("%sSpreadCI" % name, "%.4f$--$%.4f" % (slo, shi)),
+            ("%sFactor" % name, "%.2f" % ratio),
+            ("%sZ" % name, "%.1f" % abs(z)),
+        ]
     try:
         slope, _, r2, lo, hi = stat_intervals.payload_fit()
         out += [
@@ -406,10 +429,35 @@ def kernel_macros():
     ]
 
 
+def registry_macros():
+    """The audited-harness survey in Section II, counted rather than asserted.
+
+    Every one of these is a fold over docs/results/external/harness_registry.csv whose class
+    labels are recomputed from the committed evidence lines by the same classifier that read
+    our own corpus. If a later edit loosens a pattern, these numbers move, the ledger check
+    fails, and the sentence in Section II cannot be built until someone looks.
+    """
+    try:
+        import harness_registry
+        s = harness_registry.summary()
+    except (ImportError, OSError, KeyError, ValueError):
+        return []
+    return [
+        ("harnessAudited", str(s["harnesses"])),
+        ("harnessVendors", str(s["vendors"])),
+        ("harnessLanguages", str(s["languages"])),
+        ("harnessEvidenceLines", str(s["evidence_lines"])),
+        ("harnessSilent", str(s["n_silent"])),
+        ("harnessFilters", str(len(s["filters"]))),
+        ("harnessSuppressors", str(len(s["suppressors"]))),
+        ("harnessCounting", str(len(s["counts_discards"]))),
+    ]
+
+
 def all_pairs(m):
     return (list(macros(m)) + span_macros() + stat_macros() + grid_macros()
             + retention_macros() + traced_macros() + tost_macros()
-            + mechanism_macros() + kernel_macros())
+            + mechanism_macros() + kernel_macros() + registry_macros())
 
 
 def render(m):

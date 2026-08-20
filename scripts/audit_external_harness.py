@@ -39,6 +39,10 @@ CROSS_PROCESS = [
     re.compile(r"currentTimeMillis\(\)\s*-\s*\w*(timestamp|time)", re.I),
     re.compile(r"nanoTime\(\)\s*-\s*\w*(timestamp|time)", re.I),
     re.compile(r"time\.time\(\)\s*-\s*\w*(timestamp|publish)", re.I),
+    # Erlang/Elixir: `os:system_time(millisecond) - TS`, a wall-clock read minus a stamp that
+    # arrived with the message. The unit is an argument here rather than part of the method
+    # name, which is why the JVM patterns above cannot see it.
+    re.compile(r"system_time\s*\(\s*\w*\s*\)\s*-\s*\w+", re.I),
 ]
 
 # A guard that admits only positive samples silently drops the evidence of a violation.
@@ -46,14 +50,61 @@ POSITIVE_FILTER = [
     re.compile(r"if\s*\(\s*(\w*[Ll]atency\w*)\s*>\s*0\s*\)"),
     re.compile(r"if\s*\(\s*(\w*[Ll]atency\w*)\s*>=\s*0\s*\)"),
     re.compile(r"if\s+(\w*latency\w*)\s*>\s*0\s*:", re.I),
+    # Erlang spells the same guard without an `if`, as a short-circuit before the record call:
+    # `E2ELatency > 0 andalso inc_counter(...)`. Added when auditing beyond the JVM found the
+    # identical defect in a language whose syntax the original patterns could not see.
+    re.compile(r"\b(\w*[Ll]atency\w*)\s*>\s*0\s+andalso\b"),
 ]
 
-# Evidence that violations are counted rather than dropped -- what we argue should exist.
+# A third response, and the one that hides the failure most completely: detect the inversion and
+# substitute a value for it. Nothing is filtered, so a retention rate computed from the output
+# would read 100%; the sample survives into the distribution carrying a number that was never
+# measured. This class exists because auditing beyond our own corpus turned it up repeatedly --
+# fio substitutes zero, btt substitutes one nanosecond, KIP-489 substitutes NaN, .NET clamped to
+# zero -- always as a repair applied to a symptom, never with the cause named. A filter at least
+# leaves a hole a careful reader can find; a substitution leaves nothing at all.
+SUPPRESSION = [
+    # `return (from < to) ? (to - from) : 1;` -- a constant stands in for the inverted span.
+    re.compile(r"\?\s*\(?\s*\w+\s*-\s*\w+\s*\)?\s*:\s*[-\d.]+\s*;"),
+    # `if (sec < 0 || (sec == 0 && nsec < 0))` -- a sign test guarding a substitution.
+    re.compile(r"if\s*\(.*\b\w*(sec|nsec|usec|msec|delta|elapsed|latency)\w*\s*<\s*0\b.*\)", re.I),
+    # `Math.max(0, now - publishTimestamp)` -- clamped at the floor, silently.
+    re.compile(r"(Math\.)?max\s*\(\s*0[LlFfDd]?\s*,\s*[^)]*-\s*\w*(time|stamp|latency)\w*", re.I),
+    # `latency = Double.NaN;` -- replaced by a non-number.
+    re.compile(r"\w*latency\w*\s*=\s*[\w.]*NaN\b", re.I),
+]
+
+# Evidence that violations are counted rather than dropped -- what we argue should exist. The
+# `sample` alternative and the underscore are here because the one production tool we found that
+# does this properly names its metric `scheduler_discarded_samples`: the noun it counts is the
+# sample, not the discard. A rule that could not recognise the best existing implementation of
+# the practice it recommends would be a poor rule.
 DISCARD_COUNTER = re.compile(
-    r"(negative|invalid|dropped|discard|violation|inverted)\w*\s*(count|counter|\+\+|\.inc)", re.I)
+    r"(negative|invalid|dropped|discard|violation|inverted)\w*[\s_]*"
+    r"(count|counter|sample|\+\+|\.inc)", re.I)
+
+# The order matters only for reporting; a line may belong to more than one class.
+CLASSES = (
+    ("cross_process_latency", CROSS_PROCESS),
+    ("positive_only_filter", POSITIVE_FILTER),
+    ("silent_suppression", SUPPRESSION),
+)
 
 
-def source_files(repo, exts=(".java", ".py", ".scala", ".go")):
+def classify(line):
+    """Every class a single source line belongs to.
+
+    Split out of scan() so that a committed evidence line can be re-classified later by exactly
+    the code that classified it in the first place. A registry of findings that merely *asserts*
+    its labels is worth no more than the prose it replaces; one whose labels are recomputed from
+    the evidence line on every test run can be checked by a reader who has neither the checkouts
+    nor our word for it.
+    """
+    return [name for name, pats in CLASSES if any(p.search(line) for p in pats)]
+
+
+def source_files(repo, exts=(".java", ".py", ".scala", ".go", ".c", ".h", ".cc", ".cpp",
+                             ".erl", ".cs", ".rs", ".js", ".ts")):
     for root, dirs, files in os.walk(repo):
         dirs[:] = [d for d in dirs if d not in {".git", "target", "build", "node_modules"}]
         for f in files:
@@ -72,16 +123,9 @@ def scan(repo):
             continue
         rel = os.path.relpath(path, repo)
         for i, line in enumerate(lines, start=1):
-            for pat in CROSS_PROCESS:
-                if pat.search(line):
-                    findings.append({"kind": "cross_process_latency", "file": rel,
-                                     "line": i, "evidence": line.strip()})
-                    break
-            for pat in POSITIVE_FILTER:
-                if pat.search(line):
-                    findings.append({"kind": "positive_only_filter", "file": rel,
-                                     "line": i, "evidence": line.strip()})
-                    break
+            for kind in classify(line):
+                findings.append({"kind": kind, "file": rel,
+                                 "line": i, "evidence": line.strip()})
     return findings
 
 
@@ -112,10 +156,18 @@ def verdict(findings, counted):
     """Exposed? And if exposed, would anyone be able to tell?"""
     cross = [f for f in findings if f["kind"] == "cross_process_latency"]
     filt = [f for f in findings if f["kind"] == "positive_only_filter"]
+    supp = [f for f in findings if f["kind"] == "silent_suppression"]
     if not cross:
         return ("NOT EXPOSED",
                 "no cross-process latency subtraction found; a same-process span cannot "
                 "violate causality and needs no check")
+    if supp and not counted:
+        return ("EXPOSED, AND REPAIRED",
+                f"{len(cross)} cross-process subtraction(s) and {len(supp)} substitution(s) "
+                f"that replace an inverted span with a constant, with no counter: this is worse "
+                f"than filtering, because nothing is missing from the output. Retention computed "
+                f"downstream reads 100% and the substituted value enters the distribution as "
+                f"though it had been measured")
     if filt and not counted:
         return ("EXPOSED, AND SILENT",
                 f"{len(cross)} cross-process subtraction(s) and {len(filt)} positive-only "
@@ -161,7 +213,7 @@ def main(argv=None):
     if prov.get("commit"):
         print(f"  upstream {prov['upstream']}")
         print(f"  commit   {prov['commit']}  ({prov['date']})")
-    for kind in ("cross_process_latency", "positive_only_filter"):
+    for kind, _ in CLASSES:
         hits = [f for f in findings if f["kind"] == kind]
         print(f"  {kind}: {len(hits)}")
         for f in hits[:4]:

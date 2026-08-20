@@ -2045,7 +2045,8 @@ $\tracedTailAlpha$ ($\tracedTailCI$), a finite variance.
 The mode's position is not arbitrary. On this machine --- one host, \testbedCpus{} online
 CPUs, recorded as ``8 cores'' in the campaign log itself and recovered independently from
 the geometry
-conditions' own $k/ho$ rather than from a shape description -- the EEVDF base slice is
+conditions' own $k/
+ho$ rather than from a shape description -- the EEVDF base slice is
 $0.75\,\mathrm{ms} \times (1 + \lfloor\log_2 8\rfloor) = 3$~ms; run-to-parity holds a woken
 thread off the CPU until the incumbent has exhausted that slice unless it wins the
 wakeup-preemption check, and with the high-resolution tick disabled the expiry is observed
@@ -2366,5 +2367,110 @@ made, across two release versions. The cross-host exposure of that particular to
 rests on reading its source together with our own two-host harness, not on running the tool
 itself cross-host. Diagnostics are in the upstream issue draft accompanying this artefact.
 
+
+\section{S36. The audited-harness registry, in full}
+\label{sec:registry}
+
+The main text says how many independent tools dispose of an inverted or sub-quantum sample
+without counting the disposal. This section is the evidence behind that count. Each row of
+\texttt{docs/results/external/harness\_registry.csv} carries one source line, the file and
+symbol it came from, the upstream URL and the date it was read. The class labels are not
+stored in the file: they are recomputed on every build, and on every test run, by the same
+classifier that read the OpenMessaging Benchmark a month before the other tools were
+audited. A reader who disagrees with our reading of a guard can therefore check the line
+against the pattern that matched it rather than against our prose.
+Table~\ref{tab:registry} is the fold of those rows up to one verdict per tool.
+
+\begin{table}[h]
+\caption{Audited harnesses. \emph{Filter} admits only positive samples; \emph{substitute}
+replaces an inverted interval with a constant; \emph{counts} means the disposal is exposed
+in the output.}
+\label{tab:registry}
+\centering
+\footnotesize
+\begin{tabular}{@{}lllcc@{}}
+\toprule
+Tool & Language & Disposal & Counts & Source \\
+\midrule
+OpenMessaging Bench. & Java   & filter      & no  & \cite{openmessaging2018} \\
+\texttt{emqtt-bench} & Erlang & filter      & no  & \cite{emqtt_bench} \\
+\texttt{fio}         & C      & substitute $0$ & no & \cite{fio_gettime} \\
+\texttt{blktrace/btt}& C      & substitute $1$\,ns & no & \cite{btt_inlines} \\
+Rezolus              & Rust   & ---         & yes & \cite{rezolus} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two details are worth stating plainly. First, \texttt{fio}'s guard appears in three separate
+timing functions, each returning zero for a negative interval, and the comment above it ---
+``time warp bug on some kernels?'' --- is a question rather than a diagnosis. The behaviour
+is defensive and reasonable in isolation; what is missing is any record that it fired.
+Second, \texttt{btt}'s \texttt{tdelta()} returns one nanosecond whenever the stage
+timestamps are out of order, with no comment, no counter and no mention in the manual page.
+A substitution of this kind is harder to detect than a filter, because the sample count is
+unchanged: any retention rate computed downstream reads $100\%$.
+
+Two patterns had to be added to the classifier before it could see these tools, and both
+additions are recorded here because they bound what the survey can claim. The original
+patterns were written against JVM sources and could not match Erlang's guard, which is a
+short-circuit rather than an \texttt{if}, nor Erlang's clock read, which carries its unit as
+an argument. The survey therefore reports what the classifier can currently recognise, which
+is a lower bound on the field rather than a census of it.
+
+
+\section{S37. Two neighbouring literatures, and what they do about the second clock}
+\label{sec:twoclock}
+
+Two items raised in internal review belong here rather than in the main text, which sits at
+the journal's twelve-page limit and at its cap of forty-five references. Both are relevant
+to Section~VII-B, and neither changes a result.
+
+\subsection{S37.1. ``One-way latency'' that is half a round trip}
+
+The most common way to avoid the second clock is to use only the first, by measuring a round
+trip and halving it. Three widely used benchmarks do this, and we checked each against its
+own source and documentation rather than against custom:
+
+\begin{itemize}
+\item \textbf{OSU Micro-Benchmarks}~\cite{osu_microbenchmarks}. \texttt{osu\_latency.c}
+      computes \texttt{(t\_total * 1e6) / (2.0 * iterations)}, and the documentation reports
+      ``average one-way latency''. The halving is visible only in the source.
+\item \textbf{NetPIPE}~\cite{netpipe}. The documentation is explicit --- ``[l]atencies are
+      calculated by dividing the round trip time in half for small messages'' --- and the
+      source comment asserts that the halved value ``is now the 1-directional transmission
+      time''.
+\item \textbf{Intel MPI Benchmarks}~\cite{intel_imb}. The user guide states ``[r]eported
+      timings --- time${}=\Delta t/2$'' for \texttt{PingPong}, against \texttt{PingPing},
+      which reports the unhalved time. The guide does not call the result a one-way latency.
+\end{itemize}
+
+The three differ in what they disclose --- one claims one-way without saying it halves, one
+says both, one says it halves without claiming one-way --- but none of them states the
+assumption the halving requires, which is that the two directions are equal. That assumption
+is a strong one on a cloud path, and it is the assumption our own transport proxy declines to
+make (Section~III-C). We raise it not as a defect in those tools, whose paths are typically
+symmetric by construction, but because halving is the standard alternative to the
+subtraction this paper is about, and its cost is unstated wherever we looked.
+
+\subsection{S37.2. Drift-aware synchronisation in MPI benchmarking}
+
+Hunold and Carpen-Amarie give the most careful treatment of clocks in the benchmarking
+literature we found~\cite{hunold2016reproducible}. They criticise earlier MPI benchmarks for
+correcting the clock offset only, when node clocks also drift, and adopt a drift-aware
+synchronisation that fits a linear model per process; the duration of a collective is then
+the difference between the maximum finishing time and the minimum starting time over all
+processes, taken against that corrected global clock.
+
+The contrast with our setting is the useful part. They remove the second clock by building a
+better one, and then subtract global timestamps as though a single clock had produced them.
+That is the right move for their measurement, and it is unavailable for ours in two ways.
+Their correction is fitted offline over a whole run, whereas a benchmark reporting a latency
+per message has no such luxury; and a fitted global clock still leaves a residual offset on
+any individual interval, for which they give no error model, because they never consider the
+case where such a difference comes out negative. The word does not appear in their
+manuscript. Our reading is that this is not an oversight but a consequence of scale: at the
+millisecond durations of a collective over hundreds of processes, a residual of a few
+microseconds cannot invert the sign, and the question does not arise. It arises here because
+the interval is smaller than the instrument.
 
 \end{document}

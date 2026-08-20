@@ -124,6 +124,22 @@ def plot_concurrency(axes, slots, timeline):
 
 
 # --------------------------------------------------------------------------- audit
+DEFAULT_BASE_SLICE_MS = 3.0
+
+
+def _base_slice_ms():
+    """The EEVDF base slice, derived; the literal is a fallback for a stripped checkout.
+
+    The fallback equals what the derivation returns for the committed testbed, so a reader
+    without the kernel config artefact gets the published figure rather than a different one.
+    """
+    try:
+        import kernel_constants
+        return float(kernel_constants.constants()["base_slice_ms"])
+    except (ImportError, OSError, KeyError, ValueError):
+        return DEFAULT_BASE_SLICE_MS
+
+
 def plot_model(axes):
     """The measurement-failure model, drawn rather than only stated.
 
@@ -218,9 +234,15 @@ def plot_model(axes):
     # a fit -- and the caption says so. What it must get right, and now does, is that
     # raising T_true past the lobe removes most of the inversion risk rather than "barely
     # thinning" it, which is the direction the payload sweep measures.
+    # The lobe's position is the one number in this panel that is not free: it is the
+    # scheduler's base slice, and it is derived in kernel_constants.py from the published
+    # kernel config and the campaign's own CPU count. Taking it from there rather than
+    # typing it means the figure, the caption macro and Section V-G cannot drift apart --
+    # the same rule the rest of the manuscript's numbers already live under.
+    slice_ms = _base_slice_ms()
     x = np.linspace(-6, 6, 1200)
     core = 0.70 * np.exp(-0.5 * (x / 0.22) ** 2)            # RUNNING: narrow jitter core
-    lobe = 0.30 * np.exp(-0.5 * ((x + 3.0) / 0.60) ** 2)    # PREEMPTED: at the 3 ms slice
+    lobe = 0.30 * np.exp(-0.5 * ((x + slice_ms) / 0.60) ** 2)  # PREEMPTED: at the slice
     # A flat-ish background so the density stays on the axis across the whole range: both
     # threads can stall, so there is mass on the positive side too, and a curve that falls
     # off the bottom of the plot would claim otherwise.
@@ -239,7 +261,7 @@ def plot_model(axes):
     h1_ax.annotate("core\n(thread running)", xy=(0.20, 0.70), xytext=(2.9, 0.70),
                    fontsize=7, color=GREY, ha="left", va="center",
                    arrowprops=dict(arrowstyle="->", color=GREY, lw=0.8))
-    h1_ax.annotate("preempted lobe\nat the scheduler slice", xy=(-3.0, 0.31),
+    h1_ax.annotate("preempted lobe\nat the scheduler slice", xy=(-slice_ms, 0.31),
                    xytext=(-0.28, 0.011), fontsize=7, color=GREY, ha="left", va="center",
                    arrowprops=dict(arrowstyle="->", color=GREY, lw=0.8))
     h1_ax.set_xlabel(r"stamping asymmetry $\Delta$ (ms)")

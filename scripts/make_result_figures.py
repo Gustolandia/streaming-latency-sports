@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
 make_result_figures.py
-The three result figures, drawn from the committed artefacts rather than described in prose.
+The result figures, drawn from the committed artefacts rather than described in prose.
 
-Why these three, and why now. Three readers in a row have said the manuscript is hard to
-follow, and measuring it against the journal's own published corpus turned the complaint into
-a number: the median regular paper in that corpus carries thirteen figures and this one carried
-two. The three results that were hardest to follow were the three that existed only as prose
-and a table of numbers, and each of them is a picture:
+Why these, and why now. Three readers in a row have said the manuscript is hard to follow, and
+measuring it against the journal's own published corpus turned the complaint into a number: the
+median regular paper in that corpus carries thirteen figures and this one carried two. The
+results that were hardest to follow were the ones that existed only as prose and a table of
+numbers, and each of them is a picture:
 
   deletion  -- the headline. Retention swings across two and a half orders of magnitude while
                the median the benchmark prints does not move at all. Said in a sentence it
@@ -19,9 +19,17 @@ and a table of numbers, and each of them is a picture:
                rests entirely on where that mode is, and asking a reader to hold a log2
                histogram in their head from a list of bucket counts is asking too much.
 
-  grid      -- membership against a continuum null, replacing the table that carried the same
+  grid      -- membership against a continuum null, beside the table that carries the same
                numbers. A table of twelve p-values answers "is each arm significant"; the
                figure answers "does the whole set lie on the grid", which is the actual claim.
+
+  mechanism -- the four matched pairs as a forest of Wilson intervals. Table III gives the
+               numbers, and the numbers are the evidence; what the table cannot show at a
+               glance is that no pair overlaps, which is the causal claim itself.
+
+  ttrue     -- inversion rate against the interval being measured. Equation 2 as an
+               experiment: lengthening the true transport lowers the rate, where an account
+               driven by load alone predicts no change. It had no figure at all.
 
 Every number drawn here comes from the same artefacts and the same estimators the ledger uses,
 so a figure cannot drift from the text: `stat_intervals` for the intervals, `tail_index_traced`
@@ -261,13 +269,131 @@ def build_grid(out_dir):
     return _save(fig, out_dir, "grid_membership")
 
 
+# --- the mechanism, by manipulation --------------------------------------------------------
+
+def mechanism_arms():
+    """The four matched pairs behind Table~III, each as (label, arm, k, n).
+
+    Priority and geometry come from the same helpers the ledger uses, so the figure and the
+    table cannot disagree: they are two renderings of one computation.
+    """
+    arms = []
+    for level, kb, nb, kr, nr in stat_intervals.priority_cells():
+        pretty = {"l75": "Priority, 75%", "l88": "Priority, 88%"}.get(level, level)
+        arms.append((pretty, "ordinary", kb, nb))
+        arms.append((pretty, "real-time", kr, nr))
+    for phase, pretty in (("ea6", "Geometry, original"), ("ea6b", "Geometry, replication")):
+        try:
+            cells = stat_intervals.geometry_cells(phase)
+        except (OSError, KeyError, ValueError):
+            continue
+        for cond, k, n in cells:
+            arms.append((pretty, "concentrated" if "conc" in cond else "spread", k, n))
+    return arms
+
+
+def plot_mechanism(ax, arms):
+    """A forest of Wilson intervals: the manipulations, and whether they overlap.
+
+    The table gives the numbers. What the table cannot show at a glance is that the two arms
+    of every pair are disjoint, which is the whole causal claim: move occupancy at fixed
+    utilisation and the rate moves with it.
+    """
+    labels, y = [], []
+    for i, (group, arm, k, n) in enumerate(arms):
+        rate = k / n
+        lo, hi = stat_intervals.wilson(k, n)
+        pos = len(arms) - i
+        colour = ACCENT if arm in ("real-time", "concentrated") else KEPT
+        ax.plot([lo, hi], [pos, pos], color=colour, lw=1.6, solid_capstyle="butt")
+        ax.plot([rate], [pos], "o", ms=4.2, color=colour, mec="none")
+        labels.append("%s, %s" % (group, arm))
+        y.append(pos)
+
+    ax.set_yticks(y)
+    ax.set_yticklabels(labels, fontsize=6.2)
+    ax.set_xlabel("inversion rate (Wilson 95% interval)", fontsize=7.5)
+    ax.tick_params(axis="x", labelsize=7)
+    ax.grid(axis="x", alpha=0.25, lw=0.5)
+    ax.set_xlim(0, max(stat_intervals.wilson(k, n)[1] for _, _, k, n in arms) * 1.10)
+    for i in range(0, len(arms), 2):
+        ax.axhspan(len(arms) - i - 1.5, len(arms) - i + 0.5, color=GREY, alpha=0.05, zorder=0)
+
+
+# --- the interval being measured decides the rate -------------------------------------------
+
+TTRUE_CSV = RESULTS / "model" / "ttrue_sweep.csv"
+
+
+def ttrue_points(path=TTRUE_CSV):
+    """(transport ms, inversion rate, ci_lo, ci_hi) over the payload sweep."""
+    import csv
+    pts = []
+    with open(path, encoding="utf-8", newline="") as fh:
+        for r in csv.DictReader(fh):
+            pts.append((float(r["transport_ms"]), float(r["inversion"]),
+                        float(r["ci_lo"]), float(r["ci_hi"])))
+    if not pts:
+        raise ValueError("no rows in %s" % path)
+    return sorted(pts)
+
+
+def plot_ttrue(ax, pts):
+    """Inversion rate against the interval being measured, over a 77x payload span.
+
+    This is Equation 2 as an experiment: the same stall distribution overlaps a short
+    interval almost entirely and a long one hardly at all, so lengthening the true transport
+    *lowers* the rate. It is the manipulation that rules out load as the sole explanation,
+    and it had no figure.
+    """
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
+    lo = [p[1] - p[2] for p in pts]
+    hi = [p[3] - p[1] for p in pts]
+    ax.errorbar(xs, ys, yerr=[lo, hi], fmt="o", ms=4.5, color=KEPT,
+                ecolor=KEPT, elinewidth=1.1, capsize=2.2)
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel("true transport (ms)", fontsize=7.5)
+    ax.set_ylabel("inversion rate", fontsize=7.5)
+    ax.tick_params(labelsize=7)
+    ax.grid(alpha=0.25, lw=0.5)
+
+    slope, _, r2, _, _ = stat_intervals.payload_fit()
+    # The ratio drawn here is the span in *transport*, not in payload: payload starts at zero
+    # bytes and so has no ratio. The manuscript states it the same way.
+    ax.annotate("slope %.2f, $R^2$ %.2f\nover a %d× span in transport"
+                % (slope, r2, round(xs[-1] / xs[0])),
+                xy=(xs[1], ys[1]), xytext=(0.42, 0.80), textcoords="axes fraction",
+                fontsize=6.6, color=GREY,
+                arrowprops=dict(arrowstyle="->", color=GREY, lw=0.7))
+    ax.set_xlim(xs[0] * 0.55, xs[-1] * 1.9)
+
+
+def build_mechanism(out_dir):
+    fig, ax = plt.subplots(figsize=(3.4, 2.45))
+    plot_mechanism(ax, mechanism_arms())
+    fig.tight_layout()
+    return _save(fig, out_dir, "mechanism_forest")
+
+
+def build_ttrue(out_dir):
+    fig, ax = plt.subplots(figsize=(3.4, 2.3))
+    plot_ttrue(ax, ttrue_points())
+    fig.tight_layout()
+    return _save(fig, out_dir, "ttrue_law")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Build the result figures")
     ap.add_argument("--out", default=os.path.join("docs", "results", "figures"))
-    ap.add_argument("--only", choices=("deletion", "spectrum", "grid"), default=None)
+    ap.add_argument("--only",
+                    choices=("deletion", "spectrum", "grid", "mechanism", "ttrue"),
+                    default=None)
     args = ap.parse_args(argv)
 
-    builders = {"deletion": build_deletion, "spectrum": build_spectrum, "grid": build_grid}
+    builders = {"deletion": build_deletion, "spectrum": build_spectrum, "grid": build_grid,
+                "mechanism": build_mechanism, "ttrue": build_ttrue}
     todo = [args.only] if args.only else list(builders)
     for name in todo:
         path = builders[name](args.out)

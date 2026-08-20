@@ -1535,7 +1535,7 @@ the main text.
 \emph{One workload.} The arrival-rate result should generalise to any sparse bursty feed, but we
 demonstrate it on one.
 
-\section{S23. Tables and the pipeline schematic (moved from the main text)}
+\section{S23. Tables (moved from the main text; the pipeline schematic has returned to it)}
 
 \begin{table}[t]
 \caption{Retention against the producer's send interval, with message size, background load,
@@ -1620,13 +1620,6 @@ $N$ & \redis{} retained & Shift (ms) & Worst case & Equivalent \\
 \end{table}
 
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{docs/results/figures/pipeline_schematic.pdf}
-\caption{The four timestamps and the intervals each measure spans. Scheduling lag is measured
-within one process. Broker transport subtracts a producer-side timestamp from a consumer-side
-one, and can therefore come out negative when either process is delayed.}
-\end{figure}
 
 \section{S24. Tail recovery without a reference clock (moved from the main text)}
 

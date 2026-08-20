@@ -382,10 +382,34 @@ def mechanism_macros():
     return out
 
 
+def kernel_macros():
+    """The scheduler constants Section V-G explains the traced mode with.
+
+    Derived, not measured: the campaign never captured them and the machines are gone after
+    the tenancy lapses. Every input is public -- the published kernel config (committed with
+    its SHA256), the CPU count recovered from the campaign's own k/rho, and the formula in
+    v6.8 fair.c -- so a reader can repeat the whole chain. See scripts/kernel_constants.py.
+    """
+    try:
+        import kernel_constants
+        c = kernel_constants.constants()
+    except (ImportError, OSError, KeyError, ValueError):
+        return []
+    return [
+        ("kernelHz", str(c["config_hz"])),
+        ("tickMs", "%.0f" % c["tick_ms"]),
+        ("testbedCpus", str(c["cpus"])),
+        ("sliceFactor", str(c["sysctl_factor"])),
+        ("baseSliceMs", "%.0f" % c["base_slice_ms"]),
+        ("baseSliceNs", latex_thousands(c["base_slice_ns"])),
+        ("cpuEstimateSpread", "%.2f" % c["cpu_spread"]),
+    ]
+
+
 def all_pairs(m):
     return (list(macros(m)) + span_macros() + stat_macros() + grid_macros()
             + retention_macros() + traced_macros() + tost_macros()
-            + mechanism_macros())
+            + mechanism_macros() + kernel_macros())
 
 
 def render(m):

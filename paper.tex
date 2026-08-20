@@ -271,7 +271,11 @@ audit are named explicitly, because which two stamps are subtracted is the whole
 Every finding comes from four Oracle Cloud \texttt{VM.Standard.E5.Flex} instances (three
 brokers, one driver), Ubuntu 22.04 on kernel \texttt{6.8.0-1057-oracle} (EEVDF scheduler),
 CPython 3.10, a private network, client libraries pinned identically, and
-\texttt{chrony}-disciplined clocks logged every minute. A second testbed, a single
+\texttt{chrony}-disciplined clocks logged every minute. Measurement perturbs, and one early
+phase perturbed enough to be unusable: it pinned the load generator to a subset of cores
+while utilisation was measured across all of them, which dilutes $\rho$ and makes that
+phase incomparable with the rest. It is excluded from every result reported here, and the
+campaigns that remain measure utilisation with no core pinning. A second testbed, a single
 workstation running the brokers under containers, produced our withdrawn first result and
 is reported only as an audit outcome.
 
@@ -799,13 +803,21 @@ $\tracedModeRatio\times$ its lower neighbour. Above it the survival is well beha
 light --- grouped maximum likelihood beyond $\tracedTailFrom$~ms gives
 $\tracedTailAlpha$ ($\tracedTailCI$), a finite variance.
 
-That mode is the preempted state of Equation~\ref{eq:twostate}, measured directly and at
-its predicted scale. On these eight-vCPU instances the EEVDF base slice is
-$0.75\,\mathrm{ms} \times (1 + \lfloor\log_2 8\rfloor) = 3$~ms; with run-to-parity a woken
-thread that loses the wakeup-preemption check waits for the incumbent to exhaust that
-slice, and slice expiry is noticed at the tick. A thread descheduled at the wrong instant
-therefore reads its clock about three milliseconds late, which on a path whose true
-transport is $0.1$--$0.5$~ms is six to thirty times the interval being measured. The
+That mode is the preempted state of Equation~\ref{eq:twostate}, observed directly and at the
+scale the scheduler sets. The constants are \emph{derived}, not measured: they were not
+captured during the campaign, so we take them from the published kernel package and from the
+campaign's own data rather than from a machine only we can log into. The online CPU count
+follows from the geometry conditions themselves, since each loads $k$ cores and records the
+achieved utilisation, and $k/\rho$ recovers $\testbedCpus$ six times over with a spread of
+$\cpuEstimateSpread$. The kernel's rule then gives a base slice of $\sliceFactor \times
+0.75\,\mathrm{ms} = \baseSliceMs$~ms, and the build sets
+\texttt{CONFIG\_HZ}${=}\kernelHz$, a $\tickMs$~ms tick. With run-to-parity a woken thread
+that loses the wakeup-preemption check waits for the incumbent to exhaust that slice, and
+expiry is noticed at the tick. A thread descheduled at the wrong instant therefore reads its
+clock about a slice late, which on a path whose true transport is $0.1$--$0.5$~ms is six to
+thirty times the interval being measured. No scheduler tunable is written anywhere in the
+archived campaign, which is why the derived value is the one that applied; that is strong
+evidence rather than proof, and we report it as such. The
 practical consequence is unchanged and now has a cause: a mean over this distribution is
 dominated by a mode the operator never sees, so a mean-based counter is a poor instrument
 for this failure and comparing mean against median cannot flag it.

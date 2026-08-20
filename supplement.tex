@@ -2466,4 +2466,149 @@ millisecond durations of a collective over hundreds of processes, a residual of 
 microseconds cannot invert the sign, and the question does not arise. It arises here because
 the interval is smaller than the instrument.
 
+\section{S38. Where the stamp is written, in other runtimes}
+\label{sec:runtimes}
+
+Section~V argues that an acknowledgement stamp is late because the thread that writes it must
+first be scheduled. That is not peculiar to a JVM benchmark, and three widely used runtimes
+document the same structure in their own terms. None of them frames it as a hazard, which is
+the point: the property is public, and the consequence for a cross-process subtraction is not
+drawn anywhere we could find.
+
+\paragraph{The stamp is taken when the application next asks for it}
+\texttt{librdkafka}, the client under the benchmark's \kafka{} driver, serves its
+delivery-report callback from \texttt{rd\_kafka\_poll()} and the other queue-serving
+calls~\cite{librdkafka}. The callback therefore runs on the application's own thread, at
+whatever moment that thread next polls, rather than when the broker's acknowledgement
+arrives. Our $\delta_{\mathrm{ack}}$ is exactly the interval between those two events.
+
+\paragraph{The definition itself names the reap, not the completion}
+\texttt{fio} defines completion latency, for asynchronous ioengines, as running to ``the time
+\ldots when the I/O's completion was reaped by fio''~\cite{fio_howto}. The definition is
+honest and the scope matters: for synchronous I/O the same documentation says only ``to when
+it was completed''. For the asynchronous case --- the one used for latency work --- a reaping
+stamp is written into the definition of the metric.
+
+\paragraph{Vendors document the device-side stamp; one draws the consequence}
+AMD states, under \texttt{hipEventElapsedTime()}, that events ``record their timestamp when
+they reach the head of the specified stream'' and that ``the time that the event recorded
+[sic] may be significantly after the host calls hipEventRecord()''~\cite{hip_events}. NVIDIA
+documents the same mechanism --- ``[t]he device will record a timestamp for the event when it
+reaches that event in the stream''~\cite{cuda_bpg} --- without drawing AMD's conclusion. We
+note the asymmetry rather than flatten it: both vendors describe a stamp written at a moment
+the host does not choose, and only one says out loud how far from the host call it can be.
+
+\section{S39. Neighbouring rules, and what they already require}
+\label{sec:neighbours}
+
+Two of this paper's recommendations have partial precedents, and the honest thing is to say
+where. Neither displaces the contribution, because neither is applied where a streaming
+benchmark reports a latency; but a referee is entitled to see them named.
+
+\paragraph{Counting what was not measured}
+\texttt{sockperf} prints \texttt{SentMessages}, \texttt{ReceivedMessages} and
+\texttt{SkippedMessages} in the same summary block as its latency percentiles, together with
+a dropped/duplicated/out-of-order line derived from sequence numbers~\cite{sockperf}. The
+counters are error counters rather than a retention rate, but the reader of that summary can
+see the denominator the percentiles were computed over, which is what
+Section~\ref{sec:authors} asks for.
+
+The OpenTelemetry exponential-histogram format goes one step further and reserves a field for
+it. \texttt{zero\_count} holds observations at or below a zero threshold, described in the
+specification as including ``values that have been rounded to zero'', and the total
+\texttt{count} is defined to include that bucket~\cite{otlp_exphisto}. We do not claim it as a
+general sub-resolution indicator, because it is not one: it captures unrepresentable mass only
+at the bottom of the scale. What it establishes is narrower and still useful --- that a
+mainstream telemetry format already treats rounded-to-zero observations as data to be carried
+beside the total rather than dropped, which is precisely what the guard of
+Section~\ref{sec:external} does not do.
+
+\section{S40. What standardised benchmarks require about resolution}
+\label{sec:standards}
+
+Section~\ref{sec:authors} asks that a harness state its timestamp resolution and count what it
+discards. Standardised benchmarking already contains rules of that form, and one of them is
+almost exactly the rule we propose. Setting them beside the flagship standardised messaging
+benchmark is the sharpest way to show the gap, so we do that here rather than assert it.
+
+\paragraph{A rule of the right form, in embedded benchmarking}
+EEMBC's CoreMark-PRO run rules require that ``[e]ach workload must run for at least 1000 times
+the minimum timer resolution''~\cite{coremark_pro}. That is the form of rule this paper argues
+for: a floor on the measured interval expressed \emph{relative to the instrument}, not in
+absolute time. The distinction is easy to lose, and worth keeping --- plain CoreMark sets an
+absolute ten-second floor instead, with no reference to resolution at all, and the two rules
+are not interchangeable.
+
+\paragraph{A rule about unusable samples, in power measurement}
+SPEC's Power and Performance Methodology, clause 8.2.2, says the benchmark ``should report the
+number of samples that may have a return value `Unknown''' and the number whose uncertainty
+exceeds the maximum allowed~\cite{specpower_method}. Two qualifications matter and we state
+them rather than round them off: the modal verb is \emph{should}, in a methodology document
+rather than run rules, and the samples in question are unusable readings rather than samples
+excluded after the fact. Within those limits it is the same instinct --- publish the count of
+what the instrument could not measure.
+
+\paragraph{And none of it, in standardised messaging}
+SPECjms2007 is the flagship standardised benchmark for message-oriented middleware. Its run
+rules record delivery time as a per-destination histogram whose default granularity is
+$100$~ms and whose default upper bound is $10$~s~\cite{specjms2007,sachs2009specjms}. Searching
+the run rules, design document and user's guide for a resolution clause, a minimum measurable
+interval, or a counter of discarded latency samples returns nothing: the only timing-quality
+requirement anywhere in them is clause~3.2's bound of $100$~ms on \emph{inter-node clock
+agreement}, which is a skew limit and not a resolution limit. The reported
+\texttt{deliveryTime} element carries an average, a maximum, a granularity and a ninetieth
+percentile, and no field for samples outside the histogram's range.
+
+We are careful about one thing here. The user's guide does document sample discarding
+elsewhere --- \texttt{trimInitialSamples} and \texttt{trimFinalSamples}, ``this many samples
+are thrown away'' --- but those apply to throughput histories rather than to delivery-time
+histograms, and they are configured constants rather than reported counts. It would be wrong
+to say the benchmark discards nothing; what it does not do is count the latency samples its
+own resolution makes unusable.
+
+The comparison is therefore not that standards bodies have failed to think about this. One of
+them states our rule in almost our words, for a different domain. The rule simply has not
+reached the place where brokers are compared on sub-millisecond paths.
+
+\section{S41. The classical statistics of a discarded zero}
+\label{sec:zeros}
+
+The main text argues that deleting the samples which compute to zero conditions the reported
+distribution on being positive, and that the retained fraction is therefore part of the
+measurement. Two classical sources sit close enough to that argument to be named, and both
+need care in the naming, so we give them the space here rather than compress them into a
+clause.
+
+\paragraph{The baseline the guard invalidates}
+The GUM gives the standard model for a quantised reading. Clause F.2.2.1, ``The resolution of
+a digital indication'', states that if the resolution is $\delta x$ then the stimulus ``can lie
+with equal probability anywhere in the interval $X - \delta x/2$ to $X + \delta x/2$'' and is
+therefore described by ``a rectangular probability distribution \ldots\ of width $\delta x$
+with variance $u^2 = (\delta x)^2/12$''~\cite{jcgm100}. That symmetric model is the departure
+point for this paper: it holds for \emph{retained} readings, and the positivity guard of
+Section~\ref{sec:external} removes one side of the interval, so neither the rectangular shape
+nor the $(\delta x)^2/12$ variance survives the filter. Quantisation is not the problem; the
+asymmetry the guard introduces on top of it is. We cite the clause rather than the formula
+because the same $(\delta x)^2/12$ appears in F.2.2.2 for hysteresis, and the form alone does
+not identify the mechanism.
+
+\paragraph{The oldest statement that discarding zeros is not free}
+Pratt~\cite{pratt1959zeros} showed that discarding zero differences before ranking violates a
+natural monotonicity requirement: a sample not judged significantly positive can become
+significantly positive when \emph{every} observation is decreased. He calls this an anomaly
+and gives a procedure that avoids it --- rank all observations including the zeros, drop only
+the zeros' ranks, and refer the statistic to its null distribution conditional on the number
+of zeros.
+
+Two qualifications keep the analogy honest. First, Pratt \emph{conditions on} the zero count;
+he does not treat it as evidence of a shift, and he explicitly declines to claim any optimality
+for the procedure. Our claim about the retention rate is the weaker and more practical one ---
+that the count must be published so a reader can see what the distribution is conditioned on
+--- and it does not need Pratt's stronger machinery. Second, the reading that makes the
+parallel exact is not Pratt's own framing but one he reports from Meier in a remarks section:
+that a zero arises because ``with only our crude measurement, we do not know'' the sign a
+finer measurement would have resolved. That is precisely the sub-quantum sample of
+Section~\ref{sec:external}, and it is a 1959 statement of it; we attribute it where it belongs
+rather than to Pratt's main development.
+
 \end{document}

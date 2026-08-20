@@ -166,17 +166,19 @@ def test_plot_grid_draws_one_marker_per_arm_and_labels_both_classes():
 
 @pytest.mark.parametrize("name,stem", [("deletion", "deletion"),
                                        ("spectrum", "stall_spectrum"),
-                                       ("grid", "grid_membership")])
+                                       ("grid", "grid_membership"),
+                                       ("mechanism", "mechanism_forest"),
+                                       ("ttrue", "ttrue_law")])
 def test_each_builder_writes_a_pdf(tmp_path, name, stem):
     assert mrf.main(["--out", str(tmp_path), "--only", name]) == 0
     out = tmp_path / ("%s.pdf" % stem)
     assert out.is_file() and out.stat().st_size > 1000
 
 
-def test_main_builds_all_three_by_default(tmp_path, capsys):
+def test_main_builds_every_figure_by_default(tmp_path, capsys):
     assert mrf.main(["--out", str(tmp_path)]) == 0
-    assert len(list(tmp_path.glob("*.pdf"))) == 3
-    assert capsys.readouterr().out.count("wrote") == 3
+    assert len(list(tmp_path.glob("*.pdf"))) == 5
+    assert capsys.readouterr().out.count("wrote") == 5
 
 
 def test_the_spectrum_builder_takes_the_slice_from_the_derived_constants(tmp_path):
@@ -196,5 +198,61 @@ def test_the_spectrum_builder_survives_missing_kernel_constants(tmp_path, monkey
 def test_figures_the_manuscript_includes_are_the_ones_this_script_writes():
     """Guards against a figure being renamed here and left dangling in the .tex."""
     tex = (ROOT / "paper.tex").read_text(encoding="utf-8")
-    for stem in ("deletion", "stall_spectrum", "grid_membership"):
+    for stem in ("deletion", "stall_spectrum", "grid_membership",
+                 "mechanism_forest", "ttrue_law"):
         assert "figures/%s.pdf" % stem in tex, "%s is built but not included" % stem
+
+
+# --- the mechanism forest and the T_true law ---------------------------------------------
+
+def test_the_forest_carries_all_four_matched_pairs():
+    arms = mrf.mechanism_arms()
+    assert len(arms) == 8, "four pairs, two arms each"
+    groups = {g for g, _, _, _ in arms}
+    assert groups == {"Priority, 75%", "Priority, 88%",
+                      "Geometry, original", "Geometry, replication"}
+
+
+def test_no_pair_of_arms_overlaps():
+    """The figure's whole message, and the paper's causal claim. If this fails, both lie."""
+    import stat_intervals
+    arms = mrf.mechanism_arms()
+    for a, b in zip(arms[::2], arms[1::2]):
+        lo_a, hi_a = stat_intervals.wilson(a[2], a[3])
+        lo_b, hi_b = stat_intervals.wilson(b[2], b[3])
+        assert hi_a < lo_b or hi_b < lo_a, "%s vs %s overlap" % (a[1], b[1])
+
+
+def test_the_forest_draws_a_line_and_a_point_per_arm():
+    fig, ax = plt.subplots()
+    mrf.plot_mechanism(ax, mrf.mechanism_arms())
+    assert len(ax.lines) == 2 * 8
+
+
+def test_ttrue_points_are_the_committed_payload_sweep():
+    pts = mrf.ttrue_points()
+    assert len(pts) == 4
+    xs = [p[0] for p in pts]
+    assert xs == sorted(xs)
+    assert round(xs[-1] / xs[0]) == 77, "the span the manuscript quotes"
+
+
+def test_the_inversion_rate_falls_as_the_interval_grows():
+    """A load-driven account predicts no change; the figure claims a monotone fall."""
+    ys = [p[1] for p in mrf.ttrue_points()]
+    assert all(a > b for a, b in zip(ys, ys[1:]))
+
+
+def test_ttrue_refuses_an_empty_sweep(tmp_path):
+    p = tmp_path / "t.csv"
+    p.write_text("transport_ms,inversion,ci_lo,ci_hi\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="no rows"):
+        mrf.ttrue_points(p)
+
+
+def test_the_ttrue_annotation_says_transport_not_payload():
+    """Payload starts at zero bytes, so 77x is a ratio in transport. Do not mislabel it."""
+    fig, ax = plt.subplots()
+    mrf.plot_ttrue(ax, mrf.ttrue_points())
+    said = " ".join(t.get_text() for t in ax.texts)
+    assert "transport" in said and "payload" not in said

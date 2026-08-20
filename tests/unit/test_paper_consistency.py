@@ -2592,6 +2592,24 @@ class TestRefereeRoundTwo:
             assert macro in main_tex, f"{macro} must come from the pipeline"
         assert "measured directly and at" not in section, "the earlier wording overclaimed"
 
+    def test_the_cpu_count_is_named_by_its_evidence_not_by_a_shape(self, main_tex, supp):
+        """The count is 8 online CPUs on ONE host (sbl-drv carries all 5,998 cloud runs),
+        recovered from k/rho: loading 5, 6 and 7 cores gives 0.625, 0.750 and 0.878, which
+        are 5/8, 6/8 and 7/8. A shape description would not be checkable from the artefacts;
+        k/rho is. Neither document should fall back on 'eight-vCPU'."""
+        assert "eight-vCPU" not in main_tex and "eight-vCPU" not in supp
+        section = " ".join(_section(main_tex, "sec:tail").split())
+        assert "rho" in section and "k/" in section, "the count needs its evidence shown"
+
+    def test_the_slice_is_insensitive_to_an_undercounted_machine(self):
+        """The kernel clamps at 8 before taking the logarithm, so any machine with at least
+        8 online CPUs yields the same 3 ms. The derivation could only fail below 8, which
+        the k=7 condition reaching 87.8% rules out. This test states that robustness so a
+        later reader does not have to rediscover it."""
+        import kernel_constants as kc
+        assert kc.base_slice_ns(8) == kc.base_slice_ns(16) == kc.base_slice_ns(64)
+        assert kc.base_slice_ns(7) < kc.base_slice_ns(8),             "below the clamp the answer would differ, which is why 8 had to be established"
+
     def test_the_derivation_states_what_it_cannot_prove(self, main_tex):
         section = " ".join(_section(main_tex, "sec:tail").split())
         assert "strong evidence rather than proof" in section

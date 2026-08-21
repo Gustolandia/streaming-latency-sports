@@ -2396,7 +2396,7 @@ class TestTransactionsOnComputers:
         bio = main_tex[main_tex.index(r"\begin{IEEEbiographynophoto}"):
                        main_tex.index(r"\end{IEEEbiographynophoto}")]
         assert "is completing the M.Sc." not in bio, "the earlier understatement"
-        assert "first-class honours" in bio
+        assert "first-class honors" in bio
         assert "physics" in bio and "Universidade do Porto" in bio
         assert "currently pursuing" in bio, "the degree in progress is still distinguished"
 

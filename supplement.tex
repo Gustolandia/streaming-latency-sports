@@ -312,7 +312,7 @@ picture is sharper and it is not the one E1 painted. Broker transport is \kafka{
 slower, with a bootstrap $90\%$ interval of width $\pm 0.006$~ms and $p < 10^{-26}$ at every $N$.
 The two systems are \emph{not} statistically indistinguishable; \redis{}'s in-memory \texttt{XADD}
 really is several times faster per operation than \kafka{}'s replicated-log append, which is the
-direction the grey-literature comparisons report.
+direction the gray-literature comparisons report.
 
 And yet the same three estimators --- Welch, percentile bootstrap and Hodges--Lehmann --- agree
 that the difference is \emph{equivalent within one millisecond} at every $N$, because that shift is
@@ -324,7 +324,7 @@ that a properly powered instrument resolves and a seven-event one cannot. The sh
 across concurrency ($0.408$, $0.416$, $0.417$~ms at $N = 1, 9, 12$, audit-gated;
 S34), so neither system degrades.
 A part of even this residual is the instrument rather than the broker: the main text
-shows that $0.07$~ms of the gap is the asymmetric acknowledgement stamp --- a different
+shows that $0.07$~ms of the gap is the asymmetric acknowledgment stamp --- a different
 quantity from the inter-host clock offset of Section~III-A, which happens to be the same
 size ---, leaving a true
 broker-transport difference near $0.34$~ms. That $0.07$~ms is a concrete instance of the blind
@@ -656,7 +656,7 @@ We also verified the comparison was not biased by message size or protocol: payl
 near-identical (median ${\approx}170$ bytes) and serialization costs are negligible and
 comparable.
 
-A sixth problem shaped our later protocol. Our first run of the acknowledgement experiment of
+A sixth problem shaped our later protocol. Our first run of the acknowledgment experiment of
 the main text reported no improvement whatsoever --- a clean refutation of our own
 hypothesis. The treatment had never reached the consumer: the orchestration script accepted the
 option but, through a failed edit, never passed it on. We found this only by deliberately
@@ -947,10 +947,10 @@ Table~\ref{tab:config} states every setting that can move a latency number, with
 
 
 Mohammad~\cite{mohammad2025kafka} finds that published \kafka{} comparisons are frequently not
-comparable because client configuration and acknowledgement semantics differ silently between the
+comparable because client configuration and acknowledgment semantics differ silently between the
 systems being compared. We therefore state every setting that can move a latency number, with the
 reason it holds the value it does (Table~\ref{tab:config}). Two of these were not chosen but
-\emph{learned}: the pipelining setting and the acknowledgement-batching setting each cost us a
+\emph{learned}: the pipelining setting and the acknowledgment-batching setting each cost us a
 result before we understood them, and both are the subject of the main text.
 
 The general principle is that the two clients must be equalized on \emph{semantics}, not on
@@ -971,7 +971,7 @@ Setting & Value & Why \\
 \midrule
 \multicolumn{3}{l}{\emph{\kafka{} producer}} \\
 \texttt{acks} & \texttt{all} & Durability semantics matched to \redis{}'s synchronous
-\texttt{XADD}; weaker acknowledgement would compare different guarantees. \\
+\texttt{XADD}; weaker acknowledgment would compare different guarantees. \\
 \texttt{linger.ms} & $0$ & No artificial batching delay; the workload is sparse, so any linger
 would dominate the quantity measured. \\
 \texttt{max-inflight} & $64$ & \emph{Learned.} At the default $1$ the client blocks on a round
@@ -984,13 +984,13 @@ the main text measures what the asymmetry costs by also running \texttt{inline}.
 \midrule
 \multicolumn{3}{l}{\emph{\redis{} producer}} \\
 send workers & pool & Non-blocking dispatch so the emission loop keeps schedule; send and
-acknowledgement are stamped in the worker, preserving a valid transport span. \\
+acknowledgment are stamped in the worker, preserving a valid transport span. \\
 \midrule
 \multicolumn{3}{l}{\emph{Consumers}} \\
 \redis{} \texttt{ack-batch} & $200$ & \emph{Learned.} Acknowledging per message adds one network
 round trip per message, which at $20$~ms of delay is the difference between $103$~ms and
 $4{,}138$~ms (the main text). \\
-\redis{} \texttt{count} & $200$ & Read batch; matched to the acknowledgement batch so neither
+\redis{} \texttt{count} & $200$ & Read batch; matched to the acknowledgment batch so neither
 dominates. \\
 \kafka{} \texttt{poll-timeout} & $1000$~ms & Client already amortizes fetches; no per-record
 round trip exists to remove. \\
@@ -1011,8 +1011,9 @@ variable, and the main text is the reason. \\
 \paragraph{Two silent losses that were bugs (moved from the main text).}
 The positivity guard is not the first time this harness has discarded latency data with
 nothing in its output to show it. A serialization defect found in 2023 truncated the histogram
-on long runs and lost most of the samples~\cite{omb_pr398}; a second, independent defect reset
-each client's histogram on read during a retry, and was found only because ``some results
+on long runs and lost most of the samples~\cite{omb_pr398}; a second defect --- distinct,
+though the two interact in the repair's own account --- reset each client's histogram on
+read during a retry, and was found only during ``a statistical analysis on some results that
 looked strange''~\cite{vanlightly2023}. Both were repaired. They are recorded here because
 they establish the contrast the main text draws: those were bugs, and the guard is not one --
 it was added deliberately, for a stated and locally sound reason, and it is still there.
@@ -1125,7 +1126,7 @@ existing harness.
 \item \textbf{Count the fraction of events in which the span is negative}, per run and per
 component.
 \item \textbf{Reject by a stated rule, before looking at results.} We reject a run when any
-component exceeds $1\%$ inverted or has a negative median. The threshold is a judgement and
+component exceeds $1\%$ inverted or has a negative median. The threshold is a judgment and
 should be reported with its sensitivity (the main text); what matters more is that
 it is fixed in advance and applied to every condition, including those whose results look
 reasonable. Applying it only to suspicious results reproduces the error it exists to prevent.
@@ -1225,7 +1226,7 @@ steady state their benchmarks assume, so the distribution being sampled is itsel
 al.~\cite{maricq2018taming} found hundreds of trials necessary for stable comparisons on real
 hardware, and Kalibera and Jones~\cite{kalibera2013rigorous} supply the replication framework.
 Against this stands common practice rather than any contrary finding: the surveyed norm of a
-handful of repetitions~\cite{vanderkouwe2019sok,hoefler2015scientific} presumes a stable
+handful of repetitions~\cite{vanderkouwe2019sok,hoefler2015benchmarking} presumes a stable
 distribution that our phase-locked configurations demonstrably lack. We add the mechanism: at
 these configurations the instability is not variance around a value but a two-point support
 whose weights move, so no replicate count converges (the main text).
@@ -1243,7 +1244,7 @@ constraint we can find:
   $100\%$, an assumption our $0.36\%$--$100\%$ range refutes for sub-tick paths.
 \item \emph{Summary insensitivity} (the main text). Supported in spirit by
   Ousterhout's injunction to measure beneath the summary~\cite{ousterhout2018deeper} and by
-  reporting standards that require sample counts~\cite{hoefler2015scientific}; contradicted by no
+  reporting standards that require sample counts~\cite{hoefler2015benchmarking}; contradicted by no
   study, but silently contradicted by every report of a latency percentile without the count
   behind it.
 \item \emph{Irreproducibility and regime mobility} (the main text,
@@ -1326,7 +1327,7 @@ by $1.03\times$, which is no manipulation at all. The inversion rates duly faile
 (intervals overlapping in both cells). Reporting those rates as a null would misdescribe the
 experiment: nothing was manipulated, so nothing was tested. We record it because the pattern is
 itself informative. Two of our three attempts on this axis failed for structurally similar
-reasons --- netem delayed both paths and cancelled in the difference, co-location traded one
+reasons --- netem delayed both paths and canceled in the difference, co-location traded one
 delay for another --- which suggests $T_{\mathrm{true}}$ is a quantity that resists manipulation
 in a shared-resource system, because every route to shortening it lengthens something else. The
 payload sweep worked because padding adds serialization without contending for the scheduler, and
@@ -1342,7 +1343,7 @@ too weak, but because it does not act on the quantity at all. Injecting delay at
 end-to-end \tti{} almost exactly as commanded ($3.72 \to 23.61$~ms across $0 \to 20$~ms) while
 broker transport stays flat ($0.535 \to 0.482$~ms; Table~\ref{tab:eb2}).
 
-The cause is that the delay is \textbf{common-mode}. It delays the acknowledgement travelling
+The cause is that the delay is \textbf{common-mode}. It delays the acknowledgment travelling
 broker-to-producer and the record travelling broker-to-consumer by the same amount, and transport
 is the \emph{difference} of stamps taken at those two arrivals, so the injected delay cancels
 exactly. A manipulation can be applied correctly, verified present at the interface, and still not
@@ -1572,7 +1573,7 @@ stamping requires the single in-flight setting. The direction and the one-sidedn
 are what the model predicts, but we do not characterize how the $0.07$~ms offset scales with load
 or pipelining.
 
-\emph{The five-feed acknowledgement null is unexplained}, as set out in
+\emph{The five-feed acknowledgment null is unexplained}, as set out in
 the main text.
 
 \emph{One workload.} The arrival-rate result should generalize to any sparse bursty feed, but we
@@ -1889,7 +1890,7 @@ here.
 \paragraph{The experiment that settles it.} Move one of the two and hold the other fixed:
 raising the stamping processes to real-time priority makes them preempt the background load
 rather than queue behind it, so occupancy falls sharply while utilization does not move ---
-and unlike our delay injection, which cancelled in the subtraction
+and unlike our delay injection, which canceled in the subtraction
 (the main text), priority acts on the stamping threads themselves, where the model
 locates the failure. An occupancy mechanism predicts collapse toward the running-state floor;
 any account in which the rate is a function of $\rho$ predicts no change, because $\rho$ is
@@ -1986,12 +1987,12 @@ hopeless at $20$~ms, where service rate falls below arrival rate and delay is se
 backlog~\cite{kleinrock1975queueing}; \kafka{}'s consumer serves from a prefetched
 buffer and commits on a timer, no per-record round trip to expose.
 
-The falsification criterion was stated in advance: if amortizing the acknowledgements
+The falsification criterion was stated in advance: if amortizing the acknowledgments
 does not help, the account is wrong. At one feed under true real-time replay, batching them
 in groups of two hundred takes median \tti{} from $4{,}138$~ms to $103$~ms --- a factor of
 $\mathbf{40.2}$, replicated four times --- and read-loop instrumentation corrects the
 shape: each \texttt{XREADGROUP} returns a full batch (median 106 messages in ${\sim}32$~ms),
-so the constraint is entirely in the acknowledgement path.
+so the constraint is entirely in the acknowledgment path.
 \section{S31. The spread rule and the grid-membership inference in full (moved from the main text)}
 
 \paragraph{What the replicate spread does, and does not, predict.} It is tempting to write
@@ -2195,7 +2196,7 @@ full is supplementary material S12.
 \paragraph{The experiment that settles it.} Raise the stamping processes to real-time
 priority: occupancy falls sharply while utilization does not move, and priority acts on the
 stamping threads themselves --- where the model locates the failure --- rather than
-cancelling in the subtraction as our delay injection did. The result is unambiguous
+canceling in the subtraction as our delay injection did. The result is unambiguous
 (supplementary material S25): utilization held to $0.001$, and the inversion rate fell by
 factors of $39$ and $54$ at the two load levels, with disjoint Wilson intervals, both
 residual rates landing on the floor the model names in advance, $C_0 \approx 0.004$.
@@ -2246,7 +2247,7 @@ Barrett et al.~\cite{barrett2017warmup} and Maricq et al.~\cite{maricq2018taming
 establish that benchmark variability is structural, that factors as innocuous as link
 order flip published conclusions, and that hundreds of trials can be needed --- against
 the surveyed norm of a handful of
-repetitions~\cite{hoefler2015scientific, vanderkouwe2019sok}. Our phase-locked
+repetitions~\cite{hoefler2015benchmarking, vanderkouwe2019sok}. Our phase-locked
 configurations supply the mechanism those studies lack: instability that is not variance
 around a value but a two-point support whose weights move, so no replicate count converges
 (the main text).
@@ -2370,9 +2371,9 @@ main text now states the mechanism.
 \subsection{S35.3. The causality framing, withdrawn in this version}
 
 Through version~2 this paper described its first failure mode as a causality violation, on the
-argument that an acknowledgement causally precedes a receipt. That argument is wrong, and a
+argument that an acknowledgment causally precedes a receipt. That argument is wrong, and a
 reader pointed it out. The broker's append precedes both the producer's receipt of the
-acknowledgement and the consumer's receipt of the record; those are two branches of one
+acknowledgment and the consumer's receipt of the record; those are two branches of one
 cause, and neither precedes the other. A negative difference between them is therefore
 possible without any physical impossibility, and is in fact routine when the producer's
 callback thread is descheduled.
@@ -2381,7 +2382,7 @@ We settled the question on the corpus rather than by argument. Every archived ru
 producer and consumer events was recounted, span by span
 (\texttt{scripts/recount\_spans.py}, output committed as
 \texttt{docs/results/span\_recount.csv}). Over $\spanEvents$ events in $\spanRuns$ runs, the
-acknowledgement-referenced span is negative $\spanNegAck$ times and the send-referenced span
+acknowledgment-referenced span is negative $\spanNegAck$ times and the send-referenced span
 is negative $\spanNegSend$ times. Nothing in the corpus arrived before it was sent.
 
 What changed as a result: the framing, the justification of the gate, and the claim that the
@@ -2466,11 +2467,11 @@ OpenMessaging Benchmark does.
 \begin{table}[h]
 \caption{Audited harnesses, one row per span rather than per tool. \emph{Filter} admits only
 positive samples; \emph{substitute} replaces an inverted interval with a constant;
-\emph{counts} means the disposal is exposed in the output. The OpenMessaging Benchmark
-appears twice, because it treats its two spans differently and that difference is the
-finding of Section~IV-A. Sources, in row order:
-\cite{openmessaging2018,openmessaging2018,rezolus,btt_inlines,emqtt_bench,fio_gettime}. This
-table is generated from \texttt{harness\_registry.csv} at build time.}
+\emph{refused by own library} means the recording library returns a refusal the caller never
+checks; \emph{counts} means the disposal is exposed in the output. The OpenMessaging
+Benchmark appears twice, because it treats its two spans differently and that difference is
+the finding of Section~IV-A. Sources, in row order: \registryTableSources. This table and
+this list are generated from \texttt{harness\_registry.csv} at build time.}
 \label{tab:registry}
 \centering
 \footnotesize
@@ -2492,12 +2493,36 @@ timestamps are out of order, with no comment, no counter and no mention in the m
 A substitution of this kind is harder to detect than a filter, because the sample count is
 unchanged: any retention rate computed downstream reads $100\%$.
 
+Third, \texttt{wrk2}'s disposal was mis-evidenced in an earlier draft of this registry, and
+the correction is worth spelling out because the wrong version survived one round of review.
+\texttt{wrk.c} detects the negative interval, prints a block that begins ``We are about to
+crash and die'', and records the value anyway with the boolean return unchecked. We first
+attributed the resulting drop to upstream HdrHistogram\_c's value guard
+(\texttt{if (value < 0 \ldots) return false})~\cite{hdrhistogram_c}. \texttt{wrk2} does not
+build against upstream: it vendors its own \texttt{hdr\_histogram.c}, which has no value
+guard at all --- it bounds-checks the \emph{derived} counts index (lines 219 and 234) and
+returns an unchecked \texttt{false}, and its index computation carries \texttt{assert()}s
+that are live in the shipped build (\texttt{-O2}, no \texttt{-DNDEBUG}), so a negative may
+abort the run before the refusal is reached. Whether the assertion trips or the bounds check
+refuses, the sample is never recorded and nothing counts the loss --- and the panic block's
+own prediction turns out to be the accurate part. The registry row now cites the vendored
+file, and the classifier's refusal pattern matches both spellings of the same disposal.
+
 Two patterns had to be added to the classifier before it could see these tools, and both
 additions are recorded here because they bound what the survey can claim. The original
 patterns were written against JVM sources and could not match Erlang's guard, which is a
 short-circuit rather than an \texttt{if}, nor Erlang's clock read, which carries its unit as
 an argument. The survey therefore reports what the classifier can currently recognize, which
 is a lower bound on the field rather than a census of it.
+
+The pattern has since reached the audited broker itself. In November 2025, Kafka's
+coordinator metrics were found throwing on negative durations when a host clock stepped
+backwards, and the merged fix clamps the negative to zero with no counter and no log
+line~\cite{kafka19888} --- silent substitution, the class this table marks
+\emph{substitute}, adopted in the very system whose benchmark opened this audit. We record
+it here rather than in the main text because its mechanism is genuine wall-clock
+non-monotonicity, and placing it beside Mode~A would invite exactly the clock-versus-stall
+conflation the paper separates.
 
 
 \section{S37. Two neighboring literatures, and what they do about the second clock}
@@ -2558,7 +2583,7 @@ the interval is smaller than the instrument.
 \section{S38. Where the stamp is written, in other runtimes}
 \label{sec:runtimes}
 
-Section~V argues that an acknowledgement stamp is late because the thread that writes it must
+Section~V argues that an acknowledgment stamp is late because the thread that writes it must
 first be scheduled. That is not peculiar to a JVM benchmark, and three widely used runtimes
 document the same structure in their own terms. None of them frames it as a hazard, which is
 the point: the property is public, and the consequence for a cross-process subtraction is not
@@ -2568,7 +2593,7 @@ drawn anywhere we could find.
 \texttt{librdkafka}, the client under the benchmark's \kafka{} driver, serves its
 delivery-report callback from \texttt{rd\_kafka\_poll()} and the other queue-serving
 calls~\cite{librdkafka}. The callback therefore runs on the application's own thread, at
-whatever moment that thread next polls, rather than when the broker's acknowledgement
+whatever moment that thread next polls, rather than when the broker's acknowledgment
 arrives. Our $\delta_{\mathrm{ack}}$ is exactly the interval between those two events.
 
 \paragraph{The definition itself names the reap, not the completion}
@@ -2588,6 +2613,16 @@ note the asymmetry rather than flatten it: both vendors describe a stamp written
 the host does not choose, and only one says out loud how far from the host call it can be.
 
 \section{S39. Neighboring rules, and what they already require}
+
+\paragraph{A prior sighting in a benchmark, blamed on clocks.} Klenik and Pataricza report
+negative derived durations in a Hyperledger Fabric benchmark, call them a serious violation
+of event causality, and trace them to a peer clock drifting under a lightweight
+synchronization service~\cite{klenik2021}. Their case is genuinely two-clock --- the
+durations oscillate smoothly around zero, a drift signature, the same channel as our Redis
+$-1000\,\mu$s finding and not Mode~A --- and their check is post-hoc data validation with no
+per-run gate and no campaign rate. It is the nearest prior sighting of the observable inside
+a benchmark, and the attribution went where the field's default sends it: to the clock.
+
 \label{sec:neighbors}
 
 Two of this paper's recommendations have partial precedents, and the honest thing is to say
@@ -2662,6 +2697,16 @@ them states our rule in almost our words, for a different domain. The rule simpl
 reached the place where brokers are compared on sub-millisecond paths.
 
 \section{S41. The classical statistics of a discarded zero}
+
+\paragraph{A second standard already owns the lemma.} The arithmetic core of the grid ---
+a rate whose ratio to the sampling tick is $J/M$ in lowest terms visits exactly $M$ distinct
+phases --- is standardized in ADC metrology as coherent sampling: IEEE Std~1241's sine-wave
+histogram test requires the input and sampling frequencies related by $f_i = (J/M)\,f_s$
+with $J$ ``relatively prime to $M$''~\cite{ieee1241}, for the same reason we choose
+incommensurate send rates. (The standard's notation is $J/M$ where the main text writes
+$p/q$.) As with the counter literature, we claim the consequence under deletion, not the
+lemma.
+
 \label{sec:zeros}
 
 The main text argues that deleting the samples which compute to zero conditions the reported

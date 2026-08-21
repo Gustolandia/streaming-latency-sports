@@ -377,14 +377,6 @@
   year      = {2017}
 }
 
-@inproceedings{hoefler2015scientific,
-  author    = {Hoefler, Torsten and Belli, Roberto},
-  title     = {Scientific Benchmarking of Parallel Computing Systems},
-  booktitle = {Proc.\ ACM/IEEE SC},
-  year      = {2015},
-  pages     = {73:1--73:12},
-  publisher = {ACM}
-}
 
 @inproceedings{maricq2018taming,
   author    = {Maricq, Aleksander and Duplyakin, Dmitry and Jimenez, Ivo and Maltzahn, Carlos and Stutsman, Ryan and Ricci, Robert},
@@ -617,7 +609,8 @@
   title     = {{Lancet}: A Self-Correcting Latency Measuring Tool},
   booktitle = {Proc. USENIX Annual Technical Conf. (ATC)},
   pages     = {881--896},
-  year      = {2019}
+  year      = {2019},
+  note      = {\S4.3: terminates and reports the results with an inconclusive verdict}
 }
 
 @incollection{kundel2024p4sta,
@@ -1167,8 +1160,10 @@
   title        = {\texttt{model/adjuster/clockskew.go}},
   howpublished = {\url{https://github.com/jaegertracing/jaeger}},
   year         = {2026},
-  note         = {\url{https://github.com/jaegertracing/jaeger}; a query-service adjuster,
-                  off by default since v1.20.0. Read 2026-08-21}
+  note         = {\url{https://github.com/jaegertracing/jaeger},
+                  \texttt{model/adjuster/clockskew.go} at v1.57.0; adjusters run in
+                  the query service, and the default has been off since v1.20.0.
+                  Read 2026-08-21}
 }
 
 @misc{zrk2026,
@@ -1214,8 +1209,10 @@
   title        = {\texttt{wrk2} --- \texttt{src/wrk.c}},
   howpublished = {Source repository},
   year         = {2026},
-  note         = {\url{https://github.com/giltene/wrk2}; the negative interval is detected,
-                  printed, and then recorded unguarded. Read 2026-08-21}
+  note         = {\url{https://github.com/giltene/wrk2}; the negative is detected, printed,
+                  and recorded unguarded; the vendored \texttt{hdr\_histogram.c}
+                  bounds-checks the derived index behind live assertions.
+                  Read 2026-08-21}
 }
 
 @misc{hdrhistogram_c,
@@ -1223,9 +1220,9 @@
   title        = {\texttt{HdrHistogram\_c} --- \texttt{src/hdr\_histogram.c}},
   howpublished = {Source repository},
   year         = {2026},
-  note         = {\url{https://github.com/HdrHistogram/HdrHistogram_c};
-                  \texttt{hdr\_record\_values} returns \texttt{false} for a negative value.
-                  Read 2026-08-21}
+  note         = {\url{https://github.com/HdrHistogram/HdrHistogram_c}; upstream's
+                  \texttt{hdr\_record\_values} refuses a negative value outright ---
+                  the guard wrk2's vendored copy lacks. Read 2026-08-21}
 }
 
 @misc{zhou2025slice,
@@ -1259,5 +1256,35 @@
   author       = {{Standard Performance Evaluation Corporation}},
   title        = {{SPECjbb2015} run and reporting rules, v1.02},
   year         = {2018},
-  note         = {\S3.4.4--3.4.5; a run is declared invalid on clock-offset criteria}
+  note         = {\S3.4.5; an initial clock offset beyond ten minutes voids the run}
+}
+
+@misc{kafka19888,
+  author       = {{Apache Kafka contributors}},
+  title        = {{KAFKA-19888}: Clamp negative values in coordinator histograms},
+  howpublished = {Issue tracker and pull request \#20986},
+  year         = {2025},
+  note         = {\url{https://issues.apache.org/jira/browse/KAFKA-19888}; merged
+                  2025-11-26, shipped in 4.2.0: negatives from backward clock steps clamped
+                  to zero, uncounted. Read 2026-08-21}
+}
+
+@article{klenik2021,
+  author  = {Klenik, Attila and Pataricza, Andr\'as},
+  title   = {Adding semantics to measurements: Ontology-guided, systematic performance
+             analysis},
+  journal = {Acta Cybernetica},
+  year    = {2022},
+  note    = {arXiv:2112.11270; negative derived durations in a Hyperledger Fabric benchmark,
+             traced to peer clock drift}
+}
+
+@standard{ieee1241,
+  author       = {{IEEE}},
+  title        = {{IEEE} Standard for Terminology and Test Methods for Analog-to-Digital
+                  Converters},
+  howpublished = {IEEE Std 1241-2010},
+  year         = {2011},
+  note         = {\S5.4: coherent sampling, $f_i = (J/M) f_s$ with $J$ relatively prime
+                  to $M$}
 }

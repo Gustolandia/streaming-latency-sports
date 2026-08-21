@@ -654,6 +654,8 @@ streaming-latency-sports/
 │   ├── compare_plans.py · compare_experiments.py · make_results_table.py
 │   ├── audit_external_harness.py · harness_registry.py   # third-party harness audit
 │   ├── emit_paper_numbers.py · kernel_constants.py       # the macro ledger
+│   ├── clocksource_bound.py                             # which clocksource,
+│   │                                                    #   bounded from a measurement
 │   ├── make_paper_figures.py · make_result_figures.py    # figures, from artefacts
 │   ├── recount_spans.py                                 # per-span negatives + the
 │   │                                                    #   shared-stamp contrast

@@ -43,6 +43,10 @@ CROSS_PROCESS = [
     # arrived with the message. The unit is an argument here rather than part of the method
     # name, which is why the JVM patterns above cannot see it.
     re.compile(r"system_time\s*\(\s*\w*\s*\)\s*-\s*\w+", re.I),
+    # Pulsar: `System.currentTimeMillis() - msg.publishTime().toEpochMilli()` -- the stamp
+    # arrives as a method chain on the message rather than as a field, which the second
+    # pattern's `\w*` cannot cross. Added in round 6 with the harness itself.
+    re.compile(r"currentTimeMillis\(\)\s*-\s*\w+\.(publish|send|create)\w*\(", re.I),
 ]
 
 # A guard that admits only positive samples silently drops the evidence of a violation.
@@ -51,9 +55,37 @@ POSITIVE_FILTER = [
     re.compile(r"if\s*\(\s*(\w*[Ll]atency\w*)\s*>=\s*0\s*\)"),
     re.compile(r"if\s+(\w*latency\w*)\s*>\s*0\s*:", re.I),
     # Erlang spells the same guard without an `if`, as a short-circuit before the record call:
-    # `E2ELatency > 0 andalso inc_counter(...)`. Added when auditing beyond the JVM found the
-    # identical defect in a language whose syntax the original patterns could not see.
+    # `E2ELatency > 0 andalso record(...)`. Added when auditing beyond the JVM found the
+    # identical shape in a language whose syntax the original patterns could not see.
     re.compile(r"\b(\w*[Ll]atency\w*)\s*>\s*0\s+andalso\b"),
+]
+
+# A positivity guard only deletes a sample if what it guards is the *sample*. Round 6 caught us
+# on exactly this: emqtt-bench's `E2ELatency > 0 andalso inc_counter(...)` gates a Prometheus
+# counter, and the very next line observes the histogram unconditionally, so nothing is dropped
+# at all. The pattern above saw the guard and could not see its consequent, and we reported a
+# tool as deleting samples when it keeps every one of them.
+#
+# The distinction is mechanical, so it belongs here rather than in a reviewer's eye: if the
+# guarded action increments a counter, the guard is bookkeeping, not disposal.
+COUNTER_CONSEQUENT = re.compile(
+    r"(andalso|\)\s*\{?)\s*\w*(inc|add|bump)[_\w]*counter\w*\s*\(", re.I)
+
+# A fourth response, weaker to spot than the other three because the deletion is not in the
+# harness at all. The recording library refuses the value and says so in a return code; the
+# caller ignores it. wrk2 is the specimen: it tests for the negative, prints a panic block
+# asserting it can never happen, and then calls `hdr_record_value` anyway, where
+# HdrHistogram_c's `if (value < 0 ...) return false;` drops it with nothing counted anywhere.
+# Neither file is wrong on its own, which is why this needs its own class.
+# The signature is a range check against a bound the object carries: the value is rejected both
+# for being negative and for exceeding what this histogram was configured to hold, which is what
+# a library does and an application does not. Requiring the second disjunct to be a member
+# access is what separates this from fio's `if (sec < 0 || (sec == 0 && nsec < 0))`, which is a
+# sign test on two time fields and belongs to SUPPRESSION. A first draft without that
+# requirement classified fio as both, which is how this comment came to be written.
+LIBRARY_REFUSAL = [
+    # `if (value < 0 || h->highest_trackable_value < value)` -- refuse, and return the refusal.
+    re.compile(r"if\s*\(\s*(\w+)\s*<\s*0\s*\|\|\s*[\w>.\[\]-]+(->|\.)\w+\s*<\s*\1\b"),
 ]
 
 # A third response, and the one that hides the failure most completely: detect the inversion and
@@ -88,7 +120,12 @@ CLASSES = (
     ("cross_process_latency", CROSS_PROCESS),
     ("positive_only_filter", POSITIVE_FILTER),
     ("silent_suppression", SUPPRESSION),
+    ("library_refusal", LIBRARY_REFUSAL),
 )
+
+# The three ways a sample can vanish. `cross_process_latency` is not one of them -- it marks
+# where the span is computed, not what happens to it.
+DISPOSAL_KINDS = ("positive_only_filter", "silent_suppression", "library_refusal")
 
 
 def classify(line):
@@ -99,8 +136,15 @@ def classify(line):
     its labels is worth no more than the prose it replaces; one whose labels are recomputed from
     the evidence line on every test run can be checked by a reader who has neither the checkouts
     nor our word for it.
+
+    A positivity guard is withdrawn when its consequent is a counter increment: guarding a
+    counter is bookkeeping, and calling it disposal is the error round 6 found in our reading of
+    emqtt-bench.
     """
-    return [name for name, pats in CLASSES if any(p.search(line) for p in pats)]
+    kinds = [name for name, pats in CLASSES if any(p.search(line) for p in pats)]
+    if "positive_only_filter" in kinds and COUNTER_CONSEQUENT.search(line):
+        kinds.remove("positive_only_filter")
+    return kinds
 
 
 def source_files(repo, exts=(".java", ".py", ".scala", ".go", ".c", ".h", ".cc", ".cpp",

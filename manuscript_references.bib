@@ -1265,7 +1265,7 @@
   howpublished = {Issue tracker and pull request \#20986},
   year         = {2025},
   note         = {\url{https://issues.apache.org/jira/browse/KAFKA-19888}; merged
-                  2025-11-26, shipped in 4.2.0: negatives from backward clock steps clamped
+                  2025-11-26, shipped in 4.2.0 and backported to 4.0.2/4.1.2: negatives from backward clock steps clamped
                   to zero, uncounted. Read 2026-08-21}
 }
 
@@ -1279,12 +1279,22 @@
              traced to peer clock drift}
 }
 
-@standard{ieee1241,
+@misc{ieee1241,
   author       = {{IEEE}},
   title        = {{IEEE} Standard for Terminology and Test Methods for Analog-to-Digital
                   Converters},
   howpublished = {IEEE Std 1241-2010},
   year         = {2011},
-  note         = {\S5.4: coherent sampling, $f_i = (J/M) f_s$ with $J$ relatively prime
-                  to $M$}
+  note         = {\S6.4.1, Eq.~(28): the histogram test's relatively-prime record
+                  condition; \S5.4.1, Eq.~(18): $f_i = (J/M) f_s$, named coherent sampling}
+}
+
+@mastersthesis{mittal2025,
+  author = {Mittal, Yug},
+  title  = {An empirical study of open-loop load generators for microservices and web
+            workloads},
+  school = {University of Illinois Urbana-Champaign},
+  year   = {2025},
+  note   = {\url{https://hdl.handle.net/2142/129222}; behavioural evaluation of six
+            open-loop generators. Read 2026-08-21}
 }

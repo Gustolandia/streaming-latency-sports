@@ -546,10 +546,32 @@ def registry_macros():
     return out
 
 
+def clocksource_macros():
+    """The clocksource bound, derived from the probe's own measurement.
+
+    A reviewer asked which clocksource the instances ran and we could not say: the field was
+    never captured and the machines are gone. The probe did capture the smallest increment
+    the clock could report, and read cost separates the candidates by an order of magnitude,
+    so the set is recoverable even though the value is not. See scripts/clocksource_bound.py.
+    """
+    try:
+        import clocksource_bound
+        b = clocksource_bound.bound()
+    except (ImportError, OSError, KeyError, ValueError):
+        return []
+    return [
+        ("clockIncrementNs", "%.0f" % b["increment_ns"]),
+        ("clockPmTickNs", "%.0f" % b["pm_timer_tick_ns"]),
+        ("clockAdmitted", " or ".join("\\texttt{%s}" % n for n in b["admitted"])),
+        ("clockExcludedCount", str(len(b["excluded"]))),
+    ]
+
+
 def all_pairs(m):
     return (list(macros(m)) + span_macros() + stat_macros() + grid_macros()
             + retention_macros() + traced_macros() + tost_macros()
-            + mechanism_macros() + kernel_macros() + registry_macros())
+            + mechanism_macros() + kernel_macros() + registry_macros()
+            + clocksource_macros())
 
 
 def render(m):

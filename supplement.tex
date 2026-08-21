@@ -1562,6 +1562,50 @@ demonstrate it on one.
 
 \section{S23. Tables (moved from the main text; the pipeline schematic has returned to it)}
 
+Table~\ref{tab:quantisation} is the per-arm ledger behind Section~IV-B's grid claim: one row
+per send rate, with the arithmetic denominator $q$, the replicate count, and the spread those
+replicates actually showed. The main text keeps the inference drawn from it and the set view
+of the same arms; this is the record they are drawn from, and every cell in it is recomputed
+from the committed campaign index by the test suite rather than proofread. The table below it keeps the
+individual replicate retentions for three arms, which the ledger reduces to a single
+spread: it is the same evidence at finer grain, and it is where the $0.47$-to-$99.99$
+range behind the $q=1$ corner can actually be seen.
+
+\begin{table}[t]
+\caption{\textbf{Replicate spread against the phase denominator $q$} (moved from
+Section~IV-B), at fixed payload,
+load, duration and host. \emph{Position} is the distance from the measured continuous value
+to the nearest grid point, against the cell half-width: $0$ sits on a grid point, $1$
+midway between two. Position is scale-free, so every call is unchanged whether the
+continuous value is estimated pooled or per rate. $^{\dagger}$already in lowest terms.}
+\label{tab:quantisation}
+\footnotesize
+\centering
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}rlrrrrlr@{}}
+\toprule
+rate & $\Delta/\tau$ & $q$ & $n$ & width & pos. & predicted & spread \\
+\midrule
+$1000$/s & $1/1$  & $1$ & $3$ & $100.0$ & $0.99$ & full & $99.3$ \\
+$500$/s  & $2/1$  & $1$ & $4$ & $100.0$ & $0.99$ & full & $99.5$ \\
+$250$/s  & $4/1$  & $1$ & $3$ & $100.0$ & $0.99$ & full & $58.6$ \\
+$400$/s  & $5/2$  & $2$ & $5$ & $50.0$  & $0.02$ & flat & $17.6$ \\
+$300$/s  & $10/3$ & $3$ & $5$ & $33.3$  & $0.97$ & full & $30.5$ \\
+$600$/s  & $5/3$  & $3$ & $5$ & $33.3$  & $0.97$ & full & $32.7$ \\
+$800$/s  & $5/4$  & $4$ & $5$ & $25.0$  & $0.04$ & flat & $7.2$  \\
+$625$/s  & $8/5$  & $5$ & $5$ & $20.0$  & $0.95$ & full & $17.9$ \\
+$875$/s  & $8/7$  & $7$ & $5$ & $14.3$  & $0.93$ & full & $10.7$ \\
+\midrule
+\multicolumn{8}{@{}l}{\emph{incommensurate --- phase set effectively continuous}} \\
+$889$/s  & $1000/889^{\dagger}$ & ${>}64$ & $5$ & --- & --- & $\approx 0$ & $1.7$ \\
+$457$/s  & ---    & ${>}64$ & $4$ & --- & --- & $\approx 0$ & $2.1$ \\
+$383$/s  & ---    & ${>}64$ & $4$ & --- & --- & $\approx 0$ & $2.8$ \\
+$333$/s  & ---    & ${>}64$ & $3$ & --- & --- & $\approx 0$ & $3.1$ \\
+$611$/s  & ---    & ${>}64$ & $3$ & --- & --- & $\approx 0$ & $3.1$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \begin{table}[t]
 \caption{Retention against the producer's send interval, with message size, background load,
 duration and host held fixed. Only the commensurate rate is unstable, and the two incommensurate

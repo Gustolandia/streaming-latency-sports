@@ -46,7 +46,7 @@ indexed in the artefact at \texttt{docs/supplement\_index.md}.
 \tableofcontents
 \bigskip
 
-\noindent\emph{On the numbering.} Sections are numbered in the order they were first written, not the order they appear: S12 follows S13, and S14 and S30 were withdrawn when their material was folded into neighbouring sections. The numbers are left as they are because the main text, the artefact index and four rounds of correspondence all cite them, and renumbering would silently break every one.
+\noindent\emph{On the numbering.} Two numbers are absent: S14 and S30 were withdrawn when their material was folded into neighbouring sections. The remaining numbers are left as they are because the main text, the artefact index and four rounds of correspondence all cite them, and renumbering would silently break every one.
 
 
 Several sections below refer to ``internal review'' rounds and to material moved between
@@ -56,7 +56,7 @@ or reviewed by, any journal. They are recorded because the corrections they prod
 part of the evidence, and because an audit whose own failures are hidden is worth less than
 one whose are not.
 
-\section{S1: The replay-rate provenance gap, in full}
+\section{S1. The replay-rate provenance gap, in full}
 
 Auditing the corpus turned the same scrutiny on our own record-keeping, and it did not survive
 it either. The main text summarises this episode; this section is the full record, kept
@@ -149,7 +149,7 @@ Section~VII-A of the main text carries the rule that would have made all of this
 
 
 
-\section{S2: The load-axis post-mortem, in full}
+\section{S2. The load-axis post-mortem, in full}
 
 Moved from the main text's mixture development: the load-axis post-mortem in full. The main text keeps the admissions and the numbers.
 
@@ -172,7 +172,7 @@ $\rho$, through $p = \rho^C$; E-A5 shows $\rho$ does not determine occupancy. Wh
 the mechanism --- established by manipulation --- and not any curve in $\rho$, ours included.
 
 
-\section{S3: The campaign ledger schema}
+\section{S3. The campaign ledger schema}
 
 One row per cell of every instrumented-benchmark campaign,
 \texttt{docs/results/external\_campaigns\_index.csv}:
@@ -197,7 +197,7 @@ The Python-harness campaigns (no JVM, Section on generality in the main text) us
 naming and publish \texttt{docs/results/external/harness\_results.csv} with per-cell counts,
 sign-separated discards, and pacer-jitter percentiles.
 
-\section{S4: OpenMessaging distributed mode, failure diagnostics}
+\section{S4. OpenMessaging distributed mode, failure diagnostics}
 
 Eleven attempts in total never produced a measurement. The three diagnosed attempts of the
 referee campaign (chain 18, block E) fail identically at OMB commit \texttt{5b1fa70}:
@@ -218,7 +218,7 @@ supplementary material S4). We do not claim any published result obtained with t
 benchmark is wrong: exposure depends on a deployment's path latency and producer rate,
 and we audited none --- why we recommend publishing a retention rate as routine practice,
 at the cost of one number.
-\section{S5: The E1 reconciliation, in full}
+\section{S5. The E1 reconciliation, in full}
 
 \begin{table}[t]
 \caption{The same runs reproduce both published answers. Transport medians (ms) from the powered
@@ -797,46 +797,6 @@ Max matches in play at once & 21 \\
 \end{tabular}
 \end{table}
 
-\section{S13. The commensurability account's corrections in full (moved from the main text)}
-
-\paragraph{We report the correction because the first version was weaker and we published it to
-ourselves.} Treating $100/q$ as a point prediction made the even denominators look like failures, and
-we introduced an exclusion for them --- an arm cannot test a grid the continuous value sits on, so
-$q=2$ and $q=4$ were set aside. That exclusion was defensible and pre-registered: it was derived from
-the $q=4$ result and committed at 14:09Z on 2026-07-27, and the first cell of the first odd-$q$ arm
-was measured at 15:06Z, so the odd denominators were run \emph{because} the rule said they would
-separate. It was also unnecessary. Under the main text an on-grid arm is a prediction of a
-flat arm, so $q=2$ and $q=4$ are evidence \emph{for} the account rather than cases to be excused. We
-had reached for a law that excluded its exceptions when one that explains them was available.
-
-What exposed it was checking whether the exclusion survived re-estimating one of its own inputs. The
-continuous value is not constant across rate --- it runs $51.2\%$ at $333$~msg/s down to $47.5\%$ at
-$889$, a trend of $4.15$ points against a replicate noise of $1.55$ --- and under a rate-local
-estimate $q=4$ ceased to be degenerate and became a failure. A classification that flips on that
-choice is not a classification. Measuring position against the cell half-width instead of a fixed
-noise floor removes the sensitivity: every call in the main text is the same under
-either estimate.
-
-\paragraph{A second prediction of ours failed, and no reading of it rescues the number.} We recorded,
-before running it, that $q=5$ would put $2$ of $5$ phases across a boundary and so retain about
-$40\%$. The five replicates gave a median of $46.6\%$ --- inside the incommensurate range and $6.6$
-points from what we wrote down. The error was again naming one branch of a two-branch prediction:
-with $T_{\mathrm{true}}/\tau$ at a half, $2$ \emph{or} $3$ phases cross depending on where a run's
-initial phase falls, so a replicate is predicted at $40\%$ or $60\%$ and the average of many is near
-$50$. The five values --- $40.7$, $42.1$, $46.6$, $55.5$, $58.6$ --- are bimodal about exactly those
-two branches, which is what the account requires and what no continuous account produces. The grid
-held; the point we picked on it did not.
-
-\paragraph{Where the account is approximate, stated rather than trimmed.} Three observations sit
-outside it. The $q=1$ arm at $250$~msg/s spreads $58.6$ points where the cell width is $100$, and one
-replicate at $500$~msg/s sits at $18.0$; a run confined to a single phase can produce neither. We
-read this as the limit of the idealisation: a nominal rate is $q=1$ only if the pacing is exact for
-the whole run, and over three minutes a drift of a few parts per million walks the phase across a
-boundary part-way through. The grid that governs retention is the one the pacing realises, not the
-one the nominal rate implies. Third, $q=2$'s spread of $17.6$ rests on a single replicate at $68.0$;
-the other four span $3.1$ points, which is the incommensurate noise level and exactly what an on-grid
-arm should show. We report the spread over all five rather than the four that agree.
-
 \section{S12. The two-state model commentary and the tracing instrument checks (moved from the main text)}
 
 \paragraph{What it accounts for.} Clustering follows by construction: being preempted is an
@@ -931,6 +891,45 @@ measurement is most exposed. It costs us nothing here, because no claim rests on
 arm's level, and it is worth stating plainly rather than leaving in a footnote: a kernel tracer
 is not a free observer.
 
+\section{S13. The commensurability account's corrections in full (moved from the main text)}
+
+\paragraph{We report the correction because the first version was weaker and we published it to
+ourselves.} Treating $100/q$ as a point prediction made the even denominators look like failures, and
+we introduced an exclusion for them --- an arm cannot test a grid the continuous value sits on, so
+$q=2$ and $q=4$ were set aside. That exclusion was defensible and pre-registered: it was derived from
+the $q=4$ result and committed at 14:09Z on 2026-07-27, and the first cell of the first odd-$q$ arm
+was measured at 15:06Z, so the odd denominators were run \emph{because} the rule said they would
+separate. It was also unnecessary. Under the main text an on-grid arm is a prediction of a
+flat arm, so $q=2$ and $q=4$ are evidence \emph{for} the account rather than cases to be excused. We
+had reached for a law that excluded its exceptions when one that explains them was available.
+
+What exposed it was checking whether the exclusion survived re-estimating one of its own inputs. The
+continuous value is not constant across rate --- it runs $51.2\%$ at $333$~msg/s down to $47.5\%$ at
+$889$, a trend of $4.15$ points against a replicate noise of $1.55$ --- and under a rate-local
+estimate $q=4$ ceased to be degenerate and became a failure. A classification that flips on that
+choice is not a classification. Measuring position against the cell half-width instead of a fixed
+noise floor removes the sensitivity: every call in the main text is the same under
+either estimate.
+
+\paragraph{A second prediction of ours failed, and no reading of it rescues the number.} We recorded,
+before running it, that $q=5$ would put $2$ of $5$ phases across a boundary and so retain about
+$40\%$. The five replicates gave a median of $46.6\%$ --- inside the incommensurate range and $6.6$
+points from what we wrote down. The error was again naming one branch of a two-branch prediction:
+with $T_{\mathrm{true}}/\tau$ at a half, $2$ \emph{or} $3$ phases cross depending on where a run's
+initial phase falls, so a replicate is predicted at $40\%$ or $60\%$ and the average of many is near
+$50$. The five values --- $40.7$, $42.1$, $46.6$, $55.5$, $58.6$ --- are bimodal about exactly those
+two branches, which is what the account requires and what no continuous account produces. The grid
+held; the point we picked on it did not.
+
+\paragraph{Where the account is approximate, stated rather than trimmed.} Three observations sit
+outside it. The $q=1$ arm at $250$~msg/s spreads $58.6$ points where the cell width is $100$, and one
+replicate at $500$~msg/s sits at $18.0$; a run confined to a single phase can produce neither. We
+read this as the limit of the idealisation: a nominal rate is $q=1$ only if the pacing is exact for
+the whole run, and over three minutes a drift of a few parts per million walks the phase across a
+boundary part-way through. The grid that governs retention is the one the pacing realises, not the
+one the nominal rate implies. Third, $q=2$'s spread of $17.6$ rests on a single replicate at $68.0$;
+the other four span $3.1$ points, which is the incommensurate noise level and exactly what an on-grid
+arm should show. We report the spread over all five rather than the four that agree.
 
 \section{S15. Configuration in full (moved from the main text)}
 
@@ -1169,8 +1168,8 @@ The cost is one pass over data the harness already produces. In our implementati
 under two hundred lines and runs in seconds over $2{,}266$ runs, which is why we argue it
 belongs in routine practice rather than in a dedicated study.
 
-\paragraph{When it matters most.} Equation~the main text tells a reader where to be
-careful without repeating our experiments: risk rises as the measured quantity approaches the
+\paragraph{When it matters most.} Equation~3 of the main text tells a reader where to
+be careful without repeating our experiments: risk rises as the measured quantity approaches the
 instrument's own scheduling jitter, and as utilisation approaches saturation. A benchmark
 measuring milliseconds on a loaded machine is in the dangerous region; one measuring seconds, or
 running well below saturation, is not. That is a rule of thumb, and the main text
@@ -1478,7 +1477,7 @@ machine. Two attempts failed and are reported above: the queueing form fits wors
 sweep reaches the range where forms diverge, and our own registered bracket missed a $1.44\times$
 growth by predicting $2.45$--$3.07\times$. Both failed for the same reason --- both were
 parameterised in $\rho$, and $\rho$ is not the variable. The tail-index rule
-(Equation~the main text) is the nearest thing we have to a quantitative law, and it carries
+(Equation~3 of the main text) is the nearest thing we have to a quantitative law, and it carries
 no load term at all: it predicts how the rate scales with $T_{\mathrm{true}}$, not what the rate
 is. So the practical guidance this paper supports is a check to run, not a number to look up. A
 reader wanting to know whether their own measurement is exposed must measure it, which is
@@ -2268,7 +2267,7 @@ branch-probability law under-delivers. The payload sweep succeeded where co-loca
 Three artefacts added in the round-1 internal revision, each recomputable by a committed script.
 Table~\ref{tab:gatesens} applies the audit gate to the powered transport campaigns and
 bounds the selection the gate introduces (\texttt{powered\_gate\_sensitivity.py}); the
-condition-level threshold sweep behind the main text's Section~6.2 sentence is
+condition-level threshold sweep behind Section~III-B of the main text is
 \texttt{first\_result\_threshold\_sweep.csv} (no first-result cell fully usable at any
 threshold up to $20\%$; best cell $23/30$); the traced survival slopes that used to back
 the main text's effective-exponent statement are \texttt{traced\_tail\_slope.csv} (windowed

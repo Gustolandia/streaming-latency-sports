@@ -46,6 +46,9 @@ indexed in the artefact at \texttt{docs/supplement\_index.md}.
 \tableofcontents
 \bigskip
 
+\noindent\emph{On the numbering.} Sections are numbered in the order they were first written, not the order they appear: S12 follows S13, and S14 and S30 were withdrawn when their material was folded into neighbouring sections. The numbers are left as they are because the main text, the artefact index and four rounds of correspondence all cite them, and renumbering would silently break every one.
+
+
 Several sections below refer to ``internal review'' rounds and to material moved between
 revisions. These were adversarial reviews conducted within the project before submission,
 against the standards of the venues considered; the manuscript has not been submitted to,
@@ -74,7 +77,7 @@ replay rate of any run we report.} Several superseded Testbed~A scenarios record
 the plan's compression, and every plan those files name has since been deleted. Everywhere else
 the orchestrator
 wrote \texttt{speedup} into a per-campaign summary that lived beside the raw per-run data, and
-for the earliest corpora only the aggregated CSVs were kept. For the E1 corpus of the main text's powered-transport section the surviving evidence is contradictory: the
+for the earliest corpora only the aggregated CSVs were kept. For the E1 corpus of Section~VI of the main text the surviving evidence is contradictory: the
 commit that introduced it states the runs were made at true real time, the campaign script
 reconstructed afterwards specifies \texttt{-{}-speedup 10}, and the flag's meaning was corrected
 $21$~hours later the same day. E1 was replayed at $1\times$, $120\times$ or $1200\times$, and we
@@ -82,7 +85,7 @@ cannot say which.
 
 \paragraph{The rate is recoverable from the measurements, if not from the metadata.} Having
 argued all paper that a physical constraint can decide what record-keeping cannot, we applied the
-same move here, and it works. The start-up cost of the main text's attribution section is a clock: it
+same move here, and it works. The start-up cost of Section~V-A of the main text is a clock: it
 lasts a fixed $102.6$~ms of \emph{wall} time, so the number of events it swallows depends
 directly on the replay rate. Counting how many events per run carry it therefore reads the rate
 back out of the data.
@@ -121,7 +124,7 @@ the one thing a physical-constraint argument can rarely demonstrate about itself
 
 The same script also explains a feature we had described and not accounted for. It passes
 \texttt{-{}-max-t-sim 2}: two seconds of match time per run. The median of seven matched events
-that makes E1 under-powered, and that the main text's attribution section treats as an opening burst,
+that makes E1 under-powered, and that Section~V-A of the main text treats as an opening burst,
 is that window. The burst is real and is why those seven events are the densest in the match; the
 reason there were only seven is that the campaign asked for two seconds.
 
@@ -135,14 +138,14 @@ once.
 
 \paragraph{What the gap touched.} The audit is unaffected either way: a negative transport is
 causally impossible at any replay rate, and the rejection counts are arithmetic on surviving
-per-event data. The withdrawal in the main text's attribution section is unaffected by construction ---
+per-event data. The withdrawal in Section~V-A of the main text is unaffected by construction ---
 we give the argument in a form that holds at every candidate rate. The rules of
-the main text's rules section were measured after the pre-flight existed, at a derived and verified
-rate. the main text's powered-transport section's external validity is restored by the recovery above, and the
+Section~VII-A of the main text were measured after the pre-flight existed, at a derived and verified
+rate. Section~VI of the main text's external validity is restored by the recovery above, and the
 recovered script now documents it as well --- though the inference stood on its own before the
 script appeared, and is what we would still be relying on had the machine been released a day
 earlier.
-the main text's protocol section carries the rule that would have made all of this unnecessary.
+Section~VII-A of the main text carries the rule that would have made all of this unnecessary.
 
 
 
@@ -153,7 +156,7 @@ Moved from the main text's mixture development: the load-axis post-mortem in ful
 \paragraph{Both load-axis predictions failed, including ours.} The knee sweep placed conditions
 at achieved $\rho$ of $0.881$, $0.920$, $0.950$, $0.970$ and $0.990$, where the candidate forms
 diverge most; the earlier ladder stopped at $0.878$ and everything above it collapsed onto a
-degenerate $\rho = 1.000$, which is why the main text's rules section could not settle the question.
+degenerate $\rho = 1.000$, which is why Section~VII-A of the main text could not settle the question.
 With those points in hand, M/G/1 fits \emph{worse than the mean} ($R^2 = -0.05$ against a fitted
 exponential's $0.93$). The withdrawal does not merely stand: the forms are now separated, and
 M/G/1 is the one ruled out.
@@ -237,7 +240,7 @@ $N$ & Runs & \kafka{} & \redis{} & Shift & \kafka{} & \redis{} & Shift \\
 \end{tabular}
 \end{table}
 
-Moved from the main text's powered-transport section: the complete windowed re-analysis showing E1's near-equality is the observation window and nothing else.
+Moved from Section~VI of the main text: the complete windowed re-analysis showing E1's near-equality is the observation window and nothing else.
 
 \paragraph{Why E1 saw near-equality, tested directly.} The two campaigns disagree by more than
 power: E1 puts both systems near $0.8$~ms and within $0.1$~ms of each other, while the powered
@@ -257,12 +260,12 @@ $0.74$--$0.81$~ms, against E1's $0.79$--$1.00$ and $0.72$--$0.86$. One set of ru
 protocol, two windows, both published answers.
 
 So E1 is not wrong and the campaigns do not contradict each other. E1 measured the opening burst,
-during which both systems are slow for the reason the main text's attribution section establishes ---
+during which both systems are slow for the reason Section~V-A of the main text establishes ---
 topic auto-creation, connection setup, and the first blocking \texttt{produce()} --- and that
 shared start-up cost swamps a $0.41$~ms difference. As the run lengthens the cost dilutes, and
 the brokers' steady-state separation emerges. The seven-event corpus answered a question about
 start-up while appearing to answer one about brokers, which is the same failure of window
-selection as the main text's attribution section, one level up.
+selection as Section~V-A of the main text, one level up.
 
 
 
@@ -1250,7 +1253,7 @@ description is therefore a leading-order account, not a complete one --- which i
 the main text measures directly on the instrument rather than on the system under
 test. Their background-interference mechanism also predicts the temporal signature we observe: a
 core blocked by another task delays not one event but every event arriving in that interval, so
-the resulting failures should appear in consecutive bursts. the main text tests that
+the resulting failures should appear in consecutive bursts. The main text tests that
 prediction and finds exactly this clustering.
 
 Our contribution here is therefore not the observation that scheduling delay is heavy-tailed,
@@ -2322,7 +2325,7 @@ is negative $\spanNegSend$ times. Nothing in the corpus arrived before it was se
 What changed as a result: the framing, the justification of the gate, and the claim that the
 failure is self-detecting. What did not change: the rejection counts, which are unaltered as
 numbers and now described as reference-stamp failures; and every manipulation result in the
-main text's mechanism section, which rests on moving scheduling and observing the
+Section~V of the main text, which rests on moving scheduling and observing the
 rate move, not on what the negatives are called.
 
 \subsection{S35.4. The M/G/1 form, withdrawn}
@@ -2394,29 +2397,31 @@ stored in the file: they are recomputed on every build, and on every test run, b
 classifier that read the OpenMessaging Benchmark a month before the other tools were
 audited. A reader who disagrees with our reading of a guard can therefore check the line
 against the pattern that matched it rather than against our prose.
-Table~\ref{tab:registry} is the fold of those rows up to one verdict per tool.
+Table~\ref{tab:registry} is the fold of those rows up to one verdict per \emph{span}, which is
+the grain the finding lives at: one tool can guard one span and leave another alone, and the
+OpenMessaging Benchmark does.
 
 \begin{table}[h]
-\caption{Audited harnesses. \emph{Filter} admits only positive samples; \emph{substitute}
-replaces an inverted interval with a constant; \emph{counts} means the disposal is exposed
-in the output.}
+\caption{Audited harnesses, one row per span rather than per tool. \emph{Filter} admits only
+positive samples; \emph{substitute} replaces an inverted interval with a constant;
+\emph{counts} means the disposal is exposed in the output. The OpenMessaging Benchmark
+appears twice, because it treats its two spans differently and that difference is the
+finding of Section~IV-A. Sources, in row order:
+\cite{openmessaging2018,openmessaging2018,rezolus,btt_inlines,emqtt_bench,fio_gettime}. This
+table is generated from \texttt{harness\_registry.csv} at build time.}
 \label{tab:registry}
 \centering
 \footnotesize
-\begin{tabular}{@{}lllcc@{}}
-\toprule
-Tool & Language & Disposal & Counts & Source \\
-\midrule
-OpenMessaging Bench. & Java   & filter      & no  & \cite{openmessaging2018} \\
-\texttt{emqtt-bench} & Erlang & filter      & no  & \cite{emqtt_bench} \\
-\texttt{fio}         & C      & substitute $0$ & no & \cite{fio_gettime} \\
-\texttt{blktrace/btt}& C      & substitute $1$\,ns & no & \cite{btt_inlines} \\
-Rezolus              & Rust   & ---         & yes & \cite{rezolus} \\
-\bottomrule
-\end{tabular}
+\input{docs/generated/registry_table}
 \end{table}
 
-Two details are worth stating plainly. First, \texttt{fio}'s guard appears in three separate
+The most interesting row is the one carrying no defect at all. The OpenMessaging Benchmark's
+publish span is taken inside one process, stamped with a nanosecond clock and recorded
+unconditionally; its end-to-end span crosses processes, is stamped in milliseconds, and is
+filtered. The coarse clock and the guard both landed on the span that needed care --- the
+asymmetry Section~IV-A draws its conclusion from, and the reason this table folds by span.
+
+Two further details are worth stating plainly. First, \texttt{fio}'s guard appears in three separate
 timing functions, each returning zero for a negative interval, and the comment above it ---
 ``time warp bug on some kernels?'' --- is a question rather than a diagnosis. The behaviour
 is defensive and reasonable in isolation; what is missing is any record that it fired.
@@ -2533,7 +2538,7 @@ benchmark reports a latency; but a referee is entitled to see them named.
 a dropped/duplicated/out-of-order line derived from sequence numbers~\cite{sockperf}. The
 counters are error counters rather than a retention rate, but the reader of that summary can
 see the denominator the percentiles were computed over, which is what
-Section~\ref{sec:authors} asks for.
+Section~VII-A of the main text asks for.
 
 The OpenTelemetry exponential-histogram format goes one step further and reserves a field for
 it. \texttt{zero\_count} holds observations at or below a zero threshold, described in the
@@ -2543,12 +2548,12 @@ general sub-resolution indicator, because it is not one: it captures unrepresent
 at the bottom of the scale. What it establishes is narrower and still useful --- that a
 mainstream telemetry format already treats rounded-to-zero observations as data to be carried
 beside the total rather than dropped, which is precisely what the guard of
-Section~\ref{sec:external} does not do.
+Section~IV of the main text does not do.
 
 \section{S40. What standardised benchmarks require about resolution}
 \label{sec:standards}
 
-Section~\ref{sec:authors} asks that a harness state its timestamp resolution and count what it
+Section~VII-A of the main text asks that a harness state its timestamp resolution and count what it
 discards. Standardised benchmarking already contains rules of that form, and one of them is
 almost exactly the rule we propose. Setting them beside the flagship standardised messaging
 benchmark is the sharpest way to show the gap, so we do that here rather than assert it.
@@ -2588,6 +2593,8 @@ histograms, and they are configured constants rather than reported counts. It wo
 to say the benchmark discards nothing; what it does not do is count the latency samples its
 own resolution makes unusable.
 
+Two tools reached the same precondition independently, and both disclose rather than delete. \texttt{zrk}, a rewrite of \texttt{wrk2} begun in July 2026, states that at ``the sub-millisecond latencies a fast service actually produces'' a millisecond artefact ``is frequently larger than the number being measured'', and records the overshoot into the sample rather than discarding it~\cite{zrk2026}. \texttt{wrk2} itself concedes in its own documentation that ``measured latencies are only accurate to a $+/-$ \textasciitilde 1 msec granularity, due to OS sleep time behavior''~\cite{wrk2}. Neither counts a discard, because neither discards: the quantum is disclosed and the sample is kept. That is the contrast Section~IV turns on.
+
 The comparison is therefore not that standards bodies have failed to think about this. One of
 them states our rule in almost our words, for a different domain. The rule simply has not
 reached the place where brokers are compared on sub-millisecond paths.
@@ -2608,7 +2615,7 @@ with equal probability anywhere in the interval $X - \delta x/2$ to $X + \delta 
 therefore described by ``a rectangular probability distribution \ldots\ of width $\delta x$
 with variance $u^2 = (\delta x)^2/12$''~\cite{jcgm100}. That symmetric model is the departure
 point for this paper: it holds for \emph{retained} readings, and the positivity guard of
-Section~\ref{sec:external} removes one side of the interval, so neither the rectangular shape
+Section~IV of the main text removes one side of the interval, so neither the rectangular shape
 nor the $(\delta x)^2/12$ variance survives the filter. Quantisation is not the problem; the
 asymmetry the guard introduces on top of it is. We cite the clause rather than the formula
 because the same $(\delta x)^2/12$ appears in F.2.2.2 for hysteresis, and the form alone does
@@ -2630,7 +2637,7 @@ that the count must be published so a reader can see what the distribution is co
 parallel exact is not Pratt's own framing but one he reports from Meier in a remarks section:
 that a zero arises because ``with only our crude measurement, we do not know'' the sign a
 finer measurement would have resolved. That is precisely the sub-quantum sample of
-Section~\ref{sec:external}, and it is a 1959 statement of it; we attribute it where it belongs
+Section~IV of the main text, and it is a 1959 statement of it; we attribute it where it belongs
 rather than to Pratt's main development.
 
 \end{document}

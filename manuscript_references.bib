@@ -1105,8 +1105,8 @@
   howpublished = {\url{https://www.brendangregg.com/blog/2016-10-08/linux-bcc-runqlat.html}},
   month        = oct,
   year         = {2016},
-  note         = {Introduces \texttt{runqlat} and reports the distribution as bimodal,
-                  without attributing a mechanism. Read 2026-08-21}
+  note         = {Introduces \texttt{runqlat}; reports the distribution as bimodal
+                  without attributing a mechanism}
 }
 
 @misc{k6issue1872,
@@ -1124,8 +1124,7 @@
                   (issue \#216)},
   howpublished = {\url{https://github.com/openmessaging/benchmark/issues/216}},
   year         = {2021},
-  note         = {The anomaly is attributed to inter-node clock skew, on a report stating
-                  both processes ran on one node. Read 2026-08-21}
+  note         = {The anomaly attributed to inter-node skew, on a same-node report}
 }
 
 @misc{vanlightly2023,
@@ -1134,8 +1133,7 @@
   howpublished = {\url{https://jack-vanlightly.com/blog/2023/5/15/kafka-vs-redpanda-performance-do-the-claims-add-up}},
   month        = may,
   year         = {2023},
-  note         = {A second, independent defect in the same harness, losing most of the
-                  latency data. Read 2026-08-21}
+  note         = {A second, independent silent-loss defect in the same harness}
 }
 
 @inproceedings{cerqueira2013comparison,
@@ -1148,4 +1146,50 @@
   year      = {2013},
   note      = {Footnote 7 bounds worst-case scheduling latency below by the quantum length
                under a quantum-driven scheduler}
+}
+
+@misc{kvmclock,
+  author       = {{Linux Kernel Documentation}},
+  title        = {{KVM}-Specific {MSRs}: \texttt{MSR\_KVM\_SYSTEM\_TIME\_NEW}},
+  howpublished = {\url{https://docs.kernel.org/virt/kvm/x86/msr.html}},
+  year         = {2026},
+  note         = {Flag bit~0, {CPUID} \texttt{0x40000001} bit~24. Read 2026-08-21}
+}
+
+@misc{guittot2025slice,
+  author       = {Guittot, Vincent},
+  title        = {\texttt{sched/fair}: Manage Lag and Run to Parity with Different Slices},
+  howpublished = {Linux kernel mailing list},
+  month        = jul,
+  year         = {2025},
+  note         = {States the base-slice protection and the slice-plus-tick lag bound}
+}
+
+@misc{jaeger_clockskew,
+  author       = {{Jaeger contributors}},
+  title        = {\texttt{model/adjuster/clockskew.go}},
+  howpublished = {\url{https://github.com/jaegertracing/jaeger}},
+  year         = {2026},
+  note         = {The adjuster mutates the stored spans, not a view. Read 2026-08-21}
+}
+
+@misc{zrk2026,
+  author       = {{zoxy-io}},
+  title        = {\texttt{zrk}: a {Zig} rewrite of \texttt{wrk2}},
+  howpublished = {\url{https://github.com/zoxy-io/zrk}},
+  year         = {2026},
+  note         = {``At the sub-millisecond latencies a fast service actually produces, that's
+                  not a rounding error --- it's frequently larger than the number being
+                  measured''; the overshoot is recorded rather than discarded.
+                  Read 2026-08-21}
+}
+
+@misc{wrk2,
+  author       = {Tene, Gil},
+  title        = {\texttt{wrk2}: a constant-throughput, correct-latency variant of \texttt{wrk}},
+  howpublished = {\url{https://github.com/giltene/wrk2}},
+  year         = {2019},
+  note         = {``measured latencies are only accurate to a $+/-$ \textasciitilde 1 msec
+                  granularity, due to OS sleep time behavior'' --- disclosed, not discarded.
+                  Read 2026-08-21}
 }

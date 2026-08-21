@@ -40,7 +40,7 @@ REGISTRY = os.path.join("docs", "results", "external", "harness_registry.csv")
 
 # The order a reader meets them in: our own subject first, then the independent reimplementation
 # that makes it a pattern, then the two suppressors, then the counterexample.
-FIELDS = ("harness", "vendor", "language", "file", "symbol", "evidence",
+FIELDS = ("harness", "vendor", "language", "path", "clock", "file", "symbol", "evidence",
           "source_url", "retrieved", "note")
 
 
@@ -80,6 +80,49 @@ def by_harness(rows):
         h["kinds"].update(r["kinds"])
         h["counts_discards"] = h["counts_discards"] or r["is_counter"]
         h["lines"] += 1
+    return out
+
+
+def paths(rows=None):
+    """One verdict per (harness, path), because a harness can get one span right and another
+    wrong -- and the OpenMessaging Benchmark does exactly that.
+
+    A referee checking the claim "this benchmark filters" against the repository will open
+    MessageProducer.java, find a nanosecond clock and no guard, and conclude the claim is
+    overstated. It is not overstated, it is scoped: the guard is on the end-to-end path. Folding
+    by path rather than by harness makes that scope a computed property of the evidence instead
+    of a qualifier we remember to add.
+    """
+    rows = load() if rows is None else rows
+    out = {}
+    for r in classified(rows):
+        key = (r["harness"], r["path"])
+        v = out.setdefault(key, {"clock": r["clock"], "kinds": set(),
+                                 "counts_discards": False, "lines": 0})
+        v["kinds"].update(r["kinds"])
+        v["counts_discards"] = v["counts_discards"] or r["is_counter"]
+        v["lines"] += 1
+    return out
+
+
+def within_harness_contrast(rows=None):
+    """Harnesses that measure one span behind a guard and another without one.
+
+    Returns, per harness, the guarded and unguarded paths with the clock each uses. The
+    contrast is the finding: where a harness treats two spans differently, the coarse clock
+    and the filter land on the span that crosses processes -- the one that needed care.
+    """
+    rows = load() if rows is None else rows
+    by_harness = {}
+    for (harness, path), v in paths(rows).items():
+        guarded = bool(v["kinds"] & {"positive_only_filter", "silent_suppression"})
+        by_harness.setdefault(harness, []).append((path, v["clock"], guarded))
+    out = {}
+    for harness, entries in by_harness.items():
+        guarded = [(p, c) for p, c, g in entries if g]
+        clean = [(p, c) for p, c, g in entries if not g]
+        if guarded and clean:
+            out[harness] = {"guarded": sorted(guarded), "unguarded": sorted(clean)}
     return out
 
 

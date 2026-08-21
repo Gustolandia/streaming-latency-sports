@@ -876,8 +876,8 @@
   type        = {Application Note},
   number      = {162-1},
   year        = {1970},
-  note        = {Part no.\ 02-5952-0766. The note carries no printed date; it cites the
-                 \emph{HP Journal} of April 1970, which bounds it from below}
+  note        = {Part no.\ 02-5952-0766; undated, and citing the \emph{HP Journal} of
+                 April 1970}
 }
 
 @misc{fio_gettime,
@@ -885,10 +885,8 @@
   title        = {{fio}: Flexible {I/O} Tester --- \texttt{gettime.c}},
   howpublished = {Source repository},
   year         = {2026},
-  note         = {\url{https://github.com/axboe/fio}; \texttt{ntime\_since},
-                  \texttt{utime\_since} and \texttt{mtime\_since\_tv} each return zero for a
-                  negative interval, under the comment ``time warp bug on some kernels?''.
-                  Read 2026-08-20}
+  note         = {\url{https://github.com/axboe/fio}; the guard appears in three timing
+                  functions. Read 2026-08-20}
 }
 
 @misc{emqtt_bench,
@@ -896,9 +894,8 @@
   title        = {\texttt{emqtt-bench}: {MQTT} benchmark tool --- \texttt{src/emqtt\_bench.erl}},
   howpublished = {Source repository},
   year         = {2026},
-  note         = {\url{https://github.com/emqx/emqtt-bench}; a millisecond cross-process
-                  difference recorded under the guard \texttt{E2ELatency > 0} with no counter
-                  for the rejected samples. Read 2026-08-20}
+  note         = {\url{https://github.com/emqx/emqtt-bench}; millisecond cross-process
+                  difference under a positivity guard, uncounted. Read 2026-08-20}
 }
 
 @misc{rezolus,
@@ -907,8 +904,7 @@
   howpublished = {Source repository},
   year         = {2026},
   note         = {\url{https://github.com/iopsystems/rezolus}; the metric counts samples
-                  discarded ``because the two timestamps arrived out of order across CPUs''.
-                  Read 2026-08-20}
+                  discarded for out-of-order timestamps. Read 2026-08-20}
 }
 
 @misc{btt_inlines,
@@ -1101,4 +1097,55 @@
   howpublished = {\url{https://www.bipm.org/documents/20126/2071204/JCGM_100_2008_E.pdf}},
   year         = {2008},
   note         = {Clause F.2.2.1, ``The resolution of a digital indication''. Read 2026-08-20}
+}
+
+@misc{gregg2016runqlat,
+  author       = {Gregg, Brendan},
+  title        = {Linux {bcc}/{BPF} Run Queue (Scheduler) Latency},
+  howpublished = {\url{https://www.brendangregg.com/blog/2016-10-08/linux-bcc-runqlat.html}},
+  month        = oct,
+  year         = {2016},
+  note         = {Introduces \texttt{runqlat} and reports the distribution as bimodal,
+                  without attributing a mechanism. Read 2026-08-21}
+}
+
+@misc{k6issue1872,
+  author       = {{Grafana k6 contributors}},
+  title        = {Negative \texttt{http\_req\_receiving} values (issue \#1872)},
+  howpublished = {\url{https://github.com/grafana/k6/issues/1872}},
+  year         = {2022},
+  note         = {Negative intervals in a single process, attributed to thread migration
+                  between CPUs with unsynchronised clocks. Read 2026-08-21}
+}
+
+@misc{omb_issue216,
+  author       = {{OpenMessaging Benchmark contributors}},
+  title        = {Can the average publish latency be larger than end-to-end latency?
+                  (issue \#216)},
+  howpublished = {\url{https://github.com/openmessaging/benchmark/issues/216}},
+  year         = {2021},
+  note         = {The anomaly is attributed to inter-node clock skew, on a report stating
+                  both processes ran on one node. Read 2026-08-21}
+}
+
+@misc{vanlightly2023,
+  author       = {Vanlightly, Jack},
+  title        = {{Kafka} versus {Redpanda} Performance --- Do the Claims Add Up?},
+  howpublished = {\url{https://jack-vanlightly.com/blog/2023/5/15/kafka-vs-redpanda-performance-do-the-claims-add-up}},
+  month        = may,
+  year         = {2023},
+  note         = {A second, independent defect in the same harness, losing most of the
+                  latency data. Read 2026-08-21}
+}
+
+@inproceedings{cerqueira2013comparison,
+  author    = {Cerqueira, Felipe and Brandenburg, Bj{\"o}rn B.},
+  title     = {A Comparison of Scheduling Latency in {Linux}, {PREEMPT\_RT},
+               and {LITMUS\textasciicircum RT}},
+  booktitle = {Proc.\ 9th Annual Workshop on Operating Systems Platforms for Embedded
+               Real-Time Applications (OSPERT)},
+  pages     = {19--29},
+  year      = {2013},
+  note      = {Footnote 7 bounds worst-case scheduling latency below by the quantum length
+               under a quantum-driven scheduler}
 }

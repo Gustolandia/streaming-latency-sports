@@ -237,8 +237,11 @@ class TestThresholdSensitivity:
         withdrawn claim returning.
         """
         low = tex.lower()
+        # "run-queue"/"gregg" scope the one remaining use, which is about the *stall*
+        # distribution reported by Gregg, not the retention distribution whose unqualified
+        # bimodality was withdrawn. Two different histograms, one adjective.
         scope = ("commensurat", "phase", "exact multiple", "2.000", "locked", "it is not",
-                 "not (", "withdraw")
+                 "not (", "withdraw", "run-queue", "gregg", "runqlat")
         for m in re.finditer("bimodal", low):
             window = low[max(0, m.start() - 500):m.start() + 500]
             assert any(k in window for k in scope), (
@@ -2069,7 +2072,10 @@ class TestConcurrentWork:
         """What replaced the exponent must itself be scoped: the tail section keeps a
         window and an estimator, not a constant."""
         section = " ".join(_section(tex, "sec:tail").lower().split())
-        assert "it is not a heavy tail" in section,             "round 2 replaced 'not a power law' with the multimodal reading"
+        assert "not a single heavy tail" in section, \
+            "round 2 replaced 'not a power law' with the multimodal reading; round 4 " \
+            "narrowed it further, because the multimodality is Gregg's and only the " \
+            "trimodality and the slice attribution are ours"
         assert "we withdraw the claim" in section
 
 
@@ -2599,7 +2605,8 @@ class TestRefereeRoundTwo:
             hit = low.find("heavy tail", hit)
             if hit < 0:
                 break
-            assert "not a heavy tail" in low[max(0, hit - 12):hit + 10],                 "the withdrawn characterisation must not survive except as a withdrawal"
+            assert "not a single heavy tail" in low[max(0, hit - 20):hit + 12], \
+                "the withdrawn characterisation must not survive except as a withdrawal"
         for macro in (r"\tracedModes", r"\tracedModeShare", r"\tracedModeRatio",
                       r"\tracedTailAlpha", r"\tracedGofP"):
             assert macro in main_tex, f"{macro} must carry the new reading"
@@ -2628,6 +2635,12 @@ class TestRefereeRoundTwo:
     def test_the_stream_benchmark_literature_is_engaged(self, main_tex):
         """R14. A paper positioned against streaming benchmarks must cite them."""
         for key in ("karimov2018benchmarking", "vandongen2020evaluation", "fruth2021telltale"):
+            # fruth2021telltale was cut in round 4 to fit HP AN 162-1, Gregg 2016 and the
+            # k6 exclusion inside TC's cap of 45. The harness-self-interference point it
+            # anchored is now made by our own observer-effect measurement (z = 3.6), which
+            # is a measurement rather than a citation.
+            if key == "fruth2021telltale":
+                continue
             assert key in main_tex, f"{key} is expected by a TC reader"
 
     def test_the_sync_state_rule_credits_its_standard(self, main_tex):
@@ -2693,8 +2706,13 @@ class TestRefereeRoundTwo:
         it; the outreach that reached Eeckhout cited it, so its absence was also an
         accident of the reference budget rather than a judgement."""
         flat = " ".join(main_tex.split())
-        group = "\\cite{georges2007rigorous,hoefler2015benchmarking,kalibera2013rigorous}"
-        assert group in flat, "the three reporting-standard references are cited as one group"
+        # kalibera2013rigorous left the group in round 4, for the same cap that had already
+        # forced the Weyl decision. Georges et al. -- the one the author asked to keep -- and
+        # Hoefler and Belli remain, cited together.
+        group = "\\cite{georges2007rigorous,hoefler2015benchmarking}"
+        assert group in flat, "the reporting-standard references are cited as one group"
+        assert "kalibera2013rigorous" not in main_tex, \
+            "if kalibera returns it belongs in the group, not on its own"
 
     def test_weyl_left_the_main_text_but_not_the_package(self, main_tex, supp):
         """The cap forced a choice, not a deletion: the supplement has its own bibliography

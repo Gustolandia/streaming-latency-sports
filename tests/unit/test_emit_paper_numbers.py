@@ -365,3 +365,46 @@ class TestRegistryMacros:
             Path(__file__).parent.parent.parent / "docs" / "results"
             / "external_campaigns_index.csv")))}
         assert {"harnessAudited", "harnessSilent"} <= names
+
+
+class TestGuardScopeMacros:
+    """The scope of the OpenMessaging guard, computed from the registry rather than recalled.
+
+    A referee who opens MessageProducer.java finds a nanosecond clock and no filter. That does
+    not contradict the paper, but an unqualified "the benchmark filters" would. These macros
+    put the qualifier where it cannot be forgotten: derived from the evidence at build time.
+    """
+
+    def test_the_guarded_span_is_the_cross_process_one(self):
+        got = dict(epn.registry_macros())
+        assert got["ombGuardedPath"] == "end-to-end"
+        assert got["ombGuardedClock"] == "millisecond"
+
+    def test_the_unguarded_span_is_the_same_process_one(self):
+        got = dict(epn.registry_macros())
+        assert got["ombUnguardedPath"] == "publish"
+        assert got["ombUnguardedClock"] == "nanosecond"
+
+    def test_the_coarse_clock_lands_on_the_guarded_span(self):
+        """The asymmetry the paper draws its conclusion from."""
+        got = dict(epn.registry_macros())
+        assert got["ombGuardedClock"] == "millisecond"
+        assert got["ombUnguardedClock"] == "nanosecond"
+        assert got["ombGuardedClock"] != got["ombUnguardedClock"]
+
+    def test_the_contrast_count_is_emitted(self):
+        assert int(dict(epn.registry_macros())["harnessSplitGuard"]) >= 1
+
+    def test_a_registry_without_the_contrast_still_emits_the_survey(self, monkeypatch):
+        import harness_registry
+        monkeypatch.setattr(harness_registry, "within_harness_contrast", lambda *a, **k: {})
+        got = dict(epn.registry_macros())
+        assert "harnessAudited" in got
+        assert "ombGuardedPath" not in got
+
+    def test_a_broken_contrast_does_not_break_the_build(self, monkeypatch):
+        import harness_registry
+        monkeypatch.setattr(harness_registry, "within_harness_contrast",
+                            lambda *a, **k: (_ for _ in ()).throw(OSError("gone")))
+        got = dict(epn.registry_macros())
+        assert "harnessAudited" in got

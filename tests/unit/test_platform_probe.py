@@ -8,6 +8,7 @@ import pytest
 SCRIPTS_DIR = Path(__file__).parent.parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
+import platform_probe as pp  # noqa: E402
 from platform_probe import (  # noqa: E402
     timer_resolution,
     sleep_granularity,
@@ -277,3 +278,88 @@ class TestMain:
         out = temp_dir / "platform.json"
         assert main(["--out", str(out), "--trials", "1", "--sleep-trials", "2"]) == 0
         assert "timer resol." not in capsys.readouterr().out
+
+
+class TestClockProvenance:
+    """Which clock a timestamp came from, and what it promises across CPUs.
+
+    Added because a referee asked which clocksource the testbed used and the campaign had
+    no answer: the field was never captured and the instances were reclaimed before anyone
+    thought to ask. The past runs cannot be repaired. This makes sure the question is
+    answerable for every run after it, which is the only part still in our control.
+    """
+
+    def _reader(self, mapping):
+        return lambda path: mapping.get(path)
+
+    def test_reads_the_current_clocksource(self):
+        got = pp.clock_provenance(reader=self._reader({
+            pp.CLOCKSOURCE_CURRENT: "kvm-clock\n"}))
+        assert got["current_clocksource"] == "kvm-clock"
+
+    def test_reads_the_available_clocksources_as_a_list(self):
+        got = pp.clock_provenance(reader=self._reader({
+            pp.CLOCKSOURCE_AVAILABLE: "kvm-clock tsc acpi_pm\n"}))
+        assert got["available_clocksource"] == ["kvm-clock", "tsc", "acpi_pm"]
+
+    def test_reports_the_tsc_flags_the_referee_asked_about(self):
+        got = pp.clock_provenance(reader=self._reader({
+            pp.CPUINFO: "processor\t: 0\nflags\t\t: fpu constant_tsc nonstop_tsc hypervisor\n"}))
+        assert got["cpu_flags"]["constant_tsc"] is True
+        assert got["cpu_flags"]["nonstop_tsc"] is True
+        assert got["cpu_flags"]["hypervisor"] is True
+        assert got["cpu_flags"]["tsc_reliable"] is False
+
+    def test_a_flag_absent_from_cpuinfo_reads_false_not_missing(self):
+        """A silent omission is what produced the gap in the first place."""
+        got = pp.clock_provenance(reader=self._reader({
+            pp.CPUINFO: "flags\t\t: fpu vme\n"}))
+        assert set(got["cpu_flags"]) == set(pp.TSC_FLAGS)
+        assert not any(got["cpu_flags"].values())
+
+    def test_a_platform_without_sysfs_returns_nones_rather_than_raising(self):
+        got = pp.clock_provenance(reader=self._reader({}))
+        assert got["current_clocksource"] is None
+        assert got["available_clocksource"] is None
+        assert got["cpu_flags"] == {}
+
+    def test_flags_are_read_from_every_processor_block(self):
+        blob = ("processor\t: 0\nflags\t\t: fpu constant_tsc\n"
+                "processor\t: 1\nflags\t\t: fpu nonstop_tsc\n")
+        got = pp.clock_provenance(reader=self._reader({pp.CPUINFO: blob}))
+        assert got["cpu_flags"]["constant_tsc"] and got["cpu_flags"]["nonstop_tsc"]
+
+    def test_the_probe_carries_clock_provenance(self, monkeypatch):
+        monkeypatch.setattr(pp, "clock_provenance", lambda *a, **k: {"current_clocksource": "tsc"})
+        out = pp.probe(ports={}, trials=1, sleep_trials=1)
+        assert out["clock_provenance"]["current_clocksource"] == "tsc"
+
+
+class TestClockOnlyCapture:
+    """One command, no brokers, for a restored image.
+
+    A restored boot volume has no Kafka and no Redis running, so the full probe would block
+    on connections that will never open. This path records only what the referee asked for.
+    """
+
+    def test_writes_clock_provenance_without_touching_a_socket(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(pp, "clock_provenance",
+                            lambda *a, **k: {"current_clocksource": "kvm-clock",
+                                             "available_clocksource": ["kvm-clock", "tsc"],
+                                             "cpu_flags": {"constant_tsc": True}})
+        def _boom(*a, **k):
+            raise AssertionError("clock-only must not open a socket")
+        monkeypatch.setattr(pp, "tcp_rtt", _boom)
+        monkeypatch.setattr(pp, "redis_ping_rtt", _boom)
+        out = tmp_path / "clock.json"
+        assert pp.main(["--clock-only", "--out", str(out)]) == 0
+        got = json.loads(out.read_text(encoding="utf-8"))
+        assert got["clock_provenance"]["current_clocksource"] == "kvm-clock"
+        assert "broker_rtt" not in got
+
+    def test_reports_an_unpublished_clocksource_plainly(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setattr(pp, "clock_provenance",
+                            lambda *a, **k: {"current_clocksource": None,
+                                             "available_clocksource": None, "cpu_flags": {}})
+        assert pp.main(["--clock-only", "--out", str(tmp_path / "c.json")]) == 0
+        assert "not published" in capsys.readouterr().out

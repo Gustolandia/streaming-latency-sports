@@ -171,6 +171,61 @@ def platform_info():
     }
 
 
+# Where Linux publishes the identity and coherence properties of the clock a timestamp
+# actually comes from. These are read-only sysfs and procfs paths; the probe never writes.
+CLOCKSOURCE_CURRENT = "/sys/devices/system/clocksource/clocksource0/current_clocksource"
+CLOCKSOURCE_AVAILABLE = "/sys/devices/system/clocksource/clocksource0/available_clocksource"
+CPUINFO = "/proc/cpuinfo"
+
+# The CPU flags that decide whether a timestamp counter can be trusted across cores, and
+# whether the hypervisor asserts cross-vCPU monotonicity to its guest.
+TSC_FLAGS = ("constant_tsc", "nonstop_tsc", "tsc_reliable", "tsc_known_freq", "hypervisor")
+
+
+def clock_provenance(root="", reader=None):
+    """Which clock the host's timestamps come from, and what it guarantees across CPUs.
+
+    This exists because a referee asked a question the campaign could not answer. The
+    manuscript argues that inverted intervals come from a late stamp rather than from an
+    incoherent clock, and a reviewer reasonably asked which clocksource the machines used --
+    a virtualised guest need not be given a counter that is coherent across its vCPUs. The
+    campaign never recorded it, the instances have since been reclaimed, and the answer is
+    therefore unrecoverable for the runs already reported.
+
+    It is recoverable for every run after this one. The cost is four file reads, and the
+    alternative is discovering the same gap again at the next review.
+
+    Returns a dict with the current and available clocksources and the TSC-related CPU flags,
+    or Nones where the platform does not publish them (Windows, macOS, a stripped container).
+    """
+    read = reader if reader is not None else _read_text
+    out = {"current_clocksource": None, "available_clocksource": None, "cpu_flags": {}}
+
+    cur = read(root + CLOCKSOURCE_CURRENT)
+    if cur:
+        out["current_clocksource"] = cur.strip()
+    avail = read(root + CLOCKSOURCE_AVAILABLE)
+    if avail:
+        out["available_clocksource"] = avail.split()
+
+    info = read(root + CPUINFO)
+    if info:
+        flags = set()
+        for line in info.splitlines():
+            if line.startswith("flags") and ":" in line:
+                flags |= set(line.split(":", 1)[1].split())
+        out["cpu_flags"] = {f: (f in flags) for f in TSC_FLAGS}
+    return out
+
+
+def _read_text(path):  # pragma: no cover - exercised through injection
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            return fh.read()
+    except OSError:
+        return None
+
+
 def probe(ports=None, trials=50, sleep_trials=200, connect=None, redis_name="redis",
           opener=None):
     """Full testbed characterisation as a JSON-serialisable dict."""
@@ -179,6 +234,7 @@ def probe(ports=None, trials=50, sleep_trials=200, connect=None, redis_name="red
     res = timer_resolution()
     out = {
         "platform": platform_info(),
+        "clock_provenance": clock_provenance(),
         "timer_resolution_ns": None if res is None else res * 1e9,
         "sleep_1ms": sleep_granularity(0.001, sleep_trials),
         "sleep_10ms": sleep_granularity(0.010, max(20, sleep_trials // 10)),
@@ -199,7 +255,26 @@ def main(argv=None):
     ap.add_argument("--port", action="append", default=[], metavar="NAME=HOST:PORT",
                     help="broker endpoint to probe; repeatable "
                          "(e.g. --port kafka=localhost:19092 --port redis=localhost:16379)")
+    ap.add_argument("--clock-only", action="store_true",
+                    help="record only the clock's identity and cross-CPU guarantees, and "
+                         "exit; needs no brokers running, so it can be run on a restored "
+                         "image whose services were never started")
     args = ap.parse_args(argv)
+
+    if args.clock_only:
+        info = {"platform": platform_info(), "clock_provenance": clock_provenance()}
+        out = Path(args.out)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(info, indent=2, sort_keys=True), encoding="utf-8")
+        cp = info["clock_provenance"]
+        print("platform          : %s" % info["platform"]["platform"])
+        print("current clocksource: %s" % (cp["current_clocksource"] or "not published"))
+        print("available          : %s" % (", ".join(cp["available_clocksource"] or [])
+                                           or "not published"))
+        for flag, present in sorted(cp["cpu_flags"].items()):
+            print("  %-16s %s" % (flag, "yes" if present else "no"))
+        print("\nwrote %s" % out)
+        return 0
 
     try:
         ports = parse_ports(args.port) if args.port else None

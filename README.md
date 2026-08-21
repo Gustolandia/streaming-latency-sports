@@ -637,7 +637,7 @@ streaming-latency-sports/
 ├── .env                            # local environment (SB_COMMIT, etc.) — not committed
 │
 ├── paper.tex                       # IEEE paper (Trans. Computers target, IEEEtran) + supplement.tex
-├── manuscript_references.bib       # bibliography (118 entries; 45 cited in the paper, at TC's cap)
+├── manuscript_references.bib       # bibliography (123 entries; 45 cited in the paper, at TC's cap)
 │
 ├── docker-compose.yml              # single-broker Kafka + Redis
 ├── docker-compose-multibroker.yml  # 3 Kafka brokers (KRaft)        — Issue 2

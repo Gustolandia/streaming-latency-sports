@@ -355,3 +355,51 @@ class TestSharedStampContrast:
             "docs", "results", "span_recount.csv")))
         assert agg["runs_ack_only_inversions"] == 4549
         assert agg["runs_ack_only_inversions"] / agg["runs"] > 0.75
+
+
+class TestMarginQuantities:
+    """The headroom that actually excludes an incoherent clock.
+
+    The first version of that exclusion rested on the two spans sharing their closing clock
+    read. It does not discriminate: the rival is a difference between two clock domains, and
+    both spans carry it. What discriminates is how much room each span has before it can go
+    negative, so the extremes are computed rather than argued.
+    """
+
+    def _full(self, spec):
+        return [{"n_events": str(n), "neg_ack": str(a), "neg_send": str(s),
+                 "neg_output_send": "0", "neg_tti": "0",
+                 "min_ack_us": str(mn_a), "min_send_us": str(mn_s),
+                 "median_ack_us": "1.0", "median_send_us": "1.0",
+                 "run_id": "r%d" % i, "backend": "kafka"}
+                for i, (n, a, s, mn_a, mn_s) in enumerate(spec)]
+
+    def test_reports_the_deepest_inversion_and_the_send_floor(self):
+        agg = rs.totals(self._full([(100, 5, 0, -9000.0, 250.0),
+                                    (100, 2, 0, -400.0, 300.0)]))
+        assert agg["deepest_ack_inversion_us"] == -9000.0
+        assert agg["send_span_floor_us"] == 250.0
+
+    def test_the_margin_is_the_ratio_that_bounds_a_clock_offset(self):
+        agg = rs.totals(self._full([(100, 5, 0, -1000.0, 100.0)]))
+        assert agg["offset_margin_factor"] == 10.0
+
+    def test_a_zero_send_floor_gives_an_infinite_margin_rather_than_a_crash(self):
+        agg = rs.totals(self._full([(100, 1, 0, -5.0, 0.0)]))
+        assert agg["offset_margin_factor"] == float("inf")
+
+    def test_rows_without_the_extreme_columns_still_yield_every_count(self):
+        """A partial row must give a smaller answer, not an exception."""
+        rows = [{"n_events": "100", "neg_ack": "5", "neg_send": "0",
+                 "neg_output_send": "0", "neg_tti": "0", "median_ack_us": "1.0",
+                 "run_id": "r", "backend": "kafka"}]
+        agg = rs.totals(rows)
+        assert agg["neg_ack"] == 5
+        assert "offset_margin_factor" not in agg
+
+    def test_the_committed_corpus_bounds_any_offset_far_below_its_inversions(self):
+        agg = rs.totals(rs.read_csv(os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+            "docs", "results", "span_recount.csv")))
+        assert agg["send_span_floor_us"] > 0, "a negative floor would sink the argument"
+        assert agg["offset_margin_factor"] > 100, "the margin is what carries the exclusion"

@@ -637,7 +637,7 @@ streaming-latency-sports/
 ├── .env                            # local environment (SB_COMMIT, etc.) — not committed
 │
 ├── paper.tex                       # IEEE paper (Trans. Computers target, IEEEtran) + supplement.tex
-├── manuscript_references.bib       # bibliography (97 entries; 45 cited in the paper, at TC's cap)
+├── manuscript_references.bib       # bibliography (118 entries; 45 cited in the paper, at TC's cap)
 │
 ├── docker-compose.yml              # single-broker Kafka + Redis
 ├── docker-compose-multibroker.yml  # 3 Kafka brokers (KRaft)        — Issue 2
@@ -655,6 +655,8 @@ streaming-latency-sports/
 │   ├── audit_external_harness.py · harness_registry.py   # third-party harness audit
 │   ├── emit_paper_numbers.py · kernel_constants.py       # the macro ledger
 │   ├── make_paper_figures.py · make_result_figures.py    # figures, from artefacts
+│   ├── recount_spans.py                                 # per-span negatives + the
+│   │                                                    #   shared-stamp contrast
 │   ├── generate_manuscript_analysis.py
 │   └── run_*_trial.ps1 · build_*_outputs.ps1   # Windows/PowerShell runners
 │

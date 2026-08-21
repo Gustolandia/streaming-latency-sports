@@ -211,6 +211,20 @@ def totals(rows):
             1 for r in rows
             if int(r["n_events"]) and int(r["neg_ack"]) / int(r["n_events"]) > 0.01),
         "runs_negative_median_ack": sum(1 for r in rows if float(r["median_ack_us"]) < 0),
+        # The shared-stamp contrast, and why it is worth its own counter.
+        #
+        # Both spans end at the *same* clock read in the consumer. They differ only in which
+        # producer-side stamp they start from. So any artefact of the clock itself -- a
+        # cross-CPU incoherence under thread migration, a hypervisor that does not expose an
+        # invariant TSC, an NTP step -- perturbs the shared endpoint and moves both spans
+        # together. A fault in one producer-side stamp moves only one.
+        #
+        # This counts the runs where, over an identical event set, the acknowledgement span
+        # inverts and the send span does not. It is the discriminator between "the clock is
+        # unreliable" and "one stamp is late", and it is a count rather than an argument.
+        "runs_ack_only_inversions": sum(
+            1 for r in rows if int(r["neg_ack"]) > 0 and int(r["neg_send"]) == 0),
+        "runs_send_inverts": sum(1 for r in rows if int(r["neg_send"]) > 0),
     }
     for name, _, _ in SPANS:
         agg["neg_" + name] = sum(int(r["neg_" + name]) for r in rows)

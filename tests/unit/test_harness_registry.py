@@ -25,7 +25,9 @@ from harness_registry import (  # noqa: E402
     classified,
     load,
     main,
+    paths,
     summary,
+    within_harness_contrast,
 )
 
 
@@ -41,6 +43,7 @@ def write_registry(tmp_path, rows):
 
 def row(harness="H", vendor="V", language="L", evidence="int x = 1;", **kw):
     base = {"harness": harness, "vendor": vendor, "language": language,
+            "path": "end-to-end", "clock": "millisecond",
             "file": "a.c", "symbol": "f", "evidence": evidence,
             "source_url": "https://example.invalid", "retrieved": "2026-08-20", "note": ""}
     base.update(kw)
@@ -199,3 +202,49 @@ def test_the_registry_contains_a_counterexample():
 
 def test_registry_path_points_at_the_committed_file():
     assert (ROOT / REGISTRY).is_file()
+
+
+# --- the guard's scope, folded by path ---------------------------------------------------
+
+def test_the_registry_records_which_span_each_finding_belongs_to():
+    for r in load():
+        assert r["path"], r
+        assert r["clock"] in ("millisecond", "nanosecond"), r
+
+
+def test_the_omb_guard_is_on_the_end_to_end_path_only():
+    """The scoping a referee will check against MessageProducer.java in one click."""
+    p = paths()
+    e2e = p[("OpenMessaging Benchmark", "end-to-end")]
+    pub = p[("OpenMessaging Benchmark", "publish")]
+    assert "positive_only_filter" in e2e["kinds"]
+    assert pub["kinds"] == set(), "the publish path carries no defect class"
+    assert e2e["clock"] == "millisecond"
+    assert pub["clock"] == "nanosecond"
+
+
+def test_the_within_harness_contrast_finds_the_asymmetry():
+    """The coarse clock and the filter land on the span that crosses processes."""
+    c = within_harness_contrast()
+    assert "OpenMessaging Benchmark" in c
+    omb = c["OpenMessaging Benchmark"]
+    assert omb["guarded"] == [("end-to-end", "millisecond")]
+    assert omb["unguarded"] == [("publish", "nanosecond")]
+
+
+def test_a_harness_with_one_path_shows_no_contrast():
+    rows = [row(harness="X", path="only", evidence="if (latencyUs > 0) {")]
+    assert within_harness_contrast(rows) == {}
+
+
+def test_a_harness_guarded_on_every_path_shows_no_contrast():
+    rows = [row(harness="X", path="a", evidence="if (latencyUs > 0) {"),
+            row(harness="X", path="b", evidence="if (latencyMs > 0) {")]
+    assert within_harness_contrast(rows) == {}
+
+
+def test_adding_the_publish_path_did_not_move_the_headline_counts():
+    """Folding by path must not inflate the per-harness survey the text quotes."""
+    s = summary()
+    assert s["harnesses"] == 5
+    assert s["n_silent"] == 4

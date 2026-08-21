@@ -225,7 +225,29 @@ def totals(rows):
         "runs_ack_only_inversions": sum(
             1 for r in rows if int(r["neg_ack"]) > 0 and int(r["neg_send"]) == 0),
         "runs_send_inverts": sum(1 for r in rows if int(r["neg_send"]) > 0),
+        "runs_ack_inverts": sum(1 for r in rows if int(r["neg_ack"]) > 0),
     }
+    # The margin, which is what actually excludes an incoherent clock.
+    #
+    # A first version of this argument said the two spans share their closing clock read, so
+    # an artefact of that read moves both. That reasoning does not hold: the rival is a
+    # *difference* between the producer's clock domain and the consumer's, and both spans are
+    # producer-to-consumer differences, so both carry it. Sharing the endpoint discriminates
+    # nothing.
+    #
+    # What discriminates is headroom. A uniform offset large enough to explain the deepest
+    # observed inversion would drive the send span far below zero; the send span's floor says
+    # it never went there. So the floor bounds any such offset, and the bound is smaller than
+    # the inversions by orders of magnitude. That is a quantity, so it is computed here.
+    # The per-run extremes are an enrichment, not a requirement: a caller holding only the
+    # counts still gets every count. Demanding the extreme columns here would make a partial
+    # row a crash rather than a smaller answer.
+    if rows and all("min_ack_us" in r and "min_send_us" in r for r in rows):
+        agg["deepest_ack_inversion_us"] = min(float(r["min_ack_us"]) for r in rows)
+        agg["send_span_floor_us"] = min(float(r["min_send_us"]) for r in rows)
+        floor = agg["send_span_floor_us"]
+        deepest = abs(agg["deepest_ack_inversion_us"])
+        agg["offset_margin_factor"] = (deepest / floor) if floor > 0 else float("inf")
     for name, _, _ in SPANS:
         agg["neg_" + name] = sum(int(r["neg_" + name]) for r in rows)
         agg["pct_" + name] = (100.0 * agg["neg_" + name] / events) if events else 0.0

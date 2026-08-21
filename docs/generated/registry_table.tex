@@ -4,11 +4,13 @@
 \toprule
 Tool & Span measured & Clock & Disposal & Counts \\
 \midrule
+Apache Pulsar perf & end-to-end & millisecond & filter & no \\
 OpenMessaging Bench. & end-to-end & millisecond & filter & no \\
 OpenMessaging Bench. & publish & nanosecond & --- & no \\
 Rezolus & scheduler wakeup & nanosecond & --- & yes \\
 \texttt{blktrace/btt} & block stage & nanosecond & substitute a constant & no \\
-\texttt{emqtt-bench} & end-to-end & millisecond & filter & no \\
+\texttt{emqtt-bench} & end-to-end & millisecond & --- & no \\
 \texttt{fio} & I/O completion & nanosecond & substitute a constant & no \\
+wrk2 & end-to-end & microsecond & --- & no \\
 \bottomrule
 \end{tabular}

@@ -639,7 +639,7 @@ class TestQuantisationTable:
         row, and a section-wide search silently matched that one instead. A test that reads the
         wrong table is worse than no test, because it still passes for the wrong reason.
         """
-        at = tex.index(r"\label{tab:quantisation}")
+        at = tex.index(r"\label{tab:quantization}")
         end = tex.index(r"\end{tabular}", at)
         return tex[at:end]
 
@@ -952,7 +952,7 @@ class TestExternalHarnessEvidence:
         low = " ".join(tex.lower().split())
         assert "vacuous zero" in low or "never runs discards nothing" in low, (
             "the paper must own the zero that reached a draft from a run that never happened")
-        assert "reached a draft" in low or "artefact of the instrument" in low
+        assert "reached a draft" in low or "artifact of the instrument" in low
 
     def test_the_result_matches_its_artefact(self, tex):
         """Guards the count AND the evidence that the run happened.
@@ -1302,7 +1302,7 @@ class TestClusteringConstructCheck:
         threats = tex[tex.index(r"Construct validity: the check may not measure"):]
         para = threats[:threats.index(r"\paragraph")]
         low = para.lower()
-        assert "quantis" in low, "the quantisation rival must be named"
+        assert "quantiz" in low, "the quantization rival must be named"
         assert "runs test" in low or "wald" in low, "the test must be named"
         assert "cluster" in low, "the clustering finding must be stated"
         assert "no background load" in low or "idle" in low, \
@@ -1699,7 +1699,7 @@ class TestLoadGeometryAndTtrue:
         section = " ".join(tex.split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         # A single required phrase. An `or` of three acceptable wordings passes as soon as any
         # one of them survives, so deleting the attribution left the test green.
-        assert "is an artefact of the instrument" in section, \
+        assert "is an artifact of the instrument" in section, \
             "the real-time zero must be attributed to the instrument, not left open"
         assert "unexplained" not in section.split("real-time arm's zero")[-1][:400], \
             "the zero must not still be described as unexplained"

@@ -21,8 +21,13 @@ import argparse
 import csv
 from pathlib import Path
 
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import matplotlib
 matplotlib.use("Agg")
+import figure_style  # noqa: E402
+figure_style.apply()  # Type 42, IEEE-listed family; see scripts/figure_style.py
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
@@ -69,8 +74,12 @@ def plot_pipeline(ax):
                     arrowprops=dict(arrowstyle="<->", color="black", linewidth=1.0))
         ax.text((x0 + x1) / 2, y + 0.06, label, ha="center", fontsize=7.5)
 
-    ax.text(5.0, 3.20, r"broker transport spans two processes' clocks "
-                       r"$\Rightarrow$ it can come out negative",
+    # Not "two processes' clocks". The producer and the consumer are two processes on one host
+    # reading one clock, and Section V exists to show the span inverts anyway; an annotation
+    # naming clocks plants the rival hypothesis in the reader at the first figure, and
+    # contradicts this figure's own caption, which says "when either process is delayed".
+    ax.text(5.0, 3.20, r"broker transport subtracts stamps written by two threads "
+                       r"$\Rightarrow$ it can come out negative on one clock",
             ha="center", va="top", fontsize=7.5, color="#b22222")
     ax.set_xlim(0, 10)
     ax.set_ylim(0, 3.3)

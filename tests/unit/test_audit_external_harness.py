@@ -289,8 +289,19 @@ class TestSuppressionClass:
 class TestPatternsAddedForNonJvmSources:
     """Each of these was added because a real harness used a spelling the tool could not see."""
 
-    def test_erlang_short_circuit_guard_is_a_positive_filter(self):
+    def test_erlang_counter_guard_is_not_a_filter(self):
+        """Round 6 caught us reporting emqtt-bench as deleting samples. Its guard gates a
+        Prometheus counter, and the next source line observes the histogram unconditionally,
+        so nothing is deleted. The classifier now withdraws the filter label when the guarded
+        action is a counter increment -- a guard is only a deletion if what it guards is the
+        sample -- and this test is the error, pinned so it cannot come back."""
         line = "E2ELatency > 0 andalso inc_counter(Prometheus, publish_latency, E2ELatency),"
+        assert "positive_only_filter" not in classify(line)
+
+    def test_erlang_short_circuit_guarding_a_record_is_still_a_filter(self):
+        """The withdrawal is about the consequent, not the syntax: the same short-circuit
+        guarding an observation would still delete, and must still classify."""
+        line = "E2ELatency > 0 andalso histogram_observe(Prometheus, e2e_latency, E2ELatency),"
         assert "positive_only_filter" in classify(line)
 
     def test_erlang_system_time_subtraction_is_cross_process(self):

@@ -876,8 +876,7 @@
   type        = {Application Note},
   number      = {162-1},
   year        = {1970},
-  note        = {Part no.\ 02-5952-0766; undated, and citing the \emph{HP Journal} of
-                 April 1970}
+  note        = {Part no.\ 02-5952-0766; undated; the year is its \emph{HP Journal} citation}
 }
 
 @misc{fio_gettime,
@@ -885,8 +884,7 @@
   title        = {{fio}: Flexible {I/O} Tester --- \texttt{gettime.c}},
   howpublished = {Source repository},
   year         = {2026},
-  note         = {\url{https://github.com/axboe/fio}; the guard appears in three timing
-                  functions. Read 2026-08-20}
+  note         = {\url{https://github.com/axboe/fio}; the guard is in three timing functions. Read 2026-08-20}
 }
 
 @misc{emqtt_bench,
@@ -894,8 +892,8 @@
   title        = {\texttt{emqtt-bench}: {MQTT} benchmark tool --- \texttt{src/emqtt\_bench.erl}},
   howpublished = {Source repository},
   year         = {2026},
-  note         = {\url{https://github.com/emqx/emqtt-bench}; millisecond cross-process
-                  difference under a positivity guard, uncounted. Read 2026-08-20}
+  note         = {\url{https://github.com/emqx/emqtt-bench}; the guard is on the counter, not the
+                  sample. Read 2026-08-21}
 }
 
 @misc{rezolus,
@@ -903,8 +901,7 @@
   title        = {Rezolus: systems performance telemetry --- \texttt{scheduler\_discarded\_samples}},
   howpublished = {Source repository},
   year         = {2026},
-  note         = {\url{https://github.com/iopsystems/rezolus}; the metric counts samples
-                  discarded for out-of-order timestamps. Read 2026-08-20}
+  note         = {\url{https://github.com/iopsystems/rezolus}; counts samples discarded for out-of-order timestamps. Read 2026-08-20}
 }
 
 @misc{btt_inlines,
@@ -1170,7 +1167,8 @@
   title        = {\texttt{model/adjuster/clockskew.go}},
   howpublished = {\url{https://github.com/jaegertracing/jaeger}},
   year         = {2026},
-  note         = {The adjuster mutates the stored spans, not a view. Read 2026-08-21}
+  note         = {\url{https://github.com/jaegertracing/jaeger}; a query-service adjuster,
+                  off by default since v1.20.0. Read 2026-08-21}
 }
 
 @misc{zrk2026,
@@ -1192,4 +1190,74 @@
   note         = {``measured latencies are only accurate to a $+/-$ \textasciitilde 1 msec
                   granularity, due to OS sleep time behavior'' --- disclosed, not discarded.
                   Read 2026-08-21}
+}
+
+@misc{jaeger_harmful,
+  author       = {{Jaeger contributors}},
+  title        = {Clock Skew Adjuster considered harmful (issue \#1459)},
+  howpublished = {Issue tracker},
+  year         = {2019},
+  note         = {\url{https://github.com/jaegertracing/jaeger/issues/1459}. Read 2026-08-21}
+}
+
+@misc{pulsar_perf,
+  author       = {{Apache Pulsar contributors}},
+  title        = {\texttt{PerformanceConsumer.java}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/apache/pulsar}; \texttt{PerformanceConsumer.java}.
+                  Read 2026-08-21}
+}
+
+@misc{wrk2_src,
+  author       = {G. Tene},
+  title        = {\texttt{wrk2} --- \texttt{src/wrk.c}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/giltene/wrk2}; the negative interval is detected,
+                  printed, and then recorded unguarded. Read 2026-08-21}
+}
+
+@misc{hdrhistogram_c,
+  author       = {{HdrHistogram contributors}},
+  title        = {\texttt{HdrHistogram\_c} --- \texttt{src/hdr\_histogram.c}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/HdrHistogram/HdrHistogram_c};
+                  \texttt{hdr\_record\_values} returns \texttt{false} for a negative value.
+                  Read 2026-08-21}
+}
+
+@misc{zhou2025slice,
+  author       = {zihan zhou},
+  title        = {sched: Reduce the default slice to avoid tasks getting an extra tick},
+  howpublished = {Linux kernel mailing list, commit 2ae891b82695},
+  year         = {2025},
+  note         = {Reviewed-by V. Guittot; reduces the constant to \texttt{0.70} in v6.15}
+}
+
+@misc{krishnamachari2026stats,
+  author       = {B. Krishnamachari},
+  title        = {How to do statistical evaluations in {ECE/CS} papers: a practical playbook
+                  for defensible results},
+  howpublished = {arXiv:2605.00428},
+  year         = {2026},
+  note         = {Section~18, ``Outliers, failed runs, and exclusion rules''}
+}
+
+@inproceedings{paxson2004sound,
+  author    = {V. Paxson},
+  title     = {Strategies for sound {I}nternet measurement},
+  booktitle = {Proc. ACM Internet Measurement Conf. (IMC)},
+  publisher = {ACM},
+  year      = {2004},
+  pages     = {263--271},
+  note      = {Physical impossibility as grounds for discarding a trace}
+}
+
+@misc{specjbb2015,
+  author       = {{Standard Performance Evaluation Corporation}},
+  title        = {{SPECjbb2015} run and reporting rules, v1.02},
+  year         = {2018},
+  note         = {\S3.4.4--3.4.5; a run is declared invalid on clock-offset criteria}
 }

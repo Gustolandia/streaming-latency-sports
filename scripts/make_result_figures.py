@@ -46,6 +46,8 @@ from pathlib import Path
 
 import matplotlib
 matplotlib.use("Agg")
+import figure_style  # noqa: E402
+figure_style.apply()  # Type 42, IEEE-listed family; see scripts/figure_style.py
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
@@ -242,7 +244,7 @@ def _save(fig, out_dir, stem):
 
 
 def build_deletion(out_dir):
-    fig, ax = plt.subplots(figsize=(3.4, 2.5))
+    fig, ax = plt.subplots(figsize=(3.4, 2.35))
     plot_deletion(ax, retention_points())
     fig.tight_layout()
     return _save(fig, out_dir, "deletion")
@@ -256,14 +258,14 @@ def build_spectrum(out_dir, slice_ms=None):
         except (ImportError, OSError, KeyError, ValueError):
             slice_ms = None
     bins, _ = stall_histogram()
-    fig, ax = plt.subplots(figsize=(3.4, 2.5))
+    fig, ax = plt.subplots(figsize=(3.4, 2.08))
     plot_spectrum(ax, bins, slice_ms)
     fig.tight_layout()
     return _save(fig, out_dir, "stall_spectrum")
 
 
 def build_grid(out_dir):
-    fig, ax = plt.subplots(figsize=(3.4, 2.6))
+    fig, ax = plt.subplots(figsize=(3.4, 2.42))
     plot_grid(ax, grid_rows())
     fig.tight_layout()
     return _save(fig, out_dir, "grid_membership")
@@ -371,29 +373,141 @@ def plot_ttrue(ax, pts):
 
 
 def build_mechanism(out_dir):
-    fig, ax = plt.subplots(figsize=(3.4, 2.45))
+    fig, ax = plt.subplots(figsize=(3.4, 2.12))
     plot_mechanism(ax, mechanism_arms())
     fig.tight_layout()
     return _save(fig, out_dir, "mechanism_forest")
 
 
 def build_ttrue(out_dir):
-    fig, ax = plt.subplots(figsize=(3.4, 2.3))
+    fig, ax = plt.subplots(figsize=(3.4, 2.18))
     plot_ttrue(ax, ttrue_points())
     fig.tight_layout()
     return _save(fig, out_dir, "ttrue_law")
+
+
+
+# --- the payload flip ------------------------------------------------------------------------
+
+# The arms of the pre-registered payload manipulation, and where each one's replicates live.
+# 200 B is the baseline at the same rate: two campaigns ran it, and both belong to the arm --
+# dropping either would narrow the spread by selection rather than by measurement.
+PAYLOAD_ARMS = (
+    ("200 B", (("rate_q", 300), ("ultimate", 300)), GREY),
+    ("32 KB", (("ultimate_pay300", 32768),), DELETED),
+    ("64 KB", (("ultimate_pay300", 65536),), KEPT),
+)
+PAYLOAD_Q = 3  # 300 msg/s against a 1 ms tick is 10/3 in lowest terms
+
+
+def payload_arms(path=None):
+    """Retention percentages per payload arm, from the committed campaign ledger.
+
+    Selection matches the audit everywhere else: valid runs only, and only those whose counts
+    came from the shutdown hook, because a run whose totals were reconstructed afterwards cannot
+    support a retention rate.
+    """
+    import csv
+    path = path or (RESULTS / "external_campaigns_index.csv")
+    rows = list(csv.DictReader(open(path, encoding="utf-8", newline="")))
+    out = []
+    for label, keys, colour in PAYLOAD_ARMS:
+        vals = []
+        for campaign, level in keys:
+            for r in rows:
+                if (r.get("campaign") != campaign or r.get("valid") != "1"
+                        or r.get("count_source") != "shutdown_hook"
+                        or (r.get("level") or "") != str(level)):
+                    continue
+                try:
+                    kept = int(r.get("kept") or 0)
+                    seen = kept + int(r.get("discarded_zero") or 0) \
+                        + int(r.get("discarded_negative") or 0)
+                except (TypeError, ValueError):
+                    continue
+                if seen > 0:
+                    vals.append(100.0 * kept / seen)
+        if not vals:
+            raise ValueError("no replicates for payload arm %s" % label)
+        out.append((label, sorted(vals), colour))
+    return out
+
+
+def payload_positions(arms=None, q=PAYLOAD_Q):
+    """(label, frac(q*theta), spread, colour) per arm.
+
+    theta is the arm's mean retention as a fraction, which by Equation 4 estimates
+    T_true/tau. frac(q*theta) is then the replicates' position inside their grid cell, and
+    Equation 5 says the spread should be near 100/q at mid-cell and near zero on a vertex.
+    """
+    arms = payload_arms() if arms is None else arms
+    out = []
+    for label, vals, colour in arms:
+        theta = (sum(vals) / len(vals)) / 100.0
+        out.append((label, (q * theta) % 1.0, max(vals) - min(vals), colour))
+    return out
+
+
+def plot_payload_grid(ax, arms, q=PAYLOAD_Q):
+    """Panel (a): every replicate against the q-grid it is supposed to land on."""
+    for x, (label, vals, colour) in enumerate(arms):
+        jitter = [x + (i - (len(vals) - 1) / 2.0) * 0.055 for i in range(len(vals))]
+        ax.scatter(jitter, vals, s=15, color=colour, edgecolors="none", zorder=3)
+    for k in range(1, q + 1):
+        y = 100.0 * k / q
+        ax.axhline(y, color=GREY, lw=0.6, ls=":", zorder=0, alpha=0.7)
+        ax.annotate("%d/%d" % (k, q), xy=(len(arms) - 0.55, y), fontsize=6.5,
+                    color=GREY, va="center", ha="left")
+    ax.set_xticks(range(len(arms)))
+    ax.set_xticklabels([a[0] for a in arms], fontsize=7.5)
+    ax.set_xlim(-0.5, len(arms) - 0.35)
+    ax.set_ylabel("retention (%)", fontsize=7.5)
+    ax.set_title("(a) replicates against the $q=%d$ grid" % q, fontsize=7.5)
+    ax.tick_params(labelsize=7)
+
+
+def plot_payload_flip(ax, pos, q=PAYLOAD_Q):
+    """Panel (b): the spread against cell position, and the boundary it crosses twice."""
+    half = 100.0 / (2 * q)
+    ax.axhline(half, color=GREY, lw=0.8, ls="--", zorder=0)
+    ax.annotate("half cell width", xy=(0.30, half), xytext=(0, 3),
+                textcoords="offset points", fontsize=6.5, color=GREY, va="bottom")
+    for label, frac, spread, colour in pos:
+        ax.scatter([frac], [spread], s=22, color=colour, edgecolors="none", zorder=3)
+        # A point in the right-hand third would carry its label off the axis, so the label
+        # turns around and sits to its left instead.
+        right = frac > 0.55
+        ax.annotate(label, xy=(frac, spread), xytext=(-5 if right else 5, 4),
+                    textcoords="offset points", fontsize=6.8, color="#222222",
+                    ha="right" if right else "left")
+    ax.set_xlim(-0.03, 0.75)
+    ax.set_ylim(0, max(s for _, _, s, _ in pos) * 1.22)
+    ax.set_xlabel(r"frac($q\theta$)", fontsize=7.5)
+    ax.set_ylabel("replicate spread (pts)", fontsize=7.5)
+    ax.set_title("(b) the flat/full flip", fontsize=7.5)
+    ax.tick_params(labelsize=7)
+
+
+def build_payload(out_dir):
+    arms = payload_arms()
+    fig, axes = plt.subplots(1, 2, figsize=(7.0, 2.1))
+    plot_payload_grid(axes[0], arms)
+    plot_payload_flip(axes[1], payload_positions(arms))
+    fig.tight_layout(w_pad=2.2)
+    return _save(fig, out_dir, "payload_flip")
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Build the result figures")
     ap.add_argument("--out", default=os.path.join("docs", "results", "figures"))
     ap.add_argument("--only",
-                    choices=("deletion", "spectrum", "grid", "mechanism", "ttrue"),
+                    choices=("deletion", "spectrum", "grid", "mechanism", "ttrue", "payload"),
                     default=None)
     args = ap.parse_args(argv)
 
     builders = {"deletion": build_deletion, "spectrum": build_spectrum, "grid": build_grid,
-                "mechanism": build_mechanism, "ttrue": build_ttrue}
+                "mechanism": build_mechanism, "ttrue": build_ttrue,
+                "payload": build_payload}
     todo = [args.only] if args.only else list(builders)
     for name in todo:
         path = builders[name](args.out)

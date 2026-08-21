@@ -2640,4 +2640,71 @@ finer measurement would have resolved. That is precisely the sub-quantum sample 
 Section~IV of the main text, and it is a 1959 statement of it; we attribute it where it belongs
 rather than to Pratt's main development.
 
+\section{S42. Which clocksource, bounded from a measurement}
+\label{sec:clocksource}
+
+A reviewer asked which clocksource the cloud instances used, because a virtualised guest need
+not be given a counter that is coherent across its vCPUs, and if ours were not, that would be
+a rival to the account in Section~V. We did not record the field, and the instances have been
+reclaimed, so it cannot be read back. Our first answer was that we could not say. That answer
+was wrong, and the correction is worth setting out because the method is the same one the
+rest of the paper uses: a physical constraint deciding what the record-keeping did not.
+
+The platform probe recorded the smallest non-zero increment observable from
+\texttt{clock\_gettime(CLOCK\_MONOTONIC)} on the machine that produced the reported runs:
+$\clockIncrementNs$~ns. An increment is observed by reading the clock twice, so that number
+is an upper bound on the cost of a single read --- and read cost separates the four candidate
+clocksources by more than an order of magnitude.
+
+\paragraph{acpi\_pm, excluded by arithmetic}
+The ACPI power-management timer counts at \texttt{PMTMR\_TICKS\_PER\_SEC} $= 3{,}579{,}545$~Hz
+(\texttt{include/linux/acpi\_pmtmr.h}), a period of $\clockPmTickNs$~ns. A clock whose tick is
+$\clockPmTickNs$~ns cannot report an increment of $\clockIncrementNs$~ns, whatever it costs to
+read. This exclusion needs no timing figures at all.
+
+\paragraph{hpet, excluded by cost}
+HPET is memory-mapped I/O to an off-die chipset timer. The x86 maintainers, in the commit
+removing it from the vDSO, describe reads as ``exceedingly slow (on the order of several
+microseconds)''; published measurements of a \texttt{clock\_gettime} call on HPET sit near
+$1.2\,\mu$s. We are careful about the ground here: HPET's own tick, near $70$~ns at
+$14.318$~MHz, is \emph{finer} than the observed increment, so granularity does not exclude it
+and we do not pretend it does. The exclusion rests on read cost alone.
+
+\paragraph{What remains, and why it answers the question}
+That leaves \clockAdmitted{}, measured at $33$--$60$~ns and $24$--$29$~ns respectively, both
+comfortably inside the bound. Each carries the guarantee the reviewer asked about, by a
+different route.
+
+For \texttt{kvm-clock} the route is the vDSO. Without vDSO acceleration the same clock costs
+about $156$~ns per call, which the bound excludes; and \texttt{arch/x86/kernel/kvmclock.c}
+sets the vDSO mode only under a condition:
+%
+\begin{quote}
+\ttfamily\small
+if (!(flags \& PVCLOCK\_TSC\_STABLE\_BIT))\\
+\hspace*{2em}return 0;\\
+kvm\_clock.vdso\_clock\_mode = VDSO\_CLOCKMODE\_PVCLOCK;
+\end{quote}
+%
+\texttt{PVCLOCK\_TSC\_STABLE\_BIT} is the flag the KVM guest ABI documents as ``time measures
+taken across multiple cpus are guaranteed to be monotonic''~\cite{kvmclock}. A
+\texttt{kvm-clock} fast enough to fit the bound is therefore one whose hypervisor asserts
+cross-vCPU monotonicity.
+
+For \texttt{tsc} the route is selection. \texttt{kvm-clock} registers at rating $400$ and
+\texttt{tsc} at $300$, so on a KVM guest \texttt{tsc} is chosen only where
+\texttt{kvmclock\_init()} demotes \texttt{kvm-clock} to $299$ --- which it does exactly when
+\texttt{CONSTANT\_TSC} and \texttt{NONSTOP\_TSC} are present and \texttt{check\_tsc\_unstable()}
+is false. Should warp appear later, \texttt{tsc\_sync.c} reports ``Measured \%Ld cycles TSC
+warp between CPUs, turning off TSC clock'' and the source is re-rated away.
+
+\paragraph{What this does not establish}
+It identifies the set of clocksources consistent with the measurement, not which one was in
+use, and it leans on published read costs for hardware we no longer hold. Those costs vary by
+roughly a factor of two between independent measurements; the margin here is an order of
+magnitude, which is why the conclusion survives the spread. It is an inference from a
+measurement rather than a recorded fact, and Section~III-A says so. The derivation is
+\texttt{scripts/clocksource\_bound.py}, and its tests pin each exclusion to its own ground so
+that an exclusion firing for the wrong reason cannot reach the right answer by luck.
+
 \end{document}

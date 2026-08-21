@@ -1097,8 +1097,16 @@ unfitted).
 
 The clock-incoherence channel needs its own answer, because our machines are virtual and a
 hypervisor need not give a guest a counter coherent across its vCPUs~\cite{kvmclock}. We did
-not record the clocksource and the instances have been reclaimed, so the corpus closes it
-instead, on headroom rather than on shared endpoints. Both audited spans are
+not record the clocksource and the instances have been reclaimed, but we recorded something
+that bounds it: the smallest increment the clock could report, $\clockIncrementNs$~ns. That
+excludes $\clockExcludedCount$ of the candidates --- the ACPI PM timer counts at
+$3{,}579{,}545$~Hz, a $\clockPmTickNs$~ns tick it cannot subdivide, and an HPET read costs
+more than an order of magnitude beyond the bound --- leaving \clockAdmitted{}. Both carry
+the guarantee at issue: the kernel serves \texttt{kvm-clock} that fast only when the
+hypervisor sets the flag documented as making time ``monotonic'' across
+CPUs~\cite{kvmclock}, and it selects \texttt{tsc} only where it has checked the counter and
+not turned it off. Supplement~S42 gives the derivation. The corpus closes the channel a
+second time, independently, on headroom rather than on shared endpoints. Both audited spans are
 producer-to-consumer differences, so a discrepancy between the clock domains displaces both
 alike; what differs is how much each has to spare. An offset large enough to explain the
 deepest inversion we observe, $\spanDeepestInversionMs$~ms, would drive the send-referenced

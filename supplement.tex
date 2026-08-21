@@ -2513,7 +2513,7 @@ additions are recorded here because they bound what the survey can claim. The or
 patterns were written against JVM sources and could not match Erlang's guard, which is a
 short-circuit rather than an \texttt{if}, nor Erlang's clock read, which carries its unit as
 an argument. The survey therefore reports what the classifier can currently recognize, which
-is a lower bound on the field rather than a census of it.
+is a lower bound on the field rather than a census of it. The complementary lineage is behavioral: Mittal evaluates six open-loop load generators for rate fidelity and measurement skew without reading their source~\cite{mittal2025}, and the two methods find disjoint defect classes, which is the argument for doing both.
 
 The pattern has since reached the audited broker itself. In November 2025, Kafka's
 coordinator metrics were found throwing on negative durations when a host clock stepped
@@ -2613,16 +2613,6 @@ note the asymmetry rather than flatten it: both vendors describe a stamp written
 the host does not choose, and only one says out loud how far from the host call it can be.
 
 \section{S39. Neighboring rules, and what they already require}
-
-\paragraph{A prior sighting in a benchmark, blamed on clocks.} Klenik and Pataricza report
-negative derived durations in a Hyperledger Fabric benchmark, call them a serious violation
-of event causality, and trace them to a peer clock drifting under a lightweight
-synchronization service~\cite{klenik2021}. Their case is genuinely two-clock --- the
-durations oscillate smoothly around zero, a drift signature, the same channel as our Redis
-$-1000\,\mu$s finding and not Mode~A --- and their check is post-hoc data validation with no
-per-run gate and no campaign rate. It is the nearest prior sighting of the observable inside
-a benchmark, and the attribution went where the field's default sends it: to the clock.
-
 \label{sec:neighbors}
 
 Two of this paper's recommendations have partial precedents, and the honest thing is to say
@@ -2646,6 +2636,15 @@ at the bottom of the scale. What it establishes is narrower and still useful ---
 mainstream telemetry format already treats rounded-to-zero observations as data to be carried
 beside the total rather than dropped, which is precisely what the guard of
 Section~IV of the main text does not do.
+
+\paragraph{A prior sighting in a benchmark, blamed on clocks.} Klenik and Pataricza report
+negative derived durations in a Hyperledger Fabric benchmark, call them a serious violation
+of event causality, and trace them to a peer clock drifting under a lightweight
+synchronization service~\cite{klenik2021}. Their case is genuinely two-clock --- the
+durations oscillate smoothly around zero, a drift signature, the same channel as our Redis
+$-1000\,\mu$s finding and not Mode~A --- and their check is post-hoc data validation with no
+per-run gate and no campaign rate. It is the nearest prior sighting of the observable inside
+a benchmark, and the attribution went where the field's default sends it: to the clock.
 
 \section{S40. What standardized benchmarks require about resolution}
 \label{sec:standards}
@@ -2697,16 +2696,6 @@ them states our rule in almost our words, for a different domain. The rule simpl
 reached the place where brokers are compared on sub-millisecond paths.
 
 \section{S41. The classical statistics of a discarded zero}
-
-\paragraph{A second standard already owns the lemma.} The arithmetic core of the grid ---
-a rate whose ratio to the sampling tick is $J/M$ in lowest terms visits exactly $M$ distinct
-phases --- is standardized in ADC metrology as coherent sampling: IEEE Std~1241's sine-wave
-histogram test requires the input and sampling frequencies related by $f_i = (J/M)\,f_s$
-with $J$ ``relatively prime to $M$''~\cite{ieee1241}, for the same reason we choose
-incommensurate send rates. (The standard's notation is $J/M$ where the main text writes
-$p/q$.) As with the counter literature, we claim the consequence under deletion, not the
-lemma.
-
 \label{sec:zeros}
 
 The main text argues that deleting the samples which compute to zero conditions the reported
@@ -2746,6 +2735,16 @@ that a zero arises because ``with only our crude measurement, we do not know'' t
 finer measurement would have resolved. That is precisely the sub-quantum sample of
 Section~IV of the main text, and it is a 1959 statement of it; we attribute it where it belongs
 rather than to Pratt's main development.
+
+\paragraph{A second standard already owns the lemma.} The arithmetic core of the grid ---
+a rate whose ratio to the sampling tick is $J/M$ in lowest terms visits exactly $M$ distinct
+phases --- is standardized in ADC metrology. IEEE Std~1241-2010's sine-wave histogram test
+requires the record to hold a number of input cycles ``relatively prime'' to the number of
+samples (\S6.4.1, Eq.~(28)); the same standard's sine-fit clause states the frequency choice
+as $f_i = (J/M)\,f_s$ and names the practice \emph{coherent sampling} (\S5.4.1,
+Eq.~(18))~\cite{ieee1241}. Both clauses exist for the same reason we choose incommensurate
+send rates. (The standard's notation is $J/M$ where the main text writes $p/q$.) As with the
+counter literature, we claim the consequence under deletion, not the lemma.
 
 \section{S42. Which clocksource, bounded from a measurement}
 \label{sec:clocksource}

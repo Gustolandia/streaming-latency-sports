@@ -223,3 +223,49 @@ def test_every_paper_figure_has_a_generator():
     orphans = sorted(s for s in stems if '"%s"' % s not in sources and "'%s'" % s not in sources)
     assert not orphans, (
         "figures in the paper that no script builds: %s" % orphans)
+
+
+# --- structure of the submission package -----------------------------------------------------
+
+def test_supplement_section_labels_sit_on_their_headings():
+    """A \\label{sec:...} must directly follow a sectioning command.
+
+    Round 7 inserted two paragraphs immediately after their section headings, which pushed
+    each section's existing lead below the newcomer and stranded the \\label mid-section.
+    Nothing broke -- the labels were unreferenced -- but the reader met an example before the
+    frame, twice, and the round-8 review had to find it by eye. A stranded label is the
+    mechanical signature of that insertion pattern, so it is the thing pinned.
+    """
+    src = (ROOT / "supplement.tex")
+    if not src.exists():
+        pytest.skip("supplement not present")
+    lines = src.read_text(encoding="utf-8").split("\n")
+    stranded = []
+    for i, line in enumerate(lines):
+        if not re.match(r"\\label\\{sec:", line.strip()):
+            continue
+        j = i - 1
+        while j >= 0 and (not lines[j].strip() or lines[j].strip().startswith("%")):
+            j -= 1
+        prev = lines[j].strip()
+        if not prev.startswith(("\\section", "\\subsection", "\\paragraph")):
+            stranded.append("%s (line %d, preceded by %r)" % (
+                line.strip(), i + 1, prev[:40]))
+    assert not stranded, "labels stranded below inserted content:\n  " + "\n  ".join(stranded)
+
+
+@pytest.mark.parametrize("name", ("paper", "supplement"))
+def test_bibtex_ran_clean(name):
+    """The build's BibTeX logs must carry no warnings.
+
+    Round 7 entered IEEE Std 1241 as `@standard`, which IEEEtran.bst half-understands:
+    "Warning--missing institution" in the log and a dangling "Std.," in the rendered entry.
+    A one-warning log is exactly the kind of blemish that survives because nothing reads
+    logs; this reads the log.
+    """
+    blg = ROOT / ("%s.blg" % name)
+    if not blg.exists():
+        pytest.skip("no BibTeX log for %s" % name)
+    warnings = [l for l in blg.read_text(encoding="utf-8", errors="ignore").splitlines()
+                if l.startswith("Warning--")]
+    assert not warnings, "%s.blg: %s" % (name, warnings)

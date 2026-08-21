@@ -104,6 +104,10 @@ def span_macros(path=SPAN_CSV):
         ("spanNegOutputSend", latex_thousands(agg["neg_output_send"])),
         ("spanNegTti", latex_thousands(agg["neg_tti"])),
         ("spanRunsOverOnePct", latex_thousands(agg["runs_over_one_pct_ack"])),
+        ("spanRunsAckOnly", latex_thousands(agg["runs_ack_only_inversions"])),
+        ("spanRunsAckOnlyPct", "%.0f" % (100.0 * agg["runs_ack_only_inversions"] / agg["runs"]
+                                         if agg["runs"] else 0.0)),
+        ("spanRunsSendInverts", latex_thousands(agg["runs_send_inverts"])),
     ]
 
 
@@ -442,7 +446,7 @@ def registry_macros():
         s = harness_registry.summary()
     except (ImportError, OSError, KeyError, ValueError):
         return []
-    return [
+    out = [
         ("harnessAudited", str(s["harnesses"])),
         ("harnessVendors", str(s["vendors"])),
         ("harnessLanguages", str(s["languages"])),
@@ -452,6 +456,26 @@ def registry_macros():
         ("harnessSuppressors", str(len(s["suppressors"]))),
         ("harnessCounting", str(len(s["counts_discards"]))),
     ]
+    # The scope of the guard, computed rather than remembered. A referee who opens
+    # MessageProducer.java finds a nanosecond clock and no filter, and will read an
+    # unqualified "the benchmark filters" as overstated. These macros make the qualifier a
+    # property of the evidence: which span is guarded, and which clock each span uses.
+    try:
+        contrast = harness_registry.within_harness_contrast()
+    except (OSError, KeyError, ValueError):
+        return out
+    omb = contrast.get("OpenMessaging Benchmark")
+    if omb:
+        (gpath, gclock) = omb["guarded"][0]
+        (upath, uclock) = omb["unguarded"][0]
+        out += [
+            ("ombGuardedPath", gpath),
+            ("ombGuardedClock", gclock),
+            ("ombUnguardedPath", upath),
+            ("ombUnguardedClock", uclock),
+        ]
+    out.append(("harnessSplitGuard", str(len(contrast))))
+    return out
 
 
 def all_pairs(m):

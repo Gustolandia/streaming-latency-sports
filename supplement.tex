@@ -2,27 +2,49 @@
 % NOT part of the main submission: this document accompanies the paper as supplementary
 % material only. Each section is indexed in docs/supplement_index.md, which records what moved
 % here from which revision of the main text, so nothing is lost.
-\documentclass[manuscript,screen,review,nonacm]{acmart}
-\settopmatter{printacmref=false}
-\renewcommand\footnotetextcopyrightpermission[1]{}
+% Set in IEEEtran, like the paper it accompanies. It was previously in acmart, which put ACM
+% running heads on a submission to an IEEE journal and, worse, numbered each section itself --
+% so a heading read "36 S38.", two numbering schemes disagreeing in one line. The section
+% counter is switched off here and the S-numbers carry the numbering alone.
+\documentclass[10pt,journal,onecolumn]{IEEEtran}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
 \newcommand{\kafka}{Kafka}
 \newcommand{\redis}{Redis}
 \newcommand{\tti}{TTI}
 \input{docs/generated/paper_numbers}
+
+% The S-numbers in each heading are the paper's own scheme and the only one a reader should
+% see. secnumdepth rather than a \@seccntformat patch, because the patch suppresses the
+% counter in the headings but not in the table of contents, which then reads "I S1:".
+\setcounter{secnumdepth}{0}
+
+% The remaining overfull boxes are all long unbreakable \texttt{} runs -- fully qualified Java
+% exception names, committed file paths -- which cannot be hyphenated. \sloppy lets TeX stretch
+% the interword space rather than overflow the measure; in a supplement, a loose line is a
+% better trade than a line that runs into the margin.
+\setlength{\emergencystretch}{3em}
+\sloppy
+
 \begin{document}
-\title{Supplementary Material: When the Interval Is Smaller Than the Instrument}
-\author{Gustavo Pedro Ricou}
-\affiliation{%
-  \institution{School of Computer Science and Statistics, Trinity College Dublin}
-  \city{Dublin}
-  \country{Ireland}}
-\email{pedrorig@tcd.ie}
+\title{Supplementary Material:\\When the Interval Is Smaller Than the Instrument}
+\author{Gustavo~Pedro~Ricou%
+\thanks{G.~P.~Ricou is with the School of Computer Science and Statistics, Trinity
+College Dublin, Dublin~2, Ireland. E-mail: pedrorig@tcd.ie.}}
 \maketitle
 
 This document is supplementary material and is not part of the main submission. Main-text
-references of the form ``supplementary material S$n$'' resolve here. The provenance of every
-section --- what moved here, from where, and when --- is indexed in the artefact at
-\texttt{docs/supplement\_index.md}.
+references of the form ``Supplement~S$n$'' resolve to the correspondingly numbered section
+here. The provenance of every section --- what moved here, from where, and when --- is
+indexed in the artefact at \texttt{docs/supplement\_index.md}.
+
+\tableofcontents
+\bigskip
 
 Several sections below refer to ``internal review'' rounds and to material moved between
 revisions. These were adversarial reviews conducted within the project before submission,

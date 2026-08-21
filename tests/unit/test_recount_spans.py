@@ -309,3 +309,49 @@ class TestCommittedArtefact:
         assert agg["neg_send"] == 0, "the send-referenced span must be clean"
         assert agg["neg_tti"] == 0, "TTI must be clean"
         assert agg["events"] > 100000
+
+
+class TestSharedStampContrast:
+    """Both spans end at the same clock read; only one inverts.
+
+    This counter exists because a referee raised cross-CPU clock incoherence under thread
+    migration as a rival to the descheduling account -- a real mechanism, documented in the
+    wild on virtualised hardware, and one the manuscript's testbed cannot rule out from a
+    captured clocksource, because the instances are gone. It can be ruled out from the data:
+    an artefact of the shared endpoint moves both spans, and a late producer-side stamp moves
+    one. What decides between them is a count, so it is computed here rather than argued.
+    """
+
+    def _rows(self, spec):
+        return [{"n_events": str(n), "neg_ack": str(a), "neg_send": str(s),
+                 "neg_output_send": "0", "neg_tti": "0", "median_ack_us": "1.0",
+                 "median_send_us": "1.0", "run_id": "r%d" % i, "backend": "kafka"}
+                for i, (n, a, s) in enumerate(spec)]
+
+    def test_counts_runs_where_only_the_ack_span_inverts(self):
+        agg = rs.totals(self._rows([(100, 5, 0), (100, 0, 0), (100, 3, 0)]))
+        assert agg["runs_ack_only_inversions"] == 2
+
+    def test_a_run_where_both_spans_invert_is_not_ack_only(self):
+        """That run would be consistent with a clock artefact and must not be counted."""
+        agg = rs.totals(self._rows([(100, 5, 2)]))
+        assert agg["runs_ack_only_inversions"] == 0
+        assert agg["runs_send_inverts"] == 1
+
+    def test_a_run_with_no_inversions_is_not_counted(self):
+        assert rs.totals(self._rows([(100, 0, 0)]))["runs_ack_only_inversions"] == 0
+
+    def test_the_committed_corpus_never_inverts_the_send_span(self):
+        """The load-bearing fact. If this ever fails, the exclusion argument fails with it."""
+        agg = rs.totals(rs.read_csv(os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+            "docs", "results", "span_recount.csv")))
+        assert agg["runs_send_inverts"] == 0
+        assert agg["neg_send"] == 0
+
+    def test_the_contrast_holds_in_most_runs_of_the_committed_corpus(self):
+        agg = rs.totals(rs.read_csv(os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+            "docs", "results", "span_recount.csv")))
+        assert agg["runs_ack_only_inversions"] == 4549
+        assert agg["runs_ack_only_inversions"] / agg["runs"] > 0.75

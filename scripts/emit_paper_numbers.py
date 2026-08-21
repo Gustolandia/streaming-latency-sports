@@ -520,6 +520,11 @@ def registry_macros():
         ("harnessLanguages", str(s["languages"])),
         ("harnessEvidenceLines", str(s["evidence_lines"])),
         ("harnessSilent", str(s["n_silent"])),
+        # Silent harnesses other than the audited subject itself: the count the text
+        # uses for "independent tools", which round 6 caught as prose that only
+        # happened to be right after the re-audit.
+        ("harnessSilentIndependent",
+         str(len([h for h in s["silent"] if h != "OpenMessaging Benchmark"]))),
         ("harnessFilters", str(len(s["filters"]))),
         ("harnessSuppressors", str(len(s["suppressors"]))),
         ("harnessCounting", str(len(s["counts_discards"]))),

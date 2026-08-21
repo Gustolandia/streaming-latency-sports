@@ -177,8 +177,8 @@ def test_each_builder_writes_a_pdf(tmp_path, name, stem):
 
 def test_main_builds_every_figure_by_default(tmp_path, capsys):
     assert mrf.main(["--out", str(tmp_path)]) == 0
-    assert len(list(tmp_path.glob("*.pdf"))) == 5
-    assert capsys.readouterr().out.count("wrote") == 5
+    assert len(list(tmp_path.glob("*.pdf"))) == 6
+    assert capsys.readouterr().out.count("wrote") == 6
 
 
 def test_the_spectrum_builder_takes_the_slice_from_the_derived_constants(tmp_path):

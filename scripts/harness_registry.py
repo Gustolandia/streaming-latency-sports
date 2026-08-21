@@ -34,7 +34,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from audit_external_harness import DISCARD_COUNTER, classify  # noqa: E402
+from audit_external_harness import (  # noqa: E402
+    DISCARD_COUNTER, DISPOSAL_KINDS, classify)
 
 REGISTRY = os.path.join("docs", "results", "external", "harness_registry.csv")
 
@@ -115,7 +116,7 @@ def within_harness_contrast(rows=None):
     rows = load() if rows is None else rows
     by_harness = {}
     for (harness, path), v in paths(rows).items():
-        guarded = bool(v["kinds"] & {"positive_only_filter", "silent_suppression"})
+        guarded = bool(v["kinds"] & set(DISPOSAL_KINDS))
         by_harness.setdefault(harness, []).append((path, v["clock"], guarded))
     out = {}
     for harness, entries in by_harness.items():
@@ -132,12 +133,18 @@ def summary(rows=None):
     fold = by_harness(rows)
     filters = [h for h, v in fold.items() if "positive_only_filter" in v["kinds"]]
     supp = [h for h, v in fold.items() if "silent_suppression" in v["kinds"]]
+    refusal = [h for h, v in fold.items() if "library_refusal" in v["kinds"]]
     cross = [h for h, v in fold.items() if "cross_process_latency" in v["kinds"]]
     counted = [h for h, v in fold.items() if v["counts_discards"]]
     # A harness is "silent" if it disposes of the sample and does not count the disposal. The
     # parentheses are load-bearing: `-` binds tighter than `|`, so without them a harness that
-    # filtered *and* counted would still be reported as silent.
-    silent = sorted((set(filters) | set(supp)) - set(counted))
+    # filtered *and* counted would still be reported as silent. `refusal` joined this union in
+    # round 6: a value dropped by the recording library is as gone as one dropped by an `if`,
+    # and counted in one place fewer.
+    silent = sorted((set(filters) | set(supp) | set(refusal)) - set(counted))
+    # Named so a reader can check the union above against the classifier rather than trust it.
+    assert set(DISPOSAL_KINDS) == {"positive_only_filter", "silent_suppression",
+                                   "library_refusal"}, DISPOSAL_KINDS
     return {
         "harnesses": len(fold),
         "vendors": len({v["vendor"] for v in fold.values()}),
@@ -146,6 +153,7 @@ def summary(rows=None):
         "cross_process": sorted(cross),
         "filters": sorted(filters),
         "suppressors": sorted(supp),
+        "library_refusals": sorted(refusal),
         "counts_discards": sorted(counted),
         "silent": silent,
         "n_silent": len(silent),

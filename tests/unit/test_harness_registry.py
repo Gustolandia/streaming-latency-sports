@@ -172,9 +172,13 @@ def test_main_json_output(tmp_path, capsys):
 
 EXPECTED = {
     "OpenMessaging Benchmark": ({"cross_process_latency", "positive_only_filter"}, False),
-    "emqtt-bench":             ({"cross_process_latency", "positive_only_filter"}, False),
+    # Round 6: the guard is on the counter, so the filter label is withdrawn -- the tool
+    # computes the cross-process span and keeps every sample of it.
+    "emqtt-bench":             ({"cross_process_latency"}, False),
+    "Apache Pulsar perf":      ({"cross_process_latency", "positive_only_filter"}, False),
     "fio":                     ({"silent_suppression"}, False),
     "blktrace btt":            ({"silent_suppression"}, False),
+    "wrk2":                    ({"library_refusal"}, False),
     "Rezolus":                 (set(), True),
 }
 
@@ -209,7 +213,7 @@ def test_registry_path_points_at_the_committed_file():
 def test_the_registry_records_which_span_each_finding_belongs_to():
     for r in load():
         assert r["path"], r
-        assert r["clock"] in ("millisecond", "nanosecond"), r
+        assert r["clock"] in ("millisecond", "microsecond", "nanosecond"), r
 
 
 def test_the_omb_guard_is_on_the_end_to_end_path_only():
@@ -243,8 +247,18 @@ def test_a_harness_guarded_on_every_path_shows_no_contrast():
     assert within_harness_contrast(rows) == {}
 
 
-def test_adding_the_publish_path_did_not_move_the_headline_counts():
-    """Folding by path must not inflate the per-harness survey the text quotes."""
+def test_the_round6_reaudit_headline_counts():
+    """The counts Section IV-D quotes, after round 6's corrections.
+
+    emqtt-bench was acquitted -- its guard is on a counter -- and two harnesses were added:
+    Apache Pulsar (a second vendor's positivity filter) and wrk2 (the library-refusal class).
+    Five of seven now dispose silently, and the two that do not are both named in the text:
+    Rezolus counts, emqtt-bench keeps.
+    """
     s = summary()
-    assert s["harnesses"] == 5
-    assert s["n_silent"] == 4
+    assert s["harnesses"] == 7
+    assert s["n_silent"] == 5
+    assert s["counts_discards"] == ["Rezolus"]
+    assert "emqtt-bench" not in s["silent"]
+    assert "Apache Pulsar perf" in s["filters"]
+    assert s["library_refusals"] == ["wrk2"]

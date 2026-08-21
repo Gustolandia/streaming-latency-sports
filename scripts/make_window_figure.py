@@ -28,8 +28,13 @@ CLI:
 import argparse
 from pathlib import Path
 
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import matplotlib
 matplotlib.use("Agg")
+import figure_style  # noqa: E402
+figure_style.apply()  # Type 42, IEEE-listed family; see scripts/figure_style.py
 import matplotlib.pyplot as plt  # noqa: E402
 import pandas as pd  # noqa: E402
 

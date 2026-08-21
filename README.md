@@ -8,12 +8,12 @@
 [![Tests](https://img.shields.io/badge/tests-2121_passing-brightgreen.svg)]()
 [![Coverage](https://img.shields.io/badge/branch_coverage-%E2%89%A595%25-brightgreen.svg)]()
 [![StatsBomb Data](https://img.shields.io/badge/StatsBomb_Data-CC_BY--NC_4.0-blue.svg)](https://github.com/statsbomb/open-data)
-[![DOI (code)](https://img.shields.io/badge/DOI_code-10.5281%2Fzenodo.21836305-blue.svg)](https://doi.org/10.5281/zenodo.21836305)
-[![DOI (data)](https://img.shields.io/badge/DOI_data-10.5281%2Fzenodo.21836326-blue.svg)](https://doi.org/10.5281/zenodo.21836326)
+[![DOI (code)](https://img.shields.io/badge/DOI_code-10.5281%2Fzenodo.22044877-blue.svg)](https://doi.org/10.5281/zenodo.22044877)
+[![DOI (data)](https://img.shields.io/badge/DOI_data-10.5281%2Fzenodo.22044891-blue.svg)](https://doi.org/10.5281/zenodo.22044891)
 
 > **Archived versions (Zenodo).** v2.0.0 of the code and analysis:
-> [10.5281/zenodo.21836305](https://doi.org/10.5281/zenodo.21836305) · measurement dataset:
-> [10.5281/zenodo.21836326](https://doi.org/10.5281/zenodo.21836326). Concept DOIs (always
+> [10.5281/zenodo.22044877](https://doi.org/10.5281/zenodo.22044877) · measurement dataset:
+> [10.5281/zenodo.22044891](https://doi.org/10.5281/zenodo.22044891). Concept DOIs (always
 > resolve to the latest version): code [10.5281/zenodo.21650031](https://doi.org/10.5281/zenodo.21650031),
 > data [10.5281/zenodo.21650064](https://doi.org/10.5281/zenodo.21650064).
 > v1.0.0 was the arXiv-submission state: code
@@ -58,7 +58,7 @@
 > is a sign bit: the Kafka-driver corpus's discards contain not one negative, while the
 > Redis-driver replication caught **41,403 genuine one-tick negatives**, absorbed without trace.
 > Artifacts: [`external/omb/`](external/omb/) and the measurement data record
-> [10.5281/zenodo.21836326](https://doi.org/10.5281/zenodo.21836326).
+> [10.5281/zenodo.22044891](https://doi.org/10.5281/zenodo.22044891).
 >
 > **What survives:**
 > 1. The brokers are **equivalent within 1 ms** and neither degrades with concurrency — robust
@@ -444,7 +444,7 @@ Fetch with `scripts/fetch_statsbomb_corpus.py` (resumable, integrity-checked). R
 **not** redistributed here; it is re-fetchable exactly from the pinned commit, and
 `make_replay_plan.py` regenerates the committed plans byte-for-byte.
 
-The Zenodo code archive ([10.5281/zenodo.21836305](https://doi.org/10.5281/zenodo.21836305))
+The Zenodo code archive ([10.5281/zenodo.22044877](https://doi.org/10.5281/zenodo.22044877))
 **excludes** `data/processed/replay_plans/` — the plans are CC BY-NC 4.0 derivatives of
 StatsBomb data and cannot ship inside the MIT-licensed record. Regenerate them byte-for-byte
 with `scripts/make_replay_plan.py` against the pinned upstream commit.
@@ -831,8 +831,8 @@ Each run directory contains full provenance:
 Python 3.9.13 (development now also runs on 3.12), dependencies pinned in
 `requirements.txt`. The full hardware/software specification is in
 [`docs/infrastructure.md`](docs/infrastructure.md), and the Zenodo archive exists
-(v2.0.0, 2026-08-07: code [10.5281/zenodo.21836305](https://doi.org/10.5281/zenodo.21836305),
-data [10.5281/zenodo.21836326](https://doi.org/10.5281/zenodo.21836326)).
+(v2.0.0, 2026-08-07: code [10.5281/zenodo.22044877](https://doi.org/10.5281/zenodo.22044877),
+data [10.5281/zenodo.22044891](https://doi.org/10.5281/zenodo.22044891)).
 
 ---
 
@@ -906,8 +906,8 @@ The stale entries are left in the `.bib` rather than deleted so the removal is a
 are simply uncited. **Verify every remaining citation before submission.**
 
 **Archival (done 2026-08-07):** the Zenodo records are minted and published — v2.0.0 code
-[10.5281/zenodo.21836305](https://doi.org/10.5281/zenodo.21836305) and data
-[10.5281/zenodo.21836326](https://doi.org/10.5281/zenodo.21836326). `scripts/zenodo_deposit.py`
+[10.5281/zenodo.22044877](https://doi.org/10.5281/zenodo.22044877) and data
+[10.5281/zenodo.22044891](https://doi.org/10.5281/zenodo.22044891). `scripts/zenodo_deposit.py`
 stops at an unpublished draft by design — publishing is an irreversible public action, and the
 final click was a human one.
 
@@ -951,7 +951,7 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
   title   = {When the Interval Is Smaller Than the Instrument: Two Ways Streaming Latency Benchmarks Fail on Sub-Millisecond Paths},
   year    = {2026},
   note    = {Manuscript targeting IEEE Transactions on Parallel and Distributed Systems;
-             code and data archived at \url{https://doi.org/10.5281/zenodo.21836305}}
+             code and data archived at \url{https://doi.org/10.5281/zenodo.22044877}}
 }
 ```
 
@@ -988,8 +988,8 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 Manuscript restructured for **IEEE TPDS** (`IEEEtran` journal, 16-page ceiling test-enforced,
 39-page companion supplement); the OMB silent-deletion arm (the paper's second failure mode)
 integrated. Zenodo v2.0.0 archived from tag `v2.0.0` (commit `bebabec`) with SHA256 manifests:
-code [10.5281/zenodo.21836305](https://doi.org/10.5281/zenodo.21836305), data
-[10.5281/zenodo.21836326](https://doi.org/10.5281/zenodo.21836326). 2,275 tests green.
+code [10.5281/zenodo.22044877](https://doi.org/10.5281/zenodo.22044877), data
+[10.5281/zenodo.22044891](https://doi.org/10.5281/zenodo.22044891). 2,275 tests green.
 
 ### 1.0.1 — 2026-07-28 — Zenodo DOIs wired in
 The minted v1 Zenodo DOIs wired into `CITATION.cff`, README badges and the paper; software and

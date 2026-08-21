@@ -7,9 +7,9 @@
 %   abstract 100-200 words; supplement is a separate file with no page limit.
 %
 % Two substantive changes from the previous version:
-%   1. Mode A is no longer called a causality violation. The acknowledgement-referenced
+%   1. Mode A is no longer called a causality violation. The acknowledgment-referenced
 %      span is not a causal chain: the broker's append precedes both the producer's
-%      receipt of the acknowledgement and the consumer's receipt of the record, and
+%      receipt of the acknowledgment and the consumer's receipt of the record, and
 %      neither precedes the other. scripts/recount_spans.py settles it on the corpus --
 %      the send-referenced span, which IS a chain, never inverts.
 %   2. Every proportion carries a Wilson interval and every ratio a two-proportion z,
@@ -63,7 +63,7 @@ over the interval measured. Two consequences of that ratio exceeding one are inv
 the output. First, a measured latency can come out
 negative, because one of the two stamps is written by a thread that must first be scheduled
 and that stall can outlast the delivery being timed. A sign check rejected $1{,}321$ of
-$2{,}266$ runs. Across $\spanEvents$ events the acknowledgement-referenced span inverts
+$2{,}266$ runs. Across $\spanEvents$ events the acknowledgment-referenced span inverts
 $\spanNegAck$ times while the send-referenced span never does,
 on one clock by construction, so the cause is scheduling and not synchronization; real-time
 priority at fixed utilization collapses it $7$--$80\times$. Second, the most
@@ -132,7 +132,7 @@ stamping threads at fixed utilization collapses the rate $7$--$80\times$; identi
 utilization reached by two core geometries differs $2.07\times$;
 lengthening the true transport $77\times$ \emph{lowers} the rate; an unfitted kernel trace
 predicts the observed rate to within a third. The span that inverts is referenced to an
-acknowledgement, and the send-referenced span over the same $\spanEvents$ events never
+acknowledgment, and the send-referenced span over the same $\spanEvents$ events never
 inverts, which locates the fault in the reference stamp rather than in the delivery.
 
 \item \textbf{An audit, and the reporting rules that follow} (Sections~\ref{sec:gate}
@@ -165,7 +165,7 @@ The claim that measurement can dominate a benchmark is not new; what is missing 
 practice of checking for it run by run.
 
 \subsection{Streaming benchmarks}
-Broker comparisons appear continuously, in peer-reviewed venues and in the grey
+Broker comparisons appear continuously, in peer-reviewed venues and in the gray
 literature practitioners read. Apache \kafka{} and \redis{} Streams are the pair they most
 often name, and the OpenMessaging Benchmark~\cite{openmessaging2018} is the community's
 shared instrument. That experimental setup can dominate a result is
@@ -177,15 +177,16 @@ stand a clock. Karimov et al.~\cite{karimov2018benchmarking} separate event-time
 processing-time latency and keep the driver off the machines under test; Van~Dongen and
 Van~den~Poel~\cite{vandongen2020evaluation} use a single broker and its append timestamps
 ``to ensure correct latency measurements'', which is our one-clock rule arrived at
-independently. It does not ask what a millisecond stamp does to a
-sub-millisecond path, or check the sample the instrument keeps. Those two questions are
+independently. Neither work asks what
+a millisecond stamp does to a sub-millisecond path, or checks the sample the instrument
+keeps. Those two questions are
 this paper.
 
 \subsection{Cross-process time measurement}
 \label{sec:related_time}
 Lamport~\cite{lamport1978time} established that a distributed system has no single physical
 time, only a causal partial order. That order decides this paper's central span: an
-acknowledgement at the producer and a record at the consumer are two branches from the
+acknowledgment at the producer and a record at the consumer are two branches from the
 broker's append, so neither precedes the other. Agreeing clocks is a well-known engineering
 problem~\cite{ieee1588}, and instruments built to beat it exist:
 Cloudprofiler~\cite{yang2022cloudprofiler} calibrates cross-node counters to
@@ -341,9 +342,9 @@ it is carried because \tti{} is a total, and named because an unnamed span is no
 \label{sec:proxy}
 This distinction is load-bearing. The
 transport term of Equation~\ref{eq:tti} subtracts the producer's receipt of the broker's
-acknowledgement from the consumer's receipt of the record. The broker's append precedes
+acknowledgment from the consumer's receipt of the record. The broker's append precedes
 both of those events, but neither of them precedes the other: they are two branches of one
-cause. The acknowledgement stamp is therefore a \emph{late, producer-side observation} of a
+cause. The acknowledgment stamp is therefore a \emph{late, producer-side observation} of a
 broker-side event, and when the callback branch runs slower than the delivery branch the
 difference is negative without anything physically impossible having occurred. By contrast
 $t_{\mathrm{recv}}-t_{\mathrm{send}}$ and \tti{} itself are genuine chains: the producer
@@ -405,8 +406,8 @@ giving
 \caption{(a)~How a positive latency is measured as negative, on one clock: each side stamps
 some interval after its event, and when the producer's callback delay exceeds the true
 delivery plus the consumer's delay, the difference inverts --- the record is not early, the
-acknowledgement stamp is late (Section~\ref{sec:testbeds}). The producer's own stamps,
-$t_{\mathrm{sched}}$ and $t_{\mathrm{send}}$, do precede the acknowledgement, and the span
+acknowledgment stamp is late (Section~\ref{sec:testbeds}). The producer's own stamps,
+$t_{\mathrm{sched}}$ and $t_{\mathrm{send}}$, do precede the acknowledgment, and the span
 referenced to them never inverts (Table~\ref{tab:spans}). (b)~Why the check bites hardest on
 small effects: the stamping asymmetry $\Delta$ has a narrow core when the callback thread is
 running and a lobe at $-\baseSliceMs$~ms, the scheduler's base slice, when it is not, so a
@@ -459,8 +460,7 @@ where \texttt{now} is read in the consumer and \texttt{publishTimestamp} is \kaf
 producer-set \texttt{CreateTime}, itself a millisecond value. That difference is then
 promoted, \texttt{TimeUnit.MILLISECONDS.toMicros(now - publishTimestamp)}, so the guard in
 \texttt{WorkerStats.java}:95 --- \texttt{if (endToEndLatencyMicros > 0)} --- tests a variable
-named for microseconds that can only ever hold integer multiples of a thousand of them. The message is
-counted as received one line earlier, but a non-positive latency is dropped and no counter
+named for microseconds that can only ever hold integer multiples of a thousand of them. The message is counted as received a few lines earlier, but a non-positive latency is dropped and no counter
 records how many.
 
 The guard's origin is documented and its reasoning is sound. It was added in 2018 to stop
@@ -662,11 +662,11 @@ for a negative interval in each of three timing functions, under a comment readi
 warp bug on some kernels?''~\cite{fio_gettime}, and a block-tracing tool substitutes one
 nanosecond (Supplement~S36). Substitution leaves nothing missing from the output, so
 retention computed downstream reads $100\%$ and a value never measured enters the
-distribution. A fourth disposal needs two files to see: \texttt{wrk2} tests its interval,
-prints a panic block asserting a negative can never happen, and records it
-anyway, whereupon HdrHistogram's C implementation returns
-\texttt{false} and drops it (Supplement~S36). Neither file is wrong alone and nothing
-counts the loss. In all, $\harnessSilent{}$ of the $\harnessAudited{}$ dispose of the sample
+distribution. A fourth disposal needs two files to see: \texttt{wrk2} tests its interval, prints a
+panic block asserting a negative can never happen, and records it anyway, unchecked; its
+\emph{vendored} copy of HdrHistogram then either trips a live assertion or refuses the
+derived index with a \texttt{false} nobody reads (Supplement~S36). Neither file is wrong
+alone, and on either path the sample is never recorded and nothing counts the loss. In all, $\harnessSilent{}$ of the $\harnessAudited{}$ dispose of the sample
 without counting it. Two are not: Rezolus counts its discards in a metric whose description
 names the cause~\cite{rezolus}, which shows the rule is practical, and
 \texttt{emqtt-bench} computes the same millisecond cross-process difference and keeps every
@@ -713,7 +713,7 @@ first result among them. At saturation \kafka{}'s median transport proxy reads $
 one hundred connections.
 
 Table~\ref{tab:spans} separates the components. The
-acknowledgement-referenced proxy is negative on $\spanNegAck$ of $\spanEvents$ events
+acknowledgment-referenced proxy is negative on $\spanNegAck$ of $\spanEvents$ events
 ($\spanNegAckPct\%$; the Wilson interval is narrower than $0.1$ points at this denominator,
 and we omit it hereafter), and $\spanRunsOverOnePct$ runs exceed the one-per-cent
 threshold on it. The send-referenced span and \tti{}, which are causal chains, are negative
@@ -724,7 +724,7 @@ rather than of impossible physics, which is precisely what the gate is for.
 \begin{table}[t]
 \caption{\textbf{Negatives by span}, over every archived run that joins producer and
 consumer events ($\spanRuns$ runs, $\spanEvents$ events). Only the span whose origin is an
-acknowledgement inverts. The others are causal chains and never do.}
+acknowledgment inverts. The others are causal chains and never do.}
 \label{tab:spans}
 \centering
 \footnotesize
@@ -733,7 +733,7 @@ acknowledgement inverts. The others are causal chains and never do.}
 \toprule
 Span & Origin stamp & Negatives & Share \\
 \midrule
-$t_{\mathrm{recv}}-t_{\mathrm{ack}}$   & acknowledgement (proxy) & $\spanNegAck$ & $\spanNegAckPct\%$ \\
+$t_{\mathrm{recv}}-t_{\mathrm{ack}}$   & acknowledgment (proxy) & $\spanNegAck$ & $\spanNegAckPct\%$ \\
 $t_{\mathrm{recv}}-t_{\mathrm{send}}$  & send (causal chain)     & $\spanNegSend$ & $0\%$ \\
 $t_{\mathrm{out}}-t_{\mathrm{send}}$   & send (causal chain)     & $\spanNegOutputSend$ & $0\%$ \\
 \tti{}                                 & scheduled emission      & $\spanNegTti$ & $0\%$ \\
@@ -745,7 +745,7 @@ $t_{\mathrm{out}}-t_{\mathrm{send}}$   & send (causal chain)     & $\spanNegOutp
 The rejected result was monotone in concurrency, significant after correction
 ($p = 9.0\times10^{-11}$), and passed every conventional check we knew: replicate counts,
 effect sizes, corrected significance, sanity plots. The
-acknowledgement timestamp is taken by the producer's callback thread; accelerated replay
+acknowledgment timestamp is taken by the producer's callback thread; accelerated replay
 saturates the CPU, the thread is descheduled, and by the time it reads the clock the
 consumer has already recorded receipt. That is a timestamping race under load, which is why
 medians stay positive at moderate load and invert wholesale only at saturation.
@@ -886,10 +886,9 @@ $p \tracedGofP$ over $\tracedGofBoot$ replicates drawn from the fitted power law
 The reason is visible without fitting: the counts do not decrease monotonically, as a
 power law must: they have $\tracedModes$ local maxima, and the last is a \emph{mode} at
 $\tracedModeLo$--$\tracedModeHi$~ms holding $\tracedModeShare\%$ of all wakeups,
-$\tracedModeRatio\times$ its lower neighbor. A count against Gregg's modes would not be like
-for like --- different host, workload, scheduler, and his upper mode is cgroup throttling ---
-but neither this share nor this position has, to our knowledge, been attributed to a
-scheduler constant before. Above it the survival is well behaved and
+$\tracedModeRatio\times$ its lower neighbor. A count against Gregg's modes would not be
+like for like --- different host, workload, scheduler --- but neither this share nor this
+position has, to our knowledge, been attributed to a scheduler constant before. Above it the survival is well behaved and
 light --- grouped maximum likelihood beyond $\tracedTailFrom$~ms gives
 $\tracedTailAlpha$ ($\tracedTailCI$), a finite variance. Figure~\ref{fig:spectrum} is the
 histogram itself, and the shape is the argument: no monotone curve passes through it.
@@ -945,10 +944,10 @@ One condition reverses the ordering, and it is not the broker. One-way delay inj
 identically at both leaves \kafka{} tracking it almost additively while \redis{} collapses
 to a median transport of $4.6$~s at $5$~ms of injected delay, $31.3$~s at $20$~ms and
 $102.5$~s at $50$~ms over five feeds per arm --- $900$ to $2{,}050$ times the delay applied.
-The cause is the consumption pattern: a per-message acknowledgement
+The cause is the consumption pattern: a per-message acknowledgment
 turns each event into a sequential round trip, where a prefetching consumer serves from
 buffer. A falsifier
-registered in advance confirms it --- batching those acknowledgements two hundred at a time
+registered in advance confirms it --- batching those acknowledgments two hundred at a time
 cuts the median from $4{,}138$~ms to $103$~ms, replicated four times. Both settings are invisible on a
 co-located testbed --- the round trip they multiply is too short to matter --- so the
 standard evaluation environment hides the choices that matter most.
@@ -971,7 +970,7 @@ demonstrates nothing when it is small; the discipline is tested only by a campai
 something, and ours cost us a result.
 
 \textbf{Name the span you are subtracting.} A difference between two stamps is a latency
-only if the first event causally precedes the second, and an acknowledgement at the producer
+only if the first event causally precedes the second, and an acknowledgment at the producer
 does not precede a record at the consumer (Section~\ref{sec:testbeds}). The corpus caught our
 own instance only when we counted the send-referenced span separately
 (Table~\ref{tab:spans}).
@@ -993,12 +992,12 @@ advice~\cite{rfc2330,rfc3432}; what we add is why --- the phenomenon
 being synchronized with is the timestamp quantum itself. Publish beside the latency the retention rate, the timestamp
 resolution and the synchronization state, none of which is recoverable afterwards: a summary
 from $\ombGridRetentionMin\%$ of samples is typographically identical to one from all.
-Neither half of the rule is unprecedented --- OWAMP requires a packet stamped in the future
-to be recorded unaltered~\cite{rfc4656}, ETSI requires removed measurement cycles to be
-reported~\cite{etsi102250}, and RFC~7679 keeps negatives as distribution
-data~\cite{rfc7679}, which is the sign channel: negative means the reference stamp failed,
-computes-to-zero means the resolution failed, and one unsigned total cannot distinguish
-them. Supplements~S39 and~S40 give both precedents in full.
+Neither half of the rule is unprecedented --- OWAMP requires a packet stamped in the future to
+be recorded unaltered within its timeout window~\cite{rfc4656}, ETSI requires removed measurement cycles to be
+reported~\cite{etsi102250}, and RFC~7679 treats negative
+singletons as usable distribution data~\cite{rfc7679}. The sign is the channel: negative
+means the reference stamp failed, computes-to-zero means the resolution failed, and one
+unsigned total cannot distinguish them. Supplements~S39 and~S40 give both precedents in full.
 
 \textbf{Record the achieved rate, not the flag meant to produce it.} Verify it per run against
 elapsed wall time: the send schedule is an experimental variable in Mode~B, not a nuisance
@@ -1071,7 +1070,7 @@ headroom. An offset able to explain the deepest inversion, $\spanDeepestInversio
 would drive the send-referenced span about that far below zero --- yet over $\spanRuns$ runs
 it never goes negative, and its lowest value anywhere is $+\spanSendFloorUs\,\mu$s. That
 floor bounds any such offset at $\spanOffsetMargin\times$ too small; in the
-$\spanRunsAckInverts$ runs where the acknowledgement span inverts, the send span stays clean
+$\spanRunsAckInverts$ runs where the acknowledgment span inverts, the send span stays clean
 in $\spanRunsAckOnlyPct\%$, over an identical event set. The bound is worth keeping: on one
 host two clock reads cannot disagree by more than $\spanSendFloorUs\,\mu$s without a measured
 span going negative that never does --- an order of magnitude tighter than \texttt{chrony}
@@ -1107,7 +1106,7 @@ publish the retention rate beside the number.
 \section*{Acknowledgment}
 
 The author thanks R.~Duvignau, whose reading established that the
-acknowledgement-referenced span is not a causal chain and prompted the recount that
+acknowledgment-referenced span is not a causal chain and prompted the recount that
 reorganized this paper; D.~Gregg, for the readability critique that shaped the previous
 version and for the self-consistency argument in Section~\ref{sec:external}; J.~Kunkel, for
 the same-clock protocol contrast, the offset-estimation route and the measurement-model
@@ -1141,7 +1140,7 @@ specialized in nuclear fusion science at the University of Stuttgart, Germany, a
 Universit\'e de Lorraine, France. He received the Higher Diploma in computing from
 Atlantic Technological University and an M.Sc.\ in software design with
 cloud-native computing from the Technological University of the Shannon, Ireland, both
-with first-class honours, and is currently pursuing an M.Sc.\ in statistics and data
+with first-class honors, and is currently pursuing an M.Sc.\ in statistics and data
 science at Trinity College Dublin, Ireland.
 He is a Software Engineer with BoscaSports, building real-time pipelines for live
 sports. His research concerns measurement validity --- what a reported number is evidence of,

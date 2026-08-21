@@ -408,3 +408,47 @@ class TestGuardScopeMacros:
                             lambda *a, **k: (_ for _ in ()).throw(OSError("gone")))
         got = dict(epn.registry_macros())
         assert "harnessAudited" in got
+
+
+class TestRegistryTableVocabulary:
+    """The renderer's maps must cover everything the classifier can say.
+
+    Round 6 taught the classifier `library_refusal` and added two harnesses; the renderer's
+    label and citation maps, being hand-written, learned neither. wrk2's Disposal cell
+    rendered as "---", identical to the two counterexamples -- the table acquitted a tool the
+    text convicts -- and the caption's hand-written source list kept six keys in the old row
+    order beside the sentence "this table is generated at build time". These pins make the
+    next vocabulary gap a test failure instead of a round-8 finding.
+    """
+
+    def test_every_disposal_class_has_a_table_label(self):
+        from audit_external_harness import DISPOSAL_KINDS
+        missing = set(DISPOSAL_KINDS) - set(epn.REGISTRY_LABELS)
+        assert not missing, "class(es) the table would render as an acquittal: %s" % sorted(
+            missing)
+
+    def test_every_registry_harness_has_a_citation_key(self):
+        import harness_registry
+        harnesses = {r["harness"] for r in harness_registry.load()}
+        missing = harnesses - set(epn.REGISTRY_CITES)
+        assert not missing, "harness(es) absent from the caption's sources: %s" % sorted(
+            missing)
+
+    def test_the_sources_macro_matches_the_rows_in_count_and_order(self):
+        """The caption claims "in row order"; the macro and the tabular must agree."""
+        import harness_registry
+        rows = sorted(harness_registry.paths())
+        macro = dict(epn.registry_sources_macro())["registryTableSources"]
+        keys = macro[len("\cite{"):-1].split(",")
+        assert len(keys) == len(rows), (len(keys), len(rows))
+        assert keys == [epn.REGISTRY_CITES[h] for h, _ in rows]
+
+    def test_the_supplement_caption_uses_the_generated_list(self):
+        """A hand-written \cite list beside "generated at build time" is the round-7 bug."""
+        from pathlib import Path
+        supp = (Path(__file__).parent.parent.parent / "supplement.tex").read_text(
+            encoding="utf-8")
+        i = supp.index(r"\label{tab:registry}")
+        caption = supp[supp.rindex(r"\caption{", 0, i):i]
+        assert r"\registryTableSources" in caption
+        assert r"\cite{openmessaging2018" not in caption, "hand-written source list is back"

@@ -83,9 +83,19 @@ COUNTER_CONSEQUENT = re.compile(
 # access is what separates this from fio's `if (sec < 0 || (sec == 0 && nsec < 0))`, which is a
 # sign test on two time fields and belongs to SUPPRESSION. A first draft without that
 # requirement classified fio as both, which is how this comment came to be written.
+#
+# Round 7 corrected which file this class points at for wrk2. Upstream HdrHistogram_c refuses
+# the *value* (`if (value < 0 || h->highest_trackable_value < value)`); wrk2 does not build
+# against upstream -- it vendors its own hdr_histogram.c, which refuses the *derived index*
+# (`if (counts_index < 0 || h->counts_len <= counts_index) return false;`, lines 219 and 234),
+# and whose index computation carries assert()s that are live in the shipped build (-O2, no
+# -DNDEBUG). Both spellings are the same disposal -- a bool the caller never checks -- so both
+# match here; the build-dependent abort is recorded in the registry note, not inferred by a
+# pattern.
 LIBRARY_REFUSAL = [
-    # `if (value < 0 || h->highest_trackable_value < value)` -- refuse, and return the refusal.
-    re.compile(r"if\s*\(\s*(\w+)\s*<\s*0\s*\|\|\s*[\w>.\[\]-]+(->|\.)\w+\s*<\s*\1\b"),
+    # `if (value < 0 || h->highest_trackable_value < value)` -- refuse the value...
+    # `if (counts_index < 0 || h->counts_len <= counts_index)` -- ...or the index it maps to.
+    re.compile(r"if\s*\(\s*(\w+)\s*<\s*0\s*\|\|\s*[\w>.\[\]-]+(->|\.)\w+\s*<=?\s*\1\b"),
 ]
 
 # A third response, and the one that hides the failure most completely: detect the inversion and

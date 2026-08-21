@@ -128,7 +128,12 @@ BRITISH = {
     "characterise": "characterize", "characterised": "characterized",
     "generalise": "generalize", "generalises": "generalize",
     "minimise": "minimize", "maximise": "maximize", "emphasise": "emphasize",
-    "favour": "favor", "honour": "honor", "neighbour": "neighbor",
+    "favour": "favor", "honour": "honor", "honours": "honors", "neighbour": "neighbor",
+    # Merriam-Webster-first forms round 7 found surviving both rules: -dgement is not
+    # an -ise ending, and these stems were simply absent from the table.
+    "acknowledgement": "acknowledgment", "acknowledgements": "acknowledgments",
+    "judgement": "judgment", "judgements": "judgments",
+    "grey": "gray", "cancelled": "canceled", "cancelling": "canceling",
     "neighbouring": "neighboring", "neighbours": "neighbors",
 }
 

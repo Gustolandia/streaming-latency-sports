@@ -272,7 +272,11 @@ does not fix a waiting time --- pooling and geometry matter at fixed $\rho$ --- 
 single-parameter law rather than queueing itself. A 2026 preprint by Chandrasekar and
 Kramberger~\cite{chandrasekar2026bias} applies exactly such a single-parameter M/G/1
 framing to benchmark bias, which we adopt as a leading-order account and, on the load axis,
-ultimately refute (Section~\ref{sec:mechanism}). Tail behaviour under
+ultimately refute (Section~\ref{sec:mechanism}). On a second axis they reach our mechanism's
+inflation half concurrently and independently: their client's own interpreter lock
+``artificially inflates'' the latencies it reports, charging the instrument's scheduling to
+the server under test. What a positive number cannot show --- the inversion, and the sign
+channel that makes the displacement legible --- is what remains ours. Tail behaviour under
 load~\cite{li2014tales} is the phenomenon our stall distribution samples, and that work
 also shows real-time priority collapsing a tail that renicing leaves alone --- on the
 system under test, where we apply the same lever to the instrument.

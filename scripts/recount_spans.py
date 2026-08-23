@@ -254,6 +254,24 @@ def totals(rows):
     return agg
 
 
+def by_backend(rows):
+    """The same aggregate as totals(), computed separately for each broker.
+
+    The pooled count cannot answer the question a referee actually asks about Mode A: is
+    this a property of one client's architecture, or of the way the span is built? Splitting
+    it answers that from the same artefact -- both backends stamp on one host and one clock,
+    so the broker is the only thing that changes between the two columns.
+
+    Keyed by the ``backend`` column as it appears in the ledger. A row without one is grouped
+    under ``unknown`` rather than dropped, because a silently shrinking denominator is how a
+    split total starts disagreeing with the pooled one.
+    """
+    groups = {}
+    for row in rows:
+        groups.setdefault(row.get("backend") or "unknown", []).append(row)
+    return {name: totals(subset) for name, subset in sorted(groups.items())}
+
+
 def write_csv(rows, out):
     parent = os.path.dirname(out)
     if parent:

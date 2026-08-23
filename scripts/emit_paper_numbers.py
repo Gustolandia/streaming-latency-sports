@@ -96,7 +96,7 @@ def span_macros(path=SPAN_CSV):
     if not os.path.exists(path):
         return []
     agg = recount_spans.totals(recount_spans.read_csv(path))
-    return [
+    out = [
         ("spanRuns", latex_thousands(agg["runs"])),
         ("spanEvents", latex_thousands(agg["events"])),
         ("spanNegAck", latex_thousands(agg["neg_ack"])),
@@ -119,6 +119,28 @@ def span_macros(path=SPAN_CSV):
         ("spanSendFloorUs", "%.0f" % agg["send_span_floor_us"]),
         ("spanOffsetMargin", "%.0f" % agg["offset_margin_factor"]),
     ]
+    # Per-backend, because pooling hides the only control that separates "a property of
+    # Kafka's client" from "a property of an acknowledgement-referenced span". Both backends
+    # stamp on one host and one clock, so the broker is the sole variable across the columns.
+    rows = recount_spans.read_csv(path)
+    for backend, split in recount_spans.by_backend(rows).items():
+        key = backend[:1].upper() + backend[1:]
+        if not key.isalpha():  # macro names are LaTeX control words
+            continue
+        out.extend([
+            ("span%sRuns" % key, latex_thousands(split["runs"])),
+            ("span%sEvents" % key, latex_thousands(split["events"])),
+            ("span%sNegAck" % key, latex_thousands(split["neg_ack"])),
+            ("span%sNegAckPct" % key, "%.2f" % split["pct_ack"]),
+            ("span%sNegSend" % key, latex_thousands(split["neg_send"])),
+            ("span%sNegOutputSend" % key, latex_thousands(split["neg_output_send"])),
+            ("span%sNegTti" % key, latex_thousands(split["neg_tti"])),
+            ("span%sRunsAckInverts" % key, latex_thousands(split["runs_ack_inverts"])),
+            ("span%sRunsAckInvertsPct" % key, "%.0f" % (
+                100.0 * split["runs_ack_inverts"] / split["runs"] if split["runs"] else 0.0)),
+            ("span%sSendFloorUs" % key, "%.0f" % split["send_span_floor_us"]),
+        ])
+    return out
 
 
 def stat_macros():

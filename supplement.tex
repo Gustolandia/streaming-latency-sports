@@ -2813,4 +2813,170 @@ measurement rather than a recorded fact, and Section~III-A says so. The derivati
 \texttt{scripts/clocksource\_bound.py}, and its tests pin each exclusion to its own ground so
 that an exclusion firing for the wrong reason cannot reach the right answer by luck.
 
+\section{S43. Why the acknowledgment stamp is late, and why the broker is not the reason}
+
+In plain terms: the span that inverts is the one whose reference stamp is read only after a
+thread has been woken, and the corpus shows twice over that this has nothing to do with which
+broker is running. Section~V states the mechanism; this section gives the source lines, the
+control that separates the candidate causes, the rivals that were considered and dropped, and
+the parts we could not test.
+
+\subsection{S43.1. Where each stamp is actually taken}
+
+Producer and consumer are separate processes on one host, and both read
+\textsc{clock\_realtime}. Three stamps enter the spans of Table~II, and they are not taken in
+comparable places.
+
+\begin{itemize}
+\item \textbf{The send stamp} is read on the calling thread immediately \emph{before} the
+client is invoked. In \texttt{scripts/redis\_producer.py} the worker executes
+\texttt{send\_ns = now\_ns()} and only then calls \texttt{r.xadd(...)}.
+\item \textbf{The \redis{} acknowledgment stamp} is read on that same thread the moment
+\texttt{r.xadd(...)} returns. \texttt{xadd} is synchronous: the thread writes the request and
+blocks in a socket read until the reply arrives. No second thread is involved anywhere.
+\item \textbf{The \kafka{} acknowledgment stamp} is read, by default, in the client's I/O
+thread when the delivery callback fires. \texttt{scripts/kafka\_producer.py} also offers
+\texttt{-{}-ack-stamp inline}, which stamps on the calling thread once the send future
+resolves, matching what \texttt{xadd} does; it requires \texttt{-{}-max-inflight~1}.
+\end{itemize}
+
+The two clients therefore differ in whether a second thread stands between the reply and the
+clock read. They do not differ in something more basic: in both, the acknowledgment stamp is
+read only after a thread that was not running has been made runnable and then scheduled.
+
+\subsection{S43.2. Why one span cannot invert and the other can}
+
+The send stamp is taken before the message leaves the process, so
+$t_{\mathrm{send}} \rightarrow \text{emit} \rightarrow \text{deliver} \rightarrow
+t_{\mathrm{recv}}$ is a chain and its ordering holds by construction, however late the
+stamping thread was: a late thread makes the span longer, never shorter. That is not an
+empirical claim about our scheduler, it is a property of the order in which the two
+operations are written, and it is why the send-referenced span is negative on
+$\spanNegSend$ of $\spanEvents$ events under either broker.
+
+The acknowledgment stamp has no such guarantee. The broker's append precedes both the
+producer's receipt of the acknowledgment and the consumer's receipt of the record, but those
+are two downstream branches with no happens-before between them (Supplement~S35.3). Both
+branch stamps are read after a wakeup, so the error on their difference is two-sided, and the
+difference goes negative whenever the acknowledgment-side delay exceeds the true interval plus
+the receive-side delay. The exposure lies in which operand can be late in the shortening
+direction, and that is fixed by how the span is constructed, not by what is being measured.
+
+\subsection{S43.3. The second thread is not the mechanism}
+
+The harness was built expecting the thread hand-off to be the cause; the comment at
+\texttt{kafka\_producer.py} says that \redis{} ``stamps inline on the calling thread the
+moment XADD returns, and never pays that wait''. The corpus does not bear that out, and the
+disagreement is informative.
+
+Two committed results bear on it. First, the stamping campaign (\texttt{ec3}) ran \kafka{}
+under both settings at matched load, and Table~\ref{tab:h3} is the outcome: moving from
+\texttt{callback} to \texttt{inline} lowers \kafka{}'s median while \redis{} does not move,
+shrinking the between-system gap by about a quarter, and a thirty-run replication reproduces
+it. The hand-off is therefore real, it is worth some tens of microseconds of median
+inflation, and a comparison that leaves it in place compares two instruments as well as two
+brokers.
+
+Second, and against the expectation, removing the second thread does not remove the
+inversions. \redis{}, which never has one, inverts on $\spanRedisNegAckPct\%$ of its
+$\spanRedisEvents$ events against \kafka{}'s $\spanKafkaNegAckPct\%$ of $\spanKafkaEvents$;
+by runs affected \redis{} is the worse of the two ($\spanRedisRunsAckInvertsPct\%$ of runs
+against $\spanKafkaRunsAckInvertsPct\%$). A thread returning from a blocking socket read must
+also be made runnable and then scheduled before it can call the clock, and that wait is
+charged to the measurement exactly as a callback dispatch would be. What the two clients
+share is the wakeup; the hand-off is an increment on top of it, not the thing itself.
+
+\paragraph{What we could not test} The clean form of this control would be the inversion rate
+for \kafka{} under \texttt{-{}-ack-stamp inline}, compared with the same runs under
+\texttt{callback}. The stamping campaign retained only its median summary
+(\texttt{docs/results/model/ec3\_stamping.csv}); the per-event records that would carry
+sign-separated counts were not kept, and we do not reconstruct them here. The cross-broker
+contrast above is the evidence we have, and it is weaker than the within-broker one would
+have been.
+
+\subsection{S43.4. Two rivals: the scheduler itself, and the hypervisor}
+
+Neither the operating system nor virtualization is the explanation, and it is worth saying
+why in each case.
+
+The scheduler is not malfunctioning. A base slice with a wakeup-preemption check is a
+throughput and fairness trade-off, and the arithmetic of Section~V-D is the kernel
+maintainers' own. A general-purpose scheduler that guaranteed sub-hundred-microsecond wakeup
+latency to every thread would be a worse general-purpose scheduler, which is why the escapes
+from it are opt-in: real-time priority, a preemption-free build, or a pinned busy-polling
+core. The kernel also already publishes the repair --- \texttt{SO\_TIMESTAMPING} returns the
+time the packet arrived rather than the time a thread got round to asking --- and none of the
+instruments we audited uses it.
+
+Virtualization is not necessary either, and our own numbers point the other way. The
+workstation testbed runs the brokers in containers with no hypervisor beneath them and the
+audit rejects $62.4\%$ of its runs, against $51.9\%$ on the cloud instances. The effect is
+larger where there is no hypervisor at all. Two further observations disagree with a
+steal-time account: real-time priority is a guest-side control and collapses the rate
+$\rtLowFactor$--$\rtHighFactor\times$, which stolen vCPU time would not yield to; and the
+$\tracedModeLo$--$\tracedModeHi$~ms mode sits on the guest kernel's own base-slice arithmetic
+rather than on any quantity the hypervisor exposes. Steal time may still contribute on the
+cloud instances, where the mechanism campaigns were run; what the workstation shows is that it
+is not required.
+
+\subsection{S43.5. Why averaging does not repair either mode}
+
+For Mode~B the natural objection is that quantization error falls both sides of the truth, so
+averaging should recover it. That is exactly right, and it is why the deletion matters: the
+readings that straddle are the estimator, and \textsc{hp}~AN~162-1 makes the point in 1970.
+But the correspondence stops one step further on, and the paper's concession to that note
+should not be read as covering the case here. A counter measures a \emph{constant} interval,
+and which side of a tick a reading falls on is decided by phase, which is independent of the
+measurand. Our retention is $\min(1, T_{\mathrm{true}}/\tau)$, a function \emph{of the
+measurand}: the faster the delivery, the likelier it is deleted. The surviving population is
+therefore selected on the quantity being estimated, which a fixed interval cannot be, and
+averaging over the survivors does not converge on the truth however many are taken. It also
+cannot produce a percentile at all, and a latency benchmark reports percentiles.
+
+The consequence is worth stating in its own right. For a sub-quantum path every survivor
+reads exactly one tick, so the reported median is pinned at $\tau$ while the truth is
+$T_{\mathrm{true}}$, and the overstatement is $\tau/T_{\mathrm{true}}$, the reciprocal of the
+retention. A tool of this design penalizes the paths that are fastest, and by the largest
+factor exactly where it deletes the most.
+
+For Mode~A averaging is worse than unhelpful. The error is not symmetric noise but a
+one-sided lateness on one operand, so it does not cancel; and nothing in the path carries what
+would be needed to remove it afterwards. The reply does not report when it arrived, the thread
+cannot know how long it was not running, and the only clock reading in existence is the late
+one. This is not a bias that can be subtracted but information destroyed at the moment of
+observation, which is why finer clocks, better synchronization and larger samples all leave it
+untouched.
+
+What does work follows from that. Stamp before the action rather than on resumption, so the
+reading bounds its event. Where the event is not yours to stamp, attach the stamp to it ---
+a kernel or hardware receive timestamp, or a broker-assigned one --- which is the
+probe-placement argument in Section~VII-A. Keep a sub-quantum sample as a left-censored
+observation, since ``$T_{\mathrm{true}} < \tau$'' is a fact about the measurand and deleting
+it discards the censoring indicator along with the value. And treat a negative as a gate
+rather than a datum: it is not a censored observation but the reference stamp failing, so it
+belongs in a sign-separated count and in a run-level rejection, never averaged into a
+distribution.
+
+\subsection{S43.6. Where the repairs belong}
+
+No layer here misbehaves, which is why the fix is not obvious from inside any one of them.
+The kernel schedules as designed, the clients return as soon as they can, the brokers
+acknowledge correctly. The benchmark is the only party that assumes something none of them
+promised: that observing an event tells you when the event happened.
+
+\begin{itemize}
+\item \textbf{Operating system:} nothing is owed. The escape hatches and
+\texttt{SO\_TIMESTAMPING} already exist.
+\item \textbf{\kafka{}:} \texttt{record.timestamp()} is a millisecond wire field, so anything
+built on it inherits a millisecond quantum and must carry its own finer stamp in the payload
+to escape. Documenting that, or exposing a finer causally attached stamp, is the ask.
+\item \textbf{\redis{}:} the \texttt{XADD} entry identifier embeds a server-clock,
+millisecond-floored time. One documented sentence saying it is not comparable with a client
+clock would have prevented the driver defect of Section~VI outright.
+\item \textbf{Benchmark authors:} stamp before the action; count discards sign-separated;
+publish retention, timestamp resolution and synchronization state; never difference a
+server-assigned stamp against a client clock without saying so; dither the send instant; and
+record the achieved rate.
+\end{itemize}
+
 \end{document}

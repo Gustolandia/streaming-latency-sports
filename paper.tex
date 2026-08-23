@@ -345,7 +345,7 @@ transport term of Equation~\ref{eq:tti} subtracts the producer's receipt of the 
 acknowledgment from the consumer's receipt of the record. The broker's append precedes
 both of those events, but neither of them precedes the other: they are two branches of one
 cause. The acknowledgment stamp is therefore a \emph{late, producer-side observation} of a
-broker-side event, and when the callback branch runs slower than the delivery branch the
+broker-side event, and when the acknowledgment branch runs slower than the delivery branch the
 difference is negative without anything physically impossible having occurred. By contrast
 $t_{\mathrm{recv}}-t_{\mathrm{send}}$ and \tti{} itself are genuine chains: the producer
 sends, the broker appends, the consumer receives. Section~\ref{sec:audit} reports all four
@@ -404,13 +404,13 @@ giving
 \centering
 \includegraphics[width=0.82\columnwidth]{docs/results/figures/measurement_model.pdf}
 \caption{(a)~How a positive latency is measured as negative, on one clock: each side stamps
-some interval after its event, and when the producer's callback delay exceeds the true
+some interval after its event, and when the producer's stamping delay exceeds the true
 delivery plus the consumer's delay, the difference inverts --- the record is not early, the
 acknowledgment stamp is late (Section~\ref{sec:testbeds}). The producer's own stamps,
 $t_{\mathrm{sched}}$ and $t_{\mathrm{send}}$, do precede the acknowledgment, and the span
 referenced to them never inverts (Table~\ref{tab:spans}). (b)~Why the check bites hardest on
-small effects: the stamping asymmetry $\Delta$ has a narrow core when the callback thread is
-running and a lobe at $-\baseSliceMs$~ms, the scheduler's base slice, when it is not, so a
+small effects: the stamping asymmetry $\Delta$ has a narrow core when the stamping thread
+is running and a lobe at $-\baseSliceMs$~ms, the scheduler's base slice, when it is not, so a
 small $T_{\mathrm{true}}$ is inverted by the whole lobe and a large one only by what lies
 beyond it.}
 \label{fig:model}
@@ -695,9 +695,9 @@ other. That is precisely what the corpus contains. It also explains the contrast
 the sign channel legible: the \kafka{}-driver span floors two stamps whose difference is
 taken inside one JVM, and it never goes negative at all. Clock discipline was clean at
 every logged minute, which is the point --- this failure needs no misbehaving clock, only
-two of them and a floor. The same guard that deletes your fastest measurements will also
-delete the evidence that your instrument spans two clocks, and the report looks identical
-either way.
+two of them and a floor. That guard hides this as well as your fastest measurements. Nor do
+the drivers share a measurand: \kafka{}'s span is client-to-client on one clock, \redis{}'s
+server-to-client across two (Supplement~S43).
 
 \section{Mode A: Why a Latency Comes Out Negative}
 \label{sec:mechanism}
@@ -714,29 +714,28 @@ one hundred connections.
 
 Table~\ref{tab:spans} separates the components. The
 acknowledgment-referenced proxy is negative on $\spanNegAck$ of $\spanEvents$ events
-($\spanNegAckPct\%$; the Wilson interval is narrower than $0.1$ points at this denominator,
-and we omit it hereafter), and $\spanRunsOverOnePct$ runs exceed the one-per-cent
-threshold on it. The send-referenced span and \tti{}, which are causal chains, are negative
+($\spanNegAckPct\%$; Wilson intervals are under $0.1$ points here and omitted hereafter),
+and $\spanRunsOverOnePct$ runs exceed the one-per-cent threshold on it. The send-referenced span and \tti{}, which are causal chains, are negative
 on \textbf{no event at all}. Nothing in this corpus arrived before it was sent; the
 reference stamp was late. The rejections are therefore evidence of an unusable reference
 rather than of impossible physics, which is precisely what the gate is for.
 
 \begin{table}[t]
-\caption{\textbf{Negatives by span}, over every archived run that joins producer and
-consumer events ($\spanRuns$ runs, $\spanEvents$ events). Only the span whose origin is an
-acknowledgment inverts. The others are causal chains and never do.}
+\caption{\textbf{Negatives by span and broker} ($\spanRuns$ runs, $\spanEvents$ events,
+one clock). Only the acknowledgment-origin span inverts, and under both brokers
+($\spanKafkaNegAckPct\%$, $\spanRedisNegAckPct\%$); the causal chains never do.}
 \label{tab:spans}
 \centering
 \footnotesize
 \setlength{\tabcolsep}{5pt}
-\begin{tabular}{@{}llrr@{}}
+\begin{tabular}{@{}llrrr@{}}
 \toprule
-Span & Origin stamp & Negatives & Share \\
+Span & Origin stamp & \kafka{} & \redis{} & All \\
 \midrule
-$t_{\mathrm{recv}}-t_{\mathrm{ack}}$   & acknowledgment (proxy) & $\spanNegAck$ & $\spanNegAckPct\%$ \\
-$t_{\mathrm{recv}}-t_{\mathrm{send}}$  & send (causal chain)     & $\spanNegSend$ & $0\%$ \\
-$t_{\mathrm{out}}-t_{\mathrm{send}}$   & send (causal chain)     & $\spanNegOutputSend$ & $0\%$ \\
-\tti{}                                 & scheduled emission      & $\spanNegTti$ & $0\%$ \\
+$t_{\mathrm{recv}}-t_{\mathrm{ack}}$  & acknowledgment & $\spanKafkaNegAck$ & $\spanRedisNegAck$ & $\spanNegAck$ \\
+$t_{\mathrm{recv}}-t_{\mathrm{send}}$ & send (chain)   & $\spanKafkaNegSend$ & $\spanRedisNegSend$ & $\spanNegSend$ \\
+$t_{\mathrm{out}}-t_{\mathrm{send}}$  & send (chain)   & $\spanKafkaNegOutputSend$ & $\spanRedisNegOutputSend$ & $\spanNegOutputSend$ \\
+\tti{}                                & emission       & $\spanKafkaNegTti$ & $\spanRedisNegTti$ & $\spanNegTti$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -745,10 +744,11 @@ $t_{\mathrm{out}}-t_{\mathrm{send}}$   & send (causal chain)     & $\spanNegOutp
 The rejected result was monotone in concurrency, significant after correction
 ($p = 9.0\times10^{-11}$), and passed every conventional check we knew: replicate counts,
 effect sizes, corrected significance, sanity plots. The
-acknowledgment timestamp is taken by the producer's callback thread; accelerated replay
-saturates the CPU, the thread is descheduled, and by the time it reads the clock the
-consumer has already recorded receipt. That is a timestamping race under load, which is why
-medians stay positive at moderate load and invert wholesale only at saturation.
+acknowledgment timestamp is read only once the reply has arrived and its waiting thread is
+rescheduled, so under saturation the consumer has already recorded receipt; the send stamp is
+read before the message leaves and cannot be late that way, whichever client runs
+(Supplement~S43). That is a timestamping race under load, which is why medians stay positive
+at moderate load and invert wholesale only at saturation.
 
 \paragraph{What the check cannot catch}
 \label{sec:blindspot}

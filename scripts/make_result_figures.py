@@ -190,7 +190,12 @@ def plot_spectrum(ax, bins, slice_ms=None):
         if slice_ms is not None and lo == _slice_bucket(los, slice_ms):
             # Anchored to the right of the bar and above it: to its left is the 128 us hump,
             # and a label placed there runs into the axis.
-            ax.annotate("scheduler base slice:\n%.0f ms, %.1f× the bucket below"
+            # Two short lines rather than one long one. Right-aligned at the frame, the
+            # previous wording reached back to x = 7.5 in bucket units while the 1 ms
+            # rule stands at 9.47, so the rule ran through its second line -- invisible
+            # for as long as the reference-line check measured an axvline through the
+            # wrong transform. Every fact is kept; the widest line is now narrow enough.
+            ax.annotate("base slice: %.0f ms\n%.1f× its neighbor"
                         % (slice_ms, rise),
                         xy=(i + 0.62, share[i] * 0.72),
                         xytext=(len(los) - 0.5, max(share) * 1.30),
@@ -205,7 +210,13 @@ def plot_spectrum(ax, bins, slice_ms=None):
     # slice late, and the tick is the grain that clock reports in.
     x_tick = _bucket_position(los, 1000.0)
     if x_tick is not None:
-        ax.axvline(x_tick, color=GREY, lw=0.8, ls=(0, (3, 2)), zorder=0)
+        # Drawn to just above the tallest bar rather than to the top of the frame. A
+        # full-height rule runs through the second line of the slice callout, which the
+        # reference-line check could not see while it measured an axvline with the wrong
+        # transform, and which is visible at print size once it can. The rule marks a
+        # position on the x-axis; it has no business in the callout's airspace.
+        ax.plot([x_tick, x_tick], [0, max(share) * 1.02],
+                color=GREY, lw=0.8, ls=(0, (3, 2)), zorder=0)
         # At the foot of its own rule. The top right of this axis belongs to the slice
         # callout, and a label placed up there shares half its area -- which is how the
         # collision gate found the first attempt. rotation_mode="anchor" is not decoration:
@@ -290,7 +301,10 @@ def plot_grid(ax, cells):
     # it twice.
     ax.annotate("a continuum would\nland on this line", xy=(lim * 0.44, lim * 0.44),
                 xytext=(lim * 0.20, lim * 0.55), fontsize=8, color=GREY, ha="center",
-                arrowprops=dict(arrowstyle="->", color=GREY, lw=0.7))
+                # shrinkB=0: the default backs the head off its target by two points, which
+                # at print size reads as an arrow pointing *near* the diagonal rather than at
+                # it. The target is the line, so the head should touch it.
+                arrowprops=dict(arrowstyle="->", color=GREY, lw=0.7, shrinkB=0))
     ax.text(lim * 0.72, lim * 0.11, "closer to the grid", fontsize=8,
             color=KEPT, ha="center", style="italic")
 

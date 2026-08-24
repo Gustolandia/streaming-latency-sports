@@ -237,6 +237,24 @@ def _slice(bb, fig, scale, shape):
     return y0, y1, x0, x1
 
 
+#: What each check examined on its most recent call, by check name. A verdict of "no
+#: collisions" is worth nothing without it: a check that probed zero candidates says the same
+#: thing as a check that probed four hundred and found them all clean, and the round-21
+#: referee found one of each. `report()` returns a snapshot beside the findings.
+LAST_PROBE = {}
+
+
+def _record_probe(name, n):
+    """Record how many candidates a check looked at, so silence can be told from blindness."""
+    LAST_PROBE[name] = int(n)
+    return int(n)
+
+
+def probe_counts():
+    """A copy of the last recorded counts, one per check."""
+    return dict(LAST_PROBE)
+
+
 def text_struck_by_ink(fig, dpi=RENDER_DPI, max_fraction=MAX_INK_FRACTION):
     """Labels with ink drawn through them, worst first.
 
@@ -244,6 +262,7 @@ def text_struck_by_ink(fig, dpi=RENDER_DPI, max_fraction=MAX_INK_FRACTION):
     everything drawn under them; differencing two rasters would only rediscover the glyphs.
     """
     drawn, inkless, scale = _drawn_boxes(fig, dpi)
+    _record_probe("struck", len(drawn))
     if not drawn:
         return []
     found = []
@@ -285,6 +304,7 @@ def texts_overlapping(fig, min_overlap=MIN_TEXT_OVERLAP):
     # lets a single-line label hide inside the interline gap of a two-line one.
     drawn, _, _ = _drawn_boxes(fig)
     boxes = [(t, (bb.x0, bb.y0, bb.x1, bb.y1)) for t, bb in drawn]
+    _record_probe("overlapping", len(boxes) * (len(boxes) - 1) // 2)
 
     found = []
     for i in range(len(boxes)):
@@ -338,9 +358,14 @@ def _marker_sets(ax, fig):
     return out
 
 
-#: A line has to span at least this much of its axes' diagonal to count as a reference line.
-#: Below it are error bars, caps, whiskers and marker strokes, none of which is a rule anyone
-#: draws across a plot, and all of which would make this check noisy.
+#: A line has to span at least this much of its axes --- of the *width* if it runs across,
+#: of the *height* if it runs up --- to count as a reference line. Below it are error bars,
+#: caps, whiskers and marker strokes, none of which is a rule anyone draws across a plot, and
+#: all of which would make this check noisy.
+#:
+#: Measured against each axis separately, not against the diagonal. A diagonal threshold is
+#: unreachable for a rule spanning one full dimension of a wide, short panel: 50% of the
+#: diagonal of a 282 x 135 px axes is 156 px and a full-height `axvline` is 135.
 REFERENCE_SPAN_FRAC = 0.5
 
 #: How finely a segment is walked when testing it against a label. A text box is never
@@ -382,11 +407,13 @@ def reference_lines_through_text(fig, min_span_frac=REFERENCE_SPAN_FRAC):
     fig.canvas.draw()
     renderer = fig.canvas.get_renderer()
     out = []
+    probed = [0]
     for ax in fig.axes:
         if not ax.get_visible():
             continue
         ab = ax.get_window_extent()
-        threshold = min_span_frac * float(np.hypot(ab.width, ab.height))
+        wide = min_span_frac * float(ab.width)
+        tall = min_span_frac * float(ab.height)
         boxes = []
         for txt in _visible_texts(fig):
             if txt.axes is not ax:
@@ -407,12 +434,16 @@ def reference_lines_through_text(fig, min_span_frac=REFERENCE_SPAN_FRAC):
             pts = line.get_xydata()
             if pts is None or len(pts) < 2:
                 continue
-            disp = ax.transData.transform(np.asarray(pts, dtype=float))
+            # The line's own transform, not the axes'. `axhline` and `axvline` are blended --
+            # data in one axis, axes-fraction in the other -- and putting their coordinates
+            # through `transData` measures a few pixels of a rule that spans the panel.
+            disp = line.get_transform().transform(np.asarray(pts, dtype=float))
             disp = disp[np.isfinite(disp).all(axis=1)]
             for (x0, y0), (x1, y1) in zip(disp[:-1], disp[1:]):
                 length = float(np.hypot(x1 - x0, y1 - y0))
-                if length < threshold:
+                if abs(x1 - x0) < wide and abs(y1 - y0) < tall:
                     continue
+                probed[0] += 1
                 steps = max(2, int(length / SEGMENT_STEP_PX))
                 xs = np.linspace(x0, x1, steps)
                 ys = np.linspace(y0, y1, steps)
@@ -423,6 +454,7 @@ def reference_lines_through_text(fig, min_span_frac=REFERENCE_SPAN_FRAC):
                         out.append({"text": txt.get_text(),
                                     "line_px": round(length, 1),
                                     "crossing_px": round(float(hit) * SEGMENT_STEP_PX, 1)})
+    _record_probe("crossed", probed[0])
     return out
 
 
@@ -442,6 +474,7 @@ def label_patches_over_spines(fig, max_cover_px=MAX_SPINE_COVER_PX):
     fig.canvas.draw()
     renderer = fig.canvas.get_renderer()
     out = []
+    probed = 0
     for ax in fig.axes:
         if not ax.get_visible():
             continue
@@ -462,6 +495,7 @@ def label_patches_over_spines(fig, max_cover_px=MAX_SPINE_COVER_PX):
             except (ValueError, RuntimeError):   # pragma: no cover - backend dependent
                 continue
             for name, spine in spines:
+                probed += 1
                 sb = spine.get_window_extent(renderer)
                 # A spine's extent is a zero-thickness segment: the right spine has
                 # x0 == x1. Inflating by half the stroke turns it back into the thing the
@@ -475,6 +509,35 @@ def label_patches_over_spines(fig, max_cover_px=MAX_SPINE_COVER_PX):
                 if cover > max_cover_px:
                     out.append({"text": txt.get_text(), "spine": name,
                                 "cover_px": round(float(cover), 1)})
+    _record_probe("erased", probed)
+    return out
+
+
+def translucent_legends(fig):
+    """Legends drawn with a frame that is not opaque.
+
+    Matplotlib's default `framealpha` is 0.8, which shows the reader whatever passes under the
+    legend at four-fifths strength. Two figures in this repository shipped that way, and in
+    both a data series ran under the box: the eye reads a pale line and cannot tell it from a
+    faint datum.
+
+    A frameless legend is fine and is not reported. It has nothing to see through, and its
+    text is measured by the same checks that measure any other label.
+    """
+    fig.canvas.draw()
+    out = []
+    probed = 0
+    for ax in fig.axes:
+        if not ax.get_visible():
+            continue
+        legend = ax.get_legend()
+        if legend is None or not legend.get_frame_on():
+            continue
+        probed += 1
+        alpha = legend.get_frame().get_alpha()
+        if alpha is not None and alpha < 1.0:
+            out.append({"entries": len(legend.get_texts()), "alpha": round(float(alpha), 2)})
+    _record_probe("translucent", probed)
     return out
 
 
@@ -487,6 +550,7 @@ def markers_clipped_by_axes(fig, tolerance_frac=0.35):
     """
     fig.canvas.draw()
     out = []
+    probed = 0
     for ax in fig.axes:
         if not ax.get_visible():
             continue
@@ -496,6 +560,7 @@ def markers_clipped_by_axes(fig, tolerance_frac=0.35):
             for (px, py), (ux, uy) in zip(pts, np.asarray(offsets, dtype=float)):
                 if not (np.isfinite(px) and np.isfinite(py)):
                     continue
+                probed += 1
                 over = max(
                     bb.x0 - (px - radius_px), (px + radius_px) - bb.x1,
                     bb.y0 - (py - radius_px), (py + radius_px) - bb.y1,
@@ -506,22 +571,29 @@ def markers_clipped_by_axes(fig, tolerance_frac=0.35):
                         "overhang_px": round(float(over), 2),
                         "radius_px": round(radius_px, 2),
                     })
+    _record_probe("clipped", probed)
     return out
 
 
 def report(fig):
     """All three checks as data, for callers that want to look rather than fail."""
-    return {"struck": text_struck_by_ink(fig),
-            "overlapping": texts_overlapping(fig),
-            "clipped": markers_clipped_by_axes(fig),
-            "crossed": reference_lines_through_text(fig),
-            "erased": label_patches_over_spines(fig)}
+    LAST_PROBE.clear()
+    found = {"struck": text_struck_by_ink(fig),
+             "overlapping": texts_overlapping(fig),
+             "clipped": markers_clipped_by_axes(fig),
+             "crossed": reference_lines_through_text(fig),
+             "erased": label_patches_over_spines(fig),
+             "translucent": translucent_legends(fig)}
+    # Beside the verdicts, what each verdict was reached from. A caller that wants to know
+    # whether "no collisions" means anything reads this.
+    found["probed"] = probe_counts()
+    return found
 
 
 def check(fig, stem=""):
     """Every check, raising with everything needed to find the defect on the page."""
     found = report(fig)
-    if not any(found.values()):
+    if not any(v for k, v in found.items() if k != "probed"):
         return
     lines = ["%s: layout collisions" % (stem or "figure")]
     for d in found["struck"]:
@@ -540,4 +612,9 @@ def check(fig, stem=""):
     for d in found["erased"]:
         lines.append("  label patch painted over the %s spine: %r covers %.0f px of it"
                      % (d["spine"], d["text"], d["cover_px"]))
+    for d in found["translucent"]:
+        lines.append("  legend frame is translucent (framealpha=%.2f): whatever passes under "
+                     "its %d entries shows through as a ghost -- set framealpha=1.0, or "
+                     "frameon=False if seeing through it is the point"
+                     % (d["alpha"], d["entries"]))
     raise FigureCollision("\n".join(lines))

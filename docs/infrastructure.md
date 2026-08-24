@@ -202,6 +202,57 @@ shape twice more, and both came from a referee reading a rendered page:
 fix one class of defect --- an inset, an opaque patch, a zorder --- ask what the device itself
 can break, and measure that too.
 
+**1e. A check that reports clean must be able to prove it looked.** This is Section IV of the
+manuscript turned on the manuscript's own tooling, and round 21 found it: a guard that drops
+samples and records no count cannot be told from a guard that never fires, and neither can a
+check that reports no collisions be told from a check that measured nothing.
+
+`reference_lines_through_text` reported clean on every shipped figure for a whole round. It
+was not clean; it was blind, twice over. It transformed every `Line2D` with `ax.transData`,
+but `axhline` and `axvline` carry a **blended** transform --- data in one axis,
+axes-fraction in the other --- so an `axvline`'s coordinates are `[[x, 0], [x, 1]]` and
+`transData` measured 4.8 px of a rule 135 px long. And it qualified a line at half the axes
+*diagonal*, which on a 282 x 135 px panel is 156 px: a rule spanning the entire height is
+disqualified by geometry before anything else is asked. Meanwhile Figure 7's tick rule was
+printed through the second line of its own callout.
+
+Two things came out of it, and the second matters more than the first:
+
+- The check uses `line.get_transform()` and qualifies against each axis separately --- width
+  for a horizontal run, height for a vertical one.
+- **Every check now counts the candidates it examined**, and `report()` returns those counts
+  beside the verdicts. A test asserts, *per figure*, that the reference-line check saw the
+  rule that figure carries, against a written list of which figures carry one and what draws
+  it; and that each other check saw something on a figure that certainly contains its
+  subject.
+
+Per figure, not summed. The first version of that test summed the counts over five figures
+and passed under the very bug it was written for, because the grid's `y = x` is an ordinary
+data-space line and kept the total up by itself. **An aggregate is where a blind instrument
+hides.** That is the same sentence as Section IV's, about a different instrument.
+
+**1g. A framed legend must be opaque.** Twice in two rounds a data series was visible through
+a legend at matplotlib's default `framealpha` of 0.8 -- `network_delay` in round 20,
+`window_sweep` in round 22, where the emitted series and its first marker showed as pale
+ghosts behind the entries. `translucent_legends` now reports any legend drawn with a frame
+that is not opaque. The rule is unconditional rather than conditional on something passing
+underneath, because the conditional form already exists and already failed: a line can cross
+a legend's handle column and the gap before its text without touching a glyph box, so the
+reference-line check sees nothing. A figure that wants to see through its legend says
+`frameon=False`, and then its text is policed like any other label.
+
+Both fixes have a second half worth remembering: making a legend opaque in place hid a data
+point in both figures, so the legend has to move as well. Opaque and in the wrong place is not
+better than translucent.
+
+**1f. Move the pointer with the content.** Round 20 lifted two passages into new supplement
+sections and left both pointers on the sections the content had left, so Section IV-C cited
+S46 for a construction S46 does not contain. Every pointer still resolved, which is what the
+existing check asks. What it did not ask was whether the new sections could be reached at
+all. `TestEveryTargetedRelocationIsReachable` now requires every section from S45 onward ---
+the range where relocation became targeted rather than bulk --- to be pointed at from the
+paper. A relocation without a pointer is a deletion with extra steps.
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

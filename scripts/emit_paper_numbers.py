@@ -658,6 +658,7 @@ def registry_macros():
     """
     try:
         import harness_registry
+        from audit_external_harness import DISPOSAL_KINDS
         s = harness_registry.summary()
     except (ImportError, OSError, KeyError, ValueError):
         return []
@@ -676,6 +677,11 @@ def registry_macros():
         ("harnessSuppressors", str(len(s["suppressors"]))),
         ("harnessCounting", str(len(s["counts_discards"]))),
         ("harnessRefusals", str(len(s["library_refusals"]))),
+        # How many disposal classes there are, which the paragraph in IV-D was asserting from
+        # prose and asserting wrongly: it said four while the taxonomy has three and the
+        # sentence itself enumerated three. The size of DISPOSAL_KINDS is not a fact about
+        # this campaign, it is a fact about the classifier, and it is countable.
+        ("harnessDisposalClasses", str(len(DISPOSAL_KINDS))),
         # The tool in no disposal class at all. emqtt-bench guards a counter rather than the
         # sample, so it neither discards nor counts a discard, and lumping it with the tool
         # that counts is what left Section IV-D describing it as "a fifth entry" of nothing.

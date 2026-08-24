@@ -26,7 +26,7 @@ try:  # pragma: no cover - exercised indirectly
     from statsmodels.stats.power import TTestIndPower
     _ANALYSIS = TTestIndPower()
     _HAVE_SM = True
-except Exception:  # pragma: no cover
+except Exception:  # pragma: no cover - statsmodels is optional and absent here
     _ANALYSIS = None
     _HAVE_SM = False
 
@@ -102,6 +102,6 @@ def main(argv=None):
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - dispatch only; main() is tested directly
     import sys
     sys.exit(main())

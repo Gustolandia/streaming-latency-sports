@@ -459,3 +459,50 @@ class TestByBackend:
 
     def test_an_empty_corpus_yields_an_empty_split(self):
         assert rs.by_backend([]) == {}
+
+
+class TestTheArchiveMembersAndPathsThatAreNotWhatTheyLookLike:
+
+    def test_a_member_the_archive_cannot_hand_over_is_skipped(self, tmp_path,
+                                                              monkeypatch):
+        """`extractfile` answers None for a member that is not a plain readable file.
+
+        `isfile()` screens most of those out, so this guard is the second line: a 56k-member
+        archive streamed once must not lose the whole recount to one member the tar library
+        declines to open. The good run beside it must still be counted.
+        """
+        import io as _io
+        import tarfile
+
+        path = tmp_path / "runs.tar.gz"
+        rows = [{"run_id": "r1", "backend": "kafka", "event_id": "e0",
+                 "t_prod_sched_ns": 0, "t_prod_send_ns": 1, "t_broker_ack_ns": 2}]
+        with tarfile.open(path, "w:gz") as tf:
+            for run in ("r0", "r1"):
+                body = prod_csv(rows)
+                if isinstance(body, str):
+                    body = body.encode("utf-8")
+                info = tarfile.TarInfo("runs/%s/producer.csv" % run)
+                info.size = len(body)
+                tf.addfile(info, _io.BytesIO(body))
+
+        real = tarfile.TarFile.extractfile
+
+        def declines_one(self, member):
+            if "r0" in member.name:
+                return None
+            return real(self, member)
+
+        monkeypatch.setattr(tarfile.TarFile, "extractfile", declines_one)
+        got, skipped = rs.scan_archive(str(path))
+        assert isinstance(got, list) and isinstance(skipped, list)
+        assert "r0" not in [r.get("run_id") for r in got]
+
+    def test_an_output_path_with_no_directory_part_is_written_where_it_stands(self,
+                                                                              tmp_path,
+                                                                              monkeypatch):
+        """`os.path.dirname("spans.csv")` is empty, and `makedirs("")` raises. The guard is
+        what lets the script be run from inside the directory it writes to."""
+        monkeypatch.chdir(tmp_path)
+        rs.write_csv([], "spans.csv")
+        assert (tmp_path / "spans.csv").exists()

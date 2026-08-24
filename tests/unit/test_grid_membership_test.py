@@ -184,3 +184,63 @@ class TestCLI:
         write_ledger(led, [(500, 1.0), (500, 99.0)])
         assert main(["--ledger", str(led)]) == 1
         assert "incommensurate" in capsys.readouterr().out
+
+
+class TestTheLedgerRowsAndBetaEdgesThatAreRefused:
+    """What the grid test declines to read, and the two ends of its own beta CDF.
+
+    The grid law is the paper's strongest arithmetic claim, so what feeds it matters as much
+    as the statistic: a row from the wrong campaign, an invalid cell, a count taken from
+    somewhere other than the shutdown hook, or a level that will not parse must all be left
+    out. Each of them would move theta without leaving a trace.
+    """
+
+    def test_a_row_from_another_campaign_is_not_read(self, tmp_path):
+        p = tmp_path / "ledger.csv"
+        write_ledger(p, [(457, 49.0), (457, 50.0), (457, 51.0, "some_other_campaign")])
+        assert len(load_arms(p)[457]) == 2
+
+    def test_an_invalid_cell_is_not_read(self, tmp_path):
+        p = tmp_path / "ledger.csv"
+        write_ledger(p, [(457, 49.0), (457, 50.0), (457, 51.0, "rate_phase", "0")])
+        assert len(load_arms(p)[457]) == 2
+
+    def test_a_count_from_the_wrong_source_is_not_read(self, tmp_path):
+        """Only the shutdown hook counts the discards; the combined CSV does not."""
+        p = tmp_path / "ledger.csv"
+        write_ledger(p, [(457, 49.0), (457, 50.0),
+                         (457, 51.0, "rate_phase", "1", "combined_csv")])
+        assert len(load_arms(p)[457]) == 2
+
+    def test_a_level_that_will_not_parse_is_not_read(self, tmp_path):
+        p = tmp_path / "ledger.csv"
+        write_ledger(p, [(457, 49.0), (457, 50.0)])
+        with p.open("a", newline="", encoding="utf-8") as fh:
+            fh.write("rate_phase,rX,not-a-number,1,shutdown_hook,50000,50000,0\n")
+        assert load_arms(p) == {457: [49.0, 50.0]}
+
+    def test_a_cell_that_measured_nothing_is_not_an_arm(self, tmp_path):
+        """Zero kept and zero discarded is no retention at all, not a retention of zero."""
+        p = tmp_path / "ledger.csv"
+        write_ledger(p, [(457, 49.0), (457, 50.0)])
+        with p.open("a", newline="", encoding="utf-8") as fh:
+            fh.write("rate_phase,r457_empty,457,1,shutdown_hook,0,0,0\n")
+        assert load_arms(p) == {457: [49.0, 50.0]}
+
+    def test_the_interval_is_one_sided_at_the_ends_of_the_range(self):
+        """Zero successes has no lower bound to estimate and n successes has no upper one;
+        inventing either would narrow an interval the data do not support."""
+        assert clopper_pearson(0, 10)[0] == 0.0
+        assert clopper_pearson(10, 10)[1] == 1.0
+
+    def test_the_continued_fraction_answers_even_when_it_does_not_converge_early(self):
+        """Lentz's recurrence is capped at two hundred iterations.
+
+        On the small arm counts this project measures it converges in a few dozen, but the
+        cap is what guarantees the routine returns at all, and a run that reaches it must
+        come back with the value it had rather than loop or raise. A million trials is well
+        past the cap and is the case that exercises it.
+        """
+        lo, hi = clopper_pearson(500_000, 1_000_000)
+        assert 0.49 < lo < 0.5 < hi < 0.51
+        assert lo < hi

@@ -1530,3 +1530,176 @@ class TestEntryPoint:
         assert hasattr(scripts.check_concurrency_health, 'main')
         assert hasattr(scripts.check_concurrency_health, 'get_concurrency_from_run_id')
         assert hasattr(scripts.check_concurrency_health, 'check_run_health')
+
+
+class TestTheOtherSideOfEveryFilter:
+    """Twelve branches this health check had never been asked to take.
+
+    A health check is only worth running if it behaves when the thing it inspects is damaged
+    in a way nobody anticipated. Every case here is one of those: a plan name outside the
+    scenario map, a log that is not text, a suite with no feed numbers at all. In each the
+    check must report what it found and carry on, because a health check that dies on the
+    first oddity leaves the campaign unexamined.
+    """
+
+    def test_a_plan_naming_no_known_scenario_yields_none(self, temp_dir):
+        """`get_scenario_from_meta` walks a chain of names and must fall off the end."""
+        d = temp_dir / "run"
+        d.mkdir()
+        meta = d / "meta.json"
+        meta.write_text(json.dumps({"plan_csv": "data/unrelated_plan.csv"}),
+                        encoding="utf-8")
+        assert get_scenario_from_meta(meta) is None
+
+    def test_a_plan_naming_s2_matches_after_the_longer_names_fail(self, temp_dir):
+        """s2sf12j2 and s2sf12 are checked first; plain s2 is the fallthrough."""
+        d = temp_dir / "run"
+        d.mkdir()
+        meta = d / "meta.json"
+        meta.write_text(json.dumps({"plan_csv": "data/s2_plan.csv"}), encoding="utf-8")
+        assert get_scenario_from_meta(meta) == "s2"
+
+    def test_a_csv_readable_under_neither_encoding_counts_as_empty(self, temp_dir,
+                                                                   monkeypatch):
+        """Both attempts fail only when the file itself is unreadable, not merely oddly
+        encoded. Zero is the honest answer: nothing could be counted."""
+        p = temp_dir / "x.csv"
+        p.write_text("a\n1\n", encoding="utf-8")
+
+        def always_fails(*a, **kw):
+            raise OSError("locked by another process")
+
+        monkeypatch.setattr("builtins.open", always_fails)
+        assert count_csv_rows(p) == 0
+
+    def test_a_summary_missing_one_count_skips_the_sanity_comparison(self, temp_dir):
+        """n_matched > n_producer cannot be judged when one of them was never written."""
+        d = temp_dir / "run"
+        d.mkdir()
+        (d / "producer.csv").write_text("event_id\ne0\n", encoding="utf-8")
+        (d / "consumer_events.csv").write_text("event_id\ne0\n", encoding="utf-8")
+        # A harness that wrote the keys and no values. `.get(k) or .get(alt, 0)` turns an
+        # absent key into 0, so only an explicit null reaches the comparison as None.
+        (d / "tti_summary.json").write_text(
+            json.dumps({"n_matched": 5, "n_producer": None, "n_produced": None,
+                        "n_consumer": 1}),
+            encoding="utf-8")
+        ok, issues = check_event_counts(d)
+        assert not any("> n_producer" in i for i in issues), (
+            "the comparison needs both counts; with one absent it must not be attempted")
+
+    def test_a_log_that_is_not_text_is_skipped_not_fatal(self, temp_dir):
+        """Logs pick up binary from a crashed child; one must not end the scan."""
+        d = temp_dir / "run"
+        d.mkdir()
+        (d / "producer.log").write_bytes(b"\xff\xfe\x00binary\x00")
+        ok, issues = check_logs_for_errors(d)
+        assert isinstance(ok, bool) and isinstance(issues, list)
+
+    def test_a_file_beside_the_run_directories_is_not_a_run(self, temp_dir):
+        runs = temp_dir / "runs"
+        runs.mkdir()
+        (runs / "concurrency_n5_20260613_001322_kafka_feed1_rep1").mkdir()
+        (runs / "concurrency_n5_20260613_001322_kafka_feed2_rep1.tar.gz").write_text(
+            "an archive", encoding="utf-8")
+        assert len(discover_concurrency_runs(runs)) == 1
+
+    def test_a_run_outside_the_naming_convention_is_in_no_suite(self, temp_dir):
+        """Grouping keys on the campaign prefix; a name without one belongs to nothing."""
+        runs = [temp_dir / "concurrency_n5_20260613_001322_kafka_feed1_rep1",
+                temp_dir / "handwritten_experiment"]
+        suites = group_runs_by_test_suite(runs)
+        assert list(suites) == ["concurrency_n5_20260613_001322"]
+
+    def test_a_suite_of_runs_with_no_feed_numbers_reports_no_feed_issue(self, temp_dir):
+        """With no feed numbers there is nothing to call consecutive or not."""
+        runs = []
+        for backend in ("kafka", "redis"):
+            d = temp_dir / ("concurrency_n5_20260613_001322_%s_norep" % backend)
+            d.mkdir()
+            runs.append(d)
+        results = check_test_suite_health("handwritten", runs)
+        assert not any("Feed numbers" in i for i in results["suite_issues"])
+
+    def test_a_run_report_with_nothing_identifying_prints_no_bracket(self, capsys):
+        """Every descriptor absent must give a bare line, not an empty `[]`."""
+        print_run_report({"run_id": "mystery", "status": "FAIL", "issues": [],
+                          "concurrency": None, "backend": None, "scenario": None,
+                          "feed_number": None})
+        out = capsys.readouterr().out
+        assert "  mystery: " in out, "no descriptors means no bracket at all"
+        assert "n=" not in out and "backend=" not in out
+
+    def test_a_suite_with_no_issues_prints_no_issue_list(self, capsys):
+        print_suite_report({"suite_prefix": "s", "status": "PASS", "passed_runs": 2,
+                            "total_runs": 2, "suite_issues": [], "run_results": []},
+                           verbose=False)
+        out = capsys.readouterr().out
+        assert "Suite issues" not in out
+
+    def test_a_quiet_suite_report_does_not_print_each_run(self, capsys):
+        print_suite_report({"suite_prefix": "s", "status": "PASS", "passed_runs": 1,
+                            "total_runs": 1, "suite_issues": [],
+                            "run_results": [{"run_id": "r1", "status": "PASS", "issues": [],
+                                             "concurrency": 5, "backend": "kafka",
+                                             "scenario": "s1", "feed_number": 1}]},
+                           verbose=False)
+        assert "r1" not in capsys.readouterr().out
+
+    def test_a_directory_with_no_runs_reports_no_pass_rate(self, temp_dir, capsys):
+        """A pass rate over zero runs is a division, not a measurement."""
+        runs = temp_dir / "runs"
+        runs.mkdir()
+        with patch('sys.argv', ['check_concurrency_health.py', '--directory', str(runs)]):
+            from scripts.check_concurrency_health import main
+            try:
+                main()
+            except SystemExit:
+                pass
+        assert "Overall pass rate" not in capsys.readouterr().out
+
+
+class TestTheLastTwoBranches:
+
+    def test_a_csv_the_first_encoding_refuses_is_read_by_the_second(self, temp_dir,
+                                                                    monkeypatch):
+        """The fallback exists because these files come from two harnesses on two platforms.
+
+        Only the first attempt is allowed to fail here, which is the case the fallback was
+        written for: a read that fails once and succeeds on a second, plainer attempt.
+        """
+        p = temp_dir / "x.csv"
+        p.write_text("a\n1\n2\n", encoding="utf-8")
+        real_open = open
+        attempts = {"n": 0}
+
+        def once_flaky(path, *a, **kw):
+            if str(path).endswith("x.csv"):
+                attempts["n"] += 1
+                if attempts["n"] == 1:
+                    raise UnicodeDecodeError("utf-8", b"", 0, 1, "refused")
+            return real_open(path, *a, **kw)
+
+        monkeypatch.setattr("builtins.open", once_flaky)
+        assert count_csv_rows(p) == 2
+        assert attempts["n"] == 2, "the second attempt is what produced the count"
+
+    def test_runs_that_group_into_no_suite_report_no_rates(self, temp_dir, capsys):
+        """`--run-prefix` selects by name alone, so it can pick up directories that carry no
+        campaign prefix. There are runs and no suites, and both rates would divide by zero.
+        """
+        runs = temp_dir / "runs"
+        runs.mkdir()
+        (runs / "handwritten_one").mkdir()
+        (runs / "handwritten_two").mkdir()
+        with patch('sys.argv', ['check_concurrency_health.py', '--directory', str(runs),
+                                '--run-prefix', 'handwritten']):
+            from scripts.check_concurrency_health import main
+            try:
+                main()
+            except SystemExit:
+                pass
+        out = capsys.readouterr().out
+        assert "Total runs: 0/0 passed" in out
+        assert "Failure rate" not in out
+        assert "Overall pass rate" not in out

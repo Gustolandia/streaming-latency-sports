@@ -303,3 +303,21 @@ class TestReportAndCLI:
         ext, omb = self._two_cells(tmp_path)
         assert main(["--root", str(ext), "--omb-dir", str(omb)]) == 0
         assert "kept" in capsys.readouterr().out
+
+
+class TestACorpusWithNoMeasurableRetention:
+
+    def test_the_range_line_is_omitted_rather_than_printed_over_nothing(self, tmp_path,
+                                                                        capsys):
+        """Retention is kept/(kept+discarded). A cell that recorded no discards at all has no
+        percentage, and `min()` over an empty list is not a range -- it is an exception.
+        """
+        import omb_retention_table as ort
+        rows = [{"campaign": "e-x", "cell": "c1", "kept": 0, "discarded_zero": 0,
+                 "discarded_negative": 0, "retention_pct": "",
+                 "omb_p50_ms": None, "omb_p99_ms": None, "omb_avg_ms": None,
+                 "pub_lat_p50_ms": None}]
+        ort.report(rows)
+        out = capsys.readouterr().out
+        assert "retention ranges from" not in out
+        assert "negative samples across every cell: 0" in out

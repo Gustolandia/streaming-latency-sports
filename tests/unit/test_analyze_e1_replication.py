@@ -179,3 +179,70 @@ class TestMain:
                      "--runs-dir", str(temp_dir / "runs"),
                      "--out", str(temp_dir / "out")]) == 1
         assert "no usable conditions" in capsys.readouterr().out
+
+
+class TestTheRowsAndRunsThatMustBeSteppedOver:
+    """The reader's rejection paths. Each drops one event or one run and no more.
+
+    E-1 is the replication of the headline, so a reader that quietly shortened a series here
+    would change the very number the replication is supposed to confirm.
+    """
+
+    @staticmethod
+    def _pair(runs_dir, run_id, producer_rows, consumer_rows):
+        d = runs_dir / run_id
+        d.mkdir(parents=True, exist_ok=True)
+        with (d / "producer.csv").open("w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=["event_id", "t_broker_ack_ns"])
+            w.writeheader()
+            w.writerows(producer_rows)
+        with (d / "consumer_events.csv").open("w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=["event_id", "t_consume_ns"])
+            w.writeheader()
+            w.writerows(consumer_rows)
+        return d
+
+    def test_an_unacknowledged_send_is_skipped(self, temp_dir):
+        d = self._pair(temp_dir, "r1",
+                       [{"event_id": "e0", "t_broker_ack_ns": ""},
+                        {"event_id": "e1", "t_broker_ack_ns": T0}],
+                       [{"event_id": "e0", "t_consume_ns": T0 + 1_000_000},
+                        {"event_id": "e1", "t_consume_ns": T0 + 2_000_000}])
+        assert run_transports(str(d)) == [2.0]
+
+    def test_a_consumer_row_with_no_matching_ack_is_skipped(self, temp_dir):
+        d = self._pair(temp_dir, "r1",
+                       [{"event_id": "e1", "t_broker_ack_ns": T0}],
+                       [{"event_id": "ghost", "t_consume_ns": T0 + 9_000_000},
+                        {"event_id": "e1", "t_consume_ns": T0 + 2_000_000}])
+        assert run_transports(str(d)) == [2.0]
+
+    def test_a_consumer_row_with_no_stamp_is_skipped(self, temp_dir):
+        d = self._pair(temp_dir, "r1",
+                       [{"event_id": "e0", "t_broker_ack_ns": T0},
+                        {"event_id": "e1", "t_broker_ack_ns": T0}],
+                       [{"event_id": "e0", "t_consume_ns": "None"},
+                        {"event_id": "e1", "t_consume_ns": T0 + 2_000_000}])
+        assert run_transports(str(d)) == [2.0]
+
+    def test_a_run_that_yielded_nothing_is_stepped_over(self, temp_dir):
+        """An empty run must cost its own median, not the condition's."""
+        ts = "n5_20260101_000000"
+        cond = temp_dir / "e1_rep" / "n5"
+        (cond / f"concurrency_concurrency_{ts}").mkdir(parents=True)
+        (temp_dir / "runs" / f"concurrency_{ts}_kafka_feed1_rep0").mkdir(parents=True)
+        _run(temp_dir / "runs", f"concurrency_{ts}_kafka_feed1_rep1", KAFKA_SERIES)
+        all_med, pro_med = condition_medians(str(cond), str(temp_dir / "runs"), "kafka")
+        assert len(all_med) == 1 and len(pro_med) == 1
+
+    def test_a_run_shorter_than_the_prologue_still_contributes_its_overall_median(self,
+                                                                                 temp_dir):
+        """A short run has an overall median; taking a prologue median of nothing would not."""
+        ts = "n5_20260101_000000"
+        cond = temp_dir / "e1_rep" / "n5"
+        (cond / f"concurrency_concurrency_{ts}").mkdir(parents=True)
+        _run(temp_dir / "runs", f"concurrency_{ts}_kafka_feed1_rep1", [0.5, 0.6])
+        all_med, pro_med = condition_medians(str(cond), str(temp_dir / "runs"), "kafka",
+                                             prologue=0)
+        assert all_med == [0.55]
+        assert pro_med == [], "a prologue of zero events has no median to report"

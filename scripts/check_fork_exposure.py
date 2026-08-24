@@ -49,6 +49,14 @@ FIELDS = ["fork", "default_branch", "guard", "checked_utc"]
 
 
 def _fetch(url, raw=False, tries=3, pause=2.0):
+    """The body, or a value that reads as "could not read". Never raises, never returns None.
+
+    Reporting the failure after the loop rather than inside it means there is no path out of
+    this function that answers nothing: an earlier version returned the failure on the last
+    attempt and fell off the end otherwise, so `tries=0` handed the caller `None`, which
+    `classify` would have met as an AttributeError on `.startswith`.
+    """
+    last = "no attempt was made"
     for attempt in range(tries):
         try:
             request = urllib.request.Request(url, headers=HEADERS)
@@ -56,9 +64,10 @@ def _fetch(url, raw=False, tries=3, pause=2.0):
                 body = response.read().decode("utf-8", "replace")
             return body if raw else json.loads(body)
         except Exception as exc:  # noqa: BLE001 - any failure is "could not read"
-            if attempt == tries - 1:
-                return ("ERROR %s" % exc) if raw else {"error": str(exc)}
-            time.sleep(pause)
+            last = str(exc)
+            if attempt < tries - 1:
+                time.sleep(pause)
+    return ("ERROR %s" % last) if raw else {"error": last}
 
 
 def fork_names(upstream=UPSTREAM, pages=3):
@@ -139,5 +148,5 @@ def main(argv=None):
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - dispatch only; main() is tested directly
     raise SystemExit(main())

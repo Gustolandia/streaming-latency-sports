@@ -192,3 +192,20 @@ class TestMain:
         assert main(["--prediction", str(p), "--observed", str(o),
                      "--out", str(temp_dir / "o")]) == 1
         assert "no usable rows" in capsys.readouterr().out
+
+
+class TestASweepThatReachedNoPredictedCondition:
+
+    def test_it_is_undecided_rather_than_scored_on_nothing(self, temp_dir, capsys):
+        """Both predictions can be scored only where the sweep actually went.
+
+        A ladder that stopped below the first predicted utilisation supports neither model,
+        and a verdict computed over zero conditions would report 0/0 as a comparison.
+        """
+        obs = _write_obs(temp_dir, [(0.20, 0.01), (0.30, 0.02)])
+        assert main(["--prediction", str(_write_pred(temp_dir)),
+                     "--observed", str(obs),
+                     "--out", str(temp_dir / "o")]) in (0, 1)
+        out = capsys.readouterr().out
+        assert "UNDECIDED" in out
+        assert "reached none of the predicted conditions" in out

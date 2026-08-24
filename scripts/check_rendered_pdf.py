@@ -126,5 +126,5 @@ def main(argv=None):
     return 1
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - dispatch only; main() is tested directly
     sys.exit(main())

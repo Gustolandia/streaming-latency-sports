@@ -82,6 +82,11 @@ def summarize_plan(name, path, df):
 
     return overview, match_col, time_col
 
+#: The quantiles reported for the inter-event gap, and the column order they appear in.
+GAP_QUANTILES = [0, .5, .9, .95, .99, 1.0]
+GAP_COLUMNS = (["plan", "time_col", "n_gaps", "gap_mean"]
+               + ["gap_q%02d" % int(q * 100) for q in GAP_QUANTILES])
+
 def gap_quantiles(df, plan_name, time_col):
     t = df[time_col].dropna()
     if not pd.api.types.is_numeric_dtype(t):
@@ -90,9 +95,8 @@ def gap_quantiles(df, plan_name, time_col):
     gaps = t.diff().dropna()
     if gaps.empty:
         return None
-    qs = [0, .5, .9, .95, .99, 1.0]
     out = {"plan": plan_name, "time_col": time_col, "n_gaps": int(len(gaps)), "gap_mean": float(gaps.mean())}
-    for q in qs:
+    for q in GAP_QUANTILES:
         out["gap_q%02d" % int(q*100)] = float(gaps.quantile(q))
     return out
 
@@ -109,14 +113,14 @@ def by_match(df, plan_name, match_col, time_col):
             g = g.merge(agg, on=match_col, how="left")
     return g
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--a", required=True, help="Path to plan A combined_plan.csv")
     ap.add_argument("--b", required=True, help="Path to plan B combined_plan.csv")
     ap.add_argument("--name-a", default="plan_a")
     ap.add_argument("--name-b", default="plan_b")
     ap.add_argument("--outdir", default="docs/results")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     A = Path(args.a)
     B = Path(args.b)
@@ -163,7 +167,11 @@ def main():
     if b_time:
         q = gap_quantiles(dfb, args.name_b, b_time)
         if q: gaps.append(q)
-    pd.DataFrame(gaps).to_csv(outdir/"plan_compare_gap_quantiles.csv", index=False)
+    # Headed even when empty, for the same reason the by-match table is: the caller reads a
+    # file, and a plan with no measurable gaps is a finding, not a missing artefact. Written
+    # from an empty list this produced a zero-byte file that pandas refuses to parse at all.
+    pd.DataFrame(gaps, columns=GAP_COLUMNS).to_csv(
+        outdir/"plan_compare_gap_quantiles.csv", index=False)
 
     bm = []
     if a_match:
@@ -181,5 +189,5 @@ def main():
     print(" - %s" % (outdir/"plan_compare_gap_quantiles.csv"))
     print(" - %s" % (outdir/"plan_compare_by_match.csv"))
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - dispatch only; main() is tested directly
     main()

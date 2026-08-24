@@ -81,7 +81,7 @@ class TestPrintWidths:
         assert fl.print_widths((tex,))["deletion"] == pytest.approx(0.82 * 3.5)
 
     def test_columnwidth_is_a_column_even_inside_a_starred_float(self, tmp_path):
-        """LaTeX does not redefine \columnwidth inside figure*.
+        r"""LaTeX does not redefine \columnwidth inside figure*.
 
         This module assumed it did for one round, which let three figures print at a column
         width -- type near 3.8 pt -- while the check called them compliant. Measured off the
@@ -241,3 +241,26 @@ class TestEveryShippedFigure:
         finally:
             mrf._save, mpf._save = original_result, original_paper
         assert len(seen) >= 7, "expected every included figure to be measured, saw %s" % seen
+
+
+class TestAnInclusionWithNoWidth:
+
+    def test_it_is_left_out_rather_than_guessed_at(self, tmp_path):
+        r"""``\includegraphics[trim=...]{fig}`` prints at the figure's natural size.
+
+        The gate converts an authored type size to a printed one using the width the document
+        asks for. With no width there is nothing to convert, and assuming a column would
+        report a size the page does not have -- in the direction that passes.
+        """
+        tex = tmp_path / "paper.tex"
+        tex.write_text(
+            "\\documentclass{IEEEtran}\n"
+            "\\begin{document}\n"
+            "\\begin{figure}\\includegraphics[trim=1 2 3 4]{sized_by_nothing}"
+            "\\end{figure}\n"
+            "\\begin{figure}\\includegraphics[width=\\columnwidth]{sized}"
+            "\\end{figure}\n"
+            "\\end{document}\n", encoding="utf-8")
+        widths = fl.print_widths([str(tex)])
+        assert "sized" in widths, "the fixture must contain one figure the gate can measure"
+        assert "sized_by_nothing" not in widths

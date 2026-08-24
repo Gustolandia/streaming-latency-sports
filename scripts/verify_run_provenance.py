@@ -100,9 +100,9 @@ def evidence_for(path):
     candidates = [c for c in cols
                   if c in COUNT_COLUMNS
                   or c.startswith(("n_runs", "n_events", "n_samples"))]
+    # `candidates` was filtered out of `cols`, so every name here is present by construction;
+    # a second membership test stood here and could not fail.
     for c in sorted(candidates):
-        if c not in cols:
-            continue
         vals = []
         for r in rows:
             v = str(r.get(c, "")).strip()
@@ -153,9 +153,10 @@ def cited_artefacts(test_file):
     text = Path(test_file).read_text(encoding="utf-8")
     cited = set()
     for m in re.finditer(r'_rows\(((?:\s*"[^"]+"\s*,?)+)\)', text):
+        # The pattern requires at least one quoted segment, so `parts` is never empty; the
+        # guard that used to stand here could not fail either.
         parts = re.findall(r'"([^"]+)"', m.group(1))
-        if parts:
-            cited.add("/".join(parts))
+        cited.add("/".join(parts))
     return cited
 
 
@@ -211,5 +212,5 @@ def main(argv=None):
     return 1 if bad else 0
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - dispatch only; main() is tested directly
     raise SystemExit(main())

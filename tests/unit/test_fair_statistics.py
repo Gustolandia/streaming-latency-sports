@@ -177,3 +177,31 @@ class TestMain:
         csv = temp_dir / "thin.csv"
         pd.DataFrame({"backend": ["kafka", "redis"], "n": [9, 9], "v": [1, 2]}).to_csv(csv, index=False)
         assert main(["--by-run", str(csv), "--value-col", "v", "--n-col", "n"]) == 1
+
+
+class TestOlderScipyRaisesWhereNewerScipyReturnsNaN:
+    """Two scipy generations disagree about all-tied input, and both must give "no evidence".
+
+    Kruskal-Wallis on groups whose values are all identical has no variance to work with.
+    Older scipy raises ValueError; newer scipy returns nan. Either way the honest reading is
+    that the data show no concurrency effect -- and an uncaught exception here would abort a
+    whole campaign's statistics over a degenerate cell.
+    """
+
+    def test_a_raising_scipy_is_read_as_no_evidence(self, monkeypatch):
+        import fair_statistics as fs
+        import pandas as pd
+
+        def raiser(*groups):
+            raise ValueError("All numbers are identical in kruskal")
+
+        monkeypatch.setattr(fs.stats, "kruskal", raiser)
+        df = pd.DataFrame({"backend": ["kafka"] * 6,
+                           "n": [1, 1, 1, 2, 2, 2],
+                           "v": [5.0] * 6})
+        out = kruskal_across_n(df, "v", "n")
+        assert len(out) == 1
+        row = out.iloc[0]
+        assert row["p"] == 1.0, "no variance is no evidence, not a significant result"
+        assert row["significant"] is False or not row["significant"]
+        assert not np.isfinite(row["H"]), "there is no statistic to report either"

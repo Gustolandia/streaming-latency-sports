@@ -593,3 +593,160 @@ class TestMain:
         """Test entry point if __name__ == '__main__' (covers lines 537-538)."""
         import compare_experiments
         assert hasattr(compare_experiments, 'main')
+
+
+class TestTheRunDirectoriesAsTheyAreFoundOnDisk:
+    """Loading is best-effort by design: this tool compares whole campaigns, and one damaged
+    run must cost that run rather than the comparison. Every rejection path is exercised from
+    the side where it rejects, because a loader that silently drops runs and a loader that
+    correctly skips one damaged run look identical from the outside."""
+
+    def test_a_run_that_raises_is_reported_and_stepped_over(self, temp_dir, capsys):
+        import compare_experiments as ce
+        runs = temp_dir / "runs"
+        runs.mkdir()
+        good = runs / "s3_s2_kafka_rep1_20260101"
+        good.mkdir()
+        (good / "tti_summary.json").write_text(json.dumps({"tti_ms": {"p50": 1.0}}),
+                                               encoding="utf-8")
+        (runs / "s3_s2_redis_rep1_20260101").mkdir()
+
+        real = ce.load_run
+
+        def flaky(run_dir, prefix):
+            if "redis" in run_dir.name:
+                raise RuntimeError("unreadable run")
+            return real(run_dir, prefix)
+
+        old = os.getcwd()
+        try:
+            os.chdir(temp_dir)
+            with patch("compare_experiments.load_run", side_effect=flaky):
+                df = load_experiment_runs("s3")
+        finally:
+            os.chdir(old)
+        assert len(df) == 1
+        assert "WARNING: Could not load s3_s2_redis_rep1_20260101" in capsys.readouterr().out
+
+    def test_a_run_yielding_no_metrics_adds_no_row(self, temp_dir):
+        runs = temp_dir / "runs"
+        runs.mkdir()
+        (runs / "s3_nonsense").mkdir()
+        old = os.getcwd()
+        try:
+            os.chdir(temp_dir)
+            with patch("compare_experiments.load_run", return_value=None):
+                assert load_experiment_runs("s3").empty
+        finally:
+            os.chdir(old)
+
+    def test_an_s5_name_with_no_rep_segment_is_not_a_run(self, temp_dir):
+        """S4 and S5 read the backend and config by counting back from `rep`. With no `rep`
+        there is nothing to count back from, and guessing would mislabel the arm."""
+        d = temp_dir / "s5_s2_cfg_kafka_norep_20260101"
+        d.mkdir()
+        assert load_run(d, "s5") is None
+
+    def test_an_s5_rep_segment_too_early_is_not_a_run(self, temp_dir):
+        """`rep` at index 2 or less leaves no room for a config and a backend before it."""
+        d = temp_dir / "s5_s2_rep1_kafka_x_y"
+        d.mkdir()
+        assert load_run(d, "s5") is None
+
+    def test_a_run_with_no_tti_summary_still_yields_its_identity(self, temp_dir):
+        """A run that produced no summary is still a run that happened."""
+        d = temp_dir / "s3_s2_kafka_rep1_20260101"
+        d.mkdir()
+        m = load_run(d, "s3")
+        assert m is not None and m["backend"] == "kafka"
+        assert "tti_p50" not in m
+
+    def test_an_unparseable_tti_summary_is_skipped_not_fatal(self, temp_dir):
+        d = temp_dir / "s3_s2_kafka_rep1_20260101"
+        d.mkdir()
+        (d / "tti_summary.json").write_text("{not json", encoding="utf-8")
+        m = load_run(d, "s3")
+        assert m is not None and "tti_p50" not in m
+
+    def test_an_event_csv_that_cannot_be_read_is_skipped(self, temp_dir, monkeypatch):
+        d = temp_dir / "s3_s2_kafka_rep1_20260101"
+        d.mkdir()
+        (d / "producer.csv").write_text("event_id\ne0\n", encoding="utf-8")
+        real_open = open
+
+        def flaky(path, *a, **kw):
+            if str(path).endswith("producer.csv"):
+                raise OSError("locked")
+            return real_open(path, *a, **kw)
+
+        monkeypatch.setattr("builtins.open", flaky)
+        m = load_run(d, "s3")
+        assert m is not None and "n_producer_events" not in m
+
+
+class TestTheReportWithNothingToSummarise:
+    """Each heading is written unconditionally and each finding under it is not.
+
+    A report that omits "Resource Usage" when there is no resource data reads as though the
+    section was forgotten. A report that prints a heading and no findings says plainly that
+    the campaign produced none, which is the honest outcome and the one a reader can act on.
+    """
+
+    def test_the_headings_survive_an_empty_summary(self, temp_dir):
+        old = os.getcwd()
+        try:
+            os.chdir(temp_dir)
+            (temp_dir / "docs" / "results").mkdir(parents=True)
+            empty = pd.DataFrame(columns=["Experiment", "Avg TTI p50", "Avg Kafka CPU",
+                                          "Avg Match Rate"])
+            comparison = pd.DataFrame(columns=["Experiment", "Backend", "Scenario", "TTI p50",
+                                               "TTI p95", "Match Rate", "Kafka CPU",
+                                               "Redis CPU", "Samples", "Runs"])
+            generate_manuscript_report(pd.DataFrame(), pd.DataFrame(), pd.DataFrame(),
+                                       empty, comparison)
+            text = (temp_dir / "docs" / "results" / "experiments_comparison.md").read_text()
+        finally:
+            os.chdir(old)
+        assert "### Resource Usage" in text
+        assert "### Quality Metrics" in text
+        assert "### Detailed Comparison by Scenario and Backend" in text
+        assert "## Figures" in text
+        assert "Fastest TTI p50" not in text
+        assert "Highest Kafka CPU" not in text
+        assert "Best Match Rate" not in text
+        assert "S3-Specific Metrics" not in text
+
+
+class TestTheS3PlotsThatNeedS3Rows:
+
+    @patch('compare_experiments.plt')
+    @patch('compare_experiments.sns')
+    def test_s3_columns_without_s3_rows_draw_nothing(self, mock_sns, mock_plt, temp_dir,
+                                                     capsys):
+        """The column can be present because another experiment carried it. Plotting an empty
+        selection produces an axis with no data and a caption that claims otherwise."""
+        df = pd.DataFrame({
+            "experiment": ["S5", "S5"],
+            "backend": ["kafka", "redis"],
+            "scenario": ["a", "a"],
+            "tti_p50": [1.0, 2.0],
+            "tti_p95": [2.0, 3.0],
+            "match_rate": [0.999, 0.999],
+            "correction_propagation_mean": [1.0, 2.0],
+            "inconsistency_duration_mean": [1.0, 2.0],
+        })
+        generate_comparison_plots(df.iloc[0:0], df.iloc[0:0], df, str(temp_dir))
+        printed = capsys.readouterr().out
+        assert "s3_correction_propagation.png" not in printed
+        assert "s3_inconsistency_duration.png" not in printed
+
+    @patch('compare_experiments.plt')
+    @patch('compare_experiments.sns')
+    def test_no_resource_column_means_no_sample_count_plot(self, mock_sns, mock_plt, temp_dir,
+                                                           capsys):
+        df = pd.DataFrame({
+            "experiment": ["S5"], "backend": ["kafka"], "scenario": ["a"],
+            "tti_p50": [1.0], "tti_p95": [2.0], "match_rate": [0.999],
+        })
+        generate_comparison_plots(df.iloc[0:0], df.iloc[0:0], df, str(temp_dir))
+        assert "sample_count" not in capsys.readouterr().out

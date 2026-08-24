@@ -98,3 +98,27 @@ class TestMain:
         runs.mkdir()
         rc = main(["--runs-dir", str(runs), "--pattern", "zzz*"])
         assert rc == 1
+
+
+class TestAQuietRunOverSeveralIncompleteRuns:
+
+    def test_without_verbose_the_incomplete_runs_are_counted_and_not_listed(self, temp_dir,
+                                                                            capsys):
+        """The default output is a tally. A campaign has thousands of runs, and printing a
+        line for every incomplete one buries the count that says how bad it is."""
+        runs = temp_dir / "runs"
+        for name in ("batch1_a", "batch1_b", "batch1_c"):
+            (runs / name).mkdir(parents=True)
+        rc = main(["--runs-dir", str(runs)])
+        out = capsys.readouterr().out
+        assert rc == 1
+        assert "0/3 runs fully reproducible, 3 incomplete" in out
+        assert "INCOMPLETE" not in out
+
+    def test_with_verbose_every_incomplete_run_is_named(self, temp_dir, capsys):
+        runs = temp_dir / "runs"
+        for name in ("batch1_a", "batch1_b"):
+            (runs / name).mkdir(parents=True)
+        main(["--runs-dir", str(runs), "--verbose"])
+        out = capsys.readouterr().out
+        assert out.count("INCOMPLETE") == 2

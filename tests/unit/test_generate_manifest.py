@@ -75,3 +75,16 @@ class TestBuildAndMain:
     def test_main_no_files(self, temp_dir):
         out = temp_dir / "M.json"
         assert main(["--root", str(temp_dir), "--out", str(out)]) == 1
+
+
+class TestADirectoryMatchingTheGlob:
+
+    def test_it_is_not_hashed_as_a_file(self, tmp_path):
+        """`docs/results/*` matches directories as well as files, and a directory has no
+        content hash. Attempting one would raise; skipping it silently is what keeps the
+        manifest a list of files."""
+        (tmp_path / "docs").mkdir()
+        (tmp_path / "docs" / "a.csv").write_text("x\n", encoding="utf-8")
+        (tmp_path / "docs" / "nested").mkdir()
+        hashes = collect_hashes(tmp_path, ["docs/*"])
+        assert list(hashes) == ["docs/a.csv"]

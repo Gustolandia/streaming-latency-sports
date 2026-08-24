@@ -180,5 +180,5 @@ def main():
     print(f"OK kafka consumer: wrote {events_n} rows -> {events_path}")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - dispatch only; main() is tested directly
     main()

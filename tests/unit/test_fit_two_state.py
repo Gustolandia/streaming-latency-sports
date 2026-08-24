@@ -278,3 +278,46 @@ class TestMain:
         p = _write(temp_dir, [_row(0.5, 0.01), _row(0.8, 0.05)])
         assert main(["--conditions", str(p), "--out", str(temp_dir / "o")]) == 1
         assert "insufficient conditions" in capsys.readouterr().out
+
+
+class TestTheGridPointsAndVerdictLinesThatDoNotApply:
+    """Two decisions about what a run is entitled to say.
+
+    A comparator shape that is non-positive or non-finite at some rho cannot be fitted on the
+    log scale, and that grid point must be dropped -- carried in, it would contribute a
+    meaningless R^2 to a comparison the corrected model is judged against.
+
+    And the two verdict lines are separate findings. "The simple form fits materially worse"
+    and "the corrected form is preferred" can hold independently, and a run that establishes
+    neither must print neither rather than a heading with nothing under it.
+    """
+
+    def test_a_comparator_shape_that_cannot_be_logged_is_dropped(self):
+        rows = [_row(r, 0.004 + 0.4 * r ** 6) for r in (0.2, 0.5, 0.7, 0.9)]
+
+        def sometimes_zero(rho, k):
+            return [(0.0 if k < 2 else float(x) ** k) for x in rho]
+
+        got = fit_comparator(rows, sometimes_zero, [1.0, 1.5, 3.0])
+        assert got["k"] == 3.0, "only the grid point that could be fitted may win"
+
+    def test_a_comparator_that_can_never_be_fitted_reports_no_fit(self):
+        """Not a fit of nan quality: a fit that did not happen."""
+        rows = [_row(r, 0.004 + 0.4 * r ** 6) for r in (0.2, 0.5, 0.7, 0.9)]
+        got = fit_comparator(rows, lambda rho, k: [0.0 for _ in rho], [1.0, 2.0])
+        assert math.isnan(got["r2_log"])
+
+    def test_a_run_that_establishes_neither_claim_prints_neither(self, temp_dir, capsys,
+                                                                 monkeypatch):
+        import fit_two_state as fts
+        monkeypatch.setattr(fts, "verdict", lambda *a, **kw: {
+            "simple_parametric_worse": False, "sigma_carries": False,
+            "corrected_beats_comparators": False, "corrected_preferred": False,
+            "best_comparator": "linear", "best_comparator_r2": 0.9, "margin": -0.1})
+        rows = _corrected_ladder()
+        fts.main(["--conditions", str(_write(temp_dir, rows)),
+                  "--out", str(temp_dir / "o")])
+        out = capsys.readouterr().out
+        assert "== verdict ==" in out
+        assert "fits materially worse" not in out
+        assert "CORRECTED FORM PREFERRED" not in out

@@ -294,3 +294,160 @@ class TestTheDefensiveEdges:
         message = str(exc.value)
         assert "printed over each other" in message
         assert "clipped by axes" in message
+
+
+class TestTheArtistsAndBoxesTheGateMustStepOver:
+    """Every defensive path in the gate, taken from the side it had never been taken.
+
+    This gate is the reason three rounds of figure defects were caught, and the way it fails
+    is silent: an exception in the middle of the sweep, or a box it declines to measure, means
+    the figures after it are never inspected and the build passes. Each branch here is one
+    place that could happen.
+    """
+
+    def test_an_axis_that_will_not_report_its_view_is_skipped(self, monkeypatch):
+        """A custom projection can refuse `get_view_interval`; one such axis must not stop
+        the stale-label sweep for the rest of the figure."""
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(6, 2))
+        ax1.plot([0, 1], [0, 1])
+        ax2.plot([0, 1], [0, 1])
+        fig.canvas.draw()
+
+        real = type(ax1.xaxis).get_view_interval
+        calls = {"n": 0}
+
+        def flaky(self):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise RuntimeError("this projection has no view interval")
+            return real(self)
+
+        monkeypatch.setattr(type(ax1.xaxis), "get_view_interval", flaky)
+        stale = fc._stale_tick_labels(fig)
+        assert isinstance(stale, set)
+        assert calls["n"] > 1, "the failure must not have ended the sweep"
+        plt.close(fig)
+
+    def test_a_tick_with_no_location_is_skipped(self, monkeypatch):
+        """Some tick objects carry no position at all; asking whether one is in view is not
+        a question that has an answer."""
+        fig, ax = plt.subplots(figsize=(3, 2))
+        ax.plot([0, 1], [0, 1])
+        fig.canvas.draw()
+        for tick in ax.xaxis.get_major_ticks():
+            monkeypatch.setattr(tick, "get_loc", lambda: None, raising=False)
+        assert isinstance(fc._stale_tick_labels(fig), set)
+        plt.close(fig)
+
+    def test_a_schematic_panel_with_its_frame_off_has_its_ticks_marked_stale(self):
+        """Nothing draws them, and they can sit squarely on a neighbouring panel's title."""
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(6, 2))
+        ax1.axis("off")
+        ax2.set_title("a title the stale labels could land on")
+        fig.canvas.draw()
+        assert fc._stale_tick_labels(fig), "an axis-off panel must contribute stale labels"
+        plt.close(fig)
+
+    def test_a_label_whose_box_cannot_be_measured_is_skipped(self, monkeypatch):
+        fig, ax = plt.subplots(figsize=(3, 2))
+        ax.plot([0, 1], [0, 1], lw=12, color="black")
+        ax.text(0.5, 0.5, "measured", ha="center", va="center")
+        ax.set_title("also measured")
+        calls = {"n": 0}
+        real = fc._glyph_box
+
+        def flaky(text, renderer):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise ValueError("no extent")
+            return real(text, renderer)
+
+        monkeypatch.setattr(fc, "_glyph_box", flaky)
+        got = fc.report(fig)
+        assert isinstance(got["struck"], list)
+        assert calls["n"] > 1
+        plt.close(fig)
+
+    def test_an_empty_label_box_is_not_a_label(self):
+        """A Text carrying only whitespace measures zero and covers nothing."""
+        fig, ax = plt.subplots(figsize=(3, 2))
+        ax.plot([0, 1], [0, 1], lw=12, color="black")
+        ax.text(0.5, 0.5, "   ", ha="center", va="center")
+        assert fc.report(fig)["struck"] == []
+        plt.close(fig)
+
+    def test_a_label_off_the_canvas_is_not_reported_as_struck(self):
+        """Its core lies outside the raster, so there is no ink to measure -- and a figure
+        that places a label off the page has a different problem from a struck one."""
+        fig, ax = plt.subplots(figsize=(3, 2))
+        ax.plot([0, 1], [0, 1], lw=12, color="black")
+        ax.text(-40.0, -40.0, "far off the page", transform=fig.dpi_scale_trans)
+        got = fc.report(fig)
+        assert not any("far off the page" in d["text"] for d in got["struck"])
+        plt.close(fig)
+
+    def test_a_pair_of_zero_area_labels_is_not_an_overlap(self):
+        """Two boxes of no area intersect in no area; a share of 0/0 is not a fraction."""
+        fig, ax = plt.subplots(figsize=(3, 2))
+        ax.text(0.5, 0.5, "", ha="center")
+        ax.text(0.5, 0.5, "", ha="center")
+        assert fc.texts_overlapping(fig) == []
+        plt.close(fig)
+
+
+class TestTheTickSlotsAndBoxesThatAreAbsent:
+    """Three `getattr(..., None)` guards, taken from the side where the attribute is missing.
+
+    A tick carries two label slots and matplotlib has not always populated both, so the sweep
+    reads them defensively. On this matplotlib both are always present, which is exactly why
+    the absent case had never run: it is the version-portability path, and it is the one that
+    would fire on a reader's machine rather than on ours.
+    """
+
+    def test_an_axis_off_panel_with_a_missing_label_slot_is_swept_anyway(self, monkeypatch):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(6, 2))
+        ax1.axis("off")
+        ax2.set_title("a title the stale labels could land on")
+        fig.canvas.draw()
+        for axis in (ax1.xaxis, ax1.yaxis):
+            for tick in list(axis.get_major_ticks()) + list(axis.get_minor_ticks()):
+                monkeypatch.setattr(tick, "label2", None, raising=False)
+        stale = fc._stale_tick_labels(fig)
+        assert stale, "the label slot that is present must still be marked stale"
+        plt.close(fig)
+
+    def test_an_out_of_view_tick_with_a_missing_label_slot_is_swept_anyway(self, monkeypatch):
+        """A locator produces ticks past the end of an axis; their Text objects persist with
+        stale coordinates and can pile up in one spot."""
+        fig, ax = plt.subplots(figsize=(3, 2))
+        ax.plot([1, 10], [1, 10])
+        ax.set_xscale("log")
+        ax.set_xticks([1, 10])
+        ax.set_xlim(2, 5)
+        fig.canvas.draw()
+        for tick in list(ax.xaxis.get_major_ticks()) + list(ax.xaxis.get_minor_ticks()):
+            monkeypatch.setattr(tick, "label2", None, raising=False)
+        assert isinstance(fc._stale_tick_labels(fig), set)
+        plt.close(fig)
+
+    def test_a_label_measuring_no_area_is_not_a_label(self):
+        """A zero-width space is a string the gate would otherwise measure.
+
+        It survives the emptiness test -- Python does not count it as whitespace -- carries
+        the font's full line height, and occupies no width at all. Measured, its core would
+        be a zero-area strip that any stroke passing nearby fills completely, and the gate
+        would report a struck label that is not on the page. Such characters arrive in figure
+        text pasted from a browser, so this is not a hypothetical string.
+        """
+        fig, ax = plt.subplots(figsize=(3, 2))
+        ax.plot([0, 1], [0, 1], lw=12, color="black")
+        zero_width = "\u200b"
+        ax.text(0.5, 0.5, zero_width, ha="center", va="center")
+        fig.canvas.draw()
+        renderer = fig.canvas.get_renderer()
+        measured = [fc._glyph_box(x, renderer) for x in fc._visible_texts(fig)
+                    if x.get_text() == zero_width]
+        assert measured and measured[0].width == 0, (
+            "the fixture must actually measure zero, or this proves nothing")
+        assert not any(d["text"] == zero_width for d in fc.report(fig)["struck"])
+        plt.close(fig)

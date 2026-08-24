@@ -225,3 +225,58 @@ class TestTokenRejection:
         assert "SEPARATE accounts" in out
         assert "deposit:write" in out
         assert "sandbox.zenodo.org" in out
+
+
+class TestAnErrorThatIsNotARejectedToken:
+
+    def test_it_propagates_rather_than_being_swallowed(self, tmp_path, monkeypatch):
+        """Only 401 and 403 have an explanation worth printing. A 500, or a network failure,
+        must reach the operator as itself: printing the token guidance for it would send
+        someone to mint a new token for a problem a new token cannot fix."""
+        import json
+        import requests
+        import zenodo_deposit as zd
+        meta = tmp_path / "m.json"
+        meta.write_text(json.dumps({"title": "t"}), encoding="utf-8")
+        monkeypatch.setenv("ZENODO_API_TOKEN", "x")
+
+        def fake_bundle(z, ref="HEAD", prefix="", **kw):
+            out = tmp_path / "b.zip"
+            out.write_bytes(b"z")
+            return out
+
+        monkeypatch.setattr(zd, "build_bundle", fake_bundle)
+        resp = requests.Response()
+        resp.status_code = 500
+
+        def boom(*a, **k):
+            raise requests.HTTPError(response=resp)
+
+        monkeypatch.setattr(zd, "create_deposition", boom)
+        with pytest.raises(requests.HTTPError):
+            zd.main(["--sandbox", "--metadata", str(meta),
+                     "--zip", str(tmp_path / "b.zip")])
+
+    def test_an_http_error_with_no_response_also_propagates(self, tmp_path, monkeypatch):
+        """A connection that never got a reply has no status code to classify."""
+        import json
+        import requests
+        import zenodo_deposit as zd
+        meta = tmp_path / "m.json"
+        meta.write_text(json.dumps({"title": "t"}), encoding="utf-8")
+        monkeypatch.setenv("ZENODO_API_TOKEN", "x")
+
+        def fake_bundle(z, ref="HEAD", prefix="", **kw):
+            out = tmp_path / "b.zip"
+            out.write_bytes(b"z")
+            return out
+
+        monkeypatch.setattr(zd, "build_bundle", fake_bundle)
+
+        def boom(*a, **k):
+            raise requests.HTTPError(response=None)
+
+        monkeypatch.setattr(zd, "create_deposition", boom)
+        with pytest.raises(requests.HTTPError):
+            zd.main(["--sandbox", "--metadata", str(meta),
+                     "--zip", str(tmp_path / "b.zip")])

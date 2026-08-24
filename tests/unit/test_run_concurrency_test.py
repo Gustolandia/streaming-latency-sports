@@ -998,3 +998,33 @@ class TestArbitraryConcurrency:
             rct.main()
         assert parsed.get("choices") is None, "N is restricted; N=200 would be rejected"
         assert parsed.get("type") is int
+
+
+class TestRedisClusterNodes:
+    """The explicit node list, which is how a three-node Redis arm is addressed.
+
+    Without it the consumer discovers the cluster from one seed, and a seed that happens to be
+    down turns a measured arm into a failed one. The flag exists so the arm is reproducible
+    from the run record; if it stops reaching the command line, the run still succeeds and
+    stops being the configuration it says it is.
+    """
+
+    def test_the_node_list_reaches_the_consumer_command(self):
+        with patch('scripts.run_concurrency_test.subprocess.run') as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+            run_trial(run_id="t", plan_csv="p.csv", backend="redis", speedup=1, max_t_sim=1,
+                      stream="s", broker_count=3, cluster_mode=True,
+                      redis_cluster_nodes="h1:7000,h2:7001,h3:7002")
+        rendered = " ".join(_cmdstr(c) for c in mock_run.call_args_list)
+        assert '-CLUSTER_NODES "h1:7000,h2:7001,h3:7002"' in rendered
+        assert "-CLUSTER_MODE" in rendered
+        assert "-NODE_COUNT 3" in rendered
+
+    def test_no_node_list_leaves_the_flag_off_entirely(self):
+        """An empty list must not become `-CLUSTER_NODES ""`, which is a different request."""
+        with patch('scripts.run_concurrency_test.subprocess.run') as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+            run_trial(run_id="t", plan_csv="p.csv", backend="redis", speedup=1, max_t_sim=1,
+                      stream="s", broker_count=3, cluster_mode=True)
+        rendered = " ".join(_cmdstr(c) for c in mock_run.call_args_list)
+        assert "-CLUSTER_NODES" not in rendered

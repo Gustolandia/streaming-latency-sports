@@ -86,15 +86,25 @@ def main(argv=None):
         seen.append((stem, found))
         plt.close(fig)
 
-    import make_result_figures as mrf
-    mrf._save = lambda fig, out_dir, stem, **kw: (inspect(fig, stem), out / stem)[1]
-    for build in (mrf.build_deletion, mrf.build_spectrum, mrf.build_grid,
-                  mrf.build_mechanism, mrf.build_ttrue, mrf.build_payload):
-        build(out)
-
     import make_paper_figures as mpf
-    mpf._save = lambda fig, out_dir, stem, **kw: (inspect(fig, stem), [out / stem])[1]
-    mpf.main(["--out", str(out)])
+    import make_result_figures as mrf
+
+    # Both modules get their _save replaced so the figures can be inspected instead of
+    # written. Putting them back is not tidiness: this process may go on to build figures for
+    # real, and a module left holding an inspector silently stops saving anything. The suite
+    # has lost a round to exactly this class of leak before.
+    saved = [(mrf, mrf._save), (mpf, mpf._save)]
+    try:
+        mrf._save = lambda fig, out_dir, stem, **kw: (inspect(fig, stem), out / stem)[1]
+        for build in (mrf.build_deletion, mrf.build_spectrum, mrf.build_grid,
+                      mrf.build_mechanism, mrf.build_ttrue, mrf.build_payload):
+            build(out)
+
+        mpf._save = lambda fig, out_dir, stem, **kw: (inspect(fig, stem), [out / stem])[1]
+        mpf.main(["--out", str(out)])
+    finally:
+        for module, original in saved:
+            module._save = original
 
     bad = 0
     for stem, found in seen:
@@ -114,5 +124,5 @@ def main(argv=None):
     return 1 if bad else 0
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - dispatch only; main() is tested directly
     raise SystemExit(main())

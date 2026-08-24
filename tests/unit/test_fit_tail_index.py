@@ -231,3 +231,69 @@ class TestUncertainty:
             w.writeheader()
             w.writerow({"pad_bytes": 0, "transport_ms": 0.7, "inversion": 0.2, "n_events": "n/a"})
         assert load_sweep(str(p))[0]["n_events"] == 0
+
+
+class TestTheResamplesAndRefitsThatFail:
+    """Every refit inside the uncertainty machinery can come back empty, and the counts
+    must then be over what actually fitted -- not over what was attempted. A bootstrap that
+    counted failed refits as successes would report an interval narrower than the data earn,
+    which is the direction that licenses the stronger sentence in the manuscript.
+    """
+
+    def test_a_bootstrap_replicate_that_cannot_be_fitted_is_left_out(self, monkeypatch):
+        import fit_tail_index as fti
+        rows = [{"transport_ms": t, "inversion": inv, "n_events": 4000}
+                for _, t, inv in _from_alpha(1.2)]
+        real = fti.fit_power_law
+        calls = {"n": 0}
+
+        def flaky(sim):
+            calls["n"] += 1
+            return None if calls["n"] % 2 == 0 else real(sim)
+
+        monkeypatch.setattr(fti, "fit_power_law", flaky)
+        got = fti.uncertainty(rows, iters=8, seed=1)
+        assert got is not None
+        assert got["ci_lo"] is not None and got["ci_hi"] is not None
+
+    def test_a_leave_one_out_refit_that_fails_is_left_out(self, monkeypatch):
+        import fit_tail_index as fti
+        rows = [{"transport_ms": t, "inversion": inv, "n_events": 4000}
+                for _, t, inv in _from_alpha(1.2)]
+        real = fti.fit_power_law
+        seen = {"n": 0}
+
+        def flaky(sim):
+            seen["n"] += 1
+            return None if seen["n"] > 10 else real(sim)
+
+        monkeypatch.setattr(fti, "fit_power_law", flaky)
+        got = fti.uncertainty(rows, iters=4, seed=1)
+        assert got is not None
+        assert got["loo_min"] is None or got["loo_min"] <= got["loo_max"]
+
+    def test_a_traced_tail_that_will_not_parse_is_not_a_cross_check(self, tmp_path):
+        """An unreadable comparator is not a disagreement, and must not be reported as one."""
+        import fit_tail_index as fti
+        p = tmp_path / "traced.csv"
+        p.write_text("arm,p_tail\nbase,not-a-number\n", encoding="utf-8")
+        fit = fti.fit_power_law([{"transport_ms": t, "inversion": inv}
+                                 for _, t, inv in _from_alpha(1.2)])
+        got = cross_check(fit, str(p), 0.5)
+        assert got["checked"] is False
+        assert "not readable" in got["why"]
+
+    def test_an_over_predicting_agreement_carries_its_explanation(self, tmp_path, capsys):
+        """Agreement in the expected direction is a stronger result than bare agreement, and
+        the reason is what makes it so: not every stall lands on a stamping instant."""
+        import fit_tail_index as fti
+        sweep = _sweep(tmp_path, _from_alpha(1.2))
+        fit = fti.fit_power_law([{"transport_ms": t, "inversion": inv}
+                                 for _, t, inv in _from_alpha(1.2)])
+        predicted = fit["C"] * 0.5 ** (-fit["alpha"])
+        traced = _traced(tmp_path, predicted / 1.5)
+        main(["--sweep", str(sweep), "--traced", str(traced),
+              "--threshold-ms", "0.5", "--out", str(tmp_path / "o")])
+        out = capsys.readouterr().out
+        assert "AGREE" in out
+        assert "over-predicts, which is the expected direction" in out

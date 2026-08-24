@@ -1010,3 +1010,128 @@ def test_count_csv_rows_parametrized(temp_dir, n_rows, expected):
     
     count = count_csv_rows(csv_path)
     assert count == expected
+
+
+class TestTheInputsAndDirectoriesTheVerifierMustSurvive:
+    """Every remaining branch in the CLI, taken from the side it had never been taken.
+
+    This script is what decides whether a run is usable, so a shape it cannot handle is not a
+    cosmetic problem: an exception here leaves a campaign unverified, and a silent skip leaves
+    a bad run counted as good.
+    """
+
+    def test_a_csv_the_first_encoding_refuses_is_read_by_the_second(self, temp_dir,
+                                                                    monkeypatch):
+        """These files come from two harnesses on two platforms, one of which writes a BOM."""
+        p = temp_dir / "x.csv"
+        p.write_text("a\n1\n2\n", encoding="utf-8")
+        real_open = open
+        attempts = {"n": 0}
+
+        def once_flaky(path, *a, **kw):
+            if str(path).endswith("x.csv"):
+                attempts["n"] += 1
+                if attempts["n"] == 1:
+                    raise UnicodeDecodeError("utf-8-sig", b"", 0, 1, "refused")
+            return real_open(path, *a, **kw)
+
+        monkeypatch.setattr("builtins.open", once_flaky)
+        assert count_csv_rows(p) == 2
+        assert attempts["n"] == 2
+
+    def test_a_summary_with_no_matched_count_is_not_judged_on_it(self, temp_dir):
+        """Absent is not zero. An older harness wrote no n_matched at all, and reporting
+        "no events matched" for it would condemn a run nobody had measured that way."""
+        run = temp_dir / "run_no_matched"
+        run.mkdir()
+        (run / "tti_summary.json").write_text(json.dumps({"tti_ms_p50": 1.0}),
+                                              encoding="utf-8")
+        ok, issues = check_tti_values(run)
+        assert ok is True
+        assert not any("No events matched" in i for i in issues)
+
+    def test_a_run_list_readable_in_no_encoding_is_refused(self, temp_dir, monkeypatch):
+        """Better to stop than to verify a subset of the campaign and report a pass rate."""
+        import scripts.verify_run_quality as vrq
+        bad = temp_dir / "list.txt"
+        bad.write_bytes(b"\xff\xfe\xff\xfe\x00\x01")
+        real_open = open
+
+        def always_refuses(path, *a, **kw):
+            if str(path).endswith("list.txt"):
+                raise UnicodeDecodeError("utf-8", b"", 0, 1, "refused")
+            return real_open(path, *a, **kw)
+
+        monkeypatch.setattr("builtins.open", always_refuses)
+        with patch("sys.argv", ["verify_run_quality.py", "--run-list", str(bad)]):
+            with pytest.raises(SystemExit):
+                vrq.main()
+
+    def test_blank_lines_and_comments_in_a_run_list_are_skipped(self, temp_dir):
+        """These lists are hand-edited, so they carry headings and commented-out runs."""
+        import scripts.verify_run_quality as vrq
+        create_sample_run_dir("test_run_001", temp_dir)
+        lst = temp_dir / "list.txt"
+        lst.write_text("# the good one\n\n%s\n\n# runs/skipped_run\n"
+                       % (temp_dir / "test_run_001"), encoding="utf-8")
+        with patch("sys.argv", ["verify_run_quality.py", "--run-list", str(lst)]):
+            with patch("scripts.verify_run_quality.sys.exit") as mock_exit:
+                vrq.main()
+        assert mock_exit.called
+
+    def test_a_relative_run_list_entry_naming_runs_is_not_prefixed_again(self, temp_dir):
+        """`runs/x` under `--directory runs` must not become `runs/runs/x`."""
+        import scripts.verify_run_quality as vrq
+        create_sample_run_dir("test_run_001", temp_dir / "runs")
+        lst = temp_dir / "list.txt"
+        lst.write_text("runs/test_run_001\n", encoding="utf-8")
+        old = os.getcwd()
+        try:
+            os.chdir(temp_dir)
+            with patch("sys.argv", ["verify_run_quality.py", "--run-list", str(lst),
+                                    "--directory", "runs"]):
+                with patch("scripts.verify_run_quality.sys.exit") as mock_exit:
+                    vrq.main()
+        finally:
+            os.chdir(old)
+        assert mock_exit.called, "the run named by the list must have been reached"
+
+    def test_a_directory_that_does_not_exist_finds_no_runs(self, temp_dir):
+        import scripts.verify_run_quality as vrq
+        with patch("sys.argv", ["verify_run_quality.py",
+                                "--directory", str(temp_dir / "never-created")]):
+            with patch("scripts.verify_run_quality.sys.exit") as mock_exit:
+                vrq.main()
+        # sys.exit is patched out, so the run continues past the guard; what matters is that
+        # the guard fired first and with the failing code.
+        assert mock_exit.call_args_list[0].args == (1,)
+
+    def test_files_and_underscored_directories_are_not_runs(self, temp_dir, capsys):
+        """`_archive` and a stray note both sit beside the run directories."""
+        import scripts.verify_run_quality as vrq
+        create_sample_run_dir("test_run_001", temp_dir)
+        (temp_dir / "_archive").mkdir()
+        (temp_dir / "NOTES.txt").write_text("x", encoding="utf-8")
+        with patch("sys.argv", ["verify_run_quality.py", "--directory", str(temp_dir)]):
+            with patch("scripts.verify_run_quality.sys.exit"):
+                vrq.main()
+        assert "Verifying 1 run(s)" in capsys.readouterr().out
+
+    def test_a_run_that_raises_is_reported_with_a_traceback_when_verbose(self, temp_dir,
+                                                                         monkeypatch, capsys):
+        """A crash in one run must not lose the other results, and under --verbose the
+        operator needs the traceback to tell a bad run from a bug in this script."""
+        import scripts.verify_run_quality as vrq
+        create_sample_run_dir("test_run_001", temp_dir)
+
+        def explode(run_dir):
+            raise RuntimeError("unreadable run")
+
+        monkeypatch.setattr(vrq, "check_run", explode)
+        with patch("sys.argv", ["verify_run_quality.py", "--directory", str(temp_dir),
+                                "--verbose"]):
+            with patch("scripts.verify_run_quality.sys.exit"):
+                vrq.main()
+        out = capsys.readouterr()
+        assert "unreadable run" in out.out
+        assert "RuntimeError" in (out.out + out.err)

@@ -224,3 +224,31 @@ class TestMain:
         _write_cell(temp_dir / "l75_base", BASE)
         assert main(["--depth", str(temp_dir), "--out", str(temp_dir / "o")]) == 1
         assert "no load level has both arms" in capsys.readouterr().out
+
+
+class TestTheDepthDirectoryAsItIsFoundOnDisk:
+
+    def test_a_file_named_like_a_cell_is_not_a_cell(self, temp_dir):
+        """`l75_notes.txt` matches the glob and is not a measurement."""
+        _arms(temp_dir, "l75", {1: (1_000_000, 500_000, 10)}, {1: (1_000_000, 50_000, 10)})
+        (temp_dir / "l75_notes").write_text("x", encoding="utf-8")
+        assert set(load_cells(str(temp_dir))) == {"l75"}
+
+    def test_a_cell_whose_schedstat_yielded_nothing_is_dropped(self, temp_dir):
+        """A cell with no readable samples has no occupancy; pairing it would invent one."""
+        _arms(temp_dir, "l75", {1: (1_000_000, 500_000, 10)}, {1: (1_000_000, 50_000, 10)})
+        (temp_dir / "l88_base").mkdir()
+        (temp_dir / "l88_base" / "schedstat.csv").write_text(
+            ",".join(FIELDS) + "\n", encoding="utf-8")
+        _write_cell(temp_dir / "l88_rt", {1: (1_000_000, 50_000, 10)})
+        cells = load_cells(str(temp_dir))
+        assert set(cells) == {"l75"}, "a level with one usable arm cannot be compared"
+
+    def test_a_campaign_with_no_comparable_level_is_undecided(self, temp_dir, capsys):
+        """The wording comes from `verdict`, so the run and the function cannot disagree
+        about why there was nothing to conclude."""
+        (temp_dir / "l75_base").mkdir()
+        assert main(["--depth", str(temp_dir), "--out", str(temp_dir / "out")]) == 1
+        out = capsys.readouterr().out
+        assert "UNDECIDED" in out
+        assert verdict([])["why"] in out

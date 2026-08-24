@@ -1,4 +1,5 @@
 """Complete tests for redis_producer.py - 100% branch coverage."""
+import json
 import pytest
 import pandas as pd
 import sys
@@ -659,3 +660,70 @@ class TestTraceLoop:
         t = pd.read_csv(temp_dir / "loop_tr.csv")
         assert (t["t_after_produce_ns"] >= t["t_send_ns"]).all()
         assert (t["produce_ms"] >= 0).all()
+
+
+class TestPaddingAndSendFailures:
+    """The payload manipulation, and what happens when a send in the pool fails.
+
+    Padding is one of the manipulations the paper reports, so the filler reaching the wire is
+    the difference between a measured effect and a mislabelled arm. And a failed XADD inside a
+    worker thread is invisible to the main loop: without the error list it would be dropped and
+    the run would write a shorter CSV that looked clean.
+    """
+
+    def _plan(self, temp_dir, n=1):
+        plan = {"event_id": ["e%d" % i for i in range(n)], "match_id": [1] * n,
+                "t_sim_seconds": [0] * n, "t_emit_offset_s": [0.0] * n,
+                "row_idx": list(range(n))}
+        pd.DataFrame(plan).to_csv(temp_dir / "plan.csv", index=False)
+
+    def _run(self, temp_dir, mock_redis, extra=()):
+        with patch('redis.Redis', return_value=mock_redis):
+            old_argv, old_cwd = sys.argv, os.getcwd()
+            try:
+                os.chdir(temp_dir)
+                sys.argv = ["rp", "--run-id", "tr", "--plan-csv", "plan.csv",
+                            "--out", "prod.csv"] + list(extra)
+                rp_main()
+            finally:
+                os.chdir(old_cwd)
+                sys.argv = old_argv
+
+    def test_the_filler_reaches_the_wire_and_is_constant(self, temp_dir):
+        """Constant, not random: random filler compresses differently between runs and the
+        wire size would stop being the thing that was manipulated."""
+        self._plan(temp_dir)
+        mock_redis = MagicMock()
+        mock_redis.xadd = MagicMock(return_value="rid1")
+        self._run(temp_dir, mock_redis, ["--pad-bytes", "512"])
+        payloads = [json.loads(c.args[1]["data"]) if "data" in c.args[1] else
+                    json.loads(list(c.args[1].values())[0])
+                    for c in mock_redis.xadd.call_args_list]
+        assert payloads, "the producer must have sent something"
+        pad = payloads[0]["pad"]
+        assert pad == "x" * 512
+
+    def test_no_padding_leaves_the_payload_untouched(self, temp_dir):
+        self._plan(temp_dir)
+        mock_redis = MagicMock()
+        mock_redis.xadd = MagicMock(return_value="rid1")
+        self._run(temp_dir, mock_redis)
+        sent = json.loads(list(mock_redis.xadd.call_args_list[0].args[1].values())[0])
+        assert "pad" not in sent
+
+    def test_a_send_that_fails_aborts_the_run_rather_than_shortening_it(self, temp_dir):
+        """The worker catches the exception so the pool survives; the run must not."""
+        self._plan(temp_dir, n=2)
+        mock_redis = MagicMock()
+        mock_redis.xadd = MagicMock(side_effect=RuntimeError("stream unavailable"))
+        with pytest.raises(RuntimeError, match="Redis base send errors"):
+            self._run(temp_dir, mock_redis)
+
+    def test_nothing_is_written_when_a_send_failed(self, temp_dir):
+        self._plan(temp_dir)
+        mock_redis = MagicMock()
+        mock_redis.xadd = MagicMock(side_effect=RuntimeError("stream unavailable"))
+        with pytest.raises(RuntimeError):
+            self._run(temp_dir, mock_redis)
+        out = temp_dir / "prod.csv"
+        assert not out.exists() or pd.read_csv(out).empty

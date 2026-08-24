@@ -386,3 +386,26 @@ class TestGoodnessOfFit:
         assert tit._binomial(rng, 10, 0.0) == 0
         assert tit._binomial(rng, 10, 1.0) == 10
         assert tit._binomial(rng, 0, 0.5) == 0
+
+
+class TestTheBisectionTerminatesWhateverItIsAsked:
+
+    def test_an_impossible_tolerance_still_returns_a_bracket_midpoint(self):
+        """`_root` bisects up to two hundred times and then answers with what it has.
+
+        Asked for a tolerance it can never meet, it must return the midpoint of the bracket
+        rather than loop, raise, or return None -- a None here would be read downstream as
+        "no crossing exists", which is a different and wrong finding.
+        """
+        bins = [b for b in pareto_buckets(2.0, 256, 32768) if b[2] > 0]
+        alpha, _, _, _ = tit.binned_pareto_mle(bins)
+        target = tit._loglik(alpha, bins) - tit.PROFILE_DROP
+        got = tit._root(bins, target, alpha, 12.0, tol=0.0)
+        assert got is not None
+        assert alpha < got < 12.0
+
+    def test_a_bracket_that_does_not_cross_is_reported_as_no_root(self):
+        """The negative control: outside a crossing there is nothing to bisect for."""
+        bins = [b for b in pareto_buckets(2.0, 256, 32768) if b[2] > 0]
+        alpha, _, _, _ = tit.binned_pareto_mle(bins)
+        assert tit._root(bins, tit._loglik(alpha, bins) + 10.0, alpha, 12.0) is None

@@ -169,3 +169,23 @@ class TestMain:
         main(["--depth-dir", str(temp_dir / "depth"), "--runs-dir", str(temp_dir / "runs"),
               "--out", str(temp_dir / "model")])
         assert "no conditions" in capsys.readouterr().out.lower()
+
+
+class TestTheRunsAndDirectoriesThatMustBeSteppedOver:
+
+    def test_a_run_that_yielded_nothing_does_not_end_the_condition(self, temp_dir):
+        ts = "n5_20260101_000000"
+        cond = temp_dir / "depth" / "ea3" / "bg0"
+        (cond / f"concurrency_concurrency_{ts}").mkdir(parents=True)
+        (temp_dir / "runs" / f"concurrency_{ts}_kafka_feed1_rep0").mkdir(parents=True)
+        _run(temp_dir / "runs", f"concurrency_{ts}_kafka_feed1_rep1", [1.0, 2.0, 3.0])
+        assert condition_series(str(cond), str(temp_dir / "runs")) == [[1.0, 2.0, 3.0]]
+
+    def test_a_file_where_a_condition_was_expected_is_ignored(self, temp_dir):
+        """These trees carry notes and archives beside the condition directories."""
+        _condition(temp_dir, "ea_sat", "bg0", "n5_20260101_000000",
+                   [float(i) for i in range(40)], rho=0.2)
+        (temp_dir / "depth" / "ea_sat" / "README.md").write_text(
+            "x", encoding="utf-8")
+        rows = variance_rows(str(temp_dir / "depth"), str(temp_dir / "runs"))
+        assert len(rows) == 1

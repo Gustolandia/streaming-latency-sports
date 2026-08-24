@@ -32,7 +32,9 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Run tests with branch coverage
-        # Project standard: >=95% branch coverage on every script (see README S10).
+        # Project standard: 100% branch coverage across scripts/ (see README S10).
+        # What may be excluded from that number, and why, is itself enforced -- see
+        # tests/unit/test_coverage_exclusions.py.
         run: |
           python -m pytest -q --cov=scripts --cov-branch \
-            --cov-report=term-missing --cov-fail-under=95
+            --cov-report=term-missing --cov-fail-under=100

@@ -105,15 +105,26 @@ def summary(campaigns=CAMPAIGNS):
     }
 
 
-if __name__ == "__main__":  # pragma: no cover - reporting convenience
+def main(argv=None):
+    """Print every matched pair and the range they give.
+
+    A function rather than a block under the `__main__` guard: the guard is excluded from
+    coverage, and this loop is what shows the eight pairs the abstract's range comes from.
+    """
     s = summary()
     print("%-7s %-6s %-8s %-10s %-10s %-8s %s"
           % ("camp", "level", "rho", "ordinary", "real-time", "factor", "disjoint"))
     print("-" * 68)
-    for p in usable():
+    for pair in usable():
         print("%-7s %-6s %-8.3f %-10.4f %-10.4f %-8.1f %s"
-              % (p["campaign"], p["level"], p["rho"], p["rate_base"], p["rate_rt"],
-                 p["factor"], p["disjoint"]))
-    print("\n%d usable pairs (%d confounded), rho %.2f-%.2f, factor %.0f-%.0fx, all disjoint %s"
+              % (pair["campaign"], pair["level"], pair["rho"], pair["rate_base"],
+                 pair["rate_rt"], pair["factor"], pair["disjoint"]))
+    print("\n%d usable pairs (%d confounded), rho %.2f-%.2f, factor %.0f-%.0fx, "
+          "all disjoint %s"
           % (s["pairs"], s["confounded"], s["rho_low"], s["rho_high"],
              s["factor_low"], s["factor_high"], s["all_disjoint"]))
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover - dispatch only; main() is tested directly
+    raise SystemExit(main())

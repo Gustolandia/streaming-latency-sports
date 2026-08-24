@@ -392,3 +392,35 @@ class TestInterpreterSerialisation:
         out = pp.probe(ports={}, trials=1, sleep_trials=5)
         assert "interpreter_serialisation" in out
         assert out["interpreter_serialisation"]["implementation"]
+
+
+class TestTheReachableRedisPingLine:
+
+    def test_a_reachable_ping_reports_the_implied_ceiling(self, temp_dir, capsys,
+                                                          monkeypatch):
+        """The established-connection RTT is what bounds the achievable send rate, so the
+        ceiling it implies is the number the campaign plans against. Only the unreachable
+        branch had ever been printed."""
+        import platform_probe as pp
+        monkeypatch.setattr(pp, "_default_connect", lambda *a: None)
+        monkeypatch.setattr(pp, "redis_ping_rtt", lambda *a, **kw: {
+            "reachable": True, "median_ms": 0.12, "implied_ceiling_msgs_per_s": 8333.0,
+            "trials": 20})
+        out = temp_dir / "platform.json"
+        assert main(["--out", str(out), "--trials", "1", "--sleep-trials", "2"]) == 0
+        printed = capsys.readouterr().out
+        assert "established-connection RTT median 0.120 ms" in printed
+        assert "ceiling 8333 msg/s" in printed
+
+    def test_an_unreachable_ping_says_so_and_claims_no_ceiling(self, temp_dir, capsys,
+                                                               monkeypatch):
+        """A ceiling computed from an unreachable host would be a number from nothing."""
+        import platform_probe as pp
+        monkeypatch.setattr(pp, "_default_connect", lambda *a: None)
+        monkeypatch.setattr(pp, "redis_ping_rtt", lambda *a, **kw: {
+            "reachable": False, "errors": 20})
+        out = temp_dir / "platform.json"
+        assert main(["--out", str(out), "--trials", "1", "--sleep-trials", "2"]) == 0
+        printed = capsys.readouterr().out
+        assert "redis PING    : unreachable" in printed
+        assert "ceiling" not in printed.split("redis PING")[1]

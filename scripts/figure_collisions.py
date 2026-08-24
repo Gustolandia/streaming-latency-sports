@@ -248,13 +248,12 @@ def text_struck_by_ink(fig, dpi=RENDER_DPI, max_fraction=MAX_INK_FRACTION):
         return []
     found = []
     for t, bb in drawn:
-        sl = _slice(bb, fig, scale, inkless.shape)
-        if sl is None:
-            continue
-        y0, y1, x0, x1 = sl
+        # `_drawn_boxes` has already sliced each of these against the same raster and kept
+        # only the ones that landed on the canvas with a non-empty patch, so the slice here
+        # cannot be None and the patch cannot be empty. Guards for both stood here and could
+        # not be reached; they are gone rather than excused.
+        y0, y1, x0, x1 = _slice(bb, fig, scale, inkless.shape)
         patch = inkless[y0:y1, x0:x1]
-        if patch.size == 0:
-            continue
         fraction = float((patch < INK_LUMINANCE).mean())
         if fraction > max_fraction:
             found.append({
@@ -297,11 +296,10 @@ def texts_overlapping(fig, min_overlap=MIN_TEXT_OVERLAP):
             h = min(ay1, by1) - max(ay0, by0)
             if w <= 0 or h <= 0:
                 continue
+            # Both boxes came from `_drawn_boxes`, which keeps only positive width and
+            # height, so the smaller area is positive by construction.
             area_b = (bx1 - bx0) * (by1 - by0)
-            smaller = min(area_a, area_b)
-            if smaller <= 0:
-                continue
-            share = (w * h) / smaller
+            share = (w * h) / min(area_a, area_b)
             if share > min_overlap:
                 found.append({
                     "a": " ".join((ta.get_text() or "").split())[:40],

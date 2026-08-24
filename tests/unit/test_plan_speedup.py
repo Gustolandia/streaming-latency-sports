@@ -262,3 +262,32 @@ class TestMain:
     def test_unusable_plan_reports_and_exits_nonzero(self, temp_dir, capsys):
         assert main([str(_plan(temp_dir, []))]) == 1
         assert "no usable rows" in capsys.readouterr().err
+
+
+class TestPlansWithDamagedRows:
+
+    def test_a_row_with_no_usable_sim_time_is_skipped(self, temp_dir):
+        """Plans are generated files, and a generator that died mid-row leaves one behind.
+
+        `_sim_span` sets the expected wall time of a trial, so a damaged row must cost that
+        row rather than the estimate.
+        """
+        import plan_speedup as ps
+        p = temp_dir / "plan.csv"
+        p.write_text("t_sim_seconds\n0\nnot-a-number\n600\n", encoding="utf-8")
+        assert ps._sim_span(str(p)) == 600.0
+
+    def test_a_plan_with_no_sim_column_at_all_spans_nothing(self, temp_dir):
+        """No span is not a zero-length match; it is a plan this cannot speak about. The
+        caller takes the minimum with max_t_sim, so zero is the conservative answer."""
+        import plan_speedup as ps
+        p = temp_dir / "plan.csv"
+        p.write_text("other\n1\n", encoding="utf-8")
+        assert ps._sim_span(str(p)) == 0.0
+
+    def test_the_event_count_is_rows_not_lines(self, temp_dir):
+        """The header is not an event; counting it would overstate the plan by one."""
+        import plan_speedup as ps
+        p = temp_dir / "plan.csv"
+        p.write_text("event_id,t_sim_seconds\na,0\nb,1\nc,2\n", encoding="utf-8")
+        assert ps._plan_events(str(p)) == 3

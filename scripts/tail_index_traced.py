@@ -279,7 +279,8 @@ def _binomial(rng, n, p):
     if n * p > 30:  # pragma: no cover - only on interpreters without binomialvariate
         k = int(round(rng.gauss(n * p, math.sqrt(n * p * (1 - p)))))
         return max(0, min(n, k))
-    return sum(1 for _ in range(n) if rng.random() < p)  # pragma: no cover
+    return sum(1 for _ in range(n)  # pragma: no cover - no binomialvariate here
+               if rng.random() < p)
 
 
 def _multinomial(rng, n, probs):
@@ -406,5 +407,5 @@ def main(argv=None):
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - dispatch only; main() is tested directly
     sys.exit(main())

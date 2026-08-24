@@ -588,9 +588,12 @@ def main():
     print("=" * 60)
     print(f"Test suites: {passed_suites}/{total_suites} passed")
     print(f"Total runs: {total_passed}/{total_runs} passed")
-    print(f"Failure rate: {(total_failed / total_runs * 100):.1f}%")
-    
+
+    # Both rates are divisions by the run count, so both belong behind the same guard. The
+    # failure rate was outside it and raised ZeroDivisionError whenever --run-prefix selected
+    # directories that group into no test suite -- a real invocation, not a hypothetical one.
     if all_results:
+        print(f"Failure rate: {(total_failed / total_runs * 100):.1f}%")
         pass_rate = (total_passed / total_runs) * 100
         print(f"Overall pass rate: {pass_rate:.1f}%")
     
@@ -620,5 +623,5 @@ def main():
         sys.exit(0)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - dispatch only; main() is tested directly
     main()

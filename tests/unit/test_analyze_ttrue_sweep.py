@@ -173,3 +173,51 @@ class TestMain:
         with patch.object(ats, "condition_stats", return_value=_stats(0.88, 0.2, 0.5)):
             rc = main(["--depth", str(temp_dir), "--runs", "runs", "--out", str(temp_dir / "o")])
         assert rc == 1 and "at least two pad sizes" in capsys.readouterr().out
+
+
+class TestTheSweepDirectoryAsItIsFoundOnDisk:
+
+    def test_a_file_named_like_a_cell_is_not_a_cell(self, temp_dir):
+        """These trees carry `pad_notes.txt` and archives beside the pad directories."""
+        (temp_dir / "pad0").mkdir()
+        (temp_dir / "pad64").write_text("not a directory", encoding="utf-8")
+        with patch.object(ats, "condition_stats", return_value=_stats(0.5, 0.01, 1.0)):
+            rows = load_cells(str(temp_dir), "runs")
+        assert [r["pad_bytes"] for r in rows] == [0]
+
+    def test_the_utilisation_spread_is_printed_beside_a_successful_check(self, temp_dir,
+                                                                        capsys):
+        """The rise is only interpretable next to what else moved with it: a payload that
+        lengthened transport by also raising load has not isolated T_true."""
+        for pad in (0, 128):
+            (temp_dir / ("pad%d" % pad)).mkdir()
+
+        def stats(d, runs):
+            return _stats(0.5, 0.01, 1.0 if d.endswith("pad0") else 4.0)
+
+        with patch.object(ats, "condition_stats", side_effect=stats):
+            ats.main(["--depth", str(temp_dir), "--runs", "runs",
+                      "--out", str(temp_dir / "out")])
+        out = capsys.readouterr().out
+        assert "[ok]" in out
+        assert "utilisation spread across the sweep: 0.000" in out
+
+
+class TestASweepThatRecordedNoUtilisation:
+
+    def test_the_check_passes_and_says_nothing_about_a_spread_it_could_not_measure(
+            self, temp_dir, capsys):
+        """Older cells carry no utilisation.csv. The manipulation is still checkable from
+        transport alone, and the honest report is silence about load, not a spread of zero."""
+        for pad in (0, 128):
+            (temp_dir / ("pad%d" % pad)).mkdir()
+
+        def stats(d, runs):
+            return _stats(None, 0.01, 1.0 if d.endswith("pad0") else 4.0)
+
+        with patch.object(ats, "condition_stats", side_effect=stats):
+            ats.main(["--depth", str(temp_dir), "--runs", "runs",
+                      "--out", str(temp_dir / "out")])
+        out = capsys.readouterr().out
+        assert "[ok]" in out
+        assert "utilisation spread" not in out

@@ -318,3 +318,29 @@ class TestRoundTwoReaders:
     def test_a_missing_condition_returns_nothing_rather_than_half_a_result(self):
         assert si.observer_effect(condition="does_not_exist") == {}
         assert si.load_growth(idle="nope", knee="also_nope") == {}
+
+
+class TestTheRowsAndFragmentsThatCarryNothing:
+
+    def test_a_side_of_the_split_with_no_cells_is_absent_rather_than_empty(self, monkeypatch):
+        """The harness table is split by whether the clocks are on one host. A side with no
+        runs has no interval, and an entry of zeros would read as a measurement of zero."""
+        monkeypatch.setattr(si, "_rows", lambda *parts: [
+            {"cross_host": "false", "sent": "100", "kept": "90",
+             "discarded_negative": "0"},
+            {"cross_host": "false", "sent": "200", "kept": "180",
+             "discarded_negative": "0"},
+        ])
+        got = si.harness_cells()
+        assert "one_clock" in got
+        assert "cross_host" not in got, "no cross-host runs is not a cross-host result"
+
+    def test_a_detail_fragment_with_no_equals_sign_is_skipped(self, monkeypatch):
+        """The detail column is semicolon-separated `k=v`, and carries free text between the
+        pairs. Splitting a fragment without `=` would raise mid-parse."""
+        monkeypatch.setattr(si, "_rows", lambda *parts: [
+            {"law": "L2", "detail": "ceiling=0.42; measured on E-A4; median=0.31"},
+        ])
+        got = si.occupancy_bounds()
+        assert got["ceiling"] == 0.42
+        assert got["median"] == 0.31

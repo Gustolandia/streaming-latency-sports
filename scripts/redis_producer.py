@@ -389,5 +389,5 @@ def main():
         print(f"OK redis producer: wrote {len(corr_rows)} correction rows -> {out_path}")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - dispatch only; main() is tested directly
     main()

@@ -320,3 +320,42 @@ class TestPatternsAddedForNonJvmSources:
         (tmp_path / "c.txt").write_text("ignored\n", encoding="utf-8")
         names = {Path(p).name for p in source_files(str(tmp_path))}
         assert names == {"a.c", "b.erl"}
+
+
+class TestProvenanceIsPrintedWhenTheCheckoutHasAny:
+    """An audit of a third-party harness is worthless without saying which revision was read.
+
+    The upstream file moves. A finding reported against "OpenMessaging Benchmark" with no
+    commit is a claim nobody can check and nobody can refute -- the same defect the fork survey
+    was built to remove from the manuscript.
+    """
+
+    def test_a_git_checkout_has_its_commit_and_origin_reported(self, temp_dir, capsys,
+                                                               monkeypatch):
+        import audit_external_harness as aeh
+        d = temp_dir / "repo"
+        (d / "src").mkdir(parents=True)
+        (d / "src" / "W.java").write_text("long l = t2 - t1;\nif (l > 0) { rec(l); }\n",
+                                          encoding="utf-8")
+        monkeypatch.setattr(aeh, "provenance",
+                            lambda repo: {"commit": "deadbeef", "date": "2026-08-24 00:00:00",
+                                          "upstream": "https://example.invalid/omb.git"})
+        main(["--repo", str(d), "--out", str(temp_dir / "o")])
+        out = capsys.readouterr().out
+        assert "upstream https://example.invalid/omb.git" in out
+        assert "commit   deadbeef  (2026-08-24 00:00:00)" in out
+
+    def test_a_plain_directory_reports_findings_without_inventing_a_commit(self, temp_dir,
+                                                                          capsys, monkeypatch):
+        """A tarball unpacked outside git has no revision, and must not be given a blank one."""
+        import audit_external_harness as aeh
+        d = temp_dir / "plain"
+        (d / "src").mkdir(parents=True)
+        (d / "src" / "W.java").write_text("long l = t2 - t1;\nif (l > 0) { rec(l); }\n",
+                                          encoding="utf-8")
+        monkeypatch.setattr(aeh, "provenance",
+                            lambda repo: {"commit": "", "date": "", "upstream": ""})
+        main(["--repo", str(d), "--out", str(temp_dir / "o")])
+        out = capsys.readouterr().out
+        assert "commit  " not in out
+        assert "upstream" not in out

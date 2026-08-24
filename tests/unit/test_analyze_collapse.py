@@ -262,3 +262,83 @@ class TestMain:
         assert out.count("UNTESTABLE") == 2
         assert "no rho-matched condition pairs" in out
         assert not (temp_dir / "model" / "fdelta_reproduction.csv").exists()
+
+
+class TestTheRowsAndRunsThatMustBeSteppedOver:
+    """Every filter in the reader, from the side where it rejects.
+
+    Each of these is a real shape the campaign directories contain: a producer row whose send
+    was never acknowledged, a consumer row for an event the producer never got an ack for, a
+    run that yielded nothing, a stray file where a condition directory was expected. The
+    danger in all of them is the same and it is silent: a reader that stops at the first one
+    drops the rest of the condition and reports a smaller, cleaner corpus than was measured.
+    """
+
+    @staticmethod
+    def _pair(runs_dir, run_id, producer_rows, consumer_rows):
+        d = runs_dir / run_id
+        d.mkdir(parents=True, exist_ok=True)
+        with (d / "producer.csv").open("w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=["event_id", "t_broker_ack_ns"])
+            w.writeheader()
+            w.writerows(producer_rows)
+        with (d / "consumer_events.csv").open("w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=["event_id", "t_consume_ns"])
+            w.writeheader()
+            w.writerows(consumer_rows)
+        return d
+
+    @pytest.mark.parametrize("missing", ["", "None", None])
+    def test_a_send_that_was_never_acknowledged_is_skipped_not_fatal(self, temp_dir, missing):
+        d = self._pair(
+            temp_dir,
+            "r1",
+            [{"event_id": "e0", "t_broker_ack_ns": missing},
+             {"event_id": "e1", "t_broker_ack_ns": T0}],
+            [{"event_id": "e0", "t_consume_ns": T0 + 1_000_000},
+             {"event_id": "e1", "t_consume_ns": T0 + 2_000_000}])
+        assert run_series(str(d)) == [2.0], "the unacknowledged event has no transport span"
+
+    def test_a_consumed_event_with_no_matching_ack_is_skipped(self, temp_dir):
+        """The consumer sees events this producer file knows nothing about; they have no span."""
+        d = self._pair(temp_dir, "r1",
+                       [{"event_id": "e1", "t_broker_ack_ns": T0}],
+                       [{"event_id": "ghost", "t_consume_ns": T0 + 5_000_000},
+                        {"event_id": "e1", "t_consume_ns": T0 + 1_000_000}])
+        assert run_series(str(d)) == [1.0]
+
+    @pytest.mark.parametrize("missing", ["", "None", None])
+    def test_a_consumer_row_with_no_consume_stamp_is_skipped(self, temp_dir, missing):
+        d = self._pair(temp_dir, "r1",
+                       [{"event_id": "e0", "t_broker_ack_ns": T0},
+                        {"event_id": "e1", "t_broker_ack_ns": T0}],
+                       [{"event_id": "e0", "t_consume_ns": missing},
+                        {"event_id": "e1", "t_consume_ns": T0 + 3_000_000}])
+        assert run_series(str(d)) == [3.0]
+
+    def test_a_run_that_produced_nothing_does_not_end_the_condition(self, temp_dir):
+        """An empty run directory beside a good one must cost that run and no more."""
+        ts = "n5_20260101_000000"
+        cond = temp_dir / "depth" / "ea3" / "bg0"
+        (cond / f"concurrency_concurrency_{ts}").mkdir(parents=True)
+        empty = temp_dir / "runs" / f"concurrency_{ts}_kafka_feed0_rep0"
+        empty.mkdir(parents=True)
+        _run(temp_dir / "runs", f"concurrency_{ts}_kafka_feed1_rep1", _mix(6))
+        stats = condition_stats(str(cond), str(temp_dir / "runs"))
+        assert stats is not None
+        assert stats["n_runs"] == 1, "the empty run contributed no series"
+        assert stats["n_events"] == len(_mix(6))
+
+    def test_a_file_where_a_condition_directory_was_expected_is_ignored(self, temp_dir):
+        """These trees carry stray notes and archives; one must not be read as a condition."""
+        _condition(temp_dir, "ea3", "bg0", "n5_20260101_000000", _mix(6), rho=0.1)
+        (temp_dir / "depth" / "ea3" / "NOTES.txt").write_text("x", encoding="utf-8")
+        out = collect_phase(str(temp_dir / "depth"), str(temp_dir / "runs"), ["ea3"])
+        assert list(out) == ["ea3/bg0"]
+
+    def test_a_condition_with_too_little_data_is_left_out_of_the_phase(self, temp_dir):
+        """Below the pooled minimum there is no estimate; an entry would imply there was."""
+        _condition(temp_dir, "ea3", "good", "n5_20260101_000000", _mix(6), rho=0.1)
+        _condition(temp_dir, "ea3", "thin", "n6_20260101_000000", [1.0, 2.0], rho=0.1)
+        out = collect_phase(str(temp_dir / "depth"), str(temp_dir / "runs"), ["ea3"])
+        assert list(out) == ["ea3/good"]

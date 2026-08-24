@@ -168,3 +168,25 @@ class TestAgainstTheCommittedRecord:
         """Table II reports E-A5's two pairs; they must be the same rows this reads."""
         ea5 = [p for p in pp.usable() if p["campaign"] == "E-A5"]
         assert sorted(round(p["factor"]) for p in ea5) == [39, 54]
+
+
+class TestTheReport:
+    """`main` prints every matched pair behind the abstract's range.
+
+    Round 17's finding was that six of the eight pairs appeared nowhere a reader could see
+    them. This is the rendering that shows all eight, and until now it sat under a pragma.
+    """
+
+    def test_it_prints_one_line_per_usable_pair(self, capsys):
+        assert pp.main() == 0
+        out = capsys.readouterr().out
+        assert out.count("\n") >= len(pp.usable()) + 3
+        for pair in pp.usable():
+            assert pair["level"] in out
+
+    def test_it_prints_the_range_the_abstract_quotes(self, capsys):
+        s = pp.summary()
+        pp.main()
+        out = capsys.readouterr().out
+        assert "%d usable pairs" % s["pairs"] in out
+        assert "factor %.0f-%.0fx" % (s["factor_low"], s["factor_high"]) in out

@@ -169,3 +169,14 @@ class TestMain:
         with patch.object(ac, "condition_stats", return_value=_stats(0.02, 0.004, 0.5)):
             rc = main(["--depth", str(temp_dir), "--runs", "runs", "--out", str(temp_dir / "o")])
         assert rc == 1 and "no load level has both" in capsys.readouterr().out
+
+
+class TestTheDepthDirectoryAsItIsFoundOnDisk:
+
+    def test_a_file_named_like_a_cell_is_not_a_cell(self, temp_dir):
+        """`remote_l0.tar.gz` matches the glob and is an archive, not a condition."""
+        _cells(temp_dir, ["remote_l0", "colocated_l0"])
+        (temp_dir / "remote_l88").write_text("an archive, not a directory", encoding="utf-8")
+        with patch.object(ac, "condition_stats", return_value=_stats(0.1, 0.01, 0.5)):
+            cells = load_cells(temp_dir, "runs")
+        assert set(cells) == {"0"}

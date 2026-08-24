@@ -65,7 +65,7 @@ def plot_tti(ax, med):
     ax.set_ylabel("End-to-end TTI, p50 (ms)")
     ax.set_title("(a) End-to-end lag")
     ax.grid(True, which="both", alpha=0.3)
-    ax.legend()
+    ax.legend(framealpha=1.0)
 
 
 def plot_decomposition(ax, med):
@@ -93,7 +93,7 @@ def plot_decomposition(ax, med):
     ax.set_ylabel("Component, p50 (ms)")
     ax.set_title("(b) Where the lag is")
     ax.grid(True, axis="y", which="both", alpha=0.3)
-    ax.legend(fontsize="small")
+    ax.legend(fontsize="small", framealpha=1.0)
 
 
 def _save(fig, out_dir, stem):

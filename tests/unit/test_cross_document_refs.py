@@ -174,6 +174,59 @@ class TestPaperPointsAtRealSupplementSections:
             ["S%d" % n for n in missing],)
 
 
+class TestEveryTargetedRelocationIsReachable:
+    """A section created by moving text out of the paper must be pointed at by the paper.
+
+    Round 20 moved three passages into S53, S54 and S55 and left two of the three pointers on
+    the sections the content had left: Section IV-C went on citing S46 for a construction that
+    is now in S54, and Section IV-D went on citing S43 for a driver explanation that is now in
+    S53. Both pointers resolved, because both targets exist, so the resolve-check below saw
+    nothing wrong. What no check asked was whether the *new* sections could be reached at all.
+
+    The rule is deliberately not "every section labelled *moved from the main text* must be
+    pointed at". Twenty of those are bulk moves from the TPDS-era restructure, when a
+    fifty-eight-page draft became sixteen pages and the supplement absorbed whole sections at
+    once; the supplement index documents them and the paper was never expected to name each.
+    Everything from S45 onward is different in kind: each is a single passage lifted out of a
+    paragraph that stayed behind, and the paragraph that stayed behind is the only route to
+    it.
+    """
+
+    #: Where bulk relocation stopped and targeted relocation began.
+    FIRST_TARGETED = 45
+
+    def _sections(self, supp):
+        return sorted({int(n) for n in re.findall(r"\\section\{S(\d+)\.", supp)})
+
+    def _pointed_at(self, paper):
+        out = set()
+        for m in re.finditer(r"S(\d+)(?:\.\d+)?", paper):
+            out.add(int(m.group(1)))
+        return out
+
+    def test_every_section_from_the_targeted_range_is_pointed_at(self, paper, supp):
+        pointed = self._pointed_at(paper)
+        missing = [n for n in self._sections(supp)
+                   if n >= self.FIRST_TARGETED and n not in pointed]
+        assert not missing, (
+            "supplement section(s) the paper never sends anyone to: %s -- a passage moved out "
+            "of a paragraph is reachable only through that paragraph, so a relocation without "
+            "a pointer is a deletion with extra steps" % ["S%d" % n for n in missing])
+
+    def test_the_boundary_is_where_we_say_it_is(self, supp):
+        """If the targeted range ever starts below S45 this rule silently widens onto the
+        bulk moves and starts failing on twenty sections nobody intended to point at."""
+        sections = self._sections(supp)
+        assert self.FIRST_TARGETED in sections, "S%d must exist" % self.FIRST_TARGETED
+        assert max(sections) > self.FIRST_TARGETED, "no targeted relocations to police"
+
+    def test_the_check_can_fail(self, paper, supp):
+        """A reachability test that cannot notice an unreachable section is decoration."""
+        pointed = self._pointed_at(paper)
+        absent = max(self._sections(supp)) + 7
+        assert absent not in pointed
+
+
 class TestSupplementNumbering:
     """The contents list is read as a list. Two defects in it are visible at a glance."""
 

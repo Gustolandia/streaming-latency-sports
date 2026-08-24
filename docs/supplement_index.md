@@ -182,6 +182,23 @@ Mode A --- is right about Mode A and does not apply to Mode B, where the finding
 first-party vendor chose the substitution class this paper says is worse than filtering. The
 main text names the mechanism so the two cannot be confused.
 
+## Round 22 (2026-08-24): pointers, and a check that could not see
+
+No new sections. Two corrections to round 20's relocations and one to the prose:
+
+- **S54** is now cited by Section IV-C for the permutation null's construction. It had been
+  citing S46, which is the per-arm table and does not contain the construction.
+- **S53** is now cited by Section IV-D for the two-floored-clocks explanation. It had been
+  citing S43, which contains none of that material.
+- Section IV-D said the five disposing tools fall "in four classes". The taxonomy has three
+  --- `DISPOSAL_KINDS` is `positive_only_filter`, `silent_suppression`, `library_refusal` ---
+  and the sentence itself enumerates three. It was the one count in that paragraph still
+  typed by hand. `harnessDisposalClasses` is emitted now.
+
+`TestEveryTargetedRelocationIsReachable` holds the first two: every section from S45 onward
+must be pointed at from the paper. Sections below S45 are exempt by design --- they are the
+TPDS-era bulk moves, documented here rather than pointed at individually.
+
 ## Figure inventory
 
 `docs/results/figures/` holds fifteen PDFs. Twelve are included by a document; three are not,

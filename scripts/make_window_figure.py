@@ -80,7 +80,11 @@ def plot_counts(ax, df):
     ax.set_ylabel("Events per run")
     ax.set_title("(a) One series grows, the other does not")
     ax.grid(True, which="both", alpha=0.3)
-    ax.legend(loc="center left")
+    # Upper left, and opaque. At the default framealpha of 0.8 the emitted series and
+    # its first marker showed through the box as ghosts; made opaque in place, the box
+    # hid that first point instead. The top-left quadrant is empty -- the emitted
+    # series only climbs past the legend's height near the right edge.
+    ax.legend(loc="upper left", framealpha=1.0)
 
     grew = df["trace_events"].iloc[-1] / df["trace_events"].iloc[0]
     ax.annotate(f"${grew:.1f}\\times$", xy=(df["window_s"].iloc[-1], df["trace_events"].iloc[-1]),
@@ -112,7 +116,7 @@ def plot_share(ax, df):
     ax.set_ylabel("Share of events paying the cost (%)")
     ax.set_title("(b) Dilution, not absence")
     ax.grid(True, alpha=0.3)
-    ax.legend()
+    ax.legend(framealpha=1.0)
     for w, s in zip(df["window_s"], share):
         ax.annotate(f"{s:.1f}%", xy=(w, s), xytext=(0, 8), textcoords="offset points",
                     ha="center", fontsize=8)

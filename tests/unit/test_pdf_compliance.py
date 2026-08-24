@@ -269,3 +269,28 @@ def test_bibtex_ran_clean(name):
     warnings = [l for l in blg.read_text(encoding="utf-8", errors="ignore").splitlines()
                 if l.startswith("Warning--")]
     assert not warnings, "%s.blg: %s" % (name, warnings)
+
+
+def test_figure_text_layers_carry_no_unmapped_symbol():
+    """A glyph with no Arial form falls back, renders correctly, and extracts as nonsense.
+
+    Figure 1's headline once read "...written by two threads $\\Rightarrow$ it can come out
+    negative", which drew correctly and extracted as "...two threads ) it can come out
+    negative" -- the sentence a screen reader, a search index or a reviewer copying text would
+    receive. The Type 3 and family gates both passed it, because the fallback face is an
+    embedded CID font on the permitted list. Only the text layer shows the damage.
+
+    The check is deliberately narrow: an isolated bracket surrounded by spaces is not something
+    a figure label produces on purpose, and it is what this class of failure leaves behind.
+    """
+    offenders = {}
+    for pdf in sorted(FIGDIR.glob("*.pdf")):
+        text = _text(pdf)
+        # Only the closing bracket and the replacement character. An opening bracket
+        # surrounded by spaces occurs legitimately in axis labels -- window_sweep.pdf
+        # has one -- while a lone " ) " is what a failed glyph mapping leaves behind.
+        for artifact in (" ) ", "\ufffd"):
+            if artifact in text:
+                offenders.setdefault(pdf.name, set()).add(artifact.strip() or "U+FFFD")
+    assert not offenders, \
+        "figure text layers carry unmapped-glyph artifacts: %s" % offenders

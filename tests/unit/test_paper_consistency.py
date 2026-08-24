@@ -2828,3 +2828,52 @@ class TestInterpreterLockRival:
         assert "interpreter lock" in flat
         assert "switch interval" in flat, \
             "S43.4 must record that the switch interval was left at its default"
+
+
+class TestRoundTwelveRegressions:
+    """Four defect classes that survived a compression pass, each now failing loudly.
+
+    Compressing prose to recover a page is this project's most reliable source of defects:
+    rounds 10, 11 and 12 each found their principal copy errors in text rewritten to fit.
+    Grammar cannot be gated in general, but a claim that contradicts itself, a name set as an
+    acronym, a plural antecedent and a withdrawn argument's disclaimer all can be.
+    """
+
+    def test_cpython_is_a_name_not_an_acronym(self, tex):
+        r"""\textsc{CPython} renders as CPYTHON, losing the internal capital that is the name."""
+        assert r"\textsc{CPython}" not in tex, \
+            "CPython is a product name; small caps flatten it into a false acronym"
+
+    def test_the_clocksource_antecedent_stays_plural(self, main_tex):
+        r"""`\clockAdmitted` expands to two clocksources joined by 'or'."""
+        i = main_tex.find(r"\clockAdmitted{}")
+        assert i > 0, "the clocksource elimination must quote the generated list"
+        assert "both of which" in main_tex[i:i + 200], \
+            "two admitted clocksources need a plural antecedent, not a bare 'which'"
+
+    def test_the_headroom_argument_still_disowns_shared_endpoints(self, main_tex):
+        """The disclaimer marks an argument this paper abandoned; see recount_spans.totals().
+
+        An early version reasoned that the two spans share their closing clock read, so an
+        artefact of that read moves both. It does not discriminate, because both spans are
+        producer-to-consumer differences and both carry the offset. What discriminates is
+        headroom. Dropping the contrast loses the only visible trace of that correction.
+        """
+        i = main_tex.find("closes the channel again on headroom")
+        assert i > 0, "the headroom argument must be present"
+        assert "not on shared endpoints" in main_tex[i:i + 120], \
+            "the headroom argument must keep disowning the shared-endpoint reasoning"
+
+    def test_the_interpreter_rival_does_not_appeal_to_the_traced_figure(self, supp):
+        """S43.4 says the traced estimator is blind to the lock; it cannot then cite it.
+
+        Figure 8 is the runqlat histogram. A term that deposits no mass in it cannot be
+        argued about from it, and the round-11 draft did exactly that two sentences after
+        saying so.
+        """
+        flat = " ".join(supp.split())
+        i = flat.find("traced estimator cannot see this term")
+        assert i > 0, "S43.4 must state that the traced estimator is blind to the lock"
+        window = flat[i:i + 1200]
+        assert "deposit mass in the same band" not in window, \
+            "S43.4 cannot claim the lock deposits mass in a histogram it is invisible to"

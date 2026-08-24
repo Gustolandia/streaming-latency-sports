@@ -513,16 +513,24 @@ def plot_payload_flip(ax, pos, q=PAYLOAD_Q):
     ax.axhline(half, color=GREY, lw=0.8, ls="--", zorder=0)
     ax.annotate("half cell width", xy=(0.30, half), xytext=(0, 3),
                 textcoords="offset points", fontsize=6.5, color=GREY, va="bottom")
+    top = max(s for _, _, s, _ in pos) * 1.22
+    # A label set four points above its marker occupies roughly this much of the data range.
+    # Any marker sitting that close beneath the boundary would have the rule printed through
+    # its label, so the label hangs below the marker instead.
+    clearance = 0.11 * top
     for label, frac, spread, colour in pos:
         ax.scatter([frac], [spread], s=22, color=colour, edgecolors="none", zorder=3)
         # A point in the right-hand third would carry its label off the axis, so the label
         # turns around and sits to its left instead.
         right = frac > 0.55
-        ax.annotate(label, xy=(frac, spread), xytext=(-5 if right else 5, 4),
+        collides = 0 <= (half - spread) < clearance
+        ax.annotate(label, xy=(frac, spread),
+                    xytext=(-5 if right else 5, -5 if collides else 4),
                     textcoords="offset points", fontsize=6.8, color="#222222",
-                    ha="right" if right else "left")
+                    ha="right" if right else "left",
+                    va="top" if collides else "baseline")
     ax.set_xlim(-0.03, 0.75)
-    ax.set_ylim(0, max(s for _, _, s, _ in pos) * 1.22)
+    ax.set_ylim(0, top)
     ax.set_xlabel(r"frac($q\theta$)", fontsize=7.5)
     ax.set_ylabel("replicate spread (pts)", fontsize=7.5)
     ax.set_title("(b) the flat/full flip", fontsize=7.5)

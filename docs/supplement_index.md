@@ -132,3 +132,30 @@ Nineteen items (R1–R19). Those that moved or relabelled supplement material:
 
 Nothing was moved *into* the supplement in this round. The four-point payload fit stays in
 S32 where round 1 put it.
+
+
+## Figure inventory
+
+`docs/results/figures/` holds fifteen PDFs. Twelve are included by a document; three are not,
+and are kept deliberately rather than by oversight. Referee round 13 asked which was which, so
+the answer lives here instead of in anyone's memory. A test
+(`test_every_figure_is_used_or_declared`) fails if a figure appears in the directory without
+appearing in this table.
+
+| Figure | Where it appears |
+|---|---|
+| `pipeline_schematic` | main text, Fig. 1 |
+| `measurement_model` | main text, Fig. 2 |
+| `deletion` | main text, Fig. 3 |
+| `grid_membership` | main text, Fig. 4 |
+| `payload_flip` | main text, Fig. 5 |
+| `mechanism_forest` | main text, Fig. 6 |
+| `ttrue_law` | main text, Fig. 7 |
+| `stall_spectrum` | main text, Fig. 8 |
+| `experiment_map` | supplement |
+| `integrity_audit` | supplement |
+| `window_sweep` | supplement |
+| `e1_end_to_end_lag` | supplement |
+| `kickoff_concurrency` | **retained, unused.** The kickoff-window concurrency view from the withdrawn first result set. Kept because the campaign it draws is still in the archive and the withdrawal is part of the record; no current claim rests on it. |
+| `network_delay` | **retained, unused.** The injected-delay view superseded by the netem table in Section VI, which reports the same runs numerically. |
+| `workload_profile` | **retained, unused.** The StatsBomb replay profile from the 16-page version; the workload is now described in prose in Section III. |

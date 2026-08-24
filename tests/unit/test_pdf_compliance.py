@@ -286,11 +286,58 @@ def test_figure_text_layers_carry_no_unmapped_symbol():
     offenders = {}
     for pdf in sorted(FIGDIR.glob("*.pdf")):
         text = _text(pdf)
-        # Only the closing bracket and the replacement character. An opening bracket
-        # surrounded by spaces occurs legitimately in axis labels -- window_sweep.pdf
-        # has one -- while a lone " ) " is what a failed glyph mapping leaves behind.
-        for artifact in (" ) ", "\ufffd"):
+        # Both brackets. The round-12 version of this test excused " ( " on the theory
+        # that axis labels produce it legitimately, citing window_sweep.pdf -- which
+        # turned out to be a second instance of this very defect, a mathtext \propto
+        # falling back to Computer Modern. The exception was a description of the bug.
+        for artifact in (" ) ", " ( ", "\ufffd"):
             if artifact in text:
                 offenders.setdefault(pdf.name, set()).add(artifact.strip() or "U+FFFD")
     assert not offenders, \
         "figure text layers carry unmapped-glyph artifacts: %s" % offenders
+
+
+def test_no_figure_falls_back_to_computer_modern():
+    """No figure needs a Computer Modern glyph, so none should embed one.
+
+    The family gate permits cm* faces because IEEE's list ends in "Symbol" and TeX's symbol
+    complement fills that role. That remains true for the documents. For the *figures* it is
+    now a dead allowance: both users of it -- a double arrow in Figure 1, a proportional-to in
+    the window sweep -- were glyphs with no Arial form, and both rendered correctly while
+    extracting as punctuation. Neither was visible to the Type 3 check or the family check.
+
+    Holding the figure set to Arial alone converts that whole class from "caught after the
+    fact by reading the text layer" into "cannot be introduced".
+    """
+    offenders = {}
+    for pdf in sorted(FIGDIR.glob("*.pdf")):
+        for face, _ in _fonts(pdf):
+            stem = face.split("+")[-1].lower()
+            if stem.startswith(("cm", "stix")):
+                offenders.setdefault(pdf.name, set()).add(face)
+    assert not offenders, (
+        "figures fall back to a TeX symbol face: %s. A glyph with no Arial form renders "
+        "correctly and extracts as punctuation; say it in words instead." % offenders)
+
+
+def test_every_figure_is_used_or_declared():
+    """A figure is either included by a document or declared in the artifact index.
+
+    Three of the fifteen are included by neither, which is a defensible choice -- they are
+    outputs of a committed generator and the campaigns behind them are still archived -- but
+    it should be a stated choice rather than a thing a reader discovers. The index names each
+    one and why it is kept, and this test makes a fourth impossible to add silently.
+    """
+    index = ROOT / "docs" / "supplement_index.md"
+    if not index.exists():
+        pytest.skip("artifact index absent")
+    declared = index.read_text(encoding="utf-8")
+    used = set()
+    for doc in ("paper.tex", "supplement.tex"):
+        text = (ROOT / doc).read_text(encoding="utf-8")
+        used |= {Path(m).stem for m in
+                 re.findall(r"\\includegraphics\[[^\]]*\]\{([^}]*)\}", text)}
+    undeclared = [p.stem for p in sorted(FIGDIR.glob("*.pdf"))
+                  if p.stem not in used and ("`%s`" % p.stem) not in declared]
+    assert not undeclared, (
+        "figures neither included nor declared in docs/supplement_index.md: %s" % undeclared)

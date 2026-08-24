@@ -27,6 +27,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import matplotlib
 matplotlib.use("Agg")
 import figure_style  # noqa: E402
+import figure_collisions  # noqa: E402
 figure_style.apply()  # Type 42, IEEE-listed family; see scripts/figure_style.py
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
@@ -269,12 +270,16 @@ def plot_model(axes):
                fontsize=7, color=REDIS, linespacing=1.05, va="top")
     h1_ax.text(0.95, 0.22, r"small $T_{true}$:" "\nthe whole lobe\ninverts it",
                fontsize=7, color=KAFKA, linespacing=1.05, va="top")
+    # relpos pins the arrow to the edge of the label it belongs to. Left at its default it
+    # starts from the centre of the text, and the leader shows through the gaps in the words.
     h1_ax.annotate("core\n(thread running)", xy=(0.20, 0.70), xytext=(2.9, 0.70),
                    fontsize=7, color=GREY, ha="left", va="center",
-                   arrowprops=dict(arrowstyle="->", color=GREY, lw=0.8))
+                   arrowprops=dict(arrowstyle="->", color=GREY, lw=0.8, relpos=(0.0, 0.5)))
+    # Placed clear of the descending core lobe: at the old anchor the curve ran through both
+    # lines of the label on its way down to the tail.
     h1_ax.annotate("preempted lobe\nat the scheduler slice", xy=(-slice_ms, 0.31),
-                   xytext=(-0.28, 0.011), fontsize=7, color=GREY, ha="left", va="center",
-                   arrowprops=dict(arrowstyle="->", color=GREY, lw=0.8))
+                   xytext=(1.75, 0.030), fontsize=7, color=GREY, ha="left", va="center",
+                   arrowprops=dict(arrowstyle="->", color=GREY, lw=0.8, relpos=(0.0, 0.5)))
     h1_ax.set_xlabel(r"stamping asymmetry $\Delta$ (ms)")
     h1_ax.set_ylabel("density (log)")
     h1_ax.set_yticks([])
@@ -329,7 +334,10 @@ def plot_integrity(axes, by_run, threshold=0.01):
     sens_ax.set_xscale("symlog", linthresh=0.1)
     sens_ax.set_xlabel("Condemnation threshold (% of events inverted)")
     sens_ax.set_ylabel("Runs condemned (%)")
-    sens_ax.set_ylim(0, 100)
+    # Padded rather than clamped: a campaign that condemns nothing, or everything,
+    # puts its marker centred on a spine, where the frame cuts it in half and it
+    # reads as a rendering fault. The ticks still run 0 to 100.
+    sens_ax.set_ylim(-4, 104)
     sens_ax.set_title("(b) The threshold is a real choice", fontsize=10)
     sens_ax.grid(True, alpha=0.3)
     sens_ax.legend(fontsize="small", loc="upper right")
@@ -347,8 +355,9 @@ def plot_network(ax):
     ax.scatter([20], [ACK_BATCHED_TTI_MS], marker="*", s=220, color=REDIS,
                edgecolor="black", zorder=5, label="Redis (ack batched, $N$=1)")
     ax.annotate(f"batching acks:\n{ACK_UNBATCHED_TTI_MS/ACK_BATCHED_TTI_MS:.0f}$\\times$ faster",
-                xy=(20, ACK_BATCHED_TTI_MS), xytext=(23, 4.0),
-                fontsize=8, arrowprops=dict(arrowstyle="->", color="black", linewidth=1.0))
+                xy=(20, ACK_BATCHED_TTI_MS), xytext=(23, 4.0), fontsize=8,
+                arrowprops=dict(arrowstyle="->", color="black", linewidth=1.0,
+                                relpos=(0.0, 0.5)))
     ax.set_yscale("log")
     ax.set_xlabel("Injected one-way delay (ms)")
     ax.set_ylabel("End-to-end TTI, p50 (ms, log)")
@@ -360,6 +369,7 @@ def plot_network(ax):
 # --------------------------------------------------------------------------- driver
 def _save(fig, out_dir, stem):
     out_dir.mkdir(parents=True, exist_ok=True)
+    figure_collisions.check(fig, stem)
     written = []
     for ext in ("png", "pdf"):
         path = out_dir / f"{stem}.{ext}"
@@ -375,6 +385,7 @@ def _read(path):
 
 
 def main(argv=None):
+    figure_style.apply()   # in force when the artists are made, not merely at import
     ap = argparse.ArgumentParser(description="Manuscript figures other than E1")
     ap.add_argument("--profiles-csv", default="docs/results/football/feed/match_profiles.csv")
     ap.add_argument("--slots-csv", default="docs/results/football/concurrency/kickoff_slots.csv")
@@ -389,15 +400,15 @@ def main(argv=None):
                     help="multiply every matplotlib font size; used to regenerate "
                          "figures for reduced print widths (TPDS round 2, minor 3)")
     args = ap.parse_args(argv)
+    scaled = {}
     if args.font_scale != 1.0:
         for key in ("font.size", "axes.titlesize", "axes.labelsize",
                     "xtick.labelsize", "ytick.labelsize", "legend.fontsize"):
             base = plt.rcParams[key]
             if isinstance(base, str):      # named sizes like 'medium' resolve via font.size
                 continue
+            scaled[key] = base
             plt.rcParams[key] = base * args.font_scale
-        plt.rcParams["font.size"] = plt.rcParams["font.size"] if isinstance(
-            plt.rcParams["font.size"], (int, float)) else 10.0
         plt.rcParams["font.size"] = float(plt.rcParams["font.size"])
     out = Path(args.out)
 
@@ -463,6 +474,11 @@ def main(argv=None):
         print(f"wrote {path}")
     for stem in missing:
         print(f"skipped {stem}: input missing")
+    # --font-scale is for this call. Left set, it silently rescales every figure built later
+    # in the same process, which is what happens when a test exercises it and a later test
+    # builds a figure.
+    for key, base in scaled.items():
+        plt.rcParams[key] = base
     return 1 if missing else 0
 
 

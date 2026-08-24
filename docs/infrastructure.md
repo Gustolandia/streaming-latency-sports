@@ -107,16 +107,47 @@ python scripts/power_analysis.py --n 15
 The suite covers everything that can be decided by reading a file. Three things cannot, and
 each has cost a referee round, so they are written down rather than remembered.
 
+TC's own limits, for reference, from the journal's author page: a regular paper is **10-12
+double-column pages** before mandatory overlength page charges, hard-capped at 14 with them
+and 16 with the editor's prior approval; **45 references**; **145 words** of biography per
+author. Page counts include text and figures. **There is no limit on the number of figures**
+-- they are constrained only by the pages they consume, and by having to be "reasonably sized
+(readable)". Supplemental files have no page limit at all, which is the whole argument for
+moving anything that will fit there.
+
 **1. Look at every figure, at the size it prints.** Rasterise the figure directory to a contact
-sheet and read it. Two defects reached referees this way and neither was visible to any gate,
-because both were layout rather than content:
+sheet and read it. Four defects reached referees this way, none visible to any gate at the
+time, because all were layout rather than content:
 
 - Figure 5(b): the `32 KB` label was struck through by the half-cell rule (round 12).
 - `window_sweep`: `set_xticks` replaces a log axis's *major* ticks and leaves the minor decade
   formatter running, so "180" printed underneath "2 x 10^2" on both panels (round 13).
+- Figure 2(b): the density curve was drawn through a two-line annotation, and Figure 8's
+  leader arrow through the `10.5%` label above its own bar (round 15).
+- Figures 4 and 6: a data point at zero drawn centred on the spine, clipped to half a
+  marker, which reads as a rendering fault rather than as data (round 15).
 
-Font, Type 3, family and text-layer gates all passed both. A collision is a fact about
-geometry, and only an eye or a pixel-diff sees it.
+Font, Type 3, family and text-layer gates passed all of them: they ask which font and which
+glyph, and a collision is a fact about geometry.
+
+`scripts/figure_collisions.py` now gates that geometry, from inside the `_save` of every
+figure script, so a figure added later is covered without anyone remembering to add it. It
+makes three checks, each pinned by a defect that got past the eye or past the gates:
+
+- *text struck by ink* -- the figure is rasterised with the glyphs painted transparent, and
+  any dark ink inside a label's core is ink the reader must read through;
+- *labels printed over each other* -- round 13's defect, which no ink check can see because
+  neither label is struck by anything drawn;
+- *markers clipped by a spine* -- a question about points and pixels that the data cannot
+  answer.
+
+Run `python scripts/show_figure_collisions.py` when it fails: it writes the ink-only raster
+with the flagged labels outlined, which is the picture the gate saw.
+
+**The eye is still on the list.** The gate found three collisions the visual pass missed --
+the grid lines through `1/3`, `2/3` and `3/3` in Figure 5(a) -- and the visual pass is what
+found the two the gate was then written from. They fail differently: the gate cannot tell
+whether a figure is *right*, only whether it is legible.
 
 **2. Read the reference list as a copy editor would.** Round 14 was the first time anyone did,
 and it found three defects in a list that is otherwise scrupulous: one entry printing its URL

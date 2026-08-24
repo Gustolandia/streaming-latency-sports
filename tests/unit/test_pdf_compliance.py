@@ -271,6 +271,28 @@ def test_bibtex_ran_clean(name):
     assert not warnings, "%s.blg: %s" % (name, warnings)
 
 
+@pytest.mark.parametrize("name", ["paper", "supplement"])
+def test_no_font_shape_is_substituted(name):
+    """The LaTeX log must record no font substitution.
+
+    IEEEtran sets a table caption in small caps and Times has no small-caps italic, so every
+    \\emph inside one asked for `T1/ptm/m/scit` and was quietly given `T1/ptm/m/it`
+    instead -- eleven times across the two documents, and in the log every time.
+
+    What the substitution produced was in fact what was wanted, which is the reason to gate
+    it rather than to leave it: the appearance of the page was being decided by a fallback
+    rule rather than by the source, and a fallback is only right by accident. Ask for the
+    shape you want.
+    """
+    log = ROOT / ("%s.log" % name)
+    if not log.exists():
+        pytest.skip("no LaTeX log for %s; build it first" % name)
+    lines = log.read_text(encoding="utf-8", errors="ignore").splitlines()
+    warnings = [l.strip() for l in lines if "Font Warning" in l]
+    assert not warnings, "%s.log requests font shapes it cannot have:\n  %s" % (
+        name, "\n  ".join(sorted(set(warnings))))
+
+
 def test_figure_text_layers_carry_no_unmapped_symbol():
     """A glyph with no Arial form falls back, renders correctly, and extracts as nonsense.
 

@@ -42,6 +42,21 @@ IEEE_SANS = [
     "DejaVu Sans",
 ]
 
+#: Text metrics, pinned to matplotlib's defaults so that a figure does not depend on what
+#: else the process has imported. `--font-scale` multiplies these afterwards, by design.
+DEFAULT_METRICS = {
+    "font.size": 10.0,
+    "axes.titlesize": "large",
+    "axes.labelsize": "medium",
+    "xtick.labelsize": "medium",
+    "ytick.labelsize": "medium",
+    "legend.fontsize": "medium",
+    "figure.figsize": [6.4, 4.8],
+    "figure.dpi": 100.0,
+    "savefig.bbox": None,
+    "savefig.pad_inches": 0.1,
+}
+
 #: TrueType. The whole point of this module: anything but matplotlib's default of 3.
 TRUETYPE = 42
 
@@ -57,6 +72,14 @@ def apply(rc=None):
     target["ps.fonttype"] = TRUETYPE
     target["font.family"] = "sans-serif"
     target["font.sans-serif"] = list(IEEE_SANS)
+    # Size is as much a property of the artifact as family. Another script in this repository
+    # sets font.size and a default figure size at import time, so in any process that has
+    # imported it -- the test suite, or a driver that builds everything -- figures would come
+    # out with different text metrics from the committed ones, and a layout check would be
+    # measuring a different picture. These are matplotlib's own defaults, so a standalone
+    # build is unchanged; pinning them makes a combined build agree with it.
+    for key, value in DEFAULT_METRICS.items():
+        target[key] = value
     # Maths inside a figure label goes through a separate resolver. `stix`/`stixsans` are
     # TrueType and would satisfy the font rule, but they map italic latin to the Unicode
     # mathematical-alphanumeric block, so `$t_{\mathrm{sched}}$` stops extracting as "tsched"

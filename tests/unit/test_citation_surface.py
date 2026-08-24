@@ -35,6 +35,14 @@ GENERATED = REPO / "docs" / "generated"
 #: Author Information page: "references which are capped at 45".
 TC_REFERENCE_CAP = 45
 
+#: "Regular papers are between 10 and 12 double-column pages before mandatory overlength page
+#: charges apply", and the count includes text, figures, references and biography. Fourteen is
+#: the hard maximum for papers paying MOPC, at $220 per page over. Twelve is the number this
+#: submission targets, and until now it was the only journal limit with no check on it: the
+#: abstract, the reference list and the biography were all gated and the one that costs money
+#: was left to whoever last rebuilt the PDF.
+TC_PAGE_LIMIT = 12
+
 
 def _bib_keys():
     return set(re.findall(r"@\w+\{([^,]+),", BIB.read_text(encoding="utf-8")))
@@ -143,6 +151,42 @@ class TestThePrintedReferenceListFitsTheJournal:
         assert n, "no reference list found in the rendered paper"
         assert n <= TC_REFERENCE_CAP, "%d printed references against a cap of %d" % (
             n, TC_REFERENCE_CAP)
+
+
+class TestTheBuiltPaperFitsTheJournal:
+    """The page count was the only journal limit with no check on it.
+
+    The abstract's word range, the biography's word cap and the reference cap are all gated.
+    The one that costs $220 a page over was left to whoever last rebuilt the PDF and remembered
+    to look. It is the same three lines as the reference check above, against the same PDF.
+    """
+
+    def _pdf_pages(self, name):
+        pdf = REPO / name
+        if not pdf.is_file():
+            pytest.skip("%s not built" % name)
+        try:
+            out = subprocess.run(["pdfinfo", str(pdf)],
+                                 capture_output=True, text=True, check=True).stdout
+        except (OSError, subprocess.CalledProcessError):   # pragma: no cover - tool absent
+            pytest.skip("pdfinfo not available")
+        m = re.search(r"^Pages:\s+(\d+)", out, re.M)
+        assert m, "pdfinfo reported no page count for %s" % name
+        return int(m.group(1))
+
+    def test_the_paper_is_within_the_page_limit(self):
+        n = self._pdf_pages("paper.pdf")
+        assert n <= TC_PAGE_LIMIT, (
+            "%d pages against a target of %d; TC charges $220 for each page over 12 and caps "
+            "the paper at 14. Move something to the supplement." % (n, TC_PAGE_LIMIT))
+
+    def test_the_paper_is_not_suspiciously_short(self):
+        """A build that silently lost half the document would also be "within the limit"."""
+        assert self._pdf_pages("paper.pdf") >= 10,             "TC regular papers are 10-12 pages; this looks like a broken build"
+
+    def test_the_supplement_is_built_too(self):
+        """It carries everything the page limit pushed out, so an unbuilt one is a lost half."""
+        assert self._pdf_pages("supplement.pdf") > TC_PAGE_LIMIT
 
 
 def _macro_reaches_paper(key):

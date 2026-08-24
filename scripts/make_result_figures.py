@@ -195,7 +195,11 @@ def plot_spectrum(ax, bins, slice_ms=None):
             # rule stands at 9.47, so the rule ran through its second line -- invisible
             # for as long as the reference-line check measured an axvline through the
             # wrong transform. Every fact is kept; the widest line is now narrow enough.
-            ax.annotate("base slice: %.0f ms\n%.1f× its neighbor"
+            # "the one below", not "its neighbor": the mode has two neighbours and they give
+            # different answers -- 4.5x the bucket below it and 5.0x the one above. The body
+            # says "its lower neighbor", and a figure that says only "its neighbor" sends a
+            # reader checking the histogram by eye to the wrong bar.
+            ax.annotate("base slice: %.0f ms\n%.1f× the one below"
                         % (slice_ms, rise),
                         xy=(i + 0.62, share[i] * 0.72),
                         xytext=(len(los) - 0.5, max(share) * 1.30),

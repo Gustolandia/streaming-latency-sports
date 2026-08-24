@@ -152,6 +152,7 @@ appearing in this table.
 | `mechanism_forest` | main text, Fig. 5 |
 | `ttrue_law` | main text, Fig. 6 |
 | `stall_spectrum` | main text, Fig. 7 |
+| `priority_ladder` | supplement, S47 |
 | `experiment_map` | supplement |
 | `integrity_audit` | supplement |
 | `window_sweep` | supplement |

@@ -185,14 +185,37 @@ class TestMain:
         assert "skipped workload_profile: input missing" in captured
         assert (temp_dir / "figs" / "network_delay.pdf").exists(), "others still render"
 
-    def test_font_scale_scales_numeric_rc_sizes(self, temp_dir):
+    def test_font_scale_scales_numeric_rc_sizes(self, temp_dir, monkeypatch):
+        """In force while the figures are drawn, and gone once the call returns.
+
+        This used to assert that the scaling was still set afterwards, which passed only
+        because main never restored it. Five of the six keys then stayed scaled for the rest
+        of the process: every later figure was drawn half again too large, including the ones
+        other tests build, and including the ones the layout gate renders and measures.
+        """
         import matplotlib.pyplot as plt
-        base = float(plt.rcParams["font.size"])
+        import make_paper_figures as mpf
+
+        keys = ("font.size", "axes.titlesize", "axes.labelsize",
+                "xtick.labelsize", "ytick.labelsize", "legend.fontsize")
+        before = {k: plt.rcParams[k] for k in keys}
+
+        seen = {}
+        real_save = mpf._save
+
+        def spy(fig, out_dir, stem):
+            seen[stem] = float(plt.rcParams["font.size"])
+            return real_save(fig, out_dir, stem)
+
+        monkeypatch.setattr(mpf, "_save", spy)
         args = self._inputs(temp_dir) + ["--only", "measurement_model",
                                          "--font-scale", "1.5"]
-        try:
-            assert main(args) == 0
-            assert float(plt.rcParams["font.size"]) == pytest.approx(base * 1.5)
-            assert (temp_dir / "figs" / "measurement_model.pdf").exists()
-        finally:
-            plt.rcParams["font.size"] = base
+        assert main(args) == 0
+        assert (temp_dir / "figs" / "measurement_model.pdf").exists()
+
+        assert seen["measurement_model"] == pytest.approx(float(before["font.size"]) * 1.5), \
+            "the scaling was not in force while the figure was drawn"
+        after = {k: plt.rcParams[k] for k in keys}
+        assert after == before, \
+            "main left rcParams scaled: %s" % {k: (before[k], after[k])
+                                               for k in keys if after[k] != before[k]}

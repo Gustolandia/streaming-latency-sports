@@ -962,7 +962,7 @@ while the \redis{} client does not, which is not a broker difference but a harne
 
 \begin{table}[t]
 \caption{Every configuration that can move a latency number, and why it holds that value.
-Settings marked \emph{learned} were discovered by a defect they caused, not chosen in advance.}
+Settings marked \textnormal{\textit{learned}} were discovered by a defect they caused, not chosen in advance.}
 \label{tab:config}
 \small
 \begin{tabular}{llp{0.52\columnwidth}}
@@ -1593,7 +1593,7 @@ range behind the $q=1$ corner can actually be seen.
 \begin{table}[t]
 \caption{\textbf{Replicate spread against the phase denominator $q$} (moved from
 Section~IV-B), at fixed payload,
-load, duration and host. \emph{Position} is the distance from the measured continuous value
+load, duration and host. \textnormal{\textit{Position}} is the distance from the measured continuous value
 to the nearest grid point, against the cell half-width: $0$ sits on a grid point, $1$
 midway between two. Position is scale-free, so every call is unchanged whether the
 continuous value is estimated pooled or per rate. $^{\dagger}$already in lowest terms.}
@@ -1776,7 +1776,7 @@ $88\%$ & 0.8809 & 0.8812 & 0.3049 & 0.0057 & $54\times$ \\
 \caption{\textbf{Same utilization, different rate.} Both load geometries in one campaign.
 Concentrated load leaves $C-k$ cores free; spread load duty-cycles all of them and leaves none.
 At $k=6$ the two arms sit at the same $\rho$ to four decimals ---
-in \emph{both} campaigns --- and the rates differ twofold in both. Every cell is 2\,985 matched
+in \textnormal{\textit{both}} campaigns --- and the rates differ twofold in both. Every cell is 2\,985 matched
 events over 25 runs; $z$ is a two-proportion test between the arms of that row. The $k=7$ row is
 where the two campaigns disagree: the original cannot separate the geometries there, the
 replication can, and we withdraw the stronger reading (text).}
@@ -1825,11 +1825,11 @@ Padding (B) & Transport (ms) & Inversion & Transport (ms) & Inversion & $\rho$ s
 \caption{\textbf{A kernel trace predicts the inversion rate, unfitted, in every arm that has
 one.} $\Pr[\text{stall} > T_{\mathrm{true}}]$ from
 \texttt{sched\_wakeup}/\texttt{sched\_switch}, against the inversion rate measured from
-application timestamps in the \emph{same} cell; the two share no instrument and no estimator.
+application timestamps in the \textnormal{\textit{same}} cell; the two share no instrument and no estimator.
 Every cell is 2\,985 events. The three ordinary arms agree with their traced tails to within
 about a third, with no consistent sign. Every real-time arm reads exactly zero where the
 untraced control of the E-A9 pair reads $15/2985$; that is a tracing artifact, not a floor
-(text). The E-A9b $88\%$ arm is \emph{withheld} by the instrument check --- $28\%$ drift against
+(text). The E-A9b $88\%$ arm is \textnormal{\textit{withheld}} by the instrument check --- $28\%$ drift against
 a $25\%$ rule fixed in advance --- and is shown because a withheld comparison is still a
 measurement.}
 \label{tab:ea9}
@@ -2465,10 +2465,10 @@ the grain the finding lives at: one tool can guard one span and leave another al
 OpenMessaging Benchmark does.
 
 \begin{table}[h]
-\caption{Audited harnesses, one row per span rather than per tool. \emph{Filter} admits only
-positive samples; \emph{substitute} replaces an inverted interval with a constant;
-\emph{refused by own library} means the recording library returns a refusal the caller never
-checks; \emph{counts} means the disposal is exposed in the output. The OpenMessaging
+\caption{Audited harnesses, one row per span rather than per tool. \textnormal{\textit{Filter}} admits only
+positive samples; \textnormal{\textit{substitute}} replaces an inverted interval with a constant;
+\textnormal{\textit{refused by own library}} means the recording library returns a refusal the caller never
+checks; \textnormal{\textit{counts}} means the disposal is exposed in the output. The OpenMessaging
 Benchmark appears twice, because it treats its two spans differently and that difference is
 the finding of Section~IV-A. Sources, in row order: \registryTableSources. This table and
 this list are generated from \texttt{harness\_registry.csv} at build time.}

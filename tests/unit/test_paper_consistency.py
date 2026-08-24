@@ -2905,15 +2905,30 @@ class TestReferenceHouseStyle:
                 out[key] = m.group(3)
         return out
 
-    def test_no_entry_prints_the_same_url_twice(self):
-        """howpublished and note both carrying the URL prints it twice and costs a line."""
+    def test_no_entry_prints_the_same_literal_twice(self):
+        """An entry must not print the same URL or filename twice, in whichever fields.
+
+        Round 14 caught a URL duplicated between howpublished and note and gated the URL.
+        Round 15 found the same shape in two entries that duplicate a *filename* between
+        title and note, which that gate could not see. The class is a repeated literal
+        identifier, not a repeated URL.
+
+        Literals only: a proper noun may legitimately appear twice in one entry --
+        "OpenMessaging" as organisation and in a title, Hewlett-Packard as author and as
+        publisher -- and a rule wide enough to catch repeated words flags both. A URL or a
+        filename printed twice is redundant wherever it appears, so restricting the rule to
+        code-set literals draws the line at the meaning rather than at a token length.
+        """
         bad = {}
         for key, body in self._cited_entries().items():
-            urls = re.findall(r"\\url\{([^}]*)\}", body)
-            dupes = {u for u in urls if urls.count(u) > 1}
+            literals = [
+                " ".join(m.group(1).split())
+                for m in re.finditer(r"\\(?:url|texttt)\{([^}]*)\}", body)
+            ]
+            dupes = {lit for lit in literals if literals.count(lit) > 1}
             if dupes:
                 bad[key] = sorted(dupes)
-        assert not bad, "entries printing a URL twice: %s" % bad
+        assert not bad, "entries printing a literal twice: %s" % bad
 
     def test_venues_are_abbreviated(self):
         """IEEE abbreviates venue names; two of forty-five did not, which reads as carelessness."""
@@ -2942,3 +2957,63 @@ class TestReferenceHouseStyle:
                 forms.setdefault(m.group(1), []).append(key)
         assert len(forms) <= 1, \
             "arXiv entries use %d conventions: %s" % (len(forms), {k: sorted(v) for k, v in forms.items()})
+
+class TestTheManuscriptDoesNotRepeatItself:
+    """One level up from the reference list, where the same defect had the same shape.
+
+    Round 14 removed a duplicated URL and gated URLs; round 15 found two entries repeating a
+    filename and gated repeated literals. The manuscript had the same defect in prose:
+    Paxson's practice introduced once in the contribution list and again in related work, in
+    almost the same words. This gates that class.
+    """
+
+    STOP = set("""a an the of to in on at for and or but is are was were be been being it its
+    this that these those with as by from not no than then so such which who whose what when
+    where we our us they them their he she his her one two both each every any all more most
+    less least can could may might will would shall should must do does did done have has had
+    having if into over under about after before between during through against within
+    without across per same other another only also just even still yet much many few several
+    own very""".split())
+
+    # Prose on one subject shares vocabulary constantly, so the bar sits well above ordinary
+    # similarity. The pair this gate was written for scored 0.63; the closest pair remaining
+    # in the manuscript scores 0.35.
+    MAX_SIMILARITY = 0.50
+
+    @staticmethod
+    def _sentences():
+        raw = (REPO / "paper.tex").read_text(encoding="utf-8")
+        raw = re.sub(r"(?m)^%.*$", "", raw)
+        # Captions repeating the body text are deliberate, so floats are not compared.
+        raw = re.sub(r"\\begin\{(figure|table)\*?\}.*?\\end\{\1\*?\}", " ", raw,
+                     flags=re.S)
+        start = raw.find("\\section{Introduction}")
+        body = raw[start:] if start >= 0 else raw
+        out = []
+        for chunk in re.split(r"(?<=[.!?])\s+", body):
+            flat = " ".join(chunk.split())
+            if len(flat) < 70:
+                continue
+            stripped = re.sub(r"\\[a-zA-Z]+\*?(\[[^\]]*\])?(\{[^{}]*\})?", " ", flat)
+            stripped = re.sub(r"[^A-Za-z0-9\- ]", " ", stripped)
+            words = {w.lower() for w in stripped.split()
+                     if len(w) > 2 and w.lower() not in TestTheManuscriptDoesNotRepeatItself.STOP}
+            if len(words) >= 7:
+                out.append((flat, words))
+        return out
+
+    def test_no_two_sentences_say_the_same_thing(self):
+        sentences = self._sentences()
+        assert len(sentences) > 100, "sentence split failed; the gate would be vacuous"
+        worst = []
+        for i, (si, wi) in enumerate(sentences):
+            for sj, wj in sentences[i + 1:]:
+                union = len(wi | wj)
+                if not union:
+                    continue
+                score = len(wi & wj) / union
+                if score >= self.MAX_SIMILARITY:
+                    worst.append((round(score, 2), si[:110], sj[:110]))
+        worst.sort(reverse=True)
+        assert not worst, "sentences repeating each other:\n" + "\n".join(
+            "  %.2f\n    A: %s\n    B: %s" % w for w in worst[:5])

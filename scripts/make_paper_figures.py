@@ -78,8 +78,10 @@ def plot_pipeline(ax):
     # reading one clock, and Section V exists to show the span inverts anyway; an annotation
     # naming clocks plants the rival hypothesis in the reader at the first figure, and
     # contradicts this figure's own caption, which says "when either process is delayed".
-    ax.text(5.0, 3.20, r"broker transport subtracts stamps written by two threads "
-                       r"$\Rightarrow$ it can come out negative on one clock",
+    # No mathtext here. A double arrow has no Arial glyph, falls back to Computer Modern and
+    # extracts as ")", which corrupts this sentence for every reader of the text layer.
+    ax.text(5.0, 3.20, "broker transport subtracts stamps written by two threads, "
+                       "so it can come out negative on one clock",
             ha="center", va="top", fontsize=7.5, color="#b22222")
     ax.set_xlim(0, 10)
     ax.set_ylim(0, 3.3)

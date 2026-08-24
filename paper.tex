@@ -1035,11 +1035,10 @@ one.
 \subsection{Threats and limitations}
 \label{sec:threats}
 A negative span proves something is wrong; attributing it to scheduling is an inference,
-separated from its rivals by manipulation and listed at the end of
-Section~\ref{sec:mechanism}. Clock skew is ruled out by construction on the same-clock arms
-and bounded on the others, and the clustering of consecutive late wakes ($z = -6.9$ at the
-co-located floor, at every load including none) is the signature of a shared scheduling
-delay, not independent kernel granularity. \texttt{chrony} reports the inter-host offset of
+separated from its rivals by manipulation, with the eliminations listed at the end of
+Section~\ref{sec:mechanism}. Beyond that list, the clustering of consecutive late wakes
+($z = -6.9$ at the co-located floor, at every load including none) is the signature of a
+shared scheduling delay, not independent kernel granularity. \texttt{chrony} reports the inter-host offset of
 Section~\ref{sec:testbeds} as comfortably sub-tick, but bounds its own error at $4$--$7$~ms
 per host --- a pair may disagree by $12$~ms against a $1$~ms stamp --- so the cross-host
 channel stays open rather than ruled out. It did not produce the \redis{}-driver negatives,
@@ -1058,7 +1057,7 @@ twofold apart); timer noise (\texttt{SCHED\_FIFO} at fixed utilization collapses
 $\rtLowFactor$--$\rtHighFactor\times$, and noise does not respect scheduling class); stress
 (transport $77\times$ longer \emph{lowers} the rate); and direct observation (a
 \texttt{sched\_switch} histogram predicts the rate to within a third, unfitted). One rival is
-not the scheduler's: the stamp is a \textsc{CPython} call, so it waits on the interpreter lock
+not the scheduler's: the stamp is a CPython call, so it waits on the interpreter lock
 too, invisibly to a tracepoint probe --- bounded because that kernel-only estimator brackets
 the observed rate ($\tracedRatios$) instead of under-predicting (Supplement~S43.4).
 
@@ -1067,8 +1066,9 @@ hypervisor need not give a guest a counter coherent across its
 vCPUs~\cite{kvmclock}. The clocksource went unrecorded and the instances are reclaimed, but
 the probe caught the smallest increment the clock could report, $\clockIncrementNs$~ns, and
 read cost separates the candidates by an order of magnitude: that leaves \clockAdmitted{},
-which the kernel uses only where cross-CPU coherence is asserted or checked
-(Supplement~S42). The corpus closes the channel again on headroom. Both audited spans are
+both of which the kernel uses only where cross-CPU coherence is asserted or checked
+(Supplement~S42). The corpus closes the channel again on headroom, not on shared endpoints. Both audited
+spans are
 producer-to-consumer differences, so a clock-domain discrepancy displaces both alike; only
 the headroom differs. An offset able to explain the deepest inversion,
 $\spanDeepestInversionMs$~ms, would drive the send-referenced span about that far below zero

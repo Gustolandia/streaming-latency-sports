@@ -452,3 +452,46 @@ class TestRegistryTableVocabulary:
         caption = supp[supp.rindex(r"\caption{", 0, i):i]
         assert r"\registryTableSources" in caption
         assert r"\cite{openmessaging2018" not in caption, "hand-written source list is back"
+
+
+class TestTracedRatioMacros:
+    """The unfitted cross-instrument check, emitted rather than hand-copied.
+
+    Section V-C quotes these three ratios and Section V-E now leans on them again, to bound
+    a userspace serialisation the traced estimator cannot see. Two uses of one number is
+    exactly when it should stop being typed.
+    """
+
+    def test_the_ratios_come_from_the_artefacts(self):
+        pairs = dict(epn.traced_ratio_macros())
+        if not pairs:
+            pytest.skip("runq_tail artefacts absent")
+        import csv
+        import glob
+        expected = []
+        for path in sorted(glob.glob("docs/results/**/runq_tail.csv", recursive=True)):
+            with open(path, encoding="utf-8", newline="") as fh:
+                for row in csv.DictReader(fh):
+                    inv, tail = float(row["inversion"]), float(row["p_tail"])
+                    if inv > 0:
+                        expected.append(tail / inv)
+        expected.sort()
+        assert pairs["tracedRatios"] == ", ".join("%.2f" % r for r in expected)
+        assert pairs["tracedRatioArms"] == str(len(expected))
+
+    def test_the_bound_brackets_unity(self):
+        """The argument in Section V-E is the direction of the disagreement, not its size."""
+        pairs = dict(epn.traced_ratio_macros())
+        if not pairs:
+            pytest.skip("runq_tail artefacts absent")
+        lo, hi = float(pairs["tracedRatioLo"]), float(pairs["tracedRatioHi"])
+        assert lo < 1.0 < hi, \
+            "the elimination argument requires the kernel-only estimator to straddle the " \
+            "observed rate rather than fall short of it; got %.2f-%.2f" % (lo, hi)
+
+    def test_floored_arms_contribute_no_ratio(self):
+        """A real-time arm with zero inversions has no finite ratio to report."""
+        pairs = dict(epn.traced_ratio_macros())
+        if not pairs:
+            pytest.skip("runq_tail artefacts absent")
+        assert "inf" not in pairs["tracedRatios"]

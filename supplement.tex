@@ -2921,6 +2921,38 @@ rather than on any quantity the hypervisor exposes. Steal time may still contrib
 cloud instances, where the mechanism campaigns were run; what the workstation shows is that it
 is not required.
 
+\paragraph{A third rival, inside the interpreter}
+The two rivals above are the ones a reader expects. A third is specific to how this harness is
+built, and the manuscript owes it a paragraph because the mechanism was restated around a
+thread reaching a CPU.
+
+The stamping threads are \textsc{CPython} (Section~III), and both producers are
+multithreaded: \texttt{redis\_producer.py} dispatches sends through a thread pool and runs a
+correction worker beside it. \textsc{CPython} releases the interpreter lock around blocking
+I/O and takes it back on return, and \texttt{now\_ns()} is a Python call. So the sequence is
+not ``reply arrives, thread scheduled, clock read'' but ``reply arrives, thread scheduled,
+\emph{lock reacquired}, clock read''. The extra wait is bounded by the interpreter's switch
+interval, which our campaigns left at the default and none of them recorded; the platform
+probe now records it, and \texttt{interpreter\_serialisation()} is part of every future run's
+provenance.
+
+Three things follow, and we state them because two of them are uncomfortable. First, the
+traced estimator cannot see this term: \texttt{runqlat} measures \texttt{sched\_wakeup} to
+\texttt{sched\_switch}, and lock acquisition happens after the switch, in userspace. Second,
+the priority manipulation does not cleanly separate it, because a thread raised to
+\texttt{SCHED\_FIFO} also reaches the acquisition queue sooner. Third, the default switch
+interval is of the same order as the base slice of Section~V-D, so both would deposit mass in
+the same band of Figure~8.
+
+What settles it is the direction of the disagreement rather than any of those. If a second
+serialization sat in series with the run-queue wait, an estimator built from the run-queue
+wait alone would fall systematically \emph{short} of the observed inversion rate. Over
+$\tracedRatioArms$ arms it does not: the ratios are $\tracedRatios$, straddling unity, with
+the largest above it. A term big enough to matter would have to hide inside a spread that
+already brackets the answer. The interpreter lock is therefore present in principle, bounded
+in practice, and not the mechanism --- and the send-referenced span is immune to it entirely,
+since a stamp taken before the action bounds its event whatever the interpreter is doing.
+
 \subsection{S43.5. Why averaging does not repair either mode}
 
 For Mode~B the natural objection is that quantization error falls both sides of the truth, so

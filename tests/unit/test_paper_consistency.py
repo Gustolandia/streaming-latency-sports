@@ -2777,7 +2777,7 @@ class TestPerBrokerSplit:
                                ("redis", "spanRedisNegAckPct")):
             assert self._macro(macro) == "%.2f" % split[backend]["pct_ack"], backend
 
-    def test_the_two_brokers_account_for_every_event(self, main_tex):
+    def test_the_two_brokers_account_for_every_event(self):
         """If a third backend ever enters the corpus the table stops being exhaustive."""
         split = self._split()
         assert set(split) == {"kafka", "redis"}, \
@@ -2798,3 +2798,33 @@ class TestPerBrokerSplit:
         floors = {b: agg["send_span_floor_us"] for b, agg in split.items()}
         assert self._macro("spanSendFloorUs") == "%.0f" % min(floors.values())
         assert self._macro("spanSendFloorOtherUs") == "%.0f" % max(floors.values())
+
+
+class TestInterpreterLockRival:
+    """Section V-E must keep naming the rival it cannot see, and keep bounding it.
+
+    The stamping threads are CPython, so the clock read waits on the interpreter lock as
+    well as the scheduler, and the traced estimator is blind to that wait by construction.
+    The elimination survives only while the kernel-only ratios straddle the observed rate,
+    so both halves are pinned: the claim and the number that licenses it.
+    """
+
+    def test_the_eliminations_name_the_interpreter_lock(self, main_tex):
+        i = main_tex.index("the alternatives are each eliminated")
+        para = main_tex[i:i + 2000]
+        assert "interpreter lock" in para, \
+            "Section V-E lists the rivals; the interpreter lock is one and must be named"
+
+    def test_the_bound_is_the_generated_ratio_not_a_typed_one(self, main_tex):
+        assert r"\tracedRatios" in main_tex, \
+            "the ratios must come from the artefact, not be typed into the prose"
+        for typed in ("0.78", "1.06", "1.32"):
+            assert typed not in main_tex, \
+                "ratio %s is hand-typed; it is emitted as a macro" % typed
+
+    def test_the_supplement_argues_it_in_full(self, supp):
+        # Normalised: LaTeX wraps prose, so a literal space is not a reliable anchor.
+        flat = " ".join(supp.lower().split())
+        assert "interpreter lock" in flat
+        assert "switch interval" in flat, \
+            "S43.4 must record that the switch interval was left at its default"

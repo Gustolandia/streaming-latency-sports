@@ -403,3 +403,59 @@ class TestMarginQuantities:
             "docs", "results", "span_recount.csv")))
         assert agg["send_span_floor_us"] > 0, "a negative floor would sink the argument"
         assert agg["offset_margin_factor"] > 100, "the margin is what carries the exclusion"
+
+
+class TestByBackend:
+    """The per-broker split behind Table II and Figure 6.
+
+    Table II's generality claim rests on two counts that no test touched until this one. A
+    split that silently dropped a backend, or grouped two spellings of one name apart, would
+    still render a plausible table, so the invariant worth asserting is not any single number
+    but that the parts reconstruct the whole.
+    """
+
+    @staticmethod
+    def _rows():
+        return [
+            {"run_id": "a", "backend": "kafka", "n_events": "10", "neg_ack": "3",
+             "neg_send": "0", "neg_output_send": "0", "neg_tti": "0",
+             "min_ack_us": "-5.0", "min_send_us": "7.0",
+             "median_ack_us": "1.0", "median_send_us": "2.0"},
+            {"run_id": "b", "backend": "redis", "n_events": "20", "neg_ack": "4",
+             "neg_send": "0", "neg_output_send": "0", "neg_tti": "0",
+             "min_ack_us": "-9.0", "min_send_us": "3.0",
+             "median_ack_us": "1.0", "median_send_us": "2.0"},
+            {"run_id": "c", "backend": "kafka", "n_events": "30", "neg_ack": "5",
+             "neg_send": "0", "neg_output_send": "0", "neg_tti": "0",
+             "min_ack_us": "-2.0", "min_send_us": "9.0",
+             "median_ack_us": "1.0", "median_send_us": "2.0"},
+        ]
+
+    def test_rows_are_grouped_by_their_backend(self):
+        split = rs.by_backend(self._rows())
+        assert sorted(split) == ["kafka", "redis"]
+        assert split["kafka"]["runs"] == 2 and split["redis"]["runs"] == 1
+
+    def test_the_parts_reconstruct_the_whole(self):
+        rows = self._rows()
+        whole = rs.totals(rows)
+        split = rs.by_backend(rows)
+        for key in ("runs", "events", "neg_ack", "neg_send", "neg_output_send", "neg_tti"):
+            assert sum(s[key] for s in split.values()) == whole[key], key
+
+    def test_the_pooled_send_floor_is_the_smallest_of_the_per_backend_floors(self):
+        """The manuscript's headroom margin divides by this floor, so which one it is matters."""
+        rows = self._rows()
+        split = rs.by_backend(rows)
+        assert rs.totals(rows)["send_span_floor_us"] == min(
+            s["send_span_floor_us"] for s in split.values())
+
+    def test_a_row_without_a_backend_is_grouped_rather_than_dropped(self):
+        rows = self._rows()
+        rows.append(dict(rows[0], run_id="d", backend=""))
+        split = rs.by_backend(rows)
+        assert "unknown" in split
+        assert sum(s["runs"] for s in split.values()) == len(rows)
+
+    def test_an_empty_corpus_yields_an_empty_split(self):
+        assert rs.by_backend([]) == {}

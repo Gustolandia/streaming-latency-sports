@@ -1814,7 +1814,13 @@ class TestLoadGeometryAndTtrue:
         section = " ".join(supp.split())
         vals = {r["quantity"]: r["value"] for r in _rows("model", "tail_index.csv")}
         assert f"{float(vals['C']):.3f}" in section, "the fitted prefactor is missing"
-        assert f"{abs(float(vals['alpha'])):.3f}" in section, "the fitted exponent is missing"
+        # Either the value or the macro that carries it. Round 24's ledger sweep replaced the
+        # transcription here with `\tailExponent`, and a pin that only accepted the literal
+        # could be satisfied only by typing the number back in. The macro's own value is
+        # checked against this same CSV in test_emit_paper_numbers, so the claim is unchanged:
+        # the supplement states the fitted exponent, and the exponent it states is this one.
+        wanted = f"{abs(float(vals['alpha'])):.3f}"
+        assert wanted in section or r"\tailExponent" in section, "the fitted exponent is missing"
         assert f"{float(vals['predicted_p_tail']):.3f}" in section, "the predicted value is missing"
         assert f"{float(vals['cross_check_ratio']):.2f}" in section, "the cross-check ratio is missing"
         assert "four points do not earn an equation" in section, \

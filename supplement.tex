@@ -57,7 +57,8 @@
 \newcommand{\mainRelatedTime}{II-B}   % Cross-process time measurement
 \newcommand{\mainRelatedRes}{II-C}    % Resolution and discarded samples
 \newcommand{\mainGenerality}{IV-D}   % Generality, and the sign channel
-\newcommand{\mainGridInference}{IV-C} % The grid as inference      % A model of the failure
+\newcommand{\mainGridInference}{IV-C} % The grid as inference
+\newcommand{\mainThreats}{VI-D}      % Threats and limitations      % A model of the failure
 \newcommand{\mainModeB}{IV}         % Mode B
 \newcommand{\mainGuard}{IV-A}       % The guard, and its origin
 \newcommand{\mainPhase}{IV-B}       % Phase, and the grid it produces
@@ -351,7 +352,7 @@ seconds-scale human annotation latency that dominates any live sports feed's end
 broker difference is parts in $100{,}000$ of the end-to-end path, so for choosing a broker it is noise; but it
 is a real, tight, reproducible effect
 that a properly powered instrument resolves and a seven-event one cannot. The shift is also flat
-across concurrency ($0.408$, $0.416$, $0.417$~ms at $N = 1, 9, 12$, audit-gated;
+across concurrency ($\tostHL$, $0.416$, $0.417$~ms at $N = 1, 9, 12$, audit-gated;
 S34), so neither system degrades.
 A part of even this residual is the instrument rather than the broker: the main text
 shows that $0.07$~ms of the gap is the asymmetric acknowledgment stamp --- a different
@@ -2112,7 +2113,7 @@ levels gives
 \label{eq:tailindex}
 \end{equation}
 with a Student-$t$ $95\%$ interval on the exponent of $\tailExponentCI$ at two degrees of
-freedom. E-A10b repeats the sweep on a different day and returns $0.344$ against $0.339$;
+freedom. E-A10b repeats the sweep on a different day and returns $0.344$ against $\tailExponent$;
 the prefactor drifts ($0.238$ against $0.216$). Four points do not earn an equation in a
 main text, which is why this one is here.
 
@@ -2802,6 +2803,11 @@ send rates. (The standard's notation is $J/M$ where the main text writes $p/q$.)
 counter literature, we claim the consequence under deletion, not the lemma.
 
 \section{S42. Which clocksource, bounded from a measurement}
+
+\emph{Section~\mainThreats{} states the verdict in one sentence: a read-cost bound admits only
+two clocksources, and the corpus closes the channel a second time on headroom. Both halves are
+derived here --- the increment the probe saw, what it excludes, and why the send-referenced
+span's floor settles the question independently of which clocksource was in use.}
 \label{sec:clocksource}
 
 A reviewer asked which clocksource the cloud instances used, because a virtualized guest need

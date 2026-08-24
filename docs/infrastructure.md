@@ -253,6 +253,33 @@ all. `TestEveryTargetedRelocationIsReachable` now requires every section from S4
 the range where relocation became targeted rather than bulk --- to be pointed at from the
 paper. A relocation without a pointer is a deletion with extra steps.
 
+**1h. Sweep the places that have never failed.** Every check in this project was written in
+response to a defect, so the apparatus is excellent in the neighbourhood of its last failure
+and knows nothing about ground that has never moved. Round 23 found four numbers in
+`paper.tex` --- the geometry factor, its `z`, and the replication factor, one of them in
+Contribution 2 --- typed out as literals a few centimetres from a table that renders the same
+three quantities through their macros. They had been outside the ledger since the ledger
+existed. Twenty-two rounds of increasingly sophisticated checking walked past them because the
+search always followed the last repair, and no repair had ever touched them.
+
+`tests/unit/test_ledger_coverage.py` asks the question no defect prompted: *which quantities
+in this document have a machine-readable source, and are they all reading from it?* It scans
+both documents for literals duplicating a macro that document already uses, masking tabular
+bodies, `\input`ed files and comments, and ignoring a positive value where a minus sign
+precedes it. On the main text it needs no exemptions and a pin says so, because the honest
+response to a hit there is to fix the number. On the supplement it carries five, each a
+genuine coincidence with a written reason -- a utilization that equals an R-squared, a factor
+that equals a tail index.
+
+**The general habit:** when a gate is added, it answers a question someone already knew to
+ask. Once a year, ask one nobody asked.
+
+**1i. Some phrases keep dying.** "both of which" has now been deleted by three separate
+compression passes --- rounds 19, 20 and 24 --- because it reads as filler. It is the only
+thing telling a reader that `\clockAdmitted` names two clocksources rather than one, and a
+round-12 referee asked for it. When a content pin fires on the same phrase a third time, the
+phrase is not the problem: stop compressing that sentence.
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

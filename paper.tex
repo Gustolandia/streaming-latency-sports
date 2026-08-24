@@ -66,7 +66,7 @@ and that stall can outlast the delivery timed. A sign check rejected $\auditReje
 $\auditRuns$ runs. Across $\spanEvents$ events the acknowledgment-referenced span inverts
 $\spanNegAck$ times while the send-referenced span never does,
 on one clock by construction, so the cause is scheduling and not synchronization; real-time
-priority at fixed utilization collapses it $7$--$80\times$. Second, the most
+priority at fixed utilization collapses it $\rtFactorLow$--$\rtFactorHigh\times$. Second, the most
 widely used cross-broker benchmark admits an \emph{end-to-end} sample only when a
 millisecond-quantized difference is positive and counts none of what it drops, while
 measuring its same-process span with a nanosecond clock, unfiltered: over
@@ -133,7 +133,8 @@ pre-registered payload manipulation moves an arm onto a grid vertex and off it.
 (Section~\ref{sec:mechanism}). An inversion occurs when the stall between an event and the
 clock read that labels it outlasts the interval being measured, so
 $\Pr[\text{inversion}] = \Pr[\text{stall} > T_{\mathrm{true}}]$. Real-time priority on the
-stamping threads at fixed utilization collapses the rate $7$--$80\times$; identical
+stamping threads at fixed utilization collapses the rate
+$\rtFactorLow$--$\rtFactorHigh\times$ over $\rtPairs$ matched pairs; identical
 utilization reached by two core geometries differs $2.07\times$;
 lengthening the true transport $77\times$ \emph{lowers} the rate; an unfitted kernel trace
 predicts the observed rate to within a third. The span that inverts is referenced to an
@@ -690,8 +691,8 @@ scheduling while holding everything else fixed.
 The rule of Section~\ref{sec:gate} rejects $\auditRejectedWorkstation$ of
 $\auditRunsWorkstation$ runs on the workstation testbed ($\auditPctWorkstation\%$) and
 $\auditRejectedCloud$ of $\auditRunsCloud$ on the cloud testbed ($\auditPctCloud\%$), every
-run behind our first result among them: $\auditUsableConditions$ of $\auditConditions$
-conditions survive. At saturation \kafka{}'s median transport proxy reads $-6.4$~ms at one
+run behind our first result among them: on that first testbed
+$\auditUsableConditionsWorkstation$ of $\auditConditionsWorkstation$ conditions survive. At saturation \kafka{}'s median transport proxy reads $-6.4$~ms at one
 hundred connections.
 
 Table~\ref{tab:spans} separates the components, over a wider population than the audit:
@@ -811,8 +812,9 @@ $\rtHighFactor$; the Wilson intervals of the two arms are disjoint at both load 
 ($z = \rtLowZ$ and $z = \rtHighZ$), and both residual rates land on the floor the model
 names in advance, $C_0 \approx 0.004$. \emph{This refutes every account in which the
 inversion rate is a function of utilization}, including the queueing form we ourselves
-adopted: $\rho$ did not change and the rate changed fiftyfold. Across eight matched pairs
-spanning $60$ to $95\%$ load the factor ranges $7$--$80\times$.
+adopted: $\rho$ did not change and the rate changed fiftyfold. Across $\rtPairs$ matched pairs spanning $\rtRhoLow$ to $\rtRhoHigh\%$ load the factor
+ranges $\rtFactorLow$--$\rtFactorHigh\times$, every pair with disjoint intervals;
+Supplement~S47 reports each one, with the campaign it came from.
 
 Three further manipulations agree. At $k=6$ both load geometries sit at $\rho = 0.7531$,
 identical to four decimals, and the inversion rates differ by $2.07\times$ ($z = 10.3$),
@@ -1023,7 +1025,8 @@ Equation~\ref{eq:twostate} depends on, and we make no claim about them. Within o
 construction on the rejecting arms; zero negatives in $\harnessCrossHostSamples$ two-clock
 samples); cross-CPU incoherence under migration, below; utilization (identical $\rho$, rates
 twofold apart); timer noise (\texttt{SCHED\_FIFO} at fixed utilization collapses the rate
-$\rtLowFactor$--$\rtHighFactor\times$, and noise does not respect scheduling class); stress
+$\rtFactorLow$--$\rtFactorHigh\times$ across $\rtPairs$ pairs, and noise does not respect
+scheduling class); stress
 (transport $77\times$ longer \emph{lowers} the rate); and direct observation (a
 \texttt{sched\_switch} histogram predicts the rate to within a third, unfitted). One rival is
 not the scheduler's: the stamp is a CPython call, so it waits on the interpreter lock
@@ -1048,11 +1051,11 @@ regime Lozi et al.\ document, may shift them. The deletion law is demonstrated o
 benchmark and reproduced in one independent harness; the pattern it requires --- a quantized
 stamp, a paced producer, a positivity guard --- is common, and Section~\ref{sec:generality}
 finds the disposal in $\harnessSilent$ tools, though every one of those is a reading of
-source rather than a measured deployment. Nor is the guard confined to the tool we measured:
-the same expression appears unchanged in more than a dozen public forks and in tooling
-released in 2026, so the exposure is current. The OpenMessaging distributed mode failed
-identically on every attempt, so that tool's cross-host exposure rests on source reading and
-our own two-host harness rather than on running it. Exposure in a given deployment depends on
+source rather than a measured deployment. Nor is the guard confined to the tool we measured: of $\forkChecked$ public forks whose
+copy of the file we could read, $\forkUnchanged$ carry the expression unchanged, surveyed
+$\forkCheckedOn$ and recorded with the artifact. Its distributed mode failed identically on
+every attempt, so that tool's cross-host exposure rests on source reading and our own two-host
+harness rather than on running it (Supplement~S4). Exposure in a given deployment depends on
 its path latency and producer rate, which is why we recommend publishing a retention rate as
 routine practice rather than calling any published number wrong.
 

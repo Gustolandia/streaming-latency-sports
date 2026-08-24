@@ -214,18 +214,22 @@ def plot_grid(ax, cells):
     ax.plot([0, lim], [0, lim], color=GREY, lw=0.8, ls="--", zorder=1)
     # Below the diagonal is the whole claim: closer to the grid than a continuum would be.
     ax.fill_between([0, lim], [0, 0], [0, lim], color=KEPT, alpha=0.06, zorder=0)
-    # Below the legend, which gained a third row this round and now reaches further down
-    # the left edge than the annotation used to allow for.
+    # Below the legend and left of the diagonal. At the previous anchor the diagonal passed
+    # through the last glyph of "line" -- a strike on the terminal letter, which the collision
+    # gate's horizontal inset does not reach and which the eye sees immediately.
     ax.annotate("a continuum would\nland on this line", xy=(lim * 0.42, lim * 0.42),
-                xytext=(lim * 0.19, lim * 0.30), fontsize=8, color=GREY, ha="center",
+                xytext=(lim * 0.155, lim * 0.26), fontsize=8, color=GREY, ha="center",
                 arrowprops=dict(arrowstyle="->", color=GREY, lw=0.7))
     ax.text(lim * 0.72, lim * 0.11, "closer to the grid", fontsize=8,
             color=KEPT, ha="center", style="italic")
 
+    # ls="none" on every entry. The arms are a scatter; nothing joins them. Only the filled
+    # style showed a line in the legend, because color="none" on the open styles suppressed
+    # their proxy lines too and hid the inconsistency.
     STYLE = {
-        "grid":       dict(marker="o", ms=5.0, color=KEPT, mec=KEPT, mew=0.9),
-        "unresolved": dict(marker="o", ms=5.0, color="none", mec=KEPT, mew=1.4),
-        "coincident": dict(marker="s", ms=4.2, color="none", mec=GREY, mew=0.9),
+        "grid":       dict(marker="o", ms=5.0, color=KEPT, mec=KEPT, mew=0.9, ls="none"),
+        "unresolved": dict(marker="o", ms=5.0, color="none", mec=KEPT, mew=1.4, ls="none"),
+        "coincident": dict(marker="s", ms=4.2, color="none", mec=GREY, mew=0.9, ls="none"),
     }
     for x, y, k in zip(xs, ys, klass):
         ax.plot(x, y, zorder=3, **STYLE[k])
@@ -257,6 +261,57 @@ def grid_rows():
                     "d_obs": c["d_observed"], "d_null": c["d_null"],
                     "verdict": c["verdict"]})
     return out
+
+
+
+# --- the priority ladder ------------------------------------------------------------------
+
+def plot_priority_ladder(ax, rows):
+    """Eight matched pairs against load: both arms, and the collapse between them.
+
+    A forest plot rather than a factor-against-load scatter, because the factor alone hides
+    which arm moved. Reading down the rows, the real-time arm barely moves while the ordinary
+    arm climbs with load, and the gap between them -- the factor -- widens from sevenfold to
+    eightyfold. That is the pattern the range in the main text summarises.
+    """
+    import stat_intervals
+
+    rows = sorted(rows, key=lambda r: (r["rho"], r["campaign"]))
+    positions = list(range(len(rows)))[::-1]
+    for pos, r in zip(positions, rows):
+        for rate, n, colour, marker in ((r["rate_base"], r["n_base"], DELETED, "o"),
+                                        (r["rate_rt"], r["n_rt"], KEPT, "s")):
+            lo, hi = stat_intervals.wilson(int(round(rate * n)), n)
+            ax.plot([lo, hi], [pos, pos], color=colour, lw=1.4, solid_capstyle="butt")
+            ax.plot([rate], [pos], marker, ms=4.0, color=colour, mec="none")
+        ax.text(1.35, pos, "%.0f$\\times$" % r["factor"], transform=ax.get_yaxis_transform(),
+                va="center", ha="right", fontsize=8, color=GREY)
+
+    ax.set_yticks(positions)
+    ax.set_yticklabels(["%s%%  %s" % (r["level"].lstrip("l"), r["campaign"]) for r in rows],
+                       fontsize=8)
+    ax.set_xscale("log")
+    ax.set_xlabel("inversion rate (Wilson 95% interval, log)", fontsize=8)
+    ax.tick_params(labelsize=8)
+    ax.grid(axis="x", alpha=0.25, lw=0.5)
+    # Wide enough for the lowest Wilson bound in the set: the 60% real-time arm has five
+    # events in 2,985 and its interval runs below 1e-3, where a tighter limit clips it.
+    ax.set_xlim(4e-4, 0.60)
+    ax.set_ylim(-0.7, len(rows) - 0.3)
+    ax.plot([], [], "o", color=DELETED, mec="none", ms=4.0, ls="none", label="ordinary")
+    ax.plot([], [], "s", color=KEPT, mec="none", ms=4.0, ls="none", label="real-time")
+    # Upper right: the bottom row is the 95% arm, whose ordinary interval runs to the right
+    # edge, and a legend there sits on it.
+    ax.legend(fontsize=8, frameon=False, loc="upper right")
+
+
+def build_priority_ladder(out_dir):
+    figure_style.apply()   # in force when the artists are made, not merely at import
+    import priority_pairs
+    fig, ax = plt.subplots(figsize=(6.50, 3.10))
+    plot_priority_ladder(ax, priority_pairs.usable())
+    fig.tight_layout()
+    return _save(fig, out_dir, "priority_ladder")
 
 
 # --- driver -----------------------------------------------------------------------------
@@ -605,7 +660,8 @@ def main(argv=None):
 
     builders = {"deletion": build_deletion, "spectrum": build_spectrum, "grid": build_grid,
                 "mechanism": build_mechanism, "ttrue": build_ttrue,
-                "payload": build_payload}
+                "payload": build_payload,
+                "priority": build_priority_ladder}
     todo = [args.only] if args.only else list(builders)
     for name in todo:
         path = builders[name](args.out)

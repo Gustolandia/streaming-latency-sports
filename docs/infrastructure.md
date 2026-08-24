@@ -104,7 +104,7 @@ python scripts/power_analysis.py --n 15
 
 ## Release checklist
 
-The suite covers everything that can be decided by reading a file. Four things cannot, and
+The suite covers everything that can be decided by reading a file. Five things cannot, and
 each has cost a referee round, so they are written down rather than remembered.
 
 TC's own limits, for reference, from the journal's author page: a regular paper is **10-12
@@ -180,7 +180,25 @@ author outside IEEE initials-and-surname form -- entry [40] read "zihan zhou" th
 rounds spent reading this list, because the gate had never looked at a name. It still does not
 catch a mis-spelled author or a wrong page range.
 
-**4. Confirm an unexpected test result before explaining it.** Three times now the failure mode
+**4. Ask of every printed number: could a stranger find the file?**
+
+Not "does it reproduce" -- they all do -- but whether a reader who starts at the claim can
+reach the artifact without knowing where things are kept. Two rounds running found a headline
+that failed that test while passing every other one.
+
+- Round 16: the audit rate, 1,321 of 2,266. A referee following the only path he could find
+  checked it against the campaign inventory rather than the audit's own outputs and published
+  a wrong finding. The number was right; the path was not there.
+- Round 17: the real-time collapse range, 7--80x. A test had recomputed it from all three
+  campaign files since round 2 and would have caught a drift, but six of its eight matched
+  pairs appeared in neither document, so a reader could not see the evidence even though the
+  build could.
+
+The pattern is not carelessness and it will recur: **a number gets emitted when someone has
+had to recompute it, and the ones that never needed recomputing are the ones that stay typed.**
+`test_no_gated_headline_is_also_typed` holds the list; extend it when the next one turns up.
+
+**5. Confirm an unexpected test result before explaining it.** Three times now the failure mode
 has been to reason about an unexpected result from the apparatus instead of opening the file:
 a `sed` mutation that silently matched nothing and made a live gate look inert (twice), and a
 new gate that fired on a real defect and was narrowed on the assumption of a false positive

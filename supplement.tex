@@ -2926,9 +2926,9 @@ The two rivals above are the ones a reader expects. A third is specific to how t
 built, and the manuscript owes it a paragraph because the mechanism was restated around a
 thread reaching a CPU.
 
-The stamping threads are \textsc{CPython} (Section~III), and both producers are
+The stamping threads are CPython (Section~III), and both producers are
 multithreaded: \texttt{redis\_producer.py} dispatches sends through a thread pool and runs a
-correction worker beside it. \textsc{CPython} releases the interpreter lock around blocking
+correction worker beside it. CPython releases the interpreter lock around blocking
 I/O and takes it back on return, and \texttt{now\_ns()} is a Python call. So the sequence is
 not ``reply arrives, thread scheduled, clock read'' but ``reply arrives, thread scheduled,
 \emph{lock reacquired}, clock read''. The extra wait is bounded by the interpreter's switch
@@ -2940,9 +2940,11 @@ Three things follow, and we state them because two of them are uncomfortable. Fi
 traced estimator cannot see this term: \texttt{runqlat} measures \texttt{sched\_wakeup} to
 \texttt{sched\_switch}, and lock acquisition happens after the switch, in userspace. Second,
 the priority manipulation does not cleanly separate it, because a thread raised to
-\texttt{SCHED\_FIFO} also reaches the acquisition queue sooner. Third, the default switch
-interval is of the same order as the base slice of Section~V-D, so both would deposit mass in
-the same band of Figure~8.
+\texttt{SCHED\_FIFO} also reaches the acquisition queue sooner. Third, magnitude does not
+separate them either: the default switch interval and the base slice of Section~V-D are both
+of millisecond order, so neither mechanism is excluded by the size of the delay it would
+produce. Note what the first point costs us here --- Figure~8 cannot adjudicate between them,
+because it is built from the tracepoints that miss one of the two entirely.
 
 What settles it is the direction of the disagreement rather than any of those. If a second
 serialization sat in series with the run-queue wait, an estimator built from the run-queue

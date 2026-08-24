@@ -24,6 +24,7 @@ ROOT = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import figure_collisions as fc  # noqa: E402
+import figure_style  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -230,7 +231,8 @@ class TestCheck:
 
     def test_report_returns_every_check(self):
         fig, ax = _blank()
-        assert set(fc.report(fig)) == {"struck", "overlapping", "clipped", "crossed", "erased"}
+        assert set(fc.report(fig)) == {"struck", "overlapping", "clipped", "crossed",
+                                       "erased", "translucent", "probed"}
 
 
 class TestReferenceLinesThroughText:
@@ -467,6 +469,237 @@ class TestLabelPatchesOverSpines:
     def test_the_check_reaches_check_and_names_the_spine(self):
         with pytest.raises(fc.FigureCollision, match="painted over the right spine"):
             fc.check(self._at(1.0), "erased_figure")
+
+
+class TestAReferenceLineIsMeasuredThroughItsOwnTransform:
+    """`axhline` and `axvline` are the canonical reference lines and were invisible.
+
+    Both carry a *blended* transform -- data in one axis, axes-fraction in the other -- so an
+    `axvline`'s xydata is [[x, 0], [x, 1]]. Putting that through `ax.transData` maps y = 0 and
+    y = 1 to the data values 0 and 1, which on an axis running to 27 measured 4.8 px of a rule
+    whose drawn length is 135. The check reported clean on every shipped figure and the reason
+    was not that they were clean.
+    """
+
+    def test_an_axvline_through_a_label_is_found(self):
+        fig, ax = _blank()
+        ax.set_ylim(0, 30)
+        ax.axvline(0.5, color="black", lw=1.0)
+        ax.text(0.5, 15, "on the rule", ha="center", va="center", fontsize=9)
+        found = fc.reference_lines_through_text(fig)
+        assert [d["text"] for d in found] == ["on the rule"]
+
+    def test_an_axhline_through_a_label_is_found(self):
+        fig, ax = _blank()
+        ax.axhline(0.5, color="black", lw=1.0)
+        ax.text(0.5, 0.5, "on the rule", ha="center", va="center", fontsize=9)
+        assert [d["text"] for d in fc.reference_lines_through_text(fig)] == ["on the rule"]
+
+    def test_an_axvline_clear_of_every_label_is_not_reported(self):
+        fig, ax = _blank()
+        ax.axvline(0.2, color="black", lw=1.0)
+        ax.text(0.8, 0.5, "well away", ha="center", va="center", fontsize=9)
+        assert fc.reference_lines_through_text(fig) == []
+
+
+class TestTheSpanThresholdIsPerAxisNotDiagonal:
+    """A rule spanning one full dimension of a wide, short panel cannot reach half a diagonal.
+
+    Figure 7's axes is 282 x 135 px. Half the diagonal is 156 px; a full-height rule is 135.
+    Judged against the diagonal the rule was disqualified by geometry, whatever it crossed.
+    """
+
+    def test_a_full_height_rule_qualifies_in_a_wide_short_panel(self):
+        fig, ax = plt.subplots(figsize=(6.0, 1.4))
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.axvline(0.5, color="black", lw=1.0)
+        ax.text(0.5, 0.5, "struck", ha="center", va="center", fontsize=9)
+        bb = ax.get_window_extent()
+        assert bb.height < 0.5 * (bb.width ** 2 + bb.height ** 2) ** 0.5, \
+            "this panel must be one where a diagonal threshold would disqualify the rule"
+        assert [d["text"] for d in fc.reference_lines_through_text(fig)] == ["struck"]
+
+    def test_a_full_width_rule_qualifies_in_a_narrow_tall_panel(self):
+        fig, ax = plt.subplots(figsize=(1.4, 6.0))
+        ax.set_xlim(0, 1)
+        ax.set_ylim(0, 1)
+        ax.axhline(0.5, color="black", lw=1.0)
+        ax.text(0.5, 0.5, "struck", ha="center", va="center", fontsize=9)
+        assert [d["text"] for d in fc.reference_lines_through_text(fig)] == ["struck"]
+
+
+class TestTranslucentLegends:
+    """A framed legend that is not opaque shows the reader a ghost.
+
+    Matplotlib's default framealpha is 0.8. Two figures shipped that way, a round apart: a
+    series ran under `network_delay`'s legend and under `window_sweep`'s, and in the second
+    the first data marker was visible through the box as a pale disc. The rule is
+    unconditional rather than conditional on something passing underneath, because the
+    conditional version is the one that already existed and already failed -- a line can cross
+    a legend's handle column and the gap before its text without touching a glyph box.
+    """
+
+    def _legend(self, **kw):
+        fig, ax = _blank()
+        ax.plot([0, 1], [0, 1], label="series")
+        ax.legend(loc="center", **kw)
+        return fig
+
+    def test_the_default_frame_is_reported(self):
+        found = fc.translucent_legends(self._legend())
+        assert len(found) == 1
+        assert found[0]["alpha"] < 1.0
+        assert found[0]["entries"] == 1
+
+    def test_an_opaque_frame_is_not(self):
+        assert fc.translucent_legends(self._legend(framealpha=1.0)) == []
+
+    def test_a_frameless_legend_is_not(self):
+        """Nothing to see through, and its text is policed like any other label."""
+        assert fc.translucent_legends(self._legend(frameon=False)) == []
+
+    def test_a_frame_with_alpha_unset_counts_as_opaque(self):
+        fig = self._legend(framealpha=1.0)
+        fig.axes[0].get_legend().get_frame().set_alpha(None)
+        assert fc.translucent_legends(fig) == []
+
+    def test_an_axes_with_no_legend_is_skipped(self):
+        fig, ax = _blank()
+        ax.plot([0, 1], [0, 1])
+        assert fc.translucent_legends(fig) == []
+
+    def test_an_invisible_axes_is_skipped(self):
+        fig = self._legend()
+        fig.axes[0].set_visible(False)
+        assert fc.translucent_legends(fig) == []
+
+    def test_it_reaches_check_with_the_remedy_in_the_message(self):
+        with pytest.raises(fc.FigureCollision, match="framealpha=1.0"):
+            fc.check(self._legend(), "ghost_figure")
+
+    def test_it_counts_the_legends_it_looked_at(self):
+        fc.translucent_legends(self._legend(framealpha=1.0))
+        assert fc.probe_counts()["translucent"] == 1
+
+
+class TestEveryCheckCountsWhatItExamined:
+    """Silence and blindness are the same word in a check's output.
+
+    This is Section IV of the manuscript pointed at the manuscript's own tooling: a guard that
+    drops samples and records no count cannot be told from a guard that never fires, and a
+    check that reports no collisions cannot be told from a check that measured nothing. The
+    round-21 referee found one of each in this file. So every check counts its candidates.
+    """
+
+    def _busy(self):
+        fig, ax = _blank()
+        ax.set_ylim(0, 30)
+        ax.plot([0.2, 0.8], [10, 20], "o", ms=5)
+        ax.axvline(0.5, color="black", lw=0.8)
+        ax.text(0.25, 25, "alpha", fontsize=9)
+        ax.text(0.75, 5, "beta", fontsize=9,
+                bbox=dict(facecolor="white", edgecolor="none"))
+        # Opaque, so the legend check has a legend to look at and nothing to report.
+        ax.plot([], [], label="series")
+        ax.legend(loc="upper right", framealpha=1.0)
+        return fig
+
+    def test_report_carries_a_count_for_every_check(self):
+        got = fc.report(self._busy())
+        assert set(got["probed"]) == {"struck", "overlapping", "clipped", "crossed",
+                                      "erased", "translucent"}
+
+    def test_the_counts_are_non_zero_on_a_figure_with_something_to_probe(self):
+        probed = fc.report(self._busy())["probed"]
+        for name, n in sorted(probed.items()):
+            assert n > 0, "%s examined nothing and still reported a verdict" % name
+
+    def test_probe_counts_returns_a_copy(self):
+        """A caller must not be able to edit the register by accident."""
+        fc.report(self._busy())
+        snap = fc.probe_counts()
+        snap["struck"] = -1
+        assert fc.probe_counts()["struck"] != -1
+
+    def test_the_register_is_cleared_between_figures(self):
+        """Two figures must not share a count; a stale non-zero would hide a blind check."""
+        fc.report(self._busy())
+        fig, ax = _blank()
+        got = fc.report(fig)
+        assert got["probed"]["crossed"] == 0, "an empty axes has no reference line to probe"
+
+    def test_the_probe_key_does_not_make_a_clean_figure_fail(self):
+        """`check` reads the verdicts and must not mistake a count for a finding."""
+        fig, ax = _blank()
+        ax.text(0.5, 0.8, "fine", ha="center", fontsize=9)
+        fc.check(fig, "clean_with_counts")
+
+
+class TestTheShippedFiguresProbeSomething:
+    """The check that would have caught round 20's blind spot.
+
+    Running the checks over the corpus and seeing no collisions was read as evidence about the
+    figures. It was also evidence about the checks, and one of them was measuring nothing.
+
+    Per figure, not summed. Summed, this test passes while an entire class of line is
+    invisible: `grid_membership`'s y = x is an ordinary data-space line and keeps a corpus
+    total non-zero by itself, which is exactly how a blind check hides in an aggregate. Under
+    round 20's transform bug the total stayed positive and only `stall_spectrum` fell to zero.
+    """
+
+    #: Which result figures carry a line long enough to be a reference line, and what draws
+    #: it. A count of zero against one of these means the check cannot see a rule that is on
+    #: the page. Keep this list honest: it is checked against the figures, not against itself.
+    RULES = {
+        "deletion": "the 100% retention ceiling",
+        "spectrum": "the 1 ms tick rule",
+        "grid": "the y = x continuum diagonal",
+        "mechanism": "the manipulated/observed rule",
+    }
+
+    #: And the one that carries none, named so that adding a rule to it is a deliberate act.
+    NO_RULE = ("ttrue",)
+
+    def _built(self, name, out):
+        import make_result_figures as mrf
+        return {"deletion": mrf.build_deletion, "spectrum": mrf.build_spectrum,
+                "grid": mrf.build_grid, "mechanism": mrf.build_mechanism,
+                "ttrue": mrf.build_ttrue}[name](out)
+
+    @pytest.mark.parametrize("name", sorted(RULES))
+    def test_the_reference_line_check_sees_the_rule_on_this_figure(self, name, tmp_path):
+        self._built(name, tmp_path)
+        n = fc.probe_counts()["crossed"]
+        assert n > 0, (
+            "%s carries %s and the reference-line check examined nothing: it is reporting "
+            "clean about a line it cannot measure" % (name, self.RULES[name]))
+
+    @pytest.mark.parametrize("name", NO_RULE)
+    def test_a_figure_with_no_rule_probes_nothing(self, name, tmp_path):
+        """The negative half. If this starts failing, a rule was added and belongs above."""
+        self._built(name, tmp_path)
+        assert fc.probe_counts()["crossed"] == 0
+
+    #: One figure per check that certainly contains that check's subject, and why. A zero
+    #: here cannot be innocent. The other direction is not asserted: a bar chart has no
+    #: scatter marker to clip and a figure with no opaque label patch has no spine to erase,
+    #: so a zero on those is the check correctly finding nothing to look at.
+    WITNESS = {
+        "struck": ("deletion", "every figure carries tick labels and a legend"),
+        "overlapping": ("deletion", "eighteen labels give a hundred and twenty pairs"),
+        "clipped": ("deletion", "seventy-five scatter markers"),
+        "erased": ("mechanism", "the factor column sits on white patches"),
+    }
+
+    @pytest.mark.parametrize("check_name", sorted(WITNESS))
+    def test_each_check_examines_something_where_its_subject_exists(self, check_name,
+                                                                    tmp_path):
+        figure, why = self.WITNESS[check_name]
+        self._built(figure, tmp_path)
+        n = fc.probe_counts().get(check_name, 0)
+        assert n > 0, ("%s examined nothing on %s, which has %s -- a verdict of 'clean' from "
+                       "it means nothing" % (check_name, figure, why))
 
 
 class TestEveryShippedFigure:

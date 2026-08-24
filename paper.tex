@@ -587,8 +587,8 @@ $300$~msg/s spreads $30.5$.
 A table of spreads is not a test, so we state one. For each arm let $D$ be the mean
 distance from its replicates to the nearest vertex of the $q$-grid, normalized by the cell
 half-width, and let the null be a permutation of replicate positions within the arm, which
-is what a continuum implies. Supplement~S46 gives the construction, reports every arm with
-$n \ge 5$ and prints the corrected value rather than the raw one. $\gridReject$ of the
+is what a continuum implies. Supplement~S54 gives the construction and Supplement~S46 every
+arm with $n \ge 5$, printing the corrected value rather than the raw one. $\gridReject$ of the
 $\gridPowered$ powered
 arms reject the continuum null at $\alpha = 0.05$ after Holm correction within the family
 of $\gridArms$. The tenth, $\gridUnresolvedRate$~msg/s, rejects before correction
@@ -656,7 +656,7 @@ Nor is the disposal confined to this harness. We audited \harnessAuditedWord{} t
 across \harnessLanguagesWord{} languages and \harnessVendorsWord{} vendors, classifying each
 finding with the code that classified the benchmark; \harnessSilentWord{} of the
 \harnessAuditedWord{}
-dispose of the sample without counting it, in four classes. \harnessFiltersWordCap{} admit only
+dispose of the sample without counting it, in \harnessDisposalClassesWord{} classes. \harnessFiltersWordCap{} admit only
 positive samples, one of them Apache Pulsar's performance client reaching the same design
 independently~\cite{pulsar_perf}, which makes this a pattern rather than one project's
 oversight. \harnessSuppressorsWordCap{} do something worse and substitute a constant ---
@@ -696,7 +696,7 @@ produce exactly one negative value, $-1000\,\mu$s, and no other; that is precise
 corpus contains, while the \kafka{}-driver span, floored the same way but taken inside one
 JVM, never inverts at all. Clock discipline was clean at every logged minute, which is the
 point --- this failure needs no misbehaving clock, only two of them and a floor
-(Supplement~S43).
+(Supplement~S53).
 
 \section{Mode A: Why a Latency Comes Out Negative}
 \label{sec:mechanism}

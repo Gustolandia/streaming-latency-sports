@@ -108,18 +108,27 @@ def main(argv=None):
 
     bad = 0
     for stem, found in seen:
-        if not any(found.values()):
+        # `probed` is the register of what each check examined, not a finding. Counting it as
+        # one made this test always true and would have called every figure dirty.
+        findings = {k: v for k, v in found.items() if k != "probed"}
+        if not any(findings.values()):
             continue
         bad += 1
         print("%s" % stem)
-        for d in found["struck"]:
+        for d in findings["struck"]:
             print("    struck  %-44s %5.1f%%" % (_safe(d["text"]), 100 * d["fraction"]))
-        for d in found["overlapping"]:
+        for d in findings["overlapping"]:
             print("    overlap %-44s over %s (%.0f%%)"
                   % (_safe(d["a"]), _safe(d["b"]), 100 * d["overlap"]))
-        for d in found["clipped"]:
+        for d in findings["clipped"]:
             print("    clipped point %-28s overhang %.1f px of r=%.1f px"
                   % (d["point"], d["overhang_px"], d["radius_px"]))
+        # Everything else the report carries, printed generically. Three checks were added
+        # after this tool was written and none of them was printed; a finding that counts
+        # toward the verdict and never appears is worse than no tool at all.
+        for kind in sorted(set(findings) - {"struck", "overlapping", "clipped"}):
+            for d in findings[kind]:
+                print("    %-7s %s" % (kind[:7], _safe(str(d))))
     print("\n%d of %d figures carry a collision; rasters in %s" % (bad, len(seen), out))
     return 1 if bad else 0
 

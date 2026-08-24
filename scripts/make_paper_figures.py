@@ -104,7 +104,7 @@ def plot_workload(axes, profiles):
     mean_ax.set_xlabel("Mean arrival rate (events/s)")
     mean_ax.set_ylabel("Matches")
     mean_ax.set_title("(a) Football event feeds are sparse")
-    mean_ax.legend(fontsize="small")
+    mean_ax.legend(fontsize="small", framealpha=1.0)
 
     burst_ax.hist(profiles["burstiness"], bins=40, color=GREY, alpha=0.75)
     burst_ax.axvline(profiles["burstiness"].median(), color="#b22222", linewidth=1.6,
@@ -112,7 +112,7 @@ def plot_workload(axes, profiles):
     burst_ax.set_xlabel("Peak / mean arrival rate (10 s window)")
     burst_ax.set_ylabel("Matches")
     burst_ax.set_title("(b) ...and burstier than their mean suggests")
-    burst_ax.legend(fontsize="small")
+    burst_ax.legend(fontsize="small", framealpha=1.0)
 
 
 # --------------------------------------------------------------------------- concurrency
@@ -137,7 +137,7 @@ def plot_concurrency(axes, slots, timeline):
     for ax, level in ((play_ax, 12),):
         ax.axvline(level, color="#b22222", linestyle="--", linewidth=1.4,
                    label="benchmarked up to $N$=12")
-        ax.legend(fontsize="small")
+        ax.legend(fontsize="small", framealpha=1.0)
 
 
 # --------------------------------------------------------------------------- audit
@@ -341,7 +341,7 @@ def plot_integrity(axes, by_run, threshold=0.01):
     hist_ax.set_xlabel("Worst-component negative-span rate per run (log)")
     hist_ax.set_ylabel("Runs")
     hist_ax.set_title(f"(a) {clean:,} of {len(by_run):,} runs clean", fontsize=10)
-    hist_ax.legend(fontsize="small", loc="upper left")
+    hist_ax.legend(fontsize="small", loc="upper left", framealpha=1.0)
 
     counts = [condemned_at(by_run, t) for t in SENSITIVITY_THRESHOLDS]
     pct = [100 * c / len(by_run) for c in counts]
@@ -359,7 +359,7 @@ def plot_integrity(axes, by_run, threshold=0.01):
     sens_ax.set_ylim(-4, 104)
     sens_ax.set_title("(b) The threshold is a real choice", fontsize=10)
     sens_ax.grid(True, alpha=0.3)
-    sens_ax.legend(fontsize="small", loc="upper right")
+    sens_ax.legend(fontsize="small", loc="upper right", framealpha=1.0)
 
 
 # --------------------------------------------------------------------------- network

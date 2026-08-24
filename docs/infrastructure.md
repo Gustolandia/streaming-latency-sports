@@ -100,3 +100,34 @@ python scripts/power_analysis.py --n 15
       `requirements.txt`, `runs/` (or a documented subset), `data/processed/`,
       `paper.tex` + assets, this `docs/` tree.
 - [ ] Upload to Zenodo, mint a DOI, add the DOI badge to `README.md`.
+
+
+## Release checklist
+
+The suite covers everything that can be decided by reading a file. Three things cannot, and
+each has cost a referee round, so they are written down rather than remembered.
+
+**1. Look at every figure, at the size it prints.** Rasterise the figure directory to a contact
+sheet and read it. Two defects reached referees this way and neither was visible to any gate,
+because both were layout rather than content:
+
+- Figure 5(b): the `32 KB` label was struck through by the half-cell rule (round 12).
+- `window_sweep`: `set_xticks` replaces a log axis's *major* ticks and leaves the minor decade
+  formatter running, so "180" printed underneath "2 x 10^2" on both panels (round 13).
+
+Font, Type 3, family and text-layer gates all passed both. A collision is a fact about
+geometry, and only an eye or a pixel-diff sees it.
+
+**2. Read the reference list as a copy editor would.** Round 14 was the first time anyone did,
+and it found three defects in a list that is otherwise scrupulous: one entry printing its URL
+twice, two venues unabbreviated among forty-three that were not, and the arXiv entries split
+across two conventions. `TestReferenceHouseStyle` now catches those three classes; it does not
+catch a mis-spelled author or a wrong page range.
+
+**3. Confirm an unexpected test result before explaining it.** Three times now the failure mode
+has been to reason about an unexpected result from the apparatus instead of opening the file:
+a `sed` mutation that silently matched nothing and made a live gate look inert (twice), and a
+new gate that fired on a real defect and was narrowed on the assumption of a false positive
+(round 12, corrected in round 13). Verify the mutation applied. Open the file the gate names.
+An unexpected result from the apparatus deserves the scrutiny this paper asks for an unexpected
+measurement.

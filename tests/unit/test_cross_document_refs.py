@@ -162,3 +162,43 @@ class TestSupplementNumbering:
         top to bottom."""
         marks = {m.group(1) for m in re.finditer(r"^\\section\{S\d+([.:])", supp, re.M)}
         assert len(marks) == 1, "S-headings mix separators: %s" % sorted(marks)
+
+
+class TestSupplementPointsAtRealFloats:
+    """Every "Figure~N" and "Table~N" in the supplement must be that float in the main text.
+
+    These are hand-typed numbers crossing a document boundary, which is the same hazard the
+    Section pointers carry and the same fix: resolve them against the paper's own .aux, so a
+    renumbered float fails the build instead of quietly redirecting the reader.
+    """
+
+    POINTER = re.compile(r"\b(Figure|Table)~([0-9]+|[IVX]+)(?=[^a-zA-Z0-9]|$)")
+
+    def test_every_float_pointer_resolves(self, supp, aux):
+        printed = {
+            "Figure": {v for k, v in aux.items() if k.startswith("fig:")},
+            "Table": {v for k, v in aux.items() if k.startswith("tab:")},
+        }
+        if not printed["Figure"] or not printed["Table"]:
+            pytest.skip("paper.aux carries no float labels; build the paper first")
+        bad = []
+        for m in self.POINTER.finditer(supp):
+            kind, num = m.group(1), m.group(2)
+            if num not in printed[kind]:
+                line = supp.count("\n", 0, m.start()) + 1
+                bad.append("supplement:%d  %s~%s (the paper has %s %s)"
+                           % (line, kind, num, kind.lower(),
+                              ", ".join(sorted(printed[kind]))))
+        assert not bad, "\n  " + "\n  ".join(bad)
+
+    def test_the_pointers_that_exist_are_the_ones_we_expect(self, supp, aux):
+        """A cheap tripwire: if the supplement grows float pointers, they get read.
+
+        Two exist today, and both were added in the last two rounds. Listing them keeps a
+        third from arriving unexamined.
+        """
+        found = {"%s~%s" % (m.group(1), m.group(2))
+                 for m in self.POINTER.finditer(supp)}
+        assert found <= {"Table~II", "Figure~8"}, \
+            "new cross-document float pointer(s) %s -- check each against the paper" % (
+                sorted(found - {"Table~II", "Figure~8"}))

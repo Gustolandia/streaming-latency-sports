@@ -35,7 +35,8 @@ import matplotlib
 matplotlib.use("Agg")
 import figure_style  # noqa: E402
 figure_style.apply()  # Type 42, IEEE-listed family; see scripts/figure_style.py
-import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker  # noqa: E402
 import pandas as pd  # noqa: E402
 
 EMITTED = "#1f77b4"
@@ -67,6 +68,9 @@ def plot_counts(ax, df):
     ax.plot(df["window_s"], df["slow_wake"], marker="s", color=AFFECTED,
             linewidth=2, markersize=7, label="Events waking $>$50 ms late")
     ax.set_xscale("log")
+    # A log axis keeps labelling its minor decades, which prints "2 x 10^2" straight through
+    # the "180" set below. Keep the ticks, drop their labels.
+    ax.xaxis.set_minor_formatter(mticker.NullFormatter())
     ax.set_yscale("log")
     ax.set_xticks(df["window_s"])
     ax.set_xticklabels([f"{int(w)}" for w in df["window_s"]])
@@ -90,9 +94,14 @@ def plot_share(ax, df):
             label="Measured share")
     # A cost paid once per run dilutes as 1/events, anchored at the narrowest window.
     predicted = share.iloc[0] * df["trace_events"].iloc[0] / df["trace_events"]
+    # No mathtext. A proportional-to sign has no Arial glyph, falls back to Computer Modern
+    # and extracts as "(", which corrupts the legend for every reader of the text layer.
     ax.plot(df["window_s"], predicted, linestyle="--", color="#555555", linewidth=1.5,
-            label="Paid once per run ($\\propto 1/\\mathrm{events}$)")
+            label="Paid once per run, diluting as 1/events")
     ax.set_xscale("log")
+    # A log axis keeps labelling its minor decades, which prints "2 x 10^2" straight through
+    # the "180" set below. Keep the ticks, drop their labels.
+    ax.xaxis.set_minor_formatter(mticker.NullFormatter())
     ax.set_xticks(df["window_s"])
     ax.set_xticklabels([f"{int(w)}" for w in df["window_s"]])
     ax.set_xlabel("Observation window (s)")

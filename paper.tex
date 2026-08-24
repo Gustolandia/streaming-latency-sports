@@ -129,10 +129,10 @@ $T_{\mathrm{true}}/\tau$. Fourteen arms across seven denominators behave as posi
 $\gridReject$ of $\gridPowered$ powered arms reject a continuum null after correction, and a
 pre-registered payload manipulation moves an arm onto a grid vertex and off it.
 
-\item \textbf{The inversion mechanism, established by manipulation on one clock}
-(Section~\ref{sec:mechanism}). An inversion occurs when the stall between an event and the
+\item \textbf{The negative-span mechanism, established by manipulation on one clock}
+(Section~\ref{sec:mechanism}). A span comes out negative when the stall between an event and the
 clock read that labels it outlasts the interval being measured, so
-$\Pr[\text{inversion}] = \Pr[\text{stall} > T_{\mathrm{true}}]$. Real-time priority on the
+$\Pr[\text{span} < 0] = \Pr[\text{stall} > T_{\mathrm{true}}]$. Real-time priority on the
 stamping threads at fixed utilization collapses the rate
 $\rtFactorLow$--$\rtFactorHigh\times$ over $\rtPairs$ matched pairs; identical
 utilization reached by two core geometries differs $2.07\times$;
@@ -206,8 +206,8 @@ profiling FreeBSD against a DAG hardware reference, found the outgoing socket ti
 departure is written --- under every stress pattern including none, and attributed host
 latency to interrupt processing, scheduling and context switching. That is Mode~A's physical primitive, published in
 2012 and measured more precisely than we measure it; we add its consequence for a two-process
-measurement, a law relating the inversion rate to the interval measured
-(Equation~\ref{eq:inversion}), and manipulations separating scheduling from its rivals. The
+measurement, a law relating the negative-span rate to the interval measured
+(Equation~\ref{eq:negspan}), and manipulations separating scheduling from its rivals. The
 audit half has its own ancestor: Paxson~\cite{paxson1998calibrating} treated physically
 impossible transit times as instrument failure and published the proportion of traces
 affected. Lancet is the nearest existing gate, and the difference is the one that matters: it
@@ -229,13 +229,13 @@ et al.~\cite{sharma2026causality} count negative timing spans in distributed inf
 systems and propose a \texttt{causality\_health} check; injecting skew, they see no
 violations up to $3$~ms and clear ones by $5$~ms, and read that as a skew threshold. We
 contradict a premise of that reading rather than their measurements. They hold that
-``queueing alone cannot produce negative timing spans''; we observe inversion rates near
+``queueing alone cannot produce negative timing spans''; we observe negative-span rates near
 $23\%$ at $88\%$ utilization with no skew to blame, on one host and with an inter-host
 offset of $0.067$~ms where two are used, and Section~\ref{sec:mechanism} moves that rate
 fiftyfold without touching a clock. Their own formulation is nearer ours than that premise
 allows --- they note the minimum separation ``exhibits variability due to scheduling
 jitter'', with violation probability rising as $\epsilon$ exceeds its quantiles, which is
-Equation~\ref{eq:inversion} with skew where we put the stall. Scheduling is a third channel,
+Equation~\ref{eq:negspan} with skew where we put the stall. Scheduling is a third channel,
 so a threshold in milliseconds of skew does not transfer to a loaded machine. The same attribution has been made about the
 benchmark we audit: asked why publish latency could exceed end-to-end latency, a maintainer
 answered that the stamps come from different nodes and ``the clock are typically (in best
@@ -296,7 +296,7 @@ framing to benchmark bias, which we adopt as a leading-order account and, on the
 ultimately refute (Section~\ref{sec:mechanism}). On a second axis they reach our mechanism's
 inflation half concurrently and independently: their client's own interpreter lock
 ``artificially inflates'' the latencies it reports, charging the instrument's scheduling to
-the server under test. What a positive number cannot show --- the inversion, and the sign
+the server under test. What a positive number cannot show --- the negative span, and the sign
 channel that makes the displacement legible --- is what remains ours. Tail behavior under
 load~\cite{li2014tales} is the phenomenon our stall distribution samples, and that work
 also shows real-time priority collapsing a tail that renicing leaves alone --- on the
@@ -306,7 +306,10 @@ system under test, where we apply the same lever to the instrument.
 \label{sec:method}
 
 Everything below is measured on one clock unless the text says otherwise, and the spans we
-audit are named explicitly, because which two stamps are subtracted is the whole question.
+audit are named explicitly, because which two stamps are subtracted is the whole question. A
+span whose difference comes out below zero we call a \emph{negative span}: the name is the
+observable, not an interpretation of it. \emph{Span} is used throughout in the tracing sense,
+a pair of stamps bracketing an interval, and nothing here is specific to a tracing system.
 
 \subsection{Testbeds, and what the measurement proxies}
 \label{sec:testbeds}
@@ -392,8 +395,8 @@ T_{\mathrm{measured}} = T_{\mathrm{true}} + \Delta ,
 so Equation~\ref{eq:model}'s difference inverts exactly when $\Delta < -T_{\mathrm{true}}$,
 giving
 \begin{equation}
-\Pr[\text{inversion}] = F_{\Delta}(-T_{\mathrm{true}}) .
-\label{eq:inversion}
+\Pr[\text{span} < 0] = F_{\Delta}(-T_{\mathrm{true}}) .
+\label{eq:negspan}
 \end{equation}
 
 \begin{figure*}[t]
@@ -412,8 +415,8 @@ beyond it.}
 \label{fig:model}
 \end{figure*}
 
-Equation~\ref{eq:inversion} says the most useful thing in this paper
-(Fig.~\ref{fig:model}b). \textbf{Inversion probability is a property of the quantity being
+Equation~\ref{eq:negspan} says the most useful thing in this paper
+(Fig.~\ref{fig:model}b). \textbf{Negative span probability is a property of the quantity being
 measured, not only of the machine}: a fixed distribution of $\Delta$ overlaps a small
 $T_{\mathrm{true}}$ almost entirely and a large one hardly at all, which is why our
 network-delay arm, transport in tens of seconds, passes every run while same-hardware arms
@@ -752,12 +755,12 @@ The stamping thread is either running, in which case the stamp is late by a narr
 of width $\sigma_c$, or preempted and off-CPU. Writing $p(\rho)$ for the probability of the
 second state and $S(\cdot)$ for the residual's survival function,
 \begin{equation}
-\Pr[\text{inversion} \mid T_{\mathrm{true}}] \;=\; p(\rho)\;S(T_{\mathrm{true}}) .
+\Pr[\text{span} < 0 \mid T_{\mathrm{true}}] \;=\; p(\rho)\;S(T_{\mathrm{true}}) .
 \label{eq:twostate}
 \end{equation}
 Load changes how \emph{often} the thread that must record the time is not running, not how
 wide the ordinary jitter is. Going from idle to the knee multiplies the fitted core width
-$\sigma_c$ by $\coreGrowth$ and the inversion rate --- the mass of $\Delta$ beyond
+$\sigma_c$ by $\coreGrowth$ and the negative-span rate --- the mass of $\Delta$ beyond
 $-T_{\mathrm{true}}$ --- by $\invGrowth$. The rate has a ceiling below one: fully
 saturated it reaches $\invCeiling$, so even then most events are stamped either
 unpreempted or by a thread whose stall is shorter than the interval being measured.
@@ -811,22 +814,22 @@ Real-time priority on the stamping threads moves occupancy while utilization sta
 $\rtHighFactor$; the Wilson intervals of the two arms are disjoint at both load levels
 ($z = \rtLowZ$ and $z = \rtHighZ$), and both residual rates land on the floor the model
 names in advance, $C_0 \approx 0.004$. \emph{This refutes every account in which the
-inversion rate is a function of utilization}, including the queueing form we ourselves
+negative-span rate is a function of utilization}, including the queueing form we ourselves
 adopted: $\rho$ did not change and the rate changed fiftyfold. Across $\rtPairs$ matched pairs spanning $\rtRhoLow$ to $\rtRhoHigh\%$ load the factor
 ranges $\rtFactorLow$--$\rtFactorHigh\times$, every pair with disjoint intervals;
 Supplement~S47 reports each one, with the campaign it came from.
 
 Three further manipulations agree. At $k=6$ both load geometries sit at $\rho = 0.7531$,
-identical to four decimals, and the inversion rates differ by $2.07\times$ ($z = 10.3$),
+identical to four decimals, and the negative-span rates differ by $2.07\times$ ($z = 10.3$),
 reproduced at $2.05\times$ by a full replication. Multi-server queueing expects geometry to matter at
 fixed $\rho$, so this will not surprise a queueing-literate reader; what it rules out is the
-single-parameter form we had adopted and pre-registered, where $\rho$ alone fixes the rate. Payload padding lengthened transport $76.9\times$ while the inversion
+single-parameter form we had adopted and pre-registered, where $\rho$ alone fixes the rate. Payload padding lengthened transport $76.9\times$ while the negative-span
 rate \emph{fell} $4.1\times$, monotonically, at a $0.012$ utilization spread: the
-direction Equation~\ref{eq:inversion} predicts and the opposite of a stress account.
+direction Equation~\ref{eq:negspan} predicts and the opposite of a stress account.
 Finally, measured with \texttt{runqlat} on the \texttt{sched\_wakeup} and
 \texttt{sched\_switch} tracepoints~\cite{gregg2016runqlat}, filtered to the harness processes
 and sharing no instrument, estimator or data with the application-level rate, the
-probability that a run-queue stall outlasts the interval agrees with the observed inversion
+probability that a run-queue stall outlasts the interval agrees with the observed negative-span
 rate across $\tracedRatioArms$ arms at two load levels, ratios $\tracedRatios$ with no
 consistent sign: an application-level failure rate predicted to within a third, unfitted.
 A probe on every context switch is not free: the rate is $\untracedRate$ untraced
@@ -843,10 +846,10 @@ The Pollaczek--Khinchine form remains motivation rather than fitted result.
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/ttrue_law.pdf}
-\caption{\textbf{A longer interval inverts less often.} Inversion rate against true
+\caption{\textbf{A longer interval inverts less often.} Negative span rate against true
 transport over the payload sweep, Wilson $95\%$ intervals. The same stall distribution
 overlaps a short interval almost entirely and a long one hardly at all, which is
-Equation~\ref{eq:inversion} as an experiment: lengthening what is being measured lowers the
+Equation~\ref{eq:negspan} as an experiment: lengthening what is being measured lowers the
 rate, where a load-driven account predicts no change.}
 \label{fig:ttrue}
 \end{figure}
@@ -858,7 +861,7 @@ the post that introduces \texttt{runqlat}, the tool we use here~\cite{gregg2016r
 we add is which modes, and why the upper one sits where it does.
 
 Raising the payload from $0$ to $256$~KB lengthens the true transport $77\times$, and over
-that span the inversion rate falls monotonically with $T_{\mathrm{true}}$
+that range the negative-span rate falls monotonically with $T_{\mathrm{true}}$
 (Fig.~\ref{fig:ttrue}); log--log least squares over the four payload levels returns an
 effective exponent of $\tailExponent$ ($\tailExponentCI$, Student-$t$ at two degrees of
 freedom). The fit is in
@@ -957,7 +960,7 @@ deterministic per-run artifact reproduces beautifully.
 
 \textbf{Make the timestamping path unpreemptable, and say that you did.} The one mitigation
 our measurements support directly: real-time priority on the stamping threads cut the
-inversion rate $7$ to $80\times$ at unchanged background load, and busy-polling a dedicated
+negative-span rate $7$ to $80\times$ at unchanged background load, and busy-polling a dedicated
 core should buy the same for a burned core. Two caveats: the floor is not zero, so the check
 stays; and a real-time or spinning stamping thread changes the system it measures, so where
 that is unacceptable, report retention instead.
@@ -1043,7 +1046,7 @@ both of which the kernel uses only where cross-CPU coherence is asserted or chec
 audited spans are producer-to-consumer differences, so a clock-domain discrepancy displaces
 both alike, and the send-referenced span never goes negative in $\spanRuns$ runs. Its floor of
 $+\spanSendFloorUs\,\mu$s bounds any such offset at $\spanOffsetMargin\times$ too small to
-explain the deepest inversion --- an order of magnitude tighter than \texttt{chrony} claims
+explain the deepest negative span --- an order of magnitude tighter than \texttt{chrony} claims
 for itself cross-host, and the arithmetic is in Supplement~S42.
 
 The mechanism's constants are those of one EEVDF-era kernel (6.8); CFS-era schedulers, the

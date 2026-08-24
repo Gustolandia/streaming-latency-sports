@@ -206,3 +206,31 @@ rather than in full. What v2 actually carries from this survey:
   HdrHistogram claim tempered; Vanlightly histogram-reset loss mode added to [7];
   re-sweep for 2025–26 items found nothing on discarded-after-measurement samples —
   the §E gap statement stands verified.
+- 2026-08-24: Google Scholar sweep, previously blocked by an interstitial and recorded as
+  unavailable in two referee rounds. Six queries, run against the full index rather than a
+  bibliographic database, so this is the widest net yet cast at the §E gap:
+  - `"negative latency" benchmark scheduling timestamp` (2024+) -- 10 hits, every one in the
+    *latency-compensation* sense: prediction far enough ahead that perceived delay is
+    negative (Schulz et al., IEEE, 2026; Jobst et al., IEEE, 2025, both Tactile Internet).
+    None concerns a measured span that comes out below zero. This independently confirms the
+    Scopus result of 2026-08-21 (269 hits, same sense) on a much larger corpus. The term is
+    taken; the manuscript does not use it, and should not start.
+  - `"retention rate" benchmark discarded samples latency quantization` (2025+) -- 10 hits,
+    all KV-cache compression and ML inference. Retention of *measurements* appears nowhere.
+  - `"OpenMessaging Benchmark" latency discarded OR filtered OR dropped` -- 8 hits (Pravega;
+    two message-middleware characterisation surveys; four theses). Every one uses OMB as an
+    instrument; none asks what it discards.
+  - `"time interval averaging" benchmark OR software quantization retained` -- 10 hits, all
+    counter metrology: HP Journal 1975 and 1978, two TDC dissertations, Szymanowski et al.
+    2015 on quantization error in precision time counters. The arithmetic lineage the paper
+    claims (HP AN 162-1) is exactly where Scholar puts it, and no result carries it into
+    software benchmarking.
+  - `benchmark harness "measurement artifact" latency understate scheduler preemption`
+    (2020+) -- **0 results**. The strongest single signal in this survey: the conjunction of
+    terms that describes the paper's subject returns an empty index.
+  - `"negative duration" OR "backwards timestamp" distributed tracing span clock discard` --
+    10 hits, none on topic (threat detection, epidemiology, a speech corpus). The tracing
+    literature discusses clock skew; it does not discuss what the tracer drops because of it.
+
+  Conclusion unchanged and now better supported: §E stands. Nothing found requires a
+  citation, a hedge, or a change of wording, and no previous referee finding is contradicted.

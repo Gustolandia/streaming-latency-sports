@@ -853,7 +853,7 @@ credit one over the other. That is a design limit no further analysis of these d
 \emph{The instrument check, and what it can and cannot rule out.} Tracing a system to measure its
 scheduling behavior is exactly the kind of intervention that can create what it observes, so the
 traced cell has an untraced twin. Our first attempt at this campaign ran with a probe that failed
-to attach: the histogram was empty, but the inversion rates are valid, and we kept that run as the
+to attach: the histogram was empty, but the negative-span rates are valid, and we kept that run as the
 control. It measured $0.2717$ against the traced run's $0.2315$ --- the traced rate is $14.8\%$
 \emph{lower}, two hours apart, same design.
 
@@ -872,7 +872,7 @@ histogram and a count of negative transports over the same events --- so a commo
 that run moves both and leaves their agreement intact.
 
 \emph{The gate fired on our own replication, and we report the arm it withheld.} The check is a
-rule fixed in advance: a traced arm whose inversion rate differs from its untraced comparator by
+rule fixed in advance: a traced arm whose negative-span rate differs from its untraced comparator by
 more than $25\%$ is not compared. The replication's $88\%$ arm measures $0.1956$ against the same
 untraced control's $0.2717$ --- a drift of $28\%$ --- so its verdict is withheld by the same
 mechanism that admitted the original. Its numbers are in the main text because withholding
@@ -883,13 +883,13 @@ rule.
 
 \emph{The real-time arm's zero is an artifact of the instrument, and the replication settles
 it.} Every traced real-time arm we have run --- three of them, across two campaigns and two load
-levels --- recorded \emph{zero} inversions in $2{,}985$ events. The untraced twin of one of those
+levels --- recorded \emph{zero} negative spans in $2{,}985$ events. The untraced twin of one of those
 arms recorded $15$. Under that rate the chance of a single traced arm showing none is
 $3{\times}10^{-7}$, and of all three about $10^{-20}$.
 
 We first reported this as unresolved: either the arm genuinely differed or tracing perturbed it,
 and one measurement could not separate the two. Three can. Attaching BPF to
-\texttt{sched\_switch} suppresses the inversions in the real-time arm, and the effect is not
+\texttt{sched\_switch} suppresses the negative spans in the real-time arm, and the effect is not
 subtle --- it removes all of them. The direction is consistent with the ordinary arm, where the
 two traced measurements are the lower two of the six we have at $88\%$, though there the drift
 between campaigns is wide enough that the same conclusion cannot be drawn.
@@ -1252,10 +1252,10 @@ constraint we can find:
   by~\cite{mytkowicz2009wrong,georges2007rigorous,barrett2017warmup,maricq2018taming};
   constrained by the same literature's remedy --- more replicates --- which our two-point
   supports show cannot converge here.
-\item \emph{Scheduling-stall inversions} (in the main text). Supported
+\item \emph{Scheduling-stall negative spans} (in the main text). Supported
   by the tail-latency and scheduler literature~\cite{li2014tales,dean2013tail,lozi2016wastedcores}
   and by the concurrent negative-span reports~\cite{sharma2026causality}; qualified by Sharma et
-  al.'s skew-threshold reading, which our zero-skew inversions show is unsafe under load.
+  al.'s skew-threshold reading, which our zero-skew negative spans show is unsafe under load.
 \item \emph{The sign audit} (the main text). Ten million discarded samples, not
   one negative. Nothing in the literature contradicts a count; what it refuted was our own prior
   claim, which is the point of publishing it.
@@ -1323,7 +1323,7 @@ network hop --- the opposite of the payload sweep, and a useful check that the
 $T_{\mathrm{true}}$ result is not an artifact of how we lengthened it. It did not work. Moving
 the broker onto the driver made transport \emph{longer} at idle, $0.512 \to 0.573$~ms, because it
 traded network latency for CPU contention on the same cores; under $88\%$ load it moved transport
-by $1.03\times$, which is no manipulation at all. The inversion rates duly failed to separate
+by $1.03\times$, which is no manipulation at all. The negative-span rates duly failed to separate
 (intervals overlapping in both cells). Reporting those rates as a null would misdescribe the
 experiment: nothing was manipulated, so nothing was tested. We record it because the pattern is
 itself informative. Two of our three attempts on this axis failed for structurally similar
@@ -1416,7 +1416,7 @@ Start-up withdrawal (main text) & window sweep, twice & 3 per window \\
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/integrity_audit.pdf}
-\caption{The audit on Testbed~A. (a)~Per-run inversion rates: 104 runs are clean and the rest
+\caption{The audit on Testbed~A. (a)~Per-run negative-span rates: 104 runs are clean and the rest
 spread over three decades, so there is no natural threshold. (b)~Share of runs rejected against
 the threshold. The choice matters for the run count and not for any conclusion.}
 \label{fig:audit}
@@ -1433,12 +1433,12 @@ directly for Testbed~A, where both processes read the same operating-system cloc
 ruled out on Testbed~B, where producer and consumer may sit on different hosts, and there we
 rely on the co-located conditions failing at rates comparable to the distributed ones.
 
-Coarse kernel timestamp granularity would also produce inversions, and that rival makes a
-different prediction we can test. Quantization acts on each event independently, so its inversions
+Coarse kernel timestamp granularity would also produce negative spans, and that rival makes a
+different prediction we can test. Quantization acts on each event independently, so its negative spans
 would be scattered at random through a run; a descheduling event, by contrast, makes a
 \emph{consecutive run} of events wake late together. A Wald--Wolfowitz runs test on the sequence
-of inversion signs separates the two: independence gives $z \approx 0$, clustering $z \ll 0$.
-Across conditions the inversions are strongly clustered --- median $z = -6.9$ at the co-located
+of span signs separates the two: independence gives $z \approx 0$, clustering $z \ll 0$.
+Across conditions the negative spans are strongly clustered --- median $z = -6.9$ at the co-located
 floor, $-6.8$ idle, $-5.1$ saturated --- and the clustering is present even with no background
 load, so it is intrinsic to the stamping path rather than induced by contention. This is the
 signature of a shared scheduling delay, not of independent quantization, and the main text
@@ -1490,7 +1490,7 @@ against the observed direction rather than for it --- but it is clean enough to 
 netem could not, which is why the $T_{\mathrm{true}}$ result rests on it and not on this sweep.
 
 \paragraph{The mechanism is established; the quantity is not predicted.} The clearest limit on
-this work is what it still cannot do. We can say what causes an inversion, manipulate it on both
+this work is what it still cannot do. We can say what causes a negative span, manipulate it on both
 sides, and predict the rate to within a third in the three arms where we traced the scheduler
 directly. We cannot write down the rate a benchmark will suffer at a given load on a given
 machine. Two attempts failed and are reported above: the queueing form fits worse than the mean once the
@@ -1539,7 +1539,7 @@ auto-creation would pay the same cost, we did not test. The practitioner advice 
 the main text is written to be safe either way.
 
 \emph{The occupancy result is a mechanism, not a load model.} the main text shows by
-manipulation that the inversion rate follows stamping-thread occupancy rather than utilization,
+manipulation that the negative-span rate follows stamping-thread occupancy rather than utilization,
 and that is the strongest causal claim in this paper. It is not a formula. We can say the rate
 falls fifty-fold when the stamping thread stops being preempted; we cannot say what the rate will
 be at a given load, and both attempts to write one --- the queueing form and our own bounded bracket ---
@@ -1671,12 +1671,12 @@ signal-to-noise ratio near $20$ and carry the result.}
 
 
 \begin{table}[t]
-\caption{H2: inversion rate against achieved CPU utilization, no core pinning, background load
+\caption{H2: negative-span rate against achieved CPU utilization, no core pinning, background load
 swept from idle to oversubscription. The withdrawn queueing form fits at $R^2 = 0.945$ against $0.640$ for a
 straight line.}
 \begin{tabular}{rr}
 \toprule
-Utilization $\rho$ & Inversion rate \\
+Utilization $\rho$ & Negative span rate \\
 \midrule
 0.003 & 0.007 \\
 0.253 & 0.009 \\
@@ -1712,8 +1712,8 @@ $N$ & \redis{} retained & Shift (ms) & Worst case & Equivalent \\
 \section{S24. Tail recovery without a reference clock (moved from the main text)}
 
 \paragraph{Recovering the tail without a reference clock, and where it reproduces.} Because
-inversion rate at a threshold \emph{is} a quantile of $\Delta$'s tail, the tail can be read off
-inversion counts alone --- an instrument-quality estimate needing no reference clock. The honest
+negative-span rate at a threshold \emph{is} a quantile of $\Delta$'s tail, the tail can be read off
+negative span counts alone --- an instrument-quality estimate needing no reference clock. The honest
 test of it is not internal consistency but reproduction: do the recovered tail quantiles agree
 between two independent campaigns at matched utilization? Below saturation they do --- $12$ of
 $17$ matched quantiles overlap at $90\%$, and every one of the deep pre-knee quantiles does. The
@@ -1730,13 +1730,13 @@ Table~\ref{tab:mixture} is the mixture across nine load levels; Table~\ref{tab:e
 \begin{table}[t]
 \caption{The mixture, measured across nine load levels ($25$ runs each, pre-registered). The
 core width $\sigma_{\mathrm{core}} = \mathrm{IQR}/1.349$ grows $5\times$ from idle to the knee;
-the inversion rate --- the tail --- grows $60\times$. Inversions are temporally clustered at
+the negative-span rate --- the tail --- grows $60\times$. Negative spans are temporally clustered at
 every load (runs-test $z$). The three $\rho=1$ rows are distinct oversubscription levels that the
 utilization coordinate cannot separate.}
 \label{tab:mixture}
 \begin{tabular}{rrrr}
 \toprule
-Utilization $\rho$ & Core $\sigma_{\mathrm{core}}$ (ms) & Inversion rate & Clustering $z$ \\
+Utilization $\rho$ & Core $\sigma_{\mathrm{core}}$ (ms) & Negative span rate & Clustering $z$ \\
 \midrule
 0.003 & 0.126 & 0.004 & $-6.8$ \\
 0.253 & 0.138 & 0.004 & $-6.8$ \\
@@ -1755,13 +1755,13 @@ Utilization $\rho$ & Core $\sigma_{\mathrm{core}}$ (ms) & Inversion rate & Clust
 \begin{table}[t]
 \caption{\textbf{Occupancy, not utilization.} Stamping processes at ordinary priority versus
 \texttt{SCHED\_FIFO}, with the background load unchanged. Utilization is measured in both arms,
-not assumed: it matches to $0.001$, so the manipulation moved occupancy alone. The inversion rate
+not assumed: it matches to $0.001$, so the manipulation moved occupancy alone. The negative-span rate
 falls by a factor of $39$--$54$ to the running-state floor. Utilization-only models predict no
 change.}
 \label{tab:ea5}
 \begin{tabular}{lrrrrr}
 \toprule
-& \multicolumn{2}{c}{Utilization $\rho$} & \multicolumn{2}{c}{Inversion rate} & \\
+& \multicolumn{2}{c}{Utilization $\rho$} & \multicolumn{2}{c}{Negative span rate} & \\
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}
 Load & ordinary & real-time & ordinary & real-time & factor \\
 \midrule
@@ -1810,7 +1810,7 @@ $76.8\times$, the rate falls $4.09\times$ and $4.26\times$. Each cell is 2\,985 
 \toprule
 & \multicolumn{2}{c}{E-A10} & \multicolumn{2}{c}{E-A10b} & \\
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}
-Padding (B) & Transport (ms) & Inversion & Transport (ms) & Inversion & $\rho$ span \\
+Padding (B) & Transport (ms) & Negative span & Transport (ms) & Negative span & $\rho$ span \\
 \midrule
 0        & 0.701  & 0.2603 & 0.761  & 0.2338 & 0.881--0.882 \\
 4\,096   & 2.381  & 0.1906 & 2.474  & 0.1652 & 0.882--0.883 \\
@@ -1822,9 +1822,9 @@ Padding (B) & Transport (ms) & Inversion & Transport (ms) & Inversion & $\rho$ s
 
 
 \begin{table}[t]
-\caption{\textbf{A kernel trace predicts the inversion rate, unfitted, in every arm that has
+\caption{\textbf{A kernel trace predicts the negative-span rate, unfitted, in every arm that has
 one.} $\Pr[\text{stall} > T_{\mathrm{true}}]$ from
-\texttt{sched\_wakeup}/\texttt{sched\_switch}, against the inversion rate measured from
+\texttt{sched\_wakeup}/\texttt{sched\_switch}, against the negative-span rate measured from
 application timestamps in the \textnormal{\textit{same}} cell; the two share no instrument and no estimator.
 Every cell is 2\,985 events. The three ordinary arms agree with their traced tails to within
 about a third, with no consistent sign. Every real-time arm reads exactly zero where the
@@ -1895,7 +1895,7 @@ and unlike our delay injection, which canceled in the subtraction
 locates the failure. An occupancy mechanism predicts collapse toward the running-state floor;
 any account in which the rate is a function of $\rho$ predicts no change, because $\rho$ is
 unchanged by construction. The result is unambiguous (Section S25): utilization held
-to $0.001$ (the pre-registered manipulation check passes), and the inversion rate fell from
+to $0.001$ (the pre-registered manipulation check passes), and the negative-span rate fell from
 $0.132$ to $0.0034$ at $\rho = 0.75$ and from $0.305$ to $0.0057$ at $\rho = 0.88$ ---
 factors of $39$ and $54$, disjoint Wilson intervals, both residual rates on the floor the
 model names in advance, $C_0 \approx 0.004$.
@@ -1905,7 +1905,7 @@ reach the same $\rho$ by different means: $k$ cores flat out leaves $C-k$ genuin
 while duty-cycling every core leaves none. If the mechanism is whether the stamping thread
 can find a core, the second should be worse at equal $\rho$ --- and it is
 (Section S25): at $k=6$ both arms sit at $\rho = 0.7531$, identical to four
-decimals, same machine, same hour, and the inversion rates differ by $2.07\times$
+decimals, same machine, same hour, and the negative-span rates differ by $2.07\times$
 ($z=10.3$ over 2\,985 matched events per cell, disjoint Wilson intervals). A function of
 $\rho$ returns one value for one input. The gap narrows at $k=7$ ($1.06\times$) --- the
 mechanism showing itself: one free core out of eight is nearly as useless as none.
@@ -1920,7 +1920,7 @@ near-parity at $k=7$.
 mechanism predicts that a \emph{slower} path is a \emph{more reliable} measurement, because
 the same stalls have a longer interval to outrun. Padding the payload lengthens
 $T_{\mathrm{true}}$ without touching the scheduler (Section S25): transport rose
-$76.9\times$ while the inversion rate \emph{fell} $4.1\times$, monotonically, with
+$76.9\times$ while the negative-span rate \emph{fell} $4.1\times$, monotonically, with
 utilization held to a $0.012$ spread --- and pushed slightly \emph{up} by serialization,
 against the observed fall, so the effect is measured against its own confound. The same
 numbers constrain the stall distribution sharply: a $77\times$ larger threshold bought only a
@@ -2077,7 +2077,7 @@ is present in every arm that could show it (method: supplementary material S31).
 payload span, least squares of $\log \Pr$ on $\log T_{\mathrm{true}}$ over four payload
 levels gives
 \begin{equation}
-\Pr[\text{inversion}] = 0.238 \; T_{\mathrm{true}}^{-\tailExponent},
+\Pr[\text{span} < 0] = 0.238 \; T_{\mathrm{true}}^{-\tailExponent},
 \qquad R^2 = \tailRsq ,
 \label{eq:tailindex}
 \end{equation}
@@ -2097,7 +2097,7 @@ object measured over a different range. What we should have written, and now do,
 weaker and sufficient claim: over the decade that matters the survival declines so slowly
 that a mean-based counter is a poor instrument. That is enough to explain the observation
 it was invoked for --- cumulative scheduler counters moving by factors of two to five
-against a fortyfold change in the inversion rate --- without asserting that a moment fails
+against a fortyfold change in the negative-span rate --- without asserting that a moment fails
 to exist.
 
 The second is the traced cross-check. We reported that the per-wakeup survival's windowed
@@ -2164,17 +2164,17 @@ displacement toward $\theta$ that the next paragraph makes systematic.
 
 \paragraph{The other side of the inequality, and it moves the rate the wrong way.} A
 \emph{slower} path should be a \emph{more reliable} measurement, and it is: payload padding
-lengthened transport $76.9\times$ while the inversion rate \emph{fell} $4.1\times$,
+lengthened transport $76.9\times$ while the negative-span rate \emph{fell} $4.1\times$,
 monotonically, utilization held to a $0.012$ spread and pushed slightly \emph{up} against
 the observed fall (supplementary material S25). A $77\times$ larger threshold buying only a
 $4.1\times$ lower rate means the tail barely thins across two orders of magnitude --- why
 mean-based counters could not see the effect and the direct trace was necessary.
 
 \paragraph{Closing the loop: measuring the stall distribution directly.} Every result so
-far infers the scheduler's behavior from the inversion rate it produces. The mechanism says
-something stronger and directly checkable --- that the inversion rate should equal the probability
+far infers the scheduler's behavior from the negative-span rate it produces. The mechanism says
+something stronger and directly checkable --- that the negative-span rate should equal the probability
 that a run-queue stall outlasts the interval being measured --- so we measured that probability
-without reference to the inversions at all. Using \texttt{bpftrace} on the \texttt{sched\_wakeup}
+without reference to the negative spans at all. Using \texttt{bpftrace} on the \texttt{sched\_wakeup}
 and \texttt{sched\_switch} tracepoints, we recorded the delay between a stamping thread becoming
 runnable and reaching a core, for every such transition in the run, and computed
 $\Pr[\text{stall} > 0.5\,\text{ms}]$ against the measured transport of that cell
@@ -2206,13 +2206,13 @@ full is supplementary material S12.
 priority: occupancy falls sharply while utilization does not move, and priority acts on the
 stamping threads themselves --- where the model locates the failure --- rather than
 canceling in the subtraction as our delay injection did. The result is unambiguous
-(supplementary material S25): utilization held to $0.001$, and the inversion rate fell by
+(supplementary material S25): utilization held to $0.001$, and the negative-span rate fell by
 factors of $39$ and $54$ at the two load levels, with disjoint Wilson intervals, both
 residual rates landing on the floor the model names in advance, $C_0 \approx 0.004$.
 
 \paragraph{Utilization is not the variable, shown at identical utilization.} Two loads
 can reach the same $\rho$ with $C-k$ cores genuinely free or with none; at $k=6$ both arms
-sit at $\rho = 0.7531$, identical to four decimals, and the inversion rates differ by
+sit at $\rho = 0.7531$, identical to four decimals, and the negative-span rates differ by
 $2.07\times$ ($z=10.3$; supplementary material S25). A function of $\rho$ returns one value
 for one input. A full replication reproduces the load-bearing cell ($2.05\times$),
 reproduces $k=5$ in direction but not size, and resolves a small $k=7$ difference
@@ -2898,7 +2898,7 @@ inflation, and a comparison that leaves it in place compares two instruments as 
 brokers.
 
 Second, and against the expectation, removing the second thread does not remove the
-inversions. \redis{}, which never has one, inverts on $\spanRedisNegAckPct\%$ of its
+negative spans. \redis{}, which never has one, inverts on $\spanRedisNegAckPct\%$ of its
 $\spanRedisEvents$ events against \kafka{}'s $\spanKafkaNegAckPct\%$ of $\spanKafkaEvents$;
 by runs affected \redis{} is the worse of the two ($\spanRedisRunsAckInvertsPct\%$ of runs
 against $\spanKafkaRunsAckInvertsPct\%$). A thread returning from a blocking socket read must
@@ -2906,7 +2906,7 @@ also be made runnable and then scheduled before it can call the clock, and that 
 charged to the measurement exactly as a callback dispatch would be. What the two clients
 share is the wakeup; the hand-off is an increment on top of it, not the thing itself.
 
-\paragraph{What we could not test} The clean form of this control would be the inversion rate
+\paragraph{What we could not test} The clean form of this control would be the negative-span rate
 for \kafka{} under \texttt{-{}-ack-stamp inline}, compared with the same runs under
 \texttt{callback}. The stamping campaign retained only its median summary
 (\texttt{docs/results/model/ec3\_stamping.csv}); the per-event records that would carry
@@ -2969,7 +2969,7 @@ because it is built from the tracepoints that miss one of the two entirely.
 
 What settles it is the direction of the disagreement rather than any of those. If a second
 serialization sat in series with the run-queue wait, an estimator built from the run-queue
-wait alone would fall systematically \emph{short} of the observed inversion rate. Over
+wait alone would fall systematically \emph{short} of the observed negative-span rate. Over
 $\tracedRatioArms$ arms it does not: the ratios are $\tracedRatios$, straddling unity, with
 the largest above it. A term big enough to matter would have to hide inside a spread that
 already brackets the answer. The interpreter lock is therefore present in principle, bounded
@@ -3128,7 +3128,7 @@ flat, where the two hypotheses make the same prediction and the test has no powe
 \label{sec:priority-pairs}
 
 The main text quotes a range: real-time priority on the stamping threads collapses the
-inversion rate $\rtFactorLow$--$\rtFactorHigh\times$ at fixed utilization. That range is
+negative-span rate $\rtFactorLow$--$\rtFactorHigh\times$ at fixed utilization. That range is
 taken over $\rtPairs$ matched pairs from three campaigns, and until this revision only the two
 of Table~\ref{tab:ea5} appeared anywhere --- which left the two pairs that anchor the range,
 including the weakest result in the series, visible nowhere. Both are below.
@@ -3142,7 +3142,7 @@ assumes real-time priority leaves $\rho$ alone, so $\rho$ is measured in both ar
 discrepancy withholds the pair rather than reporting it hedged.
 
 \begin{table}[htbp]
-\caption{\textbf{Every matched pair.} Ordinary and real-time inversion rates at the same
+\caption{\textbf{Every matched pair.} Ordinary and real-time negative-span rates at the same
 achieved utilization, and the factor between them. Generated at build time from the three
 campaign files.}
 \label{tab:priority-pairs}
@@ -3154,7 +3154,7 @@ campaign files.}
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/priority_ladder.pdf}
-\caption{\textbf{The same $\rtPairs$ pairs, as a ladder.} Ordinary and real-time inversion
+\caption{\textbf{The same $\rtPairs$ pairs, as a ladder.} Ordinary and real-time negative-span
 rates with Wilson $95\%$ intervals, one row per pair, ordered by achieved utilization; the
 factor is printed at the right. Reading down, the real-time arm barely moves while the
 ordinary arm climbs with load, which is what makes the factor grow. The growth is a trend and

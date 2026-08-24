@@ -2934,8 +2934,8 @@ audit rejects $\auditPctWorkstation\%$ of its assessed runs, against
 $\auditPctCloud\%$ on the cloud instances. The effect is
 larger where there is no hypervisor at all. Two further observations disagree with a
 steal-time account: real-time priority is a guest-side control and collapses the rate
-$\rtLowFactor$--$\rtHighFactor\times$ (the two matched pairs; Section~V-B of the main
-text gives $7$--$80\times$ across the load sweep), which stolen vCPU time would not
+$\rtLowFactor$--$\rtHighFactor\times$ (these two matched pairs; all $\rtPairs$ are in S47, and Section~V-B of the main
+text gives $\rtFactorLow$--$\rtFactorHigh\times$ across the load sweep), which stolen vCPU time would not
 yield to; and the
 $\tracedModeLo$--$\tracedModeHi$~ms mode sits on the guest kernel's own base-slice arithmetic
 rather than on any quantity the hypervisor exposes. Steal time may still contribute on the
@@ -3122,5 +3122,52 @@ flat, where the two hypotheses make the same prediction and the test has no powe
 \input{docs/generated/grid_table}
 \end{table}
 
+
+
+\section{S47. Every real-time-priority pair, and the ladder they make}
+\label{sec:priority-pairs}
+
+The main text quotes a range: real-time priority on the stamping threads collapses the
+inversion rate $\rtFactorLow$--$\rtFactorHigh\times$ at fixed utilization. That range is
+taken over $\rtPairs$ matched pairs from three campaigns, and until this revision only the two
+of Table~\ref{tab:ea5} appeared anywhere --- which left the two pairs that anchor the range,
+including the weakest result in the series, visible nowhere. Both are below.
+
+Table~\ref{tab:priority-pairs} is generated from
+\texttt{docs/results/model/stamping\_priority*.csv} at build time, so the range in the
+abstract and the rows here cannot disagree. E-A5 is the original manipulation, E-A5b widened
+the load ladder to $60$ and $95\%$, and E-A7 replicated E-A5. Every pair has disjoint Wilson
+intervals, and $\rtConfounded$ were withheld for a failed manipulation check --- the design
+assumes real-time priority leaves $\rho$ alone, so $\rho$ is measured in both arms and a
+discrepancy withholds the pair rather than reporting it hedged.
+
+\begin{table}[htbp]
+\caption{\textbf{Every matched pair.} Ordinary and real-time inversion rates at the same
+achieved utilization, and the factor between them. Generated at build time from the three
+campaign files.}
+\label{tab:priority-pairs}
+\footnotesize
+\centering
+\input{docs/generated/priority_table}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{docs/results/figures/priority_ladder.pdf}
+\caption{\textbf{The same $\rtPairs$ pairs, as a ladder.} Ordinary and real-time inversion
+rates with Wilson $95\%$ intervals, one row per pair, ordered by achieved utilization; the
+factor is printed at the right. Reading down, the real-time arm barely moves while the
+ordinary arm climbs with load, which is what makes the factor grow. The growth is a trend and
+not a law --- $60\%$ gives $27\times$ and $70\%$ gives $\rtFactorLow\times$ --- and the range
+is reported as a range for that reason.}
+\label{fig:priority-ladder}
+\end{figure}
+
+Figure~\ref{fig:priority-ladder} shows what the range does not: which arm moves. The real-time arm sits
+between $0.0017$ and $0.0144$ across the whole load ladder, close to the floor the model names
+in advance; the ordinary arm rises from $0.046$ to $0.30$. The collapse is therefore not a
+proportional reduction that happens to be larger under load --- it is the ordinary arm
+following utilization while the manipulated arm does not, which is the two-state model of
+Equation~6 with $p(\rho)$ moved directly.
 
 \end{document}

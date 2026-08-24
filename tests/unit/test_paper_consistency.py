@@ -1832,27 +1832,40 @@ class TestLoadGeometryAndTtrue:
             assert "infinite-moment reading" in body, \
                 "the phrase may only survive inside the withdrawal that names it"
 
-    def test_the_priority_collapse_range_is_recomputed_from_every_pair(self, tex):
-        """The abstract quotes a range. It must be the range the artefacts actually contain.
+    def test_the_priority_collapse_range_is_recomputed_from_every_pair(self, main_tex):
+        """The range the abstract quotes must be the range the artefacts contain.
 
-        It was not: the upper bound read 76x where the 95%-load pair gives 79.7x, an arithmetic
-        slip in docs/laws.md that propagated into the abstract and the README. It understated
-        our own effect, which is the direction least likely to be questioned and therefore the
-        one worth pinning to a computation.
+        This caught a real slip once: an upper bound of 76x where the 95%-load pair gives
+        79.7x, understating our own effect, which is the direction least likely to be
+        questioned. It compared the recomputed range against the literal in the abstract.
+
+        Round 17 made the range a macro, so there is no literal left to compare against, and
+        the check moves one step earlier: the *emitted* values are pinned to the recomputed
+        artefacts, and the abstract is required to use them. Prose cannot drift from the
+        emitter and the emitter cannot drift from the data.
         """
         ratios = []
         for name in ("stamping_priority", "stamping_priority_ea5b", "stamping_priority_ea7"):
             for r in _rows("model", f"{name}.csv"):
                 base, rt = float(r["inv_base"]), float(r["inv_rt"])
-                if rt > 0:
+                if rt > 0 and str(r.get("confounded")) != "True":
                     ratios.append(base / rt)
         assert len(ratios) == 8, f"expected 8 matched pairs, found {len(ratios)}"
-        abstract = " ".join(re.search(r"\\begin\{abstract\}(.*?)\\end\{abstract\}",
-                                      tex, re.S).group(1).split())
         lo, hi = min(ratios), max(ratios)
-        assert (f"${round(lo)}$ to ${round(hi)}" in abstract
-                or f"${round(lo)}$--${round(hi)}" in abstract), (
-            f"artefacts give {lo:.1f}x-{hi:.1f}x; abstract does not state that range")
+
+        generated = (REPO / "docs" / "generated" / "paper_numbers.tex").read_text(
+            encoding="utf-8")
+        for macro, want in (("rtFactorLow", round(lo)), ("rtFactorHigh", round(hi)),
+                            ("rtPairs", len(ratios))):
+            needle = "\\newcommand{\\%s}{%d}" % (macro, want)
+            assert needle in generated, (
+                f"artefacts give {lo:.1f}x-{hi:.1f}x over {len(ratios)} pairs; "
+                f"{macro} does not carry it")
+
+        abstract = " ".join(re.search(r"\\begin\{abstract\}(.*?)\\end\{abstract\}",
+                                      main_tex, re.S).group(1).split())
+        assert "rtFactorLow" in abstract and "rtFactorHigh" in abstract, \
+            "the abstract must quote the range through the macros that carry it"
 
     def test_every_float_is_referenced_from_the_text(self, tex):
         """A figure, table or equation no sentence points to is a float the reader never meets.
@@ -3001,28 +3014,34 @@ class TestReferenceHouseStyle:
                     bad.append("%s: %r" % (key, name))
         assert not bad, "authors not in IEEE initials-and-surname form:\n  " + "\n  ".join(bad)
 
-    def test_the_audit_counts_are_not_typed_into_the_sources(self):
-        """The audit rate must come from the ledger, as every other headline does.
+    def test_no_gated_headline_is_also_typed(self):
+        """A number with a macro must not also appear as a literal.
 
-        Round 16 found that 1,321 of 2,266 -- the headline of the contribution about
-        publishing the record behind a number -- was a literal in both documents and did not
-        reproduce from the committed indices. Comparing a printed number against the ledger
-        would not prevent a recurrence, because the failure mode is someone typing the number
-        in the first place. So this asserts the literals are absent and the macros are used.
+        Round 16 gated the audit counts, after a reviewer following the only path he could
+        find reached the wrong conclusion about them. Round 17 found the same condition one
+        number over -- the real-time collapse range, typed in three places, with six of its
+        eight matched pairs shown nowhere. Naming this gate for the audit alone would be the
+        instance-shaped fix; it is named for the class, and the list below is what grows.
         """
-        stale = ("2{,}266", "1{,}321", "1{,}382", "$862$", "$884$", "$459$",
-                 "62.4\\%", "51.9\\%", "58.3\\%")
+        typed = {
+            "audit counts": ("2{,}266", "1{,}321", "1{,}382", "$862$", "$884$", "$459$",
+                             "62.4\\%", "51.9\\%", "58.3\\%"),
+            "real-time collapse range": ("$7$--$80", "eight matched pairs",
+                                         "more than a dozen public forks"),
+        }
         found = {}
         for name in ("paper.tex", "supplement.tex"):
             src = (REPO / name).read_text(encoding="utf-8")
-            hits = [s for s in stale if s.replace("\\\\", "\\") in src]
-            if hits:
-                found[name] = hits
-        assert not found, "audit counts typed rather than derived: %s" % found
+            for label, needles in typed.items():
+                hits = [s for s in needles if s.replace("\\\\", "\\") in src]
+                if hits:
+                    found.setdefault(name, []).append((label, hits))
+        assert not found, "gated headlines typed rather than derived: %s" % found
 
         paper = (REPO / "paper.tex").read_text(encoding="utf-8")
         for macro in ("auditRuns", "auditRejected", "auditRejectedWorkstation",
-                      "auditRejectedCloud"):
+                      "auditRejectedCloud", "rtFactorLow", "rtFactorHigh", "rtPairs",
+                      "forkChecked", "forkUnchanged"):
             assert "\\%s" % macro in paper, "%s is emitted but unused" % macro
 
     def test_venues_are_abbreviated(self):

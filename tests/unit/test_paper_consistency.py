@@ -2735,3 +2735,66 @@ class TestRefereeRoundTwo:
         for phrase in ("TC submission", "TC revision", "TC round-one"):
             assert phrase not in flat
         assert "has not been submitted to, or reviewed by, any journal" in flat
+
+
+class TestPerBrokerSplit:
+    """Table II's per-broker columns, against the ledger they are generated from.
+
+    Referee R10 observed that these were the only quantities in the manuscript with nothing
+    tying them to their artefact. The macros are generated, so the risk is not a typo but a
+    silent change of denominator: a split computed over a filtered subset would still emit a
+    well-formed table.
+    """
+
+    @staticmethod
+    def _split():
+        import recount_spans
+        csv_path = REPO / "docs" / "results" / "span_recount.csv"
+        if not csv_path.exists():
+            pytest.skip("span_recount.csv absent")
+        return recount_spans.by_backend(recount_spans.read_csv(str(csv_path)))
+
+    @staticmethod
+    def _macro(name):
+        """The emitted value, with the thousands separator removed.
+
+        `latex_thousands` writes 31{,}899, so a non-greedy match to the first brace reads
+        "31{," and compares equal to nothing. Take the whole line's body instead.
+        """
+        gen = (REPO / "docs" / "generated" / "paper_numbers.tex").read_text(encoding="utf-8")
+        m = re.search(r"\\newcommand\{\\%s\}\{(.*)\}\s*$" % name, gen, re.M)
+        assert m, "macro %s is not emitted" % name
+        return m.group(1).replace("{,}", "")
+
+    def test_the_printed_negatives_match_the_ledger(self):
+        split = self._split()
+        for backend, macro in (("kafka", "spanKafkaNegAck"), ("redis", "spanRedisNegAck")):
+            assert self._macro(macro) == str(split[backend]["neg_ack"]), backend
+
+    def test_the_printed_rates_match_the_ledger(self):
+        split = self._split()
+        for backend, macro in (("kafka", "spanKafkaNegAckPct"),
+                               ("redis", "spanRedisNegAckPct")):
+            assert self._macro(macro) == "%.2f" % split[backend]["pct_ack"], backend
+
+    def test_the_two_brokers_account_for_every_event(self, main_tex):
+        """If a third backend ever enters the corpus the table stops being exhaustive."""
+        split = self._split()
+        assert set(split) == {"kafka", "redis"}, \
+            "Table II names two brokers; the ledger holds %s" % sorted(split)
+        assert sum(s["events"] for s in split.values()) == \
+            int(self._macro("spanEvents"))
+
+    def test_the_send_span_is_clean_under_both_brokers(self):
+        """The claim the caption makes. It is a zero, and zeros are worth pinning."""
+        for agg in self._split().values():
+            assert agg["neg_send"] == 0
+            assert agg["neg_output_send"] == 0
+            assert agg["neg_tti"] == 0
+
+    def test_the_quoted_floor_is_the_smaller_of_the_two(self):
+        """Section V-C calls +220 us the smaller floor; the margin depends on it being so."""
+        split = self._split()
+        floors = {b: agg["send_span_floor_us"] for b, agg in split.items()}
+        assert self._macro("spanSendFloorUs") == "%.0f" % min(floors.values())
+        assert self._macro("spanSendFloorOtherUs") == "%.0f" % max(floors.values())

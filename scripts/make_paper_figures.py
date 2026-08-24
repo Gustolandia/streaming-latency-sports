@@ -28,6 +28,7 @@ import matplotlib
 matplotlib.use("Agg")
 import figure_style  # noqa: E402
 import figure_collisions  # noqa: E402
+import figure_legibility  # noqa: E402
 figure_style.apply()  # Type 42, IEEE-listed family; see scripts/figure_style.py
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
@@ -66,14 +67,14 @@ def plot_pipeline(ax):
     for x, sym, proc in stamps:
         ax.plot([x, x], [1.35, 1.6], color=GREY, linewidth=1.0)
         ax.text(x, 1.20, sym, ha="center", va="top", fontsize=9)
-        ax.text(x, 0.98, proc, ha="center", va="top", fontsize=6.5, color=GREY, style="italic")
+        ax.text(x, 0.98, proc, ha="center", va="top", fontsize=8, color=GREY, style="italic")
 
     spans = [(0.6, 2.4, 0.42, "scheduling lag"), (4.4, 7.6, 0.42, "broker transport"),
              (0.6, 7.6, 0.05, "end-to-end TTI")]
     for x0, x1, y, label in spans:
         ax.annotate("", xy=(x1, y), xytext=(x0, y),
                     arrowprops=dict(arrowstyle="<->", color="black", linewidth=1.0))
-        ax.text((x0 + x1) / 2, y + 0.06, label, ha="center", fontsize=7.5)
+        ax.text((x0 + x1) / 2, y + 0.06, label, ha="center", fontsize=8)
 
     # Not "two processes' clocks". The producer and the consumer are two processes on one host
     # reading one clock, and Section V exists to show the span inverts anyway; an annotation
@@ -83,7 +84,7 @@ def plot_pipeline(ax):
     # extracts as ")", which corrupts this sentence for every reader of the text layer.
     ax.text(5.0, 3.20, "broker transport subtracts stamps written by two threads, "
                        "so it can come out negative on one clock",
-            ha="center", va="top", fontsize=7.5, color="#b22222")
+            ha="center", va="top", fontsize=8, color="#b22222")
     ax.set_xlim(0, 10)
     ax.set_ylim(0, 3.3)
     ax.axis("off")
@@ -182,10 +183,10 @@ def plot_model(axes):
     for x, sym in ((1.9, r"$t_{sched}$"), (2.7, r"$t_{send}$")):
         mech_ax.plot([x], [2.3], marker="o", markersize=5, color=KAFKA,
                      markerfacecolor="white", markeredgewidth=1.2)
-        mech_ax.text(x, 2.62, sym, fontsize=7, ha="center", color=KAFKA)
+        mech_ax.text(x, 2.62, sym, fontsize=8, ha="center", color=KAFKA)
     mech_ax.annotate("", xy=(2.7, 2.3), xytext=(1.9, 2.3),
                      arrowprops=dict(arrowstyle="<->", color=GREY, linewidth=0.9))
-    mech_ax.text(2.3, 2.02, "scheduling\nlag", fontsize=6, color=GREY, ha="center",
+    mech_ax.text(2.3, 2.02, "scheduling\nlag", fontsize=8, color=GREY, ha="center",
                  va="top", linespacing=0.9)
 
     # The broker's append, and the two branches descending from it.
@@ -196,8 +197,11 @@ def plot_model(axes):
     # neither precedes the other, which is why their difference may be negative with no
     # physical impossibility. A figure for that section has to show the fork.
     mech_ax.plot([2.95], [1.6], marker="D", markersize=5.5, color=GREY)
-    mech_ax.text(2.95, 1.36, "broker\nappend", fontsize=6.5, color=GREY, ha="center",
-                 va="top", linespacing=0.95)
+    # One line, in the band between "scheduling lag" above and the consumer timeline below.
+    # Two lines do not fit there at this panel height: anchored high the label runs into the
+    # one above it, anchored low its second line lands on the timeline.
+    mech_ax.text(2.15, 1.30, "broker append", fontsize=8, color=GREY, ha="center",
+                 va="top")
     for tip_x, tip_y in ((3.62, 2.24), (4.62, 0.96)):
         mech_ax.annotate("", xy=(tip_x, tip_y), xytext=(3.05, 1.6),
                          arrowprops=dict(arrowstyle="->", color=GREY, linewidth=0.9,
@@ -205,20 +209,22 @@ def plot_model(axes):
 
     # physical events (true), and the later moments the software actually reads the clock
     mech_ax.plot([3.7], [2.3], marker="|", markersize=14, color=KAFKA)
-    mech_ax.text(3.7, 2.62, "ack arrives", fontsize=7, ha="center")
+    mech_ax.text(3.7, 2.62, "ack arrives", fontsize=8, ha="center")
     mech_ax.plot([5.9], [2.3], marker="o", markersize=6, color=KAFKA)
-    mech_ax.text(5.9, 2.62, r"clock read $\rightarrow t_{ack}$", fontsize=7, ha="center")
+    mech_ax.text(5.9, 2.62, r"clock read $\rightarrow t_{ack}$", fontsize=8, ha="center")
     mech_ax.annotate("", xy=(5.9, 2.3), xytext=(3.7, 2.3),
                      arrowprops=dict(arrowstyle="<->", color="#b22222", linewidth=1.2))
     mech_ax.text(4.8, 2.02, r"$\delta_{ack}$", fontsize=8, color="#b22222", ha="center")
 
     mech_ax.plot([4.7], [0.9], marker="|", markersize=14, color=REDIS)
-    mech_ax.text(4.6, 0.42, "message received", fontsize=7, ha="right")
+    mech_ax.text(4.6, 0.42, "message received", fontsize=8, ha="right")
     mech_ax.plot([5.3], [0.9], marker="o", markersize=6, color=REDIS)
-    mech_ax.text(5.9, 0.42, r"clock read $\rightarrow t_{recv}$", fontsize=7, ha="center")
+    mech_ax.text(5.9, 0.42, r"clock read $\rightarrow t_{recv}$", fontsize=8, ha="center")
     mech_ax.annotate("", xy=(5.3, 0.9), xytext=(4.7, 0.9),
                      arrowprops=dict(arrowstyle="<->", color="#b22222", linewidth=1.2))
-    mech_ax.text(5.0, 1.02, r"$\delta_{recv}$", fontsize=8, color="#b22222", ha="center")
+    # Clear of the arrow it names: the panel is shorter than it was drawn for, and 0.12
+    # above the timeline is no longer 0.12 on the page.
+    mech_ax.text(5.0, 1.16, r"$\delta_{recv}$", fontsize=8, color="#b22222", ha="center")
 
     mech_ax.text(6.3, 1.55,
                  r"$T_{meas}=t_{recv}-t_{ack}<0$" "\n"
@@ -264,22 +270,26 @@ def plot_model(axes):
     h1_ax.fill_between(x, 1e-4, delta, where=(x < -4.0), color=REDIS, alpha=0.55)
     h1_ax.axvline(-0.5, color=KAFKA, linewidth=1.6, linestyle="--")
     h1_ax.axvline(-4.0, color=REDIS, linewidth=1.6, linestyle="--")
-    h1_ax.set_ylim(1e-4, 2.0)
+    # Headroom above the hump. The wide format left no gap between the curve and the
+    # frame for the label that names it, and this axis has suppressed ticks, so the
+    # extra decade is free.
+    h1_ax.set_ylim(1e-4, 60.0)
     h1_ax.set_xlim(-6, 6)
-    h1_ax.text(-5.85, 1.55, r"large $T_{true}$:" "\npast the lobe,\nlittle left",
-               fontsize=7, color=REDIS, linespacing=1.05, va="top")
-    h1_ax.text(0.95, 0.22, r"small $T_{true}$:" "\nthe whole lobe\ninverts it",
-               fontsize=7, color=KAFKA, linespacing=1.05, va="top")
+    h1_ax.text(-5.85, 22.0, r"large $T_{true}$:" "\npast the lobe,\nlittle left",
+               fontsize=8, color=REDIS, linespacing=1.05, va="top")
+    h1_ax.text(1.15, 0.60, r"small $T_{true}$:" "\nthe whole lobe\ninverts it",
+               fontsize=8, color=KAFKA, linespacing=1.05, va="top")
     # relpos pins the arrow to the edge of the label it belongs to. Left at its default it
     # starts from the centre of the text, and the leader shows through the gaps in the words.
-    h1_ax.annotate("core\n(thread running)", xy=(0.20, 0.70), xytext=(2.9, 0.70),
-                   fontsize=7, color=GREY, ha="left", va="center",
+    h1_ax.annotate("core\n(thread running)", xy=(0.30, 1.4), xytext=(3.6, 1.4),
+                   fontsize=8, color=GREY, ha="left", va="center",
                    arrowprops=dict(arrowstyle="->", color=GREY, lw=0.8, relpos=(0.0, 0.5)))
-    # Placed clear of the descending core lobe: at the old anchor the curve ran through both
-    # lines of the label on its way down to the tail.
-    h1_ax.annotate("preempted lobe\nat the scheduler slice", xy=(-slice_ms, 0.31),
-                   xytext=(1.75, 0.030), fontsize=7, color=GREY, ha="left", va="center",
-                   arrowprops=dict(arrowstyle="->", color=GREY, lw=0.8, relpos=(0.0, 0.5)))
+    # Labelled where the lobe is rather than from across the panel. The wide format halved the
+    # vertical room, and a leader drawn the width of the axes crossed the other annotation on
+    # its way; the space directly above the hump is empty and a short one crosses nothing.
+    h1_ax.annotate("preempted lobe\nat the scheduler slice", xy=(-slice_ms, 0.52),
+                   xytext=(-2.9, 12.0), fontsize=8, color=GREY, ha="center", va="center",
+                   arrowprops=dict(arrowstyle="->", color=GREY, lw=0.8, relpos=(0.5, 0.0)))
     h1_ax.set_xlabel(r"stamping asymmetry $\Delta$ (ms)")
     h1_ax.set_ylabel("density (log)")
     h1_ax.set_yticks([])
@@ -367,9 +377,14 @@ def plot_network(ax):
 
 
 # --------------------------------------------------------------------------- driver
-def _save(fig, out_dir, stem):
+def _save(fig, out_dir, stem, check_layout=True):
     out_dir.mkdir(parents=True, exist_ok=True)
-    figure_collisions.check(fig, stem)
+    if check_layout:
+        # Skipped only for a deliberately rescaled build: --font-scale draws the figures at a
+        # size they were not laid out for, and the gates describe the shipped layout. Running
+        # them on a rescaled render would report collisions nobody is going to ship.
+        figure_collisions.check(fig, stem)
+        figure_legibility.check(fig, stem)
     written = []
     for ext in ("png", "pdf"):
         path = out_dir / f"{stem}.{ext}"
@@ -414,6 +429,8 @@ def main(argv=None):
 
     written, missing = [], []
 
+    layout_is_shipped = args.font_scale == 1.0
+
     def render(stem, needs, draw):
         """Render one figure if its inputs are present; record it as missing otherwise."""
         if args.only and args.only != stem:
@@ -424,39 +441,41 @@ def main(argv=None):
         written.extend(draw())
 
     def _pipeline():
-        fig, ax = plt.subplots(figsize=(5.5, 2.25))
+        # Authored at the supplement one-column width, which is where this figure now
+        # lives; the main text carries the fuller version in Figure 2(a).
+        fig, ax = plt.subplots(figsize=(6.50, 2.20))
         plot_pipeline(ax)
-        return _save(fig, out, "pipeline_schematic")
+        return _save(fig, out, "pipeline_schematic", check_layout=layout_is_shipped)
 
     def _model():
-        fig, axes = plt.subplots(2, 1, figsize=(5.5, 5.0))
+        fig, axes = plt.subplots(2, 1, figsize=(7.16, 3.15))
         plot_model(axes)
         fig.tight_layout()
-        return _save(fig, out, "measurement_model")
+        return _save(fig, out, "measurement_model", check_layout=layout_is_shipped)
 
     def _workload():
         fig, axes = plt.subplots(1, 2, figsize=(10, 3.6))
         plot_workload(axes, profiles)
         fig.tight_layout()
-        return _save(fig, out, "workload_profile")
+        return _save(fig, out, "workload_profile", check_layout=layout_is_shipped)
 
     def _concurrency():
         fig, axes = plt.subplots(1, 2, figsize=(10, 3.6))
         plot_concurrency(axes, slots, timeline)
         fig.tight_layout()
-        return _save(fig, out, "kickoff_concurrency")
+        return _save(fig, out, "kickoff_concurrency", check_layout=layout_is_shipped)
 
     def _integrity():
         fig, axes = plt.subplots(2, 1, figsize=(5.5, 4.8))
         plot_integrity(axes, integrity)
         fig.tight_layout()
-        return _save(fig, out, "integrity_audit")
+        return _save(fig, out, "integrity_audit", check_layout=layout_is_shipped)
 
     def _network():
         fig, ax = plt.subplots(figsize=(6.5, 4.2))
         plot_network(ax)
         fig.tight_layout()
-        return _save(fig, out, "network_delay")
+        return _save(fig, out, "network_delay", check_layout=layout_is_shipped)
 
     profiles = _read(args.profiles_csv)
     slots = _read(args.slots_csv)

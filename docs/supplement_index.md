@@ -144,14 +144,14 @@ appearing in this table.
 
 | Figure | Where it appears |
 |---|---|
-| `pipeline_schematic` | main text, Fig. 1 |
-| `measurement_model` | main text, Fig. 2 |
-| `deletion` | main text, Fig. 3 |
-| `grid_membership` | main text, Fig. 4 |
-| `payload_flip` | main text, Fig. 5 |
-| `mechanism_forest` | main text, Fig. 6 |
-| `ttrue_law` | main text, Fig. 7 |
-| `stall_spectrum` | main text, Fig. 8 |
+| `pipeline_schematic` | supplement, S45 |
+| `measurement_model` | main text, Fig. 1 |
+| `deletion` | main text, Fig. 2 |
+| `grid_membership` | main text, Fig. 3 |
+| `payload_flip` | main text, Fig. 4 |
+| `mechanism_forest` | main text, Fig. 5 |
+| `ttrue_law` | main text, Fig. 6 |
+| `stall_spectrum` | main text, Fig. 7 |
 | `experiment_map` | supplement |
 | `integrity_audit` | supplement |
 | `window_sweep` | supplement |

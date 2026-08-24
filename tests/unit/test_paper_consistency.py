@@ -157,31 +157,52 @@ class TestAudit:
         kept = sum(int(r["n_trustworthy"]) for r in rows)
         return runs, runs - kept, len(rows), sum(r["usable"] == "True" for r in rows)
 
-    def test_single_machine_corpus(self, tex):
+    @staticmethod
+    def _ledger():
+        import sys
+        sys.path.insert(0, str(REPO / "scripts"))
+        import audit_ledger
+        return audit_ledger.audit()
+
+    def test_single_machine_corpus(self):
+        """The audit file and the ledger that reads it must agree, exactly."""
         totals = self._totals(("integrity_windows", "clock_integrity_by_condition.csv"))
         assert totals == (1382, 862, 76, 8)
-        for v in totals[:2]:
-            assert _contains_number(tex, v, 0)
+        c = self._ledger()["workstation"]
+        assert (c["runs"], c["rejected"], c["conditions"], c["usable_conditions"]) == totals
 
-    def test_multi_machine_corpus(self, tex):
+    def test_multi_machine_corpus(self):
         totals = self._totals(("integrity_by_condition.csv",))
         assert totals == (884, 459, 40, 13)
-        for v in totals[:2]:
-            assert _contains_number(tex, v, 0)
+        c = self._ledger()["cloud"]
+        assert (c["runs"], c["rejected"], c["conditions"], c["usable_conditions"]) == totals
 
-    def test_totals_are_the_sum_of_the_parts(self, tex):
+    def test_totals_are_the_sum_of_the_parts(self):
         a = self._totals(("integrity_windows", "clock_integrity_by_condition.csv"))
         b = self._totals(("integrity_by_condition.csv",))
-        assert _contains_number(tex, a[0] + b[0], 0), "total runs audited"
-        assert _contains_number(tex, a[1] + b[1], 0), "total runs rejected"
+        total = self._ledger()["total"]
+        assert total["runs"] == a[0] + b[0], "total runs audited"
+        assert total["rejected"] == a[1] + b[1], "total runs rejected"
+
+    def test_the_emitted_macros_carry_the_audit(self):
+        """The counts were typed into both documents for sixteen rounds and a reviewer,
+        checking them against the campaign inventory rather than the audit's own outputs,
+        concluded they did not reproduce. They did. They are emitted now, so the question
+        cannot arise again -- and this pins the emitted value to the file it comes from."""
+        generated = (REPO / "docs" / "generated" / "paper_numbers.tex").read_text(
+            encoding="utf-8")
+        total = self._ledger()["total"]
+        assert "\\newcommand{\\auditRuns}{2{,}266}" in generated
+        assert "\\newcommand{\\auditRejected}{1{,}321}" in generated
+        assert total["runs"] == 2266 and total["rejected"] == 1321
 
     def test_the_audit_is_the_headline_in_both_abstract_and_conclusion(self, tex):
         """The paper's claim is the audit, so both ends must carry its numbers."""
         abstract = tex[tex.index(r"\begin{abstract}"):tex.index(r"\end{abstract}")]
         conclusion = tex[tex.index(r"\section{Conclusion}"):]
         for section, name in ((abstract, "abstract"), (conclusion, "conclusion")):
-            assert "1{,}321" in section, f"rejected count missing from {name}"
-            assert "2{,}266" in section, f"total count missing from {name}"
+            assert "auditRejected" in section, f"rejected count missing from {name}"
+            assert "auditRuns" in section, f"total count missing from {name}"
 
 
 class TestThresholdSensitivity:
@@ -1179,7 +1200,7 @@ class TestNarrativeArc:
     def test_the_conclusion_carries_every_headline(self, tex):
         conclusion = tex[tex.index(r"\section{Conclusion}"):]
         low = conclusion.lower()
-        for claim, token in (("the audit", "1{,}321"), ("the second withdrawal", "withdraw"),
+        for claim, token in (("the audit", "auditrejected"), ("the second withdrawal", "withdraw"),
                              ("the mixture correction", "mixture"),
                              ("the broker answer", "0.41")):
             assert token.lower() in low, f"conclusion omits {claim}"
@@ -2655,11 +2676,20 @@ class TestRefereeRoundTwo:
         derivation, and the text must not dress it as a measurement -- the paper's whole
         argument is that an unverifiable number is not yet one."""
         section = " ".join(_section(main_tex, "sec:tail").split())
-        assert "derived" in section
-        assert "not measured" in section
+        assert "derived" in section, "the main text must still call the constants derived"
+        # The working itself moved to Supplement S44 when the figures were redrawn at
+        # printable size; the claim stayed here and the arithmetic went there.
+        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        derivation = " ".join(supp[supp.index("S44."):].split())
+        assert "rather than measured" in derivation
+        # Wherever a constant is printed it must be a macro, never typed. Two of these now
+        # appear only in S44, which is where the derivation went.
+        package = main_tex + "\n" + (REPO / "supplement.tex").read_text(encoding="utf-8")
         for macro in (r"\testbedCpus", r"\sliceFactor", r"\baseSliceMs", r"\kernelHz",
                       r"\tickMs"):
-            assert macro in main_tex, f"{macro} must come from the pipeline"
+            assert macro in package, f"{macro} must come from the pipeline"
+        for macro in (r"\sliceFactor", r"\baseSliceMs"):
+            assert macro in main_tex, f"{macro} states the claim and belongs in the paper"
         assert "measured directly and at" not in section, "the earlier wording overclaimed"
 
     def test_the_cpu_count_is_named_by_its_evidence_not_by_a_shape(self, main_tex, supp):
@@ -2668,8 +2698,8 @@ class TestRefereeRoundTwo:
         are 5/8, 6/8 and 7/8. A shape description would not be checkable from the artefacts;
         k/rho is. Neither document should fall back on 'eight-vCPU'."""
         assert "eight-vCPU" not in main_tex and "eight-vCPU" not in supp
-        section = " ".join(_section(main_tex, "sec:tail").split())
-        assert "rho" in section and "k/" in section, "the count needs its evidence shown"
+        derivation = " ".join(supp[supp.index("S44."):].split())
+        assert "rho" in derivation and "k/" in derivation, "the count needs its evidence shown"
 
     def test_the_slice_is_insensitive_to_an_undercounted_machine(self):
         """The kernel clamps at 8 before taking the logarithm, so any machine with at least
@@ -2680,9 +2710,9 @@ class TestRefereeRoundTwo:
         assert kc.base_slice_ns(8) == kc.base_slice_ns(16) == kc.base_slice_ns(64)
         assert kc.base_slice_ns(7) < kc.base_slice_ns(8),             "below the clamp the answer would differ, which is why 8 had to be established"
 
-    def test_the_derivation_states_what_it_cannot_prove(self, main_tex):
-        section = " ".join(_section(main_tex, "sec:tail").split())
-        assert "strong evidence rather than proof" in section
+    def test_the_derivation_states_what_it_cannot_prove(self, supp):
+        derivation = " ".join(supp[supp.index("S44."):].split())
+        assert "strong evidence rather than proof" in derivation
 
     def test_the_kernel_config_artefact_is_committed_with_its_hash(self):
         path = REPO / "docs" / "results" / "env" / "kernel_config_6.8.0-1057-oracle.txt"
@@ -2695,7 +2725,16 @@ class TestRefereeRoundTwo:
         One early phase pinned the load generator while utilisation was measured across all
         cores; it feeds no reported result, and the paper now says so."""
         section = " ".join(_section(main_tex, "sec:testbeds").split())
-        assert "pinned the load generator" in section
+        # The disclosure moved to Supplement S35.0 when the main text was compressed to pay
+        # for legible figures; the main text still says a phase was excluded, and the
+        # submission is both documents.
+        assert "excluded from every result" in section, \
+            "the main text must still say the phase was excluded"
+        # Whitespace-normalised: the sentence wraps in the source, and a literal search
+        # across a line break is how this repository has produced false negatives before.
+        supp_src = " ".join((REPO / "supplement.tex").read_text(encoding="utf-8").split())
+        assert "pinned the load generator" in supp_src, \
+            "the disclosure must be somewhere the pointer leads"
         assert "excluded from every result" in section
         assert "no core pinning" in section
 
@@ -2929,6 +2968,62 @@ class TestReferenceHouseStyle:
             if dupes:
                 bad[key] = sorted(dupes)
         assert not bad, "entries printing a literal twice: %s" % bad
+
+    def test_every_author_is_initials_and_surname(self):
+        """IEEE sets authors as initials plus surname; one entry was neither.
+
+        Reference [40] printed "zihan zhou" -- lower case, unabbreviated -- among
+        forty-four entries in house form, and survived rounds 14 and 15, both of which were
+        spent reading this list. The gate had never looked at a name.
+
+        A braced group is a corporate author and is left alone: {Jaeger contributors} and
+        {Linux Kernel Documentation} are correct exactly as written.
+        """
+        bad = []
+        for key, body in self._cited_entries().items():
+            m = re.search(r"author\s*=\s*[{\"](.+?)[}\"]\s*,\s*\n", body, re.S)
+            if not m:
+                continue
+            field = " ".join(m.group(1).split())
+            for name in re.split(r"\s+and\s+", field):
+                name = name.strip()
+                if not name or name.startswith("{"):
+                    continue          # corporate author, braced to protect it
+                if "," in name:       # "Lastname, Firstname" -- BibTeX resolves it
+                    continue
+                parts = name.split()
+                if len(parts) < 2:
+                    continue          # a single token cannot be checked this way
+                given = parts[:-1]
+                if not all(re.fullmatch(r"[A.-]?[A-Z]\.?(-[A-Z]\.?)*", g) for g in given):
+                    bad.append("%s: %r" % (key, name))
+                elif not parts[-1][:1].isupper():
+                    bad.append("%s: %r" % (key, name))
+        assert not bad, "authors not in IEEE initials-and-surname form:\n  " + "\n  ".join(bad)
+
+    def test_the_audit_counts_are_not_typed_into_the_sources(self):
+        """The audit rate must come from the ledger, as every other headline does.
+
+        Round 16 found that 1,321 of 2,266 -- the headline of the contribution about
+        publishing the record behind a number -- was a literal in both documents and did not
+        reproduce from the committed indices. Comparing a printed number against the ledger
+        would not prevent a recurrence, because the failure mode is someone typing the number
+        in the first place. So this asserts the literals are absent and the macros are used.
+        """
+        stale = ("2{,}266", "1{,}321", "1{,}382", "$862$", "$884$", "$459$",
+                 "62.4\\%", "51.9\\%", "58.3\\%")
+        found = {}
+        for name in ("paper.tex", "supplement.tex"):
+            src = (REPO / name).read_text(encoding="utf-8")
+            hits = [s for s in stale if s.replace("\\\\", "\\") in src]
+            if hits:
+                found[name] = hits
+        assert not found, "audit counts typed rather than derived: %s" % found
+
+        paper = (REPO / "paper.tex").read_text(encoding="utf-8")
+        for macro in ("auditRuns", "auditRejected", "auditRejectedWorkstation",
+                      "auditRejectedCloud"):
+            assert "\\%s" % macro in paper, "%s is emitted but unused" % macro
 
     def test_venues_are_abbreviated(self):
         """IEEE abbreviates venue names; two of forty-five did not, which reads as carelessness."""

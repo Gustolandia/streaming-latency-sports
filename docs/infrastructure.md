@@ -104,7 +104,7 @@ python scripts/power_analysis.py --n 15
 
 ## Release checklist
 
-The suite covers everything that can be decided by reading a file. Three things cannot, and
+The suite covers everything that can be decided by reading a file. Four things cannot, and
 each has cost a referee round, so they are written down rather than remembered.
 
 TC's own limits, for reference, from the journal's author page: a regular paper is **10-12
@@ -145,17 +145,42 @@ Run `python scripts/show_figure_collisions.py` when it fails: it writes the ink-
 with the flagged labels outlined, which is the picture the gate saw.
 
 **The eye is still on the list.** The gate found three collisions the visual pass missed --
-the grid lines through `1/3`, `2/3` and `3/3` in Figure 5(a) -- and the visual pass is what
-found the two the gate was then written from. They fail differently: the gate cannot tell
-whether a figure is *right*, only whether it is legible.
+the grid lines through `1/3`, `2/3` and `3/3` -- and the visual pass is what found the two the
+gate was then written from. They fail differently: the gate cannot tell whether a figure is
+*right*, only whether it is legible.
 
-**2. Read the reference list as a copy editor would.** Round 14 was the first time anyone did,
+**2. Measure the type size a reader actually gets.** Round 16 found every figure in the paper
+printing below IEEE's minimum, one of them at 2.7 pt against 9.5 pt body text. The cause was
+arithmetic split across two files that never met: the figure script sets the point size and
+knows nothing about the include width, the manuscript sets the include width and knows nothing
+about the point size, and 0.82\columnwidth on a figure drawn seven inches wide is a 59%
+reduction nobody wrote down.
+
+`scripts/figure_legibility.py` closes that gap. It parses the `\includegraphics` directives
+out of both documents, so a figure moved between a column and a full-width float is measured
+where it actually lands, and it fails anything below 8 pt. The rule that follows from it:
+**draw every figure at the width it will print at.** Then authored size is printed size and
+there is no arithmetic to get wrong.
+
+Two things learned the hard way while fixing it, both worth not rediscovering:
+
+- `\columnwidth` is **not** redefined inside `figure*`. A figure drawn at 7.16 in and included
+  at `\columnwidth` in a starred float still comes out 3.37 in wide. Use `\textwidth`.
+- The collision gate's core band was the middle 58% by height and 88% by width. Cap height
+  begins inside 58%, so an axes frame drawn through the tops of the letters was outside the
+  band; and a frame touching the last glyph was outside the 88%. Both are now 72% and 96%,
+  and the case the insets exist for -- a rule flanked by a label above and below -- is still
+  pinned as passing.
+
+**3. Read the reference list as a copy editor would.** Round 14 was the first time anyone did,
 and it found three defects in a list that is otherwise scrupulous: one entry printing its URL
 twice, two venues unabbreviated among forty-three that were not, and the arXiv entries split
-across two conventions. `TestReferenceHouseStyle` now catches those three classes; it does not
+across two conventions. `TestReferenceHouseStyle` now catches those classes, and since round 16 also catches an
+author outside IEEE initials-and-surname form -- entry [40] read "zihan zhou" through two
+rounds spent reading this list, because the gate had never looked at a name. It still does not
 catch a mis-spelled author or a wrong page range.
 
-**3. Confirm an unexpected test result before explaining it.** Three times now the failure mode
+**4. Confirm an unexpected test result before explaining it.** Three times now the failure mode
 has been to reason about an unexpected result from the apparatus instead of opening the file:
 a `sed` mutation that silently matched nothing and made a live gate look inert (twice), and a
 new gate that fired on a real defect and was narrowed on the assumption of a false positive

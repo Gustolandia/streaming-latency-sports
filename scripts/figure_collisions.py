@@ -49,8 +49,15 @@ MAX_INK_FRACTION = 0.012
 
 # The share of the text box treated as glyph core. Vertically this drops the leading above the
 # capitals and the descender well below the baseline; horizontally it drops the side bearings.
-CORE_HEIGHT = 0.58
-CORE_WIDTH = 0.88
+# 72% rather than 58%: cap height starts well inside a text box, so a narrower band excludes
+# the very strokes a rule crossing the capitals would hit -- which is how an axes frame came to
+# be drawn through the top of a two-line annotation with the check reporting it clean.
+CORE_HEIGHT = 0.72
+# 96% horizontally. The vertical inset earns its keep -- it is what stops a rule
+# flanked by a label above and a label below from reading as a strike on either.
+# There is no equivalent design horizontally, and an 88% band put a frame touching
+# the last glyph of an annotation outside the region being read.
+CORE_WIDTH = 0.96
 
 # How much of the smaller of two labels may be covered by the other before they count as
 # printed over each other. Adjacent labels routinely share a hair of their boxes; a label

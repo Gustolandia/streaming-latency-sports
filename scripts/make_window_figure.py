@@ -35,6 +35,7 @@ import matplotlib
 matplotlib.use("Agg")
 import figure_style  # noqa: E402
 import figure_collisions  # noqa: E402
+import figure_legibility  # noqa: E402
 figure_style.apply()  # Type 42, IEEE-listed family; see scripts/figure_style.py
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker  # noqa: E402
@@ -135,6 +136,7 @@ def main(argv=None):
     out.mkdir(parents=True, exist_ok=True)
     for ext in ("pdf", "png"):
         figure_collisions.check(fig, "window_sweep")
+        figure_legibility.check(fig, "window_sweep")
         fig.savefig(out / f"window_sweep.{ext}", dpi=200, bbox_inches="tight")
     plt.close(fig)
     print(f"OK wrote {out}/window_sweep.pdf and .png")

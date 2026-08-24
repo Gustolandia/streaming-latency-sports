@@ -341,3 +341,42 @@ def test_every_figure_is_used_or_declared():
                   if p.stem not in used and ("`%s`" % p.stem) not in declared]
     assert not undeclared, (
         "figures neither included nor declared in docs/supplement_index.md: %s" % undeclared)
+
+
+def test_the_inventory_figure_numbers_are_current():
+    """"main text, Fig. N" in the artifact index must be the number the paper prints.
+
+    Round 13 added the inventory and gated the figure *names*; round 14 observed that the
+    numbers beside them were hand-typed and unchecked. Insert a float ahead of another and the
+    index sends a reader to the wrong panel -- the same failure the supplement's float-pointer
+    gate exists to prevent, one document across.
+    """
+    index = ROOT / "docs" / "supplement_index.md"
+    aux = ROOT / "paper.aux"
+    if not index.exists() or not aux.exists():
+        pytest.skip("artifact index or paper.aux absent")
+
+    printed = {}
+    for label, num in re.findall(r"\\newlabel\{(fig:[^}]*)\}\{\{([^}]*)\}",
+                                 aux.read_text(encoding="utf-8", errors="replace")):
+        printed[label] = num
+
+    # the figure a generator writes, keyed by the label the paper gives it
+    stem_of_label = {}
+    paper = (ROOT / "paper.tex").read_text(encoding="utf-8")
+    for block_ in re.findall(r"\\begin\{figure\}(.*?)\\end\{figure\}", paper, re.S):
+        g = re.search(r"\\includegraphics\[[^\]]*\]\{([^}]*)\}", block_)
+        lab = re.search(r"\\label\{(fig:[^}]*)\}", block_)
+        if g and lab:
+            stem_of_label[Path(g.group(1)).stem] = lab.group(1)
+
+    bad = []
+    for stem, claimed in re.findall(r"\|\s*`([a-z0-9_]+)`\s*\|\s*main text, Fig\.\s*(\d+)",
+                                    index.read_text(encoding="utf-8")):
+        label = stem_of_label.get(stem)
+        if label is None:
+            bad.append("%s: index says the main text carries it, the paper does not" % stem)
+        elif printed.get(label) != claimed:
+            bad.append("%s: index says Fig. %s, paper prints Fig. %s"
+                       % (stem, claimed, printed.get(label)))
+    assert not bad, "stale figure numbers in the artifact index:\n  " + "\n  ".join(bad)

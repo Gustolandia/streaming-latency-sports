@@ -199,6 +199,21 @@ No new sections. Two corrections to round 20's relocations and one to the prose:
 must be pointed at from the paper. Sections below S45 are exempt by design --- they are the
 TPDS-era bulk moves, documented here rather than pointed at individually.
 
+## Round 24 (2026-08-25): the sweep, and the pointer that costs money
+
+No new sections. Six numbers moved from prose into the ledger, two of them in the supplement:
+
+- `supplement.tex` quoted the payload exponent as `0.339` against a second-day repeat and the
+  Hodges--Lehmann shift as `0.408` heading a list of three. Both now read `\tailExponent` and
+  `\tostHL`.
+- S42 gained a one-paragraph lead saying what Section VI-D now states in a sentence, because
+  VI-D gave up the two-part derivation to bring Threats back under the section that carries
+  Contribution 2's decisive experiments.
+
+`tests/unit/test_ledger_coverage.py` is the sweep behind the first of those, and
+`tests/unit/test_citation_surface.py` gained the page-count check --- the last journal limit
+with no gate, and the only one that costs $220 a page.
+
 ## Figure inventory
 
 `docs/results/figures/` holds fifteen PDFs. Twelve are included by a document; three are not,

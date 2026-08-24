@@ -1,6 +1,7 @@
 """Tests for scripts/measurement_model.py - target 100% branch coverage."""
 from pathlib import Path
 import json
+import math
 import sys
 
 import numpy as np
@@ -259,3 +260,31 @@ class TestMain:
                       "inversion_rate": [0.2, 0.2, 0.2]}).to_csv(p, index=False)
         assert main(["--effect-size-csv", str(p), "--out", str(temp_dir / "m")]) == 0
         assert "NOT SUPPORTED" in capsys.readouterr().out
+
+
+class TestTheAlternativeShapesThatCannotBeFitted:
+    """Both alternatives need spread to fit against, and a ladder can fail to provide it.
+
+    The power law fits its exponent on the log-log slope and the exponential on the log-linear
+    one. With only one positive rate, or with every condition at the same utilisation, that
+    slope is undefined -- and a slope invented from one point would put a fitted alternative
+    beside M/G/1 in the comparison table as though it had been tested.
+    """
+
+    def test_a_single_positive_rate_fits_no_alternative(self):
+        fit = fit_mg1([0.5, 0.6, 0.7], [0.0, 0.0, 0.4])
+        assert math.isnan(fit["r2_power"])
+        assert math.isnan(fit["r2_exponential"])
+        assert not math.isnan(fit["r2_linear"]), "linear needs no slope of its own"
+
+    def test_every_condition_at_one_utilisation_fits_no_alternative(self):
+        """A ladder that never moved rho cannot separate a power law from an exponential."""
+        fit = fit_mg1([0.7, 0.7, 0.7], [0.1, 0.2, 0.3])
+        assert math.isnan(fit["r2_power"])
+        assert math.isnan(fit["r2_exponential"])
+
+    def test_a_real_ladder_does_fit_both(self):
+        """The negative controls above only mean something beside a case that works."""
+        fit = fit_mg1([0.5, 0.7, 0.9], [0.05, 0.12, 0.40])
+        assert not math.isnan(fit["r2_power"])
+        assert not math.isnan(fit["r2_exponential"])

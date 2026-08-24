@@ -366,3 +366,50 @@ class TestEntryPoint:
         """Test that calling main as entry point works."""
         import analyze_concurrency_sweep
         assert callable(analyze_concurrency_sweep.main)
+
+
+class TestAScenarioThatContributedNoEventRow:
+    """The plot loop walks every scenario, including one the event table has no row for.
+
+    The event table is built only from the two backends this sweep compares. A run directory
+    carrying anything else -- a third backend tried and abandoned, a mislabelled row -- leaves
+    its scenario in the scenario list and out of the event table, and plotting it would index
+    an empty frame.
+    """
+
+    @patch('analyze_concurrency_sweep.discover_runs')
+    @patch('analyze_concurrency_sweep.filter_handoff')
+    @patch('analyze_concurrency_sweep.load_run_data')
+    @patch('analyze_concurrency_sweep.stats.ttest_ind')
+    @patch('analyze_concurrency_sweep.plt')
+    def test_it_is_left_out_of_the_plot_rather_than_crashing(
+            self, mock_plt, mock_ttest, mock_load_data, mock_filter, mock_discover, temp_dir):
+        mock_discover.return_value = []
+        mock_filter.return_value = []
+        mock_load_data.return_value = pd.DataFrame({
+            'backend': ['kafka', 'redis', 'nats'],
+            'scenario': ['s1', 's1', 's2'],
+            'scenario_name': ['S1', 'S1', 'S2'],
+            'n': [5, 5, 5],
+            'feed': [1, 1, 1],
+            'tti_p50': [100.0, 80.0, 90.0],
+            'tti_p95': [200.0, 160.0, 180.0],
+            'tti_p99': [300.0, 240.0, 270.0],
+            'tti_max': [500.0, 400.0, 450.0],
+            'tti_mean': [150.0, 120.0, 135.0],
+            'tti_std': [50.0, 40.0, 45.0],
+            'tti_min': [50.0, 40.0, 45.0],
+            'n_producer': [1000, 1000, 1000],
+            'n_consumer': [1000, 1000, 1000],
+            'n_matched': [999, 999, 999],
+            'run_id': ['run1', 'run2', 'run3'],
+        })
+        mock_ttest.return_value = (1.0, 0.05)
+
+        out = temp_dir / 'output_third_backend'
+        with patch('sys.argv', ['analyze_concurrency_sweep.py', '--runs-dir', str(temp_dir),
+                                '--output-dir', str(out)]):
+            analyze_sweep_main()
+
+        events = pd.read_csv(out / 'event_analysis.csv')
+        assert set(events['Scenario']) == {'S1'}, "the third backend contributes no event row"

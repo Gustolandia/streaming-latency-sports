@@ -6,7 +6,7 @@
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Target: TPDS](https://img.shields.io/badge/Target-IEEE%20TPDS-orange.svg)]()
 [![Tests](https://img.shields.io/badge/tests-2121_passing-brightgreen.svg)]()
-[![Coverage](https://img.shields.io/badge/branch_coverage-%E2%89%A595%25-brightgreen.svg)]()
+[![Coverage](https://img.shields.io/badge/branch_coverage-100%25-brightgreen.svg)]()
 [![StatsBomb Data](https://img.shields.io/badge/StatsBomb_Data-CC_BY--NC_4.0-blue.svg)](https://github.com/statsbomb/open-data)
 [![DOI (code)](https://img.shields.io/badge/DOI_code-10.5281%2Fzenodo.22044877-blue.svg)](https://doi.org/10.5281/zenodo.22044877)
 [![DOI (data)](https://img.shields.io/badge/DOI_data-10.5281%2Fzenodo.22044891-blue.svg)](https://doi.org/10.5281/zenodo.22044891)
@@ -684,7 +684,7 @@ streaming-latency-sports/
 │
 └── tests/
     ├── conftest.py                 # fixtures + kafka/redis mocks
-    └── unit/                       # one test module per script (≥95% each)
+    └── unit/                       # one test module per script (100% each)
 ```
 
 > **Note:** `docs/results/**` holds **script-generated** tables and figures. They are
@@ -760,7 +760,7 @@ python scripts/kafka_producer.py --run-id s3_test --plan-csv "$PLAN" \
 
 ## 10. Testing & Quality
 
-**Current state (August 2026): 2,275 tests passing, every script ≥95% branch coverage.**
+**Current state (August 2026): every script in `scripts/` at 100% branch coverage.**
 The June 17 2026 snapshot (830 tests, 99% total coverage) included the Issue 3–6 gap-filler
 scripts (`statistical_analysis.py`, `power_analysis.py`, `analyze_protocol_overhead.py`,
 `analyze_actionability.py`, `verify_reproducibility.py`) and the root health-check scripts
@@ -796,7 +796,11 @@ without Docker.
 
 ### Standards
 
-- ≥95% line coverage for every script in `scripts/`.
+- **100% branch coverage** for every script in `scripts/`, enforced by CI.
+  What may be excluded from that number is enumerated and justified in
+  `tests/unit/test_coverage_exclusions.py`: a `__main__` dispatch may hold only calls
+  and imports, and every other exclusion needs a written reason. 100% bought with
+  pragmas would be worse than an honest 95%, so the exclusions are gated too.
 - Each test isolates its own temp directory; happy paths *and* error paths covered.
 - Cross-platform path handling (Windows + Unix); UTF-8-sig used for Windows-generated files.
 
@@ -935,7 +939,7 @@ Docker, Python 3.9+, and Git.
 
 **Pull-request checklist:** style ✓ · docstrings + type hints ✓ · docs updated (this
 README) ✓ · reproducibility preserved ✓ · **all tests pass and changed scripts stay
-≥95% covered** ✓.
+100% covered** ✓.
 
 ```bash
 python -m pytest tests/ --cov=scripts --cov-report=term-missing

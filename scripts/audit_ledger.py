@@ -74,10 +74,20 @@ def summary():
     return audit()
 
 
-if __name__ == "__main__":  # pragma: no cover - reporting convenience
+def main(argv=None):
+    """Print the audit the manuscript's rejection rate is emitted from.
+
+    A function rather than a block under the `__main__` guard: the guard is excluded from
+    coverage, and a report loop hidden there is code no test can reach.
+    """
     data = audit()
     for name in ("workstation", "cloud", "total"):
         c = data[name]
         print("%-12s runs %-6d rejected %-6d (%.1f%%)  conditions %-4d usable %d"
               % (name, c["runs"], c["rejected"], c["pct"],
                  c["conditions"], c["usable_conditions"]))
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover - dispatch only; main() is tested directly
+    raise SystemExit(main())

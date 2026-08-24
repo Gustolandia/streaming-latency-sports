@@ -135,3 +135,28 @@ class TestTheCountHasTwoIndependentSources:
         est = kc.cpus_from_geometry()
         assert all(abs(e - 8) < 0.1 for e in est)
         assert not any(abs(e - 16) < 1.0 for e in est)
+
+
+class TestTheGeometryRowsAndLogDirectoriesThatCarryNothing:
+
+    def test_a_condition_that_is_not_a_core_count_is_not_an_estimate(self, tmp_path):
+        """The recovery is k/rho over `k<N>_` conditions. A row named anything else has no k,
+        and a row at rho=0 has no denominator; either would corrupt the CPU count the
+        scheduler constants are derived from."""
+        p = tmp_path / "geometry.csv"
+        p.write_text("condition,rho\nk4_conc,0.5\nbaseline,0.5\nk8_conc,0.0\n",
+                     encoding="utf-8")
+        assert kc.cpus_from_geometry(str(p)) == [8.0]
+
+    def test_a_geometry_file_with_no_usable_row_is_refused(self, tmp_path):
+        """An estimate from nothing is the kind of number this project exists to refuse."""
+        p = tmp_path / "geometry.csv"
+        p.write_text("condition,rho\nbaseline,0.5\n", encoding="utf-8")
+        with pytest.raises(ValueError, match="no k.*_ conditions"):
+            kc.cpus_from_geometry(str(p))
+
+    def test_a_missing_log_directory_counts_nothing_rather_than_raising(self, tmp_path):
+        """The campaign logs are not part of the artefact, so a reader reproducing this has
+        no such directory and must still get a build. Zero stated totals is the honest
+        answer: this evidence is simply absent, and k/rho still stands on its own."""
+        assert kc.cores_from_campaign_logs(str(tmp_path / "never-created")) == {}

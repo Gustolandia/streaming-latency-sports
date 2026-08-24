@@ -205,3 +205,30 @@ class TestMain:
         runs.mkdir()
         assert main(["--runs-dir", str(runs), "--run-glob", "zzz*"]) == 1
         assert "No readable runs" in capsys.readouterr().out
+
+
+class TestTheRunsDirectoryAsItIsFoundOnDisk:
+
+    def test_a_run_whose_csv_will_not_parse_is_skipped_not_fatal(self, temp_dir):
+        """Interrupted runs leave truncated CSVs; one must not end the audit of a campaign."""
+        _run(temp_dir / "runs", "good_1")
+        broken = temp_dir / "runs" / "good_2"
+        broken.mkdir(parents=True)
+        # A run killed before its header was flushed. The file exists and holds
+        # nothing, which pandas reports as EmptyDataError, not as an empty frame.
+        (broken / "producer.csv").write_text("", encoding="utf-8")
+        (broken / "consumer.csv").write_text("", encoding="utf-8")
+        df = audit(temp_dir / "runs", "good_*")
+        assert len(df) == 1
+
+    def test_a_file_where_a_run_directory_was_expected_is_ignored(self, temp_dir):
+        _run(temp_dir / "runs", "good_1")
+        (temp_dir / "runs" / "good_notes").write_text("x", encoding="utf-8")
+        assert len(audit(temp_dir / "runs", "good_*")) == 1
+
+    def test_a_run_with_nothing_to_check_contributes_no_row(self, temp_dir):
+        """An empty run is not a clean run; a row of zeros would read as one."""
+        _run(temp_dir / "runs", "good_1")
+        empty = temp_dir / "runs" / "good_2"
+        empty.mkdir(parents=True)
+        assert len(audit(temp_dir / "runs", "good_*")) == 1

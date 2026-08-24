@@ -158,7 +158,8 @@ def verdict(rows, target_fall=INVERSION_FALL):
     stall longer than T_true. A mean cannot bound a tail.
     """
     if not rows:
-        return {"decided": False, "why": "no level has both arms"}
+        return {"decided": False,
+                "why": "no load level has both arms with schedstat data"}
     occ = st.median([r["occ_fall"] for r in rows])
     agg = st.median([r["agg_fall"] for r in rows])
     med = st.median([r["med_fall"] for r in rows])
@@ -185,10 +186,13 @@ def main(argv=None):
         print(f"missing campaign directory: {args.depth}")
         return 1
     cells = load_cells(args.depth)
-    if not cells:
-        print("no load level has both arms with schedstat data")
-        return 1
     rows = [compare(lv, cells[lv]) for lv in sorted(cells)]
+    if not rows:
+        # `verdict` owns the wording, so the reason a run reached no conclusion is written in
+        # one place rather than in two that can drift. It is also the only way the verdict can
+        # come back undecided, which is why there is no second undecided branch below.
+        print(f"UNDECIDED: {verdict(rows)['why']}")
+        return 1
 
     print("== how OFTEN the thread waits (the pre-registered quantity) ==")
     for r in rows:
@@ -210,38 +214,35 @@ def main(argv=None):
 
     v = verdict(rows)
     print("\n== verdict ==")
-    if not v["decided"]:
-        print(f"UNDECIDED: {v['why']}")
+    print(f"the inversion rate falls about {INVERSION_FALL:.0f}x (E-A5, E-A5b).")
+    print(f"  occupancy               {v['occupancy_fall']:.2f}x   "
+          f"(pre-registered >= {OCCUPANCY_PREDICTED:.0f}x -> "
+          f"{'HELD' if v['occupancy_prediction_held'] else 'FAILED'})")
+    print(f"  stall length, aggregate {v['aggregate_fall']:.2f}x   "
+          f"-> {'sufficient' if v['aggregate_explains'] else 'NOT sufficient'}")
+    print(f"  stall length, median    {v['median_fall']:.1f}x"
+          + ("   SKEWED: not representative of the aggregate" if v["skewed"] else ""))
+    if not v["scheduled_as_often"]:
+        print(f"  NOTE: under real-time priority the thread is also scheduled "
+              f"{v['slice_ratio']:.2f}x LESS often,")
+        print("        so 'it waits as often, just more briefly' does not hold at "
+              "every level.")
+    if v["occupancy_prediction_held"]:
+        print("\nThe pre-registered occupancy prediction held.")
+    elif v["aggregate_explains"]:
+        print("\nOccupancy failed and stall length carries the result on the conservative")
+        print("statistic: an inversion needs one stall longer than T_true, not a high")
+        print("time-average of waiting.")
     else:
-        print(f"the inversion rate falls about {INVERSION_FALL:.0f}x (E-A5, E-A5b).")
-        print(f"  occupancy               {v['occupancy_fall']:.2f}x   "
-              f"(pre-registered >= {OCCUPANCY_PREDICTED:.0f}x -> "
-              f"{'HELD' if v['occupancy_prediction_held'] else 'FAILED'})")
-        print(f"  stall length, aggregate {v['aggregate_fall']:.2f}x   "
-              f"-> {'sufficient' if v['aggregate_explains'] else 'NOT sufficient'}")
-        print(f"  stall length, median    {v['median_fall']:.1f}x"
-              + ("   SKEWED: not representative of the aggregate" if v["skewed"] else ""))
-        if not v["scheduled_as_often"]:
-            print(f"  NOTE: under real-time priority the thread is also scheduled "
-                  f"{v['slice_ratio']:.2f}x LESS often,")
-            print("        so 'it waits as often, just more briefly' does not hold at "
-                  "every level.")
-        if v["occupancy_prediction_held"]:
-            print("\nThe pre-registered occupancy prediction held.")
-        elif v["aggregate_explains"]:
-            print("\nOccupancy failed and stall length carries the result on the conservative")
-            print("statistic: an inversion needs one stall longer than T_true, not a high")
-            print("time-average of waiting.")
-        else:
-            print("\nNEITHER QUANTITY ACCOUNTS FOR THE RESULT on the conservative statistic.")
-            print("  Occupancy moves about 2x and mean stall length 3-5x, against a 40x fall")
-            print("  in inversions. The per-process median moves far more, but it is skewed")
-            print("  and must not be quoted as if it were the aggregate.")
-            print("  This is a limit of the instrument, not an absence of mechanism. schedstat")
-            print("  carries cumulative totals, so it yields MEANS, and an inversion is a TAIL")
-            print("  event -- one stall beyond T_true. A mean cannot bound a tail. These")
-            print("  counters constrain the explanation without resolving it; resolving it")
-            print("  needs the stall DISTRIBUTION, from sched_switch tracing, not yet run.")
+        print("\nNEITHER QUANTITY ACCOUNTS FOR THE RESULT on the conservative statistic.")
+        print("  Occupancy moves about 2x and mean stall length 3-5x, against a 40x fall")
+        print("  in inversions. The per-process median moves far more, but it is skewed")
+        print("  and must not be quoted as if it were the aggregate.")
+        print("  This is a limit of the instrument, not an absence of mechanism. schedstat")
+        print("  carries cumulative totals, so it yields MEANS, and an inversion is a TAIL")
+        print("  event -- one stall beyond T_true. A mean cannot bound a tail. These")
+        print("  counters constrain the explanation without resolving it; resolving it")
+        print("  needs the stall DISTRIBUTION, from sched_switch tracing, not yet run.")
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -254,5 +255,5 @@ def main(argv=None):
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - dispatch only; main() is tested directly
     raise SystemExit(main())

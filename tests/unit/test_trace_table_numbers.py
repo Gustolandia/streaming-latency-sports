@@ -121,3 +121,19 @@ class TestCLI:
         out = capsys.readouterr().out
         assert "FAIL tab:ea6" in out
         assert "derived quantities" in out, "an untraced cell must not read as wrong"
+
+
+class TestZeroHasNoReciprocal:
+
+    def test_the_reciprocal_roundings_are_skipped_rather_than_dividing_by_zero(self):
+        """Every table number is searched for at several roundings, and ratios are often
+        stored as the reciprocal of a fraction. Zero has no reciprocal, and the guard is what
+        keeps a legitimate 0 in a table from crashing the trace."""
+        import trace_table_numbers as ttn
+        got = ttn._roundings(0.0)
+        assert "0.00" in got
+        assert not any(v.startswith("inf") for v in got)
+
+    def test_a_non_zero_value_does_carry_its_reciprocal(self):
+        import trace_table_numbers as ttn
+        assert "4.00" in ttn._roundings(0.25)

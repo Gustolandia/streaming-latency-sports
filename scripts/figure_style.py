@@ -108,7 +108,7 @@ def resolved_family():
     return None
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - a hand-run report on the two functions below
     apply()
     print("pdf.fonttype = %s" % matplotlib.rcParams["pdf.fonttype"])
     print("resolved family = %s" % resolved_family())

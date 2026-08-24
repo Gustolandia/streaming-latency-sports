@@ -378,5 +378,5 @@ def main():
     print(f"OK kafka producer: wrote {len(rows)} rows -> {out_path}")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - dispatch only; main() is tested directly
     main()

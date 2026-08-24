@@ -325,3 +325,43 @@ class TestArmDrivenToZero:
         rows = [{"arm": "base", "p_tail": 0.18, "inversion": 0.0},
                 {"arm": "rt", "p_tail": 0.02, "inversion": 0.0}]
         assert not verdict(rows, self.OK)["decided"]
+
+
+class TestTheDepthDirectoryAsItIsFoundOnDisk:
+
+    def test_an_arm_that_is_not_a_directory_yields_nothing(self, temp_dir):
+        """`load_arm` is given a name from a glob, and a glob matches files too."""
+        (temp_dir / "l95_base").write_text("not a directory", encoding="utf-8")
+        assert art.load_arm(str(temp_dir), "l95_base", "runs") is None
+
+    def test_an_arm_that_does_not_exist_yields_nothing(self, temp_dir):
+        assert art.load_arm(str(temp_dir), "l95_never", "runs") is None
+
+    def test_a_file_beside_the_cells_is_stepped_over(self, temp_dir, capsys):
+        _cell(temp_dir, "l95_base")
+        _cell(temp_dir, "l95_rt")
+        (temp_dir / "l95_notes").write_text("x", encoding="utf-8")
+        with patch.object(art, "condition_stats", side_effect=[_stats(0.95, 0.30),
+                                                               _stats(0.95, 0.01)]):
+            main(["--depth", str(temp_dir), "--runs", "runs",
+                  "--out", str(temp_dir / "out")])
+        assert "l95" in capsys.readouterr().out
+
+    def test_asking_for_one_level_analyses_only_that_level(self, temp_dir, capsys):
+        """Two levels in one directory cannot be analysed together: the instrument check and
+        the verdict are both per-level, so pooling them compares arms across levels."""
+        for tag in ("l70_base", "l70_rt", "l95_base", "l95_rt"):
+            _cell(temp_dir, tag)
+        with patch.object(art, "condition_stats", return_value=_stats(0.95, 0.10)):
+            code = main(["--depth", str(temp_dir), "--runs", "runs",
+                         "--level", "l95", "--out", str(temp_dir / "out")])
+        out = capsys.readouterr().out
+        assert code in (0, 1)
+        assert "l70" not in out, "the level that was not asked for must not be analysed"
+
+    def test_asking_for_a_level_that_is_not_there_is_refused(self, temp_dir, capsys):
+        for tag in ("l95_base", "l95_rt"):
+            _cell(temp_dir, tag)
+        assert main(["--depth", str(temp_dir), "--runs", "runs",
+                     "--level", "l70", "--out", str(temp_dir / "out")]) == 1
+        assert "no such level" in capsys.readouterr().out

@@ -295,3 +295,67 @@ class TestControlledOutputPaths:
               "--priority", str(_priority(temp_dir, REAL_PRIO)),
               "--out", str(temp_dir / "o")])
         assert "NOT SUPPORTED" in capsys.readouterr().out
+
+
+class TestTheReportsThatOnlyAppearWhenTheLawFails:
+    """Each of these paragraphs is an interpretation, and each must follow the data.
+
+    The ceiling gloss reads the saturation level as S, the probability a preemption residual
+    outlasts the true transport. That reading is only available if there is a ceiling; printed
+    beside a rate that climbs towards 1 it would assert a measured quantity that was not
+    measured. The same holds for the dominating-pair paragraph and for the inversion of the
+    occupancy decomposition.
+    """
+
+    def test_a_ceiling_that_is_not_a_ceiling_carries_no_gloss(self, temp_dir, capsys):
+        """Saturation near 1 is not a ceiling worth claiming, so S is not named."""
+        rows = [("ea3", "z", 0.0025, 0.0037),
+                ("ea4", "a", 0.96, 0.95), ("ea4", "b", 0.97, 0.96),
+                ("ea4", "c", 0.98, 0.97)]
+        main(["--pooled", str(_pooled(temp_dir, rows)),
+              "--priority", str(_priority(temp_dir, REAL_PRIO)),
+              "--out", str(temp_dir / "o")])
+        out = capsys.readouterr().out
+        assert "FAILS" in out
+        assert "that ceiling IS S" not in out
+
+    def test_a_measured_ceiling_carries_the_gloss(self, temp_dir, capsys):
+        main(["--pooled", str(_pooled(temp_dir, REAL)),
+              "--priority", str(_priority(temp_dir, REAL_PRIO)),
+              "--out", str(temp_dir / "o")])
+        out = capsys.readouterr().out
+        assert "that ceiling IS S" in out
+
+    def test_matched_pairs_without_a_dominating_one_do_not_claim_a_contradiction(
+            self, temp_dir, capsys):
+        """A matched pair can always be blamed on residual mismatch in rho. Only a dominating
+        pair refutes the whole monotone family, so only it gets that sentence."""
+        rows = [("ea3", "z", 0.0025, 0.0037),
+                # Saturated, so excluded as geometry partners: their rho is pinned and
+                # "lower rho" would not mean anything against them.
+                ("ea4", "s1", 1.0, 0.30), ("ea4", "s2", 1.0, 0.31), ("ea4", "s3", 1.0, 0.32),
+                # One controlled matched pair, spread worse, and no dominating pair anywhere.
+                ("ea3", "k_conc", 0.7000, 0.08), ("ea3", "k_spread", 0.7010, 0.16)]
+        main(["--pooled", str(_pooled(temp_dir, rows)),
+              "--priority", str(_priority(temp_dir, REAL_PRIO)),
+              "--out", str(temp_dir / "o")])
+        out = capsys.readouterr().out
+        assert "CONTROLLED pairs" in out
+        assert "controlled pairs " in out, "the matched-pair reading must still be reported"
+        assert "DOMINATING pairs (spread at LOWER rho inverts MORE): 0" in out
+        assert "A dominating pair is a contradiction" not in out
+
+    def test_a_decomposition_that_cannot_be_inverted_says_so(self, temp_dir, capsys):
+        """p = (rate - C0)/(S - C0) needs S above C0.
+
+        A real-time floor measured above the saturation ceiling makes that denominator zero or
+        negative, and the implied occupancies would be arithmetic rather than measurement.
+        """
+        rows = [("ea3", "idle", 0.0025, 0.0037),
+                ("ea4", "a", 0.96, 0.40), ("ea4", "b", 0.97, 0.41),
+                ("ea4", "c", 0.98, 0.42)]
+        high_floor = [("l95", 0.95, 0.99, 0.90, "False")]
+        main(["--pooled", str(_pooled(temp_dir, rows)),
+              "--priority", str(_priority(temp_dir, high_floor)),
+              "--out", str(temp_dir / "o")])
+        assert "cannot invert" in capsys.readouterr().out

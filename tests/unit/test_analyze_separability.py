@@ -170,3 +170,52 @@ class TestMain:
         p = _two_state(temp_dir, [(0.9, 0.3)])
         assert main(["--points", str(p), "--out", str(temp_dir / "out")]) == 1
         assert "insufficient comparable conditions" in capsys.readouterr().out
+
+
+class TestPairsWithTooLittleOverlap:
+
+    def test_a_condition_sharing_too_few_thresholds_is_not_paired(self):
+        """A spread computed over one or two thresholds is not evidence of a shape.
+
+        The claim this analysis makes is that two conditions differ by a constant factor
+        across the whole threshold ladder. Two points always lie on some line, so a pair with
+        fewer than three shared thresholds cannot distinguish a scale family from anything
+        else, and admitting it would inflate the count of pairs that agree.
+        """
+        points = {
+            "ref": {0.0: 0.5, 0.5: 0.3, 1.0: 0.2, 2.0: 0.1},
+            "thin": {0.0: 0.4, 0.5: 0.25},
+            "full": {0.0: 0.4, 0.5: 0.25, 1.0: 0.15, 2.0: 0.08},
+        }
+        ref, rows = pair_spreads(points, min_thresholds=3)
+        assert ref == "ref"
+        assert sorted(r["condition"] for r in rows) == ["full"]
+
+    def test_lowering_the_requirement_admits_the_thin_pair(self):
+        """The threshold is a choice, so it must be the thing that decides."""
+        points = {
+            "ref": {0.0: 0.5, 0.5: 0.3},
+            "thin": {0.0: 0.4, 0.5: 0.25},
+        }
+        assert pair_spreads(points, min_thresholds=3) == (None, [])
+        assert len(pair_spreads(points, min_thresholds=2)[1]) == 1
+
+
+class TestAConditionRichEnoughOnItsOwnButNotShared:
+
+    def test_it_is_dropped_when_it_overlaps_the_reference_too_little(self):
+        """The pair is what carries the claim, not either condition alone.
+
+        A condition can be well supported at three of its own thresholds and still share only
+        one with the reference -- different sweeps stop at different places. A log-ratio over
+        one shared point is a single number with no spread, and reporting it as an agreeing
+        pair would count a measurement that was never made.
+        """
+        points = {
+            "ref": {0.0: 0.5, 0.5: 0.3, 1.0: 0.2, 2.0: 0.1},
+            "elsewhere": {0.0: 0.4, 8.0: 0.05, 16.0: 0.02},
+            "overlapping": {0.0: 0.4, 0.5: 0.25, 1.0: 0.15},
+        }
+        ref, rows = pair_spreads(points, min_thresholds=3)
+        assert ref == "ref"
+        assert [r["condition"] for r in rows] == ["overlapping"]

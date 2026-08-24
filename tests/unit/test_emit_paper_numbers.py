@@ -17,7 +17,9 @@ import pytest
 SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
+import check_fork_exposure  # noqa: E402
 import emit_paper_numbers as epn  # noqa: E402
+import stat_intervals  # noqa: E402
 from emit_paper_numbers import (  # noqa: E402
     HEADER, latex_thousands, macros, main, render,
 )
@@ -439,12 +441,12 @@ class TestRegistryTableVocabulary:
         import harness_registry
         rows = sorted(harness_registry.paths())
         macro = dict(epn.registry_sources_macro())["registryTableSources"]
-        keys = macro[len("\cite{"):-1].split(",")
+        keys = macro[len(r"\cite{"):-1].split(",")
         assert len(keys) == len(rows), (len(keys), len(rows))
         assert keys == [epn.REGISTRY_CITES[h] for h, _ in rows]
 
     def test_the_supplement_caption_uses_the_generated_list(self):
-        """A hand-written \cite list beside "generated at build time" is the round-7 bug."""
+        r"""A hand-written \cite list beside "generated at build time" is the round-7 bug."""
         from pathlib import Path
         supp = (Path(__file__).parent.parent.parent / "supplement.tex").read_text(
             encoding="utf-8")
@@ -495,3 +497,172 @@ class TestTracedRatioMacros:
         if not pairs:
             pytest.skip("runq_tail artefacts absent")
         assert "inf" not in pairs["tracedRatios"]
+
+
+class TestTheMacrosThatAreOmittedRatherThanGuessed:
+    """The emitter reads a dozen artefacts and any of them can be missing or partial.
+
+    This is the round-16 lesson applied to the emitter itself: a macro is the path from a
+    sentence to its evidence, and a macro emitted from evidence that is not there is worse
+    than a typed number, because it looks derived. Each branch below is a place where the
+    emitter must decline.
+    """
+
+    def test_a_backend_whose_name_is_not_a_latex_word_gets_no_macros(self, tmp_path,
+                                                                     monkeypatch):
+        """Macro names are LaTeX control words, so a backend called `redis-2` cannot become
+        one. Emitting it anyway would write a file that does not compile."""
+        import recount_spans
+        path = tmp_path / "span_recount.csv"
+        path.write_text("run_id\n", encoding="utf-8")
+        agg = {"runs": 1, "events": 10, "neg_ack": 1, "pct_ack": 10.0, "neg_send": 0,
+               "neg_output_send": 0, "neg_tti": 0, "runs_over_one_pct_ack": 1,
+               "runs_ack_only_inversions": 1, "runs_ack_inverts": 1,
+               "runs_send_inverts": 0, "deepest_ack_inversion_us": 1000.0,
+               "send_span_floor_us": 50.0, "offset_margin_factor": 3.0}
+        monkeypatch.setattr(recount_spans, "read_csv", lambda p: [])
+        monkeypatch.setattr(recount_spans, "totals", lambda rows: agg)
+        monkeypatch.setattr(recount_spans, "by_backend", lambda rows: {
+            "kafka": dict(agg), "redis-2": dict(agg)})
+        names = [n for n, _ in epn.span_macros(str(path))]
+        assert "spanKafkaEvents" in names
+        assert not any("redis-2" in n for n in names)
+
+    def test_one_backend_alone_emits_no_other_floor(self, tmp_path, monkeypatch):
+        """The manuscript says the pooled floor is the smaller of two. With one backend there
+        is no other, and a macro naming one would assert a comparison never made."""
+        import recount_spans
+        path = tmp_path / "span_recount.csv"
+        path.write_text("run_id\n", encoding="utf-8")
+        agg = {"runs": 1, "events": 10, "neg_ack": 1, "pct_ack": 10.0, "neg_send": 0,
+               "neg_output_send": 0, "neg_tti": 0, "runs_over_one_pct_ack": 1,
+               "runs_ack_only_inversions": 1, "runs_ack_inverts": 0,
+               "runs_send_inverts": 0, "deepest_ack_inversion_us": 1000.0,
+               "send_span_floor_us": 50.0, "offset_margin_factor": 3.0}
+        monkeypatch.setattr(recount_spans, "read_csv", lambda p: [])
+        monkeypatch.setattr(recount_spans, "totals", lambda rows: agg)
+        monkeypatch.setattr(recount_spans, "by_backend", lambda rows: {"kafka": dict(agg)})
+        names = [n for n, _ in epn.span_macros(str(path))]
+        assert "spanSendFloorOtherUs" not in names
+
+    def test_a_traced_row_that_will_not_parse_is_skipped(self, tmp_path, monkeypatch):
+        """These files are written by several campaigns and one damaged row must not cost
+        the cross-instrument check its other arms."""
+        results = tmp_path / "docs" / "results" / "ea9"
+        results.mkdir(parents=True)
+        (results / "runq_tail.csv").write_text(
+            "arm,inversion,p_tail\n"
+            "base,not-a-number,0.5\n"
+            "base,0.10,0.20\n"
+            "base,0.20,0.30\n", encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        got = dict(epn.traced_ratio_macros())
+        assert got, "the readable rows must still produce ratios"
+
+    def test_a_priority_level_that_was_not_run_emits_nothing_for_it(self, monkeypatch):
+        monkeypatch.setattr(stat_intervals, "priority_cells",
+                            lambda: [("l75", 10, 100, 1, 100)])
+        monkeypatch.setattr(stat_intervals, "geometry_cells",
+                            lambda phase="ea6": [])
+        names = [n for n, _ in epn.stat_macros()]
+        assert any("Low" in n for n in names)
+        assert not any("High" in n for n in names)
+
+    def test_a_geometry_campaign_that_is_absent_emits_nothing_for_it(self, monkeypatch):
+        monkeypatch.setattr(stat_intervals, "priority_cells", lambda: [])
+
+        def only_the_first(phase="ea6"):
+            if phase == "ea6":
+                return [("k5_conc", 10, 100), ("k5_spread", 20, 100)]
+            raise OSError("no such campaign in this archive")
+
+        monkeypatch.setattr(stat_intervals, "geometry_cells", only_the_first)
+        names = [n for n, _ in epn.stat_macros()]
+        assert any("GeomOrig" in n for n in names)
+        assert not any("GeomRepl" in n for n in names)
+
+    def test_a_geometry_campaign_with_one_arm_is_not_a_comparison(self, monkeypatch):
+        """The pair is what the claim rests on; one arm alone cannot make it."""
+        monkeypatch.setattr(stat_intervals, "priority_cells", lambda: [])
+        monkeypatch.setattr(stat_intervals, "geometry_cells",
+                            lambda phase="ea6": [("k5_conc", 10, 100)])
+        assert not any("Geom" in n for n, _ in epn.stat_macros())
+
+    def test_an_unreadable_payload_fit_emits_no_tail_exponent(self, monkeypatch):
+        monkeypatch.setattr(stat_intervals, "priority_cells", lambda: [])
+        monkeypatch.setattr(stat_intervals, "geometry_cells",
+                            lambda phase="ea6": [])
+        monkeypatch.setattr(stat_intervals, "payload_fit",
+                            lambda *a, **kw: (_ for _ in ()).throw(OSError("absent")))
+        assert not any("tailExponent" in n for n, _ in epn.stat_macros())
+
+    def test_a_traced_estimate_missing_its_optional_parts_emits_only_what_it_has(
+            self, monkeypatch):
+        """The exceedance index, the octaves, the mode, the tail refit and the goodness of
+        fit are each optional. A partial estimate must produce a partial macro set, not a
+        crash and not a fabricated entry."""
+        import tail_index_traced
+        monkeypatch.setattr(tail_index_traced, "report", lambda *a, **kw: [{
+            "tag": "ea9/l88_base", "traced_events": 1000,
+            "mle_alpha": 1.2, "mle_lo": 1.0, "mle_hi": 1.4,
+            "octaves": [(256, 1.1)], "modes": [(512, 10, 0.1, 2.0)],
+            "gof_boot": 0}])
+        names = [n for n, _ in epn.traced_macros()]
+        assert "tracedMleAlpha" in names
+        for absent in ("tracedExcAlpha", "tracedOctaveA", "tracedModeLo",
+                       "tracedTailAlpha", "tracedGofP"):
+            assert absent not in names, absent
+
+    def test_a_complete_traced_estimate_emits_every_part(self, monkeypatch):
+        """The negative control above only means something beside the full case."""
+        import tail_index_traced
+        monkeypatch.setattr(tail_index_traced, "report", lambda *a, **kw: [{
+            "tag": "ea9/l88_base", "traced_events": 1000,
+            "mle_alpha": 1.2, "mle_lo": 1.0, "mle_hi": 1.4,
+            "exc_alpha": 1.3, "exc_lo": 1.1, "exc_hi": 1.5,
+            "octaves": [(256, 1.1), (512, 2.2)],
+            "modes": [(2048, 30, 0.3, 4.0), (512, 10, 0.1, 2.0)],
+            "tail_alpha": 1.4, "tail_lo": 1.2, "tail_hi": 1.6, "tail_from_us": 4096,
+            "gof_p": 0.0, "gof_boot": 10000}])
+        got = dict(epn.traced_macros())
+        assert got["tracedExcAlpha"] == "1.30"
+        assert got["tracedOctaveA"] == "1.10" and got["tracedOctaveB"] == "2.20"
+        assert got["tracedModeLo"] == "2" and got["tracedModeHi"] == "4"
+        assert got["tracedTailFrom"] == "4"
+        assert got["tracedGofP"] == "<0.0001", "an exact zero must be reported as a bound"
+
+    def test_a_mechanism_artefact_that_is_absent_emits_nothing_for_it(self, monkeypatch):
+        """Four independent reads, each guarded, and each able to be the missing one."""
+        for name in ("harness_cells", "occupancy_bounds", "load_growth", "observer_effect"):
+            monkeypatch.setattr(stat_intervals, name,
+                                lambda *a, **kw: (_ for _ in ()).throw(OSError("absent")))
+        assert epn.mechanism_macros() == []
+
+    def test_mechanism_reads_that_return_nothing_emit_nothing(self, monkeypatch):
+        """Present but empty is a different case from absent, and both must be silent."""
+        monkeypatch.setattr(stat_intervals, "harness_cells", lambda *a, **kw: {})
+        monkeypatch.setattr(stat_intervals, "occupancy_bounds", lambda *a, **kw: {})
+        monkeypatch.setattr(stat_intervals, "load_growth", lambda *a, **kw: {})
+        monkeypatch.setattr(stat_intervals, "observer_effect", lambda *a, **kw: {})
+        assert epn.mechanism_macros() == []
+
+    def test_a_missing_fork_survey_emits_no_fork_macros(self, monkeypatch):
+        """The manuscript's fork sentence is gated on these; with no survey there is no
+        sentence, and a count of zero would be a claim the survey never made."""
+        monkeypatch.setattr(check_fork_exposure, "read_record", lambda *a, **kw: [])
+        assert epn.fork_macros() == []
+
+    def test_a_priority_table_that_cannot_be_rendered_is_reported_not_fatal(self, tmp_path,
+                                                                            monkeypatch,
+                                                                            capsys):
+        """A checkout without the priority campaigns must still build the other tables."""
+        monkeypatch.setattr(epn, "render_priority_table",
+                            lambda *a, **kw: (_ for _ in ()).throw(OSError("no campaigns")))
+        out = tmp_path / "generated"
+        epn.main(["--out", str(out / "paper_numbers.tex"),
+                  "--table", str(out / "grid_table.tex"),
+                  "--registry-table", str(out / "registry_table.tex"),
+                  "--priority-table", str(out / "priority_table.tex")])
+        printed = capsys.readouterr().out
+        assert "priority table not generated" in printed
+        assert (out / "paper_numbers.tex").exists()

@@ -248,3 +248,48 @@ class TestMain:
         runs.mkdir()
         rc = main(["--runs-dir", str(runs), "--pattern", "batch*"])
         assert rc == 1
+
+
+class TestTheFrameShapesTheFamilyMustSurvive:
+    """`run_family` is given whatever the campaign produced, and each column it looks for can
+    be absent. A comparison attempted over a column that is not there would abort the whole
+    family; a comparison attempted over two samples would report an effect size from noise.
+    """
+
+    def test_a_file_where_a_run_directory_was_expected_is_ignored(self, tmp_path):
+        (tmp_path / "batch_1").mkdir()
+        (tmp_path / "batch_1" / "tti_summary.json").write_text(
+            '{"tti_ms": {"p50": 1.0}}', encoding="utf-8")
+        (tmp_path / "batch_notes").write_text("x", encoding="utf-8")
+        df = load_run_metrics(tmp_path)
+        assert len(df) == 1
+
+    def test_a_frame_with_no_config_column_still_compares_the_backends(self):
+        df = pd.DataFrame({"backend": ["kafka"] * 3 + ["redis"] * 3,
+                           "p50": [1.0, 1.1, 1.2, 2.0, 2.1, 2.2]})
+        got = run_family(df, metric="p50")
+        labels = [c["label"] for c in got]
+        assert "kafka_vs_redis_overall" in labels
+        assert not any(lbl.startswith("single_vs_cluster") for lbl in labels)
+
+    def test_a_backend_with_one_run_is_not_compared(self):
+        """Two observations is the floor for an interval; one is a reading, not a sample."""
+        df = pd.DataFrame({"backend": ["kafka", "redis", "redis"],
+                           "p50": [1.0, 2.0, 2.1]})
+        assert [c["label"] for c in run_family(df, metric="p50")] == []
+
+    def test_a_config_with_too_few_runs_is_skipped_and_the_others_are_not(self):
+        df = pd.DataFrame({
+            "backend": ["kafka", "kafka", "redis", "redis", "kafka", "redis"],
+            "config": ["single"] * 4 + ["cluster"] * 2,
+            "p50": [1.0, 1.1, 2.0, 2.1, 1.5, 2.5]})
+        labels = [c["label"] for c in run_family(df, metric="p50")]
+        assert "kafka_vs_redis_single" in labels
+        assert "kafka_vs_redis_cluster" not in labels
+
+    def test_a_frame_with_no_scenario_column_omits_the_omnibus(self):
+        df = pd.DataFrame({"backend": ["kafka"] * 3 + ["redis"] * 3,
+                           "config": ["single"] * 6,
+                           "p50": [1.0, 1.1, 1.2, 2.0, 2.1, 2.2]})
+        labels = [c["label"] for c in run_family(df, metric="p50")]
+        assert not any("scenario" in lbl for lbl in labels)

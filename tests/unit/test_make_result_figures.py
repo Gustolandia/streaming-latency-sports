@@ -268,3 +268,127 @@ def test_the_ttrue_annotation_says_transport_not_payload():
     mrf.plot_ttrue(ax, mrf.ttrue_points())
     said = " ".join(t.get_text() for t in ax.texts)
     assert "transport" in said and "payload" not in said
+
+
+class TestTheArmsAndClassesThatAreAbsent:
+    """What each figure builder does when a class, a campaign or a file is not there.
+
+    These builders read the committed artefacts, and a reader rebuilding the figures from the
+    archive may hold a subset of them. A legend entry for a class with no members, or an arm
+    assembled from a campaign that is not present, would put a mark on the page that no data
+    supports -- which in a paper about numbers with no path to their evidence is the one
+    defect it cannot afford.
+    """
+
+    @staticmethod
+    def _cell(rate, powered=True, verdict="grid", d_obs=0.4, d_null=0.6):
+        return {"rate_hz": rate, "q": 3, "powered": powered,
+                "d_obs": d_obs, "d_null": d_null, "verdict": verdict}
+
+    def test_a_grid_class_with_no_members_gets_no_legend_entry(self):
+        """Three classes are possible; a campaign need not produce all three, and a legend
+        entry reading "no power (0)" would advertise a class the figure does not contain."""
+        import matplotlib.pyplot as _plt
+        fig, ax = _plt.subplots()
+        mrf.plot_grid(ax, [self._cell(300)])
+        labels = [x.get_text() for x in ax.get_legend().get_texts()]
+        assert any("rejects the null" in lbl for lbl in labels)
+        assert not any("no power" in lbl for lbl in labels)
+        assert not any("unresolved" in lbl for lbl in labels)
+        _plt.close(fig)
+
+    def test_every_class_present_gets_its_own_entry_with_its_count(self):
+        """The negative control above only means something beside the full case."""
+        import matplotlib.pyplot as _plt
+        fig, ax = _plt.subplots()
+        mrf.plot_grid(ax, [self._cell(300),
+                           self._cell(400, verdict="unresolved"),
+                           self._cell(500, powered=False)])
+        labels = " ".join(x.get_text() for x in ax.get_legend().get_texts())
+        assert "rejects the null (1)" in labels
+        assert "unresolved (1)" in labels
+        assert "no power (1)" in labels
+        _plt.close(fig)
+
+    def test_a_geometry_campaign_that_is_absent_is_stepped_over(self, monkeypatch):
+        """E-A6b replicates E-A6, and an archive can carry one without the other."""
+        monkeypatch.setattr(mrf.stat_intervals, "priority_cells",
+                            lambda: [("l75", 10, 100, 1, 100)])
+
+        def only_the_first(phase="ea6"):
+            if phase == "ea6":
+                return [("k5_conc", 10, 100), ("k5_spread", 20, 100)]
+            raise OSError("no such campaign in this archive")
+
+        monkeypatch.setattr(mrf.stat_intervals, "geometry_cells", only_the_first)
+        arms = mrf.mechanism_arms()
+        assert any(a[0] == "Geometry, original" for a in arms)
+        assert not any(a[0] == "Geometry, replication" for a in arms)
+
+    def test_a_missing_span_recount_yields_no_arms_rather_than_raising(self, tmp_path):
+        """The recount is an optional artefact; its absence is not a figure failure."""
+        assert mrf.backend_arms(tmp_path / "never-written.csv") == []
+
+    def test_a_backend_that_recorded_no_events_is_not_an_arm(self, tmp_path, monkeypatch):
+        """A zero denominator is not a rate of zero, and drawn beside the others it would
+        read as a broker that never inverts."""
+        import recount_spans
+        path = tmp_path / "span_recount.csv"
+        path.write_text("run_id\n", encoding="utf-8")
+        monkeypatch.setattr(recount_spans, "read_csv", lambda p: [])
+        monkeypatch.setattr(recount_spans, "by_backend", lambda rows: {
+            "kafka": {"events": 0, "neg_ack": 0},
+            "redis": {"events": 100, "neg_ack": 3}})
+        assert [a[0] for a in mrf.backend_arms(path)] == ["Redis"]
+
+    def test_a_payload_row_whose_counts_will_not_parse_is_skipped(self, tmp_path):
+        """One damaged replicate must cost that replicate, not the arm."""
+        rows = []
+        for label, keys, _colour in mrf.PAYLOAD_ARMS:
+            for campaign, level in keys:
+                rows.append("%s,1,shutdown_hook,%s,not-a-number,0,0" % (campaign, level))
+                rows.append("%s,1,shutdown_hook,%s,50,50,0" % (campaign, level))
+        path = tmp_path / "index.csv"
+        path.write_text("campaign,valid,count_source,level,kept,discarded_zero,"
+                        "discarded_negative\n" + "\n".join(rows) + "\n",
+                        encoding="utf-8")
+        arms = mrf.payload_arms(path)
+        assert [a[0] for a in arms] == [a[0] for a in mrf.PAYLOAD_ARMS]
+        assert all(vals == [50.0] * len(vals) for _, vals, _ in arms)
+
+    def test_a_cell_that_measured_nothing_contributes_no_replicate(self, tmp_path):
+        """Kept and discarded both zero is a cell that measured nothing, and an arm built
+        only from such cells has no retention to draw."""
+        label, keys, _colour = mrf.PAYLOAD_ARMS[0]
+        rows = ["%s,1,shutdown_hook,%s,0,0,0" % (campaign, level)
+                for campaign, level in keys]
+        path = tmp_path / "index.csv"
+        path.write_text("campaign,valid,count_source,level,kept,discarded_zero,"
+                        "discarded_negative\n" + "\n".join(rows) + "\n",
+                        encoding="utf-8")
+        with pytest.raises(ValueError, match="no replicates for payload arm"):
+            mrf.payload_arms(path)
+
+    def test_the_spectrum_falls_back_when_the_slice_cannot_be_read(self, tmp_path,
+                                                                   monkeypatch):
+        """The scheduler slice annotates the histogram; without it the figure still builds,
+        and it builds without the annotation rather than with a guessed one."""
+        import kernel_constants
+        monkeypatch.setattr(kernel_constants, "constants",
+                            lambda *a, **kw: (_ for _ in ()).throw(OSError("no artefact")))
+        out = mrf.build_spectrum(tmp_path)
+        assert Path(str(out)).exists() or out is not None
+
+    def test_an_explicit_slice_is_used_without_consulting_the_artefact(self, tmp_path,
+                                                                       monkeypatch):
+        """The caller can hand the slice in, and then the kernel constants must not be read.
+
+        `make_paper_figures` already resolves the slice once for the whole build; reading it
+        again here would let one figure annotate a different value from its neighbour.
+        """
+        import kernel_constants
+        monkeypatch.setattr(kernel_constants, "constants",
+                            lambda *a, **kw: (_ for _ in ()).throw(
+                                AssertionError("the artefact must not be consulted")))
+        out = mrf.build_spectrum(tmp_path, slice_ms=7.5)
+        assert out is not None

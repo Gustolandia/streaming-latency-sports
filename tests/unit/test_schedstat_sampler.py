@@ -233,3 +233,20 @@ class TestMain:
         with pytest.raises(KeyboardInterrupt):
             main(["--pattern", "kafka_", "--out", str(temp_dir / "o.csv"), "--interval", "0.01"])
         assert (temp_dir / "o.csv").exists()
+
+
+class TestTheSamplerDoesNotSampleItself:
+
+    def test_its_own_pid_is_excluded_even_when_the_pattern_matches(self, fake_proc,
+                                                                   monkeypatch):
+        """The sampler is a python process and the pattern it matches on is a python command.
+
+        Including itself would add a process that spends its life reading /proc to the very
+        occupancy figure the campaign reports, and it would do so only in the arm being
+        measured -- a bias with the shape of a result.
+        """
+        me = 4242
+        monkeypatch.setattr(ss.os, "getpid", lambda: me)
+        _add_pid(fake_proc, me, "python scripts/kafka_producer.py", [(1000, 500, 3)])
+        _add_pid(fake_proc, 4243, "python scripts/kafka_producer.py", [(1000, 500, 3)])
+        assert matching_pids("kafka_producer") == [4243]

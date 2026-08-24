@@ -261,3 +261,81 @@ class TestTheEmittedMacrosMatchTheRecord:
         generated = (ROOT / "docs" / "generated" / "paper_numbers.tex").read_text(
             encoding="utf-8")
         assert ("\\newcommand{\\forkCheckedOn}{%s}" % rows[0]["checked_utc"]) in generated
+
+
+class TestTheWalkRunsOut:
+    """Both loops end by exhausting what they were given, not only by finding enough.
+
+    A survey that only ever stops early has never been asked what it does when the fork list
+    or the page sequence runs out first, and both happen: the upstream repository has a finite
+    number of forks, and it has fewer than three hundred.
+    """
+
+    def test_the_page_walk_stops_after_the_last_page_it_is_allowed(self, monkeypatch):
+        """Three full pages and no fourth request: the cap is what ends it."""
+        pages = {"n": 0}
+
+        def fetch(url, raw=False, **kw):
+            pages["n"] += 1
+            return [{"full_name": "a/%d" % i, "default_branch": "master"}
+                    for i in range(100)]
+
+        monkeypatch.setattr(cfe, "_fetch", fetch)
+        names = cfe.fork_names(pages=3)
+        assert len(names) == 300
+        assert pages["n"] == 3, "the page cap must end the walk, not a fourth request"
+
+    def test_a_survey_shorter_than_its_limit_reads_every_fork(self, monkeypatch):
+        """Asking for forty and finding three is three forks read, not an error."""
+        monkeypatch.setattr(cfe, "fork_names",
+                            lambda upstream=cfe.UPSTREAM: [("f%d" % i, "master")
+                                                           for i in range(3)])
+        monkeypatch.setattr(cfe, "classify", lambda fork, branch: "unchanged")
+        rows = cfe.survey(limit=40)
+        assert len(rows) == 3
+        assert cfe.totals(rows)["checked"] == 3
+
+
+class TestFetchAlwaysAnswers:
+    """There is no path out of `_fetch` that returns nothing.
+
+    `classify` calls `.startswith` on whatever comes back, so a `None` would surface as an
+    AttributeError in the middle of a survey rather than as an unreadable fork.
+    """
+
+    def test_zero_attempts_still_answers(self):
+        assert cfe._fetch("http://x", raw=True, tries=0).startswith("ERROR")
+        assert "error" in cfe._fetch("http://x", tries=0)
+
+    def test_a_fork_that_could_not_be_attempted_is_unreadable(self, monkeypatch):
+        """The zero-attempt answer must classify, not crash: that is why it is a string."""
+        real = cfe._fetch
+        monkeypatch.setattr(cfe, "_fetch",
+                            lambda url, raw=False, **kw: real(url, raw, tries=0))
+        assert cfe.classify("a/b", "master") == "unreadable"
+
+    def test_the_last_failure_is_the_one_reported(self, monkeypatch):
+        """A run of different failures should end saying what stopped it last, not first."""
+        import urllib.request
+        errors = iter([OSError("first"), OSError("second"), OSError("third")])
+
+        def fake(request, timeout=None):
+            raise next(errors)
+
+        monkeypatch.setattr(urllib.request, "urlopen", fake)
+        monkeypatch.setattr(cfe.time, "sleep", lambda s: None)
+        assert cfe._fetch("http://x", raw=True).endswith("third")
+
+    def test_it_waits_between_attempts_but_not_after_the_last(self, monkeypatch):
+        """A pause after the final failure is dead time on every unreadable fork, and there
+        are forty of them."""
+        import urllib.request
+        pauses = []
+
+        def fake(request, timeout=None):
+            raise OSError("down")
+
+        monkeypatch.setattr(urllib.request, "urlopen", fake)
+        monkeypatch.setattr(cfe.time, "sleep", lambda s: pauses.append(s))
+        cfe._fetch("http://x", tries=3, pause=0.5)
+        assert pauses == [0.5, 0.5], "three attempts means two waits"

@@ -266,3 +266,22 @@ class TestMain:
     def test_missing_directory(self, temp_dir, capsys):
         assert main(["--window-dir", str(temp_dir / "absent")]) == 1
         assert "missing window directory" in capsys.readouterr().out
+
+
+class TestTheSecondBackendGetsNoVerdict:
+
+    def test_redis_is_tabulated_but_not_judged(self, temp_dir, capsys):
+        """The window hypothesis is about the Kafka producer's scheduling lag.
+
+        Redis is carried as a control and is printed, but a verdict on it would assert a
+        finding for a system the pre-registered prediction says nothing about.
+        """
+        for w, ts in ((60, "n5_20260101_000000"), (600, "n5_20260101_000001")):
+            _make_condition(temp_dir, w, ts, backend="kafka")
+            _make_condition(temp_dir, w, ts, backend="redis")
+        main(["--window-dir", str(temp_dir / "window"),
+              "--runs-dir", str(temp_dir / "runs"),
+              "--out", str(temp_dir / "out.json")])
+        out = capsys.readouterr().out
+        assert out.count("VERDICT") == 1, "exactly one backend carries the hypothesis"
+        assert "redis" in out

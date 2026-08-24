@@ -161,10 +161,10 @@ def clopper_pearson(k, n, alpha=0.05):
         return h
 
     def _beta_cdf(x, a, b):
-        if x <= 0:
-            return 0.0
-        if x >= 1:
-            return 1.0
+        # x is strictly inside (0, 1): the only caller is `beta_ppf`, which bisects the open
+        # interval and never evaluates an endpoint. Guards for x <= 0 and x >= 1 stood here
+        # and could not be reached from anywhere, so they were removed rather than excused --
+        # dead code in a numerical routine reads as a case that has been thought about.
         lbeta = math.lgamma(a) + math.lgamma(b) - math.lgamma(a + b)
         bt = math.exp(a * math.log(x) + b * math.log(1.0 - x) - lbeta)
         if x < (a + 1.0) / (a + b + 2.0):
@@ -272,5 +272,5 @@ def main(argv=None):
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - dispatch only; main() is tested directly
     raise SystemExit(main())

@@ -104,7 +104,7 @@ python scripts/power_analysis.py --n 15
 
 ## Release checklist
 
-The suite covers everything that can be decided by reading a file. Five things cannot, and
+The suite covers everything that can be decided by reading a file. Six things cannot, and
 each has cost a referee round, so they are written down rather than remembered.
 
 TC's own limits, for reference, from the journal's author page: a regular paper is **10-12
@@ -198,7 +198,39 @@ The pattern is not carelessness and it will recur: **a number gets emitted when 
 had to recompute it, and the ones that never needed recomputing are the ones that stay typed.**
 `test_no_gated_headline_is_also_typed` holds the list; extend it when the next one turns up.
 
-**5. Confirm an unexpected test result before explaining it.** Three times now the failure mode
+**5. Do not let a coverage number be bought.**
+
+The standard is 100% branch coverage across `scripts/`, and CI fails below it. That figure is
+only worth stating because what may be excluded from it is itself gated, by
+`tests/unit/test_coverage_exclusions.py`: a `__main__` guard may hide only calls and imports,
+at most four statements, and every other `# pragma: no cover` needs a written reason and an
+entry in that file's inventory. 100% earned by exclusion would be worse than an honest 95%,
+because the number stops being a question anyone asks.
+
+Raising it from 95% was not bookkeeping. It found, among others:
+
+- `show_figure_collisions` replaced `_save` on two other modules and never put it back, so any
+  figure built later in the same process was silently not saved -- the leak class this project
+  has already lost a round to.
+- `check_concurrency_health` divided by zero whenever `--run-prefix` selected directories that
+  group into no test suite, which is an ordinary invocation.
+- `compare_plans` wrote its gap table from an empty list, producing a zero-byte file that
+  pandas refuses to parse -- while the neighbouring table deliberately wrote a header for
+  exactly that reason.
+- `check_fork_exposure._fetch` returned `None` on `tries=0` into a caller that calls
+  `.startswith` on the result.
+- Seven guards that could not be reached from any caller. Those were deleted rather than
+  excluded: dead code in a numerical routine reads as a case someone thought about.
+- Two scripts with a report loop parked under a pragma'd `__main__` guard -- found by the
+  exclusion gate on its first run, which is the argument for having it.
+
+**The lesson generalises the one above it.** A branch nothing exercises is a claim nothing
+checks. Most of the 220 uncovered branches were the *rejecting* side of a filter -- the row
+that will not parse, the run that yielded nothing, the campaign that is absent -- and those
+are precisely the paths that decide what the corpus contains. A reader who cannot see them
+tested has to take the corpus on trust.
+
+**6. Confirm an unexpected test result before explaining it.** Three times now the failure mode
 has been to reason about an unexpected result from the apparatus instead of opening the file:
 a `sed` mutation that silently matched nothing and made a live gate look inert (twice), and a
 new gate that fired on a real defect and was narrowed on the assumption of a false positive

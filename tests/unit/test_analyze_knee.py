@@ -224,3 +224,87 @@ class TestDecisiveLossIsReportedAsRefutation:
         pairs = [(0.25, 0.004), (0.50, 0.006), (0.70, 0.111), (0.80, 0.220)]
         v = verdict(self._rows(pairs))
         assert not v["restored"] and "did not reach the interval" in v["reason"]
+
+
+class TestTheRunsAndRowsThatMustBeSteppedOver:
+    """The inversion rate is a ratio, so every skip here moves a numerator or a denominator.
+
+    The comment in the script is explicit about the direction of the danger: an event counted
+    into the total but lost before it reaches the numerator biases the rate downward, which is
+    the direction that flatters the result.
+    """
+
+    def test_a_run_missing_one_of_its_two_files_is_stepped_over(self, temp_dir):
+        """Interrupted runs leave a producer file and no consumer file, or the reverse."""
+        ts = "n5_20260101_000000"
+        cond = temp_dir / "depth" / "ea4" / "bg0"
+        (cond / f"concurrency_concurrency_{ts}").mkdir(parents=True)
+        half = temp_dir / "runs" / f"concurrency_{ts}_kafka_feed1_rep0"
+        half.mkdir(parents=True)
+        (half / "producer.csv").write_text("event_id,t_broker_ack_ns\n", encoding="utf-8")
+        _run(temp_dir / "runs", f"concurrency_{ts}_kafka_feed1_rep1", 200, 20)
+        with (cond / "utilisation.csv").open("w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=["t_wall", "rho", "loadavg"])
+            w.writeheader()
+            w.writerow({"t_wall": 1, "rho": 0.5, "loadavg": 1.0})
+        got = condition_inversion(str(cond), str(temp_dir / "runs"))
+        assert got["n_runs"] == 1, "only the complete run should have been counted"
+        assert got["n_events"] == 200
+        assert abs(got["inversion_rate"] - 0.1) < 1e-12
+
+    def test_an_unacknowledged_send_leaves_the_event_out_of_both_sides(self, temp_dir):
+        """Not out of the numerator alone: that is the bias the script warns about."""
+        d = temp_dir / "runs" / "concurrency_n5_20260101_000000_kafka_feed1_rep1"
+        d.mkdir(parents=True)
+        with (d / "producer.csv").open("w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=["event_id", "t_broker_ack_ns"])
+            w.writeheader()
+            w.writerow({"event_id": "e0", "t_broker_ack_ns": ""})
+            w.writerow({"event_id": "e1", "t_broker_ack_ns": T0})
+        with (d / "consumer_events.csv").open("w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=["event_id", "t_consume_ns"])
+            w.writeheader()
+            w.writerow({"event_id": "e0", "t_consume_ns": T0 - 1_000_000})
+            w.writerow({"event_id": "e1", "t_consume_ns": T0 - 1_000_000})
+        cond = temp_dir / "depth" / "ea4" / "bg0"
+        (cond / "concurrency_concurrency_n5_20260101_000000").mkdir(parents=True)
+        got = condition_inversion(str(cond), str(temp_dir / "runs"))
+        assert got["n_events"] == 1, (
+            "the unacknowledged event is in neither the numerator nor the total")
+        assert got["n_inversions"] == 1
+        assert got["inversion_rate"] == 1.0
+
+    def test_a_consumed_event_with_no_ack_is_in_neither_side(self, temp_dir):
+        d = temp_dir / "runs" / "concurrency_n5_20260101_000000_kafka_feed1_rep1"
+        d.mkdir(parents=True)
+        with (d / "producer.csv").open("w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=["event_id", "t_broker_ack_ns"])
+            w.writeheader()
+            w.writerow({"event_id": "e1", "t_broker_ack_ns": T0})
+        with (d / "consumer_events.csv").open("w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=["event_id", "t_consume_ns"])
+            w.writeheader()
+            w.writerow({"event_id": "ghost", "t_consume_ns": T0 - 5_000_000})
+            w.writerow({"event_id": "e1", "t_consume_ns": T0 + 1_000_000})
+        cond = temp_dir / "depth" / "ea4" / "bg0"
+        (cond / "concurrency_concurrency_n5_20260101_000000").mkdir(parents=True)
+        got = condition_inversion(str(cond), str(temp_dir / "runs"))
+        assert (got["n_events"], got["n_inversions"]) == (1, 0)
+
+    def test_a_consumer_row_with_no_stamp_is_in_neither_side(self, temp_dir):
+        d = temp_dir / "runs" / "concurrency_n5_20260101_000000_kafka_feed1_rep1"
+        d.mkdir(parents=True)
+        with (d / "producer.csv").open("w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=["event_id", "t_broker_ack_ns"])
+            w.writeheader()
+            for i in range(2):
+                w.writerow({"event_id": f"e{i}", "t_broker_ack_ns": T0})
+        with (d / "consumer_events.csv").open("w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=["event_id", "t_consume_ns"])
+            w.writeheader()
+            w.writerow({"event_id": "e0", "t_consume_ns": "None"})
+            w.writerow({"event_id": "e1", "t_consume_ns": T0 - 1_000_000})
+        cond = temp_dir / "depth" / "ea4" / "bg0"
+        (cond / "concurrency_concurrency_n5_20260101_000000").mkdir(parents=True)
+        got = condition_inversion(str(cond), str(temp_dir / "runs"))
+        assert (got["n_events"], got["n_inversions"]) == (1, 1)

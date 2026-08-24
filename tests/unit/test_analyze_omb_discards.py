@@ -286,3 +286,31 @@ class TestEdges:
             w.writerow([0, 10, 0, 90, 0])
         assert main(["--sweep", str(p)]) == 0
         assert "UNDECIDED" in capsys.readouterr().out
+
+
+class TestTheResolutionCaveatIsPrintedOnlyWhenItApplies:
+    """The paragraph distinguishing OMB's defect from ours must follow the verdict.
+
+    When the discards are resolution-driven the report says so at length, because a reader who
+    stops at "OMB discards most of its samples" would take it for the causality violation this
+    paper is about, and it is not. When the verdict is anything else that paragraph would be
+    describing a mechanism the data did not show.
+    """
+
+    def test_a_resolution_outcome_carries_the_distinction(self, tmp_path, capsys):
+        p = tmp_path / "ledger.csv"
+        write_ledger(p, [("load_pct", "95", 31991, 88643, 0, "1", "shutdown_hook"),
+                         ("load_pct", "70", 30000, 90000, 0, "1", "shutdown_hook")])
+        main(["--ledger", str(p)])
+        out = capsys.readouterr().out
+        assert "RESOLUTION" in out
+        assert "not the causality violation this paper is about" in out
+
+    def test_an_outcome_that_is_not_resolution_does_not_carry_it(self, tmp_path, capsys):
+        """Negatives present means a different mechanism, and a different paragraph."""
+        p = tmp_path / "ledger.csv"
+        write_ledger(p, [("load_pct", "95", 31991, 100, 5000, "1", "shutdown_hook"),
+                         ("load_pct", "70", 30000, 100, 4000, "1", "shutdown_hook")])
+        main(["--ledger", str(p)])
+        out = capsys.readouterr().out
+        assert "not the causality violation this paper is about" not in out

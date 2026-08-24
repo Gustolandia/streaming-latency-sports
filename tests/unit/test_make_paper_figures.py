@@ -219,3 +219,39 @@ class TestMain:
         assert after == before, \
             "main left rcParams scaled: %s" % {k: (before[k], after[k])
                                                for k in keys if after[k] != before[k]}
+
+
+class TestTheSliceFallback:
+
+    @staticmethod
+    def _mpf():
+        import make_paper_figures
+        return make_paper_figures
+
+    def test_an_unavailable_kernel_constant_falls_back_to_the_documented_default(self,
+                                                                                 monkeypatch):
+        """The scheduler slice is read from the campaign's own measurements, and a reader
+        rebuilding the figures from the archive may not have the file it is derived from.
+
+        Falling back keeps the figure buildable; falling back *silently to a different
+        number* would not, which is why the default is a named constant the manuscript also
+        carries rather than a literal at the call site.
+        """
+        import kernel_constants
+        monkeypatch.setattr(kernel_constants, "constants",
+                            lambda *a, **kw: (_ for _ in ()).throw(OSError("no artefact")))
+        mpf = self._mpf()
+        assert mpf._base_slice_ms() == mpf.DEFAULT_BASE_SLICE_MS
+
+    def test_a_constants_file_missing_the_key_falls_back_too(self, monkeypatch):
+        import kernel_constants
+        monkeypatch.setattr(kernel_constants, "constants", lambda *a, **kw: {})
+        mpf = self._mpf()
+        assert mpf._base_slice_ms() == mpf.DEFAULT_BASE_SLICE_MS
+
+    def test_a_real_constants_file_is_preferred_over_the_default(self, monkeypatch):
+        """The negative controls above only mean something beside the case that works."""
+        import kernel_constants
+        monkeypatch.setattr(kernel_constants, "constants",
+                            lambda *a, **kw: {"base_slice_ms": 7.5})
+        assert self._mpf()._base_slice_ms() == 7.5

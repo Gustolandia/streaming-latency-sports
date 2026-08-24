@@ -142,3 +142,27 @@ class TestCLI:
         main(["--index", str(idx), "--results", str(tmp_path / "res"), "--out", str(out)])
         assert idx.read_text(encoding="utf-8") == before
         assert "load_bearing" in out.read_text(encoding="utf-8")
+
+
+class TestThePathsAndRowsThatNameNoRun:
+
+    def test_a_condition_path_carrying_no_timestamp_names_no_run(self, tmp_path):
+        """The globs match `concurrency_concurrency_*` by name, and not every such directory
+        carries a run id: interrupted runs and scratch folders leave ones that do not. A run
+        id invented from such a name would mark an unrelated run as load-bearing."""
+        cond = tmp_path / "results" / "depth" / "ea3"
+        (cond / f"concurrency_concurrency_{TS}").mkdir(parents=True)
+        (cond / "concurrency_concurrency_scratch").mkdir()
+        found = condition_timestamps(str(tmp_path / "results"))
+        assert list(found) == [TS]
+
+    def test_an_aggregate_row_with_no_run_id_names_no_run(self, tmp_path):
+        """A blank or total row must not be read as a dependency on some run."""
+        results = tmp_path / "results"
+        results.mkdir()
+        with (results / "agg.csv").open("w", newline="", encoding="utf-8") as fh:
+            w = csv.writer(fh)
+            w.writerow(["run_id", "value"])
+            w.writerow(["", 1])
+            w.writerow([RUN, 2])
+        assert set(named_by_aggregate(str(results))) == {RUN}

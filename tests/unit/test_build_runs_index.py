@@ -372,3 +372,68 @@ class TestConditionsIndex:
 
 def rows_src(rows):
     return rows[0]["source"]
+
+
+class TestTheRowsAndFilesTheIndexMustSurvive:
+    """The index walks every run directory in the repository, so it meets every shape of
+    damage those directories accumulate: partial writes, unparseable numbers, files that
+    disappear between the listing and the read. None of them may stop the index being built,
+    because a run missing from the index is a run nobody knows was measured.
+    """
+
+    def test_an_unacknowledged_send_is_skipped(self, tmp_path):
+        d = _run(tmp_path, "r1", [("a", ""), ("b", 200)], [("a", 1100), ("b", 1200)])
+        tr = transport_and_integrity(str(d))
+        assert tr["n_matched"] == 1
+
+    def test_an_ack_that_is_not_a_number_is_skipped(self, tmp_path):
+        d = _run(tmp_path, "r2", [("a", "n/a"), ("b", 200)], [("a", 1100), ("b", 1200)])
+        assert transport_and_integrity(str(d))["n_matched"] == 1
+
+    def test_a_consume_stamp_that_is_not_a_number_is_skipped(self, tmp_path):
+        """`t_consume_ns` arrives as text from a harness that wrote an error into the field."""
+        d = _run(tmp_path, "r3", [("a", 100), ("b", 200)], [("a", "ERR"), ("b", 1200)])
+        assert transport_and_integrity(str(d))["n_matched"] == 1
+
+    def test_a_run_whose_files_cannot_be_opened_yields_nothing(self, tmp_path, monkeypatch):
+        """A directory that went away between the listing and the read is not a bad run."""
+        d = _run(tmp_path, "r4", [("a", 100)], [("a", 1100)])
+        real_open = open
+
+        def flaky(path, *a, **kw):
+            if str(path).endswith("consumer_events.csv"):
+                raise OSError("vanished")
+            return real_open(path, *a, **kw)
+
+        monkeypatch.setattr("builtins.open", flaky)
+        assert transport_and_integrity(str(d)) is None
+
+    def test_a_file_that_cannot_be_counted_reports_no_count_rather_than_zero(self, tmp_path,
+                                                                            monkeypatch):
+        """Zero rows and an unreadable file are different findings about a run."""
+        import build_runs_index as bri
+        p = tmp_path / "x.csv"
+        p.write_text("a\n1\n", encoding="utf-8")
+        assert bri._count_lines(str(p)) == 1
+
+        real_open = open
+
+        def flaky(path, *a, **kw):
+            if str(path).endswith("x.csv"):
+                raise OSError("locked")
+            return real_open(path, *a, **kw)
+
+        monkeypatch.setattr("builtins.open", flaky)
+        assert bri._count_lines(str(p)) == ""
+
+    def test_an_aggregate_row_with_no_run_id_names_no_run(self, tmp_path):
+        """A summary row -- a total, a blank separator -- must not claim a run is in use."""
+        results = tmp_path / "results"
+        results.mkdir()
+        with (results / "agg.csv").open("w", newline="", encoding="utf-8") as fh:
+            w = csv.writer(fh)
+            w.writerow(["run_id", "value"])
+            w.writerow(["", 1])
+            w.writerow(["r1", 2])
+        used = usage_map(str(results))
+        assert set(used) == {"r1"}

@@ -146,3 +146,24 @@ class TestAgainstTheCommittedRecord:
             pytest.skip("span recount not present")
         recounted = recount_spans.totals(recount_spans.read_csv(str(span)))["runs"]
         assert recounted > al.audit()["cloud"]["runs"]
+
+
+class TestTheReport:
+    """`main` prints the audit the manuscript's rejection rate is emitted from.
+
+    It used to be a loop under the `__main__` guard, which is excluded from coverage -- so
+    the only rendering of these counts a human ever sees was the one nothing checked.
+    """
+
+    def test_it_prints_a_line_for_each_of_the_three_totals(self, capsys):
+        assert al.main() == 0
+        out = capsys.readouterr().out
+        for name in ("workstation", "cloud", "total"):
+            assert name in out
+
+    def test_the_printed_counts_are_the_audited_ones(self, capsys):
+        data = al.audit()
+        al.main()
+        out = capsys.readouterr().out
+        assert str(data["total"]["runs"]) in out
+        assert str(data["total"]["rejected"]) in out

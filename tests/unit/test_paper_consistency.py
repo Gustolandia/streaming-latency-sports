@@ -2877,3 +2877,68 @@ class TestRoundTwelveRegressions:
         window = flat[i:i + 1200]
         assert "deposit mass in the same band" not in window, \
             "S43.4 cannot claim the lock deposits mass in a histogram it is invisible to"
+
+
+class TestReferenceHouseStyle:
+    """IEEE style over the cited entries, checked on the .bib that produces them.
+
+    Round 14 read the reference list as a copy editor would -- the first time in fourteen
+    rounds anyone had -- and found three defects in a list that is otherwise scrupulous: one
+    entry printing its URL twice, two venues spelled out where the other forty-three are
+    abbreviated, and the four arXiv entries split across two conventions. None touched the
+    science; all three are the author's to fix before submission rather than the copy
+    editor's to catch after.
+    """
+
+    @staticmethod
+    def _cited_entries():
+        bbl = REPO / "paper.bbl"
+        bib = REPO / "manuscript_references.bib"
+        if not bbl.exists() or not bib.exists():
+            pytest.skip("build the paper first")
+        cited = set(re.findall(r"\\bibitem\{([^}]*)\}", bbl.read_text(encoding="utf-8")))
+        out = {}
+        for m in re.finditer(r"@(\w+)\{([^,]+),(.*?)\n\}",
+                             bib.read_text(encoding="utf-8"), re.S):
+            key = m.group(2).strip()
+            if key in cited:
+                out[key] = m.group(3)
+        return out
+
+    def test_no_entry_prints_the_same_url_twice(self):
+        """howpublished and note both carrying the URL prints it twice and costs a line."""
+        bad = {}
+        for key, body in self._cited_entries().items():
+            urls = re.findall(r"\\url\{([^}]*)\}", body)
+            dupes = {u for u in urls if urls.count(u) > 1}
+            if dupes:
+                bad[key] = sorted(dupes)
+        assert not bad, "entries printing a URL twice: %s" % bad
+
+    def test_venues_are_abbreviated(self):
+        """IEEE abbreviates venue names; two of forty-five did not, which reads as carelessness."""
+        LONG = ("Communications of the", "Proceedings of the", "International Conference",
+                "Transactions on", "Symposium on", "Journal of", "Annual Conference")
+        bad = []
+        for key, body in self._cited_entries().items():
+            for field in ("journal", "booktitle"):
+                m = re.search(field + r"\s*=\s*[{\"](.+?)[}\"]\s*,", body, re.S)
+                if not m:
+                    continue
+                val = " ".join(m.group(1).split())
+                for phrase in LONG:
+                    if phrase in val:
+                        bad.append("%s (%s): %r" % (key, field, val[:70]))
+                        break
+        assert not bad, "unabbreviated venue names:\n  " + "\n  ".join(bad)
+
+    def test_arxiv_entries_share_one_convention(self):
+        """Either form is acceptable; both in one list is not."""
+        forms = {}
+        for key, body in self._cited_entries().items():
+            flat = " ".join(body.split())
+            m = re.search(r"(arXiv preprint arXiv:|arXiv:)\d", flat)
+            if m:
+                forms.setdefault(m.group(1), []).append(key)
+        assert len(forms) <= 1, \
+            "arXiv entries use %d conventions: %s" % (len(forms), {k: sorted(v) for k, v in forms.items()})

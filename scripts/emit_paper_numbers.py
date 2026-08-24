@@ -148,6 +148,42 @@ def span_macros(path=SPAN_CSV):
     return out
 
 
+def traced_ratio_macros():
+    """Traced-prediction over observed inversion, one ratio per arm that has both.
+
+    These three numbers were typed into Section V-C. They are the paper's only unfitted
+    cross-instrument check, and Section V-E now leans on them a second time: a kernel-only
+    estimator that bracketed unity bounds any additional userspace delay between the wakeup
+    and the clock read. A quantity carrying that much argument should not be hand-copied.
+
+    The real-time arms floor at zero inversions, so they have no finite ratio and are
+    skipped rather than reported as infinite.
+    """
+    import csv
+    import glob
+    ratios = []
+    for path in sorted(glob.glob(os.path.join("docs", "results", "**", "runq_tail.csv"),
+                                 recursive=True)):
+        with open(path, encoding="utf-8", newline="") as fh:
+            for row in csv.DictReader(fh):
+                try:
+                    inv = float(row["inversion"])
+                    tail = float(row["p_tail"])
+                except (KeyError, TypeError, ValueError):
+                    continue
+                if inv > 0:
+                    ratios.append(tail / inv)
+    if not ratios:
+        return []
+    ratios.sort()
+    return [
+        ("tracedRatios", ", ".join("%.2f" % r for r in ratios)),
+        ("tracedRatioLo", "%.2f" % ratios[0]),
+        ("tracedRatioHi", "%.2f" % ratios[-1]),
+        ("tracedRatioArms", str(len(ratios))),
+    ]
+
+
 def stat_macros():
     """Interval estimates for the manipulation cells and the payload fit.
 
@@ -644,7 +680,7 @@ def all_pairs(m):
             + retention_macros() + traced_macros() + tost_macros()
             + mechanism_macros() + kernel_macros() + registry_macros()
             + registry_sources_macro()
-            + clocksource_macros())
+            + clocksource_macros() + traced_ratio_macros())
 
 
 def render(m):

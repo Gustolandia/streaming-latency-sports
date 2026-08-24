@@ -724,8 +724,8 @@ rather than of impossible physics, which is precisely what the gate is for.
 
 \begin{table}[t]
 \caption{\textbf{Negatives by span and broker} ($\spanRuns$ runs, $\spanEvents$ events,
-one clock). Only the acknowledgment-origin span inverts, and under both brokers
-\kafka{} $\spanKafkaNegAckPct\%$ of events, \redis{} $\spanRedisNegAckPct\%$. The causal
+one clock). Only the acknowledgment-origin span inverts, and it does so under both
+brokers: \kafka{} on $\spanKafkaNegAckPct\%$ of events, \redis{} on $\spanRedisNegAckPct\%$. The causal
 chains are clean under each broker, so their per-broker columns are dashed rather than
 repeat a zero three times.}
 \label{tab:spans}
@@ -842,7 +842,7 @@ Finally, measured with \texttt{runqlat} on the \texttt{sched\_wakeup} and
 \texttt{sched\_switch} tracepoints~\cite{gregg2016runqlat}, filtered to the harness processes
 and sharing no instrument, estimator or data with the application-level rate, the
 probability that a run-queue stall outlasts the interval agrees with the observed inversion
-rate across three arms at two load levels, ratios $0.78$, $1.06$ and $1.32$ with no
+rate across $\tracedRatioArms$ arms at two load levels, ratios $\tracedRatios$ with no
 consistent sign: an application-level failure rate predicted to within a third, unfitted.
 A probe on every context switch is not free, and we measured what it costs by running the
 same cell untraced: the inversion rate is $\untracedRate$ untraced against $\tracedRate$
@@ -1020,21 +1020,22 @@ clouds needing it~\cite{paxson1998calibrating,geng2018huygens}, each resting on 
 its users rarely state (Supplement~S37).
 
 The obvious redesign does not help either: a consumer-to-producer acknowledgment removes
-skew but not this failure, and it measures the wrong thing (Supplement~S43).
+skew but not this failure, and it measures a producer-side round trip rather than
+staleness at the consumer (Supplement~S43.6).
 
-\paragraph{Resolution, as distinct from synchronization} Finer stamps fix the lesser half. A
-microsecond stamp makes $T_{\mathrm{true}}/\tau \gg 1$ here, so Equation~\ref{eq:retention}'s
-deletions disappear and the grid recedes to paths faster than the new quantum --- but the
-positivity guard survives untouched, and genuine negatives still occur at microsecond
-resolution, from stamping stalls (Section~\ref{sec:mechanism}), the ${\approx}70\,\mu$s
-inter-host offset and virtualized clocks. The guard would go on deleting them silently,
-converting an uncounted \emph{resolution} failure into an uncounted \emph{instrument}
-failure.
+\paragraph{Resolution, as distinct from synchronization} Finer stamps fix the lesser half.
+A microsecond stamp makes $T_{\mathrm{true}}/\tau \gg 1$ here, so
+Equation~\ref{eq:retention}'s deletions disappear and the grid recedes to paths faster than
+the new quantum --- but the positivity guard survives, and genuine negatives still occur at
+microsecond resolution: stamping stalls (Section~\ref{sec:mechanism}), the
+${\approx}70\,\mu$s inter-host offset, virtualized clocks. The guard deletes them silently
+too, converting an uncounted \emph{resolution} failure into an uncounted \emph{instrument}
+one.
 
 \subsection{Threats and limitations}
 \label{sec:threats}
-A negative span proves something is wrong; the attribution to scheduling is an inference,
-separated from its rivals by manipulation, with the eliminations listed at the end of
+A negative span proves something is wrong; attributing it to scheduling is an inference,
+separated from its rivals by manipulation and listed at the end of
 Section~\ref{sec:mechanism}. Clock skew is ruled out by construction on the same-clock arms
 and bounded on the others, and the clustering of consecutive late wakes ($z = -6.9$ at the
 co-located floor, at every load including none) is the signature of a shared scheduling
@@ -1056,41 +1057,43 @@ samples); cross-CPU incoherence under migration, below; utilization (identical $
 twofold apart); timer noise (\texttt{SCHED\_FIFO} at fixed utilization collapses the rate
 $\rtLowFactor$--$\rtHighFactor\times$, and noise does not respect scheduling class); stress
 (transport $77\times$ longer \emph{lowers} the rate); and direct observation (a
-\texttt{sched\_switch} histogram predicts the rate to within a third, unfitted).
+\texttt{sched\_switch} histogram predicts the rate to within a third, unfitted). One rival is
+not the scheduler's: the stamp is a \textsc{CPython} call, so it waits on the interpreter lock
+too, invisibly to a tracepoint probe --- bounded because that kernel-only estimator brackets
+the observed rate ($\tracedRatios$) instead of under-predicting (Supplement~S43.4).
 
 The clock-incoherence channel needs its own answer, because our machines are virtual and a
-hypervisor need not give a guest a counter coherent across its vCPUs~\cite{kvmclock}. We did not record the
-clocksource and the instances have been reclaimed, but the probe recorded the smallest
-increment the clock could report, $\clockIncrementNs$~ns, and read cost separates the
-candidates by an order of magnitude: that leaves \clockAdmitted{}, both of which the kernel
-uses only where cross-CPU coherence is asserted or checked (Supplement~S42). The corpus
-closes the channel a second time on headroom rather than on shared endpoints. Both audited spans are producer-to-consumer
-differences, so a clock-domain discrepancy displaces both alike; what differs is the
-headroom. An offset able to explain the deepest inversion, $\spanDeepestInversionMs$~ms,
-would drive the send-referenced span about that far below zero --- yet over $\spanRuns$ runs
+hypervisor need not give a guest a counter coherent across its
+vCPUs~\cite{kvmclock}. The clocksource went unrecorded and the instances are reclaimed, but
+the probe caught the smallest increment the clock could report, $\clockIncrementNs$~ns, and
+read cost separates the candidates by an order of magnitude: that leaves \clockAdmitted{},
+which the kernel uses only where cross-CPU coherence is asserted or checked
+(Supplement~S42). The corpus closes the channel again on headroom. Both audited spans are
+producer-to-consumer differences, so a clock-domain discrepancy displaces both alike; only
+the headroom differs. An offset able to explain the deepest inversion,
+$\spanDeepestInversionMs$~ms, would drive the send-referenced span about that far below zero
+--- yet over $\spanRuns$ runs
 it never goes negative, and its lowest value is $+\spanSendFloorUs\,\mu$s, the smaller of
-the two brokers' floors against $+\spanSendFloorOtherUs\,\mu$s. That floor bounds any such
+the two brokers' floors; the other is $+\spanSendFloorOtherUs\,\mu$s. That floor bounds any such
 offset at $\spanOffsetMargin\times$ too small; in the
 $\spanRunsAckInverts$ runs where the acknowledgment span inverts, the send span stays clean
-in $\spanRunsAckOnlyPct\%$, over an identical event set. The bound is worth keeping: on one
-host two clock reads cannot disagree by more than $\spanSendFloorUs\,\mu$s without a measured
-span going negative that never does --- an order of magnitude tighter than \texttt{chrony}
-claims for itself cross-host (Section~\ref{sec:threats}).
+in $\spanRunsAckOnlyPct\%$, over an identical event set. So on one host two clock reads
+cannot disagree by more than $\spanSendFloorUs\,\mu$s without a measured span going negative
+that never does --- an order of magnitude tighter than \texttt{chrony} claims for itself
+cross-host (Section~\ref{sec:threats}).
 
 The mechanism's constants are those of one EEVDF-era kernel (6.8); CFS-era schedulers, the
 regime Lozi et al.\ document, may shift them. The deletion law is demonstrated on one
-benchmark and reproduced in one independent harness; the pattern it requires, a quantized
-stamp, a paced producer and a positivity guard, is common, and the survey of
-Section~\ref{sec:generality} finds the disposal in $\harnessSilent$ tools, but every one of
-those findings is a reading of source rather than a measured deployment. The guard we
-analyze is not confined to the tool we measured: the same expression appears
-unchanged in more than a dozen public forks and in tooling released in 2026, so the
-exposure is current rather than historical. The OpenMessaging distributed mode failed
-identically on every attempt, so the cross-host exposure of that particular tool rests on
-source reading plus our own two-host harness rather than on running it. Exposure in any
-given deployment depends on its path latency and producer rate, which is why we recommend
-publishing a retention rate as routine practice rather than claiming any published number
-is wrong.
+benchmark and reproduced in one independent harness; the pattern it requires --- a quantized
+stamp, a paced producer, a positivity guard --- is common, and Section~\ref{sec:generality}
+finds the disposal in $\harnessSilent$ tools, though every one of those is a reading of
+source rather than a measured deployment. Nor is the guard confined to the tool we measured:
+the same expression appears unchanged in more than a dozen public forks and in tooling
+released in 2026, so the exposure is current. The OpenMessaging distributed mode failed
+identically on every attempt, so that tool's cross-host exposure rests on source reading and
+our own two-host harness rather than on running it. Exposure in a given deployment depends on
+its path latency and producer rate, which is why we recommend publishing a retention rate as
+routine practice rather than calling any published number wrong.
 
 \section{Conclusion}
 \label{sec:conclusion}

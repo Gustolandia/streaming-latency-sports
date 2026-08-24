@@ -3170,4 +3170,53 @@ proportional reduction that happens to be larger under load --- it is the ordina
 following utilization while the manipulated arm does not, which is the two-state model of
 Equation~6 with $p(\rho)$ moved directly.
 
+
+\section{S48. What the brokers actually do (moved from the main text)}
+\label{sec:brokers-full}
+
+The main text states two conclusions and points here for the evidence: that the broker
+comparison is not a purchasing argument, and that one configuration choice, invisible on the
+standard testbed, decides the outcome. This is the campaign behind both. It sits in the
+supplement because the paper's contribution is two measurement failures, and what the brokers
+do is a smaller result than either --- smaller, in the end, than the comparison that motivated
+the work was expected to be.
+
+\subsection{S48.1. Equivalence on gated artifacts}
+
+Over the runs the sign check leaves standing, the brokers sit within a millisecond of each
+other on the transport proxy: a Hodges--Lehmann shift of $\tostHL$~ms ($90\%$ interval
+$\tostHLCI$), with TOST rejecting both one-sided nulls against a $\tostMargin$~ms margin at
+$p < 0.001$, holding between $\tostHLRange$~ms across $\tostLevels$ concurrency levels.
+
+That span is not a causal chain, so the equivalence is stated on the quantity that is:
+\tti{} is equivalent over the same levels against a wider margin (S6). Equivalence is claimed
+rather than assumed from a failure to reject, which is the reason for the TOST rather than a
+two-sample test.
+
+\subsection{S48.2. The condition that reverses the ordering}
+
+One-way delay injected identically at both leaves \kafka{} tracking it almost additively,
+while \redis{} collapses: a median transport of $4.6$~s at $5$~ms of injected delay,
+$31.3$~s at $20$~ms and $102.5$~s at $50$~ms, over five feeds per arm. That is $900$ to
+$2{,}050$ times the delay applied.
+
+The cause is the consumption pattern rather than the broker. A per-message acknowledgment
+turns each event into a sequential round trip, so injected delay multiplies once per event,
+where a prefetching consumer serves from buffer and pays it once per batch.
+
+\subsection{S48.3. The falsifier, registered in advance}
+
+The prediction was recorded before the run: if the acknowledgment pattern is the cause, then
+batching the acknowledgments must remove most of the effect without touching the broker, the
+network or the injected delay. Batching them two hundred at a time cuts the median from
+$4{,}138$~ms to $103$~ms, a factor of $40$, replicated four times.
+
+\subsection{S48.4. Why the standard testbed cannot see it}
+
+Both settings are invisible on a co-located testbed: the round trip they multiply is a few
+hundred microseconds there, so the difference between paying it once per event and once per
+batch is below the noise. The choice that decides the outcome under any realistic separation
+is therefore not visible in the environment most comparisons are run in --- which is the same
+shape of failure as the two the paper is about, an instrument whose configuration determines
+the result while nothing in the output records it.
 \end{document}

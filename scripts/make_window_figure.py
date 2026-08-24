@@ -34,6 +34,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import matplotlib
 matplotlib.use("Agg")
 import figure_style  # noqa: E402
+import figure_collisions  # noqa: E402
 figure_style.apply()  # Type 42, IEEE-listed family; see scripts/figure_style.py
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker  # noqa: E402
@@ -117,6 +118,7 @@ def plot_share(ax, df):
 
 
 def main(argv=None):
+    figure_style.apply()   # in force when the artists are made, not merely at import
     ap = argparse.ArgumentParser(description="Window-sweep figure: start-up cost, not constant")
     ap.add_argument("--sweep-csv", default="docs/results/window/window_sweep.csv")
     ap.add_argument("--out", default="docs/results/figures")
@@ -132,6 +134,7 @@ def main(argv=None):
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     for ext in ("pdf", "png"):
+        figure_collisions.check(fig, "window_sweep")
         fig.savefig(out / f"window_sweep.{ext}", dpi=200, bbox_inches="tight")
     plt.close(fig)
     print(f"OK wrote {out}/window_sweep.pdf and .png")

@@ -140,12 +140,10 @@ fault follows the span, not the system under test.
 \item \textbf{An audit, and the reporting rules that follow} (Sections~\ref{sec:gate}
 and~\ref{sec:authors}). A sign check applied uniformly to all $2{,}266$ runs rejected
 $1{,}321$ of them, including every run behind our own first result. The practice is older
-than this paper: Paxson~\cite{paxson1998calibrating} treated physically impossible transit
-times as evidence of instrument failure and published the proportion of traces affected.
-Each half of the practice is established: pre-defined exclusion with reported counts is
-standard statistical advice~\cite{krishnamachari2026stats}, physically impossible values are
-grounds for discarding a trace~\cite{paxson2004sound}, and a standards body already voids a
-whole run on a clock criterion~\cite{specjbb2015}. What we add is their conjunction --- a
+than this paper, and each half of it is established: pre-defined exclusion with reported
+counts is standard statistical advice~\cite{krishnamachari2026stats}, physically impossible
+values are grounds for discarding a trace~\cite{paxson2004sound}, and a standards body
+already voids a whole run on a clock criterion~\cite{specjbb2015}. What we add is their conjunction --- a
 physical-impossibility criterion, applied per run, with the campaign's rejection rate published
 as a headline quantity rather than a footnote --- and the observation that the retention rate
 and the sign of each discard belong beside every reported latency.
@@ -602,9 +600,10 @@ Table~\ref{tab:gridinference}.}
 \begin{table}[t]
 \caption{\textbf{Grid membership against a continuum null.} $D$ is the mean normalized
 distance to the nearest grid vertex; under the null its expectation is the value in the
-\emph{null} column. $p_{\mathrm{Holm}}$ is a permutation $p$-value ($10^{4}$ draws) after
-Holm correction within the family of all $\gridArms$ arms; the corrected value is what
-decides the verdict. Arms marked \emph{flat (coincident)} are those the model predicts
+\textnormal{\textit{null}} column. $p_{\mathrm{Holm}}$ is a permutation $p$-value
+($10^{4}$ draws) after Holm correction within the family of all $\gridArms$ arms; the
+corrected value is what decides the verdict. Arms marked
+\textnormal{\textit{flat (coincident)}} are those the model predicts
 flat, where the two hypotheses make the same prediction and the test has no power. This
 table is generated from \texttt{grid\_membership.csv} at build time.}
 \label{tab:gridinference}

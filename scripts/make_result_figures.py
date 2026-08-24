@@ -47,6 +47,7 @@ from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")
 import figure_style  # noqa: E402
+import figure_collisions  # noqa: E402
 figure_style.apply()  # Type 42, IEEE-listed family; see scripts/figure_style.py
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
@@ -159,11 +160,14 @@ def plot_spectrum(ax, bins, slice_ms=None):
             # and a label placed there runs into the axis.
             ax.annotate("scheduler base slice:\n%.0f ms, %.1f× the bucket below"
                         % (slice_ms, rise),
-                        xy=(i + 0.46, share[i] * 0.72),
+                        xy=(i + 0.52, share[i] * 0.72),
                         xytext=(len(los) - 0.5, max(share) * 1.30),
                         fontsize=6.4, color=DELETED, ha="right", va="top",
+                        # Bowed away from the bar rather than towards it: the original arc
+                        # passed through the "%.1f%%" label sitting above the same bar.
                         arrowprops=dict(arrowstyle="->", color=DELETED, lw=0.8,
-                                        connectionstyle="arc3,rad=0.18"))
+                                        relpos=(0.5, 0.0),
+                                        connectionstyle="arc3,rad=-0.22"))
     ax.set_ylim(0, max(share) * 1.42)
     ax.set_xlim(-0.8, len(los) - 0.2)
 
@@ -209,8 +213,10 @@ def plot_grid(ax, cells):
         ax.plot(x, y, "o" if p else "s", ms=5 if p else 4.2,
                 color=KEPT if p else "none", mec=KEPT if p else GREY,
                 mew=0.9, zorder=3)
-    ax.set_xlim(0, lim)
-    ax.set_ylim(0, lim)
+    # A point at zero is drawn centred on the spine and clipped to half a marker, which
+    # reads as a rendering fault rather than as data.
+    ax.set_xlim(-lim * 0.02, lim)
+    ax.set_ylim(-lim * 0.02, lim)
     ax.set_xlabel("distance expected from a continuum", fontsize=7.5)
     ax.set_ylabel("distance observed", fontsize=7.5)
     ax.tick_params(labelsize=7)
@@ -238,12 +244,14 @@ def _save(fig, out_dir, stem):
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / ("%s.pdf" % stem)
+    figure_collisions.check(fig, stem)
     fig.savefig(path, bbox_inches="tight", pad_inches=0.02)
     plt.close(fig)
     return path
 
 
 def build_deletion(out_dir):
+    figure_style.apply()   # in force when the artists are made, not merely at import
     fig, ax = plt.subplots(figsize=(3.4, 2.35))
     plot_deletion(ax, retention_points())
     fig.tight_layout()
@@ -251,6 +259,7 @@ def build_deletion(out_dir):
 
 
 def build_spectrum(out_dir, slice_ms=None):
+    figure_style.apply()   # in force when the artists are made, not merely at import
     if slice_ms is None:
         try:
             import kernel_constants
@@ -265,6 +274,7 @@ def build_spectrum(out_dir, slice_ms=None):
 
 
 def build_grid(out_dir):
+    figure_style.apply()   # in force when the artists are made, not merely at import
     fig, ax = plt.subplots(figsize=(3.4, 2.42))
     plot_grid(ax, grid_rows())
     fig.tight_layout()
@@ -347,7 +357,9 @@ def plot_mechanism(ax, arms, observed=()):
     ax.set_xlabel("inversion rate (Wilson 95% interval)", fontsize=7.5)
     ax.tick_params(axis="x", labelsize=7)
     ax.grid(axis="x", alpha=0.25, lw=0.5)
-    ax.set_xlim(0, max(stat_intervals.wilson(k, n)[1] for _, _, k, n in rows) * 1.10)
+    _hi = max(stat_intervals.wilson(k, n)[1] for _, _, k, n in rows) * 1.10
+    # The real-time arms sit at essentially zero, where the frame would cut the marker.
+    ax.set_xlim(-_hi * 0.015, _hi)
     for i in range(0, len(arms), 2):
         ax.axhspan(len(rows) - i - 1.5, len(rows) - i + 0.5, color=GREY, alpha=0.05, zorder=0)
     if observed:
@@ -412,6 +424,7 @@ def plot_ttrue(ax, pts):
 
 
 def build_mechanism(out_dir):
+    figure_style.apply()   # in force when the artists are made, not merely at import
     # Two extra rows and a rule. The panel grows by less than the row count: the arms were
     # set with room to spare and the column budget has none.
     fig, ax = plt.subplots(figsize=(3.4, 2.30))
@@ -421,6 +434,7 @@ def build_mechanism(out_dir):
 
 
 def build_ttrue(out_dir):
+    figure_style.apply()   # in force when the artists are made, not merely at import
     fig, ax = plt.subplots(figsize=(3.4, 2.18))
     plot_ttrue(ax, ttrue_points())
     fig.tight_layout()
@@ -494,10 +508,14 @@ def plot_payload_grid(ax, arms, q=PAYLOAD_Q):
     for x, (label, vals, colour) in enumerate(arms):
         jitter = [x + (i - (len(vals) - 1) / 2.0) * 0.055 for i in range(len(vals))]
         ax.scatter(jitter, vals, s=15, color=colour, edgecolors="none", zorder=3)
+    # The label sits inside the axes, so the rule has to stop short of it: an axhline spans
+    # the full width and printed each grid line straight through its own "k/q".
+    left, label_x = -0.5, len(arms) - 0.55
     for k in range(1, q + 1):
         y = 100.0 * k / q
-        ax.axhline(y, color=GREY, lw=0.6, ls=":", zorder=0, alpha=0.7)
-        ax.annotate("%d/%d" % (k, q), xy=(len(arms) - 0.55, y), fontsize=6.5,
+        ax.plot([left, label_x - 0.06], [y, y], color=GREY, lw=0.6, ls=":",
+                zorder=0, alpha=0.7, clip_on=False)
+        ax.annotate("%d/%d" % (k, q), xy=(label_x, y), fontsize=6.5,
                     color=GREY, va="center", ha="left")
     ax.set_xticks(range(len(arms)))
     ax.set_xticklabels([a[0] for a in arms], fontsize=7.5)
@@ -538,6 +556,7 @@ def plot_payload_flip(ax, pos, q=PAYLOAD_Q):
 
 
 def build_payload(out_dir):
+    figure_style.apply()   # in force when the artists are made, not merely at import
     arms = payload_arms()
     fig, axes = plt.subplots(1, 2, figsize=(7.0, 2.1))
     plot_payload_grid(axes[0], arms)

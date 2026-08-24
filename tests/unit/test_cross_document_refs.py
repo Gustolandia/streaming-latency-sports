@@ -80,6 +80,50 @@ class TestNoStrandedPointer:
         assert not hits, "pointer word with nothing to point at:\n  " + "\n  ".join(hits)
 
 
+class TestTheSupplementNamesSectionsRatherThanNumberingThem:
+    """Main-text section numbers live in one macro block, never inline in the prose.
+
+    The check below this one asks whether a pointer resolves. That catches the pointer that
+    breaks loudly and misses the one that stays valid while changing meaning: folding the
+    broker results into the Discussion left four `Section~VI` pointers resolving perfectly to
+    a section that was no longer the one they meant. No gate can see that, so the numbers stop
+    being written by hand.
+    """
+
+    MACRO_PREFIX = "main"
+
+    def test_no_section_number_is_written_inline(self):
+        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        body = supp.split(r"\begin{document}")[-1]
+        bad = re.findall(r"Section~[IVX]+(?:-[A-D])?(?![a-zA-Z])", body)
+        assert not bad, (
+            "these point at the main text by number; use the macro block in the preamble so a "
+            "renumbering is one edit: %s" % sorted(set(bad)))
+
+    def test_every_macro_the_prose_uses_is_defined(self):
+        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        defined = set(re.findall(r"\\newcommand\{\\(main[A-Za-z]+)\}", supp))
+        used = set(re.findall(r"Section~\\(main[A-Za-z]+)", supp))
+        assert used, "the supplement must point at the main text somewhere"
+        assert used <= defined, "undefined section macros: %s" % sorted(used - defined)
+
+    def test_every_macro_defined_is_used(self):
+        """A stale entry would quietly licence a number nothing checks."""
+        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        defined = set(re.findall(r"\\newcommand\{\\(main[A-Za-z]+)\}", supp))
+        used = set(re.findall(r"Section~\\(main[A-Za-z]+)", supp))
+        assert defined <= used, "defined but never used: %s" % sorted(defined - used)
+
+    def test_the_macros_carry_numbers_the_paper_has(self):
+        """The values are still numbers, so the resolve-check below still means something."""
+        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        values = dict(re.findall(r"\\newcommand\{\\(main[A-Za-z]+)\}\{([^}]*)\}", supp))
+        assert values, "the macro block must exist"
+        for name, number in sorted(values.items()):
+            assert re.match(r"^[IVX]+(?:-[A-D])?$", number), \
+                "%s holds %r, which is not a section number" % (name, number)
+
+
 class TestSupplementPointsAtRealSections:
     """Every "Section~X of the main text" must be a section the main text has."""
 

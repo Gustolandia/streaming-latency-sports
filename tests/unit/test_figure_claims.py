@@ -54,12 +54,12 @@ def test_deletion_plots_every_committed_cell():
 
 
 def test_deletion_at_grid_count_is_the_ledgers():
-    at_grid = [r for r, m in mrf.retention_points() if m <= mrf.QUANTUM_MS]
+    at_grid = [r for r, m, _ in mrf.retention_points() if m <= mrf.QUANTUM_MS]
     assert len(at_grid) == _int("ombGridMedianCells")
 
 
 def test_deletion_annotates_the_ledgers_fold():
-    at_grid = [r for r, m in mrf.retention_points() if m <= mrf.QUANTUM_MS]
+    at_grid = [r for r, m, _ in mrf.retention_points() if m <= mrf.QUANTUM_MS]
     assert round(max(at_grid) / min(at_grid)) == _int("ombRetentionFold")
 
 

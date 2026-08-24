@@ -29,6 +29,7 @@ matplotlib.use("Agg")
 import figure_style  # noqa: E402
 import figure_collisions  # noqa: E402
 import figure_legibility  # noqa: E402
+import figure_vocabulary  # noqa: E402
 figure_style.apply()  # Type 42, IEEE-listed family; see scripts/figure_style.py
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
@@ -51,6 +52,9 @@ ACK_UNBATCHED_TTI_MS = 4138.0
 
 
 # --------------------------------------------------------------------------- schematic
+
+NL = chr(10)  # a newline that survives every editing route into this file
+
 def plot_pipeline(ax):
     """Draw the replay pipeline, its four timestamps, and the intervals they define."""
     boxes = [(0.2, "Producer\n(replay)"), (3.8, "Broker\n(Kafka/Redis)"), (7.4, "Consumer")]
@@ -174,10 +178,15 @@ def plot_model(axes):
     mech_ax.set_xlim(0, 10.4)
     mech_ax.set_ylim(0, 3.2)
     mech_ax.axis("off")
-    for y, label, colour in ((2.3, "producer", KAFKA), (0.9, "consumer", REDIS)):
+    # "thread", not "producer" and "consumer": a co-author read the panel as two processes
+    # and asked which thread actually takes each reading. Two do, one per lane, and the whole
+    # mechanism is that they wait for a core independently of each other.
+    for y, label, colour in ((2.3, "producer" + NL + "thread", KAFKA),
+                             (0.9, "consumer" + NL + "thread", REDIS)):
         mech_ax.annotate("", xy=(9.9, y), xytext=(1.4, y),
                          arrowprops=dict(arrowstyle="->", color=GREY, linewidth=1.2))
-        mech_ax.text(0.15, y, label, fontsize=8, color=colour, ha="left", va="center")
+        mech_ax.text(0.15, y, label, fontsize=8, color=colour, ha="left", va="center",
+                     linespacing=0.95)
 
     # the producer's own two stamps, taken before the acknowledgement exists
     for x, sym in ((1.9, r"$t_{sched}$"), (2.7, r"$t_{send}$")):
@@ -302,7 +311,7 @@ SENSITIVITY_THRESHOLDS = (0.0, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.10, 0.20
 
 
 def condemned_at(by_run, threshold):
-    """Number of runs the gate condemns at a given inversion threshold.
+    """Number of runs the gate condemns at a given negative-span threshold.
 
     Mirrors the rule in clock_integrity.py: condemn if the worst component's inversion rate
     exceeds the threshold, or if any component median is negative.
@@ -314,7 +323,7 @@ def condemned_at(by_run, threshold):
 
 
 def plot_integrity(axes, by_run, threshold=0.01):
-    """Per-run inversion rates, and how the condemnation count depends on the threshold.
+    """Per-run negative-span rates, and how the condemnation count depends on the threshold.
 
     The distribution is *not* cleanly bimodal, so the threshold is a real choice rather than
     an obvious one. Panel (b) reports the sensitivity instead of asserting robustness.
@@ -329,7 +338,7 @@ def plot_integrity(axes, by_run, threshold=0.01):
     hist_ax.set_xscale("log")
     hist_ax.axvline(threshold, color="#b22222", linewidth=1.8,
                     label=f"threshold ({threshold:.0%})")
-    hist_ax.set_xlabel("Worst-component inversion rate per run (log)")
+    hist_ax.set_xlabel("Worst-component negative-span rate per run (log)")
     hist_ax.set_ylabel("Runs")
     hist_ax.set_title(f"(a) {clean:,} of {len(by_run):,} runs clean", fontsize=10)
     hist_ax.legend(fontsize="small", loc="upper left")
@@ -385,6 +394,7 @@ def _save(fig, out_dir, stem, check_layout=True):
         # them on a rescaled render would report collisions nobody is going to ship.
         figure_collisions.check(fig, stem)
         figure_legibility.check(fig, stem)
+        figure_vocabulary.check(fig, stem)
     written = []
     for ext in ("png", "pdf"):
         path = out_dir / f"{stem}.{ext}"

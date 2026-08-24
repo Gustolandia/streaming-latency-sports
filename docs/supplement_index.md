@@ -134,6 +134,30 @@ Nothing was moved *into* the supplement in this round. The four-point payload fi
 S32 where round 1 put it.
 
 
+## Round 19 (2026-08-24): the co-author round
+
+A co-author's review added five explanations to the main text and one full-width figure. Both
+were paid for out of the main text, into four new sections. Everything below left a stub
+carrying its claim; nothing lost a number or a citation.
+
+| Supp. section | Content | Moved from |
+|---|---|---|
+| S49 | The statistical inventory: pooled-variance z, Hodges–Lehmann, TOST, the permutation null, the bootstrap, and the interval-censored tail estimators | main text III-D, which keeps only the three choices a reader might contest |
+| S50 | The dispute with the concurrent negative-span report in full --- which queue each account means, and why a millisecond skew threshold does not transfer to a loaded machine | main text II-B (about 140 words) |
+| S51 | The 1970 counter note mapped line by line: retention identity, class, the ceiling on averaging, the symptom, the cure | main text II-C (about 100 words) |
+| S52 | Two literatures the paper stands against: production tracing's skew adjusters, and where scheduling delay comes from | main text II-B and II-C (about 250 words) |
+
+Three citations moved with S52 and so left the paper's reference list, which is now 42 of the
+45 TC allows: the two Jaeger sources and the tail-latency study. They are cited in the
+supplement, which carries its own bibliography.
+
+**Not moved, and worth recording why.** The mechanism table (Table II) stayed in the main text
+even though the enlarged Figure 5 now does most of its work, because a TPDS round-1 referee
+asked for it there (item M1) and a gate holds it. Float packing was tried first --- two pages
+were three hundred words short each --- and adjusting `\topfraction` and its neighbours
+changed the layout by nothing at all: those pages were not float-starved, the floats were the
+content.
+
 ## Figure inventory
 
 `docs/results/figures/` holds fifteen PDFs. Twelve are included by a document; three are not,
@@ -149,10 +173,11 @@ appearing in this table.
 | `deletion` | main text, Fig. 2 |
 | `grid_membership` | main text, Fig. 3 |
 | `payload_flip` | main text, Fig. 4 |
-| `mechanism_forest` | main text, Fig. 5 |
+| `mechanism_forest` | main text, Fig. 5 (full-width from round 19) |
 | `ttrue_law` | main text, Fig. 6 |
 | `stall_spectrum` | main text, Fig. 7 |
 | `priority_ladder` | supplement, S47 |
+| _(no figure)_ | supplement, S48 --- the broker results, moved from the main text in round 18 |
 | `experiment_map` | supplement |
 | `integrity_audit` | supplement |
 | `window_sweep` | supplement |

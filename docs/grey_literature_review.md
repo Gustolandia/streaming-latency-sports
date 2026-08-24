@@ -234,3 +234,22 @@ rather than in full. What v2 actually carries from this survey:
 
   Conclusion unchanged and now better supported: §E stands. Nothing found requires a
   citation, a hedge, or a change of wording, and no previous referee finding is contradicted.
+
+- 2026-08-24 (second pass, after the rename): two checks on the new term, one of which
+  changes what the manuscript says.
+  - `"negative span" OR "negative timing span" latency benchmark timestamp` on Scholar --
+    7 hits, none in this sense (behaviour-sequence models, temporal databases, a poetry
+    corpus, vessel-wake hydrodynamics). The term is free in the indexed literature.
+  - **Its one prior user is the work we argue with.** Sharma et al. (arXiv:2604.21361) coin
+    "negative timing span" and use "negative span rates" throughout; their §4.4 defines a
+    negative span as timestamps implying an impossible causal relationship. We adopt the noun
+    and decline the causal reading, and §III now says so rather than leaving a reader to
+    wonder whether two 2026 papers mean the same thing by it.
+  - Their §6.3 was read in full to check our quotation. It is verbatim: "However, queueing
+    alone cannot produce negative timing spans or cause timestamps to imply reversed causal
+    orderings." **The rebuttal was wrong in form and is now corrected:** we agree with that
+    sentence -- §V-C refutes the queueing account of our own corpus -- and what we dispute is
+    the inference that skew is therefore what remains. Scheduling is a third channel.
+  - `benchmark verifiability criterion "retention" report discarded samples latency` (2024+)
+    -- 10 hits, none on topic. The reporting rule remains unanticipated in the literature,
+    though ICPE '15 §3.4 states the principle it instantiates, which the paper now cites.

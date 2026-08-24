@@ -104,7 +104,7 @@ python scripts/power_analysis.py --n 15
 
 ## Release checklist
 
-The suite covers everything that can be decided by reading a file. Six things cannot, and
+The suite covers everything that can be decided by reading a file. Seven things cannot, and
 each has cost a referee round, so they are written down rather than remembered.
 
 TC's own limits, for reference, from the journal's author page: a regular paper is **10-12
@@ -148,6 +148,44 @@ with the flagged labels outlined, which is the picture the gate saw.
 the grid lines through `1/3`, `2/3` and `3/3` -- and the visual pass is what found the two the
 gate was then written from. They fail differently: the gate cannot tell whether a figure is
 *right*, only whether it is legible.
+
+**1b. Ask whether the data can be seen, not whether the type can be read.** Round 19: a
+co-author could "hardly read" Figure 5 on a 37-inch monitor. Every gate passed it. The type
+printed at exactly 8 pt, nothing was struck by ink, nothing was clipped, and the vocabulary
+was current -- and the figure was still unreadable, because ten rows of categorical labels
+("Geometry, replication, concentrated") take about an inch and a half whatever the panel is,
+so in a 3.50 in column the intervals the figure exists to show were drawn in the 1.7 in left
+over.
+
+The gates measure the type. Nobody measures the fraction of the panel the type occupies, and
+that fraction is what legibility actually is. The fix was width: at `\textwidth` the label
+column costs the same inch and a half and the data gets five inches. The general rule is
+cheaper than a new gate -- **when a figure's labels are long, check what share of the panel
+is left for the data before checking the point size** -- and the round's own visual pass,
+made only after the co-author's mail, then found two more in the same sitting:
+
+- The stall spectrum's "1 ms tick" printed as "ms tick". The label is rotated and anchored at
+  `y = 0`, and matplotlib's default rotation mode aligns the box and *then* swings it about
+  the anchor, which put the first glyph below the axis where the frame clipped it. Any
+  rotated label anchored on a spine is a candidate; `rotation_mode="anchor"` is the fix.
+- The same rule was drawn through the centre of the 512 bucket, which reads as "1 ms is at
+  512 us". The bucket spans [512, 1024) and 1 ms sits at its top edge. A categorical axis
+  invites this: the bar has an index, the value does not, and drawing the value at the index
+  is wrong by up to half a bucket.
+- Figure 6 carried an arrowhead with no tail, resting on a data point. The annotation
+  describes a slope through all four points, and its text box had drifted close enough to the
+  second one that only the head was drawn. **An arrowhead is ink, not text**, so the collision
+  gate has nothing to say about it unless it happens to cover a glyph, and it covered none.
+
+**1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
+twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
+each one a decision some earlier round had fought for: the excluded-phase disclosure a
+referee asked for, a plural antecedent for two clocksources, the shared-endpoint contrast
+that is the only trace of an abandoned argument, an American spelling, and the retired word
+"inversion", which a new paragraph put straight back and thereby disarmed the vocabulary gate
+for the figures too. The shortest way to say a thing is almost never the way that carries the
+qualification. **Run the consistency suite after a compression pass, not only after a content
+pass.**
 
 **2. Measure the type size a reader actually gets.** Round 16 found every figure in the paper
 printing below IEEE's minimum, one of them at 2.7 pt against 9.5 pt body text. The cause was
@@ -230,7 +268,31 @@ that will not parse, the run that yielded nothing, the campaign that is absent -
 are precisely the paths that decide what the corpus contains. A reader who cannot see them
 tested has to take the corpus on trust.
 
-**6. Confirm an unexpected test result before explaining it.** Three times now the failure mode
+**6. When you rename something, the figures do not rename themselves.**
+
+Round 18 renamed the central quantity from "inversion" to "negative span". The rename ran over
+`paper.tex` and `supplement.tex`, which is where prose lives, and four axis labels went on
+saying "inversion rate" because a generated figure carries its label in a Python string. On
+page 8 the two names appeared within centimetres of each other, for the same number, in the
+same figure.
+
+Two figure gates were already in place and neither could see it. `figure_legibility` measures
+how large the type is; `figure_collisions` measures what is drawn through it. **Neither read
+what the type said.** `figure_vocabulary` now does, wired into both `_save` paths beside them.
+
+The rule it enforces is deliberately indirect: a term is policed only once the *manuscript*
+has stopped using it. A hand-maintained list of forbidden strings would rot; a list checked
+against the prose cannot, because retiring a term in the prose is what arms the check.
+
+**The generalisation, which is the reason this is item 6 rather than a bug fix.** Ask of any
+change: *what else says this, in a form the change does not reach?* Prose, figure labels, CSV
+column names, macro names, test names and commit messages all say the same things in different
+places, and an edit that reaches only one of them leaves the others contradicting it. The
+figures were the visible case. The identifiers were left saying "inversion" **on purpose**,
+which is a different thing from leaving them by accident, and Supplement S45 records the
+mapping so a reader following a number from claim to file is not surprised.
+
+**7. Confirm an unexpected test result before explaining it.** Three times now the failure mode
 has been to reason about an unexpected result from the apparatus instead of opening the file:
 a `sed` mutation that silently matched nothing and made a live gate look inert (twice), and a
 new gate that fired on a real defect and was narrowed on the assumption of a false positive

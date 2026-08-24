@@ -226,6 +226,34 @@ def _read_text(path):  # pragma: no cover - exercised through injection
         return None
 
 
+def interpreter_serialisation():
+    """What stands between a woken thread and its next bytecode, besides the scheduler.
+
+    The stamping threads are CPython, so a thread returning from blocking I/O must reacquire
+    the interpreter lock before it can call the clock. That wait is in userspace and a
+    scheduler-tracepoint probe cannot see it, which is why the value belongs in the record
+    rather than in an argument. `switch_interval_s` is what the run was configured with;
+    leaving it at the default is a choice like any other, and one no campaign of ours
+    recorded until now.
+    """
+    import sys as _sys
+    out = {
+        "implementation": platform.python_implementation(),
+        "switch_interval_s": None,
+        "gil_disabled": None,
+    }
+    getter = getattr(_sys, "getswitchinterval", None)
+    if getter is not None:
+        out["switch_interval_s"] = getter()
+    # PEP 703 builds report this; on 3.10 the attribute is absent, which is itself the answer.
+    flags = getattr(_sys, "_is_gil_enabled", None)
+    if flags is not None:  # pragma: no cover - free-threaded builds only
+        out["gil_disabled"] = not flags()
+    else:
+        out["gil_disabled"] = False
+    return out
+
+
 def probe(ports=None, trials=50, sleep_trials=200, connect=None, redis_name="redis",
           opener=None):
     """Full testbed characterisation as a JSON-serialisable dict."""
@@ -235,6 +263,7 @@ def probe(ports=None, trials=50, sleep_trials=200, connect=None, redis_name="red
     out = {
         "platform": platform_info(),
         "clock_provenance": clock_provenance(),
+        "interpreter_serialisation": interpreter_serialisation(),
         "timer_resolution_ns": None if res is None else res * 1e9,
         "sleep_1ms": sleep_granularity(0.001, sleep_trials),
         "sleep_10ms": sleep_granularity(0.010, max(20, sleep_trials // 10)),

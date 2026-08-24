@@ -363,3 +363,32 @@ class TestClockOnlyCapture:
                                              "available_clocksource": None, "cpu_flags": {}})
         assert pp.main(["--clock-only", "--out", str(tmp_path / "c.json")]) == 0
         assert "not published" in capsys.readouterr().out
+
+
+class TestInterpreterSerialisation:
+    """What stands between a woken thread and its next bytecode, beside the scheduler.
+
+    Section V-E names the interpreter lock as a rival and bounds it. That argument is only
+    checkable if a run records what the interpreter was configured to do, which no campaign
+    of ours did until the referee asked for it.
+    """
+
+    def test_it_reports_the_implementation_and_the_switch_interval(self):
+        info = pp.interpreter_serialisation()
+        assert info["implementation"]
+        assert isinstance(info["switch_interval_s"], float)
+        assert info["switch_interval_s"] > 0
+
+    def test_it_reports_whether_the_lock_is_in_force(self):
+        info = pp.interpreter_serialisation()
+        assert info["gil_disabled"] in (True, False)
+
+    def test_a_build_without_the_getter_degrades_rather_than_raises(self, monkeypatch):
+        monkeypatch.delattr("sys.getswitchinterval", raising=False)
+        info = pp.interpreter_serialisation()
+        assert info["switch_interval_s"] is None
+
+    def test_the_probe_carries_it(self):
+        out = pp.probe(ports={}, trials=1, sleep_trials=5)
+        assert "interpreter_serialisation" in out
+        assert out["interpreter_serialisation"]["implementation"]

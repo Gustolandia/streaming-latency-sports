@@ -177,6 +177,31 @@ made only after the co-author's mail, then found two more in the same sitting:
   second one that only the head was drawn. **An arrowhead is ink, not text**, so the collision
   gate has nothing to say about it unless it happens to cover a glyph, and it covered none.
 
+**1d. Ask the question the check does not ask.** Round 19's lesson was that the gates measure
+type size and nobody measures how much of the panel the type occupies. Round 20 is the same
+shape twice more, and both came from a referee reading a rendered page:
+
+- **A long line through a label.** `text_struck_by_ink` insets a label to its *core*, on
+  purpose, so a gridline grazing a descender does not fail a figure. One glyph out of sixteen
+  is a few per cent of that core, which is why the diagonal of Figure 3 struck the last letter
+  of its own label through *two* attempted moves and two rounds of review. The answer was not
+  a wider band --- round 17 was right that chasing the last percent produces false alarms ---
+  but a different question: does a line long enough to be a reference line cross a label's
+  **full** extent? `reference_lines_through_text` asks it, and found two more defects on its
+  first run, in a figure nobody had opened: a series drawn under a legend at matplotlib's
+  default `framealpha` of 0.8, and a dotted reference through a two-line callout.
+
+- **A label's background erasing what is drawn.** The inverse, and the one the last two rounds
+  made likely: an opaque patch behind a label is the standard fix for a rule crossing a
+  number, and it is used freely here. Anchor one on the axis limit and the patch paints over
+  the spine; Figure 5's factor column printed the right frame with four gaps in it, visible at
+  400 dpi and invisible to every check that asks about ink landing on text.
+  `label_patches_over_spines` asks the reverse and found all four.
+
+**The general rule, since a third instance of this is likely:** when a device is adopted to
+fix one class of defect --- an inset, an opaque patch, a zorder --- ask what the device itself
+can break, and measure that too.
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a
@@ -185,7 +210,9 @@ that is the only trace of an abandoned argument, an American spelling, and the r
 "inversion", which a new paragraph put straight back and thereby disarmed the vocabulary gate
 for the figures too. The shortest way to say a thing is almost never the way that carries the
 qualification. **Run the consistency suite after a compression pass, not only after a content
-pass.**
+pass.** Round 20 proved the point twice over: compressing one paragraph removed the
+tracepoint names and the observer-effect numbers that a round-16 referee had asked to be put
+in the paper, and the gate holding them caught it within the hour.
 
 **2. Measure the type size a reader actually gets.** Round 16 found every figure in the paper
 printing below IEEE's minimum, one of them at 2.7 pt against 9.5 pt body text. The cause was

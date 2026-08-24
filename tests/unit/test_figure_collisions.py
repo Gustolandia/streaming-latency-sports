@@ -228,9 +228,245 @@ class TestCheck:
         with pytest.raises(fc.FigureCollision, match="^figure:"):
             fc.check(fig)
 
-    def test_report_returns_all_three_checks(self):
+    def test_report_returns_every_check(self):
         fig, ax = _blank()
-        assert set(fc.report(fig)) == {"struck", "overlapping", "clipped"}
+        assert set(fc.report(fig)) == {"struck", "overlapping", "clipped", "crossed", "erased"}
+
+
+class TestReferenceLinesThroughText:
+    """The check written after a diagonal struck the same label through two attempted moves.
+
+    `text_struck_by_ink` insets a label to its core on purpose, so that a gridline grazing a
+    descender does not fail a figure. One glyph of sixteen is a few per cent of that core, and
+    a reader sees it immediately -- so a long straight line gets a question of its own, asked
+    against the label's full extent.
+    """
+
+    def test_a_diagonal_through_a_label_is_found(self):
+        fig, ax = _blank()
+        ax.plot([0, 1], [0, 1], ls="--", color="black", lw=1.0)
+        ax.text(0.5, 0.5, "on the line", ha="center", va="center", fontsize=9)
+        found = fc.reference_lines_through_text(fig)
+        assert [d["text"] for d in found] == ["on the line"]
+        assert found[0]["crossing_px"] > 0
+        assert found[0]["line_px"] > 0
+
+    def test_a_label_clear_of_the_line_is_not(self):
+        fig, ax = _blank()
+        ax.plot([0, 1], [0, 1], ls="--", color="black", lw=1.0)
+        ax.text(0.2, 0.8, "above it", ha="center", va="center", fontsize=9)
+        assert fc.reference_lines_through_text(fig) == []
+
+    def test_only_the_terminal_glyph_need_be_struck(self):
+        """The whole reason for the check: the ink test's inset does not reach the last letter."""
+        fig, ax = _blank()
+        ax.plot([0, 1], [0, 1], ls="--", color="black", lw=1.0)
+        # Left-aligned so the label runs at the diagonal and meets it near its right edge.
+        ax.text(0.30, 0.56, "a continuum would land here", ha="left", va="center", fontsize=9)
+        assert [d["text"] for d in fc.reference_lines_through_text(fig)] \
+            == ["a continuum would land here"]
+
+    def test_a_short_line_is_not_a_reference_line(self):
+        """Error bars, caps and whiskers cross labels all the time and are not rules."""
+        fig, ax = _blank()
+        ax.plot([0.48, 0.52], [0.5, 0.5], ls="-", color="black", lw=1.0)
+        ax.text(0.5, 0.5, "beside a whisker", ha="center", va="center", fontsize=9)
+        assert fc.reference_lines_through_text(fig) == []
+
+    def test_a_label_on_its_own_patch_is_exempt(self):
+        """An opaque patch interrupts the line, which is what the patch is for."""
+        fig, ax = _blank()
+        ax.plot([0, 1], [0, 1], ls="--", color="black", lw=1.0)
+        ax.text(0.5, 0.5, "boxed", ha="center", va="center", fontsize=9,
+                bbox=dict(facecolor="white", edgecolor="none"))
+        assert fc.reference_lines_through_text(fig) == []
+
+    def test_a_marker_only_series_is_not_a_line(self):
+        fig, ax = _blank()
+        ax.plot([0, 1], [0, 1], ls="none", marker="o", color="black")
+        ax.text(0.5, 0.5, "scatter only", ha="center", va="center", fontsize=9)
+        assert fc.reference_lines_through_text(fig) == []
+
+    def test_an_invisible_line_is_not_drawn(self):
+        fig, ax = _blank()
+        line, = ax.plot([0, 1], [0, 1], ls="--", color="black")
+        line.set_visible(False)
+        ax.text(0.5, 0.5, "hidden line", ha="center", va="center", fontsize=9)
+        assert fc.reference_lines_through_text(fig) == []
+
+    def test_an_empty_series_has_no_segments(self):
+        """Legend proxies are drawn with no data, and `zip` over one point yields nothing."""
+        fig, ax = _blank()
+        ax.plot([], [], ls="--", color="black", label="proxy")
+        ax.plot([0.5], [0.5], ls="--", color="black")
+        ax.text(0.5, 0.5, "one point", ha="center", va="center", fontsize=9)
+        assert fc.reference_lines_through_text(fig) == []
+
+    def test_a_non_finite_point_is_dropped(self):
+        fig, ax = _blank()
+        ax.plot([0, float("nan"), 1], [0, float("nan"), 1], ls="--", color="black")
+        ax.text(0.5, 0.5, "gap in the line", ha="center", va="center", fontsize=9)
+        # The surviving endpoints still span the axes, so the strike is still found.
+        assert [d["text"] for d in fc.reference_lines_through_text(fig)] == ["gap in the line"]
+
+    def test_an_axes_with_no_labels_is_skipped(self):
+        fig, ax = _blank()
+        ax.plot([0, 1], [0, 1], ls="--", color="black")
+        assert fc.reference_lines_through_text(fig) == []
+
+    def test_an_invisible_axes_is_skipped(self):
+        fig, ax = _blank()
+        ax.plot([0, 1], [0, 1], ls="--", color="black")
+        ax.text(0.5, 0.5, "hidden axes", ha="center", va="center", fontsize=9)
+        ax.set_visible(False)
+        assert fc.reference_lines_through_text(fig) == []
+
+    def test_a_text_on_another_axes_is_not_tested_against_this_line(self):
+        fig, (a, b) = plt.subplots(1, 2, figsize=(6, 3))
+        for ax in (a, b):
+            ax.set_xlim(0, 1)
+            ax.set_ylim(0, 1)
+        a.plot([0, 1], [0, 1], ls="--", color="black")
+        b.text(0.5, 0.5, "next door", ha="center", va="center", fontsize=9)
+        assert fc.reference_lines_through_text(fig) == []
+
+    def test_the_span_threshold_is_adjustable(self):
+        """A caller that wants every line measured can say so; the default keeps it quiet."""
+        fig, ax = _blank()
+        ax.plot([0.40, 0.60], [0.5, 0.5], ls="-", color="black")
+        ax.text(0.5, 0.5, "short rule", ha="center", va="center", fontsize=9)
+        assert fc.reference_lines_through_text(fig) == []
+        assert fc.reference_lines_through_text(fig, min_span_frac=0.01)
+
+
+class TestTheOpaqueLegendExemption:
+    """A legend is a patch with text on it, and exempt for the same reason a bbox is --
+    but only when the patch is opaque. Matplotlib's default framealpha is 0.8, and a series
+    running under a legend at 0.8 is visible through it."""
+
+    def _legend_figure(self, **legend_kw):
+        fig, ax = _blank()
+        ax.plot([0, 1], [0, 1], ls="-", color="black", label="series")
+        ax.legend(loc="center", **legend_kw)
+        return fig
+
+    def test_an_opaque_frame_exempts_its_entries(self):
+        assert fc.reference_lines_through_text(self._legend_figure(framealpha=1.0)) == []
+
+    def test_a_translucent_frame_does_not(self):
+        found = fc.reference_lines_through_text(self._legend_figure(framealpha=0.8))
+        assert [d["text"] for d in found] == ["series"]
+
+    def test_a_frameless_legend_does_not(self):
+        found = fc.reference_lines_through_text(self._legend_figure(frameon=False))
+        assert [d["text"] for d in found] == ["series"]
+
+    def test_a_frame_with_no_alpha_set_counts_as_opaque(self):
+        """`get_alpha()` is None until someone sets it; the default patch is solid."""
+        fig, ax = _blank()
+        ax.plot([0, 1], [0, 1], ls="-", color="black", label="series")
+        leg = ax.legend(loc="center")
+        leg.get_frame().set_alpha(None)
+        assert fc.reference_lines_through_text(fig) == []
+
+    def test_a_label_that_is_not_a_legend_entry_is_still_tested(self):
+        """The exemption is for legend text, not for every label on an axes that has one."""
+        fig, ax = _blank()
+        ax.plot([0, 1], [0, 1], ls="-", color="black", label="series")
+        ax.legend(loc="upper left", framealpha=1.0)
+        ax.text(0.6, 0.6, "loose label", ha="center", va="center", fontsize=9)
+        found = fc.reference_lines_through_text(fig)
+        assert "loose label" in [d["text"] for d in found]
+
+    def test_an_axes_with_no_legend_at_all(self):
+        fig, ax = _blank()
+        ax.plot([0, 1], [0, 1], ls="-", color="black")
+        ax.text(0.5, 0.5, "no legend here", ha="center", va="center", fontsize=9)
+        assert [d["text"] for d in fc.reference_lines_through_text(fig)] == ["no legend here"]
+
+
+class TestLabelPatchesOverSpines:
+    """The inverse of every other check here.
+
+    Those ask whether drawn ink has landed on a label. This asks whether a label's own
+    background has erased something drawn -- specifically the axes frame, which is what a
+    patch anchored on the axis limit paints over. Figure 5's factor column did exactly that
+    and printed the right spine with three gaps in it.
+    """
+
+    def _at(self, x, **kw):
+        fig, ax = _blank()
+        ax.text(x, 0.5, "39×", ha="right", va="center", fontsize=8,
+                bbox=dict(facecolor="white", edgecolor="none", pad=0.8, **kw))
+        return fig
+
+    def test_a_patch_on_the_limit_covers_the_spine(self):
+        found = fc.label_patches_over_spines(self._at(1.0))
+        assert [d["text"] for d in found] == ["39×"]
+        assert found[0]["spine"] == "right"
+        assert found[0]["cover_px"] > fc.MAX_SPINE_COVER_PX
+
+    def test_a_patch_inside_the_limit_does_not(self):
+        assert fc.label_patches_over_spines(self._at(0.94)) == []
+
+    def test_a_label_with_no_patch_is_not_a_patch(self):
+        """Bare text over a spine is the other checks' business, not this one's."""
+        fig, ax = _blank()
+        ax.text(1.0, 0.5, "39×", ha="right", va="center", fontsize=8)
+        assert fc.label_patches_over_spines(fig) == []
+
+    def test_a_translucent_patch_does_not_erase(self):
+        found = fc.label_patches_over_spines(self._at(1.0, alpha=0.4))
+        assert found == []
+
+    def test_a_patch_with_no_alpha_set_counts_as_opaque(self):
+        fig = self._at(1.0)
+        for txt in fc._visible_texts(fig):
+            if txt.get_bbox_patch() is not None:
+                txt.get_bbox_patch().set_alpha(None)
+        assert [d["text"] for d in fc.label_patches_over_spines(fig)] == ["39×"]
+
+    def test_the_tolerance_is_adjustable(self):
+        """A couple of pixels is antialiasing; the caller decides where the line is."""
+        fig = self._at(1.0)
+        assert fc.label_patches_over_spines(fig, max_cover_px=1000) == []
+        assert fc.label_patches_over_spines(fig, max_cover_px=0.0)
+
+    def test_an_axes_with_no_visible_spines_is_skipped(self):
+        fig, ax = _blank()
+        for s in ax.spines.values():
+            s.set_visible(False)
+        ax.text(1.0, 0.5, "39×", ha="right", va="center", fontsize=8,
+                bbox=dict(facecolor="white", edgecolor="none"))
+        assert fc.label_patches_over_spines(fig) == []
+
+    def test_an_invisible_axes_is_skipped(self):
+        fig = self._at(1.0)
+        fig.axes[0].set_visible(False)
+        assert fc.label_patches_over_spines(fig) == []
+
+    def test_a_text_on_another_axes_is_not_tested_against_this_frame(self):
+        fig, (a, b) = plt.subplots(1, 2, figsize=(6, 3))
+        for ax in (a, b):
+            ax.set_xlim(0, 1)
+            ax.set_ylim(0, 1)
+        b.text(1.0, 0.5, "39×", ha="right", va="center", fontsize=8,
+               bbox=dict(facecolor="white", edgecolor="none"))
+        found = fc.label_patches_over_spines(fig)
+        # It covers b's own right spine and nothing of a's.
+        assert all(d["text"] == "39×" for d in found)
+
+    def test_a_horizontal_spine_is_measured_along_its_length(self):
+        """A patch on the bottom spine hides a horizontal run, not a vertical one."""
+        fig, ax = _blank()
+        ax.text(0.5, 0.0, "wide label here", ha="center", va="center", fontsize=9,
+                bbox=dict(facecolor="white", edgecolor="none"))
+        found = fc.label_patches_over_spines(fig)
+        assert any(d["spine"] == "bottom" for d in found)
+
+    def test_the_check_reaches_check_and_names_the_spine(self):
+        with pytest.raises(fc.FigureCollision, match="painted over the right spine"):
+            fc.check(self._at(1.0), "erased_figure")
 
 
 class TestEveryShippedFigure:

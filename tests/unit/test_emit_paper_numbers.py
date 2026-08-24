@@ -356,11 +356,87 @@ class TestRegistryMacros:
         got = dict(epn.registry_macros())
         assert int(got["harnessSilent"]) <= int(got["harnessAudited"])
 
+    def test_the_small_counts_are_also_emitted_as_words(self):
+        """IEEE style spells a small number in prose, and the alternative to emitting the
+        word was transcribing it into the manuscript, where it would go stale on its own."""
+        got = dict(epn.registry_macros())
+        assert got["harnessAuditedWord"] == epn._spell(int(got["harnessAudited"]))
+        assert got["harnessSilentWord"] == epn._spell(int(got["harnessSilent"]))
+
+    def test_every_word_has_a_capitalised_twin(self):
+        """Several of these open a sentence, and a macro cannot know that it does."""
+        got = dict(epn.registry_macros())
+        words = [k for k in got if k.endswith("Word")]
+        assert words
+        for k in words:
+            cap = got[k + "Cap"]
+            assert cap == got[k][:1].upper() + got[k][1:]
+
+    def test_a_count_past_twelve_keeps_its_digits(self):
+        """Where house style stops spelling, so does this."""
+        assert epn._spell(12) == "twelve"
+        assert epn._spell(13) == "13"
+        assert epn._spell(0) == "zero"
+
     def test_a_missing_registry_yields_no_macros_rather_than_wrong_ones(self, monkeypatch):
         import harness_registry
         monkeypatch.setattr(harness_registry, "summary",
                             lambda *a, **k: (_ for _ in ()).throw(OSError("gone")))
         assert epn.registry_macros() == []
+
+class TestThePriorityResidualRange:
+    """Section V-C names a constant the model fixes in advance, and S47 used to state the
+    range the manipulated arm actually covers from two numbers typed by hand. A referee
+    pointed out that a third of the arms sit outside the constant, which makes "floor" the
+    wrong word for it -- so the range is emitted and the sentence reads off the ladder."""
+
+    def test_the_range_comes_from_the_committed_pairs(self):
+        import priority_pairs
+        got = dict(epn.priority_residual_macros())
+        rates = [p["rate_rt"] for p in priority_pairs.usable()]
+        assert got["rtResidualMin"] == "%.4f" % min(rates)
+        assert got["rtResidualMax"] == "%.4f" % max(rates)
+        assert got["rtResidualPairs"] == str(len(rates))
+
+    def test_the_range_straddles_the_constant_the_model_names(self):
+        """The finding behind the wording change: 0.004 is a scale, not a bound."""
+        got = dict(epn.priority_residual_macros())
+        assert float(got["rtResidualMin"]) < 0.004 < float(got["rtResidualMax"])
+
+    def test_missing_campaign_files_yield_no_macros_rather_than_wrong_ones(self, monkeypatch):
+        import priority_pairs
+        monkeypatch.setattr(priority_pairs, "usable",
+                            lambda *a, **k: (_ for _ in ()).throw(OSError("gone")))
+        assert epn.priority_residual_macros() == []
+
+    def test_an_empty_ladder_yields_no_macros(self, monkeypatch):
+        """min() of nothing raises; returning early says so without a traceback."""
+        import priority_pairs
+        monkeypatch.setattr(priority_pairs, "usable", lambda *a, **k: [])
+        assert epn.priority_residual_macros() == []
+
+    def test_the_group_is_wired_into_the_emitted_file(self):
+        names = {n for n, _ in epn.all_pairs(measured(load_cells(
+            Path(__file__).parent.parent.parent / "docs" / "results"
+            / "external_campaigns_index.csv")))}
+        assert {"rtResidualMin", "rtResidualMax", "rtResidualPairs"} <= names
+
+
+class TestTheSignedPayloadSlope:
+    """One word and one sign for one quantity. The ledger emitted only the magnitude, so
+    Section V-D said "exponent 0.339" while Figure 6 drew "slope -0.34" from the same fit."""
+
+    def test_the_slope_is_signed_and_the_exponent_is_its_magnitude(self):
+        got = dict(epn.stat_macros())
+        assert got["tailSlope"].startswith("-")
+        assert abs(float(got["tailSlope"])) == round(float(got["tailExponent"]), 2)
+
+    def test_the_interval_carries_its_own_math_so_the_signs_print_as_minus(self):
+        got = dict(epn.stat_macros())
+        assert "$" in got["tailSlopeCI"], "used inside $...$; the word must leave math mode"
+        lo, hi = got["tailSlopeCI"].split("$ to $")
+        assert float(lo) < float(got["tailSlope"]) < float(hi)
+
 
     def test_the_group_is_wired_into_the_emitted_file(self):
         names = {n for n, _ in epn.all_pairs(measured(load_cells(

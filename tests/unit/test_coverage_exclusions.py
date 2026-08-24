@@ -36,6 +36,9 @@ MAIN_GUARD = re.compile(r'^if __name__ == ([\'"])__main__\1:')
 #: Every exclusion that is not a `__main__` dispatch, as (file, the code it hides, why).
 #: A new entry here is a deliberate act; an exclusion that is not here fails the test below.
 ALLOWED = {
+    ("figure_collisions.py", "except (ValueError, RuntimeError):"):
+        "a text extent that the backend cannot measure; Agg always can, so the branch is "
+        "unreachable here and exists so the gate degrades rather than crashes elsewhere",
     ("emit_paper_numbers.py", "except ImportError:"):
         "stat_intervals ships beside this file",
     ("fetch_statsbomb_corpus.py", "def _default_get(url, timeout=60):"):

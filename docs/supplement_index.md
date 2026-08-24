@@ -158,6 +158,30 @@ were three hundred words short each --- and adjusting `\topfraction` and its nei
 changed the layout by nothing at all: those pages were not float-starved, the floats were the
 content.
 
+## Round 20 (2026-08-24): the referee's three substantive items
+
+Three defects, three minors and three recommendations, plus the reference cap. Everything the
+main text gave up is below; nothing lost a number or a citation.
+
+| Supp. section | Content | Moved from |
+|---|---|---|
+| S53 | Why the two drivers differ, and how a difference of two floored clocks admits exactly one negative value | main text IV-D (about 130 words) |
+| S54 | The permutation null, constructed: exchangeability under the continuum, 10^4 permutations, and why it has no power where the predictions coincide | main text IV-C |
+| S55 | The overnight campaign prediction by prediction --- the duration-invariance counts that killed the drift account, and the linear extrapolation that failed | main text IV-B |
+
+**The reference cap decided two placements.** Round 20 added five citations to a list of
+forty-two and 45 is the cap, so two came back out. `wrk2_src` keeps its entry in S36's
+generated table, which cites every audited tool by construction, and loses its per-tool
+citation in the main text; the library-refusal class is still counted from the registry and
+still described. `swami2026observability` moved to S52.1, beside the Villain argument it
+supports, rather than into Section II-B.
+
+**KAFKA-19888 moved the other way**, up from S36 into Section IV-D. The reason it was held
+back --- that its mechanism is wall-clock non-monotonicity and would invite confusion with
+Mode A --- is right about Mode A and does not apply to Mode B, where the finding is that a
+first-party vendor chose the substitution class this paper says is worse than filtering. The
+main text names the mechanism so the two cannot be confused.
+
 ## Figure inventory
 
 `docs/results/figures/` holds fifteen PDFs. Twelve are included by a document; three are not,

@@ -122,24 +122,29 @@ def span_macros(path=SPAN_CSV):
     # Per-backend, because pooling hides the only control that separates "a property of
     # Kafka's client" from "a property of an acknowledgement-referenced span". Both backends
     # stamp on one host and one clock, so the broker is the sole variable across the columns.
+    #
+    # Only what the manuscript quotes is emitted. A generated file carrying macros nobody
+    # reads is a place for a stale number to survive a revision, and the split already has
+    # more counters than the text needs.
     rows = recount_spans.read_csv(path)
-    for backend, split in recount_spans.by_backend(rows).items():
+    split = recount_spans.by_backend(rows)
+    floors = []
+    for backend, agg in split.items():
         key = backend[:1].upper() + backend[1:]
         if not key.isalpha():  # macro names are LaTeX control words
             continue
+        floors.append(agg["send_span_floor_us"])
         out.extend([
-            ("span%sRuns" % key, latex_thousands(split["runs"])),
-            ("span%sEvents" % key, latex_thousands(split["events"])),
-            ("span%sNegAck" % key, latex_thousands(split["neg_ack"])),
-            ("span%sNegAckPct" % key, "%.2f" % split["pct_ack"]),
-            ("span%sNegSend" % key, latex_thousands(split["neg_send"])),
-            ("span%sNegOutputSend" % key, latex_thousands(split["neg_output_send"])),
-            ("span%sNegTti" % key, latex_thousands(split["neg_tti"])),
-            ("span%sRunsAckInverts" % key, latex_thousands(split["runs_ack_inverts"])),
+            ("span%sEvents" % key, latex_thousands(agg["events"])),
+            ("span%sNegAck" % key, latex_thousands(agg["neg_ack"])),
+            ("span%sNegAckPct" % key, "%.2f" % agg["pct_ack"]),
             ("span%sRunsAckInvertsPct" % key, "%.0f" % (
-                100.0 * split["runs_ack_inverts"] / split["runs"] if split["runs"] else 0.0)),
-            ("span%sSendFloorUs" % key, "%.0f" % split["send_span_floor_us"]),
+                100.0 * agg["runs_ack_inverts"] / agg["runs"] if agg["runs"] else 0.0)),
         ])
+    # The pooled floor is the smaller of the two; the manuscript says so, so the other one
+    # has to be a number it can print rather than a claim it makes.
+    if len(floors) > 1:
+        out.append(("spanSendFloorOtherUs", "%.0f" % max(floors)))
     return out
 
 

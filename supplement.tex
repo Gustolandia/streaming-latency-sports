@@ -2913,7 +2913,9 @@ workstation testbed runs the brokers in containers with no hypervisor beneath th
 audit rejects $62.4\%$ of its runs, against $51.9\%$ on the cloud instances. The effect is
 larger where there is no hypervisor at all. Two further observations disagree with a
 steal-time account: real-time priority is a guest-side control and collapses the rate
-$\rtLowFactor$--$\rtHighFactor\times$, which stolen vCPU time would not yield to; and the
+$\rtLowFactor$--$\rtHighFactor\times$ (the two matched pairs; Section~V-B of the main
+text gives $7$--$80\times$ across the load sweep), which stolen vCPU time would not
+yield to; and the
 $\tracedModeLo$--$\tracedModeHi$~ms mode sits on the guest kernel's own base-slice arithmetic
 rather than on any quantity the hypervisor exposes. Steal time may still contribute on the
 cloud instances, where the mechanism campaigns were run; what the workstation shows is that it
@@ -2957,7 +2959,26 @@ rather than a datum: it is not a censored observation but the reference stamp fa
 belongs in a sign-separated count and in a run-level rejection, never averaged into a
 distribution.
 
-\subsection{S43.6. Where the repairs belong}
+\subsection{S43.6. The redesign that does not help}
+
+A reader who accepts the mechanism usually proposes the same fix: have the consumer
+acknowledge back to the producer, so that one clock times a round trip and the two-clock
+problem disappears. It is the right instinct and it does remove skew, but it does not remove
+this failure, for two separate reasons.
+
+The first is that it measures the wrong quantity. A producer-side round trip is not the
+staleness of a record at the consumer, and staleness at the consumer is what a streaming
+pipeline is judged on. Substituting the one for the other answers an easier question than the
+one asked.
+
+The second is that the stall does not care how many clocks are involved. Every negative in
+this corpus was produced on a single clock, and the arm in which both processes read that one
+clock is the arm the audit rejects most, at $62.4\%$. A round trip still ends with a thread
+being woken and scheduled before it can read the clock, so it inherits the same late reference
+stamp the acknowledgment span has. Collapsing two clocks into one removes a term the corpus
+already shows is not the cause.
+
+\subsection{S43.7. Where the repairs belong}
 
 No layer here misbehaves, which is why the fix is not obvious from inside any one of them.
 The kernel schedules as designed, the clients return as soon as they can, the brokers

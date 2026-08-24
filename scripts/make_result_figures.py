@@ -294,19 +294,49 @@ def mechanism_arms():
     return arms
 
 
-def plot_mechanism(ax, arms):
+def backend_arms(path=None):
+    """(label, "observed", negatives, events) for each broker, from the span recount.
+
+    These are not manipulations and must not be drawn as though they were. They answer the
+    other question a reader has about the mechanism -- whether it is a property of one
+    client -- and they answer it by holding the clock, the host and the span fixed and
+    changing the broker. Same artefact as Table~II, so figure and table cannot disagree.
+    """
+    import recount_spans
+    path = path or (RESULTS / "span_recount.csv")
+    if not Path(path).exists():
+        return []
+    pretty = {"kafka": "Kafka", "redis": "Redis"}
+    out = []
+    for backend, agg in recount_spans.by_backend(recount_spans.read_csv(str(path))).items():
+        if not agg["events"]:
+            continue
+        out.append((pretty.get(backend, backend), "observed", agg["neg_ack"], agg["events"]))
+    return out
+
+
+def plot_mechanism(ax, arms, observed=()):
     """A forest of Wilson intervals: the manipulations, and whether they overlap.
 
     The table gives the numbers. What the table cannot show at a glance is that the two arms
     of every pair are disjoint, which is the whole causal claim: move occupancy at fixed
     utilisation and the rate moves with it.
+
+    Below a rule, and only if supplied, the same axis carries the two brokers. Their intervals
+    are tight and mutually overlapping, so the one glance that shows every manipulated pair
+    separating also shows the broker making no difference. They are drawn in the neutral grey
+    reserved for "not a manipulated arm".
     """
+    rows = list(arms) + list(observed)
     labels, y = [], []
-    for i, (group, arm, k, n) in enumerate(arms):
+    for i, (group, arm, k, n) in enumerate(rows):
         rate = k / n
         lo, hi = stat_intervals.wilson(k, n)
-        pos = len(arms) - i
-        colour = ACCENT if arm in ("real-time", "concentrated") else KEPT
+        pos = len(rows) - i
+        if arm == "observed":
+            colour = GREY
+        else:
+            colour = ACCENT if arm in ("real-time", "concentrated") else KEPT
         ax.plot([lo, hi], [pos, pos], color=colour, lw=1.6, solid_capstyle="butt")
         ax.plot([rate], [pos], "o", ms=4.2, color=colour, mec="none")
         labels.append("%s, %s" % (group, arm))
@@ -317,9 +347,18 @@ def plot_mechanism(ax, arms):
     ax.set_xlabel("inversion rate (Wilson 95% interval)", fontsize=7.5)
     ax.tick_params(axis="x", labelsize=7)
     ax.grid(axis="x", alpha=0.25, lw=0.5)
-    ax.set_xlim(0, max(stat_intervals.wilson(k, n)[1] for _, _, k, n in arms) * 1.10)
+    ax.set_xlim(0, max(stat_intervals.wilson(k, n)[1] for _, _, k, n in rows) * 1.10)
     for i in range(0, len(arms), 2):
-        ax.axhspan(len(arms) - i - 1.5, len(arms) - i + 0.5, color=GREY, alpha=0.05, zorder=0)
+        ax.axhspan(len(rows) - i - 1.5, len(rows) - i + 0.5, color=GREY, alpha=0.05, zorder=0)
+    if observed:
+        # The rule is the point: everything above it was moved on purpose, everything below
+        # it was only observed. Without it the brokers read as a fifth matched pair.
+        ax.axhline(len(observed) + 0.5, color=GREY, lw=0.7, ls=(0, (4, 2)), zorder=1)
+        ax.text(ax.get_xlim()[1], len(observed) + 0.62, "manipulated", fontsize=5.6,
+                color=GREY, ha="right", va="bottom")
+        ax.text(ax.get_xlim()[1], len(observed) + 0.38, "observed", fontsize=5.6,
+                color=GREY, ha="right", va="top")
+    ax.set_ylim(0.4, len(rows) + 0.6)
 
 
 # --- the interval being measured decides the rate -------------------------------------------
@@ -373,8 +412,10 @@ def plot_ttrue(ax, pts):
 
 
 def build_mechanism(out_dir):
-    fig, ax = plt.subplots(figsize=(3.4, 2.12))
-    plot_mechanism(ax, mechanism_arms())
+    # Two extra rows and a rule. The panel grows by less than the row count: the arms were
+    # set with room to spare and the column budget has none.
+    fig, ax = plt.subplots(figsize=(3.4, 2.30))
+    plot_mechanism(ax, mechanism_arms(), backend_arms())
     fig.tight_layout()
     return _save(fig, out_dir, "mechanism_forest")
 

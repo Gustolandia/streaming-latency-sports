@@ -61,15 +61,15 @@ Streaming brokers are compared on sub-millisecond paths with instruments whose t
 exceed the intervals they report. One ratio governs what follows: an instrument timescale
 over the interval measured. Two consequences of that ratio exceeding one are invisible in
 the output. First, a measured latency can come out
-negative, because one of the two stamps is written by a thread that must first be scheduled
-and that stall can outlast the delivery being timed. A sign check rejected $1{,}321$ of
+negative, because one of two stamps is written by a thread that must first be scheduled,
+and that stall can outlast the delivery timed. A sign check rejected $1{,}321$ of
 $2{,}266$ runs. Across $\spanEvents$ events the acknowledgment-referenced span inverts
 $\spanNegAck$ times while the send-referenced span never does,
 on one clock by construction, so the cause is scheduling and not synchronization; real-time
 priority at fixed utilization collapses it $7$--$80\times$. Second, the most
 widely used cross-broker benchmark admits an \emph{end-to-end} sample only when a
 millisecond-quantized difference is positive and counts none of what it drops, while
-measuring its same-process span with a nanosecond clock and no filter: over
+measuring its same-process span with a nanosecond clock, unfiltered: over
 $\ombGridMedianCells$ embedded-mode cells reporting a median on the millisecond grid it
 computed that median from $\ombGridRetentionMin\%$ to $\ombGridRetentionMax\%$ of the
 samples taken, at a retained fraction fixed by the send-interval-to-quantum ratio. The
@@ -133,7 +133,9 @@ utilization reached by two core geometries differs $2.07\times$;
 lengthening the true transport $77\times$ \emph{lowers} the rate; an unfitted kernel trace
 predicts the observed rate to within a third. The span that inverts is referenced to an
 acknowledgment, and the send-referenced span over the same $\spanEvents$ events never
-inverts, which locates the fault in the reference stamp rather than in the delivery.
+inverts, locating the fault in the reference stamp. Two brokers sharing neither client nor
+protocol invert at $\spanKafkaNegAckPct\%$ and $\spanRedisNegAckPct\%$ on one clock: the
+fault follows the span, not the system under test.
 
 \item \textbf{An audit, and the reporting rules that follow} (Sections~\ref{sec:gate}
 and~\ref{sec:authors}). A sign check applied uniformly to all $2{,}266$ runs rejected
@@ -723,7 +725,9 @@ rather than of impossible physics, which is precisely what the gate is for.
 \begin{table}[t]
 \caption{\textbf{Negatives by span and broker} ($\spanRuns$ runs, $\spanEvents$ events,
 one clock). Only the acknowledgment-origin span inverts, and under both brokers
-($\spanKafkaNegAckPct\%$, $\spanRedisNegAckPct\%$); the causal chains never do.}
+\kafka{} $\spanKafkaNegAckPct\%$ of events, \redis{} $\spanRedisNegAckPct\%$. The causal
+chains are clean under each broker, so their per-broker columns are dashed rather than
+repeat a zero three times.}
 \label{tab:spans}
 \centering
 \footnotesize
@@ -732,10 +736,11 @@ one clock). Only the acknowledgment-origin span inverts, and under both brokers
 \toprule
 Span & Origin stamp & \kafka{} & \redis{} & All \\
 \midrule
-$t_{\mathrm{recv}}-t_{\mathrm{ack}}$  & acknowledgment & $\spanKafkaNegAck$ & $\spanRedisNegAck$ & $\spanNegAck$ \\
-$t_{\mathrm{recv}}-t_{\mathrm{send}}$ & send (chain)   & $\spanKafkaNegSend$ & $\spanRedisNegSend$ & $\spanNegSend$ \\
-$t_{\mathrm{out}}-t_{\mathrm{send}}$  & send (chain)   & $\spanKafkaNegOutputSend$ & $\spanRedisNegOutputSend$ & $\spanNegOutputSend$ \\
-\tti{}                                & emission       & $\spanKafkaNegTti$ & $\spanRedisNegTti$ & $\spanNegTti$ \\
+$t_{\mathrm{recv}}-t_{\mathrm{ack}}$ & acknowledgment & $\spanKafkaNegAck$ & $\spanRedisNegAck$ & $\spanNegAck$ \\
+\midrule
+$t_{\mathrm{recv}}-t_{\mathrm{send}}$ & send (chain) & --- & --- & $\spanNegSend$ \\
+$t_{\mathrm{out}}-t_{\mathrm{send}}$ & send (chain) & --- & --- & $\spanNegOutputSend$ \\
+\tti{} & emission & --- & --- & $\spanNegTti$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -806,11 +811,11 @@ Manipulation & Arm & Rate & 95\% CI & Factor ($z$)\\
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.82\columnwidth]{docs/results/figures/mechanism_forest.pdf}
-\caption{\textbf{Every manipulation, and no overlap.} Wilson $95\%$ intervals for the four
-matched pairs of Table~\ref{tab:mechanism}: real-time priority against ordinary at two
-utilizations, and concentrated against spread geometry at equal $\rho$ in two campaigns.
-Utilization is held fixed within each pair, so what moves the rate is where the stamping
-thread sits, not how loaded the machine is.}
+\caption{\textbf{Every manipulation separates; the broker does not.} Wilson $95\%$
+intervals. Above the rule, the four matched pairs of Table~\ref{tab:mechanism}, utilization
+held fixed within each: what moves the rate is where the stamping thread sits, not how
+loaded the machine is. Below it, observed rather than manipulated, the two brokers of
+Table~\ref{tab:spans}; their intervals are narrower than the plotted point.}
 \label{fig:mechanism}
 \end{figure}
 
@@ -960,38 +965,36 @@ rule rather than a better clock.
 \subsection{For benchmark authors}
 \label{sec:authors}
 
-\textbf{Report a physical-consistency audit.} Any cross-process timestamp difference admits a sign
-check that costs nothing; every run it rejected here had passed every conventional check we
-knew. Better instruments
-exist~\cite{yang2022cloudprofiler,kogias2019lancet,kundel2024p4sta}; whatever the
-instrument, check its output against causality and publish the rejection rate, as network clocks
-have for thirty years~\cite{paxson1998calibrating,paxson2004sound}. A rejection rate
-demonstrates nothing when it is small; the discipline is tested only by a campaign it costs
-something, and ours cost us a result.
+\textbf{Report a physical-consistency audit.} Any cross-process timestamp difference admits
+a sign check that costs nothing, and every run it rejected here had passed every conventional
+check we knew. Better instruments
+exist~\cite{yang2022cloudprofiler,kogias2019lancet,kundel2024p4sta}; whatever the instrument,
+check its output against causality and publish the rejection rate, as network clocks have for
+thirty years~\cite{paxson1998calibrating,paxson2004sound}. The discipline is tested only by a
+campaign the rate costs something, and ours cost us a result.
 
-\textbf{Name the span you are subtracting.} A difference between two stamps is a latency
-only if the first event causally precedes the second, and an acknowledgment at the producer
-does not precede a record at the consumer (Section~\ref{sec:testbeds}). The corpus caught our
-own instance only when we counted the send-referenced span separately
-(Table~\ref{tab:spans}).
+\textbf{Name the span you are subtracting.} A difference of two stamps is a latency only if
+the first event causally precedes the second, and an acknowledgment at the producer does not
+precede a record at the consumer (Section~\ref{sec:testbeds}). We caught our own instance
+only on counting the send-referenced span separately (Table~\ref{tab:spans}).
 
-\textbf{Count your events before you quote a percentile.} A median over as few as seven events per
-run is not a property of the system, and it survives a hundred
-runs: a deterministic per-run artifact reproduces beautifully.
+\textbf{Count your events before you quote a percentile.} A median over as few as seven
+events per run is not a property of the system, and it survives a hundred runs: a
+deterministic per-run artifact reproduces beautifully.
 
 \textbf{Make the timestamping path unpreemptable, and say that you did.} The one mitigation
 our measurements support directly: real-time priority on the stamping threads cut the
-inversion rate $7$ to $80\times$ at unchanged background load. Busy-polling on a dedicated core should buy the same at the price of
-a burned core. Two caveats: the floor is not zero, so the check stays; and a real-time or spinning
-stamping thread changes the system it measures --- where that is unacceptable, report
-retention instead.
+inversion rate $7$ to $80\times$ at unchanged background load, and busy-polling a dedicated
+core should buy the same for a burned core. Two caveats: the floor is not zero, so the check
+stays; and a real-time or spinning stamping thread changes the system it measures, so where
+that is unacceptable, report retention instead.
 
 \textbf{Dither the send instant, and publish the retention rate.} Randomizing probe timing
 to avoid synchronizing with a periodic phenomenon is long-standing
-advice~\cite{rfc2330,rfc3432}; what we add is why --- the phenomenon
-being synchronized with is the timestamp quantum itself. Publish beside the latency the retention rate, the timestamp
-resolution and the synchronization state, none of which is recoverable afterwards: a summary
-from $\ombGridRetentionMin\%$ of samples is typographically identical to one from all.
+advice~\cite{rfc2330,rfc3432}; what we add is why --- the phenomenon synchronized with is the
+timestamp quantum itself. Publish beside the latency the retention rate, the timestamp
+resolution and the synchronization state, none recoverable afterwards: a summary from
+$\ombGridRetentionMin\%$ of samples is typographically identical to one from all.
 Neither half of the rule is unprecedented --- OWAMP requires a packet stamped in the future to
 be recorded unaltered within its timeout window~\cite{rfc4656}, ETSI requires removed measurement cycles to be
 reported~\cite{etsi102250}, and RFC~7679 treats negative
@@ -1011,16 +1014,13 @@ one-millisecond stamp, $70\,\mu$s and $70$~ns produce byte-identical records: th
 deletes the same samples and the grid law is unchanged. The remedies are therefore ordered:
 record at native resolution, count what is discarded, dither the send instant, and only then
 does synchronization quality become the frontier --- our own cross-host retention wandered
-$13.4$--$27.0\%$ under clocks agreeing to well under a tick (Section~\ref{sec:generality}). Where one-way synchronization is genuinely required, designs that
-remove the requirement predate the clouds needing them --- round-trip measurement on one
-clock with offset recovered from the delay envelope~\cite{paxson1998calibrating}, and
-software-only synchronization from probe traffic~\cite{geng2018huygens} --- each resting on
-an assumption its users rarely state, which Supplement~S37 documents.
+$13.4$--$27.0\%$ under clocks agreeing to well under a tick
+(Section~\ref{sec:generality}). Designs that remove the one-way requirement predate the
+clouds needing it~\cite{paxson1998calibrating,geng2018huygens}, each resting on an assumption
+its users rarely state (Supplement~S37).
 
-One redesign deserves a direct answer: have the consumer acknowledge back to the producer, so
-one clock times a round trip. It removes skew, not this failure. A producer-side round trip is not the staleness of an event at the consumer, which is what a
-streaming pipeline is judged on, and the stall does not care how many clocks are involved ---
-the arm where both processes read one clock is the arm the audit rejects most ($62.4\%$).
+The obvious redesign does not help either: a consumer-to-producer acknowledgment removes
+skew but not this failure, and it measures the wrong thing (Supplement~S43).
 
 \paragraph{Resolution, as distinct from synchronization} Finer stamps fix the lesser half. A
 microsecond stamp makes $T_{\mathrm{true}}/\tau \gg 1$ here, so Equation~\ref{eq:retention}'s
@@ -1068,8 +1068,9 @@ closes the channel a second time on headroom rather than on shared endpoints. Bo
 differences, so a clock-domain discrepancy displaces both alike; what differs is the
 headroom. An offset able to explain the deepest inversion, $\spanDeepestInversionMs$~ms,
 would drive the send-referenced span about that far below zero --- yet over $\spanRuns$ runs
-it never goes negative, and its lowest value anywhere is $+\spanSendFloorUs\,\mu$s. That
-floor bounds any such offset at $\spanOffsetMargin\times$ too small; in the
+it never goes negative, and its lowest value is $+\spanSendFloorUs\,\mu$s, the smaller of
+the two brokers' floors against $+\spanSendFloorOtherUs\,\mu$s. That floor bounds any such
+offset at $\spanOffsetMargin\times$ too small; in the
 $\spanRunsAckInverts$ runs where the acknowledgment span inverts, the send span stays clean
 in $\spanRunsAckOnlyPct\%$, over an identical event set. The bound is worth keeping: on one
 host two clock reads cannot disagree by more than $\spanSendFloorUs\,\mu$s without a measured

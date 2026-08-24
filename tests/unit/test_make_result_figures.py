@@ -154,12 +154,19 @@ def test_every_powered_arm_lies_below_the_continuum_diagonal():
     assert all(r["d_obs"] < r["d_null"] for r in powered)
 
 
-def test_plot_grid_draws_one_marker_per_arm_and_labels_both_classes():
+def test_plot_grid_draws_one_marker_per_arm_and_labels_every_class():
+    """Three classes, not two.
+
+    Powered against underpowered is not the distinction the claim turns on: one powered arm
+    does not reject after correction, and drawing it like the nine that do showed ten
+    successes where the text claims nine. The counts stay pinned because they are what
+    catches an arm silently dropped from the figure.
+    """
     fig, ax = plt.subplots()
     mrf.plot_grid(ax, mrf.grid_rows())
-    assert len(ax.lines) == 1 + 12 + 2  # diagonal, twelve arms, two legend proxies
+    assert len(ax.lines) == 1 + 12 + 3  # diagonal, twelve arms, three legend proxies
     labels = [t.get_text() for t in ax.get_legend().get_texts()]
-    assert labels == ["powered (10)", "underpowered (2)"]
+    assert labels == ["rejects the null (9)", "unresolved (1)", "no power (2)"]
 
 
 # --- builders ----------------------------------------------------------------------------

@@ -28,6 +28,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from check_paper_omb_numbers import load_cells, measured  # noqa: E402
+import audit_ledger  # noqa: E402
 import recount_spans  # noqa: E402
 
 DEFAULT_OUT = os.path.join("docs", "generated", "paper_numbers.tex")
@@ -675,12 +676,35 @@ def clocksource_macros():
     ]
 
 
+def audit_macros():
+    """The consistency audit, from the two per-condition integrity files.
+
+    These were literals in both documents for sixteen rounds -- the only headline outside the
+    ledger, and the one in the contribution about publishing the record behind a number. They
+    reproduce exactly from the audit's own outputs; what was missing was the derivation, so a
+    reader had to know which of several CSVs to open. Now they are emitted like everything
+    else.
+    """
+    a = audit_ledger.audit()
+    total, work, cloud = a["total"], a["workstation"], a["cloud"]
+    out = []
+    for prefix, c in (("", total), ("Workstation", work), ("Cloud", cloud)):
+        out.extend([
+            ("auditRuns" + prefix, latex_thousands(c["runs"])),
+            ("auditRejected" + prefix, latex_thousands(c["rejected"])),
+            ("auditPct" + prefix, "%.1f" % c["pct"]),
+            ("auditConditions" + prefix, latex_thousands(c["conditions"])),
+            ("auditUsableConditions" + prefix, latex_thousands(c["usable_conditions"])),
+        ])
+    return out
+
+
 def all_pairs(m):
     return (list(macros(m)) + span_macros() + stat_macros() + grid_macros()
             + retention_macros() + traced_macros() + tost_macros()
             + mechanism_macros() + kernel_macros() + registry_macros()
             + registry_sources_macro()
-            + clocksource_macros() + traced_ratio_macros())
+            + clocksource_macros() + traced_ratio_macros() + audit_macros())
 
 
 def render(m):

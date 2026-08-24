@@ -1185,7 +1185,7 @@ imputation we use.
 \end{enumerate}
 
 The cost is one pass over data the harness already produces. In our implementation the rule is
-under two hundred lines and runs in seconds over $2{,}266$ runs, which is why we argue it
+under two hundred lines and runs in seconds over $\auditRuns$ runs, which is why we argue it
 belongs in routine practice rather than in a dedicated study.
 
 \paragraph{When it matters most.} Equation~3 of the main text tells a reader where to
@@ -1209,7 +1209,7 @@ the flag meant to produce it; (12)~where retention differs between arms, bound t
 Rules (2), (3), (6), (7), (9) and (11) are stated, each with the incident that taught it,
 in supplementary material S17. The cost is one pass over data the harness already
 produces; our implementation is under two hundred lines and runs in seconds over
-$2{,}266$ runs, which is why we argue it belongs in routine practice rather than in a
+$\auditRuns$ runs, which is why we argue it belongs in routine practice rather than in a
 dedicated study.
 \section{S18. Related work in full: variability literature and the result-by-result map (moved from the main text)}
 
@@ -1394,7 +1394,7 @@ the main text is needed for one row only.}
 \toprule
 Claim (section) & Campaign & Runs per cell \\
 \midrule
-Audit rejection rates (main text) & all corpora & $2{,}266$ runs total \\
+Audit rejection rates (main text) & all corpora & $\auditRuns$ runs total \\
 H1 effect size (main text) & co-located vs network & 15 per delay level \\
 H2 utilization shape (main text) & E-A, E-A3 & 25 per load level \\
 H4 process count (main text) & E-A2 & 15 per level \\
@@ -1932,16 +1932,25 @@ why mean-based counters could not see the effect and the direct trace was necess
 Table~\ref{tab:audit} is the consistency audit of every run; Table~\ref{tab:h3} the two stamping modes; Table~\ref{tab:netem} the injected one-way delay.
 
 \begin{table}[t]
-\caption{Consistency audit of every run in the study.}
+\caption{Consistency audit of every run behind a reported result. Every count is
+derived at build time from \texttt{integrity\_windows/clock\_integrity\_by\_condition.csv}
+and \texttt{integrity\_by\_condition.csv}, the audit's own outputs. A condition is usable
+only if all of its runs survive. This corpus is not the span recount of the main text's
+Table~II, which covers every cloud run that produced matched events rather than every run
+behind a result.}
 \label{tab:audit}
 \begin{tabular}{lrrrr}
 \toprule
 Corpus & Runs & Rejected & Conditions & Usable \\
 \midrule
-A (single machine) & 1{,}382 & 862 (62.4\%) & 76 & 8 \\
-B (four machines)  &   884 & 459 (51.9\%) & 40 & 13 \\
+A (single machine) & \auditRunsWorkstation{} & \auditRejectedWorkstation{}
+  (\auditPctWorkstation\%) & \auditConditionsWorkstation{} &
+  \auditUsableConditionsWorkstation{} \\
+B (four machines)  & \auditRunsCloud{} & \auditRejectedCloud{} (\auditPctCloud\%) &
+  \auditConditionsCloud{} & \auditUsableConditionsCloud{} \\
 \midrule
-Total              & 2{,}266 & 1{,}321 (58.3\%) & 116 & 21 \\
+Total              & \auditRuns{} & \auditRejected{} (\auditPct\%) & \auditConditions{} &
+  \auditUsableConditions{} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -2329,6 +2338,14 @@ the pre-registrations that failed. It is kept in full because an audit's credibi
 its own failures being visible, and because a reader checking whether the corrections were
 real should not have to take the summary on trust.
 
+\subsection{S35.0. The phase excluded from every result}
+
+Measurement perturbs, and one early phase perturbed enough to be unusable: it pinned the load
+generator to a subset of cores while utilization was measured across all of them, diluting
+$\rho$. Every number in the main text excludes it, and the campaigns that remain measure
+utilization with no core pinning. It is recorded here rather than dropped because a phase
+removed without saying so is the same omission this paper is about.
+
 \subsection{S35.1. The answer we obtained first, and why it was wrong}
 \label{sec:attribution}
 
@@ -2337,8 +2354,11 @@ was monotone in concurrency, significant after correction ($p = 9.0\times10^{-11
 a tidy architectural story: a twentyfold end-to-end gap between the two brokers. It passed
 replicate counts, effect sizes, corrected significance and sanity plots.
 
-Two independent defects destroyed it. The sign check of the main text's consistency check rejected $862$ of the $1{,}382$ runs on that testbed, including every
-run behind the headline. Separately, the twentyfold gap itself was a per-run start-up cost
+Two independent defects destroyed it. The sign check of the main text's consistency
+check rejected $\auditRejectedWorkstation$ of the $\auditRunsWorkstation$ runs on that
+testbed, including every run behind the headline: only
+$\auditUsableConditionsWorkstation$ of that testbed's $\auditConditionsWorkstation$
+conditions survive it. Separately, the twentyfold gap itself was a per-run start-up cost
 read as a per-event constant: the median was taken over as few as seven events per run, and a
 deterministic per-run artifact reproduces across a hundred runs beautifully. The second
 defect is the more instructive one, because the run data were causally consistent throughout.
@@ -2910,7 +2930,8 @@ instruments we audited uses it.
 
 Virtualization is not necessary either, and our own numbers point the other way. The
 workstation testbed runs the brokers in containers with no hypervisor beneath them and the
-audit rejects $62.4\%$ of its runs, against $51.9\%$ on the cloud instances. The effect is
+audit rejects $\auditPctWorkstation\%$ of its assessed runs, against
+$\auditPctCloud\%$ on the cloud instances. The effect is
 larger where there is no hypervisor at all. Two further observations disagree with a
 steal-time account: real-time priority is a guest-side control and collapses the rate
 $\rtLowFactor$--$\rtHighFactor\times$ (the two matched pairs; Section~V-B of the main
@@ -2943,7 +2964,7 @@ the priority manipulation does not cleanly separate it, because a thread raised 
 \texttt{SCHED\_FIFO} also reaches the acquisition queue sooner. Third, magnitude does not
 separate them either: the default switch interval and the base slice of Section~V-D are both
 of millisecond order, so neither mechanism is excluded by the size of the delay it would
-produce. Note what the first point costs us here --- Figure~8 cannot adjudicate between them,
+produce. Note what the first point costs us here --- Figure~7 cannot adjudicate between them,
 because it is built from the tracepoints that miss one of the two entirely.
 
 What settles it is the direction of the disagreement rather than any of those. If a second
@@ -3007,7 +3028,7 @@ one asked.
 
 The second is that the stall does not care how many clocks are involved. Every negative in
 this corpus was produced on a single clock, and the arm in which both processes read that one
-clock is the arm the audit rejects most, at $62.4\%$. A round trip still ends with a thread
+clock is the arm the audit rejects most, at $\auditPctWorkstation\%$. A round trip still ends with a thread
 being woken and scheduled before it can read the clock, so it inherits the same late reference
 stamp the acknowledgment span has. Collapsing two clocks into one removes a term the corpus
 already shows is not the cause.
@@ -3033,5 +3054,73 @@ publish retention, timestamp resolution and synchronization state; never differe
 server-assigned stamp against a client clock without saying so; dither the send instant; and
 record the achieved rate.
 \end{itemize}
+
+
+\section{S44. The scheduler constants, derived}
+\label{sec:slice-derivation}
+
+The main text states the base slice and moves on; this is where it comes from. The constants
+are \emph{derived} from the published kernel package and the campaign's own data rather than
+measured, which is weaker evidence than a measurement and is reported as such.
+
+The core count is recovered from the experiment rather than assumed: each geometry condition
+loads $k$ cores and records the achieved utilization, so $k/\rho$ recovers $\testbedCpus$ six
+times over with a spread of $\cpuEstimateSpread$. The kernel's own rule then gives the base
+slice, $\sliceFactor \times 0.75\,\mathrm{ms} = \baseSliceMs$~ms --- the maintainers'
+arithmetic, ``0.75 msec * (1 + ilog(ncpus)) \ldots 3.00 for 8 cpus and
+above''~\cite{zhou2025slice}. It is specific to this kernel: the constant became $0.70$~ms in
+v6.15, after our 6.8. The build sets \texttt{CONFIG\_HZ}${=}\kernelHz$, a $\tickMs$~ms tick.
+
+With run-to-parity a woken thread that loses the wakeup-preemption check waits for the
+incumbent to exhaust that slice, and the expiry is noticed at the tick. That tick is also why
+the mode is a band and not a spike: the same posting notes a task ``can only wait until the
+next tick to consider that it has reached its deadline, and will run 1ms longer''.
+
+No scheduler tunable is written anywhere in the archived campaign, which is why the derived
+value is the one that applied. It is strong evidence rather than proof.
+
+
+\section{S45. The metric map (moved from the main text)}
+\label{sec:metric-map}
+
+Figure~\ref{fig:pipeline-supp} is the orientation diagram the main text used to open its
+method section with. It was moved here when the main figures were redrawn at printable type
+size: the four stamps it names are drawn again, with more detail, in the main text's
+Figure~1(a), and what remains particular to this one is the mapping from stamps to named
+metrics --- which interval each reported quantity actually covers.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{docs/results/figures/pipeline_schematic.pdf}
+\caption{\textbf{The four timestamps, and the span each metric covers.} Scheduling lag is
+measured inside one process. Broker transport subtracts a producer-side stamp from a
+consumer-side one, so it can come out negative when either process is delayed.}
+\label{fig:pipeline-supp}
+\end{figure}
+
+
+\section{S46. Grid membership, arm by arm (moved from the main text)}
+\label{sec:gridtable}
+
+The main text's figure makes the claim about the set; this is the same twelve arms
+one row at a time, for a reader checking an individual rate. Table~\ref{tab:gridinference}
+is generated from \texttt{grid\_membership.csv} at build time by the same
+helper that produces the figure, so the two cannot disagree.
+
+\begin{table}[htbp]
+\caption{\textbf{Grid membership against a continuum null.} $D$ is the mean normalized
+distance to the nearest grid vertex; under the null its expectation is the value in the
+\textnormal{\textit{null}} column. $p_{\mathrm{Holm}}$ is a permutation $p$-value
+($10^{4}$ draws) after Holm correction within the family of all $\gridArms$ arms; the
+corrected value is what decides the verdict. Arms marked
+\textnormal{\textit{flat (coincident)}} are those the model predicts
+flat, where the two hypotheses make the same prediction and the test has no power. }
+\label{tab:gridinference}
+\footnotesize
+\centering
+\setlength{\tabcolsep}{4pt}
+\input{docs/generated/grid_table}
+\end{table}
+
 
 \end{document}

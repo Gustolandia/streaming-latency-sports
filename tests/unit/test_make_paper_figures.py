@@ -203,9 +203,9 @@ class TestMain:
         seen = {}
         real_save = mpf._save
 
-        def spy(fig, out_dir, stem):
+        def spy(fig, out_dir, stem, **kw):
             seen[stem] = float(plt.rcParams["font.size"])
-            return real_save(fig, out_dir, stem)
+            return real_save(fig, out_dir, stem, **kw)
 
         monkeypatch.setattr(mpf, "_save", spy)
         args = self._inputs(temp_dir) + ["--only", "measurement_model",

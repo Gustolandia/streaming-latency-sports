@@ -33,13 +33,13 @@ def _close_figures():
 def test_retention_points_reads_every_committed_cell():
     pts = mrf.retention_points()
     assert len(pts) == 75
-    assert all(0 < r <= 100 for r, _ in pts)
+    assert all(0 < r <= 100 for r, _, _ in pts)
 
 
 def test_retention_points_skips_unparseable_rows(tmp_path):
     p = tmp_path / "r.csv"
     p.write_text("retention_pct,omb_p50_ms\n50,1.0\nnotanumber,1.0\n", encoding="utf-8")
-    assert mrf.retention_points(p) == [(50.0, 1.0)]
+    assert mrf.retention_points(p) == [(50.0, 1.0, "")]
 
 
 def test_retention_points_refuses_an_empty_file(tmp_path):
@@ -51,7 +51,7 @@ def test_retention_points_refuses_an_empty_file(tmp_path):
 
 def test_the_swing_the_caption_claims_is_the_swing_in_the_data():
     """279x is quoted in the text; it must come out of the artefact, not a memory of it."""
-    at_grid = [r for r, m in mrf.retention_points() if m <= mrf.QUANTUM_MS]
+    at_grid = [r for r, m, _ in mrf.retention_points() if m <= mrf.QUANTUM_MS]
     assert len(at_grid) == 71
     assert round(max(at_grid) / min(at_grid)) == 279
 
@@ -392,3 +392,40 @@ class TestTheArmsAndClassesThatAreAbsent:
                                 AssertionError("the artefact must not be consulted")))
         out = mrf.build_spectrum(tmp_path, slice_ms=7.5)
         assert out is not None
+
+
+def test_a_histogram_that_starts_above_the_tick_gets_no_tick_rule():
+    """The 1 ms mark is drawn only if a bucket contains it.
+
+    A capture whose smallest bucket already exceeds a millisecond has no bucket the tick falls
+    in, and a rule drawn at the left edge would assert a boundary the axis does not carry.
+    """
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots()
+    bins = [(2048, 4096, 10), (4096, 8192, 6), (8192, 16384, 3)]
+    mrf.plot_spectrum(ax, bins, slice_ms=3.0)
+    assert not [t for t in ax.texts if "tick" in t.get_text()]
+    plt.close(fig)
+
+
+def test_a_histogram_containing_the_tick_gets_the_rule():
+    """The negative control above only means something beside the case that draws it."""
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots()
+    bins = [(256, 512, 8), (512, 1024, 10), (1024, 2048, 6), (2048, 4096, 9)]
+    mrf.plot_spectrum(ax, bins, slice_ms=3.0)
+    assert [t for t in ax.texts if "1 ms tick" in t.get_text()]
+    plt.close(fig)
+
+
+def test_a_pair_with_a_zero_arm_gets_no_factor():
+    """A ratio against zero is not a factor, and printing "inf" beside a real pair would
+    read as a measurement rather than a division that could not be done."""
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots()
+    arms = [("Priority, 75%", "ordinary", 0, 100), ("Priority, 75%", "real-time", 5, 100),
+            ("Priority, 88%", "ordinary", 30, 100), ("Priority, 88%", "real-time", 3, 100)]
+    mrf.plot_mechanism(ax, arms)
+    printed = [t.get_text() for t in ax.texts if t.get_text().endswith("×")]
+    assert len(printed) == 1, "only the pair with two non-zero arms carries a factor"
+    plt.close(fig)

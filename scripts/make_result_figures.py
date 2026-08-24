@@ -41,6 +41,7 @@ CLI:
 """
 import argparse
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -49,6 +50,7 @@ matplotlib.use("Agg")
 import figure_style  # noqa: E402
 import figure_collisions  # noqa: E402
 import figure_legibility  # noqa: E402
+import figure_vocabulary  # noqa: E402
 figure_style.apply()  # Type 42, IEEE-listed family; see scripts/figure_style.py
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
@@ -78,12 +80,26 @@ def retention_points(path=RETENTION_CSV):
     with open(path, encoding="utf-8", newline="") as fh:
         for r in csv.DictReader(fh):
             try:
-                pts.append((float(r["retention_pct"]), float(r["omb_p50_ms"])))
+                pts.append((float(r["retention_pct"]), float(r["omb_p50_ms"]),
+                            _payload_label(r.get("cell", ""))))
             except (KeyError, ValueError):
                 continue
     if not pts:
         raise ValueError("no usable retention rows in %s" % path)
     return pts
+
+
+def _payload_label(cell):
+    """The payload a cell name encodes, as a printable size, or "" if it encodes none.
+
+    Only the resolution sweep names its payload, and only those cells escape the quantum, so
+    this is exactly the set the figure needs to label.
+    """
+    m = re.match(r"^s(\d+)_", cell or "")
+    if not m:
+        return ""
+    b = int(m.group(1))
+    return "%d KB" % (b // 1024) if b >= 1024 else "%d B" % b
 
 
 QUANTUM_MS = 2.0  # a cell printing at most this is reporting at the grid, not above it
@@ -100,6 +116,7 @@ def plot_deletion(ax, pts, quantum_ms=QUANTUM_MS):
     """
     ret = np.array([p[0] for p in pts])
     med = np.array([p[1] for p in pts])
+    tags = [p[2] if len(p) > 2 else "" for p in pts]
     at_grid = med <= quantum_ms
 
     ax.scatter(med[at_grid], ret[at_grid], s=16, color=KEPT, edgecolors="none",
@@ -122,6 +139,20 @@ def plot_deletion(ax, pts, quantum_ms=QUANTUM_MS):
             color=DELETED, va="center", ha="right", rotation=90)
     ax.set_xlim(xs * 0.30, med.max() * 3)
     ax.set_ylim(lo * 0.45, 260)
+
+    # Name the cells that escape. They are the mechanism stated in one word: the quantum stops
+    # binding once the interval is larger than it, and the payload is what made it larger. One
+    # label per distinct payload, at the leftmost of its replicates, so replicates at the same
+    # size do not print the same word twice.
+    seen = set()
+    for x, y, tag in sorted(zip(med[~at_grid], ret[~at_grid],
+                                [tg for tg, g in zip(tags, at_grid) if not g])):
+        if not tag or tag in seen:
+            continue
+        seen.add(tag)
+        ax.annotate(tag, xy=(x, y), xytext=(0, -9), textcoords="offset points",
+                    fontsize=8, color=GREY, ha="center", va="top")
+
     ax.legend(fontsize=8, frameon=False, loc="lower right", handletextpad=0.4)
 
 
@@ -169,6 +200,29 @@ def plot_spectrum(ax, bins, slice_ms=None):
                         arrowprops=dict(arrowstyle="->", color=DELETED, lw=0.8,
                                         relpos=(0.5, 0.0),
                                         connectionstyle="arc3,rad=-0.28"))
+    # The tick, beside the slice. The paper argues both matter and this is why the mode is a
+    # band rather than a spike: a thread descheduled at the wrong instant reads its clock a
+    # slice late, and the tick is the grain that clock reports in.
+    x_tick = _bucket_position(los, 1000.0)
+    if x_tick is not None:
+        ax.axvline(x_tick, color=GREY, lw=0.8, ls=(0, (3, 2)), zorder=0)
+        # At the foot of its own rule. The top right of this axis belongs to the slice
+        # callout, and a label placed up there shares half its area -- which is how the
+        # collision gate found the first attempt. rotation_mode="anchor" is not decoration:
+        # under the default mode the box is aligned and then swung about the anchor, which
+        # put the leading "1" below the axis, where the frame clipped it off.
+        # Standing on whichever of the two bars it straddles is taller, rather than at y=0:
+        # the label is about half a bucket wide once rotated, so from the axis it grows up
+        # through the 1K bar and the collision gate says so.
+        near = [share[j] for j in (int(x_tick), int(x_tick) + 1) if 0 <= j < len(share)]
+        ax.annotate("1 ms tick", xy=(x_tick, max(near or [0.0])), xytext=(3, 3),
+                    textcoords="offset points", fontsize=8, color=GREY, ha="left",
+                    va="bottom", rotation=90, rotation_mode="anchor",
+                    # The y-grid runs the full width, so a vertical label crosses two of the
+                    # rules whatever height it stands at. Same white patch the forest's
+                    # factor column uses, for the same reason.
+                    bbox=dict(facecolor="white", edgecolor="none", pad=0.8))
+
     ax.set_ylim(0, max(share) * 1.42)
     ax.set_xlim(-0.8, len(los) - 0.2)
 
@@ -177,6 +231,19 @@ def _us_label(us):
     if us >= 1024:
         return "%gK" % (us / 1024)
     return "%g" % us
+
+
+def _bucket_position(los, us):
+    """Where a value falls on the categorical axis, in bar units, inside its own bucket.
+
+    A log2 bucket starting at `lo` covers [lo, 2*lo), and the bar for it is centred on its
+    index. A value is therefore at index - 0.5 + log2(us/lo): 1 ms lands at the top edge of
+    the 512 us bucket, not at its centre, and drawing it at the centre says 1 ms = 512 us.
+    """
+    lo = _slice_bucket(los, us / 1000.0)
+    if lo is None:
+        return None
+    return los.index(lo) - 0.5 + float(np.log2(us / lo))
 
 
 def _slice_bucket(los, slice_ms):
@@ -291,7 +358,7 @@ def plot_priority_ladder(ax, rows):
     ax.set_yticklabels(["%s%%  %s" % (r["level"].lstrip("l"), r["campaign"]) for r in rows],
                        fontsize=8)
     ax.set_xscale("log")
-    ax.set_xlabel("inversion rate (Wilson 95% interval, log)", fontsize=8)
+    ax.set_xlabel("negative-span rate (Wilson 95% interval, log)", fontsize=8)
     ax.tick_params(labelsize=8)
     ax.grid(axis="x", alpha=0.25, lw=0.5)
     # Wide enough for the lowest Wilson bound in the set: the 60% real-time arm has five
@@ -322,6 +389,7 @@ def _save(fig, out_dir, stem):
     path = out_dir / ("%s.pdf" % stem)
     figure_collisions.check(fig, stem)
     figure_legibility.check(fig, stem)
+    figure_vocabulary.check(fig, stem)
     fig.savefig(path, bbox_inches="tight", pad_inches=0.02)
     plt.close(fig)
     return path
@@ -429,23 +497,46 @@ def plot_mechanism(ax, arms, observed=()):
         labels.append("%s, %s" % (group, arm))
         y.append(pos)
 
+    # The factor, once per manipulated pair, at the right margin. The forest shows that the
+    # two arms of every pair separate; the factor is what a reader carries away, and until now
+    # it lived only in Table II. Rendered as max/min so it reads the same way for a
+    # manipulation that lowers the rate and one that raises it.
+    factors = []
+    for i in range(0, len(arms) - 1, 2):
+        r1 = arms[i][2] / arms[i][3]
+        r2 = arms[i + 1][2] / arms[i + 1][3]
+        if min(r1, r2) > 0:
+            top = len(rows) - i
+            factors.append(((top + (top - 1)) / 2.0, max(r1, r2) / min(r1, r2)))
+
     ax.set_yticks(y)
     ax.set_yticklabels(labels, fontsize=8)
-    ax.set_xlabel("inversion rate (Wilson 95% interval)", fontsize=8)
+    ax.set_xlabel("negative-span rate (Wilson 95% interval)", fontsize=8)
     ax.tick_params(axis="x", labelsize=8)
     ax.grid(axis="x", alpha=0.25, lw=0.5)
     _hi = max(stat_intervals.wilson(k, n)[1] for _, _, k, n in rows) * 1.10
-    # The real-time arms sit at essentially zero, where the frame would cut the marker.
-    ax.set_xlim(-_hi * 0.015, _hi)
+    # The real-time arms sit at essentially zero, where the frame would cut the marker. The
+    # right margin carries the factor column, so the axis is widened to make room for it
+    # rather than printing it over the intervals.
+    _right = _hi * 1.26
+    ax.set_xlim(-_hi * 0.015, _right)
+    for pos, factor in factors:
+        # On a white patch: the x-grid runs the full height of the axis, so without one the
+        # gridline is drawn straight through the digits and the collision gate says so.
+        ax.text(_right, pos, "%.0f×" % factor if factor >= 10 else "%.2f×" % factor,
+                fontsize=8, color=GREY, ha="right", va="center",
+                bbox=dict(facecolor="white", edgecolor="none", pad=0.8))
     for i in range(0, len(arms), 2):
         ax.axhspan(len(rows) - i - 1.5, len(rows) - i + 0.5, color=GREY, alpha=0.05, zorder=0)
     if observed:
         # The rule is the point: everything above it was moved on purpose, everything below
         # it was only observed. Without it the brokers read as a fifth matched pair.
         ax.axhline(len(observed) + 0.5, color=GREY, lw=0.7, ls=(0, (4, 2)), zorder=1)
-        ax.text(ax.get_xlim()[1], len(observed) + 0.62, "manipulated", fontsize=8,
+        # Left of the factor column, which now occupies the right margin.
+        _label_x = _hi * 1.02
+        ax.text(_label_x, len(observed) + 0.62, "manipulated", fontsize=8,
                 color=GREY, ha="right", va="bottom")
-        ax.text(ax.get_xlim()[1], len(observed) + 0.38, "observed", fontsize=8,
+        ax.text(_label_x, len(observed) + 0.38, "observed", fontsize=8,
                 color=GREY, ha="right", va="top")
     ax.set_ylim(0.4, len(rows) + 0.6)
 
@@ -456,7 +547,7 @@ TTRUE_CSV = RESULTS / "model" / "ttrue_sweep.csv"
 
 
 def ttrue_points(path=TTRUE_CSV):
-    """(transport ms, inversion rate, ci_lo, ci_hi) over the payload sweep."""
+    """(transport ms, negative-span rate, ci_lo, ci_hi) over the payload sweep."""
     import csv
     pts = []
     with open(path, encoding="utf-8", newline="") as fh:
@@ -469,7 +560,7 @@ def ttrue_points(path=TTRUE_CSV):
 
 
 def plot_ttrue(ax, pts):
-    """Inversion rate against the interval being measured, over a 77x payload span.
+    """Negative-span rate against the interval being measured, over a 77x payload span.
 
     This is Equation 2 as an experiment: the same stall distribution overlaps a short
     interval almost entirely and a long one hardly at all, so lengthening the true transport
@@ -485,7 +576,7 @@ def plot_ttrue(ax, pts):
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.set_xlabel("true transport (ms)", fontsize=8)
-    ax.set_ylabel("inversion rate", fontsize=8)
+    ax.set_ylabel("negative-span rate", fontsize=8)
     ax.tick_params(labelsize=8)
     ax.grid(alpha=0.25, lw=0.5)
 
@@ -498,17 +589,27 @@ def plot_ttrue(ax, pts):
                 % (slope, lo_slope, hi_slope, round(xs[-1] / xs[0])),
                 # Left of where it was: adding the interval lengthened the first line enough
                 # to put the second line's last glyph on the right spine.
-                xy=(xs[1], ys[1]), xytext=(0.24, 0.82), textcoords="axes fraction",
-                fontsize=8, color=GREY,
-                arrowprops=dict(arrowstyle="->", color=GREY, lw=0.7))
+                #
+                # No arrow. It used to point at the second payload level, and at print size
+                # the text box sat close enough to that marker that the tail vanished and
+                # only the head was drawn -- an arrowhead resting on a data point, which
+                # reads as a label for that point. The annotation is about the slope through
+                # all four, so it should point at none of them. Neither gate can see this:
+                # an arrowhead is ink, not text, and it was not covering any.
+                xy=(0.24, 0.82), xycoords="axes fraction",
+                fontsize=8, color=GREY)
     ax.set_xlim(xs[0] * 0.55, xs[-1] * 1.9)
 
 
 def build_mechanism(out_dir):
     figure_style.apply()   # in force when the artists are made, not merely at import
-    # Two extra rows and a rule. The panel grows by less than the row count: the arms were
-    # set with room to spare and the column budget has none.
-    fig, ax = plt.subplots(figsize=(3.50, 2.30))
+    # Full width, and not for grandeur. Ten rows of categorical labels take about an inch
+    # and a half whatever the panel is, so in a 3.50 in column the intervals were drawn in
+    # the 1.7 in left over and a co-author could not read them on a 37-inch monitor. The
+    # legibility gate passed it: the type is 8 pt either way. Width is the fix, and the
+    # height follows the row count at 17.6 pt of pitch for 8 pt type, which is what the
+    # column version already had -- height was never the complaint, the data panel was.
+    fig, ax = plt.subplots(figsize=(7.16, 2.45))
     plot_mechanism(ax, mechanism_arms(), backend_arms())
     fig.tight_layout()
     return _save(fig, out_dir, "mechanism_forest")

@@ -146,10 +146,11 @@ fault follows the span, not the system under test.
 \item \textbf{An audit, and the reporting rules that follow} (Sections~\ref{sec:gate}
 and~\ref{sec:authors}). A sign check applied uniformly to all $\auditRuns$ runs rejected
 $\auditRejected$ of them, including every run behind our own first result. The practice is older
-than this paper, and each half of it is established: pre-defined exclusion with reported
-counts is standard statistical advice~\cite{krishnamachari2026stats}, physically impossible
-values are grounds for discarding a trace~\cite{paxson2004sound}, and a standards body
-already voids a whole run on a clock criterion~\cite{specjbb2015}. What we add is their conjunction --- a
+than this paper, and each part of it is established: physically impossible values are
+grounds for discarding a trace~\cite{paxson2004sound}, a standards body
+already voids a whole run on a clock criterion~\cite{specjbb2015}, and SPEC and TPC name
+\emph{verifiability}, publishing more than the metric needs so inconsistency shows, among a
+benchmark's quality criteria~\cite{kistowski2015build}. What we add is their conjunction --- a
 physical-impossibility criterion, applied per run, with the campaign's rejection rate published
 as a headline quantity rather than a footnote --- and the observation that the retention rate
 and the sign of each discard belong beside every reported latency.
@@ -334,7 +335,9 @@ forgo an exclusion the clock could have supplied and establish it from data inst
 now does, too late for the runs reported here. The workload is a public football event feed (StatsBomb
 open data, CC~BY-NC-SA~4.0) replayed against \kafka{} and \redis{} Streams. The send schedule is measured rather than assumed:
 pacer jitter is $67$--$69\,\mu$s at p90, and the achieved rate is recorded per run against
-elapsed wall time. The measured inter-host offset, where two hosts are used, is
+elapsed wall time --- the self-validation SPEC and TPC ask of a
+benchmark~\cite{kistowski2015build}, applied to the load generator rather than the system
+under test. The measured inter-host offset, where two hosts are used, is
 $0.067$~ms. The
 primary measure is \textbf{Time-to-Insight} (\tti{}), from scheduled emission to
 availability at the consumer:
@@ -911,27 +914,15 @@ operator never sees, so a mean-based counter cannot flag this failure.
 \section{What the Brokers Actually Do}
 \label{sec:results}
 
-Once the failed runs are removed, the broker comparison that motivated the work is
-small, and one configuration choice dwarfs it.
-
-On gated artifacts the brokers sit within a millisecond of each other on the transport
-proxy: a Hodges--Lehmann shift of $\tostHL$~ms ($90\%$ interval $\tostHLCI$), TOST rejecting
-both one-sided nulls against a $\tostMargin$~ms margin at $p < 0.001$, holding between
-$\tostHLRange$~ms across $\tostLevels$ concurrency levels. That span is not a causal chain;
-\tti{}, which is, is equivalent over the same levels against a wider margin
-(Supplement~S6). It is not a purchasing argument.
-
-One condition reverses the ordering, and it is not the broker. One-way delay injected
-identically at both leaves \kafka{} tracking it almost additively while \redis{} collapses
-to a median transport of $4.6$~s at $5$~ms of injected delay, $31.3$~s at $20$~ms and
-$102.5$~s at $50$~ms over five feeds per arm --- $900$ to $2{,}050$ times the delay applied.
-The cause is the consumption pattern: a per-message acknowledgment
-turns each event into a sequential round trip, where a prefetching consumer serves from
-buffer. A falsifier
-registered in advance confirms it --- batching those acknowledgments two hundred at a time
-cuts the median from $4{,}138$~ms to $103$~ms, replicated four times. Both settings are invisible on a
-co-located testbed --- the round trip they multiply is too short to matter --- so the
-standard evaluation environment hides the choices that matter most.
+Once the failed runs are removed, the broker comparison that motivated the work is small, and
+one configuration choice dwarfs it. On gated artifacts the two sit within a millisecond on the
+transport proxy (TOST against a $\tostMargin$~ms margin, $p < 0.001$, across $\tostLevels$
+levels), so it is not a purchasing argument. One condition reverses the ordering and it is not
+the broker: under injected one-way delay, \redis{}'s per-message acknowledgment turns each
+event into a sequential round trip where a prefetching consumer serves from buffer, inflating
+median transport to $900$--$2{,}050$ times the delay applied, and a falsifier registered in
+advance confirms the cause. Both settings are invisible on a co-located testbed, so the
+standard evaluation environment hides the choices that decide the outcome (S48).
 
 \section{Discussion}
 \label{sec:discussion}
@@ -940,6 +931,12 @@ rule rather than a better clock.
 
 \subsection{For benchmark authors}
 \label{sec:authors}
+
+SPEC and TPC judge a benchmark on five criteria~\cite{kistowski2015build}. The instrument we
+audit passes \emph{reproducibility} --- consistent results for a configuration --- \emph{because}
+it fails \emph{verifiability}: a median from $\ombGridRetentionMin\%$ of the samples is the more
+stable for having had the variation deleted. The criterion a reader checks cannot see this
+defect. Every rule below is an instance of the one that can.
 
 \textbf{Report a physical-consistency audit.} Any cross-process timestamp difference admits
 a sign check that costs nothing, and every run it rejected here had passed every conventional
@@ -955,8 +952,7 @@ precede a record at the consumer (Section~\ref{sec:testbeds}). We caught our own
 only on counting the send-referenced span separately (Table~\ref{tab:spans}).
 
 \textbf{Count your events before you quote a percentile.} A median over as few as seven
-events per run is not a property of the system, and it survives a hundred runs: a
-deterministic per-run artifact reproduces beautifully.
+events per run is not a property of the system, and repetition will not tell you so.
 
 \textbf{Make the timestamping path unpreemptable, and say that you did.} The one mitigation
 our measurements support directly: real-time priority on the stamping threads cut the
@@ -971,7 +967,8 @@ advice~\cite{rfc2330,rfc3432}; what we add is why --- the phenomenon synchronize
 timestamp quantum itself. Publish beside the latency the retention rate, the timestamp
 resolution and the synchronization state, none recoverable afterwards: a summary from
 $\ombGridRetentionMin\%$ of samples is typographically identical to one from all.
-Neither half of the rule is unprecedented --- OWAMP requires a packet stamped in the future to
+Neither half of the rule is ours: the retention rate and the sign of each discard are exactly
+the detail beyond the metric that verifiability asks for. The measurement standards agree --- OWAMP requires a packet stamped in the future to
 be recorded unaltered within its timeout window~\cite{rfc4656}, ETSI requires removed measurement cycles to be
 reported~\cite{etsi102250}, and RFC~7679 treats negative
 singletons as usable distribution data~\cite{rfc7679}. The sign is the channel: negative
@@ -991,11 +988,9 @@ deletes the same samples and the grid law is unchanged. The remedies are therefo
 record at native resolution, count what is discarded, dither the send instant, and only then
 does synchronization quality become the frontier --- our own cross-host retention wandered
 $13.4$--$27.0\%$ under clocks agreeing to well under a tick
-(Section~\ref{sec:generality}). Designs that remove the one-way requirement predate the
-clouds needing it~\cite{paxson1998calibrating,geng2018huygens}, each resting on an assumption
-its users rarely state (Supplement~S37); nor does the obvious redesign, a consumer-to-producer
-acknowledgment, which removes skew but not this failure and measures a producer-side round
-trip rather than staleness at the consumer (Supplement~S43.6).
+(Section~\ref{sec:generality}). Designs that remove the one-way requirement each rest on an
+assumption their users rarely state, and the obvious redesign --- a consumer-to-producer
+acknowledgment --- removes skew but not this failure; Supplements~S37 and~S43.6 give both.
 
 \paragraph{Resolution, as distinct from synchronization} Finer stamps fix the lesser half.
 A microsecond stamp makes $T_{\mathrm{true}}/\tau \gg 1$ here, so

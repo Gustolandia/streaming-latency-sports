@@ -48,6 +48,7 @@ import matplotlib
 matplotlib.use("Agg")
 import figure_style  # noqa: E402
 import figure_collisions  # noqa: E402
+import figure_legibility  # noqa: E402
 figure_style.apply()  # Type 42, IEEE-listed family; see scripts/figure_style.py
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
@@ -107,9 +108,9 @@ def plot_deletion(ax, pts, quantum_ms=QUANTUM_MS):
                linewidths=0.9, zorder=3, label="printed above it (%d)" % (~at_grid).sum())
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel("median the benchmark printed (ms)", fontsize=7.5)
-    ax.set_ylabel("samples retained (%)", fontsize=7.5)
-    ax.tick_params(labelsize=7)
+    ax.set_xlabel("median latency the benchmark printed (ms)", fontsize=8)
+    ax.set_ylabel("samples retained (%)", fontsize=8)
+    ax.tick_params(labelsize=8)
     ax.grid(alpha=0.25, lw=0.5)
     ax.axhline(100, color=GREY, lw=0.6, ls=":", zorder=0)
 
@@ -117,11 +118,11 @@ def plot_deletion(ax, pts, quantum_ms=QUANTUM_MS):
     xs = med[at_grid].min()
     ax.annotate("", xy=(xs * 0.62, lo), xytext=(xs * 0.62, hi),
                 arrowprops=dict(arrowstyle="<->", color=DELETED, lw=1.0))
-    ax.text(xs * 0.55, (lo * hi) ** 0.5, "%.0f×" % (hi / lo), fontsize=7.5,
+    ax.text(xs * 0.55, (lo * hi) ** 0.5, "%.0f×" % (hi / lo), fontsize=8,
             color=DELETED, va="center", ha="right", rotation=90)
     ax.set_xlim(xs * 0.30, med.max() * 3)
     ax.set_ylim(lo * 0.45, 260)
-    ax.legend(fontsize=6.3, frameon=False, loc="lower right", handletextpad=0.4)
+    ax.legend(fontsize=8, frameon=False, loc="lower right", handletextpad=0.4)
 
 
 # --- the stall spectrum -------------------------------------------------------------------
@@ -145,29 +146,29 @@ def plot_spectrum(ax, bins, slice_ms=None):
     colors = [ACCENT if lo in peaks else GREY for lo in los]
     ax.bar(range(len(los)), share, color=colors, width=0.82, linewidth=0)
     ax.set_xticks(range(len(los)))
-    ax.set_xticklabels([_us_label(v) for v in los], fontsize=6, rotation=90)
-    ax.set_xlabel("run-queue stall (µs, log2 buckets)", fontsize=7.5)
-    ax.set_ylabel("share of wakeups (%)", fontsize=7.5)
-    ax.tick_params(labelsize=7)
+    ax.set_xticklabels([_us_label(v) for v in los], fontsize=8, rotation=90)
+    ax.set_xlabel("run-queue stall (µs, log2 buckets)", fontsize=8)
+    ax.set_ylabel("share of wakeups (%)", fontsize=8)
+    ax.tick_params(labelsize=8)
     ax.grid(axis="y", alpha=0.25, lw=0.5)
 
     for lo, _, frac, rise in tit.modes(bins):
         i = los.index(lo)
         ax.annotate("%.1f%%" % (100 * frac), xy=(i, share[i]), xytext=(0, 3),
-                    textcoords="offset points", ha="center", fontsize=6.5, color=ACCENT)
+                    textcoords="offset points", ha="center", fontsize=8, color=ACCENT)
         if slice_ms is not None and lo == _slice_bucket(los, slice_ms):
             # Anchored to the right of the bar and above it: to its left is the 128 us hump,
             # and a label placed there runs into the axis.
             ax.annotate("scheduler base slice:\n%.0f ms, %.1f× the bucket below"
                         % (slice_ms, rise),
-                        xy=(i + 0.52, share[i] * 0.72),
+                        xy=(i + 0.62, share[i] * 0.72),
                         xytext=(len(los) - 0.5, max(share) * 1.30),
-                        fontsize=6.4, color=DELETED, ha="right", va="top",
+                        fontsize=8, color=DELETED, ha="right", va="top",
                         # Bowed away from the bar rather than towards it: the original arc
                         # passed through the "%.1f%%" label sitting above the same bar.
                         arrowprops=dict(arrowstyle="->", color=DELETED, lw=0.8,
                                         relpos=(0.5, 0.0),
-                                        connectionstyle="arc3,rad=-0.22"))
+                                        connectionstyle="arc3,rad=-0.28"))
     ax.set_ylim(0, max(share) * 1.42)
     ax.set_xlim(-0.8, len(los) - 0.2)
 
@@ -197,36 +198,55 @@ def plot_grid(ax, cells):
     rows = sorted(cells, key=lambda r: r["rate_hz"])
     xs = [r["d_null"] for r in rows]
     ys = [r["d_obs"] for r in rows]
-    powered = [r["powered"] for r in rows]
+    # Three classes, not two. "Powered" is not the distinction the claim turns on: one
+    # powered arm does not reject after correction, and drawing it like the nine that do
+    # shows ten successes where the text claims nine.
+    klass = []
+    for r in rows:
+        if not r["powered"]:
+            klass.append("coincident")
+        elif str(r.get("verdict", "")).startswith("grid"):
+            klass.append("grid")
+        else:
+            klass.append("unresolved")
 
     lim = max(xs + ys) * 1.12
     ax.plot([0, lim], [0, lim], color=GREY, lw=0.8, ls="--", zorder=1)
     # Below the diagonal is the whole claim: closer to the grid than a continuum would be.
     ax.fill_between([0, lim], [0, 0], [0, lim], color=KEPT, alpha=0.06, zorder=0)
-    ax.annotate("a continuum would\nland on this line", xy=(lim * 0.40, lim * 0.40),
-                xytext=(lim * 0.17, lim * 0.60), fontsize=6.4, color=GREY, ha="center",
+    # Below the legend, which gained a third row this round and now reaches further down
+    # the left edge than the annotation used to allow for.
+    ax.annotate("a continuum would\nland on this line", xy=(lim * 0.42, lim * 0.42),
+                xytext=(lim * 0.19, lim * 0.30), fontsize=8, color=GREY, ha="center",
                 arrowprops=dict(arrowstyle="->", color=GREY, lw=0.7))
-    ax.text(lim * 0.72, lim * 0.11, "closer to the grid", fontsize=6.4,
+    ax.text(lim * 0.72, lim * 0.11, "closer to the grid", fontsize=8,
             color=KEPT, ha="center", style="italic")
 
-    for x, y, p in zip(xs, ys, powered):
-        ax.plot(x, y, "o" if p else "s", ms=5 if p else 4.2,
-                color=KEPT if p else "none", mec=KEPT if p else GREY,
-                mew=0.9, zorder=3)
+    STYLE = {
+        "grid":       dict(marker="o", ms=5.0, color=KEPT, mec=KEPT, mew=0.9),
+        "unresolved": dict(marker="o", ms=5.0, color="none", mec=KEPT, mew=1.4),
+        "coincident": dict(marker="s", ms=4.2, color="none", mec=GREY, mew=0.9),
+    }
+    for x, y, k in zip(xs, ys, klass):
+        ax.plot(x, y, zorder=3, **STYLE[k])
     # A point at zero is drawn centred on the spine and clipped to half a marker, which
     # reads as a rendering fault rather than as data.
     ax.set_xlim(-lim * 0.02, lim)
     ax.set_ylim(-lim * 0.02, lim)
-    ax.set_xlabel("distance expected from a continuum", fontsize=7.5)
-    ax.set_ylabel("distance observed", fontsize=7.5)
-    ax.tick_params(labelsize=7)
+    ax.set_xlabel("distance expected from a continuum", fontsize=8)
+    ax.set_ylabel("distance observed", fontsize=8)
+    ax.tick_params(labelsize=8)
     ax.grid(alpha=0.25, lw=0.5)
 
-    n_pow = sum(powered)
-    ax.plot([], [], "o", color=KEPT, mec=KEPT, ms=5, label="powered (%d)" % n_pow)
-    ax.plot([], [], "s", color="none", mec=GREY, mew=0.9, ms=4.2,
-            label="underpowered (%d)" % (len(rows) - n_pow))
-    ax.legend(fontsize=6.5, frameon=False, loc="upper left")
+    # Short labels: three entries at 8 pt in a 3.5-inch column leave no room for prose, and
+    # the caption carries the full reading anyway.
+    for key, text in (("grid", "rejects the null"),
+                      ("unresolved", "unresolved"),
+                      ("coincident", "no power")):
+        n = klass.count(key)
+        if n:
+            ax.plot([], [], label="%s (%d)" % (text, n), **STYLE[key])
+    ax.legend(fontsize=8, frameon=False, loc="upper left")
 
 
 def grid_rows():
@@ -234,7 +254,8 @@ def grid_rows():
     out = []
     for c in stat_intervals.grid_cells():
         out.append({"rate_hz": c["rate_hz"], "q": c["q"], "powered": c["powered"],
-                    "d_obs": c["d_observed"], "d_null": c["d_null"]})
+                    "d_obs": c["d_observed"], "d_null": c["d_null"],
+                    "verdict": c["verdict"]})
     return out
 
 
@@ -245,6 +266,7 @@ def _save(fig, out_dir, stem):
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / ("%s.pdf" % stem)
     figure_collisions.check(fig, stem)
+    figure_legibility.check(fig, stem)
     fig.savefig(path, bbox_inches="tight", pad_inches=0.02)
     plt.close(fig)
     return path
@@ -252,7 +274,7 @@ def _save(fig, out_dir, stem):
 
 def build_deletion(out_dir):
     figure_style.apply()   # in force when the artists are made, not merely at import
-    fig, ax = plt.subplots(figsize=(3.4, 2.35))
+    fig, ax = plt.subplots(figsize=(3.50, 2.15))
     plot_deletion(ax, retention_points())
     fig.tight_layout()
     return _save(fig, out_dir, "deletion")
@@ -267,7 +289,7 @@ def build_spectrum(out_dir, slice_ms=None):
         except (ImportError, OSError, KeyError, ValueError):
             slice_ms = None
     bins, _ = stall_histogram()
-    fig, ax = plt.subplots(figsize=(3.4, 2.08))
+    fig, ax = plt.subplots(figsize=(3.50, 2.10))
     plot_spectrum(ax, bins, slice_ms)
     fig.tight_layout()
     return _save(fig, out_dir, "stall_spectrum")
@@ -275,7 +297,7 @@ def build_spectrum(out_dir, slice_ms=None):
 
 def build_grid(out_dir):
     figure_style.apply()   # in force when the artists are made, not merely at import
-    fig, ax = plt.subplots(figsize=(3.4, 2.42))
+    fig, ax = plt.subplots(figsize=(3.50, 2.45))
     plot_grid(ax, grid_rows())
     fig.tight_layout()
     return _save(fig, out_dir, "grid_membership")
@@ -353,9 +375,9 @@ def plot_mechanism(ax, arms, observed=()):
         y.append(pos)
 
     ax.set_yticks(y)
-    ax.set_yticklabels(labels, fontsize=6.2)
-    ax.set_xlabel("inversion rate (Wilson 95% interval)", fontsize=7.5)
-    ax.tick_params(axis="x", labelsize=7)
+    ax.set_yticklabels(labels, fontsize=8)
+    ax.set_xlabel("inversion rate (Wilson 95% interval)", fontsize=8)
+    ax.tick_params(axis="x", labelsize=8)
     ax.grid(axis="x", alpha=0.25, lw=0.5)
     _hi = max(stat_intervals.wilson(k, n)[1] for _, _, k, n in rows) * 1.10
     # The real-time arms sit at essentially zero, where the frame would cut the marker.
@@ -366,9 +388,9 @@ def plot_mechanism(ax, arms, observed=()):
         # The rule is the point: everything above it was moved on purpose, everything below
         # it was only observed. Without it the brokers read as a fifth matched pair.
         ax.axhline(len(observed) + 0.5, color=GREY, lw=0.7, ls=(0, (4, 2)), zorder=1)
-        ax.text(ax.get_xlim()[1], len(observed) + 0.62, "manipulated", fontsize=5.6,
+        ax.text(ax.get_xlim()[1], len(observed) + 0.62, "manipulated", fontsize=8,
                 color=GREY, ha="right", va="bottom")
-        ax.text(ax.get_xlim()[1], len(observed) + 0.38, "observed", fontsize=5.6,
+        ax.text(ax.get_xlim()[1], len(observed) + 0.38, "observed", fontsize=8,
                 color=GREY, ha="right", va="top")
     ax.set_ylim(0.4, len(rows) + 0.6)
 
@@ -407,18 +429,22 @@ def plot_ttrue(ax, pts):
                 ecolor=KEPT, elinewidth=1.1, capsize=2.2)
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel("true transport (ms)", fontsize=7.5)
-    ax.set_ylabel("inversion rate", fontsize=7.5)
-    ax.tick_params(labelsize=7)
+    ax.set_xlabel("true transport (ms)", fontsize=8)
+    ax.set_ylabel("inversion rate", fontsize=8)
+    ax.tick_params(labelsize=8)
     ax.grid(alpha=0.25, lw=0.5)
 
-    slope, _, r2, _, _ = stat_intervals.payload_fit()
+    slope, _, _r2, lo_slope, hi_slope = stat_intervals.payload_fit()
     # The ratio drawn here is the span in *transport*, not in payload: payload starts at zero
     # bytes and so has no ratio. The manuscript states it the same way.
-    ax.annotate("slope %.2f, $R^2$ %.2f\nover a %d× span in transport"
-                % (slope, r2, round(xs[-1] / xs[0])),
-                xy=(xs[1], ys[1]), xytext=(0.42, 0.80), textcoords="axes fraction",
-                fontsize=6.6, color=GREY,
+    # The interval rather than R-squared: on four points R-squared is the flattering
+    # statistic and the interval on the exponent is the one that says what was learned.
+    ax.annotate("slope %.2f (%.2f to %.2f)\nover a %d× span in transport"
+                % (slope, lo_slope, hi_slope, round(xs[-1] / xs[0])),
+                # Left of where it was: adding the interval lengthened the first line enough
+                # to put the second line's last glyph on the right spine.
+                xy=(xs[1], ys[1]), xytext=(0.24, 0.82), textcoords="axes fraction",
+                fontsize=8, color=GREY,
                 arrowprops=dict(arrowstyle="->", color=GREY, lw=0.7))
     ax.set_xlim(xs[0] * 0.55, xs[-1] * 1.9)
 
@@ -427,7 +453,7 @@ def build_mechanism(out_dir):
     figure_style.apply()   # in force when the artists are made, not merely at import
     # Two extra rows and a rule. The panel grows by less than the row count: the arms were
     # set with room to spare and the column budget has none.
-    fig, ax = plt.subplots(figsize=(3.4, 2.30))
+    fig, ax = plt.subplots(figsize=(3.50, 2.30))
     plot_mechanism(ax, mechanism_arms(), backend_arms())
     fig.tight_layout()
     return _save(fig, out_dir, "mechanism_forest")
@@ -435,7 +461,7 @@ def build_mechanism(out_dir):
 
 def build_ttrue(out_dir):
     figure_style.apply()   # in force when the artists are made, not merely at import
-    fig, ax = plt.subplots(figsize=(3.4, 2.18))
+    fig, ax = plt.subplots(figsize=(3.50, 2.05))
     plot_ttrue(ax, ttrue_points())
     fig.tight_layout()
     return _save(fig, out_dir, "ttrue_law")
@@ -515,14 +541,18 @@ def plot_payload_grid(ax, arms, q=PAYLOAD_Q):
         y = 100.0 * k / q
         ax.plot([left, label_x - 0.06], [y, y], color=GREY, lw=0.6, ls=":",
                 zorder=0, alpha=0.7, clip_on=False)
-        ax.annotate("%d/%d" % (k, q), xy=(label_x, y), fontsize=6.5,
+        ax.annotate("%d/%d" % (k, q), xy=(label_x, y), fontsize=8,
                     color=GREY, va="center", ha="left")
     ax.set_xticks(range(len(arms)))
-    ax.set_xticklabels([a[0] for a in arms], fontsize=7.5)
+    ax.set_xticklabels([a[0] for a in arms], fontsize=8)
     ax.set_xlim(-0.5, len(arms) - 0.35)
-    ax.set_ylabel("retention (%)", fontsize=7.5)
-    ax.set_title("(a) replicates against the $q=%d$ grid" % q, fontsize=7.5)
-    ax.tick_params(labelsize=7)
+    # Headroom above the full-retention line, which is where its own label sits: without it
+    # the axes stop at 100 and the top frame runs through the capitals of "q/q". Retention
+    # cannot exceed 100, so the space is empty by construction.
+    ax.set_ylim(25, 108)
+    ax.set_ylabel("retention (%)", fontsize=8)
+    ax.set_title("(a) replicates against the $q=%d$ grid" % q, fontsize=8)
+    ax.tick_params(labelsize=8)
 
 
 def plot_payload_flip(ax, pos, q=PAYLOAD_Q):
@@ -530,7 +560,7 @@ def plot_payload_flip(ax, pos, q=PAYLOAD_Q):
     half = 100.0 / (2 * q)
     ax.axhline(half, color=GREY, lw=0.8, ls="--", zorder=0)
     ax.annotate("half cell width", xy=(0.30, half), xytext=(0, 3),
-                textcoords="offset points", fontsize=6.5, color=GREY, va="bottom")
+                textcoords="offset points", fontsize=8, color=GREY, va="bottom")
     top = max(s for _, _, s, _ in pos) * 1.22
     # A label set four points above its marker occupies roughly this much of the data range.
     # Any marker sitting that close beneath the boundary would have the rule printed through
@@ -544,21 +574,21 @@ def plot_payload_flip(ax, pos, q=PAYLOAD_Q):
         collides = 0 <= (half - spread) < clearance
         ax.annotate(label, xy=(frac, spread),
                     xytext=(-5 if right else 5, -5 if collides else 4),
-                    textcoords="offset points", fontsize=6.8, color="#222222",
+                    textcoords="offset points", fontsize=8, color="#222222",
                     ha="right" if right else "left",
                     va="top" if collides else "baseline")
     ax.set_xlim(-0.03, 0.75)
     ax.set_ylim(0, top)
-    ax.set_xlabel(r"frac($q\theta$)", fontsize=7.5)
-    ax.set_ylabel("replicate spread (pts)", fontsize=7.5)
-    ax.set_title("(b) the flat/full flip", fontsize=7.5)
-    ax.tick_params(labelsize=7)
+    ax.set_xlabel(r"frac($q\theta$)", fontsize=8)
+    ax.set_ylabel("replicate spread (pts)", fontsize=8)
+    ax.set_title("(b) the flat/full flip", fontsize=8)
+    ax.tick_params(labelsize=8)
 
 
 def build_payload(out_dir):
     figure_style.apply()   # in force when the artists are made, not merely at import
     arms = payload_arms()
-    fig, axes = plt.subplots(1, 2, figsize=(7.0, 2.1))
+    fig, axes = plt.subplots(1, 2, figsize=(7.16, 1.75))
     plot_payload_grid(axes[0], arms)
     plot_payload_flip(axes[1], payload_positions(arms))
     fig.tight_layout(w_pad=2.2)

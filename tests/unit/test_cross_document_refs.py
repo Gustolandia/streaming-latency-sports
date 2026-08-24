@@ -199,6 +199,7 @@ class TestSupplementPointsAtRealFloats:
         """
         found = {"%s~%s" % (m.group(1), m.group(2))
                  for m in self.POINTER.finditer(supp)}
-        assert found <= {"Table~II", "Figure~8"}, \
+        expected = {"Table~II", "Figure~7", "Figure~1"}
+        assert found <= expected, \
             "new cross-document float pointer(s) %s -- check each against the paper" % (
-                sorted(found - {"Table~II", "Figure~8"}))
+                sorted(found - expected))

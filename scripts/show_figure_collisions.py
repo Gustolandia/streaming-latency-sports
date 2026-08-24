@@ -87,13 +87,13 @@ def main(argv=None):
         plt.close(fig)
 
     import make_result_figures as mrf
-    mrf._save = lambda fig, out_dir, stem: (inspect(fig, stem), out / stem)[1]
+    mrf._save = lambda fig, out_dir, stem, **kw: (inspect(fig, stem), out / stem)[1]
     for build in (mrf.build_deletion, mrf.build_spectrum, mrf.build_grid,
                   mrf.build_mechanism, mrf.build_ttrue, mrf.build_payload):
         build(out)
 
     import make_paper_figures as mpf
-    mpf._save = lambda fig, out_dir, stem: (inspect(fig, stem), [out / stem])[1]
+    mpf._save = lambda fig, out_dir, stem, **kw: (inspect(fig, stem), [out / stem])[1]
     mpf.main(["--out", str(out)])
 
     bad = 0

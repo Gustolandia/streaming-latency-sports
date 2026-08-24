@@ -23,7 +23,11 @@ import make_result_figures as mrf    # noqa: E402
 import stat_intervals as si          # noqa: E402
 import tail_index_traced as tit      # noqa: E402
 
-TEX = (ROOT / "paper.tex").read_text(encoding="utf-8")
+TEX = ((ROOT / "paper.tex").read_text(encoding="utf-8") + "\n"
+       + (ROOT / "supplement.tex").read_text(encoding="utf-8"))
+# The submission is both documents. The pipeline schematic moved to the supplement in
+# round 16, when the figures were redrawn at printable type size and the paper had to
+# give a full-width float back; "included" has to mean included in the package.
 MACROS = dict(re.findall(
     r"\\newcommand\{\\(\w+)\}\{(.*?)\}\s*$",
     (ROOT / "docs" / "generated" / "paper_numbers.tex").read_text(encoding="utf-8"), re.M))
@@ -161,8 +165,18 @@ def test_every_figure_is_referenced_from_the_prose():
     assert labels <= refs, "unreferenced: %s" % sorted(labels - refs)
 
 
-def test_all_figures_share_one_width():
-    """Mixed widths accumulated one revision at a time; one width is better typography and
-    is what recovered the page the round-4 additions cost."""
+def test_no_figure_is_scaled_on_inclusion():
+    """Every figure is drawn at the width it prints at.
+
+    This replaces a pin that required one width everywhere, which was right while every
+    figure sat in a column and became wrong when three moved to full-width floats. The
+    property that matters is not uniformity but the absence of scaling: a figure included at
+    a fraction of its drawn width has its type reduced by that fraction, which is how the
+    paper came to print labels at 2.7 pt against 9.5 pt body text.
+    """
     widths = set(re.findall(r"\\includegraphics\[width=([^\]]*)\]", TEX))
-    assert len(widths) == 1, "figures at %d different widths: %s" % (len(widths), widths)
+    scaled = [w for w in widths if re.match(r"[\d.]+\\", w)]
+    assert not scaled, ("figures included at a fraction of their drawn width: %s -- draw them "
+                        "at the printed width instead" % sorted(scaled))
+    assert widths <= {r"\columnwidth", r"\textwidth"}, \
+        "unexpected include width: %s" % sorted(widths - {r"\columnwidth", r"\textwidth"})

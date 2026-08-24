@@ -386,7 +386,9 @@ def test_the_inventory_figure_numbers_are_current():
     # the figure a generator writes, keyed by the label the paper gives it
     stem_of_label = {}
     paper = (ROOT / "paper.tex").read_text(encoding="utf-8")
-    for block_ in re.findall(r"\\begin\{figure\}(.*?)\\end\{figure\}", paper, re.S):
+    # figure* as well as figure: three floats became full-width in round 16 and an
+    # unstarred-only pattern reported that the paper had stopped carrying them.
+    for block_ in re.findall(r"\\begin\{figure\*?\}(.*?)\\end\{figure\*?\}", paper, re.S):
         g = re.search(r"\\includegraphics\[[^\]]*\]\{([^}]*)\}", block_)
         lab = re.search(r"\\label\{(fig:[^}]*)\}", block_)
         if g and lab:

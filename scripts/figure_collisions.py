@@ -338,6 +338,146 @@ def _marker_sets(ax, fig):
     return out
 
 
+#: A line has to span at least this much of its axes' diagonal to count as a reference line.
+#: Below it are error bars, caps, whiskers and marker strokes, none of which is a rule anyone
+#: draws across a plot, and all of which would make this check noisy.
+REFERENCE_SPAN_FRAC = 0.5
+
+#: How finely a segment is walked when testing it against a label. A text box is never
+#: narrower than a few pixels, and a full-axis line is a few hundred, so stepping in single
+#: pixels cannot step over a box.
+SEGMENT_STEP_PX = 1.0
+
+
+def _behind_an_opaque_legend(txt, ax):
+    """Is this a legend entry whose frame actually hides what passes under it?
+
+    A legend is a patch with text on it, so it exempts its own labels for the same reason an
+    explicit bbox does -- but only when the patch is opaque. Matplotlib's default framealpha
+    is 0.8, and a series drawn under a legend at 0.8 is visible through it, which is the
+    defect this exemption would otherwise excuse.
+    """
+    for legend in ax.get_legend() and [ax.get_legend()] or []:
+        if txt not in legend.get_texts():
+            continue
+        if not legend.get_frame_on():
+            return False
+        frame = legend.get_frame()
+        alpha = frame.get_alpha()
+        return alpha is None or alpha >= 1.0
+    return False
+
+
+def reference_lines_through_text(fig, min_span_frac=REFERENCE_SPAN_FRAC):
+    """Long straight lines that pass through a label's full extent.
+
+    `text_struck_by_ink` measures the *core* of a label, inset on purpose so that a gridline
+    grazing a descender does not fail a figure. That inset is why a diagonal clipping the last
+    glyph of "land on this line" survived two rounds of review: one letter of sixteen is a few
+    per cent of the core, and the eye sees it at once.
+
+    A label sitting on an opaque patch is exempt. The patch breaks the line where the label is,
+    which is what the patch is for.
+    """
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    out = []
+    for ax in fig.axes:
+        if not ax.get_visible():
+            continue
+        ab = ax.get_window_extent()
+        threshold = min_span_frac * float(np.hypot(ab.width, ab.height))
+        boxes = []
+        for txt in _visible_texts(fig):
+            if txt.axes is not ax:
+                continue
+            if txt.get_bbox_patch() is not None:
+                continue
+            if _behind_an_opaque_legend(txt, ax):
+                continue
+            try:
+                boxes.append((txt, txt.get_window_extent(renderer)))
+            except (ValueError, RuntimeError):     # pragma: no cover - backend dependent
+                continue
+        if not boxes:
+            continue
+        for line in ax.get_lines():
+            if line.get_linestyle() in ("none", "None", " ", "") or not line.get_visible():
+                continue
+            pts = line.get_xydata()
+            if pts is None or len(pts) < 2:
+                continue
+            disp = ax.transData.transform(np.asarray(pts, dtype=float))
+            disp = disp[np.isfinite(disp).all(axis=1)]
+            for (x0, y0), (x1, y1) in zip(disp[:-1], disp[1:]):
+                length = float(np.hypot(x1 - x0, y1 - y0))
+                if length < threshold:
+                    continue
+                steps = max(2, int(length / SEGMENT_STEP_PX))
+                xs = np.linspace(x0, x1, steps)
+                ys = np.linspace(y0, y1, steps)
+                for txt, bb in boxes:
+                    hit = ((xs >= bb.x0) & (xs <= bb.x1)
+                           & (ys >= bb.y0) & (ys <= bb.y1)).sum()
+                    if hit:
+                        out.append({"text": txt.get_text(),
+                                    "line_px": round(length, 1),
+                                    "crossing_px": round(float(hit) * SEGMENT_STEP_PX, 1)})
+    return out
+
+
+#: How much of a spine an opaque label patch may cover before the frame looks broken. A
+#: couple of pixels is antialiasing; ten is a visible gap at print size.
+MAX_SPINE_COVER_PX = 6.0
+
+
+def label_patches_over_spines(fig, max_cover_px=MAX_SPINE_COVER_PX):
+    """Opaque label backgrounds painted across an axes frame.
+
+    Every other check here asks whether drawn ink has landed on a label. This asks the
+    reverse. A label on a white patch is the standard device for keeping a gridline out of a
+    number, and it is used freely in these figures -- but a patch anchored on the axis limit
+    extends past it, and what it covers is the spine. The frame then prints with gaps in it.
+    """
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    out = []
+    for ax in fig.axes:
+        if not ax.get_visible():
+            continue
+        spines = [(name, s) for name, s in ax.spines.items() if s.get_visible()]
+        if not spines:
+            continue
+        for txt in _visible_texts(fig):
+            if txt.axes is not ax:
+                continue
+            patch = txt.get_bbox_patch()
+            if patch is None:
+                continue
+            alpha = patch.get_alpha()
+            if alpha is not None and alpha < 1.0:
+                continue
+            try:
+                bb = patch.get_window_extent(renderer)
+            except (ValueError, RuntimeError):   # pragma: no cover - backend dependent
+                continue
+            for name, spine in spines:
+                sb = spine.get_window_extent(renderer)
+                # A spine's extent is a zero-thickness segment: the right spine has
+                # x0 == x1. Inflating by half the stroke turns it back into the thing the
+                # reader sees, which is a line with a width, and lets an overlap exist.
+                half = max(spine.get_linewidth() * fig.dpi / 72.0, 1.0) / 2.0
+                dx = min(bb.x1, sb.x1 + half) - max(bb.x0, sb.x0 - half)
+                dy = min(bb.y1, sb.y1 + half) - max(bb.y0, sb.y0 - half)
+                if dx <= 0 or dy <= 0:
+                    continue
+                cover = dy if sb.width <= sb.height else dx
+                if cover > max_cover_px:
+                    out.append({"text": txt.get_text(), "spine": name,
+                                "cover_px": round(float(cover), 1)})
+    return out
+
+
 def markers_clipped_by_axes(fig, tolerance_frac=0.35):
     """Scatter points whose marker is cut by the axes frame.
 
@@ -373,11 +513,13 @@ def report(fig):
     """All three checks as data, for callers that want to look rather than fail."""
     return {"struck": text_struck_by_ink(fig),
             "overlapping": texts_overlapping(fig),
-            "clipped": markers_clipped_by_axes(fig)}
+            "clipped": markers_clipped_by_axes(fig),
+            "crossed": reference_lines_through_text(fig),
+            "erased": label_patches_over_spines(fig)}
 
 
 def check(fig, stem=""):
-    """Both checks, raising with everything needed to find the defect on the page."""
+    """Every check, raising with everything needed to find the defect on the page."""
     found = report(fig)
     if not any(found.values()):
         return
@@ -392,4 +534,10 @@ def check(fig, stem=""):
         lines.append("  marker clipped by axes: point %s overhangs the frame by %.1f px "
                      "(marker radius %.1f px)"
                      % (d["point"], d["overhang_px"], d["radius_px"]))
+    for d in found["crossed"]:
+        lines.append("  reference line drawn through a label: %r -- a %.0f px line crosses "
+                     "%.0f px of it" % (d["text"], d["line_px"], d["crossing_px"]))
+    for d in found["erased"]:
+        lines.append("  label patch painted over the %s spine: %r covers %.0f px of it"
+                     % (d["spine"], d["text"], d["cover_px"]))
     raise FigureCollision("\n".join(lines))

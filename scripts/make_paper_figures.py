@@ -374,7 +374,16 @@ def plot_network(ax):
     ax.scatter([20], [ACK_BATCHED_TTI_MS], marker="*", s=220, color=REDIS,
                edgecolor="black", zorder=5, label="Redis (ack batched, $N$=1)")
     ax.annotate(f"batching acks:\n{ACK_UNBATCHED_TTI_MS/ACK_BATCHED_TTI_MS:.0f}$\\times$ faster",
-                xy=(20, ACK_BATCHED_TTI_MS), xytext=(23, 4.0), fontsize=8,
+                # Above the injected-delay reference rather than below it. At the old
+                # anchor the dotted line ran through both lines of this label, which the ink
+                # check could not see -- a dotted rule deposits little ink in a label's core
+                # -- and which reference_lines_through_text now measures.
+                xy=(20, ACK_BATCHED_TTI_MS), xytext=(24, 600.0), fontsize=8,
+                # On its own white patch, the device the result figures already use where a
+                # label and a rule must share space. This plot has three long series and a
+                # dotted reference across five decades; there is no anchor that clears all of
+                # them, and an opaque patch interrupts whichever one passes behind.
+                bbox=dict(facecolor="white", edgecolor="none", pad=1.0),
                 arrowprops=dict(arrowstyle="->", color="black", linewidth=1.0,
                                 relpos=(0.0, 0.5)))
     ax.set_yscale("log")
@@ -382,7 +391,11 @@ def plot_network(ax):
     ax.set_ylabel("End-to-end TTI, p50 (ms, log)")
     ax.set_title("A network hop reverses the ordering")
     ax.grid(True, which="both", alpha=0.3)
-    ax.legend(fontsize="small", loc="center right")
+    # framealpha=1. The default is 0.8, and the Kafka series passes under this legend: at
+    # 0.8 the line is visible through the frame and crosses a legend entry, which is a strike
+    # whatever the drawing order says. An opaque frame is what makes the exemption in
+    # figure_collisions.reference_lines_through_text honest.
+    ax.legend(fontsize="small", loc="center left", framealpha=1.0).set_zorder(6)
 
 
 # --------------------------------------------------------------------------- driver

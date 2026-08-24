@@ -281,11 +281,15 @@ def plot_grid(ax, cells):
     ax.plot([0, lim], [0, lim], color=GREY, lw=0.8, ls="--", zorder=1)
     # Below the diagonal is the whole claim: closer to the grid than a continuum would be.
     ax.fill_between([0, lim], [0, 0], [0, lim], color=KEPT, alpha=0.06, zorder=0)
-    # Below the legend and left of the diagonal. At the previous anchor the diagonal passed
-    # through the last glyph of "line" -- a strike on the terminal letter, which the collision
-    # gate's horizontal inset does not reach and which the eye sees immediately.
-    ax.annotate("a continuum would\nland on this line", xy=(lim * 0.42, lim * 0.42),
-                xytext=(lim * 0.155, lim * 0.26), fontsize=8, color=GREY, ha="center",
+    # Below the legend and well left of the diagonal. Two previous anchors put the last
+    # glyph of "line" on the diagonal, because near the origin the diagonal runs close to the
+    # left spine and a two-line label is wider than the gap; moving it further left and down
+    # made it worse. Height is what buys the clearance -- the diagonal is y = x, so a label
+    # at 55% of the axis has the whole left 55% to sit in, and this one ends near 32%.
+    # figure_collisions.reference_lines_through_text now measures it, the eye having missed
+    # it twice.
+    ax.annotate("a continuum would\nland on this line", xy=(lim * 0.44, lim * 0.44),
+                xytext=(lim * 0.20, lim * 0.55), fontsize=8, color=GREY, ha="center",
                 arrowprops=dict(arrowstyle="->", color=GREY, lw=0.7))
     ax.text(lim * 0.72, lim * 0.11, "closer to the grid", fontsize=8,
             color=KEPT, ha="center", style="italic")
@@ -523,7 +527,11 @@ def plot_mechanism(ax, arms, observed=()):
     for pos, factor in factors:
         # On a white patch: the x-grid runs the full height of the axis, so without one the
         # gridline is drawn straight through the digits and the collision gate says so.
-        ax.text(_right, pos, "%.0f×" % factor if factor >= 10 else "%.2f×" % factor,
+        # A hair inside the limit. Anchored on it, the patch below extends a point or so
+        # past the spine and paints it out, and the frame prints with gaps beside each
+        # factor; `label_patches_over_spines` measures that now.
+        ax.text(_right * 0.994, pos,
+                "%.0f×" % factor if factor >= 10 else "%.2f×" % factor,
                 fontsize=8, color=GREY, ha="right", va="center",
                 bbox=dict(facecolor="white", edgecolor="none", pad=0.8))
     for i in range(0, len(arms), 2):
@@ -585,6 +593,10 @@ def plot_ttrue(ax, pts):
     # bytes and so has no ratio. The manuscript states it the same way.
     # The interval rather than R-squared: on four points R-squared is the flattering
     # statistic and the interval on the exponent is the one that says what was learned.
+    # One word and one sign for one quantity. Section V-D called this "an effective exponent
+    # of 0.339" while this annotation drew "slope -0.34" from the same fit, on the facing
+    # page. Both now say slope and both carry the sign, and the ledger emits it so they
+    # cannot drift apart again.
     ax.annotate("slope %.2f (%.2f to %.2f)\nover a %d× span in transport"
                 % (slope, lo_slope, hi_slope, round(xs[-1] / xs[0])),
                 # Left of where it was: adding the interval lengthened the first line enough

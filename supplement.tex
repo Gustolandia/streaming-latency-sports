@@ -55,7 +55,9 @@
 \newcommand{\mainModel}{III-C}
 \newcommand{\mainStats}{III-D}    % Statistics
 \newcommand{\mainRelatedTime}{II-B}   % Cross-process time measurement
-\newcommand{\mainRelatedRes}{II-C}    % Resolution and discarded samples      % A model of the failure
+\newcommand{\mainRelatedRes}{II-C}    % Resolution and discarded samples
+\newcommand{\mainGenerality}{IV-D}   % Generality, and the sign channel
+\newcommand{\mainGridInference}{IV-C} % The grid as inference      % A model of the failure
 \newcommand{\mainModeB}{IV}         % Mode B
 \newcommand{\mainGuard}{IV-A}       % The guard, and its origin
 \newcommand{\mainPhase}{IV-B}       % Phase, and the grid it produces
@@ -3357,6 +3359,13 @@ with respect to the parent span''~\cite{jaeger_clockskew}. An issue titled \emph
 Adjuster considered harmful} objected that the result is ``wrong data and really hard to
 diagnose''~\cite{jaeger_harmful}, and Jaeger has defaulted the adjustment off since 2020.
 
+A 2026 preprint reaches Villain's conclusion again on current hardware, pairing an edge
+inference runtime's own timing against a logic-analyzer reference and finding that deployment
+interference corrupts the timing infrastructure as well as the timing it
+reports~\cite{swami2026observability}. It reports no negative spans, no quantized deletion and
+no law relating either to the interval measured; what it confirms is the premise, fourteen
+years after Villain and in another domain.
+
 That is our conclusion, reached by practitioners, from the symptom alone. What the argument
 lacked was a mechanism and a magnitude: if the displacement is a late stamp rather than a
 skewed clock, then an adjuster is not correcting error but moving evidence, and how much
@@ -3389,5 +3398,81 @@ Tail behavior under load~\cite{li2014tales} is the phenomenon our stall distribu
 That work also shows real-time priority collapsing a tail that renicing leaves alone, applied
 to the system under test; we apply the same lever to the instrument, which is the manipulation
 of Section~\mainModeA{}.
+
+\section{S53. The two floored clocks behind the \texorpdfstring{$-1000\,\mu$s}{-1000 us}
+signature (moved from the main text)}
+\label{sec:redis_signature}
+
+Section~\mainGenerality{} states the signature and what it rules out. This is why the two
+drivers differ, which is a property of the harness rather than of either broker.
+
+The \redis{} driver takes its publish timestamp from \texttt{entry.getID().getTime()} in
+\texttt{RedisBenchmarkConsumer.java}:72 --- the stream-entry identifier the \emph{\redis{}
+server} assigns on \texttt{XADD}~\cite{openmessaging2018}. The \kafka{} driver uses a
+producer-set stamp. So the \redis{} end-to-end span subtracts a consumer-side wall clock from
+a server-side one, across two hosts, with both floored to the millisecond; the \kafka{} span
+floors two stamps whose difference is taken inside one JVM.
+
+Two consequences follow, and together they are what makes the sign channel legible.
+
+First, the arithmetic admits exactly one negative value. Two clocks floored to the same
+quantum, offset by less than one tick, can disagree by one tick and by no other amount, so
+the only negative a floored cross-host difference can produce is $-1000\,\mu$s. The corpus
+contains $\ombRedisNegatives$ negatives and every one of them is that value.
+
+Second, the \kafka{} corpus's $\ombKafkaDiscarded$ discarded samples contain no negative at
+all, because a difference taken inside one process has no second clock to disagree with. The
+same guard therefore hides two different failures --- a resolution failure under \kafka{} and
+a clock failure under \redis{} --- and an unsigned discard counter could not tell them apart.
+
+It also means the two drivers do not share a measurand: \kafka{}'s span is client-to-client on
+one clock, \redis{}'s server-to-client across two. A comparison of the two numbers as though
+they measured the same interval is a further error the harness invites and does not flag.
+
+\section{S54. The permutation null, constructed (moved from the main text)}
+\label{sec:permnull}
+
+Section~\mainGridInference{} names the test and reports its verdicts. This is how the null is
+built, which matters because the null is the whole content of the claim: a continuum
+hypothesis has to be turned into a distribution before anything can reject it.
+
+For each arm, let $D$ be the mean distance from its replicates to the nearest vertex of the
+$q$-grid, normalized by the cell half-width. Under the continuum null, retention is a
+continuous function of rate, so a replicate's position within its cell carries no information
+and the positions are exchangeable and uniform on the cell. The null distribution of $D$ is
+therefore obtained by permuting replicate positions within the arm: $10^{4}$ permutations,
+which fixes the smallest attainable $p$ at $2.5\times10^{-4}$ and is why no arm reports a
+$p$ below that value however far it sits from the diagonal.
+
+Two properties of this construction are worth stating because they bound what the test can
+say. It is exact under the null rather than asymptotic, which matters at $n = 5$. And it has
+no power at all where the grid and continuum predictions coincide, which is not a weakness
+to be apologized for but the reason the two arms at those rates are reported as untestable
+rather than as evidence --- a test that separated them everywhere would be measuring
+something other than what it claims.
+
+\section{S55. The overnight campaign, prediction by prediction (moved from the main text)}
+\label{sec:overnight}
+
+Section~\mainPhase{} reports the outcome in a sentence. This is the tally, because a
+pre-registration is worth what its failures are worth and three of these failed.
+
+Sixty-three cells ran at $n \ge 5$ with six predictions and their falsifiers registered in
+advance. Every cell completed validly. One prediction was confirmed, three falsifiers fired,
+one was not evaluable and one split.
+
+\paragraph{Duration invariance, which killed the drift account}
+If retention were set by an accumulating drift, longer runs would sit further from the grid
+than shorter ones. Intermediate counts over one, three and ten minutes are $1$, $1$ and $0$,
+with the vertices pinned throughout. Nothing accumulates. What remains is per-send jitter,
+which is the mechanism the retention law of Section~\mainModeB{} assumes and not one we
+chose after seeing the data.
+
+\paragraph{The linear extrapolation that failed}
+One registered prediction assumed retention would extrapolate linearly in rate across the
+incommensurate arms. At $1053$ and $1219$~msg/s the measured values are $47.2$ and $48.2\%$
+--- flat where the prediction wanted a slope. The grid law does not predict a trend in rate,
+only a position against the tick, so the failure is of the extrapolation rather than of the
+law; we record it because it was registered and it did not come true.
 
 \end{document}

@@ -251,11 +251,42 @@ def stat_macros():
         out += [
             ("tailExponent", "%.3f" % (-slope)),
             ("tailExponentCI", "%.3f$--$%.3f" % (-hi, -lo)),
+            # Signed, for every place that says the word "slope". The magnitude above is for
+            # the supplement's `T^{-\tailExponent}`, where the sign lives in the notation;
+            # printing it beside a figure that draws the signed fit is how the paper came to
+            # show 0.339 and -0.34 for one number on facing pages.
+            ("tailSlope", "%.2f" % slope),
+            # Self-mathed like every other CI here: the value is used inside $...$, closes
+            # math around the word and reopens it, so the signs print as minus and
+            # "to" prints roman. A bare hyphen in text mode would be neither.
+            ("tailSlopeCI", "%.2f$ to $%.2f" % (lo, hi)),
             ("tailRsq", "%.3f" % r2),
         ]
     except (OSError, KeyError, ValueError):
         pass
     return out
+
+
+def priority_residual_macros():
+    """What the manipulated arm actually did across the whole ladder, not just the two tabled.
+
+    Section V-C names a constant the model fixes in advance and the two pairs in Table II land
+    on it. Over all eight pairs the real-time arm runs from well below that constant to well
+    above it, and S47 was stating that range from two hand-typed numbers.
+    """
+    try:
+        import priority_pairs
+        pairs = priority_pairs.usable()
+    except (ImportError, OSError, KeyError, ValueError):
+        return []
+    if not pairs:
+        return []
+    rates = [p["rate_rt"] for p in pairs]
+    return [
+        ("rtResidualMin", "%.4f" % min(rates)),
+        ("rtResidualMax", "%.4f" % max(rates)),
+        ("rtResidualPairs", str(len(rates))),
+    ]
 
 
 def grid_macros():
@@ -608,6 +639,15 @@ def kernel_macros():
     ]
 
 
+_SPELLED = ("zero", "one", "two", "three", "four", "five", "six",
+            "seven", "eight", "nine", "ten", "eleven", "twelve")
+
+
+def _spell(n):
+    """A small count as a word, for prose. Above twelve, IEEE style takes the digits back."""
+    return _SPELLED[n] if 0 <= n < len(_SPELLED) else str(n)
+
+
 def registry_macros():
     """The audited-harness survey in Section II, counted rather than asserted.
 
@@ -635,7 +675,22 @@ def registry_macros():
         ("harnessFilters", str(len(s["filters"]))),
         ("harnessSuppressors", str(len(s["suppressors"]))),
         ("harnessCounting", str(len(s["counts_discards"]))),
+        ("harnessRefusals", str(len(s["library_refusals"]))),
+        # The tool in no disposal class at all. emqtt-bench guards a counter rather than the
+        # sample, so it neither discards nor counts a discard, and lumping it with the tool
+        # that counts is what left Section IV-D describing it as "a fifth entry" of nothing.
+        ("harnessNoDisposal",
+         str(s["harnesses"] - s["n_silent"] - len(s["counts_discards"]))),
     ]
+    # Spelled forms of the same counts. IEEE house style wants a small number spelled in
+    # prose; the alternative to emitting the word was transcribing it, which is the failure
+    # mode this whole file exists to prevent.
+    spelled = [(name, _spell(int(value))) for name, value in list(out)
+               if name.startswith("harness") and value.isdigit() and int(value) <= 12]
+    out += [(name + "Word", word) for name, word in spelled]
+    # And the same word capitalised, because several of these open a sentence and a macro
+    # cannot know that it does. Emitting both beats teaching the manuscript to remember.
+    out += [(name + "WordCap", word[:1].upper() + word[1:]) for name, word in spelled]
     # The scope of the guard, computed rather than remembered. A referee who opens
     # MessageProducer.java finds a nanosecond clock and no filter, and will read an
     # unqualified "the benchmark filters" as overstated. These macros make the qualifier a
@@ -771,7 +826,7 @@ def all_pairs(m):
             + mechanism_macros() + kernel_macros() + registry_macros()
             + registry_sources_macro()
             + clocksource_macros() + traced_ratio_macros() + audit_macros()
-            + priority_macros() + fork_macros())
+            + priority_macros() + priority_residual_macros() + fork_macros())
 
 
 def render(m):

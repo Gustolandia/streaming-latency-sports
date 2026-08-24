@@ -128,10 +128,13 @@ one for tooling in current use.
 
 That a measurement degrades as the interval shrinks towards zero is not the claim, and would
 not be worth making: every instrument has such a limit, as sampling has its Nyquist
-frequency. The claim is about where the limit falls. A millisecond stamp, and a scheduler
-slice of the same order, place it squarely inside the range a practitioner has every reason
-to think measurable --- the sub-millisecond broker paths these tools are used to compare ---
-and the instrument gives no sign when the line has been crossed.
+frequency. The claim is about where the limit falls, and it does not fall where the
+datasheet says. The stamp is one millisecond, but the timescale that binds is the scheduler's:
+the run-queue stall distribution's largest mode sits at $\baseSliceMs$~ms
+(Section~\ref{sec:tail}), three times the quantum and nothing a specification discloses.
+A practitioner reasoning that a $0.5$~ms path and a $1$~ms stamp are the same order of
+magnitude, so the measurement should be roughly sound, is wrong by a factor they had no way
+to look up --- and the instrument gives no sign when the line has been crossed.
 
 \subsection{Contributions}
 
@@ -194,15 +197,18 @@ practice of checking for it run by run.
 \subsection{Streaming benchmarks}
 Broker comparisons appear continuously, in peer-reviewed venues and in the gray literature
 practitioners read; Apache \kafka{} and \redis{} Streams are the pair they most often name,
-and the OpenMessaging Benchmark~\cite{openmessaging2018} is the shared instrument. That experimental setup can dominate a result is
+and the OpenMessaging Benchmark~\cite{openmessaging2018} is the shared instrument. A 2025
+preprint synthesizing $42$ peer-reviewed \kafka{} studies from a decade finds evaluation rigor
+and reproducibility inconsistent across them~\cite{mohammad2025kafka}, and finds neither
+failure reported here. That experimental setup can dominate a result is
 established~\cite{mytkowicz2009wrong}, and how to report one is a settled literature we
 follow~\cite{georges2007rigorous,hoefler2015benchmarking}. The comparisons keep coming, and
 most report a median above the quantum, where the law of Section~\ref{sec:external} does not
 bind --- which is the scope of our claim rather than a limit on its reach.
 
 The instruments are few and shared, so a defect in one is not one project's problem: the
-audit of Section~\ref{sec:generality} reads $\harnessAudited$ tools at source and finds
-$\harnessSilent$ disposing of inverted samples without counting them. Nor is the architecture
+audit of Section~\ref{sec:generality} reads \harnessAuditedWord{} tools at source and finds
+\harnessSilentWord{} disposing of inverted samples without counting them. Nor is the architecture
 that produces those negative spans a blunder to be designed away. Every mainstream client sends
 asynchronously and signals completion on a callback thread, because a producer that blocked
 for each acknowledgment could not generate load at all; the send is stamped on the calling
@@ -236,8 +242,8 @@ One prior result bounds our claim closely. Villain et al.~\cite{villain2012probi
 profiling FreeBSD against a DAG hardware reference, found the outgoing socket timestamp
 ``does not respect causality'' --- packets leave before the stamp meant to mark their
 departure is written --- under every stress pattern including none, and attributed host
-latency to interrupt processing, scheduling and context switching. That is Mode~A's physical primitive, published in
-2012 and measured more precisely than we measure it; we add its consequence for a two-process
+latency to interrupt processing, scheduling and context switching. That is Mode~A's physical
+primitive, published in 2012 and measured more precisely than we measure it; we add its consequence for a two-process
 measurement, a law relating the negative-span rate to the interval measured
 (Equation~\ref{eq:negspan}), and manipulations separating scheduling from its rivals. The
 audit half has its own ancestor: Paxson~\cite{paxson1998calibrating} treated physically
@@ -494,7 +500,7 @@ every sample that computes to exactly zero, and because
 one millisecond does compute to zero; on co-located paths, where our own transport measures
 $0.1$--$0.5$~ms, that is most of them. Second, the one observation which would prove the
 instrument had failed is the exact observation the guard removes. Section~\ref{sec:generality}
-finds the same disposal, uncounted, in \harnessSilentIndependent{} independent tools.
+finds the same disposal, uncounted, in \harnessSilentIndependentWord{} independent tools.
 
 The guard's scope is the most interesting thing about it. It is on the \ombGuardedPath{}
 path, which stamps in \ombGuardedClock{}s; the same harness measures its
@@ -554,14 +560,12 @@ $\tau = 1$~ms, which agrees with our own unquantized transport measurement.
 \paragraph{Commensurability is not binary}
 \label{sec:extquant}
 Phases are not uniform when the send interval is commensurate with the tick. Write the send
-interval over the tick in lowest terms as $\Delta/\tau = p/q$ with $\gcd(p,q) = 1$. After
-$q$ sends the phase returns to its start, so a producer visits exactly $q$ distinct phases.
-Retention is then a count out of $q$, so it can only take the $q{+}1$ values
-$0, 1/q, \ldots, 1$, and a single run lands on one of the two that bracket
-$T_{\mathrm{true}}/\tau$:
-$q=1$ is the all-or-nothing corner, an incommensurate rate is effectively continuous, and
-everything between is a grid, coarser meaning less reproducible. The replicate spread
-follows:
+interval over the tick in lowest terms as $\Delta/\tau = p/q$ with $\gcd(p,q) = 1$: a
+producer visits exactly $q$ distinct phases, retention is a count out of $q$ and can take
+only the $q{+}1$ values $0, 1/q, \ldots, 1$, and a run lands on one of the two bracketing
+$T_{\mathrm{true}}/\tau$. Coarser grids are less reproducible, $q=1$ being the all-or-nothing
+corner and an incommensurate rate effectively continuous (Supplement~S23). The replicate
+spread follows:
 \begin{equation}
 \label{eq:quant}
 \text{spread} \;=\;
@@ -582,11 +586,10 @@ $300$~msg/s spreads $30.5$.
 \label{sec:extinference}
 A table of spreads is not a test, so we state one. For each arm let $D$ be the mean
 distance from its replicates to the nearest vertex of the $q$-grid, normalized by the cell
-half-width. Under the continuum null, retention is a continuous function of rate and
-replicate positions are uniform on the cell; the null distribution is obtained by permuting
-replicate positions within the arm ($10^{4}$ permutations, so the smallest attainable $p$
-is $2.5\times10^{-4}$). Supplement~S46 reports every arm with $n \ge 5$ and
-prints the corrected value, not the raw one. $\gridReject$ of the $\gridPowered$ powered
+half-width, and let the null be a permutation of replicate positions within the arm, which
+is what a continuum implies. Supplement~S46 gives the construction, reports every arm with
+$n \ge 5$ and prints the corrected value rather than the raw one. $\gridReject$ of the
+$\gridPowered$ powered
 arms reject the continuum null at $\alpha = 0.05$ after Holm correction within the family
 of $\gridArms$. The tenth, $\gridUnresolvedRate$~msg/s, rejects before correction
 ($p = \gridUnresolvedRaw$) and not after ($p = \gridUnresolvedHolm$); we report it as
@@ -595,8 +598,10 @@ remaining $\gridFlat$ arms, \gridFlatRates~msg/s, have no power by construction:
 $T_{\mathrm{true}}/\tau$ sits on a vertex the two predictions coincide and no test can
 separate them; a model that claimed separation everywhere would be the more suspicious one.
 Figure~\ref{fig:grid} shows why the set matters more than any one arm: every powered arm
-falls below the diagonal, the one that does not reject is drawn as such, and the arms above
-it are the ones the model predicts cannot be separated.
+falls below the diagonal and the one that does not reject is drawn as such. The two arms
+above it are the ones no test can separate, and we claim nothing from that position --- where
+the predictions coincide the distance is noise, and which side of the line noise lands on is
+not evidence either way.
 
 \begin{figure}[tb]
 \centering
@@ -606,8 +611,9 @@ nearest grid vertex against the distance a continuum would give. Points below th
 closer to the grid than chance allows. Filled circles reject the continuum null after
 correction; the open circle is the one powered arm that does not, drawn apart so the figure
 claims no more than the test does. The $\gridFlat$ squares are the arms where the two
-hypotheses coincide and no test has power, which is why they sit above the diagonal rather
-than below it. Per-arm corrected $p$-values are in Supplement~S46.}
+hypotheses coincide and no test has power; there the normalized distance is replicate noise
+and \emph{its sign carries nothing}, so their falling above the diagonal is not a prediction
+met. Per-arm corrected $p$-values are in Supplement~S46.}
 \label{fig:grid}
 \end{figure}
 
@@ -632,13 +638,10 @@ in both directions by the one manipulated variable.}
 \label{fig:payloadflip}
 \end{figure*}
 
-A comprehensive overnight campaign ran $63$ cells at $n \ge 5$, with six predictions and
-their falsifiers registered in advance; every cell completed validly. One prediction was
-confirmed, three falsifiers fired, one was not evaluable and one split. A cumulative drift
-account is falsified by duration invariance: intermediate counts of $1$, $1$ and $0$ over
-one, three and ten minutes, with vertices pinned throughout, so what stands is per-send
-jitter rather than accumulation. Incommensurate arms at $1053$ and $1219$~msg/s measure
-$47.2$ and $48.2\%$, refuting the linear extrapolation one registered prediction assumed.
+A larger campaign registered six predictions with their falsifiers before running $63$
+cells; three of the falsifiers fired. What survives is per-send jitter rather than
+accumulation, a cumulative-drift account being falsified by duration invariance
+(Supplement~S55).
 
 \subsection{Generality, and the sign channel}
 \label{sec:generality}
@@ -649,19 +652,33 @@ while the grid behavior reappeared intact. Across two \texttt{chrony}-discipline
 four replicates where the same arm on one clock held to $0.8$ points: cross-host, the deleted
 fraction couples to the synchronization state and nothing records either.
 
-Nor is the disposal confined to this harness. We audited \harnessAudited{} tools at source
-across \harnessLanguages{} languages and \harnessVendors{} vendors, classifying each finding
-with the code that classified the benchmark; $\harnessSilent{}$ of the $\harnessAudited{}$
-dispose of the sample without counting it. Apache Pulsar's performance client reaches the
-same design independently~\cite{pulsar_perf}, which makes this a pattern rather than one
-project's oversight. Two of the five do something worse than filter, substituting a
-constant for the inverted interval~\cite{fio_gettime}: substitution leaves nothing missing,
-so retention computed downstream reads $100\%$ and a value never measured enters the
-distribution. Two tools dispose of nothing, and one of those counts its discards in a metric
-whose description names the cause~\cite{rezolus}, which is the proof that the rule of
-Section~\ref{sec:authors} is practical rather than aspirational. A fifth entry is a
-correction of our own reading rather than a finding~\cite{emqtt_bench}. Supplement~S36 gives
-the registry, tool by tool, with the line each finding sits on.
+Nor is the disposal confined to this harness. We audited \harnessAuditedWord{} tools at source
+across \harnessLanguagesWord{} languages and \harnessVendorsWord{} vendors, classifying each
+finding with the code that classified the benchmark; \harnessSilentWord{} of the
+\harnessAuditedWord{}
+dispose of the sample without counting it, in four classes. \harnessFiltersWordCap{} admit only
+positive samples, one of them Apache Pulsar's performance client reaching the same design
+independently~\cite{pulsar_perf}, which makes this a pattern rather than one project's
+oversight. \harnessSuppressorsWordCap{} do something worse and substitute a constant ---
+\texttt{fio} returns zero~\cite{fio_gettime} and \texttt{btt} one
+nanosecond~\cite{btt_inlines} --- because substitution leaves nothing missing, so retention
+computed downstream reads $100\%$ and a value never measured enters the distribution.
+\harnessRefusalsWordCap{} hands the sample to a recorder that refuses it and does not check
+the return. Of the remaining two, \harnessCountingWord{} counts its discards in a
+metric whose description names the cause~\cite{rezolus} --- the proof that the rule of
+Section~\ref{sec:authors} is practical rather than aspirational --- and
+\harnessNoDisposalWord{} discards nothing at all, guarding a counter rather than the sample;
+we report the last because we first read it as a filter and it is
+not~\cite{emqtt_bench}. Supplement~S36 gives the registry, tool by tool, with the line each
+finding sits on.
+
+The class is not confined to benchmarks. The broker whose harness opened this audit adopted
+it: in November 2025 Kafka's coordinator metrics were found throwing on the negative
+durations a backward clock step produces, and the merged fix clamps them to zero with no
+counter and no log line~\cite{kafka19888}. The mechanism there is wall-clock
+non-monotonicity, not the stamping asymmetry of Section~\ref{sec:mechanism}, and the two
+should not be confused --- but the disposal is the same one, chosen by the vendor, at a cost
+of one coordinator per affected partition until the broker restarted.
 
 Separating the discards by sign is what makes the guard's cost legible. Across all
 $\ombRuns$ runs the \kafka{}-driver corpus's $\ombKafkaDiscarded$ discarded samples contain
@@ -673,20 +690,13 @@ negatives, every one exactly $-1000\,\mu$s, the minimum the quantum can express,
 $41{,}397$ of them in a single run where they were \emph{half of all samples taken}, beside
 six kept.
 
-That value is not a coincidence, and the driver explains it. The \redis{} driver takes its
-publish timestamp from \texttt{entry.getID().getTime()} in
-\texttt{RedisBenchmarkConsumer.java}:72 --- the stream-entry identifier the
-\emph{\redis{} server} assigns on \texttt{XADD}~\cite{openmessaging2018} --- whereas the
-\kafka{} driver uses a producer-set stamp. The \redis{} end-to-end span is therefore a
-difference between two millisecond-floored clocks on two hosts, and a sub-tick offset
-between two floored clocks can produce exactly one negative value, $-1000\,\mu$s, and no
-other. That is precisely what the corpus contains. It also explains the contrast that makes
-the sign channel legible: the \kafka{}-driver span floors two stamps whose difference is
-taken inside one JVM, and it never goes negative at all. Clock discipline was clean at
-every logged minute, which is the point --- this failure needs no misbehaving clock, only
-two of them and a floor. That guard hides this as well as your fastest measurements. Nor do
-the drivers share a measurand: \kafka{}'s span is client-to-client on one clock, \redis{}'s
-server-to-client across two (Supplement~S43).
+That value is not a coincidence. The \redis{} driver's span is a difference between two
+millisecond-floored clocks on two hosts, and a sub-tick offset between two floored clocks can
+produce exactly one negative value, $-1000\,\mu$s, and no other; that is precisely what the
+corpus contains, while the \kafka{}-driver span, floored the same way but taken inside one
+JVM, never inverts at all. Clock discipline was clean at every logged minute, which is the
+point --- this failure needs no misbehaving clock, only two of them and a floor
+(Supplement~S43).
 
 \section{Mode A: Why a Latency Comes Out Negative}
 \label{sec:mechanism}
@@ -741,10 +751,9 @@ $t_{\mathrm{out}}-t_{\mathrm{send}}$ & send (chain) & --- & --- & $\spanNegOutpu
 The rejected result was monotone in concurrency, significant after correction
 ($p = 9.0\times10^{-11}$), and passed every conventional check we knew: replicate counts,
 effect sizes, corrected significance, sanity plots. The
-acknowledgment timestamp is read only once the reply has arrived and its waiting thread is
-rescheduled, so under saturation the consumer has already recorded receipt, while the send
-stamp is read before the message leaves and cannot be late that way whichever client runs
-(Supplement~S43). A timestamping race inverts wholesale only at saturation.
+acknowledgment stamp is read only once its waiting thread is rescheduled, so under saturation
+the consumer has already recorded receipt; the send stamp cannot be late that way, whichever
+client runs (Supplement~S43).
 
 \paragraph{What the check cannot catch}
 \label{sec:blindspot}
@@ -818,8 +827,10 @@ No pair of arms in Fig.~\ref{fig:mechanism} overlaps.
 Real-time priority on the stamping threads moves occupancy while utilization stays fixed
 (Table~\ref{tab:mechanism}, top). The rate falls by factors of $\rtLowFactor$ and
 $\rtHighFactor$; the Wilson intervals of the two arms are disjoint at both load levels
-($z = \rtLowZ$ and $z = \rtHighZ$), and both residual rates land on the floor the model
-names in advance, $C_0 \approx 0.004$. \emph{This refutes every account in which the
+($z = \rtLowZ$ and $z = \rtHighZ$), and both residual rates land on the scale the model
+names in advance, $C_0 \approx 0.004$; over all $\rtResidualPairs$ pairs the manipulated arm
+runs from $\rtResidualMin$ to $\rtResidualMax$, so $C_0$ is where the rate settles and not a
+bound it respects. \emph{This refutes every account in which the
 negative-span rate is a function of utilization}, including the queueing form we ourselves
 adopted: $\rho$ did not change and the rate changed fiftyfold. Across $\rtPairs$ matched pairs spanning $\rtRhoLow$ to $\rtRhoHigh\%$ load the factor
 ranges $\rtFactorLow$--$\rtFactorHigh\times$, every pair with disjoint intervals;
@@ -832,15 +843,13 @@ fixed $\rho$, so this will not surprise a queueing-literate reader; what it rule
 single-parameter form we had adopted and pre-registered, where $\rho$ alone fixes the rate. Payload padding lengthened transport $76.9\times$ while the negative-span
 rate \emph{fell} $4.1\times$, monotonically, at a $0.012$ utilization spread: the
 direction Equation~\ref{eq:negspan} predicts and the opposite of a stress account.
-Finally, measured with \texttt{runqlat} on the \texttt{sched\_wakeup} and
-\texttt{sched\_switch} tracepoints~\cite{gregg2016runqlat}, filtered to the harness processes
-and sharing no instrument, estimator or data with the application-level rate, the
-probability that a run-queue stall outlasts the interval agrees with the observed negative-span
-rate across $\tracedRatioArms$ arms at two load levels, ratios $\tracedRatios$ with no
-consistent sign: an application-level failure rate predicted to within a third, unfitted.
-A probe on every context switch is not free: the rate is $\untracedRate$ untraced
-against $\tracedRate$ traced ($z = \observerZ$). The comparison above uses the traced arm's
-own rate, so it is two instruments on one machine; $\untracedRate$ is the machine's.
+Finally, a kernel trace on the \texttt{sched\_wakeup} and \texttt{sched\_switch}
+tracepoints~\cite{gregg2016runqlat}, filtered to the harness processes and sharing no
+instrument, estimator or data with the application-level rate, predicts that rate to within a
+third across $\tracedRatioArms$ arms at two load levels --- ratios $\tracedRatios$, no
+consistent sign, nothing fitted. The probe is not free: $\untracedRate$ untraced against
+$\tracedRate$ traced ($z = \observerZ$), and the comparison uses the traced arm's own rate,
+so $\untracedRate$ is the machine's (Supplement~S43.4).
 
 \paragraph{The load-axis predictions, and their failure}
 The knee sweep placed conditions where the candidate load laws diverge. The M/G/1 form
@@ -868,9 +877,9 @@ we add is which modes, and why the upper one sits where it does.
 
 Raising the payload from $0$ to $256$~KB lengthens the true transport $77\times$, and over
 that range the negative-span rate falls monotonically with $T_{\mathrm{true}}$
-(Fig.~\ref{fig:ttrue}); log--log least squares over the four payload levels returns an
-effective exponent of $\tailExponent$ ($\tailExponentCI$, Student-$t$ at two degrees of
-freedom). The fit is in
+(Fig.~\ref{fig:ttrue}); log--log least squares over the four payload levels returns a slope
+of $\tailSlope$ ($\tailSlopeCI$, Student-$t$ at two degrees of freedom), the same signed
+number the figure prints. The fit is in
 Supplement~S32; four points do not earn an equation here. An earlier version read the kernel trace as an independent confirmation of
 it; we withdraw the claim, because estimating the traced index properly is what refuted
 it.
@@ -995,12 +1004,10 @@ $13.4$--$27.0\%$ under clocks agreeing to well under a tick
 removes skew but not this failure, and every scheme that avoids the one-way requirement rests
 on an assumption its users rarely state (Supplements~S37 and~S43.6).
 
-\paragraph{Resolution, as distinct from synchronization} Finer stamps fix the lesser half.
-A microsecond stamp makes $T_{\mathrm{true}}/\tau \gg 1$ here, so
-Equation~\ref{eq:retention}'s deletions disappear and the grid recedes to faster paths. The
-positivity guard survives it, and genuine negatives still occur at microsecond resolution, so
-a better clock alone converts an uncounted \emph{resolution} failure into an uncounted
-\emph{instrument} one.
+\paragraph{Resolution, as distinct from synchronization} Finer stamps fix the lesser half:
+a microsecond stamp retires Equation~\ref{eq:retention}'s deletions here and moves the grid to
+faster paths. The guard survives it and genuine negatives do too, so a better clock alone
+converts an uncounted \emph{resolution} failure into an uncounted \emph{instrument} one.
 
 \subsection{Threats and limitations}
 \label{sec:threats}

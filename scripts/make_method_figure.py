@@ -26,6 +26,23 @@ figure_style.apply()  # Type 42, IEEE-listed family; see scripts/figure_style.py
 import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.patches import FancyBboxPatch  # noqa: E402
 
+def _transport_span():
+    """How far E-A10 moved the transport, from the campaign rather than from memory.
+
+    This map is drawn into the supplement, so its cells are published numbers. Round 34 found
+    the payload sweep's transport ratio typed in twenty places across the two documents, the
+    figure scripts and this table; every copy was correct, which is why none of them ever
+    failed. The fallback equals what the derivation returns for the committed campaign, so a
+    reader without the artefact gets the published figure rather than a different one --- the
+    same bargain `_base_slice_ms` makes in `make_paper_figures`.
+    """
+    try:
+        import stat_intervals
+        return "%.0f" % round(stat_intervals.payload_span()["transport_factor"])
+    except (ImportError, OSError, KeyError, ValueError):
+        return "77"
+
+
 # (campaign, manipulated, held fixed, settles) -- the row content of the map.
 ROWS = [
     ("E1\nconcurrency", "feeds $N$:\n1, 9, 10, 12", "rate, host,\nplan set",
@@ -51,8 +68,8 @@ ROWS = [
      "utilisation is not the variable\n(2.07x, 2.05x, at rho 0.7531)"),
     ("E-A9\nrun-queue trace", "nothing:\nobservation only", "load,\npriority arm",
      "P(stall > $T_\\mathrm{true}$) predicts\nthe rate, unfitted"),
-    ("E-A10\ntransport sweep", "payload size;\n$T_\\mathrm{true}$ 77x", "load, hosts,\ncode path",
-     "other side of the inequality;\ntail index 0.34"),
+    ("E-A10\ntransport sweep", "payload size;\n$T_\\mathrm{true}$ %sx" % _transport_span(),
+     "load, hosts,\ncode path", "other side of the inequality;\ntail index 0.34"),
     ("E-A8\nco-location", "broker on\nthe driver", "utilisation,\nto 0.002",
      "nothing: transport did not\nmove, so it is withheld"),
     ("OMB\nexternal", "instrumented\ndiscard counter", "our broker,\nunder load",

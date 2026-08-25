@@ -789,3 +789,48 @@ class TestTheChronyBounds:
         got = dict(epn.chrony_bound_macros(path=str(tmp_path)))
         assert got["chronyHosts"] == "2", "the capture with no bound fields is not a host"
         assert got["chronyPairBound"] == "8"   # (1+2) + (2+3) ms
+
+
+class TestThePayloadSpanMacros:
+    """The payload sweep's endpoints, emitted in round 34 after seventeen typed copies."""
+
+    def test_it_emits_both_precisions_and_the_replication(self):
+        got = dict(epn.stat_macros())
+        for key in ("payloadTransportFactor", "payloadTransportFactorRound",
+                    "payloadRateFall", "payloadRateFallExact", "payloadRhoSpread",
+                    "payloadLevels", "payloadReplTransportFactor", "payloadReplRateFall"):
+            assert key in got, "%s is not emitted" % key
+        assert round(float(got["payloadTransportFactor"])) == \
+            float(got["payloadTransportFactorRound"])
+        assert float(got["payloadRateFallExact"]) == pytest.approx(
+            float(got["payloadRateFall"]), abs=0.05)
+
+    def test_a_missing_primary_campaign_drops_only_its_macros(self, monkeypatch):
+        """A checkout without the sweep still emits everything else, as span_macros does."""
+        import stat_intervals
+        real = stat_intervals.payload_span
+
+        def only_repl(phase=None):
+            if phase is None:
+                raise OSError("no primary sweep")
+            return real(phase)
+
+        monkeypatch.setattr(stat_intervals, "payload_span", only_repl)
+        got = dict(epn.stat_macros())
+        assert "payloadTransportFactor" not in got
+        assert "payloadReplTransportFactor" in got, "the replication is independent"
+        assert "tailSlope" in got, "the fit is unaffected"
+
+    def test_a_missing_replication_drops_only_its_macros(self, monkeypatch):
+        import stat_intervals
+        real = stat_intervals.payload_span
+
+        def only_primary(phase=None):
+            if phase is not None:
+                raise OSError("no replication sweep")
+            return real(phase)
+
+        monkeypatch.setattr(stat_intervals, "payload_span", only_primary)
+        got = dict(epn.stat_macros())
+        assert "payloadTransportFactor" in got
+        assert "payloadReplTransportFactor" not in got

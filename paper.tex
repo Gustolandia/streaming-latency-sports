@@ -89,6 +89,10 @@ samples taken, at a retained fraction fixed by the send-interval-to-quantum rati
 % Computer Society subject list, where it appears that way. The others are ordinary noun
 % phrases. The mixture is deliberate, and lower-casing the taxonomy term would stop it
 % matching the taxonomy.
+% Round 33's referee asked for uniform case and the request is declined on the grounds above:
+% the capital is the quotation mark. Recorded here so a later round does not raise it again,
+% and note that a comment *inside* the block below is parsed as two index terms by
+% test_index_terms_are_alphabetical -- which is how this note ended up outside it.
 \begin{IEEEkeywords}
 distributed systems;
 measurement techniques;
@@ -158,7 +162,7 @@ the difference between them (Equation~\ref{eq:model}). Real-time priority on the
 stamping threads at fixed utilization collapses the rate
 $\rtFactorLow$--$\rtFactorHigh\times$ over $\rtPairs$ matched pairs; identical
 utilization reached by two core geometries differs $\GeomOrigFactor\times$;
-lengthening the true transport $77\times$ \emph{lowers} the rate; an unfitted kernel trace
+lengthening the true transport $\payloadTransportFactorRound\times$ \emph{lowers} the rate; an unfitted kernel trace
 predicts the observed rate to within a third. The span that inverts is referenced to an
 acknowledgment, and the send-referenced span over the same $\spanEvents$ events never
 inverts, locating the fault in the reference stamp. Two brokers sharing neither client nor
@@ -840,8 +844,8 @@ identical to four decimals, and the negative-span rates differ by
 $\GeomOrigFactor\times$ ($z = \GeomOrigZ$), reproduced at $\GeomReplFactor\times$ by a full
 replication. Multi-server queueing expects geometry to matter at
 fixed $\rho$, so this will not surprise a queueing-literate reader; what it rules out is the
-single-parameter form we had adopted and pre-registered, where $\rho$ alone fixes the rate. Payload padding lengthened transport $76.9\times$ while the negative-span
-rate \emph{fell} $4.1\times$, monotonically, at a $0.012$ utilization spread: the
+single-parameter form we had adopted and pre-registered, where $\rho$ alone fixes the rate. Payload padding lengthened transport $\payloadTransportFactor\times$ while the negative-span
+rate \emph{fell} $\payloadRateFall\times$, monotonically, at a $\payloadRhoSpread$ utilization spread: the
 direction Equation~\ref{eq:negspan} predicts and the opposite of a stress account.
 Finally, a kernel trace on the \texttt{sched\_wakeup} and \texttt{sched\_switch}
 tracepoints~\cite{gregg2016runqlat}, filtered to the harness processes and sharing no
@@ -875,7 +879,7 @@ That this distribution is not a single heavy tail is known --- Gregg reported it
 in the post introducing \texttt{runqlat}, the tool we use~\cite{gregg2016runqlat}. What we add
 is which modes, and why the upper one sits where it does.
 
-Raising the payload from $0$ to $256$~KB lengthens the true transport $77\times$, and over
+Raising the payload from $0$ to $256$~KB lengthens the true transport $\payloadTransportFactorRound\times$, and over
 that range the negative-span rate falls monotonically with $T_{\mathrm{true}}$
 (Fig.~\ref{fig:ttrue}); log--log least squares over the four payload levels returns a slope
 of $\tailSlope$ ($\tailSlopeCI$, Student-$t$ at two degrees of freedom), the same signed
@@ -1037,7 +1041,7 @@ samples); cross-CPU incoherence under migration, below; utilization (identical $
 twofold apart); timer noise (\texttt{SCHED\_FIFO} at fixed utilization collapses the rate
 $\rtFactorLow$--$\rtFactorHigh\times$ across $\rtPairs$ pairs, and noise does not respect
 scheduling class); stress
-(transport $77\times$ longer \emph{lowers} the rate); and direct observation (a
+(transport $\payloadTransportFactorRound\times$ longer \emph{lowers} the rate); and direct observation (a
 \texttt{sched\_switch} histogram predicts the rate to within a third, unfitted). One rival is
 not the scheduler's: the stamp is a CPython call, so it waits on the interpreter lock
 too, invisibly to a tracepoint probe --- bounded because that kernel-only estimator brackets

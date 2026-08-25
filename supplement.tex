@@ -1515,7 +1515,7 @@ $15/15$ on the same hardware (the main text). Testing the fine-grained slope cle
 needs an instrument that lengthens $T_{\mathrm{true}}$ without perturbing the scheduler, which
 netem is not. The payload sweep of the main text is that instrument by another
 route: padding adds serialization and transfer time without contending for the run queue, and it
-moves $T_{\mathrm{true}}$ by $77\times$ against netem's confounded range. It is not a perfect
+moves $T_{\mathrm{true}}$ by $\payloadTransportFactorRound\times$ against netem's confounded range. It is not a perfect
 constant offset either --- serialization pushes utilization slightly \emph{up}, which works
 against the observed direction rather than for it --- but it is clean enough to carry the claim
 netem could not, which is why the $T_{\mathrm{true}}$ result rests on it and not on this sweep.
@@ -1835,8 +1835,8 @@ $0.6284$/$0.6259$. $k=7$: $0.8778$/$0.8809$ and $0.8778$/$0.8822$.
 \caption{\textbf{A slower path is a more reliable measurement, twice.} Payload padding lengthens
 the true transport without touching the scheduler. Utilization is held to a $0.012$ spread; the
 serialization cost pushes it slightly up, against the predicted direction. Both quantities move
-monotonically, in opposite directions, in both campaigns: transport spans $76.9\times$ and
-$76.8\times$, the rate falls $4.09\times$ and $4.26\times$. Each cell is 2\,985 events.}
+monotonically, in opposite directions, in both campaigns: transport spans $\payloadTransportFactor\times$ and
+$\payloadReplTransportFactor\times$, the rate falls $\payloadRateFallExact\times$ and $\payloadReplRateFall\times$. Each cell is 2\,985 events.}
 \label{tab:ea10}
 \begin{tabular}{rrrrrr}
 \toprule
@@ -1952,11 +1952,11 @@ near-parity at $k=7$.
 mechanism predicts that a \emph{slower} path is a \emph{more reliable} measurement, because
 the same stalls have a longer interval to outrun. Padding the payload lengthens
 $T_{\mathrm{true}}$ without touching the scheduler (Section S25): transport rose
-$76.9\times$ while the negative-span rate \emph{fell} $4.1\times$, monotonically, with
+$\payloadTransportFactor\times$ while the negative-span rate \emph{fell} $\payloadRateFall\times$, monotonically, with
 utilization held to a $0.012$ spread --- and pushed slightly \emph{up} by serialization,
 against the observed fall, so the effect is measured against its own confound. The same
-numbers constrain the stall distribution sharply: a $77\times$ larger threshold bought only a
-$4.1\times$ lower rate, so the tail barely thins across two orders of magnitude --- which is
+numbers constrain the stall distribution sharply: a $\payloadTransportFactorRound\times$ larger threshold bought only a
+$\payloadRateFall\times$ lower rate, so the tail barely thins across two orders of magnitude --- which is
 why mean-based counters could not see the effect and the direct trace was necessary.
 
 \section{S29. The audit, stamping-mode and injected-delay tables (moved from the main text)}
@@ -2105,7 +2105,7 @@ unresolved --- and the two degenerate arms are reported as undecidable. Judged b
 is present in every arm that could show it (method: supplementary material S31).
 \section{S32. The mechanism narrative in full (moved from the main text)}
 
-\paragraph{The payload-sweep fit, demoted here from the main text.} Over a $77\times$
+\paragraph{The payload-sweep fit, demoted here from the main text.} Over a $\payloadTransportFactorRound\times$
 payload span, least squares of $\log \Pr$ on $\log T_{\mathrm{true}}$ over four payload
 levels gives
 \begin{equation}
@@ -2196,10 +2196,10 @@ displacement toward $\theta$ that the next paragraph makes systematic.
 
 \paragraph{The other side of the inequality, and it moves the rate the wrong way.} A
 \emph{slower} path should be a \emph{more reliable} measurement, and it is: payload padding
-lengthened transport $76.9\times$ while the negative-span rate \emph{fell} $4.1\times$,
+lengthened transport $\payloadTransportFactor\times$ while the negative-span rate \emph{fell} $\payloadRateFall\times$,
 monotonically, utilization held to a $0.012$ spread and pushed slightly \emph{up} against
-the observed fall (supplementary material S25). A $77\times$ larger threshold buying only a
-$4.1\times$ lower rate means the tail barely thins across two orders of magnitude --- why
+the observed fall (supplementary material S25). A $\payloadTransportFactorRound\times$ larger threshold buying only a
+$\payloadRateFall\times$ lower rate means the tail barely thins across two orders of magnitude --- why
 mean-based counters could not see the effect and the direct trace was necessary.
 
 \paragraph{Closing the loop: measuring the stall distribution directly.} Every result so

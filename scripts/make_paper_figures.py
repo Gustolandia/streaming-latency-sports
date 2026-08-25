@@ -398,7 +398,18 @@ def plot_quantum_geometry(axes, tau=TAU_MS, t_true=T_TRUE_MS, q=GRID_Q):
     # lower label came within a point or two of the dots above. The collision gate did not
     # fire; at print size it was plain. The shaded band and the $\tau - T_{true}$ tick say the
     # same thing, and the caption names it in a clause, so the space goes to the rows.
-    uniform = [(i + 0.5) * tau / 20 for i in range(20)]   # 8/20 = T_true/tau exactly
+    # Off-lattice, and that is the whole point. The first version drew this row as twenty
+    # *evenly spaced* phases, which is not an incommensurate producer at all -- it is a
+    # commensurate one with q = 20, the very thing the row below is contrasted against. The
+    # paper reserves the word carefully ("889 msg/s sits 0.00014 from 9/8 and behaves as fully
+    # continuous"), and the figure was quietly borrowing it.
+    #
+    # A golden-ratio rotation is the standard way to get phases that fill the interval without
+    # ever repeating, and it keeps the arithmetic the panel exists to show: 7 of the 20 land in
+    # the crossing region, so the printed share is exactly T_true/tau. Checked, not assumed --
+    # an offset of 0.5 gives 6/20 and would make the panel illustrate the wrong number.
+    phi = (5 ** 0.5 - 1) / 2
+    uniform = [((i * phi) % 1.0) * tau for i in range(20)]   # 7/20 = T_true/tau exactly
     # Short enough to end left of the crossing band. The long form -- "incommensurate: every
     # phase occurs" -- reached under the bracket above it, and once the figure was compressed
     # to fit the page the bracket rule cut through it: under the collision gate's threshold,

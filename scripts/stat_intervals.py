@@ -234,7 +234,7 @@ def occupancy_bounds(path=os.path.join("model", "occupancy_law.csv")):
 
     Read because the manuscript turned the ceiling into a statement about occupancy: "two
     events in three are still stamped unpreempted" is not what a rate ceiling of 0.37 says.
-    Under Equation 6 an event can be stamped by a preempted thread and still not invert,
+    Under the two-state model an event can be stamped by a preempted thread and still not invert,
     whenever the stall is shorter than the interval being measured.
     """
     out = {}

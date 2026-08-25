@@ -461,6 +461,25 @@ pair that did not reach the same utilisation is not the comparison the figure cl
 **Proof of no-op:** extract the figure's text before and after and diff it. A ledger
 substitution that changes a printed character is not a substitution, it is an edit.
 
+**1v. Code may not cite the manuscript by number.** The manuscript writes
+`ef{eq:negspan}` and LaTeX resolves it. Scripts have no such mechanism and wrote the numbers
+anyway: eight equation citations and seventeen section citations across thirteen files. Two of
+the equation numbers were wrong --- `make_result_figures` told its reader that Figure 7
+illustrates the *definition* of the measured span when the caption that same function emits
+says the rate law --- and **every one of the seventeen section numbers was arabic**, from the
+numbering the paper used before the TC restructure. They did not point at the wrong section;
+they pointed at a document that has not existed for many rounds, including a "Section 8.3" of
+a paper whose last section is VII.
+
+Five of the eight equation citations were right at the time. That is the argument for the
+rule rather than against it: nothing kept them right and nobody had reason to look.
+
+`tests/unit/test_code_cites_no_numbers.py` forbids `Equation N`, `Eq. N` and `Section N` in
+`scripts/`, with an allow-list for citations into someone else's numbered document, where the
+number is the stable identifier. **Name the thing or describe it** --- "the two-state model",
+"the rate as a function of T_true", "the external-campaign section" all survive a
+renumbering.
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

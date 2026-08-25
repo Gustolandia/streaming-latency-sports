@@ -1,10 +1,10 @@
-# Twelve IEEE Transactions on Computers papers, kept for reference
+# Fourteen IEEE Transactions on Computers papers, kept for reference
 
-Downloaded 2026-08-25 (rounds 26–33) to settle questions of house *norm* rather than house
+Downloaded 2026-08-25 (rounds 26–35) to settle questions of house *norm* rather than house
 *rule*. The rules are on the Author Information page and are already gated in the test suite;
 these answer the different question of what accepted TC papers actually look like.
 
-All twelve are author versions of accepted or published TC papers, chosen because they are the
+All fourteen are author versions of accepted or published TC papers, chosen because they are the
 closest in kind to ours that are retrievable in full — software-systems and evaluation work
 rather than the circuit and accelerator papers that dominate TC's arXiv presence.
 
@@ -22,16 +22,18 @@ rather than the circuit and accelerator papers that dominate TC's arXiv presence
 | `gpu_perfmodel_TC.pdf` | 2003.11740 | 16* | 37 | 23 | runtime performance-modelling methodology |
 | `oaas_serverless_TC.pdf` | 2408.04898 | **12** | 40 | **13** | serverless object abstraction; TC 2026 |
 | `dmrlib_malleability_TC.pdf` | 2604.26624 | 15* | 25 | 10 | job malleability, HPC resource management |
+| **`roload_kernel_TC.pdf`** | 2608.13287 | **12** | 25 | **8** | **kernel/bare-metal firmware; our exact configuration** |
+| `fedrank_TC.pdf` | 2501.14406 | 14 | 39 | 19 | federated parameter-efficient fine-tuning |
 
 \* **Page count not comparable.** These four are author preprints set in a non-IEEEtran
 template; their page counts do not correspond to journal pages and must not be quoted as TC
-page counts. The eight unstarred rows are IEEEtran two-column and are comparable.
+page counts. The ten unstarred rows are IEEEtran two-column and are comparable.
 
 **Ours: 12 pages, 45 references, 8 figures.**
 
 ## What they settle
 
-**Page length.** Of the eight comparable rows, three are 14 pages, three are 11 and two are
+**Page length.** Of the ten comparable rows, four are 14 pages, three are 11 and three are
 12; TC allows
 10–12 before mandatory overlength page charges and 14 as the hard maximum, so the 14s are
 paying MOPC. Our
@@ -47,9 +49,9 @@ normal and not a sign of padding.
 image limit" has no denominator here. The observed spread is **7 to 20**. Round 27 read the
 first four (13–20) and called our paper figure-light; the six added since correct that
 reading in both directions — one accepted TC paper carries **7 figures in 11 pages**, another
-**11 in 11**, and two carry **16 in 12** and **13 in 12** --- our exact page budget with twice
-and with over half again the figures. Two independent instances settle it: twelve pages is not
-what limits the figure count; the argument is.
+**11 in 11**, two carry **16 in 12** and **13 in 12**, and ROLoad-PMP carries **8 in 12** ---
+this manuscript's configuration exactly. The question is closed: twelve pages is not what
+limits the figure count, and a published TC paper sits precisely where this one does.
 Figure count tracks the paper's subject, not a quota. Ours is 8, inside the observed range,
 and the binding constraint is the self-imposed 12-page target rather than anything the journal
 says.
@@ -96,7 +98,7 @@ on the venue never having published this kind; it rests on nobody having publish
 None is a pure benchmarking-methodology paper. A full enumeration of TC's arXiv-visible
 corpus (~120 unique preprints, cross-checked across four name spellings in both the API and
 the advanced-search UI) found no paper whose subject is measurement methodology itself. These
-twelve are therefore useful for form, and the two precedents above for position, but none is a
+fourteen are therefore useful for form, and the two precedents above for position, but none is a
 template for the argument.
 
 `timing_channels_TC.pdf` is the closest in *subject* anyone has found: what preemption and

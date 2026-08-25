@@ -7,7 +7,7 @@ claim it is the evidence for.
 The paper's campaigns accumulated over three months in response to defects, so their logic is not
 obvious from their names. This figure states it in one place: the manipulated variable, the
 controlled variable, and the hypothesis or claim each campaign settles. A reader should be able
-to check that every claim in Section 7 has an experiment behind it, and that no experiment is
+to check that every claim in the discussion has an experiment behind it, and that no experiment is
 doing double duty as both the source of a hypothesis and its test.
 
 CLI:
@@ -106,7 +106,7 @@ ROWS = [
     ("transport\n(x2)", "feeds, powered", "verified\nreal-time rate",
      "broker transport,\nequivalence + shift"),
     # The campaigns that decided the mechanism. Added after an audit found the closing note's
-    # claim -- that every claim in Section 7 traces to a row -- had quietly become false: five
+    # claim -- that every claim in the discussion traces to a row -- had quietly become false: five
     # campaigns were carrying results in the text with no row here at all.
     ("E-A5/A5b/A7\nstamping priority", "SCHED_FIFO on\nthe stamping threads",
      "utilisation,\nto 0.003", "scheduling, not utilisation\n(%s)" % _priority_range()),
@@ -159,7 +159,7 @@ def draw(ax):
 
     # Two lines: at the larger point size this note no longer fits the narrower canvas on one.
     ax.text(5.0, -0.42,
-            "Every claim in Section 7 traces to one row. No row both generates and tests\n"
+            "Every claim in the discussion traces to one row. No row both generates and tests\n"
             "the same hypothesis, and a row that settled nothing says so.",
             ha="center", va="center", fontsize=9.5, style="italic", color="#444444")
 

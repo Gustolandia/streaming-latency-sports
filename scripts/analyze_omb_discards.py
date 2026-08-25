@@ -3,7 +3,7 @@
 analyze_omb_discards.py
 What does the OpenMessaging Benchmark actually discard, and does it match our failure mode?
 
-Section 6.7 of the manuscript reported that an instrumented OMB "discarded 6,000 end-to-end
+The external-campaign section reported that an instrumented OMB "discarded 6,000 end-to-end
 samples" under load and read that as the same causality violation our own harness produced. The
 counter behind it did not distinguish sign. A sample of exactly 0 microseconds means publish and
 receive landed in the same millisecond tick -- `record.timestamp()` is millisecond-resolution
@@ -17,7 +17,7 @@ than on which is more convenient:
   RESOLUTION   discards are overwhelmingly zeros, and their share FALLS as latency rises (with
                load, or with message size). OMB's defect is real and serious -- it reports a
                latency distribution computed from a small fraction of its samples -- but it is
-               not the failure this paper is about, and Section 6.7 must say so.
+               not the failure this paper is about, and that section must say so.
   CAUSALITY    a material number of discards are negative, and they rise with load the way our
                own inversion rate does. The original claim stands, with the zeros separated out.
   BOTH         zeros dominate but negatives are present and load-dependent. The single counter

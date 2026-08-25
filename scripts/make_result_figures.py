@@ -31,7 +31,8 @@ numbers, and each of them is a picture:
                numbers, and the numbers are the evidence; what the table cannot show at a
                glance is that no pair overlaps, which is the causal claim itself.
 
-  ttrue     -- inversion rate against the interval being measured. Equation 2 as an
+  ttrue     -- inversion rate against the interval being measured. The negative-span
+               probability as a function of $T_{true}$, as an
                experiment: lengthening the true transport lowers the rate, where an account
                driven by load alone predicts no change. It had no figure at all.
 
@@ -592,7 +593,8 @@ def ttrue_points(path=TTRUE_CSV):
 def plot_ttrue(ax, pts):
     """Negative-span rate against the interval being measured, over the payload sweep.
 
-    This is Equation 2 as an experiment: the same stall distribution overlaps a short
+    This is the negative-span probability as a function of T_true, run as an
+    experiment: the same stall distribution overlaps a short
     interval almost entirely and a long one hardly at all, so lengthening the true transport
     *lowers* the rate. It is the manipulation that rules out load as the sole explanation,
     and it had no figure.
@@ -714,9 +716,9 @@ def payload_arms(path=None):
 def payload_positions(arms=None, q=PAYLOAD_Q):
     """(label, frac(q*theta), spread, colour) per arm.
 
-    theta is the arm's mean retention as a fraction, which by Equation 4 estimates
+    theta is the arm's mean retention as a fraction, which by the retention identity estimates
     T_true/tau. frac(q*theta) is then the replicates' position inside their grid cell, and
-    Equation 5 says the spread should be near 100/q at mid-cell and near zero on a vertex.
+    The spread rule says it should be near 100/q at mid-cell and near zero on a vertex.
     """
     arms = payload_arms() if arms is None else arms
     out = []

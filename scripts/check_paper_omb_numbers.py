@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 check_paper_omb_numbers.py
-Do the numbers Section 6.7 quotes still match the campaign ledger?
+Do the numbers the external-campaign section quotes still match the campaign ledger?
 
 The manuscript states, in its artefact section, that a consistency suite recomputes its quoted
 quantities from committed CSVs and fails if the two disagree. That was true of the original
@@ -36,7 +36,7 @@ PAPER_CAMPAIGNS = {
 }
 
 # `rate_q` was initially left out, which made the count wrong in a way worth recording. The
-# quantisation table in Section 6.7 draws its arms from `rate_q` as well as `rate_phase`, and every
+# quantisation table in the external-campaign section draws its arms from `rate_q` as well as `rate_phase`, and every
 # `rate_q` cell is the same three-minute instrumented run on the same co-located path as the rest.
 # Excluding it meant the manuscript described a campaign it had already reported more of -- the
 # precise failure this checker exists to catch, committed by the checker's own configuration.
@@ -178,7 +178,7 @@ def find_undermined_macros(src, macros=DERIVED_MACROS):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Check Section 6.7's numbers against the ledger")
+    ap = argparse.ArgumentParser(description="Check the external-campaign numbers against the ledger")
     ap.add_argument("--ledger", default="docs/results/external_campaigns_index.csv")
     ap.add_argument("--paper", default="paper.tex")
     ap.add_argument("--generated", default=os.path.join("docs", "generated",
@@ -305,7 +305,7 @@ def main(argv=None):
         for f in failures:
             print("   %s" % f)
         return 1
-    print("OK: Section 6.7's quoted numbers match the ledger")
+    print("OK: the external-campaign quoted numbers match the ledger")
     return 0
 
 

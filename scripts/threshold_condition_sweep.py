@@ -3,7 +3,7 @@
 threshold_condition_sweep.py
 Verify, at condition level, that the audit threshold cannot resurrect the first result set.
 
-Section 6.2 reports the threshold's run-level sensitivity (92.5% of runs rejected at zero
+The consistency-check section reports the threshold's run-level sensitivity (92.5% of runs rejected at zero
 tolerance, 19.2% at a permissive 20%) and claims that no choice of threshold in that range
 returns any cell of the first result set to usability. The run-level curve was always
 artefact-checked; the condition-level half of the claim was not, and a referee (TPDS round 1,
@@ -108,7 +108,7 @@ def main(argv=None):
               + ", ".join(f"{r['backend']} N={r['n']}" for r in at_t if r["usable"]))
     if resurrected:
         print("FATAL: a first-result cell became usable inside the swept range; "
-              "Section 6.2's sensitivity sentence no longer holds")
+              "the consistency check's sensitivity sentence no longer holds")
         return 1
     print(f"OK: no first-result cell usable at any threshold in "
           f"[{THRESHOLDS[0]}, {THRESHOLDS[-1]}]; wrote {out}")

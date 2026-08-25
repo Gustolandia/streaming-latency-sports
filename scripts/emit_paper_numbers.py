@@ -247,6 +247,36 @@ def stat_macros():
             ("%sFactor" % name, "%.2f" % ratio),
             ("%sZ" % name, "%.1f" % abs(z)),
         ]
+    # The endpoints of the same sweep the fit above runs on. Section V-C quoted all three of
+    # these in one sentence, three other sentences quoted the transport ratio rounded to an
+    # integer, and the figure recomputed it a sixth time -- every copy correct, none of them
+    # reading any other. Two macros for the ratio, not one, because the paper genuinely wants
+    # two precisions: the result sentence earns a decimal and the three summary sentences read
+    # better rounded. Emitting both makes that a decision rather than an accident, and makes
+    # `\payloadTransportFactorRound` provably the rounding of `\payloadTransportFactor`.
+    try:
+        span = stat_intervals.payload_span()
+        out += [
+            ("payloadTransportFactor", "%.1f" % span["transport_factor"]),
+            ("payloadTransportFactorRound", "%.0f" % round(span["transport_factor"])),
+            ("payloadRateFall", "%.1f" % span["rate_fall"]),
+            ("payloadRhoSpread", "%.3f" % span["rho_spread"]),
+            ("payloadLevels", str(span["levels"])),
+            # Two decimals for S25's comparison caption, which sets the two campaigns side by
+            # side. A caption whose whole point is that two runs agree is the last place that
+            # should hold typed copies of what they agree on.
+            ("payloadRateFallExact", "%.2f" % span["rate_fall"]),
+        ]
+    except (OSError, KeyError, ValueError):
+        pass
+    try:
+        repl = stat_intervals.payload_span("ea10b")
+        out += [
+            ("payloadReplTransportFactor", "%.1f" % repl["transport_factor"]),
+            ("payloadReplRateFall", "%.2f" % repl["rate_fall"]),
+        ]
+    except (OSError, KeyError, ValueError):
+        pass
     try:
         slope, intercept, r2, lo, hi = stat_intervals.payload_fit()
         out += [

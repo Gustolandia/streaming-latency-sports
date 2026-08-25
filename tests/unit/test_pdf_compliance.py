@@ -196,7 +196,13 @@ def test_index_terms_are_alphabetical():
     tex = (ROOT / "paper.tex").read_text(encoding="utf-8")
     m = re.search(r"\\begin\{IEEEkeywords\}(.*?)\\end\{IEEEkeywords\}", tex, re.S)
     assert m, "no IEEEkeywords block"
-    terms = [t.strip().rstrip(".") for t in m.group(1).split(";") if t.strip()]
+    # Comments are not index terms. Round 34 put a two-line note inside the block explaining
+    # a change to it, and this check read the note as two more terms and failed on their
+    # ordering -- pointing at the comment, not at the terms, which cost a round-trip to
+    # understand. A block comment is a normal thing to write; the reader of it is what was
+    # wrong.
+    body = re.sub(r"(?m)%[^\n]*", "", m.group(1))
+    terms = [t.strip().rstrip(".") for t in body.split(";") if t.strip()]
     assert len(terms) >= 3, "IEEE recommends a minimum of three index terms"
     lowered = [t.lower() for t in terms]
     assert lowered == sorted(lowered), (

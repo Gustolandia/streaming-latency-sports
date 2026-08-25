@@ -590,7 +590,7 @@ def ttrue_points(path=TTRUE_CSV):
 
 
 def plot_ttrue(ax, pts):
-    """Negative-span rate against the interval being measured, over a 77x payload span.
+    """Negative-span rate against the interval being measured, over the payload sweep.
 
     This is Equation 2 as an experiment: the same stall distribution overlaps a short
     interval almost entirely and a long one hardly at all, so lengthening the true transport
@@ -619,8 +619,15 @@ def plot_ttrue(ax, pts):
     # of 0.339" while this annotation drew "slope -0.34" from the same fit, on the facing
     # page. Both now say slope and both carry the sign, and the ledger emits it so they
     # cannot drift apart again.
+    #
+    # And the span beside it, finally. This line read `round(xs[-1] / xs[0])` for eight
+    # rounds after the slope was fixed --- a sixth reading of a CSV that seventeen sentences
+    # across the two documents were also reading by hand. It comes from `payload_span()` now,
+    # which is the function the emitter uses, so the figure and `\payloadTransportFactorRound`
+    # cannot disagree. `tests/unit/test_figure_ledger_agreement.py` asserts they do not.
+    span = stat_intervals.payload_span()
     ax.annotate("slope %.2f (%.2f to %.2f)\nover a %d× span in transport"
-                % (slope, lo_slope, hi_slope, round(xs[-1] / xs[0])),
+                % (slope, lo_slope, hi_slope, round(span["transport_factor"])),
                 # Left of where it was: adding the interval lengthened the first line enough
                 # to put the second line's last glyph on the right spine.
                 #

@@ -4,18 +4,20 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![Target: TPDS](https://img.shields.io/badge/Target-IEEE%20TPDS-orange.svg)]()
-[![Tests](https://img.shields.io/badge/tests-2121_passing-brightgreen.svg)]()
+[![Target: TC](https://img.shields.io/badge/Target-IEEE%20Transactions%20on%20Computers-orange.svg)]()
+[![Tests](https://img.shields.io/badge/tests-3650_passing-brightgreen.svg)]()
 [![Coverage](https://img.shields.io/badge/branch_coverage-100%25-brightgreen.svg)]()
 [![StatsBomb Data](https://img.shields.io/badge/StatsBomb_Data-CC_BY--NC_4.0-blue.svg)](https://github.com/statsbomb/open-data)
-[![DOI (code)](https://img.shields.io/badge/DOI_code-10.5281%2Fzenodo.21650031-blue.svg)](https://doi.org/10.5281/zenodo.22044877)
-[![DOI (data)](https://img.shields.io/badge/DOI_data-10.5281%2Fzenodo.21650064-blue.svg)](https://doi.org/10.5281/zenodo.22044891)
+[![DOI (code)](https://img.shields.io/badge/DOI_code-10.5281%2Fzenodo.21650031-blue.svg)](https://doi.org/10.5281/zenodo.21650031)
+[![DOI (data)](https://img.shields.io/badge/DOI_data-10.5281%2Fzenodo.21650064-blue.svg)](https://doi.org/10.5281/zenodo.21650064)
 
-> **Archived versions (Zenodo).** v2.0.0 of the code and analysis:
+> **Archived versions (Zenodo).** Code and analysis:
 > [10.5281/zenodo.21650031](https://doi.org/10.5281/zenodo.21650031) · measurement dataset:
 > [10.5281/zenodo.21650064](https://doi.org/10.5281/zenodo.21650064). These are the **concept
 > DOIs**: they never change and always resolve to the newest version, which is what the paper
-> cites. The v2.6.0 version DOIs are minted on publication; v2.5.0 was code
+> cites. They currently resolve to v2.6.0, whose version DOIs are code
+> [10.5281/zenodo.22102716](https://doi.org/10.5281/zenodo.22102716), data
+> [10.5281/zenodo.22102832](https://doi.org/10.5281/zenodo.22102832); v2.5.0 was code
 > [10.5281/zenodo.22044877](https://doi.org/10.5281/zenodo.22044877), data
 > [10.5281/zenodo.22044891](https://doi.org/10.5281/zenodo.22044891).
 > v1.0.0 was the arXiv-submission state: code
@@ -32,7 +34,7 @@
 >
 > **Paper:** [`paper.tex`](paper.tex) — *When the Interval Is Smaller Than the Instrument:
 > Two Ways Streaming Latency Benchmarks Fail on Sub-Millisecond Paths*. IEEE format
-> (`IEEEtran`, journal), targeting **IEEE TPDS**, with a companion `supplement.tex`. This is a
+> (`IEEEtran`, journal), targeting **IEEE Transactions on Computers**, with a companion `supplement.tex`. This is a
 > **systems paper**; the football workload is the setting that produced the finding, not the
 > contribution.
 >
@@ -60,7 +62,7 @@
 > is a sign bit: the Kafka-driver corpus's discards contain not one negative, while the
 > Redis-driver replication caught **41,403 genuine one-tick negatives**, absorbed without trace.
 > Artifacts: [`external/omb/`](external/omb/) and the measurement data record
-> [10.5281/zenodo.22044891](https://doi.org/10.5281/zenodo.22044891).
+> [10.5281/zenodo.21650064](https://doi.org/10.5281/zenodo.21650064).
 >
 > **What survives:**
 > 1. The brokers are **equivalent within 1 ms** and neither degrades with concurrency — robust
@@ -119,7 +121,7 @@
 
 ## 1. Current State & Objectives
 
-**Last updated:** August 14, 2026 · **Branch:** `main` · **Target:** *IEEE TPDS* (systems venue; the JSA and TOMPECS framings were retired — see the header)
+**Last updated:** August 26, 2026 · **Branch:** `main` · **Target:** *IEEE Transactions on Computers* (systems venue; the JSA, TOMPECS and TPDS framings were retired — see the header)
 
 ### 1.1 Where things stand
 
@@ -358,7 +360,7 @@ From 3,315 StatsBomb matches across 52 competition-seasons (2003–2023), via
 
 > **Title:** *When the Interval Is Smaller Than the Instrument: Two Ways Streaming Latency
 > Benchmarks Fail on Sub-Millisecond Paths*
-> **Target:** IEEE TPDS (`IEEEtran`, journal, `paper.tex`)
+> **Target:** IEEE Transactions on Computers (`IEEEtran`, journal, `paper.tex`)
 > **Keywords:** streaming systems, latency benchmarking, measurement validity, Apache Kafka,
 > Redis Streams, reproducibility
 
@@ -446,7 +448,7 @@ Fetch with `scripts/fetch_statsbomb_corpus.py` (resumable, integrity-checked). R
 **not** redistributed here; it is re-fetchable exactly from the pinned commit, and
 `make_replay_plan.py` regenerates the committed plans byte-for-byte.
 
-The Zenodo code archive ([10.5281/zenodo.22044877](https://doi.org/10.5281/zenodo.22044877))
+The Zenodo code archive ([10.5281/zenodo.21650031](https://doi.org/10.5281/zenodo.21650031))
 **excludes** `data/processed/replay_plans/` — the plans are CC BY-NC 4.0 derivatives of
 StatsBomb data and cannot ship inside the MIT-licensed record. Regenerate them byte-for-byte
 with `scripts/make_replay_plan.py` against the pinned upstream commit.
@@ -837,8 +839,8 @@ Each run directory contains full provenance:
 Python 3.9.13 (development now also runs on 3.12), dependencies pinned in
 `requirements.txt`. The full hardware/software specification is in
 [`docs/infrastructure.md`](docs/infrastructure.md), and the Zenodo archive exists
-(v2.0.0, 2026-08-07: code [10.5281/zenodo.22044877](https://doi.org/10.5281/zenodo.22044877),
-data [10.5281/zenodo.22044891](https://doi.org/10.5281/zenodo.22044891)).
+(v2.0.0, 2026-08-07: code [10.5281/zenodo.21836305](https://doi.org/10.5281/zenodo.21836305),
+data [10.5281/zenodo.21836326](https://doi.org/10.5281/zenodo.21836326)).
 
 ---
 
@@ -912,8 +914,8 @@ The stale entries are left in the `.bib` rather than deleted so the removal is a
 are simply uncited. **Verify every remaining citation before submission.**
 
 **Archival (done 2026-08-07):** the Zenodo records are minted and published — v2.0.0 code
-[10.5281/zenodo.22044877](https://doi.org/10.5281/zenodo.22044877) and data
-[10.5281/zenodo.22044891](https://doi.org/10.5281/zenodo.22044891). `scripts/zenodo_deposit.py`
+[10.5281/zenodo.21836305](https://doi.org/10.5281/zenodo.21836305) and data
+[10.5281/zenodo.21836326](https://doi.org/10.5281/zenodo.21836326). `scripts/zenodo_deposit.py`
 stops at an unpublished draft by design — publishing is an irreversible public action, and the
 final click was a human one.
 
@@ -956,8 +958,8 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
   author  = {Ricou, Gustavo Pedro},
   title   = {When the Interval Is Smaller Than the Instrument: Two Ways Streaming Latency Benchmarks Fail on Sub-Millisecond Paths},
   year    = {2026},
-  note    = {Manuscript targeting IEEE Transactions on Parallel and Distributed Systems;
-             code and data archived at \url{https://doi.org/10.5281/zenodo.22044877}}
+  note    = {Manuscript targeting IEEE Transactions on Computers;
+             code and data archived at \url{https://doi.org/10.5281/zenodo.21650031}}
 }
 ```
 
@@ -994,8 +996,8 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 Manuscript restructured for **IEEE TPDS** (`IEEEtran` journal, 16-page ceiling test-enforced,
 39-page companion supplement); the OMB silent-deletion arm (the paper's second failure mode)
 integrated. Zenodo v2.0.0 archived from tag `v2.0.0` (commit `bebabec`) with SHA256 manifests:
-code [10.5281/zenodo.22044877](https://doi.org/10.5281/zenodo.22044877), data
-[10.5281/zenodo.22044891](https://doi.org/10.5281/zenodo.22044891). 2,275 tests green.
+code [10.5281/zenodo.21836305](https://doi.org/10.5281/zenodo.21836305), data
+[10.5281/zenodo.21836326](https://doi.org/10.5281/zenodo.21836326). 2,275 tests green.
 
 ### 1.0.1 — 2026-07-28 — Zenodo DOIs wired in
 The minted v1 Zenodo DOIs wired into `CITATION.cff`, README badges and the paper; software and
@@ -1045,7 +1047,7 @@ Repository structure, `.gitignore`, StatsBomb integration, initial fetch/plan sc
 
 ## 17. Appendix: Acronyms & File Types
 
-**Acronyms:** TTI = Time-to-Insight · TPDS = IEEE Transactions on Parallel and Distributed Systems · OMB = OpenMessaging Benchmark · SLO = Service
+**Acronyms:** TTI = Time-to-Insight · TC = IEEE Transactions on Computers · TPDS = IEEE Transactions on Parallel and Distributed Systems · OMB = OpenMessaging Benchmark · SLO = Service
 Level Objective · S1–S5 = experimental phases · AOF = Append-Only File (Redis) · KRaft =
 Kafka Raft metadata mode · RF = replication factor · FWER = family-wise error rate ·
 xG = expected goals.
@@ -1056,4 +1058,4 @@ storage · `.py` scripts · `.ps1` PowerShell runners · `.sh` bash scripts · `
 
 ---
 
-*Single-source README · last updated August 14, 2026 · target: IEEE TPDS.*
+*Single-source README · last updated August 26, 2026 · target: IEEE Transactions on Computers.*

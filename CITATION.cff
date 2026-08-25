@@ -36,7 +36,7 @@ preferred-citation:
     - family-names: "Ricou"
       given-names: "Gustavo Pedro"
       affiliation: "School of Computer Science and Statistics, Trinity College Dublin"
-  journal: "IEEE Transactions on Parallel and Distributed Systems"
+  journal: "IEEE Transactions on Computers"
   year: 2026
   volume: "TBD"
   issue: "TBD"
@@ -59,9 +59,9 @@ identifiers:
   - type: "url"
     value: "https://github.com/Gustolandia/streaming-latency-sports"
   - type: "doi"
-    value: "10.5281/zenodo.21650031"  # concept DOI (code, all versions); v2.5.0 is 10.5281/zenodo.22044877
+    value: "10.5281/zenodo.21650031"  # concept DOI (code, all versions); v2.6.0 is 10.5281/zenodo.22102716
   - type: "doi"
-    value: "10.5281/zenodo.21650064"  # concept DOI (dataset, all versions); v2.5.0 is 10.5281/zenodo.22044891
+    value: "10.5281/zenodo.21650064"  # concept DOI (dataset, all versions); v2.6.0 is 10.5281/zenodo.22102832
 
 # References to related works
 references:

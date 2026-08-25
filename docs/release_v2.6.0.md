@@ -3,21 +3,26 @@
 Everything is built and verified. What is left is the two irreversible steps, which are yours:
 pressing **Publish** on Zenodo and **Submit** on arXiv.
 
-Tag: `v2.6.0` (`bdf7207`), pushed. Both archives are built from that tag, not from the working
-tree.
+Tag: `v2.6.0`, pushed. Both archives are built from that tag, not from the working tree. The
+tag was moved during this release, so no commit id is quoted here; `git rev-parse v2.6.0^{}`
+gives the current one.
 
 ---
 
 ## 0. What is on disk
 
-| file | size | goes to |
-|---|---|---|
-| `dist/streaming-latency-sports-v2.6.0.zip` | 7.71 MB | Zenodo **code** record |
-| `dist/SHA256SUMS-code-v2.6.0.txt` | 787 files | Zenodo **code** record |
-| `dist/streaming-latency-sports-data-v2.6.0.zip` | 4.79 MB | Zenodo **data** record |
-| `dist/SHA256SUMS-data-v2.6.0.txt` | 469 files | Zenodo **data** record |
-| `dist/streaming-latency-arxiv-v2.6.zip` | 1.06 MB | arXiv |
-| `dist/arxiv_v2.6_metadata.md` | — | the arXiv form, to paste |
+| file | goes to |
+|---|---|
+| `dist/streaming-latency-sports-v2.6.0.zip` | Zenodo **code** record |
+| `dist/SHA256SUMS-code-v2.6.0.txt` | Zenodo **code** record |
+| `dist/streaming-latency-sports-data-v2.6.0.zip` | Zenodo **data** record |
+| `dist/SHA256SUMS-data-v2.6.0.txt` | Zenodo **data** record |
+| `dist/streaming-latency-arxiv-v2.6.zip` | arXiv |
+| `dist/arxiv_v2.6_metadata.md` | the arXiv form, to paste |
+
+Sizes and per-file digests are not repeated here: this file ships inside the code archive, so any
+size it quoted would be a size it changed. Both `SHA256SUMS` manifests carry the archive's own
+digest on line 3 and one line per file inside it.
 
 The code archive contains `paper.pdf`, `paper.tex`, `supplement.pdf` and `supplement.tex`, as
 well as the scripts, tests and campaign ledgers. It does **not** contain
@@ -40,7 +45,27 @@ record would mint a new concept DOI and break the citation in the PDF.
 | code / analysis / manuscript | `10.5281/zenodo.21650031` | **22044877** |
 | measurement dataset | `10.5281/zenodo.21650064` | **22044891** |
 
-### Do it
+### Already done, in the browser
+
+Both new-version drafts exist and their metadata is filled and saved. Neither is published; a
+draft is private, editable and discardable.
+
+| record | draft | concept DOI it keeps |
+|---|---|---|
+| code / analysis / manuscript | <https://zenodo.org/uploads/22102716> | `10.5281/zenodo.21650031` |
+| measurement dataset | <https://zenodo.org/uploads/22102832> | `10.5281/zenodo.21650064` |
+
+Each of these was checked after a page reload rather than assumed, because the form's fields do
+not all commit the same way:
+
+- version `2.6.0`, publication date `2026-08-25`
+- the description carries the v2.6 changelog and the licence carve-out
+- related works point at the sibling record's **concept** DOI, not last release's version DOI
+- title, authors, affiliation, keywords, licence and visibility inherited unchanged
+- no files were inherited, so there is nothing stale to delete
+
+**Do not run the deposit script now.** `--new-version` would open a *second* draft beside these
+two. The command line remains available if you would rather discard both drafts and start over:
 
 ```bash
 $env:ZENODO_API_TOKEN = "<your token>"
@@ -64,22 +89,27 @@ and the data record:
 python scripts/zenodo_deposit.py --new-version 22044891 --ref v2.6.0 --metadata .zenodo-data.json --zip dist/streaming-latency-sports-data-v2.6.0.zip --paths docs/results reproducibility
 ```
 
-Each command opens a **draft** and stops. It prints a URL. It does not publish — a published
-Zenodo record cannot be deleted, only superseded, so the last click stays human.
+Each command opens a **draft** and stops. It does not publish — a published Zenodo record cannot
+be deleted, only superseded, so the last click stays human.
 
-### Before you press Publish, check three things in the browser
+### What is left for you
 
-1. **The version field reads 2.6.0** and the description's changelog is the v2.6 one.
-2. **Exactly two files are attached** to each record — the zip and its `SHA256SUMS`. The script
-   deletes the files a new-version draft inherits from v2.5.0, and prints what it deleted; if
-   you see four files, something did not delete and the record would ship two zips.
-3. **The licence carve-out is in the description**: MIT for the code, CC BY 4.0 for the data
-   compilation and documentation, and the manuscript files © the author and expressly *not*
+Attach two files to each draft, then press **Publish**:
+
+| draft | attach |
+|---|---|
+| code <https://zenodo.org/uploads/22102716> | `dist/streaming-latency-sports-v2.6.0.zip` and `dist/SHA256SUMS-code-v2.6.0.txt` |
+| data <https://zenodo.org/uploads/22102832> | `dist/streaming-latency-sports-data-v2.6.0.zip` and `dist/SHA256SUMS-data-v2.6.0.txt` |
+
+Worth a glance before the click, since publishing is irreversible:
+
+1. **Exactly two files** on each record. Four would mean a stale zip from v2.5.0 is still
+   attached and the record would ship two archives.
+2. **The licence carve-out is in the description**: MIT for the code, CC BY 4.0 for the data
+   compilation and documentation, and the manuscript files (c) the author and expressly *not*
    CC BY, included as a data complement pending journal publication. This is what keeps the
    IEEE copyright transfer clean.
-
-Then upload each `SHA256SUMS-*.txt` alongside its zip (the script uploads the zip only) and
-press **Publish**.
+3. **The version reads 2.6.0** and the changelog paragraph is the v2.6 one.
 
 ---
 

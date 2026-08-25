@@ -7,7 +7,8 @@ The paper establishes P(inversion) = P(stall > T_true) by manipulating both side
 formula -- nothing that predicts the rate from measurable quantities. Two attempts failed, and
 both failed the same way: they were curves in rho, and rho is not the variable.
 
-E-A10 supplies what those attempts lacked. It varies T_true over 77x at fixed load, so it probes
+E-A10 supplies what those attempts lacked. It varies T_true over the payload sweep's full
+span at fixed load, so it probes
 the stall distribution's SHAPE directly. If run-queue delay has a heavy tail with index alpha,
 
     P(stall > t) ~ C * t^(-alpha)      hence      P(inversion) ~ C * T_true^(-alpha)

@@ -325,6 +325,35 @@ def payload_fit(phase=None):
     return ols_slope(xs, ys)
 
 
+def payload_span(phase=None):
+    """The endpoints of the payload sweep: how far transport moved, and what followed.
+
+    One function because the alternative was five hand-typed copies and a sixth computed
+    inside the figure. Section V-C printed the transport ratio to one decimal, three other
+    sentences printed it rounded to an integer, and `make_result_figures` recomputed
+    `round(xs[-1] / xs[0])` for its own annotation --- six readings of one CSV, none of them
+    reading each other. Every one of them was correct, which is exactly why it survived
+    thirty-three rounds: nothing was wrong, so nothing failed.
+
+    `\\tailSlope`, the other number in that same figure annotation, was emitted two rounds
+    earlier for precisely this reason, with a comment saying the ledger emits it "so they
+    cannot drift apart again". This is its neighbour finally getting the same treatment.
+
+    Returns the ratio of largest to smallest transport, the factor by which the negative-span
+    rate falls across that span, and the utilisation spread over the four levels --- the three
+    numbers Section V-C quotes in one sentence.
+    """
+    parts = ("model", "ttrue_sweep.csv") if phase is None else ("model", phase, "ttrue_sweep.csv")
+    rows = _rows(*parts)
+    t = [float(r["transport_ms"]) for r in rows]
+    inv = [float(r["inversion"]) for r in rows]
+    rho = [float(r["rho"]) for r in rows]
+    return {"transport_factor": max(t) / min(t),
+            "rate_fall": max(inv) / min(inv),
+            "rho_spread": max(rho) - min(rho),
+            "levels": len(rows)}
+
+
 def report():
     lines = []
     lines.append("Real-time priority on the stamping threads (Wilson 95%):")

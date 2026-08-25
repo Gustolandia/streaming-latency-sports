@@ -266,6 +266,15 @@ with no gate, and the only one that costs $220 a page.
   is never defined and collides with Kafka's `log.retention.*` --- is answered in the main
   text's Method section, which is where the paper defines its other terms.
 
+## Round 34 (2026-08-25): the payload sweep joins the ledger
+
+- **Eleven typed copies left the supplement.** `$76.9\times$`, `$77\times$` and
+  `$4.1\times$` are `\payloadTransportFactor`, `\payloadTransportFactorRound` and
+  `\payloadRateFall`; S25's two-campaign caption reads `\payloadReplTransportFactor`,
+  `\payloadRateFallExact` and `\payloadReplRateFall`. Every printed value is unchanged ---
+  the macros emit exactly what was typed, which is the point.
+- Nothing else in the supplement changed.
+
 ## Figure inventory
 
 `docs/results/figures/` holds fifteen PDFs. Twelve are included by a document; three are not,

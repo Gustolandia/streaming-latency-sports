@@ -403,6 +403,45 @@ Narrowing it was as instructive as writing it. Anchored on "base slice" the rule
 `_slice_bucket`'s docstring --- "the largest bucket start at or below it" --- which ranks no
 mode and is simply true. The rule is about which mode is biggest, so it keys on the modes.
 
+**1s. Seventeen correct copies is still one source too many.** The payload sweep's three
+endpoint quantities were typed in six places in the manuscript and eleven in the supplement,
+and `make_result_figures` recomputed the transport ratio a seventeenth time for Figure 7's
+annotation. **Every copy was correct**, which is exactly why it lasted thirty-three rounds:
+nothing was wrong, so nothing failed. The ledger sweep could not help --- `77` is an integer
+and that sweep skips integers by design, and `76.9` was not emitted, so there was no macro to
+compare it against.
+
+The tell was in the code. `\tailSlope`, the *other* number in the same figure annotation, had
+been emitted rounds earlier with a comment reading "the ledger emits it so they cannot drift
+apart again". Its neighbour on the same line went on recomputing. **A repair reaches the
+number you were looking at, not the claim.** When fixing one quantity, look at what is printed
+beside it.
+
+`stat_intervals.payload_span()` is the single source now; the emitter and the figure both call
+it, and `tests/unit/test_figure_ledger_agreement.py` asserts the figure's annotation equals the
+macro the prose reads. Two further things it settled:
+
+- **Two precisions is allowed; two sources is not.** The paper wants `76.9` in the result
+  sentence and `77` in three summary sentences. Both are emitted, and a pin asserts the second
+  is the rounding of the first, so the split is a decision rather than an artefact.
+- **Finish the sentence you started.** Substituting the primary campaign's numbers left S25's
+  two-campaign comparison caption reading half macro, half literal --- visibly worse than
+  uniform. The replication phase is emitted too.
+
+**1t. Read the comment before you change the line.** Round 33's referee asked for uniform
+case in the Index Terms. Four lines of comment directly above the block already answered it:
+the one capitalised entry is a taxonomy string quoted verbatim from the IEEE Computer Society
+subject list, the capital is the quotation mark, and lower-casing it stops the term matching
+the taxonomy. The change was made, the ordering gate failed, and it was reverted --- a
+round-trip that reading the file would have saved. **When a line looks wrong and the project
+is this old, assume it was argued about.**
+
+The attempt left two things worth keeping. `test_index_terms_are_alphabetical` split the
+keywords block on semicolons without masking comments, so a two-line note *inside* the block
+was read as two more index terms and the failure named the note instead of the terms; it masks
+comments now. And a declined referee item is recorded in the source beside the thing it
+declines, so the next round does not raise it a third time.
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

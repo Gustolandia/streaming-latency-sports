@@ -77,3 +77,37 @@ class TestMain:
         assert (out / "experiment_map.pdf").exists()
         assert (out / "experiment_map.png").exists()
         assert "wrote" in capsys.readouterr().out
+
+
+class TestTheTransportSpanCell:
+    """E-A10's cell is drawn into the supplement, so its number is published output.
+
+    Round 34 found the payload sweep's transport ratio typed in twenty places; this table was
+    one of them. The cell reads the campaign now, and falls back to the published literal so a
+    checkout without the artefact still draws the figure that was published rather than a
+    different one.
+    """
+
+    def test_it_reads_the_campaign(self):
+        import make_method_figure as mmf
+        assert mmf._transport_span() == "77"
+
+    def test_it_falls_back_when_the_artefact_is_missing(self, monkeypatch):
+        import make_method_figure as mmf
+        import stat_intervals
+        monkeypatch.setattr(stat_intervals, "payload_span",
+                            lambda *a, **kw: (_ for _ in ()).throw(OSError("no campaign")))
+        assert mmf._transport_span() == "77", "the fallback is the published value"
+
+    def test_the_fallback_equals_what_the_campaign_gives(self):
+        """If these ever diverge the fallback is a second source, which is the whole defect."""
+        import make_method_figure as mmf
+        import stat_intervals
+        live = "%.0f" % round(stat_intervals.payload_span()["transport_factor"])
+        assert mmf._transport_span() == live
+
+    def test_the_row_carries_the_span(self):
+        from make_method_figure import ROWS
+        rows = [r for r in ROWS if "E-A10" in r[0]]
+        assert len(rows) == 1, "one E-A10 row"
+        assert "77x" in rows[0][1], "the manipulated cell names the span"

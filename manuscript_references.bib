@@ -704,8 +704,7 @@
                Measurement, Control and Communication (ISPCS)},
   year      = {2012},
   pages     = {1--6},
-  note      = {DTrace breakdown against a DAG hardware reference; reports
-               software stamps that ``do not respect causality'' under load}
+  note      = {DTrace breakdown against a DAG hardware reference}
 }
 
 @inproceedings{hoefler2015benchmarking,
@@ -1262,8 +1261,7 @@
   howpublished = {Issue tracker and pull request \#20986},
   year         = {2025},
   note         = {\url{https://issues.apache.org/jira/browse/KAFKA-19888}; merged
-                  2025-11-26, shipped in 4.2.0 and backported to 4.0.2/4.1.2: negatives from backward clock steps clamped
-                  to zero, uncounted. Read 2026-08-21}
+                  2025-11-26, shipped in 4.2.0, backported to 4.0.2/4.1.2. Read 2026-08-21}
 }
 
 @article{klenik2021,
@@ -1323,4 +1321,15 @@
   year         = {2026},
   note         = {Reports a 3.88~ms median publish latency, above the quantum, so the
                   deletion law does not bind there}
+}
+
+@misc{mqbench2026,
+  author       = {Paul, Tapajit Chandra and Lertpongrujikorn, Pawissanutt and
+                  Nguyen, Hai Duc and Amini Salehi, Mohsen},
+  title        = {Benchmarking Message Brokers for {IoT} Edge Computing: A Comprehensive
+                  Performance Study},
+  howpublished = {arXiv preprint arXiv:2603.21600},
+  year         = {2026},
+  note         = {Introduces mq-bench: nanosecond send stamps, one host, no positivity
+                  guard. Read 2026-08-25}
 }

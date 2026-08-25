@@ -50,6 +50,8 @@ ALLOWED = {
         "a between-arm factor that happens to equal the grouped tail index",
     ("supplement.tex", "tracedMleAlpha", r"a small $k=7$ difference ($1.19\times$"):
         "the same factor, in the round-2 restatement",
+    ("supplement.tex", "tracedExcAlpha", r"medians as low as $0.21$~ms"):
+        "the same median, quoted in S52.2 where the reading behind the claim is set out",
 }
 
 

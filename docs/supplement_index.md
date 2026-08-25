@@ -214,6 +214,22 @@ No new sections. Six numbers moved from prose into the ledger, two of them in th
 `tests/unit/test_citation_surface.py` gained the page-count check --- the last journal limit
 with no gate, and the only one that costs $220 a page.
 
+## Round 26 (2026-08-25): a framework that does not have the problem
+
+- **S52.2 is new**: the reading behind Section VI-B's claim that the reporting rules are
+  practical. mq-bench (arXiv:2603.21600, March 2026) stamps in nanoseconds, subtracts a
+  send-referenced span on one host, applies no positivity guard, and reports sub-millisecond
+  medians --- both of our recommended choices, made independently and argued for nowhere. The
+  section quotes its measurement text and notes the one thing it does not do: say why its span
+  is safe.
+- **S52.3** is the old S52.2, the field-size synthesis, moved down. Its citation left the main
+  text so the reference cap could pay for mq-bench; the claim is unchanged and Section II-A
+  now points here for it.
+- The fitted prefactor is `\tailPrefactor` in both places it appears. It was the one quantity
+  in `tail_index.csv` with a committed source and no macro, and therefore invisible to the
+  round-24 sweep, which asks whether a macro'd value is read from its macro and not whether a
+  sourced value has one.
+
 ## Figure inventory
 
 `docs/results/figures/` holds fifteen PDFs. Twelve are included by a document; three are not,

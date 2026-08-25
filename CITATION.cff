@@ -9,9 +9,9 @@ authors:
     # orcid: "https://orcid.org/0000-0000-0000-0000"   # add your ORCID if you have one
   # Add additional authors as needed
 abstract: "Two failure modes of sub-millisecond latency benchmarking: causality-violating inversions from scheduling stalls, and silent sample deletion governed by a grid law in the send-interval-to-timestamp-quantum ratio. Code, campaigns, and a suite that recomputes every figure from committed data."
-version: "2.5.0"
+version: "2.6.0"
 url: "https://github.com/Gustolandia/streaming-latency-sports"
-doi: "10.5281/zenodo.22044877"
+doi: "10.5281/zenodo.21650031"   # concept DOI: always the latest version
 license: "MIT"
 keywords:
   - streaming systems
@@ -59,9 +59,9 @@ identifiers:
   - type: "url"
     value: "https://github.com/Gustolandia/streaming-latency-sports"
   - type: "doi"
-    value: "10.5281/zenodo.21650031"  # concept DOI (code, all versions); v2.0.0 is 10.5281/zenodo.22044877
+    value: "10.5281/zenodo.21650031"  # concept DOI (code, all versions); v2.5.0 is 10.5281/zenodo.22044877
   - type: "doi"
-    value: "10.5281/zenodo.21650064"  # concept DOI (dataset, all versions); v2.0.0 is 10.5281/zenodo.21836326
+    value: "10.5281/zenodo.21650064"  # concept DOI (dataset, all versions); v2.5.0 is 10.5281/zenodo.22044891
 
 # References to related works
 references:

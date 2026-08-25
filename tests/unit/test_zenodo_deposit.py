@@ -280,3 +280,119 @@ class TestAnErrorThatIsNotARejectedToken:
         with pytest.raises(requests.HTTPError):
             zd.main(["--sandbox", "--metadata", str(meta),
                      "--zip", str(tmp_path / "b.zip")])
+
+class TestNewVersion:
+    """Adding a version to an existing record, which keeps its concept DOI.
+
+    Until round 40 this script could only `POST /deposit/depositions`, which mints a *new*
+    concept DOI and orphans the citation chain. The paper cites the concept DOIs precisely so
+    that "the DOI stays the same" survives every release, and that promise is only kept if a
+    release goes through the newversion action.
+    """
+
+    def _stub(self, files=(("f1", "streaming-latency-sports-v2.5.0.zip"),)):
+        """A session recording every call, shaped like Zenodo's newversion flow."""
+        calls = []
+
+        class S:
+            def post(self, url, params=None, json=None):
+                calls.append(("POST", url))
+                if url.endswith("/actions/newversion"):
+                    return _Resp({"links":
+                                  {"latest_draft": "https://z/api/deposit/depositions/99"}})
+                return _Resp({"id": 99})
+
+            def get(self, url, params=None):
+                calls.append(("GET", url))
+                return _Resp({"id": 99, "links": {"bucket": "https://z/bucket/99"},
+                              "files": [{"id": i, "filename": n} for i, n in files]})
+
+            def delete(self, url, params=None):
+                calls.append(("DELETE", url))
+                return _Resp({})
+
+            def put(self, url, params=None, json=None, data=None):
+                calls.append(("PUT", url))
+                return _Resp({"id": 99})
+
+        return S(), calls
+
+    def test_it_uses_the_newversion_action_and_fetches_the_draft(self):
+        s, calls = self._stub()
+        dep = zd.new_version("https://z/api", "tok", "22044877", session=s)
+        assert ("POST",
+                "https://z/api/deposit/depositions/22044877/actions/newversion") in calls
+        assert ("GET", "https://z/api/deposit/depositions/99") in calls
+        assert dep["id"] == 99
+
+    def test_inherited_files_are_deleted(self):
+        """Zenodo copies the previous version's files in; shipping both zips is a defect."""
+        s, calls = self._stub(files=(("f1", "old.zip"), ("f2", "old-SHA256SUMS.txt")))
+        dep = zd.new_version("https://z/api", "tok", "22044877", session=s)
+        assert zd.clear_files("https://z/api", "tok", dep, session=s) == [
+            "old.zip", "old-SHA256SUMS.txt"]
+        assert sum(1 for m, _ in calls if m == "DELETE") == 2
+
+    def test_a_draft_with_no_inherited_files_deletes_nothing(self):
+        s, _ = self._stub(files=())
+        dep = zd.new_version("https://z/api", "tok", "22044877", session=s)
+        assert zd.clear_files("https://z/api", "tok", dep, session=s) == []
+
+    def test_a_file_without_a_filename_is_reported_by_id(self):
+        s, _ = self._stub(files=())
+        dep = {"id": 99, "files": [{"id": "abc"}]}
+        assert zd.clear_files("https://z/api", "tok", dep, session=s) == ["abc"]
+
+    def test_metadata_is_written_over_what_was_inherited(self):
+        s, calls = self._stub()
+        zd.update_metadata("https://z/api", "tok", 99, {"metadata": {"version": "2.6.0"}},
+                           session=s)
+        assert ("PUT", "https://z/api/deposit/depositions/99") in calls
+
+
+class TestMainNewVersion:
+
+    def _common(self, monkeypatch, temp_dir, cleared):
+        monkeypatch.setenv("ZENODO_API_TOKEN", "tok")
+        monkeypatch.setattr(zd, "build_bundle",
+                            lambda z, ref="HEAD", prefix="", **kw: _mk(temp_dir))
+        monkeypatch.setattr(zd, "new_version",
+                            lambda *a, **k: {"id": 99, "links": {"bucket": "b",
+                                                                 "html": "https://z/deposit/99"}})
+        monkeypatch.setattr(zd, "clear_files", lambda *a, **k: cleared)
+        monkeypatch.setattr(zd, "update_metadata", lambda *a, **k: {"id": 99})
+        monkeypatch.setattr(zd, "upload_file", lambda *a, **k: {"key": "b.zip"})
+        p = temp_dir / ".zenodo.json"
+        p.write_text('{"title": "T", "version": "2.6.0"}', encoding="utf-8")
+        return p
+
+    def test_the_flag_takes_the_newversion_route_and_still_leaves_a_draft(self, temp_dir,
+                                                                          monkeypatch, capsys):
+        meta = self._common(monkeypatch, temp_dir, ["old.zip"])
+        assert zd.main(["--metadata", str(meta), "--new-version", "22044877"]) == 0
+        out = capsys.readouterr().out
+        assert "Cleared inherited file(s): old.zip" in out
+        assert "concept DOI unchanged" in out
+        assert "NOT published" in out and "PUBLISHED" not in out
+
+    def test_an_empty_draft_reports_nothing_cleared(self, temp_dir, monkeypatch, capsys):
+        meta = self._common(monkeypatch, temp_dir, [])
+        assert zd.main(["--metadata", str(meta), "--new-version", "22044877"]) == 0
+        assert "Cleared inherited" not in capsys.readouterr().out
+
+    def test_without_the_flag_a_fresh_record_is_still_created(self, temp_dir, monkeypatch):
+        """The default must not change: a new record, and so a new concept DOI."""
+        monkeypatch.setenv("ZENODO_API_TOKEN", "tok")
+        monkeypatch.setattr(zd, "build_bundle",
+                            lambda z, ref="HEAD", prefix="", **kw: _mk(temp_dir))
+        monkeypatch.setattr(zd, "upload_file", lambda *a, **k: {})
+        monkeypatch.setattr(zd, "new_version",
+                            lambda *a, **k: pytest.fail("newversion must not be used"))
+        used = []
+        monkeypatch.setattr(zd, "create_deposition",
+                            lambda *a, **k: used.append(1) or
+                            {"id": 1, "links": {"bucket": "b", "html": "h"}})
+        p = temp_dir / ".zenodo.json"
+        p.write_text('{"title": "T"}', encoding="utf-8")
+        assert zd.main(["--metadata", str(p)]) == 0
+        assert used == [1]

@@ -21,6 +21,7 @@ CLI:
     python scripts/emit_paper_numbers.py
     python scripts/emit_paper_numbers.py --check
 """
+import math
 import argparse
 import os
 import sys
@@ -247,7 +248,7 @@ def stat_macros():
             ("%sZ" % name, "%.1f" % abs(z)),
         ]
     try:
-        slope, _, r2, lo, hi = stat_intervals.payload_fit()
+        slope, intercept, r2, lo, hi = stat_intervals.payload_fit()
         out += [
             ("tailExponent", "%.3f" % (-slope)),
             ("tailExponentCI", "%.3f$--$%.3f" % (-hi, -lo)),
@@ -260,6 +261,13 @@ def stat_macros():
             # math around the word and reopens it, so the signs print as minus and
             # "to" prints roman. A bare hyphen in text mode would be neither.
             ("tailSlopeCI", "%.2f$ to $%.2f" % (lo, hi)),
+            # The prefactor of the fitted power law, rate = C * T^(-alpha). The fit already
+            # returns the intercept and the emitter was throwing it away, so the supplement
+            # typed C out in three places: the one quantity in tail_index.csv with a
+            # committed source and no macro, and therefore the one the ledger sweep of round
+            # 24 could not see, because that sweep asks whether a macro'd value is read from
+            # its macro and not whether a sourced value has one.
+            ("tailPrefactor", "%.3f" % math.exp(intercept)),
             ("tailRsq", "%.3f" % r2),
         ]
     except (OSError, KeyError, ValueError):

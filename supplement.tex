@@ -2108,13 +2108,13 @@ is present in every arm that could show it (method: supplementary material S31).
 payload span, least squares of $\log \Pr$ on $\log T_{\mathrm{true}}$ over four payload
 levels gives
 \begin{equation}
-\Pr[\text{span} < 0] = 0.238 \; T_{\mathrm{true}}^{-\tailExponent},
+\Pr[\text{span} < 0] = \tailPrefactor \; T_{\mathrm{true}}^{-\tailExponent},
 \qquad R^2 = \tailRsq ,
 \label{eq:tailindex}
 \end{equation}
 with a Student-$t$ $95\%$ interval on the exponent of $\tailExponentCI$ at two degrees of
 freedom. E-A10b repeats the sweep on a different day and returns $0.344$ against $\tailExponent$;
-the prefactor drifts ($0.238$ against $0.216$). Four points do not earn an equation in a
+the prefactor drifts ($\tailPrefactor$ against $0.216$). Four points do not earn an equation in a
 main text, which is why this one is here.
 
 \paragraph{What we withdraw about it, and why.} Two claims previously made around
@@ -3378,7 +3378,46 @@ skewed clock, then an adjuster is not correcting error but moving evidence, and 
 evidence it moves is a measurable quantity nobody had measured. Section~\mainModeA{} measures
 it.
 
-\subsection{S52.2. Where scheduling delay comes from, and what the queueing account gets right}
+\subsection{S52.2. A framework that does not have the problem}
+
+Section~\mainAuthors{} claims the rules above are practical rather than aspirational, and the
+strongest evidence for that is not ours. In March 2026 Paul et al.\ published mq-bench, a
+framework for exactly the comparisons this paper is about, and evaluated eight brokers with
+it~\cite{mqbench2026}. Its measurement design makes both of the choices we recommend, and
+argues for neither:
+
+\begin{itemize}
+\item \textbf{Native resolution.} ``Each message includes a 24-byte binary header containing a
+64-bit send timestamp in UNIX nanoseconds.'' There is no millisecond quantum, so the deletion
+law of Section~\mainModeB{} has nothing to bind on.
+\item \textbf{A span that is a causal chain.} It computes $t_{\mathrm{recv}} -
+t_{\mathrm{send}}$, which is the span the main text's span table shows never
+inverts, rather than the acknowledgment-referenced proxy that does.
+\item \textbf{One clock.} ``Clock synchronization between publisher and subscriber processes
+is ensured by running both on the same workload generator machine.''
+\item \textbf{No guard.} We looked for a positivity filter, a clamp or a discard rule and
+found none.
+\end{itemize}
+
+It then reports medians as low as $0.21$~ms --- squarely inside the range where both failures
+reported here bite --- and needs no remedy, because it never acquired either defect.
+
+One thing it does not do is say why its span is safe. A reader cannot tell from the paper
+whether the send-referenced difference was chosen because it is a causal chain or because it
+was the convenient one to instrument, and that is exactly what the rule ``name the span you
+are subtracting'' asks an author to make explicit. The choice is right either way; the record
+of why is what would let the next framework inherit it.
+
+\subsection{S52.3. How large the literature is that misses this}
+
+A 2025 preprint synthesizes $42$ peer-reviewed \kafka{} studies published between 2015 and
+2025 and reports evaluation rigor, configuration disclosure and reproducibility inconsistent
+across them~\cite{mohammad2025kafka}. It finds neither of the failures reported here. The size
+matters for the same reason the audit of Section~\mainGenerality{} does: the instruments are
+few and shared, so a defect in one is a defect in a decade of comparisons rather than in one
+project.
+
+\subsection{S52.3. Where scheduling delay comes from, and what the queueing account gets right}
 
 A thread that is runnable does not always run. Work-conservation violations --- a runnable
 thread left waiting while a core sits idle --- are documented for CFS-era

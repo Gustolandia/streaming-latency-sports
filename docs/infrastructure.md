@@ -280,6 +280,28 @@ thing telling a reader that `\clockAdmitted` names two clocksources rather than 
 round-12 referee asked for it. When a content pin fires on the same phrase a third time, the
 phrase is not the problem: stop compressing that sentence.
 
+**1j. Know the venue's norms, not just its rules.** The rules are on the Author Information
+page and the suite gates all of them. The *norms* are only visible in accepted papers, and
+`docs/reference_tc/` now keeps two --- Scavenger+ and AXI-REALM, both accepted TC papers,
+both software-systems work with heavy evaluation. What they showed:
+
+- **Both are 14 pages.** TC allows 12 before overlength charges and 14 as the maximum, so both
+  pay for two. Our 12-page target is stricter than the venue norm. That is a legitimate
+  choice, but it should be made knowingly: round 26 spent about two hundred and thirty words
+  of prose trying to stay at 12 before discovering the freed words were landing on float pages
+  where nothing could use them, and the page came back only by shrinking the addition instead.
+- **Figures: 13 and 17. Ours: 7.** TC publishes no limit, so "75% of the limit" has nothing to
+  divide; against the observed norm of about fifteen it would mean roughly eleven. The paper
+  is figure-light for its venue and the constraint is the page target, not the journal.
+- **Scavenger+ carries exactly 45 references**, so sitting at the cap is ordinary.
+
+**1k. When cutting prose stops moving the page count, stop cutting prose.** Round 26's cuts
+freed about 150 words on one figure page and 100 more on two others, and the page count did
+not move: text cannot flow forward past a float. The lever that worked was shrinking the
+insertion that caused the overflow. **Check where the slack landed before cutting again** ---
+per-page word counts take one command and would have saved four rounds of shaving, including
+a trim to the author's own biography that turned out to be unnecessary and was reverted.
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

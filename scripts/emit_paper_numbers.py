@@ -529,12 +529,22 @@ def traced_macros():
     top = [m for m in r.get("modes", []) if m[0] >= 1024]
     if top:
         lo, _, share, ratio = max(top, key=lambda m: m[1])
+        # Where this mode sits among all the modes, by share. It is the one the paper argues
+        # about, and it is *not* the biggest: the jitter core and the second mode both carry
+        # more. Round 29 found the introduction calling it the "largest mode" against a figure
+        # printing 20.0, 13.5 and 10.5 -- a claim about a ranking nothing had ever computed.
+        # Emitting the rank lets a gate check the adjective, and lets it relax by itself if a
+        # recomputation ever makes this mode the largest.
+        by_share = sorted(r.get("modes", []), key=lambda m: m[2], reverse=True)
+        rank = next(i for i, m in enumerate(by_share, 1) if m[0] == lo)
         out += [
             ("tracedModeLo", "%.0f" % (lo / 1024.0)),
             ("tracedModeHi", "%.0f" % (2 * lo / 1024.0)),
             ("tracedModeShare", "%.1f" % (100 * share)),
             ("tracedModeRatio", "%.1f" % ratio),
             ("tracedModes", str(len(r.get("modes", [])))),
+            ("tracedModeRank", str(rank)),
+            ("tracedModeTopShare", "%.1f" % (100 * by_share[0][2])),
         ]
     if "tail_alpha" in r:
         out += [
@@ -748,6 +758,51 @@ def clocksource_macros():
     ]
 
 
+CLOCK_DIR = os.path.join("docs", "results", "external", "clocks")
+
+
+def chrony_bound_macros(path=CLOCK_DIR):
+    r"""What chrony says its own error could be, per host and for the worst pair.
+
+    Section VI-D and Supplement S42 argue that the cross-host channel stays open on this
+    testbed, and the argument rests on three numbers: the per-host bound (root dispersion plus
+    half the root delay), the range of it across hosts, and the sum for the two worst hosts.
+    All three were typed by hand in both documents for twenty-nine rounds, while
+    `scripts/clock_offset_report.py` already computed exactly them and the `chronyc tracking`
+    captures sat committed beside it. Round 29 checked the literals against the artifacts and
+    found them right; being right is not the same as being derived, and the next campaign
+    would have moved the data and not the sentence.
+
+    `chronyPairBound` is the sum for the two worst hosts, which is what the prose should say.
+    Adding the endpoints of the printed range gives a different and larger number, so the
+    range alone cannot reconstruct it.
+    """
+    try:
+        import clock_offset_report
+    except ImportError:                                 # pragma: no cover - always importable
+        return []
+    if not os.path.isdir(path):
+        return []
+    bounds = []
+    for name in sorted(os.listdir(path)):
+        if not name.endswith(".txt"):
+            continue
+        with open(os.path.join(path, name), encoding="utf-8", errors="replace") as fh:
+            err = clock_offset_report.max_error_ms(
+                clock_offset_report.parse_tracking(fh.read()))
+        if err is not None:
+            bounds.append(err)
+    if len(bounds) < 2:
+        return []
+    bounds.sort()
+    return [
+        ("chronyHostBoundLo", "%.0f" % bounds[0]),
+        ("chronyHostBoundHi", "%.0f" % bounds[-1]),
+        ("chronyPairBound", "%.0f" % (bounds[-1] + bounds[-2])),
+        ("chronyHosts", str(len(bounds))),
+    ]
+
+
 def audit_macros():
     """The consistency audit, from the two per-condition integrity files.
 
@@ -840,7 +895,8 @@ def all_pairs(m):
             + mechanism_macros() + kernel_macros() + registry_macros()
             + registry_sources_macro()
             + clocksource_macros() + traced_ratio_macros() + audit_macros()
-            + priority_macros() + priority_residual_macros() + fork_macros())
+            + priority_macros() + priority_residual_macros() + fork_macros()
+            + chrony_bound_macros())
 
 
 def render(m):

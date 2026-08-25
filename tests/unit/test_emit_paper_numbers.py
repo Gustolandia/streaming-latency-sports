@@ -742,3 +742,50 @@ class TestTheMacrosThatAreOmittedRatherThanGuessed:
         printed = capsys.readouterr().out
         assert "priority table not generated" in printed
         assert (out / "paper_numbers.tex").exists()
+
+
+class TestTheChronyBounds:
+    """Section VI-D's three clock numbers, which were right and typed for twenty-nine rounds.
+
+    Round 29 checked `4`--`7`~ms and `12`~ms against the committed `chronyc tracking` captures
+    and found all three correct. Correct is a property of this tree; derived is a property of
+    every later one, and the function that computes them had been sitting in
+    `clock_offset_report` the whole time.
+    """
+
+    def test_it_emits_the_range_and_the_worst_pair(self):
+        got = dict(epn.chrony_bound_macros())
+        assert set(got) == {"chronyHostBoundLo", "chronyHostBoundHi",
+                            "chronyPairBound", "chronyHosts"}
+        lo, hi = int(got["chronyHostBoundLo"]), int(got["chronyHostBoundHi"])
+        assert 0 < lo <= hi
+        assert int(got["chronyHosts"]) >= 2
+
+    def test_the_pair_is_the_two_worst_hosts_not_twice_the_range(self):
+        """The distinction the prose now makes: adding the printed endpoints gives a different
+        and larger number, which is what a reader would otherwise compute."""
+        got = dict(epn.chrony_bound_macros())
+        hi, pair = int(got["chronyHostBoundHi"]), int(got["chronyPairBound"])
+        assert pair <= 2 * hi
+        assert pair >= hi, "the worst pair includes the worst host"
+
+    def test_a_missing_capture_directory_emits_nothing(self, tmp_path):
+        assert epn.chrony_bound_macros(path=str(tmp_path / "absent")) == []
+
+    def test_one_host_is_not_a_pair(self, tmp_path):
+        """A pair bound needs two hosts; one capture is not a claim about disagreement."""
+        (tmp_path / "only.txt").write_text(
+            "Root delay      : 0.004000000 seconds\n"
+            "Root dispersion : 0.001000000 seconds\n", encoding="utf-8")
+        assert epn.chrony_bound_macros(path=str(tmp_path)) == []
+
+    def test_a_capture_without_the_fields_is_skipped(self, tmp_path):
+        for name, body in (("a.txt", "Stratum : 3\n"),
+                           ("b.txt", "Root delay      : 0.004000000 seconds\n"
+                                     "Root dispersion : 0.001000000 seconds\n"),
+                           ("c.txt", "Root delay      : 0.006000000 seconds\n"
+                                     "Root dispersion : 0.002000000 seconds\n")):
+            (tmp_path / name).write_text(body, encoding="utf-8")
+        got = dict(epn.chrony_bound_macros(path=str(tmp_path)))
+        assert got["chronyHosts"] == "2", "the capture with no bound fields is not a host"
+        assert got["chronyPairBound"] == "8"   # (1+2) + (2+3) ms

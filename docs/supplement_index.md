@@ -247,6 +247,16 @@ with no gate, and the only one that costs $220 a page.
 - **S50, S52.1 and S41** absorbed the reasoning trimmed from Sections II-B, II-C and IV-C to
   pay for Figure 3. No claim left the paper; the arguments behind three of them did.
 
+## Round 30 (2026-08-25): an adjective, and three numbers that were right but typed
+
+- **S42's chrony bounds now come from the ledger.** `\chronyHostBoundLo`,
+  `\chronyHostBoundHi`, `\chronyPairBound` and `\chronyHosts` are emitted from the committed
+  `chronyc tracking` captures by the function that already computed them. The sentence also
+  now says the 12 ms is the sum of the two *worst* hosts, because adding the printed endpoints
+  gives 14 and a reader was entitled to try.
+- Nothing else in the supplement changed. Section I's "largest mode" was the round's headline
+  defect and it is main-text only; S52.4 already said "the last".
+
 ## Figure inventory
 
 `docs/results/figures/` holds fifteen PDFs. Twelve are included by a document; three are not,

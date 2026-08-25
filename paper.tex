@@ -81,8 +81,7 @@ millisecond-quantized difference is positive and counts none of what it drops, w
 measuring its same-process span with a nanosecond clock, unfiltered: over
 $\ombGridMedianCells$ embedded-mode cells reporting a median on the millisecond grid it
 computed that median from $\ombGridRetentionMin\%$ to $\ombGridRetentionMax\%$ of the
-samples taken, at a retained fraction fixed by the send-interval-to-quantum ratio. The
-remedy is one line: dither the send instant and publish the retention rate.
+samples taken, at a retained fraction fixed by the send-interval-to-quantum ratio. The remedy is one line: dither the send instant and publish that retained fraction.
 \end{abstract}
 
 % Alphabetical, case-insensitively, and gated by test_index_terms_are_alphabetical.
@@ -325,9 +324,8 @@ span whose difference comes out below zero we call a \emph{negative span}. The t
 Sharma et al.'s~\cite{sharma2026causality}, taken deliberately: we keep it for the observable
 and decline the causal reading they give it, because what a negative span establishes is that
 one of two stamps is untrustworthy, not which. \emph{Span} is used in the tracing sense, a
-pair of stamps bracketing an interval, and nothing here is specific to a tracing system; nor
-is this RFC~1242's negative latency, which is a cut-through device forwarding a frame before
-it has finished receiving it~\cite{rfc1242}.
+pair of stamps bracketing an interval, and nothing here is specific to a tracing system; nor is this RFC~1242's negative latency, a cut-through forwarding artifact~\cite{rfc1242}. \emph{Retention} is the fraction of the samples
+an instrument takes that survive into what it reports, not \kafka{}'s log-retention setting.
 
 \subsection{Testbeds, and what the measurement proxies}
 \label{sec:testbeds}
@@ -783,8 +781,7 @@ saturated it reaches $\invCeiling$, so even then most stamps are taken by a thre
 running, or late by less than the interval.
 
 \begin{table}[tb]
-\caption{\textbf{The mechanism, by manipulation} ($2{,}985$ matched events per cell; Wilson
-$95\%$ intervals in brackets). Top: stamping threads moved to \texttt{SCHED\_FIFO} with
+\caption{\textbf{The mechanism, by manipulation} ($2{,}985$ matched events per cell). Top: stamping threads moved to \texttt{SCHED\_FIFO} with
 background load unchanged; achieved utilization matches to $0.001$ between arms, so
 occupancy alone moved. Bottom: identical utilization reached by two core geometries
 ($\rho = 0.7531$ in all four $k{=}6$ arms); a function of $\rho$ returns one value for one
@@ -797,17 +794,17 @@ input.}
 \toprule
 Manipulation & Arm & Rate & 95\% CI & Factor ($z$)\\
 \midrule
-\multirow{2}{*}{Priority, $75\%$} & ordinary  & $\rtLowBase$  & $\rtLowBaseCI$  & \\
-                                        & real-time & $\rtLowRt$    & $\rtLowRtCI$    & $\rtLowFactor\times$ ($\rtLowZ$) \\
+\multirow{2}{*}{Priority, $75\%$} & ordinary & $\rtLowBase$ & $\rtLowBaseCI$ & \multirow{2}{*}{$\rtLowFactor\times$ ($\rtLowZ$)} \\
+                                        & real-time & $\rtLowRt$ & $\rtLowRtCI$ & \\
 \addlinespace[2pt]
-\multirow{2}{*}{Priority, $88\%$} & ordinary  & $\rtHighBase$ & $\rtHighBaseCI$ & \\
-                                        & real-time & $\rtHighRt$   & $\rtHighRtCI$   & $\rtHighFactor\times$ ($\rtHighZ$) \\
+\multirow{2}{*}{Priority, $88\%$} & ordinary & $\rtHighBase$ & $\rtHighBaseCI$ & \multirow{2}{*}{$\rtHighFactor\times$ ($\rtHighZ$)} \\
+                                        & real-time & $\rtHighRt$ & $\rtHighRtCI$ & \\
 \midrule
-\multirow{2}{*}{Geometry, original}     & concentrated & $\GeomOrigConc$ & $\GeomOrigConcCI$ & \\
-                                        & spread       & $\GeomOrigSpread$ & $\GeomOrigSpreadCI$ & $\GeomOrigFactor\times$ ($\GeomOrigZ$) \\
+\multirow{2}{*}{Geometry, original}     & concentrated & $\GeomOrigConc$ & $\GeomOrigConcCI$ & \multirow{2}{*}{$\GeomOrigFactor\times$ ($\GeomOrigZ$)} \\
+                                        & spread & $\GeomOrigSpread$ & $\GeomOrigSpreadCI$ & \\
 \addlinespace[2pt]
-\multirow{2}{*}{Geometry, repl.}  & concentrated & $\GeomReplConc$ & $\GeomReplConcCI$ & \\
-                                        & spread       & $\GeomReplSpread$ & $\GeomReplSpreadCI$ & $\GeomReplFactor\times$ ($\GeomReplZ$) \\
+\multirow{2}{*}{Geometry, repl.}  & concentrated & $\GeomReplConc$ & $\GeomReplConcCI$ & \multirow{2}{*}{$\GeomReplFactor\times$ ($\GeomReplZ$)} \\
+                                        & spread & $\GeomReplSpread$ & $\GeomReplSpreadCI$ & \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1023,8 +1020,8 @@ separated from its rivals by manipulation, with the eliminations listed at the e
 Section~\ref{sec:mechanism}. Beyond that list, the clustering of consecutive late wakes
 ($z = -6.9$ at the co-located floor, at every load including none) is the signature of a
 shared scheduling delay, not independent kernel granularity. \texttt{chrony} reports the inter-host offset of
-Section~\ref{sec:testbeds} as comfortably sub-tick, but bounds its own error at $\chronyHostBoundLo$--$\chronyHostBoundHi$~ms per host --- the two
-worst hosts sum to $\chronyPairBound$~ms against a $1$~ms stamp --- so the cross-host
+Section~\ref{sec:testbeds} as comfortably sub-tick, but bounds its own error at $\chronyHostBoundLo$--$\chronyHostBoundHi$~ms per host --- the two worst of those bounds sum to $\chronyPairBound$~ms against a $1$~ms stamp
+--- so the cross-host
 channel stays open rather than ruled out. It did not produce the \redis{}-driver negatives,
 which the driver's own stamp accounts for exactly (Section~\ref{sec:generality}), but it is
 why we claim no cross-host bound in general.

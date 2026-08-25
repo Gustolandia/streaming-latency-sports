@@ -1592,9 +1592,9 @@ tooling.
 
 We are also explicit that the clock bound on this testbed does \emph{not} rule the channel out.
 \texttt{chrony} reports inter-host offsets near $0.1$~ms, which is comfortably sub-tick --- but the
-bound it places on its own error, root dispersion plus half the root delay, is
-$\chronyHostBoundLo$ to $\chronyHostBoundHi$~ms per host across the $\chronyHosts$ captured, and
-the two worst of them sum to $\chronyPairBound$~ms against a $1$~ms timestamp. An operator checking
+bound it places on its own error, root dispersion plus half the root delay, is $\chronyHostBoundLo$ to $\chronyHostBoundHi$~ms per host across the $\chronyHosts$ hosts
+captured, and the two worst of those bounds sum to $\chronyPairBound$~ms against a $1$~ms
+timestamp. An operator checking
 whether cross-host subtraction is safe reads the offset line and concludes it cannot happen; the
 figure that bounds the disagreement is two orders of magnitude larger and three lines further down
 the same output. The channel is therefore open on this testbed, and we could not measure it.

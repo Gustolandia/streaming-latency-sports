@@ -372,6 +372,37 @@ was quietly spending that care. It is a golden-ratio rotation now, and the fix w
 rather than assumed: an offset of 0.5 gives 6 of 20 in the crossing region and would have made
 the panel illustrate the wrong number.
 
+**1q. Three gates read every figure. None read a table.** `figure_collisions`,
+`figure_legibility` and `figure_vocabulary` run before any figure is written. Both tables in
+the manuscript are hand-authored LaTeX rather than generated, and nothing had ever been asked
+to look at them --- so Table II's caption promised "Wilson 95% intervals in brackets" for
+thirty-one rounds while the intervals sat in a column headed `95% CI` and the only bracketed
+quantity in the table was *z*. A reader following the caption looked at the wrong statistic.
+
+`tests/unit/test_table_captions.py` checks the one class of caption claim that is machine
+checkable: a promise about *marks* --- brackets, parentheses, italics, bold --- must be kept by
+the table body. Two things it taught, both found by its own self-tests rather than by review:
+
+- **The body is the `tabular`, not the float.** A first version took the whole float minus the
+  caption and every table passed for free, because `\begin{table}[tb]` is square brackets.
+- **Optional arguments are markup, not data.** `\addlinespace[2pt]` supplied the brackets the
+  second version accepted. Strip `\cmd[...]` before looking for a data delimiter.
+
+**1r. A correction reaches the file you edited, not the claim.** Round 30 fixed "largest mode"
+in `paper.tex`. The same false ranking sat in `scripts/make_result_figures.py`'s module
+docstring --- "trimodal, with the largest of the three modes sitting on the scheduler's base
+slice" --- for two rounds afterwards, because the ordinal gate read only the two `.tex` files
+and because the phrase was wrapped across two lines where a line-oriented `grep` could not see
+it. The gate now reads the figure scripts too, on whitespace-normalized text.
+
+Two lessons at once: **a claim about the data is a claim wherever it is written**, docstrings
+included; and **normalize whitespace before searching for a phrase**, or the wrap decides what
+you find.
+
+Narrowing it was as instructive as writing it. Anchored on "base slice" the rule fired on
+`_slice_bucket`'s docstring --- "the largest bucket start at or below it" --- which ranks no
+mode and is simply true. The rule is about which mode is biggest, so it keys on the modes.
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

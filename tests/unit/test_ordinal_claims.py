@@ -104,6 +104,64 @@ class TestTheModeIsNotCalledSomethingItIsNot:
                 "paper.tex:%d calls it otherwise" % (total, line))
 
 
+#: The same claim, made in prose rather than through a macro. Figure scripts describe the
+#: exhibit they draw, and that description is documentation a reader trusts.
+#:
+#: Anchored on the *modes*, not on the base slice. "base slice" was in the first version and
+#: it fired on `_slice_bucket`'s docstring --- "the largest bucket start at or below it" ---
+#: which is a true sentence about log2 bucket boundaries and no claim about ranking at all.
+#: The rule is about which mode is biggest, so it should key on the modes.
+SCRIPT_ANCHORS = ("three modes", "trimodal", "modes sitting")
+
+
+class TestTheCodeSaysWhatTheProseSays:
+    r"""Round 30 fixed "largest mode" in `paper.tex`. It did not reach here.
+
+    `scripts/make_result_figures.py` went on telling its reader, in the docstring that
+    explains why the stall-spectrum figure exists, that the distribution is "trimodal, with the
+    largest of the three modes sitting on the scheduler's base slice". Same false ranking, same
+    quantity, one directory across --- and the round-30 gate could not see it, because it read
+    only the two `.tex` files.
+
+    A claim about the data is a claim about the data wherever it is written. The docstrings in
+    `scripts/` are the first thing a reader of the artifact opens.
+    """
+
+    #: Where a description of the traced stall distribution can live.
+    SOURCES = ("scripts/make_result_figures.py", "scripts/emit_paper_numbers.py",
+               "scripts/tail_index_traced.py")
+
+    def test_no_script_calls_the_slice_mode_the_largest(self):
+        rank = int(_macros()["tracedModeRank"])
+        bad = []
+        for rel in self.SOURCES:
+            path = REPO / rel
+            if not path.exists():                       # pragma: no cover - all three present
+                continue
+            # Whitespace-normalized: the claim that prompted this rule was wrapped across two
+            # lines, so a line-oriented search missed it twice.
+            flat = " ".join(path.read_text(encoding="utf-8").split())
+            for m in re.finditer("|".join(re.escape(a) for a in SCRIPT_ANCHORS), flat):
+                window = flat[max(0, m.start() - 180):m.end() + 120]
+                # A comment *about* the defect is allowed to name it; a claim is not.
+                if "Round 29" in window or "round 29" in window:
+                    continue
+                found = superlatives_in(window)
+                if found and rank != 1:
+                    bad.append("%s  %s\n      ...%s..." % (rel, found, window[:190]))
+        assert not bad, (
+            "script documentation ranking the slice mode first, when the data ranks it %s of "
+            "%s:\n  " % (_macros()["tracedModeRank"], _macros()["tracedModes"])
+            + "\n  ".join(bad))
+
+    def test_the_anchors_still_appear_somewhere(self):
+        """If the docstrings stop describing the figure, this rule goes quiet; say so."""
+        joined = " ".join(" ".join((REPO / s).read_text(encoding="utf-8").split())
+                          for s in self.SOURCES if (REPO / s).exists())
+        assert any(a in joined for a in SCRIPT_ANCHORS), \
+            "no script describes the stall distribution any more -- has the wording changed?"
+
+
 class TestTheCheckCanFail:
     """The round-29 defect, reconstructed, and the shapes that must not fire."""
 
@@ -132,3 +190,22 @@ class TestTheCheckCanFail:
 
     def test_word_boundaries_hold(self):
         assert not superlatives_in("the enlargement of the window")
+
+    #: The docstring as it stood in scripts/make_result_figures.py for two rounds after the
+    #: manuscript was corrected. Wrapped across two lines, which is why a line-oriented
+    #: search missed it: the rule normalizes whitespace before matching.
+    SCRIPT_DEFECT = ("spectrum -- the traced stall distribution, which is trimodal, with\n"
+                     "the largest of the three\n    modes sitting on the scheduler's base "
+                     "slice.")
+
+    def test_the_script_rule_finds_the_wrapped_docstring_claim(self):
+        flat = " ".join(self.SCRIPT_DEFECT.split())
+        hits = [m for m in re.finditer("|".join(re.escape(a) for a in SCRIPT_ANCHORS), flat)]
+        assert hits, "the mode anchors must be recognised"
+        assert any(superlatives_in(flat[max(0, m.start() - 180):m.end() + 120])
+                   for m in hits)
+
+    def test_a_bucket_boundary_docstring_is_not_indicted(self):
+        """`_slice_bucket`: "the largest bucket start at or below it" ranks no mode."""
+        flat = "The log2 bucket the base slice falls in: the largest bucket start at or below it."
+        assert not [m for m in re.finditer("|".join(re.escape(a) for a in SCRIPT_ANCHORS), flat)]

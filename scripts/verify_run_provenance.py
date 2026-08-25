@@ -3,7 +3,8 @@
 verify_run_provenance.py
 Does every number the paper quotes come from a run that actually happened?
 
-This check exists because the paper failed it. Section 6.7 reported that the instrumented
+This check exists because the paper failed it. The external-campaign section reported
+that the instrumented
 OpenMessaging Benchmark "discarded zero samples" and treated that as a bounded negative. The run
 behind it had died four seconds in on a missing argument and measured nothing at all; the script
 wrote a zero because a benchmark that never runs discards nothing. The number looked exactly like

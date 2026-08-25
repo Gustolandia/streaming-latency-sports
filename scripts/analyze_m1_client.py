@@ -8,7 +8,7 @@ The paper reports that Kafka's end-to-end delay at football's sparse arrival rat
 which ~103 ms is producer scheduling lag -- the interval between an event's planned emission and
 the producer issuing the send. Three measured properties (constant, concurrency-invariant,
 rate-dependent) point at a client sender thread waking from idle, but that was an inference.
-Section 7.2 says "inferred, comparison in progress".
+The discussion says "inferred, comparison in progress".
 
 This runs the comparison: the identical experiment against a second, independently implemented
 client (confluent-kafka / librdkafka). If the offset vanishes with the other client, it is a

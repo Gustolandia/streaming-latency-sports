@@ -6,7 +6,7 @@ One tracked row per run, so the raw per-event CSVs can be deleted without losing
 `runs/` holds 8.4 GB across ~1,700 directories and **not one file of it is tracked**. The
 aggregated CSVs under docs/results cover 1,546 run ids between them, scattered over 57 files, and
 1,445 runs on disk appear in none of them. So today the honest answer to "what runs produced this
-paper" is a directory on one laptop, which is exactly the provenance gap Section 7.4 of the paper
+paper" is a directory on one laptop, which is exactly the provenance gap the threats section of the paper
 reports having found in its own history.
 
 This writes `reproducibility/runs_index.csv`: for every run directory, what it was, when, what it

@@ -310,6 +310,130 @@ def plot_model(axes):
 SENSITIVITY_THRESHOLDS = (0.0, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.10, 0.20)
 
 
+# --- the geometry behind the deletion law -------------------------------------------------
+
+#: One tick of the millisecond grid, and a delivery shorter than it. The pair is the paper's
+#: own: both incommensurate arms sit near 50% retention at tau = 1 ms, so a T_true of a few
+#: tenths of a millisecond is the regime the failure lives in. The value must fall *between*
+#: two grid values for q = 4, so that the figure shows the bracketing the text describes,
+#: which a value sitting exactly on a grid point would hide.
+#:
+#: 0.35 rather than 0.4 or 0.3, and the reason is the ledger sweep rather than the physics:
+#: both of those are publish-latency values the ledger emits, and a literal in the caption
+#: that happens to equal an emitted quantity is exactly what that gate exists to refuse. The
+#: main text takes no exemptions, so the illustration moved instead. 0.35 gives 7/20 = 35% for
+#: uniform phases against 1/4 = 25% on the grid, and three of four phases still measure zero.
+TAU_MS = 1.0
+T_TRUE_MS = 0.35
+
+#: A commensurate send interval in lowest terms. Delta/tau = 5/4 gives q = 4, so the producer
+#: visits four phases and retention can only be one of 0, 1/4, 2/4, 3/4, 1.
+GRID_Q = 4
+
+
+def plot_quantum_geometry(axes, tau=TAU_MS, t_true=T_TRUE_MS, q=GRID_Q):
+    r"""Why a span is deleted, and why the survivors are not a sample.
+
+    Figure 3 shows that the arms sit closer to the grid than chance allows, and Figure 2 shows
+    retention collapsing across the corpus. Both are evidence *that* the deletion law holds.
+    Neither draws the mechanism, which is a statement about where a send instant falls inside
+    one tick, and which is carried in the text by two equations.
+
+    Panel (a) is Equation (retention). Four deliveries of identical true duration begin at
+    four phases of the same tick. Three finish inside it, so both stamps round to the same
+    value, the difference is exactly zero, and the guard removes them. The fourth crosses the
+    boundary and is recorded -- as one whole tick, which is why the corpus reports 1.0 and 2.0
+    ms and nothing between.
+
+    Panel (b) is Equation (quant). The crossing region is the last `t_true` of the tick, so a
+    producer with uniform phases retains `t_true / tau`. A commensurate producer does not have
+    uniform phases: it visits `q` of them and retains a count out of `q`. Same delivery, same
+    clock, a different answer, decided by the send schedule -- which is the argument for
+    dithering it.
+    """
+    top, bot = axes
+    keep, drop = "#1f77b4", "#c44e52"
+    phases = [i * tau / q for i in range(q)]
+    crossing = tau - t_true                     # a delivery from here on reaches the next tick
+
+    # --- (a) one tick, four phases ---------------------------------------------------------
+    span = 1.45 * tau
+    # Drawn with an explicit top rather than axvline: a full-height rule runs through the
+    # labels that name it, which is what the collision gate said the first time this was
+    # rendered. The rule stops below the text and the text sits clear of it.
+    for x in (0.0, tau):
+        top.plot([x, x], [0.42, q + 0.34], color=GREY, lw=0.9, ls=(0, (3, 2)), zorder=1)
+    top.text(0.0, q + 0.52, "tick", fontsize=8, color=GREY, ha="center", va="bottom")
+    top.text(tau, q + 0.52, "next tick", fontsize=8, color=GREY, ha="center", va="bottom")
+
+    for i, phi in enumerate(phases):
+        y = q - i
+        crosses = phi + t_true >= tau
+        colour = keep if crosses else drop
+        top.plot([phi, phi + t_true], [y, y], color=colour, lw=2.6,
+                 solid_capstyle="butt", zorder=3)
+        top.plot([phi], [y], marker="|", color=colour, ms=7, mew=1.4, zorder=4)
+        top.text(-0.05 * tau, y, r"$\varphi=%.2f$" % phi, fontsize=8, ha="right", va="center")
+        top.text(1.52 * tau, y, "1 ms" if crosses else "0 ms", fontsize=8, color=colour,
+                 ha="right", va="center")
+        top.text(1.56 * tau, y, "kept" if crosses else "deleted", fontsize=8, color=colour,
+                 ha="left", va="center")
+    top.set_xlim(-0.42 * tau, 2.16 * tau)
+    top.set_ylim(0.55, q + 1.25)
+    for side in ("top", "right", "left", "bottom"):
+        top.spines[side].set_visible(False)
+    top.set_xticks([])
+    top.set_yticks([])
+    # The duration belongs in the title, not in the panel: as an annotation it had to sit
+    # between the two tick rules, where it was legible on screen and cramped in print. No
+    # `~` in a mathtext string -- matplotlib is not LaTeX and prints the tilde.
+    top.set_title("(a) one delivery of $T_{\\mathrm{true}} = %.2f$ ms, at four phases"
+                  % t_true, fontsize=8, loc="left")
+
+    # --- (b) which phases exist ------------------------------------------------------------
+    #
+    # No bracket over the crossing region. It was drawn with its own label above the rows, and
+    # once the panel was compressed to hold the paper at twelve pages it took most of the
+    # vertical budget: the two rows had to sit close enough that the mathtext ascenders of the
+    # lower label came within a point or two of the dots above. The collision gate did not
+    # fire; at print size it was plain. The shaded band and the $\tau - T_{true}$ tick say the
+    # same thing, and the caption names it in a clause, so the space goes to the rows.
+    uniform = [(i + 0.5) * tau / 20 for i in range(20)]   # 8/20 = T_true/tau exactly
+    # Short enough to end left of the crossing band. The long form -- "incommensurate: every
+    # phase occurs" -- reached under the bracket above it, and once the figure was compressed
+    # to fit the page the bracket rule cut through it: under the collision gate's threshold,
+    # plain to the eye. What the two rows mean is in the caption, which has room for it.
+    rows = ((2.35, uniform, "incommensurate", GREY),
+            (1.00, phases, "commensurate $\\Delta/\\tau = %d/%d$" % (q + 1, q), "#2a7f62"))
+    for y, pts, label, colour in rows:
+        # Banded per row rather than as a full-height axvspan. The full-height version put
+        # translucent ink behind both row labels, and the collision gate counted it -- which
+        # is the correct call: a label over a tint is a label read twice in print.
+        bot.add_patch(plt.Rectangle((crossing, y - 0.24), tau - crossing, 0.48,
+                                    facecolor=keep, alpha=0.14, lw=0, zorder=0))
+        bot.plot([0, tau], [y, y], color=GREY, lw=0.7, zorder=1)
+        kept_n = sum(1 for p in pts if p >= crossing)
+        for p in pts:
+            bot.plot([p], [y], marker="o", ms=4.2, zorder=3,
+                     color=keep if p >= crossing else drop)
+        # Clear of the markers: at 0.2 the descenders sat on the dots.
+        bot.text(0, y + 0.34, label, fontsize=8, color=colour, ha="left", va="bottom")
+        bot.text(1.06 * tau, y, "%d/%d = %d%%" % (kept_n, len(pts), round(100 * kept_n / len(pts))),
+                 fontsize=8, ha="left", va="center",
+                 color=keep if kept_n else drop)
+    bot.set_xlim(-0.03 * tau, 1.58 * tau)
+    bot.set_ylim(0.42, 3.18)
+    bot.set_xticks([0, crossing, tau])
+    bot.set_xticklabels(["0", r"$\tau-T_{\mathrm{true}}$", r"$\tau$"], fontsize=8)
+    bot.set_yticks([])
+    for side in ("top", "right", "left"):
+        bot.spines[side].set_visible(False)
+    bot.spines["bottom"].set_bounds(0, tau)   # the phase axis ends at the tick
+    bot.tick_params(axis="x", labelsize=8, length=3)
+    bot.set_xlabel("phase of the send instant within one tick", fontsize=8)
+    bot.set_title("(b) the send schedule decides how many survive", fontsize=8, loc="left")
+
+
 def condemned_at(by_run, threshold):
     """Number of runs the gate condemns at a given negative-span threshold.
 
@@ -476,6 +600,14 @@ def main(argv=None):
         fig.tight_layout()
         return _save(fig, out, "measurement_model", check_layout=layout_is_shipped)
 
+    def _quantum():
+        # Single column, like the other two Mode B figures it sits beside.
+        fig, axes = plt.subplots(2, 1, figsize=(3.50, 1.94),
+                                 gridspec_kw={"height_ratios": [1.12, 1.0]})
+        plot_quantum_geometry(axes)
+        fig.tight_layout(h_pad=0.35)
+        return _save(fig, out, "quantum_geometry", check_layout=layout_is_shipped)
+
     def _workload():
         fig, axes = plt.subplots(1, 2, figsize=(10, 3.6))
         plot_workload(axes, profiles)
@@ -507,6 +639,7 @@ def main(argv=None):
 
     render("pipeline_schematic", [], _pipeline)
     render("measurement_model", [], _model)
+    render("quantum_geometry", [], _quantum)
     render("workload_profile", [profiles], _workload)
     render("kickoff_concurrency", [slots, timeline], _concurrency)
     render("integrity_audit", [integrity], _integrity)

@@ -653,7 +653,7 @@ but one with a single value in it, printed to three decimal places.
 We present the first result set in full rather than describing it, because a reader cannot
 otherwise judge how convincing an invalid corpus looks.
 
-\subsection{The result}
+\subsection{S8.1. The result}
 
 On Testbed~A, replaying distinct real matches at ten times real speed across one, five and ten
 feeds with 15--30 runs per cell and both producers pipelined, broker transport separated the two
@@ -661,7 +661,7 @@ systems cleanly (the main text). Every comparison was significant after correcti
 $N \geq 5$ the run distributions did not overlap.
 
 
-\subsection{The checks it had already passed}
+\subsection{S8.2. The checks it had already passed}
 
 The corpus was not naive. It was the product of five earlier corrections, each of which had
 reversed the apparent winner and each found by investigating a result that looked wrong:
@@ -1329,7 +1329,7 @@ corrupted events, tested and found in the main text (full engagement:
 supplementary material S18).
 \section{S19. Provenance-gap episode and the co-location withholding (moved from the main text)}
 
-\subsection{A gap in our own provenance}
+\subsection{S19.1. A gap in our own provenance}
 
 Auditing the corpus turned the same scrutiny on our own record-keeping, and it did not survive
 it either: no surviving artifact records the achieved replay rate of the earliest corpus.
@@ -2575,10 +2575,10 @@ The pattern has since reached the audited broker itself. In November 2025, Kafka
 coordinator metrics were found throwing on negative durations when a host clock stepped
 backwards, and the merged fix clamps the negative to zero with no counter and no log
 line~\cite{kafka19888} --- silent substitution, the class this table marks
-\emph{substitute}, adopted in the very system whose benchmark opened this audit. We record
-it here rather than in the main text because its mechanism is genuine wall-clock
-non-monotonicity, and placing it beside Mode~A would invite exactly the clock-versus-stall
-conflation the paper separates.
+\emph{substitute}, adopted in the very system whose benchmark opened this audit. The main text
+names the case and its citation in one sentence and sends the reader here for the rest,
+because its mechanism is genuine wall-clock non-monotonicity, and setting it out beside
+Mode~A would invite exactly the clock-versus-stall conflation the paper separates.
 
 
 \section{S37. Two neighboring literatures, and what they do about the second clock}
@@ -3399,7 +3399,7 @@ is ensured by running both on the same workload generator machine.''
 found none.
 \end{itemize}
 
-It then reports medians as low as $0.21$~ms --- squarely inside the range where both failures
+mq-bench then reports medians as low as $0.21$~ms --- squarely inside the range where both failures
 reported here bite --- and needs no remedy, because it never acquired either defect.
 
 One thing it does not do is say why its span is safe. A reader cannot tell from the paper
@@ -3417,7 +3417,7 @@ matters for the same reason the audit of Section~\mainGenerality{} does: the ins
 few and shared, so a defect in one is a defect in a decade of comparisons rather than in one
 project.
 
-\subsection{S52.3. Where scheduling delay comes from, and what the queueing account gets right}
+\subsection{S52.4. Where scheduling delay comes from, and what the queueing account gets right}
 
 A thread that is runnable does not always run. Work-conservation violations --- a runnable
 thread left waiting while a core sits idle --- are documented for CFS-era

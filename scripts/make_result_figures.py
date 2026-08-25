@@ -772,12 +772,20 @@ def plot_payload_flip(ax, pos, q=PAYLOAD_Q):
 
 
 def build_payload(out_dir):
+    """Stacked and one column wide, not side by side across two.
+
+    Drawn across the full text width this was 7.16 by 1.53 inches: two sparse panels with a
+    great deal of white between them, costing twice its own height in column inches because a
+    `figure*` occupies both columns. Stacked at column width it carries the same two panels in
+    two thirds of the space, and a single-column float can also settle anywhere on the page
+    rather than only at the top of one. The panels are unchanged.
+    """
     figure_style.apply()   # in force when the artists are made, not merely at import
     arms = payload_arms()
-    fig, axes = plt.subplots(1, 2, figsize=(7.16, 1.75))
+    fig, axes = plt.subplots(2, 1, figsize=(3.50, 3.05))
     plot_payload_grid(axes[0], arms)
     plot_payload_flip(axes[1], payload_positions(arms))
-    fig.tight_layout(w_pad=2.2)
+    fig.tight_layout(h_pad=1.0)
     return _save(fig, out_dir, "payload_flip")
 
 

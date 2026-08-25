@@ -442,6 +442,25 @@ was read as two more index terms and the failure named the note instead of the t
 comments now. And a declined referee item is recorded in the source beside the thing it
 declines, so the next round does not raise it a third time.
 
+**1u. A figure is published output, so its cells are published numbers.** The experiment map
+is drawn into supplement S21, and four of its cells carried results typed by hand: the E-A10
+transport span, the priority collapse range, the two geometry factors with the utilisation
+both arms reached, and the tail index. Every one duplicated a quantity the ledger already
+emits. Round 34 fixed the first and recorded the rest; this closes them.
+
+The pattern each helper follows is `_base_slice_ms`'s: derive from the campaign, fall back to
+the literal that was published, and **assert in a test that the two agree**. That last part is
+the one worth keeping --- a fallback nobody checks is a second source wearing a disguise, which
+is exactly the defect the helper was written to remove. `test_the_fallback_equals_the_derivation`
+runs over all four.
+
+`stat_intervals.geometry_rho()` is new because `geometry_cells` drops the column the interval
+arithmetic does not need and the map does. It raises if the two k=6 arms disagree, since a
+pair that did not reach the same utilisation is not the comparison the figure claims.
+
+**Proof of no-op:** extract the figure's text before and after and diff it. A ledger
+substitution that changes a printed character is not a substitution, it is an edit.
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

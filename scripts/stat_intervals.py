@@ -316,6 +316,21 @@ def geometry_cells(phase="ea6"):
             for c in ("k6_conc", "k6_spread") if c in rows]
 
 
+def geometry_rho(phase="ea6"):
+    """The utilisation both k=6 arms reached, which is the whole point of the pair.
+
+    `geometry_cells` drops this column because the interval arithmetic does not need it. The
+    experiment map does: its cell says the two arms differ "at rho 0.7531", and that number
+    was typed. Raises if the two arms disagree, because a pair that did not reach the same
+    utilisation is not the comparison the figure claims.
+    """
+    rows = {r["condition"]: r for r in _rows("model", phase, "knee_resolution.csv")}
+    got = {round(float(rows[c]["rho"]), 6) for c in ("k6_conc", "k6_spread") if c in rows}
+    if len(got) != 1:
+        raise ValueError("k6 arms disagree on rho in %s: %s" % (phase, sorted(got)))
+    return got.pop()
+
+
 def payload_fit(phase=None):
     """OLS of log(inversion rate) on log(transport), the paper's effective span exponent."""
     parts = ("model", "ttrue_sweep.csv") if phase is None else ("model", phase, "ttrue_sweep.csv")

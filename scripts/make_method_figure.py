@@ -43,6 +43,52 @@ def _transport_span():
         return "77"
 
 
+def _priority_range():
+    """E-A5's collapse factor across every matched pair, as the map prints it.
+
+    `\\rtFactorLow`--`\\rtFactorHigh` over `\\rtPairs` pairs in the ledger. The map said
+    "8 pairs, 7-80x".
+    """
+    try:
+        import priority_pairs
+        s = priority_pairs.summary()
+        return "%d pairs, %.0f-%.0fx" % (s["pairs"], s["factor_low"], s["factor_high"])
+    except (ImportError, OSError, KeyError, ValueError):
+        return "8 pairs, 7-80x"
+
+
+def _geometry_result():
+    """E-A6's two factors and the utilisation both arms reached.
+
+    `\\GeomOrigFactor`, `\\GeomReplFactor` and the shared rho. The factors are derived the
+    same way `emit_paper_numbers` derives them --- `ratio_z` over the two cells --- so the
+    cell and the macro cannot disagree about what the ratio is.
+    """
+    try:
+        import stat_intervals
+        out = []
+        for phase in ("ea6", "ea6b"):
+            (_, kc, nc), (_, ks, ns) = stat_intervals.geometry_cells(phase)
+            out.append(stat_intervals.ratio_z(ks, ns, kc, nc)[1])
+        return "%.2fx, %.2fx, at rho %g" % (out[0], out[1],
+                                            stat_intervals.geometry_rho("ea6"))
+    except (ImportError, OSError, KeyError, ValueError):
+        return "2.07x, 2.05x, at rho 0.7531"
+
+
+def _tail_index():
+    """The payload sweep's effective exponent, two decimals, as the map prints it.
+
+    `\\tailExponent` is emitted at three (0.339); the map has room for two and said 0.34.
+    Both are the same fit, and this reads it rather than remembering it.
+    """
+    try:
+        import stat_intervals
+        return "%.2f" % -stat_intervals.payload_fit()[0]
+    except (ImportError, OSError, KeyError, ValueError):
+        return "0.34"
+
+
 # (campaign, manipulated, held fixed, settles) -- the row content of the map.
 ROWS = [
     ("E1\nconcurrency", "feeds $N$:\n1, 9, 10, 12", "rate, host,\nplan set",
@@ -63,13 +109,14 @@ ROWS = [
     # claim -- that every claim in Section 7 traces to a row -- had quietly become false: five
     # campaigns were carrying results in the text with no row here at all.
     ("E-A5/A5b/A7\nstamping priority", "SCHED_FIFO on\nthe stamping threads",
-     "utilisation,\nto 0.003", "scheduling, not utilisation\n(8 pairs, 7-80x)"),
+     "utilisation,\nto 0.003", "scheduling, not utilisation\n(%s)" % _priority_range()),
     ("E-A6 / E-A6b\nload geometry", "cores free vs\nall duty-cycled", "achieved\nutilisation",
-     "utilisation is not the variable\n(2.07x, 2.05x, at rho 0.7531)"),
+     "utilisation is not the variable\n(%s)" % _geometry_result()),
     ("E-A9\nrun-queue trace", "nothing:\nobservation only", "load,\npriority arm",
      "P(stall > $T_\\mathrm{true}$) predicts\nthe rate, unfitted"),
     ("E-A10\ntransport sweep", "payload size;\n$T_\\mathrm{true}$ %sx" % _transport_span(),
-     "load, hosts,\ncode path", "other side of the inequality;\ntail index 0.34"),
+     "load, hosts,\ncode path",
+     "other side of the inequality;\ntail index %s" % _tail_index()),
     ("E-A8\nco-location", "broker on\nthe driver", "utilisation,\nto 0.002",
      "nothing: transport did not\nmove, so it is withheld"),
     ("OMB\nexternal", "instrumented\ndiscard counter", "our broker,\nunder load",

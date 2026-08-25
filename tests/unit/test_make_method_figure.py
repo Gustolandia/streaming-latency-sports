@@ -7,6 +7,7 @@ and no row may claim to both generate and test a hypothesis.
 from pathlib import Path
 import sys
 
+import pytest
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
@@ -111,3 +112,93 @@ class TestTheTransportSpanCell:
         rows = [r for r in ROWS if "E-A10" in r[0]]
         assert len(rows) == 1, "one E-A10 row"
         assert "77x" in rows[0][1], "the manipulated cell names the span"
+
+
+class TestTheMapReadsItsResultCells:
+    """The three remaining hard-coded result values, retired.
+
+    Round 34 fixed the transport span in this table and recorded the other three as a
+    follow-up: the priority range, the geometry factors with their shared utilisation, and the
+    tail index. All four are published numbers -- this map is drawn into the supplement -- and
+    all four duplicated quantities the ledger already emits.
+
+    Each helper falls back to the literal that was there before, and each fallback is asserted
+    equal to what the campaign returns. A fallback that drifts from the derivation is a second
+    source wearing a disguise, which is the defect these helpers exist to remove.
+    """
+
+    def test_the_priority_range_reads_the_campaign(self):
+        import make_method_figure as mmf
+        import priority_pairs
+        s = priority_pairs.summary()
+        assert mmf._priority_range() == "%d pairs, %.0f-%.0fx" % (
+            s["pairs"], s["factor_low"], s["factor_high"])
+
+    def test_the_geometry_result_reads_the_campaign(self):
+        import make_method_figure as mmf
+        import stat_intervals
+        got = mmf._geometry_result()
+        assert "at rho %g" % stat_intervals.geometry_rho("ea6") in got
+        for phase in ("ea6", "ea6b"):
+            (_, kc, nc), (_, ks, ns) = stat_intervals.geometry_cells(phase)
+            assert "%.2fx" % stat_intervals.ratio_z(ks, ns, kc, nc)[1] in got
+
+    def test_the_tail_index_reads_the_fit(self):
+        import make_method_figure as mmf
+        import stat_intervals
+        assert mmf._tail_index() == "%.2f" % -stat_intervals.payload_fit()[0]
+
+    @pytest.mark.parametrize("helper,module,attr,expected", [
+        ("_priority_range", "priority_pairs", "summary", "8 pairs, 7-80x"),
+        ("_geometry_result", "stat_intervals", "geometry_cells",
+         "2.07x, 2.05x, at rho 0.7531"),
+        ("_tail_index", "stat_intervals", "payload_fit", "0.34"),
+    ])
+    def test_each_falls_back_to_the_published_literal(self, monkeypatch, helper, module,
+                                                      attr, expected):
+        import importlib
+        import make_method_figure as mmf
+        mod = importlib.import_module(module)
+        monkeypatch.setattr(mod, attr,
+                            lambda *a, **kw: (_ for _ in ()).throw(OSError("no campaign")))
+        assert getattr(mmf, helper)() == expected
+
+    @pytest.mark.parametrize("helper", ["_transport_span", "_priority_range",
+                                        "_geometry_result", "_tail_index"])
+    def test_the_fallback_equals_the_derivation(self, helper, monkeypatch):
+        """Both branches must produce the same string on the committed campaigns."""
+        import importlib
+        import make_method_figure as mmf
+        live = getattr(mmf, helper)()
+        broken = {"_transport_span": ("stat_intervals", "payload_span"),
+                  "_priority_range": ("priority_pairs", "summary"),
+                  "_geometry_result": ("stat_intervals", "geometry_cells"),
+                  "_tail_index": ("stat_intervals", "payload_fit")}[helper]
+        mod = importlib.import_module(broken[0])
+        monkeypatch.setattr(mod, broken[1],
+                            lambda *a, **kw: (_ for _ in ()).throw(OSError("no campaign")))
+        assert getattr(mmf, helper)() == live, \
+            "%s's fallback has drifted from what the campaign returns" % helper
+
+    def test_the_rows_carry_the_derived_strings(self):
+        from make_method_figure import ROWS, _priority_range, _geometry_result, _tail_index
+        joined = " ".join(r[3] for r in ROWS)
+        assert _priority_range() in joined
+        assert _geometry_result() in joined
+        assert "tail index %s" % _tail_index() in joined
+
+
+class TestTheSharedUtilisation:
+    """`geometry_rho` is new; the pair's whole claim is that both arms reached one value."""
+
+    def test_it_returns_the_value_both_arms_reached(self):
+        import stat_intervals
+        assert stat_intervals.geometry_rho("ea6") == pytest.approx(0.7531)
+
+    def test_it_refuses_a_pair_that_disagrees(self, monkeypatch, tmp_path):
+        import stat_intervals
+        monkeypatch.setattr(stat_intervals, "_rows", lambda *p: [
+            {"condition": "k6_conc", "rho": "0.7531"},
+            {"condition": "k6_spread", "rho": "0.8000"}])
+        with pytest.raises(ValueError, match="disagree on rho"):
+            stat_intervals.geometry_rho("ea6")

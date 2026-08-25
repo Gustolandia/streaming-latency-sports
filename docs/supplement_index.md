@@ -224,11 +224,28 @@ with no gate, and the only one that costs $220 a page.
   is safe.
 - **S52.3** is the old S52.2, the field-size synthesis, moved down. Its citation left the main
   text so the reference cap could pay for mq-bench; the claim is unchanged and Section II-A
-  now points here for it.
+  now points here for it. *(Corrected in round 28: it did not. The pointer was still on S52.2
+  when this was written, and this line recorded a repair that had not been made — which is why
+  `test_supplement_subsections.py` now checks that a pointer lands on its subject.)*
 - The fitted prefactor is `\tailPrefactor` in both places it appears. It was the one quantity
   in `tail_index.csv` with a committed source and no macro, and therefore invisible to the
   round-24 sweep, which asks whether a macro'd value is read from its macro and not whether a
   sourced value has one.
+
+## Round 28 (2026-08-25): subsection numbering, and a figure for the mechanism
+
+- **S52.4 is the old second S52.3.** Round 26 renumbered the field-size synthesis to S52.3 and
+  left the scheduling-delay subsection, already S52.3, where it was. Both printed. The
+  scheduling-delay subsection is now S52.4 and Section II-C points at it by number.
+- **S8.1, S8.2 and S19.1 are newly numbered**, not new. They were the only subsections in the
+  document with no `SNN.M` prefix and printed as bare titles in the contents list.
+- **Section II-A now really does point at S52.3** for the field-size claim. Round 26's entry
+  here said it did; the source said S52.2, which is the mq-bench reading and sizes nothing.
+- **S36 keeps the Kafka coordinator fix, and now the main text agrees.** S36 said the case was
+  recorded "here rather than in the main text"; the main text carried it in full anyway.
+  Section IV-E keeps the claim and the citation in one sentence and sends the reader here.
+- **S50, S52.1 and S41** absorbed the reasoning trimmed from Sections II-B, II-C and IV-C to
+  pay for Figure 3. No claim left the paper; the arguments behind three of them did.
 
 ## Figure inventory
 
@@ -243,11 +260,12 @@ appearing in this table.
 | `pipeline_schematic` | supplement, S45 |
 | `measurement_model` | main text, Fig. 1 |
 | `deletion` | main text, Fig. 2 |
-| `grid_membership` | main text, Fig. 3 |
-| `payload_flip` | main text, Fig. 4 |
-| `mechanism_forest` | main text, Fig. 5 (full-width from round 19) |
-| `ttrue_law` | main text, Fig. 6 |
-| `stall_spectrum` | main text, Fig. 7 |
+| `quantum_geometry` | main text, Fig. 3 (added round 28: the geometry behind the deletion law) |
+| `grid_membership` | main text, Fig. 4 |
+| `payload_flip` | main text, Fig. 5 (single-column from round 28; was full-width) |
+| `mechanism_forest` | main text, Fig. 6 (full-width from round 19) |
+| `ttrue_law` | main text, Fig. 7 |
+| `stall_spectrum` | main text, Fig. 8 |
 | `priority_ladder` | supplement, S47 |
 | _(no figure)_ | supplement, S48 --- the broker results, moved from the main text in round 18 |
 | `experiment_map` | supplement |

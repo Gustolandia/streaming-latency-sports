@@ -198,7 +198,7 @@ practice of checking for it run by run.
 Broker comparisons appear continuously, in peer-reviewed venues and in the gray literature
 practitioners read; Apache \kafka{} and \redis{} Streams are the pair they most often name,
 and the OpenMessaging Benchmark~\cite{openmessaging2018} is the shared instrument;
-Supplement~S52.2 sizes that literature. That experimental setup can dominate a result is
+Supplement~S52.3 sizes that literature. That experimental setup can dominate a result is
 established~\cite{mytkowicz2009wrong}, and how to report one is a settled literature we
 follow~\cite{georges2007rigorous,hoefler2015benchmarking}. Most of those comparisons report a
 median above the quantum, where the law of Section~\ref{sec:external} does not bind --- the
@@ -230,11 +230,10 @@ Lamport~\cite{lamport1978time} established that a distributed system has no sing
 time, only a causal partial order. That order decides this paper's central span: an
 acknowledgment at the producer and a record at the consumer are two branches from the
 broker's append, so neither precedes the other. Agreeing clocks is a well-known engineering
-problem~\cite{ieee1588} and instruments are built to beat it: Cloudprofiler calibrates
-cross-node counters to ${\sim}92\,\mu$s~\cite{yang2022cloudprofiler}, Lancet stamps in the
-NIC and tests its samples for convergence~\cite{kogias2019lancet}, P4STA stamps in the switch
-dataplane~\cite{kundel2024p4sta}, and the timer's own accuracy is itself a measured
-quantity~\cite{kuperberg2011timers}.
+problem~\cite{ieee1588} and instruments are built to beat it, calibrating cross-node counters to tens of
+microseconds~\cite{yang2022cloudprofiler}, stamping in the NIC~\cite{kogias2019lancet} or the
+switch dataplane~\cite{kundel2024p4sta}, and measuring the timer's own
+accuracy~\cite{kuperberg2011timers}.
 
 One prior result bounds our claim closely. Villain et al.~\cite{villain2012probing},
 profiling FreeBSD against a DAG hardware reference, found the outgoing socket timestamp
@@ -250,38 +249,31 @@ affected. Lancet is the nearest existing gate, and reports an inconclusive verdi
 results attached where we decline to publish at all; neither it nor anything else we found
 reports the fraction of runs a campaign lost.
 
-The observable is familiar in production, where distributed tracing has argued itself to
-the same answer without a mechanism: skew adjusters that rewrite a span's timestamps have
-been called harmful and are off by default (Supplement~S52). Where the displacement is a late
-stamp rather than a skewed clock, correcting it moves evidence rather than error, and what
-nobody had was a measurement of how much evidence.
+Production tracing reached the same answer without a mechanism: skew adjusters that rewrite a
+span's timestamps have been called harmful and are off by default (Supplement~S52.1). Where the
+displacement is a late stamp rather than a skewed clock, correcting it moves evidence rather
+than error --- and nobody had measured how much.
 
-Concurrent work reaches the same observable by another route. In a 2026 preprint, Sharma
-et al.~\cite{sharma2026causality} count negative timing spans in distributed inference
-systems and propose a \texttt{causality\_health} check; injecting skew, they see no
-violations up to $3$~ms and clear ones by $5$~ms, and read that as a skew threshold. We
-take their term, and dispute the reading rather than their measurements. They hold that
-``queueing alone cannot produce negative timing spans''. Under the queue they model, backlog
-at a service stage, we agree; it is false as written because a \emph{second} queue decides
-ours, the run queue the stamping thread waits in for a CPU. Eliminating backlog therefore
-does not leave skew as what remains --- we see negative-span rates near $23\%$ at $88\%$
-utilization on one host, with an inter-host offset of $0.067$~ms where two are used, and move
-that rate fiftyfold without touching a clock, so a threshold in milliseconds of skew does not
-transfer to a loaded machine (Supplement~S50). The same attribution has been made about the
-benchmark we audit: asked why publish latency could exceed end-to-end latency, a maintainer
-answered that the stamps come from different nodes and ``the clock are typically (in best
-case) skewed by \textasciitilde 100ms''~\cite{omb_issue216}. The reporter replied that both
-processes ran on one node, and was told the measurement was then reliable. That is the arm
-our audit rejects most often.
+Concurrent work reaches the same observable by another route. In a 2026 preprint, Sharma et al.~\cite{sharma2026causality} count negative timing spans in
+distributed inference systems and propose a \texttt{causality\_health} check; injecting skew,
+they see no violations up to $3$~ms and clear ones by $5$~ms, and read that as a skew threshold.
+We take their term, and dispute the reading rather than their measurements. They hold that
+``queueing alone cannot produce negative timing spans''; under the queue they model, backlog at
+a service stage, we agree, but a \emph{second} queue decides ours --- the run queue the stamping
+thread waits in for a CPU. Eliminating backlog therefore does not leave skew as what remains: we
+see negative-span rates near $23\%$ at $88\%$ utilization on one host, with an inter-host offset
+of $0.067$~ms where two are used, and move that rate fiftyfold without touching a clock, so a
+threshold in milliseconds of skew does not transfer to a loaded machine (Supplement~S50). The same attribution has been made about the
+benchmark we audit: asked why publish latency could exceed end-to-end latency, a maintainer cited inter-node clock skew of ``\textasciitilde 100ms''~\cite{omb_issue216} and,
+told that both processes ran on one node, called the measurement reliable. That is the arm our
+audit rejects most often.
 
 \subsection{Resolution and discarded samples}
 \label{sec:related_resolution}
 That a timer coarser than the interval invalidates it is
-textbook~\cite{kuperberg2011timers}. Metrology has long carried both our failure modes in
-one uncertainty budget: the NIST stopwatch guide lists the operator's reaction time beside
-the display resolution, and notes that at short intervals the resolution becomes
-significant against the instrument's rated accuracy~\cite{nist2009stopwatch}. We claim
-neither the pairing nor its novelty. That periodic sampling commensurate with a periodic phenomenon sees only part of it is
+textbook~\cite{kuperberg2011timers}. Metrology has long carried both our failure modes in one uncertainty budget: the NIST stopwatch guide budgets reaction time beside display resolution, and notes that at
+short intervals the resolution becomes significant against the instrument's rated
+accuracy~\cite{nist2009stopwatch}. We claim neither the pairing nor its novelty. That periodic sampling commensurate with a periodic phenomenon sees only part of it is
 stated in the IPPM framework~\cite{rfc2330}, and RFC~3432 makes a randomized start mandatory
 for periodic streams~\cite{rfc3432}. Coordinated omission~\cite{tene2015latency} is the
 mirror image --- there the instrument fails to record samples that would have been slow, here
@@ -315,17 +307,14 @@ a 1970 counter measured with.
 
 \paragraph{Sources of scheduling delay}
 \label{sec:related_tail}
-A thread that is runnable does not always run: work-conservation violations are documented
-for CFS-era schedulers~\cite{lozi2016wastedcores}, ours being EEVDF-era, and queueing
-predicts correctly that utilization alone does not fix a waiting time, pooling and geometry
-mattering at fixed $\rho$ --- so the geometry contrast of Table~\ref{tab:mechanism} refutes a
-single-parameter law rather than queueing itself. A 2026 preprint by Chandrasekar and
-Kramberger~\cite{chandrasekar2026bias} applies exactly such a single-parameter framing to
-benchmark bias, which we adopt as a leading-order account and, on the load axis, refute
-(Section~\ref{sec:mechanism}); on a second axis it reaches our mechanism's inflation half
-independently. What a positive number cannot show --- the negative span, and the sign channel
-that makes the displacement legible --- is what remains ours. Supplement~S52 sets both
-literatures out.
+A runnable thread does not always run: work-conservation violations are documented for CFS-era
+schedulers~\cite{lozi2016wastedcores}, ours being EEVDF-era, and queueing gives the
+leading-order account: utilization alone does not fix a waiting time, so the geometry contrast
+of Table~\ref{tab:mechanism} refutes a single-parameter law rather than queueing itself.
+A 2026 preprint by Chandrasekar and Kramberger~\cite{chandrasekar2026bias} applies such a law
+to benchmark bias; we refute it on the load axis (Section~\ref{sec:mechanism}) and it reaches
+our inflation half independently. What a positive number cannot show --- the negative span, and the sign channel
+that makes the displacement legible --- is what remains ours (Supplement~S52.4).
 
 \section{Method}
 \label{sec:method}
@@ -549,12 +538,28 @@ have ($\ombRetentionRho$ over $\ombRetentionRhoN$ cells) carries the sign
 Equation~\ref{eq:retention} predicts. What moves retention is where the producer's send
 instants fall against the millisecond grid. A sample survives
 when its delivery crosses a tick boundary, which for a delivery shorter than one tick
-happens with probability $T_{\mathrm{true}}/\tau$:
+happens with probability $T_{\mathrm{true}}/\tau$ (Figure~\ref{fig:quantum}):
 \begin{equation}
 \label{eq:retention}
 \text{retention} \;=\; \min\!\left(1,\; \frac{T_{\mathrm{true}}}{\tau}\right)
 \qquad\text{(uniform phases).}
 \end{equation}
+
+\begin{figure}[tb]
+\centering
+\includegraphics[width=\columnwidth]{docs/results/figures/quantum_geometry.pdf}
+\caption{\textbf{Why a sample disappears, and why the survivors are not a sample.}
+(a) One delivery of $T_{\mathrm{true}} = 0.35$~ms at four phases of one tick. Three finish
+inside it, so both stamps round alike, the difference is exactly zero, and the guard removes
+them; the fourth crosses the boundary and is recorded as one whole tick --- which is why the
+corpus prints $1.0$ and $2.0$~ms and nothing between. (b) A delivery survives from phase
+$\tau - T_{\mathrm{true}}$ onward --- the shaded band --- so uniform phases retain
+$T_{\mathrm{true}}/\tau$
+(Equation~\ref{eq:retention}); a commensurate producer visits only $q$ and retains a count out
+of $q$, one of the values Equation~\ref{eq:quant} allows. Same delivery, same clock, a
+different answer, chosen by the send schedule.}
+\label{fig:quantum}
+\end{figure}
 Both incommensurate arms sit near $50\%$, implying $T_{\mathrm{true}} \approx 0.5$~ms at
 $\tau = 1$~ms, which agrees with our own unquantized transport measurement.
 
@@ -627,20 +632,19 @@ re-opens to $26.7$ at $64$~KB, the flat--full boundary crossed in both direction
 manipulated variable. One registered detail failed: the $32$~KB pin sits at $69.2$, not the
 predicted $66.67$.
 
-\begin{figure*}[t]
+\begin{figure}[tb]
 \centering
-\includegraphics[width=\textwidth]{docs/results/figures/payload_flip.pdf}
+\includegraphics[width=\columnwidth]{docs/results/figures/payload_flip.pdf}
 \caption{The campaign's confirmed prediction. (a)~Retention replicates at $300$~msg/s
 ($q=3$) by payload, against the thirds grid: $200$~B straddles both branches, $32$~KB pins
 near the $2/3$ vertex, $64$~KB re-opens to the upper cell. (b)~Replicate spread against
 $\operatorname{frac}(q\theta)$: the flat--full boundary at half the cell width is crossed
 in both directions by the one manipulated variable.}
 \label{fig:payloadflip}
-\end{figure*}
+\end{figure}
 
 A larger campaign registered six predictions with their falsifiers before running $63$
-cells; three of the falsifiers fired. What survives is per-send jitter rather than
-accumulation, a cumulative-drift account being falsified by duration invariance
+cells; three fired, and what survives is per-send jitter rather than accumulation
 (Supplement~S55).
 
 \subsection{Generality, and the sign channel}
@@ -672,13 +676,11 @@ we report the last because we first read it as a filter and it is
 not~\cite{emqtt_bench}. Supplement~S36 gives the registry, tool by tool, with the line each
 finding sits on.
 
-The class is not confined to benchmarks. The broker whose harness opened this audit adopted
-it: in November 2025 Kafka's coordinator metrics were found throwing on the negative
-durations a backward clock step produces, and the merged fix clamps them to zero with no
-counter and no log line~\cite{kafka19888}. The mechanism there is wall-clock
-non-monotonicity, not the stamping asymmetry of Section~\ref{sec:mechanism}, and the two
-should not be confused --- but the disposal is the same one, chosen by the vendor, at a cost
-of one coordinator per affected partition until the broker restarted.
+The class is not confined to benchmarks: in November 2025 the audited broker's own coordinator
+metrics adopted the same disposal, clamping negative durations to zero with no counter and no
+log line~\cite{kafka19888}. Its mechanism is a backward clock step rather than the stamping
+asymmetry of Section~\ref{sec:mechanism}, so Supplement~S36 sets it out there rather than beside
+Mode~A.
 
 Separating the discards by sign is what makes the guard's cost legible. Across all
 $\ombRuns$ runs the \kafka{}-driver corpus's $\ombKafkaDiscarded$ discarded samples contain
@@ -935,9 +937,9 @@ Once the failed runs are removed, the broker comparison that motivated the work 
 one configuration choice dwarfs it. On gated artifacts the two sit within a millisecond on
 the transport proxy (TOST against a $\tostMargin$~ms margin, $p < 0.001$, across
 $\tostLevels$ levels), so it is not a purchasing argument; the one condition that reverses
-the ordering is a consumption pattern rather than the broker, and it is invisible on a
-co-located testbed. The standard evaluation environment hides the choice that decides the
-outcome (Supplement~S48).
+the ordering is a consumption pattern rather than the broker, and is invisible on a co-located
+testbed. The standard evaluation environment hides the choice that decides the outcome
+(Supplement~S48).
 
 \subsection{For benchmark authors}
 \label{sec:authors}
@@ -973,9 +975,6 @@ core should buy the same for a burned core. Two caveats: the floor is not zero, 
 stays; and a real-time or spinning stamping thread changes the system it measures, so where
 that is unacceptable, report retention instead.
 
-None of this is hypothetical: a 2026 framework for the same comparisons already makes both
-choices, and reports sub-millisecond medians without needing a
-remedy~\cite{mqbench2026}; Supplement~S52.2 reads its measurement section.
 
 \textbf{Dither the send instant, and publish the retention rate.} Randomizing probe timing
 to avoid synchronizing with a periodic phenomenon is long-standing
@@ -995,6 +994,11 @@ unsigned total cannot distinguish them. Supplements~S39 and~S40 give both preced
 elapsed wall time: the send schedule is an experimental variable in Mode~B, not a nuisance
 parameter, and we found runs where configured and achieved rates disagreed.
 
+None of this is hypothetical. A 2026 framework for the same comparisons already stamps in
+nanoseconds and subtracts a span that cannot invert, and reports sub-millisecond medians
+without needing a remedy~\cite{mqbench2026} --- both choices made, neither argued for
+(Supplement~S52.2 reads its measurement section).
+
 \subsection{The limits of a better clock}
 \label{sec:betterclock}
 Hardware-timestamped PTP~\cite{ieee1588} would take two LAN hosts from our
@@ -1002,9 +1006,8 @@ ${\approx}70\,\mu$s of \texttt{chrony} agreement to sub-microsecond, but behind 
 one-millisecond stamp, $70\,\mu$s and $70$~ns produce byte-identical records: the guard
 deletes the same samples and the grid law is unchanged. The remedies are therefore ordered:
 record at native resolution, count what is discarded, dither the send instant, and only then
-does synchronization quality become the frontier --- our own cross-host retention wandered
-$13.4$--$27.0\%$ under clocks agreeing to well under a tick
-(Section~\ref{sec:generality}). The obvious redesign, a consumer-to-producer acknowledgment,
+is synchronization quality the frontier --- our cross-host retention wandered
+$13.4$--$27.0\%$ under clocks agreeing to well under a tick (Section~\ref{sec:generality}). The obvious redesign, a consumer-to-producer acknowledgment,
 removes skew but not this failure, and every scheme that avoids the one-way requirement rests
 on an assumption its users rarely state (Supplements~S37 and~S43.6).
 
@@ -1045,22 +1048,19 @@ the observed rate ($\tracedRatios$) instead of under-predicting (Supplement~S43.
 
 Clock incoherence across vCPUs needs its own answer, our machines being
 virtual~\cite{kvmclock}, and gets one twice over: the smallest increment the probe saw,
-$\clockIncrementNs$~ns, admits only \clockAdmitted{}, both of which the kernel uses solely
-where cross-CPU coherence is asserted, and the
-corpus closes the channel again on headroom, not on shared endpoints --- the send-referenced
-span holds a floor $\spanOffsetMargin\times$ too high to explain the deepest negative span
-(Supplement~S42).
+$\clockIncrementNs$~ns, admits only \clockAdmitted{}, both of which the kernel uses solely where cross-CPU coherence is
+asserted, and the corpus closes the channel again on headroom, not on shared endpoints --- the
+send-referenced span holds a floor $\spanOffsetMargin\times$ too high to explain the deepest
+negative span (Supplement~S42).
 
 The mechanism's constants are those of one EEVDF-era kernel (6.8); CFS-era schedulers, the
 regime Lozi et al.\ document, may shift them. The deletion law is demonstrated on one
 benchmark and reproduced in one independent harness, and the \harnessSilentWord{} tools of
-Section~\ref{sec:generality} are readings of source rather than measured deployments. Nor is the guard confined to the tool we measured: of $\forkChecked$ public forks whose
-copy of the file we could read, $\forkUnchanged$ carry the expression unchanged, surveyed
-\forkCheckedOn{} and recorded with the artifact. Its distributed mode failed identically on
-every attempt, so that tool's cross-host exposure rests on source reading and our own two-host
-harness rather than on running it (Supplement~S4). Exposure in a given deployment depends on
-its path latency and producer rate, which is why we recommend publishing a retention rate as
-routine practice rather than calling any published number wrong.
+Section~\ref{sec:generality} are readings of source rather than measured deployments. Nor is the guard confined to the tool we measured: of $\forkChecked$ public forks we could read, $\forkUnchanged$ carry the expression unchanged,
+surveyed \forkCheckedOn{}. Its distributed mode failed on every attempt, so that tool's
+cross-host exposure rests on source reading and our own two-host harness (Supplement~S4). Exposure depends on a deployment's path latency and
+producer rate, which is why we recommend publishing a retention rate rather than calling any
+published number wrong.
 
 \section{Conclusion}
 \label{sec:conclusion}
@@ -1108,17 +1108,16 @@ time, and the test suite fails if the text and the data disagree.
 % cutting a qualification to clear a one-line spill onto page 13.
 \looseness=-1
 received the B.Sc.\ degree in physics from the Universidade do Porto, Portugal, and
-specialized in nuclear fusion science at the University of Stuttgart, Germany, and the
-Universit\'e de Lorraine, France. He holds the Higher Diploma in computing from Atlantic
+specialized in nuclear fusion science at the University of Stuttgart and the
+Universit\'e de Lorraine. He holds the Higher Diploma in computing from Atlantic
 Technological University and an M.Sc.\ in software design with cloud-native computing from
-the Technological University of the Shannon, Ireland, both with first-class honors, and is
-currently pursuing an M.Sc.\ in statistics and data science at Trinity College Dublin,
-Ireland.
+the Technological University of the Shannon, both with first-class honors,
+and is currently pursuing an M.Sc.\ in statistics and data science at Trinity College
+Dublin, Ireland.
 He is a Software Engineer with BoscaSports, building real-time pipelines for live sports.
-His research concerns measurement validity --- what a reported number is evidence of, and
-when a routine convention distorts what it summarizes --- in computer systems,
-environmental measurement and sports analytics, using pre-registration and
-physical-consistency auditing.
+His research concerns measurement validity --- what a reported number is really
+evidence of --- in computer systems, environmental measurement and sports analytics,
+using pre-registration and physical-consistency auditing.
 \end{IEEEbiographynophoto}
 
 \end{document}

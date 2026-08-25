@@ -302,6 +302,43 @@ insertion that caused the overflow. **Check where the slack landed before cuttin
 per-page word counts take one command and would have saved four rounds of shaving, including
 a trim to the author's own biography that turned out to be unnecessary and was reverted.
 
+**1l. Every cross-document gate in this suite worked at section granularity.** Three did:
+`TestPaperPointsAtRealSupplementSections` parsed `Supplement~S(\d+)`,
+`TestEveryTargetedRelocationIsReachable` counted sections, `TestSupplementNumbering` ordered
+them. Round 26 inserted a subsection in the middle of S52, renumbered the one below it, missed
+the one below that, and left two subsections both called **S52.3** printed one under the other
+in the contents list. Nothing failed, because S52 existed and was unique. The same edit left
+Section II-A citing S52.2 for a claim that had moved to S52.3 --- a pointer that *resolves*
+and lands on the wrong content, which no resolution check can see.
+
+`tests/unit/test_supplement_subsections.py` now holds four rules: every subsection carries an
+`SNN.M` number, the number agrees with its section and is unique and gap-free, every
+`Supplement~SNN.M` in the paper names a subsection that exists, and **the sentence making the
+pointer shares a content word with the subsection it names**. The last is the one that catches
+a right address with a wrong destination. Two things about it, both learned the hard way:
+
+- *Match against the target's heading **and body**.* A claim about "its measurement section"
+  correctly points at a subsection titled "A framework that does not have the problem"; only
+  the body knows they are about the same thing.
+- *Scope the claim to the clause, not the paragraph.* The first version took everything back
+  to the previous full stop, which on the one genuinely misdirected pointer reached across two
+  semicolons into a sentence about the gray literature --- and passed on the defect it was
+  written for. The window now starts at the nearest boundary and steps back only while it
+  holds too little to judge.
+
+Written to fail first: all four failed on the tree before anything was repaired, and one of
+them found a defect nobody had reported --- three subsections under S8 and S19 carrying no
+number at all, printing as bare titles in a contents list where twenty-seven of thirty were
+numbered.
+
+**1m. A gate with a threshold is not a substitute for looking.** The collision checker caught
+two real defects in the new figure --- a tick rule through its own label, a translucent band
+under a row label --- and then passed a third: once the figure was compressed to fit the page,
+the "crosses the boundary" bracket cut through the row label beneath it, at a coverage just
+under the threshold. It was obvious at a glance. Compression changes the data-to-pixel ratio
+while the fonts stay at 8 pt, so **a figure that passed at one height has not passed at
+another**; re-read it, do not just re-run the gate.
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

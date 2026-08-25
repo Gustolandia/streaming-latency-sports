@@ -34,7 +34,15 @@ SANDBOX = "https://sandbox.zenodo.org/api"
 # redistributed inside an MIT-licensed record. They are regenerable byte-for-byte from the
 # pinned upstream commit with scripts/make_replay_plan.py, so excluding them costs nothing in
 # reproducibility and keeps the record's licence honest.
-NC_DERIVED_PATHS = ("data/processed/replay_plans",)
+#
+# `docs/reference_tc` holds sixteen third-party IEEE Transactions on Computers papers,
+# downloaded during review to settle questions of house norm. They are other people's
+# copyrighted work: readable under whatever terms each publisher or author granted, and
+# redistributable under none of them. Shipping them inside an MIT record would relicense
+# thirty-five megabytes of material nobody here owns -- the same mistake as the NC data
+# above, with a different rightsholder. Nothing in the analysis reads them; they informed
+# judgement and are cited nowhere.
+NC_DERIVED_PATHS = ("data/processed/replay_plans", "docs/reference_tc")
 
 
 def build_bundle(out_zip, ref="HEAD", prefix="streaming-latency-sports/",

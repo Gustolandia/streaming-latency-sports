@@ -161,6 +161,25 @@ class TestBundle:
         assert cmd.index("--") < cmd.index(":(exclude)data/processed/replay_plans"), \
             "pathspecs must follow the -- separator or git treats them as refs"
 
+    def test_third_party_papers_are_excluded_from_the_record(self, temp_dir, monkeypatch):
+        """`docs/reference_tc` is sixteen other people's papers, thirty-five megabytes of it.
+
+        Readable under whatever each publisher granted, redistributable under none of it.
+        Caught when the v2.6.0 bundle came out at 38 MB against v2.5.0's 7 MB: the archive had
+        grown five-fold on material the record does not own and the analysis never reads.
+        """
+        called = {}
+
+        def fake_run(cmd, **kw):
+            called["cmd"] = cmd
+            Path(cmd[cmd.index("-o") + 1]).write_bytes(b"zip")
+            return MagicMock(returncode=0)
+
+        monkeypatch.setattr(zd.subprocess, "run", fake_run)
+        zd.build_bundle(temp_dir / "b.zip")
+        assert "docs/reference_tc" in zd.NC_DERIVED_PATHS
+        assert ":(exclude)docs/reference_tc" in called["cmd"]
+
     def test_exclusions_are_configurable(self, temp_dir, monkeypatch):
         called = {}
         monkeypatch.setattr(zd.subprocess, "run",

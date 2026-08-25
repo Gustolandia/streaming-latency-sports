@@ -78,6 +78,26 @@ def _emitted_macros():
     return out
 
 
+def _resolved(text):
+    r"""`text` with every emitted macro replaced by the value it prints.
+
+    Pins written before a quantity was ledger-ised look for its literal, and go on looking for
+    it after the prose starts reading the macro instead --- which is a pin failing on a repair
+    rather than on a regression. Round 37 hit exactly that: Section VI-B's "$7$ to $80\times$"
+    became `$\rtFactorLow$--$\rtFactorHigh\times$`, and the pin that requires the recommendation
+    to quote its own effect could no longer see the effect.
+
+    Resolving first keeps the pin's intent --- *the number must be on the page* --- and makes it
+    indifferent to how the number got there. Longest names first, so `\rtFactorHigh` is not
+    eaten by a prefix match on `\rtFactor`.
+    """
+    for name, value in sorted(_emitted_macros(), key=lambda p: -len(p[0])):
+        # A function, not a string: several macro values are LaTeX and carry backslashes,
+        # which re.sub reads as escapes in a replacement string ("bad escape \c").
+        text = re.sub(r"\\" + name + r"\b", lambda _m, v=value: v, text)
+    return text
+
+
 def _section(tex, label):
     """The text of one sectional unit, found by its label and read to its own kind of boundary.
 
@@ -1732,7 +1752,7 @@ class TestLoadGeometryAndTtrue:
         RTT -- all sound, none of them the thing our own manipulation shows works. The
         recommendation must also carry its two limits, or it overstates what the floor allows.
         """
-        section = " ".join(_section(tex, "sec:authors").split())
+        section = _resolved(" ".join(_section(tex, "sec:authors").split()))
         assert "unpreemptable" in section or "real-time priority" in section, \
             "the measured mitigation must be recommended"
         ratios = []

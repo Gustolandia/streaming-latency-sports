@@ -428,10 +428,14 @@ metric covers.
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{docs/results/figures/measurement_model.pdf}
-\caption{(a)~How a positive latency is measured as negative, on one clock: each side stamps
-some interval after its event, and when the producer's stamping delay exceeds the true
-delivery plus the consumer's delay, the difference inverts --- the record is not early, the
-acknowledgment stamp is late (Section~\ref{sec:testbeds}). The producer's own stamps,
+% The lead is the caption's own claim, promoted out of the middle of the first sentence
+% where it used to sit after a dash. Net four words shorter, and Figure 1 is no longer the
+% one exhibit of ten that opened on a panel label instead of telling the reader what it is
+% for.
+\caption{\textbf{A late stamp, not an early record.} (a)~How a positive latency is measured as
+negative, on one clock: each side stamps some interval after its event, and when the
+producer's stamping delay exceeds the true delivery plus the consumer's delay, the difference
+inverts (Section~\ref{sec:testbeds}). The producer's own stamps,
 $t_{\mathrm{sched}}$ and $t_{\mathrm{send}}$, do precede the acknowledgment, and the span
 referenced to them never inverts (Table~\ref{tab:spans}). (b)~Why the check bites hardest on
 small effects: the stamping asymmetry $\Delta$ has a narrow core when the stamping thread
@@ -637,7 +641,7 @@ predicted $66.67$.
 \begin{figure}[tb]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/payload_flip.pdf}
-\caption{The campaign's confirmed prediction. (a)~Retention replicates at $300$~msg/s
+\caption{\textbf{The campaign's confirmed prediction.} (a)~Retention replicates at $300$~msg/s
 ($q=3$) by payload, against the thirds grid: $200$~B straddles both branches, $32$~KB pins
 near the $2/3$ vertex, $64$~KB re-opens to the upper cell. (b)~Replicate spread against
 $\operatorname{frac}(q\theta)$: the flat--full boundary at half the cell width is crossed
@@ -971,7 +975,7 @@ events per run is not a property of the system, and repetition will not tell you
 
 \textbf{Make the timestamping path unpreemptable, and say that you did.} The one mitigation
 our measurements support directly: real-time priority on the stamping threads cut the
-negative-span rate $7$ to $80\times$ at unchanged background load, and busy-polling a dedicated
+negative-span rate $\rtFactorLow$--$\rtFactorHigh\times$ at unchanged background load, and busy-polling a dedicated
 core should buy the same for a burned core. Two caveats: the floor is not zero, so the check
 stays; and a real-time or spinning stamping thread changes the system it measures, so where
 that is unacceptable, report retention instead.

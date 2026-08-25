@@ -1,10 +1,10 @@
-# Six IEEE Transactions on Computers papers, kept for reference
+# Eight IEEE Transactions on Computers papers, kept for reference
 
-Downloaded 2026-08-25 (rounds 26–28) to settle questions of house *norm* rather than house
+Downloaded 2026-08-25 (rounds 26–29) to settle questions of house *norm* rather than house
 *rule*. The rules are on the Author Information page and are already gated in the test suite;
 these answer the different question of what accepted TC papers actually look like.
 
-All six are author versions of accepted or published TC papers, chosen because they are the
+All eight are author versions of accepted or published TC papers, chosen because they are the
 closest in kind to ours that are retrievable in full — software-systems and evaluation work
 rather than the circuit and accelerator papers that dominate TC's arXiv presence.
 
@@ -15,14 +15,21 @@ rather than the circuit and accelerator papers that dominate TC's arXiv presence
 | `bbreorder_TC.pdf` | — | 11 | 38 | 13 | basic-block reordering |
 | `hadar_dlcluster_TC.pdf` | — | 14 | 24 | 20 | DL cluster scheduling |
 | `partitioned_bloom_TC.pdf` | 2009.11789 | 11 | 40 | **7** | **a reported statistic is systematically wrong** |
-| `ssd_erasure_reliability_TC.pdf` | 2112.12575 | 18 | 74 | 16 | prior evaluations overestimate by 10⁶ |
+| `ssd_erasure_reliability_TC.pdf` | 2112.12575 | 18* | 74 | 16 | prior evaluations overestimate by 10⁶ |
+| `timing_channels_TC.pdf` | 2202.12029 | **11** | 39 | 11 | on-core timing channels, `fence.t`, seL4/RISC-V |
+| `lfoc_cache_TC.pdf` | 2402.07693 | 16* | 41 | 13 | OS-level cache clustering, heavy empirical evaluation |
+
+\* **Page count not comparable.** These two are author preprints set in a non-IEEEtran
+template; their page counts do not correspond to journal pages and must not be quoted as TC
+page counts. The six unstarred rows are IEEEtran two-column and are comparable.
 
 **Ours: 12 pages, 45 references, 8 figures.**
 
 ## What they settle
 
-**Page length.** Three of six are 14 pages and one is 18; TC allows 10–12 before mandatory
-overlength page charges and 14 as the hard maximum, so those are paying MOPC. Two are 11. Our
+**Page length.** Of the six comparable rows, three are 14 pages and three are 11; TC allows
+10–12 before mandatory overlength page charges and 14 as the hard maximum, so the 14s are
+paying MOPC. Our
 12-page target is therefore *stricter than the venue norm*, not looser — a deliberate choice,
 and one worth re-examining whenever holding 12 starts costing content. Round 28 held 12 while
 adding a figure, and paid for it with about two hundred words of prose moved to the supplement
@@ -33,8 +40,8 @@ normal and not a sign of padding.
 
 **Figure count.** TC publishes *no* limit, so the standing instruction to sit at "75% of the
 image limit" has no denominator here. The observed spread is **7 to 20**. Round 27 read the
-first four (13–20) and called our paper figure-light; the two added in round 28 correct that
-reading — an accepted TC paper carries **7 figures in 11 pages**, and another carries 16 in 18.
+first four (13–20) and called our paper figure-light; the four added since correct that
+reading — one accepted TC paper carries **7 figures in 11 pages** and another **11 in 11**.
 Figure count tracks the paper's subject, not a quota. Ours is 8, inside the observed range,
 and the binding constraint is the self-imposed 12-page target rather than anything the journal
 says.
@@ -81,5 +88,10 @@ on the venue never having published this kind; it rests on nobody having publish
 None is a pure benchmarking-methodology paper. A full enumeration of TC's arXiv-visible
 corpus (~120 unique preprints, cross-checked across four name spellings in both the API and
 the advanced-search UI) found no paper whose subject is measurement methodology itself. These
-six are therefore useful for form, and the two above are useful for precedent, but none is a
+eight are therefore useful for form, and the two precedents above for position, but none is a
 template for the argument.
+
+`timing_channels_TC.pdf` is the closest in *subject* anyone has found: what preemption and
+microarchitectural residue do to timing on a core, in an OS/kernel setting. It audits no
+instrument, so it does not compete — but it settles that TC is a natural home for
+kernel-timing arguments.

@@ -130,7 +130,7 @@ That a measurement degrades as the interval shrinks towards zero is not the clai
 not be worth making: every instrument has such a limit, as sampling has its Nyquist
 frequency. The claim is about where the limit falls, and it does not fall where the
 datasheet says. The stamp is one millisecond, but the timescale that binds is the scheduler's:
-the run-queue stall distribution's largest mode sits at $\baseSliceMs$~ms
+the run-queue stall distribution's last mode sits at $\baseSliceMs$~ms
 (Section~\ref{sec:tail}), three times the quantum and nothing a specification discloses.
 A practitioner reasoning that a $0.5$~ms path and a $1$~ms stamp are the same order of
 magnitude, so the measurement should be roughly sound, is wrong by a factor they had no way
@@ -307,8 +307,8 @@ a 1970 counter measured with.
 
 \paragraph{Sources of scheduling delay}
 \label{sec:related_tail}
-A runnable thread does not always run: work-conservation violations are documented for CFS-era
-schedulers~\cite{lozi2016wastedcores}, ours being EEVDF-era, and queueing gives the
+A runnable thread does not always run, and work-conservation violations are documented for
+CFS-era schedulers~\cite{lozi2016wastedcores}, ours being EEVDF-era. Queueing gives the
 leading-order account: utilization alone does not fix a waiting time, so the geometry contrast
 of Table~\ref{tab:mechanism} refutes a single-parameter law rather than queueing itself.
 A 2026 preprint by Chandrasekar and Kramberger~\cite{chandrasekar2026bias} applies such a law
@@ -556,8 +556,8 @@ corpus prints $1.0$ and $2.0$~ms and nothing between. (b) A delivery survives fr
 $\tau - T_{\mathrm{true}}$ onward --- the shaded band --- so uniform phases retain
 $T_{\mathrm{true}}/\tau$
 (Equation~\ref{eq:retention}); a commensurate producer visits only $q$ and retains a count out
-of $q$, one of the values Equation~\ref{eq:quant} allows. Same delivery, same clock, a
-different answer, chosen by the send schedule.}
+of $q$, one of the values Equation~\ref{eq:quant} allows. $T_{\mathrm{true}}$ here is
+illustrative and off-vertex by choice: at $0.5$~ms the two answers coincide.}
 \label{fig:quantum}
 \end{figure}
 Both incommensurate arms sit near $50\%$, implying $T_{\mathrm{true}} \approx 0.5$~ms at
@@ -1023,8 +1023,8 @@ separated from its rivals by manipulation, with the eliminations listed at the e
 Section~\ref{sec:mechanism}. Beyond that list, the clustering of consecutive late wakes
 ($z = -6.9$ at the co-located floor, at every load including none) is the signature of a
 shared scheduling delay, not independent kernel granularity. \texttt{chrony} reports the inter-host offset of
-Section~\ref{sec:testbeds} as comfortably sub-tick, but bounds its own error at $4$--$7$~ms
-per host --- a pair may disagree by $12$~ms against a $1$~ms stamp --- so the cross-host
+Section~\ref{sec:testbeds} as comfortably sub-tick, but bounds its own error at $\chronyHostBoundLo$--$\chronyHostBoundHi$~ms per host --- the two
+worst hosts sum to $\chronyPairBound$~ms against a $1$~ms stamp --- so the cross-host
 channel stays open rather than ruled out. It did not produce the \redis{}-driver negatives,
 which the driver's own stamp accounts for exactly (Section~\ref{sec:generality}), but it is
 why we claim no cross-host bound in general.
@@ -1056,8 +1056,8 @@ negative span (Supplement~S42).
 The mechanism's constants are those of one EEVDF-era kernel (6.8); CFS-era schedulers, the
 regime Lozi et al.\ document, may shift them. The deletion law is demonstrated on one
 benchmark and reproduced in one independent harness, and the \harnessSilentWord{} tools of
-Section~\ref{sec:generality} are readings of source rather than measured deployments. Nor is the guard confined to the tool we measured: of $\forkChecked$ public forks we could read, $\forkUnchanged$ carry the expression unchanged,
-surveyed \forkCheckedOn{}. Its distributed mode failed on every attempt, so that tool's
+Section~\ref{sec:generality} are readings of source rather than measured deployments. Nor is the guard confined to the tool we measured: $\forkUnchanged$ of the $\forkChecked$ public forks we could read carry the expression
+unchanged, surveyed \forkCheckedOn{}. Its distributed mode failed on every attempt, so that tool's
 cross-host exposure rests on source reading and our own two-host harness (Supplement~S4). Exposure depends on a deployment's path latency and
 producer rate, which is why we recommend publishing a retention rate rather than calling any
 published number wrong.

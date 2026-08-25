@@ -339,6 +339,39 @@ under the threshold. It was obvious at a glance. Compression changes the data-to
 while the fonts stay at 8 pt, so **a figure that passed at one height has not passed at
 another**; re-read it, do not just re-run the gate.
 
+**1n. A gate that polices values cannot police an ordering.** Every check in this suite asks
+whether a number is emitted, whether the prose reads it from its macro, whether a caption
+reaches it. None of them could see the introduction calling the run-queue stall distribution's
+`\baseSliceMs` mode the *largest* when Figure 8 prints the three modes at 20.0, 13.5 and 10.5
+and that one is the 10.5. "Largest" is not a value; it is a claim about the order of several
+values, and the ledger had never been asked to compute an order. The ledger sweep could not
+have helped either: it skips bare integers by design, and a rank is exactly that.
+
+The emitter now publishes `\tracedModeRank` and `\tracedModeTopShare`, and
+`tests/unit/test_ordinal_claims.py` reads the rank rather than hard-coding the answer --- so a
+recomputation that ever makes this mode the largest relaxes the rule by itself. **When a
+sentence ranks something, ask whether anything computes the ranking.**
+
+**1o. "Correct" and "derived" are different properties.** Round 29 checked
+`4`--`7`~ms and `12`~ms in Section VI-D against the committed `chronyc tracking` captures and
+found all three right --- 3.91/4.77/4.93/7.40 per host, worst pair 12.32. They were still
+typed by hand, in both documents, while `scripts/clock_offset_report.py` already had
+`pair_bound_ms` and the data sat committed beside it. Being right is a property of today's
+tree; being derived is a property of every future one. They are `\chronyHostBoundLo`,
+`\chronyHostBoundHi` and `\chronyPairBound` now.
+
+The same check found the presentation fault behind them: a reader given "4 to 7 ms per host"
+who wants the pair adds the endpoints and gets **14**. The 12 is the sum of the two *worst*
+hosts, which neither document said. Say which hosts a sum is over.
+
+**1p. A schematic borrows the paper's vocabulary whether you mean it to or not.** Figure 3(b)
+drew its "incommensurate" row as twenty evenly spaced phases --- which is a commensurate
+producer with q = 20, the exact thing the row below it is contrasted against. The prose is
+careful here ("889 msg/s sits 0.00014 from 9/8 and behaves as fully continuous"); the figure
+was quietly spending that care. It is a golden-ratio rotation now, and the fix was checked
+rather than assumed: an offset of 0.5 gives 6 of 20 in the crossing region and would have made
+the panel illustrate the wrong number.
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

@@ -462,7 +462,8 @@ pair that did not reach the same utilisation is not the comparison the figure cl
 substitution that changes a printed character is not a substitution, it is an edit.
 
 **1v. Code may not cite the manuscript by number.** The manuscript writes
-`ef{eq:negspan}` and LaTeX resolves it. Scripts have no such mechanism and wrote the numbers
+`
+ef{eq:negspan}` and LaTeX resolves it. Scripts have no such mechanism and wrote the numbers
 anyway: eight equation citations and seventeen section citations across thirteen files. Two of
 the equation numbers were wrong --- `make_result_figures` told its reader that Figure 7
 illustrates the *definition* of the measured span when the caption that same function emits
@@ -479,6 +480,34 @@ rule rather than against it: nothing kept them right and nobody had reason to lo
 number is the stable identifier. **Name the thing or describe it** --- "the two-state model",
 "the rate as a function of T_true", "the external-campaign section" all survive a
 renumbering.
+
+**1w. A range is unambiguous where a single integer is not.** `test_ledger_coverage`
+skips bare integers deliberately: an exhaustive count in round 37 found 151 numerals in the
+main text, 54 of which coincidentally equalled some macro's value and almost all of which were
+noise --- "$1$~ms stamp", "$q = 1$", a "$0.5$~ms path". Policing singletons would drown the
+signal. But **two emitted values in order, joined by a dash or by "to", is not a coincidence,
+it is the quantity.** Section VI-B typed "$7$ to $80	imes$" while eight sibling sites read
+`tFactorLow`--`tFactorHigh`.
+
+`tests/unit/test_macro_ranges.py` derives the pairs it polices *from the documents* --- a pair
+counts only once the prose already writes it as `\A--\B` somewhere, which is the evidence
+that the two macros belong together. Nothing is hard-coded and nothing needs maintaining. It
+found the site the referee named **and a second one nobody had**: `supplement.tex` typed
+"$39$--$54$" against `tLowFactor`/`tHighFactor`.
+
+**1x. The Feynman rule applies to exhibits, and nobody had checked.** `test_section_openings`
+has enforced "a section opens on a claim" for many rounds. The same convention runs through
+the captions --- and held in eight of ten. Figure 5's lead was a real claim that simply was not
+bold; **Figure 1 had no claim at all**, opening directly on "(a)". That is the first figure, the
+anchor for both modes, the exhibit a reader meets before any result.
+
+It survived thirty-six rounds because no round had put the ten captions side by side.
+`tests/unit/test_caption_leads.py` does it on every build, and asks two things: the caption
+starts with `	extbf{...}`, and that lead reads as a sentence rather than a label --- because
+"(a)" in bold would satisfy the first rule and nothing a reader wants.
+
+**When a convention holds in most places, count the places.** Both of this round's findings
+were conventions at 8/10 and 8/9, invisible to anyone reading linearly.
 
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --

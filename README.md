@@ -8,14 +8,16 @@
 [![Tests](https://img.shields.io/badge/tests-2121_passing-brightgreen.svg)]()
 [![Coverage](https://img.shields.io/badge/branch_coverage-100%25-brightgreen.svg)]()
 [![StatsBomb Data](https://img.shields.io/badge/StatsBomb_Data-CC_BY--NC_4.0-blue.svg)](https://github.com/statsbomb/open-data)
-[![DOI (code)](https://img.shields.io/badge/DOI_code-10.5281%2Fzenodo.22044877-blue.svg)](https://doi.org/10.5281/zenodo.22044877)
-[![DOI (data)](https://img.shields.io/badge/DOI_data-10.5281%2Fzenodo.22044891-blue.svg)](https://doi.org/10.5281/zenodo.22044891)
+[![DOI (code)](https://img.shields.io/badge/DOI_code-10.5281%2Fzenodo.21650031-blue.svg)](https://doi.org/10.5281/zenodo.22044877)
+[![DOI (data)](https://img.shields.io/badge/DOI_data-10.5281%2Fzenodo.21650064-blue.svg)](https://doi.org/10.5281/zenodo.22044891)
 
 > **Archived versions (Zenodo).** v2.0.0 of the code and analysis:
-> [10.5281/zenodo.22044877](https://doi.org/10.5281/zenodo.22044877) · measurement dataset:
-> [10.5281/zenodo.22044891](https://doi.org/10.5281/zenodo.22044891). Concept DOIs (always
-> resolve to the latest version): code [10.5281/zenodo.21650031](https://doi.org/10.5281/zenodo.21650031),
-> data [10.5281/zenodo.21650064](https://doi.org/10.5281/zenodo.21650064).
+> [10.5281/zenodo.21650031](https://doi.org/10.5281/zenodo.21650031) · measurement dataset:
+> [10.5281/zenodo.21650064](https://doi.org/10.5281/zenodo.21650064). These are the **concept
+> DOIs**: they never change and always resolve to the newest version, which is what the paper
+> cites. The v2.6.0 version DOIs are minted on publication; v2.5.0 was code
+> [10.5281/zenodo.22044877](https://doi.org/10.5281/zenodo.22044877), data
+> [10.5281/zenodo.22044891](https://doi.org/10.5281/zenodo.22044891).
 > v1.0.0 was the arXiv-submission state: code
 > [10.5281/zenodo.21650032](https://doi.org/10.5281/zenodo.21650032), data
 > [10.5281/zenodo.21650065](https://doi.org/10.5281/zenodo.21650065).

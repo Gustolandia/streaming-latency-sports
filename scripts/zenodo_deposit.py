@@ -69,6 +69,56 @@ def create_deposition(api, token, metadata, session=None):
     return r.json()
 
 
+def new_version(api, token, record_id, session=None):
+    """Open a new-version draft of an existing published record.
+
+    A new version keeps the record's **concept DOI** --- the one that always resolves to the
+    latest version, `10.5281/zenodo.21650031` for the code record and `...21650064` for the
+    dataset --- and mints a fresh version DOI beside it. That is what makes "the DOI stays the
+    same" true: cite the concept DOI and every future version is reachable from it.
+
+    Creating a fresh deposition instead, which is all this script could do until now, would
+    have minted a *new concept DOI* and orphaned the citation chain.
+
+    Zenodo hands back the parent record with a `latest_draft` link rather than the draft
+    itself, so the draft is fetched in a second call.
+    """
+    s = session or requests
+    r = s.post(f"{api}/deposit/depositions/{record_id}/actions/newversion",
+               params={"access_token": token})
+    r.raise_for_status()
+    draft_url = r.json()["links"]["latest_draft"]
+    d = s.get(draft_url, params={"access_token": token})
+    d.raise_for_status()
+    return d.json()
+
+
+def clear_files(api, token, deposition, session=None):
+    """Remove the files a new-version draft inherits from the version before it.
+
+    Zenodo copies the previous version's files into the draft. Uploading this release's bundle
+    without clearing them first leaves a record carrying two zips and two manifests, one pair
+    of them stale, which is precisely the sort of thing this project's manifests exist to stop.
+    """
+    s = session or requests
+    removed = []
+    for f in deposition.get("files", []):
+        r = s.delete(f"{api}/deposit/depositions/{deposition['id']}/files/{f['id']}",
+                     params={"access_token": token})
+        r.raise_for_status()
+        removed.append(f.get("filename", f["id"]))
+    return removed
+
+
+def update_metadata(api, token, deposition_id, metadata, session=None):
+    """Write this release's metadata over what the draft inherited."""
+    s = session or requests
+    r = s.put(f"{api}/deposit/depositions/{deposition_id}",
+              params={"access_token": token}, json=metadata)
+    r.raise_for_status()
+    return r.json()
+
+
 def upload_file(api, token, deposition, path, session=None):
     """Upload via the bucket API (handles large files better than the legacy files endpoint)."""
     s = session or requests
@@ -98,6 +148,10 @@ def main(argv=None):
                          "record: docs/results reproducibility)")
     ap.add_argument("--publish", action="store_true",
                     help="publish immediately instead of leaving a draft (IRREVERSIBLE)")
+    ap.add_argument("--new-version", metavar="RECORD_ID", default=None,
+                    help="add a new version to an existing record instead of creating a new "
+                         "one, keeping its concept DOI (code 21650031, data 21650064; give "
+                         "the numeric id of the LATEST version, not the concept id)")
     args = ap.parse_args(argv)
 
     token = os.environ.get("ZENODO_API_TOKEN")
@@ -112,8 +166,17 @@ def main(argv=None):
     bundle = build_bundle(args.zip, args.ref, paths=tuple(args.paths))
     print(f"Bundled {args.ref} -> {bundle} ({bundle.stat().st_size/1e6:.1f} MB)")
 
+    meta = load_metadata(args.metadata)
     try:
-        dep = create_deposition(api, token, load_metadata(args.metadata))
+        if args.new_version:
+            dep = new_version(api, token, args.new_version)
+            gone = clear_files(api, token, dep)
+            if gone:
+                print("Cleared inherited file(s): %s" % ", ".join(gone))
+            update_metadata(api, token, dep["id"], meta)
+            print("New version of record %s (concept DOI unchanged)" % args.new_version)
+        else:
+            dep = create_deposition(api, token, meta)
     except requests.HTTPError as e:
         code = e.response.status_code if e.response is not None else None
         if code in (401, 403):

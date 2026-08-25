@@ -98,7 +98,7 @@ PROTOCOL = {
                        "baked-in 120x compression, so --speedup 1 means 120x rather than real "
                        "time. The reported cloud runs are at a verified true-real-time rate; "
                        "E1's rate is recovered from a 52.34 ms diagnostic cell. See paper "
-                       "Section 6.5.",
+                       "the audit section.",
     "dataset": "StatsBomb open data, 52 competition-seasons / 3,315 matches (2003-2023), pinned "
                "to commit 3bfbffe1de5750ebd47d770be0bb924a10cde54f; re-fetch via "
                "scripts/fetch_statsbomb_corpus.py. Eleven per-match replay plans are committed "

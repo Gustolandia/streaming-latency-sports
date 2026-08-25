@@ -3,7 +3,8 @@
 traced_tail_slope.py
 The referee's second leg: what slope does the traced stall distribution itself have?
 
-Equation 6 fits the inversion rate across the payload sweep as a power law in T_true with
+The supplement's tail-index fit takes the inversion rate across the payload sweep
+as a power law in T_true with
 exponent alpha ~= 0.34, and the paper leaned on that exponent for a strong distributional
 claim. Referee point M4 (TPDS round 1) asked for the direct check: the E-A9 bpftrace
 campaign recorded the full log2 histogram of per-wakeup run-queue delay, so the traced
@@ -17,8 +18,9 @@ through the co-located decade (0.25-2 ms) and steepens sharply beyond 4 ms (>2 b
   (1) alpha = 0.34 is an EFFECTIVE exponent of the payload span, not a constant of the
       machine's stall distribution -- the infinite-moment reading is withdrawn for the
       measured-range statement (referee M4c);
-  (2) the steepening explains, in direction and roughly in size, why Equation 6
-      over-predicts the traced tail level at the base payload (the 1.66x of Section 8.3):
+  (2) the steepening explains, in direction and roughly in size, why that fit
+      over-predicts the traced tail level at the base payload (the 1.66x the
+      mechanism section reported):
       a power law calibrated across the span must sit above a curve that steepens.
 
 One further honesty note, printed with the output: the model's S(t) is the survival of the

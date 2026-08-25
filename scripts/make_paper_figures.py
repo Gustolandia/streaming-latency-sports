@@ -254,7 +254,7 @@ def plot_model(axes):
     # EEVDF base slice -- 0.75 ms * (1 + ilog2(8)) = 3 ms on these instances -- carrying
     # about a tenth of all wakeups, with a LIGHT tail (alpha ~ 2) beyond it. So Delta, which
     # is the difference of two stamping delays, has a narrow core when the callback thread
-    # is running and a lobe near -3 ms when it is not. That is Equation 6 made visible:
+    # is running and a lobe near -3 ms when it is not. That is the two-state model made visible:
     # p(rho) sets the lobe's weight, S(T_true) decides how much of it lies beyond -T_true.
     #
     # The shape below is schematic -- two components with the measured mode's location, not

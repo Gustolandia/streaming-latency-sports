@@ -3,7 +3,7 @@
 analyze_phase_quantisation.py
 Is the damage set by commensurability, or by *how* commensurate?
 
-Section 6.7 establishes that a producer paced at an interval commensurate with the timestamp
+The external-campaign section establishes that a producer paced at an interval commensurate with the timestamp
 quantum produces bimodal, irreproducible retention, while an incommensurate rate produces a stable
 fraction. That is a binary distinction and it is not the whole rule.
 

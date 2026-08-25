@@ -14,10 +14,14 @@ numbers, and each of them is a picture:
                sounds like a paradox; drawn, it is obvious, because the printed median is a
                property of the grid and the retention is a property of the phase.
 
-  spectrum  -- the traced stall distribution, which is trimodal, with the largest of the three
-               modes sitting on the scheduler's base slice. The mechanism argument in Section V
-               rests entirely on where that mode is, and asking a reader to hold a log2
-               histogram in their head from a list of bucket counts is asking too much.
+  spectrum  -- the traced stall distribution, which is trimodal, with the last of the three
+               modes sitting on the scheduler's base slice. (The last of the three, and the
+               smallest: it holds 10.5% of wakeups against the jitter core's 20.0%. Round 30
+               corrected that adjective in the manuscript and this docstring kept the wrong one
+               two rounds longer, which is why the ordinal gate reads scripts too.) The
+               mechanism argument in Section V rests entirely on where that mode is, and
+               asking a reader to hold a log2 histogram in their head from a list of bucket
+               counts is asking too much.
 
   grid      -- membership against a continuum null, beside the table that carries the same
                numbers. A table of twelve p-values answers "is each arm significant"; the
@@ -782,7 +786,7 @@ def build_payload(out_dir):
     """
     figure_style.apply()   # in force when the artists are made, not merely at import
     arms = payload_arms()
-    fig, axes = plt.subplots(2, 1, figsize=(3.50, 3.05))
+    fig, axes = plt.subplots(2, 1, figsize=(3.50, 2.86))
     plot_payload_grid(axes[0], arms)
     plot_payload_flip(axes[1], payload_positions(arms))
     fig.tight_layout(h_pad=1.0)

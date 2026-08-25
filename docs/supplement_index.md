@@ -257,6 +257,15 @@ with no gate, and the only one that costs $220 a page.
 - Nothing else in the supplement changed. Section I's "largest mode" was the round's headline
   defect and it is main-text only; S52.4 already said "the last".
 
+## Round 32 (2026-08-25): the tables, and a word that meant something else
+
+- **S42's chrony sentence names its noun and sums the right thing**: "across the
+  `\chronyHosts` hosts captured, and the two worst of *those bounds* sum to
+  `\chronyPairBound` ms". The hosts do not sum; their bounds do.
+- Nothing else in the supplement changed. The round's substantive finding --- that *retention*
+  is never defined and collides with Kafka's `log.retention.*` --- is answered in the main
+  text's Method section, which is where the paper defines its other terms.
+
 ## Figure inventory
 
 `docs/results/figures/` holds fifteen PDFs. Twelve are included by a document; three are not,

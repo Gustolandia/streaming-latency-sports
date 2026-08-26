@@ -992,6 +992,28 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 
 ## 16. Changelog
 
+### 2.6.0 — 2026-08-25 — Transactions on Computers submission package
+Fourteen further rounds of adversarial internal review, all of them on presentation and
+provenance: **no result, estimate or interval differs from v2.5**. A figure for Mode B's
+mechanism (8 figures, not 7); every printed quantity emitted from the committed artefacts
+rather than typed; eight new gates, each demonstrated failing on the defect it guards before
+that defect was repaired; and *retention* defined where the paper defines its other terms.
+The artifact line now cites the **concept** DOIs, which never change and always resolve to the
+newest version. Zenodo v2.6.0 archived from tag `v2.6.0`: code
+[10.5281/zenodo.22102716](https://doi.org/10.5281/zenodo.22102716), data
+[10.5281/zenodo.22102832](https://doi.org/10.5281/zenodo.22102832). Paper 12 pp, supplement
+46 pp, 45/45 references. 3,650 tests pass at 100% branch coverage.
+
+### 2.5.0 — 2026-08-21 — retarget to IEEE Transactions on Computers
+Manuscript rebuilt for **TC** (10–12 pp, 45-reference cap) and reorganised around what the
+evidence supports rather than the chronology of finding mistakes. The central correction of
+this release: the acknowledgment-referenced span is a **proxy, not a causal chain**, so a
+negative value is a late reference stamp rather than impossible physics — the sign check is
+justified by the reference stamp being unusable as an origin. Mode B's arithmetic conceded to
+its prior art in counter metrology (HP Application Note 162-1, 1970). Zenodo v2.5.0: code
+[10.5281/zenodo.22044877](https://doi.org/10.5281/zenodo.22044877), data
+[10.5281/zenodo.22044891](https://doi.org/10.5281/zenodo.22044891). 2,501 tests green.
+
 ### 2.0.0 — 2026-08-07 — TPDS restructure + Zenodo deposit
 Manuscript restructured for **IEEE TPDS** (`IEEEtran` journal, 16-page ceiling test-enforced,
 39-page companion supplement); the OMB silent-deletion arm (the paper's second failure mode)

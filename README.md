@@ -25,9 +25,9 @@
 > [10.5281/zenodo.21650065](https://doi.org/10.5281/zenodo.21650065).
 
 > **Frozen vs. living.** The Zenodo records above are the immutable version of record: built
-> from git tag `v2.0.0` (commit `bebabec`), with SHA256 manifests of every file. This repository
+> from git tag `v2.6.0`, with SHA256 manifests of every file. This repository
 > is the living copy and moves ahead of them. To verify the paper's claims against the exact
-> data behind them, use the Zenodo zips or `git checkout v2.0.0`; the concept DOIs always
+> data behind them, use the Zenodo zips or `git checkout v2.6.0`; the concept DOIs always
 > resolve to the newest archived version.
 
 > ## 🎯 Current target — the contribution
@@ -40,10 +40,15 @@
 >
 > **The original question** was: *compare end-to-end lag between Redis Streams and Apache Kafka
 > for real-time sports data feeds, under varying concurrency, using the StatsBomb open dataset
-> (2003–2023).* We answered it, and the answer was physically impossible.
+> (2003–2023).* We answered it, and then had to withdraw the answer.
 >
 > Broker delay subtracts a timestamp taken in the producer process from one taken in the
-> consumer process, so it admits a check no statistic supplies: **it cannot be negative**.
+> consumer process, so it admits a check no statistic supplies: **the sign**. A negative value
+> is not physically impossible here — the acknowledgment stamp is a late, producer-side
+> observation of a broker-side event, so that component is a proxy, not a causal chain. What a
+> negative does prove is that the reference stamp cannot serve as the origin of that event's
+> interval, and a run whose reference is unusable on more than one event in a hundred cannot
+> report a latency, whatever the cause.
 > Applying that check to every run — not just the ones that looked wrong — rejected **1,321 of
 > 2,266 runs (58%)**, including every run behind a large, significant, theory-confirming result
 > we were about to publish.

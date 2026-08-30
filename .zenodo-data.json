@@ -1,11 +1,15 @@
 {
-  "title": "When the Interval Is Smaller Than the Instrument: measurement dataset (campaign ledgers, per-cell counters, harness results, clock-discipline log)",
+  "title": "Measuring Nothing, Twice: measurement dataset (campaign ledgers, per-cell counters, harness results, clock-discipline log)",
   "upload_type": "dataset",
   "version": "2.6.0",
   "license": "CC-BY-4.0",
   "creators": [
     {
       "name": "Ricou, Gustavo Pedro",
+      "affiliation": "School of Computer Science and Statistics, Trinity College Dublin, Dublin, Ireland"
+    },
+    {
+      "name": "Gregg, David",
       "affiliation": "School of Computer Science and Statistics, Trinity College Dublin, Dublin, Ireland"
     }
   ],

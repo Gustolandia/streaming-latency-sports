@@ -1,13 +1,16 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: "When the Interval Is Smaller Than the Instrument: two failure modes of streaming latency benchmarks"
+title: "Measuring Nothing, Twice: two failure modes of streaming latency benchmarks"
 authors:
   - family-names: "Ricou"
     given-names: "Gustavo Pedro"
     email: "pedrorig@tcd.ie"
     affiliation: "School of Computer Science and Statistics, Trinity College Dublin"
     # orcid: "https://orcid.org/0000-0000-0000-0000"   # add your ORCID if you have one
-  # Add additional authors as needed
+  - family-names: "Gregg"
+    given-names: "David"
+    email: "david.gregg@tcd.ie"
+    affiliation: "School of Computer Science and Statistics, Trinity College Dublin"
 abstract: "Two failure modes of sub-millisecond latency benchmarking: causality-violating inversions from scheduling stalls, and silent sample deletion governed by a grid law in the send-interval-to-timestamp-quantum ratio. Code, campaigns, and a suite that recomputes every figure from committed data."
 version: "2.6.0"
 url: "https://github.com/Gustolandia/streaming-latency-sports"
@@ -31,10 +34,13 @@ date-released: "2026-08-21"
 # was discarded at parse time and "Cite this repository" emitted a scaffolding version instead.
 preferred-citation:
   type: article
-  title: "When the Interval Is Smaller Than the Instrument: Two Ways Streaming Latency Benchmarks Fail on Sub-Millisecond Paths"
+  title: "Measuring Nothing, Twice: Two Ways Streaming Latency Benchmarks Fail on Sub-Millisecond Paths"
   authors:
     - family-names: "Ricou"
       given-names: "Gustavo Pedro"
+      affiliation: "School of Computer Science and Statistics, Trinity College Dublin"
+    - family-names: "Gregg"
+      given-names: "David"
       affiliation: "School of Computer Science and Statistics, Trinity College Dublin"
   journal: "IEEE Transactions on Computers"
   year: 2026

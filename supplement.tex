@@ -840,6 +840,24 @@ Max matches in play at once & 21 \\
 
 \section{S12. The two-state model commentary and the tracing instrument checks (moved from the main text)}
 
+% Moved out of main-text Fig. 2 in round 52. It was the one drawing in the main text that was
+% not a measurement, and the main text already carries the measured version of the same
+% object -- the traced trimodal stall distribution. A schematic and its measurement do not
+% both belong in a paper that is short of pages.
+\begin{figure}[tb]
+\centering
+\includegraphics[width=\columnwidth]{docs/results/figures/delta_schematic.pdf}
+\caption{\textbf{The two-state model, drawn.} The stamping asymmetry $\Delta$ has a narrow
+core when the stamping thread is running and a lobe at $-\baseSliceMs$~ms, the scheduler's
+base slice, when it is not, so a small $T_{\mathrm{true}}$ is inverted by the whole lobe and
+a large one only by what lies beyond it --- which is why the check bites hardest on small
+effects. The shape is schematic, two components placed at the measured mode's location rather
+than a fit; the measured distribution is the traced stall spectrum of the main text.}
+\label{fig:deltaschematic}
+\end{figure}
+
+Figure~\ref{fig:deltaschematic} draws the model this section defends.
+
 \paragraph{What it accounts for.} Clustering follows by construction: being preempted is an
 \emph{interval}, so the events inside it are corrupted together and a two-state process cannot
 help but cluster. The $60\times$ growth in tail weight against $5\times$ in core width is two
@@ -2727,6 +2745,15 @@ them rather than round them off: the modal verb is \emph{should}, in a methodolo
 rather than run rules, and the samples in question are unusable readings rather than samples
 excluded after the fact. Within those limits it is the same instinct --- publish the count of
 what the instrument could not measure.
+
+\paragraph{Rules about the sign itself, in network measurement}
+Three standards already require some part of what the main text asks, and they are the closest
+precedents we found for treating an impossible value as data rather than as debris. OWAMP
+requires a packet stamped in the future to be recorded unaltered within its timeout
+window~\cite{rfc4656}; ETSI requires removed measurement cycles to be
+reported~\cite{etsi102250}; and RFC~7679 treats negative singletons as usable distribution
+data~\cite{rfc7679}. None of the three is ours and none is applied where a streaming benchmark
+reports a latency, which is the gap the main text names rather than fills for the first time.
 
 \paragraph{And none of it, in standardized messaging}
 SPECjms2007 is the flagship standardized benchmark for message-oriented middleware. Its run

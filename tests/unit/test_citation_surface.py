@@ -41,6 +41,16 @@ TC_REFERENCE_CAP = 45
 #: submission targets, and until now it was the only journal limit with no check on it: the
 #: abstract, the reference list and the biography were all gated and the one that costs money
 #: was left to whoever last rebuilt the PDF.
+#:
+#: Raised to 13 on 2026-08-30 to buy the front-matter system diagram, then PUT BACK on
+#: 2026-08-31 without giving it up. What paid for it was not prose: pages 1-11 were running
+#: 47-78 lines against page 12's 91, so the binding constraint was float placement, and the
+#: two front-matter figures were the floats. Dropping an in-figure headline that restated its
+#: own caption, and authoring both at the height they are actually used at, recovered the
+#: page. A redundancy audit paid the rest -- the contributions list was repeating the
+#: abstract's clause and Section IV's law verbatim, and one factor was printed in four
+#: sections. Measured with a placeholder biography for the second author present, so the
+#: entry that is still owed is already inside this budget.
 TC_PAGE_LIMIT = 12
 
 

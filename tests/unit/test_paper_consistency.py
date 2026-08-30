@@ -2528,9 +2528,15 @@ class TestCausalityFramingIsWithdrawn:
         figure file the paper includes, and the caption that names them.
         """
         source = (REPO / "scripts" / "make_paper_figures.py").read_text(encoding="utf-8")
-        body = source[source.index("def plot_model("):source.index("def plot_", source.index("def plot_model(") + 1)]
+        # Round 52 split plot_model() into plot_mechanism() -- panel (a), still the paper's
+        # mechanism figure -- and plot_delta(), the schematic that moved to Supplement S12.
+        # The stamps this pin guards are drawn by plot_mechanism(), so that is where it looks
+        # now. The requirement is unchanged, and pointing it at the delegating stub would
+        # have made it pass on an empty function, which is the failure mode it exists for.
+        start = source.index("def plot_mechanism(")
+        body = source[start:source.index("def plot_", start + 1)]
         for sym in ("t_{sched}", "t_{send}"):
-            assert sym in body, f"plot_model() must draw {sym} on the producer timeline"
+            assert sym in body, f"plot_mechanism() must draw {sym} on the producer timeline"
 
         from pypdf import PdfReader
         rendered = PdfReader(str(REPO / "docs" / "results" / "figures" /

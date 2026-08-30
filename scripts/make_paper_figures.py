@@ -56,7 +56,7 @@ ACK_UNBATCHED_TTI_MS = 4138.0
 NL = chr(10)  # a newline that survives every editing route into this file
 
 def plot_pipeline(ax):
-    """Draw the replay pipeline, its four timestamps, and the intervals they define."""
+    """Draw the replay pipeline, its four timestamps, and the flights they define."""
     boxes = [(0.2, "Producer\n(replay)"), (3.8, "Broker\n(Kafka/Redis)"), (7.4, "Consumer")]
     for x, label in boxes:
         ax.add_patch(plt.Rectangle((x, 1.6), 2.4, 0.9, facecolor="white",
@@ -71,7 +71,10 @@ def plot_pipeline(ax):
     for x, sym, proc in stamps:
         ax.plot([x, x], [1.35, 1.6], color=GREY, linewidth=1.0)
         ax.text(x, 1.20, sym, ha="center", va="top", fontsize=9)
-        ax.text(x, 0.98, proc, ha="center", va="top", fontsize=8, color=GREY, style="italic")
+        # 0.84, not 0.98: the shorter figure maps the same data-unit gap onto fewer
+        # inches, and 0.22 units stopped being a line of clearance.
+        ax.text(x, 0.84, proc, ha="center", va="top", fontsize=8, color=GREY,
+                style="italic")
 
     spans = [(0.6, 2.4, 0.42, "scheduling lag"), (4.4, 7.6, 0.42, "broker transport"),
              (0.6, 7.6, 0.05, "end-to-end TTI")]
@@ -86,11 +89,11 @@ def plot_pipeline(ax):
     # contradicts this figure's own caption, which says "when either process is delayed".
     # No mathtext here. A double arrow has no Arial glyph, falls back to Computer Modern and
     # extracts as ")", which corrupts this sentence for every reader of the text layer.
-    ax.text(5.0, 3.20, "broker transport subtracts stamps written by two threads, "
-                       "so it can come out negative on one clock",
-            ha="center", va="top", fontsize=8, color="#b22222")
+    # The red headline that used to sit here said what the caption says, in a figure that
+    # is now Fig. 1 of the paper and is read with its caption. Removing it took a fifth of
+    # the height off a full-width float, which buys more than the sentence did.
     ax.set_xlim(0, 10)
-    ax.set_ylim(0, 3.3)
+    ax.set_ylim(0, 2.72)
     ax.axis("off")
 
 
@@ -166,6 +169,12 @@ def plot_model(axes):
         a small T_true almost entirely and a large one hardly at all.
     """
     mech_ax, h1_ax = axes
+    plot_mechanism(mech_ax)
+    plot_delta(h1_ax)
+
+
+def plot_mechanism(mech_ax):
+    """Panel (a): the four stamps, the four threads, and the inversion."""
 
     # --- (a) the mechanism, as a timeline
     #
@@ -175,72 +184,128 @@ def plot_model(axes):
     # to the left of the acknowledgement, with the scheduling-lag bracket that ties them to
     # Eq. (1). The start-at-ack framing of the inversion itself is unchanged: the failure
     # is between the two clock reads, and that is what the red bracket still marks.
+    # The architecture first, then the failure it permits.
+    #
+    # v3. This panel used to have ONE lane called "producer thread", which asserts that a
+    # single thread takes both t_send and t_ack. Our own pre-registration
+    # (docs/preregistration_depth.md) says otherwise, and says it in a table:
+    #
+    #   redis_producer.py   t_ack after a blocking XADD returns   the calling thread
+    #   kafka_producer.py   t_ack in the delivery callback        the client's I/O thread
+    #
+    # E-C3 is pre-registered to MOVE that stamp (--ack-stamp inline), so the split is the
+    # manipulated variable of one of the paper's own experiments. Drawing one lane erased it.
+    # Two lanes now, the drawn path is named as the Kafka one, and Redis's contrasting stamp
+    # is marked on the thread that actually takes it.
     mech_ax.set_xlim(0, 10.4)
-    mech_ax.set_ylim(0, 3.2)
+    mech_ax.set_ylim(0, 5.25)
     mech_ax.axis("off")
-    # "thread", not "producer" and "consumer": a co-author read the panel as two processes
-    # and asked which thread actually takes each reading. Two do, one per lane, and the whole
-    # mechanism is that they wait for a core independently of each other.
-    for y, label, colour in ((2.3, "producer" + NL + "thread", KAFKA),
-                             (0.9, "consumer" + NL + "thread", REDIS)):
-        mech_ax.annotate("", xy=(9.9, y), xytext=(1.4, y),
+
+    y_app, y_io, y_brk, y_con = 4.30, 3.30, 2.25, 1.15
+    for y, label, colour in ((y_app, "producer app" + NL + "thread", KAFKA),
+                             (y_io, "client I/O" + NL + "thread", KAFKA),
+                             (y_brk, "broker", GREY),
+                             (y_con, "consumer app" + NL + "thread", REDIS)):
+        mech_ax.annotate("", xy=(9.9, y), xytext=(2.45, y),
                          arrowprops=dict(arrowstyle="->", color=GREY, linewidth=1.2))
-        mech_ax.text(0.15, y, label, fontsize=8, color=colour, ha="left", va="center",
+        mech_ax.text(0.05, y, label, fontsize=8, color=colour, ha="left", va="center",
                      linespacing=0.95)
 
-    # the producer's own two stamps, taken before the acknowledgement exists
-    for x, sym in ((1.9, r"$t_{sched}$"), (2.7, r"$t_{send}$")):
-        mech_ax.plot([x], [2.3], marker="o", markersize=5, color=KAFKA,
+    # The process boundary, and with it the clock. "On one clock by construction" is what
+    # excludes skew in III-C, and a reader had to take it from prose; here it is drawn. Both
+    # producer threads are in one process, so the two stamps cannot disagree about the epoch.
+    mech_ax.add_patch(plt.Rectangle((2.38, 2.75), 7.62, 2.10, fill=False, zorder=0,
+                                    edgecolor=KAFKA, linewidth=0.7, linestyle=(0, (4, 2))))
+    mech_ax.text(9.95, 5.05, "one producer process, one clock", fontsize=8, color=KAFKA,
+                 ha="right", va="center")
+
+    # the producer's own two stamps, taken on the app thread before the acknowledgment exists
+    for x, sym in ((2.95, r"$t_{sched}$"), (3.65, r"$t_{send}$")):
+        mech_ax.plot([x], [y_app], marker="o", markersize=5, color=KAFKA,
                      markerfacecolor="white", markeredgewidth=1.2)
-        mech_ax.text(x, 2.62, sym, fontsize=8, ha="center", color=KAFKA)
-    mech_ax.annotate("", xy=(2.7, 2.3), xytext=(1.9, 2.3),
+        mech_ax.text(x, y_app + 0.28, sym, fontsize=8, ha="center", color=KAFKA)
+    mech_ax.annotate("", xy=(3.65, y_app), xytext=(2.95, y_app),
                      arrowprops=dict(arrowstyle="<->", color=GREY, linewidth=0.9))
-    mech_ax.text(2.3, 2.02, "scheduling\nlag", fontsize=8, color=GREY, ha="center",
-                 va="top", linespacing=0.9)
+    mech_ax.text(3.55, y_app - 0.20, "scheduling lag", fontsize=8, color=GREY, ha="right",
+                 va="top")
 
     # The broker's append, and the two branches descending from it.
     #
-    # Without this the panel is a left-to-right sequence of four events on two lines, which
-    # invites precisely the reading Section III-C exists to refute: that the acknowledgement
+    # Without this the panel is a left-to-right sequence of events on parallel lines, which
+    # invites precisely the reading Section III-C exists to refute: that the acknowledgment
     # causally precedes the record's arrival. It does not. Both descend from the append and
     # neither precedes the other, which is why their difference may be negative with no
-    # physical impossibility. A figure for that section has to show the fork.
-    mech_ax.plot([2.95], [1.6], marker="D", markersize=5.5, color=GREY)
-    # One line, in the band between "scheduling lag" above and the consumer timeline below.
-    # Two lines do not fit there at this panel height: anchored high the label runs into the
-    # one above it, anchored low its second line lands on the timeline.
-    mech_ax.text(2.15, 1.30, "broker append", fontsize=8, color=GREY, ha="center",
-                 va="top")
-    for tip_x, tip_y in ((3.62, 2.24), (4.62, 0.96)):
-        mech_ax.annotate("", xy=(tip_x, tip_y), xytext=(3.05, 1.6),
+    # physical impossibility.
+    mech_ax.plot([4.15], [y_brk], marker="D", markersize=5.5, color=GREY)
+    mech_ax.text(4.15, y_brk - 0.22, "append", fontsize=8, color=GREY, ha="center", va="top")
+    mech_ax.annotate("", xy=(4.05, y_brk + 0.12), xytext=(3.70, y_app - 0.12),
+                     arrowprops=dict(arrowstyle="->", color=GREY, linewidth=0.9,
+                                     linestyle=(0, (3, 2))))
+    for tip_x, tip_y in ((4.85, y_io - 0.12), (5.75, y_con + 0.12)):
+        mech_ax.annotate("", xy=(tip_x, tip_y), xytext=(4.28, y_brk),
                          arrowprops=dict(arrowstyle="->", color=GREY, linewidth=0.9,
                                          linestyle=(0, (3, 2))))
 
     # physical events (true), and the later moments the software actually reads the clock
-    mech_ax.plot([3.7], [2.3], marker="|", markersize=14, color=KAFKA)
-    mech_ax.text(3.7, 2.62, "ack arrives", fontsize=8, ha="center")
-    mech_ax.plot([5.9], [2.3], marker="o", markersize=6, color=KAFKA)
-    mech_ax.text(5.9, 2.62, r"clock read $\rightarrow t_{ack}$", fontsize=8, ha="center")
-    mech_ax.annotate("", xy=(5.9, 2.3), xytext=(3.7, 2.3),
+    mech_ax.plot([4.95], [y_io], marker="|", markersize=13, color=KAFKA)
+    mech_ax.text(4.95, y_io + 0.30, "ack arrives", fontsize=8, ha="center")
+    mech_ax.plot([7.10], [y_io], marker="o", markersize=6, color=KAFKA)
+    mech_ax.text(7.10, y_io + 0.30, r"clock read $\rightarrow t_{ack}$", fontsize=8,
+                 ha="center")
+    mech_ax.annotate("", xy=(7.10, y_io), xytext=(4.95, y_io),
                      arrowprops=dict(arrowstyle="<->", color="#b22222", linewidth=1.2))
-    mech_ax.text(4.8, 2.02, r"$\delta_{ack}$", fontsize=8, color="#b22222", ha="center")
+    mech_ax.text(6.02, y_io - 0.20, r"$\delta_{ack}$: waiting for a core", fontsize=8,
+                 color="#b22222", ha="center", va="top")
 
-    mech_ax.plot([4.7], [0.9], marker="|", markersize=14, color=REDIS)
-    mech_ax.text(4.6, 0.42, "message received", fontsize=8, ha="right")
-    mech_ax.plot([5.3], [0.9], marker="o", markersize=6, color=REDIS)
-    mech_ax.text(5.9, 0.42, r"clock read $\rightarrow t_{recv}$", fontsize=8, ha="center")
-    mech_ax.annotate("", xy=(5.3, 0.9), xytext=(4.7, 0.9),
+    mech_ax.plot([5.85], [y_con], marker="|", markersize=13, color=REDIS)
+    mech_ax.text(5.75, y_con - 0.22, "record arrives", fontsize=8, ha="right", va="top")
+    mech_ax.plot([6.45], [y_con], marker="o", markersize=6, color=REDIS)
+    mech_ax.text(6.95, y_con - 0.22, r"clock read $\rightarrow t_{recv}$", fontsize=8,
+                 ha="center", va="top")
+    mech_ax.annotate("", xy=(6.45, y_con), xytext=(5.85, y_con),
                      arrowprops=dict(arrowstyle="<->", color="#b22222", linewidth=1.2))
-    # Clear of the arrow it names: the panel is shorter than it was drawn for, and 0.12
-    # above the timeline is no longer 0.12 on the page.
-    mech_ax.text(5.0, 1.16, r"$\delta_{recv}$", fontsize=8, color="#b22222", ha="center")
+    mech_ax.text(6.15, y_con + 0.24, r"$\delta_{recv}$", fontsize=8, color="#b22222",
+                 ha="center")
 
-    mech_ax.text(6.3, 1.55,
-                 r"$T_{meas}=t_{recv}-t_{ack}<0$" "\n"
+    # The inversion itself, drawn as the backwards span it is.
+    #
+    # The arrow alone floated: it sat between two lanes joining nothing visible, so the
+    # reader had to be told which two stamps it spans. The guides drop from the two clock
+    # reads, which is what makes "later stamp, earlier value" a thing you can see rather
+    # than a thing you parse.
+    mech_ax.plot([7.10, 7.10], [1.72, y_io], color=KAFKA, linewidth=0.8,
+                 linestyle=(0, (2, 2)), zorder=0)
+    mech_ax.plot([6.45, 6.45], [y_con, 1.72], color=REDIS, linewidth=0.8,
+                 linestyle=(0, (2, 2)), zorder=0)
+    mech_ax.annotate("", xy=(6.45, 1.72), xytext=(7.10, 1.72),
+                     arrowprops=dict(arrowstyle="->", color="#b22222", linewidth=1.3))
+    mech_ax.text(7.30, 1.72, r"$T_{meas}=t_{recv}-t_{ack}<0$" "\n"
                  r"even though $T_{true}>0$",
                  fontsize=8, color="#b22222", ha="left", va="center")
 
-    # --- (b) why small effects are fragile
+    # The other broker's path, named rather than implied -- and named CAREFULLY.
+    #
+    # S43.3 is titled "the second thread is not the mechanism" and means it: the harness was
+    # built expecting the hand-off to be the cause and the corpus refused. Redis, which
+    # stamps inline on the calling thread and never has a second thread, inverts on a LARGER
+    # share of runs than Kafka does. A thread returning from a blocking read must also be
+    # made runnable and scheduled before it can call the clock, and that wait is charged to
+    # the measurement exactly as a callback dispatch would be.
+    #
+    # So this note may not say "and E-C3 moves the stamp there too", which invites the
+    # reading that moving it fixes the sign. It does not. The hand-off is an increment on
+    # top of the wakeup, worth tens of microseconds of median, not the thing itself.
+    mech_ax.text(2.45, 0.14,
+                 "Kafka path drawn. Redis stamps $t_{ack}$ on the app thread and"
+                 "\ninverts anyway: the wait for a core is charged either way.",
+                 fontsize=8, color=GREY, ha="left", va="center", linespacing=1.15)
+
+
+def plot_delta(h1_ax):
+    """The stamping-asymmetry density, schematic. Supplement only: it is a drawing,
+    and the measured version of this object is the traced stall spectrum in the main text.
+    """
+    # why small effects are fragile
     #
     # This panel has now been wrong twice, in opposite directions, and both errors were the
     # same error: drawing a shape the data had not been asked about.
@@ -302,9 +367,6 @@ def plot_model(axes):
     h1_ax.set_xlabel(r"stamping asymmetry $\Delta$ (ms)")
     h1_ax.set_ylabel("density (log)")
     h1_ax.set_yticks([])
-    h1_ax.set_title(r"(b) which intervals invert is decided by the preempted lobe",
-                    fontsize=9)
-    mech_ax.set_title("(a) how a positive latency is measured as negative", fontsize=9)
 
 
 SENSITIVITY_THRESHOLDS = (0.0, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.10, 0.20)
@@ -599,17 +661,26 @@ def main(argv=None):
         written.extend(draw())
 
     def _pipeline():
-        # Authored at the supplement one-column width, which is where this figure now
-        # lives; the main text carries the fuller version in Figure 2(a).
-        fig, ax = plt.subplots(figsize=(6.50, 2.20))
+        # Authored at the supplement's one-column width, not the paper's: this figure is
+        # included at both, and a figure authored wide is scaled DOWN in the supplement,
+        # which is the direction that pushes 8 pt type under the legibility floor.
+        fig, ax = plt.subplots(figsize=(6.50, 1.72))
         plot_pipeline(ax)
         return _save(fig, out, "pipeline_schematic", check_layout=layout_is_shipped)
 
     def _model():
-        fig, axes = plt.subplots(2, 1, figsize=(7.16, 3.15))
-        plot_model(axes)
+        fig, ax = plt.subplots(figsize=(7.16, 2.30))
+        plot_mechanism(ax)
         fig.tight_layout()
         return _save(fig, out, "measurement_model", check_layout=layout_is_shipped)
+
+    def _delta():
+        # Drawn at the width the supplement includes it at. Drawn wider, every label is
+        # scaled down on inclusion and 8 pt type lands at 7.3 pt, below the floor.
+        fig, ax = plt.subplots(figsize=(6.50, 1.95))
+        plot_delta(ax)
+        fig.tight_layout()
+        return _save(fig, out, "delta_schematic", check_layout=layout_is_shipped)
 
     def _quantum():
         # Single column, like the other two Mode B figures it sits beside.
@@ -650,6 +721,7 @@ def main(argv=None):
 
     render("pipeline_schematic", [], _pipeline)
     render("measurement_model", [], _model)
+    render("delta_schematic", [], _delta)
     render("quantum_geometry", [], _quantum)
     render("workload_profile", [profiles], _workload)
     render("kickoff_concurrency", [slots, timeline], _concurrency)

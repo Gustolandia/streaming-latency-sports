@@ -80,6 +80,12 @@ docs/outreach_candidates.md
 docs/v2_execution_log.md
 docs/v3_plan.md
 docs/tc_plan.md
+# The walkthrough deck and its speaker notes quote correspondence verbatim and name a
+# reviewer, so they stay local for the same reason docs/v3_plan.md does.
+docs/paper_walkthrough.html
+docs/paper_walkthrough_notes.html
+docs/study_guide.html
+docs/paper_walkthrough.pptx
 REFEREE_REPORT_SIMULATED.md
 REFEREE_REPORT_TPDS_SIMULATED.md
 REFEREE_REPORT_TC_SIMULATED.md

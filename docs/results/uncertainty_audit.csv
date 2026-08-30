@@ -1,0 +1,207 @@
+quantity,value,class,interval_95,method,note
+GeomOrigConc,0.0824,has-interval,0.0731$--$0.0928,ledger-emitted,
+GeomOrigSpread,0.1709,has-interval,0.1578$--$0.1848,ledger-emitted,
+GeomReplConc,0.0600,has-interval,0.0520$--$0.0691,ledger-emitted,
+GeomReplSpread,0.1229,has-interval,0.1117$--$0.1352,ledger-emitted,
+rtHighBase,0.3049,has-interval,0.2886$--$0.3216,ledger-emitted,
+rtHighRt,0.0057,has-interval,0.0036$--$0.0091,ledger-emitted,
+rtLowBase,0.1320,has-interval,0.1203$--$0.1446,ledger-emitted,
+rtLowRt,0.0034,has-interval,0.0018$--$0.0062,ledger-emitted,
+tailExponent,0.339,has-interval,0.234$--$0.443,ledger-emitted,
+tailSlope,-0.34,has-interval,-0.44$ to $-0.23,ledger-emitted,
+tostHL,0.408,has-interval,0.389$--$0.419,ledger-emitted,
+tracedExcAlpha,0.21,has-interval,0.20$--$0.21,ledger-emitted,
+tracedMleAlpha,1.19,has-interval,1.18$--$1.20,ledger-emitted,
+tracedTailAlpha,2.04,has-interval,2.00$--$2.07,ledger-emitted,
+spanNegAckPct,8.43%,added-here,"[8.15%, 8.71%]",cluster bootstrap over 5913 runs,
+spanKafkaNegAckPct,8.67%,added-here,"[8.21%, 9.12%]",cluster bootstrap over 2955 runs,
+spanRedisNegAckPct,8.19%,added-here,"[7.86%, 8.52%]",cluster bootstrap over 2958 runs,
+msGuardDeletionPct (fig. deletion_histogram),45.8%,added-here,"[45.4%, 46.2%]",cluster bootstrap over 5913 runs,the 45.8%% in the new figure; not yet a paper macro
+auditPct,58.3,added-here,"[56.3%, 60.3%]",Wilson on 1321/2266 runs,run is the unit of analysis; clustering not at issue
+auditPctWorkstation,62.4,added-here,"[59.8%, 64.9%]",Wilson on 862/1382 runs,run is the unit of analysis; clustering not at issue
+auditPctCloud,51.9,added-here,"[48.6%, 55.2%]",Wilson on 459/884 runs,run is the unit of analysis; clustering not at issue
+rtFactorLow-rtFactorHigh (7-80x),7-80,range-not-CI,,min-max over 8 matched pairs,"per-pair CIs exist (rtLowCI, rtHighCI); print the range AS a range"
+"tracedRatios (0.78, 1.06, 1.32)","0.78, 1.06, 1.32",needs-data,,,"ratio of a traced rate to an observed rate; needs per-arm event counts on both sides to bootstrap -- flag for v3, data exists in the depth artefacts"
+ombGridRetentionMin/Max (0.36-100%),0.36-100,population,,,"complete enumeration of the 71 grid cells; each cell's retention is a fact of that run, not a sample estimate"
+ombRetentionMinExact (0.0044%),0.0044,population,,,one run's exact retention
+spanRuns,"5{,}913",exact,,,count or configured constant
+spanEvents,"738{,}730",exact,,,count or configured constant
+spanNegAck,"62{,}264",exact,,,count or configured constant
+spanNegSend,0,exact,,,count or configured constant
+auditRuns,"2{,}266",exact,,,count or configured constant
+auditRejected,"1{,}321",exact,,,count or configured constant
+ombRuns,223,exact,,,count or configured constant
+ombDiscarded,"11{,}532{,}492",exact,,,count or configured constant
+ombKept,"12{,}499{,}409",exact,,,count or configured constant
+harnessAudited,7,exact,,,count or configured constant
+forkChecked,40,exact,,,count or configured constant
+forkUnchanged,40,exact,,,count or configured constant
+tracedEvents,"551{,}956",exact,,,count or configured constant
+kernelHz,1000,exact,,,count or configured constant
+tickMs,1,exact,,,count or configured constant
+testbedCpus,8,exact,,,count or configured constant
+baseSliceMs,3,exact,,,count or configured constant
+GeomOrigFactor,2.07,needs-data,,,ratio CI derivable from the two arm CIs already emitted
+GeomOrigZ,10.3,exact,,,"count, constant, or enumerated value"
+GeomReplFactor,2.05,needs-data,,,same
+GeomReplZ,8.4,exact,,,"count, constant, or enumerated value"
+auditConditions,116,exact,,,"count, constant, or enumerated value"
+auditConditionsCloud,40,exact,,,"count, constant, or enumerated value"
+auditConditionsWorkstation,76,exact,,,"count, constant, or enumerated value"
+auditRejectedCloud,459,exact,,,"count, constant, or enumerated value"
+auditRejectedWorkstation,862,exact,,,"count, constant, or enumerated value"
+auditRunsCloud,884,exact,,,"count, constant, or enumerated value"
+auditRunsWorkstation,"1{,}382",exact,,,"count, constant, or enumerated value"
+auditUsableConditions,21,exact,,,"count, constant, or enumerated value"
+auditUsableConditionsCloud,13,exact,,,"count, constant, or enumerated value"
+auditUsableConditionsWorkstation,8,exact,,,"count, constant, or enumerated value"
+baseSliceNs,"3{,}000{,}000",exact,,,"count, constant, or enumerated value"
+chronyHostBoundHi,7,needs-data,,,same
+chronyHostBoundLo,4,needs-data,,,"instrument bound, not an estimate -- but say so where quoted"
+chronyHosts,4,exact,,,"count, constant, or enumerated value"
+chronyPairBound,12,needs-data,,,same
+clockAdmitted,\texttt{kvm-clock} or \texttt{tsc},exact,,,wording/config macro
+clockExcludedCount,3,exact,,,"count, constant, or enumerated value"
+clockIncrementNs,90,exact,,,"count, constant, or enumerated value"
+clockPmTickNs,279,exact,,,"count, constant, or enumerated value"
+coreGrowth,5,exact,,,"count, constant, or enumerated value"
+cpuEstimateSpread,0.05,needs-data,,,already a spread; label it as such in the text
+forkAbsent,0,exact,,,"count, constant, or enumerated value"
+forkCheckedOn,2026-08-24,exact,,,"count, constant, or enumerated value"
+gridArms,12,exact,,,"count, constant, or enumerated value"
+gridFlat,2,exact,,,"count, constant, or enumerated value"
+gridFlatRates,$400$ and $800$,population,,,exhaustive over this corpus; interval only under a super-population reading
+gridPowered,10,exact,,,"count, constant, or enumerated value"
+gridReject,9,exact,,,"count, constant, or enumerated value"
+gridUnresolvedHolm,0.131,exact,,,"count, constant, or enumerated value"
+gridUnresolvedRate,900,exact,,,"count, constant, or enumerated value"
+gridUnresolvedRaw,0.044,exact,,,"count, constant, or enumerated value"
+harnessAuditedWord,seven,exact,,,wording/config macro
+harnessAuditedWordCap,Seven,exact,,,wording/config macro
+harnessCounting,1,exact,,,"count, constant, or enumerated value"
+harnessCountingWord,one,exact,,,wording/config macro
+harnessCountingWordCap,One,exact,,,wording/config macro
+harnessCrossHostNegatives,0,exact,,,"count, constant, or enumerated value"
+harnessCrossHostRuns,12,exact,,,"count, constant, or enumerated value"
+harnessCrossHostSamples,"905{,}040",exact,,,"count, constant, or enumerated value"
+harnessDisposalClasses,3,exact,,,"count, constant, or enumerated value"
+harnessDisposalClassesWord,three,exact,,,wording/config macro
+harnessDisposalClassesWordCap,Three,exact,,,wording/config macro
+harnessEvidenceLines,14,exact,,,"count, constant, or enumerated value"
+harnessFilters,2,exact,,,"count, constant, or enumerated value"
+harnessFiltersWord,two,exact,,,wording/config macro
+harnessFiltersWordCap,Two,exact,,,wording/config macro
+harnessLanguages,4,exact,,,"count, constant, or enumerated value"
+harnessLanguagesWord,four,exact,,,wording/config macro
+harnessLanguagesWordCap,Four,exact,,,wording/config macro
+harnessNoDisposal,1,exact,,,"count, constant, or enumerated value"
+harnessNoDisposalWord,one,exact,,,wording/config macro
+harnessNoDisposalWordCap,One,exact,,,wording/config macro
+harnessOneClockNegatives,0,exact,,,"count, constant, or enumerated value"
+harnessOneClockRuns,12,exact,,,"count, constant, or enumerated value"
+harnessOneClockSamples,"905{,}040",exact,,,"count, constant, or enumerated value"
+harnessRefusals,1,exact,,,"count, constant, or enumerated value"
+harnessRefusalsWord,one,exact,,,wording/config macro
+harnessRefusalsWordCap,One,exact,,,wording/config macro
+harnessSilent,5,exact,,,"count, constant, or enumerated value"
+harnessSilentIndependent,4,exact,,,"count, constant, or enumerated value"
+harnessSilentIndependentWord,four,exact,,,wording/config macro
+harnessSilentIndependentWordCap,Four,exact,,,wording/config macro
+harnessSilentWord,five,exact,,,wording/config macro
+harnessSilentWordCap,Five,exact,,,wording/config macro
+harnessSplitGuard,1,exact,,,"count, constant, or enumerated value"
+harnessSuppressors,2,exact,,,"count, constant, or enumerated value"
+harnessSuppressorsWord,two,exact,,,wording/config macro
+harnessSuppressorsWordCap,Two,exact,,,wording/config macro
+harnessVendors,7,exact,,,"count, constant, or enumerated value"
+harnessVendorsWord,seven,exact,,,wording/config macro
+harnessVendorsWordCap,Seven,exact,,,wording/config macro
+invCeiling,0.37,population,,,exhaustive over this corpus; interval only under a super-population reading
+invGrowth,61,exact,,,"count, constant, or enumerated value"
+observerZ,3.6,exact,,,"count, constant, or enumerated value"
+ombGridMedianCells,71,exact,,,"count, constant, or enumerated value"
+ombGridRetentionMax,100,exact,,,"count, constant, or enumerated value"
+ombGridRetentionMin,0.36,exact,,,"count, constant, or enumerated value"
+ombGuardedClock,millisecond,exact,,,wording/config macro
+ombGuardedPath,end-to-end,exact,,,wording/config macro
+ombKafkaDiscarded,"10{,}913{,}263",exact,,,"count, constant, or enumerated value"
+ombKafkaNegatives,0,exact,,,"count, constant, or enumerated value"
+ombKeptHi,"120{,}434",population,,,exhaustive over this corpus; interval only under a super-population reading
+ombKeptLo,431,population,,,exhaustive over this corpus; interval only under a super-population reading
+ombMedianCells,75,population,,,exhaustive over this corpus; interval only under a super-population reading
+ombNegatives,"41{,}403",exact,,,"count, constant, or enumerated value"
+ombPubLatHi,0.4,population,,,exhaustive over this corpus; interval only under a super-population reading
+ombPubLatLo,0.3,population,,,exhaustive over this corpus; interval only under a super-population reading
+ombRedisDiscarded,"619{,}229",exact,,,"count, constant, or enumerated value"
+ombRedisNegatives,"41{,}403",exact,,,"count, constant, or enumerated value"
+ombRetentionFold,279,population,,,exhaustive over this corpus; interval only under a super-population reading
+ombRetentionMax,100.00,exact,,,"count, constant, or enumerated value"
+ombRetentionMin,0.00,exact,,,"count, constant, or enumerated value"
+ombRetentionMinExact,0.0044,exact,,,"count, constant, or enumerated value"
+ombRetentionRho,+0.31,needs-data,,,correlation over 71 cells; Fisher-z interval is one line -- add it
+ombRetentionRhoN,71,exact,,,"count, constant, or enumerated value"
+ombUnguardedClock,nanosecond,exact,,,wording/config macro
+ombUnguardedPath,publish,exact,,,wording/config macro
+payloadLevels,4,exact,,,"count, constant, or enumerated value"
+payloadRateFall,4.1,needs-data,,,same
+payloadRateFallExact,4.09,exact,,,"count, constant, or enumerated value"
+payloadReplRateFall,4.26,needs-data,,,same
+payloadReplTransportFactor,76.8,needs-data,,,same
+payloadRhoSpread,0.012,exact,,,"count, constant, or enumerated value"
+payloadTransportFactor,76.9,needs-data,,,needs per-run payload-arm data for a bootstrap
+payloadTransportFactorRound,77,exact,,,"count, constant, or enumerated value"
+registryTableSources,"\cite{pulsar_perf,openmessaging2018,openmessaging2018,rezolus,btt_inlines,emqtt_bench,fio_gettime,wrk2_src}",exact,,,wording/config macro
+rtConfounded,0,exact,,,"count, constant, or enumerated value"
+rtFactorHigh,80,exact,,,"count, constant, or enumerated value"
+rtFactorLow,7,exact,,,"count, constant, or enumerated value"
+rtHighFactor,54,needs-data,,,ratio CI derivable from rtHighBaseCI x rtHighRtCI; same route
+rtHighZ,31.9,exact,,,"count, constant, or enumerated value"
+rtLowFactor,39,needs-data,,,ratio CI derivable from rtLowBaseCI x rtLowRtCI; add to emit_paper_numbers
+rtLowZ,19.8,exact,,,"count, constant, or enumerated value"
+rtPairs,8,exact,,,"count, constant, or enumerated value"
+rtResidualMax,0.0144,population,,,exhaustive over this corpus; interval only under a super-population reading
+rtResidualMin,0.0017,population,,,exhaustive over this corpus; interval only under a super-population reading
+rtResidualPairs,8,exact,,,"count, constant, or enumerated value"
+rtRhoHigh,95,exact,,,"count, constant, or enumerated value"
+rtRhoLow,60,exact,,,"count, constant, or enumerated value"
+sliceFactor,4,exact,,,"count, constant, or enumerated value"
+spanDeepestInversionMs,-99.8,population,,,exhaustive over this corpus; interval only under a super-population reading
+spanKafkaEvents,"367{,}894",exact,,,"count, constant, or enumerated value"
+spanKafkaNegAck,"31{,}899",exact,,,"count, constant, or enumerated value"
+spanKafkaRunsAckInvertsPct,65,population,,,exhaustive over this corpus; interval only under a super-population reading
+spanNegOutputSend,0,exact,,,"count, constant, or enumerated value"
+spanNegTti,0,exact,,,"count, constant, or enumerated value"
+spanOffsetMargin,455,population,,,exhaustive over this corpus; interval only under a super-population reading
+spanRedisEvents,"370{,}836",exact,,,"count, constant, or enumerated value"
+spanRedisNegAck,"30{,}365",exact,,,"count, constant, or enumerated value"
+spanRedisRunsAckInvertsPct,88,population,,,exhaustive over this corpus; interval only under a super-population reading
+spanRunsAckInverts,"4{,}549",exact,,,"count, constant, or enumerated value"
+spanRunsAckOnly,"4{,}549",exact,,,"count, constant, or enumerated value"
+spanRunsAckOnlyPct,100,population,,,exhaustive over this corpus; interval only under a super-population reading
+spanRunsOverOnePct,"3{,}976",needs-data,,,unclassified; decide whether an interval applies
+spanRunsSendInverts,0,exact,,,"count, constant, or enumerated value"
+spanSendFloorOtherUs,805,population,,,exhaustive over this corpus; interval only under a super-population reading
+spanSendFloorUs,220,population,,,exhaustive over this corpus; interval only under a super-population reading
+tailPrefactor,0.238,needs-data,,,fit parameter without an emitted CI; bootstrap the fit
+tailRsq,0.990,exact,,,"count, constant, or enumerated value"
+tostHLRange,0.408$--$0.417,exact,,,"count, constant, or enumerated value"
+tostLevels,3,exact,,,"count, constant, or enumerated value"
+tostMargin,1,exact,,,"count, constant, or enumerated value"
+tracedGofBoot,"2{,}500",exact,,,"count, constant, or enumerated value"
+tracedGofP,<0.0004,needs-data,,,unclassified; decide whether an interval applies
+tracedModeHi,4,exact,,,"count, constant, or enumerated value"
+tracedModeLo,2,exact,,,"count, constant, or enumerated value"
+tracedModeRank,3,exact,,,"count, constant, or enumerated value"
+tracedModeRatio,4.5,exact,,,"count, constant, or enumerated value"
+tracedModeShare,10.5,needs-data,,,share of a fitted mode; stall_mixture.json now carries bootstrap CIs
+tracedModeTopShare,20.0,needs-data,,,same
+tracedModes,3,exact,,,"count, constant, or enumerated value"
+tracedOctaveA,1.96,needs-data,,,fit parameters; bootstrap alongside the mixture
+tracedOctaveB,0.03,needs-data,,,same
+tracedRate,0.231,needs-data,,,traced-arm rate; binomial trivial but clustering unknown -- decide the unit
+tracedRatioArms,3,exact,,,"count, constant, or enumerated value"
+tracedRatioHi,1.32,exact,,,"count, constant, or enumerated value"
+tracedRatioLo,0.78,exact,,,"count, constant, or enumerated value"
+tracedRatios,"0.78, 1.06, 1.32",needs-data,,,needs per-arm event counts on both sides; data in depth artefacts
+tracedTailFrom,4,exact,,,"count, constant, or enumerated value"
+untracedRate,0.272,needs-data,,,same

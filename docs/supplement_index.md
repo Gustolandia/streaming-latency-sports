@@ -303,3 +303,16 @@ appearing in this table.
 | `kickoff_concurrency` | **retained, unused.** The kickoff-window concurrency view from the withdrawn first result set. Kept because the campaign it draws is still in the archive and the withdrawal is part of the record; no current claim rests on it. |
 | `network_delay` | **retained, unused.** The injected-delay view superseded by the netem table in Section VI, which reports the same runs numerically. |
 | `workload_profile` | **retained, unused.** The StatsBomb replay profile from the 16-page version; the workload is now described in prose in Section III. |
+
+## Figures awaiting placement (v3 candidates, 2026-08-30)
+
+Four exhibits built for and after the 28 August co-author call, committed with their scripts
+and data but not yet included by any document; the v3 insertion points are recorded in the
+local plan. Each also ships a `_talk` PNG variant for slides.
+
+| Figure | Source script | Where it is headed |
+|---|---|---|
+| `deletion_histogram` | `scripts/make_deletion_histogram.py` | Section IV (Mode B): what the guard deletes, and the five dispositions |
+| `thread_architecture` | `scripts/make_thread_figure.py` | Section I or III: which threads take the two stamps, and why |
+| `axis_comparison` | `scripts/make_axis_comparison.py` | supplement: the benchmark's published data and ours on identical axes |
+| `omb_axes_explained` | `scripts/make_axis_comparison.py` | supplement: why the published chart's own axes cannot show the deletion |

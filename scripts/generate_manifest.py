@@ -21,12 +21,12 @@ from pathlib import Path
 CODE_GLOBS = ["scripts/*.py", "configs/*.yaml", "docker-compose*.yml", "requirements.txt"]
 
 # Descriptive record of the corpus + the measurement protocol behind the paper
-# (When the Interval Is Smaller Than the Instrument, IEEE TPDS). Kept in sync with
+# (Measuring Nothing, Twice, IEEE Transactions on Computers). Kept in sync with
 # reproducibility/README.md and paper.tex; the JSA framing (decision-staleness / win-probability)
 # and the earlier ACM TOMPECS framing are retired and must not be reintroduced here.
 PROTOCOL = {
-    "paper": "When the Interval Is Smaller Than the Instrument: Two Ways Streaming Latency "
-             "Benchmarks Fail on Sub-Millisecond Paths (IEEE TPDS). The Journal of Sports "
+    "paper": "Measuring Nothing, Twice: Two Ways Streaming Latency "
+             "Benchmarks Fail on Sub-Millisecond Paths (IEEE Transactions on Computers). The Journal of Sports "
              "Analytics framing (decision-staleness / Age-of-Information / win-probability) is "
              "retired, as is the earlier ACM TOMPECS formatting.",
     "integrity_audit": "scripts/clock_integrity.py rejects a run when >1% of its events invert "

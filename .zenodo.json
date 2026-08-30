@@ -1,11 +1,15 @@
 {
-  "title": "When the Interval Is Smaller Than the Instrument: code and analysis for two failure modes of streaming latency benchmarks",
+  "title": "Measuring Nothing, Twice: code and analysis for two failure modes of streaming latency benchmarks",
   "upload_type": "software",
   "version": "2.6.0",
   "license": "MIT",
   "creators": [
     {
       "name": "Ricou, Gustavo Pedro",
+      "affiliation": "School of Computer Science and Statistics, Trinity College Dublin, Dublin, Ireland"
+    },
+    {
+      "name": "Gregg, David",
       "affiliation": "School of Computer Science and Statistics, Trinity College Dublin, Dublin, Ireland"
     }
   ],

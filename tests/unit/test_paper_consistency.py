@@ -3436,3 +3436,64 @@ class TestTheArtifactLineNamesTheDepositItSitsIn:
         assert want in window, (
             "paper.pdf says %r but the deposit metadata says %s; the PDF inside the archive "
             "would name a different release than the one it is in" % (window[:80], want))
+
+
+class TestEveryPlannedFigureIsPlacedOrExcusedInWriting:
+    """A figure the index says is headed somewhere must be in a document or in the list below.
+
+    The failure this catches is not a broken build. It is a figure that answers a reviewer's
+    question, gets drawn, and is then never placed -- which is what happened to
+    `deletion_histogram` between 2026-08-26 and round 43.
+    """
+
+    # Planned, deliberately not placed, with the reason. Adding a line here is the point:
+    # the omission becomes a decision rather than an oversight.
+    UNPLACED = {
+        "thread_architecture":
+            "superseded by Figure 2 (measurement_model), which already separates the "
+            "application thread that calls send from the client I/O thread that runs the "
+            "delivery callback -- the distinction this figure was drawn to make",
+        # Both from make_axis_comparison.py, and both from the same 2026-08-26 exchange that
+        # produced the deletion histogram: the co-author pointed at the external benchmark's
+        # own published latency chart and observed that its axes cannot show a population
+        # left of zero. Drawn, not placed, and a deliberate hold rather than an oversight --
+        # the histogram now in S41 makes the same point from our data, and these two would
+        # restate it against a third party's chart.
+        "axis_comparison":
+            "not placed: the external benchmark's published distribution beside ours on "
+            "identical axes; superseded for now by the S41 histogram",
+        "omb_axes_explained":
+            "not placed: why that published chart's own axes cannot show the deletion; the "
+            "same point, and the S41 histogram carries it on our own corpus",
+    }
+
+    def _planned(self):
+        """Figure stems from the index's 'Where it is headed' table."""
+        src = (REPO / "docs" / "supplement_index.md").read_text(encoding="utf-8")
+        block = src[src.index("| Figure | Source script | Where it is headed |"):]
+        block = block[:block.index("\n\n")] if "\n\n" in block else block
+        return re.findall(r"^\| `([a-z_]+)` \|", block, re.M)
+
+    def test_the_index_still_has_the_table(self):
+        assert self._planned(), (
+            "the figure plan table is gone from docs/supplement_index.md; this gate reads it")
+
+    def test_each_planned_figure_is_placed_or_written_off(self):
+        docs = "".join((REPO / n).read_text(encoding="utf-8")
+                       for n in ("paper.tex", "supplement.tex"))
+        missing = [f for f in self._planned()
+                   if f not in docs and f not in self.UNPLACED]
+        assert not missing, (
+            "planned figure(s) %r are in neither document and are not written off in "
+            "UNPLACED. Either place them, or record why not -- a figure drawn for a "
+            "reviewer and then forgotten is the defect this gate exists for." % missing)
+
+    def test_the_co_authors_deletion_histogram_is_placed(self):
+        """Pinned by name: it was asked for, drawn, and lost once already."""
+        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        assert "deletion_histogram.pdf" in supp, (
+            "the deletion histogram is no longer in the supplement; it answers a co-author's "
+            "request of 2026-08-26 and went missing for a week the first time")
+        assert "msGuardDeletedPct" in supp, (
+            "the deletion figure is present but its headline is no longer stated in prose, "
+            "so the number is readable only off the plot")

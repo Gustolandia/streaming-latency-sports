@@ -903,6 +903,46 @@ def priority_macros():
     ]
 
 
+def deletion_macros(stats=os.path.join("docs", "results", "span_histogram_stats.json"),
+                    audit=os.path.join("docs", "results", "uncertainty_audit.csv")):
+    """What a millisecond positivity guard removes from the measured population.
+
+    The main text quotes retention per run, which ranges over the corpus. This is the other
+    cut: one pooled fraction over every joined event, which is the quantity the deletion
+    figure draws and the one a reader remembers.
+    """
+    import csv as _csv
+    import json as _json
+    try:
+        with open(stats, encoding="utf-8") as fh:
+            ms = _json.load(fh)["spans"]["ack"]["ms_rule"]
+    except (OSError, KeyError):
+        return []
+    total = ms.get("total")
+    if not total:
+        return []
+    out = [
+        ("msGuardDropped", latex_thousands(ms["dropped"])),
+        ("msGuardKept", latex_thousands(ms["kept"])),
+        ("msGuardAtZero", latex_thousands(ms["at_zero"])),
+        ("msGuardBelowZero", latex_thousands(ms["below_zero"])),
+        ("msGuardDeletedPct", "%.1f" % (100.0 * ms["dropped"] / total)),
+    ]
+    # The interval is a cluster bootstrap over runs, taken from the committed audit rather
+    # than recomputed here: two implementations of one resampling scheme would drift.
+    try:
+        with open(audit, encoding="utf-8") as fh:
+            for row in _csv.DictReader(fh):
+                if row["quantity"].startswith("msGuardDeletionPct"):
+                    lo, hi = row["interval_95"].strip("[]").replace("%", "").split(",")
+                    out.append(("msGuardDeletedCI",
+                                "%s$--$%s" % (lo.strip(), hi.strip())))
+                    break
+    except OSError:
+        pass
+    return out
+
+
 def artifact_macros(path=".zenodo.json", data_path=".zenodo-data.json"):
     """The version the archive is deposited under, from the deposit metadata itself.
 
@@ -1200,7 +1240,8 @@ def all_pairs(m):
             + clocksource_macros() + traced_ratio_macros() + audit_macros()
             + priority_macros() + priority_residual_macros() + fork_macros()
             + chrony_bound_macros() + disease_macros()
-            + exposure_macros() + artifact_macros())
+            + exposure_macros() + artifact_macros()
+            + deletion_macros())
 
 
 def render(m):

@@ -665,30 +665,23 @@ fraction couples to the synchronization state and nothing records either.
 Nor is the disposal confined to this harness, and deletion is not the only way the quantum
 wins. We audited \harnessAuditedWord{} tools at source
 across \harnessLanguagesWord{} languages and \harnessVendorsWord{} vendors, classifying each
-finding with the code that classified the benchmark; \harnessSilentWord{} of the
-\harnessAuditedWord{}
-dispose of the sample without counting it, in \harnessDisposalClassesWord{} classes.
-Two others keep every sample and lose it anyway --- Apache \kafka{}'s own bundled end-to-end
-tool fills the array its percentiles come from by integer division, so on a sub-millisecond
-path every one reports zero~\cite{kafka_tools} --- and two more keep their negatives and pass
-them on unfiltered, as RFC~7679 asks~\cite{rabbitmq_perftest,nats_cli}. The failure is not
-universal, and the claim that survives is the narrower one: \emph{the tools that quantize or
-filter do so without counting} (Supplement~S53).
-\harnessFiltersWordCap{} admit only
-positive samples, one of them Apache Pulsar's performance client reaching the same design
-independently~\cite{pulsar_perf}, which makes this a pattern rather than one project's
-oversight. \harnessSuppressorsWordCap{} do something worse and substitute a constant ---
-\texttt{fio} returns zero~\cite{fio_gettime} and \texttt{btt} one
-nanosecond~\cite{btt_inlines} --- because substitution leaves nothing missing, so retention
-computed downstream reads $100\%$ and a value never measured enters the distribution.
-\harnessRefusalsWordCap{} hands the sample to a recorder that refuses it and does not check
-the return. Of the remaining two, \harnessCountingWord{} counts its discards in a
-metric whose description names the cause~\cite{rezolus} --- the proof that the rule of
-Section~\ref{sec:authors} is practical rather than aspirational --- and
-\harnessNoDisposalWord{} discards nothing at all, guarding a counter rather than the sample;
-we report the last because we first read it as a filter and it is
-not~\cite{emqtt_bench}. Supplement~S36 gives the registry, tool by tool, with the line each
-finding sits on.
+finding with the code that classified the benchmark; \harnessSilentWord{} of the \harnessAuditedWord{}
+dispose of the sample without counting it, in \harnessDisposalClassesWord{} classes, one of
+them Apache Pulsar's performance client reaching the same design
+independently~\cite{pulsar_perf} --- a pattern rather than one project's oversight. Apache
+\kafka{}'s own bundled end-to-end tool keeps every sample and loses it anyway, filling the
+array its percentiles come from by integer division so that on a sub-millisecond path every
+one reports zero~\cite{kafka_tools}; two more keep their negatives and pass them on
+unfiltered, as RFC~7679 asks~\cite{rabbitmq_perftest,nats_cli}. The failure is not universal,
+and the claim that survives is the narrower one: \emph{the tools that quantize or filter do so
+without counting}. Substitution is the worst of the three classes ---
+\texttt{fio} returns zero~\cite{fio_gettime}, \texttt{btt} one nanosecond~\cite{btt_inlines}
+--- because it leaves nothing missing, so retention computed downstream reads $100\%$ and a
+value never measured enters the distribution; while \harnessCountingWord{} counts its discards
+in a metric whose description names the cause~\cite{rezolus}, which is what makes the rule of
+Section~\ref{sec:authors} practical rather than aspirational. Supplement~S53 gives the
+registry tool by tool, with the source line each finding sits on and one entry that corrects
+a misreading of our own.
 
 The class is not confined to benchmarks: in November 2025 the audited broker's own coordinator
 metrics adopted the same disposal, clamping negative durations to zero with no counter and no
@@ -1176,13 +1169,13 @@ using pre-registration and physical-consistency auditing.
 % Computer Science", which appears to be stale self-written copy. Three sources, two answers,
 % so we ask rather than pick.
 %
-% \begin{IEEEbiographynophoto}{David Gregg}
-% received the Ph.D.\ degree in computer science from the Technische Universit\"at Wien,
-% Vienna, Austria, in 2001, for work on compiling for instruction-level-parallel
-% architectures. He is a Professor in the School of Computer Science and Statistics, Trinity
-% College Dublin, Ireland. His research concerns compilers, algorithms and software
-% optimization for multicore and vector computers, and low-resource techniques for deep
-% neural networks. He is a Fellow of the Irish Computer Society.
-% \end{IEEEbiographynophoto}
+\begin{IEEEbiographynophoto}{David Gregg}
+received the Ph.D.\ degree in computer science from the Technische Universit\"at Wien,
+Vienna, Austria, in 2001, for work on compiling for instruction-level-parallel
+architectures. He is a Professor in the School of Computer Science and Statistics, Trinity
+College Dublin, Ireland. His research concerns compilers, algorithms and software
+optimization for multicore and vector computers, and low-resource techniques for deep
+neural networks. He is a Fellow of the Irish Computer Society.
+\end{IEEEbiographynophoto}
 
 \end{document}

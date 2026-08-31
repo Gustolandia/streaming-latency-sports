@@ -188,13 +188,21 @@ def main():
         "ombKeptLo", "ombKeptHi", "ombPubLatLo", "ombPubLatHi", "ombRetentionFold",
         "ombMedianCells", "gridFlatRates",
     }
+    # Not estimates, so not candidates for an interval. Kept as an explicit class rather
+    # than dropped, because "no interval" and "interval not computed yet" are different
+    # statements and the audit is worthless if it blurs them.
+    not_estimates = {
+        "chronyHostBoundLo": "instrument bound from chrony's own error estimate, not a sample",
+        "chronyHostBoundHi": "same",
+        "chronyPairBound": "sum of two instrument bounds; a worst case, not an estimate",
+        "cpuEstimateSpread": "a spread across arms; label it as a spread where quoted",
+        "tracedGofP": "a p-value; it is already a tail probability and takes no interval",
+        "spanRunsOverOnePct": "a count of runs, exact for this campaign (the Pct suffix "
+                              "in the macro name is a misnomer worth fixing)",
+    }
     # Estimates whose interval is genuinely missing and computable from artefacts that exist
     # but are not committed at the needed granularity. The real decision list.
     decision_macros = {
-        "rtLowFactor": "ratio CI derivable from rtLowBaseCI x rtLowRtCI; add to emit_paper_numbers",
-        "rtHighFactor": "ratio CI derivable from rtHighBaseCI x rtHighRtCI; same route",
-        "GeomOrigFactor": "ratio CI derivable from the two arm CIs already emitted",
-        "GeomReplFactor": "same",
         "payloadTransportFactor": "needs per-run payload-arm data for a bootstrap",
         "payloadRateFall": "same",
         "payloadReplTransportFactor": "same",
@@ -207,11 +215,6 @@ def main():
         "tracedOctaveA": "fit parameters; bootstrap alongside the mixture",
         "tracedOctaveB": "same",
         "tailPrefactor": "fit parameter without an emitted CI; bootstrap the fit",
-        "cpuEstimateSpread": "already a spread; label it as such in the text",
-        "ombRetentionRho": "correlation over 71 cells; Fisher-z interval is one line -- add it",
-        "chronyHostBoundLo": "instrument bound, not an estimate -- but say so where quoted",
-        "chronyHostBoundHi": "same",
-        "chronyPairBound": "same",
     }
     for m in sorted(macros):
         if m in covered or m.endswith("CI") or m in has_ci:
@@ -221,6 +224,8 @@ def main():
         elif m in population_macros:
             add(m, macros[m], "population", "", "",
                 "exhaustive over this corpus; interval only under a super-population reading")
+        elif m in not_estimates:
+            add(m, macros[m], "not-an-estimate", "", "", not_estimates[m])
         elif m in decision_macros:
             add(m, macros[m], "needs-data", "", "", decision_macros[m])
         elif re.fullmatch(r'[\d,{}\.\$\-\s]+', macros[m]) and not m.endswith("Pct"):
@@ -239,7 +244,8 @@ def main():
     from collections import Counter
     counts = Counter(r["class"] for r in rows)
     print("audited quantities: %d" % len(rows))
-    for cls in ("has-interval", "added-here", "exact", "population", "range-not-CI", "needs-data"):
+    for cls in ("has-interval", "added-here", "exact", "population", "range-not-CI",
+                "not-an-estimate", "needs-data"):
         print("  %-14s %d" % (cls, counts.get(cls, 0)))
     print("")
     print("intervals computed here:")

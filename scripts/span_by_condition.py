@@ -80,7 +80,33 @@ def condition_of(run_id):
 
 
 def new_cond():
-    return {q: {"bins": {}, "under": 0, "over": 0, "n": 0} for q in QUANTITIES}
+    acc = {q: {"bins": {}, "under": 0, "over": 0, "n": 0} for q in QUANTITIES}
+    # Paired co-moments for rho(D, A), accumulated on the EVENTS rather than recovered
+    # afterwards from the three marginal histograms.
+    #
+    # The earlier route used the variance identity, Var(S) = Var(D) + Var(A) - 2 rho sd sd,
+    # reading all three variances off binned and edge-truncated histograms. Each margin
+    # loses a different amount of tail mass to truncation, so the identity is not conserved
+    # and rho is not bounded: five of seventy conditions came back with |rho| > 1, the
+    # largest 2.16. A correlation outside [-1, 1] is not a small numerical annoyance in this
+    # paper of all papers -- it is an instrument reporting an impossible value, which is the
+    # thing the manuscript is about.
+    #
+    # Six running sums are exact, need one pass, and cost nothing beside the histograms
+    # already being filled next to them.
+    #
+    # `outside` counts the pairs the window excludes, and it is reported rather than
+    # discarded. Every other statistic in this file is computed on the +-100 ms histogram
+    # window; a correlation computed over the untruncated stream would describe a different
+    # population from the medians printed beside it. That matters here more than usually:
+    # some redis_n5 conditions carry delivery values of order 10^8 us, so sd(D) came out at
+    # 142 SECONDS and a handful of events set the correlation for the whole condition.
+    #
+    # A paper about an instrument that drops samples without counting them does not get to
+    # drop samples without counting them.
+    acc["pair"] = {"n": 0, "outside": 0,
+                   "sd": 0.0, "sa": 0.0, "sdd": 0.0, "saa": 0.0, "sda": 0.0}
+    return acc
 
 
 def add(acc_q, value_us):
@@ -133,6 +159,17 @@ def consume_run(conds, run_rows, run_id, prod_rows, cons_rows):
         add(acc["S"], s_ns / 1000.0)
         add(acc["D"], d_ns / 1000.0)
         add(acc["A"], a_ns / 1000.0)
+        d_us, a_us = d_ns / 1000.0, a_ns / 1000.0
+        pair = acc["pair"]
+        if (BIN_LO_US <= d_us < BIN_HI_US) and (BIN_LO_US <= a_us < BIN_HI_US):
+            pair["n"] += 1
+            pair["sd"] += d_us
+            pair["sa"] += a_us
+            pair["sdd"] += d_us * d_us
+            pair["saa"] += a_us * a_us
+            pair["sda"] += d_us * a_us
+        else:
+            pair["outside"] += 1
         counted += 1
         if d_ns > 0:
             r = a_ns / d_ns
@@ -218,9 +255,15 @@ def write_outputs(conds, run_rows, runs, events):
         "alphas": list(ALPHAS),
         "bin_lo_us": BIN_LO_US, "bin_hi_us": BIN_HI_US, "bin_width_us": BIN_WIDTH_US,
         "conditions": {
-            cond: {q: {"n": acc[q]["n"], "under": acc[q]["under"], "over": acc[q]["over"],
-                       "bins": {str(k): v for k, v in sorted(acc[q]["bins"].items())}}
-                   for q in QUANTITIES}
+            cond: dict(
+                {q: {"n": acc[q]["n"], "under": acc[q]["under"], "over": acc[q]["over"],
+                     "bins": {str(k): v for k, v in sorted(acc[q]["bins"].items())}}
+                 for q in QUANTITIES},
+                # Carried alongside the histograms, not derived from them: this is the whole
+                # point of the fix. Truncation at the histogram edges is what made the
+                # variance-identity route return correlations above one.
+                pair=acc["pair"],
+            )
             for cond, acc in sorted(conds.items())
         },
     }

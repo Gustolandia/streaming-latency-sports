@@ -652,7 +652,10 @@ def build_mechanism(out_dir):
     # legibility gate passed it: the type is 8 pt either way. Width is the fix, and the
     # height follows the row count at 17.6 pt of pitch for 8 pt type, which is what the
     # column version already had -- height was never the complaint, the data panel was.
-    fig, ax = plt.subplots(figsize=(7.16, 2.45))
+    # 6.50 in, not 7.16: round 57 moved this figure to the supplement, whose column is
+    # narrower than the main text's. A figure authored wide is scaled DOWN on inclusion,
+    # and that is the direction that pushes 8 pt type under the legibility floor.
+    fig, ax = plt.subplots(figsize=(6.50, 2.22))
     plot_mechanism(ax, mechanism_arms(), backend_arms())
     fig.tight_layout()
     return _save(fig, out_dir, "mechanism_forest")

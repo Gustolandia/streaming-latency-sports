@@ -97,6 +97,23 @@ class TestConsumeRun:
         sbc.consume_run(conds, rr, RUN, prod_rows(ev), cons_rows(ev))
         assert rr[0]["over_1"] == rr[0]["neg_ack"] == 1
 
+    def test_an_event_outside_the_window_is_counted_not_dropped(self):
+        """The paired sums for rho(D, A) are taken on the same +-100 ms window as every
+        median beside them, so a pair outside it must be excluded -- and counted.
+
+        Silently dropping samples is the failure this paper documents; the accumulator that
+        measures it does not get to do it. Here delivery is 0.5 s, far outside the window,
+        so `outside` takes the event and the six co-moment sums do not.
+        """
+        conds, rr = {}, []
+        far = {"far": (1_000_000, 1_600_000, 501_000_000)}
+        sbc.consume_run(conds, rr, RUN, prod_rows({**clean_event("a"), **far}),
+                        cons_rows({**clean_event("a"), **far}))
+        pair = next(iter(conds.values()))["pair"]
+        assert pair["outside"] == 1
+        assert pair["n"] == 1                      # only the clean event
+        assert rr[0]["n_events"] == 2              # both still counted as events
+
     def test_a_foreign_run_id_contributes_nothing(self):
         conds, rr = {}, []
         ev = clean_event()

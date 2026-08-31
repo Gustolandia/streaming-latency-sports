@@ -70,10 +70,11 @@ def plot_pipeline(ax):
               (4.4, r"$t_{\rm ack}$", "producer"), (7.6, r"$t_{\rm recv}$", "consumer")]
     for x, sym, proc in stamps:
         ax.plot([x, x], [1.35, 1.6], color=GREY, linewidth=1.0)
-        ax.text(x, 1.20, sym, ha="center", va="top", fontsize=9)
-        # 0.84, not 0.98: the shorter figure maps the same data-unit gap onto fewer
-        # inches, and 0.22 units stopped being a line of clearance.
-        ax.text(x, 0.84, proc, ha="center", va="top", fontsize=8, color=GREY,
+        ax.text(x, 1.26, sym, ha="center", va="top", fontsize=9)
+        # The stamp block moves UP rather than the span label moving down. Below it sit
+        # three span arrows that cannot be rearranged without crossing each other, and the
+        # empty band is above: the boxes start at 1.6 and the tick marks only reach 1.35.
+        ax.text(x, 0.98, proc, ha="center", va="top", fontsize=8, color=GREY,
                 style="italic")
 
     spans = [(0.6, 2.4, 0.42, "scheduling lag"), (4.4, 7.6, 0.42, "broker transport"),
@@ -81,7 +82,13 @@ def plot_pipeline(ax):
     for x0, x1, y, label in spans:
         ax.annotate("", xy=(x1, y), xytext=(x0, y),
                     arrowprops=dict(arrowstyle="<->", color="black", linewidth=1.0))
-        ax.text((x0 + x1) / 2, y + 0.06, label, ha="center", fontsize=8)
+        # 0.16, not 0.06. "scheduling lag" is wider than the 1.8-unit arrow it names, so the
+        # text overhangs both arrowheads and the arrow ruled straight through it. The gap was
+        # tuned when this figure was 2.20 in tall; round 40 cut it to 1.58 in to save a page,
+        # which turned 0.06 data units into about two and a half points -- less than a line.
+        # A collision the checker scored as clean because the overlap is with a rule rather
+        # than with other text, and one a reader sees immediately.
+        ax.text((x0 + x1) / 2, y + 0.16, label, ha="center", fontsize=8)
 
     # Not "two processes' clocks". The producer and the consumer are two processes on one host
     # reading one clock, and Section V exists to show the span inverts anyway; an annotation
@@ -93,7 +100,7 @@ def plot_pipeline(ax):
     # is now Fig. 1 of the paper and is read with its caption. Removing it took a fifth of
     # the height off a full-width float, which buys more than the sentence did.
     ax.set_xlim(0, 10)
-    ax.set_ylim(0, 2.72)
+    ax.set_ylim(0, 2.80)
     ax.axis("off")
 
 
@@ -664,7 +671,7 @@ def main(argv=None):
         # Authored at the supplement's one-column width, not the paper's: this figure is
         # included at both, and a figure authored wide is scaled DOWN in the supplement,
         # which is the direction that pushes 8 pt type under the legibility floor.
-        fig, ax = plt.subplots(figsize=(6.50, 1.58))
+        fig, ax = plt.subplots(figsize=(6.50, 1.86))
         plot_pipeline(ax)
         return _save(fig, out, "pipeline_schematic", check_layout=layout_is_shipped)
 

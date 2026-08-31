@@ -289,12 +289,12 @@ appearing in this table.
 | `measurement_model` | main text, Fig. 2 (panel (b) split off round 52) |
 | `delta_schematic` | supplement, S12 (was Fig. 2(b); the one main-text drawing that was not a measurement, and the measured version is Fig. 9) |
 | `deletion` | main text, Fig. 3 |
-| `quantum_geometry` | main text, Fig. 4 (added round 28: the geometry behind the deletion law) |
-| `grid_membership` | main text, Fig. 5 |
-| `payload_flip` | main text, Fig. 6 (single-column from round 28; was full-width) |
+| `quantum_geometry` | supplement, S51 (moved round 40: a constructed illustration of the retention law, not a measurement, placed beside the 1970 counter note that carries the same identity) (added round 28: the geometry behind the deletion law) |
+| `grid_membership` | main text, Fig. 4 |
+| `payload_flip` | main text, Fig. 5 (single-column from round 28; was full-width) |
 | `mechanism_forest` | supplement, S47 (moved round 57: it plots the four matched pairs of the main text's Table II and the two brokers of its Table I, so it restated tables the reader already has) |
-| `ttrue_law` | main text, Fig. 7 |
-| `stall_spectrum` | main text, Fig. 8 |
+| `ttrue_law` | main text, Fig. 6 |
+| `stall_spectrum` | main text, Fig. 7 |
 | `priority_ladder` | supplement, S47 |
 | _(no figure)_ | supplement, S48 --- the broker results, moved from the main text in round 18 |
 | `experiment_map` | supplement |

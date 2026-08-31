@@ -75,7 +75,8 @@ def audit_env(tmp_path, monkeypatch):
         r"\newcommand{\spanRedisNegAckPct}{8.19}",
         r"\newcommand{\spanRuns}{5{,}913}",           # exact count
         r"\newcommand{\spanRunsAckOnlyPct}{100}",     # population
-        r"\newcommand{\rtLowFactor}{39}",             # decision list
+        r"\newcommand{\tracedRate}{0.231}",           # decision list
+        r"\newcommand{\chronyPairBound}{12}",         # not an estimate
         r"\newcommand{\harnessSilentWord}{five}",     # wording macro
         r"\newcommand{\mysteryPct}{12.3\%}",          # residual needs-data (regex declines \%)
         r"\newcommand{\oddPct}{12.3}",                # numeric but a Pct: an estimate, not a count
@@ -116,7 +117,11 @@ class TestMain:
         assert rows["spanNegAckPct"]["class"] == "added-here"
         assert rows["spanRuns"]["class"] == "exact"
         assert rows["spanRunsAckOnlyPct"]["class"] == "population"
-        assert rows["rtLowFactor"]["class"] == "needs-data"
+        # rtLowFactor used to stand for this class. Round 54 gave it a Katz interval, so it
+        # is "has-interval" now and cannot represent the debt any more; tracedRate still
+        # can, because its clustering unit is undecided rather than merely uncomputed.
+        assert rows["tracedRate"]["class"] == "needs-data"
+        assert rows["chronyPairBound"]["class"] == "not-an-estimate"
         assert rows["harnessSilentWord"]["class"] == "exact"
         assert rows["mysteryPct"]["class"] == "needs-data"
         assert rows["oddPct"]["class"] == "needs-data"

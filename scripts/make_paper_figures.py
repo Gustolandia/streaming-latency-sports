@@ -664,12 +664,12 @@ def main(argv=None):
         # Authored at the supplement's one-column width, not the paper's: this figure is
         # included at both, and a figure authored wide is scaled DOWN in the supplement,
         # which is the direction that pushes 8 pt type under the legibility floor.
-        fig, ax = plt.subplots(figsize=(6.50, 1.72))
+        fig, ax = plt.subplots(figsize=(6.50, 1.58))
         plot_pipeline(ax)
         return _save(fig, out, "pipeline_schematic", check_layout=layout_is_shipped)
 
     def _model():
-        fig, ax = plt.subplots(figsize=(7.16, 2.30))
+        fig, ax = plt.subplots(figsize=(7.16, 2.12))
         plot_mechanism(ax)
         fig.tight_layout()
         return _save(fig, out, "measurement_model", check_layout=layout_is_shipped)

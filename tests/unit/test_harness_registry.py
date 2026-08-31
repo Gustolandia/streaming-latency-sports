@@ -171,7 +171,21 @@ def test_main_json_output(tmp_path, capsys):
 # --- the guard on the committed evidence -------------------------------------------------
 
 EXPECTED = {
-    "OpenMessaging Benchmark": ({"cross_process_latency", "positive_only_filter"}, False),
+    # Round 56 added `quantized_retention` and the OpenMessaging line acquired it without
+    # being touched: `MILLISECONDS.toMicros(now - publishTimestamp)` widens an
+    # already-quantized difference, so the microseconds are decoration. That is the class
+    # arriving where it was not designed to and finding the same tool, which is the reason
+    # to trust it on Kafka's bundled harness, where it was designed to look.
+    "OpenMessaging Benchmark": (
+        {"cross_process_latency", "positive_only_filter", "quantized_retention"}, False),
+    # The two harnesses that compute a cross-process span and do NOT dispose of it. They are
+    # pinned for the same reason Rezolus is: a survey that could only find confirmations
+    # would be an advertisement, and these are what stop the paper saying "the field deletes".
+    "RabbitMQ PerfTest": ({"cross_process_latency"}, False),
+    "NATS CLI": ({"cross_process_latency"}, False),
+    # Keeps every sample, filters nothing, and reports zero for every sub-millisecond
+    # percentile because the array is filled by integer division.
+    "Apache Kafka (bundled)": ({"quantized_retention"}, False),
     # Round 6: the guard is on the counter, so the filter label is withdrawn -- the tool
     # computes the cross-process span and keeps every sample of it.
     "emqtt-bench":             ({"cross_process_latency"}, False),
@@ -252,11 +266,20 @@ def test_the_round6_reaudit_headline_counts():
 
     emqtt-bench was acquitted -- its guard is on a counter -- and two harnesses were added:
     Apache Pulsar (a second vendor's positivity filter) and wrk2 (the library-refusal class).
-    Five of seven now dispose silently, and the two that do not are both named in the text:
     Rezolus counts, emqtt-bench keeps.
+
+    Round 56 took the survey to ten by adding the tools a co-author asked whether we had
+    looked at: Apache Kafka's own bundled harness, RabbitMQ PerfTest and the NATS CLI. The
+    SILENT count does not move, and that is the result rather than an oversight -- none of
+    the three disposes of a sample. Kafka's truncates every one of them to the quantum
+    instead, which is why the survey needed a fifth class; the other two keep their negatives.
+
+    Pinning both numbers together is deliberate. If a later edit widens a pattern so that a
+    non-disposing harness starts counting as silent, `harnesses` will hold still while
+    `n_silent` moves, and this is where that shows up.
     """
     s = summary()
-    assert s["harnesses"] == 7
+    assert s["harnesses"] == 10
     assert s["n_silent"] == 5
     assert s["counts_discards"] == ["Rezolus"]
     assert "emqtt-bench" not in s["silent"]

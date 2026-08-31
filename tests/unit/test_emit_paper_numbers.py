@@ -1072,3 +1072,64 @@ class TestTheDepositedVersionIsRead:
         data = self._write(tmp_path / "zd.json", version="2.6.0")
         with pytest.raises(ValueError, match="disagree on the version"):
             epn.artifact_macros(code, data)
+
+
+class TestWhatTheGuardDeletesIsEmitted:
+    """The deletion figure's headline, so the supplement can state it rather than plot it.
+
+    The counts are exact arithmetic on the joined corpus; the interval is a cluster bootstrap
+    over runs, read from the committed uncertainty audit rather than recomputed, because two
+    implementations of one resampling scheme drift.
+    """
+
+    def _stats(self, path, **ms):
+        import json
+        path.write_text(json.dumps({"spans": {"ack": {"ms_rule": ms}}}), encoding="utf-8")
+        return str(path)
+
+    def _audit(self, path, row="msGuardDeletionPct (fig. deletion_histogram)",
+               interval="[45.4%, 46.2%]"):
+        path.write_text(
+            "quantity,value,class,interval_95,method,note\n"
+            '%s,45.8%%,added-here,"%s",boot,note\n' % (row, interval), encoding="utf-8")
+        return str(path)
+
+    def test_the_counts_and_the_fraction_come_from_the_corpus(self, tmp_path):
+        s = self._stats(tmp_path / "s.json", total=1000, dropped=458, kept=542,
+                        at_zero=400, below_zero=58)
+        a = self._audit(tmp_path / "a.csv")
+        got = dict(epn.deletion_macros(s, a))
+        assert got["msGuardDropped"] == "458"
+        assert got["msGuardKept"] == "542"
+        assert got["msGuardAtZero"] == "400"
+        assert got["msGuardBelowZero"] == "58"
+        assert got["msGuardDeletedPct"] == "45.8"
+        assert got["msGuardDeletedCI"] == "45.4$--$46.2"
+
+    def test_absent_stats_emit_nothing(self, tmp_path):
+        assert epn.deletion_macros(str(tmp_path / "gone.json")) == []
+
+    def test_stats_without_the_millisecond_rule_emit_nothing(self, tmp_path):
+        import json
+        p = tmp_path / "s.json"
+        p.write_text(json.dumps({"spans": {"ack": {}}}), encoding="utf-8")
+        assert epn.deletion_macros(str(p)) == []
+
+    def test_an_empty_corpus_emits_nothing_rather_than_dividing_by_it(self, tmp_path):
+        s = self._stats(tmp_path / "s.json", total=0, dropped=0, kept=0,
+                        at_zero=0, below_zero=0)
+        assert epn.deletion_macros(s) == []
+
+    def test_the_counts_still_emit_when_the_audit_is_absent(self, tmp_path):
+        """The interval is a nicety; the counts are the claim."""
+        s = self._stats(tmp_path / "s.json", total=100, dropped=46, kept=54,
+                        at_zero=40, below_zero=6)
+        got = dict(epn.deletion_macros(s, str(tmp_path / "no-audit.csv")))
+        assert got["msGuardDeletedPct"] == "46.0"
+        assert "msGuardDeletedCI" not in got
+
+    def test_an_audit_without_the_row_yields_no_interval(self, tmp_path):
+        s = self._stats(tmp_path / "s.json", total=100, dropped=46, kept=54,
+                        at_zero=40, below_zero=6)
+        a = self._audit(tmp_path / "a.csv", row="somethingElse")
+        assert "msGuardDeletedCI" not in dict(epn.deletion_macros(s, a))

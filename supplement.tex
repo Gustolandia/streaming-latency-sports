@@ -2889,6 +2889,47 @@ Eq.~(18))~\cite{ieee1241}. Both clauses exist for the same reason we choose inco
 send rates. (The standard's notation is $J/M$ where the main text writes $p/q$.) As with the
 counter literature, we claim the consequence under deletion, not the lemma.
 
+\paragraph{What the guard deletes here, measured} The three arguments above are about what
+deletion does in principle. Figure~\ref{fig:deletionhist} is what it does to this corpus, in
+three panels. Panel~(a) is the control the main text states in prose: over the same
+$\spanEvents$ joined events on the same clock, the acknowledgment-referenced span falls below
+zero $\spanNegAck$ times and the send-referenced span never does, so the negatives are a
+property of which stamp serves as the origin and not of the delivery being timed. Panel~(b)
+puts a millisecond instrument in front of that population. The difference of two truncated
+stamps lands on $0$ or on $1$ according only to where the tick boundaries fall, and a guard
+that admits a sample only when the difference is strictly positive removes $\msGuardDropped$
+of $\spanEvents$ events --- $\msGuardDeletedPct\%$, $95\%$ interval $\msGuardDeletedCI$
+resampling runs rather than events --- of which $\msGuardAtZero$ computed to exactly zero and
+$\msGuardBelowZero$ to less. None of it is counted in what such a harness reports.
+Panel~(c) applies the five dispositions the registry of Section~\ref{sec:registry} found in
+shipping software to that one measured population: two of them shrink the sample the
+statistic is computed from and publish no count of what left; two hold the sample count fixed
+by reporting a value that was never measured; one keeps the data.
+
+One qualification, because the panel invites the stronger reading. Panel~(b) is that rule
+applied to \emph{our} spans, not a record of the external benchmark deleting our events: it
+says what a millisecond positivity guard would remove from this population. The per-cell
+retention the main text quotes is the other measurement --- what that harness's own
+instrumented runs did report --- and the two answer different questions.
+
+% Requested by a co-author (2026-08-26), drawn the same week, and then referenced by neither
+% document until round 43. It belongs here rather than in the main text: it restates a
+% control the main text already gives in prose, and its own headline is a counterfactual.
+\begin{figure*}[tb]
+\centering
+\includegraphics[width=\textwidth]{docs/results/figures/deletion_histogram.pdf}
+\caption{\textbf{What the instrument deletes, beside what it then reports.}
+(a)~At nanosecond resolution the acknowledgment-referenced span goes below zero
+$\spanNegAck$ times in $\spanEvents$; the send-referenced span, same events and same clock,
+never does. (b)~A millisecond instrument cannot see (a): it differences two truncated stamps,
+so a sub-millisecond flight lands on $0$ or $1$ by tick alignment alone, and a positivity
+guard then deletes $\msGuardDeletedPct\%$ of the population uncounted. (c)~The five
+dispositions found in shipping software (Section~\ref{sec:registry}), applied to that same
+population. Every count is emitted from the committed corpus by
+\texttt{scripts/span\_histogram.py}.}
+\label{fig:deletionhist}
+\end{figure*}
+
 \section{S42. Which clocksource, bounded from a measurement}
 
 \emph{Section~\mainThreats{} states the verdict in one sentence: a read-cost bound admits only

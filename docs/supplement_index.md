@@ -292,9 +292,9 @@ appearing in this table.
 | `quantum_geometry` | main text, Fig. 4 (added round 28: the geometry behind the deletion law) |
 | `grid_membership` | main text, Fig. 5 |
 | `payload_flip` | main text, Fig. 6 (single-column from round 28; was full-width) |
-| `mechanism_forest` | main text, Fig. 7 (full-width from round 19) |
-| `ttrue_law` | main text, Fig. 8 |
-| `stall_spectrum` | main text, Fig. 9 |
+| `mechanism_forest` | supplement, S47 (moved round 57: it plots the four matched pairs of the main text's Table II and the two brokers of its Table I, so it restated tables the reader already has) |
+| `ttrue_law` | main text, Fig. 7 |
+| `stall_spectrum` | main text, Fig. 8 |
 | `priority_ladder` | supplement, S47 |
 | _(no figure)_ | supplement, S48 --- the broker results, moved from the main text in round 18 |
 | `experiment_map` | supplement |

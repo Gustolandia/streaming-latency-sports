@@ -3391,3 +3391,48 @@ class TestNoCrossReferenceDangles:
         assert "\\usepackage{xr}" in src and "\\externaldocument{paper}" in src, (
             "the supplement stopped importing paper.aux; its references to the main text's "
             "sections and tables will silently degrade to '??'")
+
+
+class TestTheArtifactLineNamesTheDepositItSitsIn:
+    """The version in the artifact statement must be the version actually deposited.
+
+    Until round 43 it was typed. v2.7.0 was published with a paper.pdf inside it that said
+    the concept DOIs resolved to v2.6.0 -- the previous archive, which is exactly the error
+    the concept-DOI comment above that line was written to prevent one level up.
+    """
+
+    def _deposit_version(self, name=".zenodo.json"):
+        import json
+        return json.loads((REPO / name).read_text(encoding="utf-8"))["version"]
+
+    def test_the_two_deposit_records_agree_on_the_version(self):
+        """They are published as a pair; a reader following one to the other must not find
+        two different versions of the same release."""
+        assert self._deposit_version(".zenodo.json") == \
+            self._deposit_version(".zenodo-data.json"), (
+                "the code and data deposit metadata name different versions")
+
+    def test_the_version_is_emitted_not_typed(self, main_tex):
+        start = main_tex.index("resolve to the current version")
+        para = main_tex[start:start + 200]
+        assert "\\artifactVersion" in para, (
+            "the artifact version was typed back into the manuscript; it must come from "
+            "scripts/emit_paper_numbers.py:artifact_macros(), which reads .zenodo.json")
+        assert not re.search(r"v\d+\.\d+\.\d+", para), (
+            "a literal version string is in the artifact line: %r" % para[:120])
+
+    def test_the_built_pdf_names_the_deposited_version(self):
+        """The check that would have caught it: read the artefact, not the source."""
+        from pypdf import PdfReader
+        pdf = REPO / "paper.pdf"
+        if not pdf.exists():
+            pytest.skip("build the paper first")
+        text = "".join((p.extract_text() or "") for p in PdfReader(str(pdf)).pages)
+        flat = " ".join(text.split())
+        want = "v" + self._deposit_version()
+        i = flat.find("resolve to the current version")
+        assert i != -1, "the artifact availability sentence is not in the built PDF"
+        window = flat[i:i + 120]
+        assert want in window, (
+            "paper.pdf says %r but the deposit metadata says %s; the PDF inside the archive "
+            "would name a different release than the one it is in" % (window[:80], want))

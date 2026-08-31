@@ -1134,11 +1134,14 @@ computed from the committed data and archived code.
 % Concept DOIs, not version DOIs. A Zenodo concept DOI is stable across every version and
 % resolves to the newest; the version DOIs printed here until v2.5 pinned a record that the
 % next deposit superseded, so a reader of the current paper was sent to the previous archive.
-% The version is named so the record this PDF sits in is still identifiable.
+% The version is named so the record this PDF sits in is still identifiable --
+% and is EMITTED from .zenodo.json rather than typed, because when it was typed
+% it named v2.6.0 from inside the v2.7.0 archive, which is the one failure the
+% sentence exists to prevent.
 Code, analysis and manuscript are archived at
 \href{https://doi.org/10.5281/zenodo.21650031}{10.5281/zenodo.21650031}, the measurement
 dataset at \href{https://doi.org/10.5281/zenodo.21650064}{10.5281/zenodo.21650064}; both
-resolve to the current version, \texttt{v2.6.0}. Every
+resolve to the current version, \texttt{v\artifactVersion}. Every
 number here is recomputed from the committed data by the archived code at build
 time, and the test suite fails if the text and the data disagree.
 

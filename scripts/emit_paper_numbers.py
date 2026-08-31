@@ -903,6 +903,36 @@ def priority_macros():
     ]
 
 
+def artifact_macros(path=".zenodo.json", data_path=".zenodo-data.json"):
+    """The version the archive is deposited under, from the deposit metadata itself.
+
+    Typed into the manuscript until round 43, where it went stale the moment v2.7.0 was
+    deposited: the PDF inside the v2.7.0 record still named v2.6.0. The two deposit files
+    are checked against each other here rather than trusted, because the records are
+    published as a pair and a reader who follows one to the other must not find two
+    different versions of the same release.
+    """
+    import json as _json
+    try:
+        with open(path, encoding="utf-8") as fh:
+            meta = _json.load(fh)
+    except OSError:
+        return []
+    version = meta.get("version")
+    if not version:
+        return []
+    try:
+        with open(data_path, encoding="utf-8") as fh:
+            sibling = _json.load(fh).get("version")
+    except OSError:
+        sibling = version
+    if sibling != version:
+        raise ValueError(
+            "the two deposit records disagree on the version: %s says %r, %s says %r"
+            % (path, version, data_path, sibling))
+    return [("artifactVersion", version)]
+
+
 def _exposure_lags(path=os.path.join("docs", "results", "span_symmetry.csv")):
     """The three lags the exposure curve is built from, read once.
 
@@ -1170,7 +1200,7 @@ def all_pairs(m):
             + clocksource_macros() + traced_ratio_macros() + audit_macros()
             + priority_macros() + priority_residual_macros() + fork_macros()
             + chrony_bound_macros() + disease_macros()
-            + exposure_macros())
+            + exposure_macros() + artifact_macros())
 
 
 def render(m):

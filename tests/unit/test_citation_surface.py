@@ -49,8 +49,21 @@ TC_REFERENCE_CAP = 45
 #: own caption, and authoring both at the height they are actually used at, recovered the
 #: page. A redundancy audit paid the rest -- the contributions list was repeating the
 #: abstract's clause and Section IV's law verbatim, and one factor was printed in four
-#: sections. Measured with a placeholder biography for the second author present, so the
-#: entry that is still owed is already inside this budget.
+#: sections.
+#:
+#: THE SECOND AUTHOR'S BIOGRAPHY DOES NOT FIT, and an earlier version of this note said it
+#: did. That claim came from one measurement with a ~100-word placeholder, which overran by
+#: eight lines; the inference drawn from it -- that a shorter entry would fit -- was never
+#: tested and is false. Measured on 2026-08-31 at three lengths:
+#:
+#:      100 words  ->  13 pages, 8 lines over
+#:       77 words  ->  13 pages, 8 lines over
+#:       34 words  ->  13 pages, 4 lines over
+#:
+#: Page 12 is simply full, so the spill is nearly independent of the entry's length and
+#: shortening it is not the lever. Roughly ten lines have to come out of the body before ANY
+#: second biography lands, or the paper is thirteen pages and pays the charge. The twelve
+#: above is twelve only because that entry is still absent.
 TC_PAGE_LIMIT = 12
 
 

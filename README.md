@@ -961,7 +961,7 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 ```bibtex
 @article{ricou2026interval,
   author  = {Ricou, Gustavo Pedro and Gregg, David},
-  title   = {Measuring Nothing, Twice: Two Ways Streaming Latency Benchmarks Fail on Sub-Millisecond Paths},
+  title   = {Faster Than Light, According to the Arithmetic: Two Ways a Streaming Benchmark Fails on Sub-Millisecond Paths},
   year    = {2026},
   note    = {Manuscript targeting IEEE Transactions on Computers;
              code and data archived at \url{https://doi.org/10.5281/zenodo.21650031}}

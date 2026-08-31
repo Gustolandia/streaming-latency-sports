@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: "Measuring Nothing, Twice: two failure modes of streaming latency benchmarks"
+title: "Faster Than Light, According to the Arithmetic: two failure modes of streaming latency measurement"
 authors:
   - family-names: "Ricou"
     given-names: "Gustavo Pedro"
@@ -34,7 +34,7 @@ date-released: "2026-08-21"
 # was discarded at parse time and "Cite this repository" emitted a scaffolding version instead.
 preferred-citation:
   type: article
-  title: "Measuring Nothing, Twice: Two Ways Streaming Latency Benchmarks Fail on Sub-Millisecond Paths"
+  title: "Faster Than Light, According to the Arithmetic: Two Ways a Streaming Benchmark Fails on Sub-Millisecond Paths"
   authors:
     - family-names: "Ricou"
       given-names: "Gustavo Pedro"

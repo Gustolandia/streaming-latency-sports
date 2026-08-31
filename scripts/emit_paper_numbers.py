@@ -903,6 +903,60 @@ def priority_macros():
     ]
 
 
+def _exposure_lags(path=os.path.join("docs", "results", "span_symmetry.csv")):
+    """The three lags the exposure curve is built from, read once.
+
+    Split out in round 42. The table below and the prose macros in Section VI-B were
+    computing the same quantities from the same file by two routes -- one generated, one
+    typed by hand. They agreed, which is the only reason it went unnoticed for six rounds.
+    """
+    import csv as _csv
+    import statistics as _st
+    try:
+        with open(path, encoding="utf-8") as fh:
+            rows = list(_csv.DictReader(fh))
+    except OSError:
+        return None
+    per = {}
+    for r in rows:
+        if float(r["median_A_us"]):
+            per.setdefault(r["condition"].split("_")[0], []).append(float(r["median_A_us"]))
+    if not per:
+        return None
+    typical = _st.median([v for vs in per.values() for v in vs])
+    hi = _st.median(per.get("kafka") or [typical])
+    lo = _st.median(per.get("redis") or [typical])
+    if hi < lo:
+        hi, lo = lo, hi
+    return typical, hi, lo
+
+
+def exposure_macros():
+    """The prose numbers of Section VI-B, from the same arithmetic as Table S48.
+
+    exposureCrossover is the honest headline the curve had been hiding: the path length at
+    which the displacement equals the path, below which the "correction" is larger than the
+    quantity it corrects. Published broker medians sit below it.
+    """
+    lags = _exposure_lags()
+    if lags is None:
+        return []
+    typical, hi, lo = lags
+
+    def err(ms):
+        return "%.0f" % (100.0 * typical / (ms * 1000.0))
+
+    def gap(ms):
+        t = ms * 1000.0
+        return "%.0f" % (100.0 * (1.0 - (t - hi) / (t - lo)))
+
+    return [("exposureErrTen", err(10)),
+            ("exposureErrHundred", err(100)),
+            ("exposureErrOne", err(1)),
+            ("exposureGapTen", gap(10)),
+            ("exposureCrossover", "%.2f" % (typical / 1000.0))]
+
+
 def render_exposure_table(path=os.path.join("docs", "results", "span_symmetry.csv")):
     """Relative error and apparent gap against true path length, generated not typed.
 
@@ -915,24 +969,10 @@ def render_exposure_table(path=os.path.join("docs", "results", "span_symmetry.cs
 
     The sign check needs A > T_true, so every row below the first fires nothing at all.
     """
-    import csv as _csv
-    import statistics as _st
-    try:
-        with open(path, encoding="utf-8") as fh:
-            rows = list(_csv.DictReader(fh))
-    except OSError:
+    lags = _exposure_lags(path)
+    if lags is None:
         return ""
-    per = {}
-    for r in rows:
-        if float(r["median_A_us"]):
-            per.setdefault(r["condition"].split("_")[0], []).append(float(r["median_A_us"]))
-    if not per:
-        return ""
-    typical = _st.median([v for vs in per.values() for v in vs])
-    hi = _st.median(per.get("kafka") or [typical])
-    lo = _st.median(per.get("redis") or [typical])
-    if hi < lo:
-        hi, lo = lo, hi
+    typical, hi, lo = lags
 
     nl = chr(10)
     rule = chr(92) + chr(92)          # the LaTeX row terminator
@@ -941,14 +981,14 @@ def render_exposure_table(path=os.path.join("docs", "results", "span_symmetry.cs
            "True path & Error on one & Apparent gap between " + rule,
            "$T_{" + chr(92) + "mathrm{true}}$ & measurement & two identical systems " + rule,
            chr(92) + "midrule"]
-    for ms in (1, 2, 5, 10, 25, 50, 100):
+    for ms in (0.25, 0.5, 1, 2, 5, 10, 25, 50, 100):
         t = ms * 1000.0
-        err = "---" if t <= typical else "$%.0f$" % (100.0 * typical / t) + chr(92) + "%"
+        err = "$%.0f$" % (100.0 * typical / t) + chr(92) + "%"
         if t <= hi:
             gap = "inverts"
         else:
             gap = "$%.0f$" % (100.0 * (1.0 - (t - hi) / (t - lo))) + chr(92) + "%"
-        out.append("$%d$~ms & %s & %s %s" % (ms, err, gap, rule))
+        out.append("$%g$~ms & %s & %s %s" % (ms, err, gap, rule))
     out += [chr(92) + "bottomrule", chr(92) + "end{tabular}"]
     return nl.join(out) + nl
 
@@ -1084,11 +1124,21 @@ def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
                 bsr = _st.median([s for _, s in rs])
                 if bdr and bsr and bdk:
                     boots.append((bsk / bsr) / (bdk / bdr))
-            if len(boots) > 100:
-                boots.sort()
-                lo = boots[int(0.025 * len(boots))]
-                hi = boots[int(0.975 * len(boots))]
-                out.append(("gapDistortionCI", "%.2f$--$%.2f" % (lo, hi)))
+            # There was a `len(boots) > 100` guard here until round 42, and it could not
+            # fire. A resample is dropped only when its redis span median lands on zero,
+            # which needs more than half the resampled conditions to be zero-span -- and the
+            # `sr` test above has already established that the real median is not zero, so
+            # fewer than half of them are. That bounds the drop rate below a half, and 4000
+            # draws cannot leave under 100. A branch nothing can take is not a safeguard.
+            #
+            # Nothing replaces it on purpose. If `boots` were ever empty the indexing below
+            # raises, which is the behaviour this module wants: the macro is consumed by
+            # \gapDistortionCI in Section VI-B, so silently declining to emit it would fail
+            # the LaTeX build one step later with a worse error than the one raised here.
+            boots.sort()
+            lo = boots[int(0.025 * len(boots))]
+            hi = boots[int(0.975 * len(boots))]
+            out.append(("gapDistortionCI", "%.2f$--$%.2f" % (lo, hi)))
     return out
 
 
@@ -1119,7 +1169,8 @@ def all_pairs(m):
             + registry_sources_macro()
             + clocksource_macros() + traced_ratio_macros() + audit_macros()
             + priority_macros() + priority_residual_macros() + fork_macros()
-            + chrony_bound_macros() + disease_macros())
+            + chrony_bound_macros() + disease_macros()
+            + exposure_macros())
 
 
 def render(m):

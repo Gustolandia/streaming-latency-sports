@@ -108,6 +108,9 @@ class TestColsig:
             "value": [10.0, 20.0, 30.0]
         })
         result = colsig(df)
+        # "object" is the pinned spelling, not the one this pandas reports: pandas 3.0 calls
+        # a text column "str". colsig normalises, so a signature recorded before the upgrade
+        # still compares equal to one recorded after it.
         assert result == {"id": "int64", "name": "object", "value": "float64"}
 
     def test_empty_dataframe(self):

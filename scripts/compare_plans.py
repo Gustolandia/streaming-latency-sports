@@ -52,8 +52,16 @@ def infer_time_col(df):
             timeish.append(col)
     return timeish[0] if timeish else None
 
+# pandas 3.0 gives a text column the dtype `str` where 2.x gave `object`. A column
+# signature is recorded and compared against earlier runs, so taking the spelling straight
+# from pandas makes an interpreter upgrade look like a schema change in the data. Pin the
+# older spelling: it keeps signatures recorded before the upgrade comparable with ones
+# recorded after it, which is the only thing the signature is for.
+_DTYPE_ALIASES = {"str": "object"}
+
+
 def colsig(df):
-    return {c: str(df[c].dtype) for c in df.columns}
+    return {c: _DTYPE_ALIASES.get(str(df[c].dtype), str(df[c].dtype)) for c in df.columns}
 
 def summarize_plan(name, path, df):
     match_col = infer_match_col(df)

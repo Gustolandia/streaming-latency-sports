@@ -875,7 +875,24 @@ pdflatex -interaction=nonstopmode paper.tex
 python scripts/check_rendered_pdf.py paper.pdf
 ```
 
-That last step reads the *rendered* PDF rather than the source. A dropped backslash turns
+Then the supplement, **in that order and not before**:
+
+```bash
+pdflatex -interaction=nonstopmode supplement.tex
+bibtex supplement
+pdflatex -interaction=nonstopmode supplement.tex
+pdflatex -interaction=nonstopmode supplement.tex
+```
+
+The order is a real constraint, not a convention. The supplement refers to the main text's
+sections, tables and equations by label, and `\usepackage{xr}` resolves them by reading
+`paper.aux` — so a supplement built before the paper silently renders those references as the
+literal `??`. Six of them reached the built PDF before round 42, in the one document the main
+text sends a reader to when they want the evidence. `TestNoCrossReferenceDangles` fails on any
+`??` in either rendered PDF, so a build in the wrong order is caught on the artefact rather
+than trusted to the procedure.
+
+That check, like the one above it, reads the *rendered* PDF rather than the source. A dropped backslash turns
 `\ref{tab:ea6}` into the literal text `ef{tab:ea6}` and `\texttt{x}` into `exttt{x}`; LaTeX
 reports no error, the source still looks plausible, and the defect appears only in the output.
 That failure reached the manuscript three times here, twice past a full source-level check, which

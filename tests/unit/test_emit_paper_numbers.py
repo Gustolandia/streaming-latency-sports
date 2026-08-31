@@ -834,3 +834,200 @@ class TestThePayloadSpanMacros:
         got = dict(epn.stat_macros())
         assert "payloadTransportFactor" in got
         assert "payloadReplTransportFactor" not in got
+
+
+def write_symmetry(path, rows):
+    """rows: (condition, median_A_us). The two columns the exposure curve reads."""
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh)
+        w.writerow(["condition", "median_A_us"])
+        for cond, a in rows:
+            w.writerow([cond, a])
+    return path
+
+
+class TestTheExposureCurve:
+    """The curve the manuscript quotes in Section VI-B and tabulates in Supplement S48.
+
+    Both come from `_exposure_lags`, which is the point: before round 42 the prose carried
+    the numbers as literals and the table computed them, and the two could drift apart
+    without anything failing.
+    """
+
+    # kafka lags 1500, redis 500 -> typical 1000, hi 1500, lo 500. Chosen so that every
+    # emitted quantity is a round number a reader can check by hand.
+    BALANCED = [("kafka_n1", 1500), ("kafka_n5", 1500),
+                ("redis_n1", 500), ("redis_n5", 500)]
+
+    def test_the_lags_are_the_median_per_broker_and_overall(self, tmp_path):
+        p = write_symmetry(tmp_path / "s.csv", self.BALANCED)
+        assert epn._exposure_lags(str(p)) == (1000.0, 1500.0, 500.0)
+
+    def test_a_missing_file_yields_nothing_rather_than_zeroes(self, tmp_path):
+        """The whole module's rule: refuse to emit rather than emit a confident zero."""
+        missing = str(tmp_path / "absent.csv")
+        assert epn._exposure_lags(missing) is None
+        assert epn.render_exposure_table(missing) == ""
+
+    def test_rows_with_no_measured_lag_are_skipped_and_may_leave_nothing(self, tmp_path):
+        """A zero median_A_us is a condition that never recorded an ack lag, not a lag of 0."""
+        p = write_symmetry(tmp_path / "z.csv", [("kafka_n1", 0), ("redis_n1", 0)])
+        assert epn._exposure_lags(str(p)) is None
+        assert epn.render_exposure_table(str(p)) == ""
+
+    def test_a_zero_row_beside_a_real_one_drops_only_the_zero(self, tmp_path):
+        p = write_symmetry(tmp_path / "m.csv", [("kafka_n1", 0), ("kafka_n5", 800),
+                                                ("redis_n1", 400)])
+        assert epn._exposure_lags(str(p)) == (600.0, 800.0, 400.0)
+
+    def test_the_wider_lag_is_hi_whichever_broker_carries_it(self, tmp_path):
+        """hi and lo are the ends of the gap, not the brokers. Reversing which client
+        stamps late must not reverse the sign of the reported gap."""
+        p = write_symmetry(tmp_path / "r.csv", [("kafka_n1", 500), ("redis_n1", 1500)])
+        typical, hi, lo = epn._exposure_lags(str(p))
+        assert (hi, lo) == (1500.0, 500.0)
+
+    @pytest.mark.parametrize("broker", ["kafka", "redis"])
+    def test_one_broker_alone_falls_back_to_the_overall_median(self, tmp_path, broker):
+        """With nothing to compare against there is no gap, so both ends are the median.
+
+        Parametrized over which broker is the one present: the two fallbacks are separate
+        expressions, and a corpus missing Kafka exercises a different one from a corpus
+        missing Redis.
+        """
+        p = write_symmetry(tmp_path / "k.csv", [(broker + "_n1", 900), (broker + "_n5", 900)])
+        assert epn._exposure_lags(str(p)) == (900.0, 900.0, 900.0)
+
+    def test_the_macros_are_the_arithmetic_the_prose_quotes(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        d = tmp_path / "docs" / "results"
+        d.mkdir(parents=True)
+        write_symmetry(d / "span_symmetry.csv", self.BALANCED)
+        got = dict(epn.exposure_macros())
+        # error is typical/T_true: 1000us against 10ms is 10%, against 100ms is 1%,
+        # against 1ms is 100%. The gap at 10ms is 1-(10000-1500)/(10000-500) = 10.5%.
+        assert got == {"exposureErrTen": "10", "exposureErrHundred": "1",
+                       "exposureErrOne": "100", "exposureGapTen": "11",
+                       "exposureCrossover": "1.00"}
+
+    def test_the_macros_are_absent_rather_than_wrong_when_the_data_is(self, tmp_path,
+                                                                     monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        assert epn.exposure_macros() == []
+
+    def test_the_table_reaches_below_the_crossover(self, tmp_path):
+        """The round-42 finding: the table used to start at 1ms and render everything
+        below it as a dash, hiding the regime published sub-millisecond medians sit in."""
+        p = write_symmetry(tmp_path / "s.csv", self.BALANCED)
+        table = epn.render_exposure_table(str(p))
+        assert "$0.25$~ms" in table and "$0.5$~ms" in table
+        assert "---" not in table, "a dash hides the rows where the error exceeds 100%"
+        # below the crossover the displacement is larger than the path
+        assert "$400$" in table, "0.25ms against a 1000us lag is a 400% error"
+
+
+
+class TestTheLadderRefusesRatherThanGuesses:
+    """The refusal paths of disease_macros and _recovery_macros.
+
+    These are the branches that decline to emit when the ledger cannot support a number.
+    They are the module's reason for existing -- the campaign counts went stale in eleven
+    places at once because something was willing to write a plausible value -- and nothing
+    was exercising them.
+    """
+
+    FIELDS = ("n_events", "neg_ack", "over_0.1", "over_0.5", "over_1")
+
+    def _ladder(self, path, rows):
+        with path.open("w", newline="", encoding="utf-8") as fh:
+            w = csv.writer(fh)
+            w.writerow(self.FIELDS)
+            for r in rows:
+                w.writerow(r)
+        return str(path)
+
+    def test_an_absent_ledger_emits_nothing(self, tmp_path):
+        assert epn.disease_macros(str(tmp_path / "absent.csv")) == []
+
+    def test_a_header_with_no_runs_emits_nothing(self, tmp_path):
+        assert epn.disease_macros(self._ladder(tmp_path / "d.csv", [])) == []
+
+    def test_runs_that_recorded_no_events_emit_nothing(self, tmp_path):
+        """Zero events is not zero percent; it is no denominator."""
+        p = self._ladder(tmp_path / "d.csv", [(0, 0, 0, 0, 0), (0, 0, 0, 0, 0)])
+        assert epn.disease_macros(p) == []
+
+    def test_the_top_rung_must_equal_the_sign_count(self, tmp_path):
+        """alpha = 1 IS the sign check, so a ladder disagreeing with the negative count
+        means one of the two is wrong and neither should reach the manuscript."""
+        p = self._ladder(tmp_path / "d.csv", [(100, 7, 40, 20, 9)])
+        with pytest.raises(ValueError, match="ladder top rung"):
+            epn.disease_macros(p)
+
+    def test_the_recovery_estimator_is_absent_rather_than_wrong(self, tmp_path):
+        assert epn._recovery_macros(str(tmp_path / "absent.csv")) == []
+
+
+class TestTheRecoveryMacrosDeclineRatherThanInvent:
+    """The other half of every guard in `_recovery_macros`.
+
+    Run against the real corpus each quantity is measurable, so the arms that refuse were
+    dead in practice. A refusal path that has never run is not a safeguard, it is an
+    assumption.
+    """
+
+    COLS = ("condition", "recovery_err_us", "median_D_us", "rho_DA",
+            "median_A_us", "median_S_us")
+
+    def _sym(self, path, rows):
+        with path.open("w", newline="", encoding="utf-8") as fh:
+            w = csv.writer(fh)
+            w.writerow(self.COLS)
+            for r in rows:
+                w.writerow(r)
+        return str(path)
+
+    def test_a_corpus_with_nothing_measurable_emits_nothing(self, tmp_path):
+        """No gate outcome in the condition name, no delivery, no rho, no lag."""
+        p = self._sym(tmp_path / "s.csv", [("kafka_n1", 0, 0, "nan", "", 0)])
+        assert epn._recovery_macros(p) == []
+
+    def test_an_empty_rho_column_is_not_a_rho_of_zero(self, tmp_path):
+        p = self._sym(tmp_path / "s.csv", [("kafka_n1", 0, 0, "", "", 0)])
+        assert "spanRhoMedian" not in dict(epn._recovery_macros(p))
+
+    def test_the_gap_needs_both_brokers(self, tmp_path):
+        """One broker is not a comparison, so no distortion factor is emitted."""
+        p = self._sym(tmp_path / "s.csv", [("kafka_n1", 1, 10, "0.5", "700", 5)])
+        got = dict(epn._recovery_macros(p))
+        assert "ackLagMedianUs" in got and "reportedFraction" in got
+        assert "gapTrue" not in got and "gapDistortion" not in got
+
+    def test_a_zero_reported_span_blocks_the_ratio_rather_than_dividing_by_it(self, tmp_path):
+        """redis reports a median span of zero: the reported gap is undefined, not infinite."""
+        p = self._sym(tmp_path / "s.csv", [("kafka_n1", 1, 10, "0.5", "700", 5),
+                                           ("redis_n1", 1, 5, "0.5", "500", 0)])
+        got = dict(epn._recovery_macros(p))
+        assert "gapTrue" not in got, "a gap was emitted from a zero denominator"
+
+    def test_the_bootstrap_skips_degenerate_resamples(self, tmp_path):
+        """With one of redis's two spans at zero, some resamples have a zero median and
+        cannot contribute a ratio. They are dropped, and the interval comes from the rest."""
+        p = self._sym(tmp_path / "s.csv", [("kafka_n1", 1, 10, "0.5", "700", 5),
+                                           ("kafka_n5", 1, 10, "0.5", "700", 5),
+                                           ("redis_n1", 1, 5, "0.5", "500", 0),
+                                           ("redis_n5", 1, 5, "0.5", "500", 4)])
+        got = dict(epn._recovery_macros(p))
+        assert "gapDistortion" in got
+        assert "$--$" in got["gapDistortionCI"]
+
+    def test_a_ladder_without_the_alpha_columns_emits_only_the_counts(self, tmp_path):
+        """The over_* columns are optional; their absence must not fabricate a rung."""
+        p = tmp_path / "d.csv"
+        with p.open("w", newline="", encoding="utf-8") as fh:
+            w = csv.writer(fh)
+            w.writerow(("n_events", "neg_ack"))
+            w.writerow((100, 7))
+        got = dict(epn.disease_macros(str(p)))
+        assert got["diseaseEvents"] == "100"
+        assert not [k for k in got if k.startswith("diseaseOver")]

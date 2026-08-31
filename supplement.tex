@@ -22,6 +22,13 @@
 \usepackage{graphicx}
 \usepackage{url}
 \usepackage[hidelinks]{hyperref}
+% The supplement refers to the main text's sections, tables and equations by label. Without
+% xr those resolved to "??" -- six of them reached the built PDF, in a document the main text
+% points a reader to more than thirty times. xr reads paper.aux, so the numbers shown here
+% are the numbers the reader sees there. Build order therefore matters: paper first, then
+% this. tests/unit/test_pdf_compliance.py pins that the "??" never come back.
+\usepackage{xr}
+\externaldocument{paper}
 % Kept identical to the main text's declaration on purpose: the two documents are read as
 % one submission, and a long identifier that breaks in the paper and not in the supplement
 % is a difference a reader would notice and no gate would explain. \brk takes identifiers
@@ -3296,7 +3303,7 @@ pages, and both are restatements rather than evidence, which is why they were th
 Figure~\ref{fig:mechanism} draws the four matched pairs of the main text's mechanism table and
 the two brokers of its span table: no pair of arms overlaps, which is checkable in those
 tables and is faster to see here. Table~\ref{tab:exposure} tabulates the exposure curve whose
-two headline rows the main text quotes --- the relative error $A/T_{\mathrm{true}}$ against
+headline points the main text quotes --- the relative error $A/T_{\mathrm{true}}$ against
 path length, and beside it the gap a comparison would report between two identical systems
 whose clients stamp in different places. Neither carries a number that is not already stated
 where it is argued.
@@ -3327,13 +3334,18 @@ Table~\ref{tab:spans}; their intervals are narrower than the plotted point.}
 ack lags, not modeled. Left: the error on a single reported latency, $A/T_{\mathrm{true}}$
 at this corpus's median lag. Right: the gap a comparison would report between two
 identical systems whose clients differ only in where the acknowledgment is stamped ---
-a callback thread against an inline stamp. Below the first row nothing is negative, so the
+a callback thread against an inline stamp. Where the right-hand column reads ``inverts'',
+the apparent gap has changed sign; on every row below those nothing is negative, so the
 sign check of Section~\ref{sec:gate} fires on none of it.}
 \label{tab:exposure}
 \centering
 \footnotesize
 \input{docs/generated/exposure_table}
 \end{table}
+
+
+
+The rows added below one millisecond are the regime broker benchmarks actually report in (S52), and they are where an acknowledgment-referenced harness stops measuring the path at all. A send-referenced one is unaffected: it reports the delivery itself, which is why the framework audited in S52.2 needs no correction from this table.
 
 \section{S48. What the brokers actually do (moved from the main text)}
 \label{sec:brokers-full}

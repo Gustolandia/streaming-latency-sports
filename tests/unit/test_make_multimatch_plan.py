@@ -122,3 +122,40 @@ class TestMain:
         out = self._run(temp_dir)
         assert (out / "combined_plan.csv").exists()
         assert json.loads((out / "meta.json").read_text())["outputs"]["combined_plan_parquet"] is None
+
+
+
+class TestTheParquetSidecarIsOptional:
+    """Both arms forced; see the same class in test_make_replay_plan.py for why."""
+
+    def _run(self, temp_dir, ids=(1, 2)):
+        root = temp_dir / "plans"
+        for mid in ids:
+            _per_match_plan(root, mid)
+        out = temp_dir / "out"
+        assert main(["--commit", COMMIT, "--match-ids-file",
+                     str(_ids_file(temp_dir, list(ids))), "--out-dir", str(out),
+                     "--speed-factor", "10", "--plans-root", str(root)]) == 0
+        return out
+
+    def test_a_missing_engine_warns_and_still_writes_the_csv(
+            self, temp_dir, monkeypatch, capsys):
+        def no_engine(self, *a, **k):
+            raise ImportError("no pyarrow")
+        monkeypatch.setattr(pd.DataFrame, "to_parquet", no_engine)
+        out = self._run(temp_dir)
+        text = capsys.readouterr().out
+        assert "skipped parquet" in text and "ImportError" in text
+        assert (out / "combined_plan.csv").exists()
+        assert "combined_plan.parquet" not in text, (
+            "the summary listed a sidecar that was never written")
+
+    def test_the_sidecar_is_written_and_listed_when_an_engine_is_present(
+            self, temp_dir, monkeypatch, capsys):
+        """The arm this machine cannot reach on its own."""
+        def fake_parquet(self, path, *a, **k):
+            Path(path).write_bytes(b"PAR1")
+        monkeypatch.setattr(pd.DataFrame, "to_parquet", fake_parquet)
+        out = self._run(temp_dir)
+        assert (out / "combined_plan.parquet").exists()
+        assert "combined_plan.parquet" in capsys.readouterr().out

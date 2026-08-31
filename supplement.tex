@@ -2554,6 +2554,52 @@ unconditionally; its end-to-end span crosses processes, is stamped in millisecon
 filtered. The coarse clock and the guard both landed on the span that needed care --- the
 asymmetry Section~\mainGuard{} draws its conclusion from, and the reason this table folds by span.
 
+\paragraph{What the round-56 additions changed, including a category the survey did not have}
+Four harnesses were added after a co-author asked what the audit had \emph{not} looked at, and
+they changed the shape of the finding rather than adding to a tally.
+
+Apache \kafka{}'s own bundled tools were the gap that mattered, because they ship inside every
+distribution and are therefore installed wherever the broker is. \texttt{EndToEndLatency} is
+immune to Mode~A by construction --- one thread, one monotonic clock, a synchronous send, so
+no negative span is possible --- and it loses the measurement anyway:
+
+\begin{quote}
+\texttt{System.out.println(i + "\textbackslash t" + elapsed / 1000.0 / 1000.0);}\\
+\texttt{latencies[i] = elapsed / 1000 / 1000;}
+\end{quote}
+
+The printed line is floating point and correct; the \texttt{long[]} the percentiles are read
+from is filled by integer division. Every sample is kept, nothing is filtered, and on a
+sub-millisecond path \texttt{p50}, \texttt{p99} and \texttt{p999} all report zero. The
+companion \texttt{ProducerPerformance} takes its send-to-acknowledgment difference on
+\texttt{System.currentTimeMillis()} and casts it to \texttt{int}.
+
+This is what forced a fifth class into the classifier. Until then its categories were three
+ways a sample can \emph{vanish}, and a survey whose only question is "what happens to a
+negative" cannot see a tool that keeps every positive and records it as zero.
+\texttt{quantized\_retention} matches a division or cast that discards the unit the value was
+measured in, and applying it retroactively labels the OpenMessaging end-to-end line too ---
+\texttt{MILLISECONDS.toMicros(now - publishTimestamp)}, where the microseconds are decoration
+on a millisecond subtraction. Mode~B is therefore not a claim about a guard. It is a claim
+about a quantum, and deletion is one of the ways it collects.
+
+The other two additions are counterexamples, and they are in the table for the reason Rezolus
+is. RabbitMQ PerfTest differences a stamp carried in the message against a local clock and
+passes the result to \texttt{performanceMetrics.received(diff\_time)} with no sign test at
+all; the NATS CLI appends \texttt{time.Duration(time.Now().UnixNano()-sendTime)}
+unconditionally. Both would let a negative through into their metrics, which is what
+RFC~7679 asks of a measurement, and both are exposed to skew rather than to quantization.
+\emph{The field does not uniformly delete}, and the paper must not be read as saying so.
+
+Two tools were looked at and found not to make the measurement at all. SPECjms2007, the only
+messaging benchmark from a standards body, reports throughput
+(\texttt{SPECjms2007@Vertical} and \texttt{@Horizontal}); it defines Delivery Time as ``the
+elapsed time measured between sending a specific message and that message being received''
+and never reports it. Redpanda's \texttt{rpk} ships no latency benchmark, its published
+comparisons being OpenMessaging runs. Neither is evidence for or against the failure, and
+both are recorded so that a reader asking "did you check X" gets an answer rather than a
+silence.
+
 Two further details are worth stating plainly. First, \texttt{fio}'s guard appears in three separate
 timing functions, each returning zero for a negative interval, and the comment above it ---
 ``time warp bug on some kernels?'' --- is a question rather than a diagnosis. The behavior
@@ -3239,6 +3285,49 @@ proportional reduction that happens to be larger under load --- it is the ordina
 following utilization while the manipulated arm does not, which is the two-state model of
 Equation~6 with $p(\rho)$ moved directly.
 
+Two exhibits moved here from the main text when the manuscript was brought back inside twelve
+pages, and both are restatements rather than evidence, which is why they were the ones to go.
+Figure~\ref{fig:mechanism} draws the four matched pairs of the main text's mechanism table and
+the two brokers of its span table: no pair of arms overlaps, which is checkable in those
+tables and is faster to see here. Table~\ref{tab:exposure} tabulates the exposure curve whose
+two headline rows the main text quotes --- the relative error $A/T_{\mathrm{true}}$ against
+path length, and beside it the gap a comparison would report between two identical systems
+whose clients stamp in different places. Neither carries a number that is not already stated
+where it is argued.
+
+
+% Moved out of the main text in round 57. It plots the four matched pairs of the main
+% text's Table II and the two brokers of its Table I -- data the reader already has in
+% two tables there -- so it was the one exhibit costing a full-width float to restate
+% something rather than to show it. The claim it made visually, that no pair of arms
+% overlaps, is checkable against those tables and is still stated in the text.
+\begin{figure}[tb]
+\centering
+\includegraphics[width=\columnwidth]{docs/results/figures/mechanism_forest.pdf}
+\caption{\textbf{Every manipulation separates; the broker does not.} Wilson $95\%$
+intervals. Above the rule, the four matched pairs of Table~\ref{tab:mechanism}, utilization
+held fixed within each: what moves the rate is where the stamping thread sits, not how
+loaded the machine is. Below it, observed rather than manipulated, the two brokers of
+Table~\ref{tab:spans}; their intervals are narrower than the plotted point.}
+\label{fig:mechanism}
+\end{figure}
+
+% Moved out of the main text in round 57, with its two headline rows kept there in
+% prose. The curve is arithmetic on measured lags, so a reader who wants their own
+% path can divide; what the main text owes them is the shape and one worked point,
+% not seven rows of a function.
+\begin{table}[tb]
+\caption{\textbf{What the displacement costs at longer paths.} Computed from the measured
+ack lags, not modeled. Left: the error on a single reported latency, $A/T_{\mathrm{true}}$
+at this corpus's median lag. Right: the gap a comparison would report between two
+identical systems whose clients differ only in where the acknowledgment is stamped ---
+a callback thread against an inline stamp. Below the first row nothing is negative, so the
+sign check of Section~\ref{sec:gate} fires on none of it.}
+\label{tab:exposure}
+\centering
+\footnotesize
+\input{docs/generated/exposure_table}
+\end{table}
 
 \section{S48. What the brokers actually do (moved from the main text)}
 \label{sec:brokers-full}

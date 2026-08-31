@@ -112,3 +112,48 @@ class TestMain:
         assert (out / "abc123" / "match_1" / "replay_plan.csv").exists()
         meta = json.loads((out / "abc123" / "match_1" / "meta.json").read_text())
         assert meta["outputs"]["parquet_with_payload"] is None
+
+
+
+class TestTheParquetSidecarIsOptional:
+    """Both arms forced.
+
+    pyarrow is absent from this machine, so the fallback arm runs for free and the success
+    arm ran nowhere; on a machine with pyarrow it is the other way round. A branch whose
+    coverage depends on the host is not being tested by anyone, so both are driven here.
+    """
+
+    def _raw_two_events(self, tmp):
+        return _raw(tmp, events=[_ev(1, 0, 1, eid="a"), _ev(1, 0, 2, eid="b")])
+
+    OUT = ("abc123", "match_1")
+
+    def _run(self, tmp, raw):
+        return main(["--commit", "abc123", "--match-id", "1", "--raw-root", str(raw),
+                     "--out-root", str(tmp / "plans"), "--speed-factor", "10"])
+
+    def _dir(self, tmp):
+        return tmp / "plans" / self.OUT[0] / self.OUT[1]
+
+    def test_a_missing_engine_warns_and_still_writes_the_csv(
+            self, temp_dir, monkeypatch, capsys):
+        def no_engine(self, *a, **k):
+            raise ImportError("no pyarrow")
+        monkeypatch.setattr(pd.DataFrame, "to_parquet", no_engine)
+        assert self._run(temp_dir, self._raw_two_events(temp_dir)) == 0
+        out = capsys.readouterr().out
+        assert "skipped parquet" in out and "ImportError" in out
+        assert (self._dir(temp_dir) / "replay_plan.csv").exists()
+        assert not (self._dir(temp_dir) / "replay_plan.parquet").exists()
+        assert "replay_plan.parquet" not in out, (
+            "the summary listed a sidecar that was never written")
+
+    def test_the_sidecar_is_written_and_listed_when_an_engine_is_present(
+            self, temp_dir, monkeypatch, capsys):
+        """The arm this machine cannot reach on its own."""
+        def fake_parquet(self, path, *a, **k):
+            Path(path).write_bytes(b"PAR1")
+        monkeypatch.setattr(pd.DataFrame, "to_parquet", fake_parquet)
+        assert self._run(temp_dir, self._raw_two_events(temp_dir)) == 0
+        assert (self._dir(temp_dir) / "replay_plan.parquet").exists()
+        assert "replay_plan.parquet" in capsys.readouterr().out

@@ -989,10 +989,15 @@ only against clean runs never meets.
 
 \textbf{Know where your own path sits on the exposure curve.} The displacement is a
 scheduling quantity and does not grow because a message travelled further, so the relative
-error is $A/T_{\mathrm{true}}$ and falls as $1/T_{\mathrm{true}}$: $7\%$ at a $10$~ms path,
-$1\%$ at $100$~ms. Two \emph{identical} systems whose clients stamp in different places are
-separated by the difference of their lags, a reported gap of $11\%$ at $10$~ms, and the sign
-check fires at neither (Supplement~S48). On this corpus the reported span is
+error is $A/T_{\mathrm{true}}$ and falls as $1/T_{\mathrm{true}}$: $\exposureErrTen\%$ at a
+$10$~ms path, $\exposureErrHundred\%$ at $100$~ms. Read it the other way and it is a warning:
+$\exposureErrOne\%$ at $1$~ms, and below $\exposureCrossover$~ms the displacement exceeds the
+path itself --- while sub-millisecond medians are routine in broker benchmarking
+(Supplement~S48). The curve is a statement about acknowledgment-referenced spans; a harness
+that subtracts a send stamp reports the delivery and is not on it, which is the whole return
+on naming the span. Two \emph{identical} systems whose clients stamp in
+different places are separated by the difference of their lags, a reported gap of
+$\exposureGapTen\%$ at $10$~ms, and the sign check fires at neither. On this corpus the reported span is
 $\reportedFraction\%$ of the delivery it stands for, understating it $\understateFactor\times$,
 and because the two brokers' clients stamp differently the true $\gapTrue\times$ gap between
 them is reported as $\gapReported\times$. \textbf{The instrument nearly doubles the answer a

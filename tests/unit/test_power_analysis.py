@@ -151,7 +151,15 @@ class TestTheStatsmodelsPath:
         assert fake.power_calls == [] and fake.solve_calls == []
 
     def test_the_report_names_the_backend_it_used(self, monkeypatch):
-        """Which engine produced a power number is part of the number."""
+        """Which engine produced a power number is part of the number.
+
+        Both arms are now forced. Until round 42 the fallback arm asserted the real
+        module's backend and so silently depended on statsmodels being absent from the
+        environment; once it was installed the test failed without anything in the project
+        having changed. A gate that reports the machine it ran on rather than the code it
+        covers is not testing the code.
+        """
+        monkeypatch.setattr(power_analysis, "_HAVE_SM", False)
         assert power_analysis.analyze_power(20)["backend"] == "normal-approx"
         self._install(monkeypatch)
         assert power_analysis.analyze_power(20)["backend"] == "statsmodels"

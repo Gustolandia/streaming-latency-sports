@@ -126,3 +126,33 @@ with what each is worth, so the next reviewer does not re-fetch the ones that ar
 simply includes them, alongside references capped at 45 and biographies capped at 145 words.
 Among the 12-page papers held here the range is 6 to 10 figures, so this manuscript's seven
 sits mid-range rather than at a ceiling.
+
+## Added round 42 (2026-08-31)
+
+The sweep was re-run from scratch rather than from round 40's notes, on the reasoning that a
+referee who searches from his own summary finds his own summary.
+
+| file | arXiv | worth |
+|---|---|---|
+| `tailbench_plusplus.pdf` | 2505.03600 | **the strongest corroboration in the corpus.** 14 pp on benchmarking tail latency across clients and servers. Full-text counts: *latency* 86, *tail* 111, *percentile* 10 -- and *timestamp* 0, *clock* 0, *synchron* 0, *skew* 0, *NTP* 0, *PTP* 0, *resolution* 0, *negative* 0, *discard* 0. A dedicated multi-host latency-benchmarking methodology that never names the clock it measures with. Not TC-formatted, so it calibrates nothing about house style; keep it for the premise, not the format |
+
+Three more were assessed and **not** downloaded, so that a later round does not re-fetch them:
+
+- **arXiv:2605.02835**, per-platform GPIO overhead in edge-ML inference timing. Software clock
+  against an on-wire hardware reference at sub-millisecond granularity -- but the bias it
+  reports is the *cost of the measuring call*, which the manuscript explicitly distinguishes
+  itself from and already cites Kuperberg about. Different mechanism.
+- **arXiv:2605.24217**, systemic measurement bias in production LLM inference benchmarks. The
+  closest in stance found this round, and a second instance of the queueing account the paper
+  already refutes on the load axis (Section II-C, Supplement S52.4). No negatives, no
+  quantization, no source audit. Noted, deliberately not cited: the reference list is at
+  45/45 and the family is engaged.
+- **arXiv:2603.21600**, a 2026 broker benchmarking study. The sweep surfaced it
+  independently; the supplement already audits it as "mq-bench" in S52.2, with the same
+  verbatim clock-synchronization quote. Evidence about the search rather than about the
+  paper: an independent re-sweep converged on a source already found and read more carefully.
+
+**What the round-42 sweep says about originality.** Four candidates, one already cited, none
+competing, and the two closest in stance close in *stance* while differing in *mechanism*.
+That is the pattern of a field beginning to circle the same problem from other directions,
+which is corroboration rather than displacement.

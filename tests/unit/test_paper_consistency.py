@@ -3304,3 +3304,90 @@ class TestTheCoAuthorsRequirementsAreMet:
         assert "not a clock period" in window, (
             "the definition no longer says what a flight is NOT, which is the half that "
             "answers the co-author's question: the word had been carrying three senses")
+
+
+class TestTheExposureCurveIsGeneratedNotTyped:
+    """Section VI-B quotes the exposure curve; Table S48 computes it. One source, not two.
+
+    Until round 42 the prose carried "$7\\%$ at a $10$~ms path, $1\\%$ at $100$~ms" and
+    "$11\\%$ at $10$~ms" as literals while `render_exposure_table()` computed the same three
+    quantities from `docs/results/span_symmetry.csv`. They agreed. Nothing made them agree:
+    a re-run that moved the median ack lag would have moved the table and left the sentence
+    behind, and the sentence is the one a reader quotes.
+    """
+
+    EXPOSURE_MACROS = ("exposureErrTen", "exposureErrHundred", "exposureErrOne",
+                       "exposureGapTen", "exposureCrossover")
+
+    def _paragraph(self, main_tex):
+        start = main_tex.index("Know where your own path sits on the exposure curve")
+        return main_tex[start:start + 1200]
+
+    def test_every_exposure_number_is_a_macro(self, main_tex):
+        para = self._paragraph(main_tex)
+        for name in self.EXPOSURE_MACROS:
+            assert "\\" + name in para, (
+                "the exposure paragraph no longer uses \\%s; if the curve was re-typed by "
+                "hand, the table in Supplement S48 and this sentence can now disagree "
+                "silently" % name)
+
+    def test_no_bare_percentage_survives_in_the_exposure_paragraph(self, main_tex):
+        """A literal percentage here is the defect itself, whatever its value."""
+        para = self._paragraph(main_tex)
+        # 95 is the nominal confidence level, a design constant of the analysis rather than
+        # a measured quantity, so it is the one literal that belongs in the prose.
+        bare = [v for v in re.findall(r"\$(\d+(?:\.\d+)?)\\%\$", para) if v != "95"]
+        assert not bare, (
+            "typed percentages %r reappeared in the exposure paragraph; they must come "
+            "from scripts/emit_paper_numbers.py:exposure_macros()" % bare)
+
+    def test_the_emitter_and_the_table_share_one_computation(self):
+        """Two routes to one number is the bug; this pins the refactor that removed it."""
+        src = (REPO / "scripts" / "emit_paper_numbers.py").read_text(encoding="utf-8")
+        assert "def _exposure_lags(" in src, "the shared lag helper was removed"
+        for fn in ("def exposure_macros(", "def render_exposure_table("):
+            body = src[src.index(fn):]
+            body = body[:body.index("def ", 10)]
+            assert "_exposure_lags(" in body, (
+                "%s stopped reading the shared helper and is recomputing its own lags, "
+                "which is how the prose and the table came apart in the first place" % fn)
+
+    def test_the_curve_is_quoted_in_the_direction_that_is_not_reassuring(self, main_tex):
+        """The second half of the finding.
+
+        The curve was quoted only at 10 ms and 100 ms, where its own error is 7% and 1%.
+        Its top row is 72%, and published broker medians sit below the crossover entirely.
+        Quoting only the comfortable end understated the paper's case.
+        """
+        para = self._paragraph(main_tex)
+        assert "exposureCrossover" in para and "sub-millisecond" in para, (
+            "the exposure paragraph no longer tells the reader where the curve turns "
+            "against them, which is the regime the cited broker studies are actually in")
+
+
+class TestNoCrossReferenceDangles:
+    """No built PDF may contain an unresolved reference.
+
+    Checked on the rendered bytes, not on the .log: a stale log from a previous successful
+    build passes while the committed PDF still says "??".
+    """
+
+    @pytest.mark.parametrize("name", ["paper", "supplement"])
+    def test_no_double_question_mark_reaches_the_pdf(self, name):
+        from pypdf import PdfReader
+        pdf = REPO / (name + ".pdf")
+        if not pdf.exists():
+            pytest.skip("build %s first" % name)
+        text = "".join((p.extract_text() or "") for p in PdfReader(str(pdf)).pages)
+        assert "??" not in text, (
+            "%s.pdf contains an unresolved cross-reference rendered as '??'. If this is the "
+            "supplement, it needs paper.aux: build the paper first, then the supplement "
+            "(xr reads it). A reader sent to 'Section ??' cannot follow the evidence."
+            % name)
+
+    def test_the_supplement_imports_the_main_texts_labels(self):
+        """The mechanism, not just the symptom: without xr the '??' come straight back."""
+        src = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        assert "\\usepackage{xr}" in src and "\\externaldocument{paper}" in src, (
+            "the supplement stopped importing paper.aux; its references to the main text's "
+            "sections and tables will silently degrade to '??'")

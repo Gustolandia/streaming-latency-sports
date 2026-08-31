@@ -208,11 +208,19 @@ def test_the_spectrum_builder_survives_missing_kernel_constants(tmp_path, monkey
 
 
 def test_figures_the_manuscript_includes_are_the_ones_this_script_writes():
-    """Guards against a figure being renamed here and left dangling in the .tex."""
-    tex = (ROOT / "paper.tex").read_text(encoding="utf-8")
+    """Guards against a figure being renamed here and left dangling in the .tex.
+
+    The manuscript is two documents, and which one carries a figure is an editorial
+    decision that moves: round 57 sent `mechanism_forest` to the supplement because it
+    plotted two tables the main text already prints. What must never happen is a figure
+    this script builds appearing in NEITHER file, which is the dangling case the test is
+    for, so both are searched and the figure has to land in one of them.
+    """
+    tex = ((ROOT / "paper.tex").read_text(encoding="utf-8")
+           + (ROOT / "supplement.tex").read_text(encoding="utf-8"))
     for stem in ("deletion", "stall_spectrum", "grid_membership",
                  "mechanism_forest", "ttrue_law"):
-        assert "figures/%s.pdf" % stem in tex, "%s is built but not included" % stem
+        assert "figures/%s.pdf" % stem in tex, "%s is built but included nowhere" % stem
 
 
 # --- the mechanism forest and the T_true law ---------------------------------------------

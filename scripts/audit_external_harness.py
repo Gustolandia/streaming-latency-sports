@@ -47,6 +47,16 @@ CROSS_PROCESS = [
     # arrives as a method chain on the message rather than as a field, which the second
     # pattern's `\w*` cannot cross. Added in round 6 with the harness itself.
     re.compile(r"currentTimeMillis\(\)\s*-\s*\w+\.(publish|send|create)\w*\(", re.I),
+    # Go: `time.Now().UnixNano() - sendTime`, where sendTime was decoded from the payload.
+    # NATS spells the cross-process subtraction inline with no intervening field access.
+    re.compile(r"Now\(\)\.Unix(Nano|Milli)\(\)\s*-\s*\w*(send|pub|start)\w*", re.I),
+    # The subtraction can also be behind an abstraction, which is the harder case to see and
+    # the reason this list is patterns rather than a grep for a minus sign. RabbitMQ
+    # PerfTest's `timestampProvider.getDifference(now, messageTimestamp)` is a cross-process
+    # span with no operator in the line at all; what marks it is that one argument is the
+    # local clock and the other arrived with the message.
+    re.compile(r"get(Difference|Elapsed)\s*\(\s*\w*now\w*\s*,\s*\w*(message|publish|send)\w*",
+               re.I),
 ]
 
 # A guard that admits only positive samples silently drops the evidence of a violation.
@@ -125,12 +135,36 @@ DISCARD_COUNTER = re.compile(
     r"(negative|invalid|dropped|discard|violation|inverted)\w*[\s_]*"
     r"(count|counter|sample|\+\+|\.inc)", re.I)
 
+# The value is RETAINED at a coarser resolution than the clock that produced it.
+#
+# This class exists because the audit of round 56 found the failure without the guard. Mode B
+# was framed as deletion -- a positivity filter dropping a quantized difference -- and that
+# framing could not see Apache Kafka's own bundled `EndToEndLatency`, which takes a monotonic
+# nanosecond clock, prints every sample at full precision, and then stores the percentile
+# array with `elapsed / 1000 / 1000` in Java integer arithmetic. Nothing is filtered and
+# nothing is dropped; on a sub-millisecond path every percentile it reports is nevertheless
+# zero. Deletion is one way a quantum destroys a measurement, not the only one, and a registry
+# whose only categories are ways a sample can *vanish* is blind to the one where it stays and
+# reads zero.
+#
+# The signature is a division or cast that discards a fraction of the unit the value was
+# measured in: integer division by a thousand or a million, a cast to int on a nanosecond or
+# microsecond quantity, or a widening conversion applied to an already-quantized difference --
+# which is the OpenMessaging line, `MILLISECONDS.toMicros(now - publishTimestamp)`, where the
+# microseconds are decoration on a millisecond subtraction.
+QUANTIZED_RETENTION = [
+    re.compile(r"=\s*\w*(elapsed|latency|duration|delta|diff)\w*\s*/\s*1000\s*/\s*1000\b", re.I),
+    re.compile(r"=\s*\(\s*int\s*\)\s*\(\s*\w*(now|end)\w*\s*-\s*\w*(start|begin)\w*\s*\)", re.I),
+    re.compile(r"(MILLISECONDS|SECONDS)\.to(Micros|Nanos)\s*\(\s*\w+\s*-\s*\w+", re.I),
+]
+
 # The order matters only for reporting; a line may belong to more than one class.
 CLASSES = (
     ("cross_process_latency", CROSS_PROCESS),
     ("positive_only_filter", POSITIVE_FILTER),
     ("silent_suppression", SUPPRESSION),
     ("library_refusal", LIBRARY_REFUSAL),
+    ("quantized_retention", QUANTIZED_RETENTION),
 )
 
 # The three ways a sample can vanish. `cross_process_latency` is not one of them -- it marks

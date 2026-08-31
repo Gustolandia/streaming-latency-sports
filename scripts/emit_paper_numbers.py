@@ -38,6 +38,7 @@ DEFAULT_OUT = os.path.join("docs", "generated", "paper_numbers.tex")
 DEFAULT_TABLE = os.path.join("docs", "generated", "grid_table.tex")
 DEFAULT_REGISTRY_TABLE = os.path.join("docs", "generated", "registry_table.tex")
 DEFAULT_PRIORITY_TABLE = os.path.join("docs", "generated", "priority_table.tex")
+DEFAULT_EXPOSURE_TABLE = os.path.join("docs", "generated", "exposure_table.tex")
 SPAN_CSV = os.path.join("docs", "results", "span_recount.csv")
 
 HEADER = (
@@ -222,6 +223,10 @@ def stat_macros():
             ("rt%sRt" % name, "%.4f" % (kr / nr)),
             ("rt%sRtCI" % name, "%.4f$--$%.4f" % (rlo, rhi)),
             ("rt%sFactor" % name, "%.0f" % round(ratio)),
+            # The factor is what the discussion quotes, and until round 54 it was quoted
+            # bare. The collapsed arms hold ten and seventeen events, so the interval is
+            # wide and the omission flattered the result: 39x is really 21-74x.
+            ("rt%sFactorCI" % name, "%.0f$--$%.0f" % stat_intervals.ratio_ci(kb, nb, kr, nr)),
             ("rt%sZ" % name, "%.1f" % z),
         ]
     # The geometry half of Table III was typed by hand while the priority half above came
@@ -245,6 +250,7 @@ def stat_macros():
             ("%sSpread" % name, "%.4f" % (ks / ns)),
             ("%sSpreadCI" % name, "%.4f$--$%.4f" % (slo, shi)),
             ("%sFactor" % name, "%.2f" % ratio),
+            ("%sFactorCI" % name, "%.2f$--$%.2f" % stat_intervals.ratio_ci(ks, ns, kc, nc)),
             ("%sZ" % name, "%.1f" % abs(z)),
         ]
     # The endpoints of the same sweep the fit above runs on. Section V-C quoted all three of
@@ -260,6 +266,7 @@ def stat_macros():
             ("payloadTransportFactor", "%.1f" % span["transport_factor"]),
             ("payloadTransportFactorRound", "%.0f" % round(span["transport_factor"])),
             ("payloadRateFall", "%.1f" % span["rate_fall"]),
+        ("payloadRateFallCI", "%.1f$--$%.1f" % span["rate_fall_ci"]),
             ("payloadRhoSpread", "%.3f" % span["rho_spread"]),
             ("payloadLevels", str(span["levels"])),
             # Two decimals for S25's comparison caption, which sets the two campaigns side by
@@ -274,6 +281,7 @@ def stat_macros():
         out += [
             ("payloadReplTransportFactor", "%.1f" % repl["transport_factor"]),
             ("payloadReplRateFall", "%.2f" % repl["rate_fall"]),
+        ("payloadReplRateFallCI", "%.2f$--$%.2f" % repl["rate_fall_ci"]),
         ]
     except (OSError, KeyError, ValueError):
         pass
@@ -424,7 +432,7 @@ def render_registry_table():
         "% docs/results/external/harness_registry.csv. Do not edit by hand.",
         "\\begin{tabular}{@{}llllc@{}}",
         "\\toprule",
-        "Tool & Span measured & Clock & Disposal & Counts \\\\",
+        "Tool & Span measured & Clock & What happens to the value & Counts \\\\",
         "\\midrule",
     ]
     source_keys = []
@@ -463,6 +471,11 @@ REGISTRY_LABELS = {
     "positive_only_filter": "filter",
     "silent_suppression": "substitute a constant",
     "library_refusal": "refused by own library",
+    # Not a disposal -- nothing vanishes -- which is why it is absent from DISPOSAL_KINDS and
+    # does not move the "silent" count. It belongs in this column all the same: the column
+    # answers what happens to the value, and being truncated to the quantum is what happens
+    # to it in Apache Kafka's own bundled end-to-end tool.
+    "quantized_retention": "truncate to the quantum",
 }
 
 #: Harness -> bibliography key for the caption's source list, in the rows' own order.
@@ -474,6 +487,9 @@ REGISTRY_CITES = {
     "Rezolus": "rezolus",
     "Apache Pulsar perf": "pulsar_perf",
     "wrk2": "wrk2_src",
+    "Apache Kafka (bundled)": "kafka_tools",
+    "RabbitMQ PerfTest": "rabbitmq_perftest",
+    "NATS CLI": "nats_cli",
 }
 
 
@@ -519,6 +535,8 @@ def retention_macros():
         ("ombPubLatLo", "%.1f" % min(pub)),
         ("ombPubLatHi", "%.1f" % max(pub)),
         ("ombRetentionRho", "%+.2f" % rho),
+        ("ombRetentionRhoCI", "%+.2f$--$%+.2f"
+         % stat_intervals.fisher_ci(rho, len(grid))),
         ("ombRetentionRhoN", str(len(grid))),
     ]
 
@@ -708,7 +726,15 @@ def registry_macros():
         import harness_registry
         from audit_external_harness import DISPOSAL_KINDS
         s = harness_registry.summary()
-    except (ImportError, OSError, KeyError, ValueError):
+    except (ImportError, OSError) as exc:
+        # A checkout without the registry still emits the campaign numbers. A registry that
+        # is PRESENT and unreadable does not get the same treatment: round 56 added four
+        # harnesses, the citation map had no key for one of them, the KeyError was caught
+        # here, and this function returned [] -- so the macro file silently kept the previous
+        # run's counts and the manuscript went on saying "seven" with ten in the registry.
+        # A survey that quietly reports a stale total is the failure this paper documents,
+        # committed by the script that measures it. KeyError and ValueError now propagate.
+        print("note: harness registry absent (%s)" % exc)
         return []
     out = [
         ("harnessAudited", str(s["harnesses"])),
@@ -877,6 +903,56 @@ def priority_macros():
     ]
 
 
+def render_exposure_table(path=os.path.join("docs", "results", "span_symmetry.csv")):
+    """Relative error and apparent gap against true path length, generated not typed.
+
+    Both columns are arithmetic on measured lags rather than a model. The displacement is a
+    scheduling quantity and does not grow when the path does, so the error on one measurement
+    falls as 1/T_true. The right-hand column is the one a comparison benchmark should read:
+    two IDENTICAL systems whose clients differ only in where the acknowledgment is stamped
+    are separated by the difference of their two lags, which is an instrument artifact
+    wearing the clothes of a result.
+
+    The sign check needs A > T_true, so every row below the first fires nothing at all.
+    """
+    import csv as _csv
+    import statistics as _st
+    try:
+        with open(path, encoding="utf-8") as fh:
+            rows = list(_csv.DictReader(fh))
+    except OSError:
+        return ""
+    per = {}
+    for r in rows:
+        if float(r["median_A_us"]):
+            per.setdefault(r["condition"].split("_")[0], []).append(float(r["median_A_us"]))
+    if not per:
+        return ""
+    typical = _st.median([v for vs in per.values() for v in vs])
+    hi = _st.median(per.get("kafka") or [typical])
+    lo = _st.median(per.get("redis") or [typical])
+    if hi < lo:
+        hi, lo = lo, hi
+
+    nl = chr(10)
+    rule = chr(92) + chr(92)          # the LaTeX row terminator
+    out = [chr(92) + "begin{tabular}{@{}rrr@{}}",
+           chr(92) + "toprule",
+           "True path & Error on one & Apparent gap between " + rule,
+           "$T_{" + chr(92) + "mathrm{true}}$ & measurement & two identical systems " + rule,
+           chr(92) + "midrule"]
+    for ms in (1, 2, 5, 10, 25, 50, 100):
+        t = ms * 1000.0
+        err = "---" if t <= typical else "$%.0f$" % (100.0 * typical / t) + chr(92) + "%"
+        if t <= hi:
+            gap = "inverts"
+        else:
+            gap = "$%.0f$" % (100.0 * (1.0 - (t - hi) / (t - lo))) + chr(92) + "%"
+        out.append("$%d$~ms & %s & %s %s" % (ms, err, gap, rule))
+    out += [chr(92) + "bottomrule", chr(92) + "end{tabular}"]
+    return nl.join(out) + nl
+
+
 def render_priority_table():
     """Every matched pair, one row each, generated from the three campaign files.
 
@@ -897,6 +973,101 @@ def render_priority_table():
                         r["rate_base"], r["rate_rt"], r["factor"]))
     lines += ["\\bottomrule", "\\end{tabular}", ""]
     return "\n".join(lines)
+
+
+def disease_macros(path=os.path.join("docs", "results", "span_run_level.csv")):
+    """The ladder: how much displacement the sign check does not fire on.
+
+    A negative span needs A > D. Lengthening the path raises D and leaves A alone, so the
+    check goes quiet on exactly the deployments whose delivery is slow enough to hide it --
+    the visible negatives are the tip, and this is the rest of it. Emitted per event over the
+    whole corpus, and the top rung is checked against the sign count as an identity: a ladder
+    whose alpha=1 rung disagreed with the negatives would mean one of the two was wrong.
+
+    Also the recovery estimator, split by gate outcome, because a correction that only works
+    where the check already passes is not a correction.
+    """
+    import csv as _csv
+    try:
+        with open(path, encoding="utf-8") as fh:
+            rows = list(_csv.DictReader(fh))
+    except OSError:
+        return []
+    if not rows:
+        return []
+    total = sum(int(r["n_events"]) for r in rows)
+    if not total:
+        return []
+    neg = sum(int(r["neg_ack"]) for r in rows)
+    out = [("diseaseEvents", latex_thousands(total)),
+           ("diseaseRuns", latex_thousands(len(rows)))]
+    for col, name in (("over_0.1", "Tenth"), ("over_0.5", "Half"), ("over_1", "Whole")):
+        if col in rows[0]:
+            k = sum(int(r[col]) for r in rows)
+            out.append(("diseaseOver" + name, "%.1f" % (100.0 * k / total)))
+    # identity, not decoration: alpha = 1 IS the sign check
+    if "over_1" in rows[0] and sum(int(r["over_1"]) for r in rows) != neg:
+        raise ValueError("ladder top rung disagrees with the negative count")
+    out += _recovery_macros()
+    return out
+
+
+def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
+    """The remedy's accuracy, split by gate outcome.
+
+    Reported on the rejected conditions as well as the accepted ones on purpose. A
+    correction validated only where the check already passes has been validated on the
+    population that did not need it.
+    """
+    import csv as _csv
+    import statistics as _st
+    try:
+        with open(path, encoding="utf-8") as fh:
+            rows = list(_csv.DictReader(fh))
+    except OSError:
+        return []
+    out = []
+    for suffix, name in (("#pass", "Pass"), ("#fail", "Fail")):
+        rel = [abs(float(r["recovery_err_us"])) / float(r["median_D_us"]) * 100.0
+               for r in rows
+               if r["condition"].endswith(suffix) and float(r["median_D_us"])]
+        if rel:
+            out.append(("recoveryErr" + name, "%.1f" % _st.median(rel)))
+    rho = [float(r["rho_DA"]) for r in rows if r["rho_DA"] not in ("", "nan")]
+    if rho:
+        out.append(("spanRhoMedian", "%.2f" % _st.median(rho)))
+
+    # The displacement's own scale, and what it does to a reported number.
+    #
+    # A is a SCHEDULING quantity: it is set by how long a runnable thread waits for a core,
+    # not by how far the message travelled. That is the whole content of the 1/D law -- the
+    # numerator does not grow when the path does, so the relative error falls as the path
+    # lengthens, and the two brokers' A values differ because their CLIENTS differ, not
+    # because the brokers do.
+    lag = [float(r["median_A_us"]) for r in rows if r["median_A_us"]]
+    if lag:
+        out.append(("ackLagMedianUs", "%.0f" % _st.median(lag)))
+    frac = [float(r["median_S_us"]) / float(r["median_D_us"])
+            for r in rows if float(r["median_D_us"])]
+    if frac:
+        m = _st.median(frac)
+        out += [("reportedFraction", "%.0f" % (100.0 * m)),
+                ("understateFactor", "%.1f" % (1.0 / m))]
+    per = {}
+    for r in rows:
+        if float(r["median_D_us"]):
+            per.setdefault(r["condition"].split("_")[0], []).append(
+                (float(r["median_D_us"]), float(r["median_S_us"])))
+    if {"kafka", "redis"} <= set(per):
+        dk = _st.median([d for d, _ in per["kafka"]])
+        sk = _st.median([s for _, s in per["kafka"]])
+        dr = _st.median([d for d, _ in per["redis"]])
+        sr = _st.median([s for _, s in per["redis"]])
+        if dr and sr and dk / dr:
+            out += [("gapTrue", "%.2f" % (dk / dr)),
+                    ("gapReported", "%.2f" % (sk / sr)),
+                    ("gapDistortion", "%.2f" % ((sk / sr) / (dk / dr)))]
+    return out
 
 
 def fork_macros():
@@ -926,7 +1097,7 @@ def all_pairs(m):
             + registry_sources_macro()
             + clocksource_macros() + traced_ratio_macros() + audit_macros()
             + priority_macros() + priority_residual_macros() + fork_macros()
-            + chrony_bound_macros())
+            + chrony_bound_macros() + disease_macros())
 
 
 def render(m):
@@ -942,6 +1113,7 @@ def main(argv=None):
     ap.add_argument("--table", default=DEFAULT_TABLE)
     ap.add_argument("--registry-table", default=DEFAULT_REGISTRY_TABLE)
     ap.add_argument("--priority-table", default=DEFAULT_PRIORITY_TABLE)
+    ap.add_argument("--exposure-table", default=DEFAULT_EXPOSURE_TABLE)
     ap.add_argument("--check", action="store_true",
                     help="fail if the committed file disagrees with the ledger; write nothing")
     args = ap.parse_args(argv)
@@ -968,6 +1140,7 @@ def main(argv=None):
         targets.append((args.registry_table, reg))
     try:
         targets.append((args.priority_table, render_priority_table()))
+        targets.append((args.exposure_table, render_exposure_table()))
     except (ImportError, OSError, KeyError, ValueError) as exc:
         print("note: priority table not generated (%s)" % exc)
 

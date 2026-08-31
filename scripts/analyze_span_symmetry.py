@@ -43,6 +43,7 @@ CLI:
 """
 import csv
 import json
+import math
 import os
 
 IN_JSON = os.path.join("docs", "results", "span_by_condition.json")
@@ -119,15 +120,6 @@ def neg_fraction(dist):
     return None
 
 
-def moments(series, n):
-    """Binned mean and variance, bin centres, within the window."""
-    if not n:
-        return 0.0, 0.0
-    m = sum((lo + STEP / 2.0) * c for lo, c in series) / n
-    v = sum(((lo + STEP / 2.0) - m) ** 2 * c for lo, c in series) / n
-    return m, v
-
-
 def main():
     data = load()
     bin_lo = data["bin_lo_us"]
@@ -157,12 +149,30 @@ def main():
         counts = dict(sS)
         score0 = asym_score(counts, 0)
 
-        # implied within-event correlation between D and A, from the variance identity
-        # Var(S) = Var(D) + Var(A) - 2 rho sd(D) sd(A). Everything on the right is observed.
-        _mS, vS = moments(sS, nS)
-        _mD, vD = moments(sD, nD)
-        _mA, vA = moments(sA, nA)
-        rho = ((vD + vA - vS) / (2.0 * (vD * vA) ** 0.5)) if vD > 0 and vA > 0 else float("nan")
+        # Within-event correlation between D and A, from the paired co-moments the upstream
+        # pass now carries.
+        #
+        # This used to come from the variance identity Var(S) = Var(D) + Var(A) - 2 rho
+        # sd(D) sd(A), with all three variances read off binned, edge-truncated histograms.
+        # Each margin loses a different amount of mass at the edges, the identity stops
+        # holding, and the result is not bounded: five of seventy conditions returned
+        # |rho| > 1, the largest 2.16. Pearson on the paired sums is exact, cannot leave
+        # [-1, 1], and needed no new pass over the corpus -- only for the sums to be kept.
+        pair = q.get("pair")
+        rho = float("nan")
+        if pair and pair["n"] > 1:
+            n_p = pair["n"]
+            cov = pair["sda"] / n_p - (pair["sd"] / n_p) * (pair["sa"] / n_p)
+            var_d = pair["sdd"] / n_p - (pair["sd"] / n_p) ** 2
+            var_a = pair["saa"] / n_p - (pair["sa"] / n_p) ** 2
+            if var_d > 0 and var_a > 0:
+                rho = cov / math.sqrt(var_d * var_a)
+                # Floating-point can put a legitimate +-1 a hair outside the range; a value
+                # materially outside it would be a real defect and must not be silently
+                # clamped into looking respectable.
+                if not -1.0000001 <= rho <= 1.0000001:
+                    raise ValueError("rho outside [-1, 1] for %s: %r" % (cond, rho))
+                rho = max(-1.0, min(1.0, rho))
 
         pred = convolve_diff(sD, sA, nD, nA)
         tv = tv_distance(pred, sS, nS)
@@ -242,14 +252,22 @@ def main():
         print("  predicted/observed negative fraction: not estimable (n=%d)" % len(ratio))
     print("")
     rhos = [r["rho_DA"] for r in rows if r["rho_DA"] == r["rho_DA"]]
-    print("WITHIN-EVENT CORRELATION rho(D, A) implied by the variance identity")
+    print("WITHIN-EVENT CORRELATION rho(D, A), Pearson on paired events in the window")
     if len(rhos) >= 4:
         print("  median %.3f   IQR [%.3f, %.3f]"
               % (st.median(rhos), st.quantiles(rhos, n=4)[0], st.quantiles(rhos, n=4)[2]))
     else:
-        # every condition can be a point mass in a synthetic corpus; the identity then has
-        # no variance to work with and the honest summary line says so
+        # every condition can be a point mass in a synthetic corpus; there is then no
+        # variance to work with and the honest summary line says so
         print("  not estimable (fewer than 4 conditions with finite variance)")
+    kept = sum(q["pair"]["n"] for q in data["conditions"].values() if "pair" in q)
+    outside = sum(q["pair"].get("outside", 0) for q in data["conditions"].values()
+                  if "pair" in q)
+    if kept + outside:
+        # Printed, not assumed. The window keeps rho on the same population as every median
+        # above it, and a paper about uncounted exclusions publishes its own.
+        print("  on %d pairs; %d (%.2f%%) outside the window, excluded"
+              % (kept, outside, 100.0 * outside / (kept + outside)))
     print("")
     print("THE REMEDY UNDER TEST: med(D) ~ centre(S) + med(A)")
 

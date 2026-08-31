@@ -203,7 +203,13 @@ class TestMain:
         out = capsys.readouterr().out
         assert "EXPOSED, AND SILENT" in out
         rows = list(csv.DictReader(open(temp_dir / "out" / "harness_audit.csv")))
-        assert {r["kind"] for r in rows} == {"cross_process_latency", "positive_only_filter"}
+        # `quantized_retention` joins these two without the fixture changing: EXPOSED_SILENT
+        # was written to mirror the OpenMessaging line, `MILLISECONDS.toMicros(now - stamp)`,
+        # and the round-56 class matches that shape wherever it appears. The synthetic
+        # harness and the real one gaining the label together is the check that the pattern
+        # describes the construct rather than one file.
+        assert {r["kind"] for r in rows} == {
+            "cross_process_latency", "positive_only_filter", "quantized_retention"}
         assert all(r["harness"] == "Synthetic" for r in rows)
 
     def test_missing_repository(self, temp_dir, capsys):

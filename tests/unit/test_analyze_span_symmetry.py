@@ -66,14 +66,6 @@ class TestPieces:
         assert ass.neg_fraction({-STEP: 0.25, 0: 0.5, STEP: 0.25}) == 0.25
         assert ass.neg_fraction([1, 2]) is None
 
-    def test_moments_of_an_empty_series_are_zero(self):
-        assert ass.moments([], 0) == (0.0, 0.0)
-
-    def test_moments_recover_a_two_point_spread(self):
-        """Bins at 0 and 100 us have centres 25 and 125: mean 75, variance 50^2."""
-        m, v = ass.moments([(0, 1), (2 * STEP, 1)], 2)
-        assert m == 75.0 and v == 2500.0
-
 
 def bins_for(values):
     """{bin_index: count} on the committed grid, from microsecond values."""
@@ -84,11 +76,28 @@ def bins_for(values):
     return out
 
 
-def condition(s_vals, d_vals, a_vals, n_pad=0):
+def pair_sums(points):
+    """Paired co-moments for a list of (D, A) microsecond points, as the upstream pass emits.
+
+    The correlation is computed from these rather than from the three marginal histograms;
+    building them in the fixture is what lets the estimator be tested on inputs whose answer
+    is known by construction.
+    """
+    n = len(points)
+    return {"n": n, "outside": 0,
+            "sd": sum(d for d, _ in points), "sa": sum(a for _, a in points),
+            "sdd": sum(d * d for d, _ in points), "saa": sum(a * a for _, a in points),
+            "sda": sum(d * a for d, a in points)}
+
+
+def condition(s_vals, d_vals, a_vals, n_pad=0, pair=None):
     def q(vals):
         n = sum(vals.values()) + n_pad
         return {"n": n, "under": 0, "over": n_pad, "bins": bins_for(vals)}
-    return {"S": q(s_vals), "D": q(d_vals), "A": q(a_vals)}
+    out = {"S": q(s_vals), "D": q(d_vals), "A": q(a_vals)}
+    if pair is not None:
+        out["pair"] = pair
+    return out
 
 
 def triangle(centre, scale=100):
@@ -121,6 +130,98 @@ def synthetic(tmp_path, extra_conditions=0, neg_lobe=False):
     p = tmp_path / "in.json"
     p.write_text(json.dumps(payload))
     return p
+
+
+class TestRhoFromPairedEvents:
+    """rho(D, A) is Pearson on paired events, not the variance identity on histograms.
+
+    The identity route read three separately truncated margins, did not conserve, and
+    returned |rho| > 1 on five of seventy real conditions -- an impossible value, in a paper
+    about instruments that report impossible values. These tests pin the properties the
+    identity route could not offer: bounded, exact on a known construction, and loud rather
+    than silent if it ever leaves the range.
+    """
+
+    def _run(self, tmp_path, monkeypatch, pair):
+        payload = json.loads(synthetic(tmp_path).read_text(encoding="utf-8"))
+        cond = payload["conditions"]["kafka_n2_feed1#pass"]
+        if pair is None:
+            cond.pop("pair", None)
+        else:
+            cond["pair"] = pair
+        path = tmp_path / "with_pair.json"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        monkeypatch.setattr(ass, "IN_JSON", str(path))
+        monkeypatch.setattr(ass, "OUT_CSV", str(tmp_path / "out.csv"))
+        ass.main()
+        rows = {r["condition"]: r for r in csv.DictReader(open(tmp_path / "out.csv"))}
+        return rows["kafka_n2_feed1#pass"]
+
+    def test_a_perfect_linear_relation_gives_exactly_one(self, tmp_path, monkeypatch):
+        pts = [(d, 2 * d + 100) for d in range(1000, 3000, 10)]
+        assert float(self._run(tmp_path, monkeypatch, pair_sums(pts))["rho_DA"]) == 1.0
+
+    def test_a_perfect_inverse_relation_gives_minus_one(self, tmp_path, monkeypatch):
+        pts = [(d, -3 * d) for d in range(1000, 3000, 10)]
+        assert float(self._run(tmp_path, monkeypatch, pair_sums(pts))["rho_DA"]) == -1.0
+
+    def test_an_independent_pair_lands_near_zero(self, tmp_path, monkeypatch):
+        pts = [(d, a) for d in range(1000, 1100, 10) for a in range(500, 600, 10)]
+        assert abs(float(self._run(tmp_path, monkeypatch, pair_sums(pts))["rho_DA"])) < 1e-9
+
+    def test_a_constant_arm_has_no_variance_and_yields_no_correlation(self, tmp_path,
+                                                                      monkeypatch):
+        """A never moves, so the correlation is undefined rather than zero."""
+        pts = [(d, 700) for d in range(1000, 3000, 10)]
+        assert self._run(tmp_path, monkeypatch, pair_sums(pts))["rho_DA"] in ("nan", "")
+
+    def test_a_condition_without_paired_sums_reports_no_correlation(self, tmp_path,
+                                                                    monkeypatch):
+        assert self._run(tmp_path, monkeypatch, None)["rho_DA"] in ("nan", "")
+
+    def test_a_single_pair_is_not_enough(self, tmp_path, monkeypatch):
+        one = {"n": 1, "outside": 0, "sd": 1.0, "sa": 1.0,
+               "sdd": 1.0, "saa": 1.0, "sda": 1.0}
+        assert self._run(tmp_path, monkeypatch, one)["rho_DA"] in ("nan", "")
+
+    def test_an_impossible_correlation_raises_instead_of_being_clamped(self, tmp_path,
+                                                                      monkeypatch):
+        """Co-moments that cannot come from real points must not be quietly rounded to 1.
+
+        This is the guard that would have caught the old defect at source instead of
+        leaving it to be noticed in a CSV weeks later.
+        """
+        bogus = {"n": 10, "outside": 0, "sd": 0.0, "sa": 0.0,
+                 "sdd": 1.0, "saa": 1.0, "sda": 50.0}
+        with pytest.raises(ValueError, match="rho outside"):
+            self._run(tmp_path, monkeypatch, bogus)
+
+    def test_the_summary_publishes_how_many_pairs_the_window_excluded(self, tmp_path,
+                                                                      monkeypatch, capsys):
+        pair = pair_sums([(d, d + 500) for d in range(1000, 3000, 10)])
+        pair["outside"] = 40
+        self._run(tmp_path, monkeypatch, pair)
+        assert "outside the window, excluded" in capsys.readouterr().out
+
+    def test_four_or_more_conditions_get_a_median_and_an_iqr(self, tmp_path, monkeypatch,
+                                                             capsys):
+        """Below four the summary declines to quote quantiles; at four it must produce them,
+        and each condition needs its own correlation for the quantiles to mean anything."""
+        payload = json.loads(
+            synthetic(tmp_path, extra_conditions=4).read_text(encoding="utf-8"))
+        for i, cond in enumerate(payload["conditions"].values()):
+            cond["pair"] = pair_sums([(d, d + 500 + i * d // 20)
+                                      for d in range(1000, 3000, 10)])
+        path = tmp_path / "many.json"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        monkeypatch.setattr(ass, "IN_JSON", str(path))
+        monkeypatch.setattr(ass, "OUT_CSV", str(tmp_path / "out.csv"))
+        ass.main()
+        # Assert on the rho block itself: "not estimable" also appears on an unrelated
+        # summary line, so a whole-output check would pass for the wrong reason.
+        block = capsys.readouterr().out.split("WITHIN-EVENT CORRELATION")[1]
+        assert "median" in block and "IQR" in block
+        assert "not estimable" not in block.split("THE REMEDY")[0]
 
 
 class TestMain:

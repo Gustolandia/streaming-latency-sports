@@ -1333,3 +1333,27 @@
   note         = {Introduces mq-bench: nanosecond send stamps, one host, no positivity
                   guard. Read 2026-08-25}
 }
+
+@misc{kafka_tools,
+  author       = {{Apache Software Foundation}},
+  title        = {{Apache Kafka} tools --- \texttt{EndToEndLatency.java} and \texttt{ProducerPerformance.java}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/apache/kafka}; the percentile array is filled by integer division, \texttt{latencies[i] = elapsed / 1000 / 1000}, while each sample prints at full precision. Read 2026-08-31}
+}
+
+@misc{rabbitmq_perftest,
+  author       = {{Broadcom}},
+  title        = {{RabbitMQ PerfTest} --- \texttt{Consumer.java}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/rabbitmq/rabbitmq-perf-test}; the cross-process difference is passed to the metrics unfiltered. Read 2026-08-31}
+}
+
+@misc{nats_cli,
+  author       = {{Synadia}},
+  title        = {{NATS} CLI --- \texttt{cli/latency\_command.go}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/nats-io/natscli}; the wall-clock difference is appended unconditionally. Read 2026-08-31}
+}

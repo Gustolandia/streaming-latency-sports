@@ -2,11 +2,15 @@
 % docs/results/external/harness_registry.csv. Do not edit by hand.
 \begin{tabular}{@{}llllc@{}}
 \toprule
-Tool & Span measured & Clock & Disposal & Counts \\
+Tool & Span measured & Clock & What happens to the value & Counts \\
 \midrule
+Apache Kafka (bundled) & end-to-end & nanosecond & truncate to the quantum & no \\
+Apache Kafka (bundled) & publish & millisecond & truncate to the quantum & no \\
 Apache Pulsar perf & end-to-end & millisecond & filter & no \\
-OpenMessaging Bench. & end-to-end & millisecond & filter & no \\
+NATS CLI & end-to-end & nanosecond & --- & no \\
+OpenMessaging Bench. & end-to-end & millisecond & filter, truncate to the quantum & no \\
 OpenMessaging Bench. & publish & nanosecond & --- & no \\
+RabbitMQ PerfTest & end-to-end & nanosecond & --- & no \\
 Rezolus & scheduler wakeup & nanosecond & --- & yes \\
 \texttt{blktrace/btt} & block stage & nanosecond & substitute a constant & no \\
 \texttt{emqtt-bench} & end-to-end & millisecond & --- & no \\

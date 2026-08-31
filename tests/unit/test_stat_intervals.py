@@ -71,6 +71,111 @@ class TestRatioZ:
             si.ratio_z(0, 1000, 0, 1000)
 
 
+class TestRatioCi:
+    """Katz's log interval for a ratio of proportions.
+
+    The audit found four ratios quoted in the manuscript with no interval on the ratio
+    itself, only on the two arms it came from. Two disjoint arm intervals say the arms
+    differ; they do not say by how much, which is what the sentence claims.
+    """
+
+    def test_identical_cells_bracket_one(self):
+        lo, hi = si.ratio_ci(100, 1000, 100, 1000)
+        assert lo < 1.0 < hi
+
+    def test_the_interval_contains_the_point_estimate(self):
+        lo, hi = si.ratio_ci(394, 2985, 10, 2985)
+        assert lo < 39.4 < hi
+
+    def test_the_papers_l75_factor_is_wide_because_the_collapsed_arm_is_sparse(self):
+        """Ten events in the manipulated arm. The published 39x is really 21-74x, and the
+        point of adding this interval was that the bare factor read stronger than the data."""
+        lo, hi = si.ratio_ci(394, 2985, 10, 2985)
+        assert lo == pytest.approx(21, abs=1)
+        assert hi == pytest.approx(74, abs=1)
+
+    def test_it_is_symmetric_in_the_log_not_in_the_ratio(self):
+        lo, hi = si.ratio_ci(394, 2985, 10, 2985)
+        point = (394 / 2985) / (10 / 2985)
+        assert math.log(point) - math.log(lo) == pytest.approx(math.log(hi) - math.log(point))
+        assert hi - point > point - lo          # asymmetric on the ratio scale
+
+    def test_more_events_narrow_it(self):
+        narrow = si.ratio_ci(3940, 29850, 100, 29850)
+        wide = si.ratio_ci(394, 2985, 10, 2985)
+        assert (narrow[1] / narrow[0]) < (wide[1] / wide[0])
+
+    def test_an_empty_arm_is_refused_rather_than_bounded_on_one_side(self):
+        with pytest.raises(ValueError):
+            si.ratio_ci(100, 1000, 0, 1000)
+        with pytest.raises(ValueError):
+            si.ratio_ci(0, 1000, 100, 1000)
+
+    def test_a_non_positive_denominator_is_refused(self):
+        with pytest.raises(ValueError):
+            si.ratio_ci(10, 0, 10, 100)
+        with pytest.raises(ValueError):
+            si.ratio_ci(10, 100, 10, 0)
+
+
+class TestPayloadRateFallInterval:
+    def test_an_endpoint_whose_rate_rounds_to_no_events_yields_no_interval(self, monkeypatch):
+        """A rate can be non-zero and still imply fewer than half an event.
+
+        Here the sparse arm is 0.0001 over 1000 trials, which rounds to zero events: the
+        rate is a real number but Katz's method has no count to stand on. `payload_span`
+        withholds the interval rather than reporting one the data cannot support, and the
+        other three numbers are unaffected -- a missing interval must not take the estimate
+        down with it. (A rate of exactly zero never reaches this branch: `rate_fall` divides
+        by it first, which is pre-existing behaviour and not what this guard is for.)
+        """
+        monkeypatch.setattr(si, "_rows", lambda *parts: [
+            {"transport_ms": "1.0", "inversion": "0.20", "rho": "0.80", "n_events": "1000"},
+            {"transport_ms": "77.0", "inversion": "0.0001", "rho": "0.81", "n_events": "1000"},
+        ])
+        out = si.payload_span()
+        assert "rate_fall_ci" not in out
+        assert out["transport_factor"] == pytest.approx(77.0)
+        assert out["levels"] == 2
+
+    def test_a_normal_sweep_carries_the_interval_around_its_estimate(self, monkeypatch):
+        monkeypatch.setattr(si, "_rows", lambda *parts: [
+            {"transport_ms": "1.0", "inversion": "0.20", "rho": "0.80", "n_events": "1000"},
+            {"transport_ms": "77.0", "inversion": "0.05", "rho": "0.81", "n_events": "1000"},
+        ])
+        out = si.payload_span()
+        lo, hi = out["rate_fall_ci"]
+        assert lo < out["rate_fall"] < hi
+
+
+class TestFisherCi:
+    def test_zero_correlation_gives_a_symmetric_interval_about_zero(self):
+        lo, hi = si.fisher_ci(0.0, 100)
+        assert lo == pytest.approx(-hi)
+
+    def test_the_papers_retention_correlation_excludes_zero(self):
+        lo, hi = si.fisher_ci(0.31, 71)
+        assert 0.0 < lo < 0.31 < hi < 1.0
+
+    def test_it_stays_inside_the_unit_interval_at_a_strong_correlation(self):
+        lo, hi = si.fisher_ci(0.98, 10)
+        assert -1.0 < lo and hi < 1.0
+
+    def test_it_narrows_as_n_grows(self):
+        small = si.fisher_ci(0.5, 10)
+        large = si.fisher_ci(0.5, 1000)
+        assert (large[1] - large[0]) < (small[1] - small[0])
+
+    def test_a_degenerate_correlation_is_refused(self):
+        for bad in (1.0, -1.0, 1.5):
+            with pytest.raises(ValueError):
+                si.fisher_ci(bad, 100)
+
+    def test_too_few_points_are_refused(self):
+        with pytest.raises(ValueError):
+            si.fisher_ci(0.5, 3)
+
+
 class TestOlsSlope:
     def test_a_perfect_line_is_recovered_exactly(self):
         xs = [0.0, 1.0, 2.0, 3.0]

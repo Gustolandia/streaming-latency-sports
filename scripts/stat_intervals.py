@@ -71,6 +71,50 @@ def ratio_z(k_a, n_a, k_b, n_b):
     return z, ratio
 
 
+def ratio_ci(k_a, n_a, k_b, n_b, z=Z_975):
+    """Confidence interval for the ratio p_a / p_b, by Katz's log method. Returns (lo, hi).
+
+    `ratio_z` already answers "do these two arms differ"; it does not answer "by how much,
+    and how well is that pinned down", which is what the manuscript actually quotes when it
+    says a manipulation collapses a rate 39x. A factor published without an interval invites
+    the reader to treat the point estimate as the finding, and for the real-time arms the
+    interval is wide -- the collapsed arm has ten events -- so the omission flattered us.
+
+    The interval is symmetric in the log, which is the right scale for a ratio: it cannot
+    reach zero or cross into a reversal, and it reproduces the asymmetry a reader expects
+    around a large factor. The standard error is the usual delta-method one,
+    sqrt((1-p_a)/k_a + (1-p_b)/k_b), which is undefined when either arm has no events -- an
+    arm that never fired bounds the ratio on one side only, and we raise rather than return
+    an interval that would read as though it had been estimated.
+    """
+    for k, n in ((k_a, n_a), (k_b, n_b)):
+        if n <= 0:
+            raise ValueError("n must be positive")
+        if k <= 0:
+            raise ValueError("Katz's method needs a non-zero count in both arms")
+    p_a, p_b = k_a / n_a, k_b / n_b
+    se = math.sqrt((1 - p_a) / k_a + (1 - p_b) / k_b)
+    centre = math.log(p_a / p_b)
+    return math.exp(centre - z * se), math.exp(centre + z * se)
+
+
+def fisher_ci(rho, n, z=Z_975):
+    """Confidence interval for a correlation, via Fisher's z transform. Returns (lo, hi).
+
+    Wilson's interval is for a proportion and does not transfer to a correlation: r is
+    bounded on both sides and its sampling distribution is skewed everywhere except zero.
+    Fisher's transform is the standard fix and costs one line, which is why the audit
+    flagged its absence rather than excusing it.
+    """
+    if n < 4:
+        raise ValueError("Fisher's interval needs n >= 4")
+    if not -1.0 < rho < 1.0:
+        raise ValueError("rho must lie strictly inside (-1, 1)")
+    zeta = 0.5 * math.log((1 + rho) / (1 - rho))
+    half = z / math.sqrt(n - 3)
+    return math.tanh(zeta - half), math.tanh(zeta + half)
+
+
 def ols_slope(xs, ys):
     """Least squares of ys on xs. Returns (slope, intercept, r2, slope_lo, slope_hi).
 
@@ -363,10 +407,21 @@ def payload_span(phase=None):
     t = [float(r["transport_ms"]) for r in rows]
     inv = [float(r["inversion"]) for r in rows]
     rho = [float(r["rho"]) for r in rows]
-    return {"transport_factor": max(t) / min(t),
-            "rate_fall": max(inv) / min(inv),
-            "rho_spread": max(rho) - min(rho),
-            "levels": len(rows)}
+    # The rate-fall ratio is a ratio of two PROPORTIONS, and the sweep file carries the
+    # denominators (`n_events`), so its interval is available here and was simply never
+    # taken. The transport factor next to it is a ratio of two times with no within-level
+    # replication in this file, so it gets no interval from here -- a distinction the audit
+    # had collapsed into one "needs data" note for all four payload quantities.
+    n = [int(r["n_events"]) for r in rows]
+    hi_i, lo_i = inv.index(max(inv)), inv.index(min(inv))
+    out = {"transport_factor": max(t) / min(t),
+           "rate_fall": max(inv) / min(inv),
+           "rho_spread": max(rho) - min(rho),
+           "levels": len(rows)}
+    k_hi, k_lo = round(inv[hi_i] * n[hi_i]), round(inv[lo_i] * n[lo_i])
+    if k_hi > 0 and k_lo > 0:
+        out["rate_fall_ci"] = ratio_ci(k_hi, n[hi_i], k_lo, n[lo_i])
+    return out
 
 
 def report():

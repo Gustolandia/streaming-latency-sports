@@ -19,10 +19,14 @@ millisecond-resolution stamps and admits the sample only when the result is stri
 so every sample that computed to 0 is deleted and the reported distribution necessarily begins
 at one tick. The floor of their own published chart is the deletion, drawn.
 
-Second observation, from the axis rather than the data: the chart's x-axis begins at the 90th
-percentile. Even the 4.5% of samples sitting on the 1 ms floor are off the left edge of the
-canvas. The published picture shows the tail of a distribution whose lower nine tenths are not
-drawn at all.
+Second observation, from the axis rather than the data: the x-axis is a TAIL scale, whose
+ticks run 90, 99, 99.9, 99.99 -- each one cutting the remaining fraction tenfold -- so its
+first labelled tick is the 90th percentile. Say that precisely rather than "the axis starts
+at 90%": the scale is -log10(1 - p/100), not a linear axis with a cropped origin, and the
+distinction is exactly the kind this paper is about. The consequence is the same either way.
+Even the 4.5% of samples sitting on the 1 ms floor are off the left edge of the canvas, and
+the published picture shows the tail of a distribution whose lower nine tenths are not drawn
+at all.
 
 CLI:
     python scripts/omb_published_quantiles.py --svg <path to results-e2e-quantiles.svg>

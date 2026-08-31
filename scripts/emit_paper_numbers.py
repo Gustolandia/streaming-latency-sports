@@ -1067,6 +1067,28 @@ def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
             out += [("gapTrue", "%.2f" % (dk / dr)),
                     ("gapReported", "%.2f" % (sk / sr)),
                     ("gapDistortion", "%.2f" % ((sk / sr) / (dk / dr)))]
+            # An interval on the distortion, resampling CONDITIONS rather than events:
+            # conditions are the exchangeable unit here, since every event inside one shares
+            # a broker, a sender count and a feed count. A referee asked for the factor to
+            # be quoted as a number with an interval rather than as a number, and a factor
+            # this close to 2 invites exactly that question.
+            import random as _random
+            rng = _random.Random(20260831)
+            boots = []
+            for _ in range(4000):
+                ks = [_random.Random(rng.random()).choice(per["kafka"]) for _ in per["kafka"]]
+                rs = [_random.Random(rng.random()).choice(per["redis"]) for _ in per["redis"]]
+                bdk = _st.median([d for d, _ in ks])
+                bsk = _st.median([s for _, s in ks])
+                bdr = _st.median([d for d, _ in rs])
+                bsr = _st.median([s for _, s in rs])
+                if bdr and bsr and bdk:
+                    boots.append((bsk / bsr) / (bdk / bdr))
+            if len(boots) > 100:
+                boots.sort()
+                lo = boots[int(0.025 * len(boots))]
+                hi = boots[int(0.975 * len(boots))]
+                out.append(("gapDistortionCI", "%.2f$--$%.2f" % (lo, hi)))
     return out
 
 

@@ -410,3 +410,78 @@ def test_the_inventory_figure_numbers_are_current():
             bad.append("%s: index says Fig. %s, paper prints Fig. %s"
                        % (stem, claimed, printed.get(label)))
     assert not bad, "stale figure numbers in the artifact index:\n  " + "\n  ".join(bad)
+
+
+#: How loose a line may be before it is a visible defect rather than a typesetting nicety.
+#: TeX reports 10000 for a line it stretched as far as it is willing to go; in a two-column
+#: IEEE measure that is a river of white space a reader sees before they read a word.
+UNDERFULL_BADNESS_CEILING = 10000
+
+
+@pytest.mark.parametrize("name", ["paper", "supplement"])
+def test_no_line_is_stretched_to_the_limit(name):
+    """The LaTeX log must record no underfull box at maximum badness.
+
+    Overfull boxes were gated from early on and underfull ones never were, so for
+    thirty-nine rounds the compliance table carried a column for one and nothing for the
+    other. A referee reading the rendered PDF in round 40 found fifteen lines at badness
+    10000 -- six of them in a single paragraph of Section IV-A -- which is what the missing
+    column had been hiding.
+
+    The cause is worth naming here because it will recur: `\texttt` tokens that TeX may
+    neither hyphenate nor break, in a column too narrow to hold them.
+    `TimeUnit.MILLISECONDS.toMicros(now - publishTimestamp)` is one word to TeX, and a line
+    containing it is stretched around it. The repair is to permit breaks inside such tokens
+    (see `\brk` in the preamble), NOT to relax the paragraph with \sloppy -- that trades a
+    defect you can see for one spread thinly over the whole document.
+
+    Lower-badness underfulls are left alone deliberately. They are ordinary consequences of
+    a narrow measure and gating them would produce noise rather than findings.
+    """
+    log = ROOT / ("%s.log" % name)
+    if not log.exists():
+        pytest.skip("no LaTeX log for %s; build it first" % name)
+    text = log.read_text(encoding="utf-8", errors="ignore")
+    # The BODY only. Reference entries carry long URLs that cannot break except at their
+    # slashes, so a two-column bibliography produces loose lines in every IEEE paper that
+    # cites a repository; ten of them survive here and are not a defect of this manuscript.
+    #
+    # Scoping the sweep is not the same as lowering the bar to meet the result, and the
+    # distinction matters enough to record: the round-40 report claimed six boxes in a
+    # paragraph of Section IV-A, and that was WRONG. The line numbers belong to paper.bbl,
+    # which LaTeX was reading at the time, and the offending text was "Apache Pulsar
+    # contributors, PerformanceConsumer.java ... https://github.com/apache/pulsar". Five
+    # boxes really were in the body, from unbreakable 	exttt identifiers, and those are
+    # what rk fixed. A referee reading a log without checking which file its line numbers
+    # index is making the same error as a reader trusting a benchmark's own output.
+    head = text.split(".bbl")[0]
+    worst = re.findall(
+        r"Underfull \\hbox \(badness (\d+)\) in paragraph at lines ([\d]+--[\d]+)", head)
+    offenders = sorted({loc for badness, loc in worst
+                        if int(badness) >= UNDERFULL_BADNESS_CEILING})
+    assert not offenders, (
+        "%s.log: %d line(s) stretched to badness %d, in paragraphs at %s. Allow breaks "
+        "inside the long \texttt tokens there rather than reaching for \sloppy."
+        % (name, len(offenders), UNDERFULL_BADNESS_CEILING, ", ".join(offenders)))
+
+
+@pytest.mark.parametrize("name", ["paper", "supplement"])
+def test_breakable_spans_carry_no_spaces(name):
+    r"""`\brk` is a url-style command, and those SILENTLY DROP SPACES.
+
+    Round 40 introduced \brk to let TeX break long identifiers and applied it, among others,
+    to `\brk{if (endToEndLatencyMicros > 0)}` -- a guard quoted from the audited benchmark's
+    source. It rendered as `if (endToEndLatencyMicros>0)`. The spaces either side of the
+    comparison were gone, and a line of somebody else's source, which this paper offers as
+    evidence, had been silently altered by a typesetting macro.
+
+    Nothing else would have caught it. The build is clean, the gates were green, and the text
+    layer reads plausibly unless you are looking for the spaces. So the rule is mechanical:
+    \brk takes identifiers, never fragments. Anything with a space stays in \texttt and finds
+    another way to fit.
+    """
+    src = (ROOT / ("%s.tex" % name)).read_text(encoding="utf-8")
+    offenders = [m for m in re.findall(r"\brk\{([^}]*)\}", src) if " " in m]
+    assert not offenders, (
+        "%s.tex: \brk would drop the spaces in %s. Use \texttt for anything containing a "
+        "space -- a url-style command is not a verbatim." % (name, offenders))

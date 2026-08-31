@@ -2688,8 +2688,17 @@ class TestRefereeRoundTwo:
         assert "virkar2014power" in main_tex
 
     def test_the_tracer_discloses_its_filter_and_its_own_effect(self, main_tex):
-        """R16. Both were in the artefact tree and neither was in the paper."""
-        assert r"sched\_wakeup" in main_tex and r"sched\_switch" in main_tex
+        """R16. Both were in the artefact tree and neither was in the paper.
+
+        The tracepoint names are checked with underscores NORMALISED, because what R16 asked
+        for is that the paper disclose which tracepoints it filtered on, and that is a fact
+        about the disclosure rather than about the markup carrying it. Round 40 moved several
+        identifiers from `\\texttt{sched\\_switch}` into `\\brk{sched_switch}`, a span TeX is
+        allowed to break, and the escape went with the change; a gate that failed on that
+        would have been testing the escape and not the disclosure.
+        """
+        flat = main_tex.replace(chr(92) + "_", "_")
+        assert "sched_wakeup" in flat and "sched_switch" in flat
         for macro in (r"\untracedRate", r"\tracedRate", r"\observerZ"):
             assert macro in main_tex
 
@@ -3163,3 +3172,135 @@ class TestTheManuscriptDoesNotRepeatItself:
         worst.sort(reverse=True)
         assert not worst, "sentences repeating each other:\n" + "\n".join(
             "  %.2f\n    A: %s\n    B: %s" % w for w in worst[:5])
+
+
+class TestClaimsWithdrawnForWantOfEvidenceStayWithdrawn:
+    """Over-claims the manuscript has retracted because nothing supported them.
+
+    Distinct from TestCausalityFramingIsWithdrawn, which pins a claim retracted because it
+    was WRONG. These were retracted because they were UNEVIDENCED, and that is a different
+    failure with a different way of coming back: nobody disputes them, so nothing stops them
+    being retyped.
+
+    Round 40 is why this class exists. "The most widely used cross-broker benchmark" was
+    removed from the Introduction in round 56 -- the only citation near it pointed at the
+    tool itself, while the 42-study synthesis in S52.3 supports "shared instrument" and not
+    "most used" -- and the identical phrase survived in the ABSTRACT, unnoticed for a full
+    revision. The author's own search had missed it because the phrase breaks across a source
+    line as "the most" / "widely used", so a grep for the whole phrase returns nothing.
+
+    That is this paper's own subject wearing a different hat: an instrument reporting clean
+    because of how the question was asked. So the check normalises whitespace first, reads
+    both documents rather than one, and is a list rather than a fix, because the next such
+    claim will not be this one.
+    """
+
+    #: phrase -> why it was withdrawn, quoted in the failure so a reader need not dig.
+    WITHDRAWN = {
+        "most widely used": (
+            "unevidenced superlative: the only citation near it is the tool itself, and "
+            "S52.3's 42-study synthesis supports 'the shared instrument', not 'most used'. "
+            "Use the Introduction's wording"),
+        "every mainstream client": (
+            "unevidenced universal: Supplement S38 bounds the reading at three runtimes"),
+    }
+
+    @pytest.mark.parametrize("doc", ["paper", "supplement"])
+    def test_no_withdrawn_over_claim_reappears(self, doc):
+        src = (REPO / ("%s.tex" % doc)).read_text(encoding="utf-8")
+        # Normalised first: the whole point is that a line break must not hide a phrase.
+        flat = " ".join(src.split()).lower()
+        for phrase, why in self.WITHDRAWN.items():
+            assert phrase not in flat, (
+                "%s.tex reinstates a withdrawn claim: %r -- %s" % (doc, phrase, why))
+
+    def test_the_abstract_is_checked_and_not_merely_the_body(self):
+        """The round-40 finding was in the abstract, which is the most-read text in the
+        paper and the least often re-read by its authors. Pinning the sweep's extent here
+        means a later edit cannot narrow it to the body without this failing."""
+        src = (REPO / "paper.tex").read_text(encoding="utf-8")
+        abstract = src[src.index(r"\begin{abstract}"):src.index(r"\end{abstract}")]
+        flat = " ".join(abstract.split()).lower()
+        for phrase in self.WITHDRAWN:
+            assert phrase not in flat, "the abstract reinstates %r" % phrase
+
+
+class TestTheCoAuthorsRequirementsAreMet:
+    """D. Gregg's requirements, pinned at the level of a referee finding.
+
+    They were asked for in correspondence rather than in a review, and until round 40 they
+    were tracked in a plan file, which is to say they were tracked nowhere a build could see.
+    The author's instruction is that they carry referee weight, and a requirement carrying
+    referee weight is one a gate enforces:
+
+        "At some point the reader needs to understand what threads are doing the work of the
+        benchmark, what threads are recording times, and how the two groups of threads
+        interact. I think the only way to explain this is with some sort of picture."
+        (2026-08-24)
+
+        "The system must be clearly explained like for a general engineer with a clear system
+        diagram. This should be section 1 or 2, preferably in the 1st 2 pages." (2026-08-31)
+
+    What the pins below do NOT do is judge whether the explanation is good. They check the
+    two things that are mechanically checkable and that a later revision could quietly undo:
+    that the system figure exists and lands early, and that the thread picture distinguishes
+    the threads rather than merging them. Both have been broken before -- the thread figure
+    drew a single "producer thread" lane for eight rounds, contradicting the paper's own
+    pre-registration -- so neither is hypothetical.
+    """
+
+    def test_the_system_figure_lands_within_the_first_two_pages(self):
+        """A diagram on page 5 is not a diagram at the start."""
+        from pypdf import PdfReader
+        pdf = REPO / "paper.pdf"
+        if not pdf.exists():
+            pytest.skip("build the paper first")
+        pages = PdfReader(str(pdf)).pages
+        found = None
+        for i, page in enumerate(pages[:6], start=1):
+            if "The system measured" in (page.extract_text() or ""):
+                found = i
+                break
+        assert found is not None, "the system figure's caption is not in the first six pages"
+        assert found <= 2, (
+            "the system figure is on page %d; the co-author asked for it inside the first "
+            "two, and a reader who is not a scheduling specialist meets every claim before "
+            "it" % found)
+
+    def test_the_thread_figure_separates_the_two_producer_threads(self):
+        """The stamps are taken by two different threads, and the figure must say so.
+
+        `docs/preregistration_depth.md` records that redis_producer.py stamps on the calling
+        thread and kafka_producer.py in the delivery callback, and experiment E-C3 exists to
+        MOVE that stamp. A figure with one producer lane asserts the opposite of the
+        pre-registration and erases an experiment's manipulated variable.
+        """
+        src = (REPO / "scripts" / "make_paper_figures.py").read_text(encoding="utf-8")
+        start = src.index("def plot_mechanism(")
+        body = src[start:src.index("def plot_", start + 1)]
+        for lane in ("producer app", "client I/O", "consumer app"):
+            assert lane in body, "the mechanism figure lost its %r lane" % lane
+
+    def test_the_flight_is_defined_before_it_is_used(self, main_tex):
+        """"What is an interval" was the co-author's second question. The manuscript answers
+        it by retiring the word for the timing sense and defining `flight` in its place; the
+        definition has to precede the uses, not follow them."""
+        body = main_tex[main_tex.index(r"\section{Introduction}"):]
+        first_use = body.index("flight")
+        # The FIRST occurrence must be the defining one. Comparing indices of "definition"
+        # and "first use" cannot express that -- the definition contains the word, so the
+        # distance is always about zero and the check passes whatever the order. What
+        # distinguishes the two cases is the wording around the first occurrence.
+        # Whitespace normalised, and the reason is not hygiene. The first draft of this pin
+        # searched for "not a clock period" and failed, because the manuscript breaks it as
+        # "not a / clock period" -- which is the round-40 finding F1 committed inside the
+        # gate written to prevent round-40 findings. Any check that reads LaTeX source for a
+        # phrase must flatten it first, without exception.
+        window = " ".join(body[max(0, first_use - 120):first_use + 200].split())
+        assert "here and throughout" in window, (
+            "the first appearance of 'flight' in the Introduction is not its definition. "
+            "The co-author asked for the timing term to be pinned down before the reader "
+            "meets it, and the definition reads 'A flight, here and throughout, is...'")
+        assert "not a clock period" in window, (
+            "the definition no longer says what a flight is NOT, which is the half that "
+            "answers the co-author's question: the word had been carrying three senses")

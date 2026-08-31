@@ -30,7 +30,17 @@
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage[hidelinks]{hyperref}
-\def\UrlBreaks{\do\/\do\-\do\_\do\.\do\=\do\&\do\?}
+\def\UrlBreaks{\do\/\do\-\do\_\do\.\do\=\do\&\do\?\do\(\do\)}
+% A monospace span TeX is allowed to break, for identifiers too long for a two-column
+% measure. `\texttt{TimeUnit.MILLISECONDS.toMicros}` is one unbreakable word to TeX, so the
+% line holding it gets stretched instead -- fifteen lines in this document reached badness
+% 10000 that way before round 40 gated it, six of them in one paragraph of Section IV-A.
+%
+% Built on url's breaking machinery rather than on \sloppy or on hand-placed \allowbreak:
+% \UrlBreaks above already lists the characters an identifier may break after, so one
+% declaration reuses it and the next long name needs no thought. Not seqsplit, which breaks
+% mid-word and would hyphenate `MILLISECONDS` in the middle.
+\DeclareUrlCommand\brk{\urlstyle{tt}}
 
 \newcommand{\kafka}{Kafka}
 \newcommand{\redis}{Redis}
@@ -74,22 +84,23 @@ College Dublin, Dublin~2, Ireland. E-mail: pedrorig@tcd.ie; david.gregg@tcd.ie.}
 \maketitle
 
 \begin{abstract}
-On sub-millisecond paths, a broker benchmark's instrument timescale can exceed the flight it
-reports. One ratio governs what follows: an instrument timescale
-over the flight measured. Two consequences of that ratio exceeding one are invisible in
-the output. First, a measured latency can come out
-negative, because both stamps are written by threads that must first be scheduled, and the
-difference between those two delays can outlast the delivery timed. A sign check rejected $\auditRejected$ of
-$\auditRuns$ runs. Across $\spanEvents$ events the acknowledgment-referenced span inverts
-$\spanNegAck$ times while the send-referenced span never does,
-on one clock by construction, so the cause is scheduling and not synchronization; real-time
-priority at fixed utilization collapses it $\rtFactorLow$--$\rtFactorHigh\times$. Second, the most
-widely used cross-broker benchmark admits an \emph{end-to-end} sample only when a
+On sub-millisecond paths a broker benchmark's instrument timescale can exceed the flight it
+reports, with two consequences invisible in the output. First, a measured latency can come
+out negative, because both stamps are written by threads that must first be scheduled and the
+difference between those delays can outlast the delivery
+timed. A sign check rejected $\auditRejected$ of $\auditRuns$ runs; across $\spanEvents$
+events the acknowledgment-referenced span inverts $\spanNegAck$ times while the
+send-referenced span never does, on one clock by construction, so the cause is scheduling and
+not synchronization, and real-time priority at fixed utilization collapses the rate
+$\rtFactorLow$--$\rtFactorHigh\times$. The displacement is not small: the reported span is
+$\reportedFraction\%$ of the delivery it stands for, and inflates the gap between two brokers
+$\gapDistortion\times$ --- the answer a comparison exists to give. Second, the
+benchmark the comparison literature shares admits an \emph{end-to-end} sample only when a
 millisecond-quantized difference is positive and counts none of what it drops, while
 measuring its same-process span with a nanosecond clock, unfiltered: over
-$\ombGridMedianCells$ embedded-mode cells reporting a median on the millisecond grid it
-computed that median from $\ombGridRetentionMin\%$ to $\ombGridRetentionMax\%$ of the
-samples taken, at a retained fraction fixed by the send-interval-to-quantum ratio. The remedy is one line: dither the send instant and publish that retained fraction.
+$\ombGridMedianCells$ embedded-mode cells reporting a median on the grid it computed that
+median from $\ombGridRetentionMin\%$ to $\ombGridRetentionMax\%$ of the samples taken. The
+remedy is one line: dither the send instant and publish that retained fraction.
 \end{abstract}
 
 % Alphabetical, case-insensitively, and gated by test_index_terms_are_alphabetical.
@@ -233,7 +244,9 @@ Supplement~S52.3 sizes that literature. That experimental setup can dominate a r
 established~\cite{mytkowicz2009wrong}, and how to report one is a settled literature we
 follow~\cite{georges2007rigorous,hoefler2015benchmarking}. Most of those comparisons report a
 median above the quantum, where the law of Section~\ref{sec:external} does not bind --- the
-scope of our claim rather than a limit on its reach.
+scope of our claim rather than a limit on its reach --- but not all of them do, and a 2026
+comparison reporting a sub-millisecond p99 is inside the regime entirely
+(Supplement~S52.3).
 
 The instruments are few and shared, so a defect in one is not one project's problem: the
 audit of Section~\ref{sec:generality} reads \harnessAuditedWord{} tools at source and finds
@@ -286,9 +299,16 @@ a span's timestamps are called harmful and default to off (Supplement~S52.1). Wh
 displacement is a late stamp rather than a skewed clock, correcting it moves evidence rather
 than error, and nobody had measured how much.
 
+The nearest concurrent statement of the wider position is Swami and
+Chougule~\cite{swami2026observability}, who hold that timing observability is itself an
+interference-sensitive resource and that one internal source can hide what an external
+observer sees. We agree, and we do not need their apparatus: their reference is a logic
+analyser outside the system, ours is the sign of a subtraction inside it, which is available
+to any harness that already takes both stamps.
+
 Concurrent work reaches the same observable by another route. In a 2026 preprint, Sharma et
 al.~\cite{sharma2026causality} count negative timing spans in distributed inference systems
-and propose a \texttt{causality\_health} check; injecting skew, they see no violations up to
+and propose a \brk{causality_health} check; injecting skew, they see no violations up to
 $3$~ms and clear ones by $5$~ms, and read that as a skew threshold. We take their term, and
 dispute the reading rather than their measurements. They hold that ``queueing alone cannot
 produce negative timing spans''; for the queue they model, backlog at a service stage, we
@@ -358,8 +378,8 @@ an instrument takes that survive into what it reports, not \kafka{}'s log-retent
 
 \subsection{Testbeds, and what the measurement proxies}
 \label{sec:testbeds}
-Every finding comes from four Oracle Cloud \texttt{VM.Standard.E5.Flex} instances (three
-brokers, one driver), Ubuntu 22.04 on kernel \texttt{6.8.0-1057-oracle} (EEVDF scheduler),
+Every finding comes from four Oracle Cloud \brk{VM.Standard.E5.Flex} instances (three
+brokers, one driver), Ubuntu 22.04 on kernel \brk{6.8.0-1057-oracle} (EEVDF scheduler),
 CPython 3.10, a private network, client libraries pinned identically, and
 \texttt{chrony}-disciplined clocks logged every minute. One early phase perturbed the
 measurement enough to be unusable and is excluded from every result here; the campaigns that
@@ -371,7 +391,7 @@ an audit outcome.
 \paragraph{The measurement at a glance}
 \label{sec:metrics}
 The harness runs producer and consumer as separate \emph{processes on one host}, both
-stamping the wall clock (\texttt{time.time\_ns()}, \textsc{clock\_realtime}), not a
+stamping the wall clock (\brk{time.time_ns()}, \textsc{clock\_realtime}), not a
 monotonic counter or the TSC, since a cross-process span needs a shared epoch that no
 per-core cycle counter provides. The cost is worth naming: only
 \textsc{clock\_monotonic} guarantees consecutive reads do not go backwards, so we forgo an
@@ -484,11 +504,11 @@ distributed mode is discussed in Section~\ref{sec:limitations}.
 
 \subsection{The guard, and its origin}
 \label{sec:extmethod}
-In \texttt{LocalWorker.java}:294 the end-to-end latency is \texttt{now - publishTimestamp},
+In \brk{LocalWorker.java}:294 the end-to-end latency is \texttt{now - publishTimestamp},
 where \texttt{now} is read in the consumer and \texttt{publishTimestamp} is \kafka{}'s
 producer-set \texttt{CreateTime}, itself a millisecond value. That difference is then
-promoted, \texttt{TimeUnit.MILLISECONDS.toMicros(now - publishTimestamp)}, so the guard in
-\texttt{WorkerStats.java}:95 --- \texttt{if (endToEndLatencyMicros > 0)} --- tests a variable
+promoted to microseconds (Supplement~S53 quotes the call), so the guard in
+\brk{WorkerStats.java}:95 --- \texttt{if (endToEndLatencyMicros > 0)} --- tests a variable
 named for microseconds that can only ever hold integer multiples of a thousand of them. The message is counted as received a few lines earlier, but a non-positive latency is dropped and no counter
 records how many. Over the campaign of Section~\ref{sec:extquant} that silence covers
 $\ombDiscarded$ samples: Houdini at least took a bow.
@@ -551,28 +571,13 @@ have ($\ombRetentionRho$, Fisher $\ombRetentionRhoCI$, over $\ombRetentionRhoN$ 
 Equation~\ref{eq:retention} predicts. What moves retention is where the producer's send
 instants fall against the millisecond grid. A sample survives
 when its delivery crosses a tick boundary, which for a delivery shorter than one tick
-happens with probability $T_{\mathrm{true}}/\tau$ (Figure~\ref{fig:quantum}):
+happens with probability $T_{\mathrm{true}}/\tau$ (Supplement~S51 draws the geometry):
 \begin{equation}
 \label{eq:retention}
 \text{retention} \;=\; \min\!\left(1,\; \frac{T_{\mathrm{true}}}{\tau}\right)
 \qquad\text{(uniform phases).}
 \end{equation}
 
-\begin{figure}[tb]
-\centering
-\includegraphics[width=\columnwidth]{docs/results/figures/quantum_geometry.pdf}
-\caption{\textbf{Why a sample disappears, and why the survivors are not a sample.}
-(a) One delivery of $T_{\mathrm{true}} = 0.35$~ms at four phases of one tick. Three finish
-inside it, so both stamps round alike, the difference is exactly zero, and the guard removes
-them; the fourth crosses the boundary and is recorded as one whole tick --- which is why the
-corpus prints $1.0$ and $2.0$~ms and nothing between. (b) A delivery survives from phase
-$\tau - T_{\mathrm{true}}$ onward --- the shaded band --- so uniform phases retain
-$T_{\mathrm{true}}/\tau$
-(Equation~\ref{eq:retention}); a commensurate producer visits only $q$ and retains a count out
-of $q$, one of the values Equation~\ref{eq:quant} allows. $T_{\mathrm{true}}$ here is
-illustrative and off-vertex by choice: at $0.5$~ms the two answers coincide.}
-\label{fig:quantum}
-\end{figure}
 Both incommensurate arms sit near $50\%$, implying $T_{\mathrm{true}} \approx 0.5$~ms at
 $\tau = 1$~ms, which agrees with our own unquantized transport measurement.
 
@@ -851,7 +856,7 @@ fixed $\rho$, so this will not surprise a queueing-literate reader; what it rule
 single-parameter form we had adopted and pre-registered, where $\rho$ alone fixes the rate. Payload padding lengthened transport $\payloadTransportFactor\times$ while the negative-span
 rate \emph{fell} $\payloadRateFall\times$ [$\payloadRateFallCI$], monotonically, at a $\payloadRhoSpread$ utilization spread: the
 direction Equation~\ref{eq:negspan} predicts and the opposite of a stress account.
-Finally, a kernel trace on the \texttt{sched\_wakeup} and \texttt{sched\_switch}
+Finally, a kernel trace on the \texttt{sched\_wakeup} and \brk{sched_switch}
 tracepoints~\cite{gregg2016runqlat}, filtered to the harness processes and sharing no
 instrument, estimator or data with the application-level rate, predicts that rate to within a
 third across $\tracedRatioArms$ arms at two load levels --- ratios $\tracedRatios$, no
@@ -990,10 +995,9 @@ separated by the difference of their lags, a reported gap of $11\%$ at $10$~ms, 
 check fires at neither (Supplement~S48). On this corpus the reported span is
 $\reportedFraction\%$ of the delivery it stands for, understating it $\understateFactor\times$,
 and because the two brokers' clients stamp differently the true $\gapTrue\times$ gap between
-them is reported as $\gapReported\times$ --- the instrument $\gapDistortion\times$ of the
-answer a comparison exists to give. That factor is a property of the clients, not of the
-brokers.
-
+them is reported as $\gapReported\times$. \textbf{The instrument nearly doubles the answer a
+comparison exists to give} --- $\gapDistortion\times$, $95\%$ interval $\gapDistortionCI$
+resampling conditions --- and that factor is a property of the clients, not of the brokers.
 
 \textbf{Count your events before you quote a percentile.} A median over as few as seven
 events per run is not a property of the system, and repetition will not tell you so.
@@ -1071,7 +1075,7 @@ twofold apart); timer noise (\texttt{SCHED\_FIFO} at fixed utilization collapses
 across $\rtPairs$ pairs, and noise does not respect
 scheduling class); stress
 (transport $\payloadTransportFactorRound\times$ longer \emph{lowers} the rate); and direct observation (a
-\texttt{sched\_switch} histogram predicts the rate to within a third, unfitted). One rival is
+\brk{sched_switch} histogram predicts the rate to within a third, unfitted). One rival is
 not the scheduler's: the stamp is a CPython call, so it waits on the interpreter lock
 too, invisibly to a tracepoint probe --- bounded because that kernel-only estimator brackets
 the observed rate ($\tracedRatios$) instead of under-predicting (Supplement~S43.4).

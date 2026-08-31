@@ -1,4 +1,4 @@
-# Fourteen IEEE Transactions on Computers papers, kept for reference
+# IEEE Transactions on Computers papers, kept for reference
 
 Downloaded 2026-08-25 (rounds 26–35) to settle questions of house *norm* rather than house
 *rule*. The rules are on the Author Information page and are already gated in the test suite;
@@ -109,3 +109,20 @@ kernel-timing arguments.
 **The corpus is exhausted.** Four rounds of enumeration over TC's arXiv-visible preprints
 (~120 unique) have found everything close. Later rounds should re-read these rather than
 hunt for more; the marginal paper adds nothing the twelve do not already settle.
+
+## Added round 40 (2026-08-31)
+
+Four more, fetched when the standing instruction to sample the venue was renewed. Recorded
+with what each is worth, so the next reviewer does not re-fetch the ones that are not.
+
+| file | arXiv | pages | figures | worth |
+|---|---|---|---|---|
+| `microarch_cliffs_TC.pdf` | 2602.11580 | 12 | 10 | **the closest format analogue**: 12 pp, 10 figures, 56 refs, and benchmarking methodology as its subject |
+| `temporal_observability_TC.pdf` | 2605.17701 | 13 | 0 | **the closest in stance**, and now cited in Section II-B. An external logic-analyser reference reveals timing failures that one internal source hides. No negative values, no quantization, no harness source read -- so it does not compete |
+| `microscaling_fp_TC.pdf` | 2510.01863 | 11 | 6 | genuine TC formatting, marked "UNDER REVIEW, 2025". Useful for house norm only |
+| `continuum_measurement_TC.pdf` | 2506.22884 | 6 | 1 | **little value.** A position piece, not TC-formatted. Kept so that nobody fetches it a second time |
+
+**What the corpus says about figure counts.** TC publishes no figure limit -- the page count
+simply includes them, alongside references capped at 45 and biographies capped at 145 words.
+Among the 12-page papers held here the range is 6 to 10 figures, so this manuscript's seven
+sits mid-range rather than at a ceiling.

@@ -22,6 +22,12 @@
 \usepackage{graphicx}
 \usepackage{url}
 \usepackage[hidelinks]{hyperref}
+% Kept identical to the main text's declaration on purpose: the two documents are read as
+% one submission, and a long identifier that breaks in the paper and not in the supplement
+% is a difference a reader would notice and no gate would explain. \brk takes identifiers
+% only -- it is a url-style command and silently drops spaces, which is gated.
+\def\UrlBreaks{\do\/\do\-\do\_\do\.\do\=\do\&\do\?\do\(\do\)}
+\DeclareUrlCommand\brk{\urlstyle{tt}}
 \newcommand{\kafka}{Kafka}
 \newcommand{\redis}{Redis}
 \newcommand{\tti}{TTI}
@@ -2092,7 +2098,7 @@ denominator.
 
 
 A quantity with two-point support breaks the replicate median, so the pre-specified
-replacement (\texttt{grid\_membership\_test.py}, committed with the artifact) tests each
+replacement (\brk{grid_membership_test.py}, committed with the artifact) tests each
 arm's mean distance to its nearest grid vertex, normalized by cell width, against a
 continuum null of Normal$(\theta_{\mathrm{local}}, \sigma{=}1.2)$ replicates --- both
 parameters measured, neither fitted to the arm under test; the p-value is one-sided by
@@ -3438,6 +3444,32 @@ term. What a threshold in milliseconds of skew cannot do is transfer to a machin
 stall, not the skew, is the term that grows.
 
 \section{S51. The 1970 counter note, line by line (moved from the main text)}
+
+% Moved out of the main text in round 40. It is a CONSTRUCTED illustration -- four
+% phases of one tick, and a phase diagram -- not a measurement, and it was the last
+% such drawing in a paper whose other seven figures all carry data. It lands here
+% because S51 is where the same identity is traced to Hewlett-Packard's 1970 counter
+% note, so the geometry and its provenance are now read together.
+\begin{figure}[tb]
+\centering
+\includegraphics[width=\columnwidth]{docs/results/figures/quantum_geometry.pdf}
+\caption{\textbf{Why a sample disappears, and why the survivors are not a sample.}
+(a) One delivery of $T_{\mathrm{true}} = 0.35$~ms at four phases of one tick. Three finish
+inside it, so both stamps round alike, the difference is exactly zero, and the guard removes
+them; the fourth crosses the boundary and is recorded as one whole tick --- which is why the
+corpus prints $1.0$ and $2.0$~ms and nothing between. (b) A delivery survives from phase
+$\tau - T_{\mathrm{true}}$ onward --- the shaded band --- so uniform phases retain
+$T_{\mathrm{true}}/\tau$
+(Equation~\ref{eq:retention}); a commensurate producer visits only $q$ and retains a count out
+of $q$, one of the values Equation~\ref{eq:quant} allows. $T_{\mathrm{true}}$ here is
+illustrative and off-vertex by choice: at $0.5$~ms the two answers coincide.}
+\label{fig:quantum}
+\end{figure}
+
+Figure~\ref{fig:quantum} draws the identity this section traces: one delivery at four
+phases of a tick, three of them rounding to a difference of zero and deleted, and beneath
+it the phase diagram that decides how many of a run's sends survive.
+
 \label{sec:hp_map}
 
 Section~\mainRelatedRes{} concedes the arithmetic of Mode~B to Hewlett-Packard's Application
@@ -3533,6 +3565,26 @@ across them~\cite{mohammad2025kafka}. It finds neither of the failures reported 
 matters for the same reason the audit of Section~\mainGenerality{} does: the instruments are
 few and shared, so a defect in one is a defect in a decade of comparisons rather than in one
 project.
+
+\paragraph{Two 2026 data points, one on each side}
+The main text concedes that most published comparisons report a median above the quantum,
+where the deletion law does not bind. That concession stands, and it is worth recording that
+it is not universal: a 2026 practitioner comparison reports a \redis{} Streams p99 of
+$0.8$~ms against \kafka{}'s $12.5$~ms~\cite{indexdev2026brokers}. A p99 beneath one
+millisecond puts the whole body of that distribution under the quantum, and the comparison
+carries no retained fraction, no rejection count and no timestamp resolution. It is the
+clearest current instance of a published ranking produced inside the regime this paper is
+about.
+
+Against that, the rules of Section~\mainAuthors{} are being adopted independently, and by a
+benchmark rather than by a metrics agent. A 2026 voice-agent latency methodology records both
+endpoints \emph{on one clock} --- a dual-channel recording, chosen because ``a platform
+measures from where it stands, and the caller is not standing there'' --- publishes its
+discard counts per platform and per reason so that ``the denominator is auditable'', and
+declines to claim differences below its detector's resolution~\cite{openbenchmarks2026voice}.
+That is the one-clock rule, the retention rule and the resolution rule, arrived at in another
+domain by people who had not read this paper. We cite it as corroboration that the rules cost
+little, not as evidence for any claim of ours.
 
 \subsection{S52.4. Where scheduling delay comes from, and what the queueing account gets right}
 

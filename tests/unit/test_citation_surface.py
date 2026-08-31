@@ -51,19 +51,20 @@ TC_REFERENCE_CAP = 45
 #: abstract's clause and Section IV's law verbatim, and one factor was printed in four
 #: sections.
 #:
-#: THE SECOND AUTHOR'S BIOGRAPHY DOES NOT FIT, and an earlier version of this note said it
-#: did. That claim came from one measurement with a ~100-word placeholder, which overran by
-#: eight lines; the inference drawn from it -- that a shorter entry would fit -- was never
-#: tested and is false. Measured on 2026-08-31 at three lengths:
+#: BOTH BIOGRAPHIES ARE IN, and the twelve is measured with them present. Getting there took
+#: one more pass and the note this replaces is worth keeping in mind: it first claimed the
+#: second entry was "already inside this budget", which was an inference from a single
+#: placeholder measurement and was false. Measured at three lengths on 2026-08-31, before the
+#: last cut, every one of them overran -- 100 words by eight lines, 77 by eight, 34 by four.
+#: Page 12 was simply full, so shortening the entry was never the lever.
 #:
-#:      100 words  ->  13 pages, 8 lines over
-#:       77 words  ->  13 pages, 8 lines over
-#:       34 words  ->  13 pages, 4 lines over
+#: What paid for it was Section IV-D's audit paragraph, which enumerated the registry class by
+#: class in prose -- filters, suppressors, refusals, the counter, the acquittal -- while S53's
+#: table shows exactly that, row by row. The two findings in it that are ARGUMENTS rather than
+#: rows were kept: substitution being worse than filtering, because it leaves nothing missing
+#: and retention downstream reads 100%; and Rezolus counting its discards, which is what makes
+#: the reporting rule practical rather than aspirational.
 #:
-#: Page 12 is simply full, so the spill is nearly independent of the entry's length and
-#: shortening it is not the lever. Roughly ten lines have to come out of the body before ANY
-#: second biography lands, or the paper is thirteen pages and pays the charge. The twelve
-#: above is twelve only because that entry is still absent.
 TC_PAGE_LIMIT = 12
 
 

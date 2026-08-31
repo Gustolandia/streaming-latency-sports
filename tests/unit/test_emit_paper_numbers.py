@@ -1031,3 +1031,44 @@ class TestTheRecoveryMacrosDeclineRatherThanInvent:
         got = dict(epn.disease_macros(str(p)))
         assert got["diseaseEvents"] == "100"
         assert not [k for k in got if k.startswith("diseaseOver")]
+
+
+class TestTheDepositedVersionIsRead:
+    """`artifact_macros` names the release the archive is deposited under.
+
+    It exists because the version was typed into the manuscript and went stale the moment a
+    new version was deposited: v2.7.0 was published carrying a PDF that said v2.6.0.
+    """
+
+    def _write(self, path, **fields):
+        import json
+        path.write_text(json.dumps(fields), encoding="utf-8")
+        return str(path)
+
+    def test_the_version_comes_from_the_deposit_metadata(self, tmp_path):
+        code = self._write(tmp_path / "z.json", version="9.9.9")
+        data = self._write(tmp_path / "zd.json", version="9.9.9")
+        assert epn.artifact_macros(code, data) == [("artifactVersion", "9.9.9")]
+
+    def test_absent_metadata_emits_nothing(self, tmp_path):
+        """A checkout without the deposit files still builds; the manuscript's own gates are
+        what forbid quoting a macro that was never emitted."""
+        assert epn.artifact_macros(str(tmp_path / "gone.json")) == []
+
+    def test_metadata_without_a_version_emits_nothing(self, tmp_path):
+        code = self._write(tmp_path / "z.json", title="no version here")
+        assert epn.artifact_macros(code) == []
+
+    def test_a_missing_sibling_is_not_a_disagreement(self, tmp_path):
+        """Only the code record is required; the data record may not be checked out."""
+        code = self._write(tmp_path / "z.json", version="1.2.3")
+        assert epn.artifact_macros(code, str(tmp_path / "absent.json")) == \
+            [("artifactVersion", "1.2.3")]
+
+    def test_the_two_records_may_not_disagree(self, tmp_path):
+        """They are deposited as a pair. Publishing 2.7.0 code beside 2.6.0 data would put
+        two versions of one release in front of a reader who follows the cross-reference."""
+        code = self._write(tmp_path / "z.json", version="2.7.0")
+        data = self._write(tmp_path / "zd.json", version="2.6.0")
+        with pytest.raises(ValueError, match="disagree on the version"):
+            epn.artifact_macros(code, data)

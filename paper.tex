@@ -87,19 +87,18 @@ College Dublin, Dublin~2, Ireland. E-mail: pedrorig@tcd.ie; david.gregg@tcd.ie.}
 On sub-millisecond paths a broker benchmark's instrument timescale can exceed the flight it
 reports, with two consequences invisible in the output. First, a measured latency can come
 out negative, because both stamps are written by threads that must first be scheduled and the
-difference between those delays can outlast the delivery
-timed. A sign check rejected $\auditRejected$ of $\auditRuns$ runs; across $\spanEvents$
+difference between those delays can outlast the delivery. A sign check rejected $\auditRejected$ of our $\auditRuns$ runs; across $\spanEvents$
 events the acknowledgment-referenced span inverts $\spanNegAck$ times while the
-send-referenced span never does, on one clock by construction, so the cause is scheduling and
+send-referenced span never does, on one clock by construction, so the cause is scheduling
 not synchronization, and real-time priority at fixed utilization collapses the rate
 $\rtFactorLow$--$\rtFactorHigh\times$. The displacement is not small: the reported span is
-$\reportedFraction\%$ of the delivery it stands for, and inflates the gap between two brokers
+$\reportedFraction\%$ of the delivery it stands for, and inflates the two-broker gap
 $\gapDistortion\times$ --- the answer a comparison exists to give. Second, the
 benchmark the comparison literature shares admits an \emph{end-to-end} sample only when a
 millisecond-quantized difference is positive and counts none of what it drops, while
 measuring its same-process span with a nanosecond clock, unfiltered: over
-$\ombGridMedianCells$ embedded-mode cells reporting a median on the grid it computed that
-median from $\ombGridRetentionMin\%$ to $\ombGridRetentionMax\%$ of the samples taken. The
+$\ombGridMedianCells$ of $\ombMedianCells$ embedded-mode cells reporting a median on the grid it computed that
+median from $\ombGridRetentionMin\%$ to $\ombGridRetentionMax\%$ of samples taken. The
 remedy is one line: dither the send instant and publish that retained fraction.
 \end{abstract}
 
@@ -167,7 +166,7 @@ referenced to them never inverts (Table~\ref{tab:spans}).}
 \label{fig:model}
 \end{figure*}
 
-A benchmark times a message by reading a clock when it is sent and again when it arrives,
+A latency benchmark times a message by reading a clock when it is sent and again when it arrives,
 then subtracting. Figure~\ref{fig:pipeline} is the system we built to do that and the four
 stamps it takes. Nothing about the message takes those readings: two \emph{threads} do
 (Fig.~\ref{fig:model}), each of which must first be given a core, and each of which waits
@@ -570,7 +569,7 @@ cannot account for a range like that whatever its correlation, and the correlati
 have ($\ombRetentionRho$, Fisher $\ombRetentionRhoCI$, over $\ombRetentionRhoN$ cells) carries the sign
 Equation~\ref{eq:retention} predicts. What moves retention is where the producer's send
 instants fall against the millisecond grid. A sample survives
-when its delivery crosses a tick boundary, which for a delivery shorter than one tick
+when its delivery crosses a tick boundary, which for a delivery shorter than one tick $\tau$
 happens with probability $T_{\mathrm{true}}/\tau$ (Supplement~S51 draws the geometry):
 \begin{equation}
 \label{eq:retention}

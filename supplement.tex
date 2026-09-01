@@ -2838,6 +2838,17 @@ The comparison is therefore not that standards bodies have failed to think about
 them states our rule in almost our words, for a different domain. The rule simply has not
 reached the place where brokers are compared on sub-millisecond paths.
 
+\paragraph{The property those rules refer to is itself a measurement}
+A floor expressed relative to the instrument presumes the instrument's resolution is known,
+and on a general-purpose platform it frequently is not: the granularity a runtime advertises,
+the granularity it achieves, and the cost of the call that reads it are three different
+numbers. TimerMeter quantifies exactly those properties for the timers a runtime actually
+exposes~\cite{kuperberg2009timermeter}, which is the measurement a harness must already have
+made before a rule of CoreMark-PRO's form can be applied to it. We name it because the rule of
+Section~\mainAuthors{} has the same precondition: a harness cannot state its timestamp
+resolution honestly without having measured it, and the corpus here is a case where the
+advertised figure would have been the wrong one to state.
+
 \section{S41. The classical statistics of a discarded zero}
 \label{sec:zeros}
 

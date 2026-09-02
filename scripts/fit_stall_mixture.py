@@ -238,6 +238,35 @@ def bootstrap(bins, k, reps, seed=1):
     return {q: [ci(samples[q][j]) for j in range(k)] for q in samples}
 
 
+ELBOW_RULE = ("smallest k whose next component adds less than %.2f to the log-likelihood "
+              "per sample")
+# The geometric centre of the window that holds the answer steady. On the committed
+# corpus any threshold in 0.040 .. 0.130 gives base 3 and rt 2; below it the rule buys
+# components that move nothing, above it base collapses to 2. 0.07 is the midpoint on a
+# log scale, about 1.8x of margin either way -- chosen for the margin, not for looking
+# round. The window edges are the base arm's own successive gains, 0.134 and 0.036.
+ELBOW_THRESHOLD = 0.07
+
+
+def elbow_k(drops, n, kmax, threshold=ELBOW_THRESHOLD):
+    """The honest selector: stop where added components stop buying anything per sample.
+
+    argmin BIC cannot be used here. At n of order 5e5 the penalty for one more component is
+    3 ln n, about 40, while the likelihood gains run to five figures, so BIC keeps improving
+    to whatever kmax is offered and the "selection" records the flag rather than the data.
+
+    Normalising by n is what makes the threshold portable: a gain of 4,000 on half a million
+    samples is 0.007 each, which is nothing, and the same 4,000 on a thousand samples is 4.0,
+    which is a great deal.
+    """
+    if not n or not drops:
+        return 1
+    for k in sorted(drops):
+        if drops[k] / n < threshold:
+            return k - 1
+    return kmax
+
+
 def analyse(path, label, kmax, reps):
     bins, counters = load_bins(path)
     n = sum(c for _l, _h, c in bins)
@@ -253,15 +282,31 @@ def analyse(path, label, kmax, reps):
         print("  %d  %12.1f  %12.1f" % (k, ll, b))
         if best_bic is None or b < best_bic:
             best_k, best_bic = k, b
-    out["best_k"] = best_k
     # BIC decreases monotonically here because at n ~ 5e5 it buys components to absorb
-    # lognormal-shape misfit, so the elbow, not the minimum, is the honest selector. Report
-    # the successive drops so a reader can see the elbow rather than trust a argmin.
+    # lognormal-shape misfit, so the elbow, not the minimum, is the honest selector.
+    #
+    # Until round 44 this stored argmin under the name `best_k`, which is how the artefact
+    # came to record 6: BIC falls through kmax and every increment beats the 3 ln n penalty
+    # (about 40 here) by orders of magnitude, so argmin returns whatever kmax was passed.
+    # The number was a command-line flag wearing the name of a finding.
     drops = {k: out["fits"][k - 1]["bic"] - out["fits"][k]["bic"]
              for k in range(2, kmax + 1)}
     out["bic_drops"] = drops
-    print("  BIC argmin K = %d; successive drops: %s"
-          % (best_k, "  ".join("%d->%d: %.0f" % (k - 1, k, d) for k, d in drops.items())))
+    out["bic_drop_per_sample"] = {k: d / n for k, d in drops.items()} if n else {}
+    out["bic_argmin_k"] = best_k
+    out["kmax"] = kmax
+    out["best_k"] = elbow_k(drops, n, kmax)
+    out["selection_rule"] = ELBOW_RULE % ELBOW_THRESHOLD
+    out["bic_drops_monotone"] = all(
+        drops[k] <= drops[k - 1] for k in range(3, kmax + 1)) if kmax >= 3 else True
+    best_k = out["best_k"]
+    print("  BIC argmin K = %d (returns kmax by construction); elbow K = %d"
+          % (out["bic_argmin_k"], best_k))
+    print("  successive drops: %s"
+          % "  ".join("%d->%d: %.0f" % (k - 1, k, d) for k, d in drops.items()))
+    if not out["bic_drops_monotone"]:
+        print("  NOTE: drops are not monotone, so the component count is not well "
+              "determined for this arm; treat the selected K as indicative.")
 
     # The paper-facing structure is three separated REGIONS, whatever K the fit uses inside
     # them. Group weights on fixed boundaries chosen in the empty buckets between clusters.

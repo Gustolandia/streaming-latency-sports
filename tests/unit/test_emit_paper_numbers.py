@@ -1133,3 +1133,170 @@ class TestWhatTheGuardDeletesIsEmitted:
                         at_zero=40, below_zero=6)
         a = self._audit(tmp_path / "a.csv", row="somethingElse")
         assert "msGuardDeletedCI" not in dict(epn.deletion_macros(s, a))
+
+
+class TestTheFourPointRsquaredCannotBeQuotedAlone:
+    """`\\tailRsq` is 0.990 from four payload levels and two fitted parameters.
+
+    Two residual degrees of freedom. A number that high on four points is close to what the
+    arithmetic guarantees, and it sits beside an exponent interval of 0.234-0.443, nearly a
+    factor of two -- so quoting it bare advertises a precision the fit does not have.
+
+    The supplement already does the honest thing in prose: "over four payload levels", "at two
+    degrees of freedom", and "Four points do not earn an equation in a main text". This gate
+    keeps that true. It deliberately accepts the prose rather than demanding the macro, because
+    the requirement is that a reader be told, not that a particular spelling be used.
+
+    What it does NOT yet fix, because the manuscript is frozen: that "four" is hand-typed next
+    to a machine-emitted fit. If the sweep ever gains a level the equation updates itself and
+    the sentence around it does not -- the same defect `payload_span`'s docstring describes,
+    where six places read one CSV and none read each other. `\\tailRsqPoints` is emitted and
+    waiting for that swap.
+    """
+
+    REPO = Path(__file__).resolve().parents[2]
+    COUNT_WORDS = ("\\tailRsqPoints", "four payload levels", "four points", "Four points")
+
+    def _quoting_files(self):
+        out = []
+        for name in ("paper.tex", "supplement.tex"):
+            p = self.REPO / name
+            if not p.exists():
+                continue
+            text = p.read_text(encoding="utf-8", errors="replace")
+            stripped = text.replace("\\tailRsqPoints", "").replace("\\tailRsqAdj", "")
+            if "\\tailRsq" in stripped:
+                out.append((name, text))
+        return out
+
+    def test_wherever_it_is_quoted_the_point_count_is_stated_too(self):
+        quoting = self._quoting_files()
+        assert quoting, (
+            "nothing quotes \\tailRsq any more. That is a fine outcome -- it was always "
+            "optional -- but this gate is then guarding nothing and should be retired.")
+        for name, text in quoting:
+            assert any(w in text for w in self.COUNT_WORDS), (
+                "%s quotes \\tailRsq without anywhere saying what it rests on. An R-squared "
+                "of 0.990 on four points with two fitted parameters is decoration; if it is "
+                "worth printing, it is worth printing the point count beside it." % name)
+
+    def test_the_main_text_still_does_not_carry_it(self):
+        """Four points do not earn an equation in a main text -- the supplement's own words."""
+        assert "\\tailRsq" not in (self.REPO / "paper.tex").read_text(encoding="utf-8"), (
+            "the payload-sweep R-squared came back into the main text; it was demoted to the "
+            "supplement on purpose")
+
+    def test_both_companions_are_emitted_so_the_macro_swap_is_ready(self):
+        macros = dict(epn.stat_macros())
+        assert macros.get("tailRsqPoints") == "4"
+        assert "tailRsqAdj" in macros
+        assert float(macros["tailRsqAdj"]) <= float(macros["tailRsq"])
+
+    def test_the_adjustment_uses_the_degrees_of_freedom_it_has(self):
+        assert epn._adjusted_r2(0.990, 4, 1) == pytest.approx(1 - 0.010 * 3 / 2)
+        assert epn._adjusted_r2(0.5, 10, 1) == pytest.approx(1 - 0.5 * 9 / 8)
+
+    def test_no_residual_degrees_of_freedom_returns_the_raw_value(self):
+        """Two points and one predictor fit perfectly; adjusting would divide by zero."""
+        assert epn._adjusted_r2(1.0, 2, 1) == 1.0
+        assert epn._adjusted_r2(0.8, 1, 1) == 0.8
+
+    def test_the_point_count_is_read_from_the_sweep_not_assumed(self):
+        assert stat_intervals.payload_points() == 4
+
+
+class TestSeparabilityMacros:
+    """The numerical refutation of the separable model, emitted so Section III can cite it.
+
+    `analyze_span_symmetry.py` has computed `neg_frac_pred_indep` for six rounds and nothing
+    has ever read it. It is the rate that would follow if the delivery and the acknowledgment
+    lag were independent -- the assumption the old Equation (3) belongs to -- and it overshoots
+    the observed rate in every condition.
+    """
+
+    def test_it_reports_the_median_of_ratios_not_the_ratio_of_medians(self):
+        """The distinction that makes it 12.4x rather than 21.3x.
+
+        Ratio-of-medians divides one condition's typical prediction by a different condition's
+        typical observation, which is not an estimator of anything. The same mistake was caught
+        once already in this pipeline against `reportedFraction`; this gate is why it cannot
+        come back silently.
+        """
+        m = dict(epn.separability_macros())
+        got = float(m["indepOvershoot"])
+        ratio_of_medians = float(m["indepMedianPred"]) / float(m["indepMedianObs"])
+        assert abs(got - 12.4) < 0.05, "median-of-ratios moved: %r" % got
+        assert abs(ratio_of_medians - 21.3) < 0.3, (
+            "the tempting wrong number moved too (%r); if the corpus changed, recheck that "
+            "the emitter still takes the median of the ratios" % ratio_of_medians)
+        assert abs(got - ratio_of_medians) > 5.0, (
+            "the two estimators have converged, so this gate no longer distinguishes them")
+
+    def test_the_overshoot_is_universal_across_conditions(self):
+        m = dict(epn.separability_macros())
+        assert m["indepConditions"] == m["indepOvershootConditions"], (
+            "independence no longer overshoots in every condition; Section III's claim that "
+            "the separable family is refuted by the corpus would need weakening")
+        assert int(m["indepConditions"]) == 70
+
+    def test_the_excluded_conditions_are_counted_and_the_exclusion_is_conservative(self):
+        """Conditions with zero observed negatives have no defined ratio.
+
+        They are dropped, and that can only lower the median: independence predicts a nonzero
+        rate in each of them where none occurred, so their true overshoot is unbounded.
+        """
+        m = dict(epn.separability_macros())
+        n_all, n_ratio = int(m["indepConditions"]), int(m["indepOvershootN"])
+        assert n_ratio < n_all, "no conditions were excluded; the caveat is now misleading"
+        assert n_ratio == 61
+
+        import csv as _csv
+        path = Path(__file__).resolve().parents[2] / "docs" / "results" / "span_symmetry.csv"
+        with open(path, encoding="utf-8") as fh:
+            zeros = [r for r in _csv.DictReader(fh) if float(r["neg_frac_obs"]) == 0]
+        assert len(zeros) == n_all - n_ratio
+        assert all(float(r["neg_frac_pred_indep"]) > 0 for r in zeros), (
+            "a dropped condition predicted zero as well, so dropping it is no longer "
+            "unambiguously conservative")
+
+    def test_a_missing_artefact_yields_no_macros_rather_than_raising(self):
+        assert epn.separability_macros(path="does-not-exist.csv") == []
+
+    def test_rows_without_the_columns_are_skipped(self, tmp_path):
+        p = tmp_path / "s.csv"
+        p.write_text("condition,neg_frac_obs\na,0.1\n", encoding="utf-8")
+        assert epn.separability_macros(path=str(p)) == []
+
+    def test_all_observed_zero_yields_no_macros(self, tmp_path):
+        """No defined ratio anywhere means no honest overshoot to report."""
+        p = tmp_path / "s.csv"
+        p.write_text("condition,neg_frac_obs,neg_frac_pred_indep\na,0,0.5\n", encoding="utf-8")
+        assert epn.separability_macros(path=str(p)) == []
+
+    def test_the_macros_reach_the_generated_file(self):
+        """Emitting is not enough; the function has to be wired into all_pairs."""
+        gen = (Path(__file__).resolve().parents[2] / "docs" / "generated"
+               / "paper_numbers.tex").read_text(encoding="utf-8")
+        for want in ("indepOvershoot", "indepConditions", "indepMedianObs", "tailRsqDof"):
+            bs = chr(92)
+            assert bs + "newcommand{" + bs + want + "}" in gen, (
+                "%s is emitted by its function but never reaches paper_numbers.tex; it is "
+                "not wired into all_pairs" % want)
+
+    def test_a_condition_where_independence_undershoots_is_counted_out(self, tmp_path):
+        """The real corpus never does this, which is exactly why it needs a synthetic case.
+
+        If independence ever stopped overshooting somewhere, `indepOvershootConditions` would
+        fall below `indepConditions` and the universality claim in Section III would have to
+        be weakened rather than quietly kept.
+        """
+        p = tmp_path / "s.csv"
+        p.write_text(
+            "condition,neg_frac_obs,neg_frac_pred_indep\n"
+            "a,0.01,0.20\n"      # overshoots
+            "b,0.30,0.10\n",     # undershoots
+            encoding="utf-8")
+        m = dict(epn.separability_macros(path=str(p)))
+        assert m["indepConditions"] == "2"
+        assert m["indepOvershootConditions"] == "1", (
+            "the undershooting condition was still counted as an overshoot")

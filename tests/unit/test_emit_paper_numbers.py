@@ -1300,3 +1300,151 @@ class TestSeparabilityMacros:
         assert m["indepConditions"] == "2"
         assert m["indepOvershootConditions"] == "1", (
             "the undershooting condition was still counted as an overshoot")
+
+
+class TestPairedGapDistortion:
+    """The two-broker gap, computed on workloads that match.
+
+    The published figure divides Kafka's median condition by Redis's median condition. Only
+    24 of their 32 and 38 conditions have a counterpart, so those two medians are workloads
+    chosen independently of each other. That is what made the number move between 1.05 and
+    1.98 depending on the aggregator -- not the median, which is the right summary for skewed
+    data and is not the defect.
+    """
+
+    def _pairs(self):
+        import csv as _csv
+        import re as _re
+        path = Path(__file__).resolve().parents[2] / "docs" / "results" / "span_symmetry.csv"
+        per = {}
+        with open(path, encoding="utf-8") as fh:
+            for r in _csv.DictReader(fh):
+                m = _re.match(r"(\w+?)_n(\d+)_feed(\d+)(#(pass|fail))?$", r["condition"])
+                if not m:
+                    continue
+                s, d = float(r["median_S_us"]), float(r["median_D_us"])
+                if d > 0:
+                    per.setdefault(m.group(1), {})[
+                        (m.group(2), m.group(3), m.group(5) or "")] = (s, d)
+        shared = sorted(set(per["kafka"]) & set(per["redis"]))
+        return [(per["kafka"][k], per["redis"][k]) for k in shared]
+
+    def test_the_distortion_is_the_ratio_of_the_two_reported_fractions(self):
+        """An identity, and the reason this is not a new phenomenon.
+
+        (S_k/S_r)/(D_k/D_r) == (S_k/D_k)/(S_r/D_r). The gap distortion IS the paper's own
+        reported-fraction headline, applied per broker and divided. The paper carries the two
+        claims separately without saying they are one quantity at two levels of aggregation.
+        """
+        worst = 0.0
+        for (sk, dk), (sr, dr) in self._pairs():
+            if not (sr and dr and dk):
+                continue
+            gap = (sk / sr) / (dk / dr)
+            frac = (sk / dk) / (sr / dr)
+            worst = max(worst, abs(gap - frac) / gap)
+        assert worst < 1e-12, "the identity failed by %.2e; one of the two is miscomputed" % worst
+
+    def test_pairing_moves_the_answer_and_the_macros_say_which_is_which(self):
+        m = dict(epn.paired_gap_macros())
+        paired = float(m["gapDistortionPaired"])
+        assert 1.6 <= paired <= 1.8, "paired distortion moved to %r" % paired
+        assert m["gapDistortionPairs"] == "24"
+
+    def test_the_direction_is_reported_because_a_fifth_run_backwards(self):
+        """The published claim admits only inflation. A fifth of matched pairs deflate."""
+        m = dict(epn.paired_gap_macros())
+        inf, defl = int(m["gapDistortionInflates"]), int(m["gapDistortionDeflates"])
+        assert inf + defl == 100
+        assert defl >= 15, (
+            "only %d%% of pairs deflate; if this fell to nothing the 'about a fifth runs the "
+            "other way' sentence would be overstating it" % defl)
+
+    def test_the_paired_estimate_is_the_more_stable_of_the_two(self):
+        """The point of the change: the old estimator's spread was the aggregator's."""
+        pairs = self._pairs()
+        dist = sorted((sk / sr) / (dk / dr) for (sk, dk), (sr, dr) in pairs
+                      if sr and dr and dk)
+        n = len(dist)
+        iqr = dist[(3 * n) // 4] / dist[n // 4]
+        assert iqr < 2.0, (
+            "the interquartile ratio is %.2f; the paired estimator is supposed to be the "
+            "tight one" % iqr)
+
+    def test_a_missing_artefact_yields_no_macros(self):
+        assert epn.paired_gap_macros(path="does-not-exist.csv") == []
+
+    def test_too_few_shared_workloads_yields_no_macros(self, tmp_path):
+        """Three pairs cannot carry an interquartile range; refuse rather than pretend."""
+        p = tmp_path / "s.csv"
+        p.write_text(
+            "condition,median_S_us,median_D_us\n"
+            "kafka_n1_feed1,100,400\nredis_n1_feed1,50,400\n"
+            "kafka_n2_feed1,100,400\nredis_n2_feed1,50,400\n",
+            encoding="utf-8")
+        assert epn.paired_gap_macros(path=str(p)) == []
+
+    def test_unmatched_conditions_are_dropped_not_paired_across_workloads(self, tmp_path):
+        """The whole defect, in miniature: a Kafka n1 must not pair with a Redis n9."""
+        p = tmp_path / "s.csv"
+        rows = ["condition,median_S_us,median_D_us"]
+        for i in range(1, 6):
+            rows.append("kafka_n%d_feed1,200,800" % i)
+            rows.append("redis_n%d_feed1,100,800" % i)
+        rows.append("kafka_n9_feed1,10000,800")     # no Redis counterpart
+        p.write_text("\n".join(rows) + "\n", encoding="utf-8")
+        m = dict(epn.paired_gap_macros(path=str(p)))
+        assert m["gapDistortionPairs"] == "5", "the unmatched Kafka condition was used anyway"
+        assert float(m["gapDistortionPaired"]) == pytest.approx(2.0), (
+            "the unmatched condition leaked into the estimate")
+
+    def test_rows_that_are_not_workload_conditions_are_skipped(self, tmp_path):
+        """The file carries other condition shapes; they must not be parsed as workloads."""
+        p = tmp_path / "s.csv"
+        rows = ["condition,median_S_us,median_D_us", "aggregate_total,1,2", "l88_base,3,4"]
+        for i in range(1, 6):
+            rows.append("kafka_n%d_feed1,200,800" % i)
+            rows.append("redis_n%d_feed1,100,800" % i)
+        p.write_text("\n".join(rows) + "\n", encoding="utf-8")
+        assert dict(epn.paired_gap_macros(path=str(p)))["gapDistortionPairs"] == "5"
+
+    def test_unparsable_numbers_are_skipped(self, tmp_path):
+        p = tmp_path / "s.csv"
+        rows = ["condition,median_S_us,median_D_us", "kafka_n7_feed1,notanumber,800"]
+        for i in range(1, 6):
+            rows.append("kafka_n%d_feed1,200,800" % i)
+            rows.append("redis_n%d_feed1,100,800" % i)
+        p.write_text("\n".join(rows) + "\n", encoding="utf-8")
+        assert dict(epn.paired_gap_macros(path=str(p)))["gapDistortionPairs"] == "5"
+
+    def test_a_zero_delivery_is_skipped(self, tmp_path):
+        """No delivery, no ratio. Dropping beats dividing by zero."""
+        p = tmp_path / "s.csv"
+        rows = ["condition,median_S_us,median_D_us",
+                "kafka_n7_feed1,200,0", "redis_n7_feed1,100,0"]
+        for i in range(1, 6):
+            rows.append("kafka_n%d_feed1,200,800" % i)
+            rows.append("redis_n%d_feed1,100,800" % i)
+        p.write_text("\n".join(rows) + "\n", encoding="utf-8")
+        assert dict(epn.paired_gap_macros(path=str(p)))["gapDistortionPairs"] == "5"
+
+    def test_one_broker_alone_yields_no_macros(self, tmp_path):
+        p = tmp_path / "s.csv"
+        rows = ["condition,median_S_us,median_D_us"]
+        for i in range(1, 6):
+            rows.append("kafka_n%d_feed1,200,800" % i)
+        p.write_text("\n".join(rows) + "\n", encoding="utf-8")
+        assert epn.paired_gap_macros(path=str(p)) == []
+
+    def test_a_pair_whose_redis_span_is_zero_is_dropped_from_the_distribution(self, tmp_path):
+        """A zero reported span on one side makes the ratio infinite, not large."""
+        p = tmp_path / "s.csv"
+        rows = ["condition,median_S_us,median_D_us",
+                "kafka_n7_feed1,200,800", "redis_n7_feed1,0,800"]
+        for i in range(1, 6):
+            rows.append("kafka_n%d_feed1,200,800" % i)
+            rows.append("redis_n%d_feed1,100,800" % i)
+        p.write_text("\n".join(rows) + "\n", encoding="utf-8")
+        m = dict(epn.paired_gap_macros(path=str(p)))
+        assert m["gapDistortionPairs"] == "5", (
+            "the zero-span pair was kept and would have contributed an infinite ratio")

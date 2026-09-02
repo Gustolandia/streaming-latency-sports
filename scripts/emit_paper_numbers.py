@@ -1286,6 +1286,77 @@ def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
     return out
 
 
+def paired_gap_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
+    """The two-broker gap distortion, computed by pairing like with like.
+
+    The published `gapDistortion` divides Kafka's median condition by Redis's median
+    condition. Those are different workloads: Kafka ran 32 conditions, Redis 38, and only
+    24 have a counterpart. Comparing the two medians therefore compares a Kafka workload
+    against a Redis workload chosen independently of it, and that -- not the use of a median
+    -- is what made the figure move from 1.98 to 1.05 depending on the aggregator.
+
+    Pairing on the workload removes it. For each (sender count, feed count) present on both
+    brokers the distortion is
+
+        (S_k / S_r) / (D_k / D_r)
+
+    which, by an identity that holds to 4e-16 over all 24 pairs, equals the ratio of the two
+    brokers' own reported fractions, (S_k/D_k) / (S_r/D_r). The distortion is not a separate
+    phenomenon: it is this paper's 24% headline applied per broker and divided.
+
+    The paired estimator carries its own distribution, so the spread is an interquartile
+    range over pairs rather than a bootstrap that resamples conditions while holding the
+    aggregator and the bin width fixed -- which propagated one source of uncertainty out of
+    three. It is also stable where the old one was not: 1.68 to 1.75 across both bin widths
+    tried and both ways of handling the gate, against 1.05 to 1.98 unpaired.
+
+    And it reports the direction. In about a fifth of matched workloads the instrument
+    understates the gap instead of inflating it, which the published claim does not admit.
+    """
+    import csv as _csv
+    import re as _re
+    import statistics as _st
+    try:
+        with open(path, encoding="utf-8") as fh:
+            rows = list(_csv.DictReader(fh))
+    except OSError:
+        return []
+    per = {}
+    for r in rows:
+        m = _re.match(r"(\w+?)_n(\d+)_feed(\d+)(#(pass|fail))?$", r["condition"])
+        if not m:
+            continue
+        try:
+            s, d = float(r["median_S_us"]), float(r["median_D_us"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if d <= 0:
+            continue
+        per.setdefault(m.group(1), {})[(m.group(2), m.group(3), m.group(5) or "")] = (s, d)
+    if not {"kafka", "redis"} <= set(per):
+        return []
+    shared = sorted(set(per["kafka"]) & set(per["redis"]))
+    dist = []
+    for k in shared:
+        (sk, dk), (sr, dr) = per["kafka"][k], per["redis"][k]
+        if sr > 0 and dr > 0 and dk > 0:
+            dist.append((sk / sr) / (dk / dr))
+    if len(dist) < 4:
+        return []
+    dist.sort()
+    n = len(dist)
+    lo = dist[n // 4]
+    hi = dist[(3 * n) // 4]
+    up = sum(1 for x in dist if x > 1.0)
+    return [
+        ("gapDistortionPaired", "%.1f" % _st.median(dist)),
+        ("gapDistortionPairedIQR", "%.1f$--$%.1f" % (lo, hi)),
+        ("gapDistortionPairs", str(n)),
+        ("gapDistortionInflates", "%.0f" % (100.0 * up / n)),
+        ("gapDistortionDeflates", "%.0f" % (100.0 * (n - up) / n)),
+    ]
+
+
 def fork_macros():
     """How far the guard has travelled, from the committed survey.
 
@@ -1315,6 +1386,7 @@ def all_pairs(m):
             + priority_macros() + priority_residual_macros() + fork_macros()
             + chrony_bound_macros() + disease_macros()
             + exposure_macros() + artifact_macros() + separability_macros()
+            + paired_gap_macros()
             + deletion_macros())
 
 

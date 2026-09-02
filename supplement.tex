@@ -2137,17 +2137,30 @@ is present in every arm that could show it (method: supplementary material S31).
 \section{S32. The mechanism narrative in full (moved from the main text)}
 
 \paragraph{The payload-sweep fit, demoted here from the main text.} Over a $\payloadTransportFactorRound\times$
-payload span, least squares of $\log \Pr$ on $\log T_{\mathrm{true}}$ over four payload
-levels gives
+payload span, least squares of $\log \Pr$ on $\log T_{\mathrm{true}}$ over
+$\tailRsqPoints$ payload levels gives
 \begin{equation}
 \Pr[\text{span} < 0] = \tailPrefactor \; T_{\mathrm{true}}^{-\tailExponent},
 \qquad R^2 = \tailRsq ,
 \label{eq:tailindex}
 \end{equation}
-with a Student-$t$ $95\%$ interval on the exponent of $\tailExponentCI$ at two degrees of
-freedom. E-A10b repeats the sweep on a different day and returns $0.344$ against $\tailExponent$;
+with a Student-$t$ $95\%$ interval on the exponent of $\tailExponentCI$ at $\tailRsqDof$
+degrees of freedom. E-A10b repeats the sweep on a different day and returns $0.344$ against $\tailExponent$;
 the prefactor drifts ($\tailPrefactor$ against $0.216$). Four points do not earn an equation in a
-main text, which is why this one is here.
+main text, which is why this one is here, and Fig.~\ref{fig:ttrue} plots them.
+
+\begin{figure}[tb]
+\centering
+\includegraphics[width=\columnwidth]{docs/results/figures/ttrue_law.pdf}
+\caption{\textbf{A longer flight inverts less often.} Negative span rate against true
+transport over the payload sweep, Wilson $95\%$ intervals. The same stall distribution
+overlaps a short flight almost entirely and a long one hardly at all, which is
+Equation~\ref{eq:negspan} of the main text as an experiment: lengthening what is being
+measured lowers the rate, where a load-driven account predicts no change. The figure sits
+here rather than in the main text for the same reason Equation~\ref{eq:tailindex} does ---
+it draws four points.}
+\label{fig:ttrue}
+\end{figure}
 
 \paragraph{What we withdraw about it, and why.} Two claims previously made around
 Equation~\ref{eq:tailindex} do not survive, and both were withdrawn in the round-2 internal revision.
@@ -2283,6 +2296,15 @@ reproduces $k=5$ in direction but not size, and resolves a small $k=7$ differenc
 reading of that convergence as a null; both campaigns agree on the shape, twofold at $k=6$ collapsing toward parity at
 $k=7$, one free core in eight being nearly as useless as none.
 \section{S33. Resolution, discarded samples and sampling artifacts: the literature engagement in full (moved from the main text)}
+
+\paragraph{No defence of the guard has been found, and we looked for one.} The audit of
+Section~\ref{sec:generality} finds the practice without ever finding a stated reason for it,
+which is a weaker position than finding a reason and rebutting it, so we record the search.
+Benchmark-framework papers that do treat validity systematically stop short of this
+particular threat: ComBench, a framework for communication benchmarking, devotes a threats
+section to validity but treats latency measurement only in passing~\cite{combench2021}, and
+the same is true of the harness documentation surveyed above. We therefore claim only that we
+could not find a defence, not that none exists. N.~Herbst raised the comparison.
 
 \paragraph{Coordinated omission is the closest neighbor, and is the mirror image.} In
 Tene's \emph{coordinated omission}~\cite{tene2015latency} the worst samples are
@@ -3144,7 +3166,7 @@ the priority manipulation does not cleanly separate it, because a thread raised 
 \texttt{SCHED\_FIFO} also reaches the acquisition queue sooner. Third, magnitude does not
 separate them either: the default switch interval and the base slice of Section~\mainSpectrum{} are both
 of millisecond order, so neither mechanism is excluded by the size of the delay it would
-produce. Note what the first point costs us here --- Figure~7 cannot adjudicate between them,
+produce. Note what the first point costs us here --- Figure~6 cannot adjudicate between them,
 because it is built from the tracepoints that miss one of the two entirely.
 
 What settles it is the direction of the disagreement rather than any of those. If a second

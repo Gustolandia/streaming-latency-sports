@@ -293,10 +293,15 @@ class TestSupplementPointsAtRealFloats:
 
         Two exist today, and both were added in the last two rounds. Listing them keeps a
         third from arriving unexamined.
+
+        Figure~7 became Figure~6 when the payload-sweep figure left the main text for this
+        document: the stall spectrum moved up one. The number is checked against paper.aux
+        by test_the_inventory_figure_numbers_are_current, so what this list guards is not the
+        number but the arrival of a pointer nobody has read.
         """
         found = {"%s~%s" % (m.group(1), m.group(2))
                  for m in self.POINTER.finditer(supp)}
-        expected = {"Table~II", "Figure~7", "Figure~1"}
+        expected = {"Table~II", "Figure~6", "Figure~1"}
         assert found <= expected, \
             "new cross-document float pointer(s) %s -- check each against the paper" % (
                 sorted(found - expected))

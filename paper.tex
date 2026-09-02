@@ -74,32 +74,37 @@
 \title{Faster Than Light, According to the Arithmetic: Two Ways a Streaming
 Benchmark Fails on Sub-Millisecond Paths}
 
-\author{Gustavo~Pedro~Ricou~and~David~Gregg%
-\thanks{The authors are with the School of Computer Science and Statistics, Trinity
-College Dublin, Dublin~2, Ireland. E-mail: pedrorig@tcd.ie; david.gregg@tcd.ie.}}
+\author{Gustavo~Pedro~Ricou,~Romaric~Duvignau,~Nikolas~Herbst,~and~David~Gregg%
+\thanks{G.~P.~Ricou and D.~Gregg are with the School of Computer Science and Statistics,
+Trinity College Dublin, Dublin~2, Ireland. E-mail: pedrorig@tcd.ie; david.gregg@tcd.ie.}%
+\thanks{R.~Duvignau is with the Department of Computer Science and Engineering, Chalmers
+University of Technology, Gothenburg, Sweden. E-mail: duvignau@chalmers.se.}%
+\thanks{N.~Herbst is with the Chair of Computer Science II, University of W\"urzburg,
+W\"urzburg, Germany. E-mail: nikolas.herbst@uni-wuerzburg.de.}}
 
 \markboth{IEEE Transactions on Computers}%
-{Ricou and Gregg: Faster Than Light, According to the Arithmetic}
+{Ricou \MakeLowercase{\textit{et al.}}: Faster Than Light, According to the Arithmetic}
 
 \maketitle
 
 \begin{abstract}
 On sub-millisecond paths a broker benchmark's instrument timescale can exceed the flight it
 reports, with two consequences invisible in the output. First, a measured latency can come
-out negative, because both stamps are written by threads that must first be scheduled and the
-difference between those delays can outlast the delivery. A sign check rejected $\auditRejected$ of our $\auditRuns$ runs; across $\spanEvents$
-events the acknowledgment-referenced span inverts $\spanNegAck$ times while the
-send-referenced span never does, on one clock by construction, so the cause is scheduling
+out negative: both stamps are written by threads that must first be scheduled, and the
+difference between those delays can outlast the delivery. A sign check rejected
+$\auditRejected$ of our $\auditRuns$ runs; the acknowledgment-referenced span inverts while
+the send-referenced span never does, on one clock by construction, so the cause is scheduling
 not synchronization, and real-time priority at fixed utilization collapses the rate
-$\rtFactorLow$--$\rtFactorHigh\times$. The displacement is not small: the reported span is
-$\reportedFraction\%$ of the delivery it stands for, and inflates the two-broker gap
-$\gapDistortion\times$ --- the answer a comparison exists to give. Second, the
-benchmark the comparison literature shares admits an \emph{end-to-end} sample only when a
-millisecond-quantized difference is positive and counts none of what it drops, while
-measuring its same-process span with a nanosecond clock, unfiltered: over
-$\ombGridMedianCells$ of $\ombMedianCells$ embedded-mode cells reporting a median on the grid it computed that
-median from $\ombGridRetentionMin\%$ to $\ombGridRetentionMax\%$ of samples taken. The
-remedy is one line: dither the send instant and publish that retained fraction.
+$\rtFactorLow$--$\rtFactorHigh\times$. That span also stands for a delivery several times
+longer, distorting the two-broker gap a comparison exists for. Second, the benchmark the
+comparison literature shares admits an \emph{end-to-end} sample only when a
+millisecond-quantized difference is positive and counts none of what it drops, while timing
+its own same-process span with a nanosecond clock. Of $\ombMedianCells$ embedded-mode cells,
+$\ombGridMedianCells$ reported a median on that millisecond grid --- computed there from
+between $\ombGridRetentionMin\%$ and $\ombGridRetentionMax\%$ of the samples taken. We
+contribute a deletion law, a negative-span mechanism established by manipulation, and an
+audit of \harnessAuditedWord{} instrumentation tools. The remedy is one line: dither the send
+instant and publish that retained fraction.
 \end{abstract}
 
 % Alphabetical, case-insensitively, and gated by test_index_terms_are_alphabetical.
@@ -206,9 +211,10 @@ noise but arithmetic, the retained fraction being fixed by the ratio of send int
 timestamp quantum and never shown to the operator. Fourteen arms across seven denominators
 behave as positioned, the powered ones reject a continuum null after correction, and a
 pre-registered payload manipulation moves an arm onto a grid vertex and off it again.
-\textbf{The negative-span mechanism, on one clock} (Section~\ref{sec:mechanism}): a span
-inverts when the two stamping delays \emph{differ} by more than the flight, so
-$\Pr[\text{span} < 0] = \Pr[\Delta < -T_{\mathrm{true}}]$ (Equation~\ref{eq:model}).
+\textbf{The negative-span mechanism, on one clock} (Section~\ref{sec:mechanism}): the
+acknowledgment-referenced span is the delivery less the acknowledgment lag, $S = D - A$ per
+event, so a negative latency is an ordering between two quantities we measure rather than a
+fault in either clock (Equation~\ref{eq:negspan}).
 Four manipulations separate it from its rivals, and the send-referenced span over the same
 $\spanEvents$ events never inverts, locating the fault in the reference stamp rather than in
 the system under test. \textbf{An audit and the rules that follow} (Sections~\ref{sec:gate}
@@ -342,11 +348,9 @@ it the cancellation that defence depends on (Supplement~S41).
 
 The mathematics is older still and is not ours. Counter metrology settled it for
 time-interval averaging half a century ago: Hewlett-Packard's Application Note
-162-1~\cite{hp1970tia} contains our retention identity (Eq.~\ref{eq:retention}), our
-denominator $q$ under the same co-prime condition, our ceiling on any gain in resolution
-(Eq.~\ref{eq:quant}), the symptom --- a counter reading that appears to hang on a round
-number --- and the cure we arrived at independently, phase jitter on the repetition rate
-(Supplement~S51). What is new is the sign of the operation: HP \emph{keeps} both readings and
+162-1~\cite{hp1970tia} carries our retention identity, our co-prime denominator, our ceiling
+on resolution gain, the symptom and the cure, all of it (Supplement~S51 sets them
+side by side). What is new is the sign of the operation: HP \emph{keeps} both readings and
 the retained fraction \emph{is} the estimator, while the benchmark discards that population.
 Our contribution is not the law --- we derived it, then found it in a counter manual --- but
 its consequence under deletion: a harness released in 2018 throws away the quantity a 1970
@@ -407,12 +411,11 @@ primary measure is \textbf{Time-to-Insight} (\tti{}), from scheduled emission to
 availability at the consumer:
 \begin{equation}
 \mathrm{TTI} = \underbrace{(t_{\mathrm{send}}-t_{\mathrm{sched}})}_{\text{scheduling lag}}
-             + \underbrace{(t_{\mathrm{recv}}-t_{\mathrm{ack}})}_{\text{transport proxy}}
-             + \underbrace{\text{residual}}_{\text{broker-internal}} .
+             + \underbrace{(t_{\mathrm{ack}}-t_{\mathrm{send}})}_{\text{acknowledgment lag } A}
+             + \underbrace{(t_{\mathrm{recv}}-t_{\mathrm{ack}})}_{\text{transport proxy } S} .
 \label{eq:tti}
 \end{equation}
-The residual is the broker's own append-to-deliver delay, which no stamp of ours brackets;
-it is carried because \tti{} is a total, and named because an unnamed span is not a latency.
+The three intervals telescope exactly, with nothing left to name (Section~\ref{sec:model}).
 
 \paragraph{One component is a proxy, not a chain}
 \label{sec:proxy}
@@ -454,26 +457,28 @@ and the model that says so is two equations long. Every timestamp is taken some 
 physical event it claims to mark, because the thread that reads the clock must first be
 scheduled. This is not the cost of the clock
 call, which is small and separately measurable~\cite{kuperberg2011timers}; it is the
-delay before the call runs at all. Writing $\delta$ for those stamping delays,
+delay before the call runs at all. Only the \emph{difference} of two such delays matters: if
+both stamps are late by the same amount, one has not measured a delay, one has invented a
+time zone. That difference needs no model; the stamps of Equation~\ref{eq:tti} give it
+directly, per event and assuming no ordering:
 \begin{equation}
-T_{\mathrm{measured}} = T_{\mathrm{true}} + \Delta ,
-\qquad \Delta \equiv \delta_{\mathrm{recv}} - \delta_{\mathrm{ack}} ,
+S \;=\; D - A ,
+\qquad D \equiv t_{\mathrm{recv}} - t_{\mathrm{send}} ,
+\quad A \equiv t_{\mathrm{ack}} - t_{\mathrm{send}} .
 \label{eq:model}
 \end{equation}
-so Equation~\ref{eq:model}'s difference inverts exactly when $\Delta < -T_{\mathrm{true}}$.
-Only the \emph{difference} of the two delays matters: if both stamps are late by the same
-amount, one has not measured a delay, one has invented a time zone. Writing it out,
+So the span inverts exactly when the lag exceeds the delivery:
 \begin{equation}
-\Pr[\text{span} < 0] = F_{\Delta}(-T_{\mathrm{true}}) .
+\Pr[S < 0] \;=\; \Pr[A > D] .
 \label{eq:negspan}
 \end{equation}
 Figure~\ref{fig:model} names the four stamps; Supplement~S45 maps them onto the span each
 metric covers.
 
-Equation~\ref{eq:negspan} says the most useful thing in this paper
-(Supplement~S12). \textbf{Negative span probability is a property of the quantity being
-measured, not only of the machine}: a fixed distribution of $\Delta$ overlaps a small
-$T_{\mathrm{true}}$ almost entirely and a large one hardly at all, which is why our
+Equation~\ref{eq:negspan} is an identity, not a fit: both sides count $\spanNegAck$ over the
+$\diseaseEvents$ events, and the build fails if they part. \textbf{Negative span probability
+is a property of the quantity being measured, not only of the machine}: a fixed distribution
+of $A$ overlaps a small $D$ almost entirely and a large one hardly at all, which is why our
 network-delay arm, transport in tens of seconds, passes every run while same-hardware arms
 measuring one millisecond fail wholesale.
 
@@ -578,7 +583,7 @@ happens with probability $T_{\mathrm{true}}/\tau$ (Supplement~S51 draws the geom
 \end{equation}
 
 Both incommensurate arms sit near $50\%$, implying $T_{\mathrm{true}} \approx 0.5$~ms at
-$\tau = 1$~ms, which agrees with our own unquantized transport measurement.
+$\tau = 1$~ms.
 
 \paragraph{Commensurability is not binary}
 \label{sec:extquant}
@@ -594,15 +599,16 @@ spread follows:
 \text{spread} \;=\;
 \begin{cases}
 100/q & \text{when } T_{\mathrm{true}}/\tau \text{ sits mid-cell,}\\[2pt]
-0 & \text{when } T_{\mathrm{true}}/\tau \text{ sits on a grid point.}
+> 0 & \text{when } T_{\mathrm{true}}/\tau \text{ sits on a grid point.}
 \end{cases}
 \end{equation}
+The lower branch is not zero because a nominally commensurate rate is not exactly
+commensurate; the two arms that sit on a vertex spread by roughly a quarter to a third of the
+mid-cell width, too few to fix a constant (Supplement~S23).
 
-Supplement~S23 reports every arm. A round number is the worst possible
-choice: $500$~msg/s is exactly $2.000$~ms, $q=1$, and its four replicates retain $0.47$,
-$1.51$, $18.02$ and $99.99$ per cent, where an incommensurate $457$~msg/s holds to $2.1$
-points. The exactness matters: $889$~msg/s sits $0.00014$ from $9/8$ and behaves as fully
-continuous.
+A round number is the worst possible choice, and exactness is what decides it: Supplement~S23
+works both through every arm, from the $q=1$ rate whose replicates span almost the whole
+range to the one sitting $0.00014$ from a vertex and behaving as fully continuous.
 
 \subsection{The grid as inference}
 \label{sec:extinference}
@@ -787,17 +793,18 @@ wrong. Causal consistency is necessary, not sufficient.
 \label{sec:mixture}
 Each stamping thread is either running, in which case its stamp is late by a narrow jitter of
 width $\sigma_c$, or preempted and off-CPU. Writing $p(\rho)$ for the probability of the
-second state and $S(\cdot)$ for the residual's survival function, and taking the consumer's
-stamp to lie in the core --- the leading-order case, since both being preempted at once is
-the product of two small probabilities,
+second state and $G(\cdot)$ for the residual's survival function, and taking the consumer's
+stamp to lie in the core --- the leading-order case, though not because the two states are
+independent: a stall that delays both branches cancels in $S = D - A$, so what is set aside
+here is invisible rather than rare,
 \begin{equation}
-\Pr[\text{span} < 0 \mid T_{\mathrm{true}}] \;=\; p(\rho)\;S(T_{\mathrm{true}}) .
+\Pr[\text{span} < 0 \mid T_{\mathrm{true}}] \;=\; p(\rho)\;G(T_{\mathrm{true}}) .
 \label{eq:twostate}
 \end{equation}
 Load changes how \emph{often} the thread that must record the time is not running, not how
 wide the ordinary jitter is. Going from idle to the knee multiplies the fitted core width
-$\sigma_c$ by $\coreGrowth$ and the negative-span rate --- the mass of $\Delta$ beyond
-$-T_{\mathrm{true}}$ --- by $\invGrowth$. The rate has a ceiling below one: fully
+$\sigma_c$ by $\coreGrowth$ and the negative-span rate --- the mass of $A$ beyond $D$ --- by
+$\invGrowth$. The rate has a ceiling below one: fully
 saturated it reaches $\invCeiling$, so even then most stamps are taken by a thread that was
 running, or late by less than the flight.
 
@@ -870,16 +877,10 @@ and our own registered bracket missed a $1.44\times$ growth by predicting
 $2.45$--$3.07\times$. Both were parameterized in $\rho$, and $\rho$ is not the variable.
 The Pollaczek--Khinchine form remains motivation rather than fitted result.
 
-\begin{figure}[tb]
-\centering
-\includegraphics[width=\columnwidth]{docs/results/figures/ttrue_law.pdf}
-\caption{\textbf{A longer flight inverts less often.} Negative span rate against true
-transport over the payload sweep, Wilson $95\%$ intervals. The same stall distribution
-overlaps a short flight almost entirely and a long one hardly at all, which is
-Equation~\ref{eq:negspan} as an experiment: lengthening what is being measured lowers the
-rate, where a load-driven account predicts no change.}
-\label{fig:ttrue}
-\end{figure}
+% The payload-sweep figure moved to the supplement, beside the fit it draws. The prose two
+% paragraphs below already said "four points do not earn an equation here" and sent the fit
+% to S32; leaving the picture behind in the main text was the inconsistency. Precedent: the
+% pipeline schematic made the same journey in round 16.
 
 \subsection{The stall spectrum, and the scheduler's slice}
 \label{sec:tail}
@@ -888,27 +889,26 @@ in the post introducing \texttt{runqlat}, the tool we use~\cite{gregg2016runqlat
 is which modes, and why the upper one sits where it does.
 
 Raising the payload from $0$ to $256$~KB lengthens the true transport $\payloadTransportFactorRound\times$, and over
-that range the negative-span rate falls monotonically with $T_{\mathrm{true}}$
-(Fig.~\ref{fig:ttrue}); log--log least squares over the four payload levels returns a slope
+that range the negative-span rate falls monotonically with the delivery $D$
+(Supplement~S32); log--log least squares over the four payload levels returns a slope
 of $\tailSlope$ ($\tailSlopeCI$, Student-$t$ at two degrees of freedom), the same signed
 number the figure prints. The fit is in
 Supplement~S32; four points do not earn an equation here. An earlier version read the kernel trace as an independent confirmation of
 it; we withdraw the claim, because estimating the traced index properly is what refuted
 it.
 
-Over the $\tracedEvents$ traced wakeups the grouped maximum-likelihood index on
-$0.25$--$2$~ms is $\tracedMleAlpha$ ($\tracedMleCI$) against an exceedance index on
-$0.5$--$2$~ms of $\tracedExcAlpha$ ($\tracedExcCI$). Two estimators of one quantity cannot
-differ sixfold unless the model is wrong, and a bootstrap goodness-of-fit agrees:
-$p \tracedGofP$ over $\tracedGofBoot$ replicates drawn from the fitted power law itself. The
-reason needs no fitting at all. The counts do not descend monotonically, as a power law must:
+Two estimators of the traced tail index disagree sixfold (Supplement~S32), and a bootstrap
+goodness-of-fit agrees the model is wrong: $p \tracedGofP$ over $\tracedGofBoot$ replicates
+drawn from the fitted power law itself. The reason needs no fitting at all. Over the
+$\tracedEvents$ traced wakeups the counts do not descend monotonically, as a power law must:
 they have $\tracedModes$ local maxima, the last a \emph{mode} at
 $\tracedModeLo$--$\tracedModeHi$~ms holding $\tracedModeShare\%$ of all wakeups,
 $\tracedModeRatio\times$ its lower neighbor, above which the survival is light --- grouped
 maximum likelihood beyond $\tracedTailFrom$~ms gives $\tracedTailAlpha$ ($\tracedTailCI$), a
 finite variance. Neither that share nor that position has, to our knowledge, been attributed
-to a scheduler constant before. Figure~\ref{fig:spectrum} is the histogram, and the shape is
-the argument: no monotone curve passes through it.
+to a scheduler constant before.
+Figure~\ref{fig:spectrum} is the histogram, and the shape is the argument: no monotone curve
+passes through it.
 
 \begin{figure}[tb]
 \centering
@@ -980,15 +980,22 @@ precede a record at the consumer (Section~\ref{sec:testbeds}). We caught our own
 only on counting the send-referenced span separately (Table~\ref{tab:spans}).
 
 \textbf{Where the span cannot be restamped, recover the displacement rather than discard it.}
-$S = D - A$ holds per event and $A$ is producer-side on one clock, so a harness that records
+Equation~\ref{eq:model} holds per event and $A$ is producer-side on one clock, so a harness
+that records
 its own acknowledgment lag recovers the delivery it failed to measure: the recovered median
 lands within $\recoveryErrPass\%$ of the true one on runs the check passes and
 $\recoveryErrFail\%$ on the runs it \emph{rejects}, which is the population a remedy tried
 only against clean runs never meets.
 
+\textbf{Two delays with one cause are not independent.} Stamps waiting on one scheduler move
+together ($\rho = \spanRhoMedian$), so multiplying their probabilities misprices the answer:
+assuming independence here overpredicts the negative-span rate in all $\indepConditions$
+conditions, by a median factor of $\indepOvershoot$. What rescues the subtraction is cancellation, not rarity --- a
+stall delaying both branches leaves $S = D - A$ untouched.
+
 \textbf{Know where your own path sits on the exposure curve.} The displacement is a
 scheduling quantity and does not grow because a message travelled further, so the relative
-error is $A/T_{\mathrm{true}}$ and falls as $1/T_{\mathrm{true}}$: $\exposureErrTen\%$ at a
+error is $A/D$ and falls as $1/D$: $\exposureErrTen\%$ at a
 $10$~ms path, $\exposureErrHundred\%$ at $100$~ms. Read it the other way and it is a warning:
 $\exposureErrOne\%$ at $1$~ms, and below $\exposureCrossover$~ms the displacement exceeds the
 path itself --- while sub-millisecond medians are routine in broker benchmarking
@@ -998,10 +1005,11 @@ on naming the span. Two \emph{identical} systems whose clients stamp in
 different places are separated by the difference of their lags, a reported gap of
 $\exposureGapTen\%$ at $10$~ms, and the sign check fires at neither. On this corpus the reported span is
 $\reportedFraction\%$ of the delivery it stands for, understating it $\understateFactor\times$,
-and because the two brokers' clients stamp differently the true $\gapTrue\times$ gap between
-them is reported as $\gapReported\times$. \textbf{The instrument nearly doubles the answer a
-comparison exists to give} --- $\gapDistortion\times$, $95\%$ interval $\gapDistortionCI$
-resampling conditions --- and that factor is a property of the clients, not of the brokers.
+and the two brokers' clients stamp differently. \textbf{The instrument inflates the answer a
+comparison exists to give by about seventy per cent} --- $\gapDistortionPaired\times$ over
+$\gapDistortionPairs$ matched workloads, interquartile range $\gapDistortionPairedIQR$, and it
+\emph{narrows} the gap on $\gapDistortionDeflates\%$ of them --- a property of the clients,
+not of the brokers.
 
 \textbf{Count your events before you quote a percentile.} A median over as few as seven
 events per run is not a property of the system, and repetition will not tell you so.
@@ -1085,11 +1093,11 @@ too, invisibly to a tracepoint probe --- bounded because that kernel-only estima
 the observed rate ($\tracedRatios$) instead of under-predicting (Supplement~S43.4).
 
 Clock incoherence across vCPUs needs its own answer, our machines being
-virtual~\cite{kvmclock}, and gets one twice over: the smallest increment the probe saw,
-$\clockIncrementNs$~ns, admits only \clockAdmitted{}, both of which the kernel uses solely where cross-CPU coherence is
-asserted, and the corpus closes the channel again on headroom, not on shared endpoints --- the
-send-referenced span holds a floor $\spanOffsetMargin\times$ too high to explain the deepest
-negative span (Supplement~S42).
+virtual~\cite{kvmclock}, and gets one twice over: the probe's $\clockIncrementNs$~ns
+increment admits only \clockAdmitted{}, both of which the kernel uses solely where cross-CPU
+coherence is asserted, and the corpus closes the channel again on headroom,
+not on shared endpoints --- the send-referenced span holds a floor
+$\spanOffsetMargin\times$ too high to explain the deepest negative span (Supplement~S42).
 
 The mechanism's constants are those of one EEVDF-era kernel (6.8); CFS-era schedulers, the
 regime Lozi et al.\ document, may shift them. The deletion law is demonstrated on one
@@ -1115,11 +1123,8 @@ publish the retention rate beside the number.
 
 \section*{Acknowledgment}
 
-The authors thank R.~Duvignau, whose reading established that the
-acknowledgment-referenced span is not a causal chain and prompted the recount that
-reorganized this paper; J.~Kunkel, for the same-clock protocol contrast, the
-offset-estimation route and the measurement-model figure; N.~Herbst, for load-generation
-validation and the timer-characterization literature; M.~Luthra, for the kernel-tracing
+The authors thank J.~Kunkel, for the same-clock protocol contrast, the
+offset-estimation route and the measurement-model figure; M.~Luthra, for the kernel-tracing
 pointers; M.~Kogias, for the probe-placement argument; and L.~Tratt, for the question about
 timestamp resolution answered in Section~\ref{sec:external}.
 
@@ -1148,20 +1153,18 @@ time, and the test suite fails if the text and the data disagree.
 \bibliography{manuscript_references}
 
 \begin{IEEEbiographynophoto}{Gustavo Pedro Ricou}
-% One line tighter if the paragraph allows; content unchanged. The alternative was
-% cutting a qualification to clear a one-line spill onto page 13.
-\looseness=-1
+% Trimmed when the author list went from two names to four. The gate counts this comment,
+% so it stays short. What went: the Higher Diploma, and what BoscaSports builds.
 received the B.Sc.\ degree in physics from the Universidade do Porto, Portugal, and
 specialized in nuclear fusion science at the University of Stuttgart and the
-Universit\'e de Lorraine. He holds the Higher Diploma in computing from Atlantic
-Technological University and an M.Sc.\ in software design with cloud-native computing from
-the Technological University of the Shannon, both with first-class honors,
-and is currently pursuing an M.Sc.\ in statistics and data science at Trinity College
-Dublin, Ireland.
-He is a Software Engineer with BoscaSports, building real-time pipelines for live sports.
+Universit\'e de Lorraine. He holds an M.Sc.\ in software design with cloud-native computing
+from the Technological University of the Shannon, with first-class honors, and is
+currently pursuing an M.Sc.\ in statistics and data science at Trinity College Dublin,
+Ireland.
+He is a Software Engineer with BoscaSports.
 His research concerns measurement validity --- what a reported number is really
-evidence of --- in computer systems, environmental measurement and sports analytics,
-using pre-registration and physical-consistency auditing.
+evidence of --- in computer systems, environmental measurement and sports analytics, using
+pre-registration and physical-consistency auditing.
 \end{IEEEbiographynophoto}
 
 % OWED: a biography for D. Gregg. IEEE wants one per author and the page count includes it.
@@ -1187,6 +1190,41 @@ architectures. He is a Professor in the School of Computer Science and Statistic
 College Dublin, Ireland. His research concerns compilers, algorithms and software
 optimization for multicore and vector computers, and low-resource techniques for deep
 neural networks. He is a Fellow of the Irish Computer Society.
+\end{IEEEbiographynophoto}
+
+% UNCONFIRMED DRAFTS, assembled the way Gregg's was and under the same rule: from the
+% authors' OWN PUBLIC PAGES, not from anything either has told us, and not ours to publish
+% until each man confirms his own entry. Drafting turns his task from writing into
+% correcting, which is the point of doing it at all.
+%
+%   Duvignau -- chalmers.se/en/persons/duvignau and cse.chalmers.se/~duvignau, read
+%   2026-09-02. Ph.D. Bordeaux 2015, "Maintenance and simulation of dynamic random graphs";
+%   Associate Professor since 2024, and Head of Unit, Computer and Network Systems.
+%
+%   Herbst -- se.informatik.uni-wuerzburg.de staff page, read 2026-09-02, with the title and
+%   group taken from his own email signature, which is first-party and more precise than the
+%   page: Kounev holds the chair, Herbst leads a group inside it.
+%
+% ONE GAP LEFT DELIBERATELY: Herbst's doctoral YEAR. The page dates the SPEC dissertation
+% award to 2019 and never dates the degree, and the two need not be the same year. Asking
+% beats subtracting one from the other.
+\begin{IEEEbiographynophoto}{Romaric Duvignau}
+received the Ph.D.\ degree in computer science from the University of Bordeaux, France, in
+2015, for work on the maintenance and simulation of dynamic random graphs. He is an
+Associate Professor and Head of the Computer and Network Systems unit in the Department of
+Computer Science and Engineering, Chalmers University of Technology, Gothenburg, Sweden.
+His research concerns distributed and data-driven algorithms, the monitoring of large-scale
+distributed systems, and stream analytics for cyber-physical systems.
+\end{IEEEbiographynophoto}
+
+\begin{IEEEbiographynophoto}{Nikolas Herbst}
+received the doctoral degree from the University of W\"urzburg, Germany, for methods and
+benchmarks for auto-scaling mechanisms in elastic cloud environments, work awarded the SPEC
+Kaivalya Dixit Distinguished Dissertation Award in 2019. He leads a research group at the
+Chair of Computer Science II --- Software Engineering, University of W\"urzburg. His
+research concerns software performance engineering, autonomic and self-aware computing, and
+time-series forecasting. He is elected co-chair of the SPEC Research Group's Cloud Working
+Group.
 \end{IEEEbiographynophoto}
 
 \end{document}

@@ -277,3 +277,40 @@ class TestMain:
         ass.main()
         text = capsys.readouterr().out
         assert text.count("IQR") >= 4
+
+
+class TestTheBinWidthIsReadNotAssumed:
+    """span_by_condition.py declares `bin_width_us`; this script must use it.
+
+    It was a hardcoded 50 until round 44. The two constants had always agreed, so nothing
+    failed -- but re-binning the corpus at 5 us makes every bin index here wrong by a factor
+    of ten, and the medians with them, with no error raised anywhere. The defect is invisible
+    by construction, which is why it needs a gate rather than a comment.
+    """
+
+    def test_the_width_comes_from_the_artefact(self):
+        assert ass.step_from({"bin_width_us": 5}) == 5
+        assert ass.step_from({"bin_width_us": 50}) == 50
+
+    def test_a_missing_width_is_refused_rather_than_guessed(self):
+        """Guessing is the whole defect, so absence must raise."""
+        with pytest.raises(ValueError, match="bin_width_us"):
+            ass.step_from({"bin_lo_us": -1000}, "some.json")
+
+    def test_main_sets_the_module_width_from_the_json(self, monkeypatch):
+        """End to end: the committed artefact declares 50, and main must adopt it rather
+        than rely on the fallback happening to match."""
+        monkeypatch.setattr(ass, "STEP", 999)
+        data = ass.load()
+        assert ass.step_from(data, ass.IN_JSON) == data["bin_width_us"]
+
+    def test_the_conversion_uses_the_module_width(self, monkeypatch):
+        """to_series must follow STEP, so that setting it from the artefact is sufficient."""
+        acc = {"bins": {"0": 1, "10": 1}}
+        monkeypatch.setattr(ass, "STEP", 50)
+        wide = ass.to_series(acc, 0)
+        monkeypatch.setattr(ass, "STEP", 5)
+        narrow = ass.to_series(acc, 0)
+        assert wide == [(0, 1), (500, 1)]
+        assert narrow == [(0, 1), (50, 1)], (
+            "to_series ignored STEP; the producer's width would then have no effect")

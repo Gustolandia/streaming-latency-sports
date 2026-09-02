@@ -287,6 +287,7 @@ def stat_macros():
         pass
     try:
         slope, intercept, r2, lo, hi = stat_intervals.payload_fit()
+        npts = stat_intervals.payload_points()
         out += [
             ("tailExponent", "%.3f" % (-slope)),
             ("tailExponentCI", "%.3f$--$%.3f" % (-hi, -lo)),
@@ -307,6 +308,15 @@ def stat_macros():
             # its macro and not whether a sourced value has one.
             ("tailPrefactor", "%.3f" % math.exp(intercept)),
             ("tailRsq", "%.3f" % r2),
+            # The R-squared's own limit, emitted beside it. Four levels and two fitted
+            # parameters leave two residual degrees of freedom, so 0.990 is close to what
+            # arithmetic guarantees rather than a measure of how well the law holds. The
+            # adjusted value is the same number told honestly. A gate refuses any use of
+            # \tailRsq on the manuscript surface that does not also carry \tailRsqPoints,
+            # which is what keeps a later draft from quoting the decoration on its own.
+            ("tailRsqPoints", str(npts)),
+            ("tailRsqDof", str(max(npts - 2, 0))),
+            ("tailRsqAdj", "%.3f" % _adjusted_r2(r2, npts, 1)),
         ]
     except (OSError, KeyError, ValueError):
         pass
@@ -973,6 +983,19 @@ def artifact_macros(path=".zenodo.json", data_path=".zenodo-data.json"):
     return [("artifactVersion", version)]
 
 
+def _adjusted_r2(r2, n, predictors):
+    """R-squared with the degrees of freedom it actually had.
+
+    1 - (1 - R2)(n - 1)/(n - p - 1). Returns the raw value when there are no residual degrees
+    of freedom left to adjust against, because the alternative is a division by zero dressed
+    up as a statistic.
+    """
+    dof = n - predictors - 1
+    if dof <= 0:
+        return r2
+    return 1.0 - (1.0 - r2) * (n - 1.0) / dof
+
+
 def _exposure_lags(path=os.path.join("docs", "results", "span_symmetry.csv")):
     """The three lags the exposure curve is built from, read once.
 
@@ -1122,6 +1145,57 @@ def disease_macros(path=os.path.join("docs", "results", "span_run_level.csv")):
     return out
 
 
+def separability_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
+    """How badly an independence assumption would misprice the inversion rate.
+
+    `analyze_span_symmetry.py` already convolves the two measured margins to get the rate that
+    would follow if the delivery and the acknowledgment lag were independent, and stores it
+    beside the observed rate. Nothing has ever read it. It is the numerical form of the
+    objection R. Duvignau raised against the separable model, and it is decisive.
+
+    The overshoot is the **median of the per-condition ratios**, not the ratio of the medians.
+    Those are 12.4x and 21.3x here, and the second is not an estimator of anything: it divides
+    one condition's typical prediction by a different condition's typical observation. The
+    same mistake was caught once already in this pipeline, against `reportedFraction`, which
+    is why the guard below is a gate and not a comment.
+
+    Conditions with no observed negatives at all are excluded from the ratio, because the
+    ratio is undefined there. That makes the figure conservative rather than generous: in
+    those the independence model predicts a nonzero rate where none occurred, so the true
+    overshoot is unbounded, and dropping them can only pull the median down.
+    """
+    import csv as _csv
+    import statistics as _st
+    try:
+        with open(path, encoding="utf-8") as fh:
+            rows = list(_csv.DictReader(fh))
+    except OSError:
+        return []
+    obs, pred, ratios, over = [], [], [], 0
+    for r in rows:
+        try:
+            o = float(r["neg_frac_obs"])
+            p = float(r["neg_frac_pred_indep"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        obs.append(o)
+        pred.append(p)
+        if p > o:
+            over += 1
+        if o > 0:
+            ratios.append(p / o)
+    if not obs or not ratios:
+        return []
+    return [
+        ("indepConditions", str(len(obs))),
+        ("indepOvershootConditions", str(over)),
+        ("indepOvershoot", "%.1f" % _st.median(ratios)),
+        ("indepOvershootN", str(len(ratios))),
+        ("indepMedianObs", "%.2f" % (100.0 * _st.median(obs))),
+        ("indepMedianPred", "%.1f" % (100.0 * _st.median(pred))),
+    ]
+
+
 def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
     """The remedy's accuracy, split by gate outcome.
 
@@ -1240,7 +1314,7 @@ def all_pairs(m):
             + clocksource_macros() + traced_ratio_macros() + audit_macros()
             + priority_macros() + priority_residual_macros() + fork_macros()
             + chrony_bound_macros() + disease_macros()
-            + exposure_macros() + artifact_macros()
+            + exposure_macros() + artifact_macros() + separability_macros()
             + deletion_macros())
 
 

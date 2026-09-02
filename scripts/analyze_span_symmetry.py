@@ -49,7 +49,14 @@ import os
 IN_JSON = os.path.join("docs", "results", "span_by_condition.json")
 OUT_CSV = os.path.join("docs", "results", "span_symmetry.csv")
 
-STEP = 50  # us, the committed bin width
+# Bin width in microseconds. This is a FALLBACK ONLY: main() overwrites it from the
+# `bin_width_us` that span_by_condition.py writes into the JSON this script consumes.
+#
+# It was a hardcoded 50 until round 44, while the producer has always declared its width in
+# the artefact. The two agreed, so nothing failed -- but re-binning the corpus at 5 us would
+# have made every bin index here wrong by a factor of ten, silently, and the medians with
+# them. A constant that must match another file's constant should be read from it.
+STEP = 50
 
 
 def load():
@@ -120,8 +127,24 @@ def neg_fraction(dist):
     return None
 
 
+def step_from(data, source=""):
+    """The bin width the producer declared, never a local guess.
+
+    Split out so it can be tested without running the whole analysis: the failure this
+    guards is silent, so the guard has to be reachable on its own.
+    """
+    declared = data.get("bin_width_us")
+    if declared is None:
+        raise ValueError(
+            "%s declares no bin_width_us; this script cannot convert bin indices to "
+            "microseconds without it, and guessing is how a factor of ten hides" % source)
+    return int(declared)
+
+
 def main():
+    global STEP
     data = load()
+    STEP = step_from(data, IN_JSON)
     bin_lo = data["bin_lo_us"]
     rows = []
     pooled_S = {}

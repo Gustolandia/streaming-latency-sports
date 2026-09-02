@@ -384,6 +384,18 @@ def payload_fit(phase=None):
     return ols_slope(xs, ys)
 
 
+def payload_points(phase=None):
+    """How many levels the payload fit rests on. Four.
+
+    R-squared on four points with two fitted parameters has two residual degrees of freedom,
+    so 0.990 is very nearly arithmetic rather than evidence, and it sits beside an exponent
+    interval of 0.234-0.443 -- close to a factor of two. Emitted so the goodness-of-fit and
+    the thing that limits it cannot be quoted apart; a gate enforces the pairing.
+    """
+    parts = ("model", "ttrue_sweep.csv") if phase is None else ("model", phase, "ttrue_sweep.csv")
+    return len(_rows(*parts))
+
+
 def payload_span(phase=None):
     """The endpoints of the payload sweep: how far transport moved, and what followed.
 

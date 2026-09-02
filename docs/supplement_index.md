@@ -293,8 +293,8 @@ appearing in this table.
 | `grid_membership` | main text, Fig. 4 |
 | `payload_flip` | main text, Fig. 5 (single-column from round 28; was full-width) |
 | `mechanism_forest` | supplement, S47 (moved round 57: it plots the four matched pairs of the main text's Table II and the two brokers of its Table I, so it restated tables the reader already has) |
-| `ttrue_law` | main text, Fig. 6 |
-| `stall_spectrum` | main text, Fig. 7 |
+| `ttrue_law` | supplement, S32 |
+| `stall_spectrum` | main text, Fig. 6 |
 | `priority_ladder` | supplement, S47 |
 | _(no figure)_ | supplement, S48 --- the broker results, moved from the main text in round 18 |
 | `experiment_map` | supplement |

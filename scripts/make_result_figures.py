@@ -587,7 +587,7 @@ def plot_mechanism(ax, arms, observed=()):
 
     The table gives the numbers. What the table cannot show at a glance is that the two arms
     of every pair are disjoint, which is the whole causal claim: move occupancy at fixed
-    utilisation and the rate moves with it.
+    utilization and the rate moves with it.
 
     Below a rule, and only if supplied, the same axis carries the two brokers. Their intervals
     are tight and mutually overlapping, so the one glance that shows every manipulated pair

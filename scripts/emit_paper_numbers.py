@@ -1285,6 +1285,85 @@ def priority_macros():
     ]
 
 
+def manipulation_macros():
+    """Table II's caption, and the withholding threshold the supplement never named.
+
+    Round 48 found the last pocket of the transcription defect this file exists to close.
+    Every *cell* of Table II is a macro; its *caption* typed three measured quantities --
+    the matched events per cell, the utilisation agreement between the priority arms, and
+    the shared rho of the four k=6 arms. All three were correct, and all three were typed,
+    which is the state the paper argues against in its own Section VI-B.
+
+    The same round found `MANIP_TOL` stated nowhere in either document. S47 reports how many
+    pairs were withheld for a failed manipulation check without ever saying what would fail
+    one, so a reader cannot tell a clean manipulation from a loose tolerance. The threshold
+    and the worst gap it actually saw are emitted together, because the second is what makes
+    the first meaningful.
+
+    `eventsPerCell` is emitted only when every cell agrees. The caption says "per cell"; if
+    the campaigns ever disagree, the honest failure is a missing macro and a build that
+    stops, not a number that quietly becomes an average.
+    """
+    try:
+        import priority_pairs
+        import stat_intervals
+        from analyze_stamping_priority import MANIP_TOL
+    except ImportError:  # pragma: no cover - all three ship beside this file
+        return []
+    out = []
+
+    # The eight cells Table II shows: two priority pairs from E-A5, and the two k=6
+    # geometry pairs. Not every pair in the corpus -- the caption is about this table.
+    try:
+        counts = set()
+        for level, _kb, n_b, _kr, n_r in stat_intervals.priority_cells():
+            if level in ("l75", "l88"):
+                counts.update((n_b, n_r))
+        for phase in ("ea6", "ea6b"):
+            for _cond, _k, n in stat_intervals.geometry_cells(phase):
+                counts.add(n)
+        if len(counts) == 1:
+            out.append(("mechEventsPerCell", latex_thousands(counts.pop())))
+    except (OSError, KeyError, ValueError):
+        pass
+
+    # "Achieved utilisation matches to ..." -- the widest disagreement between the two arms
+    # of the priority pairs the table prints. Emitted as the measured worst case rather than
+    # the round bound the caption used: the bound was true, but a bound nobody recomputes is
+    # the same object as a transcribed number.
+    try:
+        gaps = []
+        for pair in priority_pairs.pairs(
+                campaigns=(("E-A5", "stamping_priority.csv"),)):
+            if pair["level"] in ("l75", "l88"):
+                gaps.append(abs(pair["rho"] - pair["rho_rt"]))
+        if gaps:
+            out.append(("mechRhoMatch", "%.4f" % max(gaps)))
+    except (OSError, KeyError, ValueError):
+        pass
+
+    # The utilisation both k=6 arms reached. geometry_rho() raises when the arms disagree,
+    # which is the right failure: a pair that did not reach one utilisation is not the
+    # comparison the caption describes.
+    try:
+        rhos = {stat_intervals.geometry_rho(p) for p in ("ea6", "ea6b")}
+        if len(rhos) == 1:
+            out.append(("mechGeomRho", "%.4f" % rhos.pop()))
+    except (OSError, KeyError, ValueError):
+        pass
+
+    # The manipulation check itself: the criterion, and the largest gap it ever saw.
+    out.append(("manipTol", "%.2f" % MANIP_TOL))
+    try:
+        worst = max(abs(p["rho"] - p["rho_rt"]) for p in priority_pairs.pairs())
+    except (OSError, KeyError, ValueError):
+        return out
+    out.append(("manipWorst", "%.3f" % worst))
+    if worst > 0:
+        out.append(("manipMargin", "%.0f" % (MANIP_TOL / worst)))
+    return out
+
+
 def deletion_macros(stats=os.path.join("docs", "results", "span_histogram_stats.json"),
                     audit=os.path.join("docs", "results", "uncertainty_audit.csv")):
     """What a millisecond positivity guard removes from the measured population.
@@ -1879,7 +1958,8 @@ def all_pairs(m):
             + chrony_bound_macros() + disease_macros()
             + exposure_macros() + artifact_macros() + separability_macros()
             + paired_gap_macros() + handling_share_macros() + inter_host_offset_macros()
-            + spread_macros() + arm_macros() + deletion_macros())
+            + spread_macros() + arm_macros() + manipulation_macros()
+            + deletion_macros())
 
 
 def render(m):

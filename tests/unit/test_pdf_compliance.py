@@ -418,6 +418,72 @@ def test_the_inventory_figure_numbers_are_current():
 UNDERFULL_BADNESS_CEILING = 10000
 
 
+def _before_the_bibliography(text):
+    """The log up to the point LaTeX opened the `.bbl`, or all of it if it never did.
+
+    This used to be `text.split(".bbl")[0]`, and round 48 found that the split had silently
+    stopped working for the supplement. **LaTeX hard-wraps its log at 79 columns, and the
+    wrap can fall inside a filename.** This build wrote
+
+        ... [49] [50] (supplement.
+        bbl [51]
+
+    so the literal `.bbl` does not occur anywhere in the file, `split` returned the whole
+    log, and every loose line in the bibliography was counted against the body -- which the
+    docstring below explicitly says they must not be. `paper.log` was unaffected only
+    because its wrap happened to fall elsewhere, so the bug was invisible in one of the two
+    documents it applies to.
+
+    Searching a newline-stripped copy and mapping the offset back is what makes the marker
+    findable wherever the wrap lands.
+    """
+    keep = [i for i, ch in enumerate(text) if ch != "\n"]
+    at = "".join(text[i] for i in keep).find(".bbl")
+    return text if at == -1 else text[:keep[at]]
+
+
+class TestTheBibliographyIsFoundWhereverTheLogWrapsIt:
+    """The scoping helper, against the wrap that defeated its predecessor.
+
+    Round 48: the supplement's log wrote `(supplement.` at the end of one line and `bbl` at
+    the start of the next, so `".bbl" in text` was false and the bibliography was never
+    excluded. One loose URL then failed a gate that exists to ignore loose URLs.
+    """
+
+    def test_an_unwrapped_marker_is_found(self):
+        """Cuts at the same place the old `split(".bbl")[0]` did, so nothing else moves."""
+        text = "body line\n(paper.bbl [12]\nUnderfull \\hbox (badness 10000)\n"
+        assert _before_the_bibliography(text) == text.split(".bbl")[0]
+        assert "Underfull" not in _before_the_bibliography(text)
+
+    def test_a_marker_split_by_the_column_wrap_is_found(self):
+        """The exact shape LaTeX produced: the wrap falls between "." and "bbl"."""
+        text = "body line\n[49] [50] (supplement.\nbbl [51]\nUnderfull \\hbox (badness 10000)\n"
+        head = _before_the_bibliography(text)
+        assert "Underfull" not in head
+        assert head.startswith("body line")
+
+    def test_a_wrap_inside_the_stem_is_also_found(self):
+        """The wrap can land anywhere, not only before the extension."""
+        text = "body\n(suppleme\nnt.bbl [51]\nUnderfull \\hbox (badness 10000)\n"
+        assert "Underfull" not in _before_the_bibliography(text)
+
+    def test_a_log_with_no_bibliography_keeps_all_of_itself(self):
+        text = "body\nUnderfull \\hbox (badness 10000) in paragraph at lines 1--2\n"
+        assert _before_the_bibliography(text) == text
+
+    def test_the_real_logs_lose_their_bibliographies(self):
+        for name in ("paper", "supplement"):
+            log = ROOT / ("%s.log" % name)
+            if not log.exists():
+                pytest.skip("no LaTeX log for %s" % name)
+            text = log.read_text(encoding="utf-8", errors="ignore")
+            head = _before_the_bibliography(text)
+            assert len(head) < len(text), (
+                "%s.log: the bibliography was not found, so its loose URLs are being "
+                "counted against the body" % name)
+
+
 @pytest.mark.parametrize("name", ["paper", "supplement"])
 def test_no_line_is_stretched_to_the_limit(name):
     """The LaTeX log must record no underfull box at maximum badness.
@@ -454,7 +520,7 @@ def test_no_line_is_stretched_to_the_limit(name):
     # boxes really were in the body, from unbreakable 	exttt identifiers, and those are
     # what rk fixed. A referee reading a log without checking which file its line numbers
     # index is making the same error as a reader trusting a benchmark's own output.
-    head = text.split(".bbl")[0]
+    head = _before_the_bibliography(text)
     worst = re.findall(
         r"Underfull \\hbox \(badness (\d+)\) in paragraph at lines ([\d]+--[\d]+)", head)
     offenders = sorted({loc for badness, loc in worst

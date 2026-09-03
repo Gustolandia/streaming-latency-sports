@@ -287,3 +287,18 @@ budget could not take both.
 Optimization for Performance Modeling and Regression Detection*) was fetched and deleted: it is
 ACM-submitted rather than TC, and its subject is reducing tracing cost by sampling functions,
 not the instrument's own validity. `uringscope_obs.pdf` covers the observer-effect point better.
+
+## Added round 48 (2026-09-03)
+
+Two fetched during the round-48 review: one for house form on a measurement paper that
+calibrates its own instrument, one for the genre sweep.
+
+| file | arXiv | pages | worth |
+|---|---|---|---|
+| `m4_residual_cache.pdf` | 2606.27098 | 16 | **the form to imitate.** A TC-shaped measurement paper that calibrates its instrument against STREAM and BabelStream *before* using it, and says so in the methods rather than in a limitations paragraph. Fetched to check what TC expects of a paper whose result depends on its own measurement being trustworthy; this manuscript already exceeds it, which is the useful finding |
+| `audit_the_audit.pdf` | 2607.02586 | 18 | genre-adjacent, not competing. A validity audit of tool-calling benchmark harnesses — the same move as ours, one field over. No timing, no resolution, no discard rate, no published rejection rate, so it establishes no priority against anything here. Kept so the July 2026 sweep is not repeated |
+
+**Reference budget after round 48.** Unchanged at **44 of 45**, one slot free. Nothing in this
+round wanted a citation: the two additions above calibrate form and close a literature sweep,
+and the one substantive new source — mq-bench's published QoS-0 loss rate — strengthens
+supplementary material S52.2 using a reference the supplement already carries.

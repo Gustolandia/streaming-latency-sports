@@ -423,6 +423,143 @@ class TestThePriorityResidualRange:
         assert {"rtResidualMin", "rtResidualMax", "rtResidualPairs"} <= names
 
 
+class TestTheManipulationCaptionAndItsThreshold:
+    """Round 48: Table II's cells were all macros and its caption typed three measurements.
+
+    The caption said "2,985 matched events per cell", "utilization matches to 0.001 between
+    arms" and "rho = 0.7531 in all four k=6 arms". All three were true, all three were
+    functions of committed artifacts, and none of them was derived -- which is the state the
+    paper argues against in its own Section VI-B.
+
+    The same round found MANIP_TOL stated nowhere in either document. S47 reported the
+    withheld count without saying what would earn a withholding, so a reader could not
+    distinguish a clean manipulation from a loose tolerance.
+    """
+
+    def test_the_events_per_cell_is_the_count_every_shown_cell_agrees_on(self):
+        got = dict(epn.manipulation_macros())
+        cells = {n for level, _kb, nb, _kr, nr in stat_intervals.priority_cells()
+                 if level in ("l75", "l88") for n in (nb, nr)}
+        cells |= {n for phase in ("ea6", "ea6b")
+                  for _c, _k, n in stat_intervals.geometry_cells(phase)}
+        assert len(cells) == 1, "the caption says 'per cell'; the artifacts must agree"
+        assert got["mechEventsPerCell"] == epn.latex_thousands(cells.pop())
+
+    def test_the_utilization_match_is_the_widest_gap_the_shown_pairs_have(self):
+        import priority_pairs
+        got = dict(epn.manipulation_macros())
+        gaps = [abs(p["rho"] - p["rho_rt"])
+                for p in priority_pairs.pairs(
+                    campaigns=(("E-A5", "stamping_priority.csv"),))
+                if p["level"] in ("l75", "l88")]
+        assert got["mechRhoMatch"] == "%.4f" % max(gaps)
+
+    def test_the_caption_claim_is_no_weaker_than_the_bound_it_replaced(self):
+        """The typed caption promised 0.001. The derived value must still honour it."""
+        got = dict(epn.manipulation_macros())
+        assert float(got["mechRhoMatch"]) <= 0.001
+
+    def test_the_geometry_rho_is_the_one_both_replications_reached(self):
+        got = dict(epn.manipulation_macros())
+        rhos = {stat_intervals.geometry_rho(p) for p in ("ea6", "ea6b")}
+        assert len(rhos) == 1
+        assert got["mechGeomRho"] == "%.4f" % rhos.pop()
+
+    def test_the_threshold_and_the_worst_gap_are_both_emitted(self):
+        from analyze_stamping_priority import MANIP_TOL
+        import priority_pairs
+        got = dict(epn.manipulation_macros())
+        assert got["manipTol"] == "%.2f" % MANIP_TOL
+        worst = max(abs(p["rho"] - p["rho_rt"]) for p in priority_pairs.pairs())
+        assert got["manipWorst"] == "%.3f" % worst
+        assert got["manipMargin"] == "%.0f" % (MANIP_TOL / worst)
+
+    def test_the_worst_gap_is_actually_inside_the_tolerance(self):
+        """S47 now says the rule never fired because nothing came close. Check that."""
+        got = dict(epn.manipulation_macros())
+        assert float(got["manipWorst"]) < float(got["manipTol"])
+        assert int(got["manipMargin"]) > 1
+
+    def test_a_level_outside_the_table_does_not_reach_the_count(self, monkeypatch):
+        """The caption is about the two pairs Table II prints, not the whole ladder.
+
+        E-A5b and E-A7 ran levels the table does not show. The committed E-A5 file happens to
+        hold only l75 and l88, so the filter never had to reject anything and its rejecting
+        branch went unexercised -- a filter nothing has ever filtered.
+        """
+        monkeypatch.setattr(stat_intervals, "priority_cells",
+                            lambda *a, **k: [("l60", 1, 999, 1, 999),
+                                             ("l75", 1, 2985, 1, 2985),
+                                             ("l88", 1, 2985, 1, 2985)])
+        got = dict(epn.manipulation_macros())
+        assert got["mechEventsPerCell"] == epn.latex_thousands(2985), \
+            "the l60 cell's 999 events must not reach a caption about l75 and l88"
+
+    def test_a_pair_outside_the_table_does_not_reach_the_match(self, monkeypatch):
+        import priority_pairs
+        shown = {"level": "l75", "rho": 0.75312, "rho_rt": 0.7525}
+        other = {"level": "l60", "rho": 0.60, "rho_rt": 0.90}
+        monkeypatch.setattr(priority_pairs, "pairs", lambda *a, **k: [other, shown])
+        got = dict(epn.manipulation_macros())
+        assert got["mechRhoMatch"] == "%.4f" % abs(shown["rho"] - shown["rho_rt"]), \
+            "a level the table does not print must not widen the caption's claim"
+
+    def test_no_shown_pair_yields_no_match_rather_than_an_empty_maximum(self, monkeypatch):
+        """max() of nothing raises; skipping says so without a traceback."""
+        import priority_pairs
+        monkeypatch.setattr(priority_pairs, "pairs",
+                            lambda *a, **k: [{"level": "l60", "rho": 0.6, "rho_rt": 0.6}])
+        got = dict(epn.manipulation_macros())
+        assert "mechRhoMatch" not in got
+        assert "manipWorst" in got, "the campaign-wide worst gap does not use that filter"
+
+    def test_cells_that_disagree_yield_no_count_rather_than_an_average(self, monkeypatch):
+        monkeypatch.setattr(stat_intervals, "priority_cells",
+                            lambda *a, **k: [("l75", 1, 100, 1, 101)])
+        assert "mechEventsPerCell" not in dict(epn.manipulation_macros())
+
+    def test_missing_priority_artifacts_drop_the_caption_macros(self, monkeypatch):
+        monkeypatch.setattr(stat_intervals, "priority_cells",
+                            lambda *a, **k: (_ for _ in ()).throw(OSError("gone")))
+        got = dict(epn.manipulation_macros())
+        assert "mechEventsPerCell" not in got
+        assert "manipTol" in got, "the threshold is a constant and does not need the data"
+
+    def test_missing_pair_data_drops_the_gap_macros(self, monkeypatch):
+        import priority_pairs
+        monkeypatch.setattr(priority_pairs, "pairs",
+                            lambda *a, **k: (_ for _ in ()).throw(OSError("gone")))
+        got = dict(epn.manipulation_macros())
+        assert "mechRhoMatch" not in got
+        assert "manipWorst" not in got
+        assert "manipMargin" not in got
+
+    def test_geometry_arms_that_disagree_yield_no_rho(self, monkeypatch):
+        monkeypatch.setattr(stat_intervals, "geometry_rho",
+                            lambda phase: 0.75 if phase == "ea6" else 0.76)
+        assert "mechGeomRho" not in dict(epn.manipulation_macros())
+
+    def test_an_unreadable_geometry_phase_drops_the_rho(self, monkeypatch):
+        monkeypatch.setattr(stat_intervals, "geometry_rho",
+                            lambda phase: (_ for _ in ()).throw(ValueError("arms differ")))
+        assert "mechGeomRho" not in dict(epn.manipulation_macros())
+
+    def test_a_zero_worst_gap_emits_no_margin_rather_than_dividing_by_it(self, monkeypatch):
+        import priority_pairs
+        monkeypatch.setattr(priority_pairs, "pairs",
+                            lambda *a, **k: [{"level": "l75", "rho": 0.5, "rho_rt": 0.5}])
+        got = dict(epn.manipulation_macros())
+        assert got["manipWorst"] == "0.000"
+        assert "manipMargin" not in got
+
+    def test_the_group_is_wired_into_the_emitted_file(self):
+        names = {n for n, _ in epn.all_pairs(measured(load_cells(
+            Path(__file__).parent.parent.parent / "docs" / "results"
+            / "external_campaigns_index.csv")))}
+        assert {"mechEventsPerCell", "mechRhoMatch", "mechGeomRho",
+                "manipTol", "manipWorst", "manipMargin"} <= names
+
+
 class TestTheSignedPayloadSlope:
     """One word and one sign for one quantity. The ledger emitted only the magnitude, so
     Section V-D said "exponent 0.339" while Figure 6 drew "slope -0.34" from the same fit."""

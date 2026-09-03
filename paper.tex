@@ -119,7 +119,7 @@ instant and publish that retained fraction.
 \begin{IEEEkeywords}
 distributed systems;
 measurement techniques;
-Measurement, evaluation, modeling, simulation of multiple-processor systems;
+measurement, evaluation, modeling, simulation of multiple-processor systems;
 message passing;
 performance attributes;
 scheduling and task partitioning.
@@ -303,8 +303,8 @@ departure is written --- under every stress pattern including none. They attribu
 latency to interrupt processing, scheduling and context switching. That is Mode~A's physical
 primitive, published in 2012 and measured more precisely than we measure it. We add its
 consequence for a two-process measurement, a law relating the negative-span rate to the
-flight measured (Equation~\ref{eq:negspan}), and manipulations separating scheduling from its
-rivals. The audit half has its own ancestor. Paxson~\cite{paxson1998calibrating} treated
+flight measured (Equation~\ref{eq:twostate}, Section~\ref{sec:mixture}), and manipulations
+separating scheduling from its rivals. The audit half has its own ancestor. Paxson~\cite{paxson1998calibrating} treated
 physically impossible transit times as instrument failure and published the proportion of
 traces affected; Lancet is the nearest existing gate, reporting an inconclusive verdict where
 we decline to publish at all. Neither reports the fraction of runs a campaign lost.
@@ -317,7 +317,7 @@ than error, and nobody had measured how much.
 The nearest concurrent statement of the wider position is Swami and
 Chougule~\cite{swami2026observability}: timing observability is itself an
 interference-sensitive resource. We agree, and need no apparatus for it. Their reference is
-a logic analyser outside the system; ours is the sign of a subtraction inside it, available
+a logic analyzer outside the system; ours is the sign of a subtraction inside it, available
 to any harness that already takes both stamps.
 
 Concurrent work reaches the same observable by another route. In a 2026 preprint, Sharma et
@@ -844,10 +844,10 @@ saturated it reaches $\invCeiling$, so even then most stamps are taken by a thre
 running, or late by less than the flight.
 
 \begin{table}[tb]
-\caption{\textbf{The mechanism, by manipulation} ($2{,}985$ matched events per cell). Top: stamping threads moved to \texttt{SCHED\_FIFO} with
-background load unchanged; achieved utilization matches to $0.001$ between arms, so
-occupancy alone moved. Bottom: identical utilization reached by two core geometries
-($\rho = 0.7531$ in all four $k{=}6$ arms); a function of $\rho$ returns one value for one
+\caption{\textbf{The mechanism, by manipulation} ($\mechEventsPerCell$ matched events per cell). Top: stamping threads moved to \texttt{SCHED\_FIFO} with
+background load unchanged; achieved utilization matches to within $\mechRhoMatch$ between arms,
+so occupancy alone moved. Bottom: identical utilization reached by two core geometries
+($\rho = \mechGeomRho$ in all four $k{=}6$ arms); a function of $\rho$ returns one value for one
 input.}
 \label{tab:mechanism}
 \centering
@@ -890,7 +890,7 @@ pairs spanning $\rtRhoLow$ to $\rtRhoHigh\%$ load the factor
 ranges $\rtFactorLow$--$\rtFactorHigh\times$, every pair with disjoint intervals.
 Supplement~S47 reports each one, with the campaign it came from.
 
-Three further manipulations agree. At $k=6$ both load geometries sit at $\rho = 0.7531$,
+Three further manipulations agree. At $k=6$ both load geometries sit at $\rho = \mechGeomRho$,
 identical to four decimals, and the negative-span rates differ by
 $\GeomOrigFactor\times$ [$\GeomOrigFactorCI$] ($z = \GeomOrigZ$), reproduced at
 $\GeomReplFactor\times$ [$\GeomReplFactorCI$] by a full replication. Multi-server queueing

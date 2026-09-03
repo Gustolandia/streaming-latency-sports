@@ -14,6 +14,7 @@ CLI:
     python scripts/make_method_figure.py --out docs/results/figures
 """
 import argparse
+import math
 from pathlib import Path
 
 import os
@@ -58,7 +59,7 @@ def _priority_range():
 
 
 def _geometry_result():
-    """E-A6's two factors and the utilisation both arms reached.
+    """E-A6's two factors and the utilization both arms reached.
 
     `\\GeomOrigFactor`, `\\GeomReplFactor` and the shared rho. The factors are derived the
     same way `emit_paper_numbers` derives them --- `ratio_z` over the two cells --- so the
@@ -74,6 +75,45 @@ def _geometry_result():
                                             stat_intervals.geometry_rho("ea6"))
     except (ImportError, OSError, KeyError, ValueError):
         return "2.07x, 2.05x, at rho 0.7531"
+
+
+def _priority_rho_match():
+    """How closely utilization was held between the priority arms, as a bound.
+
+    The map's "held fixed" column states a bound, not a measurement: utilization was the same
+    in both arms *to within* this much. Round 48 emitted the underlying worst gap as
+    `\\manipWorst` for S47 and found this cell still typing its own copy of the same quantity
+    at a coarser rounding, which is how a figure and a sentence come to print two numbers for
+    one fact. The ceiling is taken at three decimals because that is the width the cell has;
+    it is a bound, so it rounds up rather than to nearest.
+    """
+    try:
+        import priority_pairs
+        worst = max(abs(p["rho"] - p["rho_rt"]) for p in priority_pairs.pairs())
+        return "%.3f" % (math.ceil(worst * 1000.0) / 1000.0)
+    except (ImportError, OSError, KeyError, ValueError):
+        return "0.003"
+
+
+def _colocation_rho_match():
+    """The same bound for E-A8, where the typed copy was not merely coarse but wrong.
+
+    The cell claimed utilization was held "to 0.002" between the remote and co-located arms.
+    `docs/results/model/colocation.csv` has them differing by $0.0025$ at idle --- 0.0025
+    against 0.005 --- so the bound the map published excluded a value the campaign actually
+    recorded. Nothing downstream depends on it, which is precisely why it survived: no result
+    is computed from this cell, so no gate that checks results could notice it was false.
+    """
+    try:
+        import csv
+        path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                            "docs", "results", "model", "colocation.csv")
+        with open(path, newline="", encoding="utf-8-sig") as handle:
+            gaps = [abs(float(r["rho_remote"]) - float(r["rho_colocated"]))
+                    for r in csv.DictReader(handle)]
+        return "%.3f" % (math.ceil(max(gaps) * 1000.0) / 1000.0)
+    except (OSError, KeyError, TypeError, ValueError):
+        return "0.003"
 
 
 def _tail_index():
@@ -96,7 +136,7 @@ ROWS = [
     ("E-B\ndelay sweep", "injected delay\n0-50 ms", "load, feeds",
      "H1 effect size\n(direction only; confounded)"),
     ("E-A / E-A3\nload sweep", "background load\n0-12", "rate, feeds,\nplan",
-     "H2 utilisation, H10 mixture,\n$F_\\Delta$ recovery"),
+     "H2 utilization, H10 mixture,\n$F_\\Delta$ recovery"),
     ("E-A2\nprocess count", "processes at\nfixed rate", "aggregate\nevent rate",
      "H4 oversubscription"),
     ("E-C3 / E-C4\nstamping", "ack stamp:\ncallback vs inline", "load, in-flight,\nbackend",
@@ -109,15 +149,17 @@ ROWS = [
     # claim -- that every claim in the discussion traces to a row -- had quietly become false: five
     # campaigns were carrying results in the text with no row here at all.
     ("E-A5/A5b/A7\nstamping priority", "SCHED_FIFO on\nthe stamping threads",
-     "utilisation,\nto 0.003", "scheduling, not utilisation\n(%s)" % _priority_range()),
-    ("E-A6 / E-A6b\nload geometry", "cores free vs\nall duty-cycled", "achieved\nutilisation",
-     "utilisation is not the variable\n(%s)" % _geometry_result()),
+     "utilization,\nto %s" % _priority_rho_match(),
+     "scheduling, not utilization\n(%s)" % _priority_range()),
+    ("E-A6 / E-A6b\nload geometry", "cores free vs\nall duty-cycled", "achieved\nutilization",
+     "utilization is not the variable\n(%s)" % _geometry_result()),
     ("E-A9\nrun-queue trace", "nothing:\nobservation only", "load,\npriority arm",
      "P(stall > $T_\\mathrm{true}$) predicts\nthe rate, unfitted"),
     ("E-A10\ntransport sweep", "payload size;\n$T_\\mathrm{true}$ %sx" % _transport_span(),
      "load, hosts,\ncode path",
      "other side of the inequality;\ntail index %s" % _tail_index()),
-    ("E-A8\nco-location", "broker on\nthe driver", "utilisation,\nto 0.002",
+    ("E-A8\nco-location", "broker on\nthe driver",
+     "utilization,\nto %s" % _colocation_rho_match(),
      "nothing: transport did not\nmove, so it is withheld"),
     ("OMB\nexternal", "instrumented\ndiscard counter", "our broker,\nunder load",
      "the exposure is\nnot ours alone"),

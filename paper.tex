@@ -146,7 +146,7 @@ $t_{\mathrm{sched}}$, when an event was
 due; $t_{\mathrm{send}}$, immediately before the send call; $t_{\mathrm{ack}}$, when the
 producer learns the broker accepted it; and $t_{\mathrm{recv}}$, when the consumer holds the
 record. A fifth, $t_{\mathrm{out}}$, is consumer-internal
-(Section~\ref{sec:metrics}). Broker transport, the span this paper is about, subtracts a
+(Section~\ref{sec:testbeds}). Broker transport, the span this paper is about, subtracts a
 producer-process stamp from a consumer-process one. Both processes run on one host
 reading one clock unless stated otherwise (Section~\ref{sec:testbeds}), so nothing that
 follows depends on clock synchronization.}
@@ -266,12 +266,11 @@ audit of Section~\ref{sec:generality} reads \harnessAuditedWord{} tools at sourc
 further than the disposal does: the end-to-end tool bundled with Apache \kafka{}
 itself computes its percentiles from millisecond-truncated integers~\cite{kafka_tools}. This
 is the state of a widely installed instrument, not one project's oversight. Nor is the survey
-one-sided --- Supplement~S53 has every row with the source line it rests on, including the
-tools that keep their negatives and the one that counts its discards.
-Nor is the
+one-sided: Supplement~S53 gives every row with its source line, the tools that keep their
+negatives among them. Nor is the
 architecture that produces those spans a blunder to be designed away. A producer that blocked
 for each acknowledgment could not generate load at all, so the send is stamped on the calling
-thread and the reference on another. No design that keeps the asynchrony has one thread
+thread and the reference on another, and no design that keeps the asynchrony has one thread
 to stamp with (Supplement~S38). What a benchmark can drop is the habit of subtracting two
 such stamps without ever checking the sign of the result.
 
@@ -529,7 +528,7 @@ promoted to microseconds (Supplement~S53 quotes the call). So the guard in
 \brk{WorkerStats.java}:95 --- \texttt{if (endToEndLatencyMicros > 0)} --- tests a variable
 named for microseconds that can only ever hold integer multiples of a thousand of them. The
 message is counted as received a few lines earlier, but a non-positive latency is dropped
-and no counter records how many. Over the campaign of Section~\ref{sec:extquant} that silence covers
+and no counter records how many. Over the campaign of Section~\ref{sec:extphase} that silence covers
 $\ombDiscarded$ samples: Houdini at least took a bow.
 
 The guard's origin is documented and its reasoning is sound. It was added in 2018 to stop
@@ -646,7 +645,8 @@ replicate noise and which side of the diagonal it falls on is not evidence eithe
 \includegraphics[width=\columnwidth]{docs/results/figures/grid_membership.pdf}
 \caption{\textbf{Grid membership, as a set.} Each arm's observed mean distance to the
 nearest grid vertex against the distance a continuum would give, which is the diagonal. The
-gray bar at each arm is that arm's own null, simulated: a marker clear of its bar is an arm
+gray bar beside each arm, offset a little to its left so it clears the diagonal, is that
+arm's own null, simulated: a marker clear of its bar is an arm
 that rejects, so the picture carries the test rather than illustrating it. Filled circles
 reject after Holm correction; the open circle is the one powered arm that does not, and it
 sits at the edge of its bar rather than clear of it. The $\gridFlat$ squares are the arms
@@ -690,7 +690,7 @@ either.
 Nor is the disposal confined to this harness, and deletion is not the only way the quantum
 wins. We audited \harnessAuditedWord{} tools at source
 across \harnessLanguagesWord{} languages and \harnessVendorsWord{} vendors, classifying each
-finding with the code that classified the benchmark. \harnessSilentWord{} of the
+finding with the code that classified the benchmark. \harnessSilentWordCap{} of the
 \harnessAuditedWord{} dispose of the sample without counting it, in
 \harnessDisposalClassesWord{} classes --- a pattern rather than one project's oversight, and
 one of them is Apache Pulsar's performance client reaching the same design
@@ -892,11 +892,10 @@ $\tracedRate$ traced ($z = \observerZ$), and the comparison uses the traced arm'
 so $\untracedRate$ is the machine's (Supplement~S43.4).
 
 \paragraph{The load-axis predictions, and their failure}
-The knee sweep placed conditions where the candidate load laws diverge. The M/G/1 form
-fitted \emph{worse than the mean} ($R^2 = -0.05$ against a fitted exponential's $0.93$),
-and our own registered bracket missed a $1.44\times$ growth by predicting
-$2.45$--$3.07\times$. Both were parameterized in $\rho$, and $\rho$ is not the variable.
-The Pollaczek--Khinchine form remains motivation rather than fitted result.
+The knee sweep placed conditions where the candidate load laws diverge, and both failed. The
+M/G/1 form fitted \emph{worse than the mean} ($R^2 = -0.05$), and our own registered bracket
+missed a $1.44\times$ growth by predicting $2.45$--$3.07\times$. Both were parameterized in
+$\rho$, and $\rho$ is not the variable (Supplement~S2).
 
 % The payload-sweep figure moved to the supplement, beside the fit it draws. The prose two
 % paragraphs below already said "four points do not earn an equation here" and sent the fit
@@ -952,9 +951,9 @@ $\sliceFactor \times 0.75\,\mathrm{ms} = \baseSliceMs$~ms on the $\testbedCpus$ 
 campaign's own load geometry recovers, over a $\tickMs$~ms \emph{scheduler} tick, and no
 scheduler tunable is
 written anywhere in the archived campaign (Supplement~S44). That tick is the kernel's timer
-period and has nothing to do with the timestamp quantum of Section~\ref{sec:external}; on
-this testbed the two are both $1$~ms, which is a coincidence of configuration and not a
-relation, and we name the scheduler's one explicitly wherever both are in play. A thread
+period, not the timestamp quantum of Section~\ref{sec:external}. Both are $1$~ms here, which
+is a coincidence of configuration, so we name the scheduler's explicitly wherever the two are
+in play. A thread
 descheduled at the wrong
 instant therefore reads its clock about a slice late, which on a path whose true transport is
 $0.1$--$0.5$~ms is six to thirty times the flight being measured. The scheduler tick is why
@@ -981,7 +980,8 @@ Our own instrument is not symmetric across that comparison, and the rule below s
 declare it. The transport proxy ends at $t_{\mathrm{recv}}$, and \kafka{}'s client
 deserializes the payload before that stamp while \redis{}'s deserializes after it, so the
 span carries one client's parse and not the other's: $\spanHandlingWorstUs\,\mu$s, or
-$\spanHandlingSharePct\%$ of the delivery it sits inside. That is a fiftieth of the
+$\spanHandlingSharePct\%$ of \redis{}'s own median delivery, which is the denominator it sits
+inside. That is a fiftieth of the
 equivalence margin above and cannot move it, and it runs \emph{against} the per-broker
 difference of Table~\ref{tab:spans} rather than producing it. \tti{} is free of it, because
 both parses fall inside \tti{} (Supplement~S43.1).
@@ -1022,13 +1022,19 @@ assuming independence here overpredicts the negative-span rate in all $\indepCon
 conditions, by a median factor of $\indepOvershoot$. What rescues the subtraction is cancellation, not rarity --- a
 stall delaying both branches leaves $S = D - A$ untouched.
 
-\textbf{Know where your own path sits on the exposure curve.} The displacement is a
-scheduling quantity and does not grow because a message travelled further, so the relative
-error is $A/D$ and falls as $1/D$: $\exposureErrTen\%$ at a
+\textbf{Know where your own path sits on the exposure curve, and how wide it is.} The
+displacement is a scheduling quantity and does not grow because a message travelled further,
+so the relative error is $A/D$ and falls as $1/D$: $\exposureErrTen\%$ at a
 $10$~ms path, $\exposureErrHundred\%$ at $100$~ms. Read it the other way and it is a warning:
 $\exposureErrOne\%$ at $1$~ms, and below $\exposureCrossover$~ms the displacement exceeds the
 path itself --- while sub-millisecond medians are routine in broker benchmarking
-(Supplement~S48). The curve is a statement about acknowledgment-referenced spans; a harness
+(Supplement~S48).
+Those are one lag: $A = \ackLagMedianUs\,\mu$s, our median. Quoting a curve by its middle is
+this paper's own mistake one level up, and $A$ is no constant --- ours spans
+$\exposureLagLo$--$\exposureLagHi\,\mu$s across conditions, putting the $10$~ms error at
+$\exposureErrTen$--$\exposureErrTenHi\%$ and the crossover at
+$\exposureCrossover$--$\exposureCrossoverHi$~ms. Measure your own; Supplement~S48 bands every
+row. The curve is a statement about acknowledgment-referenced spans; a harness
 that subtracts a send stamp reports the delivery and is not on it, which is the whole return
 on naming the span. Two \emph{identical} systems whose clients stamp in
 different places are separated by the difference of their lags, a reported gap of
@@ -1087,8 +1093,8 @@ is synchronization quality the frontier --- our cross-host retention wandered
 $\harnessXHostRetLo$--$\harnessXHostRetHi\%$ under clocks agreeing to well under a tick
 (Section~\ref{sec:generality}).
 The obvious redesign, a consumer-to-producer acknowledgment, removes skew but not this
-failure, and every scheme that avoids the one-way requirement rests on an assumption its
-users rarely state (Supplements~S37 and~S43.6). Resolution is the lesser half, and a distinct
+failure, and every scheme avoiding the one-way requirement rests on an unstated
+assumption (Supplements~S37 and~S43.6). Resolution is the lesser half, and a distinct
 one. A microsecond stamp retires Equation~\ref{eq:retention}'s deletions here and moves the
 grid to faster paths, but the guard survives it and genuine negatives do too. A better
 clock alone therefore converts an uncounted \emph{resolution} failure into an uncounted

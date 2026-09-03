@@ -660,3 +660,30 @@ default moved every p-value sitting at the Monte Carlo floor. Nothing downstream
 because the floor is far below every threshold the paper uses -- which is exactly why it
 survived. A default that does not regenerate the committed file is the defect this project
 audits, one layer down.
+
+**11. A `\ref` to a `\paragraph` prints a section number nobody can find.** IEEEtran numbers a
+paragraph inside a subsection as "0a", so `\ref{sec:metrics}` renders as "Section III-A0a".
+Two were in the round-43 build, and one of them had been created by the round-43 edit that
+fixed a *different* dangling pointer. The source looks correct in both cases; only the output
+is wrong. `tests/unit/test_rendered_prose.py` now fails on the pattern in either rendered PDF.
+
+**12. A macro at the head of a sentence loses its capital.** `\harnessSilentWord` expands to
+"five", and round 43's sentence-splitting pass moved it to the front of a sentence: the built
+PDF read "…classified the benchmark. five of the ten dispose…". The project already generates
+a capitalised twin for exactly this — eleven `…WordCap` macros exist — and the one place that
+needed it was not using it. Two more of the same shape were in the supplement, after run-in
+italic headings.
+
+The general form is the one this file keeps rediscovering: **the source can be right while the
+output is wrong**, and every gate that reads `.tex` is blind to it. That is now four classes
+(a label under a rule, a tick formatter left running, a legend counting markers that overprint,
+and these two), which is enough to say the rule out loud: *if a defect can only be seen after
+LaTeX has run, the check has to run after LaTeX too.*
+
+**13. Quote what you emit, or stop emitting it.** Sixty-six of two hundred and seventy-five
+generated macros were read by neither document when this was counted. Most are deliberate —
+the `Word`/`WordCap` pairs exist so a number can open a sentence, and keeping both halves is
+right even when one is idle, as item 12 shows. But `\ackLagMedianUs` was not a variant: it is
+the median acknowledgment lag, the single number the whole exposure curve of Section VI-B
+rests on, and it was computed, carried and shown to nobody. The inventory now has a ceiling
+that may fall freely and may not rise without a reason being written down.

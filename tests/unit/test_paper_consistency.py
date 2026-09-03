@@ -3343,12 +3343,18 @@ class TestTheExposureCurveIsGeneratedNotTyped:
     behind, and the sentence is the one a reader quotes.
     """
 
+    #: The last five arrived in round 44, with the finding that every number here was
+    #: computed from the median lag alone while the lag itself runs 500 to 1,900 us across
+    #: the conditions. A curve quoted by its middle is this paper's own subject one level up,
+    #: so the spread is gated exactly as tightly as the point.
     EXPOSURE_MACROS = ("exposureErrTen", "exposureErrHundred", "exposureErrOne",
-                       "exposureGapTen", "exposureCrossover")
+                       "exposureGapTen", "exposureCrossover",
+                       "ackLagMedianUs", "exposureLagLo", "exposureLagHi",
+                       "exposureCrossoverHi", "exposureErrTenHi")
 
     def _paragraph(self, main_tex):
         start = main_tex.index("Know where your own path sits on the exposure curve")
-        return main_tex[start:start + 1200]
+        return main_tex[start:start + 1600]
 
     def test_every_exposure_number_is_a_macro(self, main_tex):
         para = self._paragraph(main_tex)

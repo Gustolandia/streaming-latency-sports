@@ -12,10 +12,14 @@ them.
 
 Three estimators, chosen for what they assume:
 
-  wilson()      score interval for a binomial proportion. Not Wald: at the real-time arm's
-                rate (about 3 in 1000) the normal approximation puts the lower bound below
-                zero, which is not a possible value for a rate. Wilson stays inside [0,1]
-                and is the standard recommendation for small p.
+  wilson()      score interval for a binomial proportion. Not Wald: at the real-time arms'
+                rates the normal approximation's coverage falls well short of nominal and its
+                interval is shifted low -- at the smallest arm, 10 of 2,985, Wald gives
+                [0.0013, 0.0054] against Wilson's [0.0018, 0.0062]. Round 46 checked the
+                sharper claim this docstring used to make, that Wald puts the lower bound
+                below zero, and it is false on every arm the paper reports: that needs k <= 3
+                at n = 2,985 and the smallest count published is 10. Wilson is still the right
+                estimator, for coverage rather than for range.
 
   ratio_z()     two-proportion z for the ratio between two cells. The manipulation claims
                 are "this factor is real", so the test is on the difference of the two
@@ -135,6 +139,20 @@ def ols_slope(xs, ys):
     se_slope = math.sqrt((sse / (n - 2)) / sxx) if n > 2 else float("nan")
     t = T_975.get(n - 2, 1.96)
     return slope, intercept, r2, slope - t * se_slope, slope + t * se_slope
+
+
+def _median(values):
+    """Median of an already-sorted sequence; 0.0 for an empty one.
+
+    Local rather than `statistics.median` so that an arm with no replicates recorded returns
+    a number the caller can format instead of raising, which is what every other field in
+    `spread_cells` does with missing data.
+    """
+    n = len(values)
+    if not n:
+        return 0.0
+    mid = n // 2
+    return values[mid] if n % 2 else (values[mid - 1] + values[mid]) / 2.0
 
 
 def holm(pvalues):
@@ -357,6 +375,9 @@ def spread_cells(path=os.path.join("external", "phase_quantisation.csv")):
             continue
         ratio = Fraction(1000, rate)
         commensurate = r.get("commensurate", "").strip().lower() == "true"
+        # The replicates themselves, because several of the supplement's paragraphs narrate
+        # them one by one and every one of those narrations had gone stale by round 46.
+        values = sorted(float(v) for v in (r.get("retentions") or "").split())
         cell = {
             "rate_hz": rate,
             "p": ratio.numerator,
@@ -364,6 +385,8 @@ def spread_cells(path=os.path.join("external", "phase_quantisation.csv")):
             "n": n,
             "spread": spread,
             "commensurate": commensurate,
+            "retentions": values,
+            "median": _median(values),
         }
         if not commensurate:
             cell.update({"cell_width": None, "position": None,

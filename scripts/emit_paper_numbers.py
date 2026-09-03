@@ -472,9 +472,16 @@ def render_spread_table():
             ]
         ratio = "$%d/%d$" % (c["p"], c["q"])
         if c["commensurate"]:
-            lines.append("$%d$/s & %s & $%d$ & $%d$ & $%.1f$ & $%.2f$ & %s & $%.1f$ & %s \\\\"
-                         % (c["rate_hz"], ratio, c["q"], c["n"], c["cell_width"],
-                            c["position"], c["predicted"], c["spread"], c["observed"]))
+            # A disagreeing row is marked in the row itself. The caption named the two arms
+            # and the table gave the eye nothing to find them with: twelve rows of "full" and
+            # "flat" in adjacent columns is the hardest discrimination a table can ask for,
+            # since the words are the same length, start with the same letter and are set in
+            # the same face. The dagger does what the caption was doing alone.
+            mark = "" if c["agrees"] else "$^{\\dagger}$"
+            shows = c["observed"] if c["agrees"] else "\\textbf{%s}" % c["observed"]
+            lines.append("$%d$/s%s & %s & $%d$ & $%d$ & $%.1f$ & $%.2f$ & %s & $%.1f$ & %s \\\\"
+                         % (c["rate_hz"], mark, ratio, c["q"], c["n"], c["cell_width"],
+                            c["position"], c["predicted"], c["spread"], shows))
         else:
             lines.append("$%d$/s & %s & ${>}%d$ & $%d$ & --- & --- & $\\approx 0$ & $%.1f$ "
                          "& --- \\\\"
@@ -504,7 +511,9 @@ def spread_macros():
     """
     try:
         import stat_intervals
-        cells = [c for c in stat_intervals.spread_cells() if c["commensurate"]]
+        every = stat_intervals.spread_cells()
+        cells = [c for c in every if c["commensurate"]]
+        loose = [c for c in every if not c["commensurate"]]
     except (ImportError, OSError, KeyError, ValueError):
         return []
     if not cells:
@@ -518,6 +527,18 @@ def spread_macros():
         ("spreadPredFullWord", _spell(sum(1 for c in cells if c["predicted"] == "full"))),
         ("spreadPredFlatWord", _spell(sum(1 for c in cells if c["predicted"] == "flat"))),
     ]
+    # The incommensurate arms and where their medians land. Section V-B read "Both
+    # incommensurate arms sit near 50%" of a corpus that has seven of them, all near 50 --
+    # a sentence that understated its own evidence three and a half fold because the count
+    # was typed when the corpus had two.
+    if loose:
+        medians = sorted(c["median"] for c in loose)
+        out += [
+            ("spreadIncommensurate", "%d" % len(loose)),
+            ("spreadIncommensurateWord", _spell(len(loose))),
+            ("spreadIncommensurateLo", "%.1f" % medians[0]),
+            ("spreadIncommensurateHi", "%.1f" % medians[-1]),
+        ]
     # The corrected p-values of exactly the arms the spread rule misses. S31 turns on these
     # two numbers -- the replacement statistic resolving what the superseded one could not --
     # so they are taken from the grid-membership artifact rather than read off its table.
@@ -532,51 +553,127 @@ def spread_macros():
     return out
 
 
-#: Rate in words, for a macro name. Only the arms the spread rule misses need one.
-_RATE_WORDS = {700: "SevenHundred", 1250: "TwelveFifty", 900: "NineHundred"}
+#: Rate in words, for a macro name. LaTeX control sequences are letters only, so an arm the
+#: prose narrates needs its rate spelled before it can have a macro of its own.
+_RATE_WORDS = {
+    250: "TwoFifty", 300: "ThreeHundred", 400: "FourHundred", 500: "FiveHundred",
+    600: "SixHundred", 625: "SixTwentyFive", 700: "SevenHundred", 900: "NineHundred",
+    1250: "TwelveFifty",
+}
 
 
 def _spell_rate(rate):
     return _RATE_WORDS.get(rate, "Rate%d" % rate)
 
 
-def control_arm_macros(rate=600, vertices=(1, 2), q=3):
-    """The pre-registered denominator control, replicate by replicate.
+#: The arms whose replicates the supplement narrates in prose, with what each narration needs.
+#:
+#: `vertices` names the two grid points the branch account puts the arm between, as multiples
+#: of 1/q, so per-branch counts can be derived; None where the prose makes no branch claim.
+#: `registered` is the value a pre-registration named in advance, so the miss is computed
+#: rather than typed. It is the only number in this table that is not a fact about the data --
+#: it is a fact about what was written down before the data existed, which is why it is here
+#: and not in the ledger.
+NARRATED_ARMS = (
+    # rate, branch vertices as multiples of 1/q (None where the prose makes no branch claim),
+    # the value a pre-registration named in advance (None where there was none), and the
+    # fields that arm's paragraph actually quotes.
+    (600, (1, 2), None,
+     ("Rate", "Replicates", "LowerWord", "UpperWord", "Widest", "WidestGap")),
+    (625, (2, 3), 40.0,
+     ("N", "NWord", "Median", "MedianOffBy", "Replicates", "LowerWord")),
+    (500, None, None, ("Spread",)),
+    (400, None, None, ("Spread", "Hi", "WithoutHiSpan")),
+    (300, None, None, ("Spread",)),
+    (250, None, None, ("Rate", "NWord", "Spread", "Cell")),
+)
 
-    S31 lists this arm's replicates in prose and says how many sit on each branch. The list
-    was typed, and when the phase ledger was rebuilt it gained a sixth replicate the sentence
-    knew nothing about -- so the paragraph went on saying "three on the 1/3 branch, two on the
-    2/3 branch" of an arm that now has four and two. The count is a function of the data and
-    is emitted as one.
+
+
+def arm_macros(arms=NARRATED_ARMS):
+    """Every arm the supplement tells a story about, replicate by replicate.
+
+    This began as `control_arm_macros`, which did one arm. Supplementary material S31 listed
+    the 600 msg/s control's replicates in prose and said how many sat on each branch; the list
+    was typed, and when the phase ledger was rebuilt it gained a replicate the sentence knew
+    nothing about.
+
+    Round 46 found the same defect four more times, in S13 and S23, on arms that function did
+    not cover: a q=5 pre-registration whose median moved from 46.6 to 51.04 when the arm went
+    from five replicates to ten, and whose miss against the registered 40% therefore went from
+    6.6 points to 11.0; a q=1 arm reported as anomalous at 58.6 points of a 100-point cell
+    which now spreads 98.7 and is not anomalous at all; and a q=3 spread quoted as 30.5 that
+    is 31.2. Every one of those is a function of `phase_quantisation.csv`, so every one is
+    emitted here and none is typed.
+
+    Per arm: the replicate list, count, median, spread, extremes, and the cell it sits in.
+    Where `vertices` is given: the count on each branch, the loosest replicate, and its
+    distance from its own vertex. Where `registered` is given: how far the median lands from
+    what was written down in advance.
     """
     import csv as _csv
+    import statistics as _stats
     path = os.path.join("docs", "results", "external", "phase_quantisation.csv")
     if not os.path.exists(path):
         return []
     with open(path, encoding="utf-8") as fh:
-        row = next((r for r in _csv.DictReader(fh) if int(r["rate_hz"]) == rate), None)
-    if not row or not row.get("retentions"):
-        return []
-    # No emptiness guard here: the line above already rejects a blank `retentions`, and a
-    # non-blank one splits to at least one value. A second check would be unreachable, which
-    # is a branch no test can honestly cover.
-    values = sorted(float(v) for v in row["retentions"].split())
-    branch = {v: min(vertices, key=lambda i: abs(v - 100.0 * i / q)) for v in values}
-    lower = [v for v in values if branch[v] == vertices[0]]
-    upper = [v for v in values if branch[v] == vertices[-1]]
-    widest = max(values, key=lambda v: abs(v - 100.0 * branch[v] / q))
-    return [
-        ("controlRate", "%d" % rate),
-        ("controlReplicates", _join_rates_fmt(values)),
-        ("controlLowerWord", _spell(len(lower))),
-        ("controlUpperWord", _spell(len(upper))),
-        ("controlWidest", "%.2f" % widest),
-        # Two decimals, for the reason harnessOneClockSpread carries two: at one decimal this
-        # emits "2.8", which is also the retention margin quoted in the threats section on an
-        # unrelated quantity, and a macro whose value collides with ordinary prose blinds the
-        # gate that polices transcription. Precision here is a side effect, not the point.
-        ("controlWidestGap", "%.2f" % abs(widest - 100.0 * branch[widest] / q)),
-    ]
+        rows = {int(r["rate_hz"]): r for r in _csv.DictReader(fh)}
+
+    out = []
+    for rate, vertices, registered, wanted in arms:
+        row = rows.get(rate)
+        if not row or not row.get("retentions"):
+            continue
+        # No emptiness guard: the line above rejects a blank `retentions`, and a non-blank one
+        # splits to at least one value. A second check would be unreachable.
+        values = sorted(float(v) for v in row["retentions"].split())
+        median = _stats.median(values)
+        name = "arm" + _spell_rate(rate)
+        fields = [
+            (name + "Rate", "%d" % rate),
+            (name + "N", "%d" % len(values)),
+            (name + "NWord", _spell(len(values))),
+            (name + "Replicates", _join_rates_fmt(values)),
+            (name + "Median", "%.2f" % median),
+            (name + "Spread", "%.2f" % (values[-1] - values[0])),
+            (name + "Lo", "%.2f" % values[0]),
+            (name + "Hi", "%.2f" % values[-1]),
+            # The largest replicate and the span of everything under it: S13 reports one arm
+            # whose spread "rests on a single replicate", and that is two numbers, not one.
+            (name + "WithoutHiSpan",
+             "%.2f" % ((values[-2] - values[0]) if len(values) > 2 else 0.0)),
+        ]
+        cell = _float_or_zero(row.get("cell_width_pts"))
+        if cell > 0:
+            fields.append((name + "Cell", "%.0f" % cell))
+        if registered is not None:
+            fields.append((name + "MedianOffBy", "%.1f" % abs(median - registered)))
+        if vertices:
+            q = int(row["q"])
+            branch = {v: min(vertices, key=lambda i: abs(v - 100.0 * i / q)) for v in values}
+            lower = [v for v in values if branch[v] == vertices[0]]
+            upper = [v for v in values if branch[v] == vertices[-1]]
+            widest = max(values, key=lambda v: abs(v - 100.0 * branch[v] / q))
+            fields += [
+                (name + "LowerWord", _spell(len(lower))),
+                (name + "UpperWord", _spell(len(upper))),
+                (name + "Widest", "%.2f" % widest),
+                # Two decimals, for the reason harnessOneClockSpread carries two: at one
+                # decimal this emits "2.8", which is also a retention margin quoted in the
+                # threats section on an unrelated quantity, and a macro whose value collides
+                # with ordinary prose blinds the gate that polices transcription.
+                (name + "WidestGap", "%.2f" % abs(widest - 100.0 * branch[widest] / q)),
+            ]
+        keep = {name + suffix for suffix in wanted}
+        out += [(k, v) for k, v in fields if k in keep]
+    return out
+
+
+def _float_or_zero(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def _join_rates_fmt(values):
@@ -941,6 +1038,11 @@ def mechanism_macros():
         b = stat_intervals.occupancy_bounds()
         if "ceiling" in b:
             out.append(("invCeiling", "%.2f" % b["ceiling"]))
+        # The residual floor the two-state model names in advance. Typed as "0.004" in three
+        # places across both documents until round 46, which is the transcription failure this
+        # file exists to prevent, in miniature and in triplicate.
+        if "idle" in b:
+            out.append(("invFloor", "%.3f" % b["idle"]))
     except (OSError, KeyError, ValueError):
         pass
     try:
@@ -1777,7 +1879,7 @@ def all_pairs(m):
             + chrony_bound_macros() + disease_macros()
             + exposure_macros() + artifact_macros() + separability_macros()
             + paired_gap_macros() + handling_share_macros() + inter_host_offset_macros()
-            + spread_macros() + control_arm_macros() + deletion_macros())
+            + spread_macros() + arm_macros() + deletion_macros())
 
 
 def render(m):

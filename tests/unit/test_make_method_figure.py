@@ -188,6 +188,88 @@ class TestTheMapReadsItsResultCells:
         assert "tail index %s" % _tail_index() in joined
 
 
+class TestTheHeldFixedBounds:
+    """The two "held fixed: utilization, to X" cells, which round 48's image review read.
+
+    Both stated how closely utilization was matched between a campaign's two arms, and both
+    typed the number. The priority cell was merely coarse. **The co-location cell was wrong:**
+    it published "to 0.002" while `colocation.csv` records the arms differing by 0.0025 at
+    idle, so the bound excluded a value the campaign itself had recorded.
+
+    Nothing is computed from either cell, which is why every results-checking gate in the
+    repository passed over a false statement in a published figure for as long as it stood.
+    """
+
+    def test_the_priority_bound_covers_every_pair(self):
+        import make_method_figure as mmf
+        import priority_pairs
+        bound = float(mmf._priority_rho_match())
+        for p in priority_pairs.pairs():
+            assert abs(p["rho"] - p["rho_rt"]) <= bound, \
+                "the map claims a bound a matched pair exceeds"
+
+    def test_the_priority_bound_is_tight(self):
+        """A bound of 1.0 would also 'cover every pair'. It must be the ceiling, not slack."""
+        import make_method_figure as mmf
+        import priority_pairs
+        worst = max(abs(p["rho"] - p["rho_rt"]) for p in priority_pairs.pairs())
+        assert float(mmf._priority_rho_match()) - worst < 0.001
+
+    def test_the_colocation_bound_covers_every_level(self):
+        import csv
+        import make_method_figure as mmf
+        bound = float(mmf._colocation_rho_match())
+        with open(SCRIPTS_DIR.parent / "docs" / "results" / "model" / "colocation.csv",
+                  newline="", encoding="utf-8-sig") as handle:
+            for r in csv.DictReader(handle):
+                assert abs(float(r["rho_remote"]) - float(r["rho_colocated"])) <= bound
+
+    def test_the_colocation_bound_excludes_the_value_that_was_published(self):
+        """The specific defect: 0.002 was printed and 0.0025 was measured."""
+        import make_method_figure as mmf
+        assert float(mmf._colocation_rho_match()) > 0.002
+
+    @pytest.mark.parametrize("helper,module,attr", [
+        ("_priority_rho_match", "priority_pairs", "pairs"),
+        ("_colocation_rho_match", "csv", "DictReader"),
+    ])
+    def test_each_falls_back_to_the_published_literal(self, monkeypatch, helper, module,
+                                                      attr):
+        import importlib
+        import make_method_figure as mmf
+        mod = importlib.import_module(module)
+        monkeypatch.setattr(mod, attr,
+                            lambda *a, **kw: (_ for _ in ()).throw(OSError("no campaign")))
+        assert getattr(mmf, helper)() == "0.003"
+
+    @pytest.mark.parametrize("helper,module,attr", [
+        ("_priority_rho_match", "priority_pairs", "pairs"),
+        ("_colocation_rho_match", "csv", "DictReader"),
+    ])
+    def test_the_fallback_equals_the_derivation(self, monkeypatch, helper, module, attr):
+        import importlib
+        import make_method_figure as mmf
+        live = getattr(mmf, helper)()
+        mod = importlib.import_module(module)
+        monkeypatch.setattr(mod, attr,
+                            lambda *a, **kw: (_ for _ in ()).throw(OSError("no campaign")))
+        assert getattr(mmf, helper)() == live, \
+            "%s's fallback has drifted from what the campaign returns" % helper
+
+    def test_the_rows_carry_the_derived_bounds(self):
+        from make_method_figure import ROWS, _colocation_rho_match, _priority_rho_match
+        held = [r[2] for r in ROWS]
+        assert "utilization,\nto %s" % _priority_rho_match() in held
+        assert "utilization,\nto %s" % _colocation_rho_match() in held
+
+    def test_the_map_spells_utilization_the_way_the_manuscript_does(self):
+        """IEEE sets US spelling, and the manuscript uses "utilization" 43 times. The map
+        rendered the British form in six drawn cells, so one document printed both."""
+        from make_method_figure import ROWS
+        drawn = " ".join(part for row in ROWS for part in row)
+        assert "utilisation" not in drawn, "figure text must match the manuscript's spelling"
+
+
 class TestTheSharedUtilisation:
     """`geometry_rho` is new; the pair's whole claim is that both arms reached one value."""
 

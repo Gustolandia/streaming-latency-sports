@@ -285,7 +285,7 @@ appearing in this table.
 
 | Figure | Where it appears |
 |---|---|
-| `pipeline_schematic` | main text, Fig. 1 (promoted round 51: Gregg's requirement that a general reader meet the system, drawn, inside the first two pages); also supplement, S45 |
+| `pipeline_schematic` | main text, Fig. 1 only (promoted round 51: Gregg's requirement that a general reader meet the system, drawn, inside the first two pages). The S45 copy was dropped round 48: it included the same file, under prose claiming the main text's version carried "more detail", which it could not, being the same drawing. S45 keeps the stamp-to-metric mapping as prose |
 | `measurement_model` | main text, Fig. 2 (panel (b) split off round 52) |
 | `delta_schematic` | supplement, S12 (was Fig. 2(b); the one main-text drawing that was not a measurement, and the measured version is Fig. 9) |
 | `deletion` | main text, Fig. 3 |

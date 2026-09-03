@@ -261,47 +261,78 @@ class TestSupplementNumbering:
         assert len(marks) == 1, "S-headings mix separators: %s" % sorted(marks)
 
 
-class TestSupplementPointsAtRealFloats:
-    """Every "Figure~N" and "Table~N" in the supplement must be that float in the main text.
+class TestNoFloatOrEquationIsPointedAtByNumber:
+    """Cross-document pointers must go through `\\ref`, never through a typed number.
 
-    These are hand-typed numbers crossing a document boundary, which is the same hazard the
-    Section pointers carry and the same fix: resolve them against the paper's own .aux, so a
-    renumbered float fails the build instead of quietly redirecting the reader.
+    The supplement loads `xr` (`\\externaldocument{paper}`), so `\\ref{tab:spans}` resolves
+    across the document boundary and renders "Table I". Two captions twenty lines apart in
+    S51 already do exactly that and are correct.
+
+    Six other sentences typed the number instead, and round 48 resolved every one against
+    `paper.aux`. **Five were wrong.** Both "Table~II" pointers meant Table I: one inside a
+    table caption whose entire job is distinguishing two corpora, and one inside the
+    asymmetry disclosure rounds 43 and 44 asked for so a reader could check the direction of
+    a bias -- it sent them to the only table in the paper with no per-broker columns. A third
+    cited "Figure~1(a)", a panel of a figure that has no panels.
+
+    The previous version of this check is why they survived. It asked whether a pointer
+    *resolved* -- whether the paper had a Table II at all -- and it did, so the check passed
+    while the pointer denoted the wrong table. It then listed the pointers it had seen in an
+    `expected` set as a tripwire, which had the effect of blessing them. A pointer that
+    resolves to the wrong float is invisible to any check that only asks whether the number
+    exists.
+
+    So the rule is not "resolve the number" but "do not write the number". `\\ref` cannot
+    point at a float that is not there, and cannot be left behind by a renumbering.
     """
 
-    POINTER = re.compile(r"\b(Figure|Table)~([0-9]+|[IVX]+)(?=[^a-zA-Z0-9]|$)")
+    #: A float or equation named by a literal number rather than by a `\ref`.
+    LITERAL = re.compile(
+        r"\b(Table|Figure|Fig\.|Equation|Equations)~?\s*"
+        r"(?:[IVXL]+|[0-9]+)(?![-\w])")
 
-    def test_every_float_pointer_resolves(self, supp, aux):
-        printed = {
-            "Figure": {v for k, v in aux.items() if k.startswith("fig:")},
-            "Table": {v for k, v in aux.items() if k.startswith("tab:")},
-        }
-        if not printed["Figure"] or not printed["Table"]:
-            pytest.skip("paper.aux carries no float labels; build the paper first")
+    @pytest.mark.parametrize("name", ["paper", "supplement"])
+    def test_no_pointer_names_a_number(self, name, paper, supp):
+        text = paper if name == "paper" else supp
+        text = re.sub(r"(?<!\\)%.*", "", text)
+        # `\ref{...}` and `\cite{...}` carry digits and Roman numerals of their own.
+        masked = re.sub(r"\\(?:eq)?ref\{[^}]*\}", "@@", text)
+        masked = re.sub(r"\\cite\w*\{[^}]*\}", "@@", masked)
         bad = []
-        for m in self.POINTER.finditer(supp):
-            kind, num = m.group(1), m.group(2)
-            if num not in printed[kind]:
-                line = supp.count("\n", 0, m.start()) + 1
-                bad.append("supplement:%d  %s~%s (the paper has %s %s)"
-                           % (line, kind, num, kind.lower(),
-                              ", ".join(sorted(printed[kind]))))
+        for m in self.LITERAL.finditer(masked):
+            line = masked.count("\n", 0, m.start()) + 1
+            ctx = re.sub(r"\s+", " ", masked[max(0, m.start() - 60):m.start() + 60])
+            bad.append("%s:%d  %r\n        ...%s..." % (name, line, m.group(0), ctx.strip()))
+        assert not bad, (
+            "cross-reference written as a literal number; use \\ref so it cannot rot:\n  "
+            + "\n  ".join(bad))
+
+    def test_the_supplement_can_reach_the_paper(self, supp):
+        """The rule above is only safe because `xr` is loaded. If it ever is not, every
+        `\\ref` into the paper renders as `??` and this check would still pass."""
+        assert re.search(r"\\externaldocument\{paper\}", supp), (
+            "the supplement must load xr and \\externaldocument{paper}, or the cross-document "
+            "\\ref calls this rule forces everyone to use will render as ??")
+
+    def test_the_cross_document_refs_resolve(self, supp, aux):
+        """Every label the supplement reaches for must be one the paper actually assigned."""
+        if not aux:
+            pytest.skip("paper.aux carries no labels; build the paper first")
+        body = supp.split(r"\begin{document}")[-1]
+        own = set(re.findall(r"\\label\{([^}]*)\}", body))
+        bad = []
+        for m in re.finditer(r"\\(?:eq)?ref\{((?:tab|fig|eq|sec):[^}]*)\}", body):
+            label = m.group(1)
+            if label in own or label in aux:
+                continue
+            line = body.count("\n", 0, m.start()) + 1
+            bad.append("supplement:~%d  \\ref{%s} resolves in neither document" % (line, label))
         assert not bad, "\n  " + "\n  ".join(bad)
 
-    def test_the_pointers_that_exist_are_the_ones_we_expect(self, supp, aux):
-        """A cheap tripwire: if the supplement grows float pointers, they get read.
-
-        Two exist today, and both were added in the last two rounds. Listing them keeps a
-        third from arriving unexamined.
-
-        Figure~7 became Figure~6 when the payload-sweep figure left the main text for this
-        document: the stall spectrum moved up one. The number is checked against paper.aux
-        by test_the_inventory_figure_numbers_are_current, so what this list guards is not the
-        number but the arrival of a pointer nobody has read.
-        """
-        found = {"%s~%s" % (m.group(1), m.group(2))
-                 for m in self.POINTER.finditer(supp)}
-        expected = {"Table~II", "Figure~6", "Figure~1"}
-        assert found <= expected, \
-            "new cross-document float pointer(s) %s -- check each against the paper" % (
-                sorted(found - expected))
+    def test_the_check_can_fail(self):
+        """A rule this absolute is worth proving it still bites."""
+        assert self.LITERAL.search(r"the main text's Table~II, which covers")
+        assert self.LITERAL.search(r"(Equation~3 of the main text)")
+        assert self.LITERAL.search(r"drawn again in Figure~1")
+        assert not self.LITERAL.search(r"Table~\ref{tab:spans} is clean".replace(
+            r"\ref{tab:spans}", "@@"))

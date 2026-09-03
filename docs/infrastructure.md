@@ -633,3 +633,30 @@ new gate that fired on a real defect and was narrowed on the assumption of a fal
 (round 12, corrected in round 13). Verify the mutation applied. Open the file the gate names.
 An unexpected result from the apparatus deserves the scrutiny this paper asks for an unexpected
 measurement.
+
+**8. When a figure counts something in its legend, count it in the rendering.** Round 43's
+deletion figure announced "printed above it (4)" and drew three circles: two 256 KB replicates
+printing 42,393 and 42,973 ms sat 1.4% apart on a five-decade log axis and rendered as one
+marker. No gate could see it, because every gate was reading the data and the data had four
+rows. `spread_coincident()` now separates markers before drawing, and the test asserts that
+the four above-grid cells occupy four distinguishable positions.
+
+The general form is worth stating, because it is the third instance in this project: **a
+figure can be wrong in the rendering while being right in the data, and the checks all look at
+the data.** The other two were the label struck through by a rule (round 12) and the tick
+formatter left running underneath a replaced axis (round 13). What the three have in common is
+that the defect exists only after the artists have been placed.
+
+**9. An axis with no variable on it must not carry an order.** The same round found the
+payload panel laying each arm's replicates out at even spacing in the order they arrived --
+and they arrive sorted, because the helper returns `sorted(vals)`. Every arm rendered as a
+staircase climbing left to right along an axis whose only labels were the three payloads. The
+caption claimed no trend; the picture supplied one. A swarm fixes it: offsets encode local
+crowding, symmetric about the arm's centre, so position says only what is true.
+
+**10. A script's default must reproduce the artefact in the repository.** `MC_ARMS` was 20,000
+while the committed grid ledger had been written at 4,000, so running the script with its own
+default moved every p-value sitting at the Monte Carlo floor. Nothing downstream noticed,
+because the floor is far below every threshold the paper uses -- which is exactly why it
+survived. A default that does not regenerate the committed file is the defect this project
+audits, one layer down.

@@ -101,6 +101,22 @@ acknowledgement in an **asynchronous callback**; Redis stamps it on **return fro
 command**. Different stamping paths, different `E[Δ]`, and therefore a spurious between-system
 difference that no amount of statistical care removes.
 
+**The consumer side has the same shape, and we did not look at it until round 43.** Kafka's
+consumer is given a `value_deserializer`, so the payload parse happens inside `poll()` and
+lands *before* `t_cons_recv_ns`; the Redis consumer stamps first and calls `json.loads`
+after. So the parse is inside `D = t_recv − t_send` for one broker and outside it for the
+other — an asymmetry of exactly the kind this rule is about, on the endpoint the rule's own
+statement never mentions. Measured: a median handling span of 281 ns against 19,480 ns.
+
+Two things are worth recording about it. It is small enough not to move any published
+comparison (2.4% of the delivery it sits inside, against a 1 ms equivalence margin), and it
+runs *against* the per-broker difference the paper reports rather than producing it — a
+longer `D` yields fewer negative spans, and the broker carrying the extra parse is the one
+with the higher rate. And it went unexamined for the ordinary reason: every span in
+`recount_spans.py` reached back to a producer stamp, so the audit that asked "where is each
+stamp taken" followed the spans and found only producer stamps. The fifth span exists now
+because of that.
+
 *Test:* **E-C3**. Add a producer variant that stamps the acknowledgement inline (synchronously)
 so both arms are symmetric, and run both variants at the same load. H3 predicts the
 between-system difference shrinks toward zero under symmetric stamping while the *noise* does

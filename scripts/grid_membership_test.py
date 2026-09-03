@@ -39,7 +39,13 @@ from fractions import Fraction
 RATE_CAMPAIGNS = ("rate_phase", "rate_phase2", "rate_q", "ultimate")
 MAX_MEANINGFUL_Q = 64
 CLASSIFIABLE_PTS = 3.0
-MC_ARMS = 20000
+# The count that produced the committed artefact, and therefore the default. It was 20,000
+# here while the committed CSV had been written at 4,000, so running the script with its own
+# default moved every p-value at the Monte Carlo floor -- 0.00025 became 0.00005 -- and the
+# file in the repository stopped being the file the code produces. Nothing downstream noticed,
+# because the floor is far below every threshold. A default that does not reproduce the
+# committed artefact is the same defect this paper audits, one layer down.
+MC_ARMS = 4000
 
 
 def load_arms(path, campaigns=RATE_CAMPAIGNS):
@@ -116,13 +122,30 @@ def arm_statistic(values, q):
 
 
 def mc_pvalue(n, q, theta_pct, sigma, observed, iters=MC_ARMS, seed=7):
+    """One-sided p-value and the null's own central interval, from one set of draws.
+
+    The interval was added in round 43. The figure this feeds drew each arm against the
+    diagonal, which is where the null's *centre* sits, and asked the reader to judge
+    distance from a line with nothing to say how far an arm can fall by chance. The p-value
+    answered that all along and was printed only in a supplement table. Returning the 5th
+    and 95th percentiles of the same simulated statistic lets the picture carry the test:
+    an arm below its own band is an arm that rejects, which is the claim in the text.
+
+    Same draws, same seed, so the interval and the p-value cannot disagree about the null.
+    """
     rng = random.Random(seed)
     hits = 0
+    draws = []
     for _ in range(iters):
         vals = [min(100.0, max(0.0, rng.gauss(theta_pct, sigma))) for _ in range(n)]
-        if arm_statistic(vals, q) <= observed:
+        d = arm_statistic(vals, q)
+        draws.append(d)
+        if d <= observed:
             hits += 1
-    return (hits + 1) / (iters + 1)
+    draws.sort()
+    lo = draws[int(0.05 * (len(draws) - 1))]
+    hi = draws[int(0.95 * (len(draws) - 1))]
+    return (hits + 1) / (iters + 1), sum(draws) / len(draws), lo, hi
 
 
 def clopper_pearson(k, n, alpha=0.05):
@@ -210,13 +233,30 @@ def analyse(arms, iters=MC_ARMS):
         v = arms[rate]
         th = theta(rate)
         d_obs = arm_statistic(v, q)
-        pval = mc_pvalue(len(v), q, th, sigma, d_obs, iters=iters)
-        null_center = vertex_distance(th, q) / (100.0 / q)
-        powered = null_center > 2 * sigma / (100.0 / q)
+        pval, null_mean, null_lo, null_hi = mc_pvalue(len(v), q, th, sigma, d_obs,
+                                                      iters=iters)
+        # Two different quantities, and round 43 found the manuscript treating them as one.
+        #
+        # `theta_vertex` is the distance of theta from its nearest vertex, with no replicate
+        # noise: a property of where the arm sits, and the right input to the power rule,
+        # because an arm has no power exactly when theta is ON a vertex.
+        #
+        # `null_mean` is the mean distance of NOISY replicates, which is what a continuum
+        # actually produces and therefore what "expected from a continuum" means. It is not
+        # the same number -- noise can only carry a replicate at mid-cell towards a vertex,
+        # never past the far one, so the expectation of the distance sits below the distance
+        # of the expectation. The gap reaches 0.04 here, and on five of the twelve arms the
+        # noiseless value lies outside the simulated null's own central 90%. That is a
+        # Jensen gap, and it is the third time this pipeline has been bitten by the
+        # difference between a function of an average and an average of a function.
+        theta_vertex = vertex_distance(th, q) / (100.0 / q)
+        powered = theta_vertex > 2 * sigma / (100.0 / q)
         row = {
             "rate_hz": rate, "p": p_of(rate), "q": q, "n": len(v),
             "theta_local_pct": round(th, 2), "D_observed": round(d_obs, 4),
-            "D_null_center": round(null_center, 4),
+            "D_null_center": round(null_mean, 4),
+            "D_theta_vertex": round(theta_vertex, 4),
+            "D_null_lo": round(null_lo, 4), "D_null_hi": round(null_hi, 4),
             "p_value": round(pval, 5), "powered": powered,
             "mean_residual_pts": round(sum(v) / len(v) - th, 2),
         }

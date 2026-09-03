@@ -277,6 +277,36 @@
         "99": 17
       }
     },
+    "output": {
+      "counts": {
+        "negative": 0,
+        "non_positive": 0,
+        "reported_fraction_discard": 1.0,
+        "retained_discard": 738730,
+        "retained_keep": 738730,
+        "retained_nan": 738730,
+        "retained_unit": 738730,
+        "retained_zero": 738730,
+        "total": 738730,
+        "zero": 0
+      },
+      "ms_rule": {
+        "at_zero": 730623,
+        "below_zero": 0,
+        "dropped": 730623,
+        "kept": 8107,
+        "retention": 0.010974239573321783,
+        "total": 738730
+      },
+      "ms_table": {
+        "0": 730623,
+        "1": 8007,
+        "2": 34,
+        "3": 37,
+        "4": 25,
+        "5": 4
+      }
+    },
     "output_send": {
       "counts": {
         "negative": 0,

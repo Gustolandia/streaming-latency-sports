@@ -487,3 +487,37 @@ governing variable; the rate that carries it is irrelevant.** Verdict: QUANTISED
 3. Publish the timestamp resolution beside the measured latency. *(from the unifying statement —
    the failure is governed by their ratio)*
 4. Do not let three replicates stand in for reproducibility. *(from B4)*
+
+---
+
+## Added round 43 — the fifth span, and what it says about the asymmetry rule
+
+`recount_spans.py` counts five spans now, not four. The fifth joins the consumer's two stamps
+to each other — `t_output_ns − t_cons_recv_ns` — and it exists because the other four all
+reach back to a producer stamp, so an audit that followed the spans to ask "where is each
+stamp taken" found only producer-side stamps. Every span the paper reports *ends* at a
+consumer stamp, and nobody had looked at that end.
+
+The two consumers do not stamp in the same place. Kafka's client is constructed with a
+`value_deserializer`, so the payload parse runs inside `poll()` and lands before
+`t_cons_recv_ns`; the Redis consumer stamps first and calls `json.loads` after. Median
+handling span: **281 ns under Kafka, 19,480 ns under Redis**, over 2,955 and 2,958 runs.
+
+What follows from it, with directions, because a disclosure without a direction is an
+adjective:
+
+- The parse is inside `D = t_recv − t_send` for Kafka and outside it for Redis, so the
+  transport proxy carries one client's parse and not the other's. Against Redis's median
+  delivery of 800 µs that is 2.4%, a fiftieth of the 1 ms margin the equivalence in S48 is
+  stated against. It cannot move that result.
+- A longer `D` produces *fewer* negative spans, and the broker carrying the extra parse is the
+  one with the higher reported rate (8.67% against 8.19%). Correcting the asymmetry would
+  widen the gap in Table I, not close it.
+- TTI contains both parses and is unaffected. That is one more reason the equivalence is also
+  stated on TTI.
+
+This is H3's own rule (`docs/measurement_model.md`) applied to the endpoint H3's statement
+never mentions. The pipeline can measure it but cannot fix it: the campaign's machines are
+released, so the placement is a disclosure and the *measurement* is the gate.
+`tests/unit/test_consumer_stamp_placement.py` fails if either consumer moves its stamps
+relative to the parse, so the supplement's explanation cannot quietly become fiction.

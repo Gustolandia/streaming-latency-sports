@@ -80,6 +80,56 @@ def test_plot_deletion_annotates_the_measured_ratio():
     assert any("279" in t.get_text() for t in ax.texts)
 
 
+# --- markers the legend counts have to be markers the eye can count ------------------------
+
+def test_spread_coincident_separates_markers_that_would_render_as_one():
+    """The defect this exists for, in its own numbers.
+
+    The two 256 KB replicates print 42,393 and 42,973 ms at 100% retention -- 1.4% apart on
+    an axis spanning five decades. The legend said four cells sat above the grid and three
+    circles were drawn. A figure in this paper that loses one of its own four markers is
+    making the argument against itself.
+    """
+    xs = [42393.087, 42973.183]
+    out = mrf.spread_coincident(xs, [100.0, 100.0])
+    assert max(out) / min(out) >= mrf.SEPARATION_RATIO * 0.99
+
+
+def test_spread_coincident_keeps_the_group_centred():
+    """Symmetric, so no reading of position moves beyond the separation itself."""
+    xs = [1000.0, 1010.0]
+    out = mrf.spread_coincident(xs, [50.0, 50.0])
+    before = (xs[0] * xs[1]) ** 0.5
+    after = (out[0] * out[1]) ** 0.5
+    assert abs(after / before - 1.0) < 1e-9
+
+
+def test_spread_coincident_leaves_separated_markers_alone():
+    xs = [235.0, 519.0]
+    assert mrf.spread_coincident(xs, [34.4, 35.9]) == xs
+
+
+def test_spread_coincident_leaves_a_lone_marker_alone():
+    assert mrf.spread_coincident([42393.0], [100.0]) == [42393.0]
+
+
+def test_spread_coincident_handles_three_at_one_place():
+    out = mrf.spread_coincident([100.0, 101.0, 102.0], [7.0, 7.0, 7.0])
+    assert len(set(round(v, 6) for v in out)) == 3
+
+
+def test_every_above_grid_marker_is_separately_visible():
+    """End to end, on the committed cells: four cells above the grid, four distinct x."""
+    pts = mrf.retention_points()
+    above = [(m, r) for r, m, _ in pts if m > mrf.QUANTUM_MS]
+    xs = mrf.spread_coincident([m for m, _ in above], [r for _, r in above])
+    assert len(above) == 4
+    for i in range(len(xs)):
+        for j in range(i + 1, len(xs)):
+            far_apart = max(xs[i], xs[j]) / min(xs[i], xs[j]) >= mrf.SEPARATION_RATIO * 0.99
+            assert far_apart or above[i][1] != above[j][1]
+
+
 # --- the stall spectrum --------------------------------------------------------------------
 
 def test_stall_histogram_parses_the_committed_dump():
@@ -147,6 +197,43 @@ def test_grid_rows_carry_both_distances_for_every_arm():
     assert all({"rate_hz", "q", "powered", "d_obs", "d_null"} <= set(r) for r in rows)
 
 
+def test_every_arm_carries_the_null_it_is_being_judged_against():
+    """The figure drew each arm against a diagonal and asked the eye to judge distance from
+    a line with nothing to say how far an arm can fall by chance. The p-values answering
+    that were printed only in a supplement table."""
+    rows = mrf.grid_rows()
+    assert all(r["d_null_lo"] is not None and r["d_null_hi"] is not None for r in rows)
+
+
+def test_the_diagonal_is_the_null_the_test_actually_uses():
+    """The x axis says "expected from a continuum", so it has to be that expectation.
+
+    It was not. The column held the distance of theta from its nearest vertex with no
+    replicate noise -- the distance of the expectation -- while the test simulates noisy
+    replicates and takes the expectation of the distance. Noise at mid-cell can only carry
+    a replicate towards a vertex, so the two differ, by up to 0.04 here; on five of the
+    twelve arms the noiseless value fell outside the simulated null's own central 90%, and
+    the supplement's caption claimed it *was* that expectation. Containment is the cheap
+    invariant that would have caught it, so it is now a gate.
+    """
+    for r in mrf.grid_rows():
+        assert r["d_null_lo"] <= r["d_null"] <= r["d_null_hi"], r["rate_hz"]
+
+
+def test_the_bands_agree_with_the_p_values_they_were_drawn_from():
+    """Same Monte Carlo, same seed, so the picture and the table cannot part.
+
+    An arm that rejects at 0.05 one-sided has an observed distance below the null's 5th
+    percentile, and an arm that does not, does not. The unresolved arm is the one this
+    pins hardest: it rejects before correction and not after, so it must sit just below
+    its own band rather than clear of it.
+    """
+    import stat_intervals
+    for c in stat_intervals.grid_cells():
+        below = c["d_observed"] < c["d_null_lo"]
+        assert below == (c["p_raw"] < 0.05), c["rate_hz"]
+
+
 def test_every_powered_arm_lies_below_the_continuum_diagonal():
     """The figure's whole message. If this ever fails, the figure is lying and so is the text."""
     powered = [r for r in mrf.grid_rows() if r["powered"]]
@@ -164,9 +251,11 @@ def test_plot_grid_draws_one_marker_per_arm_and_labels_every_class():
     """
     fig, ax = plt.subplots()
     mrf.plot_grid(ax, mrf.grid_rows())
-    assert len(ax.lines) == 1 + 12 + 3  # diagonal, twelve arms, three legend proxies
+    # diagonal, twelve null bands, twelve arms, four legend proxies
+    assert len(ax.lines) == 1 + 12 + 12 + 4
     labels = [t.get_text() for t in ax.get_legend().get_texts()]
-    assert labels == ["rejects the null (9)", "unresolved (1)", "no power (2)"]
+    assert labels == ["rejects the null (9)", "unresolved (1)", "no power (2)",
+                      "the null's central 90%"]
 
 
 # --- builders ----------------------------------------------------------------------------

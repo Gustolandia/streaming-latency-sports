@@ -31,6 +31,20 @@ Definitions, all in nanoseconds from the same wall clock (CLOCK_REALTIME):
     send-referenced t_cons_recv_ns - t_prod_send_ns    one-way delivery, a causal chain
     send-to-output  t_output_ns    - t_prod_send_ns    delivery plus consumer handling
     TTI             t_output_ns    - t_prod_sched_ns   the primary measure, a causal chain
+    output          t_output_ns    - t_cons_recv_ns    the consumer's own handling span
+
+The fifth span was added in round 43, and it is the one the other four were hiding. Four of
+them subtract a producer stamp from a consumer stamp, so the producer side is where the
+manuscript looked when it asked where each stamp is taken. The consumer takes two, and the
+two clients do not take them in the same place: `kafka_consumer.py` hands the client a
+`value_deserializer`, so the payload is parsed inside `poll()` and the parse falls BEFORE
+`t_cons_recv_ns`; `redis_consumer.py` stamps, then runs `json.loads`, so the same parse
+falls AFTER it. Every span referenced to `t_cons_recv_ns` -- which includes the
+manuscript's transport proxy -- therefore contains one broker's parse and not the other's.
+The asymmetry is small (a median of 281 ns against 19,437 ns) and it runs against the
+per-broker difference the manuscript reports rather than manufacturing it, but a paper
+whose second rule is "name the span you are subtracting" has to be able to name this one.
+Measuring it is what this column is for.
 
 CLI:
     python scripts/recount_spans.py --archive cloud_archive/sbl_runs.tgz
@@ -51,18 +65,22 @@ DEFAULT_OUT = os.path.join("docs", "results", "span_recount.csv")
 
 FIELDS = [
     "run_id", "backend", "n_events",
-    "neg_ack", "neg_send", "neg_output_send", "neg_tti",
+    "neg_ack", "neg_send", "neg_output_send", "neg_tti", "neg_output",
     "min_ack_us", "min_send_us", "median_ack_us", "median_send_us",
+    "median_output_ns",
 ]
 
-# The four spans, as (output-prefix, consumer-column, producer-column). Keeping them in one
-# table rather than four hand-written subtractions is the point: the bug this script exists
-# to correct was a claim about one span being quietly applied to another.
+# The five spans, as (output-prefix, later-stamp, earlier-stamp). Keeping them in one table
+# rather than five hand-written subtractions is the point: the bug this script exists to
+# correct was a claim about one span being quietly applied to another. Both stamps are
+# looked up in one merged per-event dict, so a span may join a consumer stamp to a producer
+# stamp or two consumer stamps to each other -- which is what the fifth one does.
 SPANS = (
     ("ack", "t_cons_recv_ns", "t_broker_ack_ns"),
     ("send", "t_cons_recv_ns", "t_prod_send_ns"),
     ("output_send", "t_output_ns", "t_prod_send_ns"),
     ("tti", "t_output_ns", "t_prod_sched_ns"),
+    ("output", "t_output_ns", "t_cons_recv_ns"),
 )
 
 
@@ -103,8 +121,13 @@ def join_run(prod_rows, cons_rows):
             }
         except (KeyError, TypeError, ValueError):
             continue
-        for name, cons_col, prod_col in SPANS:
-            out[name].append(cons[cons_col] - prod[prod_col])
+        # One dict per event, so a span can name any two stamps rather than only a
+        # consumer one and a producer one. The consumer's own handling span needs both of
+        # its endpoints from this side.
+        event = dict(prod)
+        event.update(cons)
+        for name, later, earlier in SPANS:
+            out[name].append(event[later] - event[earlier])
     return out
 
 
@@ -121,6 +144,10 @@ def summarise_run(run_id, backend, spans):
         "min_send_us": round(min(spans["send"]) / 1000.0, 1),
         "median_ack_us": round(statistics.median(ack) / 1000.0, 1),
         "median_send_us": round(statistics.median(spans["send"]) / 1000.0, 1),
+        # Nanoseconds, not microseconds. One client's handling span is two adjacent clock
+        # reads and rounds to 0.0 us, which is exactly the reading that let the asymmetry
+        # go unnoticed on the withdrawn testbed's integrity file.
+        "median_output_ns": int(round(statistics.median(spans["output"]))),
     }
     for name, _, _ in SPANS:
         row["neg_" + name] = sum(1 for v in spans[name] if v < 0)
@@ -251,6 +278,13 @@ def totals(rows):
     for name, _, _ in SPANS:
         agg["neg_" + name] = sum(int(r["neg_" + name]) for r in rows)
         agg["pct_" + name] = (100.0 * agg["neg_" + name] / events) if events else 0.0
+    # The consumer's handling span, as a median over run medians. Guarded like the extremes
+    # above, and for the same reason: a caller holding a ledger written before round 43 still
+    # gets every count rather than a crash.
+    handling = [float(r["median_output_ns"]) for r in rows
+                if str(r.get("median_output_ns", "")).strip() != ""]
+    if handling:
+        agg["median_output_ns"] = statistics.median(handling)
     return agg
 
 
@@ -289,14 +323,19 @@ def read_csv(path):
 
 
 def report(agg):
-    return (
+    text = (
         "runs %(runs)d  events %(events)d\n"
         "  ack-referenced   negatives %(neg_ack)d (%(pct_ack).4f%%)\n"
         "  send-referenced  negatives %(neg_send)d (%(pct_send).4f%%)\n"
         "  send-to-output   negatives %(neg_output_send)d (%(pct_output_send).4f%%)\n"
         "  TTI              negatives %(neg_tti)d (%(pct_tti).4f%%)\n"
+        "  consumer output  negatives %(neg_output)d (%(pct_output).4f%%)\n"
         "  runs over 1%% negative on the ack span: %(runs_over_one_pct_ack)d\n"
         "  runs with a negative ack median:        %(runs_negative_median_ack)d\n" % agg)
+    if "median_output_ns" in agg:
+        text += "  consumer handling span, median of run medians: %.0f ns\n" % \
+            agg["median_output_ns"]
+    return text
 
 
 def main(argv=None):

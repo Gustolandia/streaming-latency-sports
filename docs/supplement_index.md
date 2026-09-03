@@ -291,10 +291,10 @@ appearing in this table.
 | `deletion` | main text, Fig. 3 |
 | `quantum_geometry` | supplement, S51 (moved round 40: a constructed illustration of the retention law, not a measurement, placed beside the 1970 counter note that carries the same identity) (added round 28: the geometry behind the deletion law) |
 | `grid_membership` | main text, Fig. 4 |
-| `payload_flip` | main text, Fig. 5 (single-column from round 28; was full-width) |
+| `payload_flip` | supplement, S31 (moved round 43: every number its panels carry is in the sentence that used to sit above it, and four biographies would not otherwise fit inside twelve pages) (single-column from round 28; was full-width) |
 | `mechanism_forest` | supplement, S47 (moved round 57: it plots the four matched pairs of the main text's Table II and the two brokers of its Table I, so it restated tables the reader already has) |
 | `ttrue_law` | supplement, S32 |
-| `stall_spectrum` | main text, Fig. 6 |
+| `stall_spectrum` | main text, Fig. 5 (was Fig. 6 until `payload_flip` left in round 43) |
 | `priority_ladder` | supplement, S47 |
 | _(no figure)_ | supplement, S48 --- the broker results, moved from the main text in round 18 |
 | `experiment_map` | supplement |

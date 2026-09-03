@@ -2066,6 +2066,30 @@ $\mathbf{40.2}$, replicated four times --- and read-loop instrumentation correct
 shape: each \texttt{XREADGROUP} returns a full batch (median 106 messages in ${\sim}32$~ms),
 so the constraint is entirely in the acknowledgment path.
 \section{S31. The spread rule and the grid-membership inference in full (moved from the main text)}
+\label{sec:spreadrule}
+
+% Moved out of the main text in round 43. Every number its two panels carry -- 13.6 at
+% 32 KB, three replicates within 0.06, 26.7 at 64 KB, the 69.2 pin -- is in the sentence
+% that used to sit above it, so it restated the prose rather than showing something the
+% prose could not. It lands here because this is where the spread rule it confirms is
+% derived, and the main text's confirmation paragraph now points at this section.
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{docs/results/figures/payload_flip.pdf}
+\caption{\textbf{The campaign's confirmed prediction.} (a)~Retention replicates at $300$~msg/s
+($q=3$) by payload, against the thirds grid: $200$~B straddles both branches, $32$~KB pins
+near the $2/3$ vertex, $64$~KB re-opens to the upper cell. Horizontal position within an
+arm separates replicates that would overprint and carries no variable. (b)~Replicate
+spread against $\operatorname{frac}(q\theta)$: the flat--full boundary at half the cell
+width is crossed in both directions by the one manipulated variable. The spread is a range,
+so each stick shows the replicates it is made of --- $32$~KB clears the boundary with three
+of five pinned together, $64$~KB is broad.}
+\label{fig:payloadflip}
+\end{figure}
+
+Figure~\ref{fig:payloadflip} is the confirmation the main text's Section~\mainGridInference{}
+reports: the three payload arms against their $q=3$ grid, and the spread each one
+produces against the boundary the rule below puts at half a cell.
 
 \paragraph{What the replicate spread does, and does not, predict.} It is tempting to write
 the prediction as ``spread $\approx 100/q$'', and we did; that is wrong in a way that matters,
@@ -2802,6 +2826,19 @@ $-1000\,\mu$s finding and not Mode~A --- and their check is post-hoc data valida
 per-run gate and no campaign rate. It is the nearest prior sighting of the observable inside
 a benchmark, and the attribution went where the field's default sends it: to the clock.
 
+\paragraph{The strongest precedent for our own recommendation, in network measurement}
+Our rule says to keep the unusable sample and label it rather than delete it, and one system
+already does exactly that. TimeWeaver infers one-way delays from passively observed NTP
+traffic, and where earlier methods discarded a host outright for missing timestamps or
+negative latencies, it keeps those measurements and assigns them to lower accuracy
+tiers~\cite{durairajan2018timeweaver}. That is a fourth disposition beyond the three
+Section~\mainModeB{} of the main text finds in benchmark harnesses --- not deletion, not
+substitution, not passing the value on unmarked, but retention with a quality label --- and
+it is the one we would have asked for. It does not compete with this paper: it is network
+measurement rather than a benchmark harness, it derives no retention arithmetic, and it
+reads no harness source. We record it because a reader entitled to ask whether anyone has
+done the sensible thing deserves the answer, which is yes, in a neighboring field.
+
 \section{S40. What standardized benchmarks require about resolution}
 \label{sec:standards}
 
@@ -3046,8 +3083,8 @@ the parts we could not test.
 \subsection{S43.1. Where each stamp is actually taken}
 
 Producer and consumer are separate processes on one host, and both read
-\textsc{clock\_realtime}. Three stamps enter the spans of Table~II, and they are not taken in
-comparable places.
+\textsc{clock\_realtime}. Five stamps enter the spans this paper reports, and they are not
+taken in comparable places. Three of them are producer-side.
 
 \begin{itemize}
 \item \textbf{The send stamp} is read on the calling thread immediately \emph{before} the
@@ -3065,6 +3102,42 @@ resolves, matching what \texttt{xadd} does; it requires \texttt{-{}-max-inflight
 The two clients therefore differ in whether a second thread stands between the reply and the
 clock read. They do not differ in something more basic: in both, the acknowledgment stamp is
 read only after a thread that was not running has been made runnable and then scheduled.
+
+\paragraph{The consumer's two stamps, and the asymmetry between the clients}
+The other two are consumer-side, and until this revision neither this section nor any other
+said where they are taken. That was a gap in an audit whose whole subject is stamp
+placement: every span the paper reports ends at one of them.
+
+\begin{itemize}
+\item \textbf{The receive stamp} $t_{\mathrm{recv}}$ is read when the consumer holds the
+record. In \texttt{scripts/kafka\_consumer.py} the client is constructed with a
+\texttt{value\_deserializer}, so the payload is parsed inside \texttt{poll()} and the parse
+precedes the stamp. In \texttt{scripts/redis\_consumer.py} the stamp is read first and
+\texttt{json.loads} runs after it.
+\item \textbf{The output stamp} $t_{\mathrm{out}}$ is read once the record is in hand. It is
+the next statement under \kafka{} and is separated from $t_{\mathrm{recv}}$ by the payload
+parse under \redis{}.
+\end{itemize}
+
+So the consumer's own handling span, $t_{\mathrm{out}} - t_{\mathrm{recv}}$, is
+$\spanKafkaHandlingNs$~ns under \kafka{} and $\spanRedisHandlingNs$~ns under \redis{} ---
+medians over run medians across $\spanRuns$ runs, a factor of $\spanHandlingRatio$. It never
+goes negative on any of the $\spanEvents$ events, as a chain cannot.
+
+Three consequences, and we state the direction of each because a disclosure without one is
+an adjective. \emph{First}, the payload parse falls inside $D = t_{\mathrm{recv}} -
+t_{\mathrm{send}}$ for \kafka{} and outside it for \redis{}, so the transport proxy and $D$
+carry one client's parse and not the other's; against \redis{}'s median delivery of
+$\spanHandlingDeliveryUs\,\mu$s that is $\spanHandlingSharePct\%$. \emph{Second}, a longer
+$D$ produces fewer negative spans, and the broker carrying the extra parse is the one with
+the \emph{higher} reported rate, so correcting the asymmetry would widen the gap in
+Table~II rather than close it. \emph{Third}, \tti{} contains both parses and is unaffected,
+which is one more reason the equivalence in S48 is also stated on \tti{}.
+
+We could not fix this in the pipeline where it belongs, because it would require re-running
+a campaign whose machines are released. What the pipeline now does instead is measure it:
+\texttt{recount\_spans.py} carries the span as its fifth column, and a gate fails if the two
+consumers ever stamp in places that differ again without the number moving with them.
 
 \subsection{S43.2. Why one span cannot invert and the other can}
 
@@ -3166,8 +3239,9 @@ the priority manipulation does not cleanly separate it, because a thread raised 
 \texttt{SCHED\_FIFO} also reaches the acquisition queue sooner. Third, magnitude does not
 separate them either: the default switch interval and the base slice of Section~\mainSpectrum{} are both
 of millisecond order, so neither mechanism is excluded by the size of the delay it would
-produce. Note what the first point costs us here --- Figure~6 cannot adjudicate between them,
-because it is built from the tracepoints that miss one of the two entirely.
+produce. Note what the first point costs us here --- the main text's stall spectrum cannot
+adjudicate between them, because it is built from the tracepoints that miss one of the two
+entirely.
 
 What settles it is the direction of the disagreement rather than any of those. If a second
 serialization sat in series with the run-queue wait, an estimator built from the run-queue
@@ -3312,8 +3386,12 @@ helper that produces the figure, so the two cannot disagree.
 \begin{table}[htbp]
 \caption{\textbf{Grid membership against a continuum null.} $D$ is the mean normalized
 distance to the nearest grid vertex; under the null its expectation is the value in the
-\textnormal{\textit{null}} column. $p_{\mathrm{Holm}}$ is a permutation $p$-value
-($10^{4}$ draws) after Holm correction within the family of all $\gridArms$ arms; the
+\textnormal{\textit{null}} column. That column was, until this revision, the distance of
+$\theta$ from its nearest vertex with no replicate noise --- the distance of the
+expectation rather than the expectation of the distance, which are not the same number and
+differed by up to $0.04$ here. It is now the mean of the simulated null itself, so the
+sentence above it is true. $p_{\mathrm{Holm}}$ is a Monte Carlo $p$-value
+($\gridDraws$ draws) after Holm correction within the family of all $\gridArms$ arms; the
 corrected value is what decides the verdict. Arms marked
 \textnormal{\textit{flat (coincident)}} are those the model predicts
 flat, where the two hypotheses make the same prediction and the test has no power. }
@@ -3420,6 +3498,19 @@ sign check of Section~\ref{sec:gate} fires on none of it.}
 
 
 The rows added below one millisecond are the regime broker benchmarks actually report in (S52), and they are where an acknowledgment-referenced harness stops measuring the path at all. A send-referenced one is unaffected: it reports the delivery itself, which is why the framework audited in S52.2 needs no correction from this table.
+
+\paragraph{Which estimator produced the two headline ratios, stated because it decides them}
+The main text says the reported span is $\reportedFraction\%$ of the delivery it stands for,
+understating it $\understateFactor\times$. Both are the \emph{median over conditions of
+$\mathrm{median}\,S / \mathrm{median}\,D$} --- a median of per-condition ratios, computed in
+\texttt{emit\_paper\_numbers.py} and gated there. The estimator is not a detail. Working from
+the medians this supplement prints, which is the natural recomputation, a reader who
+differences them condition by condition gets $3.5\times$, and one who divides the pooled
+medians gets $2.6\times$. Three defensible readings, a factor of $1.6$ between the extremes,
+and only one of them is the number in the text. This project has been caught by the same
+distinction once before, on the independence overshoot of Section~\ref{sec:authors}, where
+median-of-ratios and ratio-of-medians differ by $12.4\times$ against $21.3\times$; there it
+is stated in the sentence that quotes it, and now it is stated here too.
 
 \section{S48. What the brokers actually do (moved from the main text)}
 \label{sec:brokers-full}
@@ -3585,6 +3676,20 @@ The one thing the note does not contain is the failure this paper reports, becau
 instrument keeps both readings. Retention is the estimator there; deleting the population
 that carries the fractional part is what converts a solved metrology problem back into an
 open one.
+
+\paragraph{When dither works, which is a question with an answer}
+Our remedy is to dither the send instant, and a reader from signal processing will ask under
+what conditions dither actually recovers the underlying quantity. It is a fair question and
+the literature has answered it: for quantized Gaussian measurements the useful regime is
+bounded by the ratio of the noise's spread to the quantization interval, and outside it
+subtractive dither costs more than it buys~\cite{rapp2019dither}. We name it rather than
+apply it, because our dither is not that dither. Theirs adds noise to the \emph{value} being
+quantized; ours randomizes the \emph{phase} of the sampling instant against the tick, which
+is RFC~3432's construction~\cite{rfc3432} and is what breaks the commensurability of
+Section~\mainPhase{}. The two coincide only in the uniform-phase limit that
+Equation~\ref{eq:retention} already assumes. The neighboring result is worth the reader's
+attention anyway: it is the closest thing to a proof that the recommendation has a domain of
+validity rather than being folklore.
 
 \section{S52. Two literatures the paper stands against (moved from the main text)}
 \label{sec:standing}

@@ -87,8 +87,16 @@ class TestEveryExhibitOpensOnAClaim:
             "\n  ".join(bad)
 
     def test_there_are_exhibits_to_police(self):
+        """A floor, not a target.
+
+        It guards against the rule quietly policing nothing, which is what happens if the
+        caption regex stops matching. The number tracks the paper: seven exhibits after
+        round 43 moved the payload-flip figure to the supplement to fit four biographies
+        inside twelve pages. Lower it when a float genuinely leaves; do not lower it to make
+        a broken extractor pass.
+        """
         found = captions((REPO / "paper.tex").read_text(encoding="utf-8"))
-        assert len(found) >= 8, "expected the paper's figures and tables; found %d" % len(found)
+        assert len(found) >= 7, "expected the paper's figures and tables; found %d" % len(found)
 
 
 class TestTheCheckCanFail:

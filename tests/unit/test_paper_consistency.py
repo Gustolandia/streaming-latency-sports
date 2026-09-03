@@ -2080,9 +2080,17 @@ class TestConcurrentWork:
         assert "$3$~ms" in section or "3~ms" in section
 
     def test_our_measured_offset_is_compared_to_their_skew(self, tex):
-        """The qualification only lands if the numbers are put side by side."""
+        """The qualification only lands if the numbers are put side by side.
+
+        The literal `0.067` became `\\interHostOffsetMs` in round 43, because the same
+        quantity was typed at three sites in two roundings -- twice as 0.067 ms and once,
+        three sections later, as about 70 microseconds -- with a pacer jitter of 67-69
+        microseconds two lines away that is a different quantity entirely. The pin follows
+        the macro; requiring the digits would now be requiring the defect.
+        """
         section = " ".join(_section(tex, "sec:related_time").split())
-        assert "0.067" in section, "our measured inter-host offset must be quoted"
+        assert r"\interHostOffsetMs" in section, \
+            "our measured inter-host offset must be quoted, and read from the ledger"
         assert "load" in section.lower(), "the difference between the settings must be named"
 
     def test_the_disagreement_is_scoped_to_the_premise_not_the_measurements(self, tex):
@@ -2203,10 +2211,24 @@ class TestRefereeRoundOne:
     scoping and marker phrases exist where promised in the response letter.
     """
 
-    def test_the_three_exhibits_are_in_the_main_text(self, main_tex):
+    def test_the_three_exhibits_are_in_the_main_text(self, main_tex, supp):
+        """The flip figure moved to the supplement in round 43, and the pin moved with it.
+
+        It was promoted to the main text on a referee's request, so it may not simply
+        vanish: the requirement is that the exhibit still exists and that the confirmation
+        it draws is still made where the reader meets the prediction. Every number its two
+        panels carry is in the main text's confirmation paragraph, and the paragraph now
+        names the supplement section that draws them. What the move bought was the twelfth
+        page, against four biographies the journal counts.
+        """
         assert "measurement_model.pdf" in main_tex, "the model figure must be in the paper"
-        assert "payload_flip.pdf" in main_tex, "the flip figure must be in the paper"
+        assert "payload_flip.pdf" in supp, "the flip figure must still exist somewhere"
+        assert "payload_flip.pdf" not in main_tex, \
+            "if it returns to the main text, this pin should return with it"
         assert r"\label{tab:mechanism}" in main_tex, "the mechanism table must be in the paper"
+        confirmation = " ".join(_section(main_tex, "sec:extcomp").split())
+        assert "S31" in confirmation, \
+            "the confirmation paragraph must point at the section that draws it"
 
     def test_the_traced_slope_cross_check_is_withdrawn_not_requoted(self, main_tex, supp):
         """REWRITTEN for the TC revision (referee item M8).
@@ -2646,7 +2668,12 @@ class TestRefereeRoundTwo:
         body = " ".join(main_tex.split())
         assert "{\approx}0.07$~ms" not in body
         assert "near $0.1$~ms" not in body
-        assert body.count("$0.067$~ms") >= 1
+        # Round 43 finished the job R6 started. One number was no longer enough: it was one
+        # number typed at three sites in two roundings, and a rounding is a second number to
+        # a copy editor. It now resolves from one macro pair, so "one number" is a property
+        # of the pipeline rather than of anyone's vigilance.
+        assert "$0.067$~ms" not in body, "the offset must be read, not typed"
+        assert body.count(r"\interHostOffsetMs") + body.count(r"\interHostOffsetUs") >= 3
 
     def test_the_nist_paraphrase_matches_what_nist_says(self, main_tex):
         """R8. NIST's own budget has reaction time dominating resolution by two orders of
@@ -2704,7 +2731,7 @@ class TestRefereeRoundTwo:
 
     def test_the_broker_comparison_names_the_span_it_uses(self, main_tex):
         """R18. Section III-C calls that span a proxy; Section VI must not quietly forget."""
-        section = " ".join(_section(main_tex, "sec:results").split())
+        section = " ".join(_section(main_tex, "sec:brokers").split())
         assert "transport\nproxy" in section or "transport proxy" in section
 
     def test_the_stream_benchmark_literature_is_engaged(self, main_tex):

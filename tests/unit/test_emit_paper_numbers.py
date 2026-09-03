@@ -708,8 +708,13 @@ class TestTheMacrosThatAreOmittedRatherThanGuessed:
         assert got["tracedGofP"] == "<0.0001", "an exact zero must be reported as a bound"
 
     def test_a_mechanism_artefact_that_is_absent_emits_nothing_for_it(self, monkeypatch):
-        """Four independent reads, each guarded, and each able to be the missing one."""
-        for name in ("harness_cells", "occupancy_bounds", "load_growth", "observer_effect"):
+        """Five independent reads, each guarded, and each able to be the missing one.
+
+        The fifth arrived in round 43 with the cross-host retention wander, whose two
+        endpoints had been typed and had drifted from the ledger.
+        """
+        for name in ("harness_cells", "harness_arm_spreads", "occupancy_bounds",
+                     "load_growth", "observer_effect"):
             monkeypatch.setattr(stat_intervals, name,
                                 lambda *a, **kw: (_ for _ in ()).throw(OSError("absent")))
         assert epn.mechanism_macros() == []
@@ -717,6 +722,7 @@ class TestTheMacrosThatAreOmittedRatherThanGuessed:
     def test_mechanism_reads_that_return_nothing_emit_nothing(self, monkeypatch):
         """Present but empty is a different case from absent, and both must be silent."""
         monkeypatch.setattr(stat_intervals, "harness_cells", lambda *a, **kw: {})
+        monkeypatch.setattr(stat_intervals, "harness_arm_spreads", lambda *a, **kw: {})
         monkeypatch.setattr(stat_intervals, "occupancy_bounds", lambda *a, **kw: {})
         monkeypatch.setattr(stat_intervals, "load_growth", lambda *a, **kw: {})
         monkeypatch.setattr(stat_intervals, "observer_effect", lambda *a, **kw: {})
@@ -1448,3 +1454,125 @@ class TestPairedGapDistortion:
         m = dict(epn.paired_gap_macros(path=str(p)))
         assert m["gapDistortionPairs"] == "5", (
             "the zero-span pair was kept and would have contributed an infinite ratio")
+
+
+class TestTheInterHostOffsetIsRead(object):
+    """One quantity that had been typed at three sites in two roundings.
+
+    The main text gave it twice as 0.067 ms and once, three sections later, as about 70
+    microseconds -- and in Section III-A the first sits two lines from a pacer jitter of
+    67-69 microseconds, which is a different quantity that happens to round to the same
+    number. The estimator is stated rather than implied: `chronyc tracking` reports each
+    host's system time as fast or slow of NTP time, and the offset between two hosts is the
+    difference of those signed quantities.
+    """
+
+    @staticmethod
+    def _capture(path, rows):
+        lines = ["host,source,measurement,value,unit,captured_utc"]
+        for host, text in rows:
+            lines.append('%s,chronyc,"System time","%s",,2026-07-25T16:05:38Z' % (host, text))
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return str(path)
+
+    def test_opposite_signs_add(self, tmp_path):
+        """One host fast and one slow disagree by the sum, not the difference."""
+        p = self._capture(tmp_path / "c.csv",
+                          [("driver", "0.000021354 seconds fast of NTP time"),
+                           ("broker", "0.000045595 seconds slow of NTP time")])
+        m = dict(epn.inter_host_offset_macros(path=p))
+        assert m["interHostOffsetUs"] == "67"
+        assert m["interHostOffsetMs"] == "0.067"
+
+    def test_the_same_side_subtracts(self, tmp_path):
+        p = self._capture(tmp_path / "c.csv",
+                          [("driver", "0.000050000 seconds fast of NTP time"),
+                           ("broker", "0.000020000 seconds fast of NTP time")])
+        assert dict(epn.inter_host_offset_macros(path=p))["interHostOffsetUs"] == "30"
+
+    def test_one_host_is_not_an_offset(self, tmp_path):
+        p = self._capture(tmp_path / "c.csv",
+                          [("driver", "0.000021354 seconds fast of NTP time")])
+        assert epn.inter_host_offset_macros(path=p) == []
+
+    def test_rows_that_are_not_system_time_are_ignored(self, tmp_path):
+        p = tmp_path / "c.csv"
+        p.write_text("host,source,measurement,value,unit,captured_utc\n"
+                     'driver,chronyc,"RMS offset","0.000133095 seconds",,x\n'
+                     'broker,chronyc,"RMS offset","0.000108486 seconds",,x\n',
+                     encoding="utf-8")
+        assert epn.inter_host_offset_macros(path=str(p)) == []
+
+    def test_an_unparsable_value_is_skipped_rather_than_guessed(self, tmp_path):
+        p = self._capture(tmp_path / "c.csv",
+                          [("driver", "0.000021354 seconds fast of NTP time"),
+                           ("broker", "clock is fine, thanks")])
+        assert epn.inter_host_offset_macros(path=str(p)) == []
+
+    def test_an_absent_capture_emits_nothing(self, tmp_path):
+        assert epn.inter_host_offset_macros(path=str(tmp_path / "nope.csv")) == []
+
+
+class TestTheHandlingShareIsBounded(object):
+    """The consumer handling span as a share of the delivery it sits inside.
+
+    This is the bound the manuscript owes beside the broker comparison: a disclosure
+    without a magnitude is an adjective. It reads two artefacts because it is a ratio
+    between them, and either one missing returns nothing rather than a number resting on
+    half its inputs.
+    """
+
+    @staticmethod
+    def _recount(path, rows):
+        head = ("run_id,backend,n_events,neg_ack,neg_send,neg_output_send,neg_tti,"
+                "neg_output,min_ack_us,min_send_us,median_ack_us,median_send_us,"
+                "median_output_ns")
+        lines = [head]
+        for run, backend, handling in rows:
+            lines.append("%s,%s,100,1,0,0,0,0,-1.0,1.0,1.0,1.0,%s"
+                         % (run, backend, handling))
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return str(path)
+
+    @staticmethod
+    def _symmetry(path, rows):
+        lines = ["condition,median_S_us,median_D_us"]
+        for cond, d in rows:
+            lines.append("%s,100,%s" % (cond, d))
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return str(path)
+
+    def test_the_worst_arm_is_the_one_bounded(self, tmp_path):
+        rec = self._recount(tmp_path / "r.csv",
+                            [("a", "kafka", "281"), ("b", "redis", "19480")])
+        sym = self._symmetry(tmp_path / "s.csv",
+                             [("kafka_n1_feed1", "2000"), ("redis_n1_feed1", "800")])
+        m = dict(epn.handling_share_macros(recount=rec, symmetry=sym))
+        assert m["spanHandlingWorstUs"] == "19.5"
+        assert m["spanHandlingDeliveryUs"] == "800", "Redis is the worst arm, so Redis's D"
+        assert m["spanHandlingSharePct"] == "2.4"
+
+    def test_no_recount_no_bound(self, tmp_path):
+        sym = self._symmetry(tmp_path / "s.csv", [("redis_n1_feed1", "800")])
+        assert epn.handling_share_macros(recount=str(tmp_path / "gone.csv"),
+                                         symmetry=sym) == []
+
+    def test_no_symmetry_no_bound(self, tmp_path):
+        rec = self._recount(tmp_path / "r.csv", [("a", "redis", "19480")])
+        assert epn.handling_share_macros(recount=rec,
+                                         symmetry=str(tmp_path / "gone.csv")) == []
+
+    def test_a_ledger_without_the_handling_column_emits_nothing(self, tmp_path):
+        p = tmp_path / "r.csv"
+        p.write_text("run_id,backend,n_events,neg_ack,neg_send,neg_output_send,neg_tti,"
+                     "neg_output,median_ack_us\na,redis,100,1,0,0,0,0,1.0\n",
+                     encoding="utf-8")
+        sym = self._symmetry(tmp_path / "s.csv", [("redis_n1_feed1", "800")])
+        assert epn.handling_share_macros(recount=str(p), symmetry=sym) == []
+
+    def test_a_worst_arm_with_no_delivery_measured_emits_nothing(self, tmp_path):
+        """The ratio needs both halves from the same broker. A symmetry file that never
+        names it is not an excuse to divide by another broker's delivery."""
+        rec = self._recount(tmp_path / "r.csv", [("a", "redis", "19480")])
+        sym = self._symmetry(tmp_path / "s.csv", [("kafka_n1_feed1", "2000")])
+        assert epn.handling_share_macros(recount=rec, symmetry=sym) == []

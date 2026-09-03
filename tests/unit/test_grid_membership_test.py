@@ -13,7 +13,8 @@ from pathlib import Path
 
 import pytest
 
-SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "scripts"
+ROOT = Path(__file__).resolve().parents[2]
+SCRIPTS_DIR = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 from grid_membership_test import (  # noqa: E402
@@ -154,7 +155,38 @@ class TestInference:
 
     def test_mc_pvalue_is_anticonservative_never(self):
         """Observed exactly at the null centre must give a large p, by construction."""
-        assert mc_pvalue(4, 3, 50.0, 1.2, observed=0.49, iters=500) > 0.3
+        assert mc_pvalue(4, 3, 50.0, 1.2, observed=0.49, iters=500)[0] > 0.3
+
+    def test_the_null_interval_brackets_its_own_mean(self):
+        """The figure draws the bar and the diagonal from the same draws, so the diagonal
+        has to sit inside the bar. It did not, before round 43: the column plotted on the
+        diagonal was the distance of theta from its vertex with no replicate noise, while
+        the test simulates noisy replicates -- the distance of the expectation against the
+        expectation of the distance, which differ by up to 0.04 on this data."""
+        _, mean, lo, hi = mc_pvalue(5, 3, 50.0, 1.2, observed=0.2, iters=800)
+        assert lo <= mean <= hi
+
+    def test_the_null_interval_is_the_one_the_p_value_is_measured_against(self):
+        """Same draws, same seed. An arm whose observed statistic sits below the 5th
+        percentile is exactly an arm that rejects one-sided at 0.05, so a figure drawn from
+        the interval and a table printed from the p-value cannot tell different stories."""
+        for observed in (0.05, 0.2, 0.35, 0.49):
+            p, _, lo, _ = mc_pvalue(5, 3, 50.0, 1.2, observed=observed, iters=2000)
+            assert (observed < lo) == (p < 0.05), observed
+
+    def test_the_default_draw_count_is_the_one_behind_the_committed_ledger(self):
+        """A default that does not reproduce the committed artefact is the defect this
+        paper audits, one layer down: the script was shipping 20,000 while the CSV in the
+        repository had been written at 4,000, so running it with its own default moved
+        every p-value sitting at the Monte Carlo floor."""
+        import grid_membership_test as gmt
+        assert gmt.MC_ARMS == 4000
+        rows = list(csv.DictReader(
+            (ROOT / "docs" / "results" / "external" / "grid_membership.csv")
+            .open(encoding="utf-8")))
+        floor = 1.0 / (gmt.MC_ARMS + 1)
+        assert any(abs(float(r["p_value"]) - floor) < 1e-6 for r in rows), \
+            "no arm sits at the floor; the committed ledger may be from another draw count"
 
 
 class TestCLI:

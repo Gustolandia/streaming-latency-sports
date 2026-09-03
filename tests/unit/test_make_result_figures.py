@@ -220,6 +220,40 @@ def test_the_diagonal_is_the_null_the_test_actually_uses():
         assert r["d_null_lo"] <= r["d_null"] <= r["d_null_hi"], r["rate_hz"]
 
 
+def test_each_null_bar_is_dodged_off_its_own_arm():
+    """The bar is the reference; the marker is the thing being judged against it.
+
+    Drawn on the same abscissa the two read as one object, and in the right-hand fifth --
+    five of twelve arms within 0.05 of each other -- bars, diagonal and neighbours
+    interleaved into a smudge at column width. The dodge is a rendering offset and is
+    checked as one: every bar moves by exactly the stated fraction, and every marker keeps
+    the x the ledger measured.
+
+    It does not claim to take the bars off the diagonal. A vertical bar centred on the
+    null's centre is cut by the diagonal near its middle, and no displacement small enough
+    to be honest would change that.
+    """
+    fig, ax = plt.subplots()
+    rows = mrf.grid_rows()
+    mrf.plot_grid(ax, rows)
+    bars = [ln for ln in ax.lines
+            if len(ln.get_xdata()) == 2 and ln.get_xdata()[0] == ln.get_xdata()[1]
+            and ln.get_ydata()[0] != ln.get_ydata()[1]]
+    assert len(bars) == len(rows), "one bar per arm"
+
+    lim = max([r["d_null"] for r in rows] + [r["d_obs"] for r in rows]
+              + [r["d_null_hi"] for r in rows]) * 1.12
+    dodge = mrf.DODGE_FRACTION * lim
+    assert dodge > 0.005, "a dodge this small would not clear a marker at column width"
+
+    want = sorted(round(r["d_null"] - dodge, 6) for r in rows)
+    assert sorted(round(b.get_xdata()[0], 6) for b in bars) == want
+
+    # The marker keeps its measured position: the offset is on the reference, not the data.
+    drawn = {round(ln.get_xdata()[0], 6) for ln in ax.lines if len(ln.get_xdata()) == 1}
+    assert {round(r["d_null"], 6) for r in rows} <= drawn
+
+
 def test_the_bands_agree_with_the_p_values_they_were_drawn_from():
     """Same Monte Carlo, same seed, so the picture and the table cannot part.
 

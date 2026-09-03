@@ -185,3 +185,39 @@ accuracy tiers instead of discarding them. It is now cited in supplement S39, wh
 bibliography is uncapped and nothing is displaced.
 
 **Ours after round 43: 12 pages, 45 references, 5 figures, 2 tables.**
+
+## Added round 44 (2026-09-03)
+
+Two more, and this round used them for a different question. The corpus already settles page
+count, reference count and figure count; what it had never been asked is what the venue's
+*prose* looks like, which is the thing round 43 spent a day on.
+
+| file | arXiv | pages | worth |
+|---|---|---|---|
+| `cled_methodology_TC.pdf` | 2403.16393 | 14 | a TC paper whose subtitle is "a New Methodology". Fetched to see what TC accepts when the contribution is a *method* rather than a system, which is this paper's shape. 231-word abstract, 41 references |
+| `qutrefoil_TC.pdf` | 2608.14285 | 16 | the most recent TC preprint found. Quantum FPGA simulation, so worthless for content; kept for current house form only |
+
+**What the corpus says about prose, measured the same way on all 25 documents.**
+
+| | pages | abstract | refs | median sentence | mean |
+|---|---|---|---|---|---|
+| **ours** | **12** | **200** | **45** | **22** | **22.4** |
+| corpus range | 6–18 | 147–406 | 13–74 | 18–26 | 21.5–39.2 |
+| corpus median | 14 | ~194 | 41 | 20 | 24.2 |
+
+This is what closed an argument that had run for several rounds on feel. Herbst reported that
+sentence length ran higher than he would have set it; the main text was at a median of 28
+against a venue range of 18–26. It is now 22, inside the range and below the corpus mean. The
+gate is `tests/unit/test_sentence_length.py`.
+
+**Two observations worth keeping.** Six papers in the corpus carry abstracts longer than
+TC's stated 200-word cap, up to 406 — which suggests the cap is applied at copy-edit rather
+than at submission. We stay inside it regardless. And our five figures is the bottom of the
+range the 12-page papers show (6–10), a consequence of round 43 moving the payload-flip figure
+to the supplement for the page budget; if a page is ever recovered, that is the exhibit to
+bring back first.
+
+**Still exhausted for content.** Five rounds of enumeration over TC's arXiv-visible preprints
+have found nothing closer than `partitioned_bloom_TC`, `ssd_erasure_reliability_TC` and
+`numerical_reproducibility_TC` for position, and `timing_channels_TC` for subject. Later
+rounds should re-read these rather than hunt.

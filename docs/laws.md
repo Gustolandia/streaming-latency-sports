@@ -521,3 +521,43 @@ never mentions. The pipeline can measure it but cannot fix it: the campaign's ma
 released, so the placement is a disclosure and the *measurement* is the gate.
 `tests/unit/test_consumer_stamp_placement.py` fails if either consumer moves its stamps
 relative to the parse, so the supplement's explanation cannot quietly become fiction.
+
+---
+
+## Added round 44 — the exposure curve has a width
+
+Section VI-B's fifth rule is the only place this paper tells a reader to do arithmetic about
+their own system. Everything it said — 7% at a 10 ms path, 1% at 100 ms, a crossover at
+0.72 ms — was computed from **one** number: `\ackLagMedianUs`, the median acknowledgment lag
+over the 70 conditions in `span_symmetry.csv`, which is 725 µs.
+
+That lag is not a constant. Across the same conditions it runs **500 to 1,900 µs** between the
+tenth and ninetieth percentiles, and to 2,250 at the maximum:
+
+| statistic of A | error at 1 ms | error at 10 ms | crossover |
+|---|---|---|---|
+| p10, 500 µs | 50% | 5% | 0.50 ms |
+| **median, 725 µs** | **72%** | **7%** | **0.72 ms** |
+| p90, 1,900 µs | 190% | 19% | 1.90 ms |
+
+A reader with a 10 ms path read 7% and stopped. At the ninetieth percentile of our own corpus
+it is 19%, and the crossover — the path length below which the displacement exceeds the path
+itself, which is the number anyone will remember — moves from *under* a millisecond to nearly
+two.
+
+**The paper's own Section V-D is the argument against what it was doing.** "A mean over this
+distribution is dominated by a mode the operator never sees, so a mean-based counter cannot
+flag this failure." A median offered as practical advice is the same mistake one level up,
+and the supplement's caption had been honest about the estimator while the main text was not.
+
+Fixed in the pipeline: `_exposure_lags()` returns the tenth and ninetieth percentiles beside
+the median, `render_exposure_table()` gives every row a p10–p90 band, and four macros carry
+the spread into the prose. The main text now quotes the lag it rests on, its range, and the
+crossover as a range.
+
+**Worth recording as a pattern rather than an incident.** This one paragraph has produced a
+finding in three consecutive rounds: R42 found it quoted only on its reassuring half, R43
+found its two headline ratios had no named estimator, R44 found it had no dispersion. Three
+referees, three different defects, one paragraph. It is the part of the paper that turns
+measurement into advice, which is exactly where a number stops being a number and starts being
+something a reader acts on — so it deserves more scepticism than the rest, not less.

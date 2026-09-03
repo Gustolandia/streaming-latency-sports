@@ -1229,15 +1229,6 @@
   note         = {Reviewed-by V. Guittot; reduces the constant to \texttt{0.70} in v6.15}
 }
 
-@misc{krishnamachari2026stats,
-  author       = {B. Krishnamachari},
-  title        = {How to do statistical evaluations in {ECE/CS} papers: a practical playbook
-                  for defensible results},
-  howpublished = {arXiv preprint arXiv:2605.00428},
-  year         = {2026},
-  note         = {Section~18, ``Outliers, failed runs, and exclusion rules''}
-}
-
 @inproceedings{paxson2004sound,
   author    = {V. Paxson},
   title     = {Strategies for sound {I}nternet measurement},
@@ -1366,6 +1357,22 @@
   note         = {\url{https://openbenchmarks.com/voice-agent-latency/how-voice-agent-latency-is-measured}; both endpoints on one clock, discard counts published per platform and per reason, and differences below the detector's resolution not claimed. Read 2026-08-31}
 }
 
+@misc{bostanci2026ramulator,
+  author       = {Bostanci, F. Nisa and Luo, Haocong and Olgun, Ataberk and
+                  Makeenkova, Maria and de Oliveira, Geraldo F. and
+                  Yaglikci, A. Giray and Mutlu, Onur},
+  title        = {Cleaning up the Mess: Re-Evaluating the Real-System Modeling Accuracy
+                  of {Ramulator 2.0}},
+  howpublished = {arXiv preprint arXiv:2510.15744v4},
+  year         = {2026},
+  month        = may,
+  note         = {Shows a MICRO best-paper runner-up with all three artifact badges,
+                  including Reproducible, reported incorrect simulator results through
+                  configuration errors and could not rebuild its own key results; argues for
+                  mechanisms to correct results and artifacts after publication.
+                  Read 2026-09-03}
+}
+
 @misc{automq2026methodology,
   author       = {{AutoMQ}},
   title        = {{Kafka} benchmark methodology: run fair comparisons},
@@ -1380,7 +1387,7 @@
   title        = {{NATS} vs {Redis} vs {Kafka}: message broker comparison},
   howpublished = {Practitioner comparison},
   year         = {2026},
-  note         = {reports a {Redis} Streams p99 of $0.8$~ms against {Kafka}'s $12.5$~ms, with no retained fraction, rejection count or timestamp resolution. Read 2026-08-31}
+  note         = {\url{https://www.index.dev/skill-vs-skill/nats-vs-redis-vs-kafka}; gives {Kafka} ``sub-10ms latency at p99'' and gives {Redis} and {NATS} no percentile at all, only ``sub-millisecond''. No retained fraction, rejection count, timestamp resolution or send rate. Re-read 2026-09-03: an earlier note here quoted a {Redis} p99 of 0.8~ms against {Kafka}'s 12.5~ms, which is not on the page and has been withdrawn}
 }
 
 @inproceedings{combench2021,
@@ -1423,7 +1430,9 @@
   howpublished = {arXiv preprint arXiv:2605.00428},
   year         = {2026},
   note         = {section 14, ``Latency-Specific Pitfalls'', names three: the mean as a
-                  summary, coordinated omission, and warmup effects. Over 31 pages the words
+                  summary, coordinated omission, and warmup effects; section 18, ``Outliers,
+                  failed runs, and exclusion rules'', is the nearest it comes to a discard
+                  rule. Over 31 pages the words
                   timestamp, resolution, quantization and retention do not occur. Read
                   2026-09-03}
 }

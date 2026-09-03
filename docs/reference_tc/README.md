@@ -258,3 +258,32 @@ to supplementary material S36 under the standing instruction to pass anything un
 the supplement. The two values survive in the main text; only their citations moved. Two slots
 are therefore free for the first time in five rounds — which does **not** mean two citations
 should be found to fill them.
+
+
+## Added round 47 (2026-09-03)
+
+Two fetched while applying round 46's findings, both on the observer-effect side of this
+paper's argument rather than its subject.
+
+| file | arXiv | pages | worth |
+|---|---|---|---|
+| `uringscope_obs.pdf` | 2606.15137 | 9 | **the closest thing to a cost model for our own tracing.** A CO-RE eBPF observability tool for `io_uring` that quantifies its own overhead on the workload it watches -- 0.7 to 9.9% of throughput in aggregate mode -- and argues that being cheap enough to leave on is the design goal. That is the observer-effect question this paper answers once (untraced 0.272 against traced 0.231) and does not otherwise engage. Useful if a referee asks what our tracing cost |
+| `streamguard.pdf` | 2606.30848 | 13 | thin for us. Low-overhead resilience for real-time HPC streams: checkpointing and load redistribution, not measurement validity. Kept so it is not fetched again |
+
+**One correction to the round-46 note.** The Timerlat paper (Bristot de Oliveira et al., *IEEE
+Trans. Comput.* 74(8):2608-2620, 2025) is now **cited in the main text**, in Section V-D beside
+`runqlat`. It was in `manuscript_references.bib` and cited nowhere, and it is the only entry in
+that file published in the target journal. Its PDF is not on arXiv under a retrievable id and
+the publisher copy is paywalled, so this corpus holds the citation rather than the file.
+
+**Reference budget after round 47.** The main text carries **44 of 45**. Round 46 recommended
+two additions and both were made; one, `danzig1990highres`, was then moved to supplementary
+material S33 because the second bibliography entry cost a thirteenth page and S33 is literally
+"the resolution literature engagement in full". Timerlat stayed in the main text because it is
+the venue-critical one. That is the referee's own priority ordering, applied when the page
+budget could not take both.
+
+**One discarded before it was recorded.** `tracing_overhead.pdf` (arXiv:2411.17548, *Tracing
+Optimization for Performance Modeling and Regression Detection*) was fetched and deleted: it is
+ACM-submitted rather than TC, and its subject is reducing tracing cost by sampling functions,
+not the instrument's own validity. `uringscope_obs.pdf` covers the observer-effect point better.

@@ -67,6 +67,11 @@ def tables(text):
             depth += {"{": 1, "}": -1}.get(block[i], 0)
             i += 1
         caption = block[cap.end():i - 1]
+        # A generated table reaches the document through \input, so the tabular the caption
+        # describes is in another file. Round 47 made three tables generated and this gate
+        # reported the first of them as promising bold that "the table does not use", of a
+        # table that uses it -- the gate was reading an empty body. Resolve the include.
+        block = _resolve_inputs(block)
         body = "".join(
             # An optional argument is markup, not data: `\begin{tabular}[t]`, `\addlinespace
             # [2pt]`, `\cmidrule[0.5pt]`. Each one is a pair of square brackets that would
@@ -76,6 +81,24 @@ def tables(text):
             for t in re.finditer(r"\\begin\{tabular\}(.*?)\\end\{tabular\}", block, re.S))
         out.append((text.count("\n", 0, m.start()) + 1, caption, body))
     return out
+
+
+def _resolve_inputs(block):
+    r"""Splice in any `\input{...}` the float pulls its tabular from.
+
+    A generated table reaches the document through `\input`, so the tabular the caption
+    describes lives in another file and a gate that reads only the float sees an empty body.
+    Round 47 made three tables generated; without this the caption gate reported the first of
+    them as promising a bold convention "the table does not use", of a table that uses it.
+    """
+    def swap(m):
+        target = REPO / (m.group(1) + ".tex")
+        if not target.is_file():
+            return m.group(0)
+        return target.read_text(encoding="utf-8").replace("\\", "\\\\")
+
+    return re.sub(r"\\input\{([^}]*)\}",
+                  lambda m: swap(m).replace("\\\\", "\\"), block)
 
 
 def broken_promises(text):

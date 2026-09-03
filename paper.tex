@@ -195,9 +195,11 @@ timescale exceeds $T_{\mathrm{true}}$, the measurement stops describing the syst
 starts describing the instrument. Sub-millisecond broker paths are where that ratio crosses
 one for tooling in current use.
 
-That a measurement degrades as the flight shrinks towards zero is not the claim, and would
-not be worth making: every instrument has such a limit, as sampling has its Nyquist
-frequency. The claim is about where the limit falls, and it does not fall where the
+% Round 47 cut the Nyquist analogy. It said that every instrument has a resolution limit,
+% which the next sentence assumes anyway, and the paragraph's work is done by where the limit
+% falls rather than by the fact that one exists.
+That a measurement degrades as the flight shrinks is not the claim. The claim is about where
+the limit falls, and it does not fall where the
 datasheet says. The stamp is one millisecond, but the timescale that binds is the scheduler's:
 the run-queue stall distribution's last mode sits at $\baseSliceMs$~ms
 (Section~\ref{sec:tail}), three times the quantum and nothing a specification discloses.
@@ -210,8 +212,10 @@ to look up. The instrument gives no sign when the line has been crossed.
 Three, each established by manipulation rather than by observation.
 \textbf{A deletion law} (Section~\ref{sec:external}): what the guard deletes is not
 noise but arithmetic, the retained fraction being fixed by the ratio of send interval to
-timestamp quantum and never shown to the operator. Fourteen arms across seven denominators
-behave as positioned, the powered ones reject a continuum null after correction, and a
+timestamp quantum and never shown to the operator. Across seven denominators, $\spreadAgree$
+of $\spreadArms$ commensurate arms behave as positioned. The two that do not are the
+superseded spread statistic's known failure mode, and its replacement rejects the
+continuum on both. A
 pre-registered payload manipulation moves an arm onto a grid vertex and off it again.
 \textbf{The negative-span mechanism, on one clock} (Section~\ref{sec:mechanism}): the
 acknowledgment-referenced span is the delivery less the acknowledgment lag, $S = D - A$ per
@@ -236,10 +240,10 @@ the benchmark. What follows is what survived. Supplement~S35 has the order of di
 withdrawn claims and the failed pre-registrations, an audit hiding its own failures being
 worth less than one that does not.
 
-Section~\ref{sec:related} places the two failures against the literature that shares these
-instruments, Section~\ref{sec:method} defines the spans and the check, and
-Sections~\ref{sec:external} and~\ref{sec:mechanism} take the deletion law and the
-negative-span mechanism in turn. Section~\ref{sec:authors} is the rule list they produce.
+% Round 47 cut the section-by-section roadmap. IEEEtran numbers the sections and the paper
+% has seven of them with descriptive titles; a paragraph restating that order in prose is the
+% kind of thing the page budget should take first.
+Section~\ref{sec:authors} is the rule list the two failures produce.
 
 \section{Background and Related Work}
 \label{sec:related}
@@ -257,8 +261,8 @@ established~\cite{mytkowicz2009wrong}, and how to report one is a settled litera
 follow~\cite{georges2007rigorous,hoefler2015benchmarking}. Most of those comparisons report a
 median above the quantum, where the law of Section~\ref{sec:external} does not bind. That is
 the scope of our claim rather than a limit on its reach --- but not all of them are above it,
-and a 2026 comparison reporting a sub-millisecond p99 is inside the regime entirely
-(Supplement~S52.3).
+and a 2026 comparison that calls two of three brokers sub-millisecond without naming a
+percentile cannot be placed against the quantum at all (Supplement~S52.3).
 
 The instruments are few and shared, so a defect in one is not one project's problem. The
 audit of Section~\ref{sec:generality} reads \harnessAuditedWord{} tools at source and finds
@@ -333,7 +337,8 @@ the measurement reliable. That is the arm our audit rejects most often.
 
 \subsection{Resolution and discarded samples}
 \label{sec:related_resolution}
-That a timer coarser than the flight invalidates it is textbook~\cite{kuperberg2011timers}.
+That a timer coarser than the flight invalidates it is textbook~\cite{kuperberg2011timers},
+and older than every tool we audit (Supplement~S33).
 Metrology has long carried both our failure modes in one uncertainty budget: the NIST
 stopwatch guide budgets reaction time beside display resolution, and notes that at short
 flights the resolution becomes significant against the instrument's rated
@@ -419,14 +424,17 @@ availability at the consumer:
              + \underbrace{(t_{\mathrm{recv}}-t_{\mathrm{ack}})}_{\text{transport proxy } S} .
 \label{eq:tti}
 \end{equation}
-The three intervals telescope to $t_{\mathrm{recv}}-t_{\mathrm{sched}}$. One stamp sits
-outside them and has to be named, because the tables below subtract from it. The consumer
-writes a second stamp $t_{\mathrm{out}}$ once it has the record in hand, and
-$t_{\mathrm{out}}-t_{\mathrm{recv}}$ is its own handling: $\spanKafkaHandlingNs$~ns under
-\kafka{}, $\spanRedisHandlingNs$~ns under \redis{}, because the two clients deserialize on
-opposite sides of $t_{\mathrm{recv}}$ (Supplement~S43.1). It is a chain and never inverts.
-It matters here because every span referenced to $t_{\mathrm{recv}}$ carries one client's
-payload parse and not the other's; Section~\ref{sec:brokers} says what that is worth.
+% Round 47 trimmed this to the fact the tables need. That the handling span is a chain and
+% never inverts, and the per-broker nanosecond figures, are in S43.1; what the main text has
+% to establish here is only that a fifth stamp exists and that spans referenced to t_recv
+% carry one client's parse and not the other's.
+The three intervals telescope to $t_{\mathrm{recv}}-t_{\mathrm{sched}}$. A fifth stamp sits
+outside them and has to be named, because the tables below subtract from it: the consumer
+writes $t_{\mathrm{out}}$ once it has the record in hand, and
+$t_{\mathrm{out}}-t_{\mathrm{recv}}$ is its own handling, which differs between the two
+clients because they deserialize on opposite sides of $t_{\mathrm{recv}}$
+(Supplement~S43.1). Every span referenced to $t_{\mathrm{recv}}$ therefore carries one
+client's payload parse and not the other's; Section~\ref{sec:brokers} says what that is worth.
 
 \paragraph{One component is a proxy, not a chain}
 \label{sec:proxy}
@@ -498,8 +506,9 @@ measuring one millisecond fail wholesale.
 \subsection{Statistics}
 \label{sec:stats}
 Every proportion below is a count over a stated denominator with a Wilson score $95\%$
-interval --- Wilson rather than Wald because at the real-time arms' rates the normal
-approximation puts the lower bound below zero. Holm correction is applied within a
+interval, not Wald: at the real-time arms' rates the normal approximation is shifted low and
+covers below its nominal rate. At the smallest arm, $10$ of $2{,}985$, Wald gives
+$[0.0013, 0.0054]$ against Wilson's $[0.0018, 0.0062]$. Holm correction is applied within a
 named family, and the corrected value is the one the tables display. Tail indices are
 estimated on the traced histogram by grouped maximum likelihood and by an exceedance ratio,
 never by a slope through survival points, because the buckets are interval-censored. The
@@ -598,8 +607,9 @@ happens with probability $T_{\mathrm{true}}/\tau$ (Supplement~S51 draws the geom
 \qquad\text{(uniform phases).}
 \end{equation}
 
-Both incommensurate arms sit near $50\%$, implying $T_{\mathrm{true}} \approx 0.5$~ms at
-$\tau = 1$~ms.
+All \spreadIncommensurateWord{} incommensurate arms sit near $50\%$ --- medians
+$\spreadIncommensurateLo$ to $\spreadIncommensurateHi$ --- implying
+$T_{\mathrm{true}} \approx 0.5$~ms at $\tau = 1$~ms.
 
 \paragraph{Commensurability is not binary}
 \label{sec:extquant}
@@ -619,7 +629,7 @@ spread follows:
 \end{cases}
 \end{equation}
 Both branches are limits. The lower is not zero because a nominally commensurate rate is not
-exactly commensurate; the two arms that sit on a vertex spread by roughly a quarter to a third
+exactly commensurate; the two arms that sit on a vertex spread by roughly three tenths
 of the mid-cell width, too few to fix a constant (Supplement~S23).
 
 A round send rate is the worst possible choice, and exactness decides it: Supplement~S23
@@ -647,8 +657,8 @@ replicate noise and which side of the diagonal it falls on is not evidence eithe
 nearest grid vertex against the distance a continuum would give, which is the diagonal. The
 gray bar beside each arm, offset a little to clear the diagonal and mirrored for the two arms
 it would otherwise push onto the axis, is that
-arm's own null, simulated: the test is one-sided towards the grid, so a marker \emph{below}
-its bar is an arm that rejects and a marker above one is not, which is what lets the picture
+arm's own null, simulated. The test is one-sided towards the grid, so a marker \emph{below}
+its bar is an arm that rejects and a marker above one is not; that is what lets the picture
 carry the test rather than illustrate it. Filled circles
 reject after Holm correction; the open circle is the one powered arm that does not, and it
 sits at the edge of its bar rather than below it. The $\gridFlat$ squares are the arms
@@ -662,9 +672,9 @@ Per-arm corrected $p$-values are in Supplement~S46.}
 \label{sec:extcomp}
 Payload moves $T_{\mathrm{true}}$, hence the grid position, and Equation~\ref{eq:quant}
 dictates the arm's class with nothing else changed. The prediction was registered before
-the runs, and it came true. Spread collapses to $13.6$ at
-$32$~KB, three replicates within $0.06$ of each other, pinned near the $2/3$ vertex. It
-re-opens to $26.7$ at $64$~KB: the flat--full boundary crossed in both directions by one
+the runs, and it came true: spread collapses to $13.6$ at
+$32$~KB, pinned near the $2/3$ vertex, and re-opens to $26.7$ at $64$~KB --- the flat--full
+boundary crossed in both directions by one
 manipulated variable. One registered detail failed --- the $32$~KB pin sits at $69.2$, not
 the predicted $66.67$. Supplement~S31 draws all three arms against their grid.
 
@@ -674,8 +684,12 @@ the predicted $66.67$. Supplement~S31 draws all three arms against their grid.
 % number the panels carry is in the sentence above them, so the figure restates rather than
 % shows, and four biographies would not otherwise fit inside twelve pages.
 
-A larger campaign registered six predictions with their falsifiers before running $63$
-cells; three fired, and what survives is per-send jitter rather than accumulation
+% Round 47 cut the sixty-three-cell campaign's tally to its conclusion. It was two sentences
+% of tier-4 evidence -- six registered predictions, three falsifiers fired -- and S55 gives
+% every one of them prediction by prediction, so the main text was carrying an index to a
+% table rather than a result. The page it bought went to the two citations round 46 asked
+% for, one of them a paper in this journal on this section's own subject.
+A larger campaign leaves per-send jitter rather than accumulation standing
 (Supplement~S55).
 
 \subsection{Generality, and the sign channel}
@@ -867,7 +881,7 @@ Real-time priority on the stamping threads moves occupancy while utilization sta
 intervals on the ratio itself, wide because the collapsed arms are the sparse ones, and
 the Wilson intervals of the two arms are disjoint at both load levels
 ($z = \rtLowZ$ and $z = \rtHighZ$). Both residual rates land on the scale the model
-names in advance, $C_0 \approx 0.004$; over all $\rtResidualPairs$ pairs the manipulated arm
+names in advance, $C_0 \approx \invFloor$; over all $\rtResidualPairs$ pairs the manipulated arm
 runs from $\rtResidualMin$ to $\rtResidualMax$, so $C_0$ is where the rate settles and not a
 bound it respects. \emph{This refutes every account in which the
 negative-span rate is a function of utilization}, including the queueing form we ourselves
@@ -896,11 +910,13 @@ $\untracedRate$ untraced against
 $\tracedRate$ traced ($z = \observerZ$), and the comparison uses the traced arm's own rate,
 so $\untracedRate$ is the machine's (Supplement~S43.4).
 
+% Round 47 cut this tier-5 negative result to the one sentence the tier rule allows. The two
+% failed fits, their R-squared and the registered bracket are in S2 in full; the main text
+% needs only the conclusion, which is that both candidates were parameterized in the wrong
+% variable.
 \paragraph{The load-axis predictions, and their failure}
-The knee sweep placed conditions where the candidate load laws diverge, and both failed. The
-M/G/1 form fitted \emph{worse than the mean} ($R^2 = -0.05$), and our own registered bracket
-missed a $1.44\times$ growth by predicting $2.45$--$3.07\times$. Both were parameterized in
-$\rho$, and $\rho$ is not the variable (Supplement~S2).
+The knee sweep placed conditions where the candidate load laws diverge and both failed,
+because both were parameterized in $\rho$ and $\rho$ is not the variable (Supplement~S2).
 
 % The payload-sweep figure moved to the supplement, beside the fit it draws. The prose two
 % paragraphs below already said "four points do not earn an equation here" and sent the fit
@@ -910,7 +926,10 @@ $\rho$, and $\rho$ is not the variable (Supplement~S2).
 \subsection{The stall spectrum, and the scheduler's slice}
 \label{sec:tail}
 That this distribution is not a single heavy tail is known --- B.~Gregg reported it as bimodal
-in the post introducing \texttt{runqlat}, the tool we use~\cite{gregg2016runqlat}. What we add
+in the post introducing \texttt{runqlat}, the tool we use~\cite{gregg2016runqlat}. The rigorous
+treatment of that measurement is \texttt{timerlat}, which decomposes scheduling latency
+into its interrupt and thread components and separates the tracer's own cost from
+them~\cite{bristot2025timerlat}. What we add
 is which modes, and why the upper one sits where it does.
 
 Raising the payload from $0$ to $256$~KB lengthens the true transport
@@ -1097,11 +1116,14 @@ record at native resolution, count what is discarded, dither the send instant, a
 is synchronization quality the frontier --- our cross-host retention wandered
 $\harnessXHostRetLo$--$\harnessXHostRetHi\%$ under clocks agreeing to well under a tick
 (Section~\ref{sec:generality}).
-The obvious redesign, a consumer-to-producer acknowledgment, removes skew but not this
-failure, and every scheme avoiding the one-way requirement rests on an unstated
-assumption (Supplements~S37 and~S43.6). Resolution is the lesser half, and a distinct
-one. A microsecond stamp retires Equation~\ref{eq:retention}'s deletions here and moves the
-grid to faster paths, but the guard survives it and genuine negatives do too. A better
+% Round 47 cut the redesign clause to its pointer. That a consumer-to-producer acknowledgment
+% removes skew but not this failure, and that every one-way-avoiding scheme rests on an
+% unstated assumption, are both worked through in S37 and S43.6; the main text needs the
+% conclusion, which is the last sentence of this paragraph.
+Resolution is the lesser half, and a distinct
+one: a microsecond stamp retires Equation~\ref{eq:retention}'s deletions here and moves the
+grid to faster paths, but the guard survives it and genuine negatives do too, and the obvious
+redesign does not help either (Supplements~S37 and~S43.6). A better
 clock alone therefore converts an uncounted \emph{resolution} failure into an uncounted
 \emph{instrument} one.
 
@@ -1137,6 +1159,11 @@ not the scheduler's --- the stamp is a CPython call, so it waits on the interpre
 too, invisibly to a tracepoint probe. That one is bounded because the kernel-only estimator
 brackets the observed rate ($\tracedRatios$) instead of under-predicting (Supplement~S43.4).
 
+% Round 47 tried to compress this paragraph for the page budget and put both of its pinned
+% clauses back. "both of which" is the plural antecedent for the two admitted clocksources,
+% and "on headroom, not on shared endpoints" is the only visible trace of an argument this
+% paper abandoned -- an early version reasoned from the shared closing clock read, which does
+% not discriminate. Two tests hold them; the words for the budget came from elsewhere.
 Clock incoherence across vCPUs needs its own answer, our machines being
 virtual~\cite{kvmclock}, and gets one twice over. The probe's $\clockIncrementNs$~ns
 increment admits only \clockAdmitted{}, both of which the kernel uses solely where cross-CPU

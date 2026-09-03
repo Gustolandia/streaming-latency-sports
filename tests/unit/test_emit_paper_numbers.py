@@ -1630,10 +1630,10 @@ class TestSpreadMacros:
     """
 
     @staticmethod
-    def cell(rate, q, predicted, observed, commensurate=True):
+    def cell(rate, q, predicted, observed, commensurate=True, median=50.0):
         return {"rate_hz": rate, "q": q, "commensurate": commensurate,
                 "predicted": predicted, "observed": observed,
-                "agrees": predicted == observed}
+                "agrees": predicted == observed, "median": median}
 
     def test_the_counts_come_out_of_the_arms(self, monkeypatch):
         import stat_intervals
@@ -1711,45 +1711,53 @@ class TestSpreadMacros:
         assert epn._spell_rate(1234) == "Rate1234"
 
 
-class TestControlArmMacros:
-    """The pre-registered denominator control, replicate by replicate."""
+class TestArmMacros:
+    """Every arm the supplement narrates, replicate by replicate.
+
+    Round 47 generalised `control_arm_macros` over six arms after round 46 found the same
+    stale-narrative defect on four more of them, and gave each arm a declared field list
+    so that emitting a quantity nobody quotes is impossible rather than merely discouraged.
+    """
 
     @staticmethod
-    def write_ledger(tmp_path, retentions, rate=600):
+    def write_ledger(tmp_path, retentions, rate=600, q=3, cell=33.333):
+        """A ledger row with the columns the emitter reads: q and the cell width decide the
+        branch geometry, so a fixture without them is testing a different function."""
         target = tmp_path / "docs" / "results" / "external"
         target.mkdir(parents=True, exist_ok=True)
         (target / "phase_quantisation.csv").write_text(
-            "rate_hz,commensurate,n,spread_pts,retentions\n"
-            "%d,True,%d,0.0,%s\n" % (rate, len(retentions.split()), retentions),
+            "rate_hz,commensurate,q,cell_width_pts,n,spread_pts,retentions\n"
+            "%d,True,%d,%s,%d,0.0,%s\n"
+            % (rate, q, cell, len(retentions.split()), retentions),
             encoding="utf-8")
 
     def test_the_branch_counts_are_a_function_of_the_replicates(self, monkeypatch, tmp_path):
         self.write_ledger(tmp_path, "33.975 34.293 34.899 36.168 65.864 66.672")
         monkeypatch.chdir(tmp_path)
-        got = dict(epn.control_arm_macros())
-        assert got["controlRate"] == "600"
-        assert got["controlLowerWord"] == "four"
-        assert got["controlUpperWord"] == "two"
-        assert got["controlWidest"] == "36.17"
-        assert got["controlWidestGap"] == "2.83"
+        got = dict(epn.arm_macros())
+        assert got["armSixHundredRate"] == "600"
+        assert got["armSixHundredLowerWord"] == "four"
+        assert got["armSixHundredUpperWord"] == "two"
+        assert got["armSixHundredWidest"] == "36.17"
+        assert got["armSixHundredWidestGap"] == "2.83"
 
     def test_adding_a_replicate_moves_the_count(self, monkeypatch, tmp_path):
         """The defect this exists for: the prose said three and two of an arm that had four
         and two the moment the ledger was rebuilt."""
         self.write_ledger(tmp_path, "33.975 34.293 34.899 65.864 66.672")
         monkeypatch.chdir(tmp_path)
-        got = dict(epn.control_arm_macros())
-        assert got["controlLowerWord"] == "three"
-        assert got["controlUpperWord"] == "two"
+        got = dict(epn.arm_macros())
+        assert got["armSixHundredLowerWord"] == "three"
+        assert got["armSixHundredUpperWord"] == "two"
 
     def test_an_absent_ledger_emits_nothing(self, monkeypatch, tmp_path):
         monkeypatch.chdir(tmp_path)
-        assert epn.control_arm_macros() == []
+        assert epn.arm_macros() == []
 
     def test_an_arm_not_in_the_ledger_emits_nothing(self, monkeypatch, tmp_path):
-        self.write_ledger(tmp_path, "33.9 66.6", rate=300)
+        self.write_ledger(tmp_path, "33.9 66.6", rate=999)
         monkeypatch.chdir(tmp_path)
-        assert epn.control_arm_macros(rate=600) == []
+        assert epn.arm_macros() == []
 
     def test_an_arm_with_no_replicates_recorded_emits_nothing(self, monkeypatch, tmp_path):
         """A blank `retentions` is the only empty case; once it is non-blank, splitting it
@@ -1760,15 +1768,39 @@ class TestControlArmMacros:
             "rate_hz,commensurate,n,spread_pts,retentions\n600,True,0,0.0,\n",
             encoding="utf-8")
         monkeypatch.chdir(tmp_path)
-        assert epn.control_arm_macros() == []
+        assert epn.arm_macros() == []
 
     def test_a_single_replicate_still_renders_as_one_value(self, monkeypatch, tmp_path):
         self.write_ledger(tmp_path, "33.40")
         monkeypatch.chdir(tmp_path)
-        got = dict(epn.control_arm_macros())
-        assert got["controlReplicates"] == "$33.40$"
-        assert got["controlLowerWord"] == "one"
-        assert got["controlUpperWord"] == "zero"
+        got = dict(epn.arm_macros())
+        assert got["armSixHundredReplicates"] == "$33.40$"
+        assert got["armSixHundredLowerWord"] == "one"
+        assert got["armSixHundredUpperWord"] == "zero"
+
+
+    def test_an_arm_with_no_cell_width_still_emits_its_other_fields(self, monkeypatch,
+                                                                    tmp_path):
+        """A commensurate row whose cell width is missing has no cell to report, and that is
+        not a reason to drop the replicate list beside it."""
+        target = tmp_path / "docs" / "results" / "external"
+        target.mkdir(parents=True, exist_ok=True)
+        (target / "phase_quantisation.csv").write_text(
+            "rate_hz,commensurate,q,cell_width_pts,n,spread_pts,retentions\n"
+            "250,True,1,0.0,2,1.0,10.00 20.00\n",
+            encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        got = dict(epn.arm_macros())
+        assert got["armTwoFiftyRate"] == "250"
+        assert "armTwoFiftyCell" not in got, "no cell width, so no cell macro"
+
+    def test_an_unreadable_cell_width_is_treated_as_absent(self):
+        """`float(None)` and `float("")` are both real outcomes for a malformed ledger row,
+        and neither should take the arm's other fields down with it."""
+        assert epn._float_or_zero("33.3") == 33.3
+        assert epn._float_or_zero(None) == 0.0
+        assert epn._float_or_zero("") == 0.0
+        assert epn._float_or_zero("not-a-width") == 0.0
 
 
 class TestIntervalTable:

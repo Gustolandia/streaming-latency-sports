@@ -536,6 +536,7 @@ TTI = t_consume_ns − t_prod_sched_ns
 | TTI | `t_consume_ns − t_prod_sched_ns` | End-to-end time-to-insight |
 | Transport latency | `t_cons_recv_ns − t_broker_ack_ns` | Network + broker overhead |
 | Producer scheduling lag | `t_prod_send_ns − t_prod_sched_ns` | Producer-side delay |
+| Consumer handling span | `t_output_ns − t_cons_recv_ns` | The consumer's own work. Added round 43, and the reason it is listed here is that the two clients do not take these two stamps in the same place: Kafka's parses the payload inside `poll()`, before `t_cons_recv_ns`; Redis's parses it between the two stamps. Median 281 ns and 19,480 ns respectively, so every span referenced to `t_cons_recv_ns` carries one client's parse and not the other's. Disclosed and bounded in supplement S43.1; pinned by `tests/unit/test_consumer_stamp_placement.py` |
 | TTI p50 / p95 / p99 | percentiles of TTI | Median, 95th, 99th |
 | Missed-window rate | `count(TTI > W) / count(TTI)` | Fraction exceeding window *W* |
 | **S3** Correction propagation | `t_correction_consume − t_base_consume` | Time for a correction to land |
@@ -667,7 +668,10 @@ streaming-latency-sports/
 │   │                                                    #   bounded from a measurement
 │   ├── make_paper_figures.py · make_result_figures.py    # figures, from artefacts
 │   ├── recount_spans.py                                 # per-span negatives + the
-│   │                                                    #   shared-stamp contrast
+│   │                                                    #   shared-stamp contrast, over
+│   │                                                    #   five spans since round 43:
+│   │                                                    #   the fifth joins the consumer's
+│   │                                                    #   two stamps to each other
 │   ├── generate_manuscript_analysis.py
 │   └── run_*_trial.ps1 · build_*_outputs.ps1   # Windows/PowerShell runners
 │
@@ -861,7 +865,7 @@ compiled from the same commit.
 | Asset | Purpose |
 |-------|---------|
 | `paper.tex` | The paper (`IEEEtran`, journal; Intro, Related Work, Setting, Method, First Answer, Audit, Second Failure Mode, What Survives, Discussion, Conclusion) |
-| `supplement.tex` | Companion supplement S1–S35 (`docs/supplement_index.md` maps what moved where) |
+| `supplement.tex` | Companion supplement S1–S55 (`docs/supplement_index.md` maps what moved where) |
 | `manuscript_references.bib` | Bibliography |
 | `IEEEtran.cls` | IEEE article class (from TeX Live/MiKTeX) |
 
@@ -899,11 +903,18 @@ That failure reached the manuscript three times here, twice past a full source-l
 is why the check now runs on the artefact a reader actually receives.
 
 **Status:** compiles clean — 0 errors, 0 undefined references or citations, 0 overfull boxes,
-11 pages against TC's 10–12 budget, exactly 45 references against TC's cap of 45, and a
-195-word abstract against TC's 100–200 range, with a 41-page supplement. Title: *When the
-Interval Is Smaller Than the Instrument: Two Ways Streaming Latency Benchmarks Fail on
-Sub-Millisecond Paths*. Formatted with `IEEEtran` (journal, 10pt) for IEEE Transactions on
-Computers.
+12 pages against TC's 10–12 budget, exactly 45 references against TC's cap of 45, a 200-word
+abstract against TC's 100–200 range, and four author biographies inside TC's 145-word cap,
+with a 52-page supplement. Five figures and two tables. Title: *Faster Than Light, According
+to the Arithmetic: Two Ways a Streaming Benchmark Fails on Sub-Millisecond Paths*. Formatted
+with `IEEEtran` (journal, 10pt) for IEEE Transactions on Computers.
+
+Sentence length is gated too, since round 43. A co-author reported that average sentence
+length ran higher than he would have set it, and asked for the claim to be measured rather
+than judged by ear: the main text was at a median of 28 words against 19–22 across five TC
+papers extracted the same way. `tests/unit/test_sentence_length.py` now caps the median at
+the top of that venue range, caps the share of sentences over forty words, and caps the
+longest. The build sits at a median of 22, a mean of 22.5, and a longest sentence of 53.
 
 Two of the four gates write as well as check. `scripts/emit_paper_numbers.py` generates both
 `docs/generated/paper_numbers.tex` (the macros the manuscript quotes) and
@@ -1013,6 +1024,40 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 ---
 
 ## 16. Changelog
+
+### Unreleased — round 43 — the consumer's stamps, audited at last
+**No measured result changes.** One quantity is disclosed that was never measured before, and
+three published numbers are corrected in their last digit.
+
+The finding is a gap in an audit. Supplement S43.1 is titled *"Where each stamp is actually
+taken"* and audited three stamps, all producer-side — while every span the paper reports
+*ends* at a consumer stamp, and the two consumers do not take theirs in the same place.
+Kafka's client is given a `value_deserializer`, so the payload is parsed inside `poll()`,
+before `t_cons_recv_ns`; the Redis consumer stamps first and parses afterwards. Measured by
+adding a fifth span to `recount_spans.py`: a median handling span of **281 ns under Kafka
+against 19,480 ns under Redis**, a factor of 69, on a stamp neither document had named. It is
+now named in §III-A, bounded in §VI-A at 2.4% of the delivery it sits inside, set out in full
+in S43.1, and pinned by `tests/unit/test_consumer_stamp_placement.py`. The direction is
+stated in both places: it cannot move the S48 equivalence, and it runs *against* the
+per-broker gap in Table I rather than producing it.
+
+Three corrections found while fixing it, none of which changes a claim:
+
+- The grid figure's x-axis held the distance of θ from its vertex with no replicate noise,
+  while the test simulates noisy replicates — the distance of the expectation against the
+  expectation of the distance. The supplement's caption asserted it *was* that expectation.
+  Now the simulated mean, with the null's central 90% drawn per arm, and a gate that the
+  centre lies inside its own band. No p-value or verdict moved.
+- `grid_membership_test.py` defaulted to 20,000 Monte Carlo draws while the committed CSV had
+  been written at 4,000, so running it with its own default moved every p-value at the floor.
+- Two typed numbers had drifted: cross-host retention runs 13.4 to **26.9**%, not 27.0, and
+  its one-clock twin holds to **0.98** points, not 0.8. Both now read from the ledger.
+
+Also: the inter-host offset resolves from one macro instead of being typed three times in two
+roundings; Figure 3 separates markers its own legend counts (two 256 KB replicates 1.4% apart
+had rendered as one); Figure 5(a) is a swarm rather than a sorted staircase on an axis with
+no variable; the payload-flip figure moved to supplement S31; and the main text's median
+sentence fell from 28 words to 22, inside the range measured across five TC papers.
 
 ### 2.6.0 — 2026-08-25 — Transactions on Computers submission package
 Fourteen further rounds of adversarial internal review, all of them on presentation and

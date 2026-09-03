@@ -449,3 +449,82 @@ class TestTheRowsAndFragmentsThatCarryNothing:
         got = si.occupancy_bounds()
         assert got["ceiling"] == 0.42
         assert got["median"] == 0.31
+
+
+class TestHarnessArmSpreads:
+    """Retention spread per rate arm, one clock against two.
+
+    The manuscript said cross-host retention "wandered from 13.4 to 27.0%" over four
+    replicates "where the same arm on one clock held to 0.8 points". Both numbers were
+    typed, and both had drifted: the arm runs 13.4 to 26.9, and its one-clock twin holds to
+    0.98 points, which is what three of its four replicates span. The claim was unchanged;
+    only the digits were wrong, which is the usual shape of this defect.
+    """
+
+    @staticmethod
+    def _rows(rows):
+        return [{"rate_hz": str(rate), "cross_host": xh, "kept": str(kept),
+                 "discarded_zero": str(1000 - kept), "discarded_negative": "0"}
+                for rate, xh, kept in rows]
+
+    def test_only_arms_measured_in_both_topologies_are_returned(self, monkeypatch):
+        """A one-sided arm cannot support the comparison the sentence makes."""
+        monkeypatch.setattr(si, "_rows", lambda *p: self._rows([
+            (457, "True", 134), (457, "True", 269),
+            (457, "False", 295), (457, "False", 305),
+            (300, "True", 400),
+        ]))
+        got = si.harness_arm_spreads()
+        assert set(got) == {457}, "300 has no one-clock twin and cannot be compared"
+
+    def test_the_endpoints_are_the_arm_extremes(self, monkeypatch):
+        monkeypatch.setattr(si, "_rows", lambda *p: self._rows([
+            (457, "True", 134), (457, "True", 161), (457, "True", 269),
+            (457, "False", 295), (457, "False", 305),
+        ]))
+        got = si.harness_arm_spreads()[457]
+        assert got["cross_host"] == (13.4, 26.9)
+        assert round(got["one_clock"][1] - got["one_clock"][0], 1) == 1.0
+
+    def test_a_run_that_took_no_samples_is_skipped_not_divided_by(self, monkeypatch):
+        monkeypatch.setattr(si, "_rows", lambda *p: [
+            {"rate_hz": "457", "cross_host": "True", "kept": "0",
+             "discarded_zero": "0", "discarded_negative": "0"},
+            {"rate_hz": "457", "cross_host": "True", "kept": "134",
+             "discarded_zero": "866", "discarded_negative": "0"},
+            {"rate_hz": "457", "cross_host": "False", "kept": "295",
+             "discarded_zero": "705", "discarded_negative": "0"},
+        ])
+        assert si.harness_arm_spreads()[457]["cross_host"] == (13.4, 13.4)
+
+    def test_an_unreadable_row_is_skipped_rather_than_raising(self, monkeypatch):
+        """One mangled row must not cost the arm its comparison; a shrinking denominator
+        is how a split total starts disagreeing with the pooled one."""
+        monkeypatch.setattr(si, "_rows", lambda *p: [
+            {"rate_hz": "not-a-rate", "cross_host": "True", "kept": "1",
+             "discarded_zero": "1", "discarded_negative": "0"},
+            {"rate_hz": "457", "cross_host": "True", "kept": "134",
+             "discarded_zero": "866", "discarded_negative": "0"},
+            {"rate_hz": "457", "cross_host": "False", "kept": "295",
+             "discarded_zero": "705", "discarded_negative": "0"},
+        ])
+        assert set(si.harness_arm_spreads()) == {457}
+
+    def test_a_row_missing_a_column_entirely_is_skipped(self, monkeypatch):
+        monkeypatch.setattr(si, "_rows", lambda *p: [
+            {"rate_hz": "457", "cross_host": "True"},
+            {"rate_hz": "457", "cross_host": "True", "kept": "134",
+             "discarded_zero": "866", "discarded_negative": "0"},
+            {"rate_hz": "457", "cross_host": "False", "kept": "295",
+             "discarded_zero": "705", "discarded_negative": "0"},
+        ])
+        assert set(si.harness_arm_spreads()) == {457}
+
+    def test_the_committed_ledger_gives_the_numbers_the_paper_prints(self):
+        """End to end, on the artefact: this is the pair the macros resolve from."""
+        got = si.harness_arm_spreads()
+        assert 457 in got, "the r457 arm is the one the sentence is about"
+        lo, hi = got[457]["cross_host"]
+        olo, ohi = got[457]["one_clock"]
+        assert (round(lo, 1), round(hi, 1)) == (13.4, 26.9)
+        assert round(ohi - olo, 2) == 0.98

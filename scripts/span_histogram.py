@@ -154,9 +154,14 @@ def consume_run(acc, prod_rows, cons_rows):
         except (KeyError, TypeError, ValueError):
             continue
         counted += 1
-        for name, cons_col, prod_col in SPANS:
-            recv_ns = cons[cons_col]
-            ref_ns = prod[prod_col]
+        # One merged dict per event, matching `recount_spans.join_run`. Round 43 added a
+        # fifth span whose two endpoints are both consumer stamps, so looking the later one
+        # up in `cons` and the earlier one in `prod` stopped being possible.
+        event = dict(prod)
+        event.update(cons)
+        for name, later, earlier in SPANS:
+            recv_ns = event[later]
+            ref_ns = event[earlier]
             add_event(acc, name, recv_ns - ref_ns, recv_ns, ref_ns)
     return counted
 

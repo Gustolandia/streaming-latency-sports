@@ -196,6 +196,11 @@ def grid_cells(path=os.path.join("external", "grid_membership.csv")):
             "n": int(r["n"]),
             "d_observed": float(r["D_observed"]),
             "d_null": float(r["D_null_center"]),
+            # The null's own central 90%, so a reader can see how far an arm can fall by
+            # chance instead of judging distance from a line. Absent in ledgers written
+            # before round 43, and optional for that reason.
+            "d_null_lo": float(r["D_null_lo"]) if r.get("D_null_lo") else None,
+            "d_null_hi": float(r["D_null_hi"]) if r.get("D_null_hi") else None,
             "p_raw": float(r["p_value"]),
             "p_holm": p_adj,
             "powered": powered,
@@ -270,6 +275,43 @@ def harness_cells(path=os.path.join("external", "harness_results.csv")):
             "kept": sum(int(r["kept"]) for r in cells),
             "negatives": sum(int(r["discarded_negative"]) for r in cells),
         }
+    return out
+
+
+def harness_arm_spreads(path=os.path.join("external", "harness_results.csv")):
+    """Retention spread per rate arm, one clock against two, from the same ledger.
+
+    The manuscript said cross-host retention "wandered from 13.4 to 27.0%" over four
+    replicates "where the same arm on one clock held to 0.8 points". Both numbers were
+    typed. Recomputed here the arm runs 13.4 to 26.9, and its one-clock twin holds to 1.0
+    points rather than 0.8 -- the second is what three of its four replicates span, so the
+    sentence had been written against a ledger with one row fewer and never revisited.
+
+    Neither correction touches the claim, which is that the cross-host arm wanders by an
+    order of magnitude more than the co-located one. That is the usual shape of this defect:
+    the argument survives and the digits do not, and a reader checking the digits finds the
+    paper wrong about its own data.
+
+    Returns {rate_hz: {"one_clock": (lo, hi), "cross_host": (lo, hi)}} for arms measured in
+    both topologies, so the comparison is always like with like.
+    """
+    rows = _rows(*path.split(os.sep))
+    per = {}
+    for r in rows:
+        try:
+            rate = int(r["rate_hz"])
+            kept = int(r["kept"])
+            seen = kept + int(r["discarded_zero"]) + int(r["discarded_negative"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if seen <= 0:
+            continue
+        key = "cross_host" if r["cross_host"].strip().lower() == "true" else "one_clock"
+        per.setdefault(rate, {}).setdefault(key, []).append(100.0 * kept / seen)
+    out = {}
+    for rate, groups in per.items():
+        if {"one_clock", "cross_host"} <= set(groups):
+            out[rate] = {k: (min(v), max(v)) for k, v in groups.items()}
     return out
 
 

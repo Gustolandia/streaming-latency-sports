@@ -24,6 +24,7 @@ CLI:
 import math
 import argparse
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -31,6 +32,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from check_paper_omb_numbers import load_cells, measured  # noqa: E402
 import audit_ledger  # noqa: E402
 import check_fork_exposure  # noqa: E402
+import grid_membership_test  # noqa: E402
 import priority_pairs  # noqa: E402
 import recount_spans  # noqa: E402
 
@@ -147,6 +149,17 @@ def span_macros(path=SPAN_CSV):
             ("span%sRunsAckInvertsPct" % key, "%.0f" % (
                 100.0 * agg["runs_ack_inverts"] / agg["runs"] if agg["runs"] else 0.0)),
         ])
+        # The consumer's own handling span, which is where the two clients differ in what
+        # falls inside the transport proxy. Nanoseconds for both, because one of them is two
+        # adjacent clock reads and any coarser unit prints it as zero -- which is how the
+        # asymmetry stayed invisible until round 43.
+        if "median_output_ns" in agg:
+            out.append(("span%sHandlingNs" % key,
+                        latex_thousands(int(round(agg["median_output_ns"])))))
+    handling = [agg["median_output_ns"] for agg in split.values()
+                if "median_output_ns" in agg and agg["median_output_ns"] > 0]
+    if len(handling) > 1:
+        out.append(("spanHandlingRatio", "%.0f" % (max(handling) / min(handling))))
     # The pooled floor is the smaller of the two; the manuscript says so, so the other one
     # has to be a number it can print rather than a claim it makes.
     if len(floors) > 1:
@@ -366,6 +379,11 @@ def grid_macros():
         ("gridPowered", str(len(powered))),
         ("gridReject", str(len(reject))),
         ("gridFlat", str(sum(1 for c in cells if not c["powered"]))),
+        # The supplement's caption said 10^4 draws and the committed artefact was written
+        # with 4,000. Nobody noticed, because the floor of a Monte Carlo p-value sits far
+        # below every threshold the paper uses; the caption was still wrong, and the number
+        # of draws is the kind of thing a reader recomputing the test needs exactly.
+        ("gridDraws", latex_thousands(grid_membership_test.MC_ARMS)),
     ]
     if unresolved:
         u = unresolved[0]
@@ -665,6 +683,38 @@ def mechanism_macros():
                 out += [("harness%sSamples" % name, latex_thousands(h[key]["sent"])),
                         ("harness%sNegatives" % name, latex_thousands(h[key]["negatives"])),
                         ("harness%sRuns" % name, str(h[key]["runs"]))]
+    except (OSError, KeyError, ValueError):
+        pass
+    # The cross-host wander and its co-located twin. Both were typed, and both had drifted
+    # from the ledger: 27.0 against a measured 26.9, and 0.8 points against a measured 1.0.
+    # The arm reported is the one with the widest cross-host spread, which is the arm the
+    # sentence is about.
+    # The claim is that the second clock adds wander, so the arm to report is the one where
+    # the topology makes the difference: widest cross-host spread RELATIVE to its own
+    # one-clock twin, not widest in absolute terms. Absolute picks the q=2 arm, whose
+    # replicates run 0 to 100 under either topology because it sits on the all-or-nothing
+    # corner of the grid -- a property of the rate, not of the second clock.
+    try:
+        spreads = stat_intervals.harness_arm_spreads()
+
+        def _contrast(rate):
+            (xlo, xhi), (olo, ohi) = (spreads[rate]["cross_host"],
+                                      spreads[rate]["one_clock"])
+            own = ohi - olo
+            return (xhi - xlo) / own if own > 0 else 0.0
+
+        if spreads:
+            rate = max(spreads, key=_contrast)
+            lo, hi = spreads[rate]["cross_host"]
+            olo, ohi = spreads[rate]["one_clock"]
+            # Two decimals on the one-clock spread, and not for precision's sake. At one
+            # decimal it emits "1.0", which is also the millisecond quantum this paper
+            # prints on four other lines, so the ledger sweep cannot tell a typed quantum
+            # from a transcribed spread. A macro whose value collides with ordinary prose
+            # blinds the gate that polices transcription.
+            out += [("harnessXHostRetLo", "%.1f" % lo),
+                    ("harnessXHostRetHi", "%.1f" % hi),
+                    ("harnessOneClockSpread", "%.2f" % (ohi - olo))]
     except (OSError, KeyError, ValueError):
         pass
     try:
@@ -1377,6 +1427,91 @@ def fork_macros():
     ]
 
 
+_SYSTIME_RE = re.compile(r"([0-9.]+)\s*seconds\s*(fast|slow)\s*of\s*NTP", re.I)
+
+
+def inter_host_offset_macros(path=os.path.join("docs", "results", "depth",
+                                               "clock_offsets.csv")):
+    r"""The two hosts' clock disagreement, from the capture that measured it.
+
+    This number appeared three times in the main text as a literal -- twice as
+    "$0.067$~ms" and once, three sections later, as "${\approx}70\,\mu$s of chrony
+    agreement". Two roundings of one quantity, and in Section III-A the first of them sits
+    two lines from the pacer jitter of "$67$--$69\,\mu$s at p90", which is a different
+    quantity that happens to round to the same number. A reader can be forgiven for taking
+    one as a typo for the other.
+
+    The estimator is stated rather than implied: `chronyc tracking` reports each host's
+    system time as fast or slow of NTP time, and the offset between two hosts is the
+    difference of those signed quantities. On the two-host depth campaign the driver ran
+    21.4 microseconds fast and the broker 45.6 slow, so they disagree by 67.0. The
+    microsecond form is emitted beside the millisecond one so both places in the text can
+    read the same measurement in the unit that suits them.
+    """
+    import csv as _csv
+    try:
+        with open(path, encoding="utf-8") as fh:
+            rows = list(_csv.DictReader(fh))
+    except OSError:
+        return []
+    signed = {}
+    for r in rows:
+        if r.get("measurement") != "System time":
+            continue
+        m = _SYSTIME_RE.search(r.get("value") or "")
+        if m:
+            signed[r["host"]] = float(m.group(1)) * (1.0 if m.group(2).lower() == "fast"
+                                                     else -1.0)
+    if len(signed) < 2:
+        return []
+    spread_s = max(signed.values()) - min(signed.values())
+    return [
+        ("interHostOffsetMs", "%.3f" % (spread_s * 1e3)),
+        ("interHostOffsetUs", "%.0f" % (spread_s * 1e6)),
+    ]
+
+
+def handling_share_macros(recount=SPAN_CSV,
+                          symmetry=os.path.join("docs", "results", "span_symmetry.csv")):
+    """What the consumer's handling span is worth against the delivery it sits beside.
+
+    The two clients stamp the consumer's second timestamp in different places relative to
+    payload deserialisation, so the span referenced to the first one -- the manuscript's
+    transport proxy -- carries one broker's parse and not the other's. That is a disclosure
+    the paper owes, and a disclosure needs a bound rather than an adjective.
+
+    The bound is the larger handling span as a share of that broker's own median delivery,
+    which is the quantity a reader would compute to ask whether the asymmetry could move a
+    reported comparison. It reads both artefacts because it is a ratio between them; either
+    one missing returns nothing rather than a number resting on half its inputs.
+    """
+    import csv as _csv
+    import statistics as _st
+    if not os.path.exists(recount):
+        return []
+    split = recount_spans.by_backend(recount_spans.read_csv(recount))
+    handling = {b: agg["median_output_ns"] for b, agg in split.items()
+                if "median_output_ns" in agg}
+    if not handling:
+        return []
+    worst = max(handling, key=lambda b: handling[b])
+    try:
+        with open(symmetry, encoding="utf-8") as fh:
+            rows = list(_csv.DictReader(fh))
+    except OSError:
+        return []
+    delivery = [float(r["median_D_us"]) for r in rows
+                if r["condition"].split("_")[0] == worst and float(r["median_D_us"])]
+    if not delivery:
+        return []
+    med = _st.median(delivery)
+    return [
+        ("spanHandlingWorstUs", "%.1f" % (handling[worst] / 1000.0)),
+        ("spanHandlingDeliveryUs", "%.0f" % med),
+        ("spanHandlingSharePct", "%.1f" % (100.0 * handling[worst] / 1000.0 / med)),
+    ]
+
+
 def all_pairs(m):
     return (list(macros(m)) + span_macros() + stat_macros() + grid_macros()
             + retention_macros() + traced_macros() + tost_macros()
@@ -1386,7 +1521,7 @@ def all_pairs(m):
             + priority_macros() + priority_residual_macros() + fork_macros()
             + chrony_bound_macros() + disease_macros()
             + exposure_macros() + artifact_macros() + separability_macros()
-            + paired_gap_macros()
+            + paired_gap_macros() + handling_share_macros() + inter_host_offset_macros()
             + deletion_macros())
 
 

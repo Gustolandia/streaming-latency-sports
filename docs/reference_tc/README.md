@@ -156,3 +156,32 @@ Three more were assessed and **not** downloaded, so that a later round does not 
 competing, and the two closest in stance close in *stance* while differing in *mechanism*.
 That is the pattern of a field beginning to circle the same problem from other directions,
 which is corroboration rather than displacement.
+
+## Added round 43 (2026-09-03)
+
+Two more, fetched under the standing instruction to sample the venue, chosen to answer
+questions the twenty-two already held could not.
+
+| file | arXiv | pages | worth |
+|---|---|---|---|
+| `numerical_reproducibility_TC.pdf` | 1312.3300 | 14 | **a third venue precedent for our position, and the closest in kind.** Revol and Theveny, IEEE TC: whether a computed number can be trusted and reproduced, as the subject rather than as a caveat. `partitioned_bloom` and `ssd_erasure_reliability` show TC publishing "your evaluation is wrong"; this one shows it publishing "can you believe the arithmetic at all", which is nearer to what this paper argues. Different domain (interval algorithms), so it does not compete |
+| `stateful_prefetch_stream.pdf` | 2603.19890 | 14 | **corroborates the scoping sentence in Section II-A.** Zapridou and Ailamaki, 2026, the most recent low-latency stateful stream-processing paper found. Its SLOs are 50-250 ms and its percentiles sit far above the quantum, so it is outside this paper's regime -- which is exactly what Section II-A says of most of that literature. Its eighteen occurrences of "clock" are all the Clock cache-eviction policy; it never discusses timestamping. Not TC-formatted; keep it for the premise, not the form |
+
+One more was assessed and **not** downloaded, so a later round does not re-fetch it:
+
+- **arXiv:2509.07199**, George et al., *A Study on Messaging Trade-offs in Data Streaming for
+  Scientific Workflows* (WORKS 2025). A RabbitMQ/Redis study for latency-critical DOE
+  workflows whose full text contains *timestamp* 0, *clock* 0, *skew* 0. Weaker than
+  TailBench++ as an exhibit, because it reports throughput rather than latency, so the
+  absence of clock discussion costs it less. Noted, not cited.
+
+**What the round-43 sweep says about originality.** Re-run from scratch across arXiv's API
+and general search, on the four criteria that have defined the claim in every round. Three
+independent query formulations converged on sources the manuscript already cites (Sharma et
+al., Chandrasekar and Kramberger, Swami and Chougule), which is what a saturated search looks
+like. One genuinely new item surfaced -- TimeWeaver, ITC 2018 -- and it is a *precedent for
+our own recommendation* rather than a competitor: it retains negative one-way delays at lower
+accuracy tiers instead of discarding them. It is now cited in supplement S39, where the
+bibliography is uncapped and nothing is displaced.
+
+**Ours after round 43: 12 pages, 45 references, 5 figures, 2 tables.**

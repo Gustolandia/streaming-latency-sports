@@ -109,6 +109,49 @@ def _payload_label(cell):
 
 QUANTUM_MS = 2.0  # a cell printing at most this is reporting at the grid, not above it
 
+# Two markers closer than this on a log axis, as a ratio, are one marker to the eye.
+COINCIDENT_RATIO = 1.06
+# And this is how far apart they have to go to stop being one. A marker in the deletion
+# figure is about 4.8 pt across and a decade of that axis is about 46 pt wide, so a tenth of
+# a decade is one marker's width -- which is 2% of the axis and invisible as a displacement.
+SEPARATION_RATIO = 1.30
+
+
+def spread_coincident(xs, ys, ratio=COINCIDENT_RATIO, separation=SEPARATION_RATIO):
+    """Nudge markers apart that would otherwise render as one, on a log x axis.
+
+    The legend of the deletion figure counts the cells it draws. Two of them -- the 256 KB
+    replicates, printing 42,393 and 42,973 ms -- sit 1.4% apart across five decades, so the
+    figure announced four points and drew three. In a paper whose argument is that an
+    instrument should show what it discarded, a picture that quietly loses one of its own
+    four markers is not a rendering detail.
+
+    Points are grouped by shared y and near-equal x, and each group is spread symmetrically
+    about its own geometric centre. Symmetric, so the group's centre of mass does not move
+    and no reading of position is altered beyond the separation itself; multiplicative,
+    because the axis is logarithmic. Returns new x values and leaves y untouched.
+    """
+    out = list(xs)
+    order = sorted(range(len(out)), key=lambda i: (ys[i], out[i]))
+    group = []
+
+    def flush(g):
+        if len(g) < 2:
+            return
+        # Enough separation to read as distinct, centred so nothing shifts on average.
+        for rank, idx in enumerate(g):
+            step = rank - (len(g) - 1) / 2.0
+            out[idx] = out[idx] * (separation ** step)
+
+    for i in order:
+        if group and ys[i] == ys[group[-1]] and out[i] <= out[group[-1]] * ratio:
+            group.append(i)
+            continue
+        flush(group)
+        group = [i]
+    flush(group)
+    return out
+
 
 def plot_deletion(ax, pts, quantum_ms=QUANTUM_MS):
     """Retention against the median the benchmark printed, every committed cell.
@@ -124,9 +167,13 @@ def plot_deletion(ax, pts, quantum_ms=QUANTUM_MS):
     tags = [p[2] if len(p) > 2 else "" for p in pts]
     at_grid = med <= quantum_ms
 
+    # The above-grid markers are counted in their own legend entry, so each one has to be
+    # visible; the at-grid stripe is read as a range and is left alone.
+    above_x = spread_coincident(list(med[~at_grid]), list(ret[~at_grid]))
+
     ax.scatter(med[at_grid], ret[at_grid], s=16, color=KEPT, edgecolors="none",
                zorder=3, label="printed at the grid (%d)" % at_grid.sum())
-    ax.scatter(med[~at_grid], ret[~at_grid], s=18, facecolors="none", edgecolors=GREY,
+    ax.scatter(above_x, ret[~at_grid], s=18, facecolors="none", edgecolors=GREY,
                linewidths=0.9, zorder=3, label="printed above it (%d)" % (~at_grid).sum())
     ax.set_xscale("log")
     ax.set_yscale("log")
@@ -150,7 +197,7 @@ def plot_deletion(ax, pts, quantum_ms=QUANTUM_MS):
     # label per distinct payload, at the leftmost of its replicates, so replicates at the same
     # size do not print the same word twice.
     seen = set()
-    for x, y, tag in sorted(zip(med[~at_grid], ret[~at_grid],
+    for x, y, tag in sorted(zip(above_x, ret[~at_grid],
                                 [tg for tg, g in zip(tags, at_grid) if not g])):
         if not tag or tag in seen:
             continue
@@ -297,23 +344,27 @@ def plot_grid(ax, cells):
         else:
             klass.append("unresolved")
 
-    lim = max(xs + ys) * 1.12
+    bands = [(r.get("d_null_lo"), r.get("d_null_hi")) for r in rows]
+    lim = max(xs + ys + [h for _, h in bands if h]) * 1.12
     ax.plot([0, lim], [0, lim], color=GREY, lw=0.8, ls="--", zorder=1)
     # Below the diagonal is the whole claim: closer to the grid than a continuum would be.
     ax.fill_between([0, lim], [0, 0], [0, lim], color=KEPT, alpha=0.06, zorder=0)
-    # Below the legend and well left of the diagonal. Two previous anchors put the last
-    # glyph of "line" on the diagonal, because near the origin the diagonal runs close to the
-    # left spine and a two-line label is wider than the gap; moving it further left and down
-    # made it worse. Height is what buys the clearance -- the diagonal is y = x, so a label
-    # at 55% of the axis has the whole left 55% to sit in, and this one ends near 32%.
-    # figure_collisions.reference_lines_through_text now measures it, the eye having missed
-    # it twice.
-    ax.annotate("a continuum would\nland on this line", xy=(lim * 0.44, lim * 0.44),
-                xytext=(lim * 0.20, lim * 0.55), fontsize=8, color=GREY, ha="center",
-                # shrinkB=0: the default backs the head off its target by two points, which
-                # at print size reads as an arrow pointing *near* the diagonal rather than at
-                # it. The target is the line, so the head should touch it.
-                arrowprops=dict(arrowstyle="->", color=GREY, lw=0.7, shrinkB=0))
+
+    # Each arm's own null, drawn where its centre sits on the diagonal. Without it the figure
+    # asked the eye to judge distance from a line with nothing to say how far an arm can fall
+    # by chance; the p-values that answered that were printed only in a supplement table. An
+    # arm whose marker clears its own bar is an arm that rejects, so the picture now carries
+    # the test rather than illustrating it.
+    for x, (blo, bhi) in zip(xs, bands):
+        if blo is None or bhi is None:
+            continue
+        ax.plot([x, x], [blo, bhi], color=GREY, lw=1.1, alpha=0.55, zorder=1,
+                solid_capstyle="butt")
+    # The annotation that used to point at the diagonal -- "a continuum would land on this
+    # line" -- is gone, and the bars are why. The diagonal is the null's centre; the bars are
+    # the null. Once both are drawn, a label naming the weaker of the two costs a legend row
+    # it now collides with and tells the reader less than the thing beside it. The caption
+    # names the diagonal instead.
     ax.text(lim * 0.72, lim * 0.11, "closer to the grid", fontsize=8,
             color=KEPT, ha="center", style="italic")
 
@@ -344,6 +395,8 @@ def plot_grid(ax, cells):
         n = klass.count(key)
         if n:
             ax.plot([], [], label="%s (%d)" % (text, n), **STYLE[key])
+    if any(lo is not None for lo, _ in bands):
+        ax.plot([], [], color=GREY, lw=1.1, alpha=0.55, label="the null's central 90%")
     ax.legend(fontsize=8, frameon=False, loc="upper left")
 
 
@@ -353,6 +406,7 @@ def grid_rows():
     for c in stat_intervals.grid_cells():
         out.append({"rate_hz": c["rate_hz"], "q": c["q"], "powered": c["powered"],
                     "d_obs": c["d_observed"], "d_null": c["d_null"],
+                    "d_null_lo": c["d_null_lo"], "d_null_hi": c["d_null_hi"],
                     "verdict": c["verdict"]})
     return out
 
@@ -727,15 +781,60 @@ def payload_positions(arms=None, q=PAYLOAD_Q):
     out = []
     for label, vals, colour in arms:
         theta = (sum(vals) / len(vals)) / 100.0
-        out.append((label, (q * theta) % 1.0, max(vals) - min(vals), colour))
+        # The replicates' own offsets above the arm minimum travel with the spread. The
+        # spread is a range, so it is fixed by two replicates and says nothing about the
+        # other n-2; a threshold crossing shown as a bare point invites the reader to treat
+        # it as a summary of the arm when it is a summary of its two extremes. Carrying the
+        # offsets lets the panel draw what the statistic is made of. A bootstrap would have
+        # been the reflex and is the wrong instrument here: resampling can never exceed the
+        # observed range, so every interval is one-sided by construction and the arms that
+        # sit furthest above the boundary would be drawn as the least certain.
+        base = min(vals)
+        out.append((label, (q * theta) % 1.0, max(vals) - base, colour,
+                    [v - base for v in vals]))
+    return out
+
+
+def swarm_offsets(vals, tol, step=0.055):
+    """Horizontal offsets that separate near-equal values without implying an order.
+
+    The first version of this panel laid each arm's replicates out at even spacing in the
+    order they arrived, and they arrive sorted. Every arm therefore rendered as a staircase
+    climbing left to right along an axis that carries no variable, and a reader could leave
+    the figure believing retention rises with replicate number. Nothing in the caption
+    claimed that; the picture did.
+
+    A swarm says only what is true. Replicates far apart in retention sit on the arm's own
+    centre line; replicates within `tol` of each other are spread symmetrically about it, so
+    the offset encodes local crowding and nothing else, and the group's centre does not move.
+    """
+    out = [0.0] * len(vals)
+    order = sorted(range(len(vals)), key=lambda i: vals[i])
+    group = []
+
+    def flush(g):
+        for rank, idx in enumerate(g):
+            out[idx] = (rank - (len(g) - 1) / 2.0) * step
+
+    for i in order:
+        if group and abs(vals[i] - vals[group[0]]) <= tol:
+            group.append(i)
+            continue
+        flush(group)
+        group = [i]
+    flush(group)
     return out
 
 
 def plot_payload_grid(ax, arms, q=PAYLOAD_Q):
     """Panel (a): every replicate against the q-grid it is supposed to land on."""
+    every = [v for _, vals, _ in arms for v in vals]
+    # A marker is about this tall in data units at this panel's size, so values closer than
+    # it would overprint and are the ones worth separating.
+    tol = 0.04 * (max(every) - min(every)) if len(every) > 1 else 0.0
     for x, (label, vals, colour) in enumerate(arms):
-        jitter = [x + (i - (len(vals) - 1) / 2.0) * 0.055 for i in range(len(vals))]
-        ax.scatter(jitter, vals, s=15, color=colour, edgecolors="none", zorder=3)
+        swarm = [x + d for d in swarm_offsets(vals, tol)]
+        ax.scatter(swarm, vals, s=15, color=colour, edgecolors="none", zorder=3)
     # The label sits inside the axes, so the rule has to stop short of it: an axhline spans
     # the full width and printed each grid line straight through its own "k/q".
     left, label_x = -0.5, len(arms) - 0.55
@@ -761,14 +860,28 @@ def plot_payload_flip(ax, pos, q=PAYLOAD_Q):
     """Panel (b): the spread against cell position, and the boundary it crosses twice."""
     half = 100.0 / (2 * q)
     ax.axhline(half, color=GREY, lw=0.8, ls="--", zorder=0)
-    ax.annotate("half cell width", xy=(0.30, half), xytext=(0, 3),
-                textcoords="offset points", fontsize=8, color=GREY, va="bottom")
-    top = max(s for _, _, s, _ in pos) * 1.22
+    # Hard left. The label used to start at 0.30 and ran right, which was clear while the
+    # arms were three bare markers and stopped being clear the moment each arm grew a stick:
+    # the 200 B stick rises through the boundary at frac 0.40 and printed itself across the
+    # last word.
+    ax.annotate("half cell width", xy=(0.0, half), xytext=(0, 3),
+                textcoords="offset points", fontsize=8, color=GREY, va="bottom", ha="left")
+    top = max(s for _, _, s, _, _ in pos) * 1.22
     # A label set four points above its marker occupies roughly this much of the data range.
     # Any marker sitting that close beneath the boundary would have the rule printed through
     # its label, so the label hangs below the marker instead.
     clearance = 0.11 * top
-    for label, frac, spread, colour in pos:
+    for label, frac, spread, colour, offsets in pos:
+        # The statistic, and the replicates it is made of. The stick runs the full spread and
+        # each tick is one replicate's distance above the arm minimum, so a reader can see
+        # whether an arm clears the boundary because it is broad or because two of its
+        # replicates are strays -- which is the difference between the 32 KB arm, three of
+        # whose replicates sit within 0.06 of each other, and the 64 KB arm, which is broad.
+        ax.plot([frac, frac], [0, spread], color=colour, lw=0.9, alpha=0.45, zorder=2,
+                solid_capstyle="butt")
+        for off in offsets:
+            ax.plot([frac - 0.012, frac + 0.012], [off, off], color=colour, lw=0.9,
+                    alpha=0.8, zorder=2, solid_capstyle="butt")
         ax.scatter([frac], [spread], s=22, color=colour, edgecolors="none", zorder=3)
         # A point in the right-hand third would carry its label off the axis, so the label
         # turns around and sits to its left instead.

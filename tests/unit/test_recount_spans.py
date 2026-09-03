@@ -106,6 +106,82 @@ class TestSummariseRun:
     def test_a_run_with_nothing_joined_yields_no_row(self):
         assert rs.summarise_run("r", "kafka", {n: [] for n, _, _ in rs.SPANS}) is None
 
+    def test_the_consumer_handling_span_is_reported_in_nanoseconds(self):
+        """Nanoseconds, because the unit its neighbours use would erase one of the arms.
+
+        The two consumers stamp `t_output_ns` in different places relative to payload
+        deserialisation: Kafka's is the next statement after `t_cons_recv_ns` and lands a
+        few hundred nanoseconds later, Redis's is separated by a `json.loads` and lands
+        tens of microseconds later. The columns beside this one are milliseconds at four
+        decimals, and at that precision the Kafka arm is 0.0003 against the Redis arm's
+        0.0195 -- a ratio of seventy carried in the last digit either column has. The unit
+        is the disclosure here, so it is pinned.
+        """
+        p, c = one_event(recv=1_000_000, output=1_000_281)
+        spans = rs.join_run(rs.parse_rows(prod_csv(p)), rs.parse_rows(cons_csv(c)))
+        row = rs.summarise_run("run-1", "kafka", spans)
+        assert row["median_output_ns"] == 281
+        assert isinstance(row["median_output_ns"], int)
+        assert round(row["median_output_ns"] / 1e6, 3) == 0.0, \
+            "the millisecond column beside it would print this as no span at all"
+
+
+class TestConsumerHandlingSpan:
+    """The fifth span, added in round 43, joins two consumer stamps rather than a
+    consumer stamp to a producer one. That is the point: the four spans that came before
+    it all reach back to the producer, so an audit of "where is each stamp taken" that
+    followed them found only producer-side stamps."""
+
+    def test_the_span_table_can_name_two_stamps_from_the_same_side(self):
+        p, c = one_event(recv=1_000_000, output=1_019_480)
+        spans = rs.join_run(rs.parse_rows(prod_csv(p)), rs.parse_rows(cons_csv(c)))
+        assert spans["output"] == [19_480]
+
+    def test_the_handling_span_is_a_chain_and_cannot_invert(self):
+        p, c = one_event(recv=1_000_000, output=1_000_281)
+        spans = rs.join_run(rs.parse_rows(prod_csv(p)), rs.parse_rows(cons_csv(c)))
+        row = rs.summarise_run("r", "kafka", spans)
+        assert row["neg_output"] == 0
+
+    @staticmethod
+    def _ledger_row(run_id, handling):
+        return {"run_id": run_id, "backend": "kafka", "n_events": "10",
+                "neg_ack": "1", "neg_send": "0", "neg_output_send": "0",
+                "neg_tti": "0", "neg_output": "0", "median_ack_us": "1.0",
+                "median_output_ns": handling}
+
+    def test_totals_carries_the_handling_median_when_the_column_is_present(self):
+        agg = rs.totals([self._ledger_row("a", "281"), self._ledger_row("b", "331")])
+        assert agg["median_output_ns"] == 306
+
+    def test_a_row_with_no_measured_handling_median_still_totals(self):
+        """The median is an enrichment; the per-span counts are the substance.
+
+        A run whose consumer log carried no usable pair of stamps has no handling median
+        to contribute, and dropping the whole run over it would shrink the denominator of
+        every other count. A missing *count* is a different thing -- a ledger without one
+        is a ledger from another schema, and summarising it as though the span had been
+        counted is the silent discard this project audits -- so that one is left to raise.
+        """
+        agg = rs.totals([self._ledger_row("a", "")])
+        assert agg["neg_ack"] == 1
+        assert "median_output_ns" not in agg
+
+    def test_a_ledger_missing_the_fifth_count_raises_rather_than_summarising(self):
+        row = self._ledger_row("a", "281")
+        del row["neg_output"]
+        with pytest.raises(KeyError):
+            rs.totals([row])
+
+    def test_the_report_prints_the_handling_median_only_when_it_has_one(self):
+        base = {"runs": 1, "events": 10, "neg_ack": 1, "pct_ack": 10.0,
+                "neg_send": 0, "pct_send": 0.0, "neg_output_send": 0,
+                "pct_output_send": 0.0, "neg_tti": 0, "pct_tti": 0.0,
+                "neg_output": 0, "pct_output": 0.0,
+                "runs_over_one_pct_ack": 1, "runs_negative_median_ack": 0}
+        assert "consumer handling span" not in rs.report(dict(base))
+        assert "281 ns" in rs.report(dict(base, median_output_ns=281.0))
+
 
 class TestBackend:
     def test_meta_json_wins(self):
@@ -202,9 +278,9 @@ class TestScanners:
 class TestTotalsAndReport:
     def test_totals_sum_and_percent(self):
         rows = [{"n_events": "10", "neg_ack": "2", "neg_send": "0", "neg_output_send": "0",
-                 "neg_tti": "0", "median_ack_us": "-1.0"},
+                 "neg_tti": "0", "neg_output": "0", "median_ack_us": "-1.0"},
                 {"n_events": "10", "neg_ack": "0", "neg_send": "0", "neg_output_send": "0",
-                 "neg_tti": "0", "median_ack_us": "5.0"}]
+                 "neg_tti": "0", "neg_output": "0", "median_ack_us": "5.0"}]
         agg = rs.totals(rows)
         assert agg["runs"] == 2 and agg["events"] == 20
         assert agg["neg_ack"] == 2 and agg["pct_ack"] == pytest.approx(10.0)
@@ -217,7 +293,7 @@ class TestTotalsAndReport:
 
     def test_a_run_with_no_events_is_not_counted_as_over_one_percent(self):
         agg = rs.totals([{"n_events": "0", "neg_ack": "0", "neg_send": "0",
-                          "neg_output_send": "0", "neg_tti": "0", "median_ack_us": "0"}])
+                          "neg_output_send": "0", "neg_tti": "0", "neg_output": "0", "median_ack_us": "0"}])
         assert agg["runs_over_one_pct_ack"] == 0
 
     def test_report_names_every_span(self):
@@ -324,7 +400,7 @@ class TestSharedStampContrast:
 
     def _rows(self, spec):
         return [{"n_events": str(n), "neg_ack": str(a), "neg_send": str(s),
-                 "neg_output_send": "0", "neg_tti": "0", "median_ack_us": "1.0",
+                 "neg_output_send": "0", "neg_tti": "0", "neg_output": "0", "median_ack_us": "1.0",
                  "median_send_us": "1.0", "run_id": "r%d" % i, "backend": "kafka"}
                 for i, (n, a, s) in enumerate(spec)]
 
@@ -368,7 +444,7 @@ class TestMarginQuantities:
 
     def _full(self, spec):
         return [{"n_events": str(n), "neg_ack": str(a), "neg_send": str(s),
-                 "neg_output_send": "0", "neg_tti": "0",
+                 "neg_output_send": "0", "neg_tti": "0", "neg_output": "0",
                  "min_ack_us": str(mn_a), "min_send_us": str(mn_s),
                  "median_ack_us": "1.0", "median_send_us": "1.0",
                  "run_id": "r%d" % i, "backend": "kafka"}
@@ -391,7 +467,7 @@ class TestMarginQuantities:
     def test_rows_without_the_extreme_columns_still_yield_every_count(self):
         """A partial row must give a smaller answer, not an exception."""
         rows = [{"n_events": "100", "neg_ack": "5", "neg_send": "0",
-                 "neg_output_send": "0", "neg_tti": "0", "median_ack_us": "1.0",
+                 "neg_output_send": "0", "neg_tti": "0", "neg_output": "0", "median_ack_us": "1.0",
                  "run_id": "r", "backend": "kafka"}]
         agg = rs.totals(rows)
         assert agg["neg_ack"] == 5
@@ -418,15 +494,15 @@ class TestByBackend:
     def _rows():
         return [
             {"run_id": "a", "backend": "kafka", "n_events": "10", "neg_ack": "3",
-             "neg_send": "0", "neg_output_send": "0", "neg_tti": "0",
+             "neg_send": "0", "neg_output_send": "0", "neg_tti": "0", "neg_output": "0",
              "min_ack_us": "-5.0", "min_send_us": "7.0",
              "median_ack_us": "1.0", "median_send_us": "2.0"},
             {"run_id": "b", "backend": "redis", "n_events": "20", "neg_ack": "4",
-             "neg_send": "0", "neg_output_send": "0", "neg_tti": "0",
+             "neg_send": "0", "neg_output_send": "0", "neg_tti": "0", "neg_output": "0",
              "min_ack_us": "-9.0", "min_send_us": "3.0",
              "median_ack_us": "1.0", "median_send_us": "2.0"},
             {"run_id": "c", "backend": "kafka", "n_events": "30", "neg_ack": "5",
-             "neg_send": "0", "neg_output_send": "0", "neg_tti": "0",
+             "neg_send": "0", "neg_output_send": "0", "neg_tti": "0", "neg_output": "0",
              "min_ack_us": "-2.0", "min_send_us": "9.0",
              "median_ack_us": "1.0", "median_send_us": "2.0"},
         ]

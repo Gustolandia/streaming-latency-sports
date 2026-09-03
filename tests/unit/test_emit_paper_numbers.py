@@ -1617,3 +1617,200 @@ class TestTheHandlingShareIsBounded(object):
         rec = self._recount(tmp_path / "r.csv", [("a", "redis", "19480")])
         sym = self._symmetry(tmp_path / "s.csv", [("kafka_n1_feed1", "2000")])
         assert epn.handling_share_macros(recount=rec, symmetry=sym) == []
+
+
+class TestSpreadMacros:
+    """The counts supplementary material S31 states in words.
+
+    They were typed, and the sentence they formed described a corpus the analyser had
+    stopped producing: the phase ledger was built before chain17's `ultimate` campaign
+    joined the rate arms and was never rebuilt, so "all nine commensurate arms match"
+    outlived the nine-arm corpus by five rounds. Emitting them makes the sentence a
+    function of the ledger.
+    """
+
+    @staticmethod
+    def cell(rate, q, predicted, observed, commensurate=True):
+        return {"rate_hz": rate, "q": q, "commensurate": commensurate,
+                "predicted": predicted, "observed": observed,
+                "agrees": predicted == observed}
+
+    def test_the_counts_come_out_of_the_arms(self, monkeypatch):
+        import stat_intervals
+        monkeypatch.setattr(stat_intervals, "spread_cells", lambda: [
+            self.cell(1250, 5, "full", "flat"),
+            self.cell(700, 7, "full", "flat"),
+            self.cell(1000, 1, "full", "full"),
+            self.cell(400, 2, "flat", "flat"),
+            self.cell(457, 457, None, None, commensurate=False),
+        ])
+        got = dict(epn.spread_macros())
+        assert got["spreadArms"] == "4", "the incommensurate arm is not one of them"
+        assert got["spreadAgree"] == "2"
+        assert got["spreadMissWord"] == "two"
+        assert got["spreadMissRates"] == "$700$ and $1250$"
+        assert got["spreadPredFullWord"] == "three"
+        assert got["spreadPredFlatWord"] == "one"
+
+    def test_the_p_values_of_the_misses_are_carried_beside_them(self, monkeypatch):
+        """S31 turns on the replacement statistic answering the arms the spread rule cannot."""
+        import stat_intervals
+        monkeypatch.setattr(stat_intervals, "spread_cells", lambda: [
+            self.cell(700, 7, "full", "flat"), self.cell(1000, 1, "full", "full")])
+        monkeypatch.setattr(stat_intervals, "grid_cells", lambda: [
+            {"rate_hz": 700, "p_holm": 0.009}, {"rate_hz": 1000, "p_holm": 0.003}])
+        got = dict(epn.spread_macros())
+        assert got["pgridSevenHundred"] == "$0.009$"
+        assert "pgridRate1000" not in got, "only the misses need one"
+
+    def test_an_arm_absent_from_the_grid_test_is_simply_not_quoted(self, monkeypatch):
+        import stat_intervals
+        monkeypatch.setattr(stat_intervals, "spread_cells",
+                            lambda: [self.cell(700, 7, "full", "flat")])
+        monkeypatch.setattr(stat_intervals, "grid_cells", lambda: [])
+        got = dict(epn.spread_macros())
+        assert got["spreadMissWord"] == "one"
+        assert not [k for k in got if k.startswith("pgrid")]
+
+    def test_a_grid_ledger_that_cannot_be_read_still_leaves_the_counts(self, monkeypatch):
+        """The counts and the p-values come from two artefacts; losing one is not losing both."""
+        import stat_intervals
+
+        def boom():
+            raise OSError("no grid ledger")
+
+        monkeypatch.setattr(stat_intervals, "spread_cells",
+                            lambda: [self.cell(700, 7, "full", "flat")])
+        monkeypatch.setattr(stat_intervals, "grid_cells", boom)
+        got = dict(epn.spread_macros())
+        assert got["spreadArms"] == "1"
+        assert not [k for k in got if k.startswith("pgrid")]
+
+    def test_no_arms_emits_nothing(self, monkeypatch):
+        import stat_intervals
+        monkeypatch.setattr(stat_intervals, "spread_cells", lambda: [])
+        assert epn.spread_macros() == []
+
+    def test_an_unreadable_phase_ledger_emits_nothing(self, monkeypatch):
+        import stat_intervals
+
+        def boom():
+            raise OSError("no phase ledger")
+
+        monkeypatch.setattr(stat_intervals, "spread_cells", boom)
+        assert epn.spread_macros() == []
+
+    def test_one_miss_reads_as_one_rate_not_a_list(self):
+        assert epn._join_rates([700]) == "$700$"
+        assert epn._join_rates([]) == ""
+        assert epn._join_rates([400, 700, 1250]) == "$400$, $700$ and $1250$"
+
+    def test_a_rate_with_no_spelled_name_still_gets_a_macro_name(self):
+        """The named ones are the arms that have ever missed; a new one must not crash."""
+        assert epn._spell_rate(700) == "SevenHundred"
+        assert epn._spell_rate(1234) == "Rate1234"
+
+
+class TestControlArmMacros:
+    """The pre-registered denominator control, replicate by replicate."""
+
+    @staticmethod
+    def write_ledger(tmp_path, retentions, rate=600):
+        target = tmp_path / "docs" / "results" / "external"
+        target.mkdir(parents=True, exist_ok=True)
+        (target / "phase_quantisation.csv").write_text(
+            "rate_hz,commensurate,n,spread_pts,retentions\n"
+            "%d,True,%d,0.0,%s\n" % (rate, len(retentions.split()), retentions),
+            encoding="utf-8")
+
+    def test_the_branch_counts_are_a_function_of_the_replicates(self, monkeypatch, tmp_path):
+        self.write_ledger(tmp_path, "33.975 34.293 34.899 36.168 65.864 66.672")
+        monkeypatch.chdir(tmp_path)
+        got = dict(epn.control_arm_macros())
+        assert got["controlRate"] == "600"
+        assert got["controlLowerWord"] == "four"
+        assert got["controlUpperWord"] == "two"
+        assert got["controlWidest"] == "36.17"
+        assert got["controlWidestGap"] == "2.83"
+
+    def test_adding_a_replicate_moves_the_count(self, monkeypatch, tmp_path):
+        """The defect this exists for: the prose said three and two of an arm that had four
+        and two the moment the ledger was rebuilt."""
+        self.write_ledger(tmp_path, "33.975 34.293 34.899 65.864 66.672")
+        monkeypatch.chdir(tmp_path)
+        got = dict(epn.control_arm_macros())
+        assert got["controlLowerWord"] == "three"
+        assert got["controlUpperWord"] == "two"
+
+    def test_an_absent_ledger_emits_nothing(self, monkeypatch, tmp_path):
+        monkeypatch.chdir(tmp_path)
+        assert epn.control_arm_macros() == []
+
+    def test_an_arm_not_in_the_ledger_emits_nothing(self, monkeypatch, tmp_path):
+        self.write_ledger(tmp_path, "33.9 66.6", rate=300)
+        monkeypatch.chdir(tmp_path)
+        assert epn.control_arm_macros(rate=600) == []
+
+    def test_an_arm_with_no_replicates_recorded_emits_nothing(self, monkeypatch, tmp_path):
+        """A blank `retentions` is the only empty case; once it is non-blank, splitting it
+        always yields a value, so there is no second emptiness branch to reach."""
+        target = tmp_path / "docs" / "results" / "external"
+        target.mkdir(parents=True, exist_ok=True)
+        (target / "phase_quantisation.csv").write_text(
+            "rate_hz,commensurate,n,spread_pts,retentions\n600,True,0,0.0,\n",
+            encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        assert epn.control_arm_macros() == []
+
+    def test_a_single_replicate_still_renders_as_one_value(self, monkeypatch, tmp_path):
+        self.write_ledger(tmp_path, "33.40")
+        monkeypatch.chdir(tmp_path)
+        got = dict(epn.control_arm_macros())
+        assert got["controlReplicates"] == "$33.40$"
+        assert got["controlLowerWord"] == "one"
+        assert got["controlUpperWord"] == "zero"
+
+
+class TestIntervalTable:
+    """S23's three-arm table, whose every row went stale when the phase ledger was rebuilt."""
+
+    def test_it_reads_the_replicates_from_the_ledger(self):
+        out = epn.render_interval_table()
+        assert out.startswith("% Generated by")
+        assert "\\textbf{exact}" in out, "500 msg/s is the commensurate one"
+        for rate in ("$500$/s", "$457$/s", "$383$/s"):
+            assert rate in out
+
+    def test_it_refuses_to_render_from_a_missing_ledger(self, monkeypatch, tmp_path):
+        monkeypatch.chdir(tmp_path)
+        with pytest.raises(OSError):
+            epn.render_interval_table()
+
+    def test_it_refuses_to_render_an_arm_the_ledger_does_not_have(self, monkeypatch, tmp_path):
+        target = tmp_path / "docs" / "results" / "external"
+        target.mkdir(parents=True)
+        (target / "phase_quantisation.csv").write_text(
+            "rate_hz,interval_ms,commensurate,spread_pts,retentions\n"
+            "500,2.0,True,99.5,0.47 99.99\n", encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        with pytest.raises(KeyError):
+            epn.render_interval_table()
+
+
+class TestSpreadTable:
+    """The quantisation table, generated, with the measured-class column it lacked."""
+
+    def test_every_commensurate_row_carries_both_classes(self):
+        out = epn.render_spread_table()
+        assert "predicts & spread & shows" in out
+        body = [ln for ln in out.splitlines() if ln.startswith("$") and "/s &" in ln]
+        assert len(body) >= 12
+        for line in [ln for ln in body if "${>}" not in ln]:
+            assert line.rstrip("\\ ").endswith(("full", "flat")), line
+
+    def test_the_incommensurate_block_is_separated_and_classless(self):
+        out = epn.render_spread_table()
+        assert "\\multicolumn{9}{@{}l}{\\emph{incommensurate" in out
+        for line in out.splitlines():
+            if "${>}" in line:
+                assert line.count("---") >= 3, "no cell, no position, no class"

@@ -315,6 +315,82 @@ def harness_arm_spreads(path=os.path.join("external", "harness_results.csv")):
     return out
 
 
+#: Above this denominator the phase set is dense enough that the grid imposes no structure,
+#: and the arm is reported as effectively continuous rather than given a cell.
+INCOMMENSURATE_Q = 64
+
+
+def spread_cells(path=os.path.join("external", "phase_quantisation.csv")):
+    """Every arm of the spread law, with both classes re-derived rather than read.
+
+    This replaces a table that was typed. It was a good table -- round 45 checked all nine
+    commensurate rows against the ledger and every one held -- and it was gated cell by cell
+    by the test suite, which is why it never drifted. What it could not do was answer the
+    sentence it exists to support. "All nine arms match, seven full, two flat" is a claim
+    about *agreement*, and the typed table printed the prediction and the measured spread but
+    never the measured class, so the one column that would let a reader see the nine matches
+    was the one column missing. The suite applied the half-cell rule on the reader's behalf
+    and the reader had to trust that it had.
+
+    Both classifications come out of the geometry here, not out of the ledger's stored
+    `predicted_full` and `observed_full`:
+
+      position   distance from the nearest vertex against the cell *half*-width, so 0 sits
+                 on a grid point and 1 sits midway between two. Predicted full above 0.5.
+      spread     the replicate range. Measured full above half the cell width.
+
+    Incommensurate arms carry no cell, so they carry no position and no class; they are
+    returned with `commensurate` false and a spread, which is all the table prints for them.
+
+    Ordered commensurate-first by ascending q -- the order the argument runs in, since q is
+    what decides the prediction -- then by descending rate within a q.
+    """
+    from fractions import Fraction
+    rows = _rows(*path.split(os.sep))
+    out = []
+    for r in rows:
+        try:
+            rate = int(r["rate_hz"])
+            spread = float(r["spread_pts"])
+            n = int(r["n"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        ratio = Fraction(1000, rate)
+        commensurate = r.get("commensurate", "").strip().lower() == "true"
+        cell = {
+            "rate_hz": rate,
+            "p": ratio.numerator,
+            "q": ratio.denominator,
+            "n": n,
+            "spread": spread,
+            "commensurate": commensurate,
+        }
+        if not commensurate:
+            cell.update({"cell_width": None, "position": None,
+                         "predicted": None, "observed": None, "agrees": None})
+            out.append(cell)
+            continue
+        try:
+            width = float(r["cell_width_pts"])
+            distance = float(r["grid_distance_pts"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if width <= 0:
+            continue
+        position = min(1.0, distance / (width / 2.0))
+        predicted_full = position > 0.5
+        observed_full = spread > width / 2.0
+        cell.update({
+            "cell_width": width,
+            "position": position,
+            "predicted": "full" if predicted_full else "flat",
+            "observed": "full" if observed_full else "flat",
+            "agrees": predicted_full == observed_full,
+        })
+        out.append(cell)
+    return sorted(out, key=lambda c: (not c["commensurate"], c["q"], -c["rate_hz"]))
+
+
 def occupancy_bounds(path=os.path.join("model", "occupancy_law.csv")):
     """The floor and ceiling of the inversion rate, as the two-state model bounds them.
 

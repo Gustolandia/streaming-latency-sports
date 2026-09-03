@@ -90,6 +90,28 @@ def measured(cells):
         "redis_negatives": sum(_int(c, "discarded_negative") for c in redis),
         "retention_min": min(shares) if shares else None,
         "retention_max": max(shares) if shares else None,
+        # The single worst run, which the main text quotes as its sharpest instance: the
+        # negatives were half of everything the harness took and six samples survived. Both
+        # numbers were typed until round 45, which found the same defect twice over in the
+        # two sentences carrying "zero" and "not one negative". A count that makes a sentence
+        # worth reading is the last count that should be reaching the page by hand.
+        **_worst_run(redis),
+    }
+
+
+def _worst_run(cells):
+    """The run with the most negatives, and what survived it."""
+    if not cells:
+        return {"redis_worst_negatives": None, "redis_worst_kept": None,
+                "redis_worst_share": None}
+    worst = max(cells, key=lambda c: _int(c, "discarded_negative"))
+    neg = _int(worst, "discarded_negative")
+    kept = _int(worst, "kept")
+    seen = neg + kept + _int(worst, "discarded_zero")
+    return {
+        "redis_worst_negatives": neg,
+        "redis_worst_kept": kept,
+        "redis_worst_share": (100.0 * neg / seen) if seen else None,
     }
 
 

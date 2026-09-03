@@ -942,6 +942,20 @@ declarations it recomputes against (`tests/unit/test_paper_consistency.py`), and
 written as an English word is still a claim about a number and is gated as one
 (`tests/unit/test_shared_statements.py`).
 
+Round 47 added `tests/unit/test_supplement_hygiene.py`, and the reason is a measurement rather
+than an incident. Counting every non-structural numeral each document prints, **78% of the main
+text's arrive through a generated macro and 15% of the supplement's do** -- and the supplement
+carries roughly four fifths of the paper's evidence. Three rounds running, the defect had the
+same shape: a generated layer moved and a typed layer beside it did not. Round 45 rebuilt the
+phase ledger; the generated tables followed and four narrative paragraphs in S13 and S23 did
+not, still describing a nine-arm corpus with a 46.6% median where the rebuilt one has ten
+replicates and 51.04. `arm_macros()` now emits, per narrated arm, exactly the fields that arm's
+paragraph quotes -- the replicate list, the median, the miss against a registered prediction,
+the branch counts -- and the new gate fails if a retired value reappears or an emitted one goes
+unread. The same file holds two smaller rules found the same round: a cited web source that
+quotes a measured figure must carry a URL or an identifier, and a reference list must be the
+last thing in its document.
+
 Round 45 also added `tests/unit/test_prose_pointers.py`, because both documents point at
 supplement sections in running text — "Supplement~S23", "supplementary material S27" — more
 than sixty times, and LaTeX cannot check a cross-reference written as prose. It found four

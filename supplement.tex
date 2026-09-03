@@ -987,23 +987,37 @@ either estimate.
 
 \paragraph{A second prediction of ours failed, and no reading of it rescues the number.} We recorded,
 before running it, that $q=5$ would put $2$ of $5$ phases across a boundary and so retain about
-$40\%$. The five replicates gave a median of $46.6\%$ --- inside the incommensurate range and $6.6$
+$40\%$. The \armSixTwentyFiveNWord{} replicates gave a median of $\armSixTwentyFiveMedian\%$ ---
+inside the incommensurate range and $\armSixTwentyFiveMedianOffBy$
 points from what we wrote down. The error was again naming one branch of a two-branch prediction:
 with $T_{\mathrm{true}}/\tau$ at a half, $2$ \emph{or} $3$ phases cross depending on where a run's
 initial phase falls, so a replicate is predicted at $40\%$ or $60\%$ and the average of many is near
-$50$. The five values --- $40.7$, $42.1$, $46.6$, $55.5$, $58.6$ --- are bimodal about exactly those
-two branches, which is what the account requires and what no continuous account produces. The grid
-held; the point we picked on it did not.
+$50$. The values --- \armSixTwentyFiveReplicates{} --- are bimodal about exactly those
+two branches, \armSixTwentyFiveLowerWord{} on each, which is what the account requires and what no
+continuous account produces. The miss grew when the arm did: at five replicates the median stood
+$6.6$ points from the registered value and at $\armSixTwentyFiveN$ it stands
+$\armSixTwentyFiveMedianOffBy$, because the upper branch was under-sampled in the smaller set. The
+grid held; the point we picked on it did not.
 
-\paragraph{Where the account is approximate, stated rather than trimmed.} Three observations sit
-outside it. The $q=1$ arm at $250$~msg/s spreads $58.6$ points where the cell width is $100$, and one
-replicate at $500$~msg/s sits at $18.0$; a run confined to a single phase can produce neither. We
+\paragraph{Where the account is approximate, stated rather than trimmed.} Two observations sit
+outside it, and a third did until the arm was filled. One
+replicate at $500$~msg/s sits at $18.0$, which a run confined to a single phase cannot produce. We
 read this as the limit of the idealization: a nominal rate is $q=1$ only if the pacing is exact for
 the whole run, and over three minutes a drift of a few parts per million walks the phase across a
 boundary part-way through. The grid that governs retention is the one the pacing realizes, not the
-one the nominal rate implies. Third, $q=2$'s spread of $17.6$ rests on a single replicate at $68.0$;
-the other four span $3.1$ points, which is the incommensurate noise level and exactly what an on-grid
+one the nominal rate implies. Second, $q=2$'s spread of $\armFourHundredSpread$ rests on a single
+replicate at $\armFourHundredHi$;
+the other four span $\armFourHundredWithoutHiSpan$ points, which is the incommensurate noise level
+and exactly what an on-grid
 arm should show. We report the spread over all five rather than the four that agree.
+
+The one that resolved is worth recording, because it is an argument for one of our own rules.
+The $q=1$ arm at $\armTwoFiftyRate$~msg/s was listed here as a departure from the account when
+it had three replicates and spread little more than half its cell. At \armTwoFiftyNWord{} it
+spreads $\armTwoFiftySpread$ of $\armTwoFiftyCell$, which is the full cell width the model
+predicts, and the anomaly is gone. It was never a departure; it was an arm reported before it
+had enough replicates to show what it was doing --- which is exactly what
+Section~\mainAuthors{} asks benchmark authors to count before they quote.
 
 \section{S15. Configuration in full (moved from the main text)}
 
@@ -1219,8 +1233,8 @@ the denominator.} A fixed interval that visits few phases within the quantum put
 sample in a run at one of them, which makes the surviving fraction bimodal and irreproducible
 rather than merely small (in the main text). The diagnostic is
 arithmetic on two numbers you already know, but it is the reduced denominator $q$ that matters, not
-whether the interval looks round: $500$~msg/s gives $q=1$ and spread $99.5$ points, and
-$300$~msg/s gives $q=3$ and spread $30.5$, while $889$~msg/s --- which sits $0.00014$ away from
+whether the interval looks round: $500$~msg/s gives $q=1$ and spread $\armFiveHundredSpread$ points, and
+$300$~msg/s gives $q=3$ and spread $\armThreeHundredSpread$, while $889$~msg/s --- which sits $0.00014$ away from
 $9/8$ --- gives a denominator in the hundreds and is stable to $1.7$. A small $q$ is the hazard;
 proximity to a simple fraction is not. The remedy is to dither the send instant, which works
 without having to get the arithmetic right.
@@ -1666,9 +1680,13 @@ continuous value is estimated pooled or per rate. \textnormal{\textit{Predicts}}
 \textnormal{\textit{full}} where the measured spread exceeds half the cell width. Both are
 recomputed from the geometry at build time, so the last two columns can be read against each
 other: $\spreadAgree$ of the $\spreadArms$ commensurate rows agree, and the
-\spreadMissWord{} that do not are \spreadMissRates{}~msg/s, discussed in
-supplementary material~S31. Rows are ordered by $q$, which is what decides the prediction.
-Every incommensurate ratio shown is already in lowest terms.}
+\spreadMissWord{} that do not are \spreadMissRates{}~msg/s, daggered and set in bold here and
+discussed in supplementary material~S31. Both are resolved in the model's favor by the
+replacement statistic of Table~\ref{tab:gridinference}, which does not use spread.
+Incommensurate arms have no cell and therefore no class: their \textnormal{\textit{predicts}}
+entry is the noise floor rather than a prediction, and their measured spreads --- about three
+points --- are that floor, not a disagreement. Rows are ordered by $q$, which is what decides
+the prediction. Every incommensurate ratio shown is already in lowest terms.}
 \label{tab:quantization}
 \footnotesize
 \centering
@@ -1955,7 +1973,7 @@ unchanged by construction. The result is unambiguous (Section S25): utilization 
 to $0.001$ (the pre-registered manipulation check passes), and the negative-span rate fell from
 $0.132$ to $0.0034$ at $\rho = 0.75$ and from $0.305$ to $0.0057$ at $\rho = 0.88$ ---
 factors of $39$ and $54$, disjoint Wilson intervals, both residual rates on the floor the
-model names in advance, $C_0 \approx 0.004$.
+model names in advance, $C_0 \approx \invFloor$.
 
 \paragraph{Utilization is not the variable, shown at identical utilization.} Two loads can
 reach the same $\rho$ by different means: $k$ cores flat out leaves $C-k$ genuinely free,
@@ -2130,12 +2148,12 @@ sampled'' from ``not on the grid'' was the whole reason for building one that ca
 misses are the clearest case in the corpus for having done it.
 
 \paragraph{The denominator, not the rate that carries it.} Every denominator above
-appears at one rate, so the pre-registered control is the $\controlRate$~msg/s arm: $1.667$~ms
+appears at one rate, so the pre-registered control is the $\armSixHundredRate$~msg/s arm: $1.667$~ms
 $= 5/3$, the same $q=3$ as $300$~msg/s at \emph{half} the interval, recorded in advance to
-land near $33\%$. It landed at \controlReplicates{} --- \controlLowerWord{}
-replicates on the $1/3$ branch, \controlUpperWord{} on the $2/3$ branch, nothing between (one
+land near $33\%$. It landed at \armSixHundredReplicates{} --- \armSixHundredLowerWord{}
+replicates on the $1/3$ branch, \armSixHundredUpperWord{} on the $2/3$ branch, nothing between (one
 replicate's shutdown-hook totals arrived after our first read; the recovered $65.86$ was on the
-upper branch). The loosest of them, $\controlWidest$, sits $\controlWidestGap$ points from its
+upper branch). The loosest of them, $\armSixHundredWidest$, sits $\armSixHundredWidestGap$ points from its
 vertex, inside the $3$-point rule stated below and the widest departure the arm shows.
 $66.67\%$ is $2/3$ to two decimals, matching the $65.35$ that $300$~msg/s produced
 on the same branch: two rates an octave apart land on the same grid because they share a
@@ -2323,7 +2341,7 @@ stamping threads themselves --- where the model locates the failure --- rather t
 canceling in the subtraction as our delay injection did. The result is unambiguous
 (supplementary material S25): utilization held to $0.001$, and the negative-span rate fell by
 factors of $39$ and $54$ at the two load levels, with disjoint Wilson intervals, both
-residual rates landing on the floor the model names in advance, $C_0 \approx 0.004$.
+residual rates landing on the floor the model names in advance, $C_0 \approx \invFloor$.
 
 \paragraph{Utilization is not the variable, shown at identical utilization.} Two loads
 can reach the same $\rho$ with $C-k$ cores genuinely free or with none; at $k=6$ both arms
@@ -2335,6 +2353,13 @@ reproduces $k=5$ in direction but not size, and resolves a small $k=7$ differenc
 reading of that convergence as a null; both campaigns agree on the shape, twofold at $k=6$ collapsing toward parity at
 $k=7$, one free core in eight being nearly as useless as none.
 \section{S33. Resolution, discarded samples and sampling artifacts: the literature engagement in full (moved from the main text)}
+
+\paragraph{The problem is older than every tool in the audit.} Danzig and Melvin were building
+microsecond timers for workstations in 1990, and said why in their title: the available clock
+was too coarse for the interval being timed~\cite{danzig1990highres}. Nothing in this paper's
+Mode~B is a new observation about clocks. What is new is that the tools which inherited the
+problem stopped counting what it costs them, and that the cost is computable in advance from
+two numbers an operator already knows.
 
 \paragraph{No defence of the guard has been found, and we looked for one.} The audit of
 Section~\ref{sec:generality} finds the practice without ever finding a stated reason for it,
@@ -2413,8 +2438,6 @@ recorded as a miss --- yet that arm sits six to seven points below the continuou
 beside it, which no continuous account produces: the grid is present even where the
 branch-probability law under-delivers. The payload sweep succeeded where co-location failed because padding adds serialization without contending for the scheduler.
 
-\bibliographystyle{IEEEtran}
-\bibliography{manuscript_references}
 \section{S34. Referee-round sensitivity artifacts (internal review, round 1)}
 
 Three artifacts added in the round-1 internal revision, each recomputable by a committed script.
@@ -2462,6 +2485,15 @@ the pre-registrations that failed. It is kept in full because an audit's credibi
 its own failures being visible, and because a reader checking whether the corrections were
 real should not have to take the summary on trust.
 
+We are not alone in needing the practice, and the field has not settled how to provide it. In
+2026 Bostanci et al.\ showed that a conference paper carrying all three artifact badges,
+including \emph{Reproducible}, had reported incorrect simulator results through configuration
+errors, and that its artifact could not rebuild its own headline
+claims~\cite{bostanci2026ramulator}. Their closing recommendation is the one this section is an
+attempt at: that the community needs mechanisms for correcting results and artifacts
+\emph{after} publication, rather than only gates before it. A withdrawal recorded in the
+document that made the claim is the cheapest such mechanism we know of.
+
 \subsection{S35.0. The phase excluded from every result}
 
 Measurement perturbs, and one early phase perturbed enough to be unusable: it pinned the load
@@ -2503,8 +2535,8 @@ the result the main text reports.
 We also called the mechanism behind those Redis-driver negatives a \emph{candidate} --- a
 sub-millisecond skew between two views of a virtualized clock --- and hedged it as such
 through the round-1 internal draft. The hedge was unnecessary, and reading the driver removes
-it. \texttt{RedisBenchmarkConsumer.java} takes the publish timestamp from
-\texttt{entry.getID().getTime()}, the stream-entry identifier the Redis \emph{server}
+it. \brk{RedisBenchmarkConsumer.java} takes the publish timestamp from
+\brk{entry.getID().getTime()}, the stream-entry identifier the Redis \emph{server}
 assigns on \texttt{XADD}, while the Kafka driver uses a producer-set stamp. The Redis span
 is therefore a difference between two millisecond-floored clocks on two hosts, for which
 $-1000\,\mu$s is the only negative value expressible; the Kafka span floors two stamps
@@ -2659,8 +2691,8 @@ about a quantum, and deletion is one of the ways it collects.
 
 The other two additions are counterexamples, and they are in the table for the reason Rezolus
 is. RabbitMQ PerfTest differences a stamp carried in the message against a local clock and
-passes the result to \texttt{performanceMetrics.received(diff\_time)} with no sign test at
-all; the NATS CLI appends \texttt{time.Duration(time.Now().UnixNano()-sendTime)}
+passes the result to \brk{performanceMetrics.received(diff_time)} with no sign test at
+all; the NATS CLI appends \brk{time.Duration(time.Now().UnixNano()-sendTime)}
 unconditionally. Both would let a negative through into their metrics, which is what
 RFC~7679 asks of a measurement, and both are exposed to skew rather than to quantization.
 \emph{The field does not uniformly delete}, and the paper must not be read as saying so.
@@ -2815,9 +2847,10 @@ where. Neither displaces the contribution, because neither is applied where a st
 benchmark reports a latency; but a referee is entitled to see them named.
 
 \paragraph{Counting what was not measured}
-\texttt{sockperf} prints \texttt{SentMessages}, \texttt{ReceivedMessages} and
-\texttt{SkippedMessages} in the same summary block as its latency percentiles, together with
-a dropped/duplicated/out-of-order line derived from sequence numbers~\cite{sockperf}. The
+In the same summary block as its latency percentiles, \texttt{sockperf} prints counts of the
+messages it sent, received and skipped, together with a
+line counting dropped, duplicated and out-of-order messages, derived from sequence
+numbers~\cite{sockperf}. The
 counters are error counters rather than a retention rate, but the reader of that summary can
 see the denominator the percentiles were computed over, which is what
 Section~\mainAuthors{} of the main text asks for.
@@ -3113,7 +3146,7 @@ taken in comparable places. Three of them are producer-side.
 
 \begin{itemize}
 \item \textbf{The send stamp} is read on the calling thread immediately \emph{before} the
-client is invoked. In \texttt{scripts/redis\_producer.py} the worker executes
+client is invoked. In \brk{scripts/redis_producer.py} the worker executes
 \texttt{send\_ns = now\_ns()} and only then calls \texttt{r.xadd(...)}.
 \item \textbf{The \redis{} acknowledgment stamp} is read on that same thread the moment
 \texttt{r.xadd(...)} returns. \texttt{xadd} is synchronous: the thread writes the request and
@@ -3393,9 +3426,11 @@ metrics --- which interval each reported quantity actually covers.
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/pipeline_schematic.pdf}
-\caption{\textbf{The four timestamps, and the span each metric covers.} Scheduling lag is
-measured inside one process. Broker transport subtracts a producer-side stamp from a
-consumer-side one, so it can come out negative when either process is delayed.}
+\caption{\textbf{The four bracketing timestamps, and the span each metric covers.} Scheduling
+lag is measured inside one process. Broker transport subtracts a producer-side stamp from a
+consumer-side one, so it can come out negative when either process is delayed. A fifth stamp,
+$t_{\mathrm{out}}$, is consumer-internal and is not drawn here; supplementary material S43.1
+places it.}
 \label{fig:pipeline-supp}
 \end{figure}
 
@@ -3419,7 +3454,10 @@ sentence above it is true. $p_{\mathrm{Holm}}$ is a Monte Carlo $p$-value
 ($\gridDraws$ draws) after Holm correction within the family of all $\gridArms$ arms; the
 corrected value is what decides the verdict. Arms marked
 \textnormal{\textit{flat (coincident)}} are those the model predicts
-flat, where the two hypotheses make the same prediction and the test has no power. }
+flat, where the two hypotheses make the same prediction and the test has no power. The
+\spreadMissRates{}~msg/s rows are the \spreadMissWord{} that the spread rule of
+Table~\ref{tab:quantization} misses; this test resolves both, which is why it replaced that
+rule.}
 \label{tab:gridinference}
 \footnotesize
 \centering
@@ -3790,15 +3828,28 @@ matters for the same reason the audit of Section~\mainGenerality{} does: the ins
 few and shared, so a defect in one is a defect in a decade of comparisons rather than in one
 project.
 
+The adjacent literatures are alive to benchmarking pitfalls without reaching this one. Fruth
+et al.\ catalogue the perils of database benchmarking~\cite{fruth2021telltale}, Zhang et al.\
+attribute tail latency to its sources through precise load
+testing~\cite{zhang2016treadmill}, and the scheduling-latency literature has compared
+measurement approaches across kernels for over a decade~\cite{cerqueira2013comparison}. Each
+takes the instrument's own reading as given. That is not a criticism of any of them --- it is
+the assumption this paper is about, and its being shared is the reason the omission survives.
+
 \paragraph{Two 2026 data points, one on each side}
 The main text concedes that most published comparisons report a median above the quantum,
 where the deletion law does not bind. That concession stands, and it is worth recording that
-it is not universal: a 2026 practitioner comparison reports a \redis{} Streams p99 of
-$0.8$~ms against \kafka{}'s $12.5$~ms~\cite{indexdev2026brokers}. A p99 beneath one
-millisecond puts the whole body of that distribution under the quantum, and the comparison
-carries no retained fraction, no rejection count and no timestamp resolution. It is the
-clearest current instance of a published ranking produced inside the regime this paper is
-about.
+it is not universal. A 2026 practitioner comparison of NATS, \redis{} and \kafka{} gives
+\kafka{} ``sub-10ms latency at p99'' and gives the other two no percentile at all:
+\redis{} has ``sub-millisecond response times'' and NATS ``sub-millisecond latency'',
+with ``microsecond-level message delivery''~\cite{indexdev2026brokers}. That is the sharper
+exhibit, and not because the numbers are small. A ranking that names a percentile for one
+system and not for the other two cannot be read at all in this regime: sub-millisecond
+\emph{somewhere} in the distribution is consistent with a median on the quantum and with a
+median well above it, and those two have retained fractions that differ by orders of
+magnitude. The comparison reports no retained fraction, no rejection count, no timestamp
+resolution and no send rate, so nothing in it distinguishes the two cases. It is the clearest
+current instance of a published ranking produced inside the regime this paper is about.
 
 Against that, the rules of Section~\mainAuthors{} are being adopted independently, and by a
 benchmark rather than by a metrics agent. A 2026 voice-agent latency methodology records both
@@ -3871,8 +3922,8 @@ signature (moved from the main text)}
 Section~\mainGenerality{} states the signature and what it rules out. This is why the two
 drivers differ, which is a property of the harness rather than of either broker.
 
-The \redis{} driver takes its publish timestamp from \texttt{entry.getID().getTime()} in
-\texttt{RedisBenchmarkConsumer.java}:72 --- the stream-entry identifier the \emph{\redis{}
+The \redis{} driver takes its publish timestamp from \brk{entry.getID().getTime()} in
+\brk{RedisBenchmarkConsumer.java}:72 --- the stream-entry identifier the \emph{\redis{}
 server} assigns on \texttt{XADD}~\cite{openmessaging2018}. The \kafka{} driver uses a
 producer-set stamp. So the \redis{} end-to-end span subtracts a consumer-side wall clock from
 a server-side one, across two hosts, with both floored to the millisecond; the \kafka{} span
@@ -3939,5 +3990,13 @@ incommensurate arms. At $1053$ and $1219$~msg/s the measured values are $47.2$ a
 --- flat where the prediction wanted a slope. The grid law does not predict a trend in rate,
 only a position against the tick, so the failure is of the extrapolation rather than of the
 law; we record it because it was registered and it did not come true.
+
+% The reference list closes the document. It sat two thirds of the way through until
+% round 47, rendering on page 32 of 53 with twenty-two sections, nine floats and
+% forty-eight distinct citation keys after it -- so a reader following a citation number
+% in S52 had to page backwards past twenty pages of text to a list they had already
+% walked over. test_supplement_hygiene.py holds it here.
+\bibliographystyle{IEEEtran}
+\bibliography{manuscript_references}
 
 \end{document}

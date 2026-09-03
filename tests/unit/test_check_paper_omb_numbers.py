@@ -20,7 +20,7 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 
 from check_paper_omb_numbers import (  # noqa: E402
     DERIVED_MACROS, OMB_SUBSET_PATTERNS, find_quoted_discard_totals, find_quoted_run_counts,
-    find_undermined_macros, load_cells, main, measured,
+    REDIS_CAMPAIGNS, _worst_run, find_undermined_macros, load_cells, main, measured,
 )
 from emit_paper_numbers import render  # noqa: E402
 
@@ -312,3 +312,50 @@ class TestCLI:
         out = capsys.readouterr().out
         assert "admissible runs" in out
         assert "none -- every run count comes from" in out
+
+
+class TestWorstRun:
+    """The single worst Redis run, which the main text quotes as its sharpest instance.
+
+    "41,397 of them in a single run where they were half of all samples taken, beside six
+    kept" -- both numbers were typed, in a round that found the same defect twice over in
+    the two sentences carrying "zero" and "not one negative". A count that makes a sentence
+    worth reading is the last count that should reach the page by hand.
+    """
+
+    @staticmethod
+    def cell(neg, kept, zero):
+        return {"discarded_negative": str(neg), "kept": str(kept),
+                "discarded_zero": str(zero)}
+
+    def test_it_picks_the_run_with_the_most_negatives(self):
+        got = _worst_run([
+            self.cell(10, 900, 90),
+            self.cell(41397, 6, 41266),
+            self.cell(300, 700, 0),
+        ])
+        assert got["redis_worst_negatives"] == 41397
+        assert got["redis_worst_kept"] == 6
+        assert got["redis_worst_share"] == pytest.approx(50.08, abs=0.01)
+
+    def test_no_cells_gives_no_worst_run(self):
+        got = _worst_run([])
+        assert got == {"redis_worst_negatives": None, "redis_worst_kept": None,
+                       "redis_worst_share": None}
+
+    def test_a_run_that_saw_nothing_has_no_share(self):
+        """Division by the number of samples taken, when none were."""
+        got = _worst_run([self.cell(0, 0, 0)])
+        assert got["redis_worst_negatives"] == 0
+        assert got["redis_worst_share"] is None
+
+    def test_the_committed_ledger_gives_the_number_the_paper_prints(self):
+        import os
+        cells = load_cells(os.path.join("docs", "results",
+                                             "external_campaigns_index.csv"))
+        redis = [c for c in cells if c.get("campaign") in REDIS_CAMPAIGNS]
+        got = _worst_run(redis)
+        assert got["redis_worst_negatives"] == 41397
+        assert got["redis_worst_kept"] == 6
+        assert got["redis_worst_share"] == pytest.approx(50.08, abs=0.05), \
+            "the main text calls this half of all samples taken"

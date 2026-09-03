@@ -770,8 +770,10 @@ The exposure of OMB-in-distributed-mode is therefore established by source audit
 timestamp is written on the producer's host and read on the consumer's, and the guard drops
 whatever the difference produces --- and \emph{not} by observing that binary. What \emph{is} now
 observed is the pattern itself across two hosts: the harness of the main text
-runs the identical stamp-subtract-guard logic over two disciplined clocks and measures zero
-negatives, an intact grid, and a deleted fraction coupled to clock-offset drift. The two
+runs the identical stamp-subtract-guard logic over two disciplined clocks across
+$\harnessCrossHostRuns$ runs, and measures $\harnessCrossHostNegatives$
+negatives in $\harnessCrossHostSamples$ samples, an intact grid, and a deleted fraction
+coupled to clock-offset drift. The two
 statements are complementary and we keep them distinct: the pattern's cross-host behavior is
 measured; OMB's own distributed binary remains unmeasurable by us.
 
@@ -1656,36 +1658,22 @@ range behind the $q=1$ corner can actually be seen.
 \begin{table}[t]
 \caption{\textbf{Replicate spread against the phase denominator $q$} (moved from
 Section~\mainPhase{}), at fixed payload,
-load, duration and host. \textnormal{\textit{Position}} is the distance from the measured continuous value
+load, duration and host. \textnormal{\textit{Pos.}} is the distance from the measured continuous value
 to the nearest grid point, against the cell half-width: $0$ sits on a grid point, $1$
 midway between two. Position is scale-free, so every call is unchanged whether the
-continuous value is estimated pooled or per rate. $^{\dagger}$already in lowest terms.}
+continuous value is estimated pooled or per rate. \textnormal{\textit{Predicts}} is
+\textnormal{\textit{full}} where the position exceeds a half; \textnormal{\textit{shows}} is
+\textnormal{\textit{full}} where the measured spread exceeds half the cell width. Both are
+recomputed from the geometry at build time, so the last two columns can be read against each
+other: $\spreadAgree$ of the $\spreadArms$ commensurate rows agree, and the
+\spreadMissWord{} that do not are \spreadMissRates{}~msg/s, discussed in
+supplementary material~S31. Rows are ordered by $q$, which is what decides the prediction.
+Every incommensurate ratio shown is already in lowest terms.}
 \label{tab:quantization}
 \footnotesize
 \centering
 \setlength{\tabcolsep}{3.5pt}
-\begin{tabular}{@{}rlrrrrlr@{}}
-\toprule
-rate & $\Delta/\tau$ & $q$ & $n$ & width & pos. & predicted & spread \\
-\midrule
-$1000$/s & $1/1$  & $1$ & $3$ & $100.0$ & $0.99$ & full & $99.3$ \\
-$500$/s  & $2/1$  & $1$ & $4$ & $100.0$ & $0.99$ & full & $99.5$ \\
-$250$/s  & $4/1$  & $1$ & $3$ & $100.0$ & $0.99$ & full & $58.6$ \\
-$400$/s  & $5/2$  & $2$ & $5$ & $50.0$  & $0.02$ & flat & $17.6$ \\
-$300$/s  & $10/3$ & $3$ & $5$ & $33.3$  & $0.97$ & full & $30.5$ \\
-$600$/s  & $5/3$  & $3$ & $5$ & $33.3$  & $0.97$ & full & $32.7$ \\
-$800$/s  & $5/4$  & $4$ & $5$ & $25.0$  & $0.04$ & flat & $7.2$  \\
-$625$/s  & $8/5$  & $5$ & $5$ & $20.0$  & $0.95$ & full & $17.9$ \\
-$875$/s  & $8/7$  & $7$ & $5$ & $14.3$  & $0.93$ & full & $10.7$ \\
-\midrule
-\multicolumn{8}{@{}l}{\emph{incommensurate --- phase set effectively continuous}} \\
-$889$/s  & $1000/889^{\dagger}$ & ${>}64$ & $5$ & --- & --- & $\approx 0$ & $1.7$ \\
-$457$/s  & ---    & ${>}64$ & $4$ & --- & --- & $\approx 0$ & $2.1$ \\
-$383$/s  & ---    & ${>}64$ & $4$ & --- & --- & $\approx 0$ & $2.8$ \\
-$333$/s  & ---    & ${>}64$ & $3$ & --- & --- & $\approx 0$ & $3.1$ \\
-$611$/s  & ---    & ${>}64$ & $3$ & --- & --- & $\approx 0$ & $3.1$ \\
-\bottomrule
-\end{tabular}
+\input{docs/generated/spread_table}
 \end{table}
 
 \begin{table}[t]
@@ -1694,15 +1682,7 @@ duration and host held fixed. Only the commensurate rate is unstable, and the tw
 rates agree with each other despite intervals differing by $19\%$. Predictions were recorded
 before the runs.}
 \small
-\begin{tabular}{@{}rlcl r@{}}
-\toprule
-Rate & Interval & Multiple of tick? & Retention per replicate & Spread \\
-\midrule
-$500$/s & $2.000$~ms & \textbf{exact} & $0.47$, $1.51$, $18.02$, $99.99$ & $99.5$ \\
-$457$/s & $2.188$~ms & no & $48.77$, $49.50$, $49.69$, $50.87$ & $2.1$ \\
-$383$/s & $2.611$~ms & no & $50.28$, $51.46$, $53.13$ & $2.8$ \\
-\bottomrule
-\end{tabular}
+\input{docs/generated/interval_table}
 \end{table}
 
 
@@ -1941,12 +1921,26 @@ $N$ & \kafka{} & \redis{} & Difference & $p_{\text{Holm}}$ \\
 \end{tabular}
 \end{table}
 
-\section{S27. The grid table (returned to the main text)}
+\section{S27. The grid table (moved to S23)}
 
-The table of replicate spread against the phase denominator $q$, which this section
-previously held, is back in the main text: the reviewer of v2.5 was right that
-load-bearing evidence should not sit in supplementary material. It is not duplicated
-here.
+The table of replicate spread against the phase denominator $q$ is
+Table~\ref{tab:quantization}, in supplementary material~S23 with the other tables that left
+the main text.
+
+It was in the main text for one revision, at the request of the reviewer of v2.5, and left
+again when the page budget tightened. This section held it before that and said so
+afterwards, which was true for one revision and then was not: the table went to S23 and this
+section went on pointing at a main text that no longer had it, while S31 went on pointing
+here. Round 45 followed the chain and found nothing at the end of it.
+
+Following it also found what the broken signpost had been hiding. The table was gated column
+by column against the campaign index on every run and had never drifted, but the ledger it was
+drawn from --- \brk{phase_quantisation.csv} --- was built before chain17's \texttt{ultimate}
+campaign was added to the rate arms and was never rebuilt, and the check that should have
+caught that was recomputing against a hard-coded copy of the same stale campaign list. Two
+routes agreed because both were stale in the same way. The table is now generated from the
+rebuilt ledger, and the campaign list is imported rather than copied, so the second route can
+no longer inherit the first one's mistake.
 
 \section{S28. The mechanism campaign paragraphs in full (moved from the main text)}
 
@@ -2098,6 +2092,7 @@ $T_{\mathrm{true}}/\tau$ sits midway between two grid points and replicates real
 On a grid point, one point takes nearly every run and the spread collapses. One statement
 covers both:
 \begin{equation}
+\label{eq:quantsupp}
 \text{spread} \;\longrightarrow\;
 \begin{cases}
 100/q & \text{when } T_{\mathrm{true}}/\tau \text{ sits mid-cell,}\\[2pt]
@@ -2109,20 +2104,40 @@ A half lies on every even grid ($1/2$, $2/4$, $4/8$) and never on an odd one, so
 point the odd denominators are predicted to show their full cell width and the even ones to show
 almost none. That is a prediction about specific arms before they are run, not a description after.
 
-\paragraph{Every arm behaves as its position predicts.} The grid table in supplementary material S27 states each rate's cell width, cell position, prediction and measured spread; the test needs
-no tolerance, since a spread above half the cell width separates full from flat.
+\paragraph{Most arms behave as their position predicts, and the two that do not are the
+reason this statistic was replaced.} Table~\ref{tab:quantization} states each rate's cell
+width, cell position, prediction and measured spread against Equation~\ref{eq:quantsupp}; the
+test needs no tolerance, since a spread above half the cell width separates full from flat.
+Of the $\spreadArms$ commensurate arms, $\spreadAgree$ match. The predictions are
+\spreadPredFullWord{} full against \spreadPredFlatWord{} flat, so both classes are realized
+and the agreement is with a prediction that varies, not with a constant. The table's last two
+columns are that comparison, one row at a time.
 
+The \spreadMissWord{} that miss are \spreadMissRates{}~msg/s. Both are predicted full and
+measure flat, and we report them as failures of \emph{this} statistic rather than of the
+model, for a reason that was stated before either was run and does not depend on how they came
+out. Spread is a range over replicates of a quantity with two-point support: an arm realizes
+the full cell width only if its replicates land on \emph{both} bracketing vertices, and five
+replicates that happen to fall on one of them produce a flat arm however exactly right the
+grid is. At $q=5$ and $q=7$ the upper branch carries a minority of the probability, so this is
+the outcome to expect some of the time, and the estimator cannot tell it from a refutation.
 
-All nine commensurate arms match --- seven full, two flat; both classes realized, so the
-agreement is with a prediction that varies, not with a constant.
+That is precisely why the pre-specified replacement below does not use spread at all, and the
+replacement answers both arms: $700$ and $1250$~msg/s each reject the continuum after Holm
+correction, at \pgridSevenHundred{} and \pgridTwelveFifty{}, and the table of that test
+records both as \emph{grid}. An estimator that cannot separate ``on the grid, one branch
+sampled'' from ``not on the grid'' was the whole reason for building one that can, and the two
+misses are the clearest case in the corpus for having done it.
 
 \paragraph{The denominator, not the rate that carries it.} Every denominator above
-appears at one rate, so the pre-registered control is the $600$~msg/s arm: $1.667$~ms
+appears at one rate, so the pre-registered control is the $\controlRate$~msg/s arm: $1.667$~ms
 $= 5/3$, the same $q=3$ as $300$~msg/s at \emph{half} the interval, recorded in advance to
-land near $33\%$. It landed at $33.97$, $34.29$, $34.90$, $65.86$ and $66.67$ --- three
-replicates on the $1/3$ branch, two on the $2/3$ branch, nothing between (the fifth's
-shutdown-hook totals arrived after our first read; the recovered $65.86$ was on the upper
-branch). $66.67\%$ is $2/3$ to two decimals, matching the $65.35$ that $300$~msg/s produced
+land near $33\%$. It landed at \controlReplicates{} --- \controlLowerWord{}
+replicates on the $1/3$ branch, \controlUpperWord{} on the $2/3$ branch, nothing between (one
+replicate's shutdown-hook totals arrived after our first read; the recovered $65.86$ was on the
+upper branch). The loosest of them, $\controlWidest$, sits $\controlWidestGap$ points from its
+vertex, inside the $3$-point rule stated below and the widest departure the arm shows.
+$66.67\%$ is $2/3$ to two decimals, matching the $65.35$ that $300$~msg/s produced
 on the same branch: two rates an octave apart land on the same grid because they share a
 denominator.
 
@@ -3807,7 +3822,17 @@ instrument's own clock is not among them. Over thirty-one pages the words
 asks for ``median + tail percentiles + CDF; warmup discarded'' and for no denominator, no
 resolution and no sign check.
 
-We record it without complaint about its author, who is doing something else and doing it
+The industrial half of that exhibit is a vendor's own fairness guide. A May 2026
+\kafka{} benchmarking methodology, written expressly to say how to run a comparison that is
+fair, covers workload profile, hardware normalization, the durability contract and failure
+scenarios, and says nothing about discarded samples, negative values, timestamp resolution or
+the send rate's relation to the clock tick~\cite{automq2026methodology}. Its entire treatment
+of the subject is the phrase ``with outlier handling described'' --- the unfalsifiable gesture
+the rules of Section~\mainAuthors{} exist to replace with a number. A tutorial and a vendor
+guide, four months apart, omitting the same thing is a stronger statement about the field than
+either alone.
+
+We record both without complaint about their authors, who are doing something else and doing it
 well. The point is narrower and harder to argue with than any count of benchmarks: a document
 written in 2026 to enumerate the ways latency measurement goes wrong does not contain the
 ways this paper reports, which is what it means for a gap to be a gap.

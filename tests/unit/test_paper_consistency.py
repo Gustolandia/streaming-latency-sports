@@ -98,6 +98,19 @@ def _resolved(text):
     return text
 
 
+def _biography(tex):
+    r"""The first biography's prose, with LaTeX comments stripped.
+
+    The comments above this entry record why each of its clauses is worded as it is, and they
+    had been counting against the 145-word budget TC applies to what it prints. Round 45
+    trimmed real words out of a biography to make room for a comment explaining the trim,
+    which is the wrong direction: a note to the next editor costs the reader nothing.
+    """
+    body = tex[tex.index(r"\begin{IEEEbiographynophoto}"):
+               tex.index(r"\end{IEEEbiographynophoto}")]
+    return re.sub(r"(?<!\\)%.*", "", body)
+
+
 def _section(tex, label):
     """The text of one sectional unit, found by its label and read to its own kind of boundary.
 
@@ -644,9 +657,27 @@ class TestQuantisationTable:
     reduced denominator q -- and it was typed in by hand from a script's stdout. That is exactly
     the transcription step that put "80 runs" in nine places while the ledger held 108, so the
     numbers are recomputed here rather than proofread.
+
+    Since round 45 the table is generated, from `phase_quantisation.csv` through
+    `emit_paper_numbers.render_spread_table`, and this class still earns its place because it
+    recomputes by a *different route*: the generator reads the phase ledger, and everything
+    below is derived from `external_campaigns_index.csv`, the campaign index. Two sources
+    agreeing is the check; a generator agreeing with itself is not. The class therefore reads
+    the generated file rather than the supplement, and nothing else about it changes.
+
+    The campaign list is imported rather than repeated. It used to be a literal here, and the
+    copy went stale: chain17's `ultimate` joined the analyser's list in July 2026 and this
+    tuple never learned about it, so for five rounds the "independent" route was quietly
+    recomputing over nine arms while the paper's other analyses used twelve. A hard-coded copy
+    of someone else's declaration is not independence, it is a second thing to keep in step --
+    and this one was not kept. Which campaigns to include is a *declaration*; what they imply
+    is the *computation*, and only the second belongs here.
     """
 
-    RATE_CAMPAIGNS = ("rate_phase", "rate_phase2", "rate_q")
+    @property
+    def RATE_CAMPAIGNS(self):
+        import analyze_phase_quantisation
+        return analyze_phase_quantisation.RATE_CAMPAIGNS
 
     @pytest.fixture(scope="class")
     def arms(self):
@@ -674,18 +705,26 @@ class TestQuantisationTable:
         return {k: sorted(v) for k, v in by.items()}
 
     def _table(self, tex):
-        """The quantisation table's body, isolated by its own label.
+        """The quantisation table's body.
 
-        Scoping to the section is not enough: Table 8 in the same section also has a `$500$/s`
-        row, and a section-wide search silently matched that one instead. A test that reads the
-        wrong table is worse than no test, because it still passes for the wrong reason.
+        Was: isolated inside `supplement.tex` by its own label, because scoping to the section
+        was not enough -- another table in the same section also has a `$500$/s` row, and a
+        section-wide search silently matched that one instead. A test that reads the wrong
+        table is worse than no test, because it still passes for the wrong reason.
+
+        Now the table is a generated file, so there is nothing to disambiguate: the file holds
+        one table and nothing else. `tex` is still taken so that the supplement is confirmed to
+        be including it, which is the other half of reading the right thing.
         """
-        at = tex.index(r"\label{tab:quantization}")
-        end = tex.index(r"\end{tabular}", at)
-        return tex[at:end]
+        assert r"\input{docs/generated/spread_table}" in tex, \
+            "the supplement no longer includes the generated quantisation table"
+        path = REPO / "docs" / "generated" / "spread_table.tex"
+        if not path.exists():                           # pragma: no cover - built by CI
+            pytest.skip("spread_table.tex absent; run emit_paper_numbers.py")
+        return path.read_text(encoding="utf-8")
 
     def _quoted_row(self, tex, rate):
-        """The table row for one rate: [ratio, q, n, width, position, predicted, spread]."""
+        """The table row for one rate: [ratio, q, n, width, position, predicted, spread, shows]."""
         m = re.search(r"^\$%d\$/s\s*&(.+?)\\\\" % rate, self._table(tex), re.M)
         assert m, "no table row for %d msg/s" % rate
         return [c.strip() for c in m.group(1).split("&")]
@@ -2463,8 +2502,7 @@ class TestTransactionsOnComputers:
     def test_the_biography_exists_and_is_short_enough(self, main_tex):
         assert r"\begin{IEEEbiographynophoto}" in main_tex, \
             "TC counts a biography in the page budget; the paper must carry one"
-        bio = main_tex[main_tex.index(r"\begin{IEEEbiographynophoto}"):
-                       main_tex.index(r"\end{IEEEbiographynophoto}")]
+        bio = _biography(main_tex)
         # The source count runs a little above the rendered count (macros and escapes
         # expand to one token), so the slack is upward only; the rendered biography is
         # what TC counts and it is 140 words.
@@ -2475,8 +2513,7 @@ class TestTransactionsOnComputers:
         point of inaccuracy: an M.Sc. and a Higher Diploma are already held, both with
         first-class honours, on top of a physics degree. A reader weighs that in the first
         clause, so it has to be right."""
-        bio = main_tex[main_tex.index(r"\begin{IEEEbiographynophoto}"):
-                       main_tex.index(r"\end{IEEEbiographynophoto}")]
+        bio = _biography(main_tex)
         assert "is completing the M.Sc." not in bio, "the earlier understatement"
         assert "first-class honors" in bio
         assert "physics" in bio and "Universidade do Porto" in bio

@@ -221,3 +221,40 @@ bring back first.
 have found nothing closer than `partitioned_bloom_TC`, `ssd_erasure_reliability_TC` and
 `numerical_reproducibility_TC` for position, and `timing_channels_TC` for subject. Later
 rounds should re-read these rather than hunt.
+
+## Added round 45 (2026-09-03)
+
+The sweep was re-run from scratch again. Two fetched, one duplicate discarded, and the corpus
+is still exhausted for *position* — but round 45 found the closest analogue in the corpus for
+what this paper actually is, which is a measurement paper that had to correct its own
+measurement.
+
+| file | arXiv | pages | worth |
+|---|---|---|---|
+| `moe_repro_eval.pdf` | 2608.07911 | 39 | **the closest analogue in genre anyone has found.** Its subject is a performance hypothesis it set out to test and could not, because "the measurement itself is unstable in ways that are easy to miss and that change the answer, not just its precision". Three evaluation axes, each of which *reverses a conclusion* rather than shifting a number; a correction of the authors' own earlier measurement; a reporting checklist as the deliverable. That is this paper's shape in another domain. Not TC-formatted and not TC-submitted, so it calibrates nothing about house style — keep it for the argument's structure |
+| `spec_fidelity.pdf` | 2608.27710 | 5 | thin but on-theme: quantifies the gap between SPEC CPU 2026 and its upstream applications, i.e. asks what the instrument's own adaptation costs in fidelity. Useful as one more data point that benchmark-fidelity work is publishable; too short to calibrate anything |
+| `sharma_causality_2604.pdf` | 2604.21361 | 17 | the concurrent negative-span report, already cited five times across both documents and given supplementary material S50 to itself. Fetched in full this round so the disagreement in S50 can be checked against the source rather than against an abstract |
+
+**One duplicate discarded.** arXiv:2403.16393 was re-fetched before anyone noticed it is
+`cled_methodology_TC.pdf`, already held since round 44. Recorded so it is not fetched a third
+time.
+
+**The figure question, answered again because it keeps being asked.** TC publishes **no figure
+limit**. The standing instruction to sit at "75% of the image limit" therefore has no
+denominator at this venue and cannot be satisfied or violated; what binds is the 12-page
+target, which includes figures, references and biographies. The corpus range is 6–20 figures,
+and 6–10 among the 12-page papers.
+
+**Current state of this manuscript**, measured this round and superseding the "Ours:" line
+near the top of this file, which was stale by two rounds:
+
+| | pages | abstract | refs | figures | tables |
+|---|---|---|---|---|---|
+| **main text** | **12** | **200** | **43** | **5** | **2** |
+| supplement | 53 | — | uncapped | 12 | 27 |
+
+References fell from 45 to 43 in round 45, when the `fio`/`btt` substitution exemplars moved
+to supplementary material S36 under the standing instruction to pass anything unnecessary to
+the supplement. The two values survive in the main text; only their citations moved. Two slots
+are therefore free for the first time in five rounds — which does **not** mean two citations
+should be found to fill them.

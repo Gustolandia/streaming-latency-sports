@@ -118,8 +118,15 @@ DODGE_FRACTION = 0.022
 COINCIDENT_RATIO = 1.06
 # And this is how far apart they have to go to stop being one. A marker in the deletion
 # figure is about 4.8 pt across and a decade of that axis is about 46 pt wide, so a tenth of
-# a decade is one marker's width -- which is 2% of the axis and invisible as a displacement.
-SEPARATION_RATIO = 1.30
+# a decade is one marker's width.
+#
+# One marker's width was the first answer and it was the wrong one: separating two centres by
+# exactly one diameter leaves the two circles touching, and round 45 found them on the printed
+# page rendering as a single figure-of-eight -- the same undercount the spreading was written
+# to prevent, one step further along. Two diameters of centre separation is what makes two
+# markers read as two. That is 0.21 of a decade, or 3.7% of this axis, still small enough that
+# the caption's disclosure covers it and no reading of position changes.
+SEPARATION_RATIO = 1.62
 
 
 def spread_coincident(xs, ys, ratio=COINCIDENT_RATIO, separation=SEPARATION_RATIO):
@@ -369,11 +376,20 @@ def plot_grid(ax, cells):
     # misreport position; what it does is take the bars off the arms' own abscissae so the
     # reference reads as separate from the thing being judged. The marker keeps its measured
     # x, and the caption says the bar is offset.
+    #
+    # The offset is absolute, so it is 2.6% of the crowded arms' abscissae and 62% of the
+    # leftmost one's. Round 45 rendered the printed page and found the 400 msg/s bar pushed
+    # onto the left spine, nearer the origin than its own marker: the arms that need the
+    # dodge are the ones where it is proportionally invisible, and the arms where it is
+    # proportionally huge are the two with nothing beside them to crowd. So it is mirrored
+    # for any arm within one dodge of the axis, which puts the bar in white space on the
+    # other side without changing its length, its height, or what it means.
     dodge = DODGE_FRACTION * lim
     for x, (blo, bhi) in zip(xs, bands):
         if blo is None or bhi is None:
             continue
-        ax.plot([x - dodge, x - dodge], [blo, bhi], color=GREY, lw=1.1, alpha=0.55,
+        at = x + dodge if x < 2 * dodge else x - dodge
+        ax.plot([at, at], [blo, bhi], color=GREY, lw=1.1, alpha=0.55,
                 zorder=1, solid_capstyle="butt")
     # The annotation that used to point at the diagonal -- "a continuum would land on this
     # line" -- is gone, and the bars are why. The diagonal is the null's centre; the bars are

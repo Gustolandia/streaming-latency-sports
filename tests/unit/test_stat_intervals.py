@@ -528,3 +528,115 @@ class TestHarnessArmSpreads:
         olo, ohi = got[457]["one_clock"]
         assert (round(lo, 1), round(hi, 1)) == (13.4, 26.9)
         assert round(ohi - olo, 2) == 0.98
+
+
+class TestSpreadCells:
+    """The spread law's arms, with both classes re-derived from the cell geometry.
+
+    Round 45 added this because the table it feeds had a column missing: the typed version
+    printed each arm's prediction and its measured spread but never the measured *class*, so
+    the sentence it supports -- a claim about agreement -- was the one thing a reader could
+    not read off it. Every classification here is recomputed rather than taken from the
+    ledger's stored `predicted_full` and `observed_full`, which is what lets the table state
+    a rule in its caption without being able to break it in its rows.
+    """
+
+    @staticmethod
+    def row(**kw):
+        base = {"rate_hz": "500", "commensurate": "True", "cell_width_pts": "100.0",
+                "grid_distance_pts": "49.084", "spread_pts": "99.515", "n": "5"}
+        base.update(kw)
+        return base
+
+    def test_a_commensurate_arm_carries_both_classes(self, monkeypatch):
+        monkeypatch.setattr(si, "_rows", lambda *p: [self.row()])
+        (c,) = si.spread_cells()
+        assert c["commensurate"] is True
+        assert (c["p"], c["q"]) == (2, 1), "500 msg/s is an interval of 2/1 ticks"
+        assert c["position"] == pytest.approx(0.98166, abs=1e-4)
+        assert c["predicted"] == "full" and c["observed"] == "full"
+        assert c["agrees"] is True
+
+    def test_position_is_capped_at_one(self, monkeypatch):
+        """Mid-cell is 1 by definition; a distance beyond the half-width is still mid-cell."""
+        monkeypatch.setattr(si, "_rows", lambda *p: [
+            self.row(grid_distance_pts="80.0")])
+        (c,) = si.spread_cells()
+        assert c["position"] == 1.0
+
+    def test_an_arm_predicted_full_that_measures_flat_is_recorded_as_a_miss(self, monkeypatch):
+        """1250 msg/s, the real one: five replicates on one branch of a two-point support."""
+        monkeypatch.setattr(si, "_rows", lambda *p: [
+            self.row(rate_hz="1250", cell_width_pts="20.0", grid_distance_pts="9.084",
+                     spread_pts="7.597")])
+        (c,) = si.spread_cells()
+        assert c["predicted"] == "full" and c["observed"] == "flat"
+        assert c["agrees"] is False
+
+    def test_an_incommensurate_arm_has_no_cell_and_no_class(self, monkeypatch):
+        monkeypatch.setattr(si, "_rows", lambda *p: [
+            self.row(rate_hz="457", commensurate="False", cell_width_pts="0.0",
+                     grid_distance_pts="", spread_pts="2.101")])
+        (c,) = si.spread_cells()
+        assert c["commensurate"] is False
+        assert c["cell_width"] is None and c["position"] is None
+        assert c["predicted"] is None and c["observed"] is None and c["agrees"] is None
+        assert c["spread"] == pytest.approx(2.101), "the spread is still reported"
+
+    def test_a_row_whose_rate_or_spread_is_unreadable_is_skipped(self, monkeypatch):
+        """A mangled row must not take the arms around it with it."""
+        monkeypatch.setattr(si, "_rows", lambda *p: [
+            self.row(rate_hz="not-a-rate"),
+            self.row(spread_pts=""),
+            self.row(),
+        ])
+        assert [c["rate_hz"] for c in si.spread_cells()] == [500]
+
+    def test_a_row_missing_a_column_entirely_is_skipped(self, monkeypatch):
+        monkeypatch.setattr(si, "_rows", lambda *p: [{"rate_hz": "500"}, self.row()])
+        assert [c["rate_hz"] for c in si.spread_cells()] == [500]
+
+    def test_a_commensurate_row_without_geometry_is_skipped(self, monkeypatch):
+        """Commensurate but with no cell to sit in: nothing can be classified, so nothing is."""
+        monkeypatch.setattr(si, "_rows", lambda *p: [
+            self.row(rate_hz="600", grid_distance_pts=""),
+            self.row(),
+        ])
+        assert [c["rate_hz"] for c in si.spread_cells()] == [500]
+
+    def test_a_zero_width_cell_is_skipped_rather_than_divided_by(self, monkeypatch):
+        monkeypatch.setattr(si, "_rows", lambda *p: [
+            self.row(rate_hz="600", cell_width_pts="0.0"),
+            self.row(),
+        ])
+        assert [c["rate_hz"] for c in si.spread_cells()] == [500]
+
+    def test_the_order_is_commensurate_first_then_by_denominator(self, monkeypatch):
+        """q decides the prediction, so the argument reads in order of q."""
+        monkeypatch.setattr(si, "_rows", lambda *p: [
+            self.row(rate_hz="457", commensurate="False", cell_width_pts="0.0",
+                     grid_distance_pts="", spread_pts="2.1"),
+            self.row(rate_hz="875", cell_width_pts="14.286", grid_distance_pts="6.227",
+                     spread_pts="10.697"),
+            self.row(rate_hz="500"),
+            self.row(rate_hz="1000", grid_distance_pts="49.084", spread_pts="99.397"),
+        ])
+        got = [c["rate_hz"] for c in si.spread_cells()]
+        assert got == [1000, 500, 875, 457], (
+            "q ascending, rate descending within a q, incommensurate last")
+
+    def test_the_committed_ledger_reproduces_the_claim_the_supplement_makes(self):
+        """End to end, on the artefact: the numbers supplementary material S31 states."""
+        comm = [c for c in si.spread_cells() if c["commensurate"]]
+        assert len(comm) == 12
+        assert sum(1 for c in comm if c["agrees"]) == 10
+        assert sorted(c["rate_hz"] for c in comm if not c["agrees"]) == [700, 1250]
+        assert sum(1 for c in comm if c["predicted"] == "full") == 10
+        assert sum(1 for c in comm if c["predicted"] == "flat") == 2
+
+    def test_every_miss_is_predicted_full_and_measured_flat(self):
+        """The direction matters: an arm measuring *more* spread than predicted would be a
+        different finding, and is not what the corpus shows."""
+        for c in si.spread_cells():
+            if c["commensurate"] and not c["agrees"]:
+                assert c["predicted"] == "full" and c["observed"] == "flat", c["rate_hz"]

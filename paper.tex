@@ -225,7 +225,7 @@ $\auditRejected$ of them, including every run behind our own first result. Each 
 practice is established already~\cite{paxson2004sound,specjbb2015,kistowski2015build}. What
 we add is their conjunction --- a physical-impossibility criterion, applied per run, with the
 rejection rate published as a headline quantity --- and the observation that the retention
-rate and the sign of each discard belong beside every reported latency.
+rate \emph{of samples} and the sign of each discard belong beside every reported latency.
 
 \subsection{Chronology, and what was withdrawn}
 
@@ -266,7 +266,7 @@ audit of Section~\ref{sec:generality} reads \harnessAuditedWord{} tools at sourc
 further than the disposal does: the end-to-end tool bundled with Apache \kafka{}
 itself computes its percentiles from millisecond-truncated integers~\cite{kafka_tools}. This
 is the state of a widely installed instrument, not one project's oversight. Nor is the survey
-one-sided: Supplement~S53 gives every row with its source line, the tools that keep their
+one-sided: Supplement~S36 gives every row with its source line, the tools that keep their
 negatives among them. Nor is the
 architecture that produces those spans a blunder to be designed away. A producer that blocked
 for each acknowledgment could not generate load at all, so the send is stamped on the calling
@@ -524,7 +524,7 @@ distributed mode is discussed in Section~\ref{sec:limitations}.
 In \brk{LocalWorker.java}:294 the end-to-end latency is \texttt{now - publishTimestamp},
 where \texttt{now} is read in the consumer and \texttt{publishTimestamp} is \kafka{}'s
 producer-set \texttt{CreateTime}, itself a millisecond value. That difference is then
-promoted to microseconds (Supplement~S53 quotes the call). So the guard in
+promoted to microseconds (Supplement~S36 quotes the call). So the guard in
 \brk{WorkerStats.java}:95 --- \texttt{if (endToEndLatencyMicros > 0)} --- tests a variable
 named for microseconds that can only ever hold integer multiples of a thousand of them. The
 message is counted as received a few lines earlier, but a non-positive latency is dropped
@@ -612,15 +612,15 @@ all-or-nothing corner and an incommensurate rate effectively continuous (Supplem
 spread follows:
 \begin{equation}
 \label{eq:quant}
-\text{spread} \;=\;
+\text{spread} \;\longrightarrow\;
 \begin{cases}
 100/q & \text{when } T_{\mathrm{true}}/\tau \text{ sits mid-cell,}\\[2pt]
-> 0 & \text{when } T_{\mathrm{true}}/\tau \text{ sits on a grid point.}
+0 & \text{when } T_{\mathrm{true}}/\tau \text{ sits on a grid point.}
 \end{cases}
 \end{equation}
-The lower branch is not zero because a nominally commensurate rate is not exactly
-commensurate; the two arms that sit on a vertex spread by roughly a quarter to a third of the
-mid-cell width, too few to fix a constant (Supplement~S23).
+Both branches are limits. The lower is not zero because a nominally commensurate rate is not
+exactly commensurate; the two arms that sit on a vertex spread by roughly a quarter to a third
+of the mid-cell width, too few to fix a constant (Supplement~S23).
 
 A round send rate is the worst possible choice, and exactness decides it: Supplement~S23
 runs from the $q=1$ rate whose replicates span almost the whole range to the one sitting
@@ -645,13 +645,15 @@ replicate noise and which side of the diagonal it falls on is not evidence eithe
 \includegraphics[width=\columnwidth]{docs/results/figures/grid_membership.pdf}
 \caption{\textbf{Grid membership, as a set.} Each arm's observed mean distance to the
 nearest grid vertex against the distance a continuum would give, which is the diagonal. The
-gray bar beside each arm, offset a little to its left so it clears the diagonal, is that
-arm's own null, simulated: a marker clear of its bar is an arm
-that rejects, so the picture carries the test rather than illustrating it. Filled circles
+gray bar beside each arm, offset a little to clear the diagonal and mirrored for the two arms
+it would otherwise push onto the axis, is that
+arm's own null, simulated: the test is one-sided towards the grid, so a marker \emph{below}
+its bar is an arm that rejects and a marker above one is not, which is what lets the picture
+carry the test rather than illustrate it. Filled circles
 reject after Holm correction; the open circle is the one powered arm that does not, and it
-sits at the edge of its bar rather than clear of it. The $\gridFlat$ squares are the arms
-where the two hypotheses coincide and no test has power; their bars collapse towards zero,
-which is what having no power looks like, and \emph{the sign carries nothing} there.
+sits at the edge of its bar rather than below it. The $\gridFlat$ squares are the arms
+where the two hypotheses coincide and no test has power; their bars collapse towards zero
+and \emph{the sign carries nothing} there.
 Per-arm corrected $p$-values are in Supplement~S46.}
 \label{fig:grid}
 \end{figure}
@@ -679,10 +681,13 @@ cells; three fired, and what survives is per-send jitter rather than accumulatio
 \subsection{Generality, and the sign channel}
 \label{sec:generality}
 To show the law is not an artifact of one JVM, we reproduced the guard in an independent
-Python harness sharing no code with the benchmark. On one clock it recorded \textbf{zero}
-negative differences across $\harnessOneClockSamples$ samples, as a causal chain requires,
-while the grid behavior reappeared intact. Across two \texttt{chrony}-disciplined hosts
-retention wandered from $\harnessXHostRetLo$ to $\harnessXHostRetHi\%$ over
+Python harness sharing no code with the benchmark. On one clock it recorded
+\textbf{zero} negative differences across $\harnessOneClockSamples$
+samples, as a causal chain requires, and none across two hosts either
+(Supplement~S10), while the grid behavior reappeared intact. At
+$\harnessXHostRate$~msg/s --- the \harnessXHostArmClass{} arm, the only one of the three whose
+own grid spread does not swamp the comparison --- cross-host retention wandered from
+$\harnessXHostRetLo$ to $\harnessXHostRetHi\%$ over
 four replicates, where the same arm on one clock held to $\harnessOneClockSpread$ points.
 Cross-host, the deleted fraction couples to the synchronization state and nothing records
 either.
@@ -695,24 +700,24 @@ finding with the code that classified the benchmark. \harnessSilentWordCap{} of 
 \harnessDisposalClassesWord{} classes --- a pattern rather than one project's oversight, and
 one of them is Apache Pulsar's performance client reaching the same design
 independently~\cite{pulsar_perf}. Apache
-\kafka{}'s own bundled end-to-end tool keeps every sample and loses it anyway. It fills the
+\kafka{}'s own bundled end-to-end tool keeps every sample and loses it anyway, filling the
 array its percentiles come from by integer division, so on a sub-millisecond path every
 one reports zero~\cite{kafka_tools}. Two more keep their negatives and pass them on
 unfiltered, as RFC~7679 asks~\cite{rabbitmq_perftest,nats_cli}. The failure is not universal,
 and the claim that survives is the narrower one: \emph{the tools that quantize or filter do so
-without counting}. Substitution is the worst of the three classes ---
-\texttt{fio} returns zero~\cite{fio_gettime}, \texttt{btt} one nanosecond~\cite{btt_inlines}
---- because it leaves nothing missing: retention computed downstream reads $100\%$ and a
-value never measured enters the distribution. At the other end, \harnessCountingWord{} counts
+without counting}. Substitution is the worst of the three classes
+because it leaves nothing missing: retention computed downstream reads $100\%$ and a
+value never measured enters the distribution --- \texttt{fio} and \texttt{btt} substitute
+zero and one nanosecond, at the source lines Supplement~S36 quotes. At the other end, \harnessCountingWord{} counts
 its discards in a metric whose description names the cause~\cite{rezolus}, which is what
 makes the rule of Section~\ref{sec:authors} practical rather than aspirational.
-Supplement~S53 gives the registry tool by tool, with the source line each finding sits on and
+Supplement~S36 gives the registry tool by tool, with the source line each finding sits on and
 one entry that corrects a misreading of our own.
 
 The class is not confined to benchmarks: in November 2025 the audited broker's own coordinator
 metrics adopted the same disposal, clamping negative durations to zero with no counter and no
-log line~\cite{kafka19888}. Its mechanism is a backward clock step, so Supplement~S36 treats
-it there rather than beside Mode~A.
+log line~\cite{kafka19888}; its mechanism is a backward clock step, treated in
+Supplement~S36.
 
 Separating the discards by sign is what makes the guard's cost legible. Across all
 $\ombRuns$ runs the \kafka{}-driver corpus's $\ombKafkaDiscarded$ discarded samples contain
@@ -721,8 +726,8 @@ Those discards are resolution failures, not clock failures --- a distinction an 
 counter cannot make. The same channel
 then caught the real thing in the \redis{}-driver replication: $\ombRedisNegatives$
 negatives, every one exactly $-1000\,\mu$s, the minimum the quantum can express, with
-$41{,}397$ of them in a single run where they were \emph{half of all samples taken}, beside
-six kept.
+$\ombRedisWorstNegatives$ of them in a single run where they were \emph{half of all samples
+taken}, beside \ombRedisWorstKept{} kept.
 
 That value is not a coincidence. The \redis{} driver's span is a difference between two
 millisecond-floored clocks on two hosts, and a sub-tick offset between two floored clocks can
@@ -1121,8 +1126,8 @@ The mechanism requires a stamping path that can be preempted. Designs that pin a
 a dedicated core and busy-poll, or that stamp in hardware, remove the state
 Equation~\ref{eq:twostate} depends on, and we make no claim about them. Within our own
 setting the alternatives are each eliminated. Clock skew: one clock by
-construction on the rejecting arms, and zero negatives in $\harnessCrossHostSamples$
-two-clock samples. Cross-CPU incoherence under migration: below. Utilization: identical
+construction on the rejecting arms, and $\harnessCrossHostNegatives$ negatives in
+$\harnessCrossHostSamples$ two-clock samples. Cross-CPU incoherence under migration: below. Utilization: identical
 $\rho$, rates twofold apart. Timer noise: \texttt{SCHED\_FIFO} at fixed utilization
 collapses the rate across $\rtPairs$ pairs, and noise does not respect
 scheduling class. Stress: transport $\payloadTransportFactorRound\times$ longer
@@ -1197,6 +1202,14 @@ time, and the test suite fails if the text and the data disagree.
 % Trimmed twice: once when the author list went from two names to four, and again in round
 % 43, when four biographies would not fit inside twelve pages. What went the second time:
 % "with first-class honors", the specialization venues, and one clause of the research line.
+%
+% Round 45 trimmed it a third time for the page budget and put every word back. Three of the
+% clauses it cut are pinned by tests, each for a reason recorded when it was pinned: "with
+% first-class honors" and "currently pursuing" because an earlier draft understated the
+% degrees held and blurred the one in progress, and "pre-registration" because the research
+% statement has to describe a programme rather than this paper. A page budget is not a reason
+% to reopen a decision about how a person's own record is stated; the words were found
+% elsewhere.
 received the B.Sc.\ degree in physics from the Universidade do Porto, Portugal, and
 specialized in nuclear fusion science under the Erasmus Mundus programme. He holds an
 M.Sc.\ in software design with cloud-native computing from the Technological University of

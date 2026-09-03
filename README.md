@@ -914,15 +914,40 @@ length ran higher than he would have set it, and asked for the claim to be measu
 than judged by ear: the main text was at a median of 28 words against 19–22 across five TC
 papers extracted the same way. `tests/unit/test_sentence_length.py` now caps the median at
 the top of that venue range, caps the share of sentences over forty words, and caps the
-longest. The build sits at a median of 22, a mean of 22.5, and a longest sentence of 53.
+longest. The build sits at a median of 21, a mean of 21.5, and a longest sentence of 78.
 
-Two of the four gates write as well as check. `scripts/emit_paper_numbers.py` generates both
-`docs/generated/paper_numbers.tex` (the macros the manuscript quotes) and
-`docs/generated/grid_table.tex` (Table II in full), and `--check` fails the build if either
-disagrees with the artefacts. The table is generated because the transcribed version drifted
-from the correction its own caption claimed: it printed raw permutation p-values under a
-caption promising Holm correction, and one arm changed verdict between the two. A number that
-reaches the page without passing through a script is the one that goes wrong.
+Two of the four gates write as well as check. `scripts/emit_paper_numbers.py` generates
+`docs/generated/paper_numbers.tex` (the macros the manuscript quotes) and six tables —
+`grid_table.tex`, `spread_table.tex`, `interval_table.tex`, `registry_table.tex`,
+`priority_table.tex` and `exposure_table.tex` — and `--check` fails the build if any of them
+disagrees with the artefacts. The first table was generated because the transcribed version drifted from the
+correction its own caption claimed: it printed raw permutation p-values under a caption
+promising Holm correction, and one arm changed verdict between the two. A number that reaches
+the page without passing through a script is the one that goes wrong.
+
+`spread_table.tex` was added in round 45 for a different reason, worth stating because it is
+the failure this repository is least protected against. The quantisation table it replaces was
+typed but *not* wrong: the suite recomputed every column of it from the campaign index on
+every run, and it never drifted. What no gate covered was the ledger *underneath* it.
+`docs/results/external/phase_quantisation.csv` was built before chain17's `ultimate` campaign
+joined `RATE_CAMPAIGNS`, and was never rebuilt, so for five rounds the manuscript's strongest
+sentence about the spread law described a nine-arm corpus the analyser no longer produces —
+while the grid-membership analysis beside it already used the full twelve. The second route
+that should have caught it was itself carrying a hard-coded copy of the campaign list, made
+before the change and never updated, so both routes agreed by being stale in the same way.
+Rebuilt, the corpus is twelve arms and ten match; the two that miss are reported in
+supplementary material S31 along with the reason the spread statistic was superseded. Two
+lessons went into the suite: a test that recomputes independently must still *import* the
+declarations it recomputes against (`tests/unit/test_paper_consistency.py`), and a claim
+written as an English word is still a claim about a number and is gated as one
+(`tests/unit/test_shared_statements.py`).
+
+Round 45 also added `tests/unit/test_prose_pointers.py`, because both documents point at
+supplement sections in running text — "Supplement~S23", "supplementary material S27" — more
+than sixty times, and LaTeX cannot check a cross-reference written as prose. It found four
+dead ones: three in the main text naming S53 where the registry is S36, and one chain where
+S31 pointed at S27, S27 said the table had gone back to the main text, and the main text did
+not have it.
 
 **Every headline number is pinned to its artefact** by
 `tests/unit/test_paper_consistency.py`, which recomputes the figures from the committed

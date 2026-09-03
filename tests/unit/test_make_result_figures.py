@@ -95,6 +95,33 @@ def test_spread_coincident_separates_markers_that_would_render_as_one():
     assert max(out) / min(out) >= mrf.SEPARATION_RATIO * 0.99
 
 
+def test_the_separation_is_two_marker_widths_and_not_one():
+    """One diameter of centre separation leaves two circles touching.
+
+    That was the first answer, and round 45 found the consequence at print size: the two
+    256 KB markers rendered as a single figure-of-eight, which is the undercount the
+    spreading exists to prevent arriving one step later. Two diameters is what makes two
+    markers read as two.
+
+    The arithmetic, in the units the page is printed in: the deletion figure's axis spans
+    0.30 to 129,000 ms, which is 5.6 decades across a 3.4 in column, so a decade is about
+    44 pt. A marker at s=18 is about 4.8 pt across, so two diameters is 9.6 pt, or 0.22 of
+    a decade.
+    """
+    import math
+    decades = math.log10(129000.0 / 0.30)
+    column_pt = 3.4 * 72.0
+    pt_per_decade = column_pt / decades
+    marker_pt = 18 ** 0.5 * 1.13          # scatter s is an area in pt^2; ~4.8 pt across
+    want_decades = 2.0 * marker_pt / pt_per_decade
+    assert math.log10(mrf.SEPARATION_RATIO) >= want_decades * 0.9, (
+        "SEPARATION_RATIO of %.2f is %.3f of a decade; two marker widths needs %.3f, and "
+        "below that the two circles touch and read as one"
+        % (mrf.SEPARATION_RATIO, math.log10(mrf.SEPARATION_RATIO), want_decades))
+    # And not so large that the displacement stops being a rendering nudge.
+    assert mrf.SEPARATION_RATIO < 2.0, "a factor this large misreports position"
+
+
 def test_spread_coincident_keeps_the_group_centred():
     """Symmetric, so no reading of position moves beyond the separation itself."""
     xs = [1000.0, 1010.0]
@@ -232,6 +259,13 @@ def test_each_null_bar_is_dodged_off_its_own_arm():
     It does not claim to take the bars off the diagonal. A vertical bar centred on the
     null's centre is cut by the diagonal near its middle, and no displacement small enough
     to be honest would change that.
+
+    The offset is mirrored for an arm sitting within one dodge of the axis. It is absolute,
+    so it is a fiftieth of the crowded arms' abscissae and two thirds of the leftmost one's,
+    and on the printed page that put the 400 msg/s bar onto the left spine, nearer the
+    origin than its own marker. The arms that need the dodge are the ones where it is
+    proportionally invisible; the arms where it is proportionally huge have nothing beside
+    them to crowd.
     """
     fig, ax = plt.subplots()
     rows = mrf.grid_rows()
@@ -246,12 +280,71 @@ def test_each_null_bar_is_dodged_off_its_own_arm():
     dodge = mrf.DODGE_FRACTION * lim
     assert dodge > 0.005, "a dodge this small would not clear a marker at column width"
 
-    want = sorted(round(r["d_null"] - dodge, 6) for r in rows)
+    def placed(x):
+        return x + dodge if x < 2 * dodge else x - dodge
+
+    want = sorted(round(placed(r["d_null"]), 6) for r in rows)
     assert sorted(round(b.get_xdata()[0], 6) for b in bars) == want
+
+    # Every bar stays inside the panel, which is the defect the mirror exists to prevent.
+    left = -lim * 0.02
+    assert all(b.get_xdata()[0] > left for b in bars), \
+        "a null bar is drawn on or outside the left spine"
+
+    # And the mirror actually fires here: without it this figure has a bar at 0.007 against
+    # a spine at -0.011, which is the rendering round 45 found.
+    assert any(r["d_null"] < 2 * dodge for r in rows), \
+        "no arm is near the axis, so the mirror is untested by this ledger"
 
     # The marker keeps its measured position: the offset is on the reference, not the data.
     drawn = {round(ln.get_xdata()[0], 6) for ln in ax.lines if len(ln.get_xdata()) == 1}
     assert {round(r["d_null"], 6) for r in rows} <= drawn
+
+
+def test_the_caption_states_the_reading_rule_with_its_direction():
+    """A rule for reading a picture is wrong if it is wrong on the picture's own points.
+
+    The caption said "a marker clear of its bar is an arm that rejects". The test is
+    one-sided towards the grid -- `mc_pvalue` counts draws at or below the observed
+    distance -- so an arm rejects by sitting *below* its band, and the generating function's
+    own docstring has said "below" since the bands were added. The caption dropped the
+    direction, and two of the twelve points it plots are the counterexample: both squares
+    sit clear of their bars, above them, at p = 1.000 and 0.992. A reader applying the rule
+    as written reads the two least significant arms in the figure as rejections.
+
+    The main text had it right the whole time -- "which side of the diagonal it falls on is
+    not evidence either way" -- which is what makes this a caption defect rather than a
+    misunderstanding.
+    """
+    import stat_intervals
+    caption = _figure_caption(r"\label{fig:grid}")
+    low = caption.lower()
+    assert "below" in low, \
+        "the caption must say which side of its bar a rejecting marker is on"
+    assert "clear of its bar is an arm" not in low, \
+        "the direction-blind form of the rule is back"
+
+    # The two squares are the reason the direction matters, so check they still are.
+    above = [c for c in stat_intervals.grid_cells()
+             if not c["powered"] and c["d_observed"] > c["d_null_hi"]]
+    assert len(above) == 2, (
+        "the no-power arms no longer sit above their own bands; the caption's exception "
+        "may need rewording with them")
+
+
+def _figure_caption(label):
+    r"""The `\caption{...}` of the float carrying `label`, brace-matched."""
+    tex = (ROOT / "paper.tex").read_text(encoding="utf-8")
+    at = tex.index(label)
+    start = tex.rindex(r"\caption{", 0, at) + len(r"\caption{")
+    depth, i = 1, start
+    while depth:
+        if tex[i] == "{":
+            depth += 1
+        elif tex[i] == "}":
+            depth -= 1
+        i += 1
+    return tex[start:i - 1]
 
 
 def test_the_bands_agree_with_the_p_values_they_were_drawn_from():

@@ -1579,7 +1579,7 @@ analysis of the main text exists partly to compensate.
 sweep, the connection sweep above ten, the cluster arm, the durability quantification and all of
 Testbed~A. We cannot characterize behavior at the concurrency a multi-tenant platform would see.
 
-\emph{E1's replay rate is inferred, not documented.} the main text recovers it
+\emph{E1's replay rate is inferred, not documented.} The main text recovers it
 from the data and the recovery is, we think, correct, but it is an inference from a
 $52.34$~ms median in one cell rather than a setting anyone recorded. A reader who does not accept
 the inference should read the main text as establishing that both arms met the same rate,
@@ -1600,7 +1600,7 @@ inferred. Whether a different client, or a pre-created topic, or a broker config
 auto-creation would pay the same cost, we did not test. The practitioner advice in
 the main text is written to be safe either way.
 
-\emph{The occupancy result is a mechanism, not a load model.} the main text shows by
+\emph{The occupancy result is a mechanism, not a load model.} The main text shows by
 manipulation that the negative-span rate follows stamping-thread occupancy rather than utilization,
 and that is the strongest causal claim in this paper. It is not a formula. We can say the rate
 falls fifty-fold when the stamping thread stops being preempted; we cannot say what the rate will
@@ -2839,6 +2839,16 @@ measurement rather than a benchmark harness, it derives no retention arithmetic,
 reads no harness source. We record it because a reader entitled to ask whether anyone has
 done the sensible thing deserves the answer, which is yes, in a neighboring field.
 
+It is a precedent for our \emph{first} rule as well as our third, and we had missed that.
+Making the case for tiers, the paper states what the filter it replaces cost: of the $8{,}804$
+clients the prior method considered, about $3{,}631$ --- two in five --- ``were rejected due to
+missing timestamps, negative latency values, and other reasons''. That is a published
+rejection rate, which is what Section~\mainAuthors{} of the main text asks a benchmark to
+report, arrived at in 2018 and for the same reason: a filter's cost is not visible in what
+survives it. Two qualifications, so the precedent is not claimed wider than it is. The
+denominator is clients rather than samples, and the rate is TimeWeaver's characterization of
+the prior method rather than of its own tiering, which it reports instead as counts per tier.
+
 \section{S40. What standardized benchmarks require about resolution}
 \label{sec:standards}
 
@@ -3482,9 +3492,14 @@ Table~\ref{tab:spans}; their intervals are narrower than the plotted point.}
 % path can divide; what the main text owes them is the shape and one worked point,
 % not seven rows of a function.
 \begin{table}[tb]
-\caption{\textbf{What the displacement costs at longer paths.} Computed from the measured
-ack lags, not modeled. Left: the error on a single reported latency, $A/T_{\mathrm{true}}$
-at this corpus's median lag. Right: the gap a comparison would report between two
+\caption{\textbf{What the displacement costs at longer paths, and how wide the cost is.}
+Computed from the measured ack lags, not modeled. Left: the error on a single reported
+latency, $A/T_{\mathrm{true}}$, at this corpus's median lag of $\ackLagMedianUs\,\mu$s.
+Middle: the same error at the tenth and ninetieth percentiles of that lag across our
+conditions, $\exposureLagLo$ and $\exposureLagHi\,\mu$s. The band is the column to read.
+A lag is not a constant, and a reader locating their own path against the point estimate
+alone would put a $10$~ms path at $\exposureErrTen\%$ when a tenth of our own conditions
+sit at $\exposureErrTenHi\%$. Right: the gap a comparison would report between two
 identical systems whose clients differ only in where the acknowledgment is stamped ---
 a callback thread against an inline stamp. Where the right-hand column reads ``inverts'',
 the apparent gap has changed sign; on every row below those nothing is negative, so the
@@ -3680,9 +3695,12 @@ open one.
 \paragraph{When dither works, which is a question with an answer}
 Our remedy is to dither the send instant, and a reader from signal processing will ask under
 what conditions dither actually recovers the underlying quantity. It is a fair question and
-the literature has answered it: for quantized Gaussian measurements the useful regime is
-bounded by the ratio of the noise's spread to the quantization interval, and outside it
-subtractive dither costs more than it buys~\cite{rapp2019dither}. We name it rather than
+the literature has answered it. For quantized Gaussian measurements subtractive dither helps
+when the ratio of the noise's standard deviation to the quantization interval is roughly
+\emph{below} one third; above that it costs more than it buys~\cite{rapp2019dither}. The
+condition is one-sided. Their second threshold does have a lower bound, but it decides which
+\emph{estimator} wins inside that regime rather than whether dither helps at all, and we do
+not lean on it. We name the result rather than
 apply it, because our dither is not that dither. Theirs adds noise to the \emph{value} being
 quantized; ours randomizes the \emph{phase} of the sampling instant against the tick, which
 is RFC~3432's construction~\cite{rfc3432} and is what breaks the commensurability of
@@ -3776,6 +3794,23 @@ declines to claim differences below its detector's resolution~\cite{openbenchmar
 That is the one-clock rule, the retention rule and the resolution rule, arrived at in another
 domain by people who had not read this paper. We cite it as corroboration that the rules cost
 little, not as evidence for any claim of ours.
+
+\paragraph{The sharpest exhibit for the gap is a tutorial on exactly this subject}
+If the omission were confined to benchmarks under deadline it would be a smaller claim. It is
+not. A 2026 tutorial on statistical evaluation for computer-systems papers devotes a section
+to \emph{latency-specific pitfalls}, opens it with ``latency data is the most common metric in
+systems papers and the most consistently mis-reported'', and names three traps: the mean as a
+summary, coordinated omission, and warmup effects~\cite{krishnamachari2026playbook}. The
+instrument's own clock is not among them. Over thirty-one pages the words
+\emph{timestamp}, \emph{resolution}, \emph{quantization} and \emph{retention} do not occur;
+\emph{clock} occurs once, about non-determinism under seeding. Its pre-submission checklist
+asks for ``median + tail percentiles + CDF; warmup discarded'' and for no denominator, no
+resolution and no sign check.
+
+We record it without complaint about its author, who is doing something else and doing it
+well. The point is narrower and harder to argue with than any count of benchmarks: a document
+written in 2026 to enumerate the ways latency measurement goes wrong does not contain the
+ways this paper reports, which is what it means for a gap to be a gap.
 
 \subsection{S52.4. Where scheduling delay comes from, and what the queueing account gets right}
 

@@ -9,6 +9,7 @@ a stale file (a check that cannot fail is worse than no check), and that the scr
 numbers from an empty ledger rather than confidently writing zeroes into a manuscript.
 """
 import csv
+import re
 import sys
 from pathlib import Path
 
@@ -867,7 +868,7 @@ class TestTheExposureCurve:
 
     def test_the_lags_are_the_median_per_broker_and_overall(self, tmp_path):
         p = write_symmetry(tmp_path / "s.csv", self.BALANCED)
-        assert epn._exposure_lags(str(p)) == (1000.0, 1500.0, 500.0)
+        assert epn._exposure_lags(str(p)) == (1000.0, 1500.0, 500.0, 500.0, 1500.0)
 
     def test_a_missing_file_yields_nothing_rather_than_zeroes(self, tmp_path):
         """The whole module's rule: refuse to emit rather than emit a confident zero."""
@@ -884,13 +885,13 @@ class TestTheExposureCurve:
     def test_a_zero_row_beside_a_real_one_drops_only_the_zero(self, tmp_path):
         p = write_symmetry(tmp_path / "m.csv", [("kafka_n1", 0), ("kafka_n5", 800),
                                                 ("redis_n1", 400)])
-        assert epn._exposure_lags(str(p)) == (600.0, 800.0, 400.0)
+        assert epn._exposure_lags(str(p)) == (600.0, 800.0, 400.0, 400.0, 800.0)
 
     def test_the_wider_lag_is_hi_whichever_broker_carries_it(self, tmp_path):
         """hi and lo are the ends of the gap, not the brokers. Reversing which client
         stamps late must not reverse the sign of the reported gap."""
         p = write_symmetry(tmp_path / "r.csv", [("kafka_n1", 500), ("redis_n1", 1500)])
-        typical, hi, lo = epn._exposure_lags(str(p))
+        typical, hi, lo, _, _ = epn._exposure_lags(str(p))
         assert (hi, lo) == (1500.0, 500.0)
 
     @pytest.mark.parametrize("broker", ["kafka", "redis"])
@@ -902,7 +903,7 @@ class TestTheExposureCurve:
         missing Redis.
         """
         p = write_symmetry(tmp_path / "k.csv", [(broker + "_n1", 900), (broker + "_n5", 900)])
-        assert epn._exposure_lags(str(p)) == (900.0, 900.0, 900.0)
+        assert epn._exposure_lags(str(p)) == (900.0, 900.0, 900.0, 900.0, 900.0)
 
     def test_the_macros_are_the_arithmetic_the_prose_quotes(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -912,9 +913,17 @@ class TestTheExposureCurve:
         got = dict(epn.exposure_macros())
         # error is typical/T_true: 1000us against 10ms is 10%, against 100ms is 1%,
         # against 1ms is 100%. The gap at 10ms is 1-(10000-1500)/(10000-500) = 10.5%.
+        #
+        # The last four are the round-44 spread. On this fixture the lags are 500 and 1500
+        # with nothing between, so the tenth and ninetieth percentiles are the two ends and
+        # the error at 10 ms runs 5% to 15% around its 10% middle -- which is the whole
+        # point of emitting them: a reader quoting only the middle would be quoting one of
+        # three numbers with no way to know it.
         assert got == {"exposureErrTen": "10", "exposureErrHundred": "1",
                        "exposureErrOne": "100", "exposureGapTen": "11",
-                       "exposureCrossover": "1.00"}
+                       "exposureCrossover": "1.00",
+                       "exposureLagLo": "500", "exposureLagHi": "1500",
+                       "exposureCrossoverHi": "1.50", "exposureErrTenHi": "15"}
 
     def test_the_macros_are_absent_rather_than_wrong_when_the_data_is(self, tmp_path,
                                                                      monkeypatch):
@@ -930,6 +939,38 @@ class TestTheExposureCurve:
         assert "---" not in table, "a dash hides the rows where the error exceeds 100%"
         # below the crossover the displacement is larger than the path
         assert "$400$" in table, "0.25ms against a 1000us lag is a 400% error"
+
+    def test_every_row_carries_the_spread_not_only_the_middle(self, tmp_path):
+        """The round-44 finding. Every number in this table, and the four the main text
+        quotes from it, came from the median lag alone -- and the lag runs 500 to 1,900
+        microseconds across the real conditions. A reader locating a 10 ms path read 7%
+        when a tenth of our own conditions sit at 19%.
+
+        The paper's own Section V-D is the argument: a central summary of this distribution
+        is dominated by a mode the operator never sees. A table of central summaries offered
+        as guidance is the same mistake one level up.
+        """
+        p = write_symmetry(tmp_path / "s.csv", self.BALANCED)
+        table = epn.render_exposure_table(str(p))
+        assert "p10--p90" in table, "the band needs a column heading a reader can parse"
+        body = [ln for ln in table.splitlines() if "~ms &" in ln]
+        assert len(body) == 9, "one row per path length"
+        for line in body:
+            assert line.count("&") == 3, "path, point, band, gap: %r" % line
+        # On this fixture the lags are 500 and 1500 around a median of 1000, so the band at
+        # 10 ms is 5-15% around the 10% point estimate.
+        ten = next(ln for ln in body if ln.startswith("$10$~ms"))
+        assert "$5$--$15$" in ten, ten
+
+    def test_the_band_brackets_the_point_estimate_on_every_row(self, tmp_path):
+        """A band that does not contain the number it qualifies is worse than no band."""
+        p = write_symmetry(tmp_path / "s.csv", self.BALANCED + [("kafka_n9", 900)])
+        table = epn.render_exposure_table(str(p))
+        rx = re.compile(r"\$([\d.]+)\$~ms & \$(\d+)\$\\% & \$(\d+)\$--\$(\d+)\$")
+        rows = rx.findall(table)
+        assert len(rows) == 9
+        for _, point, lo, hi in rows:
+            assert int(lo) <= int(point) <= int(hi), (point, lo, hi)
 
 
 

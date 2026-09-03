@@ -1047,11 +1047,22 @@ def _adjusted_r2(r2, n, predictors):
 
 
 def _exposure_lags(path=os.path.join("docs", "results", "span_symmetry.csv")):
-    """The three lags the exposure curve is built from, read once.
+    """The lags the exposure curve is built from, read once.
 
     Split out in round 42. The table below and the prose macros in Section VI-B were
     computing the same quantities from the same file by two routes -- one generated, one
     typed by hand. They agreed, which is the only reason it went unnoticed for six rounds.
+
+    Round 44 added the last two fields, and they are the point of this docstring. Everything
+    Section VI-B says about exposure -- 7% at 10 ms, the crossover at 0.72 ms -- was computed
+    from `typical` alone, a median over the conditions. That lag is not a constant: across the
+    same conditions it runs from 500 to 2,250 microseconds, a factor of four and a half. At
+    the ninetieth percentile the crossover is 1.9 ms rather than 0.72, and the error on a
+    10 ms path is 19% rather than 7%.
+
+    The paper's own Section V-D says a central summary of this distribution is dominated by a
+    mode the operator never sees. The same objection applies to a median offered as practical
+    advice, so the spread is now emitted beside the point and the curve is drawn with a band.
     """
     import csv as _csv
     import statistics as _st
@@ -1066,12 +1077,19 @@ def _exposure_lags(path=os.path.join("docs", "results", "span_symmetry.csv")):
             per.setdefault(r["condition"].split("_")[0], []).append(float(r["median_A_us"]))
     if not per:
         return None
-    typical = _st.median([v for vs in per.values() for v in vs])
+    every = sorted(v for vs in per.values() for v in vs)
+    typical = _st.median(every)
     hi = _st.median(per.get("kafka") or [typical])
     lo = _st.median(per.get("redis") or [typical])
     if hi < lo:
         hi, lo = lo, hi
-    return typical, hi, lo
+
+    def pct(p):
+        """Nearest-rank percentile. No interpolation: every value returned is a lag some
+        condition actually had, which is what a reader locating their own path wants."""
+        return every[min(len(every) - 1, max(0, int(round(p * (len(every) - 1)))))]
+
+    return typical, hi, lo, pct(0.10), pct(0.90)
 
 
 def exposure_macros():
@@ -1084,10 +1102,10 @@ def exposure_macros():
     lags = _exposure_lags()
     if lags is None:
         return []
-    typical, hi, lo = lags
+    typical, hi, lo, p10, p90 = lags
 
-    def err(ms):
-        return "%.0f" % (100.0 * typical / (ms * 1000.0))
+    def err(ms, lag=None):
+        return "%.0f" % (100.0 * (typical if lag is None else lag) / (ms * 1000.0))
 
     def gap(ms):
         t = ms * 1000.0
@@ -1097,7 +1115,13 @@ def exposure_macros():
             ("exposureErrHundred", err(100)),
             ("exposureErrOne", err(1)),
             ("exposureGapTen", gap(10)),
-            ("exposureCrossover", "%.2f" % (typical / 1000.0))]
+            ("exposureCrossover", "%.2f" % (typical / 1000.0)),
+            # The spread, so the curve reads as a curve rather than as a constant. The
+            # crossover is the number a reader remembers, and it is the one that moves most.
+            ("exposureLagLo", "%.0f" % p10),
+            ("exposureLagHi", "%.0f" % p90),
+            ("exposureCrossoverHi", "%.2f" % (p90 / 1000.0)),
+            ("exposureErrTenHi", err(10, p90))]
 
 
 def render_exposure_table(path=os.path.join("docs", "results", "span_symmetry.csv")):
@@ -1111,27 +1135,38 @@ def render_exposure_table(path=os.path.join("docs", "results", "span_symmetry.cs
     wearing the clothes of a result.
 
     The sign check needs A > T_true, so every row below the first fires nothing at all.
+
+    The error column gained a band in round 44, and the reason is the paper's own argument.
+    Every number here was computed from the median lag alone, and the lag runs 500 to 2,250
+    microseconds across these conditions. A reader locating a 10 ms path read 7% and stopped;
+    at the ninetieth percentile it is 19%. Section V-D says a central summary of this
+    distribution hides the failure, and a table of central summaries offered as guidance is
+    the same mistake one level up. The band is the tenth to ninetieth percentile of the same
+    lags, so a reader can bracket their own path instead of assuming the middle.
     """
     lags = _exposure_lags(path)
     if lags is None:
         return ""
-    typical, hi, lo = lags
+    typical, hi, lo, p10, p90 = lags
 
     nl = chr(10)
     rule = chr(92) + chr(92)          # the LaTeX row terminator
-    out = [chr(92) + "begin{tabular}{@{}rrr@{}}",
+    pc = chr(92) + "%"
+    out = [chr(92) + "begin{tabular}{@{}rrrr@{}}",
            chr(92) + "toprule",
-           "True path & Error on one & Apparent gap between " + rule,
-           "$T_{" + chr(92) + "mathrm{true}}$ & measurement & two identical systems " + rule,
+           "True path & Error on one & p10--p90 & Apparent gap between " + rule,
+           "$T_{" + chr(92) + "mathrm{true}}$ & measurement & across conditions "
+           "& two identical systems " + rule,
            chr(92) + "midrule"]
     for ms in (0.25, 0.5, 1, 2, 5, 10, 25, 50, 100):
         t = ms * 1000.0
-        err = "$%.0f$" % (100.0 * typical / t) + chr(92) + "%"
+        err = "$%.0f$" % (100.0 * typical / t) + pc
+        band = "$%.0f$--$%.0f$" % (100.0 * p10 / t, 100.0 * p90 / t) + pc
         if t <= hi:
             gap = "inverts"
         else:
-            gap = "$%.0f$" % (100.0 * (1.0 - (t - hi) / (t - lo))) + chr(92) + "%"
-        out.append("$%g$~ms & %s & %s %s" % (ms, err, gap, rule))
+            gap = "$%.0f$" % (100.0 * (1.0 - (t - hi) / (t - lo))) + pc
+        out.append("$%g$~ms & %s & %s & %s %s" % (ms, err, band, gap, rule))
     out += [chr(92) + "bottomrule", chr(92) + "end{tabular}"]
     return nl.join(out) + nl
 

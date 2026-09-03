@@ -109,6 +109,11 @@ def _payload_label(cell):
 
 QUANTUM_MS = 2.0  # a cell printing at most this is reporting at the grid, not above it
 
+# How far the grid figure's null bars sit left of the arms they belong to, as a fraction of
+# the axis. Wide enough to clear a 5 pt marker and the dashed diagonal at column width,
+# narrow enough that the bar is unambiguously the one beside it.
+DODGE_FRACTION = 0.022
+
 # Two markers closer than this on a log axis, as a ratio, are one marker to the eye.
 COINCIDENT_RATIO = 1.06
 # And this is how far apart they have to go to stop being one. A marker in the deletion
@@ -350,16 +355,26 @@ def plot_grid(ax, cells):
     # Below the diagonal is the whole claim: closer to the grid than a continuum would be.
     ax.fill_between([0, lim], [0, 0], [0, lim], color=KEPT, alpha=0.06, zorder=0)
 
-    # Each arm's own null, drawn where its centre sits on the diagonal. Without it the figure
-    # asked the eye to judge distance from a line with nothing to say how far an arm can fall
-    # by chance; the p-values that answered that were printed only in a supplement table. An
-    # arm whose marker clears its own bar is an arm that rejects, so the picture now carries
-    # the test rather than illustrating it.
+    # Each arm's own null. Without it the figure asked the eye to judge distance from a line
+    # with nothing to say how far an arm can fall by chance; the p-values that answered that
+    # were printed only in a supplement table. An arm whose marker clears its own bar is an
+    # arm that rejects, so the picture carries the test rather than illustrating it.
+    #
+    # Dodged a little left of the arm's own x, the way any error bar is dodged off the point
+    # it belongs to. Drawn on the arm's x, each bar is centred on the diagonal -- the diagonal
+    # IS the null's centre -- so the diagonal cuts every bar near its middle, and in the
+    # right-hand fifth, where five of the twelve arms sit within 0.05 of each other, bars,
+    # diagonal and neighbours interleaved into one smudge at column width. The dodge does not
+    # stop the diagonal crossing a wide bar, and cannot without a displacement large enough to
+    # misreport position; what it does is take the bars off the arms' own abscissae so the
+    # reference reads as separate from the thing being judged. The marker keeps its measured
+    # x, and the caption says the bar is offset.
+    dodge = DODGE_FRACTION * lim
     for x, (blo, bhi) in zip(xs, bands):
         if blo is None or bhi is None:
             continue
-        ax.plot([x, x], [blo, bhi], color=GREY, lw=1.1, alpha=0.55, zorder=1,
-                solid_capstyle="butt")
+        ax.plot([x - dodge, x - dodge], [blo, bhi], color=GREY, lw=1.1, alpha=0.55,
+                zorder=1, solid_capstyle="butt")
     # The annotation that used to point at the diagonal -- "a continuum would land on this
     # line" -- is gone, and the bars are why. The diagonal is the null's centre; the bars are
     # the null. Once both are drawn, a label naming the weaker of the two costs a legend row

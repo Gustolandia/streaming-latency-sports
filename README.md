@@ -905,7 +905,7 @@ is why the check now runs on the artefact a reader actually receives.
 **Status:** compiles clean — 0 errors, 0 undefined references or citations, 0 overfull boxes,
 12 pages against TC's 10–12 budget, exactly 45 references against TC's cap of 45, a 200-word
 abstract against TC's 100–200 range, and four author biographies inside TC's 145-word cap,
-with a 52-page supplement. Five figures and two tables. Title: *Faster Than Light, According
+with a 52-page supplement. Five figures and two tables, the bottom of the 6-10 range TC's 12-page papers show; the payload-flip figure went to the supplement in round 43 for the page budget. Title: *Faster Than Light, According
 to the Arithmetic: Two Ways a Streaming Benchmark Fails on Sub-Millisecond Paths*. Formatted
 with `IEEEtran` (journal, 10pt) for IEEE Transactions on Computers.
 
@@ -1024,6 +1024,41 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 ---
 
 ## 16. Changelog
+
+### Unreleased — round 44 — the exposure curve has a width
+**No measured result changes.** One published curve gains the dispersion it always had.
+
+Section VI-B's fifth rule is the only place the paper tells a reader to do arithmetic about
+their own system — *"know where your own path sits on the exposure curve"* — and every number
+in it came from **one** quantity: the median acknowledgment lag over 70 conditions, 725 µs.
+That lag runs **500 to 1,900 µs** between the tenth and ninetieth percentiles. A reader with a
+10 ms path read 7% and stopped; at the ninetieth percentile it is 19%, and the crossover
+below which the displacement exceeds the path moves from 0.72 ms to 1.90 ms.
+
+The paper's own §V-D is the argument against what it was doing: "a mean over this distribution
+is dominated by a mode the operator never sees." A median offered as practical advice is the
+same mistake one level up. `_exposure_lags()` now returns the percentiles beside the median,
+every row of Table S48 carries a p10–p90 band, and the main text quotes the lag it rests on
+and the crossover as a range. `\ackLagMedianUs` had been emitted and printed nowhere.
+
+Three defects that existed only in the rendered PDF, all invisible to gates that read `.tex`:
+
+- **Two cross-references printed section numbers that do not exist** — "Section III-A0a" and
+  "Section IV-B0a", because both labels sat on a `\paragraph`. One had been created by the
+  round-43 edit that fixed a *different* dangling pointer.
+- **Three sentences began with a lowercase word.** `\harnessSilentWord` expands to "five" and
+  round 43's sentence-splitting moved it to the head of a sentence. The capitalised twin
+  `\harnessSilentWordCap` already existed and had never been used anywhere.
+- **Sixty-six of 275 generated macros were read by neither document.** Most are deliberate
+  `Word`/`WordCap` pairs; `\ackLagMedianUs` was not.
+
+`tests/unit/test_rendered_prose.py` now fails on all three classes, reading the built PDF.
+
+Also: §VI-A says *whose* delivery the 2.4% is a share of (Redis's); the dither result in S51 is
+restated as the one-sided condition its source gives rather than a two-sided bound; S39 records
+that TimeWeaver's precedent extends to publishing a rejection rate (3,631 of 8,804 clients);
+Figure 4's null bars are dodged off the arms they belong to; and S52.3 gains a 2026 tutorial
+whose §14 enumerates "latency-specific pitfalls" and never mentions the instrument's clock.
 
 ### Unreleased — round 43 — the consumer's stamps, audited at last
 **No measured result changes.** One quantity is disclosed that was never measured before, and

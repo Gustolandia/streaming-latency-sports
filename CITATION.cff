@@ -3,14 +3,15 @@ message: "If you use this software, please cite it as below."
 title: "Faster Than Light, According to the Arithmetic: two failure modes of streaming latency measurement"
 # Order matches the manuscript byline and is not alphabetical: lead author first, the two
 # middle places by how far into the argument each contribution reached, and Gregg last in the
-# senior slot. Herbst's ORCID is the only one held first-party; the others are absent rather
-# than guessed, which is the same rule the biographies follow.
+# senior slot. Two ORCIDs are held first-party -- Herbst sent his, and Ricou's is the one on his
+# own arXiv account. Duvignau's and Gregg's are absent rather than guessed, which is the same
+# rule the biographies follow.
 authors:
   - family-names: "Ricou"
     given-names: "Gustavo Pedro"
     email: "pedrorig@tcd.ie"
     affiliation: "School of Computer Science and Statistics, Trinity College Dublin"
-    # orcid: "https://orcid.org/0000-0000-0000-0000"   # add your ORCID if you have one
+    orcid: "https://orcid.org/0009-0001-4196-7213"
   - family-names: "Duvignau"
     given-names: "Romaric"
     email: "duvignau@chalmers.se"
@@ -85,9 +86,9 @@ identifiers:
   - type: "url"
     value: "https://github.com/Gustolandia/streaming-latency-sports"
   - type: "doi"
-    value: "10.5281/zenodo.21650031"  # concept DOI (code, all versions); v2.6.0 is 10.5281/zenodo.22102716
+    value: "10.5281/zenodo.21650031"  # concept DOI (code, all versions); v2.7.0 is 10.5281/zenodo.22215274
   - type: "doi"
-    value: "10.5281/zenodo.21650064"  # concept DOI (dataset, all versions); v2.6.0 is 10.5281/zenodo.22102832
+    value: "10.5281/zenodo.21650064"  # concept DOI (dataset, all versions); v2.7.0 is 10.5281/zenodo.22215330
 
 # References to related works
 references:

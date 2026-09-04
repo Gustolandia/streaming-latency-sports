@@ -158,8 +158,13 @@ title and add D. Gregg, and it has never carried Duvignau or Herbst. **Read the 
 overwriting it** — the v2.7 assumption in this file was wrong about Zenodo and the same class
 of assumption about arXiv is worth no more.
 
-Replace in place with `dist/streaming-latency-arxiv-v3.0.zip` and resubmit. The metadata to
-paste is in `dist/arxiv_v3.0_metadata.md`, with every changed field marked.
+Read off the live form on 2026-09-04: the **title is already right**, the **author list stops
+at Gregg**, and the abstract and comments field are the v2.7 wording. The submission is **on
+hold**, meaning it is in moderation — so editing it costs the queue position it currently has.
+Worth paying to fix the author list, but go in knowing it.
+
+Replace in place with `dist/streaming-latency-arxiv-v3.0.zip` and resubmit. Every field, with
+what the form says now beside what it should say, is in `dist/arxiv_v3.0_metadata.md`.
 
 Two things worth knowing before starting. Editing a submission that is on hold moves it out of
 moderation back to *incomplete* — that is the expected cost of changing it, not a failure, and

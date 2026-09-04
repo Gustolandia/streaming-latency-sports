@@ -963,6 +963,19 @@ dead ones: three in the main text naming S53 where the registry is S36, and one 
 S31 pointed at S27, S27 said the table had gone back to the main text, and the main text did
 not have it.
 
+**A reference can resolve and still print nothing.** The supplement sets `secnumdepth` to 0
+on purpose — its S-numbers are written into the heading text, and a counter beside them would
+make the contents page read "I S36." — so `\section` steps no *printed* counter and a
+`\label` on one stores the empty string. Two `Section~\ref{sec:registry}` calls had therefore
+been typesetting as `Section  found in shipping software`, in the prose and the caption of the
+supplement's deletion-histogram figure, since round 43. Every existing check passed: the label
+is defined, so LaTeX warns nothing and no `??` reaches the page, the undefined-reference count
+stays zero, the stranded-pointer rule sees a `\ref` after the tilde, and the resolve-check asks
+whether the label can be *found*, which it can. None of them asked whether it printed anything.
+`TestNoReferenceResolvesToNothing` in `tests/unit/test_cross_document_refs.py` reads the `.aux`
+each document actually produced and fails any `\ref` whose target comes back blank; both
+pointers are now written the way the rest of the supplement writes them, as `Section~S36`.
+
 **Every headline number is pinned to its artefact** by
 `tests/unit/test_paper_consistency.py`, which recomputes the figures from the committed
 CSVs and fails if the manuscript and the data disagree. That test exists because an earlier

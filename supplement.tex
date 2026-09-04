@@ -84,13 +84,29 @@
 \newcommand{\mainBetterClock}{VI-C} % The limits of a better clock
 
 \begin{document}
-\title{Supplementary Material:\\When the Interval Is Smaller Than the Instrument}
-\author{Gustavo~Pedro~Ricou%
-\thanks{G.~P.~Ricou is with the School of Computer Science and Statistics, Trinity
-College Dublin, Dublin~2, Ireland. E-mail: pedrorig@tcd.ie.}}
+% The title, the byline and the running head all name the paper, and all three are checked
+% against paper.tex by tests/unit/test_front_matter_agrees.py. Round 52 found this page
+% stale since round 4: one author where the paper had four, a title the paper does not
+% carry, and no mention anywhere of which paper this supplements. TC requires supplementary
+% material to be a separate file, which is exactly the circumstance in which a document has
+% to be able to say what it belongs to.
+\title{Supplementary Material for\\``Faster Than Light, According to the Arithmetic:\\
+Two Ways a Streaming Benchmark Fails on Sub-Millisecond Paths''}
+\author{Gustavo~Pedro~Ricou,~Romaric~Duvignau,~Nikolas~Herbst,~and~David~Gregg%
+\thanks{G.~P.~Ricou and D.~Gregg are with the School of Computer Science and Statistics,
+Trinity College Dublin, Dublin~2, Ireland. E-mail: pedrorig@tcd.ie; david.gregg@tcd.ie.}%
+\thanks{R.~Duvignau is with the Department of Computer Science and Engineering, Chalmers
+University of Technology, Gothenburg, Sweden. E-mail: duvignau@chalmers.se.}%
+\thanks{N.~Herbst is with the Chair of Computer Science II, University of W\"urzburg,
+W\"urzburg, Germany. E-mail: nikolas.herbst@uni-wuerzburg.de.}}
+
+\markboth{IEEE Transactions on Computers --- supplementary material}%
+{Ricou \MakeLowercase{\textit{et al.}}: Faster Than Light, According to the Arithmetic}
+
 \maketitle
 
-This document is supplementary material and is not part of the main submission. Main-text
+This document is supplementary material for the paper named above and is not part of the main
+submission. Main-text
 references of the form ``Supplement~S$n$'' resolve to the correspondingly numbered section
 here. The provenance of every section --- what moved here, from where, and when --- is
 indexed in the artifact at \texttt{docs/supplement\_index.md}.

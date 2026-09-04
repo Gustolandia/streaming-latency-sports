@@ -1,5 +1,18 @@
 # IEEE Transactions on Computers papers, kept for reference
 
+> **How to read this file.** It accumulates: each round appends a dated section and earlier
+> ones are left as written, so a statement below records what was true when it was made and
+> not necessarily now. Two consequences worth stating once rather than repeating.
+>
+> **The manuscript's current state is 12 pages, 44 references, 5 figures and 2 tables** (round
+> 52). Sentences further down that give a different count — "45 references, 8 figures" in the
+> rounds 26–35 block, for instance — are historical and were accurate when written.
+>
+> **Counts drawn from a partial sample are not censuses.** Round 51 wrote that five figures was
+> "below every paper in the corpus"; two papers fetched the next round disproved it. That
+> correction is recorded in place under *Figure density in TC*, and the general lesson is the
+> paper's own: a number written once and not rechecked goes wrong quietly.
+
 Downloaded 2026-08-25 (rounds 26–35) to settle questions of house *norm* rather than house
 *rule*. The rules are on the Author Information page and are already gated in the test suite;
 these answer the different question of what accepted TC papers actually look like.
@@ -364,10 +377,21 @@ question, and this is the count, so no future round has to re-derive it:
 | 14 | `ciminus_cim_TC` | 12 |
 | 14 | `scavenger_plus_TC` | 17 |
 | 14 | `fedrank_TC` | 19 |
+| 14 | `metastability_addition_TC` | **5** |
+| 11 | `eiq_neutron_TC` | **6** |
 
-**This manuscript: 12 pages, 5 figures** — below every paper in the corpus. The nearest is
-`partitioned_bloom` at seven, which is also the only other paper here whose subject is a
-reported statistic being wrong.
+**This manuscript: 12 pages, 5 figures** — the bottom of the observed range, and matched
+exactly by a fourteen-page TC paper.
+
+> **Corrected 2026-09-04 (round 52).** This entry said, when round 51 wrote it, that five
+> figures was "below every paper in the corpus" with "the nearest `partitioned_bloom` at
+> seven". Two further TC papers fetched the next round falsified that: `metastability_addition_TC`
+> carries five figures over fourteen pages and `eiq_neutron_TC` six over eleven, both verified
+> twice — by counting caption lines and by taking the highest figure number the text
+> references. The range is 5–20, not 7–20, and this manuscript is at the low end of it rather
+> than outside it. The claim was written from a ten-paper sample and read as though it were a
+> census; two more papers were enough to break it. The conclusion the entry draws is
+> unaffected, and is below.
 
 Round 51's referee looked at this and asked for nothing, and the reasoning is worth keeping.
 The page budget is full at exactly twelve; promoting anything from the supplement costs a page;
@@ -393,3 +417,21 @@ not chased again.
 **Reference budget after round 51.** Unchanged at **44 of 45**, one slot free, and no citation
 was recommended this round. Two consecutive rounds have now declined to spend it, which the
 referee judged the correct steady state for a paper with a live literature.
+
+## Added round 52 (2026-09-04)
+
+Two more accepted by the target journal, and between them they broke the figure-density claim
+round 51 had just written down.
+
+| file | arXiv | pages | refs | figures | worth |
+|---|---|---|---|---|---|
+| `metastability_addition_TC.pdf` | 2602.06467 | 14 | 18 | **5** | accepted by IEEE TC. Metastability-containing addition, content remote from ours. Its value here is the count: fourteen pages carrying five figures, the same number this manuscript carries over twelve, which is what falsified round 51's "below every paper in the corpus" |
+| `eiq_neutron_TC.pdf` | 2509.14388 | 11 | 27 | **6** | submitted to IEEE TC. Edge-AI NPU and compiler. Same role: eleven pages, six figures |
+
+Neither carries supplementary material, so neither settles how a TC supplement should identify
+itself — that question was answered from TC's own policy instead (supplemental material is
+submitted as separate files, with no page limit), which is what makes a self-identifying title
+page necessary rather than merely tidy. See `tests/unit/test_front_matter_agrees.py`.
+
+**Reference budget after round 52.** Unchanged at **44 of 45**, one slot free, and no citation
+recommended for the third consecutive round.

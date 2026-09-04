@@ -336,3 +336,81 @@ class TestNoFloatOrEquationIsPointedAtByNumber:
         assert self.LITERAL.search(r"drawn again in Figure~1")
         assert not self.LITERAL.search(r"Table~\ref{tab:spans} is clean".replace(
             r"\ref{tab:spans}", "@@"))
+
+
+class TestNoReferenceResolvesToNothing:
+    """A `\\ref` whose target prints no number --- the pointer that vanishes silently.
+
+    The supplement sets `secnumdepth` to 0 on purpose: its S-numbers are written into the
+    heading text, and a second counter beside them would make the contents page read
+    "I S36.". The side effect nobody had traced is that `\\section` then steps no *printed*
+    counter, so a `\\label` on one stores the empty string, and
+
+        Section~\\ref{sec:registry}
+
+    typesets as `Section  found in shipping software` --- the pointer simply gone from the
+    page. Two of them had been rendering as holes since round 43, in the prose and the
+    caption of the figure a co-author asked for.
+
+    Every existing gate passed. The label is defined, so LaTeX emits no warning and no `??`
+    reaches the page; the undefined-reference count stays zero; `TestNoStrandedPointer` sees
+    a `\\ref` after the tilde and is satisfied; and `test_the_cross_document_refs_resolve`
+    above asks whether the label can be *found*, which it can. None of them asked whether it
+    printed anything.
+
+    So this one reads the `.aux` each document actually produced and requires every `\\ref`
+    to come back with a number. It is the rendered value that is inspected, which is the
+    lesson rounds 48 through 52 kept teaching: check the artifact, not the source.
+    """
+
+    #: `\newlabel{sec:registry}{{}{47}{...}}` -- the printed number is the first group, and
+    #: here it is the empty ones we are hunting rather than skipping.
+    NEWLABEL = re.compile(r"\\newlabel\{([^}]*)\}\{\{(.*?)\}\{\d+\}")
+
+    #: `\eqref` and `\ref` both print the counter; `\pageref` prints a page and is exempt.
+    REFERENCE = re.compile(r"\\(?:eq)?ref\{([^}]*)\}")
+
+    def _blank_labels(self, aux_text):
+        return {m.group(1) for m in self.NEWLABEL.finditer(aux_text)
+                if not m.group(2).replace(r"\mbox", "").strip().strip("{}").strip()}
+
+    @pytest.mark.parametrize("name", ["paper", "supplement"])
+    def test_every_reference_prints_a_number(self, name):
+        tex, aux = REPO / (name + ".tex"), REPO / (name + ".aux")
+        if not tex.exists() or not aux.exists():
+            pytest.skip("%s not built" % name)
+        blank = self._blank_labels(aux.read_text(encoding="utf-8", errors="replace"))
+        body = tex.read_text(encoding="utf-8").split(r"\begin{document}")[-1]
+        holes = []
+        for m in self.REFERENCE.finditer(body):
+            if m.group(1) in blank:
+                line = body.count("\n", 0, m.start()) + 1
+                holes.append("%s:~%d  \\ref{%s} prints nothing; write the number the heading "
+                             "carries, as the rest of the document does"
+                             % (name, line, m.group(1)))
+        assert not holes, (
+            "these references typeset as a hole in the sentence:\n  " + "\n  ".join(holes))
+
+    def test_the_supplement_still_has_labels_that_would_trip_this(self):
+        """The rule is only live while such labels exist.
+
+        If the supplement ever numbered its sections, every label would print something and
+        this class would pass vacuously for the rest of time. Then it should be deleted
+        rather than kept as decoration, and this assertion is what would say so.
+        """
+        aux = REPO / "supplement.aux"
+        if not aux.exists():
+            pytest.skip("supplement.aux not present; build the supplement first")
+        blank = self._blank_labels(aux.read_text(encoding="utf-8", errors="replace"))
+        assert blank, (
+            "no label in the supplement prints an empty number any more; if section "
+            "numbering was turned on, delete this class instead of leaving it passing")
+
+    def test_the_check_can_fail(self):
+        """Mutation: the sentence as it stood, against an aux that says the label is blank."""
+        blank = self._blank_labels(r"\newlabel{sec:registry}{{}{47}{The registry}{}{}}")
+        assert blank == {"sec:registry"}
+        broken = r"the registry of Section~\ref{sec:registry} found in shipping software"
+        assert [m.group(1) for m in self.REFERENCE.finditer(broken)] == ["sec:registry"]
+        # and a numbered target is left alone
+        assert not self._blank_labels(r"\newlabel{sec:gate}{{\mbox {III-B}}{3}{Gate}{}{}}")

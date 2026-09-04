@@ -3061,7 +3061,7 @@ that admits a sample only when the difference is strictly positive removes $\msG
 of $\spanEvents$ events --- $\msGuardDeletedPct\%$, $95\%$ interval $\msGuardDeletedCI$
 resampling runs rather than events --- of which $\msGuardAtZero$ computed to exactly zero and
 $\msGuardBelowZero$ to less. None of it is counted in what such a harness reports.
-Panel~(c) applies the five dispositions the registry of Section~\ref{sec:registry} found in
+Panel~(c) applies the five dispositions the registry of Section~S36 found in
 shipping software to that one measured population: two of them shrink the sample the
 statistic is computed from and publish no count of what left; two hold the sample count fixed
 by reporting a value that was never measured; one keeps the data.
@@ -3084,7 +3084,7 @@ $\spanNegAck$ times in $\spanEvents$; the send-referenced span, same events and 
 never does. (b)~A millisecond instrument cannot see (a): it differences two truncated stamps,
 so a sub-millisecond flight lands on $0$ or $1$ by tick alignment alone, and a positivity
 guard then deletes $\msGuardDeletedPct\%$ of the population uncounted. (c)~The five
-dispositions found in shipping software (Section~\ref{sec:registry}), applied to that same
+dispositions found in shipping software (Section~S36), applied to that same
 population. Every count is emitted from the committed corpus by
 \texttt{scripts/span\_histogram.py}.}
 \label{fig:deletionhist}

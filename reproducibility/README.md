@@ -3,9 +3,9 @@
 This directory pins the frozen artefact for the manuscript so its results can be regenerated:
 the exact code, environment, datasets and per-run provenance.
 
-**Paper:** [`paper.tex`](../paper.tex) — *When the Interval Is Smaller Than the Instrument: Two
-Ways Streaming Latency Benchmarks Fail on Sub-Millisecond Paths* (IEEE `IEEEtran`, targeting
-**IEEE TPDS**). This is a **systems / measurement-methodology paper**; the football workload is
+**Paper:** [`paper.tex`](../paper.tex) — *Faster Than Light, According to the Arithmetic: Two
+Ways a Streaming Benchmark Fails on Sub-Millisecond Paths* (IEEE `IEEEtran`, targeting
+**IEEE Transactions on Computers**). This is a **systems / measurement-methodology paper**; the football workload is
 the setting that produced the finding, not the contribution. The earlier Journal of Sports
 Analytics framing (decision-staleness, Age-of-Information, win-probability) has been **retired**
 — do not reintroduce it here.

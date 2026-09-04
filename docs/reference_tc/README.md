@@ -302,3 +302,20 @@ calibrates its own instrument, one for the genre sweep.
 round wanted a citation: the two additions above calibrate form and close a literature sweep,
 and the one substantive new source — mq-bench's published QoS-0 loss rate — strengthens
 supplementary material S52.2 using a reference the supplement already carries.
+
+## Added round 49 (2026-09-04)
+
+Two fetched during the round-49 review: one accepted by the target journal, for current house
+form, and one that is the closest live work on host latency and is deliberately not TC.
+
+| file | arXiv | pages | worth |
+|---|---|---|---|
+| `coformer_TC.pdf` | 2508.20375 | 18 | accepted by IEEE TC; edge transformer inference. Worthless for content and useful only for form, and even there it is the arXiv build under `JOURNAL OF LATEX CLASS FILES` rather than the TC layout, so it calibrates reference count (32) and figure count more than typography |
+| `netstacklat_imc.pdf` | 2606.02057 | 18 | **the closest live work on host latency, and IMC rather than TC.** An eBPF monitor capturing latency from the kernel network stack to the application read, evaluated over 144 HTTP workload variants and deployed in Cloudflare's CDN. It quantifies its own overhead --- under 6% tail inflation against over 100% for prior tools --- which is the observer-effect discipline this paper practises once. It stamps at kernel hook points, so it never performs the two-userspace-process subtraction that fails here: corroboration for the scoping in Section II, not competition |
+
+**Reference budget after round 49.** The main text stays at **44 of 45**, one slot free. The
+round's one new citation, `devto2026streaming`, is cited only from supplementary material
+S52.3, whose bibliography is separate and uncapped; it costs the main text nothing. Its bib
+note records that its figures are the ones withdrawn from `indexdev2026brokers` in round 48 --
+a search had returned both sources in one result set and the numbers were attributed to the
+wrong one. Traced and corrected rather than dropped, because the exhibit is a good one.

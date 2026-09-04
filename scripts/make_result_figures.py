@@ -364,8 +364,18 @@ def plot_grid(ax, cells):
 
     # Each arm's own null. Without it the figure asked the eye to judge distance from a line
     # with nothing to say how far an arm can fall by chance; the p-values that answered that
-    # were printed only in a supplement table. An arm whose marker clears its own bar is an
-    # arm that rejects, so the picture carries the test rather than illustrating it.
+    # were printed only in a supplement table. The test is one-sided towards the grid, so an
+    # arm whose marker falls BELOW its own bar is an arm that rejects the null this bar
+    # draws, and the picture carries that much of the test rather than illustrating it.
+    #
+    # It carries no more than that, and round 49 is why the sentence now says so. The bars
+    # are the UNCORRECTED null; every verdict in the legend is Holm-corrected across the
+    # family, and correction is not a geometric property. For nine arms the two agree. The
+    # tenth sits 0.0033 below its bar -- rejecting raw at 0.044 -- and does not survive
+    # correction at 0.131, so the picture and the legend disagree about it and only the
+    # caption can reconcile them. This comment said "clears its own bar", without a
+    # direction, for four rounds after round 45 corrected exactly that wording in the
+    # caption it describes.
     #
     # Dodged a little left of the arm's own x, the way any error bar is dodged off the point
     # it belongs to. Drawn on the arm's x, each bar is centred on the diagonal -- the diagonal

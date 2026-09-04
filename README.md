@@ -1,6 +1,6 @@
-# When the Interval Is Smaller Than the Instrument
+# Faster Than Light, According to the Arithmetic
 
-*Two ways streaming latency benchmarks fail on sub-millisecond paths, and what they left of a Kafka-versus-Redis comparison.*
+*Two ways a streaming benchmark fails on sub-millisecond paths, and what they left of a Kafka-versus-Redis comparison.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
@@ -15,7 +15,8 @@
 > [10.5281/zenodo.21650031](https://doi.org/10.5281/zenodo.21650031) · measurement dataset:
 > [10.5281/zenodo.21650064](https://doi.org/10.5281/zenodo.21650064). These are the **concept
 > DOIs**: they never change and always resolve to the newest version, which is what the paper
-> cites. They currently resolve to v2.6.0, whose version DOIs are code
+> cites. They resolve to **v3.0.0**, the four-author release, whose version DOIs are minted at
+> deposit and recorded in [`docs/release_v3.0.0.md`](docs/release_v3.0.0.md). v2.6.0 was code
 > [10.5281/zenodo.22102716](https://doi.org/10.5281/zenodo.22102716), data
 > [10.5281/zenodo.22102832](https://doi.org/10.5281/zenodo.22102832); v2.5.0 was code
 > [10.5281/zenodo.22044877](https://doi.org/10.5281/zenodo.22044877), data
@@ -25,15 +26,15 @@
 > [10.5281/zenodo.21650065](https://doi.org/10.5281/zenodo.21650065).
 
 > **Frozen vs. living.** The Zenodo records above are the immutable version of record: built
-> from git tag `v2.6.0`, with SHA256 manifests of every file. This repository
+> from git tag `v3.0.0`, with SHA256 manifests of every file. This repository
 > is the living copy and moves ahead of them. To verify the paper's claims against the exact
-> data behind them, use the Zenodo zips or `git checkout v2.6.0`; the concept DOIs always
+> data behind them, use the Zenodo zips or `git checkout v3.0.0`; the concept DOIs always
 > resolve to the newest archived version.
 
 > ## 🎯 Current target — the contribution
 >
-> **Paper:** [`paper.tex`](paper.tex) — *When the Interval Is Smaller Than the Instrument:
-> Two Ways Streaming Latency Benchmarks Fail on Sub-Millisecond Paths*. IEEE format
+> **Paper:** [`paper.tex`](paper.tex) — *Faster Than Light, According to the Arithmetic:
+> Two Ways a Streaming Benchmark Fails on Sub-Millisecond Paths*. IEEE format
 > (`IEEEtran`, journal), targeting **IEEE Transactions on Computers**, with a companion `supplement.tex`. This is a
 > **systems paper**; the football workload is the setting that produced the finding, not the
 > contribution.
@@ -363,8 +364,8 @@ From 3,315 StatsBomb matches across 52 competition-seasons (2003–2023), via
 
 ## 2. Abstract
 
-> **Title:** *When the Interval Is Smaller Than the Instrument: Two Ways Streaming Latency
-> Benchmarks Fail on Sub-Millisecond Paths*
+> **Title:** *Faster Than Light, According to the Arithmetic: Two Ways a Streaming Benchmark
+> Fails on Sub-Millisecond Paths*
 > **Target:** IEEE Transactions on Computers (`IEEEtran`, journal, `paper.tex`)
 > **Keywords:** streaming systems, latency benchmarking, measurement validity, Apache Kafka,
 > Redis Streams, reproducibility
@@ -1145,6 +1146,35 @@ roundings; Figure 3 separates markers its own legend counts (two 256 KB replicat
 had rendered as one); Figure 5(a) is a swarm rather than a sorted staircase on an axis with
 no variable; the payload-flip figure moved to supplement S31; and the main text's median
 sentence fell from 28 words to 22, inside the range measured across five TC papers.
+
+### 3.0.0 — 2026-09-04 — four authors, and the model became an identity
+**A major bump because the creator list changed**: a record's authors are part of its
+identity, and this one goes from two names to four. **R. Duvignau** (Chalmers) and
+**N. Herbst** (Würzburg) join as authors, second and third, with **D. Gregg** last in the
+senior slot; each joined on a correction that changed the work rather than the wording, and
+each left the acknowledgements on the way in. The record also takes the manuscript's current
+title, which it had wrong.
+
+**v2.7.0 was tagged and bundled but never deposited**, so this release carries its content
+too. What is new since v2.6.0, in order of how far it reached: Section III's model is now the
+identity *S = D − A* per event, stated assuming no ordering, with both sides recounted from
+the committed corpus on every build; the Time-to-Insight residual is named as the
+acknowledgment lag the harness stamps rather than an append-to-deliver delay nothing
+measures; the two-broker gap is measured on workloads that match (paired 1.7×, a fifth of
+the pairs running the other way); a fifth timestamp is named and bounded, because the two
+clients deserialize on opposite sides of the receive stamp; the word *interval* is retired
+for the timing sense in favour of *flight*; Mode B is generalised from one benchmark's
+positivity guard to a quantum destroying a sample, behind a source audit of ten tools; and
+ρ(D, A) is now a windowed Pearson correlation on paired co-moments, the previous
+variance-identity estimator having returned |ρ| > 1 on five of seventy conditions.
+
+Seven new gates, each demonstrated failing on the defect it guards before that defect was
+repaired — claim-to-equation agreement, float labelling, figure reading rules, cross-sentence
+dependency, per-corpus denominators, front matter checked against the **built PDF**, and a
+cross-reference rule that fails any pointer resolving to an empty number. Paper 12 pp,
+5 figures, 2 tables, 44/45 references; supplement 54 pp, whose title page now carries the
+paper's title and the four-author byline rather than one author under a title the paper does
+not have. 4,175 tests at 100% branch coverage, up from 3,650 at v2.6.0.
 
 ### 2.6.0 — 2026-08-25 — Transactions on Computers submission package
 Fourteen further rounds of adversarial internal review, all of them on presentation and

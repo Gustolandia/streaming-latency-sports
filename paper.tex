@@ -268,8 +268,8 @@ The instruments are few and shared, so a defect in one is not one project's prob
 audit of Section~\ref{sec:generality} reads \harnessAuditedWord{} tools at source and finds
 \harnessSilentWord{} disposing of inverted samples without counting them. The quantum reaches
 further than the disposal does: the end-to-end tool bundled with Apache \kafka{}
-itself computes its percentiles from millisecond-truncated integers~\cite{kafka_tools}. Nor is
-the architecture that produces those spans a blunder to be
+itself computes its percentiles from millisecond-truncated integers~\cite{kafka_tools}. The
+architecture that produces those spans is not a blunder to be
 designed away --- a producer that blocked for each acknowledgment could not generate load at
 all, and no design that keeps the asynchrony has one thread to stamp with (Supplement~S38).
 What a benchmark can drop is the habit of subtracting two such stamps without ever checking
@@ -780,9 +780,9 @@ rather than of impossible physics, which is precisely what the gate is for.
 \textbf{The sign is a threshold, so the negatives count only the worst of the displacement.}
 The acknowledgment lag exceeds half the delivery time on $\diseaseOverHalf\%$ of events and a
 tenth of it on $\diseaseOverTenth\%$, against the $\diseaseOverWhole\%$ where it exceeds the
-whole and the check fires. The two are correlated within an event (median
-$\spanRhoMedian$), one scheduler causing both, which suppresses crossings without touching
-the displacement.
+whole and the check fires. The two are correlated within a run (median $\spanRhoMedian$ over
+$\spanRhoConditions$ conditions), one scheduler causing both, which suppresses crossings
+without touching the displacement.
 A path above the quantum is not clean but quiet.
 
 \begin{table}[tb]
@@ -850,7 +850,7 @@ running, or late by less than the flight.
 background load unchanged; achieved utilization matches to within $\mechRhoMatch$ between arms,
 so occupancy alone moved. Bottom: identical utilization reached by two core geometries
 ($\rho = \mechGeomRho$ in all four $k{=}6$ arms); a function of $\rho$ returns one value for one
-input. Both arms' achieved $\rho$, pair by pair, is in Supplement~S47.}
+input. Supplement~S47 prints both arms' achieved $\rho$, pair by pair.}
 \label{tab:mechanism}
 \centering
 \footnotesize

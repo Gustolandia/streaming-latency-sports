@@ -1730,9 +1730,20 @@ def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
                if r["condition"].endswith(suffix) and float(r["median_D_us"])]
         if rel:
             out.append(("recoveryErr" + name, "%.1f" % _st.median(rel)))
+    # The D-A correlation, and the unit it is computed over. `rho_DA` is one number per
+    # CONDITION, fitted across that condition's own events -- 5,433 of them in the first row
+    # -- and the macro below is the median of those across conditions.
+    #
+    # The count is emitted beside it because round 50 found the main text calling this
+    # "correlated within an event", which is not a thing a single event can be: one event is
+    # one (D, A) pair. The number, the mechanism and the direction were all right and only
+    # the unit was wrong, which is the sort of error that survives every gate about values
+    # and none about meaning. A sentence that has to name its denominator cannot misname the
+    # thing the denominator counts.
     rho = [float(r["rho_DA"]) for r in rows if r["rho_DA"] not in ("", "nan")]
     if rho:
-        out.append(("spanRhoMedian", "%.2f" % _st.median(rho)))
+        out += [("spanRhoMedian", "%.2f" % _st.median(rho)),
+                ("spanRhoConditions", str(len(rho)))]
 
     # The displacement's own scale, and what it does to a reported number.
     #

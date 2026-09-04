@@ -1,9 +1,31 @@
 # Release v3.0.0 — four authors, prepared for deposit
 
-**Status, 2026-09-04.** Built and verified; not yet deposited. The remaining steps are a
-human's: open the two Zenodo drafts (the token is not in this environment), publish them, and
-replace the arXiv submission. A published Zenodo record cannot be deleted, only superseded, so
-the last click stays a decision rather than a script.
+**Status, 2026-09-04. ZENODO IS PUBLISHED.** Both records are live and the concept DOIs now
+resolve to v3.0.0. The arXiv replacement is the one step left.
+
+| record | concept DOI (cited in the paper) | v3.0.0 version DOI |
+|---|---|---|
+| code / analysis / manuscript | `10.5281/zenodo.21650031` | **`10.5281/zenodo.22307766`** |
+| measurement dataset | `10.5281/zenodo.21650064` | **`10.5281/zenodo.22307882`** |
+
+**Read back after publication, from the API rather than the rendered page** — every item on
+the checklist in section 2 below, and all of it passes:
+
+- both concept DOIs resolve to the v3.0.0 records;
+- version `3.0.0`, publication date `2026-09-04`, two files each;
+- **all four creators present and in byline order** — Ricou, Duvignau, Herbst, Gregg — with
+  ORCIDs on Ricou (`0009-0001-4196-7213`) and Herbst (`0000-0003-3462-6426`) and none guessed
+  for the other two. This is the field the release existed to change, so it was read first;
+- the md5 Zenodo reports for all four files matches the local archive byte for byte:
+  `18db1e13…` and `99bcf621…` for the code pair, `4e7ca32e…` and `5c7b3169…` for the data pair;
+- related works point at the sibling record's **concept** DOI, not a version DOI;
+- the licence carve-out is in both descriptions, reading "© the authors".
+
+**One thing to know when reading the archived copies.** This file and the README ship *inside*
+the code archive, and the copies in there were written before the deposit: they say v3.0.0 is
+"built and awaiting deposit" and give no version DOI, because at build time there was none. The
+statements are dated, not wrong. The repository is corrected; a record cannot contain its own
+DOI, which is exactly why the paper cites the concept DOIs instead.
 
 Tag: `v3.0.0`, commit `894dbcc`, pushed. All three archives are built from that tag, not from
 the working tree. Verified before hand-over:
@@ -151,7 +173,7 @@ straight to `/uploads/<id>` redirects back to the record.
 
 ---
 
-## 3. arXiv
+## 3. arXiv — THE ONE STEP LEFT
 
 `submit/7871792` is the standing submission. Its state was edited on 31 August to correct the
 title and add D. Gregg, and it has never carried Duvignau or Herbst. **Read the form before

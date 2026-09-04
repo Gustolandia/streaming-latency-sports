@@ -1387,7 +1387,15 @@
   title        = {{NATS} vs {Redis} vs {Kafka}: message broker comparison},
   howpublished = {Practitioner comparison},
   year         = {2026},
-  note         = {\url{https://www.index.dev/skill-vs-skill/nats-vs-redis-vs-kafka}; gives {Kafka} ``sub-10ms latency at p99'' and gives {Redis} and {NATS} no percentile at all, only ``sub-millisecond''. No retained fraction, rejection count, timestamp resolution or send rate. Re-read 2026-09-03: an earlier note here quoted a {Redis} p99 of 0.8~ms against {Kafka}'s 12.5~ms, which is not on the page and has been withdrawn}
+  note         = {\url{https://www.index.dev/skill-vs-skill/nats-vs-redis-vs-kafka}; gives {Kafka} ``sub-10ms latency at p99'' and gives {Redis} and {NATS} no percentile at all, only ``sub-millisecond''. No retained fraction, rejection count, timestamp resolution or send rate. Re-read 2026-09-03: an earlier note here quoted a {Redis} p99 of 0.8~ms against {Kafka}'s 12.5~ms, which is not on the page and has been withdrawn. Traced 2026-09-04: those figures belong to \texttt{devto2026streaming} below, which a search had returned in the same result set}
+}
+
+@misc{devto2026streaming,
+  author       = {Gao, Young},
+  title        = {Real-time event streaming: {Kafka} vs {Redis} {Streams} vs {NATS} in 2026},
+  howpublished = {Practitioner comparison},
+  year         = {2026},
+  note         = {\url{https://dev.to/young_gao/real-time-event-streaming-kafka-vs-redis-streams-vs-nats-in-2026-34o1}; ranks the three on ``End-to-end latency (p99)'' and gives {Redis} Streams $0.8$~ms, NATS JetStream $3.2$~ms and {Kafka} $12.5$~ms, with a summary table reading ``$<$1ms / 1-5ms / 5-20ms''. Method given in full as ``Tested on 3-node cluster, 8 vCPU, 32GB RAM each'' and ``benchmarks based on production deployments''; no tool, timestamp source, synchronization statement, resolution or discard count. Read 2026-09-04, and the source of the figures withdrawn from \texttt{indexdev2026brokers} above}
 }
 
 @inproceedings{combench2021,

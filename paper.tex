@@ -165,9 +165,9 @@ negative, on one clock. Two threads of the producer process take the two stamps 
 application thread calls send, the client's I/O thread runs the delivery callback --- and
 whichever one stamps must first be scheduled, so the difference inverts when the
 acknowledgment's stamping delay exceeds the true delivery plus the consumer's
-(Section~\ref{sec:testbeds}). The path drawn is \kafka{}'s. \redis{} stamps on the calling
-thread, has no second thread, and inverts on a larger share of runs (Supplement~S43.3): the
-wakeup is what both pay, and the hand-off only adds to it. The producer's own stamps,
+(Section~\ref{sec:testbeds}). The path drawn is \kafka{}'s, and the figure's own note covers
+\redis{}, which has no second thread and inverts on a larger share of runs
+(Supplement~S43.3). The producer's own stamps,
 $t_{\mathrm{sched}}$ and $t_{\mathrm{send}}$, do precede the acknowledgment, and the span
 referenced to them never inverts (Table~\ref{tab:spans}).}
 \label{fig:model}
@@ -268,15 +268,12 @@ The instruments are few and shared, so a defect in one is not one project's prob
 audit of Section~\ref{sec:generality} reads \harnessAuditedWord{} tools at source and finds
 \harnessSilentWord{} disposing of inverted samples without counting them. The quantum reaches
 further than the disposal does: the end-to-end tool bundled with Apache \kafka{}
-itself computes its percentiles from millisecond-truncated integers~\cite{kafka_tools}. This
-is the state of a widely installed instrument, not one project's oversight. Nor is the survey
-one-sided: Supplement~S36 gives every row with its source line, the tools that keep their
-negatives among them. Nor is the
-architecture that produces those spans a blunder to be designed away. A producer that blocked
-for each acknowledgment could not generate load at all, so the send is stamped on the calling
-thread and the reference on another, and no design that keeps the asynchrony has one thread
-to stamp with (Supplement~S38). What a benchmark can drop is the habit of subtracting two
-such stamps without ever checking the sign of the result.
+itself computes its percentiles from millisecond-truncated integers~\cite{kafka_tools}. Nor is
+the architecture that produces those spans a blunder to be
+designed away --- a producer that blocked for each acknowledgment could not generate load at
+all, and no design that keeps the asynchrony has one thread to stamp with (Supplement~S38).
+What a benchmark can drop is the habit of subtracting two such stamps without ever checking
+the sign of the result.
 
 That literature already stands its clocks carefully: Karimov et
 al.~\cite{karimov2018benchmarking} separate event-time from processing-time latency, and
@@ -369,8 +366,8 @@ harness released in 2018 throws away the quantity a 1970 counter measured with.
 \label{sec:related_tail}
 A runnable thread does not always run, and work-conservation violations are documented for
 CFS-era schedulers~\cite{lozi2016wastedcores}, ours being EEVDF-era. Queueing gives the
-leading-order account: utilization alone does not fix a waiting time, so the geometry contrast
-of Table~\ref{tab:mechanism} refutes a single-parameter law rather than queueing itself.
+leading-order account, and the geometry contrast of Table~\ref{tab:mechanism} refutes a
+single-parameter law rather than queueing itself.
 A 2026 preprint by Chandrasekar and Kramberger~\cite{chandrasekar2026bias} applies such a law
 to benchmark bias and reaches our inflation half independently; we refute it on the load axis
 (Section~\ref{sec:mechanism}). What a positive number cannot show remains ours: the negative
@@ -657,11 +654,13 @@ replicate noise and which side of the diagonal it falls on is not evidence eithe
 nearest grid vertex against the distance a continuum would give, which is the diagonal. The
 gray bar beside each arm, offset a little to clear the diagonal and mirrored for the two arms
 it would otherwise push onto the axis, is that
-arm's own null, simulated. The test is one-sided towards the grid, so a marker \emph{below}
-its bar is an arm that rejects and a marker above one is not; that is what lets the picture
-carry the test rather than illustrate it. Filled circles
-reject after Holm correction; the open circle is the one powered arm that does not, and it
-sits at the edge of its bar rather than below it. The $\gridFlat$ squares are the arms
+arm's own null, simulated --- \emph{uncorrected}. The test is one-sided towards the grid, so
+a marker \emph{below} its bar rejects that null and a marker above one does not; that is what
+lets the picture carry the test rather than illustrate it. Filled circles also survive Holm
+correction. The open circle sits \emph{\gridUnresolvedSide} its bar too, $\gridUnresolvedObs$
+against a band opening at $\gridUnresolvedNullLo$, but at $p = \gridUnresolvedRaw$ raw and
+$\gridUnresolvedHolm$ corrected it is the one powered arm that does not reject: correction is
+what the picture cannot draw. The $\gridFlat$ squares are the arms
 where the two hypotheses coincide and no test has power; their bars collapse towards zero
 and \emph{the sign carries nothing} there.
 Per-arm corrected $p$-values are in Supplement~S46.}
@@ -827,13 +826,16 @@ wrong. Causal consistency is necessary, not sufficient.
 \subsection{A rare state, not a wide distribution}
 \label{sec:mixture}
 Each stamping thread is either running, in which case its stamp is late by a narrow jitter of
-width $\sigma_c$, or preempted and off-CPU. Write $p(\rho)$ for the probability of the
+width $\sigma_c$, or preempted and off-CPU. Write $p$ for the probability of the
 second state and $G(\cdot)$ for the residual's survival function, and take the consumer's
 stamp to lie in the core:
 \begin{equation}
-\Pr[\text{span} < 0 \mid T_{\mathrm{true}}] \;=\; p(\rho)\;G(T_{\mathrm{true}}) .
+\Pr[\text{span} < 0 \mid T_{\mathrm{true}}] \;=\; p \; G(T_{\mathrm{true}}) .
 \label{eq:twostate}
 \end{equation}
+Load moves $p$ and does not fix it --- two geometries at one $\rho$, rates twofold apart
+(Table~\ref{tab:mechanism}, lower panel) --- so we write $p$ and not $p(\rho)$, and the
+model's content is on the flight axis rather than the load one (Supplement~S2).
 That last step is the leading-order case, and not because the two states are independent.
 A stall delaying both branches cancels in $S = D - A$, so what it sets aside is invisible
 rather than rare. Load changes how \emph{often} the thread that must record the time is not
@@ -848,7 +850,7 @@ running, or late by less than the flight.
 background load unchanged; achieved utilization matches to within $\mechRhoMatch$ between arms,
 so occupancy alone moved. Bottom: identical utilization reached by two core geometries
 ($\rho = \mechGeomRho$ in all four $k{=}6$ arms); a function of $\rho$ returns one value for one
-input.}
+input. Both arms' achieved $\rho$, pair by pair, is in Supplement~S47.}
 \label{tab:mechanism}
 \centering
 \footnotesize
@@ -995,9 +997,11 @@ rule rather than a better clock.
 Once the failed runs are removed, the broker comparison that motivated the work is small and
 one configuration choice dwarfs it. On gated artifacts the two sit within a millisecond on
 the transport proxy (TOST against a $\tostMargin$~ms margin, $p < 0.001$, across
-$\tostLevels$ levels), so it is not a purchasing argument. The one condition that reverses
-the ordering is a consumption pattern rather than the broker, and is invisible on a co-located
-testbed. The standard evaluation environment hides the choice that decides the outcome
+$\tostLevels$ levels; the brokers lose runs to the audit at different rates, and
+Supplement~S23 bounds that at the same margin), so it is not a purchasing argument. The one
+condition that reverses
+the ordering is a consumption pattern rather than the broker, and a co-located testbed ---
+the standard evaluation environment --- hides the choice that decides the outcome
 (Supplement~S48).
 
 Our own instrument is not symmetric across that comparison, and the rule below says to

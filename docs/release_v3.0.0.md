@@ -30,19 +30,38 @@ A Zenodo record's **creators are part of its identity**, and this one goes from 
 four. That is the whole argument; nothing else here would have justified more than a minor
 bump.
 
-| | v2.6.0 (deposited 2026-08-25) | v3.0.0 |
+| | v2.7.0 (deposited 2026-08-31) | v3.0.0 |
 |---|---|---|
 | authors | Ricou, Gregg | Ricou, **Duvignau**, **Herbst**, Gregg |
-| title on the record | the old one | the manuscript's current one |
-| paper | 12 pp, 8 figures, 45 refs | 12 pp, 5 figures, 44 refs |
-| supplement | 46 pp | 54 pp |
-| tests | 3,650 | 4,175 |
+| paper | 12 pp, 7 figures | 12 pp, 5 figures, 44/45 refs |
+| supplement | 49 pp | 54 pp |
+| tools audited | 5 | 10 |
+| tests | 3,866 | 4,175 |
 
-**v2.7.0 was tagged and bundled but never deposited.** There is no v2.7.0 Zenodo record and no
-v2.7 arXiv replacement; `dist/` holds its artifacts and the git tag exists. This release
-therefore carries v2.7's content as well as its own, which is why the changelog entry covers
-both, and why `isNewVersionOf` in each metadata file still points at the **v2.6.0** version
-DOI. Left deliberately: it names the previous *published* version, not the previous tag.
+### A correction, recorded rather than quietly fixed
+
+This file first said **"v2.7.0 was tagged and bundled but never deposited"**, and repeated it
+in the README, in both deposit descriptions and in the release commit. It is false. v2.7.0 was
+published to Zenodo on 2026-08-31: code
+[22215274](https://doi.org/10.5281/zenodo.22215274), data
+[22215330](https://doi.org/10.5281/zenodo.22215330), both bylined to Ricou and Gregg.
+
+The inference came from the repository: there was no v2.7.0 changelog entry, no v2.7 version
+DOI written down anywhere, and `isNewVersionOf` still named v2.6.0. Every one of those is a
+record we failed to update at the time, and reading their absence as evidence about **Zenodo**
+rather than about **us** is the same mistake the paper is about — treating the instrument's
+silence as a measurement. It was caught by opening the concept DOI in a browser, which is the
+one check that could have caught it.
+
+Three things it would have broken at deposit time, all of them silently:
+
+- `--new-version` would have been handed the **v2.6.0** record id. Zenodo would have accepted
+  it and forked the version chain off the wrong parent.
+- `isNewVersionOf` in both metadata files named the v2.6.0 version DOI, so the published
+  record would have asserted the wrong predecessor.
+- Both descriptions and the README told the reader v2.7 does not exist.
+
+All four are corrected, and the missing v2.7.0 changelog entry is now in the README.
 
 ---
 
@@ -79,8 +98,12 @@ each existing record.
 
 | record | concept DOI (cited in the paper) | latest published version | v3.0.0 version DOI |
 |---|---|---|---|
-| code / analysis / manuscript | `10.5281/zenodo.21650031` | `10.5281/zenodo.22102716` (v2.6.0) | *minted on publish* |
-| measurement dataset | `10.5281/zenodo.21650064` | `10.5281/zenodo.22102832` (v2.6.0) | *minted on publish* |
+| code / analysis / manuscript | `10.5281/zenodo.21650031` | **22215274** — `10.5281/zenodo.22215274` (v2.7.0) | *minted on publish* |
+| measurement dataset | `10.5281/zenodo.21650064` | **22215330** — `10.5281/zenodo.22215330` (v2.7.0) | *minted on publish* |
+
+The bolded numbers are the **record ids** `--new-version` takes. They are the id of the latest
+*published version*, never the concept id, and — as the correction above shows — never a guess
+at which version that is. Open the concept DOI and read the id off the URL it lands on.
 
 **The paper needs no edit for any of this.** It cites the concept DOIs and prints the version
 from `.zenodo.json` through `\artifactVersion`, so the PDF inside the v3.0.0 archive says
@@ -90,14 +113,14 @@ inside the v2.7.0 archive.
 ### The command
 
 ```
-python scripts/zenodo_deposit.py --new-version 22102716 --ref v3.0.0 \
+python scripts/zenodo_deposit.py --new-version 22215274 --ref v3.0.0 \
     --zip dist/streaming-latency-sports-v3.0.0.zip
 ```
 
 and for the dataset, whose archive is restricted to the two data paths:
 
 ```
-python scripts/zenodo_deposit.py --new-version 22102832 --ref v3.0.0 \
+python scripts/zenodo_deposit.py --new-version 22215330 --ref v3.0.0 \
     --zip dist/streaming-latency-sports-data-v3.0.0.zip \
     --metadata .zenodo-data.json --paths docs/results reproducibility
 ```
@@ -130,9 +153,10 @@ straight to `/uploads/<id>` redirects back to the record.
 
 ## 3. arXiv
 
-`submit/7871792` is the standing submission. It has been sitting with a **one-author list and
-the old title** since August, which is the single most wrong thing in the public record right
-now, and it is what this replacement fixes.
+`submit/7871792` is the standing submission. Its state was edited on 31 August to correct the
+title and add D. Gregg, and it has never carried Duvignau or Herbst. **Read the form before
+overwriting it** — the v2.7 assumption in this file was wrong about Zenodo and the same class
+of assumption about arXiv is worth no more.
 
 Replace in place with `dist/streaming-latency-arxiv-v3.0.zip` and resubmit. The metadata to
 paste is in `dist/arxiv_v3.0_metadata.md`, with every changed field marked.

@@ -1,7 +1,9 @@
 # Release v3.0.0 — four authors, prepared for deposit
 
-**Status, 2026-09-04. ZENODO IS PUBLISHED.** Both records are live and the concept DOIs now
-resolve to v3.0.0. The arXiv replacement is the one step left.
+**Status, 2026-09-04. RELEASED.** Both Zenodo records are published and the concept DOIs now
+resolve to v3.0.0; the arXiv replacement is submitted and back in moderation. Nothing is
+outstanding on this release except other people's answers — Gregg's biography, and the arXiv
+identifier when it is announced.
 
 | record | concept DOI (cited in the paper) | v3.0.0 version DOI |
 |---|---|---|
@@ -173,27 +175,41 @@ straight to `/uploads/<id>` redirects back to the record.
 
 ---
 
-## 3. arXiv — THE ONE STEP LEFT
+## 3. arXiv — DONE
 
-`submit/7871792` is the standing submission. Its state was edited on 31 August to correct the
-title and add D. Gregg, and it has never carried Duvignau or Herbst. **Read the form before
-overwriting it** — the v2.7 assumption in this file was wrong about Zenodo and the same class
-of assumption about arXiv is worth no more.
+`submit/7871792` was replaced on 2026-09-04 and **resubmitted**. Status: *processing*, no
+expiry, back in the moderation queue it had been sitting in.
 
-Read off the live form on 2026-09-04: the **title is already right**, the **author list stops
-at Gregg**, and the abstract and comments field are the v2.7 wording. The submission is **on
-hold**, meaning it is in moderation — so editing it costs the queue position it currently has.
-Worth paying to fix the author list, but go in knowing it.
+What was replaced, in order: every previously uploaded file deleted, then
+`dist/streaming-latency-arxiv-v3.0.zip` uploaded. arXiv's own scan selected `pdflatex` and
+`paper.tex` as the top level, recognised all nine files as used, tagged `anc/supplement.pdf`
+ancillary, and marked nothing for deletion. Its compile **succeeded**: *"Output written on
+paper.pdf (12 pages)"*, matching the local build exactly.
 
-Replace in place with `dist/streaming-latency-arxiv-v3.0.zip` and resubmit. Every field, with
-what the form says now beside what it should say, is in `dist/arxiv_v3.0_metadata.md`.
+Metadata, read off the form before each field was overwritten:
 
-Two things worth knowing before starting. Editing a submission that is on hold moves it out of
-moderation back to *incomplete* — that is the expected cost of changing it, not a failure, and
-it re-enters the queue on resubmit. And the account is capped at three in-process submissions;
-that cap produced a spurious refusal mid-edit once before and cleared on its own.
+| field | what it held | what it holds now |
+|---|---|---|
+| Title | already correct | untouched |
+| Authors | **Ricou and Gregg only** | all four, in byline order |
+| Abstract | the v2.7 wording | the current abstract, 1,313 characters |
+| Comments | 12 pp, 7 figures, supplement 49 pp | 12 pp, **5 figures**, supplement **54 pp** |
+| Primary / cross-list | cs.PF / cs.DC | untouched |
+| ACM class | C.4; C.2.4 | untouched |
+| Licence | arXiv non-exclusive | untouched — **never** CC, it would collide with the IEEE transfer |
 
----
+**arXiv stores accented characters in TeX encoding.** It converted `W\"urzburg` on save and
+said so; the preview renders it correctly. This costs a round trip: the metadata form has to be
+saved *twice*, because the conversion pass re-displays the form without committing, and the
+Preview page bounces back with "Complete earlier submission stages first" until it is saved
+again. Not an error, but it looks like one.
+
+**The PDF preview is a gate, not a courtesy.** Submit stays disabled until the article PDF has
+actually been opened, and the page must then be reloaded for the button to unlock.
+
+Editing did what the banner warned: it dropped the submission out of *on hold* to *incomplete*,
+with a 2026-09-18 expiry, until it was resubmitted. That was the price of fixing the byline and
+it was paid deliberately.
 
 ## 4. What is still open after this
 
@@ -204,8 +220,9 @@ that cap produced a spurious refusal mid-edit once before and cleared on its own
   Computer Science"*. Professor stands because it is what the maintained page says. If he
   corrects it, correct `paper.tex` and cut v3.0.1 — a Zenodo version and an arXiv replacement
   each cost nothing, which is what makes publishing now the right call rather than a gamble.
-- **arXiv identifier.** When the submission is announced, add it as a related identifier on
-  both Zenodo records and put the link in the README.
+- **arXiv identifier.** The replacement is submitted and in moderation. When it is announced,
+  add the identifier as a related identifier on both Zenodo records and put the link in the
+  README. Until then the Zenodo records deliberately do not name it.
 - **Duvignau's complete pass** is scheduled for Tuesday 8 September. If it produces an
   objection of the kind his first one did, it lands as v3.1.0.
 - **Journal submission** via the IEEE Author Portal, after the preprint is up.

@@ -15,11 +15,11 @@
 > [10.5281/zenodo.21650031](https://doi.org/10.5281/zenodo.21650031) · measurement dataset:
 > [10.5281/zenodo.21650064](https://doi.org/10.5281/zenodo.21650064). These are the **concept
 > DOIs**: they never change and always resolve to the newest version, which is what the paper
-> cites. They currently resolve to v2.7.0, whose version DOIs are code
+> cites. They currently resolve to **v3.0.0**, the four-author release, whose version DOIs are
+> code [10.5281/zenodo.22307766](https://doi.org/10.5281/zenodo.22307766), data
+> [10.5281/zenodo.22307882](https://doi.org/10.5281/zenodo.22307882); v2.7.0 was code
 > [10.5281/zenodo.22215274](https://doi.org/10.5281/zenodo.22215274), data
-> [10.5281/zenodo.22215330](https://doi.org/10.5281/zenodo.22215330); **v3.0.0**, the
-> four-author release, is built and awaiting deposit (see
-> [`docs/release_v3.0.0.md`](docs/release_v3.0.0.md)). v2.6.0 was code
+> [10.5281/zenodo.22215330](https://doi.org/10.5281/zenodo.22215330); v2.6.0 was code
 > [10.5281/zenodo.22102716](https://doi.org/10.5281/zenodo.22102716), data
 > [10.5281/zenodo.22102832](https://doi.org/10.5281/zenodo.22102832); v2.5.0 was code
 > [10.5281/zenodo.22044877](https://doi.org/10.5281/zenodo.22044877), data
@@ -29,8 +29,7 @@
 > [10.5281/zenodo.21650065](https://doi.org/10.5281/zenodo.21650065).
 
 > **Frozen vs. living.** The Zenodo records above are the immutable version of record: built
-> from git tag `v2.7.0`, with SHA256 manifests of every file, and `v3.0.0` replaces them the
-> moment it is deposited. This repository
+> from git tag `v3.0.0`, with SHA256 manifests of every file. This repository
 > is the living copy and moves ahead of them. To verify the paper's claims against the exact
 > data behind them, use the Zenodo zips or `git checkout v3.0.0`; the concept DOIs always
 > resolve to the newest archived version.
@@ -1175,7 +1174,10 @@ dependency, per-corpus denominators, front matter checked against the **built PD
 cross-reference rule that fails any pointer resolving to an empty number. Paper 12 pp,
 5 figures, 2 tables, 44/45 references; supplement 49 → 54 pp, whose title page now carries
 the paper's title and the four-author byline rather than one author under a title the paper
-does not have. 4,175 tests at 100% branch coverage, up from 3,866 at v2.7.0.
+does not have. 4,175 tests at 100% branch coverage, up from 3,866 at v2.7.0. Zenodo v3.0.0
+archived from tag `v3.0.0`: code
+[10.5281/zenodo.22307766](https://doi.org/10.5281/zenodo.22307766), data
+[10.5281/zenodo.22307882](https://doi.org/10.5281/zenodo.22307882).
 
 ### 2.7.0 — 2026-08-31 — a co-author, a title, and the system explained first
 **D. Gregg joins as an author** and the records take the manuscript's current title, both of

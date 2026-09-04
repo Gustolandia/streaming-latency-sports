@@ -86,9 +86,9 @@ identifiers:
   - type: "url"
     value: "https://github.com/Gustolandia/streaming-latency-sports"
   - type: "doi"
-    value: "10.5281/zenodo.21650031"  # concept DOI (code, all versions); v2.7.0 is 10.5281/zenodo.22215274
+    value: "10.5281/zenodo.21650031"  # concept DOI (code, all versions); v3.0.0 is 10.5281/zenodo.22307766
   - type: "doi"
-    value: "10.5281/zenodo.21650064"  # concept DOI (dataset, all versions); v2.7.0 is 10.5281/zenodo.22215330
+    value: "10.5281/zenodo.21650064"  # concept DOI (dataset, all versions); v3.0.0 is 10.5281/zenodo.22307882
 
 # References to related works
 references:

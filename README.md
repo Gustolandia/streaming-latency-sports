@@ -15,8 +15,11 @@
 > [10.5281/zenodo.21650031](https://doi.org/10.5281/zenodo.21650031) · measurement dataset:
 > [10.5281/zenodo.21650064](https://doi.org/10.5281/zenodo.21650064). These are the **concept
 > DOIs**: they never change and always resolve to the newest version, which is what the paper
-> cites. They resolve to **v3.0.0**, the four-author release, whose version DOIs are minted at
-> deposit and recorded in [`docs/release_v3.0.0.md`](docs/release_v3.0.0.md). v2.6.0 was code
+> cites. They currently resolve to v2.7.0, whose version DOIs are code
+> [10.5281/zenodo.22215274](https://doi.org/10.5281/zenodo.22215274), data
+> [10.5281/zenodo.22215330](https://doi.org/10.5281/zenodo.22215330); **v3.0.0**, the
+> four-author release, is built and awaiting deposit (see
+> [`docs/release_v3.0.0.md`](docs/release_v3.0.0.md)). v2.6.0 was code
 > [10.5281/zenodo.22102716](https://doi.org/10.5281/zenodo.22102716), data
 > [10.5281/zenodo.22102832](https://doi.org/10.5281/zenodo.22102832); v2.5.0 was code
 > [10.5281/zenodo.22044877](https://doi.org/10.5281/zenodo.22044877), data
@@ -26,7 +29,8 @@
 > [10.5281/zenodo.21650065](https://doi.org/10.5281/zenodo.21650065).
 
 > **Frozen vs. living.** The Zenodo records above are the immutable version of record: built
-> from git tag `v3.0.0`, with SHA256 manifests of every file. This repository
+> from git tag `v2.7.0`, with SHA256 manifests of every file, and `v3.0.0` replaces them the
+> moment it is deposited. This repository
 > is the living copy and moves ahead of them. To verify the paper's claims against the exact
 > data behind them, use the Zenodo zips or `git checkout v3.0.0`; the concept DOIs always
 > resolve to the newest archived version.
@@ -1155,26 +1159,40 @@ senior slot; each joined on a correction that changed the work rather than the w
 each left the acknowledgements on the way in. The record also takes the manuscript's current
 title, which it had wrong.
 
-**v2.7.0 was tagged and bundled but never deposited**, so this release carries its content
-too. What is new since v2.6.0, in order of how far it reached: Section III's model is now the
+What is new since v2.7.0, in order of how far it reached: Section III's model is now the
 identity *S = D − A* per event, stated assuming no ordering, with both sides recounted from
 the committed corpus on every build; the Time-to-Insight residual is named as the
 acknowledgment lag the harness stamps rather than an append-to-deliver delay nothing
 measures; the two-broker gap is measured on workloads that match (paired 1.7×, a fifth of
 the pairs running the other way); a fifth timestamp is named and bounded, because the two
-clients deserialize on opposite sides of the receive stamp; the word *interval* is retired
-for the timing sense in favour of *flight*; Mode B is generalised from one benchmark's
-positivity guard to a quantum destroying a sample, behind a source audit of ten tools; and
-ρ(D, A) is now a windowed Pearson correlation on paired co-moments, the previous
-variance-identity estimator having returned |ρ| > 1 on five of seventy conditions.
+clients deserialize on opposite sides of the receive stamp; and the source audit grows from
+five instrumentation tools to ten, recording that a search for any stated defence of the
+positivity guard came back empty.
 
 Seven new gates, each demonstrated failing on the defect it guards before that defect was
 repaired — claim-to-equation agreement, float labelling, figure reading rules, cross-sentence
 dependency, per-corpus denominators, front matter checked against the **built PDF**, and a
 cross-reference rule that fails any pointer resolving to an empty number. Paper 12 pp,
-5 figures, 2 tables, 44/45 references; supplement 54 pp, whose title page now carries the
-paper's title and the four-author byline rather than one author under a title the paper does
-not have. 4,175 tests at 100% branch coverage, up from 3,650 at v2.6.0.
+5 figures, 2 tables, 44/45 references; supplement 49 → 54 pp, whose title page now carries
+the paper's title and the four-author byline rather than one author under a title the paper
+does not have. 4,175 tests at 100% branch coverage, up from 3,866 at v2.7.0.
+
+### 2.7.0 — 2026-08-31 — a co-author, a title, and the system explained first
+**D. Gregg joins as an author** and the records take the manuscript's current title, both of
+which they had carried wrong. The system is drawn before any claim is made about it, and the
+companion figure that had shown a single producer lane for eight rounds — contradicting the
+project's own pre-registration — now separates the two stamping threads. The word *interval*
+is retired for the timing sense and *flight* defined ahead of its first use. Mode B is
+generalised from one benchmark's positivity guard to a quantum destroying a sample, behind a
+source audit of five harnesses practitioners actually run. The 1/D law is stated where it is
+argued rather than left to be inferred. **One estimate moved**, unlike v2.6: ρ(D, A) was
+computed from a variance identity on three separately binned, edge-truncated margins, did not
+conserve, and returned |ρ| > 1 on five of seventy conditions; it is now a windowed Pearson
+correlation on paired co-moments with excluded pairs counted rather than dropped in silence.
+Zenodo v2.7.0 archived from tag `v2.7.0`: code
+[10.5281/zenodo.22215274](https://doi.org/10.5281/zenodo.22215274), data
+[10.5281/zenodo.22215330](https://doi.org/10.5281/zenodo.22215330). Paper 12 pp, supplement
+49 pp. 3,866 tests at 100% branch coverage.
 
 ### 2.6.0 — 2026-08-25 — Transactions on Computers submission package
 Fourteen further rounds of adversarial internal review, all of them on presentation and

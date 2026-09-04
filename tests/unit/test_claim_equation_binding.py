@@ -159,10 +159,49 @@ class TestEveryClaimAboutAnEquationMatchesTheEquation:
             "this guard needs rewriting rather than deleting")
 
     def test_the_equation_that_carries_the_law_still_does(self, equations):
-        """The positive half: Equation 6 must keep both the load and the flight terms."""
+        """The positive half: Equation 6 must keep the flight term Section II cites it for."""
         two_state = equations.get("eq:twostate")
         assert two_state is not None, "eq:twostate should still exist"
-        for symbol in (r"T_\{\\mathrm\{true\}\}", r"p\(\\rho\)"):
-            assert re.search(symbol, two_state), (
-                "eq:twostate lost %s; Section II cites it for a law relating the rate to "
-                "the flight under load" % symbol)
+        assert re.search(r"T_\{\\mathrm\{true\}\}", two_state), (
+            "eq:twostate lost the flight term; Section II cites it for a law relating the "
+            "rate to the flight measured")
+
+
+class TestTheModelDoesNotAssertWhatTheTableRefutes:
+    r"""Equation 6 must not write the preemption probability as a function of $\rho$ alone.
+
+    Round 49: the equation read $p(\rho)\,G(T_{\mathrm{true}})$, which at fixed flight makes
+    the rate a function of utilization. Table II's lower panel is a manipulation showing it
+    is not --- two core geometries at $\rho = 0.7531$, rates 0.0824 against 0.1709 --- and
+    the table's own caption draws the inference in as many words: "a function of $\rho$
+    returns one value for one input". Section V-C then generalises it to "refutes *every*
+    account in which the negative-span rate is a function of utilization".
+
+    So the main text asserted a form, and refuted it on the facing page, and said nothing
+    about the collision. The supplement had it right all along --- "read as a function of
+    $\rho$ alone the model has no content" --- which makes this a propagation failure rather
+    than a misunderstanding, and exactly the kind a gate can hold.
+
+    The rule is deliberately narrow: it does not police notation in general, only that this
+    one equation does not re-acquire the dependence this paper's own experiment removes.
+    """
+
+    def test_the_two_state_model_does_not_parameterise_p_by_rho(self, equations):
+        body = equations.get("eq:twostate")
+        assert body is not None, "eq:twostate should still exist"
+        assert not re.search(r"p\s*\(\s*\\rho\s*\)", body), (
+            "Equation 6 writes p as a function of rho, which Table II's lower panel refutes "
+            "at a single rho; write p and name what moves it")
+
+    def test_the_refutation_claim_is_still_made(self, paper):
+        """If Section V-C ever stops making it, this guard should be retired knowingly."""
+        assert re.search(r"refutes every account in which the\s+negative-span rate is a "
+                         r"function of utilization", paper), (
+            "Section V-C no longer refutes utilization-only accounts; re-examine whether "
+            "Equation 6 may carry p(rho) again")
+
+    def test_the_main_text_says_why_p_is_not_a_function_of_rho(self, paper):
+        """The clause that keeps a reader from thinking the paper contradicts itself."""
+        assert re.search(r"\$p\$ and not \$p\(\\rho\)\$|not \$p\(\\rho\)\$", paper), (
+            "Section V-B must say why p is written bare, or a reader who takes Equation 6 "
+            "literally reads Table II as refuting it")

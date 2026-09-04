@@ -1670,13 +1670,15 @@ individual replicate retentions for three arms, which the ledger reduces to a si
 spread: it is the same evidence at finer grain, and it is where the $0.47$-to-$99.99$
 range behind the $q=1$ corner can actually be seen.
 
-Three further tables hold evidence the main text spends a line on each. Table~\ref{tab:payload}
+Two further tables hold evidence the main text spends a line on each. Table~\ref{tab:payload}
 sweeps payload at an incommensurate rate, where samples stay dephased and implied latency can
 be read off directly. Table~\ref{tab:h2load} is the load sweep behind the queueing form we
 withdrew; it is kept because a fit we abandoned should stay inspectable by anyone who wants to
-disagree with the abandonment. Table~\ref{tab:selection} bounds the selection effect unequal
-retention could have introduced, by imputing every rejected \redis{} run at the largest value
-its own cell allows.
+disagree with the abandonment. A third answers a question the main text does not raise:
+Table~\ref{tab:selection} bounds the selection effect unequal
+retention could have introduced into the broker equivalence of Section~\mainBrokers{}, by
+imputing every rejected \redis{} run at the largest value its own cell allows. Its margin is
+the one that equivalence is stated against.
 
 \begin{table}[t]
 \caption{\textbf{Replicate spread against the phase denominator $q$} (moved from
@@ -3502,8 +3504,11 @@ tolerance, so the zero above is a clean manipulation rather than a loose test.
 
 \begin{table}[htbp]
 \caption{\textbf{Every matched pair.} Ordinary and real-time negative-span rates at the same
-achieved utilization, and the factor between them. Generated at build time from the three
-campaign files.}
+achieved utilization, and the factor between them. Both arms' achieved $\rho$ is printed, so
+the claim that the manipulation moved occupancy and not load can be checked pair by pair
+rather than taken from a caption: the widest disagreement anywhere in the table is
+$\manipWorst$, against the $\manipTol$ that would have withheld the pair. Generated at build
+time from the three campaign files.}
 \label{tab:priority-pairs}
 \footnotesize
 \centering
@@ -3527,7 +3532,7 @@ between $0.0017$ and $0.0144$ across the whole load ladder, close to the floor t
 in advance; the ordinary arm rises from $0.046$ to $0.30$. The collapse is therefore not a
 proportional reduction that happens to be larger under load --- it is the ordinary arm
 following utilization while the manipulated arm does not, which is the two-state model of
-Equation~\ref{eq:twostate} with $p(\rho)$ moved directly.
+Equation~\ref{eq:twostate} with $p$ moved directly.
 
 Two exhibits moved here from the main text when the manuscript was brought back inside twelve
 pages, and both are restatements rather than evidence, which is why they were the ones to go.
@@ -3864,7 +3869,7 @@ measurement approaches across kernels for over a decade~\cite{cerqueira2013compa
 takes the instrument's own reading as given. That is not a criticism of any of them --- it is
 the assumption this paper is about, and its being shared is the reason the omission survives.
 
-\paragraph{Two 2026 data points, one on each side}
+\paragraph{Three 2026 data points, two of them inside the regime}
 The main text concedes that most published comparisons report a median above the quantum,
 where the deletion law does not bind. That concession stands, and it is worth recording that
 it is not universal. A 2026 practitioner comparison of NATS, \redis{} and \kafka{} gives
@@ -3878,6 +3883,17 @@ median well above it, and those two have retained fractions that differ by order
 magnitude. The comparison reports no retained fraction, no rejection count, no timestamp
 resolution and no send rate, so nothing in it distinguishes the two cases. It is the clearest
 current instance of a published ranking produced inside the regime this paper is about.
+
+A second 2026 comparison closes that gap from the other side. It ranks \kafka{}, \redis{}
+Streams and NATS on end-to-end p99 and gives \redis{} Streams $0.8$~ms --- a percentile,
+named, and below the tick --- against $3.2$ and $12.5$~ms~\cite{devto2026streaming}. The
+measurement is across a three-node cluster, so two clocks, and the method is one line about
+the node shape: no tool, no timestamp source, no synchronization statement, no resolution, no
+discard count. Unlike the ranking above, this one \emph{can} be placed against the quantum,
+and it lands under it. We draw no conclusion about the number, which may be perfectly good;
+the point is that nothing published beside it would let a reader tell, and on a
+millisecond-resolution cross-node stamp most of that distribution would compute to zero or to
+a negative a positivity guard would drop.
 
 Against that, the rules of Section~\mainAuthors{} are being adopted independently, and by a
 benchmark rather than by a metrics agent. A 2026 voice-agent latency methodology records both

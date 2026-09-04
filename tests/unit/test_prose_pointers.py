@@ -74,15 +74,25 @@ def _sections():
 
 
 def _pointers():
-    """Every prose pointer in either document, as (source file, section number, context)."""
+    """Every prose pointer in either document, as (source file, section number, context).
+
+    The context is the remainder of the pointer's **own sentence**, not a fixed window.
+    A 160-character window ran two sentences past the pointer and judged it by words that
+    had nothing to do with it: round 49 added "...its content is on the flight axis
+    (Supplement~S2)." and the window reached forward into "not because the two *states* are
+    independent", matched "states" against the exhibit verbs as though it were the verb, and
+    demanded a float in S2. The promise a pointer makes is made in the sentence that carries
+    it; anything after the full stop belongs to the next claim.
+    """
     pat = re.compile(
         r"(?:Supplements?~?\s*|supplementary material~?\s*)S(\d+)(?:\.\d+)?", re.I)
     found = []
     for name in ("paper.tex", "supplement.tex"):
         tex = _read(name)
         for m in pat.finditer(tex):
-            context = re.sub(r"\s+", " ", tex[m.start(): m.start() + 160])
-            found.append((name, int(m.group(1)), context))
+            window = re.sub(r"\s+", " ", tex[m.start(): m.start() + 160])
+            end = re.search(r"(?<=[.:;])\s+(?=[A-Z(])", window)
+            found.append((name, int(m.group(1)), window[:end.start()] if end else window))
     return found
 
 

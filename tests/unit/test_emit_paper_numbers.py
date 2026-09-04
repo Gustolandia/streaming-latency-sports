@@ -309,6 +309,56 @@ class TestTheRefereeDrivenMacroGroups:
         assert "gridUnresolvedRate" not in got
         assert "gridFlatRates" not in got, "no flat arms means no flat-arm macro"
 
+    def test_the_unresolved_arm_reports_which_side_of_its_bar_it_is_on(self):
+        """Round 49: Figure 4's caption typed that side by eye and got it backwards.
+
+        The gap is 0.0033 -- under a point at print size -- so it is not a fact the eye can
+        settle, and four rounds of proofreading did not.
+        """
+        import stat_intervals
+        got = dict(epn.grid_macros())
+        arm = [c for c in stat_intervals.grid_cells()
+               if c["powered"] and c["verdict"] == "not resolved"][0]
+        assert got["gridUnresolvedObs"] == "%.4f" % arm["d_observed"]
+        assert got["gridUnresolvedNullLo"] == "%.4f" % arm["d_null_lo"]
+        assert got["gridUnresolvedSide"] == "below"
+        assert float(got["gridUnresolvedObs"]) < float(got["gridUnresolvedNullLo"]), \
+            "the word and the numbers beside it must agree"
+
+    @pytest.mark.parametrize("observed,expected", [
+        (0.10, "below"), (0.50, "above"), (0.30, "inside"),
+    ])
+    def test_every_side_the_arm_could_land_on_is_reachable(self, monkeypatch, observed,
+                                                           expected):
+        import stat_intervals
+        monkeypatch.setattr(stat_intervals, "grid_cells", lambda *a, **k: [
+            {"rate_hz": 900, "p": 1, "q": 1, "n": 5, "d_observed": observed, "d_null": 0.3,
+             "d_null_lo": 0.2, "d_null_hi": 0.4, "p_raw": 0.044, "p_holm": 0.131,
+             "powered": True, "verdict": "not resolved"}])
+        assert dict(epn.grid_macros())["gridUnresolvedSide"] == expected
+
+    def test_an_arm_without_a_simulated_band_reports_no_side(self, monkeypatch):
+        """Older ledgers carry no band; a missing word beats a guessed one."""
+        import stat_intervals
+        monkeypatch.setattr(stat_intervals, "grid_cells", lambda *a, **k: [
+            {"rate_hz": 900, "p": 1, "q": 1, "n": 5, "d_observed": 0.26, "d_null": None,
+             "d_null_lo": None, "d_null_hi": None, "p_raw": 0.044, "p_holm": 0.131,
+             "powered": True, "verdict": "not resolved"}])
+        got = dict(epn.grid_macros())
+        assert got["gridUnresolvedRate"] == "900", "the p-values still emit"
+        assert "gridUnresolvedSide" not in got
+        assert "gridUnresolvedObs" not in got
+
+    def test_the_priority_table_prints_both_arms_utilization(self):
+        """R1: the control the manipulation rests on was published nowhere."""
+        import priority_pairs
+        body = epn.render_priority_table()
+        assert "$\\rho$ ordinary & $\\rho$ real-time" in body
+        for pair in priority_pairs.usable():
+            assert "$%.4f$ & $%.4f$" % (pair["rho"], pair["rho_rt"]) in body, \
+                "the %s %s row does not print both arms' rho" % (pair["campaign"],
+                                                                 pair["level"])
+
     def test_retention_macros_are_empty_when_no_cell_reports_a_grid_median(self, monkeypatch):
         import stat_intervals
         monkeypatch.setattr(stat_intervals, "retention_cells", lambda *a, **k: [

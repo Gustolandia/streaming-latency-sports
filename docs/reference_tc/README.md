@@ -334,3 +334,62 @@ useful of the two.
 free. Both of this round's new citations — `klenik2021tpcc` and `meshiq2026activemq` — are
 cited only from supplementary material S52.3, whose bibliography is separate and uncapped, so
 neither spends the free slot. The referee explicitly declined to ask for it.
+
+## Added round 51 (2026-09-04)
+
+Two more accepted by the target journal, fetched to settle the figure-density question with a
+count rather than an opinion.
+
+| file | arXiv | pages | refs | figures | worth |
+|---|---|---|---|---|---|
+| `gcode_coinference_TC.pdf` | 2512.11856 | 14 | 28 | 18 | accepted by IEEE TC; GNN device-edge co-inference. Content remote from ours, fetched for the figure count |
+| `ciminus_cim_TC.pdf` | 2511.16368 | 14 | 21 | 12 | accepted by IEEE TC; sparse DNN on SRAM-based CIM. Same |
+
+### Figure density in TC, settled
+
+The standing question has been whether the manuscript is near a figure limit. **TC publishes
+none** — verified four times now, most recently 2026-09-04 — and the page count includes
+figures, so the budget is the only constraint. That is the rule. The norm is a separate
+question, and this is the count, so no future round has to re-derive it:
+
+| pages | paper | figures |
+|---|---|---|
+| 12 | `brownoutserve_TC` | 16 |
+| 12 | `oaas_serverless_TC` | 13 |
+| 12 | `microarch_cliffs_TC` | 10 |
+| 11 | `bbreorder_TC` | 13 |
+| 11 | `timing_channels_TC` | 11 |
+| 11 | `partitioned_bloom_TC` | **7** |
+| 14 | `gcode_coinference_TC` | 18 |
+| 14 | `ciminus_cim_TC` | 12 |
+| 14 | `scavenger_plus_TC` | 17 |
+| 14 | `fedrank_TC` | 19 |
+
+**This manuscript: 12 pages, 5 figures** — below every paper in the corpus. The nearest is
+`partitioned_bloom` at seven, which is also the only other paper here whose subject is a
+reported statistic being wrong.
+
+Round 51's referee looked at this and asked for nothing, and the reasoning is worth keeping.
+The page budget is full at exactly twelve; promoting anything from the supplement costs a page;
+and every candidate went out deliberately. `mechanism_forest` and `priority_ladder` are
+restatements of Table II and S47. The one with a real case, `deletion_histogram`, is evidence
+rather than restatement — it draws the population the guard destroys, and Mode B in the main
+text rests on Figure 3 alone — but it is a three-panel figure and there is no page for it
+without cutting evidence, which is the worse trade. **The manuscript is figure-sparse by house
+norm, that follows from a page budget optimised twice, and it is the right call.**
+
+### One grey candidate checked and declined
+
+OpenMessaging Benchmark issue #452 (SamBarker, 26 March 2026) proposes exporting serialised
+HDR histograms so results can be tested for significance, and notes that OMB "already maintains
+HDR Histograms internally throughout each run and discards them after extracting the summary
+scalars". Closed as stale. There is a real irony in the benchmark's own community working on
+making its outputs statistically comparable while nothing asks what enters the histogram — but
+the words *discarded samples*, *negative values*, *retention* and `endToEndLatencyMicros`
+appear nowhere in it, it concerns serialisation rather than the sample population, and S52.3
+already carries five exhibits, three of them stronger. Not added, and recorded here so it is
+not chased again.
+
+**Reference budget after round 51.** Unchanged at **44 of 45**, one slot free, and no citation
+was recommended this round. Two consecutive rounds have now declined to spend it, which the
+referee judged the correct steady state for a paper with a live literature.

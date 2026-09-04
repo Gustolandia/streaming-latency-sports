@@ -359,3 +359,29 @@ class TestWorstRun:
         assert got["redis_worst_kept"] == 6
         assert got["redis_worst_share"] == pytest.approx(50.08, abs=0.05), \
             "the main text calls this half of all samples taken"
+
+    def test_the_run_counts_are_split_the_way_the_sample_counts_are(self):
+        """Round 51: every per-corpus numerator had a per-corpus denominator available and
+        none was published, so Section IV-D quoted the Kafka corpus's discards against the
+        whole ledger's 223 runs -- a ledger that holds 41,403 negatives the sentence was
+        denying."""
+        import os
+        cells = load_cells(os.path.join("docs", "results",
+                                        "external_campaigns_index.csv"))
+        m = measured(cells)
+        assert m["kafka_runs"] + m["redis_runs"] == m["n_runs"], \
+            "the two driver corpora must partition the ledger"
+        assert m["kafka_runs"] == 214 and m["redis_runs"] == 9
+        assert m["kafka_negatives"] == 0, \
+            "the withdrawal rests on this corpus staying at zero"
+        assert m["redis_negatives"] == m["negatives"], \
+            "every negative in the ledger belongs to the Redis-driver replication"
+
+    def test_an_all_kafka_ledger_leaves_the_redis_corpus_empty(self):
+        """The split must survive a corpus with no Redis campaign in it at all."""
+        cells = [c for c in [self.cell(10, 2, 100)] if True]
+        for c in cells:
+            c["campaign"] = "resolution"
+        m = measured(cells)
+        assert m["kafka_runs"] == len(cells) and m["redis_runs"] == 0
+        assert m["kafka_runs"] + m["redis_runs"] == m["n_runs"]

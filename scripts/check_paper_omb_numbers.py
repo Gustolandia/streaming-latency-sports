@@ -79,6 +79,15 @@ def measured(cells):
     kafka = [c for c in cells if c.get("campaign") not in REDIS_CAMPAIGNS]
     return {
         "n_runs": len(cells),
+        # The run counts are split for the same reason the sample counts below are, and were
+        # not, until round 51. Every per-corpus numerator here had a per-corpus denominator
+        # available in the artefact and none was published, so the one sentence that needed
+        # one reached for `n_runs` -- the whole ledger, 223, against a Kafka-driver corpus of
+        # 214 that the same sentence was claiming had no negatives. The whole ledger has
+        # 41,403 of them. A numerator without its own denominator is an invitation to divide
+        # by the wrong thing.
+        "kafka_runs": len(kafka),
+        "redis_runs": len(redis),
         "discarded_total": zero + neg,
         "negatives": neg,
         "kept_total": kept,

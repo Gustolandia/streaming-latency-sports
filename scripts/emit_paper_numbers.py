@@ -79,8 +79,10 @@ def macros(m):
         ("ombDiscarded", latex_thousands(m["discarded_total"])),
         ("ombKept", latex_thousands(m["kept_total"])),
         ("ombNegatives", latex_thousands(m["negatives"])),
+        ("ombKafkaRuns", str(m["kafka_runs"])),
         ("ombKafkaDiscarded", latex_thousands(m["kafka_discarded"])),
         ("ombKafkaNegatives", latex_thousands(m["kafka_negatives"])),
+        ("ombRedisRuns", str(m["redis_runs"])),
         ("ombRedisDiscarded", latex_thousands(m["redis_discarded"])),
         ("ombRedisNegatives", latex_thousands(m["redis_negatives"])),
     ]

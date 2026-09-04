@@ -1,11 +1,26 @@
 # Release v3.0.0 — four authors, prepared for deposit
 
-**Status, 2026-09-04.** Prepared, not yet published. Everything below is built and verified;
-the two remaining steps are a human's: publish the Zenodo drafts, and replace the arXiv
-submission. A published Zenodo record cannot be deleted, only superseded, so the last click
-stays a decision rather than a script.
+**Status, 2026-09-04.** Built and verified; not yet deposited. The remaining steps are a
+human's: open the two Zenodo drafts (the token is not in this environment), publish them, and
+replace the arXiv submission. A published Zenodo record cannot be deleted, only superseded, so
+the last click stays a decision rather than a script.
 
-Tag: `v3.0.0`. Both archives are built from that tag, not from the working tree.
+Tag: `v3.0.0`, commit `894dbcc`, pushed. All three archives are built from that tag, not from
+the working tree. Verified before hand-over:
+
+| check | result |
+|---|---|
+| code archive | 842 files, 9.19 MB; `replay_plans` and `reference_tc` absent |
+| `.zenodo.json` **inside** the archive | version `3.0.0`, four creators in byline order |
+| `paper.pdf` inside the archive | 12 pages, byline reads all four names |
+| `supplement.pdf` inside the archive | 54 pages |
+| data archive | 491 files, 5.92 MB |
+| arXiv bundle | 9 files, 1.18 MB; unzipped into an empty directory and compiled with `pdflatex` twice and **no BibTeX pass**: 0 errors, 0 undefined references, 0 unresolved citations, 0 overfull boxes, 12 pages |
+| test suite at this commit | 4,175 passed, 35 skipped, 100.00% branch coverage |
+
+`paper.bbl` is the one file in the arXiv bundle not taken from the tag, because it is a build
+product and gitignored. The build refuses to run unless the working tree is clean and `HEAD`
+is the tag, so it cannot smuggle uncommitted bytes into an archive that claims to be `v3.0.0`.
 
 ---
 

@@ -732,13 +732,15 @@ metrics adopted the same disposal, clamping negative durations to zero with no c
 log line~\cite{kafka19888}; its mechanism is a backward clock step, treated in
 Supplement~S36.
 
-Separating the discards by sign is what makes the guard's cost legible. Across all
-$\ombRuns$ runs the \kafka{}-driver corpus's $\ombKafkaDiscarded$ discarded samples contain
-\textbf{not one negative}: the most negative value at any load, size or rate is $0\,\mu$s.
+Separating the discards by sign is what makes the guard's cost legible. Across the
+\kafka{}-driver corpus's $\ombKafkaRuns$ runs its $\ombKafkaDiscarded$ discarded samples
+contain \textbf{not one negative}: the most negative value at any load, size or rate is
+$0\,\mu$s.
 Those discards are resolution failures, not clock failures --- a distinction an unsigned
 counter cannot make. The same channel
-then caught the real thing in the \redis{}-driver replication: $\ombRedisNegatives$
-negatives, every one exactly $-1000\,\mu$s, the minimum the quantum can express, with
+then caught the real thing in the \redis{}-driver replication's $\ombRedisRuns$ runs:
+$\ombRedisNegatives$ negatives, every one exactly $-1000\,\mu$s, the minimum the quantum can
+express, with
 $\ombRedisWorstNegatives$ of them in a single run where they were \emph{half of all samples
 taken}, beside \ombRedisWorstKept{} kept.
 

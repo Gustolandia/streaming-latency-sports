@@ -435,3 +435,29 @@ page necessary rather than merely tidy. See `tests/unit/test_front_matter_agrees
 
 **Reference budget after round 52.** Unchanged at **44 of 45**, one slot free, and no citation
 recommended for the third consecutive round.
+
+## Added round 53 (2026-09-04)
+
+Two more accepted or submitted at the target journal, fetched to test whether round 52's
+correction to the figure-density range held up against fresh samples. It did.
+
+| file | arXiv | pages | refs | figures | worth |
+|---|---|---|---|---|---|
+| `dl_cluster_sched_TC.pdf` | 2503.10918 | 14 | 25 | 12 | published in IEEE TC; resource-heterogeneity-aware scheduling for DL clusters. Content remote from ours; kept for the count |
+| `hypergraph_snn_TC.pdf` | 2601.16118 | 15 | 32 | 11 | submitted to IEEE TC; hypergraph mapping of SNNs to neuromorphic hardware. Same |
+
+**Figure density, closed.** With these two the corpus holds figure counts of 5, 6, 7, 10, 11,
+11, 12, 12, 13, 13, 16, 17, 18, 19 and 20 across TC papers of eleven to fifteen pages. Both new
+samples fall inside the 5–20 range that round 52 established when it corrected round 51's
+"below every paper in the corpus", so the correction is now supported rather than merely
+asserted. This manuscript's five figures is the joint minimum, shared with a fourteen-page TC
+paper. **The question is closed and should not be re-derived:** no figure moves, because the
+page budget is full at twelve and every candidate was moved out deliberately.
+
+**Reference budget after round 53.** Unchanged at **44 of 45**, one slot free, and no citation
+recommended for the fourth consecutive round. The nearest candidate considered and declined was
+`arXiv:2608.02786` ("Evaluation Blindness"), which names in the AI-systems literature the
+general phenomenon this paper demonstrates empirically in another domain. It shares no
+mechanism with the manuscript — no timestamps, resolution, clocks, discard fractions or brokers
+— and Section II-A already concedes the general point with older, in-domain anchors. Recorded
+so it is not re-fetched.

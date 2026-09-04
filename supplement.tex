@@ -1674,9 +1674,9 @@ Two further tables hold evidence the main text spends a line on each. Table~\ref
 sweeps payload at an incommensurate rate, where samples stay dephased and implied latency can
 be read off directly. Table~\ref{tab:h2load} is the load sweep behind the queueing form we
 withdrew; it is kept because a fit we abandoned should stay inspectable by anyone who wants to
-disagree with the abandonment. A third answers a question the main text does not raise:
-Table~\ref{tab:selection} bounds the selection effect unequal
-retention could have introduced into the broker equivalence of Section~\mainBrokers{}, by
+disagree with the abandonment. A third answers the question Section~\mainBrokers{} raises about
+unequal audit loss: Table~\ref{tab:selection} bounds the selection effect that loss could have
+introduced into the broker equivalence, by
 imputing every rejected \redis{} run at the largest value its own cell allows. Its margin is
 the one that equivalence is stated against.
 
@@ -3905,6 +3905,20 @@ That is the one-clock rule, the retention rule and the resolution rule, arrived 
 domain by people who had not read this paper. We cite it as corroboration that the rules cost
 little, not as evidence for any claim of ours.
 
+The load-generator half has an older precedent, and a closer one. Section~\mainTestbeds{} says
+the achieved rate is recorded per run because the self-validation SPEC and TPC ask for applies
+to the instrument as well as to the system under test. Klenik and Kocsis did exactly that in
+2021, porting TPC-C to Hyperledger Fabric~\cite{klenik2021tpcc}: they instrument their own
+workers for what they call the scheduling precision reserve --- the gap between when a
+transaction is picked and when it must be submitted --- publish it against terminal count, and
+report that it ``can drop below zero in the case of hundreds of terminals''. What they then do
+with that negative is the part worth copying. They do not clamp it and they do not drop it;
+they weigh it against the timescale of the thing being measured, observing that the violation
+``never exceeds half a second'' where TPC-C's constraints ``are in the order of magnitude of
+seconds'', and conclude it is tolerable \emph{here}. That is this paper's own question --- is
+the instrument's timescale smaller than the flight? --- asked about a load generator, answered
+in the open, and four years earlier. They publish their invalidated fraction as well.
+
 \paragraph{The sharpest exhibit for the gap is a tutorial on exactly this subject}
 If the omission were confined to benchmarks under deadline it would be a smaller claim. It is
 not. A 2026 tutorial on statistical evaluation for computer-systems papers devotes a section
@@ -3927,8 +3941,21 @@ the rules of Section~\mainAuthors{} exist to replace with a number. A tutorial a
 guide, four months apart, omitting the same thing is a stronger statement about the field than
 either alone.
 
-We record both without complaint about their authors, who are doing something else and doing it
-well. The point is narrower and harder to argue with than any count of benchmarks: a document
+A third document closes the set, and it is the one that should have caught this. In July 2026 a
+broker-monitoring vendor published a methodology guide whose central section is
+\emph{The Seven Performance Benchmarking Errors}~\cite{meshiq2026activemq} --- not advice on
+running a benchmark, but an enumeration of the ways one goes wrong. The seven are co-locating
+the load generator with the broker, skipping JVM warmup, measuring only throughput, not running
+long enough, unrepresentative message sizes, triggering producer flow control, and not matching
+production configuration. Every one is about experimental design; none reaches the instrument.
+The words \emph{clock}, \emph{timestamp}, \emph{resolution} and \emph{negative} do not occur on
+the page. We note without irony that its first error is co-locating the load generator, while
+Section~\mainBrokers{} finds that a co-located testbed \emph{hides} the condition deciding the
+outcome: the two are different concerns, resource contention against exposure, and the guide is
+right about its own.
+
+We record all three without complaint about their authors, who are doing something else and
+doing it well. The point is narrower and harder to argue with than any count of benchmarks: a document
 written in 2026 to enumerate the ways latency measurement goes wrong does not contain the
 ways this paper reports, which is what it means for a gap to be a gap.
 

@@ -1357,6 +1357,23 @@
   note         = {\url{https://openbenchmarks.com/voice-agent-latency/how-voice-agent-latency-is-measured}; both endpoints on one clock, discard counts published per platform and per reason, and differences below the detector's resolution not claimed. Read 2026-08-31}
 }
 
+@inproceedings{klenik2021tpcc,
+  author       = {Klenik, Attila and Kocsis, Imre},
+  title        = {Porting a benchmark with a classic workload to blockchain:
+                  {TPC-C} on {Hyperledger} {Fabric}},
+  booktitle    = {arXiv preprint arXiv:2112.11277},
+  year         = {2021},
+  note         = {Instruments the load generator itself: the ``scheduling precision reserve'' is the gap between when a transaction is picked and when it must be submitted, published as boxplots against terminal count. It ``can drop below zero in the case of hundreds of terminals'', and the authors weigh that against the workload's own timescale --- the violation ``never exceeds half a second'' where TPC-C's constraints ``are in the order of magnitude of seconds''. The invalidated fraction is published too. Read 2026-09-04}
+}
+
+@misc{meshiq2026activemq,
+  author       = {{meshIQ}},
+  title        = {{ActiveMQ} performance benchmarking: the complete methodology guide},
+  howpublished = {Practitioner guide},
+  year         = {2026},
+  note         = {\url{https://www.meshiq.com/blog/activemq-performance-benchmarking-methodology/}, 21 July 2026. ``The Seven Performance Benchmarking Errors'' are co-locating the load generator with the broker, skipping JVM warmup, measuring only throughput, not running long enough, non-representative message sizes, triggering producer flow control, and not matching production configuration. Verified on two independent reads that \emph{clock}, \emph{timestamp}, \emph{resolution} and \emph{negative} do not occur on the page. Read 2026-09-04}
+}
+
 @misc{bostanci2026ramulator,
   author       = {Bostanci, F. Nisa and Luo, Haocong and Olgun, Ataberk and
                   Makeenkova, Maria and de Oliveira, Geraldo F. and

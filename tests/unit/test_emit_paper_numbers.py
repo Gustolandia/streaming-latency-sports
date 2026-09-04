@@ -1230,6 +1230,28 @@ class TestTheRecoveryMacrosDeclineRatherThanInvent:
         p = self._sym(tmp_path / "s.csv", [("kafka_n1", 0, 0, "", "", 0)])
         assert "spanRhoMedian" not in dict(epn._recovery_macros(p))
 
+    def test_the_correlation_carries_the_unit_it_was_computed_over(self):
+        """Round 50: the main text called this "correlated within an event".
+
+        One event is one (D, A) pair and has no correlation. `rho_DA` is fitted across a
+        condition's own events and the macro is the median across conditions, so the count
+        of conditions is emitted beside it and the sentence has to name its denominator.
+        """
+        import csv as _csv
+        got = dict(epn._recovery_macros())
+        path = (Path(__file__).parent.parent.parent / "docs" / "results" / "span_symmetry.csv")
+        with open(path, encoding="utf-8") as fh:
+            rows = [r for r in _csv.DictReader(fh) if r["rho_DA"] not in ("", "nan")]
+        assert got["spanRhoConditions"] == str(len(rows))
+        assert int(got["spanRhoConditions"]) > 1, \
+            "a median over one condition is not a median; the sentence would mislead"
+
+    def test_the_condition_count_disappears_with_the_correlation(self, tmp_path):
+        """Neither half is useful alone: a denominator with no statistic, or the reverse."""
+        p = self._sym(tmp_path / "s.csv", [("kafka_n1", 0, 0, "", "", 0)])
+        got = dict(epn._recovery_macros(p))
+        assert "spanRhoMedian" not in got and "spanRhoConditions" not in got
+
     def test_the_gap_needs_both_brokers(self, tmp_path):
         """One broker is not a comparison, so no distortion factor is emitted."""
         p = self._sym(tmp_path / "s.csv", [("kafka_n1", 1, 10, "0.5", "700", 5)])

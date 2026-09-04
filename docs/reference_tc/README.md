@@ -319,3 +319,18 @@ S52.3, whose bibliography is separate and uncapped; it costs the main text nothi
 note records that its figures are the ones withdrawn from `indexdev2026brokers` in round 48 --
 a search had returned both sources in one result set and the numbers were attributed to the
 wrong one. Traced and corrected rather than dropped, because the exhibit is a good one.
+
+## Added round 50 (2026-09-04)
+
+One accepted by the target journal, for current house form; one not TC at all, and the more
+useful of the two.
+
+| file | arXiv | pages | worth |
+|---|---|---|---|
+| `star_sparse_attn_TC.pdf` | 2512.20198 | 15 | accepted by IEEE TC, sparse-attention accelerator. Content is remote from ours; kept as a current form sample, and notable mainly for carrying about ninety references against TC's cap of forty-five — the cap applies to the published layout, not the arXiv build, which is worth remembering before reading any of these as evidence about reference budgets |
+| `tpcc_fabric_loadgen.pdf` | 2112.11277 | 9 | **not TC, and the best corroboration in the corpus for Section III-A.** Klenik and Kocsis port TPC-C to Hyperledger Fabric and instrument their own load generator: the "scheduling precision reserve" is the gap between when a transaction is picked and when it must be submitted, published against terminal count, and it "can drop below zero in the case of hundreds of terminals". They neither clamp nor drop that negative — they weigh it against the workload's timescale and say it is tolerable there. That is this paper's question asked about a load generator, answered in the open, in 2021. Cited from supplementary material S52.3 |
+
+**Reference budget after round 50.** The main text is unchanged at **44 of 45**, one slot
+free. Both of this round's new citations — `klenik2021tpcc` and `meshiq2026activemq` — are
+cited only from supplementary material S52.3, whose bibliography is separate and uncapped, so
+neither spends the free slot. The referee explicitly declined to ask for it.

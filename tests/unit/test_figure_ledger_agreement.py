@@ -84,7 +84,7 @@ class TestNoDocumentTypesTheseByHand:
     even emitted to be compared against.
     """
 
-    #: value as it was typed -> the macro that now carries it. The last three are S25's
+    #: value as it was typed -> the macro that now carries it. The last three are S20's
     #: two-campaign comparison caption, which had the primary run's numbers replaced and the
     #: replication's left typed until the half-and-half sentence made the omission obvious.
     RETIRED = {r"76.9": "payloadTransportFactor", r"77": "payloadTransportFactorRound",
@@ -113,7 +113,7 @@ class TestNoDocumentTypesTheseByHand:
             assert re.search(r"\\" + macro + r"\b", both), "%s is emitted but unused" % macro
 
     def test_the_replication_agrees_with_its_own_campaign(self):
-        """S25's caption claims two campaigns agree; both sides must come from their own."""
+        """S20's caption claims two campaigns agree; both sides must come from their own."""
         os.chdir(REPO)
         import stat_intervals
         repl = stat_intervals.payload_span("ea10b")

@@ -8,7 +8,7 @@ roughly four fifths of the paper's evidence.
 Three consequences, one per class:
 
 **Numbers that describe an arm.** Round 45 rebuilt `phase_quantisation.csv`. The generated
-tables followed; four narrative paragraphs in S13 and S23 did not, and went on describing a
+tables followed; four narrative paragraphs in S12 and S19 did not, and went on describing a
 nine-arm corpus with a 46.6% median where the rebuilt one has ten replicates and 51.04. None
 was caught, because `test_ledger_coverage.py` only flags a typed value that equals an *emitted*
 macro, and none of these was emitted. They are emitted now (`arm_macros`), and this file checks

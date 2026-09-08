@@ -1,16 +1,16 @@
 r"""Cross-references that LaTeX cannot check, because they are written as prose.
 
-Both documents point at supplement sections by number in running text --- "Supplement~S23",
+Both documents point at supplement sections by number in running text --- "Supplement~S19",
 "supplementary material S27" --- rather than with `\ref`. There are more than sixty of them,
 and until round 45 nothing verified a single one. LaTeX has nothing to warn about: to the
 compiler they are words.
 
-What round 45 found at the end of one of those chains. Supplement S31 makes the strongest
+What round 45 found at the end of one of those chains. Supplement S22 makes the strongest
 claim in Section V --- nine arms, classified in advance by their phase denominator, seven
 predicted full and two predicted flat, and every one of them behaving as predicted --- and
 said the table backing it was in S27. S27 said the table had gone back to the main text. The
 main text had two tables and neither was it. The table was real, correct and gated the whole
-time; it was in S23. It had been in the main text for one revision at a reviewer's request,
+time; it was in S19. It had been in the main text for one revision at a reviewer's request,
 left again when the page budget tightened, and the move updated neither signpost. So a
 nine-fold confirmed prediction reached the reader as a sentence with a pointer to nowhere,
 in a paper whose thesis is that a reader should not have to take a number on trust.
@@ -18,10 +18,10 @@ in a paper whose thesis is that a reader should not have to take a number on tru
 Three rules here, in increasing strictness:
 
   * every pointed-at section exists;
-  * a pointer that promises an exhibit --- "the table in S27 states", "S31 draws" --- lands
+  * a pointer that promises an exhibit --- "the table in S27 states", "S22 draws" --- lands
     on a section that has a float;
   * no section whose own body says its content moved elsewhere is the target of a pointer,
-    which is the specific shape of the S31 -> S27 chain.
+    which is the specific shape of the S22 -> S27 chain.
 
 The third is the one that would have caught it, and it is the one worth keeping: a forwarding
 address is not a destination, and a document that leaves them behind will grow more.
@@ -53,7 +53,7 @@ def _read(name):
     r"""The document with its LaTeX comments removed.
 
     Comments must go before anything reads context around a pointer. A `%` line after
-    "(Supplement~S2)" explaining why a figure moved put the word "table" inside the sweep's
+    "(Supplement~S13)" explaining why a figure moved put the word "table" inside the sweep's
     context window and produced a finding about a sentence no reader will ever see. An
     escaped \% is not a comment.
     """
@@ -79,9 +79,9 @@ def _pointers():
     The context is the remainder of the pointer's **own sentence**, not a fixed window.
     A 160-character window ran two sentences past the pointer and judged it by words that
     had nothing to do with it: round 49 added "...its content is on the flight axis
-    (Supplement~S2)." and the window reached forward into "not because the two *states* are
+    (Supplement~S13)." and the window reached forward into "not because the two *states* are
     independent", matched "states" against the exhibit verbs as though it were the verb, and
-    demanded a float in S2. The promise a pointer makes is made in the sentence that carries
+    demanded a float in S13. The promise a pointer makes is made in the sentence that carries
     it; anything after the full stop belongs to the next claim.
     """
     pat = re.compile(
@@ -136,7 +136,7 @@ class TestEveryProsePointerHasADestination:
             "figure: %s" % "; ".join(bad))
 
     def test_no_pointer_lands_on_a_forwarding_address(self, sections, pointers):
-        """The S31 -> S27 defect, stated as a rule.
+        """The S22 -> S27 defect, stated as a rule.
 
         A section that says its content is elsewhere is not a destination. Either the pointer
         should name the real location or the section should hold the thing again.
@@ -148,7 +148,7 @@ class TestEveryProsePointerHasADestination:
             if hit is None:
                 continue
             # Naming the real destination in the same breath is a redirection a reader can
-            # follow, not a dead end: "S27 (moved to S23)" is fine.
+            # follow, not a dead end: "S27 (moved to S19)" is fine.
             if re.search(r"moved to s\d+|is table~", body[:600]):
                 continue
             bad.append("%s -> S%d, whose body says %r" % (src, num, hit))

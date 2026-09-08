@@ -163,8 +163,9 @@ clock synchronization.}
 as negative, on one clock. Two threads of the producer process take the two timestamps ---
 the application thread calls send, the client's I/O thread runs the delivery callback ---
 and whichever one timestamps must first be scheduled, so the difference inverts when the
-acknowledgment's timestamping delay exceeds the delivery. The path drawn is \kafka{}'s;
-\redis{} has no second thread and inverts on a larger share of runs (Supplement~S43.3). The
+acknowledgment's timestamping delay ($\delta_{\mathrm{ack}}$ in the drawing;
+$\delta_{\mathrm{recv}}$ is the consumer's) exceeds the delivery. The path drawn is \kafka{}'s;
+\redis{} has no second thread and inverts on a larger share of runs (Supplement~S40.3). The
 producer's own timestamps, $t_{\mathrm{sched}}$ and $t_{\mathrm{send}}$, precede the
 acknowledgment, and the span referenced to them never inverts (Table~\ref{tab:spans}).}
 \label{fig:model}
@@ -182,8 +183,10 @@ A latency benchmark measures a message by reading a clock when the message is se
 again when it arrives. Subtracting the two timestamps gives the measured latency.
 The message does not take those readings (Fig.~\ref{fig:pipeline}); two \emph{threads} do
 (Fig.~\ref{fig:model}), each of which must be scheduled onto a core before it can read the
-clock, and each of which waits for that core on its own account. On a busy machine either
-wait can exceed the delivery being measured. When the two waits differ by more than the
+clock, and each of which waits for that core on its own account. That wait is the
+\emph{scheduling delay}\label{def:scheddelay}: the time a thread that is ready to run spends
+queued before a core runs it. On a busy machine either wait can exceed the delivery being
+measured. When the two waits differ by more than the
 delivery, the subtraction is negative. Nothing arrived before it was sent; the two readings
 were taken in the wrong order. Separately, the benchmark that the cross-broker comparison
 literature shares (Section~\ref{sec:related_bench}) records its cross-process timestamps in
@@ -237,7 +240,7 @@ latency.
 \end{enumerate}
 
 % The chronology subsection is gone from the introduction: the order in which the work
-% happened is the supplement's spine now (its S35), and an introduction that narrates its own
+% happened is the supplement's spine now (its S1), and an introduction that narrates its own
 % history is what a co-author called "the start of the experimental story". The one sentence
 % kept is the withdrawal itself, because a reader deciding whether to trust the audit should
 % know it cost the authors a result; it sits in the contributions above.
@@ -283,13 +286,15 @@ call it the \emph{transport proxy}, for the reason given in
 Section~\ref{sec:proxy}. The primary end-to-end measure is \textbf{Time-to-Insight}
 (\tti{}), from scheduled emission to availability at the consumer:
 \begin{equation}
-\mathrm{TTI} = \underbrace{(t_{\mathrm{send}}-t_{\mathrm{sched}})}_{\text{scheduling lag}}
+\mathrm{TTI} = \underbrace{(t_{\mathrm{send}}-t_{\mathrm{sched}})}_{\text{send lag}}
              + \underbrace{A}_{\text{acknowledgment lag}}
              + \underbrace{S}_{\text{transport proxy}} ,
 \label{eq:tti}
 \end{equation}
-which telescopes to $t_{\mathrm{recv}} - t_{\mathrm{sched}}$ (Supplement~S45 maps every
-metric of the corpus onto the span it covers). A \emph{span} is any difference of two of
+which telescopes to $t_{\mathrm{recv}} - t_{\mathrm{sched}}$ (Supplement~S36 maps every
+metric of the corpus onto the span it covers). The first term, the \emph{send lag}, is how
+late the send call ran after the event was due, measured on the producer's own thread. A
+\emph{span} is any difference of two of
 these timestamps, and a \emph{negative span} is one whose difference is below zero. The
 term is Sharma et al.'s~\cite{sharma2026causality} (a concurrent preprint), kept for the
 observable while declining the causal reading they give it. It is not RFC~1242's negative
@@ -477,7 +482,7 @@ scheduler) and CPython 3.10, on a private network. Client libraries are pinned i
 and \texttt{chrony}-disciplined clocks are logged every minute. The producer and the consumer
 run as separate \emph{processes on one host}. One early phase perturbed the measurement
 enough to be unusable and is excluded from every result here. The campaigns that remain
-measure utilization with no core pinning (Supplement~S35). A second testbed, a workstation
+measure utilization with no core pinning (Supplement~S1). A second testbed, a workstation
 running the brokers under containers, produced our withdrawn first result and appears only
 as an audit outcome.
 
@@ -507,7 +512,7 @@ Both processes read the wall clock (\brk{time.time_ns()}, \textsc{clock\_realtim
 two-host configurations need a common epoch, and the choice is kept on one host so that
 every configuration is measured the same way. On one host \textsc{clock\_monotonic} would
 have guaranteed that consecutive reads never go backwards; we forgo that exclusion and
-establish it from data instead (Section~\ref{sec:mechanism}; Supplement~S42). The Time Stamp Counter (TSC) is a
+establish it from data instead (Section~\ref{sec:mechanism}; Supplement~S39). The Time Stamp Counter (TSC) is a
 per-core cycle register and a separate matter: whether the kernel's clocksource is coherent across virtual CPUs is
 bounded in Section~\ref{sec:threats}. The measured inter-host offset, where two hosts are
 used, is $\interHostOffsetMs$~ms.
@@ -519,7 +524,7 @@ The workload is StatsBomb's open football event data~\cite{statsbomb2023}
 sub-second event times. We replay $3{,}315$ matches, preserving each match's event order
 and scaling its inter-event spacing to the chosen send rate. It stands for small frequent
 ordered messages rather than for any particular deployment, and nothing below depends on
-its content beyond message size and rate (Supplement~S11). The send schedule is measured rather than assumed.
+its content beyond message size and rate (Supplement~S29). The send schedule is measured rather than assumed.
 Pacer jitter is $67$--$69\,\mu$s at p90, and the achieved rate is recorded per run against
 elapsed wall time: the self-validation SPEC and TPC ask of a
 benchmark~\cite{kistowski2015build}, applied to the load generator.
@@ -527,7 +532,7 @@ benchmark~\cite{kistowski2015build}, applied to the load generator.
 The two clients place one timestamp differently, and it matters to every span referenced
 to $t_{\mathrm{recv}}$. \kafka{}'s client deserializes the payload before that timestamp
 and \redis{}'s after it, so such a span carries one client's payload parse and not the
-other's (Supplement~S43.1); Section~\ref{sec:brokers} says what that is worth.
+other's (Supplement~S40.1); Section~\ref{sec:brokers} says what that is worth.
 
 \subsection{The consistency check}
 \label{sec:gate}
@@ -564,7 +569,7 @@ estimated on the traced histogram by grouped maximum likelihood and by an exceed
 A slope through survival points would mislead, because the buckets are interval-censored. The
 grouped estimator on log-spaced bins is Virkar and Clauset's, the Hill estimator for
 binned data, and we use their bootstrap for goodness of fit~\cite{virkar2014power}. The
-remaining estimators are inventoried in Supplement~S49. All interval arithmetic is
+remaining estimators are inventoried in Supplement~S35. All interval arithmetic is
 recomputed from the committed artifacts at build time
 by \texttt{scripts/stat\_intervals.py} and \texttt{scripts/tail\_index\_traced.py}. The
 tables reporting it are generated rather than transcribed.
@@ -586,7 +591,7 @@ distributed mode is discussed in Section~\ref{sec:limitations}.
 In \brk{LocalWorker.java}:294 the end-to-end latency is \texttt{now - publishTimestamp},
 where \texttt{now} is read in the consumer and \texttt{publishTimestamp} is \kafka{}'s
 producer-set \texttt{CreateTime}, itself a millisecond value. That difference is then
-promoted to microseconds (Supplement~S36 quotes the call). A sample then enters the
+promoted to microseconds (Supplement~S37 quotes the call). A sample then enters the
 histogram only if it passes the test in \brk{WorkerStats.java}:95 ---
 \texttt{if (endToEndLatencyMicros > 0)} --- which we call the \emph{admission condition}:
 a strictly positive difference is kept, and anything else is dropped. The message is counted as received a few lines earlier, but a non-positive latency is
@@ -656,7 +661,7 @@ timestamp changes value. Write $\tau$ for the timestamp resolution --- the
 true delivery of a message, the interval $D$ would report if it were measured with an
 arbitrarily fine timestamp. A sample survives when its delivery crosses a grid instant,
 which for $T_{\mathrm{true}} < \tau$ happens with probability $T_{\mathrm{true}}/\tau$
-(Supplement~S51 draws the geometry):
+(Supplement~S42 draws the geometry):
 \begin{equation}
 \label{eq:retention}
 \text{retention} \;=\; \min\!\left(1,\; \frac{T_{\mathrm{true}}}{\tau}\right)
@@ -685,15 +690,15 @@ bracketing $T_{\mathrm{true}}/\tau$. The replicate spread follows:
 \end{equation}
 Both branches are limits: a nominally commensurate rate is not exactly commensurate, and
 the two configurations that sit on a vertex spread by roughly three tenths of the mid-cell
-width, too few to fix a constant (Supplement~S23). A round send rate is the worst possible
-choice, and exactness decides it: Supplement~S23 runs from the $q=1$ rate whose replicates span almost the whole range to the one sitting
+width, too few to fix a constant (Supplement~S19). A round send rate is the worst possible
+choice, and exactness decides it: Supplement~S19 runs from the $q=1$ rate whose replicates span almost the whole range to the one sitting
 $0.00014$ from a vertex and behaving as fully continuous.
 
 \subsection{The grid as inference}
 \label{sec:extinference}
 A table of spreads is not a test, so we state one: the mean normalized distance from a
 configuration's replicates to the nearest $q$-grid vertex, against the
-within-configuration permutation null a continuum implies. Supplements~S54 and~S46 give
+within-configuration permutation null a continuum implies. Supplements~S44 and~S23 give
 the construction and every configuration with $n \ge 5$. $\gridReject$ of the
 $\gridPowered$ powered configurations reject the continuum null at $\alpha = 0.05$ after
 Holm correction within the family of $\gridArms$. The tenth, $\gridUnresolvedRate$~msg/s,
@@ -718,7 +723,7 @@ $\gridUnresolvedNullLo$, but at $p = \gridUnresolvedRaw$ raw and $\gridUnresolve
 corrected it is the one powered configuration that does not reject: correction is what the
 picture cannot draw. The $\gridFlat$ squares are the configurations where the two
 hypotheses coincide and no test has power; \emph{the sign carries nothing} there.
-Corrected $p$-values are in Supplement~S46.}
+Corrected $p$-values are in Supplement~S23.}
 \label{fig:grid}
 \end{figure}
 
@@ -730,20 +735,20 @@ the runs, and it came true: spread collapses to $13.6$ at
 $32$~KB, pinned near the $2/3$ vertex, and re-opens to $26.7$ at $64$~KB --- the flat--full
 boundary crossed in both directions by one
 manipulated variable. One registered detail failed --- the $32$~KB pin sits at $69.2$, not
-the predicted $66.67$. Supplement~S31 draws all three configurations against their grid,
-% The payload-flip figure moved to the supplement in round 43, beside S31, which is where
+the predicted $66.67$. Supplement~S22 draws all three configurations against their grid,
+% The payload-flip figure moved to the supplement in round 43, beside S22, which is where
 % the spread rule it confirms is set out in full. Same journey as the pipeline schematic in
 % round 16 and the payload-sweep law earlier in this round, and for the same reason: every
 % number the panels carry is in the sentence above them, so the figure restates rather than
 % shows, and four biographies would not otherwise fit inside twelve pages.
 
 % Round 47 cut the sixty-three-cell campaign's tally to its conclusion. It was two sentences
-% of tier-4 evidence -- six registered predictions, three falsifiers fired -- and S55 gives
+% of tier-4 evidence -- six registered predictions, three falsifiers fired -- and S26 gives
 % every one of them prediction by prediction, so the main text was carrying an index to a
 % table rather than a result. The page it bought went to the two citations round 46 asked
 % for, one of them a paper in this journal on this section's own subject.
 and a larger campaign leaves per-send jitter rather than accumulation standing
-(Supplement~S55).
+(Supplement~S26).
 
 \subsection{Generality, and the sign channel}
 \label{sec:generality}
@@ -751,7 +756,7 @@ To show the law is not an artifact of one JVM, we reproduced the admission condi
 independent Python harness sharing no code with the benchmark. On one clock it recorded
 \textbf{zero} negative differences across $\harnessOneClockSamples$
 samples, as a causal chain requires, and none across two hosts either
-(Supplement~S10). The grid behavior reappeared intact. At
+(Supplement~S11). The grid behavior reappeared intact. At
 $\harnessXHostRate$~msg/s --- the \harnessXHostArmClass{} configuration, the only one of the
 three whose own grid spread does not swamp the comparison --- cross-host retention wandered
 from $\harnessXHostRetLo$ to $\harnessXHostRetHi\%$ over four replicates, where the same
@@ -779,10 +784,10 @@ nothing missing: \texttt{fio} and \texttt{btt} substitute zero and one nanosecon
 value never measured enters the distribution. At the other end, \harnessCountingWord{} counts
 its discards in a metric whose description names the cause~\cite{rezolus}, which is what
 makes the rule of Section~\ref{sec:authors} practical rather than aspirational.
-Supplement~S36 gives the registry tool by tool, with the source line each finding sits on and
+Supplement~S37 gives the registry tool by tool, with the source line each finding sits on and
 one entry that corrects a misreading of our own. The class is not confined to benchmarks:
 in November 2025 the audited broker's own coordinator metrics adopted the same disposal,
-clamping negative durations to zero with no counter~\cite{kafka19888} (Supplement~S36).
+clamping negative durations to zero with no counter~\cite{kafka19888} (Supplement~S37).
 
 Separating the discards by sign is what makes the condition's cost legible. Across the
 \kafka{}-driver corpus's $\ombKafkaRuns$ runs its $\ombKafkaDiscarded$ discarded samples
@@ -802,7 +807,7 @@ produce exactly one negative value, $-1000\,\mu$s, and no other. That is precise
 corpus contains. The \kafka{}-driver span, floored the same way but taken inside one
 JVM, never inverts at all. Clock discipline was clean at every logged minute, which is the
 point --- this failure needs no misbehaving clock, only two of them and a floor
-(Supplement~S53).
+(Supplement~S43).
 
 \section{Scheduling and Acknowledgment Bias}
 \label{sec:mechanism}
@@ -864,7 +869,7 @@ $t_{\mathrm{out}}-t_{\mathrm{send}}$ & send (chain) & --- & --- & $\spanNegOutpu
 \label{sec:blindspot}
 The rejected result had looked correct: monotone in concurrency, significant after
 correction ($p = 9.0\times10^{-11}$), and past every conventional check we knew
-(Supplement~S43). The check does not catch everything. Load-induced inflation that stays
+(Supplement~S40). The check does not catch everything. Load-induced inflation that stays
 positive is physically possible, and our own second withdrawal is the example --- a
 twentyfold end-to-end gap that was a per-run start-up cost read as a per-event constant,
 causally consistent and wrong. Causal consistency is necessary, not sufficient.
@@ -884,7 +889,7 @@ Equation~\ref{eq:negspan} becomes, to leading order,
 \end{equation}
 Load moves $p$ and does not fix it --- two geometries at one $\rho$, rates twofold apart
 (Table~\ref{tab:mechanism}, lower panel) --- so we write $p$ and not $p(\rho)$, and the
-model's content is on the delivery axis rather than the load one (Supplement~S2). The
+model's content is on the delivery axis rather than the load one (Supplement~S13). The
 leading-order step does not assume the two states are independent: a stall delaying both
 branches cancels in $S = D - A$, so what the model sets aside is invisible rather than rare.
 Load changes how \emph{often} the thread that must record the time is not running, not how
@@ -926,7 +931,7 @@ Manipulation & Configuration & Rate & 95\% CI & Factor ($z$)\\
 
 \subsection{The experiments that settle it}
 \label{sec:twostate}
-No pair of configurations in Table~\ref{tab:mechanism} overlaps, and Supplement~S47 draws
+No pair of configurations in Table~\ref{tab:mechanism} overlaps, and Supplement~S24 draws
 them. Real-time priority on the timestamping threads moves occupancy while utilization
 stays fixed (Table~\ref{tab:mechanism}, top). The rate falls by factors of $\rtLowFactor$
 [$\rtLowFactorCI$] and $\rtHighFactor$ [$\rtHighFactorCI$]. The brackets are Katz
@@ -941,7 +946,7 @@ negative-span rate is a function of utilization}, including the queueing form we
 adopted: $\rho$ did not change and the rate changed fiftyfold. Across $\rtPairs$ matched
 pairs spanning $\rtRhoLow$ to $\rtRhoHigh\%$ load the factor
 ranges $\rtFactorLow$--$\rtFactorHigh\times$, every pair with disjoint intervals
-(Supplement~S47).
+(Supplement~S24).
 
 Three further manipulations agree. At $k=6$ both load geometries sit at $\rho = \mechGeomRho$,
 identical to four decimals, and the negative-span rates differ by
@@ -960,18 +965,18 @@ $\tracedRatios$, no consistent sign, nothing fitted. It is filtered to the harne
 processes and shares no probe, estimator or data with the application-level rate. The
 probe is not free: $\untracedRate$ untraced against $\tracedRate$ traced
 ($z = \observerZ$), and the comparison uses the traced configuration's own rate, so
-$\untracedRate$ is the machine's (Supplement~S43.4).
+$\untracedRate$ is the machine's (Supplement~S40.4).
 % Round 47 cut this tier-5 negative result to the one sentence the tier rule allows. The two
-% failed fits, their R-squared and the registered bracket are in S2 in full; the main text
+% failed fits, their R-squared and the registered bracket are in S13 in full; the main text
 % needs only the conclusion, which is that both candidates were parameterized in the wrong
 % variable. v4 folded the sentence into the manipulations paragraph: a one-sentence
 % \paragraph heading cost three lines for a tier-5 result.
 The knee sweep placed conditions where the candidate load laws diverge and both failed,
-because both were parameterized in $\rho$ and $\rho$ is not the variable (Supplement~S2).
+because both were parameterized in $\rho$ and $\rho$ is not the variable (Supplement~S13).
 
 % The payload-sweep figure moved to the supplement, beside the fit it draws. The prose two
 % paragraphs below already said "four points do not earn an equation here" and sent the fit
-% to S32; leaving the picture behind in the main text was the inconsistency. Precedent: the
+% to S15; leaving the picture behind in the main text was the inconsistency. Precedent: the
 % pipeline schematic made the same journey in round 16.
 
 \subsection{What the proxy costs a comparison}
@@ -985,10 +990,10 @@ median acknowledgment lag, $A = \ackLagMedianUs\,\mu$s, that is $\exposureErrTen
 $10$~ms delivery and $\exposureErrHundred\%$ at $100$~ms. Read the other way, it is
 $\exposureErrOne\%$ at $1$~ms, and below $\exposureCrossover$~ms the displacement exceeds
 the delivery it is a correction to --- where sub-millisecond medians are routine in broker
-benchmarking (Supplement~S48). $A$ is not a constant: across our conditions it spans
+benchmarking (Supplement~S25). $A$ is not a constant: across our conditions it spans
 $\exposureLagLo$--$\exposureLagHi\,\mu$s, which puts the $10$~ms error at
 $\exposureErrTen$--$\exposureErrTenHi\%$ and the crossover at
-$\exposureCrossover$--$\exposureCrossoverHi$~ms; Supplement~S48 bands every row.
+$\exposureCrossover$--$\exposureCrossoverHi$~ms; Supplement~S25 bands every row.
 
 Two consequences follow, both measured on the gated corpus. First, two \emph{identical}
 systems whose clients timestamp in different places are separated by the difference of
@@ -996,7 +1001,7 @@ their lags: a reported gap of $\exposureGapTen\%$ at $10$~ms, with the sign chec
 at neither. Second, on this corpus the reported span is $\reportedFraction\%$ of the
 delivery it stands for, understating it $\understateFactor\times$ --- a median of
 per-condition ratios, which is not what differencing two published medians gives
-(Supplement~S48). The two brokers' clients timestamp differently, and over
+(Supplement~S25). The two brokers' clients timestamp differently, and over
 $\gapDistortionPairs$ matched workloads the proxy inflates the gap between them
 $\gapDistortionPaired\times$ (interquartile range $\gapDistortionPairedIQR$), narrowing it
 on $\gapDistortionDeflates\%$ of the pairs: a property of the clients, not of the brokers.
@@ -1018,13 +1023,13 @@ sits where it does.
 
 Log--log least squares over the four payload levels of Section~\ref{sec:twostate}
 returns a slope of $\tailSlope$ ($\tailSlopeCI$, Student-$t$ at two degrees of freedom);
-the fit is in Supplement~S32, and four points do not earn an equation here. An earlier
+the fit is in Supplement~S15, and four points do not earn an equation here. An earlier
 version read the kernel trace as an independent confirmation of it. We withdraw the claim,
 because estimating the traced index properly is what refuted it.
 
 Two estimators of the traced tail index disagree sixfold, and a bootstrap goodness-of-fit
 rejects the fitted power law ($p \tracedGofP$ over $\tracedGofBoot$ replicates drawn from
-it); both are in Supplement~S32. Over the $\tracedEvents$ traced wakeups the counts do not
+it); both are in Supplement~S15. Over the $\tracedEvents$ traced wakeups the counts do not
 descend monotonically, and on log$_2$ buckets a power law of index above one must. What the
 counts have instead is $\tracedModes$ local maxima. The last is a \emph{mode} at
 $\tracedModeLo$--$\tracedModeHi$~ms, holding $\tracedModeShare\%$ of all wakeups and
@@ -1054,7 +1059,7 @@ case. The slice is \emph{derived} rather than measured: the kernel's published
 rule~\cite{zhou2025slice} gives $\sliceFactor \times 0.75\,\mathrm{ms} = \baseSliceMs$~ms
 on the $\testbedCpus$ cores the campaign's own load geometry recovers, over a $\tickMs$~ms
 scheduler tick, and no scheduler tunable is written anywhere in the archived campaign
-(Supplement~S44). That tick is the kernel's timer period, not the timestamp resolution of
+(Supplement~S41). That tick is the kernel's timer period, not the timestamp resolution of
 Section~\ref{sec:external}; both are $1$~ms here by coincidence of configuration. A thread
 descheduled at the wrong instant therefore reads its clock about a slice late, six to
 thirty times a $0.1$--$0.5$~ms delivery, and the tick is why the mode is a band rather
@@ -1075,7 +1080,7 @@ the transport proxy (TOST against a $\tostMargin$~ms margin, $p < 0.001$, across
 $\tostLevels$ levels), so it is not a purchasing argument. The one
 condition that reverses the ordering is a consumption pattern rather than the broker. A
 co-located testbed --- the standard evaluation environment --- hides the choice that
-decides the outcome (Supplement~S48).
+decides the outcome (Supplement~S25).
 
 Our own measurement is not symmetric across that comparison, and the rule below says to
 declare it. \kafka{}'s client deserializes the payload before $t_{\mathrm{recv}}$ and
@@ -1083,7 +1088,7 @@ declare it. \kafka{}'s client deserializes the payload before $t_{\mathrm{recv}}
 $\spanHandlingWorstUs\,\mu$s, or $\spanHandlingSharePct\%$ of \redis{}'s own median
 delivery. That is a fiftieth of the equivalence margin above, and it runs \emph{against}
 the per-broker difference of Table~\ref{tab:spans} rather than producing it. \tti{} is free
-of it, because both parses fall inside \tti{} (Supplement~S43.1).
+of it, because both parses fall inside \tti{} (Supplement~S40.1).
 
 \subsection{For benchmark authors}
 \label{sec:authors}
@@ -1144,7 +1149,7 @@ resolution and the synchronization state, none recoverable afterwards. A summary
 $\ombGridRetentionMin\%$ of samples is typographically identical to one from all.
 Neither half of the rule is ours: OWAMP has attached an error estimate to every timestamp
 since 2006, and records a packet timestamped in the future unaltered rather than discarding
-it~\cite{rfc4656} (Supplements~S39 and~S40 give the precedents). The sign is the channel:
+it~\cite{rfc4656} (Supplements~S49 and~S50 give the precedents). The sign is the channel:
 negative means the reference timestamp failed, computes-to-zero means the resolution
 failed, and one unsigned total cannot distinguish them.
 
@@ -1168,11 +1173,11 @@ record at native resolution, count what is discarded, dither the send instant, a
 is synchronization quality the frontier (Section~\ref{sec:generality}).
 % Round 47 cut the redesign clause to its pointer. That a consumer-to-producer acknowledgment
 % removes skew but not this failure, and that every one-way-avoiding scheme rests on an
-% unstated assumption, are both worked through in S37 and S43.6; the main text needs the
+% unstated assumption, are both worked through in S47 and S40.6; the main text needs the
 % conclusion, which is the last sentence of this paragraph.
 Resolution is the lesser half, and a distinct one. A microsecond timestamp retires
 Equation~\ref{eq:retention}'s deletions here and moves the grid to faster paths, but the
-admission condition and genuine negatives survive it (Supplements~S37 and~S43.6). A better
+admission condition and genuine negatives survive it (Supplements~S47 and~S40.6). A better
 clock alone therefore converts an uncounted \emph{resolution} failure into an uncounted
 \emph{timestamping} one.
 
@@ -1191,11 +1196,11 @@ rather than ruled out. It did not produce the \redis{}-driver
 negatives, which the driver's own timestamp accounts for exactly
 (Section~\ref{sec:generality}), but it is why we claim no cross-host bound in general. The
 skew threshold of Section~\ref{sec:related_time} does not transfer to a loaded machine
-either (Supplement~S50).
+either (Supplement~S51).
 
 \label{sec:limitations}
 \paragraph{Scope, and the alternatives eliminated} Three widely used runtimes document this structure without drawing its consequence for a
-cross-process subtraction (Supplement~S38).
+cross-process subtraction (Supplement~S48).
 The mechanism requires a timestamping path that can be preempted. Designs that pin a thread to
 a dedicated core and busy-poll, or that timestamp in hardware, remove the state
 Equation~\ref{eq:twostate} depends on, and we make no claim about them. Within our own
@@ -1209,7 +1214,7 @@ scheduling class. Stress: transport $\payloadTransportFactorRound\times$ longer
 \brk{sched_switch} histogram predicts the rate to within a third, unfitted. One rival is
 not the scheduler's --- the timestamp is a CPython call, so it waits on the interpreter lock
 too, invisibly to a tracepoint probe. That one is bounded because the kernel-only estimator
-brackets the observed rate ($\tracedRatios$) instead of under-predicting (Supplement~S43.4).
+brackets the observed rate ($\tracedRatios$) instead of under-predicting (Supplement~S40.4).
 
 % Round 47 tried to compress this paragraph for the page budget and put both of its pinned
 % clauses back. "both of which" is the plural antecedent for the two admitted clocksources,
@@ -1221,14 +1226,14 @@ twice. The probe's $\clockIncrementNs$~ns increment admits only
 \clockAdmitted{}, both of which the kernel uses solely where cross-CPU coherence is
 asserted; and the corpus closes the channel again on headroom, not on shared endpoints, since
 the send-referenced span holds a floor $\spanOffsetMargin\times$ too high to explain the
-deepest negative span (Supplement~S42).
+deepest negative span (Supplement~S39).
 
 The mechanism's constants are those of one EEVDF-era kernel (6.8); CFS-era schedulers, the
 regime Lozi et al.\ document, may shift them. The deletion law is demonstrated on one
 benchmark and reproduced in one independent harness. The \harnessSilentWord{} tools of
 Section~\ref{sec:generality} are readings of source rather than measured deployments. The
 benchmark's distributed mode failed on every attempt, so its cross-host exposure rests on
-source reading and our own two-host harness (Supplement~S4). Exposure depends on a
+source reading and our own two-host harness (Supplement~S34). Exposure depends on a
 deployment's path latency and producer rate. That is why we recommend publishing a
 retention rate rather than calling any published number wrong.
 

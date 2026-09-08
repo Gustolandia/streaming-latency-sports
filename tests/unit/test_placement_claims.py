@@ -1,6 +1,6 @@
 r"""When one document says where content lives, is it telling the truth about the other?
 
-Supplement S36 carried this sentence for two rounds:
+Supplement S37 carried this sentence for two rounds:
 
     We record it here rather than in the main text because its mechanism is genuine
     wall-clock non-monotonicity, and placing it beside Mode A would invite exactly the
@@ -146,7 +146,7 @@ class TestTheCheckCanFail:
         assert exclusive_claims(text)[0][2] == []
 
     def test_here_rather_than_dropped_is_not_a_placement_claim(self):
-        """S19 says a withdrawn phase is recorded "here rather than dropped". Different claim."""
+        """S7 says a withdrawn phase is recorded "here rather than dropped". Different claim."""
         assert not exclusive_claims("It is recorded here rather than dropped because a phase "
                                     "removed without saying so is a hole in the record.")
 

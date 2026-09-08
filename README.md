@@ -869,7 +869,7 @@ compiled from the same commit.
 | Asset | Purpose |
 |-------|---------|
 | `paper.tex` | The paper (`IEEEtran`, journal; Intro, Related Work, Setting, Method, First Answer, Audit, Second Failure Mode, What Survives, Discussion, Conclusion) |
-| `supplement.tex` | Companion supplement S1–S55 (`docs/supplement_index.md` maps what moved where) |
+| `supplement.tex` | Companion supplement, a single-author postmortem in four parts, S1–S52 (`docs/supplement_index.md` maps what moved where and carries the old→new concordance) |
 | `manuscript_references.bib` | Bibliography |
 | `IEEEtran.cls` | IEEE article class (from TeX Live/MiKTeX) |
 

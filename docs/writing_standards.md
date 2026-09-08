@@ -86,7 +86,10 @@ field's word for the effect. *timestamp resolution* itself has no corpus precede
 Two neighbouring terms are worth knowing: the corpus prefers *scheduling latency* (12
 papers) to *scheduling delay* (4); the manuscript keeps *scheduling delay* for the wait
 before the timestamping thread runs, because *latency* is already the measured quantity and
-the collision would cost more than the precedent buys. *System model* (98 papers),
+the collision would cost more than the precedent buys. It is therefore **defined at its first
+use** (gated by `\label{def:scheddelay}`, rule A7), and the TTI term that used to be called
+the *scheduling lag* is now the *send lag* — the send call's lateness after the event was
+due — so that two different waits no longer share a name. *System model* (98 papers),
 *experimental setup* (196) and *threats to validity* (17) are the field's section names and
 are the ones used.
 

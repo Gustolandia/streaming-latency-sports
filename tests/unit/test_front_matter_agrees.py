@@ -21,9 +21,15 @@ circumstance in which a document has to be able to say what it belongs to, and a
 page document of working behind a four-author paper, credited to one of them, is not a
 formatting nit.
 
-So: the two bylines must be identical, the supplement must name the paper, and it must carry
-a running head. Three assertions, and the class they close is the last unautomated seam in the
+So: the two bylines must agree, the supplement must name the paper, and it must carry a
+running head. Three assertions, and the class they close is the last unautomated seam in the
 project.
+
+v4 (2026-09-08) changes what "agree" means. The second author asked for the supplement to be
+a single-author document, coherent on its own -- a postmortem of how the results were
+obtained -- rather than an appendix under the paper's byline. So the supplement is bylined to
+the paper's first author alone, and its author block must still name every author of the
+paper, so that a loose page ties itself to the four-author paper it accompanies.
 """
 from pathlib import Path
 import re
@@ -80,12 +86,22 @@ def _names(author_block):
 
 class TestTheTwoDocumentsAgreeOnWhoWroteThem:
 
-    def test_the_bylines_name_the_same_people_in_the_same_order(self):
+    def test_the_supplement_is_bylined_to_the_papers_first_author(self):
         paper = [" ".join(n.split()) for n in _names(_field("paper.tex", "author"))]
         supp = [" ".join(n.split()) for n in _names(_field("supplement.tex", "author"))]
-        assert supp == paper, (
-            "the supplement is bylined %s and the paper %s; supplementary material carries "
-            "the paper's authorship" % (supp, paper))
+        assert supp == paper[:1], (
+            "the supplement is bylined %s; as a single-author postmortem it carries the "
+            "paper's first author, %s, alone" % (supp, paper[:1]))
+
+    def test_the_supplement_names_every_author_of_the_paper(self):
+        """A loose page of the postmortem must still say whose paper it accompanies."""
+        paper = [" ".join(n.split()) for n in _names(_field("paper.tex", "author"))]
+        block = _field("supplement.tex", "author")
+        for name in paper:
+            surname = name.split()[-1]
+            assert surname in block, (
+                "the supplement's author block does not name %s, an author of the paper"
+                % surname)
 
     def test_the_supplement_names_every_affiliation_the_paper_does(self):
         paper = _field("paper.tex", "author")

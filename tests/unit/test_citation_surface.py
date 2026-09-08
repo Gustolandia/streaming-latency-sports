@@ -59,7 +59,7 @@ TC_REFERENCE_CAP = 45
 #: Page 12 was simply full, so shortening the entry was never the lever.
 #:
 #: What paid for it was Section IV-D's audit paragraph, which enumerated the registry class by
-#: class in prose -- filters, suppressors, refusals, the counter, the acquittal -- while S53's
+#: class in prose -- filters, suppressors, refusals, the counter, the acquittal -- while S43's
 #: table shows exactly that, row by row. The two findings in it that are ARGUMENTS rather than
 #: rows were kept: substitution being worse than filtering, because it leaves nothing missing
 #: and retention downstream reads 100%; and Rezolus counting its discards, which is what makes

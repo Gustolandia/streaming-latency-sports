@@ -88,9 +88,10 @@ CLAIMS = (
     (r"a law relating the negative-span rate to the delivery being\s+measured",
      (r"T_\{\\mathrm\{true\}\}",),
      "a law relating a rate to the delivery must contain the true delivery"),
-    (r"stall distribution\s+overlaps a short flight",
+    # v4.1 (2026-09-08): "flight" retired in the supplement too; the claim is the same.
+    (r"stall distribution\s+overlaps a short delivery",
      (r"T_\{\\mathrm\{true\}\}",),
-     "an equation about how a distribution overlaps the flight must contain the flight"),
+     "an equation about how a distribution overlaps the delivery must contain the delivery"),
     (r"lengthening what is being\s+measured lowers the rate",
      (r"T_\{\\mathrm\{true\}\}|D \\equiv|\\Pr\[A > D\]",),
      "the flight must appear, or the delivery it is compared against"),

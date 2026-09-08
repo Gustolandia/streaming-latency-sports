@@ -56,6 +56,35 @@ def test_the_swing_the_caption_claims_is_the_swing_in_the_data():
     assert round(max(at_grid) / min(at_grid)) == 279
 
 
+def test_plot_exposure_draws_the_band_around_the_line_and_marks_the_crossover():
+    """The exposure table as a curve, with the spread it is quoted by.
+
+    The point of the figure is that a reader can bracket their own path, so the band has to
+    be there and the crossover -- where the displacement equals the delivery -- has to be
+    marked. Both are drawn from the lags the table reads, not from constants here.
+    """
+    import emit_paper_numbers as epn
+    lags = epn._exposure_lags()
+    assert lags is not None, "the exposure source must ship with the repository"
+    typical = lags[0]
+
+    fig, ax = plt.subplots()
+    mrf.plot_exposure(ax, lags)
+
+    assert ax.get_xscale() == "log" and ax.get_yscale() == "log"
+    assert ax.collections, "the p10-p90 band must be drawn"
+    labels = [t.get_text() for t in ax.get_legend().get_texts()]
+    assert "median lag" in labels
+
+    # The marked point sits at the crossover, on the 100% line.
+    marks = [ln for ln in ax.lines
+             if ln.get_marker() == "o" and len(ln.get_xdata()) == 1]
+    assert marks, "the crossover must be marked"
+    assert abs(marks[0].get_xdata()[0] - typical / 1000.0) < 1e-9
+    assert marks[0].get_ydata()[0] == 100
+    plt.close(fig)
+
+
 def test_plot_deletion_draws_every_cell_and_splits_at_the_quantum():
     fig, ax = plt.subplots()
     pts = mrf.retention_points()
@@ -391,7 +420,8 @@ def test_plot_grid_draws_one_marker_per_arm_and_labels_every_class():
                                        ("spectrum", "stall_spectrum"),
                                        ("grid", "grid_membership"),
                                        ("mechanism", "mechanism_forest"),
-                                       ("ttrue", "ttrue_law")])
+                                       ("ttrue", "ttrue_law"),
+                                       ("exposure", "exposure_curve")])
 def test_each_builder_writes_a_pdf(tmp_path, name, stem):
     assert mrf.main(["--out", str(tmp_path), "--only", name]) == 0
     out = tmp_path / ("%s.pdf" % stem)
@@ -399,14 +429,16 @@ def test_each_builder_writes_a_pdf(tmp_path, name, stem):
 
 
 def test_main_builds_every_figure_by_default(tmp_path, capsys):
-    """Seven since round 17, when the priority ladder joined them.
+    """Eight since round 54, when the exposure curve joined them.
 
     The count is pinned rather than loosened: a builder that stops running is the failure
-    this catches, and it only catches it if the number is exact.
+    this catches, and it only catches it if the number is exact. It was seven from round 17,
+    when the priority ladder joined; the exposure curve is the eighth, drawn for the
+    supplement beside the table it visualises.
     """
     assert mrf.main(["--out", str(tmp_path)]) == 0
-    assert len(list(tmp_path.glob("*.pdf"))) == 7
-    assert capsys.readouterr().out.count("wrote") == 7
+    assert len(list(tmp_path.glob("*.pdf"))) == 8
+    assert capsys.readouterr().out.count("wrote") == 8
 
 
 def test_the_spectrum_builder_takes_the_slice_from_the_derived_constants(tmp_path):

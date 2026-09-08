@@ -33,7 +33,10 @@ MACROS = dict(re.findall(
     (ROOT / "docs" / "generated" / "paper_numbers.tex").read_text(encoding="utf-8"), re.M))
 
 FIGURE_STEMS = ("pipeline_schematic", "measurement_model", "deletion", "payload_flip",
-                "grid_membership", "mechanism_forest", "stall_spectrum", "ttrue_law")
+                "grid_membership", "mechanism_forest", "stall_spectrum", "ttrue_law",
+                # Round 54: the exposure table drawn as a curve, in the supplement beside
+                # the table, because the main text is at the journal's page limit.
+                "exposure_curve")
 
 
 def caption_of(label):
@@ -65,6 +68,27 @@ def test_deletion_annotates_the_ledgers_fold():
 
 def test_deletion_caption_reaches_the_fold_through_the_ledger():
     assert "ombRetentionFold" in caption_of("fig:deletion")
+
+
+# --- fig:exposure -------------------------------------------------------------------------
+
+def test_exposure_curve_and_its_table_share_one_source():
+    """The figure is the table drawn. If they parted, one of them would be wrong.
+
+    Both read `_exposure_lags()`, so this checks the wiring rather than the arithmetic: the
+    curve's median and band must be the same three lags the table's columns are built from.
+    """
+    import emit_paper_numbers as epn
+    lags = epn._exposure_lags()
+    assert lags is not None, "the exposure source is missing"
+    typical, _hi, _lo, p10, p90 = lags
+    assert p10 <= typical <= p90, "the band must bracket the line drawn inside it"
+    # The crossover the caption marks is where the displacement equals the delivery.
+    assert "%.2f" % (typical / 1000.0) == MACROS["exposureCrossover"]
+
+
+def test_exposure_caption_reaches_its_numbers_through_the_ledger():
+    assert "exposureCrossover" in caption_of("fig:exposure")
 
 
 # --- fig:spectrum -------------------------------------------------------------------------

@@ -1,0 +1,4 @@
+citation_key,kind,year,names_percentile,figures_inside_regime,note
+indexdev2026brokers,broker_comparison,2026,one_of_three,yes,"Kafka given ""sub-10ms latency at p99""; Redis and NATS given ""sub-millisecond"" with no percentile. No retained fraction, rejection count, timestamp resolution or send rate."
+devto2026streaming,broker_comparison,2026,yes,yes,"Ranks Kafka, Redis Streams and NATS on end-to-end p99; Redis Streams 0.8 ms, below the one-millisecond tick. Three-node cluster, so two clocks; no timestamp source, synchronization statement, resolution or discard count."
+openbenchmarks2026voice,methodology,2026,yes,not_applicable,"Voice-agent latency methodology, not a broker comparison. Records both endpoints on one clock and publishes per-reason discard counts; cited as corroboration that the reporting rules are adoptable."

@@ -1117,6 +1117,43 @@ def _spell(n):
     return _SPELLED[n] if 0 <= n < len(_SPELLED) else str(n)
 
 
+def literature_macros(path=os.path.join("docs", "results", "external",
+                                        "literature_regime.csv")):
+    """How many published broker comparisons we placed against the timestamp resolution.
+
+    Section III-A concedes that most published comparisons report a median above the
+    resolution, where the deletion law does not bind, and then says not all do. Round 54
+    asked for the denominator behind that concession, and the honest denominator is small:
+    the supplement records the comparisons examined one by one, and this file is that record
+    in a form the build can count.
+
+    It is kept as a registry rather than a sentence for the reason every other count in this
+    paper is: a number typed into prose drifts from the list it summarises. Here the list is
+    the supplement's own exhibits, and the gate in `test_attributed_claims.py` holds every
+    row's citation key to a citation that actually exists on the submission's surface.
+
+    `figures_inside_regime` is the column that matters: whether the figures the comparison
+    reports fall at or below the one-millisecond timestamp resolution, which is where both
+    failures reported here bite. Rows whose kind is not a broker comparison are counted
+    separately and excluded from that denominator -- a voice-agent methodology is examined
+    for a different reason and would flatter the count if pooled.
+    """
+    import csv as _csv
+    try:
+        with open(path, encoding="utf-8") as fh:
+            rows = list(_csv.DictReader(fh))
+    except OSError:
+        return []
+    comparisons = [r for r in rows if r["kind"] == "broker_comparison"]
+    if not comparisons:
+        return []
+    inside = [r for r in comparisons if r["figures_inside_regime"] == "yes"]
+    # Words only: the prose reads "of the two ... two report", and an emitted macro nothing
+    # quotes is a number with no reader, which the ledger gate counts against us.
+    return [("litComparisonsWord", _spell(len(comparisons))),
+            ("litInsideRegimeWord", _spell(len(inside)))]
+
+
 def registry_macros():
     """The audited-harness survey in Section II, counted rather than asserted.
 
@@ -1999,7 +2036,7 @@ def all_pairs(m):
             + exposure_macros() + artifact_macros() + separability_macros()
             + paired_gap_macros() + handling_share_macros() + inter_host_offset_macros()
             + spread_macros() + arm_macros() + manipulation_macros()
-            + deletion_macros())
+            + deletion_macros() + literature_macros())
 
 
 def render(m):

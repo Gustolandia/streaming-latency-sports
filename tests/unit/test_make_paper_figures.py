@@ -118,7 +118,11 @@ class TestPlots:
         hist_ax, sens_ax = axes_pair
         assert hist_ax.get_xscale() == "log"
         assert len(sens_ax.get_lines()) >= 1
-        assert "1 of 5 runs clean" in hist_ax.get_title()
+        # Round 54: the title says what it counts. "Clean" meant a run that passes the
+        # audit everywhere else in the submission, and this count is the stricter one --
+        # runs with no negative span at all -- so the two read as a contradiction beside
+        # panel (b)'s condemned share.
+        assert "1 of 5 runs with no negative span" in hist_ax.get_title()
 
     def test_model_diagram_draws_both_panels(self, axes_pair):
         """Panel (a) is a schematic; panel (b) must show the H1 overlap argument."""

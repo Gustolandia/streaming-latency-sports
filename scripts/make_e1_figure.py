@@ -82,7 +82,7 @@ def plot_decomposition(ax, med):
             continue
         xs = [j + (i - 0.5) * 2 * width for j in range(len(ns))]
         ax.bar([x - width / 2 for x in xs], [sub["schedlag_p50"].get(n, 0) for n in ns],
-               width, color=COLORS[backend], label=f"{LABELS[backend]} sched. lag")
+               width, color=COLORS[backend], label=f"{LABELS[backend]} send lag")
         ax.bar([x + width / 2 for x in xs], [sub["transport_p50"].get(n, 0) for n in ns],
                width, color=COLORS[backend], alpha=0.45, hatch="//",
                label=f"{LABELS[backend]} transport")

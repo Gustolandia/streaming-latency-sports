@@ -525,6 +525,75 @@ def build_deletion(out_dir):
     return _save(fig, out_dir, "deletion")
 
 
+# --- the exposure curve -------------------------------------------------------------------
+
+def plot_exposure(ax, lags):
+    """Relative error of the acknowledgment-referenced proxy against the delivery measured.
+
+    The supplement already carries this as a table of nine rows, and round 54 asked for the
+    picture, on the grounds that this is the one quantity a reader will want to locate their
+    own path on. A table answers "what is the error at 10 ms"; the curve answers "where does
+    my path sit", which is the question a practitioner actually has.
+
+    Both the curve and the table read `_exposure_lags()` in `emit_paper_numbers`, so the
+    figure cannot drift from the table beside it -- the failure this project gates against
+    everywhere else, and the reason the arithmetic is not repeated here.
+
+    The band is the tenth to ninetieth percentile of the measured acknowledgment lag across
+    conditions. Drawing only the median would repeat, one level up, the mistake Section VI-E
+    reports: a central summary offered as guidance for a distribution that is not central.
+    """
+    typical, _hi, _lo, p10, p90 = lags
+    t_ms = np.logspace(np.log10(0.1), np.log10(200.0), 400)
+
+    def err(lag_us):
+        return 100.0 * lag_us / (t_ms * 1000.0)
+
+    ax.fill_between(t_ms, err(p10), err(p90), color=DELETED, alpha=0.16, linewidth=0,
+                    label="p10--p90 across conditions")
+    ax.plot(t_ms, err(typical), color=DELETED, lw=1.4, label="median lag")
+
+    # 100% is the line the paper's headline turns on: below it the correction is smaller
+    # than the quantity corrected, above it the correction is larger.
+    # The label sits on the right, where the curve has already fallen away: the first draft
+    # put it over the crossover and the collision gate refused the figure.
+    ax.axhline(100, color=GREY, lw=0.8, ls="--", zorder=1)
+    crossover = typical / 1000.0
+    ax.plot([crossover], [100], marker="o", ms=4.5, color=DELETED, zorder=4)
+    ax.text(150, 125, "displacement = delivery", fontsize=8, color=GREY,
+            ha="right", va="bottom")
+
+    # Where published broker medians sit, which is the whole reason the curve matters.
+    ax.axvspan(0.1, 1.0, color=GREY, alpha=0.10, zorder=0)
+    ax.text(0.135, 2.2, "sub-millisecond\nbroker medians", fontsize=8, color=GREY,
+            ha="left", va="bottom", linespacing=1.15)
+
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlabel("delivery being measured (ms)", fontsize=8)
+    ax.set_ylabel("relative error of the proxy (%)", fontsize=8)
+    ax.set_xlim(0.1, 200)
+    ax.set_ylim(0.2, 4000)
+    ax.tick_params(labelsize=8)
+    ax.grid(alpha=0.25, lw=0.5)
+    ax.legend(fontsize=8, frameon=False, loc="upper right", handletextpad=0.5)
+
+
+def build_exposure(out_dir):
+    figure_style.apply()   # in force when the artists are made, not merely at import
+    import emit_paper_numbers
+    lags = emit_paper_numbers._exposure_lags()
+    if lags is None:                      # pragma: no cover - the corpus ships with the repo
+        raise SystemExit("span_symmetry.csv is missing; the exposure curve has no source")
+    # Drawn at the supplement's one-column width, like `priority_ladder` and the other
+    # figures that live there: a figure is drawn at the width it prints at, never scaled on
+    # inclusion, because scaling shrinks its type by the same factor.
+    fig, ax = plt.subplots(figsize=(6.50, 2.60))
+    plot_exposure(ax, lags)
+    fig.tight_layout()
+    return _save(fig, out_dir, "exposure_curve")
+
+
 def build_spectrum(out_dir, slice_ms=None):
     figure_style.apply()   # in force when the artists are made, not merely at import
     if slice_ms is None:
@@ -963,13 +1032,14 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Build the result figures")
     ap.add_argument("--out", default=os.path.join("docs", "results", "figures"))
     ap.add_argument("--only",
-                    choices=("deletion", "spectrum", "grid", "mechanism", "ttrue", "payload"),
+                    choices=("deletion", "spectrum", "grid", "mechanism", "ttrue", "payload",
+                             "exposure"),
                     default=None)
     args = ap.parse_args(argv)
 
     builders = {"deletion": build_deletion, "spectrum": build_spectrum, "grid": build_grid,
                 "mechanism": build_mechanism, "ttrue": build_ttrue,
-                "payload": build_payload,
+                "payload": build_payload, "exposure": build_exposure,
                 "priority": build_priority_ladder}
     todo = [args.only] if args.only else list(builders)
     for name in todo:

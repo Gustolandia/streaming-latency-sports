@@ -1161,6 +1161,56 @@ class TestTheExposureCurve:
 
 
 
+class TestTheLiteratureCount:
+    """Section III-A's denominator, counted from a registry rather than typed.
+
+    Round 54 asked what "most published comparisons" is measured against. The answer is a
+    small list, and a small list typed into prose is exactly the thing that drifts from the
+    exhibits it summarises, so it is a file the build counts.
+    """
+
+    HEAD = ("citation_key,kind,year,names_percentile,figures_inside_regime,note\n")
+
+    def _write(self, path, rows):
+        with open(path, "w", encoding="utf-8", newline="") as fh:
+            fh.write(self.HEAD)
+            for r in rows:
+                fh.write(",".join(r) + "\n")
+        return str(path)
+
+    def test_it_counts_the_broker_comparisons_and_those_inside_the_regime(self, tmp_path):
+        p = self._write(tmp_path / "lit.csv", [
+            ("a2026", "broker_comparison", "2026", "one_of_three", "yes", "x"),
+            ("b2026", "broker_comparison", "2026", "yes", "yes", "x"),
+            ("c2026", "broker_comparison", "2026", "yes", "no", "x"),
+        ])
+        assert dict(epn.literature_macros(p)) == {
+            "litComparisonsWord": "three", "litInsideRegimeWord": "two"}
+
+    def test_a_methodology_row_is_examined_but_not_counted(self, tmp_path):
+        """A voice-agent methodology is read for another reason and would flatter the count."""
+        p = self._write(tmp_path / "lit.csv", [
+            ("a2026", "broker_comparison", "2026", "yes", "yes", "x"),
+            ("m2026", "methodology", "2026", "yes", "not_applicable", "x"),
+        ])
+        assert dict(epn.literature_macros(p)) == {
+            "litComparisonsWord": "one", "litInsideRegimeWord": "one"}
+
+    def test_a_missing_registry_emits_nothing_rather_than_zero(self, tmp_path):
+        assert epn.literature_macros(str(tmp_path / "absent.csv")) == []
+
+    def test_a_registry_with_no_comparisons_emits_nothing(self, tmp_path):
+        """Zero of zero is not a denominator, and the sentence would read as a claim."""
+        p = self._write(tmp_path / "lit.csv", [
+            ("m2026", "methodology", "2026", "yes", "not_applicable", "x")])
+        assert epn.literature_macros(p) == []
+
+    def test_the_committed_registry_is_the_one_the_paper_reads(self):
+        got = dict(epn.literature_macros())
+        assert set(got) == {"litComparisonsWord", "litInsideRegimeWord"}
+        assert all(v.isalpha() for v in got.values()), "the prose wants words, not digits"
+
+
 class TestTheLadderRefusesRatherThanGuesses:
     """The refusal paths of disease_macros and _recovery_macros.
 

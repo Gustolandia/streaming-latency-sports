@@ -139,8 +139,8 @@ ROWS = [
      "H2 utilization, H10 mixture,\n$F_\\Delta$ recovery"),
     ("E-A2\nprocess count", "processes at\nfixed rate", "aggregate\nevent rate",
      "H4 oversubscription"),
-    ("E-C3 / E-C4\nstamping", "ack stamp:\ncallback vs inline", "load, in-flight,\nbackend",
-     "H3 asymmetry\n(replicated)"),
+    ("E-C3 / E-C4\ntimestamping", "ack timestamp:\ncallback vs inline",
+     "load, in-flight,\nbackend", "H3 asymmetry\n(replicated)"),
     ("window\nsweep", "observation window\n60-600 s", "rate, host,\nmatch",
      "start-up cost vs\nper-event constant"),
     ("transport\n(x2)", "feeds, powered", "verified\nreal-time rate",
@@ -148,12 +148,12 @@ ROWS = [
     # The campaigns that decided the mechanism. Added after an audit found the closing note's
     # claim -- that every claim in the discussion traces to a row -- had quietly become false: five
     # campaigns were carrying results in the text with no row here at all.
-    ("E-A5/A5b/A7\nstamping priority", "SCHED_FIFO on\nthe stamping threads",
+    ("E-A5/A5b/A7\ntimestamping priority", "SCHED_FIFO on\nthe timestamping threads",
      "utilization,\nto %s" % _priority_rho_match(),
      "scheduling, not utilization\n(%s)" % _priority_range()),
     ("E-A6 / E-A6b\nload geometry", "cores free vs\nall duty-cycled", "achieved\nutilization",
      "utilization is not the variable\n(%s)" % _geometry_result()),
-    ("E-A9\nrun-queue trace", "nothing:\nobservation only", "load,\npriority arm",
+    ("E-A9\nrun-queue trace", "nothing:\nobservation only", "load,\npriority setting",
      "P(stall > $T_\\mathrm{true}$) predicts\nthe rate, unfitted"),
     ("E-A10\ntransport sweep", "payload size;\n$T_\\mathrm{true}$ %sx" % _transport_span(),
      "load, hosts,\ncode path",

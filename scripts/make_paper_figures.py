@@ -91,7 +91,7 @@ def _glyph_queue(ax, x, y):
 
 
 def plot_pipeline(ax):
-    """Draw the replay pipeline, its four timestamps, and the flights they define."""
+    """Draw the replay pipeline, its four timestamps, and the spans they define."""
     # Each stage carries the icon a reader of message-broker diagrams expects -- an
     # application window for the producer and the consumer, a queue of records for the
     # broker -- beside its name (a co-author's suggestion, 2026-09-08). The icons sit in the
@@ -424,7 +424,7 @@ def plot_delta(h1_ax):
     h1_ax.annotate("preempted lobe\nat the scheduler slice", xy=(-slice_ms, 0.52),
                    xytext=(-2.9, 12.0), fontsize=8, color=GREY, ha="center", va="center",
                    arrowprops=dict(arrowstyle="->", color=GREY, lw=0.8, relpos=(0.5, 0.0)))
-    h1_ax.set_xlabel(r"stamping asymmetry $\Delta$ (ms)")
+    h1_ax.set_xlabel(r"timestamping asymmetry $\Delta$ (ms)")
     h1_ax.set_ylabel("density (log)")
     h1_ax.set_yticks([])
 
@@ -597,7 +597,12 @@ def plot_integrity(axes, by_run, threshold=0.01):
                     label=f"threshold ({threshold:.0%})")
     hist_ax.set_xlabel("Worst-component negative-span rate per run (log)")
     hist_ax.set_ylabel("Runs")
-    hist_ax.set_title(f"(a) {clean:,} of {len(by_run):,} runs clean", fontsize=10)
+    # Not "clean": the manuscript uses clean for a run that passes the audit, and 520 of
+    # these do. This count is the stricter thing -- runs with no negative span at all -- and
+    # printing it as "clean" beside panel (b)'s 62% condemned invited the reader to subtract
+    # and find a contradiction that is not there. Round 54's image review.
+    hist_ax.set_title(f"(a) {clean:,} of {len(by_run):,} runs with no negative span",
+                      fontsize=10)
     hist_ax.legend(fontsize="small", loc="upper left", framealpha=1.0)
 
     counts = [condemned_at(by_run, t) for t in SENSITIVITY_THRESHOLDS]

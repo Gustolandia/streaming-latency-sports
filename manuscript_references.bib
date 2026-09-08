@@ -1189,7 +1189,9 @@
   title        = {Clock Skew Adjuster considered harmful (issue \#1459)},
   howpublished = {Issue tracker},
   year         = {2019},
-  note         = {\url{https://github.com/jaegertracing/jaeger/issues/1459}. Read 2026-08-21}
+  note         = {\url{https://github.com/jaegertracing/jaeger/issues/1459}; the adjustment
+                  has shipped disabled since v1.20.0 (2020), which set
+                  \texttt{--query.max-clock-skew-adjustment} to \texttt{0s}. Read 2026-08-21}
 }
 
 @misc{pulsar_perf,
@@ -1404,7 +1406,7 @@
   title        = {{NATS} vs {Redis} vs {Kafka}: message broker comparison},
   howpublished = {Practitioner comparison},
   year         = {2026},
-  note         = {\url{https://www.index.dev/skill-vs-skill/nats-vs-redis-vs-kafka}; gives {Kafka} ``sub-10ms latency at p99'' and gives {Redis} and {NATS} no percentile at all, only ``sub-millisecond''. No retained fraction, rejection count, timestamp resolution or send rate. Re-read 2026-09-03: an earlier note here quoted a {Redis} p99 of 0.8~ms against {Kafka}'s 12.5~ms, which is not on the page and has been withdrawn. Traced 2026-09-04: those figures belong to \texttt{devto2026streaming} below, which a search had returned in the same result set}
+  note         = {\url{https://www.index.dev/skill-vs-skill/nats-vs-redis-vs-kafka}; gives {Kafka} ``sub-10ms latency at p99'' and gives {Redis} and {NATS} no percentile at all, only ``sub-millisecond''. No retained fraction, rejection count, timestamp resolution or send rate. Read 2026-09-03. (The correction to an earlier reading of this page is recorded in the supplement's S1.)}
 }
 
 @misc{devto2026streaming,

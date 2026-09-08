@@ -245,11 +245,11 @@ latency.
 % history is what a co-author called "the start of the experimental story". The one sentence
 % kept is the withdrawal itself, because a reader deciding whether to trust the audit should
 % know it cost the authors a result; it sits in the contributions above.
-The paper is organized as follows. Section~\ref{sec:sysmodel} defines the system and the
-measurement model, Section~\ref{sec:related} places the work against prior measurement
-studies, Section~\ref{sec:method} gives the experimental setup and the validation rule,
-Sections~\ref{sec:external} and~\ref{sec:mechanism} present the two failures with their
-evidence, and Section~\ref{sec:discussion} draws the reporting rules.
+% Round 54 cut the roadmap paragraph for the page budget. It asserted nothing -- it restated
+% the table of contents -- and it is not the venue's habit: of the 46 readable IEEE
+% Transactions on Computers papers in docs/reference_tc, 18 carry a roadmap and 28 do not.
+% The section titles are descriptive since the v4 restructure, which is what a roadmap was
+% standing in for.
 
 \section{System and Measurement Model}
 \label{sec:sysmodel}
@@ -298,8 +298,11 @@ late the send call ran after the event was due, measured on the producer's own t
 \emph{span} is any difference of two of
 these timestamps, and a \emph{negative span} is one whose difference is below zero. The
 term is Sharma et al.'s~\cite{sharma2026causality}, kept for the
+% Round 54: the reference left the list to pay for two Related Work sources, and the clause
+% stayed. RFC 1242 is located by its number, so a reader can still check the distinction --
+% which is the principle tests/unit/test_attributed_claims.py now states and holds.
 observable while declining the causal reading they give it. It is not RFC~1242's negative
-latency, a cut-through forwarding artifact~\cite{rfc1242}. \emph{Retention} is the
+latency, a cut-through forwarding artifact. \emph{Retention} is the
 fraction of the samples a measurement tool takes that survive into what it reports, not
 \kafka{}'s log-retention setting.
 
@@ -358,9 +361,11 @@ to report one is a settled literature we
 follow~\cite{georges2007rigorous,hoefler2015benchmarking}. What that literature does not do
 is check what its tool discards. Most published comparisons report a median above the
 tool's one-millisecond timestamp resolution, where the deletion law of
-Section~\ref{sec:external} does not bind. Not all do, and a 2026 comparison that calls two of
-three brokers sub-millisecond without naming a percentile cannot be placed against that
-resolution at all.
+Section~\ref{sec:external} does not bind. Not all do. Of the \litComparisonsWord{} 2026
+broker comparisons we placed against that resolution, \litInsideRegimeWord{} report figures
+at or below it, and one names a percentile for a single broker and none for the other
+two~\cite{indexdev2026brokers}, so its ranking cannot be placed against the resolution at
+all.
 
 The tools are few and shared, so a defect in one is not one project's problem. The audit of
 Section~\ref{sec:generality} reads \harnessAuditedWord{} tools at source and finds
@@ -407,8 +412,8 @@ stability and reports an inconclusive verdict when they fail, where we decline t
 at all. Neither reports the fraction of runs a campaign lost.
 
 Production tracing reached the same answer without a mechanism: skew adjusters that rewrite
-a span's timestamps are called harmful and default to off, and nobody had measured how much
-such a correction moves.
+a span's timestamps are called harmful and have defaulted to off since
+2020~\cite{jaeger_harmful}, and nobody had measured how much such a correction moves.
 
 Swami and Chougule~\cite{swami2026observability} state the wider position concurrently,
 that timing observability is itself an interference-sensitive resource; their reference is
@@ -584,9 +589,9 @@ tables reporting it are generated rather than transcribed.
 \section{Quantization and Silent Deletion}
 \label{sec:external}
 
-The cross-broker benchmark we audit computes its reported latency distribution from
-a subset of the samples it collected. It does not record how large that subset was, and the
-size of the subset is determined by the send rate. Everything measured below is the
+The cross-broker benchmark we audit computes its reported latency distribution from a
+subset of the samples it collected, does not record how large that subset was, and lets the
+send rate decide it. Everything measured below is the
 OpenMessaging Benchmark in embedded mode, where driver and workers run in one JVM. Its
 distributed mode is discussed in Section~\ref{sec:limitations}.
 
@@ -597,8 +602,8 @@ where \texttt{now} is read in the consumer and \texttt{publishTimestamp} is \kaf
 producer-set \texttt{CreateTime}, itself a millisecond value. That difference is then
 promoted to microseconds (Supplement~S37 quotes the call). A sample then enters the
 histogram only if it passes the test in \brk{WorkerStats.java}:95 ---
-\texttt{if (endToEndLatencyMicros > 0)} --- which we call the \emph{admission condition}:
-a strictly positive difference is kept, and anything else is dropped. The message is counted as received a few lines earlier, but a non-positive latency is
+\texttt{if (endToEndLatencyMicros > 0)} --- which we call the \emph{admission condition}.
+The message is counted as received a few lines earlier, but a non-positive latency is
 dropped and no counter records how many. Over the campaign of Section~\ref{sec:extphase}
 that silence covers $\ombDiscarded$ samples.
 
@@ -884,8 +889,9 @@ causally consistent and wrong. Causal consistency is necessary, not sufficient.
 \label{sec:mixture}
 Each timestamping thread is either running, in which case its timestamp is late by a narrow
 jitter of width $\sigma_c$, or preempted and off-CPU. Write $p$ for the probability of the
-second state and $G(\cdot)$ for the survival function of the residual delay in that state,
-and take the consumer's timestamp to lie in the core. Write $T_{\mathrm{true}}$ for the
+second state --- the timestamping thread's off-CPU \emph{occupancy}\label{def:occupancy},
+which is what Table~\ref{tab:mechanism} moves --- and $G(\cdot)$ for the survival function
+of the residual delay in that state, and take the consumer's timestamp to lie in the core. Write $T_{\mathrm{true}}$ for the
 true delivery of Section~\ref{sec:extphase}: the quantity $D$ measures, equal to $D$ up to
 the consumer's own timestamping jitter. Conditioning on it, the identity of
 Equation~\ref{eq:negspan} becomes, to leading order,
@@ -993,13 +999,16 @@ because both were parameterized in $\rho$ and $\rho$ is not the variable (Supple
 The displacement $A$ is a scheduling quantity and does not grow because a message
 travelled further, so the relative error of the proxy is $A/D$ and falls as $1/D$. At our
 median acknowledgment lag, $A = \ackLagMedianUs\,\mu$s, that is $\exposureErrTen\%$ at a
-$10$~ms delivery and $\exposureErrHundred\%$ at $100$~ms. Read the other way, it is
-$\exposureErrOne\%$ at $1$~ms, and below $\exposureCrossover$~ms the displacement exceeds
-the delivery it is a correction to --- where sub-millisecond medians are routine in broker
-benchmarking (Supplement~S25). $A$ is not a constant: across our conditions it spans
-$\exposureLagLo$--$\exposureLagHi\,\mu$s, which puts the $10$~ms error at
-$\exposureErrTen$--$\exposureErrTenHi\%$ and the crossover at
-$\exposureCrossover$--$\exposureCrossoverHi$~ms; Supplement~S25 bands every row.
+$10$~ms delivery, $\exposureErrHundred\%$ at $100$~ms and $\exposureErrOne\%$ at $1$~ms;
+below $\exposureCrossover$~ms the displacement exceeds the delivery it is a correction to,
+and sub-millisecond medians are routine in broker benchmarking. $A$ is not a constant:
+across our conditions it spans $\exposureLagLo$--$\exposureLagHi\,\mu$s, putting the
+$10$~ms error at $\exposureErrTen$--$\exposureErrTenHi\%$ and the crossover at
+% S24, not S25: the exposure table and its curve sit at the end of S24, in the block that
+% collects the exhibits moved out of the main text. The pointer had said S25 since the v4
+% renumbering, and round 54's exhibit-verb rule is what caught it.
+$\exposureCrossover$--$\exposureCrossoverHi$~ms (Supplement~S24 bands every row and draws
+the curve).
 
 Two consequences follow, both measured on the gated corpus. First, two \emph{identical}
 systems whose clients timestamp in different places are separated by the difference of
@@ -1007,7 +1016,7 @@ their lags: a reported gap of $\exposureGapTen\%$ at $10$~ms, with the sign chec
 at neither. Second, on this corpus the reported span is $\reportedFraction\%$ of the
 delivery it stands for, understating it $\understateFactor\times$ --- a median of
 per-condition ratios, which is not what differencing two published medians gives
-(Supplement~S25). The two brokers' clients timestamp differently, and over
+(Supplement~S24). The two brokers' clients timestamp differently, and over
 $\gapDistortionPairs$ matched workloads the proxy inflates the gap between them
 $\gapDistortionPaired\times$ (interquartile range $\gapDistortionPairedIQR$), narrowing it
 on $\gapDistortionDeflates\%$ of the pairs: a property of the clients, not of the brokers.
@@ -1027,15 +1036,14 @@ in the post introducing \texttt{runqlat}, the tool we use~\cite{gregg2016runqlat
 components~\cite{bristot2025timerlat}; what we add is which modes, and why the upper one
 sits where it does.
 
-Log--log least squares over the four payload levels of Section~\ref{sec:twostate}
-returns a slope of $\tailSlope$ ($\tailSlopeCI$, Student-$t$ at two degrees of freedom);
-the fit is in Supplement~S15, and four points do not earn an equation here. An earlier
-version read the kernel trace as an independent confirmation of it. We withdraw the claim,
-because estimating the traced index properly is what refuted it.
+Log--log least squares over the four payload levels of Section~\ref{sec:twostate} returns a
+slope of $\tailSlope$ ($\tailSlopeCI$); four points do not earn an equation here, and an
+earlier version read the kernel trace as confirming it. We withdraw the claim, because
+estimating the traced index properly is what refuted it: two estimators disagree sixfold,
+and a bootstrap goodness-of-fit rejects the fitted power law ($p \tracedGofP$ over
+$\tracedGofBoot$ replicates), both in Supplement~S15.
 
-Two estimators of the traced tail index disagree sixfold, and a bootstrap goodness-of-fit
-rejects the fitted power law ($p \tracedGofP$ over $\tracedGofBoot$ replicates drawn from
-it); both are in Supplement~S15. Over the $\tracedEvents$ traced wakeups the counts do not
+Over the $\tracedEvents$ traced wakeups the counts do not
 descend monotonically, and on log$_2$ buckets a power law of index above one must. What the
 counts have instead is $\tracedModes$ local maxima. The last is a \emph{mode} at
 $\tracedModeLo$--$\tracedModeHi$~ms, holding $\tracedModeShare\%$ of all wakeups and
@@ -1083,10 +1091,9 @@ rule rather than a better clock.
 Once the failed runs are removed, the broker comparison that motivated the work is small and
 one configuration choice dwarfs it. On gated artifacts the two sit within a millisecond on
 the transport proxy (TOST against a $\tostMargin$~ms margin, $p < 0.001$, across
-$\tostLevels$ levels), so it is not a purchasing argument. The one
-condition that reverses the ordering is a consumption pattern rather than the broker. A
-co-located testbed --- the standard evaluation environment --- hides the choice that
-decides the outcome (Supplement~S25).
+$\tostLevels$ levels), so it is not a purchasing argument. The one condition that reverses
+the ordering is a consumption pattern rather than the broker, and a co-located testbed ---
+the standard evaluation environment --- hides it (Supplement~S25).
 
 Our own measurement is not symmetric across that comparison, and the rule below says to
 declare it. \kafka{}'s client deserializes the payload before $t_{\mathrm{recv}}$ and
@@ -1122,7 +1129,8 @@ only on counting the send-referenced span separately (Table~\ref{tab:spans}).
 \textbf{Where the span cannot be re-timestamped, recover the displacement rather than
 discard it.} A harness that records its own acknowledgment lag recovers the delivery it
 failed to measure, on the runs the check rejects as well as on those it passes
-(Section~\ref{sec:cost}).
+(Section~\ref{sec:cost}). This does not reopen the gate of Section~\ref{sec:gate}: that rule
+declines to publish the proxy as a latency, and this one reports the delivery instead.
 
 \textbf{Two delays with one cause are not independent.} Timestamps waiting on one scheduler move
 together ($\rho = \spanRhoMedian$), so multiplying their probabilities misprices the answer.
@@ -1140,9 +1148,11 @@ events per run is not a property of the system, and repetition will not tell you
 
 \textbf{Make the timestamping path unpreemptable, and say that you did.} The one mitigation
 our measurements support directly: real-time priority on the timestamping threads cut the
-negative-span rate $\rtFactorLow$--$\rtFactorHigh\times$ at unchanged background load. Two
-caveats: the floor is not zero, so the check stays. And a real-time timestamping thread
-changes the system it measures, so where that is unacceptable, report retention instead.
+negative-span rate $\rtFactorLow$--$\rtFactorHigh\times$ at unchanged background load.
+Busy-polling a dedicated core should buy the same for the price of that core, though we did
+not measure it. Two caveats: the floor is not zero, so the check stays. And a real-time or
+polling timestamping thread changes the system it measures, so where that is unacceptable,
+report retention instead.
 
 % Worded to match the abstract's closing sentence verbatim: this is the same rule and a
 % reader should be able to quote it once. The defined term stays two lines below, where
@@ -1164,9 +1174,12 @@ elapsed wall time. The send schedule is an experimental variable in
 Section~\ref{sec:external}, not a nuisance parameter. We found runs where configured
 and achieved rates disagreed.
 
-None of this is hypothetical: a 2026 framework for the same comparisons already timestamps in
-nanoseconds and subtracts a span that cannot invert, both choices made and neither argued for
-(Supplement~S52.2).
+% Round 54 (M5a): "a 2026 framework" and Section III-A's "2026 comparison" are different
+% objects, and a reader meeting the second had no way to tell. Naming this one settles it,
+% and costs no reference: the supplement cites mq-bench where the bibliography is uncapped.
+None of this is hypothetical: \brk{mq-bench}, a 2026 framework for the same comparisons,
+already timestamps in nanoseconds and subtracts a span that cannot invert, both choices made
+and neither argued for (Supplement~S52.2).
 
 \subsection{The limits of a better clock}
 \label{sec:betterclock}
@@ -1264,8 +1277,7 @@ timestamp resolution.
 
 In accordance with IEEE policy, Anthropic's Claude assisted with code development and
 verification, manuscript editing, and literature search. Experimental design, scientific
-claims, and interpretation are the authors', and all reported quantities are reproducibly
-computed from the committed data and archived code.
+claims, and interpretation are the authors'.
 
 \section*{Artifact Availability}
 

@@ -288,7 +288,24 @@ the incident is the reason rule~(10) of the main text's checklist exists in the 
 It is also the reason the main text reports measured pacer jitter rather than a configured
 rate.
 
-\subsection{S1.8. The distributed-mode gap}
+\subsection{S1.8. A source we read wrong, and how we found out}
+
+Section III-A of the main text places a published broker comparison inside the regime the
+deletion law binds on. An earlier draft of that placement attributed to
+it~\cite{indexdev2026brokers} a \redis{} p99 of $0.8$~ms against \kafka{}'s $12.5$~ms.
+Those figures are not on that page. Re-reading it on 2026-09-03 found only \kafka{} given a
+percentile --- ``sub-10ms latency at p99'' --- with \redis{} and NATS given
+``sub-millisecond'' and no percentile at all, which is the sharper exhibit and the one the
+paper now uses. The figures we had attached to it belong to a different 2026
+comparison~\cite{devto2026streaming}, which a search had returned in the same result set.
+
+We record it here rather than in the reference note because it is the same class of error
+this paper is about, one level up: a number carried from one source to another because both
+arrived together, and nothing in the citation would have shown it. Both documents are now
+placed separately in S52.3, and the registry the main text counts from
+(\texttt{docs/results/external/literature\_regime.csv}) holds one row each.
+
+\subsection{S1.9. The distributed-mode gap}
 \label{sec:extdist}
 
 The OpenMessaging Benchmark's distributed mode failed to complete a run on every attempt we
@@ -330,7 +347,7 @@ audit-surviving events per run. The original E1 corpus (Table~\ref{tab:e1}) is r
 historical measurement it is, for two reasons that disqualify it from carrying the claim: its
 replay rate is an inference --- recovered in the main text as true real time,
 but inferred from the runs rather than recorded --- and it matched a \emph{median of seven events
-per run}, the same seven-event opening burst as the scheduling lag we withdraw in
+per run}, the same seven-event opening burst as the send lag we withdraw in
 the main text. A sub-millisecond difference cannot be resolved on seven events,
 and E1 does not resolve one: its Hodges--Lehmann shifts wander ($0.021$, $0.116$, $0.053$~ms) and
 its $N{=}1$ estimators disagree. That E1 finds the two systems ``equal'' is as much a statement
@@ -443,7 +460,7 @@ decomposition it rests on, is supplementary material S9.
 
 
 \tti{} and transport give opposite answers in Table~\ref{tab:e1}. Of \kafka{}'s $105.5$~ms,
-$102.9$~ms is producer scheduling lag against \redis{}'s $1.8$~ms, while broker transport is
+$102.9$~ms is producer send lag against \redis{}'s $1.8$~ms, while broker transport is
 $0.84$ and $0.80$~ms. An earlier version of this paper reported that twentyfold end-to-end gap
 as a finding, attributed it to the client's sender thread waking from idle, and built a
 practitioner recommendation on it.
@@ -454,7 +471,7 @@ figure that once carried it (Figure~\ref{fig:e1}) rather than deleting the evide
 
 \paragraph{The offset is a start-up cost, not a per-event constant.} Re-measuring at $N{=}1$ on
 the same driver and the same broker, at a replay rate derived from the plan and verified against
-elapsed wall time, gives a median producer scheduling lag of $1.59$~ms for \kafka{}, not
+elapsed wall time, gives a median producer send lag of $1.59$~ms for \kafka{}, not
 $103$~ms --- with a \emph{maximum} of $103.5$~ms. Two independent instrumentation paths agree:
 the per-event loop trace and the per-run summary. The $103$~ms is real, but it is paid once per
 run, not once per event.
@@ -540,7 +557,7 @@ Table~\ref{tab:e1} replayed the first $600$~s of match time, which in this plan 
 the seven that survived it are not a random seven.
 
 That last claim is arithmetic rather than inference. Those runs report a median producer
-scheduling lag of $102.93$~ms over seven values, and a median of seven values at $102.93$~ms
+send lag of $102.93$~ms over seven values, and a median of seven values at $102.93$~ms
 requires \emph{at least four of the seven} to be $102.93$~ms or greater. The loop trace says
 exactly how many events per run are ever that late: four (Table~\ref{tab:window}), and always the
 same four --- those due while the first send blocks. The matched set must therefore consist
@@ -641,7 +658,7 @@ events, has no affected events at any window.}
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/e1_end_to_end_lag.pdf}
 \caption{\textbf{Withdrawn.} (a)~End-to-end delay against concurrency as originally measured.
-(b)~The decomposition that appeared to place the whole gap in producer scheduling lag. Both
+(b)~The decomposition that appeared to place the whole gap in producer send lag. Both
 panels are retained as evidence for the main text: the runs behind them matched
 a median of seven events each, so the apparent per-event offset is a per-run start-up cost.
 Broker transport, the lower series in (b), is unaffected and is what the paper claims.}
@@ -680,7 +697,7 @@ reversed the apparent winner and each found by investigating a result that looke
 \texttt{perf\_counter\_ns}, whose origin is per-process, injected each run's consumer start-up
 offset into every measurement. Fixed with a shared wall-clock epoch.
 \item \emph{A saturating replay speed.} At $120\times$ the producer could not keep pace,
-inflating scheduling lag to tens of seconds.
+inflating send lag to tens of seconds.
 \item \emph{An asymmetric load generator.} The \kafka{} producer blocked on a broker round trip
 per event while the \redis{} producer dispatched asynchronously. Median \tti{} at one feed fell
 from $1{,}644$~ms to $16$~ms once the \kafka{} producer was pipelined.
@@ -688,7 +705,7 @@ from $1{,}644$~ms to $16$~ms once the \kafka{} producer was pipelined.
 described in the main text.
 \item \emph{A heavy tail contaminating every mean.} \kafka{}'s end-to-end 95th percentile sat at
 $99$--$105$~ms at every concurrency level while its median moved from $1.8$ to $7.2$~ms. A 95th
-percentile that ignores load is not system behavior; decomposition located it in scheduling lag,
+percentile that ignores load is not system behavior; decomposition located it in send lag,
 not transport.
 \end{enumerate}
 
@@ -744,7 +761,7 @@ directly on the replay rate. Counting how many events per run carry it therefore
 back out of the data.
 
 The E1 runs sort into cells by how many events they matched, and one cell is diagnostic. Fifteen
-\kafka{} runs matched exactly eight events, and their median scheduling lag is
+\kafka{} runs matched exactly eight events, and their median send lag is
 $\mathbf{52.34}$~ms (range $51.60$--$53.01$) --- not $103$~ms, and not $1.6$~ms. A median of
 eight values is the mean of the fourth and fifth. The only way to land midway between the two
 modes is for exactly four of the eight to be late, so the fourth value is a fast event and the
@@ -1990,8 +2007,9 @@ the two brokers of its span table: no pair of configurations overlaps, which is 
 tables and is faster to see here. Table~\ref{tab:exposure} tabulates the exposure curve whose
 headline points the main text quotes --- the relative error $A/T_{\mathrm{true}}$ against
 path length, and beside it the gap a comparison would report between two identical systems
-whose clients timestamp in different places. Neither carries a number that is not already stated
-where it is argued.
+whose clients timestamp in different places --- and Figure~\ref{fig:exposure} draws the same
+lags as a curve, which is the form a reader locating their own path wants. Neither carries a
+number that is not already stated where it is argued.
 
 
 % Moved out of the main text in round 57. It plots the four matched pairs of the main
@@ -2033,7 +2051,24 @@ sign check of Section~\ref{sec:gate} fires on none of it.}
 \input{docs/generated/exposure_table}
 \end{table}
 
-
+% Round 54 asked for the table as a curve, on the grounds that a reader wants to locate
+% their own path rather than read off nine rows. It is drawn from the same lags the table
+% is, through `_exposure_lags()`, so the two cannot part. It is here rather than in the
+% main text because the main text is at the journal's twelve-page limit and this is the
+% second presentation of one quantity, which is exactly what a supplement is for.
+\begin{figure}[tb]
+\centering
+\includegraphics[width=\columnwidth]{docs/results/figures/exposure_curve.pdf}
+\caption{\textbf{Where a path sits on the exposure curve.} Table~\ref{tab:exposure} as a
+curve: the relative error of the acknowledgment-referenced proxy, $A/T_{\mathrm{true}}$,
+against the delivery being measured. The line is this corpus's median acknowledgment lag
+and the band its tenth to ninetieth percentile across conditions, so a reader can bracket
+their own path rather than take the middle. The marked point is the crossover at
+$\exposureCrossover$~ms, where the displacement equals the delivery it is a correction to;
+to its left the correction is larger than the quantity corrected. The shaded column is
+where published broker medians sit (S52.3), which is the reason the curve matters.}
+\label{fig:exposure}
+\end{figure}
 
 The rows added below one millisecond are the regime broker benchmarks actually report in (S52), and they are where an acknowledgment-referenced harness stops measuring the path at all. A send-referenced one is unaffected: it reports the delivery itself, which is why the framework audited in S52.2 needs no correction from this table.
 
@@ -2173,9 +2208,13 @@ Start-up withdrawal (main text) & window sweep, twice & 3 per window \\
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/integrity_audit.pdf}
-\caption{The audit on Testbed~A. (a)~Per-run negative-span rates: 104 runs are clean and the rest
-spread over three decades, so there is no natural threshold. (b)~Share of runs rejected against
-the threshold. The choice matters for the run count and not for any conclusion.}
+\caption{The audit on Testbed~A. (a)~Per-run negative-span rates: 104 runs carry no negative
+span at all and the rest spread over three decades, so there is no natural threshold. That
+is the count at which the rate is exactly zero, not the number the audit passes: the
+one-per-cent rule condemns $\auditPctWorkstation\%$ of the $\auditRunsWorkstation$.
+(b)~Share of runs
+rejected against the threshold. The choice matters for the run count and not for any
+conclusion.}
 \label{fig:audit}
 \end{figure}
 
@@ -2580,7 +2619,7 @@ measurements in this literature.
 
 \begin{enumerate}
 \item \textbf{Identify every span whose endpoints are timestamped by different execution contexts.}
-In our pipeline exactly one of the three components qualifies: scheduling lag and the output
+In our pipeline exactly one of the three components qualifies: send lag and the output
 interval are timestamped within a single process, broker transport is not. Spans timestamped within one
 context cannot violate causality and need no check.
 \item \textbf{Record the raw per-event values, not summaries.} The failure is invisible in

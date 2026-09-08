@@ -152,8 +152,8 @@ $t_{\mathrm{sched}}$, when an event was
 due; $t_{\mathrm{send}}$, immediately before the send call; $t_{\mathrm{ack}}$, when the
 producer learns the broker accepted it; and $t_{\mathrm{recv}}$, when the consumer holds the
 record. A fifth, $t_{\mathrm{out}}$, is consumer-internal
-(Section~\ref{sec:testbeds}). Broker transport, the span this paper is about, subtracts a
-producer-process stamp from a consumer-process one. Both processes run on one host
+(Section~\ref{sec:testbeds}). The transport proxy, the span this paper is about, subtracts a
+producer-process timestamp from a consumer-process one. Both processes run on one host
 reading one clock unless stated otherwise (Section~\ref{sec:testbeds}), so nothing that
 follows depends on clock synchronization.}
 \label{fig:pipeline}

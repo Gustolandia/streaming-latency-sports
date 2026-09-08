@@ -174,7 +174,7 @@ def main(argv=None):
                     hits = openalex(q, min(args.per_query * 4, 200))
                 else:
                     hits = query(q, args.per_query)
-            except Exception as e:  # pragma: no cover - network
+            except Exception as e:
                 print("query %s failed: %s" % (key, e))
                 hits = []
             new = 0
@@ -209,7 +209,7 @@ def main(argv=None):
         try:
             status = fetch_pdf(h["pdf"], dest)
             got += 1
-        except Exception as e:  # pragma: no cover - network
+        except Exception as e:
             status = "FAILED %s" % e
         print("[%3d/%d] %-14s %s" % (i, len(rows), h["arxiv_id"], status))
         if status == "fetched":

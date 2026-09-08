@@ -1330,7 +1330,7 @@
   title        = {{Apache Kafka} tools --- \texttt{EndToEndLatency.java} and \texttt{ProducerPerformance.java}},
   howpublished = {Source repository},
   year         = {2026},
-  note         = {\url{https://github.com/apache/kafka}; the percentile array is filled by integer division, \texttt{latencies[i] = elapsed / 1000 / 1000}, while each sample prints at full precision. Read 2026-08-31}
+  note         = {\url{https://github.com/apache/kafka}; percentiles are computed from integer-divided milliseconds. Read 2026-08-31}
 }
 
 @misc{rabbitmq_perftest,
@@ -1338,7 +1338,7 @@
   title        = {{RabbitMQ PerfTest} --- \texttt{Consumer.java}},
   howpublished = {Source repository},
   year         = {2026},
-  note         = {\url{https://github.com/rabbitmq/rabbitmq-perf-test}; the cross-process difference is passed to the metrics unfiltered. Read 2026-08-31}
+  note         = {\url{https://github.com/rabbitmq/rabbitmq-perf-test}; passes the difference unfiltered. Read 2026-08-31}
 }
 
 @misc{nats_cli,
@@ -1346,7 +1346,7 @@
   title        = {{NATS} CLI --- \texttt{cli/latency\_command.go}},
   howpublished = {Source repository},
   year         = {2026},
-  note         = {\url{https://github.com/nats-io/natscli}; the wall-clock difference is appended unconditionally. Read 2026-08-31}
+  note         = {\url{https://github.com/nats-io/natscli}; appends the difference unconditionally. Read 2026-08-31}
 }
 
 @misc{openbenchmarks2026voice,

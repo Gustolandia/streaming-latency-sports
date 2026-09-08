@@ -167,6 +167,8 @@ class TestSymbolsAreDefinedBeforeUse:
         # lag" (the send call's lateness). The term is defined where it first appears and
         # the TTI term is now the "send lag".
         "scheddelay": r"[Ss]cheduling delay",
+        # Annotation 40: "k, rho and the load geometry need definition before the table".
+        "geometry": r"load geometr|core geometr|\bgeometries\b",
     }
 
     @pytest.mark.parametrize("name", sorted(SYMBOLS))

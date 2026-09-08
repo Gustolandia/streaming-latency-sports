@@ -113,6 +113,21 @@ def main(argv=None):
     texts = {k: v for k, v in texts.items() if len(v) > 5000}   # drop unreadable PDFs
     n = len(texts)
 
+    # Which of these are the JOURNAL's own papers, as opposed to the topic neighbourhood?
+    # docs/reference_tc is curated TC papers by construction; the fetched corpus says so in
+    # its manifest (journal-ref set, or matched by the venue-comment / OpenAlex queries).
+    journal = {p.name for p in (ROOT / "docs" / "reference_tc").glob("*.pdf")}
+    manifest = ROOT / "docs" / "reference_corpus" / "manifest.csv"
+    if manifest.exists():
+        import csv
+        with open(manifest, newline="", encoding="utf-8") as fh:
+            for r in csv.DictReader(fh):
+                same = r.get("journal_ref") or re.search(r"\b(?:co|oa)_", r.get("matched", ""))
+                if same:
+                    journal.add(re.sub(r"[^A-Za-z0-9.]+", "_", r["arxiv_id"]) + ".pdf")
+    journal_texts = {k: v for k, v in texts.items() if k in journal}
+    nj = len(journal_texts)
+
     df, tf = collections.Counter(), collections.Counter()
     for t in texts.values():
         words = set()
@@ -126,8 +141,12 @@ def main(argv=None):
         pat = re.compile(rx)
         docs_with = sum(1 for t in texts.values() if pat.search(t))
         total = sum(len(pat.findall(t)) for t in texts.values())
+        j_with = sum(1 for t in journal_texts.values() if pat.search(t))
+        j_total = sum(len(pat.findall(t)) for t in journal_texts.values())
         phrases[name] = {"papers": docs_with, "total": total,
-                         "share": round(docs_with / n, 3) if n else 0.0}
+                         "share": round(docs_with / n, 3) if n else 0.0,
+                         "journal_papers": j_with, "journal_total": j_total,
+                         "journal_share": round(j_with / nj, 3) if nj else 0.0}
 
     paper_words = manuscript_words((ROOT / "paper.tex").read_text(encoding="utf-8"))
     counts = collections.Counter(paper_words)
@@ -145,6 +164,7 @@ def main(argv=None):
 
     out = {
         "corpus_papers": n,
+        "journal_papers": nj,
         "corpus_sources": [str(d.relative_to(ROOT)) for d in CORPORA if d.exists()],
         "phrases": phrases,
         "manuscript_words": scored,
@@ -154,7 +174,7 @@ def main(argv=None):
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text(json.dumps(out, indent=1, sort_keys=True) + "\n", encoding="utf-8")
 
-    print("corpus papers: %d" % n)
+    print("corpus papers: %d  (of which the journal's own: %d)" % (n, nj))
     print("manuscript prose words: %d distinct" % len(scored))
     print("  absent from corpus: %d   rare (<10%% of papers): %d" % (len(absent), len(rare)))
     print("\nmost-used manuscript words the field does not use at all:")

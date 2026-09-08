@@ -364,7 +364,7 @@ derived from the plan and verified against wall time, over a median of $125$ eve
 than seven, at $N \in \{1, 9, 12\}$ with $15$ replicates each (Table~\ref{tab:transport}).
 The numbers are computed over audit-surviving runs only --- the campaign's own retention,
 the gate's effect on every estimate (at most $0.003$~ms on the shift) and the worst-case
-imputation flip point are Table~\ref{tab:gatesens} in S34 --- and the instrument stamps
+imputation flip point are Table~\ref{tab:gatesens} in S34 --- and the instrument timestamps
 in microseconds on one clock, so neither failure mode of this paper touches the numbers
 that follow. The
 picture is sharper and it is not the one E1 painted. Broker transport is \kafka{} $\approx
@@ -384,7 +384,7 @@ that a properly powered instrument resolves and a seven-event one cannot. The sh
 across concurrency ($\tostHL$, $0.416$, $0.417$~ms at $N = 1, 9, 12$, audit-gated;
 S34), so neither system degrades.
 A part of even this residual is the instrument rather than the broker: the main text
-shows that $0.07$~ms of the gap is the asymmetric acknowledgment stamp --- a different
+shows that $0.07$~ms of the gap is the asymmetric acknowledgment timestamp --- a different
 quantity from the inter-host clock offset of Section~\mainTestbeds{}, which happens to be the same
 size ---, leaving a true
 broker-transport difference near $0.34$~ms. That $0.07$~ms is a concrete instance of the blind
@@ -564,7 +564,7 @@ scheduling lag of $102.93$~ms over seven values, and a median of seven values at
 requires \emph{at least four of the seven} to be $102.93$~ms or greater. The loop trace says
 exactly how many events per run are ever that late: four (Table~\ref{tab:window}), and always the
 same four --- those due while the first send blocks. The matched set must therefore consist
-almost entirely of the prologue. The plan's first five events are all stamped at
+almost entirely of the prologue. The plan's first five events are all timestamped at
 $t_{\mathrm{sim}}{=}0$, so they are the first candidates a consumer sees and the first a lossy
 join keeps.
 
@@ -786,7 +786,7 @@ The exposure of OMB-in-distributed-mode is therefore established by source audit
 timestamp is written on the producer's host and read on the consumer's, and the guard drops
 whatever the difference produces --- and \emph{not} by observing that binary. What \emph{is} now
 observed is the pattern itself across two hosts: the harness of the main text
-runs the identical stamp-subtract-guard logic over two disciplined clocks across
+runs the identical timestamp-subtract-guard logic over two disciplined clocks across
 $\harnessCrossHostRuns$ runs, and measures $\harnessCrossHostNegatives$
 negatives in $\harnessCrossHostSamples$ samples, an intact grid, and a deleted fraction
 coupled to clock-offset drift. The two
@@ -878,8 +878,8 @@ Max matches in play at once & 21 \\
 \begin{figure}[tb]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/delta_schematic.pdf}
-\caption{\textbf{The two-state model, drawn.} The stamping asymmetry $\Delta$ has a narrow
-core when the stamping thread is running and a lobe at $-\baseSliceMs$~ms, the scheduler's
+\caption{\textbf{The two-state model, drawn.} The timestamping asymmetry $\Delta$ has a narrow
+core when the timestamping thread is running and a lobe at $-\baseSliceMs$~ms, the scheduler's
 base slice, when it is not, so a small $T_{\mathrm{true}}$ is inverted by the whole lobe and
 a large one only by what lies beyond it --- which is why the check bites hardest on small
 effects. The shape is schematic, two components placed at the measured mode's location rather
@@ -912,7 +912,7 @@ $\Pr[\text{inv}] = p(\rho)\,S(c;\rho)$ with $p$ varying fast and $S$ slowly: sep
 good first-order description rather than an exact law.
 
 \paragraph{What this is worth, and what it is not.} It is mechanistic --- occupancy names the
-moving part --- and actionable: if the failure is occupancy, the mitigation is a stamping thread
+moving part --- and actionable: if the failure is occupancy, the mitigation is a timestamping thread
 the workload cannot preempt, not a better clock. But we found this by looking at the data; the
 separability test is exploratory (the main text), so we pre-registered a confirmatory version and ran it: the campaigns below, the decisive
 one being real-time priority at fixed utilization. Two states is the smallest model consistent with the data, not a kernel claim.
@@ -1078,7 +1078,7 @@ the main text measures what the asymmetry costs by also running \texttt{inline}.
 \midrule
 \multicolumn{3}{l}{\emph{\redis{} producer}} \\
 send workers & pool & Non-blocking dispatch so the emission loop keeps schedule; send and
-acknowledgment are stamped in the worker, preserving a valid transport span. \\
+acknowledgment are timestamped in the worker, preserving a valid transport span. \\
 \midrule
 \multicolumn{3}{l}{\emph{Consumers}} \\
 \redis{} \texttt{ack-batch} & $200$ & \emph{Learned.} Acknowledging per message adds one network
@@ -1209,9 +1209,9 @@ timestamps taken in different processes, threads or hosts --- which covers most 
 measurements in this literature.
 
 \begin{enumerate}
-\item \textbf{Identify every span whose endpoints are stamped by different execution contexts.}
+\item \textbf{Identify every span whose endpoints are timestamped by different execution contexts.}
 In our pipeline exactly one of the three components qualifies: scheduling lag and the output
-interval are stamped within a single process, broker transport is not. Spans stamped within one
+interval are timestamped within a single process, broker transport is not. Spans timestamped within one
 context cannot violate causality and need no check.
 \item \textbf{Record the raw per-event values, not summaries.} The failure is invisible in
 aggregate --- that is its defining property --- so a pipeline that writes only percentiles has
@@ -1292,7 +1292,7 @@ says what would be needed to make it quantitative.
 
 \paragraph{Moved from the main text (internal review, round 1).} The check transfers to any latency computed across execution contexts --- most
 end-to-end measurements in this literature. The load-bearing rules:
-(1)~identify every span whose endpoints are stamped by different execution contexts, and
+(1)~identify every span whose endpoints are timestamped by different execution contexts, and
 check those; (4)~reject by a rule stated before looking at results, and report its
 sensitivity; (5)~report the retention rate beside the results, counting rejection causes
 separately (negative $=$ instrument failure; computes-to-zero $=$ resolution failure);
@@ -1380,7 +1380,7 @@ actually corrupts them is already growing.
 \paragraph{Moved from the main text (internal review, round 1).} That presumption is not ours: Lozi et al.~\cite{lozi2016wastedcores} document Linux
 scheduler bugs under which cores stay idle \emph{for seconds} while runnable threads
 queue elsewhere, invisible to conventional testing because throughput stays healthy. Under
-exact work conservation a stamping thread would never wait while a core was free, and the
+exact work conservation a timestamping thread would never wait while a core was free, and the
 geometry contrast of the table in supplementary material S25 would have to be flat; it is
 not, and it converges only where no core is free to migrate to.
 
@@ -1439,7 +1439,7 @@ broker transport stays flat ($0.535 \to 0.482$~ms; Table~\ref{tab:eb2}).
 
 The cause is that the delay is \textbf{common-mode}. It delays the acknowledgment travelling
 broker-to-producer and the record travelling broker-to-consumer by the same amount, and transport
-is the \emph{difference} of stamps taken at those two arrivals, so the injected delay cancels
+is the \emph{difference} of timestamps taken at those two arrivals, so the injected delay cancels
 exactly. A manipulation can be applied correctly, verified present at the interface, and still not
 touch the quantity under study --- which is the same lesson as the rest of this paper, arriving
 this time in our own experimental design rather than in our instrument. The original sweep's
@@ -1534,7 +1534,7 @@ would be scattered at random through a run; a descheduling event, by contrast, m
 of span signs separates the two: independence gives $z \approx 0$, clustering $z \ll 0$.
 Across conditions the negative spans are strongly clustered --- median $z = -6.9$ at the co-located
 floor, $-6.8$ idle, $-5.1$ saturated --- and the clustering is present even with no background
-load, so it is intrinsic to the stamping path rather than induced by contention. This is the
+load, so it is intrinsic to the timestamping path rather than induced by contention. This is the
 signature of a shared scheduling delay, not of independent quantization, and the main text
 additionally reports the measured timer granularity on both platforms. We regard the Testbed~A
 attribution as well supported and the Testbed~B attribution as probable rather than established.
@@ -1633,15 +1633,15 @@ auto-creation would pay the same cost, we did not test. The practitioner advice 
 the main text is written to be safe either way.
 
 \emph{The occupancy result is a mechanism, not a load model.} The main text shows by
-manipulation that the negative-span rate follows stamping-thread occupancy rather than utilization,
+manipulation that the negative-span rate follows timestamping-thread occupancy rather than utilization,
 and that is the strongest causal claim in this paper. It is not a formula. We can say the rate
-falls fifty-fold when the stamping thread stops being preempted; we cannot say what the rate will
+falls fifty-fold when the timestamping thread stops being preempted; we cannot say what the rate will
 be at a given load, and both attempts to write one --- the queueing form and our own bounded bracket ---
-failed against the sweep. A practitioner should read this as ``keep the stamping thread runnable
+failed against the sweep. A practitioner should read this as ``keep the timestamping thread runnable
 and measure what you get'', not as a curve to substitute into a budget.
 
 \emph{The external evidence is single-host, and the cross-host case is unmeasured.} The
-$\ombRuns$-run campaign of the main text ran in embedded mode, so both stamps came from one
+$\ombRuns$-run campaign of the main text ran in embedded mode, so both timestamps came from one
 JVM on one host. That is sufficient for the resolution failure, which needs no second clock --- the
 quantum is a property of the timestamp, not of the network --- but it means the cross-host channel
 is established by source audit and not by observation. We attempted a distributed run eight times,
@@ -1662,9 +1662,9 @@ whether cross-host subtraction is safe reads the offset line and concludes it ca
 figure that bounds the disagreement is two orders of magnitude larger and three lines further down
 the same output. The channel is therefore open on this testbed, and we could not measure it.
 
-\emph{H3 is measured at one operating point.} The symmetric-stamping comparison
+\emph{H3 is measured at one operating point.} The symmetric-timestamping comparison
 (the main text) was run at one in-flight request and one load level, because inline
-stamping requires the single in-flight setting. The direction and the one-sidedness of the effect
+timestamping requires the single in-flight setting. The direction and the one-sidedness of the effect
 are what the model predicts, but we do not characterize how the $0.07$~ms offset scales with load
 or pipelining.
 
@@ -1845,7 +1845,7 @@ Utilization $\rho$ & Core $\sigma_{\mathrm{core}}$ (ms) & Negative span rate & C
 
 
 \begin{table}[t]
-\caption{\textbf{Occupancy, not utilization.} Stamping processes at ordinary priority versus
+\caption{\textbf{Occupancy, not utilization.} Timestamping processes at ordinary priority versus
 \texttt{SCHED\_FIFO}, with the background load unchanged. Utilization is measured in both arms,
 not assumed: it matches to $0.001$, so the manipulation moved occupancy alone. The negative-span rate
 falls by a factor of $\rtLowFactor$--$\rtHighFactor$ to the running-state floor. Utilization-only models predict no
@@ -1994,10 +1994,10 @@ no longer inherit the first one's mistake.
 \section{S28. The mechanism campaign paragraphs in full (moved from the main text)}
 
 \paragraph{The experiment that settles it.} Move one of the two and hold the other fixed:
-raising the stamping processes to real-time priority makes them preempt the background load
+raising the timestamping processes to real-time priority makes them preempt the background load
 rather than queue behind it, so occupancy falls sharply while utilization does not move ---
 and unlike our delay injection, which canceled in the subtraction
-(the main text), priority acts on the stamping threads themselves, where the model
+(the main text), priority acts on the timestamping threads themselves, where the model
 locates the failure. An occupancy mechanism predicts collapse toward the running-state floor;
 any account in which the rate is a function of $\rho$ predicts no change, because $\rho$ is
 unchanged by construction. The result is unambiguous (Section S25): utilization held
@@ -2008,7 +2008,7 @@ model names in advance, $C_0 \approx \invFloor$.
 
 \paragraph{Utilization is not the variable, shown at identical utilization.} Two loads can
 reach the same $\rho$ by different means: $k$ cores flat out leaves $C-k$ genuinely free,
-while duty-cycling every core leaves none. If the mechanism is whether the stamping thread
+while duty-cycling every core leaves none. If the mechanism is whether the timestamping thread
 can find a core, the second should be worse at equal $\rho$ --- and it is
 (Section S25): at $k=6$ both arms sit at $\rho = 0.7531$, identical to four
 decimals, same machine, same hour, and the negative-span rates differ by $2.07\times$
@@ -2033,9 +2033,9 @@ numbers constrain the stall distribution sharply: a $\payloadTransportFactorRoun
 $\payloadRateFall\times$ lower rate, so the tail barely thins across two orders of magnitude --- which is
 why mean-based counters could not see the effect and the direct trace was necessary.
 
-\section{S29. The audit, stamping-mode and injected-delay tables (moved from the main text)}
+\section{S29. The audit, timestamping-mode and injected-delay tables (moved from the main text)}
 
-Table~\ref{tab:audit} is the consistency audit of every run; Table~\ref{tab:h3} the two stamping modes; Table~\ref{tab:netem} the injected one-way delay.
+Table~\ref{tab:audit} is the consistency audit of every run; Table~\ref{tab:h3} the two timestamping modes; Table~\ref{tab:netem} the injected one-way delay.
 
 \begin{table}[t]
 \caption{Consistency audit of every run behind a reported result. Every count is
@@ -2062,14 +2062,14 @@ Total              & \auditRuns{} & \auditRejected{} (\auditPct\%) & \auditCondi
 \end{table}
 
 \begin{table}[t]
-\caption{H3: median broker transport under the two stamping modes, both arms at one in-flight
+\caption{H3: median broker transport under the two timestamping modes, both arms at one in-flight
 request under matched load. \texttt{callback} is the default asymmetric instrument; \texttt{inline}
-stamps \kafka{} on the calling thread as \redis{} already does. The between-system gap shrinks,
+timestamps \kafka{} on the calling thread as \redis{} already does. The between-system gap shrinks,
 and the shrinkage is entirely on \kafka{}'s side.}
 \label{tab:h3}
 \begin{tabular}{lrrr}
 \toprule
-Stamp & \kafka{} (ms) & \redis{} (ms) & Difference (ms) \\
+Timestamp & \kafka{} (ms) & \redis{} (ms) & Difference (ms) \\
 \midrule
 \texttt{callback} (asymmetric) & 0.392 & 0.106 & $+0.286$ \\
 \texttt{inline} (symmetric)    & 0.322 & 0.107 & $+0.215$ \\
@@ -2284,7 +2284,7 @@ window and estimator, and we should not have offered it as a confirmation.
 The prediction check against the trace is unaffected and stands: the main text predicts
 $\Pr[\text{stall} > 0.5\,\text{ms}] = 0.301$ against the traced $0.181$, over-predicting by
 $1.66\times$ ($1.52\times$ on the replication), the expected direction since not every
-stall lands on a stamping instant. That comparison is between two probabilities, not
+stall lands on a timestamping instant. That comparison is between two probabilities, not
 between two fitted exponents, and it needs no power law to be meaningful.
 
 \paragraph{What the histogram says instead, which is better.} Asking what shape the data
@@ -2305,7 +2305,7 @@ ho$ rather than from a shape description -- the EEVDF base slice is
 $0.75\,\mathrm{ms} \times (1 + \lfloor\log_2 8\rfloor) = 3$~ms; run-to-parity holds a woken
 thread off the CPU until the incumbent has exhausted that slice unless it wins the
 wakeup-preemption check, and with the high-resolution tick disabled the expiry is observed
-at the ordinary tick. A stamping thread descheduled at the wrong moment therefore reads its
+at the ordinary tick. A timestamping thread descheduled at the wrong moment therefore reads its
 clock roughly a slice late. That is the second state of the main text's two-state model,
 observed directly, at the constant the scheduler is configured with --- which is a stronger
 statement than any tail index would have been, and it is what replaced the withdrawn one.
@@ -2340,7 +2340,7 @@ far infers the scheduler's behavior from the negative-span rate it produces. The
 something stronger and directly checkable --- that the negative-span rate should equal the probability
 that a run-queue stall outlasts the interval being measured --- so we measured that probability
 without reference to the negative spans at all. Using \texttt{bpftrace} on the \texttt{sched\_wakeup}
-and \texttt{sched\_switch} tracepoints, we recorded the delay between a stamping thread becoming
+and \texttt{sched\_switch} tracepoints, we recorded the delay between a timestamping thread becoming
 runnable and reaching a core, for every such transition in the run, and computed
 $\Pr[\text{stall} > 0.5\,\text{ms}]$ against the measured transport of that cell
 (supplementary material S25).
@@ -2367,9 +2367,9 @@ but freezing $\sigma$ at its mean improves the fit to $R^2 = 0.9982$, so $\sigma
 move together on this ladder and neither can be credited over the other; the commentary in
 full is supplementary material S12.
 
-\paragraph{The experiment that settles it.} Raise the stamping processes to real-time
+\paragraph{The experiment that settles it.} Raise the timestamping processes to real-time
 priority: occupancy falls sharply while utilization does not move, and priority acts on the
-stamping threads themselves --- where the model locates the failure --- rather than
+timestamping threads themselves --- where the model locates the failure --- rather than
 canceling in the subtraction as our delay injection did. The result is unambiguous
 (supplementary material S25): utilization held to $0.001$, and the negative-span rate fell by
 factors of $39$ and $54$ at the two load levels, with disjoint Wilson intervals, both
@@ -2426,7 +2426,7 @@ et al.~\cite{wannamaker2000dither}, is the remedy that the main text states as
 dithering. The timing literature treats a coarse tick as staleness, not deletion. What we claim
 as new, narrowly: not quantization --- elementary, and
 Cloudprofiler~\cite{yang2022cloudprofiler} exists because milliseconds are known to be
-too coarse --- but the \emph{interaction} of quantized stamp, few-phase producer and
+too coarse --- but the \emph{interaction} of quantized timestamp, few-phase producer and
 positivity guard, producing a retention fraction bimodal, irreproducible between identical
 runs, invisible in the reported summary, its damage set by the denominator of the
 interval-to-quantum ratio in lowest terms rather than by ``round'' rates.
@@ -2569,9 +2569,9 @@ sub-millisecond skew between two views of a virtualized clock --- and hedged it 
 through the round-1 internal draft. The hedge was unnecessary, and reading the driver removes
 it. \brk{RedisBenchmarkConsumer.java} takes the publish timestamp from
 \brk{entry.getID().getTime()}, the stream-entry identifier the Redis \emph{server}
-assigns on \texttt{XADD}, while the Kafka driver uses a producer-set stamp. The Redis span
+assigns on \texttt{XADD}, while the Kafka driver uses a producer-set timestamp. The Redis span
 is therefore a difference between two millisecond-floored clocks on two hosts, for which
-$-1000\,\mu$s is the only negative value expressible; the Kafka span floors two stamps
+$-1000\,\mu$s is the only negative value expressible; the Kafka span floors two timestamps
 differenced inside one JVM, and never goes negative. The corpus matches both predictions
 exactly. Hedging a claim the source code settles is its own kind of imprecision, and the
 main text now states the mechanism.
@@ -2595,7 +2595,7 @@ is negative $\spanNegSend$ times. Nothing in the corpus arrived before it was se
 
 What changed as a result: the framing, the justification of the gate, and the claim that the
 failure is self-detecting. What did not change: the rejection counts, which are unaltered as
-numbers and now described as reference-stamp failures; and every manipulation result in the
+numbers and now described as reference-timestamp failures; and every manipulation result in the
 Section~\mainModeA{} of the main text, which rests on moving scheduling and observing the
 rate move, not on what the negatives are called.
 
@@ -2687,8 +2687,8 @@ this list are generated from \texttt{harness\_registry.csv} at build time.}
 \end{table}
 
 The most interesting row is the one carrying no defect at all. The OpenMessaging Benchmark's
-publish span is taken inside one process, stamped with a nanosecond clock and recorded
-unconditionally; its end-to-end span crosses processes, is stamped in milliseconds, and is
+publish span is taken inside one process, timestamped with a nanosecond clock and recorded
+unconditionally; its end-to-end span crosses processes, is timestamped in milliseconds, and is
 filtered. The coarse clock and the guard both landed on the span that needed care --- the
 asymmetry Section~\mainGuard{} draws its conclusion from, and the reason this table folds by span.
 
@@ -2722,7 +2722,7 @@ on a millisecond subtraction. Mode~B is therefore not a claim about a guard. It 
 about a quantum, and deletion is one of the ways it collects.
 
 The other two additions are counterexamples, and they are in the table for the reason Rezolus
-is. RabbitMQ PerfTest differences a stamp carried in the message against a local clock and
+is. RabbitMQ PerfTest differences a timestamp carried in the message against a local clock and
 passes the result to \brk{performanceMetrics.received(diff_time)} with no sign test at
 all; the NATS CLI appends \brk{time.Duration(time.Now().UnixNano()-sendTime)}
 unconditionally. Both would let a negative through into their metrics, which is what
@@ -2839,16 +2839,16 @@ millisecond durations of a collective over hundreds of processes, a residual of 
 microseconds cannot invert the sign, and the question does not arise. It arises here because
 the interval is smaller than the instrument.
 
-\section{S38. Where the stamp is written, in other runtimes}
+\section{S38. Where the timestamp is written, in other runtimes}
 \label{sec:runtimes}
 
-Section~\mainModeA{} argues that an acknowledgment stamp is late because the thread that writes it must
+Section~\mainModeA{} argues that an acknowledgment timestamp is late because the thread that writes it must
 first be scheduled. That is not peculiar to a JVM benchmark, and three widely used runtimes
 document the same structure in their own terms. None of them frames it as a hazard, which is
 the point: the property is public, and the consequence for a cross-process subtraction is not
 drawn anywhere we could find.
 
-\paragraph{The stamp is taken when the application next asks for it}
+\paragraph{The timestamp is taken when the application next asks for it}
 \texttt{librdkafka}, the client under the benchmark's \kafka{} driver, serves its
 delivery-report callback from \texttt{rd\_kafka\_poll()} and the other queue-serving
 calls~\cite{librdkafka}. The callback therefore runs on the application's own thread, at
@@ -2860,15 +2860,16 @@ arrives. Our $\delta_{\mathrm{ack}}$ is exactly the interval between those two e
 \ldots when the I/O's completion was reaped by fio''~\cite{fio_howto}. The definition is
 honest and the scope matters: for synchronous I/O the same documentation says only ``to when
 it was completed''. For the asynchronous case --- the one used for latency work --- a reaping
-stamp is written into the definition of the metric.
+timestamp is written into the definition of the metric.
 
-\paragraph{Vendors document the device-side stamp; one draws the consequence}
-AMD states, under \texttt{hipEventElapsedTime()}, that events ``record their timestamp when
-they reach the head of the specified stream'' and that ``the time that the event recorded
-[sic] may be significantly after the host calls hipEventRecord()''~\cite{hip_events}. NVIDIA
+\paragraph{Vendors document the device-side timestamp; one draws the consequence}
+AMD states, under \texttt{hipEvent\allowbreak{}Elapsed\allowbreak{}Time()}, that events
+``record their timestamp when they reach the head of the specified stream'' and that ``the
+time that the event recorded [sic] may be significantly after the host calls
+\texttt{hipEvent\allowbreak{}Record()}''~\cite{hip_events}. NVIDIA
 documents the same mechanism --- ``[t]he device will record a timestamp for the event when it
 reaches that event in the stream''~\cite{cuda_bpg} --- without drawing AMD's conclusion. We
-note the asymmetry rather than flatten it: both vendors describe a stamp written at a moment
+note the asymmetry rather than flatten it: both vendors describe a timestamp written at a moment
 the host does not choose, and only one says out loud how far from the host call it can be.
 
 \section{S39. Neighboring rules, and what they already require}
@@ -2957,7 +2958,7 @@ what the instrument could not measure.
 \paragraph{Rules about the sign itself, in network measurement}
 Three standards already require some part of what the main text asks, and they are the closest
 precedents we found for treating an impossible value as data rather than as debris. OWAMP
-requires a packet stamped in the future to be recorded unaltered within its timeout
+requires a packet timestamped in the future to be recorded unaltered within its timeout
 window~\cite{rfc4656}; ETSI requires removed measurement cycles to be
 reported~\cite{etsi102250}; and RFC~7679 treats negative singletons as usable distribution
 data~\cite{rfc7679}. None of the three is ours and none is applied where a streaming benchmark
@@ -3054,9 +3055,9 @@ deletion does in principle. Figure~\ref{fig:deletionhist} is what it does to thi
 three panels. Panel~(a) is the control the main text states in prose: over the same
 $\spanEvents$ joined events on the same clock, the acknowledgment-referenced span falls below
 zero $\spanNegAck$ times and the send-referenced span never does, so the negatives are a
-property of which stamp serves as the origin and not of the delivery being timed. Panel~(b)
+property of which timestamp serves as the origin and not of the delivery being timed. Panel~(b)
 puts a millisecond instrument in front of that population. The difference of two truncated
-stamps lands on $0$ or on $1$ according only to where the tick boundaries fall, and a guard
+timestamps lands on $0$ or on $1$ according only to where the tick boundaries fall, and a guard
 that admits a sample only when the difference is strictly positive removes $\msGuardDropped$
 of $\spanEvents$ events --- $\msGuardDeletedPct\%$, $95\%$ interval $\msGuardDeletedCI$
 resampling runs rather than events --- of which $\msGuardAtZero$ computed to exactly zero and
@@ -3081,7 +3082,7 @@ instrumented runs did report --- and the two answer different questions.
 \caption{\textbf{What the instrument deletes, beside what it then reports.}
 (a)~At nanosecond resolution the acknowledgment-referenced span goes below zero
 $\spanNegAck$ times in $\spanEvents$; the send-referenced span, same events and same clock,
-never does. (b)~A millisecond instrument cannot see (a): it differences two truncated stamps,
+never does. (b)~A millisecond instrument cannot see (a): it differences two truncated timestamps,
 so a sub-millisecond flight lands on $0$ or $1$ by tick alignment alone, and a positivity
 guard then deletes $\msGuardDeletedPct\%$ of the population uncounted. (c)~The five
 dispositions found in shipping software (Section~S36), applied to that same
@@ -3162,49 +3163,49 @@ measurement rather than a recorded fact, and Section~\mainTestbeds{} says so. Th
 \texttt{scripts/clocksource\_bound.py}, and its tests pin each exclusion to its own ground so
 that an exclusion firing for the wrong reason cannot reach the right answer by luck.
 
-\section{S43. Why the acknowledgment stamp is late, and why the broker is not the reason}
+\section{S43. Why the acknowledgment timestamp is late, and why the broker is not the reason}
 
-In plain terms: the span that inverts is the one whose reference stamp is read only after a
+In plain terms: the span that inverts is the one whose reference timestamp is read only after a
 thread has been woken, and the corpus shows twice over that this has nothing to do with which
 broker is running. Section~\mainModeA{} states the mechanism; this section gives the source lines, the
 control that separates the candidate causes, the rivals that were considered and dropped, and
 the parts we could not test.
 
-\subsection{S43.1. Where each stamp is actually taken}
+\subsection{S43.1. Where each timestamp is actually taken}
 
 Producer and consumer are separate processes on one host, and both read
-\textsc{clock\_realtime}. Five stamps enter the spans this paper reports, and they are not
+\textsc{clock\_realtime}. Five timestamps enter the spans this paper reports, and they are not
 taken in comparable places. Three of them are producer-side.
 
 \begin{itemize}
-\item \textbf{The send stamp} is read on the calling thread immediately \emph{before} the
+\item \textbf{The send timestamp} is read on the calling thread immediately \emph{before} the
 client is invoked. In \brk{scripts/redis_producer.py} the worker executes
 \texttt{send\_ns = now\_ns()} and only then calls \texttt{r.xadd(...)}.
-\item \textbf{The \redis{} acknowledgment stamp} is read on that same thread the moment
+\item \textbf{The \redis{} acknowledgment timestamp} is read on that same thread the moment
 \texttt{r.xadd(...)} returns. \texttt{xadd} is synchronous: the thread writes the request and
 blocks in a socket read until the reply arrives. No second thread is involved anywhere.
-\item \textbf{The \kafka{} acknowledgment stamp} is read, by default, in the client's I/O
+\item \textbf{The \kafka{} acknowledgment timestamp} is read, by default, in the client's I/O
 thread when the delivery callback fires. \texttt{scripts/kafka\_producer.py} also offers
-\texttt{-{}-ack-stamp inline}, which stamps on the calling thread once the send future
+\texttt{-{}-ack-stamp inline}, which timestamps on the calling thread once the send future
 resolves, matching what \texttt{xadd} does; it requires \texttt{-{}-max-inflight~1}.
 \end{itemize}
 
 The two clients therefore differ in whether a second thread stands between the reply and the
-clock read. They do not differ in something more basic: in both, the acknowledgment stamp is
+clock read. They do not differ in something more basic: in both, the acknowledgment timestamp is
 read only after a thread that was not running has been made runnable and then scheduled.
 
-\paragraph{The consumer's two stamps, and the asymmetry between the clients}
+\paragraph{The consumer's two timestamps, and the asymmetry between the clients}
 The other two are consumer-side, and until this revision neither this section nor any other
-said where they are taken. That was a gap in an audit whose whole subject is stamp
+said where they are taken. That was a gap in an audit whose whole subject is timestamp
 placement: every span the paper reports ends at one of them.
 
 \begin{itemize}
-\item \textbf{The receive stamp} $t_{\mathrm{recv}}$ is read when the consumer holds the
+\item \textbf{The receive timestamp} $t_{\mathrm{recv}}$ is read when the consumer holds the
 record. In \texttt{scripts/kafka\_consumer.py} the client is constructed with a
 \texttt{value\_deserializer}, so the payload is parsed inside \texttt{poll()} and the parse
-precedes the stamp. In \texttt{scripts/redis\_consumer.py} the stamp is read first and
+precedes the timestamp. In \texttt{scripts/redis\_consumer.py} the timestamp is read first and
 \texttt{json.loads} runs after it.
-\item \textbf{The output stamp} $t_{\mathrm{out}}$ is read once the record is in hand. It is
+\item \textbf{The output timestamp} $t_{\mathrm{out}}$ is read once the record is in hand. It is
 the next statement under \kafka{} and is separated from $t_{\mathrm{recv}}$ by the payload
 parse under \redis{}.
 \end{itemize}
@@ -3227,22 +3228,22 @@ which is one more reason the equivalence in S48 is also stated on \tti{}.
 We could not fix this in the pipeline where it belongs, because it would require re-running
 a campaign whose machines are released. What the pipeline now does instead is measure it:
 \texttt{recount\_spans.py} carries the span as its fifth column, and a gate fails if the two
-consumers ever stamp in places that differ again without the number moving with them.
+consumers ever timestamp in places that differ again without the number moving with them.
 
 \subsection{S43.2. Why one span cannot invert and the other can}
 
-The send stamp is taken before the message leaves the process, so
+The send timestamp is taken before the message leaves the process, so
 $t_{\mathrm{send}} \rightarrow \text{emit} \rightarrow \text{deliver} \rightarrow
 t_{\mathrm{recv}}$ is a chain and its ordering holds by construction, however late the
-stamping thread was: a late thread makes the span longer, never shorter. That is not an
+timestamping thread was: a late thread makes the span longer, never shorter. That is not an
 empirical claim about our scheduler, it is a property of the order in which the two
 operations are written, and it is why the send-referenced span is negative on
 $\spanNegSend$ of $\spanEvents$ events under either broker.
 
-The acknowledgment stamp has no such guarantee. The broker's append precedes both the
+The acknowledgment timestamp has no such guarantee. The broker's append precedes both the
 producer's receipt of the acknowledgment and the consumer's receipt of the record, but those
 are two downstream branches with no happens-before between them (Supplement~S35.3). Both
-branch stamps are read after a wakeup, so the error on their difference is two-sided, and the
+branch timestamps are read after a wakeup, so the error on their difference is two-sided, and the
 difference goes negative whenever the acknowledgment-side delay exceeds the true interval plus
 the receive-side delay. The exposure lies in which operand can be late in the shortening
 direction, and that is fixed by how the span is constructed, not by what is being measured.
@@ -3250,11 +3251,11 @@ direction, and that is fixed by how the span is constructed, not by what is bein
 \subsection{S43.3. The second thread is not the mechanism}
 
 The harness was built expecting the thread hand-off to be the cause; the comment at
-\texttt{kafka\_producer.py} says that \redis{} ``stamps inline on the calling thread the
+\texttt{kafka\_producer.py} says that \redis{} ``timestamps inline on the calling thread the
 moment XADD returns, and never pays that wait''. The corpus does not bear that out, and the
 disagreement is informative.
 
-Two committed results bear on it. First, the stamping campaign (\texttt{ec3}) ran \kafka{}
+Two committed results bear on it. First, the timestamping campaign (\texttt{ec3}) ran \kafka{}
 under both settings at matched load, and Table~\ref{tab:h3} is the outcome: moving from
 \texttt{callback} to \texttt{inline} lowers \kafka{}'s median while \redis{} does not move,
 shrinking the between-system gap by about a quarter, and a thirty-run replication reproduces
@@ -3273,7 +3274,7 @@ share is the wakeup; the hand-off is an increment on top of it, not the thing it
 
 \paragraph{What we could not test} The clean form of this control would be the negative-span rate
 for \kafka{} under \texttt{-{}-ack-stamp inline}, compared with the same runs under
-\texttt{callback}. The stamping campaign retained only its median summary
+\texttt{callback}. The timestamping campaign retained only its median summary
 (\texttt{docs/results/model/ec3\_stamping.csv}); the per-event records that would carry
 sign-separated counts were not kept, and we do not reconstruct them here. The cross-broker
 contrast above is the evidence we have, and it is weaker than the within-broker one would
@@ -3312,7 +3313,7 @@ The two rivals above are the ones a reader expects. A third is specific to how t
 built, and the manuscript owes it a paragraph because the mechanism was restated around a
 thread reaching a CPU.
 
-The stamping threads are CPython (Section~\mainMethod{}), and both producers are
+The timestamping threads are CPython (Section~\mainMethod{}), and both producers are
 multithreaded: \texttt{redis\_producer.py} dispatches sends through a thread pool and runs a
 correction worker beside it. CPython releases the interpreter lock around blocking
 I/O and takes it back on return, and \texttt{now\_ns()} is a Python call. So the sequence is
@@ -3340,7 +3341,7 @@ $\tracedRatioArms$ arms it does not: the ratios are $\tracedRatios$, straddling 
 the largest above it. A term big enough to matter would have to hide inside a spread that
 already brackets the answer. The interpreter lock is therefore present in principle, bounded
 in practice, and not the mechanism --- and the send-referenced span is immune to it entirely,
-since a stamp taken before the action bounds its event whatever the interpreter is doing.
+since a timestamp taken before the action bounds its event whatever the interpreter is doing.
 
 \subsection{S43.5. Why averaging does not repair either mode}
 
@@ -3370,13 +3371,13 @@ one. This is not a bias that can be subtracted but information destroyed at the 
 observation, which is why finer clocks, better synchronization and larger samples all leave it
 untouched.
 
-What does work follows from that. Stamp before the action rather than on resumption, so the
-reading bounds its event. Where the event is not yours to stamp, attach the stamp to it ---
+What does work follows from that. Timestamp before the action rather than on resumption, so the
+reading bounds its event. Where the event is not yours to timestamp, attach the timestamp to it ---
 a kernel or hardware receive timestamp, or a broker-assigned one --- which is the
 probe-placement argument in Section~\mainAuthors{}. Keep a sub-quantum sample as a left-censored
 observation, since ``$T_{\mathrm{true}} < \tau$'' is a fact about the measurand and deleting
 it discards the censoring indicator along with the value. And treat a negative as a gate
-rather than a datum: it is not a censored observation but the reference stamp failing, so it
+rather than a datum: it is not a censored observation but the reference timestamp failing, so it
 belongs in a sign-separated count and in a run-level rejection, never averaged into a
 distribution.
 
@@ -3396,7 +3397,7 @@ The second is that the stall does not care how many clocks are involved. Every n
 this corpus was produced on a single clock, and the arm in which both processes read that one
 clock is the arm the audit rejects most, at $\auditPctWorkstation\%$. A round trip still ends with a thread
 being woken and scheduled before it can read the clock, so it inherits the same late reference
-stamp the acknowledgment span has. Collapsing two clocks into one removes a term the corpus
+timestamp the acknowledgment span has. Collapsing two clocks into one removes a term the corpus
 already shows is not the cause.
 
 \subsection{S43.7. Where the repairs belong}
@@ -3410,14 +3411,14 @@ promised: that observing an event tells you when the event happened.
 \item \textbf{Operating system:} nothing is owed. The escape hatches and
 \texttt{SO\_TIMESTAMPING} already exist.
 \item \textbf{\kafka{}:} \texttt{record.timestamp()} is a millisecond wire field, so anything
-built on it inherits a millisecond quantum and must carry its own finer stamp in the payload
-to escape. Documenting that, or exposing a finer causally attached stamp, is the ask.
+built on it inherits a millisecond quantum and must carry its own finer timestamp in the payload
+to escape. Documenting that, or exposing a finer causally attached timestamp, is the ask.
 \item \textbf{\redis{}:} the \texttt{XADD} entry identifier embeds a server-clock,
 millisecond-floored time. One documented sentence saying it is not comparable with a client
 clock would have prevented the driver defect of Section~\mainBrokers{} outright.
-\item \textbf{Benchmark authors:} stamp before the action; count discards sign-separated;
+\item \textbf{Benchmark authors:} timestamp before the action; count discards sign-separated;
 publish retention, timestamp resolution and synchronization state; never difference a
-server-assigned stamp against a client clock without saying so; dither the send instant; and
+server-assigned timestamp against a client clock without saying so; dither the send instant; and
 record the achieved rate.
 \end{itemize}
 
@@ -3450,18 +3451,18 @@ value is the one that applied. It is strong evidence rather than proof.
 \label{sec:metric-map}
 
 This section says which interval each reported quantity actually covers. The drawing is the
-main text's Figure~\ref{fig:pipeline}, which names the four bracketing stamps; what belongs
-here is the mapping from those stamps onto the metric names, because a reader comparing our
+main text's Figure~\ref{fig:pipeline}, which names the four bracketing timestamps; what belongs
+here is the mapping from those timestamps onto the metric names, because a reader comparing our
 numbers against another harness's needs to know what was subtracted from what.
 
-\emph{Scheduling lag} is $t_{\mathrm{send}} - t_{\mathrm{sched}}$. Both stamps are taken
+\emph{Scheduling lag} is $t_{\mathrm{send}} - t_{\mathrm{sched}}$. Both timestamps are taken
 inside the producer process, so it is a causal chain and cannot invert. \emph{Acknowledgment
 lag}, $A = t_{\mathrm{ack}} - t_{\mathrm{send}}$, is also producer-internal and also cannot.
 \emph{Broker transport} is the transport proxy $S = t_{\mathrm{recv}} - t_{\mathrm{ack}}$: it
-subtracts a producer-process stamp from a consumer-process one, which is exactly why it can
+subtracts a producer-process timestamp from a consumer-process one, which is exactly why it can
 come out negative when either process is delayed, and it is the span this paper is about.
 \emph{End-to-end \tti{}} is $t_{\mathrm{recv}} - t_{\mathrm{sched}}$, the sum of the three
-(Equation~\ref{eq:tti}), and it inverts only if the whole flight does. A fifth stamp,
+(Equation~\ref{eq:tti}), and it inverts only if the whole flight does. A fifth timestamp,
 $t_{\mathrm{out}}$, is consumer-internal and is not drawn in that figure; S43.1 places it.
 
 
@@ -3500,7 +3501,7 @@ rule.}
 \section{S47. Every real-time-priority pair, and the ladder they make}
 \label{sec:priority-pairs}
 
-The main text quotes a range: real-time priority on the stamping threads collapses the
+The main text quotes a range: real-time priority on the timestamping threads collapses the
 negative-span rate $\rtFactorLow$--$\rtFactorHigh\times$ at fixed utilization. That range is
 taken over $\rtPairs$ matched pairs from three campaigns, and until this revision only the two
 of Table~\ref{tab:ea5} appeared anywhere --- which left the two pairs that anchor the range,
@@ -3557,7 +3558,7 @@ the two brokers of its span table: no pair of arms overlaps, which is checkable 
 tables and is faster to see here. Table~\ref{tab:exposure} tabulates the exposure curve whose
 headline points the main text quotes --- the relative error $A/T_{\mathrm{true}}$ against
 path length, and beside it the gap a comparison would report between two identical systems
-whose clients stamp in different places. Neither carries a number that is not already stated
+whose clients timestamp in different places. Neither carries a number that is not already stated
 where it is argued.
 
 
@@ -3571,7 +3572,7 @@ where it is argued.
 \includegraphics[width=\columnwidth]{docs/results/figures/mechanism_forest.pdf}
 \caption{\textbf{Every manipulation separates; the broker does not.} Wilson $95\%$
 intervals. Above the rule, the four matched pairs of Table~\ref{tab:mechanism}, utilization
-held fixed within each: what moves the rate is where the stamping thread sits, not how
+held fixed within each: what moves the rate is where the timestamping thread sits, not how
 loaded the machine is. Below it, observed rather than manipulated, the two brokers of
 Table~\ref{tab:spans}; their intervals are narrower than the plotted point.}
 \label{fig:mechanism}
@@ -3590,8 +3591,8 @@ conditions, $\exposureLagLo$ and $\exposureLagHi\,\mu$s. The band is the column 
 A lag is not a constant, and a reader locating their own path against the point estimate
 alone would put a $10$~ms path at $\exposureErrTen\%$ when a tenth of our own conditions
 sit at $\exposureErrTenHi\%$. Right: the gap a comparison would report between two
-identical systems whose clients differ only in where the acknowledgment is stamped ---
-a callback thread against an inline stamp. Where the right-hand column reads ``inverts'',
+identical systems whose clients differ only in where the acknowledgment is timestamped ---
+a callback thread against an inline timestamp. Where the right-hand column reads ``inverts'',
 the apparent gap has changed sign; on every row below those nothing is negative, so the
 sign check of Section~\ref{sec:gate} fires on none of it.}
 \label{tab:exposure}
@@ -3707,8 +3708,8 @@ produce negative timing spans''.
 Under the queue they model --- backlog at a service stage --- the sentence is true, and
 Section~\mainModeA{} refutes that account of our own corpus as well. It is false as written
 because two different queues are in play and only one of them is theirs. A message waits in a
-service backlog; the thread that stamps the clock waits in the kernel's \emph{run queue} for
-a CPU. The second wait is what displaces a stamp, and it is unaffected by whether any backlog
+service backlog; the thread that timestamps the clock waits in the kernel's \emph{run queue} for
+a CPU. The second wait is what displaces a timestamp, and it is unaffected by whether any backlog
 exists: our rates are highest at high utilization with no backlog at all.
 
 The consequence is practical. If backlog cannot invert a span, then eliminating backlog
@@ -3737,7 +3738,7 @@ stall, not the skew, is the term that grows.
 \includegraphics[width=\columnwidth]{docs/results/figures/quantum_geometry.pdf}
 \caption{\textbf{Why a sample disappears, and why the survivors are not a sample.}
 (a) One delivery of $T_{\mathrm{true}} = 0.35$~ms at four phases of one tick. Three finish
-inside it, so both stamps round alike, the difference is exactly zero, and the guard removes
+inside it, so both timestamps round alike, the difference is exactly zero, and the guard removes
 them; the fourth crosses the boundary and is recorded as one whole tick --- which is why the
 corpus prints $1.0$ and $2.0$~ms and nothing between. (b) A delivery survives from phase
 $\tau - T_{\mathrm{true}}$ onward --- the shaded band --- so uniform phases retain
@@ -3821,7 +3822,7 @@ no law relating either to the interval measured; what it confirms is the premise
 years after Villain and in another domain.
 
 That is our conclusion, reached by practitioners, from the symptom alone. What the argument
-lacked was a mechanism and a magnitude: if the displacement is a late stamp rather than a
+lacked was a mechanism and a magnitude: if the displacement is a late timestamp rather than a
 skewed clock, then an adjuster is not correcting error but moving evidence, and how much
 evidence it moves is a measurable quantity nobody had measured. Section~\mainModeA{} measures
 it.
@@ -3908,7 +3909,7 @@ the node shape: no tool, no timestamp source, no synchronization statement, no r
 discard count. Unlike the ranking above, this one \emph{can} be placed against the quantum,
 and it lands under it. We draw no conclusion about the number, which may be perfectly good;
 the point is that nothing published beside it would let a reader tell, and on a
-millisecond-resolution cross-node stamp most of that distribution would compute to zero or to
+millisecond-resolution cross-node timestamp most of that distribution would compute to zero or to
 a negative a positivity guard would drop.
 
 Against that, the rules of Section~\mainAuthors{} are being adopted independently, and by a
@@ -4012,9 +4013,9 @@ drivers differ, which is a property of the harness rather than of either broker.
 The \redis{} driver takes its publish timestamp from \brk{entry.getID().getTime()} in
 \brk{RedisBenchmarkConsumer.java}:72 --- the stream-entry identifier the \emph{\redis{}
 server} assigns on \texttt{XADD}~\cite{openmessaging2018}. The \kafka{} driver uses a
-producer-set stamp. So the \redis{} end-to-end span subtracts a consumer-side wall clock from
+producer-set timestamp. So the \redis{} end-to-end span subtracts a consumer-side wall clock from
 a server-side one, across two hosts, with both floored to the millisecond; the \kafka{} span
-floors two stamps whose difference is taken inside one JVM.
+floors two timestamps whose difference is taken inside one JVM.
 
 Two consequences follow, and together they are what makes the sign channel legible.
 

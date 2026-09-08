@@ -2344,14 +2344,27 @@ class TestRefereeRoundOne:
         assert "embedded mode" in audit[:2500], "Section 7's opening must scope the audit"
 
     def test_the_preprints_are_marked(self, main_tex):
-        # swami2026prereg dropped in the round-3 revision, for the same reason
-        # mohammad2025kafka went in v2.5 and by the same rule: it anchored a single clause,
-        # TC caps the reference list at 45, and HP AN 162-1 had to fit. An uncited key
-        # cannot carry a preprint marker.
+        """The preprint status is carried by the reference list, not by the prose.
+
+        Round one asked that the two concurrent preprints be marked as such at first cite,
+        and the prose said "in a 2026 preprint" / "(a concurrent preprint)". The second
+        author's pass (2026-09-08, annotation 18, writing standard C3) asks for plain
+        citation -- "Sharma et al. [20]" -- because the reference carries the year and the
+        status. Both are satisfied by putting the marker where a reader looks for it: the
+        bibliography entry. swami2026prereg dropped in the round-3 revision (TC caps the
+        list at 45, and HP AN 162-1 had to fit); an uncited key cannot carry a marker.
+        """
+        bib = (REPO / "manuscript_references.bib").read_text(encoding="utf-8")
         for key in ("sharma2026causality", "chandrasekar2026bias"):
+            assert key in main_tex, f"{key} is no longer cited"
+            i = bib.index("{%s," % key)
+            entry = bib[i:bib.index("\n}", i)].lower()
+            assert "preprint" in entry, f"{key}'s bibliography entry must say it is a preprint"
             first = main_tex.index(key)
-            window = main_tex[max(0, first - 300):first + 100].lower()
-            assert "preprint" in window, f"{key} must be marked as a preprint at first cite"
+            window = main_tex[max(0, first - 200):first + 60].lower()
+            assert "preprint" not in window, (
+                f"{key} is cited with an editorial aside about its status; cite plainly and "
+                "let the reference carry it (writing standard C3)")
 
     def test_the_kernel_and_scheduler_are_named(self, main_tex):
         assert "6.8.0-1057-oracle" in main_tex, "the kernel version must be stated"

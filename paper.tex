@@ -297,7 +297,7 @@ metric of the corpus onto the span it covers). The first term, the \emph{send la
 late the send call ran after the event was due, measured on the producer's own thread. A
 \emph{span} is any difference of two of
 these timestamps, and a \emph{negative span} is one whose difference is below zero. The
-term is Sharma et al.'s~\cite{sharma2026causality} (a concurrent preprint), kept for the
+term is Sharma et al.'s~\cite{sharma2026causality}, kept for the
 observable while declining the causal reading they give it. It is not RFC~1242's negative
 latency, a cut-through forwarding artifact~\cite{rfc1242}. \emph{Retention} is the
 fraction of the samples a measurement tool takes that survive into what it reports, not
@@ -446,7 +446,8 @@ two signed errors cancel. A filter admitting only positive samples removes one s
 with it the cancellation that defence depends on.
 
 The mathematics is older still and is not ours: Hewlett-Packard's Application Note
-162-1~\cite{hp1970tia} carries our retention identity, our co-prime denominator, our ceiling
+162-1~\cite{hp1970tia} carries our retention identity, the reduced fraction our grid law
+turns on, our ceiling
 on resolution gain, the symptom and the cure. What is new is the
 sign of the operation. HP \emph{keeps} both readings and the retained fraction \emph{is} the
 estimator; the benchmark discards that population. Our contribution is not the law ---
@@ -457,9 +458,9 @@ harness released in 2018 throws away the quantity a 1970 counter measured with.
 \label{sec:related_tail}
 A runnable thread does not always run, and work-conservation violations are documented for
 CFS-era schedulers~\cite{lozi2016wastedcores}, ours being EEVDF-era. Queueing gives the
-leading-order account, and the geometry contrast of Table~\ref{tab:mechanism} refutes a
+leading-order account, and the core-count contrast of Table~\ref{tab:mechanism} refutes a
 single-parameter law rather than queueing itself.
-Chandrasekar and Kramberger~\cite{chandrasekar2026bias}, in a concurrent preprint, apply
+Chandrasekar and Kramberger~\cite{chandrasekar2026bias} apply
 such a law to benchmark bias and reach our inflation half independently. We refute it on
 the load axis
 (Section~\ref{sec:mechanism}). What a positive number cannot show remains ours: the negative
@@ -502,7 +503,9 @@ cell. Where a manipulation compares settings that differ in one variable, each s
 \emph{configuration} of that manipulation. Utilization\label{def:rho} $\rho$ is the
 fraction of CPU time busy on the host, measured over the run rather than configured. The
 core count $k$\label{def:kcores} is the number of cores the background load occupies; both are
-manipulated in Section~\ref{sec:mechanism}.
+manipulated in Section~\ref{sec:mechanism}. Two settings that reach the same utilization
+with the background load on different numbers of cores differ in \emph{load
+geometry}\label{def:geometry}: \emph{concentrated} on few cores or \emph{spread} over many.
 
 \subsection{Clocks}
 \label{sec:clocks}
@@ -679,8 +682,8 @@ $\tau = 1$~ms.
 Phases are not uniform when the send interval is commensurate with the tick. Write the send
 interval over the tick in lowest terms as $\Delta/\tau = p/q$ with $\gcd(p,q) = 1$. A
 producer then visits exactly $q$ distinct phases. Retention is a count out of $q$ and can
-take only the $q{+}1$ values $0, 1/q, \ldots, 1$. A run lands on one of the two values
-bracketing $T_{\mathrm{true}}/\tau$. The replicate spread follows:
+take only the $q{+}1$ values $0, 1/q, \ldots, 1$, the \emph{vertices} of its grid. A run
+lands on one of the two vertices bracketing $T_{\mathrm{true}}/\tau$. The replicate spread follows:
 \begin{equation}
 \label{eq:quant}
 \text{spread} \;\longrightarrow\;
@@ -699,7 +702,9 @@ $0.00014$ from a vertex and behaving as fully continuous.
 \label{sec:extinference}
 A table of spreads is not a test, so we state one: the mean normalized distance from a
 configuration's replicates to the nearest $q$-grid vertex, against the
-within-configuration permutation null a continuum implies. Supplements~S44 and~S23 give
+within-configuration permutation null that a \emph{continuum} --- retention varying smoothly
+with $T_{\mathrm{true}}/\tau$, as an incommensurate rate gives --- implies.
+Supplements~S44 and~S23 give
 the construction and every configuration with $n \ge 5$. $\gridReject$ of the
 $\gridPowered$ powered configurations reject the continuum null at $\alpha = 0.05$ after
 Holm correction within the family of $\gridArms$. The tenth, $\gridUnresolvedRate$~msg/s,

@@ -1,4 +1,4 @@
-# Faster Than Light, According to the Arithmetic
+# Faster-than-Light: Latency Measurement Artifacts in Streaming Benchmarks
 
 *Two ways a streaming benchmark fails on sub-millisecond paths, and what they left of a Kafka-versus-Redis comparison.*
 
@@ -36,8 +36,8 @@
 
 > ## 🎯 Current target — the contribution
 >
-> **Paper:** [`paper.tex`](paper.tex) — *Faster Than Light, According to the Arithmetic:
-> Two Ways a Streaming Benchmark Fails on Sub-Millisecond Paths*. IEEE format
+> **Paper:** [`paper.tex`](paper.tex) — *Faster-than-Light: Latency Measurement Artifacts
+> in Streaming Benchmarks*. IEEE format
 > (`IEEEtran`, journal), targeting **IEEE Transactions on Computers**, with a companion `supplement.tex`. This is a
 > **systems paper**; the football workload is the setting that produced the finding, not the
 > contribution.
@@ -367,8 +367,7 @@ From 3,315 StatsBomb matches across 52 competition-seasons (2003–2023), via
 
 ## 2. Abstract
 
-> **Title:** *Faster Than Light, According to the Arithmetic: Two Ways a Streaming Benchmark
-> Fails on Sub-Millisecond Paths*
+> **Title:** *Faster-than-Light: Latency Measurement Artifacts in Streaming Benchmarks*
 > **Target:** IEEE Transactions on Computers (`IEEEtran`, journal, `paper.tex`)
 > **Keywords:** streaming systems, latency benchmarking, measurement validity, Apache Kafka,
 > Redis Streams, reproducibility
@@ -909,8 +908,8 @@ is why the check now runs on the artefact a reader actually receives.
 **Status:** compiles clean — 0 errors, 0 undefined references or citations, 0 overfull boxes,
 12 pages against TC's 10–12 budget, exactly 45 references against TC's cap of 45, a 200-word
 abstract against TC's 100–200 range, and four author biographies inside TC's 145-word cap,
-with a 52-page supplement. Five figures and two tables, the bottom of the 6-10 range TC's 12-page papers show; the payload-flip figure went to the supplement in round 43 for the page budget. Title: *Faster Than Light, According
-to the Arithmetic: Two Ways a Streaming Benchmark Fails on Sub-Millisecond Paths*. Formatted
+with a 52-page supplement. Five figures and two tables, the bottom of the 6-10 range TC's 12-page papers show; the payload-flip figure went to the supplement in round 43 for the page budget. Title: *Faster-than-Light: Latency
+Measurement Artifacts in Streaming Benchmarks*. Formatted
 with `IEEEtran` (journal, 10pt) for IEEE Transactions on Computers.
 
 Sentence length is gated too, since round 43. A co-author reported that average sentence
@@ -1045,7 +1044,7 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 ```bibtex
 @article{ricou2026interval,
   author  = {Ricou, Gustavo Pedro and Gregg, David},
-  title   = {Faster Than Light, According to the Arithmetic: Two Ways a Streaming Benchmark Fails on Sub-Millisecond Paths},
+  title   = {Faster-than-Light: Latency Measurement Artifacts in Streaming Benchmarks},
   year    = {2026},
   note    = {Manuscript targeting IEEE Transactions on Computers;
              code and data archived at \url{https://doi.org/10.5281/zenodo.21650031}}

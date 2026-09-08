@@ -120,9 +120,13 @@ class TestMain:
         assert seen["api"] == zd.SANDBOX
 
 
-def _mk(temp_dir):
+def _mk(temp_dir, names=("streaming-latency-sports/README.md",)):
+    """A real (small) zip: main() now opens the bundle to check it for LaTeX sources."""
+    import zipfile
     f = temp_dir / "bundle.zip"
-    f.write_bytes(b"zipcontents")
+    with zipfile.ZipFile(f, "w") as z:
+        for n in names:
+            z.writestr(n, "x")
     return f
 
 
@@ -215,6 +219,54 @@ class TestPathRestriction:
         assert any("/scripts/" in n for n in names)
         assert not any("replay_plans" in n for n in names), \
             "the NC-derived plans must stay excluded"
+        assert zd.latex_in_bundle(out) == [], "no LaTeX source may ship in the record"
+
+
+class TestNoLatexInTheRecord:
+    """The record carries the manuscript as a PDF and never as its sources.
+
+    Decided 2026-09-08 on a co-author's concern that the `.tex` could reappear elsewhere
+    under other names. Two layers: git excludes the sources when it builds the archive, and
+    the built zip is inspected before anything is uploaded. The second layer is what makes
+    the first testable against a real archive rather than against the command line alone.
+    """
+
+    def test_the_sources_are_excluded_by_pathspec(self, temp_dir, monkeypatch):
+        called = {}
+
+        def fake_run(cmd, **kw):
+            called["cmd"] = cmd
+            Path(cmd[cmd.index("-o") + 1]).write_bytes(b"zip")
+            return MagicMock(returncode=0)
+
+        monkeypatch.setattr(zd.subprocess, "run", fake_run)
+        zd.build_bundle(temp_dir / "b.zip")
+        for pattern in ("*.tex", "*.bib", "*.cls", "*.bst", "*.sty"):
+            assert ":(exclude)%s" % pattern in called["cmd"], pattern
+
+    def test_the_real_archive_of_head_has_no_latex(self, tmp_path):
+        out = tmp_path / "head.zip"
+        zd.build_bundle(str(out), ref="HEAD")
+        assert zd.latex_in_bundle(out) == []
+        import zipfile
+        names = zipfile.ZipFile(out).namelist()
+        assert any(n.endswith("paper.pdf") for n in names), \
+            "the built manuscript still ships; only its sources are withheld"
+
+    def test_a_planted_source_is_found(self, temp_dir):
+        bundle = _mk(temp_dir, names=("p/README.md", "p/paper.tex", "p/docs/x.BIB"))
+        assert zd.latex_in_bundle(bundle) == ["p/docs/x.BIB", "p/paper.tex"]
+
+    def test_main_refuses_to_upload_a_bundle_with_sources(self, temp_dir, monkeypatch, capsys):
+        monkeypatch.setenv("ZENODO_API_TOKEN", "tok")
+        monkeypatch.setattr(zd, "build_bundle",
+                            lambda z, ref="HEAD", prefix="", **kw: _mk(temp_dir, ("p/paper.tex",)))
+        monkeypatch.setattr(zd, "create_deposition",
+                            lambda *a, **k: pytest.fail("nothing may be created"))
+        meta = temp_dir / ".zenodo.json"
+        meta.write_text('{"title": "T"}', encoding="utf-8")
+        assert zd.main(["--metadata", str(meta)]) == 1
+        assert "Refusing to upload" in capsys.readouterr().out
 
 
 class TestTokenRejection:
@@ -228,9 +280,7 @@ class TestTokenRejection:
         meta.write_text(json.dumps({"title": "t"}), encoding="utf-8")
         monkeypatch.setenv("ZENODO_API_TOKEN", "x")
         def fake_bundle(z, ref="HEAD", prefix="", **kw):
-            out = tmp_path / "b.zip"
-            out.write_bytes(b"z")
-            return out
+            return _mk(tmp_path)
         monkeypatch.setattr(zd, "build_bundle", fake_bundle)
         resp = requests.Response()
         resp.status_code = 403
@@ -260,9 +310,7 @@ class TestAnErrorThatIsNotARejectedToken:
         monkeypatch.setenv("ZENODO_API_TOKEN", "x")
 
         def fake_bundle(z, ref="HEAD", prefix="", **kw):
-            out = tmp_path / "b.zip"
-            out.write_bytes(b"z")
-            return out
+            return _mk(tmp_path)
 
         monkeypatch.setattr(zd, "build_bundle", fake_bundle)
         resp = requests.Response()
@@ -286,9 +334,7 @@ class TestAnErrorThatIsNotARejectedToken:
         monkeypatch.setenv("ZENODO_API_TOKEN", "x")
 
         def fake_bundle(z, ref="HEAD", prefix="", **kw):
-            out = tmp_path / "b.zip"
-            out.write_bytes(b"z")
-            return out
+            return _mk(tmp_path)
 
         monkeypatch.setattr(zd, "build_bundle", fake_bundle)
 

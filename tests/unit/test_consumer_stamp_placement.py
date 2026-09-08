@@ -1,6 +1,6 @@
 """Where the two consumers take their stamps, relative to the payload parse.
 
-Round 43's finding, made into a gate. Supplement S43.1 audited three stamps, all
+Round 43's finding, made into a gate. Supplement S40.1 audited three stamps, all
 producer-side, while every span the paper reports *ends* at a consumer stamp -- and the two
 consumers do not take theirs in the same place:
 
@@ -71,7 +71,7 @@ class TestRedisStampsBeforeItParses:
         parse = offset(text, r"json\.loads\(fields\[")
         out = offset(text, r"t_output_ns = now_ns\(\)")
         assert recv < parse < out, \
-            "the Redis consumer's payload parse has moved; S43.1 describes it as sitting " \
+            "the Redis consumer's payload parse has moved; S40.1 describes it as sitting " \
             "between t_recv and t_out, and the 19.5 us handling span is that parse"
 
 
@@ -81,8 +81,8 @@ class TestTheAsymmetryIsDisclosedWhereItIsDescribed:
         # LaTeX escapes the underscores, so compare on the text a reader sees.
         body = " ".join(supp.replace("\\_", "_").split())
         assert "value_deserializer" in body, \
-            "S43.1 must say what puts Kafka's parse before the stamp"
-        assert "json.loads" in body, "S43.1 must say what puts Redis's parse after it"
+            "S40.1 must say what puts Kafka's parse before the stamp"
+        assert "json.loads" in body, "S40.1 must say what puts Redis's parse after it"
         for macro in (r"\spanKafkaHandlingNs", r"\spanRedisHandlingNs",
                       r"\spanHandlingRatio", r"\spanHandlingSharePct"):
             assert macro in body, "%s must be read from the ledger, not typed" % macro

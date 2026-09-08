@@ -436,7 +436,7 @@ class TestRegistryMacros:
         assert epn.registry_macros() == []
 
 class TestThePriorityResidualRange:
-    """Section V-C names a constant the model fixes in advance, and S47 used to state the
+    """Section V-C names a constant the model fixes in advance, and S24 used to state the
     range the manipulated arm actually covers from two numbers typed by hand. A referee
     pointed out that a third of the arms sit outside the constant, which makes "floor" the
     wrong word for it -- so the range is emitted and the sentence reads off the ladder."""
@@ -481,7 +481,7 @@ class TestTheManipulationCaptionAndItsThreshold:
     functions of committed artifacts, and none of them was derived -- which is the state the
     paper argues against in its own Section VI-B.
 
-    The same round found MANIP_TOL stated nowhere in either document. S47 reported the
+    The same round found MANIP_TOL stated nowhere in either document. S24 reported the
     withheld count without saying what would earn a withholding, so a reader could not
     distinguish a clean manipulation from a loose tolerance.
     """
@@ -525,7 +525,7 @@ class TestTheManipulationCaptionAndItsThreshold:
         assert got["manipMargin"] == "%.0f" % (MANIP_TOL / worst)
 
     def test_the_worst_gap_is_actually_inside_the_tolerance(self):
-        """S47 now says the rule never fired because nothing came close. Check that."""
+        """S24 now says the rule never fired because nothing came close. Check that."""
         got = dict(epn.manipulation_macros())
         assert float(got["manipWorst"]) < float(got["manipTol"])
         assert int(got["manipMargin"]) > 1
@@ -1041,7 +1041,7 @@ def write_symmetry(path, rows):
 
 
 class TestTheExposureCurve:
-    """The curve the manuscript quotes in Section VI-B and tabulates in Supplement S48.
+    """The curve the manuscript quotes in Section VI-B and tabulates in Supplement S25.
 
     Both come from `_exposure_lags`, which is the point: before round 42 the prose carried
     the numbers as literals and the table computed them, and the two could drift apart
@@ -1829,7 +1829,7 @@ class TestTheHandlingShareIsBounded(object):
 
 
 class TestSpreadMacros:
-    """The counts supplementary material S31 states in words.
+    """The counts supplementary material S22 states in words.
 
     They were typed, and the sentence they formed described a corpus the analyser had
     stopped producing: the phase ledger was built before chain17's `ultimate` campaign
@@ -1862,7 +1862,7 @@ class TestSpreadMacros:
         assert got["spreadPredFlatWord"] == "one"
 
     def test_the_p_values_of_the_misses_are_carried_beside_them(self, monkeypatch):
-        """S31 turns on the replacement statistic answering the arms the spread rule cannot."""
+        """S22 turns on the replacement statistic answering the arms the spread rule cannot."""
         import stat_intervals
         monkeypatch.setattr(stat_intervals, "spread_cells", lambda: [
             self.cell(700, 7, "full", "flat"), self.cell(1000, 1, "full", "full")])
@@ -2013,7 +2013,7 @@ class TestArmMacros:
 
 
 class TestIntervalTable:
-    """S23's three-arm table, whose every row went stale when the phase ledger was rebuilt."""
+    """S19's three-arm table, whose every row went stale when the phase ledger was rebuilt."""
 
     def test_it_reads_the_replicates_from_the_ledger(self):
         out = epn.render_interval_table()

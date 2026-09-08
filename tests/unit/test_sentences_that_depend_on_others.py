@@ -7,14 +7,14 @@ individually wrong.
 
 **The conjunction that lost its antecedent.** Section II-A read
 
-    Nor is the survey one-sided: Supplement S36 gives every row ...
+    Nor is the survey one-sided: Supplement S37 gives every row ...
     Nor is the architecture that produces those spans a blunder to be designed away ...
 
 a matched pair. Round 49 cut the first for the page budget, and the second was left following
 an affirmative sentence, where "Nor is X" has nothing to negate. Both halves were fine; the
 join was not.
 
-**The claim about the other document's silence.** Round 48 added a sentence to S23 saying the
+**The claim about the other document's silence.** Round 48 added a sentence to S19 saying the
 main text "spends a line on each" of three tables, which was false for one. Round 49 fixed it
 twice, in the supplement and in the main text, and the two fixes then disagreed: the
 supplement said the selection bound "answers a question the main text does not raise" while

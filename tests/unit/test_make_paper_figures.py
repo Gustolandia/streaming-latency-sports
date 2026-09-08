@@ -95,7 +95,11 @@ class TestCondemnedAt:
 class TestPlots:
     def test_pipeline_draws_boxes_and_intervals(self, ax):
         plot_pipeline(ax)
-        assert len(ax.patches) == 3, "producer, broker, consumer"
+        # Three stage boxes of the same width; everything else drawn as a patch is an icon
+        # (v4.1: an application window for producer and consumer, a queue for the broker).
+        boxes = [p for p in ax.patches if abs(p.get_width() - 2.4) < 1e-9]
+        assert len(boxes) == 3, "producer, broker, consumer"
+        assert len(ax.patches) > 3, "each stage carries its icon"
         assert not ax.axison
 
     def test_workload_marks_the_medians(self, axes_pair):

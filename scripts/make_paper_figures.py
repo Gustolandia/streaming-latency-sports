@@ -55,13 +55,55 @@ ACK_UNBATCHED_TTI_MS = 4138.0
 
 NL = chr(10)  # a newline that survives every editing route into this file
 
+def _glyph_app(ax, x, y, motif):
+    """A small application icon: a terminal window with a motif inside.
+
+    `motif` is "lines" for the producer (it emits records) and "bars" for the consumer (it
+    reads and aggregates them). Drawn with patches only, so it survives the text-layer and
+    collision checks that read the figure, and it needs no image file.
+    """
+    ax.add_patch(plt.Rectangle((x, y), 0.46, 0.40, facecolor="white", edgecolor=GREY,
+                               linewidth=1.0))
+    ax.plot([x, x + 0.46], [y + 0.32, y + 0.32], color=GREY, linewidth=0.8)   # title bar
+    ax.plot([x + 0.13, x + 0.33], [y - 0.06, y - 0.06], color=GREY, linewidth=1.0)  # stand
+    ax.plot([x + 0.23, x + 0.23], [y - 0.06, y], color=GREY, linewidth=1.0)
+    if motif == "lines":
+        for k, w in enumerate((0.26, 0.18, 0.22)):
+            yy = y + 0.24 - 0.07 * k
+            ax.plot([x + 0.07, x + 0.07 + w], [yy, yy], color=GREY, linewidth=1.0)
+    else:
+        for k, h in enumerate((0.10, 0.18, 0.14)):
+            ax.add_patch(plt.Rectangle((x + 0.09 + 0.10 * k, y + 0.05), 0.06, h,
+                                       facecolor=GREY, edgecolor="none"))
+
+
+def _glyph_queue(ax, x, y):
+    """A small message-queue icon: a channel holding a row of records.
+
+    No arrow out of it: the first draft had one and its head ran into the broker's label,
+    which the layout gate caught (1.6% of the text core under ink).
+    """
+    ax.add_patch(plt.Rectangle((x, y), 0.50, 0.30, facecolor="white", edgecolor=GREY,
+                               linewidth=1.0, joinstyle="round"))
+    for k in range(3):
+        ax.add_patch(plt.Rectangle((x + 0.06 + 0.14 * k, y + 0.07), 0.09, 0.16,
+                                   facecolor=GREY, edgecolor="none"))
+
+
 def plot_pipeline(ax):
     """Draw the replay pipeline, its four timestamps, and the flights they define."""
+    # Each stage carries the icon a reader of message-broker diagrams expects -- an
+    # application window for the producer and the consumer, a queue of records for the
+    # broker -- beside its name (a co-author's suggestion, 2026-09-08). The icons sit in the
+    # left third of each box and the name in the right two thirds.
     boxes = [(0.2, "Producer\n(replay)"), (3.8, "Broker\n(Kafka/Redis)"), (7.4, "Consumer")]
     for x, label in boxes:
         ax.add_patch(plt.Rectangle((x, 1.6), 2.4, 0.9, facecolor="white",
                                    edgecolor=GREY, linewidth=1.4))
-        ax.text(x + 1.2, 2.05, label, ha="center", va="center", fontsize=8.5)
+        ax.text(x + 1.52, 2.05, label, ha="center", va="center", fontsize=8.5)
+    _glyph_app(ax, 0.40, 1.88, "lines")
+    _glyph_queue(ax, 3.92, 1.90)
+    _glyph_app(ax, 7.60, 1.88, "bars")
     for x0, x1 in ((2.65, 3.8), (6.25, 7.4)):
         ax.annotate("", xy=(x1, 2.05), xytext=(x0, 2.05),
                     arrowprops=dict(arrowstyle="->", color=GREY, linewidth=1.2))
@@ -83,12 +125,14 @@ def plot_pipeline(ax):
     # be negative without anything impossible happening. Labelling it "broker transport" on
     # the first figure plants the causal-chain reading the paper then spends a section
     # retracting -- a co-author's finding, and the paper's own Section III-A.
-    spans = [(0.6, 2.4, 0.42, "scheduling lag"), (4.4, 7.6, 0.42, "transport proxy"),
+    # "send lag", the paper's name for t_send - t_sched since v4.1 (it was "scheduling lag",
+    # which collided with the scheduling delay of the timestamping threads).
+    spans = [(0.6, 2.4, 0.42, "send lag"), (4.4, 7.6, 0.42, "transport proxy"),
              (0.6, 7.6, 0.05, "end-to-end TTI")]
     for x0, x1, y, label in spans:
         ax.annotate("", xy=(x1, y), xytext=(x0, y),
                     arrowprops=dict(arrowstyle="<->", color="black", linewidth=1.0))
-        # 0.16, not 0.06. "scheduling lag" is wider than the 1.8-unit arrow it names, so the
+        # 0.16, not 0.06. "scheduling lag" was wider than the 1.8-unit arrow it names, so the
         # text overhangs both arrowheads and the arrow ruled straight through it. The gap was
         # tuned when this figure was 2.20 in tall; round 40 cut it to 1.58 in to save a page,
         # which turned 0.06 data units into about two and a half points -- less than a line.

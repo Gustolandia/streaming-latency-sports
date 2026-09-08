@@ -83,9 +83,11 @@ def equations():
 #: it never checks which label is cited, only that whatever is cited can support the
 #: sentence. That is what keeps it alive across renames.
 CLAIMS = (
-    (r"a law relating the negative-span rate to the\s+flight measured",
+    # v4 (2026-09-08): "flight" retired for the field's word; the claim and the symbol it
+    # requires are unchanged.
+    (r"a law relating the negative-span rate to the delivery being\s+measured",
      (r"T_\{\\mathrm\{true\}\}",),
-     "a law relating a rate to the flight must contain the flight"),
+     "a law relating a rate to the delivery must contain the true delivery"),
     (r"stall distribution\s+overlaps a short flight",
      (r"T_\{\\mathrm\{true\}\}",),
      "an equation about how a distribution overlaps the flight must contain the flight"),
@@ -145,9 +147,9 @@ class TestEveryClaimAboutAnEquationMatchesTheEquation:
         The claim is the paper's delta over Villain et al. Losing it without noticing would
         be worse than mis-citing it.
         """
-        assert re.search(r"a law relating the negative-span rate to the\s+flight measured",
+        assert re.search(r"a law relating the negative-span rate to the delivery being\s+measured",
                          paper), (
-            "Section II no longer claims the rate-to-flight law; if that is deliberate, "
+            "Related Work no longer claims the rate-to-delivery law; if that is deliberate, "
             "retire the CLAIMS entry that guards it, and check the abstract still matches")
 
     def test_the_binding_can_fail(self, equations):

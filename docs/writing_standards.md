@@ -1,10 +1,15 @@
 # Writing standards for the manuscript
 
 Adopted 2026-09-08 from a co-author's sequential pass on v3.0.0, generalised into rules, and
-checked against the field's own usage in the 45 IEEE Transactions on Computers papers held in
-`docs/reference_tc/` (3.2 million characters of running text). Where a rule below says *the
-corpus*, that is the evidence. Each rule is written so that a test can hold it; the ones that
-are gated say so.
+checked against the field's own usage in a corpus of **775 papers, 616 of them from IEEE
+Transactions on Computers** (the rest from the systems-measurement venues the paper cites),
+fetched by `scripts/fetch_vocabulary_corpus.py` into `docs/reference_corpus/` (gitignored)
+and tabulated by `scripts/build_vocabulary_table.py` into
+`docs/generated/corpus_vocabulary.json` (committed). The first draft of this document used
+the 45 hand-collected papers in `docs/reference_tc/`; the counts below are from the full
+corpus, and where the larger corpus changed a count the text says so. Where a rule says
+*the corpus*, that is the evidence. Each rule is written so that a test can hold it; the
+ones that are gated say so.
 
 The one-sentence version, which the rest only unpacks: **the paper must be readable in
 sequential order, by a stranger, without the supplement, with every non-universal term
@@ -17,9 +22,12 @@ work happened in.**
 
 ### A1. `timestamp`, never `stamp`; `timestamping` for the act — GATED
 
-Bare *stamp* (the noun and the verb) occurs **0 times** in the corpus; *timestamp* occurs 159
-times across 8 papers and *timestamping* 11 times. The manuscript used bare *stamp* 65 times
-and the supplement 102. It is colloquial, and it is ours alone.
+*timestamp* occurs 2,545 times across 161 papers in the corpus (642 times across 85 of the
+journal's own) and *timestamping* 189 times across 28; bare *stamp* (the noun and the verb,
+outside *time stamp*) occurs 55 times across 23 papers, so the field says *timestamp* some
+forty-six times for every bare *stamp*. (In the 45-paper draft corpus bare *stamp* did not
+occur at all.) The manuscript used bare *stamp* 65 times and the supplement 102. It is
+colloquial, and the field does not use it for this.
 
 Rule: every *stamp* becomes *timestamp*; every *stamping* becomes *timestamping*; a thread
 that *stamps* now *records a timestamp* or *timestamps*. The gate fails on any bare `stamp`
@@ -27,8 +35,11 @@ in prose outside code identifiers.
 
 ### A2. No `flight` — GATED
 
-In the corpus *flight* appears only inside *in-flight* (requests or packets in flight) and
-as a benchmark's name; never as a noun for a measured interval. Ours was a coinage.
+In the corpus bare *flight* occurs 131 times across 25 of 775 papers, and a read of every
+context shows what it means there: aviation workloads (flight data, flight controllers),
+a clock-calibration system named Flight, Lévy flights, pre-flight checks, and time-of-flight
+sensors; *in-flight* (requests or packets in flight) accounts for another 86 hits. It never
+names a measured interval. Ours was a coinage.
 
 Rule: say what is meant — *send-to-receive latency*, *the measured interval*, *delivery*
 (where the quantity is D). If one word is needed for the true duration, use `T_true` only
@@ -37,7 +48,8 @@ after defining it (see A7). The gate fails on `\bflight`.
 ### A3. No `instrument` as the name of the measuring apparatus — GATED
 
 The corpus uses *instrument* almost only as a verb or as *instrumentation* (the act of adding
-probes). "The instrument's timescale" is a metaphor the field does not share.
+probes: 132 hits across 54 papers); *the instrument* as a noun occurs 6 times across 5
+papers. "The instrument's timescale" is a metaphor the field does not share.
 
 Rule: name the concrete quantity every time: *timestamp resolution*, *timestamping delay*,
 *the benchmark tool*, *the measurement mechanism*. The gate fails on `the instrument`,
@@ -53,10 +65,11 @@ thereafter prefer the concrete condition ("the > 0 filter") to the jargon.
 ### A5. Experimental vocabulary is defined once, in the Experimental Setup, and used consistently — GATED
 
 `run`, `replicate`, `cell`, `arm`, `condition` were used as if interchangeable or self-evident.
-The corpus: *run* and *condition* are universal; *cell* has precedent ("runs per cell",
-"per-cell") in 16 papers and may stay **if defined**; *arm* in the corpus is overwhelmingly
-the ARM architecture, with the experimental sense rare — prefer *configuration* or
-*treatment*, and if *arm* is kept, define it.
+The corpus: *run* (617 of 775 papers) and *condition* (513) are universal; *replicate*
+appears in 99 papers; *cell* has precedent in 133 papers, *per-cell* in 7, and may stay **if
+defined**; *arm* in the corpus is overwhelmingly the ARM architecture, and *experimental
+arm* occurs in exactly one paper — prefer *configuration* or *treatment*, and if *arm* is
+kept, define it. The manuscript now uses *configuration* and never *arm*.
 
 Rule: one paragraph in Experimental Setup defines, in this order and with the containment
 made explicit: **condition** (a point in the design), **cell** (a condition × workload), **run**
@@ -66,7 +79,16 @@ any of the five appears in the paper before the paragraph that defines it.
 ### A6. `grid`, `grid vertex`, `quantum`, `commensurate`, `continuum` are defined in plain language before first use
 
 The grid law only becomes understandable in Section IV, yet *arm*, *grid* and *grid vertex*
-appear in the abstract and contributions. In the corpus *quantum* means quantum computing.
+appear in the abstract and contributions. In the corpus *quantum* means quantum computing
+(3,205 hits concentrated in 56 papers); *quantization* (669 hits across 90 papers) is the
+field's word for the effect. *timestamp resolution* itself has no corpus precedent (0 hits;
+*clock resolution* 3): it is kept because it is plain English and is defined at first use.
+Two neighbouring terms are worth knowing: the corpus prefers *scheduling latency* (12
+papers) to *scheduling delay* (4); the manuscript keeps *scheduling delay* for the wait
+before the timestamping thread runs, because *latency* is already the measured quantity and
+the collision would cost more than the precedent buys. *System model* (98 papers),
+*experimental setup* (196) and *threats to validity* (17) are the field's section names and
+are the ones used.
 
 Rule: at first mention, in words a reader can hold onto — the **quantum** is the timestamp
 resolution; the **grid** is the finite set of phases the timestamp can take when the send

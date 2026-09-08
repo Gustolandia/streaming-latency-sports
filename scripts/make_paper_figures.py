@@ -77,7 +77,13 @@ def plot_pipeline(ax):
         ax.text(x, 0.98, proc, ha="center", va="top", fontsize=8, color=GREY,
                 style="italic")
 
-    spans = [(0.6, 2.4, 0.42, "scheduling lag"), (4.4, 7.6, 0.42, "broker transport"),
+    # "transport proxy", not "broker transport". The span from t_ack to t_recv subtracts a
+    # producer-side observation of the broker's append from the consumer's receipt; the two
+    # are unordered branches of one cause, so the difference is a proxy for delivery and can
+    # be negative without anything impossible happening. Labelling it "broker transport" on
+    # the first figure plants the causal-chain reading the paper then spends a section
+    # retracting -- a co-author's finding, and the paper's own Section III-A.
+    spans = [(0.6, 2.4, 0.42, "scheduling lag"), (4.4, 7.6, 0.42, "transport proxy"),
              (0.6, 7.6, 0.05, "end-to-end TTI")]
     for x0, x1, y, label in spans:
         ax.annotate("", xy=(x1, y), xytext=(x0, y),

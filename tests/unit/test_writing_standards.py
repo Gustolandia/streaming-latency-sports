@@ -162,6 +162,11 @@ class TestSymbolsAreDefinedBeforeUse:
         "czero": r"C_0\b",
         "rho": r"\\rho\b",
         "kcores": r"\bk\s*\{?=\}?\s*6\b|\$k\$",
+        # v4.1 (2026-09-08): the co-author's confusion point -- "scheduling delay" (the
+        # timestamping thread's wait for a core) beside the TTI term once called "scheduling
+        # lag" (the send call's lateness). The term is defined where it first appears and
+        # the TTI term is now the "send lag".
+        "scheddelay": r"[Ss]cheduling delay",
     }
 
     @pytest.mark.parametrize("name", sorted(SYMBOLS))

@@ -82,7 +82,7 @@ def documents():
 
 
 class TestTheSpreadLawIsStatedOnce:
-    """Equation 5 of the main text and its twin in supplementary material S31."""
+    """Equation 5 of the main text and its twin in supplementary material S22."""
 
     def test_both_documents_state_the_same_two_branches(self, branches):
         main, supp = branches
@@ -195,9 +195,9 @@ class TestEveryCountOfNegativesIsChecked:
             "it; quote it, claim it, or stop emitting it." % ", ".join(loose))
 
     def test_the_supplement_no_longer_types_its_own_zero(self, documents):
-        """S10 reported the cross-host result in words beside no number at all."""
+        """S11 reported the cross-host result in words beside no number at all."""
         assert "measures zero negatives" not in documents, (
-            "supplementary material S10 is typing a count the ledger emits")
+            "supplementary material S11 is typing a count the ledger emits")
 
 
 class TestTheCrossHostArmIsDescribedCorrectly:

@@ -44,9 +44,26 @@ SANDBOX = "https://sandbox.zenodo.org/api"
 # judgement and are cited nowhere.
 NC_DERIVED_PATHS = ("data/processed/replay_plans", "docs/reference_tc")
 
+# LaTeX sources never ship in the record. The replication object keeps the manuscript as a
+# PDF, which is what a reader checks sentences against, and a co-author's concern
+# (2026-09-08) was the .tex reappearing elsewhere under other names. The sources are
+# excluded by git pathspec at archive time AND the built zip is checked before upload, so
+# neither a new file nor a new path can bring them back. (git matches `*` across `/`, so
+# `*.tex` reaches every directory.)
+LATEX_SOURCES = ("*.tex", "*.bib", "*.cls", "*.bst", "*.sty")
+EXCLUDED_PATHS = NC_DERIVED_PATHS + LATEX_SOURCES
+
+
+def latex_in_bundle(bundle):
+    """Names inside `bundle` that are LaTeX sources; empty when the record is clean."""
+    import zipfile
+    suffixes = tuple(p.lstrip("*") for p in LATEX_SOURCES)
+    with zipfile.ZipFile(bundle) as z:
+        return sorted(n for n in z.namelist() if n.lower().endswith(suffixes))
+
 
 def build_bundle(out_zip, ref="HEAD", prefix="streaming-latency-sports/",
-                 exclude=NC_DERIVED_PATHS, paths=(".",)):
+                 exclude=EXCLUDED_PATHS, paths=(".",)):
     """Archive the tracked tree at `ref` with git, so gitignored data is excluded by design.
 
     `exclude` additionally drops paths that must not appear in the record. git pathspec magic
@@ -173,6 +190,10 @@ def main(argv=None):
     api = SANDBOX if args.sandbox else LIVE
     bundle = build_bundle(args.zip, args.ref, paths=tuple(args.paths))
     print(f"Bundled {args.ref} -> {bundle} ({bundle.stat().st_size/1e6:.1f} MB)")
+    latex = latex_in_bundle(bundle)
+    if latex:
+        print("Refusing to upload: LaTeX sources in the bundle: %s" % ", ".join(latex))
+        return 1
 
     meta = load_metadata(args.metadata)
     try:

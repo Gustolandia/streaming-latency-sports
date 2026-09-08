@@ -120,7 +120,8 @@ class TestTheSupplementNamesSectionsRatherThanNumberingThem:
         values = dict(re.findall(r"\\newcommand\{\\(main[A-Za-z]+)\}\{([^}]*)\}", supp))
         assert values, "the macro block must exist"
         for name, number in sorted(values.items()):
-            assert re.match(r"^[IVX]+(?:-[A-D])?$", number), \
+            # v4 split Experimental Setup six ways (IV-A..IV-F), so the letter runs to F.
+            assert re.match(r"^[IVX]+(?:-[A-F])?$", number), \
                 "%s holds %r, which is not a section number" % (name, number)
 
 
@@ -192,8 +193,11 @@ class TestEveryTargetedRelocationIsReachable:
     it.
     """
 
-    #: Where bulk relocation stopped and targeted relocation began.
-    FIRST_TARGETED = 45
+    #: The targeted relocations. Until v4 these were "everything from S45 onward"; the v4
+    #: recast (2026-09-08) reordered the supplement into four parts and renumbered it, so the
+    #: eleven sections that used to be S45--S55 now sit where their part puts them. They are
+    #: listed by their new numbers; the concordance is in the supplement's numbering note.
+    TARGETED = frozenset({36, 23, 24, 25, 35, 51, 42, 52, 43, 44, 26})
 
     def _sections(self, supp):
         return sorted({int(n) for n in re.findall(r"\\section\{S(\d+)\.", supp)})
@@ -204,21 +208,20 @@ class TestEveryTargetedRelocationIsReachable:
             out.add(int(m.group(1)))
         return out
 
-    def test_every_section_from_the_targeted_range_is_pointed_at(self, paper, supp):
+    def test_every_targeted_section_is_pointed_at(self, paper, supp):
         pointed = self._pointed_at(paper)
         missing = [n for n in self._sections(supp)
-                   if n >= self.FIRST_TARGETED and n not in pointed]
+                   if n in self.TARGETED and n not in pointed]
         assert not missing, (
             "supplement section(s) the paper never sends anyone to: %s -- a passage moved out "
             "of a paragraph is reachable only through that paragraph, so a relocation without "
             "a pointer is a deletion with extra steps" % ["S%d" % n for n in missing])
 
-    def test_the_boundary_is_where_we_say_it_is(self, supp):
-        """If the targeted range ever starts below S45 this rule silently widens onto the
-        bulk moves and starts failing on twenty sections nobody intended to point at."""
-        sections = self._sections(supp)
-        assert self.FIRST_TARGETED in sections, "S%d must exist" % self.FIRST_TARGETED
-        assert max(sections) > self.FIRST_TARGETED, "no targeted relocations to police"
+    def test_the_targeted_sections_exist(self, supp):
+        """A renumbering that loses one of them would make the rule above vacuous for it."""
+        sections = set(self._sections(supp))
+        gone = sorted(self.TARGETED - sections)
+        assert not gone, "targeted section(s) no longer exist: %s" % ["S%d" % n for n in gone]
 
     def test_the_check_can_fail(self, paper, supp):
         """A reachability test that cannot notice an unreachable section is decoration."""

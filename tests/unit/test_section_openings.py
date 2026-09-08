@@ -3,7 +3,7 @@ r"""Every section opens with something a reader could disagree with.
 The rule the manuscript is written to: a section's first sentence states the section's claim,
 not what the section is about and not where to find things. A round-23 review found the one
 place it had lapsed --- Section III-C opened with "Figure 1(a) names the four stamps;
-Supplement S45 maps them onto the span each metric covers", pure navigation, while the
+Supplement S36 maps them onto the span each metric covers", pure navigation, while the
 section's own claim sat four sentences down under a sentence saying it was the most useful
 thing in the paper.
 

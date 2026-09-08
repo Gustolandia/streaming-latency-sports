@@ -410,7 +410,7 @@ class TestSecondWithdrawalIsStated:
     catch, so the text must state it plainly rather than hedge it.
     """
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; the second withdrawal is one sentence in Sec. V-C plus supplement S35")
+    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; the second withdrawal is one sentence in Sec. V-C plus supplement S1")
 
     def test_the_withdrawal_is_explicit(self, tex):
         section = _section(tex, "sec:attribution")
@@ -511,9 +511,9 @@ class TestSecondWithdrawalIsStated:
         assert "---" not in table, "no unmeasured-count placeholder may remain in the table"
         # Three Redis rows, each ending in the measured "0 & 0" counts.
         assert table.count("& 0 & 0") >= 3, "each Redis window row must show measured 0 late, 0 blocking"
-        assert "both arms" in table.lower() or "same instrument" in table.lower()
+        assert "both configurations" in table.lower() or "same tracer" in table.lower()
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; instrumentation history is supplement S35")
+    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; instrumentation history is supplement S1")
 
     def test_the_one_armed_instrumentation_is_recorded_as_fixed(self, tex):
         """The failure is worth keeping in the text, but as something we corrected."""
@@ -1032,7 +1032,7 @@ class TestExternalHarnessEvidence:
         low = " ".join(tex.lower().split())
         assert "vacuous zero" in low or "never runs discards nothing" in low, (
             "the paper must own the zero that reached a draft from a run that never happened")
-        assert "reached a draft" in low or "artifact of the instrument" in low
+        assert "reached a draft" in low or "artifact of the tracer" in low
 
     def test_the_result_matches_its_artefact(self, tex):
         """Guards the count AND the evidence that the run happened.
@@ -1103,7 +1103,7 @@ class TestH2FormIsWithdrawn:
         assert not fit["mg1_better"], "if this passes, the withdrawal must be revisited"
         assert fit["best_alternative"] == "exponential"
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; the M/G/1 withdrawal is in Sec. V-F, the shape discussion in supplement S35.4")
+    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; the M/G/1 withdrawal is in Sec. V-F, the shape discussion in supplement S1.4")
 
     def test_the_paper_withdraws_the_form_and_keeps_the_shape(self, tex):
         rules = _section(tex, "sec:rules")
@@ -1184,7 +1184,7 @@ class TestTwoStateModel:
     def test_the_occupancy_result_matches_its_artefact(self, tex):
         rows = _rows("model", "stamping_priority.csv")
         assert rows, "the E-A5 artefact must exist"
-        section = tex  # v2/TPDS: the mechanism tables live in supplement S25
+        section = tex  # v2/TPDS: the mechanism tables live in supplement S20
         for r in rows:
             assert r["confounded"] == "False", "a confounded cell must not be reported"
             # Utilisation equality is the premise of the whole comparison.
@@ -1264,7 +1264,7 @@ class TestNarrativeArc:
                              ("the broker answer", "0.41")):
             assert token.lower() in low, f"conclusion omits {claim}"
 
-    @pytest.mark.skip(reason="the TC rewrite deliberately changed this structure (docs/tc_plan.md sec.3); the test encoded the previous paper's shape; the conclusion no longer restates the chronology, which moved to supplement S35")
+    @pytest.mark.skip(reason="the TC rewrite deliberately changed this structure (docs/tc_plan.md sec.3); the test encoded the previous paper's shape; the conclusion no longer restates the chronology, which moved to supplement S1")
 
     def test_the_story_returns_to_the_original_question(self, tex):
         conclusion = tex[tex.index(r"\section{Conclusion}"):]
@@ -1431,7 +1431,7 @@ class TestRateProvenanceIsDisclosed:
     audits its own data for physical impossibility cannot quietly assert a rate it cannot show.
     """
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; the provenance gap is supplement S35.6")
+    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; the provenance gap is supplement S1.6")
 
     def test_the_section_exists_and_states_the_compression(self, tex):
         assert r"\label{sec:rateprovenance}" in tex
@@ -1613,7 +1613,7 @@ class TestLoadGeometryAndTtrue:
     """
 
     def test_the_geometry_result_is_in_the_paper(self, tex):
-        section = tex  # v2/TPDS: the mechanism tables live in supplement S25
+        section = tex  # v2/TPDS: the mechanism tables live in supplement S20
         rows = _rows("model", "ea6", "knee_resolution.csv")
         assert rows, "the E-A6 artefact must exist"
         by = {r["condition"]: float(r["inversion_rate"]) for r in rows}
@@ -1760,7 +1760,7 @@ class TestLoadGeometryAndTtrue:
         # reach the prose. The footnote is a separate claim from the paragraph.
         table = tex[tex.index(r"\label{tab:ea9}"):]
         table = table[:table.index(r"\end{table}")]
-        assert "withheld by the instrument check" in table, \
+        assert "withheld by the tracer check" in table, \
             "the table must mark the withheld arm as withheld"
         assert "shown, not used" in table, \
             "the table must say the withheld arm is shown but not relied on"
@@ -1779,8 +1779,8 @@ class TestLoadGeometryAndTtrue:
         section = " ".join(tex.split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         # A single required phrase. An `or` of three acceptable wordings passes as soon as any
         # one of them survives, so deleting the attribution left the test green.
-        assert "is an artifact of the instrument" in section, \
-            "the real-time zero must be attributed to the instrument, not left open"
+        assert "is an artifact of the tracer" in section, \
+            "the real-time zero must be attributed to the tracer, not left open"
         assert "unexplained" not in section.split("real-time arm's zero")[-1][:400], \
             "the zero must not still be described as unexplained"
 
@@ -1848,7 +1848,7 @@ class TestLoadGeometryAndTtrue:
         related work -- and Section 7.3 never reported it. An abstract may summarise the body;
         it may not be the only place a result appears.
         """
-        section = " ".join(tex.split())  # v2/TPDS: the mechanism tables live in supplement S25
+        section = " ".join(tex.split())  # v2/TPDS: the mechanism tables live in supplement S20
         rows = {r["arm"]: r for r in _rows("model", "runq_tail.csv")}
         base = rows["base"]
         assert _contains_number(section, float(base["p_tail"]), 3), \
@@ -2011,7 +2011,7 @@ class TestLoadGeometryAndTtrue:
         proportions with no n behind it cannot be checked by anyone, including us -- so the
         counts are now recorded, and this test recomputes every z the paper prints.
         """
-        section = " ".join(tex.split())  # v2/TPDS: the mechanism tables live in supplement S25
+        section = " ".join(tex.split())  # v2/TPDS: the mechanism tables live in supplement S20
         campaigns = {
             ("ea6",): (("k5", 4.09), ("k6", 10.27), ("k7", 1.22)),
             ("ea6b",): (("k5", 8.89), ("k6", 8.44), ("k7", 3.46)),
@@ -2074,7 +2074,7 @@ class TestLoadGeometryAndTtrue:
             assert v in table, f"ratio {v} missing from tab:ea6"
 
     def test_the_ttrue_sweep_is_in_the_paper(self, tex):
-        section = tex  # v2/TPDS: the mechanism tables live in supplement S25
+        section = tex  # v2/TPDS: the mechanism tables live in supplement S20
         rows = _rows("model", "ttrue_sweep.csv")
         assert rows, "the E-A10 artefact must exist"
         for r in rows:
@@ -2202,7 +2202,7 @@ class TestRecoveredProvenance:
         assert m, "the recovered e1.sh no longer names a speedup"
         flag = m.group(1)
         assert flag in " ".join((tex + supp).split()), \
-            f"the submission (main or supplement S1) must quote the recovered flag {flag}"
+            f"the submission (main or supplement S6) must quote the recovered flag {flag}"
         # 1/120 against a plan already compressed 120x is true real time.
         assert abs(float(flag) - 1 / 120) < 1e-5, \
             f"{flag} is not 1/120; the true-real-time reading needs revisiting"
@@ -2224,12 +2224,12 @@ class TestRecoveredProvenance:
         assert stamp.replace("_", "") in log.replace("_", "").replace(":", ""), \
             f"the E1 artefact's first run {first} is not in the recovered log"
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; recovered-provenance detail is supplement S35.6")
+    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; recovered-provenance detail is supplement S1.6")
 
     def test_the_paper_keeps_the_inference_ahead_of_the_confirmation(self, tex, supp):
         """Reporting only the flag would hide that the rate was determined without it.
 
-        The full episode moved to supplement S1; the ordering obligation moved with it, and the
+        The full episode moved to supplement S6; the ordering obligation moved with it, and the
         main-text summary must still tell the reader the episode exists."""
         assert "supplementary material" in _section(tex, "sec:rateprovenance").lower()
         section = " ".join(supp.split())
@@ -2266,7 +2266,7 @@ class TestRefereeRoundOne:
             "if it returns to the main text, this pin should return with it"
         assert r"\label{tab:mechanism}" in main_tex, "the mechanism table must be in the paper"
         confirmation = " ".join(_section(main_tex, "sec:extcomp").split())
-        assert "S31" in confirmation, \
+        assert "S22" in confirmation, \
             "the confirmation paragraph must point at the section that draws it"
 
     def test_the_traced_slope_cross_check_is_withdrawn_not_requoted(self, main_tex, supp):
@@ -2593,7 +2593,7 @@ class TestCausalityFramingIsWithdrawn:
         """
         source = (REPO / "scripts" / "make_paper_figures.py").read_text(encoding="utf-8")
         # Round 52 split plot_model() into plot_mechanism() -- panel (a), still the paper's
-        # mechanism figure -- and plot_delta(), the schematic that moved to Supplement S12.
+        # mechanism figure -- and plot_delta(), the schematic that moved to Supplement S16.
         # The stamps this pin guards are drawn by plot_mechanism(), so that is where it looks
         # now. The requirement is unchanged, and pointing it at the delegating stub would
         # have made it pass on an empty function, which is the failure mode it exists for.
@@ -2606,7 +2606,9 @@ class TestCausalityFramingIsWithdrawn:
         rendered = PdfReader(str(REPO / "docs" / "results" / "figures" /
                                  "measurement_model.pdf")).pages[0].extract_text()
         flat = "".join(rendered.split())  # subscripts and line breaks collapse on extraction
-        for token in ("tsched", "tsend", "schedulinglag"):
+        # v4.1: the span between them is the "send lag" (it was "scheduling lag", which
+        # collided with the scheduling delay of the timestamping threads).
+        for token in ("tsched", "tsend", "sendlag"):
             assert token in flat, f"the committed figure file must render {token!r}"
 
         fig = main_tex[main_tex.index(r"\label{fig:model}") - 1500:
@@ -2800,13 +2802,13 @@ class TestRefereeRoundTwo:
         argument is that an unverifiable number is not yet one."""
         section = " ".join(_section(main_tex, "sec:tail").split())
         assert "derived" in section, "the main text must still call the constants derived"
-        # The working itself moved to Supplement S44 when the figures were redrawn at
+        # The working itself moved to Supplement S41 when the figures were redrawn at
         # printable size; the claim stayed here and the arithmetic went there.
         supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
-        derivation = " ".join(supp[supp.index("S44."):].split())
+        derivation = " ".join(supp[supp.index("S41."):].split())
         assert "rather than measured" in derivation
         # Wherever a constant is printed it must be a macro, never typed. Two of these now
-        # appear only in S44, which is where the derivation went.
+        # appear only in S41, which is where the derivation went.
         package = main_tex + "\n" + (REPO / "supplement.tex").read_text(encoding="utf-8")
         for macro in (r"\testbedCpus", r"\sliceFactor", r"\baseSliceMs", r"\kernelHz",
                       r"\tickMs"):
@@ -2821,7 +2823,7 @@ class TestRefereeRoundTwo:
         are 5/8, 6/8 and 7/8. A shape description would not be checkable from the artefacts;
         k/rho is. Neither document should fall back on 'eight-vCPU'."""
         assert "eight-vCPU" not in main_tex and "eight-vCPU" not in supp
-        derivation = " ".join(supp[supp.index("S44."):].split())
+        derivation = " ".join(supp[supp.index("S41."):].split())
         assert "rho" in derivation and "k/" in derivation, "the count needs its evidence shown"
 
     def test_the_slice_is_insensitive_to_an_undercounted_machine(self):
@@ -2834,7 +2836,7 @@ class TestRefereeRoundTwo:
         assert kc.base_slice_ns(7) < kc.base_slice_ns(8),             "below the clamp the answer would differ, which is why 8 had to be established"
 
     def test_the_derivation_states_what_it_cannot_prove(self, supp):
-        derivation = " ".join(supp[supp.index("S44."):].split())
+        derivation = " ".join(supp[supp.index("S41."):].split())
         assert "strong evidence rather than proof" in derivation
 
     def test_the_kernel_config_artefact_is_committed_with_its_hash(self):
@@ -2848,7 +2850,7 @@ class TestRefereeRoundTwo:
         One early phase pinned the load generator while utilisation was measured across all
         cores; it feeds no reported result, and the paper now says so."""
         section = " ".join(_section(main_tex, "sec:testbeds").split())
-        # The disclosure moved to Supplement S35.0 when the main text was compressed to pay
+        # The disclosure moved to Supplement S1.0 when the main text was compressed to pay
         # for legible figures; the main text still says a phase was excluded, and the
         # submission is both documents.
         assert "excluded from every result" in section, \
@@ -2989,7 +2991,7 @@ class TestInterpreterLockRival:
         flat = " ".join(supp.lower().split())
         assert "interpreter lock" in flat
         assert "switch interval" in flat, \
-            "S43.4 must record that the switch interval was left at its default"
+            "S40.4 must record that the switch interval was left at its default"
 
 
 class TestRoundTwelveRegressions:
@@ -3027,7 +3029,7 @@ class TestRoundTwelveRegressions:
             "the headroom argument must keep disowning the shared-endpoint reasoning"
 
     def test_the_interpreter_rival_does_not_appeal_to_the_traced_figure(self, supp):
-        """S43.4 says the traced estimator is blind to the lock; it cannot then cite it.
+        """S40.4 says the traced estimator is blind to the lock; it cannot then cite it.
 
         Figure 8 is the runqlat histogram. A term that deposits no mass in it cannot be
         argued about from it, and the round-11 draft did exactly that two sentences after
@@ -3035,10 +3037,10 @@ class TestRoundTwelveRegressions:
         """
         flat = " ".join(supp.split())
         i = flat.find("traced estimator cannot see this term")
-        assert i > 0, "S43.4 must state that the traced estimator is blind to the lock"
+        assert i > 0, "S40.4 must state that the traced estimator is blind to the lock"
         window = flat[i:i + 1200]
         assert "deposit mass in the same band" not in window, \
-            "S43.4 cannot claim the lock deposits mass in a histogram it is invisible to"
+            "S40.4 cannot claim the lock deposits mass in a histogram it is invisible to"
 
 
 class TestReferenceHouseStyle:
@@ -3271,7 +3273,7 @@ class TestClaimsWithdrawnForWantOfEvidenceStayWithdrawn:
             "S52.3's 42-study synthesis supports 'the shared instrument', not 'most used'. "
             "Use the Introduction's wording"),
         "every mainstream client": (
-            "unevidenced universal: Supplement S38 bounds the reading at three runtimes"),
+            "unevidenced universal: Supplement S48 bounds the reading at three runtimes"),
     }
 
     @pytest.mark.parametrize("doc", ["paper", "supplement"])
@@ -3373,7 +3375,7 @@ class TestTheCoAuthorsRequirementsAreMet:
 
 
 class TestTheExposureCurveIsGeneratedNotTyped:
-    """Section VI-B quotes the exposure curve; Table S48 computes it. One source, not two.
+    """Section VI-B quotes the exposure curve; Table S25 computes it. One source, not two.
 
     Until round 42 the prose carried "$7\\%$ at a $10$~ms path, $1\\%$ at $100$~ms" and
     "$11\\%$ at $10$~ms" as literals while `render_exposure_table()` computed the same three
@@ -3404,7 +3406,7 @@ class TestTheExposureCurveIsGeneratedNotTyped:
         for name in self.EXPOSURE_MACROS:
             assert "\\" + name in para, (
                 "the exposure paragraph no longer uses \\%s; if the curve was re-typed by "
-                "hand, the table in Supplement S48 and this sentence can now disagree "
+                "hand, the table in Supplement S25 and this sentence can now disagree "
                 "silently" % name)
 
     def test_no_bare_percentage_survives_in_the_exposure_paragraph(self, main_tex):
@@ -3533,14 +3535,14 @@ class TestEveryPlannedFigureIsPlacedOrExcusedInWriting:
         # produced the deletion histogram: the co-author pointed at the external benchmark's
         # own published latency chart and observed that its axes cannot show a population
         # left of zero. Drawn, not placed, and a deliberate hold rather than an oversight --
-        # the histogram now in S41 makes the same point from our data, and these two would
+        # the histogram now in S38 makes the same point from our data, and these two would
         # restate it against a third party's chart.
         "axis_comparison":
             "not placed: the external benchmark's published distribution beside ours on "
-            "identical axes; superseded for now by the S41 histogram",
+            "identical axes; superseded for now by the S38 histogram",
         "omb_axes_explained":
             "not placed: why that published chart's own axes cannot show the deletion; the "
-            "same point, and the S41 histogram carries it on our own corpus",
+            "same point, and the S38 histogram carries it on our own corpus",
     }
 
     def _planned(self):

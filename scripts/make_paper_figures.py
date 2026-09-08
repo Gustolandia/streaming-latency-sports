@@ -239,7 +239,7 @@ def plot_mechanism(mech_ax):
         mech_ax.text(x, y_app + 0.28, sym, fontsize=8, ha="center", color=KAFKA)
     mech_ax.annotate("", xy=(3.65, y_app), xytext=(2.95, y_app),
                      arrowprops=dict(arrowstyle="<->", color=GREY, linewidth=0.9))
-    mech_ax.text(3.55, y_app - 0.20, "scheduling lag", fontsize=8, color=GREY, ha="right",
+    mech_ax.text(3.55, y_app - 0.20, "send lag", fontsize=8, color=GREY, ha="right",
                  va="top")
 
     # The broker's append, and the two branches descending from it.
@@ -292,8 +292,11 @@ def plot_mechanism(mech_ax):
                  linestyle=(0, (2, 2)), zorder=0)
     mech_ax.annotate("", xy=(6.45, 1.72), xytext=(7.10, 1.72),
                      arrowprops=dict(arrowstyle="->", color="#b22222", linewidth=1.3))
-    mech_ax.text(7.30, 1.72, r"$T_{meas}=t_{recv}-t_{ack}<0$" "\n"
-                 r"even though $T_{true}>0$",
+    # Labelled in the paper's own model (Section II): S is the acknowledgment-referenced
+    # span and D the delivery, so the inversion reads S < 0 although D > 0 -- not a
+    # T_meas/T_true pair the text never defines (co-author comment 16, 2026-09-08).
+    mech_ax.text(7.30, 1.72, r"$S=t_{recv}-t_{ack}<0$" "\n"
+                 r"although the delivery $D>0$",
                  fontsize=8, color="#b22222", ha="left", va="center")
 
     # The other broker's path, named rather than implied -- and named CAREFULLY.
@@ -309,7 +312,7 @@ def plot_mechanism(mech_ax):
     # reading that moving it fixes the sign. It does not. The hand-off is an increment on
     # top of the wakeup, worth tens of microseconds of median, not the thing itself.
     mech_ax.text(2.45, 0.14,
-                 "Kafka path drawn. Redis stamps $t_{ack}$ on the app thread and"
+                 "Kafka path drawn. Redis timestamps $t_{ack}$ on the app thread and"
                  "\ninverts anyway: the wait for a core is charged either way.",
                  fontsize=8, color=GREY, ha="left", va="center", linespacing=1.15)
 

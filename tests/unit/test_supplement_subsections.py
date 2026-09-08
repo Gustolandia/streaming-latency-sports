@@ -102,7 +102,7 @@ def _owning_section(supp, pos):
 _BREAKS = ".;:"
 
 #: Below this many content words a clause is too thin to judge, and the window steps back to
-#: the previous boundary. `(Supplement~S43.4)` on its own carries none.
+#: the previous boundary. `(Supplement~S40.4)` on its own carries none.
 _MIN_WORDS = 2
 
 
@@ -149,9 +149,9 @@ def _body(supp, pos):
 class TestEverySubsectionIsNumbered:
     """A contents list where some entries have numbers and some do not is read as a mistake.
 
-    `TestSupplementNumbering.test_headings_punctuate_consistently` exists because S1--S5 used
-    a colon where S6--S42 used a period. This is that defect one level down and larger: three
-    subsections under S8 and S19 printed as bare titles beside twenty-seven numbered ones.
+    `TestSupplementNumbering.test_headings_punctuate_consistently` exists because S6--S9 used
+    a colon where S3--S39 used a period. This is that defect one level down and larger: three
+    subsections under S5 and S7 printed as bare titles beside twenty-seven numbered ones.
     """
 
     def test_no_subsection_lacks_its_number(self, supp):
@@ -162,7 +162,7 @@ class TestEverySubsectionIsNumbered:
 
     def test_the_check_would_notice_a_bare_title(self):
         assert not re.match(r"S\d+\.\d+\.", "The result")
-        assert re.match(r"S\d+\.\d+\.", "S8.1. The result")
+        assert re.match(r"S\d+\.\d+\.", "S5.1. The result")
 
 
 class TestSubsectionNumbersAreWellFormed:
@@ -184,7 +184,7 @@ class TestSubsectionNumbersAreWellFormed:
             "a citation of the number cannot be resolved by a reader: %s" % dup)
 
     def test_numbers_run_without_a_gap(self, supp):
-        """S35 starts at .0 and the rest at .1, so the rule is contiguity, not a fixed start."""
+        """S1 starts at .0 and the rest at .1, so the rule is contiguity, not a fixed start."""
         by = defaultdict(list)
         for sec, sub, _, _ in _numbered(supp):
             by[sec].append(sub)
@@ -214,7 +214,7 @@ class TestThePaperPointsAtSubsectionsThatExist:
     def test_a_standards_clause_is_not_read_as_a_pointer(self):
         r"""The supplement cites `\S6.4.1` of IEEE 1241; we do not own that number."""
         assert not _pointers(r"the clause (\S6.4.1, Eq.~(28)) requires")
-        assert _pointers("as Supplement~S6.4 shows")
+        assert _pointers("as Supplement~S3.4 shows")
 
 
 class TestAPointerLandsOnItsSubject:
@@ -263,6 +263,9 @@ class TestAPointerLandsOnItsSubject:
 class TestTheseChecksCanFail:
     """Every rule above is asserted to notice its own defect, on a fixture built to carry it."""
 
+    # Synthetic numbers: this fixture is a broken document of its own, not the supplement,
+    # so its S9/S7 have nothing to do with any real section (the v4 renumbering sweep once
+    # rewrote them along with the real pointers and every self-test below went wrong).
     BROKEN = "\n".join([
         r"\section{S9. A section}",
         r"\subsection{S9.1. First}", "prose",

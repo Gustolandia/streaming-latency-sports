@@ -4,7 +4,7 @@ Round 45 found prose pointers to *sections* that no longer resolved and gated th
 found the same defect one level down, at float level, and it had already broken in the built
 PDF.
 
-Four tables in S23 -- the send-interval ladder, the payload sweep, the load sweep behind the
+Four tables in S19 -- the send-interval ladder, the payload sweep, the load sweep behind the
 withdrawn queueing form, and the selection bound -- carried no `\\label`. They were the only
 four unlabelled floats in either document. Because they could not be referenced, the prose
 introducing them pointed by position:

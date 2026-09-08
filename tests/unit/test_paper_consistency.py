@@ -2373,9 +2373,14 @@ class TestRefereeRoundOne:
         # "Stated plainly" -- the same register, but less informal as a journal article's
         # opening three words -- so the pin counts the current marker and forbids the old
         # one returning beside it.
+        # v4 (2026-09-08) retires the marker altogether. The second author's pass asked for
+        # an introduction that opens on context rather than on a statement about the
+        # paper's own register, and a marker that announces plainness is exactly the
+        # meta-commentary the writing standards forbid. The pin now holds the thinning
+        # only: never more than one, and never the old phrase.
         rendered = main_tex.replace("\\IEEEPARstart{S}{tated}", "Stated")
-        assert rendered.count("Stated plainly") == 1, \
-            "the TC version keeps exactly one plain-register marker, in the introduction"
+        assert rendered.count("Stated plainly") <= 1, \
+            "at most one plain-register marker, and none is the standard now"
         assert "In plain terms" not in rendered, "one marker, not two"
 
 
@@ -3345,29 +3350,26 @@ class TestTheCoAuthorsRequirementsAreMet:
         for lane in ("producer app", "client I/O", "consumer app"):
             assert lane in body, "the mechanism figure lost its %r lane" % lane
 
-    def test_the_flight_is_defined_before_it_is_used(self, main_tex):
-        """"What is an interval" was the co-author's second question. The manuscript answers
-        it by retiring the word for the timing sense and defining `flight` in its place; the
-        definition has to precede the uses, not follow them."""
+    def test_the_timing_term_is_defined_before_it_is_used(self, main_tex):
+        """"What is an interval" was the co-author's second question. v3 answered it by
+        coining `flight`; v4 (2026-09-08) answers it with the field's own word instead,
+        because a second co-author showed that `flight` occurs in this journal's papers only
+        as `in-flight`. The requirement is unchanged -- the timing term is pinned down before
+        the reader meets it -- and what is pinned is now the delivery D, defined in the
+        measurement-model section as a named quantity before the symbol S that depends on it
+        is used, and the coinage is gone."""
         body = main_tex[main_tex.index(r"\section{Introduction}"):]
-        first_use = body.index("flight")
-        # The FIRST occurrence must be the defining one. Comparing indices of "definition"
-        # and "first use" cannot express that -- the definition contains the word, so the
-        # distance is always about zero and the check passes whatever the order. What
-        # distinguishes the two cases is the wording around the first occurrence.
-        # Whitespace normalised, and the reason is not hygiene. The first draft of this pin
-        # searched for "not a clock period" and failed, because the manuscript breaks it as
-        # "not a / clock period" -- which is the round-40 finding F1 committed inside the
-        # gate written to prevent round-40 findings. Any check that reads LaTeX source for a
-        # phrase must flatten it first, without exception.
-        window = " ".join(body[max(0, first_use - 120):first_use + 200].split())
-        assert "here and throughout" in window, (
-            "the first appearance of 'flight' in the Introduction is not its definition. "
-            "The co-author asked for the timing term to be pinned down before the reader "
-            "meets it, and the definition reads 'A flight, here and throughout, is...'")
-        assert "not a clock period" in window, (
-            "the definition no longer says what a flight is NOT, which is the half that "
-            "answers the co-author's question: the word had been carrying three senses")
+        flat = " ".join(re.sub(r"(?m)^%.*$", "", body).split())
+        assert re.search(r"(?<!in-)\bflights?\b", flat) is None, (
+            "the coinage 'flight' is back; the field's word is delivery")
+        model = body[body.index(r"\section{System and Measurement Model}"):]
+        definition = model.index(r"\emph{delivery}")
+        first_s_use = model.index(r"$S$")
+        assert definition < first_s_use, (
+            "the delivery D must be defined, in words, before S = D - A is used")
+        window = " ".join(model[definition - 80:definition + 200].split())
+        assert "from the send call to the consumer holding the record" in window, (
+            "the definition must say what the delivery is, end to end, in words")
 
 
 class TestTheExposureCurveIsGeneratedNotTyped:
@@ -3390,8 +3392,12 @@ class TestTheExposureCurveIsGeneratedNotTyped:
                        "exposureCrossoverHi", "exposureErrTenHi")
 
     def _paragraph(self, main_tex):
-        start = main_tex.index("Know where your own path sits on the exposure curve")
-        return main_tex[start:start + 1600]
+        # v4 (2026-09-08): the curve's numbers moved out of the Discussion rule into a
+        # results subsection of the scheduling section, where a co-author said a headline
+        # result belongs -- with its experiment, denominator and uncertainty. The pins
+        # follow the numbers; the rule now points at this subsection rather than quoting it.
+        start = main_tex.index(r"\subsection{What the proxy costs a comparison}")
+        return main_tex[start:start + 2600]
 
     def test_every_exposure_number_is_a_macro(self, main_tex):
         para = self._paragraph(main_tex)

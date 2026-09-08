@@ -59,7 +59,10 @@ class TestNoSectionOpensOnNavigation:
     def test_there_are_sections_to_check(self):
         """A parser that silently finds nothing would make the rule below vacuous."""
         got = openings()
-        assert len(got) > 20, "expected the paper's full sectional structure, got %d" % len(got)
+        # v4 (2026-09-08) restructured to the standard shape: a measurement-model section
+        # gained, the chronology subsection and two method paragraphs folded away. The floor
+        # is the count a parser finding nothing could not reach, not the previous layout.
+        assert len(got) > 15, "expected the paper's full sectional structure, got %d" % len(got)
         assert all(first for _, first in got), "a section opened with nothing"
 
     @pytest.mark.parametrize("heading,first", openings(),
@@ -88,7 +91,7 @@ class TestTheRuleItself:
     def test_the_parser_strips_the_drop_cap(self):
         """The introduction opens inside \\IEEEPARstart and must not read as markup."""
         got = dict(openings())
-        assert got["Introduction"].startswith("Stated plainly")
+        assert got["Introduction"].startswith("Message-broker benchmarks")
 
     def test_a_pointer_later_in_the_sentence_is_allowed(self):
         """Only the opening is policed; a claim that cites a figure is still a claim."""

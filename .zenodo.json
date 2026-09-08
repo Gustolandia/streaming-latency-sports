@@ -1,5 +1,5 @@
 {
-  "title": "Faster Than Light, According to the Arithmetic: code and analysis for two failure modes of streaming latency measurement",
+  "title": "Faster-than-Light: code and analysis for latency measurement artifacts in streaming benchmarks",
   "upload_type": "software",
   "version": "3.0.0",
   "license": "MIT",

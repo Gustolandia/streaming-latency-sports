@@ -6,7 +6,7 @@ Round 52 found the supplement's first page stale since round 4. It carried
     Gustavo Pedro Ricou
 
 against a paper bylined to four authors, under a title the paper does not have, with the
-string "Faster Than Light" occurring nowhere in `supplement.tex` and no `\markboth` to put
+string "Faster-than-Light" occurring nowhere in `supplement.tex` and no `\markboth` to put
 anything in the running head either. The author block was written in commit `01dc662` and had
 not been touched since; the paper went to four authors in `07c57bc`. The front matter of one
 document moved and the front matter of the other did not.
@@ -160,7 +160,7 @@ class TestTheSupplementSaysWhichPaperItBelongsTo:
         for name in ("paper.tex", "supplement.tex"):
             left, recto = self._markboth(name)
             assert left.strip() and recto.strip(), "%s has an empty running head" % name
-        assert "Faster Than Light" in self._markboth("supplement.tex")[1], \
+        assert "Faster-than-Light" in self._markboth("supplement.tex")[1], \
             "the supplement's recto head should name the paper"
 
     def test_the_supplement_head_says_it_is_supplementary(self):
@@ -191,7 +191,7 @@ class TestTheBuiltSupplementIdentifiesItself:
 
     def test_page_one_names_the_paper_and_every_author(self, pages):
         first = pages(1)
-        assert "Faster Than Light" in first, \
+        assert "Faster-than-Light" in first, \
             "the built supplement's first page does not name the paper"
         for surname in ("Ricou", "Duvignau", "Herbst", "Gregg"):
             assert surname in first, \

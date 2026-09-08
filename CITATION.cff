@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: "Faster Than Light, According to the Arithmetic: two failure modes of streaming latency measurement"
+title: "Faster-than-Light: code and analysis for latency measurement artifacts in streaming benchmarks"
 # Order matches the manuscript byline and is not alphabetical: lead author first, the two
 # middle places by how far into the argument each contribution reached, and Gregg last in the
 # senior slot. Two ORCIDs are held first-party -- Herbst sent his, and Ricou's is the one on his
@@ -48,7 +48,7 @@ date-released: "2026-09-04"
 # was discarded at parse time and "Cite this repository" emitted a scaffolding version instead.
 preferred-citation:
   type: article
-  title: "Faster Than Light, According to the Arithmetic: Two Ways a Streaming Benchmark Fails on Sub-Millisecond Paths"
+  title: "Faster-than-Light: Latency Measurement Artifacts in Streaming Benchmarks"
   authors:
     - family-names: "Ricou"
       given-names: "Gustavo Pedro"

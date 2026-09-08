@@ -3309,6 +3309,63 @@ class TestClaimsWithdrawnForWantOfEvidenceStayWithdrawn:
             assert phrase not in flat, "the abstract reinstates %r" % phrase
 
 
+class TestTheReportingRulesAreInternallyConsistent:
+    """Two rules a reader meets seven pages apart, and what round 54 found between them.
+
+    **The gate and the recovery rule read as contradicting each other.** Section IV-E says a
+    gate "declines to publish from a run whose measurement demonstrably failed". Section
+    VII-B then tells a benchmark author to "recover the displacement rather than discard it",
+    on the rejected runs as well as the clean ones. Both are right and the paper knows why --
+    the gate governs whether the *proxy* may be published as a latency, while recovery
+    reports the *delivery* instead of the proxy -- but the reader met the second rule with no
+    bridge back to the first, and a referee reading in order stopped there.
+
+    **The busy-poll mitigation went missing in a page cut.** J. Kunkel asked for one sentence
+    on busy-poll and spin mitigation beside the real-time-priority rule, with the same
+    changes-the-system caveat. It was written, and later trimmed; Section VII-D's scope
+    paragraph still excludes designs that "pin a thread to a dedicated core and busy-poll" as
+    though the rules had introduced them. A requirement from correspondence carries referee
+    weight in this project, so it is gated rather than tracked in a plan file.
+    """
+
+    def _rule(self, tex, opening):
+        """The reporting-rule paragraph that begins with `opening`, in Section VII-B."""
+        section = _section(tex, "sec:authors")
+        i = section.find(opening)
+        assert i != -1, "the rule beginning %r is no longer in Section VII-B" % opening
+        end = section.find("\n\n\\textbf{", i + 1)
+        return " ".join(section[i:end if end != -1 else len(section)].split())
+
+    def test_the_recovery_rule_says_how_it_sits_beside_the_gate(self, tex):
+        rule = self._rule(tex, r"\textbf{Where the span cannot be re-timestamped")
+        assert r"\ref{sec:gate}" in rule, (
+            "the recovery rule must point back at the consistency check; without it the "
+            "reader meets 'recover it' seven pages after 'decline to publish it' and has to "
+            "reconcile the two unaided")
+        assert "delivery" in rule, (
+            "the bridge is that recovery reports the delivery rather than the proxy, so the "
+            "rule has to name what is reported instead")
+
+    def test_the_unpreemptable_rule_carries_the_busy_poll_mitigation(self, tex):
+        # Case-folded: the mitigation may open a sentence, and a gate that turned on
+        # capitalisation would fire on a rewrite that changed nothing.
+        rule = self._rule(tex, r"\textbf{Make the timestamping path unpreemptable").lower()
+        assert "busy-poll" in rule or "busy poll" in rule, (
+            "the rule must keep the busy-polling alternative a co-author asked for beside "
+            "real-time priority")
+        assert "core" in rule, "and say what busy-polling costs, which is a core"
+
+    def test_the_scope_paragraph_is_not_where_busy_polling_first_appears(self, tex):
+        """Section VII-D excludes those designs; a reader must have met them by then."""
+        body = tex[tex.index(r"\section{Introduction}"):].lower()
+        first = body.find("busy-poll")
+        threats = body.find(r"\label{sec:threats}")
+        assert first != -1, "busy-polling is not mentioned at all"
+        assert first < threats, (
+            "the first mention of busy-polling is in Threats, which excludes such designs "
+            "from the mechanism; the mitigation rule should introduce them first")
+
+
 class TestTheCoAuthorsRequirementsAreMet:
     """D. Gregg's requirements, pinned at the level of a referee finding.
 

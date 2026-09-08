@@ -56,6 +56,15 @@ def prose(path, start, stop):
     # to the sentence after the equation, reporting a 47-word sentence where the source has
     # a four-word lead-in and a display. A measurement that punishes ordinary mathematical
     # writing would have had us rewriting good prose to satisfy it.
+    # A heading and a list boundary end whatever came before them. Without this the
+    # extractor glues a section title to the paragraph after it and reports the pair as one
+    # sentence: cutting the roadmap paragraph in round 54 removed the full stop that had
+    # been separating the contributions list from "System and Measurement Model", and the
+    # gate answered with a 69-word sentence that no reader would ever meet. The prose was
+    # not what changed, so the measurement was what was wrong.
+    body = re.sub(r"\\(?:sub)*section\*?\{[^}]*\}", " . ", body)
+    body = re.sub(r"\\(?:begin|end)\{(?:enumerate|itemize|description)\}", " . ", body)
+    body = re.sub(r"\\item\b", " . ", body)
     body = re.sub(r"\\begin\{(figure|table)\*?\}.*?\\end\{\1\*?\}", " ", body, flags=re.S)
     body = re.sub(r"\\begin\{equation\*?\}.*?\\end\{equation\*?\}", " . ", body, flags=re.S)
     body = re.sub(r"\\(label|ref|cite|eqref)\{[^}]*\}", " ", body)

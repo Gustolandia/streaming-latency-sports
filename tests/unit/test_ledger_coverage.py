@@ -52,6 +52,10 @@ ALLOWED = {
         "the same factor, in the round-2 restatement",
     ("supplement.tex", "tracedExcAlpha", r"medians as low as $0.21$~ms"):
         "the same median, quoted in S52.2 where the reading behind the claim is set out",
+    ("supplement.tex", "exposureCrossover", r"E1's $0.79$--$1.00$ and"):
+        "an E1 transport interval in S9 whose lower bound happens to equal the exposure "
+        "crossover; the check armed for this macro in this document only when round 54 "
+        "put the crossover into the new exposure figure's caption",
 }
 
 

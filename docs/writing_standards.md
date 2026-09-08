@@ -33,6 +33,24 @@ Rule: every *stamp* becomes *timestamp*; every *stamping* becomes *timestamping*
 that *stamps* now *records a timestamp* or *timestamps*. The gate fails on any bare `stamp`
 in prose outside code identifiers.
 
+### A1b. The figures obey A1, A3 and A5 too — GATED
+
+Rules A1, A3 and A5 were enforced on the `.tex` sources and on the figures built by two of
+the seven figure-building scripts. `scripts/figure_vocabulary.py` runs inside
+`make_paper_figures` and `make_result_figures`; `make_deletion_histogram`, `make_e1_figure`,
+`make_method_figure`, `make_thread_figure` and `make_window_figure` never called it. The
+round-54 image review found the consequence in the exhibit a reader is most likely to look
+at first: the deletion histogram titled *"as measured, one clock, nanosecond stamps"*, a
+legend reading *"nanosecond stamps"* against *"millisecond stamps"*, a panel titled *"as a
+millisecond instrument holds it"*, and the experiment map holding fixed a *"priority arm"*.
+
+Rule: a figure is prose the reader meets first, so its text layer is held to the same
+vocabulary. The gate reads the **built PDFs** of every figure either document includes,
+rather than the scripts, because that is the only formulation a new script cannot escape.
+In a figure the bare word *arm* is banned outright — the prose gate cannot do that, because
+the ledger emits macros named `\armSixHundredRate` and the revision history discusses the
+retirement, but a figure has neither.
+
 ### A2. No `flight` — GATED
 
 In the corpus bare *flight* occurs 131 times across 25 of 775 papers, and a read of every

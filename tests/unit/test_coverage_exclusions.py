@@ -63,6 +63,10 @@ ALLOWED = {
         "only on interpreters without random.binomialvariate",
     ("tail_index_traced.py", "except ValueError:"):
         "a bootstrap replicate with one populated bucket",
+    ("make_result_figures.py", "if lags is None:"):
+        "the exposure curve's source, docs/results/span_symmetry.csv, ships with the "
+        "repository; the branch exists so a stripped checkout fails with a sentence "
+        "rather than a traceback",
 }
 
 

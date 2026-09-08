@@ -152,6 +152,146 @@ class TestExperimentalVocabularyIsDefinedBeforeUse:
         assert not bad, "used before \\label{def:vocabulary}:\n  " + "\n  ".join(bad)
 
 
+class TestOneNameForTheSendLag:
+    r"""The first term of the TTI decomposition has one name across the submission.
+
+    v4.1 renamed $t_{\mathrm{send}} - t_{\mathrm{sched}}$ from *scheduling lag* to *send
+    lag*, because the paper had just defined *scheduling delay* for something else -- the
+    wait a timestamping thread serves before a core runs it -- and two quantities a page
+    apart were sharing a word. The rename reached the paper and its figures. It did not
+    reach the supplement, which went on calling the same term *scheduling lag* in nine
+    places, nor the E1 figure, whose bars were labelled *sched. lag*.
+
+    So the collision the rename removed from one document survived in the other, which is
+    worse than not renaming at all: a reader who moves between them meets *scheduling delay*
+    and *scheduling lag* naming different things.
+    """
+
+    def test_neither_document_calls_the_send_lag_a_scheduling_lag(self):
+        bad = []
+        for name in ("paper.tex", "supplement.tex"):
+            text = (REPO / name).read_text(encoding="utf-8")
+            for line_no, line in enumerate(text.splitlines(), 1):
+                if line.lstrip().startswith("%"):
+                    continue          # the revision record may name what it retired
+                if "scheduling lag" in line:
+                    bad.append("%s:%d" % (name, line_no))
+        assert not bad, (
+            "'scheduling lag' survives at %s; the term is the send lag, and 'scheduling "
+            "delay' is the thread's wait for a core" % ", ".join(bad))
+
+    def test_the_send_lag_is_what_the_documents_do_say(self):
+        """The rename has to have landed, not merely have been deleted."""
+        paper = (REPO / "paper.tex").read_text(encoding="utf-8")
+        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        assert "send lag" in paper and "send lag" in supp
+        assert r"\label{def:scheddelay}" in paper, "and the other term stays defined"
+
+
+class TestTheFiguresObeyTheVocabularyToo:
+    r"""A figure is prose a reader meets first, and the vocabulary rules never reached it.
+
+    Round 54's image review found the supplement's deletion histogram titled "as measured,
+    one clock, nanosecond stamps", with a legend reading "nanosecond stamps" against
+    "millisecond stamps" -- the exact word the A-vocabulary rule retired, printed four times
+    in the one exhibit a reader is most likely to look at before reading anything.
+
+    It survived because the rule was enforced on `.tex` sources and on the figures built by
+    two of the seven figure-building scripts. `scripts/figure_vocabulary.py` runs inside
+    `make_paper_figures` and `make_result_figures`; `make_deletion_histogram`,
+    `make_e1_figure`, `make_method_figure`, `make_thread_figure` and `make_window_figure`
+    never call it, so their labels were checked by nobody.
+
+    This gate reads the built PDFs instead of the scripts, which is the only formulation that
+    cannot be escaped by adding a script: whatever draws a figure, if the figure ships in
+    either document its text is held to the manuscript's vocabulary.
+    """
+
+    #: The same rule the prose is held to, applied to the text layer of a figure.
+    BARE_STAMP = re.compile(
+        r"(?<!Time )(?<![A-Za-z\-])[Ss]tamp(?:s|ed|ing)?\b(?![-_])(?! Counter)")
+
+    def _included(self):
+        """Every figure either document includes, as a path."""
+        tex = "\n".join((REPO / n).read_text(encoding="utf-8")
+                        for n in ("paper.tex", "supplement.tex"))
+        stems = re.findall(r"\\includegraphics\[[^\]]*\]\{([^}]*)\}", tex)
+        return sorted({REPO / s for s in stems if s.endswith(".pdf")})
+
+    def _text(self, path):
+        import shutil
+        import subprocess
+        if not shutil.which("pdftotext"):            # pragma: no cover - tool absent
+            pytest.skip("pdftotext not available")
+        out = subprocess.run(["pdftotext", "-q", str(path), "-"],
+                             capture_output=True, text=True, encoding="utf-8",
+                             errors="replace")
+        return out.stdout
+
+    def test_there_are_figures_to_check(self):
+        got = self._included()
+        assert len(got) >= 10, "expected the submission's figures, found %d" % len(got)
+        assert all(p.is_file() for p in got), (
+            "included but not built: %s" % [p.name for p in got if not p.is_file()])
+
+    def test_no_figure_says_stamp_where_the_prose_says_timestamp(self):
+        bad = []
+        for path in self._included():
+            if not path.is_file():
+                continue
+            for hit in set(self.BARE_STAMP.findall(self._text(path))):
+                bad.append("%s: %r" % (path.name, hit))
+        assert not bad, (
+            "figures using the retired word: %s -- the A-vocabulary rule applies to the "
+            "text a reader sees, and a figure is the first prose they meet" % sorted(bad))
+
+    #: The same shape the prose rule uses (A3): "instrument" standing in for the quantity
+    #: being named. The image review found "as a millisecond instrument holds it" as a panel
+    #: title, which is the abstract's retired phrasing surviving in a picture.
+    #: A determiner, up to two modifiers, then the noun -- "a millisecond instrument" is the
+    #: form the review actually found, and the prose rule's adjacent-word pattern missed it.
+    INSTRUMENT_NOUN = re.compile(
+        r"\b(?:a|an|the|our|its|this|that|whatever)(?:\s+\w+){0,2}\s+instrument\b"
+        r"|\binstrument'?s\b")
+
+    #: "arm" for an experimental setting, retired for "configuration" (annotation 36). The
+    #: prose gate cannot ban the bare word -- the ledger emits macros named `\armSixHundred`
+    #: and the revision history discusses the retirement -- but a figure has neither, so the
+    #: word can be banned outright in the one place it is only ever the retired sense.
+    ARM = re.compile(r"\barms?\b", re.I)
+
+    def test_no_figure_calls_a_configuration_an_arm(self):
+        bad = []
+        for path in self._included():
+            if not path.is_file():
+                continue
+            if self.ARM.search(self._text(path)):
+                bad.append(path.name)
+        assert not bad, (
+            "figures still calling a configuration an arm: %s -- the manuscript says "
+            "configuration" % sorted(bad))
+
+    def test_no_figure_uses_instrument_as_the_apparatus(self):
+        bad = []
+        for path in self._included():
+            if not path.is_file():
+                continue
+            for hit in set(self.INSTRUMENT_NOUN.findall(self._text(path))):
+                bad.append("%s: %r" % (path.name, hit))
+        assert not bad, (
+            "figures naming the apparatus 'instrument' rather than the quantity: %s"
+            % sorted(bad))
+
+    def test_the_rule_would_catch_the_defect_it_was_written_for(self):
+        assert self.BARE_STAMP.search("(a) as measured, one clock, nanosecond stamps")
+        assert self.BARE_STAMP.search("millisecond stamps")
+        assert not self.BARE_STAMP.search("nanosecond timestamps")
+        assert not self.BARE_STAMP.search("Time Stamp Counter")
+        assert self.INSTRUMENT_NOUN.search("(b) as a millisecond instrument holds it")
+        assert not self.INSTRUMENT_NOUN.search("(b) as a millisecond timestamp holds it")
+        assert not self.INSTRUMENT_NOUN.search("instrumented runs")
+
+
 class TestSymbolsAreDefinedBeforeUse:
     """A7. Every symbol has a \\label{def:<name>} on its defining sentence, earlier than its
     first use. First failure: T_true in the introduction, defined nowhere; C_0 at "C_0 ~
@@ -169,6 +309,11 @@ class TestSymbolsAreDefinedBeforeUse:
         "scheddelay": r"[Ss]cheduling delay",
         # Annotation 40: "k, rho and the load geometry need definition before the table".
         "geometry": r"load geometr|core geometr|\bgeometries\b",
+        # Round 54 (M3): Table II's caption says "so occupancy alone moved" and Section VI-C
+        # says the manipulation "moves occupancy while utilization stays fixed", but the
+        # quantity was introduced only as "the probability of the second state". A reader
+        # met the word twice before anything told them it was p.
+        "occupancy": r"\boccupanc(?:y|ies)\b",
     }
 
     @pytest.mark.parametrize("name", sorted(SYMBOLS))

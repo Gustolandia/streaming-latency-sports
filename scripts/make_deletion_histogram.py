@@ -146,7 +146,7 @@ def plot_measured(ax, series, extra):
     above = extra["ack"]["over"]
     # Short form: the long sentence fitted the two-row paper layout, where panel (a) spans the
     # full width, and ran into panel (b)'s title in the three-across slide layout.
-    ax.set_title("(a) as measured, one clock, nanosecond stamps  (+%s above window)"
+    ax.set_title("(a) as measured, one clock, nanosecond timestamps  (+%s above window)"
                  % "{:,}".format(above), fontsize=8, loc="left")
 
     ax.text(0.03, 0.95, "62,264 below zero\n(8.43% of 738,730)",
@@ -156,7 +156,7 @@ def plot_measured(ax, series, extra):
 
 
 def plot_grid(ax, stats):
-    """(b) the same events as a millisecond instrument holds them, and the guard's cut."""
+    """(b) the same events as a millisecond timestamp holds them, and the condition's cut."""
     table = stats["spans"]["ack"]["ms_table"]
     xs = list(range(MS_LO, MS_HI + 1))
     ys = [table.get(str(x), 0) for x in xs]
@@ -168,7 +168,7 @@ def plot_grid(ax, stats):
     ax.set_xlabel("millisecond-differenced span (ms)")
     ax.set_ylabel("events")
     ax.yaxis.set_major_formatter(FuncFormatter(_thousands))
-    ax.set_title("(b) as a millisecond instrument holds it", fontsize=8, loc="left")
+    ax.set_title("(b) as a millisecond timestamp holds it", fontsize=8, loc="left")
 
     # A shaded span behind the bars, rather than an arrow between them: the deleted region is
     # contiguous and reaches the axis edge, so a two-headed arrow had nowhere to sit and its
@@ -181,7 +181,7 @@ def plot_grid(ax, stats):
     # Narrow enough to stay inside the shaded band: the wide form reached the 0 ms and 1 ms
     # bars, which carry 600k of the 738k events between them.
     ax.text(0.03, 0.95,
-            "guard admits\nonly > 0:\ndeletes %.1f%%\n(%s events)"
+            "admits only > 0:\ndeletes %.1f%%\n(%s events)"
             % (100.0 * (1 - rule["retention"]), "{:,}".format(rule["dropped"])),
             transform=ax.transAxes, fontsize=7, color=CUT, ha="left", va="top")
     ax.text((MS_LO - 0.6 + 0.5) / 2.0, max(ys) * 0.55, "deleted",
@@ -231,7 +231,7 @@ def plot_strategies(ax, stats):
     ax.legend(handles=[
         plt.Rectangle((0, 0), 1, 1, color=KEPT),
         plt.Rectangle((0, 0), 1, 1, color=GREY),
-    ], labels=["nanosecond stamps", "millisecond stamps"], fontsize=6,
+    ], labels=["nanosecond timestamps", "millisecond timestamps"], fontsize=6,
         loc="lower left", frameon=False, ncol=1)
 
 

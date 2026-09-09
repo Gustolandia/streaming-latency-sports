@@ -706,6 +706,43 @@ It is in Supplement S16 now, stated in full with that reasoning attached, and Se
 keeps the mechanism in prose. **A model that cannot be falsified as a model belongs where a
 reader can weigh it, not where the argument appears to rest on it.**
 
+**1ai. Six of nine was not nine, and a loose probe said it was.** The second author's note
+carries a nine-item checklist of benchmark-design rules. Asked whether Section VII-B had them,
+a first pass searched the whole paper for a word from each and reported all nine present. It
+was wrong on three: "validate" matched a sentence in Section IV, "co-locat" matched Section
+VII-A, and "physical events" matched nothing at all. Searching *the section that is supposed
+to contain the rule* found six.
+
+The three that were missing are now rules: say which physical event each timestamp marks,
+exercise the timestamping path at the load you will report from, and do not assume
+co-location makes the measurement safer. **A probe that searches the wrong scope reports the
+answer you hoped for**, which is the same failure the paper is about, in a checklist about it.
+
+**1aj. The archaeology left the reader's path.** "Much less archaeology for the reader" was
+the note's last line, and the paper carried eight retrospective passages: a closing flourish
+about the check destroying our first result, a threshold sweep framed as a withdrawal, a
+post-mortem paragraph on two rejected results, a testbed introduced by what it had produced,
+and the whole payload-sweep slope with its two disagreeing estimators and its bootstrap.
+
+All of it is in the supplement now, and **every finding and every limitation it carried
+stayed**: the threshold's insensitivity is still reported, the check's incompleteness is still
+stated ("causal consistency is necessary, not sufficient"), and the audit still publishes what
+applying the rule to ourselves cost. Three self-references survive on purpose --- the audit
+rejecting every run behind our own first result, twice, and one registered prediction that
+failed --- because those are results and correct reporting, not history.
+
+Five pins followed the material. Four required the words "we withdraw the claim" *in the main
+text*, on the principle that a withdrawal stays withdrawn only if the sentence that withdraws
+it keeps saying so; they now require it in the supplement and forbid the slope's return to the
+paper, which is the stronger form of the same rule. The fifth was the CLAIMS entry in
+`test_claim_equation_binding.py` --- a file that exists because round 48 caught the paper
+claiming "a law relating the negative-span rate to the delivery" while pointing at an equation
+that contained no delivery. **The sentence it guarded is gone, and the guard's own docstring
+told us what to do: retire it deliberately, and check the abstract still matches.** Its
+companion now asserts the delta over Villain et al. in the wording that replaced it, and
+asserts both halves, because the dependence without the manipulations is what Villain already
+had.
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

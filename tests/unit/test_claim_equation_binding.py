@@ -85,9 +85,20 @@ def equations():
 CLAIMS = (
     # v4 (2026-09-08): "flight" retired for the field's word; the claim and the symbol it
     # requires are unchanged.
-    (r"a law relating the negative-span rate to the delivery being\s+measured",
-     (r"T_\{\\mathrm\{true\}\}",),
-     "a law relating a rate to the delivery must contain the true delivery"),
+    #
+    # Retired in round 60, deliberately, which is what the guard on this list asks for. The
+    # sentence it watched -- Section III-B's "a law relating the negative-span rate to the
+    # delivery being measured (Equation 6)" -- no longer exists. Equation 6 went to
+    # Supplement S16 because nothing in the paper computed with it, and the claim against
+    # Villain et al. now rests on the manipulations: "the negative-span rate falls as the
+    # delivery being measured grows, and the manipulations that establish it separate
+    # scheduling from its rival explanations". That sentence points at a section rather than
+    # an equation, so there is no equation for it to disagree with, which is the only thing
+    # this file checks. The lesson round 48 took from it is in `docs/infrastructure.md`.
+    #
+    # (r"a law relating the negative-span rate to the delivery being\s+measured",
+    #  (r"T_\{\\mathrm\{true\}\}",),
+    #  "a law relating a rate to the delivery must contain the true delivery"),
     # v4.1 (2026-09-08): "flight" retired in the supplement too; the claim is the same.
     (r"stall distribution\s+overlaps a short delivery",
      (r"T_\{\\mathrm\{true\}\}",),
@@ -147,11 +158,23 @@ class TestEveryClaimAboutAnEquationMatchesTheEquation:
 
         The claim is the paper's delta over Villain et al. Losing it without noticing would
         be worse than mis-citing it.
+
+        Round 60 reworded it and the guard follows the claim rather than the wording. It read
+        "a law relating the negative-span rate to the delivery being measured (Equation 6)";
+        Equation 6 went to Supplement S16 because nothing in the paper computed with it, and
+        the delta is now stated as the measured dependence plus the manipulations that
+        establish it. Two things must survive, and they are what this asserts: the rate's
+        dependence on the delivery, and the manipulations. A claim that keeps only the first
+        is a claim Villain et al. could have made.
         """
-        assert re.search(r"a law relating the negative-span rate to the delivery being\s+measured",
-                         paper), (
-            "Related Work no longer claims the rate-to-delivery law; if that is deliberate, "
-            "retire the CLAIMS entry that guards it, and check the abstract still matches")
+        flat = " ".join(paper.split())
+        assert re.search(r"negative-span rate falls as the delivery being measured grows",
+                         flat), (
+            "Related Work no longer claims the rate's dependence on the delivery; if that is "
+            "deliberate, say what replaced the delta over Villain et al.")
+        assert re.search(r"manipulations that establish it separate scheduling", flat), (
+            "the delta over Villain et al. is the dependence *and* the manipulations; the "
+            "dependence alone is what they already had")
 
     def test_the_binding_can_fail(self, equations):
         """Prove the rule bites: Equation 3 must NOT satisfy the rate-to-flight claim."""

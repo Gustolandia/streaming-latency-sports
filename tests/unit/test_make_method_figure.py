@@ -206,9 +206,12 @@ class TestTheMapReadsItsResultCells:
         row = [r for r in ROWS if "E-A10" in r[0]][0]
         assert "withdrawn" in row[3], \
             "E-A10's outcome quotes the slope without saying the claim on it was withdrawn"
-        paper = (SCRIPTS_DIR.parent / "paper.tex").read_text(encoding="utf-8")
-        assert "We withdraw the claim" in paper, \
-            "the main text no longer withdraws it; this pin and the map must be revisited"
+        # Round 60 moved the slope and its withdrawal to Supplement S15, so the withdrawal is
+        # checked where it now lives. The map's obligation is unchanged: it may not settle
+        # something the submission withdraws, wherever the submission withdraws it.
+        supp = (SCRIPTS_DIR.parent / "supplement.tex").read_text(encoding="utf-8")
+        assert "we withdraw" in supp.lower(), \
+            "the submission no longer withdraws it; this pin and the map must be revisited"
 
 
 class TestTheHeldFixedBounds:

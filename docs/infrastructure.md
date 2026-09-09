@@ -528,6 +528,55 @@ labels the submission builds score 0.0000 --- a figure that is clean is clean ev
 the two populations are separated by any cut in (0.0, 0.05). **A gate that averages over
 the object it protects gets weaker as the object gets bigger.**
 
+**1z. The test existed, in the same file, and had never been pointed at the number.**
+Round 56 found Section VI-E quoting a fitted power-law index with a 95% interval and the words
+"a finite variance", six lines after using a bootstrap goodness-of-fit to justify *withdrawing*
+a different index. `estimate()` in `tail_index_traced.py` ran `gof_pvalue` on the
+256--2048 microsecond window and on no other, so the tail fit above 4 ms had never been judged.
+Pointed at it, the same test rejects it: **p < 0.0004, 0 of 2,500 replicates**. The interval's
+lower limit was 2.00 against a boundary of 2 for a finite variance, and the last populated
+bucket falls 357x where the fit implies about four.
+
+Three consecutive rounds have now found the same shape --- round 54's uncited claims about
+named artefacts, round 55's remedy quoted by its median and called a bound, round 56's index
+quoted past its own test. Each was a rule the paper states and the paper broke, and each
+survived because the gates check whether a number *matches its artefact*, never whether the
+sentence around it is *allowed to conclude what it concludes*.
+
+`tests/unit/test_the_paper_meets_its_own_rules.py` is the answer, and it is deliberately a
+different file from `test_paper_consistency.py`: one asks whether a number is right, the other
+whether it may be said. It carries five rules so far --- a moment claim must clear the interval
+it depends on; a published fit travels with its goodness of fit, and `estimate()` must judge
+every window it fits; a derived constant may not give a measured mode its position; a defined
+symbol keeps one meaning; a percentage under one keeps its significant figure.
+
+**When a rule is worth stating in a paper, it is worth running against the paper.**
+
+**1aa. A backslash the shell ate compiles cleanly and prints a word.** The same round found
+the built supplement printing **"k/ho"** on page 17 and **"a function of ho"** on page 18: two
+`\rho` whose backslash-r had been consumed by a heredoc, leaving a newline and the letters
+`ho`. LaTeX typesets `ho` in math mode without complaint, so the compiler passed it, and so did
+every gate --- references, vocabulary, collisions, legibility --- because none of them asks
+whether a math span is what its author meant. This is the project's own documented shell trap
+(write Python with the Write tool, run it with Bash) arriving in the manuscript and staying
+there.
+
+`TestNoControlWordLostItsBackslash` checks both the source and the built PDF for a Greek name's
+orphaned tail. The companion check is narrower than the one the round-56 referee asked for, and
+the difference is worth recording. They asked that no inline `$...$` span be broken across a
+line, "since that is the exact signature". It is not: the supplement legitimately wraps
+`$\approx` before `0.54$` and `$D = t_{\mathrm{recv}} -` before `t_{\mathrm{send}}$`. What is
+exact is that a *wrapped span may not resume on bare letters* --- `ho$` does, `0.54$` and
+`t_{\mathrm{send}}$` do not. **A gate that would force correct text to change is a gate someone
+turns off**, so the rule that ships is the true one, and the referee's version is recorded here
+as the thing it was narrowed from.
+
+The third finding of the round was typographic and had the same shape: `IEEEtran` ends a
+`\paragraph` run-in heading with its own colon, and 74 of the supplement's 101 headings already
+ended in a full stop, printing `.:`. The main document had none, so the convention was right
+and only the longer document drifted --- **a rule held in most places is invisible to anyone
+reading linearly**, which is lesson 1x again in a different costume.
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

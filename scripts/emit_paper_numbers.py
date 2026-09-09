@@ -956,6 +956,25 @@ def traced_macros():
             ("tracedTailCI", "%.2f$--$%.2f" % (r["tail_lo"], r["tail_hi"])),
             ("tracedTailFrom", "%.0f" % (r["tail_from_us"] / 1024.0)),
         ]
+        # Round 56. Emitted in the same block as the index it judges, so the two cannot part
+        # again: for eight rounds the manuscript printed this index with an interval and the
+        # words "a finite variance", and the bootstrap that would have refused it was run on
+        # the other window only. It rejects. What the counts do instead is emitted beside it,
+        # because that is what a reader can check against the drawn histogram.
+        if "tail_gof_p" in r and r["tail_gof_boot"]:
+            out += [
+                ("tracedTailGofP", ("<%.4f" % (1.0 / r["tail_gof_boot"]))
+                 if r["tail_gof_p"] == 0 else "%.3f" % r["tail_gof_p"]),
+                ("tracedTailGofBoot", latex_thousands(r["tail_gof_boot"])),
+            ]
+        falls = r.get("tail_falls") or []
+        if len(falls) >= 3:
+            out += [
+                ("tracedTailFallA", "%.1f" % falls[0][1]),
+                ("tracedTailFallB", "%.1f" % falls[1][1]),
+                ("tracedTailFallLast", "%.0f" % falls[-1][1]),
+                ("tracedTailOctaves", _spell(len(falls) - 1)),
+            ]
     if "gof_p" in r and r["gof_boot"]:
         out += [
             ("tracedGofP", ("<%.4f" % (1.0 / r["gof_boot"])) if r["gof_p"] == 0
@@ -1571,7 +1590,11 @@ def exposure_macros():
     typical, hi, lo, p10, p90 = lags
 
     def err(ms, lag=None):
-        return "%.0f" % (100.0 * (typical if lag is None else lag) / (ms * 1000.0))
+        # Round 56. "%.0f" everywhere printed 0.725% as "1" -- 38% high, and the only
+        # significant figure the number had. Two-figure values keep the integer they had;
+        # anything under one is given the decimal that carries it.
+        pct = 100.0 * (typical if lag is None else lag) / (ms * 1000.0)
+        return ("%.1f" if pct < 1.0 else "%.0f") % pct
 
     def gap(ms):
         t = ms * 1000.0

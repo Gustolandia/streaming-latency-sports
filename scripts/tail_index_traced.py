@@ -226,6 +226,19 @@ def octave_indices(bins):
     return out
 
 
+def octave_falls(bins):
+    """How far the counts drop from one populated bucket to the next, as [(lo_us, ratio)].
+
+    `octave_indices` gives the same information as an exponent; this gives it as the thing a
+    reader can check against the drawn histogram, which is what the manuscript now prints.
+    A Pareto tail of survival exponent alpha falls by 2**alpha per octave and by the same
+    factor every time, so a list whose last entry is two orders of magnitude from its first
+    is a truncation rather than a tail, whatever a fit returns.
+    """
+    populated = [b for b in bins if b[2] > 0]
+    return [(a[0], a[2] / float(b[2])) for a, b in zip(populated, populated[1:])]
+
+
 def modes(bins):
     """Local maxima of the bucket counts, as [(lo_us, count, share, ratio_to_lower), ...].
 
@@ -358,7 +371,15 @@ def estimate(path):
     if len(above) >= 2:
         a, alo, ahi, an = binned_pareto_mle(above)
         out.update({"tail_alpha": a, "tail_lo": alo, "tail_hi": ahi, "tail_n": an,
-                    "tail_from_us": TAIL_LO_US})
+                    "tail_from_us": TAIL_LO_US, "tail_falls": octave_falls(above)})
+        # Round 56. The fit above the mode was reported for eight rounds with an interval and
+        # a moment claim, and the test that would have judged it was never pointed at it:
+        # this function ran gof_pvalue on `win` and on nothing else. It rejects here too --
+        # the same verdict, on the same estimator, that the manuscript uses six lines earlier
+        # to justify withdrawing the payload-sweep index. Running it is the fix; the verdict
+        # is emitted whatever it says, so the prose cannot outrun it again.
+        td, tp, _, tused = gof_pvalue(above)
+        out.update({"tail_gof_d": td, "tail_gof_p": tp, "tail_gof_boot": tused})
     d, pval, _, used = gof_pvalue(win)
     out.update({"gof_d": d, "gof_p": pval, "gof_boot": used})
     if "over_500us" in counters and "over_2000us" in counters:

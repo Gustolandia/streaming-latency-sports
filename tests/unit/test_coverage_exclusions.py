@@ -63,6 +63,12 @@ ALLOWED = {
         "only on interpreters without random.binomialvariate",
     ("tail_index_traced.py", "except ValueError:"):
         "a bootstrap replicate with one populated bucket",
+    ("build_without_authors.py", "if not os.path.exists(produced):"):
+        "pdflatex failed to produce a PDF; reaching it needs a broken TeX installation, and "
+        "the branch exists so the failure is a sentence rather than a silent empty build",
+    ("build_without_authors.py", "if out.returncode != 0:"):
+        "poppler's pdftotext is absent, so the promise cannot be verified; the branch exists "
+        "so --check reports 'not verified' rather than printing 'clean' without looking",
     ("make_result_figures.py", "if lags is None:"):
         "the exposure curve's source, docs/results/span_symmetry.csv, ships with the "
         "repository; the branch exists so a stripped checkout fails with a sentence "

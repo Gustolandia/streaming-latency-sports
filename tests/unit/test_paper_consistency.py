@@ -3547,8 +3547,11 @@ class TestTheCoAuthorsRequirementsAreMet:
             pytest.skip("build the paper first")
         pages = PdfReader(str(pdf)).pages
         found = None
+        # Round 57 dropped the article from every caption lead, so this looks for the phrase
+        # that identifies the figure rather than the one that opened it: "The system measured"
+        # became "System measured". The requirement is about *placement* and is untouched.
         for i, page in enumerate(pages[:6], start=1):
-            if "The system measured" in (page.extract_text() or ""):
+            if "measured, and where its clocks are read" in (page.extract_text() or ""):
                 found = i
                 break
         assert found is not None, "the system figure's caption is not in the first six pages"

@@ -113,8 +113,8 @@ latency is strictly positive and does not count what it discards: of $\ombMedian
 embedded-mode cells, $\ombGridMedianCells$ reported a median that was an exact
 multiple of one millisecond, computed from $\ombGridRetentionMin$--$\ombGridRetentionMax\%$
 of the samples taken. We contribute an exact identity for the
-negative span, a law for the retained fraction confirmed by a pre-registered manipulation,
-and an audit of \harnessAuditedWord{} tools. The remedy is to randomize the send instant
+negative span, what a positivity filter costs a reported distribution, confirmed by a
+pre-registered manipulation, and an audit of \harnessAuditedWord{} tools. The remedy is to randomize the send instant
 and publish the retained fraction.
 \end{abstract}
 
@@ -148,7 +148,7 @@ scheduling and task partitioning.
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{docs/results/figures/pipeline_schematic.pdf}
-\caption{\textbf{The system measured, and where its clocks are read.} A replay process paces
+\caption{\textbf{System measured, and where its clocks are read.} A replay process paces
 recorded match events at a chosen rate into a broker --- \kafka{} or \redis{} Streams --- and
 a consumer reads them back. The four timestamps and the three spans they bracket are
 defined in Section~\ref{sec:sysmodel}; the transport proxy, the span this paper is about,
@@ -161,7 +161,7 @@ clock synchronization.}
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{docs/results/figures/measurement_model.pdf}
-\caption{\textbf{A late timestamp, not an early record.} How a positive latency is measured
+\caption{\textbf{Late timestamp, not an early record.} How a positive latency is measured
 as negative, on one clock. Two threads of the producer process take the two timestamps ---
 the application thread calls send, the client's I/O thread runs the delivery callback ---
 and whichever one timestamps must first be scheduled, so the difference inverts when the
@@ -221,11 +221,13 @@ specification discloses.
 We make three contributions, each established by manipulation rather than by observation
 alone.
 \begin{enumerate}
-\item \textbf{A law for what a positivity filter discards} (Section~\ref{sec:external}).
-The fraction of samples a millisecond-resolution benchmark retains is fixed by the ratio of
-its send interval to its timestamp resolution. It is never shown to the operator. A
-pre-registered manipulation of message size moves a configuration onto and off the values
-the law predicts.
+\item \textbf{What a positivity filter costs a reported distribution}
+(Section~\ref{sec:external}). The fraction of samples a millisecond-resolution benchmark
+retains is fixed by the ratio of the delivery to the timestamp resolution --- arithmetic a
+1970 counter manual already carries~\cite{hp1970tia}. New is its consequence under silent
+deletion: that fraction decides the distribution the benchmark reports, is never shown to
+the operator, and a pre-registered manipulation of message size moves a configuration
+across the boundary it predicts.
 \item \textbf{An exact account of the negative latency, on one clock}
 (Section~\ref{sec:mechanism}). The acknowledgment-referenced span is the delivery less the
 acknowledgment lag, $S = D - A$ per event. A negative value is therefore an ordering between
@@ -362,7 +364,7 @@ experimental setup can dominate a result is established~\cite{mytkowicz2009wrong
 to report one is a settled literature we
 follow~\cite{georges2007rigorous,hoefler2015benchmarking}. What that literature does not do
 is check what its tool discards. Most published comparisons report a median above the
-tool's one-millisecond timestamp resolution, where the deletion law of
+tool's one-millisecond timestamp resolution, where the deletion arithmetic of
 % Round 55 moved the denominator to Supplement S52.3, where the exhibits are set out. With
 % two comparisons it read against its own sentence: the count said both had been placed
 % against the resolution, and the clause after it said one of them cannot be placed at all.
@@ -407,8 +409,8 @@ latency to interrupt processing, scheduling and context switching. That is the s
 mechanism studied in Section~\ref{sec:mechanism}, published in 2012 and measured more
 precisely than we measure it. What it does not give, and we add, is its consequence for a
 two-process measurement: a law relating the negative-span rate to the delivery being
-measured (Equation~\ref{eq:twostate}, Section~\ref{sec:mixture}), and manipulations that
-separate scheduling from its rival explanations. The audit half has its own ancestor.
+measured, and the manipulations that separate scheduling from its rival explanations
+(Section~\ref{sec:twostate}). The audit half has its own ancestor.
 Paxson~\cite{paxson1998calibrating} treated physically impossible transit times as
 measurement failure and published the proportion of traces affected.
 Lancet~\cite{kogias2019lancet}, a latency-measurement tool that timestamps in the network
@@ -687,71 +689,16 @@ $\tau$ sit near $50\%$ --- medians $\spreadIncommensurateLo$ to
 $\spreadIncommensurateHi$ --- implying $T_{\mathrm{true}} \approx 0.5$~ms at
 $\tau = 1$~ms.
 
-\paragraph{Commensurability is not binary}
-\label{sec:extquant}
-Phases are not uniform when the send interval is commensurate with the tick. Write the send
-interval over the tick in lowest terms as $\Delta/\tau = p/q$ with $\gcd(p,q) = 1$. A
-producer then visits exactly $q$ distinct phases. Retention is a count out of $q$ and can
-take only the $q{+}1$ values $0, 1/q, \ldots, 1$, the \emph{vertices} of its grid. A run
-lands on one of the two vertices bracketing $T_{\mathrm{true}}/\tau$. The replicate spread follows:
-\begin{equation}
-\label{eq:quant}
-\text{spread} \;\longrightarrow\;
-\begin{cases}
-100/q & \text{when } T_{\mathrm{true}}/\tau \text{ sits mid-cell,}\\[2pt]
-0 & \text{when } T_{\mathrm{true}}/\tau \text{ sits on a grid point.}
-\end{cases}
-\end{equation}
-Both branches are limits: a nominally commensurate rate is not exactly commensurate, and
-the two configurations that sit on a vertex spread by roughly three tenths of the mid-cell
-width, too few to fix a constant (Supplement~S19). A round send rate is the worst possible
-choice, and exactness decides it: Supplement~S19 runs from the $q=1$ rate whose replicates span almost the whole range to the one sitting
-$0.00014$ from a vertex and behaving as fully continuous.
-
-\subsection{The grid as inference}
-\label{sec:extinference}
-A table of spreads is not a test, so we state one: the mean normalized distance from a
-configuration's replicates to the nearest $q$-grid vertex, against the
-within-configuration permutation null that a \emph{continuum} --- retention varying smoothly
-with $T_{\mathrm{true}}/\tau$, as an incommensurate rate gives --- implies.
-Supplements~S44 and~S23 give
-the construction and every configuration with $n \ge 5$. Of the \gridPoweredWord{} powered
-configurations, \gridRejectWord{} reject the continuum null at $\alpha = 0.05$ after
-Holm correction within the family of $\gridArms$. The tenth, $\gridUnresolvedRate$~msg/s,
-rejects before correction ($p = \gridUnresolvedRaw$) and not after
-($p = \gridUnresolvedHolm$); we report it as unresolved rather than as support. The
-remaining \gridFlatWord{} configurations, \gridFlatRates~msg/s, have no power by construction:
-where
-$T_{\mathrm{true}}/\tau$ sits on a vertex the two predictions coincide, so the distance is
-replicate noise and which side of the diagonal it falls on is not evidence either way
-(Fig.~\ref{fig:grid}).
-
-\begin{figure}[tb]
-\centering
-\includegraphics[width=\columnwidth]{docs/results/figures/grid_membership.pdf}
-\caption{\textbf{Grid membership, as a set.} Each configuration's observed mean distance to
-the nearest grid vertex against the distance a continuum would give, which is the diagonal.
-The gray bar beside a configuration is its own simulated null, \emph{uncorrected}; the
-test is one-sided towards the grid, so a marker \emph{below} its bar rejects that null.
-Filled circles also survive Holm correction. The open circle sits
-\emph{\gridUnresolvedSide} its bar too, $\gridUnresolvedObs$ against a band opening at
-$\gridUnresolvedNullLo$, but at $p = \gridUnresolvedRaw$ raw and $\gridUnresolvedHolm$
-corrected it is the one powered configuration that does not reject: correction is what the
-picture cannot draw. The \gridFlatWord{} squares carry no bar because no test has power
-there: the two hypotheses coincide, and \emph{the sign carries nothing}.
-Corrected $p$-values are in Supplement~S23.}
-\label{fig:grid}
-\end{figure}
-
 \paragraph{A pre-registered confirmation}
 \label{sec:extcomp}
-Payload moves $T_{\mathrm{true}}$, hence the grid position, and Equation~\ref{eq:quant}
-dictates the configuration's class with nothing else changed. The prediction was registered before
-the runs, and it came true: spread collapses to $13.6$ at
-$32$~KB, pinned near the $2/3$ vertex, and re-opens to $26.7$ at $64$~KB --- the flat--full
-boundary crossed in both directions by one
-manipulated variable. One registered detail failed --- the $32$~KB pin sits at $69.2$, not
-the predicted $66.67$. Supplement~S22 draws all three configurations against their grid,
+Payload moves $T_{\mathrm{true}}$, and with it the fraction a run retains. Where the send
+interval is commensurate with the tick the retained fraction is confined to a few values
+rather than a continuum, so moving $T_{\mathrm{true}}$ moves a configuration between them;
+Supplement~S22 sets that structure out and draws all three payloads against it; S23 tests it
+configuration by configuration against the permutation null S44 constructs. The prediction was registered before the runs and it came
+true: replicate spread collapses to $13.6$ at $32$~KB and re-opens to $26.7$ at $64$~KB, a
+boundary crossed in both directions by one manipulated variable. One registered detail
+failed --- the $32$~KB pin sits at $69.2$, not the predicted $66.67$ ---
 % The payload-flip figure moved to the supplement in round 43, beside S22, which is where
 % the spread rule it confirms is set out in full. Same journey as the pipeline schematic in
 % round 16 and the payload-sweep law earlier in this round, and for the same reason: every
@@ -900,12 +847,9 @@ which is what Table~\ref{tab:mechanism} moves --- and $G(\cdot)$ for the surviva
 of the residual delay in that state, and take the consumer's timestamp to lie in the core. Write $T_{\mathrm{true}}$ for the
 true delivery of Section~\ref{sec:extphase}: the quantity $D$ measures, equal to $D$ up to
 the consumer's own timestamping jitter. Conditioning on it, the identity of
-Equation~\ref{eq:negspan} becomes, to leading order,
-\begin{equation}
-\Pr[S < 0 \mid T_{\mathrm{true}}] \;=\; p \; G(T_{\mathrm{true}}) .
-\label{eq:twostate}
-\end{equation}
-Load moves $p$ and does not fix it --- two geometries at one $\rho$, rates twofold apart
+Equation~\ref{eq:negspan} becomes, to leading order, the occupancy times the chance that a
+residual stall outlasts the delivery; Supplement~S16 states the form and what it does and
+does not carry. Load moves $p$ and does not fix it --- two geometries at one $\rho$, rates twofold apart
 (Table~\ref{tab:mechanism}, lower panel) --- so we write $p$ and not $p(\rho)$, and the
 model's content is on the delivery axis rather than the load one (Supplement~S13). The
 leading-order step does not assume the two states are independent: a stall delaying both
@@ -918,7 +862,7 @@ $\invCeiling$, so even then most timestamps are taken by a thread that was runni
 by less than the delivery.
 
 \begin{table}[tb]
-\caption{\textbf{The mechanism, by manipulation} ($\mechEventsPerCell$ matched events per
+\caption{\textbf{Mechanism, by manipulation} ($\mechEventsPerCell$ matched events per
 cell). Top: timestamping threads moved to \texttt{SCHED\_FIFO} with background load
 unchanged; achieved utilization matches to within $\mechRhoMatch$ between configurations,
 so occupancy alone moved. Bottom: identical utilization reached by two core geometries
@@ -1038,7 +982,8 @@ population is the one a remedy tried only against clean runs never meets.
 
 \subsection{The stall spectrum, and the scheduler's slice}
 \label{sec:tail}
-That this distribution is not a single heavy tail is known: B.~Gregg reported it as bimodal
+That this distribution is not a single heavy tail is known: Brendan Gregg reported it as
+bimodal
 in the post introducing \texttt{runqlat}, the tool we use~\cite{gregg2016runqlat}. The
 \texttt{timerlat} tracer decomposes scheduling latency into its interrupt and thread
 components~\cite{bristot2025timerlat}; what we add is which modes, and why the upper one
@@ -1065,7 +1010,7 @@ no monotone curve passes through it.
 \begin{figure}[tb]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/stall_spectrum.pdf}
-\caption{\textbf{The traced run-queue stall distribution is trimodal.} $\tracedEvents$
+\caption{\textbf{Traced run-queue stalls are trimodal.} $\tracedEvents$
 wakeups, \texttt{bpftrace} log$_2$ buckets, modes shaded. The jitter core sits at a few
 microseconds and a second mode at $128$--$256\,\mu$s; the third, holding
 $\tracedModeShare\%$ of all wakeups, lands on the scheduler's derived base slice of
@@ -1074,7 +1019,7 @@ across this axis.}
 \label{fig:spectrum}
 \end{figure}
 
-That mode is the preempted state of Equation~\ref{eq:twostate}, at a scale the scheduler's own
+That mode is the preempted state of Section~\ref{sec:mixture}, at a scale the scheduler's own
 maintainers had already named: with run-to-parity a task's lag is held within
 ``$[-(\mathrm{slice} + \mathrm{tick}) : (\mathrm{slice} + \mathrm{tick})]$''~\cite{guittot2025slice}.
 The histogram adds that this is where a tenth of all wakeups land, not merely a worst
@@ -1195,7 +1140,8 @@ and neither argued for (Supplement~S52.2).
 Hardware-timestamped PTP~\cite{ieee1588} would take two LAN hosts from our
 $\interHostOffsetUs\,\mu$s of \texttt{chrony} agreement to sub-microsecond. Behind a
 one-millisecond timestamp, $\interHostOffsetUs\,\mu$s and $70$~ns produce byte-identical
-records. The admission condition deletes the same samples and the grid law is unchanged.
+records. The admission condition deletes the same samples and the retention arithmetic is
+unchanged.
 The remedies are therefore ordered:
 record at native resolution, count what is discarded, dither the send instant, and only then
 is synchronization quality the frontier (Section~\ref{sec:generality}).
@@ -1230,8 +1176,8 @@ either (Supplement~S51).
 \paragraph{Scope, and the alternatives eliminated} Three widely used runtimes document this structure without drawing its consequence for a
 cross-process subtraction (Supplement~S48).
 The mechanism requires a timestamping path that can be preempted. Designs that pin a thread to
-a dedicated core and busy-poll, or that timestamp in hardware, remove the state
-Equation~\ref{eq:twostate} depends on, and we make no claim about them. Within our own
+a dedicated core and busy-poll, or that timestamp in hardware, remove the preempted
+state the mechanism depends on, and we make no claim about them. Within our own
 setting the alternatives are each eliminated. Clock skew: one clock by
 construction on the rejecting configurations, and $\harnessCrossHostNegatives$ negatives in
 $\harnessCrossHostSamples$ two-clock samples. Cross-CPU incoherence under migration: below. Utilization: identical
@@ -1257,7 +1203,7 @@ the send-referenced span holds a floor $\spanOffsetMargin\times$ too high to exp
 deepest negative span (Supplement~S39).
 
 The mechanism's constants are those of one EEVDF-era kernel (6.8); CFS-era schedulers, the
-regime Lozi et al.\ document, may shift them. The deletion law is demonstrated on one
+regime Lozi et al.\ document, may shift them. The deletion arithmetic is demonstrated on one
 benchmark and reproduced in one independent harness. The \harnessSilentWord{} tools of
 Section~\ref{sec:generality} are readings of source rather than measured deployments. The
 benchmark's distributed mode failed on every attempt, so its cross-host exposure rests on

@@ -47,6 +47,23 @@ def paper():
 
 
 @pytest.fixture(scope="module")
+def submission():
+    """Both documents.
+
+    Round 59 moved the grid-membership figure to Supplement S23, where it sits beside the
+    per-configuration table it summarises, because the second author's note asked for the
+    grid refinement to become the explanation of the deletion rather than a contribution.
+    The reading rules below are about the figure, not about which file it lives in, so they
+    read the submission rather than the article.
+    """
+    supp = REPO / "supplement.tex"
+    text = (REPO / "paper.tex").read_text(encoding="utf-8")
+    if supp.exists():
+        text += "\n" + supp.read_text(encoding="utf-8")
+    return re.sub(r"(?<!\\)%.*", "", text)
+
+
+@pytest.fixture(scope="module")
 def macros():
     if not GENERATED.exists():                      # pragma: no cover - generated at build
         pytest.skip("docs/generated/paper_numbers.tex absent; run emit_paper_numbers.py")
@@ -55,10 +72,10 @@ def macros():
 
 
 @pytest.fixture(scope="module")
-def caption(paper):
+def caption(submission):
     m = re.search(r"\\caption\{(\\textbf\{Grid membership.*?)\}\s*\n\\label\{fig:grid\}",
-                  paper, re.S)
-    assert m, "could not find Figure 4's caption; the anchor changed"
+                  submission, re.S)
+    assert m, "could not find the grid-membership caption; the anchor changed"
     return m.group(1)
 
 

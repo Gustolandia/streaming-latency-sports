@@ -52,6 +52,15 @@ ALLOWED = {
         "the same factor, in the round-2 restatement",
     ("supplement.tex", "tracedExcAlpha", r"medians as low as $0.21$~ms"):
         "the same median, quoted in S52.2 where the reading behind the claim is set out",
+    ("supplement.tex", "cpuEstimateSpread",
+     r"reject the continuum null at $\alpha = 0.05$ after"):
+        "the significance level, which is chosen rather than measured and happens to equal "
+        "the CPU-estimate spread; armed for this document only when round 59 moved the "
+        "grid-membership verdicts out of the main text and into S23",
+    ("supplement.tex", "manipTol",
+     r"reject the continuum null at $\alpha = 0.05$ after"):
+        "the same significance level against the manipulation tolerance, which is also 0.05 "
+        "and also a chosen constant; arrived here with the same round-59 relocation",
     ("supplement.tex", "exposureCrossover", r"E1's $0.79$--$1.00$ and"):
         "an E1 transport interval in S9 whose lower bound happens to equal the exposure "
         "crossover; the check armed for this macro in this document only when round 54 "

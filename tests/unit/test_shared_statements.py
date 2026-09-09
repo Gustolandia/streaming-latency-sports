@@ -58,8 +58,23 @@ def _normalise(fragment):
 
 @pytest.fixture(scope="module")
 def branches():
-    return (_normalise(_cases_body(_tex("paper.tex"), MAIN_ANCHOR)),
-            _normalise(_cases_body(_tex("supplement.tex"), SUPP_ANCHOR)))
+    """Every statement of the spread law in the submission, normalised.
+
+    Round 59 removed the main text's copy: the second author asked for the grid refinement to
+    become the explanation of the deletion rather than a contribution, and the rule it turns
+    on was already derived in Supplement S22. So this returns one fragment now rather than
+    two, and the drift this file was written to catch is prevented by there being nothing to
+    drift from. The two substantive rules below --- the collapse branch is a limit of zero,
+    and the relation is an arrow rather than an equality --- still apply, to whichever copies
+    exist.
+    """
+    out = []
+    for name, anchor in (("paper.tex", MAIN_ANCHOR), ("supplement.tex", SUPP_ANCHOR)):
+        tex = _tex(name)
+        if anchor in tex:
+            out.append(_normalise(_cases_body(tex, anchor)))
+    assert out, "the spread law is stated nowhere in the submission"
+    return tuple(out)
 
 
 @pytest.fixture(scope="module")
@@ -84,11 +99,17 @@ def documents():
 class TestTheSpreadLawIsStatedOnce:
     """Equation 5 of the main text and its twin in supplementary material S22."""
 
-    def test_both_documents_state_the_same_two_branches(self, branches):
-        main, supp = branches
-        assert main == supp, (
-            "the spread law differs between the documents.\n  main text: %s\n  supplement: %s\n"
-            "One of them is telling a reader something the other denies." % (main, supp))
+    def test_every_copy_states_the_same_two_branches(self, branches):
+        """One copy since round 59, and this holds for however many there are.
+
+        The duplication was the defect: round 45 found the two statements disagreeing in both
+        branches, six pages apart. Removing the main text's copy is a better fix than keeping
+        them in step, and the test degrades to a tautology rather than to a hole --- if a
+        second copy ever comes back, it must match.
+        """
+        assert len(set(branches)) == 1, (
+            "the spread law differs between its copies: %s\n"
+            "One of them is telling a reader something the other denies." % (branches,))
 
     def test_the_lower_branch_is_zero_and_not_an_inequality(self, branches):
         """`> 0` excludes only exact equality with zero, which no measured range achieves.
@@ -101,8 +122,7 @@ class TestTheSpreadLawIsStatedOnce:
                 "a branch of the spread law reads as an inequality (%s). The collapse branch "
                 "is a limit of 0; the noise floor that keeps a real arm off it is prose." % text)
 
-    @pytest.mark.parametrize("name,anchor", [("paper.tex", MAIN_ANCHOR),
-                                             ("supplement.tex", SUPP_ANCHOR)])
+    @pytest.mark.parametrize("name,anchor", [("supplement.tex", SUPP_ANCHOR)])
     def test_the_relation_is_a_limit(self, name, anchor):
         r"""`\longrightarrow`, not `=`.
 

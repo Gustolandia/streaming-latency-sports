@@ -157,7 +157,13 @@ ROWS = [
      "P(stall > $T_\\mathrm{true}$) predicts\nthe rate, unfitted"),
     ("E-A10\ntransport sweep", "payload size;\n$T_\\mathrm{true}$ %sx" % _transport_span(),
      "load, hosts,\ncode path",
-     "other side of the inequality;\ntail index %s" % _tail_index()),
+     # Round 58's image review. This cell called a four-point log-log slope a "tail index"
+     # and listed it as what E-A10 settled, while Section VI-E reports the same number and
+     # then withdraws the claim built on it -- "four points do not earn an equation here".
+     # A map of what each campaign settled may not settle something the manuscript withdrew,
+     # and may not give the quantity a name the manuscript is careful to avoid for it. The
+     # row keeps its real finding, which is the direction of the inequality.
+     "other side of the inequality;\nslope %s, withdrawn" % _tail_index()),
     ("E-A8\nco-location", "broker on\nthe driver",
      "utilization,\nto %s" % _colocation_rho_match(),
      "nothing: transport did not\nmove, so it is withheld"),

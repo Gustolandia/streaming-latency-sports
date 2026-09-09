@@ -18,6 +18,7 @@ import sys
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
 import pytest  # noqa: E402
 
 ROOT = Path(__file__).parent.parent.parent
@@ -233,6 +234,46 @@ class TestCheck:
         fig, ax = _blank()
         assert set(fc.report(fig)) == {"struck", "overlapping", "clipped", "crossed",
                                        "erased", "translucent", "probed"}
+
+
+class TestALongLabelCannotDiluteAStrike:
+    """A strike on one word of a caption is a strike, however long the caption.
+
+    Round 55 read the printed page and found the transport-proxy arrowhead sitting on the
+    first "T" of Figure 1's "end-to-end TTI". The gate had passed the figure: over a
+    fourteen-character box the strike is 0.58% of the ink, under `MAX_INK_FRACTION`, while
+    the character cell it landed in was 5.08% dark. A reader does not average over the label.
+
+    So the same measurement is taken again in windows about as wide as the text is tall --
+    one character cell -- and the worst window is what the per-cell threshold sees. The
+    numbers below are the measured ones; a sweep of all labels in every figure the
+    submission builds returns 0.0 for every one, so the two populations do not overlap.
+    """
+
+    def test_a_short_label_falls_back_to_the_whole_box(self):
+        """One cell wide is the whole box, and the windowed answer must equal the plain one."""
+        patch = np.array([[0, 255], [255, 255]], dtype=float)
+        assert fc._worst_window(patch, 128) == pytest.approx((patch < 128).mean())
+
+    def test_an_empty_patch_is_not_a_strike(self):
+        assert fc._worst_window(np.zeros((0, 0)), 128) == 0.0
+
+    def test_ink_in_one_cell_of_a_long_label_is_found(self):
+        """The defect's shape: a dark cell at one end of an otherwise clean strip."""
+        patch = np.full((6, 60), 255.0)
+        patch[:, 0:6] = 0.0                       # one cell, fully inked
+        whole = float((patch < 128).mean())
+        worst = fc._worst_window(patch, 128)
+        assert whole == pytest.approx(0.1)
+        assert worst == pytest.approx(1.0)
+        assert worst > whole, "the window must see what the average hides"
+
+    def test_the_thresholds_separate_the_measured_populations(self):
+        """0.0508 was the strike; 0.0 is every clean label. The line sits between them."""
+        assert 0.0 < fc.MAX_CELL_INK_FRACTION < 0.0508
+
+    def test_a_clean_strip_is_clean_in_every_window(self):
+        assert fc._worst_window(np.full((6, 60), 255.0), 128) == 0.0
 
 
 class TestReferenceLinesThroughText:

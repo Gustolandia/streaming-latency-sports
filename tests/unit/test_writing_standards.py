@@ -152,6 +152,53 @@ class TestExperimentalVocabularyIsDefinedBeforeUse:
         assert not bad, "used before \\label{def:vocabulary}:\n  " + "\n  ".join(bad)
 
 
+class TestTheBibliographyObeysTheVocabularyToo:
+    r"""The notes print, so they are prose the reader sees.
+
+    Round 55 found `mqbench2026` carrying "nanosecond send stamps" in its note field. A
+    `note` is typeset into the reference list, so the retired word was printing in the
+    supplement's bibliography while every rule that could have caught it looked at `.tex`
+    sources and at figures. The `.bib` is the third surface, and the only one left.
+
+    Titles are exempt: a reference reproduces the title its author gave it, and correcting
+    someone else's title would be a misquotation. The rule is on the fields this project
+    writes -- `note` and `howpublished`.
+    """
+
+    OURS = re.compile(r"^\s*(?:note|howpublished)\s*=\s*", re.I)
+    BARE_STAMP = re.compile(
+        r"(?<!Time )(?<![A-Za-z\-])[Ss]tamp(?:s|ed|ing)?\b(?![-_])(?! Counter)")
+
+    def _our_fields(self):
+        """(line number, text) for every note/howpublished value, brace-continuations joined."""
+        text = (REPO / "manuscript_references.bib").read_text(encoding="utf-8")
+        out, lines = [], text.splitlines()
+        for i, line in enumerate(lines, 1):
+            if not self.OURS.match(line):
+                continue
+            chunk, depth, k = line, line.count("{") - line.count("}"), i
+            while depth > 0 and k < len(lines):
+                chunk += " " + lines[k]
+                depth += lines[k].count("{") - lines[k].count("}")
+                k += 1
+            out.append((i, chunk))
+        return out
+
+    def test_there_are_fields_to_check(self):
+        assert len(self._our_fields()) > 40, "the bibliography's own notes should be many"
+
+    def test_no_note_says_stamp_where_the_documents_say_timestamp(self):
+        bad = ["line %d: %r" % (n, self.BARE_STAMP.search(t).group(0))
+               for n, t in self._our_fields() if self.BARE_STAMP.search(t)]
+        assert not bad, (
+            "the reference list prints these notes, so the retired word reaches the reader "
+            "through them: %s" % bad)
+
+    def test_the_rule_would_catch_the_defect_it_was_written_for(self):
+        assert self.BARE_STAMP.search("Introduces mq-bench: nanosecond send stamps, one host")
+        assert not self.BARE_STAMP.search("nanosecond send timestamps, one host")
+
+
 class TestOneNameForTheSendLag:
     r"""The first term of the TTI decomposition has one name across the submission.
 

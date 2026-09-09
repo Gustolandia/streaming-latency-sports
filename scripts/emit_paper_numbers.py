@@ -389,6 +389,13 @@ def grid_macros():
         ("gridPowered", str(len(powered))),
         ("gridReject", str(len(reject))),
         ("gridFlat", str(sum(1 for c in cells if not c["powered"]))),
+        # Word forms for the prose. IEEE house style spells small counts where they open a
+        # clause, and "9 of the 10 powered configurations" is the one place in this paper
+        # where three digits land in a row (round 55, W1). Above twelve `_spell` hands the
+        # digits back, so the pair stays readable if the campaign grows.
+        ("gridPoweredWord", _spell(len(powered))),
+        ("gridRejectWord", _spell(len(reject))),
+        ("gridFlatWord", _spell(sum(1 for c in cells if not c["powered"]))),
         # The supplement's caption said 10^4 draws and the committed artefact was written
         # with 4,000. Nobody noticed, because the floor of a Monte Carlo p-value sits far
         # below every threshold the paper uses; the caption was still wrong, and the number
@@ -1749,11 +1756,24 @@ def separability_macros(path=os.path.join("docs", "results", "span_symmetry.csv"
 
 
 def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
-    """The remedy's accuracy, split by gate outcome.
+    """The remedy's accuracy, split by gate outcome, with the spread it is quoted over.
 
     Reported on the rejected conditions as well as the accepted ones on purpose. A
     correction validated only where the check already passes has been validated on the
     population that did not need it.
+
+    Round 55 added the denominators and the upper quartiles, and they are the point of this
+    docstring. The two medians were being quoted in the main text as "within 3.4%" and
+    "within 12.2%" -- as bounds, with no population named. They are not bounds. Across the
+    42 conditions the check passes the upper quartile is 20%, and the worst is 36%, so a
+    reader who took 3.4% as a guarantee would be wrong for a quarter of them.
+
+    That is this paper's own subject one level up. Section VI-E says a mean over the stall
+    distribution is dominated by a mode the operator never sees; Section VI-D says quoting
+    the exposure curve by its middle was our mistake once already. A remedy quoted by its
+    median, in the sentence that tells other people to adopt it, is the same error a third
+    time, and the fix is the same: emit the spread beside the point and the count beside
+    both, so the sentence cannot be written without them.
     """
     import csv as _csv
     import statistics as _st
@@ -1762,13 +1782,24 @@ def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
             rows = list(_csv.DictReader(fh))
     except OSError:
         return []
+
+    def pct(values, p):
+        """Nearest-rank percentile, as `_exposure_lags` uses: every value returned is one a
+        condition actually had, which is what a reader bracketing their own case wants."""
+        return values[min(len(values) - 1, max(0, int(round(p * (len(values) - 1)))))]
+
     out = []
     for suffix, name in (("#pass", "Pass"), ("#fail", "Fail")):
-        rel = [abs(float(r["recovery_err_us"])) / float(r["median_D_us"]) * 100.0
-               for r in rows
-               if r["condition"].endswith(suffix) and float(r["median_D_us"])]
+        rel = sorted(abs(float(r["recovery_err_us"])) / float(r["median_D_us"]) * 100.0
+                     for r in rows
+                     if r["condition"].endswith(suffix) and float(r["median_D_us"]))
         if rel:
+            # "Hi", not "P75": a TeX control sequence is letters only, and
+            # `\recoveryErrPassP75` parses as `\recoveryErrPassP` followed by the digits.
+            # The ledger already uses this suffix for the same idea (`exposureErrTenHi`).
             out.append(("recoveryErr" + name, "%.1f" % _st.median(rel)))
+            out.append(("recoveryErr" + name + "Hi", "%.0f" % pct(rel, 0.75)))
+            out.append(("recovery" + name + "N", str(len(rel))))
     # The D-A correlation, and the unit it is computed over. `rho_DA` is one number per
     # CONDITION, fitted across that condition's own events -- 5,433 of them in the first row
     # -- and the macro below is the median of those across conditions.

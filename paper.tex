@@ -109,7 +109,7 @@ scheduling, not clock synchronization; real-time priority on the timestamping th
 the negative rate $\rtFactorLow$--$\rtFactorHigh\times$ at unchanged utilization.
 Second, the benchmark keeps an end-to-end sample only when its millisecond-resolution
 latency is strictly positive and does not count what it discards: of $\ombMedianCells$
-embedded-mode configurations, $\ombGridMedianCells$ reported a median that was an exact
+embedded-mode cells, $\ombGridMedianCells$ reported a median that was an exact
 multiple of one millisecond, computed from $\ombGridRetentionMin$--$\ombGridRetentionMax\%$
 of the samples taken. We contribute an exact identity for the
 negative span, a law for the retained fraction confirmed by a pre-registered manipulation,
@@ -361,11 +361,14 @@ to report one is a settled literature we
 follow~\cite{georges2007rigorous,hoefler2015benchmarking}. What that literature does not do
 is check what its tool discards. Most published comparisons report a median above the
 tool's one-millisecond timestamp resolution, where the deletion law of
-Section~\ref{sec:external} does not bind. Not all do. Of the \litComparisonsWord{} 2026
-broker comparisons we placed against that resolution, \litInsideRegimeWord{} report figures
-at or below it, and one names a percentile for a single broker and none for the other
-two~\cite{indexdev2026brokers}, so its ranking cannot be placed against the resolution at
-all.
+% Round 55 moved the denominator to Supplement S52.3, where the exhibits are set out. With
+% two comparisons it read against its own sentence: the count said both had been placed
+% against the resolution, and the clause after it said one of them cannot be placed at all.
+% The exhibit is the argument; the count is bookkeeping and belongs beside the bookkeeping.
+Section~\ref{sec:external} does not bind. Not all do: a 2026 comparison names a percentile
+for a single broker and gives the other two only
+``sub-millisecond''~\cite{indexdev2026brokers}, so its ranking cannot be placed against that
+resolution at all.
 
 The tools are few and shared, so a defect in one is not one project's problem. The audit of
 Section~\ref{sec:generality} reads \harnessAuditedWord{} tools at source and finds
@@ -710,12 +713,12 @@ configuration's replicates to the nearest $q$-grid vertex, against the
 within-configuration permutation null that a \emph{continuum} --- retention varying smoothly
 with $T_{\mathrm{true}}/\tau$, as an incommensurate rate gives --- implies.
 Supplements~S44 and~S23 give
-the construction and every configuration with $n \ge 5$. $\gridReject$ of the
-$\gridPowered$ powered configurations reject the continuum null at $\alpha = 0.05$ after
+the construction and every configuration with $n \ge 5$. Of the \gridPoweredWord{} powered
+configurations, \gridRejectWord{} reject the continuum null at $\alpha = 0.05$ after
 Holm correction within the family of $\gridArms$. The tenth, $\gridUnresolvedRate$~msg/s,
 rejects before correction ($p = \gridUnresolvedRaw$) and not after
 ($p = \gridUnresolvedHolm$); we report it as unresolved rather than as support. The
-remaining $\gridFlat$ configurations, \gridFlatRates~msg/s, have no power by construction:
+remaining \gridFlatWord{} configurations, \gridFlatRates~msg/s, have no power by construction:
 where
 $T_{\mathrm{true}}/\tau$ sits on a vertex the two predictions coincide, so the distance is
 replicate noise and which side of the diagonal it falls on is not evidence either way
@@ -726,14 +729,14 @@ replicate noise and which side of the diagonal it falls on is not evidence eithe
 \includegraphics[width=\columnwidth]{docs/results/figures/grid_membership.pdf}
 \caption{\textbf{Grid membership, as a set.} Each configuration's observed mean distance to
 the nearest grid vertex against the distance a continuum would give, which is the diagonal.
-The gray bar beside each configuration is its own simulated null, \emph{uncorrected}; the
+The gray bar beside a configuration is its own simulated null, \emph{uncorrected}; the
 test is one-sided towards the grid, so a marker \emph{below} its bar rejects that null.
 Filled circles also survive Holm correction. The open circle sits
 \emph{\gridUnresolvedSide} its bar too, $\gridUnresolvedObs$ against a band opening at
 $\gridUnresolvedNullLo$, but at $p = \gridUnresolvedRaw$ raw and $\gridUnresolvedHolm$
 corrected it is the one powered configuration that does not reject: correction is what the
-picture cannot draw. The $\gridFlat$ squares are the configurations where the two
-hypotheses coincide and no test has power; \emph{the sign carries nothing} there.
+picture cannot draw. The \gridFlatWord{} squares carry no bar because no test has power
+there: the two hypotheses coincide, and \emph{the sign carries nothing}.
 Corrected $p$-values are in Supplement~S23.}
 \label{fig:grid}
 \end{figure}
@@ -832,7 +835,8 @@ The rule of Section~\ref{sec:gate} rejects $\auditRejectedWorkstation$ of
 $\auditRunsWorkstation$ runs on the workstation testbed ($\auditPctWorkstation\%$) and
 $\auditRejectedCloud$ of $\auditRunsCloud$ on the cloud testbed ($\auditPctCloud\%$), every
 run behind our first result among them: on that first testbed
-$\auditUsableConditionsWorkstation$ of $\auditConditionsWorkstation$ conditions survive.
+$\auditUsableConditionsWorkstation$ of $\auditConditionsWorkstation$ conditions survive,
+which is what applying the rule to ourselves cost.
 
 Table~\ref{tab:spans} separates the components over a wider population than the audit:
 every cloud run that produced matched events, $\spanRuns$ of them, rather than the
@@ -998,8 +1002,8 @@ because both were parameterized in $\rho$ and $\rho$ is not the variable (Supple
 % experiment, denominator and uncertainty. The rule in the Discussion now points back here.
 The displacement $A$ is a scheduling quantity and does not grow because a message
 travelled further, so the relative error of the proxy is $A/D$ and falls as $1/D$. At our
-median acknowledgment lag, $A = \ackLagMedianUs\,\mu$s, that is $\exposureErrTen\%$ at a
-$10$~ms delivery, $\exposureErrHundred\%$ at $100$~ms and $\exposureErrOne\%$ at $1$~ms;
+median acknowledgment lag, $A = \ackLagMedianUs\,\mu$s, that is $\exposureErrOne\%$ at a
+$1$~ms delivery, $\exposureErrTen\%$ at $10$~ms and $\exposureErrHundred\%$ at $100$~ms;
 below $\exposureCrossover$~ms the displacement exceeds the delivery it is a correction to,
 and sub-millisecond medians are routine in broker benchmarking. $A$ is not a constant:
 across our conditions it spans $\exposureLagLo$--$\exposureLagHi\,\mu$s, putting the
@@ -1023,10 +1027,11 @@ on $\gapDistortionDeflates\%$ of the pairs: a property of the clients, not of th
 
 The displacement can be recovered rather than discarded. Equation~\ref{eq:model} holds per
 event and $A$ is producer-side on one clock, so a harness that records its own
-acknowledgment lag recovers the delivery it failed to measure. The recovered median lands
-within $\recoveryErrPass\%$ of the true one on runs the check passes, and within
-$\recoveryErrFail\%$ on the runs it rejects --- the population a remedy tried only against
-clean runs never meets.
+acknowledgment lag recovers the delivery it failed to measure. Over the $\recoveryPassN$
+conditions the check passes, the recovered median is $\recoveryErrPass\%$ from the true one
+at the median condition and $\recoveryErrPassHi\%$ at the upper quartile; over the
+$\recoveryFailN$ it rejects, $\recoveryErrFail\%$ and $\recoveryErrFailHi\%$. The second
+population is the one a remedy tried only against clean runs never meets.
 
 \subsection{The stall spectrum, and the scheduler's slice}
 \label{sec:tail}

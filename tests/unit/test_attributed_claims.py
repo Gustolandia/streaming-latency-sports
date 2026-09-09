@@ -196,11 +196,24 @@ class TestTheLiteratureRegistryAndTheProseAgree:
                 "a counted comparison must be placed against the resolution, and %r is %r"
                 % (r["citation_key"], r["figures_inside_regime"]))
 
-    def test_the_paper_uses_the_emitted_count_rather_than_a_typed_one(self):
-        paper = (REPO / "paper.tex").read_text(encoding="utf-8")
-        assert r"\litComparisonsWord" in paper and r"\litInsideRegimeWord" in paper, (
-            "Section III-A should read its count from the registry; a typed number drifts "
-            "from the list it summarises")
+    def test_the_count_is_read_from_the_registry_wherever_it_is_quoted(self):
+        r"""Round 54 put the count in Section III-A; round 55 moved it to Supplement S52.3.
+
+        The reason for the move is in the paper: with a denominator of two, "of the two
+        comparisons we placed against that resolution, two report figures at or below it"
+        read against the clause after it, which says one of them cannot be placed at all.
+        The exhibit carries the argument in the main text and the bookkeeping went to the
+        supplement, where a denominator of two is unremarkable.
+
+        What must not change is that the count is emitted rather than typed, so the gate
+        follows it across the submission rather than pinning it to one document.
+        """
+        surface = "\n".join((REPO / n).read_text(encoding="utf-8")
+                            for n in ("paper.tex", "supplement.tex"))
+        for macro in (r"\litComparisonsWord", r"\litInsideRegimeWord"):
+            assert macro in surface, (
+                "%s is emitted but quoted nowhere; a count of the registry should either be "
+                "read from it or stop being emitted" % macro)
 
 
 class TestTheRuleWouldHaveCaughtTheDefect:

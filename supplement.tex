@@ -4019,7 +4019,12 @@ the assumption this paper is about, and its being shared is the reason the omiss
 \paragraph{Three 2026 data points, two of them inside the regime}
 The main text concedes that most published comparisons report a median above the timestamp resolution,
 where the deletion law does not bind. That concession stands, and it is worth recording that
-it is not universal. A 2026 practitioner comparison of NATS, \redis{} and \kafka{} gives
+it is not universal. The denominator behind that record is small and is stated here rather
+than in the main text, where two of two reads against the sentence it was meant to support:
+of the \litComparisonsWord{} 2026 broker comparisons we placed against the resolution,
+\litInsideRegimeWord{} report figures at or below it. Each is one row of
+\texttt{docs/results/external/literature\_regime.csv}, and the count in this sentence is
+read from that file rather than typed. A 2026 practitioner comparison of NATS, \redis{} and \kafka{} gives
 \kafka{} ``sub-10ms latency at p99'' and gives the other two no percentile at all:
 \redis{} has ``sub-millisecond response times'' and NATS ``sub-millisecond latency'',
 with ``microsecond-level message delivery''~\cite{indexdev2026brokers}. That is the sharper

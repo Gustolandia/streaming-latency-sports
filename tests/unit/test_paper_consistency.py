@@ -3309,6 +3309,118 @@ class TestClaimsWithdrawnForWantOfEvidenceStayWithdrawn:
             assert phrase not in flat, "the abstract reinstates %r" % phrase
 
 
+class TestNoSummaryIsOfferedAsABound:
+    r"""A median quoted as a limit, in the sentence that tells other people what to do.
+
+    Round 55, and the third time this project has caught itself doing what the paper
+    reports. Section VI-D read:
+
+        "The recovered median lands **within** 3.4% of the true one on runs the check
+         passes, and within 12.2% on the runs it rejects."
+
+    `recoveryErrPass` is the *median of a per-condition relative error* over the 42
+    conditions the check passes. Their upper quartile is 20% and the worst is 36%. "Within
+    3.4%" is a bound a quarter of that population does not respect, and the sentence named
+    neither the population nor the spread -- while Section IV-F promises every proportion is
+    "a count over a stated denominator" and Section VII-B tells benchmark authors to "count
+    your events before you quote a percentile".
+
+    The unit was wrong too: the population is conditions, not runs. Round 50 caught the same
+    slip ("correlated within an event", when one event is one (D, A) pair) and fixed it the
+    same way -- by making the sentence name its denominator, because a sentence that has to
+    name its denominator cannot misname the unit.
+
+    The rule is narrow on purpose. It does not police every number. It says that where the
+    manuscript quotes the accuracy of its own remedy, it does so with the count and the
+    spread beside the point, from the ledger.
+    """
+
+    def _recovery(self, tex):
+        i = tex.index(r"\recoveryErrPass")
+        start = tex.rfind("\n\n", 0, i)
+        end = tex.find("\n\n", i)
+        return " ".join(tex[start:end if end != -1 else len(tex)].split())
+
+    def test_the_recovery_claim_names_both_populations(self, tex):
+        para = self._recovery(tex)
+        for macro in (r"\recoveryPassN", r"\recoveryFailN"):
+            assert macro in para, (
+                "the recovery sentence must say how many conditions each figure is a "
+                "median over; %s is missing" % macro)
+
+    def test_the_recovery_claim_shows_its_spread(self, tex):
+        para = self._recovery(tex)
+        assert r"\recoveryErrPassHi" in para or r"\recoveryErrFailHi" in para, (
+            "a median offered as guidance needs the spread beside it; that is the "
+            "manuscript's own finding about the exposure curve and the stall distribution")
+
+    def test_the_recovery_claim_does_not_call_a_median_a_bound(self, tex):
+        para = self._recovery(tex)
+        assert "within" not in para.lower(), (
+            "'within X%%' reads as a bound and these are medians: %r" % para[:200])
+
+    def test_the_recovery_claim_counts_conditions_not_runs(self, tex):
+        """The population is one row per condition in span_symmetry.csv."""
+        para = self._recovery(tex)
+        assert "condition" in para, "the unit is conditions; say so"
+
+    def test_the_emitted_counts_match_the_ledger(self):
+        """The denominators are read, not typed, so a recomputation moves them."""
+        import csv
+        path = REPO / "docs" / "results" / "span_symmetry.csv"
+        rows = list(csv.DictReader(path.open(encoding="utf-8")))
+        macros = dict(_emitted_macros())
+        for suffix, name in (("#pass", "Pass"), ("#fail", "Fail")):
+            n = sum(1 for r in rows if r["condition"].endswith(suffix)
+                    and float(r["median_D_us"]))
+            assert macros["recovery%sN" % name] == str(n)
+
+
+class TestTheAbstractUsesTheBodysNouns:
+    r"""The abstract counted cells and called them configurations.
+
+    Section IV-B separates four experimental words on purpose, at the second author's
+    insistence: a *cell* is a condition together with a workload, and a *configuration* is a
+    setting within a manipulation. The abstract said "of 75 embedded-mode configurations",
+    counting `\ombMedianCells` -- the same macro the body and the Fig. 3 caption both
+    describe as cells.
+
+    It survived because it is in the one place a reader of the body never checks, and the
+    vocabulary gates read the body. The rule is anchored on the macro rather than on a word
+    list: wherever a count of cells is printed, the noun beside it has to be the one the
+    Terms section licenses for that count.
+    """
+
+    CELL_MACROS = (r"\ombMedianCells", r"\ombGridMedianCells")
+
+    def test_every_sentence_counting_cells_calls_them_cells(self, tex):
+        """Sentence-level, not adjacency: the noun may trail the macro by a few words.
+
+        Both macros can appear in one sentence ("of 75 cells, 71 report..."), so the rule is
+        that the sentence carrying either of them names the unit once and does not name the
+        other unit at all.
+        """
+        flat = " ".join(tex.split())
+        bad = []
+        for sentence in re.split(r"(?<=[.!?])\s+(?=[A-Z\\])", flat):
+            if not any(m in sentence for m in self.CELL_MACROS):
+                continue
+            if "cell" not in sentence.lower():
+                bad.append("no unit named: %r" % sentence[:110])
+            elif "configuration" in sentence.lower():
+                bad.append("two units in one sentence: %r" % sentence[:110])
+        assert not bad, (
+            "a count of cells is printed with the wrong noun; Section IV-B licenses 'cell' "
+            "for this quantity and 'configuration' for something else:\n  "
+            + "\n  ".join(bad))
+
+    def test_the_abstract_does_not_call_them_configurations(self, tex):
+        abstract = tex[tex.index(r"\begin{abstract}"):tex.index(r"\end{abstract}")]
+        assert "configuration" not in abstract, (
+            "the abstract uses 'configuration', which Section IV-B defines as a setting "
+            "within a manipulation; the 75 audited things are cells")
+
+
 class TestTheReportingRulesAreInternallyConsistent:
     """Two rules a reader meets seven pages apart, and what round 54 found between them.
 

@@ -87,7 +87,10 @@ def plot_counts(ax, df):
     ax.legend(loc="upper left", framealpha=1.0)
 
     grew = df["trace_events"].iloc[-1] / df["trace_events"].iloc[0]
-    ax.annotate(f"${grew:.1f}\\times$", xy=(df["window_s"].iloc[-1], df["trace_events"].iloc[-1]),
+    # A literal sign rather than $\times$, which mathtext pads as a binary operator. The
+    # italic went with it: math mode was supplying it by accident, and this annotation is
+    # one of a pair with "fixed" below, which was upright bold all along.
+    ax.annotate(f"{grew:.1f}×", xy=(df["window_s"].iloc[-1], df["trace_events"].iloc[-1]),
                 xytext=(-34, -16), textcoords="offset points", color=EMITTED, fontweight="bold")
     ax.annotate("fixed", xy=(df["window_s"].iloc[-1], df["slow_wake"].iloc[-1]),
                 xytext=(-32, 10), textcoords="offset points", color=AFFECTED, fontweight="bold")

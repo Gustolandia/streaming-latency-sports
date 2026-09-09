@@ -74,6 +74,38 @@ something other than `A`, `An` or `The`. Gated by `TestACaptionDoesNotOpenOnAnAr
 `tests/unit/test_rendered_prose.py`, which reads the bold lead only --- a caption *body* may
 open a sentence however it likes.
 
+### A1d. One multiplication sign, one microsecond, one capital --- GATED
+
+A1b and A1c hold each figure to the manuscript. This one holds the figures to *each*
+*other*, which is a reading nothing had done: round 59's triple image review put the
+seventeen included figures side by side rather than each beside its own caption, and the
+submission turned out to be printing the same things three different ways.
+
+| | was | is |
+|---|---|---|
+| the multiplication sign | `39x` (Fig. S8, literal), `39 x` (Fig. S7, mathtext), `77x` (Fig. S10, the letter) | `39×` everywhere |
+| the microsecond | `µs` (Fig. 3), `us` (Fig. S12) | `µs` |
+| panel titles | ten opening on a capital, eight not | a capital, unless the title opens on a count or continues panel (a) |
+| the E-A5 arms | blue was `real-time` in Fig. S7 and `ordinary` in Fig. S8 | `ordinary` blue, `real-time` green, in both |
+
+The mathtext row is worth its own sentence, because the cause is not carelessness:
+`$39\times$` sets the sign as a *binary operator*, and matplotlib pads binary operators.
+With no right operand the padding lands anyway. The two forms are a keystroke apart in
+the source and a visible space apart on the page.
+
+Rule: figures print `×` and `µ` as characters, panel titles open on a capital, and a
+condition keeps one colour across every figure that draws it. Gated by
+`tests/unit/test_figure_typography.py`, which reads the **built figure PDFs** for what a
+text layer preserves --- the letter x and the micro sign are characters and survive
+extraction --- and the **scripts** for what it does not: mathtext's padding is glyph
+positioning, so no extractor can see it.
+
+The same review found Fig. S2(b) drawing grouped bars on a log axis. A bar states its
+value as a length measured from zero; a log axis has no zero, so those lengths were
+`log(v) - log(floor)` and would all have changed if the limit moved, while no number did.
+The panel now draws the segment between the two components, because a distance on a log
+axis *is* a ratio, and the ratio is what the panel claims. Gated in the same file.
+
 ### A2. No `flight` — GATED
 
 In the corpus bare *flight* occurs 131 times across 25 of 775 papers, and a read of every

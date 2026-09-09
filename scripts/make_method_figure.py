@@ -53,9 +53,9 @@ def _priority_range():
     try:
         import priority_pairs
         s = priority_pairs.summary()
-        return "%d pairs, %.0f-%.0fx" % (s["pairs"], s["factor_low"], s["factor_high"])
+        return "%d pairs, %.0f-%.0f×" % (s["pairs"], s["factor_low"], s["factor_high"])
     except (ImportError, OSError, KeyError, ValueError):
-        return "8 pairs, 7-80x"
+        return "8 pairs, 7-80×"
 
 
 def _geometry_result():
@@ -71,10 +71,10 @@ def _geometry_result():
         for phase in ("ea6", "ea6b"):
             (_, kc, nc), (_, ks, ns) = stat_intervals.geometry_cells(phase)
             out.append(stat_intervals.ratio_z(ks, ns, kc, nc)[1])
-        return "%.2fx, %.2fx, at rho %g" % (out[0], out[1],
+        return "%.2f×, %.2f×, at rho %g" % (out[0], out[1],
                                             stat_intervals.geometry_rho("ea6"))
     except (ImportError, OSError, KeyError, ValueError):
-        return "2.07x, 2.05x, at rho 0.7531"
+        return "2.07×, 2.05×, at rho 0.7531"
 
 
 def _priority_rho_match():
@@ -143,7 +143,9 @@ ROWS = [
      "load, in-flight,\nbackend", "H3 asymmetry\n(replicated)"),
     ("window\nsweep", "observation window\n60-600 s", "rate, host,\nmatch",
      "start-up cost vs\nper-event constant"),
-    ("transport\n(x2)", "feeds, powered", "verified\nreal-time rate",
+    # "(x2)" meant two campaigns, and read as a product once every other cell in the map
+    # started printing a real multiplication sign. It states the count in words now.
+    ("transport\n(two runs)", "feeds, powered", "verified\nreal-time rate",
      "broker transport,\nequivalence + shift"),
     # The campaigns that decided the mechanism. Added after an audit found the closing note's
     # claim -- that every claim in the discussion traces to a row -- had quietly become false: five
@@ -155,7 +157,7 @@ ROWS = [
      "utilization is not the variable\n(%s)" % _geometry_result()),
     ("E-A9\nrun-queue trace", "nothing:\nobservation only", "load,\npriority setting",
      "P(stall > $T_\\mathrm{true}$) predicts\nthe rate, unfitted"),
-    ("E-A10\ntransport sweep", "payload size;\n$T_\\mathrm{true}$ %sx" % _transport_span(),
+    ("E-A10\ntransport sweep", "payload size;\n$T_\\mathrm{true}$ %s×" % _transport_span(),
      "load, hosts,\ncode path",
      # Round 58's image review. This cell called a four-point log-log slope a "tail index"
      # and listed it as what E-A10 settled, while Section VI-E reports the same number and
@@ -163,7 +165,12 @@ ROWS = [
      # A map of what each campaign settled may not settle something the manuscript withdrew,
      # and may not give the quantity a name the manuscript is careful to avoid for it. The
      # row keeps its real finding, which is the direction of the inequality.
-     "other side of the inequality;\nslope %s, withdrawn" % _tail_index()),
+     # The number is the exponent, not the slope: `_tail_index` negates the log--log
+     # fit because the supplement writes the law as T_true^{-\tailExponent}, with the
+     # sign outside. Fig. S3 prints the same fit as "slope -0.34", so calling this one
+     # "slope 0.34" put two signs on one number under one word. The ledger's word for
+     # the positive quantity is the exponent, and that is the word the map now uses.
+     "other side of the inequality;\nexponent %s, withdrawn" % _tail_index()),
     ("E-A8\nco-location", "broker on\nthe driver",
      "utilization,\nto %s" % _colocation_rho_match(),
      "nothing: transport did not\nmove, so it is withheld"),

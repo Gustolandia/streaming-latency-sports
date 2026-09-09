@@ -112,11 +112,11 @@ def plot_pipeline(ax):
               (4.4, r"$t_{\rm ack}$", "producer"), (7.6, r"$t_{\rm recv}$", "consumer")]
     for x, sym, proc in stamps:
         ax.plot([x, x], [1.35, 1.6], color=GREY, linewidth=1.0)
-        ax.text(x, 1.26, sym, ha="center", va="top", fontsize=9)
+        ax.text(x, 1.30, sym, ha="center", va="top", fontsize=9)
         # The stamp block moves UP rather than the span label moving down. Below it sit
         # three span arrows that cannot be rearranged without crossing each other, and the
         # empty band is above: the boxes start at 1.6 and the tick marks only reach 1.35.
-        ax.text(x, 0.98, proc, ha="center", va="top", fontsize=8, color=GREY,
+        ax.text(x, 1.02, proc, ha="center", va="top", fontsize=8, color=GREY,
                 style="italic")
 
     # "transport proxy", not "broker transport". The span from t_ack to t_recv subtracts a
@@ -134,7 +134,17 @@ def plot_pipeline(ax):
     # fourteen-character label -- see `_worst_window` in figure_collisions.py, added with
     # this fix. Moving the label left of 4.4 clears the arrowhead and still reads as naming
     # the long arrow beneath it, which is the only arrow it touches.
-    spans = [(0.6, 2.4, 0.42, 1.5, "send lag"), (4.4, 7.6, 0.42, 6.0, "transport proxy"),
+    # The acknowledgment lag is the middle term of the TTI decomposition and the subject of
+    # the sign identity (S < 0 exactly when A > D), and until round 59 it was the one span of
+    # the three the figure did not draw: a reader checking TTI = send lag + A + S against the
+    # picture found two addends and the sum. It
+    # goes in the gap the other two leave, from t_send to t_ack on the row they share. The
+    # label is the widest of the three on the narrowest arrow -- 2.0 units against send
+    # lag's 1.8 -- which is the shape of the collision item 1 of docs/infrastructure.md
+    # records, so figure_collisions.py is what clears it rather than the eye.
+    spans = [(0.6, 2.4, 0.46, 1.5, "send lag"),
+             (2.4, 4.4, 0.46, 3.4, "acknowledgment lag"),
+             (4.4, 7.6, 0.46, 6.0, "transport proxy"),
              (0.6, 7.6, 0.05, 3.1, "end-to-end TTI")]
     for x0, x1, y, label_x, label in spans:
         ax.annotate("", xy=(x1, y), xytext=(x0, y),
@@ -175,7 +185,7 @@ def plot_workload(axes, profiles):
 
     burst_ax.hist(profiles["burstiness"], bins=40, color=GREY, alpha=0.75)
     burst_ax.axvline(profiles["burstiness"].median(), color="#b22222", linewidth=1.6,
-                     label=f"median {profiles['burstiness'].median():.2f}$\\times$")
+                     label=f"median {profiles['burstiness'].median():.2f}×")
     burst_ax.set_xlabel("Peak / mean arrival rate (10 s window)")
     burst_ax.set_ylabel("Matches")
     burst_ax.set_title("(b) ...and burstier than their mean suggests")
@@ -516,7 +526,7 @@ def plot_quantum_geometry(axes, tau=TAU_MS, t_true=T_TRUE_MS, q=GRID_Q):
     # The duration belongs in the title, not in the panel: as an annotation it had to sit
     # between the two tick rules, where it was legible on screen and cramped in print. No
     # `~` in a mathtext string -- matplotlib is not LaTeX and prints the tilde.
-    top.set_title("(a) one delivery of $T_{\\mathrm{true}} = %.2f$ ms, at four phases"
+    top.set_title("(a) One delivery of $T_{\\mathrm{true}} = %.2f$ ms, at four phases"
                   % t_true, fontsize=8, loc="left")
 
     # --- (b) which phases exist ------------------------------------------------------------
@@ -571,7 +581,7 @@ def plot_quantum_geometry(axes, tau=TAU_MS, t_true=T_TRUE_MS, q=GRID_Q):
     bot.spines["bottom"].set_bounds(0, tau)   # the phase axis ends at the tick
     bot.tick_params(axis="x", labelsize=8, length=3)
     bot.set_xlabel("phase of the send instant within one tick", fontsize=8)
-    bot.set_title("(b) the send schedule decides how many survive", fontsize=8, loc="left")
+    bot.set_title("(b) The send schedule decides how many survive", fontsize=8, loc="left")
 
 
 def condemned_at(by_run, threshold):
@@ -642,7 +652,7 @@ def plot_network(ax):
             label="injected delay (reference)")
     ax.scatter([20], [ACK_BATCHED_TTI_MS], marker="*", s=220, color=REDIS,
                edgecolor="black", zorder=5, label="Redis (ack batched, $N$=1)")
-    ax.annotate(f"batching acks:\n{ACK_UNBATCHED_TTI_MS/ACK_BATCHED_TTI_MS:.0f}$\\times$ faster",
+    ax.annotate(f"batching acks:\n{ACK_UNBATCHED_TTI_MS/ACK_BATCHED_TTI_MS:.0f}× faster",
                 # Above the injected-delay reference rather than below it. At the old
                 # anchor the dotted line ran through both lines of this label, which the ink
                 # check could not see -- a dotted rule deposits little ink in a label's core

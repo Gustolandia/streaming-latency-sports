@@ -478,12 +478,21 @@ def plot_priority_ladder(ax, rows):
     rows = sorted(rows, key=lambda r: (r["rho"], r["campaign"]))
     positions = list(range(len(rows)))[::-1]
     for pos, r in zip(positions, rows):
-        for rate, n, colour, marker in ((r["rate_base"], r["n_base"], DELETED, "o"),
-                                        (r["rate_rt"], r["n_rt"], KEPT, "s")):
+        # The forest of Fig. S8 plots these same pairs and gives ACCENT to the arm
+        # the manipulation predicts will invert less, KEPT to the other. This panel
+        # used to give KEPT to `real-time`, so one blue meant two opposite arms in
+        # one document. DELETED never meant anything here -- it is the deleted-sample
+        # red of Fig. S12 -- so the ladder takes the forest's key rather than the
+        # reverse. Round 59's image review, reading the figures against each other.
+        for rate, n, colour, marker in ((r["rate_base"], r["n_base"], KEPT, "o"),
+                                        (r["rate_rt"], r["n_rt"], ACCENT, "s")):
             lo, hi = stat_intervals.wilson(int(round(rate * n)), n)
             ax.plot([lo, hi], [pos, pos], color=colour, lw=1.4, solid_capstyle="butt")
             ax.plot([rate], [pos], marker, ms=4.0, color=colour, mec="none")
-        ax.text(1.35, pos, "%.0f$\\times$" % r["factor"], transform=ax.get_yaxis_transform(),
+        # A literal sign, not $\times$: mathtext sets \times as a binary operator and
+        # pads it, so this column read "39 x" against Fig. S8's "39x" for the one
+        # number. Round 59's image review, comparing the figures with each other.
+        ax.text(1.35, pos, "%.0f×" % r["factor"], transform=ax.get_yaxis_transform(),
                 va="center", ha="right", fontsize=8, color=GREY)
 
     ax.set_yticks(positions)
@@ -497,8 +506,8 @@ def plot_priority_ladder(ax, rows):
     # events in 2,985 and its interval runs below 1e-3, where a tighter limit clips it.
     ax.set_xlim(4e-4, 0.60)
     ax.set_ylim(-0.7, len(rows) - 0.3)
-    ax.plot([], [], "o", color=DELETED, mec="none", ms=4.0, ls="none", label="ordinary")
-    ax.plot([], [], "s", color=KEPT, mec="none", ms=4.0, ls="none", label="real-time")
+    ax.plot([], [], "o", color=KEPT, mec="none", ms=4.0, ls="none", label="ordinary")
+    ax.plot([], [], "s", color=ACCENT, mec="none", ms=4.0, ls="none", label="real-time")
     # Upper right: the bottom row is the 95% arm, whose ordinary interval runs to the right
     # edge, and a legend there sits on it.
     ax.legend(fontsize=8, frameon=False, loc="upper right")
@@ -986,7 +995,7 @@ def plot_payload_grid(ax, arms, q=PAYLOAD_Q):
     # cannot exceed 100, so the space is empty by construction.
     ax.set_ylim(25, 108)
     ax.set_ylabel("retention (%)", fontsize=8)
-    ax.set_title("(a) replicates against the $q=%d$ grid" % q, fontsize=8)
+    ax.set_title("(a) Replicates against the $q=%d$ grid" % q, fontsize=8)
     ax.tick_params(labelsize=8)
 
 
@@ -1030,7 +1039,7 @@ def plot_payload_flip(ax, pos, q=PAYLOAD_Q):
     ax.set_ylim(0, top)
     ax.set_xlabel(r"frac($q\theta$)", fontsize=8)
     ax.set_ylabel("replicate spread (pts)", fontsize=8)
-    ax.set_title("(b) the flat/full flip", fontsize=8)
+    ax.set_title("(b) The flat/full flip", fontsize=8)
     ax.tick_params(labelsize=8)
 
 

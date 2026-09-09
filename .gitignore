@@ -159,3 +159,9 @@ docs/reference_corpus/
 # (scripts/zenodo_deposit.py, NC_DERIVED_PATHS); a public git remote is the same exposure.
 docs/reference_tc/
 REFEREE_REPORT_TC_R56_SIMULATED.md
+REFEREE_REPORT_TC_R57_SIMULATED.md
+# Derived build outputs: the collision rasters and the author-free PDFs that go to
+# Zenodo and into attachments. Both are rebuilt deterministically by their own scripts
+# (show_figure_collisions.py, build_without_authors.py), and a committed copy of a
+# derived PDF is one more thing that can drift from the source it was made from.
+build/

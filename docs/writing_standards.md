@@ -51,6 +51,29 @@ In a figure the bare word *arm* is banned outright — the prose gate cannot do 
 the ledger emits macros named `\armSixHundredRate` and the revision history discusses the
 retirement, but a figure has neither.
 
+### A1c. A caption opens on its claim, and not on an article --- GATED
+
+Two rules that looked like one problem. A1b makes the figures obey the vocabulary standard;
+`test_caption_leads.py` makes every caption open on its *claim* rather than on a label. The
+IEEE Editorial Style Manual adds a third: "In general, do not use A, An, or The at the
+beginning of a figure or table caption."
+
+Round 57 found 19 of the submission's 46 captions opening on an article, against a venue rate
+of 14% measured over 443 captions in 26 TC papers. The cause was the claim rule --- claims
+start with "The" --- and the resolution is that both hold at once:
+
+| was | is |
+|---|---|
+| **The** traced run-queue stall distribution is trimodal. | **Traced run-queue stalls are trimodal.** |
+| **A** late timestamp, not an early record. | **Late timestamp, not an early record.** |
+| **The** mechanism, by manipulation | **Mechanism, by manipulation** |
+| **The** same runs reproduce both published answers. | **One set of runs reproduces both published answers.** |
+
+Rule: the bold lead of every caption in either document states a claim and begins with
+something other than `A`, `An` or `The`. Gated by `TestACaptionDoesNotOpenOnAnArticle` in
+`tests/unit/test_rendered_prose.py`, which reads the bold lead only --- a caption *body* may
+open a sentence however it likes.
+
 ### A2. No `flight` — GATED
 
 In the corpus bare *flight* occurs 131 times across 25 of 775 papers, and a read of every

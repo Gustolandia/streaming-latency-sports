@@ -114,15 +114,58 @@ class TestTheSupplementNamesSectionsRatherThanNumberingThem:
         used = set(re.findall(r"Section~\\(main[A-Za-z]+)", supp))
         assert defined <= used, "defined but never used: %s" % sorted(defined - used)
 
-    def test_the_macros_carry_numbers_the_paper_has(self):
-        """The values are still numbers, so the resolve-check below still means something."""
+    def test_the_macros_read_the_paper_instead_of_repeating_it(self):
+        """Round 57: the values are `\\ref`s now, and that is strictly better than numbers.
+
+        This test used to assert the opposite -- that each macro held a literal like "IV-E" --
+        with the reason "the values are still numbers, so the resolve-check below still means
+        something". The resolve-check means more now, not less: the supplement loads `xr` and
+        pulls `paper.aux`, so a macro no longer *repeats* the paper's numbering, it *reads*
+        it, and a renumbering carries without an edit.
+
+        The class docstring above says why that matters, and it was already half the argument:
+        a pointer that stays valid while changing meaning is invisible to every gate. Twenty
+        typed constants were the remaining half. They were all correct when round 57 checked
+        them, which is the point -- nothing would have said otherwise, and round 56 had just
+        rewritten one section and compressed another.
+
+        What is pinned instead: every macro is a reference, and every label it names is a
+        label the paper actually defines.
+        """
         supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
-        values = dict(re.findall(r"\\newcommand\{\\(main[A-Za-z]+)\}\{([^}]*)\}", supp))
+        paper = (REPO / "paper.tex").read_text(encoding="utf-8")
+        # The body is `\ref{...}`, so it carries a nested brace pair: matching to the first
+        # `}` would capture `\ref{sec:audit` and report every macro as malformed.
+        values = dict(re.findall(r"\\newcommand\{\\(main[A-Za-z]+)\}\{((?:[^{}]|\{[^{}]*\})*)\}",
+                                 supp))
         assert values, "the macro block must exist"
-        for name, number in sorted(values.items()):
+        labels = set(re.findall(r"\\label\{([^}]+)\}", paper))
+        for name, body in sorted(values.items()):
+            m = re.match(r"^\\ref\{([^}]+)\}$", body)
+            assert m, ("%s holds %r; main-text pointers resolve through xr rather than "
+                       "repeating a number by hand" % (name, body))
+            assert m.group(1) in labels, \
+                "%s points at %r, which paper.tex does not define" % (name, m.group(1))
+
+    def test_the_resolved_pointers_are_still_section_numbers(self, aux):
+        """What the literals used to guarantee, now checked where the reader meets it.
+
+        `paper.aux` is the source the `\\ref`s read, so the values the supplement prints are
+        exactly the ones this asserts. If a label ever moves onto a `\\paragraph` the number
+        stops looking like a section number and this fails, which is the failure the old
+        literal check could not have seen at all.
+        """
+        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        values = dict(re.findall(r"\\newcommand\{\\(main[A-Za-z]+)\}\{\\ref\{([^}]+)\}\}",
+                                 supp))
+        assert values, "the macro block must resolve through \\ref"
+        for name, label in sorted(values.items()):
+            number = aux.get(label)
+            if number is None:                          # pragma: no cover - stale aux
+                pytest.skip("paper.aux predates %s; rebuild paper.tex first" % label)
             # v4 split Experimental Setup six ways (IV-A..IV-F), so the letter runs to F.
             assert re.match(r"^[IVX]+(?:-[A-F])?$", number), \
-                "%s holds %r, which is not a section number" % (name, number)
+                "%s resolves to %r, which is not a section number" % (name, number)
 
 
 class TestSupplementPointsAtRealSections:

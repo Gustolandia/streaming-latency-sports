@@ -303,11 +303,11 @@ appearing in this table.
 | `delta_schematic` | supplement, S16 (was Fig. 2(b); the one main-text drawing that was not a measurement, and the measured version is Fig. 9) |
 | `deletion` | main text, Fig. 3 |
 | `quantum_geometry` | supplement, S42 (moved round 40: a constructed illustration of the retention law, not a measurement, placed beside the 1970 counter note that carries the same identity) (added round 28: the geometry behind the deletion law) |
-| `grid_membership` | main text, Fig. 4 |
+| `grid_membership` | supplement, S23 (moved round 59: the second author asked for the grid refinement to become the explanation of the deletion rather than a contribution, so the figure went beside the per-configuration table it summarizes) |
 | `payload_flip` | supplement, S22 (moved round 43: every number its panels carry is in the sentence that used to sit above it, and four biographies would not otherwise fit inside twelve pages) (single-column from round 28; was full-width) |
 | `mechanism_forest` | supplement, S24 (moved round 57: it plots the four matched pairs of the main text's Table II and the two brokers of its Table I, so it restated tables the reader already has) |
 | `ttrue_law` | supplement, S15 |
-| `stall_spectrum` | main text, Fig. 5 (was Fig. 6 until `payload_flip` left in round 43) |
+| `stall_spectrum` | main text, Fig. 4 (was Fig. 5 until `grid_membership` left in round 59, and Fig. 6 until `payload_flip` left in round 43) |
 | `priority_ladder` | supplement, S24 |
 | _(no figure)_ | supplement, S25 --- the broker results, moved from the main text in round 18 |
 | `experiment_map` | supplement |

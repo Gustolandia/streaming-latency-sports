@@ -3439,6 +3439,40 @@ class TestNoSummaryIsOfferedAsABound:
             assert macros["recovery%sN" % name] == str(n)
 
 
+class TestTheAbstractPromisesWhatItDelivers:
+    r"""A colon in an abstract is a promise, and the list after it has to keep it.
+
+    Round 58: "derive checks their authors can apply: an exact identity for the negative span,
+    a pre-registered manipulation, and an audit of ten tools". An identity is not a check, a
+    manipulation is not a check and an audit is not a check -- all three are how the paper
+    *establishes* the two failure modes, and the checks are the sign check and the retention
+    report, which that sentence never names. The colon contradicted its own list.
+
+    The same sentence said "their authors" of two failure modes, which do not have any. Both
+    are pinned here because the abstract is the one paragraph every reader reads and the one
+    the body's gates never see.
+    """
+
+    def test_the_evidence_attaches_to_the_verb_that_earns_it(self, main_tex):
+        abstract = main_tex[main_tex.index(r"\begin{abstract}"):
+                            main_tex.index(r"\end{abstract}")]
+        flat = " ".join(abstract.split())
+        for word in ("characterize", "identity", "manipulation", "audit", "checks"):
+            assert word in flat, "the abstract no longer says %r; revisit this pin" % word
+        assert flat.index("characterize") < flat.index("identity") < flat.index("checks"), (
+            "the abstract lists its evidence after the word 'checks'. An identity, a "
+            "manipulation and an audit are not checks; they are what characterizes the "
+            "failure modes, and the sentence should attach them there")
+
+    def test_the_checks_name_the_audience_they_are_for(self, main_tex):
+        abstract = main_tex[main_tex.index(r"\begin{abstract}"):
+                            main_tex.index(r"\end{abstract}")]
+        flat = " ".join(abstract.split())
+        assert "checks benchmark authors can apply" in flat, (
+            "the abstract must say whose checks these are. It said 'their authors', and the "
+            "nearest plural noun was the two failure modes, which have none")
+
+
 class TestTheAbstractUsesTheBodysNouns:
     r"""The abstract counted cells and called them configurations.
 

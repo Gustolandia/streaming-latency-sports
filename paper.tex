@@ -112,10 +112,10 @@ Second, the benchmark keeps an end-to-end sample only when its millisecond-resol
 latency is strictly positive and does not count what it discards: of $\ombMedianCells$
 embedded-mode cells, $\ombGridMedianCells$ reported a median that was an exact
 multiple of one millisecond, computed from $\ombGridRetentionMin$--$\ombGridRetentionMax\%$
-of the samples taken. We identify and experimentally characterize both, show that they
-materially alter reported results, and derive checks their authors can apply: an exact
+of the samples taken. We identify and experimentally characterize both --- with an exact
 identity for the negative span, a pre-registered manipulation, and an audit of
-\harnessAuditedWord{} tools.
+\harnessAuditedWord{} tools --- show that they materially alter reported results, and derive
+checks benchmark authors can apply.
 \end{abstract}
 
 % Alphabetical, case-insensitively, and gated by test_index_terms_are_alphabetical.
@@ -850,8 +850,8 @@ case. The slice is \emph{derived} rather than measured: the kernel's published
 rule~\cite{zhou2025slice} gives $\sliceFactor \times 0.75\,\mathrm{ms} = \baseSliceMs$~ms
 on the $\testbedCpus$ cores the campaign's own load geometry recovers, over a $\tickMs$~ms
 scheduler tick, and no scheduler tunable is written anywhere in the archived campaign
-(Supplement~S41). That tick is the kernel's timer period, not the timestamp resolution of
-Section~\ref{sec:external}; both are $1$~ms here by coincidence of configuration. A thread
+(Supplement~S41). That tick is the kernel's timer period, not the timestamp resolution $\tau$ of
+Section~\ref{sec:metrics}; both are $1$~ms here by coincidence of configuration. A thread
 descheduled at the wrong instant therefore reads its clock about a slice late, six to
 thirty times a $0.1$--$0.5$~ms delivery, and the tick is why the mode is a band rather
 than a spike. A mean over this distribution is dominated by a mode the operator never
@@ -933,8 +933,8 @@ failure is confined to deliveries shorter than the timestamp resolution.}
 Publish latency across these cells takes only two values, $\ombPubLatLo$ and
 $\ombPubLatHi$~ms, while retention varies $\ombRetentionFold$-fold. A two-valued predictor
 cannot account for a range like that whatever its correlation, and the correlation it does
-have ($\ombRetentionRho$, Fisher $\ombRetentionRhoCI$, over $\ombRetentionRhoN$ cells) carries the sign
-Equation~\ref{eq:retention} predicts. What moves retention is where the producer's send
+have ($\ombRetentionRho$, Fisher $\ombRetentionRhoCI$, over $\ombRetentionRhoN$ cells) carries
+the sign the law below predicts. What moves retention is where the producer's send
 instants fall against the \emph{grid}: the instants, one millisecond apart, at which the
 timestamp changes value. A sample survives when its delivery crosses a grid instant,
 which for $T_{\mathrm{true}} < \tau$ happens with probability $T_{\mathrm{true}}/\tau$
@@ -1010,10 +1010,7 @@ point --- this failure needs no misbehaving clock, only two of them and a floor
 
 \section{Evidence Across Tools}
 \label{sec:tools}
-Neither failure is one project's oversight: the tools are few and shared, and five of 
-the \harnessAuditedWord{} we read dispose of a sample without counting it.
-
-Nor is the admission condition confined to the tool we measured: $\forkUnchanged$
+The admission condition is not confined to the tool we measured: $\forkUnchanged$
 of the $\forkChecked$ public forks we could read carry the expression unchanged, surveyed
 \forkCheckedOn{}.
 
@@ -1140,10 +1137,10 @@ negative means the reference timestamp failed, computes-to-zero means the resolu
 failed, and one unsigned total cannot distinguish them.
 
 \textbf{Do not assume co-location makes the measurement safer.} One host removes the
-clock-synchronization rival and nothing else. Every configuration our audit rejects most
-often is co-located, the standard evaluation environment hides the one condition that
-reverses our broker ordering (Section~\ref{sec:brokers}), and a shorter path is exactly the
-path on which both failures bind hardest.
+clock-synchronization rival and nothing else. The configuration our audit rejects most often
+is co-located, it hid the one condition that reverses our broker ordering
+(Section~\ref{sec:brokers}), and a shorter path is exactly the path on which both failures
+bind hardest.
 
 \textbf{Record the achieved rate, not the flag meant to produce it.} Verify it per run against
 elapsed wall time. The send schedule is an experimental variable in

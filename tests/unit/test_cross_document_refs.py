@@ -114,6 +114,24 @@ class TestTheSupplementNamesSectionsRatherThanNumberingThem:
         used = set(re.findall(r"Section~\\(main[A-Za-z]+)", supp))
         assert defined <= used, "defined but never used: %s" % sorted(defined - used)
 
+    def test_no_two_macros_point_at_the_same_section(self):
+        """Two names for one section is one name too many.
+
+        Round 59 deleted Section V-C and repointed `\\mainGridInference` at `sec:extphase`,
+        which `\\mainPhase` already named. Both resolved, both were used, and every existing
+        check passed -- while a reader following the two names had no way to know they were
+        being sent to the same place. Round 58's referee found it by reading the preamble.
+        """
+        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        pairs = re.findall(r"\\newcommand\{\\(main[A-Za-z]+)\}\{\\ref\{([^}]+)\}\}", supp)
+        seen = {}
+        clashes = []
+        for name, label in pairs:
+            if label in seen:
+                clashes.append("%s and %s both name %s" % (seen[label], name, label))
+            seen[label] = name
+        assert not clashes, "; ".join(clashes)
+
     def test_the_macros_read_the_paper_instead_of_repeating_it(self):
         """Round 57: the values are `\\ref`s now, and that is strictly better than numbers.
 

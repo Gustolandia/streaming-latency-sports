@@ -1878,6 +1878,60 @@ class TestTheHandlingShareIsBounded(object):
         assert epn.handling_share_macros(recount=rec, symmetry=sym) == []
 
 
+class TestPayloadFlipMacros:
+    """The four numbers Section VI-B quotes for the pre-registered payload flip.
+
+    Every one of them was typed, in both documents, and `test_ledger_coverage` could not
+    see them: it catches a literal colliding with an emitted macro, and none of these was
+    emitted at all. Round 60 found them while adding the units the referee asked for.
+    """
+
+    ARMS = {
+        "32 KB": {"spread": 13.63, "pin": 69.19, "lo": 62.06, "hi": 75.69, "n": 5},
+        "64 KB": {"spread": 26.72, "pin": 94.87, "lo": 73.06, "hi": 99.78, "n": 5},
+    }
+
+    def test_the_numbers_come_out_of_the_arms(self, monkeypatch):
+        import stat_intervals
+        monkeypatch.setattr(stat_intervals, "payload_flip_spreads", lambda: self.ARMS)
+        got = dict(epn.payload_flip_macros())
+        assert got["flipSpreadThirtyTwo"] == "13.6"
+        assert got["flipSpreadSixtyFour"] == "26.7"
+        assert got["flipLoThirtyTwo"] == "62.06"
+        assert got["flipHiSixtyFour"] == "99.78"
+        assert got["flipPinThirtyTwo"] == "69.2"
+        assert got["flipReplicatesThirtyTwoWord"] == "five"
+        assert got["flipVertexTwoThirds"] == "66.67"
+
+    def test_only_the_quoted_arm_carries_a_pin_and_a_count(self, monkeypatch):
+        """Lesson 13: quote what you emit, or stop emitting it.
+
+        Only the 32 KB arm's pin is quoted -- it is the registered detail that failed --
+        so the symmetric twins are deliberately absent rather than idle in the inventory.
+        """
+        import stat_intervals
+        monkeypatch.setattr(stat_intervals, "payload_flip_spreads", lambda: self.ARMS)
+        got = dict(epn.payload_flip_macros())
+        assert "flipPinSixtyFour" not in got
+        assert "flipReplicatesSixtyFourWord" not in got
+
+    def test_a_missing_arm_emits_nothing_at_all(self, monkeypatch):
+        """Half a flip is worse than none: the sentence names both arms or neither."""
+        import stat_intervals
+        monkeypatch.setattr(stat_intervals, "payload_flip_spreads",
+                            lambda: {"32 KB": self.ARMS["32 KB"]})
+        assert epn.payload_flip_macros() == []
+
+    def test_an_unreadable_ledger_declines_rather_than_invents(self, monkeypatch):
+        import stat_intervals
+
+        def boom():
+            raise OSError("no campaign")
+
+        monkeypatch.setattr(stat_intervals, "payload_flip_spreads", boom)
+        assert epn.payload_flip_macros() == []
+
+
 class TestSpreadMacros:
     """The counts supplementary material S22 states in words.
 

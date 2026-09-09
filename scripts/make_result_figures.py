@@ -883,34 +883,15 @@ PAYLOAD_Q = 3  # 300 msg/s against a 1 ms tick is 10/3 in lowest terms
 def payload_arms(path=None):
     """Retention percentages per payload arm, from the committed campaign ledger.
 
-    Selection matches the audit everywhere else: valid runs only, and only those whose counts
-    came from the shutdown hook, because a run whose totals were reconstructed afterwards cannot
-    support a retention rate.
+    Selection matches the audit everywhere else, and it lives in `stat_intervals` now: both
+    documents quote this arm's spread and its pin in prose, and round 60 found all four of
+    those numbers typed by hand. The figure keeps the colours, which are a drawing decision;
+    the numbers come from the one function that reads the ledger.
     """
-    import csv
-    path = path or (RESULTS / "external_campaigns_index.csv")
-    rows = list(csv.DictReader(open(path, encoding="utf-8", newline="")))
-    out = []
-    for label, keys, colour in PAYLOAD_ARMS:
-        vals = []
-        for campaign, level in keys:
-            for r in rows:
-                if (r.get("campaign") != campaign or r.get("valid") != "1"
-                        or r.get("count_source") != "shutdown_hook"
-                        or (r.get("level") or "") != str(level)):
-                    continue
-                try:
-                    kept = int(r.get("kept") or 0)
-                    seen = kept + int(r.get("discarded_zero") or 0) \
-                        + int(r.get("discarded_negative") or 0)
-                except (TypeError, ValueError):
-                    continue
-                if seen > 0:
-                    vals.append(100.0 * kept / seen)
-        if not vals:
-            raise ValueError("no replicates for payload arm %s" % label)
-        out.append((label, sorted(vals), colour))
-    return out
+    import stat_intervals
+    colours = {label: colour for label, _keys, colour in PAYLOAD_ARMS}
+    return [(label, vals, colours[label])
+            for label, vals in stat_intervals.payload_flip_replicates(path)]
 
 
 def payload_positions(arms=None, q=PAYLOAD_Q):

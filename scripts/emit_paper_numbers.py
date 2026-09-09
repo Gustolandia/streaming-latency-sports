@@ -519,6 +519,45 @@ def render_spread_table():
     return "\n".join(lines) + "\n"
 
 
+def payload_flip_macros():
+    """The four numbers Section VI-B quotes for the pre-registered payload flip.
+
+    Every one of them was typed, in both documents, and `test_ledger_coverage` could not
+    see them: it catches a literal that collides with an emitted macro, and none of these
+    was emitted at all. That is the blind spot its own docstring describes, found again in
+    round 60 while adding the units the referee asked for.
+
+    Two units, which is why the referee could ask. A spread is a range in percentage
+    points; a pin is a retention level in percent. The predicted vertex is neither
+    measured nor typed: for a producer commensurate at q it is a multiple of 100/q, and
+    the 32 KB arm was registered to land on the two-thirds vertex.
+    """
+    try:
+        import stat_intervals
+        arms = stat_intervals.payload_flip_spreads()
+    except (ImportError, OSError, KeyError, ValueError):
+        return []
+    # Only the fields the documents quote. Both arms are quoted for their spread and their
+    # endpoints; only the 32 KB arm is quoted for its pin and its replicate count, because
+    # only that arm's pin is the registered detail that failed. Emitting the symmetric twins
+    # would put two macros nobody reads into the inventory, which is lesson 13 of
+    # docs/infrastructure.md -- quote what you emit, or stop emitting it.
+    out = []
+    for label, key, extras in (("32 KB", "ThirtyTwo", True), ("64 KB", "SixtyFour", False)):
+        d = arms.get(label)
+        if not d:
+            return []
+        out += [("flipSpread" + key, "%.1f" % d["spread"]),
+                ("flipLo" + key, "%.2f" % d["lo"]),
+                ("flipHi" + key, "%.2f" % d["hi"])]
+        if extras:
+            out += [("flipPin" + key, "%.1f" % d["pin"]),
+                    ("flipReplicates" + key + "Word", _spell(d["n"]))]
+    q = getattr(stat_intervals, "PAYLOAD_FLIP_Q", 3)
+    out.append(("flipVertexTwoThirds", "%.2f" % (100.0 * 2.0 / q)))
+    return out
+
+
 def spread_macros():
     """The counts S31 states in words, so the sentence and the table cannot drift apart.
 
@@ -1854,6 +1893,26 @@ def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
         m = _st.median(frac)
         out += [("reportedFraction", "%.0f" % (100.0 * m)),
                 ("understateFactor", "%.1f" % (1.0 / m))]
+        # The denominator and the spread, because the median alone flatters. The
+        # understatement is 1/ratio, so the ratio's LOWER quartile is the
+        # understatement's UPPER one and the names have to cross over. Quoting 4.2x
+        # with nothing under it reads as the typical case when it is the optimistic
+        # end of the interquartile range: half the conditions are worse and the worst
+        # is 14x. Required by the second author's annotation #42, which asked this
+        # trio for experiment, denominator and uncertainty; the third was missing.
+        # The understatement is a reciprocal, so a condition reporting a span of exactly
+        # zero has no understatement -- it has an undefined one. Decline the whole trio
+        # rather than emit part of it or divide by zero: a spread quoted without the
+        # condition that produced it is the defect this block exists to remove.
+        # One guard, not two: quartiles of a set of positive numbers are positive, so
+        # `min(frac) > 0` already covers the divisions below. The inner check that was here
+        # could not be reached, which the branch-coverage gate said before the reasoning did.
+        if len(frac) >= 4 and min(frac) > 0:
+            q1, _, q3 = _st.quantiles(frac, n=4)
+            out += [("spanRatioConditions", str(len(frac))),
+                    ("understateIQRLo", "%.1f" % (1.0 / q3)),
+                    ("understateIQRHi", "%.1f" % (1.0 / q1)),
+                    ("understateWorst", "%.0f" % (1.0 / min(frac)))]
     per = {}
     for r in rows:
         if float(r["median_D_us"]):
@@ -2089,7 +2148,7 @@ def all_pairs(m):
             + chrony_bound_macros() + disease_macros()
             + exposure_macros() + artifact_macros() + separability_macros()
             + paired_gap_macros() + handling_share_macros() + inter_host_offset_macros()
-            + spread_macros() + arm_macros() + manipulation_macros()
+            + spread_macros() + payload_flip_macros() + arm_macros() + manipulation_macros()
             + deletion_macros() + literature_macros())
 
 

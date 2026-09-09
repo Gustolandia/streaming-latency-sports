@@ -106,6 +106,25 @@ value as a length measured from zero; a log axis has no zero, so those lengths w
 The panel now draws the segment between the two components, because a distance on a log
 axis *is* a ratio, and the ratio is what the panel claims. Gated in the same file.
 
+### A1e. A number states its unit, its denominator and its spread --- GATED
+
+Three habits, one rule, and the second author asked for all three in annotation #42:
+*"must be presented in Results with experiment, denominator and uncertainty"*.
+
+| | was | is |
+|---|---|---|
+| unit | "spread collapses to 13.6 … the pin sits at 69.2" --- two quantities, two units, neither stated | "13.6 points … pins at 69.2% retention" |
+| denominator | Table I's caption quoted 8.67% and 8.19% with no per-broker event count | both counts in the caption |
+| spread | "understating it 4.2x" | "a median over 70 conditions whose interquartile range runs 4.0--7.5x and reaches 14x" |
+
+The spread row is the one that matters most, because the median flattered: 4.2x sat at the
+bottom of its own interquartile range. Section IV-F already promises *"a count over a
+**stated** denominator"*; this extends the promise to the two things a bare median hides.
+
+Rule: a measured quantity in either document states what it is measured in, how many
+observations it is over, and how widely those observations spread --- unless a neighbouring
+sentence has already fixed all three. Gated by `tests/unit/test_round60_findings.py`.
+
 ### A2. No `flight` — GATED
 
 In the corpus bare *flight* occurs 131 times across 25 of 775 papers, and a read of every

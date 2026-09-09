@@ -641,7 +641,8 @@ A path longer than the timestamp resolution is not clean but quiet.
 \begin{table}[tb]
 \caption{\textbf{Negatives by span and broker} ($\spanRuns$ runs, $\spanEvents$ events,
 one clock). Only the acknowledgment-origin span inverts, and it does so under both
-brokers: \kafka{} on $\spanKafkaNegAckPct\%$ of events, \redis{} on $\spanRedisNegAckPct\%$.
+brokers: \kafka{} on $\spanKafkaNegAckPct\%$ of its $\spanKafkaEvents$ events,
+\redis{} on $\spanRedisNegAckPct\%$ of its $\spanRedisEvents$.
 The causal chains are clean under each broker, so their per-broker columns are dashed.}
 \label{tab:spans}
 \centering
@@ -790,9 +791,11 @@ Two consequences follow, both measured on the gated corpus. First, two \emph{ide
 systems whose clients timestamp in different places are separated by the difference of
 their lags: a reported gap of $\exposureGapTen\%$ at $10$~ms, with the sign check firing
 at neither. Second, on this corpus the reported span is $\reportedFraction\%$ of the
-delivery it stands for, understating it $\understateFactor\times$ --- a median of
-per-condition ratios, which is not what differencing two published medians gives
-(Supplement~S24). The two brokers' clients timestamp differently, and over
+delivery it stands for, understating it $\understateFactor\times$ --- a median over
+$\spanRatioConditions$ conditions whose interquartile range runs
+$\understateIQRLo$--$\understateIQRHi\times$ and reaches $\understateWorst\times$, so half
+of them are worse than the headline. It is a median of per-condition ratios, which is not what
+differencing two published medians gives (Supplement~S24). The two brokers' clients timestamp differently, and over
 $\gapDistortionPairs$ matched workloads the proxy inflates the gap between them
 $\gapDistortionPaired\times$ (interquartile range $\gapDistortionPairedIQR$), narrowing it
 on $\gapDistortionDeflates\%$ of the pairs: a property of the clients, not of the brokers.
@@ -959,9 +962,11 @@ interval is commensurate with the tick the retained fraction is confined to a fe
 rather than a continuum, so moving $T_{\mathrm{true}}$ moves a configuration between them;
 Supplement~S22 sets that structure out and draws all three payloads against it; S23 tests it
 configuration by configuration against the permutation null S44 constructs. The prediction was registered before the runs and it came
-true: replicate spread collapses to $13.6$ at $32$~KB and re-opens to $26.7$ at $64$~KB, a
+true: replicate spread collapses to $\flipSpreadThirtyTwo$ points at $32$~KB and re-opens
+to $\flipSpreadSixtyFour$ at $64$~KB, a
 boundary crossed in both directions by one manipulated variable. One registered detail
-failed --- the $32$~KB pin sits at $69.2$, not the predicted $66.67$ ---
+failed --- the $32$~KB arm pins at $\flipPinThirtyTwo\%$ retention, not on the predicted
+vertex at $\flipVertexTwoThirds\%$ ---
 % The payload-flip figure moved to the supplement in round 43, beside S22, which is where
 % the spread rule it confirms is set out in full. Same journey as the pipeline schematic in
 % round 16 and the payload-sweep law earlier in this round, and for the same reason: every
@@ -1012,10 +1017,9 @@ point --- this failure needs no misbehaving clock, only two of them and a floor
 
 \section{Evidence Across Tools}
 \label{sec:tools}
-The admission condition is not confined to the tool we measured: $\forkUnchanged$
-of the $\forkChecked$ public forks we could read carry the expression unchanged, surveyed
-\forkCheckedOn{}.
-
+% Round 60: the fork count used to open this section, and a fork is a copy -- the number
+% bounds how few have diverged, not how many adopted. The audit below is the independent
+% evidence, and it is the one with a registry behind it, so it opens instead.
 Deletion is not the only way coarse resolution wins. We audited \harnessAuditedWord{} tools at source
 across \harnessLanguagesWord{} languages and \harnessVendorsWord{} vendors, classifying each
 finding with the code that classified the benchmark. \harnessSilentWordCap{} of the
@@ -1037,6 +1041,9 @@ Supplement~S37 gives the registry tool by tool, with the source line each findin
 one entry that corrects a misreading of our own. The class is not confined to benchmarks:
 in November 2025 the audited broker's own coordinator metrics adopted the same disposal,
 clamping negative durations to zero with no counter~\cite{kafka19888} (Supplement~S37).
+The admission condition also survives downstream: $\forkUnchanged$ of the $\forkChecked$
+public forks we could read carry the expression unchanged (surveyed \forkCheckedOn{}), which
+bounds how few have diverged rather than how many chose it.
 
 \section{Discussion}
 \label{sec:discussion}

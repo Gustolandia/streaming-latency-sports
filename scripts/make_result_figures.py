@@ -107,7 +107,11 @@ def _payload_label(cell):
     return "%d KB" % (b // 1024) if b >= 1024 else "%d B" % b
 
 
-QUANTUM_MS = 2.0  # a cell printing at most this is reporting at the grid, not above it
+# The largest printed median that still reads as a grid value. The quantum itself is 1 ms
+# (Section V-B); 2 ms is the next vertex, so a cell printing 1.0 or 2.0 is reporting AT the
+# grid and one printing 250 ms is not. Round 56 renamed it: called QUANTUM_MS it asserted
+# that the quantum was two milliseconds, which is the one thing it is not.
+AT_GRID_MAX_MS = 2.0
 
 # How far the grid figure's null bars sit left of the arms they belong to, as a fraction of
 # the axis. Wide enough to clear a 5 pt marker and the dashed diagonal at column width,
@@ -165,7 +169,7 @@ def spread_coincident(xs, ys, ratio=COINCIDENT_RATIO, separation=SEPARATION_RATI
     return out
 
 
-def plot_deletion(ax, pts, quantum_ms=QUANTUM_MS):
+def plot_deletion(ax, pts, quantum_ms=AT_GRID_MAX_MS):
     """Retention against the median the benchmark printed, every committed cell.
 
     Every cell is drawn, including the four where the payload is large enough that the

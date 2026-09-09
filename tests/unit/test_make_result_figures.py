@@ -51,7 +51,7 @@ def test_retention_points_refuses_an_empty_file(tmp_path):
 
 def test_the_swing_the_caption_claims_is_the_swing_in_the_data():
     """279x is quoted in the text; it must come out of the artefact, not a memory of it."""
-    at_grid = [r for r, m, _ in mrf.retention_points() if m <= mrf.QUANTUM_MS]
+    at_grid = [r for r, m, _ in mrf.retention_points() if m <= mrf.AT_GRID_MAX_MS]
     assert len(at_grid) == 71
     assert round(max(at_grid) / min(at_grid)) == 279
 
@@ -177,7 +177,7 @@ def test_spread_coincident_handles_three_at_one_place():
 def test_every_above_grid_marker_is_separately_visible():
     """End to end, on the committed cells: four cells above the grid, four distinct x."""
     pts = mrf.retention_points()
-    above = [(m, r) for r, m, _ in pts if m > mrf.QUANTUM_MS]
+    above = [(m, r) for r, m, _ in pts if m > mrf.AT_GRID_MAX_MS]
     xs = mrf.spread_coincident([m for m, _ in above], [r for _, r in above])
     assert len(above) == 4
     for i in range(len(xs)):

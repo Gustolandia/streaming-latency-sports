@@ -134,3 +134,172 @@ class TestTheGeneratedLedgerIsRead:
         and that number was emitted and shown to nobody."""
         assert r"\ackLagMedianUs" not in self.unused(), \
             "the median acknowledgment lag must appear where the exposure curve is introduced"
+
+
+#: Greek control words, and what each looks like once an escape has eaten its first letter.
+#: `\rho` written through a shell that interprets `\r` becomes a carriage return plus `ho`;
+#: `\tau` becomes a tab plus `au`; `\nu`, `\alpha`, `\beta` and `\f...` all have the shape.
+#: Round 56 found two live instances in the built supplement -- "k/ho" on page 17 and "a
+#: function of ho" on page 18 -- which every gate in the repository had passed, because LaTeX
+#: typesets `ho` in math mode without complaint and no check asked whether a math span was
+#: what its author meant.
+GREEK_NAMES = (
+    "alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta", "iota", "kappa",
+    "lambda", "mu", "nu", "xi", "pi", "rho", "sigma", "tau", "upsilon", "phi", "chi", "psi",
+    "omega", "Delta", "Sigma", "Omega", "Gamma", "Lambda", "Theta", "Phi", "Psi",
+)
+
+#: Every distinct tail of two letters or more, longest first so a report names the longest
+#: match. One-letter tails are dropped: "u" and "i" occur inside ordinary words and the
+#: false-positive rate would swamp the signal the check exists for.
+GREEK_TAILS = tuple(sorted({g[1:] for g in GREEK_NAMES if len(g) > 2},
+                           key=len, reverse=True))
+
+
+class TestNoControlWordLostItsBackslash:
+    r"""A `\rho` whose backslash was eaten prints as the word `ho`, and compiles cleanly.
+
+    This is the project's documented shell trap arriving in the manuscript: a heredoc that
+    interprets escape sequences turns `\rho` into a newline and the letters `ho`. LaTeX is no
+    help -- `$k/` newline `ho$` is valid math -- and neither is the reference gate, the
+    vocabulary gate or the collision gate. It reached the printed page and stayed there for
+    the rounds between the edit that made it and the referee who read the PDF.
+
+    Both halves are checked, because either alone can be evaded: the source, which is where
+    the repair goes, and the built document, which is what a reader holds.
+    """
+
+    @staticmethod
+    def source_offenders():
+        out = []
+        for name in ("paper.tex", "supplement.tex"):
+            path = REPO / name
+            if not path.exists():                       # pragma: no cover - both are tracked
+                continue
+            text = path.read_text(encoding="utf-8").replace("\r", "")
+            for n, line in enumerate(text.split("\n"), 1):
+                stripped = line.lstrip()
+                for tail in GREEK_TAILS:
+                    if re.match(re.escape(tail) + r"[$\s}]", stripped):
+                        out.append("%s:%d starts on %r, the tail of a Greek name"
+                                   % (name, n, tail))
+                        break
+        return out
+
+    @staticmethod
+    def rendered_offenders():
+        out = []
+        for name in PDFS:
+            text = rendered(name)
+            for tail in GREEK_TAILS:
+                if re.search(r"(?<![A-Za-z])" + re.escape(tail) + r"(?![A-Za-z])", text):
+                    out.append("%s prints %r as a word" % (name, tail))
+        return out
+
+    def test_the_source_carries_no_orphaned_control_word(self):
+        offenders = self.source_offenders()
+        assert not offenders, "; ".join(offenders)
+
+    def test_the_built_documents_print_no_orphaned_control_word(self):
+        offenders = self.rendered_offenders()
+        assert not offenders, "; ".join(offenders)
+
+    def test_the_check_would_have_caught_round_56(self):
+        """Mutation: the line as it stood, and as it now stands."""
+        broken = "ho$ rather than from a shape description"
+        assert any(re.match(re.escape(t) + r"[$\s}]", broken) for t in GREEK_TAILS)
+        fixed = r"\rho$ rather than from a shape description"
+        assert not any(re.match(re.escape(t) + r"[$\s}]", fixed) for t in GREEK_TAILS)
+
+
+class TestAWrappedMathSpanDoesNotResumeOnBareLetters:
+    r"""The source signature of the defect above, checked where the repair goes.
+
+    Round 56's referee asked for a stricter rule than this one -- that no inline `$...$` span
+    be broken across a line at all, "since that is the exact signature". It is not, and the
+    corpus says so: the supplement wraps `$\approx` before `0.54$` and `$D = t_{\mathrm{recv}}
+    -` before `t_{\mathrm{send}}$`, both legitimate and both flagged by that rule. A gate that
+    would force those to reflow is a gate someone eventually turns off.
+
+    What is exact is the shape the trap leaves. `\rho` losing its backslash-r puts a newline
+    in front of the bare letters `ho`, so the continuation line is *nothing but letters* up to
+    the closing dollar. The legitimate wraps never are: they resume on a digit, an operator or
+    a control sequence, and `t_{\mathrm{send}}$` resumes on a letter that is followed by a
+    subscript rather than by the dollar. So the rule is narrower than the referee's and true,
+    which is the trade this project makes every time.
+    """
+
+    #: A continuation that is only letters, then the end of the span. `ho$`, `au$`, `lpha$`.
+    BARE_RESUMPTION = re.compile(r"^[A-Za-z]{2,}\$")
+
+    @staticmethod
+    def _open_after(line):
+        """True when `line` leaves an inline math span open."""
+        # An escaped percent is a character, not a comment. Stripping from the first bare
+        # "%" would have eaten the closing dollar of every "$\ombGridRetentionMax\%$".
+        bare = re.sub(r"(?<!\\)%.*$", "", line).replace("\\$", "")
+        return bare.count("$") % 2 == 1
+
+    @classmethod
+    def offenders(cls):
+        out = []
+        for name in ("paper.tex", "supplement.tex"):
+            path = REPO / name
+            if not path.exists():                       # pragma: no cover - both are tracked
+                continue
+            text = path.read_text(encoding="utf-8").replace("\r", "")
+            lines = text.split("\n")
+            for n, line in enumerate(lines[:-1], 1):
+                if not cls._open_after(line):
+                    continue
+                if cls.BARE_RESUMPTION.match(lines[n].lstrip()):
+                    out.append("%s:%d resumes an open math span on bare letters (%r)"
+                               % (name, n + 1, lines[n].lstrip()[:12]))
+        return out
+
+    def test_no_open_span_resumes_on_bare_letters(self):
+        offenders = self.offenders()
+        assert not offenders, "; ".join(offenders[:6])
+
+    def test_the_rule_separates_the_defect_from_the_legitimate_wraps(self):
+        """Mutation, on the four lines that decided the rule's shape."""
+        match = self.BARE_RESUMPTION.match
+        assert match("ho$ rather than from a shape description")
+        assert match("ho$ alone the model has no content")
+        assert not match("0.54$~ms against \\redis{}")
+        assert not match("t_{\\mathrm{send}}$ for \\kafka{}")
+
+
+class TestARunInHeadingDoesNotDoublePunctuate:
+    r"""IEEEtran ends a `\paragraph` run-in heading with its own colon.
+
+    Seventy-four of the supplement's hundred and one headings already ended in a full stop, so
+    they printed as ".:" -- "The powered measurement.: We measured transport directly". The
+    main document had none of them, so the convention was right and only the longer document
+    drifted from it, which is the failure mode the project keeps meeting: a rule held in most
+    places is invisible to anyone reading linearly.
+    """
+
+    @staticmethod
+    def source_offenders():
+        out = []
+        for name in ("paper.tex", "supplement.tex"):
+            path = REPO / name
+            if not path.exists():                       # pragma: no cover - both are tracked
+                continue
+            text = path.read_text(encoding="utf-8")
+            for m in re.finditer(r"\\paragraph\{([^}]*)\}", text):
+                if m.group(1).rstrip().endswith((".", "?", "!")):
+                    out.append("%s: %r" % (name, m.group(1)[:60]))
+        return out
+
+    def test_no_heading_supplies_the_punctuation_the_class_supplies(self):
+        offenders = self.source_offenders()
+        assert not offenders, (
+            "%d run-in headings end in punctuation the class repeats: %s"
+            % (len(offenders), "; ".join(offenders[:4])))
+
+    def test_the_built_documents_print_no_double_punctuation(self):
+        for name in PDFS:
+            assert ".:" not in rendered(name), \
+                "%s prints a full stop followed by a colon" % name

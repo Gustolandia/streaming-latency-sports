@@ -397,7 +397,10 @@ def _figure_caption(label):
     if label not in tex:
         tex = (ROOT / "supplement.tex").read_text(encoding="utf-8")
     at = tex.index(label)
-    start = tex.rindex(r"\caption{", 0, at) + len(r"\caption{")
+    plain = tex.rindex(r"\caption{", 0, at) if r"\caption{" in tex[:at] else -1
+    short = tex.rindex(r"\caption[", 0, at) if r"\caption[" in tex[:at] else -1
+    # `\caption[short]{long}`: the brace group starts after the optional argument.
+    start = tex.index("{", max(plain, short)) + 1
     depth, i = 1, start
     while depth:
         if tex[i] == "{":

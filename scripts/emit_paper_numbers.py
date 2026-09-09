@@ -558,6 +558,53 @@ def payload_flip_macros():
     return out
 
 
+def literature_census_macros():
+    """What the 2024 stream-benchmark survey counts, and what it never mentions.
+
+    A survey reviewing 27 benchmark efforts across five dimensions --- one of them
+    *tracked metrics* --- says latency 33 times and timestamp none. S52.3 quotes those
+    two counts, so they are derived rather than remembered: a typed count has only one
+    source and `test_ledger_coverage` cannot see it, which is lesson 1aq.
+
+    The extracted character count travels with them. A count of zero means nothing if
+    extraction failed, and the emitted `chars` is how a reader tells the two apart.
+    """
+    try:
+        import literature_census
+        counts = literature_census.counts_for("yue2024streamsurvey")
+        rows = literature_census.read_record()
+    except (ImportError, OSError, KeyError, ValueError):
+        return []
+    if not counts:
+        return []
+    def page_count(key):
+        return next((r["pages"] for r in rows if r["key"] == key), "")
+
+    out = [
+        ("surveyLatencyMentions", str(counts.get("latency", 0))),
+        # No `surveyTimestampMentions`: the sentence says the three absent words
+        # "occur never" rather than "occur 0 times", so the prose form below is what
+        # is read and the per-term count stays in the census CSV. Lesson 13.
+        ("surveyBenchmarkMentions", str(counts.get("benchmark", 0))),
+        ("surveyPages", page_count("yue2024streamsurvey")),
+        # The three words whose absence is the finding, as one count and as prose.
+        # The sentence must survive a recount that finds one: "occur never" becomes
+        # "occur once", which still reads.
+        ("surveyAbsentTimes", _times(sum(counts.get(t, 0)
+                                         for t in ("timestamp", "clock", "resolution")))),
+    ]
+    # S52.4's own absence claim, which has been typed since round 55. The playbook's
+    # `clock` count is one rather than zero, and the sentence says so, so the macro has
+    # to carry the word rather than the digit: `\playbookClockTimes{}` reads "once".
+    play = literature_census.counts_for("krishnamachari2026playbook")
+    if play:
+        out += [
+            ("playbookPages", page_count("krishnamachari2026playbook")),
+            ("playbookClockTimes", _times(play.get("clock", 0))),
+        ]
+    return out
+
+
 def spread_macros():
     """The counts S31 states in words, so the sentence and the table cannot drift apart.
 
@@ -1175,6 +1222,16 @@ def kernel_macros():
 
 _SPELLED = ("zero", "one", "two", "three", "four", "five", "six",
             "seven", "eight", "nine", "ten", "eleven", "twelve")
+
+
+def _times(n):
+    """How many occurrences, as prose says it: never, once, twice, then digits.
+
+    S52.4 says a word occurs "once"; a bare "one" would not fit the sentence and a bare digit
+    would not fit the register. The count is a fact about a corpus, so it comes from the
+    census; how the sentence says it is a fact about English, so it comes from here.
+    """
+    return {0: "never", 1: "once", 2: "twice"}.get(n, "%d times" % n)
 
 
 def _spell(n):
@@ -2148,7 +2205,8 @@ def all_pairs(m):
             + chrony_bound_macros() + disease_macros()
             + exposure_macros() + artifact_macros() + separability_macros()
             + paired_gap_macros() + handling_share_macros() + inter_host_offset_macros()
-            + spread_macros() + payload_flip_macros() + arm_macros() + manipulation_macros()
+            + spread_macros() + payload_flip_macros() + literature_census_macros()
+            + arm_macros() + manipulation_macros()
             + deletion_macros() + literature_macros())
 
 

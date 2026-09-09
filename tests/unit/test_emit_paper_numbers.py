@@ -715,7 +715,12 @@ class TestRegistryTableVocabulary:
         supp = (Path(__file__).parent.parent.parent / "supplement.tex").read_text(
             encoding="utf-8")
         i = supp.index(r"\label{tab:registry}")
-        caption = supp[supp.rindex(r"\caption{", 0, i):i]
+        # `\caption[short]{long}` is standard LaTeX and the supplement uses it, so the
+        # caption before this label may open either way. Round 61.
+        starts = [supp.rindex(form, 0, i) for form in (r"\caption{", r"\caption[")
+                  if form in supp[:i]]
+        assert starts, "no caption precedes the registry table"
+        caption = supp[max(starts):i]
         assert r"\registryTableSources" in caption
         assert r"\cite{openmessaging2018" not in caption, "hand-written source list is back"
 

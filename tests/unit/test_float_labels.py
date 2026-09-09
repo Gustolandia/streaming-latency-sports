@@ -54,7 +54,7 @@ class TestEveryFloatCanBeNamed:
             if re.search(r"\\label\{", m.group(3)):
                 continue
             line = text.count("\n", 0, m.start()) + 1
-            cap = re.search(r"\\caption\{(.{0,80})", m.group(3), re.S)
+            cap = re.search(r"\\caption(?:\[[^\]]*\])?\{(.{0,80})", m.group(3), re.S)
             bad.append("%s:%d  %s -- %s" % (
                 name, line, m.group(1),
                 re.sub(r"\s+", " ", cap.group(1)) if cap else "(no caption either)"))

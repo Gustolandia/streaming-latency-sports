@@ -589,7 +589,7 @@ declining.
 Every proportion below is a count over a stated denominator with a Wilson score $95\%$
 interval, not Wald: at the real-time configurations' rates the normal approximation is
 shifted low and covers below its nominal rate. Holm correction is applied within a
-named family, and the corrected value is the one the tables display. Tail indices are
+named family, and the corrected value is the one the supplement's tables display. Tail indices are
 estimated on the traced histogram by grouped maximum likelihood and by an exceedance ratio.
 A slope through survival points would mislead, because the buckets are interval-censored. The
 grouped estimator on log-spaced bins is Virkar and Clauset's, the Hill estimator for
@@ -792,9 +792,9 @@ systems whose clients timestamp in different places are separated by the differe
 their lags: a reported gap of $\exposureGapTen\%$ at $10$~ms, with the sign check firing
 at neither. Second, on this corpus the reported span is $\reportedFraction\%$ of the
 delivery it stands for, understating it $\understateFactor\times$ --- a median over
-$\spanRatioConditions$ conditions whose interquartile range runs
-$\understateIQRLo$--$\understateIQRHi\times$ and reaches $\understateWorst\times$, so half
-of them are worse than the headline. It is a median of per-condition ratios, which is not what
+$\spanRatioConditions$ conditions; the interquartile range runs
+$\understateIQRLo$--$\understateIQRHi\times$ and the worst condition reaches
+$\understateWorst\times$, so half are worse than the headline. It is a median of per-condition ratios, which is not what
 differencing two published medians gives (Supplement~S24). The two brokers' clients timestamp differently, and over
 $\gapDistortionPairs$ matched workloads the proxy inflates the gap between them
 $\gapDistortionPaired\times$ (interquartile range $\gapDistortionPairedIQR$), narrowing it
@@ -1020,13 +1020,16 @@ point --- this failure needs no misbehaving clock, only two of them and a floor
 % Round 60: the fork count used to open this section, and a fork is a copy -- the number
 % bounds how few have diverged, not how many adopted. The audit below is the independent
 % evidence, and it is the one with a registry behind it, so it opens instead.
-Deletion is not the only way coarse resolution wins. We audited \harnessAuditedWord{} tools at source
+The disposal is a pattern across the tooling rather than one project's oversight.
+We audited \harnessAuditedWord{} tools at source
 across \harnessLanguagesWord{} languages and \harnessVendorsWord{} vendors, classifying each
-finding with the code that classified the benchmark. \harnessSilentWordCap{} of the
+% Lower-case twin, not the ...Cap one: round 61's reordering put this clause after a
+% semicolon rather than at the head of a sentence. Lesson 12 in reverse.
+finding with the code that classified the benchmark; \harnessSilentWord{} of the
 \harnessAuditedWord{} dispose of the sample without counting it, in
-\harnessDisposalClassesWord{} classes --- a pattern rather than one project's oversight, and
+\harnessDisposalClassesWord{} classes, and
 one of them is Apache Pulsar's performance client reaching the same design
-independently~\cite{pulsar_perf}. Apache
+independently~\cite{pulsar_perf}. Deletion is not the only way coarse resolution wins: Apache
 \kafka{}'s own bundled end-to-end tool keeps every sample and loses it anyway, filling the
 array its percentiles come from by integer division, so on a sub-millisecond path every
 one reports zero~\cite{kafka_tools}. Two more keep their negatives and pass them on

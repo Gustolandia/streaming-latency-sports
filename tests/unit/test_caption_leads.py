@@ -36,7 +36,7 @@ def captions(text):
     for env in ("figure", "table"):
         for m in re.finditer(r"\\begin\{%s\*?\}(.*?)\\end\{%s\*?\}" % (env, env), text, re.S):
             block = m.group(1)
-            cap = re.search(r"\\caption\{", block)
+            cap = re.search(r"\\caption(?:\[[^\]]*\])?\{", block)
             if not cap:
                 continue
             depth, i = 1, cap.end()

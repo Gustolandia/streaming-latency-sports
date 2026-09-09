@@ -125,6 +125,39 @@ Rule: a measured quantity in either document states what it is measured in, how 
 observations it is over, and how widely those observations spread --- unless a neighbouring
 sentence has already fixed all three. Gated by `tests/unit/test_round60_findings.py`.
 
+### A1f. The reference cap is on the article --- GATED by arithmetic, not by a test
+
+TC caps the *article* at 45 references. The supplement is a separate file with no page
+limit and its own bibliography, which stands at 90. For sixty rounds the budget was
+treated as though the two shared it, and the cost was invisible: evidence *about the
+literature* --- which is exactly what a supplement is for --- was being weighed against
+the article's cap and declined.
+
+Round 61's survey is the worked example. A 2024 paper reviewing 27 stream-processing
+benchmarks across five dimensions, one of them *tracked metrics*, says *latency* 33 times
+and *timestamp* never. That converts the manuscript's central gap claim from assertion
+into measurement, and it cost the article nothing: it went into S52.3, which is already
+titled "How large the literature is that misses this".
+
+Rule: a citation whose job is to characterize the literature belongs in the supplement
+unless the article's own sentence cannot be made without it. Before proposing that
+anything be displaced from the 45, check whether the claim can be made in the document
+that has no cap.
+
+### A1g. A claim about what a paper never says is a measurement --- GATED
+
+Two of these are now in the supplement, and both were typed before round 61:
+*"over 31 pages the words timestamp, resolution, quantization and retention do not
+occur; clock occurs once"*, and the survey sentence above. A count with only one source is
+invisible to `test_ledger_coverage`, which catches a literal colliding with an emitted
+macro --- lesson 1aq.
+
+Rule: a count of what a cited work does or does not say is derived by
+`scripts/literature_census.py`, committed to `docs/results/external/literature_census.csv`
+and emitted like any other number. The extracted character count is recorded beside every
+term, because a count of zero means nothing if extraction failed and that is the only way
+a reader can tell the two apart. Gated by `tests/unit/test_round61_findings.py`.
+
 ### A2. No `flight` — GATED
 
 In the corpus bare *flight* occurs 131 times across 25 of 775 papers, and a read of every

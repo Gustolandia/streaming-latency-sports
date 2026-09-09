@@ -395,8 +395,14 @@ def plot_grid(ax, cells):
     # for any arm within one dodge of the axis, which puts the bar in white space on the
     # other side without changing its length, its height, or what it means.
     dodge = DODGE_FRACTION * lim
-    for x, (blo, bhi) in zip(xs, bands):
+    for x, (blo, bhi), k in zip(xs, bands, klass):
         if blo is None or bhi is None:
+            continue
+        # No band where no test has power. The two coincident configurations sit above the
+        # diagonal, and a null bar beside them reads as a test they failed; the caption has
+        # to say "the sign carries nothing there" to undo it. Round 55: drawing the bar only
+        # where a rejection is possible says the same thing without the correction.
+        if k == "coincident":
             continue
         at = x + dodge if x < 2 * dodge else x - dodge
         ax.plot([at, at], [blo, bhi], color=GREY, lw=1.1, alpha=0.55,

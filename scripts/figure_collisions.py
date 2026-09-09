@@ -47,6 +47,18 @@ INK_LUMINANCE = 0.62
 # through a small label covers several percent of it.
 MAX_INK_FRACTION = 0.012
 
+#: The same rule at the scale a reader meets it: the worst single character cell of a label.
+#: A long caption averages a local strike away, so the per-cell fraction is checked too.
+#:
+#: Set from measurement, not taste. Round 55's arrowhead sat on the first "T" of
+#: "end-to-end TTI" and scored **0.0058** over the whole fourteen-character box -- under
+#: MAX_INK_FRACTION, so the figure passed -- against **0.0508** in the cell it landed in. A
+#: sweep of all 331 labels in every figure the submission builds returns **0.0000** for
+#: every one of them, because a figure that is clean is clean everywhere. The threshold sits
+#: between those two, nearer the clean side: any value in (0.0, 0.05) separates them, and
+#: 0.03 leaves room for antialiasing at a glyph edge without reaching a real strike.
+MAX_CELL_INK_FRACTION = 0.03
+
 # The share of the text box treated as glyph core. Vertically this drops the leading above the
 # capitals and the descender well below the baseline; horizontally it drops the side bearings.
 # 72% rather than 58%: cap height starts well inside a text box, so a narrower band excludes
@@ -255,11 +267,41 @@ def probe_counts():
     return dict(LAST_PROBE)
 
 
-def text_struck_by_ink(fig, dpi=RENDER_DPI, max_fraction=MAX_INK_FRACTION):
+def _worst_window(patch, ink):
+    """The worst ink fraction over one character-cell-wide windows of a label.
+
+    A long label dilutes a local strike. Round 55 found the transport-proxy arrowhead
+    sitting on the first T of "end-to-end TTI" on the printed page: over a fourteen-character
+    box that is a few tenths of a per cent, comfortably under `MAX_INK_FRACTION`, and the
+    check passed a figure a reader could see was wrong.
+
+    A reader does not average over the label. They see the word the ink lands on. So the
+    patch is scanned in windows about as wide as the text is tall -- one character cell --
+    and the worst window is what the per-cell threshold is applied to. Short labels, where
+    the box is already about one cell, fall back to the whole-box fraction and are unchanged.
+    """
+    h, w = patch.shape
+    if h == 0 or w == 0:
+        return 0.0
+    cell = max(1, int(h))
+    if w <= cell:
+        return float((patch < ink).mean())
+    step = max(1, cell // 2)
+    worst = 0.0
+    for x in range(0, w - cell + 1, step):
+        worst = max(worst, float((patch[:, x:x + cell] < ink).mean()))
+    return worst
+
+
+def text_struck_by_ink(fig, dpi=RENDER_DPI, max_fraction=MAX_INK_FRACTION,
+                       max_cell_fraction=MAX_CELL_INK_FRACTION):
     """Labels with ink drawn through them, worst first.
 
     Removing the glyphs and re-rendering is what separates a label's own strokes from
     everything drawn under them; differencing two rasters would only rediscover the glyphs.
+
+    Two thresholds: one on the whole label, and one on the worst character cell within it,
+    because a strike on one word of a long caption is a strike.
     """
     drawn, inkless, scale = _drawn_boxes(fig, dpi)
     _record_probe("struck", len(drawn))
@@ -274,10 +316,12 @@ def text_struck_by_ink(fig, dpi=RENDER_DPI, max_fraction=MAX_INK_FRACTION):
         y0, y1, x0, x1 = _slice(bb, fig, scale, inkless.shape)
         patch = inkless[y0:y1, x0:x1]
         fraction = float((patch < INK_LUMINANCE).mean())
-        if fraction > max_fraction:
+        worst = _worst_window(patch, INK_LUMINANCE)
+        if fraction > max_fraction or worst > max_cell_fraction:
             found.append({
                 "text": " ".join((t.get_text() or "").split())[:60],
                 "fraction": round(fraction, 4),
+                "cell_fraction": round(worst, 4),
                 "box": (round(bb.x0, 1), round(bb.y0, 1), round(bb.x1, 1), round(bb.y1, 1)),
             })
     found.sort(key=lambda d: -d["fraction"])

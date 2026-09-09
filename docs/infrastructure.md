@@ -838,6 +838,75 @@ The same read found Fig. S2(b) drawing grouped bars on a log axis, whose docstri
 already rejected *stacked* bars there for a related reason and stopped one step short.
 
 
+**1ap. A failed download was left wearing the paper's filename.** Round 60 went looking
+for `timerlat_TC.pdf` --- the manuscript's reference [35], and the closest paper at the
+target venue --- and found it already on disk: 5.7 KB, one page, *"Enable JavaScript and
+cookies to continue"*. Three separate rounds had recorded that retrieval as **failed**, and
+each time the failure was also written to disk under the paper's name, after which the
+corpus reported the paper as held and every venue statistic counted it. The paper was
+retrievable the whole time, from the authors' own preprint page rather than from the
+publisher. `scripts/check_reference_corpus.py` now refuses any file that is under three
+pages, carries a bot-wall phrase, or has a first page too thin to be a title page; it found
+exactly one offender in fifty-six. **A negative result and its artefact must not share a
+name: recording "this fetch failed" while leaving the failure on disk records the
+opposite.**
+
+**1aq. The ledger gate could only see a typed number that collided with a macro.** Its own
+docstring says it was built for the four copies round 23 found, each of which duplicated a
+quantity the ledger already emitted. That is also its limit: `13.6`, `26.7`, `69.2` and
+`66.67` were typed in *both* documents, in two different units, and none of them was
+emitted at all --- so there was nothing for the collision check to collide with. The
+referee asked only for the units. Reading the source to add them is what found the rest.
+**A gate that checks agreement between two sources is blind to a quantity that has only
+one.**
+
+The repair also fixed the gate's opposite failure. Emitting the interquartile bound `4.0`
+made it collide with `CC BY-NC-SA 4.0`, and the main text is pinned to need *no*
+exemptions --- correctly, so the licence version is masked the way tables and comments
+already were, rather than excused. A version is part of a name.
+
+**1ar. A median quoted alone is a bound, in the second number as in the first.** Commit
+`987e525` learned this about a remedy. Round 60 found it again in the paper's headline
+distortion: *"understating it 4.2x"* is a median over 70 conditions whose interquartile
+range runs 4.0x to 7.5x and reaches 14x, so the headline sat at the **bottom** of its own
+range and half the conditions were worse. The paragraph two sentences below it already
+quoted its own claim at the median *and* the upper quartile. **A lesson learned about one
+number does not propagate to its neighbours by itself; nothing sweeps for the pattern
+unless somebody writes the sweep.** `tests/unit/test_round60_findings.py` now fails if the
+understatement loses its denominator or its spread, and separately if a recomputation ever
+moves the median into the middle of its range --- at which point the sentence needs
+rewriting rather than the test deleting.
+
+**1as. A fork count is not an adoption count.** Section VII opened on *"40 of the 40 public
+forks carry the expression unchanged"*, in the position the Feynman rule reserves for a
+section's strongest claim. A fork is a copy: the number bounds how few have diverged, and
+most public forks are never edited. It was also the one empirical claim in the paper with
+no supplement section behind it. The ten-tool audit below it --- five languages, nine
+vendors, a registry in S37 --- is the independent evidence, and it opens the section now.
+**The Feynman rule places a section's best claim first; it does not check that the first
+claim is the best one.**
+
+
+**1at. Item 1aa was recorded four rounds ago and kept happening, because nothing looked.**
+*"A backslash the shell ate compiles cleanly and prints a word"* has been in this file
+since round 40. Round 60 did it again: a patch carrying `\flipVertexTwoThirds` went
+through a shell heredoc, which interprets `\f` as a formfeed, and `supplement.tex`
+received a control character followed by `lipVertexTwoThirds`. It would have printed as a
+word in the middle of a sentence about the grid vertex.
+
+What caught it is the interesting part. Not a macro check, not a rendered-prose check ---
+**`test_no_line_is_stretched_to_the_limit`**, a *typesetting* gate, which noticed only that
+the paragraph could not be set to an acceptable badness. The cause was four steps upstream
+of the symptom, and the gate that fired knew nothing about macros at all. That is luck
+wearing the clothes of coverage.
+
+A lesson written down is not a lesson enforced. Tab, newline and carriage return are the
+only control characters a LaTeX source has any use for, and
+`tests/unit/test_round60_findings.py` now says so about both documents, with the round-60
+corruption pinned as its own negative example. **Four rounds of writing "do not use
+heredocs for backslashes" prevented nothing; eight lines of test prevent it permanently.**
+
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

@@ -313,7 +313,9 @@ appearing in this table.
 | `experiment_map` | supplement |
 | `integrity_audit` | supplement |
 | `window_sweep` | supplement |
-| `e1_end_to_end_lag` | supplement |
+| `e1_end_to_end_lag` | supplement, S4 (panel (b) stopped being grouped bars on a log axis in round 59: a bar states its value as a length from zero and a log axis has no zero) |
+| `exposure_curve` | supplement, S24 (three main-text pointers send a reader to S24 for this curve, which is why round 60 put it in that section's title) |
+| `deletion_histogram` | supplement, S38 (named in that section's title from round 60) |
 | `kickoff_concurrency` | **retained, unused.** The kickoff-window concurrency view from the withdrawn first result set. Kept because the campaign it draws is still in the archive and the withdrawal is part of the record; no current claim rests on it. |
 | `network_delay` | **retained, unused.** The injected-delay view superseded by the netem table in Section VI, which reports the same runs numerically. |
 | `workload_profile` | **retained, unused.** The StatsBomb replay profile from the 16-page version; the workload is now described in prose in Section III. |

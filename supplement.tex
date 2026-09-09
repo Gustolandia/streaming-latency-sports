@@ -1276,11 +1276,15 @@ dictates the configuration's class with nothing else changed: measured $\theta(3
 $\operatorname{frac}(q\theta) = 0.055$ (on the $2/3$ point: flat, pinned there) and $0.56$
 (mid-cell: full width back). The registered prediction was that one manipulation would move
 the configuration onto a grid point and off it.
-It did (figure in supplementary material S2): at $32$~KB the five replicates were $62.06$, $69.17$, $69.19$, $69.23$, $75.69$ --- spread
-$13.6$, three replicates agreeing to $0.06$ points --- and at $64$~KB they were $73.06$, $83.80$,
-$94.87$, $96.83$, $99.78$ --- spread $26.7$, the upper vertex hit to a quarter point. The flat-full
-boundary at half the cell width ($16.7$) is crossed in the predicted direction by both halves. One
-registered detail failed: the $32$~KB pin sits at $69.2$, not on the vertex at $66.67$ --- a
+It did (figure in supplementary material S2): at $32$~KB the
+\flipReplicatesThirtyTwoWord{} replicates spanned
+$\flipLoThirtyTwo$--$\flipHiThirtyTwo\%$ --- spread
+$\flipSpreadThirtyTwo$ points, three replicates agreeing to $0.06$ --- and at $64$~KB they
+spanned $\flipLoSixtyFour$--$\flipHiSixtyFour\%$ --- spread
+$\flipSpreadSixtyFour$, the upper vertex hit to a quarter point. The flat-full
+boundary at half the cell width ($16.7$ points) is crossed in the predicted direction by both
+halves. One registered detail failed: the $32$~KB arm pins at $\flipPinThirtyTwo\%$, not on
+the vertex at $\flipVertexTwoThirds\%$ --- a
 displacement toward $\theta$ that the next paragraph makes systematic.
 
 \paragraph{The other side of the inequality, and it moves the rate the wrong way} A
@@ -1942,7 +1946,7 @@ replicates on the $1/3$ branch, \armSixHundredUpperWord{} on the $2/3$ branch, n
 replicate's shutdown-hook totals arrived after our first read; the recovered $65.86$ was on the
 upper branch). The loosest of them, $\armSixHundredWidest$, sits $\armSixHundredWidestGap$ points from its
 vertex, inside the $3$-point rule stated below and the widest departure the configuration shows.
-$66.67\%$ is $2/3$ to two decimals, matching the $65.35$ that $300$~msg/s produced
+$\flipVertexTwoThirds\%$ is $2/3$ to two decimals, matching the $65.35$ that $300$~msg/s produced
 on the same branch: two rates an octave apart land on the same grid because they share a
 denominator.
 
@@ -2038,7 +2042,7 @@ rule.}
 
 
 
-\section{S24. Every real-time-priority pair, and the ladder they make}
+\section{S24. Every real-time-priority pair, the ladder they make, and the exposure curve}
 \label{sec:priority-pairs}
 
 The main text quotes a range: real-time priority on the timestamping threads collapses the
@@ -3027,7 +3031,7 @@ because its mechanism is genuine wall-clock non-monotonicity, and setting it out
 the scheduling failure would invite exactly the clock-versus-stall conflation the paper separates.
 
 
-\section{S38. The classical statistics of a discarded zero}
+\section{S38. The classical statistics of a discarded zero, and what the guard deletes}
 \label{sec:zeros}
 
 The main text argues that deleting the samples which compute to zero conditions the reported
@@ -3474,7 +3478,7 @@ No scheduler tunable is written anywhere in the archived campaign, which is why 
 value is the one that applied. It is strong evidence rather than proof.
 
 
-\section{S42. The 1970 counter note, line by line}
+\section{S42. The 1970 counter note, line by line, and the grid geometry it explains}
 
 % Moved out of the main text in round 40. It is a CONSTRUCTED illustration -- four
 % phases of one tick, and a phase diagram -- not a measurement, and it was the last

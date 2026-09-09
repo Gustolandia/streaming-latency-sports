@@ -88,6 +88,13 @@ def _masked(text):
     out = re.sub(r"\\begin\{tabular\}.*?\\end\{tabular\}", blank, text, flags=re.S)
     out = re.sub(r"\\input\{[^}]*\}", blank, out)
     out = re.sub(r"(?m)%[^\n]*", blank, out)
+    # A version is part of a name, not a measurement. "CC BY-NC-SA 4.0" collided with the
+    # lower interquartile bound on the understatement the moment round 60 emitted it, and
+    # the main text is pinned to need no exemptions -- correctly, so the fix belongs here
+    # rather than in the allow-list. Licence and standard identifiers only: a bare version
+    # elsewhere is still a number somebody typed.
+    out = re.sub(r"CC~?BY[-A-Z~]*~?\d+\.\d+", blank, out)
+    out = re.sub(r"(?:RFC|IEEE~?Std|v)~?\d+\.\d+", blank, out)
     return out
 
 

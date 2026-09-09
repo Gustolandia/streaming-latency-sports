@@ -516,6 +516,73 @@ def geometry_rho(phase="ea6"):
     return got.pop()
 
 
+#: The payload-flip arms, as the campaign ledger keys them. The figure carries a colour
+#: per arm and this does not: a colour is a drawing decision and these are the numbers.
+PAYLOAD_FLIP_ARMS = (
+    ("200 B", (("rate_q", 300), ("ultimate", 300))),
+    ("32 KB", (("ultimate_pay300", 32768),)),
+    ("64 KB", (("ultimate_pay300", 65536),)),
+)
+
+
+def payload_flip_replicates(path=None):
+    """Retention percentages per payload arm, sorted, from the committed campaign ledger.
+
+    Selection matches the audit everywhere else: valid runs only, and only those whose
+    counts came from the shutdown hook, because a run whose totals were reconstructed
+    afterwards cannot support a retention rate.
+
+    Lifted here from `make_result_figures` in round 60 so that the figure drawing these
+    replicates and the two sentences quoting them read one function. Both documents had
+    been typing the results by hand.
+    """
+    import csv
+    path = path or os.path.join(RESULTS, "external_campaigns_index.csv")
+    with open(path, encoding="utf-8", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    out = []
+    for label, keys in PAYLOAD_FLIP_ARMS:
+        vals = []
+        for campaign, level in keys:
+            for r in rows:
+                if (r.get("campaign") != campaign or r.get("valid") != "1"
+                        or r.get("count_source") != "shutdown_hook"
+                        or (r.get("level") or "") != str(level)):
+                    continue
+                try:
+                    kept = int(r.get("kept") or 0)
+                    seen = kept + int(r.get("discarded_zero") or 0) \
+                        + int(r.get("discarded_negative") or 0)
+                except (TypeError, ValueError):
+                    continue
+                if seen > 0:
+                    vals.append(100.0 * kept / seen)
+        if not vals:
+            raise ValueError("no replicates for payload arm %s" % label)
+        out.append((label, sorted(vals)))
+    return out
+
+
+def payload_flip_spreads(path=None):
+    """{arm: {spread, pin, lo, hi, n}} --- the two quantities Section VI-B quotes.
+
+    The *spread* is the range of an arm's replicates, in percentage points. The *pin* is
+    where the arm's replicates cluster, in percent: the median, which for the 32 KB arm
+    is the middle of three replicates agreeing to a sixteenth of a point. They are
+    different units, and the article quoted all four numbers bare.
+    """
+    out = {}
+    for label, vals in payload_flip_replicates(path):
+        out[label] = {
+            "spread": vals[-1] - vals[0],
+            "pin": _median(vals),
+            "lo": vals[0],
+            "hi": vals[-1],
+            "n": len(vals),
+        }
+    return out
+
+
 def payload_fit(phase=None):
     """OLS of log(inversion rate) on log(transport), the paper's effective span exponent."""
     parts = ("model", "ttrue_sweep.csv") if phase is None else ("model", phase, "ttrue_sweep.csv")

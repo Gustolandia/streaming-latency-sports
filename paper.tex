@@ -112,10 +112,10 @@ Second, the benchmark keeps an end-to-end sample only when its millisecond-resol
 latency is strictly positive and does not count what it discards: of $\ombMedianCells$
 embedded-mode cells, $\ombGridMedianCells$ reported a median that was an exact
 multiple of one millisecond, computed from $\ombGridRetentionMin$--$\ombGridRetentionMax\%$
-of the samples taken. We contribute an exact identity for the
-negative span, what a positivity filter costs a reported distribution, confirmed by a
-pre-registered manipulation, and an audit of \harnessAuditedWord{} tools. The remedy is to randomize the send instant
-and publish the retained fraction.
+of the samples taken. We identify and experimentally characterize both, show that they
+materially alter reported results, and derive checks their authors can apply: an exact
+identity for the negative span, a pre-registered manipulation, and an audit of
+\harnessAuditedWord{} tools.
 \end{abstract}
 
 % Alphabetical, case-insensitively, and gated by test_index_terms_are_alphabetical.
@@ -174,9 +174,10 @@ acknowledgment, and the span referenced to them never inverts (Table~\ref{tab:sp
 \end{figure*}
 
 \IEEEPARstart{M}{essage}-broker benchmarks inform purchasing and architecture decisions,
-and the paths they compare now complete in well under a millisecond. This paper reports two
-ways such a benchmark misreports on those paths without any sign of it in its output. It
-then says what a benchmark must publish for a reader to tell.
+and the paths they compare now complete in well under a millisecond. This paper asks what can
+go wrong when a benchmark measures a sub-millisecond path, and how its authors can detect or
+avoid it. We answer with two concrete failure modes, each characterized by manipulation, and
+with the checks they imply.
 
 % The two figures moved to Section II, beside the paragraph that defines what they draw. The
 % introduction still points at them, which is the right direction: a reader meets the picture
@@ -221,6 +222,12 @@ specification discloses.
 We make three contributions, each established by manipulation rather than by observation
 alone.
 \begin{enumerate}
+\item \textbf{An exact account of the negative latency, on one clock}
+(Section~\ref{sec:mechanism}). The acknowledgment-referenced span is the delivery less the
+acknowledgment lag, $S = D - A$ per event. A negative value is therefore an ordering between
+two measured quantities and not a fault in either clock. Four manipulations separate scheduling
+from its rival explanations, and the send-referenced span over the same $\spanEvents$
+events never inverts.
 \item \textbf{What a positivity filter costs a reported distribution}
 (Section~\ref{sec:external}). The fraction of samples a millisecond-resolution benchmark
 retains is fixed by the ratio of the delivery to the timestamp resolution --- arithmetic a
@@ -228,12 +235,6 @@ retains is fixed by the ratio of the delivery to the timestamp resolution --- ar
 deletion: that fraction decides the distribution the benchmark reports, is never shown to
 the operator, and a pre-registered manipulation of message size moves a configuration
 across the boundary it predicts.
-\item \textbf{An exact account of the negative latency, on one clock}
-(Section~\ref{sec:mechanism}). The acknowledgment-referenced span is the delivery less the
-acknowledgment lag, $S = D - A$ per event. A negative value is therefore an ordering between
-two measured quantities and not a fault in either clock. Four manipulations separate scheduling
-from its rival explanations, and the send-referenced span over the same $\spanEvents$
-events never inverts.
 \item \textbf{A per-run audit and the reporting rules it implies}
 (Sections~\ref{sec:gate} and~\ref{sec:authors}). A sign check applied uniformly to all
 $\auditRuns$ runs rejected $\auditRejected$, including every run behind our own first
@@ -284,6 +285,12 @@ S &\equiv t_{\mathrm{recv}} - t_{\mathrm{ack}} \;=\; D - A .
 \end{aligned}
 \label{eq:model}
 \end{equation}
+Two more quantities belong to the model rather than to either failure. Write $\tau$ for
+the \emph{timestamp resolution} --- the \emph{quantum}, one millisecond in the benchmark of
+Section~\ref{sec:external} --- and $T_{\mathrm{true}}$\label{def:ttrue} for the \emph{true
+delivery} of a message: the interval $D$ would report if it were measured with an arbitrarily
+fine timestamp, which is what $D$ measures up to the consumer's own timestamping jitter.
+
 $D$ is the \emph{delivery}, from the send call to the consumer holding the record. $A$ is
 the \emph{acknowledgment lag}, from the send call to the producer observing the broker's
 acknowledgment. $S$ is the span the benchmark literature reports as broker latency. We
@@ -375,7 +382,7 @@ for a single broker and gives the other two only
 resolution at all.
 
 The tools are few and shared, so a defect in one is not one project's problem. The audit of
-Section~\ref{sec:generality} reads \harnessAuditedWord{} tools at source and finds
+Section~\ref{sec:tools} reads \harnessAuditedWord{} tools at source and finds
 \harnessSilentWord{} disposing of inverted samples without counting them. Coarse timestamp
 resolution reaches further than the disposal does: the end-to-end tool bundled with Apache \kafka{}
 itself computes its percentiles from millisecond-truncated integers~\cite{kafka_tools}. The
@@ -593,186 +600,7 @@ tables reporting it are generated rather than transcribed.
 % Descriptive title, not "Mode B": a co-author met "Mode B" before "Mode A" and neither
 % label had been introduced. The labels are gone from the paper; the section names say what
 % each failure is.
-\section{Quantization and Silent Deletion}
-\label{sec:external}
-
-The cross-broker benchmark we audit computes its reported latency distribution from a
-subset of the samples it collected, does not record how large that subset was, and lets the
-send rate decide it. Everything measured below is the
-OpenMessaging Benchmark in embedded mode, where driver and workers run in one JVM. Its
-distributed mode is discussed in Section~\ref{sec:limitations}.
-
-\subsection{The admission condition, and its origin}
-\label{sec:extmethod}
-In \brk{LocalWorker.java}:294 the end-to-end latency is \texttt{now - publishTimestamp},
-where \texttt{now} is read in the consumer and \texttt{publishTimestamp} is \kafka{}'s
-producer-set \texttt{CreateTime}, itself a millisecond value. That difference is then
-promoted to microseconds (Supplement~S37 quotes the call). A sample then enters the
-histogram only if it passes the test in \brk{WorkerStats.java}:95 ---
-\texttt{if (endToEndLatencyMicros > 0)} --- which we call the \emph{admission condition}.
-The message is counted as received a few lines earlier, but a non-positive latency is
-dropped and no counter records how many. Over the campaign of Section~\ref{sec:extphase}
-that silence covers $\ombDiscarded$ samples.
-
-The condition's origin is documented and its reasoning is sound. It was added in 2018 to stop
-negative values reaching the histogram, on the ground that end-to-end latency ``is
-calculated based on time difference of \texttt{System.currentTimeMillis()} on two different
-machines'' and ``can be negative''~\cite{openmessaging_pr56}. The recorder is an
-\texttt{HdrHistogram} \texttt{Recorder}, which rejects negative values outright, so
-filtering for positives is the reasonable local fix, defensive rather than evasive. Its
-non-local consequences are two, neither considered at the time. First, \texttt{> 0} also deletes
-every sample that computes to exactly zero. Because
-\texttt{System.currentTimeMillis()} has millisecond resolution, any delivery faster than
-one millisecond does compute to zero. On co-located paths, where our own transport measures
-$0.1$--$0.5$~ms, that is most of them. Second, the one observation which would show the
-measurement had failed is the exact observation the condition removes.
-Section~\ref{sec:generality} finds the same disposal, uncounted, in
-\harnessSilentIndependentWord{} independent tools.
-
-The condition's scope is telling. It is on the \ombGuardedPath{} path, which timestamps in
-\ombGuardedClock{}s; the same harness measures its \ombUnguardedPath{} span with a
-\ombUnguardedClock{} clock and records every sample unconditionally. The coarse clock and
-the filter both landed on the one span that crosses processes.
-
-\paragraph{The consequence, measured}
-Of the $\ombMedianCells$ instrumented cells whose own summary we captured,
-$\ombGridMedianCells$ report a median of $1.0$ or $2.0$~ms, and across those the benchmark
-computes its reported distribution from between $\mathbf{\ombGridRetentionMin\%}$ and
-$\mathbf{\ombGridRetentionMax\%}$ of the samples it takes. Two replicates of one cell ---
-$200$~B payload at $500$~msg/s, same host --- kept $\ombKeptLo$ and $\ombKeptHi$ samples, a
-$\ombRetentionFold$-fold difference, and both reported a median of $1.0$~ms with nothing in
-the output to distinguish them. Three uninstrumented runs print p50, p95, p99 and max all
-equal to $1.0$ to three decimal places. The full ledger holds $\ombRuns$ instrumented runs,
-$\ombDiscarded$ discarded samples and $\ombNegatives$ negatives, and over it the retained
-fraction falls as low as $\ombRetentionMinExact\%$ --- four samples kept of ninety thousand.
-The printed median is pinned at the timestamp resolution while retention moves across two
-and a half orders of magnitude (Fig.~\ref{fig:deletion}). The only cells that escape are the four whose payload is large enough that
-the resolution stops binding.
-
-That discarded fraction is the one time-interval averaging measures
-with~\cite{hp1970tia}: reporting a distribution conditioned on it, without reporting it,
-keeps the residue and throws away the estimator.
-
-\begin{figure}[tb]
-\centering
-\includegraphics[width=\columnwidth]{docs/results/figures/deletion.pdf}
-\caption{\textbf{What the benchmark prints against what it kept in order to print it}, over
-every instrumented cell. At the timestamp resolution the printed median carries no
-information about retention: $\ombGridMedianCells$ cells report $1.0$ or $2.0$~ms while the
-retained fraction spans $\ombRetentionFold\times$. Away from it the harness behaves: the
-failure is confined to deliveries shorter than the timestamp resolution.}
-\label{fig:deletion}
-\end{figure}
-
-\subsection{Phase, and the grid it produces}
-\label{sec:extphase}
-Publish latency across these cells takes only two values, $\ombPubLatLo$ and
-$\ombPubLatHi$~ms, while retention varies $\ombRetentionFold$-fold. A two-valued predictor
-cannot account for a range like that whatever its correlation, and the correlation it does
-have ($\ombRetentionRho$, Fisher $\ombRetentionRhoCI$, over $\ombRetentionRhoN$ cells) carries the sign
-Equation~\ref{eq:retention} predicts. What moves retention is where the producer's send
-instants fall against the \emph{grid}: the instants, one millisecond apart, at which the
-timestamp changes value. Write $\tau$ for the timestamp resolution --- the
-\emph{quantum}, one millisecond here --- and $T_{\mathrm{true}}$\label{def:ttrue} for the
-true delivery of a message, the interval $D$ would report if it were measured with an
-arbitrarily fine timestamp. A sample survives when its delivery crosses a grid instant,
-which for $T_{\mathrm{true}} < \tau$ happens with probability $T_{\mathrm{true}}/\tau$
-(Supplement~S42 draws the geometry):
-\begin{equation}
-\label{eq:retention}
-\text{retention} \;=\; \min\!\left(1,\; \frac{T_{\mathrm{true}}}{\tau}\right)
-\qquad\text{(uniform phases).}
-\end{equation}
-
-All \spreadIncommensurateWord{} configurations whose send interval is incommensurate with
-$\tau$ sit near $50\%$ --- medians $\spreadIncommensurateLo$ to
-$\spreadIncommensurateHi$ --- implying $T_{\mathrm{true}} \approx 0.5$~ms at
-$\tau = 1$~ms.
-
-\paragraph{A pre-registered confirmation}
-\label{sec:extcomp}
-Payload moves $T_{\mathrm{true}}$, and with it the fraction a run retains. Where the send
-interval is commensurate with the tick the retained fraction is confined to a few values
-rather than a continuum, so moving $T_{\mathrm{true}}$ moves a configuration between them;
-Supplement~S22 sets that structure out and draws all three payloads against it; S23 tests it
-configuration by configuration against the permutation null S44 constructs. The prediction was registered before the runs and it came
-true: replicate spread collapses to $13.6$ at $32$~KB and re-opens to $26.7$ at $64$~KB, a
-boundary crossed in both directions by one manipulated variable. One registered detail
-failed --- the $32$~KB pin sits at $69.2$, not the predicted $66.67$ ---
-% The payload-flip figure moved to the supplement in round 43, beside S22, which is where
-% the spread rule it confirms is set out in full. Same journey as the pipeline schematic in
-% round 16 and the payload-sweep law earlier in this round, and for the same reason: every
-% number the panels carry is in the sentence above them, so the figure restates rather than
-% shows, and four biographies would not otherwise fit inside twelve pages.
-
-% Round 47 cut the sixty-three-cell campaign's tally to its conclusion. It was two sentences
-% of tier-4 evidence -- six registered predictions, three falsifiers fired -- and S26 gives
-% every one of them prediction by prediction, so the main text was carrying an index to a
-% table rather than a result. The page it bought went to the two citations round 46 asked
-% for, one of them a paper in this journal on this section's own subject.
-and a larger campaign leaves per-send jitter rather than accumulation standing
-(Supplement~S26).
-
-\subsection{Generality, and the sign channel}
-\label{sec:generality}
-To show the deletion is not an artifact of one JVM, we reproduced the admission condition in an
-independent Python harness sharing no code with the benchmark. On one clock it recorded
-\textbf{zero} negative differences across $\harnessOneClockSamples$
-samples, as a causal chain requires, and none across two hosts either
-(Supplement~S11). The grid behavior reappeared intact. At
-$\harnessXHostRate$~msg/s --- the \harnessXHostArmClass{} configuration, the only one of the
-three whose own grid spread does not swamp the comparison --- cross-host retention wandered
-from $\harnessXHostRetLo$ to $\harnessXHostRetHi\%$ over four replicates, where the same
-configuration on one clock held to $\harnessOneClockSpread$ points.
-Cross-host, the deleted fraction couples to the synchronization state and nothing records
-either. Nor is the admission condition confined to the tool we measured: $\forkUnchanged$
-of the $\forkChecked$ public forks we could read carry the expression unchanged, surveyed
-\forkCheckedOn{}.
-
-Nor is the disposal confined to this harness, and deletion is not the only way coarse
-resolution wins. We audited \harnessAuditedWord{} tools at source
-across \harnessLanguagesWord{} languages and \harnessVendorsWord{} vendors, classifying each
-finding with the code that classified the benchmark. \harnessSilentWordCap{} of the
-\harnessAuditedWord{} dispose of the sample without counting it, in
-\harnessDisposalClassesWord{} classes --- a pattern rather than one project's oversight, and
-one of them is Apache Pulsar's performance client reaching the same design
-independently~\cite{pulsar_perf}. Apache
-\kafka{}'s own bundled end-to-end tool keeps every sample and loses it anyway, filling the
-array its percentiles come from by integer division, so on a sub-millisecond path every
-one reports zero~\cite{kafka_tools}. Two more keep their negatives and pass them on
-unfiltered, as RFC~7679 asks~\cite{rabbitmq_perftest,nats_cli}. The failure is not universal,
-and the claim that survives is the narrower one: \emph{the tools that quantize or filter do so
-without counting}. Substitution is the worst of the three classes because it leaves
-nothing missing: \texttt{fio} and \texttt{btt} substitute zero and one nanosecond, and a
-value never measured enters the distribution. At the other end, \harnessCountingWord{} counts
-its discards in a metric whose description names the cause~\cite{rezolus}, which is what
-makes the rule of Section~\ref{sec:authors} practical rather than aspirational.
-Supplement~S37 gives the registry tool by tool, with the source line each finding sits on and
-one entry that corrects a misreading of our own. The class is not confined to benchmarks:
-in November 2025 the audited broker's own coordinator metrics adopted the same disposal,
-clamping negative durations to zero with no counter~\cite{kafka19888} (Supplement~S37).
-
-Separating the discards by sign is what makes the condition's cost legible. Across the
-\kafka{}-driver corpus's $\ombKafkaRuns$ runs its $\ombKafkaDiscarded$ discarded samples
-contain \textbf{not one negative}: the most negative value at any load, size or rate is
-$0\,\mu$s.
-Those discards are resolution failures, not clock failures --- a distinction an unsigned
-counter cannot make. The same channel
-then caught the real thing in the \redis{}-driver replication's $\ombRedisRuns$ runs:
-$\ombRedisNegatives$ negatives, every one exactly $-1000\,\mu$s, the smallest value a
-one-millisecond timestamp can express, with
-$\ombRedisWorstNegatives$ of them in a single run where they were \emph{half of all samples
-taken}, beside \ombRedisWorstKept{} kept.
-
-That value is not a coincidence. The \redis{} driver's span is a difference between two
-millisecond-floored clocks on two hosts, and a sub-tick offset between two floored clocks can
-produce exactly one negative value, $-1000\,\mu$s, and no other. That is precisely what the
-corpus contains. The \kafka{}-driver span, floored the same way but taken inside one
-JVM, never inverts at all. Clock discipline was clean at every logged minute, which is the
-point --- this failure needs no misbehaving clock, only two of them and a floor
-(Supplement~S43).
-
-\section{Scheduling and Acknowledgment Bias}
+\section{Failure Mode 1: Timestamp-Reference Bias}
 \label{sec:mechanism}
 
 The negatives in our own corpus are produced by scheduling, and we establish this by moving
@@ -842,9 +670,7 @@ Each timestamping thread is either running, in which case its timestamp is late 
 jitter of width $\sigma_c$, or preempted and off-CPU. Write $p$ for the probability of the
 second state --- the timestamping thread's off-CPU \emph{occupancy}\label{def:occupancy},
 which is what Table~\ref{tab:mechanism} moves --- and $G(\cdot)$ for the survival function
-of the residual delay in that state, and take the consumer's timestamp to lie in the core. Write $T_{\mathrm{true}}$ for the
-true delivery of Section~\ref{sec:extphase}: the quantity $D$ measures, equal to $D$ up to
-the consumer's own timestamping jitter. Conditioning on it, the identity of
+of the residual delay in that state, and take the consumer's timestamp to lie in the core. Conditioning on $T_{\mathrm{true}}$, the identity of
 Equation~\ref{eq:negspan} becomes, to leading order, the occupancy times the chance that a
 residual stall outlasts the delivery; Supplement~S16 states the form and what it does and
 does not carry. Load moves $p$ and does not fix it --- two geometries at one $\rho$, rates twofold apart
@@ -1030,6 +856,188 @@ descheduled at the wrong instant therefore reads its clock about a slice late, s
 thirty times a $0.1$--$0.5$~ms delivery, and the tick is why the mode is a band rather
 than a spike. A mean over this distribution is dominated by a mode the operator never
 sees, so a mean-based counter cannot flag this failure.
+
+\section{Failure Mode 2: Quantization and Silent Deletion}
+\label{sec:external}
+
+The cross-broker benchmark we audit computes its reported latency distribution from a
+subset of the samples it collected, does not record how large that subset was, and lets the
+send rate decide it. Everything measured below is the
+OpenMessaging Benchmark in embedded mode, where driver and workers run in one JVM. Its
+distributed mode is discussed in Section~\ref{sec:limitations}.
+
+\subsection{The admission condition, and its origin}
+\label{sec:extmethod}
+In \brk{LocalWorker.java}:294 the end-to-end latency is \texttt{now - publishTimestamp},
+where \texttt{now} is read in the consumer and \texttt{publishTimestamp} is \kafka{}'s
+producer-set \texttt{CreateTime}, itself a millisecond value. That difference is then
+promoted to microseconds (Supplement~S37 quotes the call). A sample then enters the
+histogram only if it passes the test in \brk{WorkerStats.java}:95 ---
+\texttt{if (endToEndLatencyMicros > 0)} --- which we call the \emph{admission condition}.
+The message is counted as received a few lines earlier, but a non-positive latency is
+dropped and no counter records how many. Over the campaign of Section~\ref{sec:extphase}
+that silence covers $\ombDiscarded$ samples.
+
+The condition's origin is documented and its reasoning is sound. It was added in 2018 to stop
+negative values reaching the histogram, on the ground that end-to-end latency ``is
+calculated based on time difference of \texttt{System.currentTimeMillis()} on two different
+machines'' and ``can be negative''~\cite{openmessaging_pr56}. The recorder is an
+\texttt{HdrHistogram} \texttt{Recorder}, which rejects negative values outright, so
+filtering for positives is the reasonable local fix, defensive rather than evasive. Its
+non-local consequences are two, neither considered at the time. First, \texttt{> 0} also deletes
+every sample that computes to exactly zero. Because
+\texttt{System.currentTimeMillis()} has millisecond resolution, any delivery faster than
+one millisecond does compute to zero. On co-located paths, where our own transport measures
+$0.1$--$0.5$~ms, that is most of them. Second, the one observation which would show the
+measurement had failed is the exact observation the condition removes.
+Section~\ref{sec:tools} finds the same disposal, uncounted, in
+\harnessSilentIndependentWord{} independent tools.
+
+The condition's scope is telling. It is on the \ombGuardedPath{} path, which timestamps in
+\ombGuardedClock{}s; the same harness measures its \ombUnguardedPath{} span with a
+\ombUnguardedClock{} clock and records every sample unconditionally. The coarse clock and
+the filter both landed on the one span that crosses processes.
+
+\paragraph{The consequence, measured}
+Of the $\ombMedianCells$ instrumented cells whose own summary we captured,
+$\ombGridMedianCells$ report a median of $1.0$ or $2.0$~ms, and across those the benchmark
+computes its reported distribution from between $\mathbf{\ombGridRetentionMin\%}$ and
+$\mathbf{\ombGridRetentionMax\%}$ of the samples it takes. Two replicates of one cell ---
+$200$~B payload at $500$~msg/s, same host --- kept $\ombKeptLo$ and $\ombKeptHi$ samples, a
+$\ombRetentionFold$-fold difference, and both reported a median of $1.0$~ms with nothing in
+the output to distinguish them. Three uninstrumented runs print p50, p95, p99 and max all
+equal to $1.0$ to three decimal places. The full ledger holds $\ombRuns$ instrumented runs,
+$\ombDiscarded$ discarded samples and $\ombNegatives$ negatives, and over it the retained
+fraction falls as low as $\ombRetentionMinExact\%$ --- four samples kept of ninety thousand.
+The printed median is pinned at the timestamp resolution while retention moves across two
+and a half orders of magnitude (Fig.~\ref{fig:deletion}). The only cells that escape are the four whose payload is large enough that
+the resolution stops binding.
+
+That discarded fraction is the one time-interval averaging measures
+with~\cite{hp1970tia}: reporting a distribution conditioned on it, without reporting it,
+keeps the residue and throws away the estimator.
+
+\begin{figure}[tb]
+\centering
+\includegraphics[width=\columnwidth]{docs/results/figures/deletion.pdf}
+\caption{\textbf{What the benchmark prints against what it kept in order to print it}, over
+every instrumented cell. At the timestamp resolution the printed median carries no
+information about retention: $\ombGridMedianCells$ cells report $1.0$ or $2.0$~ms while the
+retained fraction spans $\ombRetentionFold\times$. Away from it the harness behaves: the
+failure is confined to deliveries shorter than the timestamp resolution.}
+\label{fig:deletion}
+\end{figure}
+
+\subsection{Phase, and the grid it produces}
+\label{sec:extphase}
+Publish latency across these cells takes only two values, $\ombPubLatLo$ and
+$\ombPubLatHi$~ms, while retention varies $\ombRetentionFold$-fold. A two-valued predictor
+cannot account for a range like that whatever its correlation, and the correlation it does
+have ($\ombRetentionRho$, Fisher $\ombRetentionRhoCI$, over $\ombRetentionRhoN$ cells) carries the sign
+Equation~\ref{eq:retention} predicts. What moves retention is where the producer's send
+instants fall against the \emph{grid}: the instants, one millisecond apart, at which the
+timestamp changes value. A sample survives when its delivery crosses a grid instant,
+which for $T_{\mathrm{true}} < \tau$ happens with probability $T_{\mathrm{true}}/\tau$
+(Supplement~S42 draws the geometry):
+\begin{equation}
+\label{eq:retention}
+\text{retention} \;=\; \min\!\left(1,\; \frac{T_{\mathrm{true}}}{\tau}\right)
+\qquad\text{(uniform phases).}
+\end{equation}
+
+All \spreadIncommensurateWord{} configurations whose send interval is incommensurate with
+$\tau$ sit near $50\%$ --- medians $\spreadIncommensurateLo$ to
+$\spreadIncommensurateHi$ --- implying $T_{\mathrm{true}} \approx 0.5$~ms at
+$\tau = 1$~ms.
+
+\paragraph{A pre-registered confirmation}
+\label{sec:extcomp}
+Payload moves $T_{\mathrm{true}}$, and with it the fraction a run retains. Where the send
+interval is commensurate with the tick the retained fraction is confined to a few values
+rather than a continuum, so moving $T_{\mathrm{true}}$ moves a configuration between them;
+Supplement~S22 sets that structure out and draws all three payloads against it; S23 tests it
+configuration by configuration against the permutation null S44 constructs. The prediction was registered before the runs and it came
+true: replicate spread collapses to $13.6$ at $32$~KB and re-opens to $26.7$ at $64$~KB, a
+boundary crossed in both directions by one manipulated variable. One registered detail
+failed --- the $32$~KB pin sits at $69.2$, not the predicted $66.67$ ---
+% The payload-flip figure moved to the supplement in round 43, beside S22, which is where
+% the spread rule it confirms is set out in full. Same journey as the pipeline schematic in
+% round 16 and the payload-sweep law earlier in this round, and for the same reason: every
+% number the panels carry is in the sentence above them, so the figure restates rather than
+% shows, and four biographies would not otherwise fit inside twelve pages.
+
+% Round 47 cut the sixty-three-cell campaign's tally to its conclusion. It was two sentences
+% of tier-4 evidence -- six registered predictions, three falsifiers fired -- and S26 gives
+% every one of them prediction by prediction, so the main text was carrying an index to a
+% table rather than a result. The page it bought went to the two citations round 46 asked
+% for, one of them a paper in this journal on this section's own subject.
+and a larger campaign leaves per-send jitter rather than accumulation standing
+(Supplement~S26).
+
+\subsection{Our own harness, and the sign channel}
+\label{sec:generality}
+To show the deletion is not an artifact of one JVM, we reproduced the admission condition in an
+independent Python harness sharing no code with the benchmark. On one clock it recorded
+\textbf{zero} negative differences across $\harnessOneClockSamples$
+samples, as a causal chain requires, and none across two hosts either
+(Supplement~S11). The grid behavior reappeared intact. At
+$\harnessXHostRate$~msg/s --- the \harnessXHostArmClass{} configuration, the only one of the
+three whose own grid spread does not swamp the comparison --- cross-host retention wandered
+from $\harnessXHostRetLo$ to $\harnessXHostRetHi\%$ over four replicates, where the same
+configuration on one clock held to $\harnessOneClockSpread$ points.
+Cross-host, the deleted fraction couples to the synchronization state and nothing records
+either. 
+
+Separating the discards by sign is what makes the condition's cost legible. Across the
+\kafka{}-driver corpus's $\ombKafkaRuns$ runs its $\ombKafkaDiscarded$ discarded samples
+contain \textbf{not one negative}: the most negative value at any load, size or rate is
+$0\,\mu$s.
+Those discards are resolution failures, not clock failures --- a distinction an unsigned
+counter cannot make. The same channel
+then caught the real thing in the \redis{}-driver replication's $\ombRedisRuns$ runs:
+$\ombRedisNegatives$ negatives, every one exactly $-1000\,\mu$s, the smallest value a
+one-millisecond timestamp can express, with
+$\ombRedisWorstNegatives$ of them in a single run where they were \emph{half of all samples
+taken}, beside \ombRedisWorstKept{} kept.
+
+That value is not a coincidence. The \redis{} driver's span is a difference between two
+millisecond-floored clocks on two hosts, and a sub-tick offset between two floored clocks can
+produce exactly one negative value, $-1000\,\mu$s, and no other. That is precisely what the
+corpus contains. The \kafka{}-driver span, floored the same way but taken inside one
+JVM, never inverts at all. Clock discipline was clean at every logged minute, which is the
+point --- this failure needs no misbehaving clock, only two of them and a floor
+(Supplement~S43).
+
+\section{Evidence Across Tools}
+\label{sec:tools}
+Neither failure is one project's oversight: the tools are few and shared, and five of 
+the \harnessAuditedWord{} we read dispose of a sample without counting it.
+
+Nor is the admission condition confined to the tool we measured: $\forkUnchanged$
+of the $\forkChecked$ public forks we could read carry the expression unchanged, surveyed
+\forkCheckedOn{}.
+
+Deletion is not the only way coarse resolution wins. We audited \harnessAuditedWord{} tools at source
+across \harnessLanguagesWord{} languages and \harnessVendorsWord{} vendors, classifying each
+finding with the code that classified the benchmark. \harnessSilentWordCap{} of the
+\harnessAuditedWord{} dispose of the sample without counting it, in
+\harnessDisposalClassesWord{} classes --- a pattern rather than one project's oversight, and
+one of them is Apache Pulsar's performance client reaching the same design
+independently~\cite{pulsar_perf}. Apache
+\kafka{}'s own bundled end-to-end tool keeps every sample and loses it anyway, filling the
+array its percentiles come from by integer division, so on a sub-millisecond path every
+one reports zero~\cite{kafka_tools}. Two more keep their negatives and pass them on
+unfiltered, as RFC~7679 asks~\cite{rabbitmq_perftest,nats_cli}. The failure is not universal,
+and the claim that survives is the narrower one: \emph{the tools that quantize or filter do so
+without counting}. Substitution is the worst of the three classes because it leaves
+nothing missing: \texttt{fio} and \texttt{btt} substitute zero and one nanosecond, and a
+value never measured enters the distribution. At the other end, \harnessCountingWord{} counts
+its discards in a metric whose description names the cause~\cite{rezolus}, which is what
+makes the rule of Section~\ref{sec:authors} practical rather than aspirational.
+Supplement~S37 gives the registry tool by tool, with the source line each finding sits on and
+one entry that corrects a misreading of our own. The class is not confined to benchmarks:
+in November 2025 the audited broker's own coordinator metrics adopted the same disposal,
+clamping negative durations to zero with no counter~\cite{kafka19888} (Supplement~S37).
 
 \section{Discussion}
 \label{sec:discussion}
@@ -1219,7 +1227,7 @@ deepest negative span (Supplement~S39).
 The mechanism's constants are those of one EEVDF-era kernel (6.8); CFS-era schedulers, the
 regime Lozi et al.\ document, may shift them. The deletion arithmetic is demonstrated on one
 benchmark and reproduced in one independent harness. The \harnessSilentWord{} tools of
-Section~\ref{sec:generality} are readings of source rather than measured deployments. The
+Section~\ref{sec:tools} are readings of source rather than measured deployments. The
 benchmark's distributed mode failed on every attempt, so its cross-host exposure rests on
 source reading and our own two-host harness (Supplement~S34). Exposure depends on a
 deployment's path latency and producer rate. That is why we recommend publishing a

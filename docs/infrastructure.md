@@ -487,13 +487,17 @@ main text, 54 of which coincidentally equalled some macro's value and almost all
 noise --- "$1$~ms stamp", "$q = 1$", a "$0.5$~ms path". Policing singletons would drown the
 signal. But **two emitted values in order, joined by a dash or by "to", is not a coincidence,
 it is the quantity.** Section VI-B typed "$7$ to $80	imes$" while eight sibling sites read
-`tFactorLow`--`tFactorHigh`.
+`
+tFactorLow`--`
+tFactorHigh`.
 
 `tests/unit/test_macro_ranges.py` derives the pairs it polices *from the documents* --- a pair
 counts only once the prose already writes it as `\A--\B` somewhere, which is the evidence
 that the two macros belong together. Nothing is hard-coded and nothing needs maintaining. It
 found the site the referee named **and a second one nobody had**: `supplement.tex` typed
-"$39$--$54$" against `tLowFactor`/`tHighFactor`.
+"$39$--$54$" against `
+tLowFactor`/`
+tHighFactor`.
 
 **1x. The Feynman rule applies to exhibits, and nobody had checked.** `test_section_openings`
 has enforced "a section opens on a claim" for many rounds. The same convention runs through
@@ -508,6 +512,21 @@ starts with `	extbf{...}`, and that lead reads as a sentence rather than a label
 
 **When a convention holds in most places, count the places.** Both of this round's findings
 were conventions at 8/10 and 8/9, invisible to anyone reading linearly.
+
+**1y. An average over a label hides a strike on one letter.** Round 55 rendered Figure 1 at
+print size and found the arrowhead of the end-to-end span printed on the "T" of "end-to-end
+TTI". The ink check had passed it for every round the label existed, and the reason is
+arithmetic rather than tolerance: it scored dark ink as a fraction of the label's whole
+bounding box, so an arrowhead sitting on one letter of a fourteen-character label scored
+0.0058 against a threshold of 0.012 --- a ninth of the 0.0508 it scores in the cell it
+actually landed in. The longer the label, the more ink it can absorb before the gate notices,
+which is exactly backwards: a long label is a label with more places to be struck.
+
+`text_struck_by_ink` now also slides a character-cell-wide window along each label and scores
+the worst cell. The threshold is 0.03 because the defect scores 0.0508 there and all 331
+labels the submission builds score 0.0000 --- a figure that is clean is clean everywhere, so
+the two populations are separated by any cut in (0.0, 0.05). **A gate that averages over
+the object it protects gets weaker as the object gets bigger.**
 
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --

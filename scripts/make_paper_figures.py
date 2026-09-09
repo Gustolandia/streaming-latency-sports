@@ -127,9 +127,16 @@ def plot_pipeline(ax):
     # retracting -- a co-author's finding, and the paper's own Section III-A.
     # "send lag", the paper's name for t_send - t_sched since v4.1 (it was "scheduling lag",
     # which collided with the scheduling delay of the timestamping threads).
-    spans = [(0.6, 2.4, 0.42, "send lag"), (4.4, 7.6, 0.42, "transport proxy"),
-             (0.6, 7.6, 0.05, "end-to-end TTI")]
-    for x0, x1, y, label in spans:
+    # The fourth field is where the label sits, which is the span's midpoint except for the
+    # TTI. Centred, "end-to-end TTI" runs to x = 5.0 and its top meets the transport proxy's
+    # left arrowhead at x = 4.4: on the printed page the arrowhead sat on the first T. The
+    # collision gate scored it clean because the strike is a fraction of a percent of a
+    # fourteen-character label -- see `_worst_window` in figure_collisions.py, added with
+    # this fix. Moving the label left of 4.4 clears the arrowhead and still reads as naming
+    # the long arrow beneath it, which is the only arrow it touches.
+    spans = [(0.6, 2.4, 0.42, 1.5, "send lag"), (4.4, 7.6, 0.42, 6.0, "transport proxy"),
+             (0.6, 7.6, 0.05, 3.1, "end-to-end TTI")]
+    for x0, x1, y, label_x, label in spans:
         ax.annotate("", xy=(x1, y), xytext=(x0, y),
                     arrowprops=dict(arrowstyle="<->", color="black", linewidth=1.0))
         # 0.16, not 0.06. "scheduling lag" was wider than the 1.8-unit arrow it names, so the
@@ -138,7 +145,7 @@ def plot_pipeline(ax):
         # which turned 0.06 data units into about two and a half points -- less than a line.
         # A collision the checker scored as clean because the overlap is with a rule rather
         # than with other text, and one a reader sees immediately.
-        ax.text((x0 + x1) / 2, y + 0.16, label, ha="center", fontsize=8)
+        ax.text(label_x, y + 0.16, label, ha="center", fontsize=8)
 
     # Not "two processes' clocks". The producer and the consumer are two processes on one host
     # reading one clock, and Section V exists to show the span inverts anyway; an annotation

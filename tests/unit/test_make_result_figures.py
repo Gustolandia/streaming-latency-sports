@@ -295,14 +295,23 @@ def test_each_null_bar_is_dodged_off_its_own_arm():
     origin than its own marker. The arms that need the dodge are the ones where it is
     proportionally invisible; the arms where it is proportionally huge have nothing beside
     them to crowd.
+
+    Round 55 took the bar off the arms with no power, so the rule is one bar per POWERED
+    arm and the count is checked as that rather than against a constant. The 400 msg/s arm
+    was both the nearest one to the axis and one of the two that lost its bar, so the mirror
+    no longer fires on this ledger and is exercised below on a copy of that arm instead. The
+    mirror is kept rather than cut: it is the only thing between a future ledger with a
+    powered low-rate arm and the rendering round 45 found.
     """
     fig, ax = plt.subplots()
     rows = mrf.grid_rows()
+    banded = [r for r in rows if r["powered"]]
     mrf.plot_grid(ax, rows)
     bars = [ln for ln in ax.lines
             if len(ln.get_xdata()) == 2 and ln.get_xdata()[0] == ln.get_xdata()[1]
             and ln.get_ydata()[0] != ln.get_ydata()[1]]
-    assert len(bars) == len(rows), "one bar per arm"
+    assert len(bars) == len(banded), "one bar per powered arm"
+    assert len(banded) < len(rows), "no arm is unpowered, so the omission is untested here"
 
     lim = max([r["d_null"] for r in rows] + [r["d_obs"] for r in rows]
               + [r["d_null_hi"] for r in rows]) * 1.12
@@ -312,7 +321,7 @@ def test_each_null_bar_is_dodged_off_its_own_arm():
     def placed(x):
         return x + dodge if x < 2 * dodge else x - dodge
 
-    want = sorted(round(placed(r["d_null"]), 6) for r in rows)
+    want = sorted(round(placed(r["d_null"]), 6) for r in banded)
     assert sorted(round(b.get_xdata()[0], 6) for b in bars) == want
 
     # Every bar stays inside the panel, which is the defect the mirror exists to prevent.
@@ -320,10 +329,25 @@ def test_each_null_bar_is_dodged_off_its_own_arm():
     assert all(b.get_xdata()[0] > left for b in bars), \
         "a null bar is drawn on or outside the left spine"
 
-    # And the mirror actually fires here: without it this figure has a bar at 0.007 against
-    # a spine at -0.011, which is the rendering round 45 found.
-    assert any(r["d_null"] < 2 * dodge for r in rows), \
-        "no arm is near the axis, so the mirror is untested by this ledger"
+    # The mirror no longer fires on this ledger: the one arm within a dodge of the axis is
+    # one of the two round 55 left unbarred. So it is checked on that same arm made powered,
+    # which is the future ledger the branch exists for. Without the mirror that bar lands at
+    # 0.007 against a spine at -0.011, which is the rendering round 45 found.
+    near = [r for r in rows if r["d_null"] < 2 * dodge]
+    assert near, "no arm is near the axis, so the mirror is untested by this ledger"
+    assert not any(r["powered"] for r in near), \
+        "an arm near the axis is powered again, so the mirror belongs on the real ledger"
+    fig2, ax2 = plt.subplots()
+    revived = [dict(r, powered=True, verdict="grid") if r in near else r for r in rows]
+    mrf.plot_grid(ax2, revived)
+    at2 = {round(ln.get_xdata()[0], 6) for ln in ax2.lines
+           if len(ln.get_xdata()) == 2 and ln.get_xdata()[0] == ln.get_xdata()[1]
+           and ln.get_ydata()[0] != ln.get_ydata()[1]}
+    want_mirror = {round(r["d_null"] + dodge, 6) for r in near}
+    assert want_mirror <= at2, "the near-axis bar is dodged the wrong way"
+    assert not any(round(r["d_null"] - dodge, 6) in at2 for r in near)
+    assert min(at2) > left, "a null bar is drawn on or outside the left spine"
+    plt.close(fig2)
 
     # The marker keeps its measured position: the offset is on the reference, not the data.
     drawn = {round(ln.get_xdata()[0], 6) for ln in ax.lines if len(ln.get_xdata()) == 1}
@@ -404,11 +428,16 @@ def test_plot_grid_draws_one_marker_per_arm_and_labels_every_class():
     does not reject after correction, and drawing it like the nine that do showed ten
     successes where the text claims nine. The counts stay pinned because they are what
     catches an arm silently dropped from the figure.
+
+    Ten bands, not twelve, since round 55: the two arms with no power keep their marker and
+    lose their null bar, because a bar beside them reads as a test they failed and the
+    caption then has to say the sign carries nothing there. Every arm is still drawn, and
+    that is what the marker count holds.
     """
     fig, ax = plt.subplots()
     mrf.plot_grid(ax, mrf.grid_rows())
-    # diagonal, twelve null bands, twelve arms, four legend proxies
-    assert len(ax.lines) == 1 + 12 + 12 + 4
+    # diagonal, ten null bands, twelve arms, four legend proxies
+    assert len(ax.lines) == 1 + 10 + 12 + 4
     labels = [t.get_text() for t in ax.get_legend().get_texts()]
     assert labels == ["rejects the null (9)", "unresolved (1)", "no power (2)",
                       "the null's central 90%"]

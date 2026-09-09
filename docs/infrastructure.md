@@ -743,6 +743,55 @@ companion now asserts the delta over Villain et al. in the wording that replaced
 asserts both halves, because the dependence without the manipulations is what Villain already
 had.
 
+**1ak. A sentence can be right where it was and wrong where it is.** Round 58 found three
+of these in one read, all made by the restructure that moved material between sections, and
+all invisible to every gate the repository owns, because each sentence is individually true
+and individually well formed.
+
+*A section that states its claim, then states it again.* The new Section VII opened on
+"Neither failure is one project's oversight ... five of the ten we read dispose of a sample
+without counting it", and sixty words later its own third paragraph said "Five of the ten
+dispose of the sample without counting it, in three classes --- a pattern rather than one
+project's oversight". A fifth of a 315-word section, twice. The opening had been written
+*from* the paragraph it introduces, which is how it happened.
+
+*A connective whose antecedent moved.* "Nor is the admission condition confined to the tool we
+measured" was the second of two paired "Nor is..." continuations; the first went to another
+section in the split, and the survivor was left negating a positive claim.
+
+*A pointer that did not follow its definition.* Section V-E said "not the timestamp resolution
+of Section VI" after the reorder moved that definition to Section II --- sending a reader
+forward for something they were given three sections earlier, which is rule A7 inverted.
+
+`tests/unit/test_prose_logic.py` is the new class of gate, and **it found a fourth on its
+first run**: the co-location rule added in round 60 repeated Section VIII-A's "the standard
+evaluation environment hides" almost word for word, two pages apart.
+
+**What the shingle width had to be, and how the test itself corrected me.** The first version
+matched seven raw words and its own self-test failed, because the defect was a *near*
+repetition: "dispose of **a** sample" against "dispose of **the** sample". Stopwords carry
+the difference and not the meaning, so the rule now matches four consecutive *content* words
+with articles and prepositions dropped. **A repetition check that keeps the articles is
+checking the wording, not the claim.**
+
+**The rule runs on the article only, and that is a decision rather than an omission.** The
+supplement is a postmortem whose form is restatement --- it records what an earlier version
+said and then what replaced it, and several of those pairs are labelled "in the round-2
+restatement" in the text. Running the rule there would flag the document doing its job.
+Tables come out first for the same kind of reason: a tabular's rows repeat each other's column
+separators by construction, and left in, every table reports itself.
+
+**1al. The abstract's colon is a promise.** It read "derive checks their authors can apply: an
+exact identity for the negative span, a pre-registered manipulation, and an audit of ten
+tools". None of the three is a check --- they are how the paper *establishes* the two failure
+modes, and the checks are the sign check and the retention report, which the sentence never
+named. The same sentence said "their authors" of two failure modes, which have none.
+
+Both survived because the abstract is the one paragraph a body gate never reads, and both are
+now pinned: the evidence must be listed before the word "checks", and the checks must name the
+audience they are for. **An abstract is the only part of a paper that is read by everyone and
+checked by nothing.**
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

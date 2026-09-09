@@ -42,7 +42,7 @@ FIGURE_STEMS = ("pipeline_schematic", "measurement_model", "deletion", "payload_
 def caption_of(label):
     """The caption text belonging to a label, so a claim can be checked against its figure."""
     i = TEX.index("\\label{%s}" % label)
-    j = TEX.rindex("\\caption{", 0, i)
+    j = max(TEX.rindex("\\caption{", 0, i) if "\\caption{" in TEX[:i] else -1, TEX.rindex("\\caption[", 0, i) if "\\caption[" in TEX[:i] else -1)
     return TEX[j:i]
 
 

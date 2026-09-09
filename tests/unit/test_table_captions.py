@@ -58,7 +58,7 @@ def tables(text):
     out = []
     for m in re.finditer(r"\\begin\{table\*?\}(.*?)\\end\{table\*?\}", text, re.S):
         block = m.group(1)
-        cap = re.search(r"\\caption\{", block)
+        cap = re.search(r"\\caption(?:\[[^\]]*\])?\{", block)
         if not cap:
             continue
         # Brace-match the caption so a nested \textbf{...} does not truncate it.

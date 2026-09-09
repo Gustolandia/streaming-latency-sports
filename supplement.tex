@@ -138,6 +138,22 @@ of the form ``Supplement~S$n$'' resolve to the correspondingly numbered section 
 the artifact's \texttt{docs/supplement\_index.md} records where each section came from.
 
 \tableofcontents
+% Thirteen figures and twenty-seven tables over fifty-six pages had a contents
+% list and no index to them, so a reader who remembered an exhibit but not its
+% section had only the section titles to go on. Round 60 extended three of those
+% titles; this is the same repair applied to the right instrument. The document
+% has no page limit, so forty pointers cost nothing that matters.
+% Ragged right inside both lists. A caption set as a list entry is navigation rather
+% than prose, and justifying forty of them against a narrow measure produced underfull
+% lines at badness 10000 -- which test_no_line_is_stretched_to_the_limit rejects, and
+% rightly: a stretched line is a stretched line. Turning justification off is the fix a
+% typesetter would reach for; shortening the captions was tried first and backed out,
+% because \caption[short]{long} hides 35 of 40 captions from the project's own caption
+% parsers, several of which would then have read a neighboring caption in silence.
+\addtocontents{lof}{\protect\raggedright}
+\addtocontents{lot}{\protect\raggedright}
+\listoffigures
+\listoftables
 \bigskip
 
 \noindent\emph{On the numbering.} On 2026-09-08 the sections were reordered into the four parts above and renumbered S1--S52 in that order; the forwarding note that had been S27 was withdrawn (S14 and S30 had been withdrawn earlier). Earlier correspondence and the artifact's history cite the old numbers; the concordance, old$\to$new, is: S1$\to$S6, S2$\to$S13, S3$\to$S33, S4$\to$S34, S5$\to$S9, S6$\to$S3, S7$\to$S4, S8$\to$S5, S9$\to$S10, S10$\to$S11, S11$\to$S29, S12$\to$S16, S13$\to$S12, S15$\to$S30, S16$\to$S31, S17$\to$S32, S18$\to$S45, S19$\to$S7, S20$\to$S8, S21$\to$S27, S22$\to$S28, S23$\to$S19, S24$\to$S17, S25$\to$S20, S26$\to$S2, S28$\to$S14, S29$\to$S21, S31$\to$S22, S32$\to$S15, S33$\to$S46, S34$\to$S18, S35$\to$S1, S36$\to$S37, S37$\to$S47, S38$\to$S48, S39$\to$S49, S40$\to$S50, S41$\to$S38, S42$\to$S39, S43$\to$S40, S44$\to$S41, S45$\to$S36, S46$\to$S23, S47$\to$S24, S48$\to$S25, S49$\to$S35, S50$\to$S51, S51$\to$S42, S52$\to$S52, S53$\to$S43, S54$\to$S44, S55$\to$S26.
@@ -341,7 +357,7 @@ Table~\ref{tab:first} is the first, rejected result set in full.
 
 
 \begin{table}[t]
-\caption{\textbf{First result set, later rejected.} Broker transport (median, ms) by
+\caption[First result set, later rejected]{\textbf{First result set, later rejected.} Broker transport (median, ms) by
 concurrency, Testbed~A, $10\times$ replay. Every cell fails the check of
 the main text.}
 \label{tab:first}
@@ -422,7 +438,7 @@ the powered real-time measurement finds \redis{} uniformly \emph{faster} and fla
 the audit's doing, and the measurement's.
 
 \begin{table}[t]
-\caption{\textbf{Historical corpus; the scheduling-lag columns are withdrawn.} End-to-end delay
+\caption[Historical corpus; the scheduling-lag columns are withdrawn]{\textbf{Historical corpus; the scheduling-lag columns are withdrawn.} End-to-end delay
 and its decomposition, Testbed~B, after the consistency check (164 of 201 runs retained).
 Medians, ms. \textbf{The \tti{} and scheduling-lag columns record a per-run start-up cost, not a
 per-event property, and are retained only as evidence for the withdrawal in
@@ -637,7 +653,7 @@ the main text and is measured over the same events for both systems --- \kafka{}
 claim. The twentyfold figure is withdrawn.
 
 \begin{table}[t]
-\caption{Observation-window sweep separates a per-run cost from a per-event one. Same
+\caption[Observation-window sweep separates a per-run cost from a per-event one]{Observation-window sweep separates a per-run cost from a per-event one. Same
 match, same driver, same broker, $N{=}1$, true real-time replay; only the window changes. Both
 producers are loop-traced, so the counts for the two systems come from the same tracer.
 Events emitted grow $8.9\times$ across the sweep, but the number of \kafka{} events waking more
@@ -666,7 +682,7 @@ come from the per-run summary.}
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/window_sweep.pdf}
-\caption{Window sweep, as a picture. (a)~Events emitted per run grow $8.9\times$ while the
+\caption[Window sweep, as a picture]{Window sweep, as a picture. (a)~Events emitted per run grow $8.9\times$ while the
 number waking more than $50$~ms late stays at four --- a per-event constant would put the two
 series on parallel lines. (b)~The same fact as a proportion: the share of events paying the cost
 falls as $1/\mathrm{events}$, the dilution a once-per-run cost predicts. \redis{}, on the same
@@ -677,7 +693,7 @@ events, has no affected events at any window.}
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/e1_end_to_end_lag.pdf}
-\caption{\textbf{Withdrawn.} (a)~End-to-end delay against concurrency as originally measured.
+\caption[Withdrawn]{\textbf{Withdrawn.} (a)~End-to-end delay against concurrency as originally measured.
 (b)~The decomposition that appeared to place the whole gap in producer send lag. Both
 panels are retained as evidence for the main text: the runs behind them matched
 a median of seven events each, so the apparent per-event offset is a per-run start-up cost.
@@ -896,7 +912,7 @@ correlation was therefore never an effect-size relationship, and we report the s
 negative result it is.
 
 \begin{table}[t]
-\caption{Why the delay sweep is not an effect-size manipulation. Injected one-way delay at the
+\caption[Why the delay sweep is not an effect-size manipulation]{Why the delay sweep is not an effect-size manipulation. Injected one-way delay at the
 broker, verified present at the interface, at a verified true real-time rate. \tti{} tracks the
 injection; broker transport does not move, because the same delay is added to both arrivals whose
 difference defines it.}
@@ -916,7 +932,7 @@ Injected delay & \tti{} median & Transport median & Transport IQR \\
 \section{S9. The E1 reconciliation, in full}
 
 \begin{table}[t]
-\caption{One set of runs reproduces both published answers. Transport medians (ms) from the powered
+\caption[One set of runs reproduces both published answers]{One set of runs reproduces both published answers. Transport medians (ms) from the powered
 campaign, computed over every event and over each run's first seven events in emission order ---
 the window E1 saw. The all-events columns reproduce the powered $0.41$~ms shift; the prologue
 columns reproduce E1's near-equality (the main text) in both shift and absolute level. The
@@ -1174,7 +1190,7 @@ main text, which is why this one is here, and Fig.~\ref{fig:ttrue} plots them.
 \begin{figure}[tb]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/ttrue_law.pdf}
-\caption{\textbf{Longer delivery inverts less often.} Negative span rate against true
+\caption[Longer delivery inverts less often]{\textbf{Longer delivery inverts less often.} Negative span rate against true
 transport over the payload sweep, Wilson $95\%$ intervals. The same stall distribution
 overlaps a short delivery almost entirely and a long one hardly at all, which is the delivery
 factor $G(T_{\mathrm{true}})$ of Equation~\ref{eq:twostate} of the main text as an
@@ -1375,7 +1391,7 @@ belongs where a reader can weigh it, not where the argument appears to rest on i
 \begin{figure}[tb]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/delta_schematic.pdf}
-\caption{\textbf{Two-state model, drawn.} The timestamping asymmetry $\Delta$ has a narrow
+\caption[Two-state model, drawn]{\textbf{Two-state model, drawn.} The timestamping asymmetry $\Delta$ has a narrow
 core when the timestamping thread is running and a lobe at $-\baseSliceMs$~ms, the scheduler's
 base slice, when it is not, so a small $T_{\mathrm{true}}$ is inverted by the whole lobe and
 a large one only by what lies beyond it --- which is why the check bites hardest on small
@@ -1507,7 +1523,7 @@ what we claimed they estimated. The estimators that replace them are in
 \texttt{scripts/tail\_index\_traced.py}.
 
 \begin{table}[t]
-\caption{Audit gate applied to the powered transport campaigns. ``Flip $V^*$'' is the
+\caption[Audit gate applied to the powered transport campaigns]{Audit gate applied to the powered transport campaigns. ``Flip $V^*$'' is the
 smallest value at which imputing every condemned \redis{} run at $V^*$ would flip the
 Hodges--Lehmann shift's sign; the condemned runs' observed medians center on
 $0.10$--$0.12$~ms.}
@@ -1556,7 +1572,7 @@ imputing every rejected \redis{} run at the largest value its own cell allows. I
 the one that equivalence is stated against.
 
 \begin{table}[t]
-\caption{\textbf{Replicate spread against the phase denominator $q$} (moved from
+\caption[Replicate spread against the phase denominator $q$]{\textbf{Replicate spread against the phase denominator $q$} (moved from
 Section~\mainPhase{}), at fixed payload,
 load, duration and host. \textnormal{\textit{Pos.}} is the distance from the measured continuous value
 to the nearest grid point, against the cell half-width: $0$ sits on a grid point, $1$
@@ -1643,7 +1659,7 @@ Utilization $\rho$ & Negative span rate \\
 
 
 \begin{table}[t]
-\caption{Bounding the unequal-retention selection effect. ``Worst case'' imputes every rejected
+\caption[Bounding the unequal-retention selection effect]{Bounding the unequal-retention selection effect. ``Worst case'' imputes every rejected
 \redis{} run at the largest value observed in that cell. Margin $1$~ms.}
 \label{tab:selection}
 \begin{tabular}{rrrrl}
@@ -1665,7 +1681,7 @@ $N$ & \redis{} retained & Shift (ms) & Worst case & Equivalent \\
 Table~\ref{tab:mixture} is the mixture across nine load levels; Table~\ref{tab:ea5} the occupancy manipulation; Table~\ref{tab:ea6} the load-geometry comparison with its replication; Table~\ref{tab:ea10} the payload sweep; and Table~\ref{tab:ea9} the kernel-trace comparison, including the withheld configuration.
 
 \begin{table}[t]
-\caption{Mixture, measured across nine load levels ($25$ runs each, pre-registered). The
+\caption[Mixture, measured across nine load levels ($25$ runs each, pre-registered)]{Mixture, measured across nine load levels ($25$ runs each, pre-registered). The
 core width $\sigma_{\mathrm{core}} = \mathrm{IQR}/1.349$ grows $5\times$ from idle to the knee;
 the negative-span rate --- the tail --- grows $60\times$. Negative spans are temporally clustered at
 every load (runs-test $z$). The three $\rho=1$ rows are distinct oversubscription levels that the
@@ -1690,7 +1706,7 @@ Utilization $\rho$ & Core $\sigma_{\mathrm{core}}$ (ms) & Negative span rate & C
 
 
 \begin{table}[t]
-\caption{\textbf{Occupancy, not utilization.} Timestamping processes at ordinary priority versus
+\caption[Occupancy, not utilization]{\textbf{Occupancy, not utilization.} Timestamping processes at ordinary priority versus
 \texttt{SCHED\_FIFO}, with the background load unchanged. Utilization is measured in both configurations,
 not assumed: it matches to $0.001$, so the manipulation moved occupancy alone. The negative-span rate
 falls by a factor of $\rtLowFactor$--$\rtHighFactor$ to the running-state floor. Utilization-only models predict no
@@ -1710,7 +1726,7 @@ $88\%$ & 0.8809 & 0.8812 & 0.3049 & 0.0057 & $54\times$ \\
 
 
 \begin{table}[t]
-\caption{\textbf{Same utilization, different rate.} Both load geometries in one campaign.
+\caption[Same utilization, different rate]{\textbf{Same utilization, different rate.} Both load geometries in one campaign.
 Concentrated load leaves $C-k$ cores free; spread load duty-cycles all of them and leaves none.
 At $k=6$ the two configurations sit at the same $\rho$ to four decimals ---
 in \textnormal{\textit{both}} campaigns --- and the rates differ twofold in both. Every cell is 2\,985 matched
@@ -1737,7 +1753,7 @@ $0.6284$/$0.6259$. $k=7$: $0.8778$/$0.8809$ and $0.8778$/$0.8822$.
 
 
 \begin{table}[t]
-\caption{\textbf{Slower delivery is a more reliable measurement, twice.} Payload padding lengthens
+\caption[Slower delivery is a more reliable measurement, twice]{\textbf{Slower delivery is a more reliable measurement, twice.} Payload padding lengthens
 the true transport without touching the scheduler. Utilization is held to a $0.012$ spread; the
 serialization cost pushes it slightly up, against the predicted direction. Both quantities move
 monotonically, in opposite directions, in both campaigns: transport spans $\payloadTransportFactor\times$ and
@@ -1759,7 +1775,7 @@ Padding (B) & Transport (ms) & Negative span & Transport (ms) & Negative span & 
 
 
 \begin{table}[t]
-\caption{\textbf{Kernel tracing predicts the negative-span rate, unfitted, in every configuration that
+\caption[Kernel tracing predicts the negative-span rate, unfitted, in every configuration that has one]{\textbf{Kernel tracing predicts the negative-span rate, unfitted, in every configuration that
 has one.} $\Pr[\text{stall} > T_{\mathrm{true}}]$ from
 \texttt{sched\_wakeup}/\texttt{sched\_switch}, against the negative-span rate measured from
 application timestamps in the \textnormal{\textit{same}} cell; the two share no probe and no estimator.
@@ -1798,7 +1814,7 @@ E-A9b & real-time & 88\% & 0.8822 & $649{,}788$ & 0.016 / 0.000 & --- \\
 Table~\ref{tab:audit} is the consistency audit of every run; Table~\ref{tab:h3} the two timestamping modes; Table~\ref{tab:netem} the injected one-way delay.
 
 \begin{table}[t]
-\caption{Consistency audit of every run behind a reported result. Every count is
+\caption[Consistency audit of every run behind a reported result]{Consistency audit of every run behind a reported result. Every count is
 derived at build time from \texttt{integrity\_windows/clock\_integrity\_by\_condition.csv}
 and \texttt{integrity\_by\_condition.csv}, the audit's own outputs. A condition is usable
 only if all of its runs survive. This corpus is not the span recount of the main text's
@@ -1838,7 +1854,7 @@ Timestamp & \kafka{} (ms) & \redis{} (ms) & Difference (ms) \\
 \end{table}
 
 \begin{table}[t]
-\caption{Injected one-way broker delay, applied identically to both systems, five feeds. Medians.
+\caption[Injected one-way broker delay, applied identically to both systems, five feeds]{Injected one-way broker delay, applied identically to both systems, five feeds. Medians.
 The zero-delay row is rejected in both configurations and marks the absence of a usable baseline.}
 \label{tab:netem}
 \begin{tabular}{rrrrr}
@@ -1879,7 +1895,7 @@ so the constraint is entirely in the acknowledgment path.
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/payload_flip.pdf}
-\caption{\textbf{Campaign's confirmed prediction.} (a)~Retention replicates at $300$~msg/s
+\caption[Campaign's confirmed prediction]{\textbf{Campaign's confirmed prediction.} (a)~Retention replicates at $300$~msg/s
 ($q=3$) by payload, against the thirds grid: $200$~B straddles both branches, $32$~KB pins
 near the $2/3$ vertex, $64$~KB re-opens to the upper cell. Horizontal position within an
 configuration separates replicates that would overprint and carries no variable. (b)~Replicate
@@ -1993,7 +2009,7 @@ the deletion rather than a contribution in its own right.
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/grid_membership.pdf}
-\caption{\textbf{Grid membership, as a set.} Each configuration's observed mean distance to
+\caption[Grid membership, as a set]{\textbf{Grid membership, as a set.} Each configuration's observed mean distance to
 the nearest grid vertex against the distance a continuum would give, which is the diagonal.
 The gray bar beside a configuration is its own simulated null, \emph{uncorrected}; the
 test is one-sided towards the grid, so a marker \emph{below} its bar rejects that null.
@@ -2019,7 +2035,7 @@ is generated from \texttt{grid\_membership.csv} at build time by the same
 helper that produces the figure, so the two cannot disagree.
 
 \begin{table}[htbp]
-\caption{\textbf{Grid membership against a continuum null.} $D$ is the mean normalized
+\caption[Grid membership against a continuum null]{\textbf{Grid membership against a continuum null.} $D$ is the mean normalized
 distance to the nearest grid vertex; under the null its expectation is the value in the
 \textnormal{\textit{null}} column. That column was, until this revision, the distance of
 $\theta$ from its nearest vertex with no replicate noise --- the distance of the
@@ -2064,7 +2080,7 @@ disagreement any pair showed was $\manipWorst$, some $\manipMargin$ times inside
 tolerance, so the zero above is a clean manipulation rather than a loose test.
 
 \begin{table}[htbp]
-\caption{\textbf{Every matched pair.} Ordinary and real-time negative-span rates at the same
+\caption[Every matched pair]{\textbf{Every matched pair.} Ordinary and real-time negative-span rates at the same
 achieved utilization, and the factor between them. Both configurations' achieved $\rho$ is printed, so
 the claim that the manipulation moved occupancy and not load can be checked pair by pair
 rather than taken from a caption: the widest disagreement anywhere in the table is
@@ -2079,7 +2095,7 @@ time from the three campaign files.}
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/priority_ladder.pdf}
-\caption{\textbf{All $\rtPairs$ pairs, as a ladder.} Ordinary and real-time negative-span
+\caption[All $\rtPairs$ pairs, as a ladder]{\textbf{All $\rtPairs$ pairs, as a ladder.} Ordinary and real-time negative-span
 rates with Wilson $95\%$ intervals, one row per pair, ordered by achieved utilization; the
 factor is printed at the right. Reading down, the real-time configuration barely moves while the
 ordinary configuration climbs with load, which is what makes the factor grow. The growth is a trend and
@@ -2115,7 +2131,7 @@ number that is not already stated where it is argued.
 \begin{figure}[tb]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/mechanism_forest.pdf}
-\caption{\textbf{Every manipulation separates; the broker does not.} Wilson $95\%$
+\caption[Every manipulation separates; the broker does not]{\textbf{Every manipulation separates; the broker does not.} Wilson $95\%$
 intervals. Above the rule, the four matched pairs of Table~\ref{tab:mechanism}, utilization
 held fixed within each: what moves the rate is where the timestamping thread sits, not how
 loaded the machine is. Below it, observed rather than manipulated, the two brokers of
@@ -2128,7 +2144,7 @@ Table~\ref{tab:spans}; their intervals are narrower than the plotted point.}
 % path can divide; what the main text owes them is the shape and one worked point,
 % not seven rows of a function.
 \begin{table}[tb]
-\caption{\textbf{What the displacement costs at longer paths, and how wide the cost is.}
+\caption[What the displacement costs at longer paths, and how wide the cost is]{\textbf{What the displacement costs at longer paths, and how wide the cost is.}
 Computed from the measured ack lags, not modeled. Left: the error on a single reported
 latency, $A/T_{\mathrm{true}}$, at this corpus's median lag of $\ackLagMedianUs\,\mu$s.
 Middle: the same error at the tenth and ninetieth percentiles of that lag across our
@@ -2154,7 +2170,7 @@ sign check of Section~\ref{sec:gate} fires on none of it.}
 \begin{figure}[tb]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/exposure_curve.pdf}
-\caption{\textbf{Where a path sits on the exposure curve.} Table~\ref{tab:exposure} as a
+\caption[Where a path sits on the exposure curve]{\textbf{Where a path sits on the exposure curve.} Table~\ref{tab:exposure} as a
 curve: the relative error of the acknowledgment-referenced proxy, $A/T_{\mathrm{true}}$,
 against the delivery being measured. The line is this corpus's median acknowledgment lag
 and the band its tenth to ninetieth percentile across conditions, so a reader can bracket
@@ -2265,7 +2281,7 @@ Figure~\ref{fig:expmap} is the experiment map; Table~\ref{tab:power} is the clai
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/experiment_map.pdf}
-\caption{Experiment map. Each campaign manipulates one variable, holds the others fixed, and
+\caption[Experiment map]{Experiment map. Each campaign manipulates one variable, holds the others fixed, and
 settles one claim. The delay sweep is marked confounded because injecting delay also inflates
 variance (the main text), so we use it for direction only.}
 \label{fig:expmap}
@@ -2273,7 +2289,7 @@ variance (the main text), so we use it for direction only.}
 
 
 \begin{table}[t]
-\caption{What each claim rests on. E1 is the only corpus where retention is a live concern; the
+\caption[What each claim rests on]{What each claim rests on. E1 is the only corpus where retention is a live concern; the
 campaigns after it retain every run, so the breakdown-point argument of
 the main text is needed for one row only.}
 \label{tab:power}
@@ -2304,7 +2320,7 @@ Start-up withdrawal (main text) & window sweep, twice & 3 per window \\
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/integrity_audit.pdf}
-\caption{Audit on Testbed~A. (a)~Per-run negative-span rates: 104 runs carry no negative
+\caption[Audit on Testbed~A]{Audit on Testbed~A. (a)~Per-run negative-span rates: 104 runs carry no negative
 span at all and the rest spread over three decades, so there is no natural threshold. That
 is the count at which the rate is exactly zero, not the number the audit passes: the
 one-per-cent rule condemns $\auditPctWorkstation\%$ of the $\auditRunsWorkstation$.
@@ -2520,7 +2536,7 @@ workload sits four orders of magnitude below where either broker strains. The do
 the failure visible is the same domain in which the original question has a boring answer.
 
 \begin{table}[t]
-\caption{Workload, from 3{,}315 matches. Medians across matches; peak rate is the maximum
+\caption[Workload, from 3{,}315 matches]{Workload, from 3{,}315 matches. Medians across matches; peak rate is the maximum
 over any sliding ten-second window.}
 \label{tab:workload}
 \begin{tabular}{lr}
@@ -2561,7 +2577,7 @@ pipelines by default while our \redis{} producer dispatches to a worker pool; le
 while the \redis{} client does not, which is not a broker difference but a harness difference.
 
 \begin{table}[t]
-\caption{Every configuration that can move a latency number, and why it holds that value.
+\caption[Every configuration that can move a latency number, and why it holds that value]{Every configuration that can move a latency number, and why it holds that value.
 Settings marked \textnormal{\textit{learned}} were discovered by a defect they caused, not chosen in advance.}
 \label{tab:config}
 \small
@@ -2920,7 +2936,7 @@ the grain the finding lives at: one tool can guard one span and leave another al
 OpenMessaging Benchmark does.
 
 \begin{table}[h]
-\caption{Audited harnesses, one row per span rather than per tool. \textnormal{\textit{Filter}} admits only
+\caption[Audited harnesses, one row per span rather than per tool]{Audited harnesses, one row per span rather than per tool. \textnormal{\textit{Filter}} admits only
 positive samples; \textnormal{\textit{substitute}} replaces an inverted interval with a constant;
 \textnormal{\textit{refused by own library}} means the recording library returns a refusal the caller never
 checks; \textnormal{\textit{counts}} means the disposal is exposed in the output. The OpenMessaging
@@ -3111,7 +3127,7 @@ instrumented runs did report --- and the two answer different questions.
 \begin{figure*}[tb]
 \centering
 \includegraphics[width=\textwidth]{docs/results/figures/deletion_histogram.pdf}
-\caption{\textbf{What the benchmark deletes, beside what it then reports.}
+\caption[What the benchmark deletes, beside what it then reports]{\textbf{What the benchmark deletes, beside what it then reports.}
 (a)~At nanosecond resolution the acknowledgment-referenced span goes below zero
 $\spanNegAck$ times in $\spanEvents$; the send-referenced span, same events and same clock,
 never does. (b)~A millisecond timestamp cannot see (a): it differences two truncated timestamps,
@@ -3488,7 +3504,7 @@ value is the one that applied. It is strong evidence rather than proof.
 \begin{figure}[tb]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/quantum_geometry.pdf}
-\caption{\textbf{Why a sample disappears, and why the survivors are not a sample.}
+\caption[Why a sample disappears, and why the survivors are not a sample]{\textbf{Why a sample disappears, and why the survivors are not a sample.}
 (a) One delivery of $T_{\mathrm{true}} = 0.35$~ms at four phases of one tick. Three finish
 inside it, so both timestamps round alike, the difference is exactly zero, and the admission condition removes
 them; the fourth crosses the boundary and is recorded as one whole tick --- which is why the
@@ -4099,7 +4115,14 @@ of why is what would let the next framework inherit it.
 
 A 2025 preprint synthesizes $42$ peer-reviewed \kafka{} studies published between 2015 and
 2025 and reports evaluation rigor, configuration disclosure and reproducibility inconsistent
-across them~\cite{mohammad2025kafka}. It finds neither of the failures reported here. The size
+across them~\cite{mohammad2025kafka}. It finds neither of the failures reported
+here. The field's own taxonomy has no slot for them either: a $2024$ survey
+reviews $27$ benchmark efforts across five dimensions --- one of which is
+\emph{tracked metrics} --- and over $\surveyPages$ pages says
+\emph{benchmark} $\surveyBenchmarkMentions$ times and \emph{latency}
+$\surveyLatencyMentions$, while \emph{timestamp}, \emph{clock} and
+\emph{resolution} occur \surveyAbsentTimes{}~\cite{yue2024streamsurvey}. It closes on the aspects it judges overlooked,
+and the instrument is not among them. The size
 matters for the same reason the audit of Section~\mainTools{} does: the instruments are
 few and shared, so a defect in one is a defect in a decade of comparisons rather than in one
 project.
@@ -4173,9 +4196,9 @@ not. A 2026 tutorial on statistical evaluation for computer-systems papers devot
 to \emph{latency-specific pitfalls}, opens it with ``latency data is the most common metric in
 systems papers and the most consistently mis-reported'', and names three traps: the mean as a
 summary, coordinated omission, and warmup effects~\cite{krishnamachari2026playbook}. The
-harness's own clock is not among them. Over thirty-one pages the words
+harness's own clock is not among them. Over $\playbookPages$ pages the words
 \emph{timestamp}, \emph{resolution}, \emph{quantization} and \emph{retention} do not occur;
-\emph{clock} occurs once, about non-determinism under seeding. Its pre-submission checklist
+\emph{clock} occurs \playbookClockTimes{}, about non-determinism under seeding. Its pre-submission checklist
 asks for ``median + tail percentiles + CDF; warmup discarded'' and for no denominator, no
 resolution and no sign check.
 

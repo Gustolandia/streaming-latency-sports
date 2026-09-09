@@ -73,7 +73,7 @@ def macros():
 
 @pytest.fixture(scope="module")
 def caption(submission):
-    m = re.search(r"\\caption\{(\\textbf\{Grid membership.*?)\}\s*\n\\label\{fig:grid\}",
+    m = re.search(r"\\caption(?:\[[^\]]*\])?\{(\\textbf\{Grid membership.*?)\}\s*\n\\label\{fig:grid\}",
                   submission, re.S)
     assert m, "could not find the grid-membership caption; the anchor changed"
     return m.group(1)

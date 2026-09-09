@@ -398,7 +398,7 @@ class TestNoRejectedFigureIsQuotedAsLive:
 
     def test_the_rejected_table_caption_says_so(self, tex):
         label = tex.index(r"\label{tab:first}")
-        caption = tex[tex.rindex(r"\caption{", 0, label):label]
+        caption = tex[max(tex.rindex(r"\caption{", 0, label) if r"\caption{" in tex[:label] else -1, tex.rindex(r"\caption[", 0, label) if r"\caption[" in tex[:label] else -1):label]
         assert any(w in caption.lower() for w in self.CONDEMNATION), caption[:120]
 
 

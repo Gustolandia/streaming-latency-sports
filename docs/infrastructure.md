@@ -907,6 +907,64 @@ corruption pinned as its own negative example. **Four rounds of writing "do not 
 heredocs for backslashes" prevented nothing; eight lines of test prevent it permanently.**
 
 
+**1au. A repair moved a paragraph and did not re-read its first sentence.** Round 60 was
+right to take the fork count out of Section VII's opening. The paragraph it promoted had
+been written to sit *second*, so the section came to open on *"Deletion is not the only
+way coarse resolution wins"* --- a sentence about what Section VI was, in the position
+this paper reserves for what a section is. The hinge had also been separated from the case
+it introduces, which is two sentences further down. **Moving a paragraph changes the
+sentence it starts with, and nothing re-reads it.**
+
+The Feynman rule had been a writing standard for fifty rounds and never a test. It is one
+now, in the half a regular expression can actually judge: a section may not open on a
+sentence *about the previous section*. Section II is exempt by name, because a co-author
+put the definitions there and a definitions section opening on a claim would be worse ---
+an exemption written down beats a rule loosened until it passes.
+
+**1av. Nine parsers could not read standard LaTeX, and the tenth would not have either.**
+Giving the supplement a list of its forty exhibits is only useful if the entries are the
+exhibits' claims rather than their whole captions, so each caption gained the short form
+`\caption[short]{long}`. Every caption parser in the project looked for the literal
+`\caption{`, which that form does not contain --- nine sites across eight files.
+
+The failure was **loud**: seven gates failed or errored at once, because each asserts on
+caption *content*, so a parser that walks past a caption finds either nothing or text that
+does not match. That is worth recording because the first instinct was to back the change
+out, on the theory that a parser reading a neighboring caption would do so in silence. It
+would not have. **A gate that asserts on content fails loudly when its input moves; a gate
+that asserts on structure fails quietly.** The nine sites were fixed and the tenth is
+gated.
+
+**1aw. Three attempts at one convenience, and the third was the cheap one.** The lists were
+added, produced four pages of justified prose at badness 10000, and were then dragged
+through short captions (backed out), ragged-right (which did not reach the list files), and
+short captions again (kept, with the parsers fixed). The route mattered less than the
+reason it was long: **these captions carry evidence, not labels**, so they are not
+list-shaped, and every fix that left them whole failed on the typesetting. The instrument
+was wrong until the captions were given something list-shaped to contribute.
+
+
+**1ax. Two gates written this round could not have failed, and their own negative
+examples said so.** The capitalised-macro rule listed what may stand before a `WordCap`
+macro --- a full stop, a colon, an em dash --- and included the empty string, meaning
+"start of text". `"anything".endswith(("...", ""))` is **always true**, so the rule
+passed everything. The caption-parser rule flagged every caption literal in the project,
+including the sample captions that are test *data* rather than parsers, so it failed on
+nine innocent lines.
+
+Both were caught in seconds, by the `test_the_rule_can_fail` method each class carries as
+a matter of course. That habit --- every rule ships with an example it must reject and an
+example it must accept --- has now caught a vacuous rule and an over-broad one in a single
+round. **A gate is code, and a gate nobody tested is a gate that passes.**
+
+**1ay. The pair rule and the inventory rule pull in opposite directions, and the pair rule
+wins.** Reordering Section VII moved `\harnessSilentWordCap` out of the sentence it opened
+and put its lower-case twin after a semicolon, so the capitalised half went idle and the
+unread-macro ceiling had to rise to 67. Item 12 is why it stays emitted: the `Word`/
+`WordCap` pairs exist so a generated number can open a sentence, and half a pair is not a
+pair. The ceiling may rise for a reason written down; this is the reason.
+
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

@@ -1,0 +1,14 @@
+source,key,pages,chars,term,count,checked_utc
+streamsurvey_tpctc2024.pdf,yue2024streamsurvey,21,59260,benchmark,169,2026-09-09
+streamsurvey_tpctc2024.pdf,yue2024streamsurvey,21,59260,latency,33,2026-09-09
+streamsurvey_tpctc2024.pdf,yue2024streamsurvey,21,59260,metric,26,2026-09-09
+streamsurvey_tpctc2024.pdf,yue2024streamsurvey,21,59260,timestamp,0,2026-09-09
+streamsurvey_tpctc2024.pdf,yue2024streamsurvey,21,59260,clock,0,2026-09-09
+streamsurvey_tpctc2024.pdf,yue2024streamsurvey,21,59260,resolution,0,2026-09-09
+streamsurvey_tpctc2024.pdf,yue2024streamsurvey,21,59260,measurement error,0,2026-09-09
+krishnamachari_playbook.pdf,krishnamachari2026playbook,31,82540,latency,54,2026-09-09
+krishnamachari_playbook.pdf,krishnamachari2026playbook,31,82540,timestamp,0,2026-09-09
+krishnamachari_playbook.pdf,krishnamachari2026playbook,31,82540,resolution,0,2026-09-09
+krishnamachari_playbook.pdf,krishnamachari2026playbook,31,82540,quantization,0,2026-09-09
+krishnamachari_playbook.pdf,krishnamachari2026playbook,31,82540,retention,0,2026-09-09
+krishnamachari_playbook.pdf,krishnamachari2026playbook,31,82540,clock,1,2026-09-09

@@ -27,6 +27,10 @@ redis_data/
 *.out
 *.synctex.gz
 *.toc
+# Lists of figures and tables, written by the round-61 \listoffigures and
+# \listoftables in the supplement. Build artifacts, like the .toc above them.
+*.lof
+*.lot
 *.fls
 *.fdb_latexmk
 /manuscript.log
@@ -168,3 +172,4 @@ build/
 REFEREE_REPORT_TC_R58_SIMULATED.md
 REFEREE_REPORT_TC_R59_SIMULATED.md
 REFEREE_REPORT_TC_R60_SIMULATED.md
+REFEREE_REPORT_TC_R61_SIMULATED.md

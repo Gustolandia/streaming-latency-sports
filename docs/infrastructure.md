@@ -577,6 +577,135 @@ ended in a full stop, printing `.:`. The main document had none, so the conventi
 and only the longer document drifted --- **a rule held in most places is invisible to anyone
 reading linearly**, which is lesson 1x again in a different costume.
 
+**1ab. A submission is two documents, and both were numbering from one.** Round 57 counted
+four colliding spaces: the paper's Fig. 1--5 against the supplement's Fig. 1--12, Table I--II
+against Table I--XXVII, equations (1)--(6) against (1)--(2), and references [1]--[45] against
+[1]--[90]. The paper sends a reader into the supplement thirty-two times, so none of these was
+theoretical. The supplement's **Table I is the withdrawn first result set** and the paper's is
+the span table. The supplement's **Equation 1 is a power-law fit we withdrew** and the paper's
+is `S = D - A`, the identity the whole argument turns on. **`[12]`** is Karimov et al. in one
+document and a practitioner blog post in the other.
+
+The fix is the IEEE convention --- the S prefix --- and it is a preamble edit, because nothing
+in either document types an exhibit number by hand: every one goes through `\ref` or `\cite`.
+Three `\renewcommand`s plus `cite.sty`'s `\citeform` and `\@biblabel`, and no prose moved.
+`TestTheTwoDocumentsDoNotShareANumberingSpace` pins it in the **built PDFs**, because a
+preamble that silently stops applying is exactly what the prefix guards against.
+
+**One collision the fix created, and how it was closed.** The supplement's sections are already
+named S1--S52, so S-numbered equations gave "(S1)" two meanings inside one document. No live
+instance existed --- the five parenthetical section references were S3, S18, S37, S52 and
+S52.3 --- but the five now read "(Section~S37)", which is what the paper already writes and is
+clearer anyway. **A namespace fix can create a namespace collision; check the document you
+fixed, not only the pair.**
+
+**1ac. Measure the venue before quoting the rule at the authors.** The IEEE Editorial Style
+Manual says "In general, do not use A, An, or The at the beginning of a figure or table
+caption", and 19 of this submission's 46 captions did. The right response to a style rule is
+not to obey it on sight but to ask whether the venue keeps it: across 26 TC papers in
+`docs/reference_tc`, **443 captions, 62 open on an article --- 14%**. The paper was at 57% and
+the supplement at 38%, so the rule is real, mostly kept, and this submission was the outlier.
+
+The cause was a convention worth keeping. `test_caption_leads.py` requires every caption to
+open on its *claim* rather than on a label --- the Feynman rule applied to exhibits --- and
+claims start with "The". The two rules are compatible, and the published, IEEE-copy-edited TC
+paper fetched that round proves it: its captions are claim sentences with no article. "The
+traced run-queue stall distribution is trimodal" became "Traced run-queue stalls are trimodal",
+which is shorter, still a claim, still bold, still first. **When two conventions collide, look
+for the wording that satisfies both before giving either one up.**
+
+**1ad. The machinery was loaded and then bypassed.** The supplement loads `xr` and pulls
+`paper.aux`, and its own preamble says why: "the numbers shown here are the numbers the reader
+sees there". Twenty pointers into the main text were nevertheless typed constants ---
+`\newcommand{\mainAuthors}{VII-B}`, used thirteen times, and nineteen more. All twenty were
+correct when round 57 checked them, which is the finding rather than a reprieve: nothing would
+have said otherwise. Round 56 rewrote Section VI-E and compressed Section VII-A; one added or
+reordered section and thirteen pointers name something else.
+
+They now resolve through `\ref`, so `paper.aux` is the source. **A repository whose rule is
+that no number is typed had thirty-eight typed section numbers, in the file that explains why
+they should not be.**
+
+**1ae. "Never cited" is a claim about the submission, not about one file.** Round 57 asked
+whether Equation 2 should keep its number, having found no reference to it anywhere in
+`paper.tex`. It should: `supplement.tex` cites it, through the same `xr` link, and the
+submission is both documents. The gate that came out of it checks the union rather than the
+file --- `TestANumberedEquationIsReferencedSomewhereInTheSubmission` --- and the manuscript did
+not change. **Check the scope of a claim before acting on it; the answer moved the gate instead
+of the paper.**
+
+**1af. Every PDF that leaves the repository leaves without a byline.** Instructed
+2026-09-09, for the Zenodo record's files and for anything sent as an attachment. The author
+list is not settled, and a circulated PDF is a durable public statement of authorship that a
+later correction does not catch up with. `paper.pdf` and `supplement.pdf` are unchanged --- a
+journal submission must name its authors --- and `scripts/build_without_authors.py` writes the
+circulating pair into `build/no_authors/`.
+
+What comes out is the byline, its affiliation footnotes and the author biographies. What stays
+is the acknowledgment, because it thanks people for specific help, which is true whoever the
+authors turn out to be: **removing a byline withdraws a claim that is open; removing a credit
+would erase a debt that is not.** Two in-body names stay for the same reason and are listed in
+the script with their justification --- "Brendan Gregg", who is cited work rather than the
+co-author of that surname, and "N. Herbst raised the comparison".
+
+`--check` runs `pdftotext` over both outputs and reports any surname that survived, and it
+reports "not verified" rather than "clean" when `pdftotext` is missing, because a promise
+nobody could check must not print as a promise kept.
+
+**The tests caught a real defect in the script.** `build` cleaned up after itself by
+enumerating extensions --- `.tex`, `.aux`, `.log`, `.out`, `.bbl`, `.blg` --- and the
+supplement has a table of contents, so `_noauth_supplement.toc` survived in the repository
+root and appeared in `git status`. It cleans by prefix now. **A cleanup that lists what it
+expects will always miss the one it did not.**
+
+**1ag. The paper contradicted its own concession, in the two places a referee reads first.**
+Section III-C has said for many rounds: *"Our contribution is not the law --- we derived it,
+then found it in a counter manual --- but its consequence under deletion."* The abstract
+promised *"a law for the retained fraction"* and contribution 1 was headed *"A law for what a
+positivity filter discards"*.
+
+The second author read the abstract and the contributions cold on 2026-09-09 and reacted to
+exactly that: *"not a great idea to try to force the paper around a single grand law,
+especially I am not sure your work does contain a single such law."* Fifty-seven simulated
+rounds had not seen it, and the reason is worth recording: **each round inherited the framing
+instead of meeting it.** Round 6 had already found the grid arithmetic standardised in ADC
+metrology (IEEE Std 1241, coherent sampling, `f_in/f_s = M/N` coprime giving N phases) and
+told the paper to concede it; round 54 quoted the concession back approvingly. Neither then
+checked whether the abstract still claimed what Section III-C gives away.
+
+Contribution 1 is now *"What a positivity filter costs a reported distribution"*, the
+arithmetic is credited to the 1970 counter manual in the contribution itself, and the three
+other places that called it "the deletion law" or "the grid law" say *arithmetic*. **A
+concession buried in Section III-C is not a concession if the abstract still makes the
+claim.**
+
+Two smaller things fell out of the same pass. Contribution 1 described the ratio as *"its
+send interval to its timestamp resolution"* --- which is the commensurability, not the
+retention law it was introducing; the retention law is the delivery over the resolution. And
+the grid refinement, the spread rule and the grid-membership inference went to Supplements
+S22 and S23, where all three already existed in full: the paper's Equation 5 and the
+supplement's Equation S2 were **the same rule stated twice**, in two documents, one of them
+the document that also derives it.
+
+**1ah. Nothing in the paper computed with Equation 6.** The two-state form
+`Pr[S < 0 | T_true] = p G(T_true)` was the centre of Section VI-B. Asked whether it should
+stay, the answer came from counting what used it: **all three references named the two-state
+picture, not the formula** --- "the preempted state of Equation 6", "the state Equation 6
+depends on", and the originality claim against Villain et al. Not one step computed `p G`.
+Its three tested consequences are attributable without it: the direction under payload is
+what the *identity* predicts and the paper says so, the floor `C_0` is the `p -> 0` limit of
+the picture, and the traced check compares two probabilities.
+
+Nor has the form ever been tested as a form. There is no measurement of `p` independent of
+the rate it explains, so it cannot be falsified as a model --- only its consequences can, and
+they survive without it. It was wrong once for exactly that kind of reason: round 49 found it
+written `p(rho) G` while Table II demonstrates the rate is not a function of rho, and it was
+repaired by weakening it.
+
+It is in Supplement S16 now, stated in full with that reasoning attached, and Section VI-B
+keeps the mechanism in prose. **A model that cannot be falsified as a model belongs where a
+reader can weigh it, not where the argument appears to rest on it.**
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

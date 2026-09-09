@@ -303,3 +303,154 @@ class TestARunInHeadingDoesNotDoublePunctuate:
         for name in PDFS:
             assert ".:" not in rendered(name), \
                 "%s prints a full stop followed by a colon" % name
+
+
+class TestTheTwoDocumentsDoNotShareANumberingSpace:
+    r"""A submission is two PDFs, and until round 57 both numbered from one.
+
+    The paper carried Fig. 1--5, Table I--II, equations (1)--(6) and references [1]--[45]; the
+    supplement carried Fig. 1--12, Table I--XXVII, (1)--(2) and [1]--[90]. The paper sends a
+    reader into the supplement thirty-two times, so the collisions were live rather than
+    theoretical: the supplement's Table I is the withdrawn first result set and the paper's is
+    the span table; the supplement's Equation 1 is a power-law fit the authors withdrew and the
+    paper's is `S = D - A`, the identity the argument turns on; `[12]` is Karimov et al. in one
+    document and a practitioner blog post in the other.
+
+    IEEE's convention for supplementary material is the S prefix. This pins it in the built
+    PDFs, because a preamble that stops applying is exactly the failure the prefix guards.
+    """
+
+    @staticmethod
+    def _labels(name, pattern):
+        return set(re.findall(pattern, rendered(name)))
+
+    def test_the_supplement_prefixes_every_figure(self):
+        assert not self._labels("supplement.pdf", r"Fig\. (\d+)\."), \
+            "a supplement figure is numbered in the paper's space"
+        assert self._labels("supplement.pdf", r"Fig\. S(\d+)\."), \
+            "the supplement has no S-numbered figures; did the preamble stop applying?"
+
+    def test_the_supplement_prefixes_every_table(self):
+        romans = self._labels("supplement.pdf", r"TABLE ([IVXLC]+)\b")
+        # One reference to the main text's Table I survives by design, in a caption that says
+        # so: "this corpus is not the span recount of the main text's Table I". With the
+        # supplement's own tables prefixed, that phrase is now unambiguous rather than a
+        # collision, which is the whole point of the prefix.
+        assert romans <= {"I"}, \
+            "a supplement table is numbered in the paper's space: %s" % sorted(romans)
+        assert self._labels("supplement.pdf", r"TABLE S(\d+)"), \
+            "the supplement has no S-numbered tables"
+
+    def test_the_supplement_prefixes_every_citation(self):
+        assert not self._labels("supplement.pdf", r"\[(\d+)\]"), \
+            "a supplement citation is numbered in the paper's space"
+        assert self._labels("supplement.pdf", r"\[S(\d+)\]"), \
+            "the supplement has no S-numbered citations"
+
+    def test_the_paper_keeps_the_plain_numbering(self):
+        """The prefix belongs to the supplement alone; the article is the article."""
+        assert self._labels("paper.pdf", r"Fig\. (\d+)\."), "the paper's figures lost their numbers"
+        assert not self._labels("paper.pdf", r"Fig\. S(\d+)\."), \
+            "the paper has picked up the supplement's prefix"
+
+
+class TestACaptionDoesNotOpenOnAnArticle:
+    r"""IEEE Editorial Style Manual: "In general, do not use A, An, or The at the beginning of
+    a figure or table caption."
+
+    Round 57 measured the venue before asking for this, because a rule nobody follows is not a
+    finding: across 26 TC papers in the reference corpus, 443 captions, 14% open on an article.
+    This submission was at 41% -- the paper alone at 57% -- and the cause was a convention
+    worth keeping. `test_caption_leads.py` requires every caption to open on its claim rather
+    than on a label, and claims start with "The".
+
+    The two rules are compatible, and the IEEE-copy-edited TC paper fetched that round shows it
+    in print: its captions are claim sentences with no article. "The traced run-queue stall
+    distribution is trimodal" became "Traced run-queue stalls are trimodal" -- shorter, still a
+    claim, still bold, still first.
+    """
+
+    ARTICLE = re.compile(r"^(A|An|The)\b")
+
+    @staticmethod
+    def _leads(path):
+        text = (REPO / path).read_text(encoding="utf-8")
+        out = []
+        for m in re.finditer(r"\\caption\{", text):
+            i, depth = m.end(), 1
+            while depth and i < len(text):
+                if text[i] == "{":
+                    depth += 1
+                elif text[i] == "}":
+                    depth -= 1
+                i += 1
+            body = text[m.end():i - 1]
+            bold = re.match(r"\s*\\textbf\{((?:[^{}]|\{[^{}]*\})*)\}", body)
+            raw = bold.group(1) if bold else body[:90]
+            out.append(" ".join(re.sub(r"\\[a-zA-Z]+\{?|[{}$~\\]", " ", raw).split()))
+        return out
+
+    @pytest.mark.parametrize("path", ("paper.tex", "supplement.tex"))
+    def test_no_caption_opens_on_an_article(self, path):
+        bad = [c for c in self._leads(path) if self.ARTICLE.match(c)]
+        assert not bad, ("%d captions in %s open on an article: %s"
+                         % (len(bad), path, "; ".join(c[:50] for c in bad[:4])))
+
+    def test_the_check_reads_the_bold_lead_and_not_the_caption_body(self):
+        """Mutation: a body sentence starting with "The" is legal and must stay legal."""
+        assert self.ARTICLE.match("The traced run-queue stall distribution is trimodal")
+        assert not self.ARTICLE.match("Traced run-queue stalls are trimodal")
+        assert not self.ARTICLE.match("Theoretical measured values of n")
+
+
+class TestTheSupplementDoesNotTypeItsPointersIntoThePaper:
+    r"""Twenty section pointers were typed constants in a document that loads `xr`.
+
+    `\newcommand{\mainAuthors}{VII-B}`, used thirteen times, and nineteen more like it. All
+    twenty were correct when round 57 checked them, which is the point: nothing would have
+    said otherwise. Round 56 rewrote Section VI-E and compressed Section VII-A; one added or
+    reordered section and thirteen pointers name something else, in a repository whose
+    organising rule is that no number is typed.
+
+    They now resolve through `xr`, so `paper.aux` is the source and a renumbering carries.
+    """
+
+    def test_every_main_text_pointer_is_a_reference(self):
+        text = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        typed = [(n, v) for n, v in re.findall(r"\\newcommand\{\\(main\w+)\}\{([^}]*)\}", text)
+                 if not v.startswith("\\ref{")]
+        assert not typed, \
+            ("%d pointers into the main text are typed rather than referenced: %s"
+             % (len(typed), ", ".join("%s=%s" % t for t in typed[:5])))
+
+    def test_the_machinery_they_depend_on_is_loaded(self):
+        text = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        assert "\\usepackage{xr}" in text and "\\externaldocument{paper}" in text, \
+            "the pointers resolve through xr; without it they render as ??"
+
+    def test_no_pointer_renders_as_a_question_mark(self):
+        """The failure mode of a broken xr link, checked where a reader would meet it."""
+        assert "??" not in rendered("supplement.pdf"), \
+            "an xr reference did not resolve; build paper.tex before supplement.tex"
+
+
+class TestANumberedEquationIsReferencedSomewhereInTheSubmission:
+    r"""Round 57 asked whether Equation 2 should keep its number, having found no reference to
+    it in the paper. It should: the supplement cites it, through the same `xr` link as the
+    section pointers, and the submission is both documents.
+
+    That is the rule this pins -- a numbered display must be referenced *somewhere in the
+    submission* -- rather than the narrower one that would have unnumbered a definition the
+    other half of the submission points at.
+    """
+
+    def test_every_numbered_equation_is_referenced(self):
+        paper = (REPO / "paper.tex").read_text(encoding="utf-8")
+        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        both = paper + supp
+        labels = re.findall(r"\\label\{(eq:[^}]+)\}", paper)
+        assert labels, "the paper has no labelled equations; this pin needs rewriting"
+        for label in labels:
+            assert re.search(r"\\(?:eq)?ref\{" + re.escape(label) + r"\}", both), \
+                ("%s is numbered and referenced by neither document: cite it or unnumber it"
+                 % label)

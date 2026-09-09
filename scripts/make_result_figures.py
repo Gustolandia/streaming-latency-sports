@@ -559,8 +559,11 @@ def plot_exposure(ax, lags):
     def err(lag_us):
         return 100.0 * lag_us / (t_ms * 1000.0)
 
+    # An en dash, not two hyphens. "p10--p90" is the LaTeX idiom, and matplotlib is not
+    # LaTeX: it printed the two characters, in the legend of a supplement figure, for every
+    # round since the curve was drawn.
     ax.fill_between(t_ms, err(p10), err(p90), color=DELETED, alpha=0.16, linewidth=0,
-                    label="p10--p90 across conditions")
+                    label="p10\u2013p90 across conditions")
     ax.plot(t_ms, err(typical), color=DELETED, lw=1.4, label="median lag")
 
     # 100% is the line the paper's headline turns on: below it the correction is smaller
@@ -568,7 +571,18 @@ def plot_exposure(ax, lags):
     # The label sits on the right, where the curve has already fallen away: the first draft
     # put it over the crossover and the collision gate refused the figure.
     ax.axhline(100, color=GREY, lw=0.8, ls="--", zorder=1)
-    crossover = typical / 1000.0
+    # The crossover is a range, and this is the one panel that may not quote it by its middle.
+    # The band crosses the 100% line wherever the lag equals the delivery, so its own p10 and
+    # p90 bracket the crossing: lag/1000 ms at each end. Round 57 found the caption naming
+    # only the median crossing in a figure whose stated purpose is that "a reader can bracket
+    # their own path rather than take the middle" -- the criticism round 51 made of this same
+    # curve and round 55 made of the recovery remedy, surviving in the caption.
+    # Median to p90, which is the interval the main text and this caption both quote. Drawing
+    # the band's full p10-p90 crossing instead would put a fourth number in the reader's way
+    # and would not be the range either sentence names.
+    crossover, hi_cross = typical / 1000.0, p90 / 1000.0
+    ax.plot([crossover, hi_cross], [100, 100], color=DELETED, lw=3.0, alpha=0.30,
+            solid_capstyle="butt", zorder=3)
     ax.plot([crossover], [100], marker="o", ms=4.5, color=DELETED, zorder=4)
     ax.text(150, 125, "displacement = delivery", fontsize=8, color=GREY,
             ha="right", va="bottom")

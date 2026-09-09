@@ -94,9 +94,14 @@ class TestEveryExhibitOpensOnAClaim:
         round 43 moved the payload-flip figure to the supplement to fit four biographies
         inside twelve pages. Lower it when a float genuinely leaves; do not lower it to make
         a broken extractor pass.
+
+        Six since round 59, and the float genuinely left. The second author's note asked for
+        the grid refinement to become the explanation of the deletion rather than a
+        contribution in its own right, so the grid-membership figure went to Supplement S23,
+        beside the per-configuration table it summarises. Four figures and two tables remain.
         """
         found = captions((REPO / "paper.tex").read_text(encoding="utf-8"))
-        assert len(found) >= 7, "expected the paper's figures and tables; found %d" % len(found)
+        assert len(found) >= 6, "expected the paper's figures and tables; found %d" % len(found)
 
 
 class TestTheCheckCanFail:

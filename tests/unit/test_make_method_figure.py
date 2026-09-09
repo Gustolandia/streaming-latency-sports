@@ -185,7 +185,30 @@ class TestTheMapReadsItsResultCells:
         joined = " ".join(r[3] for r in ROWS)
         assert _priority_range() in joined
         assert _geometry_result() in joined
-        assert "tail index %s" % _tail_index() in joined
+        # Round 58: the value is still read from the fit, and is no longer called a tail
+        # index or offered as a settlement. See the next test for why.
+        assert "slope %s" % _tail_index() in joined
+
+    def test_the_map_does_not_settle_what_the_manuscript_withdraws(self):
+        """Round 58's image review, and the same shape as round 56's finding.
+
+        The E-A10 row's outcome cell read "other side of the inequality; tail index 0.34".
+        Section VI-E reports that same log-log slope over four payload levels and then says
+        "four points do not earn an equation here" and withdraws the claim. A map whose
+        column heading is what each campaign *settled* may not list a withdrawn fit there,
+        and may not call a four-point slope a tail index when the manuscript avoids that name
+        for it.
+        """
+        from make_method_figure import ROWS
+        outcomes = " ".join(r[3] for r in ROWS).lower()
+        assert "tail index" not in outcomes, \
+            "the map calls the withdrawn payload-sweep slope a tail index"
+        row = [r for r in ROWS if "E-A10" in r[0]][0]
+        assert "withdrawn" in row[3], \
+            "E-A10's outcome quotes the slope without saying the claim on it was withdrawn"
+        paper = (SCRIPTS_DIR.parent / "paper.tex").read_text(encoding="utf-8")
+        assert "We withdraw the claim" in paper, \
+            "the main text no longer withdraws it; this pin and the map must be revisited"
 
 
 class TestTheHeldFixedBounds:

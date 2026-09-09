@@ -386,8 +386,16 @@ def test_the_caption_states_the_reading_rule_with_its_direction():
 
 
 def _figure_caption(label):
-    r"""The `\caption{...}` of the float carrying `label`, brace-matched."""
+    r"""The `\caption{...}` of the float carrying `label`, brace-matched.
+
+    Searches both documents. Round 59 moved the grid-membership figure to Supplement S23, and
+    a reading rule is a property of the caption rather than of the file it sits in: the rule
+    this locator serves -- that a marker rejects by sitting *below* its band -- is wrong or
+    right wherever the figure is printed.
+    """
     tex = (ROOT / "paper.tex").read_text(encoding="utf-8")
+    if label not in tex:
+        tex = (ROOT / "supplement.tex").read_text(encoding="utf-8")
     at = tex.index(label)
     start = tex.rindex(r"\caption{", 0, at) + len(r"\caption{")
     depth, i = 1, start

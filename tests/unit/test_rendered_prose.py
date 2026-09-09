@@ -42,7 +42,15 @@ ABBREVIATIONS = frozenset((
 #: may not rise without the reason being written down. It was 66 when round 44 first counted
 #: it, and 64 after that round quoted the exposure lag and its percentiles; the four macros
 #: round 44 added are all read.
-UNUSED_MACRO_CEILING = 64
+#:
+#: 66 again since round 60, and the reason is written down. `\tailSlope` and `\tailSlopeCI`
+#: were read by exactly one paragraph -- the payload-sweep withdrawal -- and that paragraph
+#: went to Supplement S15 with the rest of the archaeology, where the same fit is stated as
+#: `\tailExponent` with the sign in the notation. They keep being emitted because they still
+#: have a consumer that is not a document: `test_figure_ledger_agreement` checks the
+#: experiment map's "slope 0.34" against `\tailSlope`, so deleting the macro would delete
+#: the check that keeps a drawn number and the ledger in step.
+UNUSED_MACRO_CEILING = 66
 
 
 def rendered(name):

@@ -104,7 +104,8 @@ widely used benchmark misreports in two ways that leave no trace. First, a
 latency computed from two timestamps written by different threads is negative whenever the
 thread writing the reference timestamp is scheduled late by more than the delivery. A
 per-run sign check rejected $\auditRejected$ of our $\auditRuns$ runs; referenced to the
-send timestamp the same events never invert on one clock by construction, so the cause is
+send timestamp the same events never invert on one clock over $\spanEvents$ events, so
+the cause is
 scheduling, not clock synchronization; real-time priority on the timestamping threads cuts
 the negative rate $\rtFactorLow$--$\rtFactorHigh\times$ at unchanged utilization.
 Second, the benchmark keeps an end-to-end sample only when its millisecond-resolution
@@ -206,9 +207,10 @@ measurement mechanism. Scheduling delay is a distribution and timestamp resoluti
 fixed quantity, and they act differently. Sub-millisecond broker paths are where each
 becomes comparable to the delivery for tooling in current use. Where that happens is not
 where a specification says. The timestamp resolution is one millisecond, but the delay that
-binds is the scheduler's: the last mode of the run-queue stall distribution sits at
-$\baseSliceMs$~ms (Section~\ref{sec:tail}), three times the timestamp resolution and nothing
-a specification discloses.
+binds is the scheduler's: the last mode of the run-queue stall distribution sits in the
+$\tracedModeLo$--$\tracedModeHi$~ms bucket, on the scheduler's derived $\baseSliceMs$~ms base
+slice (Section~\ref{sec:tail}), three times the timestamp resolution and nothing a
+specification discloses.
 
 \subsection{Contributions}
 
@@ -486,15 +488,15 @@ any result was read.
 
 \subsection{Testbeds}
 \label{sec:testbeds}
-Every finding comes from four Oracle Cloud \brk{VM.Standard.E5.Flex} instances, three
+Every measured finding comes from four Oracle Cloud \brk{VM.Standard.E5.Flex} instances, three
 brokers and one driver. They run Ubuntu 22.04 on kernel \brk{6.8.0-1057-oracle} (EEVDF
 scheduler) and CPython 3.10, on a private network. Client libraries are pinned identically,
 and \texttt{chrony}-disciplined clocks are logged every minute. The producer and the consumer
 run as separate \emph{processes on one host}. One early phase perturbed the measurement
 enough to be unusable and is excluded from every result here. The campaigns that remain
 measure utilization with no core pinning (Supplement~S1). A second testbed, a workstation
-running the brokers under containers, produced our withdrawn first result and appears only
-as an audit outcome.
+running the brokers under containers, produced our withdrawn first result and enters only
+through the audit, whose rejection count spans both (Section~\ref{sec:audit}).
 
 \subsection{Terms}
 \label{def:vocabulary}
@@ -1030,7 +1032,8 @@ event and $A$ is producer-side on one clock, so a harness that records its own
 acknowledgment lag recovers the delivery it failed to measure. Over the $\recoveryPassN$
 conditions the check passes, the recovered median is $\recoveryErrPass\%$ from the true one
 at the median condition and $\recoveryErrPassHi\%$ at the upper quartile; over the
-$\recoveryFailN$ it rejects, $\recoveryErrFail\%$ and $\recoveryErrFailHi\%$. The second
+$\recoveryFailN$ it rejects, $\recoveryErrFail\%$ and $\recoveryErrFailHi\%$: they separate
+at the median, not in the upper tail. The second
 population is the one a remedy tried only against clean runs never meets.
 
 \subsection{The stall spectrum, and the scheduler's slice}
@@ -1043,18 +1046,19 @@ sits where it does.
 
 Log--log least squares over the four payload levels of Section~\ref{sec:twostate} returns a
 slope of $\tailSlope$ ($\tailSlopeCI$); four points do not earn an equation here, and an
-earlier version read the kernel trace as confirming it. We withdraw the claim, because
-estimating the traced index properly is what refuted it: two estimators disagree sixfold,
-and a bootstrap goodness-of-fit rejects the fitted power law ($p \tracedGofP$ over
-$\tracedGofBoot$ replicates), both in Supplement~S15.
+earlier version read the kernel trace as confirming it. We withdraw the claim: two
+estimators disagree sixfold, and a bootstrap goodness-of-fit rejects the fitted power law
+($p \tracedGofP$ over $\tracedGofBoot$ replicates), in Supplement~S15.
 
 Over the $\tracedEvents$ traced wakeups the counts do not
 descend monotonically, and on log$_2$ buckets a power law of index above one must. What the
 counts have instead is $\tracedModes$ local maxima. The last is a \emph{mode} at
 $\tracedModeLo$--$\tracedModeHi$~ms, holding $\tracedModeShare\%$ of all wakeups and
-standing $\tracedModeRatio\times$ its lower neighbor. Above it the survival is light:
-grouped maximum likelihood beyond $\tracedTailFrom$~ms gives $\tracedTailAlpha$
-($\tracedTailCI$), a finite variance. Neither that share nor that position has been
+standing $\tracedModeRatio\times$ its lower neighbor. Above it the counts collapse rather
+than trail: they fall $\tracedTailFallA\times$ and $\tracedTailFallB\times$ over the next
+\tracedTailOctaves{} octaves and then $\tracedTailFallLast\times$, where a power law falls by
+one factor every time. The same bootstrap rejects a fit here too (Supplement~S15). Neither
+that share nor that position has been
 attributed to a scheduler constant before; Figure~\ref{fig:spectrum} is the histogram, and
 no monotone curve passes through it.
 
@@ -1065,8 +1069,8 @@ no monotone curve passes through it.
 wakeups, \texttt{bpftrace} log$_2$ buckets, modes shaded. The jitter core sits at a few
 microseconds and a second mode at $128$--$256\,\mu$s; the third, holding
 $\tracedModeShare\%$ of all wakeups, lands on the scheduler's derived base slice of
-$\baseSliceMs$~ms. A power law of index above one --- the fitted index is
-$\tracedTailAlpha$ --- would have to descend monotonically across this axis.}
+$\baseSliceMs$~ms. A power law of any index above one would have to descend monotonically
+across this axis.}
 \label{fig:spectrum}
 \end{figure}
 
@@ -1101,12 +1105,11 @@ the ordering is a consumption pattern rather than the broker, and a co-located t
 the standard evaluation environment --- hides it (Supplement~S25).
 
 Our own measurement is not symmetric across that comparison, and the rule below says to
-declare it. \kafka{}'s client deserializes the payload before $t_{\mathrm{recv}}$ and
-\redis{}'s after it, so the transport proxy carries one client's parse and not the other's:
-$\spanHandlingWorstUs\,\mu$s, or $\spanHandlingSharePct\%$ of \redis{}'s own median
-delivery. That is a fiftieth of the equivalence margin above, and it runs \emph{against}
-the per-broker difference of Table~\ref{tab:spans} rather than producing it. \tti{} is free
-of it, because both parses fall inside \tti{} (Supplement~S40.1).
+declare it: \kafka{}'s client deserializes the payload before $t_{\mathrm{recv}}$ and
+\redis{}'s after it, worth $\spanHandlingWorstUs\,\mu$s or $\spanHandlingSharePct\%$ of
+\redis{}'s median delivery. That is a fiftieth of the equivalence margin, it runs
+\emph{against} the per-broker difference of Table~\ref{tab:spans} rather than producing it,
+and \tti{} is free of it (Supplement~S40.1).
 
 \subsection{For benchmark authors}
 \label{sec:authors}
@@ -1138,7 +1141,8 @@ failed to measure, on the runs the check rejects as well as on those it passes
 declines to publish the proxy as a latency, and this one reports the delivery instead.
 
 \textbf{Two delays with one cause are not independent.} Timestamps waiting on one scheduler move
-together ($\rho = \spanRhoMedian$), so multiplying their probabilities misprices the answer.
+together (median correlation $\spanRhoMedian$), so multiplying their probabilities
+misprices the answer.
 Assuming independence here overpredicts the negative-span rate in all $\indepConditions$
 conditions, by a median factor of $\indepOvershoot$.
 

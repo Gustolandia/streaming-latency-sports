@@ -2584,11 +2584,33 @@ class TestCausalityFramingIsWithdrawn:
             assert phrase not in low, \
                 f"the withdrawn causality framing reappeared in the main text: {phrase!r}"
 
-    def test_the_one_clock_construction_is_visible_where_readers_look(self, main_tex):
+    def test_the_one_clock_rival_is_closed_where_readers_look(self, main_tex):
+        """Three expert readers reached for clock skew, so the abstract must forestall it.
+
+        It did so with the words "on one clock by construction", and round 56 found that
+        those last two words claim more than the paper has. A causal chain's *ordering* holds
+        by construction (S40.2 says so); the *readings* cannot go backwards only under a
+        monotone clock, and Section IV-C states plainly that we forwent that guarantee --
+        "CLOCK_MONOTONIC would have guaranteed that consecutive reads never go backwards; we
+        forgo that exclusion and establish it from data instead".
+
+        So this pin now checks the property the three readers needed rather than the phrase
+        that happened to carry it, and it is strictly stronger for the change: the abstract
+        must name the one clock, must name clock synchronization as the rival it excludes,
+        and must cite the corpus that excludes it. An empirical count over 738,730 events
+        closes the rival harder than an appeal to construction the body disclaims.
+        """
         abstract = main_tex[main_tex.index(r"\begin{abstract}"):
                             main_tex.index(r"\end{abstract}")]
-        assert "one clock by construction" in abstract, \
+        assert "on one clock" in abstract, \
             "three expert readers reached for clock skew; the abstract must forestall it"
+        assert "not clock synchronization" in abstract, \
+            "the abstract must name the rival it is excluding, not merely gesture at it"
+        assert r"\spanEvents" in abstract, \
+            "the exclusion is empirical, so the abstract must carry the count behind it"
+        assert "by construction" not in abstract, \
+            ("Section IV-C forgoes the monotonic-clock guarantee, so the abstract may not "
+             "claim the readings cannot invert by construction")
         fig = main_tex[main_tex.index(r"\label{fig:model}") - 1200:
                        main_tex.index(r"\label{fig:model}")]
         assert "one clock" in fig, "the figure caption must say it too"
@@ -2748,7 +2770,20 @@ class TestRefereeRoundTwo:
         assert "named process scheduling as the cause" not in section
 
     def test_the_traced_histogram_is_reported_as_multimodal(self, main_tex):
-        """R15. "Heavy tail" is retired; the mode at the scheduler slice replaces it."""
+        """R15. "Heavy tail" is retired; the mode at the scheduler slice replaces it.
+
+        Round 56 replaced one macro in the list below, and the reason is the pin's own
+        purpose. `\\tracedTailAlpha` was here because the main text quoted the fitted index
+        above 4 ms as the new reading. It is not a reading: `estimate()` had never run its
+        bootstrap on that window, and when round 56 pointed the test at it the fit was
+        rejected (p < 0.0004, 0 of 2,500 replicates). Requiring a rejected fit to appear in
+        the main text would make this pin enforce the error.
+
+        What replaces it says the same thing better and needs no model: the counts above the
+        mode fall by a factor that is not constant -- 3.4x, 4.7x, then 357x -- which is what
+        "not a single heavy tail" means when you draw it. The purpose is unchanged and the
+        instrument is stronger.
+        """
         low = " ".join(main_tex.split()).lower()
         # The phrase may survive only inside the sentence that retires it.
         for hit in range(len(low)):
@@ -2758,8 +2793,10 @@ class TestRefereeRoundTwo:
             assert "not a single heavy tail" in low[max(0, hit - 20):hit + 12], \
                 "the withdrawn characterisation must not survive except as a withdrawal"
         for macro in (r"\tracedModes", r"\tracedModeShare", r"\tracedModeRatio",
-                      r"\tracedTailAlpha", r"\tracedGofP"):
+                      r"\tracedTailFallA", r"\tracedTailFallLast", r"\tracedGofP"):
             assert macro in main_tex, f"{macro} must carry the new reading"
+        assert r"\tracedTailAlpha" not in main_tex, \
+            "the rejected fit belongs in the supplement's postmortem, not in the main text"
         assert "scheduler" in low and "slice" in low
 
     def test_the_goodness_of_fit_is_reported_not_just_the_disagreement(self, main_tex):

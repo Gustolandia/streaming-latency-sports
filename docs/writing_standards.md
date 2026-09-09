@@ -94,6 +94,24 @@ made explicit: **condition** (a point in the design), **cell** (a condition × w
 (one execution of a cell), **replicate** (a repeated run of the same cell). The gate fails if
 any of the five appears in the paper before the paragraph that defines it.
 
+### A5b. A defined symbol means one thing, and A5's rule extends to it — GATED
+
+A5 forbids one word for two things. Round 56 found the manuscript doing it with a symbol,
+which is worse, because a symbol carries no context to correct the reader.
+
+Section IV-B defines `\rho` as utilization --- "the fraction of CPU time busy on the host,
+measured over the run rather than configured" --- and Section VI-B, Table II and Section VII-D
+all hold to it. Section VII-B then wrote "(rho = 0.84)" for the correlation between the
+delivery and the acknowledgment lag. The emitter had never been confused: it calls the macro
+`spanRhoMedian` and computes it from `rho_DA`. Only the prose was, and only in one place,
+three sections after the definition.
+
+Rule: a symbol defined in the Terms paragraph appears nowhere in either document meaning
+anything else. Where a second quantity needs naming, name it in words --- "median correlation
+0.84" --- rather than borrowing a symbol the reader has already been taught. Gated by
+`TestADefinedSymbolKeepsItsOneMeaning` in `tests/unit/test_the_paper_meets_its_own_rules.py`,
+which fails on any sentence carrying both `\rho` and a correlation word.
+
 ### A6. `grid`, `grid vertex`, `quantum`, `commensurate`, `continuum` are defined in plain language before first use
 
 The grid law only becomes understandable in Section IV, yet *arm*, *grid* and *grid vertex*

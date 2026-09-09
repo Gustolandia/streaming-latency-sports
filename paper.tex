@@ -408,8 +408,8 @@ departure is written --- under every stress pattern including none. They attribu
 latency to interrupt processing, scheduling and context switching. That is the scheduling
 mechanism studied in Section~\ref{sec:mechanism}, published in 2012 and measured more
 precisely than we measure it. What it does not give, and we add, is its consequence for a
-two-process measurement: a law relating the negative-span rate to the delivery being
-measured, and the manipulations that separate scheduling from its rival explanations
+two-process measurement: the negative-span rate falls as the delivery being measured grows,
+and the manipulations that establish it separate scheduling from its rival explanations
 (Section~\ref{sec:twostate}). The audit half has its own ancestor.
 Paxson~\cite{paxson1998calibrating} treated physically impossible transit times as
 measurement failure and published the proportion of traces affected.
@@ -458,8 +458,8 @@ two signed errors cancel. A filter admitting only positive samples removes one s
 with it the cancellation that defence depends on.
 
 The mathematics is older still and is not ours: Hewlett-Packard's Application Note
-162-1~\cite{hp1970tia} carries our retention identity, the reduced fraction our grid law
-turns on, our ceiling
+162-1~\cite{hp1970tia} carries our retention identity, the reduced fraction the grid
+structure turns on, our ceiling
 on resolution gain, the symptom and the cure. What is new is the
 sign of the operation. HP \emph{keeps} both readings and the retained fraction \emph{is} the
 estimator; the benchmark discards that population. Our contribution is not the law ---
@@ -497,8 +497,8 @@ and \texttt{chrony}-disciplined clocks are logged every minute. The producer and
 run as separate \emph{processes on one host}. One early phase perturbed the measurement
 enough to be unusable and is excluded from every result here. The campaigns that remain
 measure utilization with no core pinning (Supplement~S1). A second testbed, a workstation
-running the brokers under containers, produced our withdrawn first result and enters only
-through the audit, whose rejection count spans both (Section~\ref{sec:audit}).
+running the brokers under containers, enters only through the audit, whose rejection count
+spans both (Section~\ref{sec:audit}).
 
 \subsection{Terms}
 \label{def:vocabulary}
@@ -557,9 +557,9 @@ whose results looked reasonable. \textbf{A run is rejected if more than $1\%$ of
 carry a negative value in any latency component, or if the median of any component is
 negative.} A condition is usable only if all of its runs survive. Where a condition is
 partly rejected we report the fraction of its runs that survived. The one-per-cent figure
-is a threshold, not a discovery. The supplement sweeps it from $0$ to $20\%$, and no
-condition behind our first result is usable anywhere in that range, so the withdrawal does
-not turn on where the line was drawn.
+is a threshold, not a discovery. The supplement sweeps it from $0$ to $20\%$ and no rejected
+condition becomes usable anywhere in that range, so the verdicts do not turn on where the
+line was drawn (Supplement~S27).
 
 The justification is not that a negative is impossible, because for the transport proxy it
 is not (Section~\ref{sec:proxy}). It is that a negative span shows the reference
@@ -569,8 +569,8 @@ procedure. A corpus that fails is unusable, and one that passes has cleared the 
 available bar and nothing more. We use the sign as a gate rather than as an estimator. The
 same constraint supports estimation, since offset and skew can be recovered from a delay
 envelope~\cite{paxson1998calibrating}. An estimator corrects a record. A gate
-declines to publish from a run whose measurement demonstrably failed, and after this check
-destroyed our own first result we preferred declining.
+declines to publish from a run whose measurement demonstrably failed, and we preferred
+declining.
 
 % "A model of the failure" moved to Section II as the identity it always was. The
 % probability notation that dressed S = D - A as a stochastic model went with it; the
@@ -715,7 +715,7 @@ and a larger campaign leaves per-send jitter rather than accumulation standing
 
 \subsection{Generality, and the sign channel}
 \label{sec:generality}
-To show the law is not an artifact of one JVM, we reproduced the admission condition in an
+To show the deletion is not an artifact of one JVM, we reproduced the admission condition in an
 independent Python harness sharing no code with the benchmark. On one clock it recorded
 \textbf{zero} negative differences across $\harnessOneClockSamples$
 samples, as a causal chain requires, and none across two hosts either
@@ -831,12 +831,10 @@ $t_{\mathrm{out}}-t_{\mathrm{send}}$ & send (chain) & --- & --- & $\spanNegOutpu
 \end{table}
 
 \label{sec:blindspot}
-The rejected result had looked correct: monotone in concurrency, significant after
-correction ($p = 9.0\times10^{-11}$), and past every conventional check we knew
-(Supplement~S40). The check does not catch everything. Load-induced inflation that stays
-positive is physically possible, and our own second withdrawal is the example --- a
-twentyfold end-to-end gap that was a per-run start-up cost read as a per-event constant,
-causally consistent and wrong. Causal consistency is necessary, not sufficient.
+A rejected corpus can look correct on every conventional check, and the check does not
+catch everything: load-induced inflation that stays positive is physically possible, and
+Supplement~S40 works through two cases from our own campaigns where it was. Causal
+consistency is necessary, not sufficient.
 
 \subsection{A rare state, not a wide distribution}
 \label{sec:mixture}
@@ -989,12 +987,11 @@ in the post introducing \texttt{runqlat}, the tool we use~\cite{gregg2016runqlat
 components~\cite{bristot2025timerlat}; what we add is which modes, and why the upper one
 sits where it does.
 
-Log--log least squares over the four payload levels of Section~\ref{sec:twostate} returns a
-slope of $\tailSlope$ ($\tailSlopeCI$); four points do not earn an equation here, and an
-earlier version read the kernel trace as confirming it. We withdraw the claim: two
-estimators disagree sixfold, and a bootstrap goodness-of-fit rejects the fitted power law
-($p \tracedGofP$ over $\tracedGofBoot$ replicates), in Supplement~S15.
-
+% Round 60: the payload-sweep slope and its withdrawal left for Supplement S15, where the
+% post-mortem lives. Both were archaeology -- a claim an earlier version made, and the two
+% estimators and the bootstrap that refuted it -- and the second author asked for much less
+% of it in a reader's path. What this section adds is which modes and why the upper one sits
+% where it does, and that begins with the histogram.
 Over the $\tracedEvents$ traced wakeups the counts do not
 descend monotonically, and on log$_2$ buckets a power law of index above one must. What the
 counts have instead is $\tracedModes$ local maxima. The last is a \emph{mode} at
@@ -1074,6 +1071,11 @@ measurement, check its output against causality and publish the rejection rate, 
 clocks have for thirty years~\cite{paxson1998calibrating,paxson2004sound}. The discipline is tested only by a
 campaign the rate costs something, and ours cost us a result.
 
+\textbf{Say which physical event each timestamp marks.} A timestamp is a clock read,
+not the event it stands for, and the gap between them is where both failures live. Publish
+where in the code each one is taken and what has already happened when it runs: our own two
+clients differ by a payload parse (Supplement~S40.1), and no reader could have known.
+
 \textbf{Name the span you are subtracting.} A difference of two timestamps is a latency only if
 the first event causally precedes the second. An acknowledgment at the producer does not
 precede a record at the consumer (Section~\ref{sec:proxy}). We caught our own instance
@@ -1100,6 +1102,12 @@ whole return on naming the span.
 \textbf{Count your events before you quote a percentile.} A median over as few as seven
 events per run is not a property of the system, and repetition will not tell you so.
 
+\textbf{Exercise the timestamping path at the load you will report from.} A path that
+is clean idle is not thereby clean at the knee: the same threads on the same host move the
+negative-span rate $\rtFactorLow$--$\rtFactorHigh\times$ between priorities, and the rate
+we measure at $88\%$ is $\diseaseOverWhole\%$ of events. Run the sign check under the load
+the numbers will be quoted at, not under a quiet one.
+
 \textbf{Make the timestamping path unpreemptable, and say that you did.} The one mitigation
 our measurements support directly: real-time priority on the timestamping threads cut the
 negative-span rate $\rtFactorLow$--$\rtFactorHigh\times$ at unchanged background load.
@@ -1122,6 +1130,12 @@ since 2006, and records a packet timestamped in the future unaltered rather than
 it~\cite{rfc4656} (Supplements~S49 and~S50 give the precedents). The sign is the channel:
 negative means the reference timestamp failed, computes-to-zero means the resolution
 failed, and one unsigned total cannot distinguish them.
+
+\textbf{Do not assume co-location makes the measurement safer.} One host removes the
+clock-synchronization rival and nothing else. Every configuration our audit rejects most
+often is co-located, the standard evaluation environment hides the one condition that
+reverses our broker ordering (Section~\ref{sec:brokers}), and a shorter path is exactly the
+path on which both failures bind hardest.
 
 \textbf{Record the achieved rate, not the flag meant to produce it.} Verify it per run against
 elapsed wall time. The send schedule is an experimental variable in

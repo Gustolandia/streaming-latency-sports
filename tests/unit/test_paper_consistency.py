@@ -2183,7 +2183,17 @@ class TestConcurrentWork:
             "round 2 replaced 'not a power law' with the multimodal reading; round 4 " \
             "narrowed it further, because the multimodality is Gregg's and only the " \
             "trimodality and the slice attribution are ours"
-        assert "we withdraw the claim" in section
+        # Round 60 moved the payload-sweep slope and its withdrawal to Supplement S15: both
+        # were archaeology -- a claim an earlier version made, and the refutation of it --
+        # and the second author asked for less of that in a reader's path. The pin's purpose
+        # is that a withdrawn claim stays withdrawn, so it now asks the stronger question:
+        # the withdrawal is stated where the post-mortem lives, and the slope is not in the
+        # main text at all, which is a place it cannot come back to unnoticed.
+        supp = " ".join((REPO / "supplement.tex").read_text(encoding="utf-8").lower().split())
+        assert "we withdraw" in supp, \
+            "the supplement must still record the payload-sweep withdrawal"
+        assert "we withdraw the claim" not in section, \
+            "the withdrawal is the supplement's to make; the main text carries the result"
 
 
 class TestRecoveredProvenance:
@@ -2291,8 +2301,10 @@ class TestRefereeRoundOne:
             "the withdrawn cross-check wording must not return to the main text"
         assert not _contains_number(main_tex, stale, 3), \
             "the superseded traced slope must not be quoted in the main text"
-        assert "we withdraw the claim" in low, "the main text must record the withdrawal"
         body = " ".join(supp.split()).lower()
+        # Round 60: the withdrawal moved with the claim it withdraws. What the main text must
+        # do is not quote the superseded slope, which the assertion above already checks.
+        assert "we withdraw" in body, "the supplement must record the withdrawal"
         assert "superseded" in body, \
             "the supplement must mark the old traced-slope artefact as superseded"
         assert "coincidence of window and estimator" in body, \
@@ -2792,17 +2804,31 @@ class TestRefereeRoundTwo:
                 break
             assert "not a single heavy tail" in low[max(0, hit - 20):hit + 12], \
                 "the withdrawn characterisation must not survive except as a withdrawal"
+        # `\tracedGofP` left the list in round 60 with the paragraph that carried it: the
+        # bootstrap refutes a fit the main text no longer states, so reporting the verdict
+        # belongs beside the fit, in Supplement S15. What the main text must carry is the
+        # reading that replaced it, which is the modes and what the counts do above them.
         for macro in (r"\tracedModes", r"\tracedModeShare", r"\tracedModeRatio",
-                      r"\tracedTailFallA", r"\tracedTailFallLast", r"\tracedGofP"):
+                      r"\tracedTailFallA", r"\tracedTailFallLast"):
             assert macro in main_tex, f"{macro} must carry the new reading"
         assert r"\tracedTailAlpha" not in main_tex, \
             "the rejected fit belongs in the supplement's postmortem, not in the main text"
+        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        assert r"\tracedGofP" in supp, \
+            "the bootstrap's verdict must be reported where the fit it judges is stated"
         assert "scheduler" in low and "slice" in low
 
-    def test_the_goodness_of_fit_is_reported_not_just_the_disagreement(self, main_tex):
-        """Two estimators disagreeing is evidence; the bootstrap is the test."""
-        section = " ".join(_section(main_tex, "sec:tail").split())
-        assert r"\tracedGofP" in section and r"\tracedGofBoot" in section
+    def test_the_goodness_of_fit_is_reported_not_just_the_disagreement(self):
+        """Two estimators disagreeing is evidence; the bootstrap is the test.
+
+        Reported in Supplement S15 since round 60, which is where the fit it judges is now
+        stated. The rule is unchanged and the pin follows the material: wherever a
+        disagreement between estimators is offered, the test that settles it is offered too.
+        """
+        supp = " ".join((REPO / "supplement.tex").read_text(encoding="utf-8").split())
+        assert r"\tracedGofP" in supp and r"\tracedGofBoot" in supp
+        assert "disagree" in supp.lower(), \
+            "the disagreement and its test belong in the same account"
 
     def test_the_binned_estimator_credits_its_source(self, main_tex):
         """R15(a). The grouped MLE on log2 bins is Virkar and Clauset's."""

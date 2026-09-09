@@ -301,13 +301,13 @@ appearing in this table.
 | `pipeline_schematic` | main text, Fig. 1 only (promoted round 51: Gregg's requirement that a general reader meet the system, drawn, inside the first two pages). The S36 copy was dropped round 48: it included the same file, under prose claiming the main text's version carried "more detail", which it could not, being the same drawing. S36 keeps the stamp-to-metric mapping as prose |
 | `measurement_model` | main text, Fig. 2 (panel (b) split off round 52) |
 | `delta_schematic` | supplement, S16 (was Fig. 2(b); the one main-text drawing that was not a measurement, and the measured version is Fig. 9) |
-| `deletion` | main text, Fig. 3 |
+| `deletion` | main text, Fig. 4 (was Fig. 3 until round 61 put failure mode 1 before failure mode 2, at the second author's request) |
 | `quantum_geometry` | supplement, S42 (moved round 40: a constructed illustration of the retention law, not a measurement, placed beside the 1970 counter note that carries the same identity) (added round 28: the geometry behind the deletion law) |
 | `grid_membership` | supplement, S23 (moved round 59: the second author asked for the grid refinement to become the explanation of the deletion rather than a contribution, so the figure went beside the per-configuration table it summarizes) |
 | `payload_flip` | supplement, S22 (moved round 43: every number its panels carry is in the sentence that used to sit above it, and four biographies would not otherwise fit inside twelve pages) (single-column from round 28; was full-width) |
 | `mechanism_forest` | supplement, S24 (moved round 57: it plots the four matched pairs of the main text's Table II and the two brokers of its Table I, so it restated tables the reader already has) |
 | `ttrue_law` | supplement, S15 |
-| `stall_spectrum` | main text, Fig. 4 (was Fig. 5 until `grid_membership` left in round 59, and Fig. 6 until `payload_flip` left in round 43) |
+| `stall_spectrum` | main text, Fig. 3 (was Fig. 4 until round 61 reordered the two failure modes, Fig. 5 until `grid_membership` left in round 59, and Fig. 6 until `payload_flip` left in round 43) |
 | `priority_ladder` | supplement, S24 |
 | _(no figure)_ | supplement, S25 --- the broker results, moved from the main text in round 18 |
 | `experiment_map` | supplement |

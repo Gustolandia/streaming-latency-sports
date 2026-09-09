@@ -150,9 +150,11 @@ scheduling and task partitioning.
 \includegraphics[width=\textwidth]{docs/results/figures/pipeline_schematic.pdf}
 \caption{\textbf{System measured, and where its clocks are read.} A replay process paces
 recorded match events at a chosen rate into a broker --- \kafka{} or \redis{} Streams --- and
-a consumer reads them back. The four timestamps and the three spans they bracket are
-defined in Section~\ref{sec:sysmodel}; the transport proxy, the span this paper is about,
-subtracts a producer-process timestamp from a consumer-process one. Both processes run on
+a consumer reads them back. The four timestamps and the four spans they bracket are
+defined in Section~\ref{sec:sysmodel}; the upper three are the terms of
+Equation~\ref{eq:tti} and sum to the fourth. The transport proxy, the span this paper is
+about, subtracts a producer-process timestamp from a consumer-process one. Both
+processes run on
 one host reading one clock unless stated otherwise, so nothing that follows depends on
 clock synchronization.}
 \label{fig:pipeline}
@@ -285,17 +287,17 @@ S &\equiv t_{\mathrm{recv}} - t_{\mathrm{ack}} \;=\; D - A .
 \end{aligned}
 \label{eq:model}
 \end{equation}
-Two more quantities belong to the model rather than to either failure. Write $\tau$ for
-the \emph{timestamp resolution} --- the \emph{quantum}, one millisecond in the benchmark of
-Section~\ref{sec:external} --- and $T_{\mathrm{true}}$\label{def:ttrue} for the \emph{true
-delivery} of a message: the interval $D$ would report if it were measured with an arbitrarily
-fine timestamp, which is what $D$ measures up to the consumer's own timestamping jitter.
-
 $D$ is the \emph{delivery}, from the send call to the consumer holding the record. $A$ is
 the \emph{acknowledgment lag}, from the send call to the producer observing the broker's
 acknowledgment. $S$ is the span the benchmark literature reports as broker latency. We
 call it the \emph{transport proxy}, for the reason given in
-Section~\ref{sec:proxy}. The primary end-to-end measure is \textbf{Time-to-Insight}
+Section~\ref{sec:proxy}.
+
+Two more quantities belong to the model rather than to either failure. Write $\tau$ for
+the \emph{timestamp resolution} --- the \emph{quantum}, one millisecond in the benchmark of
+Section~\ref{sec:external} --- and $T_{\mathrm{true}}$\label{def:ttrue} for the \emph{true
+delivery} of a message: the interval $D$ would report if it were measured with an arbitrarily
+fine timestamp, which is what $D$ measures up to the consumer's own timestamping jitter. The primary end-to-end measure is \textbf{Time-to-Insight}
 (\tti{}), from scheduled emission to availability at the consumer:
 \begin{equation}
 \mathrm{TTI} = \underbrace{(t_{\mathrm{send}}-t_{\mathrm{sched}})}_{\text{send lag}}
@@ -415,9 +417,9 @@ departure is written --- under every stress pattern including none. They attribu
 latency to interrupt processing, scheduling and context switching. That is the scheduling
 mechanism studied in Section~\ref{sec:mechanism}, published in 2012 and measured more
 precisely than we measure it. What it does not give, and we add, is its consequence for a
-two-process measurement: the negative-span rate falls as the delivery being measured grows,
-and the manipulations that establish it separate scheduling from its rival explanations
-(Section~\ref{sec:twostate}). The audit half has its own ancestor.
+two-process measurement: the negative-span rate falls as the delivery being measured
+grows. The manipulations that establish it separate scheduling from its rival
+explanations (Section~\ref{sec:twostate}). The audit half has its own ancestor.
 Paxson~\cite{paxson1998calibrating} treated physically impossible transit times as
 measurement failure and published the proportion of traces affected.
 Lancet~\cite{kogias2019lancet}, a latency-measurement tool that timestamps in the network
@@ -469,7 +471,7 @@ The mathematics is older still and is not ours: Hewlett-Packard's Application No
 structure turns on, our ceiling
 on resolution gain, the symptom and the cure. What is new is the
 sign of the operation. HP \emph{keeps} both readings and the retained fraction \emph{is} the
-estimator; the benchmark discards that population. Our contribution is not the law ---
+estimator; the benchmark discards that population. Our contribution is not that arithmetic ---
 we derived it, then found it in a counter manual --- but its consequence under deletion. A
 harness released in 2018 throws away the quantity a 1970 counter measured with.
 

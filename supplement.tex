@@ -775,7 +775,7 @@ cannot say which.
 
 \paragraph{The rate is recoverable from the measurements, if not from the metadata} Having
 argued all paper that a physical constraint can decide what record-keeping cannot, we applied the
-same move here, and it works. The start-up cost of Section~\mainAudit{} of the main text is a clock: it
+same move here, and it works. The start-up cost of Section~S4 is a clock: it
 lasts a fixed $102.6$~ms of \emph{wall} time, so the number of events it swallows depends
 directly on the replay rate. Counting how many events per run carry it therefore reads the rate
 back out of the data.
@@ -814,7 +814,7 @@ the one thing a physical-constraint argument can rarely demonstrate about itself
 
 The same script also explains a feature we had described and not accounted for. It passes
 \texttt{-{}-max-t-sim 2}: two seconds of match time per run. The median of seven matched events
-that makes E1 under-powered, and that Section~\mainAudit{} of the main text treats as an opening burst,
+that makes E1 under-powered, and that Section~S3 treats as an opening burst,
 is that window. The burst is real and is why those seven events are the densest in the match; the
 reason there were only seven is that the campaign asked for two seconds.
 
@@ -955,12 +955,12 @@ $0.74$--$0.81$~ms, against E1's $0.79$--$1.00$ and $0.72$--$0.86$. One set of ru
 protocol, two windows, both published answers.
 
 So E1 is not wrong and the campaigns do not contradict each other. E1 measured the opening burst,
-during which both systems are slow for the reason Section~\mainAudit{} of the main text establishes ---
+during which both systems are slow for reasons this section sets out ---
 topic auto-creation, connection setup, and the first blocking \texttt{produce()} --- and that
 shared start-up cost swamps a $0.41$~ms difference. As the run lengthens the cost dilutes, and
 the brokers' steady-state separation emerges. The seven-event corpus answered a question about
 start-up while appearing to answer one about brokers, which is the same failure of window
-selection as Section~\mainAudit{} of the main text, one level up.
+selection as the end-to-end withdrawal of Section~S4, one level up.
 
 
 

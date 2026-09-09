@@ -792,6 +792,52 @@ now pinned: the evidence must be listed before the word "checks", and the checks
 audience they are for. **An abstract is the only part of a paper that is read by everyone and
 checked by nothing.**
 
+**1am. A rule you cannot build is worth more measured than guessed.** Round 59 found four
+supplement sentences sending a reader to Section V-A for material round 60 had taken out
+of it, and asked for the obvious gate: a sentence naming a main-text section must share
+distinctive vocabulary with the section it names. Before writing it, we measured it over
+all 67 pointer sentences. Legitimate ones miss as many as **10 of 24** content words
+against the *whole* article --- a supplement's job is to say more than the article does ---
+while the four defects missed 2 to 4 of 4 to 8. Worse, the fifth pointer, the one round 59
+checked and found *correct*, missed 1 of 6, and the word it missed was "withdrawal", which
+round 60 had deleted from the article in the same pass. No threshold separates those
+populations, and tuning one until the corpus passes produces a gate that tests nothing.
+
+What shipped is the half that does separate them. Each of the four leaned on a phrase the
+article does not contain anywhere, so `tests/unit/test_pointer_sense.py` carries a
+hand-maintained inventory of the phrases the supplement attributes to the article, and
+requires the article to still hold them --- an allow-list, like `test_ledger_coverage`'s,
+for the same reason: what a sentence leans on is not a judgement a regular expression makes
+well. All six rows were mutation-tested; removing any one from `paper.tex` fires the gate,
+and reintroducing round 59's own defect fires the regression half. **A measured refusal to
+build a check is a result; an unmeasured check that passes is not.**
+
+**1an. The referee's diagnosis and the referee's wording are two different things.** R2 was
+right that Section III-B's colon promised "its consequence" and then delivered a
+consequence and a method, and it supplied a replacement "at no cost". The replacement cost
+the clause "separate scheduling from its rival explanations", and
+`test_claim_equation_binding` failed on it within the minute: round 60 had already fixed
+the delta over Villain et al. as two things, the dependence *and* what the manipulations
+do, because a claim keeping only the dependence is a claim Villain et al. made in 2012. A
+full stop does what the em-dash pair was for and keeps both. **A gate is how an earlier
+round argues with a later one, and it is the only party in the argument that cannot be
+talked round.**
+
+**1ao. Every figure was checked against its caption, and none against the others.** Three
+gates read the figures --- legibility measures the type, collisions measure what is drawn
+through it, vocabulary reads what it says --- and all three take one figure at a time.
+Round 59's review put the seventeen side by side instead, and found the submission
+printing the multiplication sign three ways, the microsecond two, panel titles capitalised
+ten times out of eighteen, and the colour blue meaning `real-time` in Fig. S7 and
+`ordinary` in Fig. S8 --- on the same eight experiments, beside the same factors. Not one
+of these is visible from inside a single figure, which is why nothing had seen them in
+fifty-eight rounds. **A consistency defect lives in the space between two artefacts, and a
+gate that loads one artefact at a time is looking through it.**
+
+The same read found Fig. S2(b) drawing grouped bars on a log axis, whose docstring had
+already rejected *stacked* bars there for a related reason and stopped one step short.
+
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

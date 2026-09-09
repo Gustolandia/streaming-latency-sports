@@ -90,27 +90,46 @@ class TestPlotTti:
 
 
 class TestPlotDecomposition:
-    def test_draws_two_bars_per_backend_per_n(self, ax):
+    """Round 59 took the bars out. A bar measures its value as a length from zero and this
+    panel is log-scaled, so eight grouped bars ran from the bottom of the axis and their
+    lengths were `log(v) - log(floor)`: moving the limit would have changed every bar and no
+    number. The panel claims a ratio, and a distance on a log axis is a ratio, so it draws the
+    segment between the two components with a marker at each end.
+    """
+
+    def test_draws_a_segment_and_two_markers_per_backend(self, ax):
         plot_decomposition(ax, condition_medians(_corpus()))
-        # 2 backends x 2 components x 2 concurrency levels
-        assert len(ax.patches) == 8
+        # 2 backends x (2 connectors, one per concurrency level, + 2 marker series)
+        assert len(ax.lines) == 8
         assert [t.get_text() for t in ax.get_xticklabels()] == ["1", "9"]
+
+    def test_no_bar_stands_on_the_log_axis(self, ax):
+        plot_decomposition(ax, condition_medians(_corpus()))
+        assert ax.get_yscale() == "log"
+        assert not ax.patches, "bars are back on a log axis; their lengths mean nothing there"
 
     def test_skips_a_missing_backend(self, ax):
         kafka_only = _frame(("kafka", 1, 2, 105.0, 103.0, 0.79))
         plot_decomposition(ax, condition_medians(kafka_only))
-        assert len(ax.patches) == 2
+        # one connector at the single concurrency level, plus the two marker series
+        assert len(ax.lines) == 3
 
-    def test_absent_cell_plots_as_zero(self, ax):
-        """Redis is measured at N=9 only; its N=1 bars must still be placed, at zero."""
+    def test_an_absent_cell_is_absent_rather_than_zero(self, ax):
+        """Redis is measured at N=9 only, and its N=1 position must stay empty.
+
+        It used to be drawn as a bar of height zero. On a log axis zero is not a place: the
+        bar was clipped to the floor and read as a measurement of whatever the floor happened
+        to be. A gap is what a missing cell looks like.
+        """
         ragged = _frame(
             ("kafka", 1, 2, 105.0, 103.0, 0.79),
             ("kafka", 9, 2, 105.0, 103.0, 0.80),
             ("redis", 9, 2, 5.0, 1.9, 0.81),
         )
         plot_decomposition(ax, condition_medians(ragged))
-        assert len(ax.patches) == 8
-        assert sum(1 for p in ax.patches if p.get_height() == 0) == 2
+        plotted = [y for line in ax.lines for y in line.get_ydata()]
+        assert not any(y == 0 for y in plotted), "a missing cell was drawn at zero again"
+        assert any(y != y for y in plotted), "the missing Redis cell should be a gap (NaN)"
 
 
 class TestSave:

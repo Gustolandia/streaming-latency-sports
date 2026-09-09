@@ -71,21 +71,35 @@ def plot_tti(ax, med):
 def plot_decomposition(ax, med):
     """Panel (b): the same runs split into scheduling lag and broker transport.
 
-    Grouped bars rather than stacked: the two components differ by two orders of magnitude
-    for Kafka, and a stacked bar on a log axis is unreadable.
+    Not bars. A bar states its value as a length measured from zero, and a log axis has no
+    zero: eight grouped bars ran from whatever the bottom of the axis happened to be, so
+    their lengths were log(v) - log(floor) and would all have changed if the limit moved.
+    Kafka's send lag drew about eight times the ink of its transport for a ratio near 120.
+
+    What a log axis does measure honestly is a ratio, as a distance --- and the ratio is
+    what this panel claims. Each backend gets a segment joining its two components at each
+    concurrency, filled marker at the send lag and hollow at the transport, so the gap a
+    reader measures is the gap the caption asserts.
     """
     ns = sorted(med["n"].unique())
-    width = 0.2
+    offset = 0.16
     for i, backend in enumerate(("kafka", "redis")):
         sub = med[med["backend"] == backend].set_index("n")
         if sub.empty:
             continue
-        xs = [j + (i - 0.5) * 2 * width for j in range(len(ns))]
-        ax.bar([x - width / 2 for x in xs], [sub["schedlag_p50"].get(n, 0) for n in ns],
-               width, color=COLORS[backend], label=f"{LABELS[backend]} send lag")
-        ax.bar([x + width / 2 for x in xs], [sub["transport_p50"].get(n, 0) for n in ns],
-               width, color=COLORS[backend], alpha=0.45, hatch="//",
-               label=f"{LABELS[backend]} transport")
+        xs = [j + (i - 0.5) * 2 * offset for j in range(len(ns))]
+        lag = [sub["schedlag_p50"].get(n, float("nan")) for n in ns]
+        transport = [sub["transport_p50"].get(n, float("nan")) for n in ns]
+        for x, a, b in zip(xs, lag, transport):
+            ax.plot([x, x], [b, a], color=COLORS[backend], linewidth=1.4,
+                    alpha=0.55, zorder=1, solid_capstyle="butt")
+        ax.plot(xs, lag, linestyle="none", marker=MARKERS[backend], markersize=6,
+                color=COLORS[backend], zorder=2,
+                label=f"{LABELS[backend]} send lag")
+        ax.plot(xs, transport, linestyle="none", marker=MARKERS[backend], markersize=6,
+                markerfacecolor="white", markeredgecolor=COLORS[backend],
+                markeredgewidth=1.3, zorder=2,
+                label=f"{LABELS[backend]} transport")
     ax.set_yscale("log")
     ax.set_xticks(range(len(ns)))
     ax.set_xticklabels([str(n) for n in ns])

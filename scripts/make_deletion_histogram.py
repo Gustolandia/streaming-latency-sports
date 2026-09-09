@@ -138,7 +138,8 @@ def plot_measured(ax, series, extra):
     # bin of 40 next to a bin of 88,000.
     ax.set_yscale("log")
     ax.set_ylim(1, None)
-    ax.set_xlabel("measured span (us)")
+    # The micro sign, as Fig. 3's axis has it. This said "(us)".
+    ax.set_xlabel("measured span (µs)")
     ax.set_ylabel("events (log)")
     # The window caveat rides in the title. Below the axis it sat on the x-label; inside the
     # panel it sat on the bars, in grey on dark red. A title has room and nothing to collide
@@ -146,7 +147,7 @@ def plot_measured(ax, series, extra):
     above = extra["ack"]["over"]
     # Short form: the long sentence fitted the two-row paper layout, where panel (a) spans the
     # full width, and ran into panel (b)'s title in the three-across slide layout.
-    ax.set_title("(a) as measured, one clock, nanosecond timestamps  (+%s above window)"
+    ax.set_title("(a) As measured, one clock, nanosecond timestamps  (+%s above window)"
                  % "{:,}".format(above), fontsize=8, loc="left")
 
     ax.text(0.03, 0.95, "62,264 below zero\n(8.43% of 738,730)",
@@ -164,11 +165,16 @@ def plot_grid(ax, stats):
     ax.bar(xs, ys, width=0.82, color=colours, linewidth=0)
 
     ax.set_xlim(MS_LO - 0.6, MS_HI + 0.6)
-    ax.set_xticks(xs)
+    # A tick at every integer, because each one locates a bar, but a label on every second
+    # one: at this width the negative half printed as `-6-5-4-3-2-1`, with the minus signs
+    # closing every gap a reader could have read the numbers apart by. Zero stays labelled,
+    # which is the boundary the panel is about.
+    ax.set_xticks(xs, minor=True)
+    ax.set_xticks([x for x in xs if x % 2 == 0])
     ax.set_xlabel("millisecond-differenced span (ms)")
     ax.set_ylabel("events")
     ax.yaxis.set_major_formatter(FuncFormatter(_thousands))
-    ax.set_title("(b) as a millisecond timestamp holds it", fontsize=8, loc="left")
+    ax.set_title("(b) As a millisecond timestamp holds it", fontsize=8, loc="left")
 
     # A shaded span behind the bars, rather than an arrow between them: the deleted region is
     # contiguous and reaches the axis edge, so a two-headed arrow had nowhere to sit and its
@@ -227,7 +233,7 @@ def plot_strategies(ax, stats):
     ax.set_ylim(0, 128)
     ax.set_yticks([0, 25, 50, 75, 100])
     ax.set_ylabel("% of samples taken\nreaching the statistic")
-    ax.set_title("(c) five dispositions, one population", fontsize=8, loc="left")
+    ax.set_title("(c) Five dispositions, one population", fontsize=8, loc="left")
     ax.legend(handles=[
         plt.Rectangle((0, 0), 1, 1, color=KEPT),
         plt.Rectangle((0, 0), 1, 1, color=GREY),

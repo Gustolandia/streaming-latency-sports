@@ -111,7 +111,7 @@ class TestTheTransportSpanCell:
         from make_method_figure import ROWS
         rows = [r for r in ROWS if "E-A10" in r[0]]
         assert len(rows) == 1, "one E-A10 row"
-        assert "77x" in rows[0][1], "the manipulated cell names the span"
+        assert "77×" in rows[0][1], "the manipulated cell names the span"
 
 
 class TestTheMapReadsItsResultCells:
@@ -131,7 +131,7 @@ class TestTheMapReadsItsResultCells:
         import make_method_figure as mmf
         import priority_pairs
         s = priority_pairs.summary()
-        assert mmf._priority_range() == "%d pairs, %.0f-%.0fx" % (
+        assert mmf._priority_range() == "%d pairs, %.0f-%.0f×" % (
             s["pairs"], s["factor_low"], s["factor_high"])
 
     def test_the_geometry_result_reads_the_campaign(self):
@@ -141,7 +141,7 @@ class TestTheMapReadsItsResultCells:
         assert "at rho %g" % stat_intervals.geometry_rho("ea6") in got
         for phase in ("ea6", "ea6b"):
             (_, kc, nc), (_, ks, ns) = stat_intervals.geometry_cells(phase)
-            assert "%.2fx" % stat_intervals.ratio_z(ks, ns, kc, nc)[1] in got
+            assert "%.2f×" % stat_intervals.ratio_z(ks, ns, kc, nc)[1] in got
 
     def test_the_tail_index_reads_the_fit(self):
         import make_method_figure as mmf
@@ -149,9 +149,9 @@ class TestTheMapReadsItsResultCells:
         assert mmf._tail_index() == "%.2f" % -stat_intervals.payload_fit()[0]
 
     @pytest.mark.parametrize("helper,module,attr,expected", [
-        ("_priority_range", "priority_pairs", "summary", "8 pairs, 7-80x"),
+        ("_priority_range", "priority_pairs", "summary", "8 pairs, 7-80×"),
         ("_geometry_result", "stat_intervals", "geometry_cells",
-         "2.07x, 2.05x, at rho 0.7531"),
+         "2.07×, 2.05×, at rho 0.7531"),
         ("_tail_index", "stat_intervals", "payload_fit", "0.34"),
     ])
     def test_each_falls_back_to_the_published_literal(self, monkeypatch, helper, module,
@@ -187,7 +187,15 @@ class TestTheMapReadsItsResultCells:
         assert _geometry_result() in joined
         # Round 58: the value is still read from the fit, and is no longer called a tail
         # index or offered as a settlement. See the next test for why.
-        assert "slope %s" % _tail_index() in joined
+        #
+        # Round 59: nor is it called a slope. `_tail_index` negates the log--log fit,
+        # because the supplement writes the law with the sign outside the exponent, and
+        # the payload figure prints the same fit unnegated beside the word "slope". One
+        # word was carrying 0.34 in this figure and -0.34 in that one.
+        assert "exponent %s" % _tail_index() in joined
+        assert "slope" not in joined, \
+            "the map calls the exponent a slope again; the payload figure's slope has "\
+            "the opposite sign"
 
     def test_the_map_does_not_settle_what_the_manuscript_withdraws(self):
         """Round 58's image review, and the same shape as round 56's finding.

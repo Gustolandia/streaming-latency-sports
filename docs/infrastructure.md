@@ -1176,6 +1176,48 @@ over the edited scripts is now the check that catches it, and the Write tool is 
 answer.
 
 
+**1bm. The paper's own thesis, pointed at the paper.** Figure~3 is titled *Traced
+run-queue stalls are trimodal* and Section~V-E counts three local maxima on
+`bpftrace` log2 buckets. A mode count read off a histogram is a joint property of the
+counts and the bin edges --- and Section~VI's entire argument is that a millisecond
+quantum decides what a benchmark prints while nobody discloses it. **The bucket width came
+from the tool exactly as the quantum did.** Sixty-seven rounds of gates and none of them
+had turned the paper's own standard on the paper's own histogram.
+
+The obvious check was unavailable: `runqlat.txt` is a 27-line summary and the per-event
+stall durations were never retained, so raw data cannot be rebinned now or ever. The
+referee proposed disclosure, and disclosure is this project's last resort. **The check was
+rebuilt in the form the archived data supports.** Merging adjacent log2 buckets doubles the
+bin width, and the merge can be phased two ways, which puts the edges in different places;
+a mode surviving both phasings is not sitting inside one bucket by luck.
+
+It survives --- three maxima at the tool's binning, three under both phasings at twice the
+width, fewer at four times --- so the claim holds to a factor of two in bin width and is
+resolution-limited beyond it. That is a **stronger** sentence than the disclaimer would
+have been, and it is computed rather than asserted.
+`scripts/stall_mode_robustness.py` writes the record and the suite fails if it and the
+trace disagree. **When the honest answer looks like a disclaimer, check whether the data
+you kept supports a weaker version of the test you cannot run.**
+
+**1bn. A gate that fires on good prose is a defect, not a standard.** Round 66's caption
+fix said "of all wakeups" twice in sixty words, so the obvious rule is *no caption repeats
+a three-word phrase*. It was built, measured against both documents, and **rejected**: it
+fires on Table~I's *"Kafka on 8.67% of its 367,894 events, Redis on 8.19% of its 370,836"*,
+which is deliberate parallelism and the clearest way to write that sentence. Shipping it
+would have forced an author to degrade a good caption to satisfy a counter.
+
+The specific caption is pinned instead, and the counter-example is pinned too, so nobody
+rebuilds the general rule without meeting it. This is the third time a measured rule has
+been rejected rather than shipped --- the round-59 vocabulary rule and round-66's
+range-blind reachability rule were the others --- and the pattern is worth naming:
+**measure the rule against the corpus before shipping it, and keep the counter-example.**
+
+Two of the round's own gates were wrong on first run, both in the same direction: one read
+a LaTeX comment explaining why a source is *not* cited as though it were a citation, and
+one tokenized captions without stripping macros, so the repeat it existed to demonstrate
+was invisible to it. A gate has to read text the way the thing it checks is read.
+
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

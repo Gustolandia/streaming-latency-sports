@@ -219,12 +219,29 @@ class TestTheFramingClaimArguesFromLimitsAndNotFromSlopes:
             "neither fact is a rate of change." % missing)
 
     def test_the_claim_points_at_its_proof(self, paper):
+        """Resolved by content, not by number.
+
+        This pinned `S16` and went red the moment the v5 reorganization renumbered
+        that section to S9 --- and stayed red unnoticed, because nothing ran it. A gate
+        pinned to a section number cannot survive the one event most likely to happen
+        to a section. The proof is found by what it says instead.
+        """
         i = paper.find("act differently")
         assert i > 0, "Section I no longer says the two failures act differently"
         window = paper[i:i + 260]
-        assert "S16" in window, (
-            "the framing claim has lost its pointer. It denies a framing a co-author removed, "
-            "so it may not stand on assertion.")
+        pointed = re.findall(r"Supplement~?S(\d+)", window)
+        assert pointed, (
+            "the framing claim has lost its pointer. It denies a framing a co-author "
+            "removed, so it may not stand on assertion.")
+        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        target = "\\section{S%s." % pointed[0]
+        assert target in supp, (
+            "Section I points at Supplement S%s, which does not exist" % pointed[0])
+        body = supp[supp.index(target):]
+        body = body[:body.find("\\section{S", 10)]
+        assert "not one failure seen twice" in body, (
+            "Supplement S%s is not the section that proves the two failures act "
+            "differently; the pointer resolves, but to the wrong place." % pointed[0])
 
     def test_the_claim_does_not_quote_a_ratio(self, paper):
         """Section I carried the 19x with the paragraph, and goes with it."""

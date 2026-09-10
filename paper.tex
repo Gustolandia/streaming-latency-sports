@@ -291,7 +291,7 @@ Section~\ref{sec:proxy}.
 Two more quantities belong to the model rather than to either failure. Write $\tau$ for
 the \emph{timestamp resolution} --- the \emph{quantum}, one millisecond in the benchmark of
 Section~\ref{sec:external} --- and $T_{\mathrm{true}}$\label{def:ttrue} for the \emph{true
-delivery} of a message: the interval $D$ would report if it were measured with an arbitrarily
+delivery} of a message. That is the interval $D$ would report if it were measured with an arbitrarily
 fine timestamp, which is what $D$ measures up to the consumer's own timestamping jitter. The primary end-to-end measure is \textbf{Time-to-Insight}
 (\tti{}), from scheduled emission to availability at the consumer:
 \begin{equation}
@@ -825,7 +825,15 @@ $\tracedModeLo$--$\tracedModeHi$~ms, holding $\tracedModeShare\%$ of all wakeups
 standing $\tracedModeRatio\times$ its lower neighbor. Above it the counts collapse rather
 than trail: they fall $\tracedTailFallA\times$ and $\tracedTailFallB\times$ over the next
 \tracedTailOctaves{} octaves and then $\tracedTailFallLast\times$, where a power law falls by
-one factor every time. The same bootstrap rejects a fit here too (Supplement~S8). Neither
+one factor every time. The same bootstrap rejects a fit here too (Supplement~S8).
+That refutation is about monotonicity, and no choice of bins rescues a monotone
+density. The mode \emph{count} is a joint property of the counts and the tool's
+bucket edges, so we tested it the only way the archived trace allows. The per-event
+stalls were not retained, but merging adjacent buckets widens them:
+$\stallModeCount$ maxima survive a $\stallCoarsenFactor\times$ widening under both of
+its phasings, and fewer survive at $\stallLostFactor\times$. The structure is
+therefore resolved to within a factor of $\stallCoarsenFactor$ in bin width and no
+finer (Supplement~S16). Neither
 that share nor that position has been
 attributed to a scheduler constant before; Figure~\ref{fig:spectrum} is the histogram, and
 no monotone curve passes through it.
@@ -836,10 +844,12 @@ no monotone curve passes through it.
 \caption{\textbf{Traced run-queue stalls are trimodal.} $\tracedEvents$
 wakeups, \texttt{bpftrace} log$_2$ buckets, modes shaded. The jitter core sits at a few
 microseconds and holds $\tracedModeShareA\%$ of all wakeups; a second mode at
-$128$--$256\,\mu$s holds $\tracedModeShareB\%$; the third, holding
-$\tracedModeShare\%$ of all wakeups, lands on the scheduler's derived base slice of
+$128$--$256\,\mu$s holds $\tracedModeShareB\%$; the third, at
+$\tracedModeShare\%$, lands on the scheduler's derived base slice of
 $\baseSliceMs$~ms. A power law of any index above one would have to descend monotonically
-across this axis.}
+across this axis. The count survives a
+$\stallCoarsenFactor\times$ widening of the buckets in both phasings, so it is not an
+artifact of where this tool put its edges.}
 \label{fig:spectrum}
 \end{figure}
 
@@ -955,7 +965,7 @@ $\tau = 1$~ms.
 \label{sec:extcomp}
 Payload moves $T_{\mathrm{true}}$, and with it the fraction a run retains. Where the send
 interval is commensurate with the tick the retained fraction is confined to a few values
-rather than a continuum, so moving $T_{\mathrm{true}}$ moves a configuration between them;
+rather than a continuum, so moving $T_{\mathrm{true}}$ moves a configuration between them.
 Supplement~S10 sets that structure out and draws all three payloads against it; S11 tests it
 configuration by configuration against the permutation null S14 constructs. The prediction was registered before the runs and it came
 true: replicate spread collapses to $\flipSpreadThirtyTwo$ points at $32$~KB and re-opens
@@ -1160,12 +1170,12 @@ and achieved rates disagreed.
 % and costs no reference: the supplement cites mq-bench where the bibliography is uncapped.
 None of this is hypothetical: \brk{mq-bench}, a 2026 framework for the same comparisons,
 already timestamps in nanoseconds and subtracts a span that cannot invert, both choices made
-and neither argued for (Supplement~S15.2). Nor is it unwelcome: the tool we audit
+and neither argued for (Supplement~S15.2). Nor is it unwelcome. The tool we audit
 accepted a coordinated-omission report and now records the publish delay, and the
-admission condition came through that revision untouched; a later request to
-serialize the histograms it discards after reading their summaries would carry the
-deletion into a new container unless the retained fraction travels with it
-(Supplement~S22).
+admission condition came through that revision untouched. A later request would
+serialize the histograms it discards after reading their summaries; that export
+carries the deletion into a new container unless the retained fraction travels with
+it (Supplement~S22).
 
 \subsection{The limits of a better clock}
 \label{sec:betterclock}

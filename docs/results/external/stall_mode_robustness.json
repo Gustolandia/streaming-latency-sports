@@ -1,0 +1,83 @@
+{
+  "base_mode_lows_us": [
+    2,
+    128,
+    2048
+  ],
+  "base_modes": 3,
+  "buckets": 16,
+  "coarsenings": [
+    {
+      "agrees": true,
+      "buckets": 8,
+      "factor": 2,
+      "mode_lows_us": [
+        1,
+        64,
+        1024
+      ],
+      "modes": 3,
+      "phase": 0
+    },
+    {
+      "agrees": true,
+      "buckets": 9,
+      "factor": 2,
+      "mode_lows_us": [
+        2,
+        128,
+        2048
+      ],
+      "modes": 3,
+      "phase": 1
+    },
+    {
+      "agrees": false,
+      "buckets": 4,
+      "factor": 4,
+      "mode_lows_us": [
+        1
+      ],
+      "modes": 1,
+      "phase": 0
+    },
+    {
+      "agrees": false,
+      "buckets": 5,
+      "factor": 4,
+      "mode_lows_us": [
+        32
+      ],
+      "modes": 1,
+      "phase": 1
+    },
+    {
+      "agrees": false,
+      "buckets": 5,
+      "factor": 4,
+      "mode_lows_us": [
+        1,
+        64
+      ],
+      "modes": 2,
+      "phase": 2
+    },
+    {
+      "agrees": false,
+      "buckets": 5,
+      "factor": 4,
+      "mode_lows_us": [
+        1,
+        128
+      ],
+      "modes": 2,
+      "phase": 3
+    }
+  ],
+  "doubling_phases": 2,
+  "events": 551956,
+  "resolved_to_octaves": 1,
+  "source": "docs/results/depth/ea9/l88_base/runqlat.txt",
+  "survives_doubling": true,
+  "survives_quadrupling": false
+}

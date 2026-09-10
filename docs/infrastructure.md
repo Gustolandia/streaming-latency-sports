@@ -1074,6 +1074,43 @@ the CSV, so adding the row moved the prose from "two of two" to "two of three" w
 anybody retyping a number.
 
 
+**1bh. A citation was added for a paper the bibliography already had.** Round
+64 added a reference whose author field read *"Apache Pulsar enterprise benchmark
+authors"*. There is no such group. The paper has one author and his name is on its first
+page --- Muhamed Ramees Cheriya Mukkolakkal, Platform Engineering, Brivo Systems --- and
+the PDF was in `docs/reference_tc` the whole time. The BibTeX key compounded it:
+`feng2026pulsar` named a person with no connection to the work, because a referee note
+had called it "Feng et al." and the entry was built from the note.
+
+And the fault was one step earlier than that. `mukkolakkal2026pulsar` **was already in the
+bibliography**, with the correct author, before round 64 ran --- so the new entry was not
+only misattributed, it was redundant. Round 65 corrected the author and renamed the key onto
+the name the existing entry already had, and `test_citation_surface` caught the collision:
+duplicate keys. **The check that was skipped is the cheapest one there is: look before
+adding.** The information was not merely in the corpus, it was in the file being edited.
+
+**It rendered.** `[S87] Apache Pulsar enterprise benchmark authors, "1.5 million messages
+per second..."` printed in the supplement's reference list and every gate here passed it,
+because none of them reads an author field. LaTeX will typeset a sentence describing the
+authors in the slot where the authors go.
+
+This is the only defect in sixty-five rounds that is about somebody else. Every other one
+has been about this project's precision with its own claims; this one miscredited a named
+individual, in the one part of a paper whose entire job is attribution. **A placeholder
+that renders is worse than a placeholder that fails to build**, and the rule now is that
+an author field names people or names an organization --- a phrase describing who wrote
+something is neither. `tests/unit/test_bibliography_attribution.py` checks all 161
+entries; it flagged "The OpenTelemetry Authors" on its first run, which is the design
+working, since that is a real corporate name and had to be admitted deliberately rather
+than by loosening the pattern.
+
+**1bi. The correction's own citation was read off the title page, and that is the point.**
+The same round added Rodr\'iguez, Casta\~neda and Pi\~na's causal-observation theorem to
+S48. Its three authors, their institutions and its exact claim came from the PDF's first
+page rather than from the referee report that recommended it. **The remedy for building a
+citation from a note is not to be more careful with notes; it is to open the paper.**
+
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

@@ -3894,6 +3894,28 @@ than leaving a reader to infer it from the bucket edges, and prices the finer al
 it did not take. And it bounds its own observer effect, where this paper measures its
 probe cost once (Section~\mainModeA{}). A monitoring tool that publishes both without
 being asked is the better evidence that the rules cost little, and it is not ours.
+
+\paragraph{And a proof that placement is the thing that decides}
+Where the timestamp is written is a design choice in this section and an empirical
+finding in Section~\mainAuthors{} --- our own two clients differ by a payload parse, worth
+$\spanHandlingWorstUs$~\textmu s. A 2026 result from concurrency theory says it is
+neither: it is a
+limit. Rodr\'iguez, Casta\~neda and Pi\~na formalize the \emph{Causal Observability
+Problem} --- assign timestamps to the boundary events of a concurrent execution so they
+reflect real-time order --- and prove that no solution at the observable boundary is both
+complete, never missing a genuine precedence, and sound, never reporting a spurious
+one~\cite{rodriguez2026causal}. Which of the two a monitor gets is decided by where the
+instrumentation sits relative to the operation boundary: inside yields completeness,
+outside yields soundness. They state that the dichotomy holds ``independently of the
+underlying timestamp mechanism''.
+
+The connection is structural rather than evidential, and it is worth saying which. Their
+setting is shared-memory concurrent objects and their instrument is a monitor object;
+they report neither failure mode studied here, and nothing in their proof is about
+resolution, preemption or brokers. What it supplies is the reason Section~\mainBetterClock{}
+gives for ordering the remedies as it does. A better clock does not help because the
+question was never the clock, and here that is a theorem in another setting rather than
+an observation in ours.
 \label{sec:runtimes}
 
 Section~\mainModeA{} argues that an acknowledgment timestamp is late because the thread that writes it must
@@ -4195,7 +4217,7 @@ it is not universal. The denominator behind that record is small and is stated h
 than in the main text: of the \litComparisonsWord{} 2026 broker comparisons we placed
 against the resolution, \litInsideRegimeWord{} report figures at or below it. The third is
 an enterprise-scale Apache Pulsar benchmark whose $3.88$~ms median sits well above the tick, so
-the arithmetic of Section~\mainModeB{} never reaches it~\cite{feng2026pulsar} --- a case
+the arithmetic of Section~\mainModeB{} never reaches it~\cite{mukkolakkal2026pulsar} --- a case
 for the concession rather than against it, and the record was assembled only from exceptions
 until it was looked for. It earns its row twice over: across four pages it names that median
 seven times, and the words \emph{timestamp}, \emph{clock}, \emph{resolution} and

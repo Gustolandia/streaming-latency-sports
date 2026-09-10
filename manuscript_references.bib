@@ -1312,8 +1312,12 @@
                   Optimization of {Apache Pulsar} at Enterprise Scale},
   howpublished = {arXiv preprint arXiv:2603.29113},
   year         = {2026},
-  note         = {Reports a 3.88~ms median publish latency, above the quantum, so the
-                  deletion law does not bind there}
+  note         = {reports 1,499,947~msg/s at a 3.88~ms median publish latency on three
+                  bare-metal nodes. The median sits above the quantum, so the deletion
+                  arithmetic does not bind there and this is a comparison FOR the main
+                  text's concession rather than an exception to it. Over four pages it
+                  names that median seven times; the words timestamp, clock, resolution,
+                  discard, negative and synchronization do not occur. Read 2026-09-10}
 }
 
 @misc{mqbench2026,
@@ -1492,15 +1496,17 @@
                   inflation. Read 2026-09-10}
 }
 
-@misc{feng2026pulsar,
-  author       = {{Apache Pulsar enterprise benchmark authors}},
-  title        = {1.5 Million Messages Per Second on 3 Machines: Benchmarking and Latency
-                  Optimization of {Apache} {Pulsar} at Enterprise Scale},
-  howpublished = {arXiv preprint arXiv:2603.29113},
+
+@misc{rodriguez2026causal,
+  author       = {Rodr{\'i}guez, Gilde Valeria and Casta{\~n}eda, Armando and
+                  Pi{\~n}a, Miguel},
+  title        = {On the Limits of Causal Observation in Shared-Memory Systems},
+  howpublished = {arXiv preprint arXiv:2606.14093},
   year         = {2026},
-  note         = {reports $1{,}499{,}947$~msg/s at a $3.88$~ms median publish latency on three
-                  bare-metal nodes. The median sits above the one-millisecond resolution, so
-                  it is a comparison the deletion arithmetic does not reach. Over four pages
-                  it names that median seven times; the words timestamp, clock, resolution,
-                  discard, negative and synchronization do not occur. Read 2026-09-10}
+  note         = {formalizes the Causal Observability Problem and proves no solution at the
+                  observable boundary is both complete and sound; the placement of
+                  instrumentation relative to operation boundaries decides which of the two a
+                  monitor gets, ``independently of the underlying timestamp mechanism''.
+                  Shared-memory concurrent objects, not measurement: it reports neither
+                  failure mode studied here. Read 2026-09-10}
 }

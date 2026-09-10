@@ -7,22 +7,28 @@ journal submission) or recoverable at the named commit.
 **Renumbered on 2026-09-08 (v4).** At the second author's request the supplement became a
 single-author postmortem in four parts — I. the chronology, II. the experiments in full,
 III. the audits and derivations, IV. the literature — and its sections were reordered into
-that shape and renumbered contiguously S1–S33 in the new order. The numbers in this file are
+that shape and renumbered contiguously S1–S52 in the new order. The numbers in this file are
 the **new** ones. Earlier correspondence, plans and commit messages cite the old numbers;
-the concordance, old→new, is: S1→S4, S1→S5, S2→S21, S3→S21, S1→S5, S4→S2, S4→S3, S3→S1,
-S5→S1, S1→S19, S19→S17, S6→S9, S5→S6, S8→S18, S9→S19, S8→S20, S15→S27, S10→S4,
-S10→S3, S10→S15, S11→S16, S12→S10, S13→S8, S14→S10, S7→S1, S16→S7, S17→S10, S19→S11,
-S20→S8, S21→S28, S21→S15, S21→S1, S21→S22, S22→S29, S23→S30, S24→S31, S25→S32, S25→S23,
-S26→S24, S23→S25, S23→S25, S27→S21, S28→S12, S29→S13, S30→S14, S31→S21, S32→S33, S33→S26,
-S33→S33, S53→S23, S54→S23, S55→S7; the old S15 (a forwarding note) was withdrawn, and
-S7 and S18 had been withdrawn earlier.
+the concordance, old→new, is: S1→S6, S2→S13, S3→S33, S4→S34, S5→S9, S6→S3, S7→S4, S8→S5,
+S9→S10, S10→S11, S11→S29, S12→S16, S13→S12, S15→S30, S16→S31, S17→S32, S18→S45, S19→S7,
+S20→S8, S21→S27, S22→S28, S23→S19, S24→S17, S25→S20, S26→S2, S28→S14, S29→S21, S31→S22,
+S32→S15, S33→S46, S34→S18, S35→S1, S36→S37, S37→S47, S38→S48, S39→S49, S40→S50, S41→S38,
+S42→S39, S43→S40, S44→S41, S45→S36, S46→S23, S47→S24, S48→S25, S49→S35, S50→S51, S51→S42,
+S52→S52, S53→S43, S54→S44, S55→S26; the old S27 (a forwarding note) was withdrawn, and
+S14 and S30 had been withdrawn earlier.
+
+**Reorganized on 2026-09-10 (v5).** Fifty-two sections became thirty-three: eighteen titles that read "... in full" were replaced by ones stating what the section found, sixteen sections under 350 words were folded into the section they belong beside, the three table dumps became one, and the four parts were rebuilt around the question each answers. **The numbers in this file are the v5 ones.** The concordance from the 2026-09-08 numbering is:
+
+S1->S1; S2->S1; S3->S2; S4->S3; S5->S1; S6->S4; S7->S4; S8->S3; S9->S5; S10->S1; S11->S22; S12->S6; S13->S5; S14->S7; S15->S8; S16->S9; S17->S8; S18->S18; S19->S26; S20->S26; S21->S26; S22->S10; S23->S11; S24->S12; S25->S13; S26->S7; S27->S18; S28->S19; S29->S20; S30->S21; S31->S22; S32->S23; S33->S24; S34->S24; S35->S24; S36->S24; S37->S25; S38->S14; S39->S15; S40->S16; S41->S16; S42->S17; S43->S14; S44->S14; S45->S27; S46->S28; S47->S29; S48->S30; S49->S31; S50->S32; S51->S33; S52->S33.
+
+It was built by matching section titles between the two documents rather than by composing the two rewriting passes. Composing is what corrupted the paragraph above the first time: a remapper was run over this file and rewrote *both sides* of the 2026-09-08 concordance, so S1 came to map to three different sections at once. A concordance is a record of the past and no rewriting pass may touch it.
 
 | Supp. section | Content | Moved from | Source revision |
 |---|---|---|---|
 | S4 | Replay-rate provenance gap, full episode (recovery arithmetic, per-claim exposure, disagreeing records) | main text `sec:rateprovenance` (92 lines -> 14-line summary) | pre-move text at commit 8480957 |
 | S5 | Load-axis post-mortem: the failed M/G/1 + registered-bracket detail | main text mixture development (`sec:twostate` area) | pre-move text at commit 8480957 |
-| S21 | Campaign ledger schema (column dictionary) | new (referee minor 12) | n/a |
-| S21 | OMB distributed-mode failure diagnostics (per-attempt version, logs, signature) | new (referee M2); data in `docs/results/external/dist_diag/` | n/a |
+| S24 | Campaign ledger schema (column dictionary) | new (referee minor 12) | n/a |
+| S24 | OMB distributed-mode failure diagnostics (per-attempt version, logs, signature) | new (referee M2); data in `docs/results/external/dist_diag/` | n/a |
 | S5 | The E1 reconciliation in full (windowed re-analysis, tab:e1rep) | main text `sec:e1` (95 lines -> 8-line summary) | pre-move text at commit d5e4d02 |
 
 Sections S2 onward were added in the v2 IEEEtran/TPDS restructure (2026-08), which compressed
@@ -38,31 +44,31 @@ preceding the "v2: TPDS restructure" commit.
 | S3 | The end-to-end withdrawal in full | `sec:attribution` |
 | S1 | The first corpus's prior corrections (the five-then-six list) | `sec:firstanswer` |
 | S1 | Open questions from the comprehensive campaign | `sec:extopen` |
-| S19 | The distributed-mode attempts in full | `sec:extdist` |
-| S17 | The workload in full | `sec:metrics` |
+| S22 | The distributed-mode attempts in full | `sec:extdist` |
+| S20 | The workload in full | `sec:metrics` |
 | S9 | Two-state model commentary + tracing instrument checks | `sec:twostate` (file order: after S6) |
 | S6 | The commensurability account's corrections in full | `sec:extquant` |
-| S18 | Configuration in full | `sec:config_table` |
-| S19 | Instrumentation of the external benchmark in full | `sec:extmethod` |
-| S20 | The transfer procedure with its incidents (rules 2,3,6,7,9,11) | `sec:protocol` |
+| S21 | Configuration in full | `sec:config_table` |
+| S22 | Instrumentation of the external benchmark in full | `sec:extmethod` |
+| S23 | The transfer procedure with its incidents (rules 2,3,6,7,9,11) | `sec:protocol` |
 | S27 | Related work in full: variability literature + result-by-result map | `sec:related_resolution` / `sec:related_tail` |
 | S4 | Provenance-gap episode + co-location withholding (E-A8) | `sec:rateprovenance` / withdraw list |
 | S3 | The delay-sweep withdrawal in full (netem manipulation check) | H1, `sec:rules` |
-| S15 | Experiment map, claim-evidence table, audit threshold figure | `sec:expmap` / `sec:threshold` |
-| S16 | Threats and limitations in full | `sec:threats` / `sec:limitations` |
-| S10 | Tables and the pipeline schematic (TTI decomposition, imputation) | `sec:metrics` / `sec:retention` |
+| S18 | Experiment map, claim-evidence table, audit threshold figure | `sec:expmap` / `sec:threshold` |
+| S19 | Threats and limitations in full | `sec:threats` / `sec:limitations` |
+| S26 | Tables and the pipeline schematic (TTI decomposition, imputation) | `sec:metrics` / `sec:retention` |
 | S8 | Tail recovery without a reference clock | discussion |
-| S10 | The mechanism campaigns' tables (mixture, E-A5/6/9/10) | `sec:twostate` / `sec:mixture` |
+| S26 | The mechanism campaigns' tables (mixture, E-A5/6/9/10) | `sec:twostate` / `sec:mixture` |
 | S1 | Model figure, flip figure, first result set table | `sec:model` / `sec:firstanswer` |
-| — (was S15; withdrawn in v4) | The grid table: a forwarding note only, the table itself being in S10 | `sec:extquant` |
+| — (was S18; withdrawn in v4) | The grid table: a forwarding note only, the table itself being in S26 | `sec:extquant` |
 | S7 | The mechanism campaign paragraphs in full | `sec:twostate` |
-| S10 | Audit, stamping-mode and injected-delay tables | `sec:audit` / H3 / `sec:network` |
-| S11 | Spread rule + grid-membership inference in full | `sec:extquant` / `sec:extinference` |
+| S26 | Audit, stamping-mode and injected-delay tables | `sec:audit` / H3 / `sec:network` |
+| S10 | Spread rule + grid-membership inference in full | `sec:extquant` / `sec:extinference` |
 | S8 | The mechanism narrative in full | `sec:twostate` |
 | S28 | Resolution/discard/sampling literature engagement in full (CO, Weyl, run-to-run instability) | `sec:related_resolution` |
-| S16.1 | Payload sweep's underpowered rows; duration + plateau paragraphs | `sec:extphase` / `sec:extcomp` |
+| S28.1 | Payload sweep's underpowered rows; duration + plateau paragraphs | `sec:extphase` / `sec:extcomp` |
 
-(S7 and S18 were never assigned; the numbering gaps are deliberate, not losses. The supplement
+(S7 and S21 were never assigned; the numbering gaps are deliberate, not losses. The supplement
 carries its own IEEEtran bibliography for the citations that travelled with the moved text.)
 
 The compiled supplement states on its first page that it is not part of the main submission.
@@ -72,12 +78,12 @@ Referee report that drove this split: `REFEREE_REPORT_SIMULATED.md` (untracked).
 
 Three exhibits moved **out of** the supplement into the main text at the referee's request
 (M1): the two-panel model figure and the payload flip figure (formerly S1) and a compact
-mechanism table digesting the S10 occupancy/geometry tables (`tab:mechanism`, new). In the
+mechanism table digesting the S26 occupancy/geometry tables (`tab:mechanism`, new). In the
 other direction, compact stubs in the main text now point at full paragraphs appended to
-S21 (distributed-mode body), S3 (benchmark-output corroboration), S19 (gate/warmup/ledger
-detail), S20 (transfer-procedure rules), S27 (Lozi/Li literature engagement), S10
-(reversal account + falsification), S11 (grid-membership inference), each marked
-"Moved from the main text (TPDS round 1)". **S15** (new) holds the referee-round
+S24 (distributed-mode body), S3 (benchmark-output corroboration), S22 (gate/warmup/ledger
+detail), S23 (transfer-procedure rules), S27 (Lozi/Li literature engagement), S26
+(reversal account + falsification), S10 (grid-membership inference), each marked
+"Moved from the main text (TPDS round 1)". **S18** (new) holds the referee-round
 sensitivity artefacts: the audit gate applied to the powered transport campaigns
 (`gate_sensitivity.csv`, `transport_realtime_*_gated.csv`), the condition-level threshold
 sweep (`first_result_threshold_sweep.csv`), and the traced survival slopes
@@ -107,12 +113,12 @@ here so the provenance chain stays unbroken.
   renumbered by one (provenance gap 35.6 → 35.7, distributed mode 35.7 → 35.8).
 - **S1.2** gained the Redis-driver mechanism. The negatives were previously hedged as a
   "candidate" clock artefact; the driver settles it, and the hedge is gone.
-- **S15** now marks `traced_tail_slope.csv` as *superseded* rather than as supporting
+- **S18** now marks `traced_tail_slope.csv` as *superseded* rather than as supporting
   evidence, and names the script that replaces it.
 
 **Corrected in place.**
 
-- **S11**'s grid-membership counts now come from the corrected p-values. One arm (900 msg/s)
+- **S10**'s grid-membership counts now come from the corrected p-values. One arm (900 msg/s)
   had been counted as a rejection under a caption claiming Holm correction; corrected, it
   does not reject, and it is now reported as unresolved. The main-text table is generated
   from the artefact (`docs/generated/grid_table.tex`) so the two cannot diverge again.
@@ -139,7 +145,7 @@ Nineteen items (R1–R19). Those that moved or relabelled supplement material:
   the manuscript was reviewed at two journals. It has been reviewed at none: those were
   adversarial reviews conducted inside the project before submission. The front matter now
   says so explicitly, and the labels read "internal review, round N".
-- **S11** and the S1 chronology are unchanged in substance; only the round labels moved.
+- **S10** and the S1 chronology are unchanged in substance; only the round labels moved.
 - The dither lineage in S27 gained McCanne & Torek, cut from the main text to hold the
   45-reference cap.
 
@@ -155,9 +161,9 @@ carrying its claim; nothing lost a number or a citation.
 
 | Supp. section | Content | Moved from |
 |---|---|---|
-| S21 | The statistical inventory: pooled-variance z, Hodges–Lehmann, TOST, the permutation null, the bootstrap, and the interval-censored tail estimators | main text III-D, which keeps only the three choices a reader might contest |
+| S24 | The statistical inventory: pooled-variance z, Hodges–Lehmann, TOST, the permutation null, the bootstrap, and the interval-censored tail estimators | main text III-D, which keeps only the three choices a reader might contest |
 | S33 | The dispute with the concurrent negative-span report in full --- which queue each account means, and why a millisecond skew threshold does not transfer to a loaded machine | main text II-B (about 140 words) |
-| S26 | The 1970 counter note mapped line by line: retention identity, class, the ceiling on averaging, the symptom, the cure | main text II-C (about 100 words) |
+| S17 | The 1970 counter note mapped line by line: retention identity, class, the ceiling on averaging, the symptom, the cure | main text II-C (about 100 words) |
 | S33 | Two literatures the paper stands against: production tracing's skew adjusters, and where scheduling delay comes from | main text II-B and II-C (about 250 words) |
 
 Three citations moved with S33 and so left the paper's reference list, which is now 42 of the
@@ -178,18 +184,18 @@ main text gave up is below; nothing lost a number or a citation.
 
 | Supp. section | Content | Moved from |
 |---|---|---|
-| S23 | Why the two drivers differ, and how a difference of two floored clocks admits exactly one negative value | main text IV-D (about 130 words) |
-| S23 | The permutation null, constructed: exchangeability under the continuum, 10^4 permutations, and why it has no power where the predictions coincide | main text IV-C |
+| S14 | Why the two drivers differ, and how a difference of two floored clocks admits exactly one negative value | main text IV-D (about 130 words) |
+| S14 | The permutation null, constructed: exchangeability under the continuum, 10^4 permutations, and why it has no power where the predictions coincide | main text IV-C |
 | S7 | The overnight campaign prediction by prediction --- the duration-invariance counts that killed the drift account, and the linear extrapolation that failed | main text IV-B |
 
 **The reference cap decided two placements.** Round 20 added five citations to a list of
-forty-two and 45 is the cap, so two came back out. `wrk2_src` keeps its entry in S22's
+forty-two and 45 is the cap, so two came back out. `wrk2_src` keeps its entry in S25's
 generated table, which cites every audited tool by construction, and loses its per-tool
 citation in the main text; the library-refusal class is still counted from the registry and
-still described. `swami2026observability` moved to S21.1, beside the Villain argument it
+still described. `swami2026observability` moved to S33.1, beside the Villain argument it
 supports, rather than into Section II-B.
 
-**KAFKA-19888 moved the other way**, up from S22 into Section IV-D. The reason it was held
+**KAFKA-19888 moved the other way**, up from S25 into Section IV-D. The reason it was held
 back --- that its mechanism is wall-clock non-monotonicity and would invite confusion with
 Mode A --- is right about Mode A and does not apply to Mode B, where the finding is that a
 first-party vendor chose the substitution class this paper says is worse than filtering. The
@@ -199,17 +205,17 @@ main text names the mechanism so the two cannot be confused.
 
 No new sections. Two corrections to round 20's relocations and one to the prose:
 
-- **S23** is now cited by Section IV-C for the permutation null's construction. It had been
-  citing S12, which is the per-arm table and does not contain the construction.
-- **S23** is now cited by Section IV-D for the two-floored-clocks explanation. It had been
-  citing S25, which contains none of that material.
+- **S14** is now cited by Section IV-C for the permutation null's construction. It had been
+  citing S11, which is the per-arm table and does not contain the construction.
+- **S14** is now cited by Section IV-D for the two-floored-clocks explanation. It had been
+  citing S16, which contains none of that material.
 - Section IV-D said the five disposing tools fall "in four classes". The taxonomy has three
   --- `DISPOSAL_KINDS` is `positive_only_filter`, `silent_suppression`, `library_refusal` ---
   and the sentence itself enumerates three. It was the one count in that paragraph still
   typed by hand. `harnessDisposalClasses` is emitted now.
 
-`TestEveryTargetedRelocationIsReachable` holds the first two: every section from S21 onward
-must be pointed at from the paper. Sections below S21 are exempt by design --- they are the
+`TestEveryTargetedRelocationIsReachable` holds the first two: every section from S24 onward
+must be pointed at from the paper. Sections below S24 are exempt by design --- they are the
 TPDS-era bulk moves, documented here rather than pointed at individually.
 
 ## Round 24 (2026-08-25): the sweep, and the pointer that costs money
@@ -219,7 +225,7 @@ No new sections. Six numbers moved from prose into the ledger, two of them in th
 - `supplement.tex` quoted the payload exponent as `0.339` against a second-day repeat and the
   Hodges--Lehmann shift as `0.408` heading a list of three. Both now read `\tailExponent` and
   `\tostHL`.
-- S24 gained a one-paragraph lead saying what Section VI-D now states in a sentence, because
+- S15 gained a one-paragraph lead saying what Section VI-D now states in a sentence, because
   VI-D gave up the two-part derivation to bring Threats back under the section that carries
   Contribution 2's decisive experiments.
 
@@ -229,15 +235,15 @@ with no gate, and the only one that costs $220 a page.
 
 ## Round 26 (2026-08-25): a framework that does not have the problem
 
-- **S21.2 is new**: the reading behind Section VI-B's claim that the reporting rules are
+- **S33.2 is new**: the reading behind Section VI-B's claim that the reporting rules are
   practical. mq-bench (arXiv:2603.21600, March 2026) stamps in nanoseconds, subtracts a
   send-referenced span on one host, applies no positivity guard, and reports sub-millisecond
   medians --- both of our recommended choices, made independently and argued for nowhere. The
   section quotes its measurement text and notes the one thing it does not do: say why its span
   is safe.
-- **S21.3** is the old S21.2, the field-size synthesis, moved down. Its citation left the main
+- **S33.3** is the old S33.2, the field-size synthesis, moved down. Its citation left the main
   text so the reference cap could pay for mq-bench; the claim is unchanged and Section II-A
-  now points here for it. *(Corrected in round 28: it did not. The pointer was still on S21.2
+  now points here for it. *(Corrected in round 28: it did not. The pointer was still on S33.2
   when this was written, and this line recorded a repair that had not been made — which is why
   `test_supplement_subsections.py` now checks that a pointer lands on its subject.)*
 - The fitted prefactor is `\tailPrefactor` in both places it appears. It was the one quantity
@@ -247,32 +253,32 @@ with no gate, and the only one that costs $220 a page.
 
 ## Round 28 (2026-08-25): subsection numbering, and a figure for the mechanism
 
-- **S21.4 is the old second S21.3.** Round 26 renumbered the field-size synthesis to S21.3 and
-  left the scheduling-delay subsection, already S21.3, where it was. Both printed. The
-  scheduling-delay subsection is now S21.4 and Section II-C points at it by number.
-- **S1.1, S1.2 and S3.1 are newly numbered**, not new. They were the only subsections in the
+- **S33.4 is the old second S33.3.** Round 26 renumbered the field-size synthesis to S33.3 and
+  left the scheduling-delay subsection, already S33.3, where it was. Both printed. The
+  scheduling-delay subsection is now S33.4 and Section II-C points at it by number.
+- **S1.1, S1.2 and S4.1 are newly numbered**, not new. They were the only subsections in the
   document with no `SNN.M` prefix and printed as bare titles in the contents list.
-- **Section II-A now really does point at S21.3** for the field-size claim. Round 26's entry
-  here said it did; the source said S21.2, which is the mq-bench reading and sizes nothing.
-- **S22 keeps the Kafka coordinator fix, and now the main text agrees.** S22 said the case was
+- **Section II-A now really does point at S33.3** for the field-size claim. Round 26's entry
+  here said it did; the source said S33.2, which is the mq-bench reading and sizes nothing.
+- **S25 keeps the Kafka coordinator fix, and now the main text agrees.** S25 said the case was
   recorded "here rather than in the main text"; the main text carried it in full anyway.
   Section IV-E keeps the claim and the citation in one sentence and sends the reader here.
-- **S33, S21.1 and S23** absorbed the reasoning trimmed from Sections II-B, II-C and IV-C to
+- **S33, S33.1 and S14** absorbed the reasoning trimmed from Sections II-B, II-C and IV-C to
   pay for Figure 3. No claim left the paper; the arguments behind three of them did.
 
 ## Round 30 (2026-08-25): an adjective, and three numbers that were right but typed
 
-- **S24's chrony bounds now come from the ledger.** `\chronyHostBoundLo`,
+- **S15's chrony bounds now come from the ledger.** `\chronyHostBoundLo`,
   `\chronyHostBoundHi`, `\chronyPairBound` and `\chronyHosts` are emitted from the committed
   `chronyc tracking` captures by the function that already computed them. The sentence also
   now says the 12 ms is the sum of the two *worst* hosts, because adding the printed endpoints
   gives 14 and a reader was entitled to try.
 - Nothing else in the supplement changed. Section I's "largest mode" was the round's headline
-  defect and it is main-text only; S21.4 already said "the last".
+  defect and it is main-text only; S33.4 already said "the last".
 
 ## Round 32 (2026-08-25): the tables, and a word that meant something else
 
-- **S24's chrony sentence names its noun and sums the right thing**: "across the
+- **S15's chrony sentence names its noun and sums the right thing**: "across the
   `\chronyHosts` hosts captured, and the two worst of *those bounds* sum to
   `\chronyPairBound` ms". The hosts do not sum; their bounds do.
 - Nothing else in the supplement changed. The round's substantive finding --- that *retention*
@@ -283,7 +289,7 @@ with no gate, and the only one that costs $220 a page.
 
 - **Eleven typed copies left the supplement.** `$76.9\times$`, `$77\times$` and
   `$4.1\times$` are `\payloadTransportFactor`, `\payloadTransportFactorRound` and
-  `\payloadRateFall`; S10's two-campaign caption reads `\payloadReplTransportFactor`,
+  `\payloadRateFall`; S26's two-campaign caption reads `\payloadReplTransportFactor`,
   `\payloadRateFallExact` and `\payloadReplRateFall`. Every printed value is unchanged ---
   the macros emit exactly what was typed, which is the point.
 - Nothing else in the supplement changed.
@@ -298,24 +304,24 @@ appearing in this table.
 
 | Figure | Where it appears |
 |---|---|
-| `pipeline_schematic` | main text, Fig. 1 only (promoted round 51: Gregg's requirement that a general reader meet the system, drawn, inside the first two pages). The S21 copy was dropped round 48: it included the same file, under prose claiming the main text's version carried "more detail", which it could not, being the same drawing. S21 keeps the stamp-to-metric mapping as prose |
+| `pipeline_schematic` | main text, Fig. 1 only (promoted round 51: Gregg's requirement that a general reader meet the system, drawn, inside the first two pages). The S24 copy was dropped round 48: it included the same file, under prose claiming the main text's version carried "more detail", which it could not, being the same drawing. S24 keeps the stamp-to-metric mapping as prose |
 | `measurement_model` | main text, Fig. 2 (panel (b) split off round 52) |
 | `delta_schematic` | supplement, S9 (was Fig. 2(b); the one main-text drawing that was not a measurement, and the measured version is Fig. 9) |
 | `deletion` | main text, Fig. 4 (was Fig. 3 until round 61 put failure mode 1 before failure mode 2, at the second author's request) |
-| `quantum_geometry` | supplement, S26 (moved round 40: a constructed illustration of the retention law, not a measurement, placed beside the 1970 counter note that carries the same identity) (added round 28: the geometry behind the deletion law) |
-| `grid_membership` | supplement, S12 (moved round 59: the second author asked for the grid refinement to become the explanation of the deletion rather than a contribution, so the figure went beside the per-configuration table it summarizes) |
-| `payload_flip` | supplement, S11 (moved round 43: every number its panels carry is in the sentence that used to sit above it, and four biographies would not otherwise fit inside twelve pages) (single-column from round 28; was full-width) |
-| `mechanism_forest` | supplement, S13 (moved round 57: it plots the four matched pairs of the main text's Table II and the two brokers of its Table I, so it restated tables the reader already has) |
+| `quantum_geometry` | supplement, S17 (moved round 40: a constructed illustration of the retention law, not a measurement, placed beside the 1970 counter note that carries the same identity) (added round 28: the geometry behind the deletion law) |
+| `grid_membership` | supplement, S11 (moved round 59: the second author asked for the grid refinement to become the explanation of the deletion rather than a contribution, so the figure went beside the per-configuration table it summarizes) |
+| `payload_flip` | supplement, S10 (moved round 43: every number its panels carry is in the sentence that used to sit above it, and four biographies would not otherwise fit inside twelve pages) (single-column from round 28; was full-width) |
+| `mechanism_forest` | supplement, S12 (moved round 57: it plots the four matched pairs of the main text's Table II and the two brokers of its Table I, so it restated tables the reader already has) |
 | `ttrue_law` | supplement, S8 |
 | `stall_spectrum` | main text, Fig. 3 (was Fig. 4 until round 61 reordered the two failure modes, Fig. 5 until `grid_membership` left in round 59, and Fig. 6 until `payload_flip` left in round 43) |
-| `priority_ladder` | supplement, S13 |
-| _(no figure)_ | supplement, S14 --- the broker results, moved from the main text in round 18 |
+| `priority_ladder` | supplement, S12 |
+| _(no figure)_ | supplement, S13 --- the broker results, moved from the main text in round 18 |
 | `experiment_map` | supplement |
 | `integrity_audit` | supplement |
 | `window_sweep` | supplement |
 | `e1_end_to_end_lag` | supplement, S3 (panel (b) stopped being grouped bars on a log axis in round 59: a bar states its value as a length from zero and a log axis has no zero) |
-| `exposure_curve` | supplement, S13 (three main-text pointers send a reader to S13 for this curve, which is why round 60 put it in that section's title) |
-| `deletion_histogram` | supplement, S23 (named in that section's title from round 60) |
+| `exposure_curve` | supplement, S12 (three main-text pointers send a reader to S12 for this curve, which is why round 60 put it in that section's title) |
+| `deletion_histogram` | supplement, S14 (named in that section's title from round 60) |
 | `kickoff_concurrency` | **retained, unused.** The kickoff-window concurrency view from the withdrawn first result set. Kept because the campaign it draws is still in the archive and the withdrawal is part of the record; no current claim rests on it. |
 | `network_delay` | **retained, unused.** The injected-delay view superseded by the netem table in Section VI, which reports the same runs numerically. |
 | `workload_profile` | **retained, unused.** The StatsBomb replay profile from the 16-page version; the workload is now described in prose in Section III. |
@@ -332,12 +338,3 @@ local plan. Each also ships a `_talk` PNG variant for slides.
 | `thread_architecture` | `scripts/make_thread_figure.py` | Section I or III: which threads take the two stamps, and why |
 | `axis_comparison` | `scripts/make_axis_comparison.py` | supplement: the benchmark's published data and ours on identical axes |
 | `omb_axes_explained` | `scripts/make_axis_comparison.py` | supplement: why the published chart's own axes cannot show the deletion |
-
-
-## The 2026-09-08 renumbering
-
-Printed in the supplement's front matter until v5, where it was removed: fifty-five
-old-to-new mappings are of interest to the authors and to correspondents holding older
-drafts, and to nobody reading the paper. It lives here instead.
-
-On 2026-09-08 the sections were reordered into the four parts above and renumbered S1--S52 in that order; the forwarding note that had been S27 was withdrawn (S14 and S30 had been withdrawn earlier). Earlier correspondence and the artifact's history cite the old numbers; the concordance, old -> new, is: S1 -> S6, S2 -> S13, S3 -> S33, S4 -> S34, S5 -> S9, S6 -> S3, S7 -> S4, S8 -> S5, S9 -> S10, S10 -> S11, S11 -> S29, S12 -> S16, S13 -> S12, S15 -> S30, S16 -> S31, S17 -> S32, S18 -> S45, S19 -> S7, S20 -> S8, S21 -> S27, S22 -> S28, S23 -> S19, S24 -> S17, S25 -> S20, S26 -> S2, S28 -> S14, S29 -> S21, S31 -> S22, S32 -> S15, S33 -> S46, S34 -> S18, S35 -> S1, S36 -> S37, S37 -> S47, S38 -> S48, S39 -> S49, S40 -> S50, S41 -> S38, S42 -> S39, S43 -> S40, S44 -> S41, S45 -> S36, S46 -> S23, S47 -> S24, S48 -> S25, S49 -> S35, S50 -> S51, S51 -> S42, S52 -> S52, S53 -> S43, S54 -> S44, S55 -> S26.

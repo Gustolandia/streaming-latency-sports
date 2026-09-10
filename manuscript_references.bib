@@ -1410,7 +1410,7 @@
   title        = {{NATS} vs {Redis} vs {Kafka}: message broker comparison},
   howpublished = {Practitioner comparison},
   year         = {2026},
-  note         = {\url{https://www.index.dev/skill-vs-skill/nats-vs-redis-vs-kafka}; no retained fraction, rejection count, timestamp resolution or send rate. Which broker gets the percentile, and what it is, is in Section~III-A. Read 2026-09-03. (The correction to an earlier reading of this page is recorded in the supplement's S1.)}
+  note         = {\url{https://www.index.dev/skill-vs-skill/nats-vs-redis-vs-kafka}; no retained fraction, rejection count, timestamp resolution or send rate. Which broker gets the percentile, and what it is, is in Section~III-A. Read 2026-09-03.}
 }
 
 @misc{devto2026streaming,
@@ -1509,4 +1509,32 @@
                   monitor gets, ``independently of the underlying timestamp mechanism''.
                   Shared-memory concurrent objects, not measurement: it reports neither
                   failure mode studied here. Read 2026-09-10}
+}
+
+@misc{omb2022coordinated,
+  author       = {franz1981},
+  title        = {The load generation need to fix Coordinated Omission (issue \#247)},
+  howpublished = {OpenMessaging Benchmark issue tracker},
+  year         = {2022},
+  note         = {opened 2022-03-01, closed with pull request~\#248. Argues that a load
+                  generator failing to keep up ``will pass unnoticed in the percentiles
+                  ocean'' unless the publish delay is recorded against the scheduled send
+                  instant. Accepted; the admission condition was untouched by the repair.
+                  \url{https://github.com/openmessaging/benchmark/issues/247}. Read
+                  2026-09-10}
+}
+
+@misc{omb2026histogram,
+  author       = {SamBarker},
+  title        = {Export serialized {HDR} Histogram to enable statistical significance
+                  testing of results (issue \#452)},
+  howpublished = {OpenMessaging Benchmark issue tracker},
+  year         = {2026},
+  note         = {opened 2026-03-26. Observes that the harness ``already maintains HDR
+                  Histograms internally throughout each run and discards them after
+                  extracting the summary scalars'', and that summary scalars cannot say
+                  whether a difference is significant ``or within the noise floor of the
+                  measurement''.
+                  \url{https://github.com/openmessaging/benchmark/issues/452}. Read
+                  2026-09-10}
 }

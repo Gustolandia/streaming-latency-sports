@@ -294,7 +294,7 @@ def plot_mechanism(mech_ax):
                  ha="right", va="center")
 
     # the producer's own two stamps, taken on the app thread before the acknowledgment exists
-    for x, sym in ((2.95, r"$t_{sched}$"), (3.65, r"$t_{send}$")):
+    for x, sym in ((2.95, r"$t_{\mathrm{sched}}$"), (3.65, r"$t_{\mathrm{send}}$")):
         mech_ax.plot([x], [y_app], marker="o", markersize=5, color=KAFKA,
                      markerfacecolor="white", markeredgewidth=1.2)
         mech_ax.text(x, y_app + 0.28, sym, fontsize=8, ha="center", color=KAFKA)
@@ -324,21 +324,21 @@ def plot_mechanism(mech_ax):
     mech_ax.plot([4.95], [y_io], marker="|", markersize=13, color=KAFKA)
     mech_ax.text(4.95, y_io + 0.30, "ack arrives", fontsize=8, ha="center")
     mech_ax.plot([7.10], [y_io], marker="o", markersize=6, color=KAFKA)
-    mech_ax.text(7.10, y_io + 0.30, r"clock read $\rightarrow t_{ack}$", fontsize=8,
+    mech_ax.text(7.10, y_io + 0.30, r"clock read $\rightarrow t_{\mathrm{ack}}$", fontsize=8,
                  ha="center")
     mech_ax.annotate("", xy=(7.10, y_io), xytext=(4.95, y_io),
                      arrowprops=dict(arrowstyle="<->", color="#b22222", linewidth=1.2))
-    mech_ax.text(6.02, y_io - 0.20, r"$\delta_{ack}$: waiting for a core", fontsize=8,
+    mech_ax.text(6.02, y_io - 0.20, r"$\delta_{\mathrm{ack}}$: waiting for a core", fontsize=8,
                  color="#b22222", ha="center", va="top")
 
     mech_ax.plot([5.85], [y_con], marker="|", markersize=13, color=REDIS)
     mech_ax.text(5.75, y_con - 0.22, "record arrives", fontsize=8, ha="right", va="top")
     mech_ax.plot([6.45], [y_con], marker="o", markersize=6, color=REDIS)
-    mech_ax.text(6.95, y_con - 0.22, r"clock read $\rightarrow t_{recv}$", fontsize=8,
+    mech_ax.text(6.95, y_con - 0.22, r"clock read $\rightarrow t_{\mathrm{recv}}$", fontsize=8,
                  ha="center", va="top")
     mech_ax.annotate("", xy=(6.45, y_con), xytext=(5.85, y_con),
                      arrowprops=dict(arrowstyle="<->", color="#b22222", linewidth=1.2))
-    mech_ax.text(6.15, y_con + 0.24, r"$\delta_{recv}$", fontsize=8, color="#b22222",
+    mech_ax.text(6.15, y_con + 0.24, r"$\delta_{\mathrm{recv}}$", fontsize=8, color="#b22222",
                  ha="center")
 
     # The inversion itself, drawn as the backwards span it is.
@@ -356,7 +356,7 @@ def plot_mechanism(mech_ax):
     # Labelled in the paper's own model (Section II): S is the acknowledgment-referenced
     # span and D the delivery, so the inversion reads S < 0 although D > 0 -- not a
     # T_meas/T_true pair the text never defines (co-author comment 16, 2026-09-08).
-    mech_ax.text(7.30, 1.72, r"$S=t_{recv}-t_{ack}<0$" "\n"
+    mech_ax.text(7.30, 1.72, r"$S=t_{\mathrm{recv}}-t_{\mathrm{ack}}<0$" "\n"
                  r"although the delivery $D>0$",
                  fontsize=8, color="#b22222", ha="left", va="center")
 
@@ -373,7 +373,7 @@ def plot_mechanism(mech_ax):
     # reading that moving it fixes the sign. It does not. The hand-off is an increment on
     # top of the wakeup, worth tens of microseconds of median, not the thing itself.
     mech_ax.text(2.45, 0.14,
-                 "Kafka path drawn. Redis timestamps $t_{ack}$ on the app thread and"
+                 r"Kafka path drawn. Redis timestamps $t_{\mathrm{ack}}$ on the app thread and"
                  "\ninverts anyway: the wait for a core is charged either way.",
                  fontsize=8, color=GREY, ha="left", va="center", linespacing=1.15)
 
@@ -426,9 +426,9 @@ def plot_delta(h1_ax):
     # extra decade is free.
     h1_ax.set_ylim(1e-4, 60.0)
     h1_ax.set_xlim(-6, 6)
-    h1_ax.text(-5.85, 22.0, r"large $T_{true}$:" "\npast the lobe,\nlittle left",
+    h1_ax.text(-5.85, 22.0, r"large $T_{\mathrm{true}}$:" "\npast the lobe,\nlittle left",
                fontsize=8, color=REDIS, linespacing=1.05, va="top")
-    h1_ax.text(1.15, 0.60, r"small $T_{true}$:" "\nthe whole lobe\ninverts it",
+    h1_ax.text(1.15, 0.60, r"small $T_{\mathrm{true}}$:" "\nthe whole lobe\ninverts it",
                fontsize=8, color=KAFKA, linespacing=1.05, va="top")
     # relpos pins the arrow to the edge of the label it belongs to. Left at its default it
     # starts from the centre of the text, and the leader shows through the gaps in the words.
@@ -535,7 +535,7 @@ def plot_quantum_geometry(axes, tau=TAU_MS, t_true=T_TRUE_MS, q=GRID_Q):
     # once the panel was compressed to hold the paper at twelve pages it took most of the
     # vertical budget: the two rows had to sit close enough that the mathtext ascenders of the
     # lower label came within a point or two of the dots above. The collision gate did not
-    # fire; at print size it was plain. The shaded band and the $\tau - T_{true}$ tick say the
+    # fire; at print size it was plain. The shaded band and the $\tau - T_{\mathrm{true}}$ tick say the
     # same thing, and the caption names it in a clause, so the space goes to the rows.
     # Off-lattice, and that is the whole point. The first version drew this row as twenty
     # *evenly spaced* phases, which is not an incommensurate producer at all -- it is a

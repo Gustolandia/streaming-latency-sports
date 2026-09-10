@@ -32,7 +32,7 @@ numbers, and each of them is a picture:
                glance is that no pair overlaps, which is the causal claim itself.
 
   ttrue     -- inversion rate against the interval being measured. The negative-span
-               probability as a function of $T_{true}$, as an
+               probability as a function of T_true, as an
                experiment: lengthening the true transport lowers the rate, where an account
                driven by load alone predicts no change. It had no figure at all.
 

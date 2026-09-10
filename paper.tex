@@ -75,23 +75,16 @@
 % proposed this one; "Artifacts" is the journal's American spelling of his British one.
 \title{Faster-than-Light: Latency Measurement Artifacts in Streaming Benchmarks}
 
-\author{Gustavo~Pedro~Ricou,~Romaric~Duvignau,~Nikolas~Herbst,~and~David~Gregg%
-\thanks{G.~P.~Ricou and D.~Gregg are with the School of Computer Science and Statistics,
-Trinity College Dublin, Dublin~2, Ireland. E-mail: pedrorig@tcd.ie; david.gregg@tcd.ie.}%
+\author{Gustavo~Pedro~Ricou~and~Romaric~Duvignau%
+\thanks{G.~P.~Ricou is with the School of Computer Science and Statistics, Trinity
+College Dublin, Dublin~2, Ireland. E-mail: pedrorig@tcd.ie.}%
 \thanks{R.~Duvignau is with the Department of Computer Science and Engineering, Chalmers
-University of Technology, Gothenburg, Sweden. E-mail: duvignau@chalmers.se.}%
-% MEASURED, 2026-09-04: spelling this out as "Chair of Computer Science II --- Software
-% Engineering", the full name from his own signature, costs a THIRTEENTH PAGE and with it the
-% mandatory overlength charge. The number alone is what stands. His biography below calls the
-% same chair the Chair of Software Engineering, in his own words, and the two are one place:
-% Kounev holds Computer Science II, whose subject is software engineering. Do not "fix" this
-% without rebuilding.
-\thanks{N.~Herbst is with the Chair of Computer Science II, University of W\"urzburg,
-W\"urzburg, Germany. E-mail: nikolas.herbst@uni-wuerzburg.de.}}
+University of Technology, Gothenburg, Sweden. E-mail: duvignau@chalmers.se.}}
 
+% Two authors, so the running head names both. IEEEtran's \MakeLowercase{\textit{et al.}}
+% is for three or more; it read "Ricou et al." while the paper had four names.
 \markboth{IEEE Transactions on Computers}%
-{Ricou \MakeLowercase{\textit{et al.}}: Faster-than-Light}
-
+{Ricou and Duvignau: Faster-than-Light}
 \maketitle
 
 % Standard shape, in order: context; problem; method; quantitative results; implication. No
@@ -169,7 +162,7 @@ the application thread calls send, the client's I/O thread runs the delivery cal
 and whichever one timestamps must first be scheduled, so the difference inverts when the
 acknowledgment's timestamping delay ($\delta_{\mathrm{ack}}$ in the drawing;
 $\delta_{\mathrm{recv}}$ is the consumer's) exceeds the delivery. The path drawn is \kafka{}'s;
-\redis{} has no second thread and inverts on a larger share of runs (Supplement~S40.3). The
+\redis{} has no second thread and inverts on a larger share of runs (Supplement~S12.3). The
 producer's own timestamps, $t_{\mathrm{sched}}$ and $t_{\mathrm{send}}$, precede the
 acknowledgment, and the span referenced to them never inverts (Table~\ref{tab:spans}).}
 \label{fig:model}
@@ -208,7 +201,7 @@ nothing.
 Both failures arise when the delivery being measured approaches the timescales of the
 measurement mechanism. Scheduling delay is a distribution and timestamp resolution is a
 fixed quantity, and they act differently: on the one axis they share, only one of the two
-can be escaped (Supplement~S16). Sub-millisecond broker paths are where each
+can be escaped (Supplement~S9). Sub-millisecond broker paths are where each
 becomes comparable to the delivery for tooling in current use. Where that happens is not
 where a specification says. The timestamp resolution is one millisecond, but the delay that
 binds is the scheduler's: the last mode of the run-queue stall distribution sits in the
@@ -307,7 +300,7 @@ fine timestamp, which is what $D$ measures up to the consumer's own timestamping
              + \underbrace{S}_{\text{transport proxy}} ,
 \label{eq:tti}
 \end{equation}
-which telescopes to $t_{\mathrm{recv}} - t_{\mathrm{sched}}$ (Supplement~S36 maps every
+which telescopes to $t_{\mathrm{recv}} - t_{\mathrm{sched}}$ (Supplement~S24 maps every
 metric of the corpus onto the span it covers). The first term, the \emph{send lag}, is how
 late the send call ran after the event was due, measured on the producer's own thread. A
 \emph{span} is any difference of two of
@@ -376,7 +369,7 @@ to report one is a settled literature we
 follow~\cite{georges2007rigorous,hoefler2015benchmarking}. What that literature does not do
 is check what its tool discards. Most published comparisons report a median above the
 tool's one-millisecond timestamp resolution, where the deletion arithmetic of
-% Round 55 moved the denominator to Supplement S52.3, where the exhibits are set out. With
+% Round 55 moved the denominator to Supplement S15.3, where the exhibits are set out. With
 % two comparisons it read against its own sentence: the count said both had been placed
 % against the resolution, and the clause after it said one of them cannot be placed at all.
 % The exhibit is the argument; the count is bookkeeping and belongs beside the bookkeeping.
@@ -539,7 +532,7 @@ Both processes read the wall clock (\brk{time.time_ns()}, \textsc{clock\_realtim
 two-host configurations need a common epoch, and the choice is kept on one host so that
 every configuration is measured the same way. On one host \textsc{clock\_monotonic} would
 have guaranteed that consecutive reads never go backwards; we forgo that exclusion and
-establish it from data instead (Section~\ref{sec:mechanism}; Supplement~S39). The Time Stamp Counter (TSC) is a
+establish it from data instead (Section~\ref{sec:mechanism}; Supplement~S15). The Time Stamp Counter (TSC) is a
 per-core cycle register and a separate matter: whether the kernel's clocksource is coherent across virtual CPUs is
 bounded in Section~\ref{sec:threats}. The measured inter-host offset, where two hosts are
 used, is $\interHostOffsetMs$~ms.
@@ -551,7 +544,7 @@ The workload is StatsBomb's open football event data~\cite{statsbomb2023}
 sub-second event times. We replay $3{,}315$ matches, preserving each match's event order
 and scaling its inter-event spacing to the chosen send rate. It stands for small frequent
 ordered messages rather than for any particular deployment, and nothing below depends on
-its content beyond message size and rate (Supplement~S29). The send schedule is measured rather than assumed.
+its content beyond message size and rate (Supplement~S20). The send schedule is measured rather than assumed.
 Pacer jitter is $67$--$69\,\mu$s at p90, and the achieved rate is recorded per run against
 elapsed wall time: the self-validation SPEC and TPC ask of a
 benchmark~\cite{kistowski2015build}, applied to the load generator.
@@ -559,7 +552,7 @@ benchmark~\cite{kistowski2015build}, applied to the load generator.
 The two clients place one timestamp differently, and it matters to every span referenced
 to $t_{\mathrm{recv}}$. \kafka{}'s client deserializes the payload before that timestamp
 and \redis{}'s after it, so such a span carries one client's payload parse and not the
-other's (Supplement~S40.1); Section~\ref{sec:brokers} says what that is worth.
+other's (Supplement~S12.1); Section~\ref{sec:brokers} says what that is worth.
 
 \subsection{The consistency check}
 \label{sec:gate}
@@ -570,7 +563,7 @@ negative.} A condition is usable only if all of its runs survive. Where a condit
 partly rejected we report the fraction of its runs that survived. The one-per-cent figure
 is a threshold, not a discovery. The supplement sweeps it from $0$ to $20\%$ and no rejected
 condition becomes usable anywhere in that range, so the verdicts do not turn on where the
-line was drawn (Supplement~S27).
+line was drawn (Supplement~S18).
 
 The justification is not that a negative is impossible, because for the transport proxy it
 is not (Section~\ref{sec:proxy}). It is that a negative span shows the reference
@@ -596,7 +589,7 @@ estimated on the traced histogram by grouped maximum likelihood and by an exceed
 A slope through survival points would mislead, because the buckets are interval-censored. The
 grouped estimator on log-spaced bins is Virkar and Clauset's, the Hill estimator for
 binned data, and we use their bootstrap for goodness of fit~\cite{virkar2014power}. The
-remaining estimators are inventoried in Supplement~S35. All interval arithmetic is
+remaining estimators are inventoried in Supplement~S24. All interval arithmetic is
 recomputed from the committed artifacts at build time
 by \texttt{scripts/stat\_intervals.py} and \texttt{scripts/tail\_index\_traced.py}. The
 tables reporting it are generated rather than transcribed.
@@ -666,7 +659,7 @@ $t_{\mathrm{out}}-t_{\mathrm{send}}$ & send (chain) & --- & --- & $\spanNegOutpu
 \label{sec:blindspot}
 A rejected corpus can look correct on every conventional check, and the check does not
 catch everything: load-induced inflation that stays positive is physically possible, and
-Supplement~S40 works through two cases from our own campaigns where it was. Causal
+Supplement~S16 works through two cases from our own campaigns where it was. Causal
 consistency is necessary, not sufficient.
 
 \subsection{A rare state, not a wide distribution}
@@ -677,10 +670,10 @@ second state --- the timestamping thread's off-CPU \emph{occupancy}\label{def:oc
 which is what Table~\ref{tab:mechanism} moves --- and $G(\cdot)$ for the survival function
 of the residual delay in that state, and take the consumer's timestamp to lie in the core. Conditioning on $T_{\mathrm{true}}$, the identity of
 Equation~\ref{eq:negspan} becomes, to leading order, the occupancy times the chance that a
-residual stall outlasts the delivery; Supplement~S16 states the form and what it does and
+residual stall outlasts the delivery; Supplement~S9 states the form and what it does and
 does not carry. Load moves $p$ and does not fix it --- two geometries at one $\rho$, rates twofold apart
 (Table~\ref{tab:mechanism}, lower panel) --- so we write $p$ and not $p(\rho)$, and the
-model's content is on the delivery axis rather than the load one (Supplement~S13). The
+model's content is on the delivery axis rather than the load one (Supplement~S5). The
 leading-order step does not assume the two states are independent: a stall delaying both
 branches cancels in $S = D - A$, so what the model sets aside is invisible rather than rare.
 Load changes how \emph{often} the thread that must record the time is not running, not how
@@ -722,7 +715,7 @@ Manipulation & Configuration & Rate & 95\% CI & Factor ($z$)\\
 
 \subsection{The experiments that settle it}
 \label{sec:twostate}
-No pair of configurations in Table~\ref{tab:mechanism} overlaps, and Supplement~S24 draws
+No pair of configurations in Table~\ref{tab:mechanism} overlaps, and Supplement~S12 draws
 them. Real-time priority on the timestamping threads moves occupancy while utilization
 stays fixed (Table~\ref{tab:mechanism}, top). The rate falls by factors of $\rtLowFactor$
 [$\rtLowFactorCI$] and $\rtHighFactor$ [$\rtHighFactorCI$]. The brackets are Katz
@@ -737,7 +730,7 @@ negative-span rate is a function of utilization}, including the queueing form we
 adopted: $\rho$ did not change and the rate changed fiftyfold. Across $\rtPairs$ matched
 pairs spanning $\rtRhoLow$ to $\rtRhoHigh\%$ load the factor
 ranges $\rtFactorLow$--$\rtFactorHigh\times$, every pair with disjoint intervals
-(Supplement~S24).
+(Supplement~S12).
 
 Three further manipulations agree. At $k=6$ both load geometries sit at $\rho = \mechGeomRho$,
 identical to four decimals, and the negative-span rates differ by
@@ -756,18 +749,18 @@ $\tracedRatios$, no consistent sign, nothing fitted. It is filtered to the harne
 processes and shares no probe, estimator or data with the application-level rate. The
 probe is not free: $\untracedRate$ untraced against $\tracedRate$ traced
 ($z = \observerZ$), and the comparison uses the traced configuration's own rate, so
-$\untracedRate$ is the machine's (Supplement~S40.4).
+$\untracedRate$ is the machine's (Supplement~S12.4).
 % Round 47 cut this tier-5 negative result to the one sentence the tier rule allows. The two
-% failed fits, their R-squared and the registered bracket are in S13 in full; the main text
+% failed fits, their R-squared and the registered bracket are in S5 in full; the main text
 % needs only the conclusion, which is that both candidates were parameterized in the wrong
 % variable. v4 folded the sentence into the manipulations paragraph: a one-sentence
 % \paragraph heading cost three lines for a tier-5 result.
 The knee sweep placed conditions where the candidate load laws diverge and both failed,
-because both were parameterized in $\rho$ and $\rho$ is not the variable (Supplement~S13).
+because both were parameterized in $\rho$ and $\rho$ is not the variable (Supplement~S5).
 
 % The payload-sweep figure moved to the supplement, beside the fit it draws. The prose two
 % paragraphs below already said "four points do not earn an equation here" and sent the fit
-% to S15; leaving the picture behind in the main text was the inconsistency. Precedent: the
+% to S8; leaving the picture behind in the main text was the inconsistency. Precedent: the
 % pipeline schematic made the same journey in round 16.
 
 \subsection{What the proxy costs a comparison}
@@ -783,10 +776,10 @@ below $\exposureCrossover$~ms the displacement exceeds the delivery it is a corr
 and sub-millisecond medians are routine in broker benchmarking. $A$ is not a constant:
 across our conditions it spans $\exposureLagLo$--$\exposureLagHi\,\mu$s, putting the
 $10$~ms error at $\exposureErrTen$--$\exposureErrTenHi\%$ and the crossover at
-% S24, not S25: the exposure table and its curve sit at the end of S24, in the block that
-% collects the exhibits moved out of the main text. The pointer had said S25 since the v4
+% S12, not S13: the exposure table and its curve sit at the end of S12, in the block that
+% collects the exhibits moved out of the main text. The pointer had said S13 since the v4
 % renumbering, and round 54's exhibit-verb rule is what caught it.
-$\exposureCrossover$--$\exposureCrossoverHi$~ms (Supplement~S24 bands every row and draws
+$\exposureCrossover$--$\exposureCrossoverHi$~ms (Supplement~S12 bands every row and draws
 the curve).
 
 Two consequences follow, both measured on the gated corpus. First, two \emph{identical}
@@ -797,7 +790,7 @@ delivery it stands for, understating it $\understateFactor\times$ --- a median o
 $\spanRatioConditions$ conditions; the interquartile range runs
 $\understateIQRLo$--$\understateIQRHi\times$ and the worst condition reaches
 $\understateWorst\times$, so half are worse than the headline. It is a median of per-condition ratios, which is not what
-differencing two published medians gives (Supplement~S24). The two brokers' clients timestamp differently, and over
+differencing two published medians gives (Supplement~S12). The two brokers' clients timestamp differently, and over
 $\gapDistortionPairs$ matched workloads the proxy inflates the gap between them
 $\gapDistortionPaired\times$ (interquartile range $\gapDistortionPairedIQR$), narrowing it
 on $\gapDistortionDeflates\%$ of the pairs: a property of the clients, not of the brokers.
@@ -820,7 +813,7 @@ in the post introducing \texttt{runqlat}, the tool we use~\cite{gregg2016runqlat
 components~\cite{bristot2025timerlat}; what we add is which modes, and why the upper one
 sits where it does.
 
-% Round 60: the payload-sweep slope and its withdrawal left for Supplement S15, where the
+% Round 60: the payload-sweep slope and its withdrawal left for Supplement S8, where the
 % post-mortem lives. Both were archaeology -- a claim an earlier version made, and the two
 % estimators and the bootstrap that refuted it -- and the second author asked for much less
 % of it in a reader's path. What this section adds is which modes and why the upper one sits
@@ -832,7 +825,7 @@ $\tracedModeLo$--$\tracedModeHi$~ms, holding $\tracedModeShare\%$ of all wakeups
 standing $\tracedModeRatio\times$ its lower neighbor. Above it the counts collapse rather
 than trail: they fall $\tracedTailFallA\times$ and $\tracedTailFallB\times$ over the next
 \tracedTailOctaves{} octaves and then $\tracedTailFallLast\times$, where a power law falls by
-one factor every time. The same bootstrap rejects a fit here too (Supplement~S15). Neither
+one factor every time. The same bootstrap rejects a fit here too (Supplement~S8). Neither
 that share nor that position has been
 attributed to a scheduler constant before; Figure~\ref{fig:spectrum} is the histogram, and
 no monotone curve passes through it.
@@ -857,7 +850,7 @@ case. The slice is \emph{derived} rather than measured: the kernel's published
 rule~\cite{zhou2025slice} gives $\sliceFactor \times 0.75\,\mathrm{ms} = \baseSliceMs$~ms
 on the $\testbedCpus$ cores the campaign's own load geometry recovers, over a $\tickMs$~ms
 scheduler tick, and no scheduler tunable is written anywhere in the archived campaign
-(Supplement~S41). That tick is the kernel's timer period, not the timestamp resolution $\tau$ of
+(Supplement~S16). That tick is the kernel's timer period, not the timestamp resolution $\tau$ of
 Section~\ref{sec:metrics}; both are $1$~ms here by coincidence of configuration. A thread
 descheduled at the wrong instant therefore reads its clock about a slice late, six to
 thirty times a $0.1$--$0.5$~ms delivery, and the tick is why the mode is a band rather
@@ -878,7 +871,7 @@ distributed mode is discussed in Section~\ref{sec:limitations}.
 In \brk{LocalWorker.java}:294 the end-to-end latency is \texttt{now - publishTimestamp},
 where \texttt{now} is read in the consumer and \texttt{publishTimestamp} is \kafka{}'s
 producer-set \texttt{CreateTime}, itself a millisecond value. That difference is then
-promoted to microseconds (Supplement~S37 quotes the call). A sample then enters the
+promoted to microseconds (Supplement~S25 quotes the call). A sample then enters the
 histogram only if it passes the test in \brk{WorkerStats.java}:95 ---
 \texttt{if (endToEndLatencyMicros > 0)} --- which we call the \emph{admission condition}.
 The message is counted as received a few lines earlier, but a non-positive latency is
@@ -945,7 +938,7 @@ the sign the law below predicts. What moves retention is where the producer's se
 instants fall against the \emph{grid}: the instants, one millisecond apart, at which the
 timestamp changes value. A sample survives when its delivery crosses a grid instant,
 which for $T_{\mathrm{true}} < \tau$ happens with probability $T_{\mathrm{true}}/\tau$
-(Supplement~S42 draws the geometry):
+(Supplement~S17 draws the geometry):
 \begin{equation}
 \label{eq:retention}
 \text{retention} \;=\; \min\!\left(1,\; \frac{T_{\mathrm{true}}}{\tau}\right)
@@ -962,26 +955,26 @@ $\tau = 1$~ms.
 Payload moves $T_{\mathrm{true}}$, and with it the fraction a run retains. Where the send
 interval is commensurate with the tick the retained fraction is confined to a few values
 rather than a continuum, so moving $T_{\mathrm{true}}$ moves a configuration between them;
-Supplement~S22 sets that structure out and draws all three payloads against it; S23 tests it
-configuration by configuration against the permutation null S44 constructs. The prediction was registered before the runs and it came
+Supplement~S10 sets that structure out and draws all three payloads against it; S11 tests it
+configuration by configuration against the permutation null S14 constructs. The prediction was registered before the runs and it came
 true: replicate spread collapses to $\flipSpreadThirtyTwo$ points at $32$~KB and re-opens
 to $\flipSpreadSixtyFour$ at $64$~KB, a
 boundary crossed in both directions by one manipulated variable. One registered detail
 failed --- the $32$~KB arm pins at $\flipPinThirtyTwo\%$ retention, not on the predicted
 vertex at $\flipVertexTwoThirds\%$ ---
-% The payload-flip figure moved to the supplement in round 43, beside S22, which is where
+% The payload-flip figure moved to the supplement in round 43, beside S10, which is where
 % the spread rule it confirms is set out in full. Same journey as the pipeline schematic in
 % round 16 and the payload-sweep law earlier in this round, and for the same reason: every
 % number the panels carry is in the sentence above them, so the figure restates rather than
 % shows, and four biographies would not otherwise fit inside twelve pages.
 
 % Round 47 cut the sixty-three-cell campaign's tally to its conclusion. It was two sentences
-% of tier-4 evidence -- six registered predictions, three falsifiers fired -- and S26 gives
+% of tier-4 evidence -- six registered predictions, three falsifiers fired -- and S7 gives
 % every one of them prediction by prediction, so the main text was carrying an index to a
 % table rather than a result. The page it bought went to the two citations round 46 asked
 % for, one of them a paper in this journal on this section's own subject.
 and a larger campaign leaves per-send jitter rather than accumulation standing
-(Supplement~S26).
+(Supplement~S7).
 
 \subsection{Our own harness, and the sign channel}
 \label{sec:generality}
@@ -989,7 +982,7 @@ To show the deletion is not an artifact of one JVM, we reproduced the admission 
 independent Python harness sharing no code with the benchmark. On one clock it recorded
 \textbf{zero} negative differences across $\harnessOneClockSamples$
 samples, as a causal chain requires, and none across two hosts either
-(Supplement~S11). The grid behavior reappeared intact. At
+(Supplement~S22). The grid behavior reappeared intact. At
 $\harnessXHostRate$~msg/s --- the \harnessXHostArmClass{} configuration, the only one of the
 three whose own grid spread does not swamp the comparison --- cross-host retention wandered
 from $\harnessXHostRetLo$ to $\harnessXHostRetHi\%$ over four replicates, where the same
@@ -1015,7 +1008,7 @@ produce exactly one negative value, $-1000\,\mu$s, and no other. That is precise
 corpus contains. The \kafka{}-driver span, floored the same way but taken inside one
 JVM, never inverts at all. Clock discipline was clean at every logged minute, which is the
 point --- this failure needs no misbehaving clock, only two of them and a floor
-(Supplement~S43).
+(Supplement~S14).
 
 \section{Evidence Across Tools}
 \label{sec:tools}
@@ -1042,10 +1035,10 @@ nothing missing: \texttt{fio} and \texttt{btt} substitute zero and one nanosecon
 value never measured enters the distribution. At the other end, \harnessCountingWord{} counts
 its discards in a metric whose description names the cause~\cite{rezolus}, which is what
 makes the rule of Section~\ref{sec:authors} practical rather than aspirational.
-Supplement~S37 gives the registry tool by tool, with the source line each finding sits on and
+Supplement~S25 gives the registry tool by tool, with the source line each finding sits on and
 one entry that corrects a misreading of our own. The class is not confined to benchmarks:
 in November 2025 the audited broker's own coordinator metrics adopted the same disposal,
-clamping negative durations to zero with no counter~\cite{kafka19888} (Supplement~S37).
+clamping negative durations to zero with no counter~\cite{kafka19888} (Supplement~S25).
 The admission condition also survives downstream: $\forkUnchanged$ of the $\forkChecked$
 public forks we could read carry the expression unchanged (surveyed \forkCheckedOn{}), which
 bounds how few have diverged rather than how many chose it.
@@ -1063,14 +1056,14 @@ one configuration choice dwarfs it. On gated artifacts the two sit within a mill
 the transport proxy (TOST against a $\tostMargin$~ms margin, $p < 0.001$, across
 $\tostLevels$ levels), so it is not a purchasing argument. The one condition that reverses
 the ordering is a consumption pattern rather than the broker, and a co-located testbed ---
-the standard evaluation environment --- hides it (Supplement~S25).
+the standard evaluation environment --- hides it (Supplement~S13).
 
 Our own measurement is not symmetric across that comparison, and the rule below says to
 declare it: \kafka{}'s client deserializes the payload before $t_{\mathrm{recv}}$ and
 \redis{}'s after it, worth $\spanHandlingWorstUs\,\mu$s or $\spanHandlingSharePct\%$ of
 \redis{}'s median delivery. That is a fiftieth of the equivalence margin, it runs
 \emph{against} the per-broker difference of Table~\ref{tab:spans} rather than producing it,
-and \tti{} is free of it (Supplement~S40.1).
+and \tti{} is free of it (Supplement~S12.1).
 
 \subsection{For benchmark authors}
 \label{sec:authors}
@@ -1093,7 +1086,7 @@ campaign the rate costs something, and ours cost us a result.
 \textbf{Say which physical event each timestamp marks.} A timestamp is a clock read,
 not the event it stands for, and the gap between them is where both failures live. Publish
 where in the code each one is taken and what has already happened when it runs: our own two
-clients differ by a payload parse (Supplement~S40.1), and no reader could have known.
+clients differ by a payload parse (Supplement~S12.1), and no reader could have known.
 
 \textbf{Name the span you are subtracting.} A difference of two timestamps is a latency only if
 the first event causally precedes the second. An acknowledgment at the producer does not
@@ -1146,7 +1139,7 @@ resolution and the synchronization state, none recoverable afterwards. A summary
 $\ombGridRetentionMin\%$ of samples is typographically identical to one from all.
 Neither half of the rule is ours: OWAMP has attached an error estimate to every timestamp
 since 2006, and records a packet timestamped in the future unaltered rather than discarding
-it~\cite{rfc4656} (Supplements~S49 and~S50 give the precedents). The sign is the channel:
+it~\cite{rfc4656} (Supplements~S31 and~S32 give the precedents). The sign is the channel:
 negative means the reference timestamp failed, computes-to-zero means the resolution
 failed, and one unsigned total cannot distinguish them.
 
@@ -1166,7 +1159,7 @@ and achieved rates disagreed.
 % and costs no reference: the supplement cites mq-bench where the bibliography is uncapped.
 None of this is hypothetical: \brk{mq-bench}, a 2026 framework for the same comparisons,
 already timestamps in nanoseconds and subtracts a span that cannot invert, both choices made
-and neither argued for (Supplement~S52.2).
+and neither argued for (Supplement~S15.2).
 
 \subsection{The limits of a better clock}
 \label{sec:betterclock}
@@ -1180,11 +1173,11 @@ record at native resolution, count what is discarded, dither the send instant, a
 is synchronization quality the frontier (Section~\ref{sec:generality}).
 % Round 47 cut the redesign clause to its pointer. That a consumer-to-producer acknowledgment
 % removes skew but not this failure, and that every one-way-avoiding scheme rests on an
-% unstated assumption, are both worked through in S47 and S40.6; the main text needs the
+% unstated assumption, are both worked through in S29 and S12.6; the main text needs the
 % conclusion, which is the last sentence of this paragraph.
 Resolution is the lesser half, and a distinct one. A microsecond timestamp retires
 Equation~\ref{eq:retention}'s deletions here and moves the grid to faster paths, but the
-admission condition and genuine negatives survive it (Supplements~S47 and~S40.6). A better
+admission condition and genuine negatives survive it (Supplements~S29 and~S12.6). A better
 clock alone therefore converts an uncounted \emph{resolution} failure into an uncounted
 \emph{timestamping} one.
 
@@ -1203,11 +1196,11 @@ rather than ruled out. It did not produce the \redis{}-driver
 negatives, which the driver's own timestamp accounts for exactly
 (Section~\ref{sec:generality}), but it is why we claim no cross-host bound in general. The
 skew threshold of Section~\ref{sec:related_time} does not transfer to a loaded machine
-either (Supplement~S51).
+either (Supplement~S33).
 
 \label{sec:limitations}
 \paragraph{Scope, and the alternatives eliminated} Three widely used runtimes document this structure without drawing its consequence for a
-cross-process subtraction (Supplement~S48).
+cross-process subtraction (Supplement~S30).
 The mechanism requires a timestamping path that can be preempted. Designs that pin a thread to
 a dedicated core and busy-poll, or that timestamp in hardware, remove the preempted
 state the mechanism depends on, and we make no claim about them. Within our own
@@ -1221,7 +1214,7 @@ scheduling class. Stress: transport $\payloadTransportFactorRound\times$ longer
 \brk{sched_switch} histogram predicts the rate to within a third, unfitted. One rival is
 not the scheduler's --- the timestamp is a CPython call, so it waits on the interpreter lock
 too, invisibly to a tracepoint probe. That one is bounded because the kernel-only estimator
-brackets the observed rate ($\tracedRatios$) instead of under-predicting (Supplement~S40.4).
+brackets the observed rate ($\tracedRatios$) instead of under-predicting (Supplement~S12.4).
 
 % Round 47 tried to compress this paragraph for the page budget and put both of its pinned
 % clauses back. "both of which" is the plural antecedent for the two admitted clocksources,
@@ -1233,14 +1226,14 @@ twice. The probe's $\clockIncrementNs$~ns increment admits only
 \clockAdmitted{}, both of which the kernel uses solely where cross-CPU coherence is
 asserted; and the corpus closes the channel again on headroom, not on shared endpoints, since
 the send-referenced span holds a floor $\spanOffsetMargin\times$ too high to explain the
-deepest negative span (Supplement~S39).
+deepest negative span (Supplement~S15).
 
 The mechanism's constants are those of one EEVDF-era kernel (6.8); CFS-era schedulers, the
 regime Lozi et al.\ document, may shift them. The deletion arithmetic is demonstrated on one
 benchmark and reproduced in one independent harness. The \harnessAuditedWord{} tools of
 Section~\ref{sec:tools} are readings of source rather than measured deployments. The
 benchmark's distributed mode failed on every attempt, so its cross-host exposure rests on
-source reading and our own two-host harness (Supplement~S34). Exposure depends on a
+source reading and our own two-host harness (Supplement~S24). Exposure depends on a
 deployment's path latency and producer rate. That is why we recommend publishing a
 retention rate rather than calling any published number wrong.
 
@@ -1256,12 +1249,14 @@ arithmetic the operator never sees. Neither needs a better clock, and neither is
 to detect. Check the spans whose endpoints are timestamped in different places, count what
 your tool throws away, and publish the retention rate beside the number.
 
+% The four correspondents thanked here by name were cut on 2026-09-10. Each had
+% replied once in August and none since; the lead author's instruction is that a
+% paper thanks people who are still in the conversation. What they gave is still in
+% the paper -- the same-clock contrast, the kernel-tracing pointers, the
+% probe-placement argument and the resolution question all shaped sections that
+% remain -- and the citations they led to are unchanged. The paragraph below is not
+% optional: IEEE requires disclosure of generative-AI assistance.
 \section*{Acknowledgment}
-
-The authors thank J.~Kunkel, for the same-clock protocol contrast, the
-offset-estimation route and the measurement-model figure; M.~Luthra, for the kernel-tracing
-pointers; M.~Kogias, for the probe-placement argument; and L.~Tratt, for the question about
-timestamp resolution.
 
 In accordance with IEEE policy, Anthropic's Claude assisted with code development and
 verification, manuscript editing, and literature search. Experimental design, scientific
@@ -1309,69 +1304,24 @@ evidence of --- in computer systems, environmental measurement and sports analyt
 pre-registration and physical-consistency auditing.
 \end{IEEEbiographynophoto}
 
-% OWED: a biography for D. Gregg. IEEE wants one per author and the page count includes it.
+% DUVIGNAU: CONFIRMED BY HIM on 2026-09-04. The entry was drafted from his own public
+% pages (chalmers.se/en/persons/duvignau and cse.chalmers.se/~duvignau, read 2026-09-02)
+% under the rule used for all of them -- draft it from the public record so the person's
+% task is CORRECTING rather than writing -- and he returned it with one change: the unit
+% is the NETWORK AND SYSTEMS unit, not "Computer and Network Systems". The Chalmers page
+% carries the longer name; he does not. His words win. That rule paid three times over
+% four entries, two of which have since been withdrawn.
 %
-% MARGIN: measured, twice. The entry below overruns twelve pages by a handful of lines if it
-% grows much past seventy words. Rebuild before adding to it.
-%
-% The entry below is assembled from HIS OWN PUBLIC PAGES (tcd.ie/scss staff profile and the
-% Trinity research profile, read 2026-08-31), not from anything he has told us. A biography is
-% the one part of a paper where a person's own facts are asserted in his name; drafting from a
-% public page turns his task from writing into correcting, which is the point, but it does not
-% make the facts ours to assert.
-%
-% STILL UNCONFIRMED as of 2026-09-04, and it is now the ONLY one. Herbst sent his own text on
-% the 4th and Duvignau confirmed his the same day with one correction. Gregg was sent a
-% skeleton on 31 August and the full draft on 4 September and has replied to neither; his last
-% message in the thread is 27 August. This comment used to say the entry stays commented out
-% until he confirms -- it has not been commented out for many rounds, and saying so was worse
-% than saying nothing. It is live, it is unconfirmed, and it goes into a public archive in
-% that state by an explicit decision of the lead author, who judged the delay worse than the
-% risk. A Zenodo version and an arXiv replacement each cost nothing, which is what makes that
-% the right call rather than a gamble.
-%
-% ONE THING HE MUST SETTLE: his title. The Trinity research profile and current summaries say
-% PROFESSOR; the body text of the staff page still reads "a lecturer in the Department of
-% Computer Science", which appears to be stale self-written copy. Three sources, two answers.
-% We asked on 4 September rather than picking, and PROFESSOR is what stands in the meantime,
-% because it is what the maintained page says and the other is self-written copy that has not
-% been touched in years. If he corrects it, correct it here and cut a new version.
-%
-\begin{IEEEbiographynophoto}{David Gregg}
-received the Ph.D.\ degree in computer science from the Technische Universit\"at Wien,
-Vienna, Austria, in 2001, for work on compiling for instruction-level-parallel
-architectures. He is a Professor in the School of Computer Science and Statistics, Trinity
-College Dublin, Ireland, and a Fellow of the Irish Computer Society. His research concerns
-compilers, algorithms and software optimization for multicore and vector computers, and
-low-resource techniques for deep neural networks.
-\end{IEEEbiographynophoto}
-
-% DUVIGNAU: CONFIRMED BY HIM on 2026-09-04. The entry was drafted from his own public pages
-% (chalmers.se/en/persons/duvignau and cse.chalmers.se/~duvignau, read 2026-09-02) under the
-% rule used for all four -- draft it from the public record so the person's task is
-% CORRECTING rather than writing -- and he returned it with one change: the unit is the
-% NETWORK AND SYSTEMS unit, not "Computer and Network Systems". The Chalmers page carries the
-% longer name; he does not. His words win.
-%
-% That is the third time the rule has paid: three facts wrong in Herbst's entry, one in this
-% one. Gregg's is the only entry no author has yet read back, and its open question -- his
-% title -- is recorded below.
-%
-% HERBST: NO LONGER A DRAFT. He sent his own short biography and ORCID on 2026-09-04, and
-% the entry below is his text, first-party, with only the changes IEEEtran's format forces:
-% the header carries the name, so the sentence starts from the degree, and the list of
-% research topics takes a serial "and". His three facts replace three of ours, and all three
-% of ours were wrong or unsupported:
-%
-%   - the doctoral YEAR we deliberately left blank rather than infer from the 2019 SPEC
-%     dissertation award is 2018, so the award year was indeed not the degree year;
-%   - his SPEC role is VICE-CHAIR of the SPEC Research Cloud Group, not co-chair;
-%   - his research topics are his own list, not the three we read off a staff page.
-%
-% ORCID 0000-0003-3462-6426, recorded here for the submission form; IEEEtran does not print
-% it. He also sent a photograph. All four biographies are \...nophoto, which is a page-budget
-% decision at twelve pages and not a judgment about his; it is kept on file and the four
-% would move together or not at all.
+% WHY THERE ARE TWO BIOGRAPHIES. The paper carried four names until 2026-09-10. The last
+% author withdrew on 8 September on his own standard for what he can take public
+% responsibility for in a deposited record he has not audited; the third asked on the
+% 10th for his name to come off the work entirely, having read the manuscript and passed
+% it three days earlier, on an objection to how the work was produced rather than to what
+% it reports. Neither withdrawal moved a number, a figure or a claim, and neither is a
+% reason to delete what they contributed: the load-generator rule still closes the paper,
+% the timer-characterisation citation stays in Section III, and Figure 1, the thread
+% drawing and the deletion histogram stay with the gates that pin them. Do not restore a
+% byline from an old draft; tests/unit/test_front_matter_agrees.py pins it at two.
 \begin{IEEEbiographynophoto}{Romaric Duvignau}
 received the Ph.D.\ degree in computer science from the University of Bordeaux, France, in
 2015, for work on the maintenance and simulation of dynamic random graphs. He is an
@@ -1381,12 +1331,5 @@ data-driven algorithms, the monitoring of large-scale distributed systems, and s
 analytics for cyber-physical systems.
 \end{IEEEbiographynophoto}
 
-\begin{IEEEbiographynophoto}{Nikolas Herbst}
-received the Ph.D.\ degree from the University of W\"urzburg, Germany, in 2018. He is a
-research group leader at the Chair of Software Engineering, University of W\"urzburg, and
-serves as elected vice-chair of the SPEC Research Cloud Group. His research topics include
-predictive data analysis, elasticity, auto-scaling, resource management, and performance
-evaluation of virtualized environments.
-\end{IEEEbiographynophoto}
 
 \end{document}

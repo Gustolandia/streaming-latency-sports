@@ -6,11 +6,13 @@ circulated PDF is a durable public statement of authorship that a later correcti
 catch up with.
 
 What is worth testing is not that pdflatex runs -- it does, and the build script's own
-`--check` says so -- but the two decisions the script encodes. **What comes out**: the byline,
-its affiliation footnotes and the author biographies. **What stays**: the acknowledgment, and
-the two names that are credits rather than claims. A test that only counted removals would
-pass on a script that stripped the acknowledgment too, which would erase a debt rather than a
-claim.
+`--check` says so -- but the two decisions the script encodes. **What comes out**: the
+byline, its affiliation footnotes and the author biographies. **What stays**: the
+acknowledgment. A test that only counted removals would pass on a script that stripped the
+acknowledgment too, and the section carries a disclosure the journal requires.
+
+Two authors withdrew on 2026-09-08 and 2026-09-10, so the surnames this checks are now
+two rather than four, and the exception list for in-body credits went with them.
 """
 import subprocess
 import sys
@@ -116,7 +118,7 @@ class TestTheRealSourcesStrip:
         target, _ = bwa.prepare("paper", out_dir=str(temp_dir))
         text = Path(target).read_text(encoding="utf-8")
         assert "Acknowledgment" in text or "ACKNOWLEDGMENT" in text.upper(), \
-            "the acknowledgment thanks people for specific help and must survive"
+            "the acknowledgment carries the disclosure IEEE requires and must survive"
 
     def test_the_paper_keeps_its_title_and_abstract(self, temp_dir):
         target, _ = bwa.prepare("paper", out_dir=str(temp_dir))
@@ -136,19 +138,21 @@ class TestOffendingNames:
         pdf = temp_dir / "x.pdf"
         pdf.write_bytes(b"%PDF-1.4")
         monkeypatch.setattr(subprocess, "run",
-                            lambda *a, **kw: _Result(0, "by G. P. Ricou and N. Herbst"))
-        assert bwa.offending_names(str(pdf)) == ["Herbst", "Ricou"]
+                            lambda *a, **kw: _Result(0, "by G. P. Ricou and R. Duvignau"))
+        assert bwa.offending_names(str(pdf)) == ["Duvignau", "Ricou"]
 
-    def test_the_allowed_credits_do_not_count(self, monkeypatch, temp_dir):
-        """`Brendan Gregg` is cited work and `N. Herbst raised the comparison` is a credit.
+    def test_a_cited_authors_name_is_not_a_byline(self, monkeypatch, temp_dir):
+        """`Brendan Gregg` is cited work: the author of the `runqlat` post.
 
-        Neither asserts authorship, and a checker that flagged them would push an author into
-        deleting a citation to satisfy a byline rule.
+        He shared a surname with a co-author who has since withdrawn, and the script used to
+        carry an exception list so that the citation would not be read as a byline. With that
+        author gone the surname is simply not checked, and this pins the outcome rather than
+        the mechanism -- a checker that flagged a citation would push an author into deleting
+        it to satisfy a byline rule.
         """
         pdf = temp_dir / "x.pdf"
         pdf.write_bytes(b"%PDF-1.4")
-        text = ("Brendan Gregg reported it as bimodal. "
-                "N. Herbst raised the comparison.")
+        text = "Brendan Gregg reported it as bimodal."
         monkeypatch.setattr(subprocess, "run", lambda *a, **kw: _Result(0, text))
         assert bwa.offending_names(str(pdf)) == []
 

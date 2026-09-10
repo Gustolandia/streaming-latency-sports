@@ -641,12 +641,13 @@ later correction does not catch up with. `paper.pdf` and `supplement.pdf` are un
 journal submission must name its authors --- and `scripts/build_without_authors.py` writes the
 circulating pair into `build/no_authors/`.
 
-What comes out is the byline, its affiliation footnotes and the author biographies. What stays
-is the acknowledgment, because it thanks people for specific help, which is true whoever the
-authors turn out to be: **removing a byline withdraws a claim that is open; removing a credit
-would erase a debt that is not.** Two in-body names stay for the same reason and are listed in
-the script with their justification --- "Brendan Gregg", who is cited work rather than the
-co-author of that surname, and "N. Herbst raised the comparison".
+What comes out is the byline, its affiliation footnotes and the author biographies. What
+stays is the acknowledgment: **removing a byline withdraws a claim that is open; removing a
+credit would erase a debt that is not.** The script used to carry an exception list for two
+in-body names that were credits rather than claims --- "Brendan Gregg", cited work rather
+than the co-author who shared his surname, and one contributor's credit line. Both of those
+authors withdrew on 2026-09-10 (see 1bj), so neither surname is checked any more and the
+list went with them rather than lingering as an exception to a rule it no longer meets.
 
 `--check` runs `pdftotext` over both outputs and reports any surname that survived, and it
 reports "not verified" rather than "clean" when `pdftotext` is missing, because a promise
@@ -1109,6 +1110,37 @@ The same round added Rodr\'iguez, Casta\~neda and Pi\~na's causal-observation th
 S48. Its three authors, their institutions and its exact claim came from the PDF's first
 page rather than from the referee report that recommended it. **The remedy for building a
 citation from a note is not to be more careful with notes; it is to open the paper.**
+
+
+**1bj. Two authors withdrew, and the rule is that a byline is a claim while a contribution
+is a fact.** On 2026-09-08 the last author asked to be removed: he could not take public
+responsibility for a deposited record he had not audited to his own standard. On 2026-09-10
+the third author asked for his name off the work, GitHub and Zenodo included, three days
+after reading the manuscript and passing it --- his objection is to how the work was
+produced rather than to what it reports. The lead author actioned both the same day.
+
+**What came out** is every surface that asserts somebody vouches for this work: byline,
+affiliation footnotes, biographies, `CITATION.cff`, both `.zenodo*.json` creator lists, the
+README citation block. **What did not come out is anything either of them was right about.**
+The load generator is still verified rather than assumed and that rule still closes the
+paper; the timer-characterisation citation stays in Section~III; the ComBench comparison
+stays in S52 with its credit line removed; Figure~1, the thread drawing and the deletion
+histogram stay, and so do the gates that pin them --- only the class name
+`TestTheCoAuthorsRequirementsAreMet` changed, to `TestTheReadersRequirementsAreMet`.
+**Deleting correct work to finish a name removal would be a second wrong.**
+
+The two requests are not the same request and are not treated the same. A withdrawal of
+authorship leaves the historical record alone: the changelog still says what v2.7.0 and
+v3.0.0 contained, and a new entry records the change rather than the past being edited to
+match the present. A request to be unmentioned is honoured everywhere, historical entries
+included. Reading which one you have been sent is the whole of it.
+
+**The gate is positive, and that is the point.** `tests/unit/test_author_withdrawals.py`
+pins the byline at exactly two names, two affiliation footnotes and two biographies, so a
+restoration from an old draft breaks a test. It does **not** work by forbidding the departed
+surnames: a gate that spelled out a name somebody asked to have removed would defeat its own
+purpose, and would put that name back into the repository in the one file guaranteed to be
+read. When the thing you are enforcing is an absence, pin the shape and not the string.
 
 
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold

@@ -1,11 +1,11 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 title: "Faster-than-Light: code and analysis for latency measurement artifacts in streaming benchmarks"
-# Order matches the manuscript byline and is not alphabetical: lead author first, the two
-# middle places by how far into the argument each contribution reached, and Gregg last in the
-# senior slot. Two ORCIDs are held first-party -- Herbst sent his, and Ricou's is the one on his
-# own arXiv account. Duvignau's and Gregg's are absent rather than guessed, which is the same
-# rule the biographies follow.
+# Order matches the manuscript byline and is not alphabetical: lead author first. The list
+# held four names until 2026-09-10, when the last author's withdrawal of 8 September was
+# actioned and a third author asked to be removed from the work. Neither is named here.
+# The one ORCID is Ricou's, from his own arXiv account; Duvignau's is absent rather than
+# guessed, which is the same rule the biographies follow.
 authors:
   - family-names: "Ricou"
     given-names: "Gustavo Pedro"
@@ -16,15 +16,6 @@ authors:
     given-names: "Romaric"
     email: "duvignau@chalmers.se"
     affiliation: "Department of Computer Science and Engineering, Chalmers University of Technology"
-  - family-names: "Herbst"
-    given-names: "Nikolas"
-    email: "nikolas.herbst@uni-wuerzburg.de"
-    affiliation: "Chair of Computer Science II, University of Würzburg"
-    orcid: "https://orcid.org/0000-0003-3462-6426"
-  - family-names: "Gregg"
-    given-names: "David"
-    email: "david.gregg@tcd.ie"
-    affiliation: "School of Computer Science and Statistics, Trinity College Dublin"
 abstract: "Two failure modes of sub-millisecond latency benchmarking: causality-violating inversions from scheduling stalls, and silent sample deletion governed by a grid law in the send-interval-to-timestamp-quantum ratio. Code, campaigns, and a suite that recomputes every figure from committed data."
 version: "3.0.0"
 url: "https://github.com/Gustolandia/streaming-latency-sports"
@@ -56,13 +47,6 @@ preferred-citation:
     - family-names: "Duvignau"
       given-names: "Romaric"
       affiliation: "Department of Computer Science and Engineering, Chalmers University of Technology"
-    - family-names: "Herbst"
-      given-names: "Nikolas"
-      affiliation: "Chair of Computer Science II, University of Würzburg"
-      orcid: "https://orcid.org/0000-0003-3462-6426"
-    - family-names: "Gregg"
-      given-names: "David"
-      affiliation: "School of Computer Science and Statistics, Trinity College Dublin"
   journal: "IEEE Transactions on Computers"
   year: 2026
   volume: "TBD"

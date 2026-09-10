@@ -129,11 +129,14 @@ retelling and its judgments are the lead author's.}}
 
 \maketitle
 
-This document is the supplementary material for the paper named above, and it is not part
-of the main submission. It is written as a postmortem by the lead author. Part~I retells how
-the results were reached, in the order the work happened and with everything that was
-withdrawn on the way; Part~II holds the experiments in full; Part~III the audits and
-derivations; Part~IV the literature the paper stands against, in full. Main-text references
+This document is the supplementary material for the paper named above, and it is not
+part of the main submission. It is written as a postmortem by the lead author.
+Part~I --- \emph{what we set out to measure, and what broke} --- retells the work in the
+order it happened, with everything withdrawn along the way. Part~II --- \emph{the
+mechanism, and the law it produces} --- is the argument. Part~III --- \emph{apparatus,
+data and tables} --- is reference material, meant to be looked things up in rather than
+read through. Part~IV --- \emph{the literature, and what it already requires} --- places
+the result. Main-text references
 of the form ``Supplement~S$n$'' resolve to the correspondingly numbered section here, and
 the artifact's \texttt{docs/supplement\_index.md} records where each section came from.
 
@@ -781,7 +784,7 @@ events, has no affected events at any window.}
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/e1_end_to_end_lag.pdf}
-\caption[Withdrawn]{\textbf{Withdrawn.} (a)~End-to-end delay against concurrency as originally measured.
+\caption[Withdrawn: the end-to-end gap as first decomposed]{\textbf{Withdrawn.} (a)~End-to-end delay against concurrency as originally measured.
 (b)~The decomposition that appeared to place the whole gap in producer send lag. Both
 panels are retained as evidence for the main text: the runs behind them matched
 a median of seven events each, so the apparent per-event offset is a per-run start-up cost.
@@ -2989,6 +2992,33 @@ negatives in $\harnessCrossHostSamples$ samples, an intact grid, and a deleted f
 coupled to clock-offset drift. The two
 statements are complementary and we keep them distinct: the pattern's cross-host behavior is
 measured; OMB's own distributed binary remains unmeasurable by us.
+
+\paragraph{It has accepted a measurement-validity fix before, which is why the remedy is
+not a hopeful one} In March 2022 a contributor reported that the load generator did not
+record publish delay --- the gap between an event's scheduled send instant and its actual
+one --- arguing that ``whatever prevent the load generation to work as expected should be
+recorded and weighted correctly [\ldots] otherwise inability to keep-up with the expected
+load will pass unnoticed in the percentiles ocean''~\cite{omb2022coordinated}. The report
+was accepted and the delay is now recorded. Two things follow. The maintainers act on a
+measurement-validity argument when one is put to them, so the rules of
+Section~\mainAuthors{} are addressed to a project that has taken this kind of correction
+before rather than to an indifferent one. And the admission condition came through that
+revision untouched: a review explicitly about what the harness fails to record left in
+place a filter that deletes what it did record. The two defects look nothing alike from
+inside the code, which is the argument of this paper in one repository's history.
+
+\paragraph{The histograms it discards after reading them} In March 2026 a second
+contributor asked for the HDR histograms to be serialized into the result JSON, observing
+that the harness ``already maintains HDR Histograms internally throughout each run and
+discards them after extracting the summary scalars'', and that summary scalars alone
+cannot say whether a measured difference is significant ``or within the noise floor of the
+measurement''~\cite{omb2026histogram}. We record it because it is this paper's argument
+arriving from the other side, and because of what it would and would not fix. A serialized
+histogram supports every test the request names --- Mann--Whitney, Kolmogorov--Smirnov,
+bootstrapped percentile intervals --- computed over a population whose size is still not
+stated, because the admission condition runs before the histogram is filled. The export is
+worth having. It carries the deletion into a new container unless the retained fraction
+travels with it.
 
 \paragraph{What we do not claim} That any published result obtained with this benchmark is wrong.
 We have shown that the deletion happens, that it is large, that it is irreproducible, and that it

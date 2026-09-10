@@ -2651,8 +2651,13 @@ class TestCausalityFramingIsWithdrawn:
         # have made it pass on an empty function, which is the failure mode it exists for.
         start = source.index("def plot_mechanism(")
         body = source[start:source.index("def plot_", start + 1)]
-        for sym in ("t_{sched}", "t_{send}"):
-            assert sym in body, f"plot_mechanism() must draw {sym} on the producer timeline"
+        # Round 66 set every figure subscript roman to match the body text (standard A1n), so
+        # the symbol is pinned by its name rather than by one spelling of it. What this checks
+        # is that the producer's own timestamps are drawn on the timeline, which is the point;
+        # how they are typeset is A1n's business and is gated there.
+        for sym in ("sched", "send"):
+            assert "t_{\\mathrm{%s}}" % sym in body, \
+                f"plot_mechanism() must draw t_{sym} on the producer timeline"
 
         from pypdf import PdfReader
         rendered = PdfReader(str(REPO / "docs" / "results" / "figures" /

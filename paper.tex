@@ -835,7 +835,8 @@ no monotone curve passes through it.
 \includegraphics[width=\columnwidth]{docs/results/figures/stall_spectrum.pdf}
 \caption{\textbf{Traced run-queue stalls are trimodal.} $\tracedEvents$
 wakeups, \texttt{bpftrace} log$_2$ buckets, modes shaded. The jitter core sits at a few
-microseconds and a second mode at $128$--$256\,\mu$s; the third, holding
+microseconds and holds $\tracedModeShareA\%$ of all wakeups; a second mode at
+$128$--$256\,\mu$s holds $\tracedModeShareB\%$; the third, holding
 $\tracedModeShare\%$ of all wakeups, lands on the scheduler's derived base slice of
 $\baseSliceMs$~ms. A power law of any index above one would have to descend monotonically
 across this axis.}
@@ -1159,7 +1160,12 @@ and achieved rates disagreed.
 % and costs no reference: the supplement cites mq-bench where the bibliography is uncapped.
 None of this is hypothetical: \brk{mq-bench}, a 2026 framework for the same comparisons,
 already timestamps in nanoseconds and subtracts a span that cannot invert, both choices made
-and neither argued for (Supplement~S15.2).
+and neither argued for (Supplement~S15.2). Nor is it unwelcome: the tool we audit
+accepted a coordinated-omission report and now records the publish delay, and the
+admission condition came through that revision untouched; a later request to
+serialize the histograms it discards after reading their summaries would carry the
+deletion into a new container unless the retained fraction travels with it
+(Supplement~S22).
 
 \subsection{The limits of a better clock}
 \label{sec:betterclock}
@@ -1256,6 +1262,12 @@ your tool throws away, and publish the retention rate beside the number.
 % probe-placement argument and the resolution question all shaped sections that
 % remain -- and the citations they led to are unchanged. The paragraph below is not
 % optional: IEEE requires disclosure of generative-AI assistance.
+% R4 (round 66) asked whether this heading should read "Disclosure", since the
+% section now holds only the generative-AI statement and a reader meeting
+% "Acknowledgment" expects thanks. It stays. IEEE's own template names this
+% section, its generative-AI policy puts the disclosure inside it, and the
+% paragraph says what it is in its first five words, before the friction can
+% build. scripts/build_without_authors.py and three gates key on the heading.
 \section*{Acknowledgment}
 
 In accordance with IEEE policy, Anthropic's Claude assisted with code development and

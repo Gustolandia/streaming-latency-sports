@@ -88,7 +88,7 @@ def plot_threads(ax):
     # to the event it marks, because the thread taking it is the thread doing the thing.
     ax.plot([3.1], [5.0], marker="o", markersize=6, color=PROD,
             markerfacecolor="white", markeredgewidth=1.4)
-    ax.text(3.1, 5.34, r"$t_{send}$", fontsize=8, color=PROD, ha="center")
+    ax.text(3.1, 5.34, r"$t_{\mathrm{send}}$", fontsize=8, color=PROD, ha="center")
     ax.annotate("", xy=(3.7, 4.0), xytext=(3.2, 4.95),
                 arrowprops=dict(arrowstyle="->", color=GREY, linewidth=0.9))
     ax.text(3.05, 4.5, "enqueue", fontsize=6.5, color=GREY, ha="right", va="center")
@@ -112,22 +112,22 @@ def plot_threads(ax):
     ax.text(5.7, 0.62, "record\narrives", fontsize=6.5, color=GREY, ha="center", va="top",
             linespacing=1.0)
     ax.plot([6.5], [1.0], marker="o", markersize=6, color=CONS)
-    ax.text(6.5, 1.30, r"$t_{recv}$", fontsize=8, color=CONS, ha="center")
+    ax.text(6.5, 1.30, r"$t_{\mathrm{recv}}$", fontsize=8, color=CONS, ha="center")
     ax.annotate("", xy=(6.5, 1.0), xytext=(5.7, 1.0),
                 arrowprops=dict(arrowstyle="<->", color=CUT, linewidth=1.3))
-    ax.text(6.18, 0.62, r"$\delta_{recv}$", fontsize=7.5, color=CUT, ha="center", va="top")
+    ax.text(6.18, 0.62, r"$\delta_{\mathrm{recv}}$", fontsize=7.5, color=CUT, ha="center", va="top")
 
     # --- the acknowledgment branch: the callback thread waits for a core --------------
     ax.plot([6.0], [2.0], marker="|", markersize=13, color=PROD)
     ax.text(6.0, 2.32, "ack arrives", fontsize=6.5, color=GREY, ha="center")
     ax.plot([9.3], [2.0], marker="o", markersize=6, color=PROD)
-    ax.text(9.3, 2.32, r"$t_{ack}$", fontsize=8, color=PROD, ha="center")
+    ax.text(9.3, 2.32, r"$t_{\mathrm{ack}}$", fontsize=8, color=PROD, ha="center")
     ax.annotate("", xy=(9.3, 2.0), xytext=(6.0, 2.0),
                 arrowprops=dict(arrowstyle="<->", color=CUT, linewidth=1.6))
     # Short, and anchored right of t_recv's guide line. The long form ("descheduled, waiting
     # for a core") is wide enough at paper width to reach back across the consumer's stamp
     # label, which sits a third of the figure away.
-    ax.text(9.25, 1.68, r"$\delta_{ack}$: waiting for a core",
+    ax.text(9.25, 1.68, r"$\delta_{\mathrm{ack}}$: waiting for a core",
             fontsize=7.5, color=CUT, ha="right", va="top")
 
     # --- the consequence --------------------------------------------------------------
@@ -139,7 +139,7 @@ def plot_threads(ax):
 
     ax.annotate("", xy=(6.5, 5.62), xytext=(9.3, 5.62),
                 arrowprops=dict(arrowstyle="->", color=CUT, linewidth=1.6))
-    ax.text(7.9, 5.72, r"$t_{recv} - t_{ack} < 0$", fontsize=8.5, color=CUT, ha="center",
+    ax.text(7.9, 5.72, r"$t_{\mathrm{recv}} - t_{\mathrm{ack}} < 0$", fontsize=8.5, color=CUT, ha="center",
             va="bottom")
 
     ax.text(0.02, 0.03,

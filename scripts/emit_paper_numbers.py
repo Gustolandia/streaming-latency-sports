@@ -1048,6 +1048,14 @@ def traced_macros():
             ("tracedModeRank", str(rank)),
             ("tracedModeTopShare", "%.1f" % (100 * by_share[0][2])),
         ]
+        # Figure 3's caption named three modes and gave the mass of one of them, so a
+        # reader could not tell whether the mode the argument rests on is a tenth of the
+        # distribution or a thousandth of it. The other two shares were computed here all
+        # along and simply never emitted. In bucket order, so A is the jitter core and B
+        # the second mode, which is the order the caption reads them in.
+        in_order = sorted(r.get("modes", []), key=lambda m: m[0])
+        out += [("tracedModeShare%s" % letter, "%.1f" % (100 * mode[2]))
+                for letter, mode in zip("ABC", in_order)]
     if "tail_alpha" in r:
         out += [
             ("tracedTailAlpha", "%.2f" % r["tail_alpha"]),

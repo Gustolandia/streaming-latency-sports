@@ -239,6 +239,30 @@ The habit behind the rule: **a citation is transcribed from the work's own title
 Not from a search result, not from a summary, and not from a referee report --- including
 one written inside this project. Where the PDF is held in `docs/reference_tc`, open it.
 
+### A1m. A document's summary of itself is checked against the document --- GATED
+
+Any passage that tells a reader what a document contains --- an orientation paragraph, a
+part introduction, an abstract of a structure --- is a claim about the document and is
+gated like any other claim. Round 66 found the supplement's opening paragraph describing
+the four parts as they had been arranged before v5, sitting directly above a contents page
+that disagreed with it, with three of its four descriptions wrong.
+
+Rule: the orientation paragraph names every part by the title that part carries, and the
+gate reads both. A summary written once and a document rewritten later drift apart in
+silence, because nothing but a test links them.
+
+### A1n. A symbol is set the same way in the figures as in the text --- GATED
+
+The body defines $t_{\mathrm{sched}}$, $t_{\mathrm{send}}$, $t_{\mathrm{ack}}$ and
+$t_{\mathrm{recv}}$ with roman subscripts. Figure~2 set the same four italic, and a reader
+meets the figure and Equation~1 at the same moment. A5b says a defined symbol means one
+thing; this says it has to look like one thing.
+
+Rule: no figure script sets a defined subscript in italic. The gate reads the *scripts*,
+not the built PDFs, because the notation is matplotlib mathtext inside Python string
+literals and no LaTeX check can see it. Where two toolchains set the same symbol, one gate
+reads both.
+
 ### A2. No `flight` — GATED
 
 In the corpus bare *flight* occurs 131 times across 25 of 775 papers, and a read of every

@@ -222,6 +222,23 @@ The corollary is about reasons rather than words. A deletion made for a wrong re
 still a deletion, but the wrong reason is printed and a reader will check it. Correct the
 reason even when the action stands.
 
+### A1l. An author field names people, or names an organization --- GATED
+
+It may not describe them. Round 64 credited a paper to *"Apache Pulsar enterprise
+benchmark authors"*; it has one author, named on its title page, and the entry had been
+built from a referee's note rather than from the PDF sitting in the corpus. The BibTeX
+key named a third party who has nothing to do with the work.
+
+Rule: every entry's author field is a person's name, a list of them, or the name an
+organization publishes under. Phrases of the form "the X authors", "the X team", "various"
+or "et al." in the author slot are placeholders whatever their intent, and they typeset.
+Legitimate corporate authors are listed by name in the gate, so admitting one is a
+decision rather than a hole in a pattern.
+
+The habit behind the rule: **a citation is transcribed from the work's own title page.**
+Not from a search result, not from a summary, and not from a referee report --- including
+one written inside this project. Where the PDF is held in `docs/reference_tc`, open it.
+
 ### A2. No `flight` — GATED
 
 In the corpus bare *flight* occurs 131 times across 25 of 775 papers, and a read of every

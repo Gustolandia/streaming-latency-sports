@@ -255,10 +255,18 @@ class TestEveryTargetedRelocationIsReachable:
     """
 
     #: The targeted relocations. Until v4 these were "everything from S45 onward"; the v4
-    #: recast (2026-09-08) reordered the supplement into four parts and renumbered it, so the
-    #: eleven sections that used to be S45--S55 now sit where their part puts them. They are
-    #: listed by their new numbers; the concordance is in the supplement's numbering note.
-    TARGETED = frozenset({36, 23, 24, 25, 35, 51, 42, 52, 43, 44, 26})
+    #: recast (2026-09-08) renumbered them once, and the v5 reorganization (2026-09-10)
+    #: renumbered them again while merging sixteen stubs into their neighbours -- so the
+    #: eleven v4 numbers land on eight sections now. Mapped through the v5 concordance in
+    #: docs/supplement_index.md rather than by hand:
+    #:
+    #:   S23->S11  S24->S12  S25->S13  S26->S7   S35->S24  S36->S24
+    #:   S42->S17  S43->S14  S44->S14  S51->S33  S52->S33
+    #:
+    #: This list went stale at v5 and stayed stale for three commits, because every test
+    #: run in that window was a `-k` filter that did not match this file. That is the
+    #: lesson recorded as 1bo: a targeted run is a sample, not a check.
+    TARGETED = frozenset({7, 11, 12, 13, 14, 17, 24, 33})
 
     def _sections(self, supp):
         return sorted({int(n) for n in re.findall(r"\\section\{S(\d+)\.", supp)})

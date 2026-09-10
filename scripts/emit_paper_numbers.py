@@ -1013,7 +1013,6 @@ def stall_robustness_macros():
     return [
         ("stallModeCount", str(r["base_modes"])),
         ("stallModeBuckets", str(r["buckets"])),
-        ("stallCoarsenPhases", str(len(two))),
         ("stallCoarsenFactor", "2"),
         ("stallLostFactor", "4"),
     ]
@@ -1077,9 +1076,13 @@ def traced_macros():
         # distribution or a thousandth of it. The other two shares were computed here all
         # along and simply never emitted. In bucket order, so A is the jitter core and B
         # the second mode, which is the order the caption reads them in.
+        # A and B only: the third mode's share is already emitted as tracedModeShare,
+        # which the caption and the body both use. Emitting it twice under two names
+        # would put an unread macro in the ledger, and an unread macro is a number
+        # nobody checked.
         in_order = sorted(r.get("modes", []), key=lambda m: m[0])
         out += [("tracedModeShare%s" % letter, "%.1f" % (100 * mode[2]))
-                for letter, mode in zip("ABC", in_order)]
+                for letter, mode in zip("AB", in_order)]
     if "tail_alpha" in r:
         out += [
             ("tracedTailAlpha", "%.2f" % r["tail_alpha"]),

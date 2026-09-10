@@ -162,7 +162,7 @@ the application thread calls send, the client's I/O thread runs the delivery cal
 and whichever one timestamps must first be scheduled, so the difference inverts when the
 acknowledgment's timestamping delay ($\delta_{\mathrm{ack}}$ in the drawing;
 $\delta_{\mathrm{recv}}$ is the consumer's) exceeds the delivery. The path drawn is \kafka{}'s;
-\redis{} has no second thread and inverts on a larger share of runs (Supplement~S12.3). The
+\redis{} has no second thread and inverts on a larger share of runs (Supplement~S16.3). The
 producer's own timestamps, $t_{\mathrm{sched}}$ and $t_{\mathrm{send}}$, precede the
 acknowledgment, and the span referenced to them never inverts (Table~\ref{tab:spans}).}
 \label{fig:model}
@@ -369,7 +369,7 @@ to report one is a settled literature we
 follow~\cite{georges2007rigorous,hoefler2015benchmarking}. What that literature does not do
 is check what its tool discards. Most published comparisons report a median above the
 tool's one-millisecond timestamp resolution, where the deletion arithmetic of
-% Round 55 moved the denominator to Supplement S15.3, where the exhibits are set out. With
+% Round 55 moved the denominator to Supplement S33.4, where the exhibits are set out. With
 % two comparisons it read against its own sentence: the count said both had been placed
 % against the resolution, and the clause after it said one of them cannot be placed at all.
 % The exhibit is the argument; the count is bookkeeping and belongs beside the bookkeeping.
@@ -552,7 +552,7 @@ benchmark~\cite{kistowski2015build}, applied to the load generator.
 The two clients place one timestamp differently, and it matters to every span referenced
 to $t_{\mathrm{recv}}$. \kafka{}'s client deserializes the payload before that timestamp
 and \redis{}'s after it, so such a span carries one client's payload parse and not the
-other's (Supplement~S12.1); Section~\ref{sec:brokers} says what that is worth.
+other's (Supplement~S16.1); Section~\ref{sec:brokers} says what that is worth.
 
 \subsection{The consistency check}
 \label{sec:gate}
@@ -749,7 +749,7 @@ $\tracedRatios$, no consistent sign, nothing fitted. It is filtered to the harne
 processes and shares no probe, estimator or data with the application-level rate. The
 probe is not free: $\untracedRate$ untraced against $\tracedRate$ traced
 ($z = \observerZ$), and the comparison uses the traced configuration's own rate, so
-$\untracedRate$ is the machine's (Supplement~S12.4).
+$\untracedRate$ is the machine's (Supplement~S16.4).
 % Round 47 cut this tier-5 negative result to the one sentence the tier rule allows. The two
 % failed fits, their R-squared and the registered bracket are in S5 in full; the main text
 % needs only the conclusion, which is that both candidates were parameterized in the wrong
@@ -1074,7 +1074,7 @@ declare it: \kafka{}'s client deserializes the payload before $t_{\mathrm{recv}}
 \redis{}'s after it, worth $\spanHandlingWorstUs\,\mu$s or $\spanHandlingSharePct\%$ of
 \redis{}'s median delivery. That is a fiftieth of the equivalence margin, it runs
 \emph{against} the per-broker difference of Table~\ref{tab:spans} rather than producing it,
-and \tti{} is free of it (Supplement~S12.1).
+and \tti{} is free of it (Supplement~S16.1).
 
 \subsection{For benchmark authors}
 \label{sec:authors}
@@ -1097,7 +1097,7 @@ campaign the rate costs something, and ours cost us a result.
 \textbf{Say which physical event each timestamp marks.} A timestamp is a clock read,
 not the event it stands for, and the gap between them is where both failures live. Publish
 where in the code each one is taken and what has already happened when it runs: our own two
-clients differ by a payload parse (Supplement~S12.1), and no reader could have known.
+clients differ by a payload parse (Supplement~S16.1), and no reader could have known.
 
 \textbf{Name the span you are subtracting.} A difference of two timestamps is a latency only if
 the first event causally precedes the second. An acknowledgment at the producer does not
@@ -1170,7 +1170,7 @@ and achieved rates disagreed.
 % and costs no reference: the supplement cites mq-bench where the bibliography is uncapped.
 None of this is hypothetical: \brk{mq-bench}, a 2026 framework for the same comparisons,
 already timestamps in nanoseconds and subtracts a span that cannot invert, both choices made
-and neither argued for (Supplement~S15.2). Nor is it unwelcome. The tool we audit
+and neither argued for (Supplement~S33.3). Nor is it unwelcome. The tool we audit
 accepted a coordinated-omission report and now records the publish delay, and the
 admission condition came through that revision untouched. A later request would
 serialize the histograms it discards after reading their summaries; that export
@@ -1189,11 +1189,11 @@ record at native resolution, count what is discarded, dither the send instant, a
 is synchronization quality the frontier (Section~\ref{sec:generality}).
 % Round 47 cut the redesign clause to its pointer. That a consumer-to-producer acknowledgment
 % removes skew but not this failure, and that every one-way-avoiding scheme rests on an
-% unstated assumption, are both worked through in S29 and S12.6; the main text needs the
+% unstated assumption, are both worked through in S29 and S16.5; the main text needs the
 % conclusion, which is the last sentence of this paragraph.
 Resolution is the lesser half, and a distinct one. A microsecond timestamp retires
 Equation~\ref{eq:retention}'s deletions here and moves the grid to faster paths, but the
-admission condition and genuine negatives survive it (Supplements~S29 and~S12.6). A better
+admission condition and genuine negatives survive it (Supplements~S29 and~S16.5). A better
 clock alone therefore converts an uncounted \emph{resolution} failure into an uncounted
 \emph{timestamping} one.
 
@@ -1230,7 +1230,7 @@ scheduling class. Stress: transport $\payloadTransportFactorRound\times$ longer
 \brk{sched_switch} histogram predicts the rate to within a third, unfitted. One rival is
 not the scheduler's --- the timestamp is a CPython call, so it waits on the interpreter lock
 too, invisibly to a tracepoint probe. That one is bounded because the kernel-only estimator
-brackets the observed rate ($\tracedRatios$) instead of under-predicting (Supplement~S12.4).
+brackets the observed rate ($\tracedRatios$) instead of under-predicting (Supplement~S16.4).
 
 % Round 47 tried to compress this paragraph for the page budget and put both of its pinned
 % clauses back. "both of which" is the plural antecedent for the two admitted clocksources,
@@ -1341,7 +1341,7 @@ pre-registration and physical-consistency auditing.
 % it three days earlier, on an objection to how the work was produced rather than to what
 % it reports. Neither withdrawal moved a number, a figure or a claim, and neither is a
 % reason to delete what they contributed: the load-generator rule still closes the paper,
-% the timer-characterisation citation stays in Section III, and Figure 1, the thread
+% the timer-characterization citation stays in Section III, and Figure 1, the thread
 % drawing and the deletion histogram stay with the gates that pin them. Do not restore a
 % byline from an old draft; tests/unit/test_front_matter_agrees.py pins it at two.
 \begin{IEEEbiographynophoto}{Romaric Duvignau}

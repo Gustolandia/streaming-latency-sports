@@ -167,15 +167,22 @@ class TestTheFramingClaimArguesFromLimitsAndNotFromSlopes:
 
     Section I claims the two failure modes "act differently", which is what stops a reader
     rebuilding the shared-number framing a co-author removed. S16 proves it. Round 62 wrote
-    two proofs and a gate asserting that neither used the payload sweep's log--log slope,
-    which S15 withdraws --- and the gate looked for the strings `tailExponent`, `tailSlope`
-    and `0.339`. It passed. The first proof was that slope:
+    two proofs and a gate asserting that neither used the payload sweep's log--log slope ---
+    and the gate looked for the strings `tailExponent`, `tailSlope` and `0.339`. It passed.
+    The first proof was that slope:
 
-        log(4.089) / log(76.885) = 0.3243     against the withdrawn OLS fit of 0.3387
+        log(4.089) / log(76.885) = 0.3243     against S15's OLS fit of 0.3387
 
-    **Comparing one response factor against another over a shared range is an exponent
+    **Comparing one response factor against another across the sweep is an exponent
     estimate.** That is what the ratio of their logs means, and no rewording changes it. The
     string check could not see it because the argument never spelled the word.
+
+    Round 64 corrected the *reason*, not the rule. Round 63 said the argument resurrected a
+    fit S15 withdraws; S15 **demotes** that fit and keeps it, under a heading saying so, with
+    an R-squared, a Student-$t$ interval and Fig. S3 --- what it withdraws is two claims made
+    around it. The rule stands on the stronger ground: a two-point exponent is the four-point
+    one with half its evidence discarded, so it cannot corroborate the four-point version,
+    because it is that version made weaker. Circularity needs no retraction to lean on.
 
     So this gate tests the shape of the argument instead. The transport rise and the rate
     fall may not appear together in the demonstration, because their co-appearance *is* the
@@ -200,8 +207,8 @@ class TestTheFramingClaimArguesFromLimitsAndNotFromSlopes:
         present = [m for m in self.RATE_PAIR if m in body]
         assert len(present) < 2, (
             "the demonstration quotes both %s over the payload sweep. The ratio of their "
-            "logs is an exponent -- 0.324 against the 0.339 that S15 withdraws -- so this is "
-            "the withdrawn fit however the sentence describes itself." % (present,))
+            "logs is an exponent -- 0.324 against S15's four-point 0.339 -- so this is that "
+            "fit with half its evidence discarded, which cannot corroborate it." % (present,))
 
     def test_it_argues_from_limits(self, supplement):
         body = self._demonstration(supplement)
@@ -224,15 +231,15 @@ class TestTheFramingClaimArguesFromLimitsAndNotFromSlopes:
         i = paper.find("act differently")
         window = paper[i:i + 260]
         assert r"\payloadAsymmetry" not in window, \
-            "Section I quotes the asymmetry ratio again; it is the withdrawn fit"
+            "Section I quotes the asymmetry ratio again; it is S15's fit from two points"
 
     def test_the_ratio_is_not_emitted_at_all(self):
         """Not merely unread: removed, so it cannot be quoted by a later edit."""
         gen = (REPO / "docs" / "generated" / "paper_numbers.tex").read_text(encoding="utf-8")
         assert "payloadAsymmetry" not in gen, (
             "the asymmetry ratio is emitted again. It is the transport rise over the rate "
-            "fall, which is the exponent S15 withdrew; leaving it in the ledger invites the "
-            "argument back.")
+            "fall, which is S15's exponent from two points; leaving it in the ledger invites "
+            "the argument back.")
 
     def test_the_reason_is_recorded_where_it_would_be_rewritten(self):
         """The emitter says why the macro is absent, so the next edit does not restore it."""
@@ -240,3 +247,93 @@ class TestTheFramingClaimArguesFromLimitsAndNotFromSlopes:
         i = src.find("No `payloadAsymmetry` here")
         assert i > 0, "the emitter no longer records why the ratio is not emitted"
         assert "0.3243" in src[i:i + 700] and "0.3387" in src[i:i + 700],             "the record no longer shows the two numbers that make it the same quantity"
+
+
+class TestDemotedIsNotWithdrawn:
+    r"""Round 64: three places called a result withdrawn that its own section demotes.
+
+    S15's heading is "The payload-sweep fit, demoted here from the main text". The equation
+    is there, with an $R^2$, a Student-$t$ interval on the exponent and Fig. S3 plotting it.
+    Under a separate heading, "What we withdraw about it, and why", S15 withdraws two claims
+    made *around* the fit: the infinite-moment reading and the traced cross-check.
+
+    Two other places said the fit itself was gone -- the experiment map's E-A10 cell, and a
+    sentence added in round 63 to justify a deletion. The deletion was right; the reason was
+    not, and a wrong reason in print is worse than no reason, because it invites a reader to
+    check it.
+
+    The distinction is the manuscript's own and it is unusually careful: *demoting* a result
+    moves it to where its evidence earns it, *withdrawing* a claim says the claim does not
+    hold. Nothing enforced it. This does.
+    """
+
+    #: Words that assert a retraction, and the thing S15 does instead.
+    RETRACTION = ("withdrawn", "withdraws", "retracted")
+
+    def test_the_owning_section_still_demotes_rather_than_withdraws(self, supplement):
+        i = supplement.lower().find("the payload-sweep fit, demoted here from the main text")
+        assert i > 0, (
+            "S15 no longer says it demotes the payload-sweep fit. If that changed on purpose, "
+            "every place that describes the fit's status has to change with it.")
+
+    def test_no_passage_says_the_fit_itself_is_withdrawn(self, supplement):
+        """The fit is demoted; the claims around it are withdrawn. Only the second is sayable."""
+        bad = []
+        for m in re.finditer(r"payload[- ]sweep(?:'s)? (?:fit|exponent|slope|index)",
+                             supplement, re.I):
+            window = supplement[m.start():m.start() + 220].lower()
+            hit = [w for w in self.RETRACTION if w in window]
+            if hit:
+                bad.append((hit, supplement[m.start():m.start() + 120]))
+        assert not bad, (
+            "passage(s) calling the payload-sweep fit withdrawn. S15 demotes it and keeps it; "
+            "what is withdrawn is the infinite-moment reading and the traced cross-check, "
+            "which are claims about it: %s" % bad)
+
+    def test_the_map_cell_does_not_assert_a_retraction(self):
+        import sys
+        sys.path.insert(0, str(REPO / "scripts"))
+        from make_method_figure import ROWS
+        row = [r for r in ROWS if "E-A10" in r[0]][0]
+        hit = [w for w in self.RETRACTION if w in row[3].lower()]
+        assert not hit, (
+            "the experiment map's E-A10 cell says %s. Standing after a number that reads as "
+            "'the exponent is gone', and S15 keeps it. Round 58's rule -- that this row may "
+            "not present the campaign as having settled the tail index -- is carried by "
+            "'not settled'." % hit)
+
+    def test_the_rule_can_fail(self):
+        """Round 64's own defect, pinned, so the pattern cannot be loosened blind."""
+        broken = "which is the payload-sweep fit S15 withdraws, however it is phrased"
+        assert any(w in broken.lower() for w in self.RETRACTION)
+        fixed = ("is the exponent of Equation 6 recomputed from fewer points, and a weaker "
+                 "copy of a result cannot corroborate it")
+        assert not any(w in fixed.lower() for w in self.RETRACTION)
+
+
+class TestTheComparisonRecordHasACaseThatGoesTheOtherWay:
+    """A record assembled only from exceptions cannot support a claim about the rule.
+
+    Section III-A concedes that most published comparisons report a median above the
+    timestamp resolution. S52.3's record held two broker comparisons and both were
+    exceptions -- the prose said so: "two of two reads against the sentence it was meant to
+    support". Round 64 supplied a case outside the regime.
+    """
+
+    def _rows(self):
+        import csv
+        path = REPO / "docs" / "results" / "external" / "literature_regime.csv"
+        with open(path, encoding="utf-8", newline="") as fh:
+            return list(csv.DictReader(fh))
+
+    def test_at_least_one_comparison_sits_outside_the_regime(self):
+        comparisons = [r for r in self._rows() if r["kind"] == "broker_comparison"]
+        outside = [r for r in comparisons if r["figures_inside_regime"] == "no"]
+        assert outside, (
+            "every broker comparison in the record is an exception to the concession it is "
+            "meant to document. A record of exceptions cannot say anything about the rule.")
+
+    def test_the_prose_no_longer_calls_the_record_all_exceptions(self, supplement):
+        assert "two of two reads against the sentence" not in supplement, (
+            "S52.3 still describes the record as entirely exceptions; it now holds a case "
+            "outside the regime and the sentence should report the ratio")

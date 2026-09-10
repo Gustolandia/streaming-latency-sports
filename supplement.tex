@@ -1431,9 +1431,9 @@ shared-number framing this project withdrew. Opposite movement would not establi
 Both failures answer to $T_{\mathrm{true}}$, and a longer delivery makes one of them
 rarer and the other harmless, so a reader is entitled to ask whether they are one
 dependence seen from two sides. What settles it is not how fast either responds --- any
-comparison of one response rate against the other is an exponent estimate over the shared
-axis, which is the fit S15 withdraws, however it is phrased --- but that only one of them
-can be escaped.
+comparison of one response \emph{factor} against the other \emph{across the payload sweep}
+is the exponent of Equation~\ref{eq:tailindex} recomputed from fewer points, and a weaker
+copy of a result cannot corroborate it --- but that only one of them can be escaped.
 
 \emph{Their limits differ in kind.} Retention saturates: $\min(1, T_{\mathrm{true}}/
 \tau)$ reaches one and stops, and the failure switches off --- of the
@@ -4192,9 +4192,14 @@ the assumption this paper is about, and its being shared is the reason the omiss
 The main text concedes that most published comparisons report a median above the timestamp resolution,
 where the deletion law does not bind. That concession stands, and it is worth recording that
 it is not universal. The denominator behind that record is small and is stated here rather
-than in the main text, where two of two reads against the sentence it was meant to support:
-of the \litComparisonsWord{} 2026 broker comparisons we placed against the resolution,
-\litInsideRegimeWord{} report figures at or below it. Each is one row of
+than in the main text: of the \litComparisonsWord{} 2026 broker comparisons we placed
+against the resolution, \litInsideRegimeWord{} report figures at or below it. The third is
+an enterprise-scale Apache Pulsar benchmark whose $3.88$~ms median sits well above the tick, so
+the arithmetic of Section~\mainModeB{} never reaches it~\cite{feng2026pulsar} --- a case
+for the concession rather than against it, and the record was assembled only from exceptions
+until it was looked for. It earns its row twice over: across four pages it names that median
+seven times, and the words \emph{timestamp}, \emph{clock}, \emph{resolution} and
+\emph{discard} do not occur in it. Each is one row of
 \texttt{docs/results/external/literature\_regime.csv}, and the count in this sentence is
 read from that file rather than typed. A 2026 practitioner comparison of NATS, \redis{} and \kafka{} gives
 \kafka{} ``sub-10ms latency at p99'' and gives the other two no percentile at all:

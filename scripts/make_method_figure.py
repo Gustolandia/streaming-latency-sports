@@ -170,7 +170,13 @@ ROWS = [
      # sign outside. Fig. S3 prints the same fit as "slope -0.34", so calling this one
      # "slope 0.34" put two signs on one number under one word. The ledger's word for
      # the positive quantity is the exponent, and that is the word the map now uses.
-     "other side of the inequality;\nexponent %s, withdrawn" % _tail_index()),
+     # Round 64: "withdrawn" standing after a number reads as "the exponent is gone", and
+     # S15 keeps it -- its heading is "The payload-sweep fit, DEMOTED here from the main
+     # text", with an R-squared, a Student-t interval and a figure. What S15 withdraws is
+     # two claims made around the fit. "not settled" carries round 58's ruling, which is
+     # that this row may not present E-A10 as having settled the tail index, without
+     # asserting a retraction the owning section contradicts.
+     "other side of the inequality;\nexponent %s, not settled" % _tail_index()),
     ("E-A8\nco-location", "broker on\nthe driver",
      "utilization,\nto %s" % _colocation_rho_match(),
      "nothing: transport did not\nmove, so it is withheld"),

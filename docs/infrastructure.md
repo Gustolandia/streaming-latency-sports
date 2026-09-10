@@ -1037,6 +1037,43 @@ asking where the timestamp is written, and it cost the article's 45 nothing beca
 supplement's list is separate (A1f).
 
 
+**1bf. Demoting a result and withdrawing a claim about it are different things, and three
+places conflated them.** S15's heading reads *"The payload-sweep fit, **demoted** here
+from the main text"*; the equation is there with an R-squared, a Student-$t$ interval and
+Fig. S3. Under a separate heading it withdraws two claims made *around* the fit --- the
+infinite-moment reading and the traced cross-check. Meanwhile the experiment map's E-A10
+cell said *"exponent 0.34, withdrawn"*, and a sentence added in round 63 said *"the fit
+S15 withdraws"*.
+
+Round 63's deletion was right and its stated reason was wrong. That is the worse half:
+**a wrong reason in print invites a reader to check it, and a reader who checks finds the
+manuscript contradicting itself about its own result.** The true reason needs no
+retraction --- a two-point exponent is the four-point one with half its evidence
+discarded, so it cannot corroborate the four-point version, because it *is* that version
+made weaker.
+
+The distinction is the manuscript's own and nothing enforced it. It does now, in three
+directions: S15 must keep demoting, no passage may call the fit itself withdrawn, and the
+map cell may not assert a retraction. Round 58's rule --- that the cell may not present
+E-A10 as having *settled* the tail index --- is unchanged and is carried by "not
+settled", which says that and nothing more.
+
+**1bg. A record assembled from exceptions cannot say anything about the rule.** Section
+III-A concedes that most published comparisons report a median above the timestamp
+resolution. The committed record behind that concession held two broker comparisons and
+*both were exceptions to it* --- and the prose knew, saying so in as many words: "two of
+two reads against the sentence it was meant to support". The hedge was honest and the
+record was still one-sided, because every row had been found by looking for cases that
+supported the paper's emphasis.
+
+A case outside the regime was available and is now the third row: an enterprise-scale
+benchmark whose median sits well above the tick, which names that median seven times over
+four pages and never says how it was timed. **Looking for the case that weakens your own
+emphasis is what turns a list into a denominator.** The counts in the sentence come from
+the CSV, so adding the row moved the prose from "two of two" to "two of three" without
+anybody retyping a number.
+
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

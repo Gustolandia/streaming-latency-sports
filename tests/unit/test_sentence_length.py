@@ -1,6 +1,6 @@
 r"""Sentence length in the main text, against the venue it is being submitted to.
 
-N. Herbst read the shipped build and reported that average sentence length and complexity
+A reader of the shipped build reported that average sentence length and complexity
 ran "a bit higher" than he would have set them, and asked for the claim to be measured
 rather than judged by ear. Round 43 measured it. From the LaTeX source, markup stripped,
 Introduction to Acknowledgment: **mean 30.0 words, median 28, and 24% of sentences over

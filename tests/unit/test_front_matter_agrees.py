@@ -112,9 +112,15 @@ class TestTheTwoDocumentsAgreeOnWhoWroteThem:
                     "the paper gives an affiliation at %s and the supplement does not"
                     % inst.replace("\\\\", ""))
 
-    def test_the_paper_still_has_four_authors(self):
-        """If the author list ever changes, this file should be read, not silently passed."""
-        assert len(_names(_field("paper.tex", "author"))) == 4
+    def test_the_paper_still_has_two_authors(self):
+        """If the author list ever changes, this file should be read, not silently passed.
+
+        It worked. The list stood at four from `07c57bc` until 2026-09-10, when two authors
+        withdrew and this assertion failed rather than the byline changing under a green
+        suite. The count is the whole point of the check, so it moves to two and keeps doing
+        the same job; `test_author_withdrawals.py` pins the rest of the front matter to match.
+        """
+        assert len(_names(_field("paper.tex", "author"))) == 2
 
 
 class TestTheSupplementSaysWhichPaperItBelongsTo:
@@ -193,7 +199,7 @@ class TestTheBuiltSupplementIdentifiesItself:
         first = pages(1)
         assert "Faster-than-Light" in first, \
             "the built supplement's first page does not name the paper"
-        for surname in ("Ricou", "Duvignau", "Herbst", "Gregg"):
+        for surname in ("Ricou", "Duvignau"):
             assert surname in first, \
                 "the built supplement's byline omits %s" % surname
 
@@ -209,4 +215,4 @@ class TestTheBuiltSupplementIdentifiesItself:
         plain = re.sub(r"\\[a-zA-Z]+|[{}~%]", " ", stale)
         assert "Faster" not in plain
         assert _names("Gustavo~Pedro~Ricou") != _names(
-            "Gustavo~Pedro~Ricou,~Romaric~Duvignau,~Nikolas~Herbst,~and~David~Gregg")
+            "Gustavo~Pedro~Ricou~and~Romaric~Duvignau")

@@ -1043,7 +1043,7 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 
 ```bibtex
 @article{ricou2026interval,
-  author  = {Ricou, Gustavo Pedro and Gregg, David},
+  author  = {Ricou, Gustavo Pedro and Duvignau, Romaric},
   title   = {Faster-than-Light: Latency Measurement Artifacts in Streaming Benchmarks},
   year    = {2026},
   note    = {Manuscript targeting IEEE Transactions on Computers;
@@ -1079,6 +1079,32 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 ---
 
 ## 16. Changelog
+
+### Unreleased — 2026-09-10 — the byline goes from four names to two
+**Two authors withdrew and the named acknowledgements were cut.** The last author had
+asked on 8 September to be removed, on his own standard for taking public responsibility
+for a deposited record he has not audited in the detail he requires; that request was
+actioned today. A third author asked on 10 September for his name to come off the work,
+Zenodo and this repository included, three days after reading the manuscript and passing
+it — his objection is to how the work was produced, not to what it reports, and he is not
+named here because that is what he asked for. The four correspondents thanked by name in
+the acknowledgement had each replied once in August and none since, and were cut.
+
+**No number, figure, table or claim moved.** What the departing authors contributed stays,
+because it was right: the load generator is verified rather than assumed and that rule
+still closes the paper, the timer-characterisation citation stays in Section III, the
+ComBench comparison stays in supplement S52 without its credit line, and Figure 1, the
+thread drawing and the deletion histogram stay with the gates that pin them. Removing a
+byline withdraws a claim about who vouches for the work; deleting correct work to finish
+the job would be a second wrong.
+
+The paper is now bylined **G. P. Ricou and R. Duvignau**, with two affiliation footnotes,
+two biographies and a running head that names both rather than `et al.`, which IEEEtran
+reserves for three or more. `tests/unit/test_author_withdrawals.py` pins the byline at two
+positively rather than by forbidding the departed names, since a gate that spelled out a
+name someone asked to have removed would defeat its own purpose. **Still outstanding:** the
+deposited Zenodo records and the arXiv submission carry the four-author byline until the
+next version of each is cut.
 
 ### Unreleased — round 44 — the exposure curve has a width
 **No measured result changes.** One published curve gains the dispersion it always had.
@@ -1151,10 +1177,11 @@ sentence fell from 28 words to 22, inside the range measured across five TC pape
 
 ### 3.0.0 — 2026-09-04 — four authors, and the model became an identity
 **A major bump because the creator list changed**: a record's authors are part of its
-identity, and this one goes from two names to four. **R. Duvignau** (Chalmers) and
-**N. Herbst** (Würzburg) join as authors, second and third, with **D. Gregg** last in the
-senior slot; each joined on a correction that changed the work rather than the wording, and
-each left the acknowledgements on the way in. The record also takes the manuscript's current
+identity, and this one goes from two names to four. **R. Duvignau** (Chalmers) joins as
+second author, with **D. Gregg** last in the senior slot and a third author in between;
+each joined on a correction that changed the work rather than the wording, and each left
+the acknowledgements on the way in. Two of the four have since withdrawn — see the entry
+at the top of this changelog. The record also takes the manuscript's current
 title, which it had wrong.
 
 What is new since v2.7.0, in order of how far it reached: Section III's model is now the

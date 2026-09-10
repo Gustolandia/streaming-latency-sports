@@ -3,7 +3,7 @@
 
 Why this exists. From 2026-09-09 every PDF that leaves the repository -- the Zenodo record's
 files and anything sent as an attachment -- carries no author list. The author list is not
-settled (a co-author asked to be removed on 2026-09-08 and the question is open), and a
+settled -- two authors withdrew, on 2026-09-08 and 2026-09-10 -- and a
 circulated PDF is a durable public statement of authorship that a later correction does not
 catch up with. The submission build is unchanged: `paper.pdf` and `supplement.pdf` keep their
 byline, because a journal submission must name its authors.
@@ -15,8 +15,11 @@ What "without authors" means here, precisely, and why each part:
     the very authorship question that is open;
   * the affiliation footnotes go with it, because they name the same people;
   * the author biographies go, for the same reason;
-  * the acknowledgment stays. It thanks people for specific help, which is true whoever the
-    authors turn out to be, and removing it would erase a debt rather than a claim.
+  * the acknowledgment stays. It once thanked correspondents by name, on the rule that a
+    credit is true whoever the authors turn out to be and that removing one erases a debt
+    rather than a claim; those names were cut from the manuscript itself on 2026-09-10, and
+    what remains is the disclosure IEEE requires. The rule is unchanged: this build strips
+    claims of authorship and nothing else.
 
 Everything else is byte-for-byte the document the submission carries: same text, same figures,
 same numbers, same page count minus the biographies' share.
@@ -37,20 +40,15 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, "build", "no_authors")
 
 #: Every name that must not survive into a circulated PDF's front matter or back matter.
-AUTHOR_NAMES = ("Ricou", "Duvignau", "Herbst", "Gregg")
+AUTHOR_NAMES = ("Ricou", "Duvignau")
 
-#: Names that may legitimately remain, because none of them asserts authorship.
-#:
-#: `Brendan Gregg` is cited work -- the author of the `runqlat` post, no relation to the
-#: co-author of the same surname, which is why the manuscript spells the given name out.
-#:
-#: `N. Herbst raised the comparison` is a credit for a specific contribution, in the same
-#: class as the acknowledgment this build deliberately keeps. Removing a byline withdraws a
-#: claim that is currently unsettled; removing a credit would erase a debt that is not. If a
-#: circulated PDF should carry no contributor names at all, that is a different decision and
-#: belongs here as a different rule.
-ALLOWED_IN_BODY = ("Brendan Gregg", "B. Gregg", "gregg2016runqlat",
-                   "N. Herbst raised the comparison")
+# There was an exception list here, for two in-body names that were credits rather than
+# claims: `Brendan Gregg`, the author of the `runqlat` post and no relation to the
+# co-author who then shared his surname, and one contributor's credit line in the
+# supplement. Both authors have since withdrawn, so neither surname is checked any more
+# and the credit line is gone from the source. The list went with them rather than
+# lingering as an exception to a rule it no longer meets. `Brendan Gregg` still appears
+# in the body, correctly, and is now simply not a name this check looks for.
 
 
 def _strip_author_block(text):
@@ -134,8 +132,6 @@ def offending_names(pdf_path):
     if out.returncode != 0:                             # pragma: no cover - no poppler
         return None
     text = out.stdout
-    for allowed in ALLOWED_IN_BODY:
-        text = text.replace(allowed, " ")
     return sorted({n for n in AUTHOR_NAMES if n in text})
 
 

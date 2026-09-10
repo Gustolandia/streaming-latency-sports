@@ -3,7 +3,7 @@
 make_deletion_histogram.py
 Draw what the instrument deletes, next to what it then reports.
 
-Origin. A co-author (D. Gregg, 2026-08-26) pointed at the OpenMessaging Benchmark's own
+Origin. D. Gregg (2026-08-26, then a co-author, withdrawn 2026-09-08) pointed at the OpenMessaging Benchmark's own
 published latency distribution and said: plot that on our data and a whole population sits left
 of zero; then plot it again as the software leaves it once that population is discarded, and the
 two graphs do not look alike. He asked, in the same message, for the impact of the *various*

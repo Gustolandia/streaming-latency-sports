@@ -263,6 +263,25 @@ not the built PDFs, because the notation is matplotlib mathtext inside Python st
 literals and no LaTeX check can see it. Where two toolchains set the same symbol, one gate
 reads both.
 
+### A1o. A claim read off an instrument's binning says so, and is tested against it --- GATED
+
+Any count of modes, peaks or clusters taken from a histogram belongs jointly to the data
+and to the bin edges. This paper argues that instruments impose structure which then gets
+reported as a property of the system; the rule applies to us first.
+
+Rule: separate the inference that survives rebinning from the one that does not, state
+which is which, and test the second as far as the archived data allows. Where the raw data
+was not retained, coarsening the retained histogram is the available test and its
+resolution limit is part of the claim. Disclosure is the fallback, not the first answer.
+
+### A1p. No sentence runs past fifty words --- GATED
+
+Measured, not chosen: the p95 sentence length across five IEEE TC papers in
+`docs/reference_tc` is 37, 46, 46, 50 and 52 words. Fifty sits at the upper end of what the
+journal prints. This manuscript's own p95 is 39, better than all five, and its median is 19
+against their 18--22 --- so the cap binds only on outliers, and the three it caught were
+each carrying two independent claims across a semicolon.
+
 ### A2. No `flight` — GATED
 
 In the corpus bare *flight* occurs 131 times across 25 of 775 papers, and a read of every

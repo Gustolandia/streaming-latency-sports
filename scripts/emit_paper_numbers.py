@@ -21,6 +21,7 @@ CLI:
     python scripts/emit_paper_numbers.py
     python scripts/emit_paper_numbers.py --check
 """
+import json
 import math
 import argparse
 import os
@@ -992,6 +993,29 @@ def retention_macros():
         ("ombRetentionRhoCI", "%+.2f$--$%+.2f"
          % stat_intervals.fisher_ci(rho, len(grid))),
         ("ombRetentionRhoN", str(len(grid))),
+    ]
+
+
+def stall_robustness_macros():
+    """Whether the mode count is the stalls' property or the tool's binning.
+
+    Read from the committed record `stall_mode_robustness.py` writes, so a build needs no
+    trace file. The per-event durations were never retained, so rebinning raw data is not
+    available; coarsening the retained histogram is, and it answers the part of the objection
+    that can be answered.
+    """
+    path = os.path.join("docs", "results", "external", "stall_mode_robustness.json")
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8") as fh:
+        r = json.load(fh)
+    two = [c for c in r["coarsenings"] if c["factor"] == 2]
+    return [
+        ("stallModeCount", str(r["base_modes"])),
+        ("stallModeBuckets", str(r["buckets"])),
+        ("stallCoarsenPhases", str(len(two))),
+        ("stallCoarsenFactor", "2"),
+        ("stallLostFactor", "4"),
     ]
 
 
@@ -2218,6 +2242,7 @@ def handling_share_macros(recount=SPAN_CSV,
 def all_pairs(m):
     return (list(macros(m)) + span_macros() + stat_macros() + grid_macros()
             + retention_macros() + traced_macros() + tost_macros()
+            + stall_robustness_macros()
             + mechanism_macros() + kernel_macros() + registry_macros()
             + registry_sources_macro()
             + clocksource_macros() + traced_ratio_macros() + audit_macros()

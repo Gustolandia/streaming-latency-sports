@@ -212,14 +212,31 @@ class TestTheMapReadsItsResultCells:
         assert "tail index" not in outcomes, \
             "the map calls the withdrawn payload-sweep slope a tail index"
         row = [r for r in ROWS if "E-A10" in r[0]][0]
-        assert "withdrawn" in row[3], \
-            "E-A10's outcome quotes the slope without saying the claim on it was withdrawn"
-        # Round 60 moved the slope and its withdrawal to Supplement S15, so the withdrawal is
-        # checked where it now lives. The map's obligation is unchanged: it may not settle
-        # something the submission withdraws, wherever the submission withdraws it.
+        # Round 64 changed the word and not the rule. This pinned "withdrawn", and round 64
+        # found that S15 does not withdraw the fit -- its heading is "The payload-sweep fit,
+        # DEMOTED here from the main text", and the equation is there with an R-squared, a
+        # Student-t interval and Fig. S3. What S15 withdraws is two claims made *around* the
+        # fit. So "withdrawn" in a cell, standing after a number, asserted a retraction the
+        # owning section contradicts.
+        #
+        # Round 58's rule is untouched and is what this still tests: the map may not present
+        # E-A10 as having *settled* the tail index. "not settled" says that and nothing more.
+        assert "not settled" in row[3], (
+            "E-A10's outcome quotes the exponent without saying the campaign did not settle "
+            "it. Round 58's rule: a column headed by what each campaign settled may not list "
+            "this one as settled.")
+        assert "withdrawn" not in row[3], (
+            "the cell says the exponent is withdrawn. S15 demotes it and keeps it; only the "
+            "two claims made around it are withdrawn, and a one-word cell cannot carry that "
+            "distinction.")
+        # The distinction the cell now relies on has to keep existing in the section that
+        # owns the result. If S15 ever stops demoting and starts withdrawing, or vice versa,
+        # this pin and the cell must both be revisited.
         supp = (SCRIPTS_DIR.parent / "supplement.tex").read_text(encoding="utf-8")
+        assert "demoted here from the main text" in supp.lower(), \
+            "S15 no longer demotes the fit; the map's wording depends on that heading"
         assert "we withdraw" in supp.lower(), \
-            "the submission no longer withdraws it; this pin and the map must be revisited"
+            "S15 no longer withdraws the claims made around it; revisit both"
 
 
 class TestTheHeldFixedBounds:

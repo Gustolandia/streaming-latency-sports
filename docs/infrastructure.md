@@ -965,6 +965,78 @@ unread-macro ceiling had to rise to 67. Item 12 is why it stays emitted: the `Wo
 pair. The ceiling may rise for a reason written down; this is the reason.
 
 
+**1az. The right number, in the wrong sentence, is invisible to every gate here.** Section
+VIII-D conceded that *"the five tools of Section VII are readings of source rather than
+measured deployments"*. Ten tools were read at source; five of them dispose silently.
+`\harnessSilentWord` was standing where `\harnessAuditedWord` belonged.
+
+Work through why nothing caught it. `test_ledger_coverage` catches a typed literal that
+duplicates an emitted macro --- nothing was typed. `test_emit_paper_numbers` checks each
+macro carries the number it names --- both did. `test_rendered_prose` checks every emitted
+macro is read somewhere --- both were. Every gate in the repository asks whether a number
+is *correct*; none asked whether it is the *right number for this sentence*. **A pipeline
+that guarantees no number is stale guarantees nothing about which number is used.**
+
+`tests/unit/test_round62_findings.py` inventories what each count counts and the words
+that must follow it. The first draft tested the whole sentence and failed immediately, on
+a sentence that legitimately uses both counts --- "reads ten tools at source and finds
+five disposing". A count names its population to its *right*; what stands to its left is
+the subject. Testing the right-hand side is what made the rule possible.
+
+**1ba. The error was an under-statement, and that is why it was worth fixing.** The
+referee declined to escalate for it and said why: a limitation stated too narrowly is a
+fault of understatement, and one slip against eight correct uses of the same macro family
+is not a pattern. But it sat in the Threats section, which is the one place a reader looks
+for what the authors think they have *not* shown, and this paper's credibility rests on
+conceding fully --- the audit that rejected every run behind its own first result, the
+registered detail that failed, the 2012 paper that measured the mechanism more precisely.
+**A paper that earns trust by conceding cannot afford the one sentence that concedes less
+than it should.**
+
+**1bb. A section of the paper belonged to no contribution, and the contribution list is
+the paper's own account of itself.** Section VII was a full section; the abstract named
+its audit as one of three instruments; the contributions cited V, VI, IV-E and VIII-B. The
+third instrument mapped to nothing. Now gated: every section that carries results must be
+named by a contribution, and the structural sections are listed by label so the exemption
+is a decision rather than a hole in a regular expression.
+
+
+**1bc. A gate that tests vocabulary cannot test reasoning.** Round 63 added a paragraph to
+S16 proving the two failure modes are not one, said in the paragraph that it used neither
+the payload sweep's log--log slope nor anything derived from it, and wrote a gate to keep
+it honest. The gate looked for the strings `tailExponent`, `tailSlope` and `0.339`. It
+passed. The paragraph was the slope:
+
+```
+log(4.089) / log(76.885) = 0.3243        the withdrawn OLS fit = 0.3387
+```
+
+Comparing one response factor against another over a shared range **is** an exponent
+estimate --- that is what the ratio of their logs means --- computed from two points where
+S15's withdrawn version had four. The prose never spelled the word, so the string check
+never saw it. **A gate over the words an argument uses is blind to what the argument is;
+to catch a fit you have to forbid the shape, not the vocabulary.** The rebuilt gate
+forbids the transport rise and the rate fall from appearing together in that
+demonstration, because their co-appearance is the estimate, and it was mutation-tested
+against the exact paragraph the old one passed.
+
+**1bd. The withdrawal is what made the reappearance visible.** The finding was only
+catchable because S15 had already withdrawn the four-point fit and said so. A version that
+had quietly kept its exponent would have carried the same argument with no tension to
+notice. That is worth recording as a return on the discipline rather than only as a lapse
+against it: **a withdrawal is a tripwire, and this one fired on its own author.**
+
+**1be. Corroboration was in the corpus for fourteen rounds and in neither document.**
+`netstacklat_imc.pdf` was fetched in round 49 and assessed there, in the corpus README, as
+*"the closest live work on host latency"* and *"corroboration for the scoping in Section
+II, not competition"* --- a correct reading, and then nothing. It appeared in no
+bibliography and no section. The parallel case, mq-bench, has had all of S52.2 since round
+54. **Reading a paper into the corpus notes is not citing it, and the notes are gitignored
+so nothing downstream can tell the difference.** It is in S48 now, which is the section
+asking where the timestamp is written, and it cost the article's 45 nothing because the
+supplement's list is separate (A1f).
+
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

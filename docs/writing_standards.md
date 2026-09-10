@@ -158,6 +158,50 @@ and emitted like any other number. The extracted character count is recorded bes
 term, because a count of zero means nothing if extraction failed and that is the only way
 a reader can tell the two apart. Gated by `tests/unit/test_round61_findings.py`.
 
+### A1h. A count stands next to the population it counts --- GATED
+
+Two macros can both be right and only one can belong. `\harnessAuditedWord` is ten, the
+tools the audit read; `\harnessSilentWord` is five, the subset that disposes without
+counting. Round 62 found the second in the sentence conceding that the tools are source
+readings rather than measured deployments --- a limitation that applies to all ten.
+
+Rule: a count macro is used only where the text to its right names what it counts. The
+inventory is in `tests/unit/test_round62_findings.py`, keyed by macro, and it is
+maintained by hand for the same reason `test_pointer_sense`'s is: deciding whether a
+number fits a sentence is not a judgement a regular expression makes alone.
+
+The corollary is a habit rather than a rule. When a sentence is edited into existence out
+of two others --- which is how this one arrived --- the macro it inherited was chosen for
+the sentence it came from.
+
+### A1i. Every results section is named by a contribution --- GATED
+
+The contribution list is the paper's own account of what it establishes. A section that
+carries results and appears in no contribution is either unclaimed work or a section that
+should not be one. Round 62 found Section VII in that position, with the abstract naming
+its audit as one of three instruments and the contributions naming four other sections.
+
+Rule: sections labelled as structural --- introduction, model, related work, setup,
+discussion, conclusion --- need no contribution; every other `\section` must be reachable
+by a `\ref` from inside the contribution list. The structural set is written down rather
+than inferred, so an exemption is a decision.
+
+### A1j. A withdrawn estimate may not return in another form --- GATED
+
+S15 withdrew the payload sweep's log--log slope because four points do not earn an
+equation. Round 63 reintroduced it as a ratio of two response factors, in a paragraph
+that said it was using no fit. It was: the ratio of the logs of those two factors is the
+exponent, $0.3243$ against the withdrawn $0.3387$, from two points rather than four.
+
+Rule: where an estimate has been withdrawn, no passage may quote a pair of quantities
+whose combination reconstructs it. For this one the pair is the transport rise and the
+rate fall over the payload sweep, and `tests/unit/test_round62_findings.py` forbids their
+co-appearance in the demonstration that relies on the withdrawal.
+
+The general lesson is about gates rather than about this fit. A check written over the
+*words* an argument uses cannot see what the argument does; the first version of this one
+banned three strings and passed the paragraph that was the fit. Forbid the shape.
+
 ### A2. No `flight` — GATED
 
 In the corpus bare *flight* occurs 131 times across 25 of 775 papers, and a read of every

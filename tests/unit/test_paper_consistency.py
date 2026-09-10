@@ -2276,8 +2276,13 @@ class TestRefereeRoundOne:
             "if it returns to the main text, this pin should return with it"
         assert r"\label{tab:mechanism}" in main_tex, "the mechanism table must be in the paper"
         confirmation = " ".join(_section(main_tex, "sec:extcomp").split())
-        assert "S22" in confirmation, \
-            "the confirmation paragraph must point at the section that draws it"
+        draws = re.findall(r"\\section\{S(\d+)\.",
+                           supp[:supp.index("payload_flip.pdf")])[-1]
+        assert "S%s" % draws in confirmation, (
+            "the confirmation paragraph must point at S%s, the section that draws the "
+            "figure. Pinned by where the figure actually is rather than by a number, "
+            "because the number moved in the v5 reorganization and this assertion did "
+            "not." % draws)
 
     def test_the_traced_slope_cross_check_is_withdrawn_not_requoted(self, main_tex, supp):
         """REWRITTEN for the TC revision (referee item M8).
@@ -2881,7 +2886,7 @@ class TestRefereeRoundTwo:
         # The working itself moved to Supplement S41 when the figures were redrawn at
         # printable size; the claim stayed here and the arithmetic went there.
         supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
-        derivation = " ".join(supp[supp.index("S41."):].split())
+        derivation = " ".join(supp[supp.index("The scheduler constants, derived"):].split())
         assert "rather than measured" in derivation
         # Wherever a constant is printed it must be a macro, never typed. Two of these now
         # appear only in S41, which is where the derivation went.
@@ -2899,7 +2904,7 @@ class TestRefereeRoundTwo:
         are 5/8, 6/8 and 7/8. A shape description would not be checkable from the artefacts;
         k/rho is. Neither document should fall back on 'eight-vCPU'."""
         assert "eight-vCPU" not in main_tex and "eight-vCPU" not in supp
-        derivation = " ".join(supp[supp.index("S41."):].split())
+        derivation = " ".join(supp[supp.index("The scheduler constants, derived"):].split())
         assert "rho" in derivation and "k/" in derivation, "the count needs its evidence shown"
 
     def test_the_slice_is_insensitive_to_an_undercounted_machine(self):
@@ -2912,7 +2917,7 @@ class TestRefereeRoundTwo:
         assert kc.base_slice_ns(7) < kc.base_slice_ns(8),             "below the clamp the answer would differ, which is why 8 had to be established"
 
     def test_the_derivation_states_what_it_cannot_prove(self, supp):
-        derivation = " ".join(supp[supp.index("S41."):].split())
+        derivation = " ".join(supp[supp.index("The scheduler constants, derived"):].split())
         assert "strong evidence rather than proof" in derivation
 
     def test_the_kernel_config_artefact_is_committed_with_its_hash(self):
@@ -3575,8 +3580,12 @@ class TestTheReportingRulesAreInternallyConsistent:
             "from the mechanism; the mitigation rule should introduce them first")
 
 
-class TestTheCoAuthorsRequirementsAreMet:
+class TestTheReadersRequirementsAreMet:
     """D. Gregg's requirements, pinned at the level of a referee finding.
+
+    He was a co-author when he made them and withdrew from authorship on 2026-09-08. The
+    requirements did not withdraw with him: they were right when he wrote them and the
+    figures they produced are the ones a reader meets first. Only the class name changed.
 
     They were asked for in correspondence rather than in a review, and until round 40 they
     were tracked in a plan file, which is to say they were tracked nowhere a build could see.

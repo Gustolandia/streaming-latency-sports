@@ -15,9 +15,11 @@ the checklist in section 2 below, and all of it passes:
 
 - both concept DOIs resolve to the v3.0.0 records;
 - version `3.0.0`, publication date `2026-09-04`, two files each;
-- **all four creators present and in byline order** — Ricou, Duvignau, Herbst, Gregg — with
-  ORCIDs on Ricou (`0009-0001-4196-7213`) and Herbst (`0000-0003-3462-6426`) and none guessed
-  for the other two. This is the field the release existed to change, so it was read first;
+- **all four creators present and in byline order** — Ricou, Duvignau, a third author and
+  Gregg — with ORCIDs on Ricou (`0009-0001-4196-7213`) and the third author, and none
+  guessed for the other two. This is the field the release existed to change, so it was
+  read first. Two of those four withdrew on 2026-09-08 and 2026-09-10; the third asked
+  for his name off the work, which is why this note no longer prints it;
 - the md5 Zenodo reports for all four files matches the local archive byte for byte:
   `18db1e13…` and `99bcf621…` for the code pair, `4e7ca32e…` and `5c7b3169…` for the data pair;
 - related works point at the sibling record's **concept** DOI, not a version DOI;
@@ -56,7 +58,7 @@ bump.
 
 | | v2.7.0 (deposited 2026-08-31) | v3.0.0 |
 |---|---|---|
-| authors | Ricou, Gregg | Ricou, **Duvignau**, **Herbst**, Gregg |
+| authors | Ricou, Gregg | Ricou, **Duvignau**, **a third author**, Gregg |
 | paper | 12 pp, 7 figures | 12 pp, 5 figures, 44/45 refs |
 | supplement | 49 pp | 54 pp |
 | tools audited | 5 | 10 |
@@ -158,9 +160,9 @@ account and its own token. The token is read from `ZENODO_API_TOKEN` and never w
 - both concept DOIs resolve to the v3.0.0 records;
 - each record carries exactly two files, and the md5 Zenodo reports matches the local archive;
 - version reads `3.0.0`, publication date `2026-09-04`;
-- **all four creators are present and in byline order** — Ricou, Duvignau, Herbst, Gregg — and
-  Herbst carries ORCID `0000-0003-3462-6426`. This is the field the release exists to change,
-  so it is the field to read back;
+- **all four creators are present and in byline order** — Ricou, Duvignau, a third author
+  and Gregg — and the third author carries an ORCID. This is the field the release exists
+  to change, so it is the field to read back;
 - related works point at the sibling record's **concept** DOI, not a previous version DOI;
 - the licence carve-out is in both descriptions: MIT for the code, CC BY 4.0 for the data
   compilation and documentation, and the manuscript files © the authors and expressly *not*

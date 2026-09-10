@@ -286,6 +286,13 @@ def stat_macros():
     try:
         span = stat_intervals.payload_span()
         out += [
+            # No `payloadAsymmetry` here, and the absence is the point. Round 63 emitted the
+            # ratio of the transport rise to the rate fall as evidence that the two failure
+            # modes are not each other's mirror, on the stated ground that it used no fit.
+            # It is a fit: log(4.089)/log(76.885) = 0.3243 against the withdrawn OLS slope
+            # of 0.3387, two points where S15's withdrawn estimate had four. A ratio of two
+            # response factors over one range is an exponent however it is written, so the
+            # macro is not emitted and S16 argues from limits instead.
             ("payloadTransportFactor", "%.1f" % span["transport_factor"]),
             ("payloadTransportFactorRound", "%.0f" % round(span["transport_factor"])),
             ("payloadRateFall", "%.1f" % span["rate_fall"]),
@@ -969,6 +976,11 @@ def retention_macros():
     return [
         ("ombMedianCells", str(len(cells))),
         ("ombGridMedianCells", str(len(grid))),
+        # The cells the resolution stops binding on: they report above the grid and
+        # lose nothing. S16 needs the count in words, because it is the half of the
+        # asymmetry that shows retention has an exit and the negative-span rate has
+        # none -- one failure can be lengthened out of existence, the other cannot.
+        ("ombEscapeCellsWord", _spell(len(cells) - len(grid))),
         ("ombGridRetentionMin", "%.2f" % lo["retention_pct"]),
         ("ombGridRetentionMax", "%.0f" % hi["retention_pct"]),
         ("ombRetentionFold", "%.0f" % (hi["retention_pct"] / lo["retention_pct"])),

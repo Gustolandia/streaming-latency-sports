@@ -1424,6 +1424,32 @@ load, where the residual distribution is plausibly still shifting, so the honest
 $\Pr[\text{inv}] = p(\rho)\,S(c;\rho)$ with $p$ varying fast and $S$ slowly: separability is a
 good first-order description rather than an exact law.
 
+\paragraph{The two failures are not one failure seen twice}
+The introduction of the main text says the two act differently, and that sentence
+is doing more work than it looks: it is what stops a reader rebuilding the
+shared-number framing this project withdrew. Opposite movement would not establish it.
+Both failures answer to $T_{\mathrm{true}}$, and a longer delivery makes one of them
+rarer and the other harmless, so a reader is entitled to ask whether they are one
+dependence seen from two sides. What settles it is not how fast either responds --- any
+comparison of one response rate against the other is an exponent estimate over the shared
+axis, which is the fit S15 withdraws, however it is phrased --- but that only one of them
+can be escaped.
+
+\emph{Their limits differ in kind.} Retention saturates: $\min(1, T_{\mathrm{true}}/
+\tau)$ reaches one and stops, and the failure switches off --- of the
+$\ombMedianCells$ instrumented cells, the
+\ombEscapeCellsWord{} whose payload is large enough report above the grid and lose
+nothing. The negative-span rate has no such exit. It is bounded above by
+$\invCeiling$ and below by a floor of $\invFloor$ that real-time priority reaches but
+does not cross, which is why Section~\mainAuthors{} keeps the sign check after every
+remedy it recommends. One failure can be lengthened out of existence and the other
+cannot, and no rescaling of a single dependence produces that.
+
+What this does \emph{not} show is that the failures are unrelated. They
+share an axis, and a benchmark on a sub-millisecond path meets both. They are not the
+same function of it, and the difference that establishes it is a difference of limits
+rather than of slopes.
+
 \paragraph{What this is worth, and what it is not} It is mechanistic --- occupancy names the
 moving part --- and actionable: if the failure is occupancy, the mitigation is a timestamping thread
 the workload cannot preempt, not a better clock. But we found this by looking at the data; the
@@ -3850,6 +3876,24 @@ microseconds cannot invert the sign, and the question does not arise. It arises 
 the interval is smaller than the timestamp resolution.
 
 \section{S48. Where the timestamp is written, in other runtimes}
+
+\paragraph{Where it is written instead, and by whom}
+The mechanism of Section~\mainModeA{} needs a timestamp taken by a thread that can be
+preempted, which is why Section~\mainThreats{} makes no claim about designs that pin a
+core or stamp in hardware. A third design is now in production and is worth naming
+because it is the closest live work on host latency: \emph{netstacklat} stamps at kernel
+hook points and reads those timestamps from eBPF, measuring how long a packet waits in the
+Linux network stack before an application reads
+it~\cite{sundberg2026netstacklat}. Nothing it subtracts is taken by a user-space thread
+waiting for a core, so the failure this paper reports cannot reach it --- corroboration
+for the scope rather than a counterexample to the mechanism.
+
+Two of its habits are the rules of Section~\mainAuthors{}, arrived at independently and
+in a different community. It states the resolution error its histogram imposes rather
+than leaving a reader to infer it from the bucket edges, and prices the finer alternative
+it did not take. And it bounds its own observer effect, where this paper measures its
+probe cost once (Section~\mainModeA{}). A monitoring tool that publishes both without
+being asked is the better evidence that the rules cost little, and it is not ours.
 \label{sec:runtimes}
 
 Section~\mainModeA{} argues that an acknowledgment timestamp is late because the thread that writes it must
@@ -4110,6 +4154,15 @@ whether the send-referenced difference was chosen because it is a causal chain o
 was the convenient one to instrument, and that is exactly what the rule ``name the span you
 are subtracting'' asks an author to make explicit. The choice is right either way; the record
 of why is what would let the next framework inherit it.
+
+The one choice it does explain is the one our own rule warns about. Publisher and subscriber
+are co-located, and the stated reason is that co-location ``ensures'' clock synchronization
+--- which it does, and which is the single rival Section~\mainAuthors{} says co-location
+removes. It carries them no further. Had the same framework referenced its span to an
+acknowledgment instead, one host would have left the scheduling failure exactly where it
+is, and the reason given for the safe configuration would not have been a reason for the
+measurement being safe. That is the distinction the rule is for, drawn here on a framework
+that does not need it.
 
 \subsection{S52.3. How large the literature is that misses this}
 

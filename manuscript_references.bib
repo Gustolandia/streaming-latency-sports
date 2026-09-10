@@ -1406,7 +1406,7 @@
   title        = {{NATS} vs {Redis} vs {Kafka}: message broker comparison},
   howpublished = {Practitioner comparison},
   year         = {2026},
-  note         = {\url{https://www.index.dev/skill-vs-skill/nats-vs-redis-vs-kafka}; gives {Kafka} ``sub-10ms latency at p99'' and gives {Redis} and {NATS} no percentile at all, only ``sub-millisecond''. No retained fraction, rejection count, timestamp resolution or send rate. Read 2026-09-03. (The correction to an earlier reading of this page is recorded in the supplement's S1.)}
+  note         = {\url{https://www.index.dev/skill-vs-skill/nats-vs-redis-vs-kafka}; no retained fraction, rejection count, timestamp resolution or send rate. Which broker gets the percentile, and what it is, is in Section~III-A. Read 2026-09-03. (The correction to an earlier reading of this page is recorded in the supplement's S1.)}
 }
 
 @misc{devto2026streaming,
@@ -1475,4 +1475,19 @@
                   Over 21 pages it says benchmark 169 times and latency 33; timestamp, clock,
                   resolution and ``measurement error'' do not occur. Counts recomputed by
                   scripts/literature\_census.py. Read 2026-09-09}
+}
+
+@inproceedings{sundberg2026netstacklat,
+  author       = {Sundberg, Simon and Brunstrom, Anna and Ferlin-Reiter, Simone and
+                  Brouer, Jesper Dangaard and H{\o}iland-J{\o}rgensen, Toke},
+  title        = {Waiting at the Front Door: Continuous Monitoring of Latency in the
+                  Host Network Stack},
+  booktitle    = {Proc. ACM Internet Measurement Conference (IMC)},
+  year         = {2026},
+  note         = {an eBPF monitor timestamping at kernel hook points, deployed in a CDN. Its
+                  abstract names the sub-millisecond domain and application scheduling as
+                  host latency sources. It states its histogram resolution error --- $\pm
+                  33.3\%$ from the bin midpoint on base-2 buckets, with $2^{1/8}$ costed at
+                  $\pm 4.33\%$ --- and bounds its own observer effect below $6\%$ tail
+                  inflation. Read 2026-09-10}
 }

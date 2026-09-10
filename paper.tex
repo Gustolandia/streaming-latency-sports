@@ -207,7 +207,8 @@ nothing.
 % the one a specification discloses.
 Both failures arise when the delivery being measured approaches the timescales of the
 measurement mechanism. Scheduling delay is a distribution and timestamp resolution is a
-fixed quantity, and they act differently. Sub-millisecond broker paths are where each
+fixed quantity, and they act differently: on the one axis they share, only one of the two
+can be escaped (Supplement~S16). Sub-millisecond broker paths are where each
 becomes comparable to the delivery for tooling in current use. Where that happens is not
 where a specification says. The timestamp resolution is one millisecond, but the delay that
 binds is the scheduler's: the last mode of the run-queue stall distribution sits in the
@@ -231,12 +232,13 @@ two measured quantities and not a fault in either clock. Four manipulations sepa
 from its rival explanations, and the send-referenced span over the same $\spanEvents$
 events never inverts.
 \item \textbf{What a positivity filter costs a reported distribution}
-(Section~\ref{sec:external}). The fraction of samples a millisecond-resolution benchmark
+(Sections~\ref{sec:external} and~\ref{sec:tools}). The fraction of samples a millisecond-resolution benchmark
 retains is fixed by the ratio of the delivery to the timestamp resolution --- arithmetic a
 1970 counter manual already carries~\cite{hp1970tia}. New is its consequence under silent
 deletion: that fraction decides the distribution the benchmark reports, is never shown to
 the operator, and a pre-registered manipulation of message size moves a configuration
-across the boundary it predicts.
+across the boundary it predicts. A source audit of \harnessAuditedWord{} tools places the
+disposal in the tooling rather than in the one benchmark we measured.
 \item \textbf{A per-run audit and the reporting rules it implies}
 (Sections~\ref{sec:gate} and~\ref{sec:authors}). A sign check applied uniformly to all
 $\auditRuns$ runs rejected $\auditRejected$, including every run behind our own first
@@ -1235,7 +1237,7 @@ deepest negative span (Supplement~S39).
 
 The mechanism's constants are those of one EEVDF-era kernel (6.8); CFS-era schedulers, the
 regime Lozi et al.\ document, may shift them. The deletion arithmetic is demonstrated on one
-benchmark and reproduced in one independent harness. The \harnessSilentWord{} tools of
+benchmark and reproduced in one independent harness. The \harnessAuditedWord{} tools of
 Section~\ref{sec:tools} are readings of source rather than measured deployments. The
 benchmark's distributed mode failed on every attempt, so its cross-host exposure rests on
 source reading and our own two-host harness (Supplement~S34). Exposure depends on a

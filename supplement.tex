@@ -203,7 +203,7 @@ attempt at: that the community needs mechanisms for correcting results and artif
 \emph{after} publication, rather than only gates before it. A withdrawal recorded in the
 document that made the claim is the cheapest such mechanism we know of.
 
-\subsection{S1.0. The phase excluded from every result}
+\subsection{S1.1. The phase excluded from every result}
 
 Measurement perturbs, and one early phase perturbed enough to be unusable: it pinned the load
 generator to a subset of cores while utilization was measured across all of them, diluting
@@ -211,7 +211,7 @@ $\rho$. Every number in the main text excludes it, and the campaigns that remain
 utilization with no core pinning. It is recorded here rather than dropped because a phase
 removed without saying so is the same omission this paper is about.
 
-\subsection{S1.1. The answer we obtained first, and why it was wrong}
+\subsection{S1.2. The answer we obtained first, and why it was wrong}
 \label{sec:attribution}
 
 The study began as a broker comparison on a live sports feed. The first complete result set
@@ -229,7 +229,7 @@ deterministic per-run artifact reproduces across a hundred runs beautifully. The
 defect is the more instructive one, because the run data were causally consistent throughout.
 Causal consistency is necessary, not sufficient.
 
-\subsection{S1.2. The claim about the benchmark that we withdrew}
+\subsection{S1.3. The claim about the benchmark that we withdrew}
 \label{sec:firstanswer}
 
 An earlier version of this work read the OpenMessaging Benchmark's discards as causality
@@ -253,7 +253,7 @@ differenced inside one JVM, and never goes negative. The corpus matches both pre
 exactly. Hedging a claim the source code settles is its own kind of imprecision, and the
 main text now states the mechanism.
 
-\subsection{S1.3. The causality framing, withdrawn in this version}
+\subsection{S1.4. The causality framing, withdrawn in this version}
 
 Through version~2 this paper described its first failure mode as a causality violation, on the
 argument that an acknowledgment causally precedes a receipt. That argument is wrong, and a
@@ -276,7 +276,7 @@ numbers and now described as reference-timestamp failures; and every manipulatio
 Section~\mainModeA{} of the main text, which rests on moving scheduling and observing the
 rate move, not on what the negatives are called.
 
-\subsection{S1.4. The M/G/1 form, withdrawn}
+\subsection{S1.5. The M/G/1 form, withdrawn}
 
 We adopted an M/G/1 waiting-time framing as a leading-order account of the stall, following
 its use for benchmark bias elsewhere, and pre-registered it as a hypothesis with a falsifier.
@@ -287,7 +287,7 @@ measured $1.44\times$. Both candidates were parameterized in $\rho$, and the rea
 experiment shows $\rho$ is not the variable. The Pollaczek--Khinchine result remains the
 motivation for expecting a heavy waiting tail; it is not a fitted result here.
 
-\subsection{S1.5. The traced tail-index cross-check, withdrawn}
+\subsection{S1.6. The traced tail-index cross-check, withdrawn}
 
 The traced tail index was re-estimated with an interval rather than read off a
 slope. Doing so refuted the cross-check it was meant
@@ -305,7 +305,7 @@ the first time it was estimated with an interval attached. We record that patter
 because it is the argument of the paper turned on its author: a statistic that carries no
 uncertainty is not yet a measurement.
 
-\subsection{S1.6. Pre-registration outcomes}
+\subsection{S1.7. Pre-registration outcomes}
 
 Six predictions were registered with falsifiers before the comprehensive campaign. One was
 confirmed (the payload flip, the main text's payload-flip figure); three falsifiers fired;
@@ -315,7 +315,7 @@ after that campaign was killed by a subsequent alternation test. The plateau obs
 $1053$ and $1219$~msg/s refuted the linear extrapolation that one registered prediction had
 assumed.
 
-\subsection{S1.7. The achieved send rate was taken from a flag, not measured}
+\subsection{S1.8. The achieved send rate was taken from a flag, not measured}
 \label{sec:rateprovenance}
 
 For part of the campaign the achieved send rate was recorded from the configuration flag
@@ -325,7 +325,7 @@ the incident is the reason rule~(10) of the main text's checklist exists in the 
 It is also the reason the main text reports measured pacer jitter rather than a configured
 rate.
 
-\subsection{S1.8. A source we read wrong, and how we found out}
+\subsection{S1.9. A source we read wrong, and how we found out}
 
 Section III-A of the main text places a published broker comparison inside the regime the
 deletion law binds on. An earlier draft of that placement attributed to
@@ -339,10 +339,10 @@ comparison~\cite{devto2026streaming}, which a search had returned in the same re
 We record it here rather than in the reference note because it is the same class of error
 this paper is about, one level up: a number carried from one source to another because both
 arrived together, and nothing in the citation would have shown it. Both documents are now
-placed separately in S15.3, and the registry the main text counts from
+placed separately in S33.4, and the registry the main text counts from
 (\texttt{docs/results/external/literature\_regime.csv}) holds one row each.
 
-\subsection{S1.9. The distributed-mode gap}
+\subsection{S1.10. The distributed-mode gap}
 \label{sec:extdist}
 
 The OpenMessaging Benchmark's distributed mode failed to complete a run on every attempt we
@@ -378,7 +378,7 @@ $N$ & \kafka{} & \redis{} & Difference & $p_{\text{Holm}}$ \\
 We present the first result set in full rather than describing it, because a reader cannot
 otherwise judge how convincing an invalid corpus looks.
 
-\subsection{S1.1. The result}
+\subsection{S1.13. The result}
 
 On Testbed~A, replaying distinct real matches at ten times real speed across one, five and ten
 feeds with 15--30 runs per cell and both producers pipelined, broker transport separated the two
@@ -386,7 +386,7 @@ systems cleanly (the main text). Every comparison was significant after correcti
 $N \geq 5$ the run distributions did not overlap.
 
 
-\subsection{S1.2. The checks it had already passed}
+\subsection{S1.14. The checks it had already passed}
 
 The corpus was not naive. It was the product of five earlier corrections, each of which had
 reversed the apparent winner and each found by investigating a result that looked wrong:
@@ -426,7 +426,7 @@ a fairness audit, and a full battery of rank tests, effect sizes and multiplicit
 still entirely invalid, and nothing in its output said so.
 
 
-\subsection{S1.13. Open questions from the comprehensive campaign}
+\subsection{S1.15. Open questions from the comprehensive campaign}
 Three observations from the campaign are consistent with a single conjecture --- a per-send
 jitter kernel whose width in cell units grows with the numerator $p$ of $\Delta/\tau$ --- and
 none of them is established. We separate them from the results above deliberately: they are
@@ -933,7 +933,7 @@ Section~\mainAuthors{} of the main text carries the rule that would have made al
 
 
 \subsection{S4.1. Provenance-gap episode and the co-location withholding}
-\subsection{S4.1. No artifact records the earliest corpus's replay rate}
+\subsection{S4.2. No artifact records the earliest corpus's replay rate}
 
 Auditing the corpus turned the same scrutiny on our own record-keeping, and it did not survive
 it either: no surviving artifact records the achieved replay rate of the earliest corpus.
@@ -1830,11 +1830,11 @@ their own path rather than take the middle. The bar on the dashed line is the cr
 where the displacement equals the delivery it is a correction to: $\exposureCrossover$~ms at
 the median lag and $\exposureCrossoverHi$~ms at the ninetieth percentile, marked as an
 interval because it is one. To its left the correction is larger than the quantity corrected. The shaded column is
-where published broker medians sit (Section~S15.3), which is the reason the curve matters.}
+where published broker medians sit (Section~S33.4), which is the reason the curve matters.}
 \label{fig:exposure}
 \end{figure}
 
-The rows added below one millisecond are the regime broker benchmarks actually report in (Section~S33), and they are where an acknowledgment-referenced harness stops measuring the path at all. A send-referenced one is unaffected: it reports the delivery itself, which is why the framework audited in S15.2 needs no correction from this table.
+The rows added below one millisecond are the regime broker benchmarks actually report in (Section~S33), and they are where an acknowledgment-referenced harness stops measuring the path at all. A send-referenced one is unaffected: it reports the delivery itself, which is why the framework audited in S33.3 needs no correction from this table.
 
 \paragraph{Which estimator produced the two headline ratios, stated because it decides them}
 The main text says the reported span is $\reportedFraction\%$ of the delivery it stands for,
@@ -3071,41 +3071,21 @@ measurement's path latency and producer rate, and we have audited none. That asy
 reason we recommend publishing a retention rate as routine practice: its cost is one number, and
 the alternative is a benchmark that cannot report its own failure.
 
-\section{S23. The transfer procedure with its incidents}
+\section{S23. Where the check transfers, and what it costs to run}
 
 The check is worth reporting only if it transfers, so we state it as a procedure rather than as
 a description of what we happened to do. It applies to any latency computed as a difference of
 timestamps taken in different processes, threads or hosts --- which covers most end-to-end
 measurements in this literature.
 
+Eight of the steps are the reporting rules the main text closes on, and they are stated
+there rather than twice: name the span you subtract, publish the rejection rate, publish
+the retained fraction beside the latency, know where your path sits on the exposure curve,
+count your events before quoting a percentile, and record the achieved rate rather than
+the flag meant to produce it (Section~\mainAuthors{}). What follows is the four this
+document adds, each a check the main text has no room for.
+
 \begin{enumerate}
-\item \textbf{Identify every span whose endpoints are timestamped by different execution contexts.}
-In our pipeline exactly one of the three components qualifies: send lag and the output
-interval are timestamped within a single process, broker transport is not. Spans timestamped within one
-context cannot violate causality and need no check.
-\item \textbf{Record the raw per-event values, not summaries.} The failure is invisible in
-aggregate --- that is its defining property --- so a pipeline that writes only percentiles has
-already discarded the evidence. This is the one requirement that may demand a change to an
-existing harness.
-\item \textbf{Count the fraction of events in which the span is negative}, per run and per
-component.
-\item \textbf{Reject by a stated rule, before looking at results.} We reject a run when any
-component exceeds $1\%$ inverted or has a negative median. The threshold is a judgment and
-should be reported with its sensitivity (the main text); what matters more is that
-it is fixed in advance and applied to every condition, including those whose results look
-reasonable. Applying it only to suspicious results reproduces the error it exists to prevent.
-\item \textbf{Report the retention rate alongside the results}, the way a survey reports its
-response rate. A benchmark that discards nothing has either an unusually clean measurement path or an
-unexamined one, and a reader cannot tell which without the number. Count \emph{both} causes
-separately: a sample rejected for being negative is an measurement failure, and a sample rejected
-for computing to zero is a resolution failure. A single unsigned total cannot distinguish them,
-and we drew a wrong conclusion from one that could not (the main text).
-
-\item \textbf{Compare the timestamp's resolution against the latency you expect to measure, and
-publish both.} This is the ratio that governs the second failure mode, and neither number alone
-conveys it. A millisecond-grained clock on a path the experimenter believes is sub-millisecond is
-a stated problem, not a latent one.
-
 \item \textbf{Read your own reported percentiles for quantization. This costs nothing and needs no
 patch.} If every percentile a benchmark prints is a whole multiple of its clock's resolution, the
 measurement has no resolution below that timestamp resolution and the distribution is an artifact of the grid.
@@ -3113,7 +3093,6 @@ In the benchmark we audited, all $32$ percentile values across eight runs were w
 and three runs reported $\mathrm{p50} = \mathrm{p95} = \mathrm{p99} = \max = 1.0$ --- a
 distribution with one value in it, printed to three decimal places, in output anybody could have
 read. We found it only after instrumenting the source, which was unnecessary.
-
 \item \textbf{Put your send interval over the timestamp resolution, reduce the fraction, and look at
 the denominator.} A fixed interval that visits few phases within the timestamp resolution puts nearly every
 sample in a run at one of them, which makes the surviving fraction bimodal and irreproducible
@@ -3124,19 +3103,6 @@ $300$~msg/s gives $q=3$ and spread $\armThreeHundredSpread$, while $889$~msg/s -
 $9/8$ --- gives a denominator in the hundreds and is stable to $1.7$. A small $q$ is the hazard;
 proximity to a simple fraction is not. The remedy is to dither the send instant, which works
 without having to get the arithmetic right.
-\item \textbf{Report events-per-run alongside every latency percentile.} This is the check that
-would have caught our second withdrawal (the main text) and the sign check would
-not: a median over seven events is a statement about the harness, not the system, and it looks
-its most convincing when the artifact is deterministic enough to repeat across a hundred runs.
-Any percentile computed over single-digit samples should be labeled as such.
-\item \textbf{Record the achieved rate, per run, next to the results --- not the flag that was
-meant to produce it.} A replay harness has a nominal rate and an achieved one, and they part
-company silently. Ours parted company by a factor of $120$ because the plans carried a
-compression the flag did not know about (the main text). Derive the setting
-from the workload rather than assuming it, verify the achieved rate against elapsed wall time
-before the campaign rather than after, and write the verified figure into an artifact that
-outlives the raw data. We had to reconstruct the rate of our own earliest corpus by arithmetic on
-its results, which happened to be possible and will not always be.
 \item \textbf{Before attributing an offset to every event, vary the run length and count.}
 Lengthen the observation window by a known factor and count how many events exceed the offset,
 rather than re-computing the average. A per-run cost holds that count fixed while the run grows;
@@ -3175,32 +3141,16 @@ in supplementary material S23. The cost is one pass over data the harness alread
 produces; our implementation is under two hundred lines and runs in seconds over
 $\auditRuns$ runs, which is why we argue it belongs in routine practice rather than in a
 dedicated study.
-\section{S24. The campaign ledger schema}
+\section{S24. The campaign ledger, and what distributed mode did instead}
 
-One row per cell of every instrumented-benchmark campaign,
-\texttt{docs/results/external\_campaigns\_index.csv}:
-
-\begin{itemize}
-\item \texttt{campaign}, \texttt{cell} --- sub-campaign directory and cell name; the cell name
-  encodes the swept axis (\texttt{l} load percent, \texttt{s} message size, \texttt{r} producer
-  rate) and replicate number, e.g.\ \texttt{r625\_rep3}.
-\item \texttt{level} --- the numeric value of the swept axis.
-\item \texttt{valid} --- 1 if the cell's counts are usable under the pre-stated rule; 0 rows are
-  retained with a reason, never deleted.
-\item \texttt{count\_source} --- \texttt{shutdown\_hook} for exact end-of-run counters;
-  \texttt{periodic\_quantised} for in-run lines (quantized to $10^4$, excluded from analysis);
-  \texttt{none\_in\_log} when no counters were written.
-\item \texttt{kept}, \texttt{discarded\_zero}, \texttt{discarded\_negative} --- the instrumented
-  guard's three counters, separated by sign.
-\item \texttt{log\_bytes}, \texttt{log\_sha256} --- size and hash of the run log the row was
-  built from, so any row can be re-derived and checked against its source.
-\end{itemize}
-
-The Python-harness campaigns (no JVM, Section on generality in the main text) use the same cell
-naming and publish \texttt{docs/results/external/harness\_results.csv} with per-cell counts,
-sign-separated discards, and pacer-jitter percentiles.
-
-
+One row per cell of every instrumented-benchmark campaign, in the ledger
+\texttt{external\_campaigns\_index.csv}: the swept axis and its level, a
+validity flag whose zero rows are kept with a reason rather than deleted, the source of
+each count, the instrumented guard's three sign-separated counters, and the size and
+SHA-256 of the log the row was built from, so any row can be re-derived from its source.
+The column-by-column dictionary is \texttt{docs/campaign\_ledger\_schema.md} in the
+artifact, beside the file it describes; the Python-harness campaigns use the same cell
+naming and publish \texttt{docs/results/external/harness\_results.csv}.
 \subsection{S24.1. OpenMessaging distributed mode, failure diagnostics}
 Eleven attempts in total never produced a measurement. The three diagnosed attempts of the
 referee campaign (chain 18, block E) fail identically at OMB commit \texttt{5b1fa70}:
@@ -3265,7 +3215,7 @@ subtracts a producer-process timestamp from a consumer-process one, which is exa
 come out negative when either process is delayed, and it is the span this paper is about.
 \emph{End-to-end \tti{}} is $t_{\mathrm{recv}} - t_{\mathrm{sched}}$, the sum of the three
 (Equation~\ref{eq:tti}), and it inverts only if the whole delivery does. A fifth timestamp,
-$t_{\mathrm{out}}$, is consumer-internal and is not drawn in that figure; S12.1 places it.
+$t_{\mathrm{out}}$, is consumer-internal and is not drawn in that figure; S16.1 places it.
 
 
 
@@ -4202,7 +4152,7 @@ stall, not the skew, is the term that grows.
 Section~\mainRelatedTime{} and Section~\mainRelatedRes{} state what this paper takes from
 each of these and what it adds. This is the survey behind those sentences.
 
-\subsection{S33.1. Production tracing reached the conclusion without the mechanism}
+\subsection{S33.2. Production tracing reached the conclusion without the mechanism}
 
 The observable is familiar outside benchmarking. Distributed tracing systems ship clock-skew
 adjusters, which ``modif[y] start time and log timestamps for spans that appear to be `off'
@@ -4223,7 +4173,7 @@ skewed clock, then an adjuster is not correcting error but moving evidence, and 
 evidence it moves is a measurable quantity nobody had measured. Section~\mainModeA{} measures
 it.
 
-\subsection{S33.2. A framework that does not have the problem}
+\subsection{S33.3. A framework that does not have the problem}
 
 Section~\mainAuthors{} claims the rules above are practical rather than aspirational, and the
 strongest evidence for that is not ours. In March 2026 Paul et al.\ published mq-bench, a
@@ -4274,7 +4224,7 @@ is, and the reason given for the safe configuration would not have been a reason
 measurement being safe. That is the distinction the rule is for, drawn here on a framework
 that does not need it.
 
-\subsection{S33.3. How large the literature is that misses this}
+\subsection{S33.4. How large the literature is that misses this}
 
 A 2025 preprint synthesizes $42$ peer-reviewed \kafka{} studies published between 2015 and
 2025 and reports evaluation rigor, configuration disclosure and reproducibility inconsistent
@@ -4398,7 +4348,7 @@ doing it well. The point is narrower and harder to argue with than any count of 
 written in 2026 to enumerate the ways latency measurement goes wrong does not contain the
 ways this paper reports, which is what it means for a gap to be a gap.
 
-\subsection{S33.4. Where scheduling delay comes from, and what the queueing account gets right}
+\subsection{S33.5. Where scheduling delay comes from, and what the queueing account gets right}
 
 A thread that is runnable does not always run. Work-conservation violations --- a runnable
 thread left waiting while a core sits idle --- are documented for CFS-era

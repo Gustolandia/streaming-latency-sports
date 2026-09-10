@@ -192,9 +192,20 @@ class TestTheCaptionGivesTheMassOfEveryModeItNames:
                 "%s is typed into the caption; every number is emitted" % literal
 
     def test_the_generated_macros_exist(self):
+        """A and B, plus the third mode's share under the name it already had.
+
+        Round 66 emitted A, B and C over the three modes in bucket order, which put a fourth
+        name on a number `tracedModeShare` was already carrying. Round 68's full run caught it
+        as an unread macro --- nothing quoted C, because the caption and the body both use
+        `tracedModeShare` for that mode. An unread macro is a number nobody checked, so C was
+        retired rather than the prose padded to consume it.
+        """
         gen = (REPO / "docs" / "generated" / "paper_numbers.tex").read_text(encoding="utf-8")
-        for macro in ("tracedModeShareA", "tracedModeShareB", "tracedModeShareC"):
+        for macro in ("tracedModeShareA", "tracedModeShareB", "tracedModeShare"):
             assert "\\newcommand{\\%s}" % macro in gen, "%s is not emitted" % macro
+        assert "\\newcommand{\\tracedModeShareC}" not in gen, (
+            "tracedModeShareC is back. It duplicates tracedModeShare, which is what made it "
+            "unread; if the third mode ever needs its own name, retire the other one.")
 
 
 class TestAFigureSetsASymbolTheWayTheTextDoes:

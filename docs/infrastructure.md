@@ -1218,6 +1218,38 @@ one tokenized captions without stripping macros, so the repeat it existed to dem
 was invisible to it. A gate has to read text the way the thing it checks is read.
 
 
+**1bo. A targeted test run is a sample, not a check.** The v5 merge left subsection
+numbers duplicated, gapped and out of order --- S1 carried two S1.1's and two S1.2's and
+skipped S1.10, S4 and S33 each carried two --- and the paper cited **six subsections that
+did not exist**, because the remapper rewrote the section half of every reference and left
+the subsection half alone.
+
+`test_supplement_subsections.py` caught every one of these, immediately, and **stayed red
+for three commits while nobody looked.** Rounds 66 and 67 both ran `-k` selections ---
+`round6`, `navigation`, `writing_standards`, `paper_consistency` --- and none of those
+strings matches that filename. The gate did its job perfectly and was never asked.
+
+The numbering was the symptom. **The defect was believing a filtered run was a check.** A
+`-k` selection answers "did the things I thought about break?", which is precisely the
+question that cannot find what you did not think about. It is fine while iterating and it
+is not a green light. **Before a commit that touches the manuscript, run the whole suite.**
+
+There is a second half to it. Renumbering by string could not work here, because two
+subsections sharing a number cannot be told apart by their number --- the map is ambiguous
+at exactly the places that are broken. Headings were renumbered **by position**, and the
+six dead pointers were resolved **by subject**: each was traced to the passage it describes
+and repointed at wherever that passage now lives. When identifiers collide, stop using them
+as identifiers.
+
+And one near miss worth recording. A scan for dangling references flagged `S3.4`, which is
+not a pointer at all: it is `\S3.4.1`, a clause number in IEEE Std~1241-2010's sine-wave
+histogram test. A pattern that could not tell `S3.4` from `\S3.4.1` would have silently
+rewritten a standards citation into a cross-reference to this document. The replacement now
+refuses any match preceded by a backslash. **A fix pass is a rewriting pass, and a rewriting
+pass needs the same suspicion as the defect it repairs** --- the v5 remapper is what caused
+this, and it caused it the same way.
+
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

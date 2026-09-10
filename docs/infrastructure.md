@@ -1143,6 +1143,39 @@ purpose, and would put that name back into the repository in the one file guaran
 read. When the thing you are enforcing is an absence, pin the shape and not the string.
 
 
+**1bk. A document can be consistent everywhere except in the sentence that says what it
+is.** The v5 reorganization renumbered, retitled, reordered and re-parted the supplement,
+and five gates checked the result: titles, sizes, reachability, numbering, navigation. All
+passed. What none of them read was the orientation paragraph --- the first prose a reader
+meets, sitting directly above the table of contents --- which still described the parts as
+they had been arranged before the reorganization. **Three of its four descriptions were
+wrong, on page one, above a contents page that contradicted it.**
+
+The paragraph also reintroduced the "in full" framing that eighteen section titles had
+just been rewritten to remove, which is the tell: a summary written at one time and a
+document rewritten at another drift apart silently, because nothing links them. The rule
+now is that **a document's summary of itself is checked against the document**:
+`test_round66_findings.py` asserts the orientation paragraph names every part by the title
+that part actually carries.
+
+**1bl. Two objects a reader meets together must agree, and gates read one file at a
+time.** The image review found Figure 2 setting $t_{\mathrm{sched}}$, $t_{\mathrm{send}}$,
+$t_{\mathrm{ack}}$ and $t_{\mathrm{recv}}$ with *italic* subscripts where the body sets
+them roman, twenty-eight times over. Figure 2 is the drawing a reader consults **while**
+reading Equation 1, so the two most tightly coupled objects in the paper disagreed about
+how the quantity they share is spelled.
+
+Twenty instances, across three figure scripts, invisible to every existing check --- because
+they are matplotlib mathtext inside Python string literals, and the LaTeX gates read
+`.tex`. **Where the same symbol is set by two toolchains, one gate has to read both.**
+
+Fixing it re-taught the heredoc lesson (1am) a seventh time: substituting `\mathrm` through
+a bash heredoc produced `\m` inside two *non-raw* Python strings, which Python keeps
+literally and warns about. It worked and it was wrong. `python -W error::SyntaxWarning`
+over the edited scripts is now the check that catches it, and the Write tool is still the
+answer.
+
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

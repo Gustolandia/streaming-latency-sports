@@ -2579,6 +2579,30 @@ replication & 12 & 39.8 & 0.4132 & 0.4157 & $+0.0025$ & 0.55 \\
 
 \section{S19. Threats to the scheduling attribution, and what rules them out}
 
+\paragraph{The mode count is checked against the binning, because it has to be} A count
+of local maxima read off a histogram belongs jointly to the counts and to the bin edges,
+and this paper argues that instruments impose structure which is then reported as a
+property of the system. Figure~\mainSpectrum{} reports local maxima of a
+\texttt{bpftrace} log$_2$ histogram, and those bucket edges came from the tool exactly as
+the millisecond quantum of Section~\mainModeB{} came from the benchmark. The objection
+applies to us.
+
+The usual answer is unavailable and will stay unavailable: \texttt{runqlat.txt} holds the
+tool's summary and \textbf{the per-event stall durations were not retained}, so the raw
+data cannot be rebinned now or later. What the archived histogram does support is
+coarsening. Merging adjacent buckets doubles the bin width, and the merge can be phased
+two ways --- pairing from the first bucket, or from the second --- which puts the edges in
+different places. A mode that survives both phasings is not sitting inside one bucket by
+luck.
+
+It survives. $\stallModeCount$ maxima on the tool's own $\stallModeBuckets$ buckets,
+$\stallModeCount$ again under both phasings at $\stallCoarsenFactor\times$ the bin width,
+and fewer at $\stallLostFactor\times$. The claim therefore holds to within a factor of
+$\stallCoarsenFactor$ in bin width and is resolution-limited beyond it --- a weaker
+statement than we could have made carelessly, and a stronger one than a disclaimer.
+\texttt{scripts/stall\_mode\_robustness.py} recomputes it, and the suite fails if the
+committed record and the trace disagree.
+
 \subsection*{Threats to validity (full)}
 
 \paragraph{Construct validity: the check may not measure what we claim} A negative span is
@@ -2992,6 +3016,26 @@ negatives in $\harnessCrossHostSamples$ samples, an intact grid, and a deleted f
 coupled to clock-offset drift. The two
 statements are complementary and we keep them distinct: the pattern's cross-host behavior is
 measured; OMB's own distributed binary remains unmeasurable by us.
+
+\paragraph{The library's own documentation does not describe the behavior the fix was
+written against} The 2018 rationale rests on \texttt{HdrHistogram} rejecting negative
+values~\cite{openmessaging_pr56}, and it does. What its documentation says is another matter. The
+\texttt{Recorder.recordValue} entry documents the exception it may throw ``if value is
+exceeds \texttt{highestTrackableValue}''~\cite{hdrhistogram_javadoc} --- the upper bound,
+and only that --- and the project's README describes the configurable range and the
+significant digits without mentioning negative values at all. The rejection surfaces as an
+\texttt{ArrayIndexOutOfBoundsException} from the counts-array index rather than as a
+documented contract. That makes the maintainer's local fix more defensible rather than
+less: it was written against behavior the library documents for the opposite bound. It
+also makes the wider case, that a disposal rule has to be stated by whoever depends on it,
+because the dependency will not state it for you.
+
+% Round 67's referee also reported that Cassandra and DataStax drivers catch that
+% exception and discard the value with a warning, which would be a sixth disposition for
+% the taxonomy and the only one found in the wild that warns. It is NOT cited: the claim
+% could not be read at source, only in search results, and round 65's rule is that a
+% citation is transcribed from the work itself. Recorded so the next person can finish
+% the check rather than repeat it.
 
 \paragraph{It has accepted a measurement-validity fix before, which is why the remedy is
 not a hopeful one} In March 2022 a contributor reported that the load generator did not

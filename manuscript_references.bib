@@ -1410,7 +1410,7 @@
   title        = {{NATS} vs {Redis} vs {Kafka}: message broker comparison},
   howpublished = {Practitioner comparison},
   year         = {2026},
-  note         = {\url{https://www.index.dev/skill-vs-skill/nats-vs-redis-vs-kafka}; no retained fraction, rejection count, timestamp resolution or send rate. Which broker gets the percentile, and what it is, is in Section~III-A. Read 2026-09-03.}
+  note         = {\url{https://www.index.dev/skill-vs-skill/nats-vs-redis-vs-kafka}; no retained fraction, rejection count, timestamp resolution or send rate. Which broker gets the percentile, and what it is, is in Section~III-A. S1 records what we first read here and why it was wrong. Read 2026-09-03.}
 }
 
 @misc{devto2026streaming,
@@ -1537,4 +1537,15 @@
                   measurement''.
                   \url{https://github.com/openmessaging/benchmark/issues/452}. Read
                   2026-09-10}
+}
+
+@misc{hdrhistogram_javadoc,
+  author       = {{HdrHistogram contributors}},
+  title        = {{Recorder} --- {HdrHistogram} {API} documentation},
+  howpublished = {Project documentation},
+  year         = {2026},
+  note         = {\texttt{recordValue} documents its exception as thrown ``if value is
+                  exceeds highestTrackableValue'' and does not mention negative values;
+                  the README describes the configurable range and the significant digits
+                  and is likewise silent on them. \url{https://hdrhistogram.github.io/HdrHistogram/JavaDoc/org/HdrHistogram/Recorder.html}. Read 2026-09-10}
 }

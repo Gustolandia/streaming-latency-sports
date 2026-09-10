@@ -1265,13 +1265,18 @@ arithmetic the operator never sees. Neither needs a better clock, and neither is
 to detect. Check the spans whose endpoints are timestamped in different places, count what
 your tool throws away, and publish the retention rate beside the number.
 
-% The four correspondents thanked here by name were cut on 2026-09-10. Each had
-% replied once in August and none since; the lead author's instruction is that a
-% paper thanks people who are still in the conversation. What they gave is still in
-% the paper -- the same-clock contrast, the kernel-tracing pointers, the
-% probe-placement argument and the resolution question all shaped sections that
-% remain -- and the citations they led to are unchanged. The paragraph below is not
-% optional: IEEE requires disclosure of generative-AI assistance.
+% Four correspondents were thanked here by name until 2026-09-10, when all four were cut
+% under one rule: a paper thanks the people who are still in the conversation, and none
+% had written since August. What they gave is still in the paper -- the same-clock
+% contrast, the kernel-tracing pointers, the probe-placement argument and the resolution
+% question all shaped sections that remain -- and the citations they led to are unchanged.
+%
+% N. Herbst is back, on the same rule rather than an exception to it. He asked on the 10th
+% to come off the byline, was asked whether he would still take an acknowledgment, and
+% answered the same day that he would. The other three have not written since August and
+% stay out; if any of them writes, the rule puts them back too.
+%
+% The disclosure paragraph is not optional: IEEE requires it for generative-AI assistance.
 % R4 (round 66) asked whether this heading should read "Disclosure", since the
 % section now holds only the generative-AI statement and a reader meeting
 % "Acknowledgment" expects thanks. It stays. IEEE's own template names this
@@ -1279,6 +1284,10 @@ your tool throws away, and publish the retention rate beside the number.
 % paragraph says what it is in its first five words, before the friction can
 % build. scripts/build_without_authors.py and three gates key on the heading.
 \section*{Acknowledgment}
+
+The authors thank N.~Herbst, for the load-generation point that became one of the
+reporting rules above, for the timer-characterization work cited in
+Section~\ref{sec:related}, and for a reading that reset the abstract.
 
 In accordance with IEEE policy, Anthropic's Claude assisted with code development and
 verification, manuscript editing, and literature search. Experimental design, scientific

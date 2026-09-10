@@ -111,14 +111,29 @@ class TestTheAcknowledgementCarriesOnlyTheDisclosure:
         assert "\\section*{Acknowledgment}" in tex, \
             "IEEE requires the generative-AI disclosure and this is where it lives"
 
-    def test_nobody_is_thanked_by_name(self):
+    def test_exactly_the_correspondent_who_answered_is_thanked(self):
+        r"""One name, and the rule that decides it is the same one that removed four.
+
+        All four correspondents were cut on 2026-09-10: a paper thanks the people still in
+        the conversation, and none had written since August. Herbst then wrote --- he had
+        asked to come off the byline, was asked whether he would still take an
+        acknowledgment, and said yes the same day. So he is back **on that rule**, not as an
+        exception to it, and the other three stay out under the same rule.
+
+        This pins the count rather than the name, so that reinstating somebody stays a
+        decision the lead author makes rather than one a restored paragraph arrives at.
+        """
         tex = PAPER.read_text(encoding="utf-8")
         body = tex[tex.index("\\section*{Acknowledgment}"):
                    tex.index("\\section*{Artifact Availability}")]
         body = re.sub(r"(?m)^%.*$", "", body)
-        assert "thank" not in body.lower(), (
-            "the acknowledgement thanks somebody by name again. That is a decision for the "
-            "lead author to make deliberately, not one to arrive by a restored paragraph.")
+        assert body.lower().count("thank") == 1, (
+            "the acknowledgement thanks a number of people other than one. Four were cut on "
+            "2026-09-10 and one answered; adding another is a decision to make deliberately.")
+        for gone in ("Kunkel", "Luthra", "Kogias", "Tratt"):
+            assert gone not in body, (
+                "%s is thanked again. None of the three has written since August, and the "
+                "rule that cut them is the rule that brought Herbst back." % gone)
 
     def test_the_disclosure_is_still_there(self):
         tex = PAPER.read_text(encoding="utf-8")

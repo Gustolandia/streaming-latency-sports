@@ -202,6 +202,26 @@ The general lesson is about gates rather than about this fit. A check written ov
 *words* an argument uses cannot see what the argument does; the first version of this one
 banned three strings and passed the paragraph that was the fit. Forbid the shape.
 
+### A1k. Say which of the two happened: demoted, or withdrawn --- GATED
+
+The project does both, and they are not the same. A result is **demoted** when its
+evidence does not earn the place it had --- four points do not earn an equation in a main
+text --- and it keeps its equation, its interval and its figure in the supplement. A claim
+is **withdrawn** when it does not hold, and it goes.
+
+Round 64 found the payload-sweep fit described three ways: demoted by S15, which owns it;
+withdrawn by the experiment map's E-A10 cell; and withdrawn again by a sentence in S16
+written to justify a deletion. Only the first is true.
+
+Rule: no passage may say a demoted result was withdrawn, and a cell too small to carry the
+distinction says neither --- "not settled" is what a map column headed by what each
+campaign settled can honestly print. Gated by `tests/unit/test_round62_findings.py`,
+which also pins S15's heading, because the wording everywhere else depends on it.
+
+The corollary is about reasons rather than words. A deletion made for a wrong reason is
+still a deletion, but the wrong reason is printed and a reader will check it. Correct the
+reason even when the action stands.
+
 ### A2. No `flight` — GATED
 
 In the corpus bare *flight* occurs 131 times across 25 of 775 papers, and a read of every

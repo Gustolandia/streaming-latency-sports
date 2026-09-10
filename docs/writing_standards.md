@@ -282,6 +282,19 @@ journal prints. This manuscript's own p95 is 39, better than all five, and its m
 against their 18--22 --- so the cap binds only on outliers, and the three it caught were
 each carrying two independent claims across a semicolon.
 
+### A1q. Subsection numbers run 1..n in document order --- GATED
+
+Every pointer in either document resolves to a subsection that exists, and no number is
+used twice. The v5 merge broke both: subsections arrived from merged sections carrying
+their original numbers while the target's kept theirs, so they collided, and six main-text
+pointers were left aimed at subsections that had never existed under those numbers.
+
+Rule: renumber by position, never by string substitution --- where numbers collide they
+cannot serve as a map. Resolve a stale pointer by finding the passage it describes, not by
+guessing an offset. And run the whole suite before committing a manuscript change:
+`test_supplement_subsections.py` held all of this and went unread for three commits behind
+`-k` filters that did not match its name.
+
 ### A2. No `flight` — GATED
 
 In the corpus bare *flight* occurs 131 times across 25 of 775 papers, and a read of every

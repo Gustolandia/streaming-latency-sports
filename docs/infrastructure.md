@@ -1404,6 +1404,95 @@ original by searching for the phrase. Every occurrence after the first then repo
 first one's line number and paragraph, so a second violation is attributed to the first
 violation's neighbourhood. Flattening moves every offset; relaxing the pattern moves none.
 
+**1bw. Two thresholds, one label, and the paper's own distinction lost inside its own
+audit.** The registry called Apache Pulsar's `if (latencyMillis >= 0)` a *positivity* guard,
+the generated table put it in a class captioned *"admits only positive samples"*, the
+classifier listed it beside `> 0` under a comment saying the same, and Section VII called it
+*"reaching the same design"* as the OpenMessaging Benchmark's `> 0`.
+
+`>= 0` admits zero. **Zero is the entire population the deletion failure is about.** The
+benchmark's `> 0` removes every sample that computes to exactly zero, which on a sub-quantum
+path is most of them; Pulsar's `>= 0` keeps those and drops only the inversions. Those are
+this paper's two failure modes, and Section VI-C is the passage that draws the line: *"negative
+means the reference timestamp failed, computes-to-zero means the resolution failed, and one
+unsigned total cannot distinguish them."* Pulsar's threshold distinguishes them. It is not the
+same design; it is the other one.
+
+**The mislabel entered in a round that was correcting a different mislabel.** Round 6 caught
+us describing emqtt-bench as deleting samples when its guard is on a counter, and in the same
+paragraph proposed Pulsar as the replacement specimen, describing `>= 0` as *"a positivity
+guard"*. The description was carried for sixty-three rounds. A correction pass is a writing
+pass and needs the same suspicion as the defect it repairs --- which this file already says at
+1bo, about a renumbering, and which is apparently worth saying twice.
+
+**What the repair did and did not move.** Nothing. `harnessAudited` is still ten,
+`harnessSilent` still five, `harnessDisposalClasses` still three. Pulsar still disposes and
+still counts nothing, so it stays in the silent union; only what may be *said* about it
+changed. Recording that here matters because the reflex on finding a classifier wrong is to
+fear the headline numbers, and the useful discipline is to check rather than fear: the split
+was made, the summary re-run, and the four counts compared before a word of prose moved.
+
+**Three modelling points worth keeping.**
+
+*A threshold is not a response.* Splitting the class made `len(DISPOSAL_KINDS)` four, and
+Section VII says *"in three classes"* and then enumerates three. The reader is being told what
+becomes of the value --- dropped, replaced, refused by the library --- and nothing about that
+changed. So `DISPOSAL_RESPONSES` maps kinds to responses and the macro counts responses.
+**When a taxonomy splits, ask which of its levels the prose was quoting.**
+
+*Do not emit a number nobody reads.* The weaker guard's count was emitted as a macro, with its
+word and capitalised-word twins, and the unread-macro gate rejected all three within the
+minute. It was retired before it shipped; the split lives in `harness_registry.summary()`,
+where the table and the tests read it, and the manuscript needs no number for it.
+
+*The finding is better used as a contrast than as corroboration.* Pulsar is the tool that made
+the other choice, and the consequence is exactly what Section VI-C predicts: its sub-resolution
+samples survive into its output, where an operator can watch them pile up on the quantum. That
+is the sign channel demonstrated in somebody else's code, which is worth more than
+demonstrating it again in our own.
+
+**1bx. A comment in a `.bib` file that names an entry type eats the entry below it.** Round 69
+added the HP patent to the supplement's bibliography and prefaced it with
+`% IEEEtran.bst's @patent takes nationality/number/type ...`. BibTeX scans for an at-sign
+outside entries as well as inside them, found `@patent` in the comment, tried to parse an entry
+from prose, and skipped the real one. The build reported **zero undefined citations** --- the
+key resolved, because an earlier `.bbl` was still on disk --- and the only evidence was one
+line in `supplement.blg`: *"I was expecting a `{' or a `('---line 874"*.
+
+Two things follow. **A `.bib` comment may not contain an at-sign**, which is now gated. And
+`.blg` is a log this project had never read: every other build artefact here is checked and the
+bibliography's was not, which is how a silently skipped entry could have shipped as a citation
+resolving to a stale list.
+
+**1by. The round that fixed a vocabulary label reintroduced a retired word, twice, in the
+same edit.** Round 69's Section VII rewrite ended *"so it drops the inversions and keeps the
+sub-resolution samples the benchmark deletes"*, and the new Table S14 caption ended *"drops
+only the inversions"*. **`inversion` was retired in favour of `negative span` rounds ago.**
+
+The second-order damage is the part worth recording. `figure_vocabulary.py` polices the
+figures against terms **the manuscript has actually stopped using** --- a term is live for
+policing only while the prose has abandoned it, which is the right design, because a figure
+may not be held to a word the text still prints. So putting `inversion` back into the prose
+did not merely violate the rule; it **disarmed the rule for every figure at once**, and three
+further tests in that file went red for the same reason. This is 1c exactly --- *"a new
+paragraph put [the retired word] straight back and thereby disarmed the vocabulary gate for
+the figures too"* --- committed again, four dozen rounds later, by an edit whose entire
+subject was a mislabelled term.
+
+The same run turned up two smaller ones from the same fifteen minutes of editing. A British
+*behaviour* in the nine words added to Threats, in a journal that sets American spelling. And
+two fresh uses of *quantum*, which is a REVIEW word and therefore needs a judgment rather
+than a pattern: both were adjudicated in place and both entries say why the substitution does
+not survive --- samples pile up **on** a discrete value, and a table caption already six lines
+long does not want *a path shorter than the timestamp resolution* where *sub-quantum* will do.
+
+**The lesson is about what an edit is.** Three of the four defects here were introduced by
+prose written to fix a different defect, and every one of them was caught by a gate written
+in an earlier round for an earlier mistake. A repair pass is a writing pass and inherits
+every rule the writing has; the gates are what make that inheritance automatic instead of
+remembered. **Run the whole suite after a repair, not only after a feature** --- which is
+1bo's rule arriving from the other direction.
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

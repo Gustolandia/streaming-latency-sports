@@ -928,7 +928,12 @@ def registry_sources_macro():
 #: Disposal class -> table cell. Every class `classify()` can emit must appear here; the
 #: renderer asserts it, and test_emit_paper_numbers pins it.
 REGISTRY_LABELS = {
-    "positive_only_filter": "filter",
+    "positive_only_filter": "filter, $>0$",
+    # Round 69. Two thresholds, two cells: `>= 0` keeps every sample that computes to
+    # exactly zero, which on a sub-quantum path is most of them, and drops only the
+    # inversions. Printing both as "filter" made Apache Pulsar and the OpenMessaging
+    # Benchmark look like one design when they are this paper's two failure modes.
+    "nonnegative_filter": "filter, $" + chr(92) + "geq 0$",
     "silent_suppression": "substitute a constant",
     "library_refusal": "refused by own library",
     # Not a disposal -- nothing vanishes -- which is why it is absent from DISPOSAL_KINDS and
@@ -1388,7 +1393,7 @@ def registry_macros():
     """
     try:
         import harness_registry
-        from audit_external_harness import DISPOSAL_KINDS
+        from audit_external_harness import DISPOSAL_RESPONSES
         s = harness_registry.summary()
     except (ImportError, OSError) as exc:
         # A checkout without the registry still emits the campaign numbers. A registry that
@@ -1412,14 +1417,25 @@ def registry_macros():
         ("harnessSilentIndependent",
          str(len([h for h in s["silent"] if h != "OpenMessaging Benchmark"]))),
         ("harnessFilters", str(len(s["filters"]))),
+        # Round 69 emitted the weaker guard's count here and took it straight back out:
+        # neither document quotes it, the unread-macro gate said so within the minute,
+        # and three more names nobody reads is how a ledger stops being evidence. The
+        # split lives in harness_registry.summary(), where the table and the tests read
+        # it from, and the manuscript says "the same class at the other threshold"
+        # without needing a number for it.
         ("harnessSuppressors", str(len(s["suppressors"]))),
         ("harnessCounting", str(len(s["counts_discards"]))),
         ("harnessRefusals", str(len(s["library_refusals"]))),
         # How many disposal classes there are, which the paragraph in IV-D was asserting from
         # prose and asserting wrongly: it said four while the taxonomy has three and the
-        # sentence itself enumerated three. The size of DISPOSAL_KINDS is not a fact about
-        # this campaign, it is a fact about the classifier, and it is countable.
-        ("harnessDisposalClasses", str(len(DISPOSAL_KINDS))),
+        # sentence itself enumerated three. Not a fact about this campaign, a fact about the
+        # classifier, and countable.
+        #
+        # Counted over RESPONSES rather than over classifier labels since round 69, when the
+        # two filter thresholds were separated. A reader told what becomes of the value is
+        # owed the number of things that can become of it; `>` against `>=` decides which
+        # samples are dropped, not what dropping is, and the table carries that instead.
+        ("harnessDisposalClasses", str(len(set(DISPOSAL_RESPONSES.values())))),
         # The tool in no disposal class at all. emqtt-bench guards a counter rather than the
         # sample, so it neither discards nor counts a discard, and lumping it with the tool
         # that counts is what left Section IV-D describing it as "a fifth entry" of nothing.

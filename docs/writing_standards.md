@@ -397,6 +397,58 @@ reads the two documents; it does not read the mailbox. **That is the argument fo
 requirement from an email into a test instead of a plan file**, and round 68 is the first
 time it paid out against a reviewer rather than against a forgetful author.
 
+### A1x. A concession made once governs everywhere --- GATED
+
+Section III-C concedes that Hewlett-Packard's 1970 counter note carries *"the symptom and the
+cure"*, and S17 spells the cure out and adds *"we arrived at it independently"*. Section
+VIII-B's rule list then claimed *"what we add is why"* about the same remedy --- and the cure,
+as S17 states it, is *phase jitter so the samples stop landing on the same points of the
+clock's cycle*, which **is** the why. The paper gave the point up twice, correctly, and took
+it back once, in the one place a reader looks for what is new.
+
+Rule: where a paper concedes a precedent, the concession binds every later sentence about the
+same thing. III-C's formulation is the one that governs --- *"Our contribution is not that
+arithmetic … but its consequence under deletion"* --- and the rule list now says the same.
+`test_round69_findings.py` pins both halves: the claim is gone, and the concession it defers
+to must still be there, because if III-C ever stops conceding it is the new wording that
+becomes the overclaim.
+
+The external confirmation is in the supplement, where the bibliography is uncapped: HP
+patented the remedy in 1974 (US 3,938,042) and stated the mechanism as *"the relative
+coherence between the gating and the gated signal"*. **Look for the strongest version of the
+precedent you are conceding to before writing the sentence that concedes to it.**
+
+### A1y. A classifier must distinguish what the paper distinguishes --- GATED
+
+The audit put `if (endToEndLatencyMicros > 0)` and `if (latencyMillis >= 0)` in one class
+called *filter*, captioned *"admits only positive samples"*, and Section VII called the second
+tool *"reaching the same design"* as the first. `>= 0` admits zero, and zero is the whole
+population the deletion failure is about: the strict guard removes every sample that computes
+to exactly zero, the weaker one keeps them and drops only the inversions. Those are the
+paper's two failure modes, inside the paper's own audit, under one label.
+
+Rule: **any distinction the argument rests on has to be a distinction the instrument can
+make.** The classifier now has two classes and the generated table prints the comparison
+beside the verdict, so a reader checks an operator rather than a noun.
+
+Two corollaries, both learned the hard way in the same hour. **When a taxonomy splits, ask
+which level the prose was quoting** --- Section VII says "three classes" and enumerates three
+*responses*, so the count is over responses and a threshold is not a new one. And **do not
+emit a number to carry the split**: the weaker guard's count went into the ledger with its two
+word forms and the unread-macro gate rejected all three, correctly.
+
+### A1z. No comment in a `.bib` file may contain an at-sign --- GATED
+
+BibTeX scans for an at-sign outside entries as well as inside them. A comment reading
+`% IEEEtran.bst's @patent takes …` made it parse prose as an entry and skip the real entry
+below, and the LaTeX build reported **zero undefined citations** because a `.bbl` from an
+earlier run was still on disk. The only evidence was one line in a log this project had never
+read.
+
+Rule: the bibliography's own log is a build artefact like any other and is now checked, for
+both documents, along with the stronger check it implies --- every key cited in the `.aux`
+must appear in the printed `.bbl`.
+
 ### A2. No `flight` — GATED
 
 In the corpus bare *flight* occurs 131 times across 25 of 775 papers, and a read of every

@@ -871,6 +871,31 @@
   note        = {Part no.\ 02-5952-0766; undated; the year is its \emph{HP Journal} citation}
 }
 
+% BibTeX scans for an at-sign even outside an entry, so a comment naming an entry type
+% with one starts a bogus entry and the real one below is skipped. That is what the
+% first draft of this comment did. IEEEtran.bst's patent type takes
+% nationality/number/type and the filing date in
+% yearfiled/monthfiled; there is no assignee field, so Hewlett-Packard is named in the
+% note, where it is load-bearing -- the point of the citation is that the patent and
+% Application Note 162-1 come from the same house.
+@patent{hp1976dither,
+  author      = {Gliever, John H. and Chu, David C.},
+  title       = {Measurement averaging counting apparatus employing a randomly phase
+                 modulated time base to improve counting resolution},
+  nationality = {U.S.},
+  number      = {3,938,042},
+  yearfiled   = {1974},
+  monthfiled  = aug,
+  year        = {1976},
+  month       = feb,
+  note        = {Assigned to the Hewlett-Packard Company, the publisher of Application
+                 Note 162-1. States the mechanism behind that note's cure --- ``the
+                 fundamental problem is the relative coherence between the gating and the
+                 gated signal'' --- and the symptom: a counter that ``appears to hang up on
+                 some value \ldots{} a reading that is an integral multiple of the clock
+                 period''. Read 2026-09-11}
+}
+
 @misc{fio_gettime,
   author       = {Axboe, Jens},
   title        = {{fio}: Flexible {I/O} Tester --- \texttt{gettime.c}},

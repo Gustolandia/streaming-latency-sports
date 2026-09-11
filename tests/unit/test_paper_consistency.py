@@ -1585,9 +1585,20 @@ class TestCrossReferencesResolve:
     REF = re.compile(r"\\(?:ref|autoref|eqref)\{([^}]+)\}")
     LABEL = re.compile(r"\\label\{([^}]+)\}")
 
+    #: Round 68, W4. The supplement imports the paper's labels through `xr` under a `P-`
+    #: prefix, so that the 26 citation keys the two documents share stop being reported as
+    #: multiply defined on every build. A pointer written `\ref{P-sec:audit}` is satisfied
+    #: by the paper's `\label{sec:audit}`; stripping the prefix is what lets this check keep
+    #: reading the submission package as one document.
+    XR_PREFIX = "P-"
+
+    def _target(self, ref):
+        return ref[len(self.XR_PREFIX):] if ref.startswith(self.XR_PREFIX) else ref
+
     def test_no_reference_is_dangling(self, tex):
         labels = set(self.LABEL.findall(tex))
-        dangling = sorted({r for r in self.REF.findall(tex) if r not in labels})
+        dangling = sorted({r for r in self.REF.findall(tex)
+                           if self._target(r) not in labels})
         assert dangling == [], f"\ref to labels that do not exist: {dangling}"
 
     def test_no_label_is_defined_twice(self, tex):
@@ -2802,9 +2813,11 @@ class TestRefereeRoundTwo:
         the main text would make this pin enforce the error.
 
         What replaces it says the same thing better and needs no model: the counts above the
-        mode fall by a factor that is not constant -- 3.4x, 4.7x, then 357x -- which is what
-        "not a single heavy tail" means when you draw it. The purpose is unchanged and the
-        instrument is stronger.
+        mode fall by a factor that is not constant -- 5.0x, 3.4x, 4.7x, then 357x -- which is
+        what "not a single heavy tail" means when you draw it. The purpose is unchanged and
+        the instrument is stronger. Round 68 added the first of those four: the ratios had
+        been taken from the tail-fit window while the prose anchored them on the mode, so the
+        steepest fall was the one nobody printed.
         """
         low = " ".join(main_tex.split()).lower()
         # The phrase may survive only inside the sentence that retires it.
@@ -2818,8 +2831,12 @@ class TestRefereeRoundTwo:
         # bootstrap refutes a fit the main text no longer states, so reporting the verdict
         # belongs beside the fit, in Supplement S15. What the main text must carry is the
         # reading that replaced it, which is the modes and what the counts do above them.
+        # Round 68 re-anchored the falls on the mode, where the sentence says they are
+        # anchored: they were emitted from the tail-fit window one octave higher, so the
+        # largest fall in the run -- the one a reader gets from the two bars either side
+        # of the mode -- was computed on every build and printed nowhere.
         for macro in (r"\tracedModes", r"\tracedModeShare", r"\tracedModeRatio",
-                      r"\tracedTailFallA", r"\tracedTailFallLast"):
+                      r"\tracedModeFallA", r"\tracedLastBucketFall"):
             assert macro in main_tex, f"{macro} must carry the new reading"
         assert r"\tracedTailAlpha" not in main_tex, \
             "the rejected fit belongs in the supplement's postmortem, not in the main text"
@@ -3762,7 +3779,7 @@ class TestNoCrossReferenceDangles:
     def test_the_supplement_imports_the_main_texts_labels(self):
         """The mechanism, not just the symptom: without xr the '??' come straight back."""
         src = (REPO / "supplement.tex").read_text(encoding="utf-8")
-        assert "\\usepackage{xr}" in src and "\\externaldocument{paper}" in src, (
+        assert "\\usepackage{xr}" in src and "\\externaldocument[P-]{paper}" in src, (
             "the supplement stopped importing paper.aux; its references to the main text's "
             "sections and tables will silently degrade to '??'")
 

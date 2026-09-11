@@ -159,6 +159,16 @@ def span_macros(path=SPAN_CSV):
             ("span%sNegAckPct" % key, "%.2f" % agg["pct_ack"]),
             ("span%sRunsAckInvertsPct" % key, "%.0f" % (
                 100.0 * agg["runs_ack_inverts"] / agg["runs"] if agg["runs"] else 0.0)),
+            # Round 68, W3. Table I printed an em-dash in these six cells, which in an IEEE
+            # table reads "not applicable", and explained in the caption that it meant
+            # "measured, and exactly zero". That is the wrong glyph in this paper above
+            # all others: Section VI-C's contribution is that an unsigned counter cannot
+            # tell a measured zero from an uncounted absence. Each cell now prints its own
+            # count, from the same recount as the row's total, rather than borrowing a
+            # neighbour's macro or a dash.
+            ("span%sNegSend" % key, latex_thousands(agg["neg_send"])),
+            ("span%sNegOutputSend" % key, latex_thousands(agg["neg_output_send"])),
+            ("span%sNegTti" % key, latex_thousands(agg["neg_tti"])),
         ])
         # The consumer's own handling span, which is where the two clients differ in what
         # falls inside the transport proxy. Nanoseconds for both, because one of them is two
@@ -955,6 +965,17 @@ def _tt(name):
     return name
 
 
+def _condition_stem(cell):
+    """The condition a cell name belongs to, with any replicate suffix removed.
+
+    Cell names in the ledger are `<condition>_rep<n>`, or the bare condition where there is
+    only one run. Two names share a stem exactly when they are runs of the same condition,
+    which is what Section VI-A's "two replicates of one cell" asserts about the pair the
+    retention extremes fall on.
+    """
+    return cell.rsplit("_rep", 1)[0]
+
+
 def retention_macros():
     """The cells behind the deletion claim, and the denominator the manuscript lacked.
 
@@ -972,6 +993,21 @@ def retention_macros():
         return []
     lo = min(grid, key=lambda c: c["retention_pct"])
     hi = max(grid, key=lambda c: c["retention_pct"])
+    # Round 68, W2. The main text calls these two "replicates of one cell", and they are:
+    # s200_rep1 and s200_rep2. But the code picks them by extremum over every grid cell,
+    # so that reading is a property of today's corpus and not of this function. It also
+    # licenses the sentence's second claim -- that the 279-fold difference in samples KEPT
+    # and the 279-fold difference in RETENTION are the same number -- which holds only
+    # because two replicates of one condition take the same number of samples. A cell from
+    # another condition dipping below 0.36% would leave every printed figure valid and the
+    # prose around it false, with nothing to notice. Pinned here rather than in a test,
+    # because it is a precondition of the emission and not a property of the output.
+    stem = _condition_stem(lo["cell"])
+    if stem != _condition_stem(hi["cell"]):
+        raise ValueError(
+            "Section VI-A calls the retention extremes two replicates of one cell; they are "
+            "now %r and %r, which are different conditions. Fix the prose or the selection "
+            "before this emits." % (lo["cell"], hi["cell"]))
     pub = [c["pub_p50_ms"] for c in grid]
     rho = stat_intervals.spearman(pub, [c["retention_pct"] for c in grid])
     return [
@@ -1083,6 +1119,16 @@ def traced_macros():
         in_order = sorted(r.get("modes", []), key=lambda m: m[0])
         out += [("tracedModeShare%s" % letter, "%.1f" % (100 * mode[2]))
                 for letter, mode in zip("AB", in_order)]
+        # Round 68's image review. The caption described the first mode as a region ("a few
+        # microseconds") and gave it a share that belongs to a single bucket: the three
+        # buckets under ten microseconds hold 35.5% between them, the modal one 20.0%. The
+        # second mode's edges were typed into the caption by hand, which is the other half
+        # of the same defect. Both modes now name the bucket their share is the share of,
+        # from the ledger. The high edge is 2*lo because these are log2 buckets, which is
+        # the same assumption the third mode's edges above already make.
+        out += [(name % letter, "%.0f" % (mult * mode[0]))
+                for letter, mode in zip("AB", in_order)
+                for name, mult in (("tracedModeLo%s", 1), ("tracedModeHi%s", 2))]
     if "tail_alpha" in r:
         out += [
             ("tracedTailAlpha", "%.2f" % r["tail_alpha"]),
@@ -1100,14 +1146,23 @@ def traced_macros():
                  if r["tail_gof_p"] == 0 else "%.3f" % r["tail_gof_p"]),
                 ("tracedTailGofBoot", latex_thousands(r["tail_gof_boot"])),
             ]
-        falls = r.get("tail_falls") or []
-        if len(falls) >= 3:
-            out += [
-                ("tracedTailFallA", "%.1f" % falls[0][1]),
-                ("tracedTailFallB", "%.1f" % falls[1][1]),
-                ("tracedTailFallLast", "%.0f" % falls[-1][1]),
-                ("tracedTailOctaves", _spell(len(falls) - 1)),
-            ]
+    # Round 68, R3. These were emitted from `tail_falls`, which starts at the fit window
+    # (4 ms), while both documents anchor them on the MODE (2 ms) -- "above it the counts
+    # collapse". The first fall above the mode, the largest in the run, was therefore
+    # computed and never printed, and a reader dividing the two bars either side of the
+    # mode in Fig. 3 got a ratio that appears nowhere in the sentence that sent them there.
+    # Anchored on the mode now, and named for the anchor so the two cannot part again.
+    # The final ratio is a property of the last populated bucket rather than of either
+    # anchor -- the same number under both -- so it is named for the bucket and is the one
+    # macro the truncation paragraph and the collapse sentence legitimately share.
+    falls = r.get("mode_falls") or []
+    if len(falls) >= 3:
+        out += [("tracedModeFall%s" % letter, "%.1f" % ratio)
+                for letter, (_lo, ratio) in zip("ABCDEFG", falls[:-1])]
+        out += [
+            ("tracedLastBucketFall", "%.0f" % falls[-1][1]),
+            ("tracedModeFallOctaves", _spell(len(falls) - 1)),
+        ]
     if "gof_p" in r and r["gof_boot"]:
         out += [
             ("tracedGofP", ("<%.4f" % (1.0 / r["gof_boot"])) if r["gof_p"] == 0
@@ -1776,6 +1831,16 @@ def exposure_macros():
             # crossover is the number a reader remembers, and it is the one that moves most.
             ("exposureLagLo", "%.0f" % p10),
             ("exposureLagHi", "%.0f" % p90),
+            # Round 68, R1. The main text printed "the 10 ms error at 7-19% and the
+            # crossover at 0.72-1.90 ms" directly after naming a tenth-to-ninetieth span of
+            # the lag. Both low ends were the MEDIAN: exposureErrTen and exposureCrossover
+            # were each used twice in one paragraph, once correctly as the median and once
+            # as the bottom of a range whose top was the ninetieth percentile. A reader
+            # dividing 500 by 10,000 gets 5%, which appeared nowhere. The percentile ends
+            # are emitted here so that a printed range has one estimator at both ends, and
+            # the median keeps its own two macros for the sentence that names it.
+            ("exposureErrTenLo", err(10, p10)),
+            ("exposureCrossoverLo", "%.2f" % (p10 / 1000.0)),
             ("exposureCrossoverHi", "%.2f" % (p90 / 1000.0)),
             ("exposureErrTenHi", err(10, p90))]
 

@@ -162,8 +162,15 @@ class TestTheSupplementNamesSectionsRatherThanNumberingThem:
             m = re.match(r"^\\ref\{([^}]+)\}$", body)
             assert m, ("%s holds %r; main-text pointers resolve through xr rather than "
                        "repeating a number by hand" % (name, body))
-            assert m.group(1) in labels, \
-                "%s points at %r, which paper.tex does not define" % (name, m.group(1))
+            # Round 68, W4: xr imports under a `P-` prefix so the 26 citation keys the two
+            # documents share stop being reported as multiply defined on every build. The
+            # prefix is how the label travels; the label is what has to exist.
+            assert m.group(1).startswith("P-"), (
+                "%s points at %r without the xr prefix, so it will resolve to nothing"
+                % (name, m.group(1)))
+            target = m.group(1)[len("P-"):]
+            assert target in labels, \
+                "%s points at %r, which paper.tex does not define" % (name, target)
 
     def test_the_resolved_pointers_are_still_section_numbers(self, aux):
         """What the literals used to guarantee, now checked where the reader meets it.
@@ -382,9 +389,9 @@ class TestNoFloatOrEquationIsPointedAtByNumber:
     def test_the_supplement_can_reach_the_paper(self, supp):
         """The rule above is only safe because `xr` is loaded. If it ever is not, every
         `\\ref` into the paper renders as `??` and this check would still pass."""
-        assert re.search(r"\\externaldocument\{paper\}", supp), (
-            "the supplement must load xr and \\externaldocument{paper}, or the cross-document "
-            "\\ref calls this rule forces everyone to use will render as ??")
+        assert re.search(r"\\externaldocument\[P-\]\{paper\}", supp), (
+            "the supplement must load xr and \\externaldocument[P-]{paper}, or the "
+            "cross-document \\ref calls this rule forces everyone to use will render as ??")
 
     def test_the_cross_document_refs_resolve(self, supp, aux):
         """Every label the supplement reaches for must be one the paper actually assigned."""

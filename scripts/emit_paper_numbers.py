@@ -1658,7 +1658,31 @@ def artifact_macros(path=".zenodo.json", data_path=".zenodo-data.json"):
         raise ValueError(
             "the two deposit records disagree on the version: %s says %r, %s says %r"
             % (path, version, data_path, sibling))
-    return [("artifactVersion", version)]
+    out = [("artifactVersion", version)]
+
+    # Access is the same kind of fact as the version and had the same defect waiting: the
+    # manuscript claimed that every number is recomputed from the archived code beside two
+    # DOIs whose files had been restricted, and nothing tied the sentence to the record.
+    # `access_right` is Zenodo's own field, so the deposit metadata is the one place it is
+    # written and the paper reads it from there.
+    access = meta.get("access_right")
+    if access:
+        try:
+            with open(data_path, encoding="utf-8") as fh:
+                sib_access = _json.load(fh).get("access_right")
+        except OSError:
+            sib_access = access
+        if sib_access != access:
+            raise ValueError(
+                "the two deposit records disagree on access: %s says %r, %s says %r"
+                % (path, access, data_path, sib_access))
+        out.append(("artifactAccessPhrase", {
+            "open": "openly downloadable",
+            "restricted": "restricted pending publication",
+            "embargoed": "under embargo",
+            "closed": "closed",
+        }.get(access, access)))
+    return out
 
 
 def _adjusted_r2(r2, n, predictors):

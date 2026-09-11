@@ -352,6 +352,45 @@ class TestModes:
         assert est["tail_lo"] < est["tail_alpha"] < est["tail_hi"]
 
 
+class TestFallsAboveTheMode:
+    """Round 68's required item: the sentence and the numbers must share an anchor.
+
+    Both documents say "above it the counts collapse", where "it" is the mode -- and the
+    ratios printed beside that clause were computed from TAIL_LO_US, the fit window, which
+    is one octave higher. The largest fall in the run, the one immediately above the mode,
+    was computed every build and printed nowhere. A reader dividing the two bars either
+    side of the mode in Fig. 3 got a number that appeared in no sentence.
+    """
+
+    def test_the_falls_start_at_the_mode_and_not_at_the_fit_window(self):
+        est = tit.estimate(dict(tit.traced_histograms())["ea9/l88_base"])
+        assert est["mode_falls_from_us"] == max(m[0] for m in est["modes"])
+        assert est["mode_falls_from_us"] < est["tail_from_us"],             "the whole point is that the prose anchor is below the fit window"
+
+    def test_the_first_fall_above_the_mode_is_the_one_that_was_missing(self):
+        est = tit.estimate(dict(tit.traced_histograms())["ea9/l88_base"])
+        assert est["mode_falls"][0][1] == pytest.approx(5.03, abs=0.01)
+        assert est["mode_falls"][1:] == est["tail_falls"],             "below the first, the two lists are the same falls"
+
+    def test_a_histogram_with_no_interior_mode_emits_no_mode_falls(self, tmp_path):
+        """Nothing to anchor on, so nothing is claimed rather than something anchored
+        silently on the fit window, which is the defect this key exists to prevent."""
+        dump = tmp_path / "depth" / "synthetic" / "monotone"
+        dump.mkdir(parents=True)
+        bins = pareto_buckets(0.8, 256, 32768)
+        lines = ["@count: %d" % sum(b[2] for b in bins), "@usecs: "]
+        lines += ["[%d, %d)  %d" % b for b in bins]
+        (dump / "runqlat.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        est = tit.estimate(str(dump / "runqlat.txt"))
+        assert est["modes"] == []
+        assert "mode_falls" not in est and "mode_falls_from_us" not in est
+
+    def test_the_last_fall_is_the_same_under_either_anchor(self):
+        """Which is why the manuscript names it for the bucket rather than for an anchor."""
+        est = tit.estimate(dict(tit.traced_histograms())["ea9/l88_base"])
+        assert est["mode_falls"][-1] == est["tail_falls"][-1]
+
+
 class TestGoodnessOfFit:
     def test_a_true_power_law_is_not_rejected(self):
         """The test must be able to fail to reject, or it proves nothing when it rejects."""

@@ -1,0 +1,47 @@
+{
+  "note": [
+    "Standing judgments for scripts/apply_vocabulary.py's REVIEW list: occurrences of a",
+    "retired or imprecise word that have been read in place and found correct. Every entry",
+    "carries the reason, because the point of the list is that the next round reads reasons",
+    "rather than re-reading twenty-five sentences.",
+    "",
+    "Two scopes. A 'line' judgment clears one occurrence and is anchored on verbatim text",
+    "from its own line, so it stops applying if that sentence is rewritten. A 'file'",
+    "judgment clears a word throughout one document and must say, in 'requires', what makes",
+    "that legitimate -- normally the definition the document gives the word. If the",
+    "definition goes, the allowance goes with it and every occurrence returns.",
+    "",
+    "A judgment that matches nothing is reported as STALE and fails --check. An allowance",
+    "for prose that has moved is a claim nobody checked."
+  ],
+  "judgments": [
+    {
+      "file": "supplement.tex",
+      "key": "guard",
+      "scope": "file",
+      "requires": "the audit registry (Section~S25) uses \\emph{guard} for a tool's",
+      "reason": "The supplement defines the word in its 'On the vocabulary' block, as the audit registry's term for a tool's own conditional of the admission-condition kind, 'where the word names a code path rather than the benchmark's'. That is exactly what the co-author's pass asked for -- define once, then use -- and the fifteen uses are all the registry sense. The paper, which gives no such definition, uses 'admission condition' throughout and contains no 'guard' at all."
+    },
+    {
+      "file": "paper.tex",
+      "key": "quantum",
+      "scope": "line",
+      "anchor": "the \\emph{timestamp resolution} --- the \\emph{quantum}, one millisecond",
+      "reason": "This is the sentence that defines the term: it introduces 'timestamp resolution' and gives 'quantum' as its name in the same breath. Retiring the word here would remove the definition rather than the jargon."
+    },
+    {
+      "file": "supplement.tex",
+      "key": "quantum",
+      "scope": "line",
+      "anchor": "the millisecond quantum of Section~\\mainModeB{} came from the benchmark",
+      "reason": "Use after definition, and the sentence is about where the millisecond quantum came from -- the benchmark's own timestamp, not a choice of ours. 'The millisecond timestamp resolution of Section VI came from the benchmark' says the same thing more heavily in a sentence answering an objection, where brevity is the argument."
+    },
+    {
+      "file": "supplement.tex",
+      "key": "instrument",
+      "scope": "line",
+      "anchor": "and the instrument is not among them",
+      "reason": "The sentence closes a survey of twenty-seven benchmark efforts by naming what the survey judged overlooked. The measuring instrument as a category is precisely the subject -- no substitution of 'timestamp resolution' or 'the benchmark tool' preserves it, because the point is that the survey names no part of the instrument at all."
+    }
+  ]
+}

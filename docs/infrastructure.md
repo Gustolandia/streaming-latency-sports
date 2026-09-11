@@ -1250,6 +1250,34 @@ pass needs the same suspicion as the defect it repairs** --- the v5 remapper is 
 this, and it caused it the same way.
 
 
+**1bp. An audit is only as wide as the surface it reads, and the API is narrower than the
+page.** Two co-authors asked for their names off the Zenodo deposits, and the names were
+not only in the creator lists: they were in the changelog prose of the descriptions and in
+the licence carve-out of the copyright field, across twelve published records (six software
+versions, six dataset versions). The first sweep queried the REST API, walked every string
+in every record's JSON, and reported a single dirty record. **It was wrong, and it was wrong
+silently:** Zenodo does not serialize the copyright field into the record JSON at all. The
+same sweep run against the rendered HTML of each record found the field on three of them,
+including one the API had declared clean.
+
+The rule is that **an absence is proved against the surface a reader sees**, not against
+whichever representation is most convenient to parse. Where the two disagree, the rendered
+page wins, because it is the artifact. The second sweep fetched all twelve record pages and
+counted the three surnames in the full document text, JSON-LD block included; it is what
+licensed the claim that the deposits are clean.
+
+Two mechanical traps sit under this, both of which cost publishes that appeared to succeed.
+**The description editor is TinyMCE, and neither a DOM write to its backing textarea nor
+`setContent()` commits** --- both render correctly in the editor and are discarded on
+publish. Only real keystrokes commit, so the working method is to set the selection range
+inside the editor iframe from script and then type over it, after a real click has given the
+iframe focus. And **the automation's coordinate frame is not the page's**: the viewport was
+1920 CSS pixels wide while clicks were addressed in a 1568-wide frame, so every coordinate
+computed from `getBoundingClientRect()` missed by a fifth until it was scaled. A click that
+lands on nothing reports success. **Verify focus before typing, and reload before believing
+a publish.**
+
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

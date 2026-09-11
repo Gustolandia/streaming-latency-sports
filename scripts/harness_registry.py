@@ -132,6 +132,10 @@ def summary(rows=None):
     rows = load() if rows is None else rows
     fold = by_harness(rows)
     filters = [h for h, v in fold.items() if "positive_only_filter" in v["kinds"]]
+    # Round 69: the weaker guard, counted beside the strict one because a tool that
+    # drops its inversions silently is still silent, and separately because what may be
+    # SAID about it differs -- it keeps the population the strict guard deletes.
+    nonneg = [h for h, v in fold.items() if "nonnegative_filter" in v["kinds"]]
     supp = [h for h, v in fold.items() if "silent_suppression" in v["kinds"]]
     refusal = [h for h, v in fold.items() if "library_refusal" in v["kinds"]]
     cross = [h for h, v in fold.items() if "cross_process_latency" in v["kinds"]]
@@ -141,10 +145,10 @@ def summary(rows=None):
     # filtered *and* counted would still be reported as silent. `refusal` joined this union in
     # round 6: a value dropped by the recording library is as gone as one dropped by an `if`,
     # and counted in one place fewer.
-    silent = sorted((set(filters) | set(supp) | set(refusal)) - set(counted))
+    silent = sorted((set(filters) | set(nonneg) | set(supp) | set(refusal)) - set(counted))
     # Named so a reader can check the union above against the classifier rather than trust it.
-    assert set(DISPOSAL_KINDS) == {"positive_only_filter", "silent_suppression",
-                                   "library_refusal"}, DISPOSAL_KINDS
+    assert set(DISPOSAL_KINDS) == {"positive_only_filter", "nonnegative_filter",
+                                   "silent_suppression", "library_refusal"}, DISPOSAL_KINDS
     return {
         "harnesses": len(fold),
         "vendors": len({v["vendor"] for v in fold.values()}),
@@ -152,6 +156,7 @@ def summary(rows=None):
         "evidence_lines": sum(v["lines"] for v in fold.values()),
         "cross_process": sorted(cross),
         "filters": sorted(filters),
+        "nonnegative_filters": sorted(nonneg),
         "suppressors": sorted(supp),
         "library_refusals": sorted(refusal),
         "counts_discards": sorted(counted),

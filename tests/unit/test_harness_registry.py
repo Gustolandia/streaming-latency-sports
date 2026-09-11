@@ -189,7 +189,14 @@ EXPECTED = {
     # Round 6: the guard is on the counter, so the filter label is withdrawn -- the tool
     # computes the cross-process span and keeps every sample of it.
     "emqtt-bench":             ({"cross_process_latency"}, False),
-    "Apache Pulsar perf":      ({"cross_process_latency", "positive_only_filter"}, False),
+    # Round 69: `if (latencyMillis >= 0)` is a NON-negativity guard. It admits zero, so it
+    # drops the inversions and keeps every sample that computes to exactly zero -- which on
+    # a sub-quantum path is most of them, and is the population the OpenMessaging
+    # Benchmark's `> 0` deletes. Two thresholds, two classes: the paper is about the
+    # difference between a measured zero and an uncounted absence, so its classifier has to
+    # be able to tell `>` from `>=`. Pulsar still disposes and still counts nothing, so the
+    # silent count is unmoved; what changed is what may be said about it.
+    "Apache Pulsar perf":      ({"cross_process_latency", "nonnegative_filter"}, False),
     "fio":                     ({"silent_suppression"}, False),
     "blktrace btt":            ({"silent_suppression"}, False),
     "wrk2":                    ({"library_refusal"}, False),
@@ -265,8 +272,12 @@ def test_the_round6_reaudit_headline_counts():
     """The counts Section IV-D quotes, after round 6's corrections.
 
     emqtt-bench was acquitted -- its guard is on a counter -- and two harnesses were added:
-    Apache Pulsar (a second vendor's positivity filter) and wrk2 (the library-refusal class).
-    Rezolus counts, emqtt-bench keeps.
+    Apache Pulsar and wrk2 (the library-refusal class). Rezolus counts, emqtt-bench keeps.
+
+    Round 6 called Pulsar's guard a positivity filter and round 69 corrected it: the source
+    is `if (latencyMillis >= 0)`, which admits zero. It still disposes and still counts
+    nothing, so `n_silent` is unmoved -- which is exactly why both numbers are asserted
+    here and why the assertion below now names the class rather than the union.
 
     Round 56 took the survey to ten by adding the tools a co-author asked whether we had
     looked at: Apache Kafka's own bundled harness, RabbitMQ PerfTest and the NATS CLI. The
@@ -283,5 +294,7 @@ def test_the_round6_reaudit_headline_counts():
     assert s["n_silent"] == 5
     assert s["counts_discards"] == ["Rezolus"]
     assert "emqtt-bench" not in s["silent"]
-    assert "Apache Pulsar perf" in s["filters"]
+    assert s["filters"] == ["OpenMessaging Benchmark"], "the strict guard, `> 0`"
+    assert s["nonnegative_filters"] == ["Apache Pulsar perf"], "the weaker one, `>= 0`"
+    assert "Apache Pulsar perf" in s["silent"], "a weaker guard is still a silent one"
     assert s["library_refusals"] == ["wrk2"]

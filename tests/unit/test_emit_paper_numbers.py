@@ -394,10 +394,22 @@ class TestRegistryMacros:
         assert int(got["harnessVendors"]) >= 4
         assert int(got["harnessLanguages"]) >= 3
 
-    def test_both_disposal_classes_are_represented(self):
+    def test_every_disposal_response_is_represented(self):
+        """A survey that found only one way to lose a sample would not be a survey.
+
+        Round 69 split the filter class by threshold, so the strict guard is down to one
+        harness on its own; the two are asserted together because what the sentence in
+        Section VII claims is that FILTERING is a response two vendors reached, not that
+        either spelling of it was.
+        """
+        import harness_registry
         got = dict(epn.registry_macros())
-        assert int(got["harnessFilters"]) >= 2
+        s = harness_registry.summary()
+        assert len(s["filters"]) + len(s["nonnegative_filters"]) >= 2, (
+            "two vendors filter, at two thresholds")
         assert int(got["harnessSuppressors"]) >= 2
+        assert int(got["harnessDisposalClasses"]) == 3, (
+            "three responses: drop it, replace it, let the library refuse it")
 
     def test_at_least_one_harness_counts_its_discards(self):
         """Without a counterexample the survey would be an advertisement."""

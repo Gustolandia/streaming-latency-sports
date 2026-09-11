@@ -1033,9 +1033,10 @@ across \harnessLanguagesWord{} languages and \harnessVendorsWord{} vendors, clas
 % semicolon rather than at the head of a sentence. Lesson 12 in reverse.
 finding with the code that classified the benchmark; \harnessSilentWord{} of the
 \harnessAuditedWord{} dispose of the sample without counting it, in
-\harnessDisposalClassesWord{} classes, and
-one of them is Apache Pulsar's performance client reaching the same design
-independently~\cite{pulsar_perf}. Deletion is not the only way coarse resolution wins: Apache
+\harnessDisposalClassesWord{} classes, and one of them reaches that class at the other
+threshold. Apache Pulsar's performance client admits zero~\cite{pulsar_perf}, so it drops the
+negative spans and keeps the sub-resolution samples the benchmark deletes. They survive into
+its output, where an operator can see them pile up on the quantum. Deletion is not the only way coarse resolution wins: Apache
 \kafka{}'s own bundled end-to-end tool keeps every sample and loses it anyway, filling the
 array its percentiles come from by integer division, so on a sub-millisecond path every
 one reports zero~\cite{kafka_tools}. Two more keep their negatives and pass them on
@@ -1144,8 +1145,9 @@ report retention instead.
 % Section III's definition governs it.
 \textbf{Dither the send instant, and publish the retained fraction.} Randomizing probe timing
 to avoid synchronizing with a periodic phenomenon is long-standing
-advice~\cite{rfc2330,rfc3432}; what we add is why --- the phenomenon synchronized with is the
-timestamp resolution itself. Publish beside the latency the retention rate, the timestamp
+advice~\cite{rfc2330,rfc3432}, and the counter literature that carries our retention
+identity~\cite{hp1970tia} already names the coherence it breaks. What we add is what it
+costs when the samples are deleted rather than averaged. Publish beside the latency the retention rate, the timestamp
 resolution and the synchronization state, none recoverable afterwards. A summary from
 $\ombGridRetentionMin\%$ of samples is typographically identical to one from all.
 Neither half of the rule is ours: OWAMP has attached an error estimate to every timestamp
@@ -1249,7 +1251,8 @@ deepest negative span (Supplement~S15).
 The mechanism's constants are those of one EEVDF-era kernel (6.8); CFS-era schedulers, the
 regime Lozi et al.\ document, may shift them. The deletion arithmetic is demonstrated on one
 benchmark and reproduced in one independent harness. The \harnessAuditedWord{} tools of
-Section~\ref{sec:tools} are readings of source rather than measured deployments. The
+Section~\ref{sec:tools} are readings of source rather than measured deployments, and are
+exact to the threshold rather than to the behavior a deployment would show. The
 benchmark's distributed mode failed on every attempt, so its cross-host exposure rests on
 source reading and our own two-host harness (Supplement~S24). Exposure depends on a
 deployment's path latency and producer rate. That is why we recommend publishing a

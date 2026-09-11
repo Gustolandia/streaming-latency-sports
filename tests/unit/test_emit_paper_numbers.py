@@ -1111,10 +1111,16 @@ class TestTheExposureCurve:
         # the error at 10 ms runs 5% to 15% around its 10% middle -- which is the whole
         # point of emitting them: a reader quoting only the middle would be quoting one of
         # three numbers with no way to know it.
+        # Round 68 added the two `Lo` ends. The main text printed "the 10 ms error at
+        # 7-19% and the crossover at 0.72-1.90 ms" directly after naming a tenth-to-
+        # ninetieth span of the lag, and both floors were the median: one macro serving as
+        # two statistics eight words apart. On this fixture the floors are 5% and 0.50 ms,
+        # which is what the stated span implies and what the median is not.
         assert got == {"exposureErrTen": "10", "exposureErrHundred": "1",
                        "exposureErrOne": "100", "exposureGapTen": "11",
                        "exposureCrossover": "1.00",
                        "exposureLagLo": "500", "exposureLagHi": "1500",
+                       "exposureErrTenLo": "5", "exposureCrossoverLo": "0.50",
                        "exposureCrossoverHi": "1.50", "exposureErrTenHi": "15"}
 
     def test_the_macros_are_absent_rather_than_wrong_when_the_data_is(self, tmp_path,
@@ -2164,3 +2170,59 @@ class TestSpreadTable:
         for line in out.splitlines():
             if "${>}" in line:
                 assert line.count("---") >= 3, "no cell, no position, no class"
+
+
+class TestRoundSixtyEightMacros:
+    """The three ledger changes round 68's referee required, and the guard behind one."""
+
+    def test_the_exposure_band_has_a_percentile_at_both_ends(self):
+        """R1. The printed band was [median, p90] under a sentence naming [p10, p90]."""
+        m = dict(epn.exposure_macros())
+        lag_lo, lag_hi = float(m["exposureLagLo"]), float(m["exposureLagHi"])
+        # Each end of each derived band must be that end of the lag, divided through.
+        assert float(m["exposureErrTenLo"]) == pytest.approx(100.0 * lag_lo / 10_000.0, abs=0.5)
+        assert float(m["exposureErrTenHi"]) == pytest.approx(100.0 * lag_hi / 10_000.0, abs=0.5)
+        assert float(m["exposureCrossoverLo"]) == pytest.approx(lag_lo / 1000.0, abs=0.005)
+        assert float(m["exposureCrossoverHi"]) == pytest.approx(lag_hi / 1000.0, abs=0.005)
+
+    def test_the_median_keeps_its_own_macros_and_is_not_an_endpoint(self):
+        """The median is still printed -- as the median, in the clause that names it."""
+        m = dict(epn.exposure_macros())
+        assert float(m["exposureErrTen"]) > float(m["exposureErrTenLo"]), \
+            "the median sits inside the band, which is why it cannot be its floor"
+        assert float(m["exposureCrossover"]) > float(m["exposureCrossoverLo"])
+
+    def test_the_collapse_ratios_are_anchored_on_the_mode(self):
+        """R3. Four printed ratios, the first being the fall immediately above the mode."""
+        m = dict(epn.traced_macros())
+        assert m["tracedModeFallA"] == "5.0"
+        assert m["tracedModeFallOctaves"] == "three"
+        assert m["tracedLastBucketFall"] == "357"
+        assert "tracedTailFallA" not in m and "tracedTailOctaves" not in m, \
+            "the fit-anchored names were retired; two names for one number is the defect"
+
+    def test_every_span_row_can_print_its_own_per_broker_count(self):
+        """W3. Table I's chain rows printed em-dashes and explained them in the caption."""
+        m = dict(epn.span_macros())
+        for stem in ("NegSend", "NegOutputSend", "NegTti"):
+            for broker in ("Kafka", "Redis"):
+                assert m["span%s%s" % (broker, stem)] == "0"
+
+    def test_the_retention_extremes_must_be_replicates_of_one_condition(self, monkeypatch):
+        """W2. The prose says so; nothing made it true until this raised."""
+        assert epn._condition_stem("s200_rep2") == "s200"
+        assert epn._condition_stem("l0") == "l0"
+
+        import stat_intervals
+        monkeypatch.setattr(stat_intervals, "retention_cells", lambda: [
+            {"cell": "s200_rep1", "kept": 120434, "p50_ms": 1.0,
+             "pub_p50_ms": 0.4, "retention_pct": 100.0},
+            {"cell": "other_rep1", "kept": 431, "p50_ms": 1.0,
+             "pub_p50_ms": 0.3, "retention_pct": 0.36},
+        ])
+        with pytest.raises(ValueError, match="replicates of one cell"):
+            epn.retention_macros()
+
+    def test_the_shipped_corpus_satisfies_that_guard(self):
+        m = dict(epn.retention_macros())
+        assert m["ombRetentionFold"] == "279"

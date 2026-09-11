@@ -380,6 +380,24 @@ def estimate(path):
         # is emitted whatever it says, so the prose cannot outrun it again.
         td, tp, _, tused = gof_pvalue(above)
         out.update({"tail_gof_d": td, "tail_gof_p": tp, "tail_gof_boot": tused})
+    # Round 68, R3. `tail_falls` is anchored on TAIL_LO_US, which is the fit window and the
+    # right anchor for a fit. The manuscript anchors the same numbers on the MODE -- "above
+    # it the counts collapse" -- and the mode is one octave lower, so the largest fall in
+    # the sequence was computed, discarded and never printed: a reader dividing the two bars
+    # either side of the mode in Fig. 3 got 5.0 and found neither of the printed ratios.
+    # Emitted as its own list rather than by moving TAIL_LO_US, because the fit window is
+    # correct where it is and a number used by prose and a number used by an estimator
+    # should not share a definition. Deliberately outside the `above` block: a histogram can
+    # have a mode with too few buckets above it to fit, and the prose anchor does not depend
+    # on a fit existing.
+    if out["modes"]:
+        # No length guard, and that is deliberate: `modes` scans range(1, len(bins) - 1), so
+        # the highest mode is never the last bucket and there are always at least two
+        # buckets from it. A guard here would be a branch no input can take, which is a
+        # coverage exemption bought rather than earned.
+        mode_lo = max(m[0] for m in out["modes"])
+        from_mode = [b for b in bins if b[0] >= mode_lo]
+        out.update({"mode_falls": octave_falls(from_mode), "mode_falls_from_us": mode_lo})
     d, pval, _, used = gof_pvalue(win)
     out.update({"gof_d": d, "gof_p": pval, "gof_boot": used})
     if "over_500us" in counters and "over_2000us" in counters:

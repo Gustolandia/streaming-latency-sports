@@ -55,9 +55,16 @@ ATTRIBUTED = {
 
 
 def _macro_targets():
-    """`mainX` -> the label it resolves to."""
+    """`mainX` -> the label it resolves to, with the xr prefix removed.
+
+    Round 68, W4: the supplement imports the paper's labels under `P-`, so that the 26
+    citation keys the two documents share stop being reported as multiply defined on every
+    build. `\\ref{P-sec:audit}` is satisfied by the paper's `\\label{sec:audit}`, so the
+    prefix is transport and the label is what this file is about.
+    """
     supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
-    return dict(re.findall(r"\\newcommand\{\\(main[A-Za-z]+)\}\{\\ref\{([^}]+)\}\}", supp))
+    pairs = re.findall(r"\\newcommand\{\\(main[A-Za-z]+)\}\{\\ref\{([^}]+)\}\}", supp)
+    return {name: re.sub(r"^P-", "", label) for name, label in pairs}
 
 
 def _flat(path):

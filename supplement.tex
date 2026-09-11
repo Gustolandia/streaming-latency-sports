@@ -48,7 +48,13 @@
 \makeatletter
 \renewcommand{\@biblabel}[1]{[S#1]}
 \makeatother
-\externaldocument{paper}
+% Prefixed. Without one, xr imports the paper's \\bibcite entries too, and the 26
+% citation keys the two documents share are reported as multiply defined on every
+% build -- 26 warnings that are harmless (the supplement's own numbering wins, and the
+% two label sets do not collide) and that bury the 27th, which would not be. The
+% \\main* macros above are the only route into the paper's labels, so the prefix is
+% declared once here and applied there.
+\externaldocument[P-]{paper}
 % Kept identical to the main text's declaration on purpose: the two documents are read as
 % one submission, and a long identifier that breaks in the paper and not in the supplement
 % is a difference a reader would notice and no gate would explain. \brk takes identifiers
@@ -82,26 +88,26 @@
 % broke loudly, and four more kept resolving to a number whose meaning had changed,
 % which no gate can see. Named here, a renumbering is one edit instead of thirty-six.
 % -------------------------------------------------------------------------------
-\newcommand{\mainMethod}{\ref{sec:method}}            % Experimental Setup
-\newcommand{\mainTestbeds}{\ref{sec:testbeds}}        % Testbeds
-\newcommand{\mainGate}{\ref{sec:gate}}            % The consistency check
-\newcommand{\mainModel}{\ref{sec:proxy}}           % The transport proxy is not a causal chain
-\newcommand{\mainStats}{\ref{sec:stats}}           % Statistics
-\newcommand{\mainRelatedTime}{\ref{sec:related_time}}    % Cross-process time measurement
-\newcommand{\mainRelatedRes}{\ref{sec:related_resolution}}     % Resolution and discarded samples
-\newcommand{\mainGenerality}{\ref{sec:generality}}       % Our own harness, and the sign channel
-\newcommand{\mainTools}{\ref{sec:tools}}                % Evidence across tools
-\newcommand{\mainThreats}{\ref{sec:threats}}        % Threats and limitations
-\newcommand{\mainModeB}{\ref{sec:external}}              % Quantization and Silent Deletion (the deletion failure)
-\newcommand{\mainGuard}{\ref{sec:extmethod}}            % The admission condition, and its origin
-\newcommand{\mainPhase}{\ref{sec:extphase}}            % Phase, and the grid it produces
-\newcommand{\mainModeA}{\ref{sec:mechanism}}             % Scheduling and Acknowledgment Bias (the scheduling failure)
-\newcommand{\mainAudit}{\ref{sec:audit}}           % What the audit rejected
-\newcommand{\mainRareState}{\ref{sec:mixture}}       % A rare state, not a wide distribution
-\newcommand{\mainSpectrum}{\ref{sec:tail}}        % The stall spectrum, and the scheduler's slice
-\newcommand{\mainBrokers}{\ref{sec:brokers}}        % What the brokers actually do
-\newcommand{\mainAuthors}{\ref{sec:authors}}        % For benchmark authors
-\newcommand{\mainBetterClock}{\ref{sec:betterclock}}    % The limits of a better clock
+\newcommand{\mainMethod}{\ref{P-sec:method}}            % Experimental Setup
+\newcommand{\mainTestbeds}{\ref{P-sec:testbeds}}        % Testbeds
+\newcommand{\mainGate}{\ref{P-sec:gate}}            % The consistency check
+\newcommand{\mainModel}{\ref{P-sec:proxy}}           % The transport proxy is not a causal chain
+\newcommand{\mainStats}{\ref{P-sec:stats}}           % Statistics
+\newcommand{\mainRelatedTime}{\ref{P-sec:related_time}}    % Cross-process time measurement
+\newcommand{\mainRelatedRes}{\ref{P-sec:related_resolution}}     % Resolution and discarded samples
+\newcommand{\mainGenerality}{\ref{P-sec:generality}}       % Our own harness, and the sign channel
+\newcommand{\mainTools}{\ref{P-sec:tools}}                % Evidence across tools
+\newcommand{\mainThreats}{\ref{P-sec:threats}}        % Threats and limitations
+\newcommand{\mainModeB}{\ref{P-sec:external}}              % Quantization and Silent Deletion (the deletion failure)
+\newcommand{\mainGuard}{\ref{P-sec:extmethod}}            % The admission condition, and its origin
+\newcommand{\mainPhase}{\ref{P-sec:extphase}}            % Phase, and the grid it produces
+\newcommand{\mainModeA}{\ref{P-sec:mechanism}}             % Scheduling and Acknowledgment Bias (the scheduling failure)
+\newcommand{\mainAudit}{\ref{P-sec:audit}}           % What the audit rejected
+\newcommand{\mainRareState}{\ref{P-sec:mixture}}       % A rare state, not a wide distribution
+\newcommand{\mainSpectrum}{\ref{P-sec:tail}}        % The stall spectrum, and the scheduler's slice
+\newcommand{\mainBrokers}{\ref{P-sec:brokers}}        % What the brokers actually do
+\newcommand{\mainAuthors}{\ref{P-sec:authors}}        % For benchmark authors
+\newcommand{\mainBetterClock}{\ref{P-sec:betterclock}}    % The limits of a better clock
 
 \begin{document}
 % The title, the byline and the running head all name the paper, and all three are checked
@@ -1247,17 +1253,17 @@ $\tracedModes$ local maxima. The first is the jitter core of a running thread; t
 broad hump in the hundreds of microseconds; the third is a \emph{mode} at
 $\tracedModeLo$--$\tracedModeHi$~ms carrying $\tracedModeShare\%$ of all wakeups and
 standing $\tracedModeRatio\times$ above its lower neighbor. Beyond it the counts collapse
-rather than trail: they fall $\tracedTailFallA\times$ and $\tracedTailFallB\times$ over the
-next \tracedTailOctaves{} octaves and then $\tracedTailFallLast\times$, where a power law
+rather than trail: they fall $\tracedModeFallA\times$, $\tracedModeFallB\times$ and $\tracedModeFallC\times$ over the
+next \tracedModeFallOctaves{} octaves and then $\tracedLastBucketFall\times$, where a power law
 falls by one factor every time.
 
-\paragraph{The second index, withdrawn in round 56, and why it took eight rounds}
+\paragraph{The second index, withdrawn, and why it survived so long}
 We had ended that paragraph with a number: grouped maximum likelihood above
 $\tracedTailFrom$~ms gives $\tracedTailAlpha$ ($\tracedTailCI$), quoted with the words ``a
 finite variance''. Three things were wrong with it and only the third is interesting. The
 moment claim needs an index above two and the interval's lower limit \emph{is} two, so the
 data do not separate a finite variance from an infinite one. The last populated bucket falls
-$\tracedTailFallLast\times$ where the fit implies about four, which is a truncation and not a
+$\tracedLastBucketFall\times$ where the fit implies about four, which is a truncation and not a
 tail. And the bootstrap goodness-of-fit rejects the fit outright: $p \tracedTailGofP$ over
 $\tracedTailGofBoot$ replicates, the same verdict, from the same estimator, that we use six
 lines earlier to withdraw the payload-sweep index.
@@ -1302,7 +1308,7 @@ $\flipSpreadThirtyTwo$ points, three replicates agreeing to $0.06$ --- and at $6
 spanned $\flipLoSixtyFour$--$\flipHiSixtyFour\%$ --- spread
 $\flipSpreadSixtyFour$, the upper vertex hit to a quarter point. The flat-full
 boundary at half the cell width ($16.7$ points) is crossed in the predicted direction by both
-halves. One registered detail failed: the $32$~KB arm pins at $\flipPinThirtyTwo\%$, not on
+halves. One registered detail failed: the $32$~KB configuration pins at $\flipPinThirtyTwo\%$, not on
 the vertex at $\flipVertexTwoThirds\%$ --- a
 displacement toward $\theta$ that the next paragraph makes systematic.
 
@@ -1388,7 +1394,7 @@ delay in that state, gives to leading order
 \label{eq:twostate}
 \Pr[S < 0 \mid T_{\mathrm{true}}] \;=\; p\, G(T_{\mathrm{true}}).
 \end{equation}
-Round 59 moved this out of the main text, and the reason is worth stating rather than
+This moved out of the main text, and the reason is worth stating rather than
 hiding. \emph{Nothing in the paper computes with it.} Every reference the main text makes
 to it names the two-state picture --- the preempted state, the state a pinned thread
 removes --- and the three consequences we test are attributable without it: the direction
@@ -1397,7 +1403,7 @@ picture, and the traced check compares two probabilities. The form has also neve
 tested as a form: we have no measurement of $p$ independent of the rate it is meant to
 explain, so what has been confirmed is the mechanism and its consequences, not the
 factorization. It was wrong once for exactly this kind of reason --- written $p(\rho)\,G$
-until Table~\ref{tab:mechanism} of the main text showed the rate is not a function of
+until Table~\ref{P-tab:mechanism} of the main text showed the rate is not a function of
 $\rho$ --- and was repaired by weakening it. A model that cannot be falsified as a model
 belongs where a reader can weigh it, not where the argument appears to rest on it.
 
@@ -1655,7 +1661,7 @@ is present in every configuration that could show it (method: supplementary mate
 
 Figure~\ref{fig:grid} makes the claim about the set; Table~\ref{tab:gridinference} is the
 same twelve configurations one row at a time, for a reader checking an individual rate. Both
-moved here from the main text in round 59, where the grid refinement became the explanation of
+moved here from the main text, where the grid refinement became the explanation of
 the deletion rather than a contribution in its own right.
 
 \begin{figure}[htbp]
@@ -1784,10 +1790,10 @@ number that is not already stated where it is argued.
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/mechanism_forest.pdf}
 \caption[Every manipulation separates; the broker does not]{\textbf{Every manipulation separates; the broker does not.} Wilson $95\%$
-intervals. Above the rule, the four matched pairs of Table~\ref{tab:mechanism}, utilization
+intervals. Above the rule, the four matched pairs of Table~\ref{P-tab:mechanism}, utilization
 held fixed within each: what moves the rate is where the timestamping thread sits, not how
 loaded the machine is. Below it, observed rather than manipulated, the two brokers of
-Table~\ref{tab:spans}; their intervals are narrower than the plotted point.}
+Table~\ref{P-tab:spans}; their intervals are narrower than the plotted point.}
 \label{fig:mechanism}
 \end{figure}
 
@@ -1807,7 +1813,7 @@ sit at $\exposureErrTenHi\%$. Right: the gap a comparison would report between t
 identical systems whose clients differ only in where the acknowledgment is timestamped ---
 a callback thread against an inline timestamp. Where the right-hand column reads ``inverts'',
 the apparent gap has changed sign; on every row below those nothing is negative, so the
-sign check of Section~\ref{sec:gate} fires on none of it.}
+sign check of Section~\mainGate{} fires on none of it.}
 \label{tab:exposure}
 \centering
 \footnotesize
@@ -1845,7 +1851,7 @@ the medians this supplement prints, which is the natural recomputation, a reader
 differences them condition by condition gets $3.5\times$, and one who divides the pooled
 medians gets $2.6\times$. Three defensible readings, a factor of $1.6$ between the extremes,
 and only one of them is the number in the text. This project has been caught by the same
-distinction once before, on the independence overshoot of Section~\ref{sec:authors}, where
+distinction once before, on the independence overshoot of Section~\mainAuthors{}, where
 median-of-ratios and ratio-of-medians differ by $12.4\times$ against $21.3\times$; there it
 is stated in the sentence that quotes it, and now it is stated here too.
 
@@ -2175,7 +2181,7 @@ carry one client's parse and not the other's; against \redis{}'s median delivery
 $\spanHandlingDeliveryUs\,\mu$s that is $\spanHandlingSharePct\%$. \emph{Second}, a longer
 $D$ produces fewer negative spans, and the broker carrying the extra parse is the one with
 the \emph{higher} reported rate, so correcting the asymmetry would widen the gap in
-Table~\ref{tab:spans} rather than close it. \emph{Third}, \tti{} contains both parses and is unaffected,
+Table~\ref{P-tab:spans} rather than close it. \emph{Third}, \tti{} contains both parses and is unaffected,
 which is one more reason the equivalence in S13 is also stated on \tti{}.
 
 We could not fix this in the pipeline where it belongs, because it would require re-running
@@ -2418,7 +2424,7 @@ them; the fourth crosses the boundary and is recorded as one whole tick --- whic
 corpus prints $1.0$ and $2.0$~ms and nothing between. (b) A delivery survives from phase
 $\tau - T_{\mathrm{true}}$ onward --- the shaded band --- so uniform phases retain
 $T_{\mathrm{true}}/\tau$
-(Equation~\ref{eq:retention}); a commensurate producer visits only $q$ and retains a count out
+(Equation~\ref{P-eq:retention}); a commensurate producer visits only $q$ and retains a count out
 of $q$, one of the values Equation~\ref{eq:quantsupp} allows. $T_{\mathrm{true}}$ here is
 illustrative and off-vertex by choice: at $0.5$~ms the two answers coincide.}
 \label{fig:quantum}
@@ -2471,7 +2477,7 @@ apply it, because our dither is not that dither. Theirs adds noise to the \emph{
 quantized; ours randomizes the \emph{phase} of the sampling instant against the tick, which
 is RFC~3432's construction~\cite{rfc3432} and is what breaks the commensurability of
 Section~\mainPhase{}. The two coincide only in the uniform-phase limit that
-Equation~\ref{eq:retention} already assumes. The neighboring result is worth the reader's
+Equation~\ref{P-eq:retention} already assumes. The neighboring result is worth the reader's
 attention anyway: it is the closest thing to a proof that the recommendation has a domain of
 validity rather than being folklore.
 
@@ -3208,7 +3214,7 @@ code that emits the numbers into the text, so no figure in either document is tr
 \label{sec:metric-map}
 
 This section says which interval each reported quantity actually covers. The drawing is the
-main text's Figure~\ref{fig:pipeline}, which names the four bracketing timestamps; what belongs
+main text's Figure~\ref{P-fig:pipeline}, which names the four bracketing timestamps; what belongs
 here is the mapping from those timestamps onto the metric names, because a reader comparing our
 numbers against another harness's needs to know what was subtracted from what.
 
@@ -3219,7 +3225,7 @@ lag}, $A = t_{\mathrm{ack}} - t_{\mathrm{send}}$, is also producer-internal and 
 subtracts a producer-process timestamp from a consumer-process one, which is exactly why it can
 come out negative when either process is delayed, and it is the span this paper is about.
 \emph{End-to-end \tti{}} is $t_{\mathrm{recv}} - t_{\mathrm{sched}}$, the sum of the three
-(Equation~\ref{eq:tti}), and it inverts only if the whole delivery does. A fifth timestamp,
+(Equation~\ref{P-eq:tti}), and it inverts only if the whole delivery does. A fifth timestamp,
 $t_{\mathrm{out}}$, is consumer-internal and is not drawn in that figure; S16.1 places it.
 
 
@@ -3620,7 +3626,7 @@ Table~\ref{tab:audit} is the consistency audit of every run; Table~\ref{tab:h3} 
 derived at build time from \texttt{integrity\_windows/clock\_integrity\_by\_condition.csv}
 and \texttt{integrity\_by\_condition.csv}, the audit's own outputs. A condition is usable
 only if all of its runs survive. This corpus is not the span recount of the main text's
-Table~\ref{tab:spans}, which covers every cloud run that produced matched events rather than
+Table~\ref{P-tab:spans}, which covers every cloud run that produced matched events rather than
 every run behind a result.}
 \label{tab:audit}
 \begin{tabular}{lrrrr}
@@ -4254,10 +4260,10 @@ takes the tool's own reading as given. That is not a criticism of any of them --
 the assumption this paper is about, and its being shared is the reason the omission survives.
 
 \paragraph{Three 2026 data points, two of them inside the regime}
-The main text concedes that most published comparisons report a median above the timestamp resolution,
-where the deletion law does not bind. That concession stands, and it is worth recording that
-it is not universal. The denominator behind that record is small and is stated here rather
-than in the main text: of the \litComparisonsWord{} 2026 broker comparisons we placed
+The main text states the condition under which the deletion law does not bind: a median above
+the timestamp resolution. That condition is real and the concession stands. The denominator
+behind it is small and runs the other way: of the
+\litComparisonsWord{} 2026 broker comparisons we placed
 against the resolution, \litInsideRegimeWord{} report figures at or below it. The third is
 an enterprise-scale Apache Pulsar benchmark whose $3.88$~ms median sits well above the tick, so
 the arithmetic of Section~\mainModeB{} never reaches it~\cite{mukkolakkal2026pulsar} --- a case

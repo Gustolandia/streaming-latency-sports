@@ -367,14 +367,14 @@ and the OpenMessaging Benchmark~\cite{openmessaging2018} is the tool they share.
 experimental setup can dominate a result is established~\cite{mytkowicz2009wrong}, and how
 to report one is a settled literature we
 follow~\cite{georges2007rigorous,hoefler2015benchmarking}. What that literature does not do
-is check what its tool discards. Most published comparisons report a median above the
-tool's one-millisecond timestamp resolution, where the deletion arithmetic of
+is check what its tool discards. Where a comparison reports a median above the
+tool's one-millisecond timestamp resolution, the deletion arithmetic of
 % Round 55 moved the denominator to Supplement S33.4, where the exhibits are set out. With
 % two comparisons it read against its own sentence: the count said both had been placed
 % against the resolution, and the clause after it said one of them cannot be placed at all.
 % The exhibit is the argument; the count is bookkeeping and belongs beside the bookkeeping.
-Section~\ref{sec:external} does not bind. Not all do: a 2026 comparison names a percentile
-for a single broker and gives the other two only
+Section~\ref{sec:external} does not bind. Not every comparison does: a 2026 comparison
+names a percentile for a single broker and gives the other two only
 ``sub-millisecond''~\cite{indexdev2026brokers}, so its ranking cannot be placed against that
 resolution at all.
 
@@ -637,8 +637,8 @@ A path longer than the timestamp resolution is not clean but quiet.
 \caption{\textbf{Negatives by span and broker} ($\spanRuns$ runs, $\spanEvents$ events,
 one clock). Only the acknowledgment-origin span inverts, and it does so under both
 brokers: \kafka{} on $\spanKafkaNegAckPct\%$ of its $\spanKafkaEvents$ events,
-\redis{} on $\spanRedisNegAckPct\%$ of its $\spanRedisEvents$.
-The causal chains are clean under each broker, so their per-broker columns are dashed.}
+\redis{} on $\spanRedisNegAckPct\%$ of its $\spanRedisEvents$, and the
+causal chains are clean under both.}
 \label{tab:spans}
 \centering
 \footnotesize
@@ -649,9 +649,9 @@ Span & Origin timestamp & \kafka{} & \redis{} & All \\
 \midrule
 $t_{\mathrm{recv}}-t_{\mathrm{ack}}$ & acknowledgment & $\spanKafkaNegAck$ & $\spanRedisNegAck$ & $\spanNegAck$ \\
 \midrule
-$t_{\mathrm{recv}}-t_{\mathrm{send}}$ & send (chain) & --- & --- & $\spanNegSend$ \\
-$t_{\mathrm{out}}-t_{\mathrm{send}}$ & send (chain) & --- & --- & $\spanNegOutputSend$ \\
-\tti{} & emission & --- & --- & $\spanNegTti$ \\
+$t_{\mathrm{recv}}-t_{\mathrm{send}}$ & send (chain) & $\spanKafkaNegSend$ & $\spanRedisNegSend$ & $\spanNegSend$ \\
+$t_{\mathrm{out}}-t_{\mathrm{send}}$ & send (chain) & $\spanKafkaNegOutputSend$ & $\spanRedisNegOutputSend$ & $\spanNegOutputSend$ \\
+\tti{} & emission & $\spanKafkaNegTti$ & $\spanRedisNegTti$ & $\spanNegTti$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -773,13 +773,13 @@ travelled further, so the relative error of the proxy is $A/D$ and falls as $1/D
 median acknowledgment lag, $A = \ackLagMedianUs\,\mu$s, that is $\exposureErrOne\%$ at a
 $1$~ms delivery, $\exposureErrTen\%$ at $10$~ms and $\exposureErrHundred\%$ at $100$~ms;
 below $\exposureCrossover$~ms the displacement exceeds the delivery it is a correction to,
-and sub-millisecond medians are routine in broker benchmarking. $A$ is not a constant:
-across our conditions it spans $\exposureLagLo$--$\exposureLagHi\,\mu$s, putting the
-$10$~ms error at $\exposureErrTen$--$\exposureErrTenHi\%$ and the crossover at
+and sub-millisecond medians are routine in broker benchmarking. $A$ is not a constant: between the
+tenth and ninetieth percentiles of our conditions it runs $\exposureLagLo$--$\exposureLagHi\,\mu$s, putting the
+$10$~ms error at $\exposureErrTenLo$--$\exposureErrTenHi\%$ and the crossover at
 % S12, not S13: the exposure table and its curve sit at the end of S12, in the block that
 % collects the exhibits moved out of the main text. The pointer had said S13 since the v4
 % renumbering, and round 54's exhibit-verb rule is what caught it.
-$\exposureCrossover$--$\exposureCrossoverHi$~ms (Supplement~S12 bands every row and draws
+$\exposureCrossoverLo$--$\exposureCrossoverHi$~ms (Supplement~S12 bands every row and draws
 the curve).
 
 Two consequences follow, both measured on the gated corpus. First, two \emph{identical}
@@ -823,8 +823,8 @@ descend monotonically, and on log$_2$ buckets a power law of index above one mus
 counts have instead is $\tracedModes$ local maxima. The last is a \emph{mode} at
 $\tracedModeLo$--$\tracedModeHi$~ms, holding $\tracedModeShare\%$ of all wakeups and
 standing $\tracedModeRatio\times$ its lower neighbor. Above it the counts collapse rather
-than trail: they fall $\tracedTailFallA\times$ and $\tracedTailFallB\times$ over the next
-\tracedTailOctaves{} octaves and then $\tracedTailFallLast\times$, where a power law falls by
+than trail: they fall $\tracedModeFallA\times$, $\tracedModeFallB\times$ and $\tracedModeFallC\times$ over the next
+\tracedModeFallOctaves{} octaves and then $\tracedLastBucketFall\times$, where a power law falls by
 one factor every time. The same bootstrap rejects a fit here too (Supplement~S8).
 That refutation is about monotonicity, and no choice of bins rescues a monotone
 density. The mode \emph{count} is a joint property of the counts and the tool's
@@ -842,9 +842,9 @@ no monotone curve passes through it.
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/stall_spectrum.pdf}
 \caption{\textbf{Traced run-queue stalls are trimodal.} $\tracedEvents$
-wakeups, \texttt{bpftrace} log$_2$ buckets, modes shaded. The jitter core sits at a few
-microseconds and holds $\tracedModeShareA\%$ of all wakeups; a second mode at
-$128$--$256\,\mu$s holds $\tracedModeShareB\%$; the third, at
+wakeups, \texttt{bpftrace} log$_2$ buckets, modes shaded. The jitter core peaks in the
+$\tracedModeLoA$--$\tracedModeHiA\,\mu$s bucket, which alone holds $\tracedModeShareA\%$ of all
+wakeups; a second mode at $\tracedModeLoB$--$\tracedModeHiB\,\mu$s holds $\tracedModeShareB\%$; the third, at
 $\tracedModeShare\%$, lands on the scheduler's derived base slice of
 $\baseSliceMs$~ms. A power law of any index above one would have to descend monotonically
 across this axis. The count survives a
@@ -932,7 +932,7 @@ keeps the residue and throws away the estimator.
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/deletion.pdf}
 \caption{\textbf{What the benchmark prints against what it kept in order to print it}, over
-every instrumented cell. At the timestamp resolution the printed median carries no
+the $\ombMedianCells$ cells that printed a summary of their own. At the timestamp resolution the printed median carries no
 information about retention: $\ombGridMedianCells$ cells report $1.0$ or $2.0$~ms while the
 retained fraction spans $\ombRetentionFold\times$. Away from it the harness behaves: the
 failure is confined to deliveries shorter than the timestamp resolution.}
@@ -971,7 +971,7 @@ configuration by configuration against the permutation null S14 constructs. The 
 true: replicate spread collapses to $\flipSpreadThirtyTwo$ points at $32$~KB and re-opens
 to $\flipSpreadSixtyFour$ at $64$~KB, a
 boundary crossed in both directions by one manipulated variable. One registered detail
-failed --- the $32$~KB arm pins at $\flipPinThirtyTwo\%$ retention, not on the predicted
+failed --- the $32$~KB configuration pins at $\flipPinThirtyTwo\%$ retention, not on the predicted
 vertex at $\flipVertexTwoThirds\%$ ---
 % The payload-flip figure moved to the supplement in round 43, beside S10, which is where
 % the spread rule it confirms is set out in full. Same journey as the pipeline schematic in
@@ -1155,7 +1155,9 @@ negative means the reference timestamp failed, computes-to-zero means the resolu
 failed, and one unsigned total cannot distinguish them.
 
 \textbf{Do not assume co-location makes the measurement safer.} One host removes the
-clock-synchronization rival and nothing else. The configuration our audit rejects most often
+clock-synchronization rival and nothing else: \brk{mq-bench} below gives co-location as the
+reason its timing is sound, and is sound for a different reason it does not state
+(Supplement~S33.3). The configuration our audit rejects most often
 is co-located, it hid the one condition that reverses our broker ordering
 (Section~\ref{sec:brokers}), and a shorter path is exactly the path on which both failures
 bind hardest.

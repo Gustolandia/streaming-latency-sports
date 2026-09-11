@@ -295,6 +295,108 @@ guessing an offset. And run the whole suite before committing a manuscript chang
 `test_supplement_subsections.py` held all of this and went unread for three commits behind
 `-k` filters that did not match its name.
 
+### A1r. Both ends of a printed range are the same statistic --- GATED
+
+Section V-D named a tenth-to-ninetieth span of the acknowledgment lag and then derived from
+it a band whose floor was the **median**: the same macro was used twice in one paragraph,
+once correctly as the median and once as the bottom of a percentile band, eight words apart.
+A reader dividing the stated 500 microseconds by ten milliseconds got 5%; the paper printed
+7%. The supplement had labelled both endpoints correctly all along, so the main text
+contradicted its own supplement.
+
+Rule: a printed `X--Y` takes one statistic at two points. The check is on the names, because
+every endpoint macro in this project already carries its end --- `Lo`/`Hi`, `Low`/`High`,
+`Min`/`Max` --- so the two ends of a legitimate range strip to the same stem under a matched
+pair of those tokens, and a central value has no such token at all. That is exactly how
+`exposureErrTen` differs from `exposureErrTenLo`, and it needs no registry of estimators to
+maintain. `tests/unit/test_printed_ranges.py` reads every range in both documents; there
+were thirteen and twelve were already right.
+
+Second half of the same rule: **the verb has to match the interval too.** "Spans
+500--1900 microseconds" is false of a p10--p90 interval, which is the middle eighty per cent
+and not a range. The sentence now says which percentiles it is quoting, once, and every
+number after it inherits that.
+
+### A1s. A number printed beside a figure is anchored where the sentence says --- GATED
+
+Section V-E said "above it the counts collapse", where *it* is the mode, and printed ratios
+computed from the tail-fit window one octave higher. The largest fall in the sequence --- the
+one immediately above the mode, and the one a reader gets by dividing the two bars either
+side of it in the figure --- was computed on every build and printed nowhere.
+
+Rule: when prose and an estimator want the same quantity from different starting points,
+emit both, named for their anchors, rather than letting one borrow the other's number. The
+fit window was correct where it was; what was wrong was reusing its output under a sentence
+that pointed somewhere else. `mode_falls` sits beside `tail_falls` in the ledger for that
+reason, and the one ratio both anchors agree on --- the last populated bucket's --- is named
+for the bucket rather than for either anchor, so the two paragraphs that legitimately share
+it share one macro.
+
+### A1t. A quantitative word about a literature carries a denominator --- GATED
+
+Section III-A conceded that "most published comparisons report a median above the tool's
+one-millisecond timestamp resolution". *Most* is a claim about a population, it had no
+denominator anywhere in twelve pages, and the only record this project assembled ---
+`literature_regime.csv`, three broker comparisons --- runs two of three the other way.
+
+Rule: state a condition, not a frequency, unless the frequency has a denominator the reader
+can reach. The concession was right and conservative and stays; it now reads "where a
+comparison reports a median above ... the deletion arithmetic does not bind", which is what
+the evidence supports and is shorter than what it replaced. A concession that overstates how
+safe the literature is costs nothing to the argument and costs the paper its one exemption
+from its own rule.
+
+**What this rule may not do is point at the denominator from Related Work.** The referee's
+suggested wording ended "(Supplement S33.4 gives the record we assembled)", which is B4's
+violation and R. Duvignau's annotation #12 --- related work is self-contained --- and is
+gated in two files. The denominator lives in S33.4 and a reader reaches it through the
+supplement's own contents, not through a pointer the section is forbidden to carry.
+
+### A1u. A tool that reports the same list every round is not reporting --- GATED
+
+`apply_vocabulary.py --check` printed twenty-five review items for several rounds. Every
+round re-read all twenty-five, and two genuine ones --- an undefined *arm* in both documents,
+in the sentence reporting the one pre-registered prediction that failed --- sat inside
+twenty-three correct uses without being separated.
+
+Rule: a standing report must be adjudicated down to nothing. Judgments live in
+`docs/vocabulary_adjudications.json` with a reason each, a clean run prints zero, and the
+exit status fails on an unjudged occurrence **or on a judgment that has stopped matching**,
+because an allowance for prose that has since moved is a claim nobody checked. Two scopes: a
+line judgment is anchored on its own sentence; a file judgment must name what makes it
+legitimate, normally the definition the document gives the word, so losing the definition
+brings every occurrence back.
+
+And the part that is not an allow-list: five of the twenty-five were "pre-flight" and
+"in-flight" matched by a pattern meant for the bare noun. **Where the tool is wrong, fix the
+tool.** Recording a judgment about prose that needed none is how an allow-list rots.
+
+### A1v. An em-dash in a table means "not measured" --- GATED
+
+Table I printed em-dashes in the six per-broker cells of its three causal-chain rows and
+explained in the caption that they meant "measured, and exactly zero". In this paper above
+all others that is the wrong glyph: Section VI-C's contribution is that an unsigned counter
+cannot tell a measured zero from an uncounted absence, and the sign channel is what
+separates them.
+
+Rule: print the measured value. Each cell now carries its own count from the same recount as
+the row's total --- not a dash, and not a neighbouring row's macro, which was the first fix
+attempted and would have printed the right number from the wrong source.
+
+### A1w. A requirement from correspondence outranks a referee who never saw it --- GATED
+
+Round 68's referee proposed cutting *"Busy-polling a dedicated core should buy the same for
+the price of that core, though we did not measure it"* as the one unmeasured sentence in a
+rule list whose authority is that everything in it was measured. The reasoning is sound; the
+sentence is J. Kunkel's, asked for in correspondence, and is gated for exactly that reason.
+It had already gone missing once, in a page cut, which is why the gate exists.
+
+Rule: where a review item collides with a requirement a human made, the human's requirement
+stands and the collision is recorded rather than resolved silently. A simulated referee
+reads the two documents; it does not read the mailbox. **That is the argument for putting a
+requirement from an email into a test instead of a plan file**, and round 68 is the first
+time it paid out against a reviewer rather than against a forgetful author.
+
 ### A2. No `flight` — GATED
 
 In the corpus bare *flight* occurs 131 times across 25 of 775 papers, and a read of every

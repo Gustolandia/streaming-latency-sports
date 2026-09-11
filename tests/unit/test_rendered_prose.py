@@ -439,7 +439,7 @@ class TestTheSupplementDoesNotTypeItsPointersIntoThePaper:
 
     def test_the_machinery_they_depend_on_is_loaded(self):
         text = (REPO / "supplement.tex").read_text(encoding="utf-8")
-        assert "\\usepackage{xr}" in text and "\\externaldocument{paper}" in text, \
+        assert "\\usepackage{xr}" in text and "\\externaldocument[P-]{paper}" in text, \
             "the pointers resolve through xr; without it they render as ??"
 
     def test_no_pointer_renders_as_a_question_mark(self):

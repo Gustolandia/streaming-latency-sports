@@ -78,10 +78,22 @@ def _paragraph_at(text, pos):
 
 
 def exclusive_claims(text):
-    """[(line, paragraph, [cited keys])] for every claim content is *not* in the paper."""
+    """[(line, paragraph, [cited keys])] for every claim content is *not* in the paper.
+
+    Matched against the text with runs of whitespace flattened, because LaTeX source wraps
+    at the margin and these phrases are five or six words long. Round 68 found the original
+    passing on `is stated here rather\\nthan in the main text`: the pattern wanted a literal
+    space between "rather" and "than", the source had a newline, and the claim went unread
+    for as long as that sentence happened to wrap there. **A gate that reads source must
+    normalise the one thing source does that prose does not.**
+    """
     out = []
     for pat in EXCLUSIVE:
-        for m in re.finditer(pat, text, re.I):
+        # Every literal space in these patterns may be a line break in the source, so the
+        # pattern is relaxed rather than the text flattened: flattening moves every offset,
+        # and mapping a flattened match back to its original by searching for the phrase
+        # lands every occurrence on the first one.
+        for m in re.finditer(pat.replace(" ", r"\s+"), text, re.I):
             para = _paragraph_at(text, m.start())
             keys = [k.strip() for group in re.findall(r"\\cite\{([^}]*)\}", para)
                     for k in group.split(",")]

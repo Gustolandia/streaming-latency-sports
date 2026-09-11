@@ -1278,6 +1278,132 @@ lands on nothing reports success. **Verify focus before typing, and reload befor
 a publish.**
 
 
+**1bq. Three defects, one shape: a number whose stated basis is not the basis it came
+from.** Round 68 required three fixes and they looked unrelated until they were written down
+together. Section V-D printed a band whose floor was a median under a sentence naming a
+tenth-to-ninetieth span. Section V-E printed four ratios anchored on the tail-fit window
+under a clause anchored on the mode. Section III-A said *most published comparisons* with no
+denominator anywhere, against the project's own three-row record running two of three the
+other way. **Every one of them was a correct number under a wrong label**, and none of them
+would have failed a check that only asked whether the number was computed correctly.
+
+The common repair is not more arithmetic. It is that **the label is part of the number**, so
+the label has to be emitted with it or checked against it. `exposureErrTenLo` exists so the
+floor of a band can be the same statistic as its ceiling. `mode_falls` sits beside
+`tail_falls` so prose and an estimator can want the same quantity from different starting
+points without one borrowing the other's output. And where a label cannot be emitted --- a
+word like *most* --- the rule is to stop making the claim: the concession now names a
+condition, which is what the evidence supports and is shorter than what it replaced.
+
+**The check that generalises is on names, and it needed no registry.** Every endpoint macro
+in this project already carries its end: `Lo`/`Hi`, `Low`/`High`, `Min`/`Max`. So the two
+ends of a legitimate range strip to the same stem under a matched pair of those tokens, and
+a central value has no such token at all --- which is precisely how `exposureErrTen` differs
+from `exposureErrTenLo`. `test_printed_ranges.py` reads every range in both documents and
+found thirteen; twelve were already right, and the convention that made them right was
+already there and had never been asked. **Before building a registry, check whether the
+thing you were about to record is already encoded in a name you are already using.**
+
+**1br. An allow-list is a claim, and a claim has to be able to go stale.** The same round
+found `apply_vocabulary.py --check` reporting twenty-five items, as it had for several
+rounds. Two were genuine --- an undefined *arm* in both documents --- and they had survived
+inside twenty-three correct uses precisely because the report never changed. A standing
+report of twenty-five is not a report; it is a number people learn to skip.
+
+The judgments now live in `docs/vocabulary_adjudications.json` with a reason each, and the
+design point is the failure mode rather than the allowance. A judgment that matches nothing
+**fails as loudly as an unjudged word**, because it says a sentence was read and cleared and
+that sentence is no longer there. A file-wide judgment must name what makes it legitimate ---
+the supplement may use *guard* throughout because it defines the word, so the allowance is
+written to depend on that definition still being present, and losing the definition brings
+all fifteen occurrences back. Both directions were tested by breaking them, not by reading
+the code.
+
+And the part that is not an allow-list at all: five of the twenty-five were the bare-noun
+pattern for *flight* firing on "pre-flight" and "in-flight". **Where the tool is wrong, fix
+the tool.** Recording a judgment about prose that needed none is exactly how an allow-list
+rots into the thing it replaced.
+
+**1bs. The em-dash that meant the opposite of the paper's thesis.** Table I printed `---` in
+the six per-broker cells of its three causal-chain rows, and the caption's last sentence
+explained that the dashes meant *measured, and exactly zero*. In an IEEE table an em-dash
+reads *not applicable*. This is the paper whose Section VI-C contribution is that an
+unsigned counter cannot distinguish a measured zero from an uncounted absence --- so the
+table carrying its cleanest result asked the reader to read a measured zero out of the glyph
+for no data, and spent a caption sentence apologising for it.
+
+Worth recording is the first fix, which was wrong: printing the row's own **total** macro in
+its per-broker cells. Same value, right answer, wrong source --- a per-broker cell holding a
+pooled number is the defect this paper is about, committed while repairing another one. The
+per-broker counts were already computed in `recount_spans.by_backend` and simply never
+emitted. **When a cell has no number, find out whether the number exists before deciding
+what to put there.**
+
+**1bt. The figure review found two captions, and neither was in the referee's list.** The
+same round's instruction to re-read every image caught what no textual gate reaches.
+Figure 3's caption called the first mode "a few microseconds" and gave it a share, `20.0%`,
+that belongs to a single bucket --- the three buckets under ten microseconds hold 35.5%
+between them. The same caption typed `128--256` by hand for the second mode while the ledger
+held those edges all along. Figure 4's caption said "over every instrumented cell" for a
+figure covering the seventy-five cells whose own summary was captured, out of a ledger
+holding 223 instrumented runs; Section VI-A had been careful about exactly that distinction
+two paragraphs earlier.
+
+Neither is a big error and both are the paper's own standard applied to its captions: **a
+share names the population it is a share of, and a figure names the population it draws.**
+The general lesson is narrower and more useful: *captions are prose that looks like
+metadata*, so they escape the gates aimed at prose and the gates aimed at numbers alike. The
+three checks that would have caught these read the caption as a claim --- which is what the
+Feynman rule already asks of every caption in this document, and had been applied to their
+opening sentences and not to their middles.
+
+**1bu. A simulated referee proposed two changes a human referee had already ruled out, and
+the suite is what knew.** Round 68's report carried nine items. Seven were right. Two were
+applied, looked like improvements, and were backed out within the hour because the full test
+run named the humans behind the gates they broke.
+
+**W6 proposed trading away the busy-poll sentence** --- *"Busy-polling a dedicated core
+should buy the same for the price of that core, though we did not measure it"* --- on the
+reasoning that it is the one speculation in a rule list whose authority is that everything in
+it was measured. That reasoning is good and the conclusion was wrong: the sentence is
+J. Kunkel's, asked for in correspondence, and `TestTheReportingRulesAreInternallyConsistent`
+gates it *because* a requirement from correspondence carries referee weight here. The gate's
+own docstring says so, and says it was written after the sentence went missing in an earlier
+page cut. **It went missing the same way twice, for the same plausible reason.**
+
+**R2's suggested wording put a supplement pointer into Background and Related Work**, where
+R. Duvignau's annotation #12 --- *"Related work must be self-contained"* --- is gated twice
+over, in `test_writing_standards.py` and `test_attributed_claims.py`. A third gate caught the
+same edit from a different angle: the pointer promised a record and S33.4 carries no exhibit.
+The substance of R2 stands, because it was never about the pointer: *most published
+comparisons* is gone and the concession reads as the condition it always was.
+
+The rule this leaves is not "distrust the referee". Seven of nine items were right and two of
+those three required fixes were defects the humans had not found. It is that **a simulated
+referee reads the documents and not the correspondence**, so its suggestions land as
+proposals in a place where human requirements are already law. The gates are where that law
+is written down, which is the whole argument for putting a requirement from an email into a
+test rather than into a plan file --- and this round is the first time that argument paid out
+against a reviewer rather than against a forgetful author.
+
+**1bv. A gate can pass because of where a line happens to wrap.**
+`test_placement_claims.py` looks for sentences in the supplement claiming material is "here
+rather than in the main text" and checks that the paragraph does not then cite something the
+paper also cites. Its patterns are five and six words long and it matched them against raw
+LaTeX source, where the source wraps at the margin: the supplement held *"is stated here
+rather\nthan in the main text"*, the pattern wanted a space between *rather* and *than*, and
+the claim went unread for as long as that sentence happened to break there. Round 68 rewrote
+the sentence for an unrelated reason, the line re-wrapped, and the gate fired on prose that
+had been in front of it for rounds.
+
+The repair is one line --- relax the literal spaces in the patterns to `\s+` --- and the
+lesson is the general one: **a gate that reads source has to normalise the one thing source
+does that prose does not.** Worth recording is the repair that was tried first and was also
+wrong: flattening the whole text to single spaces, then locating each match back in the
+original by searching for the phrase. Every occurrence after the first then reports the
+first one's line number and paragraph, so a second violation is attributed to the first
+violation's neighbourhood. Flattening moves every offset; relaxing the pattern moves none.
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

@@ -59,15 +59,39 @@ CROSS_PROCESS = [
                re.I),
 ]
 
-# A guard that admits only positive samples silently drops the evidence of a violation.
+# Two guards, not one, and the difference is the difference between this paper's two failure
+# modes. Round 69.
+#
+# `> 0` admits only STRICTLY positive samples, so on a path shorter than the timestamp
+# quantum it deletes every sample that computes to exactly zero -- which is most of them.
+# That is the deletion failure.
+#
+# `>= 0` admits zero. It deletes only genuinely inverted samples, and the computes-to-zero
+# population survives into the output where an operator can see it pile up on the quantum.
+# That is the other failure, and it is the one the sign channel is for: "negative means the
+# reference timestamp failed, computes-to-zero means the resolution failed, and one unsigned
+# total cannot distinguish them."
+#
+# Both were in one list under a comment that said "admits only positive samples", and the
+# registry called Apache Pulsar's `if (latencyMillis >= 0)` a positivity guard on that basis.
+# It is a non-negativity guard. The mislabel came in with round 6, which introduced Pulsar
+# while correctly fixing a different misreading, and it survived because nothing separated
+# the operators. A classifier for a paper about the difference between a measured zero and an
+# uncounted absence has to be able to tell `>` from `>=`.
 POSITIVE_FILTER = [
     re.compile(r"if\s*\(\s*(\w*[Ll]atency\w*)\s*>\s*0\s*\)"),
-    re.compile(r"if\s*\(\s*(\w*[Ll]atency\w*)\s*>=\s*0\s*\)"),
     re.compile(r"if\s+(\w*latency\w*)\s*>\s*0\s*:", re.I),
     # Erlang spells the same guard without an `if`, as a short-circuit before the record call:
     # `E2ELatency > 0 andalso record(...)`. Added when auditing beyond the JVM found the
     # identical shape in a language whose syntax the original patterns could not see.
     re.compile(r"\b(\w*[Ll]atency\w*)\s*>\s*0\s+andalso\b"),
+]
+
+#: The weaker guard: drops inversions, keeps the quantum's zeros.
+NONNEGATIVE_FILTER = [
+    re.compile(r"if\s*\(\s*(\w*[Ll]atency\w*)\s*>=\s*0\s*\)"),
+    re.compile(r"if\s+(\w*latency\w*)\s*>=\s*0\s*:", re.I),
+    re.compile(r"\b(\w*[Ll]atency\w*)\s*>=\s*0\s+andalso\b"),
 ]
 
 # A positivity guard only deletes a sample if what it guards is the *sample*. Round 6 caught us
@@ -162,14 +186,34 @@ QUANTIZED_RETENTION = [
 CLASSES = (
     ("cross_process_latency", CROSS_PROCESS),
     ("positive_only_filter", POSITIVE_FILTER),
+    ("nonnegative_filter", NONNEGATIVE_FILTER),
     ("silent_suppression", SUPPRESSION),
     ("library_refusal", LIBRARY_REFUSAL),
     ("quantized_retention", QUANTIZED_RETENTION),
 )
 
-# The three ways a sample can vanish. `cross_process_latency` is not one of them -- it marks
-# where the span is computed, not what happens to it.
-DISPOSAL_KINDS = ("positive_only_filter", "silent_suppression", "library_refusal")
+# The ways a sample can vanish. `cross_process_latency` is not one of them -- it marks where
+# the span is computed, not what happens to it.
+#
+# `nonnegative_filter` joins the disposals and does not change the count of harnesses that
+# dispose, because a tool guarding with `>= 0` still drops its inversions and still counts
+# nothing. What changes is what may be said about it: it is a different threshold with a
+# different consequence, not the same design under another name.
+DISPOSAL_KINDS = ("positive_only_filter", "nonnegative_filter", "silent_suppression",
+                  "library_refusal")
+
+#: Kind -> what actually happens to the sample. Two kinds, one response: a filter is a filter
+#: whichever way its comparison leans, and Section VII enumerates three responses because
+#: there are three -- drop it, replace it, let the library refuse it. Splitting the threshold
+#: in round 69 must not turn "three classes" into "four" in the prose, because the reader is
+#: being told what becomes of the value and nothing about that changed. The threshold decides
+#: WHICH samples are dropped, which is a separate fact and is now in the table.
+DISPOSAL_RESPONSES = {
+    "positive_only_filter": "filter",
+    "nonnegative_filter": "filter",
+    "silent_suppression": "substitute",
+    "library_refusal": "refuse",
+}
 
 
 def classify(line):
@@ -186,8 +230,9 @@ def classify(line):
     emqtt-bench.
     """
     kinds = [name for name, pats in CLASSES if any(p.search(line) for p in pats)]
-    if "positive_only_filter" in kinds and COUNTER_CONSEQUENT.search(line):
-        kinds.remove("positive_only_filter")
+    for guard in ("positive_only_filter", "nonnegative_filter"):
+        if guard in kinds and COUNTER_CONSEQUENT.search(line):
+            kinds.remove(guard)
     return kinds
 
 

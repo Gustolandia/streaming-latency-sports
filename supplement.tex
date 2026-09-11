@@ -2457,6 +2457,16 @@ appears to hang on a round number while the input is known to vary.
 \item \textbf{The cure.} Phase jitter on the repetition rate, so the samples stop landing on
 the same points of the clock's cycle. We arrived at it independently and recommend it in
 Section~\mainAuthors{}.
+\item \textbf{The mechanism, and a patent on the cure.} Hewlett-Packard did not only describe
+the symptom; it patented the remedy. US~3,938,042, filed in 1974 and granted in 1976,
+varies the phase of the counter's own time base ``to destroy coherence between the clock
+signal and an unknown signal thereby allowing statistical averaging to take
+place''~\cite{hp1976dither}, and states the failure it repairs in terms this paper could have
+used: a counter that ``appears to hang up on some value \ldots{} a reading that is an integral
+multiple of the clock period''. That is the corpus of Section~\mainModeB{}, described in 1976.
+The one substitution we make to a fifty-year-old remedy is forced: the time base belongs to
+the operating system, so a benchmark cannot dither it and must dither the send instant
+instead.
 \end{itemize}
 
 The one thing the note does not contain is the failure this paper reports, because its
@@ -3246,8 +3256,10 @@ the grain the finding lives at: one tool can guard one span and leave another al
 OpenMessaging Benchmark does.
 
 \begin{table}[h]
-\caption[Audited harnesses, one row per span rather than per tool]{Audited harnesses, one row per span rather than per tool. \textnormal{\textit{Filter}} admits only
-positive samples; \textnormal{\textit{substitute}} replaces an inverted interval with a constant;
+\caption[Audited harnesses, one row per span rather than per tool]{Audited harnesses, one row per span rather than per tool. \textnormal{\textit{Filter}} drops what its
+comparison excludes, and the comparison is printed with it: $>0$ deletes every sample that
+computes to exactly zero, which on a sub-quantum path is most of them, while $\geq 0$ keeps
+those and drops only the negative spans. \textnormal{\textit{substitute}} replaces an inverted interval with a constant;
 \textnormal{\textit{refused by own library}} means the recording library returns a refusal the caller never
 checks; \textnormal{\textit{counts}} means the disposal is exposed in the output. The OpenMessaging
 Benchmark appears twice, because it treats its two spans differently and that difference is
@@ -3285,7 +3297,7 @@ sub-millisecond path \texttt{p50}, \texttt{p99} and \texttt{p999} all report zer
 companion \texttt{ProducerPerformance} takes its send-to-acknowledgment difference on
 \texttt{System.currentTimeMillis()} and casts it to \texttt{int}.
 
-This is what forced a fifth class into the classifier. Until then its categories were three
+This is what forced a new class into the classifier. Until then its categories were three
 ways a sample can \emph{vanish}, and a survey whose only question is "what happens to a
 negative" cannot see a tool that keeps every positive and records it as zero.
 \texttt{quantized\_retention} matches a division or cast that discards the unit the value was

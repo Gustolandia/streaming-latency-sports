@@ -42,6 +42,20 @@
       "scope": "line",
       "anchor": "and the instrument is not among them",
       "reason": "The sentence closes a survey of twenty-seven benchmark efforts by naming what the survey judged overlooked. The measuring instrument as a category is precisely the subject -- no substitution of 'timestamp resolution' or 'the benchmark tool' preserves it, because the point is that the survey names no part of the instrument at all."
+    },
+    {
+      "file": "paper.tex",
+      "key": "quantum",
+      "scope": "line",
+      "anchor": "pile up on the quantum",
+      "reason": "Use after the definition three sections earlier, and the substitution does not survive it: samples pile up ON a discrete value, and 'pile up on the timestamp resolution' names a property rather than the grid the values land on. The sentence is about what an operator SEES in Pulsar's output, which is a spike at one millisecond."
+    },
+    {
+      "file": "supplement.tex",
+      "key": "quantum",
+      "scope": "line",
+      "anchor": "on a sub-quantum path is most of them",
+      "reason": "A compound adjective in a table caption, where the alternative is 'a path shorter than the timestamp resolution' and the caption is already six lines. The supplement's vocabulary block says it uses the paper's terms, and the paper defines the quantum as the timestamp resolution."
     }
   ]
 }

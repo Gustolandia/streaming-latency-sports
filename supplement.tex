@@ -93,6 +93,7 @@
 \newcommand{\mainGate}{\ref{P-sec:gate}}            % The consistency check
 \newcommand{\mainModel}{\ref{P-sec:proxy}}           % The transport proxy is not a causal chain
 \newcommand{\mainStats}{\ref{P-sec:stats}}           % Statistics
+\newcommand{\mainRelatedBench}{\ref{P-sec:related_bench}}   % Streaming benchmarks
 \newcommand{\mainRelatedTime}{\ref{P-sec:related_time}}    % Cross-process time measurement
 \newcommand{\mainRelatedRes}{\ref{P-sec:related_resolution}}     % Resolution and discarded samples
 \newcommand{\mainGenerality}{\ref{P-sec:generality}}       % Our own harness, and the sign channel
@@ -4309,6 +4310,22 @@ and it lands under it. We draw no conclusion about the number, which may be perf
 the point is that nothing published beside it would let a reader tell, and on a
 millisecond-resolution cross-node timestamp most of that distribution would compute to zero or to
 a negative an admission condition would drop.
+
+A third comparison inside the regime shows how the numbers travel after the tool has moved
+on. A March 2026 practitioner guide gives NATS ``sub-millisecond latency up to roughly the
+99.7th percentile for small payloads'', 
+edis{} the same and \kafka{} only to ``around the
+94th percentile''~\cite{javacodegeeks2026brokers}. Naming a percentile that high puts not the
+median but nearly the whole body of the distribution beneath the tick, which is the deepest
+into the regime any row of this ledger reaches. What makes it a different exhibit from the two
+above is where its figures come from: its own latency chart is captioned ``Approximate values
+drawn from published benchmarks --- Brave New Geek \& Synadia (2024)'', so the ranking is a
+redrawing of a four-year-old third-party measurement with none of its method carried across.
+\emph{Timestamp}, \emph{clock}, \emph{resolution} and \emph{discard} do not occur in the
+article at all. Section~\mainRelatedBench{} argues that the instruments are few and shared, so
+a defect in one is a defect in a decade of comparisons. This row says the same of the numbers:
+a figure produced once inside the regime is re-quoted years later by readers who cannot check
+it, because what would let them check it was never published beside it.
 
 Against that, the rules of Section~\mainAuthors{} are being adopted independently, and by a
 benchmark rather than by a metrics agent. A 2026 voice-agent latency methodology records both

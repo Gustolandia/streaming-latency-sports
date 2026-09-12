@@ -544,7 +544,8 @@ used, is $\interHostOffsetMs$~ms.
 \label{sec:workload}
 The workload is StatsBomb's open football event data~\cite{statsbomb2023}
 (CC~BY-NC-SA~4.0): per-match event streams --- passes, shots, pressure events --- with
-sub-second event times. We replay $3{,}315$ matches, preserving each match's event order
+sub-second event times. We characterize the full $\corpusMatches$-match corpus and replay
+\replayedMatchesWord{} of its matches, preserving each match's event order
 and scaling its inter-event spacing to the chosen send rate. It stands for small frequent
 ordered messages rather than for any particular deployment, and nothing below depends on
 its content beyond message size and rate (Supplement~S20). The send schedule is measured rather than assumed.
@@ -620,7 +621,8 @@ every cloud run that produced matched events, $\spanRuns$ of them, rather than t
 $\auditRunsCloud$ behind a reported result. A condemned run answers which span inverts as
 well as a clean one does, so none is excluded. The
 acknowledgment-referenced proxy is negative on $\spanNegAck$ of $\spanEvents$ events
-($\spanNegAckPct\%$; Wilson intervals are under $0.1$ points here and omitted hereafter).
+($\spanNegAckPct\%$; Wilson intervals are under $0.1$ points on corpus-wide rates and are
+omitted where they are that narrow, not in Table~\ref{tab:mechanism}).
 Of the runs, $\spanRunsOverOnePct$ exceed the one-per-cent threshold on it. The
 send-referenced span, the acknowledgment lag $A$ and \tti{} --- every causal chain the
 corpus contains --- are negative on \textbf{no event at all}. None of the $\spanNegAck$ messages arrived before it was
@@ -684,9 +686,9 @@ branches cancels in $S = D - A$, so what the model sets aside is invisible rathe
 Load changes how \emph{often} the thread that must record the time is not running, not how
 wide the ordinary jitter is. Going from idle to the knee multiplies the fitted core width
 $\sigma_c$ by $\coreGrowth$ and the negative-span rate --- the mass of $A$ beyond $D$ ---
-by $\invGrowth$. The rate has a ceiling below one: fully saturated it reaches
-$\invCeiling$, so even then most timestamps are taken by a thread that was running, or late
-by less than the delivery.
+by $\invGrowth$. The rate does not approach one: the highest we measure near saturation is
+$\invCeiling$, a maximum over those conditions and not a bound either, so even then most
+timestamps are taken by a thread that was running, or late by less than the delivery.
 
 \begin{table}[tb]
 \caption{\textbf{Mechanism, by manipulation} ($\mechEventsPerCell$ matched events per
@@ -694,7 +696,8 @@ cell). Top: timestamping threads moved to \texttt{SCHED\_FIFO} with background l
 unchanged; achieved utilization matches to within $\mechRhoMatch$ between configurations,
 so occupancy alone moved. Bottom: identical utilization reached by two core geometries
 ($\rho = \mechGeomRho$ in all four configurations with $k{=}6$ loaded cores); a function of
-$\rho$ returns one value for one input.}
+$\rho$ returns one value for one input. Each factor's bracket is a Katz $95\%$ interval on
+the ratio.}
 \label{tab:mechanism}
 \centering
 \footnotesize
@@ -703,17 +706,17 @@ $\rho$ returns one value for one input.}
 \toprule
 Manipulation & Configuration & Rate & 95\% CI & Factor ($z$)\\
 \midrule
-\multirow{2}{*}{Priority, $75\%$} & ordinary & $\rtLowBase$ & $\rtLowBaseCI$ & \multirow{2}{*}{$\rtLowFactor\times$ ($\rtLowZ$)} \\
-                                        & real-time & $\rtLowRt$ & $\rtLowRtCI$ & \\
+\multirow{2}{*}{Priority, $75\%$} & ordinary & $\rtLowBase$ & $\rtLowBaseCI$ & $\rtLowFactor\times$ ($\rtLowZ$) \\
+                                        & real-time & $\rtLowRt$ & $\rtLowRtCI$ & [$\rtLowFactorCI$] \\
 \addlinespace[2pt]
-\multirow{2}{*}{Priority, $88\%$} & ordinary & $\rtHighBase$ & $\rtHighBaseCI$ & \multirow{2}{*}{$\rtHighFactor\times$ ($\rtHighZ$)} \\
-                                        & real-time & $\rtHighRt$ & $\rtHighRtCI$ & \\
+\multirow{2}{*}{Priority, $88\%$} & ordinary & $\rtHighBase$ & $\rtHighBaseCI$ & $\rtHighFactor\times$ ($\rtHighZ$) \\
+                                        & real-time & $\rtHighRt$ & $\rtHighRtCI$ & [$\rtHighFactorCI$] \\
 \midrule
-\multirow{2}{*}{Geometry, original}     & concentrated & $\GeomOrigConc$ & $\GeomOrigConcCI$ & \multirow{2}{*}{$\GeomOrigFactor\times$ ($\GeomOrigZ$)} \\
-                                        & spread & $\GeomOrigSpread$ & $\GeomOrigSpreadCI$ & \\
+\multirow{2}{*}{Geometry, original}     & concentrated & $\GeomOrigConc$ & $\GeomOrigConcCI$ & $\GeomOrigFactor\times$ ($\GeomOrigZ$) \\
+                                        & spread & $\GeomOrigSpread$ & $\GeomOrigSpreadCI$ & [$\GeomOrigFactorCI$] \\
 \addlinespace[2pt]
-\multirow{2}{*}{Geometry, repl.}  & concentrated & $\GeomReplConc$ & $\GeomReplConcCI$ & \multirow{2}{*}{$\GeomReplFactor\times$ ($\GeomReplZ$)} \\
-                                        & spread & $\GeomReplSpread$ & $\GeomReplSpreadCI$ & \\
+\multirow{2}{*}{Geometry, repl.}  & concentrated & $\GeomReplConc$ & $\GeomReplConcCI$ & $\GeomReplFactor\times$ ($\GeomReplZ$) \\
+                                        & spread & $\GeomReplSpread$ & $\GeomReplSpreadCI$ & [$\GeomReplFactorCI$] \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -723,9 +726,9 @@ Manipulation & Configuration & Rate & 95\% CI & Factor ($z$)\\
 No pair of configurations in Table~\ref{tab:mechanism} overlaps, and Supplement~S12 draws
 them. Real-time priority on the timestamping threads moves occupancy while utilization
 stays fixed (Table~\ref{tab:mechanism}, top). The rate falls by factors of $\rtLowFactor$
-[$\rtLowFactorCI$] and $\rtHighFactor$ [$\rtHighFactorCI$]. The brackets are Katz
-intervals on the ratio, wide because the collapsed configurations are sparse; the Wilson
-intervals are disjoint at both load levels ($z = \rtLowZ$ and $z = \rtHighZ$). Both residual rates land on the scale the model names
+and $\rtHighFactor$. Each factor's bracket in the table is a Katz interval on the ratio,
+wide because the collapsed configurations are sparse; the Wilson intervals are disjoint at
+both load levels. Both residual rates land on the scale the model names
 in advance. That scale is the floor $C_0$\label{def:czero}: the negative-span rate that
 remains when the timestamping thread is never preempted and only the core jitter
 $\sigma_c$ is left, $C_0 \approx \invFloor$. Over all $\rtResidualPairs$ pairs the
@@ -739,8 +742,8 @@ ranges $\rtFactorLow$--$\rtFactorHigh\times$, every pair with disjoint intervals
 
 Three further manipulations agree. At $k=6$ both load geometries sit at $\rho = \mechGeomRho$,
 identical to four decimals, and the negative-span rates differ by
-$\GeomOrigFactor\times$ [$\GeomOrigFactorCI$] ($z = \GeomOrigZ$), reproduced at
-$\GeomReplFactor\times$ [$\GeomReplFactorCI$] by a full replication. Multi-server queueing
+$\GeomOrigFactor\times$, reproduced at $\GeomReplFactor\times$ by a full replication
+(Table~\ref{tab:mechanism}, bottom). Multi-server queueing
 expects geometry to matter at fixed $\rho$; what it rules out is the single-parameter form
 we had adopted and pre-registered, where $\rho$ alone fixes the rate. Payload padding lengthened transport
 $\payloadTransportFactor\times$ while the negative-span rate \emph{fell}
@@ -868,9 +871,12 @@ on the $\testbedCpus$ cores the campaign's own load geometry recovers, over a $\
 scheduler tick, and no scheduler tunable is written anywhere in the archived campaign
 (Supplement~S16). That tick is the kernel's timer period, not the timestamp resolution $\tau$ of
 Section~\ref{sec:metrics}; both are $1$~ms here by coincidence of configuration. A thread
-descheduled at the wrong instant therefore reads its clock about a slice late, six to
-thirty times a $0.1$--$0.5$~ms delivery, and the tick is why the mode is a band rather
-than a spike. A mean over this distribution is dominated by a mode the operator never
+descheduled at the wrong instant therefore reads its clock about a slice late ---
+$\sliceOverDeliveryLo$--$\sliceOverDeliveryHi$ times the per-condition deliveries this
+corpus measures, $\condDeliveryLoMs$--$\condDeliveryHiMs$~ms --- and the tick is why the
+mode is a band rather than a spike. The scheduler's slice lands on the scale of the
+interval being measured, which is what puts the negative-span rate at $\spanNegAckPct\%$
+rather than at a hundredth of that or at half. A mean over this distribution is dominated by a mode the operator never
 sees, so a mean-based counter cannot flag this failure.
 
 \section{Failure Mode 2: Quantization and Silent Deletion}
@@ -903,8 +909,10 @@ filtering for positives is the reasonable local fix, defensive rather than evasi
 non-local consequences are two, neither considered at the time. First, \texttt{> 0} also deletes
 every sample that computes to exactly zero. Because
 \texttt{System.currentTimeMillis()} has millisecond resolution, any delivery faster than
-one millisecond does compute to zero. On co-located paths, where our own transport measures
-$0.1$--$0.5$~ms, that is most of them. Second, the one observation which would show the
+one millisecond does compute to zero. Section~\ref{sec:extphase} recovers this benchmark's own
+delivery from its retention and puts it at $\spreadIncommensurateTrueMs$~ms, half the
+resolution: about half of what a co-located run takes computes to zero, and far more
+on the rates whose phase sits on the grid. Second, the one observation which would show the
 measurement had failed is the exact observation the condition removes.
 Section~\ref{sec:tools} finds the same disposal, uncounted, in
 \harnessSilentIndependentWord{} independent tools.
@@ -963,7 +971,7 @@ which for $T_{\mathrm{true}} < \tau$ happens with probability $T_{\mathrm{true}}
 
 All \spreadIncommensurateWord{} configurations whose send interval is incommensurate with
 $\tau$ sit near $50\%$ --- medians $\spreadIncommensurateLo$ to
-$\spreadIncommensurateHi$ --- implying $T_{\mathrm{true}} \approx 0.5$~ms at
+$\spreadIncommensurateHi$ --- implying $T_{\mathrm{true}} = \spreadIncommensurateTrueMs$~ms at
 $\tau = 1$~ms.
 
 \paragraph{A pre-registered confirmation}
@@ -1071,7 +1079,8 @@ rule rather than a better clock.
 Once the failed runs are removed, the broker comparison that motivated the work is small and
 one configuration choice dwarfs it. On gated artifacts the two sit within a millisecond on
 the transport proxy (TOST against a $\tostMargin$~ms margin, $p < 0.001$, across
-$\tostLevels$ levels), so it is not a purchasing argument. The one condition that reverses
+$\tostLevels$ levels), and on \tti{}, which is a causal chain, against a wider margin over
+the same levels (Supplement~S13). So it is not a purchasing argument. The one condition that reverses
 the ordering is a consumption pattern rather than the broker, and a co-located testbed ---
 the standard evaluation environment --- hides it (Supplement~S13).
 
@@ -1188,11 +1197,12 @@ it (Supplement~S22).
 
 \subsection{The limits of a better clock}
 \label{sec:betterclock}
-Hardware-timestamped PTP~\cite{ieee1588} would take two LAN hosts from our
-$\interHostOffsetUs\,\mu$s of \texttt{chrony} agreement to sub-microsecond. Behind a
-one-millisecond timestamp, $\interHostOffsetUs\,\mu$s and $70$~ns produce byte-identical
-records. The admission condition deletes the same samples and the retention arithmetic is
-unchanged.
+A better clock alone converts an uncounted \emph{resolution} failure into an uncounted
+\emph{timestamping} one. Hardware-timestamped PTP~\cite{ieee1588} would take two LAN hosts
+from our $\interHostOffsetUs\,\mu$s of \texttt{chrony} agreement to sub-microsecond, and
+behind a one-millisecond timestamp $\interHostOffsetUs\,\mu$s and $70$~ns produce
+byte-identical records. The admission condition deletes the same samples and the retention
+arithmetic is unchanged.
 The remedies are therefore ordered:
 record at native resolution, count what is discarded, dither the send instant, and only then
 is synchronization quality the frontier (Section~\ref{sec:generality}).
@@ -1202,9 +1212,8 @@ is synchronization quality the frontier (Section~\ref{sec:generality}).
 % conclusion, which is the last sentence of this paragraph.
 Resolution is the lesser half, and a distinct one. A microsecond timestamp retires
 Equation~\ref{eq:retention}'s deletions here and moves the grid to faster paths, but the
-admission condition and genuine negatives survive it (Supplements~S29 and~S16.5). A better
-clock alone therefore converts an uncounted \emph{resolution} failure into an uncounted
-\emph{timestamping} one.
+admission condition and genuine negatives survive it (Supplements~S29 and~S16.5), which is
+why the ordering above puts synchronization quality last.
 
 \subsection{Threats and limitations}
 \label{sec:threats}
@@ -1215,8 +1224,8 @@ clustering of consecutive late wakes
 ($z = -6.9$ at the co-located floor, at every load including none) is the signature of a
 shared scheduling delay, not independent kernel granularity. The \texttt{chrony} daemon
 reports the inter-host offset as comfortably sub-tick but bounds its own error at
-$\chronyHostBoundLo$--$\chronyHostBoundHi$~ms per host; the two worst bounds sum to
-$\chronyPairBound$~ms against a $1$~ms timestamp, so the cross-host channel stays open
+$\chronyHostBoundLo$--$\chronyHostBoundHi$~ms per host; the two worst, $\chronyWorstBound$ and
+$\chronySecondWorstBound$, sum to $\chronyPairBound$~ms against a $1$~ms timestamp, so the cross-host channel stays open
 rather than ruled out. It did not produce the \redis{}-driver
 negatives, which the driver's own timestamp accounts for exactly
 (Section~\ref{sec:generality}), but it is why we claim no cross-host bound in general. The
@@ -1231,7 +1240,8 @@ a dedicated core and busy-poll, or that timestamp in hardware, remove the preemp
 state the mechanism depends on, and we make no claim about them. Within our own
 setting the alternatives are each eliminated. Clock skew: one clock by
 construction on the rejecting configurations, and $\harnessCrossHostNegatives$ negatives in
-$\harnessCrossHostSamples$ two-clock samples. Cross-CPU incoherence under migration: below. Utilization: identical
+$\harnessCrossHostSamples$ two-clock samples --- the same count as the one-clock campaign of
+Section~\ref{sec:generality} because the two were matched run for run, not a repeated figure. Cross-CPU incoherence under migration: below. Utilization: identical
 $\rho$, rates twofold apart. Timer noise: \texttt{SCHED\_FIFO} at fixed utilization
 collapses the rate across $\rtPairs$ pairs, and noise does not respect
 scheduling class. Stress: transport $\payloadTransportFactorRound\times$ longer

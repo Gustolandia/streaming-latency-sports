@@ -1572,6 +1572,50 @@ names the overflow key and raises on it. The rule is the general one: **a check 
 the names you expect cannot see the values you did not.** Ask the parser what it did with the
 rest.
 
+**1cd. A gate is scoped to where the defect was first seen, and the defect moves.** On
+2026-07-26 commit `6717ce3` --- *"Stop the abstract claiming the benchmark ran on 3,315
+matches"* --- removed a conflation between the corpus the workload characterisation covers
+(3,315 matches) and the corpus the campaign replays (eleven plans), and installed
+`test_the_two_corpora_are_not_conflated` to keep it out. That test reads the abstract, because
+the abstract was where the sentence had been. Six weeks later `2e15b93` wrote *"We replay
+3,315 matches"* into Section IV-D, one section below, and nothing said anything for two more
+rounds until round 72's referee counted the plan directories.
+
+**A gate written against an instance protects the instance, not the claim.** The repair is to
+scope the check to the *documents* and to the *relationship* --- the corpus size within reach
+of a verb meaning "sent through the system" --- rather than to the surface the sentence
+happened to occupy. Both numbers are emitted now, so a sentence cannot name one without the
+other existing.
+
+**1ce. Nine of ten mutations were guarding nothing, and the check said OK every time.**
+`mutation_check.py` reports `SKIP` when an anchor is no longer in the manuscript, and `main()`
+returned 0 on skips. Round 72 found nine of the ten anchors stale. The list had been written
+against rendered digits --- *"is a proportion over $2{,}985$ matched"*, *"$2.07	imes$,
+$2.05	imes$"*, *"ratios $0.78$, $1.06$ and $1.32$"* --- in a manuscript that emits every
+digit from a ledger, so each anchor died the first time its number was recomputed or its
+sentence reworded, silently, and the run kept printing success.
+
+One of the nine was `re-conflate the two corpora`, whose *mutated* text was, within a synonym,
+the sentence item 1cd is about. The check written against that exact defect went quiet at the
+moment the defect returned.
+
+Two rules, both now enforced rather than recorded. **A skipped mutation fails**: an anchor
+that has vanished is an unguarded claim and not a pass. And **anchor on a macro name or on
+prose, never on a rendered number** --- `test_round72_findings.py` fails on any anchor
+containing a typeset numeral. The rebuilt list runs against six test files rather than one,
+because the claims it guards have spread across the round-by-round gates since the default
+was set.
+
+**1cf. The referee's arithmetic was worth redoing, and one of the three items was a factor of
+six.** Section V-E divided the scheduler's 3 ms base slice by *"a 0.1--0.5 ms delivery"* and
+printed *"six to thirty times"*. The pair was typed, and it is the range of the transport
+proxy: `span_symmetry.csv` puts every condition's median delivery between 700 and 2,950 us, so
+the slice runs one to four times it. The corrected number is the stronger claim --- the
+scheduler's quantum lands on the scale of the interval being measured, which is why 8.4% of
+events invert rather than a hundredth of that or half --- and it was only findable because
+the ledger holds all three spans side by side. **When a sentence divides by one of several
+similar quantities, emit the divisor from the function that knows the others.**
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

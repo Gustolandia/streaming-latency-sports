@@ -1661,6 +1661,60 @@ is not written at all unless every term came back stable** --- which it refused 
 while this was being built, correctly, under rate limiting. A number whose value depends on
 when you asked for it needs a spread or it needs asking again.
 
+**1ck. A number spelled as a word is a number typed.** Round 73 closed the gap where a
+numeral touching a control word escaped the inventory. Round 74 found the gap one
+representation over: the manuscript spells small numbers as words, deliberately --- there are
+eleven `...Word` macros precisely so a quantity can open a sentence --- and the inventory read
+digits.
+
+Two instances, both of quantities the ledger already emits. Section VI-A: *"the only cells that
+escape are the **four**"*, where `ombEscapeCellsWord` emits *four* and **the supplement uses it
+in that sentence's twin**. Section VII: *"the worst of the **three** classes"*, where
+`harnessDisposalClassesWord` emits *three* and the same paragraph uses the macro six lines
+above. The second was found by the new gate, not by the referee.
+
+The rule cannot be "no word-numbers" --- English is full of *one clock* and *two threads*. It
+is **"no word-number that names a quantity the ledger already emits"**, and that is mechanical:
+for each `...Word` macro, look for its bare value near the noun the macro is about. The residue
+is enumerated with reasons, exactly as the numerals are.
+
+**1cl. A pointer to a file is a promise, and nothing was checking those.** `test_prose_pointers`
+has verified every prose pointer to a supplement *section* since round 45 --- that it exists,
+that it lands on an exhibit if it promises one, that it is not a forwarding address. The
+documents also name **twenty-two file paths**, and nothing looked at any of them. Two led
+nowhere.
+
+The serious one is S24.1. Section VIII-D rests a limitation on the benchmark's distributed mode
+failing on every attempt; S24.1 said the per-attempt versions, full coordinator and worker logs
+and extracted signatures *"are archived in `docs/results/external/dist_diag/`"*. **There is no
+such directory, and the class-2 signatures are in no file in the artefact** --- a `git grep`
+for `CompletionException` finds exactly one hit, the supplement sentence claiming it is
+archived. What the artefact does hold is the outcome of each attempt in three
+`omb_distributed_result.csv` rows and the class-1 classpath failure in full in
+`external/omb/omb_worker_{client,driver}.log`.
+
+So the repair was not to rename a path: it was to **say what the artefact holds and name the
+absence as a limitation**, in the supplement and in the draft upstream issue, which was sending
+OMB's maintainers to the same missing directory. A directory created to satisfy a sentence
+would have been worse than the broken pointer.
+
+The general form, and the project already has a commit titled almost exactly this: **an
+artifact statement may not claim an availability its records do not have** --- and a prose
+pointer is an artifact statement. The gate resolves every `	exttt{}` containing a repository
+path, allows a glob, keeps a short list of paths absent by design with a reason, and
+additionally requires that **the sentence naming an absent path discloses the absence to the
+reader**, because a reason recorded only in a test protects the test suite and nobody else.
+
+**1cm. The referee reported a find the manuscript already had, and the ledger was the thing
+that was behind.** Round 74's W1 offered a May 2026 vendor benchmarking-methodology guide as a
+new exhibit: ten requirements for a fair comparison, none about the instrument. S33.4 had been
+discussing it, with a sharper reading, for rounds. What was missing was its row in
+`literature_regime.csv`, so the prose asserted something the ledger did not carry --- the
+inverse of every other defect in this file, and easier to miss for that reason. The row exists
+now, as `kind=methodology` so the denominator the main text quotes does not move. **A claim in
+prose with no row behind it is the same defect as a row with no claim, seen from the other
+side.**
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

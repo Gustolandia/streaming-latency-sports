@@ -613,6 +613,41 @@ not stable**: the same query returned 3 in a batch and 1 on three consecutive ca
 later, so each term is sampled three times and a count that moved is written as a band with the
 verdict *ask again*, and the ledger is not written at all until every term is stable.
 
+### A2j. A quantity the ledger emits is never written out as a word --- GATED
+
+Section VI-A: *"the only cells that escape are the **four** whose payload is large enough"*.
+`ombEscapeCellsWord` emits *four*, and the supplement uses the macro in that sentence's twin.
+Section VII: *"the worst of the **three** classes"*, six lines below the same paragraph's
+`\harnessDisposalClassesWord{}`.
+
+Rule: **a spelled number is a typed number.** This manuscript spells small quantities on
+purpose --- there are eleven `...Word` macros so that a count can open a sentence --- which is
+exactly why the spelled form needs the same discipline as the digit form.
+
+The gate is not "no word-numbers", because English is made of *one clock* and *two threads*. It
+is *no word-number that names a quantity the ledger already emits*, checked by proximity to the
+noun the macro is about, with a short enumerated residue. The mechanical test for an author is
+one question: **does a macro exist for this?**
+
+### A2k. A path named in prose is a promise the reader can check in one command --- GATED
+
+S24.1 said the distributed-mode diagnostics *"are archived in
+`docs/results/external/dist_diag/`"*. There is no such directory, and the failure signatures it
+promised are in no file in the artefact. Section VIII-D rests a limitation on that campaign, so
+a reader checking the one claim it cannot support with data was sent somewhere empty. The draft
+upstream issue sent the benchmark's own maintainers to the same place.
+
+Rule: **name only paths the artefact carries, and where it carries none, say so.** The repair
+was not to create the directory --- a directory made to satisfy a sentence is worse than the
+broken pointer. It was to name the files that do exist (`omb_distributed_result.csv`, the two
+`dist_load*/` rows, the class-1 logs in `external/omb/`) and to state that the class-2
+signatures were read from the console and not retained. That is a limitation, and limitations
+belong in the open.
+
+Corollary, gated separately: **a path the artefact deliberately lacks is disclosed in the
+sentence that names it**, not only in a test's allow-list. The sweep ledger
+(`novelty_sweep.csv`) is written by a run and absent until one succeeds; S33.1 now says so.
+
 ### A2. No `flight` — GATED
 
 In the corpus bare *flight* occurs 131 times across 25 of 775 papers, and a read of every

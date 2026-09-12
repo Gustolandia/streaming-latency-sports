@@ -56,7 +56,14 @@ ABBREVIATIONS = frozenset((
 #: `\harnessSilentWordCap` had stood at the head of a sentence, so the capitalised twin went
 #: quiet. It stays emitted: the sentence that needed it existed two revisions ago and may
 #: exist again, and `TestACapitalisedMacroOpensASentence` now polices which twin is right.
-UNUSED_MACRO_CEILING = 67
+#: Round 73 raised this from 67 by two, and the rule is that it may not rise without a reason
+#: written down. The reason: `rtLowBasePct` and `rtLowLoadPct` are the idle half of a pair the
+#: ledger now emits for every priority level -- a rate and the load it was measured at,
+#: together. Emitting them apart for some levels and together for others is precisely the
+#: asymmetry that let a corpus-wide rate pick up a load-specific label and stand for two
+#: rounds (round 73, R1). The prose quotes the 88% pair and points at Table II for the other,
+#: which is a Discussion re-quoting Results rather than introducing a number.
+UNUSED_MACRO_CEILING = 69
 
 
 def rendered(name):

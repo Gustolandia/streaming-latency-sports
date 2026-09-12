@@ -1462,9 +1462,12 @@ copy of a result cannot corroborate it --- but that only one of them can be esca
 \tau)$ reaches one and stops, and the failure switches off --- of the
 $\ombMedianCells$ instrumented cells, the
 \ombEscapeCellsWord{} whose payload is large enough report above the grid and lose
-nothing. The negative-span rate has no such exit. It is bounded above by
-$\invCeiling$ and below by a floor of $\invFloor$ that real-time priority reaches but
-does not cross, which is why Section~\mainAuthors{} keeps the sign check after every
+nothing. The negative-span rate has no such exit. At saturation it reaches
+$\invCeiling$, and the scale real-time priority settles on, $\invFloor$, is a scale and
+not a limit: across all $\rtPairs$ pairs the manipulated configuration runs
+$\rtResidualMin$--$\rtResidualMax$, on both sides of it. Neither number is a bound, and
+neither needs to be --- what the contrast rests on is that the rate has no floor at zero,
+which is why Section~\mainAuthors{} keeps the sign check after every
 remedy it recommends. One failure can be lengthened out of existence and the other
 cannot, and no rescaling of a single dependence produces that.
 
@@ -1763,7 +1766,7 @@ is reported as a range for that reason.}
 \end{figure}
 
 Figure~\ref{fig:priority-ladder} shows what the range does not: which configuration moves. The real-time configuration sits
-between $0.0017$ and $0.0144$ across the whole load ladder, close to the floor the model names
+between $\rtResidualMin$ and $\rtResidualMax$ across the whole load ladder, close to the floor the model names
 in advance; the ordinary configuration rises from $0.046$ to $0.30$. The collapse is therefore not a
 proportional reduction that happens to be larger under load --- it is the ordinary configuration
 following utilization while the manipulated configuration does not, which is the two-state model of

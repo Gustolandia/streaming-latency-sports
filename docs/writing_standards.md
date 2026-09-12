@@ -449,6 +449,42 @@ Rule: the bibliography's own log is a build artefact like any other and is now c
 both documents, along with the stronger check it implies --- every key cited in the `.aux`
 must appear in the printed `.bbl`.
 
+### A2a. Every span the argument names is a span the ledger counts --- GATED
+
+Section II asserted the acknowledgment lag non-negative, Section V-D printed its median and
+its tenth and ninetieth percentiles, and Table I --- the exhibit whose whole job is to show
+that causal chains do not invert --- counted three chains and not that one. The paper's own
+rule, in the rule list, is *"we caught our own instance only on counting the send-referenced
+span separately."*
+
+Rule: **a quantity the prose calls non-negative is counted, not asserted.** Counting it cost
+one tuple in `recount_spans.py`'s span table and gave Table I a fourth row at no extra width;
+the answer was zero negatives over the corpus. `test_round70_findings.py` pins the span in the
+recounter, the count in the ledger, the row in the table and the enumeration in the prose.
+
+Two corollaries. **The margin beats the count**: "zero negatives" is a fact about a threshold,
+"112 microseconds clear of zero" is a fact about distance from one, and only the second says
+the chain was never close --- so the floor is emitted beside the count and printed in the
+caption. And **a premise attached to an identity is doing no work**: $S = D - A$ gives
+$S<0 \iff A>D$ whatever the signs are, so the non-negativity licensed the *reading* and not the
+algebra, and the sentence now says so and points at the table that measures it.
+
+### A2b. A bound, a scale and a maximum are three different claims --- GATED
+
+S9 read *"bounded above by 0.37 and below by a floor of 0.004 that real-time priority reaches
+but does not cross."* Neither half survived its own ledger. `invCeiling` is `max(vals)` over
+the conditions with $\rho \geq 0.95$ --- the highest rate measured near saturation, with a
+consistency check across phases, and not an upper bound. And the floor is crossed in both
+directions: Section V-C prints the manipulated configurations running 0.0017--0.0144 against a
+floor of 0.004 and says in as many words that it is *"where the rate settles and not a bound it
+respects."* The main text was right and the supplement contradicted it.
+
+Rule: **say which of the three a number is.** A maximum is what was measured, a scale is where
+things settle, a bound is a claim nothing may exceed --- and only the last needs an argument.
+The repair also emits the spread beside the floor, because the reason the two documents parted
+is that `invFloor` was printed with nothing to qualify it while Section V-C had the range all
+along.
+
 ### A2. No `flight` — GATED
 
 In the corpus bare *flight* occurs 131 times across 25 of 775 papers, and a read of every

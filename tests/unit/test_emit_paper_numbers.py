@@ -797,10 +797,11 @@ class TestTheMacrosThatAreOmittedRatherThanGuessed:
         path = tmp_path / "span_recount.csv"
         path.write_text("run_id\n", encoding="utf-8")
         agg = {"runs": 1, "events": 10, "neg_ack": 1, "pct_ack": 10.0, "neg_send": 0,
-               "neg_output_send": 0, "neg_tti": 0, "runs_over_one_pct_ack": 1,
+               "neg_output_send": 0, "neg_tti": 0, "neg_acklag": 0, "runs_over_one_pct_ack": 1,
                "runs_ack_only_inversions": 1, "runs_ack_inverts": 1,
                "runs_send_inverts": 0, "deepest_ack_inversion_us": 1000.0,
-               "send_span_floor_us": 50.0, "offset_margin_factor": 3.0}
+               "send_span_floor_us": 50.0, "offset_margin_factor": 3.0,
+               "shallowest_acklag_us": 112.0}
         monkeypatch.setattr(recount_spans, "read_csv", lambda p: [])
         monkeypatch.setattr(recount_spans, "totals", lambda rows: agg)
         monkeypatch.setattr(recount_spans, "by_backend", lambda rows: {
@@ -816,10 +817,11 @@ class TestTheMacrosThatAreOmittedRatherThanGuessed:
         path = tmp_path / "span_recount.csv"
         path.write_text("run_id\n", encoding="utf-8")
         agg = {"runs": 1, "events": 10, "neg_ack": 1, "pct_ack": 10.0, "neg_send": 0,
-               "neg_output_send": 0, "neg_tti": 0, "runs_over_one_pct_ack": 1,
+               "neg_output_send": 0, "neg_tti": 0, "neg_acklag": 0, "runs_over_one_pct_ack": 1,
                "runs_ack_only_inversions": 1, "runs_ack_inverts": 0,
                "runs_send_inverts": 0, "deepest_ack_inversion_us": 1000.0,
-               "send_span_floor_us": 50.0, "offset_margin_factor": 3.0}
+               "send_span_floor_us": 50.0, "offset_margin_factor": 3.0,
+               "shallowest_acklag_us": 112.0}
         monkeypatch.setattr(recount_spans, "read_csv", lambda p: [])
         monkeypatch.setattr(recount_spans, "totals", lambda rows: agg)
         monkeypatch.setattr(recount_spans, "by_backend", lambda rows: {"kafka": dict(agg)})
@@ -1848,11 +1850,11 @@ class TestTheHandlingShareIsBounded(object):
     @staticmethod
     def _recount(path, rows):
         head = ("run_id,backend,n_events,neg_ack,neg_send,neg_output_send,neg_tti,"
-                "neg_output,min_ack_us,min_send_us,median_ack_us,median_send_us,"
-                "median_output_ns")
+                "neg_output,neg_acklag,min_ack_us,min_send_us,median_ack_us,"
+                "median_send_us,median_output_ns")
         lines = [head]
         for run, backend, handling in rows:
-            lines.append("%s,%s,100,1,0,0,0,0,-1.0,1.0,1.0,1.0,%s"
+            lines.append("%s,%s,100,1,0,0,0,0,0,-1.0,1.0,1.0,1.0,%s"
                          % (run, backend, handling))
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         return str(path)
@@ -1888,7 +1890,7 @@ class TestTheHandlingShareIsBounded(object):
     def test_a_ledger_without_the_handling_column_emits_nothing(self, tmp_path):
         p = tmp_path / "r.csv"
         p.write_text("run_id,backend,n_events,neg_ack,neg_send,neg_output_send,neg_tti,"
-                     "neg_output,median_ack_us\na,redis,100,1,0,0,0,0,1.0\n",
+                     "neg_output,neg_acklag,median_ack_us\na,redis,100,1,0,0,0,0,0,1.0\n",
                      encoding="utf-8")
         sym = self._symmetry(tmp_path / "s.csv", [("redis_n1_feed1", "800")])
         assert epn.handling_share_macros(recount=str(p), symmetry=sym) == []

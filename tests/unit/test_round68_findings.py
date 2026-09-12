@@ -190,8 +190,9 @@ class TestRecommendedItems:
         assert "dashed" not in paper[:i][-900:], \
             "the caption stopped needing to explain the glyph"
         flat = " ".join(rendered_paper.split())
-        assert flat.count("send (chain)0 0 0") == 2, \
-            "both send-referenced chain rows print three measured zeros"
+        assert flat.count("send (chain)0 0 0") == 3, \
+            "all three send-referenced chain rows print three measured zeros -- the "\
+            "acknowledgment lag joined them in round 70"
         assert "emission0 0 0" in flat, "and so does TTI"
 
     def test_w4_the_supplement_imports_the_papers_labels_under_a_prefix(self, supplement):

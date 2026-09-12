@@ -65,22 +65,33 @@ DEFAULT_OUT = os.path.join("docs", "results", "span_recount.csv")
 
 FIELDS = [
     "run_id", "backend", "n_events",
-    "neg_ack", "neg_send", "neg_output_send", "neg_tti", "neg_output",
+    "neg_ack", "neg_send", "neg_output_send", "neg_tti", "neg_output", "neg_acklag",
     "min_ack_us", "min_send_us", "median_ack_us", "median_send_us",
-    "median_output_ns",
+    "median_output_ns", "min_acklag_us",
 ]
 
-# The five spans, as (output-prefix, later-stamp, earlier-stamp). Keeping them in one table
-# rather than five hand-written subtractions is the point: the bug this script exists to
+# The six spans, as (output-prefix, later-stamp, earlier-stamp). Keeping them in one table
+# rather than six hand-written subtractions is the point: the bug this script exists to
 # correct was a claim about one span being quietly applied to another. Both stamps are
 # looked up in one merged per-event dict, so a span may join a consumer stamp to a producer
 # stamp or two consumer stamps to each other -- which is what the fifth one does.
+#
+# `acklag` is A, the acknowledgment lag, and round 70 is when it was finally counted. It is
+# a causal chain -- the send call precedes the producer learning that the broker accepted
+# the message, both on the producer, both on one clock -- and Section II asserted it
+# non-negative while Table I counted three OTHER chains and found them clean. The paper's
+# own rule is that a chain you believe in must still be counted: "we caught our own instance
+# only on counting the send-referenced span separately". A is the displacement the whole
+# exposure analysis rests on, its median and its tenth and ninetieth percentiles are all
+# printed, and its sign was the one thing nobody had asked. Both stamps were already in the
+# joined dict, used by two of the five spans above.
 SPANS = (
     ("ack", "t_cons_recv_ns", "t_broker_ack_ns"),
     ("send", "t_cons_recv_ns", "t_prod_send_ns"),
     ("output_send", "t_output_ns", "t_prod_send_ns"),
     ("tti", "t_output_ns", "t_prod_sched_ns"),
     ("output", "t_output_ns", "t_cons_recv_ns"),
+    ("acklag", "t_broker_ack_ns", "t_prod_send_ns"),
 )
 
 
@@ -148,6 +159,11 @@ def summarise_run(run_id, backend, spans):
         # reads and rounds to 0.0 us, which is exactly the reading that let the asymmetry
         # go unnoticed on the withdrawn testbed's integrity file.
         "median_output_ns": int(round(statistics.median(spans["output"]))),
+        # The deepest the acknowledgment lag ever runs backwards, which is the number that
+        # says whether a non-zero count is a clock artefact or a real ordering. Emitted
+        # beside the count for the same reason `min_ack_us` sits beside `neg_ack`: a count
+        # with no magnitude cannot be argued about.
+        "min_acklag_us": round(min(spans["acklag"]) / 1000.0, 1),
     }
     for name, _, _ in SPANS:
         row["neg_" + name] = sum(1 for v in spans[name] if v < 0)
@@ -275,6 +291,12 @@ def totals(rows):
         floor = agg["send_span_floor_us"]
         deepest = abs(agg["deepest_ack_inversion_us"])
         agg["offset_margin_factor"] = (deepest / floor) if floor > 0 else float("inf")
+    # A missing count raises, and that is deliberate. Round 70 briefly made this tolerant so
+    # that fixtures written before the acknowledgment-lag span would keep passing, which is
+    # backwards: a ledger without one of these columns is a ledger from another schema, and
+    # summarising it as though the span had been counted is precisely the silent discard this
+    # paper audits. The enrichments below -- the handling median, the extremes -- are guarded
+    # because a run can genuinely lack them; a per-span count cannot.
     for name, _, _ in SPANS:
         agg["neg_" + name] = sum(int(r["neg_" + name]) for r in rows)
         agg["pct_" + name] = (100.0 * agg["neg_" + name] / events) if events else 0.0
@@ -285,6 +307,14 @@ def totals(rows):
                 if str(r.get("median_output_ns", "")).strip() != ""]
     if handling:
         agg["median_output_ns"] = statistics.median(handling)
+    # How close the acknowledgment lag ever came to inverting. The count says it never did;
+    # this says by how much, which is what turns "zero negatives" from a fact about a
+    # threshold into a fact about a margin. Guarded like the two above so a ledger written
+    # before round 70 still yields every other count.
+    floors = [float(r["min_acklag_us"]) for r in rows
+              if str(r.get("min_acklag_us", "")).strip() != ""]
+    if floors:
+        agg["shallowest_acklag_us"] = min(floors)
     return agg
 
 
@@ -330,8 +360,12 @@ def report(agg):
         "  send-to-output   negatives %(neg_output_send)d (%(pct_output_send).4f%%)\n"
         "  TTI              negatives %(neg_tti)d (%(pct_tti).4f%%)\n"
         "  consumer output  negatives %(neg_output)d (%(pct_output).4f%%)\n"
+        "  ack lag (A)      negatives %(neg_acklag)d (%(pct_acklag).4f%%)\n"
         "  runs over 1%% negative on the ack span: %(runs_over_one_pct_ack)d\n"
         "  runs with a negative ack median:        %(runs_negative_median_ack)d\n" % agg)
+    if "shallowest_acklag_us" in agg:
+        text += "  acknowledgment lag, smallest run minimum: %.1f us\n" % \
+            agg["shallowest_acklag_us"]
     if "median_output_ns" in agg:
         text += "  consumer handling span, median of run medians: %.0f ns\n" % \
             agg["median_output_ns"]

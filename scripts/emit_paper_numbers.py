@@ -123,6 +123,14 @@ def span_macros(path=SPAN_CSV):
         ("spanNegSend", latex_thousands(agg["neg_send"])),
         ("spanNegOutputSend", latex_thousands(agg["neg_output_send"])),
         ("spanNegTti", latex_thousands(agg["neg_tti"])),
+        # Round 70. The acknowledgment lag A = t_ack - t_send is a causal chain, it is
+        # the displacement the whole exposure analysis rests on, and Section II asserted
+        # it non-negative while Table I counted three other chains and left this one
+        # out. It is counted now: zero negatives over the corpus, and the smallest run
+        # minimum is emitted beside the count because a margin is what turns "never
+        # inverted" from a fact about a threshold into a fact about distance from it.
+        ("spanNegAckLag", latex_thousands(agg["neg_acklag"])),
+        ("spanAckLagFloorUs", "%.0f" % agg["shallowest_acklag_us"]),
         ("spanRunsOverOnePct", latex_thousands(agg["runs_over_one_pct_ack"])),
         ("spanRunsAckOnly", latex_thousands(agg["runs_ack_only_inversions"])),
         # Conditioned on the runs that invert at all. Dividing by the whole corpus instead
@@ -169,6 +177,7 @@ def span_macros(path=SPAN_CSV):
             ("span%sNegSend" % key, latex_thousands(agg["neg_send"])),
             ("span%sNegOutputSend" % key, latex_thousands(agg["neg_output_send"])),
             ("span%sNegTti" % key, latex_thousands(agg["neg_tti"])),
+            ("span%sNegAckLag" % key, latex_thousands(agg["neg_acklag"])),
         ])
         # The consumer's own handling span, which is where the two clients differ in what
         # falls inside the transport proxy. Nanoseconds for both, because one of them is two

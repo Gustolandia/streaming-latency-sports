@@ -147,7 +147,7 @@ class TestConsumerHandlingSpan:
     def _ledger_row(run_id, handling):
         return {"run_id": run_id, "backend": "kafka", "n_events": "10",
                 "neg_ack": "1", "neg_send": "0", "neg_output_send": "0",
-                "neg_tti": "0", "neg_output": "0", "median_ack_us": "1.0",
+                "neg_tti": "0", "neg_output": "0", "neg_acklag": "0", "median_ack_us": "1.0",
                 "median_output_ns": handling}
 
     def test_totals_carries_the_handling_median_when_the_column_is_present(self):
@@ -177,7 +177,7 @@ class TestConsumerHandlingSpan:
         base = {"runs": 1, "events": 10, "neg_ack": 1, "pct_ack": 10.0,
                 "neg_send": 0, "pct_send": 0.0, "neg_output_send": 0,
                 "pct_output_send": 0.0, "neg_tti": 0, "pct_tti": 0.0,
-                "neg_output": 0, "pct_output": 0.0,
+                "neg_output": 0, "pct_output": 0.0, "neg_acklag": 0, "pct_acklag": 0.0,
                 "runs_over_one_pct_ack": 1, "runs_negative_median_ack": 0}
         assert "consumer handling span" not in rs.report(dict(base))
         assert "281 ns" in rs.report(dict(base, median_output_ns=281.0))
@@ -278,9 +278,9 @@ class TestScanners:
 class TestTotalsAndReport:
     def test_totals_sum_and_percent(self):
         rows = [{"n_events": "10", "neg_ack": "2", "neg_send": "0", "neg_output_send": "0",
-                 "neg_tti": "0", "neg_output": "0", "median_ack_us": "-1.0"},
+                 "neg_tti": "0", "neg_output": "0", "neg_acklag": "0", "median_ack_us": "-1.0"},
                 {"n_events": "10", "neg_ack": "0", "neg_send": "0", "neg_output_send": "0",
-                 "neg_tti": "0", "neg_output": "0", "median_ack_us": "5.0"}]
+                 "neg_tti": "0", "neg_output": "0", "neg_acklag": "0", "median_ack_us": "5.0"}]
         agg = rs.totals(rows)
         assert agg["runs"] == 2 and agg["events"] == 20
         assert agg["neg_ack"] == 2 and agg["pct_ack"] == pytest.approx(10.0)
@@ -293,7 +293,7 @@ class TestTotalsAndReport:
 
     def test_a_run_with_no_events_is_not_counted_as_over_one_percent(self):
         agg = rs.totals([{"n_events": "0", "neg_ack": "0", "neg_send": "0",
-                          "neg_output_send": "0", "neg_tti": "0", "neg_output": "0", "median_ack_us": "0"}])
+                          "neg_output_send": "0", "neg_tti": "0", "neg_output": "0", "neg_acklag": "0", "median_ack_us": "0"}])
         assert agg["runs_over_one_pct_ack"] == 0
 
     def test_report_names_every_span(self):
@@ -400,7 +400,7 @@ class TestSharedStampContrast:
 
     def _rows(self, spec):
         return [{"n_events": str(n), "neg_ack": str(a), "neg_send": str(s),
-                 "neg_output_send": "0", "neg_tti": "0", "neg_output": "0", "median_ack_us": "1.0",
+                 "neg_output_send": "0", "neg_tti": "0", "neg_output": "0", "neg_acklag": "0", "median_ack_us": "1.0",
                  "median_send_us": "1.0", "run_id": "r%d" % i, "backend": "kafka"}
                 for i, (n, a, s) in enumerate(spec)]
 
@@ -444,7 +444,7 @@ class TestMarginQuantities:
 
     def _full(self, spec):
         return [{"n_events": str(n), "neg_ack": str(a), "neg_send": str(s),
-                 "neg_output_send": "0", "neg_tti": "0", "neg_output": "0",
+                 "neg_output_send": "0", "neg_tti": "0", "neg_output": "0", "neg_acklag": "0",
                  "min_ack_us": str(mn_a), "min_send_us": str(mn_s),
                  "median_ack_us": "1.0", "median_send_us": "1.0",
                  "run_id": "r%d" % i, "backend": "kafka"}
@@ -467,7 +467,7 @@ class TestMarginQuantities:
     def test_rows_without_the_extreme_columns_still_yield_every_count(self):
         """A partial row must give a smaller answer, not an exception."""
         rows = [{"n_events": "100", "neg_ack": "5", "neg_send": "0",
-                 "neg_output_send": "0", "neg_tti": "0", "neg_output": "0", "median_ack_us": "1.0",
+                 "neg_output_send": "0", "neg_tti": "0", "neg_output": "0", "neg_acklag": "0", "median_ack_us": "1.0",
                  "run_id": "r", "backend": "kafka"}]
         agg = rs.totals(rows)
         assert agg["neg_ack"] == 5
@@ -494,15 +494,15 @@ class TestByBackend:
     def _rows():
         return [
             {"run_id": "a", "backend": "kafka", "n_events": "10", "neg_ack": "3",
-             "neg_send": "0", "neg_output_send": "0", "neg_tti": "0", "neg_output": "0",
+             "neg_send": "0", "neg_output_send": "0", "neg_tti": "0", "neg_output": "0", "neg_acklag": "0",
              "min_ack_us": "-5.0", "min_send_us": "7.0",
              "median_ack_us": "1.0", "median_send_us": "2.0"},
             {"run_id": "b", "backend": "redis", "n_events": "20", "neg_ack": "4",
-             "neg_send": "0", "neg_output_send": "0", "neg_tti": "0", "neg_output": "0",
+             "neg_send": "0", "neg_output_send": "0", "neg_tti": "0", "neg_output": "0", "neg_acklag": "0",
              "min_ack_us": "-9.0", "min_send_us": "3.0",
              "median_ack_us": "1.0", "median_send_us": "2.0"},
             {"run_id": "c", "backend": "kafka", "n_events": "30", "neg_ack": "5",
-             "neg_send": "0", "neg_output_send": "0", "neg_tti": "0", "neg_output": "0",
+             "neg_send": "0", "neg_output_send": "0", "neg_tti": "0", "neg_output": "0", "neg_acklag": "0",
              "min_ack_us": "-2.0", "min_send_us": "9.0",
              "median_ack_us": "1.0", "median_send_us": "2.0"},
         ]

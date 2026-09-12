@@ -96,14 +96,14 @@ measured is shorter than the delays and resolution of the timestamps that measur
 widely used benchmark misreports in two ways that leave no trace. First, a
 latency computed from two timestamps written by different threads is negative whenever the
 thread writing the reference timestamp is scheduled late by more than the delivery. A
-per-run sign check rejected $\auditRejected$ of our $\auditRuns$ runs; referenced to the
+per-run sign check rejected $\auditRejected$ of $\auditRuns$ runs; referenced to the
 send timestamp the same events never invert on one clock over $\spanEvents$ events, so
 the cause is
 scheduling, not clock synchronization; real-time priority on the timestamping threads cuts
 the negative rate $\rtFactorLow$--$\rtFactorHigh\times$ at unchanged utilization.
 Second, the benchmark keeps an end-to-end sample only when its millisecond-resolution
 latency is strictly positive and does not count what it discards: of $\ombMedianCells$
-embedded-mode cells, $\ombGridMedianCells$ reported a median that was an exact
+embedded-mode cells whose summary we captured, $\ombGridMedianCells$ reported a median that was an exact
 multiple of one millisecond, computed from $\ombGridRetentionMin$--$\ombGridRetentionMax\%$
 of the samples taken. We identify and experimentally characterize both --- with an exact
 identity for the negative span, a pre-registered manipulation, and an audit of
@@ -325,14 +325,17 @@ but neither of them precedes the other: they are two branches of one cause. The
 acknowledgment timestamp is therefore a \emph{late, producer-side observation} of a
 broker-side event, and $S$ is a proxy for the delivery rather than a measurement of it.
 
-Since Equation~\ref{eq:model} holds exactly per event, with $D$ and $A$ both non-negative,
+Since Equation~\ref{eq:model} is an identity holding per event, and whatever the signs,
 \begin{equation}
 S < 0 \quad\text{if and only if}\quad A > D ,
 \label{eq:negspan}
 \end{equation}
 so the span is negative exactly when the acknowledgment lag exceeds the delivery. That is
 an identity, not a model: both sides count $\spanNegAck$ negatives over the
-$\diseaseEvents$ events of our corpus, and the build fails if they part. Every timestamp is
+$\diseaseEvents$ events of our corpus, and the build fails if they part. Reading it as a
+lag outrunning a delivery does need both to be non-negative, and both are measured rather
+than assumed: $D$ and $A$ are the two send-referenced chains of Table~\ref{tab:spans}, and
+neither inverts on any event. Every timestamp is
 written some time after the event it marks, because the thread that reads the clock must
 first be scheduled (Fig.~\ref{fig:model}). This is not the cost of the clock call, which is
 small and separately measurable~\cite{kuperberg2011timers}, but the delay before the call
@@ -619,8 +622,8 @@ well as a clean one does, so none is excluded. The
 acknowledgment-referenced proxy is negative on $\spanNegAck$ of $\spanEvents$ events
 ($\spanNegAckPct\%$; Wilson intervals are under $0.1$ points here and omitted hereafter).
 Of the runs, $\spanRunsOverOnePct$ exceed the one-per-cent threshold on it. The
-send-referenced span and \tti{}, which are causal chains, are negative
-on \textbf{no event at all}. None of the $\spanNegAck$ messages arrived before it was
+send-referenced span, the acknowledgment lag $A$ and \tti{} --- every causal chain the
+corpus contains --- are negative on \textbf{no event at all}. None of the $\spanNegAck$ messages arrived before it was
 sent; the acknowledgment timestamp was written late. The rejections are therefore evidence
 that the acknowledgment cannot serve as the origin of a delivery latency on those events,
 which is precisely what the check of Section~\ref{sec:gate} is for.
@@ -638,7 +641,8 @@ A path longer than the timestamp resolution is not clean but quiet.
 one clock). Only the acknowledgment-origin span inverts, and it does so under both
 brokers: \kafka{} on $\spanKafkaNegAckPct\%$ of its $\spanKafkaEvents$ events,
 \redis{} on $\spanRedisNegAckPct\%$ of its $\spanRedisEvents$, and the
-causal chains are clean under both.}
+causal chains are clean under both --- the acknowledgment lag $A$ among them, its
+smallest run minimum $\spanAckLagFloorUs\,\mu$s clear of zero.}
 \label{tab:spans}
 \centering
 \footnotesize
@@ -651,6 +655,7 @@ $t_{\mathrm{recv}}-t_{\mathrm{ack}}$ & acknowledgment & $\spanKafkaNegAck$ & $\s
 \midrule
 $t_{\mathrm{recv}}-t_{\mathrm{send}}$ & send (chain) & $\spanKafkaNegSend$ & $\spanRedisNegSend$ & $\spanNegSend$ \\
 $t_{\mathrm{out}}-t_{\mathrm{send}}$ & send (chain) & $\spanKafkaNegOutputSend$ & $\spanRedisNegOutputSend$ & $\spanNegOutputSend$ \\
+$t_{\mathrm{ack}}-t_{\mathrm{send}}$ & send (chain) & $\spanKafkaNegAckLag$ & $\spanRedisNegAckLag$ & $\spanNegAckLag$ \\
 \tti{} & emission & $\spanKafkaNegTti$ & $\spanRedisNegTti$ & $\spanNegTti$ \\
 \bottomrule
 \end{tabular}

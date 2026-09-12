@@ -74,7 +74,7 @@ def _sections():
 
 
 def _pointers():
-    """Every prose pointer in either document, as (source file, section number, context).
+    r"""Every prose pointer in either document, as (source file, section number, context).
 
     The context is the remainder of the pointer's **own sentence**, not a fixed window.
     A 160-character window ran two sentences past the pointer and judged it by words that
@@ -83,6 +83,13 @@ def _pointers():
     independent", matched "states" against the exhibit verbs as though it were the verb, and
     demanded a float in S13. The promise a pointer makes is made in the sentence that carries
     it; anything after the full stop belongs to the next claim.
+
+    Round 73 found the same defect one character further out. A sentence can also end at a
+    LaTeX structural command rather than at a capital letter, and when round 73's repair to
+    Section VIII-C left a pointer as the last thing in its subsection, the window ran past the
+    full stop into `\subsection{Threats and limitations} A negative span **shows**...` and
+    demanded a float in S29. A sentence boundary is a full stop followed by the next thing,
+    and in a `.tex` file the next thing is sometimes a backslash.
     """
     pat = re.compile(
         r"(?:Supplements?~?\s*|supplementary material~?\s*)S(\d+)(?:\.\d+)?", re.I)
@@ -91,7 +98,8 @@ def _pointers():
         tex = _read(name)
         for m in pat.finditer(tex):
             window = re.sub(r"\s+", " ", tex[m.start(): m.start() + 160])
-            end = re.search(r"(?<=[.:;])\s+(?=[A-Z(])", window)
+            end = re.search("(?<=[.:;])" + chr(92) + "s+(?=[A-Z(" + chr(92) * 2
+                            + "])", window)
             found.append((name, int(m.group(1)), window[:end.start()] if end else window))
     return found
 

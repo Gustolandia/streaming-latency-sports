@@ -3255,6 +3255,17 @@ stored in the file: they are recomputed on every build, and on every test run, b
 classifier that read the OpenMessaging Benchmark a month before the other tools were
 audited. A reader who disagrees with our reading of a guard can therefore check the line
 against the pattern that matched it rather than against our prose.
+\paragraph{A fork that is read-only cannot be repaired}
+The main text bounds how few public forks have diverged from the admission condition. A fact
+from 2026 bounds something else, and more sharply: Confluent's fork of this benchmark, one of
+the vendor distributions practitioners actually run, was archived by its owner on
+\forkArchivedOn{} and is now read-only, with \forkArchivedForks{} forks of its own. Divergence
+and repairability are different properties. A live fork that carries the condition may drop it
+tomorrow; an archived one cannot, and neither can anything downstream of it. Whatever that tree
+is doing with sub-resolution samples, it will keep doing, which is the practical reason the rule
+of Section~\mainAuthors{} is addressed to benchmark authors and to their readers rather
+than only to maintainers. Read \forkArchivedRead{}.
+
 Table~\ref{tab:registry} is the fold of those rows up to one verdict per \emph{span}, which is
 the grain the finding lives at: one tool can guard one span and leave another alone, and the
 OpenMessaging Benchmark does.
@@ -4160,8 +4171,8 @@ exists: our rates are highest at high utilization with no backlog at all.
 
 The consequence is practical. If backlog cannot invert a span, then eliminating backlog
 leaves skew as the only explanation, and a millisecond threshold on skew becomes a
-sufficient check. On a loaded machine it is not: we see negative-span rates near $23\%$ at
-$88\%$ utilization on a single host --- where the inter-host offset is not merely small but
+sufficient check. On a loaded machine it is not: we see a negative-span rate of
+$\rtHighBasePct\%$ at $\rtHighLoadPct\%$ utilization on a single host --- where the inter-host offset is not merely small but
 undefined, there being one clock --- and move that rate fiftyfold with a scheduling
 parameter, touching no clock.
 
@@ -4178,6 +4189,37 @@ stall, not the skew, is the term that grows.
 
 Section~\mainRelatedTime{} and Section~\mainRelatedRes{} state what this paper takes from
 each of these and what it adds. This is the survey behind those sentences.
+
+\paragraph{The terms, written down, because an empty search is evidence about a phrase}
+A search that returns nothing has proved something only if the phrase it searched is the one
+the field uses. Ours was not, for a while: an earlier sweep reported that
+\emph{negative latency} returns almost nothing, which is true and measures only that nobody
+has coined it --- this paper included, since Section~\mainRelatedTime{} takes
+\emph{negative span} from Sharma et al. The two failure modes also live in different
+literatures, so one community's vocabulary cannot test both: an interval that comes out
+negative is discussed in distributed tracing and in network measurement, and a filter that
+deletes a population is discussed in benchmarking and in metrology.
+
+\texttt{scripts/novelty\_sweep.py} holds \sweepTerms{} search terms across
+\sweepCommunities{} communities and both failure modes, each recorded with the kind of hit that
+would threaten the claim, and writes what each returned to
+\texttt{docs/results/external/novelty\_sweep.csv}. Terms that come back in the
+thousands are recorded as too broad to have tested anything, which is the honest verdict for a
+query that cannot be read through; the ones that matter return few enough to open every hit.
+
+Two properties of that file are worth stating here because they are easy to mistake for
+carelessness. The counts are sampled three times and a count that moved between samples is
+written as a band with the verdict \emph{ask again} --- the index is approximate under load,
+and one phrase returned three in a batch and one on each of three consecutive calls a minute
+later, listing the same single work every time. And the ledger is not written at all unless
+every term came back stable, so a partial sweep leaves the previous record standing rather
+than replacing it with half of a new one.
+
+The sharpest term is the exact phrase the field uses and this paper adopts,
+\emph{negative timing spans} rather than any coinage of ours. Its hits were opened rather
+than counted, and the only work among them that measures a span computing negative is Sharma
+et al.~\cite{sharma2026causality}, cited above and disputed at length.
+
 
 \subsection{S33.2. Production tracing reached the conclusion without the mechanism}
 

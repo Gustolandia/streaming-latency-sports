@@ -272,6 +272,22 @@ def stat_macros():
             # wide and the omission flattered the result: 39x is really 21-74x.
             ("rt%sFactorCI" % name, "%.0f$--$%.0f" % stat_intervals.ratio_ci(kb, nb, kr, nr)),
             ("rt%sZ" % name, "%.1f" % z),
+            # The same rate as a percentage, and the load it was measured at, because two
+            # sentences outside Table II quote "the rate at 88% utilization" in prose and
+            # both got it wrong for want of this pair.
+            #
+            # Round 73's required item. Section III-B typed "rates near 23%" -- since round 4,
+            # before any campaign now reported, and reconcilable with no artefact: forty-five
+            # run-level rates sit in the 0.225--0.235 band and none of them carries a
+            # utilization. Section VIII-B reached for `diseaseOverWhole` instead, which is the
+            # negative-span rate over the WHOLE corpus at every load, and attached this load to
+            # it -- inside a reporting rule telling other authors what load to run their check
+            # at, under-reporting that load by a factor of three and a half.
+            #
+            # A rate and the load it was measured at are one fact. Emitting them apart is what
+            # let a load-specific sentence pick up a corpus-wide number and look right.
+            ("rt%sBasePct" % name, "%.1f" % (100.0 * kb / nb)),
+            ("rt%sLoadPct" % name, "%.0f" % (100.0 * _priority_load(level))),
         ]
     # The geometry half of Table III was typed by hand while the priority half above came
     # from this function. Both halves make the same kind of claim from the same kind of
@@ -1656,6 +1672,27 @@ def audit_macros():
     return out
 
 
+def _priority_load(level):
+    """The achieved utilization of a priority level's ordinary arm, as a fraction.
+
+    Read from the same row as the rate, so the two cannot part. `stamping_priority.csv`
+    records `rho_base` beside `inv_base`; the level names encode the nominal load and the
+    ledger records what was achieved, which is the number a sentence should print.
+    """
+    try:
+        import stat_intervals
+        rows = stat_intervals._rows("model", "stamping_priority.csv")
+    except (ImportError, OSError, KeyError, ValueError):
+        return 0.0
+    for r in rows:
+        if r.get("level") == level:
+            try:
+                return float(r["rho_base"])
+            except (KeyError, TypeError, ValueError):
+                return 0.0
+    return 0.0
+
+
 def priority_macros():
     """The real-time-priority collapse, over every matched pair that ran.
 
@@ -2336,6 +2373,45 @@ def paired_gap_macros(path=os.path.join("docs", "results", "span_symmetry.csv"))
     ]
 
 
+def _sweep_terms():
+    """`novelty_sweep.TERMS`, or an empty list if the module is not importable.
+
+    A function rather than an inline try/except, so the absent case can be driven from a test
+    instead of parked behind a pragma. `test_coverage_exclusions.py` caps how many exclusions
+    `scripts/` may hold on the ground that 100% stops meaning anything once it can be bought,
+    and this one would have been the first past the cap.
+    """
+    try:
+        import novelty_sweep
+    except ImportError:
+        return []
+    return list(novelty_sweep.TERMS)
+
+
+def novelty_macros():
+    """The originality sweep, counted from its term list rather than from its results.
+
+    The first instinct was to emit the hit counts, and the sweep's own first runs argued
+    against it: OpenAlex's `meta.count` returned 3 for one phrase in a batch and 1 on three
+    consecutive calls a minute later, with the same single work listed every time. A number
+    whose value depends on when it was asked is exactly what this paper tells other people not
+    to print.
+
+    So what is emitted is what does not move: how many terms were searched and how many
+    communities they span, both read from `novelty_sweep.TERMS`, which is in the repository
+    and under review. The counts and the works returned live in
+    `docs/results/external/novelty_sweep.csv`, written by a run rather than by a person, and
+    the supplement points a reader at the file instead of quoting a figure out of it.
+    """
+    terms = _sweep_terms()
+    if not terms:
+        return []
+    # Two macros, not three. A `sweepMechanisms` twin was emitted first and quoted nowhere:
+    # the supplement says "both failure modes" in words, because two is a word.
+    return [("sweepTerms", str(len(terms))),
+            ("sweepCommunities", _spell(len({c for _, c, _, _ in terms})))]
+
+
 def fork_macros():
     """How far the guard has travelled, from the committed survey.
 
@@ -2353,7 +2429,43 @@ def fork_macros():
         ("forkUnchanged", str(t["unchanged"])),
         ("forkAbsent", str(t["absent"])),
         ("forkCheckedOn", stamp),
-    ]
+    ] + _fork_archival_macros()
+
+
+def _fork_archival_macros(path=os.path.join("docs", "results", "external",
+                                            "fork_archival.csv")):
+    """A fork that has been archived, and therefore cannot be repaired.
+
+    The survey above counts forks that still carry the admission condition, which bounds how
+    few have diverged. Round 73's grey-literature sweep found a different and sharper bound: a
+    vendor fork of this benchmark went read-only in February 2026, with sixty forks of its own.
+    Divergence is a property a live repository can lose tomorrow; an archived one cannot lose
+    it, and neither can anything downstream. The two facts want two ledgers, because a reader
+    who conflated them would think the survey had counted something it had not.
+    """
+    import csv as _csv
+    try:
+        with open(path, encoding="utf-8") as fh:
+            rows = list(_csv.DictReader(fh))
+    except OSError:
+        return []
+    if not rows:
+        return []
+    r = rows[0]
+    try:
+        return [("forkArchivedOn", _month_day_year(r["archived_on"])),
+                ("forkArchivedForks", r["forks"]),
+                ("forkArchivedRead", r["read_on"])]
+    except KeyError:
+        return []
+
+
+def _month_day_year(iso):
+    """2026-02-28 -> 28 February 2026, which is how the supplement writes a date."""
+    months = ("January", "February", "March", "April", "May", "June", "July",
+              "August", "September", "October", "November", "December")
+    y, m, d = iso.split("-")
+    return "%d %s %s" % (int(d), months[int(m) - 1], y)
 
 
 _SYSTIME_RE = re.compile(r"([0-9.]+)\s*seconds\s*(fast|slow)\s*of\s*NTP", re.I)
@@ -2446,6 +2558,7 @@ def all_pairs(m):
             + retention_macros() + traced_macros() + tost_macros()
             + stall_robustness_macros()
             + mechanism_macros() + kernel_macros() + registry_macros()
+      + novelty_macros()
             + registry_sources_macro()
             + clocksource_macros() + traced_ratio_macros() + audit_macros()
             + priority_macros() + priority_residual_macros() + fork_macros()

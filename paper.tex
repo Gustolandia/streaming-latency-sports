@@ -548,7 +548,7 @@ sub-second event times. We replay $3{,}315$ matches, preserving each match's eve
 and scaling its inter-event spacing to the chosen send rate. It stands for small frequent
 ordered messages rather than for any particular deployment, and nothing below depends on
 its content beyond message size and rate (Supplement~S20). The send schedule is measured rather than assumed.
-Pacer jitter is $67$--$69\,\mu$s at p90, and the achieved rate is recorded per run against
+Pacer jitter is $\pacerJitterLo$--$\pacerJitterHi\,\mu$s at p90, and the achieved rate is recorded per run against
 elapsed wall time: the self-validation SPEC and TPC ask of a
 benchmark~\cite{kistowski2015build}, applied to the load generator.
 
@@ -1268,8 +1268,8 @@ retention rate rather than calling any published number wrong.
 
 A latency benchmark measures the system only while its timestamps are taken faster than
 the delivery it measures. Below that line the two failures reported here appear, invisible
-in the output. Two timestamps written by threads that wait for a core independently invert
-the delivery between them whenever those waits differ by more than it. A timestamp quantized
+in the output. Two timestamps written by threads that each wait for a core on their own
+account invert the delivery between them whenever those waits differ by more than it. A timestamp quantized
 to a millisecond, filtered for positivity, deletes most of a sub-millisecond path by
 arithmetic the operator never sees. Neither needs a better clock, and neither is expensive
 to detect. Check the spans whose endpoints are timestamped in different places, count what

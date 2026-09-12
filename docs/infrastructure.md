@@ -1538,6 +1538,40 @@ one that drove this entire round. It is that **a review item names a defect and 
 location, and only the first of those is evidence.** Check the location before editing it, the
 same way the defect gets checked before agreeing with it.
 
+**1cb. A read date is not a claim that the line is still there.** Round 71's optional item
+asked for a script that re-reads the audited upstream source, on the ground that
+`harness_registry.csv` records the date each line was read and the manuscript's sentences
+assert the line exists. Twenty rows, twenty fetches, and the first run returned three
+failures, none of which any of the four thousand tests could have seen.
+
+One was the script's own: the OpenMessaging producer constructor is one statement wrapped over
+two lines upstream and one string in the ledger, and line-by-line equality called a wrapped
+quotation missing. Two were real. Apache Pulsar's perf tool has moved the latency computation
+into a shared base class, so `PerformanceConsumer.java` no longer contains the two lines the
+registry cites --- `PerformanceConsumerBase.java:523-524` does, verbatim for the guard and
+with the publish time now behind an abstract `publishTimeMillis(msg)`. The finding is
+untouched: same millisecond clock, same `>= 0` with no `else`, same message counted as
+received before it. The *pointer* went stale, and only a re-read could say so.
+
+The rule: **an artefact that cites somebody else's repository has a claim with an expiry date,
+and the expiry is invisible until something checks it.** `scripts/check_upstream_lines.py`
+checks it, and is deliberately not in the suite --- a red build caused by a stranger's commit
+is news about them and not about this repository. It runs by hand before a submission.
+
+**1cc. The ledger of silent discards was silently discarding.** The same run surfaced something
+worse than a stale pointer, in the same file. One row's `note` contained unquoted commas, so
+the line carried thirteen fields against an eleven-field header. `csv.DictReader` does not
+raise on that: it files the overflow under the key `None` and hands back the row. Every reader
+of the registry had been getting that note truncated at its first comma since it was written,
+and `load()`'s own validation --- a check that no *column* is missing --- could not see it,
+because a `None` key is not a column name.
+
+That is this paper's thesis, in the paper's own artefact: a population dropped by a library
+default, with no counter, behind a validation that was looking somewhere else. `load()` now
+names the overflow key and raises on it. The rule is the general one: **a check written over
+the names you expect cannot see the values you did not.** Ask the parser what it did with the
+rest.
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

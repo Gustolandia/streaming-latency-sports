@@ -1283,6 +1283,17 @@ def mechanism_macros():
                     ("harnessOneClockSpread", "%.2f" % (ohi - olo))]
     except (OSError, KeyError, ValueError):
         pass
+    # The send pacer's own jitter, which Section IV-D asserts is measured and then typed.
+    # The typed pair, 67--69, is narrower than the ledger at both ends: the runs span
+    # 66.3 to 69.2. A sentence whose subject is that the schedule was measured cannot be
+    # the one sentence in it carrying a number that was not.
+    try:
+        band = stat_intervals.harness_pacer_jitter()
+        if band:
+            out += [("pacerJitterLo", "%.1f" % band[0]),
+                    ("pacerJitterHi", "%.1f" % band[1])]
+    except (OSError, KeyError, ValueError):
+        pass
     try:
         b = stat_intervals.occupancy_bounds()
         if "ceiling" in b:

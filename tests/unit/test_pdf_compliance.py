@@ -169,6 +169,14 @@ def british_forms(text):
         stem = re.sub(r"is(e|es|ed|ing|ation|ations)$", "ise", word)
         if stem in NOT_BRITISH or word in NOT_BRITISH:
             continue
+        # `-wise` is an English adverb-forming suffix, never a verb ending, so no word built
+        # with it has an American `-ize` twin. The table already carried `otherwise` and
+        # `wise` as literals, which is the hand-written-table failure this function's own
+        # docstring warns about: round 75 wrote `pairwise` and the check proposed `pairwize`.
+        # Named as a rule rather than added as a word, so `stepwise`, `piecewise`, `bitwise`
+        # and `elementwise` are covered before anyone writes them.
+        if re.search(r"[a-z]{3,}wise$", word):
+            continue
         if any(word.startswith(w) or w.startswith(word[:6]) for w in NOT_BRITISH
                if len(w) >= 6 and word[:6] == w[:6]):
             continue
@@ -188,6 +196,37 @@ def test_american_spelling(name):
     found = british_forms(src.read_text(encoding="utf-8"))
     assert not found, "%s: British spellings -- %s" % (
         name, ", ".join("%s x%d (-> %s)" % (b, n, a) for b, (n, a) in sorted(found.items())))
+
+
+class TestTheSpellingRuleItself:
+    """A checker with a false positive is a checker people learn to argue with.
+
+    The morphological rule is the valuable half -- it catches inflections a table misses --
+    and it is the half that can be wrong about a word nobody has written yet. Both directions
+    are tested here, because round 75 found the rule proposing `pairwize` and the only visible
+    symptom was a failing build on a correctly spelled word.
+    """
+
+    def test_it_still_catches_the_family_it_was_written_for(self):
+        for word in ("summarise", "summarises", "specialised", "normalising",
+                     "organisation", "characterisations"):
+            assert word in british_forms("we %s the result" % word), word
+
+    def test_the_explicit_table_still_fires(self):
+        assert "artefact" in british_forms("an artefact of the harness")
+        assert "behaviour" in british_forms("the behaviour of the queue")
+
+    def test_the_adverbial_suffix_is_not_a_verb_ending(self):
+        for word in ("pairwise", "stepwise", "piecewise", "bitwise", "elementwise",
+                     "clockwise", "likewise", "otherwise"):
+            assert not british_forms("compared %s across runs" % word), word
+
+    def test_the_suffix_rule_does_not_swallow_a_real_one(self):
+        """The stem must be three letters or more, so the rule cannot be reached by a word
+        that merely ends in those letters, and a genuine `-ise` verb is still caught."""
+        assert british_forms("we itemise the runs"), "a real -ise verb must still be caught"
+        assert not re.search(r"[a-z]{3,}wise$", "wise")
+        assert re.search(r"[a-z]{3,}wise$", "pairwise")
 
 
 def test_index_terms_are_alphabetical():
@@ -486,7 +525,7 @@ class TestTheBibliographyIsFoundWhereverTheLogWrapsIt:
 
 @pytest.mark.parametrize("name", ["paper", "supplement"])
 def test_no_line_is_stretched_to_the_limit(name):
-    """The LaTeX log must record no underfull box at maximum badness.
+    r"""The LaTeX log must record no underfull box at maximum badness.
 
     Overfull boxes were gated from early on and underfull ones never were, so for
     thirty-nine rounds the compliance table carried a column for one and nothing for the
@@ -527,7 +566,7 @@ def test_no_line_is_stretched_to_the_limit(name):
                         if int(badness) >= UNDERFULL_BADNESS_CEILING})
     assert not offenders, (
         "%s.log: %d line(s) stretched to badness %d, in paragraphs at %s. Allow breaks "
-        "inside the long \texttt tokens there rather than reaching for \sloppy."
+        r"inside the long \texttt tokens there rather than reaching for \sloppy."
         % (name, len(offenders), UNDERFULL_BADNESS_CEILING, ", ".join(offenders)))
 
 

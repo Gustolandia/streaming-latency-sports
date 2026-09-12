@@ -111,22 +111,36 @@ identity for the negative span, a pre-registered manipulation, and an audit of
 checks benchmark authors can apply.
 \end{abstract}
 
-% Alphabetical, case-insensitively, and gated by test_index_terms_are_alphabetical.
-% One entry carries an initial capital: it is a taxonomy string quoted verbatim from the IEEE
-% Computer Society subject list, where it appears that way. The others are ordinary noun
-% phrases. The mixture is deliberate, and lower-casing the taxonomy term would stop it
-% matching the taxonomy.
-% Round 33's referee asked for uniform case and the request is declined on the grounds above:
-% the capital is the quotation mark. Recorded here so a later round does not raise it again,
-% and note that a comment *inside* the block below is parsed as two index terms by
-% test_index_terms_are_alphabetical -- which is how this note ended up outside it.
+% Alphabetical, case-insensitively, and gated by test_index_terms_are_alphabetical. Round 75
+% replaced the list, and the reason is that the old one described a different paper. It was
+% six IEEE Computer Society taxonomy strings, each broad enough to fit a thousand articles --
+% "distributed systems", "message passing", "performance attributes" -- and between them they
+% did not carry one word this paper is about. A reader searching for the failure we document
+% would search for the clock, the timestamp, the middleware or the benchmark, and none of the
+% four appeared. Index terms are a retrieval surface, not a subject declaration: the test they
+% have to pass is whether the reader who needs this paper can find it.
+% The terms below are the words the title, the abstract and the section headings already use,
+% and `test_round75_findings.py` holds them to that -- including the rule that every noun in
+% the title appears among them. That rule is why one term differs from the referee's suggested
+% list: it proposed "performance measurement", which is covered twice over by "benchmarking"
+% and "latency measurement", and its own diagnostic table lists STREAMING among the words a
+% searcher would use and would not find. "Stream processing" takes the slot. Five of the seven
+% remain taxonomy strings -- benchmarking, clock synchronization, scheduling, stream
+% processing and, at one remove, latency measurement -- so the taxonomy is not abandoned, only
+% narrowed to the branches this work actually sits on.
+% Round 33's referee asked for uniform case, and with the multi-word taxonomy quotation gone
+% the list is uniformly lower case; the earlier decision to capitalize turned on that one
+% verbatim string and lapses with it. Note that a comment *inside* the block below is parsed
+% as two index terms by test_index_terms_are_alphabetical -- which is how this note ended up
+% outside it.
 \begin{IEEEkeywords}
-distributed systems;
-measurement techniques;
-measurement, evaluation, modeling, simulation of multiple-processor systems;
-message passing;
-performance attributes;
-scheduling and task partitioning.
+benchmarking;
+clock synchronization;
+latency measurement;
+message-oriented middleware;
+scheduling;
+stream processing;
+timestamp resolution.
 \end{IEEEkeywords}
 
 \IEEEpeerreviewmaketitle
@@ -441,9 +455,8 @@ dispute the reading rather than their measurements. They hold that ``queueing al
 produce negative timing spans''. For the queue they model, backlog at a service stage, we
 agree. A \emph{second} queue decides ours: the run queue the timestamping thread waits in
 for a CPU. We see $\rtHighBasePct\%$ at $\rtHighLoadPct\%$ utilization on one host, with an inter-host
-offset of $\interHostOffsetMs$~ms where two are used. We move that rate fiftyfold without
-touching a clock. A threshold in milliseconds of skew does not transfer to a loaded
-machine. The same attribution was offered for the benchmark we audit: asked why
+offset of $\interHostOffsetMs$~ms where two are used. A threshold in milliseconds of skew
+does not transfer to a loaded machine. The same attribution was offered for the benchmark we audit: asked why
 publish latency could exceed end-to-end latency, a maintainer cited inter-node skew of
 ``\textasciitilde 100ms''~\cite{omb_issue216} and, told both processes ran on one node, called
 the measurement reliable. That is the configuration our audit rejects most often.
@@ -806,11 +819,14 @@ on $\gapDistortionDeflates\%$ of the pairs: a property of the clients, not of th
 The displacement can be recovered rather than discarded. Equation~\ref{eq:model} holds per
 event and $A$ is producer-side on one clock, so a harness that records its own
 acknowledgment lag recovers the delivery it failed to measure. Over the $\recoveryPassN$
-conditions the check passes, the recovered median is $\recoveryErrPass\%$ from the true one
-at the median condition and $\recoveryErrPassHi\%$ at the upper quartile; over the
-$\recoveryFailN$ it rejects, $\recoveryErrFail\%$ and $\recoveryErrFailHi\%$: they separate
-at the median, not in the upper tail. The second
-population is the one a remedy tried only against clean runs never meets.
+conditions the check passes the recovered median is $\recoveryErrPass\%$ from the true one
+and $\recoveryErrPassHi\%$ at the upper quartile; over the $\recoveryFailN$ it rejects,
+$\recoveryErrFail\%$ and $\recoveryErrFailHi\%$. Those medians differ; the populations do
+not. The worst condition is $\recoveryPassMax\%$ on either side and the Hodges--Lehmann
+shift over $\recoveryShiftPairs$ pairs is $\recoveryShift$ points; what opens the median gap
+is a concentration at zero, where $\recoveryPassExact\%$ of the passing conditions recover
+the delivery exactly (Supplement~S16.9). The recovery therefore holds where the check
+rejects as well as where it passes, which is what Section~\ref{sec:authors} asks of it.
 
 \subsection{The stall spectrum, and the scheduler's slice}
 \label{sec:tail}

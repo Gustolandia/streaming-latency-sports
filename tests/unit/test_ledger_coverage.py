@@ -65,6 +65,16 @@ ALLOWED = {
         "an E1 transport interval in S9 whose lower bound happens to equal the exposure "
         "crossover; the check armed for this macro in this document only when round 54 "
         "put the crossover into the new exposure figure's caption",
+    ("supplement.tex", "recoveryShift", r"\sigma{=}1.2)$ replicates"):
+        "the standard deviation of the grid-membership null in S23, a measured parameter of "
+        "a different experiment that happens to equal the Hodges-Lehmann shift emitted in "
+        "round 75; two decimals on a shift between medians quoted to one would be false "
+        "precision, so the coincidence is recorded instead of engineered away",
+    ("supplement.tex", "recoveryShift", r"call on HPET sit near"):
+        "a published microsecond figure for a clock_gettime call on HPET, quoted from the "
+        "kernel maintainers in S15 and older than this macro by twenty rounds; the same "
+        "coincidence as the entry above, and the reason the ledger sweep matches on value "
+        "rather than on meaning",
 }
 
 

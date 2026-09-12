@@ -24,6 +24,7 @@ CLI:
 import json
 import math
 import argparse
+import glob
 import os
 import re
 import sys
@@ -679,6 +680,15 @@ def spread_macros():
             ("spreadIncommensurateWord", _spell(len(loose))),
             ("spreadIncommensurateLo", "%.1f" % medians[0]),
             ("spreadIncommensurateHi", "%.1f" % medians[-1]),
+            # The retention law read backwards. retention = min(1, T_true/tau), so on a rate
+            # has not saturated the median retention names the delivery: T_true = r * tau.
+            # It was typed as "0.5 ms" beside the medians it is derived from, which is a
+            # short derivation to leave to the reader and a short one to get wrong if a
+            # later corpus moves those medians. Section VI-A now rests on this number rather
+            # than on our own harness's transport proxy, which was the wrong span for a claim
+            # about the benchmark's deliveries (round 72, R2).
+            ("spreadIncommensurateTrueMs",
+             "%.2f" % (stat_intervals._median(medians) / 100.0)),
         ]
     # The corrected p-values of exactly the arms the spread rule misses. S31 turns on these
     # two numbers -- the replacement statistic resolving what the superseded one could not --
@@ -1294,6 +1304,63 @@ def mechanism_macros():
                     ("pacerJitterHi", "%.1f" % band[1])]
     except (OSError, KeyError, ValueError):
         pass
+    # Round 72, R2. Section V-E divided the scheduler's base slice by "a 0.1--0.5 ms
+    # delivery" and Section VI-A said "our own transport measures 0.1--0.5 ms" -- the same
+    # pair of numerals, typed into the source twice, naming the delivery in one sentence and
+    # the transport proxy in the other. It is the proxy. Over the conditions this corpus
+    # holds, the proxy's per-condition medians run 50--850 us and the delivery's run
+    # 700--2950, so the sentence that said "six to thirty times" was dividing by a quantity
+    # four hundred microseconds away from the one it named, and was about six times too large
+    # at both ends. Section II-A spends a subsection on the difference between these two and
+    # Section VIII-B's third reporting rule is "name the span you are subtracting", so this is
+    # the paper's own rule broken on the paper's own numbers.
+    # Both ranges are emitted, from one call, because either one printed alone looks like a
+    # perfectly good answer to "how long is our path".
+    try:
+        med = stat_intervals.span_medians()
+        # Only the delivery's endpoints become macros. `span_medians` returns all three spans
+        # because the emitter has to choose with the others in view -- that is the whole
+        # safeguard -- but a macro nothing quotes is a number with no reader, which lesson 13
+        # counts against us. The proxy's range and the three medians live in the function and
+        # in its docstring, where the next round will find them.
+        if "D" in med:
+            lo, _, hi = med["D"]
+            out += [("condDeliveryLoMs", "%.2f" % (lo / 1000.0)),
+                    ("condDeliveryHiMs", "%.2f" % (hi / 1000.0))]
+            # The slice against the delivery, which is the comparison the biconditional
+            # governs: a negative span needs the stall to outlast D, not to outlast S.
+            # Widest first, so the printed pair reads low-to-high the way the ratio falls as
+            # the delivery grows.
+            # Two decimals, and not for precision. At one decimal the low end emits "1.0",
+            # which is also the millisecond grid value this paper prints on four other lines,
+            # so the ledger sweep cannot tell a typed grid value from a transcribed ratio --
+            # the same collision `harnessOneClockSpread` carries two decimals to avoid.
+            import kernel_constants
+            slice_us = 1000.0 * float(kernel_constants.constants()["base_slice_ms"])
+            out += [("sliceOverDeliveryLo", "%.2f" % (slice_us / hi)),
+                    ("sliceOverDeliveryHi", "%.2f" % (slice_us / lo))]
+    except (ImportError, OSError, KeyError, ValueError, ZeroDivisionError):
+        pass
+    # Round 72, R1. The corpus the workload characterisation covers, one row per match, and
+    # the corpus the campaign replayed, one directory per plan. 3,315 and 11. The main text
+    # attached the first number to the verb "replay"; commit 6717ce3 had already removed that
+    # exact claim from the abstract in July and gated the abstract against it, and the
+    # redesign put it back one section lower, where the gate does not look. Emitting both
+    # means a sentence can no longer name one of them without the other being available.
+    try:
+        n = stat_intervals.workload_corpus()
+        if n:
+            out.append(("corpusMatches", latex_thousands(n)))
+    except (OSError, ValueError):
+        pass
+    plans = sorted(glob.glob(os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "data", "processed", "replay_plans", "*", "match_*")))
+    # The word only. A digit twin would be idle -- Section IV-D spells the count, because
+    # eleven is small enough to spell and the sentence beside it already carries a numeral --
+    # and lesson 13 says a macro nothing quotes is a number with no reader.
+    if plans:
+        out.append(("replayedMatchesWord", _spell(len(plans))))
     try:
         b = stat_intervals.occupancy_bounds()
         if "ceiling" in b:
@@ -1551,9 +1618,16 @@ def chrony_bound_macros(path=CLOCK_DIR):
     if len(bounds) < 2:
         return []
     bounds.sort()
+    # The two worst named individually, not only their sum. Round 72, W4: the prose is
+    # correct -- the sum is over the two worst hosts -- but a reader who adds the endpoints
+    # of the printed range gets 14 where the sentence says 12, and nothing on the page
+    # reconciles them. A sum whose addends are not printed is a number a reader has to take
+    # on trust, which is the one thing this manuscript declines to ask of anybody.
     return [
         ("chronyHostBoundLo", "%.0f" % bounds[0]),
         ("chronyHostBoundHi", "%.0f" % bounds[-1]),
+        ("chronyWorstBound", "%.0f" % bounds[-1]),
+        ("chronySecondWorstBound", "%.0f" % bounds[-2]),
         ("chronyPairBound", "%.0f" % (bounds[-1] + bounds[-2])),
         ("chronyHosts", str(len(bounds))),
     ]

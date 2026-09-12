@@ -274,7 +274,7 @@
   title={Identifying and mitigating systemic measurement bias in production {LLM}
          inference benchmarks},
   author={Chandrasekar, Ashok and Kramberger, Jason},
-  journal={arXiv preprint arXiv:2605.24217v2},
+  journal={arXiv preprint arXiv:2605.24217},
   year={2026}
 }
 
@@ -1435,7 +1435,7 @@
   title        = {{NATS} vs {Redis} vs {Kafka}: message broker comparison},
   howpublished = {Practitioner comparison},
   year         = {2026},
-  note         = {\url{https://www.index.dev/skill-vs-skill/nats-vs-redis-vs-kafka}; no retained fraction, rejection count, timestamp resolution or send rate. Which broker gets the percentile, and what it is, is in Section~III-A. S1 records what we first read here and why it was wrong. Read 2026-09-03.}
+  note         = {\url{https://www.index.dev/skill-vs-skill/nats-vs-redis-vs-kafka}; no retained fraction, rejection count, timestamp resolution or send rate. S1.9 records what we first read here and why it was wrong. Read 2026-09-03.}
 }
 
 @misc{devto2026streaming,
@@ -1444,6 +1444,15 @@
   howpublished = {Practitioner comparison},
   year         = {2026},
   note         = {\url{https://dev.to/young_gao/real-time-event-streaming-kafka-vs-redis-streams-vs-nats-in-2026-34o1}; ranks the three on ``End-to-end latency (p99)'' and gives {Redis} Streams $0.8$~ms, NATS JetStream $3.2$~ms and {Kafka} $12.5$~ms, with a summary table reading ``$<$1ms / 1-5ms / 5-20ms''. Method given in full as ``Tested on 3-node cluster, 8 vCPU, 32GB RAM each'' and ``benchmarks based on production deployments''; no tool, timestamp source, synchronization statement, resolution or discard count. Read 2026-09-04, and the source of the figures withdrawn from \texttt{indexdev2026brokers} above}
+}
+
+@misc{javacodegeeks2026brokers,
+  author       = {{Java Code Geeks}},
+  title        = {{NATS} vs. {Kafka} vs. {Redis} {Streams} for {Java} microservices: when ``simpler'' actually wins},
+  howpublished = {Practitioner comparison},
+  month        = mar,
+  year         = {2026},
+  note         = {\url{https://www.javacodegeeks.com/2026/03/nats-vs-kafka-vs-redis-streams-for-java-microservices-when-simpler-actually-wins.html}; ``NATS delivers sub-millisecond latency up to roughly the 99.7th percentile for small payloads'', \redis{} ``similarly'', \kafka{} to ``around the 94th percentile''. Its latency chart is captioned ``Approximate values drawn from published benchmarks --- Brave New Geek \& Synadia (2024)''. \emph{Timestamp}, \emph{clock}, \emph{resolution} and \emph{discard} do not occur in the article. Read 2026-09-12}
 }
 
 @inproceedings{combench2021,

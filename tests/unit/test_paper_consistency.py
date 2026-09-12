@@ -1639,23 +1639,53 @@ class TestLoadGeometryAndTtrue:
         section = " ".join(tex.split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         assert "0.7531" in section and "identical to four decimals" in section
 
-    def test_the_two_corpora_are_not_conflated(self, tex):
-        """3,315 matches are characterised; eleven are replayed. The abstract merged them.
+    #: Verbs that say a match was sent through the system, as opposed to measured on disk.
+    REPLAY_VERBS = ("replay", "replays", "replayed", "replaying", "drove", "drive", "driven",
+                    "benchmark", "benchmarked", "ran", "run on", "sent", "send")
 
-        It said the benchmark was driven with 3,315 real matches. The plan corpus holds eleven.
-        The larger number is the workload characterisation and belongs only to that claim.
+    def test_the_two_corpora_are_not_conflated(self, tex):
+        """3,315 matches are characterised; eleven are replayed. Both documents, not one.
+
+        The abstract merged them once: it said the benchmark was driven with 3,315 real
+        matches, and `6717ce3` removed that on 2026-07-26. The gate installed with it read
+        the abstract, because the abstract was where the defect had been seen.
+
+        Six weeks later `2e15b93` wrote "We replay 3,315 matches" into Section IV-D, one
+        section below where this test looks, and neither this gate nor the mutation named
+        "re-conflate the two corpora" -- whose anchor had gone with the old wording -- said
+        anything. Round 72's referee found it by reading the artefact.
+
+        So the check is now on the documents rather than on the surface the defect first
+        chose: wherever either file puts the corpus size within reach of a verb that means
+        "sent through the system", it fails. The larger number belongs to the
+        characterisation and to nothing else.
         """
-        abstract = " ".join(re.search(r"\\begin\{abstract\}(.*?)\\end\{abstract\}",
-                                      tex, re.S).group(1).split())
-        mentions_corpus = "3{,}315" in abstract or "3,315" in abstract
-        if mentions_corpus:
-            assert "characterise" in abstract, "3,315 must be named as a characterisation"
-            assert "eleven" in abstract, "the abstract must say how many matches drive the run"
-        # If the abstract does not mention the corpus there is nothing to conflate, but the
-        # plan count below is checked either way: it is a fact about the artefact, not the prose.
+        for name, text in (("paper.tex", tex),
+                           ("supplement.tex",
+                            (REPO / "supplement.tex").read_text(encoding="utf-8"))):
+            prose = re.sub(r"(?m)^%[^\n]*", "", text)
+            flat = " ".join(prose.split())
+            for m in re.finditer(r"3\{,\}315|3,315", flat):
+                window = flat[max(0, m.start() - 90):m.start() + 90].lower()
+                guilty = [v for v in self.REPLAY_VERBS if v in window]
+                assert not guilty, (
+                    "%s puts the characterisation corpus within reach of %r: %r. "
+                    "3,315 matches were characterised; %d were replayed."
+                    % (name, guilty, flat[max(0, m.start() - 90):m.start() + 90],
+                       len(sorted((REPO / "data" / "processed"
+                                   / "replay_plans").glob("*/match_*")))))
+        # A fact about the artefact rather than about the prose, checked either way.
         plans = sorted((REPO / "data" / "processed" / "replay_plans").glob("*/match_*"))
         if plans:
             assert len(plans) == 11, f"the corpus holds {len(plans)} plans; the paper says eleven"
+
+    def test_both_corpus_counts_are_emitted_rather_than_typed(self, tex):
+        """The pair is only safe when a sentence cannot name one without the other existing."""
+        import emit_paper_numbers as epn
+        m = dict(epn.mechanism_macros())
+        assert m["corpusMatches"] == "3{,}315"
+        assert m["replayedMatchesWord"] == "eleven"
+        assert chr(92) + "corpusMatches" in tex and chr(92) + "replayedMatchesWord" in tex
 
     def test_the_instrument_check_uses_the_campaigns_own_control(self, tex):
         """The check compared the traced cell against a different campaign's arm.

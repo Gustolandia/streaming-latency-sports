@@ -522,6 +522,60 @@ def _rows(*parts):
         return list(csv.DictReader(fh))
 
 
+def workload_corpus(path=os.path.join("football", "feed", "match_profiles.csv")):
+    """How many matches the workload characterisation covers. One row per match.
+
+    Section IV-D said "we replay 3,315 matches" and the campaign replayed eleven. The larger
+    number is this file's row count -- the corpus whose sparsity, burstiness and concurrency
+    bound Supplement S20 reports -- and it belongs to the characterisation and to nothing
+    else. Both numbers are emitted now, because the pair is only safe when a reader can see
+    which verb each one takes.
+    """
+    try:
+        return len(_rows(*path.split(os.sep)))
+    except OSError:
+        return None
+
+
+def span_medians(path="span_symmetry.csv"):
+    """Per-condition medians of the delivery, the acknowledgment lag and the proxy.
+
+    Returns {"D": (lo, med, hi), "A": ..., "S": ...} in microseconds, over the conditions
+    the file holds.
+
+    Round 72's required item lives here. Section V-E divided the scheduler's base slice by
+    "a 0.1--0.5 ms delivery", a pair typed into the source, and 0.1--0.5 ms is the range of
+    the transport proxy S and not of the delivery D. No condition in this file has a median
+    delivery below 700 us, so the printed ratio -- six to thirty -- was about six times too
+    large at both ends. Against the delivery the slice runs one to four times, which is the
+    stronger statement anyway: the scheduler's quantum lands on the same scale as the thing
+    being measured, which is why eight per cent of events invert rather than a hundredth of
+    one per cent or half.
+
+    The two ranges are returned together deliberately. They are four hundred microseconds
+    apart and each is a plausible-looking answer to "how long is our path", so the only safe
+    way to print either is from a function that also knows the other.
+    """
+    try:
+        rows = _rows(*path.split(os.sep))
+    except OSError:
+        return {}
+    out = {}
+    for key, col in (("D", "median_D_us"), ("A", "median_A_us"), ("S", "median_S_us")):
+        vals = []
+        for r in rows:
+            try:
+                vals.append(float(r[col]))
+            except (KeyError, TypeError, ValueError):
+                continue
+        if vals:
+            vals.sort()
+            n = len(vals)
+            med = vals[n // 2] if n % 2 else 0.5 * (vals[n // 2 - 1] + vals[n // 2])
+            out[key] = (vals[0], med, vals[-1])
+    return out
+
+
 def priority_cells(path=os.path.join("model", "stamping_priority.csv")):
     """The real-time-priority pairs: (level, k_base, n_base, k_rt, n_rt)."""
     out = []

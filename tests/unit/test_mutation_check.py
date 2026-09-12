@@ -93,10 +93,20 @@ class TestCLI:
         assert main(["--paper", str(paper), "--tests", "t"]) == 0
         assert "every mutation was caught" in capsys.readouterr().out
 
-    def test_skips_are_reported_in_the_summary(self, tmp_path, monkeypatch, capsys):
+    def test_a_vanished_anchor_fails_rather_than_being_reported(
+            self, tmp_path, monkeypatch, capsys):
+        """It used to print SKIP and return 0, and that is how nine claims went unguarded.
+
+        Round 72 found nine of ten anchors stale. The check had been saying so in its own
+        output for some rounds -- "OK every mutation was caught (9 skipped: anchors absent)"
+        -- and returning success, so nothing downstream and nobody upstream noticed. A
+        mutation whose anchor is gone is an unguarded claim, and an unguarded claim is the
+        thing this file exists to prevent.
+        """
         p = tmp_path / "paper.tex"
         p.write_text("no anchors", encoding="utf-8")
         monkeypatch.setattr("subprocess.run",
                             lambda *a, **k: subprocess.CompletedProcess(a, 1, "", ""))
-        assert main(["--paper", str(p), "--tests", "t"]) == 0
-        assert "skipped" in capsys.readouterr().out
+        assert main(["--paper", str(p), "--tests", "t"]) == 1
+        out = capsys.readouterr().out
+        assert "anchors are gone" in out and "unguarded claim" in out

@@ -138,6 +138,26 @@ class TestR2TheFloorIsAScaleNotALimit:
         assert "not a bound it respects" in paper
         assert "is a scale and" in supplement
 
+    def test_the_ceiling_gets_the_same_treatment_as_the_floor(self, paper, supplement):
+        """The other half of this item, which round 70 won and round 72 had to finish.
+
+        `invCeiling` is max(vals) over the conditions at rho >= 0.95 -- the highest rate
+        measured near saturation, with a consistency check across phases. S9 was repaired to
+        say so, and says "Neither number is a bound, and neither needs to be". Section V-B
+        kept "The rate has a ceiling below one: fully saturated it reaches 0.37", which is
+        the same maximum-as-bound the item was about, in the other document, unguarded.
+
+        A pair of symmetric claims wants a pair of symmetric gates, or the unguarded half is
+        where the wording comes back.
+        """
+        i = paper.index(chr(92) + "invCeiling")
+        clause = " ".join(paper[max(0, i - 320):i + 200].split())
+        assert "ceiling below one" not in clause, (
+            "a measured maximum near saturation is not a ceiling the rate reaches")
+        assert "highest we measure" in clause and "not a bound" in clause
+        assert "Neither number is a bound" in supplement, (
+            "S9's repair from round 70 is what the main text now agrees with")
+
     def test_the_ledger_shows_why_it_is_not_a_bound(self):
         import emit_paper_numbers as epn
         gen = (REPO / "docs" / "generated" / "paper_numbers.tex").read_text(encoding="utf-8")

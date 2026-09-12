@@ -522,6 +522,41 @@ different quantity --- and decimal-valued, which is what puts a macro inside the
 sweep. `test_round71_findings.py` checks the printed range contains every measured run, which
 is the property that failed, rather than checking the two digits.
 
+### A2e. A number is evidence for the claim it was measured on, and for no other --- GATED
+
+Two sentences in one round, both of the same shape. Section IV-D said *"We replay 3,315
+matches"*: 3,315 is the size of the corpus the workload **characterisation** covers, and the
+campaign replays **eleven** plans. Section V-E divided the scheduler's base slice by *"a
+0.1--0.5 ms delivery"*: that range is the **transport proxy's**, and every condition's median
+**delivery** falls between 0.70 and 2.95 ms, so the printed ratio was about six times too
+large at both ends.
+
+Rule: **name the quantity a number was measured on, in the same clause that prints it.** The
+test is mechanical --- read the sentence and ask which artefact column the number comes out
+of. If the answer is a different column from the one the noun names, the sentence is wrong
+however carefully the arithmetic was done.
+
+Both repairs are emissions, not rewordings. `corpusMatches` and `replayedMatchesWord` come
+from the profile ledger and from the plan directory; `condDeliveryLoMs`/`HiMs`,
+`condProxyLoMs`/`HiMs` and `sliceOverDeliveryLo`/`Hi` come from one function that returns all
+three spans together, **because either range printed alone looks like a perfectly good answer
+to "how long is our path"**. That is the general form: when several similar quantities could
+fill a slot, emit the one you want from a function that knows the others.
+
+### A2f. A measured extremum is not a bound, at either end --- GATED
+
+Round 70 found S9 calling a measured maximum a bound and a scale a floor, and the repair went
+into the supplement and into Section V-C for the **floor**. The **ceiling** kept its word for
+two more rounds: Section V-B read *"The rate has a ceiling below one: fully saturated it
+reaches 0.37"*, while S9 said in as many words *"Neither number is a bound, and neither needs
+to be."* `invCeiling` is a maximum over the conditions at $ho \geq 0.95$, with a
+cross-phase consistency check --- the highest rate measured near saturation.
+
+Rule: **a pair of symmetric claims wants a pair of symmetric gates.** Repairing one end of a
+floor-and-ceiling pair and gating only that end leaves the other end as the place the wording
+comes back, and it came back in the other document, which is where a reader is least likely to
+check it against.
+
 ### A2. No `flight` — GATED
 
 In the corpus bare *flight* occurs 131 times across 25 of 775 papers, and a read of every

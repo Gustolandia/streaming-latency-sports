@@ -915,18 +915,23 @@ class TestTheMacrosThatAreOmittedRatherThanGuessed:
         assert got["tracedGofP"] == "<0.0001", "an exact zero must be reported as a bound"
 
     def test_a_mechanism_artefact_that_is_absent_emits_nothing_for_it(self, monkeypatch):
-        """Six independent reads, each guarded, and each able to be the missing one.
+        """Eight independent reads, each guarded, and each able to be the missing one.
 
         The fifth arrived in round 43 with the cross-host retention wander, whose two
         endpoints had been typed and had drifted from the ledger. The sixth arrived in
         round 71 with the pacer jitter, for exactly the same reason, which is why this
         test is the one that noticed it had been added: a new read joins the roster or it
-        is a read nobody has asked to survive its artefact going missing.
+        is a read nobody has asked to survive its artefact going missing. The seventh and
+        eighth arrived in round 72 with the span medians and the workload corpus, and with
+        them the first source in this function that is not a ledger read at all -- the
+        replay plans are counted off the filesystem, so its absent case is an empty glob.
         """
         for name in ("harness_cells", "harness_arm_spreads", "occupancy_bounds",
-                     "load_growth", "observer_effect", "harness_pacer_jitter"):
+                     "load_growth", "observer_effect", "harness_pacer_jitter",
+                     "span_medians", "workload_corpus"):
             monkeypatch.setattr(stat_intervals, name,
                                 lambda *a, **kw: (_ for _ in ()).throw(OSError("absent")))
+        monkeypatch.setattr(epn.glob, "glob", lambda *a, **kw: [])
         assert epn.mechanism_macros() == []
 
     def test_mechanism_reads_that_return_nothing_emit_nothing(self, monkeypatch):
@@ -937,6 +942,13 @@ class TestTheMacrosThatAreOmittedRatherThanGuessed:
         monkeypatch.setattr(stat_intervals, "load_growth", lambda *a, **kw: {})
         monkeypatch.setattr(stat_intervals, "observer_effect", lambda *a, **kw: {})
         monkeypatch.setattr(stat_intervals, "harness_pacer_jitter", lambda *a, **kw: None)
+        monkeypatch.setattr(stat_intervals, "span_medians", lambda *a, **kw: {})
+        monkeypatch.setattr(stat_intervals, "workload_corpus", lambda *a, **kw: None)
+        # The replay plans are read off the filesystem rather than through stat_intervals,
+        # so the absent case is an empty directory. Round 72 added the only macro in this
+        # function that is not a ledger read, and a test that could not see it would have
+        # been the third thing this round that looked in the wrong place.
+        monkeypatch.setattr(epn.glob, "glob", lambda *a, **kw: [])
         assert epn.mechanism_macros() == []
 
     def test_a_missing_fork_survey_emits_no_fork_macros(self, monkeypatch):
@@ -972,11 +984,15 @@ class TestTheChronyBounds:
 
     def test_it_emits_the_range_and_the_worst_pair(self):
         got = dict(epn.chrony_bound_macros())
-        assert set(got) == {"chronyHostBoundLo", "chronyHostBoundHi",
-                            "chronyPairBound", "chronyHosts"}
+        assert set(got) == {"chronyHostBoundLo", "chronyHostBoundHi", "chronyWorstBound",
+                            "chronySecondWorstBound", "chronyPairBound", "chronyHosts"}
         lo, hi = int(got["chronyHostBoundLo"]), int(got["chronyHostBoundHi"])
         assert 0 < lo <= hi
         assert int(got["chronyHosts"]) >= 2
+        # Round 72, W4: the sum's two addends, so a reader is not asked to take it on trust.
+        worst, second = int(got["chronyWorstBound"]), int(got["chronySecondWorstBound"])
+        assert worst == hi and lo <= second <= worst
+        assert worst + second == int(got["chronyPairBound"])
 
     def test_the_pair_is_the_two_worst_hosts_not_twice_the_range(self):
         """The distinction the prose now makes: adding the printed endpoints gives a different

@@ -129,7 +129,11 @@ class TestR2TheConcession:
             .open(encoding="utf-8")))
         comparisons = [r for r in rows if r["kind"] == "broker_comparison"]
         inside = [r for r in comparisons if r["figures_inside_regime"] == "yes"]
-        assert (len(comparisons), len(inside)) == (3, 2)
+        # Three of four, since round 72 added a March 2026 comparison that puts the whole
+        # body of the distribution below the tick and redraws a 2024 benchmark to do it.
+        # The concession the count qualifies is unchanged; the denominator grew and the
+        # majority went with it, which is the direction round 68 predicted it would.
+        assert (len(comparisons), len(inside)) == (4, 3)
 
 
 class TestR3TheCollapseAboveTheMode:

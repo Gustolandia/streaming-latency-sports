@@ -333,6 +333,45 @@ def harness_arm_spreads(path=os.path.join("external", "harness_results.csv")):
     return out
 
 
+def harness_pacer_jitter(path=os.path.join("external", "harness_results.csv"),
+                        percentile="p90"):
+    """Send-pacer jitter across every harness run, from the ledger that records it.
+
+    Section IV-D asserts the send schedule is measured rather than assumed and then typed
+    its measurement: "67--69 us at p90", a range no row of this artefact produces. The runs
+    span 66.3 to 69.2, so the typed pair was wrong at both ends and wrong in the direction
+    that flatters -- it hid the widest run inside a narrower claim.
+
+    One decimal, not the integers a reader might expect from a jitter figure. Rounding
+    outward to 66--70 would be true, but it would need an argument for why the printed ends
+    are not the measured ones, and it would put a bare "67" next to interHostOffsetUs,
+    which is also 67 and is a different quantity entirely. Decimals keep the two apart on
+    the page and put these macros inside the ledger sweep, which only checks decimal-valued
+    ones.
+
+    The ledger also carries p50 (62.3--66.7) and p99 (68.0--72.4) and the manuscript reports
+    neither, which is a decision and not an oversight. Pacer jitter is a nuisance parameter:
+    the sentence exists to say the send schedule was checked, and one percentile does that on
+    a page that is full. Three would buy nothing and cost the lines that a result is entitled
+    to. The `percentile` argument is here so that a later round that wants a spread rather
+    than a range takes it from the artefact instead of re-measuring, and so that this note
+    does not have to be believed on its word.
+
+    Returns (lo, hi) over all runs, or None when the column is absent.
+    """
+    rows = _rows(*path.split(os.sep))
+    col = "jitter_%s_us" % percentile
+    vals = []
+    for r in rows:
+        try:
+            vals.append(float(r[col]))
+        except (KeyError, TypeError, ValueError):
+            continue
+    if not vals:
+        return None
+    return (min(vals), max(vals))
+
+
 #: Above this denominator the phase set is dense enough that the grid imposes no structure,
 #: and the arm is reported as effectively continuous rather than given a cell.
 INCOMMENSURATE_Q = 64

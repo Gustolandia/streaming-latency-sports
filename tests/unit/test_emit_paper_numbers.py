@@ -915,13 +915,16 @@ class TestTheMacrosThatAreOmittedRatherThanGuessed:
         assert got["tracedGofP"] == "<0.0001", "an exact zero must be reported as a bound"
 
     def test_a_mechanism_artefact_that_is_absent_emits_nothing_for_it(self, monkeypatch):
-        """Five independent reads, each guarded, and each able to be the missing one.
+        """Six independent reads, each guarded, and each able to be the missing one.
 
         The fifth arrived in round 43 with the cross-host retention wander, whose two
-        endpoints had been typed and had drifted from the ledger.
+        endpoints had been typed and had drifted from the ledger. The sixth arrived in
+        round 71 with the pacer jitter, for exactly the same reason, which is why this
+        test is the one that noticed it had been added: a new read joins the roster or it
+        is a read nobody has asked to survive its artefact going missing.
         """
         for name in ("harness_cells", "harness_arm_spreads", "occupancy_bounds",
-                     "load_growth", "observer_effect"):
+                     "load_growth", "observer_effect", "harness_pacer_jitter"):
             monkeypatch.setattr(stat_intervals, name,
                                 lambda *a, **kw: (_ for _ in ()).throw(OSError("absent")))
         assert epn.mechanism_macros() == []
@@ -933,6 +936,7 @@ class TestTheMacrosThatAreOmittedRatherThanGuessed:
         monkeypatch.setattr(stat_intervals, "occupancy_bounds", lambda *a, **kw: {})
         monkeypatch.setattr(stat_intervals, "load_growth", lambda *a, **kw: {})
         monkeypatch.setattr(stat_intervals, "observer_effect", lambda *a, **kw: {})
+        monkeypatch.setattr(stat_intervals, "harness_pacer_jitter", lambda *a, **kw: None)
         assert epn.mechanism_macros() == []
 
     def test_a_missing_fork_survey_emits_no_fork_macros(self, monkeypatch):

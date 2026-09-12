@@ -932,9 +932,10 @@ $\ombRetentionFold$-fold difference, and both reported a median of $1.0$~ms with
 the output to distinguish them. Three uninstrumented runs print p50, p95, p99 and max all
 equal to $1.0$ to three decimal places. The full ledger holds $\ombRuns$ instrumented runs,
 $\ombDiscarded$ discarded samples and $\ombNegatives$ negatives, and over it the retained
-fraction falls as low as $\ombRetentionMinExact\%$ --- four samples kept of ninety thousand.
+fraction falls as low as $\ombRetentionMinExact\%$ --- about four samples in ninety
+thousand.
 The printed median is pinned at the timestamp resolution while retention moves across two
-and a half orders of magnitude (Fig.~\ref{fig:deletion}). The only cells that escape are the four whose payload is large enough that
+and a half orders of magnitude (Fig.~\ref{fig:deletion}). The only cells that escape are the \ombEscapeCellsWord{} whose payload is large enough that
 the resolution stops binding.
 
 That discarded fraction is the one time-interval averaging measures
@@ -1055,7 +1056,7 @@ array its percentiles come from by integer division, so on a sub-millisecond pat
 one reports zero~\cite{kafka_tools}. Two more keep their negatives and pass them on
 unfiltered, as RFC~7679 asks~\cite{rabbitmq_perftest,nats_cli}. The failure is not universal,
 and the claim that survives is the narrower one: \emph{the tools that quantize or filter do so
-without counting}. Substitution is the worst of the three classes because it leaves
+without counting}. Substitution is the worst of the \harnessDisposalClassesWord{} classes because it leaves
 nothing missing: \texttt{fio} and \texttt{btt} substitute zero and one nanosecond, and a
 value never measured enters the distribution. At the other end, \harnessCountingWord{} counts
 its discards in a metric whose description names the cause~\cite{rezolus}, which is what
@@ -1106,7 +1107,7 @@ a sign check that costs nothing, and every run it rejected here had passed every
 check we knew. Better measurement systems
 exist~\cite{yang2022cloudprofiler,kogias2019lancet,kundel2024p4sta}; whatever the
 measurement, check its output against causality and publish the rejection rate, as network
-clocks have for thirty years~\cite{paxson1998calibrating,paxson2004sound}. The discipline is tested only by a
+clocks have for nearly thirty years~\cite{paxson1998calibrating,paxson2004sound}. The discipline is tested only by a
 campaign the rate costs something, and ours cost us a result.
 
 \textbf{Say which physical event each timestamp marks.} A timestamp is a clock read,

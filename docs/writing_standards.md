@@ -485,6 +485,43 @@ The repair also emits the spread beside the floor, because the reason the two do
 is that `invFloor` was printed with nothing to qualify it while Section V-C had the range all
 along.
 
+### A2c. A sentence may not contradict a measurement the same paper prints --- GATED
+
+The Conclusion said *"two timestamps written by threads that wait for a core independently"*,
+and Section VII-C's reporting rule says in bold that **two delays with one cause are not
+independent**, at a median rank correlation of 0.84, with assuming otherwise overpricing the
+negative-span rate by a median factor of 12.4 across every condition. One of those sentences
+is a result and the other was a figure of speech reaching for *separately*. The Introduction
+already had the phrase that carries the meaning without the technical term --- *"waits for
+that core on its own account"* --- and it is the same length.
+
+Rule: **a word that names one of the paper's own measured quantities is that quantity
+wherever it appears.** It cannot be borrowed for its colloquial sense in the same document,
+least of all in the Conclusion, where a reader has no context left to repair it with.
+
+The gate is not a forbidden word. *Independent* has a second sense --- "by a separate route",
+as in *arrived at independently* and *one independent harness* --- which was never retired and
+carries eleven of the thirteen occurrences; listing the bare word would have filed eleven
+judgments about prose needing none and buried the one that mattered, which is what round 68
+found wrong with the `flight` pattern. `apply_vocabulary.py` reviews the word only within
+reach of the nouns the claim is about (waits, delays, threads, timestamps, stalls), and the
+four sentences that match are cleared in `docs/vocabulary_adjudications.json` with reasons.
+
+### A2d. A sentence that says a quantity was measured may not type it --- GATED
+
+Section IV-D reads *"The send schedule is measured rather than assumed. Pacer jitter is
+67--69 us at p90"* --- and the column it summarises, `jitter_p90_us`, runs 66.3 to 69.2 over
+twenty-four runs, eleven of which fall outside the printed range. The typed pair was wrong at
+both ends and wrong in the flattering direction, in the one sentence in the paper whose
+subject is that this number was not assumed.
+
+Rule: **the sentence that claims a measurement is the sentence most in need of a macro.** It
+is emitted now, at one decimal rather than rounded outward to integers: exact, needing no
+rounding argument, un-collided from `interHostOffsetUs` --- which is also 67 and is a
+different quantity --- and decimal-valued, which is what puts a macro inside the ledger
+sweep. `test_round71_findings.py` checks the printed range contains every measured run, which
+is the property that failed, rather than checking the two digits.
+
 ### A2. No `flight` — GATED
 
 In the corpus bare *flight* occurs 131 times across 25 of 775 papers, and a read of every

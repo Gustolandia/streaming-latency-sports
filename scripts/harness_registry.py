@@ -45,13 +45,36 @@ FIELDS = ("harness", "vendor", "language", "path", "clock", "file", "symbol", "e
           "source_url", "retrieved", "note")
 
 
+#: Where `csv.DictReader` files the values of a row that has more fields than the header.
+#: It has to be named, because the default is `None` and a `None` key is invisible to every
+#: check written over `FIELDS`.
+SURPLUS = "__surplus__"
+
+
 def load(path=REGISTRY):
-    """The committed rows, in file order."""
+    """The committed rows, in file order. Raises on a row that is not the shape of the header.
+
+    The surplus check is not hypothetical. One row's `note` contained unquoted commas and so
+    had thirteen fields against the header's eleven; `csv.DictReader` put the overflow under
+    the key `None` and returned the row, and every reader of this ledger got a note truncated
+    at its first comma with nothing said. A silent discard, with no counter, in the artefact
+    of a paper about silent discards with no counters. It is quoted now, and a row that ever
+    spills again stops the pipeline instead of being summarised short.
+    """
     with open(path, encoding="utf-8", newline="") as fh:
-        rows = list(csv.DictReader(fh))
+        rows = list(csv.DictReader(fh, restkey=SURPLUS))
     missing = [f for f in FIELDS if rows and f not in rows[0]]
     if missing:
         raise ValueError("registry is missing column(s): %s" % ", ".join(missing))
+    for i, r in enumerate(rows, 2):
+        if SURPLUS in r:
+            raise ValueError(
+                "registry line %d has %d field(s) more than the header, so a value contains "
+                "an unquoted delimiter: %r" % (i, len(r[SURPLUS]), r[SURPLUS]))
+        empty = [f for f in FIELDS if r.get(f) is None]
+        if empty:
+            raise ValueError("registry line %d is missing value(s) for: %s"
+                             % (i, ", ".join(empty)))
     return rows
 
 

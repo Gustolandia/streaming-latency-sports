@@ -56,6 +56,34 @@
       "scope": "line",
       "anchor": "on a sub-quantum path is most of them",
       "reason": "A compound adjective in a table caption, where the alternative is 'a path shorter than the timestamp resolution' and the caption is already six lines. The supplement's vocabulary block says it uses the paper's terms, and the paper defines the quantum as the timestamp resolution."
+    },
+    {
+      "file": "paper.tex",
+      "key": "independence",
+      "scope": "line",
+      "anchor": "our one-clock rule, arrived at",
+      "reason": "The other sense of the word: two research groups reaching the same rule by separate routes, which is a fact about provenance and says nothing about whether any two delays are correlated. It is flagged only because the neighbouring clause names timestamps, and the pattern reaches back across a clause on purpose. Cleared as written."
+    },
+    {
+      "file": "paper.tex",
+      "key": "independence",
+      "scope": "line",
+      "anchor": "with one cause are not independent",
+      "reason": "This is the claim itself, and it is negated: the reporting rule that says two delays sharing a scheduler are not independent, carrying the measured correlation and the mispricing factor in the next line. The entry exists to protect this sentence, not to question it."
+    },
+    {
+      "file": "paper.tex",
+      "key": "independence",
+      "scope": "line",
+      "anchor": "not independent kernel granularity",
+      "reason": "The same claim applied to the clocksource threat, and negated again: the spread we see is one shared scheduling delay rather than two granularities landing separately. Saying it the other way round would contradict the measurement, which is what this entry watches for."
+    },
+    {
+      "file": "supplement.tex",
+      "key": "independence",
+      "scope": "line",
+      "anchor": "not of independent quantization",
+      "reason": "The supplement's statement of the same negated claim, distinguishing a shared scheduling delay from per-event quantization. The contrast is the point of the sentence and the word carries it."
     }
   ]
 }

@@ -73,6 +73,23 @@ REVIEW = [
     ("arm", r"\barms?\b", "arm -> configuration / treatment (or define)"),
     ("quantum", r"\bquantum\b", "quantum -> timestamp resolution where the sentence allows"),
     ("mode-label", r"\bMode~?[AB]\b", "Mode A/B -> descriptive section title"),
+    # Not `\bindependent\b`, for the reason `flight` is not `\bflights?\b`.
+    # Two senses share the spelling. One is structural -- two waits being probabilistically
+    # independent -- and this paper has a measured position on it, in bold, at a median
+    # correlation of 0.84 and a 12.4x mispricing. The other means "by a separate route",
+    # and it is what "arrived at independently" and "one independent harness" say; that
+    # sense was never retired and eleven of the thirteen occurrences carry it. Listing the
+    # bare word would file eleven judgments about prose needing none and bury the one that
+    # matters, which is the failure mode round 68 found in `flight`.
+    # So the pattern is the structural sense, reached through the nouns the claim is about.
+    # It is deliberately a little eager: a neighbouring clause's "timestamps" can pull an
+    # innocent sentence in, and a recorded judgment saying so costs one line and outlives a
+    # cleverer pattern. The Conclusion's "threads that wait for a core independently", which
+    # is what this entry exists for, matches on both nouns.
+    ("independence",
+     r"\b(?:wait|waits|waiting|waited|delay|delays|delaying|stall|stalls|thread"
+     r"|threads|timestamp|timestamps)\b[^.]{0,110}?\bindependent(?:ly|ce)?\b",
+     "independent(ly) of two waits -> on their own account (they are measured correlated)"),
 ]
 
 #: Regions that are not prose. Each is matched non-greedily and protected verbatim.

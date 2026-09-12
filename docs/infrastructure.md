@@ -1715,6 +1715,34 @@ now, as `kind=methodology` so the denominator the main text quotes does not move
 prose with no row behind it is the same defect as a row with no claim, seen from the other
 side.**
 
+**1cn. Every number in the sentence was emitted and exact, and the sentence was wrong.** For
+twenty rounds Section V-D closed on *"they separate at the median, not in the upper tail"*,
+sitting on four macros that all reproduce from `span_symmetry.csv` to the digit. The four
+numbers were never the claim. The claim was an inference drawn over them by eye, and it does
+not survive a statistic: the Hodges--Lehmann shift is about a point, half the pairwise
+differences run each way, the maxima are identical. What opened the eight-point gap between
+the medians was a third of the accepted conditions recovering the delivery *exactly* --- a
+concentration at zero dragging one median down while the populations stayed put. Section
+VIII-B's fourth rule had been drawing the opposite inference from the same data four pages
+later, and it was the one the data support, so the manuscript contradicted itself across a
+cross-reference that pointed from one to the other. Nothing could see it: `test_ledger_coverage`
+checks that a printed value is emitted, `test_discussion_numbers_are_results_numbers` checks
+that the Discussion re-quotes Results, and neither reads the verb between two numbers. **The
+gates verify the nouns. The claim lives in the verb, and the only defence is to emit the
+statistic the verb asserts** --- `recoveryShift` now sits in the same function as the four
+numbers it qualifies, which is the general repair: *if a sentence compares two populations,
+the comparison is a quantity and belongs in the ledger beside them.*
+
+**1co. A spelling checker that proposes `pairwize` is a checker people learn to argue with.**
+The British-spelling gate runs a morphological rule over the `-ise` family, which is right and
+is the half a hand-written table keeps failing at. It had no rule for `-wise`, an English
+adverb suffix that is never a verb ending, so the table carried `otherwise` and `wise` as
+literals and the first new one written --- `pairwise`, in round 75's supplement --- failed the
+build on a correctly spelled word. Fixed as a rule rather than as a word, so `stepwise`,
+`piecewise`, `bitwise` and `elementwise` are covered before anyone writes them, and with the
+rule's own tests beside it. **A false positive costs more than a false negative here, because
+it teaches the author that the checker is wrong and the next real hit gets the same shrug.**
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

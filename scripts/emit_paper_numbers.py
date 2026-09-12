@@ -2191,6 +2191,7 @@ def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
         return values[min(len(values) - 1, max(0, int(round(p * (len(values) - 1)))))]
 
     out = []
+    by_outcome = {}
     for suffix, name in (("#pass", "Pass"), ("#fail", "Fail")):
         rel = sorted(abs(float(r["recovery_err_us"])) / float(r["median_D_us"]) * 100.0
                      for r in rows
@@ -2201,7 +2202,38 @@ def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
             # The ledger already uses this suffix for the same idea (`exposureErrTenHi`).
             out.append(("recoveryErr" + name, "%.1f" % _st.median(rel)))
             out.append(("recoveryErr" + name + "Hi", "%.0f" % pct(rel, 0.75)))
+            out.append(("recovery" + name + "Max", "%.0f" % rel[-1]))
             out.append(("recovery" + name + "N", str(len(rel))))
+            out.append(("recovery" + name + "Exact",
+                        "%.0f" % (100.0 * sum(1 for v in rel if v == 0.0) / len(rel))))
+            by_outcome[name] = rel
+
+    # Round 75 added the shift, and the reason is worth more than the three lines it takes.
+    #
+    # Section V-D quoted these four numbers and then drew a conclusion from them: the two
+    # populations "separate at the median, not in the upper tail". Every one of the four was
+    # emitted from this function and every one was right. The inference on top of them was
+    # checked by nothing, and it is false. The Hodges-Lehmann shift between the populations
+    # is about a point; roughly half of the pairwise differences run each way; the worst
+    # condition is the same on both sides. What opens the eight-point gap between the medians
+    # is a spike at exactly zero in the passing population -- a third of those conditions
+    # recover the delivery exactly -- which drags one median down without moving the
+    # distributions apart. A quantile can move while the population does not.
+    #
+    # Two reasons it mattered enough to change a sentence that was about to be submitted.
+    # Section VIII-B's fourth rule cites Section V-D and asserts the OPPOSITE, that the
+    # recovery holds on the runs the check rejects as well as on those it passes -- which is
+    # what the data say and what the corrected sentence now says. And this was the last
+    # comparison in the main text made by eye, in a paper whose Section IV-F promises an
+    # interval on every proportion it reports.
+    #
+    # Hodges-Lehmann rather than a p-value: it is a shift in the units the sentence is about,
+    # the two distributions cross so a rank test is weak here by construction, and Section
+    # VIII-A already quotes an HL shift for the broker equivalence. One statistic, twice.
+    if len(by_outcome) == 2:
+        diffs = sorted(y - x for x in by_outcome["Pass"] for y in by_outcome["Fail"])
+        out.append(("recoveryShift", "%.1f" % _st.median(diffs)))
+        out.append(("recoveryShiftPairs", latex_thousands(len(diffs))))
     # The D-A correlation, and the unit it is computed over. `rho_DA` is one number per
     # CONDITION, fitted across that condition's own events -- 5,433 of them in the first row
     # -- and the macro below is the median of those across conditions.

@@ -822,6 +822,34 @@ definitions or for the literature (currently 51 such pointers; each must survive
 A reference plus: which events, at what scale, selected how, and why the workload is
 representative. A licence line is not a description.
 
+### B12. A comparison between two populations is itself a quantity, and it is emitted — GATED
+
+Printing two medians and then saying what they mean is two claims, not one. The numbers are
+gated; the verb between them is not, and it is where the error lives. Section V-D printed four
+macros that all reproduce to the digit and closed on *"they separate at the median"* — an
+inference no test could read, contradicted four pages later by the Discussion rule that cites
+it, and false: the Hodges–Lehmann shift is about a point and the maxima are identical.
+
+So: **if a sentence asserts that two distributions differ, agree, or are ordered, the statistic
+behind that assertion is emitted from the same function as the numbers it qualifies.** Shifts
+and intervals, not *p*-values — the register set by A7 and the statistics policy is
+Wilson, Katz, Fisher, Holm and TOST, and a rank test between distributions that cross says
+nothing either way. Where the comparison survives in the main text, the distributions behind it
+get a supplement section, so a reader has somewhere to check it (the omission that let this one
+stand).
+
+### B13. The index terms are content, and get read like content
+
+They are the paper's retrieval surface, not a subject declaration. Three rounds recorded
+"alphabetical ✅" of a list containing none of *latency*, *benchmark*, *streaming*, *timestamp*
+or *clock* for a paper whose title carries four of them. Alphabetical order is a property of a
+list; nobody had read what was in it.
+
+The rules, gated in `tests/unit/test_round75_findings.py`: every noun in the title appears
+among the terms; each term is at most four words and is a keyword rather than a subject-category
+heading; no term contains the separator of the enclosing list; four to eight terms, matching
+the reference corpus's own distribution (median five terms, median two words per term).
+
 ---
 
 ## C. Register: a journal paper, not a blog post

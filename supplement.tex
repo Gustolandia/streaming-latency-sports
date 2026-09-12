@@ -108,6 +108,7 @@
 \newcommand{\mainSpectrum}{\ref{P-sec:tail}}        % The stall spectrum, and the scheduler's slice
 \newcommand{\mainBrokers}{\ref{P-sec:brokers}}        % What the brokers actually do
 \newcommand{\mainAuthors}{\ref{P-sec:authors}}        % For benchmark authors
+\newcommand{\mainCost}{\ref{P-sec:cost}}              % What the displacement costs, and its recovery
 \newcommand{\mainBetterClock}{\ref{P-sec:betterclock}}    % The limits of a better clock
 
 \begin{document}
@@ -2363,6 +2364,24 @@ being woken and scheduled before it can read the clock, so it inherits the same 
 timestamp the acknowledgment span has. Collapsing two clocks into one removes a term the corpus
 already shows is not the cause.
 
+\paragraph{The monotonic clock, named because it is the remedy this section is most often
+asked about} The other standing proposal is to read
+\texttt{clock\_gettime(CLOCK\_MONOTONIC)} instead of \texttt{CLOCK\_REALTIME}. It belongs
+here rather than in the main text's ordering of remedies, because it is the correct answer
+to a question this paper does not ask. A monotonic clock cannot step or slew, so it removes
+the failure a reader has usually met before: a reading that moves backwards because the
+synchronization daemon corrected the wall clock underneath it. Neither mode we report is
+that failure. The scheduling mode is a delay between the event and the read, and a monotonic
+clock is read by a thread that has to be scheduled first exactly as the wall clock is; the
+deletion mode is an admission condition applied to the value, and a monotonic clock changes
+which value arrives, not which values are kept. It also costs something: a monotonic clock
+has an arbitrary per-boot origin, so two hosts' readings cannot be differenced at all, and
+the end-to-end span is a difference across two hosts. The demonstration is in the corpus
+already. \kafka{}'s bundled \texttt{EndToEndLatency} is one thread on one monotonic clock
+with a synchronous send, immune to the scheduling mode by construction --- and it loses the
+measurement anyway, to an integer division (Section~S25). A clock choice is not a
+measurement design.
+
 \subsection{S16.7. Where the repairs belong}
 
 No layer here misbehaves, which is why the fix is not obvious from inside any one of them.
@@ -2409,6 +2428,65 @@ next tick to consider that it has reached its deadline, and will run 1ms longer'
 
 No scheduler tunable is written anywhere in the archived campaign, which is why the derived
 value is the one that applied. It is strong evidence rather than proof.
+
+\subsection{S16.9. The displacement recovery, distribution by distribution}
+
+Section~\mainCost{} reports the recovery's accuracy as four numbers and one comparison. The
+distribution behind them is here, together with the reason the comparison is worded the way
+it is, which for most of this manuscript's life it was not.
+
+The recovery is the identity read backwards. The delivery is the reported span plus the
+acknowledgment lag, so a harness that records its own lag can report the delivery it failed
+to measure. Its error is the recovered value's distance from the true one as a percentage of
+that condition's median delivery: one number per condition, from
+\texttt{recovery\_err\_us} and \texttt{median\_D\_us} in
+\texttt{docs/results/span\_symmetry.csv}, split by whether the consistency check of
+Section~\mainGate{} accepted the condition.
+
+\begin{center}
+\begin{tabular}{lrrrrr}
+\hline
+Conditions & $n$ & Median & Upper quartile & Worst & Exact \\
+\hline
+Check accepts & \recoveryPassN{} & \recoveryErrPass\% & \recoveryErrPassHi\% &
+  \recoveryPassMax\% & \recoveryPassExact\% \\
+Check rejects & \recoveryFailN{} & \recoveryErrFail\% & \recoveryErrFailHi\% &
+  \recoveryFailMax\% & \recoveryFailExact\% \\
+\hline
+\end{tabular}
+\end{center}
+
+\emph{Exact} is the share of conditions whose recovered delivery matches the true one to the
+microsecond the campaign records.
+
+Two readings of that table are available and one of them is wrong. The wrong one, and
+ours until this section was written, is that the two populations differ because their
+medians do. They do not.
+The Hodges--Lehmann shift over all $\recoveryShiftPairs$ pairwise differences is
+$\recoveryShift$ points, the worst condition is the same on both sides, and the upper
+quartiles are within a point and a half of each other. What moves the medians apart is the
+last column: $\recoveryPassExact\%$ of the accepted conditions recover the delivery exactly,
+and a concentration at zero drags a median down without moving the population it came from.
+A quantile can shift while the distribution does not, which is this paper's own subject one
+level up.
+
+The right reading is the one Section~\mainAuthors{}'s fourth rule needs: the recovery holds
+where the check rejects as well as where it passes. That result is not free. It is the whole
+reason both populations were measured --- a remedy validated only where the check already
+passes has been validated on the population that did not need it --- and had the rejected
+conditions been dropped as spoiled, neither reading could have been told from the other.
+
+A Hodges--Lehmann shift rather than a rank test's $p$-value, for three reasons. It is a
+shift in the units the sentence is about, so a reader can act on its size. The two
+distributions cross, so a test built on ranks is weak here by construction and a large $p$
+would have carried no information about whether the populations agree. And
+Section~\mainBrokers{} already quotes a Hodges--Lehmann shift for the broker equivalence:
+one statistic, used the same way in both places it is needed.
+
+The median is still not a bound, which is the older lesson this table also serves. A reader
+who reads $\recoveryErrPass\%$ as a guarantee is wrong for a quarter of the accepted
+conditions, where the error reaches $\recoveryErrPassHi\%$, and for one of them it reaches
+$\recoveryPassMax\%$.
 
 
 \section{S17. The 1970 counter note, line by line, and the grid geometry it explains}
@@ -4464,6 +4542,21 @@ their client's own interpreter lock ``artificially inflates'' the latencies it r
 charging the harness's own scheduling to the server under test. That is the inflation half.
 What a positive number cannot show --- the negative span, and the sign channel that makes the
 displacement legible --- is what remains ours.
+
+\paragraph{The field already has a name for the shape of this, and it is not ours}
+The scheduling failure is, stated abstractly, that an agent acts on the state as \emph{observed}
+and the observation lags the event. Control and queueing theory call that \emph{partial
+observability}, and it is studied at this venue: Tahir et al.~\cite{tahir2022delayed} solve
+compute-cluster load balancing where the dispatcher's view of queue lengths arrives delayed, and
+carry \emph{partial observability} as one of their three index terms. We record this for two
+reasons and claim nothing from it. The first is that the framing is not exotic --- a reader who
+finds Section~\mainModeA{} strange has read a version of it before, in the venue this manuscript
+is submitted to. The second is the difference, which is where the contribution sits: that
+literature treats the lag as a known property of the \emph{system} and designs a policy around
+it, whereas here the lag is inside the \emph{instrument}, is not known to the people reading its
+output, and is charged to the system under test. A delayed observation you have modeled is a
+control problem. A delayed observation you have not noticed is a measurement artifact, and no
+policy repairs it because nobody is aware there is a state to estimate.
 
 Tail behavior under load~\cite{li2014tales} is the phenomenon our stall distribution samples.
 That work also shows real-time priority collapsing a tail that renicing leaves alone, applied

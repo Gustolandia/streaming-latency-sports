@@ -440,7 +440,7 @@ $3$~ms and clear ones by $5$~ms, and read that as a skew threshold. We take thei
 dispute the reading rather than their measurements. They hold that ``queueing alone cannot
 produce negative timing spans''. For the queue they model, backlog at a service stage, we
 agree. A \emph{second} queue decides ours: the run queue the timestamping thread waits in
-for a CPU. We see rates near $23\%$ at $88\%$ utilization on one host, with an inter-host
+for a CPU. We see $\rtHighBasePct\%$ at $\rtHighLoadPct\%$ utilization on one host, with an inter-host
 offset of $\interHostOffsetMs$~ms where two are used. We move that rate fiftyfold without
 touching a clock. A threshold in milliseconds of skew does not transfer to a loaded
 machine. The same attribution was offered for the benchmark we audit: asked why
@@ -875,8 +875,8 @@ descheduled at the wrong instant therefore reads its clock about a slice late --
 $\sliceOverDeliveryLo$--$\sliceOverDeliveryHi$ times the per-condition deliveries this
 corpus measures, $\condDeliveryLoMs$--$\condDeliveryHiMs$~ms --- and the tick is why the
 mode is a band rather than a spike. The scheduler's slice lands on the scale of the
-interval being measured, which is what puts the negative-span rate at $\spanNegAckPct\%$
-rather than at a hundredth of that or at half. A mean over this distribution is dominated by a mode the operator never
+interval being measured, which is why the check fires on a substantial minority of events
+rather than on almost none or on most. A mean over this distribution is dominated by a mode the operator never
 sees, so a mean-based counter cannot flag this failure.
 
 \section{Failure Mode 2: Quantization and Silent Deletion}
@@ -1143,7 +1143,8 @@ events per run is not a property of the system, and repetition will not tell you
 \textbf{Exercise the timestamping path at the load you will report from.} A path that
 is clean idle is not thereby clean at the knee: the same threads on the same host move the
 negative-span rate $\rtFactorLow$--$\rtFactorHigh\times$ between priorities, and the rate
-we measure at $88\%$ is $\diseaseOverWhole\%$ of events. Run the sign check under the load
+we measure at $\rtHighLoadPct\%$ utilization is $\rtHighBasePct\%$ of events
+(Table~\ref{tab:mechanism} has the lower load too). Run the sign check under the load
 the numbers will be quoted at, not under a quiet one.
 
 \textbf{Make the timestamping path unpreemptable, and say that you did.} The one mitigation
@@ -1208,12 +1209,15 @@ record at native resolution, count what is discarded, dither the send instant, a
 is synchronization quality the frontier (Section~\ref{sec:generality}).
 % Round 47 cut the redesign clause to its pointer. That a consumer-to-producer acknowledgment
 % removes skew but not this failure, and that every one-way-avoiding scheme rests on an
-% unstated assumption, are both worked through in S29 and S16.5; the main text needs the
-% conclusion, which is the last sentence of this paragraph.
+% unstated assumption, are both worked through in S29 and S16.5.
+% Round 72 moved this subsection's conclusion to its FIRST sentence under the rule that a
+% section opens on its claim, and round 73 found what that left behind: the paragraph then
+% ended on a back-reference to the ordering three lines above it. It ends on the residue
+% instead, which is the half a better clock does not carry away.
 Resolution is the lesser half, and a distinct one. A microsecond timestamp retires
-Equation~\ref{eq:retention}'s deletions here and moves the grid to faster paths, but the
-admission condition and genuine negatives survive it (Supplements~S29 and~S16.5), which is
-why the ordering above puts synchronization quality last.
+Equation~\ref{eq:retention}'s deletions here and moves the grid to faster paths; what it
+leaves untouched is the admission condition and every genuine negative
+(Supplements~S29 and~S16.5).
 
 \subsection{Threats and limitations}
 \label{sec:threats}
@@ -1264,8 +1268,10 @@ the send-referenced span holds a floor $\spanOffsetMargin\times$ too high to exp
 deepest negative span (Supplement~S15).
 
 The mechanism's constants are those of one EEVDF-era kernel (6.8); CFS-era schedulers, the
-regime Lozi et al.\ document, may shift them. The deletion arithmetic is demonstrated on one
-benchmark and reproduced in one independent harness. The \harnessAuditedWord{} tools of
+regime Lozi et al.\ document, may shift them. The workload is \replayedMatchesWord{} matches
+of one sport's event feed: nothing here depends on its content beyond message size and rate,
+and that independence is argued rather than assumed (Supplement~S20). The deletion arithmetic
+is demonstrated on one benchmark and reproduced in one independent harness. The \harnessAuditedWord{} tools of
 Section~\ref{sec:tools} are readings of source rather than measured deployments, and are
 exact to the threshold rather than to the behavior a deployment would show. The
 benchmark's distributed mode failed on every attempt, so its cross-host exposure rests on

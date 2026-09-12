@@ -549,13 +549,69 @@ Round 70 found S9 calling a measured maximum a bound and a scale a floor, and th
 into the supplement and into Section V-C for the **floor**. The **ceiling** kept its word for
 two more rounds: Section V-B read *"The rate has a ceiling below one: fully saturated it
 reaches 0.37"*, while S9 said in as many words *"Neither number is a bound, and neither needs
-to be."* `invCeiling` is a maximum over the conditions at $ho \geq 0.95$, with a
+to be."* `invCeiling` is a maximum over the conditions at $
+ho \geq 0.95$, with a
 cross-phase consistency check --- the highest rate measured near saturation.
 
 Rule: **a pair of symmetric claims wants a pair of symmetric gates.** Repairing one end of a
 floor-and-ceiling pair and gating only that end leaves the other end as the place the wording
 comes back, and it came back in the other document, which is where a reader is least likely to
 check it against.
+
+### A2g. A rate is quoted with the population and the load it was measured over --- GATED
+
+One question, three answers, all in one manuscript: *what is the negative-span rate at 88%
+utilization?* Section III-B said 23% (typed, since round 4, reconcilable with no artefact this
+project holds). Section VIII-B said 8.4%, which is `diseaseOverWhole` --- the rate over the
+**whole corpus at every load** --- wearing a load-specific label inside a reporting rule that
+tells other authors what load to run their check at. Table II said 30.5%, emitted and correct.
+
+Rule: **a rate, its denominator and the condition it was measured under are one fact, and a
+sentence that prints one of them prints all three.** The corollary is about emission rather
+than prose: `rt{Low,High}BasePct` and `rt{Low,High}LoadPct` come out of the same ledger row
+together, because a rate emitted without its load is a number any sentence can adopt.
+
+The middle case is why this is a standard and not an editorial note. It *looked* emitted, and a
+previous round had verified its value and pronounced it exact --- which it is, at its other
+call site. A ledger sweep reads values; **a macro is only as correct as its label.**
+
+### A2h. The main text may not compute with a model the supplement disclaims --- GATED
+
+Section V-E gained, in a repair: *"which is what puts the negative-span rate at 8.43% rather
+than at a hundredth of that or at half."* S9 says of the two-state model, in the same build,
+*"Nothing in the paper computes with it"* and *"we have no measurement of $p$ independent of
+the rate it is meant to explain."*
+
+Rule: **where the supplement states the limits of a model, the main text stays inside them.**
+The observation was worth keeping and the magnitude was not established, so the sentence keeps
+the observation --- the slice lands on the scale of the interval being measured --- and says
+what that implies qualitatively. A model that a document has deliberately weakened is weaker
+everywhere, including four pages earlier.
+
+This is the second round running in which a repair introduced a paper-supplement contradiction
+of exactly the kind the previous round's repair removed. **A change that strengthens a sentence
+is the moment to re-read what the other document says about it.**
+
+### A2i. An originality claim is a list of search terms, not a recollection --- GATED
+
+A referee offered *"negative latency"* returning almost nothing as evidence that the field is
+empty. A contributor asked whether that was the right word. It was not: the phrase is nobody's,
+this paper's included --- Section III-B takes *negative span* from Sharma et al. --- so its
+emptiness measured only that nobody had coined it.
+
+Rule: **search in the words the field uses, across every community the claim touches, and
+write the terms down.** The two failure modes live in different literatures --- an interval
+that comes out negative is discussed in distributed tracing and network measurement; a filter
+that deletes a population is discussed in benchmarking and metrology --- so a sweep in one
+vocabulary can come back empty for the wrong reason. `scripts/novelty_sweep.py` carries the
+terms, the community each belongs to, and the kind of hit that would threaten the claim; the
+supplement quotes its ledger rather than restating it.
+
+Two corollaries the first run forced. **A term that returns thousands has tested nothing**, and
+should be recorded as such rather than counted as reassurance. And **the counts themselves are
+not stable**: the same query returned 3 in a batch and 1 on three consecutive calls a minute
+later, so each term is sampled three times and a count that moved is written as a band with the
+verdict *ask again*, and the ledger is not written at all until every term is stable.
 
 ### A2. No `flight` — GATED
 

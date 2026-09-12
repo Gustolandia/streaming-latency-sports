@@ -1616,6 +1616,51 @@ events invert rather than a hundredth of that or half --- and it was only findab
 the ledger holds all three spans side by side. **When a sentence divides by one of several
 similar quantities, emit the divisor from the function that knows the others.**
 
+**1cg. A check that normalises its input before testing it is testing the normalisation.**
+Round 72 installed a gate enumerating every numeral typed into `paper.tex`, so that each one
+became a recorded decision. It worked like this: strip every `\macro`, then match
+`$digits$`. Stripping leaves a space where the control word was, and the pattern admitted
+none, so **`$23\%$` became `$23 $` and walked straight past**. Seventeen numerals were
+hiding in that gap --- every `$N\%$`, every `$N\,\mu$s`, `$k=6$`, `$z = -6.9$`,
+`$p < 0.001$`, `log$_2$` --- and one of them was the defect round 73's referee found.
+
+The gate now finds each math span and reads the numerals inside it, which is the same question
+asked where the answer lives. It also carries a mutation: `$23\%$` put back must be found.
+**A normalising step is a place a check can become a check about itself**, and the way to tell
+is to feed it the shape it was built to catch.
+
+**1ch. A rate and the load it was measured at are one fact; emitting them apart is what lets a
+sentence pick up the wrong one.** The manuscript answered "what is the negative-span rate at
+88% utilization?" three times: 23% (typed, since round 4, reconcilable with no artefact), 8.4%
+(`diseaseOverWhole`, which is the rate over the *whole corpus at every load*, wearing a
+load-specific label inside a reporting rule), and 30.5% (Table II, emitted and correct).
+
+The middle one is the instructive one. It *looked* emitted, so nobody checked it --- round 52
+verified `diseaseOverWhole`'s value against the sign count and pronounced it exact, which it
+is, at its other call site. **A macro is only as correct as its label, and a ledger sweep reads
+values.** `rt{Low,High}BasePct` and `rt{Low,High}LoadPct` are emitted together now, and a gate
+fails if a `diseaseOver*` macro appears in a sentence about a load.
+
+**1ci. An empty search is evidence about a phrase, not about a field.** A contributor asked
+whether `"negative latency"` was really the ideal search term. It was not. The phrase is
+nobody's --- this paper's included, since Section III-B takes *negative span* from Sharma et
+al. --- so its absence from the literature measured only that nobody had coined it. The two
+failure modes also live in different communities, so one vocabulary cannot test both.
+
+`scripts/novelty_sweep.py` now holds the terms by mechanism and by community, each with the
+kind of hit that would threaten the claim, and writes what each returned. The sharpest is the
+exact phrase the field does use: it returns one work, and the work is the one already cited.
+**Write the search down, or the originality claim is a recollection.**
+
+**1cj. The sweep's own count was not stable, which is this project's thesis pointed at its own
+bibliography.** A batch run returned 3 for that phrase; three interactive calls a minute later
+returned 1, 1 and 1, with the same single work listed each time. OpenAlex's `meta.count` is
+approximate under load. So the sweep samples each term three times and records the band, a term
+whose count moved is written `lo-hi` with the verdict *unstable: ask again*, and **the ledger
+is not written at all unless every term came back stable** --- which it refused to do twice
+while this was being built, correctly, under rate limiting. A number whose value depends on
+when you asked for it needs a spread or it needs asking again.
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

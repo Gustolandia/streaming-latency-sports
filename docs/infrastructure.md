@@ -1493,6 +1493,51 @@ every rule the writing has; the gates are what make that inheritance automatic i
 remembered. **Run the whole suite after a repair, not only after a feature** --- which is
 1bo's rule arriving from the other direction.
 
+**1bz. The one span the paper never counted was the one its premise was about.** Section II
+asserted *"with $D$ and $A$ both non-negative"*. Section V-D printed the acknowledgment lag's
+median, its tenth percentile and its ninetieth. Table I existed to show that causal chains do
+not invert, counted three of them, and found them clean. **$A = t_{\mathrm{ack}} -
+t_{\mathrm{send}}$ is the fourth chain, and its sign had never been counted.**
+
+The paper's own rule is the one it broke: *"Name the span you are subtracting … we caught our
+own instance only on counting the send-referenced span separately."* It told benchmark authors
+that a chain they believe in must still be counted, and believed in one without counting it.
+
+**The answer, now that it has been asked: zero negatives over 738,730 events, and the smallest
+run minimum is 112 microseconds clear of zero.** The premise is a measurement. Two things
+follow that are worth more than the count. First, the biconditional never needed it: $S = D -
+A$ is an identity, so $S < 0 \iff A > D$ whatever the signs are, and the premise was licensing
+the *reading* — a lag outrunning a delivery — rather than the algebra. Second, the margin is
+the better number: *"zero negatives"* is a fact about a threshold, *"112 microseconds clear"* is
+a fact about distance from one, and only the second says the chain was never close.
+
+**What made it cheap was a decision taken long before.** `recount_spans.py` keeps its spans in
+a table of `(name, later, earlier)` triples rather than as hand-written subtractions, and both
+of $A$'s endpoints were already in the joined per-event dict, used by two of the five spans.
+Adding the sixth was **one tuple**; the per-run counts, the per-broker split, the aggregate and
+the report line all followed from code that already existed. A table of spans is what turned a
+referee's question into an afternoon instead of an argument.
+
+And the honest note about what nearly stopped it. The referee who raised this wrote *"I
+couldn't run it — the event archive isn't in the checkout"*, and that was wrong: the archive is
+unpacked under `cloud_archive/extracted/runs`, and `--runs-dir` has always taken it. **Before
+recomputing anything, the recount was run unchanged against that tree and compared row by row
+to the committed ledger: 5,913 rows, byte-identical.** Only then was the span added. A
+recomputation that cannot first reproduce what it replaces is not a recomputation.
+
+**1ca. A referee's premise is worth checking too.** Round 70's other two items came with
+stated facts that were half right. The event archive was said to be absent and was not. And
+W3 asked for a sentence in Threats to shrink, on the reasoning that the span inventory's
+limitation had narrowed --- but that sentence is about the ten-tool *source audit*, which the
+round did not touch, so the shrink had no target. What the item was actually asking for
+belonged in Section V-A, where the chains are enumerated, and that is where it went: the
+sentence now says *"every causal chain the corpus contains"* rather than naming two of four.
+
+The rule is not to discount the report. Seven of round 70's items were right, including the
+one that drove this entire round. It is that **a review item names a defect and proposes a
+location, and only the first of those is evidence.** Check the location before editing it, the
+same way the defect gets checked before agreeing with it.
+
 **1c. Compression is where content pins die.** Round 19 cut about nine hundred words to hold
 twelve pages while adding a co-author's five requests, and five gates fired on the cuts --
 each one a decision some earlier round had fought for: the excluded-phase disclosure a

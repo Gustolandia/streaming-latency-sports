@@ -3181,9 +3181,16 @@ Eleven attempts in total never produced a measurement. The three diagnosed attem
 referee campaign (chain 18, block E) fail identically at OMB commit \texttt{5b1fa70}:
 \texttt{java.util.concurrent.CompletionException} wrapping
 \texttt{java.lang.IllegalArgumentException} in the coordinator--worker path, before any workload
-starts. Per attempt, the version, full coordinator and worker logs, and the extracted signature
-are archived in \texttt{docs/results/external/dist\_diag/}; a draft upstream report is at
-\texttt{docs/omb\_distributed\_issue.md} (not filed --- filing is the author's action).
+starts. What the artifact carries is the outcome of each attempt rather than its logs: one row
+per load level in \texttt{docs/results/external/omb\_distributed\_result.csv},
+\texttt{docs/results/external/dist\_load0/} and \texttt{docs/results/external/dist\_load50/},
+each recording that the run produced no latency output. The classpath failure of the first
+class is reproduced in full in \texttt{external/omb/omb\_worker\_client.log} and
+\texttt{external/omb/omb\_worker\_driver.log}. The coordinator--worker signatures of the
+three diagnosed attempts were read from the console and not retained, so the signature quoted
+above is the only record of them this artifact holds --- a limitation, and part of why the
+cross-host claim rests on source reading rather than on these runs. A draft upstream report is
+at \texttt{docs/omb\_distributed\_issue.md} (not filed --- filing is the author's action).
 
 
 \paragraph{The cross-host case is the one whose subtraction spans two clocks} There OMB's subtraction spans two of them, and its own
@@ -4202,8 +4209,11 @@ deletes a population is discussed in benchmarking and in metrology.
 
 \texttt{scripts/novelty\_sweep.py} holds \sweepTerms{} search terms across
 \sweepCommunities{} communities and both failure modes, each recorded with the kind of hit that
-would threaten the claim, and writes what each returned to
-\texttt{docs/results/external/novelty\_sweep.csv}. Terms that come back in the
+would threaten the claim. A run writes what each returned to
+\texttt{docs/results/external/novelty\_sweep.csv}; that file is the record of a run and
+is absent from the artifact until one succeeds, because the script declines to write a sweep
+whose terms it could not all read --- it declined twice while this section was being written,
+once because a count had moved between samples and once under a rate limit. Terms that come back in the
 thousands are recorded as too broad to have tested anything, which is the honest verdict for a
 query that cannot be read through; the ones that matter return few enough to open every hit.
 

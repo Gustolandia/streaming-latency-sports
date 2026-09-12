@@ -400,3 +400,140 @@ class TestEveryTypedNumeralInTheMainTextIsADecision:
         for literal in ("$0.1$--$0.5$", "$0.5$--$0.1$"):
             assert literal not in paper
         assert "3{,}315" not in paper, "the corpus size is emitted, not typed"
+
+
+class TestEveryWordSpelledQuantityIsADecisionToo:
+    r"""The other representation. Round 74's required item.
+
+    Round 73 closed the gap where a numeral touching a control word escaped the sweep. It did
+    not close the gap where a number is not a numeral at all. This manuscript spells small
+    numbers as words, and it does so deliberately: `emit_paper_numbers.py` carries a `_spell()`
+    helper and emits eleven `...Word` twins -- `harnessAuditedWord` -> *ten*,
+    `harnessSilentWord` -> *five*, `replayedMatchesWord` -> *eleven* -- so that a quantity can
+    open a sentence. **A number spelled out is a number typed.**
+
+    Section VI-A read "the only cells that escape are the **four** whose payload is large
+    enough". `ombEscapeCellsWord` exists, emits *four* from `len(cells) - len(grid)`, and the
+    supplement uses it in exactly that sentence's twin. The same quantity was emitted in one
+    document and typed in the other, four pages from the code that computes it.
+
+    So the rule here is narrower than the numeral one and has to be, because English is full
+    of the word *one*. It is not "no word-numbers"; it is **"no word-number that names a
+    quantity the ledger already emits"**. That is mechanical: for each `...Word` macro, take
+    its value and look for the bare word in a context that is about the same thing.
+
+    The residue -- word-numbers naming quantities with no macro -- is enumerated below with a
+    reason, the same way the numerals are.
+    """
+
+    #: Spelled quantities that are typed on purpose, with the reason. Short by design.
+    ALLOWED_WORDS = {
+        "seven": "the withdrawn E1 corpus's median events per run, stated identically in S3 "
+                 "about a corpus that is fixed and cannot move; emitting it would attach a "
+                 "live macro to a dead campaign",
+        "four": "'about four samples in ninety thousand' is a gloss on an emitted "
+                "percentage, marked as approximate so it cannot be read as a second reading",
+        "ninety": "the other half of that gloss, and an approximation of the same emitted "
+                  "percentage rather than a reading of its own",
+        "thirty": "'nearly thirty years' since Paxson 1998, an approximation flagged as one",
+        "three": "the instance count of the testbed and the decimal places of a printed "
+                 "figure, both design facts rather than measurements",
+        "five": "SPEC and TPC's criteria count, quoted from their paper",
+        "two": "the log base of the histogram's buckets, and ordinary English throughout",
+        "hundred": "'more than one event in a hundred' is the audit threshold written as a "
+                   "proportion in words; the threshold itself is a rule we chose, not a "
+                   "measurement, and Section IV-E gives it as a percentage two lines above",
+        "thousand": "the other half of the 'about four samples in ninety thousand' gloss",
+    }
+
+    def _word_macros(self):
+        """value -> macro name, for every `...Word` macro the ledger emits."""
+        import re as _re
+        gen = (REPO / "docs" / "generated" / "paper_numbers.tex").read_text(encoding="utf-8")
+        out = {}
+        for name, val in _re.findall(
+                chr(92) * 2 + r"newcommand\{" + chr(92) * 2 + r"(\w*Word)\}\{([^}]*)\}", gen):
+            if name.endswith("WordCap"):
+                continue
+            out.setdefault(val.lower(), []).append(name)
+        return out
+
+    def test_no_sentence_types_a_word_the_ledger_emits_for_that_quantity(self, paper):
+        r"""The mechanical half: a bare word next to the noun its macro is about.
+
+        Checked by proximity to the macro's own subject rather than by the word alone, because
+        "one clock" and "two threads" are English and must stay English. The subjects come
+        from the macro names themselves, so a new `...Word` macro is covered the day it is
+        added.
+        """
+        import re as _re
+        subjects = {
+            "ombEscapeCellsWord": ("cells that escape", "escape are the", "whose payload"),
+            "harnessAuditedWord": ("tools at source", "tools of Section"),
+            "harnessSilentWord": ("dispose of", "disposing of"),
+            "harnessSilentIndependentWord": ("independent tools",),
+            "harnessDisposalClassesWord": ("classes",),
+            "replayedMatchesWord": ("of its matches", "matches of one sport"),
+            "spreadIncommensurateWord": ("configurations whose send interval",),
+            "litComparisonsWord": ("comparisons we placed",),
+            "litInsideRegimeWord": ("report figures at or below",),
+            "ombEscapeCellsWordCap": (),
+        }
+        emitted = self._word_macros()
+        prose = _re.sub(r"(?m)^%[^\n]*", "", paper)
+        bad = []
+        for value, names in emitted.items():
+            for name in names:
+                for cue in subjects.get(name, ()):
+                    i = prose.find(cue)
+                    while i >= 0:
+                        window = " ".join(prose[max(0, i - 160):i + 160].split())
+                        if (_re.search(r"(?<![A-Za-z])" + value + r"(?![A-Za-z])", window)
+                                and (chr(92) + name) not in window):
+                            bad.append("%r near %r but %s emits it"
+                                       % (value, cue, name))
+                        i = prose.find(cue, i + 1)
+        assert not bad, (
+            "typed where the ledger already emits the same quantity: %s" % sorted(set(bad)))
+
+    def test_every_other_spelled_quantity_is_accounted_for(self, paper):
+        """The enumerated half, matching the numeral inventory's discipline."""
+        import re as _re
+        prose = _re.sub(r"(?m)^%[^\n]*", "", paper)
+        # Only words that sit next to a unit, a noun of count, or a comparative -- the shapes
+        # in which English writes a quantity rather than an article.
+        pat = _re.compile(
+            r"(?<![A-Za-z])(seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|"
+            r"sixty|seventy|eighty|ninety|hundred|thousand)(?![A-Za-z])")
+        found = {}
+        for m in pat.finditer(prose):
+            if (chr(92) + "ombEscapeCellsWord") in prose[max(0, m.start() - 40):m.start()]:
+                continue
+            found.setdefault(
+                m.group(1),
+                " ".join(prose[max(0, m.start() - 80):m.start() + 80].split()))
+        unknown = sorted(set(found) - set(self.ALLOWED_WORDS))
+        assert not unknown, (
+            "spelled quantities with no reason recorded: %s. Emit them, or add them to "
+            "ALLOWED_WORDS with why they are not measurements. Context: %s"
+            % (unknown, [found[u] for u in unknown]))
+
+    def test_the_word_inventory_has_not_gone_stale(self, paper):
+        import re as _re
+        prose = _re.sub(r"(?m)^%[^\n]*", "", paper)
+        stale = sorted(w for w in self.ALLOWED_WORDS
+                       if not _re.search(r"(?<![A-Za-z])" + w + r"(?![A-Za-z])", prose))
+        assert not stale, "these words are no longer in the paper: %s" % stale
+
+    def test_the_defect_that_prompted_this_is_caught(self, paper):
+        """Mutation, not inspection: put the typed word back and the gate must fire."""
+        import re as _re
+        bad = paper.replace(
+            "the only cells that escape are the " + chr(92) + "ombEscapeCellsWord{}",
+            "the only cells that escape are the four",
+        ).replace(
+            "The only cells that escape are the " + chr(92) + "ombEscapeCellsWord{}",
+            "The only cells that escape are the four")
+        assert bad != paper, "Section VI-A has been reworded; retarget this mutation"
+        with pytest.raises(AssertionError):
+            self.test_no_sentence_types_a_word_the_ledger_emits_for_that_quantity(bad)

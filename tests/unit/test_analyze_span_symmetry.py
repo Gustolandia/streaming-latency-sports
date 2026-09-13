@@ -179,6 +179,45 @@ class TestRhoFromPairedEvents:
                                                                     monkeypatch):
         assert self._run(tmp_path, monkeypatch, None)["rho_DA"] in ("nan", "")
 
+    def _run_within(self, tmp_path, monkeypatch, within, extra_conditions=0):
+        payload = json.loads(synthetic(tmp_path, extra_conditions=extra_conditions)
+                             .read_text(encoding="utf-8"))
+        for cond in payload["conditions"].values():
+            cond["pair"] = pair_sums([(d, d + 500) for d in range(1000, 3000, 10)])
+            if within is not None:
+                cond["pair_within"] = within
+        path = tmp_path / "within.json"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        monkeypatch.setattr(ass, "IN_JSON", str(path))
+        monkeypatch.setattr(ass, "OUT_CSV", str(tmp_path / "out.csv"))
+        ass.main()
+        return {r["condition"]: r for r in csv.DictReader(open(tmp_path / "out.csv"))}
+
+    def test_the_within_run_correlation_reads_the_run_centred_sums(self, tmp_path, monkeypatch):
+        """Round 79 (R2). A pool that correlates perfectly can hold runs that do not."""
+        rows = self._run_within(tmp_path, monkeypatch,
+                                {"n": 40, "runs": 2, "sdd": 10.0, "saa": 5.0, "sda": 0.0})
+        row = rows["kafka_n2_feed1#pass"]
+        assert float(row["rho_DA"]) == 1.0
+        assert float(row["rho_DA_within"]) == 0.0
+
+    def test_without_run_centred_sums_there_is_no_within_run_correlation(self, tmp_path,
+                                                                          monkeypatch):
+        rows = self._run_within(tmp_path, monkeypatch, None)
+        assert rows["kafka_n2_feed1#pass"]["rho_DA_within"] in ("nan", "")
+
+    def test_an_impossible_within_run_correlation_raises(self, tmp_path, monkeypatch):
+        with pytest.raises(ValueError, match="within-run rho outside"):
+            self._run_within(tmp_path, monkeypatch,
+                             {"n": 10, "runs": 1, "sdd": 1.0, "saa": 1.0, "sda": 50.0})
+
+    def test_the_summary_prints_the_within_run_median(self, tmp_path, monkeypatch, capsys):
+        self._run_within(tmp_path, monkeypatch,
+                         {"n": 40, "runs": 2, "sdd": 10.0, "saa": 10.0, "sda": 8.0},
+                         extra_conditions=4)
+        out = capsys.readouterr().out
+        assert "WITHIN-RUN CORRELATION" in out and "median 0.800" in out
+
     def test_a_single_pair_is_not_enough(self, tmp_path, monkeypatch):
         one = {"n": 1, "outside": 0, "sd": 1.0, "sa": 1.0,
                "sdd": 1.0, "saa": 1.0, "sda": 1.0}

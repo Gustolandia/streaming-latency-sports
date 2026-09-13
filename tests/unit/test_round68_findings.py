@@ -118,8 +118,8 @@ class TestR2TheConcession:
 
     def test_the_supplement_no_longer_quotes_a_sentence_the_paper_dropped(self, supplement):
         assert "The main text concedes that most published comparisons" not in supplement
-        assert "The main text states the condition under which the deletion law does not bind" \
-            in supplement
+        # Round 79 (R1): the pointer now names its section, Section~\mainRelatedBench{}.
+        assert "states the condition under which the deletion law does not bind" in supplement
 
     def test_the_record_still_runs_two_of_three_the_other_way(self):
         """The count the concession is measured against, read from the artefact."""

@@ -200,7 +200,7 @@ class TestW2NeitherDocumentImpliesTheRejectedNeverRecoverExactly:
     def test_the_defect_that_prompted_this_is_caught(self, paper):
         """Mutation: put the one-sided clause back and the gate must fire."""
         bad, n = re.subn(
-            r"and without the exact\s+recoveries no shift is detectable,[^(]*",
+            r"and without it\s+no shift is\s+detectable,[^(]*",
             "where " + BS + "recoveryPassExact" + r"\\% of the passing conditions "
             "recover the delivery exactly", paper)
         assert n == 1, "Section V-D has been reworded; retarget this mutation"

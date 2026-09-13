@@ -1112,7 +1112,9 @@ def retention_macros():
         ("ombPubLatLo", "%.1f" % min(pub)),
         ("ombPubLatHi", "%.1f" % max(pub)),
         ("ombRetentionRho", "%+.2f" % rho),
-        ("ombRetentionRhoCI", "%+.2f$--$%+.2f"
+        # "to", not a dash (round 79, W1): "+0.08--+0.51" did not read as a range, and a signed
+        # interval elsewhere in the article already prints as "-1.8 to 8.3".
+        ("ombRetentionRhoCI", "%+.2f$ to $%+.2f"
          % stat_intervals.fisher_ci(rho, len(grid))),
         ("ombRetentionRhoN", str(len(grid))),
     ]
@@ -2396,6 +2398,14 @@ def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
     if rho:
         out += [("spanRhoMedian", "%.2f" % _st.median(rho)),
                 ("spanRhoConditions", str(len(rho)))]
+    # Round 79 (R2). Round 50 moved this number's unit from "an event" to "a run", but the
+    # co-moments were summed over a condition's runs, so the correlation printed as "within a
+    # run" pooled between-run covariance too. The run-centred correlation is emitted beside
+    # it; the sentence keeps the unit only if this median supports it.
+    rho_w = [float(r["rho_DA_within"]) for r in rows
+             if r.get("rho_DA_within") not in (None, "", "nan")]
+    if rho_w:
+        out.append(("spanRhoWithinMedian", "%.2f" % _st.median(rho_w)))
 
     # The displacement's own scale, and what it does to a reported number.
     #

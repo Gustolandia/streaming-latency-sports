@@ -40,6 +40,13 @@ DOCS = ("paper.tex", "supplement.tex")
 #: (document, macro, a distinctive fragment of the surrounding text) so that moving the
 #: sentence does not silently keep the exemption alive somewhere else.
 ALLOWED = {
+    ("supplement.tex", "spanRhoMedian", r"broker transport is $0.84$ and $0.80$~ms"):
+        "E1's historical broker transport medians in milliseconds (S3, Table S2), which happen "
+        "to equal the pooled D-A correlation S24.2 began reading in round 79; a latency and a "
+        "correlation sharing two digits",
+    ("supplement.tex", "spanRhoWithinMedian", r"broker transport is $0.84$ and $0.80$~ms"):
+        "the same E1 transport median in milliseconds, equal to the within-run D-A correlation "
+        "emitted in round 79; the coincidence the entry above records, for the second value",
     ("supplement.tex", "tailRsq", r"\rho$ of $0.881$, $0.920$, $0.950$, $0.970$ and $0.990$"):
         "a utilization in the knee sweep that happens to equal the fitted R-squared",
     ("supplement.tex", "tailRsq", r"Over $\rho = 0.881$ to $0.990$"):

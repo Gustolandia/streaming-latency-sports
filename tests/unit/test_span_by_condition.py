@@ -57,6 +57,45 @@ class TestConditionOf:
         assert sbc.condition_of("mechanism_ea9_rep1") is None
 
 
+class TestWithinRunCoMoments:
+    """Round 79 (R2). The pooled co-moments sum a condition's runs; a run whose D and A both sit
+    high adds covariance no single run contains. The run-centred sums remove it."""
+
+    @staticmethod
+    def _run(conds, rr, rep, shift_us):
+        # D climbs with the event; A goes 600, 400, 400, 600 -- symmetric, so uncorrelated with D
+        # inside the run. The second run adds the same large shift to both.
+        ev = {}
+        for k, a in enumerate((600, 400, 400, 600)):
+            d = 1000 + 100 * k + shift_us
+            send = 1_000_000_000 + k * 10_000_000
+            ev["e%d" % k] = (send, send + (a + shift_us) * 1000, send + d * 1000)
+        run = RUN.replace("rep1", "rep%d" % rep)
+        sbc.consume_run(conds, rr, run, prod_rows(ev), cons_rows(ev))
+
+    def test_between_run_covariance_stays_out_of_the_within_run_sums(self):
+        conds, rr = {}, []
+        self._run(conds, rr, 1, 0)
+        self._run(conds, rr, 2, 4000)
+        acc = conds["kafka_n2_feed1#pass"]
+        pair, within = acc["pair"], acc["pair_within"]
+        n = pair["n"]
+        cov = pair["sda"] / n - (pair["sd"] / n) * (pair["sa"] / n)
+        var_d = pair["sdd"] / n - (pair["sd"] / n) ** 2
+        var_a = pair["saa"] / n - (pair["sa"] / n) ** 2
+        assert cov / (var_d * var_a) ** 0.5 > 0.99, "the pool sees the shared shift"
+        assert within["runs"] == 2 and within["n"] == 8
+        assert abs(within["sda"]) < 1e-6, "inside each run D and A do not move together"
+        assert within["sdd"] > 0 and within["saa"] > 0
+
+    def test_a_run_wholly_outside_the_window_adds_no_within_run_sums(self):
+        conds, rr = {}, []
+        far = {"far": (1_000_000, 1_600_000, 501_000_000)}
+        sbc.consume_run(conds, rr, RUN, prod_rows(far), cons_rows(far))
+        within = next(iter(conds.values()))["pair_within"]
+        assert within == {"n": 0, "runs": 0, "sdd": 0.0, "saa": 0.0, "sda": 0.0}
+
+
 class TestAdd:
     def test_in_window_under_and_over_each_take_their_branch(self):
         acc = sbc.new_cond()["S"]

@@ -184,10 +184,16 @@ def plot_deletion(ax, pts, quantum_ms=AT_GRID_MAX_MS):
     at_grid = med <= quantum_ms
 
     # The above-grid markers are counted in their own legend entry, so each one has to be
-    # visible; the at-grid stripe is read as a range and is left alone.
+    # visible.
     above_x = spread_coincident(list(med[~at_grid]), list(ret[~at_grid]))
 
-    ax.scatter(med[at_grid], ret[at_grid], s=16, color=KEPT, edgecolors="none",
+    # Round 79 (W3). The at-grid stripe used to be left alone as "read as a range", and the
+    # legend still counted it: 71 cells, 67 of them in one column of 4-point markers, where 57
+    # of the 66 neighbouring pairs sit closer than a marker. A reader could count about two
+    # dozen. The caption's count could not be checked from the picture, which is the defect
+    # B15 exists to prevent. The markers go translucent, so overlap shows as depth, and each
+    # grid column prints its own count from the data (below), totalling the legend's.
+    ax.scatter(med[at_grid], ret[at_grid], s=16, color=KEPT, edgecolors="none", alpha=0.45,
                zorder=3, label="printed at the grid (%d)" % at_grid.sum())
     ax.scatter(above_x, ret[~at_grid], s=18, facecolors="none", edgecolors=GREY,
                linewidths=0.9, zorder=3, label="printed above it (%d)" % (~at_grid).sum())
@@ -225,6 +231,13 @@ def plot_deletion(ax, pts, quantum_ms=AT_GRID_MAX_MS):
     # cannot read is not a repair for a claim a reader cannot check.
     ax.tick_params(axis="x", which="minor", labelsize=8, length=2.5, pad=1.5)
 
+    # Each grid column's count, just above its topmost marker, from the same data the legend
+    # totals. Derived per grid value, like the ticks, so a third value would get a third count.
+    for g in grid_values:
+        column = ret[at_grid][med[at_grid] == g]
+        ax.text(g, column.max() * 1.22, "%d" % len(column), fontsize=8, color=KEPT,
+                ha="center", va="bottom")
+
     lo, hi = ret[at_grid].min(), ret[at_grid].max()
     xs = med[at_grid].min()
     ax.annotate("", xy=(xs * 0.62, lo), xytext=(xs * 0.62, hi),
@@ -247,7 +260,10 @@ def plot_deletion(ax, pts, quantum_ms=AT_GRID_MAX_MS):
         ax.annotate(tag, xy=(x, y), xytext=(0, -9), textcoords="offset points",
                     fontsize=8, color=GREY, ha="center", va="top")
 
-    ax.legend(fontsize=8, frameon=False, loc="lower right", handletextpad=0.4)
+    leg = ax.legend(fontsize=8, frameon=False, loc="lower right", handletextpad=0.4)
+    # The legend's marker is the category, not a depth of overlap: drawn opaque.
+    for handle in getattr(leg, "legend_handles", None) or getattr(leg, "legendHandles", []):
+        handle.set_alpha(1.0)
 
 
 # --- the stall spectrum -------------------------------------------------------------------

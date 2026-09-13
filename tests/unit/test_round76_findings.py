@@ -171,7 +171,8 @@ class TestW1TheMediansCross:
         # Round 77 (R1) withdrew the crossing this test pinned: the shift between the two
         # non-zero populations is 0.0, so "crosses it" read a reversal into no shift at
         # all. The main text now states the shift; the medians stay in S16.9 as description.
-        assert "no shift remains" in vd and "crosses it" not in vd
+        # Round 78 (R1): and states it as undetectable, not as absent.
+        assert "no shift is detectable" in vd and "crosses it" not in vd
         assert BS + "recoveryNonzeroShift" in vd
 
     def test_the_supplement_states_it_with_both_denominators(self, supplement):
@@ -199,7 +200,7 @@ class TestW2NeitherDocumentImpliesTheRejectedNeverRecoverExactly:
     def test_the_defect_that_prompted_this_is_caught(self, paper):
         """Mutation: put the one-sided clause back and the gate must fire."""
         bad, n = re.subn(
-            r"and with the exact\s+recoveries set aside no shift remains,[^(]*",
+            r"and without the exact\s+recoveries no shift is detectable,[^(]*",
             "where " + BS + "recoveryPassExact" + r"\\% of the passing conditions "
             "recover the delivery exactly", paper)
         assert n == 1, "Section V-D has been reworded; retarget this mutation"
@@ -359,7 +360,7 @@ class TestTheRenderedPageCarriesIt:
     def test_the_bracket_prints_in_section_v_d(self):
         flat = " ".join(_rendered("paper").split())
         assert "1.2 points [-1.8 to 8.3]" in flat or "points [" in flat
-        assert "no shift remains" in flat and "crosses it" not in flat
+        assert "no shift is detectable" in flat and "crosses it" not in flat
 
     def test_the_supplement_table_prints_its_intervals(self):
         flat = " ".join(_rendered("supplement").split())

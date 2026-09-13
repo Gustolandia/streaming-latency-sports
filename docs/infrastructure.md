@@ -1818,7 +1818,7 @@ it arrives from the direction you trust.**
 between 1.9% and 14.3%, and 12 between 20% and 33%. Implementing that grouping from the data
 exposed that it, too, was drawn by eye: splitting the accepted population at its largest gap
 puts the break between 22% and 29%, not between 14% and 20%. The prose now counts both
-populations in three bands from one stated edge, `stat_intervals.RECOVERY_BAND_PCT` -- exact,
+populations in three bands from one stated edge, `stat_intervals.RECOVERY_BAND_PCT` (derived since round 78; see 1da) -- exact,
 below 20%, 20% or more -- which gives 14/14/14 and 6/17/5 and needs no eye at all. **Describe a
 distribution by counts in stated bands, never by the shapes a picture suggests.**
 
@@ -1841,6 +1841,48 @@ day someone opens an issue, and nothing would notice. So the search is recorded 
 the date and the age from that row, and `scripts/check_omb_tracker.py` re-runs the search and
 fails if the recorded answer has moved. Like the upstream-lines audit, it is run by hand and not
 in the suite: a stranger's issue is news about them, not a defect here.
+
+**1da. A sentence can be wrong in its verb while every number under it is right.** Round 75
+introduced the recovery comparison with the word "indistinguishable". Two rewordings later the
+main text said "the populations do not [differ]" and "no shift remains", and Fig. S11 was titled
+"no shift between them". Rounds 76 and 77 checked every emitted value beneath those phrases and
+neither checked the phrases. A failure to reject a difference had become an assertion of
+sameness. The 90% intervals support equivalence only against margins of 8.3 and 7.1 points,
+about half the quantity compared. `_recovery_macros` now emits those margins. The prose says
+"cannot be told apart" and "no shift is detectable", and S16.9 states the margins and claims no
+equivalence. `test_round78_findings.py` fails if a sameness phrase returns. **A gate on a number
+does not gate the verb that reads it.** A footnote on cost: the referee offered the replacements
+as "same length". Measured in the source, they were five words longer, and on the page that was
+one line, enough to push the last biography onto a thirteenth page. The line came back from the
+same paragraph: the pair count left the main text (S16.9 prints it), and two clauses were
+shortened. The first trim, of thirty characters, still left the word "requires." alone on a
+sixteenth line, and column ends compared against the committed PDF showed that this single line
+was the only cascade. "Same length" describes the source, and only the rendered page can confirm it.
+
+**1db. A constant that equals a statistic is a second copy of it.** S16.9's band edge was
+`RECOVERY_BAND_PCT = 20.0`, and the accepted population's upper quartile, printed in the table
+above it, was also 20. Nothing said so, so the edge read as a free choice. Nothing tied the two
+together either, so a new campaign could move one and not the other. The edge is now
+`stat_intervals.recovery_band_edge`, the same nearest-rank quartile the table prints, and the
+figure and the ledger both call it. The description that depends on the edge ("a third in each")
+now states the range where it holds. `equal_split_edges` computes that range: above 14.3% and up
+to the quartile. The emitter omits the macro once the thirds stop holding, so the supplement
+fails to build on that sentence instead of printing it wrong. This is round 76's at-grid lesson
+in a new place: **one decision, one definition.**
+
+**1dc. A colour is a legend the reader carries from figure to figure.** Figure 4 and the deletion
+histogram draw what was deleted in red (`DELETED`). Fig. S11 drew the rejected recovery
+conditions in the same red, in the section whose point is that those conditions were kept and
+measured. No gate compares colour with meaning, and the round-77 figure passed every gate. The
+rejected series is now `GREY`. `test_round78_findings.py` draws the panels and fails if `DELETED`
+appears in them. **A colour that carries a meaning keeps it across the whole submission,
+supplement included.**
+
+**1dd. A top float can land above the heading of the section that introduces it.** S11 was
+defined after S16.9's opening paragraphs, but `[tb]` sent it to the top of the page, above the
+heading. A reader met the exhibit before the section. The source was in order; the page was not.
+The float is now `[b]`, and a rendered-page test checks that the heading precedes the caption.
+**Check reading order on the page, not in the source.**
 
 **1co. A spelling checker that proposes `pairwize` is a checker people learn to argue with.**
 The British-spelling gate runs a morphological rule over the `-ise` family, which is right and

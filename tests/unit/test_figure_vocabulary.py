@@ -229,7 +229,7 @@ class TestTheRealFiguresPassTheirOwnGate:
     RESULT_BUILDERS = ("build_deletion", "build_spectrum", "build_grid", "build_mechanism",
                        "build_ttrue", "build_payload", "build_priority_ladder",
                        # Round 54: the exposure table drawn as a curve, for the supplement.
-                       "build_exposure")
+                       "build_exposure", "build_recovery")
 
     @pytest.mark.parametrize("builder", RESULT_BUILDERS)
     def test_a_result_figure_builds_without_a_retired_term(self, builder, tmp_path):

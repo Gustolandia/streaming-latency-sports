@@ -384,6 +384,11 @@ and the OpenMessaging Benchmark~\cite{openmessaging2018} is the tool they share.
 experimental setup can dominate a result is established~\cite{mytkowicz2009wrong}, and how
 to report one is a settled literature we
 follow~\cite{georges2007rigorous,hoefler2015benchmarking}. What that literature does not do
+% Round 77 (W5): Chen et al., "Statistical performance comparisons of computers", IEEE TC
+% 64(5), 2015 -- bib key chen2015statcomparisons -- is prepared as the swap for
+% georges2007rigorous if an editor asks for a venue citation on statistical reporting. The
+% referee advised against swapping unprompted: Georges is the better-known citation and every
+% current reference is load-bearing. The sentence survives the swap unchanged.
 is check what its tool discards. Where a comparison reports a median above the
 tool's one-millisecond timestamp resolution, the deletion arithmetic of
 % Round 55 moved the denominator to Supplement S33.4, where the exhibits are set out. With
@@ -823,9 +828,10 @@ conditions the check passes the recovered median is $\recoveryErrPass\%$ from th
 and $\recoveryErrPassHi\%$ at the upper quartile; over the $\recoveryFailN$ it rejects,
 $\recoveryErrFail\%$ and $\recoveryErrFailHi\%$. Those medians differ; the populations do
 not. The worst condition is $\recoveryPassMax\%$ on either side and the Hodges--Lehmann
-shift over $\recoveryShiftPairs$ pairs is $\recoveryShift$ points; what opens the median gap
-is a concentration at zero, where $\recoveryPassExact\%$ of the passing conditions recover
-the delivery exactly (Supplement~S16.9). The recovery therefore holds where the check
+shift over $\recoveryShiftPairs$ pairs is $\recoveryShift$ points [95\% bootstrap:
+$\recoveryShiftCI$]; what opens the median gap is a concentration at zero, and with the exact
+recoveries set aside no shift remains, $\recoveryNonzeroShift$ points
+[$\recoveryNonzeroShiftCI$] (Supplement~S16.9). The recovery therefore holds where the check
 rejects as well as where it passes, which is what Section~\ref{sec:authors} asks of it.
 
 \subsection{The stall spectrum, and the scheduler's slice}
@@ -940,13 +946,13 @@ the filter both landed on the one span that crosses processes.
 
 \paragraph{The consequence, measured}
 Of the $\ombMedianCells$ instrumented cells whose own summary we captured,
-$\ombGridMedianCells$ report a median of $1.0$ or $2.0$~ms, and across those the benchmark
+$\ombGridMedianCells$ report a median of $\ombGridPrintedLo$ or $\ombGridPrintedHi$~ms, and across those the benchmark
 computes its reported distribution from between $\mathbf{\ombGridRetentionMin\%}$ and
 $\mathbf{\ombGridRetentionMax\%}$ of the samples it takes. Two replicates of one cell ---
 $200$~B payload at $500$~msg/s, same host --- kept $\ombKeptLo$ and $\ombKeptHi$ samples, a
-$\ombRetentionFold$-fold difference, and both reported a median of $1.0$~ms with nothing in
+$\ombRetentionFold$-fold difference, and both reported a median of $\ombGridPrintedLo$~ms with nothing in
 the output to distinguish them. Three uninstrumented runs print p50, p95, p99 and max all
-equal to $1.0$ to three decimal places. The full ledger holds $\ombRuns$ instrumented runs,
+equal to $\ombGridPrintedLo$ to three decimal places. The full ledger holds $\ombRuns$ instrumented runs,
 $\ombDiscarded$ discarded samples and $\ombNegatives$ negatives, and over it the retained
 fraction falls as low as $\ombRetentionMinExact\%$ --- about four samples in ninety
 thousand.
@@ -963,7 +969,8 @@ keeps the residue and throws away the estimator.
 \includegraphics[width=\columnwidth]{docs/results/figures/deletion.pdf}
 \caption{\textbf{What the benchmark prints against what it kept in order to print it}, over
 the $\ombMedianCells$ cells that printed a summary of their own. At the timestamp resolution the printed median carries no
-information about retention: $\ombGridMedianCells$ cells report $1.0$ or $2.0$~ms while the
+information about retention: $\ombGridMedianCells$ cells report $\ombGridPrintedLo$ or
+$\ombGridPrintedHi$~ms --- the two labeled ticks --- while the
 retained fraction spans $\ombRetentionFold\times$. Away from it the harness behaves: the
 failure is confined to deliveries shorter than the timestamp resolution.}
 \label{fig:deletion}

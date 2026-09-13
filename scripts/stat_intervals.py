@@ -10,7 +10,9 @@ typed, for the same reason the campaign counts are (see emit_paper_numbers.py). 
 previously asserted "disjoint Wilson intervals" without printing them; this module prints
 them.
 
-Three estimators, chosen for what they assume:
+Eight estimators, chosen for what they assume (round 77 added the last two,
+newcombe_diff_ci() for a difference of two proportions and ecdf_crossings() for where two
+empirical distribution functions change order, listed at the end):
 
   wilson()      score interval for a binomial proportion. Not Wald: at the real-time arms'
                 rates the normal approximation's coverage falls well short of nominal and its
@@ -30,6 +32,23 @@ Three estimators, chosen for what they assume:
                 of freedom. Four points is four points: the interval is wide and the paper
                 says so rather than hiding it behind R^2.
 
+  fisher_ci()   interval for a correlation, via the z transform. Wilson is for a proportion
+                and does not transfer: r is bounded on both sides and skewed everywhere but
+                zero.
+
+  hl_bootstrap_ci()
+                percentile bootstrap for a Hodges-Lehmann shift. Added in round 76, when a
+                referee found the manuscript quoting two such shifts and bracketing only
+                one of them -- while the supplement claimed the statistic was used the same
+                way in both places.
+
+  ks_two_sample(), ks_permutation_p()
+                the two-sample Kolmogorov-Smirnov statistic and its permutation p. A shift
+                of zero is consistent with two distributions of different shape, so a claim
+                that two POPULATIONS agree needs a statistic about distributions rather
+                than about their offset. Tie-correct, because the samples it is used on are
+                mostly ties.
+
 CLI:
     python scripts/stat_intervals.py            # print every interval the paper quotes
 """
@@ -37,6 +56,7 @@ import argparse
 import csv
 import math
 import os
+import random
 import sys
 
 RESULTS = os.path.join("docs", "results")
@@ -117,6 +137,206 @@ def fisher_ci(rho, n, z=Z_975):
     zeta = 0.5 * math.log((1 + rho) / (1 - rho))
     half = z / math.sqrt(n - 3)
     return math.tanh(zeta - half), math.tanh(zeta + half)
+
+
+def newcombe_diff_ci(k_a, n_a, k_b, n_b, z=Z_975):
+    """Interval for the difference of two proportions, p_a - p_b. Returns (lo, hi).
+
+    Newcombe's hybrid score interval (his method 10), built from the two Wilson intervals.
+    Round 77's required item. S16.9 argued that two exact-recovery shares were not a
+    population difference because their Wilson intervals "overlap across almost their whole
+    length". They overlapped across about two-thirds -- and overlap is not the test in any
+    case, because two 95% intervals can overlap while the difference between their centres
+    is significant. The direct statistic is an interval on the difference, and this one is
+    made from the same Wilson limits Section IV-F already uses, so it adds a method without
+    adding a register.
+    """
+    for k, n in ((k_a, n_a), (k_b, n_b)):
+        if n <= 0:
+            raise ValueError("n must be positive")
+        if not 0 <= k <= n:
+            raise ValueError("k must lie between 0 and n")
+    p_a, p_b = k_a / n_a, k_b / n_b
+    l_a, u_a = wilson(k_a, n_a, z)
+    l_b, u_b = wilson(k_b, n_b, z)
+    d = p_a - p_b
+    return (d - math.sqrt((p_a - l_a) ** 2 + (u_b - p_b) ** 2),
+            d + math.sqrt((u_a - p_a) ** 2 + (p_b - l_b) ** 2))
+
+
+def ecdf_crossings(a, b):
+    """Pooled values at which the empirical CDFs of `a` and `b` change order. Returns a list.
+
+    Evaluated at distinct pooled values, tie-correct for the reason `ks_two_sample` is, and
+    blind to points where the two functions merely touch: a touch is not a crossing. Added in
+    round 77 for the recovery figure's caption, after the referee read the crossings off a
+    drawing as "near 15% and 29%"; the functions change order at 18.2% and 34.8%. A caption
+    that names where two curves cross should take the number from the curves.
+    """
+    a, b = sorted(a), sorted(b)
+    if not a or not b:
+        raise ValueError("both samples must be non-empty")
+    out, prev, i_a, i_b = [], 0, 0, 0
+    for x in sorted(set(a) | set(b)):
+        while i_a < len(a) and a[i_a] <= x:
+            i_a += 1
+        while i_b < len(b) and b[i_b] <= x:
+            i_b += 1
+        gap = i_a / len(a) - i_b / len(b)
+        sign = (gap > 1e-12) - (gap < -1e-12)
+        if sign and prev and sign != prev:
+            out.append(x)
+        if sign:
+            prev = sign
+    return out
+
+
+def recovery_populations(path=os.path.join(RESULTS, "span_symmetry.csv")):
+    """The displacement recovery's error, as % of each condition's median delivery, split by
+    whether the consistency check accepted the condition. Returns {"Pass": [...], "Fail": [...]}.
+
+    One loader for the numbers the ledger emits and for the figure that draws them. Round 76
+    learned what two copies of one definition cost (the at-grid rule, written twice); round 77
+    added a figure of these populations and put the definition here first.
+    """
+    with open(path, encoding="utf-8", newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    out = {}
+    for suffix, name in (("#pass", "Pass"), ("#fail", "Fail")):
+        out[name] = sorted(abs(float(r["recovery_err_us"])) / float(r["median_D_us"]) * 100.0
+                           for r in rows
+                           if r["condition"].endswith(suffix) and float(r["median_D_us"]))
+    return out
+
+
+#: The band edge the recovery populations are counted against, in % of median delivery.
+#: Round 77 replaced S16.9's "a spike at zero with a second cluster" and "nearly flat" with
+#: counts in bands, because a cluster is wherever an eye puts the line: the referee's own
+#: reading put the accepted population's break between 14% and 20%, and splitting at its
+#: largest gap puts it between 22% and 29%. A stated threshold and three counts need no eye.
+RECOVERY_BAND_PCT = 20.0
+
+HL_BOOT = 10000
+HL_SEED = 12345
+KS_PERM = 20000
+KS_SEED = 12345
+
+
+def hodges_lehmann(a, b):
+    """Median of every pairwise difference b_j - a_i. Returns the shift of b from a.
+
+    Round 76's required item. The manuscript quoted two Hodges-Lehmann shifts and gave an
+    interval to one of them, while the supplement asserted the statistic was "used the same
+    way in both places it is needed". It was not. The estimator lives here now, beside the
+    other interval arithmetic Section IV-F names, so that a shift and its bracket are one
+    call rather than two habits.
+
+    `equivalence_tests.hodges_lehmann` computes the same quantity on numpy arrays for the
+    broker TOST. This one is pure Python because it is called from the ledger emission,
+    which the artifact's installability claim keeps free of numpy.
+    """
+    a, b = list(a), list(b)
+    if not a or not b:
+        raise ValueError("both samples must be non-empty")
+    return _median(sorted(y - x for x in a for y in b))
+
+
+def hl_bootstrap_ci(a, b, conf=0.95, n_boot=HL_BOOT, seed=HL_SEED):
+    """Percentile bootstrap interval for the Hodges-Lehmann shift. Returns (lo, hi).
+
+    Distribution-free in the estimator and in the interval, which is the point: the two
+    populations this is used on are a spike at zero against a spread, and any interval that
+    assumed a shape would be describing the assumption.
+
+    Seeded and fixed at `HL_BOOT` resamples so the ledger is byte-reproducible. The count is
+    not arbitrary: at 500, 2,000 and 4,000 resamples the lower bound printed to one decimal
+    still moved; from 10,000 it is stable across seeds, which is the property a published
+    number needs and a smaller run does not have.
+    """
+    a, b = list(a), list(b)
+    if not a or not b:
+        raise ValueError("both samples must be non-empty")
+    if not 0.0 < conf < 1.0:
+        raise ValueError("conf must lie in (0, 1)")
+    rng = random.Random(seed)
+    shifts = sorted(hodges_lehmann(rng.choices(a, k=len(a)), rng.choices(b, k=len(b)))
+                    for _ in range(n_boot))
+    alpha = 1.0 - conf
+    lo = shifts[max(0, int(alpha / 2.0 * n_boot))]
+    hi = shifts[min(n_boot - 1, int((1.0 - alpha / 2.0) * n_boot))]
+    return lo, hi
+
+
+def _ecdf_gap(count_a, count_b, n_a, n_b):
+    """Largest gap between two empirical CDFs, from per-distinct-value counts."""
+    seen_a = seen_b = 0
+    worst = 0.0
+    for x, y in zip(count_a, count_b):
+        seen_a += x
+        seen_b += y
+        gap = abs(seen_a / n_a - seen_b / n_b)
+        if gap > worst:
+            worst = gap
+    return worst
+
+
+def _value_counts(values, index):
+    counts = [0] * len(index)
+    for v in values:
+        counts[index[v]] += 1
+    return counts
+
+
+def ks_two_sample(a, b):
+    """Two-sample Kolmogorov-Smirnov statistic D, tie-correct. Returns D.
+
+    Evaluated at the distinct pooled values rather than element by element, because these
+    samples are mostly ties: twenty of the seventy conditions sit at exactly zero, and a
+    walk that steps once per element reads a gap between two halves of one tie and reports
+    a D that no pair of distributions has.
+
+    D answers a question a shift cannot. A Hodges-Lehmann shift of zero is consistent with
+    two distributions of quite different shape, so a sentence claiming that two POPULATIONS
+    agree needs a statistic about the distributions and not about their offset.
+    """
+    a, b = list(a), list(b)
+    if not a or not b:
+        raise ValueError("both samples must be non-empty")
+    grid = sorted(set(a) | set(b))
+    index = {v: i for i, v in enumerate(grid)}
+    return _ecdf_gap(_value_counts(a, index), _value_counts(b, index), len(a), len(b))
+
+
+def ks_permutation_p(a, b, n_perm=KS_PERM, seed=KS_SEED):
+    """Permutation p-value for `ks_two_sample`, with the observed split counted in.
+
+    Permutation rather than the asymptotic Kolmogorov distribution, which assumes continuous
+    data: these samples are ties on a grid and the asymptotic form is not licensed. The
+    observed arrangement is included in both numerator and denominator -- (hits + 1) /
+    (n_perm + 1) -- so the p-value can never be reported as zero, which is the honest floor
+    for a Monte Carlo test and the one a reader can act on.
+    """
+    a, b = list(a), list(b)
+    if not a or not b:
+        raise ValueError("both samples must be non-empty")
+    observed = ks_two_sample(a, b)
+    grid = sorted(set(a) | set(b))
+    index = {v: i for i, v in enumerate(grid)}
+    pooled = [index[v] for v in a] + [index[v] for v in b]
+    n_a, n_b = len(a), len(b)
+    rng = random.Random(seed)
+    hits = 0
+    for _ in range(n_perm):
+        rng.shuffle(pooled)
+        count_a = [0] * len(grid)
+        count_b = [0] * len(grid)
+        for j in pooled[:n_a]:
+            count_a[j] += 1
+        for j in pooled[n_a:]:
+            count_b[j] += 1
+        if _ecdf_gap(count_a, count_b, n_a, n_b) >= observed - 1e-12:
+            hits += 1
+    return (hits + 1) / (n_perm + 1)
 
 
 def ols_slope(xs, ys):

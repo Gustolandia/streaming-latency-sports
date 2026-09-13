@@ -1016,6 +1016,38 @@ def _condition_stem(cell):
     return cell.rsplit("_rep", 1)[0]
 
 
+# The largest printed median that still reads as a grid value. The quantum is 1 ms and
+# 2 ms is the next vertex, so a cell printing 1.0 or 2.0 reports AT the grid and one
+# printing 235 does not. Kept equal to `make_result_figures.AT_GRID_MAX_MS`, which is the
+# same decision drawn rather than counted; `test_round76_findings` holds the two together.
+AT_GRID_MAX_MS = 2.0
+
+
+def _tracker_macros(path=os.path.join("docs", "results", "external", "omb_tracker_search.csv")):
+    """Whether anyone upstream has returned to the admission condition, as a dated ledger row.
+
+    Round 77 (W4). The referee searched the benchmark's tracker for the variable its filter
+    tests and found one item in eight years: the 2018 pull request that added the filter.
+    `scripts/check_omb_tracker.py` records that search in the ledger and re-runs it; these
+    macros are the only route by which its count, its date and the age of the filter reach
+    the supplement, so the sentence cannot outlive the search it reports.
+    """
+    import csv as _csv
+    try:
+        with open(path, encoding="utf-8", newline="") as fh:
+            rows = list(_csv.DictReader(fh))
+    except OSError:
+        return []
+    if len(rows) != 1:
+        return []
+    row = rows[0]
+    years = int(row["checked"][:4]) - int(row["first_item_created"][:4])
+    return [("ombTrackerItems", row["total_items"]),
+            ("ombTrackerFirstItem", row["first_item"]),
+            ("ombTrackerChecked", row["checked"]),
+            ("ombTrackerYearsWord", _spell(years))]
+
+
 def retention_macros():
     """The cells behind the deletion claim, and the denominator the manuscript lacked.
 
@@ -1028,7 +1060,14 @@ def retention_macros():
         cells = stat_intervals.retention_cells()
     except (ImportError, OSError, KeyError, ValueError):
         return []
-    grid = [c for c in cells if c["p50_ms"] in (1.0, 2.0)]
+    # At-grid means "printed a median no larger than the next vertex above the quantum",
+    # which is the definition `make_result_figures.AT_GRID_MAX_MS` draws with. It used to be
+    # written here as membership of the literal pair (1.0, 2.0) -- the same rule on today's
+    # corpus, and a different one the day a cell prints 1.5: the figure would have drawn it
+    # at the grid and this function would have dropped it, so the caption's count and the
+    # picture's would have parted with nothing to notice. Round 76 made the two agree, after
+    # a referee observed that the caption asserts a list of grid values the axis did not show.
+    grid = [c for c in cells if c["p50_ms"] <= AT_GRID_MAX_MS]
     if not grid:
         return []
     lo = min(grid, key=lambda c: c["retention_pct"])
@@ -1050,7 +1089,7 @@ def retention_macros():
             "before this emits." % (lo["cell"], hi["cell"]))
     pub = [c["pub_p50_ms"] for c in grid]
     rho = stat_intervals.spearman(pub, [c["retention_pct"] for c in grid])
-    return [
+    return _tracker_macros() + [
         ("ombMedianCells", str(len(cells))),
         ("ombGridMedianCells", str(len(grid))),
         # The cells the resolution stops binding on: they report above the grid and
@@ -1058,6 +1097,13 @@ def retention_macros():
         # asymmetry that shows retention has an exit and the negative-span rate has
         # none -- one failure can be lengthened out of existence, the other cannot.
         ("ombEscapeCellsWord", _spell(len(cells) - len(grid))),
+        # The printed medians the grid cells actually take, from the data rather than typed.
+        # Round 76 gave Figure 4 a labelled tick at each of these, because the caption claimed
+        # two columns and the eye could not separate them on a five-decade log axis. The
+        # caption and the axis now read the same list, so a third grid value would move both
+        # together instead of leaving the sentence asserting there were two.
+        ("ombGridPrintedLo", "%.1f" % min(c["p50_ms"] for c in grid)),
+        ("ombGridPrintedHi", "%.1f" % max(c["p50_ms"] for c in grid)),
         ("ombGridRetentionMin", "%.2f" % lo["retention_pct"]),
         ("ombGridRetentionMax", "%.0f" % hi["retention_pct"]),
         ("ombRetentionFold", "%.0f" % (hi["retention_pct"] / lo["retention_pct"])),
@@ -2179,6 +2225,13 @@ def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
     """
     import csv as _csv
     import statistics as _st
+    # A plain import, deliberately without the ImportError guard other emitters carry. Round 76
+    # first wrote the guard here, with `# pragma: no cover`, and `test_coverage_exclusions`
+    # refused it: the enumerated exclusions are capped at twenty and this made twenty-one. The
+    # cap was right. The branch could never run -- `stat_intervals` ships beside this file, and
+    # a checkout missing it cannot build the paper at all -- so the honest repair was to delete
+    # a dead branch rather than to raise the ceiling to admit it.
+    import stat_intervals
     try:
         with open(path, encoding="utf-8") as fh:
             rows = list(_csv.DictReader(fh))
@@ -2192,10 +2245,12 @@ def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
 
     out = []
     by_outcome = {}
-    for suffix, name in (("#pass", "Pass"), ("#fail", "Fail")):
-        rel = sorted(abs(float(r["recovery_err_us"])) / float(r["median_D_us"]) * 100.0
-                     for r in rows
-                     if r["condition"].endswith(suffix) and float(r["median_D_us"]))
+    # One loader for these populations and for the figure that draws them (round 77). The
+    # definition used to be written here and would have been written again in the figure
+    # builder -- the at-grid rule of round 76, one decision in two places, waiting to part.
+    populations = stat_intervals.recovery_populations(path)
+    for name in ("Pass", "Fail"):
+        rel = populations[name]
         if rel:
             # "Hi", not "P75": a TeX control sequence is letters only, and
             # `\recoveryErrPassP75` parses as `\recoveryErrPassP` followed by the digits.
@@ -2204,8 +2259,11 @@ def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
             out.append(("recoveryErr" + name + "Hi", "%.0f" % pct(rel, 0.75)))
             out.append(("recovery" + name + "Max", "%.0f" % rel[-1]))
             out.append(("recovery" + name + "N", str(len(rel))))
+            exact = sum(1 for v in rel if v == 0.0)
             out.append(("recovery" + name + "Exact",
-                        "%.0f" % (100.0 * sum(1 for v in rel if v == 0.0) / len(rel))))
+                        "%.0f" % (100.0 * exact / len(rel))))
+            out.append(("recovery" + name + "ExactCI", "%.0f$--$%.0f"
+                        % tuple(100.0 * v for v in stat_intervals.wilson(exact, len(rel)))))
             by_outcome[name] = rel
 
     # Round 75 added the shift, and the reason is worth more than the three lines it takes.
@@ -2230,10 +2288,77 @@ def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
     # Hodges-Lehmann rather than a p-value: it is a shift in the units the sentence is about,
     # the two distributions cross so a rank test is weak here by construction, and Section
     # VIII-A already quotes an HL shift for the broker equivalence. One statistic, twice.
+    # Round 76 added the brackets, and the reason is the round-75 comment one level up.
+    #
+    # That comment ends "one statistic, used the same way in both places". It was not true.
+    # Section VIII-A quotes a Hodges-Lehmann shift for the broker equivalence WITH a 90%
+    # bootstrap interval (`tostHLCI`); this one was emitted bare. And the two exact-recovery
+    # shares below are proportions over stated denominators, which Section IV-F promises to
+    # report with a Wilson interval -- Table I's exemption is for intervals "under 0.1
+    # points", and these are twenty-seven and twenty-nine points wide.
+    #
+    # Every one of these intervals SUPPORTS the corrected reading rather than weakening it,
+    # which is the argument for emitting them rather than the argument against. The shift's
+    # interval contains zero.
+    #
+    # Round 77 corrected three things this block had been telling the prose, and the first was
+    # the round-76 referee's own suggestion.
+    #
+    # (1) "Remove the exact recoveries and the medians CROSS." They do, as medians. But the
+    #     argument this block exists to make -- a quantile can move while the population does
+    #     not -- applies to the crossing exactly as it applied to the gap: the Hodges-Lehmann
+    #     shift between the two NON-ZERO populations is 0.0 points, with a bootstrap interval
+    #     that contains zero. There is no reversal, only nothing left to explain.
+    #     `recoveryNonzeroShift` carries that statement; the two medians stay emitted as
+    #     description and stop carrying an inference.
+    # (2) "The two exact shares overlap across almost their whole length." About two-thirds,
+    #     and overlap is not the test. `recoveryExactDiffCI` is: Newcombe's interval on the
+    #     difference of the two shares, from the same Wilson limits.
+    # (3) "A spike at zero with a second cluster; the rejected one nearly flat." Neither
+    #     matched the data, and a cluster is wherever an eye puts the line. The populations are
+    #     now counted in bands from one stated edge, `stat_intervals.RECOVERY_BAND_PCT`.
     if len(by_outcome) == 2:
-        diffs = sorted(y - x for x in by_outcome["Pass"] for y in by_outcome["Fail"])
+        a, b = by_outcome["Pass"], by_outcome["Fail"]
+        diffs = sorted(y - x for x in a for y in b)
+        lo, hi = stat_intervals.hl_bootstrap_ci(a, b)
         out.append(("recoveryShift", "%.1f" % _st.median(diffs)))
+        out.append(("recoveryShiftCI", "%.1f$ to $%.1f" % (lo, hi)))
         out.append(("recoveryShiftPairs", latex_thousands(len(diffs))))
+        # A shift cannot carry "the populations do not differ": two distributions can sit at
+        # zero offset and still have different shapes. So the claim is tested with a statistic
+        # about the distributions, and the shapes are counted rather than described.
+        out.append(("recoveryKsD", "%.2f" % stat_intervals.ks_two_sample(a, b)))
+        out.append(("recoveryKsP", "%.2f" % stat_intervals.ks_permutation_p(a, b)))
+        out.append(("recoveryKsPerms", latex_thousands(stat_intervals.KS_PERM)))
+        band = stat_intervals.RECOVERY_BAND_PCT
+        nonzero = {}
+        for name, rel in (("Pass", a), ("Fail", b)):
+            nz = [v for v in rel if v > 0.0]
+            nonzero[name] = nz
+            out.append(("recoveryErr" + name + "Nonzero", "%.1f" % _st.median(nz)))
+            out.append(("recovery" + name + "NonzeroN", str(len(nz))))
+            out.append(("recovery" + name + "ExactN", str(len(rel) - len(nz))))
+            out.append(("recovery" + name + "BelowBandN", str(sum(1 for v in nz if v < band))))
+            out.append(("recovery" + name + "FromBandN", str(sum(1 for v in nz if v >= band))))
+        out.append(("recoveryBandPct", "%.0f" % band))
+
+        def _one_decimal(x):
+            # round() before formatting, so a shift of -1e-12 prints "0.0" and not "-0.0".
+            return "%.1f" % (round(x, 1) + 0.0)
+
+        nlo, nhi = stat_intervals.hl_bootstrap_ci(nonzero["Pass"], nonzero["Fail"])
+        out.append(("recoveryNonzeroShift", _one_decimal(
+            stat_intervals.hodges_lehmann(nonzero["Pass"], nonzero["Fail"]))))
+        out.append(("recoveryNonzeroShiftCI", "%s$ to $%s" % (_one_decimal(nlo), _one_decimal(nhi))))
+        k_a, k_b = len(a) - len(nonzero["Pass"]), len(b) - len(nonzero["Fail"])
+        dlo, dhi = stat_intervals.newcombe_diff_ci(k_a, len(a), k_b, len(b))
+        out.append(("recoveryExactDiff", _one_decimal(100.0 * (k_a / len(a) - k_b / len(b)))))
+        out.append(("recoveryExactDiffCI", "%s$ to $%s"
+                    % (_one_decimal(100.0 * dlo), _one_decimal(100.0 * dhi))))
+        crossings = stat_intervals.ecdf_crossings(a, b)
+        if len(crossings) >= 2:
+            out.append(("recoveryEcdfCrossLo", _one_decimal(crossings[0])))
+            out.append(("recoveryEcdfCrossHi", _one_decimal(crossings[-1])))
     # The D-A correlation, and the unit it is computed over. `rho_DA` is one number per
     # CONDITION, fitted across that condition's own events -- 5,433 of them in the first row
     # -- and the macro below is the median of those across conditions.

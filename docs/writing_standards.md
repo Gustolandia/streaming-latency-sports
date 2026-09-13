@@ -875,8 +875,11 @@ the caption reads the same emitted values rather than typing them.
 adjectives, and in round 76 all four were wrong. A cluster is wherever an eye puts the line: the
 referee's own grouping of the same values disagreed with a largest-gap split by eight points. So:
 
-- **Name the bands and count them.** State the edges once, as a constant the pipeline emits, and
-  give the count in each band for each population.
+- **Name the bands and count them.** State the edges once, as a value the pipeline emits, and
+  give the count in each band for each population. Where the edge equals a statistic the text
+  already reports (round 78: the upper quartile), derive it from that statistic and say so; a
+  constant that happens to equal a quartile reads as a free choice and is free to drift from it.
+  If a description holds only over a range of edges ("a third in each"), state the range.
 - **A test replaces an adjective.** "Overlap across almost their whole length" is replaced by the
   interval on the difference (Newcombe's, from the same Wilson limits), because overlapping
   intervals are not a test of anything.
@@ -896,6 +899,26 @@ a shift printed between them was read as neither and labelled as nothing. So the
 level go inside the bracket or beside it — "[95% bootstrap: −1.8 to 8.3]" — and where two
 intervals on one statistic are at different levels (a 90% interval for TOST, a 95% interval for a
 two-sided estimate), the text says so rather than calling them "the same".
+
+### B18. A claim of sameness states the margin it would need — GATED
+
+"The populations do not differ", "no shift remains" and "the same" are claims of equivalence.
+Failing to reject a difference is not one. Where this paper does call two things equivalent (the
+brokers, §VIII-A) it runs a TOST against a stated margin. Everywhere else:
+
+- **Say what was detected, not what exists.** "Cannot be told apart", "no shift is detectable",
+  "nothing in these data separates them".
+- **Emit the margin the interval would support**, max(|lo|, |hi|) of the 90% interval, and print
+  it near the sentence. A reader can then tell "close" from "underpowered". The recovery
+  populations' margins are 8.3 and 7.1 points, about half the quantity being compared. That is
+  underpowered, and S16.9 says so.
+- **Titles are claims too.** A figure's title and its List-of-Figures entry are the same claim
+  made twice, and they change together.
+- **Test the words, not only the numbers under them.** Rounds 76 and 77 verified every value
+  beneath "no shift remains" and none checked the phrase. The drift ran from round 75's
+  "indistinguishable" to "the populations do not [differ]" in two rewordings.
+
+Gated in `tests/unit/test_round78_findings.py`.
 
 ### B13. The index terms are content, and get read like content
 

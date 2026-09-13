@@ -2316,7 +2316,8 @@ def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
     #     difference of the two shares, from the same Wilson limits.
     # (3) "A spike at zero with a second cluster; the rejected one nearly flat." Neither
     #     matched the data, and a cluster is wherever an eye puts the line. The populations are
-    #     now counted in bands from one stated edge, `stat_intervals.RECOVERY_BAND_PCT`.
+    #     now counted in bands from one stated edge, `stat_intervals.recovery_band_edge`: since
+    #     round 78, the accepted population's upper quartile.
     if len(by_outcome) == 2:
         a, b = by_outcome["Pass"], by_outcome["Fail"]
         diffs = sorted(y - x for x in a for y in b)
@@ -2330,7 +2331,7 @@ def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
         out.append(("recoveryKsD", "%.2f" % stat_intervals.ks_two_sample(a, b)))
         out.append(("recoveryKsP", "%.2f" % stat_intervals.ks_permutation_p(a, b)))
         out.append(("recoveryKsPerms", latex_thousands(stat_intervals.KS_PERM)))
-        band = stat_intervals.RECOVERY_BAND_PCT
+        band = stat_intervals.recovery_band_edge(populations)
         nonzero = {}
         for name, rel in (("Pass", a), ("Fail", b)):
             nz = [v for v in rel if v > 0.0]
@@ -2341,6 +2342,17 @@ def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
             out.append(("recovery" + name + "BelowBandN", str(sum(1 for v in nz if v < band))))
             out.append(("recovery" + name + "FromBandN", str(sum(1 for v in nz if v >= band))))
         out.append(("recoveryBandPct", "%.0f" % band))
+        # Round 78 (W2): the range of edges over which the accepted conditions divide into
+        # equal thirds. The edge used is that range's upper end, and S16.9 now says so rather
+        # than letting "a third in each" read as a property of the data at any edge.
+        # Thirds need two things: the non-zero conditions halve at the edge, and the exact ones
+        # are as many as either half. If either stops holding the macro is not emitted and the
+        # supplement fails to build on the sentence that would otherwise be wrong.
+        split = stat_intervals.equal_split_edges(a)
+        exact_a = len(a) - len(nonzero["Pass"])
+        if (split is not None and abs(split[1] - band) < 1e-9
+                and 2 * exact_a == len(nonzero["Pass"])):
+            out.append(("recoveryThirdsEdgeLo", "%.1f" % split[0]))
 
         def _one_decimal(x):
             # round() before formatting, so a shift of -1e-12 prints "0.0" and not "-0.0".
@@ -2350,6 +2362,17 @@ def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
         out.append(("recoveryNonzeroShift", _one_decimal(
             stat_intervals.hodges_lehmann(nonzero["Pass"], nonzero["Fail"]))))
         out.append(("recoveryNonzeroShiftCI", "%s$ to $%s" % (_one_decimal(nlo), _one_decimal(nhi))))
+        # Round 78 (R1). "No shift remains" and "the populations do not [differ]" were claims of
+        # equivalence, and this manuscript calls two things equivalent only after a TOST against
+        # a stated margin (Section VIII-A). These are the smallest margins the 90% bootstrap
+        # intervals on the two shifts could pass, emitted so the prose can say how wide
+        # "cannot be told apart" is, instead of implying "the same". They are about half the
+        # non-zero median errors, which is why the section now claims no equivalence at all.
+        for macro, (x, y) in (("recoveryEquivMargin", (a, b)),
+                              ("recoveryNonzeroEquivMargin",
+                               (nonzero["Pass"], nonzero["Fail"]))):
+            mlo, mhi = stat_intervals.hl_bootstrap_ci(x, y, conf=0.90)
+            out.append((macro, _one_decimal(max(abs(mlo), abs(mhi)))))
         k_a, k_b = len(a) - len(nonzero["Pass"]), len(b) - len(nonzero["Fail"])
         dlo, dhi = stat_intervals.newcombe_diff_ci(k_a, len(a), k_b, len(b))
         out.append(("recoveryExactDiff", _one_decimal(100.0 * (k_a / len(a) - k_b / len(b)))))

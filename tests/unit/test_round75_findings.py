@@ -222,8 +222,9 @@ class TestR2TheRecoveryPopulationsDoNotSeparate:
         # Round 77 (R1) then replaced that crossing with the shift on the non-zero populations,
         # which is 0.0: the medians still cross, but a crossing of medians is the same artifact
         # as the gap round 75 corrected, so the main text states the shift and S16.9 keeps the
-        # medians as description.
-        assert BS + "recoveryNonzeroShift" in vd and "no shift remains" in vd
+        # medians as description. Round 78 (R1) reworded "no shift remains", a claim of
+        # equivalence, to "no shift is detectable", which is what the interval supports.
+        assert BS + "recoveryNonzeroShift" in vd and "no shift is detectable" in vd
         assert "holds where the check rejects as well as where it passes" in vd
         j = paper.index("Where the span cannot be re-timestamped")
         viiib = " ".join(paper[j:j + 500].split())
@@ -256,7 +257,9 @@ class TestR2TheRecoveryPopulationsDoNotSeparate:
         round 75's own rewording moved the wrap and a literal anchor went stale the same
         afternoon it was written -- which is how nine of ten mutation anchors died in round
         72."""
-        bad, n = re.subn(r"Those\s+medians\s+differ;\s+the\s+populations\s+do\s*\n?\s*not\.",
+        # Round 78 (R1) changed "the populations do not" to "cannot be told apart"; the
+        # anchor followed it, and still spans the line break by construction.
+        bad, n = re.subn(r"Those\s+medians\s+differ;\s+the\s+populations\s+cannot\s+be\s+told\s+apart\.",
                          "they separate\nat the median, not in the upper tail.", paper)
         assert n == 1, "Section V-D has been reworded; retarget this mutation"
         with pytest.raises(AssertionError):

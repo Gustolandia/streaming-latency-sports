@@ -1131,12 +1131,12 @@ reach the same $\rho$ by different means: $k$ cores flat out leaves $C-k$ genuin
 while duty-cycling every core leaves none. If the mechanism is whether the timestamping thread
 can find a core, the second should be worse at equal $\rho$ --- and it is
 (Section S26): at $k=6$ both configurations sit at $\rho = 0.7531$, identical to four
-decimals, same machine, same hour, and the negative-span rates differ by $2.07\times$
-($z=10.3$ over 2\,985 matched events per cell, disjoint Wilson intervals). A function of
+decimals, same machine, same hour, and the negative-span rates differ by $\GeomOrigFactor\times$
+($z=\GeomOrigZ$ over 2\,985 matched events per cell, disjoint Wilson intervals). A function of
 $\rho$ returns one value for one input. The gap narrows at $k=7$ ($1.06\times$) --- the
 mechanism showing itself: one free core out of eight is nearly as useless as none.
 \emph{A full replication (E-A6b) corrects us on one point}: it reproduces the load-bearing
-cell almost exactly ($\rho = 0.7531$ in all four configurations; $2.05\times$ against $2.07\times$),
+cell almost exactly ($\rho = 0.7531$ in all four configurations; $\GeomReplFactor\times$ against $\GeomOrigFactor\times$),
 reproduces $k=5$ in direction but not size, and at $k=7$ resolves a small difference
 ($1.19\times$, $z=3.46$) where the original could not --- so we withdraw an earlier draft's
 reading of that convergence as a null. Both campaigns agree on the shape: twofold at $k=6$,
@@ -1365,8 +1365,8 @@ residual rates landing on the floor the model names in advance, $C_0 \approx \in
 \paragraph{Utilization is not the variable, shown at identical utilization} Two loads
 can reach the same $\rho$ with $C-k$ cores genuinely free or with none; at $k=6$ both configurations
 sit at $\rho = 0.7531$, identical to four decimals, and the negative-span rates differ by
-$2.07\times$ ($z=10.3$; supplementary material S26). A function of $\rho$ returns one value
-for one input. A full replication reproduces the load-bearing cell ($2.05\times$),
+$\GeomOrigFactor\times$ ($z=\GeomOrigZ$; supplementary material S26). A function of $\rho$ returns one value
+for one input. A full replication reproduces the load-bearing cell ($\GeomReplFactor\times$),
 reproduces $k=5$ in direction but not size, and resolves a small $k=7$ difference
 ($1.19\times$, $z=3.46$) the original could not --- so we withdraw an earlier draft's
 reading of that convergence as a null; both campaigns agree on the shape, twofold at $k=6$ collapsing toward parity at
@@ -2462,7 +2462,13 @@ interval Section~\mainStats{} asks of every proportion.
 
 Two readings of that table are available and one of them is wrong. The wrong one, and
 ours until this section was written, is that the two populations differ because their
-medians do. They do not.
+medians do. Nothing in these data separates them. That is less than saying they are the
+same: the $90\%$ bootstrap intervals on the two shifts below would support equivalence only
+against a margin of $\recoveryEquivMargin$ points over all conditions and
+$\recoveryNonzeroEquivMargin$ over the non-zero ones, about half the non-zero median errors.
+Section~\mainBrokers{} calls two brokers equivalent only after a TOST against a stated
+margin, no reader would accept a margin of half the quantity compared, and so this section
+claims no equivalence.
 The Hodges--Lehmann shift over all $\recoveryShiftPairs$ pairwise differences is
 $\recoveryShift$ points, with a percentile bootstrap interval of $\recoveryShiftCI$ that
 contains zero; the worst condition is the same on both sides; and the upper
@@ -2479,22 +2485,23 @@ on that difference, built from the same Wilson limits, is $\recoveryExactDiffCI$
 zero. Two intervals overlapping would not have shown this --- overlap is not the test --- and
 the difference's own interval does. The rejected conditions recover exactly as well, and any
 reading on which they never do is wrong. Second, remove the exact recoveries from both
-populations and no shift is left to explain. The medians of what remains are
+populations and no shift can be detected in what is left. The medians of what remains are
 $\recoveryErrPassNonzero\%$ over the $\recoveryPassNonzeroN$ accepted conditions and
 $\recoveryErrFailNonzero\%$ over the $\recoveryFailNonzeroN$ rejected ones, and they happen
 to cross; but the Hodges--Lehmann shift between those two non-zero populations is
 $\recoveryNonzeroShift$ points, with a bootstrap interval of $\recoveryNonzeroShiftCI$. A
 crossing of two medians is the same artifact as a gap between them, and the test that
 dismissed the gap dismisses the crossing. The gap was the spike entire, and above the spike
-there is nothing to choose between the populations.
+these data cannot choose between the populations.
 
-\begin{figure}[tb]
+\begin{figure}[b]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/recovery_populations.pdf}
-\caption[Two populations with no shift between them]{\textbf{Two populations with no
-shift between them.} (a)~Empirical distribution functions of the recovery error over the
-$\recoveryPassN$ conditions the check accepts and the $\recoveryFailN$ it rejects; the
-dotted line is the $\recoveryBandPct\%$ band edge the text counts against. The curves open
+\caption[Two populations with no detectable shift between them]{\textbf{Two populations with
+no detectable shift between them.} (a)~Empirical distribution functions of the recovery
+error over the $\recoveryPassN$ conditions the check accepts and the $\recoveryFailN$ it
+rejects; the dotted line is the band edge the text counts against, the accepted population's
+upper quartile of $\recoveryBandPct\%$. The curves open
 with steps of $\recoveryPassExact\%$ and $\recoveryFailExact\%$ at zero, change order at
 $\recoveryEcdfCrossLo\%$, and change back at $\recoveryEcdfCrossHi\%$, where each population
 has a single condition left above. (b)~Every condition, one mark each.}
@@ -2508,7 +2515,10 @@ error --- exact, below $\recoveryBandPct\%$, and $\recoveryBandPct\%$ or more --
 conditions divide $\recoveryPassExactN$, $\recoveryPassBelowBandN$ and
 $\recoveryPassFromBandN$, a third in each; the rejected ones divide $\recoveryFailExactN$,
 $\recoveryFailBelowBandN$ and $\recoveryFailFromBandN$, a smaller pile at zero with most of the
-rest below the band edge. The bands are counted rather than read off a picture as clusters on
+rest below the band edge. The edge is not a free choice: it is the accepted population's
+upper quartile, the $\recoveryErrPassHi\%$ in the table's Q3 column. The thirds depend on it, and
+hold for an edge above $\recoveryThirdsEdgeLo\%$ up to that quartile and for no other.
+The bands are counted rather than read off a picture as clusters on
 purpose: where a gap in the accepted population looks like a boundary depends on the eye
 drawing it, and splitting that population at its largest gap puts the boundary somewhere
 other than where a first look does. So the distributional claim is tested
@@ -2789,6 +2799,15 @@ claim undefendable.
 \paragraph{Internal validity: the surviving comparison is small} After rejection, per-cell
 samples run from 8 to 35. The $N{=}1$ cell cannot support inference and we treat it as
 descriptive; conclusions rest on the levels with 19 or more runs.
+
+\paragraph{Internal validity: the cloud's own noise} The mechanism campaigns ran on Oracle
+Cloud instances, and run-to-run variability there is a rival explanation for any effect they
+show. It is too small to be this one. Over more than three months of a stream-processing
+benchmark on another public cloud, Henning et al.~\cite{henning2025variability} measured a
+coefficient of variation below $3.7\%$ and could detect differences above $5\%$. Their metric
+is not ours, so this is context rather than a test; but the smallest manipulation effect here
+is $\GeomReplFactor\times$ in the negative-span rate, a change of about a hundred percent,
+and the largest is $\rtFactorHigh\times$.
 
 \paragraph{External validity: one workload, two systems, two platforms} We demonstrate the
 failure on a sparse bursty feed, two brokers and two operating systems. The model of
@@ -3180,7 +3199,11 @@ exceeds \texttt{highestTrackableValue}''~\cite{hdrhistogram_javadoc} --- the upp
 and only that --- and the project's README describes the configurable range and the
 significant digits without mentioning negative values at all. The rejection surfaces as an
 \texttt{ArrayIndexOutOfBoundsException} from the counts-array index rather than as a
-documented contract. That makes the maintainer's local fix more defensible rather than
+documented contract. Two ports of the library document what the Java one leaves out: the Go
+port's recording call returns ``an error if the value is out of
+range''~\cite{hdrhistogram_go}, and the Rust port's documentation says \texttt{record} ``will
+error if the value is too small or large''~\cite{hdrhistogram_rust}. That makes the
+maintainer's local fix more defensible rather than
 less: it was written against behavior the library documents for the opposite bound. It
 also makes the wider case, that a disposal rule has to be stated by whoever depends on it,
 because the dependency will not state it for you.

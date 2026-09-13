@@ -209,12 +209,45 @@ def recovery_populations(path=os.path.join(RESULTS, "span_symmetry.csv")):
     return out
 
 
-#: The band edge the recovery populations are counted against, in % of median delivery.
-#: Round 77 replaced S16.9's "a spike at zero with a second cluster" and "nearly flat" with
-#: counts in bands, because a cluster is wherever an eye puts the line: the referee's own
-#: reading put the accepted population's break between 14% and 20%, and splitting at its
-#: largest gap puts it between 22% and 29%. A stated threshold and three counts need no eye.
-RECOVERY_BAND_PCT = 20.0
+#: The quantile of the accepted population that defines the band edge the recovery
+#: populations are counted against. Round 77 introduced counting in bands, because a cluster
+#: is wherever an eye puts the line, and set the edge as a constant, 20.0. Round 78's referee
+#: noticed that 20% is exactly the accepted population's upper quartile -- the Q3 already
+#: printed in S16.9's table -- and that nothing said so: a principled edge looked like a free
+#: choice, and two numbers that happened to agree were free to part. The edge is now that
+#: quartile, by the same nearest-rank rule the table uses.
+RECOVERY_BAND_QUANTILE = 0.75
+
+
+def nearest_rank(values, p):
+    """Nearest-rank percentile: always a value the data contain, as S16.9's table reports."""
+    if not values:
+        raise ValueError("values must be non-empty")
+    v = sorted(values)
+    return v[min(len(v) - 1, max(0, int(round(p * (len(v) - 1)))))]
+
+
+def recovery_band_edge(pops, quantile=RECOVERY_BAND_QUANTILE):
+    """The band edge, in % of median delivery: the accepted population's upper quartile."""
+    return nearest_rank(pops["Pass"], quantile)
+
+
+def equal_split_edges(values):
+    """(lo, hi) such that every edge e with lo < e <= hi puts exactly half of the non-zero
+    `values` below e and half at or above it. None where no edge can.
+
+    Round 78 (W2). S16.9 said the accepted conditions divide "a third in each" band, and the
+    referee showed that holds only for some edges. This returns the whole range for which the
+    non-zero conditions split evenly, so the sentence can state the range, and that the edge
+    used sits at its upper end, instead of implying the edge was the only one that works.
+    """
+    nz = sorted(v for v in values if v > 0.0)
+    if not nz or len(nz) % 2:
+        return None
+    k = len(nz) // 2
+    if not nz[k - 1] < nz[k]:
+        return None
+    return nz[k - 1], nz[k]
 
 HL_BOOT = 10000
 HL_SEED = 12345

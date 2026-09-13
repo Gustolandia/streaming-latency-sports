@@ -866,8 +866,9 @@ class TestRecoveryPopulations:
         assert pops["Pass"] == sorted(pops["Pass"])
 
     def test_the_band_counts_the_supplement_quotes(self):
-        band = si.RECOVERY_BAND_PCT
         pops = si.recovery_populations()
+        # The edge is derived since round 78: the accepted population's upper quartile.
+        band = si.recovery_band_edge(pops)
         tally = {k: (sum(v == 0.0 for v in p), sum(0.0 < v < band for v in p),
                      sum(v >= band for v in p)) for k, p in pops.items()}
         assert tally == {"Pass": (14, 14, 14), "Fail": (6, 17, 5)}

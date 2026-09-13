@@ -826,13 +826,13 @@ event and $A$ is producer-side on one clock, so a harness that records its own
 acknowledgment lag recovers the delivery it failed to measure. Over the $\recoveryPassN$
 conditions the check passes the recovered median is $\recoveryErrPass\%$ from the true one
 and $\recoveryErrPassHi\%$ at the upper quartile; over the $\recoveryFailN$ it rejects,
-$\recoveryErrFail\%$ and $\recoveryErrFailHi\%$. Those medians differ; the populations do
-not. The worst condition is $\recoveryPassMax\%$ on either side and the Hodges--Lehmann
-shift over $\recoveryShiftPairs$ pairs is $\recoveryShift$ points [95\% bootstrap:
-$\recoveryShiftCI$]; what opens the median gap is a concentration at zero, and with the exact
-recoveries set aside no shift remains, $\recoveryNonzeroShift$ points
-[$\recoveryNonzeroShiftCI$] (Supplement~S16.9). The recovery therefore holds where the check
-rejects as well as where it passes, which is what Section~\ref{sec:authors} asks of it.
+$\recoveryErrFail\%$ and $\recoveryErrFailHi\%$. Those medians differ; the populations cannot
+be told apart. The worst condition is $\recoveryPassMax\%$ on either side; the Hodges--Lehmann
+shift is $\recoveryShift$ points [95\% bootstrap:
+$\recoveryShiftCI$]; what opens the median gap is a concentration at zero, and without the exact
+recoveries no shift is detectable, $\recoveryNonzeroShift$ points [95\% bootstrap:
+$\recoveryNonzeroShiftCI$] (Supplement~S16.9). The recovery therefore holds where the check
+rejects as well as where it passes, as Section~\ref{sec:authors} requires.
 
 \subsection{The stall spectrum, and the scheduler's slice}
 \label{sec:tail}

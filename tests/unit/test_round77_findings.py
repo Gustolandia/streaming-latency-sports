@@ -20,7 +20,8 @@ Two corrections to the referee, both found by implementing its advice from the d
 The referee's replacement grouping -- 14 exact, 14 between 1.9% and 14.3%, 12 between 20% and
 33% -- was itself drawn by eye: splitting the accepted population at its largest gap puts the
 break between 22% and 29%. So neither the old clusters nor the new ones are used. Both
-populations are counted in bands from one stated edge, `stat_intervals.RECOVERY_BAND_PCT`.
+populations are counted in bands from one stated edge, then `stat_intervals.RECOVERY_BAND_PCT`
+and since round 78 `stat_intervals.recovery_band_edge`, the accepted upper quartile it equaled.
 
 The referee's sketch read the two distribution functions as crossing "near 15% and 29%". They
 change order at 18.2% and 34.8%, and the figure's caption now reads those values from the
@@ -97,7 +98,7 @@ class TestR1NoShiftRemains:
         assert lo < float(ledger["recoveryNonzeroShift"]) < hi or \
             float(ledger["recoveryNonzeroShift"]) == 0.0
         assert lo < 0.0 < hi, (
-            "the interval no longer contains zero: 'no shift remains' is now false and the "
+            "the interval no longer contains zero: 'no shift is detectable' is now false and the "
             "clause in Section V-D must be re-argued, not re-emitted")
 
     def test_it_is_the_statistic_the_referee_ran(self, pops):
@@ -109,8 +110,10 @@ class TestR1NoShiftRemains:
 
     def test_the_main_text_states_the_shift_not_a_crossing(self, paper):
         vd = _vd(paper)
-        assert "no shift remains" in vd
-        assert BS + "recoveryNonzeroShift$ points [$" + BS + "recoveryNonzeroShiftCI$]" in vd
+        # Round 78 (R1, W1): undetectable rather than absent, and the second bracket labeled.
+        assert "no shift is detectable" in vd
+        assert (BS + "recoveryNonzeroShift$ points [95" + BS + "% bootstrap: $" + BS
+                + "recoveryNonzeroShiftCI$]") in vd
         assert "crosses it" not in vd
         assert BS + "recoveryErrPassNonzero" not in vd, (
             "the medians belong in S16.9 as description; in the main text they read as a finding")
@@ -123,7 +126,7 @@ class TestR1NoShiftRemains:
         assert "if anything the worse of the two" not in s
 
     def test_the_defect_that_prompted_this_is_caught(self, paper):
-        bad, n = re.subn(r"and with the exact\s+recoveries set aside no shift remains,[^(]*",
+        bad, n = re.subn(r"and without the exact\s+recoveries no shift is detectable,[^(]*",
                          "and setting the exact recoveries aside crosses it ", paper)
         assert n == 1, "Section V-D has been reworded; retarget this mutation"
         with pytest.raises(AssertionError):
@@ -158,7 +161,7 @@ class TestR2TheDescriptionsMatchTheData:
 
     def test_the_counts_are_the_data(self, ledger, pops):
         import stat_intervals as si
-        band = si.RECOVERY_BAND_PCT
+        band = si.recovery_band_edge(pops)
         assert ledger["recoveryBandPct"] == "%.0f" % band
         for side in ("Pass", "Fail"):
             v = pops[side]
@@ -191,7 +194,7 @@ class TestW1TheTwoPopulationsAreDrawn:
         import test_caption_leads as tcl
         leads = {lab: tcl.lead(cap) for env, lab, cap in tcl.captions(supplement)}
         lead = leads.get("fig:recovery")
-        assert lead == "Two populations with no shift between them."
+        assert lead == "Two populations with no detectable shift between them."
         assert not re.match(r"^(A|An|The)\b", lead)
 
     def test_the_caption_reads_its_crossings_from_the_curves(self, supplement, ledger, pops):
@@ -282,10 +285,10 @@ class TestTheRenderedPagesCarryIt:
 
     def test_the_main_text(self):
         flat = " ".join(_rendered("paper").split())
-        assert "no shift remains" in flat
+        assert "no shift is detectable" in flat
         assert "95% bootstrap" in flat
 
     def test_the_supplement(self):
         flat = " ".join(_rendered("supplement").split())
-        assert "Two populations with no shift between them" in flat
+        assert "Two populations with no detectable shift between them" in flat
         assert "happen to cross" in flat

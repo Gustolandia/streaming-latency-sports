@@ -1098,7 +1098,11 @@ def plot_recovery(ax_cdf, ax_strip, pops, band):
     left panel shows what the Kolmogorov-Smirnov statistic measures and where the curves
     change order; the right shows the counts the band tallies are made of.
     """
-    series = (("Pass", "check accepts", KEPT, 1), ("Fail", "check rejects", DELETED, 0))
+    # The rejected population in grey, not DELETED red (round 78, W3). Red means "deleted" in
+    # Figure 4 and in the deletion histogram, and S16.9's whole point is that these conditions
+    # were kept and measured: a reader carrying Figure 4's legend here would read them as
+    # discarded. Grey is what the paper already draws for what is printed and kept.
+    series = (("Pass", "check accepts", KEPT, 1), ("Fail", "check rejects", GREY, 0))
     for key, label, colour, row in series:
         v = sorted(pops[key])
         xs = sorted(set(v))
@@ -1130,8 +1134,10 @@ def build_recovery(out_dir):
     figure_style.apply()   # in force when the artists are made, not merely at import
     import stat_intervals
     fig, (ax_cdf, ax_strip) = plt.subplots(1, 2, figsize=(6.5, 2.35))
-    plot_recovery(ax_cdf, ax_strip, stat_intervals.recovery_populations(),
-                  stat_intervals.RECOVERY_BAND_PCT)
+    pops = stat_intervals.recovery_populations()
+    # The same derived edge the ledger emits (round 78): the accepted population's upper
+    # quartile, so the dotted line and the counted bands cannot disagree.
+    plot_recovery(ax_cdf, ax_strip, pops, stat_intervals.recovery_band_edge(pops))
     fig.tight_layout()
     return _save(fig, out_dir, "recovery_populations")
 

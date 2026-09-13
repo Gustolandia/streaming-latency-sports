@@ -197,6 +197,18 @@ def main():
                     raise ValueError("rho outside [-1, 1] for %s: %r" % (cond, rho))
                 rho = max(-1.0, min(1.0, rho))
 
+        # Round 79 (R2): the within-run correlation, from co-moments centred on each run's own
+        # means. `rho` above pools a condition's runs, so it also carries covariance between
+        # runs -- a run whose D and A both sit high. The main text's "within a run" is a claim
+        # about this one, and it is now computed rather than assumed to equal the pool.
+        within = q.get("pair_within")
+        rho_w = float("nan")
+        if within and within.get("n", 0) > 1 and within["sdd"] > 0 and within["saa"] > 0:
+            rho_w = within["sda"] / math.sqrt(within["sdd"] * within["saa"])
+            if not -1.0000001 <= rho_w <= 1.0000001:
+                raise ValueError("within-run rho outside [-1, 1] for %s: %r" % (cond, rho_w))
+            rho_w = max(-1.0, min(1.0, rho_w))
+
         pred = convolve_diff(sD, sA, nD, nA)
         tv = tv_distance(pred, sS, nS)
         neg_obs = sum(c for lo, c in sS if lo < 0) / nS
@@ -213,6 +225,7 @@ def main():
             "neg_frac_pred_indep": round(neg_pred, 5),
             "tv_pred_vs_obs": round(tv, 4),
             "rho_DA": round(rho, 4),
+            "rho_DA_within": round(rho_w, 4),
             # the remedy under test: recover delivery's median from the corrupted span plus a
             # purely producer-side quantity. Error in us; med(D) is the ground truth.
             "recovered_medD_us": cS + medA,
@@ -283,6 +296,11 @@ def main():
         # every condition can be a point mass in a synthetic corpus; there is then no
         # variance to work with and the honest summary line says so
         print("  not estimable (fewer than 4 conditions with finite variance)")
+    rhos_w = [r["rho_DA_within"] for r in rows if r["rho_DA_within"] == r["rho_DA_within"]]
+    if len(rhos_w) >= 4:
+        print("WITHIN-RUN CORRELATION rho(D, A), each run centred on its own means")
+        print("  median %.3f   IQR [%.3f, %.3f]"
+              % (st.median(rhos_w), st.quantiles(rhos_w, n=4)[0], st.quantiles(rhos_w, n=4)[2]))
     kept = sum(q["pair"]["n"] for q in data["conditions"].values() if "pair" in q)
     outside = sum(q["pair"].get("outside", 0) for q in data["conditions"].values()
                   if "pair" in q)

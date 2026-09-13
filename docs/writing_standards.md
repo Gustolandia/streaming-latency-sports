@@ -898,7 +898,9 @@ are Katz intervals on ratios; §IV-F's are Wilson intervals on proportions. A bo
 a shift printed between them was read as neither and labelled as nothing. So the method and the
 level go inside the bracket or beside it — "[95% bootstrap: −1.8 to 8.3]" — and where two
 intervals on one statistic are at different levels (a 90% interval for TOST, a 95% interval for a
-two-sided estimate), the text says so rather than calling them "the same".
+two-sided estimate), the text says so rather than calling them "the same". Every interval in the
+article's prose is held to this by `tests/unit/test_bracket_labels.py` (round 79), so the rule no
+longer depends on a referee pointing at each bracket.
 
 ### B18. A claim of sameness states the margin it would need — GATED
 
@@ -919,6 +921,23 @@ brokers, §VIII-A) it runs a TOST against a stated margin. Everywhere else:
   "indistinguishable" to "the populations do not [differ]" in two rewordings.
 
 Gated in `tests/unit/test_round78_findings.py`.
+
+### B19. A pointer names its target — GATED
+
+"(the main text)" is not a pointer; it only promises that something exists somewhere. In the
+supplement, every mention of the main text carries a section, table, figure or equation reference
+that the build resolves. The only exceptions are a capped list of phrasings that point at nothing,
+such as a note on where an exhibit came from.
+
+- **Point at what holds the content.** If it moved into the supplement, point there. If it no
+  longer exists, remove the sentence or say so.
+- **Name things with words the reader already has.** A letter that names a thing ("Testbed A",
+  "H1") is defined where the reader meets it, or replaced with the main text's own words
+  ("the workstation testbed").
+- **Keep the threats current.** A threats-to-validity section is re-read against the claims every
+  time the claims change, because it is where a sceptical reader goes first.
+
+Gated in `tests/unit/test_supplement_pointers.py`.
 
 ### B13. The index terms are content, and get read like content
 

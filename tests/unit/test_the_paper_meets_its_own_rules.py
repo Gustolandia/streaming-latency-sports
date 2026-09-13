@@ -220,7 +220,8 @@ class TestADefinedSymbolKeepsItsOneMeaning:
             "rho is the utilization; it is used for a correlation in: " + " | ".join(offenders)
 
     def test_the_correlation_keeps_a_name_that_is_not_a_symbol(self, package):
-        assert "median correlation $\\spanRhoMedian$" in package, \
+        # Round 79 (R2): now the run-centred median, `spanRhoWithinMedian`, still named in words.
+        assert "median correlation $\\spanRhoWithinMedian$" in package, \
             "the D-A correlation must be named rather than given a symbol already in use"
 
 

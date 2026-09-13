@@ -59,7 +59,7 @@
 \renewcommand{\topfraction}{0.92}
 \renewcommand{\bottomfraction}{0.75}
 \renewcommand{\textfraction}{0.08}
-\renewcommand{\floatpagefraction}{0.80}
+\renewcommand{\floatpagefraction}{0.8}
 
 \begin{document}
 
@@ -651,7 +651,7 @@ which is precisely what the check of Section~\ref{sec:gate} is for.
 \textbf{The sign is a threshold, so the negatives count only the worst of the displacement.}
 The acknowledgment lag exceeds half the delivery time on $\diseaseOverHalf\%$ of events and a
 tenth of it on $\diseaseOverTenth\%$. The check fires only on the $\diseaseOverWhole\%$ where
-it exceeds the whole. The two are correlated within a run (median $\spanRhoMedian$ over
+it exceeds the whole. The two are correlated within a run (median $\spanRhoWithinMedian$ over
 $\spanRhoConditions$ conditions), one scheduler causing both, which suppresses crossings
 without touching the displacement.
 A path longer than the timestamp resolution is not clean but quiet.
@@ -765,7 +765,7 @@ $\GeomOrigFactor\times$, reproduced at $\GeomReplFactor\times$ by a full replica
 expects geometry to matter at fixed $\rho$; what it rules out is the single-parameter form
 we had adopted and pre-registered, where $\rho$ alone fixes the rate. Payload padding lengthened transport
 $\payloadTransportFactor\times$ while the negative-span rate \emph{fell}
-$\payloadRateFall\times$ [$\payloadRateFallCI$], monotonically, at a $\payloadRhoSpread$
+$\payloadRateFall\times$ [Katz 95\%: $\payloadRateFallCI$], monotonically, at a $\payloadRhoSpread$
 utilization spread --- the direction Equation~\ref{eq:negspan} predicts and the opposite of
 a stress account.
 Finally, a kernel trace on the \texttt{sched\_wakeup} and \brk{sched_switch}
@@ -827,10 +827,10 @@ acknowledgment lag recovers the delivery it failed to measure. Over the $\recove
 conditions the check passes the recovered median is $\recoveryErrPass\%$ from the true one
 and $\recoveryErrPassHi\%$ at the upper quartile; over the $\recoveryFailN$ it rejects,
 $\recoveryErrFail\%$ and $\recoveryErrFailHi\%$. Those medians differ; the populations cannot
-be told apart. The worst condition is $\recoveryPassMax\%$ on either side; the Hodges--Lehmann
-shift is $\recoveryShift$ points [95\% bootstrap:
-$\recoveryShiftCI$]; what opens the median gap is a concentration at zero, and without the exact
-recoveries no shift is detectable, $\recoveryNonzeroShift$ points [95\% bootstrap:
+be told apart. Both worst conditions are $\recoveryPassMax\%$; the Hodges--Lehmann shift,
+rejected minus accepted, is $\recoveryShift$ points [95\% bootstrap:
+$\recoveryShiftCI$]; what opens the median gap is a concentration at zero, and without it no shift is
+detectable, $\recoveryNonzeroShift$ points [95\% bootstrap:
 $\recoveryNonzeroShiftCI$] (Supplement~S16.9). The recovery therefore holds where the check
 rejects as well as where it passes, as Section~\ref{sec:authors} requires.
 
@@ -981,7 +981,7 @@ failure is confined to deliveries shorter than the timestamp resolution.}
 Publish latency across these cells takes only two values, $\ombPubLatLo$ and
 $\ombPubLatHi$~ms, while retention varies $\ombRetentionFold$-fold. A two-valued predictor
 cannot account for a range like that whatever its correlation, and the correlation it does
-have ($\ombRetentionRho$, Fisher $\ombRetentionRhoCI$, over $\ombRetentionRhoN$ cells) carries
+have (Spearman $\ombRetentionRho$; Fisher 95\%: $\ombRetentionRhoCI$; $\ombRetentionRhoN$ cells) carries
 the sign the law below predicts. What moves retention is where the producer's send
 instants fall against the \emph{grid}: the instants, one millisecond apart, at which the
 timestamp changes value. A sample survives when its delivery crosses a grid instant,
@@ -1150,7 +1150,7 @@ failed to measure, on the runs the check rejects as well as on those it passes
 declines to publish the proxy as a latency, and this one reports the delivery instead.
 
 \textbf{Two delays with one cause are not independent.} Timestamps waiting on one scheduler move
-together (median correlation $\spanRhoMedian$), so multiplying their probabilities
+together (median correlation $\spanRhoWithinMedian$), so multiplying their probabilities
 misprices the answer.
 Assuming independence here overpredicts the negative-span rate in all $\indepConditions$
 conditions, by a median factor of $\indepOvershoot$.
@@ -1336,7 +1336,7 @@ your tool throws away, and publish the retention rate beside the number.
 \section*{Acknowledgment}
 
 The authors thank N.~Herbst, for the load-generation point that became one of the
-reporting rules above, for the timer-characterization work cited in
+reporting rules above, for pointing us to the timer study cited in
 Section~\ref{sec:related}, and for a reading that reset the abstract.
 
 In accordance with IEEE policy, Anthropic's Claude assisted with code development and

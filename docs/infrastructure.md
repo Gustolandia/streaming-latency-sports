@@ -1884,6 +1884,63 @@ heading. A reader met the exhibit before the section. The source was in order; t
 The float is now `[b]`, and a rendered-page test checks that the heading precedes the caption.
 **Check reading order on the page, not in the source.**
 
+**1de. A pointer made of words cannot break.** When the supplement was split from the article,
+`\ref{sec:...}` pointers became the words "the main text": 25 of them in parentheses and more
+than a hundred in running prose. Words resolve to nothing, so when the article moved on, those
+pointers kept aiming at things it no longer contains. Among them were an H1 slope, a netem
+sweep, a "15/15", a residual analysis, a first-answer table, a checklist rule numbered (10), and
+one mangled into "Tables~the main text--the main text". The ledger gate catches a typed number;
+nothing caught a typed pointer. `tests/unit/test_supplement_pointers.py` now requires every
+sentence that mentions the main text to carry a `\main…` macro or a `\ref{P-…}`. xr resolves
+those, and a vanished label breaks the build. The only exceptions are a capped list of eight
+phrasings that point at nothing, such as "moved here from the main text". 114 pointers were
+repointed: to the article section, to the supplement section that actually holds the content,
+or removed where no target existed. **A reference the build cannot resolve is a claim nobody is
+checking.**
+
+**1df. The unit a sentence names is a computation, not a word choice.** Section V-A said D and A
+are "correlated within a run". Round 50 had corrected "within an event" to that. Yet the number
+underneath was still pooled over each condition's runs, because `span_by_condition.py` summed
+the co-moments across every run of a condition. The fix was not a synonym but a second
+accumulator, in the same pass and over the same window, with each run centred on its own means.
+The within-run median is 0.80 against the pooled 0.84, so the claim survives, and the article
+now prints the number that matches its unit; S24.2 reports both. Rescanning the 100 MB archive
+took twelve seconds and reproduced every existing column exactly, which is what made it safe to
+run.
+
+**1dg. A rule enforced one bracket at a time leaves the next bracket standing.** Rounds 77 and
+78 each fixed the bracket a referee pointed at. Round 79's referee found two more: a Katz
+interval in prose, and a Fisher interval with no level. `tests/unit/test_bracket_labels.py` now
+reads every `$\…CI$` macro in the article's prose and requires its bracket to name a method and
+a level. The signed Fisher interval also prints "+0.08 to +0.51" now, because "+0.08--+0.51" did
+not read as a range.
+
+**1dh. A legend that counts what the picture cannot show is a caption taken on trust.** Figure
+4's legend said 71 cells. At column width, 57 of the 1 ms column's 66 neighbouring pairs
+overlapped, and a reader could count about two dozen markers. The markers are now translucent,
+so overlap shows as depth, and each grid column prints its own count from the data. No caption
+word changed, which kept the page budget where it was.
+
+**1di. One form for a date is a script, not a copy-edit pass.** The bibliography dated its
+sources four ways. `scripts/normalize_access_dates.py` rewrites every dated note into IEEE's
+"Accessed: Mon. D, YYYY." — the form a TC 2025 paper in `docs/reference_tc` uses. It never
+invents a date, and its `--check` mode runs in the suite. Of the three undated article
+references, one was re-read on 2026-09-13 and dated by hand. Dating the other two added a line
+each and pushed the last biography onto a thirteenth page, as did the four characters "Read"
+gained in becoming "Accessed:" in [12], which lost "are computed" from its note to pay for it.
+The referee's condition was that the form must not grow the reference column, so those two stay
+undated for the copy-editors. The article went to thirteen pages twice in this round, once from
+the references and once from §V-D, and each time the column-end comparison against the
+committed PDF located the line.
+
+**1dj. A threats section is the first place an old paper survives.** S19's full threats and
+limitations were written when the attribution rested on two lettered testbeds and a netem sweep.
+The main text was then rewritten around manipulation on one clock, but nothing rewrote the
+threats, because nothing pointed at them. Yet they are the section a sceptical reader opens to
+check the claim, so staleness costs more there than anywhere else. The repair also deleted a
+paragraph whose counts matched no table (8 to 35 samples, an N=1 cell, 19 or more runs), rather
+than inventing a corpus for it.
+
 **1co. A spelling checker that proposes `pairwize` is a checker people learn to argue with.**
 The British-spelling gate runs a morphological rule over the `-ise` family, which is right and
 is the half a hand-written table keeps failing at. It had no rule for `-wise`, an English

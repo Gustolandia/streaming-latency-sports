@@ -1393,8 +1393,10 @@ class TestNetemConfoundIsDisclosed:
     """The injected-delay sweep confounds T_true with backlog, so H1's slope is not leaned on."""
 
     def test_the_variance_inflation_is_stated(self, tex):
-        threats = tex[tex.index("injected-delay sweep is not a clean"):]
-        para = threats[:threats.index(r"\paragraph")]
+        # Round 79 (R1) cut S19's paragraph to the sentence the referee asked for; the number and
+        # the word that carry the disclosure stayed in it.
+        threats = tex[tex.index("Construct validity: the injected-delay sweep"):]
+        para = threats[:threats.index(r"\paragraph", 10)]
         assert "9{,}200" in para or "9200" in para, "the variance blow-up must be quantified"
         assert "confound" in para.lower()
 

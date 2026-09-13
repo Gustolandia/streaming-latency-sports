@@ -106,6 +106,12 @@ def new_cond():
     # drop samples without counting them.
     acc["pair"] = {"n": 0, "outside": 0,
                    "sd": 0.0, "sa": 0.0, "sdd": 0.0, "saa": 0.0, "sda": 0.0}
+    # Round 79 (R2): the same co-moments with each run centred on its own means. The pooled
+    # sums above describe a condition: events from all of its runs, so a run whose D and A
+    # both sit high -- a busier minute -- adds covariance that no single run contains. The
+    # manuscript said "correlated within a run" of a number computed over the pool. These
+    # sums measure the within-run co-movement the sentence describes, beside the pool.
+    acc["pair_within"] = {"n": 0, "runs": 0, "sdd": 0.0, "saa": 0.0, "sda": 0.0}
     return acc
 
 
@@ -153,6 +159,20 @@ def consume_run(conds, run_rows, run_id, prod_rows, cons_rows):
     key = cond + ("#fail" if gate_fail else "#pass")
 
     acc = conds.setdefault(key, new_cond())
+    acc.setdefault("pair_within", {"n": 0, "runs": 0, "sdd": 0.0, "saa": 0.0, "sda": 0.0})
+    # The run-centred co-moments, over the same window as the pooled ones.
+    win = [(d_ns / 1000.0, a_ns / 1000.0) for _, d_ns, a_ns in events
+           if (BIN_LO_US <= d_ns / 1000.0 < BIN_HI_US) and (BIN_LO_US <= a_ns / 1000.0 < BIN_HI_US)]
+    if win:
+        md = sum(d for d, _ in win) / len(win)
+        ma = sum(a for _, a in win) / len(win)
+        within = acc["pair_within"]
+        within["n"] += len(win)
+        within["runs"] += 1
+        for d_us, a_us in win:
+            within["sdd"] += (d_us - md) * (d_us - md)
+            within["saa"] += (a_us - ma) * (a_us - ma)
+            within["sda"] += (d_us - md) * (a_us - ma)
     counted = ms_deleted = 0
     over = {a: 0 for a in ALPHAS}
     for s_ns, d_ns, a_ns in events:
@@ -263,6 +283,8 @@ def write_outputs(conds, run_rows, runs, events):
                 # point of the fix. Truncation at the histogram edges is what made the
                 # variance-identity route return correlations above one.
                 pair=acc["pair"],
+                pair_within=acc.get("pair_within",
+                                    {"n": 0, "runs": 0, "sdd": 0.0, "saa": 0.0, "sda": 0.0}),
             )
             for cond, acc in sorted(conds.items())
         },

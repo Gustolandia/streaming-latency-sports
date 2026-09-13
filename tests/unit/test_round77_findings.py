@@ -126,7 +126,7 @@ class TestR1NoShiftRemains:
         assert "if anything the worse of the two" not in s
 
     def test_the_defect_that_prompted_this_is_caught(self, paper):
-        bad, n = re.subn(r"and without the exact\s+recoveries no shift is detectable,[^(]*",
+        bad, n = re.subn(r"and without it\s+no shift is\s+detectable,[^(]*",
                          "and setting the exact recoveries aside crosses it ", paper)
         assert n == 1, "Section V-D has been reworded; retarget this mutation"
         with pytest.raises(AssertionError):

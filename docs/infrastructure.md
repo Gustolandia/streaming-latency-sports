@@ -486,7 +486,7 @@ skips bare integers deliberately: an exhaustive count in round 37 found 151 nume
 main text, 54 of which coincidentally equalled some macro's value and almost all of which were
 noise --- "$1$~ms stamp", "$q = 1$", a "$0.5$~ms path". Policing singletons would drown the
 signal. But **two emitted values in order, joined by a dash or by "to", is not a coincidence,
-it is the quantity.** Section VI-B typed "$7$ to $80	imes$" while eight sibling sites read
+it is the quantity.** Section VI-B typed "$7$ to $80\times$" while eight sibling sites read
 `
 tFactorLow`--`
 tFactorHigh`.
@@ -507,7 +507,7 @@ anchor for both modes, the exhibit a reader meets before any result.
 
 It survived thirty-six rounds because no round had put the ten captions side by side.
 `tests/unit/test_caption_leads.py` does it on every build, and asks two things: the caption
-starts with `	extbf{...}`, and that lead reads as a sentence rather than a label --- because
+starts with `\textbf{...}`, and that lead reads as a sentence rather than a label --- because
 "(a)" in bold would satisfy the first rule and nothing a reader wants.
 
 **When a convention holds in most places, count the places.** Both of this round's findings
@@ -1590,8 +1590,8 @@ other existing.
 **1ce. Nine of ten mutations were guarding nothing, and the check said OK every time.**
 `mutation_check.py` reports `SKIP` when an anchor is no longer in the manuscript, and `main()`
 returned 0 on skips. Round 72 found nine of the ten anchors stale. The list had been written
-against rendered digits --- *"is a proportion over $2{,}985$ matched"*, *"$2.07	imes$,
-$2.05	imes$"*, *"ratios $0.78$, $1.06$ and $1.32$"* --- in a manuscript that emits every
+against rendered digits --- *"is a proportion over $2{,}985$ matched"*, *"$2.07\times$,
+$2.05\times$"*, *"ratios $0.78$, $1.06$ and $1.32$"* --- in a manuscript that emits every
 digit from a ledger, so each anchor died the first time its number was recomputed or its
 sentence reworded, silently, and the run kept printing success.
 
@@ -1700,7 +1700,7 @@ would have been worse than the broken pointer.
 
 The general form, and the project already has a commit titled almost exactly this: **an
 artifact statement may not claim an availability its records do not have** --- and a prose
-pointer is an artifact statement. The gate resolves every `	exttt{}` containing a repository
+pointer is an artifact statement. The gate resolves every `\texttt{}` containing a repository
 path, allows a glob, keeps a short list of paths absent by design with a reason, and
 additionally requires that **the sentence naming an absent path discloses the absence to the
 reader**, because a reason recorded only in a test protects the test suite and nobody else.
@@ -1732,6 +1732,115 @@ gates verify the nouns. The claim lives in the verb, and the only defence is to 
 statistic the verb asserts** --- `recoveryShift` now sits in the same function as the four
 numbers it qualifies, which is the general repair: *if a sentence compares two populations,
 the comparison is a quantity and belongs in the ledger beside them.*
+
+**1cp. The repair was audited one level up, and it had the defect it was repairing.** Round 75
+replaced a comparison made by eye with a Hodges--Lehmann shift, emitted from the same function as
+the numbers it qualified, and wrote beside it that the statistic was "used the same way in both
+places it is needed" -- Section VIII-A being the other place. Section VIII-A's shift carries a
+90% bootstrap interval. This one was emitted bare. The same round added two exact-recovery
+proportions over stated denominators and printed those bare too, against Section IV-F's promise
+of a Wilson interval on every proportion. Every interval, once computed, *supports* the
+corrected claim: the shift's contains zero, and the two proportions overlap across nearly their
+whole width. That is exactly why they had to be printed. **A paper that brackets a number only
+where the bracket is comfortable is running the positivity filter this paper is about, on its
+own statistics.** The estimators now live in `stat_intervals.py`, which is where Section IV-F
+says interval arithmetic is done, so a shift and its bracket are one call rather than two habits.
+
+**1cq. A shift cannot say that two populations agree.** The corrected sentence read "those
+medians differ; the populations do not", and the only statistic under it was an offset. Two
+distributions can share an offset of zero and differ in shape, and these two visibly do -- one is
+a spike at zero with a cluster at a fifth to a third, the other nearly flat. The referee ran the
+test nobody had: two-sample Kolmogorov--Smirnov, D = 0.27, permutation p = 0.12. The claim
+survives. The point is that it was *not entitled* to survive on the shift alone, and a claim
+that happens to be true is still an unsupported one. `ks_permutation_p` is tie-correct because
+twenty of the seventy observations are exact zeros, and an empirical CDF stepped once per
+observation reads a gap inside a tie -- the first implementation did, and reported p = 0.146
+where the correct value is 0.116.
+
+**1cr. One decision, written down twice, is two decisions.** The emitter decided which OMB
+cells are "at the grid" by testing membership of the literal pair `(1.0, 2.0)`. The figure
+decided it with `<= AT_GRID_MAX_MS`. Identical on today's corpus; different the day a cell
+prints 1.5 ms, which the figure would have drawn at the grid and the emitter would have counted
+away from it, so the caption's number and the picture's would have parted silently. It came to
+light only because a referee asked that Figure 4 label the grid values it claims, and labelling
+them from the data meant asking where the list came from. Both now read one constant, and the
+caption reads the emitted values rather than typing `$1.0$ or $2.0$`.
+
+**1cs. The heredoc lesson was recorded here, and this file carried five instances of it.**
+Round 76's referee found a literal TAB and a literal backspace (0x08) in a comment of
+`test_pdf_compliance.py`, where `\texttt` and `\brk` had been written through a shell heredoc
+that expanded `\t` and `\b` first. The repository-wide gate written in response,
+`tests/unit/test_source_hygiene.py`, failed on its first run -- not on the test file, which had
+been repaired, but on **this document**, which held five more: `\times` three times, `\textbf`
+and `\texttt`, each reduced to a tab and the rest of the word. The lesson about the defect was
+itself carrying the defect, unreadable in exactly the places it quoted LaTeX. Carrying a lesson
+is not gating it. No control character but the line ending may now sit in authored source.
+
+**1ct. An exemption written for one kind of float was covering another.** The caption gate
+requires every exhibit to open on a bolded claim, and exempts the supplement: "forty-odd floats
+and a different job". That was a reasonable call about the supplement's twenty-seven tables and
+it was recorded honestly. It also silently covered the supplement's thirteen *figures*, where
+three opened on labels -- "Window sweep, as a picture.", "Experiment map.", "Audit on Testbed
+A." -- and a fourth was bold but led with the single word "Withdrawn.", a status rather than a
+claim. Nothing was wrong with the decision; what was wrong was its reach. Round 76's image
+review found the first three by setting all seventeen captions in one list, and the extended
+gate found the fourth on its first run -- the eye had passed it because it *was* bold. Figures are
+now required in both documents; tables stay surveyed, and the gate's docstring says where to
+change that. **When an exemption is justified by one population, scope it to that population,
+or it exempts whatever else happens to share the container.**
+
+**1cu. A diff that is noise is a diff nobody reads.** Round 76 changed one figure and
+regenerated eight. Git reported eight modified. Seven had identical extracted text, identical
+pixels at render and identical byte size; comparing bytes against HEAD found six or seven
+differing in each, every one inside `/CreationDate`. matplotlib stamps the wall clock into each
+PDF, so every build had always dirtied every figure, and the history could not tell a figure
+whose content moved from one that was merely rebuilt. That matters more here than elsewhere:
+the artifact's claim is that every exhibit is recomputed from committed data, and the way a
+reader checks that a figure did *not* change is the diff. `figure_style.apply()`, which all
+eight figure scripts call, now sets `SOURCE_DATE_EPOCH`; `test_figure_reproducibility.py` builds
+a figure twice a second apart and requires identical bytes. The one-time cost is that every
+figure PDF changes once more in the commit that pins the stamp, and never again after it.
+
+**1cv. The referee's own suggestion failed the test the referee had just set.** Round 76's
+report proposed the sharp form of the recovery finding: remove the exact recoveries and the two
+medians do not merely converge, they *cross*. They do cross, as medians. But the paragraph that
+sentence sat in argued that a quantile can move while a population does not, and round 77 ran
+that argument on the crossing: the Hodges--Lehmann shift between the two non-zero populations is
+0.0 points, with a bootstrap interval that contains zero. A crossing of medians is the same
+artifact as a gap between them. The repair emits the shift on the non-zero populations
+(`recoveryNonzeroShift`) and keeps the medians as description only. **Advice is evidence about
+what someone thought, not about the data; run the test on the suggestion too, especially when
+it arrives from the direction you trust.**
+
+**1cw. A cluster is wherever an eye puts the line.** S16.9 described the accepted population as
+"a spike at zero with a second cluster between a fifth and a third", and the rejected one as
+"nearly flat". The referee corrected both, and grouped the accepted conditions as 14 exact, 14
+between 1.9% and 14.3%, and 12 between 20% and 33%. Implementing that grouping from the data
+exposed that it, too, was drawn by eye: splitting the accepted population at its largest gap
+puts the break between 22% and 29%, not between 14% and 20%. The prose now counts both
+populations in three bands from one stated edge, `stat_intervals.RECOVERY_BAND_PCT` -- exact,
+below 20%, 20% or more -- which gives 14/14/14 and 6/17/5 and needs no eye at all. **Describe a
+distribution by counts in stated bands, never by the shapes a picture suggests.**
+
+**1cx. A number read off a drawing is a number typed.** The same report said the two recovery
+distribution functions cross "near 15% and 29%", read from a sketch. `stat_intervals.ecdf_crossings`
+evaluates them where they change order: 18.2% and 34.8%. The second is a reversal by one
+condition on each side, near the maximum. The figure's caption now reads the emitted values.
+
+**1cy. A library default undid a fix without an error.** Round 76 gave Figure 4 labelled minor
+ticks at the grid values 1 and 2. The referee saw "10⁰" and "2": matplotlib silently drops a
+minor tick that coincides with a major one, so the grid value 1 kept its decade label while 2
+got the plain one. The major formatter now prints a decade that is also a grid value the way
+its neighbour does. The rendered axis, not the code, was the only place the defect existed.
+
+**1cz. A fact about someone else's repository is a ledger row, not a remembered search.** The
+supplement now says that in eight years only one tracker item upstream has named the variable
+the admission condition tests -- the pull request that added it. That sentence goes stale the
+day someone opens an issue, and nothing would notice. So the search is recorded in
+`docs/results/external/omb_tracker_search.csv` with its date, `emit_paper_numbers` emits the count,
+the date and the age from that row, and `scripts/check_omb_tracker.py` re-runs the search and
+fails if the recorded answer has moved. Like the upstream-lines audit, it is run by hand and not
+in the suite: a stranger's issue is news about them, not a defect here.
 
 **1co. A spelling checker that proposes `pairwize` is a checker people learn to argue with.**
 The British-spelling gate runs a morphological rule over the `-ise` family, which is right and

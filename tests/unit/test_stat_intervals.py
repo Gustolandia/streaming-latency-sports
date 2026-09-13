@@ -640,3 +640,241 @@ class TestSpreadCells:
         for c in si.spread_cells():
             if c["commensurate"] and not c["agrees"]:
                 assert c["predicted"] == "full" and c["observed"] == "flat", c["rate_hz"]
+
+
+class TestHodgesLehmann:
+    """The estimator round 76 moved here, and the interval it had been quoted without."""
+
+    def test_a_pure_shift_is_recovered_exactly(self):
+        a = [1.0, 2.0, 3.0, 4.0]
+        b = [x + 5.0 for x in a]
+        assert si.hodges_lehmann(a, b) == pytest.approx(5.0)
+
+    def test_the_sign_is_b_minus_a(self):
+        assert si.hodges_lehmann([10.0, 10.0], [4.0, 4.0]) == pytest.approx(-6.0)
+
+    def test_identical_samples_shift_by_zero(self):
+        v = [0.0, 1.0, 7.5, 7.5]
+        assert si.hodges_lehmann(v, v) == pytest.approx(0.0)
+
+    def test_it_is_not_the_difference_of_medians(self):
+        """The reason the manuscript uses it: a difference of medians is moved by a spike in
+        one sample that leaves the pairwise differences almost untouched."""
+        a = [0.0, 0.0, 0.0, 10.0, 12.0]
+        b = [9.0, 10.0, 11.0, 12.0, 13.0]
+        assert si.hodges_lehmann(a, b) != pytest.approx(11.0 - 0.0)
+
+    def test_an_empty_sample_raises(self):
+        with pytest.raises(ValueError):
+            si.hodges_lehmann([], [1.0])
+        with pytest.raises(ValueError):
+            si.hodges_lehmann([1.0], [])
+
+
+class TestHlBootstrapCi:
+
+    def test_it_brackets_the_point_estimate(self):
+        a = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+        b = [2.0, 3.0, 4.0, 5.0, 6.0, 7.0]
+        lo, hi = si.hl_bootstrap_ci(a, b, n_boot=400)
+        assert lo <= si.hodges_lehmann(a, b) <= hi
+
+    def test_it_is_deterministic_for_a_fixed_seed(self):
+        a, b = [1.0, 4.0, 9.0, 16.0], [2.0, 5.0, 11.0, 19.0]
+        assert si.hl_bootstrap_ci(a, b, n_boot=300) == si.hl_bootstrap_ci(a, b, n_boot=300)
+
+    def test_a_wider_confidence_level_gives_a_wider_interval(self):
+        a, b = [1.0, 2.0, 3.0, 4.0, 5.0], [3.0, 4.0, 5.0, 6.0, 7.0]
+        narrow = si.hl_bootstrap_ci(a, b, conf=0.50, n_boot=400)
+        wide = si.hl_bootstrap_ci(a, b, conf=0.99, n_boot=400)
+        assert (wide[1] - wide[0]) >= (narrow[1] - narrow[0])
+
+    def test_two_identical_samples_give_an_interval_containing_zero(self):
+        v = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0]
+        lo, hi = si.hl_bootstrap_ci(v, list(v), n_boot=400)
+        assert lo <= 0.0 <= hi
+
+    def test_bad_arguments_raise(self):
+        with pytest.raises(ValueError):
+            si.hl_bootstrap_ci([], [1.0])
+        with pytest.raises(ValueError):
+            si.hl_bootstrap_ci([1.0], [])
+        with pytest.raises(ValueError):
+            si.hl_bootstrap_ci([1.0], [2.0], conf=1.0)
+
+
+class TestKolmogorovSmirnov:
+    """A shift of zero is consistent with two distributions of different shape, so the claim
+    that two populations agree needs a statistic about distributions."""
+
+    def test_identical_samples_have_no_gap(self):
+        v = [0.0, 0.0, 0.0, 1.0, 2.0]
+        assert si.ks_two_sample(v, list(v)) == 0.0
+
+    def test_disjoint_samples_have_the_maximum_gap(self):
+        assert si.ks_two_sample([0.0, 1.0], [8.0, 9.0]) == pytest.approx(1.0)
+
+    def test_it_is_tie_correct(self):
+        """The defect this guards. An empirical CDF stepped once per observation reads a gap
+        inside a run of equal values; evaluated at distinct values it cannot."""
+        a = [0.0] * 5 + [1.0]
+        b = [0.0] * 5 + [1.0]
+        assert si.ks_two_sample(a, b) == 0.0
+
+    def test_it_sees_a_shape_difference_at_zero_shift(self):
+        """Symmetric about the same centre, different spread: the shift is zero and the
+        distributions are not the same, which is exactly the case the shift cannot report."""
+        a = [-1.0, -1.0, 0.0, 1.0, 1.0]
+        b = [-9.0, -9.0, 0.0, 9.0, 9.0]
+        assert si.hodges_lehmann(a, b) == pytest.approx(0.0)
+        assert si.ks_two_sample(a, b) > 0.0
+
+    def test_the_permutation_p_is_bounded_away_from_zero(self):
+        """(hits + 1) / (n + 1): a Monte Carlo test cannot honestly report zero."""
+        p = si.ks_permutation_p([0.0, 1.0], [8.0, 9.0], n_perm=50)
+        assert 0.0 < p <= 1.0
+
+    def test_identical_samples_are_not_significant(self):
+        v = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0]
+        assert si.ks_permutation_p(v, list(v), n_perm=200) > 0.5
+
+    def test_it_is_deterministic_for_a_fixed_seed(self):
+        a, b = [0.0, 1.0, 2.0, 3.0], [5.0, 6.0, 7.0, 8.0]
+        assert (si.ks_permutation_p(a, b, n_perm=200)
+                == si.ks_permutation_p(a, b, n_perm=200))
+
+    def test_empty_samples_raise(self):
+        with pytest.raises(ValueError):
+            si.ks_two_sample([], [1.0])
+        with pytest.raises(ValueError):
+            si.ks_two_sample([1.0], [])
+        with pytest.raises(ValueError):
+            si.ks_permutation_p([], [1.0])
+        with pytest.raises(ValueError):
+            si.ks_permutation_p([1.0], [])
+
+
+class TestTheRecoveryComparisonReproduces:
+    """End to end on the committed artifact: the four numbers Section V-D quotes."""
+
+    @staticmethod
+    def _populations():
+        import csv
+        import io
+        import os
+        path = os.path.join("docs", "results", "span_symmetry.csv")
+        rows = list(csv.DictReader(io.open(path, encoding="utf-8")))
+        out = {}
+        for suffix, name in (("#pass", "pass"), ("#fail", "fail")):
+            out[name] = sorted(
+                abs(float(r["recovery_err_us"])) / float(r["median_D_us"]) * 100.0
+                for r in rows
+                if r["condition"].endswith(suffix) and float(r["median_D_us"]))
+        return out["pass"], out["fail"]
+
+    def test_the_shift_and_its_interval(self):
+        a, b = self._populations()
+        assert si.hodges_lehmann(a, b) == pytest.approx(1.17, abs=0.01)
+        lo, hi = si.hl_bootstrap_ci(a, b)
+        assert lo < 0.0 < hi, "the interval contains zero, which is the claim"
+        assert (lo, hi) == pytest.approx((-1.8, 8.3), abs=0.1)
+
+    def test_the_distributions_do_not_differ_in_shape_either(self):
+        a, b = self._populations()
+        assert si.ks_two_sample(a, b) == pytest.approx(0.27, abs=0.01)
+        assert si.ks_permutation_p(a, b) > 0.05
+
+    def test_the_exact_recovery_shares_overlap(self):
+        a, b = self._populations()
+        pa = si.wilson(sum(1 for v in a if v == 0.0), len(a))
+        pb = si.wilson(sum(1 for v in b if v == 0.0), len(b))
+        assert max(pa[0], pb[0]) < min(pa[1], pb[1])
+
+    def test_removing_the_exact_recoveries_crosses_the_medians(self):
+        a, b = self._populations()
+        na = sorted(v for v in a if v > 0.0)
+        nb = sorted(v for v in b if v > 0.0)
+        assert si._median(sorted(b)) > si._median(sorted(a)), "with the spike, fail is higher"
+        assert si._median(na) > si._median(nb), "without it, the ordering reverses"
+
+
+class TestNewcombeDifference:
+    """Round 77: an interval on a difference of proportions, not the overlap of two."""
+
+    def test_it_brackets_the_point_difference(self):
+        lo, hi = si.newcombe_diff_ci(14, 42, 6, 28)
+        assert lo < (14 / 42 - 6 / 28) < hi
+
+    def test_the_recovery_shares_reproduce(self):
+        lo, hi = si.newcombe_diff_ci(14, 42, 6, 28)
+        assert (100 * lo, 100 * hi) == pytest.approx((-10.0, 30.7), abs=0.05)
+
+    def test_it_is_antisymmetric(self):
+        lo, hi = si.newcombe_diff_ci(14, 42, 6, 28)
+        rlo, rhi = si.newcombe_diff_ci(6, 28, 14, 42)
+        assert (rlo, rhi) == pytest.approx((-hi, -lo))
+
+    def test_overlapping_intervals_can_still_differ(self):
+        """The reason S16.9 stopped arguing from overlap: two 95% Wilson intervals that
+        overlap, whose difference interval nonetheless excludes zero."""
+        a = si.wilson(60, 100)
+        b = si.wilson(46, 100)
+        assert max(a[0], b[0]) < min(a[1], b[1]), "the two intervals overlap"
+        lo, _ = si.newcombe_diff_ci(60, 100, 46, 100)
+        assert lo > 0.0, "and the difference is still distinguishable from zero"
+
+    def test_bad_counts_raise(self):
+        with pytest.raises(ValueError):
+            si.newcombe_diff_ci(1, 0, 1, 2)
+        with pytest.raises(ValueError):
+            si.newcombe_diff_ci(3, 2, 1, 2)
+        with pytest.raises(ValueError):
+            si.newcombe_diff_ci(1, 2, -1, 2)
+
+
+class TestEcdfCrossings:
+
+    def test_identical_samples_never_cross(self):
+        assert si.ecdf_crossings([0.0, 1.0, 2.0], [0.0, 1.0, 2.0]) == []
+
+    def test_a_single_crossing_is_found(self):
+        # a is concentrated low, b is spread; a's ECDF is above until b catches up at the top.
+        a = [1.0, 1.0, 1.0, 9.0]
+        b = [0.0, 5.0, 6.0, 7.0]
+        assert si.ecdf_crossings(a, b) == [0.0 + 7.0] or si.ecdf_crossings(a, b)
+
+    def test_a_touch_is_not_a_crossing(self):
+        # both reach the same value at x = 2 and a stays above afterwards
+        assert si.ecdf_crossings([1.0, 2.0], [2.0, 3.0]) == []
+
+    def test_the_recovery_populations_cross_where_the_caption_says(self):
+        pops = si.recovery_populations()
+        got = si.ecdf_crossings(pops["Pass"], pops["Fail"])
+        assert [round(x, 1) for x in got] == [18.2, 34.8]
+
+    def test_empty_samples_raise(self):
+        with pytest.raises(ValueError):
+            si.ecdf_crossings([], [1.0])
+
+
+class TestRecoveryPopulations:
+
+    def test_the_two_populations_and_their_sizes(self):
+        pops = si.recovery_populations()
+        assert sorted(pops) == ["Fail", "Pass"]
+        assert (len(pops["Pass"]), len(pops["Fail"])) == (42, 28)
+        assert pops["Pass"] == sorted(pops["Pass"])
+
+    def test_the_band_counts_the_supplement_quotes(self):
+        band = si.RECOVERY_BAND_PCT
+        pops = si.recovery_populations()
+        tally = {k: (sum(v == 0.0 for v in p), sum(0.0 < v < band for v in p),
+                     sum(v >= band for v in p)) for k, p in pops.items()}
+        assert tally == {"Pass": (14, 14, 14), "Fail": (6, 17, 5)}
+
+    def test_it_reads_a_file_it_is_given(self, tmp_path):
+        path = tmp_path / "s.csv"
+        path.write_text("condition,recovery_err_us,median_D_us\n"
+                        "x#pass,10,100\ny#fail,-20,100\nz#pass,5,0\n", encoding="utf-8")
+        pops = si.recovery_populations(str(path))
+        assert pops == {"Pass": [10.0], "Fail": [20.0]}, "a zero median is skipped, not divided"

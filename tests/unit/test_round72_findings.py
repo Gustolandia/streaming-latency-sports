@@ -346,9 +346,9 @@ class TestEveryTypedNumeralInTheMainTextIsADecision:
              "timestamp resolution, both configuration constants",
         "10": "an evaluation point on the exposure curve",
         "100": "an evaluation point on the exposure curve",
-        "1.0": "a grid value: an exact multiple of the timestamp resolution, which is what "
-               "the sentence is about",
-        "2.0": "a grid value, as above",
+        # "1.0" and "2.0" left this inventory in round 76: the grid values are now emitted
+        # (`ombGridPrintedLo`, `ombGridPrintedHi`) from the same rows Figure 4's ticks are drawn
+        # from, so neither is typed anywhere in the main text any longer.
         "1000": "the timestamp resolution in microseconds, negated: the only negative value a "
                 "millisecond-floored difference can take, which is the sentence's whole point",
         "2": "the log base of the histogram's buckets",

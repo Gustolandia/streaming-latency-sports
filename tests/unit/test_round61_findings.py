@@ -158,7 +158,7 @@ class TestTheSupplementIndexesItsExhibits:
     def test_it_lists_its_figures_and_tables(self, supplement):
         for macro in (r"\listoffigures", r"\listoftables"):
             assert macro in supplement, (
-                "the supplement dropped %s. It carries 13 figures and 27 tables over 56 pages "
+                "the supplement dropped %s. It carries 14 figures and 27 tables over sixty pages "
                 "with no page limit, and a reader who remembers an exhibit but not its "
                 "section has only the section titles to go on." % macro)
 

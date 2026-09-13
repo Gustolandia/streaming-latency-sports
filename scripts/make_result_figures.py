@@ -199,6 +199,32 @@ def plot_deletion(ax, pts, quantum_ms=AT_GRID_MAX_MS):
     ax.grid(alpha=0.25, lw=0.5)
     ax.axhline(100, color=GREY, lw=0.6, ls=":", zorder=0)
 
+    # Round 76. The caption says the at-grid cells print "1.0 or 2.0 ms", and until now the
+    # picture could not be used to check it: those two values are 0.3 of a decade apart on an
+    # axis spanning five, and a log axis labels decades only, so the two columns read as one
+    # stripe and the reader had to take the sentence on trust. That is the wrong way round in
+    # this paper of all papers. The grid vertices get their own labelled ticks.
+    #
+    # Derived from the data rather than written as [1, 2]: if a future campaign prints a
+    # third grid value the axis grows a third tick instead of the figure quietly asserting
+    # there were two.
+    grid_values = sorted(set(med[at_grid].tolist()))
+    ax.set_xticks(grid_values, minor=True)
+    ax.set_xticklabels(["%g" % v for v in grid_values], minor=True)
+    # Round 77 (W3). matplotlib drops a minor tick that coincides with a major one, so the
+    # grid value 1 kept its decade label "10^0" while 2 read "2": the caption's two values in
+    # two notations. Where a grid value falls on a decade, the decade label now prints it the
+    # way the minor tick beside it does.
+    from matplotlib.ticker import FuncFormatter
+    decade = ax.xaxis.get_major_formatter()
+    ax.xaxis.set_major_formatter(FuncFormatter(
+        lambda x, pos: ("%g" % x) if any(abs(x - g) < 1e-9 for g in grid_values)
+        else decade(x, pos)))
+    # 8 pt, not the 7 that would fit more comfortably: `figure_legibility` holds every figure
+    # to the journal's floor and caught the smaller size on the first build. A tick a reader
+    # cannot read is not a repair for a claim a reader cannot check.
+    ax.tick_params(axis="x", which="minor", labelsize=8, length=2.5, pad=1.5)
+
     lo, hi = ret[at_grid].min(), ret[at_grid].max()
     xs = med[at_grid].min()
     ax.annotate("", xy=(xs * 0.62, lo), xytext=(xs * 0.62, hi),
@@ -1042,19 +1068,87 @@ def build_payload(out_dir):
     return _save(fig, out_dir, "payload_flip")
 
 
+# --- the recovery populations (Supplement S16.9) ------------------------------------------
+
+def _tie_offsets(values, row, spread=0.05, height=0.6):
+    """Vertical positions for a strip plot that stacks equal values instead of hiding them.
+
+    Fourteen of the accepted conditions recover the delivery exactly, and a strip that drew
+    them at one point would show one mark where the argument turns on there being fourteen.
+    Each run of equal values is fanned symmetrically about its row, narrower when the run is
+    long so that no run spills into the other row.
+    """
+    counts = {}
+    for x in values:
+        counts[x] = counts.get(x, 0) + 1
+    seen, ys = {}, []
+    for x in values:
+        k, i = counts[x], seen.get(x, 0)
+        seen[x] = i + 1
+        ys.append(row + (i - (k - 1) / 2.0) * min(spread, height / k))
+    return ys
+
+
+def plot_recovery(ax_cdf, ax_strip, pops, band):
+    """Both recovery populations, as empirical distribution functions and as every condition.
+
+    Round 77. S16.9's argument had become four paragraphs about the shape of two small
+    distributions -- a pile at zero, where the rest sits, whether a shift describes them --
+    with no picture of either, and its prose had described that shape wrongly twice. The
+    left panel shows what the Kolmogorov-Smirnov statistic measures and where the curves
+    change order; the right shows the counts the band tallies are made of.
+    """
+    series = (("Pass", "check accepts", KEPT, 1), ("Fail", "check rejects", DELETED, 0))
+    for key, label, colour, row in series:
+        v = sorted(pops[key])
+        xs = sorted(set(v))
+        fs = [sum(1 for t in v if t <= x) / len(v) for x in xs]
+        ax_cdf.step([xs[0]] + xs, [0.0] + fs, where="post", color=colour, lw=1.3,
+                    label="%s (%d)" % (label, len(v)))
+        ax_strip.scatter(v, _tie_offsets(v, row), s=10, color=colour, edgecolors="none",
+                         alpha=0.85)
+    top = max(max(p) for p in pops.values())
+    for ax in (ax_cdf, ax_strip):
+        ax.axvline(band, color=GREY, lw=0.8, ls=":", zorder=0)
+        ax.set_xlim(-1.5, top + 2.0)
+        ax.set_xlabel("recovery error (% of median delivery)", fontsize=8)
+        ax.tick_params(labelsize=8)
+        ax.grid(alpha=0.25, lw=0.5)
+    ax_cdf.set_ylim(0.0, 1.03)
+    ax_cdf.set_ylabel("share of conditions", fontsize=8)
+    ax_cdf.legend(fontsize=8, frameon=False, loc="lower right", handletextpad=0.4)
+    # Titled as the caption names the panels, and on a capital: `test_figure_typography`
+    # holds every panel title in the submission to that, and bare "(a)"/"(b)" failed it.
+    ax_cdf.set_title("(a) Distribution functions", fontsize=8, loc="left")
+    ax_strip.set_yticks([1, 0])
+    ax_strip.set_yticklabels(["check accepts", "check rejects"], fontsize=8)
+    ax_strip.set_ylim(-0.55, 1.55)
+    ax_strip.set_title("(b) Every condition", fontsize=8, loc="left")
+
+
+def build_recovery(out_dir):
+    figure_style.apply()   # in force when the artists are made, not merely at import
+    import stat_intervals
+    fig, (ax_cdf, ax_strip) = plt.subplots(1, 2, figsize=(6.5, 2.35))
+    plot_recovery(ax_cdf, ax_strip, stat_intervals.recovery_populations(),
+                  stat_intervals.RECOVERY_BAND_PCT)
+    fig.tight_layout()
+    return _save(fig, out_dir, "recovery_populations")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Build the result figures")
     ap.add_argument("--out", default=os.path.join("docs", "results", "figures"))
     ap.add_argument("--only",
                     choices=("deletion", "spectrum", "grid", "mechanism", "ttrue", "payload",
-                             "exposure"),
+                             "exposure", "recovery"),
                     default=None)
     args = ap.parse_args(argv)
 
     builders = {"deletion": build_deletion, "spectrum": build_spectrum, "grid": build_grid,
                 "mechanism": build_mechanism, "ttrue": build_ttrue,
                 "payload": build_payload, "exposure": build_exposure,
-                "priority": build_priority_ladder}
+                "priority": build_priority_ladder, "recovery": build_recovery}
     todo = [args.only] if args.only else list(builders)
     for name in todo:
         path = builders[name](args.out)

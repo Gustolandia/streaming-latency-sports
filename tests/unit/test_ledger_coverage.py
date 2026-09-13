@@ -75,6 +75,15 @@ ALLOWED = {
         "kernel maintainers in S15 and older than this macro by twenty rounds; the same "
         "coincidence as the entry above, and the reason the ledger sweep matches on value "
         "rather than on meaning",
+    ("supplement.tex", "recoveryKsP", r"medians center on $0.10$--$0.12$~ms"):
+        "the upper end of the powered transport medians in the gate-sensitivity table, in "
+        "milliseconds, which happens to equal the Kolmogorov-Smirnov permutation p emitted in "
+        "round 76; a latency and a probability sharing two digits",
+    ("supplement.tex", "tracedModeRatio", r"station changes} in $4.5\%$"):
+        "a percentage quoted from Li's 2026 process-mining preprint in S33.4 -- how often "
+        "one-minute rounding changes the top-ranked station -- which is another paper's "
+        "measurement and cannot be emitted from this artifact; it coincides with the traced "
+        "slice-mode ratio",
 }
 
 

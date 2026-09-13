@@ -461,7 +461,8 @@ def test_plot_grid_draws_one_marker_per_arm_and_labels_every_class():
                                        ("grid", "grid_membership"),
                                        ("mechanism", "mechanism_forest"),
                                        ("ttrue", "ttrue_law"),
-                                       ("exposure", "exposure_curve")])
+                                       ("exposure", "exposure_curve"),
+                                       ("recovery", "recovery_populations")])
 def test_each_builder_writes_a_pdf(tmp_path, name, stem):
     assert mrf.main(["--out", str(tmp_path), "--only", name]) == 0
     out = tmp_path / ("%s.pdf" % stem)
@@ -469,16 +470,17 @@ def test_each_builder_writes_a_pdf(tmp_path, name, stem):
 
 
 def test_main_builds_every_figure_by_default(tmp_path, capsys):
-    """Eight since round 54, when the exposure curve joined them.
+    """Nine since round 77, when the recovery populations joined them.
 
     The count is pinned rather than loosened: a builder that stops running is the failure
     this catches, and it only catches it if the number is exact. It was seven from round 17,
-    when the priority ladder joined; the exposure curve is the eighth, drawn for the
-    supplement beside the table it visualises.
+    when the priority ladder joined, and eight from round 54 with the exposure curve. The
+    ninth draws the two recovery populations for S16.9, whose argument had become four
+    paragraphs about the shape of two distributions and no picture of either.
     """
     assert mrf.main(["--out", str(tmp_path)]) == 0
-    assert len(list(tmp_path.glob("*.pdf"))) == 8
-    assert capsys.readouterr().out.count("wrote") == 8
+    assert len(list(tmp_path.glob("*.pdf"))) == 9
+    assert capsys.readouterr().out.count("wrote") == 9
 
 
 def test_the_spectrum_builder_takes_the_slice_from_the_derived_constants(tmp_path):

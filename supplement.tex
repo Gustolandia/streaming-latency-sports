@@ -781,7 +781,7 @@ come from the per-run summary.}
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/window_sweep.pdf}
-\caption[Window sweep, as a picture]{Window sweep, as a picture. (a)~Events emitted per run grow $8.9\times$ while the
+\caption[Once-per-run cost, diluted by the window]{\textbf{Once-per-run cost, diluted by the window.} (a)~Events emitted per run grow $8.9\times$ while the
 number waking more than $50$~ms late stays at four --- a per-event constant would put the two
 series on parallel lines. (b)~The same fact as a proportion: the share of events paying the cost
 falls as $1/\mathrm{events}$, the dilution a once-per-run cost predicts. \redis{}, on the same
@@ -792,7 +792,7 @@ events, has no affected events at any window.}
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/e1_end_to_end_lag.pdf}
-\caption[Withdrawn: the end-to-end gap as first decomposed]{\textbf{Withdrawn.} (a)~End-to-end delay against concurrency as originally measured.
+\caption[Withdrawn: a per-run start-up cost, read as a per-event gap]{\textbf{Withdrawn: a per-run start-up cost, read as a per-event gap.} (a)~End-to-end delay against concurrency as originally measured.
 (b)~The decomposition that appeared to place the whole gap in producer send lag. Both
 panels are retained as evidence for the main text: the runs behind them matched
 a median of seven events each, so the apparent per-event offset is a per-run start-up cost.
@@ -2444,31 +2444,80 @@ that condition's median delivery: one number per condition, from
 Section~\mainGate{} accepted the condition.
 
 \begin{center}
-\begin{tabular}{lrrrrr}
+\begin{tabular}{lrrrrl}
 \hline
-Conditions & $n$ & Median & Upper quartile & Worst & Exact \\
+Conditions & $n$ & Median & Q3 & Worst & Exact (95\% CI) \\
 \hline
 Check accepts & \recoveryPassN{} & \recoveryErrPass\% & \recoveryErrPassHi\% &
-  \recoveryPassMax\% & \recoveryPassExact\% \\
+  \recoveryPassMax\% & \recoveryPassExact\% [$\recoveryPassExactCI$] \\
 Check rejects & \recoveryFailN{} & \recoveryErrFail\% & \recoveryErrFailHi\% &
-  \recoveryFailMax\% & \recoveryFailExact\% \\
+  \recoveryFailMax\% & \recoveryFailExact\% [$\recoveryFailExactCI$] \\
 \hline
 \end{tabular}
 \end{center}
 
-\emph{Exact} is the share of conditions whose recovered delivery matches the true one to the
-microsecond the campaign records.
+\emph{Q3} is the upper quartile. \emph{Exact} is the share of conditions whose recovered
+delivery matches the true one to the microsecond the campaign records, with the Wilson
+interval Section~\mainStats{} asks of every proportion.
 
 Two readings of that table are available and one of them is wrong. The wrong one, and
 ours until this section was written, is that the two populations differ because their
 medians do. They do not.
 The Hodges--Lehmann shift over all $\recoveryShiftPairs$ pairwise differences is
-$\recoveryShift$ points, the worst condition is the same on both sides, and the upper
+$\recoveryShift$ points, with a percentile bootstrap interval of $\recoveryShiftCI$ that
+contains zero; the worst condition is the same on both sides; and the upper
 quartiles are within a point and a half of each other. What moves the medians apart is the
 last column: $\recoveryPassExact\%$ of the accepted conditions recover the delivery exactly,
 and a concentration at zero drags a median down without moving the population it came from.
 A quantile can shift while the distribution does not, which is this paper's own subject one
 level up.
+
+Two further checks make that concrete. First, the concentration at zero is not itself a
+population difference. The two exact-recovery shares are $\recoveryPassExact\%$ and
+$\recoveryFailExact\%$, a difference of $\recoveryExactDiff$ points, and Newcombe's interval
+on that difference, built from the same Wilson limits, is $\recoveryExactDiffCI$: it contains
+zero. Two intervals overlapping would not have shown this --- overlap is not the test --- and
+the difference's own interval does. The rejected conditions recover exactly as well, and any
+reading on which they never do is wrong. Second, remove the exact recoveries from both
+populations and no shift is left to explain. The medians of what remains are
+$\recoveryErrPassNonzero\%$ over the $\recoveryPassNonzeroN$ accepted conditions and
+$\recoveryErrFailNonzero\%$ over the $\recoveryFailNonzeroN$ rejected ones, and they happen
+to cross; but the Hodges--Lehmann shift between those two non-zero populations is
+$\recoveryNonzeroShift$ points, with a bootstrap interval of $\recoveryNonzeroShiftCI$. A
+crossing of two medians is the same artifact as a gap between them, and the test that
+dismissed the gap dismisses the crossing. The gap was the spike entire, and above the spike
+there is nothing to choose between the populations.
+
+\begin{figure}[tb]
+\centering
+\includegraphics[width=\columnwidth]{docs/results/figures/recovery_populations.pdf}
+\caption[Two populations with no shift between them]{\textbf{Two populations with no
+shift between them.} (a)~Empirical distribution functions of the recovery error over the
+$\recoveryPassN$ conditions the check accepts and the $\recoveryFailN$ it rejects; the
+dotted line is the $\recoveryBandPct\%$ band edge the text counts against. The curves open
+with steps of $\recoveryPassExact\%$ and $\recoveryFailExact\%$ at zero, change order at
+$\recoveryEcdfCrossLo\%$, and change back at $\recoveryEcdfCrossHi\%$, where each population
+has a single condition left above. (b)~Every condition, one mark each.}
+\label{fig:recovery}
+\end{figure}
+
+A shift cannot carry that sentence on its own, and the gap is worth naming rather than
+leaving. Two distributions can sit at zero offset and still differ in shape, and
+Figure~\ref{fig:recovery} shows that these two do. Counted in three bands of the recovery
+error --- exact, below $\recoveryBandPct\%$, and $\recoveryBandPct\%$ or more --- the accepted
+conditions divide $\recoveryPassExactN$, $\recoveryPassBelowBandN$ and
+$\recoveryPassFromBandN$, a third in each; the rejected ones divide $\recoveryFailExactN$,
+$\recoveryFailBelowBandN$ and $\recoveryFailFromBandN$, a smaller pile at zero with most of the
+rest below the band edge. The bands are counted rather than read off a picture as clusters on
+purpose: where a gap in the accepted population looks like a boundary depends on the eye
+drawing it, and splitting that population at its largest gap puts the boundary somewhere
+other than where a first look does. So the distributional claim is tested
+distributionally. The two-sample Kolmogorov--Smirnov statistic is $D = \recoveryKsD$, at
+$p = \recoveryKsP$ over $\recoveryKsPerms$ permutations --- tie-corrected, because the exact
+recoveries are ties at zero and an empirical CDF that steps once per observation reads a gap
+inside a tie that no pair of distributions has. Permutation rather than the asymptotic
+Kolmogorov distribution, which assumes continuous data these samples do not have. The
+stronger claim survives the stronger test.
 
 The right reading is the one Section~\mainAuthors{}'s fourth rule needs: the recovery holds
 where the check rejects as well as where it passes. That result is not free. It is the whole
@@ -2481,7 +2530,9 @@ shift in the units the sentence is about, so a reader can act on its size. The t
 distributions cross, so a test built on ranks is weak here by construction and a large $p$
 would have carried no information about whether the populations agree. And
 Section~\mainBrokers{} already quotes a Hodges--Lehmann shift for the broker equivalence:
-one statistic, used the same way in both places it is needed.
+one statistic, on the same footing in both places and each at the level its question calls
+for --- a $90\%$ interval beside the two one-sided tests of equivalence, a $95\%$ interval for
+this two-sided estimate.
 
 The median is still not a bound, which is the older lesson this table also serves. A reader
 who reads $\recoveryErrPass\%$ as a guarantee is wrong for a quarter of the accepted
@@ -2589,8 +2640,8 @@ changing any conclusion.
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/experiment_map.pdf}
-\caption[Experiment map]{Experiment map. Each campaign manipulates one variable, holds the others fixed, and
-settles one claim. The delay sweep is marked confounded because injecting delay also inflates
+\caption[One variable per campaign, one claim per row]{\textbf{One variable per campaign, one claim per row.} Each campaign holds the others
+fixed. The delay sweep is marked confounded because injecting delay also inflates
 variance (the main text), so we use it for direction only.}
 \label{fig:expmap}
 \end{figure}
@@ -2629,7 +2680,8 @@ Start-up withdrawal & window sweep, twice & 3 per window \\
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/integrity_audit.pdf}
-\caption[Audit on Testbed~A]{Audit on Testbed~A. (a)~Per-run negative-span rates: 104 runs carry no negative
+\caption[No natural threshold, and the choice moves no conclusion]{\textbf{No natural threshold, and the choice moves no conclusion.} Audit on
+Testbed~A. (a)~Per-run negative-span rates: 104 runs carry no negative
 span at all and the rest spread over three decades, so there is no natural threshold. That
 is the count at which the rate is exactly zero, not the number the audit passes: the
 one-per-cent rule condemns $\auditPctWorkstation\%$ of the $\auditRunsWorkstation$.
@@ -3132,6 +3184,14 @@ documented contract. That makes the maintainer's local fix more defensible rathe
 less: it was written against behavior the library documents for the opposite bound. It
 also makes the wider case, that a disposal rule has to be stated by whoever depends on it,
 because the dependency will not state it for you.
+
+Nor has anyone upstream returned to it. A search of the benchmark's issue tracker for the
+variable the condition tests, run on \ombTrackerChecked{}, returns \ombTrackerItems{} item:
+pull request \#\ombTrackerFirstItem{}, the change that introduced the
+filter~\cite{openmessaging_pr56}. In the \ombTrackerYearsWord{} years since, including the
+coordinated-omission revision the project accepted, no issue or pull request has named it.
+The search and its date are a ledger row rather than a remembered result, re-run by
+\brk{check_omb_tracker.py}.
 
 % Round 67's referee also reported that Cassandra and DataStax drivers catch that
 % exception and discard the value with a warning, which would be a sixth disposition for
@@ -4324,6 +4384,17 @@ reports~\cite{swami2026observability}. It reports no negative spans, no quantize
 no law relating either to the interval measured; what it confirms is the premise, fourteen
 years after Villain and in another domain.
 
+The dead end is still open, and the clearest instance of it is recent. In July 2026 a bug was
+filed against the OpenTelemetry eBPF instrumentation, reporting child spans whose start times
+precede their parents' \emph{on same-node resources as well as distributed ones}, and stating
+that the reporter had checked for clock skew and found none~\cite{otel_obi_2568}. It was
+untriaged when we read it. We claim nothing from it about our own mechanism and the reason is
+in the report itself: the deltas are given as seconds to minutes, which is orders of magnitude
+beyond any run-queue stall, so whatever produces them is not Section~\mainModeA{}'s
+displacement. What it evidences is the \emph{absence of a second hypothesis}. A practitioner
+who has ruled out the clock, on one node, has nowhere else to look, and that is the gap the
+rules of Section~\mainAuthors{} are meant to close.
+
 That is our conclusion, reached by practitioners, from the symptom alone. What the argument
 lacked was a mechanism and a magnitude: if the displacement is a late timestamp rather than a
 skewed clock, then an adjuster is not correcting error but moving evidence, and how much
@@ -4520,6 +4591,21 @@ We record all three without complaint about their authors, who are doing somethi
 doing it well. The point is narrower and harder to argue with than any count of benchmarks: a document
 written in 2026 to enumerate the ways latency measurement goes wrong does not contain the
 ways this paper reports, which is what it means for a gap to be a gap.
+
+\paragraph{The half of this that another field found the same year}
+The deletion failure has two halves --- a coarse grid, and a filter that throws away what
+lands on it --- and the first half is not confined to computing. A 2026 process-mining
+preprint rounds manufacturing event logs to 1-, 5- and 10-minute grids and reports that the
+\emph{top-ranked station changes} in $4.5\%$, $19.0\%$ and $30.25\%$ of paired
+logs~\cite{li2026rounding}. That is Section~\mainModeB{}'s consequence, in a field with no
+contact with this one: a grid coarse against the interval destroys an ordering rather than
+adding noise to it, which is the property that makes it dangerous to a comparison. We record
+it as corroboration and not as a precedent, because the differences are the whole of our
+contribution: those logs are synthetic and ours are measured, the grid there is applied in
+analysis and here it is inside the benchmark tool, and --- decisively --- rounding keeps every
+observation while the admission condition deletes the ones that round to zero. Li has the
+arithmetic without the sign. It is the sign that makes the population unrecoverable and the
+retained fraction worth publishing.
 
 \subsection{S33.5. Where scheduling delay comes from, and what the queueing account gets right}
 

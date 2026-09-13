@@ -838,6 +838,65 @@ nothing either way. Where the comparison survives in the main text, the distribu
 get a supplement section, so a reader has somewhere to check it (the omission that let this one
 stand).
 
+### B14. Every emitted comparison carries its uncertainty, and the statistic matches the claim — GATED
+
+B12 says a comparison is a quantity. This says what the quantity must carry. Section IV-F
+promises an interval on every proportion, and the manuscript had twenty-five of them — and three
+bare numbers, all introduced by the round that repaired a different statistical error. So:
+
+- **A shift is printed with its interval**, in the main text as well as the supplement: `1.2 points
+  [−1.8 to 8.3]`. Both Hodges–Lehmann shifts in this manuscript are now bracketed; there is no
+  third kind.
+- **A proportion over a stated denominator is printed with its Wilson interval** unless that
+  interval is narrower than the precision printed, and the exemption is stated where it is used,
+  as Table I does.
+- **The statistic has to be about the thing claimed.** A shift supports "one population is not
+  offset from the other". It does not support "the populations agree", which is a claim about
+  distributions and needs a statistic about distributions — here a tie-corrected Kolmogorov–Smirnov
+  with a permutation p. A rank test does not substitute for either (it tests dominance, which is
+  weak between distributions that cross).
+- **An interval that supports the claim is printed for exactly that reason.** Omitting one because
+  it is uninteresting is indistinguishable, from outside, from omitting one because it is
+  inconvenient.
+
+Gated in `tests/unit/test_round76_findings.py`.
+
+### B15. A figure lets the reader check its own caption — GATED
+
+If a caption names values, the axis shows them. Figure 4's caption said the grid cells print
+"1.0 or 2.0 ms", on a log axis labelled only at decades, where those two columns sit three tenths
+of a decade apart and read as one stripe. The claim could only be taken on trust, which in this
+paper is the wrong way round. The grid values now carry labelled ticks derived from the data, and
+the caption reads the same emitted values rather than typing them.
+
+### B16. A distribution is described by counts in stated bands, not by the shapes a picture suggests — GATED
+
+"Spike", "cluster", "nearly flat" and "almost the whole length" are claims about data made in
+adjectives, and in round 76 all four were wrong. A cluster is wherever an eye puts the line: the
+referee's own grouping of the same values disagreed with a largest-gap split by eight points. So:
+
+- **Name the bands and count them.** State the edges once, as a constant the pipeline emits, and
+  give the count in each band for each population.
+- **A test replaces an adjective.** "Overlap across almost their whole length" is replaced by the
+  interval on the difference (Newcombe's, from the same Wilson limits), because overlapping
+  intervals are not a test of anything.
+- **The same test runs on the reply.** A gap between two medians and a crossing of two medians are
+  the same kind of artifact; whichever statistic dismisses one is run on the other before either
+  is written.
+- **Where a comparison turns on shape, draw it.** A supplement figure costs nothing against the
+  page budget, and the ECDF shows at a glance what four paragraphs had described wrongly.
+
+Gated in `tests/unit/test_round77_findings.py`.
+
+### B17. An interval says what it is where it is printed
+
+A bracket in the main text is read as whatever the nearest caption says brackets are. Table II's
+are Katz intervals on ratios; §IV-F's are Wilson intervals on proportions. A bootstrap interval on
+a shift printed between them was read as neither and labelled as nothing. So the method and the
+level go inside the bracket or beside it — "[95% bootstrap: −1.8 to 8.3]" — and where two
+intervals on one statistic are at different levels (a 90% interval for TOST, a 95% interval for a
+two-sided estimate), the text says so rather than calling them "the same".
+
 ### B13. The index terms are content, and get read like content
 
 They are the paper's retrieval surface, not a subject declaration. Three rounds recorded

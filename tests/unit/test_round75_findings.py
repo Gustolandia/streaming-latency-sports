@@ -213,7 +213,17 @@ class TestR2TheRecoveryPopulationsDoNotSeparate:
         Results subsection that contradicted it."""
         i = paper.index("The displacement can be recovered rather than discarded")
         vd = " ".join(paper[i:i + 1400].split())
-        assert BS + "recoveryShift" in vd and BS + "recoveryPassExact" in vd
+        assert BS + "recoveryShift" in vd
+        # Round 76 replaced the one-sided quote of `recoveryPassExact` here. It read "33% of
+        # the passing conditions recover the delivery exactly", which invites the inference
+        # that the rejected ones never do -- the error round 75's own report made in prose.
+        # What stands in its place is the crossing of the two medians with the exact
+        # recoveries removed, which is both two-sided and a stronger statement.
+        # Round 77 (R1) then replaced that crossing with the shift on the non-zero populations,
+        # which is 0.0: the medians still cross, but a crossing of medians is the same artifact
+        # as the gap round 75 corrected, so the main text states the shift and S16.9 keeps the
+        # medians as description.
+        assert BS + "recoveryNonzeroShift" in vd and "no shift remains" in vd
         assert "holds where the check rejects as well as where it passes" in vd
         j = paper.index("Where the span cannot be re-timestamped")
         viiib = " ".join(paper[j:j + 500].split())
@@ -228,9 +238,18 @@ class TestR2TheRecoveryPopulationsDoNotSeparate:
         vd = " ".join(paper[i:i + 1400].split())
         assert "Mann" not in vd and "$p$" not in vd and "p =" not in vd
         k = supplement.index("S16.9.")
-        s169 = " ".join(supplement[k:k + 3600].split())
-        assert "Mann" not in s169
+        s169 = " ".join(supplement[k:supplement.index("S17. The 1970 counter note")].split())
+        # What round 75 ruled out was a RANK test standing in for the shift: Mann-Whitney
+        # tests dominance between distributions that cross, so a large p would have carried
+        # no information about whether the populations agree. That still holds and is still
+        # gated. Round 76's Kolmogorov-Smirnov p is not the same object and was asked for by
+        # the referee in the same breath as the intervals: it answers a question the shift
+        # cannot -- whether the two distributions differ in SHAPE -- and it is an addition to
+        # the shift rather than a substitute for it. Both are pinned here so a later round
+        # can see which was excluded and why.
+        assert "Mann" not in s169 and "Wilcoxon" not in s169
         assert "rank test" in s169, "the supplement says why, rather than leaving a gap"
+        assert "Kolmogorov" in s169 and BS + "recoveryKsD" in supplement
 
     def test_the_defect_that_prompted_this_is_caught(self, paper):
         """Mutation, not inspection. Anchored on the claim across its line break, because
@@ -294,8 +313,11 @@ class TestW2TheRecoveryNumbersHaveASupplementHome:
 
     def test_the_main_text_claim_and_the_supplement_agree_on_direction(self, supplement):
         i = supplement.index("S16.9.")
-        section = " ".join(supplement[i:i + 3600].split())
-        assert "the recovery holds\nwhere the check rejects".replace("\n", " ") in section
+        # Bounded by the next section rather than by a character count: round 76 grew S16.9
+        # past the 3,600-character window this used, and a window that silently stops short
+        # of the sentence it is checking reports success for the wrong reason.
+        section = " ".join(supplement[i:supplement.index("S17. The 1970 counter note")].split())
+        assert "the recovery holds where the check rejects" in section
 
 
 class TestW3TheRepeatedCountIsDeliberate:

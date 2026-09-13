@@ -32,6 +32,8 @@ Usage, before the first pyplot import that draws:
     import figure_style
     figure_style.apply()
 """
+import os
+
 import matplotlib
 
 # The IEEE list, in the order we prefer them, with metric-compatible substitutes for build
@@ -60,6 +62,12 @@ DEFAULT_METRICS = {
 #: TrueType. The whole point of this module: anything but matplotlib's default of 3.
 TRUETYPE = 42
 
+# The PDF creation stamp every figure carries, pinned so a rebuild is byte-identical to the
+# build it repeats. Zero is the reproducible-builds convention: it claims no date at all
+# rather than a plausible false one, and it prints as 1970, which no reader mistakes for the
+# day a figure was made. See `apply()` and docs/infrastructure.md, lesson 1cu.
+SOURCE_DATE_EPOCH = "0"
+
 
 def apply(rc=None):
     """Set the font policy. Idempotent, and safe to call from every script.
@@ -68,6 +76,19 @@ def apply(rc=None):
     global state of the process they run in.
     """
     target = matplotlib.rcParams if rc is None else rc
+    if rc is None:
+        # Byte-reproducible figures. Round 76 regenerated eight figures to change one and found
+        # the other seven "modified" in git with identical text, identical pixels and identical
+        # size -- six or seven differing bytes each, all inside `/CreationDate`. matplotlib
+        # stamps the wall clock into every PDF it writes, so every build dirtied every figure,
+        # and a reader of the history could not tell a figure that changed from one that was
+        # merely rebuilt. In a repository whose claim is that every artifact is recomputed from
+        # committed data, a diff that is noise is a diff nobody reads.
+        #
+        # SOURCE_DATE_EPOCH is the reproducible-builds convention and matplotlib's PDF backend
+        # honours it. `setdefault`, so a CI or a packager can still pin a real date; the test
+        # path (rc passed in) leaves the process environment alone, as it leaves rcParams alone.
+        os.environ.setdefault("SOURCE_DATE_EPOCH", SOURCE_DATE_EPOCH)
     target["pdf.fonttype"] = TRUETYPE
     target["ps.fonttype"] = TRUETYPE
     target["font.family"] = "sans-serif"

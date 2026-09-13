@@ -556,8 +556,15 @@ def test_no_line_is_stretched_to_the_limit(name):
     # paragraph of Section IV-A, and that was WRONG. The line numbers belong to paper.bbl,
     # which LaTeX was reading at the time, and the offending text was "Apache Pulsar
     # contributors, PerformanceConsumer.java ... https://github.com/apache/pulsar". Five
-    # boxes really were in the body, from unbreakable 	exttt identifiers, and those are
-    # what rk fixed. A referee reading a log without checking which file its line numbers
+    # boxes really were in the body, from unbreakable `\texttt` identifiers, and those are
+    # what `\brk` fixed. Round 76 restored those two backslashes: a heredoc had eaten them
+    # years of rounds ago, leaving a literal TAB where `\t` was written and a literal
+    # backspace, 0x08, where `\b` was -- so the comment explaining the typography repair had
+    # itself become unreadable, and a control character sat in a source file waiting to
+    # confuse the next diff. `tests/unit/test_source_hygiene.py` now refuses them repository
+    # wide.
+    #
+    # A referee reading a log without checking which file its line numbers
     # index is making the same error as a reader trusting a benchmark's own output.
     head = _before_the_bibliography(text)
     worst = re.findall(

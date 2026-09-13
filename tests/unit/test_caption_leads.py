@@ -86,6 +86,72 @@ class TestEveryExhibitOpensOnAClaim:
         assert not bad, "caption lead(s) that are labels rather than claims:\n  " + \
             "\n  ".join(bad)
 
+    def test_every_supplement_figure_opens_on_a_bolded_claim_too(self):
+        """Round 76 narrowed the supplement's exemption to its tables.
+
+        The exemption above was recorded for "forty-odd floats and a different job", and for
+        the supplement's twenty-seven tables it still holds: most open on a claim sentence, a
+        few on a description, and bolding them is a style cascade nobody has asked for. The
+        FIGURES were different. Nine of thirteen carried a bolded claim. Three opened on
+        labels -- "Window sweep, as a picture.", "Experiment map.", "Audit on Testbed A." --
+        and the round-76 image review found them by setting all seventeen captions side by
+        side, which is how round 37 found the paper's. The fourth was found by this test on
+        its first run, and not by the eye: `fig:e1` was bold, but its entire lead was
+        "Withdrawn." -- one word, a status rather than a claim, which the sentence rule below
+        rejects and a glance at a list of bold leads does not.
+
+        All thirteen comply now, so requiring it costs nothing today and stops the three
+        from coming back. Tables stay surveyed, not required, and this docstring is where to
+        change that if a later round decides otherwise.
+        """
+        figures = [(lab, cap) for env, lab, cap in
+                   captions((REPO / "supplement.tex").read_text(encoding="utf-8"))
+                   if env == "figure"]
+        assert len(figures) >= 13, "the supplement's figures stopped parsing"
+        bad = []
+        for lab, cap in figures:
+            text = lead(cap)
+            words = ([w for w in re.sub(r"[^A-Za-z ]", " ", text).split() if len(w) > 1]
+                     if text else [])
+            if text is None or len(words) < 3 or re.match(r"^\(?[a-z]\)", text):
+                bad.append("%s: %r" % (lab, (text if text is not None else cap)[:60]))
+        assert not bad, ("supplement figure(s) not opening on a bolded claim:\n  "
+                         + "\n  ".join(bad))
+
+    def test_a_supplement_figure_is_listed_by_the_claim_it_opens_on(self):
+        """The List of Figures shows the short caption, and round 76 fixed only the long one.
+
+        Round 76 rewrote four supplement figure captions to open on a claim, and left their
+        `\\caption[short]` arguments alone, so the supplement's List of Figures kept listing
+        three of them by the labels the repair had removed -- "Window sweep, as a picture",
+        "Experiment map", "Audit on Testbed A" -- and a fourth by a claim its caption no longer
+        makes. Round 77's image review found them in the rendered list, beside the new
+        recovery figure, whose short title had drifted from its own lead the day it was written.
+
+        A reader scanning the list for an exhibit should meet the same sentence the exhibit
+        opens with. Figures only, for the reason the supplement's tables are surveyed rather
+        than required above.
+        """
+        text = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        bad = []
+        for block in re.findall(r"\\begin\{figure\*?\}(.*?)\\end\{figure\*?\}", text, re.S):
+            short = re.search(r"\\caption\[([^\]]*)\]\{", block)
+            if not short:
+                continue
+            cap = captions(r"\begin{figure}" + block + r"\end{figure}")
+            if not cap:
+                continue
+            env, lab, body = cap[0]
+            claim = lead(body)
+            if claim is None:
+                continue                                # the lead rules above own this case
+            want = " ".join(claim.rstrip(".").split())
+            got = " ".join(short.group(1).split())
+            if got != want:
+                bad.append("%s: listed as %r, opens on %r" % (lab, got, want))
+        assert not bad, ("supplement figure(s) listed by a title that is not their claim:\n  "
+                         + "\n  ".join(bad))
+
     def test_there_are_exhibits_to_police(self):
         """A floor, not a target.
 

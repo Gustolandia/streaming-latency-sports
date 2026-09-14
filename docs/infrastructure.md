@@ -1990,6 +1990,40 @@ three paragraphs that each ended on a word or two ("it.", "this.", "them."), and
 moved round 69's anchor, "public forks we could read" → "readable public forks". Reverting that
 one trim brought the thirteenth page back, so it stays, and the test follows it.
 
+**1dq. A pointer can resolve and still point at the wrong number.** Round 79's pointer gate
+proves that a supplement's `\main...` macro names a section that exists. It cannot see what is
+printed beside the pointer. Round 81 found S12 calling "12.4× against 21.3×, pooled and with no
+floor" the independence overshoot "of Section VIII-B", one round after §VIII-B had moved to 7.4
+within runs above a 0.1% floor. The new gate in `test_supplement_pointers.py` requires every
+ledger macro in a sentence that names a main-text section to appear in that section's source,
+from its heading to the next heading of the same level. Its first run flagged seven sentences.
+Three were wrong: S12; a 7–80× credited to §V-B, which §V-C prints; and a payload-parse cost
+credited to §VIII-B, which §VIII-A prints. The rest named a section for its rule, an offset, a
+concept or a harness. One of those went away when S2 was rewritten, so three exemptions carry
+reasons, under a cap of five. A longer macro does not count as printing its prefix:
+`\hThreeShrinkageCI` does not print `\hThreeShrinkage`.
+
+**1dr. The bibliography style lowercases the first letter of every note.** `IEEEtran.bst` turned
+"Open Compute Project" into "open Compute Project" in [5] and "DTrace" into "dTrace" in [20].
+Neither LaTeX nor BibTeX warns. Twelve of the article's fourteen lowercased notes are fragments,
+where lowercase is right, so the rule is to brace-protect a leading name
+(`test_bibliography_note_case.py`). The gate's first draft flagged `\url{...}`, `\texttt{...}`
+and "arXiv", none of which a one-character lowercase can damage. It also missed "DTrace", whose
+second capital follows a capital. Both corrections are now tests of the rule itself.
+
+**1ds. An interval over runs found a replication no table printed.** Table S26's change row had
+no interval, and its cells were rounded independently, so the row did not add up in the last
+digit. Its caption said the shrinkage was "entirely" on Kafka's side, which was 98%.
+`analyze_depth.py` computed a median per run and wrote only the median over them. So
+`h3_stamping_runs.py` now writes the per-run file straight from the archive, through the same
+join (`transport_median_from_rows`), and `stat_intervals.h3_stamping_intervals` bootstraps runs
+within each cell. The archive also held a second campaign, E-C4, at thirty runs per cell. The
+experiment map listed it; no table printed it. Its shrinkage is 0.039 ms [0.008–0.059], against
+E-C3's 0.071 ms [0.039–0.113]. Both intervals exclude zero, Redis's change spans zero in both, and
+the residual broker difference S2 derives is now a range, 0.34–0.37 ms. The new emitter code
+first failed with `NameError`: the emitter imports `stat_intervals` inside each function that
+uses it, and a new function has to do the same.
+
 **1co. A spelling checker that proposes `pairwize` is a checker people learn to argue with.**
 The British-spelling gate runs a morphological rule over the `-ise` family, which is right and
 is the half a hand-written table keeps failing at. It had no rule for `-wise`, an English

@@ -3041,7 +3041,11 @@ class TestRefereeRoundTwo:
         assert "TPDS" not in flat
         for phrase in ("TC submission", "TC revision", "TC round-one"):
             assert phrase not in flat
-        assert "has not been submitted to, or reviewed by, any journal" in flat
+        # Round 81 (W3): the tense of the submission build. "Has not been submitted" is false in
+        # the file a journal receives; the sentence keeps round 68's purpose in the past tense.
+        assert "Before this submission, the manuscript had not been submitted to, or reviewed by, " \
+               "any journal" in flat
+        assert "has not been submitted to, or reviewed by" not in flat
 
 
 class TestPerBrokerSplit:

@@ -253,9 +253,11 @@ class TestW3TableS26ShowsTheNumberItIsPointedAtFor:
 
     def test_the_pointer_and_the_limitation_quote_the_emitted_shrinkage(self, supplement):
         text = flat(supplement)
-        assert "Table~" + BS + "ref{tab:h3} shows that $" + BS + "hThreeShrinkage$~ms" in text
+        # Round 81 (W1) rewrote both sentences around the interval and the replication. They still
+        # read the emitted shrinkage, not a typed one.
+        assert "accounts for $" + BS + "hThreeShrinkage$~ms of the gap" in text
         assert "$0.07$~ms of the gap" not in text
-        assert "how the $" + BS + "hThreeShrinkage$~ms offset scales" in text
+        assert "against $" + BS + "hThreeShrinkage$~ms (Table~" + BS + "ref{tab:h3})" in text
 
     def test_a_missing_or_malformed_csv_emits_nothing(self, tmp_path):
         import emit_paper_numbers as epn

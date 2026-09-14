@@ -40,6 +40,14 @@ DOCS = ("paper.tex", "supplement.tex")
 #: (document, macro, a distinctive fragment of the surrounding text) so that moving the
 #: sentence does not silently keep the exemption alive somewhere else.
 ALLOWED = {
+    ("supplement.tex", "hThreeRepKafkaInline", r"returns $0.344$ against"):
+        "a payload-sweep exponent from a second day's campaign (S10), equal to round 81's E-C4 "
+        "median Kafka transport under inline timestamping in milliseconds; an exponent and a "
+        "latency sharing three digits",
+    ("supplement.tex", "indepWithinFlooredRatioOfMedians", r"falls from $7.0\%$ to $0.8\%$"):
+        "the window sweep's share of events paying the start-up cost (Fig. S1), equal to round "
+        "81's within-run ratio of medians at the 0.1% floor; a percentage and a ratio sharing a "
+        "digit",
     ("supplement.tex", "indepFloorPct", r"E1 ($<0.1$~ms apart)"):
         "a gap between two campaigns' medians in milliseconds (S5), equal to the 0.1% floor below "
         "which round 80 stopped trusting an observed negative-span rate; a latency and a "

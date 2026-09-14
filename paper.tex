@@ -653,7 +653,8 @@ The acknowledgment lag exceeds half the delivery time on $\diseaseOverHalf\%$ of
 tenth of it on $\diseaseOverTenth\%$. The check fires only on the $\diseaseOverWhole\%$ where
 it exceeds the whole. The two are correlated within a run (median $\spanRhoWithinMedian$ over
 $\spanRhoConditions$ conditions), one scheduler causing both, which suppresses crossings
-without touching the displacement: independence within a run would overpredict them
+without touching the displacement: treating the two as independent within a run would
+overpredict them
 $\indepWithinFloored$-fold, the median of the $\indepWithinFlooredN$ conditions above
 $\indepFloorPct\%$.
 A path longer than the timestamp resolution is not clean but quiet.

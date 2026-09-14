@@ -31,6 +31,18 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
 
+      - name: Install the fonts and PDF text extractor the gates read with
+        # The figure gates lay text out in Arial on the author's machine; Liberation Sans is its
+        # metric-compatible substitute, and figure_style.py falls back to it. The rendered-prose
+        # gates compare words extracted by xpdf's pdftotext 4.06, the version the author runs;
+        # Ubuntu's pdftotext is poppler's, a different extractor. `-v` fails the step loudly if
+        # the unpacked path is wrong, rather than letting those gates skip.
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq fonts-liberation
+          curl -fsSL https://dl.xpdfreader.com/xpdf-tools-linux-4.06.tar.gz | tar -xz -C "$RUNNER_TEMP"
+          "$RUNNER_TEMP/xpdf-tools-linux-4.06/bin64/pdftotext" -v
+          echo "$RUNNER_TEMP/xpdf-tools-linux-4.06/bin64" >> "$GITHUB_PATH"
+
       - name: Run tests with branch coverage
         # Project standard: 100% branch coverage across scripts/ (see README S10).
         # What may be excluded from that number, and why, is itself enforced -- see

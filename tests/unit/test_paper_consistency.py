@@ -2487,11 +2487,19 @@ class TestTpdsFormat:
         2026-08-06 after the 14-page floor proved incompatible with the tier policy's
         space-for-evidence guarantees. 14 remains the aspiration, not the gate."""
         log = REPO / "paper.log"
-        assert log.exists(), "build the paper before running the format gate"
-        pages = re.findall(r"\((\d+) pages", log.read_text(encoding="utf-8", errors="ignore"))
-        assert pages, "no page count found in paper.log"
-        assert int(pages[-1]) <= 16, (
-            f"TPDS hard ceiling is 16 pages (MOPC beyond 14); this build is {pages[-1]}. "
+        if log.exists():
+            pages = re.findall(r"\((\d+) pages", log.read_text(encoding="utf-8", errors="ignore"))
+            assert pages, "no page count found in paper.log"
+            count = int(pages[-1])
+        else:
+            # A clean checkout (CI) has the committed PDF but no build log, which git ignores.
+            # Counting the PDF's pages checks the same budget on the artefact a reader gets.
+            pdf = REPO / "paper.pdf"
+            assert pdf.exists(), "build the paper before running the format gate"
+            import pypdf
+            count = len(pypdf.PdfReader(str(pdf)).pages)
+        assert count <= 16, (
+            f"TPDS hard ceiling is 16 pages (MOPC beyond 14); this build is {count}. "
             "Move material to the supplement rather than shrinking type.")
 
 

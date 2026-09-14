@@ -279,8 +279,11 @@ def main():
         
         print(f"  Rep {rep} completed")
     
-    # Save run list
+    # Save run list. runs/ is not in the repository, so a fresh checkout has no such directory
+    # until a trial makes one. If every trial failed before starting, the list is the only record
+    # of what was attempted, and it must not be lost to a missing folder.
     run_list_file = f"runs/_concurrency_{prefix}_runs.txt"
+    os.makedirs(os.path.dirname(run_list_file), exist_ok=True)
     with open(run_list_file, 'w', encoding='utf-8') as f:
         f.write('\n'.join(run_list))
     

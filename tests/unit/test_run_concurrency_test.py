@@ -1016,7 +1016,9 @@ class TestRedisClusterNodes:
                       stream="s", broker_count=3, cluster_mode=True,
                       redis_cluster_nodes="h1:7000,h2:7001,h3:7002")
         rendered = " ".join(_cmdstr(c) for c in mock_run.call_args_list)
-        assert '-CLUSTER_NODES "h1:7000,h2:7001,h3:7002"' in rendered
+        # PowerShell carries the list inside one quoted string; bash as one unquoted argv entry.
+        assert ('-CLUSTER_NODES "h1:7000,h2:7001,h3:7002"' in rendered
+                or "-CLUSTER_NODES h1:7000,h2:7001,h3:7002" in rendered)
         assert "-CLUSTER_MODE" in rendered
         assert "-NODE_COUNT 3" in rendered
 

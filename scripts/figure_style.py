@@ -108,9 +108,15 @@ def apply(rc=None):
     # worse outcome than the one we were fixing, so maths is set to the same family as the
     # text and extracts as ordinary letters.
     target["mathtext.fontset"] = "custom"
+    # The family the text actually resolved to, not the first name on the list. Naming Arial
+    # here sent the maths on a machine without Arial (the Ubuntu CI runner) to DejaVu Sans, while
+    # the text beside it could be set in a metric-compatible substitute; the wider maths then
+    # collided with its neighbours in the layout gate, on CI only. Where Arial is installed this
+    # is Arial, exactly as before.
+    family = resolved_family() or IEEE_SANS[-1]
     for slot, suffix in (("rm", ""), ("it", ":italic"), ("bf", ":bold"),
                          ("sf", ""), ("tt", "")):
-        target["mathtext.%s" % slot] = "%s%s" % (IEEE_SANS[0], suffix)
+        target["mathtext.%s" % slot] = "%s%s" % (family, suffix)
     target["mathtext.default"] = "it"
     return target
 

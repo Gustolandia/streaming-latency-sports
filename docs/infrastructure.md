@@ -2052,6 +2052,26 @@ That rule's constant fell from 750000 to 700000 ns in Linux 6.15, so a predictio
 the 6.8 formula would be wrong on a newer image. A value that cannot be read is listed as missing,
 never filled in.
 
+**1dw. A suite that passes only on the machine that wrote it has stopped being checked.** GitHub's
+run had failed on at least the three pushes before the Azure kit, about seventy tests on both
+Pythons, while every local run passed. The author's machine has what a clean checkout lacks:
+- pypdf, which requirements-dev.txt never listed;
+- pdftotext, which Git for Windows ships as xpdf 4.06;
+- a `runs/` folder, so `run_concurrency_test.py` never had to create one;
+- a stale `runs/test_run_7/`, which let two consumer tests assert a path the consumers had stopped
+  writing to;
+- `paper.log` and `docs/reference_tc/`, which git ignores and two tests read;
+- Arial, which the figure maths named even where the text resolves to a substitute. That is the
+  likely cause of the layout collisions seen only on the runner.
+
+One Python 3.10 argument, `Path.write_text(newline=)`, failed only on 3.9. The repair:
+- the runner installs Liberation Sans and xpdf's pdftotext 4.06;
+- pypdf is pinned, and the script creates its folder;
+- the consumer tests check the file the consumers write;
+- the page budget counts the committed PDF when no build log exists;
+- the local-only readme skips with a reason;
+- figure maths uses whatever family the text resolved to.
+
 **1co. A spelling checker that proposes `pairwize` is a checker people learn to argue with.**
 The British-spelling gate runs a morphological rule over the `-ise` family, which is right and
 is the half a hand-written table keeps failing at. It had no rule for `-wise`, an English

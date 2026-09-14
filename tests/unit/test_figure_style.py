@@ -55,9 +55,10 @@ class TestApply:
         rc["font.sans-serif"].append("Comic Sans MS")
         assert "Comic Sans MS" not in figure_style.IEEE_SANS
 
-    def test_maths_uses_the_text_family_rather_than_a_stix_set(self):
+    def test_maths_uses_the_text_family_rather_than_a_stix_set(self, monkeypatch):
         """stix is TrueType and would pass the font rule, but it maps italic latin into the
         mathematical-alphanumeric block, so a label stops extracting as ordinary letters."""
+        monkeypatch.setattr(figure_style, "resolved_family", lambda: "Arial")
         rc = figure_style.apply({})
         assert rc["mathtext.fontset"] == "custom"
         assert rc["mathtext.rm"] == "Arial"
@@ -65,11 +66,25 @@ class TestApply:
         assert rc["mathtext.bf"] == "Arial:bold"
         assert rc["mathtext.default"] == "it"
 
-    def test_every_mathtext_slot_is_set(self):
+    def test_every_mathtext_slot_is_set(self, monkeypatch):
         """An unset slot silently falls back to DejaVu inside maths only."""
+        monkeypatch.setattr(figure_style, "resolved_family", lambda: "Arial")
         rc = figure_style.apply({})
         for slot in ("rm", "it", "bf", "sf", "tt"):
             assert rc["mathtext.%s" % slot].startswith("Arial")
+
+    def test_maths_follows_the_family_the_text_resolved_to(self, monkeypatch):
+        """On a machine without Arial the text lands on a metric-compatible substitute, and the
+        maths must land on the same one. Naming Arial for the maths sent it to DejaVu Sans
+        there, and the wider maths collided in the layout gate on the Linux CI runner only."""
+        monkeypatch.setattr(figure_style, "resolved_family", lambda: "Liberation Sans")
+        rc = figure_style.apply({})
+        assert rc["mathtext.rm"] == "Liberation Sans"
+        assert rc["mathtext.it"] == "Liberation Sans:italic"
+
+    def test_maths_falls_back_with_the_text_when_nothing_listed_is_installed(self, monkeypatch):
+        monkeypatch.setattr(figure_style, "resolved_family", lambda: None)
+        assert figure_style.apply({})["mathtext.rm"] == "DejaVu Sans"
 
     def test_the_text_metrics_are_pinned(self):
         """Another script here sets font.size at import; without this, a combined build draws

@@ -2072,6 +2072,15 @@ One Python 3.10 argument, `Path.write_text(newline=)`, failed only on 3.9. The r
 - the local-only readme skips with a reason;
 - figure maths uses whatever family the text resolved to.
 
+**1dx. A setup marker written unconditionally reports a setup that never happened.** The broker,
+the one machine created without a public address, could not reach the internet on the new Azure
+network: apt and GitHub timed out, so it got no Docker and no checkout. cloud-init's `runcmd`
+carries on past a failed command, so it still wrote the marker `session.sh` waits for, and the
+session failed three steps later at `cd sbl`. The marker is now written only when the checkout,
+Docker and stress-ng are all there. `testbed_watch.py`, run from the author's computer, reads both
+machines every five minutes and flags an idle-but-billing testbed, a stuck or failing campaign, a
+negative trip, starved load, a full disk and clock drift.
+
 **1co. A spelling checker that proposes `pairwize` is a checker people learn to argue with.**
 The British-spelling gate runs a morphological rule over the `-ise` family, which is right and
 is the half a hand-written table keeps failing at. It had no rule for `-wise`, an English

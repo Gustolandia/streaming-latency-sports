@@ -426,6 +426,35 @@ class TestGoodnessOfFit:
         assert tit._binomial(rng, 10, 1.0) == 10
         assert tit._binomial(rng, 0, 0.5) == 0
 
+    def test_the_exact_draw_is_used_where_the_generator_offers_one(self):
+        """`random.binomialvariate` arrived in Python 3.12 and CI runs 3.9 and 3.11, so each
+        interpreter lacked one of the two branches. Generators that do and do not offer the
+        draw drive both everywhere."""
+        class Exact:
+            def binomialvariate(self, n, p):
+                return int(n * p) + 1
+        assert tit._binomial(Exact(), 10, 0.5) == 6
+
+    def test_without_it_a_large_mean_is_drawn_normally_and_clamped(self):
+        class Normal:
+            def __init__(self, offset):
+                self.offset = offset
+
+            def gauss(self, mu, sigma):
+                return mu + self.offset
+        assert tit._binomial(Normal(0.2), 100, 0.5) == 50
+        assert tit._binomial(Normal(-1000), 100, 0.5) == 0
+        assert tit._binomial(Normal(1000), 100, 0.5) == 100
+
+    def test_without_it_a_small_mean_is_counted_one_trial_at_a_time(self):
+        class Uniform:
+            def __init__(self, values):
+                self.values = iter(values)
+
+            def random(self):
+                return next(self.values)
+        assert tit._binomial(Uniform([0.1, 0.9, 0.2, 0.8]), 4, 0.5) == 2
+
 
 class TestTheBisectionTerminatesWhateverItIsAsked:
 

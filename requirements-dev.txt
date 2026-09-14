@@ -11,6 +11,7 @@ pytest>=7.0.0                  # test framework (8.x supported)
 pytest-cov>=3.0.0              # coverage, incl. --cov-branch (project bar: >=95% branch)
 pytest-xdist>=3.0.0            # optional: parallel test execution (-n auto)
 pypdf>=6.0,<7.0                # the rendered-page gates read the text of the committed PDFs
+pymupdf>=1.24,<2.0             # the reference-corpus and literature-census checks open PDFs
 
 # --- Archival ---
 zenodo-client>=0.3.0           # CLI/API helpers for Zenodo (needs ZENODO_API_TOKEN)

@@ -15,9 +15,11 @@ must be guaranteed instead is that nothing else is hiding there, so the rule is 
 block may hold only calls and imports, and no control flow at all. A conditional under a
 pragma'd guard is exactly the thing this test exists to catch.
 
-**Everything else.** Thirteen exclusions cover code that cannot run on this machine: a network
-call, an import of an optional dependency, a free-threaded-build branch, a fallback for an
-interpreter older than the one we test on. Each is legitimate and each is a place a future
+**Everything else.** Fourteen exclusions cover code that cannot run on this machine: a network
+call, an import of an optional dependency, a free-threaded-build branch. A fallback for an older
+interpreter is not among them: the suite runs on 3.9 and 3.11 as well as here, so "cannot run
+here" is untrue of it somewhere, and a fake generator drives it instead. Each is legitimate and
+each is a place a future
 untested branch could be quietly parked, so they are enumerated here by file and line-content.
 Adding one means adding a line to this list, which is the point: the exclusion becomes a
 decision someone made and wrote down rather than a comment that appeared.
@@ -57,10 +59,6 @@ ALLOWED = {
         "statsmodels is optional and is not installed here",
     ("power_analysis.py", "except Exception:"):
         "statsmodels is optional and is not installed here",
-    ("tail_index_traced.py", "if n * p > 30:"):
-        "only on interpreters without random.binomialvariate",
-    ("tail_index_traced.py", "return sum(1 for _ in range(n)"):
-        "only on interpreters without random.binomialvariate",
     ("tail_index_traced.py", "except ValueError:"):
         "a bootstrap replicate with one populated bucket",
     ("build_without_authors.py", "if not os.path.exists(produced):"):

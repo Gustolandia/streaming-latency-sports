@@ -49,6 +49,13 @@ jobs:
         # Project standard: 100% branch coverage across scripts/ (see README S10).
         # What may be excluded from that number, and why, is itself enforced -- see
         # tests/unit/test_coverage_exclusions.py.
+        #
+        # The number is held on 3.11 only. Before Python 3.10 the compiler folds an
+        # `if ...: continue` into the jump ahead of it, so the `continue` line never reports
+        # running, and 3.9 calls such lines missed even when the tests take them. Every test
+        # still runs on 3.9; only the count is not held against it.
         run: |
+          floor=100
+          if [ "${{ matrix.python-version }}" = "3.9" ]; then floor=0; fi
           python -m pytest -q --cov=scripts --cov-branch \
-            --cov-report=term-missing --cov-fail-under=100
+            --cov-report=term-missing --cov-fail-under=$floor

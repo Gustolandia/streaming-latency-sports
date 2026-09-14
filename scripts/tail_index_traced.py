@@ -289,11 +289,10 @@ def _binomial(rng, n, p):
     exact = getattr(rng, "binomialvariate", None)
     if exact is not None:
         return exact(n, p)
-    if n * p > 30:  # pragma: no cover - only on interpreters without binomialvariate
+    if n * p > 30:
         k = int(round(rng.gauss(n * p, math.sqrt(n * p * (1 - p)))))
         return max(0, min(n, k))
-    return sum(1 for _ in range(n)  # pragma: no cover - no binomialvariate here
-               if rng.random() < p)
+    return sum(1 for _ in range(n) if rng.random() < p)
 
 
 def _multinomial(rng, n, probs):

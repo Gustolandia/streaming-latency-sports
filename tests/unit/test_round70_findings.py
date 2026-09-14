@@ -187,7 +187,7 @@ class TestRecommendedItems:
         if not pdf.is_file() or not shutil.which("pdftotext"):
             pytest.skip("paper.pdf or pdftotext absent")
         out = Path(tempfile.mkstemp(suffix=".txt")[1])
-        subprocess.run(["pdftotext", "-q", "-nopgbrk", "-f", "1", "-l", "1",
+        subprocess.run(["pdftotext", "-q", "-nopgbrk", "-enc", "UTF-8", "-f", "1", "-l", "1",
                         str(pdf), str(out)], check=True)
         page = out.read_text(encoding="utf-8", errors="replace")
         i, j = page.find("Abstract"), page.find("Index Terms")

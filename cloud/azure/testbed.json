@@ -1,0 +1,75 @@
+{
+  "about": "The Azure testbed, one entry per machine. Read by scripts/azure_testbed.py, which prints every command before anything runs. Prices are list prices for planning only; the preflight reads the real CPU limits from the subscription.",
+  "resource_group": "sbl-az",
+  "location": "swedencentral",
+  "location_note": "On the free-trial subscription (checked 2026-09-14) North Europe refuses every size below (NotAvailableForSubscription). Sweden Central allows both profiles and was the cheapest of the European regions that do.",
+  "admin_user": "ubuntu",
+  "ssh_public_key": "~/.ssh/azure_sbl.pub",
+  "custom_data": "cloud/azure/cloud-init.yaml",
+  "vnet": {
+    "name": "sbl-vnet",
+    "cidr": "10.1.0.0/16",
+    "subnet": "sbl-subnet",
+    "subnet_cidr": "10.1.1.0/24"
+  },
+  "nsg": "sbl-nsg",
+  "os_disk_gb": 64,
+  "storage_sku": "Premium_LRS",
+  "images": {
+    "x64-jammy": "Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest",
+    "arm64-jammy": "Canonical:0001-com-ubuntu-server-jammy:22_04-lts-arm64:latest"
+  },
+  "tags": {
+    "project": "sbl",
+    "purpose": "latency-law"
+  },
+  "hosts": {
+    "sbl-az-drv": {
+      "role": "driver",
+      "size": "Standard_D8as_v6",
+      "image": "x64-jammy",
+      "private_ip": "10.1.1.10",
+      "receiver_ip": "10.1.1.11",
+      "public_ip": true
+    },
+    "sbl-az-b1": {
+      "role": "broker",
+      "size": "Standard_D2as_v6",
+      "image": "x64-jammy",
+      "private_ip": "10.1.1.21",
+      "public_ip": false
+    },
+    "sbl-az-arm-drv": {
+      "role": "driver",
+      "size": "Standard_D8ps_v6",
+      "image": "arm64-jammy",
+      "private_ip": "10.1.1.30",
+      "receiver_ip": "10.1.1.31",
+      "public_ip": true
+    },
+    "sbl-az-arm-b1": {
+      "role": "broker",
+      "size": "Standard_D2ps_v6",
+      "image": "arm64-jammy",
+      "private_ip": "10.1.1.41",
+      "public_ip": false
+    }
+  },
+  "profiles": {
+    "matched": {
+      "hosts": ["sbl-az-drv", "sbl-az-b1"],
+      "about": "the Oracle layout the mechanism campaigns ran on: an 8-CPU driver and a 2-CPU broker, on the same AMD EPYC generation (Genoa) as Oracle's E5"
+    },
+    "arm": {
+      "hosts": ["sbl-az-arm-drv", "sbl-az-arm-b1"],
+      "about": "the materially different machine: the same layout on Azure's Arm chip, one core per CPU"
+    }
+  },
+  "hourly_usd": {
+    "Standard_D2as_v6": 0.097,
+    "Standard_D8as_v6": 0.388,
+    "Standard_D2ps_v6": 0.0748,
+    "Standard_D8ps_v6": 0.299
+  },
+  "hourly_usd_source": "prices.azure.com retail API, Linux pay-as-you-go in swedencentral, read 2026-09-14; disks and public addresses are extra"
+}

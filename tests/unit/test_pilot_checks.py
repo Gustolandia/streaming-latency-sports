@@ -1,0 +1,189 @@
+"""Tests for scripts/pilot_checks.py, on run directories built to known answers."""
+import csv
+import io
+import json
+import os
+import sys
+
+import pytest
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__)))), "scripts"))
+
+import pilot_checks as pc  # noqa: E402
+
+START = 1_789_000_000_000_000_000
+
+
+def make_run(tmp_path, name, n=100, gap_ms=10.0, trip_ms=0.5, gotit_ms=0.2, acks=True,
+             negative_trip_at=None):
+    """A run whose every message has the same trip and got-it delay, sent gap_ms apart."""
+    run = tmp_path / name
+    run.mkdir()
+    with (run / "producer.csv").open("w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh)
+        w.writerow(["event_id", "t_prod_send_ns", "t_broker_ack_ns"])
+        for i in range(n):
+            send = START + int(i * gap_ms * 1e6)
+            w.writerow(["e%d" % i, send, send + int(gotit_ms * 1e6) if acks else "None"])
+    with (run / "consumer_events.csv").open("w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh)
+        w.writerow(["event_id", "t_consume_ns"])
+        for i in range(n):
+            send = START + int(i * gap_ms * 1e6)
+            trip = -0.1 if i == negative_trip_at else trip_ms
+            w.writerow(["e%d" % i, send + int(trip * 1e6)])
+        w.writerow(["unmatched", START])
+        w.writerow(["e0", ""])
+    return str(run)
+
+
+class TestSpans:
+
+    def test_the_warm_up_is_left_out(self, tmp_path):
+        run = make_run(tmp_path, "r", n=100, gap_ms=10.0)
+        trip, gotit, measured = pc.spans(run, warmup_s=0.5)
+        assert len(trip) == 50, "the first half second holds messages 0 to 49"
+        assert trip[0] == pytest.approx(0.5) and gotit[0] == pytest.approx(0.2)
+        assert measured[0] == pytest.approx(0.3)
+
+    def test_a_producer_with_no_send_times(self, tmp_path):
+        run = tmp_path / "r"
+        run.mkdir()
+        (run / "producer.csv").write_text("event_id,t_prod_send_ns,t_broker_ack_ns\ne1,,\n",
+                                          encoding="utf-8")
+        with pytest.raises(ValueError, match="no send times"):
+            pc.spans(str(run))
+
+
+class TestSummary:
+
+    def test_a_late_got_it_note_is_a_negative_measured_span(self, tmp_path):
+        s = pc.summarise(make_run(tmp_path, "r", trip_ms=0.5, gotit_ms=0.8), warmup_s=0)
+        assert s["messages"] == 100 and s["trip_negative"] == 0
+        assert s["measured_negative"] == 100 and s["measured_negative_rate"] == 1.0
+        assert s["trip_median_ms"] == pytest.approx(0.5)
+
+    def test_a_negative_trip_is_counted(self, tmp_path):
+        s = pc.summarise(make_run(tmp_path, "r", negative_trip_at=70), warmup_s=0)
+        assert s["trip_negative"] == 1
+
+    def test_without_acknowledgements_there_is_no_got_it(self, tmp_path):
+        s = pc.summarise(make_run(tmp_path, "r", acks=False), warmup_s=0)
+        assert s["gotit_median_ms"] is None and s["measured_negative_rate"] is None
+
+    def test_a_run_shorter_than_its_warm_up(self, tmp_path):
+        with pytest.raises(ValueError, match="no message sent after the first 30 s"):
+            pc.summarise(make_run(tmp_path, "r", n=10), warmup_s=30)
+
+
+class TestCompare:
+
+    def summaries(self, tmp_path, **step):
+        base = [pc.summarise(make_run(tmp_path, "b%d" % i), warmup_s=0) for i in range(2)]
+        moved = [pc.summarise(make_run(tmp_path, "s", **step), warmup_s=0)]
+        return base, moved
+
+    def test_a_delay_that_reached_the_receiver_alone(self, tmp_path):
+        report = pc.compare(*self.summaries(tmp_path, trip_ms=2.5), added_ms=2.0)
+        assert report["ok"] and report["trip_shift_ms"] == pytest.approx(2.0)
+
+    def test_a_delay_that_reached_the_got_it_reply(self, tmp_path):
+        report = pc.compare(*self.summaries(tmp_path, trip_ms=2.5, gotit_ms=2.2), added_ms=2.0)
+        assert not report["ok"] and not report["gotit_unchanged"]
+
+    def test_a_delay_that_did_not_arrive(self, tmp_path):
+        report = pc.compare(*self.summaries(tmp_path, trip_ms=0.5), added_ms=2.0)
+        assert not report["ok"] and not report["trip_moved_by_the_delay"]
+
+    def test_a_negative_trip_fails_the_check_whatever_the_medians_say(self, tmp_path):
+        report = pc.compare(*self.summaries(tmp_path, trip_ms=2.5, negative_trip_at=3),
+                            added_ms=2.0)
+        assert not report["ok"] and report["trip_negative_total"] == 1
+
+    def test_no_got_it_values_at_all(self, tmp_path):
+        base, step = self.summaries(tmp_path, acks=False)
+        with pytest.raises(ValueError, match="no gotit_median_ms"):
+            pc.compare(step, step, added_ms=2.0)
+
+
+def write_cell(tmp_path, runs):
+    cell = tmp_path / "cell"
+    (cell / "concurrency_x").mkdir(parents=True)
+    listing = tmp_path / "runs.txt"
+    listing.write_text("\n".join(runs) + "\n\n", encoding="utf-8")
+    (cell / "concurrency_x" / "x_summary.json").write_text(
+        json.dumps({"run_list_file": str(listing)}), encoding="utf-8")
+    return str(cell)
+
+
+class TestListing:
+
+    def test_runs_come_from_the_invocations_own_list(self, tmp_path):
+        cell = write_cell(tmp_path, ["runs/c_kafka_feed1_rep1", "runs/c_redis_feed1_rep1"])
+        assert pc.runs_in(cell) == ["runs/c_kafka_feed1_rep1", "runs/c_redis_feed1_rep1"]
+        assert pc.runs_in(cell, "redis") == ["runs/c_redis_feed1_rep1"]
+
+
+def write_table(tmp_path, rows):
+    path = tmp_path / "stamping_priority.csv"
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=["level", "ratio", "disjoint", "confounded"])
+        w.writeheader()
+        w.writerows(rows)
+    return str(path)
+
+
+class TestGoFirst:
+
+    def test_a_clean_cut_at_every_level(self, tmp_path):
+        result = pc.go_first(write_table(tmp_path, [
+            {"level": "l75", "ratio": "0.05", "disjoint": "True", "confounded": "False"},
+            {"level": "l88", "ratio": "0.0", "disjoint": "True", "confounded": "False"}]))
+        assert result["ok"] and "disjoint" in result["levels"][0]["why"]
+
+    @pytest.mark.parametrize("row,fragment", [
+        ({"ratio": "0.05", "disjoint": "False", "confounded": "False"}, "overlapping"),
+        ({"ratio": "0.5", "disjoint": "True", "confounded": "False"}, "at most 0.2000"),
+        ({"ratio": "", "disjoint": "", "confounded": "True"}, "manipulation check failed"),
+        ({"ratio": "None", "disjoint": "", "confounded": "False"}, "nothing to cut")])
+    def test_anything_less_than_a_clean_cut_fails(self, tmp_path, row, fragment):
+        result = pc.go_first(write_table(tmp_path, [dict(row, level="l75")]))
+        assert not result["ok"] and fragment in result["levels"][0]["why"]
+
+    def test_an_empty_table(self, tmp_path):
+        with pytest.raises(ValueError, match="no load levels"):
+            pc.go_first(write_table(tmp_path, []))
+
+
+class TestMain:
+
+    @staticmethod
+    def run(argv):
+        out = io.StringIO()
+        return pc.main(argv, out=out), out.getvalue()
+
+    def test_run(self, tmp_path):
+        assert self.run(["run", make_run(tmp_path, "a"), "--warmup-s", "0"])[0] == 0
+        code, text = self.run(["run", make_run(tmp_path, "b", negative_trip_at=5),
+                               "--warmup-s", "0"])
+        assert code == 1 and json.loads(text)["trip_negative"] == 1
+
+    def test_compare(self, tmp_path):
+        base = make_run(tmp_path, "base")
+        step = make_run(tmp_path, "step", trip_ms=2.5)
+        argv = ["compare", "--warmup-s", "0", "--baseline", base, "--step", step, "--added-ms"]
+        assert self.run(argv + ["2.0"])[0] == 0
+        assert self.run(argv + ["1.0"])[0] == 1
+
+    def test_list_and_go_first(self, tmp_path):
+        code, text = self.run(["list", "--out-dir", write_cell(tmp_path, ["runs/k_kafka_1"])])
+        assert code == 0 and text == "runs/k_kafka_1\n"
+        table = write_table(tmp_path, [{"level": "l75", "ratio": "0.1", "disjoint": "True",
+                                        "confounded": "False"}])
+        assert self.run(["go-first", "--table", table])[0] == 0
+        assert self.run(["go-first", "--table", table, "--factor", "20"])[0] == 1
+
+    def test_a_missing_run_is_an_error_line(self, tmp_path):
+        code, text = self.run(["run", str(tmp_path / "absent")])
+        assert code == 2 and text.startswith("ERROR:")

@@ -70,7 +70,10 @@ meta = {
                       "machine": platform.machine(), "node": platform.node(),
                       "python": platform.python_version()},
     "env": {"REDIS_PRODUCER_OPTS": os.environ.get("REDIS_PRODUCER_OPTS", ""),
-            "REDIS_CONSUMER_OPTS": os.environ.get("REDIS_CONSUMER_OPTS", "")},
+            "REDIS_CONSUMER_OPTS": os.environ.get("REDIS_CONSUMER_OPTS", ""),
+            # Which arm a run belonged to must be readable from the run itself.
+            "SBL_SCHED_WRAP": os.environ.get("SBL_SCHED_WRAP", ""),
+            "SBL_CONSUMER_WRAP": os.environ.get("SBL_CONSUMER_WRAP", "")},
     "git": {"head": cmd(["git","rev-parse","HEAD"]),
             "status_short": cmd(["git","status","--porcelain"])},
     "code_sha256": {f"scripts/{f}": sha256(f"scripts/{f}") for f in
@@ -85,6 +88,9 @@ redis-cli -h "$HOST" -p "$PORT" DEL "$STREAM" >/dev/null 2>&1 || true
 # See run_kafka_trial.sh for why this hook exists: it moves stamping-thread occupancy without
 # moving system utilisation, which is the one manipulation a load ladder cannot make.
 SCHED_WRAP="${SBL_SCHED_WRAP:-}"
+# See run_kafka_trial.sh: SBL_CONSUMER_WRAP starts the consumer alone behind the receiver's own
+# address, so a receiver-only delay cannot reach the producer's reply. Empty by default.
+CONSUMER_WRAP="${SBL_CONSUMER_WRAP:-}"
 
 CLUSTER_FLAG=""
 [ "$CLUSTER_MODE" = "1" ] && CLUSTER_FLAG="--cluster-mode"
@@ -92,7 +98,7 @@ CLUSTER_FLAG=""
 
 echo "[1/4] $(date +%H:%M:%S) starting consumer..."
 # shellcheck disable=SC2086
-$SCHED_WRAP "$PY" scripts/redis_consumer.py ${REDIS_CONSUMER_OPTS:-} \
+$SCHED_WRAP $CONSUMER_WRAP "$PY" scripts/redis_consumer.py ${REDIS_CONSUMER_OPTS:-} \
   --run-id "$RUN_ID" --out "runs/$RUN_ID/consumer.csv" \
   --host "$HOST" --port "$PORT" --stream "$STREAM" --group "$GROUP" \
   --idle-seconds "$IDLE_SECONDS" --node-count "$NODE_COUNT" $CLUSTER_FLAG \

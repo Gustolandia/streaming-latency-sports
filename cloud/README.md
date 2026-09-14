@@ -1,5 +1,10 @@
 # Multi-host testbed (Oracle Cloud Always Free, uk-london-1)
 
+> **The testbed moves to Azure.** The paid Oracle machines below go when the trial's grace period
+> ends on 18 September 2026. Their replacement, the same layout on the same AMD generation plus
+> the checks the next campaign needs, is in [`azure/README.md`](azure/README.md). This page stays
+> as the record of the machines the published results came from.
+
 Replaces the single-host Windows/WSL2 rig for the network-realism (RQ5) and cluster arms.
 Provisioned entirely through the OCI CLI; see `provision.sh`.
 

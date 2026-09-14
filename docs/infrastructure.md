@@ -2024,6 +2024,34 @@ the residual broker difference S2 derives is now a range, 0.34–0.37 ms. The ne
 first failed with `NameError`: the emitter imports `stat_intervals` inside each function that
 uses it, and a new function has to do the same.
 
+**1dt. A delay on the broker's link cannot move a difference of two timestamps taken on one
+machine.** The earlier broker-side delay (E-B2) slowed the producer's "got it" reply exactly as
+much as the message, so both timestamps moved together and the span between them did not. The
+Azure kit fixes the design rather than the analysis. The driver's network card gets a second
+address, the consumer runs in a namespace that owns it (`receiver_delay.py driver`), and the
+broker delays only packets addressed to it. It uses a four-band `prio` queue whose priority map
+names bands 0 to 2 only, so the fourth band holds nothing the filter does not put there. The delay
+is checked twice at every step: by ping from the host and from the namespace, and from the run
+files by `pilot_checks.py compare`. The trial runners gained `SBL_CONSUMER_WRAP`, empty by
+default, and every `meta.json` now records both wraps, so a run's arm can be read from the run.
+
+**1du. The first time a command meets a trial account must not be the first time it runs.**
+Azure's trial credit lasts thirty days from sign-up, and a trial's CPU limit cannot be raised. So
+`azure_testbed.py` builds every `az` command as data. `plan` prints them with no account and the
+tests check them. Nothing that costs money, stops a machine or deletes anything runs without
+`--yes`, and `down` also wants the resource group's name typed back. `preflight` reads the real
+limits before anything is created. Private addresses are fixed in `cloud/azure/testbed.json`, so
+`hosts.env` stays true across stop and start. A deallocation is a reboot, so `session.sh` rebuilds
+the namespace and restarts the brokers at the start of every session.
+
+**1dv. On the new testbed the scheduler constants are read off the machine, not derived.**
+`kernel_constants.py` had to derive the Oracle driver's base slice and tick from public inputs,
+because nobody read them while the machine existed. `sched_settings.py` reads both before and
+after every campaign, and records the slice the kernel's own rule predicts beside the value read.
+That rule's constant fell from 750000 to 700000 ns in Linux 6.15, so a prediction written from
+the 6.8 formula would be wrong on a newer image. A value that cannot be read is listed as missing,
+never filled in.
+
 **1co. A spelling checker that proposes `pairwize` is a checker people learn to argue with.**
 The British-spelling gate runs a morphological rule over the `-ise` family, which is right and
 is the half a hand-written table keeps failing at. It had no rule for `-wise`, an English

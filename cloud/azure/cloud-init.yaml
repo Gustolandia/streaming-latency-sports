@@ -1,0 +1,38 @@
+#cloud-config
+# Machine setup for the Azure testbed. It is the same on every machine: a broker and a driver
+# differ only in what cloud/azure/session.sh starts on them afterwards. Passed as custom data by
+# scripts/azure_testbed.py, which strips any CRLF first.
+#
+# How it differs from cloud/cloud-init.yaml (Oracle), and why:
+#   * no iptables line. Oracle's Ubuntu image blocked everything but SSH; Azure's does not, and
+#     the network security group already keeps every broker port off the internet;
+#   * chrony is left as the image sets it up, which on Azure reads the host's clock through
+#     /dev/ptp_hyperv. Its sources are logged, not changed;
+#   * the tools the mechanism campaigns call (stress-ng, bpftrace, ethtool) are installed here.
+#     On Oracle they were added by hand, so nothing recorded that they were there;
+#   * the client libraries get upper bounds and their installed versions are written down. The
+#     Oracle file installed whatever was newest on the day and recorded nothing.
+package_update: true
+packages:
+  - docker.io
+  - docker-compose-v2
+  - python3-pip
+  - python3-venv
+  - iproute2
+  - iputils-ping
+  - chrony
+  - stress-ng
+  - bpftrace
+  - ethtool
+  - jq
+  - git
+  - sysstat
+runcmd:
+  - systemctl enable --now docker
+  - usermod -aG docker ubuntu
+  - pip3 install --break-system-packages "kafka-python>=2.3,<3" "redis>=7,<8" pandas numpy || pip3 install "kafka-python>=2.3,<3" "redis>=7,<8" pandas numpy
+  - pip3 freeze > /var/log/sbl-pip-freeze.txt
+  - chronyc sources -v > /var/log/sbl-chrony-sources.txt 2>&1 || true
+  - sudo -u ubuntu git clone --depth 1 https://github.com/Gustolandia/streaming-latency-sports.git /home/ubuntu/sbl
+  - mountpoint -q /sys/kernel/debug || mount -t debugfs debugfs /sys/kernel/debug
+  - touch /var/lib/sbl-cloud-init-done

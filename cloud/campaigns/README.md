@@ -91,3 +91,8 @@ multi-host anomaly (1000 → 200000) and it did **not** account for it, but the 
 (3-node). Capacity notes and cost are in [`../README.md`](../README.md); briefly: the Always Free
 ARM shape and `E4.Flex` were out of capacity in London, `E5.Flex` was not, and `E5` is a paid
 shape drawing on trial credit.
+
+The Azure testbed that replaces them is described in [`../azure/README.md`](../azure/README.md).
+It runs these campaigns unchanged: `../azure/replicate_oracle.sh` runs the load-geometry, payload
+and go-first campaigns there. The trial runners' `SBL_CONSUMER_WRAP` hook, empty by default,
+serves its receiver-only delay.

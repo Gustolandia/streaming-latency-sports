@@ -41,6 +41,12 @@ PY="${PYTHON:-python3}"
 # behaves exactly as before. Applied to producer AND consumer because the measured transport is
 # a difference of stamps taken in the two.
 SCHED_WRAP="${SBL_SCHED_WRAP:-}"
+# SBL_CONSUMER_WRAP prefixes the consumer alone. The receiver-only delay needs it: the consumer
+# must connect from its own address, inside the namespace scripts/receiver_delay.py builds, so
+# the broker can delay what the consumer receives without delaying the producer's "got it" reply.
+# A campaign sets it to "sudo ip netns exec sblrecv sudo -u $USER". Empty by default, so every
+# existing campaign behaves exactly as before.
+CONSUMER_WRAP="${SBL_CONSUMER_WRAP:-}"
 mkdir -p "runs/$RUN_ID"
 
 "$PY" - "$RUN_ID" "$PLAN_CSV" "$SPEEDUP" "$MAX_T_SIM" "$BOOTSTRAP" "$TOPIC" <<'PY'
@@ -68,7 +74,10 @@ meta = {
                       "machine": platform.machine(), "node": platform.node(),
                       "python": platform.python_version()},
     "env": {"KAFKA_PRODUCER_OPTS": os.environ.get("KAFKA_PRODUCER_OPTS", ""),
-            "KAFKA_CONSUMER_OPTS": os.environ.get("KAFKA_CONSUMER_OPTS", "")},
+            "KAFKA_CONSUMER_OPTS": os.environ.get("KAFKA_CONSUMER_OPTS", ""),
+            # Which arm a run belonged to must be readable from the run itself.
+            "SBL_SCHED_WRAP": os.environ.get("SBL_SCHED_WRAP", ""),
+            "SBL_CONSUMER_WRAP": os.environ.get("SBL_CONSUMER_WRAP", "")},
     "git": {"head": cmd(["git","rev-parse","HEAD"]),
             "status_short": cmd(["git","status","--porcelain"])},
     "code_sha256": {f"scripts/{f}": sha256(f"scripts/{f}") for f in
@@ -79,7 +88,7 @@ PY
 
 echo "[1/4] $(date +%H:%M:%S) starting consumer..."
 # shellcheck disable=SC2086
-$SCHED_WRAP "$PY" scripts/kafka_consumer.py ${KAFKA_CONSUMER_OPTS:-} \
+$SCHED_WRAP $CONSUMER_WRAP "$PY" scripts/kafka_consumer.py ${KAFKA_CONSUMER_OPTS:-} \
   --run-id "$RUN_ID" --out "runs/$RUN_ID/consumer.csv" \
   --bootstrap "$BOOTSTRAP" --topic "$TOPIC" --idle-seconds "$IDLE_SECONDS" \
   --broker-count "$BROKER_COUNT" $CONSUMER_EXTRA > "runs/$RUN_ID/consumer.log" 2>&1 &

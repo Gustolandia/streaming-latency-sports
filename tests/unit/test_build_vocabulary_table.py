@@ -36,6 +36,16 @@ class TestPdfText:
         monkeypatch.setattr(bvt.subprocess, "run", boom)
         assert bvt.pdf_text(Path("x.pdf")) == ""
 
+    def test_ligatures_and_unicode_hyphens_come_back_as_the_patterns_expect(self, monkeypatch):
+        """UTF-8 output keeps a ligature as one character. On the 823-paper corpus, a UTF-8
+        build without this dropped "flight (bare)" from 27 papers to 17 and "defined" from 593
+        to 328. Dashes between words stay, because they separate the words."""
+        class R:
+            stdout = "eﬃcient ﬂight in‐flight per‑cell a–b c—d"
+
+        monkeypatch.setattr(bvt.subprocess, "run", lambda cmd, **kw: R())
+        assert bvt.pdf_text(Path("x.pdf")) == "efficient flight in-flight per-cell a–b c—d"
+
 
 class TestManuscriptWords:
 

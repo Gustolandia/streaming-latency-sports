@@ -87,9 +87,22 @@ def pdf_text(path):
         r = subprocess.run(["pdftotext", "-q", "-enc", "UTF-8", str(path), "-"],
                            capture_output=True, text=True, encoding="utf-8", errors="replace",
                            timeout=180)
-        return r.stdout
+        return normalised(r.stdout)
     except (OSError, subprocess.TimeoutExpired):
         return ""
+
+
+def normalised(text):
+    """Extracted text with ligatures split into letters and the Unicode hyphen made ASCII.
+
+    UTF-8 output keeps a ligature as one character, so the word pattern would read "first", set
+    with an fi ligature, as "rst". Latin-1 output split ligatures as a side effect, and the table
+    was built on that. NFKC splits them on purpose and folds U+2011 into U+2010, which becomes the
+    "-" the word and phrase patterns match. En-dashes and em-dashes are left alone: they separate
+    words, where Latin-1's "-" and "--" glued them together.
+    """
+    import unicodedata
+    return unicodedata.normalize("NFKC", text).translate({0x2010: "-"})
 
 
 def manuscript_words(tex):

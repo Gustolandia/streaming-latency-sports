@@ -326,7 +326,7 @@
   journal = {arXiv preprint arXiv:2604.21361},
   year    = {2026},
   month   = apr,
-  note    = {Open Compute Project, Unified Intelligent Infrastructure workstream}
+  note    = {{Open Compute Project}, Unified Intelligent Infrastructure workstream}
 }
 
 @inproceedings{lozi2016wastedcores,
@@ -704,7 +704,7 @@
                Measurement, Control and Communication (ISPCS)},
   year      = {2012},
   pages     = {1--6},
-  note      = {DTrace breakdown against a DAG hardware reference}
+  note      = {{DTrace} breakdown against a DAG hardware reference}
 }
 
 @inproceedings{hoefler2015benchmarking,
@@ -1128,6 +1128,16 @@
   year         = {2022},
   note         = {Negative intervals in a single process, attributed to thread migration
                   between CPUs with unsynchronised clocks. Accessed: Aug. 21, 2026}
+}
+
+@misc{hasija2026kafkalag,
+  author       = {Hasija, Chirag},
+  title        = {Kafka Consumer Lag Is Lying to You -- How to Measure and Fix It Properly},
+  howpublished = {Blog post, \url{https://chiraghasija.cc/posts/kafka-consumer-group-lag-monitoring-production-2026/}},
+  year         = {2026},
+  note         = {``If your p50 latency is negative you have a skew problem, not a fast
+                  consumer''; recommends treating sub-zero readings as a monitoring bug.
+                  Accessed: Sep. 14, 2026}
 }
 
 @misc{omb_issue216,
@@ -1666,5 +1676,5 @@
   title        = {Metrics: latency tracking},
   howpublished = {Apache Flink documentation},
   year         = {2026},
-  note         = {\url{https://nightlies.apache.org/flink/flink-docs-master/docs/ops/metrics/}; ``Flink assumes that the clocks of all machines in the cluster are in sync''. Accessed: Sep. 14, 2026}
+  note         = {\url{https://nightlies.apache.org/flink/flink-docs-master/docs/ops/metrics/}; ``Flink assumes that the clocks of all machines in the cluster are in sync''; the feature ``is disabled by default'' and is recommended ``only \ldots{} for debugging purposes''. Accessed: Sep. 14, 2026}
 }

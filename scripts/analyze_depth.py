@@ -64,6 +64,28 @@ def run_inversion(run_dir):
         return 0, 0
 
 
+def transport_median_from_rows(prod_rows, cons_rows):
+    """Median broker transport in ms from a producer table and a consumer table (dict rows).
+
+    The join `run_transport_median` performs, split out in round 81 so that
+    `h3_stamping_runs.py` can read a run straight out of the archive with this arithmetic rather
+    than a second copy of it. A malformed row raises ValueError or KeyError for the caller to
+    handle, as the directory reader always has.
+    """
+    ack = {}
+    for r in prod_rows:
+        v = r.get("t_broker_ack_ns")
+        if v not in (None, "", "None"):
+            ack[r["event_id"]] = int(v)
+    vals = []
+    for r in cons_rows:
+        a = ack.get(r["event_id"])
+        recv = r.get("t_consume_ns")
+        if a is not None and recv not in (None, "", "None"):
+            vals.append((int(recv) - a) / 1e6)
+    return st.median(vals) if vals else None
+
+
 def run_transport_median(run_dir):
     """Median broker transport in ms for one run, from raw per-event data.
 
@@ -74,21 +96,10 @@ def run_transport_median(run_dir):
     prod = os.path.join(run_dir, "producer.csv")
     if not (os.path.exists(cons) and os.path.exists(prod)):
         return None
-    ack = {}
     try:
-        with open(prod, newline="", encoding="utf-8") as fh:
-            for r in csv.DictReader(fh):
-                v = r.get("t_broker_ack_ns")
-                if v not in (None, "", "None"):
-                    ack[r["event_id"]] = int(v)
-        vals = []
-        with open(cons, newline="", encoding="utf-8") as fh:
-            for r in csv.DictReader(fh):
-                a = ack.get(r["event_id"])
-                recv = r.get("t_consume_ns")
-                if a is not None and recv not in (None, "", "None"):
-                    vals.append((int(recv) - a) / 1e6)
-        return st.median(vals) if vals else None
+        with open(prod, newline="", encoding="utf-8") as pf, \
+                open(cons, newline="", encoding="utf-8") as cf:
+            return transport_median_from_rows(csv.DictReader(pf), csv.DictReader(cf))
     except (ValueError, KeyError, OSError):
         return None
 

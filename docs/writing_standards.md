@@ -953,6 +953,40 @@ that read 12.4 counting every condition with an observed negative, and 7.3 above
 
 Gated in `tests/unit/test_round80_findings.py`.
 
+### B21. A number beside a pointer is a number the section prints — GATED
+
+A supplement sentence that names a main-text section and prints a ledger number reads as saying
+the section contains that number. Round 81 found three sentences where it did not: an overshoot
+the section had stopped quoting, a factor printed one subsection later, and a cost printed in the
+neighboring subsection.
+
+- **Point at the section that prints the number.** If a section is named for something else, such
+  as the rule that produced the number or the quantity it is contrasted with, the sentence says so.
+- **Split a sentence** that sets a supplement-only number beside a claim about what the article
+  prints. Keep the pointer in the sentence whose numbers the article prints.
+
+Gated in `tests/unit/test_supplement_pointers.py`, with three exemptions carrying reasons and a
+cap of five.
+
+### B22. A change states its interval, its rounding and its replication — GATED
+
+- **A change between two medians carries an interval.** Resample the unit that was repeated,
+  runs within cells, and carry every resample through the subtraction the table prints.
+- **Independently rounded cells are declared.** A row that does not add up in its last digit
+  says why in the caption.
+- **A share is a number.** "Entirely" was 98%.
+- **A replication in the archive is printed.** A table that shows one campaign when a second
+  exists is showing the easier one.
+
+Gated in `tests/unit/test_round81_findings.py`.
+
+### B23. A name at the start of a reference note is brace-protected — GATED
+
+`IEEEtran.bst` lowercases the first character of every note. That is right for a fragment and a
+typo for a name ("open Compute Project", "dTrace"). A note that opens with a name protects it:
+`note = {{DTrace} breakdown ...}`. Gated on the rendered `.bbl` in
+`tests/unit/test_bibliography_note_case.py`.
+
 ### B13. The index terms are content, and get read like content
 
 They are the paper's retrieval surface, not a subject declaration. Three rounds recorded

@@ -112,6 +112,7 @@
 \newcommand{\mainBetterClock}{\ref{P-sec:betterclock}}    % The limits of a better clock
 \newcommand{\mainIntro}{\ref{P-sec:intro}}                % Introduction (round 79)
 \newcommand{\mainWorkload}{\ref{P-sec:workload}}          % Workload and load generation (round 79)
+\newcommand{\mainSettle}{\ref{P-sec:twostate}}            % The experiments that settle it (round 81)
 
 \begin{document}
 % The title, the byline and the running head all name the paper, and all three are checked
@@ -170,9 +171,9 @@ the artifact's \texttt{docs/supplement\_index.md} records where each section cam
 \bigskip
 
 \medskip
-\noindent\emph{On review.} This manuscript has not been submitted to, or reviewed by,
-any journal. Where a section below records a correction, the correction was found in the
-course of the work rather than asked for by a referee.
+\noindent\emph{On review.} Before this submission, the manuscript had not been submitted to,
+or reviewed by, any journal. Where a section below records a correction, the correction was
+found in the course of the work rather than asked for by a referee.
 
 \medskip
 \noindent\emph{On the vocabulary.} This document uses the paper's terms, defined here once. A
@@ -508,13 +509,17 @@ is a real, tight, reproducible effect
 that a properly powered measurement resolves and a seven-event one cannot. The shift is also flat
 across concurrency ($\tostHL$, $0.416$, $0.417$~ms at $N = 1, 9, 12$, audit-gated;
 S18), so neither system degrades.
-A part of even this residual is the harness rather than the broker: Table~\ref{tab:h3} shows that $\hThreeShrinkage$~ms of the gap is the asymmetric acknowledgment timestamp --- a different
-quantity from the inter-host clock offset of Section~\mainTestbeds{}, which happens to be the same
-size ---, leaving a true
-broker-transport difference near $0.34$~ms. That $\hThreeShrinkage$~ms is a concrete instance of the blind spot Section~\mainAudit{} names: it is a bias smaller than the quantity measured, so it never
-turns a value negative and the consistency check passed both corpora that carried it. The check
-guarantees a corpus is not \emph{catastrophically} wrong; resolving a $\hThreeShrinkage$~ms harness
-artifact still took a controlled experiment.
+A part of even this residual is the harness rather than the broker: Table~\ref{tab:h3} shows that
+the asymmetric acknowledgment timestamp accounts for $\hThreeShrinkage$~ms of the gap [95\%
+bootstrap over runs: $\hThreeShrinkageCI$], and for $\hThreeRepShrinkage$~ms
+[$\hThreeRepShrinkageCI$] in the replication at $\hThreeRepRuns$ runs per cell --- a different
+quantity from the inter-host clock offset of Section~\mainTestbeds{}, which happens to be the size
+of the first ---, leaving a true broker-transport difference of $\hThreeResidualRange$~ms. That
+shrinkage is a concrete instance of the blind spot Section~\mainAudit{} names: it is a bias smaller
+than the quantity measured, so it never turns a value negative and the consistency check passed both
+corpora that carried it. The check guarantees a corpus is not \emph{catastrophically} wrong;
+resolving a harness artifact of a few hundredths of a millisecond still took a controlled
+experiment, and sizing it took a replication.
 
 An independent replication confirms it. A second powered campaign, run days apart with the same
 protocol, gives Hodges--Lehmann shifts of $0.397$, $0.412$ and $0.413$~ms at $N = 1, 9, 12$ ---
@@ -1826,10 +1831,14 @@ the medians this supplement prints, which is the natural recomputation, a reader
 differences them condition by condition gets $3.5\times$, and one who divides the pooled
 medians gets $2.6\times$. Three defensible readings, a factor of $1.6$ between the extremes,
 and only one of them is the number in the text. This project has been caught by the same
-distinction once before, on the independence overshoot of Section~\mainAuthors{}, where
-median-of-ratios and ratio-of-medians differ, pooled and with no floor, by $\indepOvershoot\times$
-against $\indepRatioOfMedians\times$; there it
-is stated in the sentence that quotes it, and now it is stated here too.
+distinction once before, on the independence overshoot: pooled and with no floor,
+median-of-ratios and ratio-of-medians differ by $\indepOvershoot\times$ against
+$\indepRatioOfMedians\times$ (S24.2). Within runs and above a $\indepFloorPct\%$ floor they nearly
+agree, $\indepWithinFloored\times$ against $\indepWithinFlooredRatioOfMedians\times$, once the
+floor has removed the smallest denominators. Sections~\mainAudit{} and~\mainAuthors{} quote the
+median of ratios at that floor, $\indepWithinFloored\times$ over the $\indepWithinFlooredN$
+conditions above $\indepFloorPct\%$, and each says it is a median over conditions; now the
+estimator is stated here too.
 
 \section{S13. What the brokers actually do}
 \label{sec:brokers-full}
@@ -2234,10 +2243,10 @@ audit rejects $\auditPctWorkstation\%$ of its assessed runs, against
 $\auditPctCloud\%$ on the cloud instances. The effect is
 larger where there is no hypervisor at all. Two further observations disagree with a
 steal-time account: real-time priority is a guest-side control and collapses the rate
-$\rtLowFactor$--$\rtHighFactor\times$ (these two matched pairs; all $\rtPairs$ are in S12, and Section~\mainRareState{} of the main
+$\rtLowFactor$--$\rtHighFactor\times$ (these two matched pairs; all $\rtPairs$ are in S12, and Section~\mainSettle{} of the main
 text gives $\rtFactorLow$--$\rtFactorHigh\times$ across the load sweep), which stolen vCPU time would not
 yield to; and the
-$\tracedModeLo$--$\tracedModeHi$~ms mode sits on the guest kernel's own base-slice arithmetic
+$\tracedModeLo$--$\tracedModeHi$~ms mode of Section~\mainSpectrum{} sits on the guest kernel's own base-slice arithmetic
 rather than on any quantity the hypervisor exposes. Steal time may still contribute on the
 cloud instances, where the mechanism campaigns were run; what the workstation shows is that it
 is not required.
@@ -2870,8 +2879,9 @@ the same output. The channel is therefore open on this testbed, and we could not
 
 \emph{H3 is measured at one operating point.} The symmetric-timestamping comparison (Table~\ref{tab:h3}) was run at one in-flight request and one load level, because inline
 timestamping requires the single in-flight setting. The direction and the one-sidedness of the effect
-are what the model predicts, but we do not characterize how the $\hThreeShrinkage$~ms offset scales with load
-or pipelining.
+are what the model predicts, and the replication at $\hThreeRepRuns$ runs per cell keeps both
+while sizing the shrinkage at $\hThreeRepShrinkage$~ms against $\hThreeShrinkage$~ms (Table~\ref{tab:h3}),
+but we do not characterize how the offset scales with load or pipelining.
 
 \emph{The five-feed acknowledgment null is unexplained}.
 
@@ -3328,8 +3338,8 @@ negative and $\indepPooledFloored$ over the $\indepPooledFlooredN$ with a rate a
 $\indepFloorPct\%$; with pairing confined to each run, $\indepWithinAll$ over
 $\indepWithinAllN$ and $\indepWithinFloored$ over $\indepWithinFlooredN$. The unit barely moves it
 and the floor moves it by half, while its direction holds everywhere: independence overpredicts in
-$\indepWithinOvershootConditions$ of the $\indepWithinConditions$ conditions. Section~\mainAuthors{}
-quotes the within-run figure at the floor. Tail indices are estimated on the traced histogram by grouped maximum likelihood
+$\indepWithinOvershootConditions$ of the $\indepWithinConditions$ conditions. Sections~\mainAudit{}
+and~\mainAuthors{} quote the within-run figure at the floor. Tail indices are estimated on the traced histogram by grouped maximum likelihood
 with a profile-likelihood interval and by an exceedance ratio with a Wilson interval,
 because the buckets are interval-censored and a slope through survival points is not an
 estimator; the grouped estimator on log-spaced bins is Virkar and Clauset's, which is the
@@ -3794,19 +3804,31 @@ Total              & \auditRuns{} & \auditRejected{} (\auditPct\%) & \auditCondi
 
 \begin{table}[t]
 \caption{H3: median broker transport under the two timestamping modes, both configurations at one in-flight
-request under matched load. \texttt{callback} is the default asymmetric timestamping mode; \texttt{inline}
-timestamps \kafka{} on the calling thread as \redis{} already does. The last row is the change from
-\texttt{callback} to \texttt{inline}: the between-system gap shrinks by $\hThreeShrinkage$~ms, and
-the shrinkage is entirely on \kafka{}'s side.}
+request under matched load, in the campaign (E-C3) and its replication (E-C4). \texttt{callback} is the default
+asymmetric timestamping mode; \texttt{inline} timestamps \kafka{} on the calling thread as \redis{} already
+does. Each cell is the median over runs of a per-run median. Each campaign closes with the change from
+\texttt{callback} to \texttt{inline} and a 95\% percentile-bootstrap interval, resampling runs within each
+cell. The between-system gap shrinks by $\hThreeShrinkage$~ms ($\hThreeShrinkageCI$) in E-C3 and by
+$\hThreeRepShrinkage$~ms ($\hThreeRepShrinkageCI$) in E-C4; \kafka{}'s change carries $\hThreeKafkaSharePct\%$ and
+$\hThreeRepKafkaSharePct\%$ of it, more than all of it in E-C4 because \redis{}'s change there runs the other
+way, and \redis{}'s interval spans zero in both. Cells are rounded independently,
+so a change can differ in its last digit from the difference of the printed cells.}
 \label{tab:h3}
 \begin{tabular}{lrrr}
 \toprule
 Timestamp & \kafka{} (ms) & \redis{} (ms) & Difference (ms) \\
 \midrule
+\multicolumn{4}{l}{\emph{E-C3, $\hThreeRuns$ runs per cell}} \\
 \texttt{callback} (asymmetric) & $\hThreeKafkaCallback$ & $\hThreeRedisCallback$ & $\hThreeDiffCallback$ \\
 \texttt{inline} (symmetric)    & $\hThreeKafkaInline$ & $\hThreeRedisInline$ & $\hThreeDiffInline$ \\
-\midrule
 Change                         & $\hThreeKafkaChange$ & $\hThreeRedisChange$ & $\hThreeDiffChange$ \\
+\quad 95\% bootstrap           & $[\hThreeKafkaChangeCI]$ & $[\hThreeRedisChangeCI]$ & $[\hThreeDiffChangeCI]$ \\
+\midrule
+\multicolumn{4}{l}{\emph{E-C4, replication, $\hThreeRepRuns$ runs per cell}} \\
+\texttt{callback} (asymmetric) & $\hThreeRepKafkaCallback$ & $\hThreeRepRedisCallback$ & $\hThreeRepDiffCallback$ \\
+\texttt{inline} (symmetric)    & $\hThreeRepKafkaInline$ & $\hThreeRepRedisInline$ & $\hThreeRepDiffInline$ \\
+Change                         & $\hThreeRepKafkaChange$ & $\hThreeRepRedisChange$ & $\hThreeRepDiffChange$ \\
+\quad 95\% bootstrap           & $[\hThreeRepKafkaChangeCI]$ & $[\hThreeRepRedisChangeCI]$ & $[\hThreeRepDiffChangeCI]$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -4088,7 +4110,7 @@ being asked is the better evidence that the rules cost little, and it is not our
 
 \paragraph{And a proof that placement is the thing that decides}
 Where the timestamp is written is a design choice in this section and an empirical
-finding in Section~\mainAuthors{} --- our own two clients differ by a payload parse, worth
+finding in Section~\mainBrokers{} --- our own two clients differ by a payload parse, worth
 $\spanHandlingWorstUs$~\textmu s. A 2026 result from concurrency theory says it is
 neither: it is a
 limit. Rodr\'iguez, Casta\~neda and Pi\~na formalize the \emph{Causal Observability
@@ -4140,14 +4162,16 @@ note the asymmetry rather than flatten it: both vendors describe a timestamp wri
 the host does not choose, and only one says out loud how far from the host call it can be.
 
 \paragraph{A stream processor's own latency metric sits in this regime}
-Flink's latency tracking subtracts two millisecond clock reads: \texttt{LatencyStats} records
+Flink's latency tracking, an opt-in metric its documentation recommends for debugging only,
+subtracts two millisecond clock reads: \texttt{LatencyStats} records
 \texttt{System.currentTimeMillis() - marker.getMarkedTime()} with no filter~\cite{flink_latencystats},
 where the marked time was read when the source emitted the marker, often on another machine.
-Its documentation states the precondition, ``Flink assumes that the clocks of all machines in
-the cluster are in sync'', and adds that the markers bypass operators and so miss the time
-records spend in them~\cite{flink_metrics_docs}. The metric sits in this paper's regime twice,
-at one-millisecond resolution and across two clocks, and it keeps its negatives rather than
-dropping them, the disposition Section~\mainTools{} finds in two of the ten tools it reads.
+Its documentation says the feature is disabled by default, states the precondition, ``Flink
+assumes that the clocks of all machines in the cluster are in sync'', and adds that the markers
+bypass operators and so miss the time records spend in them~\cite{flink_metrics_docs}. Once
+enabled, the metric sits in this paper's regime twice, at one-millisecond resolution and across
+two clocks, and it keeps its negatives rather than dropping them, the disposition
+Section~\mainTools{} finds in two of the ten tools it reads.
 
 \section{S31. Neighboring rules, and what they already require}
 \label{sec:neighbors}
@@ -4301,6 +4325,13 @@ sufficient check. On a loaded machine it is not: we see a negative-span rate of
 $\rtHighBasePct\%$ at $\rtHighLoadPct\%$ utilization on a single host --- where the inter-host offset is not merely small but
 undefined, there being one clock --- and move that rate fiftyfold with a scheduling
 parameter, touching no clock.
+
+The skew reading is not confined to this dispute. The benchmark's maintainer gave it in 2021,
+attributing publish latency above end-to-end latency to inter-node skew on a report from a
+single node~\cite{omb_issue216}. A 2026 guide to monitoring Kafka consumers still tells its
+readers that a negative median latency is ``a skew problem, not a fast consumer''
+\cite{hasija2026kafkalag}. Neither asks whether the thread that took the timestamp was
+running.
 
 Their own formulation is nearer ours than the dichotomy allows. They note that the minimum
 separation ``exhibits variability due to scheduling jitter'', with violation probability

@@ -2156,15 +2156,26 @@ def disease_macros(path=os.path.join("docs", "results", "span_run_level.csv")):
     return out
 
 
-def h3_stamping_macros(path=os.path.join("docs", "results", "model", "ec3_stamping.csv")):
+def h3_stamping_macros(path=os.path.join("docs", "results", "model", "ec3_stamping.csv"),
+                       runs_path=os.path.join("docs", "results", "model",
+                                              "ec3_stamping_runs.csv")):
     """Table S26, emitted from its CSV rather than typed (round 80, W3).
 
     S2 pointed at Table S26 for "0.07 ms of the gap", and the table printed the two
     between-system differences and left the subtraction to the reader. A pointer that lands on
     a page without the number pointed at is half a pointer. The table now carries a change row,
     and the prose quotes the emitted shrinkage instead of four typed copies of it.
+
+    Round 81 (W1) found the change row still short of a claim. Its cells are rounded
+    independently, so the row cannot add up in the last digit. "Entirely on Kafka's side" was
+    98%. And ten runs per cell carried no interval, while the replication at thirty runs, E-C4,
+    was in the archive and in no table. So this also emits, from the per-run file
+    `h3_stamping_runs.py` writes: bootstrap intervals over runs for both campaigns, E-C4's
+    cells, Kafka's share of each shrinkage, and the residual broker difference S2 derives by
+    subtracting the shrinkage from the N = 1 transport shift.
     """
     import csv as _csv
+    import stat_intervals
     try:
         with open(path, encoding="utf-8") as fh:
             rows = {r["stamp"]: r for r in _csv.DictReader(fh)}
@@ -2173,7 +2184,7 @@ def h3_stamping_macros(path=os.path.join("docs", "results", "model", "ec3_stampi
         k1, r1, d1 = float(inl["kafka_ms"]), float(inl["redis_ms"]), float(inl["difference_ms"])
     except (OSError, KeyError, ValueError):
         return []
-    return [
+    out = [
         ("hThreeKafkaCallback", "%.3f" % k0), ("hThreeRedisCallback", "%.3f" % r0),
         ("hThreeDiffCallback", "%+.3f" % d0),
         ("hThreeKafkaInline", "%.3f" % k1), ("hThreeRedisInline", "%.3f" % r1),
@@ -2182,6 +2193,45 @@ def h3_stamping_macros(path=os.path.join("docs", "results", "model", "ec3_stampi
         ("hThreeDiffChange", "%+.3f" % (d1 - d0)),
         ("hThreeShrinkage", "%.3f" % (d0 - d1)),
     ]
+    intervals = stat_intervals.h3_stamping_intervals(runs_path)
+    shrinkages = []
+    for campaign, prefix in (("E-C3", "hThree"), ("E-C4", "hThreeRep")):
+        c = intervals.get(campaign)
+        if not c:
+            continue
+        runs = sorted(set(c["n"].values()))
+        out.append((prefix + "Runs", "%d" % runs[0] if len(runs) == 1
+                    else "%d$--$%d" % (runs[0], runs[-1])))
+        if campaign == "E-C4":
+            m = c["median"]
+            out += [
+                ("hThreeRepKafkaCallback", "%.3f" % m[("callback", "kafka")]),
+                ("hThreeRepRedisCallback", "%.3f" % m[("callback", "redis")]),
+                ("hThreeRepDiffCallback", "%+.3f" % (m[("callback", "kafka")]
+                                                     - m[("callback", "redis")])),
+                ("hThreeRepKafkaInline", "%.3f" % m[("inline", "kafka")]),
+                ("hThreeRepRedisInline", "%.3f" % m[("inline", "redis")]),
+                ("hThreeRepDiffInline", "%+.3f" % (m[("inline", "kafka")]
+                                                   - m[("inline", "redis")])),
+                ("hThreeRepKafkaChange", "%+.3f" % c["change"]["kafka"]),
+                ("hThreeRepRedisChange", "%+.3f" % c["change"]["redis"]),
+                ("hThreeRepDiffChange", "%+.3f" % c["change"]["difference"]),
+                ("hThreeRepShrinkage", "%.3f" % -c["change"]["difference"]),
+            ]
+        for name, label in (("kafka", "Kafka"), ("redis", "Redis"), ("difference", "Diff")):
+            lo, hi = c["ci"][name]
+            # A CI macro carries its own math (test_generated_macro_typesetting), so it reads
+            # the same inside `$[...]$` in a table cell as anywhere else it is dropped.
+            out.append((prefix + label + "ChangeCI", "%+.3f$, $%+.3f" % (lo, hi)))
+        lo, hi = c["ci"]["difference"]
+        out += [(prefix + "ShrinkageCI", "%.3f$--$%.3f" % (-hi, -lo)),
+                (prefix + "KafkaSharePct", "%.0f" % (100.0 * c["kafka_share"]))]
+        shrinkages.append(-c["change"]["difference"])
+    tost = dict(tost_macros())
+    if shrinkages and "tostHL" in tost:
+        residual = [float(tost["tostHL"]) - s for s in shrinkages]
+        out.append(("hThreeResidualRange", "%.2f$--$%.2f" % (min(residual), max(residual))))
+    return out
 
 
 #: The observed negative-span rate below which a per-condition ratio is not trusted, as a
@@ -2225,6 +2275,10 @@ def separability_macros(path=os.path.join("docs", "results", "span_symmetry.csv"
     obs, pred, ratios, over, floored = [], [], [], 0, []
     w_n = w_over = 0
     w_ratios, w_floored = [], []
+    # Round 81 (R1): the two margins of the floored within-run population, so the ratio of
+    # medians S12 contrasts with the median of ratios is computed over the population the
+    # article quotes, not the pooled, unfloored one it stopped quoting in round 80.
+    w_floored_obs, w_floored_pred = [], []
     for r in rows:
         try:
             o = float(r["neg_frac_obs"])
@@ -2253,6 +2307,8 @@ def separability_macros(path=os.path.join("docs", "results", "span_symmetry.csv"
             w_ratios.append(wp / wo)
         if wo > floor:
             w_floored.append(wp / wo)
+            w_floored_obs.append(wo)
+            w_floored_pred.append(wp)
     if not obs or not ratios:
         return []
     out = [
@@ -2279,7 +2335,9 @@ def separability_macros(path=os.path.join("docs", "results", "span_symmetry.csv"
                     ("indepWithinAllN", str(len(w_ratios)))]
         if w_floored:
             out += [("indepWithinFloored", "%.1f" % _st.median(w_floored)),
-                    ("indepWithinFlooredN", str(len(w_floored)))]
+                    ("indepWithinFlooredN", str(len(w_floored))),
+                    ("indepWithinFlooredRatioOfMedians",
+                     "%.1f" % (_st.median(w_floored_pred) / _st.median(w_floored_obs)))]
     return out
 
 

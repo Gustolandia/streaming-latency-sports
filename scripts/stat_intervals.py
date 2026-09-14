@@ -300,6 +300,69 @@ def hl_bootstrap_ci(a, b, conf=0.95, n_boot=HL_BOOT, seed=HL_SEED):
     return lo, hi
 
 
+#: Resamples and seed for Table S26's intervals. The count is `HL_BOOT`'s, for the reason given
+#: there; the seed is its own, so that a change to one table cannot move the other.
+H3_BOOT = 10000
+H3_SEED = 81081
+
+
+def h3_stamping_intervals(path=os.path.join("docs", "results", "model", "ec3_stamping_runs.csv"),
+                          conf=0.95, n_boot=H3_BOOT, seed=H3_SEED):
+    """Table S26 with its uncertainty: per campaign, four cell medians and three changes.
+
+    Round 81 (W1). Each cell of Table S26 is a median over runs of a per-run median. The table
+    printed them to a microsecond, over ten runs each and with no interval, while S2 read
+    "0.071 ms of the gap is the asymmetric acknowledgment timestamp" off its change row. This
+    interval resamples runs within each of the four cells independently, since the run is the
+    unit that was repeated. Every resample goes through the same subtraction the table prints,
+    so the two changes and the difference-in-differences each get a percentile interval.
+
+    Returns {campaign: {"n": {(stamp, backend): runs}, "median": {(stamp, backend): ms},
+    "change": {"kafka", "redis", "difference"}, "ci": {same keys: (lo, hi)},
+    "kafka_share": Kafka's change over the difference's change}}. A campaign missing a cell is
+    left out, and an unreadable file gives {}.
+    """
+    try:
+        cells = {}
+        with open(path, encoding="utf-8") as fh:
+            for r in csv.DictReader(fh):
+                cells.setdefault(r["campaign"], {}).setdefault(
+                    (r["stamp"], r["backend"]), []).append(float(r["median_ms"]))
+    except (OSError, KeyError, ValueError):
+        return {}
+    keys = [(s, b) for s in ("callback", "inline") for b in ("kafka", "redis")]
+
+    def changes(m):
+        k = m[("inline", "kafka")] - m[("callback", "kafka")]
+        r = m[("inline", "redis")] - m[("callback", "redis")]
+        return {"kafka": k, "redis": r, "difference": k - r}
+
+    alpha = 1.0 - conf
+    out = {}
+    for campaign in sorted(cells):
+        c = cells[campaign]
+        if any(k not in c for k in keys):
+            continue
+        rng = random.Random(seed)
+        boot = {"kafka": [], "redis": [], "difference": []}
+        for _ in range(n_boot):
+            m = {k: _median(sorted(rng.choices(c[k], k=len(c[k])))) for k in keys}
+            for name, v in changes(m).items():
+                boot[name].append(v)
+        ci = {}
+        for name, vals in boot.items():
+            vals.sort()
+            ci[name] = (vals[max(0, int(alpha / 2.0 * n_boot))],
+                        vals[min(n_boot - 1, int((1.0 - alpha / 2.0) * n_boot))])
+        med = {k: _median(sorted(c[k])) for k in keys}
+        ch = changes(med)
+        out[campaign] = {
+            "n": {k: len(c[k]) for k in keys}, "median": med, "change": ch, "ci": ci,
+            "kafka_share": ch["kafka"] / ch["difference"] if ch["difference"] else float("nan"),
+        }
+    return out
+
+
 def _ecdf_gap(count_a, count_b, n_a, n_b):
     """Largest gap between two empirical CDFs, from per-distinct-value counts."""
     seen_a = seen_b = 0

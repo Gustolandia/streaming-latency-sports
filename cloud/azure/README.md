@@ -72,6 +72,15 @@ nohup bash cloud/azure/replicate_oracle.sh > replicate.log 2>&1 &
 Run the second only after the pilot's `verdicts.csv` has no `no` in it. Results stay on the
 driver under `runs/azure/`; copy them back before the machines are deleted.
 
+While anything runs, watch it from your computer. The watch only reads. Every 5 minutes it flags
+machines that are idle but still billing, a stuck campaign, failed trials, impossible numbers
+(a message that arrived before it was sent), load that is lower than set, full disks, low
+memory, CPU taken by other tenants (steal), clock drift, and brokers that are down:
+
+```bash
+python scripts/testbed_watch.py
+```
+
 Between sessions, and at the very end:
 
 ```bash
@@ -109,6 +118,7 @@ python scripts/azure_testbed.py down --confirm sbl-az
 | `scripts/pilot_checks.py` | reads run files: never-negative trips, the receiver-only check, the go-first cut |
 | `cloud/azure/replicate_oracle.sh` | runs the Oracle mechanism campaigns unchanged, in shuffled order |
 | `scripts/run_queue.py` | the randomised run queue and its ledger (every run recorded, failures included) |
+| `scripts/testbed_watch.py` | watches both machines from your computer and flags idle, stuck, failed or impossible runs, low load, full disks and clock drift |
 
 The two trial runners, `scripts/run_kafka_trial.sh` and `scripts/run_redis_trial.sh`, gained one
 hook, `SBL_CONSUMER_WRAP`. It is empty unless a campaign sets it, and each run's `meta.json` now
@@ -131,8 +141,7 @@ sending grows by the delay.
 
 - SSH is open to one address only, and it only accepts the testbed key. No broker port is
   reachable from the internet: an unprotected Redis on a public address is taken over within
-  minutes.
-- The programs never handle passwords or cards. `az login` is done by you, in a browser.
+  minutes.- The programs never handle passwords or cards. `az login` is done by you, in a browser.
 - Nothing is created, stopped or deleted without `--yes`, and deleting also needs the group's name.
 
 ## Not here yet

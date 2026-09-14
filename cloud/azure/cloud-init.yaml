@@ -35,4 +35,7 @@ runcmd:
   - chronyc sources -v > /var/log/sbl-chrony-sources.txt 2>&1 || true
   - sudo -u ubuntu git clone --depth 1 https://github.com/Gustolandia/streaming-latency-sports.git /home/ubuntu/sbl
   - mountpoint -q /sys/kernel/debug || mount -t debugfs debugfs /sys/kernel/debug
-  - touch /var/lib/sbl-cloud-init-done
+  # The marker is written only if the setup really happened. runcmd carries on past a failed
+  # command, so an unconditional marker once told session.sh a broker was ready when it had no
+  # Docker and no checkout, because it could not reach the internet.
+  - test -d /home/ubuntu/sbl && command -v docker && command -v stress-ng && touch /var/lib/sbl-cloud-init-done

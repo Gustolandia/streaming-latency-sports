@@ -82,12 +82,26 @@ class TestTheDriverNamespace:
 
     def test_only_the_cleanup_may_fail(self):
         flags = [may_fail for _, may_fail in rd.driver_commands("10.1.1.11/24", "10.1.1.1")]
-        assert flags[:2] == [True, True] and not any(flags[2:])
+        assert flags[:3] == [True, True, True] and not any(flags[3:])
         assert all(may_fail for _, may_fail in rd.driver_clear_commands())
 
+    def test_the_host_gives_the_address_up_before_the_namespace_takes_it(self):
+        """Azure's first boot writes every address of the card into netplan, so the first driver
+        held 10.1.1.11 itself. Once the namespace owned it, the broker's replies to the driver
+        went into the namespace and the session lost the broker. Every boot restores the
+        address, so the release runs each time and may find nothing to delete."""
+        commands = rd.driver_commands("10.1.1.11/24", "10.1.1.1")
+        argvs = [argv for argv, _ in commands]
+        release = ["ip", "addr", "del", "10.1.1.11/24", "dev", "eth0"]
+        assert argvs.index(release) < argvs.index(["ip", "netns", "add", "sblrecv"])
+        assert commands[argvs.index(release)][1] is True
+
     def test_l3_mode_passes_through(self):
-        link = rd.driver_commands("10.1.1.11/24", "10.1.1.1", dev="eth1", mode="l3")[3][0]
+        commands = [argv for argv, _ in
+                    rd.driver_commands("10.1.1.11/24", "10.1.1.1", dev="eth1", mode="l3")]
+        link = next(argv for argv in commands if argv[:3] == ["ip", "link", "add"])
         assert link[-1] == "l3" and link[link.index("link", 2) + 1] == "eth1"
+        assert ["ip", "addr", "del", "10.1.1.11/24", "dev", "eth1"] in commands
 
     def test_an_address_without_its_prefix_is_refused(self):
         with pytest.raises(ValueError, match="subnet prefix"):

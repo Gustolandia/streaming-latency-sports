@@ -2094,6 +2094,16 @@ recovered constant rather than from the version. The Oracle driver's 3 ms was de
 6.8.0-1057-oracle carried the same constant is therefore open, and the manuscript's derived value
 depends on it.
 
+**1dz. An address given to a network card is also given to the machine.** The receiver-only
+delay gives the driver's card a second address, 10.1.1.11, for a namespace to own. Azure's first
+boot (cloud-init 26.1) writes every address the card has into the machine's network settings, so
+the driver itself also held 10.1.1.11, and its own traffic to the subnet left from that address.
+Once the namespace took the address, the broker's replies to the driver went into the namespace.
+The driver lost the broker entirely ("No route to host"), and the session stopped at its last
+step, reading the broker's settings. `receiver_delay.py driver` now takes the address off the
+driver before it builds the namespace. Every boot writes the address back, which is one more
+reason `session.sh` runs after every start.
+
 **1co. A spelling checker that proposes `pairwize` is a checker people learn to argue with.**
 The British-spelling gate runs a morphological rule over the `-ise` family, which is right and
 is the half a hand-written table keeps failing at. It had no rule for `-wise`, an English

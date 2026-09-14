@@ -537,9 +537,17 @@ class TestH3IsMeasuredAndSupported:
     def test_the_h3_table_matches_the_committed_csv(self, tex):
         rows = {r["stamp"]: r for r in _rows("model", "ec3_stamping.csv")}
         assert set(rows) == {"callback", "inline"}
-        for r in rows.values():
-            assert _contains_number(tex, float(r["kafka_ms"]), 3)
-            assert _contains_number(tex, abs(float(r["difference_ms"])), 3)
+        # Round 80 (W3): Table S26 is emitted rather than typed, so the check reads the ledger
+        # the table reads, and the table must read it.
+        from pathlib import Path as _Path
+        gen = (_Path(__file__).resolve().parents[2] / "docs" / "generated"
+               / "paper_numbers.tex").read_text(encoding="utf-8")
+        bs = chr(92)
+        for stamp, suffix in (("callback", "Callback"), ("inline", "Inline")):
+            r = rows[stamp]
+            assert "{%shThreeKafka%s}{%.3f}" % (bs, suffix, float(r["kafka_ms"])) in gen
+            assert "{%shThreeDiff%s}{%+.3f}" % (bs, suffix, float(r["difference_ms"])) in gen
+            assert bs + "hThreeKafka" + suffix in tex and bs + "hThreeDiff" + suffix in tex
 
     def test_the_gap_shrinks_and_only_on_kafkas_side(self, tex):
         """The prediction is specific: symmetric stamping shrinks the gap from Kafka's side."""

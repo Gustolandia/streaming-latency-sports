@@ -1365,7 +1365,9 @@ def mechanism_macros():
         band = stat_intervals.harness_pacer_jitter()
         if band:
             out += [("pacerJitterLo", "%.1f" % band[0]),
-                    ("pacerJitterHi", "%.1f" % band[1])]
+                    ("pacerJitterHi", "%.1f" % band[1]),
+                    # Round 80 (W5): the range is across runs, and the sentence says how many.
+                    ("pacerJitterRuns", str(stat_intervals.harness_pacer_jitter_runs()))]
     except (OSError, KeyError, ValueError):
         pass
     # Round 72, R2. Section V-E divided the scheduler's base slice by "a 0.1--0.5 ms
@@ -2154,6 +2156,40 @@ def disease_macros(path=os.path.join("docs", "results", "span_run_level.csv")):
     return out
 
 
+def h3_stamping_macros(path=os.path.join("docs", "results", "model", "ec3_stamping.csv")):
+    """Table S26, emitted from its CSV rather than typed (round 80, W3).
+
+    S2 pointed at Table S26 for "0.07 ms of the gap", and the table printed the two
+    between-system differences and left the subtraction to the reader. A pointer that lands on
+    a page without the number pointed at is half a pointer. The table now carries a change row,
+    and the prose quotes the emitted shrinkage instead of four typed copies of it.
+    """
+    import csv as _csv
+    try:
+        with open(path, encoding="utf-8") as fh:
+            rows = {r["stamp"]: r for r in _csv.DictReader(fh)}
+        cb, inl = rows["callback"], rows["inline"]
+        k0, r0, d0 = float(cb["kafka_ms"]), float(cb["redis_ms"]), float(cb["difference_ms"])
+        k1, r1, d1 = float(inl["kafka_ms"]), float(inl["redis_ms"]), float(inl["difference_ms"])
+    except (OSError, KeyError, ValueError):
+        return []
+    return [
+        ("hThreeKafkaCallback", "%.3f" % k0), ("hThreeRedisCallback", "%.3f" % r0),
+        ("hThreeDiffCallback", "%+.3f" % d0),
+        ("hThreeKafkaInline", "%.3f" % k1), ("hThreeRedisInline", "%.3f" % r1),
+        ("hThreeDiffInline", "%+.3f" % d1),
+        ("hThreeKafkaChange", "%+.3f" % (k1 - k0)), ("hThreeRedisChange", "%+.3f" % (r1 - r0)),
+        ("hThreeDiffChange", "%+.3f" % (d1 - d0)),
+        ("hThreeShrinkage", "%.3f" % (d0 - d1)),
+    ]
+
+
+#: The observed negative-span rate below which a per-condition ratio is not trusted, as a
+#: fraction. It is the floor `analyze_span_symmetry.py` already applied to its own printed
+#: summary; round 80 made the emitter state it rather than use a different one silently.
+INDEP_FLOOR = 0.001
+
+
 def separability_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
     """How badly an independence assumption would misprice the inversion rate.
 
@@ -2180,7 +2216,15 @@ def separability_macros(path=os.path.join("docs", "results", "span_symmetry.csv"
             rows = list(_csv.DictReader(fh))
     except OSError:
         return []
-    obs, pred, ratios, over = [], [], [], 0
+    # Round 80 (R1). The factor above is one estimator at one floor. A ratio of rates is at the
+    # mercy of its smallest denominators: seven conditions with an observed rate between zero
+    # and 0.1% moved the pooled median from 7.3 to 12.4. So the factor is also emitted with a
+    # floor, and computed inside each run (`neg_frac_pred_within`, exact random pairing within
+    # the run, over the same pairs as `neg_frac_obs_pairs`), each with its own denominator.
+    floor = INDEP_FLOOR
+    obs, pred, ratios, over, floored = [], [], [], 0, []
+    w_n = w_over = 0
+    w_ratios, w_floored = [], []
     for r in rows:
         try:
             o = float(r["neg_frac_obs"])
@@ -2193,16 +2237,50 @@ def separability_macros(path=os.path.join("docs", "results", "span_symmetry.csv"
             over += 1
         if o > 0:
             ratios.append(p / o)
+        if o > floor:
+            floored.append(p / o)
+        try:
+            wo = float(r["neg_frac_obs_pairs"])
+            wp = float(r["neg_frac_pred_within"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if wo != wo or wp != wp:        # NaN: the upstream pass carried no within-run sums
+            continue
+        w_n += 1
+        if wp > wo:
+            w_over += 1
+        if wo > 0:
+            w_ratios.append(wp / wo)
+        if wo > floor:
+            w_floored.append(wp / wo)
     if not obs or not ratios:
         return []
-    return [
+    out = [
         ("indepConditions", str(len(obs))),
         ("indepOvershootConditions", str(over)),
         ("indepOvershoot", "%.1f" % _st.median(ratios)),
         ("indepOvershootN", str(len(ratios))),
         ("indepMedianObs", "%.2f" % (100.0 * _st.median(obs))),
         ("indepMedianPred", "%.1f" % (100.0 * _st.median(pred))),
+        # The estimator the docstring warns against, emitted so the sentence in S12 that sets
+        # the two side by side reads both from here (round 80) instead of typing them.
+        ("indepRatioOfMedians", "%.1f" % (_st.median(pred) / _st.median(obs))
+         if _st.median(obs) > 0 else "nan"),
+        ("indepFloorPct", "%.1f" % (100.0 * floor)),
     ]
+    if floored:
+        out += [("indepPooledFloored", "%.1f" % _st.median(floored)),
+                ("indepPooledFlooredN", str(len(floored)))]
+    if w_n:
+        out += [("indepWithinConditions", str(w_n)),
+                ("indepWithinOvershootConditions", str(w_over))]
+        if w_ratios:
+            out += [("indepWithinAll", "%.1f" % _st.median(w_ratios)),
+                    ("indepWithinAllN", str(len(w_ratios)))]
+        if w_floored:
+            out += [("indepWithinFloored", "%.1f" % _st.median(w_floored)),
+                    ("indepWithinFlooredN", str(len(w_floored)))]
+    return out
 
 
 def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
@@ -2406,6 +2484,13 @@ def _recovery_macros(path=os.path.join("docs", "results", "span_symmetry.csv")):
              if r.get("rho_DA_within") not in (None, "", "nan")]
     if rho_w:
         out.append(("spanRhoWithinMedian", "%.2f" % _st.median(rho_w)))
+    # Round 80 (W1): the spread beside each median. The within-run correlation is not just
+    # lower than the pooled one; its lower quartile is, which a pair of medians hides. Same
+    # quartile method as the analysis script's printed summary.
+    for name, vals in (("spanRhoIQR", rho), ("spanRhoWithinIQR", rho_w)):
+        if len(vals) >= 4:
+            q = _st.quantiles(vals, n=4)
+            out.append((name, "%.2f$--$%.2f" % (q[0], q[2])))
 
     # The displacement's own scale, and what it does to a reported number.
     #
@@ -2754,6 +2839,7 @@ def all_pairs(m):
             + priority_macros() + priority_residual_macros() + fork_macros()
             + chrony_bound_macros() + disease_macros()
             + exposure_macros() + artifact_macros() + separability_macros()
+            + h3_stamping_macros()
             + paired_gap_macros() + handling_share_macros() + inter_host_offset_macros()
             + spread_macros() + payload_flip_macros() + literature_census_macros()
             + arm_macros() + manipulation_macros()

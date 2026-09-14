@@ -112,6 +112,12 @@ def new_cond():
     # manuscript said "correlated within a run" of a number computed over the pool. These
     # sums measure the within-run co-movement the sentence describes, beside the pool.
     acc["pair_within"] = {"n": 0, "runs": 0, "sdd": 0.0, "saa": 0.0, "sda": 0.0}
+    # Round 80 (R1): the independence prediction made inside each run. The published factor
+    # compared the observed negative rate with a convolution of condition-pooled margins, so
+    # it priced independence across runs while the correlation printed beside it had become a
+    # within-run one. `pred` is the expected number of negatives if a run's D and A were paired
+    # at random within that run; `obs` counts the negatives the same pairs actually carry.
+    acc["indep_within"] = {"n": 0, "obs": 0, "pred": 0.0}
     return acc
 
 
@@ -173,6 +179,14 @@ def consume_run(conds, run_rows, run_id, prod_rows, cons_rows):
             within["sdd"] += (d_us - md) * (d_us - md)
             within["saa"] += (a_us - ma) * (a_us - ma)
             within["sda"] += (d_us - md) * (a_us - ma)
+        # Random pairing inside the run, counted exactly rather than binned: for each A, the
+        # share of this run's D values below it is the chance a random partner inverts.
+        import bisect
+        ds = sorted(d for d, _ in win)
+        indep = acc.setdefault("indep_within", {"n": 0, "obs": 0, "pred": 0.0})
+        indep["n"] += len(win)
+        indep["obs"] += sum(1 for d_us, a_us in win if a_us > d_us)
+        indep["pred"] += sum(bisect.bisect_left(ds, a_us) for _, a_us in win) / len(win)
     counted = ms_deleted = 0
     over = {a: 0 for a in ALPHAS}
     for s_ns, d_ns, a_ns in events:
@@ -285,6 +299,7 @@ def write_outputs(conds, run_rows, runs, events):
                 pair=acc["pair"],
                 pair_within=acc.get("pair_within",
                                     {"n": 0, "runs": 0, "sdd": 0.0, "saa": 0.0, "sda": 0.0}),
+                indep_within=acc.get("indep_within", {"n": 0, "obs": 0, "pred": 0.0}),
             )
             for cond, acc in sorted(conds.items())
         },

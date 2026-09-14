@@ -2081,6 +2081,17 @@ Docker and stress-ng are all there. `testbed_watch.py`, run from the author's co
 machines every five minutes and flags an idle-but-billing testbed, a stuck or failing campaign, a
 negative trip, starved load, a full disk and clock drift.
 
+**1dy. A kernel's version does not say which slice constant it carries.** The first Azure driver
+(6.8.0-1064-azure, 8 CPUs, log scaling) reported a base slice of 2800000 ns. The v6.8 rule
+predicts 3000000. Only a per-step constant of 700000 ns gives 2.8 ms on 8 CPUs, and that is the
+constant Linux 6.15 adopted. The package changelog does not name the change, so how it reached
+a 6.8 build is unknown. `sched_settings.py` now records the constant it recovers from the slice
+the machine reports, and `law_design.py` predicts the core-count block's default slices from that
+recovered constant rather than from the version. The Oracle driver's 3 ms was derived by
+`kernel_constants.py` from the version rule and never read off the machine. Whether
+6.8.0-1057-oracle carried the same constant is therefore open, and the manuscript's derived value
+depends on it.
+
 **1co. A spelling checker that proposes `pairwize` is a checker people learn to argue with.**
 The British-spelling gate runs a morphological rule over the `-ise` family, which is right and
 is the half a hand-written table keeps failing at. It had no rule for `-wise`, an English

@@ -65,10 +65,11 @@ echo "disk_pct=$(df --output=pcent / | tail -1 | tr -dc 0-9)"
 echo "clock_offset_s=$(chronyc -c tracking 2>/dev/null | cut -d, -f5)"
 """
 
-#: The trial directories a campaign writes are runs/concurrency_*; a run counts as finished once
-#: its tti_summary.json exists, and only runs finished in the last @WINDOW@ minutes are read.
+#: The trial directories campaigns write are runs/concurrency_* (the Oracle scripts and the pilot)
+#: and runs/law_* (cloud/azure/campaign.sh). A run counts as finished once its tti_summary.json
+#: exists, and only runs finished in the last @WINDOW@ minutes are read.
 DRIVER_PROBE = COMMON_PROBE + r"""
-echo "campaign=$(pgrep -f 'cloud/azure/pilot.sh|cloud/azure/replicate_oracle.sh|cloud/campaigns/|run_concurrency_test.py' | wc -l)"
+echo "campaign=$(pgrep -f 'cloud/azure/pilot.sh|cloud/azure/replicate_oracle.sh|cloud/azure/campaign.sh|cloud/campaigns/|run_concurrency_test.py|run_kafka_trial.sh|run_redis_trial.sh' | wc -l)"
 echo "stress=$(pgrep -x stress-ng | wc -l)"
 echo "netns=$(ip netns list 2>/dev/null | grep -c '^sblrecv')"
 cd ~/sbl 2>/dev/null || exit 0
@@ -84,7 +85,7 @@ newest=$(ls -td runs/* runs/azure/*/* 2>/dev/null | head -1)
 echo "fails=$(cat ./*.log 2>/dev/null | grep -c '\[FAIL\]')"
 v=$(ls -t runs/azure/pilot/*/verdicts.csv 2>/dev/null | head -1)
 [ -n "$v" ] && echo "verdict_no=$(grep -c ',no,' "$v")"
-for d in $(find runs -maxdepth 1 -mindepth 1 -type d -name 'concurrency_*' -mmin -@WINDOW@ 2>/dev/null | head -n 20); do
+for d in $(find runs -maxdepth 1 -mindepth 1 -type d \( -name 'concurrency_*' -o -name 'law_*' \) -mmin -@WINDOW@ 2>/dev/null | head -n 20); do
   if [ -f "$d/tti_summary.json" ]; then
     echo "run=$(python3 scripts/pilot_checks.py run "$d" --warmup-s 0 2>&1 | tr -d '\n ')"
   fi

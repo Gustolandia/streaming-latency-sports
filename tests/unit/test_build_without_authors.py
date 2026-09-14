@@ -91,7 +91,10 @@ class TestPrepare:
     def test_it_writes_a_stripped_copy_beside_the_original(self, temp_dir):
         src = temp_dir / "src"
         src.mkdir()
-        (src / "paper.tex").write_text(SAMPLE, encoding="utf-8", newline="")
+        # open() rather than Path.write_text: write_text's newline argument arrived in Python
+        # 3.10, and CI also runs 3.9.
+        with open(src / "paper.tex", "w", encoding="utf-8", newline="") as fh:
+            fh.write(SAMPLE)
         out = temp_dir / "out"
         out.mkdir()
         target, removed = bwa.prepare("paper", source_dir=str(src), out_dir=str(out))

@@ -363,8 +363,10 @@ class TestRecommendedItems:
     def test_w5_the_table_two_non_request_is_recorded(self):
         """Round 73 looked at the factor column's bracket ownership and was content. Recorded
         so the next round does not re-raise a settled thing."""
-        readme = (REPO / "docs" / "reference_tc" / "README.md").read_text(encoding="utf-8")
-        assert "bracket ownership" in readme
+        path = REPO / "docs" / "reference_tc" / "README.md"
+        if not path.exists():
+            pytest.skip("docs/reference_tc/ is a local working folder that git ignores")
+        assert "bracket ownership" in path.read_text(encoding="utf-8")
 
 
 class TestTheNoveltyClaimIsMadeFromItsTermList:

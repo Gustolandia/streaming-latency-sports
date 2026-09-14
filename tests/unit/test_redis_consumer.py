@@ -231,8 +231,11 @@ class TestMain:
                     rc_main()
             
             assert out_path.parent.exists()
-            events_path = Path("runs") / run_id / "consumer_events.csv"
-            assert events_path.parent.exists()
+            # The event log is the output's sibling, not runs/<run_id>/: the consumer stopped
+            # writing into the repository. The old assertion passed only on a machine where an
+            # earlier run had left runs/test_run_7 behind, and failed on every clean checkout.
+            events_path = out_path.with_name(out_path.stem + "_events.csv")
+            assert events_path.exists()
         finally:
             sys.argv = old_argv
 

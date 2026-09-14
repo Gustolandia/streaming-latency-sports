@@ -171,8 +171,10 @@ A delay on that whole link slows the "got it" reply exactly as much as the messa
 timestamps move together and nothing changes. That is why the old delay experiment saw nothing.
 
 So the receiver gets its own address. Azure gives the driver's network card a second address, and
-the receiver runs inside a namespace that owns it. On the broker, a queue with four lanes sends
-ordinary traffic down the first three. The fourth lane has the delay, and only packets addressed
+the receiver runs inside a namespace that owns it. Azure's first boot also puts that address on
+the driver itself, so the setup takes it off the driver first. Left there, the broker's replies to
+the driver would go into the namespace, and the driver would lose the broker. On the broker, a
+queue with four lanes sends ordinary traffic down the first three. The fourth lane has the delay, and only packets addressed
 to the receiver go there. The pilot proves it twice: with ping from both sides at every delay
 step, and again from the run files, where the "got it" delay must stay put while arrival minus
 sending grows by the delay.

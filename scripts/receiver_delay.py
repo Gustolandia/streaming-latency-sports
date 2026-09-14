@@ -96,9 +96,14 @@ def driver_commands(address, gateway, dev="eth0", mode="l2"):
     gw = ipaddress.ip_address(gateway)
     if gw not in iface.network:
         raise ValueError("gateway %s is not in the receiver's subnet %s" % (gw, iface.network))
+    # Azure's first boot writes every address of the card into netplan, so the host holds the
+    # receiver's address too and sends its own subnet traffic from it. Once the namespace owns
+    # the address, the replies to that traffic land in the namespace and the host loses the
+    # broker. Every boot puts the address back; deleting one that is already gone is harmless.
     return [
         (["ip", "netns", "del", NETNS], True),
         (["ip", "link", "del", LINK], True),
+        (["ip", "addr", "del", str(iface), "dev", dev], True),
         (["ip", "netns", "add", NETNS], False),
         (["ip", "link", "add", LINK, "link", dev, "type", "ipvlan", "mode", mode], False),
         (["ip", "link", "set", LINK, "netns", NETNS], False),

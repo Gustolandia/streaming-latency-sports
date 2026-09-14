@@ -167,8 +167,11 @@ class TestThePrintedReferenceListFitsTheJournal:
         if not pdf.is_file():
             pytest.skip("paper.pdf not built")
         try:
-            out = subprocess.run(["pdftotext", "-q", "-nopgbrk", str(pdf), "-"],
-                                 capture_output=True, text=True, check=True).stdout
+            # xpdf writes Latin-1 unless told otherwise. Windows decodes that without
+            # complaint and Linux refuses it, so the encoding is named on both ends.
+            out = subprocess.run(["pdftotext", "-q", "-nopgbrk", "-enc", "UTF-8", str(pdf), "-"],
+                                 capture_output=True, text=True, encoding="utf-8",
+                                 check=True).stdout
         except (OSError, subprocess.CalledProcessError):     # pragma: no cover - tool absent
             pytest.skip("pdftotext not available")
         n = len(re.findall(r"^\[\d+\]", out, re.M))

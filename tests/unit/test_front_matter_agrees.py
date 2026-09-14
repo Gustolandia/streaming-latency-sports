@@ -190,8 +190,8 @@ class TestTheBuiltSupplementIdentifiesItself:
             pytest.skip("built supplement or pdftotext unavailable")
 
         def page(n):
-            out = subprocess.run(["pdftotext", "-f", str(n), "-l", str(n), str(pdf), "-"],
-                                 capture_output=True).stdout
+            out = subprocess.run(["pdftotext", "-enc", "UTF-8", "-f", str(n), "-l", str(n),
+                                  str(pdf), "-"], capture_output=True).stdout
             return re.sub(r"\s+", " ", out.decode("utf-8", "replace"))
         return page
 

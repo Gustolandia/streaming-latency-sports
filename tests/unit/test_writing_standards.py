@@ -270,7 +270,7 @@ class TestTheFiguresObeyTheVocabularyToo:
         import subprocess
         if not shutil.which("pdftotext"):            # pragma: no cover - tool absent
             pytest.skip("pdftotext not available")
-        out = subprocess.run(["pdftotext", "-q", str(path), "-"],
+        out = subprocess.run(["pdftotext", "-q", "-enc", "UTF-8", str(path), "-"],
                              capture_output=True, text=True, encoding="utf-8",
                              errors="replace")
         return out.stdout

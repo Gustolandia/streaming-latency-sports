@@ -71,8 +71,8 @@ def rendered(name):
     if not path.is_file():
         pytest.skip("%s not built" % name)
     try:
-        out = subprocess.run(["pdftotext", "-q", "-nopgbrk", str(path), "-"],
-                             capture_output=True, text=True, errors="replace")
+        out = subprocess.run(["pdftotext", "-q", "-nopgbrk", "-enc", "UTF-8", str(path), "-"],
+                             capture_output=True, text=True, encoding="utf-8", errors="replace")
     except OSError:
         # A pdftotext that is not installed at all raises before any return code exists. CI
         # installs xpdf's (tests.yml), so a skip there means that install step broke.

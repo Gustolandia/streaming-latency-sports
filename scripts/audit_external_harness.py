@@ -70,7 +70,7 @@ CROSS_PROCESS = [
 # population survives into the output where an operator can see it pile up on the quantum.
 # That is the other failure, and it is the one the sign channel is for: "negative means the
 # reference timestamp failed, computes-to-zero means the resolution failed, and one unsigned
-# total cannot distinguish them."
+# total conflates them."
 #
 # Both were in one list under a comment that said "admits only positive samples", and the
 # registry called Apache Pulsar's `if (latencyMillis >= 0)` a positivity guard on that basis.

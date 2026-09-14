@@ -1651,3 +1651,20 @@
   year      = {2025},
   note      = {arXiv:2504.11826. 2366 benchmarks on AWS over more than three months: coefficient of variation below 3.7\%, substantial differences (e.g. above 5\%) detectable}
 }
+
+@misc{flink_latencystats,
+  author       = {{Apache Flink contributors}},
+  title        = {\texttt{LatencyStats.java}},
+  howpublished = {Source repository},
+  year         = {2026},
+  note         = {\url{https://github.com/apache/flink/blob/master/flink-runtime/src/main/java/org/apache/flink/streaming/util/LatencyStats.java};
+                  records \texttt{System.currentTimeMillis() - marker.getMarkedTime()} with no filter. Accessed: Sep. 14, 2026}
+}
+
+@misc{flink_metrics_docs,
+  author       = {{Apache Flink contributors}},
+  title        = {Metrics: latency tracking},
+  howpublished = {Apache Flink documentation},
+  year         = {2026},
+  note         = {\url{https://nightlies.apache.org/flink/flink-docs-master/docs/ops/metrics/}; ``Flink assumes that the clocks of all machines in the cluster are in sync''. Accessed: Sep. 14, 2026}
+}

@@ -215,7 +215,8 @@ class TestW3RecordedNotRequested:
     rediscover it as a defect."""
 
     def test_the_fork_clause_is_deliberate(self, paper):
-        i = paper.index("public forks we could read")
+        # Round 80 bought a line back as "readable public forks"; the clause itself is untouched.
+        i = paper.index("readable public forks")
         clause = " ".join(paper[i:i + 220].split())
         assert "rather than how many chose it" in clause, (
             "the contrast is the point: the survey measures inheritance, not adoption")

@@ -567,7 +567,7 @@ sub-second event times. We characterize the full $\corpusMatches$-match corpus a
 and scaling its inter-event spacing to the chosen send rate. It stands for small frequent
 ordered messages rather than for any particular deployment, and nothing below depends on
 its content beyond message size and rate (Supplement~S20). The send schedule is measured rather than assumed.
-Pacer jitter is $\pacerJitterLo$--$\pacerJitterHi\,\mu$s at p90, and the achieved rate is recorded per run against
+Pacer jitter is $\pacerJitterLo$--$\pacerJitterHi\,\mu$s at p90 across its $\pacerJitterRuns$ runs, and the achieved rate is recorded per run against
 elapsed wall time: the self-validation SPEC and TPC ask of a
 benchmark~\cite{kistowski2015build}, applied to the load generator.
 
@@ -653,7 +653,9 @@ The acknowledgment lag exceeds half the delivery time on $\diseaseOverHalf\%$ of
 tenth of it on $\diseaseOverTenth\%$. The check fires only on the $\diseaseOverWhole\%$ where
 it exceeds the whole. The two are correlated within a run (median $\spanRhoWithinMedian$ over
 $\spanRhoConditions$ conditions), one scheduler causing both, which suppresses crossings
-without touching the displacement.
+without touching the displacement: independence within a run would overpredict them
+$\indepWithinFloored$-fold, the median of the $\indepWithinFlooredN$ conditions above
+$\indepFloorPct\%$.
 A path longer than the timestamp resolution is not clean but quiet.
 
 \begin{table}[tb]
@@ -1088,8 +1090,8 @@ Supplement~S25 gives the registry tool by tool, with the source line each findin
 one entry that corrects a misreading of our own. The class is not confined to benchmarks:
 in November 2025 the audited broker's own coordinator metrics adopted the same disposal,
 clamping negative durations to zero with no counter~\cite{kafka19888} (Supplement~S25).
-The admission condition also survives downstream: $\forkUnchanged$ of the $\forkChecked$
-public forks we could read carry the expression unchanged (surveyed \forkCheckedOn{}), which
+The admission condition survives downstream: $\forkUnchanged$ of the $\forkChecked$
+readable public forks carry the expression unchanged (surveyed \forkCheckedOn{}), which
 bounds how few have diverged rather than how many chose it.
 
 \section{Discussion}
@@ -1122,8 +1124,8 @@ SPEC and TPC judge a benchmark on five criteria~\cite{kistowski2015build}. The t
 audit passes the half of \emph{reproducibility} a reader checks ---
 run-to-run consistency at a fixed configuration --- \emph{because} it fails
 \emph{verifiability}. A median from $\ombGridRetentionMin\%$ of the samples is the more
-stable for having had the variation deleted, and a second tester who picks a different send
-rate measures a different sample. Every rule below instances the criterion that can see this.
+stable for having its variation deleted, and a second tester who picks a different send
+rate measures a different sample. Every rule below instances the criterion that sees this.
 
 \textbf{Report a physical-consistency audit.} Any cross-process timestamp difference admits
 a sign check that costs nothing, and every run it rejected here had passed every conventional
@@ -1150,10 +1152,10 @@ failed to measure, on the runs the check rejects as well as on those it passes
 declines to publish the proxy as a latency, and this one reports the delivery instead.
 
 \textbf{Two delays with one cause are not independent.} Timestamps waiting on one scheduler move
-together (median correlation $\spanRhoWithinMedian$), so multiplying their probabilities
-misprices the answer.
-Assuming independence here overpredicts the negative-span rate in all $\indepConditions$
-conditions, by a median factor of $\indepOvershoot$.
+together (median correlation $\spanRhoWithinMedian$), and assuming independence within a run
+overpredicts the negative-span rate in all
+$\indepWithinConditions$ conditions, by a median factor of $\indepWithinFloored$ over the
+$\indepWithinFlooredN$ with a rate above $\indepFloorPct\%$.
 
 \textbf{Know where your own path sits on the exposure curve, and how wide it is.} The
 relative error of an acknowledgment-referenced span is $A/D$ (Section~\ref{sec:cost}).
@@ -1193,7 +1195,7 @@ Neither half of the rule is ours: OWAMP has attached an error estimate to every 
 since 2006, and records a packet timestamped in the future unaltered rather than discarding
 it~\cite{rfc4656} (Supplements~S31 and~S32 give the precedents). The sign is the channel:
 negative means the reference timestamp failed, computes-to-zero means the resolution
-failed, and one unsigned total cannot distinguish them.
+failed, and one unsigned total conflates them.
 
 \textbf{Do not assume co-location makes the measurement safer.} One host removes the
 clock-synchronization rival and nothing else: \brk{mq-bench} below gives co-location as the

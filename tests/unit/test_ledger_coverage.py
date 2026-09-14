@@ -40,6 +40,16 @@ DOCS = ("paper.tex", "supplement.tex")
 #: (document, macro, a distinctive fragment of the surrounding text) so that moving the
 #: sentence does not silently keep the exemption alive somewhere else.
 ALLOWED = {
+    ("supplement.tex", "indepFloorPct", r"E1 ($<0.1$~ms apart)"):
+        "a gap between two campaigns' medians in milliseconds (S5), equal to the 0.1% floor below "
+        "which round 80 stopped trusting an observed negative-span rate; a latency and a "
+        "percentage sharing a digit",
+    ("supplement.tex", "indepFloorPct", r"within $0.1$~ms of each other"):
+        "two brokers' historical medians agreeing to a tenth of a millisecond (S5), the same "
+        "coincidence with the round-80 floor as the entry above",
+    ("supplement.tex", "indepFloorPct", r"offsets near $0.1$~ms"):
+        "the inter-host clock offset chrony reports in S19's limitations, in milliseconds; the "
+        "same coincidence with the 0.1% floor",
     ("supplement.tex", "spanRhoMedian", r"broker transport is $0.84$ and $0.80$~ms"):
         "E1's historical broker transport medians in milliseconds (S3, Table S2), which happen "
         "to equal the pooled D-A correlation S24.2 began reading in round 79; a latency and a "

@@ -1415,7 +1415,8 @@ benchmark's `> 0` removes every sample that computes to exactly zero, which on a
 path is most of them; Pulsar's `>= 0` keeps those and drops only the inversions. Those are
 this paper's two failure modes, and Section VI-C is the passage that draws the line: *"negative
 means the reference timestamp failed, computes-to-zero means the resolution failed, and one
-unsigned total cannot distinguish them."* Pulsar's threshold distinguishes them. It is not the
+unsigned total conflates them."* (worded *"cannot distinguish them"* until round 80). Pulsar's
+threshold distinguishes them. It is not the
 same design; it is the other one.
 
 **The mislabel entered in a round that was correcting a different mislabel.** Round 6 caught
@@ -1940,6 +1941,54 @@ threats, because nothing pointed at them. Yet they are the section a sceptical r
 check the claim, so staleness costs more there than anywhere else. The repair also deleted a
 paragraph whose counts matched no table (8 to 35 samples, an N=1 cell, 19 or more runs), rather
 than inventing a corpus for it.
+
+**1dk. Repairing a number can orphan its neighbour.** Round 79 made the D–A correlation a
+within-run statistic, but the independence factor in the same sentence stayed pooled. The sentence
+traded one unit mismatch for another. Its median was also over 61 conditions while the sentence
+counted 70, and the size turned out to depend on a floor: 12.4 counting any observed negative,
+7.3 above 0.1%. The pipeline now counts, exactly and inside each run, the negatives that random
+pairing would produce, with a sort and a bisect per run in the pass that already buffers the run.
+The emitter publishes the factor at both floors, pooled and within-run, each with its denominator.
+The unit barely moves it (12.2 against 12.4, 7.4 against 7.3); the floor nearly halves it. **When a
+statistic is repaired, re-read the sentence it sits in, not just the statistic.**
+
+**1dl. A ratio of rates belongs to its smallest denominators.** Seven conditions with an observed
+rate between zero and 0.1% moved a median of ratios from 7.3 to 12.4. The analysis script's own
+summary already used a 0.1% floor and the emitter used none, so one pipeline printed two sizes for
+one quantity without saying which. The floor is now a named constant (`INDEP_FLOOR`), both sizes
+are emitted, and the article quotes the floored one with its count.
+
+**1dm. A table that a pointer lands on must show the number pointed at.** S2 said Table S26 shows
+0.07 ms, but the table printed +0.286 and +0.215 and left the subtraction to the reader. Table S26
+is now emitted from `model/ec3_stamping.csv`, change row included. The prose quotes the emitted
+shrinkage, 0.071 ms, which replaced four typed copies of "0.07".
+
+**1dn. A range is not an interval until it says what it ranges over.** "66.3–69.2 µs at p90" read
+as a confidence interval beside a percentile. It is the range of per-run 90th percentiles, and the
+sentence now says across how many runs, emitted from the same rows as the range.
+
+**1do. One text extractor keeps the space around inline math and the other drops it.** The
+rendered-page check for the new §VIII-B sentence matched `rate above 0.1 %` against pdftotext
+and failed against pypdf, which returns `rate above0.1%` and `in all70conditions`. A rendered
+check matches words joined by `\s*` wherever a macro's value meets prose, because the gap it
+reads is a property of the extractor, not of the page. The same round also broke a
+fixed-length window. Two lines added on page 6 put page 7's column break inside round 68's
+collapse sentence, and the extractor reads Figure 3's tick labels between "3.4× and" and
+"4.7×", so the 220-character window after "collapse rather" no longer reached the last two
+ratios. The window is now bounded by the sentence's own next phrase, with a cap that keeps it
+local. The first end marker tried was "power law", and Figure 3's caption says that too, so
+the bound has to be a phrase only the sentence contains: "falls by one factor".
+
+**1dp. A floor written into a rule is a number, and B8 counts it.** Round 80 put the within-run
+factor into §VIII-B's rule together with the 0.1% floor it was computed above. B8's gate failed:
+`\indepFloorPct` appeared first in the Discussion, as did the factor and its denominator, which
+the gate's suffix list does not catch. The fix was the order rather than the gate. §V-A's
+sentence reporting the within-run correlation now also reports the factor, its count and its
+floor, and the rule repeats them. Those two lines cost the paper its twelfth page, all of it
+the second biography. Trimming the rule alone recovered less than a line. The rest came from
+three paragraphs that each ended on a word or two ("it.", "this.", "them."), and one of them
+moved round 69's anchor, "public forks we could read" → "readable public forks". Reverting that
+one trim brought the thirteenth page back, so it stays, and the test follows it.
 
 **1co. A spelling checker that proposes `pairwize` is a checker people learn to argue with.**
 The British-spelling gate runs a morphological rule over the `-ise` family, which is right and

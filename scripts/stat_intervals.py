@@ -625,6 +625,25 @@ def harness_pacer_jitter(path=os.path.join("external", "harness_results.csv"),
     return (min(vals), max(vals))
 
 
+def harness_pacer_jitter_runs(path=os.path.join("external", "harness_results.csv"),
+                              percentile="p90"):
+    """How many runs the pacer-jitter range in Section IV-D spans.
+
+    Round 80 (W5). "66.3--69.2 us at p90" read as an interval beside a percentile. It is a range
+    of per-run 90th percentiles, and the sentence now says across how many runs, from the same
+    rows `harness_pacer_jitter` reads. Returns 0 when the column is absent.
+    """
+    col = "jitter_%s_us" % percentile
+    n = 0
+    for r in _rows(*path.split(os.sep)):
+        try:
+            float(r[col])
+        except (KeyError, TypeError, ValueError):
+            continue
+        n += 1
+    return n
+
+
 #: Above this denominator the phase set is dense enough that the grid imposes no structure,
 #: and the arm is reported as effectively continuous rather than given a cell.
 INCOMMENSURATE_Q = 64

@@ -62,10 +62,12 @@ class TestR1TheConclusionAgreesWithTheReportingRule:
 
     def test_the_rule_it_was_contradicting_is_still_there_and_still_measured(self, paper):
         i = paper.index("Two delays with one cause are not independent")
-        rule = " ".join(paper[i:i + 420].split())
+        rule = " ".join(paper[i:i + 600].split())
         # Round 79 (R2): the rule quotes the within-run correlation, the unit its sentence names.
         assert RE_BS[:1] + "spanRhoWithinMedian" in rule
-        assert RE_BS[:1] + "indepOvershoot" in rule and RE_BS[:1] + "indepConditions" in rule
+        # Round 80 (R1): and the within-run factor beside it, with its denominator and floor.
+        assert RE_BS[:1] + "indepWithinFloored" in rule and RE_BS[:1] + "indepWithinConditions" in rule
+        assert RE_BS[:1] + "indepWithinFlooredN" in rule and RE_BS[:1] + "indepFloorPct" in rule
 
     def test_the_rendered_conclusion_carries_the_fix(self):
         flat = " ".join(_rendered("paper").split())

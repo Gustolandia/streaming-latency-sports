@@ -939,6 +939,20 @@ such as a note on where an exhibit came from.
 
 Gated in `tests/unit/test_supplement_pointers.py`.
 
+### B20. A ratio of rates states its floor, its denominator and its unit — GATED
+
+A median of per-condition ratios is at the mercy of its smallest denominators. Round 80 found one
+that read 12.4 counting every condition with an observed negative, and 7.3 above a 0.1% floor.
+
+- **Quote the count the median is over**, which is not always the count the sentence names.
+- **Name the floor** below which a denominator was not trusted. Where the size moves with the floor,
+  print both in the supplement, and quote one in the article together with its floor.
+- **Match the unit to the statistic beside it.** A within-run correlation sits beside a within-run
+  factor, not a pooled one.
+- **A range says what it ranges over**, so it cannot be read as an interval: "across its N runs".
+
+Gated in `tests/unit/test_round80_findings.py`.
+
 ### B13. The index terms are content, and get read like content
 
 They are the paper's retrieval surface, not a subject declaration. Three rounds recorded

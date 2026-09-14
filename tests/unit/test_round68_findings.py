@@ -169,7 +169,12 @@ class TestR3TheCollapseAboveTheMode:
     def test_the_rendered_sentence_carries_four_ratios(self, rendered_paper):
         flat = " ".join(rendered_paper.split())
         i = flat.index("collapse rather")
-        passage = flat[i:i + 220]
+        # Bounded by the sentence, not by a character count: round 80 moved a column break
+        # into it, and the extractor reads Figure 3 -- tick labels and a caption that says
+        # "power law" too -- between its two halves.
+        j = flat.index("falls by one factor", i)
+        assert j - i < 900, "the collapse sentence no longer reaches its own end nearby"
+        passage = flat[i:j]
         for n in ("5.0", "3.4", "4.7", "357"):
             assert n in passage, "%s missing from the collapse sentence" % n
         assert "three octaves" in passage

@@ -209,6 +209,15 @@ def main():
                 raise ValueError("within-run rho outside [-1, 1] for %s: %r" % (cond, rho_w))
             rho_w = max(-1.0, min(1.0, rho_w))
 
+        # Round 80 (R1): the independence prediction inside each run, and the observed rate over
+        # the same pairs, so the within-run factor divides like by like. Both are NaN where the
+        # upstream pass carried no such sums.
+        ind = q.get("indep_within")
+        obs_pairs = pred_within = float("nan")
+        if ind and ind.get("n", 0) > 0:
+            obs_pairs = ind["obs"] / ind["n"]
+            pred_within = ind["pred"] / ind["n"]
+
         pred = convolve_diff(sD, sA, nD, nA)
         tv = tv_distance(pred, sS, nS)
         neg_obs = sum(c for lo, c in sS if lo < 0) / nS
@@ -223,6 +232,8 @@ def main():
             "medD_minus_medA_us": medD - medA,
             "neg_frac_obs": round(neg_obs, 5),
             "neg_frac_pred_indep": round(neg_pred, 5),
+            "neg_frac_obs_pairs": round(obs_pairs, 5),
+            "neg_frac_pred_within": round(pred_within, 5),
             "tv_pred_vs_obs": round(tv, 4),
             "rho_DA": round(rho, 4),
             "rho_DA_within": round(rho_w, 4),

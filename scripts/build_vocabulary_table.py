@@ -82,8 +82,11 @@ STOP = set("the and for that with this from are was were not but which have has 
 
 def pdf_text(path):
     try:
-        r = subprocess.run(["pdftotext", "-q", str(path), "-"], capture_output=True,
-                           text=True, timeout=180)
+        # The encoding is named on both ends. Left to xpdf's default, the text is Latin-1,
+        # which the locale decodes one way on Windows and refuses on Linux.
+        r = subprocess.run(["pdftotext", "-q", "-enc", "UTF-8", str(path), "-"],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace",
+                           timeout=180)
         return r.stdout
     except (OSError, subprocess.TimeoutExpired):
         return ""

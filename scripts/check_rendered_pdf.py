@@ -64,9 +64,11 @@ def extract_text(pdf_path, text_out=None):
     out = Path(text_out) if text_out else Path(tempfile.mkstemp(suffix=".txt")[1])
     if shutil.which("pdftotext"):
         # -layout keeps table cells on their own lines, so a mangled cell is not
-        # concatenated with its neighbour into something that looks intentional.
-        r = subprocess.run(["pdftotext", "-q", "-layout", str(pdf_path), str(out)],
-                           capture_output=True)
+        # concatenated with its neighbour into something that looks intentional. -enc UTF-8
+        # because xpdf otherwise writes Latin-1, which has no en-dash: the flag-ligature check
+        # above could never see the character it looks for.
+        r = subprocess.run(["pdftotext", "-q", "-layout", "-enc", "UTF-8",
+                            str(pdf_path), str(out)], capture_output=True)
         if r.returncode == 0 and out.exists():
             return out.read_text(encoding="utf-8", errors="replace")
     try:

@@ -127,8 +127,8 @@ def build(out_dir=OUT):
 
 def offending_names(pdf_path):
     """Author surnames still readable in a built PDF, minus the ones that may stay."""
-    out = subprocess.run(["pdftotext", "-q", "-nopgbrk", pdf_path, "-"],
-                         capture_output=True, text=True, errors="replace")
+    out = subprocess.run(["pdftotext", "-q", "-nopgbrk", "-enc", "UTF-8", pdf_path, "-"],
+                         capture_output=True, text=True, encoding="utf-8", errors="replace")
     if out.returncode != 0:                             # pragma: no cover - no poppler
         return None
     text = out.stdout

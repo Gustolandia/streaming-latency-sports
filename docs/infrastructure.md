@@ -2077,7 +2077,9 @@ the one machine created without a public address, could not reach the internet o
 network: apt and GitHub timed out, so it got no Docker and no checkout. cloud-init's `runcmd`
 carries on past a failed command, so it still wrote the marker `session.sh` waits for, and the
 session failed three steps later at `cd sbl`. The marker is now written only when the checkout,
-Docker and stress-ng are all there. `testbed_watch.py`, run from the author's computer, reads both
+Docker and stress-ng are all there. Every machine in `testbed.json` now has a static public
+address for going out, as every Oracle machine had; the firewall's single inbound rule is
+unchanged. Measured traffic stays on the private network either way. `testbed_watch.py`, run from the author's computer, reads both
 machines every five minutes and flags an idle-but-billing testbed, a stuck or failing campaign, a
 negative trip, starved load, a full disk and clock drift.
 

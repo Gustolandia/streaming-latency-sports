@@ -3,7 +3,7 @@
   "resource_group": "sbl-az",
   "location": "swedencentral",
   "location_note": "On the free-trial subscription (checked 2026-09-14) North Europe refuses every size below (NotAvailableForSubscription). Sweden Central allows both profiles and was the cheapest of the European regions that do.",
-  "outbound_note": "On this network (created 2026-09-14) a machine without a public address had no route to apt or GitHub, so the broker's first boot set up nothing. How the broker reaches out is still to be decided.",
+  "public_ip_note": "Every machine has a static public address so that it can reach out: on this network (created 2026-09-14) a machine without one had no route to apt or GitHub, and the broker's first boot set up nothing. A public address also matches the Oracle testbed, where every machine had one. Nothing comes in except SSH from the one address the firewall rule names.",
   "admin_user": "ubuntu",
   "ssh_public_key": "~/.ssh/azure_sbl.pub",
   "custom_data": "cloud/azure/cloud-init.yaml",
@@ -38,7 +38,7 @@
       "size": "Standard_D2as_v6",
       "image": "x64-jammy",
       "private_ip": "10.1.1.21",
-      "public_ip": false
+      "public_ip": true
     },
     "sbl-az-arm-drv": {
       "role": "driver",
@@ -53,7 +53,7 @@
       "size": "Standard_D2ps_v6",
       "image": "arm64-jammy",
       "private_ip": "10.1.1.41",
-      "public_ip": false
+      "public_ip": true
     }
   },
   "profiles": {

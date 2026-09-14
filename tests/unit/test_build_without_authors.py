@@ -159,6 +159,18 @@ class TestOffendingNames:
         monkeypatch.setattr(subprocess, "run", lambda *a, **kw: _Result(0, text))
         assert bwa.offending_names(str(pdf)) == []
 
+    def test_the_text_is_asked_for_and_read_as_utf8(self, monkeypatch, temp_dir):
+        """xpdf writes Latin-1 unless told otherwise, and the locale then decodes it one way on
+        Windows and refuses it on Linux."""
+        pdf = temp_dir / "x.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+        calls = []
+        monkeypatch.setattr(subprocess, "run",
+                            lambda argv, **kw: calls.append((argv, kw)) or _Result(0, ""))
+        assert bwa.offending_names(str(pdf)) == []
+        argv, kw = calls[0]
+        assert argv[argv.index("-enc") + 1] == "UTF-8" and kw["encoding"] == "utf-8"
+
 
 class _Result:
     def __init__(self, returncode, stdout=""):

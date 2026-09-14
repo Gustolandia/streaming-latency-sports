@@ -78,14 +78,24 @@ class TestExtract:
 
     def test_pdftotext_path_reads_the_output(self, monkeypatch, tmp_path):
         out = tmp_path / "t.txt"
+        seen = []
 
         def fake_run(cmd, **kw):
-            Path(cmd[-1]).write_text("extracted body", encoding="utf-8")
+            seen.append(cmd)
+            Path(cmd[-1]).write_text("extracted body –cpu", encoding="utf-8")
             return type("R", (), {"returncode": 0})()
 
         monkeypatch.setattr("shutil.which", lambda _: "/usr/bin/pdftotext")
         monkeypatch.setattr("subprocess.run", fake_run)
-        assert extract_text(tmp_path / "x.pdf", out) == "extracted body"
+        assert extract_text(tmp_path / "x.pdf", out) == "extracted body –cpu"
+        assert seen[0][seen[0].index("-enc") + 1] == "UTF-8"
+
+    def test_the_flag_check_fires_only_if_the_en_dash_survives_extraction(self):
+        """xpdf writes Latin-1 unless asked for UTF-8, and Latin-1 has no en-dash: it prints a
+        hyphen. A flag set as an en-dash then reads "-cpu", which the check cannot tell from a
+        correct flag, so the check is only as good as the encoding extract_text asks for."""
+        assert [f["check"] for f in scan("stress-ng –cpu 8")] == ["hyphen ligature in a flag"]
+        assert scan("stress-ng -cpu 8") == []
 
     def test_pypdf_fallback_reads_every_page(self, monkeypatch, tmp_path):
         """The machine that builds the paper has pdftotext; a reviewer's may only have pypdf."""

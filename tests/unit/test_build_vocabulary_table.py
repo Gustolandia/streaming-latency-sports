@@ -24,9 +24,11 @@ class TestPdfText:
         class R:
             stdout = "some text"
 
-        monkeypatch.setattr(bvt.subprocess, "run", lambda cmd, **kw: calls.append(cmd) or R())
+        monkeypatch.setattr(bvt.subprocess, "run",
+                            lambda cmd, **kw: calls.append((cmd, kw)) or R())
         assert bvt.pdf_text(Path("x.pdf")) == "some text"
-        assert calls[0][:2] == ["pdftotext", "-q"]
+        cmd, kw = calls[0]
+        assert cmd[:4] == ["pdftotext", "-q", "-enc", "UTF-8"] and kw["encoding"] == "utf-8"
 
     def test_a_missing_or_hanging_pdftotext_reads_as_empty(self, monkeypatch):
         def boom(cmd, **kw):

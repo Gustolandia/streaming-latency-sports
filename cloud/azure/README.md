@@ -181,7 +181,12 @@ sending grows by the delay.
 
 - SSH is open to one address only, and it only accepts the testbed key. No broker port is
   reachable from the internet: an unprotected Redis on a public address is taken over within
-  minutes.- The programs never handle passwords or cards. `az login` is done by you, in a browser.
+  minutes.
+- Every machine has a public address, but only so that it can reach out, to download packages
+  and the code. On this Azure network a machine without one had no way out at all, and Oracle's
+  machines all had one too. What comes in is the firewall's decision, and it admits nothing but
+  that one SSH rule.
+- The programs never handle passwords or cards. `az login` is done by you, in a browser.
 - Nothing is created, stopped or deleted without `--yes`, and deleting also needs the group's name.
 
 ## Not here yet

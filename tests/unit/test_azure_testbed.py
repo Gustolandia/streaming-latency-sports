@@ -178,11 +178,30 @@ class TestPlan:
         assert "Standard_D8as_v6" in creates[0] and "--nics sbl-az-drv-nic" in creates[0]
         assert "--custom-data cloud/azure/cloud-init.yaml" in creates[0]
 
-    def test_only_the_driver_is_reachable_from_outside(self):
+    def test_every_machine_can_get_out_but_only_ssh_from_one_address_gets_in(self):
+        """On a new Azure network a machine without a public address had no route out, and the
+        broker's first boot could not reach apt or GitHub. So every machine has an address, as
+        on Oracle; what comes in is the firewall's decision, and it has exactly one inbound
+        rule."""
         _, text = run_main(["plan", "--ssh-source", SOURCE])
         lines = text.splitlines()
         publics = [line for line in lines if line.startswith("az network public-ip create")]
-        assert len(publics) == 1 and "sbl-az-drv-ip" in publics[0]
+        assert [("sbl-az-drv-ip" in p, "sbl-az-b1-ip" in p) for p in publics] == [
+            (True, False), (False, True)]
+        broker_nic = [line for line in lines if line.startswith("az network nic create")
+                      and "sbl-az-b1-nic" in line]
+        assert broker_nic and "--public-ip-address sbl-az-b1-ip" in broker_nic[0]
+        rules = [line for line in lines if line.startswith("az network nsg rule create")]
+        assert len(rules) == 1
+        assert "--access Allow" in rules[0] and "--destination-port-ranges 22" in rules[0]
+        assert "--source-address-prefixes %s" % SOURCE in rules[0]
+
+    def test_a_machine_marked_without_a_public_address_gets_none(self, spec, tmp_path):
+        data = copy_of(spec)
+        data["hosts"]["sbl-az-b1"]["public_ip"] = False
+        _, text = run_main(["--spec", write_spec(tmp_path, data), "plan", "--ssh-source", SOURCE])
+        lines = text.splitlines()
+        assert len([p for p in lines if p.startswith("az network public-ip create")]) == 1
         broker_nic = [line for line in lines if line.startswith("az network nic create")
                       and "sbl-az-b1-nic" in line]
         assert broker_nic and "--public-ip-address" not in broker_nic[0]

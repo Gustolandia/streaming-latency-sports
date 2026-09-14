@@ -63,8 +63,16 @@ ESSENTIAL = ("release", "config_hz", "base_slice_ns", "online_cpus")
 RECORDED = ("tunable_scaling", "preempt", "cpu_model", "clocksource")
 
 
+#: Where the kernel lists each CPU's directory; cpu0 usually has no `online` file and stays on.
+CPU_DIR = "sys/devices/system/cpu"
+
+
 class SliceNotApplied(RuntimeError):
     """The kernel did not keep the base slice that was written."""
+
+
+class CpusNotApplied(RuntimeError):
+    """The kernel did not list the number of online CPUs that was asked for."""
 
 
 def _read(root, rel):
@@ -132,6 +140,20 @@ def rule_slice_ns(release, cpus, scaling):
     return kernel_constants.base_slice_ns(cpus, scaling, normalised)
 
 
+def normalised_slice_ns(settings):
+    """The per-step constant the kernel's rule multiplies, recovered from the slice it reports.
+
+    It means something only while the slice is still the kernel's own default. The first Azure
+    driver (6.8.0-1064-azure, 8 CPUs) reported 2800000 ns, a constant of 700000: the smaller
+    one from Linux 6.15, carried in a 6.8 kernel. Its version number alone predicted 3 ms.
+    """
+    cpus, scaling, base = (settings["online_cpus"], settings["tunable_scaling"],
+                           settings["base_slice_ns"])
+    if not (cpus and scaling and base):
+        return None
+    return int(round(base / kernel_constants.sysctl_factor(cpus, scaling)))
+
+
 def read_settings(root="/"):
     """Everything above, as a dict, with the unreadable items named under "missing"."""
     raw = {key: _read(root, rel) for key, rel in FILES.items()}
@@ -151,6 +173,7 @@ def read_settings(root="/"):
     }
     settings["rule_slice_ns"] = rule_slice_ns(release, settings["online_cpus"],
                                               settings["tunable_scaling"])
+    settings["normalised_slice_ns"] = normalised_slice_ns(settings)
     settings["missing"] = [k for k in ESSENTIAL + RECORDED if settings[k] is None]
     return settings
 
@@ -166,6 +189,26 @@ def set_base_slice(ns, root="/"):
     if got != str(ns):
         raise SliceNotApplied("wrote %d ns to %s and read back %r" % (ns, path, got))
     return ns
+
+
+def set_online_cpus(n, root="/"):
+    """Keep CPUs 0 to n-1 online and take the rest offline, then read back the online list.
+
+    Taking CPUs offline makes the kernel recompute its default slice from the new count, which
+    is what the core-count experiment tests on one machine instead of three. It also resets a
+    hand-set slice, so a runner sets the CPUs first and the slice after.
+    """
+    base = os.path.join(root, CPU_DIR)
+    present = sorted(int(name[3:]) for name in os.listdir(base) if re.fullmatch(r"cpu\d+", name))
+    if not 1 <= n <= len(present):
+        raise ValueError("cannot have %d CPUs online on a machine with %d" % (n, len(present)))
+    for cpu in present[1:]:
+        with open(os.path.join(base, "cpu%d" % cpu, "online"), "w", encoding="utf-8") as fh:
+            fh.write("1\n" if cpu < n else "0\n")
+    got = _read(root, FILES["online"])
+    if got is None or count_cpu_list(got) != n:
+        raise CpusNotApplied("asked for %d CPUs online and the kernel lists %r" % (n, got))
+    return n
 
 
 def problems(settings, slice_ns=None, hz=None):
@@ -187,17 +230,23 @@ def main(argv=None, out=None):
     sub.add_parser("read")
     p = sub.add_parser("set-slice")
     p.add_argument("ns", type=int)
+    p = sub.add_parser("set-cpus")
+    p.add_argument("n", type=int)
     p = sub.add_parser("check")
     p.add_argument("--slice-ns", type=int)
     p.add_argument("--hz", type=int)
     args = ap.parse_args(argv)
-    if args.command == "set-slice":
+    if args.command in ("set-slice", "set-cpus"):
         try:
-            set_base_slice(args.ns, args.root)
-        except (OSError, ValueError, SliceNotApplied) as exc:
+            if args.command == "set-slice":
+                set_base_slice(args.ns, args.root)
+                print("base slice set to %d ns, and read back" % args.ns, file=out)
+            else:
+                set_online_cpus(args.n, args.root)
+                print("%d CPUs online, and read back" % args.n, file=out)
+        except (OSError, ValueError, SliceNotApplied, CpusNotApplied) as exc:
             print("ERROR: %s" % exc, file=out)
             return 1
-        print("base slice set to %d ns, and read back" % args.ns, file=out)
         return 0
     settings = read_settings(args.root)
     if args.command == "read":

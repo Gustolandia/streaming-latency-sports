@@ -93,6 +93,44 @@ python scripts/azure_testbed.py down --confirm sbl-az
 `stop` deallocates, so the CPUs stop billing; a start after it is a reboot, which is why
 `session.sh` runs again. `down` deletes everything and asks for the group's name typed back.
 
+## The law campaign
+
+It runs on the driver after a passing pilot, one queue at a time, and each step uses what the
+step before it measured (a queue is the shuffled list of runs, with what happened to each):
+
+1. **Read the machine**: its tick, and the slice constant its kernel really uses. The first
+   Azure driver ran a 6.8 kernel whose default slice was 2.8 ms, where its version predicts 3.
+2. **Baseline trips (block B0)**: no added delay, each backend at 50, 75 and 88% load, 3 rounds.
+3. **Spread pilot (P0)**: 16 setups over 5 rounds, placed from the baseline trips.
+4. **Repeats**: `rounds` turns the pilot's run-to-run spread into runs per setup (15 to 40).
+5. **Main blocks**: A1 (slice doses), A3 (load) and A7 (go-first) on this machine; A5 (core
+   count) in its own queue, because it switches CPUs off; A4 on the arm profile. A2 (the tick)
+   needs a second kernel built with a 4 ms tick, which is not built yet.
+
+For each block: read the machine, make the design, make the queue, run it. B0 is shown; the
+later blocks add `--baseline`, and the main blocks also `--rounds`:
+
+```bash
+sudo python3 scripts/sched_settings.py read > runs/azure/settings.json
+python3 scripts/law_design.py design --block B0 --settings runs/azure/settings.json --seed 20260915 --out runs/azure/queues/b0.json
+python3 scripts/run_queue.py make --design runs/azure/queues/b0.json --out runs/azure/queues/b0.csv
+nohup bash cloud/azure/campaign.sh runs/azure/queues/b0.csv > campaign_b0.log 2>&1 &
+```
+
+After B0 and after P0:
+
+```bash
+python3 scripts/law_design.py baseline --queue runs/azure/queues/b0.csv --out runs/azure/baseline.json
+python3 scripts/law_design.py rounds --queue runs/azure/queues/p0.csv --block A1
+```
+
+`touch runs/azure/STOP` ends a campaign after the run in progress. Starting it again carries on
+from the queue, and a run left half-done is recorded as failed and queued again. Each run uses
+a constant-rate plan, 50 messages a second for 130 s, which keeps 5,000 messages after the 30 s
+warm-up (a warm-up is the stretch thrown away while things settle). The effect is strongest at
+sparse rates, so the spread pilot is where to check that the plateau is still measurable at this
+rate.
+
 ## Money and limits
 
 - The machines live in Sweden Central. On the free-trial subscription, North Europe refuses these
@@ -119,6 +157,8 @@ python scripts/azure_testbed.py down --confirm sbl-az
 | `cloud/azure/replicate_oracle.sh` | runs the Oracle mechanism campaigns unchanged, in shuffled order |
 | `scripts/run_queue.py` | the randomised run queue and its ledger (every run recorded, failures included) |
 | `scripts/testbed_watch.py` | watches both machines from your computer and flags idle, stuck, failed or impossible runs, low load, full disks and clock drift |
+| `scripts/law_design.py` | builds each law block's run list from the machine's tick and slice constant, the measured baseline trips and the repeat rule |
+| `cloud/azure/campaign.sh` | the law campaign's runner: sets each run's CPUs, slice, delay and load, runs one trial, checks it, records it |
 
 The two trial runners, `scripts/run_kafka_trial.sh` and `scripts/run_redis_trial.sh`, gained one
 hook, `SBL_CONSUMER_WRAP`. It is empty unless a campaign sets it, and each run's `meta.json` now

@@ -86,6 +86,7 @@ def summarise(run_dir, warmup_s=30.0):
         "trip_median_ms": statistics.median(trip),
         "gotit_median_ms": statistics.median(gotit) if gotit else None,
         "measured_negative": negative,
+        "measured_spans": len(measured),
         "measured_negative_rate": negative / len(measured) if measured else None,
     }
 

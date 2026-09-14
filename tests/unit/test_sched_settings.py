@@ -92,6 +92,59 @@ class TestReading:
         assert s["release"] == "custom" and s["rule_slice_ns"] is None
 
 
+class TestTheKernelsOwnConstant:
+
+    def test_it_is_recovered_from_the_default_slice(self, tmp_path):
+        assert ss.read_settings(fake_root(tmp_path))["normalised_slice_ns"] == 750000
+
+    def test_the_first_azure_kernel_carried_the_smaller_one(self, tmp_path):
+        """6.8.0-1064-azure on 8 CPUs reported 2.8 ms, where its version predicts 3 ms."""
+        s = ss.read_settings(fake_root(tmp_path, release="6.8.0-1064-azure", slice_ns="2800000"))
+        assert s["normalised_slice_ns"] == 700000 and s["rule_slice_ns"] == 3000000
+
+    def test_nothing_is_recovered_from_nothing(self, tmp_path):
+        assert ss.read_settings(str(tmp_path))["normalised_slice_ns"] is None
+
+
+class TestOnlineCpus:
+
+    @staticmethod
+    def cpu_tree(tmp_path, listed="0-3", n=4):
+        root = fake_root(tmp_path, online=listed)
+        base = tmp_path / "sys" / "devices" / "system" / "cpu"
+        for i in range(n):
+            (base / ("cpu%d" % i)).mkdir(parents=True, exist_ok=True)
+            if i:
+                (base / ("cpu%d" % i) / "online").write_text("1\n", encoding="utf-8")
+        (base / "cpufreq").mkdir(exist_ok=True)
+        return root
+
+    def test_cpus_past_the_count_go_offline_and_the_list_is_read_back(self, tmp_path):
+        root = self.cpu_tree(tmp_path, listed="0-1")
+        assert ss.set_online_cpus(2, root) == 2
+        base = tmp_path / "sys" / "devices" / "system" / "cpu"
+        assert [(base / ("cpu%d" % i) / "online").read_text(encoding="utf-8")
+                for i in (1, 2, 3)] == ["1\n", "0\n", "0\n"]
+
+    def test_a_count_the_kernel_did_not_take_is_refused(self, tmp_path):
+        with pytest.raises(ss.CpusNotApplied, match="asked for 2"):
+            ss.set_online_cpus(2, self.cpu_tree(tmp_path, listed="0-3"))
+
+    @pytest.mark.parametrize("n", [0, 5])
+    def test_a_count_the_machine_cannot_have(self, tmp_path, n):
+        with pytest.raises(ValueError, match="cannot have"):
+            ss.set_online_cpus(n, self.cpu_tree(tmp_path))
+
+    def test_the_command(self, tmp_path):
+        out = io.StringIO()
+        assert ss.main(["--root", self.cpu_tree(tmp_path, listed="0-2"), "set-cpus", "3"],
+                       out=out) == 0
+        assert "3 CPUs online" in out.getvalue()
+        out = io.StringIO()
+        assert ss.main(["--root", str(tmp_path / "missing"), "set-cpus", "3"], out=out) == 1
+        assert out.getvalue().startswith("ERROR:")
+
+
 class TestHelpers:
 
     @pytest.mark.parametrize("text,count", [("0-7", 8), ("0-3,6,8-9", 7), ("0", 1),

@@ -19,7 +19,8 @@ SHELL = sorted(KIT.glob("*.sh"))
 
 
 def test_the_kit_has_the_scripts_the_guide_describes():
-    assert [p.name for p in SHELL] == ["pilot.sh", "replicate_oracle.sh", "session.sh"]
+    assert [p.name for p in SHELL] == ["campaign.sh", "pilot.sh", "replicate_oracle.sh",
+                                       "session.sh"]
 
 
 @pytest.mark.parametrize("path", SHELL + [KIT / "cloud-init.yaml"], ids=lambda p: p.name)

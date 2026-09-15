@@ -71,6 +71,14 @@ class TestSummary:
     def test_without_acknowledgements_there_is_no_got_it(self, tmp_path):
         s = pc.summarise(make_run(tmp_path, "r", acks=False), warmup_s=0)
         assert s["gotit_median_ms"] is None and s["measured_negative_rate"] is None
+        assert s["gotit_p99_ms"] is None
+
+    def test_the_got_it_tail_is_its_99th_percentile(self, tmp_path):
+        """The session calibration watches the slowest acknowledgements as well as the median."""
+        assert pc.summarise(make_run(tmp_path, "many"), warmup_s=0)["gotit_p99_ms"] == \
+            pytest.approx(0.2)
+        assert pc.summarise(make_run(tmp_path, "one", n=1), warmup_s=0)["gotit_p99_ms"] == \
+            pytest.approx(0.2)
 
     def test_a_run_shorter_than_its_warm_up(self, tmp_path):
         with pytest.raises(ValueError, match="no message sent after the first 30 s"):

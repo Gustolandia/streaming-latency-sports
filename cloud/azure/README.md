@@ -101,14 +101,19 @@ step before it measured (a queue is the shuffled list of runs, with what happene
 1. **Read the machine**: its tick, and the slice constant its kernel really uses. The first
    Azure driver ran a 6.8 kernel whose default slice was 2.8 ms, where its version predicts 3.
 2. **Baseline trips (block B0)**: no added delay, each backend at 50, 75 and 88% load, 3 rounds.
-3. **Spread pilot (P0)**: 16 setups over 5 rounds, placed from the baseline trips.
-4. **Repeats**: `rounds` turns the pilot's run-to-run spread into runs per setup (15 to 40).
-5. **Main blocks**: A1 (slice doses), A3 (load) and A7 (go-first) on this machine; A5 (core
+3. **Delay calibration (block C0), at the start of every session**: added delays of 0 (twice),
+   1, 2, 4 and 8 ms, longer with `--up-to-ms`, 2 rounds. `delay_calibration.py fit` measures
+   how far the trip moves per millisecond of delay and checks the gate. It has to be measured:
+   on the first pilot, 2.03 ms added moved Kafka's trip by 1.80 ms and Redis's by 2.51 ms.
+4. **Spread pilot (P0)**: 16 setups over 5 rounds, placed from the calibration.
+5. **Repeats**: `rounds` turns the pilot's run-to-run spread into runs per setup (15 to 40).
+6. **Main blocks**: A1 (slice doses), A3 (load) and A7 (go-first) on this machine; A5 (core
    count) in its own queue, because it switches CPUs off; A4 on the arm profile. A2 (the tick)
-   needs a second kernel built with a 4 ms tick, which is not built yet.
+   needs three kernels built with 1, 4 and 10 ms ticks, which are not built yet.
 
-For each block: read the machine, make the design, make the queue, run it. B0 is shown; the
-later blocks add `--baseline`, and the main blocks also `--rounds`:
+For each block: read the machine, make the design, make the queue, run it. B0 is shown. C0
+needs nothing more; the later blocks add `--calibration` (or `--baseline`, which assumes the
+delay adds one-for-one), and the main blocks also `--rounds`:
 
 ```bash
 sudo python3 scripts/sched_settings.py read > runs/azure/settings.json
@@ -117,10 +122,11 @@ python3 scripts/run_queue.py make --design runs/azure/queues/b0.json --out runs/
 nohup bash cloud/azure/campaign.sh runs/azure/queues/b0.csv > campaign_b0.log 2>&1 &
 ```
 
-After B0 and after P0:
+After B0, after C0 and after P0:
 
 ```bash
 python3 scripts/law_design.py baseline --queue runs/azure/queues/b0.csv --out runs/azure/baseline.json
+python3 scripts/delay_calibration.py fit --queue runs/azure/queues/c0.csv --out runs/azure/calibration.json
 python3 scripts/law_design.py rounds --queue runs/azure/queues/p0.csv --block A1
 ```
 
@@ -157,7 +163,8 @@ rate.
 | `cloud/azure/replicate_oracle.sh` | runs the Oracle mechanism campaigns unchanged, in shuffled order |
 | `scripts/run_queue.py` | the randomised run queue and its ledger (every run recorded, failures included) |
 | `scripts/testbed_watch.py` | watches both machines from your computer and flags idle, stuck, failed or impossible runs, low load, full disks and clock drift |
-| `scripts/law_design.py` | builds each law block's run list from the machine's tick and slice constant, the measured baseline trips and the repeat rule |
+| `scripts/law_design.py` | builds each law block's run list from the machine's tick and slice constant, the session's delay calibration (or the baseline trips) and the repeat rule |
+| `scripts/delay_calibration.py` | measures, from a calibration queue, how far the trip moves per millisecond of receiver-only delay, checks the gate, and gives the delay each planned trip needs |
 | `cloud/azure/campaign.sh` | the law campaign's runner: sets each run's CPUs, slice, delay and load, runs one trial, checks it, records it |
 
 The two trial runners, `scripts/run_kafka_trial.sh` and `scripts/run_redis_trial.sh`, gained one
@@ -195,9 +202,6 @@ sending grows by the delay.
 
 - **The tool checks:** a millisecond tool and a nanosecond tool measuring a known delay. Each
   tool has to be installed and its output read.
-- **The two tick kernels:** the same kernel built at HZ=1000 and at HZ=250, for the tick
-  experiment.
+- **The three tick kernels:** the same kernel built at HZ=1000, 250 and 100, with a check at
+  every boot that the tick really changed, for the tick experiment.
 - **The analysis code** for the frozen predictions, tested on made-up data before any real run.
-- **The campaign runner** that takes runs from the queue, sets each run's slice and delay, and
-  records the outcome. The queue and its rules are here. The runner comes after the pilot, because
-  the delays it applies depend on the baseline trip the pilot measures.

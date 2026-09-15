@@ -10,16 +10,22 @@ generated rather than typed:
   trip points  for each slice: two on the plateau (0.5s, 0.9s), four across the cliff
                (s + 0.2h to s + 0.8h), two past it (s + 1.5h and 2(s + h)); the smaller blocks
                use subsets of these.
-  delays       a run's trip is the machine's own baseline trip plus the receiver-only delay, so
-               a point's delay is its target minus the baseline measured for that backend at
-               that load. A point below the baseline cannot be reached by adding delay. It is
-               listed as unreachable in the design, not quietly dropped.
+  delays       a run's trip is the machine's own zero-delay trip plus what the receiver-only
+               delay adds, and the first Azure pilot showed that is not the delay itself: Kafka's
+               trip moved 0.89 ms per millisecond added, Redis's 1.24. So a point's delay is read
+               off the session's calibration (block C0, fitted by delay_calibration.py). A design
+               made from B0's baseline alone assumes one-for-one, and every setup records which
+               way it was placed. A point the placement cannot reach (below the zero-delay trip,
+               or beyond the calibration's longest step) is listed as unreachable in the design,
+               not quietly dropped.
   repeats      the rounds that give 80% power to see a two-fold difference at the run-to-run
                spread the spread pilot measured: never fewer than 15 for A1 to A4 or 10 for the
                rest, never more than 40.
 
 Blocks, each a design for scripts/run_queue.py:
   B0  baseline trips: no delay, the kernel's own slice, each backend at 50, 75 and 88% load
+  C0  delay calibration: no delay twice, then 1, 2, 4 and 8 ms (doubling up to --up-to-ms),
+      each backend at the session's load and the kernel's own slice, 2 rounds
   P0  the spread pilot: 2 slices x 4 points x 2 backends, 5 rounds
   A1  slice dose-response: 6 slices x 8 points x 2 backends at 75% load
   A2  tick: 2 slices x 8 points x 2 backends, made once per tick session
@@ -33,9 +39,11 @@ of those runs whose queue key hashes even.
 CLI:
     python3 scripts/law_design.py design --block B0 --settings settings.json --seed 1 --out b0.json
     python3 scripts/law_design.py baseline --queue b0.csv --out baseline.json
+    python3 scripts/law_design.py design --block C0 --settings settings.json --seed 2 --out c0.json
+    python3 scripts/delay_calibration.py fit --queue c0.csv --out calibration.json
     python3 scripts/law_design.py rounds --queue p0.csv --block A1
     python3 scripts/law_design.py design --block A1 --settings settings.json \\
-        --baseline baseline.json --rounds 26 --seed 20260915 --out a1.json
+        --calibration calibration.json --rounds 26 --seed 20260915 --out a1.json
 """
 import argparse
 import json
@@ -45,6 +53,7 @@ import statistics
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import delay_calibration  # noqa: E402
 import kernel_constants  # noqa: E402
 import pilot_checks  # noqa: E402
 import run_queue  # noqa: E402
@@ -62,6 +71,7 @@ EIGHT = ("p05s", "p09s", "c02h", "c04h", "c06h", "c08h", "f15h", "f2sh")
 
 BLOCKS = {
     "B0": {"loads": (50, 75, 88)},
+    "C0": {"loads": (75,)},
     "P0": {"slices": (1.5, 3.0), "points": ("p09s", "c04h", "c08h", "f15h"), "loads": (75,)},
     "A1": {"slices": (0.75, 1.5, 2.25, 3.0, 4.5, 6.0), "points": EIGHT, "loads": (75,),
            "trace_half": True},
@@ -74,20 +84,31 @@ BLOCKS = {
            "priorities": (False, True)},
 }
 BACKENDS = ("kafka", "redis")
-FIXED_ROUNDS = {"B0": 3, "P0": 5}
+#: Blocks that plan no trip: they need neither a baseline nor a calibration, and they may take
+#: the loads of the session they open.
+UNPLACED = ("B0", "C0")
+FIXED_ROUNDS = {"B0": 3, "C0": 2, "P0": 5}
 MIN_ROUNDS = {"A1": 15, "A2": 15, "A3": 15, "A4": 15}
 DEFAULT_MIN_ROUNDS = 10
 MAX_ROUNDS = 40
 ALPHA, POWER, FOLD = 0.05, 0.80, 2.0
 
 #: Minutes one run takes end to end with the runner's default plan (warm-up, measurement,
-#: settling and checks). For planning only.
+#: settling and checks), as the first Azure pilot measured. For planning only.
 RUN_MINUTES = 3.5
 
 
 def trip_ms(point, slice_ms, tick_ms):
     a, b = POINT_FORM[point]
     return a * slice_ms + b * tick_ms
+
+
+def c0_steps(up_to_ms):
+    """C0's delays other than zero: 1 ms, doubling until up_to_ms is covered."""
+    steps = [1.0]
+    while steps[-1] < up_to_ms:
+        steps.append(steps[-1] * 2)
+    return steps
 
 
 def rounds_for(sigma, block):
@@ -130,26 +151,64 @@ def _base(baseline, backend, load):
                          % (backend, load))
 
 
-def make_setups(block, tick_ms, baseline=None, settings=None):
-    """(setups, unreachable) for one block. `settings` is sched_settings' read of the machine."""
+def _placer(baseline, calibration, backend, load):
+    """(zero-delay trip, the delay for a target trip, how it was placed) at one backend and load.
+
+    The calibration, when there is one, is the session's own measurement of what a millisecond
+    of delay does to the trip. Without it the baseline is used and one-for-one is assumed.
+    """
+    if calibration is None:
+        base = _base(baseline, backend, load)
+        return base, (lambda target: round(target - base, 3) if target >= base else None), \
+            "baseline"
+    try:
+        entry = calibration[backend][str(load)]
+    except KeyError:
+        raise ValueError("the calibration has no %s entry at %d%% load; C0 must cover it"
+                         % (backend, load))
+    if not entry["gate"]["ok"]:
+        raise ValueError("the %s calibration at %d%% load failed its gate, so it cannot place "
+                         "trips" % (backend, load))
+    return (delay_calibration.predict(entry, 0.0),
+            lambda target: delay_calibration.delay_for(entry, target), "calibration")
+
+
+def _unplaced(block, backend, load, tick_ms, up_to_ms):
+    """B0's single no-delay setup, or C0's delay staircase, for one backend at one load."""
+    common = {"block": block, "backend": backend, "load_pct": load, "slice_ns": None,
+              "predicted_slice_ns": None, "cpus": None, "tick_ms": tick_ms,
+              "target_trip_ms": None, "baseline_trip_ms": None, "priority": False,
+              "trace_half": False}
+    if block == "B0":
+        steps = [("base", 0.0)]
+    else:
+        steps = [("d0a", 0.0), ("d0b", 0.0)] + [("d%d" % round(s * 1000), s)
+                                               for s in c0_steps(up_to_ms)]
+    return [dict(common, id="%s-%s-l%d-%s" % (block, backend, load, label), point=label,
+                 delay_ms=delay) for label, delay in steps]
+
+
+def make_setups(block, tick_ms, baseline=None, settings=None, calibration=None, loads=None,
+                up_to_ms=8.0):
+    """(setups, unreachable) for one block. `settings` is sched_settings' read of the machine,
+    and `calibration` is delay_calibration.py's fit, which places the trips when it is given."""
     settings = settings or {}
     spec = BLOCKS[block]
+    if loads and block not in UNPLACED:
+        raise ValueError("block %s fixes its own loads; only %s take other loads"
+                         % (block, " and ".join(UNPLACED)))
     setups, unreachable = [], []
     for backend in BACKENDS:
-        for load in spec["loads"]:
-            if block == "B0":
-                setups.append({"id": "B0-%s-l%d-base" % (backend, load), "block": block,
-                               "backend": backend, "load_pct": load, "slice_ns": None,
-                               "predicted_slice_ns": None, "cpus": None, "tick_ms": tick_ms,
-                               "point": "base", "target_trip_ms": None,
-                               "baseline_trip_ms": None, "delay_ms": 0.0, "priority": False,
-                               "trace_half": False})
+        for load in loads or spec["loads"]:
+            if block in UNPLACED:
+                setups += _unplaced(block, backend, load, tick_ms, up_to_ms)
                 continue
-            base = _base(baseline, backend, load)
+            base, delay_for, placed_by = _placer(baseline, calibration, backend, load)
             for slice_ms, hand_set, cpus, predicted in _slices(block, spec, settings):
                 label = "c%d" % cpus if cpus else "s%d" % round(slice_ms * 1000)
                 for point in spec["points"]:
                     target = trip_ms(point, slice_ms, tick_ms)
+                    delay = delay_for(target)
                     for priority in spec.get("priorities", (False,)):
                         setup = {
                             "id": "%s-%s-l%d-%s-%s%s" % (block, backend, load, label, point,
@@ -158,15 +217,15 @@ def make_setups(block, tick_ms, baseline=None, settings=None):
                             "slice_ns": predicted if hand_set else None,
                             "predicted_slice_ns": predicted, "cpus": cpus, "tick_ms": tick_ms,
                             "point": point, "target_trip_ms": round(target, 4),
-                            "baseline_trip_ms": round(base, 4),
-                            "delay_ms": round(target - base, 3), "priority": priority,
+                            "baseline_trip_ms": round(base, 4), "delay_ms": delay,
+                            "placed_by": placed_by, "priority": priority,
                             "trace_half": bool(spec.get("trace_half")),
                         }
-                        (setups if setup["delay_ms"] >= 0 else unreachable).append(setup)
+                        (setups if delay is not None else unreachable).append(setup)
     return setups, unreachable
 
 
-def design(block, settings, baseline, rounds, seed):
+def design(block, settings, baseline, rounds, seed, calibration=None, loads=None, up_to_ms=8.0):
     """The run_queue design for one block, with what it was made from."""
     if block not in BLOCKS:
         raise ValueError("no block %r; the blocks are %s" % (block, ", ".join(sorted(BLOCKS))))
@@ -174,17 +233,19 @@ def design(block, settings, baseline, rounds, seed):
     if not tick:
         raise ValueError("the settings carry no tick; read them on the machine that will run "
                          "the block with sched_settings.py read")
-    if block != "B0" and not baseline:
-        raise ValueError("block %s places its trips from the baseline trips B0 measured"
-                         % block)
+    if block not in UNPLACED and not baseline and not calibration:
+        raise ValueError("block %s places its trips from the session's calibration (C0) or "
+                         "from the baseline trips B0 measured" % block)
     rounds = FIXED_ROUNDS.get(block, rounds)
     if not rounds:
         raise ValueError("block %s needs --rounds, from law_design.py rounds" % block)
-    setups, unreachable = make_setups(block, tick, baseline, settings)
+    setups, unreachable = make_setups(block, tick, baseline, settings, calibration, loads,
+                                      up_to_ms)
     return {"block": block, "seed": seed, "rounds": rounds, "tick_ms": tick,
             "release": settings.get("release"),
             "normalised_slice_ns": settings.get("normalised_slice_ns"), "baseline": baseline,
-            "setups": setups, "unreachable": [u["id"] for u in unreachable]}
+            "calibration": calibration, "setups": setups,
+            "unreachable": [u["id"] for u in unreachable]}
 
 
 def baseline_from_rows(rows, warmup_s=30.0, summarise=pilot_checks.summarise):
@@ -232,6 +293,9 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise):
     p.add_argument("--block", required=True, choices=sorted(BLOCKS))
     p.add_argument("--settings", required=True, help="JSON from sched_settings.py read or check")
     p.add_argument("--baseline", default="")
+    p.add_argument("--calibration", default="", help="JSON from delay_calibration.py fit")
+    p.add_argument("--loads", default="", help="comma-separated loads, for B0 or C0 only")
+    p.add_argument("--up-to-ms", type=float, default=8.0, help="C0's longest delay step")
     p.add_argument("--rounds", type=int, default=0)
     p.add_argument("--seed", type=int, required=True)
     p.add_argument("--out", required=True)
@@ -262,12 +326,16 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise):
             return 0
         with open(args.settings, encoding="utf-8") as fh:
             settings = json.load(fh)
-        baseline = None
+        baseline = calibration = None
         if args.baseline:
             with open(args.baseline, encoding="utf-8") as fh:
                 baseline = json.load(fh)
+        if args.calibration:
+            with open(args.calibration, encoding="utf-8") as fh:
+                calibration = json.load(fh)["calibration"]
+        loads = [int(v) for v in args.loads.split(",")] if args.loads else None
         made = design(args.block, settings.get("settings", settings), baseline, args.rounds,
-                      args.seed)
+                      args.seed, calibration, loads, args.up_to_ms)
         with open(args.out, "w", encoding="utf-8") as fh:
             fh.write(json.dumps(made, indent=2, sort_keys=True) + "\n")
         runs = len(made["setups"]) * made["rounds"]
@@ -277,7 +345,7 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise):
                  (": " + ", ".join(made["unreachable"])) if made["unreachable"] else ""),
               file=out)
         return 0
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, KeyError) as exc:
         print("ERROR: %s" % exc, file=out)
         return 2
 

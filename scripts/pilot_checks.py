@@ -85,6 +85,10 @@ def summarise(run_dir, warmup_s=30.0):
         "trip_negative": sum(1 for d in trip if d < 0),
         "trip_median_ms": statistics.median(trip),
         "gotit_median_ms": statistics.median(gotit) if gotit else None,
+        # The tail the session calibration's "got it" check also watches (delay_calibration.py):
+        # a helper kept waiting for a core shows first in the slowest acknowledgements.
+        "gotit_p99_ms": (statistics.quantiles(gotit, n=100, method="inclusive")[98]
+                         if len(gotit) > 1 else (gotit[0] if gotit else None)),
         "measured_negative": negative,
         "measured_spans": len(measured),
         "measured_negative_rate": negative / len(measured) if measured else None,

@@ -2104,6 +2104,17 @@ step, reading the broker's settings. `receiver_delay.py driver` now takes the ad
 driver before it builds the namespace. Every boot writes the address back, which is one more
 reason `session.sh` runs after every start.
 
+**1ea. An added delay is not an added trip.** The receiver-only delay was built to lengthen each
+message's trip by the delay added on the receiver's path, and the experiment plan's check said
+so, to within 0.05 ms. On the first Azure pilot, 2.03 ms added moved Kafka's median trip by
+1.80 ms and Redis's by 2.51 ms, and repeat runs agreed with each other within about 0.1 ms. That
+is a property of the two clients, in opposite directions, and not noise. Trips placed as "delay
+= target minus baseline" would have missed by up to half a millisecond, as much as the detail of
+the cliff the law predicts. Every session now measures the relation first (block C0 in
+`law_design.py`, fitted and gated by `delay_calibration.py`) and places its trips from that
+measurement, and the law is analysed at the trip each run actually had. Why the two clients
+differ is a study of its own (M0 in the experiment plan).
+
 **1co. A spelling checker that proposes `pairwize` is a checker people learn to argue with.**
 The British-spelling gate runs a morphological rule over the `-ise` family, which is right and
 is the half a hand-written table keeps failing at. It had no rule for `-wise`, an English

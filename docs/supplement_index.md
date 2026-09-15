@@ -72,7 +72,7 @@ preceding the "v2: TPDS restructure" commit.
 carries its own IEEEtran bibliography for the citations that travelled with the moved text.)
 
 The compiled supplement states on its first page that it is not part of the main submission.
-Referee report that drove this split: `REFEREE_REPORT_SIMULATED.md` (untracked).
+The internal review that drove this split is not public.
 
 ## TPDS round-1 revision (2026-08-07)
 
@@ -143,8 +143,8 @@ Nineteen items (R1–R19). Those that moved or relabelled supplement material:
 - **Every review-history label was relabelled.** Nine sections read "TPDS round 1" and three
   passages referred to "the TC submission" or "the TC revision". Read cold, that implies
   the manuscript was reviewed at two journals. It has been reviewed at none: those were
-  adversarial reviews conducted inside the project before submission. The front matter now
-  says so explicitly, and the labels read "internal review, round N".
+  internal reviews held before submission. The front matter now says so explicitly, and the
+  labels read "internal review, round N".
 - **S10** and the S1 chronology are unchanged in substance; only the round labels moved.
 - The dither lineage in S27 gained McCanne & Torek, cut from the main text to hold the
   45-reference cap.

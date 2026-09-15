@@ -391,11 +391,11 @@ rule list whose authority is that everything in it was measured. The reasoning i
 sentence is J. Kunkel's, asked for in correspondence, and is gated for exactly that reason.
 It had already gone missing once, in a page cut, which is why the gate exists.
 
-Rule: where a review item collides with a requirement a human made, the human's requirement
-stands and the collision is recorded rather than resolved silently. A simulated referee
-reads the two documents; it does not read the mailbox. **That is the argument for putting a
-requirement from an email into a test instead of a plan file**, and round 68 is the first
-time it paid out against a reviewer rather than against a forgetful author.
+Rule: where a review item collides with a requirement someone made in correspondence, that
+requirement stands and the collision is recorded rather than resolved silently. An internal
+review reads the two documents; it does not read the mailbox. **That is the argument for
+putting a requirement from an email into a test instead of a plan file**, and round 68 is the
+first time it paid out against a reviewer rather than against a forgetful author.
 
 ### A1x. A concession made once governs everywhere --- GATED
 

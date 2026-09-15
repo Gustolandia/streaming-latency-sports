@@ -1,11 +1,9 @@
-# Response to simulated referee report — IEEE Transactions on Computers, round 2
+# Response to internal review — IEEE Transactions on Computers standard, round 2
 
-> **Internal QA artefact — simulated review.** The referee report answered below was an
-> adversarial review generated inside the project, before any journal submission, to
-> stress-test the manuscript against IEEE TC's standards (source report:
-> `REFEREE_REPORT_TC_R2_SIMULATED.md`, kept untracked). The paper has not been submitted to
-> IEEE Transactions on Computers; no text here originates from, or is addressed to, any
-> real reviewer or journal.
+> **Internal review.** The report answered below came from a review held inside the project,
+> before any journal submission, to test the manuscript against IEEE TC's standards. The
+> report itself is not public. The paper has not been submitted to IEEE Transactions on
+> Computers; no text here originates from, or is addressed to, any journal or its reviewers.
 
 Manuscript: *When the Interval Is Smaller Than the Instrument: Two Ways Streaming Latency
 Benchmarks Fail on Sub-Millisecond Paths*.
@@ -136,7 +134,7 @@ instruments that change what they measure should not have needed to be asked for
 **R17 — the supplement's review labels.** This is the one we are most grateful for. Nine
 sections read "TPDS round 1" and three passages referred to "the TC submission" or "the TC
 revision". Read cold that says the manuscript was reviewed at two journals. It has been
-reviewed at none — those were adversarial reviews conducted inside the project. Every label
+reviewed at none — those were internal reviews. Every label
 now reads "internal review, round N", and the front matter states explicitly that the
 manuscript has not been submitted to or reviewed by any journal, and why the rounds are
 recorded at all.

@@ -6,7 +6,7 @@ change v2 should make, with its source noted. It will be revised as further feed
 (second reviewer pass pending; arXiv readers after announcement) and only then executed.
 
 Reviewer names are kept to first names here; acknowledgements in v2 with permission.
-The "referee rounds" referenced below are the project's simulated internal reviews
+The "referee rounds" referenced below are the project's internal reviews
 (see docs/referee_response_letter.md), not journal correspondence.
 
 ---

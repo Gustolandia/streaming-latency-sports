@@ -27,8 +27,8 @@ redis_data/
 *.out
 *.synctex.gz
 *.toc
-# Lists of figures and tables, written by the round-61 \listoffigures and
-# \listoftables in the supplement. Build artifacts, like the .toc above them.
+# Lists of figures and tables, written by the \listoffigures and \listoftables in the
+# supplement. Build artifacts, like the .toc above them.
 *.lof
 *.lot
 *.fls
@@ -77,146 +77,18 @@ cloud_archive/
 dist/
 supplement.log
 
-# Working documents: correspondence state, process journals, and the simulated
-# adversarial referee reports used as internal QA. Deliberately never part of the
-# public record (see README Section 12 on the simulated-review process).
-docs/outreach_candidates.md
-docs/v2_execution_log.md
-docs/v3_plan.md
-docs/tc_plan.md
-# The walkthrough deck and its speaker notes quote correspondence verbatim and name a
-# reviewer, so they stay local for the same reason docs/v3_plan.md does.
-docs/paper_walkthrough.html
-docs/paper_walkthrough_notes.html
-docs/study_guide.html
-docs/humour_candidates.md
-docs/humour_prompt.md
-docs/paper_walkthrough.pptx
-REFEREE_REPORT_SIMULATED.md
-REFEREE_REPORT_TPDS_SIMULATED.md
-REFEREE_REPORT_TC_SIMULATED.md
-REFEREE_REPORT_TC_R2_SIMULATED.md
-REFEREE_REPORT_TC_R3_SIMULATED.md
-
-# Claude Code local state
-.claude/
-REFEREE_REPORT_TC_R4_SIMULATED.md
-REFEREE_REPORT_TC_R5_SIMULATED.md
-REFEREE_REPORT_TC_R6_SIMULATED.md
-REFEREE_REPORT_TC_R7_SIMULATED.md
-REFEREE_REPORT_TC_R8_SIMULATED.md
-REFEREE_REPORT_TC_R9_SIMULATED.md
-REFEREE_REPORT_TC_R10_SIMULATED.md
-REFEREE_REPORT_TC_R11_SIMULATED.md
-REFEREE_REPORT_TC_R12_SIMULATED.md
-REFEREE_REPORT_TC_R13_SIMULATED.md
-REFEREE_REPORT_TC_R14_SIMULATED.md
-REFEREE_REPORT_TC_R15_SIMULATED.md
-REFEREE_REPORT_TC_R16_SIMULATED.md
-REFEREE_REPORT_TC_R17_SIMULATED.md
-REFEREE_REPORT_TC_R18_SIMULATED.md
-REFEREE_REPORT_TC_R19_SIMULATED.md
-REFEREE_REPORT_TC_R20_SIMULATED.md
-REFEREE_REPORT_TC_R21_SIMULATED.md
-REFEREE_REPORT_TC_R22_SIMULATED.md
-REFEREE_REPORT_TC_R23_SIMULATED.md
-REFEREE_REPORT_TC_R24_SIMULATED.md
-REFEREE_REPORT_TC_R25_SIMULATED.md
-REFEREE_REPORT_TC_R26_SIMULATED.md
-REFEREE_REPORT_TC_R27_SIMULATED.md
-REFEREE_REPORT_TC_R28_SIMULATED.md
-REFEREE_REPORT_TC_R29_SIMULATED.md
-REFEREE_REPORT_TC_R30_SIMULATED.md
-REFEREE_REPORT_TC_R31_SIMULATED.md
-REFEREE_REPORT_TC_R32_SIMULATED.md
-REFEREE_REPORT_TC_R33_SIMULATED.md
-REFEREE_REPORT_TC_R34_SIMULATED.md
-REFEREE_REPORT_TC_R35_SIMULATED.md
-REFEREE_REPORT_TC_R36_SIMULATED.md
-REFEREE_REPORT_TC_R37_SIMULATED.md
-REFEREE_REPORT_TC_R38_SIMULATED.md
-REFEREE_REPORT_TC_R39_SIMULATED.md
-REFEREE_REPORT_TC_R40_SIMULATED.md
-REFEREE_REPORT_TC_R42_SIMULATED.md
-REVIEWER_REQUIREMENTS_V3.md
-HELD_PATCH_V3.py
-REFEREE_REPORT_TC_R43_SIMULATED.md
-REFEREE_REPORT_TC_R44_SIMULATED.md
-REFEREE_REPORT_TC_R45_SIMULATED.md
-REFEREE_REPORT_TC_R46_SIMULATED.md
-REFEREE_REPORT_TC_R48_SIMULATED.md
-REFEREE_REPORT_TC_R49_SIMULATED.md
-REFEREE_REPORT_TC_R50_SIMULATED.md
-REFEREE_REPORT_TC_R51_SIMULATED.md
-REFEREE_REPORT_TC_R52_SIMULATED.md
-REFEREE_REPORT_TC_R53_SIMULATED.md
-REFEREE_REPORT_TC_R54_SIMULATED.md
-REFEREE_REPORT_TC_R55_SIMULATED.md
-REFEREE_REPORT_DUVIGNAU_2026-09-08.md
 # Third-party PDFs fetched for vocabulary statistics; never committed (public repository).
 docs/reference_corpus/
 
 # Third-party IEEE Transactions on Computers papers, downloaded during review to settle
 # questions of house norm and vocabulary. They are other people's copyrighted work:
 # readable under whatever each publisher granted, redistributable under none of it. The
-# Zenodo bundle has excluded this directory since round 40 for exactly that reason
+# Zenodo bundle excludes this directory for exactly that reason
 # (scripts/zenodo_deposit.py, NC_DERIVED_PATHS); a public git remote is the same exposure.
 docs/reference_tc/
-REFEREE_REPORT_TC_R56_SIMULATED.md
-REFEREE_REPORT_TC_R57_SIMULATED.md
+
 # Derived build outputs: the collision rasters and the author-free PDFs that go to
 # Zenodo and into attachments. Both are rebuilt deterministically by their own scripts
 # (show_figure_collisions.py, build_without_authors.py), and a committed copy of a
 # derived PDF is one more thing that can drift from the source it was made from.
 build/
-REFEREE_REPORT_TC_R58_SIMULATED.md
-REFEREE_REPORT_TC_R59_SIMULATED.md
-REFEREE_REPORT_TC_R60_SIMULATED.md
-REFEREE_REPORT_TC_R61_SIMULATED.md
-REFEREE_REPORT_TC_R62_SIMULATED.md
-REFEREE_REPORT_TC_R63_SIMULATED.md
-REFEREE_REPORT_TC_R64_SIMULATED.md
-REFEREE_REPORT_TC_R65_SIMULATED.md
-docs/v5_supplement_plan.md
-
-# Round 68 (2026-09-11), local only: quotes nothing but is the same class
-REFEREE_REPORT_TC_R68_SIMULATED.md
-
-# Round 69 (2026-09-11), local only: same class as its sixty-eight predecessors
-REFEREE_REPORT_TC_R69_SIMULATED.md
-
-# Round 70 (2026-09-11), local only
-REFEREE_REPORT_TC_R70_SIMULATED.md
-
-# Round 71 (2026-09-12), local only
-REFEREE_REPORT_TC_R71_SIMULATED.md
-
-# Round 72 (2026-09-12), local only
-REFEREE_REPORT_TC_R72_SIMULATED.md
-
-# Round 73 (2026-09-12), local only
-REFEREE_REPORT_TC_R73_SIMULATED.md
-
-# Round 74 (2026-09-12), local only
-REFEREE_REPORT_TC_R74_SIMULATED.md
-
-# Round 75 (2026-09-12), local only
-REFEREE_REPORT_TC_R75_SIMULATED.md
-
-# Round 76 (2026-09-13), local only
-REFEREE_REPORT_TC_R76_SIMULATED.md
-
-# Round 77 (2026-09-13), local only
-REFEREE_REPORT_TC_R77_SIMULATED.md
-
-# Round 78 (2026-09-13), local only
-REFEREE_REPORT_TC_R78_SIMULATED.md
-
-# Round 79 (2026-09-13), local only
-REFEREE_REPORT_TC_R79_SIMULATED.md
-
-# Round 80 (2026-09-14), local only
-REFEREE_REPORT_TC_R80_SIMULATED.md
-
-# Round 81 (2026-09-14), local only
-REFEREE_REPORT_TC_R81_SIMULATED.md

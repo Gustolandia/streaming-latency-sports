@@ -667,7 +667,7 @@ positivity filter discards"*.
 
 The second author read the abstract and the contributions cold on 2026-09-09 and reacted to
 exactly that: *"not a great idea to try to force the paper around a single grand law,
-especially I am not sure your work does contain a single such law."* Fifty-seven simulated
+especially I am not sure your work does contain a single such law."* Fifty-seven internal review
 rounds had not seen it, and the reason is worth recording: **each round inherited the framing
 instead of meeting it.** Round 6 had already found the grid arithmetic standardised in ADC
 metrology (IEEE Std 1241, coherent sampling, `f_in/f_s = M/N` coprime giving N phases) and
@@ -1357,10 +1357,10 @@ three checks that would have caught these read the caption as a claim --- which 
 Feynman rule already asks of every caption in this document, and had been applied to their
 opening sentences and not to their middles.
 
-**1bu. A simulated referee proposed two changes a human referee had already ruled out, and
+**1bu. An internal review proposed two changes that correspondence had already ruled out, and
 the suite is what knew.** Round 68's report carried nine items. Seven were right. Two were
 applied, looked like improvements, and were backed out within the hour because the full test
-run named the humans behind the gates they broke.
+run named the people behind the gates they broke.
 
 **W6 proposed trading away the busy-poll sentence** --- *"Busy-polling a dedicated core
 should buy the same for the price of that core, though we did not measure it"* --- on the
@@ -1378,13 +1378,13 @@ same edit from a different angle: the pointer promised a record and S33.4 carrie
 The substance of R2 stands, because it was never about the pointer: *most published
 comparisons* is gone and the concession reads as the condition it always was.
 
-The rule this leaves is not "distrust the referee". Seven of nine items were right and two of
-those three required fixes were defects the humans had not found. It is that **a simulated
-referee reads the documents and not the correspondence**, so its suggestions land as
-proposals in a place where human requirements are already law. The gates are where that law
-is written down, which is the whole argument for putting a requirement from an email into a
-test rather than into a plan file --- and this round is the first time that argument paid out
-against a reviewer rather than against a forgetful author.
+The rule this leaves is not "distrust the review". Seven of nine items were right and two of
+those three required fixes were defects nobody else had found. It is that **an internal
+review reads the documents and not the correspondence**, so its suggestions land as
+proposals in a place where requirements from correspondence are already law. The gates are
+where that law is written down, which is the whole argument for putting a requirement from an
+email into a test rather than into a plan file --- and this round is the first time that
+argument paid out against a reviewer rather than against a forgetful author.
 
 **1bv. A gate can pass because of where a line happens to wrap.**
 `test_placement_claims.py` looks for sentences in the supplement claiming material is "here

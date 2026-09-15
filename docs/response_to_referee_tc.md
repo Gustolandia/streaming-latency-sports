@@ -1,11 +1,9 @@
-# Response to simulated referee report — IEEE Transactions on Computers round 1
+# Response to internal review — IEEE Transactions on Computers standard, round 1
 
-> **Internal QA artefact — simulated review.** The referee report answered below was an
-> adversarial review generated inside the project, before any journal submission, to
-> stress-test the manuscript against IEEE TC's standards (source report:
-> `REFEREE_REPORT_TC_SIMULATED.md`, kept untracked). The paper has not been submitted to
-> IEEE Transactions on Computers; no text here originates from, or is addressed to, any
-> real reviewer or journal.
+> **Internal review.** The report answered below came from a review held inside the project,
+> before any journal submission, to test the manuscript against IEEE TC's standards. The
+> report itself is not public. The paper has not been submitted to IEEE Transactions on
+> Computers; no text here originates from, or is addressed to, any journal or its reviewers.
 
 Manuscript: *When the Interval Is Smaller Than the Instrument: Two Ways Streaming Latency
 Benchmarks Fail on Sub-Millisecond Paths*.

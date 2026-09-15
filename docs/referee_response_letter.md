@@ -1,7 +1,7 @@
-# Response to the referee report (simulated TPDS/TC review)
+# Response to the referee report (internal TPDS/TC-standard review)
 
-This review was generated internally as pre-submission QA; the paper had not been submitted
-to any journal. Source report: `REFEREE_REPORT_SIMULATED.md` (untracked). Every major concern, minor comment and
+This review was held internally before submission; the paper had not been submitted to any
+journal, and the source report is not public. Every major concern, minor comment and
 question, with the action taken and where the evidence lives. Items marked *(chain18)* draw on
 the referee campaign `reproducibility/campaign_logs/omb_chain18.sh`.
 

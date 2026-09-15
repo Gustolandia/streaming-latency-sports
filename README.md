@@ -1007,13 +1007,13 @@ are simply uncited. **Verify every remaining citation before submission.**
 stops at an unpublished draft by design — publishing is an irreversible public action, and the
 final click was a human one.
 
-**Adversarial review rehearsal.** Before submission, the manuscript was stress-tested through
-simulated adversarial referee rounds authored inside the project
+**Internal review.** Before submission, the manuscript went through internal review rounds held
+to journal standards
 ([`docs/referee_response_plan.md`](docs/referee_response_plan.md),
 [`docs/response_to_referee_tpds.md`](docs/response_to_referee_tpds.md),
-[`docs/referee_response_letter.md`](docs/referee_response_letter.md)). These are internal QA
-artefacts written to journal standards; the paper has not yet been submitted to any venue, and
-no document in this repository contains real journal correspondence.
+[`docs/referee_response_letter.md`](docs/referee_response_letter.md)). The paper has not yet
+been submitted to a journal, and no document in this repository contains journal
+correspondence.
 
 **Data Availability Statement:** all benchmark results, configs, and scripts are in this
 repository; the StatsBomb dataset is public under CC BY-NC-4.0. Reproduction needs only

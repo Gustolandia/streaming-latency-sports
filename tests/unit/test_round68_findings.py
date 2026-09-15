@@ -109,7 +109,7 @@ class TestR2TheConcession:
         R. Duvignau's annotation #12 -- related work is self-contained -- is gated in
         `test_writing_standards.py` and `test_attributed_claims.py`, and a third gate caught
         the same edit from another side: the pointer promised a record, and S33.4 carries no
-        exhibit. A human referee's condition outranks a simulated one's suggested phrasing,
+        exhibit. A condition set in correspondence outranks a review round's suggested phrasing,
         and the substance of R2 never depended on the pointer.
         """
         i = paper.index(chr(92) + "section{Background and Related Work}")

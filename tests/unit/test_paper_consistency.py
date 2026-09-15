@@ -2786,7 +2786,7 @@ class TestPriorArtCredits:
 
 
 class TestRefereeRoundTwo:
-    """Pins for the second internal review (REFEREE_REPORT_TC_R2_SIMULATED.md, 2026-08-19).
+    """Pins for the second internal review (2026-08-19).
 
     Round 1's fixes introduced four of round 2's defects: a denominator borrowed from one
     population and printed against another, a paraphrase of NIST that inverted its own

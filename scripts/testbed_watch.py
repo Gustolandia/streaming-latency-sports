@@ -2,13 +2,19 @@
 """
 testbed_watch.py -- watch the Azure testbed from your own computer, and say when something is off.
 
-It changes nothing on the machines. Each cycle opens one SSH session to the driver and one to
-the broker (through the driver), reads what is happening, prints one status block and appends it
-to runs/azure_watch/. It raises a flag when:
+It reads the machines and changes nothing on them, with one exception it is told to make. Each
+cycle opens one SSH session to each driver and one to each broker (through its driver), reads
+what is happening, prints one status block per lane and appends it to runs/azure_watch/, and
+writes the latest look to runs/azure_watch/status.json. A lane is one machine pair: its own
+hosts file, its own machines, its own campaigns. It raises a flag when:
 
-  IDLE     the driver is running, and so billing, with no campaign on it
+  IDLE     a driver is running, and so billing, with no campaign on it
   stuck    a campaign is running but nothing under ~/sbl has changed for STALE_MIN minutes
+  stopped  a campaign stopped itself on a rule (a STOP_RULE line in its log): find the cause first
+  complete a campaign finished: collect its runs (scripts/collect_runs.py), then start the next
   failed   new "[FAIL]" trials appeared in a campaign log since the previous cycle
+  stop     a run's integrity verdict stopped its campaign (scripts/run_integrity.py)
+  repeat   a run's integrity verdict sent it back to the queue
   pilot    the pilot's verdicts.csv has a check marked no
   broken   a finished run has a negative trip: arrival before sending, so the harness is wrong
   odd      a finished run's median trip is above ODD_TRIP_MS, or it carried few messages
@@ -21,16 +27,23 @@ to runs/azure_watch/. It raises a flag when:
   receiver the receiver's namespace is gone, which means a reboot: run cloud/azure/session.sh
   unreachable  SSH fails; if the Azure CLI is present, the line also says whether the machine is
                running (billing) or deallocated (not billing)
+  pairs    two lanes run the same queue, or the lanes run different commits of the code
 
-What it cannot see: whether a number is right. It flags numbers no working harness produces,
-and leaves the rest to the analysis.
+The exception: with --stop-idle-min N, a lane whose machines have been IDLE for N minutes is
+stopped (deallocated), so it stops billing for CPUs.
+
+What it cannot see: whether a number is right. It flags numbers no working harness produces and
+the verdicts the runs already carry, and leaves the rest to the analysis.
 
 Usage:
     python scripts/testbed_watch.py              # every 5 minutes until Ctrl+C
     python scripts/testbed_watch.py --once       # one check; exit 1 if anything is an ALERT
+    python scripts/testbed_watch.py --lane a=cloud/hosts.env --lane b=cloud/hosts_b.env
+    python scripts/testbed_watch.py --lane a=cloud/hosts.env --stop-idle-min 20
 """
 import argparse
 import datetime
+import io
 import json
 import os
 import subprocess
@@ -67,18 +80,27 @@ echo "clock_offset_s=$(chronyc -c tracking 2>/dev/null | cut -d, -f5)"
 
 #: The trial directories campaigns write are runs/concurrency_* (the Oracle scripts and the pilot)
 #: and runs/law_* (cloud/azure/campaign.sh). A run counts as finished once its tti_summary.json
-#: exists, and only runs finished in the last @WINDOW@ minutes are read.
+#: exists, and only runs finished in the last @WINDOW@ minutes are read. The newest log is the
+#: campaign's own, so a stop rule or a completion is read from it alone.
 DRIVER_PROBE = COMMON_PROBE + r"""
 echo "campaign=$(pgrep -f 'cloud/azure/pilot.sh|cloud/azure/replicate_oracle.sh|cloud/azure/campaign.sh|cloud/campaigns/|run_concurrency_test.py|run_kafka_trial.sh|run_redis_trial.sh' | wc -l)"
 echo "stress=$(pgrep -x stress-ng | wc -l)"
 echo "netns=$(ip netns list 2>/dev/null | grep -c '^sblrecv')"
+queue=$(pgrep -af 'cloud/azure/campaign.sh' | grep -o 'runs/[^ ]*\.csv' | head -n 1)
 cd ~/sbl 2>/dev/null || exit 0
+echo "commit=$(git rev-parse --short HEAD 2>/dev/null)"
 now=$(date +%s)
 log=$(ls -t ./*.log 2>/dev/null | head -1)
 if [ -n "$log" ]; then
   echo "log=$log"
   echo "log_tail=$(tail -n 1 "$log" | tr -d '\r' | cut -c1-160)"
   echo "log_age_s=$(( now - $(stat -c %Y "$log") ))"
+  echo "stop_rule=$(grep 'STOP_RULE' "$log" | tail -n 1 | tr -d '\r' | cut -c1-200)"
+  echo "complete=$(grep -c 'CAMPAIGN_COMPLETE' "$log")"
+fi
+if [ -n "$queue" ]; then
+  echo "queue=$queue"
+  echo "progress=$(python3 scripts/run_queue.py report --queue "$queue" 2>/dev/null | head -n 1)"
 fi
 newest=$(ls -td runs/* runs/azure/*/* 2>/dev/null | head -1)
 [ -n "$newest" ] && echo "activity_age_s=$(( now - $(stat -c %Y "$newest") ))"
@@ -88,6 +110,9 @@ v=$(ls -t runs/azure/pilot/*/verdicts.csv 2>/dev/null | head -1)
 for d in $(find runs -maxdepth 1 -mindepth 1 -type d \( -name 'concurrency_*' -o -name 'law_*' \) -mmin -@WINDOW@ 2>/dev/null | head -n 20); do
   if [ -f "$d/tti_summary.json" ]; then
     echo "run=$(python3 scripts/pilot_checks.py run "$d" --warmup-s 0 2>&1 | tr -d '\n ')"
+  fi
+  if [ -f "$d/integrity.json" ]; then
+    echo "verdict=$(python3 scripts/run_integrity.py show "$d" 2>&1 | tr -d '\n')"
   fi
 done
 """
@@ -124,17 +149,19 @@ def ssh_argv(ssh, key, host, jump=None):
 
 
 def parse(text):
-    """Probe output as a dict; every run= line becomes one entry of "runs"."""
-    facts = {"runs": []}
+    """Probe output as a dict. Every run= line becomes one entry of "runs", and every verdict=
+    line one entry of "verdicts"."""
+    facts = {"runs": [], "verdicts": []}
     for line in text.splitlines():
         key, sep, value = line.partition("=")
         if not sep:
             continue
-        if key == "run":
+        if key in ("run", "verdict"):
             try:
-                facts["runs"].append(json.loads(value))
+                entry = json.loads(value)
             except ValueError:
-                facts["runs"].append({"unreadable": value})
+                entry = {"unreadable": value}
+            facts[key + "s"].append(entry)
         else:
             facts[key] = value.strip()
     return facts
@@ -214,6 +241,22 @@ def run_flags(runs):
     return flags
 
 
+def verdict_flags(verdicts):
+    """Flags about the integrity verdicts runs were given since the last look."""
+    flags = []
+    for found in verdicts:
+        where = found.get("run_dir", "a run")
+        reasons = "; ".join(found.get("reasons") or [])
+        if "unreadable" in found:
+            flags.append(("WARN", "odd: could not read a run's integrity verdict (%s)"
+                          % found["unreadable"][:80]))
+        elif found.get("verdict") == "stop":
+            flags.append(("ALERT", "stop: %s: %s" % (where, reasons)))
+        elif found.get("verdict") == "repeat":
+            flags.append(("WARN", "repeat: %s will run again: %s" % (where, reasons)))
+    return flags
+
+
 def evaluate(driver, broker, previous_fails=None):
     """Every flag for one cycle. A machine that could not be read is passed as None."""
     flags = []
@@ -228,6 +271,12 @@ def evaluate(driver, broker, previous_fails=None):
         if campaign and activity is not None and activity > STALE_MIN * 60:
             flags.append(("ALERT", "stuck: a campaign is running but nothing has changed for "
                           "%d minutes" % (activity // 60)))
+        if not campaign and driver.get("stop_rule"):
+            flags.append(("ALERT", "stopped: the campaign stopped itself (%s); find the cause "
+                          "before starting it again" % driver["stop_rule"]))
+        if not campaign and number(driver, "complete", int):
+            flags.append(("INFO", "complete: the campaign finished; collect its runs with "
+                          "scripts/collect_runs.py, then start the next"))
         if (number(driver, "stress", int) or 0) and busy is not None and busy < LOADED_BUSY_PCT:
             flags.append(("WARN", "load: stress-ng is running but the CPUs are only %.0f%% busy"
                           % busy))
@@ -241,6 +290,7 @@ def evaluate(driver, broker, previous_fails=None):
         if number(driver, "netns", int) == 0:
             flags.append(("WARN", "receiver: the namespace is gone; run cloud/azure/session.sh"))
         flags += run_flags(driver["runs"])
+        flags += verdict_flags(driver["verdicts"])
     if broker is not None:
         flags += machine_flags("broker", broker)
         docker = broker.get("docker", "")
@@ -278,33 +328,41 @@ def summary(name, address, facts):
         parts.append("containers %s" % (facts["docker"].strip() or "none"))
     if "campaign" in facts:
         parts.append("campaign %s" % ("running" if number(facts, "campaign", int) else "none"))
+    if facts.get("progress"):
+        parts.append("queue %s: %s" % (facts.get("queue", "?"), facts["progress"]))
     if "log" in facts:
         parts.append("log %s %s s ago: %s" % (facts["log"], facts.get("log_age_s", "?"),
                                               facts.get("log_tail", "")))
     return "  ".join(parts)
 
 
-def cycle(hosts, spec, key, ssh, run, runner, state, stamp, window_min=15):
-    """(lines, flags) for one look at the testbed."""
+def cycle(hosts, spec, key, ssh, run, runner, state, stamp, window_min=15, lane="main"):
+    """(lines, flags) for one look at one lane. `state` keeps what the next look compares."""
     driver, driver_err = probe(run, ssh_argv(ssh, key, hosts["DRIVER_PUBLIC"]),
                                DRIVER_PROBE.replace("@WINDOW@", str(window_min)))
     broker, broker_err = probe(run, ssh_argv(ssh, key, hosts["BROKER_PRIV"],
                                              jump=hosts["DRIVER_PUBLIC"]), BROKER_PROBE)
     flags = evaluate(driver, broker, state.get("fails"))
+    profile = hosts["AZ_PROFILE"]
+    own = azure_testbed.profile_spec(spec, profile)
     if driver is not None:
-        state["fails"] = number(driver, "fails", int)
-    names = dict((h["role"], n) for n, h in azure_testbed.profile_hosts(spec, hosts["AZ_PROFILE"]))
+        state.update(fails=number(driver, "fails", int), commit=driver.get("commit") or None,
+                     queue=driver.get("queue") or None)
+    else:
+        state.update(commit=None, queue=None)
+    machines = azure_testbed.profile_hosts(own, profile)
+    names = dict((h["role"], n) for n, h in machines)
     if driver is None or broker is None:
-        states = power_states(runner, spec["resource_group"])
+        states = power_states(runner, own["resource_group"])
         for role, facts, err in (("driver", driver, driver_err), ("broker", broker, broker_err)):
             if facts is None:
                 power = states.get(names[role])
                 flags.append(("ALERT", "unreachable: the %s does not answer over SSH (%s)%s"
                               % (role, err, "; Azure says: %s" % power if power else "")))
-    hourly = sum(spec["hourly_usd"][h["size"]]
-                 for _, h in azure_testbed.profile_hosts(spec, hosts["AZ_PROFILE"]))
-    lines = ["%s  profile %s, about $%.2f an hour while running"
-             % (stamp, hosts["AZ_PROFILE"], hourly)]
+    hourly = sum(own["hourly_usd"][h["size"]] for _, h in machines)
+    lines = ["%s  lane %s, profile %s, about $%.2f an hour while running%s"
+             % (stamp, lane, profile, hourly,
+                ", commit %s" % state["commit"] if state.get("commit") else "")]
     if driver is not None:
         lines.append("  " + summary("driver", hosts["DRIVER_PUBLIC"], driver))
         lines.append("  runs finished in the last %d min: %d" % (window_min, len(driver["runs"])))
@@ -314,24 +372,90 @@ def cycle(hosts, spec, key, ssh, run, runner, state, stamp, window_min=15):
     return lines, flags
 
 
+def cross_lane_flags(states):
+    """Flags about the lanes together: one queue on two pairs, or pairs on different code."""
+    flags = []
+    queues = {}
+    for lane, state in sorted(states.items()):
+        if state.get("queue"):
+            queues.setdefault(state["queue"], []).append(lane)
+    for queue, lanes in sorted(queues.items()):
+        if len(lanes) > 1:
+            flags.append(("ALERT", "pairs: lanes %s both run %s; a campaign runs on one pair"
+                          % (" and ".join(lanes), queue)))
+    commits = {state["commit"] for state in states.values() if state.get("commit")}
+    if len(commits) > 1:
+        flags.append(("WARN", "pairs: the lanes run different commits (%s); every pair should run "
+                      "the same code" % ", ".join(sorted(commits))))
+    return flags
+
+
+def stop_idle(lane, hosts, spec, runner, state, idle, now, after_min):
+    """Stop a lane's machines once they have been idle for `after_min` minutes.
+
+    Returns flags: none until then, INFO once they are stopped, ALERT if stopping failed. With
+    `after_min` at 0 the idle time is tracked and nothing is stopped.
+    """
+    if not idle:
+        state.pop("idle_since", None)
+        return []
+    since = state.setdefault("idle_since", now)
+    idle_min = int((now - since).total_seconds() // 60)
+    if not after_min or idle_min < after_min:
+        return []
+    profile = hosts["AZ_PROFILE"]
+    said = io.StringIO()
+    try:
+        code = azure_testbed.execute(
+            azure_testbed.power_steps(azure_testbed.profile_spec(spec, profile), profile, "stop"),
+            runner, said)
+    except azure_testbed.AzNotFound as exc:
+        code, said = 1, io.StringIO(str(exc))
+    state.pop("idle_since", None)
+    if code == 0:
+        return [("INFO", "stopped: lane %s had been idle for %d minutes; its machines were "
+                 "deallocated" % (lane, idle_min))]
+    last = (said.getvalue().strip().splitlines() or ["exit %d" % code])[-1]
+    return [("ALERT", "stopping: lane %s has been idle for %d minutes and could not be stopped "
+             "(%s)" % (lane, idle_min, last))]
+
+
+def parse_lane(text):
+    """(name, hosts file) from NAME=HOSTS_FILE."""
+    name, sep, path = text.partition("=")
+    if not (sep and name and path):
+        raise ValueError("a lane is NAME=HOSTS_FILE, for example b=cloud/hosts_b.env, not %r"
+                         % text)
+    return name, path
+
+
 def main(argv=None, run=subprocess.run, runner=None, sleep=time.sleep, clock=None, out=None):
     out = out or sys.stdout
     ap = argparse.ArgumentParser(description="Watch the Azure testbed and flag trouble")
-    ap.add_argument("--hosts", default=HOSTS_ENV)
+    ap.add_argument("--hosts", default=HOSTS_ENV, help="the hosts file, when there is one lane")
+    ap.add_argument("--lane", action="append", default=[],
+                    help="NAME=HOSTS_FILE, once for each machine pair")
     ap.add_argument("--spec", default=azure_testbed.SPEC)
     ap.add_argument("--key", default=KEY)
     ap.add_argument("--ssh", default="ssh")
     ap.add_argument("--interval", type=int, default=300, help="seconds between looks")
     ap.add_argument("--window-min", type=int, default=15,
                     help="read the runs that finished in this many minutes")
+    ap.add_argument("--stop-idle-min", type=int, default=0,
+                    help="stop a lane's machines once idle this many minutes (0: never)")
     ap.add_argument("--once", action="store_true", help="one look; exit 1 on any ALERT")
     ap.add_argument("--cycles", type=int, default=0, help="stop after this many looks (0: never)")
     ap.add_argument("--log-dir", default=LOG_DIR)
     args = ap.parse_args(argv)
     clock = clock or (lambda: datetime.datetime.now(datetime.timezone.utc))
     try:
-        hosts = read_hosts(args.hosts)
+        lanes = [parse_lane(text) for text in args.lane] or [("main", args.hosts)]
+        if len({name for name, _ in lanes}) != len(lanes):
+            raise ValueError("lane names repeat: %s" % ", ".join(name for name, _ in lanes))
+        hosts = {name: read_hosts(path) for name, path in lanes}
         spec = azure_testbed.load_spec(args.spec)
+        for name, _ in lanes:
+            azure_testbed.profile_hosts(spec, hosts[name]["AZ_PROFILE"])
     except (OSError, ValueError) as exc:
         print("ERROR: %s" % exc, file=out)
         return 2
@@ -339,18 +463,37 @@ def main(argv=None, run=subprocess.run, runner=None, sleep=time.sleep, clock=Non
     key = os.path.expanduser(args.key)
     os.makedirs(args.log_dir, exist_ok=True)
     cycles = 1 if args.once else args.cycles
-    state, alerts, done = {}, False, 0
+    states = {name: {} for name, _ in lanes}
+    alerts, done = False, 0
     try:
         while True:
             now = clock()
-            lines, flags = cycle(hosts, spec, key, args.ssh, run, runner, state,
-                                 now.strftime("%Y-%m-%d %H:%M:%S UTC"), args.window_min)
+            stamp = now.strftime("%Y-%m-%d %H:%M:%S UTC")
+            lines, everything, status = [], [], {"stamp": stamp, "lanes": {}}
+            for name, _ in lanes:
+                lane_lines, flags = cycle(hosts[name], spec, key, args.ssh, run, runner,
+                                          states[name], stamp, args.window_min, name)
+                idle = any(level == "IDLE" for level, _ in flags)
+                stopped = stop_idle(name, hosts[name], spec, runner, states[name], idle, now,
+                                    args.stop_idle_min)
+                lines += lane_lines + ["  %s %s" % flag for flag in stopped]
+                everything += flags + stopped
+                status["lanes"][name] = {"profile": hosts[name]["AZ_PROFILE"],
+                                         "commit": states[name].get("commit"),
+                                         "queue": states[name].get("queue"),
+                                         "flags": [list(flag) for flag in flags + stopped]}
+            together = cross_lane_flags(states)
+            lines += ["  %s %s" % flag for flag in together]
+            everything += together
+            status["pairs"] = [list(flag) for flag in together]
             text = "\n".join(lines)
             print(text, file=out)
             path = os.path.join(args.log_dir, "watch_%s.log" % now.strftime("%Y%m%d"))
             with open(path, "a", encoding="utf-8") as fh:
                 fh.write(text + "\n")
-            alerts = alerts or any(level == "ALERT" for level, _ in flags)
+            with open(os.path.join(args.log_dir, "status.json"), "w", encoding="utf-8") as fh:
+                fh.write(json.dumps(status, indent=2, sort_keys=True) + "\n")
+            alerts = alerts or any(level == "ALERT" for level, _ in everything)
             done += 1
             if cycles and done >= cycles:
                 break

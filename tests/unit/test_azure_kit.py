@@ -66,6 +66,8 @@ def test_the_pilot_uses_the_hook_the_trial_runners_read():
 WRITTEN = {
     "cloud/hosts.env": "written by scripts/azure_testbed.py hosts; the addresses belong to one "
                        "provisioning and are never committed",
+    "cloud/hosts_b.env": "written by scripts/azure_testbed.py hosts --profile matched-b; the "
+                         "second pair's addresses, never committed either",
 }
 
 

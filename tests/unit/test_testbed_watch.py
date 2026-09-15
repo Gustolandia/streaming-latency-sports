@@ -280,3 +280,165 @@ class TestMain:
         assert self.run(["--hosts", str(tmp_path / "none.env")])[0] == 2
         code, text = self.run(["--hosts", hosts_file, "--spec", str(tmp_path / "none.json")])
         assert code == 2 and text.startswith("ERROR:")
+
+    @staticmethod
+    def lanes(tmp_path):
+        a = tmp_path / "hosts_a.env"
+        a.write_text("BROKER_PRIV=10.1.1.21\nAZ_PROFILE=matched\nDRIVER_PUBLIC=4.223.79.212\n",
+                     encoding="utf-8")
+        b = tmp_path / "hosts_b.env"
+        b.write_text("BROKER_PRIV=10.2.1.21\nAZ_PROFILE=matched-b\nDRIVER_PUBLIC=20.0.0.10\n",
+                     encoding="utf-8")
+        return ["--lane", "a=%s" % a, "--lane", "b=%s" % b]
+
+    def test_two_lanes_in_one_look_with_a_status_file(self, tmp_path):
+        driver = DRIVER_OK + "commit=abc1234\nqueue=runs/azure/queues/a1.csv\n"
+        code, text = self.run(self.lanes(tmp_path) + ["--log-dir", str(tmp_path / "log"),
+                                                      "--once"],
+                              run=fake_run(driver=driver), runner=lambda a: (1, "", ""))
+        assert code == 1, "one queue on two pairs is an alert"
+        assert "lane a, profile matched," in text and "lane b, profile matched-b," in text
+        assert "pairs: lanes a and b both run runs/azure/queues/a1.csv" in text
+        with open(tmp_path / "log" / "status.json", encoding="utf-8") as fh:
+            status = json.load(fh)
+        assert sorted(status["lanes"]) == ["a", "b"] and status["lanes"]["b"]["commit"] == "abc1234"
+        assert status["lanes"]["a"]["profile"] == "matched" and status["pairs"][0][0] == "ALERT"
+
+    def test_an_idle_lane_is_stopped_after_the_minutes_given(self, tmp_path):
+        quiet = QUIET + MACHINE + "campaign=0\nnetns=1\n"
+        times = iter([STAMP, STAMP + datetime.timedelta(minutes=25)])
+        calls, out = [], io.StringIO()
+        code = tw.main(self.lanes(tmp_path)[:2] + ["--log-dir", str(tmp_path), "--cycles", "2",
+                                                   "--stop-idle-min", "20"],
+                       run=fake_run(driver=quiet), runner=lambda a: calls.append(a) or (0, "", ""),
+                       sleep=lambda seconds: None, clock=lambda: next(times), out=out)
+        assert code == 0 and "stopped: lane a had been idle for 25 minutes" in out.getvalue()
+        assert [c[1] for c in calls] == ["deallocate", "deallocate"]
+
+    @pytest.mark.parametrize("lane", ["nohosts", "=x.env", "a="])
+    def test_a_lane_that_is_not_name_equals_file(self, tmp_path, lane):
+        code, text = self.run(["--lane", lane, "--log-dir", str(tmp_path)])
+        assert code == 2 and "a lane is NAME=HOSTS_FILE" in text
+
+    def test_lane_names_that_repeat_or_a_profile_the_file_lacks(self, tmp_path):
+        good = tmp_path / "h.env"
+        good.write_text("BROKER_PRIV=1\nAZ_PROFILE=matched\nDRIVER_PUBLIC=2\n", encoding="utf-8")
+        code, text = self.run(["--lane", "a=%s" % good, "--lane", "a=%s" % good])
+        assert code == 2 and "lane names repeat" in text
+        unknown = tmp_path / "g.env"
+        unknown.write_text("BROKER_PRIV=1\nAZ_PROFILE=huge\nDRIVER_PUBLIC=2\n", encoding="utf-8")
+        code, text = self.run(["--lane", "x=%s" % unknown])
+        assert code == 2 and "no profile 'huge'" in text
+
+
+class TestLanesAndVerdicts:
+
+    def test_verdict_lines_are_read_and_flagged(self):
+        got = facts("verdict=%s\nverdict=%s\nverdict=%s\nverdict=not json\n" % (
+            json.dumps({"run_dir": "runs/law_a", "verdict": "stop",
+                        "reasons": ["1 message(s) arrived before they were sent"]}),
+            json.dumps({"run_dir": "runs/law_b", "verdict": "repeat",
+                        "reasons": ["the measured load was 60.0% against 75%"]}),
+            json.dumps({"run_dir": "runs/law_c", "verdict": "count", "reasons": []})))
+        found = tw.verdict_flags(got["verdicts"])
+        assert [f[0] for f in found] == ["ALERT", "WARN", "WARN"]
+        assert found[0][1] == "stop: runs/law_a: 1 message(s) arrived before they were sent"
+        assert found[1][1].startswith("repeat: runs/law_b will run again: the measured load")
+        assert "could not read a run's integrity verdict (not json)" in found[2][1]
+
+    def test_a_campaign_that_stopped_itself_or_finished(self):
+        rule = "2026-09-16T10:00:00Z STOP_RULE: the last 3 attempts all failed"
+        stopped = facts(QUIET + MACHINE + "campaign=0\nnetns=1\nstop_rule=%s\ncomplete=0\n" % rule)
+        assert ("ALERT", "stopped: the campaign stopped itself (%s); find the cause before "
+                "starting it again" % rule) in tw.evaluate(stopped, None)
+        finished = facts(QUIET + MACHINE + "campaign=0\nnetns=1\nstop_rule=\ncomplete=1\n")
+        assert [f[0] for f in tw.evaluate(finished, None)] == ["IDLE", "INFO"]
+        running = facts(DRIVER_OK + "stop_rule=old STOP_RULE: x\ncomplete=1\n")
+        assert tw.evaluate(running, facts(BROKER_OK), previous_fails=0) == [], (
+            "a running campaign's old log lines are not news")
+
+    def test_a_look_names_the_lane_its_commit_and_its_progress(self):
+        spec = azure_testbed.load_spec()
+        hosts = {"DRIVER_PUBLIC": "4.223.79.212", "BROKER_PRIV": "10.1.1.21",
+                 "AZ_PROFILE": "matched"}
+        driver = DRIVER_OK + ("commit=abc1234\nqueue=runs/azure/queues/a1.csv\n"
+                              "progress=runs: queued 90, running 1, done 19, failed 1\n")
+        state = {}
+        lines, _ = tw.cycle(hosts, spec, "k", "ssh", fake_run(driver=driver), None, state,
+                            "stamp", lane="a")
+        assert lines[0].startswith("stamp  lane a, profile matched,")
+        assert lines[0].endswith(", commit abc1234")
+        assert "queue runs/azure/queues/a1.csv: runs: queued 90" in "\n".join(lines)
+        assert state["commit"] == "abc1234" and state["queue"] == "runs/azure/queues/a1.csv"
+
+    def test_a_second_pairs_prices_and_group_are_its_own(self):
+        spec = azure_testbed.load_spec()
+        hosts = {"DRIVER_PUBLIC": "20.0.0.10", "BROKER_PRIV": "10.2.1.21",
+                 "AZ_PROFILE": "matched-b"}
+        asked = []
+
+        def az(args):
+            asked.append(args)
+            return 0, json.dumps([{"name": "sbl-azb-drv", "powerState": "VM deallocated"}]), ""
+        state = {"commit": "old", "queue": "q"}
+        lines, _ = tw.cycle(hosts, spec, "k", "ssh",
+                            fake_run(driver=Done("", 255, "timed out"), broker=Done("", 255, "")),
+                            az, state, "stamp", lane="b")
+        assert "about $%.2f an hour" % (0.426 + 0.107) in lines[0]
+        assert asked[0][-3:] == ["sbl-azb", "--output", "json"]
+        assert "Azure says: VM deallocated" in "\n".join(lines)
+        assert state["commit"] is None and state["queue"] is None
+
+    def test_pairs_that_share_a_queue_or_differ_in_code(self):
+        states = {"a": {"queue": "runs/azure/queues/a1.csv", "commit": "abc1234"},
+                  "b": {"queue": "runs/azure/queues/a1.csv", "commit": "def5678"},
+                  "arm": {"queue": None, "commit": None}}
+        found = tw.cross_lane_flags(states)
+        assert found[0] == ("ALERT", "pairs: lanes a and b both run runs/azure/queues/a1.csv; a "
+                            "campaign runs on one pair")
+        assert found[1][0] == "WARN" and "(abc1234, def5678)" in found[1][1]
+        same = {"a": {"queue": "x", "commit": "c"}, "b": {"queue": "y", "commit": "c"}}
+        assert tw.cross_lane_flags(same) == []
+
+    def test_idle_machines_are_stopped_only_after_the_minutes_given(self):
+        spec = azure_testbed.load_spec()
+        hosts = {"AZ_PROFILE": "matched-b"}
+        calls, state = [], {}
+
+        def runner(args):
+            calls.append(args)
+            return 0, "", ""
+        assert tw.stop_idle("b", hosts, spec, runner, state, True, STAMP, 20) == []
+        later = STAMP + datetime.timedelta(minutes=19)
+        assert tw.stop_idle("b", hosts, spec, runner, state, True, later, 20) == []
+        later = STAMP + datetime.timedelta(minutes=21)
+        assert tw.stop_idle("b", hosts, spec, runner, state, True, later, 20) == [
+            ("INFO", "stopped: lane b had been idle for 21 minutes; its machines were deallocated")]
+        assert [c[:2] + [c[3]] for c in calls] == [["vm", "deallocate", "sbl-azb"],
+                                                   ["vm", "deallocate", "sbl-azb"]]
+        assert "idle_since" not in state
+
+    def test_a_lane_busy_again_starts_its_idle_time_over(self):
+        state = {"idle_since": STAMP}
+        assert tw.stop_idle("a", {}, None, None, state, False, STAMP, 20) == [] and state == {}
+
+    def test_without_the_flag_idle_machines_are_only_reported(self):
+        state = {}
+        tw.stop_idle("a", {}, None, None, state, True, STAMP, 0)
+        later = STAMP + datetime.timedelta(hours=5)
+        assert tw.stop_idle("a", {}, None, None, state, True, later, 0) == []
+        assert state == {"idle_since": STAMP}
+
+    @pytest.mark.parametrize("answer,fragment", [
+        ((1, "", "AuthorizationFailed"), "(AuthorizationFailed)"),
+        (azure_testbed.AzNotFound("the Azure CLI (az) is not installed"), "not installed")])
+    def test_stopping_that_fails_is_an_alert(self, answer, fragment):
+        def runner(args):
+            if isinstance(answer, Exception):
+                raise answer
+            return answer
+        state = {"idle_since": STAMP}
+        found = tw.stop_idle("a", {"AZ_PROFILE": "matched"}, azure_testbed.load_spec(), runner,
+                             state, True, STAMP + datetime.timedelta(minutes=30), 20)
+        assert found[0][0] == "ALERT" and fragment in found[0][1]
+        assert "could not be stopped" in found[0][1]

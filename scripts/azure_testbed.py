@@ -33,6 +33,12 @@ Usage:
     python scripts/azure_testbed.py start --profile matched --yes
     python scripts/azure_testbed.py status
     python scripts/azure_testbed.py down --confirm sbl-az
+
+A profile can name its own region, resource group, network, firewall and prices. "matched-b" does:
+the matched layout in Italy North, so that a second x86 pair can run beside the first without
+sharing a machine. Every command takes --profile and acts in that profile's group:
+    python scripts/azure_testbed.py up --profile matched-b --ssh-source 203.0.113.7/32 --yes
+    python scripts/azure_testbed.py down --profile matched-b --confirm sbl-azb
 """
 import argparse
 import datetime
@@ -119,16 +125,31 @@ def host_problems(spec, subnet, name, host, seen):
     return out
 
 
+def host_vnet(spec, name):
+    """The network a machine's addresses must fit: that of the first profile naming it, or the
+    file's own when that profile names none."""
+    for profile in spec["profiles"].values():
+        if name in profile.get("hosts", []):
+            return profile.get("vnet", spec["vnet"])
+    return spec["vnet"]
+
+
 def spec_problems(spec):
     """Every reason the file cannot be built, so a broken file is fixed in one pass."""
     out = []
-    subnet = ipaddress.ip_network(spec["vnet"]["subnet_cidr"])
-    network = ipaddress.ip_network(spec["vnet"]["cidr"])
-    if not subnet.subnet_of(network):
-        out.append("subnet %s is not inside the network %s" % (subnet, network))
     seen = {}
+    for vnet in [spec["vnet"]] + [p["vnet"] for p in spec["profiles"].values() if "vnet" in p]:
+        if vnet["cidr"] in seen:
+            continue
+        seen[vnet["cidr"]] = {}
+        subnet = ipaddress.ip_network(vnet["subnet_cidr"])
+        network = ipaddress.ip_network(vnet["cidr"])
+        if not subnet.subnet_of(network):
+            out.append("subnet %s is not inside the network %s" % (subnet, network))
     for name, host in spec["hosts"].items():
-        out += host_problems(spec, subnet, name, host, seen)
+        vnet = host_vnet(spec, name)
+        out += host_problems(spec, ipaddress.ip_network(vnet["subnet_cidr"]), name, host,
+                             seen[vnet["cidr"]])
     for pname, profile in spec["profiles"].items():
         unknown = [h for h in profile["hosts"] if h not in spec["hosts"]]
         if unknown:
@@ -158,6 +179,25 @@ def profile_hosts(spec, profile):
         raise SpecError("no profile %r; the file has %s"
                         % (profile, ", ".join(sorted(spec["profiles"]))))
     return [(name, spec["hosts"][name]) for name in spec["profiles"][profile]["hosts"]]
+
+
+#: What a profile may name for itself instead of taking the file's. A pair in another region needs
+#: its own resource group and network, because an Azure network belongs to one region.
+PROFILE_OVERRIDES = ("location", "resource_group", "vnet", "nsg")
+
+
+def profile_spec(spec, profile):
+    """The testbed file as one profile sees it: its own region, group, network, firewall and
+    prices where it names them, and the file's everywhere else."""
+    profile_hosts(spec, profile)
+    own = spec["profiles"][profile]
+    resolved = dict(spec)
+    for key in PROFILE_OVERRIDES:
+        if key in own:
+            resolved[key] = own[key]
+    if "hourly_usd" in own:
+        resolved["hourly_usd"] = dict(spec["hourly_usd"], **own["hourly_usd"])
+    return resolved
 
 
 def gateway(spec):
@@ -586,8 +626,8 @@ def main(argv=None, runner=None, out=None):
     ap.add_argument("--spec", default=SPEC)
     sub = ap.add_subparsers(dest="command", required=True)
     parsers = {name: sub.add_parser(name) for name in PROFILE_COMMANDS + ("status", "down")}
-    for name in PROFILE_COMMANDS:
-        parsers[name].add_argument("--profile", default="matched")
+    for parser in parsers.values():
+        parser.add_argument("--profile", default="matched")
     for name in ("plan", "up"):
         parsers[name].add_argument("--ssh-source", default="")
     for name in ("up", "stop", "start"):
@@ -597,9 +637,7 @@ def main(argv=None, runner=None, out=None):
     args = ap.parse_args(argv)
     runner = runner or make_runner()
     try:
-        spec = load_spec(args.spec)
-        if args.command in PROFILE_COMMANDS:
-            profile_hosts(spec, args.profile)
+        spec = profile_spec(load_spec(args.spec), args.profile)
         return COMMANDS[args.command](spec, args, runner, out)
     except (RuntimeError, ValueError, OSError) as exc:
         print("ERROR: %s" % exc, file=out)

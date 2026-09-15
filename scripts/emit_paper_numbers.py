@@ -1409,7 +1409,7 @@ def mechanism_macros():
         pass
     # Round 72, R1. The corpus the workload characterisation covers, one row per match, and
     # the corpus the campaign replayed, one directory per plan. 3,315 and 11. The main text
-    # attached the first number to the verb "replay"; commit 6717ce3 had already removed that
+    # attached the first number to the verb "replay"; commit 484b915 had already removed that
     # exact claim from the abstract in July and gated the abstract against it, and the
     # redesign put it back one section lower, where the gate does not look. Emitting both
     # means a sentence can no longer name one of them without the other being available.

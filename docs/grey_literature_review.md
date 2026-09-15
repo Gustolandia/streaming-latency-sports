@@ -177,7 +177,7 @@ quantum turns sub-millisecond truth into rational-grid retention.** The paper's 
 ("the practice is missing") survives the grey literature and is strengthened by it: the
 practice is missing *even where the awareness is oldest* (OMB fixed CO in the same file).
 
-## F. Status after the v2 restructure (2026-08-07, commit 90d1136)
+## F. Status after the v2 restructure (2026-08-07, commit 510bcc4)
 
 The v2 manuscript is frozen at the 16-page TPDS ceiling, so A10 was applied selectively
 rather than in full. What v2 actually carries from this survey:

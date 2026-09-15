@@ -581,7 +581,7 @@ decision error through a calibrated win-probability proxy and an age-of-informat
 cost, and it belonged to the Journal of Sports Analytics framing described in the header. When
 that framing was retired the five scripts behind it (`win_probability.py`, `wp_calibration.py`,
 `wp_sensitivity.py`, `decision_staleness.py`, `make_worked_example.py`) and their result
-directories were deleted in commit `67efbfa`, along with 28 other obsolete scripts.
+directories were deleted in commit `32b70eb`, along with 28 other obsolete scripts.
 
 They are recoverable from git history if anyone wants them, and the reason they went is worth
 recording rather than hiding: the conversion was a *weighted rescaling of measured latency*.
@@ -1247,7 +1247,7 @@ its prior art in counter metrology (HP Application Note 162-1, 1970). Zenodo v2.
 ### 2.0.0 — 2026-08-07 — TPDS restructure + Zenodo deposit
 Manuscript restructured for **IEEE TPDS** (`IEEEtran` journal, 16-page ceiling test-enforced,
 39-page companion supplement); the OMB silent-deletion arm (the paper's second failure mode)
-integrated. Zenodo v2.0.0 archived from tag `v2.0.0` (commit `bebabec`) with SHA256 manifests:
+integrated. Zenodo v2.0.0 archived from tag `v2.0.0` (commit `6c2c46d`) with SHA256 manifests:
 code [10.5281/zenodo.21836305](https://doi.org/10.5281/zenodo.21836305), data
 [10.5281/zenodo.21836326](https://doi.org/10.5281/zenodo.21836326). 2,275 tests green.
 

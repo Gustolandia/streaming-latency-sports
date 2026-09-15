@@ -867,7 +867,7 @@ exemptions --- correctly, so the licence version is masked the way tables and co
 already were, rather than excused. A version is part of a name.
 
 **1ar. A median quoted alone is a bound, in the second number as in the first.** Commit
-`987e525` learned this about a remedy. Round 60 found it again in the paper's headline
+`9b10661` learned this about a remedy. Round 60 found it again in the paper's headline
 distortion: *"understating it 4.2x"* is a median over 70 conditions whose interquartile
 range runs 4.0x to 7.5x and reaches 14x, so the headline sat at the **bottom** of its own
 range and half the conditions were worse. The paragraph two sentences below it already
@@ -1574,11 +1574,11 @@ the names you expect cannot see the values you did not.** Ask the parser what it
 rest.
 
 **1cd. A gate is scoped to where the defect was first seen, and the defect moves.** On
-2026-07-26 commit `6717ce3` --- *"Stop the abstract claiming the benchmark ran on 3,315
+2026-07-26 commit `484b915` --- *"Stop the abstract claiming the benchmark ran on 3,315
 matches"* --- removed a conflation between the corpus the workload characterisation covers
 (3,315 matches) and the corpus the campaign replays (eleven plans), and installed
 `test_the_two_corpora_are_not_conflated` to keep it out. That test reads the abstract, because
-the abstract was where the sentence had been. Six weeks later `2e15b93` wrote *"We replay
+the abstract was where the sentence had been. Six weeks later `13d1b40` wrote *"We replay
 3,315 matches"* into Section IV-D, one section below, and nothing said anything for two more
 rounds until round 72's referee counted the plan directories.
 

@@ -29,7 +29,7 @@ It was built by matching section titles between the two documents rather than by
 | S5 | Load-axis post-mortem: the failed M/G/1 + registered-bracket detail | main text mixture development (`sec:twostate` area) | pre-move text at commit 8480957 |
 | S24 | Campaign ledger schema (column dictionary) | new (referee minor 12) | n/a |
 | S24 | OMB distributed-mode failure diagnostics (per-attempt version, logs, signature) | new (referee M2); data in `docs/results/external/dist_diag/` | n/a |
-| S5 | The E1 reconciliation in full (windowed re-analysis, tab:e1rep) | main text `sec:e1` (95 lines -> 8-line summary) | pre-move text at commit d5e4d02 |
+| S5 | The E1 reconciliation in full (windowed re-analysis, tab:e1rep) | main text `sec:e1` (95 lines -> 8-line summary) | pre-move text at commit 6251050 |
 
 Sections S2 onward were added in the v2 IEEEtran/TPDS restructure (2026-08), which compressed
 the main text from 58 acmsmall pages to 16 IEEEtran pages. Every block below left a compact stub

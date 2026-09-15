@@ -7,8 +7,8 @@ Round 52 found the supplement's first page stale since round 4. It carried
 
 against a paper bylined to four authors, under a title the paper does not have, with the
 string "Faster-than-Light" occurring nowhere in `supplement.tex` and no `\markboth` to put
-anything in the running head either. The author block was written in commit `01dc662` and had
-not been touched since; the paper went to four authors in `07c57bc`. The front matter of one
+anything in the running head either. The author block was written in commit `836b0a9` and had
+not been touched since; the paper went to four authors in `f57095e`. The front matter of one
 document moved and the front matter of the other did not.
 
 It survived forty-eight rounds of review because every gate in this repository reads content.
@@ -115,7 +115,7 @@ class TestTheTwoDocumentsAgreeOnWhoWroteThem:
     def test_the_paper_still_has_two_authors(self):
         """If the author list ever changes, this file should be read, not silently passed.
 
-        It worked. The list stood at four from `07c57bc` until 2026-09-10, when two authors
+        It worked. The list stood at four from `f57095e` until 2026-09-10, when two authors
         withdrew and this assertion failed rather than the byline changing under a green
         suite. The count is the whole point of the check, so it moves to two and keeps doing
         the same job; `test_author_withdrawals.py` pins the rest of the front matter to match.

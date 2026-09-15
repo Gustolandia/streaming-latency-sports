@@ -13,12 +13,12 @@ equation that does not contain it.
 
 **No existing gate could see this, and `\\ref` could not have prevented it.** The pointer
 resolved. It resolved to a real, numbered, labelled equation in the same document. What had
-happened is that Equation 3 was *replaced in its own slot*: at commit 4c22c33 it read
+happened is that Equation 3 was *replaced in its own slot*: at commit 0713fb4 it read
 
     Pr[inversion] = F_Delta(-T_true)
 
 which is exactly the law the sentence claims, and the rename that turned "inversion" into
-"negative span" (5cc1600) put the identity there instead. Every `\\ref` followed the label,
+"negative span" (501334b) put the identity there instead. Every `\\ref` followed the label,
 because that is what labels do. The prose describing what the label pointed at did not,
 because prose has no labels. Nothing in the build failed, because nothing was broken --
 only untrue.

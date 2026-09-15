@@ -53,7 +53,7 @@ class TestR1TheSectionOpensOnItsEvidence:
 
 
 class TestR2AMedianTravelsWithItsSpread:
-    """Commit 987e525: a remedy quoted by its median is a bound. So is a distortion."""
+    """Commit 9b10661: a remedy quoted by its median is a bound. So is a distortion."""
 
     def test_the_understatement_carries_denominator_and_interquartile_range(self, paper):
         i = paper.find(r"\understateFactor")

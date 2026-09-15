@@ -1,9 +1,9 @@
 """Tests for scripts/law_design.py.
 
 A run list decides at which trips the law is tested, so these tests pin the arithmetic that
-places them: the points against the slice and the tick, the delays against the measured
-baseline, the unreachable points kept visible, the core-count block's prediction from the
-machine's own constant, and the repeats against the measured spread.
+places them: the points against the slice and the tick, the delays against the session's
+calibration or the measured baseline, the unreachable points kept visible, the core-count
+block's prediction from the machine's own constant, and the repeats against the measured spread.
 """
 import io
 import json
@@ -26,6 +26,15 @@ AZURE = {"release": "6.8.0-1064-azure", "tick_ms": 1.0, "config_hz": 1000, "onli
          "tunable_scaling": "log", "base_slice_ns": 2800000, "normalised_slice_ns": 700000}
 BASELINE = {"kafka": {"50": 0.40, "75": 0.45, "88": 0.55},
             "redis": {"50": 0.25, "75": 0.30, "88": 0.40}}
+
+#: What delay_calibration.py fit gives on a machine like the pilot's, trimmed to what placing
+#: reads.
+CALIBRATION = {
+    "kafka": {"75": {"model": "line", "intercept_ms": 3.5, "slope": 0.89, "gate": {"ok": True},
+                     "steps": [[0.0, 3.5], [1.0, 4.39], [2.0, 5.28], [4.0, 7.06], [8.0, 10.62]]}},
+    "redis": {"75": {"model": "line", "intercept_ms": 2.2, "slope": 1.25, "gate": {"ok": True},
+                     "steps": [[0.0, 2.2], [1.0, 3.45], [2.0, 4.7], [4.0, 7.2], [8.0, 12.2]]}},
+}
 
 
 def by_id(setups):
@@ -52,8 +61,9 @@ class TestPoints:
 
 class TestBlocks:
 
-    @pytest.mark.parametrize("block,size", [("B0", 6), ("P0", 16), ("A1", 96), ("A2", 32),
-                                            ("A3", 72), ("A4", 48), ("A5", 48), ("A7", 24)])
+    @pytest.mark.parametrize("block,size", [("B0", 6), ("C0", 12), ("P0", 16), ("A1", 96),
+                                            ("A2", 32), ("A3", 72), ("A4", 48), ("A5", 48),
+                                            ("A7", 24)])
     def test_every_block_is_its_full_product(self, block, size):
         setups, unreachable = ld.make_setups(block, 1.0, BASELINE, AZURE)
         assert len(setups) + len(unreachable) == size
@@ -68,6 +78,7 @@ class TestBlocks:
         assert (setup["target_trip_ms"], setup["baseline_trip_ms"], setup["delay_ms"]) == (
             1.9, 0.3, 1.6)
         assert setup["slice_ns"] == 1500000 and setup["trace_half"] is True
+        assert setup["placed_by"] == "baseline"
 
     def test_ids_are_unique_and_can_name_a_kafka_topic(self):
         for block in ld.BLOCKS:
@@ -107,6 +118,60 @@ class TestBlocks:
             ld.make_setups("A3", 1.0, partial, AZURE)
 
 
+class TestCalibrationBlock:
+
+    def test_the_staircase_doubles_from_one_millisecond(self):
+        assert ld.c0_steps(8.0) == [1.0, 2.0, 4.0, 8.0]
+        assert ld.c0_steps(20.0) == [1.0, 2.0, 4.0, 8.0, 16.0, 32.0]
+        assert ld.c0_steps(0.5) == [1.0]
+
+    def test_zero_delay_runs_twice_per_round_at_the_kernels_slice(self):
+        setups = by_id(ld.make_setups("C0", 1.0, settings=AZURE)[0])
+        kafka = sorted(s["delay_ms"] for s in setups.values() if s["backend"] == "kafka")
+        assert kafka == [0.0, 0.0, 1.0, 2.0, 4.0, 8.0]
+        assert setups["C0-redis-l75-d0b"]["slice_ns"] is None
+        assert setups["C0-kafka-l75-d8000"]["delay_ms"] == 8.0
+
+    def test_a_longer_staircase_at_the_sessions_own_loads(self):
+        setups = ld.make_setups("C0", 4.0, loads=(50, 88), up_to_ms=16.0)[0]
+        assert len(setups) == 2 * 2 * 7
+        assert {s["load_pct"] for s in setups} == {50, 88}
+
+    def test_a_block_that_plans_trips_keeps_its_own_loads(self):
+        with pytest.raises(ValueError, match="fixes its own loads"):
+            ld.make_setups("A1", 1.0, BASELINE, AZURE, loads=(50,))
+
+
+class TestPlacingFromTheCalibration:
+
+    def test_a_delay_is_read_off_the_calibration(self):
+        setups = by_id(ld.make_setups("A1", 1.0, settings=AZURE, calibration=CALIBRATION)[0])
+        setup = setups["A1-redis-l75-s3000-f15h"]
+        assert setup["target_trip_ms"] == pytest.approx(4.5)
+        assert setup["delay_ms"] == pytest.approx((4.5 - 2.2) / 1.25, abs=1e-3)
+        assert setup["placed_by"] == "calibration"
+        assert setup["baseline_trip_ms"] == pytest.approx(2.2)
+
+    def test_points_the_calibration_did_not_measure_are_kept_visible(self):
+        _, unreachable = ld.make_setups("A1", 1.0, settings=AZURE, calibration=CALIBRATION)
+        ids = {u["id"] for u in unreachable}
+        assert "A1-kafka-l75-s750-p05s" in ids, "below the zero-delay trip"
+        assert "A1-kafka-l75-s6000-f2sh" in ids, "beyond the longest step"
+        assert all(u["delay_ms"] is None for u in unreachable)
+
+    def test_a_calibration_missing_a_load_or_failing_its_gate_places_nothing(self):
+        with pytest.raises(ValueError, match="no kafka entry at 50% load"):
+            ld.make_setups("A3", 1.0, settings=AZURE, calibration=CALIBRATION)
+        failed = {"kafka": {"75": dict(CALIBRATION["kafka"]["75"], gate={"ok": False})},
+                  "redis": CALIBRATION["redis"]}
+        with pytest.raises(ValueError, match="failed its gate"):
+            ld.make_setups("A1", 1.0, settings=AZURE, calibration=failed)
+
+    def test_a_design_from_the_calibration_alone(self):
+        made = ld.design("A7", AZURE, None, 10, 3, calibration=CALIBRATION)
+        assert made["calibration"] is CALIBRATION and made["setups"]
+
+
 class TestRounds:
 
     def test_the_spread_the_old_data_showed_needs_about_26(self):
@@ -128,6 +193,7 @@ class TestDesign:
     def test_the_pilot_blocks_keep_their_own_rounds(self):
         assert ld.design("P0", AZURE, BASELINE, 99, 1)["rounds"] == 5
         assert ld.design("B0", AZURE, None, 0, 1)["rounds"] == 3
+        assert ld.design("C0", AZURE, None, 0, 1)["rounds"] == 2
 
     @pytest.mark.parametrize("args,fragment", [
         (("Z9", AZURE, BASELINE, 5, 1), "no block 'Z9'"),
@@ -220,6 +286,20 @@ class TestMain:
         code, text = self.run(["rounds", "--queue", str(queue), "--block", "A1"],
                               summarise=lambda d, w: summary)
         assert code == 0 and json.loads(text)["rounds"] == 15
+
+    def test_design_places_from_a_calibration_file_and_c0_takes_loads(self, tmp_path):
+        settings = tmp_path / "settings.json"
+        settings.write_text(json.dumps(AZURE), encoding="utf-8")
+        cal = tmp_path / "cal.json"
+        cal.write_text(json.dumps({"calibration": CALIBRATION}), encoding="utf-8")
+        code, text = self.run(["design", "--block", "A7", "--settings", str(settings),
+                               "--calibration", str(cal), "--rounds", "10", "--seed", "2",
+                               "--out", str(tmp_path / "a7.json")])
+        assert code == 0 and text.startswith("A7: ")
+        code, text = self.run(["design", "--block", "C0", "--settings", str(settings),
+                               "--loads", "50,88", "--up-to-ms", "16", "--seed", "2",
+                               "--out", str(tmp_path / "c0.json")])
+        assert code == 0 and text.startswith("C0: 28 setups x 2 rounds = 56 runs")
 
     def test_errors_are_lines(self, tmp_path):
         code, text = self.run(["design", "--block", "A1", "--settings",

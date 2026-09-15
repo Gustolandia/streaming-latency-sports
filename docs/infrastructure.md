@@ -1378,13 +1378,13 @@ same edit from a different angle: the pointer promised a record and S33.4 carrie
 The substance of R2 stands, because it was never about the pointer: *most published
 comparisons* is gone and the concession reads as the condition it always was.
 
-The rule this leaves is not "distrust the referee". Seven of nine items were right and two of
+The rule this leaves is not "distrust the review". Seven of nine items were right and two of
 those three required fixes were defects nobody else had found. It is that **an internal
 review reads the documents and not the correspondence**, so its suggestions land as
-proposals in a place where requirements from correspondence are already law. The gates are where that law
-is written down, which is the whole argument for putting a requirement from an email into a
-test rather than into a plan file --- and this round is the first time that argument paid out
-against a reviewer rather than against a forgetful author.
+proposals in a place where requirements from correspondence are already law. The gates are
+where that law is written down, which is the whole argument for putting a requirement from an
+email into a test rather than into a plan file --- and this round is the first time that
+argument paid out against a reviewer rather than against a forgetful author.
 
 **1bv. A gate can pass because of where a line happens to wrap.**
 `test_placement_claims.py` looks for sentences in the supplement claiming material is "here

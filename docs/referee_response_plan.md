@@ -1,9 +1,8 @@
 # Referee response plan
 
-> All referee reports referenced in this document are internal reviews, authored
-> within the project as QA before any journal submission. The manuscript has
-> never been submitted to TOMPECS, TPDS, or any other journal; no verdict below was issued
-> by a journal or its reviewers.
+> All referee reports referenced in this document are internal reviews, held within the
+> project before any journal submission. The manuscript has never been submitted to TOMPECS,
+> TPDS, or any other journal; no verdict below was issued by a journal's reviewer.
 
 A demanding internal review recommended **reject in present form** for the
 then-TOMPECS-targeted draft. This

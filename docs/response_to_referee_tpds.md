@@ -1,10 +1,9 @@
-# Response to internal review — TPDS-standard round 1
+# Response to internal review — TPDS standard, round 1
 
-> **Internal QA artefact — internal review.** The "referee reports" answered below came
-> from reviews held inside the project, before any journal submission, to
-> stress-test the manuscript against TPDS standards (source report:
-> `REFEREE_REPORT_TPDS.md`, kept untracked). The paper has not been submitted to
-> IEEE TPDS; no text here originates from, or is addressed to, any journal or its reviewers.
+> **Internal review.** The reports answered below came from reviews held inside the project,
+> before any journal submission, to test the manuscript against TPDS standards. The reports
+> themselves are not public. The paper has not been submitted to IEEE TPDS; no text here
+> originates from, or is addressed to, any journal or its reviewers.
 
 Manuscript: *When the Interval Is Smaller Than the Instrument: Two Ways Streaming Latency
 Benchmarks Fail on Sub-Millisecond Paths* (title shortened per your minor 1).

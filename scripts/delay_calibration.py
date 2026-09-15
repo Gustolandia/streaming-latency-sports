@@ -254,6 +254,7 @@ def fit_entry(runs, seed):
              "lack_of_fit": shape, "steps": steps, "model": "segments" if line_fails else "line"}
     residuals = [r["trip"] - predict(entry, r["x"]) for r in runs]
     checks = gotit_checks(runs)
+    zero_gotit = [r["gotit"] for r in runs if r["step"] == 0.0 and r["gotit"] is not None]
     gate = {
         "never_negative": sum(r["negative"] for r in runs) == 0,
         "slope_above_half": low > MIN_SLOPE,
@@ -264,7 +265,10 @@ def fit_entry(runs, seed):
     }
     gate["ok"] = all(gate.values())
     entry.update(residual_max_ms=max(abs(v) for v in residuals),
-                 residual_sd_ms=statistics.pstdev(residuals), gotit=checks, gate=gate)
+                 residual_sd_ms=statistics.pstdev(residuals), gotit=checks, gate=gate,
+                 # What each later run's own "got it" median is held against, run by run
+                 # (run_integrity.py): the median over this session's zero-delay runs.
+                 gotit_zero_median_ms=statistics.median(zero_gotit) if zero_gotit else None)
     return entry
 
 

@@ -59,8 +59,9 @@ runs/
 # provenance for the audit's rejection counts, not tracked.
 docs/results/concurrency_concurrency_*/
 
-# Cloud testbed addresses (ephemeral, per-provisioning)
+# Cloud testbed addresses (ephemeral, per-provisioning), one file per machine pair
 cloud/hosts.env
+cloud/hosts_b.env
 paper.aux
 paper.log
 paper.out

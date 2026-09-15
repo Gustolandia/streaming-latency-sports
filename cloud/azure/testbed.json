@@ -2,7 +2,7 @@
   "about": "The Azure testbed, one entry per machine. Read by scripts/azure_testbed.py, which prints every command before anything runs. Prices are list prices for planning only; the preflight reads the real CPU limits from the subscription.",
   "resource_group": "sbl-az",
   "location": "swedencentral",
-  "location_note": "On the free-trial subscription (checked 2026-09-14) North Europe refuses every size below (NotAvailableForSubscription). Sweden Central allows both profiles and was the cheapest of the European regions that do.",
+  "location_note": "On the free-trial subscription (checked 2026-09-14) North Europe refuses every size below (NotAvailableForSubscription). Sweden Central allows both profiles and was the cheapest of the European regions that do. On the pay-as-you-go subscription (checked 2026-09-15) Italy North and Poland Central also offer the x86 sizes, and only Sweden Central offers the Arm ones. A region allows 10 CPUs, stopped machines included, which is why the second x86 pair (matched-b) lives in Italy North.",
   "public_ip_note": "Every machine has a static public address so that it can reach out: on this network (created 2026-09-14) a machine without one had no route to apt or GitHub, and the broker's first boot set up nothing. A public address also matches the Oracle testbed, where every machine had one. Nothing comes in except SSH from the one address the firewall rule names.",
   "admin_user": "ubuntu",
   "ssh_public_key": "~/.ssh/azure_sbl.pub",
@@ -54,6 +54,21 @@
       "image": "arm64-jammy",
       "private_ip": "10.1.1.41",
       "public_ip": true
+    },
+    "sbl-azb-drv": {
+      "role": "driver",
+      "size": "Standard_D8as_v6",
+      "image": "x64-jammy",
+      "private_ip": "10.2.1.10",
+      "receiver_ip": "10.2.1.11",
+      "public_ip": true
+    },
+    "sbl-azb-b1": {
+      "role": "broker",
+      "size": "Standard_D2as_v6",
+      "image": "x64-jammy",
+      "private_ip": "10.2.1.21",
+      "public_ip": true
     }
   },
   "profiles": {
@@ -64,6 +79,23 @@
     "arm": {
       "hosts": ["sbl-az-arm-drv", "sbl-az-arm-b1"],
       "about": "the materially different machine: the same layout on Azure's Arm chip, one core per CPU"
+    },
+    "matched-b": {
+      "hosts": ["sbl-azb-drv", "sbl-azb-b1"],
+      "about": "a second pair of the matched layout, in Italy North, so that two x86 campaigns can run at the same time without sharing a machine",
+      "location": "italynorth",
+      "resource_group": "sbl-azb",
+      "vnet": {
+        "name": "sbl-vnet",
+        "cidr": "10.2.0.0/16",
+        "subnet": "sbl-subnet",
+        "subnet_cidr": "10.2.1.0/24"
+      },
+      "nsg": "sbl-nsg",
+      "hourly_usd": {
+        "Standard_D2as_v6": 0.107,
+        "Standard_D8as_v6": 0.426
+      }
     }
   },
   "hourly_usd": {
@@ -72,5 +104,5 @@
     "Standard_D2ps_v6": 0.0748,
     "Standard_D8ps_v6": 0.299
   },
-  "hourly_usd_source": "prices.azure.com retail API, Linux pay-as-you-go in swedencentral, read 2026-09-14; disks and public addresses are extra"
+  "hourly_usd_source": "prices.azure.com retail API, Linux pay-as-you-go in swedencentral, read 2026-09-14, and in italynorth for the matched-b profile, read 2026-09-15; disks and public addresses are extra"
 }

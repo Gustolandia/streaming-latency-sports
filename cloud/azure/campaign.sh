@@ -4,6 +4,8 @@
 #
 # Run on the driver, from the checkout, after cloud/azure/session.sh and a passing pilot:
 #     nohup bash cloud/azure/campaign.sh runs/azure/queues/a1.csv > campaign_a1.log 2>&1 &
+# and, once the session's delay calibration (C0) has been fitted, with it:
+#     CALIBRATION=runs/azure/calibration.json nohup bash cloud/azure/campaign.sh QUEUE > LOG 2>&1 &
 # To stop after the run in progress:  touch runs/azure/STOP
 #
 # One run, in order:
@@ -16,13 +18,19 @@
 #   4. trace     A1 and A3 runs whose queue key hashes even record the timestamping processes'
 #                run-queue delays with bpftrace (A6);
 #   5. run       one trial of one backend on a constant-rate plan, the consumer behind the
-#                receiver's address, go-first priority where the setup asks for it;
-#   6. checks    arrival minus sending never negative, and the settings still as set;
-#   7. record    everything lands in the run's directory, and the queue marks the run done.
+#                receiver's address, go-first priority where the setup asks for it; the clock's
+#                offset and the CPU counters are logged just before and just after it;
+#   6. checks    scripts/run_integrity.py, on this machine, as soon as the trial ends: the run
+#                counts, is repeated, or stops the campaign, and integrity.json says why;
+#   7. record    everything lands in the run's directory, with lane.json naming the machine pair
+#                and the commit, and the queue marks the run done or failed.
 #
-# Only a mechanical failure fails a run and puts it back in the queue: a setting that did not
-# apply, a trial that exited non-zero, files that are missing. A run that completes is done
-# whatever it measured. Its checks sit next to it, and the analysis decides.
+# A run is repeated only when a step failed or a condition it was meant to have did not take:
+# too few messages, the send rate or the load off target, the delay or the settings not as set,
+# the clock not logged. A run whose conditions held is done whatever it measured. Two things stop
+# the campaign, with a STOP_RULE line in this log: a run that puts the instrument in doubt (a
+# message that arrived before it was sent, or a "got it" median that left the session's
+# calibration), and a queue whose attempts keep failing (scripts/run_integrity.py guard).
 #
 # RATE and DURATION set the plan. The default, 50 messages a second for 130 s, keeps 5,000
 # messages after the 30 s warm-up. The effect is strongest at sparse rates, so the spread pilot
@@ -36,6 +44,8 @@ RATE="${RATE:-50}"
 DURATION="${DURATION:-130}"
 WARMUP_S="${WARMUP_S:-30}"
 STOP_FILE="${STOP_FILE:-runs/azure/STOP}"
+CALIBRATION="${CALIBRATION:-}"
+LANE="${LANE:-${AZ_PROFILE:-unknown}}"
 SYN_PLAN="data/synthetic/constant_r${RATE}_d${DURATION}/replay_plan.csv"
 TRACE_BT="runs/azure/runqlat.bt"
 ALL_CPUS=$(nproc --all)
@@ -64,6 +74,9 @@ trap finish_campaign EXIT
 # --- before the first run: refuse to spend runs on a testbed that is not ready -----------------
 mkdir -p runs/azure
 [ -f "$QUEUE" ] || { log "FATAL: no queue at $QUEUE"; exit 1; }
+if [ -n "$CALIBRATION" ] && [ ! -f "$CALIBRATION" ]; then
+  log "FATAL: CALIBRATION names $CALIBRATION, which does not exist"; exit 1
+fi
 sudo -n true 2>/dev/null || { log "FATAL: the runner needs passwordless sudo"; exit 1; }
 command -v chrt >/dev/null || { log "FATAL: chrt is not installed"; exit 1; }
 ip netns list | grep -q '^sblrecv' || {
@@ -122,8 +135,8 @@ fi
 
 # --- one run ---------------------------------------------------------------------------------
 run_one () {
-  local want_cpus="${CPUS:-$ALL_CPUS}" stress_pid sampler_pid rc traced=0 wrap_sched=""
-  local check_args=()
+  local want_cpus="${CPUS:-$ALL_CPUS}" stress_pid sampler_pid rc traced=0 wrap_sched="" verdict
+  local check_args=() calibration_args=()
   reap
   sudo python3 scripts/sched_settings.py set-cpus "$want_cpus" > "$RUN_DIR/set_cpus.txt" 2>&1 || {
     REASON="online CPUs did not become $want_cpus"; return; }
@@ -155,6 +168,8 @@ run_one () {
   fi
 
   [ -n "$PRIORITY" ] && wrap_sched="sudo chrt -f 80"
+  chronyc -c tracking > "$RUN_DIR/clock_before.txt" 2>/dev/null
+  head -n 1 /proc/stat > "$RUN_DIR/stat_before.txt"
   if [ "$BACKEND" = kafka ]; then
     SBL_CONSUMER_WRAP="sudo ip netns exec sblrecv sudo -u $ME" SBL_SCHED_WRAP="$wrap_sched" \
       timeout -k 30 $(( DURATION + 300 )) bash scripts/run_kafka_trial.sh "$RUN_ID" "$SYN_PLAN" \
@@ -168,6 +183,8 @@ run_one () {
       -IDLE_SECONDS 15 > "$RUN_DIR/trial.log" 2>&1
     rc=$?
   fi
+  head -n 1 /proc/stat > "$RUN_DIR/stat_after.txt"
+  chronyc -c tracking > "$RUN_DIR/clock_after.txt" 2>/dev/null
 
   if [ "$traced" = 1 ]; then sudo pkill -INT -x bpftrace 2>/dev/null; sleep 3; fi
   kill -TERM "$sampler_pid" 2>/dev/null; wait "$sampler_pid" 2>/dev/null
@@ -186,10 +203,21 @@ run_one () {
   local drift_exit=$?
   printf '{"never_negative_exit": %d, "settings_after_exit": %d, "traced": %d}\n' \
     "$negative_exit" "$drift_exit" "$traced" > "$RUN_DIR/checks_exit.json"
+
+  [ -n "$CALIBRATION" ] && calibration_args=(--calibration "$CALIBRATION")
+  verdict=$(python3 scripts/run_integrity.py check "$RUN_DIR" --rate "$RATE" \
+    --duration "$DURATION" --warmup-s "$WARMUP_S" "${calibration_args[@]}" \
+    2> "$RUN_DIR/integrity.err")
+  case $? in
+    0) ;;
+    3) STOP_REASON="${verdict#stop: }"; REASON="$verdict" ;;
+    *) verdict="${verdict#repeat: }"
+       REASON="integrity: ${verdict:-the check itself failed; see $RUN_DIR/integrity.err}" ;;
+  esac
 }
 
 # --- the queue -------------------------------------------------------------------------------
-log "campaign: $QUEUE; plan $SYN_PLAN at speedup $SPEEDUP; warm-up ${WARMUP_S} s; $ALL_CPUS CPUs"
+log "campaign: $QUEUE on lane $LANE; plan $SYN_PLAN at speedup $SPEEDUP; warm-up ${WARMUP_S} s; $ALL_CPUS CPUs${CALIBRATION:+; calibration $CALIBRATION}"
 RECOVER="--recover"
 while true; do
   if [ -f "$STOP_FILE" ]; then
@@ -222,15 +250,27 @@ PY
   RUN_DIR="runs/$RUN_ID"
   mkdir -p "$RUN_DIR"
   echo "$ROW" > "$RUN_DIR/queue_row.json"
+  printf '{"lane": "%s", "profile": "%s", "driver": "%s", "commit": "%s"}\n' "$LANE" \
+    "${AZ_PROFILE:-unknown}" "$(hostname)" "$(git rev-parse HEAD 2>/dev/null)" > "$RUN_DIR/lane.json"
   log "run $KEY: $BACKEND, load $LOAD%, slice ${SLICE_NS:-kernel default}, delay $DELAY_MS ms${PRIORITY:+, go-first}${CPUS:+, $CPUS CPUs online}"
   REASON=""
+  STOP_REASON=""
   run_one
   if [ -n "$REASON" ]; then
     echo "  [FAIL] $KEY: $REASON"
     python3 scripts/run_queue.py finish --queue "$QUEUE" --key "$KEY" --status failed \
-      --reason "$REASON"
+      --reason "$REASON" --run-dir "$RUN_DIR"
   else
     python3 scripts/run_queue.py finish --queue "$QUEUE" --key "$KEY" --status done \
       --run-dir "$RUN_DIR"
+  fi
+  if [ -n "$STOP_REASON" ]; then
+    log "STOP_RULE: $STOP_REASON"
+    break
+  fi
+  GUARD=$(python3 scripts/run_integrity.py guard --queue "$QUEUE")
+  if [ "$?" = 3 ]; then
+    log "STOP_RULE: $GUARD"
+    break
   fi
 done

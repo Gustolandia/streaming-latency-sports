@@ -190,6 +190,12 @@ class TestTheGate:
         gate = dc.fit_entry(c0_runs(**kwargs), seed=1)["gate"]
         assert not gate["ok"] and not gate[failed]
 
+    def test_the_zero_delay_got_it_median_later_runs_are_held_against(self):
+        """run_integrity.py compares each main run's "got it" median with this one."""
+        assert dc.fit_entry(c0_runs(), seed=1)["gotit_zero_median_ms"] == pytest.approx(2.5)
+        no_zero = [dict(r, gotit=None) if r["step"] == 0.0 else r for r in c0_runs()]
+        assert dc.fit_entry(no_zero, seed=1)["gotit_zero_median_ms"] is None
+
 
 def queue_rows(runs):
     """The runs as a finished C0 queue holds them."""

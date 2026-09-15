@@ -568,3 +568,78 @@ class TestMain:
     def test_a_missing_testbed_file_is_an_error_line(self, tmp_path):
         code, text = run_main(["--spec", str(tmp_path / "none.json"), "status"])
         assert code == 2 and "ERROR" in text
+
+
+class TestProfilesOfTheirOwn:
+    """A second x86 pair runs in another region, so a profile can name its own region, group,
+    network, firewall and prices. Whatever a profile does not name is the file's."""
+
+    def test_matched_b_is_matched_in_another_region(self, spec):
+        own, first = at.profile_spec(spec, "matched-b"), at.profile_spec(spec, "matched")
+        assert (own["location"], own["resource_group"]) == ("italynorth", "sbl-azb")
+        assert (first["location"], first["resource_group"]) == ("swedencentral", "sbl-az")
+        assert own["vnet"]["subnet_cidr"] == "10.2.1.0/24"
+        assert first["vnet"]["subnet_cidr"] == "10.1.1.0/24"
+
+        def sizes(profile):
+            return sorted(h["size"] for _, h in at.profile_hosts(spec, profile))
+        assert sizes("matched-b") == sizes("matched")
+        assert own["hourly_usd"]["Standard_D8as_v6"] == 0.426
+        assert first["hourly_usd"]["Standard_D8as_v6"] == 0.388
+
+    def test_a_profiles_own_network_is_checked_like_the_files(self, spec):
+        data = copy_of(spec)
+        data["profiles"]["matched-b"]["vnet"]["cidr"] = "10.9.0.0/16"
+        assert "subnet 10.2.1.0/24 is not inside the network 10.9.0.0/16" in at.spec_problems(data)
+
+    def test_a_machine_is_held_to_its_profiles_network(self, spec):
+        data = copy_of(spec)
+        data["hosts"]["sbl-azb-b1"]["private_ip"] = "10.1.1.50"
+        assert ("sbl-azb-b1: private_ip: 10.1.1.50 is outside 10.2.1.0/24"
+                in at.spec_problems(data))
+
+    def test_a_network_two_profiles_share_and_a_machine_in_none(self, spec):
+        data = copy_of(spec)
+        data["profiles"]["twin"] = {"hosts": ["sbl-az-drv", "sbl-az-b1"], "about": "x",
+                                    "vnet": dict(data["vnet"])}
+        data["hosts"]["spare"] = dict(data["hosts"]["sbl-az-b1"], private_ip="10.1.1.99")
+        assert at.spec_problems(data) == []
+
+    def test_its_plan_builds_its_own_group_and_network(self):
+        code, text = run_main(["plan", "--profile", "matched-b", "--ssh-source", SOURCE])
+        commands = [line for line in text.splitlines() if line.startswith("az ")]
+        assert code == 0
+        assert commands[0].startswith("az group create --name sbl-azb --location italynorth")
+        assert any("--address-prefixes 10.2.0.0/16" in c for c in commands)
+        assert any(c.startswith("az network nic ip-config create") and "10.2.1.11" in c
+                   for c in commands)
+        assert "about $0.53 an hour" in text
+
+    def test_its_limits_are_read_in_its_own_region(self):
+        fake = preflight_az()
+        code, text = run_main(["preflight", "--profile", "matched-b"], fake)
+        assert code == 0 and "all CPUs in italynorth: need 10" in text
+        assert ["vm", "list-usage", "--location", "italynorth", "--output", "json"] in fake.calls
+
+    def test_its_hosts_file_carries_its_own_gateway(self):
+        machines = (("sbl-azb-drv", ["10.2.1.10", "10.2.1.11"], [{"ipAddress": "20.0.0.10"}]),
+                    ("sbl-azb-b1", ["10.2.1.21"], []))
+        text = json.dumps([{"virtualMachine": {"name": name, "network": {
+            "privateIpAddresses": ips, "publicIpAddresses": pubs}}}
+            for name, ips, pubs in machines])
+        fake = FakeAz(rules=[(starts("vm", "list-ip-addresses"), (0, text, ""))])
+        code, out = run_main(["hosts", "--profile", "matched-b"], fake)
+        assert code == 0
+        assert fake.calls[0][:4] == ["vm", "list-ip-addresses", "--resource-group", "sbl-azb"]
+        for line in ("AZ_PROFILE=matched-b", "DRIVER_PUBLIC=20.0.0.10", "BROKER_PRIV=10.2.1.21",
+                     "RECEIVER_IP=10.2.1.11", "SUBNET_GATEWAY=10.2.1.1"):
+            assert line in out.splitlines()
+
+    def test_stop_and_down_act_in_its_own_group(self):
+        code, text = run_main(["stop", "--profile", "matched-b"])
+        assert code == 1
+        assert "az vm deallocate --resource-group sbl-azb --name sbl-azb-drv --no-wait" in text
+        fake = FakeAz()
+        code, _ = run_main(["down", "--profile", "matched-b", "--confirm", "sbl-azb"], fake)
+        assert code == 0 and fake.calls == [["group", "delete", "--name", "sbl-azb", "--yes",
+                                             "--no-wait"]]

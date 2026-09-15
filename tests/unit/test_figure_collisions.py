@@ -141,6 +141,28 @@ class TestTextsOverlapping:
         ax.text(0.8, 0.5, "right", ha="center", va="center", fontsize=9)
         assert fc.texts_overlapping(fig) == []
 
+    def test_labels_sharing_a_sliver_of_their_boxes_are_not_overlapping(self):
+        """Stacked labels routinely share a hair of their boxes, which MIN_TEXT_OVERLAP allows.
+        Built here to a known share, because whether a real figure has such a sliver is an
+        accident of its layout: after the label moves of 2026-09-15 none did on this machine,
+        and this branch went unexercised."""
+        fig, ax = _blank()
+        fig.set_dpi(fc.RENDER_DPI)          # measure at the resolution the check reads
+        upper = ax.text(0.5, 0.5, "upper label", ha="center", va="bottom", fontsize=16)
+        fig.canvas.draw()
+        box = upper.get_window_extent(fig.canvas.get_renderer())
+        (_, y0), (_, y1) = ax.transData.inverted().transform([(0, box.y0), (0, box.y1)])
+        lower = ax.text(0.5, y0 + 0.05 * (y1 - y0), "lower label", ha="center", va="top",
+                        fontsize=16)
+        fig.canvas.draw()
+        renderer = fig.canvas.get_renderer()
+        a, b = upper.get_window_extent(renderer), lower.get_window_extent(renderer)
+        width = min(a.x1, b.x1) - max(a.x0, b.x0)
+        height = min(a.y1, b.y1) - max(a.y0, b.y0)
+        assert width > 0 and height > 0
+        assert width * height / min(a.width * a.height, b.width * b.height) < fc.MIN_TEXT_OVERLAP
+        assert fc.texts_overlapping(fig) == []
+
     def test_a_single_line_label_inside_a_two_line_one_is_found(self):
         fig, ax = _blank()
         ax.text(0.5, 0.5, "first line\nsecond line", ha="center", va="center", fontsize=9)

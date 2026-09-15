@@ -111,11 +111,15 @@ def plot_pipeline(ax):
     stamps = [(0.6, r"$t_{\rm sched}$", "planned"), (2.4, r"$t_{\rm send}$", "producer"),
               (4.4, r"$t_{\rm ack}$", "producer"), (7.6, r"$t_{\rm recv}$", "consumer")]
     for x, sym, proc in stamps:
-        ax.plot([x, x], [1.35, 1.6], color=GREY, linewidth=1.0)
-        ax.text(x, 1.30, sym, ha="center", va="top", fontsize=9)
+        ax.plot([x, x], [1.47, 1.6], color=GREY, linewidth=1.0)
+        ax.text(x, 1.42, sym, ha="center", va="top", fontsize=9)
         # The stamp block moves UP rather than the span label moving down. Below it sit
         # three span arrows that cannot be rearranged without crossing each other, and the
-        # empty band is above: the boxes start at 1.6 and the tick marks only reach 1.35.
+        # empty band is above: the boxes start at 1.6. The symbol went up again, to 1.42, and
+        # the tick marks were shortened to make the room. Under Arial's maths metrics a
+        # subscripted symbol is 0.35 units tall, so at 1.30 its subscript sat on the process
+        # name below (19-24% of the smaller label); Liberation Sans's shallower subscript, the
+        # CI font, had hidden that.
         ax.text(x, 1.02, proc, ha="center", va="top", fontsize=8, color=GREY,
                 style="italic")
 
@@ -288,7 +292,10 @@ def plot_mechanism(mech_ax):
     # The process boundary, and with it the clock. "On one clock by construction" is what
     # excludes skew in III-C, and a reader had to take it from prose; here it is drawn. Both
     # producer threads are in one process, so the two stamps cannot disagree about the epoch.
-    mech_ax.add_patch(plt.Rectangle((2.38, 2.75), 7.62, 2.10, fill=False, zorder=0,
+    # The lower edge sits at 2.55, clear of the delta-ack label under the I/O lane. At 2.75 it
+    # ran through that label's subscript under matplotlib 3.9.4 in all three fonts the gate was
+    # run with (5-6% of the label's core); CI's matplotlib 3.10 happened not to flag it.
+    mech_ax.add_patch(plt.Rectangle((2.38, 2.55), 7.62, 2.30, fill=False, zorder=0,
                                     edgecolor=KAFKA, linewidth=0.7, linestyle=(0, (4, 2))))
     mech_ax.text(9.95, 5.05, "one producer process, one clock", fontsize=8, color=KAFKA,
                  ha="right", va="center")
@@ -297,7 +304,9 @@ def plot_mechanism(mech_ax):
     for x, sym in ((2.95, r"$t_{\mathrm{sched}}$"), (3.65, r"$t_{\mathrm{send}}$")):
         mech_ax.plot([x], [y_app], marker="o", markersize=5, color=KAFKA,
                      markerfacecolor="white", markeredgewidth=1.2)
-        mech_ax.text(x, y_app + 0.28, sym, fontsize=8, ha="center", color=KAFKA)
+        # 0.24 above the lane, midway between the marker and the box's top edge at 4.85. At
+        # 0.28 that edge crossed the top of both symbols under Arial's taller maths boxes.
+        mech_ax.text(x, y_app + 0.24, sym, fontsize=8, ha="center", color=KAFKA)
     mech_ax.annotate("", xy=(3.65, y_app), xytext=(2.95, y_app),
                      arrowprops=dict(arrowstyle="<->", color=GREY, linewidth=0.9))
     mech_ax.text(3.55, y_app - 0.20, "send lag", fontsize=8, color=GREY, ha="right",
@@ -334,7 +343,9 @@ def plot_mechanism(mech_ax):
     mech_ax.plot([5.85], [y_con], marker="|", markersize=13, color=REDIS)
     mech_ax.text(5.75, y_con - 0.22, "record arrives", fontsize=8, ha="right", va="top")
     mech_ax.plot([6.45], [y_con], marker="o", markersize=6, color=REDIS)
-    mech_ax.text(6.95, y_con - 0.22, r"clock read $\rightarrow t_{\mathrm{recv}}$", fontsize=8,
+    # 0.15 below the lane, not 0.22: under Arial's taller maths box the label sat on the note
+    # beneath it (17% of the label). It still clears the orange marker above.
+    mech_ax.text(6.95, y_con - 0.15, r"clock read $\rightarrow t_{\mathrm{recv}}$", fontsize=8,
                  ha="center", va="top")
     mech_ax.annotate("", xy=(6.45, y_con), xytext=(5.85, y_con),
                      arrowprops=dict(arrowstyle="<->", color="#b22222", linewidth=1.2))
@@ -553,9 +564,12 @@ def plot_quantum_geometry(axes, tau=TAU_MS, t_true=T_TRUE_MS, q=GRID_Q):
     # phase occurs" -- reached under the bracket above it, and once the figure was compressed
     # to fit the page the bracket rule cut through it: under the collision gate's threshold,
     # plain to the eye. What the two rows mean is in the caption, which has room for it.
-    rows = ((2.35, uniform, "incommensurate", GREY),
-            (1.00, phases, "commensurate $\\Delta/\\tau = %d/%d$" % (q + 1, q), "#2a7f62"))
-    for y, pts, label, colour in rows:
+    # The last field is each label's lift above its own row. The commensurate label's maths box
+    # is the taller of the two, and at 0.34 its top met the incommensurate dots above it (1.9%
+    # of its core under Arial, 2.0% under DejaVu Sans); at 0.30 it clears them and its own row.
+    rows = ((2.35, uniform, "incommensurate", GREY, 0.34),
+            (1.00, phases, "commensurate $\\Delta/\\tau = %d/%d$" % (q + 1, q), "#2a7f62", 0.30))
+    for y, pts, label, colour, lift in rows:
         # Banded per row rather than as a full-height axvspan. The full-height version put
         # translucent ink behind both row labels, and the collision gate counted it -- which
         # is the correct call: a label over a tint is a label read twice in print.
@@ -567,7 +581,7 @@ def plot_quantum_geometry(axes, tau=TAU_MS, t_true=T_TRUE_MS, q=GRID_Q):
             bot.plot([p], [y], marker="o", ms=4.2, zorder=3,
                      color=keep if p >= crossing else drop)
         # Clear of the markers: at 0.2 the descenders sat on the dots.
-        bot.text(0, y + 0.34, label, fontsize=8, color=colour, ha="left", va="bottom")
+        bot.text(0, y + lift, label, fontsize=8, color=colour, ha="left", va="bottom")
         bot.text(1.06 * tau, y, "%d/%d = %d%%" % (kept_n, len(pts), round(100 * kept_n / len(pts))),
                  fontsize=8, ha="left", va="center",
                  color=keep if kept_n else drop)
@@ -765,9 +779,13 @@ def main(argv=None):
         return _save(fig, out, "delta_schematic", check_layout=layout_is_shipped)
 
     def _quantum():
-        # Single column, like the other two Mode B figures it sits beside.
-        fig, axes = plt.subplots(2, 1, figsize=(3.50, 1.94),
-                                 gridspec_kw={"height_ratios": [1.12, 1.0]})
+        # Single column, like the other two Mode B figures it sits beside. 2.12 in tall rather
+        # than 1.94, all of the difference given to panel (a): its four phase rows were closer
+        # together than an 8 pt label is tall, and under matplotlib 3.9.4 each label's box
+        # covered a third of the next one's (31-33%), where 3.10 measured the boxes shorter and
+        # passed. The ratio keeps panel (b) at the 0.39 in it had.
+        fig, axes = plt.subplots(2, 1, figsize=(3.50, 2.12),
+                                 gridspec_kw={"height_ratios": [1.578, 1.0]})
         plot_quantum_geometry(axes)
         fig.tight_layout(h_pad=0.35)
         return _save(fig, out, "quantum_geometry", check_layout=layout_is_shipped)

@@ -31,7 +31,7 @@ the code archive, and the copies in there were written before the deposit: they 
 statements are dated, not wrong. The repository is corrected; a record cannot contain its own
 DOI, which is exactly why the paper cites the concept DOIs instead.
 
-Tag: `v3.0.0`, commit `894dbcc`, pushed. All three archives are built from that tag, not from
+Tag: `v3.0.0`, commit `c61b35c`, pushed. All three archives are built from that tag, not from
 the working tree. Verified before hand-over:
 
 | check | result |

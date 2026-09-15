@@ -1657,10 +1657,10 @@ class TestLoadGeometryAndTtrue:
         """3,315 matches are characterised; eleven are replayed. Both documents, not one.
 
         The abstract merged them once: it said the benchmark was driven with 3,315 real
-        matches, and `6717ce3` removed that on 2026-07-26. The gate installed with it read
+        matches, and `484b915` removed that on 2026-07-26. The gate installed with it read
         the abstract, because the abstract was where the defect had been seen.
 
-        Six weeks later `2e15b93` wrote "We replay 3,315 matches" into Section IV-D, one
+        Six weeks later `13d1b40` wrote "We replay 3,315 matches" into Section IV-D, one
         section below where this test looks, and neither this gate nor the mutation named
         "re-conflate the two corpora" -- whose anchor had gone with the old wording -- said
         anything. Round 72's referee found it by reading the artefact.

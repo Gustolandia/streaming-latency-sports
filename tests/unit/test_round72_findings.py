@@ -4,9 +4,9 @@ Two required items, and the same sentence-level failure underneath both: a numbe
 evidence for a claim it was not measured on.
 
 R1. Section IV-D said "We replay 3,315 matches". Eleven replay plans exist. 3,315 is the size
-of the corpus the workload *characterisation* covers, and commit `6717ce3` had already removed
+of the corpus the workload *characterisation* covers, and commit `484b915` had already removed
 that exact conflation from the abstract on 2026-07-26 -- installing a gate that reads the
-abstract, because the abstract was where it had been seen. `2e15b93` wrote it into Section IV-D
+abstract, because the abstract was where it had been seen. `13d1b40` wrote it into Section IV-D
 six weeks later, one section below where anything was looking. Both numbers are emitted now and
 the gate reads both documents (`test_paper_consistency.py`).
 

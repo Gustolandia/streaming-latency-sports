@@ -1524,7 +1524,7 @@ spread falls roughly as $100/q$."* Against that:
 Four discriminating denominators, each within $3$ points of $100/q$ across a range of $100$ points.
 
 **The degeneracy exclusion is load-bearing, so its timing matters.** It was derived from the $q=4$
-arm and committed in `79b8672` at 14:09Z on 2026-07-27; the first $q=5$ cell was measured at 15:06Z,
+arm and committed in `f4b5eec` at 14:09Z on 2026-07-27; the first $q=5$ cell was measured at 15:06Z,
 $57$ minutes later. The odd-$q$ arms exist *because* the rule predicted they would discriminate. It
 is now encoded in the analyser as the general statement rather than as "skip even $q$" — an arm is
 degenerate when the *measured* continuous value passes within *measured* replicate noise of its

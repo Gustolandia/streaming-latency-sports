@@ -571,12 +571,12 @@ class TestMain:
 
 
 class TestProfilesOfTheirOwn:
-    """A second x86 pair runs in another region, so a profile can name its own region, group,
-    network, firewall and prices. Whatever a profile does not name is the file's."""
+    """A second x86 pair runs beside the first, so a profile can name its own group, network,
+    firewall, region and prices. Whatever a profile does not name is the file's."""
 
-    def test_matched_b_is_matched_in_another_region(self, spec):
+    def test_matched_b_is_matched_in_its_own_group_and_network(self, spec):
         own, first = at.profile_spec(spec, "matched-b"), at.profile_spec(spec, "matched")
-        assert (own["location"], own["resource_group"]) == ("italynorth", "sbl-azb")
+        assert (own["location"], own["resource_group"]) == ("swedencentral", "sbl-azb")
         assert (first["location"], first["resource_group"]) == ("swedencentral", "sbl-az")
         assert own["vnet"]["subnet_cidr"] == "10.2.1.0/24"
         assert first["vnet"]["subnet_cidr"] == "10.1.1.0/24"
@@ -584,8 +584,19 @@ class TestProfilesOfTheirOwn:
         def sizes(profile):
             return sorted(h["size"] for _, h in at.profile_hosts(spec, profile))
         assert sizes("matched-b") == sizes("matched")
+        assert own["hourly_usd"] == first["hourly_usd"], "one region, one price list"
+
+    def test_a_profile_in_a_dearer_region_names_its_own_prices(self, spec):
+        """The second pair sat in Italy North until the Sweden limit was raised, so a profile
+        that moves region keeps working: it names the prices of the region it moves to."""
+        data = copy_of(spec)
+        data["profiles"]["matched-b"]["location"] = "italynorth"
+        data["profiles"]["matched-b"]["hourly_usd"] = {"Standard_D8as_v6": 0.426}
+        own = at.profile_spec(data, "matched-b")
+        assert own["location"] == "italynorth"
         assert own["hourly_usd"]["Standard_D8as_v6"] == 0.426
-        assert first["hourly_usd"]["Standard_D8as_v6"] == 0.388
+        assert own["hourly_usd"]["Standard_D2as_v6"] == 0.097, "the rest stay the file's"
+        assert at.profile_spec(data, "matched")["hourly_usd"]["Standard_D8as_v6"] == 0.388
 
     def test_a_profiles_own_network_is_checked_like_the_files(self, spec):
         data = copy_of(spec)
@@ -609,17 +620,17 @@ class TestProfilesOfTheirOwn:
         code, text = run_main(["plan", "--profile", "matched-b", "--ssh-source", SOURCE])
         commands = [line for line in text.splitlines() if line.startswith("az ")]
         assert code == 0
-        assert commands[0].startswith("az group create --name sbl-azb --location italynorth")
+        assert commands[0].startswith("az group create --name sbl-azb --location swedencentral")
         assert any("--address-prefixes 10.2.0.0/16" in c for c in commands)
         assert any(c.startswith("az network nic ip-config create") and "10.2.1.11" in c
                    for c in commands)
-        assert "about $0.53 an hour" in text
+        assert "about $%.2f an hour" % (0.388 + 0.097) in text, "the file's prices, not its own"
 
-    def test_its_limits_are_read_in_its_own_region(self):
+    def test_its_limits_are_read_in_the_region_it_names(self):
         fake = preflight_az()
         code, text = run_main(["preflight", "--profile", "matched-b"], fake)
-        assert code == 0 and "all CPUs in italynorth: need 10" in text
-        assert ["vm", "list-usage", "--location", "italynorth", "--output", "json"] in fake.calls
+        assert code == 0 and "all CPUs in swedencentral: need 10" in text
+        assert ["vm", "list-usage", "--location", "swedencentral", "--output", "json"] in fake.calls
 
     def test_its_hosts_file_carries_its_own_gateway(self):
         machines = (("sbl-azb-drv", ["10.2.1.10", "10.2.1.11"], [{"ipAddress": "20.0.0.10"}]),

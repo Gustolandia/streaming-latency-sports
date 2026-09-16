@@ -189,10 +189,10 @@ The rules, from the experiment plan:
 5. **Copy before the next.** A finished campaign's runs are copied home before the next campaign
    starts on that pair.
 
-The second x86 pair is the profile *matched-b*, in Italy North, because a region allows 10 CPUs
-and the first pair uses all of Sweden Central's. Every `azure_testbed.py` command takes
-`--profile`, and acts on *matched* without it. The second pair's addresses go in
-`cloud/hosts_b.env`:
+The second x86 pair is the profile *matched-b*. It sits beside the first in Sweden Central, in its
+own resource group and network, which became possible when that region's CPU limit was raised on
+16 September 2026. Every `azure_testbed.py` command takes `--profile`, and acts on *matched*
+without it. The second pair's addresses go in `cloud/hosts_b.env`:
 
 ```bash
 python scripts/azure_testbed.py preflight --profile matched-b
@@ -234,15 +234,15 @@ python scripts/collect_runs.py --hosts cloud/hosts_b.env --queue runs/azure/queu
 
 ## Money and limits
 
-- The first pairs live in Sweden Central. On the free-trial subscription, North Europe refused
+- All three pairs live in Sweden Central. On the free-trial subscription, North Europe refused
   these sizes, and Sweden Central was the cheapest region that allows both profiles. Italy North
   and Poland Central also offer the x86 sizes; only Sweden Central offers the Arm ones.
-- The *matched* profile is 10 CPUs, about \$0.49 an hour while running (Sweden Central list prices,
-  dated in `cloud/azure/testbed.json`), and *matched-b* about \$0.53 in Italy North. `plan` prints
-  the sum.
-- The pay-as-you-go subscription allows 10 CPUs per region, and deallocated machines still count.
-  So Sweden Central holds one pair at a time: the Arm pair beside *matched* needs a higher limit,
-  which is a request to Azure. `preflight` reads the real limit.
+- Each x86 pair is 10 CPUs, about \$0.49 an hour while running, and the Arm pair about \$0.37
+  (Sweden Central list prices, dated in `cloud/azure/testbed.json`). `plan` prints the sum.
+- A region allows a set number of CPUs, and deallocated machines still count. Sweden Central held
+  one pair until 16 September 2026, when the limit was raised on request to 40 CPUs in total, 20
+  in the Dav6 family and 10 in the Dpsv6 family, which is room for all three pairs. `preflight`
+  reads the real limit.
 - Deallocated machines cost only their disks and fixed addresses. Delete the group when the work
   is done.
 

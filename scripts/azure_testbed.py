@@ -34,9 +34,11 @@ Usage:
     python scripts/azure_testbed.py status
     python scripts/azure_testbed.py down --confirm sbl-az
 
-A profile can name its own region, resource group, network, firewall and prices. "matched-b" does:
-the matched layout in Italy North, so that a second x86 pair can run beside the first without
-sharing a machine. Every command takes --profile and acts in that profile's group:
+A profile can name its own region, resource group, network, firewall and prices. "matched-b" names
+its own group and network: the matched layout again, so that a second x86 pair runs beside the
+first without sharing a machine. It sat in another region until Sweden Central's CPU limit was
+raised, which is what the region and price overrides are for. Every command takes --profile and
+acts in that profile's group:
     python scripts/azure_testbed.py up --profile matched-b --ssh-source 203.0.113.7/32 --yes
     python scripts/azure_testbed.py down --profile matched-b --confirm sbl-azb
 """

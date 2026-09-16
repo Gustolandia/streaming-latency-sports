@@ -67,6 +67,7 @@ bash cloud/azure/session.sh
 - `up` creates the machines. Without `--yes` it only shows what it would do.
 - `hosts` writes the machines' addresses into `cloud/hosts.env` (not committed; it is ours only).
 - `session.sh` starts a session (a working period on the machines): it waits for the setup,
+  switches automatic package upgrades off (one restarted the network in the middle of a pilot),
   starts the brokers, builds the receiver's namespace and records the scheduler settings.
 
 Then, on the driver (`ssh -i ~/.ssh/azure_sbl ubuntu@<DRIVER_PUBLIC>`, then `cd sbl`):
@@ -161,12 +162,18 @@ driver and writes every check, with the value found and the limit it was held to
 - **It is repeated** when a condition it was meant to have did not take: fewer than 99% of the
   planned messages sent after the warm-up, or fewer than 99% of those arrived; the send rate more
   than 2% off; the measured load more than 3 points off, or fewer than 10 load samples; the slice
-  or the tick changed during the run; the delay ping measured more than 0.25 ms plus 5% away from
-  the one set; the clock's offset not logged before and after. The run keeps its files, and the
+  or the tick changed during the run; the added delay more than 0.25 ms plus 5% away from the one
+  set, measured by ping beyond the same ping taken with no delay just before the run (the two ping
+  paths of the second x86 pair differ by 0.4 ms with no delay at all); the clock's offset not
+  logged before and after. The run keeps its files, and the
   queue runs a copy later, three attempts at most. What a run measured never makes it a repeat.
 - **It stops the campaign** when the instrument is in doubt: a message arrived before it was sent,
   or the "got it" median moved from the session's zero-delay median by more than a quarter of the
   added delay (this needs `CALIBRATION`).
+
+Before each run the machine itself is checked: the receiver's address only in its namespace,
+the broker reachable, and no package manager running. A run that fails this is repeated like any
+other, so a machine that changed under a campaign soon stops it.
 
 A campaign also stops itself when attempts keep failing: the last three all failed, or more than
 a fifth of the last twenty did, once ten have finished. A stopped campaign writes a `STOP_RULE:`
@@ -218,7 +225,9 @@ nohup bash cloud/azure/stage0.sh first > stage0.log 2>&1 &
 ```
 
 with `new` in place of `first` on the second x86 pair and on the Arm pair. Its last line is
-`CAMPAIGN_COMPLETE`, or `STOP_RULE:` with the reason.
+`CAMPAIGN_COMPLETE`, or `STOP_RULE:` with the reason. A pair that has already passed its
+shakedown starts again without repeating the pilot when the stage-0 folder holding that
+shakedown is added: `bash cloud/azure/stage0.sh new runs/azure/stage0/<profile>_<start>`.
 
 **Watching every lane.** One watch reads them all: give each lane a name and its hosts file. With
 `--stop-idle-min 20` it also deallocates a pair whose machines have been idle for 20 minutes, so a

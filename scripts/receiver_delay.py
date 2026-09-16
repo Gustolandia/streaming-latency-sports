@@ -100,10 +100,18 @@ def driver_commands(address, gateway, dev="eth0", mode="l2"):
     # receiver's address too and sends its own subnet traffic from it. Once the namespace owns
     # the address, the replies to that traffic land in the namespace and the host loses the
     # broker. Every boot puts the address back; deleting one that is already gone is harmless.
+    # It must leave netplan's own settings too: on 16 September a package upgrade restarted
+    # systemd-networkd in the middle of a pilot, networkd put the address back from those
+    # settings, and the driver lost its broker. The card's own address comes by DHCP, so its
+    # static addresses are exactly the ones Azure added for the receiver. Both commands can run
+    # again and again; the next boot writes the address back and the next session removes it.
     return [
         (["ip", "netns", "del", NETNS], True),
         (["ip", "link", "del", LINK], True),
         (["ip", "addr", "del", str(iface), "dev", dev], True),
+        (["netplan", "set", "--origin-hint", "50-cloud-init",
+          "ethernets.%s.addresses=null" % dev], False),
+        (["netplan", "generate"], False),
         (["ip", "netns", "add", NETNS], False),
         (["ip", "link", "add", LINK, "link", dev, "type", "ipvlan", "mode", mode], False),
         (["ip", "link", "set", LINK, "netns", NETNS], False),

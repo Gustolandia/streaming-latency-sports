@@ -77,6 +77,34 @@ def test_stage_0_runs_its_steps_in_order_each_gated_on_the_last():
     assert code.rstrip().endswith('its queues and files are in $DIR"')
 
 
+def test_a_pair_starts_again_without_its_pilot_only_from_a_passing_shakedown():
+    code = (KIT / "stage0.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
+    assert 'json.load(open(sys.argv[1]))["ok"]' in code
+    assert 'cp "$EARLIER/shakedown.json" "$DIR/shakedown.json"' in code
+    assert code.index('if [ -n "$EARLIER" ]') < code.index("bash cloud/azure/pilot.sh")
+
+
+def test_nothing_upgrades_itself_under_a_campaign():
+    """On 16 September an automatic upgrade restarted the driver's network service mid-pilot."""
+    session = (KIT / "session.sh").read_text(encoding="utf-8")
+    assert ("systemctl disable --now unattended-upgrades.service apt-daily.timer "
+            "apt-daily-upgrade.timer") in session
+    assert "APT::Periodic::Unattended-Upgrade" in session
+    setup = (KIT / "cloud-init.yaml").read_text(encoding="utf-8")
+    assert 'APT::Periodic::Unattended-Upgrade "0";' in setup
+    assert "systemctl disable --now unattended-upgrades.service" in setup
+
+
+def test_every_run_checks_the_machine_and_its_zero_delay_baseline_first():
+    code = (KIT / "campaign.sh").read_text(encoding="utf-8").split("run_one () {", 1)[1]
+    order = ['grep -q " ${RECEIVER_IP}/"', "sudo ip netns exec sblrecv ip -o -4 addr show",
+             'ping -n -c 2 -W 1 "$BROKER_PRIV"', "sudo fuser /var/lib/dpkg/lock-frontend",
+             "sched_settings.py set-cpus", "broker_delay 0", "delay_baseline.json",
+             'broker_delay "$DELAY_MS"', "delay_measured.json"]
+    places = [code.index(step) for step in order]
+    assert places == sorted(places)
+
+
 def test_the_watch_counts_the_chain_as_a_campaign():
     """Between two campaigns the chain runs no campaign.sh, and a watch that took that for idle
     would deallocate the pair in the middle of stage 0."""

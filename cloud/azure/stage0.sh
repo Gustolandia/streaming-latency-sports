@@ -4,11 +4,15 @@
 # Run on the driver, from the checkout, after cloud/azure/session.sh:
 #     nohup bash cloud/azure/stage0.sh first > stage0.log 2>&1 &   # the first x86 pair
 #     nohup bash cloud/azure/stage0.sh new > stage0.log 2>&1 &     # the second x86 pair, or Arm
+# A pair that has already passed its shakedown starts again without repeating the pilot when the
+# stage-0 folder holding that shakedown is named:
+#     nohup bash cloud/azure/stage0.sh new runs/azure/stage0/<profile>_<start> > stage0.log 2>&1 &
 #
 # In order, each step only if the ones before it succeeded:
 #   1. pilot  cloud/azure/pilot.sh: a new pair's shakedown, or the first pair's retest of its
 #             14 September pilot. Its settings, receiver-only delay, load and never-negative
-#             checks must pass (scripts/pilot_checks.py shakedown), or nothing else runs.
+#             checks must pass (scripts/pilot_checks.py shakedown), or nothing else runs. A named
+#             earlier folder's passing shakedown stands in for it, and is copied with its origin.
 #   2. C0     the session's delay calibration. On the first pair it is the staircase S0-1: steps
 #             up to 16 ms, 4 rounds. On a new pair: up to 8 ms, 2 rounds.
 #   3. fit    scripts/delay_calibration.py fit, with its gate.
@@ -24,10 +28,12 @@ set +e
 set -o pipefail
 
 KIND="${1:-}"
+EARLIER="${2:-}"
 case "$KIND" in
   first) UP_TO_MS=16; C0_ROUNDS=4 ;;
   new) UP_TO_MS=8; C0_ROUNDS=2 ;;
-  *) echo "usage: bash cloud/azure/stage0.sh first|new"; exit 2 ;;
+  *) echo "usage: bash cloud/azure/stage0.sh first|new [earlier stage-0 folder with a passing shakedown]"
+     exit 2 ;;
 esac
 PROFILE="${AZ_PROFILE:-unknown}"
 LOAD_PCT="${LOAD_PCT:-75}"
@@ -64,15 +70,24 @@ campaign () {  # label [calibration]
 
 log "stage 0 on $PROFILE ($KIND pair), writing to $DIR; seeds from $SEED"
 
-log "== pilot: $([ "$KIND" = first ] && echo "the retest of this pair's first pilot" || echo "this pair's shakedown")"
-OUT="$DIR/pilot" LOAD_PCT="$LOAD_PCT" bash cloud/azure/pilot.sh 2>&1 | tee "$DIR/pilot.log"
-python3 scripts/pilot_checks.py shakedown --pilot-dir "$DIR/pilot" --load-pct "$LOAD_PCT" \
-  > "$DIR/shakedown.json"
-case $? in
-  0) log "shakedown passed" ;;
-  1) stop "the shakedown failed; see $DIR/shakedown.json" ;;
-  *) stop "the shakedown could not be read; see $DIR/shakedown.json" ;;
-esac
+if [ -n "$EARLIER" ]; then
+  python3 -c 'import json, sys; sys.exit(0 if json.load(open(sys.argv[1]))["ok"] else 1)' \
+    "$EARLIER/shakedown.json" 2>/dev/null \
+    || stop "$EARLIER holds no passing shakedown to start from"
+  cp "$EARLIER/shakedown.json" "$DIR/shakedown.json"
+  echo "$EARLIER" > "$DIR/shakedown_from.txt"
+  log "== pilot: not repeated; this pair passed its shakedown in $EARLIER"
+else
+  log "== pilot: $([ "$KIND" = first ] && echo "the retest of this pair's first pilot" || echo "this pair's shakedown")"
+  OUT="$DIR/pilot" LOAD_PCT="$LOAD_PCT" bash cloud/azure/pilot.sh 2>&1 | tee "$DIR/pilot.log"
+  python3 scripts/pilot_checks.py shakedown --pilot-dir "$DIR/pilot" --load-pct "$LOAD_PCT" \
+    > "$DIR/shakedown.json"
+  case $? in
+    0) log "shakedown passed" ;;
+    1) stop "the shakedown failed; see $DIR/shakedown.json" ;;
+    *) stop "the shakedown could not be read; see $DIR/shakedown.json" ;;
+  esac
+fi
 
 sudo python3 scripts/sched_settings.py read > "$DIR/settings.json" \
   || stop "the scheduler settings could not be read"

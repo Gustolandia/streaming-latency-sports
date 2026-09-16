@@ -36,7 +36,8 @@ def write_csv(path, header, rows):
 def make_run(tmp_path, name="run", n=400, gap_ms=100.0, trip_ms=0.5, gotit_ms=0.2, acks=True,
              negative_at=None, lose=0, load=75.0, load_samples=None, delay_ms=2.0,
              measured_added=2.0, settings_ok=True, problems=None, clock=(0.00002, -0.00003),
-             stat=((100, 100, 800, 0), (800, 200, 1500, 10)), params=None, drop=()):
+             stat=((100, 100, 800, 0), (800, 200, 1500, 10)), params=None, drop=(),
+             baseline_added=None):
     run = tmp_path / name
     run.mkdir()
     sends = [START + int(i * gap_ms * 1e6) for i in range(n)]
@@ -59,6 +60,10 @@ def make_run(tmp_path, name="run", n=400, gap_ms=100.0, trip_ms=0.5, gotit_ms=0.
                                              encoding="utf-8")
     (run / "delay_measured.json").write_text(json.dumps(
         {"host_median_ms": 0.30, "receiver_median_ms": 0.30 + measured_added}), encoding="utf-8")
+    if baseline_added is not None:
+        (run / "delay_baseline.json").write_text(json.dumps(
+            {"host_median_ms": 0.30, "receiver_median_ms": 0.30 + baseline_added}),
+            encoding="utf-8")
     for side, value in zip(("before", "after"), clock):
         if value is not None:
             (run / ("clock_%s.txt" % side)).write_text(CHRONY % value, encoding="utf-8")
@@ -186,6 +191,35 @@ class TestRepeat:
     def test_a_plan_that_cannot_be_checked_is_an_error(self, tmp_path, rate, duration):
         with pytest.raises(ValueError, match="positive rate"):
             ri.evaluate(make_run(tmp_path), rate, duration, WARMUP)
+
+
+class TestTheZeroDelayBaseline:
+    """On the second x86 pair the receiver's ping path was 0.4 ms faster than the host's with no
+    delay at all, so every run read 0.4 ms short. Each run now measures that difference with no
+    delay just before it, and the added delay is what lies beyond it, as the pilot measures it."""
+
+    def test_a_path_offset_is_not_delay(self, tmp_path):
+        found = evaluate(make_run(tmp_path, delay_ms=0.0, measured_added=-0.43,
+                                  baseline_added=-0.41))
+        assert found["verdict"] == "count"
+        assert found["recorded"]["delay_added_ms"] == pytest.approx(-0.02)
+
+    def test_without_a_baseline_the_offset_counts_against_the_run(self, tmp_path):
+        found = evaluate(make_run(tmp_path, delay_ms=0.0, measured_added=-0.43))
+        assert found["verdict"] == "repeat"
+        assert "ping measured -0.430 ms added against 0 ms set" in found["reasons"]
+
+    def test_a_delayed_run_is_measured_beyond_its_baseline(self, tmp_path):
+        found = evaluate(make_run(tmp_path, delay_ms=4.0, measured_added=3.60,
+                                  baseline_added=-0.40))
+        assert found["checks"]["delay"]["ok"]
+        assert found["recorded"]["delay_added_ms"] == pytest.approx(4.0)
+
+    def test_a_baseline_without_its_medians(self, tmp_path):
+        run = make_run(tmp_path, baseline_added=0.0)
+        with open(os.path.join(run, "delay_baseline.json"), "w", encoding="utf-8") as fh:
+            fh.write('{"host_median_ms": 0.3}')
+        assert "lacks the two medians" in " ".join(evaluate(run)["reasons"])
 
 
 class TestTheGotItComparison:

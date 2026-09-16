@@ -83,6 +83,20 @@ class TestTheCommittedFile:
         hosts = [h for _, h in at.profile_hosts(spec, "arm")]
         assert sorted(at.size_cpus(h["size"]) for h in hosts) == [2, 8]
         assert all(h["size"].endswith("ps_v6") and h["image"] == "arm64-jammy" for h in hosts)
+        assert all(h["disk_controller"] == "SCSI" for h in hosts), (
+            "Azure lists only SCSI for the Dpsv6 sizes, and refused NVMe at creation")
+
+    def test_each_machine_boots_from_the_disk_controller_its_size_takes(self):
+        def controllers(profile):
+            _, text = run_main(["plan", "--profile", profile, "--ssh-source", SOURCE])
+            return {line.split("--disk-controller-type ")[1].split()[0]
+                    for line in text.splitlines() if line.startswith("az vm create")}
+        assert controllers("matched") == {"NVMe"} and controllers("arm") == {"SCSI"}
+
+    def test_a_disk_controller_azure_does_not_offer_is_refused(self, spec):
+        data = copy_of(spec)
+        data["hosts"]["sbl-az-b1"]["disk_controller"] = "IDE"
+        assert "sbl-az-b1: disk_controller must be one of NVMe, SCSI" in at.spec_problems(data)
 
     def test_it_points_at_the_setup_file_it_sends(self, spec):
         assert (REPO / spec["custom_data"]).is_file()
@@ -597,6 +611,10 @@ class TestProfilesOfTheirOwn:
         assert own["hourly_usd"]["Standard_D8as_v6"] == 0.426
         assert own["hourly_usd"]["Standard_D2as_v6"] == 0.097, "the rest stay the file's"
         assert at.profile_spec(data, "matched")["hourly_usd"]["Standard_D8as_v6"] == 0.388
+
+    def test_every_pair_has_its_own_group_so_down_deletes_one_pair(self, spec):
+        groups = [at.profile_spec(spec, name)["resource_group"] for name in spec["profiles"]]
+        assert sorted(groups) == ["sbl-az", "sbl-azarm", "sbl-azb"]
 
     def test_a_profiles_own_network_is_checked_like_the_files(self, spec):
         data = copy_of(spec)

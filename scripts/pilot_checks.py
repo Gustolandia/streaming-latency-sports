@@ -16,6 +16,13 @@ They are about the instrument, not the result:
                    least FACTOR-fold at every load level, with the manipulation check passed.
                    On Oracle it did; a machine that cannot reproduce it cleanly is not yet the
                    machine to test a law on.
+  shakedown        what a machine pair must pass, read from one pilot's output, before its first
+                   campaign: the settings and the receiver-only delay by ping (the pilot's own
+                   verdicts), no negative trip in the harness runs, and the load within
+                   LOAD_POINTS of its setting in every harness cell. The pilot's harness verdict
+                   also asks that the trip grow one-for-one with the delay, which the first pilot
+                   showed it does not, so each session's calibration judges that instead. Go-first
+                   is reported but not required, because the campaign tests it as a prediction.
 
 Per message, from producer.csv and consumer_events.csv joined on event_id (the files and join
 analyze_depth.run_inversion uses):
@@ -32,6 +39,7 @@ CLI:
     python3 scripts/pilot_checks.py list --out-dir <campaign cell dir> [--backend kafka]
     python3 scripts/pilot_checks.py compare --baseline runs/a runs/b --step runs/c --added-ms 2.0
     python3 scripts/pilot_checks.py go-first --table <dir>/stamping_priority.csv [--factor 5]
+    python3 scripts/pilot_checks.py shakedown --pilot-dir <pilot output dir> [--load-pct 75]
 """
 import argparse
 import csv
@@ -43,6 +51,10 @@ import sys
 
 TOLERANCE_MS = 0.05
 FACTOR = 5.0
+#: A harness cell's mean load may differ from its setting by this many percentage points.
+LOAD_POINTS = 3.0
+#: The pilot writes one receiver-only report per backend.
+HARNESS_REPORTS = ("harness_verify_kafka.json", "harness_verify_redis.json")
 
 
 def _int(value):
@@ -168,6 +180,56 @@ def go_first(table, factor=FACTOR):
     return {"factor": factor, "ok": all(level["ok"] for level in levels), "levels": levels}
 
 
+def _verdict_check(verdicts, name):
+    """One of the pilot's own checks: passed only if it wrote rows and every row says yes."""
+    rows = [r for r in verdicts if r.get("check") == name]
+    detail = "; ".join("%s %s (%s)" % (r.get("step"), r.get("ok"), r.get("detail")) for r in rows)
+    return {"ok": bool(rows) and all(r.get("ok") == "yes" for r in rows),
+            "detail": detail or "the pilot wrote no %s verdict" % name}
+
+
+def _cell_load(path):
+    """A harness cell's mean load in per cent, or None when it holds no readable sample."""
+    samples = []
+    with open(path, newline="", encoding="utf-8") as fh:
+        for row in csv.DictReader(fh):
+            try:
+                samples.append(100.0 * float(row["rho"]))
+            except (KeyError, TypeError, ValueError):
+                continue
+    return statistics.mean(samples) if samples else None
+
+
+def shakedown(pilot_dir, load_pct, load_points=LOAD_POINTS):
+    """The instrument checks a machine pair must pass, read from one pilot's output."""
+    with open(os.path.join(pilot_dir, "verdicts.csv"), newline="", encoding="utf-8") as fh:
+        verdicts = list(csv.DictReader(fh))
+    checks = {name: _verdict_check(verdicts, name) for name in ("settings", "network")}
+    negatives, unreadable = 0, []
+    for name in HARNESS_REPORTS:
+        try:
+            with open(os.path.join(pilot_dir, name), encoding="utf-8") as fh:
+                negatives += int(json.load(fh)["trip_negative_total"])
+        except (OSError, ValueError, KeyError, TypeError):
+            unreadable.append(name)
+    checks["never_negative"] = {
+        "ok": negatives == 0 and not unreadable,
+        "detail": "%d negative trip(s)%s" % (
+            negatives, "; unreadable: " + ", ".join(unreadable) if unreadable else "")}
+    loads = {os.path.basename(os.path.dirname(path)): _cell_load(path)
+             for path in sorted(glob.glob(os.path.join(pilot_dir, "harness_*", "utilisation.csv")))}
+    off = [cell for cell, load in loads.items()
+           if load is None or abs(load - load_pct) > load_points]
+    checks["load"] = {
+        "ok": bool(loads) and not off,
+        "detail": ", ".join("%s %s" % (cell, "no samples" if load is None else "%.1f%%" % load)
+                            for cell, load in sorted(loads.items()))
+        or "no harness cell recorded its load"}
+    return {"pilot_dir": pilot_dir, "load_pct": load_pct, "load_points": load_points,
+            "checks": checks, "ok": all(check["ok"] for check in checks.values()),
+            "go_first_recorded": _verdict_check(verdicts, "go-first")["detail"]}
+
+
 def main(argv=None, out=None):
     out = out or sys.stdout
     ap = argparse.ArgumentParser(description="Instrument checks a run must pass before it counts")
@@ -187,6 +249,10 @@ def main(argv=None, out=None):
     p = sub.add_parser("go-first")
     p.add_argument("--table", required=True)
     p.add_argument("--factor", type=float, default=FACTOR)
+    p = sub.add_parser("shakedown")
+    p.add_argument("--pilot-dir", required=True)
+    p.add_argument("--load-pct", type=float, default=75.0)
+    p.add_argument("--load-points", type=float, default=LOAD_POINTS)
     args = ap.parse_args(argv)
     try:
         if args.command == "list":
@@ -200,6 +266,9 @@ def main(argv=None, out=None):
             result = compare([summarise(d, args.warmup_s) for d in args.baseline],
                              [summarise(d, args.warmup_s) for d in args.step],
                              args.added_ms, args.tolerance_ms)
+            ok = result["ok"]
+        elif args.command == "shakedown":
+            result = shakedown(args.pilot_dir, args.load_pct, args.load_points)
             ok = result["ok"]
         else:
             result = go_first(args.table, args.factor)

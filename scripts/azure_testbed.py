@@ -98,9 +98,17 @@ def address_problem(subnet, value):
     return None
 
 
+#: How a machine's disk is attached. The x86 v6 sizes boot only from NVMe; Azure lists only
+#: SCSI for the Arm v6 sizes, so a machine may name it instead.
+DISK_CONTROLLERS = ("NVMe", "SCSI")
+
+
 def host_problems(spec, subnet, name, host, seen):
     """Problems with one machine. `seen` maps addresses already taken to their owners."""
     out = []
+    if host.get("disk_controller", "NVMe") not in DISK_CONTROLLERS:
+        out.append("%s: disk_controller must be one of %s"
+                   % (name, ", ".join(DISK_CONTROLLERS)))
     if host.get("role") not in ROLES:
         out.append("%s: role must be one of %s" % (name, ", ".join(ROLES)))
     if host.get("image") not in spec["images"]:
@@ -307,7 +315,7 @@ def host_steps(spec, name, host, custom_data):
          "--ssh-key-values", os.path.expanduser(spec["ssh_public_key"]),
          "--custom-data", custom_data, "--os-disk-size-gb", str(spec["os_disk_gb"]),
          "--storage-sku", spec["storage_sku"], "--os-disk-delete-option", "Delete",
-         "--disk-controller-type", "NVMe", "--tags"] + tag_args(spec, {"role": host["role"]}),
+         "--disk-controller-type", host.get("disk_controller", "NVMe"), "--tags"] + tag_args(spec, {"role": host["role"]}),
         "%s: %s, %d CPUs, %s" % (name, host["size"], size_cpus(host["size"]), host["role"]),
         probe=["vm", "show", "--resource-group", rg, "--name", name]))
     return steps

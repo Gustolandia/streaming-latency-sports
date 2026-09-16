@@ -195,6 +195,12 @@ class TestDesign:
         assert ld.design("B0", AZURE, None, 0, 1)["rounds"] == 3
         assert ld.design("C0", AZURE, None, 0, 1)["rounds"] == 2
 
+    def test_the_first_sessions_staircase_runs_more_rounds(self):
+        """S0-1 is C0 up to 16 ms over 4 rounds; asking B0 or P0 for more changes nothing."""
+        made = ld.design("C0", AZURE, None, 4, 1, up_to_ms=16.0)
+        assert made["rounds"] == 4 and len(made["setups"]) == 14
+        assert ld.design("B0", AZURE, None, 4, 1)["rounds"] == 3
+
     @pytest.mark.parametrize("args,fragment", [
         (("Z9", AZURE, BASELINE, 5, 1), "no block 'Z9'"),
         (("A1", {"release": "x"}, BASELINE, 5, 1), "carry no tick"),

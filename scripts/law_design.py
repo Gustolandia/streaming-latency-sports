@@ -25,7 +25,8 @@ generated rather than typed:
 Blocks, each a design for scripts/run_queue.py:
   B0  baseline trips: no delay, the kernel's own slice, each backend at 50, 75 and 88% load
   C0  delay calibration: no delay twice, then 1, 2, 4 and 8 ms (doubling up to --up-to-ms),
-      each backend at the session's load and the kernel's own slice, 2 rounds
+      each backend at the session's load and the kernel's own slice, 2 rounds (the first
+      session's staircase, S0-1, runs up to 16 ms over 4: --up-to-ms 16 --rounds 4)
   P0  the spread pilot: 2 slices x 4 points x 2 backends, 5 rounds
   A1  slice dose-response: 6 slices x 8 points x 2 backends at 75% load
   A2  tick: 2 slices x 8 points x 2 backends, made once per tick session
@@ -236,7 +237,12 @@ def design(block, settings, baseline, rounds, seed, calibration=None, loads=None
     if block not in UNPLACED and not baseline and not calibration:
         raise ValueError("block %s places its trips from the session's calibration (C0) or "
                          "from the baseline trips B0 measured" % block)
-    rounds = FIXED_ROUNDS.get(block, rounds)
+    # B0 and P0 run their plan's rounds whatever is asked. C0 runs 2 unless asked for more: the
+    # first session's staircase (S0-1) runs 4.
+    if block == "C0":
+        rounds = rounds or FIXED_ROUNDS[block]
+    else:
+        rounds = FIXED_ROUNDS.get(block, rounds)
     if not rounds:
         raise ValueError("block %s needs --rounds, from law_design.py rounds" % block)
     setups, unreachable = make_setups(block, tick, baseline, settings, calibration, loads,

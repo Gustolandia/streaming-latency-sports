@@ -81,9 +81,10 @@ echo "clock_offset_s=$(chronyc -c tracking 2>/dev/null | cut -d, -f5)"
 #: The trial directories campaigns write are runs/concurrency_* (the Oracle scripts and the pilot)
 #: and runs/law_* (cloud/azure/campaign.sh). A run counts as finished once its tti_summary.json
 #: exists, and only runs finished in the last @WINDOW@ minutes are read. The newest log is the
-#: campaign's own, so a stop rule or a completion is read from it alone.
+#: campaign's own, so a stop rule or a completion is read from it alone, and only the last of
+#: them counts: a chain of campaigns (cloud/azure/stage0.sh) completes several before it ends.
 DRIVER_PROBE = COMMON_PROBE + r"""
-echo "campaign=$(pgrep -f 'cloud/azure/pilot.sh|cloud/azure/replicate_oracle.sh|cloud/azure/campaign.sh|cloud/campaigns/|run_concurrency_test.py|run_kafka_trial.sh|run_redis_trial.sh' | wc -l)"
+echo "campaign=$(pgrep -f 'cloud/azure/stage0.sh|cloud/azure/pilot.sh|cloud/azure/replicate_oracle.sh|cloud/azure/campaign.sh|cloud/campaigns/|run_concurrency_test.py|run_kafka_trial.sh|run_redis_trial.sh' | wc -l)"
 echo "stress=$(pgrep -x stress-ng | wc -l)"
 echo "netns=$(ip netns list 2>/dev/null | grep -c '^sblrecv')"
 queue=$(pgrep -af 'cloud/azure/campaign.sh' | grep -o 'runs/[^ ]*\.csv' | head -n 1)
@@ -95,8 +96,9 @@ if [ -n "$log" ]; then
   echo "log=$log"
   echo "log_tail=$(tail -n 1 "$log" | tr -d '\r' | cut -c1-160)"
   echo "log_age_s=$(( now - $(stat -c %Y "$log") ))"
-  echo "stop_rule=$(grep 'STOP_RULE' "$log" | tail -n 1 | tr -d '\r' | cut -c1-200)"
-  echo "complete=$(grep -c 'CAMPAIGN_COMPLETE' "$log")"
+  outcome=$(grep -E 'STOP_RULE|CAMPAIGN_COMPLETE' "$log" | tail -n 1 | tr -d '\r' | cut -c1-200)
+  case "$outcome" in *STOP_RULE*) echo "stop_rule=$outcome" ;; esac
+  echo "complete=$(printf '%s' "$outcome" | grep -c 'CAMPAIGN_COMPLETE')"
 fi
 if [ -n "$queue" ]; then
   echo "queue=$queue"

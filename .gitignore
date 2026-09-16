@@ -62,6 +62,7 @@ docs/results/concurrency_concurrency_*/
 # Cloud testbed addresses (ephemeral, per-provisioning), one file per machine pair
 cloud/hosts.env
 cloud/hosts_b.env
+cloud/hosts_arm.env
 paper.aux
 paper.log
 paper.out

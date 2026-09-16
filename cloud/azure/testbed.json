@@ -4,6 +4,7 @@
   "location": "swedencentral",
   "location_note": "On the free-trial subscription (checked 2026-09-14) North Europe refuses every size below (NotAvailableForSubscription). Sweden Central allows both profiles and was the cheapest of the European regions that do. On the pay-as-you-go subscription (checked 2026-09-15) Italy North and Poland Central also offer the x86 sizes, and only Sweden Central offers the Arm ones. A region allowed 10 CPUs, stopped machines included, until the Sweden Central limits were raised on request on 2026-09-16 to 40 CPUs in total, 20 in the Dav6 family and 10 in the Dpsv6 family. All three pairs therefore fit in Sweden Central, each in its own resource group and network.",
   "public_ip_note": "Every machine has a static public address so that it can reach out: on this network (created 2026-09-14) a machine without one had no route to apt or GitHub, and the broker's first boot set up nothing. A public address also matches the Oracle testbed, where every machine had one. Nothing comes in except SSH from the one address the firewall rule names.",
+  "disk_controller_note": "Every machine boots from NVMe unless it names another controller. Azure lists only SCSI for Standard_D8ps_v6 and Standard_D2ps_v6 (checked 2026-09-16, after it refused NVMe when the Arm driver was first created), so the Arm machines name SCSI.",
   "admin_user": "ubuntu",
   "ssh_public_key": "~/.ssh/azure_sbl.pub",
   "custom_data": "cloud/azure/cloud-init.yaml",
@@ -44,6 +45,7 @@
       "role": "driver",
       "size": "Standard_D8ps_v6",
       "image": "arm64-jammy",
+      "disk_controller": "SCSI",
       "private_ip": "10.1.1.30",
       "receiver_ip": "10.1.1.31",
       "public_ip": true
@@ -52,6 +54,7 @@
       "role": "broker",
       "size": "Standard_D2ps_v6",
       "image": "arm64-jammy",
+      "disk_controller": "SCSI",
       "private_ip": "10.1.1.41",
       "public_ip": true
     },
@@ -78,7 +81,15 @@
     },
     "arm": {
       "hosts": ["sbl-az-arm-drv", "sbl-az-arm-b1"],
-      "about": "the materially different machine: the same layout on Azure's Arm chip, one core per CPU"
+      "about": "the materially different machine: the same layout on Azure's Arm chip, one core per CPU, in its own resource group so that it is created and deleted on its own",
+      "resource_group": "sbl-azarm",
+      "vnet": {
+        "name": "sbl-vnet",
+        "cidr": "10.1.0.0/16",
+        "subnet": "sbl-subnet",
+        "subnet_cidr": "10.1.1.0/24"
+      },
+      "nsg": "sbl-nsg"
     },
     "matched-b": {
       "hosts": ["sbl-azb-drv", "sbl-azb-b1"],

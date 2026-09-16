@@ -17,10 +17,13 @@ REPO = Path(__file__).parent.parent.parent
 KIT = REPO / "cloud" / "azure"
 SHELL = sorted(KIT.glob("*.sh"))
 
+sys.path.insert(0, str(REPO / "scripts"))
+import testbed_watch  # noqa: E402
+
 
 def test_the_kit_has_the_scripts_the_guide_describes():
     assert [p.name for p in SHELL] == ["campaign.sh", "pilot.sh", "replicate_oracle.sh",
-                                       "session.sh"]
+                                       "session.sh", "stage0.sh"]
 
 
 @pytest.mark.parametrize("path", SHELL + [KIT / "cloud-init.yaml"], ids=lambda p: p.name)
@@ -41,7 +44,7 @@ def test_the_machine_setup_is_cloud_config_with_the_campaign_tools():
 
 @pytest.mark.parametrize("path", SHELL, ids=lambda p: p.name)
 def test_every_script_stops_on_errors_or_says_why_it_does_not(path):
-    """The two driver scripts carry on past a failing check on purpose, like every campaign."""
+    """The driver scripts carry on past a failing check on purpose, like every campaign."""
     text = path.read_text(encoding="utf-8")
     assert text.startswith("#!/usr/bin/env bash\n")
     assert "set -euo pipefail" in text or ("campaigns/common.sh" in text and "set +e" in text)
@@ -61,6 +64,25 @@ def test_the_pilot_uses_the_hook_the_trial_runners_read():
         assert "SBL_CONSUMER_WRAP" in (REPO / "scripts" / runner).read_text(encoding="utf-8")
 
 
+def test_stage_0_runs_its_steps_in_order_each_gated_on_the_last():
+    """The chain runs unattended for hours, so its order and its gates are checked here."""
+    code = (KIT / "stage0.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
+    order = ["bash cloud/azure/pilot.sh", "pilot_checks.py shakedown", "sched_settings.py read",
+             "design C0", "delay_calibration.py fit", "design B0", '[ "$FIT" = 0 ] ||',
+             "design P0"]
+    places = [code.index(step) for step in order]
+    assert places == sorted(places), "the steps run in the plan's order"
+    assert "first) UP_TO_MS=16; C0_ROUNDS=4 ;;" in code, "the first pair's C0 is the staircase"
+    assert 'campaign "p0_$START" "$DIR/calibration.json"' in code, "P0 is held to the calibration"
+    assert code.rstrip().endswith('its queues and files are in $DIR"')
+
+
+def test_the_watch_counts_the_chain_as_a_campaign():
+    """Between two campaigns the chain runs no campaign.sh, and a watch that took that for idle
+    would deallocate the pair in the middle of stage 0."""
+    assert "cloud/azure/stage0.sh" in testbed_watch.DRIVER_PROBE
+
+
 #: Files the guide names that the kit writes rather than ships, and why. Each must be ignored by
 #: git, so an entry here cannot hide a committed file that went missing.
 WRITTEN = {
@@ -68,6 +90,8 @@ WRITTEN = {
                        "provisioning and are never committed",
     "cloud/hosts_b.env": "written by scripts/azure_testbed.py hosts --profile matched-b; the "
                          "second pair's addresses, never committed either",
+    "cloud/hosts_arm.env": "written by scripts/azure_testbed.py hosts --profile arm; the Arm "
+                           "pair's addresses, never committed either",
 }
 
 

@@ -195,3 +195,91 @@ class TestMain:
     def test_a_missing_run_is_an_error_line(self, tmp_path):
         code, text = self.run(["run", str(tmp_path / "absent")])
         assert code == 2 and text.startswith("ERROR:")
+
+
+PASSING_VERDICTS = [
+    ("settings", "kept", "yes", "1500000 ns still set after 60 s"),
+    ("settings", "restored", "yes", "2800000 ns"),
+    ("network", "0.5 ms", "yes", "measured 0.515 ms"),
+    ("network", "2.0 ms", "yes", "measured 2.03 ms"),
+    ("harness", "kafka", "no", "see harness_verify_kafka.json"),
+    ("go-first", "75%", "yes", "at least five-fold with disjoint intervals")]
+CLEAN_REPORTS = {"kafka": json.dumps({"trip_negative_total": 0, "ok": False}),
+                 "redis": json.dumps({"trip_negative_total": 0, "ok": False})}
+STEADY_LOADS = {"harness_1_d0": ["0.75", "0.76"], "harness_2_d2.0": ["0.74", "0.755"],
+                "harness_3_d0": ["0.752"]}
+
+
+def write_pilot(tmp_path, verdicts=PASSING_VERDICTS, reports=CLEAN_REPORTS, loads=STEADY_LOADS):
+    """A pilot's output: its verdicts, one receiver-only report per backend, each cell's load."""
+    pilot = tmp_path / "pilot"
+    pilot.mkdir()
+    with (pilot / "verdicts.csv").open("w", newline="", encoding="utf-8") as fh:
+        w = csv.writer(fh)
+        w.writerow(["check", "step", "ok", "detail"])
+        w.writerows(verdicts)
+    for backend, text in reports.items():
+        (pilot / ("harness_verify_%s.json" % backend)).write_text(text, encoding="utf-8")
+    for cell, rows in loads.items():
+        (pilot / cell).mkdir()
+        with (pilot / cell / "utilisation.csv").open("w", newline="", encoding="utf-8") as fh:
+            fh.write(rows if isinstance(rows, str) else
+                     "t_wall,rho\n" + "".join("%d,%s\n" % (i, v) for i, v in enumerate(rows)))
+    return str(pilot)
+
+
+class TestShakedown:
+
+    def test_a_pair_passes_although_its_trip_is_not_one_for_one(self, tmp_path):
+        """The first pilot's harness verdict was no for exactly that reason; C0 judges it now."""
+        result = pc.shakedown(write_pilot(tmp_path), 75)
+        assert result["ok"], result
+        assert result["checks"]["load"]["detail"] == (
+            "harness_1_d0 75.5%, harness_2_d2.0 74.8%, harness_3_d0 75.2%")
+        assert result["go_first_recorded"] == "75% yes (at least five-fold with disjoint intervals)"
+
+    def test_a_setting_that_did_not_hold(self, tmp_path):
+        verdicts = [("settings", "kept", "no", "see settings_after_60s.json")] + PASSING_VERDICTS[2:]
+        result = pc.shakedown(write_pilot(tmp_path, verdicts=verdicts), 75)
+        assert not result["ok"] and not result["checks"]["settings"]["ok"]
+        assert result["checks"]["network"]["ok"]
+
+    def test_a_check_the_pilot_never_wrote(self, tmp_path):
+        result = pc.shakedown(write_pilot(tmp_path, verdicts=PASSING_VERDICTS[:2]), 75)
+        assert result["checks"]["network"] == {
+            "ok": False, "detail": "the pilot wrote no network verdict"}
+        assert result["go_first_recorded"] == "the pilot wrote no go-first verdict"
+
+    @pytest.mark.parametrize("reports,detail", [
+        (dict(CLEAN_REPORTS, kafka=json.dumps({"trip_negative_total": 2})), "2 negative trip(s)"),
+        (dict(CLEAN_REPORTS, redis="ERROR: no gotit_median_ms in runs/x"),
+         "0 negative trip(s); unreadable: harness_verify_redis.json"),
+        ({"kafka": CLEAN_REPORTS["kafka"]},
+         "0 negative trip(s); unreadable: harness_verify_redis.json"),
+        (dict(CLEAN_REPORTS, kafka=json.dumps({"ok": True})),
+         "0 negative trip(s); unreadable: harness_verify_kafka.json")])
+    def test_a_negative_trip_or_a_report_that_cannot_be_read(self, tmp_path, reports, detail):
+        result = pc.shakedown(write_pilot(tmp_path, reports=reports), 75)
+        assert not result["ok"]
+        assert result["checks"]["never_negative"] == {"ok": False, "detail": detail}
+
+    @pytest.mark.parametrize("loads,detail", [
+        ({"harness_1_d0": ["0.70"]}, "harness_1_d0 70.0%"),
+        ({"harness_1_d0": "t_wall,rho\n0,x\n1,\n2\n"}, "harness_1_d0 no samples"),
+        ({"harness_1_d0": "t_wall,cpu\n0,0.75\n"}, "harness_1_d0 no samples"),
+        ({}, "no harness cell recorded its load")])
+    def test_a_load_off_its_setting_or_never_recorded(self, tmp_path, loads, detail):
+        result = pc.shakedown(write_pilot(tmp_path, loads=loads), 75)
+        assert not result["ok"]
+        assert result["checks"]["load"] == {"ok": False, "detail": detail}
+
+    def test_from_the_command_line(self, tmp_path):
+        run = TestMain.run
+        pilot = write_pilot(tmp_path)
+        code, text = run(["shakedown", "--pilot-dir", pilot])
+        assert code == 0 and json.loads(text)["ok"]
+        assert run(["shakedown", "--pilot-dir", pilot, "--load-pct", "88"])[0] == 1
+        assert run(["shakedown", "--pilot-dir", pilot, "--load-pct", "88",
+                    "--load-points", "15"])[0] == 0
+        code, text = run(["shakedown", "--pilot-dir", str(tmp_path / "absent")])
+        assert code == 2 and text.startswith("ERROR:")

@@ -172,12 +172,12 @@ A campaign also stops itself when attempts keep failing: the last three all fail
 a fifth of the last twenty did, once ten have finished. A stopped campaign writes a `STOP_RULE:`
 line in its log and waits for a person. Find the cause before starting it again.
 
-## Two pairs at once
+## Several pairs at once
 
 Some campaigns can run at the same time, but only on separate machine pairs, never two on one
 pair. Each pair is a *lane* (a driver and its broker, with its own hosts file, queues and logs).
 Runs on two lanes share no CPU, broker, network link or disk, so neither can disturb the other.
-The rules, from the experiment plan:
+The rules, from the experiment plan in `freezes/`:
 
 1. **One campaign, one pair.** A campaign runs on one lane from its first run to its last, and
    every prediction is tested on runs from one pair. Nothing pools runs across pairs.
@@ -189,28 +189,43 @@ The rules, from the experiment plan:
 5. **Copy before the next.** A finished campaign's runs are copied home before the next campaign
    starts on that pair.
 
-The second x86 pair is the profile *matched-b*. It sits beside the first in Sweden Central, in its
-own resource group and network, which became possible when that region's CPU limit was raised on
-16 September 2026. Every `azure_testbed.py` command takes `--profile`, and acts on *matched*
-without it. The second pair's addresses go in `cloud/hosts_b.env`:
+There are three pairs, all in Sweden Central since that region's CPU limit was raised on
+16 September 2026, each in its own resource group and network so that each is created and
+deleted on its own: *matched* (group `sbl-az`), *matched-b* (`sbl-azb`) and *arm* (`sbl-azarm`).
+Every `azure_testbed.py` command takes `--profile`, and acts on *matched* without it. Each pair
+has its own hosts file: `cloud/hosts.env`, `cloud/hosts_b.env` and `cloud/hosts_arm.env`.
 
 ```bash
-python scripts/azure_testbed.py preflight --profile matched-b
 python scripts/azure_testbed.py up --profile matched-b --ssh-source YOUR.ADDRESS/32 --yes
 python scripts/azure_testbed.py hosts --profile matched-b --write cloud/hosts_b.env
 HOSTS_ENV=cloud/hosts_b.env bash cloud/azure/session.sh
 ```
 
-`session.sh` copies that file to the second driver as its own `cloud/hosts.env`, so nothing on
-the driver needs to know which pair it is. At the very end the pair is deleted like the first:
+The Arm pair is the same with `--profile arm` and `cloud/hosts_arm.env`. `session.sh` copies the
+hosts file to that driver as its own `cloud/hosts.env`, so nothing on a driver needs to know which
+pair it is. A pair is deleted alone, with its group's name typed back, for example
 `python scripts/azure_testbed.py down --profile matched-b --confirm sbl-azb`.
+
+**Stage 0, unattended.** `cloud/azure/stage0.sh` runs the plan's first stage on one pair from
+start to end: the pilot (a new pair's shakedown, or the first pair's retest), which must pass
+`pilot_checks.py shakedown`; the session's delay calibration (C0) and its fit; the baseline trips
+(B0); and the spread pilot (P0), placed from the calibration and only if its gate passed. On the
+first pair C0 is the staircase S0-1, up to 16 ms over 4 rounds. It takes about 6 to 10 hours,
+depending on how many P0 points the machine can reach. On each driver, after `session.sh`:
+
+```bash
+nohup bash cloud/azure/stage0.sh first > stage0.log 2>&1 &
+```
+
+with `new` in place of `first` on the second x86 pair and on the Arm pair. Its last line is
+`CAMPAIGN_COMPLETE`, or `STOP_RULE:` with the reason.
 
 **Watching every lane.** One watch reads them all: give each lane a name and its hosts file. With
 `--stop-idle-min 20` it also deallocates a pair whose machines have been idle for 20 minutes, so a
 pair that finished at night does not bill until morning:
 
 ```bash
-python scripts/testbed_watch.py --lane a=cloud/hosts.env --lane b=cloud/hosts_b.env --stop-idle-min 20
+python scripts/testbed_watch.py --lane a=cloud/hosts.env --lane b=cloud/hosts_b.env --lane arm=cloud/hosts_arm.env --stop-idle-min 20
 ```
 
 Each look is appended to a dated log under `runs/azure_watch/`, and the latest is also in
@@ -257,13 +272,14 @@ python scripts/collect_runs.py --hosts cloud/hosts_b.env --queue runs/azure/queu
 | `scripts/sched_settings.py` | reads, sets and checks the base slice and the tick on a machine |
 | `scripts/receiver_delay.py` | builds the receiver's namespace, delays traffic to it alone, and checks that with ping |
 | `cloud/azure/pilot.sh` | the five pilot checks, with a verdict for each |
-| `scripts/pilot_checks.py` | reads run files: never-negative trips, the receiver-only check, the go-first cut |
+| `scripts/pilot_checks.py` | reads run files: never-negative trips, the receiver-only check, the go-first cut, and whether a pilot passed a new pair's shakedown |
 | `cloud/azure/replicate_oracle.sh` | runs the Oracle mechanism campaigns unchanged, in shuffled order |
 | `scripts/run_queue.py` | the randomised run queue and its ledger (every run recorded, failures included) |
 | `scripts/testbed_watch.py` | watches every machine pair from your computer and flags idle, stuck, failed or impossible runs, repeated and stopping verdicts, low load, full disks and clock drift; can deallocate idle pairs |
 | `scripts/law_design.py` | builds each law block's run list from the machine's tick and slice constant, the session's delay calibration (or the baseline trips) and the repeat rule |
 | `scripts/delay_calibration.py` | measures, from a calibration queue, how far the trip moves per millisecond of receiver-only delay, checks the gate, and gives the delay each planned trip needs |
 | `cloud/azure/campaign.sh` | the law campaign's runner: sets each run's CPUs, slice, delay and load, runs one trial, checks it, records it, and stops itself on a stop rule |
+| `cloud/azure/stage0.sh` | the plan's first stage on one pair, unattended: the pilot and its shakedown, the calibration and its fit, the baseline trips, the spread pilot |
 | `scripts/run_integrity.py` | judges each run as it ends (it counts, is repeated, or stops its campaign), and stops a campaign whose attempts keep failing |
 | `scripts/collect_runs.py` | copies a finished campaign home and checks a fingerprint for every file |
 

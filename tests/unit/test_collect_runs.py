@@ -68,8 +68,9 @@ def fake_driver(home, tmp_path, seen, tamper=None, ssh_code=0, scp_code=0):
         if argv[-1].startswith("rm -rf"):
             return Done()
         if ssh_code:
-            return Done("", ssh_code, "banner\nPermission denied (publickey).")
-        assert "queue=%s\n" % QUEUE in kwargs["input"]
+            return Done(b"", ssh_code, b"banner\nPermission denied (publickey).")
+        assert b"queue=%s\n" % QUEUE.encode() in kwargs["input"]
+        assert b"\r" not in kwargs["input"], "the script must reach bash as LF"
         paths = [QUEUE] + [p for p in ("runs/law_r001-s0-a1", "runs/law_r001-s1-a1")
                            if (home / p).is_dir()]
         work.mkdir(exist_ok=True)
@@ -87,7 +88,7 @@ def fake_driver(home, tmp_path, seen, tamper=None, ssh_code=0, scp_code=0):
                  "host=sbl-az-drv"]
         lines += ["manifest=%s  %s" % pair for pair in sorted(manifest, key=lambda m: m[1])]
         text = "\n".join(lines) + "\n"
-        return Done(tamper(text) if tamper else text)
+        return Done((tamper(text) if tamper else text).encode(), 0, b"")
     return run
 
 
@@ -175,7 +176,7 @@ class TestACopyThatCannotBeTrusted:
         assert not (tmp_path / "here" / "matched" / "c0" / "COLLECTED.json").exists()
 
     def test_the_last_line_of_an_empty_answer(self):
-        assert cr.last_line(Done("", 3, "")) == "exit 3"
+        assert cr.last_line(3, "", "") == "exit 3"
 
 
 def archive_with(tmp_path, *entries):

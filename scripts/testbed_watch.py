@@ -15,7 +15,8 @@ hosts file, its own machines, its own campaigns. It raises a flag when:
   failed   new "[FAIL]" trials appeared in a campaign log since the previous cycle
   stop     a run's integrity verdict stopped its campaign (scripts/run_integrity.py)
   repeat   a run's integrity verdict sent it back to the queue
-  pilot    the pilot's verdicts.csv has a check marked no
+  pilot    the newest pilot failed a settings or network check (its harness verdict is judged by
+           the session's calibration, and go-first by the campaign that tests it)
   broken   a finished run has a negative trip: arrival before sending, so the harness is wrong
   odd      a finished run's median trip is above ODD_TRIP_MS, or it carried few messages
   load     stress-ng is running but the driver's CPUs are less than half busy
@@ -107,8 +108,8 @@ fi
 newest=$(ls -td runs/* runs/azure/*/* 2>/dev/null | head -1)
 [ -n "$newest" ] && echo "activity_age_s=$(( now - $(stat -c %Y "$newest") ))"
 echo "fails=$(cat ./*.log 2>/dev/null | grep -c '\[FAIL\]')"
-v=$(ls -t runs/azure/pilot/*/verdicts.csv 2>/dev/null | head -1)
-[ -n "$v" ] && echo "verdict_no=$(grep -c ',no,' "$v")"
+v=$(ls -t runs/azure/pilot/*/verdicts.csv runs/azure/stage0/*/pilot/verdicts.csv 2>/dev/null | head -1)
+[ -n "$v" ] && echo "verdict_no=$(grep -cE '^(settings|network),[^,]*,no,' "$v")"
 for d in $(find runs -maxdepth 1 -mindepth 1 -type d \( -name 'concurrency_*' -o -name 'law_*' \) -mmin -@WINDOW@ 2>/dev/null | head -n 20); do
   if [ -f "$d/tti_summary.json" ]; then
     echo "run=$(python3 scripts/pilot_checks.py run "$d" --warmup-s 0 2>&1 | tr -d '\n ')"
@@ -141,7 +142,12 @@ def read_hosts(path):
 
 
 def ssh_argv(ssh, key, host, jump=None):
-    """An ssh command that runs a script read from stdin, optionally through the driver."""
+    """An ssh command that runs a script read from stdin, optionally through the driver.
+
+    Paths go with forward slashes: the jump to the broker runs inside a shell, which would eat
+    the backslashes of a Windows key path, and ssh reads either kind.
+    """
+    ssh, key = ssh.replace("\\", "/"), key.replace("\\", "/")
     opts = ["-i", key, "-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
             "-o", "StrictHostKeyChecking=accept-new"]
     argv = [ssh] + opts
@@ -169,16 +175,27 @@ def parse(text):
     return facts
 
 
+def run_script(run, argv, script, timeout):
+    """(exit code, stdout, stderr) of a bash script fed to a machine's stdin over SSH.
+
+    The script goes as bytes. In text mode, Python on Windows turns every newline it writes into
+    CR LF, and bash on the machine then reads a stray carriage return at the end of every line.
+    """
+    done = run(argv, input=script.encode("utf-8"), capture_output=True, timeout=timeout)
+    return (done.returncode, done.stdout.decode("utf-8", "replace"),
+            done.stderr.decode("utf-8", "replace"))
+
+
 def probe(run, argv, script, timeout=90):
     """(facts, "") from one SSH session, or (None, why) if it could not be read."""
     try:
-        done = run(argv, input=script, capture_output=True, text=True, timeout=timeout)
+        code, stdout, stderr = run_script(run, argv, script, timeout)
     except (OSError, subprocess.TimeoutExpired) as exc:
         return None, str(exc)
-    if done.returncode != 0:
-        lines = (done.stderr or done.stdout or "").strip().splitlines()
-        return None, lines[-1] if lines else "ssh exited with %d" % done.returncode
-    return parse(done.stdout), ""
+    if code != 0:
+        lines = (stderr or stdout).strip().splitlines()
+        return None, lines[-1] if lines else "ssh exited with %d" % code
+    return parse(stdout), ""
 
 
 def cpu_usage(first, second):
@@ -287,8 +304,8 @@ def evaluate(driver, broker, previous_fails=None):
             flags.append(("ALERT", "failed: %d new failed trials since the last look"
                           % (fails - previous_fails)))
         if number(driver, "verdict_no", int):
-            flags.append(("ALERT", "pilot: %s check(s) in verdicts.csv are marked no"
-                          % driver["verdict_no"]))
+            flags.append(("ALERT", "pilot: the newest pilot failed %s settings or network "
+                          "check(s); nothing should run on this pair" % driver["verdict_no"]))
         if number(driver, "netns", int) == 0:
             flags.append(("WARN", "receiver: the namespace is gone; run cloud/azure/session.sh"))
         flags += run_flags(driver["runs"])

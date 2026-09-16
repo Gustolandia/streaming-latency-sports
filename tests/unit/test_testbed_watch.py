@@ -33,15 +33,17 @@ STAMP = datetime.datetime(2026, 9, 14, 23, 0, tzinfo=datetime.timezone.utc)
 
 
 class Done:
+    """What subprocess.run returns when the output is captured as bytes."""
     def __init__(self, stdout="", returncode=0, stderr=""):
-        self.stdout, self.returncode, self.stderr = stdout, returncode, stderr
+        self.stdout, self.returncode, self.stderr = stdout.encode(), returncode, stderr.encode()
 
 
 def fake_run(driver=DRIVER_OK, broker=BROKER_OK, seen=None):
     """Answers the driver's probe and the broker's (the one that goes through ProxyCommand)."""
-    def run(argv, input, capture_output, text, timeout):
+    def run(argv, input, capture_output, timeout):
+        assert isinstance(input, bytes) and b"\r" not in input, "the script must reach bash as LF"
         if seen is not None:
-            seen.append((argv, input))
+            seen.append((argv, input.decode("utf-8")))
         answer = broker if any(a.startswith("ProxyCommand=") for a in argv) else driver
         if isinstance(answer, BaseException):
             raise answer
@@ -80,6 +82,14 @@ class TestHostsAndSsh:
         jumped = tw.ssh_argv("ssh", "k", "10.1.1.21", jump="4.223.79.212")
         proxy = [a for a in jumped if a.startswith("ProxyCommand=")][0]
         assert proxy.endswith("-W %h:%p ubuntu@4.223.79.212")
+
+    def test_a_windows_key_path_survives_the_shell_that_runs_the_jump(self):
+        jumped = tw.ssh_argv(r"C:\Program\ssh.exe", r"C:\Users\me\.ssh\azure_sbl",
+                             "10.1.1.21", jump="4.223.79.212")
+        proxy = [a for a in jumped if a.startswith("ProxyCommand=")][0]
+        assert proxy.startswith("ProxyCommand=C:/Program/ssh.exe -i C:/Users/me/.ssh/azure_sbl ")
+        assert jumped[:3] == ["C:/Program/ssh.exe", "-i", "C:/Users/me/.ssh/azure_sbl"]
+        assert "\\" not in " ".join(jumped)
 
 
 class TestReading:
@@ -135,7 +145,7 @@ class TestFlags:
 
     @pytest.mark.parametrize("extra,level,fragment", [
         ("activity_age_s=1500\n", "ALERT", "nothing has changed for 25 minutes"),
-        ("verdict_no=2\n", "ALERT", "2 check(s) in verdicts.csv are marked no"),
+        ("verdict_no=2\n", "ALERT", "failed 2 settings or network check(s)"),
         ("netns=0\n", "WARN", "namespace is gone")])
     def test_campaign_trouble(self, extra, level, fragment):
         found = tw.evaluate(facts(DRIVER_OK + extra), facts(BROKER_OK), previous_fails=0)

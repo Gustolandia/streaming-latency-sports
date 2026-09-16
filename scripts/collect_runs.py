@@ -142,9 +142,9 @@ def verify(dest, manifest):
     return problems
 
 
-def last_line(done):
-    lines = (done.stderr or done.stdout or "").strip().splitlines()
-    return lines[-1] if lines else "exit %d" % done.returncode
+def last_line(code, stdout, stderr):
+    lines = (stderr or stdout or "").strip().splitlines()
+    return lines[-1] if lines else "exit %d" % code
 
 
 def collect(hosts, queue, dest, key, ssh="ssh", scp="scp", run=subprocess.run, clock=None):
@@ -156,11 +156,12 @@ def collect(hosts, queue, dest, key, ssh="ssh", scp="scp", run=subprocess.run, c
     if os.path.exists(os.path.join(home, "COLLECTED.json")):
         raise RuntimeError("%s is already collected in %s; move that folder aside to collect it "
                            "again" % (queue, home))
-    done = run([ssh] + opts + [driver, "bash -s"], input=remote_script(queue),
-               capture_output=True, text=True, timeout=1800)
-    if done.returncode != 0:
-        raise RuntimeError("the driver could not pack the runs: %s" % last_line(done))
-    facts = parse_pack(done.stdout)
+    code, stdout, stderr = testbed_watch.run_script(
+        run, [ssh] + opts + [driver, "bash -s"], remote_script(queue), 1800)
+    if code != 0:
+        raise RuntimeError("the driver could not pack the runs: %s"
+                           % last_line(code, stdout, stderr))
+    facts = parse_pack(stdout)
     if not facts["work"].startswith(WORK_PREFIX):
         raise RuntimeError("the driver named %r as its temporary folder; refusing to use it"
                            % facts["work"])
@@ -170,7 +171,8 @@ def collect(hosts, queue, dest, key, ssh="ssh", scp="scp", run=subprocess.run, c
         copied = run([scp] + opts + ["%s:%s" % (driver, facts["archive"]), archive],
                      capture_output=True, text=True, timeout=3600)
         if copied.returncode != 0:
-            raise RuntimeError("the archive did not copy: %s" % last_line(copied))
+            raise RuntimeError("the archive did not copy: %s"
+                               % last_line(copied.returncode, copied.stdout, copied.stderr))
         digest = sha256_file(archive)
         if digest != facts["archive_sha256"]:
             raise RuntimeError("the archive's fingerprint here, %s, is not the driver's, %s"

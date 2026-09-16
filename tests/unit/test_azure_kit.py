@@ -105,6 +105,15 @@ def test_every_run_checks_the_machine_and_its_zero_delay_baseline_first():
     assert places == sorted(places)
 
 
+def test_a_run_writes_only_into_a_folder_of_its_own():
+    """Queue keys repeat from one queue to the next. On 16 September a restarted calibration wrote
+    its first run into the folder of the attempt before it, and the watch saw a 35-minute trip."""
+    code = (KIT / "campaign.sh").read_text(encoding="utf-8")
+    assert 'QUEUE_NAME="$(basename "$QUEUE" .csv)"' in code
+    loop = code.split('RUN_ID="law_${QUEUE_NAME}_$KEY"', 1)[1]
+    assert loop.index('if [ -e "$RUN_DIR" ]; then') < loop.index('mkdir -p "$RUN_DIR"')
+
+
 def test_the_watch_counts_the_chain_as_a_campaign():
     """Between two campaigns the chain runs no campaign.sh, and a watch that took that for idle
     would deallocate the pair in the middle of stage 0."""

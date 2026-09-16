@@ -14,8 +14,9 @@
 #   1. settings  online CPUs (all of them unless the setup names a count), then the base slice
 #                unless the setup keeps the kernel's own; both read back, with the tick, and a
 #                mismatch fails the run before any traffic;
-#   2. delay     the receiver-only delay on the broker, then measured by ping from both sides
-#                (the measured value is what the analysis uses);
+#   2. delay     the receiver-only delay on the broker, measured by ping from both sides beyond
+#                the same ping taken with no delay just before (the measured value is what the
+#                analysis uses);
 #   3. load      stress-ng on every online CPU at the setup's duty, measured by util_sampler;
 #   4. trace     A1 and A3 runs whose queue key hashes even record the timestamping processes'
 #                run-queue delays with bpftrace (A6);
@@ -24,8 +25,10 @@
 #                offset and the CPU counters are logged just before and just after it;
 #   6. checks    scripts/run_integrity.py, on this machine, as soon as the trial ends: the run
 #                counts, is repeated, or stops the campaign, and integrity.json says why;
-#   7. record    everything lands in the run's directory, with lane.json naming the machine pair
-#                and the commit, and the queue marks the run done or failed.
+#   7. record    everything lands in the run's own directory, runs/law_<queue>_<key>, with
+#                lane.json naming the machine pair and the commit, and the queue marks the run
+#                done or failed. A directory that already exists stops the campaign: keys repeat
+#                from one queue to the next, and a run never writes into another run's files.
 #
 # A run is repeated only when a step failed or a condition it was meant to have did not take:
 # too few messages, the send rate or the load off target, the delay or the settings not as set,
@@ -41,6 +44,7 @@
 set +e
 
 QUEUE="${1:?usage: bash cloud/azure/campaign.sh QUEUE.csv}"
+QUEUE_NAME="$(basename "$QUEUE" .csv)"
 : "${RECEIVER_IP:?hosts.env has no RECEIVER_IP; is this the Azure testbed?}"
 RATE="${RATE:-50}"
 DURATION="${DURATION:-130}"
@@ -268,8 +272,14 @@ values = {
 print("\n".join("%s=%s" % (k, shlex.quote(str(v))) for k, v in values.items()))
 PY
 )"
-  RUN_ID="law_$KEY"
+  # On 16 September a restarted calibration wrote its first run into the folder of the attempt
+  # before it, because the folder was named by the key alone.
+  RUN_ID="law_${QUEUE_NAME}_$KEY"
   RUN_DIR="runs/$RUN_ID"
+  if [ -e "$RUN_DIR" ]; then
+    log "FATAL: $RUN_DIR already exists, and a run never writes into another run's folder"
+    exit 1
+  fi
   mkdir -p "$RUN_DIR"
   echo "$ROW" > "$RUN_DIR/queue_row.json"
   printf '{"lane": "%s", "profile": "%s", "driver": "%s", "commit": "%s"}\n' "$LANE" \

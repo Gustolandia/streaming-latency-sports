@@ -18,7 +18,10 @@ hosts file, its own machines, its own campaigns. It raises a flag when:
   pilot    the newest pilot failed a settings or network check (its harness verdict is judged by
            the session's calibration, and go-first by the campaign that tests it)
   broken   a finished run has a negative trip: arrival before sending, so the harness is wrong
-  odd      a finished run's median trip is above ODD_TRIP_MS, or it carried few messages
+  crazy    a finished run shows numbers no working setup produces: a median trip above
+           CRAZY_TRIP_MS, fewer than FEW_MESSAGES messages, or a load CRAZY_LOAD_POINTS off
+  off      a placed run missed its planned trip by more than OFF_TARGET_MS and OFF_TARGET_SHARE
+  odd      a finished run, its verdict or its numbers could not be read
   load     stress-ng is running but the driver's CPUs are less than half busy
   disk     a disk is DISK_PCT% full; Kafka's logs once filled a 45 GB disk on Oracle
   memory   less than a tenth of memory is available
@@ -29,6 +32,10 @@ hosts file, its own machines, its own campaigns. It raises a flag when:
   unreachable  SSH fails; if the Azure CLI is present, the line also says whether the machine is
                running (billing) or deallocated (not billing)
   pairs    two lanes run the same queue, or the lanes run different commits of the code
+
+Every look also shows one line per finished run, with its messages, trip, "got it" delay,
+negative share, load and verdict, so absurd numbers are seen at once; and under any alert it
+prints the command that stops that pair after the run in progress.
 
 The exception: with --stop-idle-min N, a lane whose machines have been IDLE for N minutes is
 stopped (deallocated), so it stops billing for CPUs.
@@ -59,8 +66,11 @@ LOG_DIR = os.path.join(azure_testbed.REPO, "runs", "azure_watch")
 KEY = os.path.join("~", ".ssh", "azure_sbl")
 
 STALE_MIN = 20
-ODD_TRIP_MS = 50.0
+CRAZY_TRIP_MS = 50.0
 FEW_MESSAGES = 100
+CRAZY_LOAD_POINTS = 15.0
+OFF_TARGET_MS = 1.0
+OFF_TARGET_SHARE = 0.5
 DISK_PCT = 80
 MEM_FREE_FRACTION = 0.10
 STEAL_PCT = 5.0
@@ -118,6 +128,28 @@ for d in $(find runs -maxdepth 1 -mindepth 1 -type d \( -name 'concurrency_*' -o
     echo "verdict=$(python3 scripts/run_integrity.py show "$d" 2>&1 | tr -d '\n')"
   fi
 done
+NUMBERS='
+import json, sys
+d = sys.argv[1]
+out = {"run_dir": d}
+try:
+    found = json.load(open(d + "/integrity.json"))
+    checks, recorded = found.get("checks") or {}, found.get("recorded") or {}
+    out.update(verdict=found.get("verdict"), messages=recorded.get("messages"),
+               trip_ms=recorded.get("trip_median_ms"), gotit_ms=recorded.get("gotit_median_ms"),
+               negative_rate=recorded.get("measured_negative_rate"),
+               load_pct=(checks.get("load") or {}).get("value"))
+    params = json.load(open(d + "/queue_row.json"))["params"]
+    out.update(load_target=params.get("load_pct"), target_trip_ms=params.get("target_trip_ms"))
+except Exception as exc:
+    out["unreadable"] = type(exc).__name__
+print(json.dumps(out))
+'
+for d in $(find runs -maxdepth 1 -mindepth 1 -type d -name 'law_*' -mmin -@WINDOW@ 2>/dev/null | head -n 20); do
+  if [ -f "$d/integrity.json" ]; then
+    echo "numbers=$(python3 -c "$NUMBERS" "$d" 2>/dev/null)"
+  fi
+done
 """
 
 BROKER_PROBE = COMMON_PROBE + r"""
@@ -156,20 +188,24 @@ def ssh_argv(ssh, key, host, jump=None):
     return argv + ["ubuntu@%s" % host, "bash -s"]
 
 
+#: Probe lines that come once per finished run, and the list each goes into.
+LISTS = {"run": "runs", "verdict": "verdicts", "numbers": "numbers"}
+
+
 def parse(text):
-    """Probe output as a dict. Every run= line becomes one entry of "runs", and every verdict=
-    line one entry of "verdicts"."""
-    facts = {"runs": [], "verdicts": []}
+    """Probe output as a dict. Every run=, verdict= and numbers= line becomes one entry of the
+    list LISTS names for it."""
+    facts = {name: [] for name in LISTS.values()}
     for line in text.splitlines():
         key, sep, value = line.partition("=")
         if not sep:
             continue
-        if key in ("run", "verdict"):
+        if key in LISTS:
             try:
                 entry = json.loads(value)
             except ValueError:
                 entry = {"unreadable": value}
-            facts[key + "s"].append(entry)
+            facts[LISTS[key]].append(entry)
         else:
             facts[key] = value.strip()
     return facts
@@ -251,11 +287,14 @@ def run_flags(runs):
             flags.append(("ALERT", "broken: %s has %d messages that arrived before they were "
                           "sent; the harness is wrong" % (where, run["trip_negative"])))
         else:
-            if (run.get("trip_median_ms") or 0) > ODD_TRIP_MS:
-                flags.append(("WARN", "odd: %s has a median trip of %.1f ms"
+            if (run.get("trip_median_ms") or 0) > CRAZY_TRIP_MS:
+                flags.append(("ALERT", "crazy: %s has a median trip of %.1f ms"
                               % (where, run["trip_median_ms"])))
-            if (run.get("messages") or 0) < FEW_MESSAGES:
-                flags.append(("WARN", "odd: %s carried only %d messages"
+            # Only a campaign run has a planned message count; the pilot replays real matches,
+            # whose feeds hold 71 to 148 events.
+            if (os.path.basename(str(where)).startswith("law_")
+                    and (run.get("messages") or 0) < FEW_MESSAGES):
+                flags.append(("ALERT", "crazy: %s carried only %d messages"
                               % (where, run.get("messages") or 0)))
     return flags
 
@@ -274,6 +313,68 @@ def verdict_flags(verdicts):
         elif found.get("verdict") == "repeat":
             flags.append(("WARN", "repeat: %s will run again: %s" % (where, reasons)))
     return flags
+
+
+def _number(value):
+    """A float, or None for anything that is not a number."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def numbers_flags(numbers):
+    """Flags about what finished campaign runs measured against what they were set to."""
+    flags = []
+    for found in numbers:
+        where = found.get("run_dir", "a run")
+        if "unreadable" in found:
+            flags.append(("WARN", "odd: could not read the numbers of %s (%s)"
+                          % (where, str(found["unreadable"])[:80])))
+            continue
+        load, wanted = _number(found.get("load_pct")), _number(found.get("load_target"))
+        if load is not None and wanted is not None and abs(load - wanted) > CRAZY_LOAD_POINTS:
+            flags.append(("ALERT", "crazy: %s ran at %.0f%% load where %.0f%% was set; the load "
+                          "generator may have died" % (where, load, wanted)))
+        trip, target = _number(found.get("trip_ms")), _number(found.get("target_trip_ms"))
+        if (trip is not None and target is not None
+                and abs(trip - target) > max(OFF_TARGET_MS, OFF_TARGET_SHARE * target)):
+            flags.append(("WARN", "off: %s measured a %.2f ms trip where %.2f ms was planned; "
+                          "the calibration may be placing runs badly" % (where, trip, target)))
+    return flags
+
+
+def _shown(label, value, spec):
+    """`label value`, the value formatted by `spec`, or `label ?` when it is not a number."""
+    number = _number(value)
+    return "%s %s" % (label, "?" if number is None else spec.format(number))
+
+
+def run_line(run, numbers):
+    """One finished run in a line. A campaign run shows the numbers its verdict was given on,
+    after the warm-up, with its planned trip, load and verdict; another run shows what the probe
+    read, warm-up included."""
+    def pick(key, fallback):
+        return numbers[key] if numbers.get(key) is not None else run.get(fallback)
+    trip = _shown("trip", pick("trip_ms", "trip_median_ms"), "{:.2f} ms")
+    if _number(numbers.get("target_trip_ms")) is not None:
+        trip += _shown(" (planned", numbers["target_trip_ms"], "{:.2f} ms)")
+    parts = [_shown("messages", pick("messages", "messages"), "{:,.0f}"), trip,
+             _shown("got-it", pick("gotit_ms", "gotit_median_ms"), "{:.2f} ms"),
+             _shown("negative", pick("negative_rate", "measured_negative_rate"), "{:.1%}")]
+    if "load_pct" in numbers:
+        parts.append(_shown("load", numbers["load_pct"], "{:.1f}%"))
+    if numbers.get("verdict"):
+        parts.append(numbers["verdict"])
+    return "run %s: %s" % (os.path.basename(str(run.get("run_dir", "?"))), ", ".join(parts))
+
+
+def run_lines(driver):
+    """A line for every run that finished since the last look."""
+    numbers = {found.get("run_dir"): found for found in driver["numbers"]
+               if "unreadable" not in found}
+    return [run_line(run, numbers.get(run.get("run_dir"), {}))
+            for run in driver["runs"] if "unreadable" not in run]
 
 
 def evaluate(driver, broker, previous_fails=None):
@@ -310,6 +411,7 @@ def evaluate(driver, broker, previous_fails=None):
             flags.append(("WARN", "receiver: the namespace is gone; run cloud/azure/session.sh"))
         flags += run_flags(driver["runs"])
         flags += verdict_flags(driver["verdicts"])
+        flags += numbers_flags(driver["numbers"])
     if broker is not None:
         flags += machine_flags("broker", broker)
         docker = broker.get("docker", "")
@@ -385,9 +487,14 @@ def cycle(hosts, spec, key, ssh, run, runner, state, stamp, window_min=15, lane=
     if driver is not None:
         lines.append("  " + summary("driver", hosts["DRIVER_PUBLIC"], driver))
         lines.append("  runs finished in the last %d min: %d" % (window_min, len(driver["runs"])))
+        lines += ["  " + line for line in run_lines(driver)]
     if broker is not None:
         lines.append("  " + summary("broker", hosts["BROKER_PRIV"], broker))
     lines += ["  %s %s" % (level, message) for level, message in flags] or ["  all clear"]
+    if driver is not None and any(level == "ALERT" and not message.startswith("unreachable")
+                                  for level, message in flags):
+        lines.append("  to stop this pair after the run in progress: %s 'touch sbl/runs/azure/STOP'"
+                     % " ".join(ssh_argv(ssh, key, hosts["DRIVER_PUBLIC"])[:-1]))
     return lines, flags
 
 

@@ -163,8 +163,8 @@ class TestFlags:
 
     @pytest.mark.parametrize("run,level,fragment", [
         (dict(RUN_OK, trip_negative=3), "ALERT", "3 messages that arrived before they were sent"),
-        (dict(RUN_OK, trip_median_ms=80.0), "WARN", "median trip of 80.0 ms"),
-        (dict(RUN_OK, messages=20), "WARN", "only 20 messages"),
+        (dict(RUN_OK, trip_median_ms=80.0), "ALERT", "median trip of 80.0 ms"),
+        (dict(RUN_OK, messages=20, run_dir="runs/law_x"), "ALERT", "only 20 messages"),
         ({"unreadable": "ERROR:runs/x"}, "WARN", "could not read")])
     def test_numbers_no_working_harness_produces(self, run, level, fragment):
         found = tw.run_flags([run])
@@ -178,6 +178,10 @@ class TestFlags:
     def test_machine_health(self, override, level, fragment):
         found = tw.machine_flags("broker", facts(BROKER_OK + override))
         assert [(f[0], fragment in f[1]) for f in found] == [(level, True)]
+
+    def test_a_replay_run_may_carry_few_messages(self):
+        """The pilot replays real matches, whose feeds hold 71 to 148 events."""
+        assert tw.run_flags([dict(RUN_OK, messages=71)]) == []
 
     def test_an_unreadable_clock_or_memory_is_not_a_flag(self):
         assert tw.machine_flags("broker", facts(BUSY + "disk_pct=10\n")) == []
@@ -452,3 +456,67 @@ class TestLanesAndVerdicts:
                              state, True, STAMP + datetime.timedelta(minutes=30), 20)
         assert found[0][0] == "ALERT" and fragment in found[0][1]
         assert "could not be stopped" in found[0][1]
+
+
+class TestRunNumbers:
+    """Every finished run is shown with its numbers, and numbers no working setup produces are
+    alerts, so a pair doing something absurd is seen, and stopped, at once."""
+
+    NUMBERS = {"run_dir": "runs/law_c0-r001-a1", "verdict": "count", "messages": 4990,
+               "trip_ms": 3.412, "gotit_ms": 0.214, "negative_rate": 0.123, "load_pct": 75.24,
+               "load_target": 75, "target_trip_ms": 3.8}
+    HOSTS = {"DRIVER_PUBLIC": "4.223.79.212", "BROKER_PRIV": "10.1.1.21", "AZ_PROFILE": "matched"}
+
+    def test_the_probe_reads_each_campaign_runs_numbers(self):
+        assert 'echo "numbers=$(python3 -c "$NUMBERS" "$d" 2>/dev/null)"' in tw.DRIVER_PROBE
+
+    def test_numbers_lines_are_read(self):
+        got = facts("numbers=%s\nnumbers=\n" % json.dumps(self.NUMBERS))
+        assert got["numbers"] == [self.NUMBERS, {"unreadable": ""}]
+
+    def test_a_campaign_run_shows_the_numbers_its_verdict_was_given_on(self):
+        run = {"run_dir": "runs/law_c0-r001-a1", "messages": 6500, "trip_median_ms": 3.5,
+               "gotit_median_ms": 0.3, "measured_negative_rate": 0.2}
+        assert tw.run_line(run, self.NUMBERS) == (
+            "run law_c0-r001-a1: messages 4,990, trip 3.41 ms (planned 3.80 ms), "
+            "got-it 0.21 ms, negative 12.3%, load 75.2%, count")
+
+    def test_another_run_shows_what_the_probe_read(self):
+        assert tw.run_line(RUN_OK, {}) == (
+            "run concurrency_x_kafka_feed1_rep1: messages 1,200, trip 0.42 ms, got-it ?, "
+            "negative ?")
+
+    def test_a_look_has_a_line_for_each_finished_run_it_can_read(self):
+        driver = facts("run=%s\nrun=not json\nnumbers=%s\nnumbers=broken\n" % (
+            json.dumps(dict(RUN_OK, run_dir="runs/law_c0-r001-a1")), json.dumps(self.NUMBERS)))
+        lines = tw.run_lines(driver)
+        assert len(lines) == 1 and lines[0].endswith("negative 12.3%, load 75.2%, count")
+
+    @pytest.mark.parametrize("change,level,fragment", [
+        ({"load_pct": 20.0}, "ALERT", "ran at 20% load where 75% was set"),
+        ({"trip_ms": 9.5}, "WARN", "measured a 9.50 ms trip where 3.80 ms was planned"),
+        ({"unreadable": "KeyError"}, "WARN", "could not read the numbers of runs/law_c0-r001-a1")])
+    def test_numbers_no_working_setup_produces(self, change, level, fragment):
+        found = tw.numbers_flags([dict(self.NUMBERS, **change)])
+        assert [(f[0], fragment in f[1]) for f in found] == [(level, True)]
+
+    def test_numbers_within_reason_raise_nothing(self):
+        near = dict(self.NUMBERS, load_pct=73.0, trip_ms=4.6)
+        unplanned = dict(self.NUMBERS, target_trip_ms=None, load_target=None, load_pct="x")
+        assert tw.numbers_flags([near, unplanned]) == []
+
+    def test_an_alert_comes_with_the_command_that_stops_the_pair(self):
+        driver = DRIVER_OK + "numbers=%s\n" % json.dumps(dict(self.NUMBERS, load_pct=20.0))
+        lines, _ = tw.cycle(self.HOSTS, azure_testbed.load_spec(), "k", "ssh",
+                            fake_run(driver=driver), None, {}, "stamp")
+        assert "  run concurrency_x_kafka_feed1_rep1: messages 1,200, trip 0.42 ms, " \
+            "got-it ?, negative ?" in lines
+        assert lines[-1].startswith("  to stop this pair after the run in progress: ssh -i k ")
+        assert lines[-1].endswith(" ubuntu@4.223.79.212 'touch sbl/runs/azure/STOP'")
+
+    def test_an_unreachable_machine_alone_brings_no_stop_command(self):
+        lines, flags = tw.cycle(self.HOSTS, azure_testbed.load_spec(), "k", "ssh",
+                                fake_run(broker=Done("", 255, "refused")),
+                                lambda a: (1, "", ""), {}, "stamp")
+        assert [f[0] for f in flags] == ["ALERT"]
+        assert not any("to stop this pair" in line for line in lines)

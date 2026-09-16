@@ -371,7 +371,7 @@ class TestLanesAndVerdicts:
         assert "queue runs/azure/queues/a1.csv: runs: queued 90" in "\n".join(lines)
         assert state["commit"] == "abc1234" and state["queue"] == "runs/azure/queues/a1.csv"
 
-    def test_a_second_pairs_prices_and_group_are_its_own(self):
+    def test_a_second_pair_is_read_in_its_own_group(self):
         spec = azure_testbed.load_spec()
         hosts = {"DRIVER_PUBLIC": "20.0.0.10", "BROKER_PRIV": "10.2.1.21",
                  "AZ_PROFILE": "matched-b"}
@@ -384,7 +384,7 @@ class TestLanesAndVerdicts:
         lines, _ = tw.cycle(hosts, spec, "k", "ssh",
                             fake_run(driver=Done("", 255, "timed out"), broker=Done("", 255, "")),
                             az, state, "stamp", lane="b")
-        assert "about $%.2f an hour" % (0.426 + 0.107) in lines[0]
+        assert "about $%.2f an hour" % (0.388 + 0.097) in lines[0]
         assert asked[0][-3:] == ["sbl-azb", "--output", "json"]
         assert "Azure says: VM deallocated" in "\n".join(lines)
         assert state["commit"] is None and state["queue"] is None

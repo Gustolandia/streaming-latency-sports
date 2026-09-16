@@ -157,13 +157,27 @@ def settings_check(run_dir):
                    % ("; ".join(problems) or "sched_settings.py gave no reason"))
 
 
+def _path_difference(found):
+    return float(found["receiver_median_ms"]) - float(found["host_median_ms"])
+
+
 def delay_check(run_dir, delay_ms):
-    """(the check, the added delay ping measured)."""
+    """(the check, the added delay ping measured).
+
+    The added delay is the receiver's round trip minus the host's, less that same difference
+    measured with no delay just before the run (delay_baseline.json), as the pilot measures it.
+    On the second x86 pair the receiver's path was 0.4 ms faster than the host's with no delay at
+    all, and that is not delay. A run with no baseline is taken as it stands.
+    """
     measured = read_json(os.path.join(run_dir, "delay_measured.json"))
+    baseline_path = os.path.join(run_dir, "delay_baseline.json")
+    baseline = read_json(baseline_path) if os.path.exists(baseline_path) else None
     try:
-        added = float(measured["receiver_median_ms"]) - float(measured["host_median_ms"])
+        added = _path_difference(measured)
+        if baseline is not None:
+            added -= _path_difference(baseline)
     except (KeyError, TypeError, ValueError) as exc:
-        raise ValueError("delay_measured.json lacks the two medians") from exc
+        raise ValueError("delay_measured.json or delay_baseline.json lacks the two medians") from exc
     tolerance = DELAY_TOLERANCE_MS + DELAY_TOLERANCE_SHARE * delay_ms
     check = outcome(abs(added - delay_ms) <= tolerance, added,
                     "%g ms within %.3f ms" % (delay_ms, tolerance),

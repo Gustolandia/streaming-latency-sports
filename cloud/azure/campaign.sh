@@ -9,6 +9,8 @@
 # To stop after the run in progress:  touch runs/azure/STOP
 #
 # One run, in order:
+#   0. machine   the receiver's address only in its namespace, the broker reachable, and no
+#                package manager running; otherwise the run fails before it starts;
 #   1. settings  online CPUs (all of them unless the setup names a count), then the base slice
 #                unless the setup keeps the kernel's own; both read back, with the tick, and a
 #                mismatch fails the run before any traffic;
@@ -138,6 +140,19 @@ run_one () {
   local want_cpus="${CPUS:-$ALL_CPUS}" stress_pid sampler_pid rc traced=0 wrap_sched="" verdict
   local check_args=() calibration_args=()
   reap
+  # The machine must still be the one the session built. On 16 September a package upgrade
+  # restarted the network service mid-pilot, the receiver's address came back on the card, and
+  # the driver lost its broker; session.sh now switches upgrades off, and this catches the rest.
+  if ip -o -4 addr show dev eth0 | grep -q " ${RECEIVER_IP}/"; then
+    REASON="the receiver's address is back on the driver's card; run cloud/azure/session.sh"; return
+  fi
+  sudo ip netns exec sblrecv ip -o -4 addr show | grep -q " ${RECEIVER_IP}/" || {
+    REASON="the receiver's namespace does not hold its address; run cloud/azure/session.sh"; return; }
+  ping -n -c 2 -W 1 "$BROKER_PRIV" >/dev/null 2>&1 || {
+    REASON="the driver cannot reach the broker at $BROKER_PRIV"; return; }
+  if sudo fuser /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock >/dev/null 2>&1; then
+    REASON="a package manager is running on the driver"; return
+  fi
   sudo python3 scripts/sched_settings.py set-cpus "$want_cpus" > "$RUN_DIR/set_cpus.txt" 2>&1 || {
     REASON="online CPUs did not become $want_cpus"; return; }
   if [ -n "$SLICE_NS" ]; then
@@ -149,6 +164,13 @@ run_one () {
   sudo python3 scripts/sched_settings.py check "${check_args[@]}" > "$RUN_DIR/settings_before.json" || {
     REASON="the settings before the run do not match the setup"; return; }
 
+  # The two ping paths can differ with no delay at all (by 0.4 ms on the second x86 pair), so the
+  # same measurement is taken with no delay first, and run_integrity.py counts what lies beyond it.
+  broker_delay 0 || { REASON="the broker's delay could not be set to zero"; return; }
+  sleep 1
+  sudo python3 scripts/receiver_delay.py measure --broker "$BROKER_PRIV" --count 100 \
+    --out "$RUN_DIR/delay_baseline.json" >/dev/null 2>&1 || {
+    REASON="the zero-delay ping baseline could not be measured"; return; }
   broker_delay "$DELAY_MS" || { REASON="the receiver-only delay did not apply"; return; }
   sleep 1
   sudo python3 scripts/receiver_delay.py measure --broker "$BROKER_PRIV" --count 100 \

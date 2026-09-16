@@ -96,6 +96,17 @@ class TestTheDriverNamespace:
         assert argvs.index(release) < argvs.index(["ip", "netns", "add", "sblrecv"])
         assert commands[argvs.index(release)][1] is True
 
+    def test_the_address_also_leaves_netplans_own_settings(self):
+        """A package upgrade restarted networkd in the middle of a pilot on 16 September, and
+        networkd put the address back from netplan. So netplan forgets the card's static
+        addresses, and its networkd files are written again without them, before the namespace
+        is built."""
+        argvs = [argv for argv, _ in rd.driver_commands("10.1.1.11/24", "10.1.1.1")]
+        forget = ["netplan", "set", "--origin-hint", "50-cloud-init",
+                  "ethernets.eth0.addresses=null"]
+        assert (argvs.index(forget) < argvs.index(["netplan", "generate"])
+                < argvs.index(["ip", "netns", "add", "sblrecv"]))
+
     def test_l3_mode_passes_through(self):
         commands = [argv for argv, _ in
                     rd.driver_commands("10.1.1.11/24", "10.1.1.1", dev="eth1", mode="l3")]

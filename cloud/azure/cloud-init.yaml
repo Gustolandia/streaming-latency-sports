@@ -12,6 +12,14 @@
 #     On Oracle they were added by hand, so nothing recorded that they were there;
 #   * the client libraries get upper bounds and their installed versions are written down. The
 #     Oracle file installed whatever was newest on the day and recorded nothing.
+#   * nothing upgrades itself: on 16 September an automatic upgrade restarted the network service
+#     in the middle of a pilot, and the driver lost its broker. cloud/azure/session.sh switches
+#     upgrades off too, for machines made before this line.
+write_files:
+  - path: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "0";
+      APT::Periodic::Unattended-Upgrade "0";
 package_update: true
 packages:
   - docker.io
@@ -28,6 +36,7 @@ packages:
   - git
   - sysstat
 runcmd:
+  - systemctl disable --now unattended-upgrades.service apt-daily.timer apt-daily-upgrade.timer || true
   - systemctl enable --now docker
   - usermod -aG docker ubuntu
   - pip3 install --break-system-packages "kafka-python>=2.3,<3" "redis>=7,<8" pandas numpy || pip3 install "kafka-python>=2.3,<3" "redis>=7,<8" pandas numpy

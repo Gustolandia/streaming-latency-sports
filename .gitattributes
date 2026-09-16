@@ -13,3 +13,7 @@
 *.yaml text eol=lf
 *.yml text eol=lf
 Dockerfile* text eol=lf
+
+# A plan freeze is checked against the SHA-256 fingerprints in its folder (freezes/README.md), so
+# git must store and check out every file in it byte for byte, with no line-ending conversion.
+freezes/*/** -text

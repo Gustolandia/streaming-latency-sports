@@ -693,6 +693,9 @@ streaming-latency-sports/
 │   └── results/                    # GENERATED analysis outputs (CSV/PNG/PDF)
 │       ├── realtime_concurrency/   # PRIMARY: fair sweep latency by backend/config/N
 │
+├── freezes/                        # experiment plans frozen before their runs (freezes/README.md)
+│   └── 01-experiment-plan/         # the Azure law campaign: plan source, PDF, SHA256SUMS
+│
 ├── runs/                           # per-run outputs + canonical run lists
 │   ├── _paper_s2_official_runs.txt # canonical S2 list (frozen)
 │   ├── _paper_s3_official_runs.txt # canonical S3 list

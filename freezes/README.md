@@ -31,6 +31,7 @@ it covers.
 | Folder | Frozen | What it fixes |
 |---|---|---|
 | [`01-experiment-plan/`](01-experiment-plan/) | 16 September 2026 | the law campaign on Azure: its predictions, campaigns, repeats rule and analysis, and how its runs are checked, stopped and kept |
+| [`02-experiment-plan/`](02-experiment-plan/) | 17 September 2026 | amends 01 after its first runs, which were stopped, and starts stage 0 again: the calibration known within 0.3 ms, the delay checked by the broker's own capture, the paper's Redis setting, M0 on bursty traffic, and runs protected from faults of the machines; prompted by results, as its first section says |
 
 ## Checking a freeze
 

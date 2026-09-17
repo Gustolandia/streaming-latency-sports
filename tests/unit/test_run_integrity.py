@@ -37,7 +37,7 @@ def make_run(tmp_path, name="run", n=400, gap_ms=100.0, trip_ms=0.5, gotit_ms=0.
              negative_at=None, lose=0, load=75.0, load_samples=None, delay_ms=2.0,
              measured_added=2.0, settings_ok=True, problems=None, clock=(0.00002, -0.00003),
              stat=((100, 100, 800, 0), (800, 200, 1500, 10)), params=None, drop=(),
-             baseline_added=None):
+             baseline_added=None, client_line="CONFIG effective max_inflight=64 ack_stamp=callback"):
     run = tmp_path / name
     run.mkdir()
     sends = [START + int(i * gap_ms * 1e6) for i in range(n)]
@@ -70,6 +70,11 @@ def make_run(tmp_path, name="run", n=400, gap_ms=100.0, trip_ms=0.5, gotit_ms=0.
     for side, (user, system, idle, steal) in zip(("before", "after"), stat):
         (run / ("stat_%s.txt" % side)).write_text(STAT % (user, system, idle, steal),
                                                    encoding="utf-8")
+    backend = row["params"].get("backend")
+    log = {"kafka": "producer.log", "redis": "consumer.log"}.get(backend)
+    if log and client_line is not None:
+        (run / log).write_text("starting\n%s\nOK wrote 400 rows\n" % client_line,
+                               encoding="utf-8")
     for name_ in drop:
         (run / name_).unlink()
     return str(run)
@@ -85,7 +90,9 @@ class TestARunThatCounts:
         found = evaluate(make_run(tmp_path))
         assert found["verdict"] == "count" and found["reasons"] == []
         assert set(found["checks"]) == {"never_negative", "messages_sent", "messages_received",
-                                        "send_rate", "load", "settings", "delay", "clock"}
+                                        "send_rate", "load", "settings", "client", "delay",
+                                        "clock"}
+        assert found["checks"]["client"]["value"] == 64
         assert found["checks"]["send_rate"]["value"] == pytest.approx(10.0)
         assert found["checks"]["load"]["value"] == pytest.approx(75.0)
 
@@ -247,7 +254,67 @@ class TestTheGotItComparison:
         assert any(fragment in r for r in found["reasons"])
 
 
+class TestTheClientSettings:
+    """The paper's own settings (supplement, "Learned"); the Redis one was missing from the law
+    campaign until plan v6, and this treatment failed silently three times in earlier work."""
+
+    def test_redis_acknowledging_in_batches_of_200_counts(self, tmp_path):
+        params = {"backend": "redis", "load_pct": 75, "delay_ms": 2.0}
+        run = make_run(tmp_path, params=params,
+                       client_line="CONFIG effective ack_batch=200 count=200 block_ms=1000")
+        assert evaluate(run)["checks"]["client"] == {
+            "ok": True, "value": 200, "limit": "ack_batch=200 in consumer.log", "why": ""}
+
+    @pytest.mark.parametrize("backend,line,why", [
+        ("redis", "CONFIG effective ack_batch=1 count=200 block_ms=1000",
+         "the redis client ran with ack_batch=1, not 200"),
+        ("kafka", "CONFIG effective max_inflight=1 ack_stamp=callback",
+         "the kafka client ran with max_inflight=1, not 64"),
+        ("kafka", "OK kafka producer: wrote 400 rows",
+         "the kafka client ran with max_inflight=an unlogged value, not 64")])
+    def test_a_client_not_set_as_the_campaign_sets_it_is_repeated(self, tmp_path, backend, line,
+                                                                  why):
+        run = make_run(tmp_path, params={"backend": backend, "load_pct": 75, "delay_ms": 2.0},
+                       client_line=line)
+        found = evaluate(run)
+        assert found["verdict"] == "repeat" and found["reasons"] == [why]
+
+    def test_a_missing_client_log_is_repeated(self, tmp_path):
+        found = evaluate(make_run(tmp_path, client_line=None))
+        assert found["verdict"] == "repeat"
+        assert found["checks"]["client"]["why"].startswith("the client could not be checked")
+
+
+TCP = ("Tcp: RtoAlgorithm RtoMin RtoMax MaxConn ActiveOpens PassiveOpens AttemptFails "
+       "EstabResets CurrEstab InSegs OutSegs RetransSegs InErrs OutRsts InCsumErrors\n"
+       "Tcp: 1 200 120000 -1 10 5 0 0 3 1000 2000 %d 0 0 0\n")
+
+
 class TestRecordedOnly:
+
+    def test_the_brokers_hold_and_the_resent_segments(self, tmp_path):
+        run = make_run(tmp_path)
+        with open(os.path.join(run, "delay_hold.json"), "w", encoding="utf-8") as fh:
+            json.dump({"host_hold_ms": 0.015, "receiver_hold_ms": 2.023}, fh)
+        for prefix, (before, after) in (("", (5, 9)), ("broker_", (40, 40))):
+            for when, value in (("before", before), ("after", after)):
+                with open(os.path.join(run, "%stcp_%s.txt" % (prefix, when)), "w",
+                          encoding="utf-8") as fh:
+                    fh.write(TCP % value)
+        recorded = evaluate(run)["recorded"]
+        assert recorded["delay_held_ms"] == pytest.approx(2.008)
+        assert recorded["retransmitted"] == {"driver": 4, "receiver": None, "broker": 0}
+
+    def test_counters_that_cannot_be_read_record_nothing(self, tmp_path):
+        run = make_run(tmp_path)
+        for name, text in (("tcp_before.txt", "Tcp: RetransSegs\n"),
+                           ("tcp_after.txt", "Tcp: RetransSegs\nTcp: 3\n"),
+                           ("delay_hold.json", json.dumps({"host_hold_ms": 0.01}))):
+            with open(os.path.join(run, name), "w", encoding="utf-8") as fh:
+                fh.write(text)
+        assert ri.retransmitted(run, "driver") is None
+        assert ri.delay_held_ms(run) is None
+        assert evaluate(run)["recorded"]["delay_held_ms"] is None
 
     @pytest.mark.parametrize("stat", [((1, 1, 1, 1), (1, 1, 1, 1))])
     def test_no_time_passing_gives_no_steal(self, tmp_path, stat):

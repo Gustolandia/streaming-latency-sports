@@ -201,6 +201,14 @@ class TestDesign:
         assert made["rounds"] == 4 and len(made["setups"]) == 14
         assert ld.design("B0", AZURE, None, 4, 1)["rounds"] == 3
 
+    def test_a_second_stage_of_the_calibration_carries_on_its_rounds(self):
+        made = ld.design("C0", AZURE, None, 2, 1, first_round=3)
+        assert made["first_round"] == 3
+        assert sorted({r["round"] for r in rq.make_rows(made)}) == ["3", "4"]
+        assert ld.design("B0", AZURE, None, 0, 1)["first_round"] == 1
+        with pytest.raises(ValueError, match="only C0 runs in two stages"):
+            ld.design("B0", AZURE, None, 0, 1, first_round=3)
+
     @pytest.mark.parametrize("args,fragment", [
         (("Z9", AZURE, BASELINE, 5, 1), "no block 'Z9'"),
         (("A1", {"release": "x"}, BASELINE, 5, 1), "carry no tick"),

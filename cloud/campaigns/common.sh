@@ -32,6 +32,12 @@ REDIS_CLUSTER_PORT="${REDIS_CLUSTER_PORT:-7000}"
 # measurement defect #3 in the manuscript; leaving it out silently reproduces the defect.
 KAFKA_PRODUCER_EXTRA="${KAFKA_PRODUCER_EXTRA:---max-inflight 64}"
 
+# The Redis consumer must acknowledge in batches, or at a long delay every message waits for one
+# round trip per message before it: the paper's own setting (supplement, "Learned"), which the
+# law campaign left out until plan v6. Old campaign scripts that replicate earlier results do not
+# read this.
+REDIS_CONSUMER_EXTRA="${REDIS_CONSUMER_EXTRA:---ack-batch 200}"
+
 cd "$REPO_ROOT"
 PLAN="$(find data -name replay_plan.csv | head -1)"
 PLANS_DIR="$(dirname "$(dirname "$PLAN")")"

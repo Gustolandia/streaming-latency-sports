@@ -202,6 +202,7 @@ PASSING_VERDICTS = [
     ("settings", "restored", "yes", "2800000 ns"),
     ("network", "0.5 ms", "yes", "measured 0.515 ms"),
     ("network", "2.0 ms", "yes", "measured 2.03 ms"),
+    ("paths", "no delay", "yes", "receiver minus host 0.020 ms"),
     ("harness", "kafka", "no", "see harness_verify_kafka.json"),
     ("go-first", "75%", "yes", "at least five-fold with disjoint intervals")]
 CLEAN_REPORTS = {"kafka": json.dumps({"trip_negative_total": 0, "ok": False}),
@@ -226,6 +227,42 @@ def write_pilot(tmp_path, verdicts=PASSING_VERDICTS, reports=CLEAN_REPORTS, load
             fh.write(rows if isinstance(rows, str) else
                      "t_wall,rho\n" + "".join("%d,%s\n" % (i, v) for i, v in enumerate(rows)))
     return str(pilot)
+
+
+def zero_readings(folder, pairs):
+    for n, (host, receiver) in enumerate(pairs, 1):
+        (folder / ("net_zero%d.json" % n)).write_text(json.dumps(
+            {"host_median_ms": host, "receiver_median_ms": receiver}), encoding="utf-8")
+
+
+class TestThePathsAgree:
+
+    def test_the_median_of_the_zero_delay_readings_is_held_to_the_limit(self, tmp_path):
+        zero_readings(tmp_path, [(0.94, 0.99), (0.95, 1.00), (0.93, 0.95)])
+        result = pc.paths(str(tmp_path))
+        assert result["ok"] and result["median_difference_ms"] == pytest.approx(0.05)
+        assert result["files"] == ["net_zero1.json", "net_zero2.json", "net_zero3.json"]
+
+    def test_the_second_pairs_paths_of_16_september_fail(self, tmp_path):
+        zero_readings(tmp_path, [(1.28, 0.84), (1.20, 0.82), (1.30, 0.86)])
+        result = pc.paths(str(tmp_path))
+        assert not result["ok"] and result["median_difference_ms"] == pytest.approx(-0.44)
+
+    def test_one_odd_reading_does_not_decide(self, tmp_path):
+        """The Arm pilot's single zero-delay reading was 0.11 ms off its usual difference."""
+        zero_readings(tmp_path, [(0.38, 0.39), (0.535, 0.2), (0.40, 0.41)])
+        assert pc.paths(str(tmp_path))["median_difference_ms"] == pytest.approx(0.01)
+
+    def test_a_pilot_without_zero_delay_readings(self, tmp_path):
+        with pytest.raises(ValueError, match="no zero-delay reading"):
+            pc.paths(str(tmp_path))
+
+    def test_from_the_command_line(self, tmp_path):
+        zero_readings(tmp_path, [(1.28, 0.84)])
+        code, text = TestMain.run(["paths", "--pilot-dir", str(tmp_path)])
+        assert code == 1 and json.loads(text)["limit_ms"] == 0.25
+        assert TestMain.run(["paths", "--pilot-dir", str(tmp_path), "--limit-ms", "0.5"])[0] == 0
+        assert TestMain.run(["paths", "--pilot-dir", str(tmp_path / "none")])[0] == 2
 
 
 class TestShakedown:
@@ -273,9 +310,29 @@ class TestShakedown:
         assert not result["ok"]
         assert result["checks"]["load"] == {"ok": False, "detail": detail}
 
+    def test_a_later_session_asks_for_the_network_checks_alone(self, tmp_path):
+        """Its pilot runs the network part only, so it has no harness cells to read."""
+        pilot = write_pilot(tmp_path, reports={}, loads={})
+        assert not pc.shakedown(pilot, 75)["ok"]
+        result = pc.shakedown(pilot, 75, wanted=("network", "paths"))
+        assert result["ok"] and sorted(result["checks"]) == ["network", "paths"]
+
+    @pytest.mark.parametrize("wanted", [(), ("network", "tick")])
+    def test_a_shakedown_asks_for_checks_it_knows(self, tmp_path, wanted):
+        with pytest.raises(ValueError, match="a shakedown asks for some of"):
+            pc.shakedown(write_pilot(tmp_path), 75, wanted=wanted)
+
+    def test_paths_that_differ_with_no_delay_fail(self, tmp_path):
+        """The second x86 pair's paths differed by 0.44 ms on 16 September."""
+        verdicts = PASSING_VERDICTS[:4] + [("paths", "no delay", "no", "see net_paths.json")]
+        result = pc.shakedown(write_pilot(tmp_path, verdicts=verdicts), 75)
+        assert not result["ok"] and not result["checks"]["paths"]["ok"]
+
     def test_from_the_command_line(self, tmp_path):
         run = TestMain.run
         pilot = write_pilot(tmp_path)
+        code, text = run(["shakedown", "--pilot-dir", pilot, "--checks", "network, paths"])
+        assert code == 0 and sorted(json.loads(text)["checks"]) == ["network", "paths"]
         code, text = run(["shakedown", "--pilot-dir", pilot])
         assert code == 0 and json.loads(text)["ok"]
         assert run(["shakedown", "--pilot-dir", pilot, "--load-pct", "88"])[0] == 1

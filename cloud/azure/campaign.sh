@@ -16,13 +16,18 @@
 #                mismatch fails the run before any traffic;
 #   2. delay     the receiver-only delay on the broker, measured by ping from both sides beyond
 #                the same ping taken with no delay just before (the measured value is what the
-#                analysis uses);
+#                analysis uses), while the broker's own capture of those pings times how long it
+#                held the receiver's replies (delay_hold.json: to the microsecond, where ping
+#                prints 0.1 ms above 10 ms);
 #   3. load      stress-ng on every online CPU at the setup's duty, measured by util_sampler;
 #   4. trace     A1 and A3 runs whose queue key hashes even record the timestamping processes'
 #                run-queue delays with bpftrace (A6);
 #   5. run       one trial of one backend on a constant-rate plan, the consumer behind the
-#                receiver's address, go-first priority where the setup asks for it; the clock's
-#                offset and the CPU counters are logged just before and just after it;
+#                receiver's address, go-first priority where the setup asks for it, Kafka's
+#                producer with 64 requests in flight and Redis's consumer acknowledging in
+#                batches of 200 (the paper's own settings); the clock's offset, the CPU counters
+#                and the TCP counters of the driver, the receiver's namespace and the broker are
+#                logged just before and just after it, and the broker's log for the run is kept;
 #   6. checks    scripts/run_integrity.py, on this machine, as soon as the trial ends: the run
 #                counts, is repeated, or stops the campaign, and integrity.json says why;
 #   7. record    everything lands in the run's own directory, runs/law_<queue>_<key>, with
@@ -46,6 +51,7 @@ set +e
 QUEUE="${1:?usage: bash cloud/azure/campaign.sh QUEUE.csv}"
 QUEUE_NAME="$(basename "$QUEUE" .csv)"
 : "${RECEIVER_IP:?hosts.env has no RECEIVER_IP; is this the Azure testbed?}"
+: "${DRIVER_PRIV:?hosts.env has no DRIVER_PRIV; is this the Azure testbed?}"
 RATE="${RATE:-50}"
 DURATION="${DURATION:-130}"
 WARMUP_S="${WARMUP_S:-30}"
@@ -139,9 +145,16 @@ for _ in range(900):
   log "run-queue probe ok: $PROBE_COUNT events in 8 s"
 fi
 
+tcp_counters () {  # before|after: the Tcp lines of /proc/net/snmp on every side of the run
+  grep '^Tcp:' /proc/net/snmp > "$RUN_DIR/tcp_$1.txt" 2>&1
+  sudo ip netns exec sblrecv grep '^Tcp:' /proc/net/snmp > "$RUN_DIR/receiver_tcp_$1.txt" 2>&1
+  remote_broker "grep '^Tcp:' /proc/net/snmp" > "$RUN_DIR/broker_tcp_$1.txt" 2>&1
+}
+
 # --- one run ---------------------------------------------------------------------------------
 run_one () {
   local want_cpus="${CPUS:-$ALL_CPUS}" stress_pid sampler_pid rc traced=0 wrap_sched="" verdict
+  local capture_pid measured began ended container
   local check_args=() calibration_args=()
   reap
   # The machine must still be the one the session built. On 16 September a package upgrade
@@ -176,10 +189,19 @@ run_one () {
     --out "$RUN_DIR/delay_baseline.json" >/dev/null 2>&1 || {
     REASON="the zero-delay ping baseline could not be measured"; return; }
   broker_delay "$DELAY_MS" || { REASON="the receiver-only delay did not apply"; return; }
-  sleep 1
+  remote_broker "sudo timeout 60 tcpdump -i eth0 -nn -tt --time-stamp-precision=nano -c 400 \
+    'icmp and (host $DRIVER_PRIV or host $RECEIVER_IP)'" \
+    > "$RUN_DIR/delay_capture.txt" 2> "$RUN_DIR/delay_capture.err" &
+  capture_pid=$!
+  sleep 2
   sudo python3 scripts/receiver_delay.py measure --broker "$BROKER_PRIV" --count 100 \
-    --out "$RUN_DIR/delay_measured.json" >/dev/null 2>&1 || {
-    REASON="the receiver-only delay could not be measured"; return; }
+    --out "$RUN_DIR/delay_measured.json" >/dev/null 2>&1
+  measured=$?
+  wait "$capture_pid" 2>/dev/null
+  [ "$measured" = 0 ] || { REASON="the receiver-only delay could not be measured"; return; }
+  python3 scripts/receiver_delay.py holds --capture "$RUN_DIR/delay_capture.txt" \
+    --host "$DRIVER_PRIV" --receiver "$RECEIVER_IP" --out "$RUN_DIR/delay_hold.json" \
+    > "$RUN_DIR/delay_hold.log" 2>&1
 
   stress-ng --cpu "$want_cpus" --cpu-load "$LOAD" --timeout 3600s >/dev/null 2>&1 &
   stress_pid=$!
@@ -196,6 +218,8 @@ run_one () {
   [ -n "$PRIORITY" ] && wrap_sched="sudo chrt -f 80"
   chronyc -c tracking > "$RUN_DIR/clock_before.txt" 2>/dev/null
   head -n 1 /proc/stat > "$RUN_DIR/stat_before.txt"
+  tcp_counters before
+  began=$(date -u +%s)
   if [ "$BACKEND" = kafka ]; then
     SBL_CONSUMER_WRAP="sudo ip netns exec sblrecv sudo -u $ME" SBL_SCHED_WRAP="$wrap_sched" \
       timeout -k 30 $(( DURATION + 300 )) bash scripts/run_kafka_trial.sh "$RUN_ID" "$SYN_PLAN" \
@@ -206,11 +230,17 @@ run_one () {
     SBL_CONSUMER_WRAP="sudo ip netns exec sblrecv sudo -u $ME" SBL_SCHED_WRAP="$wrap_sched" \
       timeout -k 30 $(( DURATION + 300 )) bash scripts/run_redis_trial.sh "$RUN_ID" "$SYN_PLAN" \
       "$SPEEDUP" "$DURATION" -RedisHost "$REDIS_HOST" -PORT "$REDIS_PORT" \
-      -IDLE_SECONDS 15 > "$RUN_DIR/trial.log" 2>&1
+      -CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA" -IDLE_SECONDS 15 > "$RUN_DIR/trial.log" 2>&1
     rc=$?
   fi
+  ended=$(date -u +%s)
   head -n 1 /proc/stat > "$RUN_DIR/stat_after.txt"
   chronyc -c tracking > "$RUN_DIR/clock_after.txt" 2>/dev/null
+  tcp_counters after
+  container=redis
+  [ "$BACKEND" = kafka ] && container=broker
+  remote_broker "docker logs --timestamps --since $began --until $(( ended + 1 )) $container" \
+    > "$RUN_DIR/broker_log.txt" 2>&1
 
   if [ "$traced" = 1 ]; then sudo pkill -INT -x bpftrace 2>/dev/null; sleep 3; fi
   kill -TERM "$sampler_pid" 2>/dev/null; wait "$sampler_pid" 2>/dev/null

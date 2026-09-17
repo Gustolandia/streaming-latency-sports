@@ -126,6 +126,10 @@ def main():
         producer_kwargs["compression_type"] = args.compression_type
 
     producer = KafkaProducer(**producer_kwargs)
+    # The effective setting, in the run's own files: a missing --max-inflight 64 once reproduced
+    # measurement defect #3 without a trace, and run_integrity.py now checks this line.
+    print(f"CONFIG effective max_inflight={producer_kwargs['max_in_flight_requests_per_connection']} "
+          f"ack_stamp={args.ack_stamp}", flush=True)
 
     # Producer time origins:
     # - t0_mono: time.monotonic() reference used for sleep scheduling (intra-process)

@@ -6,6 +6,7 @@ the synthetic runs use those, and the gate is tested against each way it can fai
 import io
 import json
 import math
+import re
 import os
 import sys
 
@@ -23,16 +24,16 @@ STEPS = (0.0, 0.0, 1.0, 2.0, 4.0, 8.0)
 
 def c0_runs(intercept=3.5, slope=0.89, curve=0.0, rounds=2, backend="kafka", load="75",
             wobble=0.01, gotit=2.5, gotit_per_ms=0.0, gotit_wobble=0.002, p99=3.0,
-            negative_at=None, outlier_at=None, trips=None):
+            negative_at=None, trips=None, first_round=1):
     """Runs whose trip is intercept + slope x + curve x^2, nudged up in odd rounds and down in
     even ones, so that every step has repeats that differ."""
     runs = []
-    for rd in range(1, rounds + 1):
+    for rd in range(first_round, first_round + rounds):
         sign = 1 if rd % 2 else -1
         for i, step in enumerate(STEPS):
             key = "r%d-%d" % (rd, i)
             trip = (trips or {}).get(step, intercept + slope * step + curve * step * step)
-            trip += sign * wobble + (0.3 if key == outlier_at else 0.0)
+            trip += sign * wobble
             runs.append({"key": key, "round": str(rd), "backend": backend, "load": load,
                          "step": step, "x": step, "trip": trip,
                          "gotit": gotit + gotit_per_ms * step + sign * gotit_wobble,
@@ -173,15 +174,68 @@ class TestTheGate:
         assert entry["intercept_ms"] == pytest.approx(3.5)
         assert (entry["runs"], entry["rounds"]) == (12, 2)
         assert entry["residual_max_ms"] == pytest.approx(0.01)
+        assert [x for x, _ in entry["halfwidths_ms"]] == pytest.approx([0.0, 1.0, 2.0, 4.0, 8.0])
+        assert 0.0 < entry["halfwidth_max_ms"] < 0.03
+
+    def test_the_line_is_known_worst_far_from_its_middle(self):
+        """t(10) s sqrt(1/n + (x - mean)^2 / Sxx), with s from the scatter about the line."""
+        widths = [w for _, w in dc.fit_entry(c0_runs(wobble=0.1), seed=1)["halfwidths_ms"]]
+        s = math.sqrt(12 * 0.01 / 10)
+        at_8 = dc.t_quantile(0.975, 10) * s * math.sqrt(1 / 12 + (8 - 2.5) ** 2 / 95)
+        assert widths[-1] == pytest.approx(at_8) and widths[-1] == max(widths)
 
     def test_a_curved_relation_is_placed_by_segments(self):
         entry = dc.fit_entry(c0_runs(intercept=2.0, slope=0.5, curve=0.1), seed=1)
         assert entry["model"] == "segments" and entry["gate"]["ok"]
         assert entry["residual_max_ms"] == pytest.approx(0.01)
+        assert entry["step_residuals_ms"] == [0.0] * 5, "the segments pass through the steps"
+
+    def test_the_segments_are_known_from_the_scatter_within_steps(self):
+        """The zero step holds four runs, so its median counts as sqrt(pi/2) less precise than a
+        mean; the other steps hold two, whose median is their mean."""
+        entry = dc.fit_entry(c0_runs(intercept=2.0, slope=0.5, curve=0.1, wobble=0.05), seed=1)
+        assert entry["model"] == "segments"
+        s = math.sqrt(12 * 0.0025 / 7)
+        t = dc.t_quantile(0.975, 7)
+        widths = [w for _, w in entry["halfwidths_ms"]]
+        assert widths[0] == pytest.approx(t * s * math.sqrt(math.pi / 2) / 2)
+        assert widths[1:] == pytest.approx([t * s / math.sqrt(2)] * 4)
+
+    def test_runs_that_scatter_need_more_rounds_and_are_still_reported(self):
+        """The second x86 pair's runs scattered around its calibration by 0.18 to 0.27 ms.
+        Version 5's 0.1 ms on every run could never pass them; two rounds leave the line too
+        loosely known at its far end, and four know it well enough."""
+        two = dc.fit_entry(c0_runs(wobble=0.25), seed=1)
+        assert two["model"] == "line" and not two["gate"]["known_within_0_3_ms"]
+        assert dc.needs_more_rounds({"kafka": {"75": two}})
+        assert two["residual_max_ms"] == pytest.approx(0.25)
+        assert max(abs(v) for v in two["step_residuals_ms"]) == pytest.approx(0.0, abs=1e-9)
+        four = dc.fit_entry(c0_runs(wobble=0.25, rounds=4), seed=1)
+        assert four["gate"]["ok"] and four["halfwidth_max_ms"] < dc.KNOWN_WITHIN_MS
+
+    def test_too_few_runs_to_say_how_well_the_line_is_known(self):
+        runs = [r for r in c0_runs(rounds=1) if r["step"] in (0.0, 1.0)][1:]
+        entry = dc.fit_entry(runs, seed=1)
+        assert entry["model"] == "line" and entry["halfwidths_ms"] == [[0.0, None], [1.0, None]]
+        assert entry["halfwidth_max_ms"] is None and not entry["gate"]["known_within_0_3_ms"]
+
+    @pytest.mark.parametrize("failed,more", [
+        ((), False),
+        (("known_within_0_3_ms",), True),
+        (("known_within_0_3_ms", "slope_above_half"), False),
+        (("never_negative",), False),
+    ])
+    def test_only_a_calibration_that_lacks_precision_gets_more_rounds(self, failed, more):
+        good = {k: True for k in ("never_negative", "slope_above_half", "known_within_0_3_ms",
+                                  "longer_delay_longer_trip", "no_gross_gotit_departure")}
+        bad = dict(good, **{k: False for k in failed})
+        cal = {"kafka": {"75": {"gate": dict(good, ok=True)}},
+               "redis": {"75": {"gate": dict(bad, ok=not failed)}}}
+        assert dc.needs_more_rounds(cal) is more
 
     @pytest.mark.parametrize("kwargs,failed", [
         ({"slope": 0.3}, "slope_above_half"),
-        ({"outlier_at": "r1-0"}, "runs_within_0_1_ms"),
+        ({"wobble": 0.3}, "known_within_0_3_ms"),
         ({"trips": {4.0: 4.0}}, "longer_delay_longer_trip"),
         ({"negative_at": "r2-3"}, "never_negative"),
         ({"gotit_per_ms": -0.5}, "no_gross_gotit_departure"),
@@ -262,22 +316,50 @@ class TestMain:
         out = io.StringIO()
         return dc.main(argv, out=out, **kw), out.getvalue()
 
-    def fit(self, tmp_path, runs):
-        queue = tmp_path / "c0.csv"
-        rq.write_queue(str(queue), queue_rows(runs))
+    def fit(self, tmp_path, runs, *stages):
+        """Fit the runs from one queue, or from one queue per stage when stages are given."""
+        summarise, read_delay = readers(runs + [r for stage in stages for r in stage])
+        argv = ["fit"]
+        for n, part in enumerate((runs,) + stages):
+            queue = tmp_path / ("c0_%d.csv" % n)
+            rq.write_queue(str(queue), queue_rows(part))
+            argv += ["--queue", str(queue)]
         dest = tmp_path / "cal.json"
-        summarise, read_delay = readers(runs)
-        code, text = self.run(["fit", "--queue", str(queue), "--out", str(dest), "--seed", "4"],
+        code, text = self.run(argv + ["--out", str(dest), "--seed", "4"],
                               summarise=summarise, read_delay=read_delay)
         return code, text, dest
 
     def test_fit_writes_the_calibration_and_passes(self, tmp_path):
         code, text, dest = self.fit(tmp_path, c0_runs())
         assert code == 0 and "kafka at 75%: trip = 3.500 + 0.890 x delay" in text
-        assert text.rstrip().endswith("line, gate passed")
+        assert re.search(r"line, known within 0\.0\d\d ms, gate passed$", text.rstrip())
         saved = json.loads(dest.read_text(encoding="utf-8"))
         assert saved["zero_offset_ms"] == pytest.approx(0.3)
         assert saved["calibration"]["kafka"]["75"]["model"] == "line"
+        assert saved["queues"] == [str(tmp_path / "c0_0.csv")]
+
+    def test_a_second_stage_is_fitted_with_the_first(self, tmp_path):
+        """Two rounds leave the scattered line too loosely known; the next two mend it."""
+        code, text, dest = self.fit(tmp_path, c0_runs(wobble=0.25))
+        assert code == 1 and "GATE FAILED: known_within_0_3_ms" in text
+        assert self.run(["needs-rounds", "--calibration", str(dest)]) == (
+            0, "more rounds can make the calibration precise enough\n")
+        code, text, dest = self.fit(tmp_path, c0_runs(wobble=0.25),
+                                    c0_runs(wobble=0.25, first_round=3))
+        saved = json.loads(dest.read_text(encoding="utf-8"))
+        assert code == 0 and saved["calibration"]["kafka"]["75"]["rounds"] == 4
+        assert len(saved["queues"]) == 2
+        assert self.run(["needs-rounds", "--calibration", str(dest)]) == (
+            1, "more rounds would not change what the gate found\n")
+
+    def test_two_stages_never_share_a_round(self, tmp_path):
+        code, text, _ = self.fit(tmp_path, c0_runs(), c0_runs(first_round=2))
+        assert code == 2 and "both hold round 2" in text
+
+    def test_a_line_from_too_few_runs_says_so(self, tmp_path):
+        runs = [r for r in c0_runs(rounds=1) if r["step"] in (0.0, 1.0)]
+        code, text, _ = self.fit(tmp_path, runs[:1] + runs[2:])
+        assert code == 1 and "known within ? ms" in text
 
     def test_fit_names_the_part_of_the_gate_that_failed(self, tmp_path):
         code, text, _ = self.fit(tmp_path, c0_runs(slope=0.3))

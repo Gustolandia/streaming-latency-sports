@@ -205,6 +205,63 @@ class TestVerifying:
         assert not ok and report["receiver_path_moved_by_the_delay"] is False
 
 
+def capture(pairs):
+    """tcpdump lines for (address, request time, reply time) triples, in seconds."""
+    lines = []
+    for seq, (who, asked, answered) in enumerate(pairs):
+        lines.append((asked, "%.9f IP %s > 10.1.1.21: ICMP echo request, id 7, seq %d, length 64"
+                      % (asked, who, seq)))
+        lines.append((answered, "%.9f IP 10.1.1.21 > %s: ICMP echo reply, id 7, seq %d, length 64"
+                      % (answered, who, seq)))
+    return "\n".join(text for _, text in sorted(lines)) + "\n"
+
+
+class TestTheBrokersOwnClock:
+    """The broker's capture times the delay where it is added, to the nanosecond; ping prints
+    two decimals above 1 ms and one above 10 ms, and its reference drifts between readings."""
+
+    HOST, RECEIVER = "10.1.1.10", "10.1.1.11"
+
+    def test_holds_are_timed_by_the_address_the_reply_went_to(self):
+        text = capture([(self.HOST, 1.000, 1.000012), (self.RECEIVER, 1.001, 1.003015),
+                        (self.HOST, 1.002, 1.002010)])
+        held = rd.broker_holds_ms(text + "tcpdump: listening on eth0\n", self.HOST, self.RECEIVER)
+        assert held["host"] == pytest.approx([0.012, 0.010], abs=1e-6)
+        assert held["receiver"] == pytest.approx([2.015], abs=1e-6)
+
+    def test_replies_without_their_request_and_other_addresses_are_left_out(self):
+        text = capture([("10.1.1.99", 1.0, 1.1)])
+        text += "2.000000000 IP 10.1.1.21 > 10.1.1.10: ICMP echo reply, id 7, seq 99, length 64\n"
+        assert rd.broker_holds_ms(text, self.HOST, self.RECEIVER) == {"host": [], "receiver": []}
+        assert rd.broker_holds_ms(None, self.HOST, self.RECEIVER) == {"host": [], "receiver": []}
+
+    @pytest.mark.parametrize("side", ["host", "receiver"])
+    def test_a_side_without_replies_is_not_a_measurement(self, side):
+        held = {"host": [0.01], "receiver": [2.0]}
+        held[side] = []
+        with pytest.raises(ValueError, match="no answered ping from the %s" % side):
+            rd.hold_summary(held)
+
+    ZERO = {"host_hold_ms": 0.010, "receiver_hold_ms": 0.012}
+
+    def test_a_delay_held_for_the_receiver_alone_passes(self):
+        ok, report = rd.verify_hold(self.ZERO, {"host_hold_ms": 0.011,
+                                                "receiver_hold_ms": 2.018}, 2.0)
+        assert ok and report["receiver_excess_ms"] == pytest.approx(0.005)
+        assert report["added_ms_held"] == pytest.approx(2.005)
+
+    def test_a_delay_that_also_held_the_host_fails(self):
+        ok, report = rd.verify_hold(self.ZERO, {"host_hold_ms": 2.010,
+                                                "receiver_hold_ms": 2.012}, 2.0)
+        assert not ok and report["host_replies_not_held"] is False
+        assert report["receiver_replies_held_for_the_delay"] is False
+
+    def test_a_delay_held_too_long_fails(self):
+        ok, report = rd.verify_hold(self.ZERO, {"host_hold_ms": 0.010,
+                                                "receiver_hold_ms": 2.092}, 2.0)
+        assert not ok and report["host_replies_not_held"] is True
+
+
 class TestMain:
 
     def run(self, argv, run=None):
@@ -244,6 +301,26 @@ class TestMain:
         assert self.run(argv + [str(good)])[0] == 0
         assert self.run(argv + [str(bad)])[0] == 1
         assert self.run(argv + [str(tmp_path / "missing.json")])[0] == 2
+
+    def test_holds_and_their_check(self, tmp_path):
+        host, receiver = TestTheBrokersOwnClock.HOST, TestTheBrokersOwnClock.RECEIVER
+        zero, step, empty = tmp_path / "zero.txt", tmp_path / "step.txt", tmp_path / "empty.txt"
+        zero.write_text(capture([(host, 1.0, 1.00001), (receiver, 1.1, 1.10001)]),
+                        encoding="utf-8")
+        step.write_text(capture([(host, 2.0, 2.00001), (receiver, 2.1, 2.10051)]),
+                        encoding="utf-8")
+        empty.write_text("", encoding="utf-8")
+        argv = ["holds", "--host", host, "--receiver", receiver, "--capture"]
+        code, text = self.run(argv + [str(zero), "--out", str(tmp_path / "zero.json")])
+        assert code == 0 and json.loads(text)["replies_receiver"] == 1
+        assert self.run(argv + [str(step), "--out", str(tmp_path / "step.json")])[0] == 0
+        assert self.run(argv + [str(zero)])[0] == 0, "printing alone is enough"
+        assert self.run(argv + [str(empty)])[0] == 2
+        check = ["verify-hold", "--baseline", str(tmp_path / "zero.json"), "--step",
+                 str(tmp_path / "step.json"), "--added-ms"]
+        code, text = self.run(check + ["0.5"])
+        assert code == 0 and json.loads(text)["added_ms_held"] == pytest.approx(0.5)
+        assert self.run(check + ["2.0"])[0] == 1
 
 
 @pytest.mark.parametrize("runner,consumer", [("run_kafka_trial.sh", "kafka_consumer.py"),

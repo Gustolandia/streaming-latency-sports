@@ -113,8 +113,12 @@ step before it measured (a queue is the shuffled list of runs, with what happene
 2. **Baseline trips (block B0)**: no added delay, each backend at 50, 75 and 88% load, 3 rounds.
 3. **Delay calibration (block C0), at the start of every session**: added delays of 0 (twice),
    1, 2, 4 and 8 ms, longer with `--up-to-ms`, 2 rounds. `delay_calibration.py fit` measures
-   how far the trip moves per millisecond of delay and checks the gate. It has to be measured:
-   on the first pilot, 2.03 ms added moved Kafka's trip by 1.80 ms and Redis's by 2.51 ms.
+   how far the trip moves per millisecond of delay and checks the gate: the slope clearly above
+   one half, and the calibration known to within 0.3 ms at every step (its 95% interval). When
+   only that precision fails, 2 more rounds run and both are fitted together. The first pilot
+   found 2.03 ms moving Kafka's trip by 1.80 ms and Redis's by 2.51 ms, but it replayed the match
+   in bursts; on the campaign's steady 50 messages a second both clients track the delay within
+   2%, and the calibration is the session's check that they still do.
 4. **Spread pilot (P0)**: 16 setups over 5 rounds, placed from the calibration.
 5. **Repeats**: `rounds` turns the pilot's run-to-run spread into runs per setup (15 to 40).
 6. **Main blocks**: A1 (slice doses), A3 (load) and A7 (go-first) on this machine; A5 (core
@@ -214,9 +218,10 @@ pair it is. A pair is deleted alone, with its group's name typed back, for examp
 `python scripts/azure_testbed.py down --profile matched-b --confirm sbl-azb`.
 
 **Stage 0, unattended.** `cloud/azure/stage0.sh` runs the plan's first stage on one pair from
-start to end: the pilot (a new pair's shakedown, or the first pair's retest), which must pass
-`pilot_checks.py shakedown`; the session's delay calibration (C0) and its fit; the baseline trips
-(B0); and the spread pilot (P0), placed from the calibration and only if its gate passed. On the
+start to end: the pair's shakedown, which must pass `pilot_checks.py shakedown`; the session's
+delay calibration (C0), with 2 more rounds when its fit finds it too loosely known and nothing
+else wrong; the baseline trips (B0); and the spread pilot (P0), placed from the calibration and
+only if its gate passed. A failed gate ends the session, and the pair starts a new one. On the
 first pair C0 is the staircase S0-1, up to 16 ms over 4 rounds. It takes about 6 to 10 hours,
 depending on how many P0 points the machine can reach. On each driver, after `session.sh`:
 
@@ -226,8 +231,15 @@ nohup bash cloud/azure/stage0.sh first > stage0.log 2>&1 &
 
 with `new` in place of `first` on the second x86 pair and on the Arm pair. Its last line is
 `CAMPAIGN_COMPLETE`, or `STOP_RULE:` with the reason. A pair that has already passed its
-shakedown starts again without repeating the pilot when the stage-0 folder holding that
-shakedown is added: `bash cloud/azure/stage0.sh new runs/azure/stage0/<profile>_<start>`.
+shakedown skips the long parts of the pilot when the stage-0 folder holding that shakedown is
+added: `bash cloud/azure/stage0.sh new runs/azure/stage0/<profile>_<start>`. The network part
+(`PARTS=network`) runs in every session all the same: a start after a stop can put a machine on
+another physical host, and on 16 and 17 September the gap between the two x86 drivers' paths
+moved between +0.06 and -0.44 ms from one start to the next.
+
+**Start one pair first.** After a change to the code, start the first x86 pair alone, and start
+the others once its shakedown and its first calibration have passed: on 16 September every
+fault reached all three pairs at once.
 
 **Watching every lane.** One watch reads them all: give each lane a name and its hosts file. With
 `--stop-idle-min 20` it also deallocates a pair whose machines have been idle for 20 minutes, so a
@@ -256,6 +268,16 @@ python scripts/collect_runs.py --hosts cloud/hosts.env --queue runs/azure/queues
 python scripts/collect_runs.py --hosts cloud/hosts_b.env --queue runs/azure/queues/a5.csv
 ```
 
+Some measurements belong to no queue: a pilot's runs, a void session, a probe of the instrument,
+a chain's log. `--path` copies folders and files the same way, into a new
+`collected/<profile>/snapshot_<UTC time>/` each time, so a later copy of the same folders sits
+beside the earlier one. Before a pair is deleted, and whenever a session ends early, its whole
+`runs` folder and its logs are copied:
+
+```bash
+python scripts/collect_runs.py --hosts cloud/hosts_arm.env --path runs --path stage0.log
+```
+
 ## Money and limits
 
 - All three pairs live in Sweden Central. On the free-trial subscription, North Europe refused
@@ -280,7 +302,7 @@ python scripts/collect_runs.py --hosts cloud/hosts_b.env --queue runs/azure/queu
 | `cloud/azure/session.sh` | starts a working session from your computer |
 | `scripts/sched_settings.py` | reads, sets and checks the base slice and the tick on a machine |
 | `scripts/receiver_delay.py` | builds the receiver's namespace, delays traffic to it alone, and checks that with ping |
-| `cloud/azure/pilot.sh` | the five pilot checks, with a verdict for each |
+| `cloud/azure/pilot.sh` | the pilot checks, with a verdict for each: settings, the two paths, the delay the broker holds (its own capture) and ping sees, the harness, go-first; `PARTS=network` for a later session |
 | `scripts/pilot_checks.py` | reads run files: never-negative trips, the receiver-only check, the go-first cut, and whether a pilot passed a new pair's shakedown |
 | `cloud/azure/replicate_oracle.sh` | runs the Oracle mechanism campaigns unchanged, in shuffled order |
 | `scripts/run_queue.py` | the randomised run queue and its ledger (every run recorded, failures included) |
@@ -288,9 +310,10 @@ python scripts/collect_runs.py --hosts cloud/hosts_b.env --queue runs/azure/queu
 | `scripts/law_design.py` | builds each law block's run list from the machine's tick and slice constant, the session's delay calibration (or the baseline trips) and the repeat rule |
 | `scripts/delay_calibration.py` | measures, from a calibration queue, how far the trip moves per millisecond of receiver-only delay, checks the gate, and gives the delay each planned trip needs |
 | `cloud/azure/campaign.sh` | the law campaign's runner: sets each run's CPUs, slice, delay and load, runs one trial, checks it, records it, and stops itself on a stop rule |
-| `cloud/azure/stage0.sh` | the plan's first stage on one pair, unattended: the pilot and its shakedown, the calibration and its fit, the baseline trips, the spread pilot |
+| `cloud/azure/machine_facts.sh` | what a machine is, as far as its network and timing go; the pilot keeps it for both machines |
+| `cloud/azure/stage0.sh` | the plan's first stage on one pair, unattended: the pilot and its shakedown, the calibration in one or two stages and its fit, the baseline trips, the spread pilot |
 | `scripts/run_integrity.py` | judges each run as it ends (it counts, is repeated, or stops its campaign), and stops a campaign whose attempts keep failing |
-| `scripts/collect_runs.py` | copies a finished campaign home and checks a fingerprint for every file |
+| `scripts/collect_runs.py` | copies a finished campaign, or whole folders, home and checks a fingerprint for every file |
 
 The two trial runners, `scripts/run_kafka_trial.sh` and `scripts/run_redis_trial.sh`, gained one
 hook, `SBL_CONSUMER_WRAP`. It is empty unless a campaign sets it, and each run's `meta.json` now
@@ -307,9 +330,15 @@ the receiver runs inside a namespace that owns it. Azure's first boot also puts 
 the driver itself, so the setup takes it off the driver first. Left there, the broker's replies to
 the driver would go into the namespace, and the driver would lose the broker. On the broker, a
 queue with four lanes sends ordinary traffic down the first three. The fourth lane has the delay, and only packets addressed
-to the receiver go there. The pilot proves it twice: with ping from both sides at every delay
-step, and again from the run files, where the "got it" delay must stay put while arrival minus
-sending grows by the delay.
+to the receiver go there. The pilot proves it three ways. The broker captures the pings and
+shows it held the receiver's replies for the set delay and the driver's not at all, to a few
+microseconds. Ping, from both sides, sees the delay end to end. And the run files show the
+"got it" delay staying put while arrival minus sending grows. Ping alone cannot decide a few
+hundredths of a millisecond: it prints two decimals from 1 to 10 ms and one above that, and its
+zero-delay reading drifts by up to 0.1 ms within half a minute. With no delay at all the two
+paths differ by a tenth of a millisecond or so, in Azure's network rather than in either machine,
+so every run measures the same ping with no delay just before its own, and the pilot requires
+the two paths to agree within 0.25 ms.
 
 ## Safety
 

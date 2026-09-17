@@ -1,23 +1,28 @@
 #!/usr/bin/env bash
-# Stage 0 of the frozen experiment plan on one machine pair, from start to end, unattended.
+# Stage 0 of the frozen experiment plan (freeze 02) on one machine pair, from start to end,
+# unattended.
 #
 # Run on the driver, from the checkout, after cloud/azure/session.sh:
 #     nohup bash cloud/azure/stage0.sh first > stage0.log 2>&1 &   # the first x86 pair
 #     nohup bash cloud/azure/stage0.sh new > stage0.log 2>&1 &     # the second x86 pair, or Arm
-# A pair that has already passed its shakedown starts again without repeating the pilot when the
-# stage-0 folder holding that shakedown is named:
+# A pair that passed its shakedown in an earlier session skips the long parts of the pilot when
+# that session's stage-0 folder is named. The network part runs again all the same, because a
+# start after a stop can put a machine on another physical host:
 #     nohup bash cloud/azure/stage0.sh new runs/azure/stage0/<profile>_<start> > stage0.log 2>&1 &
 #
 # In order, each step only if the ones before it succeeded:
-#   1. pilot  cloud/azure/pilot.sh: a new pair's shakedown, or the first pair's retest of its
-#             14 September pilot. Its settings, receiver-only delay, load and never-negative
-#             checks must pass (scripts/pilot_checks.py shakedown), or nothing else runs. A named
-#             earlier folder's passing shakedown stands in for it, and is copied with its origin.
+#   1. pilot  cloud/azure/pilot.sh: the pair's shakedown. Its settings, network (the broker holds
+#             replies for the set delay and to the receiver alone, and the two paths agree with no
+#             delay), load and never-negative checks must pass (scripts/pilot_checks.py
+#             shakedown), or nothing else runs. With an earlier folder, only the network part
+#             runs, and it must pass.
 #   2. C0     the session's delay calibration. On the first pair it is the staircase S0-1: steps
-#             up to 16 ms, 4 rounds. On a new pair: up to 8 ms, 2 rounds.
-#   3. fit    scripts/delay_calibration.py fit, with its gate.
+#             up to 16 ms, 4 rounds. On a new pair: up to 8 ms, 2 rounds, and 2 more when the fit
+#             finds the calibration too loosely known and nothing else wrong.
+#   3. fit    scripts/delay_calibration.py fit over the session's C0 queues, with its gate.
 #   4. B0     the baseline trips. They need no calibration, so they run whatever the gate said.
-#   5. P0     the spread pilot, placed from the calibration, and only if its gate passed.
+#   5. P0     the spread pilot, placed from the calibration, and only if its gate passed. A
+#             failed gate ends the session, and the pair starts a new one with a new C0.
 #
 # Each campaign is cloud/azure/campaign.sh, which judges every run as it ends and stops itself on
 # a stop rule; this stops with it. Everything lands in runs/azure/stage0/<profile>_<start>/, and
@@ -40,7 +45,7 @@ LOAD_PCT="${LOAD_PCT:-75}"
 START="$(date -u +%Y%m%dT%H%M%SZ)"
 DIR="runs/azure/stage0/${PROFILE}_$START"
 # One seed per design, from the day and the pair, so no two pairs draw the same order.
-SEED="$(date -u +%Y%m%d)$(printf '%02d' $(( $(printf '%s' "$PROFILE" | cksum | cut -d' ' -f1) % 100 )))"
+SEED="${START:0:8}$(printf '%02d' $(( $(printf '%s' "$PROFILE" | cksum | cut -d' ' -f1) % 100 )))"
 mkdir -p "$DIR"
 
 log () { echo "$(date -u +%FT%TZ) $*"; }
@@ -74,28 +79,47 @@ if [ -n "$EARLIER" ]; then
   python3 -c 'import json, sys; sys.exit(0 if json.load(open(sys.argv[1]))["ok"] else 1)' \
     "$EARLIER/shakedown.json" 2>/dev/null \
     || stop "$EARLIER holds no passing shakedown to start from"
-  cp "$EARLIER/shakedown.json" "$DIR/shakedown.json"
+  cp "$EARLIER/shakedown.json" "$DIR/shakedown_earlier.json"
   echo "$EARLIER" > "$DIR/shakedown_from.txt"
-  log "== pilot: not repeated; this pair passed its shakedown in $EARLIER"
+  log "== pilot: the network part only; this pair passed its shakedown in $EARLIER"
+  OUT="$DIR/pilot" PARTS=network bash cloud/azure/pilot.sh 2>&1 | tee "$DIR/pilot.log"
+  CHECKS="network,paths"
 else
-  log "== pilot: $([ "$KIND" = first ] && echo "the retest of this pair's first pilot" || echo "this pair's shakedown")"
+  log "== pilot: this pair's shakedown"
   OUT="$DIR/pilot" LOAD_PCT="$LOAD_PCT" bash cloud/azure/pilot.sh 2>&1 | tee "$DIR/pilot.log"
-  python3 scripts/pilot_checks.py shakedown --pilot-dir "$DIR/pilot" --load-pct "$LOAD_PCT" \
-    > "$DIR/shakedown.json"
-  case $? in
-    0) log "shakedown passed" ;;
-    1) stop "the shakedown failed; see $DIR/shakedown.json" ;;
-    *) stop "the shakedown could not be read; see $DIR/shakedown.json" ;;
-  esac
+  CHECKS="settings,network,paths,never_negative,load"
 fi
+python3 scripts/pilot_checks.py shakedown --pilot-dir "$DIR/pilot" --load-pct "$LOAD_PCT" \
+  --checks "$CHECKS" > "$DIR/shakedown.json"
+case $? in
+  0) log "shakedown passed ($CHECKS)" ;;
+  1) stop "the shakedown failed; see $DIR/shakedown.json" ;;
+  *) stop "the shakedown could not be read; see $DIR/shakedown.json" ;;
+esac
 
 sudo python3 scripts/sched_settings.py read > "$DIR/settings.json" \
   || stop "the scheduler settings could not be read"
 
 design C0 "c0_$START" "${SEED}1" --up-to-ms "$UP_TO_MS" --rounds "$C0_ROUNDS" --loads "$LOAD_PCT"
 campaign "c0_$START"
+C0_QUEUES=(--queue "$DIR/c0_$START.csv")
+if [ "$KIND" = new ]; then
+  # Two rounds are enough on a quiet pair. On a noisier one the calibration can be too loosely
+  # known, and only then, with nothing else wrong, two more rounds run and both stages are fitted.
+  python3 scripts/delay_calibration.py fit "${C0_QUEUES[@]}" \
+    --out "$DIR/calibration_first_stage.json" 2>&1 | tee "$DIR/fit_first_stage.txt"
+  FIRST=$?
+  [ "$FIRST" -le 1 ] || stop "the calibration could not be fitted; see $DIR/fit_first_stage.txt"
+  if python3 scripts/delay_calibration.py needs-rounds \
+      --calibration "$DIR/calibration_first_stage.json"; then
+    design C0 "c0b_$START" "${SEED}4" --up-to-ms "$UP_TO_MS" --rounds 2 --first-round 3 \
+      --loads "$LOAD_PCT"
+    campaign "c0b_$START"
+    C0_QUEUES+=(--queue "$DIR/c0b_$START.csv")
+  fi
+fi
 
-python3 scripts/delay_calibration.py fit --queue "$DIR/c0_$START.csv" \
+python3 scripts/delay_calibration.py fit "${C0_QUEUES[@]}" \
   --out "$DIR/calibration.json" 2>&1 | tee "$DIR/fit.txt"
 FIT=$?
 [ "$FIT" -le 1 ] || stop "the calibration could not be fitted; see $DIR/fit.txt"
@@ -103,7 +127,7 @@ FIT=$?
 design B0 "b0_$START" "${SEED}2"
 campaign "b0_$START"
 
-[ "$FIT" = 0 ] || stop "the calibration failed its gate, so P0 cannot be placed; see $DIR/fit.txt"
+[ "$FIT" = 0 ] || stop "the calibration failed its gate, so P0 cannot be placed and this session ends; the pair starts a new one. See $DIR/fit.txt"
 design P0 "p0_$START" "${SEED}3" --calibration "$DIR/calibration.json"
 campaign "p0_$START" "$DIR/calibration.json"
 

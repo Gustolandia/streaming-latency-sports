@@ -16,13 +16,21 @@ They are about the instrument, not the result:
                    least FACTOR-fold at every load level, with the manipulation check passed.
                    On Oracle it did; a machine that cannot reproduce it cleanly is not yet the
                    machine to test a law on.
+  paths            with no delay, the receiver's ping round trip and the host's agree within
+                   PATHS_MS, as the median of the pilot's zero-delay readings. The receiver-only
+                   delay assumes the two paths are the same but for the delay; on 16 September the
+                   second x86 pair's differed by 0.44 ms.
   shakedown        what a machine pair must pass, read from one pilot's output, before its first
-                   campaign: the settings and the receiver-only delay by ping (the pilot's own
+                   campaign: the settings, the receiver-only delay (held by the broker for the
+                   receiver alone, and seen by ping end to end) and the paths (the pilot's own
                    verdicts), no negative trip in the harness runs, and the load within
-                   LOAD_POINTS of its setting in every harness cell. The pilot's harness verdict
-                   also asks that the trip grow one-for-one with the delay, which the first pilot
-                   showed it does not, so each session's calibration judges that instead. Go-first
-                   is reported but not required, because the campaign tests it as a prediction.
+                   LOAD_POINTS of its setting in every harness cell. A later session of the same
+                   pair asks for the network checks alone (--checks network,paths). The pilot's
+                   harness verdict also asks that the trip grow one-for-one with the delay; it
+                   replays the football match in bursts, and in bursts the trip does not, so each
+                   session's calibration, on the campaign's steady traffic, judges that instead.
+                   Go-first is reported but not required, because the campaign tests it as a
+                   prediction.
 
 Per message, from producer.csv and consumer_events.csv joined on event_id (the files and join
 analyze_depth.run_inversion uses):
@@ -39,7 +47,9 @@ CLI:
     python3 scripts/pilot_checks.py list --out-dir <campaign cell dir> [--backend kafka]
     python3 scripts/pilot_checks.py compare --baseline runs/a runs/b --step runs/c --added-ms 2.0
     python3 scripts/pilot_checks.py go-first --table <dir>/stamping_priority.csv [--factor 5]
-    python3 scripts/pilot_checks.py shakedown --pilot-dir <pilot output dir> [--load-pct 75]
+    python3 scripts/pilot_checks.py paths --pilot-dir <pilot output dir>
+    python3 scripts/pilot_checks.py shakedown --pilot-dir <pilot output dir> [--load-pct 75] \
+        [--checks network,paths]
 """
 import argparse
 import csv
@@ -55,6 +65,11 @@ FACTOR = 5.0
 LOAD_POINTS = 3.0
 #: The pilot writes one receiver-only report per backend.
 HARNESS_REPORTS = ("harness_verify_kafka.json", "harness_verify_redis.json")
+#: With no delay, the receiver's and the host's round trips may differ by this much: the limit
+#: every run's added delay is held to (plan v6).
+PATHS_MS = 0.25
+#: What a shakedown asks for, unless it is told to ask for less.
+SHAKEDOWN_CHECKS = ("settings", "network", "paths", "never_negative", "load")
 
 
 def _int(value):
@@ -200,11 +215,32 @@ def _cell_load(path):
     return statistics.mean(samples) if samples else None
 
 
-def shakedown(pilot_dir, load_pct, load_points=LOAD_POINTS):
+def paths(pilot_dir, limit_ms=PATHS_MS):
+    """Do the receiver's and the host's round trips agree with no delay? The median, over the
+    pilot's zero-delay readings (net_zero*.json), of receiver minus host."""
+    files = sorted(glob.glob(os.path.join(pilot_dir, "net_zero*.json")))
+    differences = []
+    for path in files:
+        with open(path, encoding="utf-8") as fh:
+            reading = json.load(fh)
+        differences.append(reading["receiver_median_ms"] - reading["host_median_ms"])
+    if not differences:
+        raise ValueError("%s holds no zero-delay reading (net_zero*.json)" % pilot_dir)
+    middle = statistics.median(differences)
+    return {"ok": abs(middle) <= limit_ms, "median_difference_ms": middle,
+            "differences_ms": differences, "limit_ms": limit_ms,
+            "files": [os.path.basename(p) for p in files]}
+
+
+def shakedown(pilot_dir, load_pct, load_points=LOAD_POINTS, wanted=SHAKEDOWN_CHECKS):
     """The instrument checks a machine pair must pass, read from one pilot's output."""
+    unknown = sorted(set(wanted) - set(SHAKEDOWN_CHECKS))
+    if unknown or not wanted:
+        raise ValueError("a shakedown asks for some of %s, not %s"
+                         % (", ".join(SHAKEDOWN_CHECKS), ", ".join(unknown) or "none"))
     with open(os.path.join(pilot_dir, "verdicts.csv"), newline="", encoding="utf-8") as fh:
         verdicts = list(csv.DictReader(fh))
-    checks = {name: _verdict_check(verdicts, name) for name in ("settings", "network")}
+    checks = {name: _verdict_check(verdicts, name) for name in ("settings", "network", "paths")}
     negatives, unreadable = 0, []
     for name in HARNESS_REPORTS:
         try:
@@ -225,6 +261,7 @@ def shakedown(pilot_dir, load_pct, load_points=LOAD_POINTS):
         "detail": ", ".join("%s %s" % (cell, "no samples" if load is None else "%.1f%%" % load)
                             for cell, load in sorted(loads.items()))
         or "no harness cell recorded its load"}
+    checks = {name: checks[name] for name in wanted}
     return {"pilot_dir": pilot_dir, "load_pct": load_pct, "load_points": load_points,
             "checks": checks, "ok": all(check["ok"] for check in checks.values()),
             "go_first_recorded": _verdict_check(verdicts, "go-first")["detail"]}
@@ -253,6 +290,11 @@ def main(argv=None, out=None):
     p.add_argument("--pilot-dir", required=True)
     p.add_argument("--load-pct", type=float, default=75.0)
     p.add_argument("--load-points", type=float, default=LOAD_POINTS)
+    p.add_argument("--checks", default=",".join(SHAKEDOWN_CHECKS),
+                   help="the checks to require, comma-separated")
+    p = sub.add_parser("paths")
+    p.add_argument("--pilot-dir", required=True)
+    p.add_argument("--limit-ms", type=float, default=PATHS_MS)
     args = ap.parse_args(argv)
     try:
         if args.command == "list":
@@ -268,7 +310,11 @@ def main(argv=None, out=None):
                              args.added_ms, args.tolerance_ms)
             ok = result["ok"]
         elif args.command == "shakedown":
-            result = shakedown(args.pilot_dir, args.load_pct, args.load_points)
+            wanted = tuple(c.strip() for c in args.checks.split(",") if c.strip())
+            result = shakedown(args.pilot_dir, args.load_pct, args.load_points, wanted)
+            ok = result["ok"]
+        elif args.command == "paths":
+            result = paths(args.pilot_dir, args.limit_ms)
             ok = result["ok"]
         else:
             result = go_first(args.table, args.factor)

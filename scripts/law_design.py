@@ -226,10 +226,13 @@ def make_setups(block, tick_ms, baseline=None, settings=None, calibration=None, 
     return setups, unreachable
 
 
-def design(block, settings, baseline, rounds, seed, calibration=None, loads=None, up_to_ms=8.0):
+def design(block, settings, baseline, rounds, seed, calibration=None, loads=None, up_to_ms=8.0,
+           first_round=1):
     """The run_queue design for one block, with what it was made from."""
     if block not in BLOCKS:
         raise ValueError("no block %r; the blocks are %s" % (block, ", ".join(sorted(BLOCKS))))
+    if first_round != 1 and block != "C0":
+        raise ValueError("only C0 runs in two stages; block %s starts at round 1" % block)
     tick = settings.get("tick_ms")
     if not tick:
         raise ValueError("the settings carry no tick; read them on the machine that will run "
@@ -247,7 +250,8 @@ def design(block, settings, baseline, rounds, seed, calibration=None, loads=None
         raise ValueError("block %s needs --rounds, from law_design.py rounds" % block)
     setups, unreachable = make_setups(block, tick, baseline, settings, calibration, loads,
                                       up_to_ms)
-    return {"block": block, "seed": seed, "rounds": rounds, "tick_ms": tick,
+    return {"block": block, "seed": seed, "rounds": rounds, "first_round": first_round,
+            "tick_ms": tick,
             "release": settings.get("release"),
             "normalised_slice_ns": settings.get("normalised_slice_ns"), "baseline": baseline,
             "calibration": calibration, "setups": setups,
@@ -303,6 +307,8 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise):
     p.add_argument("--loads", default="", help="comma-separated loads, for B0 or C0 only")
     p.add_argument("--up-to-ms", type=float, default=8.0, help="C0's longest delay step")
     p.add_argument("--rounds", type=int, default=0)
+    p.add_argument("--first-round", type=int, default=1,
+                   help="C0's second stage carries on from the first stage's rounds")
     p.add_argument("--seed", type=int, required=True)
     p.add_argument("--out", required=True)
     p = sub.add_parser("baseline")
@@ -341,7 +347,7 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise):
                 calibration = json.load(fh)["calibration"]
         loads = [int(v) for v in args.loads.split(",")] if args.loads else None
         made = design(args.block, settings.get("settings", settings), baseline, args.rounds,
-                      args.seed, calibration, loads, args.up_to_ms)
+                      args.seed, calibration, loads, args.up_to_ms, args.first_round)
         with open(args.out, "w", encoding="utf-8") as fh:
             fh.write(json.dumps(made, indent=2, sort_keys=True) + "\n")
         runs = len(made["setups"]) * made["rounds"]

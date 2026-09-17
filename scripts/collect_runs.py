@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """
-collect_runs.py -- copy a finished campaign off its driver, with a fingerprint for every file.
+collect_runs.py -- copy a finished campaign, or any folders, off a driver, with a fingerprint
+for every file.
 
 A campaign's runs exist only on its driver until they are copied, and a copy is where results get
 lost without anyone noticing: a transfer cut short, a file that changed after it was listed. So
 the copy is checked end to end.
 
   1. On the driver, the campaign's queue names its run directories: every attempt, done or
-     failed. Every file in them, and the queue itself, gets a SHA-256 fingerprint.
+     failed. Every file in them, and the queue itself, gets a SHA-256 fingerprint. With --path
+     instead, every file under the folders and files named gets one: a pilot, a void session,
+     or a driver's whole runs folder, so that nothing measured stays on one machine only.
   2. They are packed into one archive there, and the archive is fingerprinted too.
   3. The archive comes here and its fingerprint is checked. It is unpacked, refusing any entry
      that would land outside the destination or is not a plain file or folder, and every file is
@@ -20,6 +23,11 @@ its check is reported, and the runs stay where they were.
 Usage:
     python scripts/collect_runs.py --hosts cloud/hosts.env --queue runs/azure/queues/c0.csv
     python scripts/collect_runs.py --hosts cloud/hosts_b.env --queue runs/azure/queues/a5.csv
+    python scripts/collect_runs.py --hosts cloud/hosts_arm.env --path runs --path stage0.log
+
+A queue lands in collected/<profile>/<queue name>/, and is never collected twice. Paths land in
+collected/<profile>/snapshot_<UTC time>/, so a later snapshot of the same folders sits beside the
+earlier one and replaces nothing.
 """
 import argparse
 import datetime
@@ -42,7 +50,15 @@ WORK_PREFIX = "/tmp/sbl_collect."
 
 PACK = r"""set -euo pipefail
 cd ~/sbl
+mode=@MODE@
 queue=@QUEUE@
+if [ "$mode" = paths ]; then
+  for path in @PATHS@; do
+    [ -e "$path" ] || { echo "error=there is nothing at $path on the driver"; exit 0; }
+  done
+  work=$(mktemp -d /tmp/sbl_collect.XXXXXX)
+  printf '%s\n' @PATHS@ > "$work/list"
+else
 if [ ! -f "$queue" ]; then echo "error=there is no queue at $queue on the driver"; exit 0; fi
 work=$(mktemp -d /tmp/sbl_collect.XXXXXX)
 python3 - "$queue" > "$work/list" <<'PY'
@@ -56,6 +72,7 @@ with open(queue, newline="", encoding="utf-8") as fh:
             paths.append(run_dir)
 print("\n".join(paths))
 PY
+fi
 while IFS= read -r path; do find "$path" -type f -print0; done < "$work/list" \
   | sort -z | xargs -0 -r sha256sum > "$work/manifest"
 tar -cf "$work/runs.tar" -T "$work/list"
@@ -68,9 +85,21 @@ sed 's/^/manifest=/' "$work/manifest"
 """
 
 
-def remote_script(queue):
-    """The packing script for one queue, with its path quoted for the shell."""
-    return PACK.replace("@QUEUE@", shlex.quote(queue))
+def remote_script(queue=None, paths=None):
+    """The packing script for one queue, or for folders and files, each quoted for the shell."""
+    if paths:
+        return (PACK.replace("@MODE@", "paths").replace("@QUEUE@", "''")
+                .replace("@PATHS@", " ".join(shlex.quote(p) for p in paths)))
+    return PACK.replace("@MODE@", "queue").replace("@QUEUE@", shlex.quote(queue)).replace(
+        "@PATHS@", "")
+
+
+def path_problem(path):
+    """Why a path cannot be collected, or None: it must be a relative path inside the checkout."""
+    parts = path.replace("\\", "/").split("/")
+    if not path or path.startswith(("/", "~", "-")) or ":" in path or ".." in parts:
+        return "%r is not a path inside the driver's checkout" % path
+    return None
 
 
 def parse_pack(text):
@@ -147,17 +176,30 @@ def last_line(code, stdout, stderr):
     return lines[-1] if lines else "exit %d" % code
 
 
-def collect(hosts, queue, dest, key, ssh="ssh", scp="scp", run=subprocess.run, clock=None):
-    """Copy one campaign's runs and check them. Returns what COLLECTED.json records."""
+def collect(hosts, queue, dest, key, ssh="ssh", scp="scp", run=subprocess.run, clock=None,
+            paths=None):
+    """Copy one campaign's runs, or the folders and files in `paths`, and check them. Returns
+    what COLLECTED.json records."""
+    clock = clock or (lambda: datetime.datetime.now(datetime.timezone.utc))
     opts = ["-i", key, "-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
             "-o", "StrictHostKeyChecking=accept-new"]
     driver = "ubuntu@%s" % hosts["DRIVER_PUBLIC"]
-    home = os.path.join(dest, hosts["AZ_PROFILE"], os.path.splitext(os.path.basename(queue))[0])
+    if paths:
+        problems = [p for p in map(path_problem, paths) if p]
+        if problems:
+            raise RuntimeError("; ".join(problems))
+        home = os.path.join(dest, hosts["AZ_PROFILE"],
+                            "snapshot_%s" % clock().strftime("%Y%m%dT%H%M%SZ"))
+        what = ", ".join(paths)
+    else:
+        home = os.path.join(dest, hosts["AZ_PROFILE"],
+                            os.path.splitext(os.path.basename(queue))[0])
+        what = queue
     if os.path.exists(os.path.join(home, "COLLECTED.json")):
         raise RuntimeError("%s is already collected in %s; move that folder aside to collect it "
-                           "again" % (queue, home))
+                           "again" % (what, home))
     code, stdout, stderr = testbed_watch.run_script(
-        run, [ssh] + opts + [driver, "bash -s"], remote_script(queue), 1800)
+        run, [ssh] + opts + [driver, "bash -s"], remote_script(queue, paths), 1800)
     if code != 0:
         raise RuntimeError("the driver could not pack the runs: %s"
                            % last_line(code, stdout, stderr))
@@ -186,8 +228,9 @@ def collect(hosts, queue, dest, key, ssh="ssh", scp="scp", run=subprocess.run, c
     finally:
         run([ssh] + opts + [driver, "rm -rf %s" % shlex.quote(facts["work"])],
             capture_output=True, text=True, timeout=120)
-    now = (clock or (lambda: datetime.datetime.now(datetime.timezone.utc)))()
-    record = {"queue": queue, "profile": hosts["AZ_PROFILE"], "driver": facts.get("host"),
+    now = clock()
+    record = {"queue": queue, "paths": paths, "home": home, "profile": hosts["AZ_PROFILE"],
+              "driver": facts.get("host"),
               "driver_address": hosts["DRIVER_PUBLIC"], "commit": facts.get("commit"),
               "files": len(facts["manifest"]), "archive_sha256": digest,
               "collected_utc": now.strftime("%Y-%m-%dT%H:%M:%SZ")}
@@ -202,7 +245,10 @@ def main(argv=None, run=subprocess.run, clock=None, out=None):
     out = out or sys.stdout
     ap = argparse.ArgumentParser(description="Copy a finished campaign off its driver, checked")
     ap.add_argument("--hosts", default=testbed_watch.HOSTS_ENV)
-    ap.add_argument("--queue", required=True, help="the queue's path on the driver, under ~/sbl")
+    which = ap.add_mutually_exclusive_group(required=True)
+    which.add_argument("--queue", help="the queue's path on the driver, under ~/sbl")
+    which.add_argument("--path", action="append", dest="paths",
+                       help="a folder or file under ~/sbl on the driver; give it again for more")
     ap.add_argument("--dest", default=DEST)
     ap.add_argument("--key", default=testbed_watch.KEY)
     ap.add_argument("--ssh", default="ssh")
@@ -211,13 +257,13 @@ def main(argv=None, run=subprocess.run, clock=None, out=None):
     try:
         hosts = testbed_watch.read_hosts(args.hosts)
         record = collect(hosts, args.queue, args.dest, os.path.expanduser(args.key), args.ssh,
-                         args.scp, run, clock)
+                         args.scp, run, clock, args.paths)
     except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired, tarfile.TarError) as exc:
         print("ERROR: %s" % exc, file=out)
         return 2
     print("collected %d files of %s from %s (commit %s) into %s"
-          % (record["files"], record["queue"], record["driver"], (record["commit"] or "?")[:8],
-             os.path.join(args.dest, record["profile"])), file=out)
+          % (record["files"], record["queue"] or ", ".join(record["paths"]), record["driver"],
+             (record["commit"] or "?")[:8], record["home"]), file=out)
     return 0
 
 

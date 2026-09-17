@@ -8,7 +8,10 @@ run as it ends, on the machine that ran it, so they hold when nobody is watching
   count    every check passed. The run enters the analysis.
   repeat   a condition the run was meant to have did not take: too few messages sent, or too few
            of them arrived; the send rate or the load off target; the settings changed during the
-           run; the delay not applied as set; the clock not logged; files that cannot be read. The
+           run; the delay not applied as set; the clock not logged; the client not set as every
+           campaign sets it (Kafka's producer with 64 requests in flight, Redis's consumer
+           acknowledging in batches of 200, each read from the client's own log line); files
+           that cannot be read. The
            run keeps its files and its ledger row, marked failed with the reasons, and
            run_queue.py queues a copy, three attempts at most. Nothing a run measured can make it
            a repeat.
@@ -21,7 +24,11 @@ failing: the last three all failed, or more than a fifth of the last twenty did,
 finished.
 
 Every check, with the value found and the limit it was held to, is written to
-RUN_DIR/integrity.json, next to the run.
+RUN_DIR/integrity.json, next to the run. Recorded beside the checks, and never judged: the delay
+the broker's own capture says it held (delay_hold.json), and the TCP segments each side sent
+again during the run (the Tcp lines of /proc/net/snmp, before and after, on the driver, in the
+receiver's namespace and on the broker), which is where a stall of a fraction of a second would
+show.
 
 CLI:
     python3 scripts/run_integrity.py check RUN_DIR --rate 50 --duration 130 --warmup-s 30
@@ -34,6 +41,7 @@ import argparse
 import csv
 import json
 import os
+import re
 import statistics
 import sys
 
@@ -54,6 +62,12 @@ MIN_LOAD_SAMPLES = 10
 #: The delay ping measures may differ from the one set by this much, plus this share of it.
 DELAY_TOLERANCE_MS = 0.25
 DELAY_TOLERANCE_SHARE = 0.05
+#: The client settings every campaign run uses (plan v6): the log that states it, the setting,
+#: and its value.
+CLIENT_SETTINGS = {"kafka": ("producer.log", "max_inflight", 64),
+                   "redis": ("consumer.log", "ack_batch", 200)}
+#: Where each side's Tcp counters are logged, by file-name prefix.
+TCP_SIDES = {"driver": "", "receiver": "receiver_", "broker": "broker_"}
 #: The guard: failed attempts in a row, and the share failed among the most recent ones.
 GUARD_IN_A_ROW = 3
 GUARD_WINDOW = 20
@@ -185,6 +199,45 @@ def delay_check(run_dir, delay_ms):
     return check, added
 
 
+def client_check(run_dir, backend):
+    """The client ran with the campaign's setting, as its own log line states it."""
+    log_name, key, wanted = CLIENT_SETTINGS[backend]
+    found = None
+    pattern = re.compile(r"CONFIG effective .*\b%s=(\d+)" % key)
+    with open(os.path.join(run_dir, log_name), encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            match = pattern.search(line)
+            if match:
+                found = int(match.group(1))
+    return outcome(found == wanted, found, "%s=%d in %s" % (key, wanted, log_name),
+                   "the %s client ran with %s=%s, not %d"
+                   % (backend, key, "an unlogged value" if found is None else found, wanted))
+
+
+def delay_held_ms(run_dir):
+    """How much longer the broker held the receiver's replies than the host's, by its capture of
+    the run's delay pings; None when there is no capture to read."""
+    try:
+        held = read_json(os.path.join(run_dir, "delay_hold.json"))
+        return float(held["receiver_hold_ms"]) - float(held["host_hold_ms"])
+    except (ValueError, KeyError, TypeError):
+        return None
+
+
+def retransmitted(run_dir, side):
+    """TCP segments one side sent again during the run; None when its counters were not logged."""
+    counts = []
+    for when in ("before", "after"):
+        try:
+            with open(os.path.join(run_dir, "%stcp_%s.txt" % (TCP_SIDES[side], when)),
+                      encoding="utf-8") as fh:
+                names, values = [line.split() for line in fh if line.startswith("Tcp:")][:2]
+            counts.append(int(values[names.index("RetransSegs")]))
+        except (OSError, ValueError):
+            return None
+    return counts[1] - counts[0]
+
+
 def clock_offset_s(path):
     """chrony's clock offset in seconds, from one `chronyc -c tracking` line, or None."""
     try:
@@ -276,7 +329,9 @@ def evaluate(run_dir, rate, duration, warmup_s, calibration=None,
     """Every check on one run, and the verdict they give."""
     if rate <= 0 or duration <= warmup_s:
         raise ValueError("a run needs a positive rate and a duration longer than its warm-up")
-    checks, recorded = {}, {"steal_pct": steal_pct(run_dir)}
+    checks, recorded = {}, {"steal_pct": steal_pct(run_dir), "delay_held_ms": delay_held_ms(run_dir),
+                            "retransmitted": {side: retransmitted(run_dir, side)
+                                              for side in TCP_SIDES}}
     try:
         params = read_json(os.path.join(run_dir, "queue_row.json"))["params"]
         sent = send_times(run_dir)
@@ -297,6 +352,7 @@ def evaluate(run_dir, rate, duration, warmup_s, calibration=None,
     window = (sent_after[0], sent_after[-1]) if sent_after else (cutoff, cutoff)
     guarded(checks, "load", lambda: load_check(run_dir, float(params["load_pct"]), *window))
     guarded(checks, "settings", lambda: settings_check(run_dir))
+    guarded(checks, "client", lambda: client_check(run_dir, params["backend"]))
     added = None
     try:
         checks["delay"], added = delay_check(run_dir, float(params["delay_ms"]))

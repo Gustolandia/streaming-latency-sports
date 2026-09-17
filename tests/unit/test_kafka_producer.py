@@ -491,7 +491,7 @@ class TestMain:
         
         assert (temp_dir / "prod.csv").exists()
 
-    def test_main_max_inflight_multi(self, temp_dir, monkeypatch):
+    def test_main_max_inflight_multi(self, temp_dir, monkeypatch, capsys):
         """Test lines 193-198: max_inflight > 1 enables pending queue."""
         plan_data = {
             "event_id": ["e1", "e2", "e3"],
@@ -521,6 +521,7 @@ class TestMain:
                 sys.argv = old_argv
         
         assert (temp_dir / "prod.csv").exists()
+        assert "CONFIG effective max_inflight=2 ack_stamp=callback" in capsys.readouterr().out
 
     def test_main_as_script(self, temp_dir, monkeypatch):
         """Test line 289: if __name__ == '__main__' block by running as subprocess with coverage.

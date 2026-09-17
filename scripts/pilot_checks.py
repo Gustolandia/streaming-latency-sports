@@ -16,10 +16,12 @@ They are about the instrument, not the result:
                    least FACTOR-fold at every load level, with the manipulation check passed.
                    On Oracle it did; a machine that cannot reproduce it cleanly is not yet the
                    machine to test a law on.
-  paths            with no delay, the receiver's ping round trip and the host's agree within
-                   PATHS_MS, as the median of the pilot's zero-delay readings. The receiver-only
-                   delay assumes the two paths are the same but for the delay; on 16 September the
-                   second x86 pair's differed by 0.44 ms.
+  paths            with no delay, how far the receiver's round trip to the broker sits from the
+                   host's, measured three ways: by TCP and UDP (sockperf, the tool Microsoft's own
+                   guidance names) and by ping. Recorded, not required (plan v7): on 17 September
+                   ping put the two paths 0.283 ms apart, steadily, where TCP put them 0.009 ms
+                   apart, and a gate on ping's figure had already turned a sound pair away. What
+                   a pair's runs actually vary by is measured by B0 and sets its rounds.
   shakedown        what a machine pair must pass, read from one pilot's output, before its first
                    campaign: the settings, the receiver-only delay (held by the broker for the
                    receiver alone, and seen by ping end to end) and the paths (the pilot's own
@@ -68,8 +70,10 @@ HARNESS_REPORTS = ("harness_verify_kafka.json", "harness_verify_redis.json")
 #: With no delay, the receiver's and the host's round trips may differ by this much: the limit
 #: every run's added delay is held to (plan v6).
 PATHS_MS = 0.25
-#: What a shakedown asks for, unless it is told to ask for less.
-SHAKEDOWN_CHECKS = ("settings", "network", "paths", "never_negative", "load")
+#: Every check a shakedown can be asked for.
+ALL_CHECKS = ("settings", "network", "paths", "never_negative", "load")
+#: What a shakedown asks for, unless it is told otherwise. The paths are recorded, not required.
+SHAKEDOWN_CHECKS = ("settings", "network", "never_negative", "load")
 
 
 def _int(value):
@@ -215,9 +219,23 @@ def _cell_load(path):
     return statistics.mean(samples) if samples else None
 
 
+def sockperf_ms(path):
+    """The median round trip sockperf measured, in ms, or None when there is nothing to read."""
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                if "percentile 50.000" in line:
+                    return float(line.rsplit("=", 1)[1]) / 1000.0
+    except (OSError, ValueError, IndexError):
+        return None
+    return None
+
+
 def paths(pilot_dir, limit_ms=PATHS_MS):
-    """Do the receiver's and the host's round trips agree with no delay? The median, over the
-    pilot's zero-delay readings (net_zero*.json), of receiver minus host."""
+    """How far the receiver's round trip to the broker sits from the host's with no delay, by
+    ping (the median over the pilot's zero-delay readings) and, where the pilot measured them, by
+    TCP and UDP. Recorded, not required: TCP is the one our messages use, so it decides `ok`
+    where it exists."""
     files = sorted(glob.glob(os.path.join(pilot_dir, "net_zero*.json")))
     differences = []
     for path in files:
@@ -227,17 +245,29 @@ def paths(pilot_dir, limit_ms=PATHS_MS):
     if not differences:
         raise ValueError("%s holds no zero-delay reading (net_zero*.json)" % pilot_dir)
     middle = statistics.median(differences)
-    return {"ok": abs(middle) <= limit_ms, "median_difference_ms": middle,
-            "differences_ms": differences, "limit_ms": limit_ms,
-            "files": [os.path.basename(p) for p in files]}
+    readings = {}
+    for name in ("tcp_host", "tcp_receiver", "udp_host", "udp_receiver"):
+        value = sockperf_ms(os.path.join(pilot_dir, "sockperf_%s.txt" % name))
+        if value is not None:
+            readings[name] = value
+    found = {"ping_difference_ms": middle, "median_difference_ms": middle,
+             "differences_ms": differences, "limit_ms": limit_ms,
+             "files": [os.path.basename(p) for p in files], "sockperf_ms": readings}
+    for kind in ("tcp", "udp"):
+        pair = ("%s_host" % kind, "%s_receiver" % kind)
+        if all(name in readings for name in pair):
+            found["%s_difference_ms" % kind] = readings[pair[1]] - readings[pair[0]]
+    decides = found.get("tcp_difference_ms", middle)
+    found["ok"] = abs(decides) <= limit_ms
+    return found
 
 
 def shakedown(pilot_dir, load_pct, load_points=LOAD_POINTS, wanted=SHAKEDOWN_CHECKS):
     """The instrument checks a machine pair must pass, read from one pilot's output."""
-    unknown = sorted(set(wanted) - set(SHAKEDOWN_CHECKS))
+    unknown = sorted(set(wanted) - set(ALL_CHECKS))
     if unknown or not wanted:
         raise ValueError("a shakedown asks for some of %s, not %s"
-                         % (", ".join(SHAKEDOWN_CHECKS), ", ".join(unknown) or "none"))
+                         % (", ".join(ALL_CHECKS), ", ".join(unknown) or "none"))
     with open(os.path.join(pilot_dir, "verdicts.csv"), newline="", encoding="utf-8") as fh:
         verdicts = list(csv.DictReader(fh))
     checks = {name: _verdict_check(verdicts, name) for name in ("settings", "network", "paths")}

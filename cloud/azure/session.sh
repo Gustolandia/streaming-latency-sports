@@ -9,7 +9,9 @@
 # Every step is safe to repeat:
 #   1. the commit you are on must already be on GitHub, because the machines fetch it from there;
 #   2. wait until cloud-init has finished on both machines;
-#   3. switch automatic package upgrades off on both, and wait for any upgrade already running.
+#   3. switch automatic package upgrades off on both, wait for any upgrade already running, and
+#      make sure the two measuring tools are there: tcpdump, which times the delay where the
+#      broker adds it, and sockperf, which measures the paths as TCP and UDP see them;
 #      On 16 September one restarted the driver's network service in the middle of a pilot, and
 #      the driver lost its broker. Nothing may change the software under a campaign either;
 #   4. bring both checkouts to that commit, discarding anything left on them: a machine runs the
@@ -67,6 +69,12 @@ brk 'cloud-init status --wait >/dev/null; test -f /var/lib/sbl-cloud-init-done' 
 echo "== 3/8 automatic package upgrades off on both machines, and any running one finished"
 for host in drv brk; do
   "$host" 'sudo systemctl disable --now unattended-upgrades.service apt-daily.timer apt-daily-upgrade.timer >/dev/null 2>&1; printf "APT::Periodic::Update-Package-Lists \"0\";\nAPT::Periodic::Unattended-Upgrade \"0\";\n" | sudo tee /etc/apt/apt.conf.d/20auto-upgrades >/dev/null && timeout 1800 bash -c "while sudo fuser /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock >/dev/null 2>&1; do sleep 5; done"'
+done
+
+for host in drv brk; do
+  "$host" "command -v tcpdump >/dev/null && command -v sockperf >/dev/null \
+    || sudo apt-get install -y tcpdump sockperf > /tmp/measuring_tools.log 2>&1; \
+    echo \"  $host: \$(command -v tcpdump || echo 'tcpdump MISSING') \$(command -v sockperf || echo 'sockperf MISSING')\""
 done
 
 echo "== 4/8 both checkouts to $COMMIT"

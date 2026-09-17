@@ -37,7 +37,8 @@ def make_run(tmp_path, name="run", n=400, gap_ms=100.0, trip_ms=0.5, gotit_ms=0.
              negative_at=None, lose=0, load=75.0, load_samples=None, delay_ms=2.0,
              measured_added=2.0, settings_ok=True, problems=None, clock=(0.00002, -0.00003),
              stat=((100, 100, 800, 0), (800, 200, 1500, 10)), params=None, drop=(),
-             baseline_added=None, client_line="CONFIG effective max_inflight=64 ack_stamp=callback"):
+             baseline_added=None, held_added=None,
+             client_line="CONFIG effective max_inflight=64 ack_stamp=callback"):
     run = tmp_path / name
     run.mkdir()
     sends = [START + int(i * gap_ms * 1e6) for i in range(n)]
@@ -60,6 +61,9 @@ def make_run(tmp_path, name="run", n=400, gap_ms=100.0, trip_ms=0.5, gotit_ms=0.
                                              encoding="utf-8")
     (run / "delay_measured.json").write_text(json.dumps(
         {"host_median_ms": 0.30, "receiver_median_ms": 0.30 + measured_added}), encoding="utf-8")
+    held = delay_ms if held_added is None else held_added
+    (run / "delay_hold.json").write_text(json.dumps(
+        {"host_hold_ms": 0.015, "receiver_hold_ms": 0.015 + held}), encoding="utf-8")
     if baseline_added is not None:
         (run / "delay_baseline.json").write_text(json.dumps(
             {"host_median_ms": 0.30, "receiver_median_ms": 0.30 + baseline_added}),
@@ -100,7 +104,8 @@ class TestARunThatCounts:
         recorded = evaluate(make_run(tmp_path))["recorded"]
         assert recorded["messages"] == 300 and recorded["trip_median_ms"] == pytest.approx(0.5)
         assert recorded["steal_pct"] == pytest.approx(100 * 10 / 1510)
-        assert recorded["delay_added_ms"] == pytest.approx(2.0)
+        assert recorded["delay_held_ms"] == pytest.approx(2.0)
+        assert recorded["delay_added_by_ping_ms"] == pytest.approx(2.0)
         assert recorded["clock_offset_max_s"] == pytest.approx(0.00003)
         assert recorded["gotit_median_ms"] == pytest.approx(0.2)
 
@@ -133,7 +138,7 @@ class TestRepeat:
         (dict(load=70.0), "the measured load was 70.0% against 75%"),
         (dict(settings_ok=False), "changed during the run: the base slice is 2800000 ns"),
         (dict(settings_ok=False, problems=[]), "sched_settings.py gave no reason"),
-        (dict(measured_added=1.0), "ping measured 1.000 ms added against 2 ms set"),
+        (dict(held_added=1.0), "the broker held 1.000 ms against 2 ms set"),
         (dict(clock=(0.00002, None)), "not logged on one side of the run"),
         (dict(clock=(None, None)), "not logged before or after the run")])
     def test_a_condition_that_did_not_take(self, tmp_path, change, fragment):
@@ -150,16 +155,16 @@ class TestRepeat:
     @pytest.mark.parametrize("dropped,fragment", [
         ("utilisation.csv", "the load could not be checked"),
         ("settings_after.json", "settings_after.json cannot be read"),
-        ("delay_measured.json", "the delay could not be checked")])
+        ("delay_hold.json", "the delay could not be checked")])
     def test_a_file_a_check_needs_is_missing(self, tmp_path, dropped, fragment):
         found = evaluate(make_run(tmp_path, drop=(dropped,)))
         assert found["verdict"] == "repeat" and any(fragment in r for r in found["reasons"])
 
-    def test_a_delay_file_without_its_medians(self, tmp_path):
+    def test_a_capture_without_its_two_holds(self, tmp_path):
         run = make_run(tmp_path)
-        with open(os.path.join(run, "delay_measured.json"), "w", encoding="utf-8") as fh:
-            fh.write('{"host_median_ms": 0.3}')
-        assert "lacks the two medians" in " ".join(evaluate(run)["reasons"])
+        with open(os.path.join(run, "delay_hold.json"), "w", encoding="utf-8") as fh:
+            fh.write('{"host_hold_ms": 0.015}')
+        assert "lacks the two holds" in " ".join(evaluate(run)["reasons"])
 
     def test_a_broken_json_file(self, tmp_path):
         run = make_run(tmp_path)
@@ -200,33 +205,44 @@ class TestRepeat:
             ri.evaluate(make_run(tmp_path), rate, duration, WARMUP)
 
 
-class TestTheZeroDelayBaseline:
-    """On the second x86 pair the receiver's ping path was 0.4 ms faster than the host's with no
-    delay at all, so every run read 0.4 ms short. Each run now measures that difference with no
-    delay just before it, and the added delay is what lies beyond it, as the pilot measures it."""
+class TestTheDelayIsReadWhereItIsApplied:
+    """Plan v7. Ping reads about half a millisecond above the round trip our messages take, with a
+    tail several times longer, and in the receiver's namespace it shows a 0.28 ms difference that
+    TCP does not. The broker's own capture reads the treatment itself, to a few microseconds."""
 
-    def test_a_path_offset_is_not_delay(self, tmp_path):
-        found = evaluate(make_run(tmp_path, delay_ms=0.0, measured_added=-0.43,
+    def test_the_broker_holding_the_delay_counts(self, tmp_path):
+        found = evaluate(make_run(tmp_path, delay_ms=2.0, held_added=2.018))
+        assert found["verdict"] == "count"
+        assert found["recorded"]["delay_held_ms"] == pytest.approx(2.018)
+
+    def test_a_delay_the_broker_did_not_hold_is_repeated(self, tmp_path):
+        found = evaluate(make_run(tmp_path, delay_ms=2.0, held_added=1.8))
+        assert found["verdict"] == "repeat"
+        assert "the broker held 1.800 ms against 2 ms set" in found["reasons"]
+
+    def test_a_run_without_its_capture_is_repeated(self, tmp_path):
+        found = evaluate(make_run(tmp_path, drop=("delay_hold.json",)))
+        assert found["verdict"] == "repeat"
+        assert found["checks"]["delay"]["why"].startswith("the delay could not be checked")
+
+    def test_ping_is_recorded_beyond_its_own_zero_reading_and_judges_nothing(self, tmp_path):
+        """On the second x86 pair the receiver's ping path was 0.4 ms faster than the host's with
+        no delay at all. That is not delay, and it no longer decides anything either."""
+        found = evaluate(make_run(tmp_path, delay_ms=0.0, held_added=0.0, measured_added=-0.43,
                                   baseline_added=-0.41))
         assert found["verdict"] == "count"
-        assert found["recorded"]["delay_added_ms"] == pytest.approx(-0.02)
+        assert found["recorded"]["delay_added_by_ping_ms"] == pytest.approx(-0.02)
 
-    def test_without_a_baseline_the_offset_counts_against_the_run(self, tmp_path):
-        found = evaluate(make_run(tmp_path, delay_ms=0.0, measured_added=-0.43))
-        assert found["verdict"] == "repeat"
-        assert "ping measured -0.430 ms added against 0 ms set" in found["reasons"]
-
-    def test_a_delayed_run_is_measured_beyond_its_baseline(self, tmp_path):
-        found = evaluate(make_run(tmp_path, delay_ms=4.0, measured_added=3.60,
-                                  baseline_added=-0.40))
-        assert found["checks"]["delay"]["ok"]
-        assert found["recorded"]["delay_added_ms"] == pytest.approx(4.0)
-
-    def test_a_baseline_without_its_medians(self, tmp_path):
-        run = make_run(tmp_path, baseline_added=0.0)
-        with open(os.path.join(run, "delay_baseline.json"), "w", encoding="utf-8") as fh:
-            fh.write('{"host_median_ms": 0.3}')
-        assert "lacks the two medians" in " ".join(evaluate(run)["reasons"])
+    @pytest.mark.parametrize("change", [{"drop": ("delay_measured.json",)},
+                                        {"baseline_added": 0.0}])
+    def test_a_ping_reading_that_cannot_be_read_records_nothing(self, tmp_path, change):
+        run = make_run(tmp_path, **change)
+        if "baseline_added" in change:
+            with open(os.path.join(run, "delay_baseline.json"), "w", encoding="utf-8") as fh:
+                fh.write('{"host_median_ms": 0.3}')
+        found = evaluate(run)
+        assert found["verdict"] == "count"
+        assert found["recorded"]["delay_added_by_ping_ms"] is None
 
 
 class TestTheGotItComparison:
@@ -246,7 +262,7 @@ class TestTheGotItComparison:
         ({"calibration": {"kafka": {"75": {"gotit_zero_median_ms": None}}}}, {},
          "no zero-delay got-it median"),
         (CAL, {"acks": False}, "the run recorded no got-it times"),
-        (CAL, {"drop": ("delay_measured.json",)}, "the added delay was not measured")])
+        (CAL, {"drop": ("delay_hold.json",)}, "the added delay was not measured")])
     def test_what_cannot_be_compared_is_a_repeat_not_a_stop(self, tmp_path, calibration, change,
                                                               fragment):
         found = evaluate(make_run(tmp_path, **change), calibration=calibration)
@@ -313,8 +329,8 @@ class TestRecordedOnly:
             with open(os.path.join(run, name), "w", encoding="utf-8") as fh:
                 fh.write(text)
         assert ri.retransmitted(run, "driver") is None
-        assert ri.delay_held_ms(run) is None
-        assert evaluate(run)["recorded"]["delay_held_ms"] is None
+        found = evaluate(run)
+        assert found["recorded"]["delay_held_ms"] is None and found["verdict"] == "repeat"
 
     @pytest.mark.parametrize("stat", [((1, 1, 1, 1), (1, 1, 1, 1))])
     def test_no_time_passing_gives_no_steal(self, tmp_path, stat):

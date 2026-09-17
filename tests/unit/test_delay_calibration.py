@@ -298,10 +298,17 @@ class TestFromTheQueue:
         with pytest.raises(ValueError, match="no finished zero-delay run"):
             dc.runs_from_queue(queue_rows(runs), *readers(runs))
 
-    def test_the_delay_file_is_read(self, tmp_path):
-        (tmp_path / "delay_measured.json").write_text(
-            json.dumps({"host_median_ms": 1.1, "receiver_median_ms": 3.2}), encoding="utf-8")
-        assert dc.read_delay_file(str(tmp_path)) == (1.1, 3.2)
+    def test_the_delay_is_read_from_the_brokers_capture(self, tmp_path):
+        (tmp_path / "delay_hold.json").write_text(
+            json.dumps({"host_hold_ms": 0.015, "receiver_hold_ms": 2.033}), encoding="utf-8")
+        assert dc.read_delay_file(str(tmp_path)) == (0.015, 2.033)
+
+    @pytest.mark.parametrize("text", [None, '{"host_hold_ms": 0.015}'])
+    def test_a_run_without_its_capture_cannot_be_calibrated(self, tmp_path, text):
+        if text is not None:
+            (tmp_path / "delay_hold.json").write_text(text, encoding="utf-8")
+        with pytest.raises(ValueError, match="no broker capture of its delay pings"):
+            dc.read_delay_file(str(tmp_path))
 
     def test_backends_are_calibrated_apart(self):
         cal = dc.calibrate(c0_runs() + c0_runs(backend="redis", intercept=2.2, slope=1.24))

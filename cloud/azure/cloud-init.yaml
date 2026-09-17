@@ -29,6 +29,7 @@ packages:
   - iproute2
   - iputils-ping
   - tcpdump
+  - sockperf
   - chrony
   - stress-ng
   - bpftrace

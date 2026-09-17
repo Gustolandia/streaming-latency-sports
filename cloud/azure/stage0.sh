@@ -12,10 +12,10 @@
 #
 # In order, each step only if the ones before it succeeded:
 #   1. pilot  cloud/azure/pilot.sh: the pair's shakedown. Its settings, network (the broker holds
-#             replies for the set delay and to the receiver alone, and the two paths agree with no
-#             delay), load and never-negative checks must pass (scripts/pilot_checks.py
-#             shakedown), or nothing else runs. With an earlier folder, only the network part
-#             runs, and it must pass.
+#             replies for the set delay, and to the receiver alone), load and never-negative
+#             checks must pass (scripts/pilot_checks.py shakedown), or nothing else runs. The two
+#             paths are measured by ping, TCP and UDP and recorded, not required (plan v7).
+#             With an earlier folder, only the network part runs, and its delay check must pass.
 #   2. C0     the session's delay calibration. On the first pair it is the staircase S0-1: steps
 #             up to 16 ms, 4 rounds. On a new pair: up to 8 ms, 2 rounds, and 2 more when the fit
 #             finds the calibration too loosely known and nothing else wrong.
@@ -83,11 +83,11 @@ if [ -n "$EARLIER" ]; then
   echo "$EARLIER" > "$DIR/shakedown_from.txt"
   log "== pilot: the network part only; this pair passed its shakedown in $EARLIER"
   OUT="$DIR/pilot" PARTS=network bash cloud/azure/pilot.sh 2>&1 | tee "$DIR/pilot.log"
-  CHECKS="network,paths"
+  CHECKS="network"
 else
   log "== pilot: this pair's shakedown"
   OUT="$DIR/pilot" LOAD_PCT="$LOAD_PCT" bash cloud/azure/pilot.sh 2>&1 | tee "$DIR/pilot.log"
-  CHECKS="settings,network,paths,never_negative,load"
+  CHECKS="settings,network,never_negative,load"
 fi
 python3 scripts/pilot_checks.py shakedown --pilot-dir "$DIR/pilot" --load-pct "$LOAD_PCT" \
   --checks "$CHECKS" > "$DIR/shakedown.json"

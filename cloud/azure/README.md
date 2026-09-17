@@ -113,7 +113,8 @@ step before it measured (a queue is the shuffled list of runs, with what happene
 2. **Baseline trips (block B0)**: no added delay, each backend at 50, 75 and 88% load, 3 rounds.
 3. **Delay calibration (block C0), at the start of every session**: added delays of 0 (twice),
    1, 2, 4 and 8 ms, longer with `--up-to-ms`, 2 rounds. `delay_calibration.py fit` measures
-   how far the trip moves per millisecond of delay and checks the gate: the slope clearly above
+   how far the trip moves per millisecond of delay, at the delay the broker's capture says it
+   held, and checks the gate: the slope clearly above
    one half, and the calibration known to within 0.3 ms at every step (its 95% interval). When
    only that precision fails, 2 more rounds run and both are fitted together. The first pilot
    found 2.03 ms moving Kafka's trip by 1.80 ms and Redis's by 2.51 ms, but it replayed the match
@@ -302,7 +303,7 @@ python scripts/collect_runs.py --hosts cloud/hosts_arm.env --path runs --path st
 | `cloud/azure/session.sh` | starts a working session from your computer |
 | `scripts/sched_settings.py` | reads, sets and checks the base slice and the tick on a machine |
 | `scripts/receiver_delay.py` | builds the receiver's namespace, delays traffic to it alone, and checks that with ping |
-| `cloud/azure/pilot.sh` | the pilot checks, with a verdict for each: settings, the two paths, the delay the broker holds (its own capture) and ping sees, the harness, go-first; `PARTS=network` for a later session |
+| `cloud/azure/pilot.sh` | the pilot checks, with a verdict for each: settings, the delay the broker holds (its own capture, which decides), the two paths by ping, TCP and UDP (recorded), the harness, go-first; `PARTS=network` for a later session |
 | `scripts/pilot_checks.py` | reads run files: never-negative trips, the receiver-only check, the go-first cut, and whether a pilot passed a new pair's shakedown |
 | `cloud/azure/replicate_oracle.sh` | runs the Oracle mechanism campaigns unchanged, in shuffled order |
 | `scripts/run_queue.py` | the randomised run queue and its ledger (every run recorded, failures included) |
@@ -330,15 +331,19 @@ the receiver runs inside a namespace that owns it. Azure's first boot also puts 
 the driver itself, so the setup takes it off the driver first. Left there, the broker's replies to
 the driver would go into the namespace, and the driver would lose the broker. On the broker, a
 queue with four lanes sends ordinary traffic down the first three. The fourth lane has the delay, and only packets addressed
-to the receiver go there. The pilot proves it three ways. The broker captures the pings and
-shows it held the receiver's replies for the set delay and the driver's not at all, to a few
-microseconds. Ping, from both sides, sees the delay end to end. And the run files show the
-"got it" delay staying put while arrival minus sending grows. Ping alone cannot decide a few
-hundredths of a millisecond: it prints two decimals from 1 to 10 ms and one above that, and its
-zero-delay reading drifts by up to 0.1 ms within half a minute. With no delay at all the two
-paths differ by a tenth of a millisecond or so, in Azure's network rather than in either machine,
-so every run measures the same ping with no delay just before its own, and the pilot requires
-the two paths to agree within 0.25 ms.
+to the receiver go there. What proves it is the broker's own capture of the pings: it shows the
+broker held the receiver's replies for the set delay and the driver's not at all, to a few
+microseconds, which is the treatment measured where it is applied. Every run is checked that way
+too, and the calibration is fitted at the delay the broker held.
+
+Ping is recorded and judges nothing. On 17 September, measured side by side over nine minutes,
+ping read 0.86 and 1.13 ms on the two paths where TCP read 0.45 and 0.61 and UDP 0.44 and 0.70;
+ping's 90th percentile was 3.2 to 3.7 ms against TCP's 0.5, with single readings of 9 and 11 ms.
+Worse for our purposes, ping put the two paths 0.28 ms apart, steadily, where TCP put them
+0.009 ms apart. Microsoft's own guidance says as much: ICMP is treated differently from
+application traffic, and it names sockperf instead. So the pilot records both paths by ping, TCP
+and UDP, and lets none of them decide; what a pair's runs actually vary by is measured by B0 and
+sets how many rounds it needs.
 
 ## Safety
 

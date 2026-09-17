@@ -235,6 +235,14 @@ def zero_readings(folder, pairs):
             {"host_median_ms": host, "receiver_median_ms": receiver}), encoding="utf-8")
 
 
+SOCKPERF = """sockperf: ====> avg-rtt=447.964 (std-dev=28.752)
+sockperf: Summary: Round trip is 447.964 usec
+sockperf: ---> percentile 90.000 =  469.808
+sockperf: ---> percentile 50.000 =  %s
+sockperf: ---> <MIN> observation =  352.532
+"""
+
+
 class TestThePathsAgree:
 
     def test_the_median_of_the_zero_delay_readings_is_held_to_the_limit(self, tmp_path):
@@ -252,6 +260,32 @@ class TestThePathsAgree:
         """The Arm pilot's single zero-delay reading was 0.11 ms off its usual difference."""
         zero_readings(tmp_path, [(0.38, 0.39), (0.535, 0.2), (0.40, 0.41)])
         assert pc.paths(str(tmp_path))["median_difference_ms"] == pytest.approx(0.01)
+
+    def test_tcp_decides_where_it_was_measured_and_ping_is_kept(self, tmp_path):
+        """The readings of 17 September: ping says +0.283 ms, TCP says +0.009 ms, and our
+        messages are TCP."""
+        zero_readings(tmp_path, [(0.859, 1.142), (0.860, 1.143), (0.858, 1.141)])
+        for name, usec in (("tcp_host", "447.0"), ("tcp_receiver", "456.0"),
+                           ("udp_host", "439.0"), ("udp_receiver", "684.0")):
+            (tmp_path / ("sockperf_%s.txt" % name)).write_text(SOCKPERF % usec, encoding="utf-8")
+        result = pc.paths(str(tmp_path))
+        assert result["ping_difference_ms"] == pytest.approx(0.283)
+        assert result["tcp_difference_ms"] == pytest.approx(0.009)
+        assert result["udp_difference_ms"] == pytest.approx(0.245)
+        assert result["sockperf_ms"]["tcp_host"] == pytest.approx(0.447)
+        assert result["ok"], "TCP decides, and TCP says the paths agree"
+
+    def test_without_sockperf_readings_ping_is_all_there_is(self, tmp_path):
+        zero_readings(tmp_path, [(0.859, 1.142)])
+        result = pc.paths(str(tmp_path))
+        assert result["sockperf_ms"] == {} and "tcp_difference_ms" not in result
+        assert not result["ok"], "ping alone still says what it says"
+
+    @pytest.mark.parametrize("text", ["nothing to read here\n", "percentile 50.000 = x\n"])
+    def test_a_sockperf_run_that_said_nothing(self, tmp_path, text):
+        (tmp_path / "sockperf_tcp_host.txt").write_text(text, encoding="utf-8")
+        assert pc.sockperf_ms(str(tmp_path / "sockperf_tcp_host.txt")) is None
+        assert pc.sockperf_ms(str(tmp_path / "absent.txt")) is None
 
     def test_a_pilot_without_zero_delay_readings(self, tmp_path):
         with pytest.raises(ValueError, match="no zero-delay reading"):
@@ -322,11 +356,15 @@ class TestShakedown:
         with pytest.raises(ValueError, match="a shakedown asks for some of"):
             pc.shakedown(write_pilot(tmp_path), 75, wanted=wanted)
 
-    def test_paths_that_differ_with_no_delay_fail(self, tmp_path):
-        """The second x86 pair's paths differed by 0.44 ms on 16 September."""
+    def test_paths_that_differ_are_recorded_and_do_not_fail_a_pair(self, tmp_path):
+        """Plan v7: on 17 September ping put the two paths 0.283 ms apart and TCP 0.009 ms apart,
+        and a gate on ping's figure had already turned a sound pair away."""
         verdicts = PASSING_VERDICTS[:4] + [("paths", "no delay", "no", "see net_paths.json")]
-        result = pc.shakedown(write_pilot(tmp_path, verdicts=verdicts), 75)
-        assert not result["ok"] and not result["checks"]["paths"]["ok"]
+        pilot = write_pilot(tmp_path, verdicts=verdicts)
+        assert pc.shakedown(pilot, 75)["ok"], "the paths no longer decide"
+        assert "paths" not in pc.shakedown(pilot, 75)["checks"]
+        asked = pc.shakedown(pilot, 75, wanted=("network", "paths"))
+        assert not asked["ok"] and not asked["checks"]["paths"]["ok"]
 
     def test_from_the_command_line(self, tmp_path):
         run = TestMain.run

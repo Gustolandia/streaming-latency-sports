@@ -12,9 +12,14 @@ the cliff the law predicts. So every session measures the relation first, in blo
 law_design.py, and places its trips from the measurement (Draft 3, change D3-5).
 
 What is read, per finished run of a C0 queue:
-  x         the added delay actually measured: the receiver's ping round trip minus the host's
-            (delay_measured.json, written by cloud/azure/campaign.sh), less the same difference
-            in the queue's zero-delay runs. The setting is only the step's label.
+  x         the added delay actually measured, where it is applied: how much longer the broker
+            held the replies to the receiver than the replies to the host, from its own capture of
+            the run's delay pings (delay_hold.json, written by cloud/azure/campaign.sh), less the
+            same difference in the queue's zero-delay runs. The setting is only the step's label.
+            Version 6 read this from ping; plan v7 moved it to the capture, which reads the
+            treatment to a few microseconds where ping reads half a millisecond high, with a tail
+            several times longer and, in the receiver's namespace, a 0.28 ms difference that TCP
+            does not have.
   y         the run's median trip, and its "got it" median and 99th percentile (pilot_checks.py).
 
 What is fitted and checked, per backend and load, as the plan fixed before the data:
@@ -355,10 +360,15 @@ def rows_of_queues(paths, read=run_queue.read_queue):
 
 
 def read_delay_file(run_dir):
-    """(host, receiver) median ping round trips the runner measured for one run."""
-    with open(os.path.join(run_dir, "delay_measured.json"), encoding="utf-8") as fh:
-        measured = json.load(fh)
-    return measured["host_median_ms"], measured["receiver_median_ms"]
+    """(host, receiver) holds: how long the broker kept each side's replies, from its capture."""
+    path = os.path.join(run_dir, "delay_hold.json")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            held = json.load(fh)
+        return held["host_hold_ms"], held["receiver_hold_ms"]
+    except (OSError, ValueError, KeyError) as exc:
+        raise ValueError("%s has no broker capture of its delay pings (delay_hold.json), which "
+                         "is what the calibration measures its delays with" % run_dir) from exc
 
 
 def runs_from_queue(rows, summarise, read_delay, warmup_s=30.0):
@@ -373,16 +383,16 @@ def runs_from_queue(rows, summarise, read_delay, warmup_s=30.0):
         host, receiver = read_delay(row["run_dir"])
         runs.append({"key": row["key"], "round": row["round"], "backend": params["backend"],
                      "load": str(params["load_pct"]), "step": float(params["delay_ms"]),
-                     "path_ms": receiver - host, "trip": summary["trip_median_ms"],
+                     "held_ms": receiver - host, "trip": summary["trip_median_ms"],
                      "gotit": summary["gotit_median_ms"], "p99": summary["gotit_p99_ms"],
                      "negative": summary["trip_negative"]})
-    zeros = [r["path_ms"] for r in runs if r["step"] == 0.0]
+    zeros = [r["held_ms"] for r in runs if r["step"] == 0.0]
     if not zeros:
         raise ValueError("the queue has no finished zero-delay run to measure added delays "
                          "against")
     offset = statistics.median(zeros)
     for r in runs:
-        r["x"] = r["path_ms"] - offset
+        r["x"] = r["held_ms"] - offset
     return runs, offset
 
 

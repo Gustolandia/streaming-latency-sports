@@ -8,7 +8,8 @@ run as it ends, on the machine that ran it, so they hold when nobody is watching
   count    every check passed. The run enters the analysis.
   repeat   a condition the run was meant to have did not take: too few messages sent, or too few
            of them arrived; the send rate or the load off target; the settings changed during the
-           run; the delay not applied as set; the clock not logged; the client not set as every
+           run; the delay the broker held not the delay set, or its capture missing; the clock
+           not logged; the client not set as every
            campaign sets it (Kafka's producer with 64 requests in flight, Redis's consumer
            acknowledging in batches of 200, each read from the client's own log line); files
            that cannot be read. The
@@ -24,11 +25,10 @@ failing: the last three all failed, or more than a fifth of the last twenty did,
 finished.
 
 Every check, with the value found and the limit it was held to, is written to
-RUN_DIR/integrity.json, next to the run. Recorded beside the checks, and never judged: the delay
-the broker's own capture says it held (delay_hold.json), and the TCP segments each side sent
-again during the run (the Tcp lines of /proc/net/snmp, before and after, on the driver, in the
-receiver's namespace and on the broker), which is where a stall of a fraction of a second would
-show.
+RUN_DIR/integrity.json, next to the run. Recorded beside the checks, and never judged: what ping made of
+the added delay, and the TCP segments each side sent again during the run (the Tcp lines of
+/proc/net/snmp, before and after, on the driver, in the receiver's namespace and on the broker),
+which is where a stall of a fraction of a second would show.
 
 CLI:
     python3 scripts/run_integrity.py check RUN_DIR --rate 50 --duration 130 --warmup-s 30
@@ -59,9 +59,11 @@ RATE_TOLERANCE = 0.02
 LOAD_POINTS = 3.0
 #: Fewer utilisation samples than this inside the run cannot say what its load was.
 MIN_LOAD_SAMPLES = 10
-#: The delay ping measures may differ from the one set by this much, plus this share of it.
-DELAY_TOLERANCE_MS = 0.25
-DELAY_TOLERANCE_SHARE = 0.05
+#: The delay the broker's own capture shows it held may differ from the one set by this much
+#: (plan v7). It is read where the delay is added, and on three machine pairs it came within
+#: 0.022 ms. Ping is kept as a record: on 17 September it read 0.4 to 0.5 ms above the round trip
+#: our messages take, with a 90th percentile of 3 to 4 ms against TCP's 0.5.
+DELAY_TOLERANCE_MS = 0.05
 #: The client settings every campaign run uses (plan v6): the log that states it, the setting,
 #: and its value.
 CLIENT_SETTINGS = {"kafka": ("producer.log", "max_inflight", 64),
@@ -176,27 +178,39 @@ def _path_difference(found):
 
 
 def delay_check(run_dir, delay_ms):
-    """(the check, the added delay ping measured).
+    """(the check, the added delay the broker held).
 
-    The added delay is the receiver's round trip minus the host's, less that same difference
-    measured with no delay just before the run (delay_baseline.json), as the pilot measures it.
-    On the second x86 pair the receiver's path was 0.4 ms faster than the host's with no delay at
-    all, and that is not delay. A run with no baseline is taken as it stands.
+    Read from the broker's own capture of the run's delay pings: how much longer it held the
+    replies to the receiver than the replies to the host. That is the treatment itself, measured
+    where it is applied, to a few microseconds. Ping is recorded beside it and judges nothing: it
+    reads about half a millisecond above the round trip our messages take, its 90th percentile is
+    several times theirs, and in the receiver's namespace it invents a difference of 0.28 ms that
+    TCP does not have. A run whose capture is missing is repeated, not taken on trust.
     """
-    measured = read_json(os.path.join(run_dir, "delay_measured.json"))
-    baseline_path = os.path.join(run_dir, "delay_baseline.json")
-    baseline = read_json(baseline_path) if os.path.exists(baseline_path) else None
+    held = read_json(os.path.join(run_dir, "delay_hold.json"))
     try:
-        added = _path_difference(measured)
-        if baseline is not None:
-            added -= _path_difference(baseline)
+        added = float(held["receiver_hold_ms"]) - float(held["host_hold_ms"])
     except (KeyError, TypeError, ValueError) as exc:
-        raise ValueError("delay_measured.json or delay_baseline.json lacks the two medians") from exc
-    tolerance = DELAY_TOLERANCE_MS + DELAY_TOLERANCE_SHARE * delay_ms
-    check = outcome(abs(added - delay_ms) <= tolerance, added,
-                    "%g ms within %.3f ms" % (delay_ms, tolerance),
-                    "ping measured %.3f ms added against %g ms set" % (added, delay_ms))
+        raise ValueError("delay_hold.json lacks the two holds") from exc
+    check = outcome(abs(added - delay_ms) <= DELAY_TOLERANCE_MS, added,
+                    "%g ms within %.3f ms" % (delay_ms, DELAY_TOLERANCE_MS),
+                    "the broker held %.3f ms against %g ms set" % (added, delay_ms))
     return check, added
+
+
+def delay_by_ping_ms(run_dir):
+    """What ping made of the run's added delay: the receiver's round trip minus the host's, less
+    that same difference with no delay just before (delay_baseline.json). Recorded, never judged
+    (plan v7); None when the files are missing or short."""
+    try:
+        measured = read_json(os.path.join(run_dir, "delay_measured.json"))
+        added = _path_difference(measured)
+        baseline_path = os.path.join(run_dir, "delay_baseline.json")
+        if os.path.exists(baseline_path):
+            added -= _path_difference(read_json(baseline_path))
+        return added
+    except (ValueError, KeyError, TypeError):
+        return None
 
 
 def client_check(run_dir, backend):
@@ -212,16 +226,6 @@ def client_check(run_dir, backend):
     return outcome(found == wanted, found, "%s=%d in %s" % (key, wanted, log_name),
                    "the %s client ran with %s=%s, not %d"
                    % (backend, key, "an unlogged value" if found is None else found, wanted))
-
-
-def delay_held_ms(run_dir):
-    """How much longer the broker held the receiver's replies than the host's, by its capture of
-    the run's delay pings; None when there is no capture to read."""
-    try:
-        held = read_json(os.path.join(run_dir, "delay_hold.json"))
-        return float(held["receiver_hold_ms"]) - float(held["host_hold_ms"])
-    except (ValueError, KeyError, TypeError):
-        return None
 
 
 def retransmitted(run_dir, side):
@@ -329,7 +333,8 @@ def evaluate(run_dir, rate, duration, warmup_s, calibration=None,
     """Every check on one run, and the verdict they give."""
     if rate <= 0 or duration <= warmup_s:
         raise ValueError("a run needs a positive rate and a duration longer than its warm-up")
-    checks, recorded = {}, {"steal_pct": steal_pct(run_dir), "delay_held_ms": delay_held_ms(run_dir),
+    checks, recorded = {}, {"steal_pct": steal_pct(run_dir),
+                            "delay_added_by_ping_ms": delay_by_ping_ms(run_dir),
                             "retransmitted": {side: retransmitted(run_dir, side)
                                               for side in TCP_SIDES}}
     try:
@@ -358,7 +363,7 @@ def evaluate(run_dir, rate, duration, warmup_s, calibration=None,
         checks["delay"], added = delay_check(run_dir, float(params["delay_ms"]))
     except (OSError, ValueError, KeyError, TypeError) as exc:
         checks["delay"] = outcome(False, None, None, "the delay could not be checked: %s" % exc)
-    recorded["delay_added_ms"] = added
+    recorded["delay_held_ms"] = added
     checks["clock"] = clock_check(run_dir)
     recorded["clock_offset_max_s"] = checks["clock"]["value"]
     checks.update(gotit_checks(summary, params, added, calibration))

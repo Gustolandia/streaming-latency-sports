@@ -85,8 +85,8 @@ def test_a_later_session_repeats_the_network_part_of_its_shakedown():
     assert 'json.load(open(sys.argv[1]))["ok"]' in code
     assert 'cp "$EARLIER/shakedown.json" "$DIR/shakedown_earlier.json"' in code
     earlier = code.split('if [ -n "$EARLIER" ]; then', 1)[1].split("\nelse\n", 1)[0]
-    assert 'PARTS=network bash cloud/azure/pilot.sh' in earlier and 'CHECKS="network,paths"' in earlier
-    assert 'CHECKS="settings,network,paths,never_negative,load"' in code
+    assert 'PARTS=network bash cloud/azure/pilot.sh' in earlier and 'CHECKS="network"' in earlier
+    assert 'CHECKS="settings,network,never_negative,load"' in code
     assert '--checks "$CHECKS" > "$DIR/shakedown.json"' in code
 
 
@@ -149,13 +149,32 @@ def test_the_pilot_checks_the_delay_where_the_broker_adds_it():
              "tcpdump -i eth0", "receiver_delay.py measure", 'wait "$capture"',
              "receiver_delay.py holds", 'for i in 1 2 3 4 5; do', "pilot_checks.py paths",
              "verdict paths", "0.25 + 0.05 * float", "receiver_delay.py verify-hold",
-             '--tolerance-ms "$TOL"', 'if [ "$HELD" = 0 ] && [ "$SEEN" = 0 ]; then']
+             '--tolerance-ms "$TOL"', 'if [ "$HELD" = 0 ]; then']
     places = [network.index(step) for step in order]
     assert places == sorted(places)
     assert 'PARTS="${PARTS:-settings network harness go-first}"' in pilot
     for name in ("settings", "network", "harness", "go-first"):
         assert "if part %s; then" % name in pilot, name
     assert '--redis-consumer-extra "$REDIS_CONSUMER_EXTRA"' in pilot
+    assert '"$SEEN" = 0' not in network.split("verdict network", 1)[0], (
+        "only the broker's own capture decides the delay (plan v7)")
+    for tool in ("sockperf ping-pong --tcp", "sockperf ping-pong -i",
+                 'sudo ip netns exec sblrecv sockperf', '"$OUT/sockperf_tcp_host.txt"',
+                 '"$OUT/sockperf_udp_receiver.txt"'):
+        assert tool in network, tool
+
+
+def test_the_paths_are_recorded_and_the_treatment_is_judged():
+    """Plan v7: ping reads about half a millisecond above our messages' round trip, and in the
+    receiver's namespace it shows a difference of 0.28 ms that TCP does not."""
+    chain = (KIT / "stage0.sh").read_text(encoding="utf-8")
+    assert 'CHECKS="settings,network,never_negative,load"' in chain
+    assert 'CHECKS="network"' in chain and "paths" not in chain.split("CHECKS=", 1)[1][:200]
+    session = (KIT / "session.sh").read_text(encoding="utf-8")
+    assert "sudo apt-get install -y tcpdump sockperf" in session
+    assert "sockperf MISSING" in session
+    assert "  - sockperf\n" in (KIT / "cloud-init.yaml").read_text(encoding="utf-8")
+    assert "sockperf --version" in (KIT / "machine_facts.sh").read_text(encoding="utf-8")
 
 
 def test_every_run_keeps_the_brokers_hold_its_tcp_counters_and_the_brokers_log():

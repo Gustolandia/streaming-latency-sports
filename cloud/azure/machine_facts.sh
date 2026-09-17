@@ -51,4 +51,5 @@ section tcp; try bash -c 'grep -E "^Tcp:" /proc/net/snmp'
 section sysctl
 try sysctl net.core.busy_poll net.core.busy_read kernel.timer_migration net.ipv4.tcp_min_rtt_wlen
 section tcpdump; try command -v tcpdump
+section sockperf; try bash -c 'sockperf --version 2>&1 | head -2'
 section namespaces; try ip netns list

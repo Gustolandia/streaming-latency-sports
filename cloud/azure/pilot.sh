@@ -7,13 +7,14 @@
 # Five checks, each with a verdict line in $OUT/verdicts.csv:
 #   1. settings  the base slice and the tick read back, a hand-set slice is still there a minute
 #                later, and the default is put back (scripts/sched_settings.py);
-#   2. network   the machines' facts are kept (cloud/azure/machine_facts.sh). With no delay, the
-#                receiver's and the host's ping round trips agree within 0.25 ms, over five
-#                readings (paths). At each of DELAYS_MS, the broker's own capture shows it held
-#                the receiver's replies for the set delay, and the host's not at all, within
-#                0.05 ms; and ping sees the delay end to end within 0.25 ms plus 5%, the limit
-#                every run is held to (scripts/receiver_delay.py). Ping alone could not decide
-#                0.05 ms: on the Arm pair its zero-delay reading drifted by up to 0.1 ms;
+#   2. network   the machines' facts are kept (cloud/azure/machine_facts.sh). At each of
+#                DELAYS_MS, the broker's own capture must show it held the receiver's replies for
+#                the set delay, and the host's not at all, within 0.05 ms: that is the treatment,
+#                measured where it is applied (scripts/receiver_delay.py). With no delay, both
+#                paths are measured by ping and by TCP and UDP (sockperf) and recorded, not
+#                required: ping reads about half a millisecond above the round trip our messages
+#                take, and in the receiver's namespace it shows a difference of 0.28 ms that TCP
+#                does not have (plan v7);
 #   3. harness   the same, as the harness itself sees it under load: the "got it" delay does not
 #                move, arrival minus sending grows by the measured delay, and arrival minus
 #                sending is never negative (scripts/pilot_checks.py). Zero-delay runs come before
@@ -122,6 +123,19 @@ reading () {  # tag delay_ms: ping from both sides while the broker captures the
 for i in 1 2 3 4 5; do
   reading "zero$i" 0
 done
+# The paths as the messages see them, for the record: TCP and UDP round trips from both sides.
+remote_broker "nohup sockperf server --tcp -i $BROKER_PRIV -p 11111 > /tmp/sockperf_tcp.log 2>&1 &
+  nohup sockperf server -i $BROKER_PRIV -p 11112 > /tmp/sockperf_udp.log 2>&1 &" > /dev/null 2>&1
+sleep 2
+sockperf ping-pong --tcp -i "$BROKER_PRIV" -p 11111 -t 5 -m 64 --full-rtt \
+  > "$OUT/sockperf_tcp_host.txt" 2>&1
+sudo ip netns exec sblrecv sockperf ping-pong --tcp -i "$BROKER_PRIV" -p 11111 -t 5 -m 64 \
+  --full-rtt > "$OUT/sockperf_tcp_receiver.txt" 2>&1
+sockperf ping-pong -i "$BROKER_PRIV" -p 11112 -t 5 -m 64 --full-rtt \
+  > "$OUT/sockperf_udp_host.txt" 2>&1
+sudo ip netns exec sblrecv sockperf ping-pong -i "$BROKER_PRIV" -p 11112 -t 5 -m 64 --full-rtt \
+  > "$OUT/sockperf_udp_receiver.txt" 2>&1
+remote_broker "sudo pkill sockperf" > /dev/null 2>&1
 if python3 scripts/pilot_checks.py paths --pilot-dir "$OUT" > "$OUT/net_paths.json" 2>&1; then
   verdict paths "no delay" yes "receiver minus host $(json_ms "$OUT/net_paths.json" median_difference_ms) ms"
 else
@@ -137,10 +151,11 @@ for D in $DELAYS_MS; do
     --step "$OUT/net_$D.json" --added-ms "$D" --tolerance-ms "$TOL" \
     > "$OUT/net_verify_$D.json" 2>&1
   SEEN=$?
-  if [ "$HELD" = 0 ] && [ "$SEEN" = 0 ]; then
-    verdict network "$D ms" yes "the broker held $(json_ms "$OUT/net_hold_verify_$D.json" added_ms_held) ms; ping saw $(json_ms "$OUT/net_verify_$D.json" added_ms_measured) ms"
+  # Only the broker's own capture decides; ping's figure is written down beside it (plan v7).
+  if [ "$HELD" = 0 ]; then
+    verdict network "$D ms" yes "the broker held $(json_ms "$OUT/net_hold_verify_$D.json" added_ms_held) ms; ping saw $(json_ms "$OUT/net_verify_$D.json" added_ms_measured) ms; ping check $([ "$SEEN" = 0 ] && echo passed || echo failed)"
   else
-    verdict network "$D ms" no "see net_hold_verify_$D.json and net_verify_$D.json"
+    verdict network "$D ms" no "see net_hold_verify_$D.json"
   fi
 done
 broker_delay 0 > /dev/null 2>&1

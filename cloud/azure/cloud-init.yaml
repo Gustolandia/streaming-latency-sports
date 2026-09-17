@@ -28,6 +28,7 @@ packages:
   - python3-venv
   - iproute2
   - iputils-ping
+  - tcpdump
   - chrony
   - stress-ng
   - bpftrace

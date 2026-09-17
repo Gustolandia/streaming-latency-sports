@@ -22,8 +22,8 @@ import testbed_watch  # noqa: E402
 
 
 def test_the_kit_has_the_scripts_the_guide_describes():
-    assert [p.name for p in SHELL] == ["campaign.sh", "pilot.sh", "replicate_oracle.sh",
-                                       "session.sh", "stage0.sh"]
+    assert [p.name for p in SHELL] == ["campaign.sh", "machine_facts.sh", "pilot.sh",
+                                       "replicate_oracle.sh", "session.sh", "stage0.sh"]
 
 
 @pytest.mark.parametrize("path", SHELL + [KIT / "cloud-init.yaml"], ids=lambda p: p.name)
@@ -74,14 +74,40 @@ def test_stage_0_runs_its_steps_in_order_each_gated_on_the_last():
     assert places == sorted(places), "the steps run in the plan's order"
     assert "first) UP_TO_MS=16; C0_ROUNDS=4 ;;" in code, "the first pair's C0 is the staircase"
     assert 'campaign "p0_$START" "$DIR/calibration.json"' in code, "P0 is held to the calibration"
+    assert "p0)" not in code and "freeze02" not in code, "no session carries on across a rule change"
     assert code.rstrip().endswith('its queues and files are in $DIR"')
 
 
-def test_a_pair_starts_again_without_its_pilot_only_from_a_passing_shakedown():
+def test_a_later_session_repeats_the_network_part_of_its_shakedown():
+    """A start after a stop can put a machine on another physical host: on 17 September the
+    second x86 pair's two paths differed by 0.13 ms, where they had differed by 0.44 ms."""
     code = (KIT / "stage0.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
     assert 'json.load(open(sys.argv[1]))["ok"]' in code
-    assert 'cp "$EARLIER/shakedown.json" "$DIR/shakedown.json"' in code
-    assert code.index('if [ -n "$EARLIER" ]') < code.index("bash cloud/azure/pilot.sh")
+    assert 'cp "$EARLIER/shakedown.json" "$DIR/shakedown_earlier.json"' in code
+    earlier = code.split('if [ -n "$EARLIER" ]; then', 1)[1].split("\nelse\n", 1)[0]
+    assert 'PARTS=network bash cloud/azure/pilot.sh' in earlier and 'CHECKS="network,paths"' in earlier
+    assert 'CHECKS="settings,network,paths,never_negative,load"' in code
+    assert '--checks "$CHECKS" > "$DIR/shakedown.json"' in code
+
+
+def test_the_calibration_runs_two_more_rounds_only_when_only_its_precision_failed():
+    code = (KIT / "stage0.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
+    stage = code.split('if [ "$KIND" = new ]; then', 1)[1].split("\nfi\n\n", 1)[0]
+    order = ['--out "$DIR/calibration_first_stage.json"', "delay_calibration.py needs-rounds",
+             'design C0 "c0b_$START" "${SEED}4"', "--rounds 2 --first-round 3",
+             'campaign "c0b_$START"', 'C0_QUEUES+=(--queue "$DIR/c0b_$START.csv")']
+    places = [stage.index(step) for step in order]
+    assert places == sorted(places)
+    final = code.split(stage, 1)[1]
+    assert final.index('fit "${C0_QUEUES[@]}"') < final.index('--out "$DIR/calibration.json"')
+
+
+def test_a_session_leaves_nothing_of_its_own_on_a_machine():
+    """On 17 September a patch tried on a machine before a freeze stayed on its broker."""
+    session = (KIT / "session.sh").read_text(encoding="utf-8")
+    step = session.split("== 4/8", 1)[1].split("== 5/8", 1)[0]
+    assert "git checkout --quiet --force --detach $COMMIT" in step
+    assert "git status --porcelain --untracked-files=no" in step
 
 
 def test_nothing_upgrades_itself_under_a_campaign():
@@ -112,6 +138,59 @@ def test_a_run_writes_only_into_a_folder_of_its_own():
     assert 'QUEUE_NAME="$(basename "$QUEUE" .csv)"' in code
     loop = code.split('RUN_ID="law_${QUEUE_NAME}_$KEY"', 1)[1]
     assert loop.index('if [ -e "$RUN_DIR" ]; then') < loop.index('mkdir -p "$RUN_DIR"')
+
+
+def test_the_pilot_checks_the_delay_where_the_broker_adds_it():
+    """Plan v6: the broker's own capture decides 0.05 ms, ping checks the delay end to end at the
+    limit every run is held to, and five zero-delay readings check that the two paths agree."""
+    pilot = (KIT / "pilot.sh").read_text(encoding="utf-8")
+    network = pilot.split("if part network; then", 1)[1].split("# --- 3. harness", 1)[0]
+    order = ["bash cloud/azure/machine_facts.sh", 'remote_broker "cd sbl && bash cloud/azure/machine_facts.sh"',
+             "tcpdump -i eth0", "receiver_delay.py measure", 'wait "$capture"',
+             "receiver_delay.py holds", 'for i in 1 2 3 4 5; do', "pilot_checks.py paths",
+             "verdict paths", "0.25 + 0.05 * float", "receiver_delay.py verify-hold",
+             '--tolerance-ms "$TOL"', 'if [ "$HELD" = 0 ] && [ "$SEEN" = 0 ]; then']
+    places = [network.index(step) for step in order]
+    assert places == sorted(places)
+    assert 'PARTS="${PARTS:-settings network harness go-first}"' in pilot
+    for name in ("settings", "network", "harness", "go-first"):
+        assert "if part %s; then" % name in pilot, name
+    assert '--redis-consumer-extra "$REDIS_CONSUMER_EXTRA"' in pilot
+
+
+def test_every_run_keeps_the_brokers_hold_its_tcp_counters_and_the_brokers_log():
+    code = (KIT / "campaign.sh").read_text(encoding="utf-8").split("run_one () {", 1)[1]
+    order = ['broker_delay "$DELAY_MS"', "tcpdump -i eth0", 'capture_pid=$!',
+             '--out "$RUN_DIR/delay_measured.json"', 'wait "$capture_pid"',
+             '[ "$measured" = 0 ]', "receiver_delay.py holds", "tcp_counters before",
+             'began=$(date -u +%s)', "run_kafka_trial.sh", "run_redis_trial.sh",
+             'ended=$(date -u +%s)', "tcp_counters after", "docker logs --timestamps",
+             "run_integrity.py check"]
+    places = [code.index(step) for step in order]
+    assert places == sorted(places)
+    assert '-CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA"' in code
+    helper = (KIT / "campaign.sh").read_text(encoding="utf-8").split("tcp_counters () {", 1)[1]
+    for side in ('"$RUN_DIR/tcp_$1.txt"', "sudo ip netns exec sblrecv grep",
+                 '"$RUN_DIR/broker_tcp_$1.txt"'):
+        assert side in helper.split("\n}\n", 1)[0], side
+
+
+def test_the_campaign_clients_use_the_papers_own_settings():
+    """Kafka's in-flight setting was there all along; Redis's batched acknowledgement was not."""
+    common = (REPO / "cloud" / "campaigns" / "common.sh").read_text(encoding="utf-8")
+    assert 'KAFKA_PRODUCER_EXTRA="${KAFKA_PRODUCER_EXTRA:---max-inflight 64}"' in common
+    assert 'REDIS_CONSUMER_EXTRA="${REDIS_CONSUMER_EXTRA:---ack-batch 200}"' in common
+    supplement = (REPO / "supplement.tex").read_text(encoding="utf-8")
+    assert "\\texttt{ack-batch} & $200$ & \\emph{Learned.}" in supplement
+
+
+def test_the_machine_facts_never_stop_on_a_fact_they_cannot_read():
+    facts = (KIT / "machine_facts.sh").read_text(encoding="utf-8")
+    assert 'try () { "$@" 2>&1 || echo "(failed: $*)"; }' in facts
+    body = facts.split("try () {", 1)[1]
+    for command in ("ethtool -i", "ethtool -c", "ip -d link show", "grep -E \"^Tcp:\" /proc/net/snmp",
+                    "command -v tcpdump"):
+        assert command in body, command
 
 
 def test_the_watch_counts_the_chain_as_a_campaign():

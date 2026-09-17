@@ -54,7 +54,7 @@ def driver(tmp_path):
     return home
 
 
-def fake_driver(home, tmp_path, seen, tamper=None, ssh_code=0, scp_code=0):
+def fake_driver(home, tmp_path, seen, tamper=None, ssh_code=0, scp_code=0, paths=None):
     """Answers the three things collect asks of a driver: pack, copy, and remove the folder."""
     work = tmp_path / "remote_work"
 
@@ -69,14 +69,18 @@ def fake_driver(home, tmp_path, seen, tamper=None, ssh_code=0, scp_code=0):
             return Done()
         if ssh_code:
             return Done(b"", ssh_code, b"banner\nPermission denied (publickey).")
-        assert b"queue=%s\n" % QUEUE.encode() in kwargs["input"]
         assert b"\r" not in kwargs["input"], "the script must reach bash as LF"
-        paths = [QUEUE] + [p for p in ("runs/law_r001-s0-a1", "runs/law_r001-s1-a1")
-                           if (home / p).is_dir()]
+        if paths:
+            assert b"mode=paths\n" in kwargs["input"]
+            listed = paths
+        else:
+            assert b"queue=%s\n" % QUEUE.encode() in kwargs["input"]
+            listed = [QUEUE] + [p for p in ("runs/law_r001-s0-a1", "runs/law_r001-s1-a1")
+                                if (home / p).is_dir()]
         work.mkdir(exist_ok=True)
         manifest = []
         with tarfile.open(str(work / "runs.tar"), "w") as tar:
-            for p in paths:
+            for p in listed:
                 tar.add(str(home / p), arcname=p)
                 full = home / p
                 files = [full] if full.is_file() else sorted(f for f in full.rglob("*")
@@ -92,10 +96,11 @@ def fake_driver(home, tmp_path, seen, tamper=None, ssh_code=0, scp_code=0):
     return run
 
 
-def collect(driver, tmp_path, seen=None, **kwargs):
+def collect(driver, tmp_path, seen=None, paths=None, **kwargs):
     seen = [] if seen is None else seen
-    return cr.collect(HOSTS, QUEUE, str(tmp_path / "here"), "key",
-                      run=fake_driver(driver, tmp_path, seen, **kwargs), clock=lambda: STAMP)
+    return cr.collect(HOSTS, None if paths else QUEUE, str(tmp_path / "here"), "key",
+                      run=fake_driver(driver, tmp_path, seen, paths=paths, **kwargs),
+                      clock=lambda: STAMP, paths=paths)
 
 
 class TestACampaignArrivesWhole:
@@ -126,7 +131,40 @@ class TestACampaignArrivesWhole:
     def test_the_queue_path_is_quoted_for_the_shell(self):
         script = cr.remote_script("runs/azure/queues/a b.csv")
         assert "queue='runs/azure/queues/a b.csv'\n" in script and "@QUEUE@" not in script
+        assert "mode=queue\n" in script and "@PATHS@" not in script
         assert "sha256sum" in script and 'tar -cf "$work/runs.tar"' in script
+
+
+class TestFoldersArriveWhole:
+    """Pilots, void sessions and probes are named by no queue, and are kept all the same."""
+
+    def test_every_file_under_the_paths_arrives_checked(self, driver, tmp_path):
+        (driver / "stage0.log").write_text("CAMPAIGN_COMPLETE\n", encoding="utf-8")
+        record = collect(driver, tmp_path, paths=["runs", "stage0.log"])
+        home = tmp_path / "here" / "matched" / "snapshot_20260916T080000Z"
+        assert record["files"] == 5 and record["queue"] is None
+        assert record["paths"] == ["runs", "stage0.log"] and record["home"] == str(home)
+        assert (home / "stage0.log").read_text(encoding="utf-8") == "CAMPAIGN_COMPLETE\n"
+        assert (home / "runs" / "azure" / "queues" / "c0.csv").is_file()
+        assert len((home / "SHA256SUMS").read_text(encoding="utf-8").splitlines()) == 5
+
+    def test_a_snapshot_is_never_written_over(self, driver, tmp_path):
+        collect(driver, tmp_path, paths=["runs"])
+        with pytest.raises(RuntimeError, match="runs is already collected"):
+            collect(driver, tmp_path, paths=["runs"])
+
+    @pytest.mark.parametrize("path", ["/etc", "~/x", "runs/../../x", "..", "-rf", "", "C:x"])
+    def test_only_paths_inside_the_checkout(self, driver, tmp_path, path):
+        seen = []
+        with pytest.raises(RuntimeError, match="not a path inside the driver's checkout"):
+            collect(driver, tmp_path, seen, paths=["runs", path])
+        assert seen == []
+
+    def test_the_paths_are_quoted_and_each_must_exist(self):
+        script = cr.remote_script(paths=["runs", "a b.log"])
+        assert "mode=paths\n" in script and "for path in runs 'a b.log'; do" in script
+        assert "printf '%s\\n' runs 'a b.log' > \"$work/list\"" in script
+        assert "error=there is nothing at $path on the driver" in script
 
 
 class TestACopyThatCannotBeTrusted:
@@ -239,6 +277,20 @@ class TestMain:
                         str(tmp_path / "here")],
                        run=fake_driver(driver, tmp_path, [], tamper=tamper), out=out)
         assert code == 0 and "(commit ?)" in out.getvalue()
+
+    def test_paths_are_named_in_what_it_says(self, driver, tmp_path):
+        out = io.StringIO()
+        code = cr.main(["--hosts", self.hosts(tmp_path), "--path", "runs", "--dest",
+                        str(tmp_path / "here")],
+                       run=fake_driver(driver, tmp_path, [], paths=["runs"]),
+                       clock=lambda: STAMP, out=out)
+        assert code == 0 and "collected 4 files of runs from sbl-az-drv" in out.getvalue()
+        assert out.getvalue().rstrip().endswith("snapshot_20260916T080000Z")
+
+    def test_a_queue_or_paths_but_not_both(self, tmp_path):
+        with pytest.raises(SystemExit):
+            cr.main(["--hosts", self.hosts(tmp_path), "--queue", QUEUE, "--path", "runs"],
+                    out=io.StringIO())
 
     def test_errors_are_one_line(self, tmp_path):
         out = io.StringIO()

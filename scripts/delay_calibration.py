@@ -22,9 +22,16 @@ What is fitted and checked, per backend and load, as the plan fixed before the d
                 rounds;
   lack of fit   an F test of the line against the per-step means. If the line fails it at 5%, the
                 per-step medians joined by straight segments are used instead;
-  gate          P5(a) no trip below zero; P5(b) the slope's 95% interval above 0.5 and every run
-                within 0.1 ms of the calibration; and a longer delay always giving a longer trip,
-                without which no trip can be placed;
+  gate          P5(a) no trip below zero; P5(b) the slope's 95% interval above 0.5, and the
+                calibration known to within 0.3 ms at every step: its 95% interval there, from
+                the scatter of the runs about the line, or within the steps for the segments,
+                lies within 0.3 ms of it; and a longer delay always giving a longer trip, without
+                which no trip can be placed. Version 5 of the plan held every run to 0.1 ms;
+                freeze 02 changed that after the second x86 pair's runs scattered around its
+                calibration with a standard deviation of 0.18 to 0.27 ms, which no number of
+                rounds brings under 0.1 ms. How far each run and each step median lies from the
+                calibration is still written out. When only the precision fails, two more rounds
+                can mend it (needs-rounds), and the fit then reads both queues;
   got it        P5(c) at every step against zero delay, two one-sided tests at 90%: equivalent if
                 the median shift lies within 0.10 ms and the p99 ratio within 10%. A median shift
                 larger than a quarter of the added delay is a gross departure and fails the gate.
@@ -36,6 +43,8 @@ same code runs on the driver without scipy.
 
 CLI:
     python3 scripts/delay_calibration.py fit --queue runs/azure/queues/c0.csv --out cal.json
+    python3 scripts/delay_calibration.py needs-rounds --calibration cal.json
+    python3 scripts/delay_calibration.py fit --queue c0.csv --queue c0b.csv --out cal.json
     python3 scripts/delay_calibration.py place --calibration cal.json --backend kafka --load 75 \\
         --trip-ms 3.4
 """
@@ -52,7 +61,10 @@ import pilot_checks  # noqa: E402
 import run_queue  # noqa: E402
 
 MIN_SLOPE = 0.5
-MAX_RESIDUAL_MS = 0.10
+#: P5(b) as freeze 02 has it: at every step, the calibration's 95% interval lies within this.
+KNOWN_WITHIN_MS = 0.30
+#: The one part of the gate that more rounds of the same session can mend.
+PRECISION_ONLY = frozenset({"known_within_0_3_ms"})
 GOTIT_MARGIN_MS = 0.10
 P99_RATIO = (0.9, 1.1)
 GROSS_SHARE = 0.25
@@ -184,6 +196,40 @@ def predict(entry, x):
     return points[-1][1]
 
 
+def halfwidths(runs, entry):
+    """[[measured delay, 95% half-width]] of the calibration at each step; None where the runs
+    are too few to say.
+
+    Under the line, from the scatter of the runs about it. Under the segments, which are the step
+    medians, from the scatter within the steps, pooled; a median of three or more runs is taken
+    to be sqrt(pi/2) times less precise than their mean, as for a large normal sample, and a
+    median of one or two runs is their mean.
+    """
+    n = len(runs)
+    if entry["model"] == "line":
+        df = n - 2
+        if df < 1:
+            return [[x, None] for x, _ in entry["steps"]]
+        xs = [r["x"] for r in runs]
+        mean_x = statistics.fmean(xs)
+        sxx = sum((x - mean_x) ** 2 for x in xs)
+        s = math.sqrt(sum((r["trip"] - entry["intercept_ms"] - entry["slope"] * r["x"]) ** 2
+                          for r in runs) / df)
+        t = t_quantile(0.975, df)
+        return [[x, t * s * math.sqrt(1.0 / n + (x - mean_x) ** 2 / sxx)]
+                for x, _ in entry["steps"]]
+    # The segments are chosen only when the lack-of-fit test could be run, so the steps repeat.
+    by_step = {}
+    for r in runs:
+        by_step.setdefault(r["step"], []).append(r["trip"])
+    df = n - len(by_step)
+    s = math.sqrt(sum((y - statistics.fmean(ys)) ** 2 for ys in by_step.values() for y in ys)
+                  / df)
+    t = t_quantile(0.975, df)
+    return [[x, t * s * (1.0 if len(ys) <= 2 else math.sqrt(math.pi / 2)) / math.sqrt(len(ys))]
+            for (x, _), (_, ys) in zip(entry["steps"], sorted(by_step.items()))]
+
+
 def delay_for(entry, trip_ms):
     """The added delay that reaches trip_ms, or None where the calibration measured nothing:
     below the zero-delay trip, which no added delay reaches, or beyond the longest step."""
@@ -253,19 +299,24 @@ def fit_entry(runs, seed):
              "intercept_ms": intercept, "slope": slope, "slope_ci95": [low, high],
              "lack_of_fit": shape, "steps": steps, "model": "segments" if line_fails else "line"}
     residuals = [r["trip"] - predict(entry, r["x"]) for r in runs]
+    step_residuals = [y - predict(entry, x) for x, y in steps]
+    widths = halfwidths(runs, entry)
     checks = gotit_checks(runs)
     zero_gotit = [r["gotit"] for r in runs if r["step"] == 0.0 and r["gotit"] is not None]
     gate = {
         "never_negative": sum(r["negative"] for r in runs) == 0,
         "slope_above_half": low > MIN_SLOPE,
-        "runs_within_0_1_ms": max(abs(v) for v in residuals) <= MAX_RESIDUAL_MS,
+        "known_within_0_3_ms": all(w is not None and w <= KNOWN_WITHIN_MS for _, w in widths),
         "longer_delay_longer_trip": all(b[0] > a[0] and b[1] > a[1]
                                         for a, b in zip(steps, steps[1:])),
         "no_gross_gotit_departure": not any(c["gross"] for c in checks),
     }
     gate["ok"] = all(gate.values())
     entry.update(residual_max_ms=max(abs(v) for v in residuals),
-                 residual_sd_ms=statistics.pstdev(residuals), gotit=checks, gate=gate,
+                 residual_sd_ms=statistics.pstdev(residuals), step_residuals_ms=step_residuals,
+                 halfwidths_ms=widths,
+                 halfwidth_max_ms=max((w for _, w in widths if w is not None), default=None),
+                 gotit=checks, gate=gate,
                  # What each later run's own "got it" median is held against, run by run
                  # (run_integrity.py): the median over this session's zero-delay runs.
                  gotit_zero_median_ms=statistics.median(zero_gotit) if zero_gotit else None)
@@ -279,6 +330,28 @@ def calibrate(runs, seed=1):
         groups.setdefault(r["backend"], {}).setdefault(r["load"], []).append(r)
     return {backend: {load: fit_entry(rs, seed) for load, rs in sorted(loads.items())}
             for backend, loads in sorted(groups.items())}
+
+
+def needs_more_rounds(calibration):
+    """True when the only part of the gate that any entry failed is its precision, which more
+    rounds of the same session can mend."""
+    failed = {k for loads in calibration.values() for e in loads.values()
+              for k, v in e["gate"].items() if k != "ok" and not v}
+    return bool(failed) and failed <= PRECISION_ONLY
+
+
+def rows_of_queues(paths, read=run_queue.read_queue):
+    """Every row of the queues. They must not share a round: a second stage carries on from the
+    rounds of the first, and the slope's interval resamples whole rounds."""
+    rows, owner = [], {}
+    for path in paths:
+        mine = read(path)
+        for rnd in sorted({r["round"] for r in mine}):
+            if rnd in owner:
+                raise ValueError("%s and %s both hold round %s" % (owner[rnd], path, rnd))
+            owner[rnd] = path
+        rows += mine
+    return rows
 
 
 def read_delay_file(run_dir):
@@ -318,7 +391,8 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise, read_delay=read_
     ap = argparse.ArgumentParser(description="How far the trip moves per millisecond of delay")
     sub = ap.add_subparsers(dest="command", required=True)
     p = sub.add_parser("fit")
-    p.add_argument("--queue", required=True)
+    p.add_argument("--queue", required=True, action="append",
+                   help="a finished C0 queue; name the second stage's queue too, if it ran")
     p.add_argument("--out", required=True)
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--warmup-s", type=float, default=30.0)
@@ -327,8 +401,16 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise, read_delay=read_
     p.add_argument("--backend", required=True)
     p.add_argument("--load", required=True)
     p.add_argument("--trip-ms", type=float, required=True)
+    p = sub.add_parser("needs-rounds")
+    p.add_argument("--calibration", required=True)
     args = ap.parse_args(argv)
     try:
+        if args.command == "needs-rounds":
+            with open(args.calibration, encoding="utf-8") as fh:
+                more = needs_more_rounds(json.load(fh)["calibration"])
+            print("more rounds can make the calibration precise enough" if more else
+                  "more rounds would not change what the gate found", file=out)
+            return 0 if more else 1
         if args.command == "place":
             with open(args.calibration, encoding="utf-8") as fh:
                 entry = json.load(fh)["calibration"][args.backend][args.load]
@@ -337,9 +419,9 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise, read_delay=read_
                               "trip_ms": args.trip_ms, "delay_ms": delay}, sort_keys=True),
                   file=out)
             return 0 if delay is not None else 1
-        runs, offset = runs_from_queue(run_queue.read_queue(args.queue), summarise, read_delay,
+        runs, offset = runs_from_queue(rows_of_queues(args.queue), summarise, read_delay,
                                        args.warmup_s)
-        result = {"queue": args.queue, "seed": args.seed, "zero_offset_ms": offset,
+        result = {"queues": args.queue, "seed": args.seed, "zero_offset_ms": offset,
                   "calibration": calibrate(runs, args.seed)}
         with open(args.out, "w", encoding="utf-8") as fh:
             fh.write(json.dumps(result, indent=2, sort_keys=True) + "\n")
@@ -347,9 +429,12 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise, read_delay=read_
         for backend, loads in result["calibration"].items():
             for load, e in loads.items():
                 failed = [k for k, v in e["gate"].items() if not v and k != "ok"]
-                print("%s at %s%%: trip = %.3f + %.3f x delay (95%% %.3f to %.3f), %s, %s"
+                known = e["halfwidth_max_ms"]
+                print("%s at %s%%: trip = %.3f + %.3f x delay (95%% %.3f to %.3f), %s, known "
+                      "within %s ms, %s"
                       % (backend, load, e["intercept_ms"], e["slope"], e["slope_ci95"][0],
                          e["slope_ci95"][1], e["model"],
+                         "?" if known is None else "%.3f" % known,
                          "GATE FAILED: " + ", ".join(failed) if failed else "gate passed"),
                       file=out)
                 passed = passed and not failed

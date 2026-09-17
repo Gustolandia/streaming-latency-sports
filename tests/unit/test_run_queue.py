@@ -62,6 +62,11 @@ class TestMaking:
         assert row["key"] == "r001-%s-a1" % row["setup"]
         assert (row["status"], row["attempt"]) == ("queued", "1")
 
+    def test_a_second_stage_carries_on_from_the_first_stages_rounds(self):
+        rows = rq.make_rows(dict(design(n=2, rounds=2), first_round=3))
+        assert sorted({r["round"] for r in rows}) == ["3", "4"]
+        assert all(r["key"].startswith(("r003-", "r004-")) for r in rows)
+
     def test_a_single_setup_in_a_single_round_is_allowed(self):
         assert len(rq.make_rows(design(n=1, rounds=1))) == 1
 
@@ -75,7 +80,9 @@ class TestMaking:
         ({"seed": 1, "rounds": True, "setups": [{"id": "a"}]}, "rounds must be"),
         ({"seed": 1, "rounds": 2, "setups": [{"id": "a"}]}, "cannot avoid repeating"),
         ({"seed": None, "rounds": 1, "setups": [{"id": "a"}]}, "seed must be"),
-        ({"seed": True, "rounds": 1, "setups": [{"id": "a"}]}, "seed must be")])
+        ({"seed": True, "rounds": 1, "setups": [{"id": "a"}]}, "seed must be"),
+        ({"seed": 1, "rounds": 1, "setups": [{"id": "a"}], "first_round": 0}, "first_round"),
+        ({"seed": 1, "rounds": 1, "setups": [{"id": "a"}], "first_round": "3"}, "first_round")])
     def test_a_design_that_cannot_become_a_queue(self, bad, fragment):
         with pytest.raises(ValueError, match=fragment):
             rq.make_rows(bad)

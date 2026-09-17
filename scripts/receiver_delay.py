@@ -54,6 +54,9 @@ LIMIT = 200000
 PRIOMAP = "1 2 2 2 1 2 0 0 1 1 1 1 1 1 1 1"
 
 PING_TIME = re.compile(r"time=([\d.]+) ms")
+#: One echo packet as tcpdump -nn -tt --time-stamp-precision=nano prints it.
+CAPTURE_LINE = re.compile(r"^(\d+\.\d+) IP (\S+) > (\S+): ICMP echo (request|reply), "
+                          r"id (\d+), seq (\d+)")
 
 
 def delay_us(ms):
@@ -124,6 +127,60 @@ def driver_commands(address, gateway, dev="eth0", mode="l2"):
 
 def driver_clear_commands():
     return [(["ip", "netns", "del", NETNS], True), (["ip", "link", "del", LINK], True)]
+
+
+def broker_holds_ms(text, host, receiver):
+    """{"host": [...], "receiver": [...]}: how long the broker held each echo reply, in ms.
+
+    Read from the broker's own capture: the kernel stamps a request as it arrives and a reply as
+    it leaves the queue the delay sits in, so the difference is the delay the broker added plus
+    its own handling, whatever the network does before or after. Ping prints its round trips to
+    0.01 ms above 1 ms and to 0.1 ms above 10 ms; the capture prints nanoseconds.
+    """
+    asked, held = {}, {"host": [], "receiver": []}
+    for line in (text or "").splitlines():
+        found = CAPTURE_LINE.match(line)
+        if not found:
+            continue
+        stamp, src, dst, kind, ident, seq = found.groups()
+        if kind == "request":
+            asked[(src, ident, seq)] = float(stamp)
+            continue
+        start = asked.get((dst, ident, seq))
+        side = "receiver" if dst == receiver else "host" if dst == host else None
+        if start is not None and side:
+            held[side].append((float(stamp) - start) * 1000.0)
+    return held
+
+
+def hold_summary(held):
+    """Median holds for both sides, or a ValueError when a side has none."""
+    for side in ("host", "receiver"):
+        if not held[side]:
+            raise ValueError("the capture holds no answered ping from the %s" % side)
+    return {"host_hold_ms": statistics.median(held["host"]),
+            "receiver_hold_ms": statistics.median(held["receiver"]),
+            "replies_host": len(held["host"]), "replies_receiver": len(held["receiver"])}
+
+
+def verify_hold(baseline, step, added_ms, tolerance_ms=0.05):
+    """(ok, report) for one delay step, from the broker's captures with and without the delay:
+    the host's replies are held no longer than before, and the receiver's are held for the set
+    delay beyond the host's."""
+    host_shift = step["host_hold_ms"] - baseline["host_hold_ms"]
+    excess = ((step["receiver_hold_ms"] - step["host_hold_ms"])
+              - (baseline["receiver_hold_ms"] - baseline["host_hold_ms"]) - added_ms)
+    report = {
+        "added_ms_set": added_ms,
+        "added_ms_held": added_ms + excess,
+        "host_hold_shift_ms": host_shift,
+        "receiver_excess_ms": excess,
+        "tolerance_ms": tolerance_ms,
+        "host_replies_not_held": abs(host_shift) <= tolerance_ms,
+        "receiver_replies_held_for_the_delay": abs(excess) <= tolerance_ms,
+    }
+    report["ok"] = report["host_replies_not_held"] and report["receiver_replies_held_for_the_delay"]
+    return report["ok"], report
 
 
 def run_commands(commands, apply=False, run=subprocess.run, out=None):
@@ -222,6 +279,16 @@ def main(argv=None, run=subprocess.run, out=None):
     p.add_argument("--step", required=True)
     p.add_argument("--added-ms", type=float, required=True)
     p.add_argument("--tolerance-ms", type=float, default=0.05)
+    p = sub.add_parser("holds")
+    p.add_argument("--capture", required=True, help="the broker's tcpdump of the pings")
+    p.add_argument("--host", required=True, help="the driver's own address")
+    p.add_argument("--receiver", required=True, help="the receiver's address")
+    p.add_argument("--out", default="")
+    p = sub.add_parser("verify-hold")
+    p.add_argument("--baseline", required=True)
+    p.add_argument("--step", required=True)
+    p.add_argument("--added-ms", type=float, required=True)
+    p.add_argument("--tolerance-ms", type=float, default=0.05)
     args = ap.parse_args(argv)
     try:
         if args.command == "broker":
@@ -242,11 +309,21 @@ def main(argv=None, run=subprocess.run, out=None):
                     fh.write(text + "\n")
             print(text, file=out)
             return 0
+        if args.command == "holds":
+            with open(args.capture, encoding="utf-8") as fh:
+                summary = hold_summary(broker_holds_ms(fh.read(), args.host, args.receiver))
+            text = json.dumps(summary, indent=2, sort_keys=True)
+            if args.out:
+                with open(args.out, "w", encoding="utf-8") as fh:
+                    fh.write(text + "\n")
+            print(text, file=out)
+            return 0
         with open(args.baseline, encoding="utf-8") as fh:
             baseline = json.load(fh)
         with open(args.step, encoding="utf-8") as fh:
             step = json.load(fh)
-        ok, report = verify(baseline, step, args.added_ms, args.tolerance_ms)
+        check = verify_hold if args.command == "verify-hold" else verify
+        ok, report = check(baseline, step, args.added_ms, args.tolerance_ms)
         print(json.dumps(report, indent=2, sort_keys=True), file=out)
         return 0 if ok else 1
     except (ValueError, RuntimeError, OSError) as exc:

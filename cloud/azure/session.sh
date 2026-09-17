@@ -12,7 +12,8 @@
 #   3. switch automatic package upgrades off on both, and wait for any upgrade already running.
 #      On 16 September one restarted the driver's network service in the middle of a pilot, and
 #      the driver lost its broker. Nothing may change the software under a campaign either;
-#   4. bring both checkouts to that commit;
+#   4. bring both checkouts to that commit, discarding anything left on them: a machine runs the
+#      code of that commit and nothing else;
 #   5. give the driver the testbed key and hosts.env (the campaigns SSH from the driver to the
 #      broker, as they did on Oracle);
 #   6. start Kafka and Redis on the broker (cloud/brokers.sh), with no delay on its card;
@@ -70,8 +71,12 @@ done
 
 echo "== 4/8 both checkouts to $COMMIT"
 for host in drv brk; do
+  # --force throws away anything left in the checkout: on 17 September a patch tried on a machine
+  # before a freeze stayed on its broker, and a plain checkout of the same commit would keep it.
   "$host" "cd sbl && git fetch --quiet --depth 1 origin $COMMIT \
-    && git checkout --quiet --detach $COMMIT && git log -1 --format='  %h %s'"
+    && git checkout --quiet --force --detach $COMMIT \
+    && [ -z \"\$(git status --porcelain --untracked-files=no)\" ] \
+    && git log -1 --format='  %h %s'"
 done
 
 echo "== 5/8 testbed key and hosts.env to the driver"

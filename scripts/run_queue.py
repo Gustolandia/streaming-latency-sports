@@ -92,6 +92,8 @@ def check_design(design):
         out.append("with a single setup, consecutive rounds cannot avoid repeating it")
     if not _whole(design.get("seed"), 0):
         out.append("seed must be a whole number, written down before the queue is made")
+    if not _whole(design.get("first_round", 1), 1):
+        out.append("first_round must be a whole number of at least 1")
     return out
 
 
@@ -102,7 +104,10 @@ def make_rows(design):
     by_id = {s["id"]: s for s in design["setups"]}
     rng = random.Random(design["seed"])
     rows = []
-    for r, order in enumerate(shuffled_rounds(list(by_id), design["rounds"], rng), 1):
+    # A second stage of a block carries on from the rounds of the first, so that the two queues
+    # never share a round and their keys never repeat.
+    for r, order in enumerate(shuffled_rounds(list(by_id), design["rounds"], rng),
+                              design.get("first_round", 1)):
         for setup in order:
             params = {k: v for k, v in by_id[setup].items() if k != "id"}
             rows.append({"key": "r%03d-%s-a1" % (r, setup), "round": str(r), "setup": setup,

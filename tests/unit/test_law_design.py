@@ -180,6 +180,79 @@ class TestRounds:
         assert not hasattr(ld, "rounds_for"), "version 3's closed-form rule is gone"
 
 
+class TestWhichSlicesAPairCanTest:
+    """A message cannot arrive sooner than the client's own zero-delay trip, and the plateau lives
+    at trips below the slice, so a pair with a high floor cannot test its smallest slices."""
+
+    def calibration(self, zero_ms, up_to_ms=16.0):
+        """A calibration that adds the delay one for one, from each client's own floor."""
+        return dict((backend, {"75": {
+            "slope": 1.0, "intercept_ms": zero, "model": "line", "gate": {"ok": True},
+            "steps": [[x, zero + x] for x in (0.0, 1.0, 2.0, 4.0, 8.0, up_to_ms)]}})
+            for backend, zero in zero_ms.items())
+
+    def test_a_low_floor_reaches_every_slice(self):
+        found = ld.testable("A1", AZURE, calibration=self.calibration({"kafka": 0.4, "redis": 0.4}),
+                            up_to_ms=16.0)
+        assert all(found["kafka"][s] for s in (1.5, 2.25, 3.0, 4.5, 6.0))
+
+    def test_a_floor_above_a_slices_plateau_puts_it_out_of_reach(self):
+        found = ld.testable("A1", AZURE, calibration=self.calibration({"kafka": 2.1, "redis": 0.9}),
+                            up_to_ms=16.0)
+        assert found["kafka"][0.75] is False and found["kafka"][1.5] is False
+        assert found["kafka"][2.25] is False, "its plateau point sits at 2.025 ms"
+        assert found["kafka"][3.0] is True and found["kafka"][6.0] is True
+        assert found["redis"][1.5] is True
+
+    def test_a_calibration_that_stops_short_puts_the_far_slices_out_of_reach(self):
+        near = ld.testable("A1", AZURE,
+                           calibration=self.calibration({"kafka": 0.4, "redis": 0.4}, 8.0),
+                           up_to_ms=8.0)
+        assert near["redis"][6.0] is False, "twice six plus a tick is beyond an 8 ms calibration"
+        assert near["redis"][3.0] is True
+
+    def test_a_block_of_core_counts_is_read_by_its_own_slices(self):
+        """A5 names its conditions by the cores switched on, not by a slice set by hand."""
+        found = ld.testable("A5", AZURE, calibration=self.calibration({"kafka": 2.1,
+                                                                       "redis": 0.4}))
+        assert found["redis"] and all(isinstance(s, float) for s in found["redis"])
+        assert any(ok for ok in found["redis"].values())
+
+    def test_a_block_that_sets_no_slice_has_no_slice_to_judge(self):
+        """C0 and B0 run at whatever slice the kernel has; they test no cliff and no prediction."""
+        assert ld.testable("C0", AZURE, calibration=self.calibration({"kafka": 2.1,
+                                                                      "redis": 0.4})) == {
+            "kafka": {}, "redis": {}}
+
+    def test_it_can_be_placed_from_the_baseline_trips_instead(self, tmp_path):
+        settings = tmp_path / "settings.json"
+        settings.write_text(json.dumps(AZURE), encoding="utf-8")
+        baseline = tmp_path / "baseline.json"
+        baseline.write_text(json.dumps(BASELINE), encoding="utf-8")
+        code, text = self.run(["testable", "--block", "A1", "--settings", str(settings),
+                               "--baseline", str(baseline)])
+        assert code == 0 and "kafka" in text and "redis" in text
+
+    def test_the_command_says_what_a_pair_can_test(self, tmp_path):
+        settings = tmp_path / "settings.json"
+        settings.write_text(json.dumps(AZURE), encoding="utf-8")
+        cal = tmp_path / "calibration.json"
+        cal.write_text(json.dumps({"calibration": self.calibration({"kafka": 2.1,
+                                                                     "redis": 0.9})}),
+                       encoding="utf-8")
+        code, text = self.run(["testable", "--block", "A1", "--settings", str(settings),
+                               "--calibration", str(cal), "--up-to-ms", "16"])
+        assert code == 0
+        assert "kafka 3,4.5,6" in text and "out of reach: 0.75, 1.5, 2.25" in text
+        assert "redis 1.5,2.25,3,4.5,6" in text
+
+    @staticmethod
+    def run(argv):
+        import io
+        out = io.StringIO()
+        return ld.main(argv, out=out), out.getvalue()
+
+
 class TestOneCampaignOfABlock:
     """A block is not a sitting: the plan runs A1 as six campaigns, three per backend, each
     sharing the 3 ms anchor, and each campaign carries which slice that is."""

@@ -73,7 +73,8 @@ def test_stage_0_runs_its_steps_in_order_each_gated_on_the_last():
              "design P0"]
     places = [code.index(step) for step in order]
     assert places == sorted(places), "the steps run in the plan's order"
-    assert "first) UP_TO_MS=16; C0_ROUNDS=4 ;;" in code, "the first pair's C0 is the staircase"
+    assert 'first) UP_TO_MS="${UP_TO_MS:-16}"; C0_ROUNDS=4 ;;' in code, (
+        "the first pair's C0 is the staircase, and a session may ask for a longer one")
     assert 'campaign "p0_$START" "$DIR/calibration.json"' in code, "P0 is held to the calibration"
     assert "p0)" not in code and "freeze02" not in code, "no session carries on across a rule change"
     assert code.rstrip().endswith('its queues and files are in $DIR"')
@@ -110,7 +111,8 @@ def test_a_session_that_only_needs_its_calibration_stops_after_the_fit():
     started can come back on another host. The baseline trips and the spread pilot belong to the
     pair, and repeating them would cost four hours a pair does not owe."""
     code = (KIT / "stage0.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
-    assert "session) UP_TO_MS=8; C0_ROUNDS=2 ;;" in code
+    assert 'session) UP_TO_MS="${UP_TO_MS:-8}"; C0_ROUNDS=2 ;;' in code, (
+        "a session calibrates to 8 ms unless its campaign needs further")
     ends = code.split('if [ "$KIND" = session ]; then', 1)[1].split("\nfi\n", 1)[0]
     assert "CAMPAIGN_COMPLETE: the session's calibration passed" in ends
     assert "exit 0" in ends

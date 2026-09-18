@@ -69,7 +69,7 @@ def test_stage_0_runs_its_steps_in_order_each_gated_on_the_last():
     """The chain runs unattended for hours, so its order and its gates are checked here."""
     code = (KIT / "stage0.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
     order = ["bash cloud/azure/pilot.sh", "pilot_checks.py shakedown", "sched_settings.py read",
-             "design C0", "delay_calibration.py fit", "design B0", '[ "$FIT" = 0 ] ||',
+             "design C0", "delay_calibration.py fit", "design B0", "so P0 cannot be placed",
              "design P0"]
     places = [code.index(step) for step in order]
     assert places == sorted(places), "the steps run in the plan's order"
@@ -105,6 +105,27 @@ def test_stage_1_needs_the_block_the_rounds_and_the_session_it_comes_from():
     assert "exit 2" in code, "it says how it is used rather than guessing"
 
 
+def test_a_session_that_only_needs_its_calibration_stops_after_the_fit():
+    """The plan asks every session for its own calibration, because a machine that was stopped and
+    started can come back on another host. The baseline trips and the spread pilot belong to the
+    pair, and repeating them would cost four hours a pair does not owe."""
+    code = (KIT / "stage0.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
+    assert "session) UP_TO_MS=8; C0_ROUNDS=2 ;;" in code
+    ends = code.split('if [ "$KIND" = session ]; then', 1)[1].split("\nfi\n", 1)[0]
+    assert "CAMPAIGN_COMPLETE: the session's calibration passed" in ends
+    assert "exit 0" in ends
+    assert code.index('if [ "$KIND" = session ]; then') < code.index('design B0'), \
+        "it stops before the baseline trips"
+    assert code.index("delay_calibration.py fit") < code.index('if [ "$KIND" = session ]; then')
+
+
+def test_a_second_stage_of_the_calibration_is_open_to_every_pair_but_the_first():
+    """Only the first pair's staircase runs four rounds outright; every other session may need
+    two more when its calibration is too loosely known."""
+    code = (KIT / "stage0.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
+    assert 'if [ "$KIND" != first ]; then' in code
+
+
 def test_a_later_session_repeats_the_network_part_of_its_shakedown():
     """A start after a stop can put a machine on another physical host: on 17 September the
     second x86 pair's two paths differed by 0.13 ms, where they had differed by 0.44 ms."""
@@ -119,7 +140,7 @@ def test_a_later_session_repeats_the_network_part_of_its_shakedown():
 
 def test_the_calibration_runs_two_more_rounds_only_when_only_its_precision_failed():
     code = (KIT / "stage0.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
-    stage = code.split('if [ "$KIND" = new ]; then', 1)[1].split("\nfi\n\n", 1)[0]
+    stage = code.split('if [ "$KIND" != first ]; then', 1)[1].split("\nfi\n\n", 1)[0]
     order = ['--out "$DIR/calibration_first_stage.json"', "delay_calibration.py needs-rounds",
              'design C0 "c0b_$START" "${SEED}4"', "--rounds 2 --first-round 3",
              'campaign "c0b_$START"', 'C0_QUEUES+=(--queue "$DIR/c0b_$START.csv")']

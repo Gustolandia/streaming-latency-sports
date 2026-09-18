@@ -80,6 +80,16 @@ LANGUAGE_RATIO = 1.5
 #: What is never pooled: a prediction is judged on each machine pair and each backend on its own,
 #: and confirmed only where every one of them confirms it.
 SPLIT_BY = ("pair", "backend")
+#: A slice is a test of the cliff only where the runs reach the level the halfway point is
+#: measured from, the level past the cliff, and most of the cliff itself. A message cannot arrive
+#: sooner than the client's own zero-delay trip, so a slice under that floor has no plateau.
+PLATEAU_POINT = "p09s"
+FLOOR_POINT = "f2sh"
+CLIFF_POINTS = ("c02h", "c04h", "c06h", "c08h")
+CLIFF_POINTS_NEEDED = 3
+#: How many testable slices a prediction needs at all, and how many of them may miss the band.
+LEAST_SLICES = {"P1": 4, "P9": 2}
+MAY_MISS = {"P1": 1, "P9": 0}
 
 
 def inside(value, low, high):
@@ -139,6 +149,21 @@ def straight_line(xs, ys):
     bottom = sum((x - mean_x) ** 2 for x, _ in kept)
     slope = sum((x - mean_x) * (y - mean_y) for x, y in kept) / bottom
     return slope, mean_y - slope * mean_x
+
+
+def testable(runs):
+    """{slice: whether its runs reach what the halfway point is read from}.
+
+    The plateau level at 0.9 of the slice, the floor past the cliff, and at least three of the
+    four trips across the cliff. A slice that fails this is not a weaker test of the prediction;
+    it is not a test of it, and the campaign records why.
+    """
+    found = {}
+    for key, part in law_curve.groups(runs, ("slice_ms",)).items():
+        points = set(run.get("point") for run in part)
+        found[key[0]] = (PLATEAU_POINT in points and FLOOR_POINT in points
+                         and len(points & set(CLIFF_POINTS)) >= CLIFF_POINTS_NEEDED)
+    return found
 
 
 def anchor_offsets(runs, anchor_ms, summary="free", grid=None):
@@ -249,24 +274,29 @@ def cliff_follows_slice(runs, tick_ms, need_inside=None, need_interval=True, dra
             found[summary] = None if line is None else line[0]
         return found
 
+    reaches = testable(runs)
     over = over_draws(runs, numbers, draws, seed)
     by_summary, slices, wanted = {}, [], need_inside
     for summary in SUMMARIES:
-        found = halfways(runs, summary)
+        found = dict((s, where) for s, where in halfways(runs, summary).items()
+                     if reaches.get(s, True))
         slices = sorted(s for s in found if s is not None)
         in_band = dict((s, inside(found[s], s, s + tick_ms)) for s in slices)
-        wanted = need_inside if need_inside is not None else (
-            len(slices) - 1 if len(slices) >= 6 else len(slices))
+        wanted = need_inside if need_inside is not None else max(
+            0, len(slices) - MAY_MISS["P1" if need_interval else "P9"])
         said = over[summary]
         ok = inside(said["value"], *SLOPE_BAND)
         if need_interval:
             ok = ok and all(excludes((said["low"], said["high"]), edge)
                             for edge in SLOPE_EXCLUDES)
+        enough = len(slices) >= LEAST_SLICES["P1" if need_interval else "P9"]
         by_summary[summary] = _said(
-            said, sum(in_band.values()) >= wanted and ok, halfway_ms=found, in_band=in_band,
+            said, enough and sum(in_band.values()) >= wanted and ok, halfway_ms=found,
+            in_band=in_band, out_of_reach=sorted(s for s, can in reaches.items() if not can),
             p_value=p_value(said["drawn"], 1.0) if need_interval else None)
     return _both(by_summary,
-                 "halfway inside [s, s+h] in at least %d of %d slices; slope in %s%s%s"
+                 "halfway inside [s, s+h] in at least %d of the %d slices this pair can reach; "
+                 "slope in %s%s%s"
                  % (wanted, len(slices), SLOPE_BAND,
                     " with an interval excluding %s and %s" % SLOPE_EXCLUDES
                     if need_interval else "",
@@ -541,7 +571,8 @@ def lines(prediction, found):
                 [_round(said["value"])] + [_round(edge) for edge in said["interval"]]
                 + [said["draws"]])
         out.append(line)
-        for key in ("in_band", "halfway_move_ms", "java_cliff", "within", "intercept"):
+        for key in ("in_band", "out_of_reach", "halfway_move_ms", "java_cliff", "within",
+                    "intercept"):
             if said.get(key) is not None:
                 out.append("    %s: %s" % (key.replace("_", " "), said[key]))
     for key in ("hz", "read_back", "anchor_ms"):

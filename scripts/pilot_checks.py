@@ -62,6 +62,11 @@ import statistics
 import sys
 
 TOLERANCE_MS = 0.05
+#: The plan's own margin for the got-it median (P5c). The pilot's harness verdict holds the
+#: receiver-only delay to it, and reports how far the trip moved rather than judging it: the
+#: harness replays the match in bursts, and in bursts the trip does not grow one-for-one, which is
+#: why each session's calibration judges that instead on the campaign's steady traffic.
+GOTIT_MS = 0.10
 FACTOR = 5.0
 #: A harness cell's mean load may differ from its setting by this many percentage points.
 LOAD_POINTS = 3.0
@@ -135,7 +140,7 @@ def _median_of_runs(runs, key):
     return statistics.median(values)
 
 
-def compare(baseline, step, added_ms, tolerance_ms=TOLERANCE_MS):
+def compare(baseline, step, added_ms, tolerance_ms=TOLERANCE_MS, gotit_ms=GOTIT_MS):
     """The receiver-only check, on run summaries without and with the delay."""
     gotit_shift = _median_of_runs(step, "gotit_median_ms") - _median_of_runs(
         baseline, "gotit_median_ms")
@@ -148,14 +153,18 @@ def compare(baseline, step, added_ms, tolerance_ms=TOLERANCE_MS):
         "gotit_shift_ms": gotit_shift,
         "trip_shift_ms": trip_shift,
         "trip_negative_total": negatives,
-        "gotit_unchanged": abs(gotit_shift) <= tolerance_ms,
+        "gotit_ms": gotit_ms,
+        "gotit_unchanged": abs(gotit_shift) <= gotit_ms,
+        "trip_moved_per_ms": (trip_shift / added_ms) if added_ms else None,
         "trip_moved_by_the_delay": abs(trip_shift - added_ms) <= tolerance_ms,
         "never_negative": negatives == 0,
         "baseline_runs": [r["run_dir"] for r in baseline],
         "step_runs": [r["run_dir"] for r in step],
     }
-    report["ok"] = (report["gotit_unchanged"] and report["trip_moved_by_the_delay"]
-                    and report["never_negative"])
+    #: What the pilot's harness verdict asks: the delay left the got-it where it was, and no
+    #: message arrived before it was sent. How far the trip moved is recorded beside it, because
+    #: the calibration judges that on the campaign's own traffic.
+    report["ok"] = report["gotit_unchanged"] and report["never_negative"]
     return report
 
 

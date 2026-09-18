@@ -279,6 +279,23 @@ beside the earlier one. Before a pair is deleted, and whenever a session ends ea
 python scripts/collect_runs.py --hosts cloud/hosts_arm.env --path runs --path stage0.log
 ```
 
+**Reading the copy while the machines carry on.** `scripts/quality_report.py` says what a
+campaign's runs tell us about the instrument: the verdicts and the reasons behind every repeat,
+the messages kept, the send rate, the load, the delay the broker held, the clock offset, the CPU
+other tenants took, the TCP segments each side sent again, and pauses over 150 ms after the
+warm-up. It also makes the *waypoint check*: a setup's repeats run at different times, in a
+shuffled order, so one repeat far from its fellows says the machine was in a different state
+then. Such a repeat is registered with its numbers and kept, never removed, and nothing here
+decides anything. It reads the instrument, not whether a prediction came true:
+
+```bash
+python scripts/quality_report.py --runs runs/azure/collected/matched/c0_20260917T231015Z/runs
+```
+
+Each look of the watch also says where the queue has got to and when it is due, and raises an
+alert when the run in progress passes the time this campaign's runs take. Runs are unusually
+even: 197 of them took 160 seconds each, so a late run is not slow, it is wrong.
+
 ## Money and limits
 
 - All three pairs live in Sweden Central. On the free-trial subscription, North Europe refused
@@ -292,6 +309,22 @@ python scripts/collect_runs.py --hosts cloud/hosts_arm.env --path runs --path st
   reads the real limit.
 - Deallocated machines cost only their disks and fixed addresses. Delete the group when the work
   is done.
+- Azure's own bill arrives a day or two late, so it cannot say what a run cost while it is
+  running. `scripts/spend.py` keeps a second figure that can: every look of the watch adds the
+  machine time since the last look, at each pair's list price, to `runs/azure_watch/spend.json`.
+  A gap nobody watched is counted at fifteen minutes rather than its whole length, so the
+  estimate stays low on purpose and the bill remains the truth it is checked against. Seed it
+  once with what has already been billed, and read either figure at any time:
+
+```bash
+python scripts/spend.py seed --from-bill --since 2026-09-01
+python scripts/spend.py show
+python scripts/spend.py billed --since 2026-09-01
+```
+
+  Every run's start is a point on that ledger, so each run can be told what had been spent by the
+  time it began: the watch says so as a run starts, and `quality_report.py --ledger` writes it
+  beside every run of a campaign it reads.
 
 ## What each file does
 
@@ -314,7 +347,9 @@ python scripts/collect_runs.py --hosts cloud/hosts_arm.env --path runs --path st
 | `cloud/azure/machine_facts.sh` | what a machine is, as far as its network and timing go; the pilot keeps it for both machines |
 | `cloud/azure/stage0.sh` | the plan's first stage on one pair, unattended: the pilot and its shakedown, the calibration in one or two stages and its fit, the baseline trips, the spread pilot |
 | `scripts/run_integrity.py` | judges each run as it ends (it counts, is repeated, or stops its campaign), and stops a campaign whose attempts keep failing |
+| `scripts/quality_report.py` | what a campaign's runs say about the instrument, once copied: verdicts, conditions, pauses, and repeats that sit far from their fellows |
 | `scripts/collect_runs.py` | copies a finished campaign, or whole folders, home and checks a fingerprint for every file |
+| `scripts/spend.py` | what the machines have cost so far, counted look by look, and what Azure has actually billed |
 
 The two trial runners, `scripts/run_kafka_trial.sh` and `scripts/run_redis_trial.sh`, gained one
 hook, `SBL_CONSUMER_WRAP`. It is empty unless a campaign sets it, and each run's `meta.json` now

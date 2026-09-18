@@ -295,6 +295,73 @@ class TestP8Language:
         assert found["by_summary"]["free"]["java_cliff"] is None
 
 
+class TestTheAnchorTheCampaignsShare:
+    """A1 and A4 run as several campaigns on different days, and each has an offset of its own.
+    The plan removes it through the slice they all share, before P1 or P9 is judged."""
+
+    def campaigns(self, shifts=None, anchor=3.0, spread=0.05):
+        runs = []
+        for i, (slices, shift) in enumerate(shifts or [((3.0, 0.75, 1.5), 0.0),
+                                                       ((3.0, 2.25, 4.5), 0.4),
+                                                       ((3.0, 6.0), -0.3)]):
+            part = lw.campaign(slices=slices, rounds=4, seed=10 + i, spread=spread)
+            for run in part:
+                run["campaign"] = "a1_%d" % i
+                run["trip_ms"] += shift
+            runs += part
+        return runs
+
+    def test_each_campaign_is_measured_against_the_mean_of_the_anchors(self):
+        found = lp.anchor_offsets(self.campaigns(), 3.0, grid=24)
+        assert sorted(found) == ["a1_0", "a1_1", "a1_2"]
+        assert sum(found.values()) == pytest.approx(0.0, abs=1e-9), "the offsets sum to nothing"
+        assert found["a1_1"] > found["a1_0"] > found["a1_2"]
+
+    def test_a_campaign_that_never_ran_the_anchor_is_left_where_it_is(self):
+        runs = self.campaigns()
+        for run in runs:
+            if run["campaign"] == "a1_2":
+                run["campaign"] = "a1_x"
+                run["slice_ms"] = 6.0 if run["slice_ms"] == 3.0 else run["slice_ms"]
+        found = lp.anchor_offsets(runs, 3.0, grid=24)
+        assert "a1_x" not in found and len(found) == 2
+
+    def test_one_campaign_alone_has_nothing_to_be_measured_against(self):
+        runs = lw.campaign(slices=(3.0, 1.5), rounds=4, seed=1, spread=0.05)
+        for run in runs:
+            run["campaign"] = "a1_only"
+        assert lp.anchor_offsets(runs, 3.0, grid=24) == {}
+
+    def test_the_anchor_itself_counts_once_however_many_campaigns_ran_it(self):
+        found = lp.through_the_anchor(self.campaigns(), 3.0, grid=24)
+        assert sorted(found) == [0.75, 1.5, 2.25, 3.0, 4.5, 6.0]
+        assert found[3.0] == pytest.approx(3.5, abs=0.2)
+
+    def test_a_slice_whose_curve_says_nothing_is_left_out(self):
+        runs = self.campaigns()
+        for run in runs:
+            if run["slice_ms"] == 6.0:
+                run["negative_rate"] = 0.01
+        assert 6.0 not in lp.through_the_anchor(runs, 3.0, grid=24)
+
+    def test_the_correction_recovers_the_slope_the_shifts_hid(self):
+        runs = self.campaigns(shifts=[((3.0, 0.75, 1.5), 0.0), ((3.0, 2.25, 4.5), 0.9),
+                                      ((3.0, 6.0), -0.8)])
+        plain = lp.judge(runs, "P1", 1.0, draws=40, seed=1, grid=24)
+        fixed = lp.judge(runs, "P1", 1.0, draws=40, seed=1, grid=24, anchor_ms=3.0)
+        astray = plain["by_summary"]["free"]
+        through = fixed["by_summary"]["free"]
+        assert abs(through["value"] - 1.0) < abs(astray["value"] - 1.0)
+        assert sum(through["in_band"].values()) >= sum(astray["in_band"].values())
+        assert "through the 3 ms anchor" in fixed["rule"]
+        assert "anchor ms: 3.0" in "\n".join(lp.lines("P1", fixed))
+
+    def test_the_arm_pair_reads_its_three_slices_the_same_way(self):
+        runs = self.campaigns(shifts=[((3.0, 1.5), 0.0), ((3.0, 4.5), 0.3)])
+        found = lp.judge(runs, "P9", 1.0, draws=40, seed=1, grid=24, anchor_ms=3.0)
+        assert found["confirmed"] is True and found["anchor_ms"] == 3.0
+
+
 class TestJudgingFromTheOutside:
 
     def runs(self):

@@ -276,13 +276,17 @@ def groups(runs, keys=("backend", "slice_ms")):
     return found
 
 
-def read_runs(folder, pair=None):
+def read_runs(folder, pair=None, campaign=None):
     """The runs of a campaign as this module reads them, from a folder of copied run directories.
 
     Each run gives the trip it actually had and the share of its messages that arrived before they
     were sent, with the setup it belonged to and the machine pair it ran on. The pair is read from
     the note collect_runs.py leaves beside the runs, because nothing may be pooled across pairs.
     """
+    #: The campaign a run belonged to: collect_runs.py copies each one into a folder of its own,
+    #: and the block's campaigns are compared through their anchor, so a run has to know which
+    #: sitting it came from.
+    campaign = campaign or os.path.basename(os.path.dirname(os.path.abspath(folder)))
     if pair is None:
         try:
             pair = quality_report.read_json(
@@ -300,6 +304,7 @@ def read_runs(folder, pair=None):
         except (OSError, ValueError, KeyError, TypeError):
             continue
         found.append({"run": os.path.basename(run_dir), "setup": row.get("setup"), "pair": pair,
+                      "campaign": campaign,
                       "round": row.get("round"), "backend": params.get("backend"),
                       "slice_ms": params.get("slice_ns") and params["slice_ns"] / 1e6,
                       "tick_ms": params.get("tick_ms"), "load_pct": params.get("load_pct"),

@@ -180,17 +180,44 @@ def _unplaced(block, backend, load, tick_ms, up_to_ms):
                  delay_ms=delay) for label, delay in steps]
 
 
+def _wanted(block, spec, slices, backends):
+    """The slices and backends of one campaign of a block, checked against what the block fixes.
+
+    A campaign is a sitting, not a block: the plan runs A1 as six of them, three per backend, each
+    including the anchor slice. Asking for a slice the block does not have would be a new
+    condition, which the plan fixes and this script may not invent.
+    """
+    if slices:
+        if "slices" not in spec:
+            raise ValueError("block %s runs core counts, not slices of its own" % block)
+        unknown = [s for s in slices if s not in spec["slices"]]
+        if unknown:
+            raise ValueError("block %s has no slice %s; its slices are %s"
+                             % (block, ", ".join("%g" % s for s in unknown),
+                                ", ".join("%g" % s for s in spec["slices"])))
+    if backends:
+        unknown = [b for b in backends if b not in BACKENDS]
+        if unknown:
+            raise ValueError("no backend %s; the backends are %s"
+                             % (", ".join(unknown), " and ".join(BACKENDS)))
+    return (tuple(slices) if slices else None, tuple(backends) if backends else BACKENDS)
+
+
 def make_setups(block, tick_ms, baseline=None, settings=None, calibration=None, loads=None,
-                up_to_ms=8.0):
-    """(setups, unreachable) for one block. `settings` is sched_settings' read of the machine,
-    and `calibration` is delay_calibration.py's fit, which places the trips when it is given."""
+                up_to_ms=8.0, slices=None, backends=None):
+    """(setups, unreachable) for one campaign of a block. `settings` is sched_settings' read of
+    the machine, and `calibration` is delay_calibration.py's fit, which places the trips when it
+    is given. `slices` and `backends` take one campaign's share of the block."""
     settings = settings or {}
     spec = BLOCKS[block]
     if loads and block not in UNPLACED:
         raise ValueError("block %s fixes its own loads; only %s take other loads"
                          % (block, " and ".join(UNPLACED)))
+    slices, backends = _wanted(block, spec, slices, backends)
+    if slices:
+        spec = dict(spec, slices=slices)
     setups, unreachable = [], []
-    for backend in BACKENDS:
+    for backend in backends:
         for load in loads or spec["loads"]:
             if block in UNPLACED:
                 setups += _unplaced(block, backend, load, tick_ms, up_to_ms)
@@ -218,8 +245,8 @@ def make_setups(block, tick_ms, baseline=None, settings=None, calibration=None, 
 
 
 def design(block, settings, baseline, rounds, seed, calibration=None, loads=None, up_to_ms=8.0,
-           first_round=1):
-    """The run_queue design for one block, with what it was made from."""
+           first_round=1, slices=None, backends=None, anchor=None):
+    """The run_queue design for one campaign of a block, with what it was made from."""
     if block not in BLOCKS:
         raise ValueError("no block %r; the blocks are %s" % (block, ", ".join(sorted(BLOCKS))))
     if first_round != 1 and block != "C0":
@@ -239,10 +266,16 @@ def design(block, settings, baseline, rounds, seed, calibration=None, loads=None
         rounds = FIXED_ROUNDS.get(block, rounds)
     if not rounds:
         raise ValueError("block %s needs --rounds, from law_design.py rounds" % block)
+    if anchor is not None and slices and anchor not in slices:
+        raise ValueError("the anchor slice %g is not among this campaign's slices %s; every "
+                         "campaign of a block shares the anchor" % (anchor, ", ".join(
+                             "%g" % s for s in slices)))
     setups, unreachable = make_setups(block, tick, baseline, settings, calibration, loads,
-                                      up_to_ms)
+                                      up_to_ms, slices, backends)
     return {"block": block, "seed": seed, "rounds": rounds, "first_round": first_round,
-            "tick_ms": tick,
+            "tick_ms": tick, "slices": list(slices) if slices else None,
+            "backends": list(backends) if backends else list(BACKENDS),
+            "anchor_slice": anchor,
             "release": settings.get("release"),
             "normalised_slice_ns": settings.get("normalised_slice_ns"), "baseline": baseline,
             "calibration": calibration, "setups": setups,
@@ -298,6 +331,12 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise):
     p.add_argument("--loads", default="", help="comma-separated loads, for B0 or C0 only")
     p.add_argument("--up-to-ms", type=float, default=8.0, help="C0's longest delay step")
     p.add_argument("--rounds", type=int, default=0)
+    p.add_argument("--slices", default="",
+                   help="this campaign's share of the block's slices, for example 3,0.75,1.5")
+    p.add_argument("--backend", action="append", default=[],
+                   help="run one backend in this campaign; may be given twice")
+    p.add_argument("--anchor-slice", type=float, default=None,
+                   help="the slice every campaign of the block shares, for example 3")
     p.add_argument("--first-round", type=int, default=1,
                    help="C0's second stage carries on from the first stage's rounds")
     p.add_argument("--seed", type=int, required=True)
@@ -343,7 +382,9 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise):
                 calibration = json.load(fh)["calibration"]
         loads = [int(v) for v in args.loads.split(",")] if args.loads else None
         made = design(args.block, settings.get("settings", settings), baseline, args.rounds,
-                      args.seed, calibration, loads, args.up_to_ms, args.first_round)
+                      args.seed, calibration, loads, args.up_to_ms, args.first_round,
+                      [float(s) for s in args.slices.split(",")] if args.slices else None,
+                      args.backend or None, args.anchor_slice)
         with open(args.out, "w", encoding="utf-8") as fh:
             fh.write(json.dumps(made, indent=2, sort_keys=True) + "\n")
         runs = len(made["setups"]) * made["rounds"]

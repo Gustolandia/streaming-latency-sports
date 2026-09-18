@@ -23,7 +23,8 @@ import testbed_watch  # noqa: E402
 
 def test_the_kit_has_the_scripts_the_guide_describes():
     assert [p.name for p in SHELL] == ["campaign.sh", "machine_facts.sh", "pilot.sh",
-                                       "replicate_oracle.sh", "session.sh", "stage0.sh"]
+                                       "replicate_oracle.sh", "session.sh", "stage0.sh",
+                                       "stage1.sh"]
 
 
 @pytest.mark.parametrize("path", SHELL + [KIT / "cloud-init.yaml"], ids=lambda p: p.name)
@@ -76,6 +77,32 @@ def test_stage_0_runs_its_steps_in_order_each_gated_on_the_last():
     assert 'campaign "p0_$START" "$DIR/calibration.json"' in code, "P0 is held to the calibration"
     assert "p0)" not in code and "freeze02" not in code, "no session carries on across a rule change"
     assert code.rstrip().endswith('its queues and files are in $DIR"')
+
+
+def test_stage_1_runs_one_campaign_of_a_block_from_a_finished_stage_0():
+    """A block is not a sitting: each campaign is placed from a stage 0 that passed, runs the
+    rounds it is given, and says in its own log where that number came from."""
+    code = (KIT / "stage1.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
+    order = ['cp "$STAGE0/$f" "$DIR/$f"', 'at_load.get("gate", {}).get("ok")',
+             'log "rounds: $ROUNDS"', "law_design.py design", "run_queue.py make",
+             "bash cloud/azure/campaign.sh", "CAMPAIGN_COMPLETE"]
+    places = [code.index(step) for step in order]
+    assert places == sorted(places), "the steps run in the plan's order"
+    assert code.index('log "rounds: $ROUNDS"') < code.index("law_design.py design"), \
+        "the rounds are in the log before the campaign is even designed"
+    assert 'log "rounds from: $ROUNDS_NOTE"' in code, "and where the number came from"
+
+
+def test_stage_1_will_not_place_a_campaign_from_a_calibration_that_failed():
+    code = (KIT / "stage1.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
+    assert "did not pass its gate on every backend" in code
+    assert code.index('at_load.get("gate", {}).get("ok")') < code.index("law_design.py design")
+
+
+def test_stage_1_needs_the_block_the_rounds_and_the_session_it_comes_from():
+    code = (KIT / "stage1.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
+    assert '[ -z "$BLOCK" ] || [ -z "$ROUNDS" ] || [ -z "$STAGE0" ]' in code
+    assert "exit 2" in code, "it says how it is used rather than guessing"
 
 
 def test_a_later_session_repeats_the_network_part_of_its_shakedown():

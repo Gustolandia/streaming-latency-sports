@@ -126,7 +126,15 @@ step before it measured (a queue is the shuffled list of runs, with what happene
    times under the law and a thousand times where it is false (at least 4, at most 40).
 6. **Main blocks**: A1 (slice doses), A3 (load) and A7 (go-first) on this machine; A5 (core
    count) in its own queue, because it switches CPUs off; A4 on the arm profile. A2 (the tick)
-   needs three kernels built with 1, 4 and 10 ms ticks, which are not built yet.
+   needs three kernels built with 1, 4 and 10 ms ticks, which are not built yet. A block is not
+   one sitting: A1 runs as six campaigns, three per backend, each including the 3 ms slice as the
+   anchor they are compared through, and each runs with `cloud/azure/stage1.sh`:
+
+```bash
+STAGE0=runs/azure/stage0/matched_20260917T231015Z \
+bash cloud/azure/stage1.sh A1 --slices 3,0.75,1.5 --backend kafka --anchor-slice 3 \
+  --rounds 4 --rounds-note "P1: 4 rounds, from 1000 simulations at spread 0.18; seed 20260918"
+```
 
 For each block: read the machine, make the design, make the queue, run it. B0 is shown. C0
 needs nothing more; the later blocks add `--calibration` (or `--baseline`, which assumes the
@@ -362,6 +370,7 @@ python scripts/spend.py billed --since 2026-09-01
 | `cloud/azure/campaign.sh` | the law campaign's runner: sets each run's CPUs, slice, delay and load, runs one trial, checks it, records it, and stops itself on a stop rule |
 | `cloud/azure/machine_facts.sh` | what a machine is, as far as its network and timing go; the pilot keeps it for both machines |
 | `cloud/azure/stage0.sh` | the plan's first stage on one pair, unattended: the pilot and its shakedown, the calibration in one or two stages and its fit, the baseline trips, the spread pilot |
+| `cloud/azure/stage1.sh` | one campaign of a main block, in a sitting of its own, placed from a stage 0 that passed, with the rounds it is given written into its log before it runs |
 | `scripts/run_integrity.py` | judges each run as it ends (it counts, is repeated, or stops its campaign), and stops a campaign whose attempts keep failing |
 | `scripts/quality_report.py` | what a campaign's runs say about the instrument, once copied: verdicts, conditions, pauses, and repeats that sit far from their fellows |
 | `scripts/collect_runs.py` | copies a finished campaign, or whole folders, home and checks a fingerprint for every file |

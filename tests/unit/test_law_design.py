@@ -173,14 +173,11 @@ class TestPlacingFromTheCalibration:
 
 
 class TestRounds:
+    """The number of rounds is not this script's to give: the plan sets it by simulating the
+    campaign's own prediction at the spread measured here (D4-2, rounds_rule.py)."""
 
-    def test_the_spread_the_old_data_showed_needs_about_26(self):
-        assert ld.rounds_for(0.89, "A1") == 26
-
-    def test_the_floor_and_the_cap(self):
-        assert ld.rounds_for(0.1, "A1") == 15
-        assert ld.rounds_for(0.1, "A7") == 10
-        assert ld.rounds_for(3.0, "A3") == 40
+    def test_it_reports_the_spread_and_who_turns_it_into_rounds(self):
+        assert not hasattr(ld, "rounds_for"), "version 3's closed-form rule is gone"
 
 
 class TestDesign:
@@ -299,7 +296,10 @@ class TestMain:
         assert json.loads((tmp_path / "b.json").read_text(encoding="utf-8"))["kafka"]["75"] == 0.4
         code, text = self.run(["rounds", "--queue", str(queue), "--block", "A1"],
                               summarise=lambda d, w: summary)
-        assert code == 0 and json.loads(text)["rounds"] == 15
+        found = json.loads(text)
+        assert code == 0 and "rounds" not in found, "the number is not this script's to give"
+        assert found["sigma_median"] is not None
+        assert found["rounds_from"].startswith("python scripts/rounds_rule.py for")
 
     def test_design_places_from_a_calibration_file_and_c0_takes_loads(self, tmp_path):
         settings = tmp_path / "settings.json"

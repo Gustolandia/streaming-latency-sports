@@ -121,7 +121,9 @@ step before it measured (a queue is the shuffled list of runs, with what happene
    in bursts; on the campaign's steady 50 messages a second both clients track the delay within
    2%, and the calibration is the session's check that they still do.
 4. **Spread pilot (P0)**: 16 setups over 5 rounds, placed from the calibration.
-5. **Repeats**: `rounds` turns the pilot's run-to-run spread into runs per setup (15 to 40).
+5. **Repeats**: `rounds` reports the pilot's run-to-run spread, and `rounds_rule.py` turns it
+   into runs per setup by simulating the campaign's own prediction and decision rule a thousand
+   times under the law and a thousand times where it is false (at least 4, at most 40).
 6. **Main blocks**: A1 (slice doses), A3 (load) and A7 (go-first) on this machine; A5 (core
    count) in its own queue, because it switches CPUs off; A4 on the arm profile. A2 (the tick)
    needs three kernels built with 1, 4 and 10 ms ticks, which are not built yet.
@@ -143,6 +145,16 @@ After B0, after C0 and after P0:
 python3 scripts/law_design.py baseline --queue runs/azure/queues/b0.csv --out runs/azure/baseline.json
 python3 scripts/delay_calibration.py fit --queue runs/azure/queues/c0.csv --out runs/azure/calibration.json
 python3 scripts/law_design.py rounds --queue runs/azure/queues/p0.csv --block A1
+```
+
+That prints the run-to-run spread the pilot measured, and the command that turns it into a number
+of rounds: the campaign is simulated a thousand times under the law and a thousand times in the
+world its falsifier names, and the rounds are the smallest number, at least four, that confirms
+the prediction in at least 80% of the first and at most 5% of the second (the plan's D4-2).
+
+```bash
+python3 scripts/rounds_rule.py for --prediction P1 --slices 1.5,3,4.5,6,7.5,9 --spread 0.18
+python3 scripts/rounds_rule.py fixed --campaign B0
 ```
 
 Every campaign after the session's C0 runs with that calibration, so each run's "got it" delay
@@ -341,7 +353,11 @@ python scripts/spend.py billed --since 2026-09-01
 | `cloud/azure/replicate_oracle.sh` | runs the Oracle mechanism campaigns unchanged, in shuffled order |
 | `scripts/run_queue.py` | the randomised run queue and its ledger (every run recorded, failures included) |
 | `scripts/testbed_watch.py` | watches every machine pair from your computer and flags idle, stuck, failed or impossible runs, repeated and stopping verdicts, low load, full disks and clock drift; can deallocate idle pairs |
-| `scripts/law_design.py` | builds each law block's run list from the machine's tick and slice constant, the session's delay calibration (or the baseline trips) and the repeat rule |
+| `scripts/law_design.py` | builds each law block's run list from the machine's tick and slice constant, the session's delay calibration (or the baseline trips) and the number of rounds it is given |
+| `scripts/law_curve.py` | measures one cliff both ways the plan fixes: the fitted plateau, fall and floor, and the curve only required never to rise |
+| `scripts/law_predictions.py` | whether a prediction came true, by the sentence the plan wrote beside it; nothing pooled across pairs or backends |
+| `scripts/law_world.py` | made-up campaigns, under the law and in the world each falsifier names, for the tests and the rounds rule |
+| `scripts/rounds_rule.py` | how many rounds a campaign runs, by simulating its own prediction and decision rule (the plan's D4-2) |
 | `scripts/delay_calibration.py` | measures, from a calibration queue, how far the trip moves per millisecond of receiver-only delay, checks the gate, and gives the delay each planned trip needs |
 | `cloud/azure/campaign.sh` | the law campaign's runner: sets each run's CPUs, slice, delay and load, runs one trial, checks it, records it, and stops itself on a stop rule |
 | `cloud/azure/machine_facts.sh` | what a machine is, as far as its network and timing go; the pilot keeps it for both machines |

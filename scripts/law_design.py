@@ -18,9 +18,11 @@ generated rather than typed:
                way it was placed. A point the placement cannot reach (below the zero-delay trip,
                or beyond the calibration's longest step) is listed as unreachable in the design,
                not quietly dropped.
-  repeats      the rounds that give 80% power to see a two-fold difference at the run-to-run
-               spread the spread pilot measured: never fewer than 15 for A1 to A4 or 10 for the
-               rest, never more than 40.
+  repeats      the rounds come from simulating the campaign's own prediction and decision rule at
+               the spread the spread pilot measured (rounds_rule.py, the plan's D4-2). This script
+               measures that spread and takes the number; it does not invent one. Where no
+               prediction is tested the plan fixes the number instead: B0 runs 3, C0 runs 2 and 4
+               in the first pair's staircase, P0 runs 5.
 
 Blocks, each a design for scripts/run_queue.py:
   B0  baseline trips: no delay, the kernel's own slice, each backend at 50, 75 and 88% load
@@ -89,10 +91,6 @@ BACKENDS = ("kafka", "redis")
 #: the loads of the session they open.
 UNPLACED = ("B0", "C0")
 FIXED_ROUNDS = {"B0": 3, "C0": 2, "P0": 5}
-MIN_ROUNDS = {"A1": 15, "A2": 15, "A3": 15, "A4": 15}
-DEFAULT_MIN_ROUNDS = 10
-MAX_ROUNDS = 40
-ALPHA, POWER, FOLD = 0.05, 0.80, 2.0
 
 #: Minutes one run takes end to end with the runner's default plan (warm-up, measurement,
 #: settling and checks), as the first Azure pilot measured. For planning only.
@@ -110,13 +108,6 @@ def c0_steps(up_to_ms):
     while steps[-1] < up_to_ms:
         steps.append(steps[-1] * 2)
     return steps
-
-
-def rounds_for(sigma, block):
-    """Rounds per setup for 80% power to see a FOLD-fold difference at log-rate spread sigma."""
-    z = statistics.NormalDist().inv_cdf
-    need = 2 * (z(1 - ALPHA / 2) + z(POWER)) ** 2 * sigma ** 2 / math.log(FOLD) ** 2
-    return max(MIN_ROUNDS.get(block, DEFAULT_MIN_ROUNDS), min(MAX_ROUNDS, math.ceil(need)))
 
 
 def _slices(block, spec, settings):
@@ -332,9 +323,14 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise):
         if args.command == "rounds":
             sigma, sds = spread_from_rows(run_queue.read_queue(args.queue), args.warmup_s,
                                           summarise)
+            #: The number itself comes from simulating this campaign's own prediction and
+            #: decision rule at this spread, which is the plan's D4-2 and is what rounds_rule.py
+            #: does. What belongs here is the spread that simulation is run at.
             print(json.dumps({"block": args.block, "sigma_median": sigma,
-                              "rounds": rounds_for(sigma, args.block),
-                              "setups_measured": len(sds)}, sort_keys=True), file=out)
+                              "setups_measured": len(sds),
+                              "rounds_from": "python scripts/rounds_rule.py for --prediction "
+                                             "<the campaign's> --spread %.4f" % sigma},
+                             sort_keys=True), file=out)
             return 0
         with open(args.settings, encoding="utf-8") as fh:
             settings = json.load(fh)

@@ -2115,6 +2115,26 @@ the cliff the law predicts. Every session now measures the relation first (block
 measurement, and the law is analysed at the trip each run actually had. Why the two clients
 differ is a study of its own (M0 in the experiment plan).
 
+**1eb. A grid no finer than the rule decides the answer itself.** The fitted shape is found by
+trying where the fall starts and how wide it is, and reading off the plateau and floor that fit
+best. The first version tried as many starts as widths -- 96 of each across the trips the runs
+cover. On the tick block, whose runs span about 14 ms, that put the starts 0.6 ms apart, and P2d
+asks whether the start sits within 0.25 ms of the slice: the grid, not the data, would have
+answered. The start now moves in steps of 0.05 ms whatever the span (`law_curve.START_STEP_MS`),
+capped so that a design spanning seconds still finishes, and the width keeps its own count of
+candidates. A made-up cliff at 8.00 ms is now read at 7.95, where before it read 7.36.
+
+**1ec. The design pins the cliff's width only as far as its trip points reach.** The plan places
+four runs across the cliff (`s + 0.2h` to `s + 0.8h`), one past it at `s + 1.5h`, and the plateau's
+own point at `0.9s`. The end of the fall, `s + h`, is not a design point, so on made-up data whose
+fall is exactly one tick wide the fitted width is pinned only between about 0.8 and 1.5 ticks, and
+the free shape's 90%-to-10% width runs about a millisecond wide of the fall because the nearest
+points outside the cliff sit half a millisecond away on one side and 0.7 on the other. Ratios
+between kernels mostly cancel it, which is what P2 and P2b compare; P2c, which asks for a straight
+line through zero with slope one, is the prediction this costs, and it is the one to watch in the
+rounds rule's simulations. Found before any campaign ran, by writing the analysis first and
+feeding it curves whose answer was known.
+
 **1co. A spelling checker that proposes `pairwize` is a checker people learn to argue with.**
 The British-spelling gate runs a morphological rule over the `-ise` family, which is right and
 is the half a hand-written table keeps failing at. It had no rule for `-wise`, an English

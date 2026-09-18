@@ -136,11 +136,15 @@ def _fit_on_grid(shares, rates):
     return best, float(plateau[best]), float(floor[best]), float(cost[best])
 
 
-def fitted_shape(trips, rates, grid=GRID, step_ms=START_STEP_MS):
-    """Plateau, floor, where the fall starts and how wide it is, fitted to the runs."""
+def fitted_shape(trips, rates, grid=GRID, step_ms=None):
+    """Plateau, floor, where the fall starts and how wide it is, fitted to the runs.
+
+    `step_ms` is how finely the start is moved; None takes START_STEP_MS, and it is resolved here
+    rather than bound as a default, so a caller that wants a coarser grid gets one.
+    """
     if len(trips) < 3 or len(set(trips)) < 2:
         return None
-    starts, widths = _grid(trips, grid, step_ms)
+    starts, widths = _grid(trips, grid, START_STEP_MS if step_ms is None else step_ms)
     best, plateau, floor, cost = _fit_on_grid(_shares(trips, starts, widths), rates)
     return {"start_ms": float(starts[best // grid]), "width_ms": float(widths[best % grid]),
             "plateau": plateau, "floor": floor, "falls": plateau - floor > FLAT, "cost": cost}
@@ -186,7 +190,7 @@ def crossing(trips, fitted, level):
     return None
 
 
-def read_off(runs, plateau=None, floor=None, grid=GRID):
+def read_off(runs, plateau=None, floor=None, grid=GRID, step_ms=None):
     """Everything one curve says: both shapes, the halfway point and the width of the drop.
 
     The plateau and the floor come from the named design points when the campaign ran them, and
@@ -194,7 +198,7 @@ def read_off(runs, plateau=None, floor=None, grid=GRID):
     """
     trips = [run["trip_ms"] for run in runs]
     rates = [run["negative_rate"] for run in runs]
-    fitted = fitted_shape(trips, rates, grid)
+    fitted = fitted_shape(trips, rates, grid, step_ms)
     if fitted is None:
         return None
     named_plateau, named_floor = levels(runs)

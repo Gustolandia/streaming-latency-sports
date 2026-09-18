@@ -166,7 +166,7 @@ def testable(runs):
     return found
 
 
-def anchor_offsets(runs, anchor_ms, summary="free", grid=None):
+def anchor_offsets(runs, anchor_ms, summary="free", grid=None, step_ms=None):
     """{campaign: how far its anchor sits from the block's mean anchor}, in milliseconds.
 
     A campaign that ran no anchor slice has no offset here: its readings cannot be compared with
@@ -175,7 +175,8 @@ def anchor_offsets(runs, anchor_ms, summary="free", grid=None):
     anchors = {}
     for key, part in law_curve.groups(runs, ("campaign",)).items():
         at_anchor = [run for run in part if run.get("slice_ms") == anchor_ms]
-        curve = law_curve.read_off(at_anchor, grid=grid or law_curve.GRID) if at_anchor else None
+        curve = (law_curve.read_off(at_anchor, grid=grid or law_curve.GRID, step_ms=step_ms)
+                 if at_anchor else None)
         if curve and curve[HALFWAY[summary]] is not None:
             anchors[key[0]] = curve[HALFWAY[summary]]
     if len(anchors) < 2:
@@ -184,17 +185,17 @@ def anchor_offsets(runs, anchor_ms, summary="free", grid=None):
     return dict((campaign, where - middle) for campaign, where in anchors.items())
 
 
-def through_the_anchor(runs, anchor_ms, summary="free", grid=None):
+def through_the_anchor(runs, anchor_ms, summary="free", grid=None, step_ms=None):
     """{slice: halfway point}, each campaign's readings moved by its own offset.
 
     The anchor itself comes out at the block's mean by construction, so it counts once however
     many campaigns ran it.
     """
-    offsets = anchor_offsets(runs, anchor_ms, summary, grid)
+    offsets = anchor_offsets(runs, anchor_ms, summary, grid, step_ms)
     found = {}
     for key, part in law_curve.groups(runs, ("campaign", "slice_ms")).items():
         campaign, slice_ms = key
-        curve = law_curve.read_off(part, grid=grid or law_curve.GRID)
+        curve = law_curve.read_off(part, grid=grid or law_curve.GRID, step_ms=step_ms)
         where = curve and curve[HALFWAY[summary]]
         if where is None:
             continue
@@ -202,11 +203,12 @@ def through_the_anchor(runs, anchor_ms, summary="free", grid=None):
     return dict((slice_ms, sum(seen) / len(seen)) for slice_ms, seen in found.items())
 
 
-def curves_by(runs, key, grid=None, **levels):
+def curves_by(runs, key, grid=None, step_ms=None, **levels):
     """One curve per value of `key`, read off by law_curve.py."""
     found = {}
     for value, part in law_curve.groups(runs, (key,)).items():
-        found[value[0]] = law_curve.read_off(part, grid=grid or law_curve.GRID, **levels)
+        found[value[0]] = law_curve.read_off(part, grid=grid or law_curve.GRID, step_ms=step_ms,
+                                             **levels)
     return found
 
 
@@ -251,7 +253,7 @@ def _both(by_summary, rule, judged_on=SUMMARIES, **rest):
 
 
 def cliff_follows_slice(runs, tick_ms, need_inside=None, need_interval=True, draws=DRAWS,
-                        seed=0, grid=None, anchor_ms=None):
+                        seed=0, grid=None, anchor_ms=None, step_ms=None):
     """P1 and P9: the halfway point sits in its band at each slice, and rises with the slice.
 
     P1 allows one slice of six to fall outside the band and asks the slope's interval to exclude
@@ -259,17 +261,20 @@ def cliff_follows_slice(runs, tick_ms, need_inside=None, need_interval=True, dra
     its band. `need_inside` says how many slices must be inside, and defaults to one short of all
     for six slices or more, and all of them below that.
     """
-    def halfways(part, summary):
+    def halfways(part, summary, curves=None):
         """Where each slice's curve crosses halfway, through the anchor when there is one."""
         if anchor_ms is not None:
-            return through_the_anchor(part, anchor_ms, summary, grid)
-        return dict((s, curve and curve[HALFWAY[summary]])
-                    for s, curve in curves_by(part, "slice_ms", grid).items())
+            return through_the_anchor(part, anchor_ms, summary, grid, step_ms)
+        curves = curves_by(part, "slice_ms", grid, step_ms) if curves is None else curves
+        return dict((s, curve and curve[HALFWAY[summary]]) for s, curve in curves.items())
 
     def numbers(part):
+        #: One fit per curve, both summaries read off it: they are two readings of one shape, and
+        #: fitting twice would cost twice and answer about different draws.
+        curves = None if anchor_ms is not None else curves_by(part, "slice_ms", grid, step_ms)
         found = {}
         for summary in SUMMARIES:
-            heights = halfways(part, summary)
+            heights = halfways(part, summary, curves)
             line = straight_line(sorted(heights), [heights[s] for s in sorted(heights)])
             found[summary] = None if line is None else line[0]
         return found
@@ -508,7 +513,7 @@ RULES = {"P1": cliff_follows_slice, "P2": width_follows_tick, "P2b": width_follo
 
 
 def judge(runs, prediction, tick_ms=1.0, draws=DRAWS, seed=0, grid=None, read_back=None,
-          anchor_ms=None):
+          anchor_ms=None, step_ms=None):
     """One prediction's answer, by the rule the plan wrote beside it.
 
     Nothing is pooled across machine pairs or across backends: where the runs hold more than one
@@ -524,24 +529,27 @@ def judge(runs, prediction, tick_ms=1.0, draws=DRAWS, seed=0, grid=None, read_ba
         by_part = {}
         for key, part in sorted(law_curve.groups(runs, apart).items(), key=lambda pair: str(pair)):
             by_part[", ".join(str(k) for k in key)] = _one(part, prediction, tick_ms, draws,
-                                                           seed, grid, read_back, anchor_ms)
+                                                           seed, grid, read_back, anchor_ms,
+                                                           step_ms)
         first = list(by_part.values())[0]
         return {"confirmed": all(answer["confirmed"] for answer in by_part.values()),
                 "rule": first["rule"], "judged_on": first["judged_on"],
                 "split_by": list(apart), "by_part": by_part}
-    return _one(runs, prediction, tick_ms, draws, seed, grid, read_back, anchor_ms)
+    return _one(runs, prediction, tick_ms, draws, seed, grid, read_back, anchor_ms, step_ms)
 
 
-def _one(runs, prediction, tick_ms, draws, seed, grid, read_back=None, anchor_ms=None):
+def _one(runs, prediction, tick_ms, draws, seed, grid, read_back=None, anchor_ms=None,
+         step_ms=None):
     """One prediction's answer on runs that share a pair and a backend."""
     rule = RULES[prediction]
     if prediction == "P7":
         return rule(runs, read_back or {}, tick_ms, draws=draws, seed=seed, grid=grid)
     if prediction == "P9":
         return rule(runs, tick_ms, need_interval=False, draws=draws, seed=seed, grid=grid,
-                    anchor_ms=anchor_ms)
+                    anchor_ms=anchor_ms, step_ms=step_ms)
     if prediction == "P1":
-        return rule(runs, tick_ms, draws=draws, seed=seed, grid=grid, anchor_ms=anchor_ms)
+        return rule(runs, tick_ms, draws=draws, seed=seed, grid=grid, anchor_ms=anchor_ms,
+                    step_ms=step_ms)
     if prediction in ("P2", "P2b"):
         return rule(runs, tick_ms, draws=draws, seed=seed, grid=grid)
     if prediction == "P2d":

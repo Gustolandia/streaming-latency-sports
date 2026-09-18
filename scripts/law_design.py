@@ -244,6 +244,46 @@ def make_setups(block, tick_ms, baseline=None, settings=None, calibration=None, 
     return setups, unreachable
 
 
+#: A slice tests the cliff only where these are reachable: the level the halfway point is
+#: measured from, the level past the cliff, and at least this many of the four trips across it
+#: (the plan's D8-1).
+PLATEAU_POINT = "p09s"
+FLOOR_POINT = "f2sh"
+CLIFF_POINTS = ("c02h", "c04h", "c06h", "c08h")
+CLIFF_POINTS_NEEDED = 3
+
+
+def testable(block, settings, baseline=None, calibration=None, backends=BACKENDS, up_to_ms=8.0):
+    """{backend: {slice: whether this pair can test the cliff at it}}.
+
+    A slice a pair cannot reach is not a weaker test of the prediction; it is not a test of it,
+    and the campaign is not run. What puts a slice out of reach is the client's own zero-delay
+    trip, below which no message can arrive, or a trip beyond the calibration's longest step.
+    """
+    found = {}
+    for backend in backends:
+        setups, unreachable = make_setups(block, settings.get("tick_ms"), baseline, settings,
+                                          calibration, None, up_to_ms, None, [backend])
+        points = {}
+        for setup in setups:
+            #: A5 does not set a slice by hand: its condition is the cores switched on, and the
+            #: slice is the one the kernel's own rule predicts for that count.
+            ns = setup["slice_ns"] or setup["predicted_slice_ns"]
+            if ns:
+                points.setdefault(ns / 1e6, set()).add(setup["point"])
+        for entry in unreachable:
+            #: A point the placement cannot reach still names its slice, and the slice has to
+            #: appear here or a slice with nothing reachable at all would go unmentioned.
+            name = entry["id"]
+            if "-s" in name:
+                points.setdefault(float(name.split("-s")[1].split("-")[0]) / 1000.0, set())
+        found[backend] = dict(
+            (slice_ms, PLATEAU_POINT in seen and FLOOR_POINT in seen
+             and len(seen & set(CLIFF_POINTS)) >= CLIFF_POINTS_NEEDED)
+            for slice_ms, seen in points.items())
+    return found
+
+
 def design(block, settings, baseline, rounds, seed, calibration=None, loads=None, up_to_ms=8.0,
            first_round=1, slices=None, backends=None, anchor=None):
     """The run_queue design for one campaign of a block, with what it was made from."""
@@ -345,6 +385,12 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise):
     p.add_argument("--queue", required=True)
     p.add_argument("--out", required=True)
     p.add_argument("--warmup-s", type=float, default=30.0)
+    p = sub.add_parser("testable", help="which slices this pair can test, and which it cannot")
+    p.add_argument("--block", required=True)
+    p.add_argument("--settings", required=True)
+    p.add_argument("--calibration", default="")
+    p.add_argument("--baseline", default="")
+    p.add_argument("--up-to-ms", type=float, default=8.0)
     p = sub.add_parser("rounds")
     p.add_argument("--queue", required=True)
     p.add_argument("--block", required=True, choices=sorted(BLOCKS))
@@ -358,6 +404,26 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise):
             with open(args.out, "w", encoding="utf-8") as fh:
                 fh.write(text + "\n")
             print(text, file=out)
+            return 0
+        if args.command == "testable":
+            with open(args.settings, encoding="utf-8") as fh:
+                settings = json.load(fh)
+            settings = settings.get("settings", settings)
+            calibration = baseline = None
+            if args.calibration:
+                with open(args.calibration, encoding="utf-8") as fh:
+                    calibration = json.load(fh)
+                calibration = calibration.get("calibration", calibration)
+            if args.baseline:
+                with open(args.baseline, encoding="utf-8") as fh:
+                    baseline = json.load(fh)
+            found = testable(args.block, settings, baseline, calibration, up_to_ms=args.up_to_ms)
+            for backend in sorted(found):
+                can = sorted(s for s, ok in found[backend].items() if ok)
+                cannot = sorted(s for s, ok in found[backend].items() if not ok)
+                print("%s %s%s" % (backend, ",".join("%g" % s for s in can) or "none",
+                                   "" if not cannot else "  (out of reach: %s)"
+                                   % ", ".join("%g" % s for s in cannot)), file=out)
             return 0
         if args.command == "rounds":
             sigma, sds = spread_from_rows(run_queue.read_queue(args.queue), args.warmup_s,

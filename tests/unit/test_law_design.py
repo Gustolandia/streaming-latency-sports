@@ -180,6 +180,40 @@ class TestRounds:
         assert not hasattr(ld, "rounds_for"), "version 3's closed-form rule is gone"
 
 
+class TestOneCampaignOfABlock:
+    """A block is not a sitting: the plan runs A1 as six campaigns, three per backend, each
+    sharing the 3 ms anchor, and each campaign carries which slice that is."""
+
+    def test_a_campaign_takes_its_share_of_the_slices_and_one_backend(self):
+        made = ld.design("A1", AZURE, BASELINE, 4, 5, slices=[3.0, 0.75, 1.5],
+                         backends=["kafka"], anchor=3.0)
+        assert made["slices"] == [3.0, 0.75, 1.5] and made["backends"] == ["kafka"]
+        assert made["anchor_slice"] == 3.0
+        assert set(s["backend"] for s in made["setups"]) == {"kafka"}
+        assert len(made["setups"]) + len(made["unreachable"]) == 3 * 8, "three slices, eight trips"
+
+    def test_the_whole_block_is_still_what_it_was(self):
+        made = ld.design("A1", AZURE, BASELINE, 4, 5)
+        assert made["slices"] is None and made["backends"] == ["kafka", "redis"]
+        assert len(made["setups"]) + len(made["unreachable"]) == 6 * 8 * 2
+
+    def test_a_slice_the_block_does_not_have_is_refused(self):
+        with pytest.raises(ValueError, match="no slice 2.5"):
+            ld.design("A1", AZURE, BASELINE, 4, 5, slices=[3.0, 2.5])
+
+    def test_a_backend_that_does_not_exist_is_refused(self):
+        with pytest.raises(ValueError, match="no backend pulsar"):
+            ld.design("A1", AZURE, BASELINE, 4, 5, backends=["pulsar"])
+
+    def test_a_block_of_core_counts_has_no_slices_to_share(self):
+        with pytest.raises(ValueError, match="runs core counts"):
+            ld.design("A5", AZURE, BASELINE, 4, 5, slices=[3.0])
+
+    def test_a_campaign_without_the_anchor_is_refused(self):
+        with pytest.raises(ValueError, match="anchor slice 3 is not among"):
+            ld.design("A1", AZURE, BASELINE, 4, 5, slices=[0.75, 1.5], anchor=3.0)
+
+
 class TestDesign:
 
     def test_a_design_becomes_a_queue(self):

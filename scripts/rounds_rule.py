@@ -47,6 +47,11 @@ FALSE_CONFIRM = 0.05
 TRIALS = 1000
 DRAWS = 200
 GRID = 48
+#: How finely the fitted shape moves the fall's start while simulating. The analysis itself reads
+#: it to a twentieth of a millisecond; a simulation asks the same rule two thousand times and the
+#: band it decides on is a millisecond wide, so a fifth of a millisecond is finer than the question
+#: and twelve times cheaper.
+STEP_MS = 0.2
 SEED = 20260918
 #: The world in which each prediction is false, as its falsifier states it.
 FALSIFIERS = {"P1": "cliff_fixed", "P9": "cliff_fixed", "P2": "width_fixed",
@@ -58,7 +63,7 @@ FIXED = {"C0": 2, "S0-1": 4, "B0": 3, "P0": 5, "M0": 10, "tools": 4}
 
 
 def confirms(prediction, design, rounds, world, trials=TRIALS, draws=DRAWS, grid=GRID,
-             seed=SEED, tick_ms=1.0):
+             seed=SEED, tick_ms=1.0, step_ms=STEP_MS):
     """How often the rule confirms the prediction, over `trials` made-up campaigns of that world.
 
     Each campaign is made up afresh from its own seed, so the count can be repeated exactly.
@@ -68,13 +73,13 @@ def confirms(prediction, design, rounds, world, trials=TRIALS, draws=DRAWS, grid
         runs = law_world.campaign(rounds=rounds, world=world, seed=seed + trial,
                                   tick_ms=tick_ms, **design)
         found = law_predictions.judge(runs, prediction, tick_ms, draws=draws,
-                                      seed=seed + trial, grid=grid)
+                                      seed=seed + trial, grid=grid, step_ms=step_ms)
         said += 1 if found["confirmed"] else 0
     return said / float(trials)
 
 
 def rounds_for(prediction, design, trials=TRIALS, draws=DRAWS, grid=GRID, seed=SEED,
-               tick_ms=1.0, floor=FLOOR, ceiling=CEILING, steps=None):
+               tick_ms=1.0, floor=FLOOR, ceiling=CEILING, steps=None, step_ms=STEP_MS):
     """The smallest number of rounds that reaches the power the rule asks for.
 
     The rounds tried climb from the floor to the ceiling; `steps` names them, and defaults to the
@@ -88,19 +93,21 @@ def rounds_for(prediction, design, trials=TRIALS, draws=DRAWS, grid=GRID, seed=S
              if floor <= n <= ceiling]
     tried = []
     for rounds in steps:
-        power = confirms(prediction, design, rounds, "law", trials, draws, grid, seed, tick_ms)
+        power = confirms(prediction, design, rounds, "law", trials, draws, grid, seed, tick_ms,
+                         step_ms)
         wrongly = confirms(prediction, design, rounds, FALSIFIERS[prediction], trials, draws,
-                           grid, seed + 500000, tick_ms)
+                           grid, seed + 500000, tick_ms, step_ms)
         tried.append({"rounds": rounds, "power": power, "false_confirm": wrongly})
         if power >= POWER and wrongly <= FALSE_CONFIRM:
-            return _answer(prediction, rounds, tried, False, trials, draws, grid, seed)
-    return _answer(prediction, ceiling, tried, True, trials, draws, grid, seed)
+            return _answer(prediction, rounds, tried, False, trials, draws, grid, seed, step_ms)
+    return _answer(prediction, ceiling, tried, True, trials, draws, grid, seed, step_ms)
 
 
-def _answer(prediction, rounds, tried, underpowered, trials, draws, grid, seed):
+def _answer(prediction, rounds, tried, underpowered, trials, draws, grid, seed, step_ms=STEP_MS):
     return {"prediction": prediction, "rounds": rounds, "underpowered": underpowered,
             "tried": tried, "asked_of_it": {"power": POWER, "false_confirm": FALSE_CONFIRM},
-            "settings": {"trials": trials, "draws": draws, "grid": grid, "seed": seed}}
+            "settings": {"trials": trials, "draws": draws, "grid": grid, "seed": seed,
+                         "step_ms": step_ms}}
 
 
 def fixed_rounds(campaign):
@@ -123,9 +130,10 @@ def lines(found):
         out.append("  %2d rounds: confirmed in %.0f%% under the law, in %.0f%% where it is false"
                    % (step["rounds"], 100 * step["power"], 100 * step["false_confirm"]))
     out.append("  asked of it: at least %.0f%% power, at most %.0f%% false; from %d simulations "
-               "of %d resamplings, seed %d"
+               "of %d resamplings, the start read every %.2f ms, seed %d"
                % (100 * POWER, 100 * FALSE_CONFIRM, found["settings"]["trials"],
-                  found["settings"]["draws"], found["settings"]["seed"]))
+                  found["settings"]["draws"], found["settings"].get("step_ms", STEP_MS),
+                  found["settings"]["seed"]))
     return out
 
 
@@ -169,6 +177,8 @@ def main(argv=None, out=None):
     p.add_argument("--trials", type=int, default=TRIALS)
     p.add_argument("--draws", type=int, default=DRAWS)
     p.add_argument("--grid", type=int, default=GRID)
+    p.add_argument("--step-ms", type=float, default=STEP_MS,
+                   help="how finely the fit moves the fall's start while simulating")
     p.add_argument("--seed", type=int, default=SEED)
     p.add_argument("--steps", default="", help="the round counts to try, in order")
     p.add_argument("--out", default="", help="write the answer here as JSON")
@@ -182,7 +192,7 @@ def main(argv=None, out=None):
             found = rounds_for(args.prediction, design_from(args), args.trials, args.draws,
                                args.grid, args.seed, args.tick_ms,
                                steps=[int(n) for n in args.steps.split(",")] if args.steps
-                               else None)
+                               else None, step_ms=args.step_ms)
             if args.out:
                 with open(args.out, "w", encoding="utf-8", newline="\n") as fh:
                     fh.write(json.dumps(found, indent=2, sort_keys=True) + "\n")

@@ -57,7 +57,8 @@ class TestTheRuleItself:
 
     def test_it_records_what_it_was_run_with(self):
         found = rr.rounds_for("P1", DESIGN, **TINY)
-        assert found["settings"] == {"trials": 2, "draws": 20, "grid": 24, "seed": rr.SEED}
+        assert found["settings"] == {"trials": 2, "draws": 20, "grid": 24, "seed": rr.SEED,
+                                     "step_ms": rr.STEP_MS}
         assert found["asked_of_it"] == {"power": 0.8, "false_confirm": 0.05}
 
     def test_a_prediction_with_no_falsifier_named_is_refused(self):

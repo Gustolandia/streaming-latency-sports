@@ -126,7 +126,24 @@ class TestStop:
         found = evaluate(make_run(tmp_path, gotit_ms=0.9), calibration=CAL)
         assert found["verdict"] == "stop"
         assert found["reasons"] == ["the got-it median moved 0.700 ms, more than 25% of the "
-                                    "2.000 ms added"]
+                                    "2.000 ms added and more than the 0.100 ms this session's "
+                                    "got-it moves by itself"]
+
+    def test_a_shift_under_the_noise_of_the_session_stops_nothing(self, tmp_path):
+        """A quarter of a small delay is less than the got-it median moves between runs with
+        nothing added at all: on 18 September a pair's Kafka wandered 0.36 ms across four
+        zero-delay runs, and a brake set at 0.056 ms stopped a sound session."""
+        noisy = {"calibration": {"kafka": {"75": {"gotit_zero_median_ms": 0.2,
+                                                  "gotit_zero_sd_ms": 0.183}}}}
+        run = make_run(tmp_path, gotit_ms=0.45, delay_ms=0.225, measured_added=0.225)
+        assert evaluate(run, calibration=noisy)["verdict"] != "stop"
+
+    def test_a_shift_over_that_noise_still_stops(self, tmp_path):
+        noisy = {"calibration": {"kafka": {"75": {"gotit_zero_median_ms": 0.2,
+                                                  "gotit_zero_sd_ms": 0.183}}}}
+        run = make_run(tmp_path, gotit_ms=1.0, delay_ms=0.225, measured_added=0.225)
+        found = evaluate(run, calibration=noisy)
+        assert found["verdict"] == "stop" and "moves by itself" in found["reasons"][0]
 
 
 class TestRepeat:

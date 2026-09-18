@@ -100,9 +100,23 @@ class TestCompare:
         report = pc.compare(*self.summaries(tmp_path, trip_ms=2.5, gotit_ms=2.2), added_ms=2.0)
         assert not report["ok"] and not report["gotit_unchanged"]
 
-    def test_a_delay_that_did_not_arrive(self, tmp_path):
+    def test_a_delay_that_did_not_arrive_is_recorded_not_judged(self, tmp_path):
+        """In bursts the trip does not grow one-for-one with the delay, which is why the session's
+        calibration judges that on the campaign's own traffic. The pilot writes down how far it
+        moved and asks only that the got-it stayed put and nothing arrived before it was sent."""
         report = pc.compare(*self.summaries(tmp_path, trip_ms=0.5), added_ms=2.0)
-        assert not report["ok"] and not report["trip_moved_by_the_delay"]
+        assert not report["trip_moved_by_the_delay"]
+        assert report["trip_moved_per_ms"] == pytest.approx(0.0, abs=0.2)
+        assert report["ok"], "the harness verdict does not rest on it"
+
+    def test_the_got_it_is_held_to_the_margin_the_plan_gives_it(self, tmp_path):
+        """P5(c) allows the got-it median 0.10 ms, not the 0.05 ms the delay itself is held to."""
+        close, far = tmp_path / "close", tmp_path / "far"
+        close.mkdir(), far.mkdir()
+        report = pc.compare(*self.summaries(close, trip_ms=2.5, gotit_ms=0.273), added_ms=2.0)
+        assert report["gotit_ms"] == 0.10 and report["gotit_unchanged"] and report["ok"]
+        moved = pc.compare(*self.summaries(far, trip_ms=2.5, gotit_ms=0.4), added_ms=2.0)
+        assert not moved["gotit_unchanged"] and not moved["ok"]
 
     def test_a_negative_trip_fails_the_check_whatever_the_medians_say(self, tmp_path):
         report = pc.compare(*self.summaries(tmp_path, trip_ms=2.5, negative_trip_at=3),
@@ -182,7 +196,9 @@ class TestMain:
         step = make_run(tmp_path, "step", trip_ms=2.5)
         argv = ["compare", "--warmup-s", "0", "--baseline", base, "--step", step, "--added-ms"]
         assert self.run(argv + ["2.0"])[0] == 0
-        assert self.run(argv + ["1.0"])[0] == 1
+        moved = make_run(tmp_path, "moved", trip_ms=2.5, gotit_ms=1.9)
+        assert self.run(["compare", "--warmup-s", "0", "--baseline", base, "--step", moved,
+                         "--added-ms", "2.0"])[0] == 1, "a got-it that moved fails it"
 
     def test_list_and_go_first(self, tmp_path):
         code, text = self.run(["list", "--out-dir", write_cell(tmp_path, ["runs/k_kafka_1"])])

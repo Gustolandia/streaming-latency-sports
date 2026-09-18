@@ -324,7 +324,12 @@ def fit_entry(runs, seed):
                  gotit=checks, gate=gate,
                  # What each later run's own "got it" median is held against, run by run
                  # (run_integrity.py): the median over this session's zero-delay runs.
-                 gotit_zero_median_ms=statistics.median(zero_gotit) if zero_gotit else None)
+                 gotit_zero_median_ms=statistics.median(zero_gotit) if zero_gotit else None,
+                 #: How much the got-it median moves between runs with nothing added at all. The
+                 #: brake that stops a session on a got-it shift has to clear this, or it reports
+                 #: the instrument's own noise as a fault.
+                 gotit_zero_sd_ms=(statistics.stdev(zero_gotit) if len(zero_gotit) > 1
+                                   else None))
     return entry
 
 

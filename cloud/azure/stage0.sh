@@ -24,6 +24,11 @@
 #   5. P0     the spread pilot, placed from the calibration, and only if its gate passed. A
 #             failed gate ends the session, and the pair starts a new one with a new C0.
 #
+# KIND session runs steps 1 to 3 and stops: a pair that has already finished stage 0 needs its own
+# calibration for the session ahead, because a machine that was stopped and started can come back
+# on another host, but the baseline trips and the spread pilot are properties of the pair and do
+# not change with a restart. cloud/azure/stage1.sh is pointed at the folder this leaves.
+#
 # Each campaign is cloud/azure/campaign.sh, which judges every run as it ends and stops itself on
 # a stop rule; this stops with it. Everything lands in runs/azure/stage0/<profile>_<start>/, and
 # the runs under runs/ as always. The last line of this log is CAMPAIGN_COMPLETE, or STOP_RULE
@@ -37,7 +42,8 @@ EARLIER="${2:-}"
 case "$KIND" in
   first) UP_TO_MS=16; C0_ROUNDS=4 ;;
   new) UP_TO_MS=8; C0_ROUNDS=2 ;;
-  *) echo "usage: bash cloud/azure/stage0.sh first|new [earlier stage-0 folder with a passing shakedown]"
+  session) UP_TO_MS=8; C0_ROUNDS=2 ;;
+  *) echo "usage: bash cloud/azure/stage0.sh first|new|session [earlier stage-0 folder with a passing shakedown]"
      exit 2 ;;
 esac
 PROFILE="${AZ_PROFILE:-unknown}"
@@ -103,7 +109,7 @@ sudo python3 scripts/sched_settings.py read > "$DIR/settings.json" \
 design C0 "c0_$START" "${SEED}1" --up-to-ms "$UP_TO_MS" --rounds "$C0_ROUNDS" --loads "$LOAD_PCT"
 campaign "c0_$START"
 C0_QUEUES=(--queue "$DIR/c0_$START.csv")
-if [ "$KIND" = new ]; then
+if [ "$KIND" != first ]; then
   # Two rounds are enough on a quiet pair. On a noisier one the calibration can be too loosely
   # known, and only then, with nothing else wrong, two more rounds run and both stages are fitted.
   python3 scripts/delay_calibration.py fit "${C0_QUEUES[@]}" \
@@ -123,6 +129,12 @@ python3 scripts/delay_calibration.py fit "${C0_QUEUES[@]}" \
   --out "$DIR/calibration.json" 2>&1 | tee "$DIR/fit.txt"
 FIT=$?
 [ "$FIT" -le 1 ] || stop "the calibration could not be fitted; see $DIR/fit.txt"
+
+if [ "$KIND" = session ]; then
+  [ "$FIT" = 0 ] || stop "the calibration failed its gate; this session ends and the pair starts a new one. See $DIR/fit.txt"
+  log "CAMPAIGN_COMPLETE: the session's calibration passed on $PROFILE; its queues and files are in $DIR"
+  exit 0
+fi
 
 design B0 "b0_$START" "${SEED}2"
 campaign "b0_$START"

@@ -17,8 +17,11 @@ run as it ends, on the machine that ran it, so they hold when nobody is watching
            run_queue.py queues a copy, three attempts at most. Nothing a run measured can make it
            a repeat.
   stop     the instrument is in doubt: a message arrived before it was sent, or the "got it"
-           median moved by more than a quarter of the added delay from the session's zero-delay
-           median. The run is recorded as failed and the campaign stops.
+           median moved from the session's zero-delay median by more than a quarter of the added
+           delay and by more than the session's own got-it noise -- GOTIT_FLOOR_MS, the plan's
+           equivalence margin, or three times the scatter of its zero-delay runs, whichever is
+           larger. A brake below that noise would stop a session for standing still. The run is
+           recorded as failed and the campaign stops.
 
 `guard` reads the queue's ledger after every attempt and stops the campaign when attempts keep
 failing: the last three all failed, or more than a fifth of the last twenty did, once ten have
@@ -281,6 +284,12 @@ def never_negative_check(summary):
                    "%d message(s) arrived before they were sent" % negative)
 
 
+#: The brake on the got-it median never sits below the plan's own equivalence margin for it
+#: (P5c), nor below this many times the scatter the session's zero-delay runs showed.
+GOTIT_FLOOR_MS = 0.10
+GOTIT_NOISE_SHARE = 3.0
+
+
 def gotit_checks(summary, params, added_ms, calibration):
     """The run's "got it" median against its session's zero-delay median.
 
@@ -304,11 +313,15 @@ def gotit_checks(summary, params, added_ms, calibration):
     if why:
         return {"gotit_compared": outcome(False, None, "a zero-delay median and this run's", why)}
     shift = summary["gotit_median_ms"] - zero
-    limit = delay_calibration.GROSS_SHARE * abs(added_ms)
+    #: The brake clears the instrument's own noise as well as its share of the delay: a quarter of
+    #: a small delay is less than the got-it median moves between runs with nothing added.
+    noise = max(GOTIT_FLOOR_MS, GOTIT_NOISE_SHARE * (entry.get("gotit_zero_sd_ms") or 0.0))
+    limit = max(delay_calibration.GROSS_SHARE * abs(added_ms), noise)
     return {"gotit_steady": outcome(
         abs(shift) <= limit, shift, "within %.3f ms" % limit,
         "the got-it median moved %.3f ms, more than %.0f%% of the %.3f ms added"
-        % (shift, 100 * delay_calibration.GROSS_SHARE, added_ms))}
+        " and more than the %.3f ms this session's got-it moves by itself"
+        % (shift, 100 * delay_calibration.GROSS_SHARE, added_ms, noise))}
 
 
 def guarded(checks, name, compute):

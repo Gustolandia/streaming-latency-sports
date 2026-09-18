@@ -101,12 +101,13 @@ class TestP1TheCliffFollowsTheSlice:
     def test_one_slice_of_six_may_miss_the_band(self):
         runs = lw.campaign(slices=SIX, rounds=4, seed=1)
         found = lp.cliff_follows_slice(runs, 1.0, **QUICK)
-        assert "at least 5 of 6 slices" in found["rule"]
+        assert "at least 5 of the 6 slices this pair can reach" in found["rule"]
 
     def test_with_fewer_slices_every_one_must_be_inside(self):
         runs = lw.campaign(slices=(1.5, 3.0, 4.5), rounds=4, seed=1)
         found = lp.cliff_follows_slice(runs, 1.0, need_interval=False, **QUICK)
-        assert "at least 3 of 3 slices" in found["rule"] and found["confirmed"] is True
+        assert "at least 3 of the 3 slices this pair can reach" in found["rule"]
+        assert found["confirmed"] is True
         assert found["by_summary"]["free"]["p_value"] is None, "P9 asks for no interval"
 
     def test_a_campaign_with_one_slice_has_no_slope_to_read(self):
@@ -293,6 +294,50 @@ class TestP8Language:
         found = lp.language(runs, **QUICK)
         assert found["confirmed"] is False
         assert found["by_summary"]["free"]["java_cliff"] is None
+
+
+class TestTheSlicesAPairCanReach:
+    """A message cannot arrive sooner than the client's own zero-delay trip, and the plateau lives
+    at trips below the slice. On 18 September the first pair measured that floor at 1.964 ms for
+    Kafka, which leaves the 0.75 and 1.5 ms slices with no plateau to stand on."""
+
+    def campaign(self, slices=(0.75, 1.5, 2.25, 3.0, 4.5, 6.0), floor=2.0, spread=0.28):
+        runs = []
+        for slice_ms in slices:
+            part = lw.campaign(slices=(slice_ms,), rounds=4, seed=int(slice_ms * 100),
+                               spread=spread)
+            runs += [run for run in part if run["trip_ms"] >= floor]
+        return runs
+
+    def test_a_slice_needs_its_plateau_its_floor_and_most_of_its_cliff(self):
+        runs = lw.campaign(slices=(3.0,), rounds=2, seed=1, spread=0.05)
+        assert lp.testable(runs) == {3.0: True}
+        assert lp.testable([r for r in runs if r["point"] != "p09s"]) == {3.0: False}
+        assert lp.testable([r for r in runs if r["point"] != "f2sh"]) == {3.0: False}
+        assert lp.testable([r for r in runs if r["point"] != "c02h"]) == {3.0: True}, \
+            "three of the four trips across the cliff are enough"
+        assert lp.testable([r for r in runs if r["point"] not in ("c02h", "c04h")]) == {3.0: False}
+
+    def test_the_prediction_is_judged_on_the_reachable_slices_and_says_which_they_were(self):
+        found = lp.judge(self.campaign(), "P1", 1.0, draws=40, seed=1, grid=24)
+        said = found["by_summary"]["free"]
+        assert said["out_of_reach"] == [0.75, 1.5]
+        assert sorted(said["in_band"]) == [2.25, 3.0, 4.5, 6.0]
+        assert "at least 3 of the 4 slices this pair can reach" in found["rule"]
+        assert "out of reach: [0.75, 1.5]" in "\n".join(lp.lines("P1", found))
+
+    def test_too_few_reachable_slices_confirm_nothing(self):
+        """Three slices are not a dose-response, however well they behave."""
+        found = lp.judge(self.campaign(slices=(2.25, 3.0, 4.5), floor=5.0), "P1", 1.0,
+                         draws=40, seed=1, grid=24)
+        assert found["confirmed"] is False
+
+    def test_the_arm_pair_needs_two_and_every_one_of_them(self):
+        runs = self.campaign(slices=(1.5, 3.0, 4.5), floor=2.0)
+        found = lp.judge(runs, "P9", 1.0, draws=40, seed=1, grid=24)
+        said = found["by_summary"]["free"]
+        assert said["out_of_reach"] == [1.5] and sorted(said["in_band"]) == [3.0, 4.5]
+        assert "at least 2 of the 2 slices this pair can reach" in found["rule"]
 
 
 class TestTheAnchorTheCampaignsShare:

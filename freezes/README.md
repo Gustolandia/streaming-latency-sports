@@ -33,6 +33,7 @@ it covers.
 | [`01-experiment-plan/`](01-experiment-plan/) | 16 September 2026 | the law campaign on Azure: its predictions, campaigns, repeats rule and analysis, and how its runs are checked, stopped and kept |
 | [`02-experiment-plan/`](02-experiment-plan/) | 17 September 2026 | amends 01 after its first runs, which were stopped, and starts stage 0 again: the calibration known within 0.3 ms, the delay checked by the broker's own capture, the paper's Redis setting, M0 on bursty traffic, and runs protected from faults of the machines; prompted by results, as its first section says |
 | [`03-experiment-plan/`](03-experiment-plan/) | 18 September 2026 | amends 02 after its first shakedown: every judgement about the added delay is read from the broker's own capture, where the delay is applied, and the paths are recorded by ping, TCP and UDP rather than judged, because ping is not the path the messages take |
+| [`04-experiment-plan/`](04-experiment-plan/) | 18 September 2026 | amends 03 after stage 0 ran on all three pairs: a slice whose plateau lies below the client's own zero-delay trip is reported as out of reach and not run, and P1 and P9 are judged on the slices each pair can reach; the brake that stops a session on a got-it shift must clear that session's own zero-delay scatter, after a sound session was stopped by a brake set at 0.056 ms |
 
 ## Checking a freeze
 

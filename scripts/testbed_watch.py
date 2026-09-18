@@ -10,6 +10,8 @@ hosts file, its own machines, its own campaigns. It raises a flag when:
 
   IDLE     a driver is running, and so billing, with no campaign on it
   stuck    a campaign is running but nothing under ~/sbl has changed for STALE_MIN minutes
+  late     the run in progress has been going far longer than this campaign's runs take. Runs
+           take the same time to the second, so a late one is not slow, it is wrong
   stopped  a campaign stopped itself on a rule (a STOP_RULE line in its log): find the cause first
   complete a campaign finished: collect its runs (scripts/collect_runs.py), then start the next
   failed   new "[FAIL]" trials appeared in a campaign log since the previous cycle
@@ -60,12 +62,20 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import azure_testbed  # noqa: E402
+import spend  # noqa: E402
 
 HOSTS_ENV = os.path.join(azure_testbed.REPO, "cloud", "hosts.env")
 LOG_DIR = os.path.join(azure_testbed.REPO, "runs", "azure_watch")
 KEY = os.path.join("~", ".ssh", "azure_sbl")
 
 STALE_MIN = 20
+#: How long a run takes when nothing has gone wrong, until the queue itself says otherwise: 197
+#: runs on three machine pairs took 160 s each, with about ten more between one run and the next.
+RUN_SECONDS = 170
+#: A run is late when it passes this much of what its own campaign's runs have been taking, and
+#: LATE_FLOOR_S in any case, so that a quick campaign does not cry wolf.
+LATE_SHARE = 1.5
+LATE_FLOOR_S = 240
 CRAZY_TRIP_MS = 50.0
 FEW_MESSAGES = 100
 CRAZY_LOAD_POINTS = 15.0
@@ -111,9 +121,38 @@ if [ -n "$log" ]; then
   case "$outcome" in *STOP_RULE*) echo "stop_rule=$outcome" ;; esac
   echo "complete=$(printf '%s' "$outcome" | grep -c 'CAMPAIGN_COMPLETE')"
 fi
+#: What the queue says about time: how long the run in progress has been going, how long this
+#: campaign's finished runs have taken from one start to the next, and how many are left.
+TIMING='
+import csv, datetime, json, statistics, sys
+def when(text):
+    return datetime.datetime.strptime(text, "%Y-%m-%dT%H:%M:%SZ").replace(
+        tzinfo=datetime.timezone.utc)
+out = {}
+try:
+    rows = list(csv.DictReader(open(sys.argv[1], newline="", encoding="utf-8")))
+    now = datetime.datetime.now(datetime.timezone.utc)
+    started = sorted(when(r["started_utc"]) for r in rows if r["started_utc"])
+    cycles = [(b - a).total_seconds() for a, b in zip(started, started[1:])]
+    running = [r for r in rows if r["status"] == "running" and r["started_utc"]]
+    out["left"] = sum(1 for r in rows if r["status"] in ("queued", "running"))
+    out["done"] = sum(1 for r in rows if r["status"] == "done")
+    out["runs"] = len(rows)
+    if cycles:
+        out["cycle_s"] = statistics.median(cycles)
+    if running:
+        out["run_key"] = running[-1]["key"]
+        out["run_started"] = running[-1]["started_utc"]
+        out["run_age_s"] = (now - when(running[-1]["started_utc"])).total_seconds()
+except Exception as exc:
+    out["unreadable"] = type(exc).__name__
+print(json.dumps(out))
+'
+
 if [ -n "$queue" ]; then
   echo "queue=$queue"
   echo "progress=$(python3 scripts/run_queue.py report --queue "$queue" 2>/dev/null | head -n 1)"
+  echo "timing=$(python3 -c "$TIMING" "$queue" 2>/dev/null)"
 fi
 newest=$(ls -td runs/* runs/azure/*/* 2>/dev/null | head -1)
 [ -n "$newest" ] && echo "activity_age_s=$(( now - $(stat -c %Y "$newest") ))"
@@ -369,6 +408,59 @@ def run_line(run, numbers):
     return "run %s: %s" % (os.path.basename(str(run.get("run_dir", "?"))), ", ".join(parts))
 
 
+def timing(driver):
+    """What the driver said about time, as numbers, or {} when it said nothing readable."""
+    try:
+        found = json.loads(driver.get("timing") or "{}")
+    except ValueError:
+        return {}
+    return found if isinstance(found, dict) and "unreadable" not in found else {}
+
+
+def due_line(driver):
+    """One line on where the campaign has got to and when it is due, or None."""
+    found = timing(driver)
+    if not found.get("left"):
+        return None
+    cycle = found.get("cycle_s") or RUN_SECONDS
+    left_s = cycle * found["left"]
+    due = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=left_s)
+    going = found.get("run_age_s")
+    return ("queue: %d of %d done, %d left at %.0f s each, due %s UTC%s"
+            % (found.get("done", 0), found.get("runs", 0), found["left"], cycle,
+               due.strftime("%H:%M"),
+               "" if going is None else "; %s running %.1f min" % (found.get("run_key", "a run"),
+                                                                   going / 60)))
+
+
+def began_a_run(driver, state):
+    """(key, when it started) when the queue has begun a run since the last look, else None.
+
+    A run takes under three minutes and the watch looks every few, so most runs begin and end
+    between two looks; this catches the ones the watch is there for, and each is reported once.
+    """
+    found = timing(driver or {})
+    began = found.get("run_started")
+    if not began or began == state.get("run_started"):
+        return None
+    state["run_started"] = began
+    return found.get("run_key") or "a run", began
+
+
+def late_run(driver):
+    """The run in progress, when it has been going far longer than this campaign's runs take."""
+    found = timing(driver)
+    going, cycle = found.get("run_age_s"), found.get("cycle_s") or RUN_SECONDS
+    if going is None:
+        return None
+    limit = max(LATE_FLOOR_S, LATE_SHARE * cycle)
+    if going <= limit:
+        return None
+    return ("late: %s has been running %.1f minutes; this campaign's runs take %.0f s and the "
+            "limit is %.0f s" % (found.get("run_key", "the run in progress"), going / 60,
+                                 cycle, limit))
+
+
 def run_lines(driver):
     """A line for every run that finished since the last look."""
     numbers = {found.get("run_dir"): found for found in driver["numbers"]
@@ -387,6 +479,9 @@ def evaluate(driver, broker, previous_fails=None):
         if not campaign and (busy is None or busy < IDLE_BUSY_PCT):
             flags.append(("IDLE", "the machines are running with no campaign; stop them with "
                           "scripts/azure_testbed.py stop --yes"))
+        overdue = late_run(driver)
+        if campaign and overdue:
+            flags.append(("ALERT", overdue))
         activity = number(driver, "activity_age_s", int)
         if campaign and activity is not None and activity > STALE_MIN * 60:
             flags.append(("ALERT", "stuck: a campaign is running but nothing has changed for "
@@ -481,11 +576,19 @@ def cycle(hosts, spec, key, ssh, run, runner, state, stamp, window_min=15, lane=
                 flags.append(("ALERT", "unreachable: the %s does not answer over SSH (%s)%s"
                               % (role, err, "; Azure says: %s" % power if power else "")))
     hourly = sum(own["hourly_usd"][h["size"]] for _, h in machines)
+    #: Azure charges for a machine that is allocated, so a pair that answers is a pair being paid
+    #: for. One that does not answer is counted at nothing: the estimate stays low on purpose, and
+    #: `spend.py billed` reads what Azure actually charged.
+    state["hourly_usd"] = hourly if (driver is not None or broker is not None) else 0.0
+    state["began"] = began_a_run(driver, state)
     lines = ["%s  lane %s, profile %s, about $%.2f an hour while running%s"
              % (stamp, lane, profile, hourly,
                 ", commit %s" % state["commit"] if state.get("commit") else "")]
     if driver is not None:
         lines.append("  " + summary("driver", hosts["DRIVER_PUBLIC"], driver))
+        due = due_line(driver)
+        if due:
+            lines.append("  " + due)
         lines.append("  runs finished in the last %d min: %d" % (window_min, len(driver["runs"])))
         lines += ["  " + line for line in run_lines(driver)]
     if broker is not None:
@@ -546,6 +649,29 @@ def stop_idle(lane, hosts, spec, runner, state, idle, now, after_min):
              "(%s)" % (lane, idle_min, last))]
 
 
+def money_lines(lanes, hosts, states, ledger_path, credit_usd, now, status):
+    """Add this look's machine time to the ledger and say what has been spent, and at what run."""
+    running = {}
+    for name, _ in lanes:
+        hourly = states[name].get("hourly_usd")
+        if hourly:
+            profile = hosts[name]["AZ_PROFILE"]
+            running[profile] = running.get(profile, 0.0) + hourly
+    ledger = spend.track(spend.load(ledger_path), running, now)
+    spend.save(ledger, ledger_path)
+    status["spend"] = {"total_usd": round(ledger.get("total_usd", 0.0), 4),
+                       "credit_usd": credit_usd, "by_profile": ledger.get("by_profile", {})}
+    lines = ["  money: " + spend.line(ledger, credit_usd)]
+    for name, _ in lanes:
+        began = states[name].get("began")
+        if began:
+            had = spend.at(ledger, began[1])
+            lines.append("  money: lane %s began %s at %s, with about $%.2f spent by then"
+                         % (name, began[0], began[1],
+                            spend.total(ledger) if had is None else had))
+    return lines
+
+
 def parse_lane(text):
     """(name, hosts file) from NAME=HOSTS_FILE."""
     name, sep, path = text.partition("=")
@@ -572,6 +698,10 @@ def main(argv=None, run=subprocess.run, runner=None, sleep=time.sleep, clock=Non
     ap.add_argument("--once", action="store_true", help="one look; exit 1 on any ALERT")
     ap.add_argument("--cycles", type=int, default=0, help="stop after this many looks (0: never)")
     ap.add_argument("--log-dir", default=LOG_DIR)
+    ap.add_argument("--ledger", default=spend.LEDGER,
+                    help="where the machine time the watch has counted is kept")
+    ap.add_argument("--credit-usd", type=float, default=200.0,
+                    help="the credit the spending is measured against")
     args = ap.parse_args(argv)
     clock = clock or (lambda: datetime.datetime.now(datetime.timezone.utc))
     try:
@@ -608,6 +738,7 @@ def main(argv=None, run=subprocess.run, runner=None, sleep=time.sleep, clock=Non
                                          "commit": states[name].get("commit"),
                                          "queue": states[name].get("queue"),
                                          "flags": [list(flag) for flag in flags + stopped]}
+            lines += money_lines(lanes, hosts, states, args.ledger, args.credit_usd, now, status)
             together = cross_lane_flags(states)
             lines += ["  %s %s" % flag for flag in together]
             everything += together

@@ -7,6 +7,7 @@ answer is reported with what Azure says about it rather than silently left out.
 import datetime
 import io
 import json
+import pathlib
 import os
 import subprocess
 import sys
@@ -30,6 +31,12 @@ DRIVER_OK = BUSY + MACHINE + (
     "log_age_s=40\nactivity_age_s=30\nfails=0\nverdict_no=0\nrun=%s\n" % json.dumps(RUN_OK))
 BROKER_OK = BUSY + MACHINE + "docker=broker:running redis:running \n"
 STAMP = datetime.datetime(2026, 9, 14, 23, 0, tzinfo=datetime.timezone.utc)
+
+
+@pytest.fixture(autouse=True)
+def a_ledger_of_its_own(tmp_path, monkeypatch):
+    """No test reads or writes the repo's own spending ledger."""
+    monkeypatch.setattr(tw.spend, "LEDGER", str(tmp_path / "spend.json"))
 
 
 class Done:
@@ -376,13 +383,15 @@ class TestLanesAndVerdicts:
         hosts = {"DRIVER_PUBLIC": "4.223.79.212", "BROKER_PRIV": "10.1.1.21",
                  "AZ_PROFILE": "matched"}
         driver = DRIVER_OK + ("commit=abc1234\nqueue=runs/azure/queues/a1.csv\n"
-                              "progress=runs: queued 90, running 1, done 19, failed 1\n")
+                              "progress=runs: queued 90, running 1, done 19, failed 1\n"
+                              'timing={"done": 19, "runs": 110, "left": 91, "cycle_s": 166.0}\n')
         state = {}
         lines, _ = tw.cycle(hosts, spec, "k", "ssh", fake_run(driver=driver), None, state,
                             "stamp", lane="a")
         assert lines[0].startswith("stamp  lane a, profile matched,")
         assert lines[0].endswith(", commit abc1234")
         assert "queue runs/azure/queues/a1.csv: runs: queued 90" in "\n".join(lines)
+        assert "queue: 19 of 110 done, 91 left at 166 s each, due" in "\n".join(lines)
         assert state["commit"] == "abc1234" and state["queue"] == "runs/azure/queues/a1.csv"
 
     def test_a_second_pair_is_read_in_its_own_group(self):
@@ -456,6 +465,137 @@ class TestLanesAndVerdicts:
                              state, True, STAMP + datetime.timedelta(minutes=30), 20)
         assert found[0][0] == "ALERT" and fragment in found[0][1]
         assert "could not be stopped" in found[0][1]
+
+
+class TestTimeItTakes:
+    """Runs take the same time to the second, so a late run is not slow, it is wrong."""
+
+    @staticmethod
+    def driver(**timing):
+        return {"timing": json.dumps(timing) if timing else "", "campaign": "1",
+                "runs": [], "verdicts": [], "numbers": []}
+
+    def test_the_queue_says_where_it_is_and_when_it_is_due(self):
+        line = tw.due_line(self.driver(done=11, runs=56, left=45, cycle_s=166.0,
+                                       run_key="r012-C0-kafka", run_age_s=95.0))
+        assert "queue: 11 of 56 done, 45 left at 166 s each, due" in line
+        assert "r012-C0-kafka running 1.6 min" in line
+
+    def test_a_campaign_with_nothing_left_says_nothing(self):
+        assert tw.due_line(self.driver(done=56, runs=56, left=0)) is None
+        assert tw.due_line({"timing": ""}) is None
+
+    def test_a_queue_it_could_not_read_says_nothing(self):
+        assert tw.timing({"timing": "not json"}) == {}
+        assert tw.timing({"timing": json.dumps({"unreadable": "OSError"})}) == {}
+
+    def test_a_run_over_its_time_is_an_alert(self):
+        found = tw.evaluate(self.driver(left=40, cycle_s=166.0, run_key="r012",
+                                        run_age_s=600.0), None)
+        assert any(kind == "ALERT" and "late: r012 has been running 10.0 minutes" in text
+                   for kind, text in found)
+
+    def test_a_run_inside_its_time_is_not(self):
+        assert tw.late_run(self.driver(left=40, cycle_s=166.0, run_age_s=200.0)) is None
+
+    def test_a_quick_campaign_still_gets_the_floor(self):
+        """Four minutes, however short the runs, before anyone is told."""
+        assert tw.late_run(self.driver(left=9, cycle_s=20.0, run_age_s=200.0)) is None
+        assert "limit is 240 s" in tw.late_run(self.driver(left=9, cycle_s=20.0, run_age_s=300.0))
+
+    def test_without_a_cycle_it_uses_what_runs_take(self):
+        assert tw.late_run(self.driver(left=9, run_age_s=200.0)) is None
+        assert "take 170 s" in tw.late_run(self.driver(left=9, run_age_s=600.0))
+
+    def test_every_look_says_where_the_queue_is(self):
+        """cycle() prints it, so a person reading the log sees the campaign's progress."""
+        assert "due = due_line(driver)" in pathlib.Path(
+            "scripts/testbed_watch.py").read_text(encoding="utf-8")
+
+    def test_the_probe_reads_the_queue_with_a_reader_it_has_already_set(self):
+        """A shell variable used above where it is set is empty, and the queue would say nothing."""
+        assert tw.DRIVER_PROBE.index("TIMING='") < tw.DRIVER_PROBE.index('python3 -c "$TIMING"')
+
+    def test_the_probe_asks_the_queue_for_its_timing(self):
+        assert 'echo "timing=$(python3 -c "$TIMING" "$queue"' in tw.DRIVER_PROBE
+        assert "out[\"run_age_s\"]" in tw.DRIVER_PROBE
+
+
+class TestMoney:
+    """Azure bills a day late, so the watch keeps its own count of the machine time it sees."""
+
+    @staticmethod
+    def state(**timing):
+        return {"timing": json.dumps(timing) if timing else ""}
+
+    def test_a_run_the_queue_has_just_begun_is_reported_once(self):
+        state = {}
+        driver = self.state(run_key="r012-C0-kafka", run_started="2026-09-18T12:03:00Z")
+        assert tw.began_a_run(driver, state) == ("r012-C0-kafka", "2026-09-18T12:03:00Z")
+        assert tw.began_a_run(driver, state) is None, "the same run is not begun twice"
+
+    def test_a_queue_that_names_no_run_begins_nothing(self):
+        assert tw.began_a_run({}, {}) is None
+        assert tw.began_a_run(None, {}) is None
+
+    def test_a_run_without_a_key_is_still_reported(self):
+        assert tw.began_a_run(self.state(run_started="2026-09-18T12:03:00Z"), {})[0] == "a run"
+
+    def lanes(self, tmp_path, **states):
+        hosts = {"a": {"AZ_PROFILE": "matched"}, "arm": {"AZ_PROFILE": "arm"}}
+        status = {}
+        lines = tw.money_lines([("a", None), ("arm", None)], hosts, states,
+                               str(tmp_path / "spend.json"), 200.0, STAMP, status)
+        return lines, status
+
+    def test_the_first_look_starts_the_count(self, tmp_path):
+        lines, status = self.lanes(tmp_path, a={"hourly_usd": 0.48}, arm={"hourly_usd": 0.37})
+        assert lines == ["  money: spent about $0.00 of $200; since 2026-09-14"]
+        assert status["spend"]["credit_usd"] == 200.0
+
+    def test_the_second_look_pays_for_the_time_between(self, tmp_path):
+        path = str(tmp_path / "spend.json")
+        hosts = {"a": {"AZ_PROFILE": "matched"}}
+        states = {"a": {"hourly_usd": 0.48}}
+        tw.money_lines([("a", None)], hosts, states, path, 200.0,
+                       STAMP - datetime.timedelta(minutes=10), {})
+        lines = tw.money_lines([("a", None)], hosts, states, path, 200.0, STAMP, {})
+        assert "spent about $0.08 of $200" in lines[0] and "matched $0.08" in lines[0]
+
+    def test_a_pair_that_does_not_answer_is_counted_at_nothing(self, tmp_path):
+        lines, status = self.lanes(tmp_path, a={"hourly_usd": 0.0}, arm={})
+        assert status["spend"]["by_profile"] == {} and "of $200" in lines[0]
+
+    def test_a_run_that_began_is_told_what_had_been_spent(self, tmp_path):
+        path = str(tmp_path / "spend.json")
+        hosts = {"a": {"AZ_PROFILE": "matched"}}
+        states = {"a": {"hourly_usd": 0.48}}
+        tw.money_lines([("a", None)], hosts, states, path, 200.0,
+                       STAMP - datetime.timedelta(minutes=10), {})
+        states["a"]["began"] = ("r012-C0-kafka", STAMP.strftime("%Y-%m-%dT%H:%M:%SZ"))
+        lines = tw.money_lines([("a", None)], hosts, states, path, 200.0, STAMP, {})
+        assert lines[1] == ("  money: lane a began r012-C0-kafka at 2026-09-14T23:00:00Z, "
+                            "with about $0.08 spent by then")
+
+    def test_a_run_older_than_the_ledger_takes_everything_spent(self, tmp_path):
+        """A run that began before the first look still knows the bill the ledger was seeded with."""
+        path = tmp_path / "spend.json"
+        path.write_text(json.dumps({"before_usd": 8.49}), encoding="utf-8")
+        states = {"a": {"hourly_usd": 0.48, "began": ("r001", "2020-01-01T00:00:00Z")},
+                  "arm": {}}
+        lines, _ = self.lanes(tmp_path, **states)
+        assert "with about $8.49 spent by then" in lines[1]
+
+    def test_the_look_counts_the_money_and_the_probe_asks_when_a_run_began(self, hosts_file,
+                                                                          tmp_path):
+        out = io.StringIO()
+        code = tw.main(["--hosts", hosts_file, "--log-dir", str(tmp_path / "log"),
+                        "--ledger", str(tmp_path / "spend.json"), "--once"],
+                       out=out, clock=lambda: STAMP, run=fake_run())
+        assert code == 0 and "money: spent about $0.00 of $200" in out.getvalue()
+        assert "out[\"run_started\"]" in tw.DRIVER_PROBE
+        with open(tmp_path / "log" / "status.json", encoding="utf-8") as fh:
+            assert json.load(fh)["spend"]["total_usd"] == 0.0
 
 
 class TestRunNumbers:

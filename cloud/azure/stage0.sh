@@ -39,10 +39,13 @@ set -o pipefail
 
 KIND="${1:-}"
 EARLIER="${2:-}"
+# A campaign can only place a trip the calibration reached: the longest step has to cover the
+# longest trip the campaign needs, which for A1's 6 ms slice is twice 6 plus a tick. UP_TO_MS in
+# the environment says so; the defaults are what stage 0 itself needs.
 case "$KIND" in
-  first) UP_TO_MS=16; C0_ROUNDS=4 ;;
-  new) UP_TO_MS=8; C0_ROUNDS=2 ;;
-  session) UP_TO_MS=8; C0_ROUNDS=2 ;;
+  first) UP_TO_MS="${UP_TO_MS:-16}"; C0_ROUNDS=4 ;;
+  new) UP_TO_MS="${UP_TO_MS:-8}"; C0_ROUNDS=2 ;;
+  session) UP_TO_MS="${UP_TO_MS:-8}"; C0_ROUNDS=2 ;;
   *) echo "usage: bash cloud/azure/stage0.sh first|new|session [earlier stage-0 folder with a passing shakedown]"
      exit 2 ;;
 esac

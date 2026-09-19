@@ -34,8 +34,13 @@ import random
 
 #: Where a campaign puts its runs, as law_design.py names them: two on the plateau, four across
 #: the cliff, two past it.
+#: The design points, as multiples of the slice and of the tick. This is the same table as
+#: law_design.POINT_FORM and a test holds the two to each other: a point the design can place and
+#: the world cannot simulate is a campaign whose rounds cannot be worked out, which is how c05h --
+#: the middle of the cliff, which A7 reads -- was missing here.
 POINTS = {"p05s": (0.5, 0.0), "p09s": (0.9, 0.0), "c02h": (1.0, 0.2), "c04h": (1.0, 0.4),
-          "c06h": (1.0, 0.6), "c08h": (1.0, 0.8), "f15h": (1.0, 1.5), "f2sh": (2.0, 2.0)}
+          "c05h": (1.0, 0.5), "c06h": (1.0, 0.6), "c08h": (1.0, 0.8), "f15h": (1.0, 1.5),
+          "f2sh": (2.0, 2.0)}
 #: What the first pair's pilot measured, and what the plan fixes for shifts between sittings.
 SPREAD = 0.18
 TRIP_SHIFT_MS = 0.1

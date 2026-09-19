@@ -141,6 +141,23 @@ class TestACampaignThatSwitchesCpusOff:
         assert design["slice_by_core"] == {"2": 1.4, "8": 2.8}
 
 
+class TestTheWorldCanSimulateEveryCampaignTheDesignCanPlace:
+    """The design's table of points and the world's are the same table written twice. When they
+    drift, a campaign can be designed and run but its rounds cannot be worked out: A7 reads the
+    middle of the cliff, c05h, which the design had and the world did not."""
+
+    def test_every_point_the_design_places_the_world_knows(self):
+        import law_design
+        assert law_world.POINTS == law_design.POINT_FORM
+
+    @pytest.mark.parametrize("block", ["A1", "A2", "A3", "A4", "A5", "A7", "P0"])
+    def test_every_blocks_points_can_be_simulated(self, block):
+        import law_design
+        points = law_design.BLOCKS[block].get("points") or law_design.EIGHT
+        runs = law_world.campaign(rounds=1, points=list(points))
+        assert sorted(set(run["point"] for run in runs)) == sorted(points)
+
+
 class TestWhereTheNumberIsFixedInstead:
 
     @pytest.mark.parametrize("campaign,rounds", [("C0", 2), ("S0-1", 4), ("B0", 3), ("P0", 5),

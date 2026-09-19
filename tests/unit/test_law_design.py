@@ -107,6 +107,30 @@ class TestBlocks:
         assert setups["A7-kafka-l75-s3000-c05h-rt"]["priority"] is True
         assert setups["A7-kafka-l75-s3000-c05h"]["priority"] is False
 
+    def test_a_session_can_calibrate_at_the_core_count_it_will_run_at(self):
+        """A5 gives each core count its own session with its own C0: the delay's effect on the
+        trip is measured on the machine as the campaign will run it, and a machine with six of
+        its CPUs switched off is not the one the 8-CPU calibration was taken on."""
+        setups, _ = ld.make_setups("C0", 1.0, cpus=2)
+        assert all(setup["cpus"] == 2 for setup in setups)
+        assert setups[0]["id"] == "C0-kafka-l75-c2-d0a", "and the id says so"
+
+    def test_a_calibration_with_no_core_count_asked_for_is_as_it_was(self):
+        setups, _ = ld.make_setups("C0", 1.0)
+        assert all(setup["cpus"] is None for setup in setups)
+        assert setups[0]["id"] == "C0-kafka-l75-d0a"
+
+    def test_the_baseline_can_be_measured_at_a_core_count_too(self):
+        setups, _ = ld.make_setups("B0", 1.0, cpus=4)
+        assert all(setup["cpus"] == 4 for setup in setups)
+
+    @pytest.mark.parametrize("block", ["A1", "A3", "A5", "P0"])
+    def test_a_block_that_places_its_trips_refuses_a_core_count(self, block):
+        """A5's core counts belong to its own design, one slice each; a core count handed to it
+        from outside would mean two answers to the same question."""
+        with pytest.raises(ValueError, match="only B0 and C0"):
+            ld.make_setups(block, 1.0, BASELINE, AZURE, cpus=2)
+
     def test_load_is_tested_at_one_slice(self):
         """D4-4: A3 runs at three loads, at the 3 ms slice and 6 trips, in two campaigns, one per
         backend. That is 18 setups a campaign, and the plan's 216 runs over six rounds."""

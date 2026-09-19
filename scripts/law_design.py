@@ -169,10 +169,16 @@ def _placer(baseline, calibration, backend, load):
             lambda target: delay_calibration.delay_for(entry, target), "calibration")
 
 
-def _unplaced(block, backend, load, tick_ms, up_to_ms):
-    """B0's single no-delay setup, or C0's delay staircase, for one backend at one load."""
+def _unplaced(block, backend, load, tick_ms, up_to_ms, cpus=None):
+    """B0's single no-delay setup, or C0's delay staircase, for one backend at one load.
+
+    `cpus` switches the machine down to that many CPUs for these runs. A5 gives each core count
+    its own session with its own calibration, because the delay's effect on the trip is measured
+    on the machine as the campaign will run it, and a machine with six of its CPUs switched off
+    is not the machine the 8-CPU calibration was taken on.
+    """
     common = {"block": block, "backend": backend, "load_pct": load, "slice_ns": None,
-              "predicted_slice_ns": None, "cpus": None, "tick_ms": tick_ms,
+              "predicted_slice_ns": None, "cpus": cpus, "tick_ms": tick_ms,
               "target_trip_ms": None, "baseline_trip_ms": None, "priority": False,
               "trace_half": False}
     if block == "B0":
@@ -180,7 +186,8 @@ def _unplaced(block, backend, load, tick_ms, up_to_ms):
     else:
         steps = [("d0a", 0.0), ("d0b", 0.0)] + [("d%d" % round(s * 1000), s)
                                                for s in c0_steps(up_to_ms)]
-    return [dict(common, id="%s-%s-l%d-%s" % (block, backend, load, label), point=label,
+    at = "-c%d" % cpus if cpus else ""
+    return [dict(common, id="%s-%s-l%d%s-%s" % (block, backend, load, at, label), point=label,
                  delay_ms=delay) for label, delay in steps]
 
 
@@ -208,15 +215,19 @@ def _wanted(block, spec, slices, backends):
 
 
 def make_setups(block, tick_ms, baseline=None, settings=None, calibration=None, loads=None,
-                up_to_ms=8.0, slices=None, backends=None):
+                up_to_ms=8.0, slices=None, backends=None, cpus=None):
     """(setups, unreachable) for one campaign of a block. `settings` is sched_settings' read of
     the machine, and `calibration` is delay_calibration.py's fit, which places the trips when it
-    is given. `slices` and `backends` take one campaign's share of the block."""
+    is given. `slices` and `backends` take one campaign's share of the block, and `cpus` runs a
+    session's instrument campaign at the core count the campaign after it will run at."""
     settings = settings or {}
     spec = BLOCKS[block]
     if loads and block not in UNPLACED:
         raise ValueError("block %s fixes its own loads; only %s take other loads"
                          % (block, " and ".join(UNPLACED)))
+    if cpus and block not in UNPLACED:
+        raise ValueError("block %s takes its core counts from its own design; only %s are run "
+                         "at a core count given to them" % (block, " and ".join(UNPLACED)))
     slices, backends = _wanted(block, spec, slices, backends)
     if slices:
         spec = dict(spec, slices=slices)
@@ -224,7 +235,7 @@ def make_setups(block, tick_ms, baseline=None, settings=None, calibration=None, 
     for backend in backends:
         for load in loads or spec["loads"]:
             if block in UNPLACED:
-                setups += _unplaced(block, backend, load, tick_ms, up_to_ms)
+                setups += _unplaced(block, backend, load, tick_ms, up_to_ms, cpus)
                 continue
             base, delay_for, placed_by = _placer(baseline, calibration, backend, load)
             for slice_ms, hand_set, cpus, predicted in _slices(block, spec, settings):
@@ -289,7 +300,7 @@ def testable(block, settings, baseline=None, calibration=None, backends=BACKENDS
 
 
 def design(block, settings, baseline, rounds, seed, calibration=None, loads=None, up_to_ms=8.0,
-           first_round=1, slices=None, backends=None, anchor=None):
+           first_round=1, slices=None, backends=None, anchor=None, cpus=None):
     """The run_queue design for one campaign of a block, with what it was made from."""
     if block not in BLOCKS:
         raise ValueError("no block %r; the blocks are %s" % (block, ", ".join(sorted(BLOCKS))))
@@ -315,7 +326,7 @@ def design(block, settings, baseline, rounds, seed, calibration=None, loads=None
                          "campaign of a block shares the anchor" % (anchor, ", ".join(
                              "%g" % s for s in slices)))
     setups, unreachable = make_setups(block, tick, baseline, settings, calibration, loads,
-                                      up_to_ms, slices, backends)
+                                      up_to_ms, slices, backends, cpus)
     return {"block": block, "seed": seed, "rounds": rounds, "first_round": first_round,
             "tick_ms": tick, "slices": list(slices) if slices else None,
             "backends": list(backends) if backends else list(BACKENDS),
@@ -381,6 +392,9 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise):
                    help="run one backend in this campaign; may be given twice")
     p.add_argument("--anchor-slice", type=float, default=None,
                    help="the slice every campaign of the block shares, for example 3")
+    p.add_argument("--cpus", type=int, default=None,
+                   help="run B0 or C0 at this many CPUs, for a session that opens a campaign at "
+                        "a reduced core count (A5)")
     p.add_argument("--first-round", type=int, default=1,
                    help="C0's second stage carries on from the first stage's rounds")
     p.add_argument("--seed", type=int, required=True)
@@ -454,7 +468,7 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise):
         made = design(args.block, settings.get("settings", settings), baseline, args.rounds,
                       args.seed, calibration, loads, args.up_to_ms, args.first_round,
                       [float(s) for s in args.slices.split(",")] if args.slices else None,
-                      args.backend or None, args.anchor_slice)
+                      args.backend or None, args.anchor_slice, args.cpus)
         with open(args.out, "w", encoding="utf-8") as fh:
             fh.write(json.dumps(made, indent=2, sort_keys=True) + "\n")
         runs = len(made["setups"]) * made["rounds"]

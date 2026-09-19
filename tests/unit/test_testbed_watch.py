@@ -566,6 +566,27 @@ class TestMoney:
         lines, status = self.lanes(tmp_path, a={"hourly_usd": 0.0}, arm={})
         assert status["spend"]["by_profile"] == {} and "of $200" in lines[0]
 
+    def test_a_run_that_begins_is_also_told_how_far_along_the_work_is(self, tmp_path,
+                                                                       monkeypatch):
+        """The other question a person watching wants answered, on the same event."""
+        monkeypatch.setattr(tw.progress, "counted", lambda *a, **k: {"A1, the slice": 296})
+        states = {"a": {"hourly_usd": 0.48, "began": ("r012", "2026-09-14T23:00:00Z"),
+                        "queue": "runs/azure/stage1/matched_x/a1_20260918T194622Z.csv",
+                        "timing": {"done": 41}},
+                  "arm": {}}
+        lines, _ = self.lanes(tmp_path, **states)
+        assert any("progress: 337 of 3,590 runs the plan asks for" in line for line in lines)
+
+    def test_the_campaign_running_now_is_counted_once(self, monkeypatch):
+        monkeypatch.setattr(tw.progress, "counted", lambda *a, **k: {"A1, the slice": 92})
+        said = tw.far_along({"a": {"queue": "runs/azure/stage1/m/a1_two.csv",
+                                   "timing": {"done": 41}}})
+        assert "133 of 3,590" in said
+
+    def test_a_lane_with_no_queue_adds_nothing(self, monkeypatch):
+        monkeypatch.setattr(tw.progress, "counted", lambda *a, **k: {"A1, the slice": 92})
+        assert "92 of 3,590" in tw.far_along({"a": {}, "b": {"queue": "", "timing": {}}})
+
     def test_a_run_that_began_is_told_what_had_been_spent(self, tmp_path):
         path = str(tmp_path / "spend.json")
         hosts = {"a": {"AZ_PROFILE": "matched"}}

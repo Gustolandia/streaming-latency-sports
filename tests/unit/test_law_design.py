@@ -107,6 +107,24 @@ class TestBlocks:
         assert setups["A7-kafka-l75-s3000-c05h-rt"]["priority"] is True
         assert setups["A7-kafka-l75-s3000-c05h"]["priority"] is False
 
+    def test_a_campaign_can_take_one_of_the_blocks_core_counts(self):
+        """A5 runs a session per core count (D4-6), so a campaign is one core count's share of
+        the block, the way an A1 campaign is a share of its slices. Sixteen setups, eight trips
+        on each backend: three sessions of a calibration and those setups is the plan's 264."""
+        setups, unreachable = ld.make_setups("A5", 1.0, None, AZURE, CALIBRATION, cores=[2])
+        assert len(setups) + len(unreachable) == 16
+        assert set(setup["cpus"] for setup in setups) == {2}
+        assert 3 * (24 + 16 * 4) == 264, "the plan's own count for A5"
+
+    def test_a_block_of_slices_has_no_core_counts_to_share(self):
+        with pytest.raises(ValueError, match="runs slices, not core counts"):
+            ld.make_setups("A1", 1.0, BASELINE, AZURE, cores=[2])
+
+    def test_a_core_count_the_block_does_not_have_is_refused(self):
+        """Asking for 3 CPUs would be a new condition, and the plan fixes the conditions."""
+        with pytest.raises(ValueError, match="has no core count 3"):
+            ld.make_setups("A5", 1.0, None, AZURE, CALIBRATION, cores=[3])
+
     def test_a_session_can_calibrate_at_the_core_count_it_will_run_at(self):
         """A5 gives each core count its own session with its own C0: the delay's effect on the
         trip is measured on the machine as the campaign will run it, and a machine with six of

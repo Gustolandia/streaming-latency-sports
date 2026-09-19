@@ -191,13 +191,21 @@ def _unplaced(block, backend, load, tick_ms, up_to_ms, cpus=None):
                  delay_ms=delay) for label, delay in steps]
 
 
-def _wanted(block, spec, slices, backends):
-    """The slices and backends of one campaign of a block, checked against what the block fixes.
+def _wanted(block, spec, slices, backends, cores=None):
+    """The slices, backends and core counts of one campaign, checked against what the block fixes.
 
     A campaign is a sitting, not a block: the plan runs A1 as six of them, three per backend, each
-    including the anchor slice. Asking for a slice the block does not have would be a new
-    condition, which the plan fixes and this script may not invent.
+    including the anchor slice, and A5 as one session per core count. Asking for a condition the
+    block does not have would be a new one, which the plan fixes and this script may not invent.
     """
+    if cores:
+        if "cpus" not in spec:
+            raise ValueError("block %s runs slices, not core counts of its own" % block)
+        unknown = [c for c in cores if c not in spec["cpus"]]
+        if unknown:
+            raise ValueError("block %s has no core count %s; its core counts are %s"
+                             % (block, ", ".join(str(c) for c in unknown),
+                                ", ".join(str(c) for c in spec["cpus"])))
     if slices:
         if "slices" not in spec:
             raise ValueError("block %s runs core counts, not slices of its own" % block)
@@ -211,11 +219,12 @@ def _wanted(block, spec, slices, backends):
         if unknown:
             raise ValueError("no backend %s; the backends are %s"
                              % (", ".join(unknown), " and ".join(BACKENDS)))
-    return (tuple(slices) if slices else None, tuple(backends) if backends else BACKENDS)
+    return (tuple(slices) if slices else None, tuple(backends) if backends else BACKENDS,
+            tuple(cores) if cores else None)
 
 
 def make_setups(block, tick_ms, baseline=None, settings=None, calibration=None, loads=None,
-                up_to_ms=8.0, slices=None, backends=None, cpus=None):
+                up_to_ms=8.0, slices=None, backends=None, cpus=None, cores=None):
     """(setups, unreachable) for one campaign of a block. `settings` is sched_settings' read of
     the machine, and `calibration` is delay_calibration.py's fit, which places the trips when it
     is given. `slices` and `backends` take one campaign's share of the block, and `cpus` runs a
@@ -228,9 +237,11 @@ def make_setups(block, tick_ms, baseline=None, settings=None, calibration=None, 
     if cpus and block not in UNPLACED:
         raise ValueError("block %s takes its core counts from its own design; only %s are run "
                          "at a core count given to them" % (block, " and ".join(UNPLACED)))
-    slices, backends = _wanted(block, spec, slices, backends)
+    slices, backends, cores = _wanted(block, spec, slices, backends, cores)
     if slices:
         spec = dict(spec, slices=slices)
+    if cores:
+        spec = dict(spec, cpus=cores)
     setups, unreachable = [], []
     for backend in backends:
         for load in loads or spec["loads"]:
@@ -300,7 +311,7 @@ def testable(block, settings, baseline=None, calibration=None, backends=BACKENDS
 
 
 def design(block, settings, baseline, rounds, seed, calibration=None, loads=None, up_to_ms=8.0,
-           first_round=1, slices=None, backends=None, anchor=None, cpus=None):
+           first_round=1, slices=None, backends=None, anchor=None, cpus=None, cores=None):
     """The run_queue design for one campaign of a block, with what it was made from."""
     if block not in BLOCKS:
         raise ValueError("no block %r; the blocks are %s" % (block, ", ".join(sorted(BLOCKS))))
@@ -326,7 +337,7 @@ def design(block, settings, baseline, rounds, seed, calibration=None, loads=None
                          "campaign of a block shares the anchor" % (anchor, ", ".join(
                              "%g" % s for s in slices)))
     setups, unreachable = make_setups(block, tick, baseline, settings, calibration, loads,
-                                      up_to_ms, slices, backends, cpus)
+                                      up_to_ms, slices, backends, cpus, cores)
     return {"block": block, "seed": seed, "rounds": rounds, "first_round": first_round,
             "tick_ms": tick, "slices": list(slices) if slices else None,
             "backends": list(backends) if backends else list(BACKENDS),
@@ -392,6 +403,9 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise):
                    help="run one backend in this campaign; may be given twice")
     p.add_argument("--anchor-slice", type=float, default=None,
                    help="the slice every campaign of the block shares, for example 3")
+    p.add_argument("--cores", default="",
+                   help="this campaign's share of the block's core counts, for example 2; A5 "
+                        "runs one session per core count")
     p.add_argument("--cpus", type=int, default=None,
                    help="run B0 or C0 at this many CPUs, for a session that opens a campaign at "
                         "a reduced core count (A5)")
@@ -468,7 +482,8 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise):
         made = design(args.block, settings.get("settings", settings), baseline, args.rounds,
                       args.seed, calibration, loads, args.up_to_ms, args.first_round,
                       [float(s) for s in args.slices.split(",")] if args.slices else None,
-                      args.backend or None, args.anchor_slice, args.cpus)
+                      args.backend or None, args.anchor_slice, args.cpus,
+                      [int(c) for c in args.cores.split(",")] if args.cores else None)
         with open(args.out, "w", encoding="utf-8") as fh:
             fh.write(json.dumps(made, indent=2, sort_keys=True) + "\n")
         runs = len(made["setups"]) * made["rounds"]

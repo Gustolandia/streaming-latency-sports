@@ -24,7 +24,8 @@ What a made-up campaign is built from, as the plan fixes it:
 The worlds where a prediction is false are the ones its falsifier names, and no others:
   cliff_fixed          the cliff sits at the same trip whatever the slice (against P1, P9)
   width_fixed          the fall is the same width whatever the tick (against P2, P2b, P2c)
-  cliff_moves_with_load  the halfway point moves 0.5 ms between 50% and 88% load (against P3)
+  cliff_moves_with_load  the halfway point moves 0.5 ms between 50% and 88% load (against P3a)
+  plateau_flat_with_load the plateau is the same height at every load (against P3b)
   no_priority_effect   go-first changes nothing (against P4)
   cliff_fixed_by_cores the cliff stays put as CPUs are switched off (against P7)
   python_twice_java    Python's rate is twice Java's (against P8)
@@ -47,7 +48,7 @@ TRIP_SHIFT_MS = 0.1
 PLATEAU_SHIFT = 0.20
 #: The worlds this module can build.
 WORLDS = ("law", "cliff_fixed", "width_fixed", "cliff_moves_with_load", "no_priority_effect",
-          "cliff_fixed_by_cores", "python_twice_java")
+          "cliff_fixed_by_cores", "plateau_flat_with_load", "python_twice_java")
 
 
 def trip_of(point, slice_ms, tick_ms):
@@ -134,7 +135,10 @@ def _run(rng, round_, slice_ms, tick_ms, backend, load_pct, priority, cpus, lang
     cliff = _cliff(world, slice_ms, fixed_at, cpus, load_pct, loads)
     width = width_ms if width_ms is not None else (
         tick_ms if world != "width_fixed" else 1.0)
-    height = plateau * plateau_shift * (1.0 + 0.004 * (load_pct - 75))
+    # The law has the plateau rise with load: 0.4% of it per point of load, so a plateau of
+    # 30% at 75% load stands at 27% at 50% and 31.6% at 88%. Where P3b is false it does not move.
+    rise = 1.0 if world == "plateau_flat_with_load" else (1.0 + 0.004 * (load_pct - 75))
+    height = plateau * plateau_shift * rise
     if priority and world != "no_priority_effect":
         height = height / 10.0
     if language == "python" and world == "python_twice_java":

@@ -55,7 +55,8 @@ STEP_MS = 0.2
 SEED = 20260918
 #: The world in which each prediction is false, as its falsifier states it.
 FALSIFIERS = {"P1": "cliff_fixed", "P9": "cliff_fixed", "P2": "width_fixed",
-              "P2c": "width_fixed", "P2d": "cliff_fixed", "P3": "cliff_moves_with_load",
+              "P2c": "width_fixed", "P2d": "cliff_fixed",
+              "P3a": "cliff_moves_with_load", "P3b": "plateau_flat_with_load",
               "P4": "no_priority_effect", "P7": "cliff_fixed_by_cores",
               "P8": "python_twice_java"}
 #: Where no prediction is tested, the plan fixes the number of rounds instead.

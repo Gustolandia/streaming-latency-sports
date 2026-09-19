@@ -89,6 +89,12 @@ BLOCKS = {
     # slice. Two slices would be 120 runs where the plan asks for 72.
     "A7": {"slices": (3.0,), "points": ("p09s", "c05h", "f15h"), "loads": (75,),
            "priorities": (False, True)},
+    # D4-9: Kafka only, our Python client against Kafka's official Java one, at the 3 ms slice and
+    # A7's three trips, ordinary and go-first, with the got-it note taken both where it can be
+    # taken. That is 24 setups, and the plan's 240 runs over two campaigns is 24 at five rounds.
+    "A8": {"slices": (3.0,), "points": ("p09s", "c05h", "f15h"), "loads": (75,),
+           "priorities": (False, True), "languages": ("python", "java"),
+           "ack_stamps": ("callback", "inline"), "backends": ("kafka",)},
 }
 BACKENDS = ("kafka", "redis")
 #: Blocks that plan no trip: they need neither a baseline nor a calibration, and they may take
@@ -214,12 +220,15 @@ def _wanted(block, spec, slices, backends, cores=None):
             raise ValueError("block %s has no slice %s; its slices are %s"
                              % (block, ", ".join("%g" % s for s in unknown),
                                 ", ".join("%g" % s for s in spec["slices"])))
+    # A block may fix its own backends: A8 is Kafka only, because the Java client it compares ours
+    # with is Kafka's. Where it does, that is both the default and the limit.
+    allowed = tuple(spec.get("backends") or BACKENDS)
     if backends:
-        unknown = [b for b in backends if b not in BACKENDS]
+        unknown = [b for b in backends if b not in allowed]
         if unknown:
-            raise ValueError("no backend %s; the backends are %s"
-                             % (", ".join(unknown), " and ".join(BACKENDS)))
-    return (tuple(slices) if slices else None, tuple(backends) if backends else BACKENDS,
+            raise ValueError("block %s does not run %s; it runs %s"
+                             % (block, ", ".join(unknown), " and ".join(allowed)))
+    return (tuple(slices) if slices else None, tuple(backends) if backends else allowed,
             tuple(cores) if cores else None)
 
 
@@ -255,18 +264,27 @@ def make_setups(block, tick_ms, baseline=None, settings=None, calibration=None, 
                     target = trip_ms(point, slice_ms, tick_ms)
                     delay = delay_for(target)
                     for priority in spec.get("priorities", (False,)):
-                        setup = {
-                            "id": "%s-%s-l%d-%s-%s%s" % (block, backend, load, label, point,
-                                                        "-rt" if priority else ""),
-                            "block": block, "backend": backend, "load_pct": load,
-                            "slice_ns": predicted if hand_set else None,
-                            "predicted_slice_ns": predicted, "cpus": cpus, "tick_ms": tick_ms,
-                            "point": point, "target_trip_ms": round(target, 4),
-                            "baseline_trip_ms": round(base, 4), "delay_ms": delay,
-                            "placed_by": placed_by, "priority": priority,
-                            "trace_half": bool(spec.get("trace_half")),
-                        }
-                        (setups if delay is not None else unreachable).append(setup)
+                      for language in spec.get("languages", (None,)):
+                        for ack_stamp in spec.get("ack_stamps", (None,)):
+                            # A8 varies the client and where the got-it note is taken; every other
+                            # block leaves both unset and the id is the one it always was.
+                            marks = "".join(part for part in (
+                                "-rt" if priority else "",
+                                "-%s" % language if language else "",
+                                "-%s" % ack_stamp if ack_stamp else "") if part)
+                            setup = {
+                                "id": "%s-%s-l%d-%s-%s%s" % (block, backend, load, label, point,
+                                                             marks),
+                                "block": block, "backend": backend, "load_pct": load,
+                                "slice_ns": predicted if hand_set else None,
+                                "predicted_slice_ns": predicted, "cpus": cpus, "tick_ms": tick_ms,
+                                "point": point, "target_trip_ms": round(target, 4),
+                                "baseline_trip_ms": round(base, 4), "delay_ms": delay,
+                                "placed_by": placed_by, "priority": priority,
+                                "language": language, "ack_stamp": ack_stamp,
+                                "trace_half": bool(spec.get("trace_half")),
+                            }
+                            (setups if delay is not None else unreachable).append(setup)
     return setups, unreachable
 
 

@@ -1,0 +1,75 @@
+{
+  "audited_utc": "2026-09-19",
+  "protocol": "freeze 04, Section 'Experiments for Mode 2', T5",
+  "terms": ["negative latency", "negative", "clock skew", "resolution", "rounding",
+            "millisecond", "nanosecond", "latency 0"],
+  "tools": [
+    {
+      "tool": "emqtt-bench",
+      "repository": "https://github.com/emqx/emqtt-bench",
+      "version_seen": "tag 0.6.3, commit cb86b18848da17cae1024e1d06f7e43f8f6691a1, 2026-05-23",
+      "what_it_times": "send to receive, end to end through the broker, across two separate OS processes: the publisher stamps the payload and the subscriber subtracts. Publisher and subscriber are separate subcommands run as separate commands, and the README's own examples bind them to different addresses, so any offset between two hosts' clocks lands directly in the reported latency. Separately, four connection-phase durations are measured within one process and form no part of the end-to-end figure",
+      "documentation": {
+        "clock_and_resolution": {
+          "finding": "Wall clock at millisecond resolution on both sides. It uses os:system_time(millisecond), which reads the operating system's clock directly: neither erlang:monotonic_time, which is immune to NTP, nor erlang:system_time, which Erlang smooths by default. NTP steps and slews therefore pass into the measurement uncorrected and undetected. The tool does use a monotonic clock, but only for publish scheduling and for stats bookkeeping, never for the latency it reports. Microsecond and nanosecond timestamps exist in the codebase as payload template placeholders, but they are write-only: nothing ever parses them back, and the only latency-computing path is the fixed 8-byte millisecond header.",
+          "evidence": [
+            "src/emqtt_bench.erl:1431",
+            "src/emqtt_bench.erl:1455-1457",
+            "src/emqtt_bench.erl:811",
+            "src/emqtt_bench.erl:889-898",
+            "https://github.com/emqx/emqtt-bench/issues/244"
+          ]
+        },
+        "odd_values": {
+          "finding": "Handled two contradictory ways on adjacent lines of one function, and the printed average is worse than either. The counter is guarded -- `E2ELatency > 0 andalso inc_counter(...)`, with a comment saying why -- while the histogram_observe on the very next line is unguarded, so a zero or negative sample enters the lowest bucket, which is 1 ms, and a negative decrements the histogram's running sum. The console average then divides the guarded sum by the count of ALL received messages, so every discarded sample stays in the denominator and is effectively counted as exactly 0 ms, biasing the printed average downward; integer division truncates it again to a whole millisecond. This split is a regression rather than a design: a commit of January 2025 removed the guard that had previously protected the histogram too, so results are version-dependent. Nothing is counted separately, labelled or warned about. A related crash exists on payload shape rather than value: a payload shorter than the declared header kills the client process, while any payload of eight or more arbitrary bytes is silently reinterpreted as a timestamp and yields a meaningless latency with no diagnostic.",
+          "evidence": [
+            "src/emqtt_bench.erl:1432-1435",
+            "src/emqtt_bench.erl:488-494",
+            "src/emqtt_bench.erl:1420-1422",
+            "https://github.com/emqx/emqtt-bench/commit/ff8b3b9d950342aa749241a34ac3ba020834e17f",
+            "https://github.com/emqx/emqtt-bench/commit/a24962ef3da4a287c9212cf510fe84f97e2016ad",
+            "src/emqtt_bench.erl:1426-1445"
+          ]
+        },
+        "warnings": {
+          "finding": "none found. A sweep of the README, changelog, docker notes, topic specification and all of src for clock, skew, NTP, scheduler, contention, jitter, accuracy, precision and caveat returned no warning about clock skew between the publisher's and subscriber's hosts, about millisecond quantisation, or about contention distorting measurements. The only 'scheduler' hit sizes the worker pool. The tool does carry one scheduling-pressure signal, a counter incremented when the publisher misses its own send interval, but it is documented nowhere, and a user opened an issue asking what it means precisely because it is not in the README.",
+          "evidence": [
+            "README.md, 361 lines, swept",
+            "src/emqtt_bench.erl:343",
+            "src/emqtt_bench.erl:830",
+            "https://github.com/emqx/emqtt-bench/issues/307"
+          ]
+        }
+      },
+      "precision_class": {"class": "low", "why": "both the publisher's stamp and the subscriber's subtraction are millisecond-resolution, so every sample is quantised to 1 ms before any aggregation; the printed average is truncated again by integer division, and the histogram's finest bucket is 1 ms"},
+      "plan_said": "send to receive; Low; keeps all",
+      "audit_found": "the class and what it times hold exactly. 'Keeps all' holds for the histogram and only since a guard was removed in January 2025; the counter drops non-positive values, and the printed average keeps them in its denominator while excluding them from its numerator, which is neither keeping nor dropping but silently counting them as zero",
+      "prediction": "held in part",
+      "searches": [
+        {"term": "negative latency", "where": "github issues", "hits": 0},
+        {"term": "negative", "where": "github issues", "hits": 0},
+        {"term": "clock skew", "where": "github issues", "hits": 0},
+        {"term": "resolution", "where": "github issues", "hits": 0},
+        {"term": "rounding", "where": "github issues", "hits": 0},
+        {"term": "millisecond", "where": "github issues", "hits": 2},
+        {"term": "nanosecond", "where": "github issues", "hits": 0},
+        {"term": "latency 0", "where": "github issues", "hits": 3}
+      ],
+      "reports": [
+        {"title": "Mismatched payload makes emqttbench crash", "url": "https://github.com/emqx/emqtt-bench/issues/244", "opened": "2024-03-21", "outcome": "closed without a fix", "why_relevant": "the latency header is an unvalidated, untagged raw prefix. If the two sides disagree about it, the subscriber either dies or silently reinterprets arbitrary bytes as a timestamp and emits a meaningless latency with no diagnostic. A maintainer answered that it is designed to crash. The thread also holds the clearest statement anywhere that the encoding is a millisecond epoch timestamp, which is the resolution limit"},
+        {"title": "Track maximum publish latency?", "url": "https://github.com/emqx/emqtt-bench/issues/313", "opened": "2025-12-16", "outcome": "closed without a fix", "why_relevant": "a user reports that the reported average hides per-message spikes and asks for maxima; a maintainer confirms only an average reaches the console, and the alternative offered has a floor of 1 ms. The maintainer's own pasted metrics in the closing comment show the two accumulators disagreeing, which is the observable signature of the guarded counter beside the unguarded histogram"},
+        {"title": "Just a few questions", "url": "https://github.com/emqx/emqtt-bench/issues/307", "opened": "2025-11-18", "outcome": "closed without a fix", "why_relevant": "the overrun counter is documented nowhere, and the answer confirms that at the default inflight of one the publisher's achieved rate is throttled by acknowledgement round trips, so the offered load departs silently from what was configured. It also records that stalls are not separated from latency"}
+      ],
+      "checked_here": [
+        "src/emqtt_bench.erl: `E2ELatency = os:system_time(millisecond) - TS`, the guarded counter `E2ELatency > 0 andalso inc_counter(...)` with its explanatory comment, and the unguarded `histogram_observe(...)` on the line below. Read back from the tool's own source.",
+        "the printed average: `Recv = CurrentRecv - LastRecv` over all received messages, and `avg=~wms` computed as `(CurVal - LastVal) div Recv`, so the numerator excludes the samples the denominator counts. Read back from the tool's own source."
+      ],
+      "not_determined": [
+        "the tool was not built or run: no Erlang toolchain here. Every finding is from the source at tag 0.6.3 and from the tracker",
+        "the cause of the numeric gap between the two accumulators in the maintainer's own scrape. The structural asymmetry is a code fact; the gap is an observation, not a diagnosis",
+        "the clock behind the connection-phase histograms, which come from a dependency that was not read. It does not affect the end-to-end path"
+      ],
+      "version_dependence": "the zero and negative handling is not static. The histogram guard was present from the feature's introduction and removed on 2025-01-20, first shipping in tag 0.4.31. A run on 0.4.30 or earlier silently discards non-positive samples from the histogram; a run from 0.4.31 to 0.6.3 admits them into the lowest bucket and into the sum. The console average has treated them as zero in the numerator while keeping them in the denominator throughout. Any published result from this tool is therefore version-dependent in a way nothing in its output records"
+    }
+  ]
+}

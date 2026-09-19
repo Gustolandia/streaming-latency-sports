@@ -51,6 +51,11 @@ case "$KIND" in
 esac
 PROFILE="${AZ_PROFILE:-unknown}"
 LOAD_PCT="${LOAD_PCT:-75}"
+# The load the session itself runs at, and the loads its calibration has to cover, are not the
+# same thing. A3 runs at 50, 75 and 88% and a campaign is placed from the calibration, so that
+# calibration needs all three (D4-4); the shakedown before it is one measurement at one load, and
+# handing it a list is how this session stopped itself on 19 September.
+C0_LOADS="${C0_LOADS:-$LOAD_PCT}"
 # A session that opens a campaign at a reduced core count calibrates at that core count: the
 # delay's effect on the trip is measured on the machine as the campaign will run it (A5, D4-6).
 CPUS_ARG=()
@@ -114,7 +119,7 @@ sudo python3 scripts/sched_settings.py read > "$DIR/settings.json" \
   || stop "the scheduler settings could not be read"
 
 design C0 "c0_$START" "${SEED}1" --up-to-ms "$UP_TO_MS" --rounds "$C0_ROUNDS" \
-  --loads "$LOAD_PCT" "${CPUS_ARG[@]}"
+  --loads "$C0_LOADS" "${CPUS_ARG[@]}"
 campaign "c0_$START"
 C0_QUEUES=(--queue "$DIR/c0_$START.csv")
 if [ "$KIND" != first ]; then
@@ -127,7 +132,7 @@ if [ "$KIND" != first ]; then
   if python3 scripts/delay_calibration.py needs-rounds \
       --calibration "$DIR/calibration_first_stage.json"; then
     design C0 "c0b_$START" "${SEED}4" --up-to-ms "$UP_TO_MS" --rounds 2 --first-round 3 \
-      --loads "$LOAD_PCT" "${CPUS_ARG[@]}"
+      --loads "$C0_LOADS" "${CPUS_ARG[@]}"
     campaign "c0b_$START"
     C0_QUEUES+=(--queue "$DIR/c0b_$START.csv")
   fi

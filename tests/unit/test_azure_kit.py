@@ -330,3 +330,17 @@ def test_a_session_given_no_core_count_asks_for_none():
     code = (KIT / "stage0.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
     assert "CPUS_ARG=()" in code
     assert code.index("CPUS_ARG=()") < code.index('CPUS_ARG=(--cpus "$CPUS")')
+
+
+def test_the_load_a_session_runs_at_and_the_loads_it_calibrates_for_are_separate():
+    """A3 is placed from a calibration covering 50, 75 and 88% (D4-4), but the shakedown before
+    it is one measurement at one load. On 19 September a session was given the three loads for
+    both and stopped itself: pilot_checks reads --load-pct as a single number."""
+    code = (KIT / "stage0.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
+    assert 'C0_LOADS="${C0_LOADS:-$LOAD_PCT}"' in code, "the calibration's loads default to the one"
+    shakedown = [line for line in code.splitlines() if "--load-pct" in line]
+    assert shakedown and all('"$LOAD_PCT"' in line for line in shakedown), \
+        "the shakedown takes the session's own load, never a list"
+    calibrations = [line for line in code.splitlines() if "--loads" in line]
+    assert len(calibrations) == 2 and all('"$C0_LOADS"' in line for line in calibrations), \
+        "both stages of the calibration take the loads a campaign will need"

@@ -99,13 +99,22 @@ def rounds_for(prediction, design, trials=TRIALS, draws=DRAWS, grid=GRID, seed=S
                            grid, seed + 500000, tick_ms, step_ms)
         tried.append({"rounds": rounds, "power": power, "false_confirm": wrongly})
         if power >= POWER and wrongly <= FALSE_CONFIRM:
-            return _answer(prediction, rounds, tried, False, trials, draws, grid, seed, step_ms)
-    return _answer(prediction, ceiling, tried, True, trials, draws, grid, seed, step_ms)
+            return _answer(prediction, rounds, tried, False, trials, draws, grid, seed, step_ms,
+                           design)
+    return _answer(prediction, ceiling, tried, True, trials, draws, grid, seed, step_ms, design)
 
 
-def _answer(prediction, rounds, tried, underpowered, trials, draws, grid, seed, step_ms=STEP_MS):
+def _answer(prediction, rounds, tried, underpowered, trials, draws, grid, seed, step_ms=STEP_MS,
+            design=None):
+    """The answer, with the world it was reached in.
+
+    The rounds a campaign runs are written into that campaign's own log before it runs, saying
+    they came from the spread this pair measured. The design is recorded here so that claim can
+    be checked afterwards against the numbers the simulation actually used.
+    """
     return {"prediction": prediction, "rounds": rounds, "underpowered": underpowered,
             "tried": tried, "asked_of_it": {"power": POWER, "false_confirm": FALSE_CONFIRM},
+            "design": dict(design or {}),
             "settings": {"trials": trials, "draws": draws, "grid": grid, "seed": seed,
                          "step_ms": step_ms}}
 
@@ -134,6 +143,9 @@ def lines(found):
                % (100 * POWER, 100 * FALSE_CONFIRM, found["settings"]["trials"],
                   found["settings"]["draws"], found["settings"].get("step_ms", STEP_MS),
                   found["settings"]["seed"]))
+    spread = (found.get("design") or {}).get("spread")
+    if spread is not None:
+        out.append("  in a world where a run varies by %.3f on the log of the rate" % spread)
     return out
 
 
@@ -146,6 +158,12 @@ def design_from(args):
         design["loads"] = tuple(int(load) for load in args.loads.split(","))
     if args.cores:
         design["cores"] = tuple(int(core) for core in args.cores.split(","))
+    if args.slice_by_core:
+        # A5 switches CPUs off and takes the slice the kernel's rule then gives, so each core
+        # count has one slice. Simulating the cross would make a campaign three times the size.
+        design["slice_by_core"] = dict(
+            (int(cores), float(slice_ms))
+            for cores, slice_ms in (pair.split("=") for pair in args.slice_by_core.split(",")))
     if args.priorities:
         design["priorities"] = (False, True)
     if args.languages:
@@ -165,6 +183,9 @@ def main(argv=None, out=None):
     p.add_argument("--tick-ms", type=float, default=1.0)
     p.add_argument("--loads", default="")
     p.add_argument("--cores", default="")
+    p.add_argument("--slice-by-core", default="",
+                   help="the slice each core count gives, as 2=1.4,4=2.1,8=2.8; the campaign "
+                        "then walks those pairs instead of crossing slices with core counts")
     p.add_argument("--priorities", action="store_true")
     p.add_argument("--languages", action="store_true")
     p.add_argument("--plateau", type=float, default=0.30)

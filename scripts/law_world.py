@@ -74,33 +74,41 @@ def _cliff(world, slice_ms, fixed_at, cpus, load_pct, loads):
 def campaign(slices=(3.0,), rounds=4, tick_ms=1.0, plateau=0.30, floor=0.01, spread=SPREAD,
              backends=("kafka",), loads=(75,), points=None, priorities=(False,), cores=(None,),
              languages=(None,), world="law", seed=0, fixed_at=3.0, width_ms=None,
-             session_shift=False, python_share=1.0):
+             session_shift=False, python_share=1.0, slice_by_core=None):
     """A campaign's runs, made up in the world named.
 
     Every run carries what the analysis reads: the trip it actually had, the share of its messages
     that arrived before they were sent, and the setup it belonged to.
+
+    Slices and core counts usually cross: every slice is run at every core count. A5 is not like
+    that. It switches CPUs off and takes whatever slice the kernel's own rule then gives, so each
+    core count has one slice and no other. `slice_by_core` is {cores: the slice that follows},
+    and where it is given the campaign walks those pairs instead of crossing them; a campaign
+    simulated as a cross would be three times the size of the one that will be run.
     """
     if world not in WORLDS:
         raise ValueError("no such world: %s; the worlds here are %s" % (world, ", ".join(WORLDS)))
     rng = random.Random(seed)
     points = points or list(POINTS)
+    conditions = ([(slice_ms, cpus) for cpus, slice_ms in sorted(slice_by_core.items())]
+                  if slice_by_core else
+                  [(slice_ms, cpus) for slice_ms in slices for cpus in cores])
     runs = []
     for round_ in range(1, rounds + 1):
         trip_shift, plateau_shift = 0.0, 1.0
         if session_shift:
             trip_shift = rng.gauss(0.0, TRIP_SHIFT_MS)
             plateau_shift = math.exp(rng.gauss(0.0, PLATEAU_SHIFT))
-        for slice_ms in slices:
+        for slice_ms, cpus in conditions:
             for backend in backends:
                 for load_pct in loads:
                     for priority in priorities:
-                        for cpus in cores:
-                            for language in languages:
-                                runs.append(_run(
-                                    rng, round_, slice_ms, tick_ms, backend, load_pct, priority,
-                                    cpus, language, points, world, plateau, floor, spread,
-                                    fixed_at, width_ms, trip_shift, plateau_shift, loads,
-                                    python_share))
+                        for language in languages:
+                            runs.append(_run(
+                                rng, round_, slice_ms, tick_ms, backend, load_pct, priority,
+                                cpus, language, points, world, plateau, floor, spread,
+                                fixed_at, width_ms, trip_shift, plateau_shift, loads,
+                                python_share))
     return [run for group in runs for run in group]
 
 

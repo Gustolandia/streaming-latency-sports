@@ -16,6 +16,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__)))), "scripts"))
 
+import law_world  # noqa: E402
 import rounds_rule as rr  # noqa: E402
 
 #: Few campaigns, few resamplings, a coarse grid: enough to exercise the rule, quick enough to run.
@@ -61,6 +62,17 @@ class TestTheRuleItself:
                                      "step_ms": rr.STEP_MS}
         assert found["asked_of_it"] == {"power": 0.8, "false_confirm": 0.05}
 
+    def test_it_records_the_world_it_simulated(self):
+        """A campaign's log says its rounds came from the spread its pair measured. The answer
+        has to carry that spread, or the claim cannot be checked afterwards."""
+        found = rr.rounds_for("P1", dict(DESIGN, spread=0.284), **TINY)
+        assert found["design"]["spread"] == 0.284
+        assert found["design"]["slices"] == DESIGN["slices"]
+
+    def test_an_underpowered_answer_records_it_too(self):
+        found = rr.rounds_for("P1", dict(DESIGN, plateau=0.011, spread=0.6), steps=(4,), **TINY)
+        assert found["underpowered"] and found["design"]["spread"] == 0.6
+
     def test_a_prediction_with_no_falsifier_named_is_refused(self):
         with pytest.raises(ValueError, match="no falsifier named for P6"):
             rr.rounds_for("P6", DESIGN, **TINY)
@@ -68,6 +80,43 @@ class TestTheRuleItself:
     @pytest.mark.parametrize("prediction,world", sorted(rr.FALSIFIERS.items()))
     def test_every_falsifier_names_a_world_that_exists(self, prediction, world):
         assert world in __import__("law_world").WORLDS
+
+
+class TestACampaignThatSwitchesCpusOff:
+    """A5 takes whatever slice the kernel's rule gives at each core count, so the two do not
+    cross: simulating the cross would make a campaign three times the one that will be run."""
+
+    PAIRS = {2: 1.4, 4: 2.1, 8: 2.8}
+
+    def conditions(self, runs):
+        return sorted(set((run["cpus"], run["slice_ms"]) for run in runs))
+
+    def test_each_core_count_has_the_one_slice_that_follows_it(self):
+        runs = law_world.campaign(rounds=1, points=["p09s"], slice_by_core=self.PAIRS)
+        assert self.conditions(runs) == [(2, 1.4), (4, 2.1), (8, 2.8)]
+
+    def test_the_slices_it_is_also_given_are_not_crossed_in(self):
+        runs = law_world.campaign(rounds=1, points=["p09s"], slices=(3.0, 6.0),
+                                  cores=(2, 4, 8), slice_by_core=self.PAIRS)
+        assert len(self.conditions(runs)) == 3, "three conditions, not nine"
+
+    def test_without_it_slices_and_core_counts_still_cross(self):
+        runs = law_world.campaign(rounds=1, points=["p09s"], slices=(3.0, 6.0), cores=(2, 8))
+        assert self.conditions(runs) == [(2, 3.0), (2, 6.0), (8, 3.0), (8, 6.0)]
+
+    def test_the_rule_reads_it_from_the_command_line(self):
+        args = rr.main(["for", "--prediction", "P7", "--slice-by-core", "2=1.4,4=2.1,8=2.8",
+                        "--steps", "4", "--trials", "1", "--draws", "10", "--grid", "12"],
+                       out=io.StringIO())
+        assert args == 0
+
+    def test_what_it_simulated_is_recorded_with_the_answer(self, tmp_path):
+        where = tmp_path / "a5.json"
+        rr.main(["for", "--prediction", "P7", "--slice-by-core", "2=1.4,8=2.8", "--steps", "4",
+                 "--trials", "1", "--draws", "10", "--grid", "12", "--out", str(where)],
+                out=io.StringIO())
+        design = json.loads(where.read_text(encoding="utf-8"))["design"]
+        assert design["slice_by_core"] == {"2": 1.4, "8": 2.8}
 
 
 class TestWhereTheNumberIsFixedInstead:
@@ -96,6 +145,15 @@ class TestHowItReads:
         flat = dict(DESIGN, plateau=0.011, spread=0.6)
         said = "\n".join(rr.lines(rr.rounds_for("P1", flat, steps=(4,), **TINY)))
         assert "reported as underpowered" in said
+
+    def test_it_names_the_spread_the_rounds_were_reached_at(self):
+        said = "\n".join(rr.lines(rr.rounds_for("P1", dict(DESIGN, spread=0.284), **TINY)))
+        assert "a run varies by 0.284 on the log of the rate" in said
+
+    def test_an_answer_from_before_the_design_was_recorded_still_reads(self):
+        found = rr.rounds_for("P1", DESIGN, **TINY)
+        found.pop("design")
+        assert "varies by" not in "\n".join(rr.lines(found))
 
     def test_a_fixed_number_reads_in_one_line(self):
         assert rr.lines(rr.fixed_rounds("B0")) == [

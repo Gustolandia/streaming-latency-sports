@@ -71,6 +71,12 @@ DELAY_TOLERANCE_MS = 0.05
 #: and its value.
 CLIENT_SETTINGS = {"kafka": ("producer.log", "max_inflight", 64),
                    "redis": ("consumer.log", "ack_batch", 200)}
+#: Except where the setup itself asks for something else. A8 takes the got-it note two ways, and
+#: taking it inline forces one request in flight: above one, the blocking wait resolves an older
+#: event and the stamp would belong to a different message, so both clients refuse. A run that
+#: asked for inline and then reported 64 would be the fault this check exists to catch, and one
+#: that asked for inline and reported 1 is doing as it was told (D4-9).
+INLINE_MAX_INFLIGHT = 1
 #: Where each side's Tcp counters are logged, by file-name prefix.
 TCP_SIDES = {"driver": "", "receiver": "receiver_", "broker": "broker_"}
 #: The guard: failed attempts in a row, and the share failed among the most recent ones.
@@ -216,9 +222,11 @@ def delay_by_ping_ms(run_dir):
         return None
 
 
-def client_check(run_dir, backend):
-    """The client ran with the campaign's setting, as its own log line states it."""
+def client_check(run_dir, backend, ack_stamp=None):
+    """The client ran with the setting this setup asked for, as its own log line states it."""
     log_name, key, wanted = CLIENT_SETTINGS[backend]
+    if backend == "kafka" and ack_stamp == "inline":
+        wanted = INLINE_MAX_INFLIGHT
     found = None
     pattern = re.compile(r"CONFIG effective .*\b%s=(\d+)" % key)
     with open(os.path.join(run_dir, log_name), encoding="utf-8", errors="replace") as fh:
@@ -370,7 +378,8 @@ def evaluate(run_dir, rate, duration, warmup_s, calibration=None,
     window = (sent_after[0], sent_after[-1]) if sent_after else (cutoff, cutoff)
     guarded(checks, "load", lambda: load_check(run_dir, float(params["load_pct"]), *window))
     guarded(checks, "settings", lambda: settings_check(run_dir))
-    guarded(checks, "client", lambda: client_check(run_dir, params["backend"]))
+    guarded(checks, "client",
+            lambda: client_check(run_dir, params["backend"], params.get("ack_stamp")))
     added = None
     try:
         checks["delay"], added = delay_check(run_dir, float(params["delay_ms"]))

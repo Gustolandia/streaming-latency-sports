@@ -37,6 +37,21 @@ CALIBRATION = {
 }
 
 
+#: What a session that calibrated twice gives: one fit per client, because the delay's effect on
+#: the trip belongs to the client (D4-9). The Java figures are the Python ones shifted, which is
+#: the point -- if they were identical the block would not need two.
+BY_CLIENT = {
+    "python": {"kafka": {"75": {"model": "line", "intercept_ms": 2.2, "slope": 0.89,
+                                "gate": {"ok": True},
+                                "steps": [[0.0, 2.2], [1.0, 3.09], [2.0, 3.98], [4.0, 5.76],
+                                          [8.0, 9.32]]}}},
+    "java": {"kafka": {"75": {"model": "line", "intercept_ms": 2.35, "slope": 0.94,
+                              "gate": {"ok": True},
+                              "steps": [[0.0, 2.35], [1.0, 3.29], [2.0, 4.23], [4.0, 6.11],
+                                        [8.0, 9.87]]}}},
+}
+
+
 def by_id(setups):
     return {s["id"]: s for s in setups}
 
@@ -167,6 +182,62 @@ class TestBlocks:
         assert set(s["language"] for s in setups) == {"python", "java"}
         assert set(s["ack_stamp"] for s in setups) == {"callback", "inline"}
         assert 24 * 5 * 2 == 240, "the plan's own count for A8"
+
+    def test_each_client_places_its_trips_from_its_own_calibration(self):
+        """D4-9: the delay's effect on the trip belongs to the client. Two clients aiming at one
+        target trip therefore need two different delays to get there."""
+        setups, unreachable = ld.make_setups("A8", 1.0, None, AZURE, BY_CLIENT)
+        assert len(setups) == 24 and not unreachable
+        found = by_id(setups)
+        python = found["A8-kafka-l75-s3000-c05h-python-callback"]
+        java = found["A8-kafka-l75-s3000-c05h-java-callback"]
+        assert python["target_trip_ms"] == java["target_trip_ms"], "the same trip is aimed at"
+        assert python["delay_ms"] != java["delay_ms"], "and a different delay gets there"
+        assert python["baseline_trip_ms"] != java["baseline_trip_ms"]
+        assert python["placed_by"] == "calibration"
+
+    def test_one_calibration_for_both_clients_is_refused(self):
+        """Placing one client's trips from the other's would put every one of them in the wrong
+        place, and the difference would look like the comparison A8 exists to make."""
+        one = BY_CLIENT["python"]
+        with pytest.raises(ValueError, match="each client's trips from that client's own"):
+            ld.make_setups("A8", 1.0, None, AZURE, one)
+
+    def test_a_trip_can_be_out_of_reach_for_one_client_and_not_the_other(self):
+        """Reachability is a property of the client's own floor, so it is decided per client."""
+        higher = {"python": BY_CLIENT["python"],
+                  "java": {"kafka": {"75": dict(BY_CLIENT["java"]["kafka"]["75"],
+                                                intercept_ms=4.2,
+                                                steps=[[0.0, 4.2], [1.0, 5.15], [2.0, 6.10],
+                                                       [4.0, 8.0], [8.0, 11.8]])}}}
+        setups, unreachable = ld.make_setups("A8", 1.0, None, AZURE, higher)
+        out = [u["id"] for u in unreachable]
+        assert out and all("-java-" in i for i in out), out
+        assert all("-python-" in s["id"] or "-java-" in s["id"] for s in setups)
+
+    def test_a_session_can_calibrate_once_per_client(self):
+        """A8 gives each client its own calibration, so the session runs C0 twice and each run
+        says which client took it."""
+        for client in ("python", "java"):
+            setups, _ = ld.make_setups("C0", 1.0, language=client, backends=["kafka"])
+            assert all(s["language"] == client for s in setups)
+            assert setups[0]["id"] == "C0-kafka-l75-%s-d0a" % client
+
+    def test_a_calibration_with_no_client_named_is_as_it_was(self):
+        setups, _ = ld.make_setups("C0", 1.0, backends=["kafka"])
+        assert all(s["language"] is None for s in setups)
+        assert setups[0]["id"] == "C0-kafka-l75-d0a"
+
+    @pytest.mark.parametrize("block", ["A1", "A7", "A8"])
+    def test_a_block_that_places_its_trips_refuses_a_client_from_outside(self, block):
+        """A8 names its own clients; one handed in from outside would mean two answers to the
+        same question, as a core count handed to A5 would."""
+        with pytest.raises(ValueError, match="only B0 and C0 are run as one client"):
+            ld.make_setups(block, 1.0, BASELINE, AZURE, language="java")
+
+    def test_a_block_with_no_clients_takes_the_calibration_as_it_always_did(self):
+        setups, _ = ld.make_setups("A7", 1.0, None, AZURE, CALIBRATION)
+        assert setups and all(s["placed_by"] == "calibration" for s in setups)
 
     def test_the_client_block_refuses_the_backend_it_does_not_run(self):
         with pytest.raises(ValueError, match="A8 does not run redis"):

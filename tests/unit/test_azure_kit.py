@@ -344,3 +344,51 @@ def test_the_load_a_session_runs_at_and_the_loads_it_calibrates_for_are_separate
     calibrations = [line for line in code.splitlines() if "--loads" in line]
     assert len(calibrations) == 2 and all('"$C0_LOADS"' in line for line in calibrations), \
         "both stages of the calibration take the loads a campaign will need"
+
+
+def test_the_runner_can_swap_the_client_and_nothing_else():
+    """A8 compares our Python client with Kafka's official Java one (D4-9). Everything around the
+    client has to stay identical or the block compares two harnesses, so there is one script with
+    one dispatch rather than two scripts that can drift apart."""
+    code = (REPO / "scripts" / "run_kafka_trial.sh").read_text(encoding="utf-8")
+    assert 'CLIENT="python"' in code, "the client defaults to the one every other block uses"
+    assert '-CLIENT) CLIENT="$2"' in code and '-ACK_STAMP) ACK_STAMP="$2"' in code
+    # One plan, one topic, one wrapping, one metadata block, one TTI computation: the only thing
+    # the dispatch changes is which program sends and which receives.
+    assert code.count('if [ "$CLIENT" = java ]; then') == 2, \
+        "the consumer and the producer, and nothing else forks on the client"
+    assert 'if [ "$CLIENT" = java ] && [ ! -d harness/java/out ]; then' in code, \
+        "and one guard, which is a refusal before the run rather than a fork inside it"
+    assert code.count('"$PY" scripts/compute_tti.py') == 1, \
+        "the trips are computed once, by the same code, whichever client produced them"
+    assert code.count("meta.json") == 1, "and one record of what ran"
+
+
+def test_the_java_client_is_refused_before_a_run_when_it_is_not_built():
+    """Failing here costs nothing; failing after the run costs the run."""
+    code = (REPO / "scripts" / "run_kafka_trial.sh").read_text(encoding="utf-8")
+    assert "harness/java/out is not built" in code
+    assert code.index("is not built") < code.index("starting consumer"), \
+        "the refusal comes before anything is started"
+
+
+def test_where_the_got_it_note_is_taken_reaches_both_clients_the_same_way():
+    code = (REPO / "scripts" / "run_kafka_trial.sh").read_text(encoding="utf-8")
+    assert 'PRODUCER_EXTRA="$PRODUCER_EXTRA --ack-stamp $ACK_STAMP"' in code, \
+        "one option, named the same in each client, rather than two spellings"
+
+
+def test_the_campaign_hands_the_client_and_the_note_to_the_runner():
+    code = (KIT / "campaign.sh").read_text(encoding="utf-8")
+    assert '"CLIENT": p.get("language") or ""' in code
+    assert '"ACK_STAMP": p.get("ack_stamp") or ""' in code
+    # An empty value must add no argument at all, so every block that names no client is launched
+    # exactly as it was before A8 existed.
+    assert '[ -n "${CLIENT:-}" ] && client_args+=(-CLIENT "$CLIENT")' in code
+    assert '"${client_args[@]}"' in code
+
+
+def test_a_leftover_java_client_is_reaped_like_the_python_ones():
+    code = (KIT / "campaign.sh").read_text(encoding="utf-8")
+    assert 'pkill -f "LawProducer|LawConsumer"' in code, \
+        "a leftover client would send into the next run's topic"

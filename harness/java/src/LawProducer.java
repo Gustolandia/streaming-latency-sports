@@ -92,8 +92,11 @@ public final class LawProducer {
                 .thenComparingLong(e -> e.rowIndex));
 
         long clockResolutionNs = LawClock.demandUsableResolution("the producer");
-        System.out.println("CONFIG client=java effective max_inflight=" + maxInflight
-                + " ack_stamp=" + ackStamp + " clock_resolution_ns=" + clockResolutionNs);
+        // Worded as the Python client words it, because run_integrity.py reads this line to check
+        // the run used the setting the campaign asked for, and it must read both clients alike.
+        System.out.println("CONFIG effective max_inflight=" + maxInflight
+                + " ack_stamp=" + ackStamp + " client=java"
+                + " clock_resolution_ns=" + clockResolutionNs);
         System.out.flush();
 
         Properties props = new Properties();

@@ -298,6 +298,34 @@ class TestTheClientSettings:
         assert evaluate(run)["checks"]["client"] == {
             "ok": True, "value": 200, "limit": "ack_batch=200 in consumer.log", "why": ""}
 
+    def test_a_run_that_takes_the_note_inline_is_expected_to_run_one_in_flight(self):
+        """A8 takes the got-it note two ways. Taken inline it forces one request in flight --
+        above one the blocking wait resolves an older event and the stamp would belong to a
+        different message -- so a run that asked for inline and reported 1 did as it was told,
+        where the standing setting for every other Kafka run is 64."""
+        assert ri.client_check.__defaults__ == (None,)
+        assert ri.INLINE_MAX_INFLIGHT == 1
+
+    def test_taking_the_note_inline_and_reporting_one_counts(self, tmp_path):
+        params = {"backend": "kafka", "load_pct": 75, "delay_ms": 2.0, "ack_stamp": "inline"}
+        run = make_run(tmp_path, params=params,
+                       client_line="CONFIG effective max_inflight=1 ack_stamp=inline client=java")
+        assert evaluate(run)["checks"]["client"]["ok"] is True
+
+    def test_taking_it_inline_and_reporting_sixty_four_does_not(self, tmp_path):
+        """Which is the fault this check exists to catch: the note would name another message."""
+        params = {"backend": "kafka", "load_pct": 75, "delay_ms": 2.0, "ack_stamp": "inline"}
+        run = make_run(tmp_path, params=params,
+                       client_line="CONFIG effective max_inflight=64 ack_stamp=inline")
+        found = evaluate(run)["checks"]["client"]
+        assert found["ok"] is False and "not 1" in found["why"]
+
+    def test_taking_it_in_the_callback_expects_the_standing_setting(self, tmp_path):
+        params = {"backend": "kafka", "load_pct": 75, "delay_ms": 2.0, "ack_stamp": "callback"}
+        run = make_run(tmp_path, params=params,
+                       client_line="CONFIG effective max_inflight=64 ack_stamp=callback client=java")
+        assert evaluate(run)["checks"]["client"]["ok"] is True
+
     @pytest.mark.parametrize("backend,line,why", [
         ("redis", "CONFIG effective ack_batch=1 count=200 block_ms=1000",
          "the redis client ran with ack_batch=1, not 200"),

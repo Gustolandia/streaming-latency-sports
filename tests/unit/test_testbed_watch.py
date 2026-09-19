@@ -249,6 +249,21 @@ class TestCycle:
         assert "the driver does not answer over SSH (timed out); Azure says: VM running" in text
         assert "the broker does not answer over SSH (ssh exited with 255)\n" in text + "\n"
 
+    def test_a_pair_stopped_because_its_work_is_done_is_not_an_alert(self):
+        """A stopped pair is the state we want it in. Alerting on it every three minutes would
+        bury the alerts that mean something."""
+        spec = azure_testbed.load_spec()
+        hosts = {"DRIVER_PUBLIC": "51.12.89.77", "BROKER_PRIV": "10.1.1.41",
+                 "AZ_PROFILE": "arm"}
+        listing = json.dumps([{"name": "sbl-az-arm-drv", "powerState": "VM deallocated"},
+                              {"name": "sbl-az-arm-b1", "powerState": "VM deallocated"}])
+        lines, flags = tw.cycle(hosts, spec, "k", "ssh",
+                                fake_run(driver=Done("", 255, "timed out"),
+                                         broker=Done("", 255, "timed out")),
+                                lambda a: (0, listing, ""), {}, "stamp")
+        assert [level for level, _ in flags] == ["INFO", "INFO"]
+        assert "stopped: the driver is deallocated, so it is not billing" in "\n".join(lines)
+
     def test_one_machine_down_is_flagged_and_the_other_still_summarised(self):
         spec = azure_testbed.load_spec()
         hosts = {"DRIVER_PUBLIC": "4.223.79.212", "BROKER_PRIV": "10.1.1.21",
@@ -409,7 +424,8 @@ class TestLanesAndVerdicts:
                             az, state, "stamp", lane="b")
         assert "about $%.2f an hour" % (0.388 + 0.097) in lines[0]
         assert asked[0][-3:] == ["sbl-azb", "--output", "json"]
-        assert "Azure says: VM deallocated" in "\n".join(lines)
+        assert "stopped: the driver is deallocated" in "\n".join(lines), \
+            "the group's own listing was read, and a stopped machine is not a fault"
         assert state["commit"] is None and state["queue"] is None
 
     def test_pairs_that_share_a_queue_or_differ_in_code(self):

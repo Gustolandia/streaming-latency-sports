@@ -27,6 +27,11 @@ from pathlib import Path
 
 PROC_STAT = Path("/proc/stat")
 PROC_LOADAVG = Path("/proc/loadavg")
+PROC = Path("/proc")
+#: How often the busiest processes are written down, in samples, and how many of them. A load that
+#: is not the load we set is a fault, and a fault should leave behind what caused it.
+BUSIEST_EVERY = 60
+BUSIEST_KEPT = 6
 
 
 def read_cpu_times(path=PROC_STAT):
@@ -65,15 +70,61 @@ def utilisation(prev, cur):
     return max(0.0, min(1.0, 1.0 - d_idle / d_total))
 
 
-def sample_loop(out_path, interval, stop, stat_path=PROC_STAT, load_path=PROC_LOADAVG):
-    """Append utilisation samples until `stop()` returns True. Returns the number written."""
+def process_times(proc=PROC):
+    """{pid: (name, processor time in jiffies)} for every process that is still there.
+
+    Read from /proc itself: a sampler that needed another program to be installed would be one
+    more thing to go wrong on a machine we cannot log into while it is busy.
+    """
+    found = {}
+    try:
+        entries = list(proc.iterdir())
+    except OSError:
+        return found  # no /proc here: the sampler says so elsewhere and this adds nothing
+    for entry in entries:
+        if not entry.name.isdigit():
+            continue
+        try:
+            fields = (entry / "stat").read_text(encoding="utf-8").rsplit(") ", 1)
+            name = fields[0].split("(", 1)[1]
+            rest = fields[1].split()
+            found[entry.name] = (name, int(rest[11]) + int(rest[12]))
+        except (OSError, ValueError, IndexError):
+            continue  # it ended while we were reading it, which is not our business
+    return found
+
+
+def busiest(before, after, kept=BUSIEST_KEPT):
+    """The processes that used the most processor time between two readings."""
+    grew = []
+    for pid, (name, ticks) in after.items():
+        was = before.get(pid)
+        if was is not None and ticks > was[1]:
+            grew.append((ticks - was[1], pid, name))
+    grew.sort(reverse=True)
+    return grew[:kept]
+
+
+def sample_loop(out_path, interval, stop, stat_path=PROC_STAT, load_path=PROC_LOADAVG,
+                proc=PROC, busiest_every=BUSIEST_EVERY):
+    """Append utilisation samples until `stop()` returns True. Returns the number written.
+
+    Every `busiest_every` samples it also writes down the processes that used the most processor
+    time since the last such look, beside the utilisation, so that a load which is not the load we
+    set can be explained afterwards rather than guessed at.
+    """
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    who_path = out_path.with_name(out_path.stem + "_busiest.csv")
     prev = read_cpu_times(stat_path)
+    seen = process_times(proc) if busiest_every else {}
     n = 0
-    with out_path.open("w", newline="", encoding="utf-8") as fh:
+    with out_path.open("w", newline="", encoding="utf-8") as fh, \
+            who_path.open("w", newline="", encoding="utf-8") as who_fh:
         w = csv.DictWriter(fh, fieldnames=["t_wall", "rho", "loadavg"])
         w.writeheader()
+        who = csv.DictWriter(who_fh, fieldnames=["t_wall", "pid", "name", "jiffies"])
+        who.writeheader()
         while not stop():
             time.sleep(interval)
             cur = read_cpu_times(stat_path)
@@ -85,6 +136,13 @@ def sample_loop(out_path, interval, stop, stat_path=PROC_STAT, load_path=PROC_LO
                         "loadavg": read_loadavg(load_path)})
             fh.flush()
             n += 1
+            if busiest_every and n % busiest_every == 0:
+                now = process_times(proc)
+                when = time.time()
+                for ticks, pid, name in busiest(seen, now):
+                    who.writerow({"t_wall": when, "pid": pid, "name": name, "jiffies": ticks})
+                who_fh.flush()
+                seen = now
     return n
 
 

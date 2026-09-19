@@ -62,6 +62,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import azure_testbed  # noqa: E402
+import progress  # noqa: E402
 import spend  # noqa: E402
 
 HOSTS_ENV = os.path.join(azure_testbed.REPO, "cloud", "hosts.env")
@@ -563,7 +564,7 @@ def cycle(hosts, spec, key, ssh, run, runner, state, stamp, window_min=15, lane=
     own = azure_testbed.profile_spec(spec, profile)
     if driver is not None:
         state.update(fails=number(driver, "fails", int), commit=driver.get("commit") or None,
-                     queue=driver.get("queue") or None)
+                     queue=driver.get("queue") or None, timing=timing(driver))
     else:
         state.update(commit=None, queue=None)
     machines = azure_testbed.profile_hosts(own, profile)
@@ -649,6 +650,20 @@ def stop_idle(lane, hosts, spec, runner, state, idle, now, after_min):
              "(%s)" % (lane, idle_min, last))]
 
 
+def far_along(states):
+    """How much of the experiment has been run, counting the campaigns now under way.
+
+    A campaign is copied home only once it has finished, so the runs its queue has already
+    counted are added from the queue itself and counted once.
+    """
+    live = {}
+    for state in states.values():
+        queue, done = state.get("queue"), (state.get("timing") or {}).get("done")
+        if queue and done:
+            live[os.path.basename(queue).rsplit(".", 1)[0]] = done
+    return progress.line(progress.add_live(progress.counted(), live))
+
+
 def money_lines(lanes, hosts, states, ledger_path, credit_usd, now, status):
     """Add this look's machine time to the ledger and say what has been spent, and at what run."""
     running = {}
@@ -669,6 +684,7 @@ def money_lines(lanes, hosts, states, ledger_path, credit_usd, now, status):
             lines.append("  money: lane %s began %s at %s, with about $%.2f spent by then"
                          % (name, began[0], began[1],
                             spend.total(ledger) if had is None else had))
+            lines.append("  " + far_along(states))
     return lines
 
 

@@ -195,26 +195,59 @@ class TestP2dTheTickDoesNotMoveTheStart:
         assert lp.start_at_slice([])["confirmed"] is False
 
 
-class TestP3LoadRaisesThePlateau:
+class TestP3aLoadLeavesTheCliffWhereItIs:
+    """An absence is claimed by two one-sided tests: the whole interval of the movement inside
+    the band, not the number in the middle of it. Reading the number alone lets a noisy estimate
+    claim the cliff stayed put by luck, which is a claim the data has not earned."""
 
-    def test_the_plateau_rises_and_the_cliff_stays(self):
-        runs = lw.campaign(slices=(3.0,), rounds=6, loads=(50, 75, 88), seed=5, spread=0.05)
-        found = lp.load_raises_the_plateau(runs, **QUICK)
-        assert found["confirmed"] is True
-        assert found["by_summary"]["free"]["halfway_move_ms"] < 0.25
+    def test_a_cliff_that_stays_put_is_confirmed(self):
+        runs = lw.campaign(slices=(3.0,), rounds=16, loads=(50, 75, 88), seed=5, spread=0.05)
+        assert lp.cliff_stays_under_load(runs, **QUICK)["confirmed"] is True
 
     def test_a_cliff_that_moves_with_load_is_caught(self):
         runs = lw.campaign(slices=(3.0,), rounds=6, loads=(50, 75, 88), seed=5, spread=0.05,
                            world="cliff_moves_with_load")
-        found = lp.load_raises_the_plateau(runs, **QUICK)
+        assert lp.cliff_stays_under_load(runs, **QUICK)["confirmed"] is False
+
+    def test_an_interval_that_reaches_past_the_band_is_not_a_claim(self):
+        """Few rounds and a wide scatter: the cliff did stay put, and the campaign cannot say so."""
+        runs = lw.campaign(slices=(3.0,), rounds=4, loads=(50, 75, 88), seed=5, spread=0.6)
+        found = lp.cliff_stays_under_load(runs, **QUICK)
         assert found["confirmed"] is False
-        assert found["by_summary"]["free"]["halfway_move_ms"] >= 0.25
+        assert found["by_summary"]["free"]["interval"][1] >= lp.HALFWAY_MOVE_MS
 
     def test_one_load_alone_says_nothing(self):
         runs = lw.campaign(slices=(3.0,), rounds=4, loads=(75,), seed=5)
+        assert lp.cliff_stays_under_load(runs, **QUICK)["confirmed"] is False
+
+    def test_the_rule_it_reports_names_the_band_and_both_sides(self):
+        runs = lw.campaign(slices=(3.0,), rounds=6, loads=(50, 88), seed=5, spread=0.05)
+        assert "either way" in lp.cliff_stays_under_load(runs, **QUICK)["rule"]
+
+
+class TestP3bLoadRaisesThePlateau:
+    """Judged on its own. Together with P3a it confirmed neither: an intersection of two claims
+    is confirmed only where both are, so its power was the power of the weaker."""
+
+    def test_a_plateau_that_rises_with_load_is_confirmed(self):
+        runs = lw.campaign(slices=(3.0,), rounds=16, loads=(50, 75, 88), seed=5, spread=0.05)
+        assert lp.load_raises_the_plateau(runs, **QUICK)["confirmed"] is True
+
+    def test_a_plateau_that_does_not_move_with_load_is_caught(self):
+        runs = lw.campaign(slices=(3.0,), rounds=16, loads=(50, 75, 88), seed=5, spread=0.05,
+                           world="plateau_flat_with_load")
+        assert lp.load_raises_the_plateau(runs, **QUICK)["confirmed"] is False
+
+    def test_one_load_alone_says_nothing(self):
+        runs = lw.campaign(slices=(3.0,), rounds=4, loads=(75,), seed=5)
+        assert lp.load_raises_the_plateau(runs, **QUICK)["confirmed"] is False
+
+    def test_it_no_longer_asks_anything_about_the_cliff(self):
+        """The clause that could not tell the law from its falsifier is gone from this one."""
+        runs = lw.campaign(slices=(3.0,), rounds=6, loads=(50, 88), seed=5, spread=0.05)
         found = lp.load_raises_the_plateau(runs, **QUICK)
-        assert found["confirmed"] is False
-        assert found["by_summary"]["free"]["halfway_move_ms"] is None
+        assert "halfway" not in found["rule"]
+        assert "halfway_move_ms" not in found["by_summary"]["free"]
 
 
 class TestP4GoFirstRemovesThePlateau:
@@ -458,7 +491,7 @@ class TestJudgingFromTheOutside:
         with pytest.raises(ValueError, match="no rule for P42"):
             lp.judge(self.runs(), "P42")
 
-    @pytest.mark.parametrize("prediction", ["P2", "P3"])
+    @pytest.mark.parametrize("prediction", ["P2", "P3a", "P3b"])
     def test_the_rules_that_take_the_campaign_as_it_is(self, prediction):
         runs = lw.campaign(slices=(3.0,), rounds=4, loads=(50, 88), seed=5, spread=0.05)
         assert "confirmed" in lp.judge(runs, prediction, 1.0, draws=40, seed=1, grid=24)

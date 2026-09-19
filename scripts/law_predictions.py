@@ -22,8 +22,9 @@ the fitted width and P2d about the fitted start. The other summary is still repo
       a 95% interval overlapping 0.8-1.2 and excluding 0.5, and the intercept's interval includes 0.
   P2d the tick does not move the start: in every kernel and slice, the fitted start is within
       0.25 ms of the slice.
-  P3  load raises the plateau, not the cliff: the plateau's increase has a 95% interval above
-      zero, and the halfway point moves less than 0.25 ms.
+  P3a load leaves the cliff where it is: the halfway point's move between the lowest and the
+      highest load has its whole interval inside 0.25 ms either way.
+  P3b load raises the plateau: its increase between those loads has a 95% interval above zero.
   P4  go-first priority removes the plateau: it cuts the plateau at least 5 times where the
       ordinary plateau is at least 2%, with a 95% interval above 2.
   P7  default slices follow the core count: the read-back slice matches, and P1's band holds at
@@ -69,7 +70,8 @@ RATIO_EXCLUDES = 1.0
 TICK_SLOPE_BAND = (0.8, 1.2)
 TICK_SLOPE_EXCLUDES = 0.5
 START_WITHIN_MS = 0.25
-#: P3: how far the halfway point may move between the lowest and highest load.
+#: P3a: how far the halfway point may move between the lowest and the highest load. The whole
+#: interval of the move must lie inside this band either way, which is how an absence is claimed.
 HALFWAY_MOVE_MS = 0.25
 #: P4: how many times go-first must cut the plateau, where the ordinary plateau is this high.
 PRIORITY_CUT = 5.0
@@ -381,37 +383,66 @@ def start_at_slice(runs, grid=None):
                  % START_WITHIN_MS, judged_on=("fitted",))
 
 
-def load_raises_the_plateau(runs, draws=DRAWS, seed=0, grid=None):
-    """P3: the plateau rises with load while the halfway point stays where it is."""
-    def ends(part):
-        found = curves_by(part, "load_pct", grid)
-        seen = sorted(load for load in found if found[load])
-        return (None, None) if len(seen) < 2 else (found[seen[0]], found[seen[-1]])
+def _load_ends(part, grid):
+    """The curves at the lowest and the highest load a campaign ran."""
+    found = curves_by(part, "load_pct", grid)
+    seen = sorted(load for load in found if found[load])
+    return (None, None) if len(seen) < 2 else (found[seen[0]], found[seen[-1]])
 
+
+def cliff_stays_under_load(runs, draws=DRAWS, seed=0, grid=None):
+    """P3a: load leaves the cliff where it is.
+
+    This is a claim that something did not happen, and such a claim is made here the way the
+    equivalence-testing literature makes it: the whole interval of the movement must lie inside
+    the band, not merely the number in the middle of it. Two one-sided tests on the signed
+    difference, not on its size -- folding the draws about zero would push the interval's top out
+    and refuse the claim for a reason that is arithmetic rather than physical.
+    """
     def numbers(part):
-        low, high = ends(part)
+        low, high = _load_ends(part, grid)
         found = {}
         for summary in SUMMARIES:
-            level = None if low is None else (
-                (high["plateau"] - low["plateau"]) if summary == "free"
-                else (high["fitted"]["plateau"] - low["fitted"]["plateau"]))
-            found[summary] = level
-            found[summary + " move"] = None if low is None or low[HALFWAY[summary]] is None \
-                or high[HALFWAY[summary]] is None else abs(high[HALFWAY[summary]]
-                                                           - low[HALFWAY[summary]])
+            found[summary] = None if low is None or low[HALFWAY[summary]] is None \
+                or high[HALFWAY[summary]] is None \
+                else high[HALFWAY[summary]] - low[HALFWAY[summary]]
         return found
 
     over = over_draws(runs, numbers, draws, seed)
     by_summary = {}
     for summary in SUMMARIES:
         said = over[summary]
-        moved = over[summary + " move"]["value"]
-        by_summary[summary] = _said(
-            said, above((said["low"], said["high"]), 0.0) and moved is not None
-            and moved < HALFWAY_MOVE_MS, halfway_move_ms=moved,
-            p_value=p_value(said["drawn"], 0.0))
-    return _both(by_summary, "the plateau's increase has an interval above zero and the halfway "
-                 "point moves less than %s ms" % HALFWAY_MOVE_MS)
+        inside = (said.get("low") is not None and said.get("high") is not None
+                  and -HALFWAY_MOVE_MS < said["low"] and said["high"] < HALFWAY_MOVE_MS)
+        by_summary[summary] = _said(said, inside)
+    return _both(by_summary, "the halfway point's move between the lowest and the highest load "
+                 "has its whole interval inside %s ms either way" % HALFWAY_MOVE_MS)
+
+
+def load_raises_the_plateau(runs, draws=DRAWS, seed=0, grid=None):
+    """P3b: the plateau rises with load.
+
+    Judged on its own. Asking this and P3a together confirmed neither: a campaign is confirmed
+    only where every part of it is, so the power of the pair was the power of the weaker, and this
+    part cannot tell the law from the world where the cliff moves with load.
+    """
+    def numbers(part):
+        low, high = _load_ends(part, grid)
+        found = {}
+        for summary in SUMMARIES:
+            found[summary] = None if low is None else (
+                (high["plateau"] - low["plateau"]) if summary == "free"
+                else (high["fitted"]["plateau"] - low["fitted"]["plateau"]))
+        return found
+
+    over = over_draws(runs, numbers, draws, seed)
+    by_summary = {}
+    for summary in SUMMARIES:
+        said = over[summary]
+        by_summary[summary] = _said(said, above((said["low"], said["high"]), 0.0),
+                                    p_value=p_value(said["drawn"], 0.0))
+    return _both(by_summary, "the plateau's increase between the lowest and the highest load has "
+                 "a 95% interval above zero")
 
 
 def priority_removes_the_plateau(runs, draws=DRAWS, seed=0, grid=None):
@@ -507,7 +538,8 @@ def language(runs, draws=DRAWS, seed=0, grid=None):
 
 #: The rules a campaign's runs can be judged by from the command line.
 RULES = {"P1": cliff_follows_slice, "P2": width_follows_tick, "P2b": width_follows_tick,
-         "P2c": width_against_tick, "P2d": start_at_slice, "P3": load_raises_the_plateau,
+         "P2c": width_against_tick, "P2d": start_at_slice,
+         "P3a": cliff_stays_under_load, "P3b": load_raises_the_plateau,
          "P4": priority_removes_the_plateau, "P7": default_slices, "P8": language,
          "P9": cliff_follows_slice}
 

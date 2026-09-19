@@ -1,0 +1,153 @@
+{
+  "audited_utc": "2026-09-19",
+  "protocol": "freeze 04, Section 'Experiments for Mode 2', T5",
+  "note": "These three do not time a message trip. The plan includes them as source readings and states in advance what each does with an odd value, so unlike the other tools these are predictions to test rather than classifications to establish.",
+  "terms": ["negative latency", "negative", "clock skew", "resolution", "rounding",
+            "millisecond", "nanosecond", "latency 0"],
+  "tools": [
+    {
+      "tool": "fio",
+      "repository": "https://github.com/axboe/fio",
+      "version_seen": "HEAD 162e8fb3d059c090caa56255e4a6a92bfa6e47b3, 2026-09-17, which git describes as fio-3.42-183",
+      "plan_predicted": "fio replaces negatives with 0",
+      "verdict": "HELD",
+      "what_it_does_now": "Unchanged, and still on the completion-latency path. ntime_since() returns 0 for any negative interval, under a comment that reads, with its question mark intact, 'time warp bug on some kernels?'. That function is exactly what computes completion latency and total latency, and the sample goes straight into the histogram. The same clamp is repeated at microsecond and millisecond resolution, so a backwards clock is reported as a genuine zero at every scale.",
+      "documentation": {
+        "clock_and_resolution": {
+          "finding": "The clock is chosen by the user: gettimeofday, clock_gettime or the processor's own cycle counter. With clock_gettime it uses the monotonic clock where the platform has one and falls back to the real-time clock where it does not. fio selects the cycle counter automatically when it judges it reliable, and it runs its own cross-processor test to decide. Samples are nanoseconds internally.",
+          "evidence": ["gettime.c:135-146", "gettime.c:161-199", "gettime.c:412-414", "HOWTO.rst:731-747"]
+        },
+        "odd_values": {
+          "finding": "Negatives become zero, at every resolution, and are not counted. A signed variant of the same subtraction exists and is documented as asymmetric in its rounding, but it is used for the rate machinery rather than for latency samples.",
+          "evidence": ["gettime.c:434-435", "gettime.c:462-463", "gettime.c:493-494", "gettime.c:541", "gettime.c:515-533", "io_u.c:2097-2124"]
+        },
+        "warnings": {
+          "finding": "fio warns more than most, and specifically about the clock. It prints that the cycle-counter source may not be reliable when it has judged it so and the user forced it anyway; it prints a warning on a double wrap of that counter; and its own monotonic clock test prints a mismatch between processors. It also documents two options whose entire purpose is to manage the cost of reading the clock -- one dedicating a processor to it and excluding that processor from the jobs, the other cutting the number of clock reads by disabling latency measurement altogether. In other words fio documents that reading the time perturbs the measurement.",
+          "evidence": ["gettime.c:416", "gettime.c:184", "gettime.c:771", "HOWTO.rst:748-769"]
+        }
+      },
+      "searches": [
+        {"term": "negative latency", "where": "github issues", "hits": 0},
+        {"term": "negative", "where": "github issues", "hits": 6},
+        {"term": "clock skew", "where": "github issues", "hits": 0},
+        {"term": "resolution", "where": "github issues", "hits": 13},
+        {"term": "rounding", "where": "github issues", "hits": 9},
+        {"term": "millisecond", "where": "github issues", "hits": 16},
+        {"term": "nanosecond", "where": "github issues", "hits": 11},
+        {"term": "latency 0", "where": "github issues", "hits": 184, "caveat": "not honoured as a phrase; the set is dominated by loose matches and only the first 30 were read"}
+      ],
+      "reports": [
+        {"title": "avg latency is inconformity with avg iops in my fio test", "url": "https://github.com/axboe/fio/issues/902", "opened": "2020-01-10", "outcome": "closed without a fix", "why_relevant": "a user reporting a minimum completion latency of zero, who pasted fio's own clamp and wrote that the start time exceeded the finish time. Traced to a kernel timer defect on Arm and closed as not an fio issue. It is the clearest instance of the pattern: the clamp turned a clock fault into a plausible-looking zero, and the tool reported it as a measurement"},
+        {"title": "Suggestions for improvement of precision of wall-clock time measurements", "url": "https://github.com/axboe/fio/issues/695", "opened": "2018-09-26", "outcome": "still open", "why_relevant": "argues fio loses precision by working in ticks per millisecond rather than ticks per second. Two maintainers agreed in the thread and posted candidate conversions; it is still open eight years later"},
+        {"title": "nanosecond timing for fio", "url": "https://github.com/axboe/fio/issues/324", "opened": "2017-03-06", "outcome": "fixed", "why_relevant": "the conversion to nanosecond timing, which landed in fio 3.0. The thread also records an accuracy problem converting clock ticks to nanoseconds in 64-bit integers"},
+        {"title": "Floating point precision issue with percentile calculations", "url": "https://github.com/axboe/fio/issues/1005", "opened": "2020-06-02", "outcome": "still open", "why_relevant": "fio's own continuous-integration latency checks disagree with an independent implementation because of floating-point width. A maintainer wrote that he knows of no good solution but that it is diagnosed and documented"},
+        {"title": "fio latency report not correct if using iops_rate with null engine", "url": "https://github.com/axboe/fio/issues/1394", "opened": "2022-05-02", "outcome": "still open", "why_relevant": "completion latency varies with the requested rate on an engine that does no work, which a maintainer reproduced and agreed should not happen: rate-limit waiting is being captured inside the latency"},
+        {"title": "invalidate time is counted towards bandwidth calculation", "url": "https://github.com/axboe/fio/issues/1422", "opened": "2022-07-15", "outcome": "still open", "why_relevant": "page-cache invalidation time charged to the measured interval"}
+      ],
+      "checked_here": [
+        "gettime.c: the clamp `if (sec < 0 || (sec == 0 && nsec < 0)) return 0;` under the comment 'time warp bug on some kernels?', inside ntime_since, which is what computes completion latency. Read back from the tool's own source."
+      ],
+      "not_determined": [
+        "whether fio's mailing list carries reports the tracker does not. Its archive is behind a bot gate and the other archive does not carry the list, so the eight terms were run against the tracker only"
+      ]
+    },
+    {
+      "tool": "btt",
+      "repository": "https://brick.kernel.dk/git/blktrace.git, where btt lives in btt/. The GitHub mirror is stale, last pushed 2016",
+      "version_seen": "HEAD 9b24b42ef59d2e8015957db3dd70ffedb7ebcfe8, 2025-12-10, which git describes as blktrace-1.3.0-29",
+      "plan_predicted": "btt replaces negatives with 1 ns",
+      "verdict": "HELD, and it reaches further than the prediction said",
+      "what_it_does_now": "tdelta returns `(from < to) ? (to - from) : 1`, and the trace timestamps are nanoseconds, so the substituted 1 is one nanosecond. The qualification the prediction does not capture: the test is strictly less-than, so the substitution catches EQUAL timestamps as well as reversed ones. A genuinely zero-duration span is also reported as one nanosecond. The function feeds every inter-event latency btt computes, including its queue-to-complete and device-to-complete figures and its emulated iostat columns. The behaviour dates to 2006 at the latest and is unchanged.",
+      "documentation": {
+        "clock_and_resolution": {
+          "finding": "btt does not read a clock. It consumes nanosecond timestamps from the kernel's trace stream. Its own output, though, is coarser than its input: the latency files are written as a seconds value with six decimals, so the published figures are quantised to microseconds even though the trace is in nanoseconds. That output code has not changed since 2009, and two patches in 2025 tried to address the mismatch; neither landed.",
+          "evidence": ["blktrace_api.h:121", "btt/globals.h:46-47", "btt/latency.c:26", "btt/args.c:32"]
+        },
+        "odd_values": {
+          "finding": "One nanosecond is substituted for any reversed or equal pair. The type is unsigned, so a negative is never representable and never reported. A separate zero-difference case is documented for the seeks-per-second output.",
+          "evidence": ["btt/inlines.h:315-318", "btt/trace_complete.c:71-79", "btt/iostat.c:272-282", "btt/doc/btt.tex:844-848"]
+        },
+        "warnings": {
+          "finding": "None in btt itself: no warning about scheduling, contention or clocks in its source or its two manuals. Elsewhere in the same pipeline the tools do notice: the raw verifier counts a time regression when a timestamp fails to advance within a per-processor file, and the parser marks a device whose time goes backwards. btt's own manual states that the parser is what merges the parallel per-processor files into one ordered stream, so btt trusts an ordering it never verifies itself.",
+          "evidence": ["blkrawverify.c:228-230", "blkparse.c:1291-1298", "btt/doc/btt.tex:92-94"]
+        }
+      },
+      "searches": [
+        {"term": "negative latency", "where": "linux-btrace archive", "hits": 1},
+        {"term": "negative", "where": "linux-btrace archive", "hits": 6},
+        {"term": "clock skew", "where": "linux-btrace archive", "hits": 0},
+        {"term": "resolution", "where": "linux-btrace archive", "hits": 2},
+        {"term": "rounding", "where": "linux-btrace archive", "hits": 1},
+        {"term": "millisecond", "where": "linux-btrace archive", "hits": 4},
+        {"term": "nanosecond", "where": "linux-btrace archive", "hits": 2},
+        {"term": "latency 0", "where": "linux-btrace archive", "hits": 30, "caveat": "loosely matched and capped at 30"},
+        {"term": "all eight", "where": "the stale GitHub mirror's issues", "hits": 0, "caveat": "that mirror has had one issue in its lifetime; it is not a real tracker"}
+      ],
+      "reports": [
+        {"title": "Negative queue lengths in btt iostat output?", "url": "https://marc.info/?l=linux-btrace&m=121193491013469&w=2", "opened": "2008-05-28", "outcome": "still open, no fix identifiable in the tree", "why_relevant": "btt's emulated iostat produced steadily growing negative queue lengths while utilisation sat near 100 per cent. btt's own author replied and two days later posted a rewrite of the iostat capability whose description concedes that its await and service-time columns do not match iostat well. No commit with that subject exists in the repository, and the file's history ends in 2009"},
+        {"title": "btt: use millisecond output latency time", "url": "https://marc.info/?l=linux-btrace&m=174539710901016&w=2", "opened": "2025-04-23", "outcome": "still open", "why_relevant": "a patch to change the latency output unit, answered the same day with the observation that it would potentially break tooling and a suggestion to add a switch instead. A second version adding the switch followed the next day. Neither landed, and the output is still written the old way"},
+        {"title": "btt: add the option -n to output latency with nanosecond precision", "url": "https://marc.info/?l=linux-btrace&m=174971623226733&w=2", "opened": "2025-06-12", "outcome": "still open", "why_relevant": "documents the quantisation exactly: the timestamps in one output mode are nanoseconds while the latencies in another are microseconds, and proposes an option to align them. Not merged; the option list still has no such switch"},
+        {"title": "blktrace: output the earliest block trace log firstly", "url": "https://marc.info/?l=linux-btrace&m=170607522402099&w=2", "opened": "2023-12-11", "outcome": "still open", "why_relevant": "in pipe mode the parser takes the smallest timestamp in the first batch as the origin, but scheduling across per-processor buffers means that need not be the earliest event, so relative times come out absurd. A scheduling-induced timestamp distortion in the very stream btt consumes. The author asked for feedback in 2024 and received none"}
+      ],
+      "checked_here": [
+        "btt/inlines.h: `static inline __u64 tdelta(__u64 from, __u64 to) { return (from < to) ? (to - from) : 1; }`. Read back from the tool's own source, including that the strict less-than makes the substitution cover equal timestamps as well as reversed ones."
+      ],
+      "not_determined": [
+        "whether the 2008 negative-queue-length report was ever resolved; the archive shows no further thread and the rewrite patch has no corresponding commit",
+        "the full result set for one term, which the archive capped at thirty"
+      ]
+    },
+    {
+      "tool": "Rezolus",
+      "repository": "https://github.com/iopsystems/rezolus",
+      "version_seen": "HEAD 0c39b821cb28c6afed56168d390e6379626302b3, 2026-09-19, which git describes as v5.20.0-32",
+      "plan_predicted": "Rezolus counts its discards",
+      "verdict": "HELD on the literal claim, and it must not be generalised",
+      "what_it_does_now": "The scheduler runqueue sampler guards each timestamp subtraction and, on a reversed pair, increments a per-processor discard slot instead of recording, surfaced as a named metric. Its in-source comment states the mechanism plainly: a timestamp pair can arrive out of order across processors, an unguarded subtraction would wrap and land in the top bucket, so it discards and counts, and the comment says why -- so the condition stays observable rather than silently vanishing. That is the clearest statement of this paper's problem found in any tool audited. But it is the practice of ONE sampler. The block-I/O latency sampler drops silently against a plausibility bound. Two network latency samplers drop silently on a reversed pair with no counter. The system-call latency sampler has no guard at all: a bare subtraction that wraps on underflow. Even inside the counting sampler, one path drops a sample without incrementing the discard count.",
+      "documentation": {
+        "clock_and_resolution": {
+          "finding": "It does not poll a clock. Programs attached to kernel tracepoints read the kernel's monotonic nanosecond clock in place, and deltas are bucketed in the kernel into a base-2 histogram of about eight buckets per octave, which is relative rather than absolute resolution. The project states as a design principle that the agent never samples on its own clock and that consumers drive the cadence. A comment in the histogram code records a fixed defect in which a shift was performed in the wrong width, mis-bucketing every value above about two seconds.",
+          "evidence": ["src/agent/bpf/histogram.h:215-228", "docs/principles.md:287-296", "src/agent/samplers/scheduler/linux/runqueue/mod.bpf.c:20"]
+        },
+        "odd_values": {
+          "finding": "One sampler counts its discards and names the metric after the reason. Three others do not: two drop silently, and one does not guard at all.",
+          "evidence": [
+            "src/agent/samplers/scheduler/linux/runqueue/mod.bpf.c:260-269",
+            "src/agent/samplers/scheduler/linux/runqueue/stats.rs:139-144",
+            "src/agent/samplers/blockio/linux/latency/mod.bpf.c:135-136",
+            "src/agent/samplers/tcp/linux/packet_latency/mod.bpf.c:74-75",
+            "src/agent/samplers/syscall/linux/latency/mod.bpf.c:202",
+            "src/agent/samplers/scheduler/linux/runqueue/mod.bpf.c:346"
+          ]
+        },
+        "warnings": {
+          "finding": "The clearest in the whole audit, and in three places: the source comment quoted above, the metric's own description, and a changelog entry that tells operators their alert thresholds will need revisiting because the spurious outliers in the top bucket -- an underflow from a slot shared across processors -- are now gone. The project also discusses cross-processor contention as a first-order design concern.",
+          "evidence": ["src/agent/samplers/scheduler/linux/runqueue/mod.bpf.c:260-263", "src/agent/samplers/scheduler/linux/runqueue/stats.rs:141", "CHANGELOG.md, 5.18.0", "docs/principles.md:195-210"]
+        }
+      },
+      "searches": [
+        {"term": "negative latency", "where": "github issues", "hits": 0},
+        {"term": "negative", "where": "github issues", "hits": 3},
+        {"term": "clock skew", "where": "github issues", "hits": 1},
+        {"term": "resolution", "where": "github issues", "hits": 7},
+        {"term": "rounding", "where": "github issues", "hits": 0},
+        {"term": "millisecond", "where": "github issues", "hits": 2},
+        {"term": "nanosecond", "where": "github issues", "hits": 1},
+        {"term": "latency 0", "where": "github issues", "hits": 2}
+      ],
+      "reports": [
+        {"title": "runqueue latency: top histogram bucket accumulates constant-rate garbage samples", "url": "https://github.com/iopsystems/rezolus/issues/1035", "opened": "2026-08-11", "outcome": "fixed", "why_relevant": "the most directly relevant report across all three of these tools. The top bucket, holding century-scale latencies, accrued about three counts a second regardless of load -- present on an idle host and slightly LOWER under saturation, which is the signature of an artefact rather than of the system. The reporter called the tail unusable and the metric a false-anomaly generator. Mechanism as filed: unsigned underflow from an out-of-order pair. Fixed within a day"},
+        {"title": "scheduler_offcpu, cpu_migrations: stale per-process state fabricates samples on identifier reuse", "url": "https://github.com/iopsystems/rezolus/issues/1192", "opened": "2026-09-10", "outcome": "still open", "why_relevant": "state keyed on a process identifier alone means a reused identifier is differenced against a stale entry. In the reporter's words the result is not a lost sample but a fabricated one, with durations at machine-uptime scale"},
+        {"title": "cgroup runqueue wait: suspected exit-time flush fabricates a single-sample spike", "url": "https://github.com/iopsystems/rezolus/issues/1038", "opened": "2026-08-11", "outcome": "still open", "why_relevant": "an impossible spike of about 137 core-seconds of wait inside a one-second sample. Notable for the audit's own standards: the maintainer posted two corrections retracting his own proposed mechanism and reporting a non-reproduction. The observation stands, the explanation does not"},
+        {"title": "tcp latency histograms: grouping too coarse to resolve degradation", "url": "https://github.com/iopsystems/rezolus/issues/1039", "opened": "2026-08-11", "outcome": "still open", "why_relevant": "a fourfold degradation measured at the client shows as roughly one bucket of movement in the host capture, and blind analyses graded the impact one level too low every time. A quantisation-induced under-read rather than a clock artefact"},
+        {"title": "Viewer: scheduler drops are invisible", "url": "https://github.com/iopsystems/rezolus/issues/1186", "opened": "2026-09-10", "outcome": "still open", "why_relevant": "directly qualifies the prediction: the discard counter exists but the viewer does not plot it, so the section omits the one metric that says whether its own percentiles can be trusted. Counting a discard and surfacing it are not the same thing"}
+      ],
+      "checked_here": [],
+      "not_determined": [
+        "when the discard counter was introduced; the clone was shallow and its history does not reach back far enough",
+        "whether the silent drops in the block-I/O and network samplers are deliberate or simply unexamined, since no issue covers them"
+      ]
+    }
+  ],
+  "across_the_three": "All three predictions held, and the two that held exactly are the two that substitute a plausible number for an impossible one: fio writes zero, btt writes one nanosecond. Neither counts how often it does so, and neither warns. The third, Rezolus, is the only tool in the entire audit that counts a discard AND names the metric after the reason -- but in one sampler out of four, and its own tracker notes that the viewer does not plot it. The paper should credit the practice and not attribute it to the project as a policy."
+}

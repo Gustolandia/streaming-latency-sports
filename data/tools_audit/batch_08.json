@@ -1,0 +1,138 @@
+{
+  "audited_utc": "2026-09-19",
+  "protocol": "freeze 04, Section 'Experiments for Mode 2', T5",
+  "terms": ["negative latency", "negative", "clock skew", "resolution", "rounding",
+            "millisecond", "nanosecond", "latency 0"],
+  "tools": [
+    {
+      "tool": "valkey-benchmark",
+      "repository": "https://github.com/valkey-io/valkey",
+      "version_seen": "release 9.1.2, 2026-09-01, cross-checked against unstable and against its ancestor redis-benchmark, which carries the identical clock, sentinel, clamp and histogram constants",
+      "what_it_times": "request to reply, on one machine's wall clock, first byte not last. The start stamp is taken just before the write, so the write is inside the measurement; the end stamp is taken on the first readable event, deliberately before parsing. Under pipelining the unit measured is the batch, not the command",
+      "documentation": {
+        "clock_and_resolution": {
+          "finding": "Wall clock at microsecond resolution, while a monotonic helper sits in the same file and is used only by the rate limiter. So an NTP step during a run corrupts the samples, and the tool had the right clock to hand. The practical floor is set by the histogram rather than by the clock: its lowest discernible value makes the first bucket eight microseconds wide, so every reply faster than that is one value and reports as a minimum of 0.000 ms. Output is milliseconds to three decimals. The precision option is documented as the number of decimal places to display, in both the built-in help and the published manual, and that is wrong twice over: it sets the histogram's significant figures, it changes no printing, and its default is three rather than the zero the help claims.",
+          "evidence": [
+            "src/valkey-benchmark.c:259-267",
+            "src/valkey-benchmark.c:273-277 and 627",
+            "src/valkey-benchmark.c:67-73",
+            "src/valkey-benchmark.c:1260-1267",
+            "src/valkey-benchmark.c:1970-1971",
+            "https://github.com/valkey-io/valkey-doc/blob/main/topics/benchmark.md"
+          ]
+        },
+        "odd_values": {
+          "finding": "Zero is kept as a real sample. A negative is silently dropped, counted nowhere, and is additionally indistinguishable from the tool's own not-yet-measured sentinel, which is minus one: if the clock moves backwards between the write and the read, the computed latency is negative, so it re-enters the sentinel branch and would be recomputed on a later event. The only clamp on the record path is an upper one, which a negative passes unchanged; the histogram then refuses it, and the tool ignores the return value of every record call. The request still counts as completed. The loss is faintly visible in the default report, where the cumulative counts would fall short of the completed line, and invisible in the comma-separated and quiet modes, which print no count at all. Two further behaviours: under pipelining the single batch measurement is written to the histogram once per reply, so a batch of sixteen contributes sixteen identical samples and the distribution is duplicated rather than per-command; and an empty histogram is not reported as absent -- the mean divides by a zero count, and the live line prints that.",
+          "evidence": [
+            "src/valkey-benchmark.c:882-883",
+            "src/valkey-benchmark.c:689-692",
+            "src/valkey-benchmark.c:754-776",
+            "deps/hdr_histogram/hdr_histogram.c:491-511",
+            "src/valkey-benchmark.c:1180-1224",
+            "src/valkey-benchmark.c:2084-2092"
+          ]
+        },
+        "warnings": {
+          "finding": "It warns about processor placement and not at all about the clock. The manual has a section on what affects performance, warning that NUMA placement makes results seem non-deterministic because client and server are distributed randomly across cores, and that pinning is needed for determinism; there is also a section on what a synchronous loop actually measures. Against that, the word clock occurs zero times in the manual, as do NTP, skew, accuracy and scheduling. So it times with the real-time clock, silently discards what a step produces, and tells the user neither thing.",
+          "evidence": [
+            "https://valkey.io/topics/benchmark/",
+            "topics/benchmark.md:392-400",
+            "topics/benchmark.md:305-310"
+          ]
+        }
+      },
+      "precision_class": {"class": "medium", "why": "microseconds end to end, printed as milliseconds to three decimals, but with a practical floor of eight microseconds set by the histogram's first bucket rather than by the clock"},
+      "plan_said": "read first: request to reply, class unknown, odd values to confirm",
+      "audit_found": "request to reply, class medium, negatives dropped and uncounted, zeros kept",
+      "prediction": "this tool was left unclassified on purpose, so the classification above is the prediction that T1 to T4 will test",
+      "searches": [
+        {"term": "negative latency", "where": "github issues (the whole valkey server repo)", "hits": 3},
+        {"term": "negative", "where": "github issues", "hits": 28},
+        {"term": "clock skew", "where": "github issues", "hits": 1},
+        {"term": "resolution", "where": "github issues", "hits": 18},
+        {"term": "rounding", "where": "github issues", "hits": 1},
+        {"term": "millisecond", "where": "github issues", "hits": 39},
+        {"term": "nanosecond", "where": "github issues", "hits": 0},
+        {"term": "latency 0", "where": "github issues", "hits": 53}
+      ],
+      "reports": [
+        {"title": "valkey-benchmark tool badly affected by kernel mitigations", "url": "https://github.com/valkey-io/valkey/issues/1947", "opened": "2025-04-12", "outcome": "still open", "why_relevant": "the only report in this tracker genuinely about the benchmark's own numbers being wrong. Two identical hosts benchmarking each other, differing only in a kernel mitigation setting on the machine RUNNING the benchmark: about a 67 per cent increase in reported latency and a halving of throughput, attributed by the reporter to the measuring host rather than the server. The tool takes two clock reads per request and does no accounting of its own cost, so a client-side cost of that size is reported as server latency with nothing in the output to distinguish it. Open seventeen months, no diagnosis"}
+      ],
+      "checked_here": [],
+      "not_determined": [
+        "how often the negative drop fires: no counter exists, and the only trace is an arithmetic gap between two printed numbers that two of the three output modes omit",
+        "nothing was run; the bucket arithmetic was re-derived from the vendored source's own constants rather than observed",
+        "the tracker is the whole server repository, so of 143 hits across the eight terms exactly one concerns the benchmark's latency measurement"
+      ]
+    },
+    {
+      "tool": "memtier_benchmark",
+      "repository": "https://github.com/redis/memtier_benchmark",
+      "version_seen": "master at 5694a3d61aaf0322a62fc44083ba6f2130b16265, 2026-09-01; the two load-bearing lines are identical at release tag 2.5.1",
+      "what_it_times": "request to reply, on one machine's wall clock, with a batch-shared stamp at each end: one clock read per pipeline fill and one per readable event, so every request in a batch carries the same start and every reply drained together carries the same end. Under retry-on-error the reference is deliberately the first attempt, so a retried command is one operation whose latency spans every backoff",
+      "documentation": {
+        "clock_and_resolution": {
+          "finding": "Wall clock at microsecond resolution; there is no monotonic clock on the latency path anywhere. Samples go into histograms built at two significant figures with a lowest value of ten microseconds, which makes the first bucket eight microseconds wide. Two constants named for a finer setting are defined and used nowhere -- dead code promising a precision the tool does not use.",
+          "evidence": [
+            "run_stats.h:49-55",
+            "shard_connection.cpp:119-136, 1057-1062, 1325-1328",
+            "run_stats_types.h:22-29 and 45-62",
+            "run_stats.cpp:1301-1305 and 1762-1781"
+          ]
+        },
+        "odd_values": {
+          "finding": "A negative is not dropped and not detected: it is converted into a huge positive. The difference function correctly returns a signed value, and every consumer takes it as an unsigned int. That narrowing is modular, so a backwards step of one millisecond is recorded as about seventy-one and a half minutes. Nothing checks the sign anywhere between the subtraction and the histogram. The wrapped value then goes two ways at once: into the histograms through a capped record, which pins it at exactly six hundred seconds, and into the plain per-second accumulators unclamped, so one backwards step produces two different impossible numbers in one report. The same capped record is what happens to fast replies: every value below ten microseconds, including zero, is RAISED to ten microseconds before recording, so the smallest value any percentile, histogram line or summary minimum can show is 0.008 ms whatever the true latency. The console average inherits that floor while the per-second average does not, so the two disagree on the same run. The clamp is neither old nor accidental: it was added in November 2024 as the fix for two reports of degenerate output, one printing a not-a-number and one printing an uninitialised sentinel as a concrete latency. The cure for impossible output was to impose an undocumented floor.",
+          "evidence": [
+            "run_stats.h:49-55",
+            "run_stats.h:234-236, 250-253",
+            "client.cpp:818-834",
+            "deps/hdr_histogram/hdr_histogram.c:451-456",
+            "run_stats_types.cpp:90-100",
+            "run_stats.cpp:1294-1327",
+            "https://github.com/redis/memtier_benchmark/pull/273/files"
+          ]
+        },
+        "warnings": {
+          "finding": "It warns about processor contention at run time, and that is the strongest built-in contention warning found in this whole audit: it samples each worker's processor time once a second and prints that results may be unreliable when a worker crosses a threshold, defaulting to ninety-five per cent of a core. Against that, the word clock occurs zero times in its manual, as do NTP, skew and scheduling. Its section on latency explains at length why percentiles beat the mean and praises the histogram's high precision, without mentioning that every value below ten microseconds is raised to ten before reaching it, or that the histogram is built at two significant figures while the constant named for three sits unused beside it.",
+          "evidence": [
+            "memtier_benchmark.cpp:3057-3063 and 2637-2640",
+            "README.md, 410 lines",
+            "README.md:328-348"
+          ]
+        }
+      },
+      "precision_class": {"class": "medium", "why": "microseconds in the arithmetic, thrown away at the recording boundary: no percentile, histogram line or summary extreme can read below 0.008 ms however fast the reply was"},
+      "plan_said": "read first: request to reply, class unknown, odd values to confirm",
+      "audit_found": "request to reply, class medium, negatives converted to huge positives rather than dropped, and everything below ten microseconds raised to ten",
+      "prediction": "this tool was left unclassified on purpose, so the classification above is the prediction that T1 to T4 will test",
+      "searches": [
+        {"term": "negative latency", "where": "github issues", "hits": 0},
+        {"term": "negative", "where": "github issues", "hits": 5},
+        {"term": "clock skew", "where": "github issues", "hits": 1},
+        {"term": "resolution", "where": "github issues", "hits": 2},
+        {"term": "rounding", "where": "github issues", "hits": 1},
+        {"term": "millisecond", "where": "github issues", "hits": 0},
+        {"term": "nanosecond", "where": "github issues", "hits": 0},
+        {"term": "latency 0", "where": "github issues", "hits": 26}
+      ],
+      "reports": [
+        {"title": "get wrong latency value 4300000", "url": "https://github.com/redis/memtier_benchmark/issues/115", "opened": "2020-03-05", "outcome": "closed without a fix", "why_relevant": "the field sighting of the unsigned wrap, closed as not a bug. A 165-second run in which every histogram line is under 60 ms and then one final line reads 4300000.000, dragging the reported average to 2164 ms. Two checks settle it. The arithmetic: two to the thirty-second power of microseconds is 4,294,967.296 ms, and that era's rounding to two significant figures prints exactly 4,300,000.000 -- the number to the digit. The impossibility: the whole run lasted 165 seconds, so a request of 4,295 seconds cannot have happened. Closed two years later with the words that there is no reason to believe the latency value is wrong, and that a cold start or saturation could explain the spike"},
+        {"title": "The latency is not accurate", "url": "https://github.com/redis/memtier_benchmark/issues/126", "opened": "2020-05-14", "outcome": "still open", "why_relevant": "a user measures the network round trip to an endpoint two ways, then runs memtier against the same endpoint and gets a LOWER figure than either, and asks why. A reported latency below the network round trip to the same host is exactly the failure this paper is about. Open since 2020 with zero comments: nobody has ever answered it"},
+        {"title": "Latency decreases as throughput increases under rate-limiting", "url": "https://github.com/redis/memtier_benchmark/issues/243", "opened": "2023-12-03", "outcome": "closed without a fix", "why_relevant": "measured latency falling monotonically as offered load rises from one to a hundred and twenty-eight thousand operations a second, which is the inverse of the queueing curve and so a property of the measurement. The maintainer reproduced the shape, attributed it to processor frequency scaling and closed it for want of evidence of a code issue. The reporter's reply, unanswered, names the real candidate: no correction for coordinated omission, and another tool giving the textbook curve on the same machine. The same signature appears in wrk2's tracker, undiagnosed there too"},
+        {"title": "per second latency metrics are skewed on very long running commands", "url": "https://github.com/redis/memtier_benchmark/issues/272", "opened": "2024-11-05", "outcome": "fixed", "why_relevant": "a per-second block carrying a count of forty and an average of 1276 ms alongside a minimum printed as the largest possible integer and a maximum of zero, with every percentile zero: the uninitialised sentinel printed as a concrete latency, and a maximum below both the minimum and the mean in one object. The identical signature appears in wrk2's tracker. Its fix is the clamp that now floors every latency memtier reports"},
+        {"title": "Output file sometimes contains invalid JSON", "url": "https://github.com/redis/memtier_benchmark/issues/271", "opened": "2024-10-24", "outcome": "fixed", "why_relevant": "a ten-minute production run emitting infinities for throughput beside an ordinary average latency, in a file meant to be parsed. Intermittent and not reproducible on demand, which is the property that makes it dangerous: a run that silently produced one is indistinguishable from a good one unless something downstream fails"},
+        {"title": "timeval_factorial_average loses precision below 1ms aggregate duration", "url": "https://github.com/redis/memtier_benchmark/issues/463", "opened": "2026-06-08", "outcome": "fixed", "why_relevant": "an average that truncated seconds and microseconds independently, so an aggregate duration under a millisecond rounded to zero and throughput printed as zero while the count and the average latency were positive. Fixed the next day. A clean example of the general failure -- a sub-millisecond interval truncated to zero and then divided by -- caught and repaired in this tool, while the same class of loss at the recording floor was not"},
+        {"title": "Uninitialized flags in setup_socket can disable TCP_NODELAY", "url": "https://github.com/redis/memtier_benchmark/issues/534", "opened": "2026-09-10", "outcome": "still open", "why_relevant": "an uninitialised variable passed to the socket options call, so the no-delay option was off on every connection and a repeatable forty-one millisecond plateau appeared, vanishing when the variable was initialised. A latency manufactured entirely by the measuring tool and reported as the server's, with no signal in the output"}
+      ],
+      "checked_here": [
+        "run_stats.h: `inline long long int ts_diff(...)` returns a signed value, while update_get_op, update_set_op and their siblings all take `unsigned int latency`. Read back from the tool's own source.",
+        "deps/hdr_histogram/hdr_histogram.c: hdr_record_value_capped clamps BOTH ends, raising anything below the lowest trackable value up to it. Read back from the tool's own source."
+      ],
+      "not_determined": [
+        "nothing was run; the wrap and the floor are read from source, with the wrap corroborated by the arithmetic match to the field report",
+        "whether the gap in the report of latency below the network round trip is the floor, the batch-shared stamps or something else: it predates the clamp by four years, carries no version and has no reply",
+        "how often a negative occurs in the field: one sighting, no counter in the tool, so no rate can be given"
+      ]
+    }
+  ]
+}

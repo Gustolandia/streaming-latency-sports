@@ -1,0 +1,147 @@
+{
+  "audited_utc": "2026-09-19",
+  "protocol": "freeze 04, Section 'Experiments for Mode 2', T5",
+  "terms": ["negative latency", "negative", "clock skew", "resolution", "rounding",
+            "millisecond", "nanosecond", "latency 0"],
+  "tools": [
+    {
+      "tool": "YCSB",
+      "repository": "https://github.com/brianfrankcooper/YCSB",
+      "version_seen": "master at 66302f301b13, 2026-08-12. The last tagged release is 0.17.0 of October 2019, so master is about seven years ahead of anything released",
+      "what_it_times": "one database operation, per client thread, inside the client process. The timer brackets only the binding's call, so it covers request serialisation, the network round trip, server processing and response deserialisation, and excludes key generation and the throttling sleep. Failed operations are measured under a separate name, so failures do not contaminate the successful path",
+      "documentation": {
+        "clock_and_resolution": {
+          "finding": "A monotonic clock, System.nanoTime(), on both ends of a tight bracket: the one tool in this audit whose clock choice is right. The wall clock appears only in an optional log header. The precision is then given away at the boundary: the interval is converted to microseconds by integer division and narrowed to a 32-bit int, so any operation faster than a microsecond records as exactly zero and every value is floored. The default backend is the auto-resizing HdrHistogram at three significant digits, which is genuinely high fidelity and has no fixed ceiling. The opt-in bucket backend is a millisecond floor: its percentiles are emitted as whole milliseconds.",
+          "evidence": [
+            "core/src/main/java/site/ycsb/DBWrapper.java:139-143",
+            "core/src/main/java/site/ycsb/DBWrapper.java:184-187",
+            "core/src/main/java/site/ycsb/measurements/Measurements.java:44",
+            "core/src/main/java/site/ycsb/measurements/OneMeasurementHdrHistogram.java:93",
+            "core/src/main/java/site/ycsb/measurements/OneMeasurementHistogram.java:32-41"
+          ]
+        },
+        "odd_values": {
+          "finding": "Zero is kept and counted in both backends, and because of the microsecond truncation every sub-microsecond operation becomes a genuine zero. In the opt-in bucket backend a small negative is truncated into bucket zero and treated as sub-millisecond, while its negative value is added to the running total, dragging the average down and making the reported minimum negative; a larger negative indexes outside the array and throws before the operation is counted, so it vanishes entirely. The worst behaviour is at the other end: everything at or above the last bucket is counted only in an overflow counter and excluded from the array, yet the divisor for the percentile loop still includes it -- so if more than five per cent of operations exceed the ceiling, the 95th percentile line is NEVER PRINTED AT ALL. The percentile does not come out large; it silently disappears from the output. The overflow count itself is printed only in verbose mode. The measurement layer also swallows an index-out-of-bounds exception and carries on, under the project's own comment calling it a terribly hacky way to cover up for a bug in the measurement code.",
+          "evidence": [
+            "core/src/main/java/site/ycsb/measurements/OneMeasurementHistogram.java:100-152",
+            "core/src/main/java/site/ycsb/measurements/Measurements.java:183-196",
+            "core/src/main/java/site/ycsb/ClientThread.java:144-148"
+          ]
+        },
+        "warnings": {
+          "finding": "YCSB warns, and unusually candidly. Its own changelog states that as a latency-under-load benchmark the tool in its original form suffers from coordinated omission, listing four specific defects including that the histogram gives no data on overflow values. The correction is opt-in and off by default, and it also requires a target rate to be set. The same document admits the corrected measurement inevitably includes some of the load generator's own preparation. A code comment records that the pacer and the measurement deliberately share one time source. Nothing warns about CPU contention or clock effects on the measurement itself, and a maintainer confirmed in the tracker that garbage collection in the measuring client does perturb the reported latencies. The changelog is also stale in a way that matters: it still states the default measurement type is the bucket histogram, which the code contradicts.",
+          "evidence": [
+            "core/CHANGES.md",
+            "core/src/main/java/site/ycsb/measurements/Measurements.java:47",
+            "core/src/main/java/site/ycsb/ClientThread.java:106-107",
+            "https://github.com/brianfrankcooper/YCSB/issues/975"
+          ]
+        }
+      },
+      "precision_class": {
+        "class": "medium",
+        "why": "judged on the default configuration, since that is what users get. The timing stack is strong -- a monotonic clock and an auto-resizing histogram at three significant digits -- but four choices in the default path cost it the top band: coordinated omission is uncorrected by default, and the project itself documents that as a real defect; latency is truncated to whole microseconds; the measurement layer swallows an exception under a comment admitting it hides a bug; and the opt-in bucket backend can suppress a percentile line entirely. The first alone is a first-order distortion for a latency-under-load benchmark"
+      },
+      "plan_said": "read first: request to reply, class unknown, odd values to confirm",
+      "audit_found": "it times one database operation inside the client; class medium on the default backend",
+      "prediction": "this tool was left unclassified on purpose, so the classification above is the prediction that T1 to T4 will test",
+      "searches": [
+        {"term": "negative latency", "where": "github issues", "hits": 0},
+        {"term": "negative", "where": "github issues", "hits": 8},
+        {"term": "clock skew", "where": "github issues", "hits": 0},
+        {"term": "resolution", "where": "github issues", "hits": 17},
+        {"term": "rounding", "where": "github issues", "hits": 1},
+        {"term": "millisecond", "where": "github issues", "hits": 13},
+        {"term": "nanosecond", "where": "github issues", "hits": 1},
+        {"term": "latency 0", "where": "github issues", "hits": 38}
+      ],
+      "reports": [
+        {"title": "Sub-Millisecond latencies are reported as taking 0 milliseconds", "url": "https://github.com/brianfrankcooper/YCSB/issues/41", "opened": "2011-10-14", "outcome": "fixed", "why_relevant": "the artefact this whole audit is about, found and fixed in YCSB fifteen years ago. Sub-millisecond responses landed in the zero bucket and contributed nothing to the sum, skewing fast datastores; the reporter proposed nanosecond timing divided down to microseconds, and that is still the code today. The fix moved the truncation boundary from a millisecond to a microsecond rather than removing it"},
+        {"title": "Remove histogram/time-series measurements as they are made obsolete by hdrhistogram", "url": "https://github.com/brianfrankcooper/YCSB/issues/375", "opened": "2015-07-29", "outcome": "still open", "why_relevant": "argues the bucket backend is strictly inferior and should go. One comment in eleven years. It was never removed, so a user who selects it still gets millisecond-floored percentiles and the vanishing-percentile behaviour"},
+        {"title": "Can Garbage Collection affect latency reported by YCSB?", "url": "https://github.com/brianfrankcooper/YCSB/issues/975", "opened": "2017-05-31", "outcome": "closed without a fix", "why_relevant": "a maintainer confirms on the record that pauses in the measuring client contaminate the reported latency, with reporting-only mitigation. Closed as stale a year later"},
+        {"title": "Extremely high latencies when using measurement.interval=both to address coordinated omission", "url": "https://github.com/brianfrankcooper/YCSB/issues/1672", "opened": "2023-03-29", "outcome": "still open", "why_relevant": "a report against the coordinated-omission correction the changelog recommends, showing intended latencies over 100 seconds across three different databases. Zero comments in three and a half years"}
+      ],
+      "checked_here": [],
+      "not_determined": [
+        "what a negative latency does on the DEFAULT histogram backend. Source tracing gives two candidate behaviours -- an uncaught exception that would terminate the client, or a silently mis-indexed sample -- and reading alone could not decide between them. The auditor deliberately did not run code to settle it, since under this protocol the classification is the prediction and the experiment is meant to test it. This is the sharpest experimental target the YCSB audit produced",
+        "whether YCSB has ever observed a negative latency in the wild; the monotonic clock makes it unlikely from clock effects, so the exception handler may guard against overflow of the int cast rather than against clock artefacts"
+      ]
+    },
+    {
+      "tool": "k6",
+      "repository": "https://github.com/grafana/k6",
+      "version_seen": "master at 3fcf5388d78c, 2026-09-18; latest release v2.2.0",
+      "what_it_times": "one HTTP request, inside the k6 process, through the standard library's tracing hooks. The headline metric excludes connection setup, TLS and the wait for a connection slot. It does NOT exclude k6's own work: the measurement is finalised after the response body has been read and decompressed, on the same thread pool that is under load, so client-side processing falls inside the reported duration",
+      "documentation": {
+        "clock_and_resolution": {
+          "finding": "Wall clock, with Go's monotonic reading deliberately discarded. The tool's entire time source is a function returning time.Now().UnixNano(), and calling UnixNano strips the monotonic reading, so every interval is a wall-clock difference exposed to NTP steps and slew. The one value that does retain a monotonic reading is subtracted from timestamps rebuilt with time.Unix, which carry none, so Go falls back to the wall clock there too: no interval in the HTTP timing path is monotonic. The arithmetic afterwards is excellent -- float64 milliseconds from nanosecond timestamps, no integer truncation, and exact order-statistic percentiles over every retained sample rather than a histogram approximation. The documentation states neither the unit nor any precision guarantee.",
+          "evidence": [
+            "lib/netext/httpext/tracer.go:175-177",
+            "lib/netext/httpext/tracer.go:316",
+            "lib/netext/httpext/tracer.go:362-367",
+            "metrics/units.go:7-13",
+            "metrics/sink.go:126-166",
+            "https://grafana.com/docs/k6/latest/using-k6/metrics/reference/"
+          ]
+        },
+        "odd_values": {
+          "finding": "The headline duration is not end minus start. It is the SUM of three sub-intervals, each computed from separately captured wall-clock stamps and each guarded differently, and the guards can only shrink the total, never grow it -- so the reported duration can be strictly less than the true elapsed time. Three components silently collapse to zero when an ordering precondition fails, and one of those fires in an ordinary case the code itself documents: on HTTP/2 the server may begin responding before the request has finished being sent, so the time to first byte is recorded as zero and the duration is understated by construction. Three other components have no ordering guard at all and can be negative outright, and one of them is a summand of the total, so a negative propagates straight into the headline metric. Nothing downstream rejects, clamps or flags it: the sink stores it and lets it set the minimum, the average and every percentile. This is not hypothetical -- k6's own tracker carries a summary showing a negative total request duration.",
+          "evidence": [
+            "lib/netext/httpext/tracer.go:372",
+            "lib/netext/httpext/tracer.go:323",
+            "lib/netext/httpext/tracer.go:348",
+            "lib/netext/httpext/tracer.go:355-359",
+            "lib/netext/httpext/tracer.go:340-345",
+            "lib/netext/httpext/tracer.go:365-367",
+            "metrics/sink.go:126-142",
+            "https://github.com/grafana/k6/issues/1872"
+          ]
+        },
+        "warnings": {
+          "finding": "none found about accuracy. The documentation carries no caveat on scheduling, contention, clocks or coordinated omission for the HTTP timing metrics, states no unit, and does not mention that the timings can be zero-clamped or negative. The substantive caveats exist only as code comments. The nearest thing to a clock warning anywhere in the project is a third-party comment on a closed issue attributing negative values to a measuring thread migrating between processors whose clocks are not synchronised, which a maintainer called very plausible and which was never written down anywhere users would find it.",
+          "evidence": [
+            "https://grafana.com/docs/k6/latest/using-k6/metrics/reference/",
+            "lib/netext/httpext/tracer.go:356-357",
+            "lib/netext/httpext/tracer.go:327-331",
+            "https://github.com/grafana/k6/issues/1872"
+          ]
+        }
+      },
+      "precision_class": {
+        "class": "low",
+        "why": "judged on trustworthiness as a measurement of the system under test, not on numeric resolution. On resolution alone k6 would score high: float64 milliseconds from nanosecond stamps, no truncation, exact percentiles. It is classified low because the construct is artefact-prone in four compounding ways, three of them confirmed by the project's own tracker. The clock is wall-clock by choice. The duration is a sum of asymmetrically clamped parts that can only be understated. Three parts can go negative and pass unfiltered into the minimum, the average and every percentile, and the tool has in fact printed a negative total duration. And the measured interval contains k6's own body reading and decompression, so client CPU contention is reported as server latency. A tool that can report a negative total request duration, and whose maintainers closed that report without a fix, cannot rank above low for a study of measurement artefacts, however precise its arithmetic"
+      },
+      "plan_said": "read first: request to reply, class unknown, odd values to confirm",
+      "audit_found": "request to reply, excluding connection setup but including k6's own decompression; class low",
+      "prediction": "this tool was left unclassified on purpose, so the classification above is the prediction that T1 to T4 will test",
+      "searches": [
+        {"term": "negative latency", "where": "github issues", "hits": 1},
+        {"term": "negative", "where": "github issues", "hits": 34},
+        {"term": "clock skew", "where": "github issues", "hits": 0},
+        {"term": "resolution", "where": "github issues", "hits": 78},
+        {"term": "rounding", "where": "github issues", "hits": 2},
+        {"term": "millisecond", "where": "github issues", "hits": 25},
+        {"term": "nanosecond", "where": "github issues", "hits": 13},
+        {"term": "latency 0", "where": "github issues", "hits": 2}
+      ],
+      "reports": [
+        {"title": "Negative http_req_receiving values", "url": "https://github.com/grafana/k6/issues/1872", "opened": "2021-02-25", "outcome": "closed without a fix", "why_relevant": "the most important report in this audit. k6's own summary printed a negative TOTAL request duration. Opened by a maintainer from an external report, reproduced by the reporter but not by the maintainer, quantified at eight negative results in 1,055,790 requests over ordinary HTTP/1.1 on successful uncancelled requests. The maintainer wrote 'I'm officially stumped'. A commenter proposed unsynchronised per-processor clocks, which the maintainer called very plausible, and suggested simply clamping small negatives to zero. That clamp was never implemented, and the issue was closed in 2024 as not planned, for lack of recent updates. The auditor notes that the commenter's theory presumes a monotonic source whereas the code uses the wall clock, so NTP adjustment is a candidate the thread never considered"},
+        {"title": "Negative http_req_sending values", "url": "https://github.com/grafana/k6/issues/588", "opened": "2018-04-19", "outcome": "fixed", "why_relevant": "the same class of defect three years earlier, with an average sending time of about minus one millisecond. Notable for its history: it was closed by a fix, REOPENED when the reporter confirmed the next release still produced negative values, and closed again seven months later. The symptom returned in 2021 regardless"},
+        {"title": "metrics show incorrect timings", "url": "https://github.com/grafana/k6/issues/1041", "opened": "2019-06-05", "outcome": "fixed", "why_relevant": "receiving time of about 0.05 ms while transferring megabyte bodies. A maintainer named the construction: receiving is measured from the first byte to the moment the tool calls its own finaliser. The reporter also noted identical payloads taking 600 ms uncompressed against 800 ms compressed and called it misleading -- the decompression-inside-the-measurement effect, later filed separately and still open"},
+        {"title": "K6 seems to time decompression of gzip responses", "url": "https://github.com/grafana/k6/issues/2685", "opened": "2022-09-18", "outcome": "still open", "why_relevant": "client-side CPU work reported as server latency, acknowledged by a maintainer and unfixed after four years. The reporter had measurements: tests appeared 15 per cent slower with compression, and a library change that microbenchmarks predicted would double throughput moved k6's numbers by two or three per cent"},
+        {"title": "res.timings.looking_up is always 0", "url": "https://github.com/grafana/k6/issues/6372", "opened": "2026-09-04", "outcome": "still open", "why_relevant": "a timing field that silently reports a constant zero rather than being absent, because the data source was removed in 2017 and the field recreated without one in a later refactor"},
+        {"title": "Use HDR histograms for calculating percentiles", "url": "https://github.com/grafana/k6/issues/763", "opened": "2018-09-12", "outcome": "still open", "why_relevant": "records that k6 retains every sample to compute exact percentiles, which the reporter calls a large memory leak for long runs. Open eight years. It is the one respect in which k6's statistics are more precise than YCSB's"}
+      ],
+      "checked_here": [
+        "lib/netext/httpext/tracer.go: the whole time source is `func now() int64 { return time.Now().UnixNano() }`, which strips Go's monotonic reading. Read back from the tool's own source.",
+        "`trail.Duration = trail.Sending + trail.Waiting + trail.Receiving` -- the headline metric is a sum of parts, not end minus start. Read back from the tool's own source.",
+        "`if gotFirstResponseByte != 0 { trail.Receiving = done.Sub(time.Unix(0, gotFirstResponseByte)) }` -- a presence check and no ordering check, and the subtraction is from a timestamp rebuilt with time.Unix, which carries no monotonic reading, so Go falls back to the wall clock even though `done` had one. Read back from the tool's own source."
+      ],
+      "not_determined": [
+        "whether the negative values reported in the tracker arise from NTP adjustment, from unsynchronised per-processor clocks, or from a data race. The maintainer could not reproduce them and the issue was closed unfixed. The source reading establishes that the timestamps are wall-clock, which makes NTP a live candidate the thread never considered",
+        "how often the zero-clamping fires on HTTP/2 in ordinary use. The code path is unambiguous but nothing quantifies it, and this looks like the most testable k6 prediction"
+      ]
+    }
+  ],
+  "on_the_protocol_itself": "The auditor recorded something about the frozen terms worth keeping. For k6, 'negative' was the highest-yield term and found the central result, while 'clock skew' returned zero hits in both repositories despite one thread containing an extended debate about unsynchronised processor clocks -- because that thread says 'tsc' and 'sockets' and never 'clock skew'. 'negative latency' returned one k6 hit, unrelated. Had the protocol leaned on 'negative latency' and 'clock skew' alone it would have found nothing in either project. No term was added or substituted; this is recorded as a limitation of the instrument, not a deviation from it."
+}

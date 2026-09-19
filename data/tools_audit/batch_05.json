@@ -1,0 +1,85 @@
+{
+  "audited_utc": "2026-09-19",
+  "protocol": "freeze 04, Section 'Experiments for Mode 2', T5",
+  "terms": ["negative latency", "negative", "clock skew", "resolution", "rounding",
+            "millisecond", "nanosecond", "latency 0"],
+  "tools": [
+    {
+      "tool": "librdkafka rdkafka_performance",
+      "repository": "https://github.com/confluentinc/librdkafka",
+      "version_seen": "master at 6f86c853a131d66fc2cd2a44aac99e83de859b4e, 2026-09-17; the audited lines are byte-identical in release v2.15.1",
+      "what_it_times": "both, by mode. The producer mode times send to got-it: it writes its own timestamp into the payload before producing and subtracts it in the delivery-report callback, both stamps taken by one process on one machine. The consumer mode times send to receive, subtracting a stamp written by a separate producer process, normally on another machine, across two unsynchronised wall clocks. A third figure, the application fetch latency, is the accumulated duration of the consume calls divided by the message count, which is a per-message amortisation of a per-batch wait and not a message latency at all",
+      "documentation": {
+        "clock_and_resolution": {
+          "finding": "The tool does not use librdkafka's monotonic clock for its own latency. It rolls a private wall_clock() on bare gettimeofday(), in microseconds, and uses the library's monotonic rd_clock() only for elapsed time, display intervals and the fetch-latency figure. The library has a monotonic clock, documents the distinction in its own statistics, and even exposes a guarded monotonic microsecond send-to-got-it measurement through rd_kafka_message_latency() in the very callback this tool is already inside -- which the tool does not call. On Windows the tool compiles a gettimeofday() of its own that fills the microseconds field from whole milliseconds, so every sample there is a multiple of 1000 microseconds and anything under a millisecond measures as exactly zero. Reporting is coarser than sampling everywhere: the four latency columns print milliseconds to two decimals, the round-trip column is integer-divided to whole milliseconds, and the consumer's summary suppresses the latency line entirely when the mean is below one millisecond.",
+          "evidence": [
+            "examples/rdkafka_performance.c:126-130",
+            "src/rdtime.h:80-121",
+            "win32/wintime.h:14-33",
+            "src/rdkafka.h:1641-1648",
+            "src/rdkafka_msg.c:1441-1444",
+            "examples/rdkafka_performance.c:530-592",
+            "STATISTICS.md:55-56"
+          ]
+        },
+        "odd_values": {
+          "finding": "The two paths are guarded differently and neither counts what it does. The producer path has no guard at all: the subtraction is signed throughout, so a backward clock step propagates a negative into the minimum, which then prints as a negative millisecond figure, and into the sum, which drags the mean down, while the sample is counted as valid. The consumer path silently drops anything not strictly above zero, so a latency that rounds to zero microseconds is discarded rather than kept or clamped -- on Windows, where the clock has millisecond resolution, that discards every sub-millisecond message -- and the discards are tallied nowhere, so the count understates the messages seen and the mean is conditioned on the samples that survived. Three further faults. Zero doubles as the sentinel for 'no minimum recorded yet', so one genuine zero sample wipes the running minimum and the next sample replaces it however large; librdkafka's own averager carries the identical bug, corrupting the minimum in its published statistics. The raw per-message file writes a signed value through an unsigned formatter, so a negative sample appears there as about 1.8e19 -- a defect the project has already shipped once before in two other timing fields. And the round-trip column excludes any broker whose average round trip is under 100 microseconds, on the stated assumption that it must mean no messages are passing: a genuinely fast link is treated as no link.",
+          "evidence": [
+            "examples/rdkafka_performance.c:175-185",
+            "examples/rdkafka_performance.c:206-212",
+            "examples/rdkafka_performance.c:318-340",
+            "examples/rdkafka_performance.c:470-486",
+            "src/rdavg.h:77-93",
+            "src/rdhdrhistogram.c:394-410",
+            "https://github.com/confluentinc/librdkafka/issues/3519"
+          ]
+        },
+        "warnings": {
+          "finding": "This is the one project in the audit so far that does warn, and it warns well -- but not about the tool. INTRODUCTION.md has a Latency measurement section advising that end-to-end latency be measured with clocks synchronised between producers and consumers, and stating that a high internal latency indicates CPU core contention, with advice to check load and involuntary context switches. None of it is attached to the perf tool's own latency mode, which is precisely an unsynchronised cross-machine wall-clock subtraction. Nothing warns that the tool's clock is not monotonic, that a Windows build has millisecond resolution, that the consumer drops sub-microsecond samples, that the round-trip column has a 100 microsecond floor, or that a zero resets the minimum. The tool's own usage text for the latency switch carries no caveat at all. Separately, the percentiles in the library's statistics are compile-time optional and, when absent, are emitted as literal zero rather than as missing, so a reader cannot tell 'no histogram in this build' from 'the 99th percentile is zero'.",
+          "evidence": [
+            "INTRODUCTION.md:219-256",
+            "STATISTICS.md:112-138",
+            "examples/rdkafka_performance.c:1172-1178",
+            "src/rdavg.h:124-130",
+            "CMakeLists.txt:36-40"
+          ]
+        }
+      },
+      "precision_class": {
+        "class": "medium",
+        "why": "microseconds on Linux and macOS, where the measurement is gettimeofday and the raw per-message file is written in microseconds. Two qualifications that carry weight: a Windows build is LOW, not medium, because its gettimeofday carries no sub-millisecond information at all; and the reported resolution is coarser than the sampled resolution everywhere, with the round-trip column truncated to whole milliseconds and the consumer summary suppressed below one millisecond"
+      },
+      "plan_said": "read first: 'send to got-it?', class unknown, odd values to confirm",
+      "audit_found": "the provisional guess holds for the producer mode; the consumer mode is send to receive across two machines' wall clocks. The class is medium, except on Windows where it is low",
+      "prediction": "this tool was left unclassified on purpose, so the classification above is the prediction that T1 to T4 will test",
+      "searches": [
+        {"term": "negative latency", "where": "github issues", "hits": 1},
+        {"term": "negative", "where": "github issues", "hits": 36},
+        {"term": "clock skew", "where": "github issues", "hits": 0},
+        {"term": "resolution", "where": "github issues", "hits": 39},
+        {"term": "rounding", "where": "github issues", "hits": 1},
+        {"term": "millisecond", "where": "github issues", "hits": 79},
+        {"term": "nanosecond", "where": "github issues", "hits": 5},
+        {"term": "latency 0", "where": "github issues", "hits": 45}
+      ],
+      "reports": [
+        {"title": "int_latency stat is wildly wrong (huge negative value) when message.timeout.ms is set to infinite", "url": "https://github.com/confluentinc/librdkafka/issues/5555", "opened": "2026-07-24", "outcome": "fixed", "why_relevant": "a latency metric in a production Kafka client reported a huge negative number for about nine years, under a configuration the reporter calls common for idempotent and transactional producers. The quantity was derived from a timeout deadline rather than an enqueue time, so an infinite timeout underflowed, and no sign guard stopped it reaching the published statistic. Found by a user rather than by the project's tests, and the fixing change sat unreviewed for six months, which is why the reporter opened the issue at all"},
+        {"title": "Statistics fields txidle and rxidle emitted as 18446744073709551615 when -1 is expected", "url": "https://github.com/confluentinc/librdkafka/issues/3519", "opened": "2021-08-26", "outcome": "fixed", "why_relevant": "two timing fields whose documented sentinel is -1 were serialised as unsigned, so users received about 1.8e19 and a parser broke on upgrade. Precedent for the defect still live in the perf tool, which writes a signed latency through an unsigned formatter into its raw file"},
+        {"title": "maximum poll interval exceeded by 846018558ms", "url": "https://github.com/confluentinc/librdkafka/issues/3537", "opened": "2021-09-10", "outcome": "fixed", "why_relevant": "a time difference that looked like a nine-day latency turned out to be a torn 64-bit read of the clock on a 32-bit build: an artefact of reading the clock, not of the system measured. The thread also records the project's own clock policy, that sub-millisecond granularity is needed and a 10 to 16 millisecond timer is 'not good enough' -- the standard the perf tool's own clock does not meet on Windows"},
+        {"title": "Measuring the latency time of producer/consumer individually?", "url": "https://github.com/confluentinc/librdkafka/issues/791", "opened": "2016-09-09", "outcome": "closed without a fix", "why_relevant": "a maintainer confirms on the record that the round-trip figure this tool prints pools produce requests with metadata and version requests, and that there is no supported way to separate them. Still true at the audited commit. Combined with the tool's own 100 microsecond exclusion and its truncation to whole milliseconds, that column is a millisecond-rounded average over a request mix the user cannot control. The thread also has the maintainer calling it milliseconds where the documentation calls it microseconds"},
+        {"title": "Mismatch timestamp units between C++ Producer and C implementation", "url": "https://github.com/confluentinc/librdkafka/issues/2125", "opened": "2018-11-28", "outcome": "fixed", "why_relevant": "a thousandfold documented-unit error, live for an unknown period, in exactly the timestamp the project's own documentation tells you to use for measuring end-to-end latency. The auditor could not find the fixing commit and rests 'fixed' on the maintainer's acknowledgement plus the present state of the file"},
+        {"title": "Bug: Statistics contains invalid or undocumented values", "url": "https://github.com/confluentinc/librdkafka/issues/5378", "opened": "2026-04-01", "outcome": "still open", "why_relevant": "the statistics serialiser emits numbers with leading zeros, which is invalid JSON, at a buffer-growth boundary and so non-deterministically. It can corrupt any numeric field including the latency objects, and this tool scrapes its round-trip column out of that same JSON"}
+      ],
+      "checked_here": [
+        "examples/rdkafka_performance.c latency_add: `if (!cnt.latency_lo || ts < cnt.latency_lo)` -- zero is the sentinel for an unset minimum -- and `fprintf(latency_fp, \"%\" PRIu64 \"\\n\", ts);` with ts declared int64_t. Read back from the tool's own source.",
+        "the round-trip exclusion: `/* Skip low RTT values, means no messages are passing */ if (avg_rtt[avg_rtt_i] < 100 /*0.1ms*/) continue;`. Read back from the tool's own source.",
+        "the producer path has no guard: `latency_add(wall_clock() - source_ts, \"producer\");` with no sign or range test. Read back from the tool's own source."
+      ],
+      "not_determined": [
+        "no upstream issue exists for any of the perf tool's own faults found here: not the unsigned write, not the zero-resets-the-minimum bug, not the consumer's silent drop, not the 100 microsecond floor, not the Windows resolution. The eight terms surfaced none, and other wordings were not searched, so a differently-phrased report cannot be ruled out. Each is a present-tense reading of the code, not a user report",
+        "the tool was not built or run; the Windows claim rests on reading the header it compiles there",
+        "whether shipped Windows binaries omit the histogram, which would make every percentile in their statistics a literal zero. That is an inference from the build configuration, not an inspection of a binary"
+      ]
+    }
+  ]
+}

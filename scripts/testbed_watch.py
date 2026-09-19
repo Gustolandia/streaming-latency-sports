@@ -574,6 +574,12 @@ def cycle(hosts, spec, key, ssh, run, runner, state, stamp, window_min=15, lane=
         for role, facts, err in (("driver", driver, driver_err), ("broker", broker, broker_err)):
             if facts is None:
                 power = states.get(names[role])
+                # A pair that was stopped because its work was done is the state we want it in,
+                # not a fault. Alerting on it every look would bury the alerts that matter.
+                if power and "deallocated" in power.lower():
+                    flags.append(("INFO", "stopped: the %s is deallocated, so it is not billing"
+                                  % role))
+                    continue
                 flags.append(("ALERT", "unreachable: the %s does not answer over SSH (%s)%s"
                               % (role, err, "; Azure says: %s" % power if power else "")))
     hourly = sum(own["hourly_usd"][h["size"]] for _, h in machines)

@@ -7,7 +7,12 @@ set -euo pipefail
 # Usage:
 #   scripts/run_kafka_trial.sh <RUN_ID> <PLAN_CSV> [SPEEDUP] [MAX_T_SIM] \
 #       [-BOOTSTRAP host:port] [-TOPIC t] [-BROKER_COUNT n] [-PRODUCER_EXTRA "..."] \
-#       [-CONSUMER_EXTRA "..."] [-IDLE_SECONDS n]
+#       [-CONSUMER_EXTRA "..."] [-IDLE_SECONDS n] [-CLIENT python|java] [-ACK_STAMP callback|inline]
+#
+# -CLIENT swaps which client sends and receives, and nothing else. A8 compares our Python client
+# with Kafka's official Java one, so everything around the client -- the plan, the topic, the
+# wrapping, the metadata, the TTI computed afterwards -- has to stay identical, or the block
+# compares two harnesses. That is why this is one script with one dispatch and not two scripts.
 
 RUN_ID="${1:?run_id required}"
 PLAN_CSV="${2:?plan_csv required}"
@@ -19,6 +24,7 @@ if [ $# -gt 0 ] && [[ "$1" != -* ]]; then MAX_T_SIM="$1"; shift; fi
 
 BOOTSTRAP="localhost:9092"; TOPIC=""; BROKER_COUNT=1
 PRODUCER_EXTRA=""; CONSUMER_EXTRA=""; IDLE_SECONDS=30
+CLIENT="python"; ACK_STAMP=""
 while [ $# -gt 0 ]; do
   case "$1" in
     -BOOTSTRAP) BOOTSTRAP="$2"; shift 2;;
@@ -27,6 +33,8 @@ while [ $# -gt 0 ]; do
     -PRODUCER_EXTRA) PRODUCER_EXTRA="$2"; shift 2;;
     -CONSUMER_EXTRA) CONSUMER_EXTRA="$2"; shift 2;;
     -IDLE_SECONDS) IDLE_SECONDS="$2"; shift 2;;
+    -CLIENT) CLIENT="$2"; shift 2;;
+    -ACK_STAMP) ACK_STAMP="$2"; shift 2;;
     *) shift;;
   esac
 done
@@ -86,12 +94,41 @@ meta = {
 Path(f"runs/{run_id}/meta.json").write_text(json.dumps(meta, indent=2, sort_keys=True), encoding="utf-8")
 PY
 
-echo "[1/4] $(date +%H:%M:%S) starting consumer..."
+# Where the got-it note is taken is a condition A8 varies, so it reaches both clients the same
+# way: one option on the producer, named the same in each.
+#
+# Taking it inline also forces one request in flight, in both clients, and they refuse otherwise:
+# above one, the blocking wait resolves an older event and the stamp would belong to a different
+# message. The campaign's standing setting is 64, so it is overridden here rather than in the
+# campaign, and run_integrity.py knows to expect 1 for an inline run. Both options are later, so
+# they win over anything PRODUCER_EXTRA already carried.
+if [ -n "$ACK_STAMP" ]; then
+  PRODUCER_EXTRA="$PRODUCER_EXTRA --ack-stamp $ACK_STAMP"
+  if [ "$ACK_STAMP" = inline ]; then
+    PRODUCER_EXTRA="$PRODUCER_EXTRA --max-inflight 1"
+  fi
+fi
+
+JAVA_BIN="${SBL_JAVA:-java}"
+JAVA_CP="harness/java/out:harness/java/lib/kafka-clients.jar:harness/java/lib/slf4j-api.jar"
+if [ "$CLIENT" = java ] && [ ! -d harness/java/out ]; then
+  echo "FATAL: -CLIENT java, but harness/java/out is not built. Run bash harness/java/build.sh" >&2
+  exit 1
+fi
+
+echo "[1/4] $(date +%H:%M:%S) starting consumer ($CLIENT)..."
 # shellcheck disable=SC2086
-$SCHED_WRAP $CONSUMER_WRAP "$PY" scripts/kafka_consumer.py ${KAFKA_CONSUMER_OPTS:-} \
-  --run-id "$RUN_ID" --out "runs/$RUN_ID/consumer.csv" \
-  --bootstrap "$BOOTSTRAP" --topic "$TOPIC" --idle-seconds "$IDLE_SECONDS" \
-  --broker-count "$BROKER_COUNT" $CONSUMER_EXTRA > "runs/$RUN_ID/consumer.log" 2>&1 &
+if [ "$CLIENT" = java ]; then
+  $SCHED_WRAP $CONSUMER_WRAP "$JAVA_BIN" -cp "$JAVA_CP" LawConsumer \
+    --run-id "$RUN_ID" --out "runs/$RUN_ID/consumer.csv" \
+    --bootstrap "$BOOTSTRAP" --topic "$TOPIC" --idle-seconds "$IDLE_SECONDS" \
+    > "runs/$RUN_ID/consumer.log" 2>&1 &
+else
+  $SCHED_WRAP $CONSUMER_WRAP "$PY" scripts/kafka_consumer.py ${KAFKA_CONSUMER_OPTS:-} \
+    --run-id "$RUN_ID" --out "runs/$RUN_ID/consumer.csv" \
+    --bootstrap "$BOOTSTRAP" --topic "$TOPIC" --idle-seconds "$IDLE_SECONDS" \
+    --broker-count "$BROKER_COUNT" $CONSUMER_EXTRA > "runs/$RUN_ID/consumer.log" 2>&1 &
+fi
 CONS_PID=$!
 
 sleep 2
@@ -101,11 +138,19 @@ echo "[2/4] $(date +%H:%M:%S) running producer..."
 # against confluent-kafka, which is how "Kafka" is separated from "kafka-python".
 KAFKA_PRODUCER_SCRIPT="${KAFKA_PRODUCER_SCRIPT:-scripts/kafka_producer.py}"
 # shellcheck disable=SC2086
-$SCHED_WRAP "$PY" "$KAFKA_PRODUCER_SCRIPT" ${KAFKA_PRODUCER_OPTS:-} \
-  --run-id "$RUN_ID" --plan-csv "$PLAN_CSV" --out "runs/$RUN_ID/producer.csv" \
-  --bootstrap "$BOOTSTRAP" --topic "$TOPIC" \
-  --speedup "$SPEEDUP" --max-t-sim "$MAX_T_SIM" --broker-count "$BROKER_COUNT" \
-  $PRODUCER_EXTRA > "runs/$RUN_ID/producer.log" 2>&1
+if [ "$CLIENT" = java ]; then
+  $SCHED_WRAP "$JAVA_BIN" -cp "$JAVA_CP" LawProducer \
+    --run-id "$RUN_ID" --plan-csv "$PLAN_CSV" --out "runs/$RUN_ID/producer.csv" \
+    --bootstrap "$BOOTSTRAP" --topic "$TOPIC" \
+    --speedup "$SPEEDUP" --max-t-sim "$MAX_T_SIM" \
+    $PRODUCER_EXTRA > "runs/$RUN_ID/producer.log" 2>&1
+else
+  $SCHED_WRAP "$PY" "$KAFKA_PRODUCER_SCRIPT" ${KAFKA_PRODUCER_OPTS:-} \
+    --run-id "$RUN_ID" --plan-csv "$PLAN_CSV" --out "runs/$RUN_ID/producer.csv" \
+    --bootstrap "$BOOTSTRAP" --topic "$TOPIC" \
+    --speedup "$SPEEDUP" --max-t-sim "$MAX_T_SIM" --broker-count "$BROKER_COUNT" \
+    $PRODUCER_EXTRA > "runs/$RUN_ID/producer.log" 2>&1
+fi
 
 echo "[3/4] $(date +%H:%M:%S) waiting for consumer..."
 wait "$CONS_PID" || true

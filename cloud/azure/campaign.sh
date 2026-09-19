@@ -70,6 +70,8 @@ broker_delay () {
 }
 reap () {
   pkill -f "kafka_producer.py|redis_producer.py|kafka_consumer.py|redis_consumer.py" 2>/dev/null
+  # A8 runs Kafka's Java client too, and a leftover one would send into the next run's topic.
+  pkill -f "LawProducer|LawConsumer" 2>/dev/null
   pkill -f "util_sampler.py" 2>/dev/null
   sudo pkill -INT -x bpftrace 2>/dev/null
   pkill -9 -x stress-ng 2>/dev/null
@@ -221,10 +223,13 @@ run_one () {
   tcp_counters before
   began=$(date -u +%s)
   if [ "$BACKEND" = kafka ]; then
+    client_args=()
+    [ -n "${CLIENT:-}" ] && client_args+=(-CLIENT "$CLIENT")
+    [ -n "${ACK_STAMP:-}" ] && client_args+=(-ACK_STAMP "$ACK_STAMP")
     SBL_CONSUMER_WRAP="sudo ip netns exec sblrecv sudo -u $ME" SBL_SCHED_WRAP="$wrap_sched" \
       timeout -k 30 $(( DURATION + 300 )) bash scripts/run_kafka_trial.sh "$RUN_ID" "$SYN_PLAN" \
       "$SPEEDUP" "$DURATION" -BOOTSTRAP "$KAFKA_BOOTSTRAP" -PRODUCER_EXTRA "$KAFKA_PRODUCER_EXTRA" \
-      -IDLE_SECONDS 15 > "$RUN_DIR/trial.log" 2>&1
+      -IDLE_SECONDS 15 "${client_args[@]}" > "$RUN_DIR/trial.log" 2>&1
     rc=$?
   else
     SBL_CONSUMER_WRAP="sudo ip netns exec sblrecv sudo -u $ME" SBL_SCHED_WRAP="$wrap_sched" \
@@ -295,6 +300,9 @@ values = {
     "KEY": row["key"], "BACKEND": p["backend"], "LOAD": p["load_pct"],
     "SLICE_NS": p.get("slice_ns") or "", "DELAY_MS": p["delay_ms"],
     "PRIORITY": "1" if p.get("priority") else "", "CPUS": p.get("cpus") or "",
+    # A8 varies which client sends and where it takes the got-it note; every other block leaves
+    # both unset and the run is launched exactly as it always was.
+    "CLIENT": p.get("language") or "", "ACK_STAMP": p.get("ack_stamp") or "",
     "TRACE_HALF": "1" if p.get("trace_half") else "",
     "TRACE": 1 if int(hashlib.sha256(row["key"].encode()).hexdigest(), 16) % 2 == 0 else 0,
     "HZ": round(1000 / tick) if tick else "",

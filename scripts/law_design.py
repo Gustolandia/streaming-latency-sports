@@ -153,6 +153,27 @@ def _base(baseline, backend, load):
                          % (backend, load))
 
 
+def _client_calibration(block, spec, calibration, language):
+    """The calibration that places one client's trips.
+
+    A8 gives each client its own calibration, because the delay's effect on the trip belongs to
+    the client: the pilot measured Kafka's trip moving 0.89 ms per millisecond added and Redis's
+    1.24, and there is no reason two clients of one broker should agree either (D4-9). Where a
+    block names clients, the calibration it is handed must be keyed by client. Placing one
+    client's trips from the other's calibration would put every one of them in the wrong place,
+    and the difference would look like the comparison A8 exists to make.
+    """
+    if not spec.get("languages"):
+        return calibration
+    if calibration is None:
+        return None
+    if language not in calibration:
+        raise ValueError("block %s places each client's trips from that client's own "
+                         "calibration, and the one given has no %s entry; it has %s"
+                         % (block, language, ", ".join(sorted(calibration)) or "nothing"))
+    return calibration[language]
+
+
 def _placer(baseline, calibration, backend, load):
     """(zero-delay trip, the delay for a target trip, how it was placed) at one backend and load.
 
@@ -175,7 +196,7 @@ def _placer(baseline, calibration, backend, load):
             lambda target: delay_calibration.delay_for(entry, target), "calibration")
 
 
-def _unplaced(block, backend, load, tick_ms, up_to_ms, cpus=None):
+def _unplaced(block, backend, load, tick_ms, up_to_ms, cpus=None, language=None):
     """B0's single no-delay setup, or C0's delay staircase, for one backend at one load.
 
     `cpus` switches the machine down to that many CPUs for these runs. A5 gives each core count
@@ -186,15 +207,16 @@ def _unplaced(block, backend, load, tick_ms, up_to_ms, cpus=None):
     common = {"block": block, "backend": backend, "load_pct": load, "slice_ns": None,
               "predicted_slice_ns": None, "cpus": cpus, "tick_ms": tick_ms,
               "target_trip_ms": None, "baseline_trip_ms": None, "priority": False,
-              "trace_half": False}
+              "language": language, "ack_stamp": None, "trace_half": False}
     if block == "B0":
         steps = [("base", 0.0)]
     else:
         steps = [("d0a", 0.0), ("d0b", 0.0)] + [("d%d" % round(s * 1000), s)
                                                for s in c0_steps(up_to_ms)]
     at = "-c%d" % cpus if cpus else ""
-    return [dict(common, id="%s-%s-l%d%s-%s" % (block, backend, load, at, label), point=label,
-                 delay_ms=delay) for label, delay in steps]
+    by = "-%s" % language if language else ""
+    return [dict(common, id="%s-%s-l%d%s%s-%s" % (block, backend, load, at, by, label),
+                 point=label, delay_ms=delay) for label, delay in steps]
 
 
 def _wanted(block, spec, slices, backends, cores=None):
@@ -233,7 +255,8 @@ def _wanted(block, spec, slices, backends, cores=None):
 
 
 def make_setups(block, tick_ms, baseline=None, settings=None, calibration=None, loads=None,
-                up_to_ms=8.0, slices=None, backends=None, cpus=None, cores=None):
+                up_to_ms=8.0, slices=None, backends=None, cpus=None, cores=None,
+                language=None):
     """(setups, unreachable) for one campaign of a block. `settings` is sched_settings' read of
     the machine, and `calibration` is delay_calibration.py's fit, which places the trips when it
     is given. `slices` and `backends` take one campaign's share of the block, and `cpus` runs a
@@ -246,6 +269,10 @@ def make_setups(block, tick_ms, baseline=None, settings=None, calibration=None, 
     if cpus and block not in UNPLACED:
         raise ValueError("block %s takes its core counts from its own design; only %s are run "
                          "at a core count given to them" % (block, " and ".join(UNPLACED)))
+    if language and block not in UNPLACED:
+        raise ValueError("block %s names its own clients; only %s are run as one client given to "
+                         "them, which is how an A8 session calibrates twice"
+                         % (block, " and ".join(UNPLACED)))
     slices, backends, cores = _wanted(block, spec, slices, backends, cores)
     if slices:
         spec = dict(spec, slices=slices)
@@ -255,16 +282,21 @@ def make_setups(block, tick_ms, baseline=None, settings=None, calibration=None, 
     for backend in backends:
         for load in loads or spec["loads"]:
             if block in UNPLACED:
-                setups += _unplaced(block, backend, load, tick_ms, up_to_ms, cpus)
+                setups += _unplaced(block, backend, load, tick_ms, up_to_ms, cpus, language)
                 continue
-            base, delay_for, placed_by = _placer(baseline, calibration, backend, load)
+            placers = dict(
+                (language, _placer(baseline,
+                                   _client_calibration(block, spec, calibration, language),
+                                   backend, load))
+                for language in spec.get("languages", (None,)))
             for slice_ms, hand_set, cpus, predicted in _slices(block, spec, settings):
                 label = "c%d" % cpus if cpus else "s%d" % round(slice_ms * 1000)
                 for point in spec["points"]:
                     target = trip_ms(point, slice_ms, tick_ms)
-                    delay = delay_for(target)
                     for priority in spec.get("priorities", (False,)):
                       for language in spec.get("languages", (None,)):
+                        base, delay_for, placed_by = placers[language]
+                        delay = delay_for(target)
                         for ack_stamp in spec.get("ack_stamps", (None,)):
                             # A8 varies the client and where the got-it note is taken; every other
                             # block leaves both unset and the id is the one it always was.
@@ -329,7 +361,8 @@ def testable(block, settings, baseline=None, calibration=None, backends=BACKENDS
 
 
 def design(block, settings, baseline, rounds, seed, calibration=None, loads=None, up_to_ms=8.0,
-           first_round=1, slices=None, backends=None, anchor=None, cpus=None, cores=None):
+           first_round=1, slices=None, backends=None, anchor=None, cpus=None, cores=None,
+           language=None):
     """The run_queue design for one campaign of a block, with what it was made from."""
     if block not in BLOCKS:
         raise ValueError("no block %r; the blocks are %s" % (block, ", ".join(sorted(BLOCKS))))
@@ -355,7 +388,7 @@ def design(block, settings, baseline, rounds, seed, calibration=None, loads=None
                          "campaign of a block shares the anchor" % (anchor, ", ".join(
                              "%g" % s for s in slices)))
     setups, unreachable = make_setups(block, tick, baseline, settings, calibration, loads,
-                                      up_to_ms, slices, backends, cpus, cores)
+                                      up_to_ms, slices, backends, cpus, cores, language)
     return {"block": block, "seed": seed, "rounds": rounds, "first_round": first_round,
             "tick_ms": tick, "slices": list(slices) if slices else None,
             "backends": list(backends) if backends else list(BACKENDS),
@@ -454,6 +487,9 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise):
                    help="run one backend in this campaign; may be given twice")
     p.add_argument("--anchor-slice", type=float, default=None,
                    help="the slice every campaign of the block shares, for example 3")
+    p.add_argument("--language", default="",
+                   help="run B0 or C0 as one client, for a session that opens a campaign "
+                        "comparing clients (A8); each client gets its own calibration")
     p.add_argument("--cores", default="",
                    help="this campaign's share of the block's core counts, for example 2; A5 "
                         "runs one session per core count")
@@ -534,7 +570,8 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise):
                       args.seed, calibration, loads, args.up_to_ms, args.first_round,
                       [float(s) for s in args.slices.split(",")] if args.slices else None,
                       args.backend or None, args.anchor_slice, args.cpus,
-                      [int(c) for c in args.cores.split(",")] if args.cores else None)
+                      [int(c) for c in args.cores.split(",")] if args.cores else None,
+                      args.language or None)
         with open(args.out, "w", encoding="utf-8") as fh:
             fh.write(json.dumps(made, indent=2, sort_keys=True) + "\n")
         runs = len(made["setups"]) * made["rounds"]

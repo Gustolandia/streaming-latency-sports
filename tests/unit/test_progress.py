@@ -49,6 +49,22 @@ class TestWhichStageACampaignBelongsTo:
     def test_a_whole_path_is_read_by_its_own_name(self, tmp_path):
         assert progress.stage_of(str(tmp_path / "matched" / "a1_x")) == "A1, the slice"
 
+    @pytest.mark.parametrize("label", ["c0_20260918T194812Z", "b0_x", "p0_x"])
+    def test_the_arm_pairs_instrument_campaign_belongs_to_a4(self, label):
+        """The plan's table gives A4 five campaigns: the Arm instrument one, then two per
+        backend. Stage 0's four are the x86 pairs' own (S0-1 to S0-4)."""
+        assert progress.stage_of(label, "arm") == "A4, the Arm pair"
+        assert progress.stage_of(label, "matched") == "stage 0, the instrument"
+        assert progress.stage_of(label, "matched-b") == "stage 0, the instrument"
+        assert progress.stage_of(label) == "stage 0, the instrument"
+
+    def test_a_session_folder_names_the_pair_that_ran_it(self):
+        assert progress.stage_of("c0_x", "arm_20260919T031017Z") == "A4, the Arm pair"
+
+    def test_a_campaign_of_a_block_goes_by_its_label_wherever_it_ran(self):
+        """A8 runs on the Arm pair too, and it is A8's campaign, not A4's."""
+        assert progress.stage_of("a8_x", "arm") == "A8, the client"
+
     def test_the_plan_totals_what_its_table_says(self):
         assert progress.TOTAL == 3590, "the campaigns table of freeze 04"
         assert sum(runs for _, _, runs in progress.PLAN) == progress.TOTAL
@@ -78,6 +94,13 @@ class TestCountingWhatCameHome:
     def test_nothing_collected_yet_is_no_runs(self, tmp_path):
         assert progress.counted(str(tmp_path)) == {}
 
+    def test_the_pair_a_campaign_ran_on_decides_where_its_instrument_work_counts(self, tmp_path):
+        write_report(tmp_path, "arm", "p0_one", counted=70)
+        write_report(tmp_path, "arm", "a4_one", counted=60)
+        write_report(tmp_path, "matched", "p0_one", counted=70)
+        assert progress.counted(str(tmp_path)) == {"A4, the Arm pair": 130,
+                                                   "stage 0, the instrument": 70}
+
     def test_what_is_not_a_campaign_of_the_plan_is_not_counted(self, tmp_path):
         """A folder of everything a driver held, copied before a pair is deleted, is not runs."""
         write_report(tmp_path, "matched", "a1_one", counted=92)
@@ -88,19 +111,24 @@ class TestCountingWhatCameHome:
 class TestTheCampaignRunningNow:
 
     def test_its_finished_runs_count_too(self):
-        found = progress.add_live({"A1, the slice": 92}, {"a1_20260918T194622Z": 41})
+        found = progress.add_live({"A1, the slice": 92},
+                                  [("matched", "a1_20260918T194622Z", 41)])
         assert found["A1, the slice"] == 133
 
     def test_a_queue_of_no_stage_adds_nothing(self):
-        assert progress.add_live({}, {"probe_of_something": 7}) == {}
+        assert progress.add_live({}, [("matched", "probe_of_something", 7)]) == {}
 
     def test_nothing_running_changes_nothing(self):
         assert progress.add_live({"A1, the slice": 5}, None) == {"A1, the slice": 5}
 
     def test_it_does_not_change_what_it_was_given(self):
         came_home = {"A1, the slice": 92}
-        progress.add_live(came_home, {"a1_x": 41})
+        progress.add_live(came_home, [("matched", "a1_x", 41)])
         assert came_home == {"A1, the slice": 92}
+
+    def test_a_calibration_running_on_the_arm_pair_counts_for_a4(self):
+        found = progress.add_live({}, [("arm_20260919T031017Z", "c0_20260919T031017Z", 12)])
+        assert found == {"A4, the Arm pair": 12}
 
 
 class TestTheShare:

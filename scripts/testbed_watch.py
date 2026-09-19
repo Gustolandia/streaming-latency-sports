@@ -656,11 +656,14 @@ def far_along(states):
     A campaign is copied home only once it has finished, so the runs its queue has already
     counted are added from the queue itself and counted once.
     """
-    live = {}
+    live = []
     for state in states.values():
         queue, done = state.get("queue"), (state.get("timing") or {}).get("done")
         if queue and done:
-            live[os.path.basename(queue).rsplit(".", 1)[0]] = done
+            # runs/azure/stage1/<pair>_<stamp>/<label>.csv: the folder names the pair that is
+            # running it, which is what tells an instrument campaign on Arm from one on x86.
+            live.append((os.path.basename(os.path.dirname(queue)),
+                         os.path.basename(queue).rsplit(".", 1)[0], done))
     return progress.line(progress.add_live(progress.counted(), live))
 
 

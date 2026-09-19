@@ -63,7 +63,7 @@ class TestBlocks:
 
     @pytest.mark.parametrize("block,size", [("B0", 6), ("C0", 12), ("P0", 16), ("A1", 96),
                                             ("A2", 32), ("A3", 72), ("A4", 48), ("A5", 48),
-                                            ("A7", 24)])
+                                            ("A7", 12)])
     def test_every_block_is_its_full_product(self, block, size):
         setups, unreachable = ld.make_setups(block, 1.0, BASELINE, AZURE)
         assert len(setups) + len(unreachable) == size
@@ -104,8 +104,16 @@ class TestBlocks:
 
     def test_go_first_doubles_its_block(self):
         setups = by_id(ld.make_setups("A7", 1.0, BASELINE, AZURE)[0])
-        assert setups["A7-kafka-l75-s1500-c05h-rt"]["priority"] is True
-        assert setups["A7-kafka-l75-s1500-c05h"]["priority"] is False
+        assert setups["A7-kafka-l75-s3000-c05h-rt"]["priority"] is True
+        assert setups["A7-kafka-l75-s3000-c05h"]["priority"] is False
+
+    def test_go_first_is_tested_at_one_slice(self):
+        """D4-5: A7 tests one slice, 3 ms, both backends, in one campaign, and P4 is judged at
+        that slice. The plan's own count, 72 runs, is twelve setups over six rounds; two slices
+        would make it 120."""
+        assert ld.BLOCKS["A7"]["slices"] == (3.0,)
+        setups, unreachable = ld.make_setups("A7", 1.0, BASELINE, AZURE)
+        assert len(setups) + len(unreachable) == 12
 
     def test_the_baseline_block_adds_no_delay_and_keeps_the_kernels_slice(self):
         setups = ld.make_setups("B0", 1.0)[0]
@@ -291,7 +299,7 @@ class TestDesign:
 
     def test_a_design_becomes_a_queue(self):
         made = ld.design("A7", AZURE, BASELINE, 12, 7)
-        assert len(rq.make_rows(made)) == 24 * 12
+        assert len(rq.make_rows(made)) == 12 * 12, "A7's twelve setups, each round"
         assert made["normalised_slice_ns"] == 700000 and made["unreachable"] == []
 
     def test_the_pilot_blocks_keep_their_own_rounds(self):

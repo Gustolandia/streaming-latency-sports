@@ -83,7 +83,9 @@ BLOCKS = {
            "loads": (50, 75, 88), "trace_half": True},
     "A4": {"slices": (1.5, 3.0, 4.5), "points": EIGHT, "loads": (75,)},
     "A5": {"cpus": (2, 4, 8), "points": EIGHT, "loads": (75,)},
-    "A7": {"slices": (1.5, 3.0), "points": ("p09s", "c05h", "f15h"), "loads": (75,),
+    # D4-5: A7 tests one slice, 3 ms, both backends, in one campaign, and P4 is judged at that
+    # slice. Two slices would be 120 runs where the plan asks for 72.
+    "A7": {"slices": (3.0,), "points": ("p09s", "c05h", "f15h"), "loads": (75,),
            "priorities": (False, True)},
 }
 BACKENDS = ("kafka", "redis")

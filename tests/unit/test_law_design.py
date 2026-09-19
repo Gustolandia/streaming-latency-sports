@@ -63,7 +63,7 @@ class TestBlocks:
 
     @pytest.mark.parametrize("block,size", [("B0", 6), ("C0", 12), ("P0", 16), ("A1", 96),
                                             ("A2", 32), ("A3", 36), ("A4", 48), ("A5", 48),
-                                            ("A7", 12)])
+                                            ("A7", 12), ("A8", 24)])
     def test_every_block_is_its_full_product(self, block, size):
         setups, unreachable = ld.make_setups(block, 1.0, BASELINE, AZURE)
         assert len(setups) + len(unreachable) == size
@@ -155,6 +155,38 @@ class TestBlocks:
         assert ld.BLOCKS["A3"]["slices"] == (3.0,)
         setups, unreachable = ld.make_setups("A3", 1.0, BASELINE, AZURE)
         assert (len(setups) + len(unreachable)) // 2 * 6 * 2 == 216
+
+    def test_the_client_block_is_kafka_only_and_comes_to_the_plans_count(self):
+        """D4-9: Kafka only, because the official client A8 compares ours with is Kafka's. One
+        slice, three trips, ordinary and go-first, two clients, and the got-it note taken both
+        where it can be taken: 24 setups, which over two campaigns at five rounds is the plan's
+        240 runs."""
+        setups, unreachable = ld.make_setups("A8", 1.0, BASELINE, AZURE)
+        assert len(setups) + len(unreachable) == 24
+        assert set(s["backend"] for s in setups) == {"kafka"}
+        assert set(s["language"] for s in setups) == {"python", "java"}
+        assert set(s["ack_stamp"] for s in setups) == {"callback", "inline"}
+        assert 24 * 5 * 2 == 240, "the plan's own count for A8"
+
+    def test_the_client_block_refuses_the_backend_it_does_not_run(self):
+        with pytest.raises(ValueError, match="A8 does not run redis"):
+            ld.make_setups("A8", 1.0, BASELINE, AZURE, CALIBRATION, backends=["redis"])
+
+    def test_a_setup_says_which_client_and_where_the_note_was_taken(self):
+        setups, _ = ld.make_setups("A8", 1.0, BASELINE, AZURE)
+        found = by_id(setups)
+        assert "A8-kafka-l75-s3000-p09s-python-callback" in found
+        assert "A8-kafka-l75-s3000-p09s-rt-java-inline" in found
+        one = found["A8-kafka-l75-s3000-p09s-rt-java-inline"]
+        assert one["priority"] is True and one["language"] == "java"
+        assert one["ack_stamp"] == "inline"
+
+    @pytest.mark.parametrize("block", ["A1", "A3", "A4", "A7"])
+    def test_a_block_that_names_no_client_carries_none(self, block):
+        """Every other block leaves both unset, and its ids are the ones they always were."""
+        setups, _ = ld.make_setups(block, 1.0, BASELINE, AZURE)
+        assert all(s["language"] is None and s["ack_stamp"] is None for s in setups)
+        assert all("-python" not in s["id"] and "-callback" not in s["id"] for s in setups)
 
     def test_go_first_is_tested_at_one_slice(self):
         """D4-5: A7 tests one slice, 3 ms, both backends, in one campaign, and P4 is judged at
@@ -332,7 +364,7 @@ class TestOneCampaignOfABlock:
             ld.design("A1", AZURE, BASELINE, 4, 5, slices=[3.0, 2.5])
 
     def test_a_backend_that_does_not_exist_is_refused(self):
-        with pytest.raises(ValueError, match="no backend pulsar"):
+        with pytest.raises(ValueError, match="A1 does not run pulsar"):
             ld.design("A1", AZURE, BASELINE, 4, 5, backends=["pulsar"])
 
     def test_a_block_of_core_counts_has_no_slices_to_share(self):

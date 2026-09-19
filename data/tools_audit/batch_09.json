@@ -1,0 +1,147 @@
+{
+  "audited_utc": "2026-09-19",
+  "protocol": "freeze 04, Section 'Experiments for Mode 2', T5",
+  "terms": ["negative latency", "negative", "clock skew", "resolution", "rounding",
+            "millisecond", "nanosecond", "latency 0"],
+  "tools": [
+    {
+      "tool": "Vegeta",
+      "repository": "https://github.com/tsenart/vegeta",
+      "version_seen": "master at cf5811269046c672a604b1eb352204d30f16ae4a, 2026-02-16, one commit after tag v12.13.0",
+      "what_it_times": "request to response, client side, over a wider interval than the documentation says: the clock starts at the top of the hit, BEFORE the next target is read and the request is built, and stops after the response body has been read up to the configured limit. The documented definition omits the construction time. Every result carries a latency, including errors and timeouts",
+      "documentation": {
+        "clock_and_resolution": {
+          "finding": "Monotonic, nanosecond resolution, and the monotonic reading provably survives into the subtraction -- the only tool in this audit of which that is true. The attack records one start time and derives each hit's timestamp by adding an elapsed duration to it, which keeps both readings, so the closing subtraction is monotonic against monotonic and no clock step can move it. Nothing on the path rounds, truncates or marshals a time before the subtraction. This was deliberate: a commit of 2019 titled 'Force monotonic timestamp marshalling' quotes Go's own documentation, explains that marshalling discards the monotonic reading and can produce non-monotonic timestamps within one attack, and introduces exactly this construction. One place where stripping does bite: once results are encoded to a file, which is the normal pipeline, the timestamps lose their monotonic reading, so the reported duration, rate and throughput are wall-clock differences even though the latencies are not.",
+          "evidence": [
+            "lib/attack.go:456",
+            "lib/attack.go:543-560",
+            "lib/results.go:175-177",
+            "lib/metrics.go:99-105",
+            "https://github.com/tsenart/vegeta/commit/892bb03"
+          ]
+        },
+        "odd_values": {
+          "finding": "Nothing is dropped, clamped, replaced or counted: there is no guard on latency anywhere in the tree, and in a live attack a negative is unreachable because the subtraction is monotonic. Errors and timeouts are deliberately inside the distribution, made so by a commit of 2019. A negative can still enter through the decoders, which parse the field with no validation, and then it sets the minimum, pulls the mean down, and -- because the histogram falls through to the final index when no bucket matches -- is counted in the SLOWEST bucket, the exact inverse of what it is. Zero is kept, and one zero corrupts the reported minimum: the running minimum treats zero as unset, so a zero sample resets it and the next sample replaces it however large. That is the same defect found independently in librdkafka's perf tool. On percentiles: the reporter does not hold every sample and does not sort. Since 2018 it has used a streaming digest at compression one hundred, so the printed percentiles are interpolations between summary centroids and generally not any latency actually observed; only the minimum, the maximum and the mean are exact. The manual describes them as the percentiles of the latencies of all requests and never mentions estimation.",
+          "evidence": [
+            "lib/metrics.go:50-58",
+            "lib/metrics.go:154-177",
+            "lib/histogram.go:23-37",
+            "lib/results.go:235",
+            "https://github.com/tsenart/vegeta/commit/e8136be",
+            "https://github.com/tsenart/vegeta/commit/0f5577e"
+          ]
+        },
+        "warnings": {
+          "finding": "One claim, about coordinated omission, and nothing else. The manual lists as a feature that it avoids coordinated omission, linking to a code-review comment. That comment, opened and read, is three words of praise from the author of the coordinated-omission argument, written in 2014 on a pull request that was NEVER MERGED and whose histogram dependency was never adopted. What the tool does today is a different thing: it corrects the LOAD, not the measurement -- the pacer keeps the send rate constant by spawning unbounded workers as the target slows -- but it does not back-date the clock to the intended send time, because a commit of 2018 moved the timestamp from the tick to the worker. Before that date it measured from the intended send, as wrk2 does. Beyond that: no mention of clocks, contention or scheduling anywhere.",
+          "evidence": [
+            "README.md:12",
+            "https://github.com/tsenart/vegeta/pull/92",
+            "https://github.com/tsenart/vegeta/commit/e3f83eb",
+            "lib/attack.go:50-53 and 486-509",
+            "https://github.com/tsenart/vegeta/issues/126"
+          ]
+        }
+      },
+      "precision_class": {
+        "class": "high",
+        "why": "high for the per-request record it emits, which is what a careful user analyses: a monotonic nanosecond subtraction no clock step can move, integer nanoseconds in its outputs, nothing clamped, dropped or replaced. Three qualifications, all about how the number is USED rather than how it is taken: the printed percentiles are digest estimates rather than order statistics, and the far tail is where users see that break; the timed interval includes client-side target reading and request construction, invisible at small payloads and visible at large ones; and failed requests sit in the same distribution as successes"
+      },
+      "plan_said": "read first: request to reply, class unknown, odd values to confirm",
+      "audit_found": "request to reply, class high; the falsifiable part is that its per-request latencies should track our own instrument to within the sub-millisecond and that it should never emit a negative on a live attack however the clock is disturbed",
+      "prediction": "this tool was left unclassified on purpose, so the classification above is the prediction that T1 to T4 will test",
+      "searches": [
+        {"term": "negative latency", "where": "github issues", "hits": 0},
+        {"term": "negative", "where": "github issues", "hits": 4},
+        {"term": "clock skew", "where": "github issues", "hits": 0},
+        {"term": "resolution", "where": "github issues", "hits": 4},
+        {"term": "rounding", "where": "github issues", "hits": 0},
+        {"term": "millisecond", "where": "github issues", "hits": 4},
+        {"term": "nanosecond", "where": "github issues", "hits": 4},
+        {"term": "latency 0", "where": "github issues", "hits": 7}
+      ],
+      "reports": [
+        {"title": "Incorrect tail latencies in Histogram report", "url": "https://github.com/tsenart/vegeta/issues/726", "opened": "2025-07-31", "outcome": "still open", "why_relevant": "the digest finding arriving from the field: a user plots Vegeta's own percentile report against an independent histogram fed with the same results and shows the curves diverging with a sharp bump at the far tail. That is what the source predicts -- beyond about the 99.9th percentile the digest has few centroids left and the quantile is an interpolation toward the maximum. Open with no reply; no maintainer has ever answered a report about the estimator"},
+        {"title": "Latency is not being reported correctly on windows", "url": "https://github.com/tsenart/vegeta/issues/670", "opened": "2023-12-05", "outcome": "still open", "why_relevant": "the same attack against the same local service reported at about eleven milliseconds on one platform and about ten seconds on another, a thousandfold difference, with the user asking whether the units differ. The auditor could NOT diagnose it: the timing path has no platform-specific code, and the issue's own response headers are consistent with the long latencies, which argues against a units bug. Open with no reply for over two years"},
+        {"title": "Why is Max Latency able to exceed Timeout specified?", "url": "https://github.com/tsenart/vegeta/issues/555", "opened": "2021-01-30", "outcome": "still open", "why_relevant": "every request failing on a three-second timeout, reported with a maximum of 5.4 seconds. It confirms two source readings at once: failed requests are inside the distribution, and the measured interval starts before the target is read and the request built, which with a multi-megabyte payload is where the excess comes from. The user quotes the manual's own definition to show it does not account for what they see. Unanswered for four years"},
+        {"title": "Wrong latencies", "url": "https://github.com/tsenart/vegeta/issues/223", "opened": "2017-03-06", "outcome": "closed without a fix", "why_relevant": "the sharpest recorded disagreement between one tool and everything else measuring the same run: a mean of 22 seconds and a maximum of 48 where the server's own metrics showed a 99th percentile of 63 milliseconds, and a third tool agreed with the server. The first explanation offered was that the others suffer coordinated omission; the reporter answered that a coordinated-omission-safe tool also disagreed. Closed with a remark about resource limits on the attacking side. Both explanations offered are load-generator artefacts, which is this paper's point, and two coordinated-omission-aware tools disagreed with each other by a factor of about three hundred and fifty"},
+        {"title": "latency computation off if low rate, high speed", "url": "https://github.com/tsenart/vegeta/issues/164", "opened": "2015-12-14", "outcome": "closed without a fix", "why_relevant": "the historical hinge, and a textbook artefact: at one request a second the tool reported 4.4 ms, at two hundred and fifty-six a second 1.9 ms, so the server appeared to get FASTER as load rose. The reporter diagnosed it correctly -- the latency included waiting for the tick -- because the clock then started at the tick's scheduled time, which is precisely the coordinated-omission correction. Closed with no change; the behaviour was nonetheless removed three years later, so today the tool measures from the actual send while the manual still advertises coordinated-omission avoidance citing a 2014 comment"},
+        {"title": "Units in JSON report are not consistent with normal report", "url": "https://github.com/tsenart/vegeta/issues/537", "opened": "2020-08-29", "outcome": "closed without a fix", "why_relevant": "a user could not tell that one output's latencies are nanoseconds while another's are human-readable. Closed by explanation with no documentation change, and it is the second report of the same confusion in a year"}
+      ],
+      "checked_here": [],
+      "not_determined": [
+        "the cause of the thousandfold platform discrepancy; the timing path is platform-independent and nothing was reproduced",
+        "the size of the digest's error at its configured compression; the estimator was established to interpolate and retain no samples, and a user saw the tails diverge, but no error figure was computed and nothing was run",
+        "whether a zero latency is reachable in a live attack; the consequent corruption of the reported minimum is derived from source, not observed"
+      ]
+    },
+    {
+      "tool": "hey",
+      "repository": "https://github.com/rakyll/hey",
+      "version_seen": "master at 5626f79b8698df6daf9b25799c9805c6acc96740, 2026-01-10, two commits after tag v0.1.5 released the same day; the previous release was 2020-08-05",
+      "what_it_times": "request to reply, whole request, closed loop. The clock starts before the request is cloned from the template and stops after the body has been fully drained. Five sub-intervals are timed separately through tracing hooks. Errored requests are timed and then discarded by the reporter. The load is closed-loop, so it measures the latency of requests it managed to send rather than of a constant offered rate, and never corrects for that",
+      "documentation": {
+        "clock_and_resolution": {
+          "finding": "Two clocks by platform, and one of them is broken. Everywhere but Windows the tool measures elapsed time against a single start, monotonic and in nanoseconds, and never holds a timestamp after that start -- only durations -- so there is no monotonic reading to strip and no step can move it. On Windows it substitutes the performance counter and computes the conversion in an order that multiplies the raw counter by a thousand million in a 64-bit integer first. On the auditor's own machine that product exceeds the 64-bit ceiling by a factor of about three hundred and twenty-seven and has been wrapping since roughly fifteen minutes after boot; each wrap subtracts a constant of 1844.6744 seconds from any interval that straddles it, recurring about every half hour of uptime. Two readings inside one segment still differ correctly, which is why the tool mostly appears to work. Far more consequential on every platform is the REPORTED resolution: every output path, including the file dump a user would analyse elsewhere, formats seconds with four decimals, so everything is quantised to a tenth of a millisecond and the histogram marks to a whole millisecond. Anything below fifty microseconds prints as zero. The tool has no raw output finer than that.",
+          "evidence": [
+            "requester/now_other.go:15-24",
+            "requester/now_windows.go:24-28",
+            "requester/requester.go:147 and 191-193",
+            "requester/print.go:68-70 and 90",
+            "https://github.com/rakyll/hey/issues/320",
+            "https://github.com/rakyll/hey/issues/187"
+          ]
+        },
+        "odd_values": {
+          "finding": "No guard of any kind: the tool never tests a duration for sign, for zero or for plausibility. A negative is kept, sorts to the front and is printed as the fastest; it enters the mean; and because the histogram spans fastest to slowest in ten equal buckets, one negative empties the other nine, which is exactly what two field reports show, with about a hundred thousand samples crushed into one bucket. Three further defects bear on whether a reported latency is right. Errors are EXCLUDED from the latency statistics while still counting toward the request rate, so a server that fails under load looks faster -- the opposite of Vegeta's choice. The mean is arithmetically wrong above a million results: every success is added to the running total while only the first million are kept in the sample slice, and the average divides the full total by the kept count, so it is inflated by the ratio; a field report of this exact shape shows an average sitting between the ninetieth and ninety-ninth percentiles. And the percentile scan leaves an entry at zero when it never reaches the requested rank, which the template prints as a concrete zero-second latency: the 99th percentile row prints as zero for every run of fewer than a hundred successful requests, and a genuine zero sample would be indistinguishable from that missing-data case.",
+          "evidence": [
+            "requester/report.go:31 and 84-126",
+            "requester/report.go:182-184",
+            "requester/report.go:217-268",
+            "https://github.com/rakyll/hey/issues/166",
+            "https://github.com/rakyll/hey/issues/320"
+          ]
+        },
+        "warnings": {
+          "finding": "None. The manual is a hundred and five lines and contains no occurrence of clock, NTP, skew, monotonic, contention, scheduling, coordinated omission, accuracy or precision. It does not even define what the reported numbers measure: the only description anywhere is a comment in a source file naming the output columns. There is no warning about the platform clock, although two reports of its consequences have been open since 2019 and 2024; none about the million-result cap, although it silently changes the reported mean; and none that the tool is closed-loop and therefore subject to coordinated omission, which is the standard caveat for this class.",
+          "evidence": [
+            "README.md",
+            "requester/print.go:15-34",
+            "requester/requester.go:208-215"
+          ]
+        }
+      },
+      "precision_class": {
+        "class": "low",
+        "why": "the clock underneath is fine on the platforms that matter here, and everything above it throws that away. Every number the tool prints or exports is seconds to four decimals, so its reported resolution is a tenth of a millisecond and its histogram's a whole millisecond; a tool that cannot express a tenth of a millisecond cannot measure the effects this paper is about, and a field report shows ninety-four per cent of a million samples inside one printed bucket. On top of that the mean is wrong above a million results, tail percentiles print as zero for short runs, failures are absent from the distribution while still counted in the rate, and on one platform the clock arithmetic overflows and injects a large negative per concurrency slot every half hour of uptime"
+      },
+      "plan_said": "read first: request to reply, class unknown, odd values to confirm",
+      "audit_found": "request to reply, class low; the falsifiable part is that its output will be quantised in steps of a tenth of a millisecond, that differences our own instrument resolves below that will be invisible in it, that runs under a hundred requests will print a zero 99th percentile, and that on Linux it will never emit a negative",
+      "prediction": "this tool was left unclassified on purpose, so the classification above is the prediction that T1 to T4 will test",
+      "searches": [
+        {"term": "negative latency", "where": "github issues", "hits": 0},
+        {"term": "negative", "where": "github issues", "hits": 2},
+        {"term": "clock skew", "where": "github issues", "hits": 0},
+        {"term": "resolution", "where": "github issues", "hits": 0},
+        {"term": "rounding", "where": "github issues", "hits": 0},
+        {"term": "millisecond", "where": "github issues", "hits": 1},
+        {"term": "nanosecond", "where": "github issues", "hits": 0},
+        {"term": "latency 0", "where": "github issues", "hits": 18}
+      ],
+      "reports": [
+        {"title": "Weird negative numbers in result", "url": "https://github.com/rakyll/hey/issues/320", "opened": "2024-04-03", "outcome": "still open", "why_relevant": "the clock overflow, undiagnosed. A run of about a hundred thousand requests reporting a total, a fastest, an average and a request rate all negative, with a histogram whose first bucket holds the impossible value and whose nine middle buckets are empty. The magnitude matches the auditor's derived constant to four decimal places once the run's own median is subtracted, and the number of corrupted samples equals the default concurrency -- every request in flight when the counter wrapped. One comment from another user saying they face the same. No maintainer has replied. Note what the tool shows and hides: the percentile table is entirely plausible while the mean is wrong by nearly a second"},
+        {"title": "Negative response times in output", "url": "https://github.com/rakyll/hey/issues/142", "opened": "2019-02-24", "outcome": "still open", "why_relevant": "the same failure five years earlier, with fifty of a hundred thousand requests affected and the same constant. The reporter's own guess is wrong -- they suppose a few requests took so long that a number overflowed, and propose ignoring overflowed values -- which is worth recording in itself: the user diagnosed a broken clock as a slow server. Zero comments in seven years, and the two reports were never linked"},
+        {"title": "More measurement units available", "url": "https://github.com/rakyll/hey/issues/187", "opened": "2019-12-18", "outcome": "still open", "why_relevant": "direct field evidence of the reporting floor: a histogram of roughly a million requests with ninety-four per cent of the distribution inside one printed bucket, and a request for finer units and more buckets. One comment in 2022 asking whether it is possible. Never answered, never changed"},
+        {"title": "Only 1,000,000 request could be sent", "url": "https://github.com/rakyll/hey/issues/166", "opened": "2019-07-25", "outcome": "still open", "why_relevant": "the result cap, reported as a truncation and not recognised as a corruption of the mean. The thread correctly quotes the constant and concludes the tool keeps running but stops recording. What nobody noticed is that the average is summed over every result and divided by the kept million: the posted run's own numbers give an average sitting between its ninetieth and ninety-ninth percentiles, and dividing by the inflation factor lands just below its median"},
+        {"title": "Details shows impossible numbers", "url": "https://github.com/rakyll/hey/issues/257", "opened": "2021-08-18", "outcome": "still open", "why_relevant": "a summary line whose average is faster than its fastest, because the template printed the run's overall extremes in a per-phase row. The fix was merged five months before this was filed, but the only release available to users for four years and ten months predates it -- so the fix existed and nobody could run it. Still open even though master no longer reproduces it"},
+        {"title": "DNS+dialup report incorrect", "url": "https://github.com/rakyll/hey/issues/38", "opened": "2016-12-07", "outcome": "fixed", "why_relevant": "the only latency defect in this tool ever fixed, and the same shape as artefacts in other tools here: it printed the largest possible integer rendered as seconds. The cause was an unset start being subtracted from the current clock on reused connections. The identical pattern survives elsewhere in the file and is unreachable only because errored results are discarded before the statistics"}
+      ],
+      "checked_here": [],
+      "project_state": "largely unmaintained, with evidence: three hundred and two commits in total, a hundred and forty-five of them in 2014 and three in 2021, then nothing from 2022 through 2025, then fourteen housekeeping commits on a single day in January 2026, none touching measurement. Two releases in the last six years with a gap of four years and ten months between them, during which a merged output fix sat unreleased. A hundred and sixteen open issues against fifty-eight closed; of the eight latency reports above, seven are open, four have no maintainer reply at all, and the newest maintainer comment on any of them is from 2017",
+      "not_determined": [
+        "nothing was run: the overflow is a source derivation plus the auditor's own machine's counter frequency plus two field reports whose magnitudes match the derived constant to four decimal places. It was not reproduced",
+        "the behaviour at a different counter frequency was not tested, only the arithmetic",
+        "which binary the reporters of the impossible-summary issues actually ran; the older template fits their output but neither states a version"
+      ]
+    }
+  ]
+}

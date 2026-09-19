@@ -587,6 +587,14 @@ class TestMoney:
         monkeypatch.setattr(tw.progress, "counted", lambda *a, **k: {"A1, the slice": 92})
         assert "92 of 3,590" in tw.far_along({"a": {}, "b": {"queue": "", "timing": {}}})
 
+    def test_the_queue_says_which_pair_is_running_it(self, monkeypatch):
+        """An instrument campaign counts for stage 0 or for A4 depending on the pair that runs
+        it, so the pair has to travel with the label."""
+        monkeypatch.setattr(tw.progress, "counted", lambda *a, **k: {})
+        said = tw.far_along({"arm": {"queue": "runs/azure/stage1/arm_20260919T031017Z/c0_x.csv",
+                                     "timing": {"done": 12}}})
+        assert "progress: 12 of 3,590" in said, "counted for A4, whose first campaign it is"
+
     def test_a_run_that_began_is_told_what_had_been_spent(self, tmp_path):
         path = str(tmp_path / "spend.json")
         hosts = {"a": {"AZ_PROFILE": "matched"}}

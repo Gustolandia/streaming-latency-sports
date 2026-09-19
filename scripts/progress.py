@@ -41,21 +41,33 @@ PLAN = (("stage 0, the instrument", ("s0", "c0", "b0", "p0", "m0"), 414),
 TOTAL = sum(runs for _, _, runs in PLAN)
 COLLECTED = os.path.join("runs", "azure", "collected")
 
+#: Stage 0 is the instrument work on the x86 pairs: S0-1 to S0-4, the last of them on a second
+#: x86 pair. The Arm pair's own instrument campaign is the first of A4's five, not a fifth stage-0
+#: campaign, so where an instrument campaign ran decides which stage it belongs to.
+INSTRUMENT, ARM_BLOCK, ARM_PAIR = PLAN[0][0], "A4, the Arm pair", "arm"
 
-def stage_of(label):
-    """The stage a campaign belongs to, from the label collect_runs.py copied it under."""
+
+def stage_of(label, profile=None):
+    """The stage a campaign belongs to, from its label and the pair that ran it."""
     start = os.path.basename(str(label)).split("_")[0].lower()
     for name, labels, _ in PLAN:
         if start in labels:
+            if name == INSTRUMENT and str(profile or "").lower().split("_")[0] == ARM_PAIR:
+                return ARM_BLOCK
             return name
     return None
 
 
 def counted(collected=COLLECTED):
-    """{stage: runs that counted} over every campaign copied home."""
+    """{stage: runs that counted} over every campaign copied home.
+
+    collect_runs.py files a campaign under the pair that ran it, so the folder above it is that
+    pair, which is what tells an instrument campaign apart from A4's own.
+    """
     found = {}
     for report in sorted(glob.glob(os.path.join(collected, "*", "*", "quality_report.json"))):
-        stage = stage_of(os.path.basename(os.path.dirname(report)))
+        where = os.path.dirname(report)
+        stage = stage_of(os.path.basename(where), os.path.basename(os.path.dirname(where)))
         if stage is None:
             continue
         try:
@@ -70,11 +82,12 @@ def counted(collected=COLLECTED):
 def add_live(found, live):
     """The runs a campaign now under way has already counted, added to what came home.
 
-    `live` is {campaign label: runs done}, as the watch reads it from the driver's own queue.
+    `live` is (pair, campaign label, runs done) for each campaign running now, as the watch reads
+    them from the drivers' own queues.
     """
     found = dict(found)
-    for label, done in (live or {}).items():
-        stage = stage_of(label)
+    for profile, label, done in live or ():
+        stage = stage_of(label, profile)
         if stage is not None:
             found[stage] = found.get(stage, 0) + int(done or 0)
     return found

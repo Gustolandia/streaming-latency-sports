@@ -1,0 +1,195 @@
+{
+  "audited_utc": "2026-09-19",
+  "protocol": "freeze 04, Section 'Experiments for Mode 2', T5",
+  "terms": ["negative latency", "negative", "clock skew", "resolution", "rounding",
+            "millisecond", "nanosecond", "latency 0"],
+  "tools": [
+    {
+      "tool": "OpenMessaging Benchmark",
+      "repository": "https://github.com/openmessaging/benchmark",
+      "version_seen": "commit 5b1fa70951a323da26bd587174b58bb2c65b0b5c on main, 2026-04-07; no release tags exist; pom.xml says 0.0.1-SNAPSHOT",
+      "what_it_times": "send to receive (end to end), and separately send to got-it (publish latency)",
+      "documentation": {
+        "clock_and_resolution": {
+          "finding": "Two clocks. Publish latency uses System.nanoTime() inside one JVM, recorded in microseconds into an HdrHistogram at 5 significant digits. End-to-end latency uses wall clocks on two machines: the consumer takes System.currentTimeMillis() and subtracts a publish timestamp, the subtraction is done in WHOLE MILLISECONDS and only then multiplied into microseconds. Every end-to-end value is therefore an exact multiple of 1000 microseconds: the microsecond unit and the 5-digit precision are nominal, and the real granularity is 1 ms. The publish timestamp is not always the benchmark's own: the Kafka driver passes the broker's record timestamp and the Pulsar driver the broker's publish time, while NATS, Pravega, JMS and Artemis stamp it in the producer.",
+          "evidence": [
+            "benchmark-framework/src/main/java/io/openmessaging/benchmark/worker/LocalWorker.java:293-295",
+            "benchmark-framework/src/main/java/io/openmessaging/benchmark/worker/WorkerStats.java:88-99",
+            "benchmark-framework/src/main/java/io/openmessaging/benchmark/worker/MessageProducer.java:32-52",
+            "driver-kafka/src/main/java/io/openmessaging/benchmark/driver/kafka/KafkaBenchmarkConsumer.java:74",
+            "driver-pulsar/src/main/java/io/openmessaging/benchmark/driver/pulsar/PulsarBenchmarkDriver.java:228"
+          ]
+        },
+        "odd_values": {
+          "finding": "End-to-end values of zero or below are silently dropped: `if (endToEndLatencyMicros > 0)` gates all three end-to-end sinks. They are not counted anywhere and nothing is logged, while the message still increments messagesReceived, so the message count and the latency sample count diverge with no indicator. Because the value is millisecond-granular, this drops not only clock-skew negatives but EVERY delivery faster than a millisecond, which computes as exactly zero: the tool cannot report a sub-millisecond end-to-end latency at all, and the fastest messages are the ones excluded. On the publish side there is no lower guard, only an upper clamp recording anything above 60 s as exactly 60 s.",
+          "evidence": [
+            "benchmark-framework/src/main/java/io/openmessaging/benchmark/worker/WorkerStats.java:95-99",
+            "benchmark-framework/src/main/java/io/openmessaging/benchmark/worker/WorkerStats.java:173-184",
+            "https://github.com/openmessaging/benchmark/pull/56",
+            "https://github.com/openmessaging/benchmark/pull/282"
+          ]
+        },
+        "warnings": {
+          "finding": "None in the repository or the official documentation. README.md does not contain the word 'latency'; no markdown file mentions CPU contention or co-location. The docs page defines publish latency and publish delay and says values over 60 s 'are not captured', which the code contradicts: it records them as exactly 60 s, so maxima and high percentiles saturate rather than being absent. The docs do not define end-to-end latency at all and give no clock or NTP caveat. The only mitigation in the repository is silent: the Kafka ansible deployment installs chrony on the client hosts. The nearest thing to a warning is in the issue tracker, where a maintainer writes that end-to-end latency uses timestamps from different nodes and is 'really not super-reliable'.",
+          "evidence": [
+            "http://openmessaging.cloud/docs/benchmarks/",
+            "driver-kafka/deploy/ssd-deployment/deploy.yaml:164-176",
+            "https://github.com/openmessaging/benchmark/issues/216",
+            "https://github.com/openmessaging/benchmark/pull/1"
+          ]
+        }
+      },
+      "plan_said": "end-to-end: drops <= 0, uncounted. Publish: keeps all",
+      "audit_found": "as predicted, and more: because the end-to-end value is millisecond-granular, the same guard also drops every sub-millisecond delivery",
+      "prediction": "held",
+      "searches": [
+        {"term": "negative latency", "where": "github issues and PRs", "hits": 0},
+        {"term": "negative", "where": "github issues and PRs", "hits": 3},
+        {"term": "clock skew", "where": "github issues and PRs", "hits": 2},
+        {"term": "resolution", "where": "github issues and PRs", "hits": 4},
+        {"term": "rounding", "where": "github issues and PRs", "hits": 0},
+        {"term": "millisecond", "where": "github issues and PRs", "hits": 3},
+        {"term": "nanosecond", "where": "github issues and PRs", "hits": 1},
+        {"term": "latency 0", "where": "github issues and PRs", "hits": 10},
+        {"term": "all eight", "where": "mailing list (groups.google.com/g/openmessaging)", "hits": 0}
+      ],
+      "reports": [
+        {"title": "Avoid adding negative metric values", "url": "https://github.com/openmessaging/benchmark/pull/56", "opened": "2018-03-22", "outcome": "fixed", "why_relevant": "introduced the `> 0` guard; its body states the end-to-end value is a difference of System.currentTimeMillis() across two machines and can be negative"},
+        {"title": "Consumer only mode, completeness metric, and e2e latency measurement", "url": "https://github.com/openmessaging/benchmark/pull/1", "opened": "2017-11-18", "outcome": "closed without a fix", "why_relevant": "the original discussion: a maintainer warns nanoTime is not portable across machines and NTP still leaves tens to hundreds of ms; the author replies that milliseconds were 'not granular enough and I'd get zeros'"},
+        {"title": "Collect end-to-end latencies", "url": "https://github.com/openmessaging/benchmark/pull/5", "opened": "2017-12-01", "outcome": "fixed", "why_relevant": "the review comment that fixed the surviving resolution split: publish latency in micros, 'while for end-to-end we only have millis'"},
+        {"title": "Update Pulsar drivers to work with 2.4.0 plus fix aggregate latency", "url": "https://github.com/openmessaging/benchmark/pull/150", "opened": "2019-08-15", "outcome": "fixed", "why_relevant": "aggregate end-to-end latency had been reported in microseconds while every other figure was in milliseconds: a 1000x unit error in published results"},
+        {"title": "Can the average publish latency be larger than end-to-end latency?", "url": "https://github.com/openmessaging/benchmark/issues/216", "opened": "2021-11-18", "outcome": "closed without a fix", "why_relevant": "a reproducible impossible result, closed with an explanation about cross-node clocks and no code or documentation change"},
+        {"title": "Fix license check and modify configurations for multi topics test", "url": "https://github.com/openmessaging/benchmark/pull/282", "opened": "2022-08-25", "outcome": "fixed", "why_relevant": "a PR about licences and topic configuration whose diff silently introduced the 60 s clamp"},
+        {"title": "Benchmark failed with ArrayIndexOutOfBoundException", "url": "https://github.com/openmessaging/benchmark/issues/369", "opened": "2023-02-20", "outcome": "fixed", "why_relevant": "latency recording crashed on a value outside the histogram's range; auto-closed by a stale bot with no fix, disputed ten months later, and answered by a later PR. The auditor flags this outcome as a judgement call: the later PR repairs a different defect from the one the stack trace shows"},
+        {"title": "Grow buffer if histogram can't fit", "url": "https://github.com/openmessaging/benchmark/pull/398", "opened": "2023-12-06", "outcome": "fixed", "why_relevant": "an undersized buffer truncated the encoded histogram and the retry hit a destructive read, so reported results 'only sample about 1 second worth of data at the end of the test'. Found as a cross-reference, not by the eight terms"}
+      ],
+      "checked_here": [
+        "WorkerStats.recordMessageReceived: the `if (endToEndLatencyMicros > 0)` guard gates all three end-to-end sinks, and messagesReceived increments OUTSIDE it. Read back from the tool's own source.",
+        "LocalWorker: `long endToEndLatencyMicros = TimeUnit.MILLISECONDS.toMicros(now - publishTimestamp);` with `now = System.currentTimeMillis()`. The subtraction is in whole milliseconds, so every end-to-end value is a multiple of 1000 microseconds and any delivery under a millisecond is exactly zero, hence dropped. Read back from the tool's own source."
+      ],
+      "not_determined": [
+        "whether the 60 s clamp was deliberate: the PR that introduced it discusses licences and topic configuration and never mentions it",
+        "the publish-timestamp provenance for every driver; Kafka, Pulsar, NATS, Pravega, JMS and Artemis were checked, the remainder were not",
+        "whether anyone has quantified the resulting bias; nothing in the tracker does"
+      ]
+    },
+    {
+      "tool": "RabbitMQ PerfTest",
+      "repository": "https://github.com/rabbitmq/rabbitmq-perf-test",
+      "version_seen": "commit ba718d2eae542ee5557a676f5454d4492739e714, 2026-09-18; latest release v2.25.0, 2026-06-30",
+      "what_it_times": "send to receive; separately publish to broker confirm (send to got-it), both stamped in one JVM",
+      "documentation": {
+        "clock_and_resolution": {
+          "finding": "The clock is chosen at runtime: System.nanoTime() by default, System.currentTimeMillis() when --use-millis is passed, which the documentation prescribes for producer and consumer on different machines. Latency is collected in ns or ms but reported in microseconds by integer division by 1000, which truncates toward zero, so any sub-microsecond latency prints as 0. The tool does not use HdrHistogram: percentiles come from a Dropwizard ExponentiallyDecayingReservoir, a 1028-element decaying random sample biased to the last five minutes, not from every recorded value.",
+          "evidence": [
+            "src/main/java/com/rabbitmq/perf/TimestampProvider.java:36-42",
+            "src/main/java/com/rabbitmq/perf/metrics/DefaultPerformanceMetrics.java:263-270",
+            "src/main/java/com/rabbitmq/perf/metrics/DefaultPerformanceMetrics.java:143-144",
+            "src/docs/asciidoc/usage-advanced.adoc:453-458",
+            "https://perftest.rabbitmq.com/"
+          ]
+        },
+        "odd_values": {
+          "finding": "Negative latencies are silently turned positive, not dropped and not kept: getDifference returns Math.abs(ts1 - ts2). Under --use-millis, the documented cross-machine mode, a consumer clock behind the producer's reports the magnitude of the clock offset AS LATENCY, with no sign check, no counter and no warning. A missing or unparseable timestamp is signalled by a sentinel for which the method returns -1, which the consumed path filters with `if (latency >= 0)`; a genuine zero latency is therefore kept. The confirm path filters nothing at all. Nothing crashes.",
+          "evidence": [
+            "src/main/java/com/rabbitmq/perf/TimestampProvider.java:44-51",
+            "src/main/java/com/rabbitmq/perf/metrics/DefaultPerformanceMetrics.java:300-308",
+            "src/main/java/com/rabbitmq/perf/metrics/DefaultPerformanceMetrics.java:279-287",
+            "src/main/java/com/rabbitmq/perf/Stats.java:209-224"
+          ]
+        },
+        "warnings": {
+          "finding": "On clock synchronisation the documentation is explicit: the machines 'should have their clock synchronised, e.g. by NTP', with the explanation that nanoTime must be used only within one JVM. Beyond that, nothing: no warning about thread scheduling, CPU contention, coordinated omission, or what residual error an NTP-synchronised pair leaves, and no hint that the absolute value masks a backwards clock. The only admonition in the whole document set is an unrelated deprecation notice.",
+          "evidence": [
+            "src/docs/asciidoc/usage-advanced.adoc:436-458",
+            "https://perftest.rabbitmq.com/",
+            "src/docs/asciidoc/monitoring.adoc:35-37"
+          ]
+        }
+      },
+      "plan_said": "keeps all, negatives included",
+      "audit_found": "it does not keep negatives: Math.abs turns them into positive latencies of the same size, so a clock offset is reported as delay and cannot be told from one",
+      "prediction": "FAILED",
+      "searches": [
+        {"term": "negative latency", "where": "github issues", "hits": 0},
+        {"term": "negative", "where": "github issues", "hits": 0},
+        {"term": "clock skew", "where": "github issues", "hits": 0},
+        {"term": "resolution", "where": "github issues", "hits": 1},
+        {"term": "rounding", "where": "github issues", "hits": 0},
+        {"term": "millisecond", "where": "github issues", "hits": 2},
+        {"term": "nanosecond", "where": "github issues", "hits": 0},
+        {"term": "latency 0", "where": "github issues", "hits": 5}
+      ],
+      "reports": [
+        {"title": "Publisher confirm latency reported differently based on the number of publishers", "url": "https://github.com/rabbitmq/rabbitmq-perf-test/issues/394", "opened": "2022-09-28", "outcome": "fixed", "why_relevant": "measured latency was an artefact of the tool's own start-up: a random start delay in whole seconds made publishers start in herds and publish in synchronised bursts"},
+        {"title": "Prometheus metrics are sometimes reported as zero", "url": "https://github.com/rabbitmq/rabbitmq-perf-test/issues/395", "opened": "2022-09-28", "outcome": "closed without a fix", "why_relevant": "confirm-latency quantiles returned exactly 0.0 on the Prometheus endpoint while stdout showed non-zero latency in the same second; closed the same day as possibly a duplicate, with no change of its own and no verification"}
+      ],
+      "checked_here": [
+        "TimestampProvider.getDifference returns Math.abs(ts1 - ts2), and the sentinel branch returns -1L under a comment that says 'returning 0'. Both read back from the tool's own source."
+      ],
+      "not_determined": [
+        "the tool was not executed; every claim is from reading the source",
+        "no documented bound on the residual clock error under --use-millis: the documentation says synchronise by NTP and stops",
+        "the absolute-value behaviour appears nowhere in the issue tracker: the three sign and clock terms returned zero hits each across 215 issues, which is itself the finding"
+      ]
+    },
+    {
+      "tool": "NATS CLI (latency and bench)",
+      "repository": "https://github.com/nats-io/natscli",
+      "version_seen": "commit cc0a8e3224d564b134a92f6f2c2081452f885549, 2026-09-17; latest release v0.5.0",
+      "what_it_times": "nats latency: send to receive. nats bench: varies by mode, and on core NATS publish it times only the local enqueue call, not a trip",
+      "documentation": {
+        "clock_and_resolution": {
+          "finding": "The two commands use different clocks. `nats latency` is wall-clock and non-monotonic: the publisher writes time.Now().UnixNano() into the payload and the subscriber subtracts it from its own, and calling UnixNano strips Go's monotonic reading, so an NTP step during a run lands directly in the sample. Both connections are opened by the same process on one host, so the exposure is that one clock moving, not cross-machine skew. `nats bench` uses time.Since, which keeps the monotonic reading and cannot go backwards. Percentiles in `nats latency` come from an HdrHistogram whose upper bound is taken from the data after sorting.",
+          "evidence": [
+            "cli/latency_command.go:169-171",
+            "cli/latency_command.go:112-113",
+            "cli/latency_command.go:70-81",
+            "cli/latency_command.go:189-194",
+            "cli/bench_command.go:1933-1940",
+            "internal/bench/stats.go:201-240"
+          ]
+        },
+        "odd_values": {
+          "finding": "`nats latency` drops out-of-range values from the histogram while keeping them in the headline statistics, so the two outputs can disagree. RecordValue is called with its error return ignored, and the histogram library rejects a negative value; but the value stays in the slice that prints Minimum, Median and Maximum Latency and the raw dump. A backwards clock step would therefore print a negative minimum while the percentile table silently ignores it. `nats bench` casts a duration to unsigned, which would wrap a negative rather than reject it, though its monotonic clock makes that unreachable. Neither has a sign check, a zero check, a counter or a warning, and neither crashes.",
+          "evidence": [
+            "cli/latency_command.go:192-194",
+            "cli/latency_command.go:216-225",
+            "cli/latency_command.go:182-187",
+            "cli/bench_command.go:1940",
+            "https://github.com/HdrHistogram/hdrhistogram-go"
+          ]
+        },
+        "warnings": {
+          "finding": "none found",
+          "evidence": [
+            "cli/latency_command.go:46-55",
+            "cli/bench_command.go:192"
+          ]
+        }
+      },
+      "plan_said": "keeps all",
+      "audit_found": "keeps them in the printed minimum, median and maximum, but the histogram silently refuses them, so the percentile table and the headline numbers can disagree",
+      "prediction": "held in part; the disagreement between the two outputs was not predicted",
+      "searches": [
+        {"term": "negative latency", "where": "github issues", "hits": 0},
+        {"term": "negative", "where": "github issues", "hits": 2},
+        {"term": "clock skew", "where": "github issues", "hits": 0},
+        {"term": "resolution", "where": "github issues", "hits": 1},
+        {"term": "rounding", "where": "github issues", "hits": 0},
+        {"term": "millisecond", "where": "github issues", "hits": 1},
+        {"term": "nanosecond", "where": "github issues", "hits": 0},
+        {"term": "latency 0", "where": "github issues", "hits": 0}
+      ],
+      "reports": [
+        {"title": "nats micro reporting service response times in 2 different units", "url": "https://github.com/nats-io/natscli/issues/880", "opened": "2023-09-27", "outcome": "fixed", "why_relevant": "latencies rendered in the wrong unit in the summary row, so microseconds read as milliseconds: a 1000x misreading from output formatting. It concerns `nats micro stats`, not the two audited commands, and is the only report the eight terms surfaced"}
+      ],
+      "checked_here": [],
+      "not_determined": [
+        "no Go toolchain here, so the histogram's behaviour on exactly zero and on a negative value was not observed; the claim rests on the library's bound check and its maintainers' comment",
+        "the tool was not run against live servers, so no negative sample was observed being produced",
+        "issues about these commands may also be filed in nats-server or nats.go, which the protocol's scope did not cover"
+      ]
+    }
+  ]
+}

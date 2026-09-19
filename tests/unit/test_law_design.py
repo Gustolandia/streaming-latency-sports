@@ -419,6 +419,45 @@ class TestFromRuns:
             ld.spread_from_rows([{"status": "done", "run_dir": "c0", "setup": "S"}], 30,
                                 lambda d, w: {"measured_negative": 1, "measured_spans": 10})
 
+    def backends(self, table, rows):
+        return ld.spread_by_backend(rows, 30, lambda d, w: {
+            "measured_negative": table[d][0], "measured_spans": table[d][1]})
+
+    def test_each_backend_has_its_own_spread(self):
+        """D10-1: a campaign runs one backend, so the spread it is simulated at is that
+        backend's. Pooling a quiet backend with a noisy one describes neither."""
+        rows = [{"status": "done", "run_dir": "k0", "setup": "P0-kafka-l75-s3000-p09s"},
+                {"status": "done", "run_dir": "k1", "setup": "P0-kafka-l75-s3000-p09s"},
+                {"status": "done", "run_dir": "r0", "setup": "P0-redis-l75-s3000-p09s"},
+                {"status": "done", "run_dir": "r1", "setup": "P0-redis-l75-s3000-p09s"}]
+        table = {"k0": (9, 1000), "k1": (10, 1000), "r0": (9, 1000), "r1": (99, 1000)}
+        found = self.backends(table, rows)
+        assert sorted(found) == ["kafka", "redis"]
+        assert found["redis"] > found["kafka"], "the noisy backend must not be averaged away"
+        assert found["kafka"] == pytest.approx(
+            statistics.stdev([math.log(9.5 / 1001), math.log(10.5 / 1001)]))
+
+    def test_a_setup_whose_name_names_no_backend_is_left_out(self):
+        rows = [{"status": "done", "run_dir": "a", "setup": "oddly-named"},
+                {"status": "done", "run_dir": "b", "setup": "oddly-named"},
+                {"status": "done", "run_dir": "k0", "setup": "P0-kafka-l75-s3000-p09s"},
+                {"status": "done", "run_dir": "k1", "setup": "P0-kafka-l75-s3000-p09s"}]
+        table = dict((d, (9, 1000)) for d in ("a", "b", "k0"))
+        table["k1"] = (10, 1000)
+        assert sorted(self.backends(table, rows)) == ["kafka"]
+
+    def test_a_setup_with_one_run_gives_that_backend_nothing(self):
+        rows = [{"status": "done", "run_dir": "k0", "setup": "P0-kafka-l75-s3000-p09s"},
+                {"status": "done", "run_dir": "r0", "setup": "P0-redis-l75-s3000-p09s"},
+                {"status": "done", "run_dir": "r1", "setup": "P0-redis-l75-s3000-p09s"}]
+        table = {"k0": (9, 1000), "r0": (9, 1000), "r1": (99, 1000)}
+        assert sorted(self.backends(table, rows)) == ["redis"]
+
+    def test_no_backend_at_all_is_refused_rather_than_guessed(self):
+        with pytest.raises(ValueError, match="no backend has a setup"):
+            ld.spread_by_backend([{"status": "done", "run_dir": "c0", "setup": "P0-kafka-x"}], 30,
+                                 lambda d, w: {"measured_negative": 1, "measured_spans": 10})
+
 
 class TestMain:
 

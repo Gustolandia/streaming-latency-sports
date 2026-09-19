@@ -364,8 +364,8 @@ def baseline_from_rows(rows, warmup_s=30.0, summarise=pilot_checks.summarise):
             for backend, loads in sorted(groups.items())}
 
 
-def spread_from_rows(rows, warmup_s=30.0, summarise=pilot_checks.summarise):
-    """(median SD, {setup: SD}) of log negative rate across the repeat runs of each setup.
+def _spread_logs(rows, warmup_s, summarise):
+    """{setup: [log rate per run]} over a finished spread pilot's queue.
 
     The rate is (negatives + 0.5) / (spans + 1), so a run with no negative span still has a
     logarithm, and the shrinkage it adds is the same for every run.
@@ -379,10 +379,43 @@ def spread_from_rows(rows, warmup_s=30.0, summarise=pilot_checks.summarise):
             continue
         logs.setdefault(row["setup"], []).append(
             math.log((summary["measured_negative"] + 0.5) / (summary["measured_spans"] + 1)))
+    return logs
+
+
+def spread_from_rows(rows, warmup_s=30.0, summarise=pilot_checks.summarise):
+    """(median SD, {setup: SD}) of log negative rate across the repeat runs of each setup."""
+    logs = _spread_logs(rows, warmup_s, summarise)
     sds = {setup: statistics.stdev(values) for setup, values in logs.items() if len(values) >= 2}
     if not sds:
         raise ValueError("no setup has two finished runs, so the spread cannot be estimated")
     return statistics.median(sds.values()), sds
+
+
+def spread_by_backend(rows, warmup_s=30.0, summarise=pilot_checks.summarise):
+    """{backend: median SD of the log rate} over the setups that backend ran.
+
+    A campaign runs one backend and a prediction is judged on one backend, so the spread a
+    campaign is simulated at is the spread of the backend that campaign runs. Pooling the two
+    describes neither: on the second x86 pair the spread pilot measured 0.213 for Kafka and 0.701
+    for Redis, and their pooled median, 0.457, is too many rounds for one and too few for the
+    other -- and the simulation would report a power the noisier campaign does not have (D10-1).
+
+    A setup's backend is read from the setup's own name, which begins with the block and the
+    backend, as law_design writes it.
+    """
+    logs = _spread_logs(rows, warmup_s, summarise)
+    by = {}
+    for setup, values in logs.items():
+        if len(values) < 2:
+            continue
+        parts = str(setup).split("-")
+        if len(parts) < 2 or parts[1] not in BACKENDS:
+            continue
+        by.setdefault(parts[1], []).append(statistics.stdev(values))
+    if not by:
+        raise ValueError("no backend has a setup with two finished runs, so no spread can be "
+                         "estimated for it")
+    return dict((backend, statistics.median(sds)) for backend, sds in sorted(by.items()))
 
 
 def main(argv=None, out=None, summarise=pilot_checks.summarise):

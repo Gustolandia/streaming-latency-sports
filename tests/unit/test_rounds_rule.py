@@ -104,6 +104,32 @@ class TestACampaignThatSwitchesCpusOff:
         runs = law_world.campaign(rounds=1, points=["p09s"], slices=(3.0, 6.0), cores=(2, 8))
         assert self.conditions(runs) == [(2, 3.0), (2, 6.0), (8, 3.0), (8, 6.0)]
 
+    def trips_by_core(self, **kw):
+        runs = law_world.campaign(rounds=3, points=["p09s"], seed=1, **kw)
+        by = {}
+        for run in runs:
+            by.setdefault(run["cpus"], set()).add(round(run["trip_ms"], 6))
+        return by
+
+    def test_a_core_count_is_a_sitting_so_its_rounds_share_one_shift(self):
+        """A5 gives each core count its own session, with its own calibration, so the shift
+        between sittings belongs to the core count and holds across its rounds."""
+        by = self.trips_by_core(slice_by_core=self.PAIRS, session_shift=True)
+        assert [len(trips) for _, trips in sorted(by.items())] == [1, 1, 1]
+
+    def test_and_the_sittings_differ_from_each_other(self):
+        by = self.trips_by_core(slice_by_core=self.PAIRS, session_shift=True)
+        assert len(set(next(iter(trips)) for trips in by.values())) == 3
+
+    def test_a_block_whose_campaign_is_one_sitting_still_shifts_round_by_round(self):
+        runs = law_world.campaign(rounds=3, points=["p09s"], slices=(3.0,), session_shift=True,
+                                  seed=1)
+        assert len(set(round(run["trip_ms"], 6) for run in runs)) == 3
+
+    def test_with_no_shift_at_all_the_rounds_are_alike(self):
+        by = self.trips_by_core(slice_by_core=self.PAIRS)
+        assert [len(trips) for _, trips in sorted(by.items())] == [1, 1, 1]
+
     def test_p7_can_be_confirmed_at_all(self):
         """P7 also asks that the machine report the slice the rule computes. The made-up runs
         carry no settings, so the simulation has to supply it, or P7 never confirms, the rule

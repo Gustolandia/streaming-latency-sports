@@ -98,13 +98,23 @@ def campaign(slices=(3.0,), rounds=4, tick_ms=1.0, plateau=0.30, floor=0.01, spr
     conditions = ([(slice_ms, cpus) for cpus, slice_ms in sorted(slice_by_core.items())]
                   if slice_by_core else
                   [(slice_ms, cpus) for slice_ms in slices for cpus in cores])
+    # What counts as a sitting. In most blocks a campaign is one sitting and its conditions are
+    # run inside it, so the shift between sittings is modelled round by round. A5 is not like
+    # that: the plan gives each core count its own session, with its own calibration, so there
+    # the shift belongs to the condition and holds across that condition's rounds.
+    by_condition = session_shift and bool(slice_by_core)
+    shifts = dict((condition, (rng.gauss(0.0, TRIP_SHIFT_MS),
+                               math.exp(rng.gauss(0.0, PLATEAU_SHIFT))))
+                  for condition in conditions) if by_condition else {}
     runs = []
     for round_ in range(1, rounds + 1):
         trip_shift, plateau_shift = 0.0, 1.0
-        if session_shift:
+        if session_shift and not by_condition:
             trip_shift = rng.gauss(0.0, TRIP_SHIFT_MS)
             plateau_shift = math.exp(rng.gauss(0.0, PLATEAU_SHIFT))
         for slice_ms, cpus in conditions:
+            if by_condition:
+                trip_shift, plateau_shift = shifts[(slice_ms, cpus)]
             for backend in backends:
                 for load_pct in loads:
                     for priority in priorities:

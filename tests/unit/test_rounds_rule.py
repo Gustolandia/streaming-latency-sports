@@ -104,11 +104,33 @@ class TestACampaignThatSwitchesCpusOff:
         runs = law_world.campaign(rounds=1, points=["p09s"], slices=(3.0, 6.0), cores=(2, 8))
         assert self.conditions(runs) == [(2, 3.0), (2, 6.0), (8, 3.0), (8, 6.0)]
 
+    def test_p7_can_be_confirmed_at_all(self):
+        """P7 also asks that the machine report the slice the rule computes. The made-up runs
+        carry no settings, so the simulation has to supply it, or P7 never confirms, the rule
+        answers with the ceiling, and a sound campaign is called underpowered."""
+        design = {"slice_by_core": self.PAIRS, "spread": 0.05, "plateau": 0.30, "floor": 0.01}
+        assert rr.confirms("P7", design, 4, "law", trials=3, draws=20, grid=24) == 1.0
+
+    def test_and_the_world_where_the_cliff_ignores_the_core_count_is_not(self):
+        design = {"slice_by_core": self.PAIRS, "spread": 0.05, "plateau": 0.30, "floor": 0.01}
+        assert rr.confirms("P7", design, 4, "cliff_fixed_by_cores", trials=3, draws=20,
+                           grid=24) == 0.0
+
     def test_the_rule_reads_it_from_the_command_line(self):
         args = rr.main(["for", "--prediction", "P7", "--slice-by-core", "2=1.4,4=2.1,8=2.8",
                         "--steps", "4", "--trials", "1", "--draws", "10", "--grid", "12"],
                        out=io.StringIO())
         assert args == 0
+
+    def test_a_point_the_pair_cannot_reach_is_not_simulated(self, tmp_path):
+        """D8-1: a point below the client's own zero-delay trip is not run, so a simulation that
+        included it would answer for a campaign nobody is going to run."""
+        where = tmp_path / "a5.json"
+        rr.main(["for", "--prediction", "P7", "--slice-by-core", "2=1.4,8=2.8",
+                 "--points", "p09s,c04h,f15h", "--steps", "4", "--trials", "1", "--draws", "10",
+                 "--grid", "12", "--out", str(where)], out=io.StringIO())
+        assert json.loads(where.read_text(encoding="utf-8"))["design"]["points"] == \
+            ["p09s", "c04h", "f15h"]
 
     def test_what_it_simulated_is_recorded_with_the_answer(self, tmp_path):
         where = tmp_path / "a5.json"

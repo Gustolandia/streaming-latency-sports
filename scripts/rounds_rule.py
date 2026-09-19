@@ -68,12 +68,19 @@ def confirms(prediction, design, rounds, world, trials=TRIALS, draws=DRAWS, grid
 
     Each campaign is made up afresh from its own seed, so the count can be repeated exactly.
     """
+    # P7 asks two things of the machine: that it reports the slice the core-count rule computes,
+    # and that the cliff follows it. The made-up runs carry no settings to read back, so the
+    # reported slice is the one the campaign was designed with -- in the falsifier world too,
+    # where what fails is the cliff, not the reporting. Without this P7 can never confirm, and the
+    # rule would answer with the ceiling and call a sound campaign underpowered.
+    read_back = design.get("slice_by_core")
     said = 0
     for trial in range(trials):
         runs = law_world.campaign(rounds=rounds, world=world, seed=seed + trial,
                                   tick_ms=tick_ms, **design)
         found = law_predictions.judge(runs, prediction, tick_ms, draws=draws,
-                                      seed=seed + trial, grid=grid, step_ms=step_ms)
+                                      seed=seed + trial, grid=grid, step_ms=step_ms,
+                                      read_back=read_back)
         said += 1 if found["confirmed"] else 0
     return said / float(trials)
 
@@ -156,6 +163,9 @@ def design_from(args):
               "session_shift": args.session_shift}
     if args.loads:
         design["loads"] = tuple(int(load) for load in args.loads.split(","))
+    if args.points:
+        # D8-1: a point the pair cannot reach is not run, so it is not simulated either.
+        design["points"] = [point.strip() for point in args.points.split(",") if point.strip()]
     if args.cores:
         design["cores"] = tuple(int(core) for core in args.cores.split(","))
     if args.slice_by_core:
@@ -183,6 +193,9 @@ def main(argv=None, out=None):
     p.add_argument("--tick-ms", type=float, default=1.0)
     p.add_argument("--loads", default="")
     p.add_argument("--cores", default="")
+    p.add_argument("--points", default="",
+                   help="the design points the pair can reach, as p09s,c04h,f15h; the whole "
+                        "eight by default")
     p.add_argument("--slice-by-core", default="",
                    help="the slice each core count gives, as 2=1.4,4=2.1,8=2.8; the campaign "
                         "then walks those pairs instead of crossing slices with core counts")

@@ -94,3 +94,8 @@ docs/reference_tc/
 # (show_figure_collisions.py, build_without_authors.py), and a committed copy of a
 # derived PDF is one more thing that can drift from the source it was made from.
 build/
+
+# The Java harness for A8: its jars are fetched by build.sh and pinned by their fingerprints in
+# harness/java/DEPENDENCIES, and its classes are built from src/. Neither is source.
+harness/java/lib/
+harness/java/out/

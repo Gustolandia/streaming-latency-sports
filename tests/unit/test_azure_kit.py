@@ -310,3 +310,23 @@ def test_the_guide_lists_every_file_in_the_kit():
 def test_the_testbed_file_sends_this_setup_file():
     spec = json.loads((KIT / "testbed.json").read_text(encoding="utf-8"))
     assert spec["custom_data"] == "cloud/azure/cloud-init.yaml"
+
+
+def test_a_session_can_calibrate_at_a_reduced_core_count():
+    """A5 gives each core count its own session with its own C0 (D4-6). Every queue row sets the
+    run's core count from its own parameters, so an environment variable alone would be
+    overwritten: the core count has to reach the design that writes those rows."""
+    code = (KIT / "stage0.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
+    assert '[ -n "${CPUS:-}" ] && CPUS_ARG=(--cpus "$CPUS")' in code
+    assert code.count('"${CPUS_ARG[@]}"') == 2, "both stages of the calibration"
+    for stage in ('design C0 "c0_$START"', 'design C0 "c0b_$START"'):
+        after = code.split(stage, 1)[1].split("campaign", 1)[0]
+        assert '"${CPUS_ARG[@]}"' in after, stage
+
+
+def test_a_session_given_no_core_count_asks_for_none():
+    """The argument is an array so that an unset core count adds no argument at all, rather than
+    an empty one the design would have to read as a number."""
+    code = (KIT / "stage0.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
+    assert "CPUS_ARG=()" in code
+    assert code.index("CPUS_ARG=()") < code.index('CPUS_ARG=(--cpus "$CPUS")')

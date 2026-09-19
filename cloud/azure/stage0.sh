@@ -51,6 +51,10 @@ case "$KIND" in
 esac
 PROFILE="${AZ_PROFILE:-unknown}"
 LOAD_PCT="${LOAD_PCT:-75}"
+# A session that opens a campaign at a reduced core count calibrates at that core count: the
+# delay's effect on the trip is measured on the machine as the campaign will run it (A5, D4-6).
+CPUS_ARG=()
+[ -n "${CPUS:-}" ] && CPUS_ARG=(--cpus "$CPUS")
 START="$(date -u +%Y%m%dT%H%M%SZ)"
 DIR="runs/azure/stage0/${PROFILE}_$START"
 # One seed per design, from the day and the pair, so no two pairs draw the same order.
@@ -109,7 +113,8 @@ esac
 sudo python3 scripts/sched_settings.py read > "$DIR/settings.json" \
   || stop "the scheduler settings could not be read"
 
-design C0 "c0_$START" "${SEED}1" --up-to-ms "$UP_TO_MS" --rounds "$C0_ROUNDS" --loads "$LOAD_PCT"
+design C0 "c0_$START" "${SEED}1" --up-to-ms "$UP_TO_MS" --rounds "$C0_ROUNDS" \
+  --loads "$LOAD_PCT" "${CPUS_ARG[@]}"
 campaign "c0_$START"
 C0_QUEUES=(--queue "$DIR/c0_$START.csv")
 if [ "$KIND" != first ]; then
@@ -122,7 +127,7 @@ if [ "$KIND" != first ]; then
   if python3 scripts/delay_calibration.py needs-rounds \
       --calibration "$DIR/calibration_first_stage.json"; then
     design C0 "c0b_$START" "${SEED}4" --up-to-ms "$UP_TO_MS" --rounds 2 --first-round 3 \
-      --loads "$LOAD_PCT"
+      --loads "$LOAD_PCT" "${CPUS_ARG[@]}"
     campaign "c0b_$START"
     C0_QUEUES+=(--queue "$DIR/c0b_$START.csv")
   fi

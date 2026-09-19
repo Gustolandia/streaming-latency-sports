@@ -62,7 +62,7 @@ class TestPoints:
 class TestBlocks:
 
     @pytest.mark.parametrize("block,size", [("B0", 6), ("C0", 12), ("P0", 16), ("A1", 96),
-                                            ("A2", 32), ("A3", 72), ("A4", 48), ("A5", 48),
+                                            ("A2", 32), ("A3", 36), ("A4", 48), ("A5", 48),
                                             ("A7", 12)])
     def test_every_block_is_its_full_product(self, block, size):
         setups, unreachable = ld.make_setups(block, 1.0, BASELINE, AZURE)
@@ -106,6 +106,13 @@ class TestBlocks:
         setups = by_id(ld.make_setups("A7", 1.0, BASELINE, AZURE)[0])
         assert setups["A7-kafka-l75-s3000-c05h-rt"]["priority"] is True
         assert setups["A7-kafka-l75-s3000-c05h"]["priority"] is False
+
+    def test_load_is_tested_at_one_slice(self):
+        """D4-4: A3 runs at three loads, at the 3 ms slice and 6 trips, in two campaigns, one per
+        backend. That is 18 setups a campaign, and the plan's 216 runs over six rounds."""
+        assert ld.BLOCKS["A3"]["slices"] == (3.0,)
+        setups, unreachable = ld.make_setups("A3", 1.0, BASELINE, AZURE)
+        assert (len(setups) + len(unreachable)) // 2 * 6 * 2 == 216
 
     def test_go_first_is_tested_at_one_slice(self):
         """D4-5: A7 tests one slice, 3 ms, both backends, in one campaign, and P4 is judged at

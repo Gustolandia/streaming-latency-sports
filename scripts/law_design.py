@@ -79,7 +79,9 @@ BLOCKS = {
     "A1": {"slices": (0.75, 1.5, 2.25, 3.0, 4.5, 6.0), "points": EIGHT, "loads": (75,),
            "trace_half": True},
     "A2": {"slices": (1.5, 3.0), "points": EIGHT, "loads": (75,)},
-    "A3": {"slices": (1.5, 3.0), "points": ("p09s", "c02h", "c04h", "c06h", "c08h", "f15h"),
+    # D4-4: A3 runs at three loads, at the 3 ms slice and 6 trips, in two campaigns, one per
+    # backend. Two slices would be 432 runs where the plan's table asks for 216.
+    "A3": {"slices": (3.0,), "points": ("p09s", "c02h", "c04h", "c06h", "c08h", "f15h"),
            "loads": (50, 75, 88), "trace_half": True},
     "A4": {"slices": (1.5, 3.0, 4.5), "points": EIGHT, "loads": (75,)},
     "A5": {"cpus": (2, 4, 8), "points": EIGHT, "loads": (75,)},

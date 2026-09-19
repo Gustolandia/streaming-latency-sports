@@ -1,0 +1,132 @@
+{
+  "audited_utc": "2026-09-19",
+  "protocol": "freeze 04, Section 'Experiments for Mode 2', T5",
+  "terms": ["negative latency", "negative", "clock skew", "resolution", "rounding",
+            "millisecond", "nanosecond", "latency 0"],
+  "searches_note": "Both tools were audited in one sweep of the eight terms over the KAFKA JIRA project and the kafka-users and kafka-dev lists, so the counts below are one set of 24 searches covering both. The JIRA operator stems and does not enforce phrases, and kafka-dev is dominated by automated JIRA notification mail, so these counts are what was seen and are not counts of relevant reports.",
+  "searches": [
+    {"term": "negative latency", "where": "KAFKA jira", "hits": 10},
+    {"term": "negative", "where": "KAFKA jira", "hits": 240},
+    {"term": "clock skew", "where": "KAFKA jira", "hits": 17},
+    {"term": "resolution", "where": "KAFKA jira", "hits": 155},
+    {"term": "rounding", "where": "KAFKA jira", "hits": 285},
+    {"term": "millisecond", "where": "KAFKA jira", "hits": 459},
+    {"term": "nanosecond", "where": "KAFKA jira", "hits": 58},
+    {"term": "latency 0", "where": "KAFKA jira", "hits": 142},
+    {"term": "negative latency", "where": "kafka-users", "hits": 35},
+    {"term": "clock skew", "where": "kafka-users", "hits": 2},
+    {"term": "nanosecond", "where": "kafka-users", "hits": 1},
+    {"term": "rounding", "where": "kafka-users", "hits": 6},
+    {"term": "negative latency", "where": "kafka-dev", "hits": 175},
+    {"term": "rounding", "where": "kafka-dev", "hits": 8},
+    {"term": "nanosecond", "where": "kafka-dev", "hits": 40}
+  ],
+  "tools": [
+    {
+      "tool": "Kafka EndToEndLatency",
+      "repository": "https://github.com/apache/kafka",
+      "version_seen": "trunk at 995cfcf99f7917403e030428c00b5c51808ddc61, version 4.5.0-SNAPSHOT, fetched 2026-09-19; re-verified against release tag 4.3.1. The class is org.apache.kafka.tools.EndToEndLatency; the Scala original under kafka.tools was removed at 4.0.0",
+      "what_it_times": "send to receive, with the acknowledgement wait serialised inside the timed interval: the timer opens, send().get() blocks for the broker's ack, only then does the consumer poll, and the timer closes after poll returns. The consumer is not listening while the acknowledgement is outstanding",
+      "documentation": {
+        "clock_and_resolution": {
+          "finding": "It measures with System.nanoTime(), a monotonic clock at nanosecond resolution, and then throws that resolution away at the storage boundary: `latencies[i] = elapsed / 1000 / 1000` is integer division, so every value kept for the percentiles is a whole millisecond rounded toward zero. The tool is then internally inconsistent about its own precision. The average is accumulated from untruncated nanoseconds and printed as '%.4f ms', four decimal places of real precision; the percentiles come from the truncated array and print as bare integers with no unit label at all. A run whose latencies are all below a millisecond prints '50th = 0, 99th = 0, 99.9th = 0' beside an average of a fraction of a millisecond: two lines of one output disagreeing. The same truncation is in the Scala original at 3.4.0, so it was carried over verbatim into the Java port.",
+          "evidence": [
+            "tools/src/main/java/org/apache/kafka/tools/EndToEndLatency.java:123",
+            "tools/src/main/java/org/apache/kafka/tools/EndToEndLatency.java:127",
+            "tools/src/main/java/org/apache/kafka/tools/EndToEndLatency.java:135",
+            "tools/src/main/java/org/apache/kafka/tools/EndToEndLatency.java:236",
+            "tools/src/main/java/org/apache/kafka/tools/EndToEndLatency.java:241",
+            "https://github.com/apache/kafka/blob/3.4.0/core/src/main/scala/kafka/tools/EndToEndLatency.scala"
+          ]
+        },
+        "odd_values": {
+          "finding": "None at all: no drop, no clamp, no replacement, no separate count, no crash. Both stamps come from one monotonic clock in one process, so a negative is not expected to arise. Zero, though, is manufactured by the tool itself -- the truncation maps every latency under a millisecond to exactly zero -- and those zeros are kept and sorted into the percentiles like any other value. The only condition that stops a record is a correctness failure, which throws and ends the whole run rather than recording an outlier.",
+          "evidence": [
+            "tools/src/main/java/org/apache/kafka/tools/EndToEndLatency.java:129-136",
+            "tools/src/main/java/org/apache/kafka/tools/EndToEndLatency.java:143-175",
+            "tools/src/main/java/org/apache/kafka/tools/EndToEndLatency.java:235-242"
+          ]
+        },
+        "warnings": {
+          "finding": "none found. Nothing in the class comment, the option help, the launcher script, or Kafka's documentation. All 168 files under docs/ on trunk were fetched: the tool appears in exactly one, an upgrade note recording the removal of the old redirect. No page describes what the tool measures. The only nearby remarks configure away batching rather than caution the reader.",
+          "evidence": [
+            "tools/src/main/java/org/apache/kafka/tools/EndToEndLatency.java:54-64",
+            "tools/src/main/java/org/apache/kafka/tools/EndToEndLatency.java:281",
+            "https://github.com/apache/kafka/blob/trunk/bin/kafka-e2e-latency.sh",
+            "https://github.com/apache/kafka/blob/trunk/docs/getting-started/upgrade.md"
+          ]
+        }
+      },
+      "plan_said": "send to receive; Low (chops); keeps all; average exact",
+      "audit_found": "exactly that: nanosecond measurement chopped to whole milliseconds by integer division, every value kept, and the average computed from the untruncated total",
+      "prediction": "held",
+      "reports": [
+        {"title": "EndToEndLatency: Add support for printing all latencies", "url": "https://issues.apache.org/jira/browse/KAFKA-9456", "opened": "2020-01-20", "outcome": "still open", "why_relevant": "asks for a flag to dump every latency so users can plot distributions; the reporter does not notice that the stored array has already been truncated to integer milliseconds, so dumping it would not recover what was lost. Six years open"},
+        {"title": "kafka TestEndtoEndLatency (kafka-users)", "url": "https://lists.apache.org/thread/clkchh32zqbccsc7dl73xtvpsfqjxjzn", "opened": "2015-07-15", "outcome": "closed without a fix", "why_relevant": "the only place found where a committer states on the record what each tool times: 'Only TestEndtoEndLatency's number are end to end, for ProducerPerformance the latency is for the send-to-ack latency'. A user's direct question, whether acks are involved in the end-to-end test, goes uncorrected, though the .get() on the send future is precisely an ack wait inside the timed interval"},
+        {"title": "Failure of end to end latency test during nightly run", "url": "https://issues.apache.org/jira/browse/KAFKA-2749", "opened": "2015-11-05", "outcome": "still open", "why_relevant": "a report against this tool, though about a timeout under SSL rather than measurement correctness"},
+        {"title": "EndToEndLatencyTest#testInvalidRecordHeaderValue does not cover the correct scenario", "url": "https://issues.apache.org/jira/browse/KAFKA-20826", "opened": "2026-07-22", "outcome": "fixed", "why_relevant": "shows the tool was under active maintenance in 2026 and that the truncation survived that attention untouched"}
+      ],
+      "checked_here": [
+        "EndToEndLatency.java: `long begin = System.nanoTime();` ... `long elapsed = System.nanoTime() - begin;` ... `latencies[i] = elapsed / 1000 / 1000;`, and the two print statements, one an average at four decimals from the untruncated total and the other bare integer percentiles with no unit. Read back from the tool's own source.",
+        "the acknowledgement wait sits inside the timed interval: send(...).get() completes before the consumer polls. Read back from the tool's own source."
+      ],
+      "not_determined": [
+        "whether anyone has ever reported the truncation. The eight frozen terms surfaced no such report, but the protocol forbids adding terms like 'truncation' or 'integer division', so this absence is weak and must not be written up as 'nobody has ever reported it'",
+        "the practical granularity of the clock on a given platform, which is a property of the JVM and the operating system rather than of the source"
+      ]
+    },
+    {
+      "tool": "Kafka ProducerPerformance",
+      "repository": "https://github.com/apache/kafka",
+      "version_seen": "trunk at 995cfcf99f7917403e030428c00b5c51808ddc61; re-verified against 4.3.1. bin/kafka-producer-perf-test.sh execs org.apache.kafka.tools.ProducerPerformance",
+      "what_it_times": "send to got-it. The start stamp is taken before producer.send and the stop stamp inside the completion callback, which fires when the broker acknowledges. No consumer exists in the tool, so nothing about delivery to a reader is measured. Two consequences it never states: time spent blocking in send() on a full buffer or a metadata fetch is charged to latency, and the stop stamp is taken on the producer's background I/O thread, so that thread's scheduling delay falls inside the number",
+      "documentation": {
+        "clock_and_resolution": {
+          "finding": "It times with System.currentTimeMillis(), the wall clock rather than the monotonic one, at both ends, and forms `int latency = (int) (now - start)`. Every statistic it prints comes from that integer, so a millisecond is the hard floor and all values are truncated toward zero. The average is printed to two decimals but is an average of integers, so its apparent sub-millisecond precision is spurious. Because the clock is not monotonic, a backward step or slew during a run corrupts the measurement directly, and nothing guards against it.",
+          "evidence": [
+            "tools/src/main/java/org/apache/kafka/tools/ProducerPerformance.java:112",
+            "tools/src/main/java/org/apache/kafka/tools/ProducerPerformance.java:607-608",
+            "tools/src/main/java/org/apache/kafka/tools/ProducerPerformance.java:564",
+            "tools/src/main/java/org/apache/kafka/tools/ProducerPerformance.java:94"
+          ]
+        },
+        "odd_values": {
+          "finding": "None: no drop, no clamp, no replacement, no count, no crash. A negative from a backward clock step would be added to the running total, dragging the average down, and would sort to the front of the percentiles; Math.max would ignore it, so the maximum would be unaffected and the inconsistency invisible. Zero is not an anomaly here but the normal reading for any acknowledgement faster than the clock tick, and it is kept. The only filter anywhere in the path is on failure rather than on plausibility. Above 500,000 records the percentile array is sampled, so only every Nth latency reaches the percentiles while the average and maximum use all of them.",
+          "evidence": [
+            "tools/src/main/java/org/apache/kafka/tools/ProducerPerformance.java:606-619",
+            "tools/src/main/java/org/apache/kafka/tools/ProducerPerformance.java:493-505",
+            "tools/src/main/java/org/apache/kafka/tools/ProducerPerformance.java:479-480"
+          ]
+        },
+        "warnings": {
+          "finding": "none found on scheduling, contention or clocks. The nearest thing is --warmup-records, added in 2024 so that start-up effects are excluded from steady-state statistics: the project accepts measurement-artefact arguments about this tool in principle, but that change named only warm-up and left the clock choice, the truncation and the I/O-thread delay untouched. Neither the tool nor any Kafka document warns that the stop stamp is taken on the producer's I/O thread; that threading fact appears in Kafka only as advice to user code not to block the thread.",
+          "evidence": [
+            "tools/src/main/java/org/apache/kafka/tools/ProducerPerformance.java:402-410",
+            "clients/src/main/java/org/apache/kafka/clients/producer/KafkaProducer.java:942",
+            "https://lists.apache.org/thread/gfogcwz4wp452rx104kbsypvgfztf6on",
+            "https://github.com/apache/kafka/blob/trunk/docs/operations/tiered-storage.md"
+          ]
+        }
+      },
+      "plan_said": "send to got-it; Low; keeps all",
+      "audit_found": "exactly that: a wall clock at millisecond granularity, every value kept, nothing filtered on plausibility",
+      "prediction": "held",
+      "reports": [
+        {"title": "producer.request-latency-avg/max metric can't report latency less than 1ms", "url": "https://issues.apache.org/jira/browse/KAFKA-3028", "opened": "2015-12-22", "outcome": "still open", "why_relevant": "the most on-point report found anywhere in this audit. A user reports that the producer latency metric emits NaN below a millisecond and asks for nanosecond measurement; a committer replies 'We should handle that better'. It concerns the producer's metric rather than the perf tool, but it is the same failure from the same clock choice, and it establishes that Kafka has known about its millisecond floor since 2015. Still open after eleven years"},
+        {"title": "Measuring Kafka Producer request latency when it is less than 1ms (kafka-users)", "url": "https://lists.apache.org/thread/5rg1f4k2vqgwc6cvqnvkbhsrf9om9wxh", "opened": "2015-12-22", "outcome": "still open", "why_relevant": "the thread that spawned KAFKA-3028: a production user asks for microsecond or nanosecond precision and for a histogram of individual events. Asked for in 2015, never delivered"},
+        {"title": "The output of kafka-producer-perf-test.sh is ambiguous", "url": "https://issues.apache.org/jira/browse/KAFKA-9391", "opened": "2020-01-09", "outcome": "still open", "why_relevant": "a reporter cannot tell what the tool's summary line means. The pasted output is itself the artefact: an average to two decimals beside whole-number percentiles, the signature of averaging integer milliseconds. Six years open with no reply"},
+        {"title": "KIP-1052: Enable warmup in producer performance test", "url": "https://issues.apache.org/jira/browse/KAFKA-17645", "opened": "2024-09-27", "outcome": "fixed", "why_relevant": "the one accepted change in which the project concedes this tool's latency numbers are distorted by something outside the system under test, and adds machinery to exclude it"},
+        {"title": "ResponseMetadata calculates latency incorrectly", "url": "https://issues.apache.org/jira/browse/KAFKA-6853", "opened": "2018-05-03", "outcome": "fixed", "why_relevant": "not one of the audited tools, but direct precedent: the subtraction operands were reversed, so a published Kafka latency metric was sign-inverted for an extended period without detection"},
+        {"title": "ZkWriteSnapshotTimeMs metric reports negative values", "url": "https://issues.apache.org/jira/browse/KAFKA-20947", "opened": "2026-08-17", "outcome": "still open", "why_relevant": "the identical defect class as KAFKA-6853, recurring eight years later and still unfixed: a latency published with its operands the wrong way round, and nothing in the pipeline rejecting a negative"},
+        {"title": "Kafka Streams commit-latency-max and commit-latency-avg is always 0", "url": "https://issues.apache.org/jira/browse/KAFKA-12272", "opened": "2021-02-02", "outcome": "fixed", "why_relevant": "a latency metric read exactly zero for a whole release because the start timestamp was refreshed before the subtraction: precedent that a Kafka latency can read zero across a release without the zero being recognised as impossible"},
+        {"title": "[ConsumerPerformance] the test result is negative number", "url": "https://issues.apache.org/jira/browse/KAFKA-1828", "opened": "2014-12-24", "outcome": "closed without a fix", "why_relevant": "resolved as a duplicate. The negative quantities are throughput rather than latency and the tool is a sibling of the two audited, but it is the closest found to a user reporting that a Kafka perf tool printed a physically impossible number, and the reporter's own diagnosis names this audit's mechanism: the interval measured was shorter than the timing could resolve"}
+      ],
+      "checked_here": [],
+      "not_determined": [
+        "no negative latency was demonstrated from this tool. That a backward wall-clock step would produce one is read off the source and is a statement about what the code permits, not an observed run; observing it would need a run under an induced clock step",
+        "how much of the reported latency is I/O-thread scheduling delay. Only that the stop stamp is taken on that thread, which is what puts the delay inside the interval"
+      ]
+    }
+  ],
+  "across_the_two": "The two tools are routinely cited side by side as though their numbers were comparable, and the 2015 kafka-users thread shows a user doing exactly that. They are not comparable: one is a serialised send-ack-then-poll round trip on a monotonic clock, the other a pipelined send-to-ack on a wall clock, and neither tool's output says which it is. Both print '0 ms' as an ordinary result for any interval below the tick, and neither tells the reader that a printed zero means 'below my resolution' rather than 'instantaneous'. The disambiguation exists only in a committer's mailing-list reply from 2015 and in the source."
+}

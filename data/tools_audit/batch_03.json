@@ -1,0 +1,133 @@
+{
+  "audited_utc": "2026-09-19",
+  "protocol": "freeze 04, Section 'Experiments for Mode 2', T5",
+  "terms": ["negative latency", "negative", "clock skew", "resolution", "rounding",
+            "millisecond", "nanosecond", "latency 0"],
+  "tools": [
+    {
+      "tool": "Apache Pulsar perf",
+      "repository": "https://github.com/apache/pulsar",
+      "version_seen": "master at 0f8af3259ec8b233374b42bccd79338c397a40a3, 2026-09-19; cross-checked against release v4.2.4",
+      "what_it_times": "both, by subcommand. `pulsar-perf produce` times send to got-it on one monotonic clock. `pulsar-perf consume` times send to receive across two machines' wall clocks, from the producer client's publish stamp to the consumer's arrival. Because the start point is the message's publish stamp rather than anything the benchmark initiated, consuming an existing backlog reports the AGE of the messages, not transport latency",
+      "documentation": {
+        "clock_and_resolution": {
+          "finding": "Two clocks at two resolutions. The producer uses System.nanoTime() converted to microseconds, on one machine, so it cannot go negative. The consumer uses System.currentTimeMillis() minus the publish timestamp carried in the message, in whole milliseconds; that stamp is written by the producer client's own wall clock, not by the broker and not by the consumer, so the subtraction crosses two machines' wall clocks and is exposed to skew and to NTP steps. Millisecond resolution means any consumer latency below a millisecond quantises to zero.",
+          "evidence": [
+            "pulsar-testclient/src/main/java/org/apache/pulsar/testclient/PerformanceConsumerBase.java:544",
+            "pulsar-testclient/src/main/java/org/apache/pulsar/testclient/PerformanceProducerBase.java:589-593",
+            "pulsar-testclient/src/main/java/org/apache/pulsar/testclient/PerformanceConsumer.java:199-201",
+            "pulsar-client/src/main/java/org/apache/pulsar/client/impl/ProducerImpl.java:710"
+          ]
+        },
+        "odd_values": {
+          "finding": "Negative values are silently dropped and counted nowhere. The consumer guards with `if (latencyMillis >= 0)` and gives no else branch, no counter and no log line: a message whose publish stamp is ahead of the consumer's clock simply never enters the histogram. Neither the producer nor the consumer ever prints the histogram's total count, so the loss is not even indirectly visible; recovering it means writing a histogram file and comparing its count against the message count by hand. Values at or above the cap are clamped rather than dropped, so an outlier is recorded as exactly ten days. Zero is kept. Separately, an EMPTY histogram prints as 0.000 for the mean and every percentile rather than as 'no data', so during the warm-up window the tool reports a latency of 0.000 ms, indistinguishable from a real measurement of zero.",
+          "evidence": [
+            "pulsar-testclient/src/main/java/org/apache/pulsar/testclient/PerformanceConsumerBase.java:544-551",
+            "pulsar-testclient/src/main/java/org/apache/pulsar/testclient/PerformanceReaderBase.java:250",
+            "pulsar-testclient/src/main/java/org/apache/pulsar/testclient/PerformanceProducerBase.java:500-522",
+            "https://github.com/apache/pulsar/issues/13250"
+          ]
+        },
+        "warnings": {
+          "finding": "none found. The official pulsar-perf documentation page contains no occurrence of clock, NTP, skew, synchronisation, CPU, contention, scheduling, negative or accuracy; it shows example latency output but never says what the latency is measured between or which clock is used. The source carries no warning either. Given that the consumer subtracts a remote machine's wall-clock stamp from a local one, the absence of any clock-synchronisation caveat is itself the finding.",
+          "evidence": [
+            "https://pulsar.apache.org/docs/next/performance-pulsar-perf/",
+            "pulsar-testclient/src/main/java/org/apache/pulsar/testclient/PerformanceConsumer.java:96-112"
+          ]
+        }
+      },
+      "plan_said": "send to receive; Low; drops negatives, keeps zeros, uncounted",
+      "audit_found": "exactly that for the consumer, and the audit adds that the producer subcommand is a different measurement on a different clock",
+      "prediction": "held",
+      "searches": [
+        {"term": "negative latency", "where": "github issues (apache/pulsar)", "hits": 0},
+        {"term": "negative", "where": "github issues (apache/pulsar)", "hits": 137},
+        {"term": "clock skew", "where": "github issues (apache/pulsar)", "hits": 1},
+        {"term": "resolution", "where": "github issues (apache/pulsar)", "hits": 85},
+        {"term": "rounding", "where": "github issues (apache/pulsar)", "hits": 1},
+        {"term": "millisecond", "where": "github issues (apache/pulsar)", "hits": 69},
+        {"term": "nanosecond", "where": "github issues (apache/pulsar)", "hits": 4},
+        {"term": "latency 0", "where": "github issues (apache/pulsar)", "hits": 47},
+        {"term": "all eight", "where": "apache jira (PULSAR, retired project)", "hits": 1}
+      ],
+      "reports": [
+        {"title": "[Bug] pulsar-perf outputs values in nanos with values saying \"ms\"", "url": "https://github.com/apache/pulsar/issues/23879", "opened": "2025-01-22", "outcome": "still open", "why_relevant": "a user reports pulsar-perf printing 'Latency: mean: 18740630.690 ms' and concludes the histogram is in nanoseconds. The auditor opened the cited lines and found the recording genuinely is in milliseconds, so the reporter's diagnosis does not match the source; the auditor's own inference, flagged as inference, is that the figure is real in the tool's terms -- about 5.2 hours, which is what 'now minus publish time' returns when draining a backlog, the tool reporting message age rather than transport latency. Either way it is a live, undiagnosed report of a latency number its own user could not interpret"},
+        {"title": "[Pulsar-perf] aggregated latency stats prints twice", "url": "https://github.com/apache/pulsar/issues/13250", "opened": "2021-12-12", "outcome": "fixed", "why_relevant": "holds two artefacts. Six consecutive report lines print a latency of 0.000 ms during the warm-up window because the empty histogram is printed as zeros, with real values appearing only afterwards; and the aggregated statistics print twice with different numbers, the second a degenerate distribution from reading an already-drained recorder. The double print is gone from master; the empty-histogram zeros were never addressed and still reproduce, as there is no total-count guard anywhere in the reporting path"}
+      ],
+      "checked_here": [],
+      "not_determined": [
+        "how many negative samples are dropped in practice: the tool keeps no count, so this cannot be answered from its output at all, only by instrumenting it",
+        "whether any maintainer has discussed the consumer figure's dependence on two machines' clocks agreeing; the eight terms surfaced nothing, and the single 'clock skew' hit concerns proxy token refresh"
+      ]
+    },
+    {
+      "tool": "wrk2",
+      "repository": "https://github.com/giltene/wrk2",
+      "version_seen": "44a94c17d8e6a0bac8559b53da76848e430cb7a7, committed 2019-09-23, which is repository HEAD. The project has no tags and no releases; src/wrk.h still declares the version it inherited from wrk",
+      "what_it_times": "request to reply, and deliberately not from the actual send. The main histogram times from the moment the request SHOULD have been sent under the configured constant rate, which is the coordinated-omission correction the tool exists for; a second histogram behind --u_latency times from the actual send, provided only to show how much the naive measurement understates latency",
+      "documentation": {
+        "clock_and_resolution": {
+          "finding": "It times with gettimeofday(), the wall clock, not a monotonic one, at microsecond resolution; every timestamp in the request path comes from that one function. That choice is what leaves it exposed to NTP stepping the clock backwards during a run. Its histogram is initialised from 1 microsecond to 24 hours at 3 significant digits. The effective resolution is far coarser than a microsecond: the README states latencies are accurate only to about a millisecond because the rate limiter sleeps at the event loop's millisecond granularity.",
+          "evidence": [
+            "src/wrk.c:675-679",
+            "src/wrk.c:10",
+            "src/wrk.c:113",
+            "README.md:40-42",
+            "https://github.com/giltene/wrk2/issues/78"
+          ]
+        },
+        "odd_values": {
+          "finding": "A negative value crashes the tool; a zero is recorded as a real sample. The code computes the timing as a signed integer and explicitly tests for a negative, printing a panic block that begins 'We are about to crash and die (recoridng a negative #)' and 'This wil never ever ever happen...', typos and all. It then recomputes the START of the interval but NOT the timing itself, so the still-negative value falls through to the histogram, where the bucket arithmetic on a negative gives an index far outside the histogram's range and an assertion aborts the process. The build never defines NDEBUG, so that assertion is live in the default build. The companion line records the uncorrected timing as an UNSIGNED integer with no check at all, so a backwards clock step there wraps to about 1.8e19 rather than going negative. Neither recording call checks its return value. A zero-microsecond latency is below the histogram's declared lowest trackable value but that bound is never enforced on the record path, so it is kept as a genuine observation.",
+          "evidence": [
+            "src/wrk.c:518-543",
+            "src/wrk.c:553-559",
+            "src/hdr_histogram.c:41-45",
+            "src/hdr_histogram.c:52-65",
+            "Makefile:1",
+            "https://github.com/giltene/wrk2/issues/58"
+          ]
+        },
+        "warnings": {
+          "finding": "It warns at length about coordinated omission -- the tool's entire reason for existing -- and about its own millisecond timing floor, but says nothing whatever about clocks. Nothing in the README or the source tells a user that wrk2 reads the wall clock and will abort if NTP steps it backwards; that knowledge exists only in the issue tracker, where users pass around the workaround of stopping the time-synchronisation daemon. No warning about CPU contention or core pinning either.",
+          "evidence": [
+            "README.md:296-333",
+            "README.md:40-42",
+            "src/wrk.c:511-517",
+            "https://github.com/giltene/wrk2/issues/58"
+          ]
+        }
+      },
+      "plan_said": "request to response; Medium; negatives never recorded; may crash",
+      "audit_found": "it crashes, and the route is worse than predicted: the code detects the negative, declares it impossible, repairs the wrong variable, and records the negative anyway",
+      "prediction": "held",
+      "searches": [
+        {"term": "negative latency", "where": "github issues (giltene/wrk2)", "hits": 0},
+        {"term": "negative", "where": "github issues (giltene/wrk2)", "hits": 1},
+        {"term": "clock skew", "where": "github issues (giltene/wrk2)", "hits": 0},
+        {"term": "resolution", "where": "github issues (giltene/wrk2)", "hits": 1},
+        {"term": "rounding", "where": "github issues (giltene/wrk2)", "hits": 1},
+        {"term": "millisecond", "where": "github issues (giltene/wrk2)", "hits": 3},
+        {"term": "nanosecond", "where": "github issues (giltene/wrk2)", "hits": 0},
+        {"term": "latency 0", "where": "github issues (giltene/wrk2)", "hits": 3}
+      ],
+      "reports": [
+        {"title": "Assertion failure while running benchmark", "url": "https://github.com/giltene/wrk2/issues/58", "opened": "2018-05-31", "outcome": "still open", "why_relevant": "a real, reproducible negative latency destroying a benchmark run: the tool's own panic block showing a timing of -1340, followed by the assertion failure and an abort. A commenter diagnosed it as NTP correcting the clock backwards mid-run, likelier under Docker, which follows directly from timing with the wall clock. The accepted workaround is to disable time synchronisation entirely, confirmed by further users in 2025. Open for more than seven years, no fix, no code change, and no warning added to the README. The failure is non-deterministic in the way that most damages a benchmark: it works sometimes and fails arbitrarily"},
+        {"title": "Improve aeTimeEvent resolution from 1 msec to 1 usec", "url": "https://github.com/giltene/wrk2/issues/78", "opened": "2019-08-17", "outcome": "still open", "why_relevant": "opened by wrk2's own author, conceding a systematic upward bias of up to a millisecond because the rate limiter oversleeps, 'which ends up looking like a server problem when it is actually a load generator problem'. He rejects subtracting the error, preferring pessimistic reporting. It quantifies the floor below which any wrk2 sub-millisecond claim is an artefact of the load generator. Open since 2019"},
+        {"title": "confusing results when run with -H 'Connection: Close'", "url": "https://github.com/giltene/wrk2/issues/5", "opened": "2015-01-24", "outcome": "still open", "why_relevant": "wrk2 prints 'Thread calibration: mean lat.: 9223372036854776.000ms' on every thread: the largest possible integer rendered as milliseconds to three decimal places. The author identifies the precondition as zero successful requests, so there is no latency information; rather than reporting no data, the calibration path formats an unpopulated histogram's mean as a concrete latency. Open since 2015"},
+        {"title": "wrk2 produces incorrect results", "url": "https://github.com/giltene/wrk2/issues/138", "opened": "2023-10-30", "outcome": "still open", "why_relevant": "a five-second run reported as having taken 1.25 ms, giving 663 million requests per second alongside a not-a-number column, so the tool's own elapsed-time accounting can be wrong, not merely its latencies"},
+        {"title": "why the latency of 4k is lower when comparing 2k and 4k qps?", "url": "https://github.com/giltene/wrk2/issues/149", "opened": "2025-09-26", "outcome": "still open", "why_relevant": "measured latency DECREASING as offered load doubles, the signature of an artefact rather than server behaviour, and consistent with the millisecond sleep bias dominating at the lower rate. Recorded because it is live and entirely unanswered; no diagnosis exists in the thread and the auditor did not reproduce it"},
+        {"title": "Wrong latency distribution on the benchmark test", "url": "https://github.com/giltene/wrk2/issues/81", "opened": "2019-10-29", "outcome": "closed without a fix", "why_relevant": "included as a negative control: the case where the tool was right and the user was wrong. The author explains this is correct reporting of experienced latency when the target cannot keep up with the requested rate. It shows the coordinated-omission correction is routinely mistaken for a measurement fault, the inverse of the usual error"},
+        {"title": "What's the unit of latency used in lua scripting?", "url": "https://github.com/giltene/wrk2/issues/122", "opened": "2022-03-25", "outcome": "closed without a fix", "why_relevant": "a user could not tell whether the latency exposed to scripts was microseconds or milliseconds. Self-resolved, no documentation change: direct evidence that wrk2's latency units are undocumented at the scripting boundary"}
+      ],
+      "checked_here": [
+        "src/wrk.c: the signed timing, the `if (expected_latency_timing < 0)` panic block with its 'This wil never ever ever happen...' text, the recomputation of expected_latency_start but NOT of expected_latency_timing, and the unguarded hdr_record_value call that follows. Also that the companion actual_latency_timing is uint64_t with no check. Read back from the tool's own source."
+      ],
+      "not_determined": [
+        "the abort was NOT reproduced here: there is no C toolchain on this machine. The auditor derived the histogram's bucket arithmetic in Python with wrk2's own parameters and predicted which assertion fires first; the README's published sample output and the crash line named in issue #58 both match that derivation. It is a derivation plus field evidence, not an experiment run",
+        "how often the abort occurs under NTP slewing rather than stepping; the reports cluster around containers and no frequency data exists",
+        "whether a build defining NDEBUG would silently discard the negative instead of aborting; that variant was not tested"
+      ],
+      "project_state": "unmaintained. HEAD is dated 2019-09-23, about seven years stale, with no tags and no releases. Every latency-measurement defect found is open, including the crash, and comments from 2025 show users still hitting it and still working around it by disabling clock synchronisation. wrk2 is widely cited as the coordinated-omission-correct load generator; it is correct about coordinated omission, and it has an open clock-induced abort and an acknowledged millisecond floor its README does not fully disclose"
+    }
+  ]
+}

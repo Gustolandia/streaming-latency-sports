@@ -516,8 +516,21 @@ class TestT2ForcedNegatives:
     def tools(self):
         return (KIT / "tools.sh").read_text(encoding="utf-8")
 
-    def test_it_runs_the_two_offsets_the_plan_fixed(self):
-        assert "for ms in 0.5 2.0; do" in self.tools(), "0.5 ms and 2 ms, as the plan says"
+    def test_the_offsets_come_from_the_trip_they_act_on(self):
+        """Plan version 15, D15-1. Half a millisecond against a 3 ms trip puts nothing below
+        zero, so a fixed pair of offsets asks nothing of most of these tools."""
+        code = self.tools()
+        assert '(t+1.0, t+3.0)' in code, "the session's own median trip plus one and plus three"
+        assert "for ms in $offsets; do" in code
+        assert "statistics.median" in code, "from the trips T1 recorded, not from a guess"
+
+    def test_t2_is_given_what_t1_found_the_tool_can_report(self):
+        """D15-2: a tool that cannot report a tenth of a millisecond never meets one below zero
+        either, so the prediction has to pass through the step T1 measured."""
+        code = self.tools()
+        assert "tool_readings.py staircase" in code
+        assert "--step-ms" in code and "--plain" in code
+        assert "which is a bound" in code, "and says so when it falls back to the printed step"
 
     def test_a_go_tool_is_refused_rather_than_run_without_an_offset(self):
         """Go reads the clock without the C library, so the preload never reaches it."""

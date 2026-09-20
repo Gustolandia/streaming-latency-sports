@@ -230,8 +230,40 @@ t2 () {
   esac
   sudo apt-get install -y -qq faketime >/dev/null 2>&1
 
-  log "== T2 $tool: forced negatives"
-  for ms in 0.5 2.0; do
+  # The offsets come from the trip they act on, not from a fixed pair of numbers (plan version
+  # 15, D15-1). Half a millisecond against a 3 ms trip puts nothing below zero, and a tool
+  # reading whole milliseconds needs the offset past its own step before it meets a negative at
+  # all -- so the session's own median trip plus one and plus three is what T2 runs at.
+  local trips="$DIR/t1-$tool-0ms/reference_trips.json"
+  [ -s "$trips" ] || stop "T2 needs T1's zero-delay run for $tool first: its trips set the offsets and its reading cancels this tool's own bias"
+  local median offsets
+  median=$(python3 -c 'import json,statistics,sys
+loaded = json.load(open(sys.argv[1]))
+print("%.3f" % statistics.median(loaded["trips_ms"] if isinstance(loaded, dict) else loaded))' \
+    "$trips") || stop "the median trip could not be read from $trips"
+  offsets=$(python3 -c 'import sys; t=float(sys.argv[1]); print("%.3f %.3f" % (t+1.0, t+3.0))' \
+    "$median")
+  log "== T2 $tool: forced negatives; median trip $median ms, offsets $offsets"
+
+  # What T1 found this tool can report at all. T2 predicts each behaviour through that step,
+  # because a tool that cannot report a tenth of a millisecond never sees one below zero either
+  # (D15-2). Where T1 found none, T2 falls back to the step the tool prints in, which is a
+  # bound on it rather than a measurement, and says so.
+  local step plain="$DIR/t1-$tool-0ms/reading.json"
+  python3 scripts/tool_readings.py staircase --tool "$tool" --dir "$DIR" \
+    --out "$DIR/t1-$tool-step.json" >/dev/null 2>&1
+  step=$(python3 -c 'import json,sys
+found = json.load(open(sys.argv[1]))
+print(found["smallest_reported_ms"] or "")' "$DIR/t1-$tool-step.json" 2>/dev/null)
+  if [ -z "$step" ]; then
+    step=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["step_ms"] or "")' \
+      "$plain" 2>/dev/null)
+    log "   T1 found no step this tool reports; using the $step ms it prints in, which is a bound"
+  else
+    log "   T1 measured its smallest reportable step at $step ms"
+  fi
+
+  for ms in $offsets; do
     local run="t2-$tool-$(echo "$ms" | tr . _)ms"
     mkdir -p "$DIR/$run"
     local spelling
@@ -245,10 +277,13 @@ t2 () {
     python3 scripts/tool_readings.py read --tool "$tool" --file "$DIR/$run/tool.txt" \
       --out "$DIR/$run/reading.json" >/dev/null 2>&1 \
       || log "   it reported no latency at all under the offset; kept as that"
-    # Our own trips for the same messages are the reference the verdict is measured against.
+    # Our own trips for the same messages are the reference the verdict is measured against;
+    # T1's zero-delay reading of the same tool is what cancels that tool's own bias out of the
+    # comparison, and T1's measured step is what the prediction passes through.
     if [ -s "$DIR/$run/reference_trips.json" ]; then
       python3 scripts/tool_negatives.py judge --reading "$DIR/$run/reading.json" \
         --reference "$DIR/$run/reference_trips.json" --offset-ms "$ms" \
+        --plain "$plain" ${step:+--step-ms "$step"} \
         --exit-code "$(cat "$DIR/$run/exit_code.txt")" --out "$DIR/$run/verdict.json" \
         || log "   UNDECIDED at $ms ms; see $DIR/$run/verdict.json"
     else

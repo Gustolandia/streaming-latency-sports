@@ -84,7 +84,7 @@ def test_stage_1_runs_one_campaign_of_a_block_from_a_finished_stage_0():
     """A block is not a sitting: each campaign is placed from a stage 0 that passed, runs the
     rounds it is given, and says in its own log where that number came from."""
     code = (KIT / "stage1.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
-    order = ['cp "$STAGE0/$f" "$DIR/$f"', 'at_load.get("gate", {}).get("ok")',
+    order = ['cp "$STAGE0/$f" "$DIR/$f"', 'yield bool(node["gate"].get("ok"))',
              'log "rounds: $ROUNDS"', "law_design.py design", "run_queue.py make",
              "bash cloud/azure/campaign.sh", "CAMPAIGN_COMPLETE"]
     places = [code.index(step) for step in order]
@@ -97,7 +97,7 @@ def test_stage_1_runs_one_campaign_of_a_block_from_a_finished_stage_0():
 def test_stage_1_will_not_place_a_campaign_from_a_calibration_that_failed():
     code = (KIT / "stage1.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
     assert "did not pass its gate on every backend" in code
-    assert code.index('at_load.get("gate", {}).get("ok")') < code.index("law_design.py design")
+    assert code.index('yield bool(node["gate"].get("ok"))') < code.index("law_design.py design")
 
 
 def test_stage_1_needs_the_block_the_rounds_and_the_session_it_comes_from():
@@ -142,14 +142,33 @@ def test_a_later_session_repeats_the_network_part_of_its_shakedown():
 
 def test_the_calibration_runs_two_more_rounds_only_when_only_its_precision_failed():
     code = (KIT / "stage0.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
-    stage = code.split('if [ "$KIND" != first ]; then', 1)[1].split("\nfi\n\n", 1)[0]
-    order = ['--out "$DIR/calibration_first_stage.json"', "delay_calibration.py needs-rounds",
-             'design C0 "c0b_$START" "${SEED}4"', "--rounds 2 --first-round 3",
-             'campaign "c0b_$START"', 'C0_QUEUES+=(--queue "$DIR/c0b_$START.csv")']
+    stage = code.split('if [ "$KIND" != first ]; then', 1)[1].split("\n  fi\n", 1)[0]
+    order = ['--out "$DIR/calibration_first_stage$tag.json"', "delay_calibration.py needs-rounds",
+             'design C0 "c0b$tag" "${SEED}4"', "--rounds 2 --first-round 3",
+             'campaign "c0b$tag"', 'C0_QUEUES+=(--queue "$DIR/c0b$tag.csv")']
     places = [stage.index(step) for step in order]
     assert places == sorted(places)
+    # Each client fits its own, and only then is the file law_design reads made: copied where
+    # there is one client, joined where there are two.
     final = code.split(stage, 1)[1]
-    assert final.index('fit "${C0_QUEUES[@]}"') < final.index('--out "$DIR/calibration.json"')
+    assert final.index('fit "${C0_QUEUES[@]}"') < final.index('--out "$DIR/calibration$tag.json"')
+    assert 'cp "$DIR/calibration_$START.json" "$DIR/calibration.json"' in final
+
+
+def test_a_session_that_calibrates_twice_keeps_the_two_apart():
+    """A8 compares two clients, and the delay's effect on the trip belongs to the client (D4-9),
+    so law_design refuses to place one client's trips from the other's fit. Both C0s, both fits
+    and both first-stage records carry the client in their name, or the second would write over
+    the first."""
+    code = (KIT / "stage0.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
+    assert 'CLIENTS="${CLIENTS:-}"' in code
+    assert 'for client in $CLIENTS; do' in code
+    assert 'calibrate "$client" "_${client}_$START"' in code
+    for named in ('"c0$tag"', '"$DIR/calibration$tag.json"', '"$DIR/fit$tag.txt"',
+                  '"$DIR/calibration_first_stage$tag.json"'):
+        assert named in code, named
+    # Only a session opens A8, and B0 and P0 would be handed a calibration keyed by client.
+    assert '[ -n "$CLIENTS" ] && [ "$KIND" != session ]' in code
 
 
 def test_a_session_leaves_nothing_of_its_own_on_a_machine():
@@ -319,7 +338,7 @@ def test_a_session_can_calibrate_at_a_reduced_core_count():
     code = (KIT / "stage0.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
     assert '[ -n "${CPUS:-}" ] && CPUS_ARG=(--cpus "$CPUS")' in code
     assert code.count('"${CPUS_ARG[@]}"') == 2, "both stages of the calibration"
-    for stage in ('design C0 "c0_$START"', 'design C0 "c0b_$START"'):
+    for stage in ('design C0 "c0$tag"', 'design C0 "c0b$tag"'):
         after = code.split(stage, 1)[1].split("campaign", 1)[0]
         assert '"${CPUS_ARG[@]}"' in after, stage
 

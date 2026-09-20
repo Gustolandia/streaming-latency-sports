@@ -71,10 +71,21 @@ for f in settings.json calibration.json; do
 done
 [ -s "$STAGE0/baseline.json" ] && cp "$STAGE0/baseline.json" "$DIR/baseline.json"
 
+# A session that opens A8 fits one calibration per client, so the gates sit one level deeper
+# (client, then backend, then load) than in every other session. Walk down to whatever carries a
+# gate rather than counting levels, and require every one of them.
 python3 -c 'import json, sys
+def gates(node):
+    if isinstance(node, dict):
+        if "gate" in node:
+            yield bool(node["gate"].get("ok"))
+            return
+        for below in node.values():
+            for found in gates(below):
+                yield found
 fit = json.load(open(sys.argv[1])).get("calibration") or {}
-sys.exit(0 if fit and all(at_load.get("gate", {}).get("ok")
-                          for backend in fit.values() for at_load in backend.values()) else 1)' \
+found = list(gates(fit))
+sys.exit(0 if found and all(found) else 1)' \
   "$DIR/calibration.json" \
   || stop "the calibration in $STAGE0 did not pass its gate on every backend, so this campaign
  cannot be placed from it; the pair needs a new session"

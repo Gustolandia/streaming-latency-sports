@@ -22,9 +22,9 @@ import testbed_watch  # noqa: E402
 
 
 def test_the_kit_has_the_scripts_the_guide_describes():
-    assert [p.name for p in SHELL] == ["campaign.sh", "machine_facts.sh", "pilot.sh",
-                                       "replicate_oracle.sh", "session.sh", "stage0.sh",
-                                       "stage1.sh"]
+    assert [p.name for p in SHELL] == ["campaign.sh", "kernels.sh", "machine_facts.sh",
+                                       "pilot.sh", "replicate_oracle.sh", "session.sh",
+                                       "stage0.sh", "stage1.sh"]
 
 
 @pytest.mark.parametrize("path", SHELL + [KIT / "cloud-init.yaml"], ids=lambda p: p.name)

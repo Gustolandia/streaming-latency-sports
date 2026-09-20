@@ -17,11 +17,20 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
 
 import tool_readings as tr  # noqa: E402
 
-VEGETA = """Requests      [total, rate, throughput]  600, 10.02, 9.99
-Duration      [total, attack, wait]     1m0s, 59.9s, 2.393ms
+# Every fixture below is the shape the tool really prints, taken from its own source or its
+# documentation rather than from what this reader would find convenient. Three parsers were wrong
+# against the real thing and the tidy fixtures they were written against hid it: valkey-benchmark
+# prints a table and not a list, memtier_benchmark has a p99.9 column, and rdkafka_performance
+# divides by a thousand before printing. Keep these faithful.
+
+VEGETA = """Requests      [total, rate, throughput]         600, 10.02, 9.99
+Duration      [total, attack, wait]             59.9s, 59.888s, 2.393ms
 Latencies     [min, mean, 50, 90, 95, 99, max]  1.109ms, 3.417ms, 2.913ms, 5.2ms, 6.1ms, 9.83ms, 21.4ms
-Bytes In      [total, mean]             123456, 205.76
-Success       [ratio]                   100.00%
+Bytes In      [total, mean]                     123456, 205.76
+Bytes Out     [total, mean]                     0, 0.00
+Success       [ratio]                           100.00%
+Status Codes  [code:count]                      200:600
+Error Set:
 """
 
 HEY = """Summary:
@@ -34,33 +43,112 @@ HEY = """Summary:
 Latency distribution:
   50% in 0.0029 secs
   99% in 0.0098 secs
+
+Status code distribution:
+  [200]	900 responses
+  [503]	100 responses
 """
 
+# valkey-benchmark's summary is a row of names then a row of figures, printed at %9.3f, with a
+# p95 sitting between p50 and p99 (src/valkey-benchmark.c).
 VALKEY = """====== GET ======
   100000 requests completed in 1.41 seconds
+  1 parallel clients
 
-Latency by percentile distribution:
-avg       0.271
-min       0.000
-p50       0.263
-p99       0.887
-max       2.119
+Summary:
+  throughput summary: 70921.98 requests per second
+  latency summary (msec):
+          avg       min       p50       p95       p99       max
+        0.271     0.000     0.263     0.407     0.887     2.119
 """
 
-MEMTIER = """
-Type    Ops/sec  Hits/sec  Misses/sec  Avg. Latency  p50 Latency  p99 Latency  KB/sec
-Totals  70123.4  0.0       0.0         0.541         0.487        1.823        5412.1
+# memtier_benchmark's real totals block: five decimals, and a p99.9 column before KB/sec.
+MEMTIER = """ALL STATS
+========================================================================
+Type         Ops/sec     Hits/sec   Misses/sec    Avg. Latency     p50 Latency     p99 Latency   p99.9 Latency       KB/sec
+------------------------------------------------------------------------
+Sets         2312.01          ---          ---        22.43371        21.24700        47.35900       101.88700       178.00
+Gets         2312.01      2312.01         0.00        22.42225        21.24700        47.35900       101.88700       464.47
+Waits           0.00          ---          ---         0.00000         0.00000         0.00000         0.00000          ---
+Totals       4624.02      2312.01         0.00        22.42798        21.24700        47.35900       101.88700       642.47
+"""
+
+# An older build, whose average column is headed "Latency" and which has no p99.9 at all.
+MEMTIER_OLDER = """Type        Ops/sec    Hits/sec  Misses/sec      Latency     p50 Latency     p99 Latency       KB/sec
+Totals     70123.40        0.00        0.00      0.54100         0.48700         1.82300      5412.10
 """
 
 KAFKA = """Avg latency: 3.4210 ms
 Percentiles: 50th = 3, 99th = 9, 99.9th = 21
 """
 
-RDKAFKA = """%% 600 messages produced, latency curr/avg/lo/hi 3120/3417/1109/21400us
+# ProducerPerformance prints a short line as it goes and a total carrying the percentiles:
+# "%d%s records sent, %f records/sec (%.2f MB/sec), %.2f ms avg latency, %.2f ms max latency,
+#  %d ms 50th, %d ms 95th, %d ms 99th, %d ms 99.9th.%n"
+PRODUCER_PERF = """2510 records sent, 501.8 records/sec (0.24 MB/sec), 1.2 ms avg latency, \
+25.0 ms max latency.
+3000 records sent, 600.0 records/sec (0.29 MB/sec), 1.3 ms avg latency, 30.0 ms max latency.
+3000 records sent, 599.880024 records/sec (0.29 MB/sec), 3.42 ms avg latency, \
+21.40 ms max latency, 3 ms 50th, 6 ms 95th, 9 ms 99th, 21 ms 99.9th.
 """
 
+# A run that was killed before it printed its total: only the progress lines are there.
+PRODUCER_PERF_KILLED = """2510 records sent, 501.8 records/sec (0.24 MB/sec), \
+1.2 ms avg latency, 25.0 ms max latency.
+"""
+
+WRK2 = """Running 1m test @ http://127.0.0.1:8080/
+  1 threads and 1 connections
+  Thread Stats   Avg      Stdev     99%   +/- Stdev
+    Latency     3.41ms    1.20ms   9.83ms   75.00%
+    Req/Sec    50.10      5.20    60.00    68.00%
+  Latency Distribution (HdrHistogram - Recorded Latency)
+ 50.000%    2.91ms
+ 75.000%    4.10ms
+ 90.000%    6.20ms
+ 99.000%    9.83ms
+ 99.900%   21.40ms
+
+  3000 requests in 1.00m, 1.21MB read
+Requests/sec:     50.00
+"""
+
+# PerfTest prints one of these a second and the same shape as its summary; whole microseconds.
+RABBIT = """id: test-093012-123, time 1.000s, sent: 50 msg/s, received: 50 msg/s, \
+min/median/75th/95th/99th consumer latency: 1109/2913/4100/6200/9830 µs
+id: test-093012-123, time 60.000s, sent: 50 msg/s, received: 50 msg/s, \
+min/median/75th/95th/99th consumer latency: 1110/2910/4100/6100/9840 µs
+"""
+
+# The NATS CLI writes Go durations, truncated to microseconds, each in its own unit.
+NATS = """==============================
+Pub Server RTT:  340µs
+Sub Server RTT:  310µs
+Minimum Latency: 1.109ms
+Median Latency : 2.913ms
+Maximum Latency: 21.4ms
+
+HDR Percentiles:
+10:       1.5ms
+50:       2.913ms
+99:       9.83ms
+100:      21.4ms
+"""
+
+# librdkafka's format string is ", latency curr/avg/lo/hi %.2f/%.2f/%.2f/%.2fms" with every
+# argument divided by 1000.0f first -- milliseconds, two decimals (examples/rdkafka_performance.c).
+RDKAFKA = """%% 600 messages consumed (307200 bytes) in 60021ms: 9 msgs/s, 0.01 MB/s, \
+latency curr/avg/lo/hi 3.12/3.42/1.11/21.40ms
+"""
+
+# k6 as the runner asks for it, with p(99) among the trend statistics.
 K6 = """     http_req_duration..............: avg=3.41ms min=1.1ms med=2.91ms max=21.4ms p(99)=9.83ms
      iterations.....................: 600
+"""
+
+# k6 left at its defaults: avg, min, med, max, p(90), p(95) -- and no p(99) anywhere.
+K6_DEFAULT_STATS = """     iteration_duration.............: avg=1.02s min=1.0s med=1.01s max=1.2s p(90)=1.05s p(95)=1.1s
+     http_req_duration..............: avg=3.41ms min=1.1ms med=2.91ms max=21.4ms p(90)=5.2ms p(95)=6.1ms
 """
 
 
@@ -117,6 +205,10 @@ class TestEachToolsOwnOutput:
         assert got["reported_ms"]["p99"] == pytest.approx(9.8)
         assert got["step_ms"] == pytest.approx(0.1)
 
+    def test_hey_counts_every_status_code_it_answered_with(self):
+        """900 of them were 200s and 100 were 503s; it kept a thousand."""
+        assert tr.read_tool("hey", HEY)["kept"] == 1000
+
     def test_valkey_benchmark_and_the_floor_its_printing_puts_at_zero(self):
         got = tr.read_tool("valkey-benchmark", VALKEY)
         assert got["reported_ms"]["avg"] == pytest.approx(0.271)
@@ -124,10 +216,35 @@ class TestEachToolsOwnOutput:
         assert got["kept"] == 100000
         assert got["step_ms"] == pytest.approx(0.001)
 
-    def test_memtier_totals_row(self):
+    def test_valkey_benchmark_does_not_read_its_p95_as_its_p99(self):
+        """Its summary is a table with p95 between p50 and p99. Counting fields from the left
+        would report 0.407 as the 99th percentile; reading the header reports 0.887."""
+        got = tr.read_tool("valkey-benchmark", VALKEY)
+        assert got["reported_ms"]["p50"] == pytest.approx(0.263)
+        assert got["reported_ms"]["p99"] == pytest.approx(0.887)
+        assert got["reported_ms"]["max"] == pytest.approx(2.119)
+
+    def test_valkey_benchmark_does_not_read_a_column_name_as_a_number(self):
+        """The names sit on their own line above the figures. A reader that ran past the newline
+        would take the "50" out of "p50" and report an average of 50 ms."""
+        assert tr.read_tool("valkey-benchmark", VALKEY)["reported_ms"]["avg"] < 1.0
+
+    def test_memtier_totals_row_at_the_precision_it_really_prints(self):
         got = tr.read_tool("memtier_benchmark", MEMTIER)
+        assert got["reported_ms"]["avg"] == pytest.approx(22.42798)
+        assert got["reported_ms"]["p50"] == pytest.approx(21.247)
+        assert got["reported_ms"]["p99"] == pytest.approx(47.359)
+        assert got["step_ms"] == pytest.approx(1e-5), "five decimals of a millisecond"
+
+    def test_memtier_does_not_read_its_p99_9_as_its_p99(self):
+        """The p99.9 column arrived beside the others, so the field that holds p99 depends on the
+        build. 101.887 is the p99.9 here and must not be reported as the 99th."""
+        assert tr.read_tool("memtier_benchmark", MEMTIER)["reported_ms"]["p99"] != \
+            pytest.approx(101.887)
+
+    def test_memtier_on_a_build_that_heads_its_average_differently(self):
+        got = tr.read_tool("memtier_benchmark", MEMTIER_OLDER)
         assert got["reported_ms"]["avg"] == pytest.approx(0.541)
-        assert got["reported_ms"]["p50"] == pytest.approx(0.487)
         assert got["reported_ms"]["p99"] == pytest.approx(1.823)
 
     def test_kafka_end_to_end_prints_whole_milliseconds_for_its_percentiles(self):
@@ -137,12 +254,15 @@ class TestEachToolsOwnOutput:
         assert got["reported_ms"]["p50"] == 3.0 and got["reported_ms"]["p99"] == 9.0
         assert got["step_ms"] == 1.0, "a whole millisecond, so it cannot see T1's 0.1 ms step"
 
-    def test_librdkafka_reports_microseconds(self):
+    def test_librdkafka_prints_milliseconds_however_it_counts(self):
+        """It counts microseconds and divides by a thousand before printing, so its figures are
+        milliseconds at two decimals. Reading them as the microseconds it counts in would report
+        every latency a thousandfold too small and put its step below any clock on earth."""
         got = tr.read_tool("rdkafka_performance", RDKAFKA)
-        assert got["reported_ms"]["avg"] == pytest.approx(3.417)
-        assert got["reported_ms"]["min"] == pytest.approx(1.109)
-        assert got["reported_ms"]["max"] == pytest.approx(21.4)
-        assert got["unit"] == "us" and got["step_ms"] == pytest.approx(0.001)
+        assert got["reported_ms"]["avg"] == pytest.approx(3.42)
+        assert got["reported_ms"]["min"] == pytest.approx(1.11)
+        assert got["reported_ms"]["max"] == pytest.approx(21.40)
+        assert got["unit"] == "ms" and got["step_ms"] == pytest.approx(0.01)
 
     def test_k6_carries_a_unit_on_every_figure(self):
         got = tr.read_tool("k6", K6)
@@ -150,6 +270,94 @@ class TestEachToolsOwnOutput:
         assert got["reported_ms"]["p50"] == pytest.approx(2.91)
         assert got["reported_ms"]["p99"] == pytest.approx(9.83)
         assert got["reported_ms"]["min"] == pytest.approx(1.1)
+
+    def test_k6_reads_the_request_and_not_the_loop_that_paces_it(self):
+        """iteration_duration is printed first and includes our script's own sleep -- a second,
+        not three milliseconds. The request metric is the one that means anything here."""
+        got = tr.read_tool("k6", K6_DEFAULT_STATS)
+        assert got["reported_ms"]["avg"] == pytest.approx(3.41)
+
+    def test_k6_left_at_its_defaults_has_no_p99_and_is_not_given_its_p95(self):
+        """Its default statistics stop at p(95). A missing percentile is missing."""
+        assert "p99" not in tr.read_tool("k6", K6_DEFAULT_STATS)["reported_ms"]
+
+    def test_kafka_producer_performance_reads_its_total_and_not_its_progress(self):
+        """It prints a shorter line every few seconds and one total at the end. The total is the
+        answer; reading a progress line would report a part of the run as the whole."""
+        got = tr.read_tool("kafka-producer-perf", PRODUCER_PERF)
+        assert got["reported_ms"]["avg"] == pytest.approx(3.42)
+        assert got["reported_ms"]["p50"] == 3.0 and got["reported_ms"]["p99"] == 9.0
+        assert got["kept"] == 3000
+
+    def test_kafka_producer_performance_falls_back_when_there_is_no_total(self):
+        """A run that was killed has progress lines and no total. That is a reading of what it
+        managed, not nothing -- T2 needs to be able to say a tool died partway."""
+        got = tr.read_tool("kafka-producer-perf", PRODUCER_PERF_KILLED)
+        assert got["reported_ms"]["avg"] == pytest.approx(1.2)
+        assert "p50" not in got["reported_ms"] and got["kept"] == 2510
+
+    def test_wrk2_reads_its_average_and_its_histogram(self):
+        got = tr.read_tool("wrk2", WRK2)
+        assert got["reported_ms"]["avg"] == pytest.approx(3.41)
+        assert got["reported_ms"]["p50"] == pytest.approx(2.91)
+        assert got["reported_ms"]["p99"] == pytest.approx(9.83)
+        assert got["kept"] == 3000
+
+    def test_rabbitmq_perftest_takes_its_last_line_and_reads_microseconds(self):
+        """It prints one of these a second; the last is the one that covers the whole run."""
+        got = tr.read_tool("rabbitmq-perftest", RABBIT)
+        assert got["reported_ms"]["min"] == pytest.approx(1.110)
+        assert got["reported_ms"]["p50"] == pytest.approx(2.910)
+        assert got["reported_ms"]["p99"] == pytest.approx(9.840)
+        assert got["step_ms"] == pytest.approx(0.001), "whole microseconds"
+
+    def test_rabbitmq_perftest_keeps_a_negative_where_it_prints_one(self):
+        """The audit rates it high and says it keeps negatives. If it ever prints one, the
+        reader must carry it through rather than lose it to a regex that wants digits."""
+        text = RABBIT.replace("1110/2910", "-890/2910")
+        assert tr.read_tool("rabbitmq-perftest", text)["reported_ms"]["min"] == \
+            pytest.approx(-0.890)
+
+    def test_nats_reads_a_go_duration_in_whatever_unit_it_chose(self):
+        """Go prints 1.109ms and 340µs on adjacent lines, so the unit travels with the figure."""
+        got = tr.read_tool("nats-latency", NATS)
+        assert got["reported_ms"]["min"] == pytest.approx(1.109)
+        assert got["reported_ms"]["p50"] == pytest.approx(2.913)
+        assert got["reported_ms"]["p99"] == pytest.approx(9.83)
+        assert got["reported_ms"]["max"] == pytest.approx(21.4)
+
+    def test_there_are_ten_tools_and_more(self):
+        """The block is ten tools. Losing one to a typo in the table should fail here."""
+        assert len(tr.READERS) >= 10
+
+
+class TestTheStepBelongsToTheFigureAndNotTheTool:
+    """Kafka's two tools both print an exact average beside percentiles chopped to whole
+    milliseconds. That gap is what T-P1 and T-P2 predict, so a reading that carried one step for
+    the whole tool would report the average as blind along with them and lose the finding."""
+
+    def test_an_exact_average_beside_chopped_percentiles(self):
+        got = tr.read_tool("kafka-end-to-end", KAFKA)
+        assert got["steps_ms"]["avg"] == pytest.approx(1e-4)
+        assert got["steps_ms"]["p50"] == 1.0
+
+    def test_the_tools_own_step_is_the_coarsest_of_them(self):
+        assert tr.read_tool("kafka-end-to-end", KAFKA)["step_ms"] == 1.0
+
+    def test_producer_performance_shows_the_same_gap(self):
+        got = tr.read_tool("kafka-producer-perf", PRODUCER_PERF)
+        assert got["steps_ms"]["avg"] == pytest.approx(0.01)
+        assert got["steps_ms"]["p99"] == 1.0
+
+    def test_a_step_asked_of_one_figure_answers_for_that_figure(self):
+        """T1 adds 0.1 ms. EndToEndLatency's percentiles cannot see it and its average can."""
+        got = tr.read_tool("kafka-end-to-end", KAFKA)
+        assert tr.below_its_step(got, 3.0, 3.1, "p50") is True
+        assert tr.below_its_step(got, 3.0, 3.1, "avg") is False
+
+    def test_a_figure_the_tool_did_not_print_falls_back_to_the_tools_own_step(self):
+        got = tr.read_tool("kafka-end-to-end", KAFKA)
+        assert tr.below_its_step(got, 3.0, 3.1, "min") is True
 
     @pytest.mark.parametrize("tool", sorted(tr.READERS))
     def test_every_tool_reads_nothing_from_nothing_without_falling_over(self, tool):
@@ -161,7 +369,34 @@ class TestEachToolsOwnOutput:
             tr.read_tool("fio", "")
 
 
-class TestWhatATeaCannotSee:
+class TestReadingATableByItsOwnHeader:
+    """The two tools that print tables have both moved their columns between versions, so the
+    reading is taken by column name. What matters is what happens when a name is not where the
+    reader expects it: nothing, rather than the neighbouring figure under the wrong label."""
+
+    def test_a_column_the_header_does_not_have_is_absent_rather_than_guessed(self):
+        got, steps = tr._by_column(["avg", "min"], ["1.0", "2.0"], tr.VALKEY_COLUMNS)
+        assert set(got) == {"avg", "min"} and len(steps) == 2
+
+    def test_a_header_wider_than_its_row_stops_at_the_figures_there_are(self):
+        """A truncated line -- a run killed mid-print -- must not read past the end of it."""
+        got, _ = tr._by_column(["avg", "min", "p50"], ["1.0"], tr.VALKEY_COLUMNS)
+        assert got == {"avg": pytest.approx(1.0)}
+
+    def test_a_field_that_is_not_a_number_is_not_made_into_one(self):
+        """memtier prints --- where a row has no figure for that column."""
+        got, _ = tr._by_column(["avg", "min"], ["---", "2.0"], tr.VALKEY_COLUMNS)
+        assert got == {"min": pytest.approx(2.0)}
+
+    @pytest.mark.parametrize("tool,text", [
+        ("valkey-benchmark", "====== GET ======\n  100000 requests completed in 1.41 seconds\n"),
+        ("memtier_benchmark", "ALL STATS\nnothing like a table here\n"),
+    ])
+    def test_output_without_the_table_reads_nothing_rather_than_falling_over(self, tool, text):
+        assert tr.read_tool(tool, text)["reported_ms"] == {}
+
+
+class TestWhatAToolCannotSee:
 
     def test_a_difference_under_the_tools_step_is_out_of_its_reach(self):
         """T1 adds 0.1 ms steps. A tool printing whole milliseconds cannot report them, and that

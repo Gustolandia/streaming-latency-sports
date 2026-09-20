@@ -207,9 +207,12 @@ class TestHowItReads:
         assert "at least 80% power, at most 5% false" in said and "seed" in said
 
     def test_an_underpowered_answer_says_so(self):
-        flat = dict(DESIGN, plateau=0.011, spread=0.6)
-        said = "\n".join(rr.lines(rr.rounds_for("P1", flat, steps=(4,), **TINY)))
-        assert "reported as underpowered" in said
+        # A plateau barely above the floor, and enough spread to hide it half the time: the rule
+        # still confirms sometimes, which is what separates a weak test from a broken one.
+        flat = dict(DESIGN, plateau=0.02, spread=0.45)
+        found = rr.rounds_for("P1", flat, steps=(4,), **TINY)
+        assert any(step["power"] > 0.0 for step in found["tried"])
+        assert "reported as underpowered" in "\n".join(rr.lines(found))
 
     def test_it_names_the_spread_the_rounds_were_reached_at(self):
         said = "\n".join(rr.lines(rr.rounds_for("P1", dict(DESIGN, spread=0.284), **TINY)))
@@ -223,6 +226,43 @@ class TestHowItReads:
     def test_a_fixed_number_reads_in_one_line(self):
         assert rr.lines(rr.fixed_rounds("B0")) == [
             "B0 runs 3 rounds: no prediction is tested, so the plan fixes the number"]
+
+
+class TestARuleThatCanNeverConfirm:
+    """A rule never satisfied under the law is broken, and rounds cannot mend it.
+
+    P8 read the middle of the cliff from a point A8's design never runs. It answered 0% power at
+    every number of rounds, which the ceiling rule reported as 40 rounds and underpowered: 1,440
+    runs, about 84 hours, to learn nothing. The number is arithmetically correct and scientifically
+    meaningless, so the answer says which of the two it is.
+    """
+
+    NEVER = [{"rounds": n, "power": 0.0, "false_confirm": 0.0} for n in (4, 8, 40)]
+
+    def test_no_confirmation_at_any_number_of_rounds_is_a_broken_test(self):
+        assert rr.never_confirms(self.NEVER) is True
+
+    def test_one_confirmation_anywhere_means_it_is_merely_weak(self):
+        weak = [dict(step) for step in self.NEVER]
+        weak[-1]["power"] = 0.02
+        assert rr.never_confirms(weak) is False
+
+    def test_nothing_tried_is_not_a_verdict(self):
+        assert rr.never_confirms([]) is False
+
+    def test_the_answer_says_broken_rather_than_underpowered(self):
+        found = rr._answer("P8", 40, self.NEVER, True, 1000, 200, 48, 1)
+        said = "\n".join(rr.lines(found))
+        assert found["broken"] is True
+        assert "never confirms" in said and "broken test, not an underpowered one" in said
+        assert "reported as underpowered" not in said
+
+    def test_a_weak_answer_still_reads_as_underpowered(self):
+        weak = [dict(step) for step in self.NEVER]
+        weak[-1]["power"] = 0.67
+        found = rr._answer("P8", 40, weak, True, 1000, 200, 48, 1)
+        said = "\n".join(rr.lines(found))
+        assert found["broken"] is False and "reported as underpowered" in said
 
 
 class TestTheCommand:
@@ -241,8 +281,8 @@ class TestTheCommand:
             assert json.load(fh)["rounds"] == 4
 
     def test_the_steps_it_tries_can_be_named(self):
-        code, said = self.run(["for", "--prediction", "P1", "--slices", "1.5,3.0,4.5",
-                               "--spread", "0.6", "--plateau", "0.011", "--trials", "2",
+        code, said = self.run(["for", "--prediction", "P1", "--slices", "1.5,3.0,4.5,6.0",
+                               "--spread", "0.4", "--plateau", "0.015", "--trials", "2",
                                "--draws", "20", "--grid", "24", "--steps", "4,8"])
         assert code == 0 and "40 rounds" in said and "8 rounds: confirmed" in said
 

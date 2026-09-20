@@ -96,6 +96,14 @@ BLOCKS = {
            "priorities": (False, True), "languages": ("python", "java"),
            "ack_stamps": ("callback", "inline"), "backends": ("kafka",)},
 }
+#: Which block tests which prediction, as the plan's table of campaigns states it. The numbers do
+#: not line up -- A7 is the go-first block and is judged by P4, A5 is the core-count block and is
+#: judged by P7 -- so the mapping is written down rather than inferred from the names. It is here
+#: so that a prediction is always simulated against the design its own campaign runs: P8 named a
+#: point on the cliff that A8 never runs, and answered 0% power at every number of rounds, which
+#: reads as a weak prediction rather than as a rule that cannot be satisfied.
+TESTED_BY = {"P1": "A1", "P2": "A2", "P2b": "A2", "P2c": "A2", "P2d": "A2",
+             "P3a": "A3", "P3b": "A3", "P4": "A7", "P7": "A5", "P8": "A8", "P9": "A4"}
 BACKENDS = ("kafka", "redis")
 #: Blocks that plan no trip: they need neither a baseline nor a calibration, and they may take
 #: the loads of the session they open.

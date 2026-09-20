@@ -96,7 +96,14 @@ build () {
       || stop "HZ=$hz could not be set"
     scripts/config --file .config --disable CONFIG_DEBUG_INFO_BTF \
       --disable CONFIG_SYSTEM_TRUSTED_KEYS --disable CONFIG_SYSTEM_REVOCATION_KEYS
-    yes "" | make olddefconfig >/dev/null 2>&1 || stop "olddefconfig failed for HZ=$hz"
+    # No "yes |" in front of it. olddefconfig takes the default for every new symbol and asks
+    # nothing, and this kit runs under pipefail: make finishes first, yes dies of a broken pipe
+    # with status 141, and the pipeline reports that -- so a configuration that worked perfectly
+    # stopped the build. Its output is kept, because a stop rule that cannot say why is worth
+    # little at three in the morning.
+    make olddefconfig > "$WORK/olddefconfig-hz$hz.log" 2>&1 \
+      || { tail -5 "$WORK/olddefconfig-hz$hz.log"
+           stop "olddefconfig failed for HZ=$hz; see $WORK/olddefconfig-hz$hz.log"; }
     got=$(grep '^CONFIG_HZ=' .config | cut -d= -f2)
     [ "$got" = "$hz" ] || stop "the config says HZ=$got after asking for $hz"
     cp .config "$WORK/config-hz$hz" || stop "the HZ=$hz config could not be kept"

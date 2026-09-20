@@ -80,7 +80,9 @@ def _cliff(world, slice_ms, fixed_at, cpus, load_pct, loads):
 def campaign(slices=(3.0,), rounds=4, tick_ms=1.0, plateau=0.30, floor=0.01, spread=SPREAD,
              backends=("kafka",), loads=(75,), points=None, priorities=(False,), cores=(None,),
              languages=(None,), world="law", seed=0, fixed_at=3.0, width_ms=None,
-             session_shift=False, python_share=1.0, slice_by_core=None):
+             session_shift=False, python_share=1.0, slice_by_core=None, messages=None,
+             overdispersion=None, plateau_by_load=None, floor_by_load=None,
+             trip_jitter_ms=0.0):
     """A campaign's runs, made up in the world named.
 
     Every run carries what the analysis reads: the trip it actually had, the share of its messages
@@ -124,13 +126,51 @@ def campaign(slices=(3.0,), rounds=4, tick_ms=1.0, plateau=0.30, floor=0.01, spr
                                 rng, round_, slice_ms, tick_ms, backend, load_pct, priority,
                                 cpus, language, points, world, plateau, floor, spread,
                                 fixed_at, width_ms, trip_shift, plateau_shift, loads,
-                                python_share))
+                                python_share, messages, overdispersion, plateau_by_load,
+                                floor_by_load, trip_jitter_ms))
     return [run for group in runs for run in group]
+
+
+def _poisson(rng, mean):
+    """A draw from Poisson(mean), by Knuth below 30 and by the normal shape above it."""
+    if mean <= 0:
+        return 0
+    if mean < 30:
+        limit, count, product = math.exp(-mean), 0, rng.random()
+        while product > limit:
+            count += 1
+            product *= rng.random()
+        return count
+    return max(0, int(round(rng.gauss(mean, math.sqrt(mean)))))
+
+
+def counted(rng, rate, messages, overdispersion):
+    """A rate measured by counting `messages`, not a rate multiplied by a lognormal.
+
+    A run does not observe its rate; it counts negatives out of the messages it sent, and divides.
+    That matters because the counting is most of the noise where the rate is low: A3's 50% load
+    saw four to seven negatives in a run of about 5,000 messages, and its run-to-run spread of the
+    log rate, 1.129, is within a fifth of what counting alone produces. At 75 and 88% the counts
+    are in the hundreds and the spread is two to four times counting alone, because the cliff's
+    own position wobbles between runs and the steep part of the fall turns that into rate.
+
+    So: negatives are drawn with mean `rate * messages` and variance `overdispersion` times that,
+    as a gamma mixed with a Poisson. At an overdispersion of 1 it is Poisson exactly. Writing it
+    this way makes the messages a run sends a design lever -- quadruple them and the counting half
+    of the noise halves, for the price of a longer replay rather than four more runs, which pay
+    their warm-up and checks again each time.
+    """
+    mean = rate * messages
+    if overdispersion > 1.0 and mean > 0:
+        shape = mean / (overdispersion - 1.0)
+        mean = rng.gammavariate(shape, overdispersion - 1.0)
+    return _poisson(rng, mean) / float(messages)
 
 
 def _run(rng, round_, slice_ms, tick_ms, backend, load_pct, priority, cpus, language, points,
          world, plateau, floor, spread, fixed_at, width_ms, trip_shift, plateau_shift, loads,
-         python_share):
+         python_share, messages=None, overdispersion=None, plateau_by_load=None,
+         floor_by_load=None, trip_jitter_ms=0.0):
     """The runs of one setup in one round: one per design point."""
     cliff = _cliff(world, slice_ms, fixed_at, cpus, load_pct, loads)
     width = width_ms if width_ms is not None else (
@@ -139,6 +179,16 @@ def _run(rng, round_, slice_ms, tick_ms, backend, load_pct, priority, cpus, lang
     # 30% at 75% load stands at 27% at 50% and 31.6% at 88%. Where P3b is false it does not move.
     rise = 1.0 if world == "plateau_flat_with_load" else (1.0 + 0.004 * (load_pct - 75))
     height = plateau * plateau_shift * rise
+    # Where the levels were measured at each load, they stand in for that rule. It puts the
+    # plateau 17% higher at 88% load than at 50%; A3 measured it 59 times higher -- 0.15% against
+    # 8.9% -- so a campaign simulated by the rule is not the campaign that runs. Where P3b is
+    # false the plateau does not move, so the lowest load's level is used at every load.
+    if plateau_by_load:
+        flat = world == "plateau_flat_with_load"
+        at = min(plateau_by_load) if flat else load_pct
+        height = plateau_by_load[at] * plateau_shift
+    if floor_by_load:
+        floor = floor_by_load[load_pct]
     if priority and world != "no_priority_effect":
         height = height / 10.0
     if language == "python" and world == "python_twice_java":
@@ -148,8 +198,20 @@ def _run(rng, round_, slice_ms, tick_ms, backend, load_pct, priority, cpus, lang
     made = []
     for point in points:
         trip = trip_of(point, slice_ms, tick_ms) + trip_shift
-        rate = rate_of(trip, cliff, width, height, floor)
-        if spread:
+        # Where the cliff sits wobbles from one run to the next, and each design point is its own
+        # run. The curve's own slope turns that wobble into rate: on the steep part of the fall a
+        # quarter of a millisecond of it is most of the scatter, and on the flat plateau, or
+        # anywhere on a curve as shallow as the 50% load's, it is almost none. That is why the
+        # scatter A3 measured looks like one thing at 50% load and another at 88%, and why a
+        # single overdispersion per point cannot reproduce either.
+        at = cliff + rng.gauss(0.0, trip_jitter_ms) if trip_jitter_ms else cliff
+        rate = rate_of(trip, at, width, height, floor)
+        if messages:
+            how_much = overdispersion.get(point, 1.0) if isinstance(overdispersion, dict) else (
+                overdispersion or 1.0)
+            rate = counted(rng, rate, messages.get(load_pct, messages[min(messages)])
+                           if isinstance(messages, dict) else messages, how_much)
+        elif spread:
             rate = rate * math.exp(rng.gauss(0.0, spread))
         made.append({"round": str(round_), "point": point, "backend": backend,
                      "slice_ms": slice_ms, "tick_ms": tick_ms, "load_pct": load_pct,

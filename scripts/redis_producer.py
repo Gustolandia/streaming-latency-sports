@@ -16,6 +16,9 @@ except Exception:
     pass
 
 
+import law_clock
+
+
 def now_ns() -> int:
     # Wall-clock epoch nanoseconds. MUST be time.time_ns() (not perf_counter_ns):
     # producer and consumer run as SEPARATE processes, and perf_counter's reference
@@ -88,6 +91,12 @@ def main():
                     help="write per-event loop timing to this CSV (diagnostic; off by default)")
 
     args = ap.parse_args()
+
+    # The same bar as the Kafka client and as the Java one: the quantity being measured is the
+    # same, so the instrument's resolution is judged the same way. See law_clock.py.
+    print(f"CONFIG effective client=python "
+          f"clock_resolution_ns={law_clock.demand_usable_resolution('the Redis producer')}",
+          flush=True)
 
     plan = pd.read_csv(args.plan_csv)
     plan = plan[plan["t_sim_seconds"] <= args.max_t_sim].copy()

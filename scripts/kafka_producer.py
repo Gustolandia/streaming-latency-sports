@@ -13,6 +13,9 @@ except Exception:
     pass
 
 
+import law_clock
+
+
 def now_ns() -> int:
     # Wall-clock epoch nanoseconds. MUST be time.time_ns() (not perf_counter_ns):
     # producer and consumer run as SEPARATE processes, and perf_counter's reference
@@ -126,10 +129,15 @@ def main():
         producer_kwargs["compression_type"] = args.compression_type
 
     producer = KafkaProducer(**producer_kwargs)
+    # Measured before the run, not assumed: a clock too coarse to see the effect stops here, and
+    # the figure it reported goes in the run's own record either way. The Java client A8 compares
+    # this one with holds the same bar, in harness/java/src/LawClock.java.
+    clock_resolution_ns = law_clock.demand_usable_resolution("the Kafka producer")
     # The effective setting, in the run's own files: a missing --max-inflight 64 once reproduced
     # measurement defect #3 without a trace, and run_integrity.py now checks this line.
     print(f"CONFIG effective max_inflight={producer_kwargs['max_in_flight_requests_per_connection']} "
-          f"ack_stamp={args.ack_stamp}", flush=True)
+          f"ack_stamp={args.ack_stamp} client=python "
+          f"clock_resolution_ns={clock_resolution_ns}", flush=True)
 
     # Producer time origins:
     # - t0_mono: time.monotonic() reference used for sleep scheduling (intra-process)

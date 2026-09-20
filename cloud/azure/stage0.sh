@@ -56,6 +56,18 @@ LOAD_PCT="${LOAD_PCT:-75}"
 # calibration needs all three (D4-4); the shakedown before it is one measurement at one load, and
 # handing it a list is how this session stopped itself on 19 September.
 C0_LOADS="${C0_LOADS:-$LOAD_PCT}"
+# The clients this session calibrates for. Empty is every session but A8's: one C0, one
+# calibration, as before. "python java" runs C0 once per client and fits each on its own,
+# because the delay's effect on the trip belongs to the client (D4-9) and law_design
+# refuses to place one client's trips from the other's fit.
+CLIENTS="${CLIENTS:-}"
+# Only a session opens a campaign that compares clients. B0 and P0 are one client's blocks and
+# would be handed a calibration keyed by client, which law_design would refuse in a way that
+# reads like a broken file rather than a wrong request, so the request is refused here instead.
+if [ -n "$CLIENTS" ] && [ "$KIND" != session ]; then
+  echo "FATAL: CLIENTS is for a session that opens A8; run: bash cloud/azure/stage0.sh session" >&2
+  exit 2
+fi
 # A session that opens a campaign at a reduced core count calibrates at that core count: the
 # delay's effect on the trip is measured on the machine as the campaign will run it (A5, D4-6).
 CPUS_ARG=()
@@ -118,30 +130,63 @@ esac
 sudo python3 scripts/sched_settings.py read > "$DIR/settings.json" \
   || stop "the scheduler settings could not be read"
 
-design C0 "c0_$START" "${SEED}1" --up-to-ms "$UP_TO_MS" --rounds "$C0_ROUNDS" \
-  --loads "$C0_LOADS" "${CPUS_ARG[@]}"
-campaign "c0_$START"
-C0_QUEUES=(--queue "$DIR/c0_$START.csv")
-if [ "$KIND" != first ]; then
-  # Two rounds are enough on a quiet pair. On a noisier one the calibration can be too loosely
-  # known, and only then, with nothing else wrong, two more rounds run and both stages are fitted.
-  python3 scripts/delay_calibration.py fit "${C0_QUEUES[@]}" \
-    --out "$DIR/calibration_first_stage.json" 2>&1 | tee "$DIR/fit_first_stage.txt"
-  FIRST=$?
-  [ "$FIRST" -le 1 ] || stop "the calibration could not be fitted; see $DIR/fit_first_stage.txt"
-  if python3 scripts/delay_calibration.py needs-rounds \
-      --calibration "$DIR/calibration_first_stage.json"; then
-    design C0 "c0b_$START" "${SEED}4" --up-to-ms "$UP_TO_MS" --rounds 2 --first-round 3 \
-      --loads "$C0_LOADS" "${CPUS_ARG[@]}"
-    campaign "c0b_$START"
-    C0_QUEUES+=(--queue "$DIR/c0b_$START.csv")
+calibrate () {  # client-or-empty label-suffix
+  local client="$1" tag="$2" args=()
+  [ -n "$client" ] && args=(--language "$client")
+  design C0 "c0$tag" "${SEED}1" --up-to-ms "$UP_TO_MS" --rounds "$C0_ROUNDS" \
+    --loads "$C0_LOADS" "${CPUS_ARG[@]}" "${args[@]}"
+  campaign "c0$tag"
+  C0_QUEUES=(--queue "$DIR/c0$tag.csv")
+  if [ "$KIND" != first ]; then
+    # Two rounds are enough on a quiet pair. On a noisier one the calibration can be too loosely
+    # known, and only then, with nothing else wrong, two more rounds run and both stages are
+    # fitted. The first stage is named by the client as well, because a session that calibrates
+    # twice would otherwise have its second client write over the first one's record.
+    python3 scripts/delay_calibration.py fit "${C0_QUEUES[@]}" \
+      --out "$DIR/calibration_first_stage$tag.json" 2>&1 | tee "$DIR/fit_first_stage$tag.txt"
+    FIRST=$?
+    [ "$FIRST" -le 1 ] || stop "the calibration could not be fitted; see $DIR/fit_first_stage$tag.txt"
+    if python3 scripts/delay_calibration.py needs-rounds \
+        --calibration "$DIR/calibration_first_stage$tag.json"; then
+      design C0 "c0b$tag" "${SEED}4" --up-to-ms "$UP_TO_MS" --rounds 2 --first-round 3 \
+        --loads "$C0_LOADS" "${CPUS_ARG[@]}" "${args[@]}"
+      campaign "c0b$tag"
+      C0_QUEUES+=(--queue "$DIR/c0b$tag.csv")
+    fi
   fi
-fi
+  python3 scripts/delay_calibration.py fit "${C0_QUEUES[@]}" \
+    --out "$DIR/calibration$tag.json" 2>&1 | tee "$DIR/fit$tag.txt"
+  local fitted=$?
+  [ "$fitted" -le 1 ] || stop "the calibration could not be fitted; see $DIR/fit$tag.txt"
+  return "$fitted"
+}
 
-python3 scripts/delay_calibration.py fit "${C0_QUEUES[@]}" \
-  --out "$DIR/calibration.json" 2>&1 | tee "$DIR/fit.txt"
-FIT=$?
-[ "$FIT" -le 1 ] || stop "the calibration could not be fitted; see $DIR/fit.txt"
+if [ -z "$CLIENTS" ]; then
+  calibrate "" "_$START"
+  FIT=$?
+  cp "$DIR/calibration_$START.json" "$DIR/calibration.json"
+else
+  # One C0 and one fit per client, then the two under the names law_design reads them by.
+  FIT=0
+  for client in $CLIENTS; do
+    calibrate "$client" "_${client}_$START"
+    one=$?
+    [ "$one" -gt "$FIT" ] && FIT=$one
+  done
+  python3 - "$DIR" "$START" $CLIENTS <<'PY' || stop "the per-client calibrations could not be joined"
+import json, os, sys
+folder, start, clients = sys.argv[1], sys.argv[2], sys.argv[3:]
+joined = {}
+for client in clients:
+    with open(os.path.join(folder, "calibration_%s_%s.json" % (client, start)),
+              encoding="utf-8") as fh:
+        joined[client] = json.load(fh)["calibration"]
+with open(os.path.join(folder, "calibration.json"), "w", encoding="utf-8") as fh:
+    json.dump({"calibration": joined, "clients": clients}, fh, indent=2, sort_keys=True)
+print("joined %s into calibration.json" % ", ".join(clients))
+PY
+fi
+[ "$FIT" -le 1 ] || stop "the calibration could not be fitted; see $DIR/fit*.txt"
 
 if [ "$KIND" = session ]; then
   [ "$FIT" = 0 ] || stop "the calibration failed its gate; this session ends and the pair starts a new one. See $DIR/fit.txt"

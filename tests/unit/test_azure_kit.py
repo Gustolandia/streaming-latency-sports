@@ -155,6 +155,21 @@ def test_the_calibration_runs_two_more_rounds_only_when_only_its_precision_faile
     assert 'cp "$DIR/calibration_$START.json" "$DIR/calibration.json"' in final
 
 
+def test_a_client_calibrates_only_the_backends_its_runner_can_dispatch_to():
+    """Only the Kafka runner takes -CLIENT. A Redis run asked for Java quietly runs the Python
+    client and is written down under Java's name, and a calibration mislabelled that way is worse
+    than one not taken. This pins the coupling: if the Redis runner ever learns to dispatch on
+    the client, this test fails and stage0.sh is revisited rather than silently left wrong."""
+    redis = (REPO / "scripts" / "run_redis_trial.sh").read_text(encoding="utf-8")
+    kafka = (REPO / "scripts" / "run_kafka_trial.sh").read_text(encoding="utf-8")
+    assert "-CLIENT" in kafka, "the Kafka runner is the one that dispatches on the client"
+    assert "-CLIENT" not in redis, (
+        "the Redis runner now takes a client, so stage0.sh must stop restricting a named client "
+        "to Kafka")
+    code = (KIT / "stage0.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
+    assert '[ "$client" = python ] || args+=(--backend kafka)' in code
+
+
 def test_a_session_that_calibrates_twice_keeps_the_two_apart():
     """A8 compares two clients, and the delay's effect on the trip belongs to the client (D4-9),
     so law_design refuses to place one client's trips from the other's fit. Both C0s, both fits

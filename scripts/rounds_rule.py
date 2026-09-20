@@ -112,6 +112,18 @@ def rounds_for(prediction, design, trials=TRIALS, draws=DRAWS, grid=GRID, seed=S
     return _answer(prediction, ceiling, tried, True, trials, draws, grid, seed, step_ms, design)
 
 
+def never_confirms(tried):
+    """Whether the rule confirmed in no simulation at all, at any number of rounds.
+
+    A rule that is never satisfied in the world where the law is true is not a weak test of the
+    law; it is not a test of it. Rounds cannot mend it, so reporting it as underpowered would
+    put a broken instrument in the plan's table as a weak result. The case is real: P8 named a
+    point on the cliff that A8's own design never runs, and answered 0% at every step from 4
+    rounds to 40, which reads as "underpowered" and costs 1,440 runs to learn nothing.
+    """
+    return bool(tried) and all(step["power"] == 0.0 for step in tried)
+
+
 def _answer(prediction, rounds, tried, underpowered, trials, draws, grid, seed, step_ms=STEP_MS,
             design=None):
     """The answer, with the world it was reached in.
@@ -121,6 +133,7 @@ def _answer(prediction, rounds, tried, underpowered, trials, draws, grid, seed, 
     be checked afterwards against the numbers the simulation actually used.
     """
     return {"prediction": prediction, "rounds": rounds, "underpowered": underpowered,
+            "broken": never_confirms(tried),
             "tried": tried, "asked_of_it": {"power": POWER, "false_confirm": FALSE_CONFIRM},
             "design": dict(design or {}),
             "settings": {"trials": trials, "draws": draws, "grid": grid, "seed": seed,
@@ -140,9 +153,16 @@ def lines(found):
     """The answer as it is written into a campaign's log before it runs."""
     if "campaign" in found:
         return ["%s runs %d rounds: %s" % (found["campaign"], found["rounds"], found["why"])]
-    out = ["%s: %d rounds%s" % (found["prediction"], found["rounds"],
-                                ", and the prediction is reported as underpowered"
-                                if found["underpowered"] else "")]
+    if found.get("broken"):
+        out = ["%s: the rule never confirms, in any simulation, at any number of rounds."
+               % found["prediction"],
+               "  This is a broken test, not an underpowered one: rounds cannot mend it. Check "
+               "that the rule reads",
+               "  design points the campaign actually runs before simulating it again."]
+    else:
+        out = ["%s: %d rounds%s" % (found["prediction"], found["rounds"],
+                                    ", and the prediction is reported as underpowered"
+                                    if found["underpowered"] else "")]
     for step in found["tried"]:
         out.append("  %2d rounds: confirmed in %.0f%% under the law, in %.0f%% where it is false"
                    % (step["rounds"], 100 * step["power"], 100 * step["false_confirm"]))

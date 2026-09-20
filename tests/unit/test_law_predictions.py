@@ -20,6 +20,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
 
 import law_predictions as lp  # noqa: E402
 import law_world as lw  # noqa: E402
+import law_design as ld  # noqa: E402
+import rounds_rule as rr  # noqa: E402
 
 #: Few draws and a coarse grid: these tests read rules, not power.
 QUICK = {"draws": 80, "seed": 1, "grid": 24}
@@ -328,6 +330,43 @@ class TestP8Language:
         assert found["confirmed"] is False
         assert found["by_summary"]["free"]["java_cliff"] is None
 
+    def a8(self, world="law", points=("p09s", "c05h", "f15h")):
+        return lw.campaign(slices=(3.0,), rounds=6, points=points, priorities=(False, True),
+                           languages=("python", "java"), loads=(75,), backends=("kafka",),
+                           spread=0.05, seed=3, world=world)
+
+    def test_the_ratio_is_taken_only_where_both_clients_ran(self):
+        """The plan takes it "at matched setups". Each client is calibrated on its own, so a trip
+        can be out of reach for one and not the other, and a ratio between a trip one client took
+        and a trip the other never did is not a comparison of clients."""
+        wider = self.a8(points=("p05s", "p09s", "c05h", "f15h"))
+        uneven = [r for r in wider
+                  if not (r["language"] == "java" and r["point"] == "p05s")]
+        found = lp.language(uneven, **QUICK)
+        assert found["matched_on"] == ["p09s"], "p05s was Python's alone and cannot be compared"
+        assert found["tested"] is True and found["confirmed"] is True
+
+    def test_runs_one_client_alone_reached_are_still_kept(self):
+        """They are a measurement of that client; they are only left out of the comparison."""
+        wider = self.a8(points=("p05s", "p09s", "c05h", "f15h"))
+        uneven = [r for r in wider
+                  if not (r["language"] == "java" and r["point"] == "p05s")]
+        assert any(r["point"] == "p05s" for r in uneven)
+        assert lp.language(uneven, **QUICK)["confirmed"] is True
+
+    def test_no_shared_plateau_trip_means_the_campaign_did_not_test_p8(self):
+        """Not that P8 failed. The ratio is undefined, and an undefined ratio reported as a
+        prediction that did not hold would be a broken test read as a result -- after the runs."""
+        thinned = [r for r in self.a8()
+                   if not (r["language"] == "java" and r["point"] == "p09s")]
+        found = lp.language(thinned, **QUICK)
+        assert found["tested"] is False and found["matched_on"] == []
+        assert found["confirmed"] is False
+
+    def test_a_whole_campaign_is_tested_and_says_where_it_was_compared(self):
+        found = lp.language(self.a8(), **QUICK)
+        assert found["tested"] is True and found["matched_on"] == ["p09s"]
+
 
 class TestTheSlicesAPairCanReach:
     """A message cannot arrive sooner than the client's own zero-delay trip, and the plateau lives
@@ -613,3 +652,82 @@ class TestTheWorldsThemselves:
     def test_a_design_point_sits_where_the_slice_and_tick_put_it(self):
         assert lw.trip_of("p09s", 3.0, 1.0) == pytest.approx(2.7)
         assert lw.trip_of("f2sh", 3.0, 1.0) == pytest.approx(8.0)
+
+
+#: The slice the kernel's rule gives at each core count, for the core-count campaign.
+SLICE_BY_CORE = {2: 6.0, 4: 4.5, 8: 3.0}
+
+
+def _campaign_for(prediction, world, points):
+    """The campaign that tests one prediction, built on the points its own block runs."""
+    if prediction in ("P2", "P2b", "P2c", "P2d"):
+        slices = (20.0,) if prediction == "P2c" else (8.0,)
+        ticks = (1.0, 4.0, 10.0) if prediction == "P2c" else (1.0, 4.0)
+        runs = []
+        for tick in ticks:
+            runs += lw.campaign(slices=slices, rounds=4, tick_ms=tick, seed=3, world=world,
+                                spread=0.05, points=points)
+        return runs
+    if prediction in ("P1", "P9"):
+        return lw.campaign(slices=SIX, rounds=6, points=points, spread=0.05, seed=5, world=world)
+    if prediction in ("P3a", "P3b"):
+        return lw.campaign(slices=(3.0,), rounds=6, points=points, loads=(50, 75, 88),
+                           spread=0.05, seed=5, world=world)
+    if prediction == "P4":
+        return lw.campaign(slices=(3.0,), rounds=6, points=points, priorities=(False, True),
+                           backends=("kafka", "redis"), spread=0.05, seed=5, world=world)
+    if prediction == "P7":
+        return lw.campaign(slices=(3.0,), rounds=6, points=points, cores=(2, 4, 8),
+                           slice_by_core=SLICE_BY_CORE, spread=0.05, seed=5, world=world)
+    return lw.campaign(slices=(3.0,), rounds=6, points=points, priorities=(False, True),
+                       languages=("python", "java"), spread=0.05, seed=5, world=world)
+
+
+def _judge(prediction, runs):
+    """The rule, called the way its campaign calls it."""
+    if prediction in ("P1", "P9"):
+        return lp.RULES[prediction](runs, 1.0, **QUICK)
+    if prediction in ("P2", "P2b"):
+        return lp.RULES[prediction](runs, 4.0, **QUICK)
+    if prediction == "P2c":
+        return lp.RULES[prediction](runs, **dict(QUICK, grid=48))
+    if prediction == "P2d":
+        return lp.RULES[prediction](runs, grid=96)
+    if prediction == "P7":
+        return lp.RULES[prediction](runs, SLICE_BY_CORE, 1.0, **QUICK)
+    return lp.RULES[prediction](runs, **QUICK)
+
+
+class TestEveryRuleIsJudgedOnTheDesignItsOwnBlockRuns:
+    """Each rule must be satisfiable by the campaign that tests it, and refused by its falsifier.
+
+    The block numbers and the prediction numbers do not line up -- A7 is the go-first block and is
+    judged by P4, A5 is the core-count block and is judged by P7 -- so law_design.TESTED_BY says
+    which block runs which prediction, and these build each campaign from that block's own points
+    rather than from the eight-point ladder law_world offers by default.
+
+    This is the check that was missing. P8 read the middle of the cliff from c04h, a point A8's
+    three-trip design never runs. Against the default ladder the rule looked well; against A8's
+    own design it could not confirm at any number of rounds, and the round simulation reported
+    that as 40 rounds and underpowered -- 1,440 runs to learn nothing.
+    """
+
+    def test_every_prediction_names_the_block_that_tests_it(self):
+        assert set(rr.FALSIFIERS) <= set(ld.TESTED_BY)
+        assert all(block in ld.BLOCKS for block in ld.TESTED_BY.values())
+
+    @pytest.mark.parametrize("prediction", sorted(rr.FALSIFIERS))
+    def test_the_rule_confirms_under_the_law_on_its_own_points(self, prediction):
+        points = ld.BLOCKS[ld.TESTED_BY[prediction]]["points"]
+        found = _judge(prediction, _campaign_for(prediction, "law", points))
+        assert found["confirmed"] is True, (
+            "%s cannot be confirmed by %s, the block that tests it, on its points %s"
+            % (prediction, ld.TESTED_BY[prediction], ", ".join(points)))
+
+    @pytest.mark.parametrize("prediction", sorted(rr.FALSIFIERS))
+    def test_the_rule_is_refused_where_it_is_false_on_its_own_points(self, prediction):
+        points = ld.BLOCKS[ld.TESTED_BY[prediction]]["points"]
+        found = _judge(prediction, _campaign_for(prediction, rr.FALSIFIERS[prediction], points))
+        assert found["confirmed"] is False, (
+            "%s is confirmed in the world where it is false (%s)"
+            % (prediction, rr.FALSIFIERS[prediction]))

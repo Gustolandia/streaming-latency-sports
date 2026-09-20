@@ -86,9 +86,18 @@ SPLIT_BY = ("pair", "backend")
 #: measured from, the level past the cliff, and most of the cliff itself. A message cannot arrive
 #: sooner than the client's own zero-delay trip, so a slice under that floor has no plateau.
 PLATEAU_POINT = "p09s"
+#: The trips that sit on the plateau, which is the level P8 compares the two clients at. A1 and
+#: A4 run both; A8 buys only 0.9s.
+PLATEAU_POINTS = ("p05s", "p09s")
 FLOOR_POINT = "f2sh"
 CLIFF_POINTS = ("c02h", "c04h", "c06h", "c08h")
 CLIFF_POINTS_NEEDED = 3
+#: Where P8 reads the middle of the fall, nearest the middle first, ties to the earlier point.
+#: It takes the first of these a design actually carries rather than naming one outright: a block
+#: is free to choose its own ladder -- A8 buys three points, not five -- and a rule that insists on
+#: a point the design never ran cannot fail, it can only never confirm, which reads as a weak
+#: result instead of a broken test. On the four-point ladder this still picks c04h, as before.
+CLIFF_MIDDLE = ("c05h", "c04h", "c06h", "c08h", "c02h")
 #: How many testable slices a prediction needs at all, and how many of them may miss the band.
 LEAST_SLICES = {"P1": 4, "P9": 2}
 MAY_MISS = {"P1": 1, "P9": 0}
@@ -502,21 +511,43 @@ def language(runs, draws=DRAWS, seed=0, grid=None):
     def only(part, name):
         return [run for run in part if run.get("language") == name]
 
+    def matched(part):
+        """The trips both clients ran, which is where the plan says the ratio is taken.
+
+        Each client is calibrated on its own, because the delay's effect on the trip belongs to
+        the client, so their zero-delay floors differ and a trip can be out of reach for one and
+        not the other (the plan's D8-1). The runs are still made and still reported -- a trip one
+        client reached is a measurement of that client -- but the comparison is taken only where
+        both ran, because a ratio between a trip one client took and a trip the other never did
+        is not a comparison of clients.
+        """
+        return (set(run.get("point") for run in only(part, "python"))
+                & set(run.get("point") for run in only(part, "java")))
+
     def between(part, summary):
         java = only(part, "java")
         curve = law_curve.read_off(java, grid=grid or law_curve.GRID)
-        middle = [run["negative_rate"] for run in java if run.get("point") == "c04h"]
+        middle = []
+        for point in CLIFF_MIDDLE:
+            middle = [run["negative_rate"] for run in java if run.get("point") == point]
+            if middle:
+                break
         if not curve or not middle:
             return None
         floor = curve["floor"] if summary == "free" else curve["fitted"]["floor"]
         plateau = curve["plateau"] if summary == "free" else curve["fitted"]["plateau"]
         return 1.0 if floor <= sum(middle) / len(middle) <= plateau else 0.0
 
+    #: Read once from the campaign, not inside each resampling. Which trips both clients ran is a
+    #: property of the design, and letting a draw that happened to lose a trip change it would
+    #: make the interval an interval over two different comparisons.
+    on = sorted(matched(runs) & set(PLATEAU_POINTS))
+
     def numbers(part):
         rates = {}
         for name in ("python", "java"):
             plateau = [run["negative_rate"] for run in only(part, name)
-                       if run.get("point") in ("p05s", "p09s")]
+                       if run.get("point") in on]
             rates[name] = sum(plateau) / len(plateau) if plateau else None
         ratio = (None if not rates["python"] or not rates["java"]
                  else rates["python"] / rates["java"])
@@ -528,12 +559,17 @@ def language(runs, draws=DRAWS, seed=0, grid=None):
         cliff = between(runs, summary)
         said = over[summary]
         by_summary[summary] = _said(
-            said, cliff == 1.0 and said["value"] is not None and said["value"] <= LANGUAGE_RATIO
+            said, bool(on) and cliff == 1.0
+            and said["value"] is not None and said["value"] <= LANGUAGE_RATIO
             and said["high"] is not None and said["high"] <= LANGUAGE_RATIO,
             java_cliff=cliff, p_value=p_value(said["drawn"], LANGUAGE_RATIO))
     return _both(by_summary,
                  "Java's rate in the middle of the cliff lies between its plateau and its floor, "
-                 "and Python's plateau is at most %s times Java's" % LANGUAGE_RATIO)
+                 "and Python's plateau is at most %s times Java's" % LANGUAGE_RATIO,
+                 # Empty where the two clients share no plateau trip: then the campaign did not
+                 # test P8 rather than testing it and finding against it, and the two read the
+                 # same in the answer unless the difference is stated here.
+                 matched_on=on, tested=bool(on))
 
 
 #: The rules a campaign's runs can be judged by from the command line.

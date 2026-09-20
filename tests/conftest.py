@@ -35,6 +35,18 @@ def pytest_sessionfinish(session, exitstatus):
         cov.combine([coverage_file])
     cov.save()
 
+# The only place the broker libraries are stubbed, and it has to stay the only one.
+#
+# A script binds the module object that is in sys.modules when IT is imported:
+# scripts/redis_producer.py runs `import redis` once and then calls `redis.Redis(...)` on the
+# object it bound. A test module that reassigns sys.modules['redis'] later leaves that script
+# holding the earlier mock, while `patch('redis.Redis', ...)` resolves through sys.modules and
+# patches the newer one. The patch reaches nothing, the producer goes on calling the old mock,
+# and the test's own mock records no calls at all.
+#
+# Five test modules used to repeat these lines. The suite stayed green only because the
+# alphabetical order happened to import the reassigning module first; a four-module selection
+# failed. tests/unit/test_one_place_stubs_the_brokers.py now holds the rule.
 sys.modules['kafka'] = MagicMock()
 sys.modules['kafka.KafkaProducer'] = MagicMock()
 sys.modules['kafka.KafkaConsumer'] = MagicMock()

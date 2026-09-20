@@ -370,6 +370,7 @@ python scripts/spend.py billed --since 2026-09-01
 | `cloud/azure/campaign.sh` | the law campaign's runner: sets each run's CPUs, slice, delay and load, runs one trial, checks it, records it, and stops itself on a stop rule |
 | `cloud/azure/machine_facts.sh` | what a machine is, as far as its network and timing go; the pilot keeps it for both machines |
 | `cloud/azure/stage0.sh` | the plan's first stage on one pair, unattended: the pilot and its shakedown, the calibration in one or two stages and its fit, the baseline trips, the spread pilot |
+| `cloud/azure/kernels.sh` | A2's build campaign: three kernels from the driver's own source and configuration differing in nothing but the tick (HZ=1000, 250 and 100), each booted once while the stock kernel stays the default, and each held to the checks `scripts/kernel_checks.py` makes before any run |
 | `cloud/azure/stage1.sh` | one campaign of a main block, in a sitting of its own, placed from a stage 0 that passed, with the rounds it is given written into its log before it runs |
 | `scripts/run_integrity.py` | judges each run as it ends (it counts, is repeated, or stops its campaign), and stops a campaign whose attempts keep failing |
 | `scripts/quality_report.py` | what a campaign's runs say about the instrument, once copied: verdicts, conditions, pauses, and repeats that sit far from their fellows |

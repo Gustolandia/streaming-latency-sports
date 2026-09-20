@@ -508,6 +508,47 @@ class TestTheToolsBlock:
         assert 'WRAP="${SBL_TOOL_WRAP:-}"' in self.runner()
 
 
+class TestA2sKernelBuild:
+    """A2 asks whether the cliff's width follows the tick, and the tick is fixed when a kernel is
+    compiled, so the block builds its own. What can be checked here is that the three differ in
+    the tick and in nothing else, and that a build which cannot start says so."""
+
+    def kernels(self):
+        return (KIT / "kernels.sh").read_text(encoding="utf-8")
+
+    def test_the_three_ticks_the_plan_asks_for(self):
+        code = self.kernels()
+        assert 'TICKS="${TICKS:-1000 250 100}"' in code
+        assert "HZ=1000 build is the control" in code, "not Azure's stock kernel"
+
+    def test_only_the_tick_changes_between_them(self):
+        code = self.kernels()
+        assert 'cp "/boot/config-$RELEASE" ".config"' in code, "from the running kernel's own"
+        assert "--disable CONFIG_HZ_100 --disable CONFIG_HZ_250" in code
+        assert '--enable "CONFIG_HZ_$hz" --set-val CONFIG_HZ "$hz"' in code
+        assert '[ "$got" = "$hz" ] || stop' in code, "and the config is read back"
+
+    def test_a_built_kernel_is_booted_once_so_a_failed_boot_costs_a_reboot(self):
+        code = self.kernels()
+        assert "grub-reboot" in code and "stock kernel stays the default" in code
+
+    def test_the_source_can_be_fetched_on_a_machine_that_lists_no_source(self):
+        """Azure's Ubuntu image carries no deb-src line at all, so apt-get source refuses before
+        it starts. The build died on this the first time it ran."""
+        code = self.kernels()
+        assert "grep -qs '^deb-src'" in code
+        assert "sources.list.d/sbl-kernel-source.list" in code, "in a file of our own"
+        assert "upgrades nothing" in code
+
+    def test_a_source_that_could_not_be_fetched_stops_the_build(self):
+        """Piping apt-get into tail reports tail's status, which is always zero, and the build
+        would carry on with no source to build."""
+        code = self.kernels()
+        assert "apt-get source" in code
+        assert "apt-get source \"linux-image-unsigned-$RELEASE\" | tail" not in code
+        assert 'stop "the source for $RELEASE could not be fetched' in code
+
+
 class TestT2ForcedNegatives:
     """T2 moves the clock the tool reads and asks what it did with the values that came out
     below zero. Its whole danger is silence: a run where the offset never reached the tool looks

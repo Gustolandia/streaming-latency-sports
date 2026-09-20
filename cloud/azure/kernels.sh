@@ -42,11 +42,29 @@ build () {
   sudo apt-get install -y -qq build-essential fakeroot libncurses-dev bison flex libssl-dev \
       libelf-dev dwarves rsync kernel-wedge gcc-12 \
     || stop "the build tools could not be installed"
+  # Azure's Ubuntu image carries no deb-src line at all, so apt has no idea where the kernel's
+  # source lives and `apt-get source` refuses before it starts. Every binary line is mirrored as
+  # a source line, in a file of our own so the image's own list is left as it is. This adds a
+  # place to fetch source from; it upgrades nothing, and nothing under a campaign changes.
+  if ! grep -qs '^deb-src' /etc/apt/sources.list /etc/apt/sources.list.d/*.list; then
+    log "   no deb-src line on this machine; mirroring the binary ones"
+    sed -n 's/^deb \(.*\)$/deb-src \1/p' /etc/apt/sources.list 2>/dev/null \
+      | sudo tee /etc/apt/sources.list.d/sbl-kernel-source.list >/dev/null
+    [ -s /etc/apt/sources.list.d/sbl-kernel-source.list ] \
+      || stop "no deb line could be mirrored into a deb-src one; this image lists its sources another way"
+    sudo apt-get update -qq || stop "apt-get update failed after adding the source lines"
+  fi
+
   mkdir -p "$WORK" && cd "$WORK" || stop "cannot use $WORK"
   if [ ! -d "linux-azure" ]; then
     sudo apt-get install -y -qq dpkg-dev || stop "dpkg-dev could not be installed"
-    apt-get source "linux-image-unsigned-$RELEASE" 2>&1 | tail -3 \
-      || stop "the source for $RELEASE could not be fetched; is deb-src enabled?"
+    # The status has to be apt-get's own. Piping it into tail reports tail's, which is always
+    # zero, and the build would carry on with no source to build.
+    apt-get source "linux-image-unsigned-$RELEASE" > "$WORK/source.log" 2>&1
+    if [ "$?" != 0 ]; then
+      tail -3 "$WORK/source.log"
+      stop "the source for $RELEASE could not be fetched; see $WORK/source.log"
+    fi
     mv linux-azure-* linux-azure || stop "the source did not unpack as expected"
   fi
   cd linux-azure || stop "no source folder"

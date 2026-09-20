@@ -20,6 +20,8 @@
 . "$(dirname "${BASH_SOURCE[0]}")/../campaigns/common.sh"
 set +e
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)" || exit 1
+#: The build works inside $WORK, so anything written back to the repository needs its full path.
+REPO="$(pwd)"
 
 TICKS="${TICKS:-1000 250 100}"
 WORK="${WORK:-$HOME/kernelbuild}"
@@ -65,7 +67,18 @@ build () {
       tail -3 "$WORK/source.log"
       stop "the source for $RELEASE could not be fetched; see $WORK/source.log"
     fi
-    mv linux-azure-* linux-azure || stop "the source did not unpack as expected"
+    # apt leaves the package's tarball, diff and dsc beside the tree it unpacks, and all four
+    # begin with the package's name -- linux-azure-6.8 here -- so a glob matches the lot and mv
+    # reads the last one as the destination. The tree is picked out by being a directory.
+    unpacked=$(find "$WORK" -maxdepth 1 -mindepth 1 -type d -name 'linux-*' | head -1)
+    [ -n "$unpacked" ] || stop "the source did not unpack as expected; see $WORK/source.log"
+    mv "$unpacked" linux-azure || stop "the source tree could not be renamed"
+    # The archive serves whatever version it currently holds, which need not be the one running:
+    # on 20 September the running kernel was 6.8.0-1064 and the archive offered 1067. The three
+    # builds still differ in the tick and in nothing else, because all three come from this one
+    # tree -- but which tree it was belongs beside the results, not in anybody's memory.
+    basename "$unpacked" > "$REPO/$DIR/source_version.txt"
+    log "   source tree: $(basename "$unpacked"); the kernel running here is $RELEASE"
   fi
   cd linux-azure || stop "no source folder"
 
@@ -86,7 +99,7 @@ build () {
     yes "" | make olddefconfig >/dev/null 2>&1 || stop "olddefconfig failed for HZ=$hz"
     got=$(grep '^CONFIG_HZ=' .config | cut -d= -f2)
     [ "$got" = "$hz" ] || stop "the config says HZ=$got after asking for $hz"
-    cp .config "$OLDPWD/../config-hz$hz" 2>/dev/null || cp .config "$WORK/config-hz$hz"
+    cp .config "$WORK/config-hz$hz" || stop "the HZ=$hz config could not be kept"
     log "   HZ=$hz configured"
   done
 
@@ -99,8 +112,13 @@ build () {
   done
 
   log "== 4/4 what was built"
-  ls -1 "$WORK"/linux-image-*sbl*.deb 2>/dev/null | tee "$OLDPWD/$DIR/built.txt" \
-    || stop "no kernel package was produced"
+  # Written with the repository's full path. The previous directory, at this point in the build,
+  # is the build directory and not the repository, so writing built.txt relative to it fails --
+  # and a failing tee is what the stop rule below would read, so three kernels that took six
+  # hours to build would have reported that none was produced.
+  ls -1 "$WORK"/linux-image-*sbl*.deb > "$REPO/$DIR/built.txt" 2>/dev/null
+  [ -s "$REPO/$DIR/built.txt" ] || stop "no kernel package was produced"
+  cat "$REPO/$DIR/built.txt"
   log "CAMPAIGN_COMPLETE: three kernels built in $WORK; boot each once with: sudo bash cloud/azure/kernels.sh boot <hz>"
 }
 

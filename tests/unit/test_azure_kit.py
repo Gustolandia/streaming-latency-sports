@@ -540,6 +540,28 @@ class TestA2sKernelBuild:
         assert "sources.list.d/sbl-kernel-source.list" in code, "in a file of our own"
         assert "upgrades nothing" in code
 
+    def test_the_source_tree_is_picked_out_from_the_tarballs_beside_it(self):
+        """apt leaves the tarball, diff and dsc next to the tree it unpacks, and all four begin
+        with the package's name, so a glob matches the lot and mv reads the last as the
+        destination. The build died on this the second time it ran."""
+        code = self.kernels()
+        assert "-type d -name 'linux-*'" in code
+        assert "mv linux-azure-* linux-azure" not in code
+
+    def test_which_source_tree_was_built_is_recorded(self):
+        """The archive serves whatever it currently holds, which need not be the kernel running:
+        on 20 September the running kernel was 1064 and the archive offered 1067."""
+        assert "source_version.txt" in self.kernels()
+
+    def test_what_was_built_is_written_where_the_repository_is(self):
+        """$OLDPWD inside the build directory is not the repository. Writing built.txt through
+        it fails, and the failing tee is what the stop rule reads -- so three kernels that took
+        six hours would have reported that none was produced."""
+        code = self.kernels()
+        assert 'REPO="$(pwd)"' in code
+        assert '"$REPO/$DIR/built.txt"' in code
+        assert "$OLDPWD" not in code
+
     def test_a_source_that_could_not_be_fetched_stops_the_build(self):
         """Piping apt-get into tail reports tail's status, which is always zero, and the build
         would carry on with no source to build."""

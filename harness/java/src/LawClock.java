@@ -30,15 +30,22 @@ final class LawClock {
     /**
      * The finest step this clock must resolve before a run is worth taking, in nanoseconds.
      *
-     * The trips this experiment measures run from under a millisecond to about fourteen, and the
-     * cliff the law predicts is one tick -- a millisecond -- wide. A clock that cannot resolve a
-     * tenth of that cannot see the structure the run exists to measure: every reading would be a
-     * whole number of milliseconds, and A8 would be comparing two clocks rather than two clients.
-     * Measured on a Windows JVM this clock steps in about a millisecond; on Linux, where the
-     * testbed runs, the same call reads clock_gettime and steps far finer. The point of checking
-     * rather than assuming is that the difference does not announce itself.
+     * Metrology's rule of ten: an instrument's resolution should divide the tolerance being
+     * judged into about ten parts, and a ratio below four to one is not considered a measurement
+     * of that tolerance at all. The tolerance here is not the cliff's width. It is the narrowest
+     * quantity the plan pre-registers a bound on -- P2d asks whether the fitted start stays
+     * within a quarter of a millisecond, and P3a whether the halfway point's whole interval sits
+     * inside 0.25 ms either way. Ten parts of 250 microseconds is 25, so that is the bar; at the
+     * 100 microseconds this first held, the ratio against those two bounds was 2.5 to 1, under
+     * even the four-to-one floor, and the guard would have passed clocks too coarse to judge the
+     * predictions it exists to protect.
+     *
+     * Measured: a Windows JVM steps in 998600 ns and a Windows Python in the same 998600 ns -- the
+     * operating system's answer, not the runtime's, and about 1:1 against these bounds. On the
+     * Linux testbed the JVM steps in 1000 ns and Python in 232 ns, which are 25:1 and 108:1. The
+     * point of checking rather than assuming is that the difference does not announce itself.
      */
-    static final long FINEST_USABLE_NS = 100_000L;
+    static final long FINEST_USABLE_NS = 25_000L;
 
     /**
      * Refuses to go on where the clock cannot resolve {@link #FINEST_USABLE_NS}.

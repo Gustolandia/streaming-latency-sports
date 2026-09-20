@@ -405,6 +405,30 @@ requires_redis = pytest.mark.skipif(
 
 
 @pytest.fixture(autouse=True)
+def _the_clock_is_not_what_is_under_test(request, monkeypatch):
+    """Let the producers and consumers run here, where the wall clock steps in a millisecond.
+
+    law_clock refuses a clock coarser than 25 microseconds, because a trip measured on one is a
+    column of round numbers that no later check can tell from a result. Windows reads 998600 ns,
+    from the JVM and from Python alike, so on this machine that guard stops every entry point --
+    correctly, for a real run, and uselessly for a unit test, where the broker is a MagicMock and
+    no latency is being measured at all. The same reasoning already mocks `kafka` and `redis`
+    above; this mocks the clock, and for the same reason.
+
+    The guard itself is tested in test_law_clock.py, which drives it with clocks of its own and is
+    excluded here, and test_clock_guard_is_wired.py checks that every entry point still calls it,
+    so this cannot quietly become a way of not having the guard at all.
+    """
+    if request.module.__name__.rsplit(".", 1)[-1] == "test_law_clock":
+        return
+    import itertools
+    import law_clock
+    # Endless: a test may call main() several times, and each call characterises the clock afresh.
+    step = itertools.count(0, 1_000)
+    monkeypatch.setattr(law_clock, "now_ns", lambda: next(step))
+
+
+@pytest.fixture(autouse=True)
 def _isolate_repo_writes(temp_dir, monkeypatch):
     """Keep the test suite from writing artefacts into the repository.
 

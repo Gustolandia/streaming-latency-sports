@@ -13,6 +13,9 @@ except Exception:
     pass
 
 
+import law_clock
+
+
 def now_ns() -> int:
     # Wall-clock epoch ns (time.time_ns), NOT perf_counter_ns: must share one epoch
     # with the producer process so consumer_ts - producer_ts is a valid latency.
@@ -36,6 +39,12 @@ def main():
     ap.add_argument("--max-poll-records", type=int, default=None)
 
     args = ap.parse_args()
+
+    # The receiving half reads the same wall clock and is held to the same bar: a trip is a
+    # difference of two stamps, so a coarse clock in either process flattens it. See law_clock.py.
+    print(f"CONFIG effective client=python "
+          f"clock_resolution_ns={law_clock.demand_usable_resolution('the Kafka consumer')}",
+          flush=True)
 
     group_id = args.group or f"sb-consumer-{args.run_id}"
     out_path = Path(args.out)

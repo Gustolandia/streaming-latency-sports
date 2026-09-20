@@ -13,6 +13,9 @@ except Exception:
     pass
 
 
+import law_clock
+
+
 def now_ns() -> int:
     # Wall-clock epoch ns (time.time_ns), NOT perf_counter_ns: must share one epoch
     # with the producer process so consumer_ts - producer_ts is a valid latency.
@@ -143,7 +146,9 @@ def main():
         # makes "was the treatment applied?" answerable from the run artefacts alone.
         print(f"CONFIG effective ack_batch={max(1, args.ack_batch)} "
               f"count={args.count} block_ms={args.block_ms} "
-              f"cluster={bool(args.cluster_mode or args.node_count == 3)}", flush=True)
+              f"cluster={bool(args.cluster_mode or args.node_count == 3)} client=python "
+              f"clock_resolution_ns={law_clock.demand_usable_resolution('the Redis consumer')}",
+              flush=True)
 
         # Read-loop instrumentation. The round-trip-bound account predicts each XREADGROUP
         # returns ~1 message under delay (so the consumer is capped at 1/RTT); a competing

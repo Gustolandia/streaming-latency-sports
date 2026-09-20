@@ -132,7 +132,15 @@ sudo python3 scripts/sched_settings.py read > "$DIR/settings.json" \
 
 calibrate () {  # client-or-empty label-suffix
   local client="$1" tag="$2" args=()
-  [ -n "$client" ] && args=(--language "$client")
+  if [ -n "$client" ]; then
+    args=(--language "$client")
+    # Only the Kafka runner dispatches on the client; scripts/run_redis_trial.sh has no such
+    # flag, so a Redis run asked for another client quietly runs the Python one and is written
+    # down under the other client's name. A calibration mislabelled that way is worse than one
+    # not taken, and A8 -- the only block that compares clients -- is Kafka only in any case.
+    # Python is the client every other backend already runs, so it keeps them all.
+    [ "$client" = python ] || args+=(--backend kafka)
+  fi
   design C0 "c0$tag" "${SEED}1" --up-to-ms "$UP_TO_MS" --rounds "$C0_ROUNDS" \
     --loads "$C0_LOADS" "${CPUS_ARG[@]}" "${args[@]}"
   campaign "c0$tag"

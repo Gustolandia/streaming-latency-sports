@@ -562,6 +562,14 @@ class TestA2sKernelBuild:
         assert '"$REPO/$DIR/built.txt"' in code
         assert "$OLDPWD" not in code
 
+    def test_the_configuration_step_is_not_fed_by_a_pipe(self):
+        """This kit runs under pipefail. olddefconfig asks nothing, so "yes |" in front of it
+        only means make finishes first, yes dies of a broken pipe with status 141, and the
+        pipeline reports that -- stopping the build on a configuration that worked."""
+        code = self.kernels()
+        assert "yes \"\" | make olddefconfig" not in code
+        assert "make olddefconfig >" in code, "and its output is kept, so a stop can say why"
+
     def test_a_source_that_could_not_be_fetched_stops_the_build(self):
         """Piping apt-get into tail reports tail's status, which is always zero, and the build
         would carry on with no source to build."""

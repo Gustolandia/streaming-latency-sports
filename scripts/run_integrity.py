@@ -298,6 +298,34 @@ GOTIT_FLOOR_MS = 0.10
 GOTIT_NOISE_SHARE = 3.0
 
 
+def calibration_entry(calibration, params):
+    """The fit this run's got-it median is held against, for its backend and load.
+
+    A session that opens A8 fits one calibration per client and joins them under the client's
+    name, because the delay's effect on the trip belongs to the client and the two fits are not
+    interchangeable. Its file is therefore a level deeper than every other session's. Reading it
+    as though it were flat finds no entry at all, and a missing entry is a repeat -- so a whole
+    A8 campaign would run twice and the second time would fail in exactly the same way.
+
+    So the client's own fit is taken where the file has one, and the flat shape otherwise.
+    Neither is assumed: a run that matches neither is reported as having no entry, which is what
+    the caller turns into a stated reason.
+    """
+    fit = (calibration or {}).get("calibration")
+    if not isinstance(fit, dict):
+        return None
+    where = [(params.get("backend"), str(params.get("load_pct")))]
+    if params.get("language"):
+        where.insert(0, (params["language"], params.get("backend"), str(params.get("load_pct"))))
+    for path in where:
+        node = fit
+        for step in path:
+            node = node.get(step) if isinstance(node, dict) else None
+        if isinstance(node, dict) and node.get("gotit_zero_median_ms") is not None:
+            return node
+    return None
+
+
 def gotit_checks(summary, params, added_ms, calibration):
     """The run's "got it" median against its session's zero-delay median.
 
@@ -305,11 +333,8 @@ def gotit_checks(summary, params, added_ms, calibration):
     """
     if calibration is None or float(params.get("delay_ms") or 0) <= 0:
         return {}
-    try:
-        entry = calibration["calibration"][params["backend"]][str(params["load_pct"])]
-        zero = entry["gotit_zero_median_ms"]
-    except (KeyError, TypeError):
-        zero = None
+    entry = calibration_entry(calibration, params)
+    zero = entry["gotit_zero_median_ms"] if entry else None
     why = None
     if zero is None:
         why = ("the calibration has no zero-delay got-it median for %s at %s%%"

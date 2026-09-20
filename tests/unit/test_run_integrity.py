@@ -287,6 +287,51 @@ class TestTheGotItComparison:
         assert any(fragment in r for r in found["reasons"])
 
 
+class TestACalibrationFittedPerClient:
+    """A8 fits one calibration per client and joins them under the client's name, so its file is
+    a level deeper than every other session's. Read as though it were flat it yields no entry,
+    every run of the block is a repeat, and the repeat fails in exactly the same way -- a whole
+    campaign run twice for nothing. This is what that costs, held down by tests."""
+
+    #: The shape stage 0 writes when CLIENTS is set: client, then backend, then load.
+    PER_CLIENT = {"calibration": {
+        "java": {"kafka": {"75": {"gotit_zero_median_ms": 0.2}}},
+        "python": {"kafka": {"75": {"gotit_zero_median_ms": 0.9}}}}}
+
+    def test_a_java_run_is_held_against_the_java_fit(self, tmp_path):
+        params = {"backend": "kafka", "load_pct": 75, "delay_ms": 2.0, "language": "java"}
+        found = evaluate(make_run(tmp_path, params=params), calibration=self.PER_CLIENT)
+        assert found["verdict"] == "count" and found["checks"]["gotit_steady"]["ok"]
+
+    def test_each_client_is_held_against_its_own_and_not_the_others(self):
+        """The two fits differ by 0.7 ms here. Reading the wrong one would pass or fail the run
+        on another client's instrument."""
+        for language, expected in (("java", 0.2), ("python", 0.9)):
+            entry = ri.calibration_entry(
+                self.PER_CLIENT, {"backend": "kafka", "load_pct": 75, "language": language})
+            assert entry["gotit_zero_median_ms"] == expected
+
+    def test_a_session_with_one_fit_per_backend_still_reads_flat(self):
+        entry = ri.calibration_entry(CAL, {"backend": "kafka", "load_pct": 75})
+        assert entry["gotit_zero_median_ms"] == 0.2
+
+    def test_a_run_naming_a_client_the_file_does_not_have_falls_back(self):
+        """Every block but A8 leaves the client unset, and a flat file has no client level at
+        all; naming one must not lose the entry that is there."""
+        entry = ri.calibration_entry(
+            CAL, {"backend": "kafka", "load_pct": 75, "language": "java"})
+        assert entry["gotit_zero_median_ms"] == 0.2
+
+    @pytest.mark.parametrize("calibration", [
+        None, {}, {"calibration": None}, {"calibration": "not a mapping"},
+        {"calibration": {"java": {"kafka": {"88": {"gotit_zero_median_ms": 0.2}}}}},
+        {"calibration": {"java": {"kafka": {"75": {"gotit_zero_median_ms": None}}}}},
+        {"calibration": {"java": "not a mapping"}}])
+    def test_anything_else_is_no_entry_rather_than_a_guess(self, calibration):
+        assert ri.calibration_entry(
+            calibration, {"backend": "kafka", "load_pct": 75, "language": "java"}) is None
+
+
 class TestTheClientSettings:
     """The paper's own settings (supplement, "Learned"); the Redis one was missing from the law
     campaign until plan v6, and this treatment failed silently three times in earlier work."""

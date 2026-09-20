@@ -8,10 +8,10 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
 # Mock kafka module before importing
-sys.modules['kafka'] = MagicMock()
-sys.modules['kafka.KafkaConsumer'] = MagicMock()
-sys.modules['redis'] = MagicMock()
-sys.modules['redis.Redis'] = MagicMock()
+# The broker libraries are stubbed once, in tests/conftest.py, and must not be stubbed again
+# here. `import redis` in a script binds the module object present at that moment; replacing
+# sys.modules['redis'] afterwards leaves the script holding the old one while
+# patch('redis.Redis', ...) patches the new one, and the patch then reaches nothing.
 
 SCRIPTS_DIR = Path(__file__).parent.parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))

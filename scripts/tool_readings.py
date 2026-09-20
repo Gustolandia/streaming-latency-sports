@@ -30,6 +30,7 @@ they print. Where the two disagree, the prediction is reported as failed, not co
 """
 import argparse
 import json
+import os
 import re
 import sys
 
@@ -397,6 +398,43 @@ def below_its_step(reading, true_ms, other_ms, figure=None):
     return abs(true_ms - other_ms) < step
 
 
+def step_seen(staircase):
+    """What T1's staircase says this tool can report, from its own answers at each step.
+
+    `staircase` is (added_ms, reading) pairs, one per step, including the zero step. Each step's
+    reported average is compared with the tool's average at zero, and a step it moved by less
+    than its own printing step is one it could not report.
+
+    The smallest step it *did* report is the tool's step as measured rather than as printed, and
+    it is what T2 has to predict through. A tool that cannot report a tenth of a millisecond does
+    not meet a negative a tenth of a millisecond below zero either: its clock puts that value at
+    zero before its rule for odd values ever runs.
+    """
+    base = next((r["reported_ms"].get("avg") for added, r in staircase if added == 0.0), None)
+    moves, smallest = [], None
+    for added, reading in sorted(staircase, key=lambda pair: pair[0]):
+        avg, step = reading["reported_ms"].get("avg"), reading.get("step_ms")
+        moved = None if (avg is None or base is None) else avg - base
+        seen = bool(moved is not None and step is not None and abs(moved) >= step)
+        if seen and added > 0.0 and (smallest is None or added < smallest):
+            smallest = added
+        moves.append({"added_ms": added, "reported_avg_ms": avg, "moved_ms": moved, "seen": seen})
+    return {"zero_avg_ms": base, "smallest_reported_ms": smallest, "steps": moves}
+
+
+def _staircase_from(folder, tool):
+    """T1's runs for one tool, as (added_ms, reading) pairs, read off their folder names."""
+    found = []
+    for name in sorted(os.listdir(folder)):
+        match = re.fullmatch(r"t1-%s-(\d+)_?(\d*)ms" % re.escape(tool), name)
+        path = os.path.join(folder, name, "reading.json")
+        if not match or not os.path.exists(path):
+            continue
+        with open(path, encoding="utf-8") as fh:
+            found.append((float("%s.%s" % (match.group(1), match.group(2) or "0")), json.load(fh)))
+    return found
+
+
 def main(argv=None, out=None):
     out = out or sys.stdout
     ap = argparse.ArgumentParser(description="What a tool says it measured, from its own output")
@@ -405,7 +443,21 @@ def main(argv=None, out=None):
     p.add_argument("--tool", required=True, choices=sorted(READERS))
     p.add_argument("--file", required=True)
     p.add_argument("--out", default="")
+    s = sub.add_parser("staircase")
+    s.add_argument("--tool", required=True, choices=sorted(READERS))
+    s.add_argument("--dir", required=True, help="the folder T1's runs were written under")
+    s.add_argument("--out", default="")
     args = ap.parse_args(argv)
+
+    if args.command == "staircase":
+        found = step_seen(_staircase_from(args.dir, args.tool))
+        text = json.dumps(found, indent=2, sort_keys=True)
+        if args.out:
+            with open(args.out, "w", encoding="utf-8") as fh:
+                fh.write(text + "\n")
+        print(text, file=out)
+        return 0 if found["smallest_reported_ms"] is not None else 1
+
     with open(args.file, encoding="utf-8", errors="replace") as fh:
         reading = read_tool(args.tool, fh.read())
     text = json.dumps(reading, indent=2, sort_keys=True)

@@ -33,20 +33,23 @@ Status Codes  [code:count]                      200:600
 Error Set:
 """
 
+# hey separates its labels from its figures with a tab. The tab is written as an escape rather
+# than typed, because a control character sitting in a source file is how a heredoc that expanded
+# too early looks, and tests/unit/test_source_hygiene.py refuses them for that reason.
 HEY = """Summary:
-  Total:	10.0021 secs
-  Slowest:	0.0214 secs
-  Fastest:	0.0011 secs
-  Average:	0.0034 secs
-  Requests/sec:	99.9790
+  Total:\t10.0021 secs
+  Slowest:\t0.0214 secs
+  Fastest:\t0.0011 secs
+  Average:\t0.0034 secs
+  Requests/sec:\t99.9790
 
 Latency distribution:
   50% in 0.0029 secs
   99% in 0.0098 secs
 
 Status code distribution:
-  [200]	900 responses
-  [503]	100 responses
+  [200]\t900 responses
+  [503]\t100 responses
 """
 
 # valkey-benchmark's summary is a row of names then a row of figures, printed at %9.3f, with a
@@ -418,6 +421,67 @@ class TestWhatAToolCannotSee:
         assert tr.below_its_step(reading, a, b) is None
 
 
+class TestWhatTheStaircaseSaysTheToolCanReport:
+    """T1 adds a staircase and asks what each tool can report. The smallest step it *did* report
+    is its step as measured rather than as printed, and T2 has to predict through it: a tool that
+    cannot report a tenth of a millisecond does not meet a negative a tenth below zero either,
+    because its clock puts that value at zero before its rule for odd values runs."""
+
+    def rung(self, avg, step):
+        return {"reported_ms": {"avg": avg}, "steps_ms": {"avg": step}, "step_ms": step}
+
+    def test_a_fine_tool_reports_the_smallest_step_there_is(self):
+        found = tr.step_seen([(0.0, self.rung(3.0, 0.001)), (0.1, self.rung(3.1, 0.001)),
+                              (0.5, self.rung(3.5, 0.001))])
+        assert found["smallest_reported_ms"] == 0.1 and found["zero_avg_ms"] == 3.0
+
+    def test_a_whole_millisecond_tool_reports_none_of_the_small_ones(self):
+        found = tr.step_seen([(0.0, self.rung(3.0, 1.0)), (0.1, self.rung(3.0, 1.0)),
+                              (0.5, self.rung(3.0, 1.0)), (1.5, self.rung(4.0, 1.0))])
+        assert found["smallest_reported_ms"] == 1.5
+        assert [s["seen"] for s in found["steps"]] == [False, False, False, True]
+
+    def test_a_tool_that_never_moves_has_no_measured_step_rather_than_a_zero(self):
+        found = tr.step_seen([(0.0, self.rung(3.0, 1.0)), (2.0, self.rung(3.0, 1.0))])
+        assert found["smallest_reported_ms"] is None
+
+    def test_without_the_zero_step_nothing_can_be_compared(self):
+        found = tr.step_seen([(0.1, self.rung(3.1, 0.001))])
+        assert found["zero_avg_ms"] is None and found["smallest_reported_ms"] is None
+        assert found["steps"][0]["moved_ms"] is None
+
+    def test_a_step_the_tool_printed_nothing_for_is_not_a_step_it_reported(self):
+        found = tr.step_seen([(0.0, self.rung(3.0, 0.001)),
+                              (0.1, {"reported_ms": {}, "steps_ms": {}, "step_ms": None})])
+        assert found["smallest_reported_ms"] is None and not found["steps"][1]["seen"]
+
+    def test_the_zero_step_itself_is_never_the_answer(self):
+        """Its own average against itself moves nothing, and a tool cannot report an added
+        nothing however fine it is."""
+        found = tr.step_seen([(0.0, self.rung(3.0, 0.0)), (0.1, self.rung(3.1, 0.001))])
+        assert found["smallest_reported_ms"] == 0.1
+
+    def test_it_reads_t1s_runs_off_their_own_folder_names(self, tmp_path):
+        for name, avg in (("t1-vegeta-0ms", 3.0), ("t1-vegeta-0_1ms", 3.1),
+                          ("t1-vegeta-1_5ms", 4.5)):
+            folder = tmp_path / name
+            folder.mkdir()
+            (folder / "reading.json").write_text(
+                json.dumps(self.rung(avg, 0.001)), encoding="utf-8")
+        (tmp_path / "t3-vegeta-l88-firstno").mkdir()
+        (tmp_path / "t1-vegeta-2_0ms").mkdir()  # started, never finished: no reading beside it
+        found = tr._staircase_from(str(tmp_path), "vegeta")
+        assert sorted(added for added, _ in found) == [0.0, 0.1, 1.5]
+
+    def test_another_tools_runs_in_the_same_folder_are_left_alone(self, tmp_path):
+        for name in ("t1-vegeta-0ms", "t1-hey-0ms"):
+            folder = tmp_path / name
+            folder.mkdir()
+            (folder / "reading.json").write_text(
+                json.dumps(self.rung(3.0, 0.001)), encoding="utf-8")
+        assert len(tr._staircase_from(str(tmp_path), "hey")) == 1
+
+
 class TestTheCommand:
 
     def run(self, argv):
@@ -444,3 +508,24 @@ class TestTheCommand:
         path.write_text("nothing here", encoding="utf-8")
         code, _ = self.run(["read", "--tool", "k6", "--file", str(path)])
         assert code == 1, "a run whose tool printed no latency is not a reading"
+
+    def staircase_at(self, tmp_path, avgs):
+        for name, avg in avgs:
+            folder = tmp_path / name
+            folder.mkdir()
+            (folder / "reading.json").write_text(json.dumps(
+                {"reported_ms": {"avg": avg}, "steps_ms": {"avg": 0.001}, "step_ms": 0.001}),
+                encoding="utf-8")
+
+    def test_it_reads_a_whole_staircase_and_says_the_smallest_step(self, tmp_path):
+        self.staircase_at(tmp_path, [("t1-hey-0ms", 3.0), ("t1-hey-0_1ms", 3.1)])
+        code, said = self.run(["staircase", "--tool", "hey", "--dir", str(tmp_path)])
+        assert code == 0 and json.loads(said)["smallest_reported_ms"] == 0.1
+
+    def test_a_staircase_the_tool_never_answered_leaves_with_one(self, tmp_path):
+        self.staircase_at(tmp_path, [("t1-hey-0ms", 3.0), ("t1-hey-0_1ms", 3.0)])
+        where = tmp_path / "step.json"
+        code, _ = self.run(["staircase", "--tool", "hey", "--dir", str(tmp_path),
+                            "--out", str(where)])
+        assert code == 1
+        assert json.loads(where.read_text(encoding="utf-8"))["smallest_reported_ms"] is None

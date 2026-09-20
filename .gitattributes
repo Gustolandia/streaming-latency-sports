@@ -9,6 +9,12 @@
 # Pinning eol=lf makes the working-tree copy identical to the stored one, so scp is safe too.
 *.sh text eol=lf
 
+# The Java client's pinned jar fingerprints, for the same reason one step removed. `sha256sum -c`
+# takes the whole line as the file name, so a CRLF copy asks for "kafka-clients.jar\r", which does
+# not exist: the check fails, the build stops, and the message names a fingerprint mismatch that
+# never happened. LF here means the file reads the same in Git Bash on Windows as on the driver.
+harness/java/DEPENDENCIES text eol=lf
+
 # Same reasoning for the other files that are read by Linux tooling.
 *.yaml text eol=lf
 *.yml text eol=lf

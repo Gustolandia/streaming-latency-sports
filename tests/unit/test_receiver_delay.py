@@ -336,9 +336,24 @@ class TestTheTrialRunnersCarryTheConsumerHook:
         assert 'CONSUMER_WRAP="${SBL_CONSUMER_WRAP:-}"' in self.text(runner)
 
     def test_it_prefixes_the_consumer_and_nothing_else(self, runner, consumer):
-        wrapped = [line for line in self.text(runner).splitlines()
+        """Every line that carries the hook must be a consumer, and no producer may carry it.
+
+        A runner that dispatches on the client has one consumer line per client -- A8 runs the
+        Kafka trial as our Python client or as Kafka's Java one -- so this counts the lines that
+        receive against the lines that send rather than expecting exactly one of them.
+        """
+        text = self.text(runner)
+        wrapped = [line for line in text.splitlines()
                    if "$CONSUMER_WRAP" in line and not line.lstrip().startswith("#")]
-        assert len(wrapped) == 1 and "scripts/%s" % consumer in wrapped[0]
+        receivers = ("scripts/%s" % consumer, "LawConsumer")
+        assert wrapped, "the receiver-only delay needs the consumer prefixed"
+        for line in wrapped:
+            assert any(name in line for name in receivers), (
+                "the consumer hook prefixes something that does not receive: %s" % line.strip())
+        sends = [line for line in text.splitlines()
+                 if ("LawProducer" in line or "KAFKA_PRODUCER_SCRIPT\"" in line
+                     or "redis_producer.py" in line) and not line.lstrip().startswith("#")]
+        assert sends and not [line for line in sends if "$CONSUMER_WRAP" in line]
 
     def test_a_run_records_which_arm_it_belonged_to(self, runner, consumer):
         """p4_ack_batching's lesson: the treatment must be recoverable from the run alone."""

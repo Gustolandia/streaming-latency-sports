@@ -1,16 +1,2 @@
-# The jars the Java client is built and run against, pinned by fingerprint.
-#
-# A8 compares Kafka's official client with ours, so which build of that client ran is part of the
-# result. build.sh fetches these and refuses to go on where a fingerprint does not match, so a jar
-# that changed under us stops the build rather than quietly producing a different experiment.
-#
-# Fingerprints are SHA-256 of the file as downloaded. Verify by hand with:
-#   cd harness/java && sha256sum -c DEPENDENCIES
-#
-# kafka-clients 3.9.0 is Kafka's own producer and consumer, the thing A8 is about.
-# slf4j-api 1.7.36 is the logging interface kafka-clients compiles against; with no binding on the
-# classpath it prints one warning and discards its logs, which is what we want: a logging backend
-# on the sending thread would be a second client inside the client.
-
 15c1e137f2c2c94398e27abc4060a03b6bde10bf9fac15e8f70c02320b202f18 *kafka-clients.jar
 d3ef575e3e4979678dc01bf1dcce51021493b4d11fb7f1be8ad982877c16a1c0 *slf4j-api.jar

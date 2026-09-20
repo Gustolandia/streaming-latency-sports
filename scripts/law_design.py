@@ -335,6 +335,11 @@ PLATEAU_POINT = "p09s"
 FLOOR_POINT = "f2sh"
 CLIFF_POINTS = ("c02h", "c04h", "c06h", "c08h")
 CLIFF_POINTS_NEEDED = 3
+#: Where a pilot reads the two levels the rounds rule simulates at, best first. The plateau is
+#: read nearest the slice, where the law says the rate is still flat; the floor as far past the
+#: cliff as the design reaches, where it is flattest. P0 runs p09s and f15h.
+PLATEAU_READ_FROM = ("p09s", "p05s")
+FLOOR_READ_FROM = ("f2sh", "f15h")
 
 
 def testable(block, settings, baseline=None, calibration=None, backends=BACKENDS, up_to_ms=8.0):
@@ -450,6 +455,89 @@ def spread_from_rows(rows, warmup_s=30.0, summarise=pilot_checks.summarise):
     return statistics.median(sds.values()), sds
 
 
+def _level_rates(rows, warmup_s, summarise):
+    """{(backend, slice_ms, point): [negative rate per run]} over a finished pilot's queue.
+
+    The rate is (negatives + 0.5) / (spans + 1), as the spread's logarithms are, and for a
+    related reason. A floor run that saw no negative at all measures a rate of zero, and zero is
+    not a level the simulation can be run at: a cliff falling to nothing is infinitely deep, so
+    it is easier to locate than any real one and the rounds asked for would again be too few --
+    the very error these levels exist to correct. What the run established is that the rate is
+    below what it could resolve, about one in five thousand, and the shrunk figure says that
+    instead of saying zero. The Arm pair's Redis floor is measured at exactly zero.
+
+    Kept apart by slice as well as by backend. Both levels are read at trips defined from the
+    slice -- the plateau at 0.9 of it, the floor a tick and a half past it -- so they are not the
+    same quantity at two slices, and a median over both describes neither. On the first x86 pair
+    Kafka's floor is 0.0092 at 3~ms and 0.0321 at 1.5~ms: pooling them gives 0.0166, which is no
+    slice's floor. This is the mistake D10-1 corrected for backends, one level down.
+    """
+    rates = {}
+    for row in rows:
+        if row["status"] != "done" or not row["run_dir"]:
+            continue
+        summary = summarise(row["run_dir"], warmup_s)
+        if not summary.get("measured_spans"):
+            continue
+        parts = str(row["setup"]).split("-")
+        if len(parts) < 4 or parts[1] not in BACKENDS or not parts[3].startswith("s"):
+            continue
+        try:
+            slice_ms = int(parts[3][1:]) / 1000.0
+        except ValueError:
+            continue
+        rates.setdefault((parts[1], slice_ms, parts[-1]), []).append(
+            ((summary["measured_negative"] + 0.5) / (summary["measured_spans"] + 1),
+             summary["measured_negative"]))
+    return rates
+
+
+def levels_by_backend(rows, warmup_s=30.0, summarise=pilot_checks.summarise, anchor_ms=3.0):
+    """{backend: {"plateau": rate, "floor": rate, "slice_ms": s, "read_from": [point, point]}}.
+
+    The rounds rule simulates a campaign at a plateau and a floor as well as at a spread, and it
+    has taken 0.30 and 0.01 for them: figures from the machines this work began on, not from the
+    pair about to run. On the first x86 pair this pilot measures 0.0345 and 0.0092 for Kafka at
+    the anchor slice -- a fall of under four times where the simulation assumed thirty. A
+    shallower cliff is harder to locate, so the rounds that simulation asked for were too few,
+    and A3 showed it: P3a was given 16 rounds and needs 24 at the levels its own runs then
+    measured.
+
+    Read per backend for the reason the spread is (D10-1): a campaign runs one backend and the
+    two do not agree. Read at the anchor slice, which every campaign of a block shares (D4-3), so
+    that one pair of levels stands for the block. Read only where the pilot reached the point, so
+    a plateau below the client's own zero-delay trip is absent rather than guessed (D8-1) -- on
+    this pair Kafka has no plateau at all at 1.5~ms.
+    """
+    rates = _level_rates(rows, warmup_s, summarise)
+    found = {}
+    for backend in sorted(set(backend for backend, _, _ in rates)):
+        levels = {}
+        for name, wanted in (("plateau", PLATEAU_READ_FROM), ("floor", FLOOR_READ_FROM)):
+            for point in wanted:
+                seen = rates.get((backend, anchor_ms, point))
+                if seen:
+                    levels[name] = statistics.median(rate for rate, _ in seen)
+                    levels.setdefault("read_from", []).append(point)
+                    # Every run at this point saw no negative at all, so the level is not
+                    # measured but bounded: it is below what the pilot could resolve. The
+                    # shrunk figure stands in for it, and a cliff falling to a bound is at
+                    # least as deep as the real one -- so the rounds it gives are a floor on
+                    # what the campaign needs, and the answer has to say so rather than pass
+                    # as a measurement.
+                    if not any(negatives for _, negatives in seen):
+                        levels.setdefault("below_resolution", []).append(name)
+                    break
+        if "plateau" in levels and "floor" in levels:
+            found[backend] = dict(levels, slice_ms=anchor_ms)
+    if not found:
+        raise ValueError(
+            "no backend ran both a plateau point (%s) and a floor point (%s) at the %g ms anchor "
+            "slice, so neither level can be read there"
+            % (", ".join(PLATEAU_READ_FROM), ", ".join(FLOOR_READ_FROM), anchor_ms))
+    return found
+
+
 def spread_by_backend(rows, warmup_s=30.0, summarise=pilot_checks.summarise):
     """{backend: median SD of the log rate} over the setups that backend ran.
 
@@ -522,6 +610,9 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise):
     p.add_argument("--queue", required=True)
     p.add_argument("--block", required=True, choices=sorted(BLOCKS))
     p.add_argument("--warmup-s", type=float, default=30.0)
+    p.add_argument("--anchor-slice", type=float, default=3.0,
+                   help="the slice the plateau and floor are read at; every campaign of a block "
+                        "shares it, so one pair of levels stands for the block")
     args = ap.parse_args(argv)
     try:
         if args.command == "baseline":
@@ -553,16 +644,25 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise):
                                    % ", ".join("%g" % s for s in cannot)), file=out)
             return 0
         if args.command == "rounds":
-            sigma, sds = spread_from_rows(run_queue.read_queue(args.queue), args.warmup_s,
-                                          summarise)
+            rows = run_queue.read_queue(args.queue)
+            sigma, sds = spread_from_rows(rows, args.warmup_s, summarise)
             #: The number itself comes from simulating this campaign's own prediction and
             #: decision rule at this spread, which is the plan's D4-2 and is what rounds_rule.py
-            #: does. What belongs here is the spread that simulation is run at.
-            print(json.dumps({"block": args.block, "sigma_median": sigma,
-                              "setups_measured": len(sds),
-                              "rounds_from": "python scripts/rounds_rule.py for --prediction "
-                                             "<the campaign's> --spread %.4f" % sigma},
-                             sort_keys=True), file=out)
+            #: does. What belongs here is what that simulation is run at -- and that is three
+            #: numbers, not one: a campaign whose cliff falls from 0.03 to 0.01 is a harder thing
+            #: to find than one falling from 0.30 to 0.01, at any spread.
+            spreads = spread_by_backend(rows, args.warmup_s, summarise)
+            levels = levels_by_backend(rows, args.warmup_s, summarise, args.anchor_slice)
+            answer = {"block": args.block, "sigma_median": sigma, "setups_measured": len(sds),
+                      "by_backend": dict(
+                          (backend, dict(levels[backend], spread=spreads[backend]))
+                          for backend in sorted(set(levels) & set(spreads)))}
+            answer["rounds_from"] = dict(
+                (backend, "python scripts/rounds_rule.py for --prediction <the campaign's> "
+                          "--spread %.4f --plateau %.4f --floor %.4f"
+                          % (one["spread"], one["plateau"], one["floor"]))
+                for backend, one in answer["by_backend"].items())
+            print(json.dumps(answer, sort_keys=True), file=out)
             return 0
         with open(args.settings, encoding="utf-8") as fh:
             settings = json.load(fh)

@@ -562,6 +562,133 @@ class TestFromRuns:
                                  lambda d, w: {"measured_negative": 1, "measured_spans": 10})
 
 
+
+class TestTheLevelsTheRoundsRuleIsSimulatedAt:
+    """The pilot measures the plateau and the floor, instead of the rule assuming 0.30 and 0.01.
+
+    Those two were figures from the machines this work began on. On the first x86 pair the pilot
+    measures 0.0345 and 0.0092 for Kafka: a fall of under four times where the simulation assumed
+    thirty. A shallower cliff is harder to find, so the rounds the simulation asked for were too
+    few -- A3 was given 16 and needs 24 at the levels its own runs measured.
+    """
+
+    def levels(self, table, rows, anchor_ms=3.0):
+        return ld.levels_by_backend(rows, 30, lambda d, w: {
+            "measured_negative": table[d][0], "measured_spans": table[d][1]}, anchor_ms)
+
+    def rows(self, *setups):
+        return [{"status": "done", "run_dir": "d%d" % i, "setup": s}
+                for i, s in enumerate(setups)]
+
+    BOTH = ("P0-kafka-l75-s3000-p09s", "P0-kafka-l75-s3000-f15h")
+
+    def test_each_backend_reads_its_own_plateau_and_floor(self):
+        rows = self.rows(*self.BOTH, "P0-redis-l75-s3000-p09s", "P0-redis-l75-s3000-f15h")
+        table = {"d0": (30, 1000), "d1": (9, 1000), "d2": (5, 1000), "d3": (1, 1000)}
+        found = self.levels(table, rows)
+        assert found["kafka"]["read_from"] == ["p09s", "f15h"]
+        assert found["kafka"]["slice_ms"] == 3.0
+        assert found["kafka"]["plateau"] == pytest.approx(30.5 / 1001)
+        assert found["kafka"]["floor"] == pytest.approx(9.5 / 1001)
+        assert found["redis"]["plateau"] == pytest.approx(5.5 / 1001)
+        assert found["redis"]["floor"] == pytest.approx(1.5 / 1001)
+
+    def test_the_levels_are_medians_over_the_runs_of_a_setup(self):
+        rows = self.rows("P0-kafka-l75-s3000-p09s", "P0-kafka-l75-s3000-p09s",
+                         "P0-kafka-l75-s3000-p09s", "P0-kafka-l75-s3000-f15h")
+        table = {"d0": (10, 1000), "d1": (30, 1000), "d2": (50, 1000), "d3": (9, 1000)}
+        assert self.levels(table, rows)["kafka"]["plateau"] == pytest.approx(30.5 / 1001)
+
+    def test_a_slice_that_is_not_the_anchor_is_not_read(self):
+        """Both levels are trips defined from the slice, so they are not one quantity at two
+        slices: on the first x86 pair Kafka's floor is 0.0092 at 3 ms and 0.0321 at 1.5 ms, and
+        their median, 0.0166, is no slice's floor."""
+        rows = self.rows(*self.BOTH, "P0-kafka-l75-s1500-p09s", "P0-kafka-l75-s1500-f15h")
+        table = {"d0": (30, 1000), "d1": (9, 1000), "d2": (900, 1000), "d3": (800, 1000)}
+        found = self.levels(table, rows)
+        assert found["kafka"]["plateau"] == pytest.approx(30.5 / 1001)
+        assert found["kafka"]["floor"] == pytest.approx(9.5 / 1001)
+
+    def test_it_reads_the_slice_it_is_asked_for(self):
+        rows = self.rows("P0-kafka-l75-s1500-p09s", "P0-kafka-l75-s1500-f15h")
+        table = {"d0": (60, 1000), "d1": (20, 1000)}
+        found = self.levels(table, rows, anchor_ms=1.5)
+        assert found["kafka"]["slice_ms"] == 1.5
+        assert found["kafka"]["plateau"] == pytest.approx(60.5 / 1001)
+        assert found["kafka"]["floor"] == pytest.approx(20.5 / 1001)
+
+    def test_the_second_choice_point_is_used_where_the_first_was_not_run(self):
+        """f2sh is further past the cliff and flatter, so it is preferred; P0 runs f15h."""
+        rows = self.rows("P0-kafka-l75-s3000-p05s", "P0-kafka-l75-s3000-f2sh")
+        table = {"d0": (40, 1000), "d1": (2, 1000)}
+        found = self.levels(table, rows)
+        assert found["kafka"]["read_from"] == ["p05s", "f2sh"]
+        assert found["kafka"]["plateau"] == pytest.approx(40.5 / 1001)
+        assert found["kafka"]["floor"] == pytest.approx(2.5 / 1001)
+
+    def test_the_first_choice_wins_where_both_were_run(self):
+        rows = self.rows("P0-kafka-l75-s3000-p09s", "P0-kafka-l75-s3000-p05s",
+                         "P0-kafka-l75-s3000-f2sh", "P0-kafka-l75-s3000-f15h")
+        table = {"d0": (30, 1000), "d1": (70, 1000), "d2": (2, 1000), "d3": (9, 1000)}
+        found = self.levels(table, rows)
+        assert found["kafka"]["read_from"] == ["p09s", "f2sh"]
+
+    def test_a_backend_missing_one_of_the_two_levels_is_left_out(self):
+        """Half a cliff is not a cliff: without a floor there is nothing to fall to."""
+        rows = self.rows(*self.BOTH, "P0-redis-l75-s3000-p09s")
+        table = {"d0": (30, 1000), "d1": (9, 1000), "d2": (5, 1000)}
+        assert sorted(self.levels(table, rows)) == ["kafka"]
+
+    def test_neither_level_anywhere_is_refused_rather_than_guessed(self):
+        with pytest.raises(ValueError, match="no backend ran both a plateau point"):
+            self.levels({"d0": (9, 1000)}, self.rows("P0-kafka-l75-s3000-c04h"))
+
+    def test_it_names_the_anchor_it_looked_at_when_it_finds_nothing(self):
+        with pytest.raises(ValueError, match="4.5 ms anchor"):
+            self.levels({"d0": (9, 1000)}, self.rows("P0-kafka-l75-s3000-p09s"), anchor_ms=4.5)
+
+    def test_a_level_no_run_could_resolve_is_marked_as_a_bound(self):
+        """The Arm pair's Redis floor: no floor run saw a single negative. The shrunk figure
+        stands in for a rate below what the pilot resolves, and a cliff falling to a bound is at
+        least as deep as the real one, so the rounds it gives are a floor on what is needed."""
+        rows = self.rows(*self.BOTH)
+        found = self.levels({"d0": (30, 1000), "d1": (0, 1000)}, rows)
+        assert found["kafka"]["below_resolution"] == ["floor"]
+        assert found["kafka"]["floor"] == pytest.approx(0.5 / 1001)
+
+    def test_a_level_something_was_seen_at_is_not_marked(self):
+        found = self.levels({"d0": (30, 1000), "d1": (1, 1000)}, self.rows(*self.BOTH))
+        assert "below_resolution" not in found["kafka"]
+
+    def test_one_run_seeing_nothing_does_not_make_the_level_a_bound(self):
+        """It is a bound only where no run saw anything; one quiet run among several is data."""
+        rows = self.rows("P0-kafka-l75-s3000-p09s", "P0-kafka-l75-s3000-f15h",
+                         "P0-kafka-l75-s3000-f15h")
+        found = self.levels({"d0": (30, 1000), "d1": (0, 1000), "d2": (4, 1000)}, rows)
+        assert "below_resolution" not in found["kafka"]
+
+    @pytest.mark.parametrize("rows,why", [
+        ([{"status": "failed", "run_dir": "d0", "setup": "P0-kafka-l75-s3000-p09s"}],
+         "a run that did not finish"),
+        ([{"status": "done", "run_dir": "", "setup": "P0-kafka-l75-s3000-p09s"}],
+         "a run with no directory"),
+        ([{"status": "done", "run_dir": "empty", "setup": "P0-kafka-l75-s3000-p09s"}],
+         "a run that measured no span"),
+        ([{"status": "done", "run_dir": "d0", "setup": "short-name"}],
+         "a setup name with too few parts"),
+        ([{"status": "done", "run_dir": "d0", "setup": "P0-mystery-l75-s3000-p09s"}],
+         "a backend this plan does not run"),
+        ([{"status": "done", "run_dir": "d0", "setup": "P0-kafka-l75-3000-p09s"}],
+         "a slice field that is not a slice"),
+        ([{"status": "done", "run_dir": "d0", "setup": "P0-kafka-l75-sxyz-p09s"}],
+         "a slice field that is not a number"),
+    ])
+    def test_a_row_that_says_nothing_about_a_level_is_passed_over(self, rows, why):
+        table = {"d0": (9, 1000), "empty": (0, 0)}
+        kept = ld._level_rates(rows, 30, lambda d, w: {
+            "measured_negative": table[d][0], "measured_spans": table[d][1]})
+        assert kept == {}, why
+
 class TestMain:
 
     @staticmethod
@@ -600,12 +727,40 @@ class TestMain:
                            summarise=lambda d, w: summary)
         assert code == 0
         assert json.loads((tmp_path / "b.json").read_text(encoding="utf-8"))["kafka"]["75"] == 0.4
+        # The rounds are read off the spread pilot, which is the queue this is documented for:
+        # B0 plans no trip, so it has neither a plateau nor a floor to read.
         code, text = self.run(["rounds", "--queue", str(queue), "--block", "A1"],
                               summarise=lambda d, w: summary)
+        assert code == 2 and "no backend ran both a plateau point" in text, (
+            "a queue that cannot give the levels must be refused, not simulated at 0.30 and 0.01")
+
+    def test_the_rounds_reading_gives_each_backend_its_spread_and_its_levels(self, tmp_path):
+        """What the simulation is run at is three numbers, not one. A cliff falling from 0.03 to
+        0.01 is harder to find than one falling from 0.30 to 0.01, at any spread."""
+        rows = rq.make_rows(ld.design("P0", AZURE, None, 5, 1, calibration=CALIBRATION))
+        for row in rows:
+            row.update(status="done", run_dir=row["key"])
+        queue = tmp_path / "p0.csv"
+        rq.write_queue(str(queue), rows)
+
+        def summarise(run_dir, warmup_s):
+            # Negatives by where the trip sits: high on the plateau, low past the cliff.
+            negatives = 30 if "p09s" in run_dir else 9 if "f15h" in run_dir else 20
+            return {"trip_median_ms": 0.4, "measured_negative": negatives + len(run_dir) % 3,
+                    "measured_spans": 1000}
+
+        code, text = self.run(["rounds", "--queue", str(queue), "--block", "A1"],
+                              summarise=summarise)
         found = json.loads(text)
         assert code == 0 and "rounds" not in found, "the number is not this script's to give"
         assert found["sigma_median"] is not None
-        assert found["rounds_from"].startswith("python scripts/rounds_rule.py for")
+        for backend, one in found["by_backend"].items():
+            assert one["plateau"] > one["floor"], backend
+            assert one["slice_ms"] == 3.0 and one["read_from"] == ["p09s", "f15h"]
+            assert "spread" in one
+            assert found["rounds_from"][backend].startswith("python scripts/rounds_rule.py for")
+            assert "--plateau" in found["rounds_from"][backend]
+            assert "--floor" in found["rounds_from"][backend]
 
     def test_design_places_from_a_calibration_file_and_c0_takes_loads(self, tmp_path):
         settings = tmp_path / "settings.json"

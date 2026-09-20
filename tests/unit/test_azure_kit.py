@@ -24,7 +24,7 @@ import testbed_watch  # noqa: E402
 def test_the_kit_has_the_scripts_the_guide_describes():
     assert [p.name for p in SHELL] == ["campaign.sh", "kernels.sh", "machine_facts.sh",
                                        "pilot.sh", "replicate_oracle.sh", "session.sh",
-                                       "stage0.sh", "stage1.sh"]
+                                       "stage0.sh", "stage1.sh", "tools.sh", "tools_run.sh"]
 
 
 @pytest.mark.parametrize("path", SHELL + [KIT / "cloud-init.yaml"], ids=lambda p: p.name)
@@ -426,3 +426,118 @@ def test_a_leftover_java_client_is_reaped_like_the_python_ones():
     code = (KIT / "campaign.sh").read_text(encoding="utf-8")
     assert 'pkill -f "LawProducer|LawConsumer"' in code, \
         "a leftover client would send into the next run's topic"
+
+
+class TestTheToolsBlock:
+    """T1 to T4 measure what ten tools report against our own record of the same traffic. What
+    can be checked here is that the conditions the plan fixes are the ones the scripts set, and
+    that nothing can be run whose answer cannot be read."""
+
+    def tools(self):
+        return (KIT / "tools.sh").read_text(encoding="utf-8")
+
+    def runner(self):
+        return (KIT / "tools_run.sh").read_text(encoding="utf-8")
+
+    def test_t1_adds_the_plans_own_staircase_in_random_order(self):
+        """The plan: 0, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 1.1, 1.5 and 2.0 ms, in random order."""
+        code = self.tools()
+        assert 'steps="0 0.1 0.2 0.3 0.5 0.7 0.9 1.1 1.5 2.0"' in code
+        assert "shuf" in code, "in random order, so a drift in time is not read as a step"
+        assert "receiver_delay.py broker --delay-ms" in code, "receiver-only, as the plan says"
+        assert "broker-clear" in code, "and the delay is taken off afterwards"
+
+    def test_t3_crosses_load_with_go_first(self):
+        code = self.tools()
+        assert "for load in 0 88; do" in code, "idle and at 88% load"
+        assert "for first in no yes; do" in code, "with and without go-first"
+        assert 'wrap="sudo chrt -f 80"' in code, "go-first on the tool's own process"
+
+    def test_every_tool_that_can_be_run_has_a_reader(self):
+        """A run whose output nothing can read is a run that cost machine time and says nothing.
+        This holds the runner and scripts/tool_readings.py to each other."""
+        sys.path.insert(0, str(REPO / "scripts"))
+        import tool_readings
+        runnable = set(re.findall(r"^  ([a-z0-9_-]+)\)$", self.runner(), re.M))
+        runnable.discard("*")
+        assert runnable, "the runner names the tools it can run"
+        missing = sorted(runnable - set(tool_readings.READERS))
+        assert not missing, "no reader for %s" % ", ".join(missing)
+
+    def test_every_tool_with_a_reader_is_pinned(self):
+        """A tool's behaviour is what this block reports, so a tool that changed under us would
+        be a different experiment."""
+        sys.path.insert(0, str(REPO / "scripts"))
+        import tool_readings
+        code = self.tools()
+        pinned = dict(re.findall(r"^([a-z0-9_-]+)\|[a-z]+\|(\S+)$", code, re.M))
+        for tool in sorted(tool_readings.READERS):
+            assert tool in pinned, "%s has a reader but no pinned version" % tool
+            assert pinned[tool] == "resolve" or len(pinned[tool]) >= 5, \
+                "%s is pinned to something too vague" % tool
+        # "resolve" is an honest blank, not a pin: it says the fingerprint is recorded at install
+        # and written back before anything runs. It is only allowed while the script refuses to
+        # let a campaign past it, which is what makes it better than an invented commit.
+        if "resolve" in pinned.values():
+            assert "grep -q '|resolve$'" in code and "STOP_RULE" in code, \
+                "a tool left unpinned must stop the block, not run under a blank"
+
+    def test_a_tool_is_run_against_a_server_the_block_itself_puts_up(self):
+        """Two of the ten speak to servers no law campaign needs, and the HTTP tools need
+        something to fetch. They are installed on the machine rather than in containers: a
+        container adds a network namespace and firewall rules between tool and broker, and this
+        block measures tenths of a millisecond."""
+        code = self.tools()
+        assert "brokers ()" in code
+        for server in ("nginx", "rabbitmq-server", "nats-server"):
+            assert server in code, "%s is one of the servers the ten tools need" % server
+        assert "docker" not in code.lower(), "natively, so nothing sits in the path"
+        assert "listen 8080" in code, "the HTTP tools' target is the block's own site"
+
+    def test_what_is_installed_is_fingerprinted_rather_than_assumed(self):
+        code = self.tools()
+        assert "hashlib.sha256" in code, "the build that ran, not the version we meant to install"
+        assert "installed.json" in code
+
+    def test_the_tool_is_the_only_thing_the_conditions_reach(self):
+        """T1 to T4 all invoke one runner, so they differ in the conditions and in nothing
+        else; the wrapper prefixes the tool's own process and nothing around it."""
+        code = self.tools()
+        assert code.count("bash cloud/azure/tools_run.sh") == 4
+        assert 'SBL_TOOL_WRAP="$wrap"' in code
+        assert 'WRAP="${SBL_TOOL_WRAP:-}"' in self.runner()
+
+
+class TestT2ForcedNegatives:
+    """T2 moves the clock the tool reads and asks what it did with the values that came out
+    below zero. Its whole danger is silence: a run where the offset never reached the tool looks
+    exactly like a tool that handles negatives perfectly."""
+
+    def tools(self):
+        return (KIT / "tools.sh").read_text(encoding="utf-8")
+
+    def test_it_runs_the_two_offsets_the_plan_fixed(self):
+        assert "for ms in 0.5 2.0; do" in self.tools(), "0.5 ms and 2 ms, as the plan says"
+
+    def test_a_go_tool_is_refused_rather_than_run_without_an_offset(self):
+        """Go reads the clock without the C library, so the preload never reaches it."""
+        code = self.tools()
+        assert 'GO_TOOLS="vegeta hey k6 nats-latency"' in code
+        assert "needs the second machine with an offset clock" in code
+
+    def test_a_tool_in_neither_list_is_refused_rather_than_assumed(self):
+        assert "not in either T2 list" in self.tools()
+
+    def test_the_offset_is_measured_before_anything_is_run_under_it(self):
+        """libfaketime's fractional spellings differ between builds, so the one that works is
+        found by measuring the shift, not by assuming a format."""
+        code = self.tools()
+        assert "faketime_spelling ()" in code
+        assert "no libfaketime offset of $ms ms could be confirmed" in code
+        assert "offset_spelling.txt" in code, "and what was used is recorded beside the run"
+
+    def test_what_the_tool_did_is_judged_against_our_own_trips(self):
+        code = self.tools()
+        assert "tool_negatives.py judge" in code
+        assert "--exit-code" in code, "a tool that died is one of the answers"
+        assert "no reference trips beside this run" in code

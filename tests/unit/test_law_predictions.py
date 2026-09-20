@@ -10,6 +10,8 @@ numbers and applies its sentence, not how much power a campaign has.
 """
 import io
 import json
+import math
+import statistics as st
 import os
 import sys
 
@@ -731,3 +733,94 @@ class TestEveryRuleIsJudgedOnTheDesignItsOwnBlockRuns:
         assert found["confirmed"] is False, (
             "%s is confirmed in the world where it is false (%s)"
             % (prediction, rr.FALSIFIERS[prediction]))
+
+
+class TestARunCountsWhatItSees:
+    """A run does not observe a rate; it counts negatives out of the messages it sent.
+
+    That matters wherever the rate is low. A3's 50% load saw four to seven negatives in a run of
+    about 5,000 messages, and its run-to-run scatter is within a fifth of what counting alone
+    produces; at 75 and 88% the counts are in the hundreds and most of the scatter is the cliff's
+    own position moving between runs, which the curve's slope turns into rate. A single spread
+    multiplied onto the rate can represent neither, and cannot represent the messages a run sends
+    at all -- so it cannot answer whether a longer run would buy what another round buys.
+    """
+
+    def rates(self, **kw):
+        runs = lw.campaign(slices=(3.0,), rounds=200, points=("p09s",), seed=4, **kw)
+        return [r["negative_rate"] for r in runs]
+
+    def test_counting_gives_a_rate_that_is_a_whole_number_of_messages(self):
+        for rate in self.rates(plateau=0.02, messages=1000, spread=0):
+            assert abs(rate * 1000 - round(rate * 1000)) < 1e-9
+
+    def test_more_messages_make_the_counting_quieter(self):
+        few = st.pstdev([math.log(max(r, 1e-9)) for r in self.rates(plateau=0.02, messages=500)])
+        many = st.pstdev([math.log(max(r, 1e-9)) for r in self.rates(plateau=0.02, messages=8000)])
+        assert many < few / 2, "sixteen times the messages should halve the scatter twice over"
+
+    def test_overdispersion_widens_it_and_one_leaves_it_poisson(self):
+        plain = st.pstdev(self.rates(plateau=0.02, messages=2000, overdispersion=1.0))
+        wide = st.pstdev(self.rates(plateau=0.02, messages=2000, overdispersion=4.0))
+        assert wide > plain
+
+    def test_the_large_count_path_is_taken_too(self):
+        """Knuth's method below 30 expected, the normal shape above it: both must work."""
+        big = self.rates(plateau=0.5, messages=2000, overdispersion=1.0)
+        assert 0.4 < st.mean(big) < 0.6
+
+    def test_a_rate_of_nothing_counts_nothing(self):
+        assert set(self.rates(plateau=0.0, floor=0.0, messages=1000)) == {0.0}
+
+    def test_the_messages_can_differ_by_load(self):
+        """Only the load that needs them has to pay for them."""
+        runs = lw.campaign(slices=(3.0,), rounds=40, points=("p09s",), loads=(50, 88), seed=4,
+                           plateau=0.02, messages={50: 16000, 88: 1000})
+        by = {}
+        for r in runs:
+            by.setdefault(r["load_pct"], []).append(r["negative_rate"])
+        quiet = st.pstdev([math.log(max(v, 1e-9)) for v in by[50]])
+        noisy = st.pstdev([math.log(max(v, 1e-9)) for v in by[88]])
+        assert quiet < noisy
+
+
+class TestTheCliffWobblesBetweenRuns:
+
+    def test_jitter_moves_the_fall_and_the_slope_turns_it_into_rate(self):
+        """On the steep part a quarter of a millisecond of wobble is most of the scatter; on the
+        flat plateau it is almost none. That is the shape A3 measured."""
+        def scatter(point):
+            runs = lw.campaign(slices=(3.0,), rounds=200, points=(point,), seed=6, spread=0,
+                               plateau=0.09, floor=0.03, trip_jitter_ms=0.25)
+            return st.pstdev([r["negative_rate"] for r in runs])
+        assert scatter("c06h") > 4 * scatter("p09s")
+
+    def test_without_jitter_a_flat_world_does_not_move(self):
+        runs = lw.campaign(slices=(3.0,), rounds=20, points=("p09s",), spread=0, seed=6)
+        assert len(set(r["negative_rate"] for r in runs)) == 1
+
+
+class TestTheLevelsCanBeGivenPerLoad:
+    """A3 measured the plateau 59 times higher at 88% load than at 50%. The rule the world used
+    puts it 17% higher, so a campaign simulated by that rule is not the campaign that runs."""
+
+    LEVELS = {50: 0.0015, 75: 0.041, 88: 0.089}
+
+    def plateaus(self, world="law"):
+        runs = lw.campaign(slices=(3.0,), rounds=1, points=("p09s",), loads=(50, 75, 88),
+                           spread=0, world=world, plateau_by_load=self.LEVELS,
+                           floor_by_load={50: 0.0005, 75: 0.009, 88: 0.029})
+        return dict((r["load_pct"], r["negative_rate"]) for r in runs)
+
+    def test_each_load_gets_the_level_that_was_measured_there(self):
+        assert self.plateaus() == pytest.approx(self.LEVELS)
+
+    def test_where_the_plateau_does_not_rise_every_load_reads_the_lowest(self):
+        found = self.plateaus(world="plateau_flat_with_load")
+        assert sorted(found.values()) == pytest.approx([self.LEVELS[50]] * 3)
+
+    def test_the_floor_is_taken_per_load_as_well(self):
+        runs = lw.campaign(slices=(3.0,), rounds=1, points=("f15h",), loads=(50, 88), spread=0,
+                           plateau_by_load=self.LEVELS, floor_by_load={50: 0.0005, 88: 0.029})
+        found = dict((r["load_pct"], r["negative_rate"]) for r in runs)
+        assert found[50] == pytest.approx(0.0005) and found[88] == pytest.approx(0.029)

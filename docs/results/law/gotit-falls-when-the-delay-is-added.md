@@ -88,6 +88,35 @@ The −0.124 ms is most likely the ordinary drift of a machine between a calibra
 campaign that follows it, which is the thing the brake was built to tolerate and, at its shortest
 rung, does not.
 
+## It is one rung, and it is predictable which
+
+Sorting the fourteen judged comparisons by how much room each had left — its allowance minus the
+size of its move — separates them into two groups with nothing in between.
+
+| | headroom |
+|---|---|
+| Python at `p09s`, three runs | −0.031, +0.023, +0.220 ms |
+| every other comparison, eleven runs | 0.305 to 0.796 ms |
+
+The chain is exact. `p09s` asks for a trip of 0.9 of the slice, 2.7 ms. Python's own trip with no
+delay is the longer of the two clients', so it needs only **0.886 ms** of added delay to reach
+that trip where Java needs 1.66. The allowance is a quarter of the delay, so Python's is 0.221 ms
+where Java's at the same rung is 0.416. And the got-it's own move is about an eighth of a
+millisecond whatever the delay. So the one place the allowance falls to the size of the noise is
+the shortest delay of the client that needs the least delay — and that is where the campaign
+stopped.
+
+**What that means for running A8 again.** The block is 24 setups at 6 rounds, of which two setups
+are Python at `p09s` with the note taken the calibration's way: twelve runs that land in this
+group. One of the three seen exceeded its limit and a second cleared it by 0.023 ms. Three points
+are not a rate, and this is not a prediction — but a campaign needs all twelve to clear, and a
+single `stop` verdict ends it. Restarting collects more than the 28 runs already in hand; it is
+not likely to collect all 144.
+
+Nothing here says the brake should be loosened. It says where to look: an allowance built only
+from the added delay is smallest exactly where the instrument's own noise is unchanged, and that
+is a property of its shape, not of the pair.
+
 ## The two repeated runs are a separate fault
 
 Both `f15h python inline` and `p09s java callback` were judged `repeat`, and both failed the same

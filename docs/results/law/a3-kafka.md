@@ -210,6 +210,21 @@ that was unlikely to confirm either time.
 intervals far from zero, and nothing here says the cliff does or does not move with load. The
 measurement is of the instrument, not of the world.
 
+**It is P3a, and not the plan's arithmetic in general.** The same question asked of the other
+finished blocks, at their own designs and the same pair's measured levels, reproduces what their
+notes claim:
+
+| block | rule | rounds | recomputed | its note says |
+|---|---|---|---|---|
+| A1 | P1 | 4 | **100.0%** | 99% |
+| A7 | P4 | 4 | **100.0%** | 100% |
+
+So A1's and A7's "sound at 4 rounds" stands, and what is wrong is particular to P3a. That is not
+a surprise once said aloud: P3a is the one equivalence test among them. It asks for a whole
+interval to sit inside 0.25 ms either way, where P1 and P4 ask only for a direction, and an
+interval narrow enough to fall inside a band is far more expensive than one that merely misses
+zero.
+
 **What is not yet known** is why the two numbers differ. The rule judging P3a has changed since
 the 84% was computed — freeze 10 put a 2% floor on the plateau P3a may be judged at (D14-2), and
 A3's plateau at 50% load is 0.15% — so the comparison the rule now makes may not be the one that

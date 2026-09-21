@@ -30,8 +30,12 @@ rather than as a negative result.
 
 ## What has actually been found
 
-**Load raises the plateau, and does not move the cliff — but the second half could not be
-shown.** A3's Kafka campaign, 15 complete rounds, judged against freeze 05.
+**Load raises the plateau. Whether it moves the cliff still cannot be shown — now on two
+campaigns.** A3's Kafka block has run twice on the first pair: 15 complete rounds judged against
+freeze 05, and a second campaign of 12 complete rounds judged against freeze 12 on 21 September.
+Both confirm P3b, the second at 0.081 with a 95% interval of 0.078 to 0.083. Neither can confirm
+P3a: the second campaign puts the cliff's move at +0.13 ms by one summary and −0.33 by the
+other, with intervals about five times the 0.25 ms band the rule allows.
 → [`law/a3-kafka.md`](law/a3-kafka.md)
 
 The reason the second half could not be shown is worth more than the result. At 50% load the
@@ -39,6 +43,11 @@ negative rate is 0.15%, and a cliff cannot be located in a curve that shallow �
 running, which was checked against that campaign's own data by holding 5, 8, 11 and 15 rounds
 and watching the answer refuse to settle. Freeze 10 judges that prediction only where the
 plateau reaches 2%.
+
+The second campaign sharpens that. Its plateau at the anchor is 3.46%, comfortably over the
+guard, and it ran the 12 rounds a simulation said would confirm P3a in 84% of campaigns — and it
+still could not place the cliff closely enough to decide. Twice now, at 15 rounds and at 12. That
+is a question for a freeze, with two campaigns behind it rather than one.
 
 **Every client has the cliff, and they are not in the same place.** Redis at its own natural
 speed is the noisiest thing in the experiment — 63% of readings negative at 50% load — and falls

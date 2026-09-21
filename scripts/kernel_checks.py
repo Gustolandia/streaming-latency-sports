@@ -35,6 +35,13 @@ import sched_settings  # noqa: E402
 
 #: How far the counted tick may sit from the configured one. The plan's figure.
 TICK_TOLERANCE = 0.05
+#: The rows of /proc/interrupts that carry a per-CPU timer tick, in the order they are preferred.
+#: LOC is the local APIC timer, which is what a kernel on real hardware ticks on. HVS is the
+#: Hyper-V synthetic timer, which is what a guest on Azure ticks on -- and there LOC is present
+#: but stays at zero for the life of the machine. A reader that knew only LOC counted 0 Hz on
+#: matched-b and reported a freshly built HZ=1000 kernel as 100% out; it would have said the same
+#: of all three builds, so A2 could never have started on the machines it was written for.
+TIMER_ROWS = ("LOC", "HVS")
 #: How long to count for. Ten seconds at 100 Hz is a thousand ticks, so a single missed or extra
 #: one moves the answer by a tenth of a percent.
 COUNT_SECONDS = 10.0
@@ -71,12 +78,29 @@ def nohz_settings(config):
 def local_timer_counts(interrupts):
     """{cpu: the kernel's own timer interrupts so far} from /proc/interrupts.
 
-    The LOC line holds one count per CPU. Where a kernel does not carry it -- some Arm builds do
-    not -- there is nothing to count and the caller is told so rather than given a zero.
+    Which row carries the tick depends on the timer the machine is using, so TIMER_ROWS is tried
+    in order and the first one actually counting is taken. A row that is all zeros is not in use:
+    these counts run from boot, so a timer that had ever fired would show it.
+
+    Where no known timer row is counting there is nothing to count, and the caller is told so
+    rather than handed a zero -- "the tick could not be counted" and "the tick is 0 Hz" are
+    different statements, and only one of them accuses the kernel.
     """
-    for line in (interrupts or "").splitlines():
-        if line.strip().startswith("LOC:"):
-            return dict(enumerate(int(n) for n in re.findall(r"\d+", line.split(":", 1)[1])))
+    for want in TIMER_ROWS:
+        for line in (interrupts or "").splitlines():
+            label, _, rest = line.partition(":")
+            if label.strip() != want:
+                continue
+            counts = {}
+            # The per-CPU counts come first and the row's description last, and the description
+            # can carry a digit of its own: "Hyper-V stimer0 interrupts" would otherwise add a
+            # ninth CPU to an eight-CPU machine. Read columns until one stops being a number.
+            for cpu, token in enumerate(rest.split()):
+                if not token.isdigit():
+                    break
+                counts[cpu] = int(token)
+            if any(counts.values()):
+                return counts
     return {}
 
 

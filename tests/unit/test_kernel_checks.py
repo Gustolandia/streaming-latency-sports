@@ -23,6 +23,19 @@ CONFIG = ("CONFIG_HZ=250\nCONFIG_NO_HZ=y\nCONFIG_NO_HZ_IDLE=y\nCONFIG_NO_HZ_COMM
           "CONFIG_HIGH_RES_TIMERS=y\n")
 
 
+def hyperv(counts, loc=None):
+    """What an Azure guest shows: LOC present and forever zero, and the tick on HVS.
+
+    The row's description carries a digit of its own -- stimer0 -- which a reader counting every
+    number on the line would take for another CPU.
+    """
+    def row(name, ns, why):
+        return " %s:  %s   %s\n" % (name, "   ".join(str(n) for n in ns), why)
+    return ("           CPU0       CPU1\n"
+            + row("LOC", loc if loc is not None else [0] * len(counts), "Local timer interrupts")
+            + row("HVS", counts, "Hyper-V stimer0 interrupts"))
+
+
 def interrupts(counts):
     return ("           CPU0       CPU1\n"
             "  0:         41          0   IO-APIC   2-edge      timer\n"
@@ -62,6 +75,31 @@ class TestCountingTheTick:
         before = kc.local_timer_counts(interrupts([1000, 1000]))
         after = kc.local_timer_counts(interrupts([1010, 3500]))
         assert kc.measured_hz(before, after, 10.0, cpu=0) == 1.0
+
+    def test_the_tick_is_found_on_the_hypervisor_s_timer_when_the_local_one_is_dead(self):
+        """Azure's guests tick on HVS; LOC is there and stays at zero for the machine's life.
+
+        A reader that knew only LOC counted 0 Hz on a kernel running perfectly well, and would
+        have reported all three of A2's builds as 100% out on the machines A2 was written for.
+        """
+        before = kc.local_timer_counts(hyperv([1000, 1000]))
+        after = kc.local_timer_counts(hyperv([1153, 5004]))
+        assert kc.measured_hz(before, after, 4.0) == 1001.0
+
+    def test_the_row_s_own_description_is_not_read_as_another_cpu(self):
+        """Hyper-V stimer0 ends in a digit; a two-CPU machine still has two CPUs."""
+        assert kc.local_timer_counts(hyperv([1000, 2000])) == {0: 1000, 1: 2000}
+
+    def test_the_local_timer_is_preferred_where_it_is_the_one_counting(self):
+        assert kc.local_timer_counts(hyperv([5, 5], loc=[1000, 2000])) == {0: 1000, 1: 2000}
+
+    def test_a_row_that_stops_after_its_numbers_is_read_to_the_end(self):
+        """Nothing says a row must describe itself; the columns are what is being read."""
+        assert kc.local_timer_counts(" LOC:  10  20\n") == {0: 10, 1: 20}
+
+    def test_a_machine_whose_known_timers_all_sit_at_zero_is_not_counted(self):
+        """These counts run from boot, so a timer that had ever fired would show it."""
+        assert kc.local_timer_counts(hyperv([0, 0])) == {}
 
     def test_a_kernel_with_no_local_timer_line_gives_nothing(self):
         assert kc.local_timer_counts("  0:  41  IO-APIC  timer\n") == {}

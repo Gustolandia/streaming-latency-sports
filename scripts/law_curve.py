@@ -310,7 +310,14 @@ def read_runs(folder, pair=None, campaign=None):
         found.append({"run": os.path.basename(run_dir), "setup": row.get("setup"), "pair": pair,
                       "campaign": campaign,
                       "round": row.get("round"), "backend": params.get("backend"),
+                      # A5 sets no slice: it tests the one the kernel picks from the core count,
+                      # so its runs carry the slice the design predicted and none of its own.
+                      # Reading only slice_ns leaves every A5 run sliceless, which is what made
+                      # P7 impossible to judge -- it compared a machine's reported slice against
+                      # a designed one that, for the one block that needs it, is never there.
                       "slice_ms": params.get("slice_ns") and params["slice_ns"] / 1e6,
+                      "predicted_slice_ms": (params.get("predicted_slice_ns")
+                                             and params["predicted_slice_ns"] / 1e6),
                       "tick_ms": params.get("tick_ms"), "load_pct": params.get("load_pct"),
                       "point": params.get("point"), "priority": params.get("priority"),
                       "cpus": params.get("cpus"), "verdict": judged.get("verdict"),

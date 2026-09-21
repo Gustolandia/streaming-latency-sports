@@ -22,7 +22,7 @@ rather than as a negative result.
 | A2 | does the cliff's width follow the tick | kernels building; **rounds cannot be simulated** (D14-5), runs at the floor of 4 |
 | A3 | does load move the cliff, and raise the plateau | Kafka run once (below); Redis not run |
 | A4 | does it hold on Arm | run, sound at 4 rounds |
-| A5 | does the default slice follow the core count | finished 20 Sep on the second x86 pair, not yet read |
+| A5 | does the default slice follow the core count | **one session of three.** Its 8-CPU campaign finished 20 Sep and is clean (60 runs counted, 1 repeated); P7 needs 2 and 4 CPUs as well, and neither has run |
 | A7 | does go-first priority remove the plateau | run; its Kafka half checked sound at 4 rounds |
 | A8 | does the client language change it | running on Arm, 6 rounds |
 | T1–T4 | what ten benchmarking tools report | harness built and checked against made-up tools; no machine run yet |
@@ -88,3 +88,10 @@ measured.
 | three tool parsers wrong against real output | checking them against the tools' own source | none — caught before running |
 | T2's offsets could not make a negative | running the block against made-up tools first | none — caught before running |
 | four faults in the kernel build | running it | three would each have cost a six-hour build |
+| P7 could not be judged at all: it compared the machine's reported slice against a designed one, and A5 is the one block that sets none | reading A5's finished campaign instead of waiting for the rest of it | none — but the two remaining A5 sessions, about eight hours, would have run first |
+
+The last of those is worth a second look, because it is the same shape as the P8 fault of freeze 09
+and it survived a suite at 100% branch coverage. The made-up world every test builds from sets a
+slice on every run. A5 sets none — that is its whole prediction, that the kernel picks one from the
+core count — so the shape a real A5 campaign produces had never once reached the judge. The tests
+were complete and the thing they tested was not the thing that runs.

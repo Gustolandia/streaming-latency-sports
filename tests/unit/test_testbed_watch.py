@@ -150,6 +150,21 @@ class TestFlags:
     def test_a_busy_machine_without_a_campaign_is_not_idle(self):
         assert tw.evaluate(facts(BUSY + MACHINE + "campaign=0\nnetns=1\n"), None) == []
 
+    def test_a_quiet_machine_with_work_in_hand_is_not_idle(self):
+        """A chain waiting on a calibration has no run going and is not idle.
+
+        Deallocating such a pair destroys the thing chain.sh exists to protect, and the pair
+        would be quiet: the chain sleeps between looks.
+        """
+        armed = facts(QUIET + MACHINE + "campaign=1\nnetns=1\n")
+        assert [f[0] for f in tw.evaluate(armed, None)] == []
+
+    @pytest.mark.parametrize("what", ["cloud/azure/chain.sh", "cloud/azure/stage1.sh",
+                                      "rounds_rule.py"])
+    def test_the_probe_counts_work_that_is_not_yet_a_run(self, what):
+        """Named here so the list cannot quietly lose one of them again."""
+        assert what in tw.DRIVER_PROBE
+
     @pytest.mark.parametrize("extra,level,fragment", [
         ("activity_age_s=1500\n", "ALERT", "nothing has changed for 25 minutes"),
         ("verdict_no=2\n", "ALERT", "failed 2 settings or network check(s)"),

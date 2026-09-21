@@ -44,10 +44,12 @@ running, which was checked against that campaign's own data by holding 5, 8, 11 
 and watching the answer refuse to settle. Freeze 10 judges that prediction only where the
 plateau reaches 2%.
 
-The second campaign sharpens that. Its plateau at the anchor is 3.46%, comfortably over the
-guard, and it ran the 12 rounds a simulation said would confirm P3a in 84% of campaigns — and it
-still could not place the cliff closely enough to decide. Twice now, at 15 rounds and at 12. That
-is a question for a freeze, with two campaigns behind it rather than one.
+The second campaign sharpens that, and then overturns the reading. Recomputing the rounds
+rule on 21 September, at A3's own design and the levels its own note quotes, P3a confirms in
+**38.3%** of 1000 simulated campaigns at 12 rounds and 54.6% at 16 — where the campaign's note
+claims 84%. So both Kafka campaigns were underpowered for P3a, and two null results are what
+that design does, not two pieces of evidence about load and the cliff. Why the stated figure and
+the recomputed one differ is open.
 
 **Every client has the cliff, and they are not in the same place.** Redis at its own natural
 speed is the noisiest thing in the experiment — 63% of readings negative at 50% load — and falls
@@ -149,6 +151,8 @@ measured.
 | the tick check had no busy CPU to count on, and an idle CPU stops its timer | the same run | none |
 | installing A2's built kernels made one of them grub's default, so every restart of that driver came up on the HZ=1000 kernel | reading which kernel a restart actually came back on | none — no block had run since |
 | the chain simulated a campaign's rounds at the backend named in its environment, not the one named on its command line | reading the chain's own log in the minute before the campaign started | none — stopped before it ran |
+| the chain sized every campaign against a generic nine-point design, so A8's P8 was simulated in a world with no clients and could not confirm at any round count | A8's chain refusing to start, and reading why | none — the refusal was correct; A8 started once the design was its own |
+| a waiter for one campaign read a completion line left by another hours earlier and opened a second calibration on a pair already running one | the process list, two minutes later | 2 runs, both caught by their own timeout and re-queued; no counted run was judged during the overlap |
 | the watch counted a pair with a campaign chained behind a calibration as idle, and would have deallocated it | reading the watch's own log while A3's Redis chain simulated | none — it survived only on one core of eight being 12.5%, just over the 10% called busy |
 | fixing that made a long simulation look like a stalled campaign, alerting every five minutes | the first alert it produced | none — caught in one cycle |
 | a run measured the previous rung's delay, with the load still flat out at 99.8% | the repeat rule, on two of A8's 31 runs | 2 runs |

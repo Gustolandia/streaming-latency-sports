@@ -325,6 +325,12 @@ def read_runs(folder, pair=None, campaign=None):
                       # None and P8 reported that the campaign had not tested P8 at all -- a
                       # silent null after eight hours, rather than an error anyone would notice.
                       "language": params.get("language"),
+                      # Where the "got it" note was taken. No prediction is judged by it, but
+                      # plan version 16 asks P5(c) of the runs the brake cannot judge by
+                      # comparing the ones that share a note's place across the delays they ran
+                      # at (D16-2), and that comparison cannot be made from runs that do not say
+                      # which place they used.
+                      "ack_stamp": params.get("ack_stamp"),
                       "cpus": params.get("cpus"), "verdict": judged.get("verdict"),
                       "trip_ms": recorded.get("trip_median_ms"),
                       "negative_rate": recorded.get("measured_negative_rate")})

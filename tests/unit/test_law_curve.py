@@ -272,13 +272,25 @@ class TestReadingACopiedCampaign:
             "the judges read %s off a run, and read_runs never puts it there"
             % ", ".join(sorted(asked - given)))
 
-    def test_a_run_says_which_client_sent_it(self, tmp_path):
-        """A8 is judged by that and nothing else."""
+    def test_a_run_says_which_client_sent_it_and_where_it_took_its_note(self, tmp_path):
+        """A8 is judged by the client and nothing else, so a run without it is invisible to P8.
+
+        Where the note was taken decides no prediction, but plan version 16 asks P5(c) of the
+        runs the got-it brake cannot judge by comparing the ones that share a note's place
+        across the delays they ran at (D16-2). That comparison cannot be made from runs that do
+        not say which place they used, and A8 is half inline.
+        """
         run = self.write_run(tmp_path / "runs", "law_a8_r001-p09s", "p09s", 2.7, 0.03)
         row = json.loads((run / "queue_row.json").read_text(encoding="utf-8"))
-        row["params"]["language"] = "java"
+        row["params"].update(language="java", ack_stamp="inline")
         (run / "queue_row.json").write_text(json.dumps(row), encoding="utf-8")
-        assert lc.read_runs(str(tmp_path / "runs"))[0]["language"] == "java"
+        found = lc.read_runs(str(tmp_path / "runs"))[0]
+        assert found["language"] == "java" and found["ack_stamp"] == "inline"
+
+    def test_a_run_of_any_other_block_carries_neither(self, tmp_path):
+        """Every block but A8 leaves both unset, and an unset one is None rather than absent."""
+        found = lc.read_runs(self.campaign_on_disk(tmp_path, rounds=1))[0]
+        assert found["language"] is None and found["ack_stamp"] is None
 
     def test_it_reads_the_runs_the_driver_wrote(self, tmp_path):
         runs = lc.read_runs(self.campaign_on_disk(tmp_path, rounds=1))

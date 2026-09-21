@@ -117,6 +117,32 @@ Nothing here says the brake should be loosened. It says where to look: an allowa
 from the added delay is smallest exactly where the instrument's own noise is unchanged, and that
 is a property of its shape, not of the pair.
 
+## The allowance is built from two things, and neither is the thing that moves
+
+The full rule is `max(a quarter of the added delay, max(0.10 ms, three times the session's own
+got-it scatter))`. That second term is a floor meant to stop the first from shrinking to nothing
+at short delays. Read on the two pairs:
+
+| pair | got-it scatter within a session | its floor | allowance at the shortest rung |
+|---|---|---|---|
+| Arm, Python on Kafka | 0.0663 ms | 0.199 ms | **0.221** — the delay term wins |
+| matched-b, Kafka | 0.1788 ms | **0.536 ms** | 0.536 — the floor wins |
+
+So the brake is **tightest on the steadiest machine**. A pair whose got-it barely varies from run
+to run gets a small floor, and at a short delay the quarter-of-the-delay term is smaller still.
+
+The defect is not that the floor is too low. It is that the floor is built from the wrong
+quantity. Run-to-run scatter *inside* a session and the drift *between* a calibration and the
+campaign that follows it are different numbers, and the brake measures the first to absorb the
+second. On the Arm pair the scatter is 0.066 ms and the drift is 0.124 — the drift is twice the
+scatter the floor is built from. On matched-b the scatter happens to be large enough that the
+floor covers the drift four times over, which is luck rather than design.
+
+**Where that leaves the campaigns now running.** A2 on matched-b sits behind a 0.536 ms floor at
+every rung, against moves of about an eighth of a millisecond, so this brake is not the thing to
+watch there. A8 on the Arm pair sits behind 0.199 to 0.221 at its shortest rung. The same
+instrument, the same rule, and the difference between them is which machine is quieter.
+
 ## The two repeated runs are a separate fault
 
 Both `f15h python inline` and `p09s java callback` were judged `repeat`, and both failed the same

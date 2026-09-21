@@ -296,6 +296,14 @@ def never_negative_check(summary):
 #: (P5c), nor below this many times the scatter the session's zero-delay runs showed.
 GOTIT_FLOOR_MS = 0.10
 GOTIT_NOISE_SHARE = 3.0
+#: How many earlier counted runs of the same setup the brake needs before it can judge one
+#: (plan version 17, D17-1). Below this a run's got-it is recorded and not braked: a comparison
+#: against one other run is a comparison against that run's noise as much as against this one's.
+GOTIT_MIN_EARLIER = 2
+#: A queue key: the round, the setup, and which attempt at it. The setup is everything the brake
+#: needs to hold like against like -- the client, where the note is taken, the slice and the
+#: delay -- so two keys with the same middle are two runs of the same thing.
+SETUP_KEY = re.compile(r"^r(?P<round>\d+)-(?P<setup>.+)-a(?P<attempt>\d+)$")
 
 #: Where a calibration takes its "got it" note. Stage 0 calibrates with the client's own
 #: defaults and never passes --ack-stamp, and the clients default to the callback, so every
@@ -349,40 +357,108 @@ def calibration_entry(calibration, params):
     return None
 
 
-def gotit_checks(summary, params, added_ms, calibration):
-    """The run's "got it" median against its session's zero-delay median.
+def setup_of(key):
+    """(round, setup, attempt) from a queue key, or None if it is not one."""
+    found = SETUP_KEY.match(key or "")
+    if not found:
+        return None
+    return (int(found.group("round")), found.group("setup"), int(found.group("attempt")))
 
-    Empty when there is nothing to hold it against: no calibration, or no added delay.
+
+def earlier_same_setup(run_dir):
+    """The got-it medians of this campaign's earlier counted runs of this very setup.
+
+    Not the session's calibration (plan version 17, D17-1). A campaign runs hours after the
+    calibration it is placed from and its got-it drifts in between, by an amount that has nothing
+    to do with the delay -- and the allowance it was charged against is a quarter of that delay.
+    Two campaigns measured that drift at 0.022 ms and 0.124 ms on near-equal noise floors, so it
+    is the drift that varies. Within one campaign the drift is common to the runs compared and
+    cancels, which is the whole reason for looking here instead.
+
+    Earlier means earlier in the queue's own order for this setup -- a lower round, or an earlier
+    attempt at the same round -- and not whatever the filesystem happens to report, so the answer
+    does not depend on when anything was written.
     """
-    if calibration is None or float(params.get("delay_ms") or 0) <= 0:
+    try:
+        mine = setup_of(read_json(os.path.join(run_dir, "queue_row.json")).get("key"))
+    except (OSError, ValueError, AttributeError):
+        return []
+    if mine is None:
+        return []
+    here = os.path.abspath(run_dir)
+    parent = os.path.dirname(here)
+    found = []
+    for name in sorted(os.listdir(parent)):
+        other = os.path.join(parent, name)
+        if os.path.abspath(other) == here or not os.path.isdir(other):
+            continue
+        try:
+            theirs = setup_of(read_json(os.path.join(other, "queue_row.json")).get("key"))
+            judged = read_json(os.path.join(other, "integrity.json"))
+        except (OSError, ValueError, AttributeError):
+            continue
+        if theirs is None or theirs[1] != mine[1]:
+            continue
+        if (theirs[0], theirs[2]) >= (mine[0], mine[2]):
+            continue
+        if judged.get("verdict") != "count":
+            continue
+        median = (judged.get("recorded") or {}).get("gotit_median_ms")
+        if median is not None:
+            found.append(median)
+    return found
+
+
+def gotit_shift_from_calibration(summary, params, calibration):
+    """How far this run's got-it median sits from the session's zero-delay one, or None.
+
+    Recorded for every run and braking none of them (plan version 17, D17-3). It is the number
+    the brake used to stop campaigns with, and it is worth keeping for exactly the reason it was
+    no good as a brake: it measures the drift between two sittings.
+    """
+    if calibration is None or summary.get("gotit_median_ms") is None:
+        return None
+    entry = calibration_entry(calibration, params)
+    zero = entry.get("gotit_zero_median_ms") if entry else None
+    return None if zero is None else summary["gotit_median_ms"] - zero
+
+
+def gotit_checks(summary, params, added_ms, earlier=()):
+    """The run's "got it" median against its own campaign's earlier runs of the same setup.
+
+    Empty when there is nothing to hold it against: no added delay, a note taken a way the runs
+    it would be compared with never took it, or too few of them yet.
+    """
+    if float(params.get("delay_ms") or 0) <= 0:
         return {}
     if not gotit_comparable(params):
         # Not a failed check: there is nothing here to fail. The run's own got-it median is
         # recorded beside it, and the campaign compares the runs that share a note's place with
         # each other, which is where P5(c)'s question can actually be asked of them.
         return {}
-    entry = calibration_entry(calibration, params)
-    zero = entry["gotit_zero_median_ms"] if entry else None
     why = None
-    if zero is None:
-        why = ("the calibration has no zero-delay got-it median for %s at %s%%"
-               % (params.get("backend"), params.get("load_pct")))
-    elif summary.get("gotit_median_ms") is None:
+    if summary.get("gotit_median_ms") is None:
         why = "the run recorded no got-it times"
     elif added_ms is None:
         why = "the added delay was not measured"
     if why:
-        return {"gotit_compared": outcome(False, None, "a zero-delay median and this run's", why)}
-    shift = summary["gotit_median_ms"] - zero
-    #: The brake clears the instrument's own noise as well as its share of the delay: a quarter of
-    #: a small delay is less than the got-it median moves between runs with nothing added.
-    noise = max(GOTIT_FLOOR_MS, GOTIT_NOISE_SHARE * (entry.get("gotit_zero_sd_ms") or 0.0))
+        return {"gotit_compared": outcome(False, None, "a got-it median and an added delay", why)}
+    if len(earlier) < GOTIT_MIN_EARLIER:
+        # The first runs of a setup have nothing like themselves to be held against yet. Their
+        # got-it is recorded, and the runs after them are judged against these.
+        return {}
+    base = statistics.median(earlier)
+    shift = summary["gotit_median_ms"] - base
+    #: The brake clears the scatter of the runs it compares against as well as its share of the
+    #: delay: a quarter of a small delay is less than the got-it median moves between runs.
+    noise = max(GOTIT_FLOOR_MS, GOTIT_NOISE_SHARE * statistics.stdev(earlier))
     limit = max(delay_calibration.GROSS_SHARE * abs(added_ms), noise)
     return {"gotit_steady": outcome(
         abs(shift) <= limit, shift, "within %.3f ms" % limit,
-        "the got-it median moved %.3f ms, more than %.0f%% of the %.3f ms added"
-        " and more than the %.3f ms this session's got-it moves by itself"
-        % (shift, 100 * delay_calibration.GROSS_SHARE, added_ms, noise))}
+        "the got-it median moved %.3f ms from this campaign's %d earlier runs of the same setup,"
+        " more than %.0f%% of the %.3f ms added and more than the %.3f ms those runs move by"
+        " themselves" % (shift, len(earlier), 100 * delay_calibration.GROSS_SHARE, added_ms,
+                         noise))}
 
 
 def guarded(checks, name, compute):
@@ -441,7 +517,14 @@ def evaluate(run_dir, rate, duration, warmup_s, calibration=None,
     recorded["delay_held_ms"] = added
     checks["clock"] = clock_check(run_dir)
     recorded["clock_offset_max_s"] = checks["clock"]["value"]
-    checks.update(gotit_checks(summary, params, added, calibration))
+    earlier = earlier_same_setup(run_dir)
+    checks.update(gotit_checks(summary, params, added, earlier))
+    recorded["gotit_earlier_same_setup"] = len(earlier)
+    # Kept and no longer braking anything (D17-3): the distance between this run and a sitting
+    # hours before it measures the drift between them, which is why it was the wrong thing to
+    # stop a campaign with and the right thing to be able to read afterwards.
+    recorded["gotit_shift_from_calibration_ms"] = gotit_shift_from_calibration(
+        summary, params, calibration)
     # Which runs the brake could judge travels with the run, so a campaign that measured its
     # got-it a way the calibration never did says so in its own files rather than in a note.
     recorded["gotit_compared_with_calibration"] = bool(

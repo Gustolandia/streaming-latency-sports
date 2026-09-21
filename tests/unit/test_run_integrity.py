@@ -37,7 +37,7 @@ def make_run(tmp_path, name="run", n=400, gap_ms=100.0, trip_ms=0.5, gotit_ms=0.
              negative_at=None, lose=0, load=75.0, load_samples=None, delay_ms=2.0,
              measured_added=2.0, settings_ok=True, problems=None, clock=(0.00002, -0.00003),
              stat=((100, 100, 800, 0), (800, 200, 1500, 10)), params=None, drop=(),
-             baseline_added=None, held_added=None,
+             baseline_added=None, held_added=None, key="r001-s-a1",
              client_line="CONFIG effective max_inflight=64 ack_stamp=callback"):
     run = tmp_path / name
     run.mkdir()
@@ -52,7 +52,7 @@ def make_run(tmp_path, name="run", n=400, gap_ms=100.0, trip_ms=0.5, gotit_ms=0.
     if load_samples is None:
         load_samples = [[first + k * (last - first) / 60, load / 100.0, 3.0] for k in range(61)]
     write_csv(run / "utilisation.csv", ["t_wall", "rho", "loadavg"], load_samples)
-    row = {"key": "r001-s-a1",
+    row = {"key": key,
            "params": params or {"backend": "kafka", "load_pct": 75, "delay_ms": delay_ms}}
     (run / "queue_row.json").write_text(json.dumps(row), encoding="utf-8")
     if problems is None:
@@ -110,6 +110,28 @@ class TestARunThatCounts:
         assert recorded["gotit_median_ms"] == pytest.approx(0.2)
 
 
+SETUP = "A3-kafka-l75-s3000-c04h"
+
+
+def earlier_runs(tmp_path, gotits, setup=SETUP, verdict="count"):
+    """This campaign's earlier counted runs of one setup, as its own folders hold them.
+
+    The brake compares a run against these and not against the session's calibration (D17-1),
+    so a test of the brake has to build a campaign rather than a run.
+    """
+    for i, gotit in enumerate(gotits, start=1):
+        run = make_run(tmp_path, name="earlier%d" % i, gotit_ms=gotit,
+                       key="r%03d-%s-a1" % (i, setup))
+        with open(os.path.join(run, "integrity.json"), "w", encoding="utf-8") as fh:
+            json.dump({"verdict": verdict, "recorded": {"gotit_median_ms": gotit}}, fh)
+
+
+def later_run(tmp_path, gotit_ms, setup=SETUP, round_no=9, **kw):
+    """The run being judged, placed after those."""
+    return make_run(tmp_path, name="later", gotit_ms=gotit_ms,
+                    key="r%03d-%s-a1" % (round_no, setup), **kw)
+
+
 class TestStop:
 
     def test_a_message_that_arrived_before_it_was_sent(self, tmp_path):
@@ -123,27 +145,55 @@ class TestStop:
         assert "measured load was 60.0%" in found["reasons"][1]
 
     def test_a_got_it_median_that_moved_too_far(self, tmp_path):
-        found = evaluate(make_run(tmp_path, gotit_ms=0.9), calibration=CAL)
+        earlier_runs(tmp_path, [0.2, 0.21])
+        found = evaluate(later_run(tmp_path, 0.9), calibration=CAL)
         assert found["verdict"] == "stop"
-        assert found["reasons"] == ["the got-it median moved 0.700 ms, more than 25% of the "
-                                    "2.000 ms added and more than the 0.100 ms this session's "
-                                    "got-it moves by itself"]
+        assert found["reasons"] == ["the got-it median moved 0.695 ms from this campaign's 2 "
+                                    "earlier runs of the same setup, more than 25% of the 2.000 "
+                                    "ms added and more than the 0.100 ms those runs move by "
+                                    "themselves"]
 
-    def test_a_shift_under_the_noise_of_the_session_stops_nothing(self, tmp_path):
+    def test_a_shift_under_the_scatter_of_those_runs_stops_nothing(self, tmp_path):
         """A quarter of a small delay is less than the got-it median moves between runs with
         nothing added at all: on 18 September a pair's Kafka wandered 0.36 ms across four
         zero-delay runs, and a brake set at 0.056 ms stopped a sound session."""
-        noisy = {"calibration": {"kafka": {"75": {"gotit_zero_median_ms": 0.2,
-                                                  "gotit_zero_sd_ms": 0.183}}}}
-        run = make_run(tmp_path, gotit_ms=0.45, delay_ms=0.225, measured_added=0.225)
-        assert evaluate(run, calibration=noisy)["verdict"] != "stop"
+        earlier_runs(tmp_path, [0.2, 0.32])
+        run = later_run(tmp_path, 0.45, delay_ms=0.225, measured_added=0.225)
+        assert evaluate(run, calibration=CAL)["verdict"] != "stop"
 
-    def test_a_shift_over_that_noise_still_stops(self, tmp_path):
-        noisy = {"calibration": {"kafka": {"75": {"gotit_zero_median_ms": 0.2,
-                                                  "gotit_zero_sd_ms": 0.183}}}}
-        run = make_run(tmp_path, gotit_ms=1.0, delay_ms=0.225, measured_added=0.225)
-        found = evaluate(run, calibration=noisy)
-        assert found["verdict"] == "stop" and "moves by itself" in found["reasons"][0]
+    def test_a_shift_over_that_scatter_still_stops(self, tmp_path):
+        earlier_runs(tmp_path, [0.2, 0.32])
+        run = later_run(tmp_path, 1.0, delay_ms=0.225, measured_added=0.225)
+        found = evaluate(run, calibration=CAL)
+        assert found["verdict"] == "stop" and "move by themselves" in found["reasons"][0]
+
+    def test_a_setup_with_too_few_earlier_runs_is_recorded_and_not_braked(self, tmp_path):
+        """The first runs of a setup have nothing like themselves to be held against.
+
+        A comparison against a single other run is a comparison against that run's noise as much
+        as against this one's, so the brake waits until there are two.
+        """
+        earlier_runs(tmp_path, [0.2])
+        found = evaluate(later_run(tmp_path, 5.0), calibration=CAL)
+        assert found["verdict"] == "count" and "gotit_steady" not in found["checks"]
+        assert found["recorded"]["gotit_earlier_same_setup"] == 1
+
+    def test_only_runs_that_counted_are_compared_against(self, tmp_path):
+        earlier_runs(tmp_path, [0.2, 0.21], verdict="repeat")
+        found = evaluate(later_run(tmp_path, 5.0), calibration=CAL)
+        assert found["recorded"]["gotit_earlier_same_setup"] == 0
+        assert "gotit_steady" not in found["checks"]
+
+    def test_another_setups_runs_are_not_compared_against(self, tmp_path):
+        earlier_runs(tmp_path, [0.2, 0.21], setup="A3-kafka-l75-s3000-f15h")
+        found = evaluate(later_run(tmp_path, 5.0), calibration=CAL)
+        assert found["recorded"]["gotit_earlier_same_setup"] == 0
+
+    def test_a_later_round_is_not_earlier(self, tmp_path):
+        """Earlier is the queue's own order for this setup, not the filesystem's."""
+        earlier_runs(tmp_path, [0.2, 0.21, 0.2])
+        found = evaluate(later_run(tmp_path, 5.0, round_no=2), calibration=CAL)
+        assert found["recorded"]["gotit_earlier_same_setup"] == 1
 
 
 class TestRepeat:
@@ -265,7 +315,8 @@ class TestTheDelayIsReadWhereItIsApplied:
 class TestTheGotItComparison:
 
     def test_a_steady_median_counts(self, tmp_path):
-        found = evaluate(make_run(tmp_path), calibration=CAL)
+        earlier_runs(tmp_path, [0.2, 0.21])
+        found = evaluate(later_run(tmp_path, 0.2), calibration=CAL)
         assert found["verdict"] == "count" and found["checks"]["gotit_steady"]["ok"]
         assert found["checks"]["gotit_steady"]["limit"] == "within 0.500 ms"
 
@@ -273,18 +324,59 @@ class TestTheGotItComparison:
         found = evaluate(make_run(tmp_path, delay_ms=0.0, measured_added=0.0), calibration=CAL)
         assert found["verdict"] == "count" and "gotit_steady" not in found["checks"]
 
-    @pytest.mark.parametrize("calibration,change,fragment", [
-        ({"calibration": {"redis": {}}}, {}, "no zero-delay got-it median for kafka at 75%"),
-        ({"calibration": None}, {}, "no zero-delay got-it median"),
-        ({"calibration": {"kafka": {"75": {"gotit_zero_median_ms": None}}}}, {},
-         "no zero-delay got-it median"),
-        (CAL, {"acks": False}, "the run recorded no got-it times"),
-        (CAL, {"drop": ("delay_hold.json",)}, "the added delay was not measured")])
-    def test_what_cannot_be_compared_is_a_repeat_not_a_stop(self, tmp_path, calibration, change,
-                                                              fragment):
-        found = evaluate(make_run(tmp_path, **change), calibration=calibration)
+    def test_the_brake_no_longer_needs_a_calibration_at_all(self, tmp_path):
+        """It compares a run with its own campaign, so a missing calibration stops nothing.
+
+        Under version 16 a calibration that held no zero-delay median for this backend made the
+        run a repeat. The brake does not read it any more; only the recorded shift does, and
+        that is allowed to be absent.
+        """
+        earlier_runs(tmp_path, [0.2, 0.21])
+        found = evaluate(later_run(tmp_path, 0.2), calibration={"calibration": {"redis": {}}})
+        assert found["verdict"] == "count" and found["checks"]["gotit_steady"]["ok"]
+        assert found["recorded"]["gotit_shift_from_calibration_ms"] is None
+
+    @pytest.mark.parametrize("change,fragment", [
+        ({"acks": False}, "the run recorded no got-it times"),
+        ({"drop": ("delay_hold.json",)}, "the added delay was not measured")])
+    def test_what_cannot_be_compared_is_a_repeat_not_a_stop(self, tmp_path, change, fragment):
+        earlier_runs(tmp_path, [0.2, 0.21])
+        found = evaluate(later_run(tmp_path, 0.2, **change), calibration=CAL)
         assert found["verdict"] == "repeat" and not found["checks"]["gotit_compared"]["ok"]
         assert any(fragment in r for r in found["reasons"])
+
+
+class TestFindingACampaignsOwnEarlierRuns:
+    """What the brake compares against, and what it refuses to compare against (D17-1)."""
+
+    def test_a_key_that_is_not_a_queue_key_names_no_setup(self):
+        assert ri.setup_of("not-a-key") is None
+        assert ri.setup_of("") is None and ri.setup_of(None) is None
+
+    def test_a_key_gives_its_round_setup_and_attempt(self):
+        assert ri.setup_of("r012-A3-kafka-l50-s3000-c08h-a2") == (
+            12, "A3-kafka-l50-s3000-c08h", 2)
+
+    def test_a_run_whose_own_key_cannot_be_read_compares_against_nothing(self, tmp_path):
+        bare = tmp_path / "bare"
+        bare.mkdir()
+        assert ri.earlier_same_setup(str(bare)) == []
+
+    def test_a_run_whose_key_is_not_a_queue_key_compares_against_nothing(self, tmp_path):
+        run = make_run(tmp_path, key="handmade")
+        assert ri.earlier_same_setup(run) == []
+
+    def test_a_sibling_that_counted_but_recorded_no_got_it_is_skipped(self, tmp_path):
+        earlier_runs(tmp_path, [0.2])
+        run = make_run(tmp_path, name="silent", key="r002-%s-a1" % SETUP)
+        with open(os.path.join(run, "integrity.json"), "w", encoding="utf-8") as fh:
+            json.dump({"verdict": "count", "recorded": {}}, fh)
+        assert ri.earlier_same_setup(later_run(tmp_path, 0.2)) == [0.2]
+
+    def test_a_later_attempt_at_the_same_round_is_still_earlier(self, tmp_path):
+        """A run re-queued as a2 follows a1, and both precede the next round."""
+        earlier_runs(tmp_path, [0.2, 0.21])
+        assert len(ri.earlier_same_setup(later_run(tmp_path, 0.2, round_no=3))) == 2
 
 
 class TestARunThatTakesItsNoteAnotherWay:
@@ -314,10 +406,11 @@ class TestARunThatTakesItsNoteAnotherWay:
         assert "gotit_steady" not in found["checks"]
         assert "gotit_compared" not in found["checks"], "nothing failed; there was nothing to fail"
 
-    def test_the_same_shift_taken_the_calibrations_way_still_stops(self, tmp_path):
-        """The brake is not loosened. A run that measures got-it as the calibration did, and
-        moves that far, stops exactly as before."""
-        found = evaluate(make_run(tmp_path, gotit_ms=0.9), calibration=CAL)
+    def test_the_same_shift_taken_the_other_runs_way_still_stops(self, tmp_path):
+        """The brake is not loosened. A run that takes its note the way the runs it is held
+        against took theirs, and moves that far, stops exactly as before."""
+        earlier_runs(tmp_path, [0.2, 0.21])
+        found = evaluate(later_run(tmp_path, 0.9), calibration=CAL)
         assert found["verdict"] == "stop" and "moved" in found["reasons"][0]
 
     def test_every_run_says_whether_the_brake_could_judge_it(self, tmp_path):
@@ -352,10 +445,14 @@ class TestACalibrationFittedPerClient:
         "java": {"kafka": {"75": {"gotit_zero_median_ms": 0.2}}},
         "python": {"kafka": {"75": {"gotit_zero_median_ms": 0.9}}}}}
 
-    def test_a_java_run_is_held_against_the_java_fit(self, tmp_path):
+    def test_a_java_runs_recorded_shift_is_taken_from_the_java_fit(self, tmp_path):
+        """The brake no longer reads this file (D17-3), but the recorded shift still does, and
+        reading it at the wrong level would record another client's instrument."""
         params = {"backend": "kafka", "load_pct": 75, "delay_ms": 2.0, "language": "java"}
-        found = evaluate(make_run(tmp_path, params=params), calibration=self.PER_CLIENT)
-        assert found["verdict"] == "count" and found["checks"]["gotit_steady"]["ok"]
+        found = evaluate(make_run(tmp_path, params=params, gotit_ms=0.5),
+                         calibration=self.PER_CLIENT)
+        assert found["verdict"] == "count"
+        assert found["recorded"]["gotit_shift_from_calibration_ms"] == pytest.approx(0.3)
 
     def test_each_client_is_held_against_its_own_and_not_the_others(self):
         """The two fits differ by 0.7 ms here. Reading the wrong one would pass or fail the run
@@ -563,9 +660,19 @@ class TestMain:
         assert code == 3 and text.startswith("stop: 1 message(s) arrived")
 
     def test_a_calibration_file_is_read(self, tmp_path):
+        """It no longer brakes anything, so what it must do is reach the recorded shift."""
         path = tmp_path / "calibration.json"
         path.write_text(json.dumps(CAL), encoding="utf-8")
-        code, text = self.check(make_run(tmp_path, gotit_ms=0.9), "--calibration", str(path))
+        run = make_run(tmp_path, gotit_ms=0.9)
+        code, _ = self.check(run, "--calibration", str(path))
+        assert code == 0
+        with open(os.path.join(run, "integrity.json"), encoding="utf-8") as fh:
+            shift = json.load(fh)["recorded"]["gotit_shift_from_calibration_ms"]
+        assert shift == pytest.approx(0.7)
+
+    def test_a_campaign_stops_itself_through_the_command(self, tmp_path):
+        earlier_runs(tmp_path, [0.2, 0.21])
+        code, text = self.check(later_run(tmp_path, 0.9))
         assert code == 3 and "got-it median moved" in text
 
     @pytest.mark.parametrize("extra", [["--calibration", "no-such-file.json"]])

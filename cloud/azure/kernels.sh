@@ -29,9 +29,12 @@ REPO="$(pwd)"
 TICKS="${TICKS:-1000 250 100}"
 WORK="${WORK:-$HOME/kernelbuild}"
 DIR="runs/azure/kernels"
-#: The busy loop the tick is counted against. Named once: what gets started and what
-#: gets searched for afterwards must be the same string or the check cannot tell.
+#: The busy loop the tick is counted against, and the name it runs under. The name carries
+#: this shell's pid so it cannot match anything else alive on the machine: the first version
+#: searched for the loop's own text, and that matched the ssh command line of the operator
+#: who had typed the same words to go looking for it.
 SPINNER="while : ; do : ; done"
+SPIN_TAG="sbl-tick-spinner-$$"
 SPIN_CPU="${SPIN_CPU:-1}"
 mkdir -p "$DIR"
 
@@ -188,7 +191,8 @@ check () {
   # outright, the trap covers the stop rules, and the kill covers the ordinary path. What is
   # checked afterwards is the loop itself and not the pid that was signalled: `timeout` does
   # forward the signal to its child, but this kit has been bitten by a surviving child before.
-  timeout 120 taskset -c "$SPIN_CPU" sh -c "$SPINNER" &
+  # The loop runs under $SPIN_TAG so the search for survivors matches this invocation alone.
+  timeout 120 taskset -c "$SPIN_CPU" sh -c "$SPINNER" "$SPIN_TAG" &
   local spin=$!
   # shellcheck disable=SC2064
   trap "kill $spin 2>/dev/null" EXIT INT TERM
@@ -201,7 +205,7 @@ check () {
   wait "$spin" 2>/dev/null
   trap - EXIT INT TERM
   local left
-  left=$(pgrep -f "$SPINNER" 2>/dev/null | tr '\n' ' ')
+  left=$(pgrep -f "$SPIN_TAG" 2>/dev/null | tr '\n' ' ')
   [ -z "$left" ] || stop "a spinner survived the check (pids: $left); kill it before any run"
 
   python3 -c 'import json,sys; d=json.load(open(sys.argv[1]));

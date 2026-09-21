@@ -87,10 +87,15 @@ if ! drv true 2>/dev/null; then
   group=$(az vm list --query "[?name=='$DRIVER_NAME'].resourceGroup | [0]" -o tsv 2>/dev/null)
   [ -n "$group" ] || stop "azure does not list a VM called $DRIVER_NAME, so its pair cannot be started"
   log "   the driver is not answering; starting every machine in $group"
-  ids=$(az vm list -g "$group" --query "[].id" -o tsv 2>/dev/null | tr '\n' ' ')
-  [ -n "$ids" ] || stop "the group $group holds no machines to start"
-  # shellcheck disable=SC2086
-  az vm start --ids $ids >/dev/null 2>&1 || true   # the wait below is what decides
+  names=$(az vm list -g "$group" --query "[].name" -o tsv 2>/dev/null)
+  [ -n "$names" ] || stop "the group $group holds no machines to start"
+  # One at a time, by name. `az vm start --ids a b` accepted a list of ids and started the
+  # driver alone, so the broker stayed deallocated, session.sh could not reach it, and the
+  # session stopped three steps later with the machine looking fine.
+  for machine in $names; do
+    az vm start --resource-group "$group" --name "$machine" --no-wait >/dev/null 2>&1 || true
+    log "   asked $machine to start"
+  done
   for _ in $(seq 1 40); do drv true 2>/dev/null && break; sleep 15; done
   drv true 2>/dev/null || stop "the driver did not come back after its pair was started"
 fi

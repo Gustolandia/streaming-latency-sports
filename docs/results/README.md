@@ -19,10 +19,10 @@ rather than as a negative result.
 | Block | What it asks | Where it stands |
 |---|---|---|
 | A1 | does the cliff follow the slice | run, sound at 4 rounds |
-| A2 | does the cliff's width follow the tick | kernels building; **rounds cannot be simulated** (D14-5), runs at the floor of 4 |
+| A2 | does the cliff's width follow the tick | **all three kernels built** 21 Sep (HZ=1000, 250, 100), none booted yet; **rounds cannot be simulated** (D14-5), runs at the floor of 4 |
 | A3 | does load move the cliff, and raise the plateau | Kafka run once (below); Redis not run |
 | A4 | does it hold on Arm | run, sound at 4 rounds |
-| A5 | does the default slice follow the core count | **one session of three.** Its 8-CPU campaign finished 20 Sep and is clean (60 runs counted, 1 repeated); P7 needs 2 and 4 CPUs as well, and neither has run |
+| A5 | does the default slice follow the core count | **one session of three, and the other two cannot start.** Its 8-CPU campaign finished 20 Sep and is clean (60 runs counted, 1 repeated). P7 needs 2 and 4 CPUs as well, and the machine refuses to offline a CPU — see below |
 | A7 | does go-first priority remove the plateau | run; its Kafka half checked sound at 4 rounds |
 | A8 | does the client language change it | running on Arm, 6 rounds |
 | T1–T4 | what ten benchmarking tools report | harness built and checked against made-up tools; no machine run yet |
@@ -71,6 +71,19 @@ insists on throughout.
 - **A2's round count**: the rounds rule simulates one kernel at a time and the tick predictions
   compare two, so A2 runs at the floor of 4 rounds with its power unknown. The largest block in
   the plan and the largest open risk.
+- **A5 at 2 and 4 CPUs, and therefore P7 as a whole.** A5 gives each core count its own session,
+  and a session reaches its core count by switching CPUs off. On the second x86 pair the machine
+  refuses: writing to `/sys/devices/system/cpu/cpuN/online` returns `Device or resource busy` on
+  every CPU, on a machine sitting idle, with nothing in `dmesg` and `CONFIG_HOTPLUG_CPU=y` in the
+  running kernel. That is the usual behaviour when the hypervisor has pinned its channels to the
+  CPUs, which is not something a guest can undo. A5 has only ever run at 8 CPUs, so this path had
+  never been exercised until 21 September, when the session stopped itself on its first three
+  runs with "online CPUs did not become 2".
+
+  The way out is most likely the one A2 already uses: ask for the core count at boot, through
+  grub, rather than by switching CPUs off afterwards. That machinery exists and is about to be
+  used for the three tick kernels. It is a bigger change to the machine than offlining, so it is
+  a decision rather than a fix, and it is recorded here rather than taken.
 - **T2 on the tool that reads a millisecond clock twice**: its error depends on where in the
   tick each message was sent, and that variance is the size of the difference T2 looks for. T-P2
   is judged by T1 instead, which separates it cleanly.

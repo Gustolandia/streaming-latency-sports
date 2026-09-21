@@ -211,13 +211,22 @@ def set_online_cpus(n, root="/"):
     return n
 
 
-def problems(settings, slice_ns=None, hz=None):
-    """Why these settings cannot back a run expecting `slice_ns` and `hz`; empty if they can."""
+def problems(settings, slice_ns=None, hz=None, cpus=None):
+    """Why these settings cannot back a run expecting `slice_ns`, `hz` and `cpus`; empty if they can.
+
+    The core count is checked here and not only where it is set, because on Azure it cannot be set
+    at all: a session reaches its count at boot, so by the time anything runs there is nobody left
+    to have failed. What is left is to read the machine and refuse if it is not the one asked for.
+    Booting with `maxcpus=N` gives a machine that agrees for about a second and then does not, so
+    this is the check that catches it.
+    """
     out = ["%s could not be read" % k for k in ESSENTIAL if k in settings["missing"]]
     if slice_ns is not None and settings["base_slice_ns"] != slice_ns:
         out.append("the base slice is %s ns, not %d" % (settings["base_slice_ns"], slice_ns))
     if hz is not None and settings["config_hz"] != hz:
         out.append("CONFIG_HZ is %s, not %d" % (settings["config_hz"], hz))
+    if cpus is not None and settings["online_cpus"] != cpus:
+        out.append("%s CPUs are online, not %d" % (settings["online_cpus"], cpus))
     return out
 
 
@@ -235,6 +244,8 @@ def main(argv=None, out=None):
     p = sub.add_parser("check")
     p.add_argument("--slice-ns", type=int)
     p.add_argument("--hz", type=int)
+    p.add_argument("--cpus", type=int,
+                   help="how many CPUs this session is meant to be running on")
     args = ap.parse_args(argv)
     if args.command in ("set-slice", "set-cpus"):
         try:
@@ -252,7 +263,7 @@ def main(argv=None, out=None):
     if args.command == "read":
         print(json.dumps(settings, indent=2, sort_keys=True), file=out)
         return 0
-    found = problems(settings, args.slice_ns, args.hz)
+    found = problems(settings, args.slice_ns, args.hz, args.cpus)
     print(json.dumps({"ok": not found, "problems": found, "settings": settings},
                      indent=2, sort_keys=True), file=out)
     return 1 if found else 0

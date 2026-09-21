@@ -140,6 +140,33 @@ build () {
   log "CAMPAIGN_COMPLETE: three kernels built in $WORK; boot each once with: bash cloud/azure/kernels.sh boot <hz>"
 }
 
+#: Keep the stock kernel as the one a plain restart comes back on.
+#:
+#: Installing a kernel we built ourselves quietly took that away. GRUB_DEFAULT=0 means the first
+#: menu entry, which is whichever kernel sorts highest, and 6.8.12-sbl1000 sorts above
+#: 6.8.0-1064-azure -- so from the moment the tick builds went on, every restart of the driver
+#: came up on the HZ=1000 kernel. Silently, and including restarts with nothing to do with A2.
+#:
+#: That costs twice. This script's whole safety argument is that a kernel which does not come up
+#: is gone on the next restart because the stock one is still the default, and that had stopped
+#: being true. And A3, A5 and A7 all run on the stock kernel; they would have run on a 1000 Hz
+#: build of a different source tree with nothing in the record saying so.
+#:
+#: Pinned by the entry's own id rather than by its position, because position is the bug.
+pin_stock_default () {
+  local stock sub ent
+  stock=$(ls -1 /boot/vmlinuz-* 2>/dev/null | sed 's|/boot/vmlinuz-||' | grep -- '-azure$'             | sort -V | tail -1)
+  [ -n "$stock" ] || stop "no stock -azure kernel in /boot to keep as the default"
+  sub=$(sudo grep -oE "gnulinux-advanced-[a-f0-9-]+" /boot/grub/grub.cfg | head -1)
+  ent=$(sudo grep -oE "gnulinux-$stock-advanced-[a-f0-9-]+" /boot/grub/grub.cfg | head -1)
+  [ -n "$sub" ] && [ -n "$ent" ] || stop "the stock kernel has no menu entry to pin the default to"
+  sudo cp -n /etc/default/grub /etc/default/grub.sbl-orig 2>/dev/null
+  sudo sed -i "s|^GRUB_DEFAULT=.*|GRUB_DEFAULT=\"$sub>$ent\"|" /etc/default/grub     || stop "the default kernel could not be pinned"
+  sudo update-grub >/dev/null 2>&1 || stop "update-grub failed while pinning the default"
+  grep -q "^GRUB_DEFAULT=\"$sub>$ent\"$" /etc/default/grub     || stop "the default kernel did not stay pinned to $stock"
+  log "a plain restart comes back on $stock"
+}
+
 boot () {
   local hz="${1:?which tick}"
   local deb
@@ -152,6 +179,7 @@ boot () {
   [ -n "$deb" ] || stop "no built kernel for HZ=$hz in $WORK"
   case "$deb" in *-dbg_*) stop "that is the debug-symbol package, not a kernel: $deb" ;; esac
   sudo dpkg -i "$deb" >/dev/null 2>&1 || stop "the HZ=$hz kernel could not be installed"
+  pin_stock_default
   local entry
   entry=$(grep -E "^menuentry|^\s+menuentry" /boot/grub/grub.cfg | grep -c . || true)
   log "installed $deb; $entry menu entries"

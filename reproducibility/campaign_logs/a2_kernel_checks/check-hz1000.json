@@ -1,0 +1,34 @@
+{
+  "ok": true,
+  "problems": [],
+  "reading": {
+    "counted_for_s": 10.012,
+    "hrtick_on": false,
+    "measured_hz": 999.958272488968,
+    "nohz": {
+      "CONFIG_HIGH_RES_TIMERS": "y",
+      "CONFIG_NO_HZ": "y",
+      "CONFIG_NO_HZ_COMMON": "y",
+      "CONFIG_NO_HZ_FULL": "y",
+      "CONFIG_NO_HZ_IDLE": null
+    },
+    "settings": {
+      "base_slice_ns": null,
+      "clocksource": "tsc",
+      "config_hz": 1000,
+      "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+      "missing": [
+        "base_slice_ns",
+        "tunable_scaling",
+        "preempt"
+      ],
+      "normalised_slice_ns": null,
+      "online_cpus": 8,
+      "preempt": null,
+      "release": "6.8.12-sbl1000",
+      "rule_slice_ns": null,
+      "tick_ms": 1.0,
+      "tunable_scaling": null
+    }
+  }
+}

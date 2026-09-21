@@ -22,7 +22,7 @@ import testbed_watch  # noqa: E402
 
 
 def test_the_kit_has_the_scripts_the_guide_describes():
-    assert [p.name for p in SHELL] == ["campaign.sh", "chain.sh", "kernels.sh",
+    assert [p.name for p in SHELL] == ["campaign.sh", "chain.sh", "cpus.sh", "kernels.sh",
                                        "machine_facts.sh", "pilot.sh", "replicate_oracle.sh",
                                        "session.sh", "stage0.sh", "stage1.sh", "tools.sh",
                                        "tools_run.sh"]

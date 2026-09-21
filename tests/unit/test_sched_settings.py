@@ -187,6 +187,19 @@ class TestProblems:
         assert "the base slice is None ns, not 3000000" in found
         assert "CONFIG_HZ is 250, not 1000" in found
 
+    def test_a_machine_with_the_wrong_number_of_cpus_is_caught(self, tmp_path):
+        """A5's sessions reach their core count at boot, so this is where a wrong one shows up.
+
+        Booting with maxcpus=2 gives a machine that has two CPUs for about a second, and then has
+        eight because a udev rule onlines them; the run directory would still say two.
+        """
+        s = ss.read_settings(fake_root(tmp_path, online="0-7"))
+        assert ss.problems(s, cpus=2) == ["8 CPUs are online, not 2"]
+
+    def test_a_machine_with_the_core_count_it_was_asked_for_passes(self, tmp_path):
+        s = ss.read_settings(fake_root(tmp_path, online="0-1"))
+        assert ss.problems(s, cpus=2) == []
+
     def test_a_missing_record_that_the_law_does_not_need_is_not_a_problem(self, tmp_path):
         s = ss.read_settings(fake_root(tmp_path, preempt=None, clocksource=None))
         assert s["missing"] == ["preempt", "clocksource"]
@@ -210,6 +223,13 @@ class TestMain:
         code, text = self.run(["--root", root, "check", "--slice-ns", "1500000"])
         assert code == 1 and json.loads(text)["problems"] == [
             "the base slice is 3000000 ns, not 1500000"]
+
+    def test_check_can_be_asked_for_a_core_count(self, tmp_path):
+        root = fake_root(tmp_path, online="0-7")
+        code, text = self.run(["--root", root, "check", "--cpus", "2"])
+        assert code == 1 and json.loads(text)["problems"] == ["8 CPUs are online, not 2"]
+        code, text = self.run(["--root", root, "check", "--cpus", "8"])
+        assert code == 0 and json.loads(text)["ok"] is True
 
     def test_set_slice(self, tmp_path):
         code, text = self.run(["--root", fake_root(tmp_path), "set-slice", "2250000"])

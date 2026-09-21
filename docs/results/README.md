@@ -19,10 +19,10 @@ rather than as a negative result.
 | Block | What it asks | Where it stands |
 |---|---|---|
 | A1 | does the cliff follow the slice | run, sound at 4 rounds |
-| A2 | does the cliff's width follow the tick | **all three kernels built** 21 Sep (HZ=1000, 250, 100), none booted yet; **rounds cannot be simulated** (D14-5), runs at the floor of 4 |
+| A2 | does the cliff's width follow the tick | **all three kernels built, booted and checked** 21 Sep: each runs within 1.4% of the tick it was built for, HRTICK off, tickless settings identical — see below. **Rounds cannot be simulated** (D14-5), runs at the floor of 4 |
 | A3 | does load move the cliff, and raise the plateau | Kafka run once (below); Redis not run |
 | A4 | does it hold on Arm | run, sound at 4 rounds |
-| A5 | does the default slice follow the core count | **one session of three, and the other two cannot start.** Its 8-CPU campaign finished 20 Sep and is clean (60 runs counted, 1 repeated). P7 needs 2 and 4 CPUs as well, and the machine refuses to offline a CPU — see below |
+| A5 | does the default slice follow the core count | **one session of three; the other two now have a way to start.** Its 8-CPU campaign finished 20 Sep and is clean (60 runs counted, 1 repeated). The machine refuses to offline a CPU, so the count is asked for at boot instead — demonstrated at 2 and 4 CPUs on 21 Sep, see below. The two sessions still have to run |
 | A7 | does go-first priority remove the plateau | run; its Kafka half checked sound at 4 rounds |
 | A8 | does the client language change it | **stopped itself four times on 21 Sep, three of them instrument faults since fixed.** The fourth is the brake's shape rather than the pair: a constant offset judged by an allowance proportional to the delay, which only ever fails at the shortest trip — see below. 31 runs, 28 counted, 2 repeated, 1 stop |
 | T1–T4 | what ten benchmarking tools report | harness built and checked against made-up tools; no machine run yet |
@@ -63,6 +63,21 @@ Two earlier versions of that note were wrong — one read the baseline off the c
 before the pair was restarted, the other said the failing run was re-queued three times when it
 was never re-queued at all. Both errors are kept visible at the top of the note.
 
+**A2's three kernels boot, and each runs at the tick it was built for.** 999.958, 251.231 and
+101.367 Hz against 1000, 250 and 100, all inside the plan's 5%; HRTICK off on all three; tickless
+settings identical, which is what holds them to differing in the tick alone. Finding that out took
+fixing two faults in the check itself, either of which would have reported all three kernels as
+broken: it counted a timer Azure does not use, and nothing was keeping a CPU busy for it to count
+on.
+→ [`law/a2-three-kernels-boot-and-tick.md`](law/a2-three-kernels-boot-and-tick.md)
+
+**A5's core counts have to be asked for at boot, and the slice follows them exactly.** The
+machine refuses to switch a CPU off, so the count goes on the kernel command line instead:
+`nr_cpus=2` gives a 1,400,000 ns default slice and `nr_cpus=4` gives 2,100,000, against 2,800,000
+at eight — every one of them exactly `700000 × (1 + ilog2(n))`. Not `maxcpus`, which looks like
+the same parameter and leaves the machine back at eight CPUs within a second.
+→ [`law/a5-core-count-must-be-asked-for-at-boot.md`](law/a5-core-count-must-be-asked-for-at-boot.md)
+
 **T1 works as designed. T2, as first frozen, could not have answered anything.** Run against
 made-up tools built from their clocks and their arithmetic, then re-run on 19,952 trips A3
 actually measured. At the 2 ms offset the plan froze, **not one trip of 3,000 goes below zero** —
@@ -84,19 +99,10 @@ insists on throughout.
 - **A2's round count**: the rounds rule simulates one kernel at a time and the tick predictions
   compare two, so A2 runs at the floor of 4 rounds with its power unknown. The largest block in
   the plan and the largest open risk.
-- **A5 at 2 and 4 CPUs, and therefore P7 as a whole.** A5 gives each core count its own session,
-  and a session reaches its core count by switching CPUs off. On the second x86 pair the machine
-  refuses: writing to `/sys/devices/system/cpu/cpuN/online` returns `Device or resource busy` on
-  every CPU, on a machine sitting idle, with nothing in `dmesg` and `CONFIG_HOTPLUG_CPU=y` in the
-  running kernel. That is the usual behaviour when the hypervisor has pinned its channels to the
-  CPUs, which is not something a guest can undo. A5 has only ever run at 8 CPUs, so this path had
-  never been exercised until 21 September, when the session stopped itself on its first three
-  runs with "online CPUs did not become 2".
-
-  The way out is most likely the one A2 already uses: ask for the core count at boot, through
-  grub, rather than by switching CPUs off afterwards. That machinery exists and is about to be
-  used for the three tick kernels. It is a bigger change to the machine than offlining, so it is
-  a decision rather than a fix, and it is recorded here rather than taken.
+- ~~**A5 at 2 and 4 CPUs, and therefore P7 as a whole.**~~ **No longer out of reach, as of 21
+  September.** The machine still refuses to switch a CPU off, so the count is asked for at boot
+  with `nr_cpus=N` instead, and both 2 and 4 CPUs have been reached and measured. The two sessions
+  have still to run. See the note above.
 - **T2 on the tool that reads a millisecond clock twice**: its error depends on where in the
   tick each message was sent, and that variance is the size of the difference T2 looks for. T-P2
   is judged by T1 instead, which separates it cleanly.
@@ -114,6 +120,9 @@ measured.
 | three tool parsers wrong against real output | checking them against the tools' own source | none — caught before running |
 | T2's offsets could not make a negative | running the block against made-up tools first | none — caught before running |
 | four faults in the kernel build | running it | three would each have cost a six-hour build |
+| the tick check counted the local APIC timer, which on Azure is present and always zero | booting the first kernel and being told it was 100% out | none — it would have failed all three |
+| the tick check had no busy CPU to count on, and an idle CPU stops its timer | the same run | none |
+| installing A2's built kernels made one of them grub's default, so every restart of that driver came up on the HZ=1000 kernel | reading which kernel a restart actually came back on | none — no block had run since |
 | a run measured the previous rung's delay, with the load still flat out at 99.8% | the repeat rule, on two of A8's 31 runs | 2 runs |
 | P7 could not be judged at all: it compared the machine's reported slice against a designed one, and A5 is the one block that sets none | reading A5's finished campaign instead of waiting for the rest of it | none — but the two remaining A5 sessions, about eight hours, would have run first |
 | P8 could not see which client sent a run: the reader never extracted the language, so it reported that A8 had not tested P8 at all | asking the same question of every other judge after P7 | none — caught while A8 was still running |

@@ -55,8 +55,10 @@ Across the fourteen judged comparisons the move does not grow with the delay:
 > flat, and if anything the wrong sign for a delay effect. Mean shift **−0.124 ms**, and 13 of 14
 > are negative.
 
-So there *is* a real offset — the campaign's got-it sits about an eighth of a millisecond below
-the calibration's, consistently — but it is **a fixed amount, not a fraction of the delay**. The
+So there *is* a real offset in this campaign — its got-it sits about an eighth of a millisecond
+below its calibration's — and it is **a fixed amount, not a fraction of the delay**. (How much a
+campaign drifts from its calibration is not itself a constant: A3's 216 comparisons on the first
+pair give −0.022 ms. See below.) The
 brake's allowance is a quarter of the delay. A constant offset divided by a proportional allowance
 can only ever fail at the short end of the ladder, which is exactly where it failed.
 
@@ -134,14 +136,27 @@ to run gets a small floor, and at a short delay the quarter-of-the-delay term is
 The defect is not that the floor is too low. It is that the floor is built from the wrong
 quantity. Run-to-run scatter *inside* a session and the drift *between* a calibration and the
 campaign that follows it are different numbers, and the brake measures the first to absorb the
-second. On the Arm pair the scatter is 0.066 ms and the drift is 0.124 — the drift is twice the
-scatter the floor is built from. On matched-b the scatter happens to be large enough that the
-floor covers the drift four times over, which is luck rather than design.
+second.
+
+And the second is not a constant of the instrument, which is the thing an earlier version of this
+note got wrong by having only one campaign to look at. A3's Kafka campaign on the first pair
+finished on 21 September with **216 judged comparisons** against A8's fourteen:
+
+| campaign | comparisons | drift, mean | drift, sd | over the allowance | tightest headroom |
+|---|---|---|---|---|---|
+| A3 Kafka, first pair | 216 | **−0.022 ms** | 0.062 | 0 | 0.079 ms |
+| A8, Arm pair | 14 | **−0.124 ms** | 0.091 | 1 | −0.031 ms |
+
+Their noise floors are close — 0.170 ms on the first pair against 0.199 on the Arm — so that is
+not what separates them. **The drift is**: A8's session sat six times further from its calibration
+than A3's did from its, and A3's campaign ran for ten hours after its calibration where A8's ran
+for three. Time is not the cause. Whatever it is belongs to that pair, that client or that
+session, and one campaign of fourteen comparisons cannot say which.
 
 **Where that leaves the campaigns now running.** A2 on matched-b sits behind a 0.536 ms floor at
-every rung, against moves of about an eighth of a millisecond, so this brake is not the thing to
-watch there. A8 on the Arm pair sits behind 0.199 to 0.221 at its shortest rung. The same
-instrument, the same rule, and the difference between them is which machine is quieter.
+every rung, which is three times the largest drift yet measured anywhere, so this brake is not the
+thing to watch there. A8 on the Arm pair sits behind 0.199 to 0.221 at its shortest rung, on the
+one pair whose drift has been large.
 
 ## The two repeated runs are a separate fault
 

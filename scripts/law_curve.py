@@ -320,6 +320,11 @@ def read_runs(folder, pair=None, campaign=None):
                                              and params["predicted_slice_ns"] / 1e6),
                       "tick_ms": params.get("tick_ms"), "load_pct": params.get("load_pct"),
                       "point": params.get("point"), "priority": params.get("priority"),
+                      # A8 is judged by which client sent the messages, so a run that does not
+                      # carry its language is a run P8 cannot see. Left out, every real run read
+                      # None and P8 reported that the campaign had not tested P8 at all -- a
+                      # silent null after eight hours, rather than an error anyone would notice.
+                      "language": params.get("language"),
                       "cpus": params.get("cpus"), "verdict": judged.get("verdict"),
                       "trip_ms": recorded.get("trip_median_ms"),
                       "negative_rate": recorded.get("measured_negative_rate")})

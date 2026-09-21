@@ -213,6 +213,16 @@ class TestChainingACampaignBehindItsCalibration:
         assert '--backend) BACKEND="$2"' in code, "--backend must set the backend it simulates at"
         assert 'ARGS+=("$1" "$2")' in code, "and must still reach law_design"
 
+    def test_the_previous_campaigns_console_log_is_kept(self):
+        """It is the only record of what the driver printed while that campaign ran.
+
+        A3's Kafka campaign finished with 216 runs and its Redis campaign was chained behind it;
+        the line that made room for the new log would have taken the old one with it.
+        """
+        code = self.chain()
+        assert "rm -f stage1.log" not in code, "the previous campaign's log is moved, not removed"
+        assert 'mv stage1.log "$kept"' in code
+
     def test_one_backend_at_a_time_when_the_rounds_are_simulated(self):
         code = self.chain()
         assert "--rounds-from simulates at one backend's levels" in code

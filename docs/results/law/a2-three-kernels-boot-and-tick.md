@@ -56,6 +56,40 @@ runs its checks without sudo, so the answer was always "could not be read" — a
 correctly refuses to let A2 run, and that accuses the kernel of what is really a permissions
 problem.
 
+## The twelve sessions, and the order they run in
+
+The plan asks for twelve sessions of one kernel and one backend each, over four days, with each
+kernel running with each backend on two different days and each kernel taking the first, middle
+and last slot across the days (D4-7). Two bridge sessions on the stock kernel tie the results
+back to A1, A3 and A5, which run on it. Written down here because a counterbalance improvised
+session by session is not a counterbalance.
+
+| day | first | middle | last |
+|---|---|---|---|
+| 1 | **1000 kafka** | 250 redis | 100 redis |
+| 2 | 250 kafka | 100 kafka | 1000 redis |
+| 3 | 100 redis | 1000 kafka | 250 redis |
+| 4 | 1000 redis | 100 kafka | 250 kafka |
+
+Each kernel appears once a day, so four times; each kernel–backend pair twice, on different days.
+Slots taken: HZ=1000 first, last, middle, first; HZ=250 middle, first, last, last; HZ=100 last,
+middle, first, middle — every kernel first, middle and last at least once. Kafka and Redis take
+six sessions each.
+
+The bridge sessions run on the stock kernel, one before day 2 and one after day 4, so that the
+tie back to A1 and A3 is measured at both ends of the block rather than once.
+
+Each session is one command, which starts the pair if the watch has deallocated it:
+
+```
+HOSTS_ENV=cloud/hosts_b.env bash cloud/azure/a2_session.sh 250 redis
+```
+
+The session's calibration reaches further at the longer ticks, because A2's longest point is a
+trip of twice the slice plus twice the tick: 8 ms at HZ=1000, 16 at 250 and 32 at 100. That is
+computed by `a2_session.sh`, not typed, because a calibration that falls short does not fail —
+the design silently drops the setups it cannot reach.
+
 ## What this does not show
 
 Nothing about the cliff, the tick's effect on it, or A2's predictions. It says the instrument is

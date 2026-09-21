@@ -45,7 +45,13 @@ EARLIER="${2:-}"
 case "$KIND" in
   first) UP_TO_MS="${UP_TO_MS:-16}"; C0_ROUNDS=4 ;;
   new) UP_TO_MS="${UP_TO_MS:-8}"; C0_ROUNDS=2 ;;
-  session) UP_TO_MS="${UP_TO_MS:-8}"; C0_ROUNDS=2 ;;
+  # Two rounds is what a session's calibration normally needs. A2's HZ=100 kernel is the case
+  # it does not cover: on 21 September that session's Kafka fit came back known within 0.387 ms
+  # against a 0.3 gate and the session ended, while Redis on the same boot passed at 0.198. The
+  # remedy the plan already names for a fit that is merely too loosely known, and nothing else
+  # wrong, is more rounds of the same calibration -- so C0_ROUNDS can be raised from outside
+  # rather than the gate being lowered.
+  session) UP_TO_MS="${UP_TO_MS:-8}"; C0_ROUNDS="${C0_ROUNDS:-2}" ;;
   *) echo "usage: bash cloud/azure/stage0.sh first|new|session [earlier stage-0 folder with a passing shakedown]"
      exit 2 ;;
 esac

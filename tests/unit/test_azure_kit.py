@@ -113,7 +113,7 @@ def test_a_session_that_only_needs_its_calibration_stops_after_the_fit():
     started can come back on another host. The baseline trips and the spread pilot belong to the
     pair, and repeating them would cost four hours a pair does not owe."""
     code = (KIT / "stage0.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
-    assert 'session) UP_TO_MS="${UP_TO_MS:-8}"; C0_ROUNDS=2 ;;' in code, (
+    assert 'session) UP_TO_MS="${UP_TO_MS:-8}"; C0_ROUNDS="${C0_ROUNDS:-2}" ;;' in code, (
         "a session calibrates to 8 ms unless its campaign needs further")
     ends = code.split('if [ "$KIND" = session ]; then', 1)[1].split("\nfi\n", 1)[0]
     assert "CAMPAIGN_COMPLETE: the session's calibration passed" in ends

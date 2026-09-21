@@ -56,8 +56,12 @@ boot () {
   local n="${1:?how many CPUs}"
   local rel="${KERNEL:-$(stock_kernel)}"
   [ -n "$rel" ] || stop "no stock -azure kernel found in /boot; name one with KERNEL="
-  [ -r "/boot/vmlinuz-$rel" ] || stop "no /boot/vmlinuz-$rel"
-  [ -r "/boot/initrd.img-$rel" ] || stop "no /boot/initrd.img-$rel"
+  # Existence, not readability. Ubuntu ships the stock kernel as 0600 root -- the ones we built
+  # ourselves are 0644, which is why this only shows up on the kernel A5 actually wants -- and
+  # this script deliberately does not run as root. What has to be able to read the file is grub,
+  # at boot, as root.
+  [ -e "/boot/vmlinuz-$rel" ] || stop "no /boot/vmlinuz-$rel"
+  [ -e "/boot/initrd.img-$rel" ] || stop "no /boot/initrd.img-$rel"
 
   local have
   have=$(ls -1d /sys/devices/system/cpu/cpu[0-9]* 2>/dev/null | wc -l)

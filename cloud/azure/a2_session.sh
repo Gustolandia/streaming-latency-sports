@@ -35,6 +35,10 @@ HZ="${1:?which tick: 1000, 250, 100, or stock for a bridge session}"
 BACKEND="${2:?which backend: kafka or redis}"
 HOSTS_ENV="${HOSTS_ENV:-cloud/hosts.env}"
 ROUNDS="${ROUNDS:-4}"
+#: Rounds of the session's own calibration. Two is enough on the two faster kernels; the
+#: HZ=100 one needed four, its Kafka fit having come back known within 0.387 ms against a
+#: 0.3 gate while Redis on the same boot passed at 0.198.
+C0_ROUNDS="${C0_ROUNDS:-2}"
 ROUNDS_NOTE="${ROUNDS_NOTE:-D14-5: the rounds rule simulates one tick at a time and P2, P2b and P2c compare two kernels, so it cannot set a number for A2; the plan runs it at its floor of 4 rounds with the power unknown.}"
 
 log () { echo "$(date -u +%FT%TZ) $*"; }
@@ -133,7 +137,7 @@ log "== 4/5 the calibration, measured on this boot"
 earlier=$(drv 'cd sbl && for d in runs/azure/stage0/*_*; do [ -s "$d/shakedown.json" ] || continue; python3 -c "import json,sys; sys.exit(0 if json.load(open(sys.argv[1])).get(\"ok\") else 1)" "$d/shakedown.json" 2>/dev/null && echo "$d"; done | tail -1' || true)
 [ -n "$earlier" ] || stop "this pair has no stage 0 folder with a passing shakedown to start a session from"
 log "   starting from the shakedown in $earlier"
-drv "cd sbl; UP_TO_MS=$UP_TO_MS LOAD_PCT=75 setsid nohup bash cloud/azure/stage0.sh session $earlier > stage0.log 2>&1 < /dev/null &" >/dev/null 2>&1
+drv "cd sbl; UP_TO_MS=$UP_TO_MS LOAD_PCT=75 C0_ROUNDS=$C0_ROUNDS setsid nohup bash cloud/azure/stage0.sh session $earlier > stage0.log 2>&1 < /dev/null &" >/dev/null 2>&1
 sleep 15
 drv 'cd sbl && head -1 stage0.log' | grep -q "stage 0 on" || stop "the session calibration did not start; read stage0.log on the driver"
 

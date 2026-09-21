@@ -56,6 +56,32 @@ runs its checks without sudo, so the answer was always "could not be read" — a
 correctly refuses to let A2 run, and that accuses the kernel of what is really a permissions
 problem.
 
+## How much of A2 the pair can actually reach
+
+Read off the design before the first session ran, from matched-b's own calibration: a campaign
+cannot place a trip shorter than the client's own trip with no delay added, and on this pair that
+is **2.32 ms for Kafka** and **0.99 ms for Redis**.
+
+| | slice 1.5 ms | slice 3.0 ms | of 16 |
+|---|---|---|---|
+| Kafka | `f15h`, `f2sh` only | everything but `p05s` | **9** |
+| Redis | everything but `p05s` | everything | **15** |
+
+The two plateau points are `p05s` and `p09s`, at 0.5 and 0.9 of the slice. **They carry no tick
+term**, so unlike every other point they do not move when the kernel changes — which means this
+table is the same for all three kernels, and knowing it once is knowing it for the block.
+
+What it costs is specific rather than general. On Kafka at the 1.5 ms slice the only survivors are
+the two floor points, so that curve has no plateau at all and no cliff can be fitted in it; P2's
+width is not available there on any kernel. At the 3.0 ms slice Kafka keeps `p09s` and the four
+cliff points, which is a whole curve. Redis keeps a whole curve at both slices. So A2's questions
+are answerable on Redis at both slices and on Kafka at the anchor slice, and not on Kafka at 1.5.
+
+This is the same shape as Redis's plateau being too shallow for P3a and P4 in A3: the instrument
+reaching a limit, stated as a limit. Nothing here is adjusted to get around it — the slices are
+frozen (D3-7), and changing them to suit what this pair can reach would be choosing the
+measurement to fit the prediction.
+
 ## The twelve sessions, and the order they run in
 
 The plan asks for twelve sessions of one kernel and one backend each, over four days, with each

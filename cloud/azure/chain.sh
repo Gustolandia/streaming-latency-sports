@@ -29,12 +29,22 @@ ROUNDS=""
 ROUNDS_NOTE=""
 ROUNDS_FROM=""
 PREDICTION="${PREDICTION:-P3a}"
+BACKEND="${BACKEND:-}"
+BACKENDS_NAMED=0
 ARGS=()
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --rounds) ROUNDS="$2"; shift 2 ;;
     --rounds-note) ROUNDS_NOTE="$2"; shift 2 ;;
     --rounds-from) ROUNDS_FROM="$2"; shift 2 ;;
+    # Taken here as well as passed on. The spread, plateau and floor the rounds are simulated
+    # from belong to one backend, and this read them from BACKEND in the environment while the
+    # campaign took its backend from the command line -- so asking for a Redis campaign on the
+    # command line simulated its rounds at Kafka's levels, and wrote that into a note that reads
+    # like a measurement. Found on 21 September by reading the chain's own log, before the
+    # campaign it would have mislabelled had started.
+    --backend) BACKEND="$2"; BACKENDS_NAMED=$(( BACKENDS_NAMED + 1 ))
+               ARGS+=("$1" "$2"); shift 2 ;;
     *) ARGS+=("$1"); shift ;;
   esac
 done
@@ -44,6 +54,11 @@ stop () { log "STOP_RULE: $*"; exit 1; }
 
 [ -n "$ROUNDS" ] || [ -n "$ROUNDS_FROM" ] \
   || stop "give either --rounds or --rounds-from; a campaign never runs at a number nobody set"
+# One backend has one spread. Simulating the rounds at one backend's levels and then running the
+# campaign at two would give a number that is right for at most half of it.
+if [ -n "$ROUNDS_FROM" ] && [ "$BACKENDS_NAMED" -gt 1 ]; then
+  stop "--rounds-from simulates at one backend's levels and $BACKENDS_NAMED backends were named; run one campaign each, or give --rounds"
+fi
 
 log "chain: waiting for this session's calibration to pass, then $BLOCK"
 while true; do

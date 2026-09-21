@@ -21,11 +21,49 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__)))), "scripts"))
 
+import tool_negatives  # noqa: E402
 import tool_synthetic as ts  # noqa: E402
 
 
 def rng():
     return random.Random(20260920)
+
+
+class TestTheTripsTheToolsAreGiven:
+    """The block asks what a tool does to a real latency, so the latencies put through it should
+    be real ones. These come from A3's own Kafka runs at 75% load and the 3 ms slice.
+
+    The difference is not cosmetic. A trip cannot come out below the client's own zero-delay
+    trip, so the measured distribution has a hard floor at 2.03 ms -- and T2 asks how many trips
+    an offset can push below zero, which a floor is exactly the thing to decide."""
+
+    def test_the_measured_trips_carry_a_floor_a_lognormal_has_not(self):
+        quantiles = ts.measured_quantiles()
+        assert quantiles == sorted(quantiles), "a quantile function only goes up"
+        assert quantiles[0] == pytest.approx(2.035, abs=0.01), "the floor A3 measured"
+        assert quantiles[len(quantiles) // 2] == pytest.approx(2.69, abs=0.02)
+        assert quantiles[-1] > 10.0, "and a tail a lognormal about 3 ms does not reach"
+
+    def test_drawing_from_them_reproduces_that_floor(self):
+        drawn = ts.trips(rng(), 3000, 3.0, 0.25, ts.measured_quantiles())
+        assert min(drawn) >= 2.03 and max(drawn) <= 10.67
+        assert sorted(drawn)[1500] == pytest.approx(2.69, abs=0.1)
+
+    def test_the_lognormal_is_still_there_when_no_trips_are_given(self):
+        drawn = ts.trips(rng(), 3000, 3.0, 0.25)
+        assert min(drawn) < 2.03, "it has no floor, which is the point"
+
+    def test_the_plans_own_offset_puts_nothing_below_zero_on_real_trips(self):
+        """The finding, on measured data rather than made-up: against trips that stop dead at
+        2.03 ms, a 2 ms offset makes not one negative value out of three thousand."""
+        drawn = ts.trips(rng(), 3000, 3.0, 0.25, ts.measured_quantiles())
+        assert tool_negatives.negatives_made(drawn, 2.0) == 0
+        assert tool_negatives.negatives_made(drawn, 0.5) == 0
+
+    def test_a_place_between_two_quantiles_is_read_between_them(self):
+        assert ts._at([1.0, 2.0, 3.0], 0.0) == pytest.approx(1.0)
+        assert ts._at([1.0, 2.0, 3.0], 1.0) == pytest.approx(3.0), "the very top, not past it"
+        assert ts._at([1.0, 2.0, 3.0], 0.25) == pytest.approx(1.5)
 
 
 class TestHowAToolsOwnClockChangesWhatItSees:

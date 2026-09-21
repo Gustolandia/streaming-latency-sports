@@ -62,9 +62,39 @@ CLASSES = {
 }
 
 
-def trips(rng, count, median_ms, spread):
-    """True trips: spread about a median on the logarithm, which is the shape a trip has."""
-    return [median_ms * math.exp(rng.gauss(0.0, spread)) for _ in range(count)]
+#: Trips a real campaign measured, as a quantile function. A3's Kafka runs at 75% load and the
+#: 3 ms slice, pooled over four rounds.
+MEASURED_TRIPS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                              "data", "measured", "a3_kafka_trips.json")
+
+
+def measured_quantiles(path=MEASURED_TRIPS):
+    """The quantile function of the trips a real campaign measured."""
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)["quantiles_ms"]
+
+
+def _at(quantiles, where):
+    """The trip at a place between 0 and 1 in that quantile function."""
+    place = where * (len(quantiles) - 1)
+    low = int(place)
+    high = min(low + 1, len(quantiles) - 1)
+    return quantiles[low] + (quantiles[high] - quantiles[low]) * (place - low)
+
+
+def trips(rng, count, median_ms, spread, quantiles=None):
+    """True trips: the ones a real campaign measured where they are given, and otherwise spread
+    about a median on the logarithm.
+
+    The difference is not cosmetic, and it changes what T2 can do. A trip cannot come out below
+    the client's own zero-delay trip, so a measured distribution has a hard floor: A3's Kafka
+    trips at 75% load stop dead at 2.03 ms, sit at 2.69 in the middle, and run out to 10.67. A
+    lognormal about 3 ms has no floor at all and a far shorter tail. T2 asks how many trips an
+    offset can push below zero, and a floor is exactly the thing that decides it.
+    """
+    if quantiles is None:
+        return [median_ms * math.exp(rng.gauss(0.0, spread)) for _ in range(count)]
+    return [_at(quantiles, rng.random()) for _ in range(count)]
 
 
 def seen(rng, trip_ms, resolution_ms, reads, paced, offset_ms=0.0):
@@ -114,7 +144,8 @@ def a_run(rng, true_ms, clock, reads, odd, digits, paced=False, offset_ms=0.0):
     return reading(surviving(values, odd), digits)
 
 
-def t1(rng, clock, reads, odd, digits, messages=3000, median_ms=3.0, spread=0.25, paced=False):
+def t1(rng, clock, reads, odd, digits, messages=3000, median_ms=3.0, spread=0.25, paced=False,
+       quantiles=None):
     """T1: which of the staircase's steps this tool could report at all.
 
     The tool is run at each added delay and its average compared with its own average at zero.
@@ -124,7 +155,8 @@ def t1(rng, clock, reads, odd, digits, messages=3000, median_ms=3.0, spread=0.25
     base = None
     out = []
     for step_ms in STAIRCASE:
-        said = a_run(rng, [t + step_ms for t in trips(rng, messages, median_ms, spread)],
+        said = a_run(rng, [t + step_ms for t in trips(rng, messages, median_ms, spread,
+                                                      quantiles)],
                      clock, reads, odd, digits, paced)
         avg = said["reported_ms"].get("avg")
         if base is None:
@@ -137,7 +169,7 @@ def t1(rng, clock, reads, odd, digits, messages=3000, median_ms=3.0, spread=0.25
 
 
 def t2(rng, clock, reads, odd, digits, messages=3000, median_ms=3.0, spread=0.25, paced=False,
-       offsets=OFFSETS):
+       offsets=OFFSETS, quantiles=None):
     """T2: whether the forced offsets let the block name what this tool did with the negatives.
 
     The verdict is taken by the same script the real campaign uses, against the same true trips
@@ -151,7 +183,7 @@ def t2(rng, clock, reads, odd, digits, messages=3000, median_ms=3.0, spread=0.25
     """
     out = []
     for offset_ms in offsets:
-        true_ms = trips(rng, messages, median_ms, spread)
+        true_ms = trips(rng, messages, median_ms, spread, quantiles)
         # The same tool on the same traffic with nothing moved: T1's zero step, which is what
         # cancels this tool's own clock bias out of the comparison.
         plain = a_run(rng, true_ms, clock, reads, odd, digits, paced, 0.0)
@@ -175,7 +207,8 @@ def reachable_offsets(median_ms):
     return (round(median_ms + 1.0, 3), round(median_ms + 3.0, 3))
 
 
-def report(seed=20260920, messages=3000, median_ms=3.0, spread=0.25, offsets=None):
+def report(seed=20260920, messages=3000, median_ms=3.0, spread=0.25, offsets=None,
+           quantiles=None):
     """Every class, through both experiments, on evenly spread sends and on paced ones."""
     offsets = OFFSETS if offsets is None else offsets
     out = {}
@@ -184,9 +217,10 @@ def report(seed=20260920, messages=3000, median_ms=3.0, spread=0.25, offsets=Non
         for pacing, paced in (("spread evenly", False), ("paced with the tick", True)):
             rng = random.Random(seed)
             out[name][pacing] = {
-                "t1": t1(rng, clock, reads, odd, digits, messages, median_ms, spread, paced),
+                "t1": t1(rng, clock, reads, odd, digits, messages, median_ms, spread, paced,
+                         quantiles),
                 "t2": t2(rng, clock, reads, odd, digits, messages, median_ms, spread, paced,
-                         offsets)}
+                         offsets, quantiles)}
     return out
 
 
@@ -224,11 +258,15 @@ def main(argv=None, out=None):
     p.add_argument("--spread", type=float, default=0.25)
     p.add_argument("--offsets", default="", help="the offsets to force, in milliseconds, comma "
                                                  "separated; the plan's own by default")
+    p.add_argument("--made-up-trips", action="store_true",
+                   help="draw trips from a lognormal instead of from the ones a campaign "
+                        "measured; the measured ones carry a floor that a lognormal has not")
     p.add_argument("--out", default="")
     args = ap.parse_args(argv)
     offsets = tuple(float(v) for v in args.offsets.split(",")) if args.offsets else None
+    quantiles = None if args.made_up_trips else measured_quantiles()
     found = report(seed=args.seed, messages=args.messages, median_ms=args.median_ms,
-                   spread=args.spread, offsets=offsets)
+                   spread=args.spread, offsets=offsets, quantiles=quantiles)
     if args.out:
         with open(args.out, "w", encoding="utf-8") as fh:
             json.dump(found, fh, indent=2, sort_keys=True)

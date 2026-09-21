@@ -103,6 +103,44 @@ Five of the ten tools are in that class. They are the ones the block most wants 
    that did not answer. Where the tool's reading with nothing moved is available — T1's zero step
    — the comparison is on how far each figure *moved*, which cancels the tool's own bias.
 
+## Re-run on trips a campaign actually measured
+
+**21 September 2026.** The table above draws its trips from a lognormal about 3 ms. That was a
+guess at the shape, and the shape is the one thing T2 depends on, so it has been replaced by
+trips A3's own Kafka campaign measured — 19,952 of them, at 75% load and the 3 ms slice, pooled
+over four rounds with each run's first 30 seconds dropped (`data/measured/a3_kafka_trips.json`,
+kept as a quantile function rather than twenty thousand numbers).
+
+They are not shaped like the guess:
+
+| | lognormal about 3 ms | what A3 measured |
+|---|---|---|
+| smallest trip | no floor at all | **2.035 ms** |
+| middle | 3.000 ms | 2.686 ms |
+| 99th | 5.36 ms | 8.387 ms |
+| largest | unbounded | 10.668 ms |
+
+The floor is the part that matters, and it is not an accident of this pair: a message cannot
+arrive before the client's own zero-delay trip, which is the same fact version 8 of the plan used
+to rule slices out of reach.
+
+**It makes the finding stronger, not weaker.** At the 2 ms offset the plan froze, the lognormal
+put 177 of 3,000 values below zero. The measured trips put **none** — not one, because the
+shortest trip there is 2.035 ms. The experiment as frozen does not merely under-ask on most of
+the tools; on these trips it asks nothing at all, of any of them.
+
+With the offsets version 15 sets — the session's own median trip plus 1 ms and plus 3 ms, which
+here is 3.69 and 5.69 ms — five of the six classes are named, and none is named wrongly.
+
+**One class stays out of reach: the tool that reads a millisecond clock twice.** It is named at
+6.0 ms and at 7.0 ms and not at 6.5, which is what a marginal result looks like rather than a
+threshold. That is the class's own nature: its error depends on where in the tick each message
+was sent, so it carries a variance the others do not, and that variance is of the same size as
+the difference T2 is trying to see. T2 is therefore expected to report *undecided* for
+ProducerPerformance and emqtt-bench, and the prediction about them (T-P2) is judged by T1, which
+separates them cleanly. That is recorded here as a limit of the design, before it runs, rather
+than discovered afterwards.
+
 ## What this does not show
 
 These are made-up tools. They show what the *design* can and cannot resolve, on traffic whose

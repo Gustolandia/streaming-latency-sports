@@ -29,6 +29,10 @@ REPO="$(pwd)"
 TICKS="${TICKS:-1000 250 100}"
 WORK="${WORK:-$HOME/kernelbuild}"
 DIR="runs/azure/kernels"
+#: The busy loop the tick is counted against. Named once: what gets started and what
+#: gets searched for afterwards must be the same string or the check cannot tell.
+SPINNER="while : ; do : ; done"
+SPIN_CPU="${SPIN_CPU:-1}"
 mkdir -p "$DIR"
 
 log () { echo "$(date -u +%FT%TZ) $*"; }
@@ -162,6 +166,7 @@ check () {
   local hz="${1:?which tick}"
   local like=""
   [ -s "$DIR/nohz-hz1000.json" ] && [ "$hz" != 1000 ] && like="--nohz-like $DIR/nohz-hz1000.json"
+
   # Whether HRTICK is on decides whether A2 measures anything at all, and it is only legible to
   # root: /sys/kernel/debug is mounted 0700, so an unprivileged read returns nothing and the
   # check reports it could not be read -- a true statement that reads like a fault in the kernel.
@@ -169,17 +174,42 @@ check () {
   local feats="$WORK/features-hz$hz.txt"
   mkdir -p "$WORK"
   sudo cat /sys/kernel/debug/sched/features > "$feats" 2>/dev/null
-  [ -s "$feats" ] || stop "the scheduler's feature list could not be read even with sudo; A2 is void if HRTICK is on and this cannot say"
-  # shellcheck disable=SC2086
-  python3 scripts/kernel_checks.py check --hz "$hz" --features-from "$feats" $like     > "$DIR/check-hz$hz.json"
+  [ -s "$feats" ] \
+    || stop "the scheduler's feature list could not be read even with sudo; A2 is void if HRTICK is on and this cannot say"
+
+  # The tick is counted from /proc/interrupts on the busiest CPU, and an idle machine has no busy
+  # CPU: NO_HZ_IDLE stops the timer on every one of them, the count comes back 0 Hz, and the
+  # check says the kernel is 100% out. That reads as a broken kernel and means "nothing was
+  # running". So one CPU is held busy for as long as the count takes.
+  #
+  # The spinner is given three ways to die, because the last stray busy loop in this kit sat at
+  # 99.7% of a CPU and quietly spoiled A3's measurements until somebody measured the idle
+  # baseline and found it was not idle. `timeout` bounds it even if this shell is killed
+  # outright, the trap covers the stop rules, and the kill covers the ordinary path. What is
+  # checked afterwards is the loop itself and not the pid that was signalled: `timeout` does
+  # forward the signal to its child, but this kit has been bitten by a surviving child before.
+  timeout 120 taskset -c "$SPIN_CPU" sh -c "$SPINNER" &
+  local spin=$!
+  # shellcheck disable=SC2064
+  trap "kill $spin 2>/dev/null" EXIT INT TERM
+
+  python3 scripts/kernel_checks.py check --hz "$hz" --features-from "$feats" $like \
+    > "$DIR/check-hz$hz.json"
   local ok=$?
+
+  kill "$spin" 2>/dev/null
+  wait "$spin" 2>/dev/null
+  trap - EXIT INT TERM
+  local left
+  left=$(pgrep -f "$SPINNER" 2>/dev/null | tr '\n' ' ')
+  [ -z "$left" ] || stop "a spinner survived the check (pids: $left); kill it before any run"
+
   python3 -c 'import json,sys; d=json.load(open(sys.argv[1]));
 print("\n".join("   " + p for p in d["problems"]) or "   nothing wrong")' "$DIR/check-hz$hz.json"
   [ "$ok" = 0 ] || stop "HZ=$hz did not pass its checks; see $DIR/check-hz$hz.json"
   [ "$hz" = 1000 ] && cp "$DIR/check-hz$hz.json" "$DIR/nohz-hz1000.json"
   log "CAMPAIGN_COMPLETE: HZ=$hz passed its checks; see $DIR/check-hz$hz.json"
 }
-
 case "${1:-}" in
   build) build ;;
   boot) boot "${2:-}" ;;

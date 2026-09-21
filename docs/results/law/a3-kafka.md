@@ -218,8 +218,9 @@ notes claim:
 |---|---|---|---|---|
 | A1 | P1 | 4 | **100.0%** | 99% |
 | A7 | P4 | 4 | **100.0%** | 100% |
+| A4 | P9 | 4 | **99.5%** | 92–100% |
 
-So A1's and A7's "sound at 4 rounds" stands, and what is wrong is particular to P3a. That is not
+So the finished blocks' "sound at 4 rounds" stands, and what is wrong is particular to P3a. That is not
 a surprise once said aloud: P3a is the one equivalence test among them. It asks for a whole
 interval to sit inside 0.25 ms either way, where P1 and P4 ask only for a direction, and an
 interval narrow enough to fall inside a band is far more expensive than one that merely misses

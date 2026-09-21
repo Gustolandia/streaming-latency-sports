@@ -48,8 +48,9 @@ The second campaign sharpens that, and then overturns the reading. Recomputing t
 rule on 21 September, at A3's own design and the levels its own note quotes, P3a confirms in
 **38.3%** of 1000 simulated campaigns at 12 rounds and 54.6% at 16 — where the campaign's note
 claims 84%. So both Kafka campaigns were underpowered for P3a, and two null results are what
-that design does, not two pieces of evidence about load and the cliff. The same check on A1 and
-A7 reproduces their notes exactly — 100% at 4 rounds against 99% and 100% — so this is
+that design does, not two pieces of evidence about load and the cliff. The same check on A1, A4
+and A7 reproduces their notes — 100.0%, 99.5% and 100.0% at 4 rounds against 99%, 92–100% and
+100% — so this is
 particular to P3a, the one equivalence test among them, and not the plan's arithmetic in
 general. Why the stated figure and the recomputed one differ is open.
 

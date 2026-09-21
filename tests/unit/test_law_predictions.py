@@ -296,6 +296,32 @@ class TestP7DefaultSlicesFollowTheCoreCount:
         assert found["confirmed"] is True and all(found["read_back"].values())
         assert found["band"]["confirmed"] is True
 
+    def as_a5_really_runs(self, runs):
+        """The shape a real A5 campaign has, which is not the shape the made-up world builds.
+
+        A5 sets no slice. Its whole prediction is that the kernel picks one from the core count,
+        so every run carries the slice the design *predicted* and none of its own. The made-up
+        world sets a slice on every run, so this shape never reached the judge until a real
+        campaign produced it -- and then the judge could not read it at all.
+        """
+        return [dict(run, slice_ms=None, predicted_slice_ms=run["slice_ms"]) for run in runs]
+
+    def test_it_judges_the_campaign_a5_actually_produces(self):
+        """On 21 September this raised "unsupported operand type(s) for -: 'float' and
+        'NoneType'" on every run of A5's finished 8-CPU campaign: the judge compared the
+        machine's reported slice against a designed one that, for the one block that needs it,
+        is never set. P7 could not be judged at all, and the two remaining A5 sessions -- about
+        eight hours of machine time -- would have been run before anyone found out."""
+        found = lp.default_slices(self.as_a5_really_runs(self.campaign()), self.READ_BACK, 1.0,
+                                  **QUICK)
+        assert found["confirmed"] is True and all(found["read_back"].values())
+        assert found["band"]["confirmed"] is True, "the band is read against the predicted slice"
+
+    def test_a_campaign_with_neither_slice_reports_no_match_rather_than_falling_over(self):
+        bare = [dict(run, slice_ms=None, predicted_slice_ms=None) for run in self.campaign()]
+        found = lp.default_slices(bare, self.READ_BACK, 1.0, **QUICK)
+        assert found["confirmed"] is False and not any(found["read_back"].values())
+
     def test_a_slice_the_machine_does_not_report_is_caught(self):
         found = lp.default_slices(self.campaign(), {2: 1.4, 4: 2.1}, 1.0, **QUICK)
         assert found["confirmed"] is False and found["read_back"]["8"] is False

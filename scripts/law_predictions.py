@@ -490,12 +490,19 @@ def default_slices(runs, read_back, tick_ms, draws=DRAWS, seed=0, grid=None):
     """
     matched = {}
     for cores, part in sorted(law_curve.groups(runs, ("cpus",)).items()):
-        designed = set(run.get("slice_ms") for run in part)
+        # A5 asks for no slice of its own: the whole prediction is that the kernel picks one from
+        # the core count. So the slice each run was designed around is the *predicted* one, and
+        # reading the set one instead leaves nothing to compare the machine's answer against.
+        designed = set(run.get("slice_ms") or run.get("predicted_slice_ms") for run in part)
+        designed.discard(None)
         reported = read_back.get(cores[0], read_back.get(str(cores[0])))
         matched[str(cores[0])] = (reported is not None and len(designed) == 1
                                   and abs(reported - designed.pop()) <= 1e-6)
-    band = cliff_follows_slice(runs, tick_ms, need_interval=False, draws=draws, seed=seed,
-                               grid=grid)
+    # The band is read against the slice the machine actually ran at, which for these runs is the
+    # one it reported, so a run with no slice of its own is given the predicted one.
+    band = cliff_follows_slice([dict(run, slice_ms=run.get("slice_ms")
+                                     or run.get("predicted_slice_ms")) for run in runs],
+                               tick_ms, need_interval=False, draws=draws, seed=seed, grid=grid)
     held = bool(matched) and all(matched.values()) and band["confirmed"]
     return _both({name: _said(None, held) for name in SUMMARIES},
                  "the read-back slice matches at every core count and P1's band holds",

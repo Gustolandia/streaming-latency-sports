@@ -184,6 +184,38 @@ intervals are about five times that wide, so the campaign cannot place the cliff
 to say whether it moved. The two summaries do not even agree on the sign. **"Not confirmed" here
 means the measurement is too imprecise to decide, not that the cliff moved.**
 
+## The stated power does not survive recomputation
+
+The campaign's own rounds note says **12 rounds, confirmed in 84% of 1000 simulated campaigns
+under the law**. Recomputed on 21 September with the rounds rule as it now stands, at A3's own
+design taken from `law_design.BLOCKS`, at the three levels that note itself quotes, and at the
+note's own seed:
+
+| rounds | confirms under the law | confirms where it is false |
+|---|---|---|
+| 12 — what the second campaign ran | **38.3%** | 0.0% |
+| 15 — the first campaign's complete rounds | 51.1% | 0.0% |
+| 16 — what the first campaign asked for | 54.6% | 0.0% |
+
+1,000 simulated campaigns each, the same number the note quotes, so this is not a sampling
+difference: 38.3% against 84% is not a number that moves with the seed.
+
+**What follows from it.** P3a not confirming is what an underpowered campaign does. At 38%, a
+campaign that runs under the law fails to confirm three times in five, and both A3 Kafka
+campaigns landed there — the first at about 51%, the second at 38%. Two null results from two
+campaigns is not two pieces of evidence about load and the cliff; it is one design, run twice,
+that was unlikely to confirm either time.
+
+**What does not follow.** Nothing here touches P3b, which confirmed in both campaigns with
+intervals far from zero, and nothing here says the cliff does or does not move with load. The
+measurement is of the instrument, not of the world.
+
+**What is not yet known** is why the two numbers differ. The rule judging P3a has changed since
+the 84% was computed — freeze 10 put a 2% floor on the plateau P3a may be judged at (D14-2), and
+A3's plateau at 50% load is 0.15% — so the comparison the rule now makes may not be the one that
+was simulated then. That is a reading of the code and its history, not a measurement, and it is
+left open here rather than asserted.
+
 ## The part worth keeping
 
 A3's Kafka plateau at the 3 ms anchor is 3.46%, above the 2% guard that freeze 10 put on P3a, so

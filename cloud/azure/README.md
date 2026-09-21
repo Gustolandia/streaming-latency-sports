@@ -367,6 +367,7 @@ python scripts/spend.py billed --since 2026-09-01
 | `scripts/law_world.py` | made-up campaigns, under the law and in the world each falsifier names, for the tests and the rounds rule |
 | `scripts/rounds_rule.py` | how many rounds a campaign runs, by simulating its own prediction and decision rule (the plan's D4-2) |
 | `scripts/delay_calibration.py` | measures, from a calibration queue, how far the trip moves per millisecond of receiver-only delay, checks the gate, and gives the delay each planned trip needs |
+| `cloud/azure/chain.sh` | waits on the driver for this session's calibration to pass and then starts a campaign from it, so a pair does not sit billing between the two; it can simulate the rounds from the pair's own spread pilot first, and starts nothing if the calibration failed its gate. Runs on the driver under `nohup`, so it survives whatever started it |
 | `cloud/azure/campaign.sh` | the law campaign's runner: sets each run's CPUs, slice, delay and load, runs one trial, checks it, records it, and stops itself on a stop rule |
 | `cloud/azure/machine_facts.sh` | what a machine is, as far as its network and timing go; the pilot keeps it for both machines |
 | `cloud/azure/stage0.sh` | the plan's first stage on one pair, unattended: the pilot and its shakedown, the calibration in one or two stages and its fit, the baseline trips, the spread pilot |

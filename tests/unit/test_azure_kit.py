@@ -22,9 +22,10 @@ import testbed_watch  # noqa: E402
 
 
 def test_the_kit_has_the_scripts_the_guide_describes():
-    assert [p.name for p in SHELL] == ["campaign.sh", "kernels.sh", "machine_facts.sh",
-                                       "pilot.sh", "replicate_oracle.sh", "session.sh",
-                                       "stage0.sh", "stage1.sh", "tools.sh", "tools_run.sh"]
+    assert [p.name for p in SHELL] == ["campaign.sh", "chain.sh", "kernels.sh",
+                                       "machine_facts.sh", "pilot.sh", "replicate_oracle.sh",
+                                       "session.sh", "stage0.sh", "stage1.sh", "tools.sh",
+                                       "tools_run.sh"]
 
 
 @pytest.mark.parametrize("path", SHELL + [KIT / "cloud-init.yaml"], ids=lambda p: p.name)
@@ -180,6 +181,44 @@ def test_the_calibration_takes_its_got_it_note_where_the_clients_default_to():
     assert "--ack-stamp" not in stage0 and "ACK_STAMP" not in stage0
     producer = (REPO / "scripts" / "kafka_producer.py").read_text(encoding="utf-8")
     assert '"--ack-stamp", default="%s"' % run_integrity.CALIBRATED_AT in producer
+
+
+class TestChainingACampaignBehindItsCalibration:
+    """A pair that finishes its calibration and waits for someone to notice is a pair billing for
+    nothing. Chaining it from a laptop works until the laptop closes: the calibration finishes,
+    the campaign never starts, and the watch deallocates the pair half an hour later having
+    learned nothing. This runs on the driver instead."""
+
+    def chain(self):
+        return (KIT / "chain.sh").read_text(encoding="utf-8")
+
+    def test_it_waits_on_the_calibration_and_starts_nothing_if_it_failed(self):
+        code = self.chain()
+        assert "CAMPAIGN_COMPLETE: the session's calibration passed" in code
+        assert "the session stopped, so no campaign starts" in code
+        assert code.index("the session stopped") < code.index("bash cloud/azure/stage1.sh")
+
+    def test_a_campaign_never_runs_at_a_number_nobody_set(self):
+        assert "give either --rounds or --rounds-from" in self.chain()
+
+    def test_the_rounds_can_be_simulated_from_the_pairs_own_spread_pilot(self):
+        code = self.chain()
+        assert "law_design.py rounds" in code and "rounds_rule.py for" in code
+        assert code.index("the calibration passed") < code.index("law_design.py rounds"), \
+            "simulated only once the calibration is done: a simulation beside a measurement " \
+            "changes what is measured"
+
+    def test_a_rule_that_never_confirms_starts_no_campaign(self):
+        """P8 once confirmed in 0% of simulated campaigns at every round count, and the rule
+        reported that as forty rounds and underpowered -- 1,440 runs to learn nothing."""
+        code = self.chain()
+        assert 'found.get("broken")' in code
+        assert "the rounds rule gave no number" in code
+
+    def test_the_note_says_what_set_the_number(self):
+        code = self.chain()
+        assert "ROUNDS_NOTE=" in code and "--rounds-note" in code
+        assert "the spread pilot measured on this pair" in code
 
 
 def test_a_campaign_is_placed_only_from_a_calibration_measured_on_this_boot():

@@ -158,6 +158,57 @@ every rung, which is three times the largest drift yet measured anywhere, so thi
 thing to watch there. A8 on the Arm pair sits behind 0.199 to 0.221 at its shortest rung, on the
 one pair whose drift has been large.
 
+## Measured a third time, on a third campaign
+
+A2's first session, on the second x86 pair and under freeze 13, gives a third reading of the
+drift the old brake had to absorb. Its first round of ten setups sits **−0.023 ms** from its
+calibration.
+
+| campaign | drift | comparisons | interval |
+|---|---|---|---|
+| A3 Kafka, first pair | −0.022 ms | 216 | ±0.008 |
+| A2 session 1, second pair | −0.023 ms | 10 | ±0.10 |
+| A8, Arm pair | −0.124 ms | 14 | ±0.048 |
+
+The two x86 point estimates agree to a thousandth of a millisecond, which on ten comparisons is
+partly luck — A2's own interval is wide enough to hold all three numbers. What the readings do
+settle is that the first pair and the Arm pair differ, their intervals not meeting, and that
+nothing about the second pair suggests it is unusual. **The Arm pair is the outlier.** Why it
+drifts five times further is a question none of this answers.
+
+The largest single departure in A2's round is −0.378 ms, bigger than the Arm pair's entire mean
+drift, and it counted. One run scattering is not a campaign shifting, and that is the distinction
+D17-1 is built on.
+
+## What the brake did next, and freeze 14
+
+Version 17's brake stopped A2's first session at 28 of 40 runs, on the shortest delay in the
+block — `s1500-c08h`, which needs 0.081 ms. The three runs of that setup:
+
+| round | got-it |
+|---|---|
+| 1 | 1.8095 ms |
+| 2 | 1.7352 ms |
+| **3** | **1.4974 ms** — 0.275 from their median |
+
+The allowance was **0.158 ms**, which is three times 0.0526 — a standard deviation taken from two
+points. The campaign's ten setups give ten such figures:
+
+    0.053  0.055  0.082  0.082  0.116  0.127  0.177  0.185  0.224  0.227    pooled 0.133
+
+One quantity seen through two or three points each, and the campaign was stopped by the smallest
+of them. Three times the pooled figure is 0.398, which admits a 0.275 move with room to spare.
+
+**Freeze 14 (plan version 18)** pools the scatter across the campaign's setups and leaves the
+centre alone, so no other sitting's drift enters; it makes the brake wait for five degrees of
+freedom; and it records the pooled figure, its degrees of freedom and the centre beside every run
+so a campaign that stops itself can be argued with from its own files. A2's 28 runs are kept and
+reported under version 17, which was in force when they ran.
+
+The freeze says plainly that it widens a brake straight after that brake fired, because it does,
+and the argument is meant to stand without that: a variance from two points has one degree of
+freedom whatever the campaign did with it.
+
 ## The two repeated runs are a separate fault
 
 Both `f15h python inline` and `p09s java callback` were judged `repeat`, and both failed the same

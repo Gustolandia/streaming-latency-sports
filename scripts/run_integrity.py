@@ -300,6 +300,16 @@ GOTIT_NOISE_SHARE = 3.0
 #: (plan version 17, D17-1). Below this a run's got-it is recorded and not braked: a comparison
 #: against one other run is a comparison against that run's noise as much as against this one's.
 GOTIT_MIN_EARLIER = 2
+#: How much the pooled scatter must rest on before the brake uses it (plan version 18, D18-2):
+#: one degree of freedom for each counted run beyond the first in every setup. Below this a run
+#: is recorded and not braked.
+#:
+#: Version 17 took the scatter from the judged setup's own earlier runs, which on the first
+#: braked run of a setup means two points and one degree of freedom -- not an estimate of spread.
+#: A2's first session gave ten within-setup scatters from 0.053 to 0.227 ms around a pooled
+#: 0.133, and was stopped by the 0.053 on a run 0.275 from its centre. The scatter belongs to the
+#: sitting, so it is pooled; the centre stays the setup's own, so no other sitting's drift enters.
+GOTIT_MIN_POOL_DF = 5
 #: A queue key: the round, the setup, and which attempt at it. The setup is everything the brake
 #: needs to hold like against like -- the client, where the note is taken, the slice and the
 #: delay -- so two keys with the same middle are two runs of the same thing.
@@ -365,6 +375,75 @@ def setup_of(key):
     return (int(found.group("round")), found.group("setup"), int(found.group("attempt")))
 
 
+def _campaign_runs(run_dir):
+    """((round, setup, attempt) for this run, and the same plus the got-it for its campaign's).
+
+    One walk of the folder for the two things the brake needs: the judged setup's own earlier
+    runs, which give the centre, and every setup's runs, which give the pooled scatter. Only
+    runs that counted, and only this campaign's -- a run directory is law_<campaign>_<key>, so
+    what is left after the key is the campaign, and A2 runs each kernel with each backend on two
+    different days, carrying the same keys on another boot behind another calibration.
+    """
+    try:
+        key = read_json(os.path.join(run_dir, "queue_row.json")).get("key")
+        mine = setup_of(key)
+    except (OSError, ValueError, AttributeError):
+        return None, []
+    if mine is None:
+        return None, []
+    here = os.path.abspath(run_dir)
+    parent = os.path.dirname(here)
+    campaign = os.path.basename(here)[:-len(key)]
+    rows = []
+    for name in sorted(os.listdir(parent)):
+        other = os.path.join(parent, name)
+        if os.path.abspath(other) == here or not os.path.isdir(other):
+            continue
+        try:
+            their_key = read_json(os.path.join(other, "queue_row.json")).get("key")
+            theirs = setup_of(their_key)
+            judged = read_json(os.path.join(other, "integrity.json"))
+        except (OSError, ValueError, AttributeError):
+            continue
+        if theirs is None or name[:-len(their_key)] != campaign:
+            continue
+        if judged.get("verdict") != "count":
+            continue
+        median = (judged.get("recorded") or {}).get("gotit_median_ms")
+        if median is not None:
+            rows.append(theirs + (median,))
+    return mine, rows
+
+
+def campaign_spread(run_dir):
+    """(the got-it scatter pooled over this campaign's setups, the degrees of freedom behind it).
+
+    Every counted run's distance from its own setup's centre, taken together (plan version 18,
+    D18-1). Run-to-run scatter in the got-it belongs to the sitting, not to one setup: A2's first
+    session gave ten within-setup figures from 0.053 to 0.227 ms around a pooled 0.133, which is
+    one quantity seen through two or three points each. Taking it from the judged setup alone
+    means taking a standard deviation from two points, and that stopped a sound campaign.
+
+    None until the pool has GOTIT_MIN_POOL_DF degrees of freedom (D18-2), because a pool of two
+    or three runs is the same fault one level up. The judged run is not in it: a run may not
+    widen the allowance it is about to be measured against.
+    """
+    _, rows = _campaign_runs(run_dir)
+    by_setup = {}
+    for _, setup, _, median in rows:
+        by_setup.setdefault(setup, []).append(median)
+    residuals, freedom = [], 0
+    for medians in by_setup.values():
+        if len(medians) < 2:
+            continue
+        centre = statistics.median(medians)
+        residuals += [median - centre for median in medians]
+        freedom += len(medians) - 1
+    if freedom < GOTIT_MIN_POOL_DF:
+        return None, freedom
+    return statistics.pstdev(residuals), freedom
+
+
 def earlier_same_setup(run_dir):
     """The got-it medians of this campaign's earlier counted runs of this very setup.
 
@@ -379,44 +458,11 @@ def earlier_same_setup(run_dir):
     attempt at the same round -- and not whatever the filesystem happens to report, so the answer
     does not depend on when anything was written.
     """
-    try:
-        key = read_json(os.path.join(run_dir, "queue_row.json")).get("key")
-        mine = setup_of(key)
-    except (OSError, ValueError, AttributeError):
-        return []
+    mine, rows = _campaign_runs(run_dir)
     if mine is None:
         return []
-    here = os.path.abspath(run_dir)
-    parent = os.path.dirname(here)
-    # A run directory is law_<campaign>_<key>, so what is left after the key is the campaign.
-    # Matching on the key alone would reach into any campaign that ran the same setup -- and A2
-    # runs each kernel with each backend on two different days, so its own later sessions carry
-    # the same keys. Those sit on another boot behind another calibration, which is the drift
-    # this brake was moved away from the calibration to escape.
-    mine_campaign = os.path.basename(here)[:-len(key)]
-    found = []
-    for name in sorted(os.listdir(parent)):
-        other = os.path.join(parent, name)
-        if os.path.abspath(other) == here or not os.path.isdir(other):
-            continue
-        try:
-            their_key = read_json(os.path.join(other, "queue_row.json")).get("key")
-            theirs = setup_of(their_key)
-            judged = read_json(os.path.join(other, "integrity.json"))
-        except (OSError, ValueError, AttributeError):
-            continue
-        if theirs is None or theirs[1] != mine[1]:
-            continue
-        if name[:-len(their_key)] != mine_campaign:
-            continue
-        if (theirs[0], theirs[2]) >= (mine[0], mine[2]):
-            continue
-        if judged.get("verdict") != "count":
-            continue
-        median = (judged.get("recorded") or {}).get("gotit_median_ms")
-        if median is not None:
-            found.append(median)
-    return found
+    return [median for (rounds, setup, attempt, median) in rows
+            if setup == mine[1] and (rounds, attempt) < (mine[0], mine[2])]
 
 
 def gotit_shift_from_calibration(summary, params, calibration):
@@ -433,7 +479,7 @@ def gotit_shift_from_calibration(summary, params, calibration):
     return None if zero is None else summary["gotit_median_ms"] - zero
 
 
-def gotit_checks(summary, params, added_ms, earlier=()):
+def gotit_checks(summary, params, added_ms, earlier=(), spread=None):
     """The run's "got it" median against its own campaign's earlier runs of the same setup.
 
     Empty when there is nothing to hold it against: no added delay, a note taken a way the runs
@@ -457,18 +503,22 @@ def gotit_checks(summary, params, added_ms, earlier=()):
         # The first runs of a setup have nothing like themselves to be held against yet. Their
         # got-it is recorded, and the runs after them are judged against these.
         return {}
+    if spread is None:
+        # The campaign has not yet run enough to say how much its got-it moves between runs
+        # (D18-2). Judging against what it has would be a spread taken from two or three points.
+        return {}
     base = statistics.median(earlier)
     shift = summary["gotit_median_ms"] - base
-    #: The brake clears the scatter of the runs it compares against as well as its share of the
+    #: The brake clears the scatter this campaign actually shows as well as its share of the
     #: delay: a quarter of a small delay is less than the got-it median moves between runs.
-    noise = max(GOTIT_FLOOR_MS, GOTIT_NOISE_SHARE * statistics.stdev(earlier))
+    noise = max(GOTIT_FLOOR_MS, GOTIT_NOISE_SHARE * spread)
     limit = max(delay_calibration.GROSS_SHARE * abs(added_ms), noise)
     return {"gotit_steady": outcome(
         abs(shift) <= limit, shift, "within %.3f ms" % limit,
         "the got-it median moved %.3f ms from this campaign's %d earlier runs of the same setup,"
-        " more than %.0f%% of the %.3f ms added and more than the %.3f ms those runs move by"
-        " themselves" % (shift, len(earlier), 100 * delay_calibration.GROSS_SHARE, added_ms,
-                         noise))}
+        " more than %.0f%% of the %.3f ms added and more than the %.3f ms this campaign's got-it"
+        " moves between runs" % (shift, len(earlier), 100 * delay_calibration.GROSS_SHARE,
+                                 added_ms, noise))}
 
 
 def guarded(checks, name, compute):
@@ -528,8 +578,14 @@ def evaluate(run_dir, rate, duration, warmup_s, calibration=None,
     checks["clock"] = clock_check(run_dir)
     recorded["clock_offset_max_s"] = checks["clock"]["value"]
     earlier = earlier_same_setup(run_dir)
-    checks.update(gotit_checks(summary, params, added, earlier))
+    spread, freedom = campaign_spread(run_dir)
+    checks.update(gotit_checks(summary, params, added, earlier, spread))
     recorded["gotit_earlier_same_setup"] = len(earlier)
+    # What the allowance was built from, so a brake that stops a campaign can be argued with
+    # afterwards from the campaign's own files (D18-3).
+    recorded["gotit_campaign_spread_ms"] = spread
+    recorded["gotit_campaign_spread_df"] = freedom
+    recorded["gotit_setup_centre_ms"] = statistics.median(earlier) if earlier else None
     # Kept and no longer braking anything (D17-3): the distance between this run and a sitting
     # hours before it measures the drift between them, which is why it was the wrong thing to
     # stop a campaign with and the right thing to be able to read afterwards.

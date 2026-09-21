@@ -126,6 +126,22 @@ def earlier_runs(tmp_path, gotits, setup=SETUP, verdict="count", campaign="law_a
             json.dump({"verdict": verdict, "recorded": {"gotit_median_ms": gotit}}, fh)
 
 
+def pooled_spread(tmp_path, spread=0.01, setups=5, campaign="law_a2_1_"):
+    """Other setups of the same campaign, so the pooled scatter has degrees of freedom (D18-2).
+
+    Each contributes two counted runs a distance `spread` either side of its own centre, so the
+    pool's own scatter is `spread` and its degrees of freedom are one per setup. Without these a
+    campaign cannot say how much its got-it moves between runs, and the brake waits.
+    """
+    for s in range(setups):
+        name = "PAD%d-kafka-l75-s3000-c02h" % s
+        for i, gotit in enumerate((1.0 - spread, 1.0 + spread), start=1):
+            key = "r%03d-%s-a1" % (i, name)
+            run = make_run(tmp_path, name=campaign + key, gotit_ms=gotit, key=key)
+            with open(os.path.join(run, "integrity.json"), "w", encoding="utf-8") as fh:
+                json.dump({"verdict": "count", "recorded": {"gotit_median_ms": gotit}}, fh)
+
+
 def later_run(tmp_path, gotit_ms, setup=SETUP, round_no=9, attempt=1, campaign="law_a2_1_",
               **kw):
     """The run being judged, placed after those.
@@ -150,27 +166,72 @@ class TestStop:
         assert "measured load was 60.0%" in found["reasons"][1]
 
     def test_a_got_it_median_that_moved_too_far(self, tmp_path):
+        pooled_spread(tmp_path)
         earlier_runs(tmp_path, [0.2, 0.21])
         found = evaluate(later_run(tmp_path, 0.9), calibration=CAL)
         assert found["verdict"] == "stop"
         assert found["reasons"] == ["the got-it median moved 0.695 ms from this campaign's 2 "
                                     "earlier runs of the same setup, more than 25% of the 2.000 "
-                                    "ms added and more than the 0.100 ms those runs move by "
-                                    "themselves"]
+                                    "ms added and more than the 0.100 ms this campaign's "
+                                    "got-it moves between runs"]
 
     def test_a_shift_under_the_scatter_of_those_runs_stops_nothing(self, tmp_path):
         """A quarter of a small delay is less than the got-it median moves between runs with
         nothing added at all: on 18 September a pair's Kafka wandered 0.36 ms across four
         zero-delay runs, and a brake set at 0.056 ms stopped a sound session."""
+        pooled_spread(tmp_path, spread=0.085)
         earlier_runs(tmp_path, [0.2, 0.32])
         run = later_run(tmp_path, 0.45, delay_ms=0.225, measured_added=0.225)
         assert evaluate(run, calibration=CAL)["verdict"] != "stop"
 
     def test_a_shift_over_that_scatter_still_stops(self, tmp_path):
+        pooled_spread(tmp_path, spread=0.085)
         earlier_runs(tmp_path, [0.2, 0.32])
         run = later_run(tmp_path, 1.0, delay_ms=0.225, measured_added=0.225)
         found = evaluate(run, calibration=CAL)
-        assert found["verdict"] == "stop" and "move by themselves" in found["reasons"][0]
+        assert found["verdict"] == "stop" and "moves between runs" in found["reasons"][0]
+
+    def test_the_scatter_comes_from_the_campaign_and_not_from_the_judged_setup(self, tmp_path):
+        """A setup whose two earlier runs happen to agree does not get a tighter brake for it.
+
+        That is what stopped A2's first session: of ten within-setup scatters from 0.053 to
+        0.227 ms, the 0.053 was the one being judged against, and a run 0.275 from its centre
+        failed a limit the pooled 0.133 would have allowed nearly three times over.
+        """
+        pooled_spread(tmp_path, spread=0.133)
+        earlier_runs(tmp_path, [1.772, 1.775])       # a pair that agrees to 3 thousandths
+        found = evaluate(later_run(tmp_path, 1.497, delay_ms=0.081, measured_added=0.081),
+                         calibration=CAL)
+        assert found["verdict"] == "count", "the campaign's own scatter admits this run"
+        assert found["checks"]["gotit_steady"]["ok"]
+
+    def test_the_same_run_stops_when_the_campaign_really_is_that_steady(self, tmp_path):
+        """Not switched off: where the whole campaign agrees, that move still stops it."""
+        pooled_spread(tmp_path, spread=0.01)
+        earlier_runs(tmp_path, [1.772, 1.775])
+        found = evaluate(later_run(tmp_path, 1.497, delay_ms=0.081, measured_added=0.081),
+                         calibration=CAL)
+        assert found["verdict"] == "stop"
+
+    def test_the_brake_waits_until_the_pool_has_enough_behind_it(self, tmp_path):
+        """A pool of two or three runs is the same fault one level up (D18-2)."""
+        # One short: the judged setup's own two earlier runs are in the pool as well, so the
+        # padding supplies two fewer than the threshold.
+        pooled_spread(tmp_path, spread=0.01, setups=ri.GOTIT_MIN_POOL_DF - 2)
+        earlier_runs(tmp_path, [0.2, 0.21])
+        found = evaluate(later_run(tmp_path, 5.0), calibration=CAL)
+        assert found["verdict"] == "count" and "gotit_steady" not in found["checks"]
+        assert found["recorded"]["gotit_campaign_spread_df"] == ri.GOTIT_MIN_POOL_DF - 1
+        assert found["recorded"]["gotit_campaign_spread_ms"] is None
+
+    def test_what_the_allowance_was_built_from_travels_with_the_run(self, tmp_path):
+        """A brake that stops a campaign should be arguable from the campaign's own files."""
+        pooled_spread(tmp_path, spread=0.02)
+        earlier_runs(tmp_path, [0.2, 0.24])
+        recorded = evaluate(later_run(tmp_path, 0.22), calibration=CAL)["recorded"]
+        assert recorded["gotit_campaign_spread_ms"] == pytest.approx(0.02)
+        assert recorded["gotit_campaign_spread_df"] == 6, "five padding setups and the judged one"
+        assert recorded["gotit_setup_centre_ms"] == pytest.approx(0.22)
 
     def test_a_setup_with_too_few_earlier_runs_is_recorded_and_not_braked(self, tmp_path):
         """The first runs of a setup have nothing like themselves to be held against.
@@ -324,6 +385,7 @@ class TestTheDelayIsReadWhereItIsApplied:
 class TestTheGotItComparison:
 
     def test_a_steady_median_counts(self, tmp_path):
+        pooled_spread(tmp_path)
         earlier_runs(tmp_path, [0.2, 0.21])
         found = evaluate(later_run(tmp_path, 0.2), calibration=CAL)
         assert found["verdict"] == "count" and found["checks"]["gotit_steady"]["ok"]
@@ -340,6 +402,7 @@ class TestTheGotItComparison:
         run a repeat. The brake does not read it any more; only the recorded shift does, and
         that is allowed to be absent.
         """
+        pooled_spread(tmp_path)
         earlier_runs(tmp_path, [0.2, 0.21])
         found = evaluate(later_run(tmp_path, 0.2), calibration={"calibration": {"redis": {}}})
         assert found["verdict"] == "count" and found["checks"]["gotit_steady"]["ok"]
@@ -428,6 +491,7 @@ class TestARunThatTakesItsNoteAnotherWay:
     def test_the_same_shift_taken_the_other_runs_way_still_stops(self, tmp_path):
         """The brake is not loosened. A run that takes its note the way the runs it is held
         against took theirs, and moves that far, stops exactly as before."""
+        pooled_spread(tmp_path)
         earlier_runs(tmp_path, [0.2, 0.21])
         found = evaluate(later_run(tmp_path, 0.9), calibration=CAL)
         assert found["verdict"] == "stop" and "moved" in found["reasons"][0]
@@ -690,6 +754,7 @@ class TestMain:
         assert shift == pytest.approx(0.7)
 
     def test_a_campaign_stops_itself_through_the_command(self, tmp_path):
+        pooled_spread(tmp_path)
         earlier_runs(tmp_path, [0.2, 0.21])
         code, text = self.check(later_run(tmp_path, 0.9))
         assert code == 3 and "got-it median moved" in text

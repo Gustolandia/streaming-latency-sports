@@ -297,6 +297,29 @@ def never_negative_check(summary):
 GOTIT_FLOOR_MS = 0.10
 GOTIT_NOISE_SHARE = 3.0
 
+#: Where a calibration takes its "got it" note. Stage 0 calibrates with the client's own
+#: defaults and never passes --ack-stamp, and the clients default to the callback, so every
+#: calibration this plan takes is a callback one. test_azure_kit holds stage 0 to that.
+CALIBRATED_AT = "callback"
+
+
+def gotit_comparable(params):
+    """Whether this run takes its "got it" note the way the calibration took it.
+
+    A8 varies where the note is taken, and taking it inline forces the producer to one message
+    in flight where the calibration ran with sixty-four. Those are two different producers on
+    purpose: it is the treatment A8 exists to measure. Holding such a run against the
+    calibration's median asks what that treatment did, not what the added delay did -- and
+    P5(c) asks only the second.
+
+    On the Arm pair on 20 September this stopped A8 on its first Python run. The got-it median
+    sat 0.167 ms from the calibration's where the brake allowed 0.145, and what moved it was the
+    note's place, not the delay: the Java runs, whose inline and callback medians happen to lie
+    0.06 ms apart, sailed through the same brake. A rule that stops one client and not the other
+    for a difference neither of them was asked about is not a check on the instrument.
+    """
+    return (params.get("ack_stamp") or CALIBRATED_AT) == CALIBRATED_AT
+
 
 def calibration_entry(calibration, params):
     """The fit this run's got-it median is held against, for its backend and load.
@@ -332,6 +355,11 @@ def gotit_checks(summary, params, added_ms, calibration):
     Empty when there is nothing to hold it against: no calibration, or no added delay.
     """
     if calibration is None or float(params.get("delay_ms") or 0) <= 0:
+        return {}
+    if not gotit_comparable(params):
+        # Not a failed check: there is nothing here to fail. The run's own got-it median is
+        # recorded beside it, and the campaign compares the runs that share a note's place with
+        # each other, which is where P5(c)'s question can actually be asked of them.
         return {}
     entry = calibration_entry(calibration, params)
     zero = entry["gotit_zero_median_ms"] if entry else None
@@ -414,6 +442,12 @@ def evaluate(run_dir, rate, duration, warmup_s, calibration=None,
     checks["clock"] = clock_check(run_dir)
     recorded["clock_offset_max_s"] = checks["clock"]["value"]
     checks.update(gotit_checks(summary, params, added, calibration))
+    # Which runs the brake could judge travels with the run, so a campaign that measured its
+    # got-it a way the calibration never did says so in its own files rather than in a note.
+    recorded["gotit_compared_with_calibration"] = bool(
+        calibration is not None and float(params.get("delay_ms") or 0) > 0
+        and gotit_comparable(params))
+    recorded["gotit_note_at"] = params.get("ack_stamp") or CALIBRATED_AT
     return verdict(run_dir, checks, recorded)
 
 

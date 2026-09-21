@@ -104,6 +104,27 @@ python3 -c 'import json, sys; sys.exit(0 if json.load(open(sys.argv[1]))["setups
 python3 scripts/run_queue.py make --design "$DIR/$LABEL.json" --out "$DIR/$LABEL.csv" \
   || stop "the $LABEL queue could not be made"
 
+# Before anything runs: which of these runs the got-it brake can judge and which it cannot.
+# A8 takes its note two ways and a calibration takes it one way, so half its runs have no
+# like-for-like baseline and are recorded rather than braked (plan version 16, D16-1). Saying so
+# here is the difference between knowing it now and finding it on the third run, hours in.
+python3 - "$DIR/$LABEL.csv" > "$DIR/gotit_brake.txt" 2>&1 <<'PY'
+import collections, json, sys
+sys.path.insert(0, "scripts")
+import run_integrity, run_queue
+rows = run_queue.read_queue(sys.argv[1])
+counted = collections.Counter()
+for row in rows:
+    params = json.loads(row["params"])
+    counted[(params.get("ack_stamp") or run_integrity.CALIBRATED_AT,
+             run_integrity.gotit_comparable(params))] += 1
+for (where, judged), many in sorted(counted.items()):
+    print("got-it note taken %-9s %4d run(s): %s"
+          % (where, many, "held against the calibration" if judged
+             else "no like-for-like baseline, so recorded and not braked"))
+PY
+sed 's/^/   /' "$DIR/gotit_brake.txt"
+
 OUT="$DIR/campaign_$LABEL.log"
 log "== $LABEL: $(python3 scripts/run_queue.py report --queue "$DIR/$LABEL.csv" | head -n 1)"
 CALIBRATION="$DIR/calibration.json" bash cloud/azure/campaign.sh "$DIR/$LABEL.csv" 2>&1 | tee "$OUT"

@@ -182,6 +182,18 @@ def test_the_calibration_takes_its_got_it_note_where_the_clients_default_to():
     assert '"--ack-stamp", default="%s"' % run_integrity.CALIBRATED_AT in producer
 
 
+def test_a_campaign_is_placed_only_from_a_calibration_measured_on_this_boot():
+    """Stage 0 says a stopped-and-started pair needs its own calibration, because it can come
+    back on another host. On 21 September A8 was placed from one fitted at 22:28 on a pair that
+    booted again at 00:48, and the got-it brake stopped it three runs in. The brake was right;
+    nothing had said that placing the campaign at all was the mistake."""
+    stage1 = (KIT / "stage1.sh").read_text(encoding="utf-8")
+    assert "uptime -s" in stage1 and 'date -u -r "$STAGE0/calibration.json"' in stage1
+    assert "before this" in stage1 and "needs a new session" in stage1
+    assert stage1.index("uptime -s") < stage1.index("law_design.py design"), \
+        "checked before the design is made, not after the runs are placed"
+
+
 def test_a_campaign_says_which_runs_the_got_it_brake_can_judge_before_it_runs():
     """A8 takes its note two ways and a calibration takes it one way, so half its runs have no
     like-for-like baseline. On the Arm pair that was found on the third run, hours in, by the

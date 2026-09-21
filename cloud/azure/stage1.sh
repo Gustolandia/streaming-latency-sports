@@ -71,6 +71,21 @@ for f in settings.json calibration.json; do
 done
 [ -s "$STAGE0/baseline.json" ] && cp "$STAGE0/baseline.json" "$DIR/baseline.json"
 
+# A calibration is a property of the machine it was measured on. Stage 0 says so itself: a pair
+# that was stopped and started needs its own calibration for the session ahead, because it can
+# come back on another host. So a campaign is placed only from one measured on this boot.
+#
+# On 21 September A8 was placed from a calibration fitted at 22:28 on a pair that booted again at
+# 00:48, and the got-it brake stopped it three runs in. The brake was right -- the instrument had
+# moved under it -- but nothing had said that placing the campaign was the mistake.
+BOOTED=$(date -u -d "$(uptime -s)" +%s 2>/dev/null || echo 0)
+FITTED=$(date -u -r "$STAGE0/calibration.json" +%s 2>/dev/null || echo 0)
+if [ "$BOOTED" != 0 ] && [ "$FITTED" != 0 ] && [ "$FITTED" -lt "$BOOTED" ]; then
+  stop "the calibration in $STAGE0 was fitted at $(date -u -d "@$FITTED" +%FT%TZ), before this
+ machine last booted at $(date -u -d "@$BOOTED" +%FT%TZ). A pair that was stopped and started
+ needs a new session: bash cloud/azure/stage0.sh session $STAGE0"
+fi
+
 # A session that opens A8 fits one calibration per client, so the gates sit one level deeper
 # (client, then backend, then load) than in every other session. Walk down to whatever carries a
 # gate rather than counting levels, and require every one of them.

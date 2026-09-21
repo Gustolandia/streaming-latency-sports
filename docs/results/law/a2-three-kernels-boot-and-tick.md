@@ -82,6 +82,31 @@ reaching a limit, stated as a limit. Nothing here is adjusted to get around it â
 frozen (D3-7), and changing them to suit what this pair can reach would be choosing the
 measurement to fit the prediction.
 
+## A correction to freeze 13, which cannot be corrected in freeze 13
+
+Freeze 13 says, of the campaigns running when it was written, that "A2's first session ran under
+earlier versions and is reported under them". That was written while it was about to be true and
+it is not true. The timestamps:
+
+| | |
+|---|---|
+| freeze 13 public | 21 September 2026, **14:01:37 UTC** |
+| A2's first session started | **14:07:23 UTC**, five minutes and 46 seconds later |
+
+The plan's rule that no run starts before its freeze is public was therefore kept. What was not
+kept is the other half: the driver was still carrying the code from before freeze 13, so those
+runs were judged by version 16's brake while version 17 was the plan in force.
+
+The session was stopped after **two runs** and started again at **14:17:44 UTC** on the new code.
+The reason is not bookkeeping. A2's twelve sessions exist to be compared with one another, and a
+first session judged by one brake against eleven judged by another is a block with a seam down
+the middle of it. Fifteen minutes was the whole cost.
+
+The two runs of the stopped campaign are kept where they fell, in
+`runs/azure/stage1/matched-b_20260921T140723Z`, with the console log beside them; they belong to
+no result. A freeze is never edited, so the sentence in freeze 13 stands and this is the
+correction.
+
 ## The twelve sessions, and the order they run in
 
 The plan asks for twelve sessions of one kernel and one backend each, over four days, with each

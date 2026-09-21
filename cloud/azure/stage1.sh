@@ -135,7 +135,9 @@ for row in rows:
              run_integrity.gotit_comparable(params))] += 1
 for (where, judged), many in sorted(counted.items()):
     print("got-it note taken %-9s %4d run(s): %s"
-          % (where, many, "held against the calibration" if judged
+          % (where, many,
+             "held against this campaign's own earlier runs of the same setup"
+             " (the first two of each are recorded, not braked)" if judged
              else "no like-for-like baseline, so recorded and not braked"))
 PY
 sed 's/^/   /' "$DIR/gotit_brake.txt"

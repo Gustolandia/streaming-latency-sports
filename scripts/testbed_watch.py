@@ -106,16 +106,23 @@ echo "clock_offset_s=$(chronyc -c tracking 2>/dev/null | cut -d, -f5)"
 #: campaign's own, so a stop rule or a completion is read from it alone, and only the last of
 #: them counts: a chain of campaigns (cloud/azure/stage0.sh) completes several before it ends.
 #:
-#: What counts as work is wider than what counts as a run. A chain waiting for a calibration to
-#: pass, and the rounds rule simulating the campaign it will then start, are both a pair with
-#: work in hand and nothing yet in runs/ -- and deallocating such a pair for being idle destroys
-#: exactly the thing chain.sh exists to protect. On 21 September the first x86 pair was flagged
-#: idle at 13:38:58 with a chain armed on it, and was saved only because the simulation that
-#: began moments later holds one core: 12.5% of eight, just over the 10% this calls busy. On a
-#: machine with sixteen it would have been 6.25% and the pair would have gone.
+#: Two kinds of work, counted apart, because a pair is told off for different things.
+#:
+#: `campaign` is work that makes runs. If it is going and nothing under ~/sbl has changed for a
+#: while, that is a stall and worth an alert.
+#:
+#: `queued` is work in hand that makes no runs yet: a chain waiting for a calibration to pass,
+#: and the rounds rule simulating the campaign it will then start. Such a pair is not idle --
+#: deallocating it destroys exactly what chain.sh exists to protect -- but neither is it stalled,
+#: and an alert every five minutes for the hours a simulation takes is how a real stall comes to
+#: be ignored. On 21 September the first x86 pair was flagged idle at 13:38:58 with a chain armed
+#: on it, and was saved only because the simulation that began moments later holds one core:
+#: 12.5% of eight, just over the 10% this calls busy. On a machine with sixteen that is 6.25%
+#: and the pair would have gone.
 
 DRIVER_PROBE = COMMON_PROBE + r"""
-echo "campaign=$(pgrep -f 'cloud/azure/stage0.sh|cloud/azure/stage1.sh|cloud/azure/chain.sh|cloud/azure/pilot.sh|cloud/azure/replicate_oracle.sh|cloud/azure/campaign.sh|cloud/campaigns/|rounds_rule.py|run_concurrency_test.py|run_kafka_trial.sh|run_redis_trial.sh' | wc -l)"
+echo "campaign=$(pgrep -f 'cloud/azure/stage0.sh|cloud/azure/pilot.sh|cloud/azure/replicate_oracle.sh|cloud/azure/campaign.sh|cloud/campaigns/|run_concurrency_test.py|run_kafka_trial.sh|run_redis_trial.sh' | wc -l)"
+echo "queued=$(pgrep -f 'cloud/azure/chain.sh|cloud/azure/stage1.sh|rounds_rule.py' | wc -l)"
 echo "stress=$(pgrep -x stress-ng | wc -l)"
 echo "netns=$(ip netns list 2>/dev/null | grep -c '^sblrecv')"
 queue=$(pgrep -af 'cloud/azure/campaign.sh' | grep -o 'runs/[^ ]*\.csv' | head -n 1)
@@ -486,7 +493,12 @@ def evaluate(driver, broker, previous_fails=None):
         flags += machine_flags("driver", driver)
         busy, _ = cpu_usage(driver.get("cpu1"), driver.get("cpu2"))
         campaign = number(driver, "campaign", int) or 0
-        if not campaign and (busy is None or busy < IDLE_BUSY_PCT):
+        # A pair with a campaign chained behind a calibration, or simulating the rounds for one,
+        # has work in hand and is not idle -- and it is quiet, because a chain sleeps between
+        # looks. Only the stall alert below is about making runs; this is about having anything
+        # to do at all.
+        queued = number(driver, "queued", int) or 0
+        if not campaign and not queued and (busy is None or busy < IDLE_BUSY_PCT):
             flags.append(("IDLE", "the machines are running with no campaign; stop them with "
                           "scripts/azure_testbed.py stop --yes"))
         overdue = late_run(driver)

@@ -1,7 +1,7 @@
 # What the measurements support
 
 The state of the mechanism after E-A3 through E-A10, the OMB replication, and the campaigns that
-preceded them. This supersedes the load-axis parts of [two_state_model.md](two_state_model.md),
+preceded them. This supersedes the load-axis parts of [earlier_models.md](earlier_models.md),
 which were written before the manipulations that decided them.
 
 Every entry says what would falsify it and what is still open. The failures are listed with the
@@ -242,7 +242,7 @@ rather than a fitted asymptote.
 *Revised 2026-07-26. This entry previously read "The exposure is not ours alone" and reported
 6,000 discarded samples as the same causality violation we report. The sign-separated sweep
 refutes that: **zero negatives in ~420,000 discards**, and a discard share that FALLS as load
-rises. Every discard was a millisecond-tick collision. See `referee_response_plan.md`, R1.*
+rises. Every discard was a millisecond-tick collision. See `reviews_and_responses.md`, R1.*
 
 Across 16 cells of the instrumented OpenMessaging Benchmark, retention — the share of end-to-end
 samples surviving its `if (endToEndLatencyMicros > 0)` guard — ranges from **0.83% to 100%**, a
@@ -321,7 +321,7 @@ Within Family B there is a second unification, one level down: B1–B5 are regim
 rotation-orbit model — retention is the occupancy of an arc of width `T_true/τ` by the orbit of
 `φ → φ + Δ mod τ`, with B1 the expectation of the branch law at every q, B2 its q=1 corner, and
 the drift intermediates its third regime. Stated, checked against all existing arms, and
-pre-registered for chain17 in [general_model.md](general_model.md).
+pre-registered for chain17 in [earlier_models.md](earlier_models.md).
 
 ## B1 — retention law  *(ESTABLISHED, 2026-07-27)*
 
@@ -458,7 +458,7 @@ three arms with p=10 smeared mid-cell; no arm with p≤8 did) and is independent
 (1/3/10-minute sweep flat — the walk account died there). The regime is also mobile between passes
 at fixed configuration. The law's sharpest confirmation survived all of it: payload moves T_true/τ,
 and its position in the grid cell flipped the 300/s arm flat→full on command (spread 13.6 pinned
-at 32 KB → 26.7 with the upper vertex hit at 64 KB). Full record: general_model.md, chain17
+at 32 KB → 26.7 with the upper vertex hit at 64 KB). Full record: earlier_models.md, chain17
 outcomes.
 
 **The rate-independence control passed, and it is exact.** q=3 repeated at 600/s — half the

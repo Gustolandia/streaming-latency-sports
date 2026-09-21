@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 analyze_separability.py
-Test the two-state stamping model against the scale family it replaces (docs/two_state_model.md).
+Test the two-state stamping model against the scale family it replaces (docs/earlier_models.md).
 
 The two structures make opposite geometric predictions for how the tail curve moves with load:
 

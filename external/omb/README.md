@@ -16,7 +16,7 @@
 > after the fact.
 >
 > Current evidence: `docs/results/external/` (the sweeps), `docs/results/external/omb_retention.csv`
-> (what the benchmark reported against how much data survived), and `referee_response_plan.md`, R1.
+> (what the benchmark reported against how much data survived), and `reviews_and_responses.md`, R1.
 
 The source-level audit is unaffected and never depended on the run: the guard admits only positive
 samples, nothing counts the drops, the reported distribution is conditioned on being positive, and

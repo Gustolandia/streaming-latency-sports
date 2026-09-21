@@ -202,6 +202,22 @@ class TestChainingACampaignBehindItsCalibration:
     def test_a_campaign_never_runs_at_a_number_nobody_set(self):
         assert "give either --rounds or --rounds-from" in self.chain()
 
+    def test_the_backend_on_the_command_line_reaches_the_rounds_rule(self):
+        """The levels the rounds are simulated from belong to one backend.
+
+        They were read from BACKEND in the environment while the campaign took its backend from
+        the command line, so asking for a Redis campaign simulated its rounds at Kafka's levels
+        and wrote that into a note that reads like a measurement.
+        """
+        code = self.chain()
+        assert '--backend) BACKEND="$2"' in code, "--backend must set the backend it simulates at"
+        assert 'ARGS+=("$1" "$2")' in code, "and must still reach law_design"
+
+    def test_one_backend_at_a_time_when_the_rounds_are_simulated(self):
+        code = self.chain()
+        assert "--rounds-from simulates at one backend's levels" in code
+        assert code.index("BACKENDS_NAMED=0") < code.index('--backend) BACKEND="$2"')
+
     def test_the_rounds_can_be_simulated_from_the_pairs_own_spread_pilot(self):
         code = self.chain()
         assert "law_design.py rounds" in code and "rounds_rule.py for" in code

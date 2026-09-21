@@ -20,7 +20,7 @@ rather than as a negative result.
 |---|---|---|
 | A1 | does the cliff follow the slice | run, sound at 4 rounds |
 | A2 | does the cliff's width follow the tick | **session 1 of 12 running again.** Its first attempt stopped itself at 28 of 40 on the got-it brake and prompted freeze 14; the 28 are kept. All three kernels boot and run within 1.4% of their tick. All three kernels built, booted and checked 21 Sep, each within 1.4% of its tick. The first of twelve sessions (HZ=1000, Kafka) is running on matched-b: 10 of 16 setups reachable, 40 runs. It was started once at 14:07 UTC, stopped after two runs and started again at 14:17 under freeze 13's code, so that all twelve sessions run one brake — see below. The counterbalanced order for the rest is below too. **Rounds cannot be simulated** (D14-5), so every session runs at the floor of 4 |
-| A3 | does load move the cliff, and raise the plateau | **Kafka's second campaign finished clean on 21 Sep: 216 runs counted, 1 repeated, all 12 rounds, no stop** — the first stopped at 286 of 288 on the got-it brake. Not yet judged; the pair is busy. **Redis is now running** on the same session's calibration, its rounds simulated at Redis's own levels for P3b, since P3a and P4 are out of reach there. First Kafka campaign reported below |
+| A3 | does load move the cliff, and raise the plateau | **Kafka's second campaign finished clean on 21 Sep: 216 runs counted, 1 repeated, all 12 rounds, no stop** — the first stopped at 286 of 288 on the got-it brake. Not yet judged; the pair is busy. **Redis will not run.** Simulated at its own levels, P3b reaches 35.5% power at the plan's ceiling of 40 rounds, so there is no round count at which that campaign answers anything — see below. Redis now carries no A3 prediction. First Kafka campaign reported below |
 | A4 | does it hold on Arm | run, sound at 4 rounds |
 | A5 | does the default slice follow the core count | **one session of three; the other two now have a way to start.** Its 8-CPU campaign finished 20 Sep and is clean (60 runs counted, 1 repeated). The machine refuses to offline a CPU, so the count is asked for at boot instead — demonstrated at 2 and 4 CPUs on 21 Sep, see below. The two sessions still have to run |
 | A7 | does go-first priority remove the plateau | run; its Kafka half checked sound at 4 rounds |
@@ -123,8 +123,24 @@ six tool classes are then named on real trips, and none wrongly.
 Reported as out of reach rather than as a negative result, which is the distinction the plan
 insists on throughout.
 
-- **P3a and P4 on Redis**, on every pair: its plateau at the anchor slice is 0.55–1.15%, under
-  the 2% guard. Not a property of Redis — see the cliff note above.
+- **The whole of A3 on Redis, P3b included.** P3a and P4 were already out: its plateau at the
+  anchor slice is 0.55–1.15%, under the 2% guard. P3b, the one prediction Redis still carried,
+  was simulated on 21 September at this pair's own measured Redis levels — spread 0.4232,
+  plateau 0.0057, floor 0.0005 — against A3's real design of 18 setups a round:
+
+  | rounds | 4 | 8 | 16 | 24 | 32 | 40 |
+  |---|---|---|---|---|---|---|
+  | confirms under the law | 12.5% | 16.0% | 20.0% | 26.0% | 33.5% | **35.5%** |
+
+  It never approaches the 80% the plan asks, and at 4 rounds it confirms where the law is false
+  8% of the time, over that bar as well. Forty rounds is the plan's ceiling, so there is no
+  number of rounds at which this campaign answers P3b on this pair, and **Redis now carries no
+  A3 prediction at all**.
+
+  Worth saying plainly what was avoided: the rounds rule returns the ceiling flagged
+  underpowered, which is not the same as the "never confirms" the chain refuses, so the chain
+  would have started a **720-run campaign of about 34 hours** with a one-in-three chance of
+  confirming. The simulation that showed this ran on a laptop in 20 minutes.
 - **P3a at 50% load on Kafka**: 0.33–0.41%, same guard, same reason.
 - **A2's round count**: the rounds rule simulates one kernel at a time and the tick predictions
   compare two, so A2 runs at the floor of 4 rounds with its power unknown. The largest block in

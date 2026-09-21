@@ -607,6 +607,22 @@ class TestA2sKernelBuild:
         code = self.kernels()
         assert "grub-reboot" in code and "stock kernel stays the default" in code
 
+    def test_it_boots_the_kernel_and_not_the_debug_symbols_beside_it(self):
+        """Each build also makes a -dbg package, and "...-sbl1000-dbg_..." sorts before
+        "...-sbl1000_..." because a hyphen comes before an underscore. Without the underscore the
+        glob installs the symbols and points grub at an entry that is not a kernel -- which is
+        what happened on the first real boot, on 21 September."""
+        code = self.kernels()
+        assert 'linux-image-*sbl"$hz"_*.deb' in code
+        assert "*-dbg_*) stop" in code, "and it refuses outright if one still gets through"
+
+    def test_none_of_it_is_run_as_root(self):
+        """common.sh takes the checkout from HOME, so running the script under sudo sends it to
+        /root/sbl. It calls sudo where it needs it instead."""
+        code = self.kernels()
+        assert "sudo bash cloud/azure/kernels.sh" not in code
+        assert "running the script itself" in code and "/root" in code
+
     def test_the_source_can_be_fetched_on_a_machine_that_lists_no_source(self):
         """Azure's Ubuntu image carries no deb-src line at all, so apt-get source refuses before
         it starts. The build died on this the first time it ran."""

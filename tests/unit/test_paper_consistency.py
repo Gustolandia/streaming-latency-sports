@@ -2504,7 +2504,7 @@ class TestTpdsFormat:
 
 
 class TestTierPolicy:
-    """The five-tier stratification (docs/v2_plan.md, 'Stratification policy').
+    """The five-tier stratification (docs/paper_revisions.md, 'Stratification policy').
 
     Only tiers 1-3 may appear in the abstract; tier-4/5 topics are bounded to
     approximately one sentence in the main text, with their detail in the supplement.

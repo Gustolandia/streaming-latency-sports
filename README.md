@@ -685,11 +685,12 @@ streaming-latency-sports/
 │       └── results/                # aggregated result CSVs (paper_*.csv)
 │
 ├── docs/
+│   ├── README.md                                                # what each doc is, and which are current
 │   ├── infrastructure.md · laws.md · measurement_model.md        # environment + the model
-│   ├── general_model.md · two_state_model.md · grey_literature_review.md
+│   ├── earlier_models.md · grey_literature_review.md             # models tried, sources gathered
 │   ├── preregistration_depth.md · omb_distributed_issue.md · supplement_index.md
-│   ├── section67_rewrite_draft.md · v2_plan.md                   # working drafts
-│   ├── referee_response_plan.md · response_to_referee_tpds.md · referee_response_letter.md
+│   ├── paper_revisions.md                                       # the plans behind the paper's shape
+│   ├── reviews_and_responses.md · releases.md                   # reviews answered, versions deposited
 │   └── results/                    # GENERATED analysis outputs (CSV/PNG/PDF)
 │       ├── realtime_concurrency/   # PRIMARY: fair sweep latency by backend/config/N
 │
@@ -1012,9 +1013,9 @@ final click was a human one.
 
 **Internal review.** Before submission, the manuscript went through internal review rounds held
 to journal standards
-([`docs/referee_response_plan.md`](docs/referee_response_plan.md),
-[`docs/response_to_referee_tpds.md`](docs/response_to_referee_tpds.md),
-[`docs/referee_response_letter.md`](docs/referee_response_letter.md)). The paper has not yet
+([`docs/reviews_and_responses.md`](docs/reviews_and_responses.md),
+[`docs/reviews_and_responses.md`](docs/reviews_and_responses.md),
+[`docs/reviews_and_responses.md`](docs/reviews_and_responses.md)). The paper has not yet
 been submitted to a journal, and no document in this repository contains journal
 correspondence.
 

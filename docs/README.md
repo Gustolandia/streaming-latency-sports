@@ -1,17 +1,17 @@
 # What is in `docs/`, and which of it is current
 
-Thirty-odd files, and their names do not say which are live. This page does. It exists because
-the alternative offered was deleting some of them, and on inspection every candidate turned out
-to be carrying something: a policy the tests enforce, the provenance of a decision, or research
-material that took real work to gather.
+Their names do not say which are live, so this page does.
 
-**Nothing here is deleted when it goes out of date.** A superseded document says so at the top
-and points at what replaced it. That is deliberate — several of these files are the evidence
-that something was written down *before* the data existed, and a deleted file cannot be that.
+**Nothing here is deleted when it goes out of date.** A superseded document says so at its top
+and points at what replaced it. That is deliberate: several of these files are the evidence that
+something was written down *before* the data existed, and a deleted file cannot be that.
+
+Documents that belong together have been fused into one, each section carried over unchanged and
+labelled with the file it came from. Fifteen files became four that way on 21 September 2026.
 
 ## Where the current answers live
 
-These are the pages to read first. Everything else is background or history.
+Read these first. Everything else is background or history.
 
 | | |
 |---|---|
@@ -22,14 +22,13 @@ These are the pages to read first. Everything else is background or history.
 | [`writing_standards.md`](writing_standards.md) | the prose rules, gated by `tests/unit/test_writing_standards.py` |
 | [`supplement_index.md`](supplement_index.md) | what is in the supplement, section by section |
 
-## Documents the tests read from
+## The tests read from these
 
-Change these and a test changes with them. They are not historical.
+Change one and a test changes with it. They are not history.
 
 | | |
 |---|---|
-| [`v2_plan.md`](v2_plan.md) | holds the five-tier stratification policy; `test_paper_consistency.py` enforces it |
-| [`v4_restructure_plan.md`](v4_restructure_plan.md) | the mapping from writing rules to sections, behind `test_writing_standards.py` |
+| [`paper_revisions.md`](paper_revisions.md) | holds the five-tier stratification policy (`test_paper_consistency.py`) and the mapping from writing rules to sections (`test_writing_standards.py`) |
 | [`campaign_ledger_schema.md`](campaign_ledger_schema.md) | the schema of `results/external_campaigns_index.csv` |
 | [`laws.md`](laws.md), [`measurement_model.md`](measurement_model.md), [`tc_plan.md`](tc_plan.md) | cited by `paper.tex` itself |
 
@@ -47,28 +46,26 @@ Gathered evidence, not process. Slow to rebuild if lost.
 
 ## Provenance — why things are the way they are
 
-Each records a decision or a review. They are what lets a reader check that a claim was made
-before its evidence, or see what a reviewer actually asked for.
+Each records a decision or a review, so a reader can check that a claim was made before its
+evidence, or see what a reviewer actually asked for.
 
 | | |
 |---|---|
-| [`preregistration_depth.md`](preregistration_depth.md) | the depth-suite analysis plan, committed before the data existed |
-| [`referee_response_plan.md`](referee_response_plan.md), [`referee_response_letter.md`](referee_response_letter.md) | how the review was answered |
-| `response_to_referee_tc.md`, `response_to_referee_tc_r2.md`, `response_to_referee_tpds.md` | internal review rounds, each labelled as internal |
-| [`release_v2.6.0.md`](release_v2.6.0.md), [`release_v3.0.0.md`](release_v3.0.0.md) | what each deposited version contained |
-
-## Superseded, kept for the record
-
-Still readable, no longer the answer. Each says so at its own top.
-
-| | |
-|---|---|
-| [`v3_plan.md`](v3_plan.md), [`v2_execution_log.md`](v2_execution_log.md) | how versions 2 and 3 were planned and executed |
-| [`section67_rewrite_draft.md`](section67_rewrite_draft.md) | a draft never applied; its checklist records which sites were updated instead |
-| [`two_state_model.md`](two_state_model.md), [`general_model.md`](general_model.md) | earlier models, partly replaced by `laws.md` |
+| [`preregistration_depth.md`](preregistration_depth.md) | the depth-suite analysis plan, committed before its data existed |
+| [`reviews_and_responses.md`](reviews_and_responses.md) | every internal review (one to TPDS's standards, two to TC's) and the plan and letter that answered them |
+| [`releases.md`](releases.md) | what each deposited version contained, one section per Zenodo deposit |
+| [`paper_revisions.md`](paper_revisions.md) | the plans and drafts behind the paper's present shape |
+| [`earlier_models.md`](earlier_models.md) | two models tried before the campaigns settled the mechanism, partly replaced by `laws.md` |
 
 ## Not in the repository
 
-`humour_candidates.md`, `humour_prompt.md` and `v5_supplement_plan.md` are on the author's
-machine only, excluded through `.git/info/exclude`. The last of those quotes private mail. They
-are listed here so that their absence from a clone is not mistaken for a missing file.
+`tc_plan.md`, `outreach_candidates.md`, `humour_candidates.md`, `humour_prompt.md` and
+`v5_supplement_plan.md` exist only on the author's machine — the last three excluded through
+`.git/info/exclude`, the others simply never committed. They are listed here so their absence
+from a clone is not mistaken for a missing file.
+
+**They have no safety net.** Two documents in this position, `v3_plan.md` and
+`v2_execution_log.md`, were destroyed on 21 September 2026 by a script that deleted its sources
+after merging them; git had nothing to restore. What they were is recorded at the top of
+[`paper_revisions.md`](paper_revisions.md). Anything in this list is one careless command from
+the same fate.

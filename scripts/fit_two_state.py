@@ -3,7 +3,7 @@
 fit_two_state.py
 Fit the load dependence of the inversion rate, and discriminate the candidate mechanisms.
 
-docs/two_state_model.md states the two-state model in its simplified form
+docs/earlier_models.md states the two-state model in its simplified form
 
     P(inversion | rho) = p(rho) * S                                        (SIMPLE)
 

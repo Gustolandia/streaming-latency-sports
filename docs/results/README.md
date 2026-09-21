@@ -20,7 +20,7 @@ rather than as a negative result.
 |---|---|---|
 | A1 | does the cliff follow the slice | run, sound at 4 rounds |
 | A2 | does the cliff's width follow the tick | **running.** All three kernels built, booted and checked 21 Sep, each within 1.4% of its tick. The first of twelve sessions (HZ=1000, Kafka) started 21 Sep 13:00 UTC on matched-b; the counterbalanced order for the rest is below. **Rounds cannot be simulated** (D14-5), so every session runs at the floor of 4 |
-| A3 | does load move the cliff, and raise the plateau | Kafka's second campaign is on its last round (12 of 12) on matched; **Redis is queued behind it** on the same session's calibration, with its rounds taken from P3b because P3a and P4 are out of reach there. First Kafka campaign reported below |
+| A3 | does load move the cliff, and raise the plateau | **Kafka's second campaign finished clean on 21 Sep: 216 runs, all 12 rounds, no stop** — the first stopped at 286 of 288 on the got-it brake. Not yet judged; the pair is busy. **Redis is now running** on the same session's calibration, its rounds simulated at Redis's own levels for P3b, since P3a and P4 are out of reach there. First Kafka campaign reported below |
 | A4 | does it hold on Arm | run, sound at 4 rounds |
 | A5 | does the default slice follow the core count | **one session of three; the other two now have a way to start.** Its 8-CPU campaign finished 20 Sep and is clean (60 runs counted, 1 repeated). The machine refuses to offline a CPU, so the count is asked for at boot instead — demonstrated at 2 and 4 CPUs on 21 Sep, see below. The two sessions still have to run |
 | A7 | does go-first priority remove the plateau | run; its Kafka half checked sound at 4 rounds |
@@ -139,6 +139,7 @@ measured.
 | the tick check counted the local APIC timer, which on Azure is present and always zero | booting the first kernel and being told it was 100% out | none — it would have failed all three |
 | the tick check had no busy CPU to count on, and an idle CPU stops its timer | the same run | none |
 | installing A2's built kernels made one of them grub's default, so every restart of that driver came up on the HZ=1000 kernel | reading which kernel a restart actually came back on | none — no block had run since |
+| the chain simulated a campaign's rounds at the backend named in its environment, not the one named on its command line | reading the chain's own log in the minute before the campaign started | none — stopped before it ran |
 | a run measured the previous rung's delay, with the load still flat out at 99.8% | the repeat rule, on two of A8's 31 runs | 2 runs |
 | P7 could not be judged at all: it compared the machine's reported slice against a designed one, and A5 is the one block that sets none | reading A5's finished campaign instead of waiting for the rest of it | none — but the two remaining A5 sessions, about eight hours, would have run first |
 | P8 could not see which client sent a run: the reader never extracted the language, so it reported that A8 had not tested P8 at all | asking the same question of every other judge after P7 | none — caught while A8 was still running |

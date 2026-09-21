@@ -78,6 +78,22 @@ at eight — every one of them exactly `700000 × (1 + ilog2(n))`. Not `maxcpus`
 the same parameter and leaves the machine back at eight CPUs within a second.
 → [`law/a5-core-count-must-be-asked-for-at-boot.md`](law/a5-core-count-must-be-asked-for-at-boot.md)
 
+**Two ABI builds of one kernel version give two different default slices, and the version number
+predicts only one of them.** The first x86 pair now runs `6.8.0-1065-azure` and the second
+`6.8.0-1064-azure` — same VM size, same eight CPUs, same log scaling, same 1000 Hz tick — and
+their kernel-chosen base slices are **3,000,000 ns and 2,800,000 ns**. That is a per-step constant
+of 750,000 against 700,000. Asked from the release string alone, this kit's own rule says
+3,000,000 for both: right for 1065, wrong for 1064, which is why it recovers the constant from the
+machine instead of trusting the version.
+
+The pairs drifted apart on 16 September, when unattended-upgrades installed 1065 on the first pair
+during the incident that also cost that day's pilot; it was booted into on 20 September. Nothing
+measured so far is invalidated — every block that compares slices sets its slice explicitly, and
+P7, the one block that reads the kernel's default, runs on the second pair. A2's three kernels are
+built from one source tree and all three report 2,800,000, so they still differ in the tick and
+nothing else. What it does mean is that A3's two Kafka campaigns sit on different kernel builds,
+and anyone pooling them has to say so.
+
 **T1 works as designed. T2, as first frozen, could not have answered anything.** Run against
 made-up tools built from their clocks and their arithmetic, then re-run on 19,952 trips A3
 actually measured. At the 2 ms offset the plan froze, **not one trip of 3,000 goes below zero** —

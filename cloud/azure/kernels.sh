@@ -90,9 +90,10 @@ build () {
   log "== 2/4 three configurations from the running kernel's own"
   for hz in $TICKS; do
     cp "/boot/config-$RELEASE" ".config" || stop "cannot copy the running config"
-    # Only the tick changes. HRTICK is a scheduler feature rather than a config, and is switched
-    # off at boot by cloud/azure/kernels.sh boot; the tickless settings are left exactly as the
-    # running kernel has them, and kernel_checks.py holds the three builds to each other.
+    # Only the tick changes. HRTICK is a scheduler feature rather than a config: v6.8 ships it
+    # off (SCHED_FEAT(HRTICK, false)) and nothing here turns it on, so the check after each boot
+    # confirms it rather than setting it. The tickless settings are left exactly as the running
+    # kernel has them, and kernel_checks.py holds the three builds to each other.
     scripts/config --file .config --disable CONFIG_HZ_100 --disable CONFIG_HZ_250 \
       --disable CONFIG_HZ_300 --disable CONFIG_HZ_1000 || stop "the tick could not be cleared"
     scripts/config --file .config --enable "CONFIG_HZ_$hz" --set-val CONFIG_HZ "$hz" \
@@ -161,8 +162,16 @@ check () {
   local hz="${1:?which tick}"
   local like=""
   [ -s "$DIR/nohz-hz1000.json" ] && [ "$hz" != 1000 ] && like="--nohz-like $DIR/nohz-hz1000.json"
+  # Whether HRTICK is on decides whether A2 measures anything at all, and it is only legible to
+  # root: /sys/kernel/debug is mounted 0700, so an unprivileged read returns nothing and the
+  # check reports it could not be read -- a true statement that reads like a fault in the kernel.
+  # Read it here, where this kit keeps its sudo, and hand the checker the file.
+  local feats="$WORK/features-hz$hz.txt"
+  mkdir -p "$WORK"
+  sudo cat /sys/kernel/debug/sched/features > "$feats" 2>/dev/null
+  [ -s "$feats" ] || stop "the scheduler's feature list could not be read even with sudo; A2 is void if HRTICK is on and this cannot say"
   # shellcheck disable=SC2086
-  python3 scripts/kernel_checks.py check --hz "$hz" $like > "$DIR/check-hz$hz.json"
+  python3 scripts/kernel_checks.py check --hz "$hz" --features-from "$feats" $like     > "$DIR/check-hz$hz.json"
   local ok=$?
   python3 -c 'import json,sys; d=json.load(open(sys.argv[1]));
 print("\n".join("   " + p for p in d["problems"]) or "   nothing wrong")' "$DIR/check-hz$hz.json"

@@ -179,6 +179,30 @@ class TestReadingAMachine:
         assert found["counted_for_s"] == 10.0
         assert found["nohz"]["CONFIG_NO_HZ_IDLE"] == "y"
 
+    def test_the_feature_list_can_come_from_a_file_read_with_sudo(self, tmp_path, monkeypatch):
+        """debugfs is 0700 root, so the live path gives an unprivileged reader nothing.
+
+        Reading it with sudo and passing the file must reach the same verdict; otherwise every
+        check reports HRTICK "could not be read", which looks like a fault in the kernel.
+        """
+        root = self.machine(tmp_path, features=FEATURES_ON)   # what an unprivileged read cannot see
+        elsewhere = tmp_path / "from-sudo.txt"
+        elsewhere.write_text(FEATURES_OFF, encoding="utf-8")
+        monkeypatch.setattr(kc.sched_settings, "read_settings",
+                            lambda r: {"release": "6.8.0-1064-azure", "config_hz": 250})
+        clock = iter([100.0, 110.0, 110.0])
+        found = kc.read(str(root), seconds=10.0, sleep=lambda s: None, now=lambda: next(clock),
+                        features_from=str(elsewhere))
+        assert found["hrtick_on"] is False
+
+    def test_without_that_file_it_still_reads_the_machine_s_own(self, tmp_path, monkeypatch):
+        root = self.machine(tmp_path, features=FEATURES_ON)
+        monkeypatch.setattr(kc.sched_settings, "read_settings",
+                            lambda r: {"release": "6.8.0-1064-azure", "config_hz": 250})
+        clock = iter([100.0, 110.0, 110.0])
+        found = kc.read(str(root), seconds=10.0, sleep=lambda s: None, now=lambda: next(clock))
+        assert found["hrtick_on"] is True
+
     def test_a_file_it_cannot_read_is_empty_rather_than_an_error(self, tmp_path):
         assert kc._slurp(str(tmp_path / "nothing")) == ""
 
@@ -190,8 +214,12 @@ class TestReadingAMachine:
 
 class TestTheCommand:
 
-    def run(self, argv, monkeypatch, reading):
-        monkeypatch.setattr(kc, "read", lambda root, seconds: reading)
+    def run(self, argv, monkeypatch, reading, seen=None):
+        def fake(root, seconds, features_from=None):
+            if seen is not None:
+                seen.append(features_from)
+            return reading
+        monkeypatch.setattr(kc, "read", fake)
         out = io.StringIO()
         return kc.main(argv, out), out.getvalue()
 
@@ -212,6 +240,18 @@ class TestTheCommand:
         found = json.loads(text)
         assert code == 1 and found["ok"] is False
         assert any("HZ=250" in one for one in found["problems"])
+
+    def test_the_file_read_with_sudo_is_handed_to_the_reader(self, monkeypatch):
+        """The shell does the sudo; the path it read into must actually reach read()."""
+        seen = []
+        code, _ = self.run(["check", "--hz", "250", "--features-from", "/tmp/feats.txt"],
+                           monkeypatch, self.READING, seen)
+        assert code == 0 and seen == ["/tmp/feats.txt"]
+
+    def test_not_naming_one_leaves_the_reader_to_the_machine(self, monkeypatch):
+        seen = []
+        self.run(["check", "--hz", "250"], monkeypatch, self.READING, seen)
+        assert seen == [None]
 
     def test_it_can_be_held_to_another_build_s_tickless_settings(self, monkeypatch, tmp_path):
         other = tmp_path / "hz1000.json"

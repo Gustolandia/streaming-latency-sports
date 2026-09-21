@@ -133,12 +133,20 @@ def problems(reading, hz=None, slice_ns=None, nohz_like=None):
     return wrong
 
 
-def read(root="/", seconds=COUNT_SECONDS, sleep=time.sleep, now=time.time):
-    """Everything the checks need from the machine this runs on."""
+def read(root="/", seconds=COUNT_SECONDS, sleep=time.sleep, now=time.time,
+         features_from=None):
+    """Everything the checks need from the machine this runs on.
+
+    features_from names a file holding the scheduler's feature list, for when the live one cannot
+    be opened. On Ubuntu /sys/kernel/debug is mounted 0700 root, so an unprivileged reader gets
+    nothing back and the HRTICK check fails as "could not be read" -- which reads like a fault in
+    the kernel rather than in who is asking. The caller reads it with sudo and passes the file,
+    keeping sudo in the shell where this kit's header says it belongs.
+    """
     settings = sched_settings.read_settings(root)
     release = settings.get("release")
     config = _slurp(os.path.join(root, "boot", "config-%s" % release)) if release else ""
-    features = _slurp(os.path.join(root, "sys/kernel/debug/sched/features"))
+    features = _slurp(features_from or os.path.join(root, "sys/kernel/debug/sched/features"))
     before, started = local_timer_counts(_slurp(os.path.join(root, "proc/interrupts"))), now()
     sleep(seconds)
     after = local_timer_counts(_slurp(os.path.join(root, "proc/interrupts")))
@@ -164,6 +172,9 @@ def main(argv=None, out=None):
         p = sub.add_parser(name)
         p.add_argument("--root", default="/")
         p.add_argument("--seconds", type=float, default=COUNT_SECONDS)
+        p.add_argument("--features-from", default=None,
+                       help="a file holding /sys/kernel/debug/sched/features, read with sudo "
+                            "because debugfs is root-only")
         if name == "check":
             p.add_argument("--hz", type=int, default=None)
             p.add_argument("--slice-ns", type=int, default=None)
@@ -171,7 +182,7 @@ def main(argv=None, out=None):
                            help="a reading from another build, whose tickless settings these "
                                 "must match")
     args = ap.parse_args(argv)
-    reading = read(args.root, args.seconds)
+    reading = read(args.root, args.seconds, features_from=args.features_from)
     if args.command == "read":
         print(json.dumps(reading, indent=2, sort_keys=True), file=out)
         return 0

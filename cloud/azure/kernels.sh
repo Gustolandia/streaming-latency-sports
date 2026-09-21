@@ -9,8 +9,11 @@
 #
 # Run on the driver that will run A2, because the kernel has to be the driver's own:
 #     nohup bash cloud/azure/kernels.sh build > kernels.log 2>&1 &
-#     sudo bash cloud/azure/kernels.sh boot 250      # boots it once, stock stays the default
+#     bash cloud/azure/kernels.sh boot 250           # boots it once, stock stays the default
 #     bash cloud/azure/kernels.sh check 250          # after the reboot, before any run
+#
+# None of these is run under sudo: they call it where they need it, and running the script itself
+# as root sends it looking for the checkout in /root.
 #
 # Booting safely: a built kernel is booted once with grub-reboot, so a kernel that does not come
 # up is gone on the next restart and the stock one takes over. Azure's serial console is the last
@@ -132,8 +135,14 @@ build () {
 boot () {
   local hz="${1:?which tick}"
   local deb
-  deb=$(ls -1 "$WORK"/linux-image-*sbl"$hz"*.deb 2>/dev/null | head -1)
+  # The underscore matters. Each build also produces a -dbg package of debug symbols, and
+  # "linux-image-6.8.12-sbl1000-dbg_..." sorts before "linux-image-6.8.12-sbl1000_..." because a
+  # hyphen comes before an underscore -- so a glob without it installs the symbols and points
+  # grub at an entry that is not a kernel. The underscore also keeps HZ=100 from matching the
+  # HZ=1000 package.
+  deb=$(ls -1 "$WORK"/linux-image-*sbl"$hz"_*.deb 2>/dev/null | head -1)
   [ -n "$deb" ] || stop "no built kernel for HZ=$hz in $WORK"
+  case "$deb" in *-dbg_*) stop "that is the debug-symbol package, not a kernel: $deb" ;; esac
   sudo dpkg -i "$deb" >/dev/null 2>&1 || stop "the HZ=$hz kernel could not be installed"
   local entry
   entry=$(grep -E "^menuentry|^\s+menuentry" /boot/grub/grub.cfg | grep -c . || true)

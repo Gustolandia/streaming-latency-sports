@@ -38,8 +38,6 @@ DIR="runs/azure/cpus"
 mkdir -p "$DIR"
 CUSTOM="/etc/grub.d/40_custom"
 KEEP="/etc/grub.d/40_custom.sbl-orig"
-GRUBDEF="/etc/default/grub"
-GRUBKEEP="/etc/default/grub.sbl-orig"
 ENTRY_ID="sbl-cpus"
 
 log () { echo "$(date -u +%FT%TZ) $*"; }
@@ -119,8 +117,11 @@ print("   %s CPUs online, base slice %s ns, scaling %s"
 }
 
 restore () {
+  # Only the menu file, which is the only one boot() writes. NOT /etc/default/grub: kernels.sh
+  # pins GRUB_DEFAULT to the stock kernel there, and that is a repair rather than a change to be
+  # undone -- putting the saved copy back would hand the default to whichever built kernel sorts
+  # highest, which is the fault it was pinned to prevent.
   [ -r "$KEEP" ] && { sudo cp "$KEEP" "$CUSTOM" || stop "the original menu file could not be put back"; }
-  [ -r "$GRUBKEEP" ] && { sudo cp "$GRUBKEEP" "$GRUBDEF" || stop "the original grub defaults could not be put back"; }
   sudo update-grub >/dev/null 2>&1 || stop "update-grub failed while restoring"
   sudo grep -q "$ENTRY_ID" /boot/grub/grub.cfg && stop "the entry is still in the menu after restoring"
   log "CAMPAIGN_COMPLETE: the menu is as it was; the next boot is the default one"

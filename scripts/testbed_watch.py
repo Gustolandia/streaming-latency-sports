@@ -565,7 +565,11 @@ def summary(name, address, facts):
     if "docker" in facts:
         parts.append("containers %s" % (facts["docker"].strip() or "none"))
     if "campaign" in facts:
-        parts.append("campaign %s" % ("running" if number(facts, "campaign", int) else "none"))
+        # "none" on a pair that is simulating the rounds for the campaign it is about to start,
+        # or waiting for a calibration to pass, reads as "nothing is happening here" -- and the
+        # person reading it is the one who would then stop the pair by hand.
+        parts.append("campaign %s" % ("running" if number(facts, "campaign", int)
+                                      else "queued" if number(facts, "queued", int) else "none"))
     if facts.get("progress"):
         parts.append("queue %s: %s" % (facts.get("queue", "?"), facts["progress"]))
     if "log" in facts:

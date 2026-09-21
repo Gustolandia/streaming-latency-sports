@@ -129,7 +129,7 @@ build () {
   ls -1 "$WORK"/linux-image-*sbl*.deb > "$REPO/$DIR/built.txt" 2>/dev/null
   [ -s "$REPO/$DIR/built.txt" ] || stop "no kernel package was produced"
   cat "$REPO/$DIR/built.txt"
-  log "CAMPAIGN_COMPLETE: three kernels built in $WORK; boot each once with: sudo bash cloud/azure/kernels.sh boot <hz>"
+  log "CAMPAIGN_COMPLETE: three kernels built in $WORK; boot each once with: bash cloud/azure/kernels.sh boot <hz>"
 }
 
 boot () {

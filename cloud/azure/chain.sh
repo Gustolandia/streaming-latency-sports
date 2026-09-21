@@ -110,7 +110,16 @@ fi
 
 log "chain: $BLOCK at $ROUNDS rounds"
 log "chain: rounds from: $ROUNDS_NOTE"
-rm -f stage1.log
+# The previous campaign's console log is moved aside, not removed. It is the only place that
+# carries what the driver printed as that campaign ran -- the per-run lines, the verdicts, the
+# reason it stopped -- and the campaign's own folder holds a different log. On 21 September A3's
+# Kafka campaign finished and its Redis campaign was chained behind it, and this line would have
+# taken the record of 216 finished runs with it; it was copied out of the way by hand, which is
+# not a thing to rely on twice.
+if [ -s stage1.log ]; then
+  kept="stage1_$(date -u +%Y%m%dT%H%M%SZ).log"
+  mv stage1.log "$kept" && log "chain: the previous campaign's console log is now $kept"
+fi
 STAGE0="$STAGE0" bash cloud/azure/stage1.sh "$BLOCK" --rounds "$ROUNDS" \
   --rounds-note "$ROUNDS_NOTE" "${ARGS[@]}" > stage1.log 2>&1
 log "chain: stage 1 finished; see stage1.log"

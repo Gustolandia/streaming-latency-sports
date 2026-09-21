@@ -24,7 +24,7 @@ rather than as a negative result.
 | A4 | does it hold on Arm | run, sound at 4 rounds |
 | A5 | does the default slice follow the core count | **one session of three, and the other two cannot start.** Its 8-CPU campaign finished 20 Sep and is clean (60 runs counted, 1 repeated). P7 needs 2 and 4 CPUs as well, and the machine refuses to offline a CPU — see below |
 | A7 | does go-first priority remove the plateau | run; its Kafka half checked sound at 4 rounds |
-| A8 | does the client language change it | running on Arm, 6 rounds |
+| A8 | does the client language change it | **stopped itself four times on 21 Sep, three of them instrument faults since fixed.** The fourth is not a fault: the got-it falls when the delay is added, by about a sixth of its own size, and the brake cannot pass that at A8's shortest trip — see below. 21 runs kept |
 | T1–T4 | what ten benchmarking tools report | harness built and checked against made-up tools; no machine run yet |
 | T5 | do the tools' own documents admit it | done, frozen in freeze 08 |
 
@@ -49,6 +49,14 @@ of 20 September, 30 runs, both backends, three loads.
 This is what is really behind "P3a and P4 cannot be tested on Redis". It is not that Redis is
 well behaved. It is that a 3 ms slice asks for trips of 2.7 ms and up, and Redis is already past
 its own cliff by then. The same happens to Kafka at 50% load.
+
+**Adding the receiver-only delay makes the acknowledgement come back faster.** Both clients, by
+about a sixth to a fifth of their own got-it time, measured against a calibration taken on the
+same boot. The brake that asks whether the delay left the got-it alone allows a quarter of the
+*added* delay, and the offset does not shrink with the delay, so at A8's shortest trip it stops
+the campaign every time. Whether that is P5(c) correctly reporting a real coupling, or the wrong
+comparison being made, is a freeze decision with the evidence attached.
+→ [`law/gotit-falls-when-the-delay-is-added.md`](law/gotit-falls-when-the-delay-is-added.md)
 
 **T1 works as designed. T2, as first frozen, could not have answered anything.** Run against
 made-up tools built from their clocks and their arithmetic, then re-run on 19,952 trips A3

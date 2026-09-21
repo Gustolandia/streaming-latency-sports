@@ -213,6 +213,17 @@ class TestChainingACampaignBehindItsCalibration:
         assert '--backend) BACKEND="$2"' in code, "--backend must set the backend it simulates at"
         assert 'ARGS+=("$1" "$2")' in code, "and must still reach law_design"
 
+    def test_the_rounds_are_simulated_for_the_block_that_will_run(self):
+        """The design goes by name, not written out here, because written out it was wrong.
+
+        Three loads and the default nine points for every block: A3 runs six points, A8 runs one
+        load and two clients, and P8 compares those clients. In a world with none it confirmed in
+        0% of campaigns at every round count, and the chain refused to start a sound campaign.
+        """
+        code = self.chain()
+        assert '--block "$BLOCK"' in code
+        assert "--loads 50,75,88" not in code, "the loads belong to the block, not to the chain"
+
     def test_the_previous_campaigns_console_log_is_kept(self):
         """It is the only record of what the driver printed while that campaign ran.
 

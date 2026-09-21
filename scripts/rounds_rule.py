@@ -33,6 +33,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import law_design  # noqa: E402
 import law_predictions  # noqa: E402
 import law_world  # noqa: E402
 
@@ -177,11 +178,32 @@ def lines(found):
     return out
 
 
+def from_block(name):
+    """The parts of a block's own design that change how many runs a round holds.
+
+    One source of truth, which is law_design.BLOCKS. Naming the design on the command line
+    instead means naming it twice, and on 21 September the two disagreed: the chain asked for
+    nine points and three loads where A3 runs six points, and asked for neither client where A8
+    runs two. The first sizes a campaign against half again as much data as it will have. The
+    second is worse -- P8 compares Python against Java, and in a world with no clients it cannot
+    confirm at any number of rounds, so the rule called the prediction broken and the chain
+    refused to start a campaign that was never at fault.
+    """
+    block = law_design.BLOCKS[name]
+    design = {}
+    for key in ("points", "loads", "slices", "priorities", "languages", "cores"):
+        if block.get(key):
+            design[key] = tuple(block[key])
+    return design
+
+
 def design_from(args):
-    """The campaign to simulate, as the command line describes it."""
+    """The campaign to simulate: its own block's design, then what the command line says."""
     design = {"slices": tuple(float(s) for s in args.slices.split(",")) if args.slices else (3.0,),
               "plateau": args.plateau, "floor": args.floor, "spread": args.spread,
               "session_shift": args.session_shift}
+    if args.block:
+        design.update(from_block(args.block))
     if args.loads:
         design["loads"] = tuple(int(load) for load in args.loads.split(","))
     if args.points:
@@ -210,6 +232,9 @@ def main(argv=None, out=None):
     sub = ap.add_subparsers(dest="command", required=True)
     p = sub.add_parser("for", help="simulate a campaign and answer with its rounds")
     p.add_argument("--prediction", required=True)
+    p.add_argument("--block", default="",
+                   help="take the points, loads, slices, priorities and clients from this "
+                        "block's own design, so the campaign simulated is the one that will run")
     p.add_argument("--slices", default="3.0")
     p.add_argument("--tick-ms", type=float, default=1.0)
     p.add_argument("--loads", default="")

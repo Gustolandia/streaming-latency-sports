@@ -24,7 +24,7 @@ rather than as a negative result.
 | A4 | does it hold on Arm | run, sound at 4 rounds |
 | A5 | does the default slice follow the core count | **one session of three, and the other two cannot start.** Its 8-CPU campaign finished 20 Sep and is clean (60 runs counted, 1 repeated). P7 needs 2 and 4 CPUs as well, and the machine refuses to offline a CPU — see below |
 | A7 | does go-first priority remove the plateau | run; its Kafka half checked sound at 4 rounds |
-| A8 | does the client language change it | **stopped itself four times on 21 Sep, three of them instrument faults since fixed.** The fourth is not a fault: the got-it falls when the delay is added, by about a sixth of its own size, and the brake cannot pass that at A8's shortest trip — see below. 21 runs kept |
+| A8 | does the client language change it | **stopped itself four times on 21 Sep, three of them instrument faults since fixed.** The fourth is not a fault: the got-it falls when the delay is added, by about a sixth of its own size, and the brake cannot pass that at A8's shortest trip — see below. 28 runs kept |
 | T1–T4 | what ten benchmarking tools report | harness built and checked against made-up tools; no machine run yet |
 | T5 | do the tools' own documents admit it | done, frozen in freeze 08 |
 

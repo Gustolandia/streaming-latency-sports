@@ -1,7 +1,7 @@
 # Adding the receiver-only delay lowers the "got it" time, and the brake cannot pass it
 
 **21 September 2026, 04:20 UTC. Read off A8's campaign on the Arm pair
-(`arm_20260921T025629Z`) after it stopped itself, 21 runs in.** Not a test of any prediction: it
+(`arm_20260921T025629Z`) after it stopped itself, 28 runs in.** Not a test of any prediction: it
 is the instrument reporting on itself, which is what P5(c) is for.
 
 **Words used here.** *Got-it* — the time from a message being sent to the broker's
@@ -70,13 +70,14 @@ not a rule.
 
 ## What was kept
 
-Twenty-one runs counted before the stop and are kept with the campaign. The pair was left to
+Twenty-eight runs counted before the stop, against three failed, and all are kept with the
+campaign (the queue's own report: queued 116, done 28, failed 3, abandoned 0). The pair was left to
 deallocate rather than restarted, because restarting reproduces the stop: the offset is constant
 and the allowance at `p09s` is smaller than it.
 
 ## What this does not show
 
-One campaign, one pair, one load, 21 runs. The offset is measured against a calibration taken on
+One campaign, one pair, one load, 28 runs. The offset is measured against a calibration taken on
 the same boot, which is what makes it comparable at all, but it is still a single session. It
 says nothing about whether the law holds, and A8's own prediction (P8) is untouched by it — P8
 compares the two clients with each other, and both moved the same way.

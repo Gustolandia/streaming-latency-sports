@@ -117,7 +117,7 @@ session by session is not a counterbalance.
 
 | day | first | middle | last |
 |---|---|---|---|
-| 1 | **1000 kafka** | 250 redis | 100 redis |
+| 1 | **1000 kafka** | 100 redis | 250 redis |
 | 2 | 250 kafka | 100 kafka | 1000 redis |
 | 3 | 100 redis | 1000 kafka | 250 redis |
 | 4 | 1000 redis | 100 kafka | 250 kafka |
@@ -126,6 +126,18 @@ Each kernel appears once a day, so four times; each kernel–backend pair twice,
 Slots taken: HZ=1000 first, last, middle, first; HZ=250 middle, first, last, last; HZ=100 last,
 middle, first, middle — every kernel first, middle and last at least once. Kafka and Redis take
 six sessions each.
+
+Day 1's second and third sessions are swapped from the order first written here, and the reason
+is worth keeping rather than tidying away. A waiter meant to start the third session when the
+second finished read a completion line the *first* session had left behind, and started the third
+while the second was still calibrating — rebooting the machine out from under it. It cost about
+two minutes and no runs, because the second session had not started making any. The same fault
+had happened once already that afternoon on the other pair, and the lesson is the same: a waiter
+must remember what was there when it started and wait for something new, not read the last line
+of a log that another campaign wrote.
+
+Each kernel still runs once on day 1, which is what the counterbalance asks; only the order
+within the day changed.
 
 The bridge sessions run on the stock kernel, one before day 2 and one after day 4, so that the
 tie back to A1 and A3 is measured at both ends of the block rather than once.

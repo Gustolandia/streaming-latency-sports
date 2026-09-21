@@ -287,6 +287,60 @@ class TestTheGotItComparison:
         assert any(fragment in r for r in found["reasons"])
 
 
+class TestARunThatTakesItsNoteAnotherWay:
+    """A8 varies where the "got it" note is taken, and taking it inline forces the producer to
+    one message in flight where the calibration ran with sixty-four. Those are two different
+    producers on purpose. Holding such a run against the calibration's median asks what that
+    treatment did, not what the added delay did, and P5(c) asks only the second.
+
+    On the Arm pair this stopped A8 on its first Python run: 0.167 ms against a 0.145 ms brake,
+    moved by the note's place and not by the delay. The Java runs, whose two medians happen to
+    lie 0.06 ms apart, went through the same brake untouched."""
+
+    def test_a_callback_run_is_still_held_against_the_calibration(self):
+        assert ri.gotit_comparable({"ack_stamp": "callback"})
+        assert ri.gotit_comparable({}), "every block but A8 leaves it unset, which is callback"
+
+    def test_an_inline_run_has_no_like_for_like_baseline(self):
+        assert not ri.gotit_comparable({"ack_stamp": "inline"})
+
+    def test_an_inline_run_counts_instead_of_being_stopped(self, tmp_path):
+        """The shift that stopped A8 on the Arm pair, with the note taken inline."""
+        params = {"backend": "kafka", "load_pct": 75, "delay_ms": 2.0, "ack_stamp": "inline"}
+        run = make_run(tmp_path, params=params, gotit_ms=0.9,
+                       client_line="CONFIG effective max_inflight=1 ack_stamp=inline")
+        found = evaluate(run, calibration=CAL)
+        assert found["verdict"] == "count"
+        assert "gotit_steady" not in found["checks"]
+        assert "gotit_compared" not in found["checks"], "nothing failed; there was nothing to fail"
+
+    def test_the_same_shift_taken_the_calibrations_way_still_stops(self, tmp_path):
+        """The brake is not loosened. A run that measures got-it as the calibration did, and
+        moves that far, stops exactly as before."""
+        found = evaluate(make_run(tmp_path, gotit_ms=0.9), calibration=CAL)
+        assert found["verdict"] == "stop" and "moved" in found["reasons"][0]
+
+    def test_every_run_says_whether_the_brake_could_judge_it(self, tmp_path):
+        params = {"backend": "kafka", "load_pct": 75, "delay_ms": 2.0, "ack_stamp": "inline"}
+        inline = evaluate(make_run(tmp_path, name="a", params=params,
+                                   client_line="CONFIG effective max_inflight=1 ack_stamp=inline"),
+                          calibration=CAL)["recorded"]
+        assert inline["gotit_compared_with_calibration"] is False
+        assert inline["gotit_note_at"] == "inline"
+        callback = evaluate(make_run(tmp_path, name="b"), calibration=CAL)["recorded"]
+        assert callback["gotit_compared_with_calibration"] is True
+        assert callback["gotit_note_at"] == "callback"
+
+    def test_a_run_with_no_delay_is_not_claimed_to_have_been_compared(self, tmp_path):
+        run = make_run(tmp_path, delay_ms=0.0, measured_added=0.0)
+        assert evaluate(run, calibration=CAL)["recorded"][
+            "gotit_compared_with_calibration"] is False
+
+    def test_a_run_judged_without_a_calibration_says_so_too(self, tmp_path):
+        assert evaluate(make_run(tmp_path))["recorded"][
+            "gotit_compared_with_calibration"] is False
+
+
 class TestACalibrationFittedPerClient:
     """A8 fits one calibration per client and joins them under the client's name, so its file is
     a level deeper than every other session's. Read as though it were flat it yields no entry,

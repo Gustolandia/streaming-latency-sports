@@ -170,6 +170,30 @@ def test_a_client_calibrates_only_the_backends_its_runner_can_dispatch_to():
     assert '[ "$client" = python ] || args+=(--backend kafka)' in code
 
 
+def test_the_calibration_takes_its_got_it_note_where_the_clients_default_to():
+    """run_integrity.CALIBRATED_AT says every calibration is a callback one, and the got-it
+    brake now leans on that. What makes it true is that stage 0 never asks for another: it
+    passes the client and nothing else about how the note is taken."""
+    sys.path.insert(0, str(REPO / "scripts"))
+    import run_integrity
+    stage0 = (KIT / "stage0.sh").read_text(encoding="utf-8")
+    assert "--ack-stamp" not in stage0 and "ACK_STAMP" not in stage0
+    producer = (REPO / "scripts" / "kafka_producer.py").read_text(encoding="utf-8")
+    assert '"--ack-stamp", default="%s"' % run_integrity.CALIBRATED_AT in producer
+
+
+def test_a_campaign_says_which_runs_the_got_it_brake_can_judge_before_it_runs():
+    """A8 takes its note two ways and a calibration takes it one way, so half its runs have no
+    like-for-like baseline. On the Arm pair that was found on the third run, hours in, by the
+    campaign stopping itself. It is now counted from the queue before anything runs."""
+    stage1 = (KIT / "stage1.sh").read_text(encoding="utf-8")
+    assert "gotit_brake.txt" in stage1
+    assert "run_integrity.gotit_comparable" in stage1, "one rule, not a second copy of it"
+    assert "no like-for-like baseline" in stage1
+    assert stage1.index("gotit_brake.txt") < stage1.index("bash cloud/azure/campaign.sh"), \
+        "counted before the campaign is launched, not after it stops itself"
+
+
 def test_a_session_that_calibrates_twice_keeps_the_two_apart():
     """A8 compares two clients, and the delay's effect on the trip belongs to the client (D4-9),
     so law_design refuses to place one client's trips from the other's fit. Both C0s, both fits

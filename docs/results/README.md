@@ -89,9 +89,16 @@ measured.
 | T2's offsets could not make a negative | running the block against made-up tools first | none — caught before running |
 | four faults in the kernel build | running it | three would each have cost a six-hour build |
 | P7 could not be judged at all: it compared the machine's reported slice against a designed one, and A5 is the one block that sets none | reading A5's finished campaign instead of waiting for the rest of it | none — but the two remaining A5 sessions, about eight hours, would have run first |
+| P8 could not see which client sent a run: the reader never extracted the language, so it reported that A8 had not tested P8 at all | asking the same question of every other judge after P7 | none — caught while A8 was still running |
 
-The last of those is worth a second look, because it is the same shape as the P8 fault of freeze 09
-and it survived a suite at 100% branch coverage. The made-up world every test builds from sets a
-slice on every run. A5 sets none — that is its whole prediction, that the kernel picks one from the
-core count — so the shape a real A5 campaign produces had never once reached the judge. The tests
-were complete and the thing they tested was not the thing that runs.
+Those last two are one fault with two faces, and both survived a suite at 100% branch coverage.
+Every test of a judge builds its runs from the made-up world, and that world is not shaped like a
+run off a driver: it sets a slice on every run where A5 sets none, and it carries a language that
+the reader of real runs never extracted. So the shapes real campaigns produce had never once
+reached the judges. Coverage said the branch ran; it said nothing about whether the input could
+occur.
+
+P7 announced itself by raising. P8 would not have: it would have reported that A8's campaign did
+not test P8, which reads exactly like a result. `tests/unit/test_law_curve.py` now holds the
+contract directly — every field a judge asks a run for must be one the reader gives it — and that
+test fails if either fix is removed.

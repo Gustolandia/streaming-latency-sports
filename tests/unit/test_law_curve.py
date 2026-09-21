@@ -9,7 +9,9 @@ import io
 import json
 import os
 import random
+import re
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -245,6 +247,38 @@ class TestReadingACopiedCampaign:
                 self.write_run(tmp_path / "runs", "law_a1_r%03d-%s" % (round_, point), point,
                                trip, rate_at(trip), str(round_))
         return str(tmp_path / "runs")
+
+    def test_every_field_a_judge_asks_a_run_for_is_one_this_gives_it(self, tmp_path):
+        """The contract between what the judges read and what a run off the driver carries.
+
+        A field this does not extract is None on every real run, silently, and the judge reading
+        it has no way to know the difference between "the campaign did not do that" and "nobody
+        wrote it down". Two predictions were lost that way. P7 compared the slice a machine
+        reported against the slice each run was designed with, and A5 sets none, so it raised on
+        every run of a finished campaign. P8 filters runs by which client sent them, and the
+        language was never extracted, so it reported that A8's campaign had not tested P8 at all
+        -- a silent null after eight hours of machine time.
+
+        Both survived a suite at 100% branch coverage, because every test of a judge builds its
+        runs from the made-up world, and that world sets fields this reader never reads. Coverage
+        says the branch ran; it says nothing about whether the input can occur.
+        """
+        asked = set()
+        for name in ("law_predictions.py", "law_curve.py"):
+            text = (Path(lc.__file__).parent / name).read_text(encoding="utf-8")
+            asked |= set(re.findall(r'run\.get\("(\w+)"', text))
+        given = set(lc.read_runs(self.campaign_on_disk(tmp_path, rounds=1))[0])
+        assert not (asked - given), (
+            "the judges read %s off a run, and read_runs never puts it there"
+            % ", ".join(sorted(asked - given)))
+
+    def test_a_run_says_which_client_sent_it(self, tmp_path):
+        """A8 is judged by that and nothing else."""
+        run = self.write_run(tmp_path / "runs", "law_a8_r001-p09s", "p09s", 2.7, 0.03)
+        row = json.loads((run / "queue_row.json").read_text(encoding="utf-8"))
+        row["params"]["language"] = "java"
+        (run / "queue_row.json").write_text(json.dumps(row), encoding="utf-8")
+        assert lc.read_runs(str(tmp_path / "runs"))[0]["language"] == "java"
 
     def test_it_reads_the_runs_the_driver_wrote(self, tmp_path):
         runs = lc.read_runs(self.campaign_on_disk(tmp_path, rounds=1))

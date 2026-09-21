@@ -19,8 +19,8 @@ rather than as a negative result.
 | Block | What it asks | Where it stands |
 |---|---|---|
 | A1 | does the cliff follow the slice | run, sound at 4 rounds |
-| A2 | does the cliff's width follow the tick | **all three kernels built, booted and checked** 21 Sep: each runs within 1.4% of the tick it was built for, HRTICK off, tickless settings identical — see below. **Rounds cannot be simulated** (D14-5), runs at the floor of 4 |
-| A3 | does load move the cliff, and raise the plateau | Kafka run once (below); Redis not run |
+| A2 | does the cliff's width follow the tick | **running.** All three kernels built, booted and checked 21 Sep, each within 1.4% of its tick. The first of twelve sessions (HZ=1000, Kafka) started 21 Sep 13:00 UTC on matched-b; the counterbalanced order for the rest is below. **Rounds cannot be simulated** (D14-5), so every session runs at the floor of 4 |
+| A3 | does load move the cliff, and raise the plateau | Kafka's second campaign is on its last round (12 of 12) on matched; **Redis is queued behind it** on the same session's calibration, with its rounds taken from P3b because P3a and P4 are out of reach there. First Kafka campaign reported below |
 | A4 | does it hold on Arm | run, sound at 4 rounds |
 | A5 | does the default slice follow the core count | **one session of three; the other two now have a way to start.** Its 8-CPU campaign finished 20 Sep and is clean (60 runs counted, 1 repeated). The machine refuses to offline a CPU, so the count is asked for at boot instead — demonstrated at 2 and 4 CPUs on 21 Sep, see below. The two sessions still have to run |
 | A7 | does go-first priority remove the plateau | run; its Kafka half checked sound at 4 rounds |

@@ -19,6 +19,19 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
 import law_world  # noqa: E402
 import rounds_rule as rr  # noqa: E402
 
+
+class FakeArgs:
+    """What the command line gives design_from, with the defaults argparse would supply."""
+
+    def __init__(self, **over):
+        self.block = ""
+        self.slices = "3.0"
+        self.loads = self.points = self.cores = self.slice_by_core = ""
+        self.priorities = self.languages = self.session_shift = False
+        self.plateau, self.floor, self.spread = 0.30, 0.01, law_world.SPREAD
+        self.fixed_at = None
+        self.__dict__.update(over)
+
 #: Few campaigns, few resamplings, a coarse grid: enough to exercise the rule, quick enough to run.
 TINY = {"trials": 2, "draws": 20, "grid": 24}
 SIX = (1.5, 3.0, 4.5, 6.0, 7.5, 9.0)
@@ -165,6 +178,36 @@ class TestACampaignThatSwitchesCpusOff:
                 out=io.StringIO())
         design = json.loads(where.read_text(encoding="utf-8"))["design"]
         assert design["slice_by_core"] == {"2": 1.4, "8": 2.8}
+
+
+class TestTheDesignSimulatedIsTheOneThatWillRun:
+    """One source of truth, which is law_design.BLOCKS.
+
+    Written out on the chain's command line instead, the two disagreed: nine points and three
+    loads for every block, where A3 runs six points and A8 runs one load and two clients. The
+    first sizes a campaign against half again as much data as it will have; the second leaves
+    P8, which compares Python with Java, unable to confirm at any number of rounds.
+    """
+
+    @pytest.mark.parametrize("block", sorted(rr.law_design.BLOCKS))
+    def test_a_blocks_design_is_taken_whole(self, block):
+        want = rr.law_design.BLOCKS[block]
+        got = rr.from_block(block)
+        for key in ("points", "loads", "slices", "priorities", "languages", "cores"):
+            if want.get(key):
+                assert got[key] == tuple(want[key]), "%s: %s" % (block, key)
+
+    def test_the_block_that_compares_clients_brings_both_of_them(self):
+        assert rr.from_block("A8")["languages"] == ("python", "java")
+
+    def test_the_command_takes_the_design_from_the_block(self):
+        design = rr.design_from(FakeArgs(block="A8"))
+        assert design["languages"] == ("python", "java")
+        assert design["points"] == rr.law_design.BLOCKS["A8"]["points"]
+        assert design["loads"] == (75,), "A8 runs one load, not the three A3 runs"
+
+    def test_without_a_block_nothing_is_taken(self):
+        assert "languages" not in rr.design_from(FakeArgs())
 
 
 class TestTheWorldCanSimulateEveryCampaignTheDesignCanPlace:

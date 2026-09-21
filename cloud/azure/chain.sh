@@ -90,7 +90,13 @@ EOF
   [ -n "$SPREAD" ] || stop "the spread pilot gave no levels for ${BACKEND:-kafka}"
   log "chain: ${BACKEND:-kafka} spread $SPREAD, plateau $PLATEAU, floor $FLOOR at the 3 ms anchor"
 
-  python3 scripts/rounds_rule.py for --prediction "$PREDICTION" --loads 50,75,88 --slices 3 \
+  # --block, and not a design written out here. Written out here it was wrong: three loads and
+  # the default nine points for every block, so A3 was sized against half again as many runs a
+  # round as it has, and A8 against a world with no clients in it at all -- where P8, which
+  # compares Python with Java, cannot confirm at any number of rounds. On 21 September the rule
+  # duly reported P8 confirmed in 0% of campaigns from 4 rounds to 40, the chain read that as a
+  # prediction that never confirms, and refused to start a campaign that was never at fault.
+  python3 scripts/rounds_rule.py for --prediction "$PREDICTION" --block "$BLOCK" \
     --spread "$SPREAD" --plateau "$PLATEAU" --floor "$FLOOR" --seed 20260921 \
     --out "$STAGE0/rounds_$BLOCK.json" > "$STAGE0/rounds_$BLOCK.txt" 2>&1
   ROUNDS=$(python3 -c 'import json, sys

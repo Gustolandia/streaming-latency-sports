@@ -311,6 +311,16 @@ class TestCycle:
         line = tw.summary("broker", "10.1.1.21", facts("docker= \n"))
         assert "CPU ?" in line and "containers none" in line and "memory" not in line
 
+    @pytest.mark.parametrize("state,shown", [
+        ("campaign=1\nqueued=0\n", "campaign running"),
+        ("campaign=0\nqueued=1\n", "campaign queued"),
+        ("campaign=0\nqueued=0\n", "campaign none")])
+    def test_a_pair_with_work_in_hand_does_not_read_as_doing_nothing(self, state, shown):
+        """"none" on a pair simulating the rounds for the campaign it is about to start reads as
+        "nothing is happening here", and the person reading it is the one who would then stop the
+        pair by hand."""
+        assert shown in tw.summary("driver", "10.1.1.10", facts(state))
+
 
 class TestMain:
 

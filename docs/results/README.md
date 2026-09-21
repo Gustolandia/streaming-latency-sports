@@ -24,7 +24,7 @@ rather than as a negative result.
 | A4 | does it hold on Arm | run, sound at 4 rounds |
 | A5 | does the default slice follow the core count | **one session of three, and the other two cannot start.** Its 8-CPU campaign finished 20 Sep and is clean (60 runs counted, 1 repeated). P7 needs 2 and 4 CPUs as well, and the machine refuses to offline a CPU — see below |
 | A7 | does go-first priority remove the plateau | run; its Kafka half checked sound at 4 rounds |
-| A8 | does the client language change it | **stopped itself four times on 21 Sep, three of them instrument faults since fixed.** The fourth is not a fault: the got-it falls when the delay is added, by about a sixth of its own size, and the brake cannot pass that at A8's shortest trip — see below. 28 runs kept |
+| A8 | does the client language change it | **stopped itself four times on 21 Sep, three of them instrument faults since fixed.** The fourth is the brake's shape rather than the pair: a constant offset judged by an allowance proportional to the delay, which only ever fails at the shortest trip — see below. 31 runs, 28 counted, 2 repeated, 1 stop |
 | T1–T4 | what ten benchmarking tools report | harness built and checked against made-up tools; no machine run yet |
 | T5 | do the tools' own documents admit it | done, frozen in freeze 08 |
 
@@ -50,13 +50,18 @@ This is what is really behind "P3a and P4 cannot be tested on Redis". It is not 
 well behaved. It is that a 3 ms slice asks for trips of 2.7 ms and up, and Redis is already past
 its own cliff by then. The same happens to Kafka at 50% load.
 
-**Adding the receiver-only delay makes the acknowledgement come back faster.** Both clients, by
-about a sixth to a fifth of their own got-it time, measured against a calibration taken on the
-same boot. The brake that asks whether the delay left the got-it alone allows a quarter of the
-*added* delay, and the offset does not shrink with the delay, so at A8's shortest trip it stops
-the campaign every time. Whether that is P5(c) correctly reporting a real coupling, or the wrong
-comparison being made, is a freeze decision with the evidence attached.
+**A campaign's got-it sits a constant eighth of a millisecond below its calibration's, and the
+brake judges that against an allowance proportional to the delay.** So it can only ever fail at
+the short end of the ladder, which is where A8 stopped. Two lines of A8's own table carry it: the
+largest move in the campaign, −0.273 ms, **passed** where the allowance was 0.674, while a
+smaller −0.252 **stopped the campaign** where the allowance was 0.221 — and the same setup came
+in at +0.001 the other time it ran. The delay is not the cause: the shift's slope against the
+delay is +0.004 ms per ms over a ladder from 0.88 to 3.46 ms, and four calibration sweeps agree.
 → [`law/gotit-falls-when-the-delay-is-added.md`](law/gotit-falls-when-the-delay-is-added.md)
+
+Two earlier versions of that note were wrong — one read the baseline off the calibration from
+before the pair was restarted, the other said the failing run was re-queued three times when it
+was never re-queued at all. Both errors are kept visible at the top of the note.
 
 **T1 works as designed. T2, as first frozen, could not have answered anything.** Run against
 made-up tools built from their clocks and their arithmetic, then re-run on 19,952 trips A3
@@ -109,6 +114,7 @@ measured.
 | three tool parsers wrong against real output | checking them against the tools' own source | none — caught before running |
 | T2's offsets could not make a negative | running the block against made-up tools first | none — caught before running |
 | four faults in the kernel build | running it | three would each have cost a six-hour build |
+| a run measured the previous rung's delay, with the load still flat out at 99.8% | the repeat rule, on two of A8's 31 runs | 2 runs |
 | P7 could not be judged at all: it compared the machine's reported slice against a designed one, and A5 is the one block that sets none | reading A5's finished campaign instead of waiting for the rest of it | none — but the two remaining A5 sessions, about eight hours, would have run first |
 | P8 could not see which client sent a run: the reader never extracted the language, so it reported that A8 had not tested P8 at all | asking the same question of every other judge after P7 | none — caught while A8 was still running |
 

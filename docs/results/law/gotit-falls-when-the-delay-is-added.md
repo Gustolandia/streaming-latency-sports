@@ -1,83 +1,106 @@
-# Adding the receiver-only delay lowers the "got it" time, and the brake cannot pass it
+# A constant offset judged by a proportional allowance: why A8 stopped at its shortest trip
 
-**21 September 2026, 04:20 UTC. Read off A8's campaign on the Arm pair
-(`arm_20260921T025629Z`) after it stopped itself, 28 runs in.** Not a test of any prediction: it
-is the instrument reporting on itself, which is what P5(c) is for.
+**21 September 2026. Read off A8's campaign on the Arm pair (`arm_20260921T025629Z`) — 31 runs,
+28 counted, 2 repeated, 1 stop — and off the delay sweeps in four calibrations.** Not a test of
+any prediction: the instrument reporting on itself, which is what P5(c) is for.
 
-**Words used here.** *Got-it* — the time from a message being sent to the broker's
-acknowledgement reaching the sender. *Receiver-only delay* — extra delay added on the path to the
-receiving program, and nowhere else. *The brake* — the rule that stops a session when the delay
-appears to have moved the got-it (P5c, tightened by D8-2).
+> **Two earlier versions of this note were wrong, and both errors are worth naming.** The first
+> reported offsets of −0.138 ms (Java) and −0.252 (Python) as systematic and about a fifth of each
+> client's got-it. Those came from reconstructing a baseline out of the calibration taken *before*
+> the pair was restarted, instead of reading the shifts the judge itself computed; and the −0.252
+> was not a typical value at all but the single worst run in the campaign. The second said the
+> failing run was re-queued and failed three times over. It was not re-queued once: every run in
+> the campaign is attempt `a1`, and a `stop` verdict ends the session by itself.
 
-## What the brake said
+**Words used here.** *Got-it* — the time from a message being sent to the broker's acknowledgement
+reaching the sender. *The brake* — the rule that stops a session when the added delay appears to
+have moved the got-it (P5c, tightened by D8-2). Its allowance is the larger of a quarter of the
+added delay and the session's own got-it scatter.
 
-> STOP_RULE: the got-it median moved −0.252 ms, more than 25% of the 0.886 ms added and more than
-> the 0.199 ms this session's got-it moves by itself
+## Every comparison the judge made
 
-## What the campaign's own runs say
+Fifteen of the 31 runs were compared; the other sixteen are the inline half, which has no
+like-for-like baseline, and the runs with no added delay. Sorted by the allowance each was given.
 
-Only the runs that take the note the way the calibration took it are compared (freeze 12, D16-1),
-so these are the callback runs.
-
-| | campaign got-it, mean | calibration's zero-delay | offset | as a share |
+| run | added | move | allowance | |
 |---|---|---|---|---|
-| Java | 0.540 ms | 0.678 ms | **−0.138 ms** | −20.4% |
-| Python | 1.315 ms | 1.567 ms | **−0.252 ms** | −16.1% |
+| p09s python callback | 0.88 | **+0.001** | 0.221 | |
+| p09s python callback | 0.89 | **−0.252** | 0.221 | **stop** |
+| p09s rt python callback | 0.89 | −0.199 | 0.222 | |
+| p09s rt java callback | 1.66 | −0.043 | 0.416 | |
+| c05h python callback | 1.69 | −0.088 | 0.423 | |
+| c05h rt python callback | 1.69 | −0.118 | 0.423 | |
+| c05h java callback | 2.46 | −0.068 | 0.616 | |
+| c05h rt java callback | 2.46 | −0.119 | 0.616 | |
+| f15h python callback | 2.69 | −0.109 | 0.674 | |
+| f15h rt python callback | 2.69 | −0.141 | 0.674 | |
+| f15h python callback | 2.70 | **−0.273** | 0.674 | largest move in the campaign — **passed** |
+| f15h java callback | 3.46 | −0.069 | 0.865 | |
+| f15h rt java callback | 3.46 | −0.123 | 0.865 | |
+| f15h rt java callback | 3.46 | −0.125 | 0.866 | |
 
-Three things follow, and the third is the one that matters.
+All in milliseconds. (A fifteenth, `p09s java callback`, was repeated for an unrelated fault and
+is left out of the arithmetic below.)
 
-**It is not an outlier.** The run that stopped the campaign moved −0.252 ms, which is the
-campaign's own average to the millisecond. The brake did not catch a bad run; it caught a typical
-one.
+Two lines carry the whole result. **The largest move in the campaign, −0.273, passed**, because it
+sat where the allowance was 0.674. A smaller move, −0.252, **stopped the campaign**, because it sat
+where the allowance was 0.221. And the same setup — `p09s python callback`, same client, same
+delay, same allowance — came in at **+0.001 one time and −0.252 the other**.
 
-**It is not noise.** Every callback run of both clients sits below the calibration's zero-delay
-value, none above. The campaign's own scatter is larger than the calibration's — 0.091 against
-0.048 for Python, 0.034 against 0.008 for Java — but the offset is far larger than either.
+## The offset is constant; the allowance is proportional
 
-**It is proportional, and the brake's allowance is not.** The offset is about a sixth to a fifth
-of each client's own got-it, whatever the delay. The brake allows a quarter of the *added delay*.
-So at A8's shortest trip the allowance is small and the offset is not:
+Across the fourteen judged comparisons the move does not grow with the delay:
 
-| | smallest added delay | brake allows | offset | |
-|---|---|---|---|---|
-| Java | 1.665 ms | 0.416 ms | 0.138 | passes |
-| Python | 0.884 ms | 0.221 ms | 0.252 | **stops** |
+> slope **+0.004 ms of shift per ms of added delay** over a delay ladder from 0.88 to 3.46 ms —
+> flat, and if anything the wrong sign for a delay effect. Mean shift **−0.124 ms**, and 13 of 14
+> are negative.
 
-Python's runs at `p09s` will therefore stop this campaign every time it is run, on this pair, at
-this trip. A8 cannot complete as the rule stands. That is a property of the rule meeting a real
-effect, not a fault in either.
+So there *is* a real offset — the campaign's got-it sits about an eighth of a millisecond below
+the calibration's, consistently — but it is **a fixed amount, not a fraction of the delay**. The
+brake's allowance is a quarter of the delay. A constant offset divided by a proportional allowance
+can only ever fail at the short end of the ladder, which is exactly where it failed.
 
-## Two readings, and this note does not choose between them
+Scatter finishes the job. Python's judged moves have a standard deviation of 0.091 ms; at `p09s`
+the allowance is 0.221 and the session's own measured got-it scatter is 0.199 — the allowance and
+the noise are the same size. The rule at that rung is asking a question its own noise can answer
+either way, which is why one run cleared it and its twin did not.
 
-**The effect may be real, and P5(c) may be working.** P5(c) exists to ask whether the added delay
-leaves the got-it alone. Here it does not: both clients' acknowledgements come back *faster* when
-the receiver is delayed, by a similar share of their own time. A mechanism is easy to name — with
-the receiver held back, the consumer competes for less of a machine already at 75% load, and the
-producer's acknowledging thread is scheduled sooner — and it is the same kind of coupling M0
-exists to study. If that is what is happening, the brake is telling the truth and the plan's own
-provision applies: analyse the session with each run's own got-it distribution and report the
-departure, rather than treat the runs as spoiled.
+## What it is not
 
-**Or the comparison is the wrong one.** The brake holds a run *with* delay against a baseline
-*without* it, so any effect of the delay on the got-it registers as a fault of the instrument. A
-comparison that could separate the two — the same client and note placement across the delays the
-campaign itself ran — is available in the campaign's own data and is what freeze 12 already asks
-for on the inline runs (D16-2).
+**Not the delay reaching the acknowledgement.** A calibration sweeps the delay from nothing to
+eight milliseconds at one load with everything else fixed, which is the clean version of this
+experiment. Four of them agree with the campaign:
 
-Deciding between them is a change to a frozen rule and belongs in a freeze, with this evidence
-attached. Nothing here loosens the brake: a rule relaxed because a campaign kept failing it is
-not a rule.
+| calibration | slope, ms of got-it per ms of delay | spread across the sweep |
+|---|---|---|
+| matched, Kafka, 50 / 75 / 88% load | −0.0042 / −0.0108 / **+0.0031** | −8% to +3% |
+| matched, Redis, 50 / 75% load | −0.0040 / −0.0038 | −4% to +6% |
+| arm, Kafka, Python client | −0.0060 | −3% to +10% |
+| arm, Kafka, Java client | −0.0026 | −4% to +3% |
 
-## What was kept
+The sign is not even consistent between loads on one pair.
 
-Twenty-eight runs counted before the stop, against three failed, and all are kept with the
-campaign (the queue's own report: queued 116, done 28, failed 3, abandoned 0). The pair was left to
-deallocate rather than restarted, because restarting reproduces the stop: the offset is constant
-and the allowance at `p09s` is smaller than it.
+**Not the change of slice between calibration and campaign.** A8 calibrates at
+`base_slice_ns = 2800000` and runs at `3000000`. A3 on the matched pair makes exactly the same
+change and its got-it sits 1.5% from its calibration's across 59 runs.
+
+The −0.124 ms is most likely the ordinary drift of a machine between a calibration and the
+campaign that follows it, which is the thing the brake was built to tolerate and, at its shortest
+rung, does not.
+
+## The two repeated runs are a separate fault
+
+Both `f15h python inline` and `p09s java callback` were judged `repeat`, and both failed the same
+two checks: the broker held the *wrong* delay, and the load came in at 99.7–99.8% instead of 75%.
+`f15h` was set 2.691 ms and held 0.886 — which is `p09s`'s delay. `p09s` was set 1.659 and held
+2.694 — which is `f15h`'s. Each measured the delay of another rung while the load generator was
+still flat out. That is a previous run's state surviving into the next one, and it is not the same
+thing as the brake firing. The repeat rule caught both; neither reached the results.
 
 ## What this does not show
 
-One campaign, one pair, one load, 28 runs. The offset is measured against a calibration taken on
-the same boot, which is what makes it comparable at all, but it is still a single session. It
-says nothing about whether the law holds, and A8's own prediction (P8) is untouched by it — P8
-compares the two clients with each other, and both moved the same way.
+One campaign, one pair, one load, 28 runs kept, 14 comparisons. It does not settle what the
+−0.124 ms is. Reshaping the allowance — giving it a floor, or judging the offset against runs at
+several delays rather than against the calibration — is a change to a frozen rule and belongs in a
+freeze; nothing here loosens it. Freeze 12 already asks for the comparison the campaign's own data
+could support (D16-2), and `law_curve` now carries the fields it needs.

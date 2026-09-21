@@ -144,3 +144,56 @@ above are the uncorrected ones.
 | Calibration | measuring how much a known added delay moves our reading |
 | Session | one machine pair, booted one way, on one day |
 | Deallocate | switch a cloud machine off, which is a reboot and ends its session |
+
+---
+
+# The second campaign, 21 September 2026: twelve rounds under freeze 12
+
+The first campaign stopped itself at 286 of 288 on the got-it brake. This one ran to the end:
+**216 runs counted, 1 repeated, all 12 rounds, no stop.** Judged against **freeze 12** (plan
+version 16), which was in force when it ran, and at 12 rounds because the rounds rule simulated
+that count to confirm P3a in 84% of campaigns at the plateau, floor and spread this pair's own
+spread pilot measured (D14-1).
+
+*Provisional in one respect only: judged from each run's `queue_row.json` and `integrity.json`
+read on the driver, because the pair went straight on to A3's Redis campaign and copying the
+campaign home while it measures is not free. The formal collection, with a fingerprint for every
+file, has not been done. The judge sees the same bytes either way.*
+
+## What it says
+
+**P3b — load raises the plateau — confirmed, and not narrowly.**
+
+| summary | increase between the lowest and highest load | 95% interval |
+|---|---|---|
+| free shape | 0.0808 | 0.0779 to 0.0834 |
+| fitted shape | 0.0834 | 0.0775 to 0.0845 |
+
+The rule asks for an interval above zero. Both are, by a wide margin, and both shapes agree. This
+is the same answer the 15-round campaign gave, from an independent campaign on the same pair.
+
+**P3a — load leaves the cliff where it is — not confirmed, and not contradicted either.**
+
+| summary | move between the lowest and highest load | 95% interval |
+|---|---|---|
+| free shape | +0.1298 ms | −0.7897 to +0.5377 |
+| fitted shape | −0.3337 ms | −1.0685 to +0.7033 |
+
+The rule is an equivalence test: the whole interval has to sit inside 0.25 ms either way. These
+intervals are about five times that wide, so the campaign cannot place the cliff precisely enough
+to say whether it moved. The two summaries do not even agree on the sign. **"Not confirmed" here
+means the measurement is too imprecise to decide, not that the cliff moved.**
+
+## The part worth keeping
+
+A3's Kafka plateau at the 3 ms anchor is 3.46%, above the 2% guard that freeze 10 put on P3a, so
+this is not the shallow-curve problem that puts P3a out of reach on Redis. The campaign ran the
+number of rounds a simulation said would confirm P3a in 84% of campaigns under the law, and it
+did not confirm.
+
+That is a statement about this campaign and its interval, and deliberately not a statement about
+power: reading a failed confirmation backwards into "the power was low" is the observed-power
+fallacy this plan refuses elsewhere. What it does mean practically is that the rounds rule's
+answer for P3a rests on assumptions about the cliff's fitted position that a real campaign has now
+twice failed to meet — at 15 rounds and at 12 — and that deciding what to do about it is a freeze
+decision with two campaigns of evidence rather than one.

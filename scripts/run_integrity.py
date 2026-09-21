@@ -380,24 +380,34 @@ def earlier_same_setup(run_dir):
     does not depend on when anything was written.
     """
     try:
-        mine = setup_of(read_json(os.path.join(run_dir, "queue_row.json")).get("key"))
+        key = read_json(os.path.join(run_dir, "queue_row.json")).get("key")
+        mine = setup_of(key)
     except (OSError, ValueError, AttributeError):
         return []
     if mine is None:
         return []
     here = os.path.abspath(run_dir)
     parent = os.path.dirname(here)
+    # A run directory is law_<campaign>_<key>, so what is left after the key is the campaign.
+    # Matching on the key alone would reach into any campaign that ran the same setup -- and A2
+    # runs each kernel with each backend on two different days, so its own later sessions carry
+    # the same keys. Those sit on another boot behind another calibration, which is the drift
+    # this brake was moved away from the calibration to escape.
+    mine_campaign = os.path.basename(here)[:-len(key)]
     found = []
     for name in sorted(os.listdir(parent)):
         other = os.path.join(parent, name)
         if os.path.abspath(other) == here or not os.path.isdir(other):
             continue
         try:
-            theirs = setup_of(read_json(os.path.join(other, "queue_row.json")).get("key"))
+            their_key = read_json(os.path.join(other, "queue_row.json")).get("key")
+            theirs = setup_of(their_key)
             judged = read_json(os.path.join(other, "integrity.json"))
         except (OSError, ValueError, AttributeError):
             continue
         if theirs is None or theirs[1] != mine[1]:
+            continue
+        if name[:-len(their_key)] != mine_campaign:
             continue
         if (theirs[0], theirs[2]) >= (mine[0], mine[2]):
             continue

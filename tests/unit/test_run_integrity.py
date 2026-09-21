@@ -113,23 +113,28 @@ class TestARunThatCounts:
 SETUP = "A3-kafka-l75-s3000-c04h"
 
 
-def earlier_runs(tmp_path, gotits, setup=SETUP, verdict="count"):
+def earlier_runs(tmp_path, gotits, setup=SETUP, verdict="count", campaign="law_a2_1_"):
     """This campaign's earlier counted runs of one setup, as its own folders hold them.
 
     The brake compares a run against these and not against the session's calibration (D17-1),
     so a test of the brake has to build a campaign rather than a run.
     """
     for i, gotit in enumerate(gotits, start=1):
-        run = make_run(tmp_path, name="earlier%d" % i, gotit_ms=gotit,
-                       key="r%03d-%s-a1" % (i, setup))
+        key = "r%03d-%s-a1" % (i, setup)
+        run = make_run(tmp_path, name=campaign + key, gotit_ms=gotit, key=key)
         with open(os.path.join(run, "integrity.json"), "w", encoding="utf-8") as fh:
             json.dump({"verdict": verdict, "recorded": {"gotit_median_ms": gotit}}, fh)
 
 
-def later_run(tmp_path, gotit_ms, setup=SETUP, round_no=9, **kw):
-    """The run being judged, placed after those."""
-    return make_run(tmp_path, name="later", gotit_ms=gotit_ms,
-                    key="r%03d-%s-a1" % (round_no, setup), **kw)
+def later_run(tmp_path, gotit_ms, setup=SETUP, round_no=9, attempt=1, campaign="law_a2_1_",
+              **kw):
+    """The run being judged, placed after those.
+
+    Named the way a driver names them, law_<campaign>_<key>, because the brake has to tell one
+    campaign's runs from another's and the campaign is only in the folder name.
+    """
+    key = "r%03d-%s-a%d" % (round_no, setup, attempt)
+    return make_run(tmp_path, name=campaign + key, gotit_ms=gotit_ms, key=key, **kw)
 
 
 class TestStop:
@@ -190,10 +195,14 @@ class TestStop:
         assert found["recorded"]["gotit_earlier_same_setup"] == 0
 
     def test_a_later_round_is_not_earlier(self, tmp_path):
-        """Earlier is the queue's own order for this setup, not the filesystem's."""
+        """Earlier is the queue's own order for this setup, not the filesystem's.
+
+        A run re-queued as the second attempt at round 2 follows round 1 and the first attempt
+        at its own round, and precedes round 3 -- which is on disk already and must not count.
+        """
         earlier_runs(tmp_path, [0.2, 0.21, 0.2])
-        found = evaluate(later_run(tmp_path, 5.0, round_no=2), calibration=CAL)
-        assert found["recorded"]["gotit_earlier_same_setup"] == 1
+        found = evaluate(later_run(tmp_path, 5.0, round_no=2, attempt=2), calibration=CAL)
+        assert found["recorded"]["gotit_earlier_same_setup"] == 2
 
 
 class TestRepeat:
@@ -368,10 +377,20 @@ class TestFindingACampaignsOwnEarlierRuns:
 
     def test_a_sibling_that_counted_but_recorded_no_got_it_is_skipped(self, tmp_path):
         earlier_runs(tmp_path, [0.2])
-        run = make_run(tmp_path, name="silent", key="r002-%s-a1" % SETUP)
+        key = "r002-%s-a1" % SETUP
+        run = make_run(tmp_path, name="law_a2_1_" + key, key=key)
         with open(os.path.join(run, "integrity.json"), "w", encoding="utf-8") as fh:
             json.dump({"verdict": "count", "recorded": {}}, fh)
         assert ri.earlier_same_setup(later_run(tmp_path, 0.2)) == [0.2]
+
+    def test_another_campaigns_runs_of_the_same_setup_are_not_compared_against(self, tmp_path):
+        """A2 runs each kernel with each backend on two different days, so its own later
+        sessions carry the very same keys -- on another boot, behind another calibration. That
+        is the drift this brake was moved off the calibration to escape."""
+        earlier_runs(tmp_path, [0.2, 0.21], campaign="law_a2_OTHER_")
+        found = evaluate(later_run(tmp_path, 5.0), calibration=CAL)
+        assert found["recorded"]["gotit_earlier_same_setup"] == 0
+        assert "gotit_steady" not in found["checks"]
 
     def test_a_later_attempt_at_the_same_round_is_still_earlier(self, tmp_path):
         """A run re-queued as a2 follows a1, and both precede the next round."""

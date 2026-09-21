@@ -104,7 +104,10 @@ boot () {
 
 check () {
   local n="${1:?how many CPUs}"
-  python3 scripts/sched_settings.py check --cpus "$n" > "$DIR/check-cpu$n.json"
+  # Under sudo, as campaign.sh runs the same command: the base slice lives in debugfs, which is
+  # mounted 0700 root, so an unprivileged read comes back empty and the check reports that the
+  # slice could not be read on a machine that is perfectly willing to say.
+  sudo python3 scripts/sched_settings.py check --cpus "$n" > "$DIR/check-cpu$n.json"
   local ok=$?
   python3 -c 'import json,sys; d=json.load(open(sys.argv[1]));
 print("\n".join("   " + p for p in d["problems"]) or "   nothing wrong");

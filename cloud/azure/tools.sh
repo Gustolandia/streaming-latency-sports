@@ -160,19 +160,32 @@ get_kafka () {
   done
 }
 
+#: Built from its own source at the commit the audit read, not taken from a release.
+#:
+#: The tempting shortcut is the release jar: it is one download and it works. It is also the
+#: wrong artefact. The audit read commit ba718d2e of 18 September 2026 and noted that the latest
+#: release, 2.25.0, is from 30 June -- so the release is nearly three months *older* than the
+#: source the audit looked at, and running the block against it would report on a build nobody
+#: audited. This block exists to say what a tool does; which build of it is the whole question.
 get_perftest () {
-  local jar="$HOME/tools/perf-test.jar"
+  local jar="$HOME/tools/perf-test.jar" version="$1"
   [ -s "$jar" ] && { log "   rabbitmq-perftest already here"; return 0; }
-  local url
-  url=$(curl -fsSL https://api.github.com/repos/rabbitmq/rabbitmq-perf-test/releases/latest \
-        | sed -n 's/.*"browser_download_url": *"\([^"]*-bin\.tar\.gz\)".*/\1/p' | head -1)
-  [ -n "$url" ] || { log "   WARN: no rabbitmq-perf-test archive found"; return 1; }
-  echo "$url" > "$DIR/perftest_asset.txt"
+  command -v mvn >/dev/null || sudo apt-get install -y -qq maven \
+    || { log "   WARN: maven is not available, so perf-test cannot be built"; return 1; }
+  local src="$WORK/perftest"
+  [ -d "$src" ] || git clone -q https://github.com/rabbitmq/rabbitmq-perf-test "$src" \
+    || { log "   WARN: rabbitmq-perf-test could not be cloned"; return 1; }
+  log "   building rabbitmq-perftest from $version"
+  ( cd "$src" && git fetch -q --all 2>/dev/null && git checkout -q "$version" \
+    && mvn -q -DskipTests -Dmaven.javadoc.skip=true package ) \
+    > "$DIR/build_perftest.log" 2>&1 \
+    || { log "   WARN: perf-test did not build; see $DIR/build_perftest.log"; return 1; }
   mkdir -p "$HOME/tools"
-  (cd "$WORK" && curl -fsSL -o perftest.tgz "$url" && tar -xzf perftest.tgz \
-    && cp perf-test*/perf-test.jar "$jar" 2>/dev/null \
-    || cp perf-test*/*.jar "$jar") \
-    || { log "   WARN: rabbitmq-perftest could not be unpacked from $url"; return 1; }
+  local built
+  built=$(ls -1 "$src"/target/perf-test*.jar 2>/dev/null | grep -v sources | head -1)
+  [ -n "$built" ] || { log "   WARN: perf-test built no jar under target/"; return 1; }
+  cp "$built" "$jar" || { log "   WARN: the perf-test jar could not be copied"; return 1; }
+  ( cd "$src" && git rev-parse HEAD ) > "$DIR/commit_perftest.txt" 2>/dev/null
 }
 
 install () {
@@ -207,7 +220,7 @@ install () {
     sh -c './configure && make -j2 && make -C examples rdkafka_performance'
   git_build valkey https://github.com/valkey-io/valkey 9.1.2 src/valkey-benchmark make -j2
   get_kafka
-  get_perftest
+  get_perftest ba718d2eae542ee5557a676f5454d4492739e714
 
   # What is actually on this machine afterwards, with its own fingerprint, so a run can say which
   # build produced its numbers rather than which version we meant to install.

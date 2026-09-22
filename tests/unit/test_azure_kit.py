@@ -1514,7 +1514,7 @@ def test_stopping_itself_is_an_instruction_about_one_list_and_not_a_standing_rul
     exactly that, twice, before anything could be copied off it."""
     code = QUEUE.read_text(encoding="utf-8")
     loop = code.split("run_loop () {", 1)[1]
-    armed = loop.split('if [ -e "$DIR/stop_when_done" ]; then', 1)[1].split("fi", 1)[0]
+    armed = loop.split('if [ -e "$DIR/stop_when_done" ]; then', 1)[1].split("\n      fi", 1)[0]
     assert 'rm -f "$DIR/stop_when_done"' in armed, "the marker is taken when it fires"
     said = "taken before the pair is asked to go, not after"
     assert armed.index("rm -f") < armed.index("stop_self.sh"), said

@@ -80,6 +80,16 @@ echo "work=$work"
 echo "archive=$work/runs.tar"
 echo "archive_sha256=$(sha256sum "$work/runs.tar" | cut -d' ' -f1)"
 echo "commit=$(git rev-parse HEAD)"
+# A commit is only the truth about the code if the tree is that commit. The second x86
+# driver ran for a day with four tracked files copied forward from later commits, which
+# made every pull abort and left every run it collected recording a commit that had not
+# made them. Each differing file is named with the hash of what was actually there, which
+# is enough to find the version it came from.
+git status --porcelain -- ":(exclude)runs" 2>/dev/null \
+  | awk '$1 != "??" {print $NF}' \
+  | while IFS= read -r changed; do
+      echo "changed=$changed $(git hash-object "$changed" 2>/dev/null)"
+    done
 echo "host=$(hostname)"
 sed 's/^/manifest=/' "$work/manifest"
 """
@@ -104,7 +114,7 @@ def path_problem(path):
 
 def parse_pack(text):
     """What the driver reported: its temporary folder, the archive, and every file's fingerprint."""
-    facts = {"manifest": []}
+    facts = {"manifest": [], "changed": []}
     for line in text.splitlines():
         key, sep, value = line.partition("=")
         if not sep:
@@ -112,6 +122,11 @@ def parse_pack(text):
         if key == "manifest":
             digest, _, path = value.partition("  ")
             facts["manifest"].append((digest.strip(), path.strip()))
+        elif key == "changed":
+            #: One line per tracked file that is not what the commit says it is, with
+            #: the hash of what was actually there.
+            path, _, digest = value.strip().partition(" ")
+            facts["changed"].append({"path": path, "sha1": digest.strip()})
         else:
             facts[key] = value.strip()
     if "error" in facts:
@@ -232,6 +247,8 @@ def collect(hosts, queue, dest, key, ssh="ssh", scp="scp", run=subprocess.run, c
     record = {"queue": queue, "paths": paths, "home": home, "profile": hosts["AZ_PROFILE"],
               "driver": facts.get("host"),
               "driver_address": hosts["DRIVER_PUBLIC"], "commit": facts.get("commit"),
+              # Empty where the tree was the commit, which is the ordinary case.
+              "changed_from_commit": facts.get("changed", []),
               "files": len(facts["manifest"]), "archive_sha256": digest,
               "collected_utc": now.strftime("%Y-%m-%dT%H:%M:%SZ")}
     with open(os.path.join(home, "SHA256SUMS"), "w", encoding="utf-8", newline="\n") as fh:

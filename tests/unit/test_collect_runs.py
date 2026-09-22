@@ -296,3 +296,30 @@ class TestMain:
         out = io.StringIO()
         assert cr.main(["--hosts", str(tmp_path / "none.env"), "--queue", QUEUE], out=out) == 2
         assert out.getvalue().startswith("ERROR:")
+
+def test_a_tree_that_is_not_its_commit_is_recorded_as_such():
+    """A commit is only the truth about the code if the tree is that commit. The second x86
+    driver ran for a day with four tracked files copied forward from later commits, which made
+    every pull abort and left every run it collected recording a commit that had not made them.
+    """
+    said = cr.parse_pack(
+        "work=/tmp/x\narchive=/tmp/x/runs.tar\narchive_sha256=deadbeef\n"
+        "commit=8f31c3e6\n"
+        "changed=scripts/delay_calibration.py 6d5bca2b\n"
+        "changed=cloud/azure/queue.sh 7bce880c\n"
+        "manifest=aa  runs/one/meta.json\n")
+    assert said["changed"] == [{"path": "scripts/delay_calibration.py", "sha1": "6d5bca2b"},
+                               {"path": "cloud/azure/queue.sh", "sha1": "7bce880c"}]
+
+
+def test_a_clean_tree_leaves_the_list_empty():
+    said = cr.parse_pack("work=/tmp/x\narchive=/tmp/x/runs.tar\narchive_sha256=deadbeef\n"
+                         "commit=8f31c3e6\nmanifest=aa  runs/one/meta.json\n")
+    assert said["changed"] == []
+
+
+def test_the_probe_asks_git_what_differs_and_ignores_what_is_untracked():
+    code = cr.PACK
+    assert "git status --porcelain" in code
+    assert '$1 != "??"' in code, "an untracked log beside the runs is not a changed file"
+    assert "git hash-object" in code, "and what was there is named, not just that it differed"

@@ -173,14 +173,22 @@ brokers () {
   command -v nats-server >/dev/null && \
     (pgrep -x nats-server >/dev/null || (nohup nats-server -p 4222 >"$WORK/nats.log" 2>&1 &))
 
-  # What is actually answering, which is the only thing a campaign can rely on.
+  # What is actually answering, which is the only thing a campaign can rely on -- but asked for
+  # up to fifteen seconds rather than once. These servers are started a few lines above and a
+  # cold one is not listening by the time the next statement runs: on 22 September nats-server
+  # logged "Server is ready" at 10:56:10.503 and this check had already called it dead in the
+  # same second, which stopped the whole tools block.
   local bad=0
   for pair in "nginx 8080 http" "rabbitmq-server 5672 amqp" "nats-server 4222 nats"; do
     set -- $pair
+    local waited=0
+    while ! (echo > "/dev/tcp/127.0.0.1/$2") 2>/dev/null && [ "$waited" -lt 15 ]; do
+      sleep 1; waited=$(( waited + 1 ))
+    done
     if (echo > "/dev/tcp/127.0.0.1/$2") 2>/dev/null; then
-      log "   $1 answering on $2"
+      log "   $1 answering on $2${waited:+ after ${waited}s}"
     else
-      log "   $1 NOT answering on $2"; bad=1
+      log "   $1 NOT answering on $2 after ${waited}s"; bad=1
     fi
   done
   [ "$bad" = 0 ] || stop "a server the tools block needs is not answering; see above"

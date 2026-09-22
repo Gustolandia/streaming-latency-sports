@@ -62,18 +62,23 @@ chain and the rounds rule as work in hand.
 A4 is four campaigns on the Arm pair: two per backend, at slices of 1.5 and 3 ms and of 3 and
 4.5 ms (D4-8). Reading what the Arm driver actually holds, before giving it new work:
 
-| campaign | backend | slices | ended |
-|---|---|---|---|
-| `arm_20260918T211544Z` | kafka | 3, 4.5 | stopped itself |
-| `arm_20260918T211825Z` | kafka | 1.5, 3 | **stopped itself** |
-| `arm_20260918T213410Z` | kafka | 3, 4.5 | complete |
-| `arm_20260919T001708Z` | redis | 1.5, 3 | complete |
-| `arm_20260919T031017Z` | redis | 3, 4.5 | complete |
+| campaign | backend | slices | started | ended |
+|---|---|---|---|---|
+| `arm_20260918T211544Z` | kafka | 3, 4.5 | 21:15 | stopped itself, 21:26:34 |
+| `arm_20260918T211825Z` | redis | 3, 1.5 | 21:18 | stopped itself, 21:26:33 |
+| `arm_20260918T213410Z` | kafka | 3, 4.5 | 21:34 | complete |
+| `arm_20260919T001708Z` | redis | 3, 1.5 | 00:17 | complete |
+| `arm_20260919T031017Z` | redis | 3, 4.5 | 03:10 | complete |
 
-Three complete, not four. The Kafka campaign at 1.5 and 3 ms stopped itself on the evening of 18
-September, the one beside it was started again, and this one never was. Nothing said so: the
-block's line in the results has read "run, sound at 4 rounds" ever since, because the campaigns
-that did finish were sound and nobody counted them against the design.
+Three complete, not four, and **Kafka at 1.5 and 3 ms was never started at all**.
+
+The first two rows are one event: two campaigns were put on the same pair three minutes apart,
+and both stopped within a second of each other, each failing its integrity checks because the
+other was running. They were then restarted one at a time — Kafka's 3 and 4.5 at 21:34, Redis's
+two at 00:17 and 03:10 — and the fourth campaign, which had never run, was not among them.
+
+Nothing said so. The block's line in the results has read "run, sound at 4 rounds" ever since,
+because the three that did finish were sound and nobody counted them against the design.
 
 It is running now, at **4 rounds**. That is what its three siblings ran, and it is also what the
 rule gives when simulated again at this pair's own corrected levels — P9 confirms in **98%** of

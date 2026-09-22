@@ -918,6 +918,18 @@ def test_the_check_that_the_loop_is_alive_knows_the_copy_by_name(tmp_path):
     assert done.returncode != 0, "only the loop counts, not every call of the script"
 
 
+def test_a_commands_log_says_which_attempt_of_which_job_wrote_what():
+    """The log is appended to, so it keeps a put-back job's first attempt and whatever held that
+    number before a list was rewritten. Without a header the top of cmd-12.log was an error from
+    a different job hours earlier, and it was read as this one's twice."""
+    code = QUEUE.read_text(encoding="utf-8")
+    booted = code.split("      booted)", 1)[1].split("\n        ;;", 1)[0]
+    assert '>> "$out"' in booted, "kept, not truncated"
+    header = booted.split('echo "=== ', 1)[1].split("\n", 1)[0]
+    assert "job $(read_at)" in header and "$cmd" in header and "date -u" in header
+    assert booted.index('echo "=== ') < booted.index('timeout 43200'), "written before it runs"
+
+
 def test_a_job_is_put_back_once_and_never_retried_in_place():
     """One more go is worth having; two is a retry loop wearing a different hat, and the second
     failure of the same job is information rather than bad luck."""
@@ -1266,6 +1278,25 @@ class TestTheReferenceEveryToolNumberIsReadAgainst:
         assert "assert_plan_rate" in code, "and at the speedup that plan's rate asks for"
         assert 'SBL_CONSUMER_WRAP="$NETNS' in code, \
             "the consumer behind the receiver's address, as campaign.sh puts it"
+
+    def test_no_local_uses_a_name_the_same_local_declares(self):
+        """Bash expands every word of a `local` before it runs any of them.
+
+        So `local tool="$1" run="$DIR/t1-$tool-0ms"` reads $tool before it exists, and under
+        `set -u` the script is over in the same second it started. The queue's field reader was
+        written that way once and the tools block's reference command once more.
+        """
+        for path in sorted(KIT.glob("*.sh")) + sorted((KIT.parent / "campaigns").glob("*.sh")):
+            for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                said = line.strip()
+                if not said.startswith("local "):
+                    continue
+                rest = said[len("local "):]
+                declared = set(re.findall(r"(\w+)=", rest))
+                used = set(re.findall(r"\$\{?(\w+)", rest))
+                assert not (declared & used), \
+                    "%s:%d reads %s on the `local` that declares it" % (
+                        path.name, n, ", ".join(sorted(declared & used)))
 
     def test_no_line_continuation_was_written_as_two_characters(self):
         """A backslash-n in the middle of a command is not a new line, it is the argument `n`.

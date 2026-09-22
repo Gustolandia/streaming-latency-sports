@@ -355,8 +355,47 @@ brokers () {
 hold_for () {
   local ms="$1"
   ssh -n -i "$SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=no "ubuntu@$BROKER_PRIV" \
-    "cd sbl && sudo python3 scripts/receiver_delay.py broker --dst $DRIVER_PRIV \
+    "cd sbl && sudo python3 scripts/receiver_delay.py broker --dst $RECEIVER_IP \
        --delay-ms $ms --apply"
+}
+
+#: Every tool runs inside the receiver's namespace, because that is where the delay can reach it.
+#:
+#: These machines have accelerated networking, so the driver's own address sends and receives
+#: through a hardware function -- enP2839s1 on the Arm pair -- which never touches eth0's
+#: queueing discipline. netem lives on eth0. On 22 September a 20 ms delay was installed on the
+#: broker toward the driver's address, confirmed present with tc, and the round trip did not
+#: move: 1.36 ms against 1.86 with no delay at all. The tool saw nothing either, and reported a
+#: flat 0.32 ms across a staircase from 0.1 to 1.5 ms -- data that looks perfectly reasonable and
+#: means nothing.
+#:
+#: The receiver's namespace is an ipvlan on eth0, so its traffic is handled in software and the
+#: delay does reach it. That is why every law campaign measures there, and it is the path a tool
+#: has to be on for its number to stand beside ours.
+NETNS="sudo ip netns exec sblrecv"
+
+needs_namespace () {
+  ip netns list 2>/dev/null | grep -q "^sblrecv" \
+    || stop "the receiver's namespace is missing, and a tool outside it is not reached by the delay: it would report a flat staircase. Run cloud/azure/session.sh for this pair first"
+}
+
+#: Asked before the staircase, because the fault above produces believable numbers. A delay that
+#: is installed and not felt is the one thing this stage cannot notice by looking at its results.
+delay_arrives () {
+  local idle held
+  release_delay
+  idle=$($NETNS ping -c 5 -q "$BROKER_PRIV" 2>/dev/null | awk -F/ '/rtt|round-trip/ {print $5}')
+  hold_for 20 >/dev/null 2>&1
+  held=$($NETNS ping -c 5 -q "$BROKER_PRIV" 2>/dev/null | awk -F/ '/rtt|round-trip/ {print $5}')
+  release_delay
+  [ -n "$idle" ] && [ -n "$held" ] \
+    || stop "the path to $BROKER_PRIV could not be timed from the receiver's namespace"
+  python3 -c 'import sys
+idle, held = float(sys.argv[1]), float(sys.argv[2])
+print("   the path moves %.2f ms when 20 ms is added (idle %.2f, held %.2f)"
+      % (held - idle, idle, held))
+sys.exit(0 if held - idle > 10.0 else 1)' "$idle" "$held" \
+    || stop "20 ms was added on the broker and the path did not move by half of it: the delay is not reaching this tool, so its staircase would be flat and mean nothing"
 }
 
 release_delay () {
@@ -404,12 +443,14 @@ t1 () {
   local steps="0 0.1 0.2 0.3 0.5 0.7 0.9 1.1 1.5 2.0"
   local order; order=$(echo $steps | tr ' ' '\n' | shuf | tr '\n' ' ')
   log "== T1 $tool: the delay staircase, in the order $order"
+  needs_namespace
+  delay_arrives
   for ms in $order; do
     local run="t1-$tool-$(echo "$ms" | tr . _)ms"
     mkdir -p "$DIR/$run"
     hold_for "$ms" > "$DIR/$run/delay.json" 2>&1 \
       || stop "the $ms ms delay could not be applied on $BROKER_PRIV"
-    bash cloud/azure/tools_run.sh "$tool" "$DIR/$run" > "$DIR/$run/tool.txt" 2>&1
+    SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh "$tool" "$DIR/$run" \n      > "$DIR/$run/tool.txt" 2>&1
     python3 scripts/tool_readings.py read --tool "$tool" --file "$DIR/$run/tool.txt" \
       --out "$DIR/$run/reading.json" >/dev/null 2>&1 \
       || log "WARN: $tool reported no latency at $ms ms; kept as a reading of nothing"
@@ -529,12 +570,13 @@ print(found["smallest_reported_ms"] or "")' "$DIR/t1-$tool-step.json" 2>/dev/nul
 t3 () {
   local tool="${1:?which tool}"
   log "== T3 $tool: idle and at 88% load, with and without go-first"
+  needs_namespace
   for load in 0 88; do
     for first in no yes; do
       local run="t3-$tool-l$load-first$first"
       mkdir -p "$DIR/$run"
-      local wrap=""
-      [ "$first" = yes ] && wrap="sudo chrt -f 80"
+      local wrap="$NETNS"
+      [ "$first" = yes ] && wrap="$NETNS chrt -f 80"
       if [ "$load" != 0 ]; then
         stress-ng --cpu "$(nproc)" --cpu-load "$load" --timeout 600s >/dev/null 2>&1 &
         local stress=$!
@@ -557,7 +599,8 @@ t4 () {
   local run="t4-$tool"
   mkdir -p "$DIR/$run"
   log "== T4 $tool: what it can report at all"
-  bash cloud/azure/tools_run.sh "$tool" "$DIR/$run" > "$DIR/$run/tool.txt" 2>&1
+  needs_namespace
+  SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh "$tool" "$DIR/$run" \n    > "$DIR/$run/tool.txt" 2>&1
   python3 scripts/tool_readings.py read --tool "$tool" --file "$DIR/$run/tool.txt" \
     --out "$DIR/$run/reading.json" >/dev/null 2>&1 \
     || stop "$tool printed no latency at all, so T4 has nothing to confirm from"

@@ -557,9 +557,11 @@ class TestTheToolsBlock:
         code = self.tools()
         assert 'steps="0 0.1 0.2 0.3 0.5 0.7 0.9 1.1 1.5 2.0"' in code
         assert "shuf" in code, "in random order, so a drift in time is not read as a step"
-        assert "receiver_delay.py broker --dst $DRIVER_PRIV" in code, (
-            "added on the broker's card toward the machine the tool runs on -- the same place "
-            "and the same way the law campaigns add it")
+        assert "receiver_delay.py broker --dst $RECEIVER_IP" in code, (
+            "added on the broker's card toward the receiver's namespace, the same place and the "
+            "same way the law campaigns add it")
+        assert "needs_namespace" in code and "delay_arrives" in code, (
+            "and the staircase does not start until the delay is shown to reach the tool")
         assert "broker-clear" in code, "and the delay is taken off afterwards"
 
     def test_the_tools_talk_across_the_pair_and_not_to_themselves(self):
@@ -581,7 +583,9 @@ class TestTheToolsBlock:
         code = self.tools()
         assert "for load in 0 88; do" in code, "idle and at 88% load"
         assert "for first in no yes; do" in code, "with and without go-first"
-        assert 'wrap="sudo chrt -f 80"' in code, "go-first on the tool's own process"
+        assert 'wrap="$NETNS chrt -f 80"' in code, (
+            "go-first inside the namespace, which is the path the delay reaches")
+        assert "chrt -f 80" in code, "go-first on the tool's own process"
 
     def test_every_tool_that_can_be_run_has_a_reader(self):
         """A run whose output nothing can read is a run that cost machine time and says nothing.

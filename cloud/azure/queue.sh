@@ -352,6 +352,12 @@ run_loop () {
           out="$DIR/cmd-$(read_at).log"
           if verify_boot "$boot"; then
             log "  running: $cmd"
+            #: The log is appended to, so that a job put back on the list keeps what its first
+            #: attempt said, and so that a list rewritten around a job does not throw away the
+            #: log of whatever held that number before. That costs a header: without one, the
+            #: top of cmd-12.log was an error from a different job hours earlier, and it was
+            #: read as this one's -- twice.
+            echo "=== $(date -u +%FT%TZ) job $(read_at): $cmd" >> "$out"
             timeout 43200 bash -c "$cmd" >> "$out" 2>&1
             rc=$?
             log "  it finished with status $rc; its output is in $out"

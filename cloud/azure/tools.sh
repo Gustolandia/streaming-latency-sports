@@ -649,7 +649,12 @@ print("   its own step: %s ms" % r["step_ms"])' "$DIR/$run/reading.json"
 #: the failed attempt's log kept beside it. It refuses where a reference already exists, because
 #: the one T1 took is the one the design asks for.
 reference () {
-  local tool="${1:?which tool}" run="$DIR/t1-$tool-0ms"
+  local tool="${1:?which tool}"
+  #: Its own statement. Bash expands every word of a `local` before it runs any of them, so a
+  #: second name on the same line cannot use the first: under `set -u` this read "tool: unbound
+  #: variable" and the job was over in the same second it started. The queue's own field reader
+  #: was written twice for the same reason.
+  local run="$DIR/t1-$tool-0ms"
   [ -d "$run" ] || stop "there is no zero-delay run for $tool under $DIR to put a reference in"
   [ -s "$run/reference_trips.json" ] \
     && stop "$tool already has the reference T1 took; this would replace it"

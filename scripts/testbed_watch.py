@@ -112,7 +112,11 @@ echo "clock_offset_s=$(chronyc -c tracking 2>/dev/null | cut -d, -f5)"
 #: while, that is a stall and worth an alert.
 #:
 #: `queued` is work in hand that makes no runs yet: a chain waiting for a calibration to pass,
-#: and the rounds rule simulating the campaign it will then start. Such a pair is not idle --
+#: the rounds rule simulating the campaign it will then start, and a queue holding a list of
+#: sessions it is working through. The queue matters most of the three, because it is idle by
+#: design between jobs -- it has just rebooted the machine, or is waiting a minute before looking
+#: again -- and a pair deallocated in that gap loses a list of work nobody is left watching.
+#: Such a pair is not idle --
 #: deallocating it destroys exactly what chain.sh exists to protect -- but neither is it stalled,
 #: and an alert every five minutes for the hours a simulation takes is how a real stall comes to
 #: be ignored. On 21 September the first x86 pair was flagged idle at 13:38:58 with a chain armed
@@ -122,7 +126,7 @@ echo "clock_offset_s=$(chronyc -c tracking 2>/dev/null | cut -d, -f5)"
 
 DRIVER_PROBE = COMMON_PROBE + r"""
 echo "campaign=$(pgrep -f 'cloud/azure/stage0.sh|cloud/azure/pilot.sh|cloud/azure/replicate_oracle.sh|cloud/azure/campaign.sh|cloud/campaigns/|run_concurrency_test.py|run_kafka_trial.sh|run_redis_trial.sh' | wc -l)"
-echo "queued=$(pgrep -f 'cloud/azure/chain.sh|cloud/azure/stage1.sh|rounds_rule.py' | wc -l)"
+echo "queued=$(pgrep -f 'cloud/azure/chain.sh|cloud/azure/stage1.sh|cloud/azure/queue.sh|rounds_rule.py' | wc -l)"
 echo "stress=$(pgrep -x stress-ng | wc -l)"
 echo "netns=$(ip netns list 2>/dev/null | grep -c '^sblrecv')"
 queue=$(pgrep -af 'cloud/azure/campaign.sh' | grep -o 'runs/[^ ]*\.csv' | head -n 1)

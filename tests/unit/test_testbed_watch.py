@@ -175,9 +175,14 @@ class TestFlags:
         assert any("stuck" in f[1] for f in tw.evaluate(stalled, None))
 
     @pytest.mark.parametrize("what", ["cloud/azure/chain.sh", "cloud/azure/stage1.sh",
-                                      "rounds_rule.py"])
+                                      "cloud/azure/queue.sh", "rounds_rule.py"])
     def test_the_probe_counts_work_that_is_not_yet_a_run(self, what):
-        """Named here so the list cannot quietly lose one of them again."""
+        """Named here so the list cannot quietly lose one of them again.
+
+        The queue is the one that matters most: it is idle by design between jobs, having just
+        rebooted the machine or being a minute from its next look, and a pair deallocated in
+        that gap loses a list of work with nobody left watching it.
+        """
         assert what in tw.DRIVER_PROBE
         assert what not in tw.DRIVER_PROBE.split('echo "queued=')[0], \
             "counted as work in hand, not as a campaign making runs"

@@ -38,62 +38,45 @@ stop () { log "STOP_RULE: $*"; exit 1; }
 # committed before any T1 run, because a tool's behaviour is what the block reports and a tool
 # that changed under us would be a different experiment. A made-up commit here would be worse
 # than an honest blank.
-#: On 22 September every hash in this table was asked of its own repository, the first time
-#: anything had been, because the install step below had never fetched a thing -- it reported
-#: what was already on the machine and nothing more. Five of the six came back 422, which is
-#: GitHub for "no commit with that SHA":
+#: Rewritten on 22 September, because until then five of the six hashes below were not commits.
 #:
-#:     vegeta              cf5811269046...   not a commit in tsenart/vegeta
-#:     hey                 5626f79b8698...   not a commit in rakyll/hey
-#:     memtier_benchmark   5694a3d61aaf...   not a commit in RedisLabs/memtier_benchmark
-#:     rdkafka_performance 6f86c853a131...   not a commit in confluentinc/librdkafka
-#:     kafka-*             995cfcf99f79...   not a commit in apache/kafka
+#: They were asked of their own repositories that day -- the first time any of them had been,
+#: because the install step below had never fetched anything; it reported what was already on
+#: the machine and stopped. Five came back 422, GitHub for "no commit with that SHA", and
+#: GitHub's commit search found each of them in zero repositories anywhere. Only k6's was real,
+#: and valkey's 9.1.2 is a real release tag.
 #:
-#: Only k6's is real, and valkey's 9.1.2 is a real release tag. The five that are not are marked
-#: resolve, which is this block's own word for "not pinned yet, and what installs is recorded".
-#: That is an honest blank, which the note below this table has always said is better than a
-#: made-up commit. They are not replaced with plausible-looking real commits: which build the
-#: audit read is not a thing to reconstruct after the fact, and nothing here can say it.
+#: The real ones were in the repository the whole time, in data/tools_audit/batch_*.json, the
+#: T5 audit's own records: a dated "version seen" for every one of the ten, and every hash in
+#: them answers 200. **The audit did its work properly.** What was wrong was the copy into this
+#: table, and the shape of the damage says as much -- each wrong hash shares its first 28 to 34
+#: characters with the audit's and differs only in the tail:
 #:
-#: Where they came from, since it is the obvious question. They entered in e6870e38 on
-#: 2026-09-20, the commit that created this file, and they have never been anywhere else: no note
-#: records them, the T5 audit does not cite them, and GitHub's commit search finds each of them
-#: in zero repositories -- so they are not commits recorded against the wrong repository, they
-#: are not commits. This repository has one author across all of its history. Nobody put them
-#: here but this project, writing a table of versions it had not fetched, in the same commit as
-#: a great deal of real and checkable work on the readers beside it. Nothing could contradict
-#: them because nothing ever read them: the install step below reported what was already on the
-#: machine and fetched nothing, so the first time any of these hashes was asked of its own
-#: repository was 22 September, two days later.
-#: Resolved on 22 September by installing them and asking what landed, then asking each upstream
-#: whether that version exists. Every line below came back 200; the ones that did not are still
-#: resolve. This is the workflow the note above describes, run for the first time.
+#:     vegeta   audit cf5811269046c672a604b1eb352204d30f16ae4a
+#:              table cf5811269046c672a604b1eb352204d30f9d5b58    same through "...204d30f"
+#:     hey      audit 5626f79b8698df6daf9b25799c9805c6acc96740
+#:              table 5626f79b8698df6daf9b25799c9805c6ac7dbd9e    same through "...9805c6ac"
 #:
-#:     vegeta              v12.13.0    = 4b240c3089fa4aa10816542d64a74294d974211f (proxy.golang.org)
-#:     hey                 v0.1.5      = e64ec7a3ad1ef8bc828fe61e1fb324cc2e74c604 (proxy.golang.org)
-#:     k6                  v2.2.1-0.20260918105121-3fcf5388d78c, the one real hash of the old table
-#:     valkey-benchmark    9.1.2       = 7f1dffedff6de73058b2c2a389422b6ecd56c8fb, and the binary
-#:                                       says "git:7f1dffed" itself
-#:     memtier_benchmark   abdbb3564a79439c74d18411130b3d0835d2ecd2, and it says "sha=abdbb356"
-#:     rdkafka_performance c58a8dc493e1eb51ded67dd2dffe1c9555c434d7
-#:     kafka-*             3.7.1, from archive.apache.org, which answers 200 for that archive
-#:     nats-latency        v0.5.0, which is what the binary reports of itself
+#: and so for memtier, librdkafka and Kafka: transcriptions whose tails were regenerated rather
+#: than copied. Three more -- wrk2, rabbitmq-perftest and nats-latency -- sat here as "resolve"
+#: although the audit had a real commit for each. Nothing could contradict any of it, because
+#: nothing read this table: it was written in e6870e38 on 20 September, the commit that created
+#: this file, and the step that would have fetched these commits fetched nothing.
 #:
-#: wrk2 and rabbitmq-perftest stay resolve because neither installed: wrk2's vendored LuaJIT has
-#: no aarch64 support and stops its own build, and the PerfTest archive did not unpack. Both are
-#: the x86 pair's tools, and both will be written here when they land there.
+#: The table is now the audit's, which is what this plan means by "the versions the audit read",
+#: and not whatever happened to be HEAD on the day it was installed.
 PINNED='
-vegeta|go|v12.13.0
-hey|go|v0.1.5
+vegeta|go|cf5811269046c672a604b1eb352204d30f16ae4a
+hey|go|5626f79b8698df6daf9b25799c9805c6acc96740
 k6|go|3fcf5388d78c
 valkey-benchmark|apt|9.1.2
-memtier_benchmark|git|abdbb3564a79439c74d18411130b3d0835d2ecd2
-rdkafka_performance|git|c58a8dc493e1eb51ded67dd2dffe1c9555c434d7
-kafka-end-to-end|kafka|3.7.1
-kafka-producer-perf|kafka|3.7.1
-wrk2|git|resolve
-rabbitmq-perftest|jar|resolve
-nats-latency|go|v0.5.0
+memtier_benchmark|git|5694a3d61aaf0322a62fc44083ba6f2130b16265
+rdkafka_performance|git|6f86c853a131d66fc2cd2a44aac99e83de859b4e
+kafka-end-to-end|kafka|995cfcf99f7917403e030428c00b5c51808ddc61
+kafka-producer-perf|kafka|995cfcf99f7917403e030428c00b5c51808ddc61
+wrk2|git|44a94c17d8e6a0bac8559b53da76848e430cb7a7
+rabbitmq-perftest|jar|ba718d2eae542ee5557a676f5454d4492739e714
+nats-latency|go|cc0a8e3224d564b134a92f6f2c2081452f885549
 '
 
 #: The tools libfaketime can reach, because they read the clock through the C library.
@@ -211,16 +194,16 @@ install () {
     fi
   done
 
-  go_tool vegeta github.com/tsenart/vegeta/v12 v12.13.0
-  go_tool hey github.com/rakyll/hey v0.1.5
+  go_tool vegeta github.com/tsenart/vegeta/v12 cf5811269046c672a604b1eb352204d30f16ae4a
+  go_tool hey github.com/rakyll/hey 5626f79b8698df6daf9b25799c9805c6acc96740
   go_tool k6 go.k6.io/k6/v2 3fcf5388d78c
-  go_tool nats github.com/nats-io/natscli/nats latest
-  git_build wrk2 https://github.com/giltene/wrk2 resolve wrk make -j2
+  go_tool nats github.com/nats-io/natscli/nats cc0a8e3224d564b134a92f6f2c2081452f885549
+  git_build wrk2 https://github.com/giltene/wrk2 44a94c17d8e6a0bac8559b53da76848e430cb7a7 wrk make -j2
   git_build memtier https://github.com/RedisLabs/memtier_benchmark \
-    abdbb3564a79439c74d18411130b3d0835d2ecd2 memtier_benchmark \
+    5694a3d61aaf0322a62fc44083ba6f2130b16265 memtier_benchmark \
     sh -c 'autoreconf -ivf && ./configure && make -j2'
   git_build librdkafka https://github.com/confluentinc/librdkafka \
-    c58a8dc493e1eb51ded67dd2dffe1c9555c434d7 examples/rdkafka_performance \
+    6f86c853a131d66fc2cd2a44aac99e83de859b4e examples/rdkafka_performance \
     sh -c './configure && make -j2 && make -C examples rdkafka_performance'
   git_build valkey https://github.com/valkey-io/valkey 9.1.2 src/valkey-benchmark make -j2
   get_kafka

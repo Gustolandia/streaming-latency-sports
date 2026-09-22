@@ -179,8 +179,7 @@ start_job () {
   # would take its first job straight away and reboot under a running calibration, which is the
   # one thing that went wrong twice on 21 September.
   if [ -z "$block" ]; then
-    ls -d runs/azure/stage1/*/ 2>/dev/null | sort > "$SEEN"
-    log "  nothing of its own to start; waiting for the session already on the pair"
+    log "  nothing of its own to start; waiting for the pair to go quiet"
     return 0
   fi
   backend="$(field "$line" backend)"; rounds="$(field "$line" rounds)"
@@ -234,6 +233,17 @@ start_job () {
   grep -q "chain:" chain.log 2>/dev/null \
     || { log "  the chain did not start; read chain.log"; return 1; }
   return 0
+}
+
+#: Is any of the pair's work still going? What a job of its own is waiting for is a word in a
+#: log, but a job that only holds the list back cannot use that: the session it is waiting for
+#: may already have made its folder, in which case there is no new one coming and the wait would
+#: run to its twelve-hour limit. What it is really waiting for is the machine, so it asks the
+#: machine. Read here rather than over ssh, so there is no command line carrying the pattern for
+#: it to match itself in -- which killed three connections this week.
+work_running () {
+  ps -eo args --no-headers \
+    | awk '/azure\/(campaign|stage0|stage1|chain)\.sh/ && !/awk/ { n++ } END { exit !(n > 0) }'
 }
 
 #: How the campaign this job started ended. Only a folder that was not there when it started
@@ -304,7 +314,11 @@ run_loop () {
       waiting)
         waited=0
         while true; do
-          state="$(campaign_state)"
+          if [ -z "$(field "$line" block)" ]; then
+            if work_running; then state="running"; else state="done the pair is quiet"; fi
+          else
+            state="$(campaign_state)"
+          fi
           case "$state" in
             done*)    log "  finished: ${state#done }"; advance; break ;;
             stopped*) log "  stopped itself: ${state#stopped }"; requeue_once "$line"; advance; break ;;

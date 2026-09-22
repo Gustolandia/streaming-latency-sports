@@ -928,8 +928,7 @@ def test_a_list_can_be_put_on_a_pair_that_is_already_working():
     code = QUEUE.read_text(encoding="utf-8")
     start = code.split("start_job () {", 1)[1].split("\n}", 1)[0]
     holding = start.split('if [ -z "$block" ]; then', 1)[1].split("fi", 1)[0]
-    assert '> "$SEEN"' in holding, "it still remembers the folders, so it waits for a new one"
-    assert "return 0" in holding
+    assert "return 0" in holding and "stage0.sh" not in holding
     assert start.index('if [ -z "$block" ]; then') < start.index("verify_boot"), \
         "it starts nothing, so it also rebuilds nothing and checks no boot"
     assert start.index('if [ -z "$block" ]; then') < start.index("rebuild_session")
@@ -955,3 +954,18 @@ def test_a_block_with_no_core_count_is_given_none():
     start = code.split("start_job () {", 1)[1].split("\n}", 1)[0]
     assert 'local cores=""' in start
     assert start.index('local cores=""') < start.index('args+=(--cores')
+
+
+
+def test_a_holding_job_waits_on_the_machine_rather_than_on_a_word_in_a_log():
+    """A job of its own waits for a campaign folder that was not there when it started. A job
+    that only holds the list back cannot: the session it waits for may have made its folder
+    already, so no new one is coming and the wait would run to its twelve-hour limit. What it is
+    really waiting for is the machine, so it asks the machine."""
+    code = QUEUE.read_text(encoding="utf-8")
+    assert "work_running () {" in code
+    assert "ps -eo args --no-headers" in code, "read here, not over ssh"
+    assert "!/awk/" in code, "and not matching the command line that carries the pattern"
+    waiting = code.split("      waiting)", 1)[1].split("\n        ;;", 1)[0]
+    assert 'if [ -z "$(field "$line" block)" ]; then' in waiting
+    assert "work_running" in waiting

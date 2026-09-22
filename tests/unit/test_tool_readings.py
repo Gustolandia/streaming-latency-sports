@@ -321,6 +321,26 @@ class TestEachToolsOwnOutput:
         assert tr.read_tool("rabbitmq-perftest", text)["reported_ms"]["min"] == \
             pytest.approx(-0.890)
 
+    def test_perftest_is_read_when_it_prints_a_sixth_figure(self):
+        """The build this block runs prints the maximum as well. The five-figure pattern
+        matched the label and the first five numbers and stopped at the slash before the
+        sixth, so every run of it read as nothing at all with its latencies in the file.
+        """
+        text = ('id: test-191012-635, consumer latency min/median/75th/95th/99th/max '
+                '271/507/576/692/809/5112 µs')
+        got = tr.read_tool("rabbitmq-perftest", text)["reported_ms"]
+        assert got["min"] == pytest.approx(0.271)
+        assert got["p50"] == pytest.approx(0.507)
+        assert got["p99"] == pytest.approx(0.809)
+        assert got["max"] == pytest.approx(5.112)
+
+    def test_a_negative_minimum_survives_the_sixth_figure_too(self):
+        """A negative minimum is the whole point of T2 for this tool."""
+        text = ('id: t, consumer latency min/median/75th/95th/99th/max '
+                '-890/975/1320/1900/2799/3000 µs')
+        got = tr.read_tool("rabbitmq-perftest", text)["reported_ms"]
+        assert got["min"] == pytest.approx(-0.890)
+
     def test_nats_reads_a_go_duration_in_whatever_unit_it_chose(self):
         """Go prints 1.109ms and 340µs on adjacent lines, so the unit travels with the figure."""
         got = tr.read_tool("nats-latency", NATS)

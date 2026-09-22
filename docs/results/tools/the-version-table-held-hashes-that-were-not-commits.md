@@ -103,3 +103,65 @@ nats-latency         cc0a8e3224d564b134a92f6f2c2081452f885549   2026-09-17
 An earlier fix pinned the table to whatever was HEAD on the day the tools installed. That was
 honest and still wrong: the plan says the block runs at the versions the audit read, and HEAD on
 an arbitrary morning is a build the audit never looked at.
+
+## Everything else of that shape, checked
+
+A fabricated identifier is a class of fault, not one incident, so the rest of the repository was
+asked the same question: is there anything here that looks fetched and was not?
+
+| what | how many | result |
+|---|---|---|
+| commit hashes in `cloud/azure/tools.sh` | 6 | **5 were not commits** |
+| commit hashes in `data/tools_audit/` (T5's records) | 10 | all real |
+| every other 40-hex string in the repository | — | all are this project's own commits, the pinned StatsBomb corpus, or vendor build strings in logs |
+| DOIs in `manuscript_references.bib` | 16 | 15 resolve; **1 resolved to nothing** |
+| numbers of every cited reference, against Crossref | 125 cited | 38 agree, 82 Crossref does not index, **5 flagged** |
+| arXiv identifiers cited | 4 | all real, titles match exactly |
+| URLs in cited references | 13 | all answer 200 |
+| Zenodo DOIs this repository publishes | 14 | all real, titles match |
+| authors across the whole git history | 648 commits | one, plus GitHub's web interface on three merges |
+
+**No cited work is fabricated.** Of the five references flagged by their numbers, three are the
+checker being naive and two are a style choice:
+
+- `barrett2017warmup` gives pages as `52:1--52:27`, the article-number form PACMPL uses; Crossref
+  stores `1-27`. Nothing wrong.
+- `lamport1978time` and `rfc7679` carry no DOI, so the checker searched by title and matched, in
+  the first case a 2019 ACM anthology reprint of Lamport's 1978 paper, and in the second RFC 2679
+  of 1999, which shares its title and which RFC 7679 obsoletes. Both entries are right; the
+  checker was matching the wrong thing.
+- `fruth2021telltale` and `yue2024streamsurvey` give the conference year where Crossref gives the
+  Springer publication year, a year later in both cases. A convention, not an error, and left as
+  it is rather than changed quietly.
+
+**One reference was genuinely wrong**, and it is the one that shows why checking a title is not
+enough. `tahir2022delayed` named a real paper by its real authors and then gave the wrong volume,
+the wrong issue, the wrong pages, the wrong year and a DOI that resolves to nothing:
+
+| | the entry said | the paper is |
+|---|---|---|
+| volume | 71 | **72** |
+| issue | 9 | **6** |
+| pages | 1975–1988 | **1610–1622** |
+| year | 2022 | **2023** |
+| DOI | `10.1109/TC.2021.3131240` — resolves to nothing | `10.1109/TC.2022.3215907` |
+
+Corrected, with a note in the entry recording what it said before. The supplement cites it, so
+the key is unchanged.
+
+## What this class of fault looks like
+
+Three things were true of every instance, and any one of them is worth treating as a warning:
+
+1. **The identifier sat beside work that was real and checkable**, and borrowed its credibility.
+   The commit that wrote the bad version table also established, correctly and against the tools'
+   own source, that `rdkafka_performance` divides by `1000.0f` before printing.
+2. **Nothing consumed it.** The version table was never read by anything until the install step
+   was made to install; `tahir2022delayed`'s DOI was never resolved. An identifier nothing
+   fetches is an identifier nothing can contradict.
+3. **It was plausible.** Forty hex characters, a DOI in the right registrant's prefix, a volume
+   and page range of the right magnitude. Plausibility is the whole problem: an implausible
+   identifier would have been caught on sight.
+
+The practical rule that follows: **write the blank rather than the guess**, and add the step that
+consumes a table in the same change that adds the table.

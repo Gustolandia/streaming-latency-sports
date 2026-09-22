@@ -531,10 +531,25 @@ def levels_by_backend(rows, warmup_s=30.0, summarise=pilot_checks.summarise, anc
         if "plateau" in levels and "floor" in levels:
             found[backend] = dict(levels, slice_ms=anchor_ms)
     if not found:
+        #: A block that varies more than the trip reaches here with its points all present, and
+        #: the sentence above would be a lie. _level_rates takes the point from the end of the
+        #: setup's name, which is where a pilot puts it; A8's setups end with the client and
+        #: where the note was taken, so its p09s and f15h runs are filed under "callback" and
+        #: "inline" and no point is found. Reading them under their points would not mend it:
+        #: A8 varies the client and the priority, and those are the very things that change the
+        #: plateau -- its go-first runs sit near zero and its Python runs three times above its
+        #: Java ones, so its runs have no one plateau to read. That is why levels come from the
+        #: pair's spread pilot, and this says so rather than leaving a reader to find it.
+        varies = sorted(set(point for _, _, point in rates if point not in POINT_FORM))
         raise ValueError(
             "no backend ran both a plateau point (%s) and a floor point (%s) at the %g ms anchor "
-            "slice, so neither level can be read there"
-            % (", ".join(PLATEAU_READ_FROM), ", ".join(FLOOR_READ_FROM), anchor_ms))
+            "slice, so neither level can be read there%s"
+            % (", ".join(PLATEAU_READ_FROM), ", ".join(FLOOR_READ_FROM), anchor_ms,
+               "" if not varies else
+               "; these setups end in %s rather than a point, so this is a block that varies "
+               "more than the trip -- a campaign that varies what changes the plateau has no one "
+               "plateau, and the levels for it are read from the pair's spread pilot"
+               % ", ".join(varies)))
     return found
 
 

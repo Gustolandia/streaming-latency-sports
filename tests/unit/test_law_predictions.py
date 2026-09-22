@@ -551,6 +551,28 @@ class TestTheAnchorTheCampaignsShare:
         runs = self.campaigns(shifts=[((3.0, 1.5), 0.0), ((3.0, 4.5), 0.3)])
         found = lp.judge(runs, "P9", 1.0, draws=40, seed=1, grid=24, anchor_ms=3.0)
         assert found["confirmed"] is True and found["anchor_ms"] == 3.0
+        assert "each of the 2 campaigns moved by its own offset" in found["rule"]
+
+    def test_an_anchor_over_one_campaign_is_refused_rather_than_done_quietly(self):
+        """A4's P9 was read this way. Its four campaigns were copied into one folder, so every
+        run took that folder's name; anchor_offsets found one campaign and returned no offsets;
+        through_the_anchor moved every reading by zero; and the rule printed beside the answer
+        still said that each campaign had been moved by its own offset. Both free slopes came
+        out just outside the band they are inside once the correction is applied.
+        """
+        runs = lw.campaign(slices=(3.0, 1.5, 4.5), rounds=4, seed=1, spread=0.05)
+        for run in runs:
+            run["campaign"] = "a4_all"
+        with pytest.raises(ValueError, match="these runs carry 1 of them"):
+            lp.judge(runs, "P9", 1.0, draws=40, seed=1, grid=24, anchor_ms=3.0)
+
+    def test_without_an_anchor_one_campaign_is_perfectly_ordinary(self):
+        """The refusal is about asking for a correction that cannot be made, not about the runs:
+        the plan asks for the uncorrected reading too."""
+        runs = lw.campaign(slices=SIX, rounds=4, seed=1, spread=0.05)
+        for run in runs:
+            run["campaign"] = "a1_only"
+        assert lp.judge(runs, "P1", 1.0, draws=40, seed=1, grid=24)["confirmed"] is True
 
 
 class TestJudgingFromTheOutside:
@@ -643,9 +665,9 @@ class TestHowTheAnswersRead:
 
 class TestTheCommand:
 
-    def write(self, folder, runs):
+    def write(self, folder, runs, verdict="count", first=0):
         for i, run in enumerate(runs):
-            where = folder / ("law_a1_r%s-%03d" % (run["round"], i))
+            where = folder / ("law_a1_r%s-%03d" % (run["round"], first + i))
             where.mkdir(parents=True, exist_ok=True)
             (where / "queue_row.json").write_text(json.dumps(
                 {"key": where.name, "round": run["round"], "setup": "A1",
@@ -654,7 +676,7 @@ class TestTheCommand:
                             "load_pct": run["load_pct"], "priority": run["priority"],
                             "cpus": run["cpus"]}}), encoding="utf-8")
             (where / "integrity.json").write_text(json.dumps(
-                {"verdict": "count", "recorded": {"trip_median_ms": run["trip_ms"],
+                {"verdict": verdict, "recorded": {"trip_median_ms": run["trip_ms"],
                                                   "measured_negative_rate": run["negative_rate"]}}),
                 encoding="utf-8")
         return str(folder)
@@ -690,6 +712,24 @@ class TestTheCommand:
         out = io.StringIO()
         assert lp.main(["judge", "--runs", str(tmp_path), "--prediction", "P1"], out=out) == 2
         assert out.getvalue().startswith("ERROR:")
+
+    def test_runs_the_integrity_rule_stopped_do_not_move_the_answer(self, tmp_path):
+        """The measurement a campaign is judged on is the one its own instrument passed.
+
+        A stopped run is a run whose clock ran backwards, or whose "got it" note moved further
+        between sittings of one setup than the delay being added. It is on disk and it is
+        reported, and it decides nothing. Here the stopped runs are a whole second campaign of a
+        world where the cliff never moves: if they were read, P1 could not survive them.
+        """
+        good = lw.campaign(slices=SIX, rounds=4, seed=1)
+        bad = lw.campaign(slices=SIX, rounds=4, seed=1, world="cliff_fixed", fixed_at=4.0)
+        folder = self.write(tmp_path / "runs", good)
+        self.write(tmp_path / "runs", bad, verdict="stop", first=len(good))
+        out = io.StringIO()
+        code = lp.main(["judge", "--runs", folder, "--prediction", "P1", "--tick-ms", "1.0",
+                        "--draws", "40", "--seed", "1"], out=out)
+        assert code == 0 and "P1: confirmed" in out.getvalue()
+        assert "left out %d runs the integrity rule did not pass" % len(bad) in out.getvalue()
 
 
 class TestTheWorldsThemselves:

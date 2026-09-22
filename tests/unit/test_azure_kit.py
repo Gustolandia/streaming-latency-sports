@@ -871,6 +871,53 @@ def test_the_queue_goes_on_when_one_job_stops_itself():
     assert "exit 1" not in waiting
 
 
+def test_the_code_is_brought_up_to_date_once_a_job_has_booted_and_before_it_measures():
+    """A pair driven by the queue ran whatever code it had when the list was put on it.
+
+    The block jobs go straight to stage0.sh and chain.sh; only the cmd= jobs pulled, because
+    their commands happen to say so. matched-b sat four commits behind for a day that way,
+    including the commit that corrects a campaign's load to the load the machine shows.
+    """
+    code = QUEUE.read_text(encoding="utf-8")
+    start = code.split("start_job () {", 1)[1].split("\n}", 1)[0]
+    assert "pull_code" in start
+    assert start.index("verify_boot") < start.index("pull_code") < start.index("stage0.sh session")
+
+
+def test_the_pull_will_not_merge_and_its_failure_is_a_line_rather_than_a_stopped_job():
+    code = QUEUE.read_text(encoding="utf-8")
+    body = code.split("pull_code () {", 1)[1].split("\n}", 1)[0]
+    assert "--ff-only" in body, "a tree edited on the machine stops rather than merges"
+    assert "return 1" not in body and "exit" not in body, \
+        "the code it has ran the last job; a pair that goes quiet is worse"
+    assert "log " in body, "what it did, or could not do, is in the log either way"
+
+
+def test_the_loop_runs_from_a_copy_so_a_pull_cannot_rewrite_it_underneath():
+    """Bash reads a script as it goes and keeps its place by byte offset, so a loop that pulls
+    its own source can carry on in the middle of something else."""
+    code = QUEUE.read_text(encoding="utf-8")
+    run = code.split("  run)", 1)[1].split("run_loop ;;", 1)[0]
+    assert "$RUNNING_NAME" in run and "cp " in run and "exec bash" in run
+    assert 'RUNNING_NAME=".queue.running.sh"' in code
+    assert code.index("RUNNING_NAME=") < code.index("  run)"), "set before it is used"
+
+
+@needs_bash
+def test_the_check_that_the_loop_is_alive_knows_the_copy_by_name(tmp_path):
+    """The check exists because a lock left by a killed loop made `start` say "running" over a
+    queue that was not. Renaming what it runs from must not blind it again."""
+    code = QUEUE.read_text(encoding="utf-8")
+    pattern = code.split("if ps -eo args --no-headers | awk '", 1)[1].split("'", 1)[0]
+    for line in ("bash cloud/azure/queue.sh run", "bash cloud/azure/.queue.running.sh run"):
+        done = subprocess.run(["bash", "-c", "echo '%s' | awk '%s'" % (line, pattern)],
+                              capture_output=True, text=True)
+        assert done.returncode == 0, "%r is the loop and the check missed it" % line
+    done = subprocess.run(["bash", "-c", "echo 'bash cloud/azure/queue.sh show' | awk '%s'"
+                           % pattern], capture_output=True, text=True)
+    assert done.returncode != 0, "only the loop counts, not every call of the script"
+
+
 def test_a_job_is_put_back_once_and_never_retried_in_place():
     """One more go is worth having; two is a retry loop wearing a different hat, and the second
     failure of the same job is information rather than bad luck."""

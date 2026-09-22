@@ -99,3 +99,6 @@ build/
 # harness/java/DEPENDENCIES, and its classes are built from src/. Neither is source.
 harness/java/lib/
 harness/java/out/
+
+# The copy the queue loop runs from, so a pull cannot rewrite the script bash is reading
+cloud/azure/.queue.running.sh

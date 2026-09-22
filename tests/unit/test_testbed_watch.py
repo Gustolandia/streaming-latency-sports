@@ -9,6 +9,7 @@ import io
 import json
 import pathlib
 import os
+import re
 import subprocess
 import sys
 
@@ -174,17 +175,26 @@ class TestFlags:
                         + "campaign=1\nqueued=0\nactivity_age_s=5000\nnetns=1\n")
         assert any("stuck" in f[1] for f in tw.evaluate(stalled, None))
 
-    @pytest.mark.parametrize("what", ["cloud/azure/chain.sh", "cloud/azure/stage1.sh",
-                                      "cloud/azure/queue.sh", "rounds_rule.py"])
+    @pytest.mark.parametrize("what", [
+        "bash cloud/azure/chain.sh A4 --rounds 4",
+        "bash cloud/azure/stage1.sh run --queue runs/azure/x.csv",
+        "bash cloud/azure/queue.sh run",
+        # The loop runs from a copy of queue.sh, so that a pull cannot rewrite the script bash is
+        # reading. A probe that knows only the original would call that pair idle.
+        "bash cloud/azure/.queue.running.sh run",
+        "python3 scripts/rounds_rule.py for --prediction P9"])
     def test_the_probe_counts_work_that_is_not_yet_a_run(self, what):
-        """Named here so the list cannot quietly lose one of them again.
+        """Matched against the command lines themselves, so the list cannot quietly lose one.
 
         The queue is the one that matters most: it is idle by design between jobs, having just
         rebooted the machine or being a minute from its next look, and a pair deallocated in
         that gap loses a list of work with nobody left watching it.
         """
-        assert what in tw.DRIVER_PROBE
-        assert what not in tw.DRIVER_PROBE.split('echo "queued=')[0], \
+        queued = tw.DRIVER_PROBE.split('echo "queued=', 1)[1]
+        pattern = queued.split("pgrep -f '", 1)[1].split("'", 1)[0]
+        assert re.search(pattern, what), \
+            "%r is work in hand and the probe does not count it" % what
+        assert what.split()[1] not in tw.DRIVER_PROBE.split('echo "queued=')[0], \
             "counted as work in hand, not as a campaign making runs"
 
     @pytest.mark.parametrize("extra,level,fragment", [

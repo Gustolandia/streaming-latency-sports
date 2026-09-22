@@ -564,6 +564,26 @@ class TestTheToolsBlock:
             "and the staircase does not start until the delay is shown to reach the tool")
         assert "broker-clear" in code, "and the delay is taken off afterwards"
 
+    def test_rdkafkas_consumer_is_started_before_the_producer_it_measures(self):
+        """It starts at the end of the topic, so a producer that has already finished is one it
+        never sees. With the producer first it printed "0 messages consumed" once a second and
+        had a pair to itself for twenty-eight minutes."""
+        code = self.runner().split("  rdkafka_performance)", 1)[1].split(";;", 1)[0]
+        lines = [line.strip() for line in code.splitlines() if not line.strip().startswith("#")]
+        consumer = next(i for i, line in enumerate(lines) if " -C " in line)
+        producer = next(i for i, line in enumerate(lines) if " -P " in line)
+        assert consumer < producer, "the consumer is listening before anything is sent"
+        assert lines[consumer].endswith("&") or lines[consumer + 1].endswith("&"), \
+            "and it is the one left running in the background"
+        assert 'wait "$consumer"' in code, "the run ends when the consumer has its messages"
+
+    def test_a_tool_that_never_finishes_cannot_take_the_pair_with_it(self):
+        """The only limit above the tool was the queue's own twelve hours."""
+        runner = self.runner()
+        assert "SBL_TOOL_GUARDED" in runner and "exec timeout -k 30" in runner
+        assert runner.index("SBL_TOOL_GUARDED") < runner.index('case "$TOOL" in'), \
+            "the guard is in place before any tool runs"
+
     def test_the_tools_talk_across_the_pair_and_not_to_themselves(self):
         """T1 adds its delay on the broker, to traffic bound for the driver. Every target in the
         runner defaulted to 127.0.0.1 until 22 September, which put the tool and the server it

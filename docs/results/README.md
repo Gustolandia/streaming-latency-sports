@@ -21,11 +21,11 @@ rather than as a negative result.
 | A1 | does the cliff follow the slice | run, sound at 4 rounds |
 | A2 | does the cliff's width follow the tick | **session 1 of 12 running again.** Its first attempt stopped itself at 28 of 40 on the got-it brake and prompted freeze 14; the 28 are kept. All three kernels boot and run within 1.4% of their tick. All three kernels built, booted and checked 21 Sep, each within 1.4% of its tick. The first of twelve sessions (HZ=1000, Kafka) is running on matched-b: 10 of 16 setups reachable, 40 runs. It was started once at 14:07 UTC, stopped after two runs and started again at 14:17 under freeze 13's code, so that all twelve sessions run one brake — see below. The counterbalanced order for the rest is below too. **Rounds cannot be simulated** (D14-5), so every session runs at the floor of 4 |
 | A3 | does load move the cliff, and raise the plateau | **Kafka's second campaign finished clean on 21 Sep: 216 runs counted, 1 repeated, all 12 rounds, no stop** — the first stopped at 286 of 288 on the got-it brake. Not yet judged; the pair is busy. **Redis will not run.** Simulated at its own levels, P3b reaches 35.5% power at the plan's ceiling of 40 rounds, so there is no round count at which that campaign answers anything — see below. Redis now carries no A3 prediction. First Kafka campaign reported below |
-| A4 | does it hold on Arm | run, sound at 4 rounds |
-| A5 | does the default slice follow the core count | **one session of three; the other two now have a way to start.** Its 8-CPU campaign finished 20 Sep and is clean (60 runs counted, 1 repeated). The machine refuses to offline a CPU, so the count is asked for at boot instead — demonstrated at 2 and 4 CPUs on 21 Sep, see below. The two sessions still have to run |
+| A4 | does it hold on Arm | **three of its four campaigns, not four.** The Kafka campaign at slices 1.5 and 3 ms stopped itself on 18 September and was never started again; the block has read "run, sound at 4 rounds" ever since, because the three that finished were sound and nobody counted them against the design. The fourth is running now at 4 rounds, the number its siblings ran and the number the rule gives again at this pair's corrected levels (98%) — see below |
+| A5 | does the default slice follow the core count | **one session of three; the other two are queued on matched-b and start when the A2 session running now finishes.** Its 8-CPU campaign finished 20 Sep and is clean (60 runs counted, 1 repeated). The machine refuses to offline a CPU, so the count is asked for at boot instead — demonstrated at 2 and 4 CPUs on 21 Sep, see below. The two sessions still have to run |
 | A7 | does go-first priority remove the plateau | run; its Kafka half checked sound at 4 rounds |
 | A8 | does the client language change it | **stopped itself four times on 21 Sep, three of them instrument faults since fixed.** The fourth is the brake's shape rather than the pair: a constant offset judged by an allowance proportional to the delay, which only ever fails at the shortest trip — see below. 31 runs, 28 counted, 2 repeated, 1 stop |
-| T1–T4 | what ten benchmarking tools report | harness built and checked against made-up tools; no machine run yet |
+| T1–T4 | what ten benchmarking tools report | **queued on matched, behind A8.** Harness built and checked against made-up tools. All ten go on one pair rather than five each: the plan requires only that each tool runs entirely on one pair, and the load is no longer the shape the five-and-five split was balanced for. Three tools wait on their version pins being resolved and written down — see below |
 | T5 | do the tools' own documents admit it | done, frozen in freeze 08 |
 
 ## What has actually been found
@@ -91,6 +91,9 @@ machine refuses to switch a CPU off, so the count goes on the kernel command lin
 at eight — every one of them exactly `700000 × (1 + ilog2(n))`. Not `maxcpus`, which looks like
 the same parameter and leaves the machine back at eight CPUs within a second.
 → [`law/a5-core-count-must-be-asked-for-at-boot.md`](law/a5-core-count-must-be-asked-for-at-boot.md)
+
+**The pairs keep their own lists now, and A4 turned out to be a campaign short.** A session cannot survive the thing driving it, because it begins with a reboot; driving the twelve A2 sessions from outside cost two quiet nights in one day. Each driver now holds its own job list and an `@reboot` line to pick it up again, so nothing outside the pair has to stay awake. Counting the Arm driver's campaigns against the design before giving it new work found that A4's Kafka campaign at 1.5 and 3 ms stopped itself on 18 September and was never started again.
+→ [`law/the-pairs-keep-their-own-lists.md`](law/the-pairs-keep-their-own-lists.md)
 
 **Two ABI builds of one kernel version give two different default slices, and the version number
 predicts only one of them.** The first x86 pair now runs `6.8.0-1065-azure` and the second
@@ -178,6 +181,10 @@ measured.
 | a run measured the previous rung's delay, with the load still flat out at 99.8% | the repeat rule, on two of A8's 31 runs | 2 runs |
 | P7 could not be judged at all: it compared the machine's reported slice against a designed one, and A5 is the one block that sets none | reading A5's finished campaign instead of waiting for the rest of it | none — but the two remaining A5 sessions, about eight hours, would have run first |
 | P8 could not see which client sent a run: the reader never extracted the language, so it reported that A8 had not tested P8 at all | asking the same question of every other judge after P7 | none — caught while A8 was still running |
+| a session driven from outside dies with whatever is driving it, and the pair goes quiet until somebody notices | it happening twice on 21 September | the pairs now keep their own lists, across their own reboots |
+| A4 ran three of its four campaigns: one stopped itself on 18 September and was never started again | counting the Arm driver's campaigns against the design before giving it new work | four days of the block reading as finished when it was not |
+| a rounds simulation was started by hand on a driver, and a calibration started on the same driver eleven minutes later, overlapping it | the process list, while checking why the machine was busy | 4 minutes; one run abandoned and recorded, the calibration restarted clean |
+| the watch would have called a pair with a queue on it idle and deallocated it, because a queue between jobs looks like nothing at all | adding the queue and asking what the watch would make of it | none — caught before the watch was started |
 
 Those last two are one fault with two faces, and both survived a suite at 100% branch coverage.
 Every test of a judge builds its runs from the made-up world, and that world is not shaped like a

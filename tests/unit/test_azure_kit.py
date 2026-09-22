@@ -86,7 +86,7 @@ def test_stage_1_runs_one_campaign_of_a_block_from_a_finished_stage_0():
     """A block is not a sitting: each campaign is placed from a stage 0 that passed, runs the
     rounds it is given, and says in its own log where that number came from."""
     code = (KIT / "stage1.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
-    order = ['cp "$STAGE0/$f" "$DIR/$f"', 'yield bool(node["gate"].get("ok"))',
+    order = ['cp "$STAGE0/$f" "$DIR/$f"', 'yield path, bool(node["gate"].get("ok"))',
              'log "rounds: $ROUNDS"', "law_design.py design", "run_queue.py make",
              "bash cloud/azure/campaign.sh", "CAMPAIGN_COMPLETE"]
     places = [code.index(step) for step in order]
@@ -98,8 +98,8 @@ def test_stage_1_runs_one_campaign_of_a_block_from_a_finished_stage_0():
 
 def test_stage_1_will_not_place_a_campaign_from_a_calibration_that_failed():
     code = (KIT / "stage1.sh").read_text(encoding="utf-8").split("set -o pipefail", 1)[1]
-    assert "did not pass its gate on every backend" in code
-    assert code.index('yield bool(node["gate"].get("ok"))') < code.index("law_design.py design")
+    assert "did not pass its gate for" in code
+    assert code.index('yield path, bool(node["gate"].get("ok"))') < code.index("law_design.py design")
 
 
 def test_stage_1_needs_the_block_the_rounds_and_the_session_it_comes_from():
@@ -998,3 +998,57 @@ def test_work_that_no_calibration_places_is_still_on_the_list():
     assert booted.index("timeout 43200") < booted.index("advance")
     assert "rebuild_session" not in booted.split('if [ -n "$cmd" ]', 1)[1].split("elif", 1)[0], \
         "the tools block puts up its own servers, and rebuilding ours would fight it"
+
+
+class TestACampaignIsGatedOnTheCalibrationItIsPlacedFrom:
+    """It used to require every gate in the file, whichever backend the campaign ran.
+
+    That cost three sessions on 22 September. On the second x86 pair Kafka's calibration cannot
+    be known within 0.3 ms on the coarse-tick kernels -- 0.311 to 0.410 against the 0.3 the gate
+    asks -- while Redis's is 0.128 to 0.237 on every one of them. Redis campaigns were refused
+    for the state of a calibration they are not placed from, each after about two and a half
+    hours of calibrating.
+    """
+
+    def _gate(self, tmp_path, calibration, *backends):
+        """The gate check exactly as stage1.sh runs it."""
+        code = (KIT / "stage1.sh").read_text(encoding="utf-8")
+        code = code.split("python3 -c '", 1)[1].split("' \\\n", 1)[0]
+        path = tmp_path / "calibration.json"
+        path.write_text(json.dumps({"calibration": calibration}), encoding="utf-8")
+        done = subprocess.run([sys.executable, "-c", code, str(path), *backends],
+                              capture_output=True)
+        return done.returncode == 0
+
+    def _fit(self, ok):
+        return {"75": {"gate": {"ok": ok, "known_within_0_3_ms": ok}}}
+
+    def test_a_redis_campaign_runs_when_redis_passed_and_kafka_did_not(self, tmp_path):
+        both = {"kafka": self._fit(False), "redis": self._fit(True)}
+        assert self._gate(tmp_path, both, "redis") is True
+        assert self._gate(tmp_path, both, "kafka") is False
+
+    def test_naming_no_backend_still_requires_them_all(self, tmp_path):
+        """A5 runs both backends in one campaign and is placed from both fits."""
+        both = {"kafka": self._fit(False), "redis": self._fit(True)}
+        assert self._gate(tmp_path, both) is False
+        assert self._gate(tmp_path, {"kafka": self._fit(True), "redis": self._fit(True)}) is True
+
+    def test_a_campaign_naming_two_backends_needs_both(self, tmp_path):
+        both = {"kafka": self._fit(False), "redis": self._fit(True)}
+        assert self._gate(tmp_path, both, "redis", "kafka") is False
+
+    def test_an_a8_session_keyed_by_client_is_still_reached(self, tmp_path):
+        """Its gates sit one level deeper: client, then backend, then load."""
+        keyed = {"python": {"kafka": self._fit(True)}, "java": {"kafka": self._fit(False)}}
+        assert self._gate(tmp_path, keyed, "kafka") is False
+        passing = {"python": {"kafka": self._fit(True)}, "java": {"kafka": self._fit(True)}}
+        assert self._gate(tmp_path, passing, "kafka") is True
+
+    def test_a_backend_the_calibration_never_fitted_is_refused(self, tmp_path):
+        """Not silently allowed: no gate matching the campaign's backend means nothing placed it."""
+        assert self._gate(tmp_path, {"redis": self._fit(True)}, "kafka") is False
+
+    def test_an_empty_calibration_is_refused(self, tmp_path):
+        assert self._gate(tmp_path, {}, "redis") is False
+        assert self._gate(tmp_path, {}) is False

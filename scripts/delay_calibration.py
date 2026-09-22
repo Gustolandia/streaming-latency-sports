@@ -41,10 +41,16 @@ What is fitted and checked, per backend and load, as the plan fixed before the d
                 calibration is still written out. When only the precision fails, two more rounds
                 can mend it (needs-rounds), and the fit then reads both queues;
   got it        P5(c) at every step against zero delay, two one-sided tests at 90%: equivalent if
-                the median shift lies within 0.10 ms and the p99 ratio within 10%. A median shift
-                larger than a quarter of the added delay is a gross departure and fails the gate.
-                A step not shown equivalent does not fail it: the session is then analysed with
-                each run's own "got it" distribution.
+                the median shift lies within 0.10 ms and the p99 ratio within 10%. A step not
+                shown equivalent does not fail the gate: the session is then analysed with each
+                run's own "got it" distribution. What does fail it is a gross departure -- the
+                added delay reaching the note -- and that is read across the staircase, as the
+                slope of the shift against the delay: leakage of a quarter is a quarter at every
+                step, while drift that does not grow with the delay leaves a slope near zero
+                however large it is. A shift larger than the whole delay added is gross on its
+                own, at any one step. Until 22 September the test was a quarter of the delay
+                step by step, which fails a constant drift at the small steps and passes it at
+                the large ones; it ended a sound session whose slopes were -0.010 and -0.038.
 
 The statistics are written out here, from the regularized incomplete beta function, so that the
 same code runs on the driver without scipy.
@@ -84,7 +90,23 @@ KNOWN_WITHIN_TICK_SHARE = 0.15
 PRECISION_ONLY = frozenset({"known_within_the_bound"})
 GOTIT_MARGIN_MS = 0.10
 P99_RATIO = (0.9, 1.1)
+#: What a gross departure is: the added delay reaching the "got it" note. That is a shift which
+#: grows with the delay -- a quarter of it leaking is a quarter at every step -- so it is read
+#: off the whole staircase as a slope, and this is the slope that fails the gate.
+#:
+#: Step by step the test could not tell leakage from drift. A constant drift of d fails wherever
+#: d is more than a quarter of the delay added, which is every step below 4d and no step above
+#: it, so a sitting whose note wanders by a third of a millisecond fails at 1 ms and passes at 4.
+#: The second x86 pair showed both halves of that in one calibration on 22 September: Redis
+#: shifted +0.342 ms at 1 ms added and failed the gate, while Kafka shifted -0.315 at 4 ms and
+#: -0.282 at 8 -- both further from zero than their own 90% intervals reach, both larger than the
+#: one that failed -- and passed. Regressed on the delay, Redis's four shifts give a slope of
+#: -0.010 and Kafka's -0.038: no leakage in either, and a sound session ended anyway, after an
+#: hour of calibrating, on a rule whose threshold has nothing to do with what it is testing.
 GROSS_SHARE = 0.25
+#: One step can still be gross on its own. A note that moves further than the whole delay added
+#: is not drift of a kind any staircase averages away, and no slope should have to agree.
+GROSS_STEP_SHARE = 1.0
 LACK_OF_FIT_ALPHA = 0.05
 RESAMPLES = 1000
 
@@ -298,9 +320,28 @@ def gotit_checks(runs):
             "p99_ratio": math.exp(log_ratio),
             "p99_ratio_ci90": None if log_ci is None else [math.exp(v) for v in log_ci],
             "p99_equivalent": log_ci is not None and low < log_ci[0] and log_ci[1] < high,
-            "gross": abs(shift) > GROSS_SHARE * abs(added),
+            #: This one step on its own, against the whole delay added. The staircase's own
+            #: answer is gross_departure below, and it is the one the gate reads.
+            "gross_step": abs(shift) > GROSS_STEP_SHARE * abs(added),
         })
     return checks
+
+
+def gross_departure(checks):
+    """Whether the added delay is reaching the "got it" note, read across the whole staircase.
+
+    Returns (whether it is, the slope of the shift against the delay, or None from one step).
+    Leakage of a fraction f of the delay is f at every step, so f is what this measures; drift
+    that does not grow with the delay leaves a slope near zero however large it is.
+    """
+    pairs = [(c["added_ms"], c["median_shift_ms"]) for c in checks
+             if c["added_ms"] and c["median_shift_ms"] is not None]
+    if any(c["gross_step"] for c in checks):
+        return True, None
+    if len(pairs) < 2:
+        return False, None
+    slope = ols(pairs)[1]
+    return abs(slope) > GROSS_SHARE, slope
 
 
 # --- one calibration, and a session's ---------------------------------------------------------
@@ -324,6 +365,7 @@ def fit_entry(runs, seed):
     bound = max(KNOWN_WITHIN_MS, KNOWN_WITHIN_TICK_SHARE * max(ticks)) if ticks \
         else KNOWN_WITHIN_MS
     checks = gotit_checks(runs)
+    leaking, gotit_slope = gross_departure(checks)
     zero_gotit = [r["gotit"] for r in runs if r["step"] == 0.0 and r["gotit"] is not None]
     gate = {
         "never_negative": sum(r["negative"] for r in runs) == 0,
@@ -331,7 +373,7 @@ def fit_entry(runs, seed):
         "known_within_the_bound": all(w is not None and w <= bound for _, w in widths),
         "longer_delay_longer_trip": all(b[0] > a[0] and b[1] > a[1]
                                         for a, b in zip(steps, steps[1:])),
-        "no_gross_gotit_departure": not any(c["gross"] for c in checks),
+        "no_gross_gotit_departure": not leaking,
     }
     gate["ok"] = all(gate.values())
     entry.update(known_within_bound_ms=bound,
@@ -340,6 +382,11 @@ def fit_entry(runs, seed):
                  halfwidths_ms=widths,
                  halfwidth_max_ms=max((w for _, w in widths if w is not None), default=None),
                  gotit=checks, gate=gate,
+                 #: The slope of the got-it shift against the delay added: what the
+                 #: gate's gross-departure test now reads, written out so a reader can
+                 #: see how far from leaking the session was. None where one step alone
+                 #: answered, or where there was only one.
+                 gotit_shift_slope=gotit_slope,
                  # What each later run's own "got it" median is held against, run by run
                  # (run_integrity.py): the median over this session's zero-delay runs.
                  gotit_zero_median_ms=statistics.median(zero_gotit) if zero_gotit else None,

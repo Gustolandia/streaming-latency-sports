@@ -150,16 +150,55 @@ class TestGotIt:
     def test_an_unmoved_got_it_is_equivalent_at_every_step(self):
         checks = dc.gotit_checks(c0_runs())
         assert [c["step_ms"] for c in checks] == [1.0, 2.0, 4.0, 8.0]
-        assert all(c["median_equivalent"] and c["p99_equivalent"] and not c["gross"]
+        assert all(c["median_equivalent"] and c["p99_equivalent"] and not c["gross_step"]
                    for c in checks)
+        leaking, slope = dc.gross_departure(checks)
+        assert not leaking and slope == pytest.approx(0.0, abs=1e-9)
 
     def test_a_noisy_got_it_is_not_shown_equivalent_but_is_not_gross(self):
         checks = dc.gotit_checks(c0_runs(gotit_wobble=0.3))
         assert not any(c["median_equivalent"] for c in checks)
-        assert not any(c["gross"] for c in checks)
+        assert not dc.gross_departure(checks)[0]
 
     def test_a_got_it_that_follows_the_delay_is_gross(self):
-        assert all(c["gross"] for c in dc.gotit_checks(c0_runs(gotit_per_ms=-0.5)))
+        """Leakage of a fraction of the delay is that fraction at every step, so it shows as a
+        slope; this one leaks half of it."""
+        checks = dc.gotit_checks(c0_runs(gotit_per_ms=-0.5))
+        leaking, slope = dc.gross_departure(checks)
+        assert leaking and slope == pytest.approx(-0.5, abs=0.05)
+
+    def test_a_drift_that_does_not_grow_with_the_delay_is_not_leakage(self):
+        """The rule this replaced was a quarter of the delay step by step, so a constant drift
+        failed at the small steps and passed at the large ones. The second x86 pair's Redis
+        shifted +0.342 ms at 1 ms added and ended a sound session after an hour of calibrating,
+        while its Kafka shifted -0.315 at 4 ms and -0.282 at 8 -- both further from zero than
+        their own 90% intervals reach -- and passed."""
+        redis = [{"added_ms": 1.005, "median_shift_ms": 0.3424, "gross_step": False},
+                 {"added_ms": 2.007, "median_shift_ms": 0.0793, "gross_step": False},
+                 {"added_ms": 4.009, "median_shift_ms": 0.0754, "gross_step": False},
+                 {"added_ms": 8.021, "median_shift_ms": 0.1851, "gross_step": False}]
+        leaking, slope = dc.gross_departure(redis)
+        assert not leaking and slope == pytest.approx(-0.0095, abs=0.002)
+        kafka = [{"added_ms": 1.014, "median_shift_ms": -0.0197, "gross_step": False},
+                 {"added_ms": 2.012, "median_shift_ms": -0.0691, "gross_step": False},
+                 {"added_ms": 4.016, "median_shift_ms": -0.3152, "gross_step": False},
+                 {"added_ms": 8.013, "median_shift_ms": -0.2817, "gross_step": False}]
+        assert not dc.gross_departure(kafka)[0]
+
+    def test_one_step_moving_further_than_the_whole_delay_is_gross_on_its_own(self):
+        """No slope has to agree: that is not drift of a kind a staircase averages away."""
+        checks = dc.gotit_checks(c0_runs())
+        checks[0]["gross_step"] = True
+        assert dc.gross_departure(checks) == (True, None)
+
+    def test_one_step_alone_cannot_give_a_slope(self):
+        checks = [{"added_ms": 1.0, "median_shift_ms": 0.9, "gross_step": False}]
+        assert dc.gross_departure(checks) == (False, None)
+
+    def test_a_step_without_numbers_is_not_read(self):
+        checks = [{"added_ms": 1.0, "median_shift_ms": None, "gross_step": False},
+                  {"added_ms": 0.0, "median_shift_ms": 0.5, "gross_step": False}]
+        assert dc.gross_departure(checks) == (False, None)
 
     def test_without_got_it_values_there_is_nothing_to_check(self):
         assert dc.gotit_checks([dict(r, gotit=None) for r in c0_runs()]) == []

@@ -211,6 +211,38 @@ run_one () {
   python3 scripts/util_sampler.py --out "$RUN_DIR/utilisation.csv" --interval 0.5 >/dev/null 2>&1 &
   sampler_pid=$!
 
+  #: stress-ng is told a duty, and what the machine then shows is that duty plus whatever the
+  #: harness itself is using -- the client, the receiver's namespace, the sampler. On eight CPUs
+  #: that share is under a point and nobody noticed. On two it is over three, and A5's two-CPU
+  #: calibration failed its own runs at 78.1% against a 75% design, three times over, before it
+  #: had measured anything.
+  #:
+  #: Widening the check was the wrong answer: A5 compares core counts at one load, so letting two
+  #: CPUs sit at 78 while eight sit at 75 puts a difference in load exactly where the difference
+  #: in cores is meant to be. So the duty is corrected instead, once, against what the machine
+  #: actually shows, before the warm-up ends and well before any message is counted. What it was
+  #: corrected to is written beside the run.
+  sleep 4
+  local shown adjusted
+  shown=$(python3 -c 'import csv, statistics, sys
+rows = list(csv.DictReader(open(sys.argv[1], newline="", encoding="utf-8")))
+rho = [float(r["rho"]) for r in rows[-6:] if r.get("rho")]
+print("%.2f" % (100 * statistics.fmean(rho)) if rho else "")' "$RUN_DIR/utilisation.csv" 2>/dev/null)
+  if [ -n "$shown" ]; then
+    adjusted=$(python3 -c 'import sys
+want, shown, duty = (float(x) for x in sys.argv[1:4])
+out = duty - (shown - want)
+print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
+    printf '{"designed_pct": %s, "shown_before_pct": %s, "duty_used_pct": %s}\n' \
+      "$LOAD" "$shown" "$adjusted" > "$RUN_DIR/load_correction.json"
+    if [ "$adjusted" != "$LOAD" ]; then
+      kill "$stress_pid" 2>/dev/null; wait "$stress_pid" 2>/dev/null
+      stress-ng --cpu "$want_cpus" --cpu-load "$adjusted" --timeout 3600s >/dev/null 2>&1 &
+      stress_pid=$!
+      sleep 3
+    fi
+  fi
+
   if [ -n "$TRACE_HALF" ] && [ "$TRACE" = 1 ]; then
     sudo bpftrace "$TRACE_BT" > "$RUN_DIR/runqlat.txt" 2>"$RUN_DIR/runqlat.err" &
     traced=1

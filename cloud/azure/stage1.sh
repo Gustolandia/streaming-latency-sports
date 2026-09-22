@@ -36,10 +36,14 @@ shift
 ROUNDS=""
 ROUNDS_NOTE=""
 DESIGN_ARGS=()
+BACKENDS=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --rounds) ROUNDS="$2"; shift 2 ;;
     --rounds-note) ROUNDS_NOTE="$2"; shift 2 ;;
+    # Taken here as well as passed on: the campaign is placed from this backend's calibration and
+    # from no other, so it is this backend's gate that has to have passed.
+    --backend) BACKENDS+=("$2"); DESIGN_ARGS+=("$1" "$2"); shift 2 ;;
     *) DESIGN_ARGS+=("$1"); shift ;;
   esac
 done
@@ -88,22 +92,33 @@ fi
 
 # A session that opens A8 fits one calibration per client, so the gates sit one level deeper
 # (client, then backend, then load) than in every other session. Walk down to whatever carries a
-# gate rather than counting levels, and require every one of them.
+# gate rather than counting levels, keeping the names on the way so a gate can be told which
+# backend it belongs to.
+#
+# Only the backends this campaign runs have to have passed. It used to require every gate in the
+# file, and that cost this plan three sessions on 22 September: on the second x86 pair Kafka's
+# calibration cannot be known within 0.3 ms on the coarse-tick kernels -- 0.311 to 0.410 against
+# the 0.3 the gate asks -- while Redis's is 0.128 to 0.237 on every kernel. Redis campaigns were
+# refused for the state of a calibration they are not placed from. A campaign is placed from its
+# own backend's fit and from no other; that is what has to be sound.
 python3 -c 'import json, sys
-def gates(node):
+def gates(node, path=()):
     if isinstance(node, dict):
         if "gate" in node:
-            yield bool(node["gate"].get("ok"))
+            yield path, bool(node["gate"].get("ok"))
             return
-        for below in node.values():
-            for found in gates(below):
+        for name, below in node.items():
+            for found in gates(below, path + (name,)):
                 yield found
 fit = json.load(open(sys.argv[1])).get("calibration") or {}
+wanted = set(sys.argv[2:])
 found = list(gates(fit))
-sys.exit(0 if found and all(found) else 1)' \
-  "$DIR/calibration.json" \
-  || stop "the calibration in $STAGE0 did not pass its gate on every backend, so this campaign
- cannot be placed from it; the pair needs a new session"
+if wanted:
+    found = [(path, ok) for path, ok in found if set(path) & wanted]
+sys.exit(0 if found and all(ok for _, ok in found) else 1)' \
+  "$DIR/calibration.json" "${BACKENDS[@]}" \
+  || stop "the calibration in $STAGE0 did not pass its gate for ${BACKENDS[*]:-every backend}, so
+ this campaign cannot be placed from it; the pair needs a new session"
 
 # The plan asks for the rounds, and where they came from, in the campaign's log before it runs.
 log "rounds: $ROUNDS"

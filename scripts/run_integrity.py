@@ -299,10 +299,15 @@ def never_negative_check(summary):
 #: for the question P5(c) asks -- whether the added delay moved the got-it -- and the wrong size
 #: for this one, which is whether the instrument broke mid-campaign. Within-campaign drift has
 #: now been measured on two sound campaigns: A8 moved 0.124 ms on the Arm pair and 0.134 on the
-#: x86 pair, both over hours, both with nothing else wrong. A8's within-setup scatter is so tight
-#: -- 0.012 to 0.036 ms -- that three times the pooled figure sits well under 0.10, so the floor
-#: was what bit, and it bit at 86 of 144 runs after the four earlier stops this block has had.
-#: A brake set below the drift a working instrument shows is not a brake, it is a timer.
+#: x86 pair, both over hours, both with nothing else wrong.
+#:
+#: The x86 stop is the one to read closely, because it was not the floor that bit. The campaign's
+#: own pooled scatter put the allowance at 0.132 ms and the move was 0.134: an eight-hour
+#: campaign stopped at 86 of 144 runs, after four earlier stops, on an overshoot of two
+#: microseconds. That is the real fault in setting this from the campaign's own scatter alone --
+#: three times a very tight scatter is a very tight allowance, and A8's within-setup scatter is
+#: 0.012 to 0.036 ms. The floor is what stops the allowance collapsing onto the noise, and at
+#: 0.10 it was below the drift sound campaigns show, so it never did that job.
 #:
 #: Nothing is given up by raising it. Every run's got-it median, its distance from its setup's
 #: centre and its distance from the session's calibration are written beside it either way

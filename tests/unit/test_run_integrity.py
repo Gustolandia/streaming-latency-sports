@@ -791,10 +791,12 @@ class TestTheFloorIsAboveTheDriftAWorkingCampaignShows:
     question P5(c) asks and the wrong size for this one.
 
     Within-campaign drift has been measured on two sound campaigns: A8 moved 0.124 ms on the Arm
-    pair and 0.134 on the x86 pair, over hours, with nothing else wrong. A8's within-setup
-    scatter is 0.012 to 0.036 ms, so three times the pooled figure sits well under 0.10 and the
-    floor was what bit -- at 86 of 144 runs, after four earlier stops. A brake set below the
-    drift a working instrument shows is a timer, not a brake.
+    pair and 0.134 on the x86 pair, over hours, with nothing else wrong. The x86 stop is the one
+    to read closely: the campaign's own pooled scatter put the allowance at 0.132 ms and the move
+    was 0.134, so an eight-hour campaign stopped at 86 of 144 runs on an overshoot of two
+    microseconds. Three times a very tight scatter is a very tight allowance -- A8's within-setup
+    scatter is 0.012 to 0.036 ms -- and the floor is what stops the allowance collapsing onto the
+    noise. At 0.10 it sat below the drift sound campaigns show, so it never did that job.
     """
 
     def _judged(self, shift_ms, added_ms=0.5, scatter=0.02):

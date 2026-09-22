@@ -969,3 +969,32 @@ def test_a_holding_job_waits_on_the_machine_rather_than_on_a_word_in_a_log():
     waiting = code.split("      waiting)", 1)[1].split("\n        ;;", 1)[0]
     assert 'if [ -z "$(field "$line" block)" ]; then' in waiting
     assert "work_running" in waiting
+
+
+@needs_bash
+def test_a_command_and_a_note_each_take_the_rest_of_their_line(tmp_path):
+    """Two keys hold sentences rather than words. A job carries at most one, and the keys before
+    it are still read as key=value."""
+    job = "boot=none cmd=bash cloud/azure/tools.sh t1 vegeta"
+    assert _queue_call(tmp_path, 'field "%s" cmd' % job) == "bash cloud/azure/tools.sh t1 vegeta"
+    assert _queue_call(tmp_path, 'field "%s" boot' % job) == "none"
+    assert _queue_call(tmp_path, 'field "%s" note' % job) == ""
+    assert _queue_call(tmp_path, 'field "%s" block' % job) == "", \
+        "a word key must not reach into the command"
+    noted = "boot=hz100 block=A2 note=4 rounds, power unknown"
+    assert _queue_call(tmp_path, 'field "%s" cmd' % noted) == ""
+    assert _queue_call(tmp_path, 'field "%s" note' % noted) == "4 rounds, power unknown"
+
+
+def test_work_that_no_calibration_places_is_still_on_the_list():
+    """The tools block is not a campaign: nothing places it and no chain waits on one. It is run
+    by the loop itself rather than let go of, because the loop is already the thing that
+    survives, and a command that outlived it would have nobody to tell."""
+    code = QUEUE.read_text(encoding="utf-8")
+    booted = code.split("      booted)", 1)[1].split("\n        ;;", 1)[0]
+    assert 'cmd="$(field "$line" cmd)"' in booted
+    assert "timeout 43200" in booted, "a command that hangs does not hang the list"
+    assert 'requeue_once "$line"' in booted, "one that fails gets its second go like any job"
+    assert booted.index("timeout 43200") < booted.index("advance")
+    assert "rebuild_session" not in booted.split('if [ -n "$cmd" ]', 1)[1].split("elif", 1)[0], \
+        "the tools block puts up its own servers, and rebuilding ours would fight it"

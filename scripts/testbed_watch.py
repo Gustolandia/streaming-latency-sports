@@ -269,6 +269,15 @@ def parse(text):
             facts[LISTS[key]].append(entry)
         else:
             facts[key] = value.strip()
+    #: What a run measured and what it was asked to do come from two different readers of the
+    #: same directory -- pilot_checks for the trip, queue_row.json for the delay that was added
+    #: to it -- and the checks need both, because a trip is only impossible beside the delay the
+    #: run itself added. Joined here, on the directory both of them name.
+    delays = {entry.get("run_dir"): entry.get("added_delay_ms") for entry in facts["numbers"]}
+    for entry in facts["runs"]:
+        delay = delays.get(entry.get("run_dir"))
+        if delay is not None:
+            entry["added_delay_ms"] = delay
     return facts
 
 

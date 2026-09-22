@@ -790,3 +790,43 @@ class TestATripIsImpossibleOnlyForItsOwnSetup:
 
     def test_the_probe_reads_the_delay_the_run_added(self):
         assert 'added_delay_ms=params.get("delay_ms")' in tw.DRIVER_PROBE
+
+
+class TestARunsTripAndItsDelayComeFromTwoReaders:
+    """The trip a run measured is read by pilot_checks; the delay it was asked to add is read
+    from its queue row. Both name the same directory, and the checks need both -- a trip is only
+    impossible beside the delay the run itself added. On 22 September the ceiling was taught
+    about the delay and went on firing, because the delay was reaching only the other list.
+    """
+
+    def _probe(self):
+        return "\n".join([
+            'run={"run_dir": "runs/law_c0b_r003", "trip_median_ms": 53.5, "messages": 4988}',
+            'numbers={"run_dir": "runs/law_c0b_r003", "trip_ms": 53.5, "added_delay_ms": 32.0}',
+            'run={"run_dir": "runs/law_a2_r001", "trip_median_ms": 4.2, "messages": 4988}',
+            'numbers={"run_dir": "runs/law_a2_r001", "trip_ms": 4.2, "added_delay_ms": 0.0}',
+        ])
+
+    def test_the_delay_reaches_the_run_the_checks_read(self):
+        found = tw.parse(self._probe())
+        by_dir = {run["run_dir"]: run for run in found["runs"]}
+        assert by_dir["runs/law_c0b_r003"]["added_delay_ms"] == 32.0
+        assert by_dir["runs/law_a2_r001"]["added_delay_ms"] == 0.0
+
+    def test_and_the_long_trip_is_then_not_called_impossible(self):
+        assert tw.run_flags(tw.parse(self._probe())["runs"]) == []
+
+    def test_a_run_whose_numbers_could_not_be_read_keeps_the_flat_ceiling(self):
+        probe = "\n".join([
+            'run={"run_dir": "runs/law_c0b_r003", "trip_median_ms": 53.5, "messages": 4988}',
+            'numbers={"run_dir": "runs/law_c0b_r003", "unreadable": "KeyError"}',
+        ])
+        found = tw.parse(probe)
+        assert "added_delay_ms" not in found["runs"][0]
+        assert [level for level, _ in tw.run_flags(found["runs"])] == ["ALERT"]
+
+    def test_a_run_with_no_numbers_line_at_all_keeps_the_flat_ceiling(self):
+        probe = 'run={"run_dir": "runs/law_c0b_r003", "trip_median_ms": 53.5, "messages": 4988}'
+        found = tw.parse(probe)
+        assert "added_delay_ms" not in found["runs"][0]
+        assert [level for level, _ in tw.run_flags(found["runs"])] == ["ALERT"]

@@ -29,6 +29,18 @@ RABBIT="${SBL_RABBIT:-amqp://guest:guest@$BROKER_PRIV:5672}"
 NATS="${SBL_NATS:-nats://$BROKER_PRIV:4222}"
 PERFTEST_JAR="${SBL_PERFTEST_JAR:-$HOME/tools/perf-test.jar}"
 
+#: A tool that never finishes must not take the pair with it.
+#:
+#: rdkafka_performance's consumer waits for messages that are not coming and says so once a
+#: second for ever; the only limit above it was the queue's own twelve hours, and it had a
+#: whole pair to itself for twenty-eight minutes before anyone looked. Six times the run's own
+#: length is far longer than any of these tools takes and far shorter than a night.
+LIMIT="${SBL_TOOL_LIMIT:-$(( SECONDS_TO_RUN * 6 + 120 ))}"
+if [ -z "${SBL_TOOL_GUARDED:-}" ]; then
+  export SBL_TOOL_GUARDED=1
+  exec timeout -k 30 "$LIMIT" bash "${BASH_SOURCE[0]}" "$TOOL" "$OUT"
+fi
+
 mkdir -p "$OUT"
 # shellcheck disable=SC2086
 case "$TOOL" in
@@ -59,12 +71,16 @@ JS
     # running with the -l switch" (its own usage text): the producer stamps the payload and the
     # consumer subtracts, so the consumer is the one that prints a latency and the producer alone
     # would print none. -A also writes every message's latency, which T1 reads beside the summary.
-    rdkafka_performance -P -l -t sbl-tools -b "$KAFKA" -c $((RATE * SECONDS_TO_RUN)) \
-      -s 512 -a 1 > "$OUT/producer.txt" 2>&1 &
-    producer=$!
+    # The consumer goes first. It starts at the end of the topic, so a producer that has already
+    # finished is a producer it never sees: with the producer first, it sat printing "0 messages
+    # consumed" once a second and would have done so until the queue's twelve-hour timeout.
     $WRAP rdkafka_performance -C -l -t sbl-tools -b "$KAFKA" -c $((RATE * SECONDS_TO_RUN)) \
-      -A "$OUT/per_message_us.txt"
-    wait "$producer" 2>/dev/null ;;
+      -A "$OUT/per_message_us.txt" &
+    consumer=$!
+    sleep 5
+    rdkafka_performance -P -l -t sbl-tools -b "$KAFKA" -c $((RATE * SECONDS_TO_RUN)) \
+      -s 512 -a 1 > "$OUT/producer.txt" 2>&1
+    wait "$consumer" 2>/dev/null ;;
   kafka-end-to-end)
     # Kafka moved this tool out of the kafka.tools package; the old name is kept for the pinned
     # build that still has it, and whichever answers is the one whose output is read.

@@ -933,3 +933,25 @@ def test_a_list_can_be_put_on_a_pair_that_is_already_working():
     assert start.index('if [ -z "$block" ]; then') < start.index("verify_boot"), \
         "it starts nothing, so it also rebuilds nothing and checks no boot"
     assert start.index('if [ -z "$block" ]; then') < start.index("rebuild_session")
+
+
+def test_a_core_count_is_read_once_and_reaches_all_three_places_that_need_it():
+    """A5 asks for its core count at boot, calibrates on that boot and designs its runs for it.
+    Two of those three do not fail when they disagree: a campaign designed for eight CPUs on a
+    machine booted with two would run, and be filed under a name that is not true. So the boot,
+    the calibration and the design all read the one word on the job line."""
+    code = QUEUE.read_text(encoding="utf-8")
+    start = code.split("start_job () {", 1)[1].split("\n}", 1)[0]
+    assert 'case "$boot" in cpu*) cores="${boot#cpu}" ;; esac' in start, "read once, from the boot"
+    assert 'CPUS="$cores"' in start, "the calibration is measured at that count"
+    assert '[ -n "$cores" ]   && args+=(--cores "$cores")' in start, "and the design writes it"
+    assert start.count('cores="${boot#cpu}"') == 1, "one place, so there is nothing to disagree"
+
+
+def test_a_block_with_no_core_count_is_given_none():
+    """A2 runs at whatever the machine has, and law_design refuses a core count for a block whose
+    design has none, so an empty one must not be passed at all."""
+    code = QUEUE.read_text(encoding="utf-8")
+    start = code.split("start_job () {", 1)[1].split("\n}", 1)[0]
+    assert 'local cores=""' in start
+    assert start.index('local cores=""') < start.index('args+=(--cores')

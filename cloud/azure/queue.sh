@@ -384,8 +384,19 @@ case "$CMD" in
     ( crontab -l 2>/dev/null | grep -v "queue.sh run"; echo "$line" ) | crontab -
     log "the @reboot line is in; starting the loop" | tee -a "$LOG"
     setsid nohup flock -n "$LOCK" bash cloud/azure/queue.sh run >> "$LOG" 2>&1 < /dev/null &
-    sleep 2
-    echo "running; watch it with: tail -f $LOG"
+    sleep 4
+    # Asked for, then checked. A lock left behind by a loop that was killed is held by nothing and
+    # still refuses the next one, and flock says so by exiting quietly -- so this said "running"
+    # over a queue that was not, and a pair sat idle through its whole tools block on 22 September
+    # before the watch stopped it. Whether it is running is a thing to look at, not to assume.
+    if ps -eo args --no-headers | awk '/queue\.sh run/ && !/awk/ { found = 1 } END { exit !found }'
+    then
+      echo "running; watch it with: tail -f $LOG"
+    else
+      echo "FAILED to start: nothing is running the list." >&2
+      echo "  Most likely $LOCK is held by a loop that has since died; remove it and try again." >&2
+      exit 1
+    fi
     ;;
   run)   run_loop ;;
   stop)

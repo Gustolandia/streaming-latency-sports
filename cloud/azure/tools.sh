@@ -133,13 +133,30 @@ brokers () {
   sudo apt-get install -y -qq nginx rabbitmq-server \
     || log "WARN: nginx or rabbitmq-server was not available; each is checked below"
 
-  # nats-server is a single Go binary and is not in Ubuntu's archive.
+  # nats-server is a single Go binary and is not in Ubuntu's archive. Its release assets carry
+  # the version in their own names -- nats-server-v2.11.0-linux-amd64.zip -- so GitHub's
+  # "latest/download/<name>" shortcut, which needs the name to be fixed, answers 404 for it. That
+  # is what it did on 22 September, and because the check below is about what answers rather than
+  # what installed, it stopped the whole tools block at its first job. The tag is resolved first
+  # and written down, because which server answered is part of what this block reports.
   if ! command -v nats-server >/dev/null; then
-    local url="https://github.com/nats-io/nats-server/releases/latest/download/nats-server-linux-amd64.zip"
-    [ "$(uname -m)" = aarch64 ] && url="${url/amd64/arm64}"
-    (cd "$WORK" && curl -fsSL -o nats.zip "$url" && unzip -oq nats.zip \
-      && sudo install -m 0755 nats-server-*/nats-server /usr/local/bin/nats-server) \
-      || log "WARN: nats-server could not be installed; it is checked below"
+    local arch=amd64
+    [ "$(uname -m)" = aarch64 ] && arch=arm64
+    local tag
+    tag=$(curl -fsSL https://api.github.com/repos/nats-io/nats-server/releases/latest \
+          | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)
+    if [ -z "$tag" ]; then
+      log "WARN: the latest nats-server release could not be read; it is checked below"
+    else
+      local name="nats-server-$tag-linux-$arch"
+      echo "$tag" > "$DIR/nats_server_tag.txt"
+      (cd "$WORK" \
+        && curl -fsSL -o nats.zip \
+             "https://github.com/nats-io/nats-server/releases/download/$tag/$name.zip" \
+        && unzip -oq nats.zip \
+        && sudo install -m 0755 "$name/nats-server" /usr/local/bin/nats-server) \
+        || log "WARN: nats-server $tag could not be installed; it is checked below"
+    fi
   fi
   # A site of our own on 8080, serving one small fixed file. The tools' own numbers include
   # however long the server took, so what it serves has to be the same every time and the same

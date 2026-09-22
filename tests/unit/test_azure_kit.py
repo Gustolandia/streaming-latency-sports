@@ -1106,5 +1106,6 @@ class TestEveryPinnedToolHasSomethingThatInstallsIt:
         """Three of the eleven are pinned "resolve", and the plan says what actually installed is
         recorded before any T1 run."""
         text = (KIT / "tools.sh").read_text(encoding="utf-8")
-        for record in ("commit_$name.txt", "kafka_tools_version.txt", "perftest_asset.txt"):
+        for record in ("commit_$name.txt", "kafka_tools_version.txt", "commit_perftest.txt",
+                       "version_$binary.txt"):
             assert record in text, record

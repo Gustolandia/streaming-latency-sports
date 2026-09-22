@@ -172,9 +172,25 @@ get_kafka () {
 #: release, 2.25.0, is from 30 June -- so the release is nearly three months *older* than the
 #: source the audit looked at, and running the block against it would report on a build nobody
 #: audited. This block exists to say what a tool does; which build of it is the whole question.
+#: Whether a jar can be started at all. `java -jar` needs a Main-Class in the manifest, and
+#: Maven's `package` leaves a plain perf-test-<version>.jar without one beside the runnable one.
+#: The plain jar was the first the glob found, it was copied, fingerprinted and recorded as
+#: installed because the file was there, and every run of it said "no main manifest attribute".
+runnable_jar () {
+  python3 - "$1" <<'PY'
+import sys, zipfile
+try:
+    with zipfile.ZipFile(sys.argv[1]) as jar:
+        text = jar.read("META-INF/MANIFEST.MF").decode("utf-8", "replace")
+except Exception:
+    raise SystemExit(1)
+raise SystemExit(0 if any(line.startswith("Main-Class:") for line in text.splitlines()) else 1)
+PY
+}
+
 get_perftest () {
   local jar="$HOME/tools/perf-test.jar" version="$1"
-  [ -s "$jar" ] && { log "   rabbitmq-perftest already here"; return 0; }
+  [ -s "$jar" ] && runnable_jar "$jar" && { log "   rabbitmq-perftest already here"; return 0; }
   command -v mvn >/dev/null || sudo apt-get install -y -qq maven \
     || { log "   WARN: maven is not available, so perf-test cannot be built"; return 1; }
   local src="$WORK/perftest"
@@ -186,9 +202,23 @@ get_perftest () {
     > "$DIR/build_perftest.log" 2>&1 \
     || { log "   WARN: perf-test did not build; see $DIR/build_perftest.log"; return 1; }
   mkdir -p "$HOME/tools"
-  local built
-  built=$(ls -1 "$src"/target/perf-test*.jar 2>/dev/null | grep -v sources | head -1)
-  [ -n "$built" ] || { log "   WARN: perf-test built no jar under target/"; return 1; }
+  local built candidate
+  built=""
+  for candidate in $(ls -1 "$src"/target/perf-test*.jar 2>/dev/null | grep -v sources); do
+    runnable_jar "$candidate" && { built="$candidate"; break; }
+  done
+  #: Some versions put the runnable one behind a profile. Asked for only when the ordinary build
+  #: left nothing that can be started, so the usual case costs no second build.
+  if [ -z "$built" ]; then
+    log "   no runnable jar from the ordinary build; asking for the uber one"
+    ( cd "$src" && mvn -q -DskipTests -Dmaven.javadoc.skip=true -Puber-jar package ) \
+      >> "$DIR/build_perftest.log" 2>&1
+    for candidate in $(ls -1 "$src"/target/perf-test*.jar 2>/dev/null | grep -v sources); do
+      runnable_jar "$candidate" && { built="$candidate"; break; }
+    done
+  fi
+  [ -n "$built" ] \
+    || { log "   WARN: perf-test built no jar with a Main-Class under target/"; return 1; }
   cp "$built" "$jar" || { log "   WARN: the perf-test jar could not be copied"; return 1; }
   ( cd "$src" && git rev-parse HEAD ) > "$DIR/commit_perftest.txt" 2>/dev/null
 }
@@ -254,13 +284,30 @@ for tool, binary in (("vegeta", "vegeta"), ("hey", "hey"), ("k6", "k6"), ("wrk2"
 # RabbitMQ's PerfTest is a jar rather than a program on the path, so it is fingerprinted where
 # it sits.
 jar = os.path.expanduser(os.environ.get("SBL_PERFTEST_JAR", "~/tools/perf-test.jar"))
-if os.path.exists(jar):
+
+
+def startable(path):
+    """`java -jar` needs a Main-Class. A jar without one is a file, not a tool: Maven leaves a
+    plain perf-test jar beside the runnable one, and the plain one was recorded as installed
+    because it existed. Every run of it printed "no main manifest attribute" instead."""
+    import zipfile
+    try:
+        with zipfile.ZipFile(path) as opened:
+            text = opened.read("META-INF/MANIFEST.MF").decode("utf-8", "replace")
+    except Exception:
+        return False
+    return any(line.startswith("Main-Class:") for line in text.splitlines())
+
+
+if os.path.exists(jar) and startable(jar):
     with open(jar, "rb") as fh:
         found["rabbitmq-perftest"] = {"present": True, "path": jar,
                                       "sha256": hashlib.sha256(fh.read()).hexdigest(),
                                       "version_says": ""}
 else:
-    found["rabbitmq-perftest"] = {"present": False}
+    found["rabbitmq-perftest"] = {"present": False,
+                                  "why": ("no Main-Class in its manifest" if os.path.exists(jar)
+                                          else "no jar at %s" % jar)}
 with open(sys.argv[1], "w", encoding="utf-8") as fh:
     json.dump(found, fh, indent=2, sort_keys=True)
 print("\n".join("   %-22s %s" % (t, "ok" if v["present"] else "MISSING")
@@ -464,8 +511,33 @@ json.dump({"run_dir": sys.argv[1], "trips_ms": trip}, open(sys.argv[2], "w"))' \
     || { log "   WARN: the reference trips could not be read from runs/$id"; return 1; }
 }
 
+#: A stage will not run a tool the machine does not have.
+#:
+#: installed.json says what is here and, where something is not, why not. Running anyway is how
+#: the Arm pair produced ten wrk2 folders whose readings are empty and whose whole output is
+#: `exec of "wrk" failed: No such file or directory` -- the install had said MISSING, and the
+#: jobs were queued for it regardless -- and three rabbitmq-perftest folders saying "no main
+#: manifest attribute". Neither is a measurement, and neither announced itself as anything else.
+have_tool () {
+  local tool="$1" why
+  why=$(python3 - "$DIR/installed.json" "$tool" <<'NOTHERE'
+import json, sys
+try:
+    found = json.load(open(sys.argv[1]))
+except Exception:
+    raise SystemExit(0)
+one = found.get(sys.argv[2])
+if one is None or one.get("present"):
+    raise SystemExit(0)
+print(one.get("why") or "installed.json records it as not present")
+raise SystemExit(1)
+NOTHERE
+) || stop "$tool is not installed on this machine: $why"
+}
+
 t1 () {
   local tool="${1:?which tool}"
+  have_tool "$tool"
   local steps="0 0.1 0.2 0.3 0.5 0.7 0.9 1.1 1.5 2.0"
   local order; order=$(echo $steps | tr ' ' '\n' | shuf | tr '\n' ' ')
   log "== T1 $tool: the delay staircase, in the order $order"
@@ -567,6 +639,7 @@ sys.exit(0 if abs(moved - want) <= max(0.1 * want, 0.05) else 1)" "$moved" "$ms"
 # else, and ask what it did with the values that came out below zero.
 t2 () {
   local tool="${1:?which tool}"
+  have_tool "$tool"
   case " $GO_TOOLS " in
     *" $tool "*)
       stop "$tool is a Go program: it reads the clock without the C library, so libfaketime never reaches it. T2 for this tool needs the second machine with an offset clock, restored afterwards, which is not this script" ;;
@@ -647,6 +720,7 @@ print(found["smallest_reported_ms"] or "")' "$DIR/t1-$tool-step.json" 2>/dev/nul
 # T3: idle against 88% load, with and without go-first priority on the tool's own process.
 t3 () {
   local tool="${1:?which tool}"
+  have_tool "$tool"
   log "== T3 $tool: idle and at 88% load, with and without go-first"
   needs_namespace
   for load in 0 88; do
@@ -674,6 +748,7 @@ t3 () {
 # T4: which trips the tool can report at all, confirmed from a real output file.
 t4 () {
   local tool="${1:?which tool}"
+  have_tool "$tool"
   local run="t4-$tool"
   mkdir -p "$DIR/$run"
   log "== T4 $tool: what it can report at all"

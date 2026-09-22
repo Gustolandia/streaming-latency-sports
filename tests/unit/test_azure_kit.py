@@ -782,6 +782,30 @@ class TestT2ForcedNegatives:
     def test_a_tool_in_neither_list_is_refused_rather_than_assumed(self):
         assert "not in either T2 list" in self.tools()
 
+    def test_no_stage_runs_a_tool_the_machine_does_not_have(self):
+        """The Arm pair produced ten wrk2 folders whose readings are empty and whose whole
+        output is `exec of "wrk" failed`, and three rabbitmq-perftest ones saying "no main
+        manifest attribute". The install had said MISSING for the first and recorded the second
+        as present because the jar existed."""
+        code = self.tools()
+        assert "have_tool () {" in code
+        for stage in ("t1", "t2", "t3", "t4"):
+            body = code.split("\n%s () {" % stage, 1)[1].split("\n}", 1)[0]
+            assert 'have_tool "$tool"' in body, "%s runs it without asking" % stage
+            assert body.index('have_tool "$tool"') < len(body) // 2, \
+                "%s asks before it measures anything" % stage
+
+    def test_a_jar_without_a_main_class_is_not_a_tool(self):
+        """`java -jar` needs one. Maven leaves a plain perf-test jar beside the runnable one,
+        and the plain one was copied, fingerprinted and recorded as installed."""
+        code = self.tools()
+        assert "runnable_jar () {" in code and "Main-Class" in code
+        built = code.split("get_perftest () {", 1)[1].split("\n}", 1)[0]
+        assert 'runnable_jar "$candidate"' in built, "the jar chosen is one that can start"
+        assert "-Puber-jar" in built, "and the profile is asked for when the plain build has none"
+        assert 'runnable_jar "$jar"' in built, "a jar already here is checked, not trusted"
+        assert "def startable(path):" in code, "and the record of what is installed agrees"
+
     def test_the_offset_is_measured_before_anything_is_run_under_it(self):
         """libfaketime's fractional spellings differ between builds, so the one that works is
         found by measuring the shift, not by assuming a format."""

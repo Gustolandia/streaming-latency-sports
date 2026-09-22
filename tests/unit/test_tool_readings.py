@@ -329,6 +329,17 @@ class TestEachToolsOwnOutput:
         assert got["reported_ms"]["p99"] == pytest.approx(9.83)
         assert got["reported_ms"]["max"] == pytest.approx(21.4)
 
+    def test_nats_is_read_with_the_clock_it_puts_on_every_line(self):
+        """Written down from the documented report, the patterns began at the start of the line.
+        Run against the tool, every line arrives with the time on it: T4 stopped saying nats had
+        printed no latency at all, with its latencies in the file beside the message."""
+        stamped = "\n".join("16:18:00 " + line for line in NATS.splitlines())
+        got = tr.read_tool("nats-latency", stamped)
+        assert got["reported_ms"]["min"] == pytest.approx(1.109)
+        assert got["reported_ms"]["p50"] == pytest.approx(2.913)
+        assert got["reported_ms"]["p99"] == pytest.approx(9.83)
+        assert got["reported_ms"]["max"] == pytest.approx(21.4)
+
     def test_there_are_ten_tools_and_more(self):
         """The block is ten tools. Losing one to a typo in the table should fail here."""
         assert len(tr.READERS) >= 10

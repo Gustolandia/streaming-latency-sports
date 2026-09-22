@@ -337,19 +337,24 @@ def read_rabbitmq_perftest(text):
 def read_nats_latency(text):
     """The NATS CLI's latency report, printed as Go durations truncated to microseconds.
 
-        Minimum Latency: 271µs
-        Median Latency : 312µs
-        Maximum Latency: 1.204ms
-        99:       887µs
+        16:18:00 Minimum Latency: 107µs
+        16:18:00 Median Latency : 254µs
+        16:18:00 Maximum Latency: 1.631ms
+        16:18:00 99:       887µs
 
     Go writes a duration in whatever unit keeps it readable, so every figure carries its own, and
     the truncation means the step is a microsecond however many digits happen to be printed.
+
+    The clock at the start of each line is why these are not anchored. Written down from the
+    tool's documented report, the patterns began at the start of the line; run against the tool,
+    every line arrives with the time on it, nothing matched, and T4 stopped saying the tool had
+    printed no latency at all -- with its latencies in the file beside the message.
     """
     got, steps = {}, {}
-    for key, pattern in (("min", r"^\s*Minimum Latency\s*:\s*([\d.]+)(%s)"),
-                         ("p50", r"^\s*Median Latency\s*:\s*([\d.]+)(%s)"),
-                         ("max", r"^\s*Maximum Latency\s*:\s*([\d.]+)(%s)"),
-                         ("p99", r"^\s*99:\s+([\d.]+)(%s)")):
+    for key, pattern in (("min", r"Minimum Latency\s*:\s*([\d.]+)(%s)"),
+                         ("p50", r"Median Latency\s*:\s*([\d.]+)(%s)"),
+                         ("max", r"Maximum Latency\s*:\s*([\d.]+)(%s)"),
+                         ("p99", r"\b99:\s+([\d.]+)(%s)")):
         pair = re.search(pattern % GO_UNITS, text or "", re.M)
         if pair:
             _put(got, steps, key, pair.group(1), pair.group(2))

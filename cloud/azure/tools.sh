@@ -377,6 +377,8 @@ brokers () {
   # the reference T1 never took. These brokers hold no data, answer only on the pair's own
   # private subnet, and live as long as the experiment, so the loopback restriction is lifted
   # rather than a credential invented for it.
+  #: The directory is where RabbitMQ looks for extra configuration and it does not ship it.
+  sudo mkdir -p /etc/rabbitmq/conf.d
   printf 'loopback_users = none\n' | sudo tee /etc/rabbitmq/conf.d/10-sbl.conf >/dev/null
   sudo systemctl enable --now nginx rabbitmq-server >/dev/null 2>&1
   sudo systemctl restart rabbitmq-server >/dev/null 2>&1

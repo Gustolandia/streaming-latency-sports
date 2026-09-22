@@ -321,6 +321,12 @@ run_loop () {
       #: exhausted, which is true only after the jobs put back for a second go have run
       #: too, and the stop file is handled above, so a pair asked to stop keeps its list.
       if [ -e "$DIR/stop_when_done" ]; then
+        #: Taken first, and taken once. "Stop when this list ends" is an instruction
+        #: about this list, not a standing rule about every boot: left in place it made
+        #: the pair unreachable, because starting it to collect its runs simply let the
+        #: loop find an empty list again and turn it off inside a minute. The Arm pair
+        #: did exactly that, twice, before anything could be copied off it.
+        rm -f "$DIR/stop_when_done"
         log "the list is armed to stop the pair when it ends; asking Azure now"
         bash cloud/azure/stop_self.sh 2>&1 | while read -r said; do log "  $said"; done
       fi

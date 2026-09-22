@@ -1445,6 +1445,19 @@ class TestTheReferenceEveryToolNumberIsReadAgainst:
         t2 = self.tools().split("t2 () {", 1)[1].split("\n}", 1)[0]
         assert "T2 needs T1's zero-delay run" in t2
 
+def test_the_amqp_broker_lets_the_driver_in():
+    """RabbitMQ lets its default user in from the machine itself and nowhere else. Every
+    broker here is on the other machine by design, so PerfTest got ACCESS_REFUSED on every
+    run and printed no latency at all: ten staircase steps of nothing, and a T2 that would
+    not start for want of the reference T1 never took."""
+    code = (KIT / "tools.sh").read_text(encoding="utf-8")
+    brokers = code.split("brokers () {", 1)[1].split("\n}", 1)[0]
+    assert "loopback_users = none" in brokers
+    assert "/etc/rabbitmq/conf.d/" in brokers, "its own file, not an edit of theirs"
+    said = "written before the restart that reads it"
+    assert brokers.index("loopback_users") < brokers.index("restart rabbitmq-server"), said
+
+
 class TestAPairThatTurnsItselfOff:
     """A machine that has finished its list kept billing until somebody noticed, and nothing on
     it could do anything about it: no Azure CLI and no identity, so deallocating a pair could

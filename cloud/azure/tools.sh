@@ -368,7 +368,18 @@ brokers () {
     | sudo tee /etc/nginx/sites-available/sbl >/dev/null
   sudo ln -sf /etc/nginx/sites-available/sbl /etc/nginx/sites-enabled/sbl
   sudo nginx -t >/dev/null 2>&1 || stop "the nginx site for the tools block does not parse"
+
+  # RabbitMQ lets its default user in from the machine itself and nowhere else, which is the
+  # right default and the wrong one here: the tools run on the driver and every broker in this
+  # testbed is on the other machine, by design, so that a tool's messages cross the same wire
+  # our own program's do. PerfTest therefore got ACCESS_REFUSED on every run and printed no
+  # latency at all -- ten staircase steps of nothing, and a T2 that would not start for want of
+  # the reference T1 never took. These brokers hold no data, answer only on the pair's own
+  # private subnet, and live as long as the experiment, so the loopback restriction is lifted
+  # rather than a credential invented for it.
+  printf 'loopback_users = none\n' | sudo tee /etc/rabbitmq/conf.d/10-sbl.conf >/dev/null
   sudo systemctl enable --now nginx rabbitmq-server >/dev/null 2>&1
+  sudo systemctl restart rabbitmq-server >/dev/null 2>&1
   sudo systemctl reload nginx >/dev/null 2>&1
   command -v nats-server >/dev/null && \
     (pgrep -x nats-server >/dev/null || (nohup nats-server -p 4222 >"$WORK/nats.log" 2>&1 &))

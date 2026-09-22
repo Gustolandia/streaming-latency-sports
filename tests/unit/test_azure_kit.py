@@ -919,3 +919,17 @@ def test_the_machine_is_checked_against_what_the_job_asked_for():
     assert "*sbl*)" in verify, "a bridge session must not be on a tick build"
     start = code.split("start_job () {", 1)[1].split("\n}", 1)[0]
     assert start.index("verify_boot") < start.index("stage0.sh session")
+
+
+def test_a_list_can_be_put_on_a_pair_that_is_already_working():
+    """A queue installed mid-session would otherwise take its first job at once and reboot under
+    a running calibration -- what went wrong twice on 21 September. A first job with no block of
+    its own starts nothing and waits for what is already there."""
+    code = QUEUE.read_text(encoding="utf-8")
+    start = code.split("start_job () {", 1)[1].split("\n}", 1)[0]
+    holding = start.split('if [ -z "$block" ]; then', 1)[1].split("fi", 1)[0]
+    assert '> "$SEEN"' in holding, "it still remembers the folders, so it waits for a new one"
+    assert "return 0" in holding
+    assert start.index('if [ -z "$block" ]; then') < start.index("verify_boot"), \
+        "it starts nothing, so it also rebuilds nothing and checks no boot"
+    assert start.index('if [ -z "$block" ]; then') < start.index("rebuild_session")

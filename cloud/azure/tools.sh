@@ -415,17 +415,43 @@ release_delay () {
 #: broker. That is possible for the tools that speak Kafka or Redis, which is all five of the
 #: ones T2 can reach on the x86 pair. wrk2 speaks HTTP and RabbitMQ's PerfTest speaks AMQP, and
 #: we have no client of our own for either, so T2 for those two says so rather than guessing.
+#: Called the way campaign.sh calls it, and for the same reason: "the same client every law
+#: campaign uses" has to mean the same client, the same workload and the same path, or the trip
+#: it measures is not the trip the tools are being read against. Its first version passed only a
+#: run id and a plan, which left the trial on all of its own defaults -- localhost for the
+#: broker, so the consumer was refused at 127.0.0.1:6379 while redis ran on the other machine;
+#: a StatsBomb plan at whatever rate it happens to hold, where every campaign runs a synthetic
+#: constant-rate one; and no consumer wrap, so nothing sat behind the receiver's address. The
+#: staircase either side of it was sound, and T2 refused to start for want of the file this
+#: writes -- which is the refusal working.
 reference_for () {
-  local tool="$1" out="$2" backend id
+  local tool="$1" out="$2" backend id plan speedup me
   case "$tool" in
     valkey-benchmark|memtier_benchmark) backend=redis ;;
     rdkafka_performance|kafka-end-to-end|kafka-producer-perf) backend=kafka ;;
     *) log "   no client of ours speaks $tool's protocol, so no reference is taken"; return 1 ;;
   esac
   id="toolsref-$tool-$(date -u +%Y%m%dT%H%M%SZ)"
+  plan="data/synthetic/constant_r${RATE:-50}_d${DURATION:-130}/replay_plan.csv"
+  [ -s "$plan" ] \
+    || { log "   WARN: no synthetic plan at $plan, so no reference is taken"; return 1; }
+  speedup=$(assert_plan_rate "$plan" 1) \
+    || { log "   WARN: no speedup for $plan, so no reference is taken"; return 1; }
+  me=$(id -un)
   log "   our own $backend client on the same path, for the reference"
-  timeout -k 30 900 bash "scripts/run_${backend}_trial.sh" "$id" "$PLAN" \
-    > "$out/reference.log" 2>&1 \
+  if [ "$backend" = kafka ]; then
+    SBL_CONSUMER_WRAP="$NETNS sudo -u $me" \
+      timeout -k 30 900 bash scripts/run_kafka_trial.sh "$id" "$plan" \
+        "$speedup" "${DURATION:-130}" -BOOTSTRAP "$KAFKA_BOOTSTRAP" \
+        -PRODUCER_EXTRA "$KAFKA_PRODUCER_EXTRA" -IDLE_SECONDS 15 \
+        > "$out/reference.log" 2>&1
+  else
+    SBL_CONSUMER_WRAP="$NETNS sudo -u $me" \
+      timeout -k 30 900 bash scripts/run_redis_trial.sh "$id" "$plan" \
+        "$speedup" "${DURATION:-130}" -RedisHost "$REDIS_HOST" -PORT "$REDIS_PORT" \
+        -CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA" -IDLE_SECONDS 15 \
+        > "$out/reference.log" 2>&1
+  fi \
     || { log "   WARN: the reference run did not finish; see $out/reference.log"; return 1; }
   python3 -c 'import json, sys
 sys.path.insert(0, "scripts")
@@ -450,7 +476,8 @@ t1 () {
     mkdir -p "$DIR/$run"
     hold_for "$ms" > "$DIR/$run/delay.json" 2>&1 \
       || stop "the $ms ms delay could not be applied on $BROKER_PRIV"
-    SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh "$tool" "$DIR/$run" \n      > "$DIR/$run/tool.txt" 2>&1
+    SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh "$tool" "$DIR/$run" \
+      > "$DIR/$run/tool.txt" 2>&1
     python3 scripts/tool_readings.py read --tool "$tool" --file "$DIR/$run/tool.txt" \
       --out "$DIR/$run/reading.json" >/dev/null 2>&1 \
       || log "WARN: $tool reported no latency at $ms ms; kept as a reading of nothing"
@@ -600,7 +627,8 @@ t4 () {
   mkdir -p "$DIR/$run"
   log "== T4 $tool: what it can report at all"
   needs_namespace
-  SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh "$tool" "$DIR/$run" \n    > "$DIR/$run/tool.txt" 2>&1
+  SBL_TOOL_WRAP="$NETNS" bash cloud/azure/tools_run.sh "$tool" "$DIR/$run" \
+    > "$DIR/$run/tool.txt" 2>&1
   python3 scripts/tool_readings.py read --tool "$tool" --file "$DIR/$run/tool.txt" \
     --out "$DIR/$run/reading.json" >/dev/null 2>&1 \
     || stop "$tool printed no latency at all, so T4 has nothing to confirm from"
@@ -611,14 +639,40 @@ print("   its own step: %s ms" % r["step_ms"])' "$DIR/$run/reading.json"
   log "CAMPAIGN_COMPLETE: T4 $tool; see $DIR/$run/reading.json"
 }
 
+#: The reference on its own, for a staircase that already ran without one.
+#:
+#: T1 takes it at the zero step and T2 will not start without it. When the reference was calling
+#: the trial on its defaults it could not connect, and five staircases were measured soundly with
+#: no reference beside them. Re-running T1 would overwrite those measurements with a second set
+#: for the sake of one file, so this takes the file instead: the same 0 ms hold the zero step
+#: applies, the same call, into the same folder, with a note saying it was taken afterwards and
+#: the failed attempt's log kept beside it. It refuses where a reference already exists, because
+#: the one T1 took is the one the design asks for.
+reference () {
+  local tool="${1:?which tool}" run="$DIR/t1-$tool-0ms"
+  [ -d "$run" ] || stop "there is no zero-delay run for $tool under $DIR to put a reference in"
+  [ -s "$run/reference_trips.json" ] \
+    && stop "$tool already has the reference T1 took; this would replace it"
+  log "== the reference for $tool, taken after its staircase"
+  needs_namespace
+  hold_for 0 > "$run/delay.reference.json" 2>&1 \
+    || stop "the 0 ms delay could not be applied on $BROKER_PRIV"
+  [ -s "$run/reference.log" ] && mv "$run/reference.log" "$run/reference.first_attempt.log"
+  date -u +%FT%TZ > "$run/reference.taken_after_the_staircase"
+  reference_for "$tool" "$run" || stop "the reference for $tool could not be taken"
+  release_delay
+  log "CAMPAIGN_COMPLETE: the reference for $tool is in $run/reference_trips.json"
+}
+
 case "${1:-}" in
   brokers) brokers ;;
   install) install ;;
+  reference) reference "${2:-}" ;;
   t1) t1 "${2:-}" ;;
   t2) t2 "${2:-}" ;;
   t3) t3 "${2:-}" ;;
   t4) t4 "${2:-}" ;;
-  *) echo "usage: bash cloud/azure/tools.sh brokers | install | t1 <tool> | t2 <tool> |" >&2
-     echo "       t3 <tool> | t4 <tool>" >&2
+  *) echo "usage: bash cloud/azure/tools.sh brokers | install | reference <tool> |" >&2
+     echo "       t1 <tool> | t2 <tool> | t3 <tool> | t4 <tool>" >&2
      exit 2 ;;
 esac

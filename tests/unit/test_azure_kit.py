@@ -1243,8 +1243,44 @@ class TestTheReferenceEveryToolNumberIsReadAgainst:
     def test_it_is_our_own_client_on_the_same_path(self):
         """Not the tool's own reading of itself, which is the thing being judged."""
         code = self.tools().split("reference_for () {", 1)[1].split("\n}", 1)[0]
-        assert 'bash "scripts/run_${backend}_trial.sh"' in code
+        assert "bash scripts/run_kafka_trial.sh" in code
+        assert "bash scripts/run_redis_trial.sh" in code
         assert "pilot_checks" in code, "trips read the way every campaign reads them"
+
+    def test_it_is_called_the_way_a_campaign_calls_it(self):
+        """"The same client every law campaign uses" has to mean the same client, the same
+        workload and the same path, or the trip it measures is not the trip the tools are read
+        against. Passing only a run id and a plan left the trial on its own defaults: localhost
+        for the broker, so the consumer was refused at 127.0.0.1:6379 while redis ran on the
+        other machine; a StatsBomb plan at whatever rate it holds, where every campaign runs a
+        synthetic constant-rate one; and no consumer wrap, so nothing sat behind the receiver's
+        address.
+        """
+        code = self.tools().split("reference_for () {", 1)[1].split("\n}", 1)[0]
+        campaign = (KIT / "campaign.sh").read_text(encoding="utf-8")
+        for flag in ("-BOOTSTRAP", "-RedisHost", "-PORT", "-IDLE_SECONDS"):
+            assert flag in code, "%s reaches the trial in a campaign and must here too" % flag
+        for name in ("KAFKA_BOOTSTRAP", "REDIS_HOST", "REDIS_PORT"):
+            assert name in code and name in campaign, name
+        assert "data/synthetic/constant_r" in code, "the plan every campaign runs, not any plan"
+        assert "assert_plan_rate" in code, "and at the speedup that plan's rate asks for"
+        assert 'SBL_CONSUMER_WRAP="$NETNS' in code, \
+            "the consumer behind the receiver's address, as campaign.sh puts it"
+
+    def test_no_line_continuation_was_written_as_two_characters(self):
+        """A backslash-n in the middle of a command is not a new line, it is the argument `n`.
+
+        It gets there because a doubled backslash arrives as one through a shell heredoc, and it
+        has done so three times now. Here it put `n` on the end of two tools_run.sh calls and the
+        redirection on the same line; tools_run.sh reads only its first two arguments, so nothing
+        was measured wrongly, which is exactly why nobody would have noticed.
+        """
+        #: A space either side, which is what a continuation would have had and what a newline
+        #: inside a printf format -- `%s}\n' \` -- does not.
+        for path in sorted(KIT.glob("*.sh")):
+            for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                assert " \\n " not in line.split("#", 1)[0], \
+                    "%s:%d writes a line continuation as two characters" % (path.name, n)
 
     def test_it_is_taken_at_the_zero_step(self):
         """T2 reads t1-<tool>-0ms, and an offset measured under an added delay is not the
@@ -1260,6 +1296,29 @@ class TestTheReferenceEveryToolNumberIsReadAgainst:
             assert tool in code, tool
         for tool in ("rdkafka_performance", "kafka-end-to-end", "kafka-producer-perf"):
             assert tool in code, tool
+
+    def test_a_staircase_that_ran_without_one_can_be_given_a_reference_on_its_own(self):
+        """Five staircases were measured soundly while the reference could not connect.
+
+        Re-running T1 would overwrite those measurements with a second set for the sake of one
+        file, and the folders carry no timestamp, so there would be nothing left of the first.
+        """
+        code = self.tools()
+        assert "  reference) reference " in code, "it has a command of its own"
+        body = code.split("\nreference () {", 1)[1].split("\n}", 1)[0]
+        assert "hold_for 0" in body, "the same zero hold the zero step applies"
+        assert "needs_namespace" in body and "release_delay" in body
+        assert "reference_for" in body, "and the same call, so it is the same measurement"
+        assert "reference.first_attempt.log" in body, "what failed is kept"
+        assert "taken_after_the_staircase" in body, "and the folder says it came later"
+
+    def test_it_will_not_replace_a_reference_t1_already_took(self):
+        """The one taken at the zero step is the one the design asks for."""
+        body = self.tools().split("\nreference () {", 1)[1].split("\n}", 1)[0]
+        guard = body.split('[ -s "$run/reference_trips.json" ]', 1)[1].split("\n", 2)
+        assert "stop" in " ".join(guard[:2])
+        assert body.index("reference_trips.json") < body.index("reference_for"), \
+            "checked before anything is measured"
 
     def test_t2_still_refuses_rather_than_guesses_without_one(self):
         t2 = self.tools().split("t2 () {", 1)[1].split("\n}", 1)[0]

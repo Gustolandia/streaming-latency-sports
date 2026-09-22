@@ -557,8 +557,25 @@ class TestTheToolsBlock:
         code = self.tools()
         assert 'steps="0 0.1 0.2 0.3 0.5 0.7 0.9 1.1 1.5 2.0"' in code
         assert "shuf" in code, "in random order, so a drift in time is not read as a step"
-        assert "receiver_delay.py broker --delay-ms" in code, "receiver-only, as the plan says"
+        assert "receiver_delay.py broker --dst $DRIVER_PRIV" in code, (
+            "added on the broker's card toward the machine the tool runs on -- the same place "
+            "and the same way the law campaigns add it")
         assert "broker-clear" in code, "and the delay is taken off afterwards"
+
+    def test_the_tools_talk_across_the_pair_and_not_to_themselves(self):
+        """T1 adds its delay on the broker, to traffic bound for the driver. Every target in the
+        runner defaulted to 127.0.0.1 until 22 September, which put the tool and the server it
+        measured on one machine, so the delay landed on a path the tool never used and T1 could
+        not work at all."""
+        runner = self.runner()
+        #: The code, not the comment that explains why the code is as it is.
+        code = " ".join(line for line in runner.splitlines()
+                        if not line.lstrip().startswith("#"))
+        assert "127.0.0.1" not in code, "no target is the machine the tool runs on"
+        assert "localhost" not in code
+        for target in ("SBL_TOOL_HTTP:-http://$BROKER_PRIV:8080/", "SBL_VALKEY_HOST:-$BROKER_PRIV",
+                       "SBL_KAFKA:-$BROKER_PRIV:19092", "SBL_NATS:-nats://$BROKER_PRIV:4222"):
+            assert target in runner, target
 
     def test_t3_crosses_load_with_go_first(self):
         code = self.tools()

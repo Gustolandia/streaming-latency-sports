@@ -6,12 +6,17 @@
 # pinned before any run because a tool's behaviour is what T1 to T4 report, and a tool that
 # changed under us would be a different experiment (the plan's Section "The tools").
 #
-#     bash cloud/azure/tools.sh brokers          # the servers the tools need, on the broker host
-#     bash cloud/azure/tools.sh install          # pinned versions, fingerprints recorded
+#     bash cloud/azure/tools.sh brokers          # ON THE BROKER: the servers the tools speak to
+#     bash cloud/azure/tools.sh install          # ON THE DRIVER: pinned versions, fingerprinted
 #     bash cloud/azure/tools.sh t1 vegeta        # the delay staircase
 #     bash cloud/azure/tools.sh t2 wrk2          # forced negatives, by moving the clock it reads
 #     bash cloud/azure/tools.sh t3 vegeta        # idle against 88% load, with and without go-first
 #     bash cloud/azure/tools.sh t4 vegeta        # what it can report at all
+#
+# Which machine runs which is not a detail. The servers go on the broker and the tools on the
+# driver, so a tool's messages cross the same wire our own program's do and T1's delay, added on
+# the broker's card, is on the path the tool actually uses. Every target defaulted to 127.0.0.1
+# until 22 September, which put tool and server on one machine and left T1 unable to work at all.
 #
 # T2 moves the clock the tool reads with libfaketime, and refuses the Go tools: Go reads the
 # clock without going through the C library, so the preload never reaches it and a run that
@@ -344,6 +349,21 @@ brokers () {
 }
 
 # T1: the delay staircase, receiver-only, in random order, with our reference beside it.
+#: The delay is added where the law campaigns add it: on the broker's own card, to the traffic
+#: bound for the machine running the client. It is applied over SSH because this stage runs on
+#: the driver, where the tool runs, and the delay belongs on the other end of the wire.
+hold_for () {
+  local ms="$1"
+  ssh -n -i "$SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=no "ubuntu@$BROKER_PRIV" \
+    "cd sbl && sudo python3 scripts/receiver_delay.py broker --dst $DRIVER_PRIV \
+       --delay-ms $ms --apply"
+}
+
+release_delay () {
+  ssh -n -i "$SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=no "ubuntu@$BROKER_PRIV" \
+    "cd sbl && sudo python3 scripts/receiver_delay.py broker-clear --apply" >/dev/null 2>&1
+}
+
 t1 () {
   local tool="${1:?which tool}"
   local steps="0 0.1 0.2 0.3 0.5 0.7 0.9 1.1 1.5 2.0"
@@ -352,15 +372,15 @@ t1 () {
   for ms in $order; do
     local run="t1-$tool-$(echo "$ms" | tr . _)ms"
     mkdir -p "$DIR/$run"
-    sudo python3 scripts/receiver_delay.py broker --delay-ms "$ms" --apply \
-      > "$DIR/$run/delay.json" 2>&1 || stop "the $ms ms delay could not be applied"
+    hold_for "$ms" > "$DIR/$run/delay.json" 2>&1 \
+      || stop "the $ms ms delay could not be applied on $BROKER_PRIV"
     bash cloud/azure/tools_run.sh "$tool" "$DIR/$run" > "$DIR/$run/tool.txt" 2>&1
     python3 scripts/tool_readings.py read --tool "$tool" --file "$DIR/$run/tool.txt" \
       --out "$DIR/$run/reading.json" >/dev/null 2>&1 \
       || log "WARN: $tool reported no latency at $ms ms; kept as a reading of nothing"
     log "   $ms ms done"
   done
-  sudo python3 scripts/receiver_delay.py broker-clear --apply >/dev/null 2>&1
+  release_delay
   log "CAMPAIGN_COMPLETE: T1 $tool; its runs are under $DIR"
 }
 

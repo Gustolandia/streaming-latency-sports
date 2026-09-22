@@ -1021,7 +1021,7 @@ class TestACampaignIsGatedOnTheCalibrationItIsPlacedFrom:
         return done.returncode == 0
 
     def _fit(self, ok):
-        return {"75": {"gate": {"ok": ok, "known_within_0_3_ms": ok}}}
+        return {"75": {"gate": {"ok": ok, "known_within_the_bound": ok}}}
 
     def test_a_redis_campaign_runs_when_redis_passed_and_kafka_did_not(self, tmp_path):
         both = {"kafka": self._fit(False), "redis": self._fit(True)}

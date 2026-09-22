@@ -172,7 +172,7 @@ class TestStop:
         assert found["verdict"] == "stop"
         assert found["reasons"] == ["the got-it median moved 0.695 ms from this campaign's 2 "
                                     "earlier runs of the same setup, more than 25% of the 2.000 "
-                                    "ms added and more than the 0.100 ms this campaign's "
+                                    "ms added and more than the 0.250 ms this campaign's "
                                     "got-it moves between runs"]
 
     def test_a_shift_under_the_scatter_of_those_runs_stops_nothing(self, tmp_path):
@@ -784,3 +784,40 @@ class TestMain:
                                        "finished_utc": "2026-09-16T10:00:00Z"}])
         assert self.run(["guard", "--queue", fine])[0] == 0
         assert self.run(["guard", "--queue", str(tmp_path / "none.csv")])[0] == 2
+
+
+class TestTheFloorIsAboveTheDriftAWorkingCampaignShows:
+    """The floor was 0.10 ms, P5(c)'s equivalence margin, which is the right size for the
+    question P5(c) asks and the wrong size for this one.
+
+    Within-campaign drift has been measured on two sound campaigns: A8 moved 0.124 ms on the Arm
+    pair and 0.134 on the x86 pair, over hours, with nothing else wrong. A8's within-setup
+    scatter is 0.012 to 0.036 ms, so three times the pooled figure sits well under 0.10 and the
+    floor was what bit -- at 86 of 144 runs, after four earlier stops. A brake set below the
+    drift a working instrument shows is a timer, not a brake.
+    """
+
+    def _judged(self, shift_ms, added_ms=0.5, scatter=0.02):
+        summary = {"gotit_median_ms": 1.0 + shift_ms}
+        params = {"delay_ms": added_ms, "ack_stamp": None}
+        return ri.gotit_checks(summary, params, added_ms, earlier=[1.0, 1.0], spread=scatter)
+
+    def test_the_drift_that_stopped_a8_on_both_pairs_no_longer_stops_a_campaign(self):
+        for drift in (0.124, 0.134):
+            found = self._judged(drift)
+            assert found["gotit_steady"]["ok"] is True, drift
+
+    def test_a_campaign_that_really_moves_still_stops(self):
+        assert self._judged(0.40)["gotit_steady"]["ok"] is False
+
+    def test_the_floor_is_above_every_drift_measured_on_a_sound_campaign(self):
+        assert ri.GOTIT_FLOOR_MS > 0.134
+
+    def test_a_noisy_campaign_is_still_judged_against_its_own_scatter(self):
+        """The floor is a floor. Three times a wide scatter is still what a wide campaign gets."""
+        assert self._judged(0.40, scatter=0.20)["gotit_steady"]["ok"] is True
+        assert self._judged(0.70, scatter=0.20)["gotit_steady"]["ok"] is False
+
+    def test_a_long_delay_is_still_judged_against_its_own_share(self):
+        assert self._judged(0.40, added_ms=2.0)["gotit_steady"]["ok"] is True
+        assert self._judged(0.60, added_ms=2.0)["gotit_steady"]["ok"] is False

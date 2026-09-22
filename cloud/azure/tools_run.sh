@@ -16,11 +16,17 @@ OUT="${2:?where to write}"
 WRAP="${SBL_TOOL_WRAP:-}"
 SECONDS_TO_RUN="${SBL_TOOL_SECONDS:-60}"
 RATE="${SBL_TOOL_RATE:-50}"
-TARGET_HTTP="${SBL_TOOL_HTTP:-http://127.0.0.1:8080/}"
-VALKEY_HOST="${SBL_VALKEY_HOST:-127.0.0.1}"
-KAFKA="${SBL_KAFKA:-localhost:19092}"
-RABBIT="${SBL_RABBIT:-amqp://guest:guest@127.0.0.1:5672}"
-NATS="${SBL_NATS:-nats://127.0.0.1:4222}"
+#: Across the pair, not around the loopback. Every default here used to be 127.0.0.1, which
+#: meant the tool and the server it talked to were the same machine -- and T1 adds its delay on
+#: the broker's card, to traffic bound for the driver, so the delay landed on a path the tool
+#: never used and T1 could not work at all. Running the tool on the driver against the broker
+#: puts it on the path the delay is added to, which is the path our own program is measured on,
+#: and that is the comparison this block exists to make.
+TARGET_HTTP="${SBL_TOOL_HTTP:-http://$BROKER_PRIV:8080/}"
+VALKEY_HOST="${SBL_VALKEY_HOST:-$BROKER_PRIV}"
+KAFKA="${SBL_KAFKA:-$BROKER_PRIV:19092}"
+RABBIT="${SBL_RABBIT:-amqp://guest:guest@$BROKER_PRIV:5672}"
+NATS="${SBL_NATS:-nats://$BROKER_PRIV:4222}"
 PERFTEST_JAR="${SBL_PERFTEST_JAR:-$HOME/tools/perf-test.jar}"
 
 mkdir -p "$OUT"

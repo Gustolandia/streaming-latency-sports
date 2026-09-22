@@ -317,20 +317,28 @@ def read_rabbitmq_perftest(text):
     """RabbitMQ PerfTest's consumer latency line, in whole microseconds.
 
         id: test-..., consumer latency min/median/75th/95th/99th 99/975/1320/1900/2799 µs
+        id: test-..., consumer latency min/median/75th/95th/99th/max 271/507/576/692/809/5112 µs
 
-    The label has sat on either side of the figures across versions, so the five names are what
-    the reader anchors on. It prints one of these a second and a summary at the end; the last is
-    the summary. The audit rates it high and keeps negatives, which is what T2 asks of it.
+    The label has sat on either side of the figures across versions, so the names are what the
+    reader anchors on. The build this block runs prints a sixth, the maximum, and the five-figure
+    pattern then matched the label and the first five numbers and stopped at the slash before the
+    sixth -- so every run of it read as nothing at all, with its latencies in the file. Both
+    shapes are read now, and the maximum is kept where it is there.
+
+    It prints one of these a second and a summary at the end; the last is the summary. The audit
+    rates it high and keeps negatives, which is what T2 asks of it.
     """
     # The gap before the figures must not swallow a minus sign: a negative minimum is the whole
     # point of T2 for this tool, and "[^0-9]*" would eat the sign and report -0.89 ms as 0.89.
-    match = _last(text, r"min/median/75th/95th/99th[^0-9-]*"
-                        r"(-?\d+)/(-?\d+)/(-?\d+)/(-?\d+)/(-?\d+)\s*(%s)" % GO_UNITS)
+    match = _last(text, r"min/median/75th/95th/99th(?:/max)?[^0-9-]*"
+                        r"(-?\d+)/(-?\d+)/(-?\d+)/(-?\d+)/(-?\d+)(?:/(-?\d+))?"
+                        r"\s*(%s)" % GO_UNITS)
     got, steps = {}, {}
     if match:
-        unit = match.group(6)
-        for key, group in (("min", 1), ("p50", 2), ("p99", 5)):
-            _put(got, steps, key, match.group(group), unit)
+        unit = match.group(7)
+        for key, group in (("min", 1), ("p50", 2), ("p99", 5), ("max", 6)):
+            if match.group(group) is not None:
+                _put(got, steps, key, match.group(group), unit)
     return _reading("rabbitmq-perftest", got, steps)
 
 

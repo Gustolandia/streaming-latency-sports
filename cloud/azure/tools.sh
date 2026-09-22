@@ -54,6 +54,17 @@ stop () { log "STOP_RULE: $*"; exit 1; }
 #: That is an honest blank, which the note below this table has always said is better than a
 #: made-up commit. They are not replaced with plausible-looking real commits: which build the
 #: audit read is not a thing to reconstruct after the fact, and nothing here can say it.
+#:
+#: Where they came from, since it is the obvious question. They entered in e6870e38 on
+#: 2026-09-20, the commit that created this file, and they have never been anywhere else: no note
+#: records them, the T5 audit does not cite them, and GitHub's commit search finds each of them
+#: in zero repositories -- so they are not commits recorded against the wrong repository, they
+#: are not commits. This repository has one author across all of its history. Nobody put them
+#: here but this project, writing a table of versions it had not fetched, in the same commit as
+#: a great deal of real and checkable work on the readers beside it. Nothing could contradict
+#: them because nothing ever read them: the install step below reported what was already on the
+#: machine and fetched nothing, so the first time any of these hashes was asked of its own
+#: repository was 22 September, two days later.
 PINNED='
 vegeta|go|resolve
 hey|go|resolve

@@ -1008,6 +1008,17 @@ def test_the_check_that_the_loop_is_alive_knows_the_copy_by_name(tmp_path):
     assert done.returncode != 0, "only the loop counts, not every call of the script"
 
 
+def test_a_command_job_gets_the_receivers_namespace_back_after_a_reboot():
+    """It never survives one. A block job is given it back by rebuild_session; a command was
+    given nothing, so the tools block's own guard stopped four jobs in a row on the Arm pair
+    -- correctly, since a tool outside it is not reached by the delay."""
+    code = QUEUE.read_text(encoding="utf-8")
+    booted = code.split("      booted)", 1)[1].split("elif start_job", 1)[0]
+    assert "grep -qw sblrecv || namespace_back" in booted
+    said = "asked for before the command runs, not after"
+    assert booted.index("sblrecv") < booted.index("timeout 43200"), said
+
+
 def test_a_commands_log_says_which_attempt_of_which_job_wrote_what():
     """The log is appended to, so it keeps a put-back job's first attempt and whatever held that
     number before a list was rewritten. Without a header the top of cmd-12.log was an error from

@@ -133,6 +133,22 @@ requeue_once () {
 #: machine and do not reboot with this one, but they are restarted anyway because a broker that
 #: died quietly looks exactly like one that is fine until a campaign reads no messages. The
 #: receiver's namespace is on this machine and never survives.
+#: The receiver's namespace, and nothing else about the session.
+#:
+#: It never survives a reboot. A block job is given it back by rebuild_session, which also
+#: restarts the law brokers -- right before a campaign, wrong before a tools job, because the
+#: tools block puts up its own servers on that machine and restarting ours would fight it. So a
+#: command job was given nothing, and the tools block's own guard stopped four jobs in a row on
+#: the Arm pair: a tool outside that namespace is not reached by the delay and would report a
+#: flat staircase. It showed up there first because that pair had turned itself off and been
+#: started again, which is a reboot like any other.
+namespace_back () {
+  log "  the receiver's namespace is missing; putting it back"
+  sudo python3 scripts/receiver_delay.py driver \
+    --address "$RECEIVER_IP/$SUBNET_PREFIX" --gateway "$SUBNET_GATEWAY" --apply >/dev/null 2>&1 \
+    || log "  it could not be put back; whatever needs it will say so"
+}
+
 rebuild_session () {
   log "  rebuilding the session the reboot took"
   brk "cd sbl && sudo python3 scripts/receiver_delay.py broker-clear --apply >/dev/null \
@@ -365,6 +381,11 @@ run_loop () {
           local out rc
           out="$DIR/cmd-$(read_at).log"
           if verify_boot "$boot"; then
+            #: A command runs after a reboot too, and the receiver's namespace never
+            #: survives one. Only the namespace: the servers on the other machine are the
+            #: tools block's own here, and ours are not restarted under them. See
+            #: namespace_back.
+            sudo ip netns list 2>/dev/null | grep -qw sblrecv || namespace_back
             log "  running: $cmd"
             #: The log is appended to, so that a job put back on the list keeps what its first
             #: attempt said, and so that a list rewritten around a job does not throw away the

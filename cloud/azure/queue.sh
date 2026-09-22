@@ -61,6 +61,8 @@ RETRIED="$DIR/retried"
 STOPFILE="$DIR/stop"
 LOG="$DIR/log"
 LOCK="$DIR/lock"
+#: The copy the loop actually runs from, beside this file so its `..` still reaches campaigns/.
+RUNNING_NAME=".queue.running.sh"
 mkdir -p "$DIR"
 
 # Plain, because both ways the loop is started send its output to the log, and a tee as well as
@@ -183,6 +185,29 @@ ask_for_boot () {
   esac
 }
 
+#: Bring the checkout up to date, at the one moment in a job when nothing is measuring.
+#
+# A pair driven by this queue ran whatever code it had when the list was put on it, for as long
+# as the list lasted: the block jobs go straight to stage0.sh and chain.sh, and only the cmd=
+# jobs pulled, because their commands say so. matched-b sat four commits behind for a day that
+# way, including the one that corrects a campaign's load to the load the machine shows, and the
+# watch's "the lanes run different commits" was saying so every five minutes.
+#
+# Here, and nowhere else: after the boot is verified and before a calibration or a campaign is
+# placed. --ff-only so a tree somebody has edited on the machine stops rather than merges, and a
+# failure is a line in the log, not a stopped job -- the code it has is the code that ran the
+# last job, and running the next one with it beats a pair that goes quiet.
+pull_code () {
+  local before after
+  before="$(git rev-parse --short HEAD 2>/dev/null)"
+  if git pull --ff-only -q origin main 2>/dev/null; then
+    after="$(git rev-parse --short HEAD 2>/dev/null)"
+    [ "$before" = "$after" ] && log "  code is current at $after" || log "  code $before -> $after"
+  else
+    log "  the code could not be brought up to date; carrying on at $before"
+  fi
+}
+
 start_job () {
   local line="$1"
   local boot block backend rounds c0 up load slices anchor clients note
@@ -211,6 +236,7 @@ start_job () {
   case "$boot" in cpu*) cores="${boot#cpu}" ;; esac
 
   verify_boot "$boot" || return 1
+  pull_code
   rebuild_session || return 1
 
   local earlier
@@ -389,7 +415,8 @@ case "$CMD" in
     # still refuses the next one, and flock says so by exiting quietly -- so this said "running"
     # over a queue that was not, and a pair sat idle through its whole tools block on 22 September
     # before the watch stopped it. Whether it is running is a thing to look at, not to assume.
-    if ps -eo args --no-headers | awk '/queue\.sh run/ && !/awk/ { found = 1 } END { exit !found }'
+    # The loop runs from a copy of this file, so what to look for is the copy's name too.
+    if ps -eo args --no-headers | awk '/queue[^ ]*\.sh run/ && !/awk/ { found = 1 } END { exit !found }'
     then
       echo "running; watch it with: tail -f $LOG"
     else
@@ -398,7 +425,18 @@ case "$CMD" in
       exit 1
     fi
     ;;
-  run)   run_loop ;;
+  run)
+    # The loop pulls, and a pull rewrites the file bash is reading. Bash reads a script as it
+    # goes and keeps its place by byte offset, so a loop that replaces its own source can carry
+    # on in the middle of something else. It runs from a copy instead, taken before any pull can
+    # happen; the copy sits beside the original so that the common.sh it sources is still one
+    # directory up, and it is retaken every time this is started -- which is every reboot, since
+    # that is what the @reboot line calls.
+    if [ "$(basename "${BASH_SOURCE[0]}")" != "$RUNNING_NAME" ]; then
+      cp "${BASH_SOURCE[0]}" "$(dirname "${BASH_SOURCE[0]}")/$RUNNING_NAME" || exit 1
+      exec bash "$(dirname "${BASH_SOURCE[0]}")/$RUNNING_NAME" run
+    fi
+    run_loop ;;
   stop)
     touch "$STOPFILE"
     crontab -l 2>/dev/null | grep -v "queue.sh run" | crontab - 2>/dev/null

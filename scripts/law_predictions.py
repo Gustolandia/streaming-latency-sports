@@ -319,7 +319,8 @@ def cliff_follows_slice(runs, tick_ms, need_inside=None, need_interval=True, dra
                  % (wanted, len(slices), SLOPE_BAND,
                     " with an interval excluding %s and %s" % SLOPE_EXCLUDES
                     if need_interval else "",
-                    "; each campaign moved by its own offset through the %g ms anchor" % anchor_ms
+                    "; each of the %d campaigns moved by its own offset through the %g ms anchor"
+                    % (len(set(str(run.get("campaign")) for run in runs)), anchor_ms)
                     if anchor_ms is not None else ""),
                  anchor_ms=anchor_ms)
 
@@ -627,6 +628,22 @@ def judge(runs, prediction, tick_ms=1.0, draws=DRAWS, seed=0, grid=None, read_ba
     if prediction not in RULES:
         raise ValueError("no rule for %s; the rules here are %s"
                          % (prediction, ", ".join(sorted(RULES))))
+    #: An anchor moves each campaign's readings by its own offset so that campaigns of one block
+    #: can be compared through the slice they share (D4-3). anchor_offsets groups by campaign and
+    #: returns nothing at all when it finds fewer than two, and through_the_anchor then moves
+    #: every reading by zero -- while the rule the answer prints still says each campaign was
+    #: moved by its own offset. A4's P9 was read that way: its four campaigns were copied into
+    #: one folder, so read_runs gave all 232 runs that folder's name, the correction was silently
+    #: skipped, and both free slopes came out just outside the band they are inside. Asking for an
+    #: anchor over one campaign is a contradiction, and it is answered with a sentence.
+    if anchor_ms is not None:
+        seen = sorted(set(str(run.get("campaign")) for run in runs))
+        if len(seen) < 2:
+            raise ValueError(
+                "an anchor moves each campaign by its own offset and these runs carry %d of them "
+                "(%s); reading a block's campaigns out of one folder leaves every run with that "
+                "folder's name, and the offsets are then silently nothing"
+                % (len(seen), ", ".join(seen)))
     apart = tuple(key for key in SPLIT_BY
                   if len(set(run.get(key) for run in runs)) > 1)
     if apart:
@@ -710,7 +727,10 @@ def main(argv=None, out=None):
     p.add_argument("--out", default="", help="write the answer here as JSON")
     args = ap.parse_args(argv)
     try:
-        runs = law_curve.read_runs(args.runs)
+        runs, skipped = law_curve.counted(args.runs)
+        said = law_curve.left_out(skipped)
+        if said:
+            print(said, file=out)
         if not runs:
             raise ValueError("no runs with a trip and a negative rate under %s" % args.runs)
         read_back = dict((int(pair.split("=")[0]), float(pair.split("=")[1]))

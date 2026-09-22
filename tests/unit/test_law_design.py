@@ -647,6 +647,23 @@ class TestTheLevelsTheRoundsRuleIsSimulatedAt:
         with pytest.raises(ValueError, match="4.5 ms anchor"):
             self.levels({"d0": (9, 1000)}, self.rows("P0-kafka-l75-s3000-p09s"), anchor_ms=4.5)
 
+    def test_a_block_that_varies_more_than_the_trip_is_told_why_it_cannot_be_read(self):
+        """A8's setups end in the client and where the note was taken, so the point is not last
+        and no point is found at all -- and the sentence above would say its runs never went
+        there, which is false. Reading them under their points would not mend it either: A8
+        varies the client and the priority, and those are what change the plateau.
+        """
+        rows = self.rows("A8-kafka-l75-s3000-p09s-java-callback",
+                         "A8-kafka-l75-s3000-f15h-rt-python-inline")
+        with pytest.raises(ValueError, match="end in callback, inline rather than a point"):
+            self.levels({"d0": (30, 1000), "d1": (9, 1000)}, rows)
+
+    def test_a_pilot_that_simply_missed_the_points_is_not_told_that(self):
+        """The longer sentence is for the block that varies more than the trip, and a pilot that
+        ran neither level is not one."""
+        with pytest.raises(ValueError, match="neither level can be read there$"):
+            self.levels({"d0": (9, 1000)}, self.rows("P0-kafka-l75-s3000-c04h"))
+
     def test_a_level_no_run_could_resolve_is_marked_as_a_bound(self):
         """The Arm pair's Redis floor: no floor run saw a single negative. The shrunk figure
         stands in for a rate below what the pilot resolves, and a cliff falling to a bound is at

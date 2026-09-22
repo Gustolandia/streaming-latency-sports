@@ -71,6 +71,9 @@ ALLOWED = {
         "the exposure curve's source, docs/results/span_symmetry.csv, ships with the "
         "repository; the branch exists so a stripped checkout fails with a sentence "
         "rather than a traceback",
+    ("check_identifiers.py", "if fetch is None:"):
+        "asks Crossref, arXiv, Zenodo and GitHub whether an identifier exists, which is the "
+        "one thing this script cannot be tested against; the tests inject a fetcher",
 }
 
 

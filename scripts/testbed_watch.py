@@ -126,7 +126,7 @@ echo "clock_offset_s=$(chronyc -c tracking 2>/dev/null | cut -d, -f5)"
 
 DRIVER_PROBE = COMMON_PROBE + r"""
 echo "campaign=$(pgrep -f 'cloud/azure/stage0.sh|cloud/azure/pilot.sh|cloud/azure/replicate_oracle.sh|cloud/azure/campaign.sh|cloud/campaigns/|run_concurrency_test.py|run_kafka_trial.sh|run_redis_trial.sh' | wc -l)"
-echo "queued=$(pgrep -f 'cloud/azure/chain.sh|cloud/azure/stage1.sh|cloud/azure/queue.sh|rounds_rule.py' | wc -l)"
+echo "queued=$(pgrep -f 'cloud/azure/chain.sh|cloud/azure/stage1.sh|cloud/azure/[.]?queue[^ ]*[.]sh|rounds_rule.py' | wc -l)"
 echo "stress=$(pgrep -x stress-ng | wc -l)"
 echo "netns=$(ip netns list 2>/dev/null | grep -c '^sblrecv')"
 queue=$(pgrep -af 'cloud/azure/campaign.sh' | grep -o 'runs/[^ ]*\.csv' | head -n 1)

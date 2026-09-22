@@ -53,6 +53,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import quality_report  # noqa: E402 - a folder of copied runs is what that module already reads
+import run_integrity  # noqa: E402 - for the one word that says a run counts, not two spellings
 
 #: The design point whose runs give the plateau level (0.9 of the slice), and the one that gives
 #: the floor (twice the slice plus a tick), as law_design.py names them.
@@ -280,12 +281,21 @@ def groups(runs, keys=("backend", "slice_ms")):
     return found
 
 
-def read_runs(folder, pair=None, campaign=None):
+def read_runs(folder, pair=None, campaign=None, counted_only=True):
     """The runs of a campaign as this module reads them, from a folder of copied run directories.
 
     Each run gives the trip it actually had and the share of its messages that arrived before they
     were sent, with the setup it belonged to and the machine pair it ran on. The pair is read from
     the note collect_runs.py leaves beside the runs, because nothing may be pooled across pairs.
+
+    Only the runs the integrity rule passed are returned. A run it stopped is one whose own
+    instrument was in doubt -- its clock ran backwards, or its "got it" note moved further between
+    runs of the same setup than the delay being added -- and a run it marked for repeat was run
+    again, so counting it counts one sitting twice. run_integrity.py already refuses to compare a
+    run against neighbours that did not count; until this, the judges did not, and every
+    prediction was decided on curves that included them. Pass `counted_only=False` to see them,
+    which is how the CLIs report what they left out: the runs stay on disk and stay reported, they
+    just do not decide anything.
     """
     #: The campaign a run belonged to: collect_runs.py copies each one into a folder of its own,
     #: and the block's campaigns are compared through their anchor, so a run has to know which
@@ -335,7 +345,8 @@ def read_runs(folder, pair=None, campaign=None):
                       "trip_ms": recorded.get("trip_median_ms"),
                       "negative_rate": recorded.get("measured_negative_rate")})
     return [run for run in found
-            if run["trip_ms"] is not None and run["negative_rate"] is not None]
+            if run["trip_ms"] is not None and run["negative_rate"] is not None
+            and (run["verdict"] == run_integrity.COUNT or not counted_only)]
 
 
 def lines(found):
@@ -356,6 +367,29 @@ def lines(found):
     return out
 
 
+def counted(folder, pair=None, campaign=None):
+    """A campaign's runs split into the ones that decide things and the ones that do not.
+
+    Nothing about a campaign is dropped quietly: a reader that silently uses 144 of 145 runs
+    prints what a reader of all 145 prints, and the difference is exactly the runs whose own
+    instrument was in doubt. Both CLIs say so before they answer.
+    """
+    every = read_runs(folder, pair, campaign, counted_only=False)
+    keep = [run for run in every if run["verdict"] == run_integrity.COUNT]
+    skipped = [run for run in every if run["verdict"] != run_integrity.COUNT]
+    return keep, skipped
+
+
+def left_out(skipped):
+    """One line naming the runs the integrity rule did not pass, or None when there are none."""
+    if not skipped:
+        return None
+    return "left out %d run%s the integrity rule did not pass: %s" % (
+        len(skipped), "" if len(skipped) == 1 else "s",
+        ", ".join("%s (%s)" % (run["run"], run["verdict"])
+                  for run in sorted(skipped, key=lambda run: run["run"])))
+
+
 def main(argv=None, out=None):
     out = out or sys.stdout
     ap = argparse.ArgumentParser(description="What a campaign's runs say about one cliff")
@@ -365,7 +399,10 @@ def main(argv=None, out=None):
     p.add_argument("--out", default="", help="write the curves here as JSON")
     args = ap.parse_args(argv)
     try:
-        runs = read_runs(args.runs)
+        runs, skipped = counted(args.runs)
+        said = left_out(skipped)
+        if said:
+            print(said, file=out)
         if not runs:
             raise ValueError("no runs with a trip and a negative rate under %s" % args.runs)
         found = dict((key, read_off(part)) for key, part in groups(runs).items())

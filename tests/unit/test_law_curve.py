@@ -321,6 +321,61 @@ class TestReadingACopiedCampaign:
         (run / "queue_row.json").write_text("{oh dear", encoding="utf-8")
         assert len(lc.read_runs(folder)) == len(POINTS)
 
+    def judged(self, tmp_path, verdict, name="law_a1_r001-stopped", rate=0.1):
+        run = self.write_run(tmp_path / "runs", name, "c02h", 3.2, rate)
+        found = json.loads((run / "integrity.json").read_text(encoding="utf-8"))
+        found["verdict"] = verdict
+        (run / "integrity.json").write_text(json.dumps(found), encoding="utf-8")
+        return run
+
+    def test_a_run_the_integrity_rule_stopped_decides_nothing(self, tmp_path):
+        """A stopped run is one whose own instrument was in doubt, so it is not a measurement.
+
+        run_integrity.py has always refused to compare a run against neighbours that did not
+        count. The judges did not: read_runs kept anything with a trip and a rate, and every
+        prediction so far was decided on curves that included them.
+        """
+        folder = self.campaign_on_disk(tmp_path, rounds=1)
+        self.judged(tmp_path, "stop")
+        assert len(lc.read_runs(folder)) == len(POINTS)
+        assert len(lc.read_runs(folder, counted_only=False)) == len(POINTS) + 1
+
+    def test_a_run_marked_for_repeat_decides_nothing_either(self, tmp_path):
+        """It was run again, so counting it counts one sitting of that setup twice."""
+        folder = self.campaign_on_disk(tmp_path, rounds=1)
+        self.judged(tmp_path, "repeat")
+        assert len(lc.read_runs(folder)) == len(POINTS)
+
+    def test_the_split_names_every_run_it_leaves_out(self, tmp_path):
+        folder = self.campaign_on_disk(tmp_path, rounds=1)
+        self.judged(tmp_path, "stop")
+        keep, skipped = lc.counted(folder)
+        assert len(keep) == len(POINTS)
+        assert [run["run"] for run in skipped] == ["law_a1_r001-stopped"]
+        assert lc.left_out(skipped) == (
+            "left out 1 run the integrity rule did not pass: law_a1_r001-stopped (stop)")
+
+    def test_a_campaign_with_nothing_left_out_says_nothing(self, tmp_path):
+        folder = self.campaign_on_disk(tmp_path, rounds=1)
+        keep, skipped = lc.counted(folder)
+        assert len(keep) == len(POINTS) and skipped == []
+        assert lc.left_out(skipped) is None
+
+    def test_more_than_one_reads_as_more_than_one_and_in_order(self):
+        """Named, and in a fixed order: a reader comparing two runs of the judge needs the same
+        line for the same campaign."""
+        assert lc.left_out([{"run": "law_a1_r002-b", "verdict": "repeat"},
+                            {"run": "law_a1_r001-a", "verdict": "stop"}]) == (
+            "left out 2 runs the integrity rule did not pass: "
+            "law_a1_r001-a (stop), law_a1_r002-b (repeat)")
+
+    def test_the_command_says_what_it_left_out_before_it_answers(self, tmp_path):
+        folder = self.campaign_on_disk(tmp_path)
+        self.judged(tmp_path, "stop")
+        out = io.StringIO()
+        assert lc.main(["read", "--runs", folder], out=out) == 0
+        assert "left out 1 run" in out.getvalue()
+
     def test_the_command_reads_a_campaign_and_writes_the_curves(self, tmp_path):
         folder = self.campaign_on_disk(tmp_path)
         out = io.StringIO()

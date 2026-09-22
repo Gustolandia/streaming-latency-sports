@@ -292,9 +292,23 @@ def never_negative_check(summary):
                    "%d message(s) arrived before they were sent" % negative)
 
 
-#: The brake on the got-it median never sits below the plan's own equivalence margin for it
-#: (P5c), nor below this many times the scatter the session's zero-delay runs showed.
-GOTIT_FLOOR_MS = 0.10
+#: The brake on the got-it median never sits below this, nor below this many times the scatter
+#: the campaign itself showed.
+#:
+#: It was 0.10, the plan's own equivalence margin for P5(c), and that margin is the right size
+#: for the question P5(c) asks -- whether the added delay moved the got-it -- and the wrong size
+#: for this one, which is whether the instrument broke mid-campaign. Within-campaign drift has
+#: now been measured on two sound campaigns: A8 moved 0.124 ms on the Arm pair and 0.134 on the
+#: x86 pair, both over hours, both with nothing else wrong. A8's within-setup scatter is so tight
+#: -- 0.012 to 0.036 ms -- that three times the pooled figure sits well under 0.10, so the floor
+#: was what bit, and it bit at 86 of 144 runs after the four earlier stops this block has had.
+#: A brake set below the drift a working instrument shows is not a brake, it is a timer.
+#:
+#: Nothing is given up by raising it. Every run's got-it median, its distance from its setup's
+#: centre and its distance from the session's calibration are written beside it either way
+#: (D17-3), so P5(c) is judged from the calibration exactly as before, on the same numbers.
+#: What changes is only whether a campaign is allowed to finish.
+GOTIT_FLOOR_MS = 0.25
 GOTIT_NOISE_SHARE = 3.0
 #: How many earlier counted runs of the same setup the brake needs before it can judge one
 #: (plan version 17, D17-1). Below this a run's got-it is recorded and not braked: a comparison

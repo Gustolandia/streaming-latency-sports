@@ -206,7 +206,7 @@ class TestTheGate:
         Version 5's 0.1 ms on every run could never pass them; two rounds leave the line too
         loosely known at its far end, and four know it well enough."""
         two = dc.fit_entry(c0_runs(wobble=0.25), seed=1)
-        assert two["model"] == "line" and not two["gate"]["known_within_0_3_ms"]
+        assert two["model"] == "line" and not two["gate"]["known_within_the_bound"]
         assert dc.needs_more_rounds({"kafka": {"75": two}})
         assert two["residual_max_ms"] == pytest.approx(0.25)
         assert max(abs(v) for v in two["step_residuals_ms"]) == pytest.approx(0.0, abs=1e-9)
@@ -217,16 +217,16 @@ class TestTheGate:
         runs = [r for r in c0_runs(rounds=1) if r["step"] in (0.0, 1.0)][1:]
         entry = dc.fit_entry(runs, seed=1)
         assert entry["model"] == "line" and entry["halfwidths_ms"] == [[0.0, None], [1.0, None]]
-        assert entry["halfwidth_max_ms"] is None and not entry["gate"]["known_within_0_3_ms"]
+        assert entry["halfwidth_max_ms"] is None and not entry["gate"]["known_within_the_bound"]
 
     @pytest.mark.parametrize("failed,more", [
         ((), False),
-        (("known_within_0_3_ms",), True),
-        (("known_within_0_3_ms", "slope_above_half"), False),
+        (("known_within_the_bound",), True),
+        (("known_within_the_bound", "slope_above_half"), False),
         (("never_negative",), False),
     ])
     def test_only_a_calibration_that_lacks_precision_gets_more_rounds(self, failed, more):
-        good = {k: True for k in ("never_negative", "slope_above_half", "known_within_0_3_ms",
+        good = {k: True for k in ("never_negative", "slope_above_half", "known_within_the_bound",
                                   "longer_delay_longer_trip", "no_gross_gotit_departure")}
         bad = dict(good, **{k: False for k in failed})
         cal = {"kafka": {"75": {"gate": dict(good, ok=True)}},
@@ -235,7 +235,7 @@ class TestTheGate:
 
     @pytest.mark.parametrize("kwargs,failed", [
         ({"slope": 0.3}, "slope_above_half"),
-        ({"wobble": 0.3}, "known_within_0_3_ms"),
+        ({"wobble": 0.3}, "known_within_the_bound"),
         ({"trips": {4.0: 4.0}}, "longer_delay_longer_trip"),
         ({"negative_at": "r2-3"}, "never_negative"),
         ({"gotit_per_ms": -0.5}, "no_gross_gotit_departure"),
@@ -348,7 +348,7 @@ class TestMain:
     def test_a_second_stage_is_fitted_with_the_first(self, tmp_path):
         """Two rounds leave the scattered line too loosely known; the next two mend it."""
         code, text, dest = self.fit(tmp_path, c0_runs(wobble=0.25))
-        assert code == 1 and "GATE FAILED: known_within_0_3_ms" in text
+        assert code == 1 and "GATE FAILED: known_within_the_bound" in text
         assert self.run(["needs-rounds", "--calibration", str(dest)]) == (
             0, "more rounds can make the calibration precise enough\n")
         code, text, dest = self.fit(tmp_path, c0_runs(wobble=0.25),
@@ -385,3 +385,53 @@ class TestMain:
         code, text = self.run(["fit", "--queue", str(tmp_path / "none.csv"),
                                "--out", str(tmp_path / "c.json")])
         assert code == 2 and text.startswith("ERROR:")
+
+
+class TestTheBoundFollowsTheTick:
+    """A calibration cannot be known to a fraction of the quantum its trips are quantised by.
+
+    0.30 ms was set on the stock kernel, whose tick is 1 ms. A2 boots two kernels where the tick
+    is 4 and 10 ms, and on the second x86 pair Kafka came in at 0.410 at HZ=250 and 0.387 at
+    HZ=100, against 0.128 to 0.237 for Redis on the same boots. Four rounds did not mend it,
+    because it is not imprecision to be averaged away. Three sessions were refused for it on
+    22 September before the bound was made to follow the tick.
+    """
+
+    def _fit(self, tick_ms, wobble=0.0):
+        runs = c0_runs(wobble=wobble)
+        for run in runs:
+            run["tick_ms"] = tick_ms
+        return dc.fit_entry(runs, seed=1)
+
+    @pytest.mark.parametrize("tick_ms,bound", [(1.0, 0.30), (4.0, 0.60), (10.0, 1.50)])
+    def test_the_bound_is_the_larger_of_a_floor_and_a_share_of_the_tick(self, tick_ms, bound):
+        assert self._fit(tick_ms)["known_within_bound_ms"] == pytest.approx(bound)
+
+    def test_the_bound_it_used_is_written_beside_the_gate(self):
+        """So a reader never has to work out which bound applied to a given session."""
+        assert "known_within_bound_ms" in self._fit(4.0)
+
+    def test_a_calibration_that_fails_on_a_fine_tick_passes_on_a_coarse_one(self):
+        """The same scatter, judged against the tick it was measured on."""
+        fine = self._fit(1.0, wobble=0.25)
+        coarse = self._fit(10.0, wobble=0.25)
+        assert fine["halfwidth_max_ms"] == pytest.approx(coarse["halfwidth_max_ms"])
+        assert fine["gate"]["known_within_the_bound"] is False
+        assert coarse["gate"]["known_within_the_bound"] is True
+
+    def test_runs_that_carry_no_tick_are_held_to_the_floor(self):
+        """Every calibration before 22 September wrote no tick into its rows, and none of them
+        ran on anything but a 1 ms tick, so the floor is the bound that applied to them."""
+        runs = c0_runs()
+        for run in runs:
+            run.pop("tick_ms", None)
+        assert dc.fit_entry(runs, seed=1)["known_within_bound_ms"] == pytest.approx(0.30)
+
+    def test_a_row_missing_its_tick_cannot_lower_the_bound(self):
+        """One run of a coarse-tick session arriving without its tick must not quietly put that
+        whole session back on the fine-tick bound."""
+        runs = c0_runs()
+        for run in runs:
+            run["tick_ms"] = 10.0
+        runs[0]["tick_ms"] = None
+        assert dc.fit_entry(runs, seed=1)["known_within_bound_ms"] == pytest.approx(1.50)

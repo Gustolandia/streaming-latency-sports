@@ -1052,3 +1052,59 @@ class TestACampaignIsGatedOnTheCalibrationItIsPlacedFrom:
     def test_an_empty_calibration_is_refused(self, tmp_path):
         assert self._gate(tmp_path, {}, "redis") is False
         assert self._gate(tmp_path, {}) is False
+
+
+class TestEveryPinnedToolHasSomethingThatInstallsIt:
+    """install listed the pins, installed the build dependencies, and then only *reported* which
+    tools were present. Nothing in it fetched or built a single one of the ten.
+
+    It ran on the broker on 22 September in under a second and said MISSING eleven times, and
+    every T1 job behind it failed. The step had never been run on a machine -- T1 and T2 were
+    checked against made-up tools -- so nothing had ever asked it to produce a binary.
+    """
+
+    def _tools(self):
+        text = (KIT / "tools.sh").read_text(encoding="utf-8")
+        table = text.split("PINNED='", 1)[1].split("'", 1)[0]
+        return [line.split("|")[0] for line in table.strip().splitlines() if line.strip()]
+
+    def test_the_block_pins_the_ten_tools_the_plan_counts(self):
+        assert len(self._tools()) == 11, "ten runnable plus wrk2's pair"
+
+    @pytest.mark.parametrize("tool", ["vegeta", "hey", "k6", "wrk2", "valkey-benchmark",
+                                      "memtier_benchmark", "rdkafka_performance",
+                                      "kafka-end-to-end", "kafka-producer-perf",
+                                      "rabbitmq-perftest", "nats-latency"])
+    def test_each_one_is_fetched_or_built_by_the_install_step(self, tool):
+        """The invariant that was missing. A tool named in the table and nowhere else in the
+        step is a tool the step cannot produce, and every run of it fails hours later."""
+        install = (KIT / "tools.sh").read_text(encoding="utf-8").split("install () {", 1)[1]
+        builders = {"vegeta": "go_tool vegeta", "hey": "go_tool hey", "k6": "go_tool k6",
+                    "wrk2": "git_build wrk2", "valkey-benchmark": "git_build valkey",
+                    "memtier_benchmark": "git_build memtier",
+                    "rdkafka_performance": "git_build librdkafka",
+                    "kafka-end-to-end": "get_kafka", "kafka-producer-perf": "get_kafka",
+                    "rabbitmq-perftest": "get_perftest", "nats-latency": "go_tool nats"}
+        assert builders[tool] in install, "%s has nothing that installs it" % tool
+
+    def test_a_tool_that_will_not_build_does_not_stop_the_other_nine(self):
+        """A block reporting on nine tools is worth more than one reporting on none because a
+        single upstream moved."""
+        text = (KIT / "tools.sh").read_text(encoding="utf-8")
+        for helper in ("go_tool () {", "git_build () {", "get_kafka () {", "get_perftest () {"):
+            body = text.split(helper, 1)[1].split("\n}", 1)[0]
+            assert "WARN" in body and "stop " not in body, helper
+
+    def test_the_compiler_is_pinned_like_the_tools_it_builds(self):
+        """Ubuntu 22.04 ships Go 1.18 and k6 needs newer, so the toolchain is fetched -- and it
+        is part of what produced a binary whose behaviour this block reports."""
+        text = (KIT / "tools.sh").read_text(encoding="utf-8")
+        assert re.search(r'GO_VERSION="\d+\.\d+\.\d+"', text)
+        assert "go.dev/dl/go$GO_VERSION" in text
+
+    def test_what_each_build_resolved_is_written_down(self):
+        """Three of the eleven are pinned "resolve", and the plan says what actually installed is
+        recorded before any T1 run."""
+        text = (KIT / "tools.sh").read_text(encoding="utf-8")
+        for record in ("commit_$name.txt", "kafka_tools_version.txt", "perftest_asset.txt"):
+            assert record in text, record

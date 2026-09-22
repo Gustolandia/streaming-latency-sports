@@ -58,11 +58,99 @@ kafka-producer-perf rabbitmq-perftest"
 #: The tools it cannot: Go does not go through the C library for the clock.
 GO_TOOLS="vegeta hey k6 nats-latency"
 
+#: The Go toolchain the three Go tools are built with. Ubuntu 22.04 ships Go 1.18 and k6 needs
+#: newer, so it is fetched rather than apt-installed -- and pinned, because the compiler is part
+#: of what produced the binary whose behaviour this block reports.
+GO_VERSION="1.22.5"
+
+#: Each tool in its own function, each carrying on past its own failure. Nine of these ten can be
+#: had without the tenth, and a block that reports on nine tools is worth more than one that
+#: reports on none because a single upstream moved. What installed is fingerprinted below;
+#: what did not is named.
+have () { command -v "$1" >/dev/null 2>&1; }
+
+get_go () {
+  have go && return 0
+  [ -x /usr/local/go/bin/go ] && { export PATH="/usr/local/go/bin:$PATH"; return 0; }
+  local arch=amd64
+  [ "$(uname -m)" = aarch64 ] && arch=arm64
+  log "   fetching Go $GO_VERSION"
+  (cd "$WORK" \
+    && curl -fsSL -o go.tgz "https://go.dev/dl/go$GO_VERSION.linux-$arch.tar.gz" \
+    && sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go.tgz) \
+    || { log "   WARN: Go $GO_VERSION could not be fetched"; return 1; }
+  export PATH="/usr/local/go/bin:$PATH"
+}
+
+go_tool () {
+  local binary="$1" module="$2" version="$3"
+  have "$binary" && { log "   $binary already here"; return 0; }
+  get_go || return 1
+  log "   building $binary from $module@$version"
+  GOBIN="$WORK/bin" GOFLAGS=-mod=mod GOPATH="$WORK/go" GOCACHE="$WORK/gocache" \
+    go install "$module@$version" >"$DIR/build_$binary.log" 2>&1 \
+    || { log "   WARN: $binary did not build; see $DIR/build_$binary.log"; return 1; }
+  sudo install -m 0755 "$WORK/bin/$binary" /usr/local/bin/ \
+    || log "   WARN: $binary built but could not be installed"
+}
+
+git_build () {
+  local name="$1" repo="$2" version="$3" binary="$4" ; shift 4
+  have "$(basename "$binary")" && { log "   $name already here"; return 0; }
+  local src="$WORK/$name"
+  [ -d "$src" ] || git clone -q "$repo" "$src" \
+    || { log "   WARN: $name could not be cloned"; return 1; }
+  ( cd "$src" && git fetch -q --all 2>/dev/null
+    [ "$version" = resolve ] || git checkout -q "$version" 2>/dev/null
+    "$@" ) >"$DIR/build_$name.log" 2>&1 \
+    || { log "   WARN: $name did not build; see $DIR/build_$name.log"; return 1; }
+  sudo install -m 0755 "$src/$binary" /usr/local/bin/ \
+    || log "   WARN: $name built but could not be installed"
+  ( cd "$src" && git rev-parse HEAD ) > "$DIR/commit_$name.txt" 2>/dev/null
+}
+
+get_kafka () {
+  have kafka-run-class.sh && { log "   kafka tools already here"; return 0; }
+  local version="${KAFKA_VERSION:-3.7.1}" scala=2.13
+  log "   fetching Kafka $version for its own tools"
+  (cd "$WORK" \
+    && curl -fsSL -o kafka.tgz \
+         "https://archive.apache.org/dist/kafka/$version/kafka_$scala-$version.tgz" \
+    && tar -xzf kafka.tgz) \
+    || { log "   WARN: Kafka $version could not be fetched"; return 1; }
+  echo "$version" > "$DIR/kafka_tools_version.txt"
+  local home="$WORK/kafka_$scala-$version"
+  local name
+  for name in kafka-run-class.sh kafka-producer-perf-test.sh; do
+    printf '#!/bin/sh\nexec %s/bin/%s "$@"\n' "$home" "$name" > "$WORK/$name"
+    sudo install -m 0755 "$WORK/$name" /usr/local/bin/ \
+      || log "   WARN: $name could not be installed"
+  done
+}
+
+get_perftest () {
+  local jar="$HOME/tools/perf-test.jar"
+  [ -s "$jar" ] && { log "   rabbitmq-perftest already here"; return 0; }
+  local url
+  url=$(curl -fsSL https://api.github.com/repos/rabbitmq/rabbitmq-perf-test/releases/latest \
+        | sed -n 's/.*"browser_download_url": *"\([^"]*-bin\.tar\.gz\)".*/\1/p' | head -1)
+  [ -n "$url" ] || { log "   WARN: no rabbitmq-perf-test archive found"; return 1; }
+  echo "$url" > "$DIR/perftest_asset.txt"
+  mkdir -p "$HOME/tools"
+  (cd "$WORK" && curl -fsSL -o perftest.tgz "$url" && tar -xzf perftest.tgz \
+    && cp perf-test*/perf-test.jar "$jar" 2>/dev/null \
+    || cp perf-test*/*.jar "$jar") \
+    || { log "   WARN: rabbitmq-perftest could not be unpacked from $url"; return 1; }
+}
+
 install () {
   log "== the tools, at the versions the audit read"
   sudo apt-get update -qq || stop "apt-get update failed"
-  sudo apt-get install -y -qq golang-go build-essential git pkg-config libssl-dev \
-      libevent-dev autoconf automake libpcre3-dev zlib1g-dev valkey-tools \
+  # Everything the builds below need. openjdk is for Kafka's own tools and RabbitMQ's PerfTest,
+  # both of which are Java programs; libsasl2 and cmake are librdkafka's.
+  sudo apt-get install -y -qq build-essential git pkg-config libssl-dev unzip cmake \
+      libevent-dev autoconf automake libtool libpcre3-dev zlib1g-dev libsasl2-dev \
+      openjdk-11-jdk-headless \
     || log "WARN: some packages were not available; each tool is checked below"
 
   echo "$PINNED" | while IFS='|' read -r tool how version; do
@@ -73,6 +161,21 @@ install () {
       log "   $tool: $how, pinned at $version"
     fi
   done
+
+  go_tool vegeta github.com/tsenart/vegeta/v12 cf5811269046c672a604b1eb352204d30f9d5b58
+  go_tool hey github.com/rakyll/hey 5626f79b8698df6daf9b25799c9805c6ac7dbd9e
+  go_tool k6 go.k6.io/k6 3fcf5388d78c
+  go_tool nats github.com/nats-io/natscli/nats latest
+  git_build wrk2 https://github.com/giltene/wrk2 resolve wrk make -j2
+  git_build memtier https://github.com/RedisLabs/memtier_benchmark \
+    5694a3d61aaf0322a62fc44083ba6f21305de40e memtier_benchmark \
+    sh -c 'autoreconf -ivf && ./configure && make -j2'
+  git_build librdkafka https://github.com/confluentinc/librdkafka \
+    6f86c853a131d66fc2cd2a44aac99e83de6c2337 examples/rdkafka_performance \
+    sh -c './configure && make -j2 && make -C examples rdkafka_performance'
+  git_build valkey https://github.com/valkey-io/valkey 9.1.2 src/valkey-benchmark make -j2
+  get_kafka
+  get_perftest
 
   # What is actually on this machine afterwards, with its own fingerprint, so a run can say which
   # build produced its numbers rather than which version we meant to install.

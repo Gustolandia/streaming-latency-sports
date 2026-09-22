@@ -1126,3 +1126,47 @@ class TestEveryPinnedToolHasSomethingThatInstallsIt:
         for record in ("commit_$name.txt", "kafka_tools_version.txt", "commit_perftest.txt",
                        "version_$binary.txt"):
             assert record in text, record
+
+
+class TestTheLoadIsCorrectedToWhatTheMachineShows:
+    """stress-ng is told a duty; what the machine shows is that duty plus the harness's own use.
+
+    On eight CPUs the harness is under a point of the machine and nobody noticed. On two it is
+    over three, and A5's two-CPU calibration failed its own runs at 78.1% against a 75% design --
+    three of them, before it had measured anything. Widening the check would have been the wrong
+    answer: A5 compares core counts at one load, so two CPUs at 78 and eight at 75 puts a
+    difference in load exactly where the difference in cores is meant to be.
+    """
+
+    def code(self):
+        return (KIT / "campaign.sh").read_text(encoding="utf-8")
+
+    def test_the_duty_is_corrected_against_what_the_machine_shows(self):
+        code = self.code()
+        assert "load_correction.json" in code, "and what it was corrected to is written down"
+        block = code.split("sampler_pid=$!", 1)[1].split("if [ -n \"$TRACE_HALF\"", 1)[0]
+        assert "stress-ng --cpu \"$want_cpus\" --cpu-load \"$adjusted\"" in block
+        assert 'kill "$stress_pid"' in block, "the first one is stopped before the second starts"
+
+    def test_it_happens_before_anything_is_counted(self):
+        """A correction made after the warm-up would move the load under the measured messages."""
+        code = self.code()
+        assert code.index("load_correction.json") < code.index("run_kafka_trial.sh") \
+            or code.index("load_correction.json") < code.index("WARMUP"), \
+            "corrected before the trial runs"
+
+    def test_the_correction_is_bounded(self):
+        """A machine that shows something absurd must not be asked for a duty that is absurd."""
+        code = self.code()
+        assert "min(100.0, max(1.0, out))" in code
+
+    def test_a_machine_that_shows_nothing_is_left_alone(self):
+        """No samples yet is not a reason to change the duty to something invented."""
+        code = self.code()
+        assert 'if [ -n "$shown" ]; then' in code
+
+    def test_the_design_is_what_the_check_still_judges(self):
+        """The correction moves the duty, never the number the run is held to."""
+        integrity = (REPO / "scripts" / "run_integrity.py").read_text(encoding="utf-8")
+        assert 'float(params["load_pct"])' in integrity, "judged against the designed load"
+        assert "LOAD_POINTS = 3.0" in integrity, "and the tolerance is unchanged"

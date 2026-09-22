@@ -628,8 +628,10 @@ import sys
 moved, want = float(sys.argv[1]), float(sys.argv[2])
 sys.exit(0 if abs(moved - want) <= max(0.1 * want, 0.05) else 1)" "$moved" "$ms" 2>/dev/null \
       || continue
-    FAKETIME_MOVED_MS="$moved"
-    offset_as "$grammar" "$ms"
+    #: The spelling and what the clock was measured to do, on one line, because a caller
+    #: reading this through $(...) reads it in a subshell: a variable set here never reaches
+    #: them, and the first version set one, so every run recorded "measured ? ms".
+    echo "$(offset_as "$grammar" "$ms") $moved"
     return 0
   done
   return 1
@@ -686,15 +688,16 @@ print(found["smallest_reported_ms"] or "")' "$DIR/t1-$tool-step.json" 2>/dev/nul
   for ms in $offsets; do
     local run="t2-$tool-$(echo "$ms" | tr . _)ms"
     mkdir -p "$DIR/$run"
-    local spelling
-    spelling=$(faketime_spelling "$ms") \
+    local spelling moved said
+    said=$(faketime_spelling "$ms") \
       || stop "no libfaketime offset of $ms ms could be confirmed on this machine; T2 will not run an offset it cannot show reached the clock"
+    spelling="${said%% *}"; moved="${said##* }"
     echo "$spelling" > "$DIR/$run/offset_spelling.txt"
     #: What the clock was measured to actually do under that spelling, beside what was asked for,
     #: because "confirmed" is a claim and this is the number behind it.
-    echo "{\"asked_ms\": $ms, \"measured_ms\": ${FAKETIME_MOVED_MS:-null}, \"spelling\": \"$spelling\"}" \
+    echo "{\"asked_ms\": $ms, \"measured_ms\": $moved, \"spelling\": \"$spelling\"}" \
       > "$DIR/$run/offset_measured.json"
-    log "   $ms ms, as $spelling, measured ${FAKETIME_MOVED_MS:-?} ms"
+    log "   $ms ms, as $spelling, measured $moved ms"
     SBL_TOOL_WRAP="faketime -f $spelling" bash cloud/azure/tools_run.sh "$tool" "$DIR/$run" \
       > "$DIR/$run/tool.txt" 2>&1
     echo "$?" > "$DIR/$run/exit_code.txt"
@@ -704,14 +707,18 @@ print(found["smallest_reported_ms"] or "")' "$DIR/t1-$tool-step.json" 2>/dev/nul
     # Our own trips for the same messages are the reference the verdict is measured against;
     # T1's zero-delay reading of the same tool is what cancels that tool's own bias out of the
     # comparison, and T1's measured step is what the prediction passes through.
-    if [ -s "$DIR/$run/reference_trips.json" ]; then
+    #: The reference is T1's, taken at the zero step on the same path, and it is read from where
+    #: T1 wrote it. This looked for it inside the T2 run's own folder, where nothing puts it, so
+    #: the condition could never be true and every T2 run ended with "no reference trips beside
+    #: this run" -- a warning about a file that was never meant to be there.
+    if [ -s "$trips" ]; then
       python3 scripts/tool_negatives.py judge --reading "$DIR/$run/reading.json" \
-        --reference "$DIR/$run/reference_trips.json" --offset-ms "$ms" \
+        --reference "$trips" --offset-ms "$ms" \
         --plain "$plain" ${step:+--step-ms "$step"} \
         --exit-code "$(cat "$DIR/$run/exit_code.txt")" --out "$DIR/$run/verdict.json" \
         || log "   UNDECIDED at $ms ms; see $DIR/$run/verdict.json"
     else
-      log "   WARN: no reference trips beside this run, so nothing can be judged from it"
+      log "   WARN: T1 left no reference trips at $trips, so nothing can be judged from it"
     fi
   done
   log "CAMPAIGN_COMPLETE: T2 $tool; its runs are under $DIR"

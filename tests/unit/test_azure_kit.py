@@ -1508,6 +1508,18 @@ def test_the_pair_stops_itself_only_when_the_list_is_exhausted():
     assert loop.index("$STOPFILE") < loop.index("stop_when_done"), said
 
 
+def test_stopping_itself_is_an_instruction_about_one_list_and_not_a_standing_rule():
+    """Left in place the marker made the pair unreachable: starting it to collect its runs
+    let the loop find an empty list again and turn it off inside a minute. The Arm pair did
+    exactly that, twice, before anything could be copied off it."""
+    code = QUEUE.read_text(encoding="utf-8")
+    loop = code.split("run_loop () {", 1)[1]
+    armed = loop.split('if [ -e "$DIR/stop_when_done" ]; then', 1)[1].split("fi", 1)[0]
+    assert 'rm -f "$DIR/stop_when_done"' in armed, "the marker is taken when it fires"
+    said = "taken before the pair is asked to go, not after"
+    assert armed.index("rm -f") < armed.index("stop_self.sh"), said
+
+
 def test_stopping_itself_is_asked_for_and_can_be_taken_back():
     code = QUEUE.read_text(encoding="utf-8")
     assert "  arm-stop)" in code and "  disarm-stop)" in code

@@ -38,15 +38,31 @@ stop () { log "STOP_RULE: $*"; exit 1; }
 # committed before any T1 run, because a tool's behaviour is what the block reports and a tool
 # that changed under us would be a different experiment. A made-up commit here would be worse
 # than an honest blank.
+#: On 22 September every hash in this table was asked of its own repository, the first time
+#: anything had been, because the install step below had never fetched a thing -- it reported
+#: what was already on the machine and nothing more. Five of the six came back 422, which is
+#: GitHub for "no commit with that SHA":
+#:
+#:     vegeta              cf5811269046...   not a commit in tsenart/vegeta
+#:     hey                 5626f79b8698...   not a commit in rakyll/hey
+#:     memtier_benchmark   5694a3d61aaf...   not a commit in RedisLabs/memtier_benchmark
+#:     rdkafka_performance 6f86c853a131...   not a commit in confluentinc/librdkafka
+#:     kafka-*             995cfcf99f79...   not a commit in apache/kafka
+#:
+#: Only k6's is real, and valkey's 9.1.2 is a real release tag. The five that are not are marked
+#: resolve, which is this block's own word for "not pinned yet, and what installs is recorded".
+#: That is an honest blank, which the note below this table has always said is better than a
+#: made-up commit. They are not replaced with plausible-looking real commits: which build the
+#: audit read is not a thing to reconstruct after the fact, and nothing here can say it.
 PINNED='
-vegeta|go|cf5811269046c672a604b1eb352204d30f9d5b58
-hey|go|5626f79b8698df6daf9b25799c9805c6ac7dbd9e
+vegeta|go|resolve
+hey|go|resolve
 k6|go|3fcf5388d78c
 valkey-benchmark|apt|9.1.2
-memtier_benchmark|git|5694a3d61aaf0322a62fc44083ba6f21305de40e
-rdkafka_performance|git|6f86c853a131d66fc2cd2a44aac99e83de6c2337
-kafka-end-to-end|kafka|995cfcf99f7917403e030428c00b5c518089d1b2
-kafka-producer-perf|kafka|995cfcf99f7917403e030428c00b5c518089d1b2
+memtier_benchmark|git|resolve
+rdkafka_performance|git|resolve
+kafka-end-to-end|kafka|resolve
+kafka-producer-perf|kafka|resolve
 wrk2|git|resolve
 rabbitmq-perftest|jar|resolve
 nats-latency|go|resolve
@@ -162,16 +178,16 @@ install () {
     fi
   done
 
-  go_tool vegeta github.com/tsenart/vegeta/v12 cf5811269046c672a604b1eb352204d30f9d5b58
-  go_tool hey github.com/rakyll/hey 5626f79b8698df6daf9b25799c9805c6ac7dbd9e
-  go_tool k6 go.k6.io/k6 3fcf5388d78c
+  go_tool vegeta github.com/tsenart/vegeta/v12 latest
+  go_tool hey github.com/rakyll/hey latest
+  go_tool k6 go.k6.io/k6/v2 3fcf5388d78c
   go_tool nats github.com/nats-io/natscli/nats latest
   git_build wrk2 https://github.com/giltene/wrk2 resolve wrk make -j2
   git_build memtier https://github.com/RedisLabs/memtier_benchmark \
-    5694a3d61aaf0322a62fc44083ba6f21305de40e memtier_benchmark \
+    resolve memtier_benchmark \
     sh -c 'autoreconf -ivf && ./configure && make -j2'
   git_build librdkafka https://github.com/confluentinc/librdkafka \
-    6f86c853a131d66fc2cd2a44aac99e83de6c2337 examples/rdkafka_performance \
+    resolve examples/rdkafka_performance \
     sh -c './configure && make -j2 && make -C examples rdkafka_performance'
   git_build valkey https://github.com/valkey-io/valkey 9.1.2 src/valkey-benchmark make -j2
   get_kafka

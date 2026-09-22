@@ -1,0 +1,18 @@
+{
+  "Name": "SBL Pair Deallocator",
+  "Description": "Lets a driver stop its own pair when its list of work is finished, and nothing else. Read a virtual machine and deallocate it: no create, no delete, no change to any other kind of resource. Assigned to each driver's system-assigned identity, scoped to that pair's own resource group, so a driver can reach its broker and itself and no other machine.",
+  "IsCustom": true,
+  "Actions": [
+    "Microsoft.Compute/virtualMachines/read",
+    "Microsoft.Compute/virtualMachines/instanceView/read",
+    "Microsoft.Compute/virtualMachines/deallocate/action"
+  ],
+  "NotActions": [],
+  "DataActions": [],
+  "NotDataActions": [],
+  "AssignableScopes": [
+    "/subscriptions/e62c0303-b73e-452d-98a0-e274249b2dcf/resourceGroups/sbl-az",
+    "/subscriptions/e62c0303-b73e-452d-98a0-e274249b2dcf/resourceGroups/sbl-azb",
+    "/subscriptions/e62c0303-b73e-452d-98a0-e274249b2dcf/resourceGroups/sbl-azarm"
+  ]
+}

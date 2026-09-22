@@ -316,6 +316,14 @@ run_loop () {
     line="$(job_line)"
     if [ -z "$line" ]; then
       log "every job on the list has run ($(job_count) of them)"
+      #: And if the list was armed to, the pair turns itself off here rather than billing
+      #: until somebody notices. This is the one place it can be done safely: the list is
+      #: exhausted, which is true only after the jobs put back for a second go have run
+      #: too, and the stop file is handled above, so a pair asked to stop keeps its list.
+      if [ -e "$DIR/stop_when_done" ]; then
+        log "the list is armed to stop the pair when it ends; asking Azure now"
+        bash cloud/azure/stop_self.sh 2>&1 | while read -r said; do log "  $said"; done
+      fi
       return 0
     fi
     boot="$(field "$line" boot)"
@@ -448,11 +456,19 @@ case "$CMD" in
     crontab -l 2>/dev/null | grep -v "queue.sh run" | crontab - 2>/dev/null
     echo "it will stop after the job it is on; the @reboot line is out"
     ;;
+  arm-stop)
+    touch "$DIR/stop_when_done"
+    echo "armed: this pair deallocates itself once every job on the list has run"
+    ;;
+  disarm-stop)
+    rm -f "$DIR/stop_when_done"
+    echo "disarmed: the pair stays up when the list ends"
+    ;;
   show)
     echo "jobs: $(job_count), on job $(read_at), phase $(read_phase)"
     [ -s "$JOBS" ] && nl -ba "$JOBS"
     echo "--- the last of its log ---"
     tail -15 "$LOG" 2>/dev/null
     ;;
-  *) echo "usage: queue.sh add|start|run|stop|show" >&2; exit 2 ;;
+  *) echo "usage: queue.sh add|start|run|stop|show|arm-stop|disarm-stop" >&2; exit 2 ;;
 esac

@@ -25,7 +25,8 @@ def test_the_kit_has_the_scripts_the_guide_describes():
     assert [p.name for p in SHELL] == ["a2_session.sh", "campaign.sh", "chain.sh", "cpus.sh",
                                        "kernels.sh",
                                        "machine_facts.sh", "pilot.sh", "queue.sh", "replicate_oracle.sh",
-                                       "session.sh", "stage0.sh", "stage1.sh", "tools.sh",
+                                       "session.sh", "stage0.sh", "stage1.sh",
+                                       "stop_self.sh", "tools.sh",
                                        "tools_run.sh"]
 
 
@@ -1443,3 +1444,58 @@ class TestTheReferenceEveryToolNumberIsReadAgainst:
     def test_t2_still_refuses_rather_than_guesses_without_one(self):
         t2 = self.tools().split("t2 () {", 1)[1].split("\n}", 1)[0]
         assert "T2 needs T1's zero-delay run" in t2
+
+class TestAPairThatTurnsItselfOff:
+    """A machine that has finished its list kept billing until somebody noticed, and nothing on
+    it could do anything about it: no Azure CLI and no identity, so deallocating a pair could
+    only be done from outside, by hand. Two days of unattended work meant two days in which the
+    only thing between a finished pair and an empty subscription was somebody looking."""
+
+    def code(self):
+        return (KIT / "stop_self.sh").read_text(encoding="utf-8")
+
+    def body(self):
+        return self.code().split("main () {", 1)[1].split("\n}", 1)[0]
+
+    def test_it_deallocates_and_does_nothing_else(self):
+        """Deallocated is the word that matters: a machine shut down from inside is still
+        allocated and still billed. And the role it holds allows nothing else -- asked to
+        restart itself, a driver is refused with 403."""
+        code = self.code()
+        assert "/deallocate?api-version=" in code
+        for verb in ("/delete", "/start?", "/restart?", "/powerOff"):
+            assert verb not in code, "it has no business asking for %s" % verb
+
+    def test_the_broker_goes_before_the_machine_running_this(self):
+        assert "for vm in $others $me; do" in self.body(), "itself last: it is its own last act"
+
+    def test_it_only_ever_touches_its_own_resource_group(self):
+        """Each pair is its own resource group, so "every machine in my group" is exactly this
+        pair. The identity is scoped there and refused elsewhere; this is the second lock."""
+        code = self.code()
+        assert "resourceGroupName" in code, "the group comes from the machine's own metadata"
+        assert "$IMDS/instance?api-version=" in code
+        assert "MOST_IN_A_PAIR=4" in code
+        assert "does not look like this pair; stopping nothing" in self.body()
+
+    def test_it_needs_the_identity_and_says_so_when_there_is_none(self):
+        body = self.body()
+        assert "nothing can be stopped from inside" in body
+        assert body.index("token") < body.index("deallocate")
+
+
+def test_the_pair_stops_itself_only_when_the_list_is_exhausted():
+    """The one place it is safe: the list is empty, which is true only after the jobs put back
+    for a second go have run too. A pair asked to stop keeps its list and is handled above."""
+    code = QUEUE.read_text(encoding="utf-8")
+    loop = code.split("run_loop () {", 1)[1]
+    ended = loop.split('if [ -z "$line" ]; then', 1)[1].split("return 0", 1)[0]
+    assert "stop_when_done" in ended and "stop_self.sh" in ended
+    said = "a pair asked to stop is answered before a pair that has simply finished"
+    assert loop.index("$STOPFILE") < loop.index("stop_when_done"), said
+
+
+def test_stopping_itself_is_asked_for_and_can_be_taken_back():
+    code = QUEUE.read_text(encoding="utf-8")
+    assert "  arm-stop)" in code and "  disarm-stop)" in code
+    assert "arm-stop|disarm-stop" in code, "and both are in the usage line"

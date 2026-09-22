@@ -24,7 +24,7 @@ import testbed_watch  # noqa: E402
 def test_the_kit_has_the_scripts_the_guide_describes():
     assert [p.name for p in SHELL] == ["a2_session.sh", "campaign.sh", "chain.sh", "cpus.sh",
                                        "kernels.sh",
-                                       "machine_facts.sh", "pilot.sh", "replicate_oracle.sh",
+                                       "machine_facts.sh", "pilot.sh", "queue.sh", "replicate_oracle.sh",
                                        "session.sh", "stage0.sh", "stage1.sh", "tools.sh",
                                        "tools_run.sh"]
 
@@ -754,3 +754,168 @@ class TestT2ForcedNegatives:
         assert "tool_negatives.py judge" in code
         assert "--exit-code" in code, "a tool that died is one of the answers"
         assert "no reference trips beside this run" in code
+
+
+QUEUE = KIT / "queue.sh"
+
+
+def _queue_call(tmp_path, call):
+    """One of queue.sh's own functions, sourced in a scratch checkout and asked a question.
+
+    Sourcing runs the dispatch at the foot of the script, which with no argument is `show`, and
+    show only reads. That is cheaper than a second copy of the parsing here, and a copy is what
+    would rot.
+    """
+    root = _scratch_checkout(tmp_path)
+    script = "cd '%s' && . cloud/azure/queue.sh >/dev/null 2>&1; %s" % (root.as_posix(), call)
+    done = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+    return done.stdout.strip()
+
+
+def _scratch_checkout(tmp_path):
+    """Enough of a checkout for the script to load: it reads the pair's addresses through
+    common.sh, which refuses to load without them, as every campaign script here does."""
+    root = tmp_path / "sbl"
+    (root / "cloud" / "azure").mkdir(parents=True)
+    (root / "cloud" / "campaigns").mkdir(parents=True)
+    shutil.copy(QUEUE, root / "cloud" / "azure" / "queue.sh")
+    shutil.copy(REPO / "cloud" / "campaigns" / "common.sh", root / "cloud" / "campaigns")
+    (root / "cloud" / "hosts.env").write_text(
+        "\n".join(["BROKER_PRIV=10.9.9.9", "RECEIVER_IP=10.9.9.8", "SUBNET_PREFIX=24",
+                   "SUBNET_GATEWAY=10.9.9.1", "AZ_PROFILE=scratch", ""]), encoding="utf-8")
+    return root
+
+
+needs_bash = pytest.mark.skipif(sys.platform == "win32" or not shutil.which("bash"),
+                                reason="these run the script itself")
+
+
+@needs_bash
+def test_a_jobs_note_keeps_its_spaces_and_the_keys_before_it_keep_their_meaning(tmp_path):
+    """The rounds note is a sentence, so it is the last key on the line and takes the rest of it.
+    Everything before it is still read as key=value, including a note that contains an = sign."""
+    line = "boot=hz100 backend=kafka rounds=4 note=P2: 4 rounds, power unknown (a=b)"
+    assert _queue_call(tmp_path, 'field "%s" note' % line) == "P2: 4 rounds, power unknown (a=b)"
+    assert _queue_call(tmp_path, 'field "%s" backend' % line) == "kafka"
+    assert _queue_call(tmp_path, 'field "%s" rounds' % line) == "4"
+
+
+@needs_bash
+def test_a_key_that_ends_another_key_is_not_that_key(tmp_path):
+    """`ounds` is inside `rounds`, and a substring match would hand the campaign a round count
+    nobody asked for. The keys are matched with their space and their equals sign."""
+    line = "boot=none block=A4 rounds=4"
+    assert _queue_call(tmp_path, 'field "%s" ounds' % line) == ""
+    assert _queue_call(tmp_path, 'field "%s" c0' % line) == ""
+    assert _queue_call(tmp_path, 'field "%s" block' % line) == "A4"
+
+
+@needs_bash
+def test_the_queue_reaches_as_far_as_a_session_driven_from_outside_does(tmp_path):
+    """Two copies of one piece of arithmetic. A calibration that does not reach a campaign's
+    longest trip does not fail: the design quietly drops the setups it cannot reach, so the two
+    copies disagreeing would cost points rather than raise anything."""
+    outside = (KIT / "a2_session.sh").read_text(encoding="utf-8")
+    outside = outside.split("reach_ms () {", 1)[1].split("\n}", 1)[0]
+    for boot, hz in (("hz1000", "1000"), ("hz250", "250"), ("hz100", "100")):
+        mine = _queue_call(tmp_path, "reach_ms %s" % boot)
+        theirs = subprocess.run(
+            ["bash", "-c", "reach_ms () {%s\n}\nreach_ms %s" % (outside, hz)],
+            capture_output=True, text=True).stdout.strip()
+        assert mine == theirs, boot
+    assert _queue_call(tmp_path, "reach_ms hz1000") == "8"
+    assert _queue_call(tmp_path, "reach_ms hz100") == "32"
+
+
+@needs_bash
+def test_a_list_is_added_to_and_counted_from_the_disk(tmp_path):
+    root = _scratch_checkout(tmp_path)
+    for spec in ("boot=hz100 block=A2", "boot=cpu2 block=A5", "boot=none block=A4"):
+        subprocess.run(["bash", "cloud/azure/queue.sh", "add", spec], cwd=root, check=True,
+                       capture_output=True)
+    shown = subprocess.run(["bash", "cloud/azure/queue.sh", "show"], cwd=root,
+                           capture_output=True, text=True).stdout
+    assert "jobs: 3, on job 1, phase prep" in shown
+    assert "boot=cpu2 block=A5" in shown
+
+
+def test_the_queue_goes_on_when_one_job_stops_itself():
+    """The rule a chain driven from outside used was to stop the lot, and it is the wrong one
+    here: the next job is a different kernel asking a different question, and a campaign that
+    tripped a brake has still measured everything up to the trip."""
+    code = QUEUE.read_text(encoding="utf-8")
+    waiting = code.split("      waiting)", 1)[1].split("\n        ;;", 1)[0]
+    assert waiting.count("advance") == 3, "done, stopped and given up on all move to the next job"
+    assert "requeue_once" in waiting
+    assert "exit 1" not in waiting
+
+
+def test_a_job_is_put_back_once_and_never_retried_in_place():
+    """One more go is worth having; two is a retry loop wearing a different hat, and the second
+    failure of the same job is information rather than bad luck."""
+    code = QUEUE.read_text(encoding="utf-8")
+    body = code.split("requeue_once () {", 1)[1].split("\n}", 1)[0]
+    assert 'grep -qxF "$line" "$RETRIED"' in body, "it remembers which jobs have had their second"
+    assert body.index("$RETRIED") < body.index('>> "$JOBS"'), "remembered before it is queued"
+
+
+def test_a_job_that_keeps_rebooting_is_given_up_on():
+    """A machine that will not come up the way it was asked is a machine that reboots for ever
+    on one job, and it bills the whole time."""
+    code = QUEUE.read_text(encoding="utf-8")
+    prep = code.split("      prep)", 1)[1].split(";;", 1)[0]
+    assert '[ "$n" -gt 2 ]' in prep
+    assert "advance" in prep.split('[ "$n" -gt 2 ]', 1)[1]
+
+
+def test_the_campaign_it_waits_for_is_one_that_did_not_exist_when_it_started():
+    """Reading the newest campaign folder reads the last campaign's until this one makes its own,
+    and on 21 September that started a calibration on a busy pair and rebooted under a running
+    one. The folders are remembered before anything starts."""
+    code = QUEUE.read_text(encoding="utf-8")
+    start = code.split("start_job () {", 1)[1].split("\n}", 1)[0]
+    assert start.index('> "$SEEN"') < start.index("stage0.sh session"), \
+        "remembered before the calibration, let alone the campaign"
+    state = code.split("campaign_state () {", 1)[1].split("\n}", 1)[0]
+    assert 'grep -qxF "$d" "$SEEN" 2>/dev/null && continue' in state
+
+
+def test_what_makes_it_survive_the_reboot_is_on_the_machine_itself():
+    """The whole point. A session driven from a laptop dies with the laptop; this leaves itself a
+    note on the driver and an @reboot line to read it."""
+    code = QUEUE.read_text(encoding="utf-8")
+    assert "@reboot" in code and "crontab -" in code
+    assert "queue.sh run" in code.split("@reboot", 1)[1]
+    started = code.split("  start)", 1)[1].split(";;", 1)[0]
+    assert started.index("crontab -") < started.index("setsid nohup"), \
+        "the line is in before the loop starts, so a reboot in between is still caught"
+    stopped = code.split("  stop)", 1)[1].split(";;", 1)[0]
+    assert "crontab -l" in stopped and "grep -v" in stopped, "stopping takes the line out again"
+
+
+def test_only_one_loop_runs_at_a_time():
+    """Two loops on one pair would boot two kernels and place two campaigns on whichever won."""
+    code = QUEUE.read_text(encoding="utf-8")
+    assert code.count("flock -n") == 2, "the @reboot line and the loop it starts"
+
+
+def test_a_job_that_needs_no_reboot_does_not_take_one():
+    """The tool campaigns and a second campaign on a kernel already booted need nothing but the
+    machine they are on, and a reboot would cost half an hour and a session rebuild for nothing."""
+    code = QUEUE.read_text(encoding="utf-8")
+    prep = code.split("      prep)", 1)[1].split(";;", 1)[0]
+    assert 'if [ "$boot" = none ]; then' in prep
+    assert prep.index('if [ "$boot" = none ]; then') < prep.index("systemctl reboot")
+    assert "none|stock) return 0" in code, "the stock kernel is booted, not built"
+
+
+def test_the_machine_is_checked_against_what_the_job_asked_for():
+    """A session that reached its core count or its tick some other way than the one asked for
+    would not fail. It would run, and be filed under a name that is not true -- which is what
+    maxcpus did on 21 September, coming up with all eight CPUs under a folder saying two."""
+    code = QUEUE.read_text(encoding="utf-8")
+    verify = code.split("verify_boot () {", 1)[1].split("\n}", 1)[0]
+    assert "kernels.sh check" in verify and "cpus.sh check" in verify
+    assert "*sbl*)" in verify, "a bridge session must not be on a tick build"
+    start = code.split("start_job () {", 1)[1].split("\n}", 1)[0]
+    assert start.index("verify_boot") < start.index("stage0.sh session")

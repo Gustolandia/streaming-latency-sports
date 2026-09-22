@@ -789,6 +789,28 @@ class TestT2ForcedNegatives:
         assert "faketime_spelling ()" in code
         assert "no libfaketime offset of $ms ms could be confirmed" in code
         assert "offset_spelling.txt" in code, "and what was used is recorded beside the run"
+        assert "offset_measured.json" in code, "and what the clock did, beside what was asked"
+
+    def test_no_spelling_is_tried_that_libfaketime_reads_as_minutes(self):
+        """It has no millisecond unit: "-1.812ms" is 1.812 minutes with the s ignored, which
+        moves the clock back 108 seconds. Fractional seconds are the grammar."""
+        code = self.tools().split("offset_as () {", 1)[1].split("\n}", 1)[0]
+        for spelt in ("}ms", "ms'", 'ms"', "}m'", '}m"'):
+            assert spelt not in code, "a spelling ending in %r is minutes to libfaketime" % spelt
+        assert "'-%.9f' %" in code and "'-%.9fs' %" in code, "fractional seconds, both ways"
+
+    def test_the_offset_is_measured_as_a_difference_against_no_offset(self):
+        """Starting faketime and date costs about two milliseconds, which is more than the
+        offsets T2 uses; reading the clock either side of one faked reading therefore measured a
+        correct spelling as anything at all, and T2 stopped on a machine that was fine. The cost
+        is the same at any offset, so it cancels in a difference."""
+        code = self.tools().split("faketime_spelling () {", 1)[1].split("\n}", 1)[0]
+        assert 'offset_as "$grammar" 0' in code, "the same measurement at no offset"
+        assert 'offset_as "$grammar" "$ms"' in code
+        assert "float(sys.argv[1]) - float(sys.argv[2])" in code, "and what separates them"
+        reading = self.tools().split("faketime_reading () {", 1)[1].split("\n}", 1)[0]
+        assert "statistics.median" in reading, "a median over repeats, not one reading"
+        assert "FAKETIME_READS" in reading
 
     def test_what_the_tool_did_is_judged_against_our_own_trips(self):
         code = self.tools()

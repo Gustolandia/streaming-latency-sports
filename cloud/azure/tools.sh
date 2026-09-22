@@ -490,28 +490,75 @@ t1 () {
   log "CAMPAIGN_COMPLETE: T1 $tool; its runs are under $DIR"
 }
 
+#: How many readings each measurement below takes. Each costs about two milliseconds.
+FAKETIME_READS=12
+
+#: One grammar's spelling of an offset given in milliseconds.
+offset_as () {
+  local grammar="$1" ms="$2"
+  case "$grammar" in
+    plain)   python3 -c "print('-%.9f' % (${ms} / 1000.0))" ;;
+    seconds) python3 -c "print('-%.9fs' % (${ms} / 1000.0))" ;;
+    *)       return 1 ;;
+  esac
+}
+
+#: The median of (a real reading, then a faked one) under a spelling, in milliseconds. It carries
+#: the cost of starting faketime and date as well as the offset, which is why it is only ever
+#: used as a difference against the same measurement at no offset.
+faketime_reading () {
+  local spelling="$1" i before after vals=""
+  for i in $(seq 1 "$FAKETIME_READS"); do
+    before=$(date +%s.%N)
+    after=$(faketime -f "$spelling" date +%s.%N 2>/dev/null) || return 1
+    [ -n "$after" ] || return 1
+    vals="$vals $(python3 -c "
+import sys
+print('%.6f' % ((float(sys.argv[1]) - float(sys.argv[2])) * 1000.0))" "$before" "$after")"
+  done
+  # shellcheck disable=SC2086
+  python3 -c "
+import statistics, sys
+print('%.4f' % statistics.median(float(v) for v in sys.argv[1:]))" $vals 2>/dev/null
+}
+
 # The spelling of an offset that libfaketime actually honours, found by measuring it.
 #
-# Its documented offsets are whole days, hours, minutes and seconds, and the fractional and
-# millisecond spellings differ between builds. Rather than assume one, each is tried and the
-# achieved shift is measured against a clock that was not faked. Nothing is run at an offset
-# this could not confirm, because a T2 run with no offset looks exactly like a tool that handles
-# negatives perfectly, and that is the one mistake this block cannot afford.
+# libfaketime's units are days, hours, minutes and seconds. There is no millisecond one: it reads
+# "-1.812ms" as 1.812 minutes and ignores the s, which moves the clock back 108 seconds rather
+# than two milliseconds -- and that spelling was the first this tried. Fractional seconds are
+# honoured, with or without a trailing s, and that is the grammar.
+#
+# The measurement was the other half of it. Reading the clock either side of a faked reading
+# cannot confirm a millisecond offset, because starting faketime and date costs about two
+# milliseconds here -- more than the offsets T2 uses -- so a correct spelling measured as
+# anything at all, and T2 stopped with its offsets computed and nothing wrong with the machine.
+# That cost is the same whatever offset is asked for, so it cancels in a difference: the same
+# measurement is taken at no offset and at the wanted one, and what separates the two medians is
+# the offset. On the first x86 pair that recovers 1.812 ms as 1.806 and 3.812 as 3.806.
+#
+# Nothing is run at an offset this could not confirm, because a T2 run with no offset looks
+# exactly like a tool that handles negatives perfectly, and that is the one mistake this block
+# cannot afford.
 faketime_spelling () {
-  local ms="$1" spelling before after moved
+  local ms="$1" grammar zero here moved
   command -v faketime >/dev/null || return 1
-  for spelling in "-${ms}ms" "-0$(python3 -c "print('%.9f' % (${ms}/1000.0))" | cut -c2-)" \
-                  "-$(python3 -c "print('%.6f' % (${ms}/1000.0))")s"; do
-    before=$(date +%s.%N)
-    after=$(faketime -f "$spelling" date +%s.%N 2>/dev/null) || continue
-    [ -n "$after" ] || continue
-    # How far back it moved, in milliseconds, against a real reading taken just before.
-    moved=$(python3 -c "import sys; print('%.4f' % ((float(sys.argv[1]) - float(sys.argv[2])) * 1000.0))" \
-      "$before" "$after" 2>/dev/null) || continue
-    if python3 -c "import sys; m=float(sys.argv[1]); w=float(sys.argv[2]); sys.exit(0 if 0.5*w <= m <= 2.0*w else 1)" \
-        "$moved" "$ms" 2>/dev/null; then
-      echo "$spelling"; return 0
-    fi
+  for grammar in plain seconds; do
+    zero=$(faketime_reading "$(offset_as "$grammar" 0)") || continue
+    here=$(faketime_reading "$(offset_as "$grammar" "$ms")") || continue
+    [ -n "${zero:-}" ] && [ -n "${here:-}" ] || continue
+    moved=$(python3 -c "
+import sys
+print('%.4f' % (float(sys.argv[1]) - float(sys.argv[2])))" "$here" "$zero") || continue
+    #: Within a tenth of what was asked for, or 0.05 ms, whichever is the more forgiving.
+    python3 -c "
+import sys
+moved, want = float(sys.argv[1]), float(sys.argv[2])
+sys.exit(0 if abs(moved - want) <= max(0.1 * want, 0.05) else 1)" "$moved" "$ms" 2>/dev/null \
+      || continue
+    FAKETIME_MOVED_MS="$moved"
+    offset_as "$grammar" "$ms"
+    return 0
   done
   return 1
 }
@@ -570,7 +617,11 @@ print(found["smallest_reported_ms"] or "")' "$DIR/t1-$tool-step.json" 2>/dev/nul
     spelling=$(faketime_spelling "$ms") \
       || stop "no libfaketime offset of $ms ms could be confirmed on this machine; T2 will not run an offset it cannot show reached the clock"
     echo "$spelling" > "$DIR/$run/offset_spelling.txt"
-    log "   $ms ms, as $spelling"
+    #: What the clock was measured to actually do under that spelling, beside what was asked for,
+    #: because "confirmed" is a claim and this is the number behind it.
+    echo "{\"asked_ms\": $ms, \"measured_ms\": ${FAKETIME_MOVED_MS:-null}, \"spelling\": \"$spelling\"}" \
+      > "$DIR/$run/offset_measured.json"
+    log "   $ms ms, as $spelling, measured ${FAKETIME_MOVED_MS:-?} ms"
     SBL_TOOL_WRAP="faketime -f $spelling" bash cloud/azure/tools_run.sh "$tool" "$DIR/$run" \
       > "$DIR/$run/tool.txt" 2>&1
     echo "$?" > "$DIR/$run/exit_code.txt"

@@ -148,6 +148,11 @@ verify_boot () {
            bash cloud/azure/kernels.sh check "$hz" >/dev/null 2>&1 \
              || { log "  HZ=$hz did not pass its checks"; return 1; } ;;
     cpu*)  local n="${boot#cpu}"
+           # cpus.sh builds its entry on the stock kernel by name, so this should hold; it is
+           # checked because the count check would not catch it. A5 belongs with A1, A3 and A7
+           # on the stock kernel, and a reduced-count session on a tick build would pass every
+           # check it is given and answer a question nobody asked.
+           case "$running" in *sbl*) log "  $n CPUs but on $running, and A5 runs on the stock kernel"; return 1 ;; esac
            bash cloud/azure/cpus.sh check "$n" >/dev/null 2>&1 \
              || { log "  the machine did not come up with $n CPUs"; return 1; } ;;
   esac

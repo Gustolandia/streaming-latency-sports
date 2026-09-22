@@ -65,18 +65,35 @@ stop () { log "STOP_RULE: $*"; exit 1; }
 #: them because nothing ever read them: the install step below reported what was already on the
 #: machine and fetched nothing, so the first time any of these hashes was asked of its own
 #: repository was 22 September, two days later.
+#: Resolved on 22 September by installing them and asking what landed, then asking each upstream
+#: whether that version exists. Every line below came back 200; the ones that did not are still
+#: resolve. This is the workflow the note above describes, run for the first time.
+#:
+#:     vegeta              v12.13.0    = 4b240c3089fa4aa10816542d64a74294d974211f (proxy.golang.org)
+#:     hey                 v0.1.5      = e64ec7a3ad1ef8bc828fe61e1fb324cc2e74c604 (proxy.golang.org)
+#:     k6                  v2.2.1-0.20260918105121-3fcf5388d78c, the one real hash of the old table
+#:     valkey-benchmark    9.1.2       = 7f1dffedff6de73058b2c2a389422b6ecd56c8fb, and the binary
+#:                                       says "git:7f1dffed" itself
+#:     memtier_benchmark   abdbb3564a79439c74d18411130b3d0835d2ecd2, and it says "sha=abdbb356"
+#:     rdkafka_performance c58a8dc493e1eb51ded67dd2dffe1c9555c434d7
+#:     kafka-*             3.7.1, from archive.apache.org, which answers 200 for that archive
+#:     nats-latency        v0.5.0, which is what the binary reports of itself
+#:
+#: wrk2 and rabbitmq-perftest stay resolve because neither installed: wrk2's vendored LuaJIT has
+#: no aarch64 support and stops its own build, and the PerfTest archive did not unpack. Both are
+#: the x86 pair's tools, and both will be written here when they land there.
 PINNED='
-vegeta|go|resolve
-hey|go|resolve
+vegeta|go|v12.13.0
+hey|go|v0.1.5
 k6|go|3fcf5388d78c
 valkey-benchmark|apt|9.1.2
-memtier_benchmark|git|resolve
-rdkafka_performance|git|resolve
-kafka-end-to-end|kafka|resolve
-kafka-producer-perf|kafka|resolve
+memtier_benchmark|git|abdbb3564a79439c74d18411130b3d0835d2ecd2
+rdkafka_performance|git|c58a8dc493e1eb51ded67dd2dffe1c9555c434d7
+kafka-end-to-end|kafka|3.7.1
+kafka-producer-perf|kafka|3.7.1
 wrk2|git|resolve
 rabbitmq-perftest|jar|resolve
-nats-latency|go|resolve
+nats-latency|go|v0.5.0
 '
 
 #: The tools libfaketime can reach, because they read the clock through the C library.
@@ -194,16 +211,16 @@ install () {
     fi
   done
 
-  go_tool vegeta github.com/tsenart/vegeta/v12 latest
-  go_tool hey github.com/rakyll/hey latest
+  go_tool vegeta github.com/tsenart/vegeta/v12 v12.13.0
+  go_tool hey github.com/rakyll/hey v0.1.5
   go_tool k6 go.k6.io/k6/v2 3fcf5388d78c
   go_tool nats github.com/nats-io/natscli/nats latest
   git_build wrk2 https://github.com/giltene/wrk2 resolve wrk make -j2
   git_build memtier https://github.com/RedisLabs/memtier_benchmark \
-    resolve memtier_benchmark \
+    abdbb3564a79439c74d18411130b3d0835d2ecd2 memtier_benchmark \
     sh -c 'autoreconf -ivf && ./configure && make -j2'
   git_build librdkafka https://github.com/confluentinc/librdkafka \
-    resolve examples/rdkafka_performance \
+    c58a8dc493e1eb51ded67dd2dffe1c9555c434d7 examples/rdkafka_performance \
     sh -c './configure && make -j2 && make -C examples rdkafka_performance'
   git_build valkey https://github.com/valkey-io/valkey 9.1.2 src/valkey-benchmark make -j2
   get_kafka

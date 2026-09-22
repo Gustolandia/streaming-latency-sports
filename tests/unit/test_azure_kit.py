@@ -840,7 +840,30 @@ class TestT2ForcedNegatives:
         code = self.tools()
         assert "tool_negatives.py judge" in code
         assert "--exit-code" in code, "a tool that died is one of the answers"
-        assert "no reference trips beside this run" in code
+        assert "T1 left no reference trips at" in code
+
+    def test_the_reference_is_read_from_where_t1_wrote_it(self):
+        """It looked for the file inside the T2 run's own folder, where nothing puts it, so the
+        condition could never hold: every T2 run ended with a warning about a file that was
+        never meant to be there, and nothing was ever judged."""
+        body = self.tools().split("\nt2 () {", 1)[1].split("\n}", 1)[0]
+        assert 'local trips="$DIR/t1-$tool-0ms/reference_trips.json"' in body
+        assert '--reference "$trips"' in body
+        assert 'if [ -s "$trips" ]; then' in body
+        assert '"$DIR/$run/reference_trips.json"' not in body, \
+            "nothing puts a reference in the T2 run's folder"
+
+    def test_what_the_clock_did_reaches_the_run_that_asks_for_it(self):
+        """faketime_spelling is read through $(...), which is a subshell: a variable set in it
+        never reaches the caller, and the first version set one -- so every run recorded
+        "measured ? ms" while the number was there to be had."""
+        code = self.tools()
+        assert "FAKETIME_MOVED_MS" not in code, "a variable set in a subshell reaches nobody"
+        spelling = code.split("faketime_spelling () {", 1)[1].split("\n}", 1)[0]
+        assert 'echo "$(offset_as "$grammar" "$ms") $moved"' in spelling
+        t2 = code.split("\nt2 () {", 1)[1].split("\n}", 1)[0]
+        assert 'spelling="${said%% *}"; moved="${said##* }"' in t2
+        assert 'measured $moved ms' in t2
 
 
 QUEUE = KIT / "queue.sh"

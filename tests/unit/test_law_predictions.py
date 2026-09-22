@@ -335,8 +335,11 @@ class TestP7DefaultSlicesFollowTheCoreCount:
 class TestP8Language:
 
     def campaign(self, world="law", share=1.0):
+        #: Both ways round, as A8 runs them: P8's third clause is about go-first, and a campaign
+        #: that never gives it cannot answer the whole prediction.
         return lw.campaign(slices=(3.0,), rounds=4, languages=("python", "java"), seed=8,
-                           spread=0.05, world=world, python_share=share)
+                           priorities=(False, True), spread=0.05, world=world,
+                           python_share=share)
 
     def test_java_shows_the_cliff_and_python_is_not_far_above_it(self):
         found = lp.language(self.campaign(), **QUICK)
@@ -394,6 +397,49 @@ class TestP8Language:
     def test_a_whole_campaign_is_tested_and_says_where_it_was_compared(self):
         found = lp.language(self.a8(), **QUICK)
         assert found["tested"] is True and found["matched_on"] == ["p09s"]
+
+    def test_how_far_go_first_cuts_javas_plateau(self):
+        """The plan's third clause, which this judge did not test until 22 September."""
+        runs = ([{"language": "java", "point": "p09s", "priority": False,
+                  "negative_rate": 0.02}] * 3
+                + [{"language": "java", "point": "p09s", "priority": True,
+                    "negative_rate": 0.002}] * 3)
+        assert lp.priority_cut(runs, ["p09s"]) == pytest.approx(10.0)
+
+    def test_a_cut_to_nothing_is_reported_as_the_cut_it_is(self):
+        """Both clients reached zero under go-first on the Arm pair, and a division that raised
+        instead would read as a broken campaign rather than as a complete effect."""
+        runs = [{"language": "java", "point": "p09s", "priority": False, "negative_rate": 0.02},
+                {"language": "java", "point": "p09s", "priority": True, "negative_rate": 0.0}]
+        assert lp.priority_cut(runs, ["p09s"]) == float("inf")
+
+    def test_a_campaign_that_ran_only_one_way_cannot_say(self):
+        runs = [{"language": "java", "point": "p09s", "priority": False, "negative_rate": 0.02}]
+        assert lp.priority_cut(runs, ["p09s"]) is None
+        assert lp.priority_cut([], ["p09s"]) is None
+
+    def test_pythons_runs_do_not_enter_javas_cut(self):
+        runs = [{"language": "java", "point": "p09s", "priority": False, "negative_rate": 0.02},
+                {"language": "java", "point": "p09s", "priority": True, "negative_rate": 0.002},
+                {"language": "python", "point": "p09s", "priority": True, "negative_rate": 0.9}]
+        assert lp.priority_cut(runs, ["p09s"]) == pytest.approx(10.0)
+
+    def test_go_first_has_to_work_in_java_too(self):
+        """In a world where go-first changes nothing the other two clauses still hold, so this
+        is the clause that decides. Before 22 September the judge confirmed P8 in that world."""
+        flat = lp.language(self.a8(world="no_priority_effect"), **QUICK)
+        assert flat["confirmed"] is False
+        assert flat["by_summary"]["free"]["java_cliff"] == 1.0, "the cliff clause still holds"
+        assert flat["by_summary"]["free"]["java_priority_cut"] < lp.PRIORITY_CUT
+        worked = lp.language(self.a8(), **QUICK)
+        assert worked["confirmed"] is True
+        assert worked["by_summary"]["free"]["java_priority_cut"] >= lp.PRIORITY_CUT
+
+    def test_the_rule_it_prints_names_all_three_clauses(self):
+        found = lp.language(self.a8(), **QUICK)
+        assert "lies between its plateau and its floor" in found["rule"]
+        assert "go-first cuts Java's plateau at least 5.0 times" in found["rule"]
+        assert "at most 1.5 times Java's" in found["rule"]
 
 
 class TestTheSlicesAPairCanReach:

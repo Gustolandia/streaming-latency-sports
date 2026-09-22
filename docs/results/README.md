@@ -188,7 +188,8 @@ measured.
 | A4 ran three of its four campaigns: one stopped itself on 18 September and was never started again | counting the Arm driver's campaigns against the design before giving it new work | four days of the block reading as finished when it was not |
 | a rounds simulation was started by hand on a driver, and a calibration started on the same driver eleven minutes later, overlapping it | the process list, while checking why the machine was busy | 4 minutes; one run abandoned and recorded, the calibration restarted clean |
 | the watch would have called a pair with a queue on it idle and deallocated it, because a queue between jobs looks like nothing at all | adding the queue and asking what the watch would make of it | none — caught before the watch was started |
-| the P8 judge says in its own docstring that it tests the cliff **and the priority effect**, and tests only the cliff and the language ratio | judging A8's finished Arm campaign and reading the rule it printed against the plan's | none to that verdict — the omitted clause passes by about 470 times where the plan asks 5 |
+| the P8 judge said in its own docstring that it tests the cliff **and the priority effect**, and tested only the cliff and the language ratio | judging A8's finished Arm campaign and reading the rule it printed against the plan's | none — fixed the same day, and the campaign re-judged under all three clauses gives the same verdict and the same cut, 469.7 |
+| the watch called a run impossible for a trip above a flat 50 ms, when the run itself had been asked to add 32 | two sound calibration runs flagged within minutes of an HZ=100 session starting | none — the ceiling is now measured from the run's own delay |
 
 Those last two are one fault with two faces, and both survived a suite at 100% branch coverage.
 Every test of a judge builds its runs from the made-up world, and that world is not shaped like a

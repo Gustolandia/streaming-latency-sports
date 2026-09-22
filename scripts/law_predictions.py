@@ -77,6 +77,9 @@ HALFWAY_MOVE_MS = 0.25
 PRIORITY_CUT = 5.0
 PRIORITY_CUT_ABOVE = 2.0
 PLATEAU_WORTH_CUTTING = 0.02
+#: P8: how far go-first must cut Java's plateau, so that it shows the priority effect
+#: Python shows. The plan states this clause beside the other two and the judge did not test it.
+PRIORITY_CUT = 5.0
 #: P8: how much higher Python's rate may be than Java's at a matched setup.
 LANGUAGE_RATIO = 1.5
 #: What is never pooled: a prediction is judged on each machine pair and each backend on its own,
@@ -509,6 +512,28 @@ def default_slices(runs, read_back, tick_ms, draws=DRAWS, seed=0, grid=None):
                  read_back=matched, band=band)
 
 
+def priority_cut(runs, points):
+    """How many times go-first cuts Java's plateau rate, or None if the campaign cannot say.
+
+    The third clause of P8, which the plan has stated since version 8 and which this judge did
+    not test until 22 September. A8 runs every setup ordinary and go-first, so the campaign
+    carries it; nothing else needed measuring.
+
+    Infinite where go-first reaches zero, which is what both clients did on the Arm pair. That
+    is reported as the cut it is rather than as a failure to divide.
+    """
+    def plateau(priority):
+        rates = [run["negative_rate"] for run in runs
+                 if run.get("language") == "java" and run.get("point") in points
+                 and bool(run.get("priority")) is priority]
+        return sum(rates) / len(rates) if rates else None
+
+    ordinary, first = plateau(False), plateau(True)
+    if ordinary is None or first is None:
+        return None
+    return float("inf") if first == 0 else ordinary / first
+
+
 def language(runs, draws=DRAWS, seed=0, grid=None):
     """P8: Java shows the cliff and the priority effect, and Python's rate is not far above it.
 
@@ -560,19 +585,23 @@ def language(runs, draws=DRAWS, seed=0, grid=None):
                  else rates["python"] / rates["java"])
         return dict((summary, ratio) for summary in SUMMARIES)
 
+    cut = priority_cut(runs, on)
     over = over_draws(runs, numbers, draws, seed)
     by_summary = {}
     for summary in SUMMARIES:
         cliff = between(runs, summary)
         said = over[summary]
         by_summary[summary] = _said(
-            said, bool(on) and cliff == 1.0
+            said, bool(on) and cliff == 1.0 and cut is not None and cut >= PRIORITY_CUT
             and said["value"] is not None and said["value"] <= LANGUAGE_RATIO
             and said["high"] is not None and said["high"] <= LANGUAGE_RATIO,
-            java_cliff=cliff, p_value=p_value(said["drawn"], LANGUAGE_RATIO))
+            java_cliff=cliff, java_priority_cut=cut,
+            p_value=p_value(said["drawn"], LANGUAGE_RATIO))
     return _both(by_summary,
                  "Java's rate in the middle of the cliff lies between its plateau and its floor, "
-                 "and Python's plateau is at most %s times Java's" % LANGUAGE_RATIO,
+                 "go-first cuts Java's plateau at least %s times, "
+                 "and Python's plateau is at most %s times Java's"
+                 % (PRIORITY_CUT, LANGUAGE_RATIO),
                  # Empty where the two clients share no plateau trip: then the campaign did not
                  # test P8 rather than testing it and finding against it, and the two read the
                  # same in the answer unless the difference is stated here.

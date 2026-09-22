@@ -21,7 +21,9 @@
 #
 #   boot=      hz1000 | hz250 | hz100 | stock | cpu2 | cpu4 | cpu8 | none
 #              none is the only one that does not reboot; stock reboots onto the pinned default
-#   block=     the campaign to run when the machine is back up (A2, A5, A4, ...)
+#   block=     the campaign to run when the machine is back up (A2, A5, A4, ...). Leave it out,
+#              with boot=none, for a job that starts nothing and only waits for the session
+#              already on the pair -- which is how a list is put on a machine mid-session.
 #   backend=   kafka | redis, passed to both the campaign and the rounds simulation
 #   rounds=    how many, or leave it out and give rounds-from=
 #   c0=        rounds of the session's own delay calibration (default 2)
@@ -167,6 +169,15 @@ start_job () {
   local line="$1"
   local boot block backend rounds c0 up load slices anchor clients note
   boot="$(field "$line" boot)";       block="$(field "$line" block)"
+  # A job with no block of its own starts nothing and only waits for what is already on the pair.
+  # It is how a list is put on a machine that is in the middle of a session: without it the queue
+  # would take its first job straight away and reboot under a running calibration, which is the
+  # one thing that went wrong twice on 21 September.
+  if [ -z "$block" ]; then
+    ls -d runs/azure/stage1/*/ 2>/dev/null | sort > "$SEEN"
+    log "  nothing of its own to start; waiting for the session already on the pair"
+    return 0
+  fi
   backend="$(field "$line" backend)"; rounds="$(field "$line" rounds)"
   c0="$(field "$line" c0)";           up="$(field "$line" up)"
   load="$(field "$line" load)";       slices="$(field "$line" slices)"

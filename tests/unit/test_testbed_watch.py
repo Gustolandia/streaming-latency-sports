@@ -752,3 +752,41 @@ class TestRunNumbers:
                                 lambda a: (1, "", ""), {}, "stamp")
         assert [f[0] for f in flags] == ["ALERT"]
         assert not any("to stop this pair" in line for line in lines)
+
+
+class TestATripIsImpossibleOnlyForItsOwnSetup:
+    """A flat ceiling calls a run impossible for doing what it was asked.
+
+    An HZ=100 session's calibration reaches 32 ms of added delay -- twice the slice plus twice
+    the tick, rounded up to a power of two -- and a run that adds 32 ms cannot come in under 32.
+    On 22 September two sound runs on the second x86 pair were flagged within minutes of that
+    session starting. A check that fires on sound runs is how a real one comes to be ignored,
+    which is the argument this file already makes about the stall alert.
+    """
+
+    def test_a_long_trip_is_not_crazy_when_the_run_added_the_delay(self):
+        run = {"run_dir": "runs/law_c0b_r003-C0-kafka-l75-d32000-a1",
+               "trip_median_ms": 53.5, "added_delay_ms": 32.0, "messages": 5000}
+        assert tw.run_flags([run]) == []
+
+    def test_the_same_trip_is_crazy_when_nothing_was_added(self):
+        run = {"run_dir": "runs/law_a2_r001", "trip_median_ms": 53.5, "added_delay_ms": 0.0,
+               "messages": 5000}
+        found = tw.run_flags([run])
+        assert [level for level, _ in found] == ["ALERT"]
+        assert "53.5 ms" in found[0][1] and "added delay" not in found[0][1]
+
+    def test_a_trip_far_above_its_own_delay_is_still_crazy(self):
+        run = {"run_dir": "runs/law_c0b_r003", "trip_median_ms": 120.0, "added_delay_ms": 32.0,
+               "messages": 5000}
+        found = tw.run_flags([run])
+        assert [level for level, _ in found] == ["ALERT"]
+        assert "with 32 ms of added delay" in found[0][1], "the ceiling it passed is named"
+
+    def test_a_run_that_does_not_say_what_it_added_is_held_to_the_flat_ceiling(self):
+        """A pilot run carries no delay parameter, and a missing one must not become licence."""
+        run = {"run_dir": "runs/concurrency_x", "trip_median_ms": 53.5, "messages": 5000}
+        assert [level for level, _ in tw.run_flags([run])] == ["ALERT"]
+
+    def test_the_probe_reads_the_delay_the_run_added(self):
+        assert 'added_delay_ms=params.get("delay_ms")' in tw.DRIVER_PROBE

@@ -34,9 +34,8 @@ an artifact of our Python client** — Kafka's own official Java client, on the 
 the same trips, shows the same shape.
 
 **Go-first removes it in Java too**, and not marginally. The plan asks for a cut of at least 5
-times; on the plateau Java's rate falls from 0.0236 to 0.0001, a cut of about **470 times**, and
-Python's falls to zero. (This clause is stated in the plan and is *not* implemented in the judge
-— see below. The figures here are computed from the campaign's own runs, not by the rule.)
+times; on the plateau Java's rate falls from 0.0236 to 0.0001, a cut of **469.7 times**, and
+Python's falls to zero.
 
 **The sizes are four times apart.** Python's plateau rate is 0.1025 against Java's 0.0236: a
 ratio of **4.33**, 95% interval 4.07 to 4.66, p = 0.0005. The plan allows at most **1.5**. So
@@ -58,10 +57,18 @@ on one trip, with 12 runs of each client behind it.
 **One pair.** P8 must hold on each pair, and only one has reported. The x86 campaign is running
 and will say whether 4.33 is the Arm machine or the clients.
 
-**The judge does not test the priority clause.** `scripts/law_predictions.py` states in its own
-docstring that it tests "the cliff and the priority effect", and its rule string and its code
-carry only the cliff and the ratio. The go-first figures above were computed from the runs by
-hand. This is the same family as the two faults found on 21 September — a judge that reports on
-less than it says it does — and it is listed with them. It does not change this verdict: the
-clause it omits is one the campaign passes by a wide margin, so testing it could only have left
-P8 not confirmed for the same reason it already is.
+**The judge did not test the priority clause, and now does.** `scripts/law_predictions.py`
+stated in its own docstring that it tested "the cliff and the priority effect", while its rule
+string and its code carried only the cliff and the ratio — the plan's P8 has three clauses and
+the judge had two. Found on 22 September by reading the rule it printed against the plan's, while
+judging this campaign. It is the same family as the two faults found the day before: a judge
+reporting on less than it says it does.
+
+The clause is now computed and gated, and the campaign was judged again under all three. **The
+verdict does not move.** The rule the judge prints now names all three, and the cut it measures —
+469.7 — is the figure that was computed by hand above, to the digit. That is the useful thing
+about fixing an instrument on a campaign that has already answered: the fix can be checked against
+an answer it cannot have influenced.
+
+It wants a numbered decision in the next freeze, as the earlier judge fixes got (D13-1). No run
+waits on it: P8 is judged after the runs, not before.

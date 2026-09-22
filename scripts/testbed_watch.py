@@ -20,8 +20,9 @@ hosts file, its own machines, its own campaigns. It raises a flag when:
   pilot    the newest pilot failed a settings or network check (its harness verdict is judged by
            the session's calibration, and go-first by the campaign that tests it)
   broken   a finished run has a negative trip: arrival before sending, so the harness is wrong
-  crazy    a finished run shows numbers no working setup produces: a median trip above
-           CRAZY_TRIP_MS, fewer than FEW_MESSAGES messages, or a load CRAZY_LOAD_POINTS off
+  crazy    a finished run shows numbers no working setup produces: a median trip more than
+           CRAZY_TRIP_MS above the delay the run itself added, fewer than FEW_MESSAGES
+           messages, or a load CRAZY_LOAD_POINTS off
   off      a placed run missed its planned trip by more than OFF_TARGET_MS and OFF_TARGET_SHARE
   odd      a finished run, its verdict or its numbers could not be read
   load     stress-ng is running but the driver's CPUs are less than half busy
@@ -116,10 +117,9 @@ echo "clock_offset_s=$(chronyc -c tracking 2>/dev/null | cut -d, -f5)"
 #: sessions it is working through. The queue matters most of the three, because it is idle by
 #: design between jobs -- it has just rebooted the machine, or is waiting a minute before looking
 #: again -- and a pair deallocated in that gap loses a list of work nobody is left watching.
-#: Such a pair is not idle --
-#: deallocating it destroys exactly what chain.sh exists to protect -- but neither is it stalled,
-#: and an alert every five minutes for the hours a simulation takes is how a real stall comes to
-#: be ignored. On 21 September the first x86 pair was flagged idle at 13:38:58 with a chain armed
+#: None of the three is idle -- deallocating such a pair destroys exactly what chain.sh and the
+#: queue exist to protect -- but neither is it stalled, and an alert every five minutes for the
+#: hours a simulation takes is how a real stall comes to be ignored. On 21 September the first x86 pair was flagged idle at 13:38:58 with a chain armed
 #: on it, and was saved only because the simulation that began moments later holds one core:
 #: 12.5% of eight, just over the 10% this calls busy. On a machine with sixteen that is 6.25%
 #: and the pair would have gone.
@@ -200,7 +200,8 @@ try:
                negative_rate=recorded.get("measured_negative_rate"),
                load_pct=(checks.get("load") or {}).get("value"))
     params = json.load(open(d + "/queue_row.json"))["params"]
-    out.update(load_target=params.get("load_pct"), target_trip_ms=params.get("target_trip_ms"))
+    out.update(load_target=params.get("load_pct"), target_trip_ms=params.get("target_trip_ms"),
+               added_delay_ms=params.get("delay_ms"))
 except Exception as exc:
     out["unreadable"] = type(exc).__name__
 print(json.dumps(out))
@@ -347,9 +348,15 @@ def run_flags(runs):
             flags.append(("ALERT", "broken: %s has %d messages that arrived before they were "
                           "sent; the harness is wrong" % (where, run["trip_negative"])))
         else:
-            if (run.get("trip_median_ms") or 0) > CRAZY_TRIP_MS:
-                flags.append(("ALERT", "crazy: %s has a median trip of %.1f ms"
-                              % (where, run["trip_median_ms"])))
+            # Against the delay the run itself added, not a flat ceiling. A calibration
+            # step that adds 32 ms cannot produce a trip under 32, and an HZ=100 session's
+            # calibration reaches exactly that -- so a flat 50 ms called two sound runs
+            # impossible within minutes of that session starting on 22 September.
+            added = run.get("added_delay_ms") or 0
+            if (run.get("trip_median_ms") or 0) > CRAZY_TRIP_MS + added:
+                flags.append(("ALERT", "crazy: %s has a median trip of %.1f ms%s"
+                              % (where, run["trip_median_ms"],
+                                 " with %.0f ms of added delay" % added if added else "")))
             # Only a campaign run has a planned message count; the pilot replays real matches,
             # whose feeds hold 71 to 148 events.
             if (os.path.basename(str(where)).startswith("law_")

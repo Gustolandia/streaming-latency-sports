@@ -155,10 +155,13 @@ version 16), which was in force when it ran, and at 12 rounds because the rounds
 that count to confirm P3a in 84% of campaigns at the plateau, floor and spread this pair's own
 spread pilot measured (D14-1).
 
-*Provisional in one respect only: judged from each run's `queue_row.json` and `integrity.json`
-read on the driver, because the pair went straight on to A3's Redis campaign and copying the
-campaign home while it measures is not free. The formal collection, with a fingerprint for every
-file, has not been done. The judge sees the same bytes either way.*
+*It was first judged provisionally, from each run's `queue_row.json` and `integrity.json` read
+on the driver, because the pair went straight on and copying a campaign home while it measures is
+not free. The formal collection was made at 13:37 UTC on 21 September — 218 run directories, a
+fingerprint for every file, archive SHA-256 `2d6f008d…bf69ea` — and on 22 September every number
+below was recomputed from that copy. They come out identical to the figures the provisional
+judgement gave, to every digit printed here. The judge did see the same bytes either way, and
+now that is checked rather than asserted.*
 
 ## What it says
 

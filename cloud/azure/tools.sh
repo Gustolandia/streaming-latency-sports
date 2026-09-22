@@ -117,6 +117,11 @@ go_tool () {
   GOBIN="$WORK/bin" GOFLAGS=-mod=mod GOPATH="$WORK/go" GOCACHE="$WORK/gocache" \
     go install "$module@$version" >"$DIR/build_$binary.log" 2>&1 \
     || { log "   WARN: $binary did not build; see $DIR/build_$binary.log"; return 1; }
+  # What "latest" actually resolved to, asked of the module proxy rather than assumed. A version
+  # nobody fetched is how this table came to hold five hashes that were not commits.
+  GOPATH="$WORK/go" GOCACHE="$WORK/gocache" GOFLAGS=-mod=mod \
+    go list -m -f '{{.Path}}@{{.Version}}' "$module@$version" \
+    > "$DIR/version_$binary.txt" 2>/dev/null
   sudo install -m 0755 "$WORK/bin/$binary" /usr/local/bin/ \
     || log "   WARN: $binary built but could not be installed"
 }

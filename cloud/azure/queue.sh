@@ -32,7 +32,11 @@
 #   slices=    passed on to stage 1, e.g. 3,1.5
 #   anchor=    the anchor slice
 #   clients=   "python java", for a session that opens A8
-#   note=      the rounds note. It holds spaces, so it is always the last key on the line.
+#   cmd=       a command to run instead of a campaign, for work no calibration places -- the
+#              tools block. It holds spaces, so it takes the rest of the line.
+#   note=      the rounds note. It holds spaces, so it takes the rest of the line.
+#
+# A job carries at most one of cmd= and note=, and whichever it carries comes last.
 #
 # It does not stop the queue when a job stops itself. That was the earlier rule and it is the
 # wrong one here: a campaign that trips a brake has still measured everything up to the trip, the
@@ -59,19 +63,28 @@ LOG="$DIR/log"
 LOCK="$DIR/lock"
 mkdir -p "$DIR"
 
-log () { echo "$(date -u +%FT%TZ) queue: $*" | tee -a "$LOG"; }
+# Plain, because both ways the loop is started send its output to the log, and a tee as well as
+# that redirect wrote every line twice. The one line printed outside the loop tees for itself.
+log () { echo "$(date -u +%FT%TZ) queue: $*"; }
 
 # The addresses and the key come from common.sh, which reads the pair's own hosts.env -- the copy
 # session.sh left on the driver, not the one on the computer that started the session.
 SSH_OPTS=(-i "$SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=20)
 brk () { ssh "${SSH_OPTS[@]}" "ubuntu@$BROKER_PRIV" "$@"; }
 
-#: One field out of a job line. Everything after note= is the note.
+#: One field out of a job line. Two keys hold sentences rather than words -- the rounds note and
+#: a command -- so each takes the rest of the line, and a job carries at most one of them.
 field () {
   local line="$1" key="$2"
+  # Its own statement: bash expands every word of a `local` before it runs any of them, so
+  # head="$line" on the line that declares `line` reads whatever `line` meant outside -- nothing,
+  # and under the set -u this kit runs with, that is fatal rather than merely wrong.
+  local head="$line"
+  head="${head%%note=*}"
+  head="${head%%cmd=*}"
   case "$key" in
-    note) case "$line" in *note=*) echo "${line#*note=}" ;; *) echo "" ;; esac ;;
-    *) local t=" ${line%%note=*} "
+    note|cmd) case "$line" in *"$key="*) echo "${line#*"$key="}" ;; *) echo "" ;; esac ;;
+    *) local t=" $head "
        case "$t" in
          *" $key="*) t="${t#*" $key="}"; echo "${t%% *}" ;;
          *) echo "" ;;
@@ -303,7 +316,26 @@ run_loop () {
         ;;
       booted)
         log "  up on $(uname -r)"
-        if start_job "$line"; then
+        local cmd; cmd="$(field "$line" cmd)"
+        if [ -n "$cmd" ]; then
+          # The tools block is not a campaign: no calibration places it and no chain waits on
+          # one, so a job can simply be a command. It is run here rather than let go of, because
+          # this loop is already the thing that survives, and a command that outlives it would
+          # have nobody to tell.
+          local out rc
+          out="$DIR/cmd-$(read_at).log"
+          if verify_boot "$boot"; then
+            log "  running: $cmd"
+            timeout 43200 bash -c "$cmd" >> "$out" 2>&1
+            rc=$?
+            log "  it finished with status $rc; its output is in $out"
+            [ "$rc" = 0 ] || requeue_once "$line"
+          else
+            log "  STOPPED before it ran: job $(read_at)"
+            requeue_once "$line"
+          fi
+          advance
+        elif start_job "$line"; then
           set_phase waiting
         else
           log "  STOPPED before it ran: job $(read_at)"
@@ -350,7 +382,7 @@ case "$CMD" in
     [ -s "$PHASE" ] || echo prep > "$PHASE"
     line="@reboot sleep 60 && cd $PWD && flock -n $PWD/$LOCK bash cloud/azure/queue.sh run >> $PWD/$LOG 2>&1"
     ( crontab -l 2>/dev/null | grep -v "queue.sh run"; echo "$line" ) | crontab -
-    log "the @reboot line is in; starting the loop"
+    log "the @reboot line is in; starting the loop" | tee -a "$LOG"
     setsid nohup flock -n "$LOCK" bash cloud/azure/queue.sh run >> "$LOG" 2>&1 < /dev/null &
     sleep 2
     echo "running; watch it with: tail -f $LOG"

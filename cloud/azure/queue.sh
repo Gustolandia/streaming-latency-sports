@@ -186,6 +186,12 @@ start_job () {
   [ -n "$c0" ]   || c0=2
   [ -n "$load" ] || load=75
   [ -n "$up" ]   || up="$(reach_ms "$boot")"
+  # A5's core count has to reach three places: the boot that sets it, the calibration measured on
+  # that boot, and the design that writes the runs. All three come off the one word here, because
+  # the two that could disagree are the two that do not fail loudly -- a campaign designed for
+  # eight CPUs on a machine booted with two would run, and be filed under a name that is not true.
+  local cores=""
+  case "$boot" in cpu*) cores="${boot#cpu}" ;; esac
 
   verify_boot "$boot" || return 1
   rebuild_session || return 1
@@ -203,8 +209,8 @@ start_job () {
   # twice on 21 September.
   ls -d runs/azure/stage1/*/ 2>/dev/null | sort > "$SEEN"
 
-  log "  calibration from $earlier, reaching $up ms, $c0 round(s), load $load"
-  UP_TO_MS="$up" LOAD_PCT="$load" C0_ROUNDS="$c0" CLIENTS="$clients" \
+  log "  calibration from $earlier, reaching $up ms, $c0 round(s), load $load${cores:+, $cores CPUs}"
+  UP_TO_MS="$up" LOAD_PCT="$load" C0_ROUNDS="$c0" CLIENTS="$clients" CPUS="$cores" \
     setsid nohup bash cloud/azure/stage0.sh session "$earlier" > stage0.log 2>&1 < /dev/null &
   sleep 15
   grep -q "stage 0 on" stage0.log 2>/dev/null \
@@ -216,6 +222,7 @@ start_job () {
   [ -n "$backend" ] && args+=(--backend "$backend")
   [ -n "$slices" ]  && args+=(--slices "$slices")
   [ -n "$anchor" ]  && args+=(--anchor-slice "$anchor")
+  [ -n "$cores" ]   && args+=(--cores "$cores")
   log "  campaign: ${args[*]}"
   setsid nohup bash cloud/azure/chain.sh "${args[@]}" > chain.log 2>&1 < /dev/null &
   sleep 10

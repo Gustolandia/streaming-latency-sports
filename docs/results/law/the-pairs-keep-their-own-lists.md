@@ -96,6 +96,25 @@ The run is recorded in `runs/azure/stage0/arm_20260922T015016Z/ABANDONED.txt` an
 folder counts. The calibration was restarted from nothing at 01:55Z, on an idle machine, and the
 simulation was re-run off the driver entirely. Cost: four minutes.
 
+## The pair with the least room is the one with the most left to do
+
+matched-b's disk was **76% full** when its list was installed, with fourteen campaigns still to
+run. The watch alerts at 80%, and a campaign leaves roughly 200 MB behind, so it will say
+something before the end of the list.
+
+Thirty-three of those gigabytes are `~/kernelbuild`: the kernel source and object tree A2's three
+builds came out of. All three kernels are installed in `/boot` and their `.deb` packages are
+about 4 GB of that folder, so deleting `~/kernelbuild/linux-azure` alone would free about 29 GB
+and keep every artifact. Recorded here rather than done, because deleting 29 GB is real I/O on a
+machine that is measuring, and the pair has room for the list as it stands.
+
+The other way space comes back is the ordinary one: `scripts/collect_runs.py` copies a finished
+campaign here, fingerprinting every file, and the bulk on the driver can then go. That reads and
+hashes a few hundred megabytes on the driver, so it waits until the pair is between jobs — which
+now means the end of its list, since the queue starts the next job as soon as one finishes.
+Two A2 campaigns are uncollected for that reason: `matched-b_20260921T140723Z` and the
+`matched-b_20260921T141744Z` whose 28 runs the brake stopped and which the results keep.
+
 ## All ten tools on one pair rather than five each
 
 The plan's schedule gives five tool campaigns to each x86 pair (Section "Which pair runs what").

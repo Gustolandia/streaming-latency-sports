@@ -1170,3 +1170,46 @@ class TestTheLoadIsCorrectedToWhatTheMachineShows:
         integrity = (REPO / "scripts" / "run_integrity.py").read_text(encoding="utf-8")
         assert 'float(params["load_pct"])' in integrity, "judged against the designed load"
         assert "LOAD_POINTS = 3.0" in integrity, "and the tolerance is unchanged"
+
+
+class TestTheReferenceEveryToolNumberIsReadAgainst:
+    """The block's first paragraph says every number a tool reports has a reference measured
+    beside it. Nothing took that reference.
+
+    reference_trips.json was read in two places -- T2's offsets are set from the median true trip
+    and the tool's own bias is cancelled against it -- and written in none. T2 would have stopped
+    on its first run, hours after the tools were built, asking for a file nothing creates.
+    """
+
+    def tools(self):
+        return (KIT / "tools.sh").read_text(encoding="utf-8")
+
+    def test_the_reference_is_taken_and_not_only_read(self):
+        code = self.tools()
+        assert "reference_for () {" in code
+        assert code.count("reference_trips.json") >= 3, "written as well as read twice"
+
+    def test_it_is_our_own_client_on_the_same_path(self):
+        """Not the tool's own reading of itself, which is the thing being judged."""
+        code = self.tools().split("reference_for () {", 1)[1].split("\n}", 1)[0]
+        assert 'bash "scripts/run_${backend}_trial.sh"' in code
+        assert "pilot_checks" in code, "trips read the way every campaign reads them"
+
+    def test_it_is_taken_at_the_zero_step(self):
+        """T2 reads t1-<tool>-0ms, and an offset measured under an added delay is not the
+        path's own trip."""
+        t1 = self.tools().split("t1 () {", 1)[1].split("\n}", 1)[0]
+        assert '[ "$ms" = 0 ] && reference_for' in t1
+
+    def test_a_protocol_we_have_no_client_for_says_so(self):
+        """wrk2 speaks HTTP and PerfTest speaks AMQP. Saying so beats inventing a reference."""
+        code = self.tools().split("reference_for () {", 1)[1].split("\n}", 1)[0]
+        assert "no client of ours speaks" in code
+        for tool in ("valkey-benchmark", "memtier_benchmark"):
+            assert tool in code, tool
+        for tool in ("rdkafka_performance", "kafka-end-to-end", "kafka-producer-perf"):
+            assert tool in code, tool
+
+    def test_t2_still_refuses_rather_than_guesses_without_one(self):
+        t2 = self.tools().split("t2 () {", 1)[1].split("\n}", 1)[0]
+        assert "T2 needs T1's zero-delay run" in t2

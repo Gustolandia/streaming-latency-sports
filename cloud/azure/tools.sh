@@ -142,20 +142,21 @@ brokers () {
   if ! command -v nats-server >/dev/null; then
     local arch=amd64
     [ "$(uname -m)" = aarch64 ] && arch=arm64
-    local tag
-    tag=$(curl -fsSL https://api.github.com/repos/nats-io/nats-server/releases/latest \
-          | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)
-    if [ -z "$tag" ]; then
-      log "WARN: the latest nats-server release could not be read; it is checked below"
+    # The release is asked for its own asset rather than having one guessed from the tag: the
+    # guess was a .zip and what they publish is a .tar.gz, so a correctly resolved version still
+    # 404'd. What the release says it has is the only thing that cannot be out of date.
+    local asset
+    asset=$(curl -fsSL https://api.github.com/repos/nats-io/nats-server/releases/latest \
+            | sed -n 's/.*"browser_download_url": *"\([^"]*linux-'"$arch"'\.tar\.gz\)".*/\1/p' \
+            | head -1)
+    if [ -z "$asset" ]; then
+      log "WARN: the latest nats-server release named no linux-$arch archive; checked below"
     else
-      local name="nats-server-$tag-linux-$arch"
-      echo "$tag" > "$DIR/nats_server_tag.txt"
-      (cd "$WORK" \
-        && curl -fsSL -o nats.zip \
-             "https://github.com/nats-io/nats-server/releases/download/$tag/$name.zip" \
-        && unzip -oq nats.zip \
-        && sudo install -m 0755 "$name/nats-server" /usr/local/bin/nats-server) \
-        || log "WARN: nats-server $tag could not be installed; it is checked below"
+      echo "$asset" > "$DIR/nats_server_asset.txt"
+      (cd "$WORK" && curl -fsSL -o nats.tar.gz "$asset" && tar -xzf nats.tar.gz \
+        && sudo install -m 0755 nats-server-*-linux-"$arch"/nats-server \
+             /usr/local/bin/nats-server) \
+        || log "WARN: nats-server could not be installed from $asset; it is checked below"
     fi
   fi
   # A site of our own on 8080, serving one small fixed file. The tools' own numbers include

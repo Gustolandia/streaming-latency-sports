@@ -364,6 +364,41 @@ release_delay () {
     "cd sbl && sudo python3 scripts/receiver_delay.py broker-clear --apply" >/dev/null 2>&1
 }
 
+#: Our own program's trips on the same path, measured at the zero step.
+#:
+#: This block's whole premise is in its first paragraph: every number a tool reports has a
+#: reference measured beside it. Nothing took that reference. reference_trips.json was read in
+#: two places and written in none, so T2 -- which sets its offsets from the median true trip and
+#: cancels the tool's own bias against it -- would have stopped on its first run, hours after
+#: the tools were built, saying it needed a file nothing creates.
+#:
+#: The reference is our own client, the same one every law campaign uses, against the same
+#: broker. That is possible for the tools that speak Kafka or Redis, which is all five of the
+#: ones T2 can reach on the x86 pair. wrk2 speaks HTTP and RabbitMQ's PerfTest speaks AMQP, and
+#: we have no client of our own for either, so T2 for those two says so rather than guessing.
+reference_for () {
+  local tool="$1" out="$2" backend id
+  case "$tool" in
+    valkey-benchmark|memtier_benchmark) backend=redis ;;
+    rdkafka_performance|kafka-end-to-end|kafka-producer-perf) backend=kafka ;;
+    *) log "   no client of ours speaks $tool's protocol, so no reference is taken"; return 1 ;;
+  esac
+  id="toolsref-$tool-$(date -u +%Y%m%dT%H%M%SZ)"
+  log "   our own $backend client on the same path, for the reference"
+  timeout -k 30 900 bash "scripts/run_${backend}_trial.sh" "$id" "$PLAN" \
+    > "$out/reference.log" 2>&1 \
+    || { log "   WARN: the reference run did not finish; see $out/reference.log"; return 1; }
+  python3 -c 'import json, sys
+sys.path.insert(0, "scripts")
+import pilot_checks
+trip, _gotit, _measured = pilot_checks.spans(sys.argv[1], 30.0)
+if not trip:
+    raise SystemExit("the reference run recorded no trips")
+json.dump({"run_dir": sys.argv[1], "trips_ms": trip}, open(sys.argv[2], "w"))' \
+    "runs/$id" "$out/reference_trips.json" \
+    || { log "   WARN: the reference trips could not be read from runs/$id"; return 1; }
+}
+
 t1 () {
   local tool="${1:?which tool}"
   local steps="0 0.1 0.2 0.3 0.5 0.7 0.9 1.1 1.5 2.0"
@@ -378,6 +413,9 @@ t1 () {
     python3 scripts/tool_readings.py read --tool "$tool" --file "$DIR/$run/tool.txt" \
       --out "$DIR/$run/reading.json" >/dev/null 2>&1 \
       || log "WARN: $tool reported no latency at $ms ms; kept as a reading of nothing"
+    #: At the zero step only, and after the tool has run so the two are not on the wire at once.
+    #: T2 reads this file from t1-<tool>-0ms and will not start without it.
+    [ "$ms" = 0 ] && reference_for "$tool" "$DIR/$run"
     log "   $ms ms done"
   done
   release_delay

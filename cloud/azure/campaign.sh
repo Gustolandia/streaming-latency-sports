@@ -236,7 +236,14 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
     printf '{"designed_pct": %s, "shown_before_pct": %s, "duty_used_pct": %s}\n' \
       "$LOAD" "$shown" "$adjusted" > "$RUN_DIR/load_correction.json"
     if [ "$adjusted" != "$LOAD" ]; then
-      kill "$stress_pid" 2>/dev/null; wait "$stress_pid" 2>/dev/null
+      #: -9, not a polite TERM. stress-ng does not stop for TERM here, so the wait below sat
+      #: until the first one reached its own --timeout 3600s: four runs of matched's A2 on
+      #: 23 September took 62.7 minutes each instead of 2.8, and matched-b's took four of the
+      #: twelve hours its job was given, leaving 24 of its 60 runs unmeasured. Every stalled run
+      #: was a run that took this branch and no other run stalled, on either pair. The cleanup at
+      #: the end of the run already kills this same process with -9 and has never hung.
+      kill -9 "$stress_pid" 2>/dev/null; wait "$stress_pid" 2>/dev/null
+      pkill -9 -x stress-ng 2>/dev/null
       stress-ng --cpu "$want_cpus" --cpu-load "$adjusted" --timeout 3600s >/dev/null 2>&1 &
       stress_pid=$!
       sleep 3

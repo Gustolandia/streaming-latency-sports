@@ -565,10 +565,36 @@ class TestTheToolsBlock:
             "and the staircase does not start until the delay is shown to reach the tool")
         assert "broker-clear" in code, "and the delay is taken off afterwards"
 
+    def rdkafka_invocations(self):
+        """The tool's own command lines, continuations joined and comments dropped.
+
+        Read physical lines and an argument on the second half of a wrapped command reads as
+        absent, which is a test that passes by not looking.
+        """
+        code = self.runner().split("  rdkafka_performance)", 1)[1].split(";;", 1)[0]
+        joined, held = [], ""
+        for line in code.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.endswith("\\"):
+                held += line[:-1] + " "
+                continue
+            joined.append(held + line)
+            held = ""
+        if held:
+            joined.append(held)
+        return joined
+
     def test_rdkafkas_consumer_is_started_before_the_producer_it_measures(self):
-        """It starts at the end of the topic, so a producer that has already finished is one it
-        never sees. With the producer first it printed "0 messages consumed" once a second and
-        had a pair to itself for twenty-eight minutes."""
+        """-o end is what makes the order matter, and the order was settled before it was there.
+
+        The note here used to say the consumer starts at the end of the topic of its own accord.
+        It does not: its default is the beginning, and the shakedown of 23 September read the
+        previous trial's messages back and reported their age as latency. With -o end the claim
+        is true because the invocation makes it true, and a producer that has already finished
+        is a producer this consumer never sees.
+        """
         code = self.runner().split("  rdkafka_performance)", 1)[1].split(";;", 1)[0]
         lines = [line.strip() for line in code.splitlines() if not line.strip().startswith("#")]
         consumer = next(i for i, line in enumerate(lines) if " -C " in line)
@@ -577,6 +603,29 @@ class TestTheToolsBlock:
         assert lines[consumer].endswith("&") or lines[consumer + 1].endswith("&"), \
             "and it is the one left running in the background"
         assert 'wait "$consumer"' in code, "the run ends when the consumer has its messages"
+
+    def test_rdkafkas_consumer_is_told_which_partition_to_read(self):
+        """Its usage says the partition "defaults to random", and without one it reads nothing.
+
+        This is the whole of why the tool measured nothing: not the topic, not the order of the
+        two instances, both of which were tried. The same invocation with -p 0 added and nothing
+        else changed read every message the producer sent, on a one-partition topic
+        (docs/results/tools/rdkafka-shakedown.md, trials A to C). A tool that measures nothing
+        must not be reported as a tool that measured zero.
+        """
+        consumer = next(line for line in self.rdkafka_invocations() if " -C " in line)
+        assert " -p 0 " in consumer, "attached to the partition rather than to a random one"
+        assert " -o end " in consumer, "and reading only what this run sent"
+
+    def test_rdkafkas_producer_is_paced_like_every_other_tool_in_the_block(self):
+        """Unpaced, what it reports is its own batching rather than a trip.
+
+        The other ten tools are all held to RATE. Without -r this one enqueues the whole count
+        at once: the shakedown's readings fell in exact 20 ms steps from 1005 ms, every message
+        stamped at its own enqueue time and all of them arriving together.
+        """
+        producer = next(line for line in self.rdkafka_invocations() if " -P " in line)
+        assert '-r "$RATE"' in producer, "paced at the rate the rest of the block runs at"
 
     def test_a_tool_that_never_finishes_cannot_take_the_pair_with_it(self):
         """The only limit above the tool was the queue's own twelve hours."""

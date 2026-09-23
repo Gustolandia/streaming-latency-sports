@@ -1310,7 +1310,24 @@ class TestTheLoadIsCorrectedToWhatTheMachineShows:
         assert "load_correction.json" in code, "and what it was corrected to is written down"
         block = code.split("sampler_pid=$!", 1)[1].split("if [ -n \"$TRACE_HALF\"", 1)[0]
         assert "stress-ng --cpu \"$want_cpus\" --cpu-load \"$adjusted\"" in block
-        assert 'kill "$stress_pid"' in block, "the first one is stopped before the second starts"
+        assert 'kill -9 "$stress_pid"' in block, "the first one is stopped before the second starts"
+
+    def test_the_first_one_is_stopped_with_a_signal_it_cannot_decline(self):
+        """A polite TERM and then a wait is a wait for stress-ng's own hour-long timeout.
+
+        On 23 September four runs of matched's A2 took 62.7 minutes each rather than 2.8, and
+        matched-b spent four of its twelve hours the same way and left 24 of its 60 runs
+        unmeasured. Every run that stalled took this branch and no run outside it stalled, on
+        either pair, 52 runs to nothing. The wait is what makes the signal matter: a TERM that
+        stress-ng ignores turns the next line into a blocking wait for --timeout 3600s.
+        """
+        code = self.code()
+        block = code.split("sampler_pid=$!", 1)[1].split("if [ -n \"$TRACE_HALF\"", 1)[0]
+        for line in block.split("\n"):
+            if 'wait "$stress_pid"' not in line:
+                continue
+            assert 'kill -9 "$stress_pid"' in line, \
+                "waiting on a process stopped by anything it can decline can wait the hour out"
 
     def test_it_happens_before_anything_is_counted(self):
         """A correction made after the warm-up would move the load under the measured messages."""

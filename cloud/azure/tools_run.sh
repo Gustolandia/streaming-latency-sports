@@ -71,15 +71,27 @@ JS
     # running with the -l switch" (its own usage text): the producer stamps the payload and the
     # consumer subtracts, so the consumer is the one that prints a latency and the producer alone
     # would print none. -A also writes every message's latency, which T1 reads beside the summary.
-    # The consumer goes first. It starts at the end of the topic, so a producer that has already
-    # finished is a producer it never sees: with the producer first, it sat printing "0 messages
-    # consumed" once a second and would have done so until the queue's twelve-hour timeout.
-    $WRAP rdkafka_performance -C -l -t sbl-tools -b "$KAFKA" -c $((RATE * SECONDS_TO_RUN)) \
-      -A "$OUT/per_message_us.txt" &
+    # This is the only tool of the eleven whose subtraction spans two clocks, so it is the only
+    # one T2 can ask its question of, and $WRAP is on the consumer alone.
+    #
+    # -p 0 is what makes it read anything. Its usage says the partition "defaults to random", and
+    # without one the consumer never attaches to a partition: it printed nothing at all and
+    # consumed nothing, over a whole staircase and again with the producer first. The shakedown
+    # of 23 September (docs/results/tools/rdkafka-shakedown.md) has the trials -- the same
+    # invocation with -p 0 read every message the producer sent, on a one-partition topic.
+    #
+    # -o end so a run measures its own messages. The default is the beginning of the topic, not
+    # the end as the note here used to say: without it the consumer read the previous run's
+    # messages too and reported their age as latency.
+    #
+    # -r is the pacing every other tool in this block gets. Without it the producer enqueues the
+    # whole count at once, and what comes out is its own batching rather than a trip.
+    $WRAP rdkafka_performance -C -l -t sbl-tools -p 0 -o end -b "$KAFKA" \
+      -c $((RATE * SECONDS_TO_RUN)) -A "$OUT/per_message_us.txt" &
     consumer=$!
     sleep 5
     rdkafka_performance -P -l -t sbl-tools -b "$KAFKA" -c $((RATE * SECONDS_TO_RUN)) \
-      -s 512 -a 1 > "$OUT/producer.txt" 2>&1
+      -s 512 -a 1 -r "$RATE" > "$OUT/producer.txt" 2>&1
     wait "$consumer" 2>/dev/null ;;
   kafka-end-to-end)
     # Kafka moved this tool out of the kafka.tools package; the old name is kept for the pinned

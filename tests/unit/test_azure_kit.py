@@ -1625,11 +1625,68 @@ def test_the_amqp_broker_lets_the_driver_in():
     run and printed no latency at all: ten staircase steps of nothing, and a T2 that would
     not start for want of the reference T1 never took."""
     code = (KIT / "tools.sh").read_text(encoding="utf-8")
-    brokers = code.split("brokers () {", 1)[1].split("\n}", 1)[0]
+    brokers = code.split("\nbrokers_here () {", 1)[1].split("\n}", 1)[0]
     assert "loopback_users = none" in brokers
     assert "/etc/rabbitmq/conf.d/" in brokers, "its own file, not an edit of theirs"
     said = "written before the restart that reads it"
     assert brokers.index("loopback_users") < brokers.index("restart rabbitmq-server"), said
+
+
+class TestTheServersAreSetUpWhereTheToolsReachThem:
+    """The test above passed all along, and on 24 September PerfTest got ACCESS_REFUSED anyway.
+    It checks what the setup writes; nothing checked which machine it was written on. `brokers`
+    was run on the driver, set the driver's servers up, asked 127.0.0.1 whether they answered,
+    and certified a machine the tools never talk to. Thirty runs of two tools measured nothing.
+    """
+
+    def code(self):
+        return (KIT / "tools.sh").read_text(encoding="utf-8")
+
+    def entry(self):
+        return self.code().split("\nbrokers () {", 1)[1].split("\n}", 1)[0]
+
+    def test_from_anywhere_but_the_broker_it_does_the_work_on_the_broker(self):
+        entry = self.entry()
+        assert 'grep -q " ${BROKER_PRIV}/"' in entry, "it asks whether it is the broker"
+        assert 'remote_broker "cd sbl && bash cloud/azure/tools.sh brokers"' in entry
+
+    def test_and_then_checks_from_here_rather_than_from_127_0_0_1(self):
+        entry = self.entry()
+        assert "server_answers" in entry, "asked the way the tools will be answered"
+        assert "127.0.0.1" not in entry, "not the loopback of a machine the tools do not use"
+        after = entry.split("remote_broker", 1)[1]
+        assert "server_answers" in after, "and after the setup, not before it"
+
+    def test_on_the_broker_it_is_the_setup_it_always_was(self):
+        assert self.entry().rstrip().endswith("brokers_here")
+
+    def test_each_servers_check_asks_what_its_tool_needs_not_whether_a_port_is_open(self):
+        body = self.code().split("\nserver_answers () {", 1)[1].split("\n}", 1)[0]
+        assert '"200 512"' in body, "the fixed page, the size every HTTP tool is timed against"
+        assert "+PONG" in body, "a Redis that answers"
+        assert "loopback_users" in body, "a RabbitMQ that lets the tools' user in from here"
+        assert '"INFO"' in body, "a NATS server's greeting"
+
+    def test_every_stage_asks_before_it_runs(self):
+        """A server can go between one stage and the next."""
+        code = self.code()
+        for stage in ("t1", "t2", "t3", "t4"):
+            body = code.split("\n%s () {" % stage, 1)[1].split("\n}\n", 1)[0]
+            head = body.split("\n")[:5]
+            assert any('needs_server "$tool"' in line for line in head), stage
+
+    def test_nats_is_a_unit_that_outlives_the_session_that_started_it(self):
+        body = self.code().split("\nbrokers_here () {", 1)[1].split("\n}", 1)[0]
+        assert "nohup nats-server" not in body
+        assert "/etc/systemd/system/sbl-nats.service" in body
+        assert "Restart=always" in body and "enable --now sbl-nats" in body
+
+
+def test_a_jar_is_asked_whether_it_starts_whatever_the_record_says():
+    """The first x86 pair's record predated the question, and said yes to a jar that could not."""
+    code = (KIT / "tools.sh").read_text(encoding="utf-8")
+    have = code.split("\nhave_tool () {", 1)[1].split("\n}", 1)[0]
+    assert "rabbitmq-perftest)" in have and "runnable_jar" in have
 
 
 class TestAPairThatTurnsItselfOff:

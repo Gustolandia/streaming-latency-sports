@@ -843,11 +843,38 @@ class TestT2ForcedNegatives:
         assert "--step-ms" in code and "--plain" in code
         assert "which is a bound" in code, "and says so when it falls back to the printed step"
 
-    def test_a_go_tool_is_refused_rather_than_run_without_an_offset(self):
-        """Go reads the clock without the C library, so the preload never reaches it."""
+    def test_a_go_tool_gets_the_machines_own_clock_moved_not_the_preload(self):
+        """Go reads the clock without the C library, so the preload never reaches it, and a run
+        under it would be a run with no offset at all. D15-1 says what to do instead: move the
+        machine's own clock and put it back. Until 25 September this script only refused."""
         code = self.tools()
         assert 'GO_TOOLS="vegeta hey k6 nats-latency"' in code
-        assert "needs the second machine with an offset clock" in code
+        t2 = code.split("\nt2 () {", 1)[1].split("\n}\n", 1)[0]
+        assert "how=clock" in t2 and "step_clock" in t2
+        go = t2.split('*" $tool "*)', 1)[1].split(";;", 1)[0]
+        assert "faketime" not in go, "a Go tool is never given the preload that cannot reach it"
+
+    def test_it_will_not_move_a_clock_under_a_running_campaign(self):
+        """Every process on the machine sees the step, a campaign's among them."""
+        t2 = self.tools().split("\nt2 () {", 1)[1].split("\n}\n", 1)[0]
+        assert "machine_is_quiet" in t2 and "a campaign is running here" in t2
+
+    def test_the_step_is_measured_against_the_hypervisors_clock(self):
+        """D23-1: a run whose offset is not confirmed is not made. The measure is the PTP clock,
+        which stepping the system clock does not move."""
+        step = self.tools().split("\nstep_clock () {", 1)[1].split("\n}\n", 1)[0]
+        assert "clock_step.py shift" in step and "clock_step.json" in step
+        assert "systemctl stop chrony" in step, "or chrony pulls the clock back during the run"
+
+    def test_the_clock_is_put_back_whatever_happens(self):
+        """After each run, before the next reading is taken, and on any way out of the stage."""
+        code = self.tools()
+        t2 = code.split("\nt2 () {", 1)[1].split("\n}\n", 1)[0]
+        assert "trap unstep_clock EXIT" in t2
+        loop = t2.split("for ms in $offsets; do", 1)[1]
+        assert loop.index("unstep_clock") < loop.index("tool_readings.py read")
+        back = code.split("\nunstep_clock () {", 1)[1].split("\n}\n", 1)[0]
+        assert "systemctl start chrony" in back
 
     def test_a_tool_in_neither_list_is_refused_rather_than_assumed(self):
         assert "not in either T2 list" in self.tools()
@@ -1696,6 +1723,38 @@ def test_no_stress_ng_is_waited_for_after_a_signal_it_can_decline(script):
             assert re.search(r"kill -9 \"\$stress", line), \
                 "%s waits on a stress-ng stopped by a signal it can decline: %s" % (
                     script, line.strip())
+
+
+class TestEveryToolHasAReferenceOfOurOwn:
+    """Seven of the eleven tools had no reference until 25 September, because the study's own
+    program speaks Kafka and Redis only. T2 takes its offsets and its predictions from one."""
+
+    def reference(self):
+        code = (KIT / "tools.sh").read_text(encoding="utf-8")
+        return code.split("\nreference_for () {", 1)[1].split("\n}\n", 1)[0]
+
+    @pytest.mark.parametrize("tool,client", [
+        ("vegeta", "http_reference.py"), ("hey", "http_reference.py"),
+        ("k6", "http_reference.py"), ("wrk2", "http_reference.py"),
+        ("rabbitmq-perftest", "amqp_reference.py"), ("nats-latency", "nats_reference.py")])
+    def test_each_protocol_has_a_client(self, tool, client):
+        cases = self.reference().split('case "$tool" in', 1)[1].split("esac", 1)[0]
+        line = next(l for l in cases.splitlines() if re.search(r"(^|\|)\s*%s[|)]" % re.escape(
+            tool), l.strip()))
+        assert client in line, "%s is referenced by %s" % (tool, client)
+        assert (REPO / "scripts" / client).exists()
+
+    def test_the_client_is_given_its_settings_as_arguments_that_sudo_keeps(self):
+        """The environment is what sudo cleared for k6, which then made no request at all."""
+        body = self.reference()
+        run = body.split('if [ -n "$client" ]; then', 1)[1].split("fi", 1)[0]
+        assert "$NETNS" in run, "from inside the receiver's namespace, like every tool here"
+        assert "--rate" in run and "--seconds" in run and "--out" in run
+
+    def test_the_amqp_client_is_installed_pinned(self):
+        code = (KIT / "tools.sh").read_text(encoding="utf-8")
+        install = code.split("\ninstall () {", 1)[1].split("\n}\n", 1)[0]
+        assert re.search(r'pip3 install -q "pika==\d+\.\d+\.\d+"', install)
 
 
 class TestFreeze21InTheToolsBlock:

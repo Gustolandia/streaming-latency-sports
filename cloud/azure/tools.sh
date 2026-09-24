@@ -893,7 +893,11 @@ t3 () {
         > "$DIR/$run/tool.txt" 2>&1
       python3 scripts/tool_readings.py read --tool "$tool" --file "$DIR/$run/tool.txt" \
         --out "$DIR/$run/reading.json" >/dev/null 2>&1 || true
-      [ "$load" != 0 ] && { kill "$stress" 2>/dev/null; wait "$stress" 2>/dev/null; }
+      #: -9, as campaign.sh learnt on 23 September: stress-ng does not stop for a TERM here, so
+      #: the wait sat until its own --timeout 600s, and every 88% step of T3 took ten minutes for
+      #: a one-minute run. The measurement had finished long before; only the time was lost.
+      [ "$load" != 0 ] && { kill -9 "$stress" 2>/dev/null; wait "$stress" 2>/dev/null
+                            pkill -9 -x stress-ng 2>/dev/null; }
       log "   load $load%, go-first $first done"
     done
   done

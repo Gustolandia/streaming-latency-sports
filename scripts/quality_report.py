@@ -165,8 +165,16 @@ def queue_rows(folder):
     above = os.path.dirname(os.path.abspath(folder))
     for path in sorted(glob.glob(os.path.join(folder, "*.csv"))
                        + glob.glob(os.path.join(above, "*.csv"))):
+        #: The folder above is whatever the runs were put in, and on a driver that was /tmp: a
+        #: directory someone had named something.csv stopped the whole report, and any other
+        #: CSV there would have been read as this campaign's queue. Only a file with the two
+        #: columns this reads from a queue -- which run, and when it began -- is taken for one.
+        if not os.path.isfile(path):
+            continue
         with open(path, newline="", encoding="utf-8") as fh:
-            return list(csv.DictReader(fh))
+            rows = list(csv.DictReader(fh))
+        if rows and {"key", "started_utc"} <= set(rows[0]):
+            return rows
     tar = os.path.join(above, "runs.tar")
     if os.path.exists(tar):
         with tarfile.open(tar) as archive:
@@ -195,9 +203,13 @@ def report(run_dirs, want_stalls=True, warmup_s=30.0, ledger=None, folder=""):
     runs = [one_run(d, want_stalls, warmup_s) for d in run_dirs]
     if ledger is not None:
         money(runs, folder or os.path.dirname(run_dirs[0]), ledger)
+    #: A campaign still running has a run with no verdict yet. Counted under None, it put a None
+    #: key beside the string ones, and writing the report with sorted keys then failed -- so a
+    #: report asked for mid-campaign, which is when it is most use, printed only an error.
     verdicts = {}
     for run in runs:
-        verdicts[run.get("verdict")] = verdicts.get(run.get("verdict"), 0) + 1
+        said = run.get("verdict") or "not yet judged"
+        verdicts[said] = verdicts.get(said, 0) + 1
     spreads = {}
     by_setup = {}
     for run in runs:

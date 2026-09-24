@@ -189,6 +189,46 @@ class TestPausesAreAWaypointToo:
         assert [m for m in qr.waypoints(runs) if m["quantity"] == "stalls"] == []
 
 
+class TestAReportAskedForMidCampaign:
+    """Both found on 24 September, running this on three drivers while their campaigns ran.
+    Mid-campaign is when a report is most use, and it printed only an error."""
+
+    def test_a_run_still_going_is_counted_as_not_yet_judged(self, tmp_path):
+        runs = tmp_path / "runs"
+        write_run(runs, "law_a3_x_r001-A3-kafka-l50-s3000-c02h-a1")
+        write_run(runs, "law_a3_x_r001-A3-kafka-l50-s3000-c04h-a1")
+        os.remove(runs / "law_a3_x_r001-A3-kafka-l50-s3000-c04h-a1" / "integrity.json")
+        found = qr.report(qr.run_dirs_under(str(runs)), want_stalls=False)
+        assert found["verdicts"].get("not yet judged") == 1
+        assert None not in found["verdicts"]
+
+    def test_and_the_report_of_it_can_be_written_down(self, tmp_path):
+        """A None key beside string ones is what sorted keys could not order."""
+        runs = tmp_path / "runs"
+        write_run(runs, "law_a3_x_r001-A3-kafka-l50-s3000-c02h-a1")
+        write_run(runs, "law_a3_x_r001-A3-kafka-l50-s3000-c04h-a1")
+        os.remove(runs / "law_a3_x_r001-A3-kafka-l50-s3000-c04h-a1" / "integrity.json")
+        out = tmp_path / "report.json"
+        said = io.StringIO()
+        assert qr.main(["--runs", str(runs), "--no-stalls", "--out", str(out)], said) == 0
+        assert "ERROR" not in said.getvalue()
+        assert json.loads(out.read_text(encoding="utf-8"))["verdicts"]["not yet judged"] == 1
+
+    def test_a_directory_named_like_a_queue_is_not_read_as_one(self, tmp_path):
+        """On a driver the folder above the runs was /tmp, holding a directory called x.csv."""
+        runs = tmp_path / "runs"
+        write_run(runs, "law_c0_x_r001-C0-kafka-l75-d0a-a1")
+        (tmp_path / "stray.csv").mkdir()
+        assert qr.queue_rows(str(runs)) == []
+
+    def test_nor_is_a_csv_that_is_not_a_queue(self, tmp_path):
+        """Anything else in that folder would have been taken for this campaign's queue."""
+        runs = tmp_path / "runs"
+        write_run(runs, "law_c0_x_r001-C0-kafka-l75-d0a-a1")
+        (tmp_path / "prices.csv").write_text("region,usd\nswedencentral,0.48\n", encoding="utf-8")
+        assert qr.queue_rows(str(runs)) == []
+
+
 class TestWhatARunCost:
     """The queue says when each run began; the watch's ledger says what had been spent by then."""
 

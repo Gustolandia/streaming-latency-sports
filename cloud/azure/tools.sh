@@ -30,6 +30,9 @@ set +e
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)" || exit 1
 
 DIR="runs/azure/tools"
+#: The AMQP broker our own reference client talks to: the same default the tools are given in
+#: tools_run.sh, so the reference and PerfTest are pointed at one broker by one rule.
+RABBIT="${SBL_RABBIT:-amqp://guest:guest@${BROKER_PRIV:-}:5672}"
 WORK="${WORK:-$HOME/tools}"
 mkdir -p "$DIR" "$WORK"
 
@@ -256,6 +259,12 @@ install () {
   git_build valkey https://github.com/valkey-io/valkey 9.1.2 src/valkey-benchmark make -j2
   get_kafka
   get_perftest ba718d2eae542ee5557a676f5454d4492739e714
+  #: The client our own AMQP reference speaks through (scripts/amqp_reference.py). Pinned like
+  #: the tools, and system-wide, because the reference runs as this user inside the receiver's
+  #: namespace, where a user-local install is not on the path sudo gives it.
+  sudo pip3 install -q "pika==1.3.2" >/dev/null 2>&1 \
+    && log "   pika $(python3 -c 'import pika; print(pika.__version__)' 2>/dev/null), for the AMQP reference" \
+    || log "   WARN: pika did not install, so rabbitmq-perftest can have no reference"
 
   # What is actually on this machine afterwards, with its own fingerprint, so a run can say which
   # build produced its numbers rather than which version we meant to install.
@@ -522,12 +531,30 @@ release_delay () {
 #: staircase either side of it was sound, and T2 refused to start for want of the file this
 #: writes -- which is the refusal working.
 reference_for () {
-  local tool="$1" out="$2" backend id plan speedup me
+  local tool="$1" out="$2" backend id plan speedup me client=""
   case "$tool" in
     valkey-benchmark|memtier_benchmark) backend=redis ;;
     rdkafka_performance|kafka-end-to-end|kafka-producer-perf) backend=kafka ;;
+    #: Our own clients for the protocols the study's program does not speak, written on
+    #: 25 September because seven of the eleven tools had no reference at all, and T2 takes its
+    #: offsets and its predictions from one. Each is timed the way its tools time, from inside the
+    #: receiver's namespace like every tool here, and takes its settings as arguments: `sudo`
+    #: clears the environment, which is how k6 came to make no request.
+    vegeta|hey|k6|wrk2) client="http_reference.py --host $BROKER_PRIV --port 8080" ;;
+    rabbitmq-perftest) client="amqp_reference.py --uri $RABBIT" ;;
+    nats-latency) client="nats_reference.py --host $BROKER_PRIV --port 4222" ;;
     *) log "   no client of ours speaks $tool's protocol, so no reference is taken"; return 1 ;;
   esac
+  if [ -n "$client" ]; then
+    me=$(id -un)
+    log "   our own client on the same path, for the reference: ${client%% *}"
+    # shellcheck disable=SC2086
+    $NETNS sudo -u "$me" timeout -k 30 900 python3 scripts/$client --rate "${RATE:-50}" \
+      --seconds "${DURATION:-130}" --warmup-s 30 --out "$out/reference_trips.json" \
+      > "$out/reference.log" 2>&1 \
+      || { log "   WARN: the reference run timed nothing; see $out/reference.log"; return 1; }
+    return 0
+  fi
   id="toolsref-$tool-$(date -u +%Y%m%dT%H%M%SZ)"
   plan="data/synthetic/constant_r${RATE:-50}_d${DURATION:-130}/replay_plan.csv"
   [ -s "$plan" ] \
@@ -768,19 +795,57 @@ sys.exit(0 if abs(moved - want) <= max(0.1 * want, 0.05) else 1)" "$moved" "$ms"
 
 # T2: forced negatives. Move the clock the tool reads back by 0.5 ms and 2 ms, change nothing
 # else, and ask what it did with the values that came out below zero.
+#: T2 for the Go tools (D15-1): this machine's own clock, stepped early and put back.
+#:
+#: Go reads the clock without the C library, so libfaketime never reaches a Go tool, and the plan
+#: has said since D15-1 what to do instead: a machine whose own clock is offset for the run and
+#: restored afterwards. Until 25 September this script refused, and four tools had no T2. The
+#: machine is the one the tools run on, and it must be doing nothing else: every process on it
+#: sees the stepped clock. The step is measured against the hypervisor's PTP clock, which it does
+#: not move (scripts/clock_step.py), and chrony is stopped only while the clock is held off.
+STEPPED_MS=""
+
+machine_is_quiet () {
+  ps -eo args --no-headers \
+    | awk '/azure\/(campaign|stage0|stage1|chain)\.sh/ && !/awk/ { n++ } END { exit (n > 0) }'
+}
+
+step_clock () {  # ms, run dir: step early by ms, print how far it was measured to move
+  local ms="$1" out="$2"
+  sudo systemctl stop chrony || return 1
+  sudo python3 scripts/clock_step.py shift --ms="-$ms" --out "$out/clock_step.json" \
+    > /dev/null || { sudo systemctl start chrony; return 1; }
+  STEPPED_MS="$ms"
+  python3 -c 'import json, sys; print("%.4f" % -json.load(open(sys.argv[1]))["moved_ms"])' \
+    "$out/clock_step.json"
+}
+
+unstep_clock () {  # put the clock back, and chrony with it; safe to call when nothing is stepped
+  if [ -n "$STEPPED_MS" ]; then
+    sudo python3 scripts/clock_step.py shift --ms="$STEPPED_MS" > /dev/null 2>&1 \
+      || log "   WARN: the clock could not be stepped back by $STEPPED_MS ms; chrony will pull it"
+    STEPPED_MS=""
+  fi
+  sudo systemctl start chrony >/dev/null 2>&1
+}
+
 t2 () {
-  local tool="${1:?which tool}"
+  local tool="${1:?which tool}" how=faketime
   have_tool "$tool"
   needs_server "$tool"
   case " $GO_TOOLS " in
     *" $tool "*)
-      stop "$tool is a Go program: it reads the clock without the C library, so libfaketime never reaches it. T2 for this tool needs the second machine with an offset clock, restored afterwards, which is not this script" ;;
+      how=clock
+      machine_is_quiet \
+        || stop "$tool is a Go program, so T2 moves this machine's own clock, and a campaign is running here; every process on the machine would see the step"
+      trap unstep_clock EXIT ;;
+    *)
+      case " $FAKEABLE " in
+        *" $tool "*) ;;
+        *) stop "$tool is not in either T2 list; add it to FAKEABLE or GO_TOOLS having checked which clock it reads" ;;
+      esac
+      sudo apt-get install -y -qq faketime >/dev/null 2>&1 ;;
   esac
-  case " $FAKEABLE " in
-    *" $tool "*) ;;
-    *) stop "$tool is not in either T2 list; add it to FAKEABLE or GO_TOOLS having checked which clock it reads" ;;
-  esac
-  sudo apt-get install -y -qq faketime >/dev/null 2>&1
 
   # The offsets come from the trip they act on, not from a fixed pair of numbers (plan version
   # 15, D15-1). Half a millisecond against a 3 ms trip puts nothing below zero, and a tool
@@ -832,19 +897,30 @@ print(found["smallest_reported_ms"] or "")' "$DIR/t1-$tool-step.json" 2>/dev/nul
   for ms in $offsets; do
     local run="t2-$tool-$(echo "$ms" | tr . _)ms"
     mkdir -p "$DIR/$run"
-    local spelling moved said
-    said=$(faketime_spelling "$ms") \
-      || stop "no libfaketime offset of $ms ms could be confirmed on this machine; T2 will not run an offset it cannot show reached the clock"
-    spelling="${said%% *}"; moved="${said##* }"
+    local spelling moved said wrap
+    if [ "$how" = clock ]; then
+      moved=$(step_clock "$ms" "$DIR/$run") \
+        || stop "this machine's clock could not be stepped by $ms ms and measured against its PTP clock; T2 will not run an offset it cannot show reached the clock"
+      spelling="the system clock stepped"
+      wrap=""
+    else
+      said=$(faketime_spelling "$ms") \
+        || stop "no libfaketime offset of $ms ms could be confirmed on this machine; T2 will not run an offset it cannot show reached the clock"
+      spelling="${said%% *}"; moved="${said##* }"
+      wrap="faketime -f $spelling"
+    fi
     echo "$spelling" > "$DIR/$run/offset_spelling.txt"
     #: What the clock was measured to actually do under that spelling, beside what was asked for,
     #: because "confirmed" is a claim and this is the number behind it.
     echo "{\"asked_ms\": $ms, \"measured_ms\": $moved, \"spelling\": \"$spelling\"}" \
       > "$DIR/$run/offset_measured.json"
     log "   $ms ms, as $spelling, measured $moved ms"
-    SBL_TOOL_WRAP="faketime -f $spelling" bash cloud/azure/tools_run.sh "$tool" "$DIR/$run" \
+    SBL_TOOL_WRAP="$wrap" bash cloud/azure/tools_run.sh "$tool" "$DIR/$run" \
       > "$DIR/$run/tool.txt" 2>&1
     echo "$?" > "$DIR/$run/exit_code.txt"
+    #: Put back before anything else happens, reading included: the clock is held off only for as
+    #: long as the tool runs.
+    [ "$how" = clock ] && unstep_clock
     python3 scripts/tool_readings.py read --tool "$tool" --file "$DIR/$run/tool.txt" \
       --out "$DIR/$run/reading.json" >/dev/null 2>&1 \
       || log "   it reported no latency at all under the offset; kept as that"

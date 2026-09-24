@@ -271,17 +271,22 @@ def read_rdkafka_performance(text):
 def read_k6(text):
     """k6's summary. The audit found it strips the monotonic part of Go's clock.
 
-    http_req_duration is the request; iteration_duration is the whole loop, which in our script
-    includes the sleep that paces it, so it is only read when the request metric is absent and is
-    never preferred over it.
+    http_req_duration is the request, and it is the only figure read (D25-3). This used to fall
+    back to iteration_duration when the request metric was absent -- but k6 prints no request
+    metric only when it made no request, so the fallback turned nothing into a number. On
+    24 September every k6 run did exactly that: no URL reached it, each iteration failed at once,
+    and the 9 microseconds a failure took were read as the latency of a request that never left.
+    A run that sent no byte is a run that reported nothing, whatever else it printed.
 
     k6's default trend statistics are avg, min, med, max, p(90) and p(95) -- no p(99). The runner
     asks for p(99) with --summary-trend-stats; where it is not there, it is missing from the
     reading rather than replaced by p(95).
     """
     got, steps = {}, {}
-    line = _find(text, r"^\s*http_req_duration.*$", 0) or \
-        _find(text, r"^\s*iteration_duration.*$", 0) or ""
+    sent = _find(text, r"^\s*data_sent\.*:\s*([\d.]+)\s*\w*B\b", 1)
+    if sent is not None and float(sent) == 0:
+        return _reading("k6", got, steps)
+    line = _find(text, r"^\s*http_req_duration.*$", 0) or ""
     for key, name in (("avg", "avg"), ("min", "min"), ("p50", "med"), ("p99", r"p\(99\)"),
                       ("max", "max")):
         pair = re.search(r"%s=([\d.]+)(%s)" % (name, GO_UNITS), line)
@@ -435,6 +440,35 @@ def step_seen(staircase):
     return {"zero_avg_ms": base, "smallest_reported_ms": smallest, "steps": moves}
 
 
+#: How many times a tool's measured interval crosses the delayed direction (D25-5). T1 delays the
+#: broker's traffic toward the driver, so a round trip meets it once. kafka-end-to-end sends,
+#: waits for the broker's acknowledgement, and then fetches the message back: twice.
+#: rdkafka_performance's consumer fetches what a producer waiting on acknowledgements sent: twice.
+CROSSINGS = {"kafka-end-to-end": 2, "rdkafka_performance": 2}
+
+
+def slope_against_delay(staircase, tool):
+    """How far a tool's reading moves per millisecond T1 adds, held to its crossings (D25-5).
+
+    The median where the tool prints one, else the average. A slope under half the number of
+    crossings, or over one and a half times it, is a staircase that did not measure the path --
+    which is how k6 was found on 24 September: 0.000, because it had made no request at all.
+    """
+    figure = "p50" if any("p50" in (r.get("reported_ms") or {}) for _, r in staircase) else "avg"
+    xy = [(added, (r.get("reported_ms") or {}).get(figure)) for added, r in staircase]
+    xy = [(x, y) for x, y in xy if isinstance(y, (int, float))]
+    crossings = CROSSINGS.get(tool, 1)
+    found = {"figure": figure, "crossings": crossings, "slope": None, "measured_the_path": None}
+    if len(xy) < 3 or len(set(x for x, _ in xy)) < 2:
+        return found
+    mx = sum(x for x, _ in xy) / len(xy)
+    my = sum(y for _, y in xy) / len(xy)
+    slope = sum((x - mx) * (y - my) for x, y in xy) / sum((x - mx) ** 2 for x, _ in xy)
+    found["slope"] = slope
+    found["measured_the_path"] = 0.5 * crossings <= slope <= 1.5 * crossings
+    return found
+
+
 def _staircase_from(folder, tool):
     """T1's runs for one tool, as (added_ms, reading) pairs, read off their folder names."""
     found = []
@@ -463,7 +497,9 @@ def main(argv=None, out=None):
     args = ap.parse_args(argv)
 
     if args.command == "staircase":
-        found = step_seen(_staircase_from(args.dir, args.tool))
+        steps = _staircase_from(args.dir, args.tool)
+        found = step_seen(steps)
+        found["slope"] = slope_against_delay(steps, args.tool)
         text = json.dumps(found, indent=2, sort_keys=True)
         if args.out:
             with open(args.out, "w", encoding="utf-8") as fh:

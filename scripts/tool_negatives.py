@@ -33,8 +33,11 @@ tool's reading from T1's zero step is passed in where there is one.
         --reference trips.json --offset-ms 2.0 --plain plain_reading.json
 """
 import argparse
+import glob
 import json
 import math
+import os
+import re
 import sys
 
 #: The four things a tool can do with a value the subtraction pushed below zero, in the order
@@ -140,6 +143,41 @@ def negatives_made(trips_ms, offset_ms, step_ms=None):
 #: with a value below zero, and this is a tool in which no such value can arise.
 ONE_CLOCK = "times against one clock"
 
+#: The figures T2 judges (D25-2). The four behaviours have been held to these two and no others
+#: since the judge was written, and the fifth hypothesis is held to the same.
+JUDGED = (("avg", "avg_ms"), ("min", "min_ms"))
+
+#: Three times the noise. Estimated on the eight degrees of freedom of a ten-step staircase, a
+#: band of three holds about 98% of changes that are noise alone (freeze 21, D25-2).
+NOISE_BANDS = 3.0
+
+
+def noise_from_staircase(points):
+    """Each judged figure's run-to-run noise, from a tool's T1 staircase (D25-2).
+
+    `points` are (added delay in ms, reading) for each step. The noise of a figure is the residual
+    standard deviation about the least-squares line of that figure against the added delay: what
+    is left of the tool's scatter once the delay the staircase added is taken out. A figure given
+    at fewer than three steps has no noise and is left out -- two points always lie on their line.
+
+    This is where T2's allowance comes from because T1 already holds ten runs of each tool, on the
+    same pair, minutes apart. A second control run could not supply it: an offset run falls
+    outside the range of k equally noisy controls with probability 2/(k+1), a coin at two.
+    """
+    found = {}
+    for figure, _ in JUDGED:
+        xy = [(delay, (reading.get("reported_ms") or {}).get(figure)) for delay, reading in points]
+        xy = [(x, y) for x, y in xy if isinstance(y, (int, float))]
+        if len(xy) < 3:
+            continue
+        mx = sum(x for x, _ in xy) / len(xy)
+        my = sum(y for _, y in xy) / len(xy)
+        sxx = sum((x - mx) ** 2 for x, _ in xy)
+        slope = sum((x - mx) * (y - my) for x, y in xy) / sxx if sxx else 0.0
+        left = sum((y - (my + slope * (x - mx))) ** 2 for x, y in xy)
+        found[figure] = (left / (len(xy) - 2)) ** 0.5
+    return found
+
 
 def figures_moved(reading, control, step_ms=None):
     """How far each figure moved from the control run, and whether any moved past the tool's step.
@@ -165,8 +203,100 @@ def figures_moved(reading, control, step_ms=None):
     return moved_by, any(gap > (step_ms or 0.0) for gap in moved_by.values())
 
 
+def judged_by_noise(verdict, reading, trips_ms, sent, step_ms, control, noise):
+    """Freeze 21's T2 judgement (D25-1, D25-2), on a verdict what_it_did has started.
+
+    1. The change of each judged figure is the offset run's value less the control run's, the
+       control taken in the same T2 session (D23-1) -- not T1's zero step, which is what the four
+       behaviours were held against until D25-1.
+    2-3. The allowance for a change is three times the figure's noise, from the T1 staircase,
+       times the square root of two -- the scatter of a difference between two runs -- and never
+       less than two of the steps the figure is printed in.
+    4. Five hypotheses predict a change: the four behaviours, from our reference trips at the
+       offset measured at the clock; and one clock, which predicts none.
+    5. A hypothesis survives when every judged figure's change is within the allowance of its
+       prediction. A count short of what was sent rules out the behaviours that could not have
+       given it, as before.
+    6. The verdict is the one hypothesis left standing; otherwise it is undecided, with the
+       numbers beside it.
+    """
+    shift = verdict["offset_ms"]
+    expected = verdict["expected"]
+    base = predictions(trips_ms, 0.0, step_ms)["keeps every value"]
+    said = reading.get("reported_ms") or {}
+    was = (control or {}).get("reported_ms") or {}
+    changes, allowed = {}, {}
+    for figure, key in JUDGED:
+        if figure in said and figure in was and figure in noise and base[key] is not None:
+            changes[figure] = said[figure] - was[figure]
+            printed = _step_of(reading, figure) or 0.0
+            allowed[figure] = max(NOISE_BANDS * noise[figure] * 2.0 ** 0.5, 2.0 * printed)
+    verdict.update({"rule": "freeze 21 (D25-1, D25-2)", "noise_ms": dict(noise),
+                    "changes_ms": changes, "allowed_ms": allowed,
+                    "moved_from_control_ms": {f: abs(c) for f, c in changes.items()}})
+    if not changes:
+        verdict["why"] = ("no figure could be judged: it needs the average or the minimum in this "
+                          "run, in the control, and at three or more steps of the T1 staircase")
+        return verdict
+
+    predicted = {name: ({f: said_[key] - base[key] for f, key in JUDGED if f in changes}
+                        if said_["count"] else None)
+                 for name, said_ in expected.items()}
+    predicted[ONE_CLOCK] = {f: 0.0 for f in changes}
+    verdict["predicted_changes_ms"] = predicted
+    kept = reading.get("kept")
+    for name, wants in predicted.items():
+        why = None
+        if wants is None:
+            why = "it printed a figure, and this would have left it nothing to print"
+        else:
+            for figure in sorted(changes):
+                gap = abs(changes[figure] - wants[figure])
+                if gap > allowed[figure]:
+                    why = ("its %s changed %+.4f ms where this predicts %+.4f; %.4f apart, more "
+                           "than the %.4f ms its own noise allows"
+                           % (figure, changes[figure], wants[figure], gap, allowed[figure]))
+                    break
+        if why is None and name != ONE_CLOCK and kept is not None and sent is not None \
+                and kept < sent and kept != expected[name]["count"]:
+            why = "it counted %d where this would count %d" % (kept, expected[name]["count"])
+        if why is None:
+            verdict["still_standing"].append(name)
+        else:
+            verdict["ruled_out"][name] = why
+    verdict["still_standing"].sort()
+
+    standing = verdict["still_standing"]
+    numbers = "; ".join("%s changed %+.4f ms, allowed %.4f" % (f, changes[f], allowed[f])
+                        for f in sorted(changes))
+    if len(standing) == 1:
+        verdict["behaviour"] = standing[0]
+        verdict["decided"] = True
+        if standing[0] == ONE_CLOCK:
+            verdict["why"] = ("it %s: the clock it reads moved %.3f ms and its figures did not "
+                              "move beyond their own noise (%s). Both of its timestamps moved "
+                              "together, so no value below zero can arise in it"
+                              % (ONE_CLOCK, shift, numbers))
+        else:
+            verdict["why"] = ("only %s accounts for what it printed, and the others, one clock "
+                              "among them, are ruled out (%s)" % (standing[0], numbers))
+        return verdict
+    if not standing:
+        verdict["why"] = ("none of the five accounts for what it printed (%s); what each "
+                          "predicted is beside it" % numbers)
+        return verdict
+    if ONE_CLOCK not in standing and verdict["negatives_made"] == 0:
+        verdict["why"] = ("its figures moved, so its subtraction spans two clocks, but the offset "
+                          "put no value below zero, so the four behaviours give the same figures "
+                          "and cannot be told apart (%s)" % numbers)
+        return verdict
+    verdict["why"] = ("its figures are consistent with %s within its own noise, so this run does "
+                      "not say which (%s)" % (" and ".join(standing), numbers))
+    return verdict
+
+
 def what_it_did(reading, trips_ms, offset_ms, sent=None, exit_code=0, plain=None,
-                step_ms=None, control=None, shift_ms=None):
+                step_ms=None, control=None, shift_ms=None, noise=None):
     """Which behaviour this run rules out, and whether one alone is left standing.
 
     `reading` is one of tool_readings' readings, taken from the tool's output under the offset.
@@ -177,11 +307,19 @@ def what_it_did(reading, trips_ms, offset_ms, sent=None, exit_code=0, plain=None
     The verdict is what survives, not what is nearest. Something is always nearest, and on a tool
     whose clock is coarser than the difference between two behaviours the nearest is decided by
     the rounding rather than by the tool. A run that leaves two standing has not answered.
+
+    Given `noise` -- each judged figure's run-to-run noise from the tool's T1 staircase -- this is
+    freeze 21's judgement (judged_by_noise), predicting at the offset measured at the clock, which
+    is what T2 is judged by from that freeze on. Without it, it is the judgement as D23-1 was
+    implemented, kept so that what it said of each run can be reported beside the new verdict.
     """
     sent = len(trips_ms) if sent is None else sent
+    asked = offset_ms
+    if noise is not None and shift_ms:
+        offset_ms = shift_ms
     expected = predictions(trips_ms, offset_ms, step_ms)
     base = predictions(trips_ms, 0.0, step_ms)["keeps every value"]
-    verdict = {"offset_ms": offset_ms, "sent": sent, "exit_code": exit_code,
+    verdict = {"offset_ms": offset_ms, "asked_ms": asked, "sent": sent, "exit_code": exit_code,
                "step_ms": step_ms, "shift_ms": shift_ms, "moved_from_control_ms": {},
                "negatives_made": negatives_made(trips_ms, offset_ms, step_ms),
                "expected": expected, "behaviour": None, "decided": False,
@@ -203,6 +341,8 @@ def what_it_did(reading, trips_ms, offset_ms, sent=None, exit_code=0, plain=None
     if not trips_ms:
         verdict["why"] = "there are no reference trips, so there is nothing to compare"
         return verdict
+    if noise is not None:
+        return judged_by_noise(verdict, reading, trips_ms, sent, step_ms, control, noise)
 
     #: D23-1. Asked first, because a tool whose figures did not move is not a tool that did
     #: something strange with negatives: it is a tool in which no negative can arise, and the
@@ -278,6 +418,18 @@ def lines(verdict):
         out.append("   it counted %d of %d sent%s" % (
             verdict["count_reported"], verdict["sent"],
             "" if verdict["count_matches_sent"] else " -- they do not match"))
+    #: Under freeze 21 every figure judged, what it changed by, what its noise allows and what each
+    #: hypothesis predicted, so that an undecided run shows why and a decided one shows on what.
+    if verdict.get("rule"):
+        out.append("   judged under %s, at the offset measured at the clock" % verdict["rule"])
+        for figure in sorted(verdict.get("changes_ms") or {}):
+            out.append("   its %s changed %+.4f ms; its own noise is %.4f, so %.4f is allowed"
+                       % (figure, verdict["changes_ms"][figure], verdict["noise_ms"][figure],
+                          verdict["allowed_ms"][figure]))
+        for name, wants in sorted((verdict.get("predicted_changes_ms") or {}).items()):
+            out.append("   %-34s predicts %s" % (name, "nothing to print" if wants is None else
+                                                 ", ".join("%s %+.4f" % kv
+                                                           for kv in sorted(wants.items()))))
     #: The two numbers D23-1 tells the one-clock verdict apart by, printed whether or not that
     #: verdict was reached, so a reader can see what it was decided on.
     if verdict.get("shift_ms"):
@@ -288,6 +440,25 @@ def lines(verdict):
             for name, gap in sorted(verdict["moved_from_control_ms"].items())))
     out.append("   %s: %s" % ("VERDICT" if verdict["decided"] else "UNDECIDED", verdict["why"]))
     return out
+
+
+def staircase(folder, tool):
+    """A tool's T1 runs as (added delay in ms, reading), from the folders T1 names t1-<tool>-<d>ms.
+
+    The delay is read from the folder's own name, which is how T1 writes it -- 0_1ms is a tenth.
+    A step with no reading, or one that reported nothing, is left out rather than read as zero.
+    """
+    found = []
+    for path in sorted(glob.glob(os.path.join(folder, "t1-%s-*ms" % tool))):
+        step = re.search(r"-(\d+(?:_\d+)?)ms$", path)
+        where = os.path.join(path, "reading.json")
+        if not step or not os.path.isfile(where):
+            continue
+        with open(where, encoding="utf-8") as fh:
+            reading = json.load(fh)
+        if reading.get("reported_ms"):
+            found.append((float(step.group(1).replace("_", ".")), reading))
+    return found
 
 
 def reference_trips(path):
@@ -323,6 +494,11 @@ def main(argv=None, out=None):
     p.add_argument("--shift-ms", type=float, default=None,
                    help="how far the clock was measured to actually move under this offset, not "
                         "how far it was asked to. A run whose shift is not confirmed is not made")
+    p.add_argument("--staircase", default="",
+                   help="the folder holding this tool's T1 runs, t1-<tool>-<delay>ms; given it, "
+                        "each figure's noise comes from the staircase and the run is judged as "
+                        "freeze 21 says (D25-2)")
+    p.add_argument("--tool", default="", help="the tool whose staircase to read")
     p.add_argument("--out", default="")
     args = ap.parse_args(argv)
     with open(args.reading, encoding="utf-8") as fh:
@@ -335,9 +511,15 @@ def main(argv=None, out=None):
     if args.control:
         with open(args.control, encoding="utf-8") as fh:
             control = json.load(fh)
+    noise = None
+    if args.staircase:
+        if not args.tool:
+            ap.error("--staircase needs --tool, to know whose steps to read")
+        noise = noise_from_staircase(staircase(args.staircase, args.tool))
     verdict = what_it_did(reading, reference_trips(args.reference), args.offset_ms,
                           sent=args.sent, exit_code=args.exit_code, plain=plain,
-                          step_ms=args.step_ms, control=control, shift_ms=args.shift_ms)
+                          step_ms=args.step_ms, control=control, shift_ms=args.shift_ms,
+                          noise=noise)
     if args.out:
         with open(args.out, "w", encoding="utf-8") as fh:
             json.dump(verdict, fh, indent=2, sort_keys=True)

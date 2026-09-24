@@ -1682,6 +1682,38 @@ class TestTheServersAreSetUpWhereTheToolsReachThem:
         assert "Restart=always" in body and "enable --now sbl-nats" in body
 
 
+class TestFreeze21InTheToolsBlock:
+    """What freeze 21 changed in how the tools are run and judged."""
+
+    def tools(self):
+        return (KIT / "tools.sh").read_text(encoding="utf-8")
+
+    def test_k6_takes_its_settings_as_flags_that_sudo_keeps(self):
+        """D25-3. Through the environment, sudo cleared them and k6 made no request at all."""
+        runner = (KIT / "tools_run.sh").read_text(encoding="utf-8")
+        k6 = runner.split("\n  k6)", 1)[1].split(";;", 1)[0]
+        command = [line for line in k6.splitlines() if not line.strip().startswith("#")]
+        body = "\n".join(command)
+        for name in ("SBL_DURATION", "SBL_TARGET", "SBL_RATE"):
+            assert "--env %s=" % name in body, name
+            assert not re.search(r"^\s*%s=" % name, body, re.M), \
+                "%s is not set as an environment prefix, which sudo clears" % name
+
+    def test_t2_is_judged_with_the_noise_of_the_tools_own_staircase(self):
+        """D25-2: the judge is given the T1 runs, and so judges as freeze 21 says."""
+        t2 = self.tools().split("\nt2 () {", 1)[1].split("\n}\n", 1)[0]
+        judge = t2.split("tool_negatives.py judge", 1)[1].split("|| log", 1)[0]
+        assert '--staircase "$DIR" --tool "$tool"' in judge
+        assert "--control" in judge and "--shift-ms" in judge
+
+    def test_t1_asks_whether_it_measured_the_path(self):
+        """D25-5: the slope is recorded at the end of every staircase, and a flat one said so."""
+        t1 = self.tools().split("\nt1 () {", 1)[1].split("\n}\n", 1)[0]
+        tail = t1.split("release_delay", 1)[1]
+        assert "tool_readings.py staircase" in tail and "measured_the_path" in tail
+        assert tail.index("tool_readings.py staircase") < tail.index("CAMPAIGN_COMPLETE: T1")
+
+
 def test_a_jar_is_asked_whether_it_starts_whatever_the_record_says():
     """The first x86 pair's record predated the question, and said yes to a jar that could not."""
     code = (KIT / "tools.sh").read_text(encoding="utf-8")

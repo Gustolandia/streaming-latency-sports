@@ -673,6 +673,21 @@ t1 () {
     log "   $ms ms done"
   done
   release_delay
+  #: D25-5. The staircase assumed the delay reached the tool; this asks whether it did. A tool's
+  #: reading should move with the delay once for every time its interval crosses the delayed
+  #: direction, and k6's moved not at all -- it had made no request, which is how that was found.
+  python3 scripts/tool_readings.py staircase --tool "$tool" --dir "$DIR" \
+    --out "$DIR/t1-$tool-step.json" >/dev/null 2>&1
+  local slope
+  slope=$(python3 -c 'import json, sys
+s = json.load(open(sys.argv[1]))["slope"]
+if s["slope"] is None:
+    print("no slope: too few steps reported")
+else:
+    print("%s moved %.3f per ms added, against %d crossing(s): %s" % (s["figure"], s["slope"],
+          s["crossings"], "it measured the path" if s["measured_the_path"]
+          else "IT DID NOT MEASURE THE PATH"))' "$DIR/t1-$tool-step.json" 2>/dev/null)
+  log "   T1 slope: ${slope:-could not be read}"
   log "CAMPAIGN_COMPLETE: T1 $tool; its runs are under $DIR"
 }
 
@@ -846,6 +861,7 @@ print(found["smallest_reported_ms"] or "")' "$DIR/t1-$tool-step.json" 2>/dev/nul
         --plain "$plain" ${step:+--step-ms "$step"} \
         ${moved:+--shift-ms "$moved"} \
         $([ -s "$control/reading.json" ] && printf -- "--control %s" "$control/reading.json") \
+        --staircase "$DIR" --tool "$tool" \
         --exit-code "$(cat "$DIR/$run/exit_code.txt")" --out "$DIR/$run/verdict.json" \
         || log "   UNDECIDED at $ms ms; see $DIR/$run/verdict.json"
     else

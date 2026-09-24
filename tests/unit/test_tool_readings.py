@@ -149,6 +149,14 @@ K6 = """     http_req_duration..............: avg=3.41ms min=1.1ms med=2.91ms ma
      iterations.....................: 600
 """
 
+# What k6 printed on 24 September with no URL: sudo had cleared the environment it came through.
+# Every iteration failed at once, so there is no request metric, and nothing crossed the wire.
+K6_NO_REQUEST = """     data_received..................: 0 B     0 B/s
+     data_sent......................: 0 B     0 B/s
+     iteration_duration.............: avg=9.93µs min=7.44µs med=8.93µs p(99)=21.54µs max=31.86ms
+     iterations.....................: 4895826 81596.947151/s
+"""
+
 # k6 left at its defaults: avg, min, med, max, p(90), p(95) -- and no p(99) anywhere.
 K6_DEFAULT_STATS = """     iteration_duration.............: avg=1.02s min=1.0s med=1.01s max=1.2s p(90)=1.05s p(95)=1.1s
      http_req_duration..............: avg=3.41ms min=1.1ms med=2.91ms max=21.4ms p(90)=5.2ms p(95)=6.1ms
@@ -283,6 +291,57 @@ class TestEachToolsOwnOutput:
     def test_k6_left_at_its_defaults_has_no_p99_and_is_not_given_its_p95(self):
         """Its default statistics stop at p(95). A missing percentile is missing."""
         assert "p99" not in tr.read_tool("k6", K6_DEFAULT_STATS)["reported_ms"]
+
+    @staticmethod
+    def steps(values, figure="p50"):
+        return [(added, {"reported_ms": {figure: value}})
+                for added, value in zip((0.0, 0.5, 1.0, 1.5, 2.0), values)]
+
+    def test_t1s_slope_is_one_for_a_round_trip(self):
+        got = tr.slope_against_delay(self.steps((0.80, 1.30, 1.80, 2.30, 2.80)), "vegeta")
+        assert got["slope"] == pytest.approx(1.0) and got["crossings"] == 1
+        assert got["measured_the_path"] is True
+
+    def test_and_two_for_a_send_an_acknowledgement_and_a_fetch(self):
+        got = tr.slope_against_delay(self.steps((1.0, 2.0, 3.0, 4.0, 5.0)), "kafka-end-to-end")
+        assert got["slope"] == pytest.approx(2.0) and got["crossings"] == 2
+        assert got["measured_the_path"] is True
+
+    def test_a_staircase_that_did_not_measure_the_path_is_said_to_be_one(self):
+        """k6 on 24 September, which had made no request: 9 microseconds at every step."""
+        got = tr.slope_against_delay(self.steps((0.0089, 0.0090, 0.0089, 0.0091, 0.0090)), "k6")
+        assert got["slope"] == pytest.approx(0.0, abs=1e-3)
+        assert got["measured_the_path"] is False
+
+    def test_a_round_trip_read_twice_over_is_flagged_too(self):
+        assert tr.slope_against_delay(self.steps((1.0, 2.0, 3.0, 4.0, 5.0)),
+                                      "vegeta")["measured_the_path"] is False
+
+    def test_it_takes_the_average_where_there_is_no_median(self):
+        got = tr.slope_against_delay(self.steps((0.8, 1.3, 1.8, 2.3, 2.8), "avg"), "hey")
+        assert got["figure"] == "avg" and got["measured_the_path"] is True
+
+    def test_too_few_steps_or_one_delay_give_no_slope(self):
+        assert tr.slope_against_delay(self.steps((0.8, 1.3)), "vegeta")["slope"] is None
+        flat = [(1.0, {"reported_ms": {"p50": v}}) for v in (1.0, 1.1, 1.2)]
+        assert tr.slope_against_delay(flat, "vegeta")["measured_the_path"] is None
+
+    def test_k6_that_made_no_request_reported_nothing(self):
+        """D25-3. What k6 printed on the first x86 pair on 24 September, run through sudo with its
+        URL in an environment sudo had cleared: no request metric, because no request left, and
+        an iteration time of nine microseconds, which is how long failing on "invalid URL" takes.
+        The reader used to fall back to that line and report it as the latency."""
+        got = tr.read_tool("k6", K6_NO_REQUEST)
+        assert got["reported_ms"] == {}, "the time a failure took is not a latency"
+
+    def test_k6_that_sent_no_byte_reported_nothing_whatever_else_it_printed(self):
+        """A request metric beside zero bytes sent is still a run that measured nothing."""
+        text = K6 + "     data_sent......................: 0 B 0 B/s\n"
+        assert tr.read_tool("k6", text)["reported_ms"] == {}
+
+    def test_k6_that_sent_something_is_read(self):
+        text = K6 + "     data_sent......................: 51 kB 850 B/s\n"
+        assert tr.read_tool("k6", text)["reported_ms"]["avg"] == pytest.approx(3.41)
 
     def test_kafka_producer_performance_reads_its_total_and_not_its_progress(self):
         """It prints a shorter line every few seconds and one total at the end. The total is the

@@ -698,6 +698,20 @@ print(found["smallest_reported_ms"] or "")' "$DIR/t1-$tool-step.json" 2>/dev/nul
     log "   T1 measured its smallest reportable step at $step ms"
   fi
 
+  #: D23-1: the control. The same tool on the same traffic at no offset, taken here rather than
+  #: borrowed from T1's zero step, which ran under a different arrangement of the delay and
+  #: possibly hours earlier. It is what the two offset runs are held against, and without it
+  #: "its figures did not move" cannot be told from "it did something none of the four
+  #: describes" -- the two produced the same sentence until today.
+  local control="$DIR/t2-$tool-control"
+  mkdir -p "$control"
+  log "   the control: no offset, on this machine in this state"
+  bash cloud/azure/tools_run.sh "$tool" "$control" > "$control/tool.txt" 2>&1
+  echo "$?" > "$control/exit_code.txt"
+  python3 scripts/tool_readings.py read --tool "$tool" --file "$control/tool.txt" \
+    --out "$control/reading.json" >/dev/null 2>&1 \
+    || log "   the control reported no latency at all; the offset runs have nothing to move from"
+
   for ms in $offsets; do
     local run="t2-$tool-$(echo "$ms" | tr . _)ms"
     mkdir -p "$DIR/$run"
@@ -728,6 +742,8 @@ print(found["smallest_reported_ms"] or "")' "$DIR/t1-$tool-step.json" 2>/dev/nul
       python3 scripts/tool_negatives.py judge --reading "$DIR/$run/reading.json" \
         --reference "$trips" --offset-ms "$ms" \
         --plain "$plain" ${step:+--step-ms "$step"} \
+        ${moved:+--shift-ms "$moved"} \
+        $([ -s "$control/reading.json" ] && printf -- "--control %s" "$control/reading.json") \
         --exit-code "$(cat "$DIR/$run/exit_code.txt")" --out "$DIR/$run/verdict.json" \
         || log "   UNDECIDED at $ms ms; see $DIR/$run/verdict.json"
     else

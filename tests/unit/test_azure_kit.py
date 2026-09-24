@@ -1682,6 +1682,22 @@ class TestTheServersAreSetUpWhereTheToolsReachThem:
         assert "Restart=always" in body and "enable --now sbl-nats" in body
 
 
+@pytest.mark.parametrize("script", ["campaign.sh", "tools.sh"])
+def test_no_stress_ng_is_waited_for_after_a_signal_it_can_decline(script):
+    """A TERM stress-ng ignores turns the wait after it into a wait for its own --timeout.
+
+    Found in campaign.sh on 23 September -- an hour for a three-minute run -- and fixed there. The
+    same two lines were in T3, and every 88% step of every tool took ten minutes for one until
+    24 September. Asked of every script that starts it, so a third copy cannot hide the same way.
+    """
+    code = (KIT / script).read_text(encoding="utf-8")
+    for line in code.splitlines():
+        if re.search(r"\bwait \"\$stress", line):
+            assert re.search(r"kill -9 \"\$stress", line), \
+                "%s waits on a stress-ng stopped by a signal it can decline: %s" % (
+                    script, line.strip())
+
+
 class TestFreeze21InTheToolsBlock:
     """What freeze 21 changed in how the tools are run and judged."""
 

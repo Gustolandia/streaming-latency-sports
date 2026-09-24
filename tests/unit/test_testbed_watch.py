@@ -176,6 +176,28 @@ class TestFlags:
         assert any("stuck" in f[1] for f in tw.evaluate(stalled, None))
 
     @pytest.mark.parametrize("what", [
+        "bash cloud/azure/campaign.sh runs/azure/stage1/x/a3.csv",
+        "bash cloud/azure/stage0.sh session runs/azure/stage0/arm_1",
+        "bash cloud/azure/pilot.sh",
+        # The tools block makes runs for hours and makes them through neither campaign.sh nor a
+        # trial script. Left out of this list it is invisible, and on 24 September the watch
+        # called the first x86 pair idle 32 minutes into rdkafka's staircase and deallocated it
+        # mid-run. Both spellings: tools.sh starts it and re-execs itself as tools_run.sh.
+        "bash cloud/azure/tools.sh t1 rdkafka_performance",
+        "bash cloud/azure/tools_run.sh rdkafka_performance runs/azure/tools/t1-x",
+        "bash scripts/run_kafka_trial.sh r001 plan.csv 1.0 130"])
+    def test_the_probe_counts_a_pair_that_is_making_runs(self, what):
+        """A pair making runs is not idle, whatever started them.
+
+        The idle rule deallocates a lane that has no campaign and nothing queued, so anything
+        this pattern misses is work the watch will stop while it is still running.
+        """
+        campaign = tw.DRIVER_PROBE.split('echo "campaign=', 1)[1]
+        pattern = campaign.split("pgrep -f '", 1)[1].split("'", 1)[0]
+        assert re.search(pattern, what), \
+            "%r is making runs and the probe does not count it" % what
+
+    @pytest.mark.parametrize("what", [
         "bash cloud/azure/chain.sh A4 --rounds 4",
         "bash cloud/azure/stage1.sh run --queue runs/azure/x.csv",
         "bash cloud/azure/queue.sh run",

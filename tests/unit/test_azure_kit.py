@@ -705,11 +705,30 @@ class TestTheToolsBlock:
 
     def test_the_tool_is_the_only_thing_the_conditions_reach(self):
         """T1 to T4 all invoke one runner, so they differ in the conditions and in nothing
-        else; the wrapper prefixes the tool's own process and nothing around it."""
+        else; the wrapper prefixes the tool's own process and nothing around it.
+
+        Five invocations, not four: T2 runs the tool a third time at no offset as its control
+        (D23-1), and that one carries no wrapper at all, which is the whole point of it.
+        """
         code = self.tools()
-        assert code.count("bash cloud/azure/tools_run.sh") == 4
+        assert code.count("bash cloud/azure/tools_run.sh") == 5
         assert 'SBL_TOOL_WRAP="$wrap"' in code
         assert 'WRAP="${SBL_TOOL_WRAP:-}"' in self.runner()
+
+    def test_t2_takes_its_control_with_no_offset_and_before_the_offsets(self):
+        """Without it, "its figures did not move" cannot be told from "it did something none of
+        the four behaviours describes" -- the two produced the same sentence until 23 September,
+        and valkey-benchmark's first complete T2 is the run that produced it.
+        """
+        code = self.tools()
+        t2 = code.split("\nt2 () {", 1)[1].split("\n}\n", 1)[0]
+        control = t2.index('bash cloud/azure/tools_run.sh "$tool" "$control"')
+        offsets = t2.index("for ms in $offsets; do")
+        assert control < offsets, "the control is taken before the offset runs, not after"
+        assert "SBL_TOOL_WRAP" not in t2[control:t2.index("\n", control)], \
+            "the control runs with the clock the machine actually has"
+        assert "--control" in t2 and "--shift-ms" in t2, \
+            "and both reach the judge, which cannot decide the verdict without them"
 
 
 class TestA2sKernelBuild:

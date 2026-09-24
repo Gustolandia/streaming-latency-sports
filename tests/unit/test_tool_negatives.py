@@ -166,7 +166,68 @@ class TestComparingHowFarItMoved:
     def test_a_shift_that_no_behaviour_accounts_for_still_rules_them_all_out(self):
         plain = reading(avg=1.75, step=0.001)
         got = tn.what_it_did(reading(avg=1.74, step=0.001), TRIPS, 2.0, plain=plain)
-        assert got["still_standing"] == [] and "never reached its subtraction" in got["why"]
+        assert got["still_standing"] == [] and not got["decided"]
+        assert "none of the four describes" in got["why"]
+
+
+class TestWhetherItsSubtractionSpansTwoClocks:
+    """D23-1. T2's question has an answer only where the subtraction spans two clocks.
+
+    Ten of the eleven tools write both timestamps in one process, so the moved clock moves both
+    and the difference is untouched. Until the control run that came out as "no behaviour
+    accounts for what it printed", which is the same sentence a tool doing something unforeseen
+    produces. The two are told apart by whether the tool's own figures moved.
+    """
+
+    def test_a_clock_that_moved_under_figures_that_did_not_is_one_clock(self):
+        control = reading(avg=1.75, step=0.01)
+        got = tn.what_it_did(reading(avg=1.752, step=0.01), TRIPS, 2.0,
+                             step_ms=0.01, control=control, shift_ms=1.806)
+        assert got["decided"] and got["behaviour"] == tn.ONE_CLOCK
+        assert "1.806" in got["why"] and "one clock" in got["why"]
+
+    def test_figures_that_moved_past_the_step_are_judged_as_before(self):
+        control = reading(avg=1.75, step=0.01)
+        got = tn.what_it_did(reading(avg=-0.25, step=0.01), TRIPS, 2.0,
+                             step_ms=0.01, control=control, shift_ms=1.806)
+        assert got["behaviour"] != tn.ONE_CLOCK, "a tool whose figures moved is not one-clock"
+
+    def test_a_shift_nobody_measured_decides_nothing(self):
+        """The verdict is that the clock moved and the figures did not; half of that is not it."""
+        control = reading(avg=1.75, step=0.01)
+        got = tn.what_it_did(reading(avg=1.752, step=0.01), TRIPS, 2.0,
+                             step_ms=0.01, control=control, shift_ms=None)
+        assert got["behaviour"] != tn.ONE_CLOCK
+
+    def test_with_no_control_there_is_nothing_to_have_moved_from(self):
+        got = tn.what_it_did(reading(avg=1.752, step=0.01), TRIPS, 2.0,
+                             step_ms=0.01, control=None, shift_ms=1.806)
+        assert got["behaviour"] != tn.ONE_CLOCK
+        assert got["moved_from_control_ms"] == {}
+
+    def test_the_undecided_run_prints_both_numbers_a_reader_needs(self):
+        control = reading(avg=1.75, step=0.001)
+        got = tn.what_it_did(reading(avg=1.74, step=0.001), TRIPS, 2.0,
+                             plain=reading(avg=1.75, step=0.001),
+                             step_ms=0.001, control=control, shift_ms=1.806)
+        assert not got["decided"]
+        assert "1.806" in got["why"], "the shift that was confirmed"
+        assert "0.010" in got["why"], "and how far the figures actually moved"
+
+    def test_a_figure_that_will_not_subtract_is_skipped_rather_than_crashing(self):
+        control = reading(avg=1.75, step=0.01)
+        control["reported_ms"]["max"] = "n/a"
+        offset = reading(avg=1.752, step=0.01)
+        offset["reported_ms"]["max"] = 9.0
+        moved_by, moved = tn.figures_moved(offset, control, 0.01)
+        assert "max" not in moved_by and moved is False
+
+    def test_both_numbers_reach_the_page_a_person_reads(self):
+        control = reading(avg=1.75, step=0.01)
+        got = tn.what_it_did(reading(avg=1.752, step=0.01), TRIPS, 2.0,
+                             step_ms=0.01, control=control, shift_ms=1.806)
+        page = "\n".join(tn.lines(got))
+        assert "move 1.806 ms" in page and "its figures moved" in page
 
 
 class TestTheRunsThatCannotAnswer:
@@ -290,6 +351,18 @@ class TestTheCommand:
         code, _ = self.run(["judge", "--reading", r, "--reference", t, "--offset-ms", "2.0",
                             "--plain", str(plain)])
         assert code == 0, "its own bias cancels, so the run decides"
+
+    def test_it_can_be_given_the_control_run_and_the_shift_that_was_measured(self, tmp_path):
+        """D23-1 through the command, which is how the campaign reaches it."""
+        r, t = self.write(tmp_path, TRIPS, avg=1.752, step=0.01)
+        control = tmp_path / "control.json"
+        control.write_text(json.dumps(reading(avg=1.75, step=0.01)), encoding="utf-8")
+        code, said = self.run(["judge", "--reading", r, "--reference", t, "--offset-ms", "2.0",
+                               "--step-ms", "0.01", "--control", str(control),
+                               "--shift-ms", "1.806"])
+        assert code == 0, "the clock moved and the figures did not, which is a verdict"
+        assert tn.ONE_CLOCK in said, "the page names the verdict it reached"
+        assert "move 1.806 ms" in said, "and the shift it was decided on"
 
     def test_it_can_be_told_the_step_the_tool_reads_in(self, tmp_path):
         r, t = self.write(tmp_path, [3.0] * 20, avg=-3.0, low=-3.0, kept=20, step=1.0)

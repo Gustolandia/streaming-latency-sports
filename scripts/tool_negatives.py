@@ -136,8 +136,37 @@ def negatives_made(trips_ms, offset_ms, step_ms=None):
     return sum(1 for value in measured(trips_ms, offset_ms, step_ms) if value < 0)
 
 
+#: The verdict D23-1 adds. It is not one of the four behaviours: those are things a tool does
+#: with a value below zero, and this is a tool in which no such value can arise.
+ONE_CLOCK = "times against one clock"
+
+
+def figures_moved(reading, control, step_ms=None):
+    """How far each figure moved from the control run, and whether any moved past the tool's step.
+
+    The control is the same tool on the same traffic at no offset, taken in the same session
+    minutes earlier (D23-1). Comparing against it rather than against T1's zero-delay step keeps
+    the comparison inside one session, where the machine is in one state.
+
+    Returns (moved_by, moved): the distance for every figure both runs report, and whether any of
+    them is larger than the step the tool can report in. `moved` is None where there is nothing
+    to compare, which is not the same as nothing having moved.
+    """
+    said = reading.get("reported_ms") or {}
+    was = (control or {}).get("reported_ms") or {}
+    moved_by = {}
+    for name in sorted(set(said) & set(was)):
+        try:
+            moved_by[name] = abs(float(said[name]) - float(was[name]))
+        except (TypeError, ValueError):
+            continue
+    if not moved_by:
+        return {}, None
+    return moved_by, any(gap > (step_ms or 0.0) for gap in moved_by.values())
+
+
 def what_it_did(reading, trips_ms, offset_ms, sent=None, exit_code=0, plain=None,
-                step_ms=None):
+                step_ms=None, control=None, shift_ms=None):
     """Which behaviour this run rules out, and whether one alone is left standing.
 
     `reading` is one of tool_readings' readings, taken from the tool's output under the offset.
@@ -153,7 +182,7 @@ def what_it_did(reading, trips_ms, offset_ms, sent=None, exit_code=0, plain=None
     expected = predictions(trips_ms, offset_ms, step_ms)
     base = predictions(trips_ms, 0.0, step_ms)["keeps every value"]
     verdict = {"offset_ms": offset_ms, "sent": sent, "exit_code": exit_code,
-               "step_ms": step_ms,
+               "step_ms": step_ms, "shift_ms": shift_ms, "moved_from_control_ms": {},
                "negatives_made": negatives_made(trips_ms, offset_ms, step_ms),
                "expected": expected, "behaviour": None, "decided": False,
                "reported_avg_ms": (reading.get("reported_ms") or {}).get("avg"),
@@ -175,6 +204,23 @@ def what_it_did(reading, trips_ms, offset_ms, sent=None, exit_code=0, plain=None
         verdict["why"] = "there are no reference trips, so there is nothing to compare"
         return verdict
 
+    #: D23-1. Asked first, because a tool whose figures did not move is not a tool that did
+    #: something strange with negatives: it is a tool in which no negative can arise, and the
+    #: four behaviours have nothing to say about it. The clock is known to have moved because
+    #: the harness measures the shift and refuses to run an offset it cannot confirm.
+    moved_by, moved = figures_moved(reading, control, step_ms)
+    verdict["moved_from_control_ms"] = moved_by
+    if moved is False and shift_ms:
+        verdict["behaviour"] = ONE_CLOCK
+        verdict["decided"] = True
+        verdict["why"] = (
+            "it %s: the clock it reads moved %.3f ms and none of its figures moved from the "
+            "no-offset run by more than the %s ms it can report in. Both of its timestamps "
+            "moved together, so no value below zero can arise in it and the artifact cannot "
+            "appear in what it reports"
+            % (ONE_CLOCK, shift_ms, "%g" % step_ms if step_ms else "0"))
+        return verdict
+
     for name, said in expected.items():
         why = ruled_out(reading, said, base, sent, plain)
         if why is None:
@@ -184,10 +230,18 @@ def what_it_did(reading, trips_ms, offset_ms, sent=None, exit_code=0, plain=None
     verdict["still_standing"].sort()
 
     if not verdict["still_standing"]:
-        verdict["why"] = ("no behaviour accounts for what it printed. Either the offset never "
-                          "reached its subtraction -- a tool that writes both timestamps itself "
-                          "has both moved together and never sees it -- or it does something "
-                          "with odd values that none of the four describes")
+        #: D23-1: this used to carry the whole of "either it times against one clock or it does
+        #: something unforeseen", which are not the same finding and read identically. The first
+        #: is now decided above, from the control run, so what is left here is the second -- and
+        #: the two numbers a reader needs to see it are printed beside it.
+        verdict["why"] = ("no behaviour accounts for what it printed, and its figures did move: "
+                          "the clock moved %s and its figures moved %s. So the offset reached "
+                          "its subtraction and it did something with the values below zero that "
+                          "none of the four describes"
+                          % ("%.3f ms" % shift_ms if shift_ms else "by an unrecorded amount",
+                             ", ".join("%s by %.3f ms" % (name, gap)
+                                       for name, gap in sorted(moved_by.items()))
+                             if moved_by else "by an amount no control run was taken to measure"))
         return verdict
     if verdict["negatives_made"] == 0:
         verdict["why"] = ("the offset made no negative value, so every behaviour predicts the "
@@ -224,6 +278,14 @@ def lines(verdict):
         out.append("   it counted %d of %d sent%s" % (
             verdict["count_reported"], verdict["sent"],
             "" if verdict["count_matches_sent"] else " -- they do not match"))
+    #: The two numbers D23-1 tells the one-clock verdict apart by, printed whether or not that
+    #: verdict was reached, so a reader can see what it was decided on.
+    if verdict.get("shift_ms"):
+        out.append("   the clock it reads was measured to move %.3f ms" % verdict["shift_ms"])
+    if verdict.get("moved_from_control_ms"):
+        out.append("   from the no-offset run its figures moved %s" % ", ".join(
+            "%s by %.3f ms" % (name, gap)
+            for name, gap in sorted(verdict["moved_from_control_ms"].items())))
     out.append("   %s: %s" % ("VERDICT" if verdict["decided"] else "UNDECIDED", verdict["why"]))
     return out
 
@@ -254,6 +316,13 @@ def main(argv=None, out=None):
                    help="the tool's own step, as T1 measured it: the smallest added delay it "
                         "can report. Without it a coarse tool's rule for odd values is "
                         "predicted from values that tool never saw")
+    p.add_argument("--control", default="", help="the same tool's reading at no offset, taken in "
+                                                 "this T2 session minutes before this run "
+                                                 "(D23-1). Its figures are what this run's are "
+                                                 "held against")
+    p.add_argument("--shift-ms", type=float, default=None,
+                   help="how far the clock was measured to actually move under this offset, not "
+                        "how far it was asked to. A run whose shift is not confirmed is not made")
     p.add_argument("--out", default="")
     args = ap.parse_args(argv)
     with open(args.reading, encoding="utf-8") as fh:
@@ -262,9 +331,13 @@ def main(argv=None, out=None):
     if args.plain:
         with open(args.plain, encoding="utf-8") as fh:
             plain = json.load(fh)
+    control = None
+    if args.control:
+        with open(args.control, encoding="utf-8") as fh:
+            control = json.load(fh)
     verdict = what_it_did(reading, reference_trips(args.reference), args.offset_ms,
                           sent=args.sent, exit_code=args.exit_code, plain=plain,
-                          step_ms=args.step_ms)
+                          step_ms=args.step_ms, control=control, shift_ms=args.shift_ms)
     if args.out:
         with open(args.out, "w", encoding="utf-8") as fh:
             json.dump(verdict, fh, indent=2, sort_keys=True)

@@ -296,9 +296,13 @@ start_job () {
 #: run to its twelve-hour limit. What it is really waiting for is the machine, so it asks the
 #: machine. Read here rather than over ssh, so there is no command line carrying the pattern for
 #: it to match itself in -- which killed three connections this week.
+#:
+#: The tools block counts. It makes runs for hours through tools.sh and tools_run.sh, and on
+#: 24 September this pattern, read on the first x86 pair mid-staircase, called it quiet -- the
+#: same blind spot that had the watch deallocate that pair 32 minutes into rdkafka's T1.
 work_running () {
   ps -eo args --no-headers \
-    | awk '/azure\/(campaign|stage0|stage1|chain)\.sh/ && !/awk/ { n++ } END { exit !(n > 0) }'
+    | awk '/azure\/(campaign|stage0|stage1|chain|tools|tools_run)\.sh/ && !/awk/ { n++ } END { exit !(n > 0) }'
 }
 
 #: How the campaign this job started ended. Only a folder that was not there when it started

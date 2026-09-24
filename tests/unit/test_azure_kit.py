@@ -5,6 +5,7 @@ silently there: a CRLF line ending, a script that carries on after an error it s
 setup file that is not cloud-config, and a guide that names a file that does not exist.
 """
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -26,7 +27,7 @@ def test_the_kit_has_the_scripts_the_guide_describes():
                                        "kernels.sh",
                                        "machine_facts.sh", "pilot.sh", "queue.sh", "replicate_oracle.sh",
                                        "session.sh", "stage0.sh", "stage1.sh",
-                                       "stop_self.sh", "tools.sh",
+                                       "stop_self.sh", "stop_when_idle.sh", "tools.sh",
                                        "tools_run.sh"]
 
 
@@ -1218,6 +1219,83 @@ def test_a_holding_job_waits_on_the_machine_rather_than_on_a_word_in_a_log():
     waiting = code.split("      waiting)", 1)[1].split("\n        ;;", 1)[0]
     assert 'if [ -z "$(field "$line" block)" ]; then' in waiting
     assert "work_running" in waiting
+
+
+@needs_bash
+@pytest.mark.parametrize("line,busy", [
+    ("bash cloud/azure/campaign.sh runs/azure/stage1/x/a3.csv", True),
+    ("bash cloud/azure/chain.sh A3 --rounds 24", True),
+    # The tools block makes runs for hours and never through campaign.sh. Read on the first x86
+    # pair mid-staircase on 24 September, the pattern without these called that pair quiet.
+    ("bash cloud/azure/tools.sh t4 memtier_benchmark", True),
+    ("bash cloud/azure/tools_run.sh rdkafka_performance runs/azure/tools/t1-x", True),
+    # The loop that asks is not work: counting itself, it would never let a list end.
+    ("bash cloud/azure/queue.sh run", False),
+    ("bash cloud/azure/.queue.running.sh run", False),
+    ("sleep 60", False)])
+def test_what_the_queue_counts_as_the_pair_being_at_work(tmp_path, line, busy):
+    """Run the awk program queue.sh actually carries, not a copy of its pattern."""
+    code = QUEUE.read_text(encoding="utf-8")
+    body = code.split("work_running () {", 1)[1].split("\n}", 1)[0]
+    program = body.split("awk '", 1)[1].rsplit("'", 1)[0]
+    found = subprocess.run(["awk", program], input=line + "\n", capture_output=True, text=True)
+    assert (found.returncode == 0) is busy, \
+        "%r should read as %s" % (line, "work" if busy else "not work")
+
+
+class TestAPairStopsWhenItsWorkEnds:
+    """stop_when_idle.sh, written when the PC running the watch was restarted and took the idle
+    rule with it. The queue could not stand in: its holding job gives up after twelve hours, and
+    the Arm pair's A3 had sixteen left."""
+
+    def code(self):
+        return (KIT / "stop_when_idle.sh").read_text(encoding="utf-8")
+
+    def test_it_reads_the_work_from_the_environment_not_its_own_command_line(self):
+        """A pattern on the command line is a process the pattern matches, for ever."""
+        code = self.code()
+        assert 'ENVIRON["WORK"]' in code and "!/awk/" in code
+        assert "export WORK" in code
+
+    def test_it_waits_for_quiet_looks_in_a_row_before_it_stops_anything(self):
+        """Work hands over, and a waiter between two pieces of it is asleep for a minute."""
+        code = self.code()
+        assert "quiet=0" in code, "any look that finds work starts the count again"
+        assert 'LOOKS="${LOOKS:-2}"' in code
+
+    def test_it_stops_the_pair_the_way_the_queue_does(self):
+        """Through the driver's own identity, so it needs nobody's login and nobody's PC."""
+        code = self.code()
+        assert code.rstrip().endswith("bash cloud/azure/stop_self.sh")
+        assert 'cd "$HOME/sbl"' in code, "from outside the checkout as well as inside it"
+
+    @needs_bash
+    @pytest.mark.parametrize("pattern,refused", [
+        # A plain word matches its own spelling. Found by testing it on the first x86 pair with
+        # a made-up process name: the waiter counted the test's own command line as work.
+        ("run_t2_all", True),
+        ("azure/(tools)[.]sh|run_t2_all", True),
+        # One bracketed letter, and it matches the process but no longer its own text.
+        ("run_t2_al[l]", False),
+        ("azure/(campaign|stage0|stage1|chain)[.]sh", False),
+        ("azure/(campaign|stage0|stage1|chain|tools|tools_run)[.]sh|run_t2_al[l]|run_missing_tool[s]",
+         False)])
+    def test_it_refuses_a_pattern_that_matches_its_own_spelling(self, pattern, refused):
+        """Such a pattern counts any command line carrying it as work, and the pair never stops."""
+        code = self.code()
+        guard = code.split("if printf '%s\\n' \"$WORK\" | awk '", 1)[1].split("'", 1)[0]
+        found = subprocess.run(["awk", guard], input=pattern + "\n", capture_output=True,
+                               text=True, env=dict(os.environ, WORK=pattern))
+        assert (found.returncode == 0) is refused, pattern
+
+    def test_it_has_no_limit_of_its_own(self):
+        """The queue's twelve hours is the reason this exists."""
+        code = self.code()
+        assert "720" not in code and "12 hours" not in code
+
+    @needs_bash
+    def test_it_parses(self):
+        assert subprocess.run(["bash", "-n", str(KIT / "stop_when_idle.sh")]).returncode == 0
 
 
 @needs_bash

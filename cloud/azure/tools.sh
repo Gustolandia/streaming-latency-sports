@@ -327,7 +327,34 @@ PY
 # own scheduling. This block measures tenths of a millisecond, so an extra hop would land inside
 # the thing being measured. Kafka and Valkey are already standing from the law campaigns; these
 # are the two that only the tools block needs, plus the web server the HTTP tools talk to.
+#: The servers belong on the broker, and this script's header says so. On 24 September `brokers`
+#: was run on the driver anyway, and nothing stopped it: it installed and configured the servers
+#: there, asked 127.0.0.1 whether they answered, and they did -- the driver's own. The broker the
+#: tools actually talk to never got the setting that lets RabbitMQ's user in from another machine,
+#: and its NATS server was not running; two tools then measured nothing for thirty runs. So from
+#: anywhere but the broker this now does the work on the broker, and then checks from here, the
+#: way the tools will be answered, which is the only check that could have caught it.
 brokers () {
+  if [ -n "${BROKER_PRIV:-}" ] && ! ip -o -4 addr show 2>/dev/null | grep -q " ${BROKER_PRIV}/"; then
+    log "== this is not the broker: setting the servers up on $BROKER_PRIV, where the tools reach them"
+    remote_broker "cd sbl && bash cloud/azure/tools.sh brokers" \
+      || stop "setting the servers up on the broker failed; see above"
+    local bad=0 tool why
+    for tool in wrk2 valkey-benchmark rdkafka_performance rabbitmq-perftest nats-latency; do
+      if why=$(server_answers "$tool"); then
+        log "   from here, $tool's server answers it"
+      else
+        log "   from here, $tool's server does NOT answer it: $why"; bad=1
+      fi
+    done
+    [ "$bad" = 0 ] || stop "a server the tools need does not answer them from here; see above"
+    log "CAMPAIGN_COMPLETE: the tools block's servers are up, as the tools reach them"
+    return 0
+  fi
+  brokers_here
+}
+
+brokers_here () {
   log "== the servers the tools block needs, on this host"
   sudo apt-get update -qq || stop "apt-get update failed"
   sudo apt-get install -y -qq nginx rabbitmq-server \
@@ -383,8 +410,18 @@ brokers () {
   sudo systemctl enable --now nginx rabbitmq-server >/dev/null 2>&1
   sudo systemctl restart rabbitmq-server >/dev/null 2>&1
   sudo systemctl reload nginx >/dev/null 2>&1
-  command -v nats-server >/dev/null && \
-    (pgrep -x nats-server >/dev/null || (nohup nats-server -p 4222 >"$WORK/nats.log" 2>&1 &))
+  #: A unit, like nginx and RabbitMQ beside it. Started with nohup over a session, NATS did not
+  #: outlive the session, and a broker restart left nothing to bring it back: every nats-latency
+  #: run of 24 September found no server. One started the old way, or by hand as a transient
+  #: unit of the same name, is stopped first so that it does not hold the port.
+  if command -v nats-server >/dev/null; then
+    sudo systemctl stop sbl-nats >/dev/null 2>&1
+    sudo pkill -x nats-server >/dev/null 2>&1
+    printf '[Unit]\nDescription=NATS for the tools block\nAfter=network.target\n\n[Service]\nExecStart=%s -p 4222\nRestart=always\n\n[Install]\nWantedBy=multi-user.target\n' \
+      "$(command -v nats-server)" | sudo tee /etc/systemd/system/sbl-nats.service >/dev/null
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now sbl-nats >/dev/null 2>&1
+  fi
 
   # What is actually answering, which is the only thing a campaign can rely on -- but asked for
   # up to fifteen seconds rather than once. These servers are started a few lines above and a
@@ -546,11 +583,75 @@ print(one.get("why") or "installed.json records it as not present")
 raise SystemExit(1)
 NOTHERE
 ) || stop "$tool is not installed on this machine: $why"
+  #: The record says what the install found when it ran, which is not what is there now. The
+  #: first x86 pair's record was written before the install learnt to ask whether a jar can be
+  #: started, and it said yes to one that could not: fifteen runs of rabbitmq-perftest on
+  #: 24 September printed "no main manifest attribute" and nothing else. So the one thing here
+  #: that can be present and still not start is asked on the spot, whatever the record says.
+  case "$tool" in
+    rabbitmq-perftest)
+      runnable_jar "${SBL_PERFTEST_JAR:-$HOME/tools/perf-test.jar}" \
+        || stop "$tool's jar has no Main-Class, whatever installed.json says; rebuild it with: bash cloud/azure/tools.sh install" ;;
+  esac
+}
+
+#: Does the server this tool talks to answer it, from here, the way the tool will be answered?
+#:
+#: On 24 September two of the eleven tools ran their whole T1, T3 and T4 -- fifteen runs each --
+#: against servers that could not answer them, and printed nothing: nats-latency against a NATS
+#: server that had died with the session that started it, and rabbitmq-perftest against a
+#: RabbitMQ that let its user in from the broker itself only. Both had been certified a few hours
+#: earlier by a check that asked 127.0.0.1 on the machine it ran on -- which was the driver.
+#: This asks the broker, from the driver, and asks what the tool needs rather than whether a port
+#: is open: a page of the right size, a PONG, a NATS greeting, a broker that lets the user in.
+server_answers () {
+  local tool="$1" host="${BROKER_PRIV:-}" got
+  [ -n "$host" ] || { echo "no BROKER_PRIV here, so there is no broker to ask"; return 1; }
+  case "$tool" in
+    vegeta|hey|k6|wrk2)
+      got=$(curl -s -o /dev/null -m 5 -w '%{http_code} %{size_download}' "http://$host:8080/")
+      [ "$got" = "200 512" ] \
+        || { echo "http://$host:8080/ answered '$got' where the fixed 512-byte page is 200 512"
+             return 1; } ;;
+    valkey-benchmark|memtier_benchmark)
+      got=$(timeout 5 bash -c "exec 3<>/dev/tcp/${VALKEY_HOST:-$host}/6379 \
+        && printf 'PING\r\n' >&3 && head -c 5 <&3" 2>/dev/null | tr -d '\r\n')
+      [ "$got" = "+PONG" ] \
+        || { echo "Redis at ${VALKEY_HOST:-$host}:6379 answered '$got' to PING"; return 1; } ;;
+    rdkafka_performance|kafka-end-to-end|kafka-producer-perf)
+      timeout 5 bash -c "echo > /dev/tcp/$host/19092" 2>/dev/null \
+        || { echo "nothing listens for Kafka at $host:19092"; return 1; } ;;
+    rabbitmq-perftest)
+      timeout 5 bash -c "echo > /dev/tcp/$host/5672" 2>/dev/null \
+        || { echo "nothing listens for AMQP at $host:5672"; return 1; }
+      #: An open port is what fooled the check before. The user has to be let in from here, and
+      #: RabbitMQ says whether it will be in one setting.
+      timeout 20 ssh -n -i "$SSH_KEY" -o BatchMode=yes -o StrictHostKeyChecking=accept-new \
+        -o ConnectTimeout=10 "ubuntu@$host" "sudo rabbitmqctl environment 2>/dev/null" 2>/dev/null \
+        | grep -q '{loopback_users,\[\]}' \
+        || { echo "RabbitMQ on $host lets its user in from the broker only (loopback_users)"
+             return 1; } ;;
+    nats-latency)
+      got=$(timeout 5 bash -c "exec 3<>/dev/tcp/$host/4222 && head -c 4 <&3" 2>/dev/null)
+      [ "$got" = "INFO" ] \
+        || { echo "no NATS greeting from $host:4222 (got '$got')"; return 1; } ;;
+    *)
+      echo "no check is written for $tool's server"; return 1 ;;
+  esac
+}
+
+#: Every stage asks before it runs, because a server can go between one stage and the next: a
+#: broker restarted under the session, a process that did not outlive it.
+needs_server () {
+  local why
+  why=$(server_answers "$1") \
+    || stop "$1's server does not answer it, so this stage would measure nothing: $why"
 }
 
 t1 () {
   local tool="${1:?which tool}"
   have_tool "$tool"
+  needs_server "$tool"
   local steps="0 0.1 0.2 0.3 0.5 0.7 0.9 1.1 1.5 2.0"
   local order; order=$(echo $steps | tr ' ' '\n' | shuf | tr '\n' ' ')
   log "== T1 $tool: the delay staircase, in the order $order"
@@ -655,6 +756,7 @@ sys.exit(0 if abs(moved - want) <= max(0.1 * want, 0.05) else 1)" "$moved" "$ms"
 t2 () {
   local tool="${1:?which tool}"
   have_tool "$tool"
+  needs_server "$tool"
   case " $GO_TOOLS " in
     *" $tool "*)
       stop "$tool is a Go program: it reads the clock without the C library, so libfaketime never reaches it. T2 for this tool needs the second machine with an offset clock, restored afterwards, which is not this script" ;;
@@ -757,6 +859,7 @@ print(found["smallest_reported_ms"] or "")' "$DIR/t1-$tool-step.json" 2>/dev/nul
 t3 () {
   local tool="${1:?which tool}"
   have_tool "$tool"
+  needs_server "$tool"
   log "== T3 $tool: idle and at 88% load, with and without go-first"
   needs_namespace
   for load in 0 88; do
@@ -785,6 +888,7 @@ t3 () {
 t4 () {
   local tool="${1:?which tool}"
   have_tool "$tool"
+  needs_server "$tool"
   local run="t4-$tool"
   mkdir -p "$DIR/$run"
   log "== T4 $tool: what it can report at all"

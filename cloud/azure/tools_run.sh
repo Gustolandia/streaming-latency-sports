@@ -57,8 +57,13 @@ export const options = { vus: 1, duration: __ENV.SBL_DURATION || '60s' };
 export default function () { http.get(__ENV.SBL_TARGET); sleep(1.0 / Number(__ENV.SBL_RATE)); }
 JS
     # k6's own defaults stop at p(95), so a run left alone reports no 99th percentile at all.
-    SBL_DURATION="${SECONDS_TO_RUN}s" SBL_TARGET="$TARGET_HTTP" SBL_RATE="$RATE" \
-      $WRAP k6 run --summary-trend-stats="avg,min,med,p(99),max" "$OUT/script.js" ;;
+    #
+    # Its settings go in as flags (D25-3). They went in through the environment, and every stage
+    # runs the tool through `sudo ip netns exec`, which clears it: k6 got no URL and no rate,
+    # looped 4,895,826 times in 60 s on "invalid URL" without sending a byte, and all fifteen of
+    # its runs of 24 September measured nothing. `sudo` keeps a command's arguments.
+    $WRAP k6 run --env SBL_DURATION="${SECONDS_TO_RUN}s" --env SBL_TARGET="$TARGET_HTTP" \
+      --env SBL_RATE="$RATE" --summary-trend-stats="avg,min,med,p(99),max" "$OUT/script.js" ;;
   valkey-benchmark)
     # --latency-history belongs to valkey-cli, not to this tool; its own summary table is what
     # is read here, and -q or --csv would suppress it.

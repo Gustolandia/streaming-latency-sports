@@ -230,6 +230,136 @@ class TestWhetherItsSubtractionSpansTwoClocks:
         assert "move 1.806 ms" in page and "its figures moved" in page
 
 
+class TestTheJudgementOfFreeze21:
+    """D25-1 and D25-2. The judge held every hypothesis to a tool's printing step and compared
+    against T1's zero step. Two runs of one tool minutes apart differ by far more than a printing
+    step, so a tool whose figures did not move was ruled out of "did not move" by its own scatter.
+    """
+
+    #: The four behaviours at a 2 ms shift over TRIPS predict, on the average: keeps -2.0,
+    #: replaces with zero -1.25, the two drops -0.75. One clock predicts no change at all.
+    CONTROL = reading(avg=1.75, low=0.5, step=0.001)
+
+    def test_a_tool_whose_figures_stayed_within_their_noise_times_against_one_clock(self):
+        """valkey-benchmark on 24 September: average up 0.075 ms under a clock moved back 1.78."""
+        got = tn.what_it_did(reading(avg=1.825, low=0.58, step=0.001), TRIPS, 1.812,
+                             control=self.CONTROL, shift_ms=2.0, noise={"avg": 0.05, "min": 0.05})
+        assert got["decided"] and got["behaviour"] == tn.ONE_CLOCK
+        assert "moved 2.000 ms" in got["why"]
+
+    def test_the_same_run_held_to_the_printing_step_could_not_say_so(self):
+        """What D23-1 as implemented made of it: one step of 0.001 ms, against 0.075 of noise."""
+        got = tn.what_it_did(reading(avg=1.825, low=0.58, step=0.001), TRIPS, 1.812,
+                             control=self.CONTROL, shift_ms=2.0)
+        assert not got["decided"]
+
+    def test_a_tool_whose_figures_moved_with_the_clock_is_told_apart_by_the_behaviours(self):
+        got = tn.what_it_did(reading(avg=-0.25, low=-1.5, step=0.001), TRIPS, 1.9,
+                             control=self.CONTROL, shift_ms=2.0, noise={"avg": 0.05, "min": 0.05})
+        assert got["decided"] and got["behaviour"] == "keeps every value"
+        assert tn.ONE_CLOCK in got["ruled_out"], "one clock predicts no change and it moved 2 ms"
+
+    def test_it_predicts_at_the_offset_measured_at_the_clock(self):
+        got = tn.what_it_did(reading(avg=-0.25, low=-1.5), TRIPS, 1.9, control=self.CONTROL,
+                             shift_ms=2.0, noise={"avg": 0.05})
+        assert got["asked_ms"] == 1.9 and got["offset_ms"] == 2.0
+
+    def test_the_allowance_is_three_noises_of_a_difference_and_never_under_two_steps(self):
+        got = tn.what_it_did(reading(avg=1.75, low=0.5, step=0.01), TRIPS, 2.0,
+                             control=self.CONTROL, shift_ms=2.0, noise={"avg": 0.1, "min": 0.0})
+        assert got["allowed_ms"]["avg"] == pytest.approx(3.0 * 0.1 * 2.0 ** 0.5)
+        assert got["allowed_ms"]["min"] == pytest.approx(0.02), "two steps of 0.01, not zero"
+
+    def test_a_figure_with_no_noise_is_not_judged(self):
+        got = tn.what_it_did(reading(avg=1.75, low=0.5), TRIPS, 2.0, control=self.CONTROL,
+                             shift_ms=2.0, noise={"avg": 0.05})
+        assert list(got["changes_ms"]) == ["avg"]
+
+    def test_with_no_figure_to_judge_it_says_so(self):
+        got = tn.what_it_did(reading(avg=1.75), TRIPS, 2.0, control=self.CONTROL, shift_ms=2.0,
+                             noise={})
+        assert not got["decided"] and "no figure could be judged" in got["why"]
+
+    def test_a_tool_no_hypothesis_accounts_for_is_undecided_with_every_prediction(self):
+        got = tn.what_it_did(reading(avg=9.0, low=9.0), TRIPS, 2.0, control=self.CONTROL,
+                             shift_ms=2.0, noise={"avg": 0.01, "min": 0.01})
+        assert not got["decided"] and "none of the five" in got["why"]
+        assert set(got["predicted_changes_ms"]) == set(got["expected"]) | {tn.ONE_CLOCK}
+
+    def test_a_tool_too_noisy_for_its_offset_is_undecided_between_what_survives(self):
+        """rdkafka_performance: about 1.1 ms of noise against a 3.4 ms offset."""
+        got = tn.what_it_did(reading(avg=0.75, low=0.0), TRIPS, 2.0, control=self.CONTROL,
+                             shift_ms=2.0, noise={"avg": 1.1, "min": 1.1})
+        assert not got["decided"] and tn.ONE_CLOCK in got["still_standing"]
+        assert "within its own noise" in got["why"]
+
+    def test_two_clocks_with_no_negative_made_is_said_to_be_two_clocks(self):
+        """Every trip clears the offset, so the four give the same figures -- but they moved."""
+        trips = [3.0] * 20
+        got = tn.what_it_did(reading(avg=2.0, low=2.0), trips, 1.0,
+                             control=reading(avg=3.0, low=3.0), shift_ms=1.0,
+                             noise={"avg": 0.01, "min": 0.01})
+        assert tn.ONE_CLOCK in got["ruled_out"] and len(got["still_standing"]) == 4
+        assert "spans two clocks" in got["why"]
+
+    def test_a_count_short_of_what_was_sent_still_rules_behaviours_out(self):
+        got = tn.what_it_did(reading(avg=1.0, low=1.0, kept=10), TRIPS_ON_ZERO, 2.0,
+                             control=reading(avg=1.725, low=0.5), shift_ms=2.0,
+                             noise={"avg": 0.5, "min": 0.5})
+        assert "it counted 10" in got["ruled_out"]["drops the negatives"]
+        assert tn.ONE_CLOCK not in got["ruled_out"] or "counted" not in \
+            got["ruled_out"][tn.ONE_CLOCK], "the count is a question for the four, as before"
+
+    def test_a_behaviour_that_would_leave_nothing_is_ruled_out_by_a_printed_figure(self):
+        got = tn.what_it_did(reading(avg=-2.5, low=-2.5), [0.5] * 20, 3.0,
+                             control=reading(avg=0.5, low=0.5), shift_ms=3.0,
+                             noise={"avg": 0.05, "min": 0.05})
+        assert "nothing to print" in got["ruled_out"]["drops the negatives"]
+        assert got["predicted_changes_ms"]["drops the negatives"] is None
+
+    def test_the_page_shows_every_number_it_was_decided_on(self):
+        got = tn.what_it_did(reading(avg=-2.5, low=-2.5), [0.5] * 20, 3.0,
+                             control=reading(avg=0.5, low=0.5), shift_ms=3.0,
+                             noise={"avg": 0.05, "min": 0.05})
+        page = "\n".join(tn.lines(got))
+        assert "judged under freeze 21" in page and "its own noise is 0.0500" in page
+        assert "predicts nothing to print" in page and "one clock" in page
+
+
+class TestTheNoiseComesFromTheStaircase:
+
+    def test_it_is_what_is_left_about_the_line_of_the_figure_against_the_delay(self):
+        points = [(d, reading(avg=1.0 + d + e, low=0.5 + d))
+                  for d, e in ((0.0, 0.1), (0.5, -0.1), (1.0, 0.1), (1.5, -0.1))]
+        found = tn.noise_from_staircase(points)
+        said = "the fitted slope of 0.92 leaves residuals of 0.04 and 0.12, not the raw 0.1"
+        assert found["avg"] == pytest.approx(0.1265, abs=1e-4), said
+        assert found["min"] == pytest.approx(0.0, abs=1e-12), "a perfect line leaves nothing"
+
+    def test_a_figure_at_fewer_than_three_steps_has_no_noise(self):
+        points = [(0.0, reading(avg=1.0)), (1.0, reading(avg=2.0, low=1.0)),
+                  (2.0, reading(avg=3.1, low=2.0))]
+        found = tn.noise_from_staircase(points)
+        assert "avg" in found and "min" not in found
+
+    def test_steps_all_at_one_delay_are_held_to_their_mean(self):
+        found = tn.noise_from_staircase([(1.0, reading(avg=v)) for v in (1.0, 1.2, 1.4)])
+        assert found["avg"] == pytest.approx(((0.04 + 0.0 + 0.04) / 1) ** 0.5)
+
+    def test_it_is_read_from_the_folders_t1_writes(self, tmp_path):
+        for name, value in (("t1-vx-0ms", 1.0), ("t1-vx-0_5ms", 1.5), ("t1-vx-1_1ms", 2.1)):
+            (tmp_path / name).mkdir()
+            (tmp_path / name / "reading.json").write_text(
+                json.dumps(reading(avg=value)), encoding="utf-8")
+        (tmp_path / "t1-vx-2_0ms").mkdir()                                  # no reading at all
+        (tmp_path / "t1-vx-1_5ms").mkdir()
+        (tmp_path / "t1-vx-1_5ms" / "reading.json").write_text(
+            json.dumps(reading()), encoding="utf-8")                        # reported nothing
+        (tmp_path / "t1-vx-step.json").write_text("{}", encoding="utf-8")   # not a step
+        found = tn.staircase(str(tmp_path), "vx")
+        assert sorted(d for d, _ in found) == [0.0, 0.5, 1.1]
+
+
 class TestTheRunsThatCannotAnswer:
 
     def test_a_tool_that_printed_nothing_and_died_is_reported_as_that(self):
@@ -363,6 +493,27 @@ class TestTheCommand:
         assert code == 0, "the clock moved and the figures did not, which is a verdict"
         assert tn.ONE_CLOCK in said, "the page names the verdict it reached"
         assert "move 1.806 ms" in said, "and the shift it was decided on"
+
+    def test_given_the_staircase_it_judges_as_freeze_21_says(self, tmp_path):
+        """How tools.sh calls it from D25-2 on: the T1 runs beside the T2 ones."""
+        for name, value in (("t1-vx-0ms", 1.70), ("t1-vx-0_5ms", 2.30), ("t1-vx-1_0ms", 2.72),
+                            ("t1-vx-1_5ms", 3.28)):
+            (tmp_path / name).mkdir()
+            (tmp_path / name / "reading.json").write_text(
+                json.dumps(reading(avg=value, low=value - 1.25)), encoding="utf-8")
+        r, t = self.write(tmp_path, TRIPS, avg=1.80, low=0.55, step=0.001)
+        control = tmp_path / "control.json"
+        control.write_text(json.dumps(reading(avg=1.75, low=0.5, step=0.001)), encoding="utf-8")
+        code, said = self.run(["judge", "--reading", r, "--reference", t, "--offset-ms", "1.9",
+                               "--shift-ms", "2.0", "--control", str(control),
+                               "--staircase", str(tmp_path), "--tool", "vx"])
+        assert code == 0 and tn.ONE_CLOCK in said and "judged under freeze 21" in said
+
+    def test_a_staircase_without_its_tool_is_refused(self, tmp_path):
+        r, t = self.write(tmp_path, TRIPS, avg=1.8)
+        with pytest.raises(SystemExit):
+            self.run(["judge", "--reading", r, "--reference", t, "--offset-ms", "2.0",
+                      "--staircase", str(tmp_path)])
 
     def test_it_can_be_told_the_step_the_tool_reads_in(self, tmp_path):
         r, t = self.write(tmp_path, [3.0] * 20, avg=-3.0, low=-3.0, kept=20, step=1.0)

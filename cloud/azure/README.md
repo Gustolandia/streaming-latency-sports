@@ -365,6 +365,8 @@ python scripts/spend.py billed --since 2026-09-01
 | `scripts/law_curve.py` | measures one cliff both ways the plan fixes: the fitted plateau, fall and floor, and the curve only required never to rise |
 | `scripts/law_predictions.py` | whether a prediction came true, by the sentence the plan wrote beside it; nothing pooled across pairs or backends |
 | `scripts/helper_waits.py` | whether the waits of the thread that stamps "got it" predict the negative rate: P6 on A6's histograms (`p6`), and A9's three questions on its event recordings (`a9`), as plan version 30 fixes them |
+| `scripts/m0_read.py` | M0, as plan version 31 reads it: the departure from one-for-one, and M-H1 to M-H4 each against it |
+| `scripts/pcap_read.py` | the TCP segments of a tcpdump capture, Ethernet or Linux cooked, read without a library |
 | `scripts/law_world.py` | made-up campaigns, under the law and in the world each falsifier names, for the tests and the rounds rule |
 | `scripts/rounds_rule.py` | how many rounds a campaign runs, by simulating its own prediction and decision rule (the plan's D4-2) |
 | `scripts/delay_calibration.py` | measures, from a calibration queue, how far the trip moves per millisecond of receiver-only delay, checks the gate, and gives the delay each planned trip needs |

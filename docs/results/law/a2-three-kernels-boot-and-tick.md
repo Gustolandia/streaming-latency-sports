@@ -5,6 +5,8 @@ test of any prediction. A2 asks whether the cliff's width follows the tick, and 
 only worth asking if the three kernels really differ in the tick and really run at it. This is the
 check the plan puts before the block.
 
+**Judged again under version 30 (25 September).** Each session's rounds are now drawn from its own (D30-4); no answer of P2, P2b, P2c or P2d moves. They are judged again once the second Redis day on the HZ=1000 build and the two bridge days are home. See [`judged-again-under-version-30.md`](judged-again-under-version-30.md).
+
 **Words used here.** *Tick* — the regular timer interrupt the kernel wakes on; fixed when the
 kernel is compiled. *HRTICK* — a scheduler option that ends a slice on a high-resolution timer
 instead of at the tick; if it were on, A2 would measure nothing. *Tickless* — the settings that

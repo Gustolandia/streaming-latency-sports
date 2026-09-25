@@ -5,6 +5,8 @@ pair on 19–20 September 2026. It is judged against **freeze 05** (plan version
 force when the campaign ran and which created the two predictions it tests. Nothing here is
 judged by a rule written after the runs were seen.
 
+**Judged again under version 30 (25 September).** P3a and P3b now compare 75 with 88% load, as D14-2 says, 50% having no plateau to locate a cliff in. P3b is confirmed on both Kafka campaigns and on Arm; P3a on none. The numbers, beside these, are in [`judged-again-under-version-30.md`](judged-again-under-version-30.md).
+
 *Glosses. **Campaign**: the runs that answer one question in one sitting. **Round**: one pass
 through every setup of a campaign once. **Setup**: one combination of settings. **Plateau, cliff,
 floor**: the three parts of the predicted curve — a flat high rate at short trips, a fall, and a

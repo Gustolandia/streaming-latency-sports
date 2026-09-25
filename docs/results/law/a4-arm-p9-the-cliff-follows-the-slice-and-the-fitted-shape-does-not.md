@@ -5,6 +5,8 @@ A4 became judgeable today: its fourth campaign — Kafka at slices 1.5 and 3 ms 
 started, was found by counting the pair's campaigns against the block's design, and finished at
 05:16 with 44 of 44 runs and no run carrying a problem.
 
+**Judged again under version 30 (25 September).** Each campaign's rounds are now drawn from its own (D30-4). P9's answer does not move: the free reading holds on both backends and the fitted shape does not. See [`judged-again-under-version-30.md`](judged-again-under-version-30.md).
+
 **This note was first written with the wrong numbers, and it said the wrong thing.** The
 correction is below, before the result, because the first version is on the record.
 

@@ -4,6 +4,8 @@
 of any prediction. A5 gives each core count its own session, and it had never run at anything but
 eight CPUs, so this is the first time that path was exercised at all.
 
+**P7, judged under version 30 (25 September).** Held to P1's band alone, as the plan writes it (D30-2): confirmed on Kafka at 8 CPUs, the one core count whose slice Kafka reaches; not confirmed on Redis, where the fitted shape misses at all three. See [`judged-again-under-version-30.md`](judged-again-under-version-30.md).
+
 **Words used here.** *Base slice* — how long the scheduler lets a helper run before switching; the
 kernel picks a default. *Offlining* — switching a CPU off on a running machine. *`nr_cpus=N`* — a
 boot parameter capping how many CPUs the kernel will ever know about. *`maxcpus=N`* — a boot

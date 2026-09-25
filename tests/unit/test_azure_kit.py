@@ -1808,7 +1808,17 @@ class TestTheServersAreSetUpWhereTheToolsReachThem:
     def test_from_anywhere_but_the_broker_it_does_the_work_on_the_broker(self):
         entry = self.entry()
         assert 'grep -q " ${BROKER_PRIV}/"' in entry, "it asks whether it is the broker"
-        assert 'remote_broker "cd sbl && bash cloud/azure/tools.sh brokers"' in entry
+        call = entry.split('remote_broker "', 1)[1].split('" \\', 1)[0]
+        assert call.startswith("cd sbl && ") and call.endswith("bash cloud/azure/tools.sh brokers")
+
+    def test_the_broker_is_told_its_own_address_and_brought_up_to_date(self):
+        """The broker has no hosts.env -- session.sh leaves that on the driver only -- so
+        common.sh would not load there, and on 25 September its checkout was eight commits old.
+        The delegation had been read in a test and never run end to end."""
+        call = self.entry().split('remote_broker "', 1)[1].split('" \\', 1)[0]
+        assert "BROKER_PRIV=$BROKER_PRIV bash cloud/azure/tools.sh brokers" in call
+        assert "git pull -q --ff-only origin main" in call
+        assert call.index("git pull") < call.index("tools.sh brokers"), "brought up first"
 
     def test_and_then_checks_from_here_rather_than_from_127_0_0_1(self):
         entry = self.entry()

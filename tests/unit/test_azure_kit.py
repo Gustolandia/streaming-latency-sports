@@ -1090,6 +1090,16 @@ def test_a_key_that_ends_another_key_is_not_that_key(tmp_path):
 
 
 @needs_bash
+def test_a_campaigns_loads_and_its_calibrations_load_are_two_keys(tmp_path):
+    """`load` is inside `loads`. A campaign that runs part of its block's loads (D27-4) must not
+    hand its calibration the wrong one, nor a single-load job read a list it was never given."""
+    line = "boot=none block=A3 loads=75,88 rounds=16"
+    assert _queue_call(tmp_path, 'field "%s" loads' % line) == "75,88"
+    assert _queue_call(tmp_path, 'field "%s" load' % line) == ""
+    assert _queue_call(tmp_path, 'field "boot=none block=A2 load=88" loads') == ""
+
+
+@needs_bash
 def test_the_queue_reaches_as_far_as_a_session_driven_from_outside_does(tmp_path):
     """Two copies of one piece of arithmetic. A calibration that does not reach a campaign's
     longest trip does not fail: the design quietly drops the setups it cannot reach, so the two
@@ -1365,6 +1375,18 @@ def test_a_core_count_is_read_once_and_reaches_all_three_places_that_need_it():
     assert 'CPUS="$cores"' in start, "the calibration is measured at that count"
     assert '[ -n "$cores" ]   && args+=(--cores "$cores")' in start, "and the design writes it"
     assert start.count('cores="${boot#cpu}"') == 1, "one place, so there is nothing to disagree"
+
+
+def test_a_campaign_that_runs_part_of_its_loads_is_calibrated_at_each_of_them():
+    """D27-4: A3 at 75 and 88 only. The loads reach two places that do not fail when they
+    disagree -- a calibration that misses one leaves the design nothing to place that load's
+    runs from -- so both read the one word on the job line."""
+    code = QUEUE.read_text(encoding="utf-8")
+    start = code.split("start_job () {", 1)[1].split("\n}", 1)[0]
+    assert start.count('loads="$(field "$line" loads)"') == 1
+    assert 'C0_LOADS="$loads"' in start, "the calibration covers each of them"
+    assert '[ -n "$loads" ]   && args+=(--loads "$loads")' in start, "and the design runs them"
+    assert start.index('C0_LOADS="$loads"') < start.index("stage0.sh session")
 
 
 def test_a_block_with_no_core_count_is_given_none():

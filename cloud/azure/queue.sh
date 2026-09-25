@@ -29,6 +29,8 @@
 #   c0=        rounds of the session's own delay calibration (default 2)
 #   up=        how far that calibration reaches, in ms (default: worked out from the tick)
 #   load=      the load it calibrates at (default 75)
+#   loads=     the campaign's loads, where it runs part of its block's, e.g. 75,88 for A3 (D27-4);
+#              the calibration then covers each of them, and load= is not used
 #   slices=    passed on to stage 1, e.g. 3,1.5
 #   anchor=    the anchor slice
 #   clients=   "python java", for a session that opens A8
@@ -226,7 +228,7 @@ pull_code () {
 
 start_job () {
   local line="$1"
-  local boot block backend rounds c0 up load slices anchor clients note
+  local boot block backend rounds c0 up load loads slices anchor clients note
   boot="$(field "$line" boot)";       block="$(field "$line" block)"
   # A job with no block of its own starts nothing and only waits for what is already on the pair.
   # It is how a list is put on a machine that is in the middle of a session: without it the queue
@@ -240,7 +242,7 @@ start_job () {
   c0="$(field "$line" c0)";           up="$(field "$line" up)"
   load="$(field "$line" load)";       slices="$(field "$line" slices)"
   anchor="$(field "$line" anchor)";   clients="$(field "$line" clients)"
-  note="$(field "$line" note)"
+  loads="$(field "$line" loads)";     note="$(field "$line" note)"
   [ -n "$c0" ]   || c0=2
   [ -n "$load" ] || load=75
   [ -n "$up" ]   || up="$(reach_ms "$boot")"
@@ -268,9 +270,10 @@ start_job () {
   # twice on 21 September.
   ls -d runs/azure/stage1/*/ 2>/dev/null | sort > "$SEEN"
 
-  log "  calibration from $earlier, reaching $up ms, $c0 round(s), load $load${cores:+, $cores CPUs}"
-  UP_TO_MS="$up" LOAD_PCT="$load" C0_ROUNDS="$c0" CLIENTS="$clients" CPUS="$cores" \
-    setsid nohup bash cloud/azure/stage0.sh session "$earlier" > stage0.log 2>&1 < /dev/null &
+  log "  calibration from $earlier, reaching $up ms, $c0 round(s), load ${loads:-$load}${cores:+, $cores CPUs}"
+  UP_TO_MS="$up" LOAD_PCT="$load" C0_LOADS="$loads" C0_ROUNDS="$c0" CLIENTS="$clients" \
+    CPUS="$cores" setsid nohup bash cloud/azure/stage0.sh session "$earlier" > stage0.log 2>&1 \
+    < /dev/null &
   sleep 15
   grep -q "stage 0 on" stage0.log 2>/dev/null \
     || { log "  the calibration did not start; read stage0.log"; return 1; }
@@ -280,6 +283,7 @@ start_job () {
   [ -n "$note" ]    && args+=(--rounds-note "$note")
   [ -n "$backend" ] && args+=(--backend "$backend")
   [ -n "$slices" ]  && args+=(--slices "$slices")
+  [ -n "$loads" ]   && args+=(--loads "$loads")
   [ -n "$anchor" ]  && args+=(--anchor-slice "$anchor")
   [ -n "$cores" ]   && args+=(--cores "$cores")
   log "  campaign: ${args[*]}"

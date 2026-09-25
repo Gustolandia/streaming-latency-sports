@@ -76,12 +76,22 @@ class TestPoints:
 
 class TestBlocks:
 
-    @pytest.mark.parametrize("block,size", [("B0", 6), ("C0", 12), ("P0", 16), ("A1", 96),
+    @pytest.mark.parametrize("block,size", [("B0", 6), ("C0", 12), ("P0", 16), ("A1", 112),
                                             ("A2", 32), ("A3", 36), ("A4", 48), ("A5", 48),
                                             ("A7", 12), ("A8", 24)])
     def test_every_block_is_its_full_product(self, block, size):
         setups, unreachable = ld.make_setups(block, 1.0, BASELINE, AZURE)
         assert len(setups) + len(unreachable) == size
+
+    def test_a1_has_a_slice_between_3_and_4_5(self):
+        """D27-3: 3.75 ms, so that Kafka, whose own zero-delay trip puts 0.75, 1.5 and 2.25 out
+        of reach, has the four slices P1 asks for. Its campaign is 3 and 3.75, through the
+        anchor like every other."""
+        made = ld.design("A1", AZURE, BASELINE, 4, 7, slices=(3.0, 3.75), backends=("kafka",),
+                         anchor=3.0)
+        ids = {setup["id"] for setup in made["setups"]}
+        assert "A1-kafka-l75-s3750-p09s" in ids and "A1-kafka-l75-s3000-p09s" in ids
+        assert made["slices"] == [3.0, 3.75]
 
     def test_a_point_below_the_baseline_is_kept_visible_rather_than_dropped(self):
         setups, unreachable = ld.make_setups("A1", 1.0, BASELINE, AZURE)
@@ -298,8 +308,19 @@ class TestCalibrationBlock:
         assert {s["load_pct"] for s in setups} == {50, 88}
 
     def test_a_block_that_plans_trips_keeps_its_own_loads(self):
-        with pytest.raises(ValueError, match="fixes its own loads"):
+        with pytest.raises(ValueError, match="runs at 75% load and not at 50; only B0 and C0"):
             ld.make_setups("A1", 1.0, BASELINE, AZURE, loads=(50,))
+
+    def test_a_block_may_run_part_of_its_own_loads(self):
+        """D27-4: A3 at the two loads whose plateau P3a and P3b are judged at, 75 and 88, and
+        not at 50, whose plateau the guard of D14-2 leaves out."""
+        setups = ld.make_setups("A3", 1.0, BASELINE, AZURE, loads=(75, 88))[0]
+        assert {s["load_pct"] for s in setups} == {75, 88}
+        assert len(setups) == 2 * 2 * 6
+
+    def test_part_of_its_loads_is_not_a_load_it_does_not_fix(self):
+        with pytest.raises(ValueError, match="runs at 50, 75, 88% load and not at 60"):
+            ld.make_setups("A3", 1.0, BASELINE, AZURE, loads=(75, 60))
 
 
 class TestPlacingFromTheCalibration:
@@ -403,8 +424,9 @@ class TestWhichSlicesAPairCanTest:
         code, text = self.run(["testable", "--block", "A1", "--settings", str(settings),
                                "--calibration", str(cal), "--up-to-ms", "16"])
         assert code == 0
-        assert "kafka 3,4.5,6" in text and "out of reach: 0.75, 1.5, 2.25" in text
-        assert "redis 1.5,2.25,3,4.5,6" in text
+        # D27-3: the four P1 asks for, where the six gave Kafka three.
+        assert "kafka 3,3.75,4.5,6" in text and "out of reach: 0.75, 1.5, 2.25" in text
+        assert "redis 1.5,2.25,3,3.75,4.5,6" in text
 
     @staticmethod
     def run(argv):
@@ -428,7 +450,8 @@ class TestOneCampaignOfABlock:
     def test_the_whole_block_is_still_what_it_was(self):
         made = ld.design("A1", AZURE, BASELINE, 4, 5)
         assert made["slices"] is None and made["backends"] == ["kafka", "redis"]
-        assert len(made["setups"]) + len(made["unreachable"]) == 6 * 8 * 2
+        # Seven slices since D27-3.
+        assert len(made["setups"]) + len(made["unreachable"]) == 7 * 8 * 2
 
     def test_a_slice_the_block_does_not_have_is_refused(self):
         with pytest.raises(ValueError, match="no slice 2.5"):
@@ -722,7 +745,7 @@ class TestMain:
         code, text = self.run(["design", "--block", "A1", "--settings", str(settings),
                                "--baseline", str(baseline), "--rounds", "26", "--seed", "5",
                                "--out", str(dest)])
-        assert code == 0 and text.startswith("A1: 95 setups x 26 rounds = 2470 runs")
+        assert code == 0 and text.startswith("A1: 111 setups x 26 rounds = 2886 runs")
         assert "1 unreachable point(s): A1-kafka-l75-s750-p05s" in text
         assert json.loads(dest.read_text(encoding="utf-8"))["rounds"] == 26
 

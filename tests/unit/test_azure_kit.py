@@ -962,6 +962,29 @@ class TestT2ForcedNegatives:
         assert 'spelling="${said%% *}"; moved="${said##* }"' in t2
         assert 'measured $moved ms' in t2
 
+    def test_the_clock_is_stepped_where_the_step_can_be_undone(self):
+        """The same trap one function along. step_clock records what it stepped for unstep_clock
+        to undo, and it was called through $(...), so the record was made in a subshell and
+        unstep_clock found nothing to put back. On 25 September each Go tool's second offset
+        landed on top of its first: 5.3 to 5.7 ms from the PTP clock where 3.8 was planned."""
+        code = self.tools()
+        assert "$(step_clock" not in code, "a variable set in a subshell reaches nobody"
+        step = code.split("\nstep_clock () {", 1)[1].split("\n}\n", 1)[0]
+        assert 'STEPPED_MS="$ms"' in step and "STEP_MOVED=$(" in step
+        t2 = code.split("\nt2 () {", 1)[1].split("\n}\n", 1)[0]
+        assert 'step_clock "$ms" "$DIR/$run"' in t2 and 'moved="$STEP_MOVED"' in t2
+
+    def test_the_clock_is_measured_after_it_is_put_back_and_nothing_runs_on_from_one_held_off(
+            self):
+        """Nothing said so on 25 September: the only sign was the offset printed at the end."""
+        t2 = self.tools().split("\nt2 () {", 1)[1].split("\n}\n", 1)[0]
+        loop = t2.split("for ms in $offsets; do", 1)[1]
+        back = loop[loop.index("unstep_clock"):]
+        assert "clock_step.py measure" in back and "clock_back.json" in back
+        assert "abs(float(sys.argv[1])) <= 0.25" in back
+        assert "from a clock still held off" in back
+        assert back.index("clock_back.json") < back.index("tool_readings.py read")
+
 
 QUEUE = KIT / "queue.sh"
 
@@ -1102,6 +1125,48 @@ def test_the_check_that_the_loop_is_alive_knows_the_copy_by_name(tmp_path):
     done = subprocess.run(["bash", "-c", "echo 'bash cloud/azure/queue.sh show' | awk '%s'"
                            % pattern], capture_output=True, text=True)
     assert done.returncode != 0, "only the loop counts, not every call of the script"
+
+
+@needs_bash
+def test_a_clock_stepped_for_a_run_is_stepped_back_after_it(tmp_path):
+    """T2's own lines for a Go tool's offset, run with stand-ins for sudo and the clock. Every
+    line of the first version read right, and a test of the two functions on their own passes on
+    it: what was wrong was the call, which kept the record of the step in a subshell. So this runs
+    the call as T2 makes it, and asks that the step back was asked for, by the amount stepped."""
+    code = (KIT / "tools.sh").read_text(encoding="utf-8")
+    functions = "".join(
+        name + " () {" + code.split("\n" + name + " () {", 1)[1].split("\n}\n", 1)[0] + "\n}\n"
+        for name in ("step_clock", "unstep_clock"))
+    t2 = code.split("\nt2 () {", 1)[1].split("\n}\n", 1)[0]
+    loop = t2.split("for ms in $offsets; do", 1)[1]
+    stepping = loop.split('if [ "$how" = clock ]; then\n', 1)[1].split("\n    else\n", 1)[0]
+    calls = (tmp_path / "calls").as_posix()
+    script = "\n".join([
+        "log () { :; }",
+        "stop () { echo \"stopped: $*\"; exit 3; }",
+        "python3 () { \"" + Path(sys.executable).as_posix() + "\" \"$@\"; }",
+        "sudo () {",
+        "  echo \"$*\" >> \"" + calls + "\"",
+        "  case \"$*\" in",
+        "    *\"clock_step.py shift\"*\"--out \"*) echo '{\"moved_ms\": -1.4987}' > \"${@: -1}\" ;;",
+        "  esac",
+        "}",
+        functions,
+        "ms=1.5; DIR=\"" + tmp_path.as_posix() + "\"; run=r1; mkdir -p \"$DIR/$run\"",
+        "STEPPED_MS=\"\"; STEP_MOVED=\"\"",
+        stepping,
+        "echo \"moved=$moved\"",
+        "unstep_clock",
+    ])
+    done = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "moved=1.4987" in done.stdout, "how far it moved reaches the run"
+    asked = (tmp_path / "calls").read_text(encoding="utf-8").splitlines()
+    assert asked[0] == "systemctl stop chrony"
+    assert asked[1].startswith("python3 scripts/clock_step.py shift --ms=-1.5 --out ")
+    assert asked[2] == "python3 scripts/clock_step.py shift --ms=1.5", \
+        "the step back, by what was stepped, in the shell that ran the tool"
+    assert asked[3] == "systemctl start chrony"
 
 
 def test_a_command_job_gets_the_receivers_namespace_back_after_a_reboot():

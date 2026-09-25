@@ -76,7 +76,10 @@ BLOCKS = {
     "B0": {"loads": (50, 75, 88)},
     "C0": {"loads": (75,)},
     "P0": {"slices": (1.5, 3.0), "points": ("p09s", "c04h", "c08h", "f15h"), "loads": (75,)},
-    "A1": {"slices": (0.75, 1.5, 2.25, 3.0, 4.5, 6.0), "points": EIGHT, "loads": (75,),
+    # D27-3: 3.75 ms joined the six in version 27. At the Kafka client's own zero-delay trip on the
+    # first pair, 2.21 ms, the six leave Kafka three slices it can reach where P1 asks for four;
+    # 3.75 is the next step of the ladder's 0.75 ms spacing that Kafka reaches.
+    "A1": {"slices": (0.75, 1.5, 2.25, 3.0, 3.75, 4.5, 6.0), "points": EIGHT, "loads": (75,),
            "trace_half": True},
     "A2": {"slices": (1.5, 3.0), "points": EIGHT, "loads": (75,)},
     # D4-4: A3 runs at three loads, at the 3 ms slice and 6 trips, in two campaigns, one per
@@ -271,9 +274,14 @@ def make_setups(block, tick_ms, baseline=None, settings=None, calibration=None, 
     session's instrument campaign at the core count the campaign after it will run at."""
     settings = settings or {}
     spec = BLOCKS[block]
-    if loads and block not in UNPLACED:
-        raise ValueError("block %s fixes its own loads; only %s take other loads"
-                         % (block, " and ".join(UNPLACED)))
+    # A placed block may run part of its own loads -- A3 at the two whose plateau P3a and P3b are
+    # judged at (D27-4) -- and never a load it does not fix.
+    foreign = [load for load in loads or () if load not in spec["loads"]]
+    if foreign and block not in UNPLACED:
+        raise ValueError("block %s runs at %s%% load and not at %s; only %s take other loads"
+                         % (block, ", ".join("%d" % load for load in spec["loads"]),
+                            ", ".join("%d" % load for load in foreign),
+                            " and ".join(UNPLACED)))
     if cpus and block not in UNPLACED:
         raise ValueError("block %s takes its core counts from its own design; only %s are run "
                          "at a core count given to them" % (block, " and ".join(UNPLACED)))
@@ -589,7 +597,9 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise):
     p.add_argument("--settings", required=True, help="JSON from sched_settings.py read or check")
     p.add_argument("--baseline", default="")
     p.add_argument("--calibration", default="", help="JSON from delay_calibration.py fit")
-    p.add_argument("--loads", default="", help="comma-separated loads, for B0 or C0 only")
+    p.add_argument("--loads", default="",
+                   help="comma-separated loads: any for B0 or C0, part of the block's own for the "
+                        "others, for example 75,88 for A3")
     p.add_argument("--up-to-ms", type=float, default=8.0, help="C0's longest delay step")
     p.add_argument("--rounds", type=int, default=0)
     p.add_argument("--slices", default="",

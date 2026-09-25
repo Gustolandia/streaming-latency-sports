@@ -962,6 +962,16 @@ class TestT2ForcedNegatives:
         assert 'spelling="${said%% *}"; moved="${said##* }"' in t2
         assert 'measured $moved ms' in t2
 
+    def test_the_got_it_brake_records_only_when_a_campaign_is_told_to(self):
+        """D26-1. The rule is the default: nothing is passed unless GOTIT_BRAKE is set, and a
+        campaign run that way says so at the head of its own log."""
+        code = (KIT / "campaign.sh").read_text(encoding="utf-8")
+        assert 'GOTIT_BRAKE="${GOTIT_BRAKE:-}"' in code
+        assert '[ -n "$GOTIT_BRAKE" ] && gotit_args=(--gotit-brake "$GOTIT_BRAKE")' in code
+        check = code.split("scripts/run_integrity.py check", 1)[1].split("\n  case $?", 1)[0]
+        assert '"${gotit_args[@]}"' in check
+        assert "${GOTIT_BRAKE:+; the got-it brake: $GOTIT_BRAKE (D26-1)}" in code
+
     def test_each_round_of_the_block_has_a_folder_of_its_own(self):
         """D4-2: tool campaigns run four rounds. The block ran once, into folders named for the
         tool and the step, so a second pass would have landed on the first (25 September)."""

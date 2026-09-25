@@ -57,6 +57,9 @@ DURATION="${DURATION:-130}"
 WARMUP_S="${WARMUP_S:-30}"
 STOP_FILE="${STOP_FILE:-runs/azure/STOP}"
 CALIBRATION="${CALIBRATION:-}"
+#: Empty is the rule: the got-it brake stops the campaign. "record" is asked for by name for one
+#: campaign's remaining runs, after a stop, and is frozen before those runs begin (D26-1).
+GOTIT_BRAKE="${GOTIT_BRAKE:-}"
 LANE="${LANE:-${AZ_PROFILE:-unknown}}"
 SYN_PLAN="data/synthetic/constant_r${RATE}_d${DURATION}/replay_plan.csv"
 TRACE_BT="runs/azure/runqlat.bt"
@@ -157,7 +160,7 @@ tcp_counters () {  # before|after: the Tcp lines of /proc/net/snmp on every side
 run_one () {
   local want_cpus="${CPUS:-$ALL_CPUS}" stress_pid sampler_pid rc traced=0 wrap_sched="" verdict
   local capture_pid measured began ended container
-  local check_args=() calibration_args=()
+  local check_args=() calibration_args=() gotit_args=()
   reap
   # The machine must still be the one the session built. On 16 September a package upgrade
   # restarted the network service mid-pilot, the receiver's address came back on the card, and
@@ -305,8 +308,9 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
     "$negative_exit" "$drift_exit" "$traced" > "$RUN_DIR/checks_exit.json"
 
   [ -n "$CALIBRATION" ] && calibration_args=(--calibration "$CALIBRATION")
+  [ -n "$GOTIT_BRAKE" ] && gotit_args=(--gotit-brake "$GOTIT_BRAKE")
   verdict=$(python3 scripts/run_integrity.py check "$RUN_DIR" --rate "$RATE" \
-    --duration "$DURATION" --warmup-s "$WARMUP_S" "${calibration_args[@]}" \
+    --duration "$DURATION" --warmup-s "$WARMUP_S" "${calibration_args[@]}" "${gotit_args[@]}" \
     2> "$RUN_DIR/integrity.err")
   case $? in
     0) ;;
@@ -317,7 +321,7 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
 }
 
 # --- the queue -------------------------------------------------------------------------------
-log "campaign: $QUEUE on lane $LANE; plan $SYN_PLAN at speedup $SPEEDUP; warm-up ${WARMUP_S} s; $ALL_CPUS CPUs${CALIBRATION:+; calibration $CALIBRATION}"
+log "campaign: $QUEUE on lane $LANE; plan $SYN_PLAN at speedup $SPEEDUP; warm-up ${WARMUP_S} s; $ALL_CPUS CPUs${CALIBRATION:+; calibration $CALIBRATION}${GOTIT_BRAKE:+; the got-it brake: $GOTIT_BRAKE (D26-1)}"
 RECOVER="--recover"
 while true; do
   if [ -f "$STOP_FILE" ]; then

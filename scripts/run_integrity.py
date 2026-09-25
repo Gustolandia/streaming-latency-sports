@@ -126,9 +126,14 @@ def send_times(run_dir):
     return sorted(times)
 
 
-def message_checks(sent_after, received, rate, duration, warmup_s):
-    """Enough of the planned messages sent after the warm-up, and enough of those arrived."""
-    planned = rate * (duration - warmup_s)
+def message_checks(sent_after, received, rate, duration, warmup_s, planned=None):
+    """Enough of the planned messages sent after the warm-up, and enough of those arrived.
+
+    `planned` is given where the plan states its count outright. M0 replays the football match
+    in bursts, and a burst's count is the plan's own events in the window, not a rate times a
+    time (D29-1); every other campaign sends steadily and leaves it to the arithmetic.
+    """
+    planned = rate * (duration - warmup_s) if planned is None else planned
     sent = len(sent_after)
     least_sent = MESSAGE_SHARE * planned
     checks = {"messages_sent": outcome(
@@ -222,11 +227,16 @@ def delay_by_ping_ms(run_dir):
         return None
 
 
-def client_check(run_dir, backend, ack_stamp=None):
-    """The client ran with the setting this setup asked for, as its own log line states it."""
+def client_check(run_dir, backend, ack_stamp=None, ack_batch=None):
+    """The client ran with the setting this setup asked for, as its own log line states it.
+
+    M0 acknowledges Redis messages one at a time as well as in batches of 200, the intervention
+    on M-H2 (S0-2, D29-1), so a Redis setup that names its batch is held to that batch."""
     log_name, key, wanted = CLIENT_SETTINGS[backend]
     if backend == "kafka" and ack_stamp == "inline":
         wanted = INLINE_MAX_INFLIGHT
+    if backend == "redis" and ack_batch:
+        wanted = int(ack_batch)
     found = None
     pattern = re.compile(r"CONFIG effective .*\b%s=(\d+)" % key)
     with open(os.path.join(run_dir, log_name), encoding="utf-8", errors="replace") as fh:
@@ -568,7 +578,7 @@ GOTIT_BRAKE_MODES = ("stop", "record")
 
 
 def evaluate(run_dir, rate, duration, warmup_s, calibration=None,
-             summarise=pilot_checks.summarise, gotit_brake="stop"):
+             summarise=pilot_checks.summarise, gotit_brake="stop", planned=None):
     """Every check on one run, and the verdict they give."""
     if gotit_brake not in GOTIT_BRAKE_MODES:
         raise ValueError("the got-it brake either stops or records, not %r" % (gotit_brake,))
@@ -593,13 +603,15 @@ def evaluate(run_dir, rate, duration, warmup_s, calibration=None,
                     gotit_p99_ms=summary.get("gotit_p99_ms"),
                     measured_negative_rate=summary.get("measured_negative_rate"))
     checks["never_negative"] = never_negative_check(summary)
-    checks.update(message_checks(sent_after, summary["messages"], rate, duration, warmup_s))
+    checks.update(message_checks(sent_after, summary["messages"], rate, duration, warmup_s,
+                                 planned))
     checks["send_rate"] = rate_check(sent_after, rate)
     window = (sent_after[0], sent_after[-1]) if sent_after else (cutoff, cutoff)
     guarded(checks, "load", lambda: load_check(run_dir, float(params["load_pct"]), *window))
     guarded(checks, "settings", lambda: settings_check(run_dir))
     guarded(checks, "client",
-            lambda: client_check(run_dir, params["backend"], params.get("ack_stamp")))
+            lambda: client_check(run_dir, params["backend"], params.get("ack_stamp"),
+                                 params.get("ack_batch")))
     added = None
     try:
         checks["delay"], added = delay_check(run_dir, float(params["delay_ms"]))
@@ -668,6 +680,9 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise):
     p.add_argument("--rate", type=float, required=True, help="messages a second, as planned")
     p.add_argument("--duration", type=float, required=True, help="seconds, as planned")
     p.add_argument("--warmup-s", type=float, default=30.0)
+    p.add_argument("--planned", type=int, default=None,
+                   help="messages planned after the warm-up, where the plan says outright rather "
+                        "than rate times time: M0's replay in bursts (D29-1)")
     p.add_argument("--calibration", default="", help="the session's delay_calibration.py fit")
     p.add_argument("--gotit-brake", choices=GOTIT_BRAKE_MODES, default="stop",
                    help="what the got-it brake does with a run it would stop: the rule stops the "
@@ -688,7 +703,7 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise):
             return 0
         calibration = read_json(args.calibration) if args.calibration else None
         result = evaluate(args.run_dir, args.rate, args.duration, args.warmup_s, calibration,
-                          summarise, gotit_brake=args.gotit_brake)
+                          summarise, gotit_brake=args.gotit_brake, planned=args.planned)
         with open(os.path.join(args.run_dir, "integrity.json"), "w", encoding="utf-8") as fh:
             fh.write(json.dumps(result, indent=2, sort_keys=True) + "\n")
         line = ("%s: %s" % (result["verdict"], "; ".join(result["reasons"]))

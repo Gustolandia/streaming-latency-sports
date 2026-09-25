@@ -364,6 +364,16 @@ class TestRepeat:
         check = ri.message_checks([], 0, RATE, DURATION, WARMUP)["messages_received"]
         assert not check["ok"] and check["why"] == "0 of the 0 messages sent after the warm-up arrived"
 
+    def test_a_plan_that_states_its_count_is_held_to_that_count(self):
+        """D29-1: M0 replays the football match in bursts, so the count it is held to is the
+        plan's own events in the window, not a rate times a time."""
+        sends = [START + i for i in range(1350)]
+        held = ri.message_checks(sends, 1350, RATE, DURATION, WARMUP, planned=1363)
+        assert held["messages_sent"]["ok"] and held["messages_sent"]["limit"] == "at least 1349"
+        short = ri.message_checks(sends[:1300], 1300, RATE, DURATION, WARMUP, planned=1363)
+        assert not short["messages_sent"]["ok"]
+        assert "fewer than 99% of the 1363 planned" in short["messages_sent"]["why"]
+
     def test_send_times_all_at_one_instant_cannot_give_a_rate(self):
         check = ri.rate_check([START, START, START], RATE)
         assert not check["ok"] and "too few distinct send times" in check["why"]
@@ -614,8 +624,21 @@ class TestTheClientSettings:
         above one the blocking wait resolves an older event and the stamp would belong to a
         different message -- so a run that asked for inline and reported 1 did as it was told,
         where the standing setting for every other Kafka run is 64."""
-        assert ri.client_check.__defaults__ == (None,)
+        assert ri.client_check.__defaults__ == (None, None)
         assert ri.INLINE_MAX_INFLIGHT == 1
+
+    def test_an_m0_setup_that_acknowledges_one_at_a_time_is_held_to_one(self, tmp_path):
+        """S0-2, D29-1: M0's intervention on M-H2. Asked for 1 and reporting 1 did as it was
+        told; asked for 1 and reporting the standing 200 is the fault this check catches."""
+        params = {"backend": "redis", "load_pct": 75, "delay_ms": 2.0, "ack_batch": 1}
+        run = make_run(tmp_path, name="a", params=params,
+                       client_line="CONFIG effective ack_batch=1 count=200 block_ms=1000")
+        assert evaluate(run)["checks"]["client"]["ok"] is True
+        run = make_run(tmp_path, name="b", params=params,
+                       client_line="CONFIG effective ack_batch=200 count=200 block_ms=1000")
+        check = evaluate(run)["checks"]["client"]
+        assert check["ok"] is False and check["why"] == \
+            "the redis client ran with ack_batch=200, not 1"
 
     def test_taking_the_note_inline_and_reporting_one_counts(self, tmp_path):
         params = {"backend": "kafka", "load_pct": 75, "delay_ms": 2.0, "ack_stamp": "inline"}
@@ -790,6 +813,14 @@ class TestMain:
         earlier_runs(tmp_path, [0.2, 0.21])
         code, text = self.check(later_run(tmp_path, 0.9))
         assert code == 3 and "got-it median moved" in text
+
+    def test_the_command_takes_a_count_the_plan_states(self, tmp_path):
+        """D29-1, as campaign.sh passes it for M0. The fixture sends 300 after its warm-up:
+        enough for a plan of 10 a second, not for one that says it planned 400."""
+        code, _ = self.check(make_run(tmp_path, name="a"))
+        assert code == 0
+        code, text = self.check(make_run(tmp_path, name="b"), "--planned", "400")
+        assert code == 1 and "fewer than 99% of the 400 planned" in text
 
     def test_the_command_can_be_asked_to_record_rather_than_stop(self, tmp_path):
         """D26-1, as campaign.sh passes it when GOTIT_BRAKE is set."""

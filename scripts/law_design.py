@@ -103,6 +103,13 @@ BLOCKS = {
     # thread's scheduling events are recorded and each client names the thread that stamps.
     "A9": {"slices": (3.0,), "points": EIGHT, "loads": (75, 88), "trace_half": True,
            "trace_events": True},
+    # S0-2, D29-1: why the trip does not grow one-for-one. The football match in bursts, at the
+    # three delays M-H1 to M-H4 are judged between, and Redis both acknowledging each message and
+    # in batches of 200, the intervention on M-H2. Half the runs record: every python3 thread's
+    # scheduling events, the clients' threads, the receive loop's cycle and a packet capture at
+    # both ends.
+    "M0": {"loads": (75,), "delays": (0.0, 2.0, 8.0), "ack_batches": (1, 200),
+           "plan": "football", "trace_half": True, "trace_events": True, "capture": True},
 }
 #: Which block tests which prediction, as the plan's table of campaigns states it. The numbers do
 #: not line up -- A7 is the go-first block and is judged by P4, A5 is the core-count block and is
@@ -116,7 +123,10 @@ BACKENDS = ("kafka", "redis")
 #: Blocks that plan no trip: they need neither a baseline nor a calibration, and they may take
 #: the loads of the session they open.
 UNPLACED = ("B0", "C0")
-FIXED_ROUNDS = {"B0": 3, "C0": 2, "P0": 5}
+#: M0 places no trip either -- its delays are the plan's own -- but it opens no session, and takes
+#: no load, core count or client from one (D29-1).
+NO_TRIPS = UNPLACED + ("M0",)
+FIXED_ROUNDS = {"B0": 3, "C0": 2, "P0": 5, "M0": 10}
 
 #: Minutes one run takes end to end with the runner's default plan (warm-up, measurement,
 #: settling and checks), as the first Azure pilot measured. For planning only.
@@ -212,6 +222,29 @@ def _placer(baseline, calibration, backend, load):
             lambda target: delay_calibration.delay_for(entry, target), "calibration")
 
 
+def _m0(backend, load, tick_ms):
+    """M0's setups for one backend: each delay, and on Redis each acknowledgement batch too.
+
+    Its trips are not placed, because M0 asks what a delay does to the trip rather than which
+    trip a delay gives: the delays are the plan's own (S0-2), and the ids name the batch only
+    where there is one, so a Kafka setup reads like any other.
+    """
+    spec = BLOCKS["M0"]
+    setups = []
+    for batch in spec["ack_batches"] if backend == "redis" else (None,):
+        for delay in spec["delays"]:
+            label = "d%d" % round(delay * 1000)
+            setups.append({
+                "id": "M0-%s-l%d%s-%s" % (backend, load, "-ack%d" % batch if batch else "", label),
+                "block": "M0", "backend": backend, "load_pct": load, "slice_ns": None,
+                "predicted_slice_ns": None, "cpus": None, "tick_ms": tick_ms,
+                "target_trip_ms": None, "baseline_trip_ms": None, "priority": False,
+                "language": None, "ack_stamp": None, "point": label, "delay_ms": delay,
+                "plan": spec["plan"], "ack_batch": batch, "trace_half": True,
+                "trace_events": True, "capture": True})
+    return setups
+
+
 def _unplaced(block, backend, load, tick_ms, up_to_ms, cpus=None, language=None):
     """B0's single no-delay setup, or C0's delay staircase, for one backend at one load.
 
@@ -302,6 +335,9 @@ def make_setups(block, tick_ms, baseline=None, settings=None, calibration=None, 
     setups, unreachable = [], []
     for backend in backends:
         for load in loads or spec["loads"]:
+            if block == "M0":
+                setups += _m0(backend, load, tick_ms)
+                continue
             if block in UNPLACED:
                 setups += _unplaced(block, backend, load, tick_ms, up_to_ms, cpus, language)
                 continue
@@ -401,7 +437,7 @@ def design(block, settings, baseline, rounds, seed, calibration=None, loads=None
     if not tick:
         raise ValueError("the settings carry no tick; read them on the machine that will run "
                          "the block with sched_settings.py read")
-    if block not in UNPLACED and not baseline and not calibration:
+    if block not in NO_TRIPS and not baseline and not calibration:
         raise ValueError("block %s places its trips from the session's calibration (C0) or "
                          "from the baseline trips B0 measured" % block)
     # B0 and P0 run their plan's rounds whatever is asked. C0 runs 2 unless asked for more: the

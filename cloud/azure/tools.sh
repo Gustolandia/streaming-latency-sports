@@ -18,10 +18,10 @@
 # the broker's card, is on the path the tool actually uses. Every target defaulted to 127.0.0.1
 # until 22 September, which put tool and server on one machine and left T1 unable to work at all.
 #
-# T2 moves the clock the tool reads with libfaketime, and refuses the Go tools: Go reads the
-# clock without going through the C library, so the preload never reaches it and a run that
-# looked fine would be a run with no offset at all. Those tools need the second machine whose
-# clock is offset and then restored, which is not this script.
+# T2 moves the clock the tool reads with libfaketime. The Go tools read the clock without going
+# through the C library, so the preload never reaches them, and a run that looked fine would be a
+# run with no offset at all: for those, T2 steps this machine's own clock, measured against the
+# hypervisor's PTP clock, and puts it back after each run (step_clock, since 25 September).
 #
 # Like stage 0 and every campaign, this carries on past a failing command on purpose: a check
 # that fails becomes a STOP_RULE with a reason a person can read, not a silent exit.
@@ -29,7 +29,16 @@
 set +e
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)" || exit 1
 
-DIR="runs/azure/tools"
+#: D4-2: tool campaigns run four rounds. Round 1 is runs/azure/tools, where it has always been, and
+#: each later round has a folder of its own, so no round writes over another's runs. Until 25
+#: September there was no round here at all: the block ran once where the plan asks for four,
+#: and a second pass would have landed on top of the first.
+ROUND="${SBL_TOOLS_ROUND:-1}"
+case "$ROUND" in
+  1) DIR="runs/azure/tools" ;;
+  [2-9]) DIR="runs/azure/tools_round$ROUND" ;;
+  *) echo "SBL_TOOLS_ROUND is a round from 1 to 9, not '$ROUND'" >&2; exit 2 ;;
+esac
 #: The AMQP broker our own reference client talks to: the same default the tools are given in
 #: tools_run.sh, so the reference and PerfTest are pointed at one broker by one rule.
 RABBIT="${SBL_RABBIT:-amqp://guest:guest@${BROKER_PRIV:-}:5672}"
@@ -38,6 +47,17 @@ mkdir -p "$DIR" "$WORK"
 
 log () { echo "$(date -u +%FT%TZ) $*"; }
 stop () { log "STOP_RULE: $*"; exit 1; }
+
+#: A stage writes into folders named for the tool and the step, and nothing stopped a second pass
+#: writing over the first. A round that already holds any of a stage's runs will not run that
+#: stage again; putting a stage right means moving its runs aside first, with the reason beside
+#: them, as every set-aside run of 24 and 25 September was.
+not_run_yet () {  # stage, tool, a pattern for the runs that stage writes
+  local found
+  found=$(compgen -G "$DIR/$3" | head -n 1)
+  [ -z "$found" ] \
+    || stop "$1 for $2 has already run in round $ROUND ($(dirname "$found")); this would write over it"
+}
 
 #: tool|how it is fetched|the version the audit read
 #
@@ -679,6 +699,7 @@ t1 () {
   local tool="${1:?which tool}"
   have_tool "$tool"
   needs_server "$tool"
+  not_run_yet T1 "$tool" "t1-$tool-*ms/tool.txt"
   local steps="0 0.1 0.2 0.3 0.5 0.7 0.9 1.1 1.5 2.0"
   local order; order=$(echo $steps | tr ' ' '\n' | shuf | tr '\n' ' ')
   log "== T1 $tool: the delay staircase, in the order $order"
@@ -840,6 +861,7 @@ t2 () {
   local tool="${1:?which tool}" how=faketime
   have_tool "$tool"
   needs_server "$tool"
+  not_run_yet T2 "$tool" "t2-$tool-*/tool.txt"
   case " $GO_TOOLS " in
     *" $tool "*)
       how=clock
@@ -972,6 +994,7 @@ t3 () {
   local tool="${1:?which tool}"
   have_tool "$tool"
   needs_server "$tool"
+  not_run_yet T3 "$tool" "t3-$tool-*/tool.txt"
   log "== T3 $tool: idle and at 88% load, with and without go-first"
   needs_namespace
   for load in 0 88; do
@@ -1005,6 +1028,7 @@ t4 () {
   local tool="${1:?which tool}"
   have_tool "$tool"
   needs_server "$tool"
+  not_run_yet T4 "$tool" "t4-$tool/tool.txt"
   local run="t4-$tool"
   mkdir -p "$DIR/$run"
   log "== T4 $tool: what it can report at all"

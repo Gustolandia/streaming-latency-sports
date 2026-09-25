@@ -386,7 +386,9 @@ def test_every_run_keeps_the_brokers_hold_its_tcp_counters_and_the_brokers_log()
              "run_integrity.py check"]
     places = [code.index(step) for step in order]
     assert places == sorted(places)
-    assert '-CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA"' in code
+    # The paper's batched acknowledgement reaches the Redis consumer, with A9's thread record
+    # beside it in the runs that ask for one (D28-1).
+    assert '-CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA $record_args"' in code
     helper = (KIT / "campaign.sh").read_text(encoding="utf-8").split("tcp_counters () {", 1)[1]
     for side in ('"$RUN_DIR/tcp_$1.txt"', "sudo ip netns exec sblrecv grep",
                  '"$RUN_DIR/broker_tcp_$1.txt"'):
@@ -2037,3 +2039,27 @@ def test_stopping_itself_is_asked_for_and_can_be_taken_back():
     code = QUEUE.read_text(encoding="utf-8")
     assert "  arm-stop)" in code and "  disarm-stop)" in code
     assert "arm-stop|disarm-stop" in code, "and both are in the usage line"
+
+
+def test_the_helper_blocks_runs_record_every_event_and_name_their_threads():
+    """D28-1: A9 reads each negative reading against the waits of the one thread that stamped its
+    acknowledgement. So for A9's traced runs, and only those, the campaign records every python3
+    thread's scheduling events rather than a histogram, probes that recording against live traffic
+    before the first run, and asks both clients to name the threads that stamp."""
+    code = (KIT / "campaign.sh").read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert 'EVENTS_BT="runs/azure/waits.bt"' in code
+    events = code.split("cat > \"$EVENTS_BT\" <<'BT'\n", 1)[1].split("\nBT\n", 1)[0]
+    for kind in "PSRW":
+        assert 'printf("%s %%d %%llu\\n"' % kind in events, kind
+    assert 'if (args->prev_state == 0) { printf("P ' in events, "preempted while it could run"
+    assert '"TRACE_EVENTS": "1" if p.get("trace_events") else ""' in code
+    assert "event probe ok" in code and 'sudo timeout 8 bpftrace "$EVENTS_BT"' in code
+    run = code.split("run_one () {", 1)[1]
+    assert 'sudo bpftrace "$EVENTS_BT" > "$RUN_DIR/waits.txt"' in run
+    assert 'sudo bpftrace "$TRACE_BT" > "$RUN_DIR/runqlat.txt"' in run, "A1 and A3 as they were"
+    assert 'record_args="--thread-record"' in run
+    assert '-PRODUCER_EXTRA "$KAFKA_PRODUCER_EXTRA $record_args" -CONSUMER_EXTRA "$record_args"' \
+        in run
+    assert '-PRODUCER_EXTRA "$record_args" -CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA $record_args"' \
+        in run
+    assert run.index('local record_args=""') < run.index('record_args="--thread-record"')

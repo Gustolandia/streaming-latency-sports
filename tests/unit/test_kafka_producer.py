@@ -869,6 +869,34 @@ class TestPathsThatNeedARealFuture:
         assert len(df) == 4                              # two base events, two corrections
         assert df["t_broker_ack_ns"].notna().all()       # no callback ever fired
 
+    def test_the_thread_record_names_the_threads_that_stamp(self, temp_dir):
+        """D28-1: a recording of every python3 thread's waits is read for the thread that
+        stamped the acknowledgement, so the run says which one that was, and both clocks."""
+        self._plan(temp_dir, 3)
+        producer, _ = self._producer()
+        self._run(temp_dir, producer, ["--thread-record"])
+        record = json.loads((temp_dir / "prod_threads.json").read_text(encoding="utf-8"))
+        me = threading.get_native_id()
+        assert record["roles"] == {"stamps_ack": [me], "stamps_send": [me]}
+        assert len(record["clocks"]) == 2 and record["pid"] == os.getpid()
+
+    def test_no_thread_record_is_written_unless_asked(self, temp_dir):
+        """A8's two clients leave the same files, and the Java one keeps no such record."""
+        self._plan(temp_dir, 1)
+        producer, _ = self._producer()
+        self._run(temp_dir, producer, [])
+        assert not (temp_dir / "prod_threads.json").exists()
+
+    def test_the_corrections_thread_is_named_when_it_stamps_a_send(self, temp_dir):
+        self._plan(temp_dir, 2)
+        producer, _ = self._producer(fire_callbacks=False)
+        self._run(temp_dir, producer, [
+            "--thread-record", "--s3-mode", "corrections", "--corrections-every-k", "1",
+            "--correction-delay-s", "0.0"])
+        record = json.loads((temp_dir / "prod_threads.json").read_text(encoding="utf-8"))
+        assert len(record["roles"]["stamps_send"]) == 2, "the loop and the corrections thread"
+        assert "stamps_ack" not in record["roles"], "no callback fired"
+
     def test_corrections_keep_the_callback_path_when_asked(self, temp_dir):
         self._plan(temp_dir, 2)
         producer, _ = self._producer(fire_callbacks=False)

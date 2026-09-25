@@ -14,6 +14,7 @@ except Exception:
 
 
 import law_clock
+import thread_record
 
 
 def now_ns() -> int:
@@ -90,8 +91,13 @@ def main():
     ap.add_argument("--ack-stamp", default="callback", choices=["callback", "inline"],
                     help="where t_broker_ack_ns is taken: in the delivery callback (default, "
                          "asymmetric with Redis) or inline on the calling thread (symmetric)")
+    # D28-1: which thread stamps the send and which the acknowledgement, and both clocks, so a
+    # recording of every python3 thread's waits can be read for the one that stamps the ack.
+    ap.add_argument("--thread-record", action="store_true",
+                    help="write which threads stamped what, and both clocks, beside the CSV")
 
     args = ap.parse_args()
+    record = thread_record.ThreadRecord() if args.thread_record else None
 
     if args.ack_stamp == "inline" and args.max_inflight > 1:
         # Fail loudly rather than silently emit a run with no acknowledgement stamps at all:
@@ -155,6 +161,8 @@ def main():
     def on_ack(event_id: str):
         with ack_lock:
             ack_ns[event_id] = now_ns()
+        if record is not None:
+            record.note("stamps_ack")
 
     def on_err(event_id: str, exc: Exception):
         with err_lock:
@@ -194,6 +202,8 @@ def main():
 
             # Send outside lock
             t_prod_send_ns = now_ns()
+            if record is not None:
+                record.note("stamps_send")
             fut = producer.send(args.topic, key=corr_event_id, value=corr_msg)
             if args.ack_stamp == "callback":
                 fut.add_callback(lambda _meta, eid=corr_event_id: on_ack(eid))
@@ -240,6 +250,8 @@ def main():
 
         t_prod_sched_ns = t0_wall_ns + int((t_emit_offset_s / args.speedup) * 1e9)
         t_prod_send_ns = now_ns()
+        if record is not None:
+            record.note("stamps_send")
 
         # stable S3 linkage id (does not change existing event_id semantics)
         s3_uid = f"{match_id}:{event_id}"
@@ -387,6 +399,8 @@ def main():
             tw.writerows(trace)
         print(f"OK loop trace: wrote {len(trace)} rows -> {tp}")
 
+    if record is not None:
+        record.write(thread_record.beside(out_path))
     print(f"OK kafka producer: wrote {len(rows)} rows -> {out_path}")
 
 

@@ -14,6 +14,7 @@ except Exception:
 
 
 import law_clock
+import thread_record
 
 
 def now_ns() -> int:
@@ -37,8 +38,18 @@ def main():
     ap.add_argument("--consumer-timeout-ms", type=int, default=1000)
     ap.add_argument("--poll-timeout-ms", type=int, default=1000, help="e.g. 50")
     ap.add_argument("--max-poll-records", type=int, default=None)
+    # D28-1: the thread that stamps each arrival, and both clocks, for a recording of waits.
+    ap.add_argument("--thread-record", action="store_true",
+                    help="write which thread stamped the arrivals, and both clocks, beside the CSV")
+    # D28-2, M0's M-H2: the receive loop's own cycle, each poll's start, how long it took and
+    # what it brought, in the file and the columns redis_consumer.py has always written. Asked
+    # for rather than always written here, because A8's two Kafka clients leave the same files.
+    ap.add_argument("--read-trace", action="store_true",
+                    help="write each poll's start, duration and message count beside the CSV")
 
     args = ap.parse_args()
+    record = thread_record.ThreadRecord() if args.thread_record else None
+    polls = [] if args.read_trace else None
 
     # The receiving half reads the same wall clock and is held to the same bar: a trip is a
     # difference of two stamps, so a coarse clock in either process flattens it. See law_clock.py.
@@ -124,7 +135,11 @@ def main():
             if args.max_poll_records is not None:
                 poll_kwargs["max_records"] = args.max_poll_records
 
+            t_poll_ns = now_ns() if polls is not None else None
             records = consumer.poll(**poll_kwargs)
+            if polls is not None:
+                polls.append((t_poll_ns, now_ns() - t_poll_ns,
+                              sum(len(msgs) for msgs in records.values()) if records else 0))
 
             if not records:
                 if (time.monotonic() - last_msg) >= args.idle_seconds:
@@ -143,6 +158,8 @@ def main():
                     t_consume_ns = now_ns()
                     t_cons_recv_ns = t_consume_ns
                     t_output_ns = now_ns()
+                    if record is not None:
+                        record.note("stamps_receive")
 
                     # S2-compatible output row
                     w.writerow(
@@ -185,6 +202,14 @@ def main():
                         f_out.flush()
 
     consumer.close()
+    if polls is not None:
+        with out_path.with_name(out_path.stem + "_readtrace.csv").open(
+                "w", newline="", encoding="utf-8") as fh:
+            pw = csv.writer(fh)
+            pw.writerow(["t_read_start_ns", "read_duration_ns", "n_messages"])
+            pw.writerows(polls)
+    if record is not None:
+        record.write(thread_record.beside(out_path))
     print(f"OK kafka consumer: wrote {n} rows -> {out_path}")
     print(f"OK kafka consumer: wrote {events_n} rows -> {events_path}")
 

@@ -14,6 +14,7 @@ except Exception:
 
 
 import law_clock
+import thread_record
 
 
 def now_ns() -> int:
@@ -51,8 +52,12 @@ def main():
     # that the measured corpus used; >1 enables the mitigation.
     ap.add_argument("--ack-batch", type=int, default=1,
                     help="XACK this many messages per round trip (1 = ack every message)")
+    # D28-1: the thread that stamps each arrival, and both clocks, for a recording of waits.
+    ap.add_argument("--thread-record", action="store_true",
+                    help="write which thread stamped the arrivals, and both clocks, beside the CSV")
 
     args = ap.parse_args()
+    record = thread_record.ThreadRecord() if args.thread_record else None
 
     # Use per-run group default to prevent cross-run contamination
     group_id = args.group or f"sb-group-{args.run_id}"
@@ -183,6 +188,8 @@ def main():
                     # Note: decode_responses=True => fields are already str->str
                     t_consume_ns = now_ns()
                     t_cons_recv_ns = t_consume_ns
+                    if record is not None:
+                        record.note("stamps_receive")
                     msg = json.loads(fields["value"])
 
                     # Filter to this run_id (prevents cross-run contamination when stream/group has old data)
@@ -243,6 +250,8 @@ def main():
         _w = csv.writer(_f)
         _w.writerow(['t_read_start_ns', 'read_duration_ns', 'n_messages'])
         _w.writerows(read_trace)
+    if record is not None:
+        record.write(thread_record.beside(out_path))
     print(f"OK redis consumer: wrote {n} rows -> {out_path}")
     print(f"OK redis consumer: wrote {events_n} rows -> {events_path}")
 

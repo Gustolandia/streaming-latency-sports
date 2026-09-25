@@ -98,6 +98,11 @@ BLOCKS = {
     "A8": {"slices": (3.0,), "points": ("p09s", "c05h", "f15h"), "loads": (75,),
            "priorities": (False, True), "languages": ("python", "java"),
            "ack_stamps": ("callback", "inline"), "backends": ("kafka",)},
+    # D28-1: the got-it helper's own waits, message by message. A3's slice, the eight trips, the
+    # two loads P3a is judged at, both backends; in a random half of the runs every python3
+    # thread's scheduling events are recorded and each client names the thread that stamps.
+    "A9": {"slices": (3.0,), "points": EIGHT, "loads": (75, 88), "trace_half": True,
+           "trace_events": True},
 }
 #: Which block tests which prediction, as the plan's table of campaigns states it. The numbers do
 #: not line up -- A7 is the go-first block and is judged by P4, A5 is the core-count block and is
@@ -332,6 +337,9 @@ def make_setups(block, tick_ms, baseline=None, settings=None, calibration=None, 
                                 "language": language, "ack_stamp": ack_stamp,
                                 "trace_half": bool(spec.get("trace_half")),
                             }
+                            # Only A9's runs say so, and every other block's are as they were.
+                            if spec.get("trace_events"):
+                                setup["trace_events"] = True
                             (setups if delay is not None else unreachable).append(setup)
     return setups, unreachable
 

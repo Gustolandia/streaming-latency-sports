@@ -454,3 +454,47 @@ class TestBrokerCountParameter:
             assert out_path.exists()
         finally:
             sys.argv = old_argv
+
+
+class TestWhatAConsumerRecordsForTheMechanism:
+    """D28-1 and D28-2: the thread that stamps each arrival, both clocks, and the receive loop's
+    own cycle -- each only when asked, so the files A8 compares stay the same for both clients."""
+
+    @staticmethod
+    def _run(temp_dir, extra):
+        import json
+        mock_msg = MagicMock()
+        mock_msg.value = {"run_id": "r9", "event_id": "e1", "match_id": 1, "t_sim_seconds": 1}
+        consumer = MagicMock()
+        consumer.poll.side_effect = [{"t0": [mock_msg, mock_msg]}, {}]
+        old_argv = sys.argv
+        try:
+            sys.argv = ["kc", "--run-id", "r9", "--out", str(temp_dir / "consumer.csv"),
+                        "--idle-seconds", "0"] + extra
+            with patch('kafka_consumer.KafkaConsumer', return_value=consumer):
+                with patch('kafka_consumer.time.monotonic', side_effect=lambda: 100.0):
+                    kc_main()
+        finally:
+            sys.argv = old_argv
+        return json
+
+    def test_the_thread_that_stamps_arrivals_is_named(self, temp_dir):
+        import threading
+        json = self._run(temp_dir, ["--thread-record"])
+        record = json.loads((temp_dir / "consumer_threads.json").read_text(encoding="utf-8"))
+        assert record["roles"] == {"stamps_receive": [threading.get_native_id()]}
+        assert len(record["clocks"]) == 2
+
+    def test_every_poll_is_logged_with_what_it_brought(self, temp_dir):
+        self._run(temp_dir, ["--read-trace"])
+        with open(temp_dir / "consumer_readtrace.csv", newline="", encoding="utf-8") as fh:
+            rows = list(csv.DictReader(fh))
+        assert [int(r["n_messages"]) for r in rows] == [2, 0]
+        assert all(int(r["read_duration_ns"]) >= 0 for r in rows)
+        # The columns redis_consumer.py writes, so M0 reads one format for both backends.
+        assert list(rows[0]) == ["t_read_start_ns", "read_duration_ns", "n_messages"]
+
+    def test_neither_is_written_unless_asked(self, temp_dir):
+        self._run(temp_dir, [])
+        assert not (temp_dir / "consumer_threads.json").exists()
+        assert not (temp_dir / "consumer_readtrace.csv").exists()

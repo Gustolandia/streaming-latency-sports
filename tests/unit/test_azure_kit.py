@@ -962,6 +962,23 @@ class TestT2ForcedNegatives:
         assert 'spelling="${said%% *}"; moved="${said##* }"' in t2
         assert 'measured $moved ms' in t2
 
+    def test_each_round_of_the_block_has_a_folder_of_its_own(self):
+        """D4-2: tool campaigns run four rounds. The block ran once, into folders named for the
+        tool and the step, so a second pass would have landed on the first (25 September)."""
+        code = self.tools()
+        assert 'ROUND="${SBL_TOOLS_ROUND:-1}"' in code
+        assert '1) DIR="runs/azure/tools" ;;' in code, "round 1 stays where it always was"
+        assert '[2-9]) DIR="runs/azure/tools_round$ROUND" ;;' in code
+
+    def test_no_stage_writes_over_runs_that_are_already_there(self):
+        code = self.tools()
+        for stage, pattern in (("t1", '"t1-$tool-*ms/tool.txt"'), ("t2", '"t2-$tool-*/tool.txt"'),
+                               ("t3", '"t3-$tool-*/tool.txt"'), ("t4", '"t4-$tool/tool.txt"')):
+            body = code.split("\n%s () {" % stage, 1)[1].split("\n}\n", 1)[0]
+            guard = 'not_run_yet %s "$tool" %s' % (stage.upper(), pattern)
+            assert guard in body, stage
+            assert body.index(guard) < body.index("mkdir"), "%s asks before it makes a folder" % stage
+
     def test_a_tools_count_is_held_against_what_it_was_asked_to_send(self):
         """Not against the number of trips in our reference, another run of another client: held
         against our 5,000, wrk2's count of all 3,001 it sent read as short, and a run was decided
@@ -1147,6 +1164,35 @@ def test_the_check_that_the_loop_is_alive_knows_the_copy_by_name(tmp_path):
     done = subprocess.run(["bash", "-c", "echo 'bash cloud/azure/queue.sh show' | awk '%s'"
                            % pattern], capture_output=True, text=True)
     assert done.returncode != 0, "only the loop counts, not every call of the script"
+
+
+@needs_bash
+def test_a_round_finds_its_own_folder_and_will_not_write_over_runs_already_in_it(tmp_path):
+    """tools.sh's own lines for the round and the guard, run as they are written."""
+    code = (KIT / "tools.sh").read_text(encoding="utf-8")
+    rounds = 'ROUND="${SBL_TOOLS_ROUND:-1}"' + code.split('ROUND="${SBL_TOOLS_ROUND:-1}"', 1)[1] \
+        .split("\nesac\n", 1)[0] + "\nesac\n"
+    guard = "not_run_yet () {" + code.split("\nnot_run_yet () {", 1)[1].split("\n}\n", 1)[0] + "\n}\n"
+    head = "log () { echo \"$*\"; }\nstop () { log \"STOP_RULE: $*\"; exit 1; }\n"
+
+    def ask(round_, then):
+        env = dict(os.environ, SBL_TOOLS_ROUND=round_)
+        return subprocess.run(["bash", "-c", head + rounds + guard + then], cwd=tmp_path,
+                              capture_output=True, text=True, env=env)
+
+    assert ask("1", 'echo "$DIR"').stdout.strip() == "runs/azure/tools"
+    assert ask("3", 'echo "$DIR"').stdout.strip() == "runs/azure/tools_round3"
+    assert ask("x", 'echo "$DIR"').returncode == 2, "a round that is not a number is refused"
+    first = tmp_path / "runs" / "azure" / "tools_round2" / "t1-vegeta-0_5ms"
+    first.mkdir(parents=True)
+    assert ask("2", 'not_run_yet T1 vegeta "t1-vegeta-*ms/tool.txt"; echo free').stdout.strip() \
+        == "free", "a folder with no run in it is not a run"
+    (first / "tool.txt").write_text("Requests [total] 3000\n", encoding="utf-8")
+    done = ask("2", 'not_run_yet T1 vegeta "t1-vegeta-*ms/tool.txt"; echo free')
+    assert done.returncode == 1 and "free" not in done.stdout
+    assert "T1 for vegeta has already run in round 2" in done.stdout
+    assert ask("3", 'not_run_yet T1 vegeta "t1-vegeta-*ms/tool.txt"; echo free').stdout.strip() \
+        == "free", "and another round is another folder"
 
 
 @needs_bash

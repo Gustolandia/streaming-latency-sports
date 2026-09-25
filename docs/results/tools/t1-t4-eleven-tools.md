@@ -1,10 +1,13 @@
 # T1–T4, eleven tools: all eleven measure the path, and ten time against one clock
 
-First x86 pair (`matched`), 23–25 September 2026. The whole tools block — T1 to T4 for each of
-the eleven tools — as it stands after the corrections of 24 and 25 September, judged under freeze
-21. `rdkafka_performance` has two pages of its own: the [shakedown](rdkafka-shakedown.md) that got
-its consumer reading, and [its T1](t1-rdkafka-precision-without-accuracy.md), which found it
-reporting half a second for a 2.5 ms trip. What is set out here is the other ten beside it.
+First x86 pair (`matched`), 23–25 September 2026. **Round 1 of the tools block's four**: T1 to T4
+once for each of the eleven tools, as it stands after the corrections of 24 and 25 September,
+judged under freeze 21. The plan runs every tool campaign four times (D4-2): one round already
+shows each pattern, and the repeats measure how stable it is. The first version of this page
+called the block complete. It is not, and rounds 2 to 4 started on 25 September, each in a folder
+of its own. `rdkafka_performance` has two pages of its own: the [shakedown](rdkafka-shakedown.md)
+that got its consumer reading, and [its T1](t1-rdkafka-precision-without-accuracy.md), which found
+it reporting half a second for a 2.5 ms trip. What is set out here is the other ten beside it.
 
 *Glosses. **T1**, the staircase: a known delay added to the path in ten steps, 0 to 2 ms, asking
 how far each tool's figure moves. **T2**, forced negatives: the clock the tool reads is moved back
@@ -222,7 +225,10 @@ program to another, which needs two clocks, and is what a streaming system is us
 
 ## What went wrong on the way, and what was done
 
-Four faults were found writing this up. They are recorded in the index's table of faults.
+Four faults were found writing this up, and a fifth after it: the block had run one round of the
+four D4-2 asks for, into folders a second round would have written over. Each round now has a
+folder of its own, and no stage writes over runs that are already there. All five are in the
+index's table of faults.
 
 - **T2's count was compared against the wrong number.** It is described under T2 above. The judge
   now holds a count against what the tool was asked to send, which `tools_run.sh` writes beside

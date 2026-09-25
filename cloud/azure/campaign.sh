@@ -63,6 +63,8 @@ GOTIT_BRAKE="${GOTIT_BRAKE:-}"
 LANE="${LANE:-${AZ_PROFILE:-unknown}}"
 SYN_PLAN="data/synthetic/constant_r${RATE}_d${DURATION}/replay_plan.csv"
 TRACE_BT="runs/azure/runqlat.bt"
+#: D28-1: every python3 thread's scheduling events, one line each, for A9's traced runs.
+EVENTS_BT="runs/azure/waits.bt"
 ALL_CPUS=$(nproc --all)
 ME=$(id -un)
 
@@ -148,6 +150,46 @@ for _ in range(900):
     log "FATAL: the run-queue probe recorded ${PROBE_COUNT:-0} events against live traffic"
     exit 1; }
   log "run-queue probe ok: $PROBE_COUNT events in 8 s"
+fi
+
+if python3 -c 'import csv, json, sys
+rows = csv.DictReader(open(sys.argv[1], encoding="utf-8"))
+sys.exit(0 if any(json.loads(r["params"]).get("trace_events") for r in rows) else 1)' "$QUEUE"; then
+  # D28-1: A9 reads each negative reading against the waits of the one thread that stamped its
+  # acknowledgement, so it needs every event rather than a histogram: a python3 thread taken off
+  # a CPU while it could still run (P) or because it slept (S), put back on one (R) and woken
+  # (W), with its id and the kernel's monotonic clock. The clients name the threads that stamp
+  # and read both clocks (scripts/thread_record.py). Probed against live traffic first, as above.
+  cat > "$EVENTS_BT" <<'BT'
+tracepoint:sched:sched_switch
+{
+  if (args->prev_comm == "python3") {
+    if (args->prev_state == 0) { printf("P %d %llu\n", args->prev_pid, nsecs); }
+    else { printf("S %d %llu\n", args->prev_pid, nsecs); }
+  }
+  if (args->next_comm == "python3") { printf("R %d %llu\n", args->next_pid, nsecs); }
+}
+
+tracepoint:sched:sched_wakeup,
+tracepoint:sched:sched_wakeup_new
+{
+  if (args->comm == "python3") { printf("W %d %llu\n", args->pid, nsecs); }
+}
+BT
+  python3 -c "
+import time
+for _ in range(900):
+    time.sleep(0.01)
+" >/dev/null 2>&1 &
+  PROBE_PID=$!
+  sleep 1
+  sudo timeout 8 bpftrace "$EVENTS_BT" > runs/azure/probe_events.txt 2>&1
+  kill "$PROBE_PID" 2>/dev/null
+  PROBE_EVENTS=$(grep -cE '^[PSRW] [0-9]+ [0-9]+$' runs/azure/probe_events.txt)
+  [ "${PROBE_EVENTS:-0}" -ge 100 ] || {
+    log "FATAL: the event probe recorded ${PROBE_EVENTS:-0} events against live traffic"
+    exit 1; }
+  log "event probe ok: $PROBE_EVENTS events in 8 s"
 fi
 
 tcp_counters () {  # before|after: the Tcp lines of /proc/net/snmp on every side of the run
@@ -253,8 +295,14 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
     fi
   fi
 
+  local record_args=""
   if [ -n "$TRACE_HALF" ] && [ "$TRACE" = 1 ]; then
-    sudo bpftrace "$TRACE_BT" > "$RUN_DIR/runqlat.txt" 2>"$RUN_DIR/runqlat.err" &
+    if [ -n "$TRACE_EVENTS" ]; then
+      sudo bpftrace "$EVENTS_BT" > "$RUN_DIR/waits.txt" 2>"$RUN_DIR/waits.err" &
+      record_args="--thread-record"
+    else
+      sudo bpftrace "$TRACE_BT" > "$RUN_DIR/runqlat.txt" 2>"$RUN_DIR/runqlat.err" &
+    fi
     traced=1
     sleep 8
   fi
@@ -270,14 +318,16 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
     [ -n "${ACK_STAMP:-}" ] && client_args+=(-ACK_STAMP "$ACK_STAMP")
     SBL_CONSUMER_WRAP="sudo ip netns exec sblrecv sudo -u $ME" SBL_SCHED_WRAP="$wrap_sched" \
       timeout -k 30 $(( DURATION + 300 )) bash scripts/run_kafka_trial.sh "$RUN_ID" "$SYN_PLAN" \
-      "$SPEEDUP" "$DURATION" -BOOTSTRAP "$KAFKA_BOOTSTRAP" -PRODUCER_EXTRA "$KAFKA_PRODUCER_EXTRA" \
+      "$SPEEDUP" "$DURATION" -BOOTSTRAP "$KAFKA_BOOTSTRAP" \
+      -PRODUCER_EXTRA "$KAFKA_PRODUCER_EXTRA $record_args" -CONSUMER_EXTRA "$record_args" \
       -IDLE_SECONDS 15 "${client_args[@]}" > "$RUN_DIR/trial.log" 2>&1
     rc=$?
   else
     SBL_CONSUMER_WRAP="sudo ip netns exec sblrecv sudo -u $ME" SBL_SCHED_WRAP="$wrap_sched" \
       timeout -k 30 $(( DURATION + 300 )) bash scripts/run_redis_trial.sh "$RUN_ID" "$SYN_PLAN" \
       "$SPEEDUP" "$DURATION" -RedisHost "$REDIS_HOST" -PORT "$REDIS_PORT" \
-      -CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA" -IDLE_SECONDS 15 > "$RUN_DIR/trial.log" 2>&1
+      -PRODUCER_EXTRA "$record_args" -CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA $record_args" \
+      -IDLE_SECONDS 15 > "$RUN_DIR/trial.log" 2>&1
     rc=$?
   fi
   ended=$(date -u +%s)
@@ -347,6 +397,7 @@ values = {
     # both unset and the run is launched exactly as it always was.
     "CLIENT": p.get("language") or "", "ACK_STAMP": p.get("ack_stamp") or "",
     "TRACE_HALF": "1" if p.get("trace_half") else "",
+    "TRACE_EVENTS": "1" if p.get("trace_events") else "",
     "TRACE": 1 if int(hashlib.sha256(row["key"].encode()).hexdigest(), 16) % 2 == 0 else 0,
     "HZ": round(1000 / tick) if tick else "",
 }

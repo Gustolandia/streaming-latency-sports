@@ -735,3 +735,48 @@ class TestPaddingAndSendFailures:
             self._run(temp_dir, mock_redis)
         out = temp_dir / "prod.csv"
         assert not out.exists() or pd.read_csv(out).empty
+
+class TestThreadRecord:
+    """D28-1: the send workers stamp both the send and the acknowledgement, so they are the
+    threads a recording of every python3 thread's waits is read for."""
+
+    @staticmethod
+    def _run(temp_dir, extra, n=3):
+        pd.DataFrame({
+            "event_id": [f"e{i}" for i in range(n)],
+            "match_id": [1] * n,
+            "t_sim_seconds": [0] * n,
+            "t_emit_offset_s": [0.0] * n,
+            "row_idx": list(range(n)),
+        }).to_csv(temp_dir / "plan.csv", index=False)
+        mock_redis = MagicMock()
+        mock_redis.xadd = MagicMock(return_value="rid1")
+        with patch('redis.Redis', return_value=mock_redis):
+            old_argv, old_cwd = sys.argv, os.getcwd()
+            try:
+                os.chdir(temp_dir)
+                sys.argv = ["rp", "--run-id", "tr", "--plan-csv", "plan.csv",
+                            "--out", "prod.csv"] + extra
+                rp_main()
+            finally:
+                os.chdir(old_cwd)
+                sys.argv = old_argv
+
+    def test_the_workers_are_named_as_the_threads_that_stamp(self, temp_dir):
+        import threading
+        self._run(temp_dir, ["--thread-record"])
+        record = json.loads((temp_dir / "prod_threads.json").read_text(encoding="utf-8"))
+        assert record["roles"]["stamps_ack"] == record["roles"]["stamps_send"]
+        assert threading.get_native_id() not in record["roles"]["stamps_ack"],             "the loop hands the send to a worker and stamps neither"
+        assert len(record["clocks"]) == 2
+
+    def test_the_corrections_thread_is_named_too(self, temp_dir):
+        self._run(temp_dir, ["--thread-record", "--send-workers", "1", "--s3-mode",
+                             "corrections", "--corrections-every-k", "1",
+                             "--correction-delay-s", "0.0"], n=2)
+        record = json.loads((temp_dir / "prod_threads.json").read_text(encoding="utf-8"))
+        assert len(record["roles"]["stamps_ack"]) == 2, "one worker and the corrections thread"
+
+    def test_no_record_unless_asked(self, temp_dir):
+        self._run(temp_dir, [])
+        assert not (temp_dir / "prod_threads.json").exists()

@@ -748,3 +748,35 @@ class TestAckBatching:
     def test_zero_batch_treated_as_one(self, temp_dir):
         r = self._run(temp_dir, ["--ack-batch", "0"], n_msgs=3)
         assert r.xack.call_count == 3
+
+
+class TestTheThreadThatStampsArrivals:
+    """D28-1: named only when asked, with both clocks."""
+
+    @staticmethod
+    def _run(temp_dir, extra):
+        mock_redis = MagicMock()
+        mock_redis.xgroup_create.side_effect = Exception("Group exists")
+        mock_redis.xreadgroup.side_effect = [
+            [("sb:events", [("m1", {"value": json.dumps({"run_id": "r9", "event_id": "e1"})})])],
+            None,
+        ]
+        old_argv = sys.argv
+        try:
+            sys.argv = ["rc", "--run-id", "r9", "--out", str(temp_dir / "consumer.csv"),
+                        "--idle-seconds", "0"] + extra
+            with patch('redis_consumer.redis.Redis', return_value=mock_redis):
+                with patch('redis_consumer.time.monotonic', side_effect=lambda: 100.0):
+                    rc_main()
+        finally:
+            sys.argv = old_argv
+
+    def test_it_is_named_when_asked(self, temp_dir):
+        import threading
+        self._run(temp_dir, ["--thread-record"])
+        record = json.loads((temp_dir / "consumer_threads.json").read_text(encoding="utf-8"))
+        assert record["roles"] == {"stamps_receive": [threading.get_native_id()]}
+
+    def test_it_is_not_written_unless_asked(self, temp_dir):
+        self._run(temp_dir, [])
+        assert not (temp_dir / "consumer_threads.json").exists()

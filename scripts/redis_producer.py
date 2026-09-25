@@ -17,6 +17,7 @@ except Exception:
 
 
 import law_clock
+import thread_record
 
 
 def now_ns() -> int:
@@ -89,8 +90,13 @@ def main():
     # the round trip; that is the quantity comparable to Kafka's produce() return.
     ap.add_argument("--trace-loop", default=None,
                     help="write per-event loop timing to this CSV (diagnostic; off by default)")
+    # D28-1, as in kafka_producer.py. Here the send workers stamp both times, so they are the
+    # threads a recording of waits is read for.
+    ap.add_argument("--thread-record", action="store_true",
+                    help="write which threads stamped what, and both clocks, beside the CSV")
 
     args = ap.parse_args()
+    record = thread_record.ThreadRecord() if args.thread_record else None
 
     # The same bar as the Kafka client and as the Java one: the quantity being measured is the
     # same, so the instrument's resolution is judged the same way. See law_clock.py.
@@ -190,6 +196,9 @@ def main():
                     {"value": json.dumps(corr_msg, separators=(",", ":"), ensure_ascii=False)},
                 )
                 t_broker_ack_ns = now_ns()
+                if record is not None:
+                    record.note("stamps_send")
+                    record.note("stamps_ack")
 
                 corr_rows.append(
                     {
@@ -227,6 +236,9 @@ def main():
             send_ns = now_ns()
             redis_id = r.xadd(args.stream, {"value": payload})
             ack_ns = now_ns()
+            if record is not None:
+                record.note("stamps_send")
+                record.note("stamps_ack")
             row = {
                 "run_id": args.run_id, "backend": "redis", "stream": args.stream,
                 "event_id": event_id, "match_id": match_id, "t_sim_seconds": t_sim,
@@ -393,6 +405,8 @@ def main():
             tw.writerows(trace)
         print(f"OK loop trace: wrote {len(trace)} rows -> {tp}")
 
+    if record is not None:
+        record.write(thread_record.beside(out_path))
     print(f"OK redis producer: wrote {sent} base rows -> {out_path}")
     if corr_enabled:
         print(f"OK redis producer: wrote {len(corr_rows)} correction rows -> {out_path}")

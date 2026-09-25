@@ -78,10 +78,18 @@ class TestBlocks:
 
     @pytest.mark.parametrize("block,size", [("B0", 6), ("C0", 12), ("P0", 16), ("A1", 112),
                                             ("A2", 32), ("A3", 36), ("A4", 48), ("A5", 48),
-                                            ("A7", 12), ("A8", 24)])
+                                            ("A7", 12), ("A8", 24), ("A9", 32)])
     def test_every_block_is_its_full_product(self, block, size):
         setups, unreachable = ld.make_setups(block, 1.0, BASELINE, AZURE)
         assert len(setups) + len(unreachable) == size
+
+    def test_the_helper_block_records_its_waits_and_no_other_block_says_so(self):
+        """D28-1: A9's runs, and only A9's, carry trace_events, which is what makes the campaign
+        record every python3 thread's scheduling events and the clients name their threads."""
+        setups = ld.make_setups("A9", 1.0, BASELINE, AZURE)[0]
+        assert all(s["trace_events"] and s["trace_half"] for s in setups)
+        assert {s["load_pct"] for s in setups} == {75, 88}
+        assert all("trace_events" not in s for s in ld.make_setups("A3", 1.0, BASELINE, AZURE)[0])
 
     def test_a1_has_a_slice_between_3_and_4_5(self):
         """D27-3: 3.75 ms, so that Kafka, whose own zero-delay trip puts 0.75, 1.5 and 2.25 out

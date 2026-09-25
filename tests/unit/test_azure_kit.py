@@ -386,9 +386,10 @@ def test_every_run_keeps_the_brokers_hold_its_tcp_counters_and_the_brokers_log()
              "run_integrity.py check"]
     places = [code.index(step) for step in order]
     assert places == sorted(places)
-    # The paper's batched acknowledgement reaches the Redis consumer, with A9's thread record
-    # beside it in the runs that ask for one (D28-1).
-    assert '-CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA $record_args"' in code
+    # The paper's batched acknowledgement reaches the Redis consumer, M0's own batch after it
+    # where the setup names one (D29-1), and A9's thread record in the runs that ask (D28-1).
+    assert ('-CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA${ACK_BATCH:+ --ack-batch $ACK_BATCH}'
+            ' $record_args"') in code
     helper = (KIT / "campaign.sh").read_text(encoding="utf-8").split("tcp_counters () {", 1)[1]
     for side in ('"$RUN_DIR/tcp_$1.txt"', "sudo ip netns exec sblrecv grep",
                  '"$RUN_DIR/broker_tcp_$1.txt"'):
@@ -2058,8 +2059,33 @@ def test_the_helper_blocks_runs_record_every_event_and_name_their_threads():
     assert 'sudo bpftrace "$EVENTS_BT" > "$RUN_DIR/waits.txt"' in run
     assert 'sudo bpftrace "$TRACE_BT" > "$RUN_DIR/runqlat.txt"' in run, "A1 and A3 as they were"
     assert 'record_args="--thread-record"' in run
-    assert '-PRODUCER_EXTRA "$KAFKA_PRODUCER_EXTRA $record_args" -CONSUMER_EXTRA "$record_args"' \
-        in run
-    assert '-PRODUCER_EXTRA "$record_args" -CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA $record_args"' \
-        in run
+    assert '-PRODUCER_EXTRA "$KAFKA_PRODUCER_EXTRA $record_args"' in run
+    assert '-CONSUMER_EXTRA "$record_args $read_args"' in run
+    assert '-PRODUCER_EXTRA "$record_args"' in run
+    assert ('-CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA${ACK_BATCH:+ --ack-batch $ACK_BATCH}'
+            ' $record_args"') in run
     assert run.index('local record_args=""') < run.index('record_args="--thread-record"')
+
+
+def test_m0_replays_its_own_plan_and_records_what_its_hypotheses_are_judged_by():
+    """S0-2 and D29-1. M0 replays the football match in bursts, is held to that plan's own count
+    and rate, sets the Redis consumer's acknowledgement batch from its setup, and in its recorded
+    half captures the packets at both ends and the receive loop's cycle, each capture stopped by
+    its own process id. Every other block runs exactly as it did."""
+    code = (KIT / "campaign.sh").read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert 'find data/processed/replay_plans -name replay_plan.csv | sort | head -n 1' in code
+    assert 'FOOT_SPEEDUP=$(assert_plan_rate "$FOOT_PLAN" 10)' in code, "as the pilot did"
+    assert "python3 scripts/replay_window.py" in code
+    assert '"PLAN_KIND": p.get("plan") or ""' in code and '"CAPTURE": "1" if p.get("capture")' in code
+    run = code.split("run_one () {", 1)[1]
+    assert 'local run_plan="$SYN_PLAN" run_speedup="$SPEEDUP" run_maxt="$DURATION"' in run
+    assert 'plan_args=(--planned "$FOOT_PLANNED")' in run
+    assert run.count('"$RUN_ID" "$run_plan"') == 2, "both backends replay the run's own plan"
+    assert '--rate "$run_rate"' in run and '"${plan_args[@]}"' in run
+    assert 'read_args="--read-trace"' in run
+    assert 'sudo ip netns exec sblrecv tcpdump -i any -s 200 -w "$RUN_DIR/receiver.pcap"' in run
+    assert "tcpdump -i eth0 -s 200 -w /tmp/sbl_m0.pcap host $RECEIVER_IP" in run
+    assert 'sudo kill -INT "$receiver_capture"' in run, "stopped by its own id"
+    assert '> "$RUN_DIR/broker.pcap"' in run
+    assert run.index("tcpdump -i eth0 -s 200") > run.index("tcpdump -i eth0 -nn"), \
+        "M0's capture starts after the delay's own capture has been read"

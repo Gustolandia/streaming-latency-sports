@@ -78,7 +78,7 @@ class TestBlocks:
 
     @pytest.mark.parametrize("block,size", [("B0", 6), ("C0", 12), ("P0", 16), ("A1", 112),
                                             ("A2", 32), ("A3", 36), ("A4", 48), ("A5", 48),
-                                            ("A7", 12), ("A8", 24), ("A9", 32)])
+                                            ("A7", 12), ("A8", 24), ("A9", 32), ("M0", 9)])
     def test_every_block_is_its_full_product(self, block, size):
         setups, unreachable = ld.make_setups(block, 1.0, BASELINE, AZURE)
         assert len(setups) + len(unreachable) == size
@@ -90,6 +90,27 @@ class TestBlocks:
         assert all(s["trace_events"] and s["trace_half"] for s in setups)
         assert {s["load_pct"] for s in setups} == {75, 88}
         assert all("trace_events" not in s for s in ld.make_setups("A3", 1.0, BASELINE, AZURE)[0])
+
+    def test_m0_is_the_plans_own_design(self):
+        """S0-2 and D29-1: the football match in bursts at 0, 2 and 8 ms, Redis both acknowledging
+        each message and in batches of 200, 10 rounds, and half the runs recording everything
+        M-H1 to M-H4 are judged by."""
+        setups = by_id(ld.make_setups("M0", 1.0, BASELINE, AZURE)[0])
+        assert sorted(setups) == sorted(
+            ["M0-kafka-l75-d%d" % d for d in (0, 2000, 8000)]
+            + ["M0-redis-l75-ack%d-d%d" % (b, d) for b in (1, 200) for d in (0, 2000, 8000)])
+        assert {s["delay_ms"] for s in setups.values()} == {0.0, 2.0, 8.0}
+        assert setups["M0-kafka-l75-d2000"]["ack_batch"] is None
+        assert setups["M0-redis-l75-ack200-d8000"]["ack_batch"] == 200
+        assert all(s["plan"] == "football" and s["capture"] and s["trace_events"]
+                   and s["trace_half"] and s["target_trip_ms"] is None for s in setups.values())
+        assert ld.FIXED_ROUNDS["M0"] == 10 and "M0" not in ld.UNPLACED
+
+    def test_m0_needs_no_calibration_and_takes_nothing_from_a_session(self):
+        made = ld.design("M0", AZURE, None, 10, 3)
+        assert len(made["setups"]) == 9 and made["rounds"] == 10
+        with pytest.raises(ValueError, match="runs at 75% load and not at 50"):
+            ld.make_setups("M0", 1.0, None, AZURE, loads=(50,))
 
     def test_a1_has_a_slice_between_3_and_4_5(self):
         """D27-3: 3.75 ms, so that Kafka, whose own zero-delay trip puts 0.75, 1.5 and 2.25 out

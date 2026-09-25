@@ -192,6 +192,24 @@ for _ in range(900):
   log "event probe ok: $PROBE_EVENTS events in 8 s"
 fi
 
+if python3 -c 'import csv, json, sys
+rows = csv.DictReader(open(sys.argv[1], encoding="utf-8"))
+sys.exit(0 if any(json.loads(r["params"]).get("plan") == "football" for r in rows) else 1)' "$QUEUE"; then
+  # S0-2, D29-1: M0 replays the football match in bursts, as the pilot did at ten messages a
+  # second. A burst sends what the match did, so the count a run is held to and the rate it is
+  # checked at are the plan's own events in the run's window (scripts/replay_window.py).
+  FOOT_PLAN=$(find data/processed/replay_plans -name replay_plan.csv | sort | head -n 1)
+  [ -f "$FOOT_PLAN" ] || {
+    log "FATAL: no football replay plan under data/processed/replay_plans"; exit 1; }
+  FOOT_SPEEDUP=$(assert_plan_rate "$FOOT_PLAN" 10) || {
+    log "FATAL: no speedup for $FOOT_PLAN"; exit 1; }
+  read -r FOOT_MAXT FOOT_PLANNED FOOT_RATE < <(python3 scripts/replay_window.py "$FOOT_PLAN" \
+    --speedup "$FOOT_SPEEDUP" --duration "$DURATION" --warmup-s "$WARMUP_S")
+  [ "${FOOT_PLANNED:-0}" -gt 1 ] || {
+    log "FATAL: the football plan sends ${FOOT_PLANNED:-nothing} after the warm-up"; exit 1; }
+  log "football replay: $FOOT_PLAN at speedup $FOOT_SPEEDUP; $FOOT_PLANNED messages after the warm-up at $FOOT_RATE a second, to match second $FOOT_MAXT"
+fi
+
 tcp_counters () {  # before|after: the Tcp lines of /proc/net/snmp on every side of the run
   grep '^Tcp:' /proc/net/snmp > "$RUN_DIR/tcp_$1.txt" 2>&1
   sudo ip netns exec sblrecv grep '^Tcp:' /proc/net/snmp > "$RUN_DIR/receiver_tcp_$1.txt" 2>&1
@@ -295,13 +313,33 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
     fi
   fi
 
-  local record_args=""
+  # M0 replays the football plan and is held to that plan's own count and rate (D29-1); every
+  # other block runs the steady one.
+  local run_plan="$SYN_PLAN" run_speedup="$SPEEDUP" run_maxt="$DURATION" run_rate="$RATE"
+  local plan_args=()
+  if [ "$PLAN_KIND" = football ]; then
+    run_plan="$FOOT_PLAN"; run_speedup="$FOOT_SPEEDUP"; run_maxt="$FOOT_MAXT"
+    run_rate="$FOOT_RATE"; plan_args=(--planned "$FOOT_PLANNED")
+  fi
+
+  local record_args="" read_args="" receiver_capture=""
   if [ -n "$TRACE_HALF" ] && [ "$TRACE" = 1 ]; then
     if [ -n "$TRACE_EVENTS" ]; then
       sudo bpftrace "$EVENTS_BT" > "$RUN_DIR/waits.txt" 2>"$RUN_DIR/waits.err" &
       record_args="--thread-record"
     else
       sudo bpftrace "$TRACE_BT" > "$RUN_DIR/runqlat.txt" 2>"$RUN_DIR/runqlat.err" &
+    fi
+    if [ -n "$CAPTURE" ]; then
+      # M0's recorded half (S0-2): the packets at both ends, for M-H1 and M-H4, and the receive
+      # loop's own cycle, for M-H2. Each capture is stopped by its own process id below.
+      read_args="--read-trace"
+      sudo ip netns exec sblrecv tcpdump -i any -s 200 -w "$RUN_DIR/receiver.pcap" \
+        host "$BROKER_PRIV" > "$RUN_DIR/receiver_capture.err" 2>&1 &
+      receiver_capture=$!
+      # A capture a crashed run left behind is stopped by its own id first, so no two write one file.
+      remote_broker "sudo sh -c 'kill -INT \$(cat /tmp/sbl_m0.pid 2>/dev/null) 2>/dev/null; nohup tcpdump -i eth0 -s 200 -w /tmp/sbl_m0.pcap host $RECEIVER_IP > /tmp/sbl_m0.err 2>&1 & echo \$! > /tmp/sbl_m0.pid'" \
+        > /dev/null 2>&1
     fi
     traced=1
     sleep 8
@@ -317,16 +355,18 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
     [ -n "${CLIENT:-}" ] && client_args+=(-CLIENT "$CLIENT")
     [ -n "${ACK_STAMP:-}" ] && client_args+=(-ACK_STAMP "$ACK_STAMP")
     SBL_CONSUMER_WRAP="sudo ip netns exec sblrecv sudo -u $ME" SBL_SCHED_WRAP="$wrap_sched" \
-      timeout -k 30 $(( DURATION + 300 )) bash scripts/run_kafka_trial.sh "$RUN_ID" "$SYN_PLAN" \
-      "$SPEEDUP" "$DURATION" -BOOTSTRAP "$KAFKA_BOOTSTRAP" \
-      -PRODUCER_EXTRA "$KAFKA_PRODUCER_EXTRA $record_args" -CONSUMER_EXTRA "$record_args" \
+      timeout -k 30 $(( DURATION + 300 )) bash scripts/run_kafka_trial.sh "$RUN_ID" "$run_plan" \
+      "$run_speedup" "$run_maxt" -BOOTSTRAP "$KAFKA_BOOTSTRAP" \
+      -PRODUCER_EXTRA "$KAFKA_PRODUCER_EXTRA $record_args" \
+      -CONSUMER_EXTRA "$record_args $read_args" \
       -IDLE_SECONDS 15 "${client_args[@]}" > "$RUN_DIR/trial.log" 2>&1
     rc=$?
   else
     SBL_CONSUMER_WRAP="sudo ip netns exec sblrecv sudo -u $ME" SBL_SCHED_WRAP="$wrap_sched" \
-      timeout -k 30 $(( DURATION + 300 )) bash scripts/run_redis_trial.sh "$RUN_ID" "$SYN_PLAN" \
-      "$SPEEDUP" "$DURATION" -RedisHost "$REDIS_HOST" -PORT "$REDIS_PORT" \
-      -PRODUCER_EXTRA "$record_args" -CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA $record_args" \
+      timeout -k 30 $(( DURATION + 300 )) bash scripts/run_redis_trial.sh "$RUN_ID" "$run_plan" \
+      "$run_speedup" "$run_maxt" -RedisHost "$REDIS_HOST" -PORT "$REDIS_PORT" \
+      -PRODUCER_EXTRA "$record_args" \
+      -CONSUMER_EXTRA "$REDIS_CONSUMER_EXTRA${ACK_BATCH:+ --ack-batch $ACK_BATCH} $record_args" \
       -IDLE_SECONDS 15 > "$RUN_DIR/trial.log" 2>&1
     rc=$?
   fi
@@ -339,6 +379,11 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
   remote_broker "docker logs --timestamps --since $began --until $(( ended + 1 )) $container" \
     > "$RUN_DIR/broker_log.txt" 2>&1
 
+  if [ -n "$receiver_capture" ]; then
+    sudo kill -INT "$receiver_capture" 2>/dev/null; wait "$receiver_capture" 2>/dev/null
+    remote_broker "sudo kill -INT \$(cat /tmp/sbl_m0.pid) 2>/dev/null; sleep 1; sudo cat /tmp/sbl_m0.pcap; sudo rm -f /tmp/sbl_m0.pcap /tmp/sbl_m0.pid /tmp/sbl_m0.err" \
+      > "$RUN_DIR/broker.pcap" 2>/dev/null
+  fi
   if [ "$traced" = 1 ]; then sudo pkill -INT -x bpftrace 2>/dev/null; sleep 3; fi
   kill -TERM "$sampler_pid" 2>/dev/null; wait "$sampler_pid" 2>/dev/null
   kill -9 "$stress_pid" 2>/dev/null
@@ -359,9 +404,9 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
 
   [ -n "$CALIBRATION" ] && calibration_args=(--calibration "$CALIBRATION")
   [ -n "$GOTIT_BRAKE" ] && gotit_args=(--gotit-brake "$GOTIT_BRAKE")
-  verdict=$(python3 scripts/run_integrity.py check "$RUN_DIR" --rate "$RATE" \
+  verdict=$(python3 scripts/run_integrity.py check "$RUN_DIR" --rate "$run_rate" \
     --duration "$DURATION" --warmup-s "$WARMUP_S" "${calibration_args[@]}" "${gotit_args[@]}" \
-    2> "$RUN_DIR/integrity.err")
+    "${plan_args[@]}" 2> "$RUN_DIR/integrity.err")
   case $? in
     0) ;;
     3) STOP_REASON="${verdict#stop: }"; REASON="$verdict" ;;
@@ -398,6 +443,10 @@ values = {
     "CLIENT": p.get("language") or "", "ACK_STAMP": p.get("ack_stamp") or "",
     "TRACE_HALF": "1" if p.get("trace_half") else "",
     "TRACE_EVENTS": "1" if p.get("trace_events") else "",
+    # M0 (D29-1): its plan, the Redis consumer's acknowledgement batch, and whether its recorded
+    # half captures packets. Every other block leaves all three unset.
+    "PLAN_KIND": p.get("plan") or "", "ACK_BATCH": p.get("ack_batch") or "",
+    "CAPTURE": "1" if p.get("capture") else "",
     "TRACE": 1 if int(hashlib.sha256(row["key"].encode()).hexdigest(), 16) % 2 == 0 else 0,
     "HZ": round(1000 / tick) if tick else "",
 }

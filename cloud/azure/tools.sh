@@ -804,20 +804,27 @@ sys.exit(0 if abs(moved - want) <= max(0.1 * want, 0.05) else 1)" "$moved" "$ms"
 #: sees the stepped clock. The step is measured against the hypervisor's PTP clock, which it does
 #: not move (scripts/clock_step.py), and chrony is stopped only while the clock is held off.
 STEPPED_MS=""
+STEP_MOVED=""
 
 machine_is_quiet () {
   ps -eo args --no-headers \
     | awk '/azure\/(campaign|stage0|stage1|chain)\.sh/ && !/awk/ { n++ } END { exit (n > 0) }'
 }
 
-step_clock () {  # ms, run dir: step early by ms, print how far it was measured to move
+#: Step early by ms, and leave in STEP_MOVED how far the clock was measured to move. Call it
+#: directly, never through $(...): that is a subshell, and STEPPED_MS set there never reaches
+#: unstep_clock. It was called that way on 25 September, so nothing was ever put back: each Go
+#: tool's second offset landed on top of its first, 5.3 to 5.7 ms from the PTP clock where 3.8
+#: was planned, and each next tool's control began with chrony still pulling the clock back.
+step_clock () {  # ms, run dir
   local ms="$1" out="$2"
   sudo systemctl stop chrony || return 1
   sudo python3 scripts/clock_step.py shift --ms="-$ms" --out "$out/clock_step.json" \
     > /dev/null || { sudo systemctl start chrony; return 1; }
   STEPPED_MS="$ms"
-  python3 -c 'import json, sys; print("%.4f" % -json.load(open(sys.argv[1]))["moved_ms"])' \
-    "$out/clock_step.json"
+  STEP_MOVED=$(python3 -c \
+    'import json, sys; print("%.4f" % -json.load(open(sys.argv[1]))["moved_ms"])' \
+    "$out/clock_step.json")
 }
 
 unstep_clock () {  # put the clock back, and chrony with it; safe to call when nothing is stepped
@@ -899,8 +906,9 @@ print(found["smallest_reported_ms"] or "")' "$DIR/t1-$tool-step.json" 2>/dev/nul
     mkdir -p "$DIR/$run"
     local spelling moved said wrap
     if [ "$how" = clock ]; then
-      moved=$(step_clock "$ms" "$DIR/$run") \
+      step_clock "$ms" "$DIR/$run" \
         || stop "this machine's clock could not be stepped by $ms ms and measured against its PTP clock; T2 will not run an offset it cannot show reached the clock"
+      moved="$STEP_MOVED"
       spelling="the system clock stepped"
       wrap=""
     else
@@ -920,7 +928,18 @@ print(found["smallest_reported_ms"] or "")' "$DIR/t1-$tool-step.json" 2>/dev/nul
     echo "$?" > "$DIR/$run/exit_code.txt"
     #: Put back before anything else happens, reading included: the clock is held off only for as
     #: long as the tool runs.
-    [ "$how" = clock ] && unstep_clock
+    if [ "$how" = clock ]; then
+      unstep_clock
+      #: And checked, with the answer beside the run. On 25 September nothing was put back and
+      #: nothing said so; the only sign was the offset printed once, at the very end.
+      local back
+      back=$(sudo python3 scripts/clock_step.py measure) || back=""
+      echo "{\"after_putting_back_ms\": ${back:-null}}" > "$DIR/$run/clock_back.json"
+      log "   the clock put back: ${back:-not measured} ms from the PTP clock"
+      python3 -c 'import sys; sys.exit(0 if abs(float(sys.argv[1])) <= 0.25 else 1)' \
+        "${back:-99}" \
+        || stop "the clock is ${back:-an unmeasured number of} ms from the PTP clock after being put back; T2 will not run on from a clock still held off"
+    fi
     python3 scripts/tool_readings.py read --tool "$tool" --file "$DIR/$run/tool.txt" \
       --out "$DIR/$run/reading.json" >/dev/null 2>&1 \
       || log "   it reported no latency at all under the offset; kept as that"

@@ -1016,15 +1016,25 @@ def _queue_call(tmp_path, call):
 
 def _scratch_checkout(tmp_path):
     """Enough of a checkout for the script to load: it reads the pair's addresses through
-    common.sh, which refuses to load without them, as every campaign script here does."""
+    common.sh, which refuses to load without them, as every campaign script here does.
+
+    common.sh then changes to REPO_ROOT -- $HOME/sbl unless it is told otherwise -- and will not
+    go on without a replay plan under data/. The first version of this gave it neither, and made
+    its folders as though it would only ever be called once, when a test calls it once for each
+    question. So every test built on it failed on Linux from the day they were written, 22
+    September, while Windows skipped them; CI said so on every commit from then on.
+    """
     root = tmp_path / "sbl"
-    (root / "cloud" / "azure").mkdir(parents=True)
-    (root / "cloud" / "campaigns").mkdir(parents=True)
+    for where in ("cloud/azure", "cloud/campaigns", "data/plans/scratch"):
+        (root / where).mkdir(parents=True, exist_ok=True)
     shutil.copy(QUEUE, root / "cloud" / "azure" / "queue.sh")
     shutil.copy(REPO / "cloud" / "campaigns" / "common.sh", root / "cloud" / "campaigns")
+    (root / "data" / "plans" / "scratch" / "replay_plan.csv").write_text("event_id\n",
+                                                                          encoding="utf-8")
     (root / "cloud" / "hosts.env").write_text(
         "\n".join(["BROKER_PRIV=10.9.9.9", "RECEIVER_IP=10.9.9.8", "SUBNET_PREFIX=24",
-                   "SUBNET_GATEWAY=10.9.9.1", "AZ_PROFILE=scratch", ""]), encoding="utf-8")
+                   "SUBNET_GATEWAY=10.9.9.1", "AZ_PROFILE=scratch",
+                   "REPO_ROOT=%s" % root.as_posix(), ""]), encoding="utf-8")
     return root
 
 

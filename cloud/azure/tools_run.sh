@@ -42,6 +42,10 @@ if [ -z "${SBL_TOOL_GUARDED:-}" ]; then
 fi
 
 mkdir -p "$OUT"
+#: How many this run asks the tool to send, written beside it: T2 holds the tool's own count
+#: against this. It held it against the number of trips in our reference -- another run, of
+#: another client -- and on 25 September wrk2, which counted all 3,001 it sent, read as short.
+echo $(( RATE * SECONDS_TO_RUN )) > "$OUT/asked_to_send.txt"
 # shellcheck disable=SC2086
 case "$TOOL" in
   vegeta)

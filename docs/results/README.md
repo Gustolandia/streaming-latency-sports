@@ -25,7 +25,7 @@ rather than as a negative result.
 | A5 | does the default slice follow the core count | **one session of three; the other two are queued on matched-b and start when the A2 session running now finishes.** Its 8-CPU campaign finished 20 Sep and is clean (60 runs counted, 1 repeated). The machine refuses to offline a CPU, so the count is asked for at boot instead — demonstrated at 2 and 4 CPUs on 21 Sep, see below. The two sessions still have to run |
 | A7 | does go-first priority remove the plateau | run; its Kafka half checked sound at 4 rounds |
 | A8 | does the client language change it | **complete, both pairs, and P8 is not confirmed on either — the same two clauses hold and the same one fails.** The cliff is there in Kafka's own official Java client on both processors, and go-first removes it there too (1227× on x86, 470× on Arm, where the plan asks for 5×). Python's plateau rate is **3.25 times Java's on x86 and 4.33 times on Arm**, where the plan allows 1.5, and the two intervals do not overlap. 288 runs, 288 counted, no run with a problem on either pair. The x86 campaign stopped itself five times before its final resume, four of them instrument faults since fixed; the fifth was the brake stopping it at 86 of 144 on a move of 0.134 ms where it allowed 0.132. Its 6 rounds were chosen from the Arm pair's levels because the x86 pair has no A8 pilot — recomputed at its own, 6 rounds gives 87% and 4 would have given 78% — see below |
-| T1–T4 | what ten benchmarking tools report | **queued on matched, behind A8, and its install step exists for the first time** — it had never fetched or built a single tool. Harness built and checked against made-up tools. All ten go on one pair rather than five each: the plan requires only that each tool runs entirely on one pair, and the load is no longer the shape the five-and-five split was balanced for. Three tools wait on their version pins being resolved and written down — see below |
+| T1–T4 | what eleven benchmarking tools report | **complete on the first x86 pair, all eleven tools, 23–25 Sep.** All eleven measure the path. Ten time against one clock, and `rdkafka_performance`, the one arranged across two, moved with its clock. Judged under freeze 21 as written. Four faults found writing it up are in the table below, and none changes a tool's answer → [`tools/t1-t4-eleven-tools.md`](tools/t1-t4-eleven-tools.md) |
 | T5 | do the tools' own documents admit it | done, frozen in freeze 08 |
 
 ## What has actually been found
@@ -133,6 +133,18 @@ Corrected in freeze 11: the offsets come from the measured trip, the prediction 
 the step T1 measures, and the verdict names what survives rather than what is nearest. Five of
 six tool classes are then named on real trips, and none wrongly.
 
+**All eleven tools measure the path, and ten of them time against one clock.** T1–T4 ran on the
+first x86 pair from 23 to 25 September. Every tool's figure follows the added delay at the rate
+its crossings predict: 0.98 to 1.14 ms per millisecond, and 1.96 and 2.03 for the two tools whose
+interval crosses the delayed direction twice. With their clock moved back by their median trip
+plus 3 ms, ten tools' figures stayed within their own noise. Each writes both of its timestamps
+from one clock, so it cannot report a negative latency, and it cannot measure a one-way trip
+either. `rdkafka_performance` is arranged across two clocks, and its figures moved by the offset:
+−5.42 ms at 5.48. Which rule it applies to a value below zero is undecided, as freeze 21 said it
+would be before it was judged. At 88% load no tool's figure moved beyond its own noise except
+`wrk2` under go-first, and that only marginally.
+→ [`tools/t1-t4-eleven-tools.md`](tools/t1-t4-eleven-tools.md)
+
 ## What is out of reach, and why
 
 Reported as out of reach rather than as a negative result, which is the distinction the plan
@@ -229,6 +241,10 @@ measured.
 | T2's judge held every hypothesis to a tool's printing step -- 0.001 ms, 0.00001 ms -- where two runs of the same tool minutes apart differ by 0.07 to 0.16 ms, and compared against T1's zero step rather than the control D23-1 takes | laying each tool's movement beside its step and its measured shift: valkey-benchmark's average rose 0.075 ms under a clock moved back 1.78 ms and was called undecided | every T2 but one undecided. Freeze 21 takes each tool's noise from its own T1 staircase and judges the one-clock hypothesis beside the four; every reading is judged again, with the old verdict kept beside (D25-1, D25-2) |
 | the program that reads T1's staircase for T2's noise used three modules it did not import | reading its imports after its own tests all passed: the function was new and not yet called by any of them | none -- caught before T2 ran under freeze 21, where its first run would have stopped |
 | the first x86 pair's driver ran idle RabbitMQ, nginx and NATS servers from 15:01 UTC, left by the misdirected `brokers` | a check of the driver's own processes, which found a NATS server where none should be | none measured: no tool talked to them. Stopped once the tools block was done, and recorded in freeze 21 because they were there (D25-8) |
+| T2's judge held a tool's count against the number of trips in our reference, which is another run of another client, instead of against what the tool was asked to send. It also held a dropping behaviour's count of our trips against the tool's count of its own | laying each run's printed count, "it counted 3001 of 5000 sent", beside what `tools_run.sh` asks of every tool: 3,000 | one verdict. wrk2 at its 1.83 ms offset was printed as one clock on "it counted 3001 where this would count 50", and it is undecided under freeze 21 as written. Its answer stands on its 3.82 ms offset. Every T2 reading was judged again, after the re-judgement had first reproduced all 22 printed verdicts with the program unchanged |
+| `step_clock` was read through `$(...)`, a subshell, so the record of each step never reached `unstep_clock` and the Go tools' clock was never put back. Each second offset landed on top of the first, 5.3 to 5.7 ms from the PTP clock where 3.8 was planned, and each next control began with chrony pulling the clock back | the job's last line, "the clock now: −4.978339 ms from the PTP clock", then each run's `clock_step.json` | twelve runs of four tools, kept and set aside, and 13 minutes of one pair to run them again. T2 now measures the clock after putting it back and will not go on from one more than 0.25 ms off. A test runs T2's own lines with stand-ins, and it fails on the old call (f6859319) |
+| T1's step finder reads only a tool's average. rabbitmq-perftest and nats-latency print none, so it found no step for them, and T2 fell back to their printing step, "a bound" | tabulating T1 for all eleven tools | none: judged again with a 0.1 ms step, all four of their T2 runs keep their verdicts. Left as it is, because changing it changes T2's inputs for the other nine, which is for the next freeze |
+| hey's percentiles were never read. It prints "50%% in", its format string's escape left in, where its documentation shows "50% in", and the reader and its fixture followed the documentation | the same table, where hey alone had no median | none to T2, which judges the average and the minimum: re-read from the raw output, hey's verdicts, changes and noise are identical. T1's slope is now taken on its median, 1.038, where its average gave 1.054 |
 
 The commit-versus-tree row and the T2 row above are one fault with two faces, and both survived a
 suite at 100% branch coverage.

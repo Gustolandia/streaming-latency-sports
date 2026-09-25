@@ -956,6 +956,7 @@ print(found["smallest_reported_ms"] or "")' "$DIR/t1-$tool-step.json" 2>/dev/nul
         --plain "$plain" ${step:+--step-ms "$step"} \
         ${moved:+--shift-ms "$moved"} \
         $([ -s "$control/reading.json" ] && printf -- "--control %s" "$control/reading.json") \
+        $([ -s "$DIR/$run/asked_to_send.txt" ] && printf -- "--sent %s" "$(cat "$DIR/$run/asked_to_send.txt")") \
         --staircase "$DIR" --tool "$tool" \
         --exit-code "$(cat "$DIR/$run/exit_code.txt")" --out "$DIR/$run/verdict.json" \
         || log "   UNDECIDED at $ms ms; see $DIR/$run/verdict.json"

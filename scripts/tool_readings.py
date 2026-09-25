@@ -151,7 +151,10 @@ def read_hey(text):
                          ("max", r"^\s*Slowest:\s*([\d.]+) secs")):
         _put(got, steps, key, _find(text, pattern), "s")
     for share, key in (("50", "p50"), ("99", "p99")):
-        _put(got, steps, key, _find(text, r"^\s*%s%% in ([\d.]+) secs" % share), "s")
+        #: One percent sign or two. hey's documentation shows "50% in"; what it prints is its own
+        #: format string's escape, "50%% in", in every real run of 25 September -- so this read
+        #: none of its percentiles from any of them, and T1 fell back to its average.
+        _put(got, steps, key, _find(text, r"^\s*%s%%{1,2} in ([\d.]+) secs" % share), "s")
     # Its count is in the status-code distribution, as "[200]\t1000 responses", one line per
     # code. All of them together are what it kept, so a run that answered 900 of 1000 with a 200
     # and 100 with a 503 is not read as having kept 900.

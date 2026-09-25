@@ -962,6 +962,18 @@ class TestT2ForcedNegatives:
         assert 'spelling="${said%% *}"; moved="${said##* }"' in t2
         assert 'measured $moved ms' in t2
 
+    def test_a_tools_count_is_held_against_what_it_was_asked_to_send(self):
+        """Not against the number of trips in our reference, another run of another client: held
+        against our 5,000, wrk2's count of all 3,001 it sent read as short, and a run was decided
+        on it (25 September)."""
+        run = (KIT / "tools_run.sh").read_text(encoding="utf-8")
+        assert 'echo $(( RATE * SECONDS_TO_RUN )) > "$OUT/asked_to_send.txt"' in run
+        assert run.index("asked_to_send.txt") > run.index('mkdir -p "$OUT"'), \
+            "written once the run's folder exists"
+        t2 = self.tools().split("\nt2 () {", 1)[1].split("\n}\n", 1)[0]
+        judge = t2[t2.index("tool_negatives.py judge"):]
+        assert '"$DIR/$run/asked_to_send.txt"' in judge and '"--sent %s"' in judge
+
     def test_the_clock_is_stepped_where_the_step_can_be_undone(self):
         """The same trap one function along. step_clock records what it stepped for unstep_clock
         to undo, and it was called through $(...), so the record was made in a subshell and

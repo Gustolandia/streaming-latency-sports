@@ -216,6 +216,16 @@ class TestEachToolsOwnOutput:
         assert got["reported_ms"]["p99"] == pytest.approx(9.8)
         assert got["step_ms"] == pytest.approx(0.1)
 
+    def test_hey_is_read_as_it_prints_and_not_as_its_documentation_shows_it(self):
+        """The fixture above was written from hey's documentation, one percent sign. The tool
+        prints two, and on 25 September none of its percentiles had been read from any real run.
+        These lines are from its T4 run on the first x86 pair."""
+        printed = ("Summary:\n  Average:\t0.0009 secs\n\nLatency distribution:\n"
+                   "  10%% in 0.0008 secs\n  50%% in 0.0008 secs\n  99%% in 0.0020 secs\n")
+        got = tr.read_tool("hey", printed)
+        assert got["reported_ms"]["p50"] == pytest.approx(0.8)
+        assert got["reported_ms"]["p99"] == pytest.approx(2.0)
+
     def test_hey_counts_every_status_code_it_answered_with(self):
         """900 of them were 200s and 100 were 503s; it kept a thousand."""
         assert tr.read_tool("hey", HEY)["kept"] == 1000

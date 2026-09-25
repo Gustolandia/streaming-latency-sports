@@ -23,7 +23,7 @@ the fitted width and P2d about the fitted start. The other summary is still repo
   P2d the tick does not move the start: in every kernel and slice, the fitted start is within
       0.25 ms of the slice.
   P3a load leaves the cliff where it is: the halfway point's move between the lowest and the
-      highest load has its whole interval inside 0.25 ms either way.
+      highest load whose plateau is at least 2% has its whole interval inside 0.25 ms either way.
   P3b load raises the plateau: its increase between those loads has a 95% interval above zero.
   P4  go-first priority removes the plateau: it cuts the plateau at least 5 times where the
       ordinary plateau is at least 2%, with a 95% interval above 2.
@@ -33,6 +33,10 @@ the fitted width and P2d about the fitted start. The other summary is still repo
       times Java's at matched setups.
   P9  new hardware: on the Arm pair the halfway point is inside the band at all three slices and
       its slope against the slice lies between 0.8 and 1.2.
+
+A campaign whose runs cannot reach what a rule reads -- too few slices, too few loads with a
+plateau, no core count whose slice it reaches -- did not test the prediction, and its answer says
+"out of reach" rather than "not confirmed".
 
 Intervals come from resampling whole rounds, jointly for every curve of the campaign, because a
 round is what the campaign repeats. Predictions that belong to one family are also corrected
@@ -293,26 +297,31 @@ def cliff_follows_slice(runs, tick_ms, need_inside=None, need_interval=True, dra
             found[summary] = None if line is None else line[0]
         return found
 
+    #: Which slices are a test at all is read from the design's own points (D8-1), never from
+    #: whether a curve crossed halfway: a slice in reach whose curve does not cross is a miss, and
+    #: dropping it would shrink the count the rule is held to (D30-3).
     reaches = testable(runs)
+    slices = sorted(s for s in reaches if reaches[s] and s is not None)
+    least = LEAST_SLICES["P1" if need_interval else "P9"]
+    wanted = need_inside if need_inside is not None else max(
+        0, len(slices) - MAY_MISS["P1" if need_interval else "P9"])
     over = over_draws(runs, numbers, draws, seed)
-    by_summary, slices, wanted = {}, [], need_inside
+    by_summary = {}
     for summary in SUMMARIES:
-        found = dict((s, where) for s, where in halfways(runs, summary).items()
-                     if reaches.get(s, True))
-        slices = sorted(s for s in found if s is not None)
-        in_band = dict((s, inside(found[s], s, s + tick_ms)) for s in slices)
-        wanted = need_inside if need_inside is not None else max(
-            0, len(slices) - MAY_MISS["P1" if need_interval else "P9"])
+        found = halfways(runs, summary)
+        in_band = dict((s, inside(found.get(s), s, s + tick_ms)) for s in slices)
         said = over[summary]
         ok = inside(said["value"], *SLOPE_BAND)
         if need_interval:
             ok = ok and all(excludes((said["low"], said["high"]), edge)
                             for edge in SLOPE_EXCLUDES)
-        enough = len(slices) >= LEAST_SLICES["P1" if need_interval else "P9"]
         by_summary[summary] = _said(
-            said, enough and sum(in_band.values()) >= wanted and ok, halfway_ms=found,
-            in_band=in_band, out_of_reach=sorted(s for s, can in reaches.items() if not can),
+            said, len(slices) >= least and sum(in_band.values()) >= wanted and ok,
+            halfway_ms=dict((s, found.get(s)) for s in slices), in_band=in_band,
+            out_of_reach=sorted(s for s, can in reaches.items() if not can),
             p_value=p_value(said["drawn"], 1.0) if need_interval else None)
+    #: Fewer slices in reach than the rule needs is a campaign that did not test the prediction,
+    #: which is reported as that and not as a test that went against it (D30-3).
     return _both(by_summary,
                  "halfway inside [s, s+h] in at least %d of the %d slices this pair can reach; "
                  "slope in %s%s%s"
@@ -322,7 +331,8 @@ def cliff_follows_slice(runs, tick_ms, need_inside=None, need_interval=True, dra
                     "; each of the %d campaigns moved by its own offset through the %g ms anchor"
                     % (len(set(str(run.get("campaign")) for run in runs)), anchor_ms)
                     if anchor_ms is not None else ""),
-                 anchor_ms=anchor_ms)
+                 anchor_ms=anchor_ms, tested=len(slices) >= least,
+                 in_reach="%d slices, where the rule needs %d" % (len(slices), least))
 
 
 def width_follows_tick(runs, tick_ms, against_tick_ms=1.0, draws=DRAWS, seed=0, grid=None):
@@ -396,11 +406,39 @@ def start_at_slice(runs, grid=None):
                  % START_WITHIN_MS, judged_on=("fitted",))
 
 
-def _load_ends(part, grid):
-    """The curves at the lowest and the highest load a campaign ran."""
-    found = curves_by(part, "load_pct", grid)
+def loads_in_reach(runs, grid=None):
+    """({load: its plateau} for the loads P3a and P3b compare, and the same for the rest).
+
+    A load is compared only where its plateau is at least P4's bar (D14-2): a curve that falls
+    from 0.0015 to 0.00047 does not fix a cliff position, and a load under the bar is reported out
+    of reach with the rate that puts it there (D14-3). Read once, from the campaign's own runs and
+    not inside each resampling, as P8 reads its trips: which loads are compared is a property of
+    the campaign, and a draw that carried a load across the bar would make the interval an
+    interval over two different comparisons. The plateau is the free one, the rate measured at
+    0.9 of the slice, which is the rate D14-3 reports.
+    """
+    reach, out = {}, {}
+    for load, curve in curves_by(runs, "load_pct", grid).items():
+        level = curve["plateau"] if curve else None
+        (reach if level is not None and level >= PLATEAU_WORTH_CUTTING else out)[load] = level
+    return reach, out
+
+
+def _load_ends(part, grid, loads):
+    """The curves at the lowest and the highest of the loads compared.
+
+    Until version 30 these were the lowest and the highest load the campaign ran, whatever their
+    plateau, so every A3 verdict compared 50% load, whose plateau is 0.12-0.16%, with 88% (D30-1).
+    """
+    found = curves_by([run for run in part if run.get("load_pct") in loads], "load_pct", grid)
     seen = sorted(load for load in found if found[load])
     return (None, None) if len(seen) < 2 else (found[seen[0]], found[seen[-1]])
+
+
+def _between_loads(reach, out):
+    """What the two load predictions report about the loads beside the answer."""
+    return {"loads_compared": sorted(reach), "loads_out_of_reach": out,
+            "tested": len(reach) >= 2}
 
 
 def cliff_stays_under_load(runs, draws=DRAWS, seed=0, grid=None):
@@ -412,8 +450,10 @@ def cliff_stays_under_load(runs, draws=DRAWS, seed=0, grid=None):
     difference, not on its size -- folding the draws about zero would push the interval's top out
     and refuse the claim for a reason that is arithmetic rather than physical.
     """
+    reach, out = loads_in_reach(runs, grid)
+
     def numbers(part):
-        low, high = _load_ends(part, grid)
+        low, high = _load_ends(part, grid, reach)
         found = {}
         for summary in SUMMARIES:
             found[summary] = None if low is None or low[HALFWAY[summary]] is None \
@@ -429,7 +469,8 @@ def cliff_stays_under_load(runs, draws=DRAWS, seed=0, grid=None):
                   and -HALFWAY_MOVE_MS < said["low"] and said["high"] < HALFWAY_MOVE_MS)
         by_summary[summary] = _said(said, inside)
     return _both(by_summary, "the halfway point's move between the lowest and the highest load "
-                 "has its whole interval inside %s ms either way" % HALFWAY_MOVE_MS)
+                 "whose plateau is at least %g%% has its whole interval inside %s ms either way"
+                 % (100 * PLATEAU_WORTH_CUTTING, HALFWAY_MOVE_MS), **_between_loads(reach, out))
 
 
 def load_raises_the_plateau(runs, draws=DRAWS, seed=0, grid=None):
@@ -439,8 +480,10 @@ def load_raises_the_plateau(runs, draws=DRAWS, seed=0, grid=None):
     only where every part of it is, so the power of the pair was the power of the weaker, and this
     part cannot tell the law from the world where the cliff moves with load.
     """
+    reach, out = loads_in_reach(runs, grid)
+
     def numbers(part):
-        low, high = _load_ends(part, grid)
+        low, high = _load_ends(part, grid, reach)
         found = {}
         for summary in SUMMARIES:
             found[summary] = None if low is None else (
@@ -454,8 +497,9 @@ def load_raises_the_plateau(runs, draws=DRAWS, seed=0, grid=None):
         said = over[summary]
         by_summary[summary] = _said(said, above((said["low"], said["high"]), 0.0),
                                     p_value=p_value(said["drawn"], 0.0))
-    return _both(by_summary, "the plateau's increase between the lowest and the highest load has "
-                 "a 95% interval above zero")
+    return _both(by_summary, "the plateau's increase between the lowest and the highest load "
+                 "whose plateau is at least %g%% has a 95%% interval above zero"
+                 % (100 * PLATEAU_WORTH_CUTTING), **_between_loads(reach, out))
 
 
 def priority_removes_the_plateau(runs, draws=DRAWS, seed=0, grid=None):
@@ -490,7 +534,11 @@ def default_slices(runs, read_back, tick_ms, draws=DRAWS, seed=0, grid=None):
     """P7: the machine reports the slice the core-count rule computes, and the cliff follows it.
 
     `read_back` is {cores: the slice the machine reported}; the computed slices are the ones the
-    runs were designed with.
+    runs were designed with. The cliff follows the slice where P1's band holds at each core count,
+    and that is all P7 asks: until version 30 it was also held to the slope P9 asks across three
+    slices (D30-2). A core count whose slice its runs cannot reach is reported out of reach, as a
+    slice is (D8-1), and P7 is judged at the core counts in reach. The band is read off each
+    curve as it is, as P1's is, so no interval is drawn and `draws` and `seed` go unused.
     """
     matched = {}
     for cores, part in sorted(law_curve.groups(runs, ("cpus",)).items()):
@@ -504,13 +552,32 @@ def default_slices(runs, read_back, tick_ms, draws=DRAWS, seed=0, grid=None):
                                   and abs(reported - designed.pop()) <= 1e-6)
     # The band is read against the slice the machine actually ran at, which for these runs is the
     # one it reported, so a run with no slice of its own is given the predicted one.
-    band = cliff_follows_slice([dict(run, slice_ms=run.get("slice_ms")
-                                     or run.get("predicted_slice_ms")) for run in runs],
-                               tick_ms, need_interval=False, draws=draws, seed=seed, grid=grid)
-    held = bool(matched) and all(matched.values()) and band["confirmed"]
-    return _both({name: _said(None, held) for name in SUMMARIES},
-                 "the read-back slice matches at every core count and P1's band holds",
-                 read_back=matched, band=band)
+    at_slice = [dict(run, slice_ms=run.get("slice_ms") or run.get("predicted_slice_ms"))
+                for run in runs]
+    reach, halfway, band = {}, dict((name, {}) for name in SUMMARIES), \
+        dict((name, {}) for name in SUMMARIES)
+    for cores, part in sorted(law_curve.groups(at_slice, ("cpus",)).items()):
+        cores = str(cores[0])
+        slices = sorted(s for s, can in testable(part).items() if can and s is not None)
+        reach[cores] = bool(slices)
+        if not slices:
+            continue
+        curves = curves_by(part, "slice_ms", grid)
+        for name in SUMMARIES:
+            where = dict((s, curves[s] and curves[s][HALFWAY[name]]) for s in slices)
+            halfway[name][cores] = where
+            band[name][cores] = all(inside(where[s], s, s + tick_ms) for s in slices)
+    in_reach = sorted(cores for cores, can in reach.items() if can)
+    by_summary = {}
+    for name in SUMMARIES:
+        by_summary[name] = _said(None, bool(matched) and all(matched.values()) and bool(in_reach)
+                                 and all(band[name].values()),
+                                 halfway_ms=halfway[name], in_band=band[name])
+    return _both(by_summary,
+                 "the read-back slice matches at every core count, and the halfway point is "
+                 "inside [s, s+h] at every core count whose slice the runs reach",
+                 read_back=matched, out_of_reach=sorted(c for c, can in reach.items() if not can),
+                 tested=bool(in_reach))
 
 
 def priority_cut(runs, points):
@@ -609,6 +676,8 @@ def language(runs, draws=DRAWS, seed=0, grid=None):
                  matched_on=on, tested=bool(on))
 
 
+#: What the command line answers with: 2 is kept for an error, so out of reach is 3.
+EXIT = {"confirmed": 0, "not confirmed": 1, "out of reach": 3}
 #: The rules a campaign's runs can be judged by from the command line.
 RULES = {"P1": cliff_follows_slice, "P2": width_follows_tick, "P2b": width_follows_tick,
          "P2c": width_against_tick, "P2d": start_at_slice,
@@ -654,9 +723,26 @@ def judge(runs, prediction, tick_ms=1.0, draws=DRAWS, seed=0, grid=None, read_ba
                                                            step_ms)
         first = list(by_part.values())[0]
         return {"confirmed": all(answer["confirmed"] for answer in by_part.values()),
+                "tested": all(answer.get("tested", True) for answer in by_part.values()),
                 "rule": first["rule"], "judged_on": first["judged_on"],
                 "split_by": list(apart), "by_part": by_part}
     return _one(runs, prediction, tick_ms, draws, seed, grid, read_back, anchor_ms, step_ms)
+
+
+def verdict(found):
+    """"confirmed", "not confirmed" or "out of reach".
+
+    A campaign that could not test a prediction did not find against it, and until version 30
+    the two read alike (D30-3). Where the answer is split by pair or backend, it is out of reach
+    only where every part that did not confirm was out of reach; one part that tested the
+    prediction and went against it makes the whole not confirmed.
+    """
+    if found["confirmed"]:
+        return "confirmed"
+    parts = list(found["by_part"].values()) if "by_part" in found else [found]
+    if all(part["confirmed"] or not part.get("tested", True) for part in parts):
+        return "out of reach"
+    return "not confirmed"
 
 
 def _one(runs, prediction, tick_ms, draws, seed, grid, read_back=None, anchor_ms=None,
@@ -684,7 +770,7 @@ def _round(value):
 
 def lines(prediction, found):
     """The answer as a person reads it."""
-    out = ["%s: %s" % (prediction, "confirmed" if found["confirmed"] else "not confirmed"),
+    out = ["%s: %s" % (prediction, verdict(found)),
            "  rule: %s" % found["rule"],
            "  judged on: %s" % ", ".join(found["judged_on"])]
     if "by_part" in found:
@@ -704,7 +790,8 @@ def lines(prediction, found):
                     "intercept"):
             if said.get(key) is not None:
                 out.append("    %s: %s" % (key.replace("_", " "), said[key]))
-    for key in ("hz", "read_back", "anchor_ms"):
+    for key in ("hz", "read_back", "anchor_ms", "in_reach", "out_of_reach", "loads_compared",
+                "loads_out_of_reach"):
         if found.get(key) is not None:
             out.append("  %s: %s" % (key.replace("_", " "), found[key]))
     return out
@@ -742,7 +829,7 @@ def main(argv=None, out=None):
                 fh.write(json.dumps(found, indent=2, sort_keys=True, default=str) + "\n")
         for line in lines(args.prediction, found):
             print(line, file=out)
-        return 0 if found["confirmed"] else 1
+        return EXIT[verdict(found)]
     except (OSError, ValueError, KeyError, TypeError) as exc:
         print("ERROR: %s" % exc, file=out)
         return 2

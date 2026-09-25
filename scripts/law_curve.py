@@ -37,7 +37,8 @@ tick. The halfway point is where the curve crosses the middle of those two.
 
 Each run sits at the trip it actually had -- its own measured median trip -- not the trip it was
 aimed at. Intervals come from resampling whole rounds, because a round is what the campaign
-repeats: runs inside one round share the state the machine was in.
+repeats: runs inside one round share the state the machine was in. Where the runs hold several
+campaigns, each campaign's rounds are drawn from its own.
 
 CLI:
     python scripts/law_curve.py read --runs <folder> [--out curve.json]
@@ -236,11 +237,23 @@ def by_round(runs):
 
 
 def resample(runs, rng):
-    """Whole rounds drawn with replacement: a round is what the campaign repeats."""
-    rounds = by_round(runs)
+    """Whole rounds drawn with replacement, each campaign from its own: a round is what a
+    campaign repeats.
+
+    Drawn campaign by campaign (D30-4). Drawn across a block by round number alone, the first
+    round of every campaign came out together as one unit, so a block of four campaigns of four
+    rounds had four units where it has sixteen, and a draw that repeated a round repeated it in
+    every campaign at once. Each campaign keeps its own number of rounds in every draw, so every
+    slice a campaign carries is in every draw. Over one campaign the draws are the ones they were.
+    """
+    campaigns = {}
+    for run in runs:
+        campaigns.setdefault(str(run.get("campaign")), []).append(run)
     drawn = []
-    for _ in rounds:
-        drawn += rounds[rng.randrange(len(rounds))]
+    for name in sorted(campaigns):
+        rounds = by_round(campaigns[name])
+        for _ in rounds:
+            drawn += rounds[rng.randrange(len(rounds))]
     return drawn
 
 

@@ -191,6 +191,42 @@ class TestResamplingWholeRounds:
         assert len(drawn) == len(runs)
         assert len(set(r["round"] for r in drawn)) <= 4
 
+    def test_over_one_campaign_the_draws_are_the_ones_they_were(self):
+        """D30-4 changes blocks of several campaigns and nothing else."""
+        def by_round_number(runs, rng):
+            rounds = lc.by_round(runs)
+            drawn = []
+            for _ in rounds:
+                drawn += rounds[rng.randrange(len(rounds))]
+            return drawn
+        runs = campaign(rounds=5)
+        now, then = random.Random(7), random.Random(7)
+        for _ in range(20):
+            assert lc.resample(runs, now) == by_round_number(runs, then)
+
+    def test_each_campaign_keeps_its_own_number_of_rounds(self):
+        four = [dict(run, campaign="a3_1") for run in campaign(rounds=4)]
+        two = [dict(run, campaign="a3_2") for run in campaign(rounds=2)]
+        rng = random.Random(1)
+        for _ in range(20):
+            drawn = lc.resample(four + two, rng)
+            first = [r for r in drawn if r["campaign"] == "a3_1"]
+            second = [r for r in drawn if r["campaign"] == "a3_2"]
+            assert len(first) == len(four) and len(second) == len(two)
+            assert set(r["round"] for r in second) <= {"1", "2"}
+
+    def test_the_same_round_of_two_campaigns_is_not_drawn_as_one(self):
+        """Drawn by round number, round 1 of every campaign came out together, every time."""
+        one = [dict(run, campaign="a1_1") for run in campaign(rounds=4)]
+        other = [dict(run, campaign="a1_2") for run in campaign(rounds=4)]
+        rng, apart = random.Random(2), 0
+        for _ in range(30):
+            drawn = lc.resample(one + other, rng)
+            rounds = [sorted(r["round"] for r in drawn if r["campaign"] == name)
+                      for name in ("a1_1", "a1_2")]
+            apart += rounds[0] != rounds[1]
+        assert apart >= 20
+
     def test_the_interval_holds_the_answer_and_the_same_seed_repeats_it(self):
         runs = campaign(noise=0.02, seed=5)
         found = lc.bootstrap(runs, lambda part: lc.read_off(part)["halfway_ms"], draws=60, seed=3)

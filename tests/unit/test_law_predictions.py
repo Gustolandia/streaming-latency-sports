@@ -228,6 +228,35 @@ class TestP3aLoadLeavesTheCliffWhereItIs:
         runs = lw.campaign(slices=(3.0,), rounds=6, loads=(50, 88), seed=5, spread=0.05)
         assert "either way" in lp.cliff_stays_under_load(runs, **QUICK)["rule"]
 
+    #: The levels the first x86 pair measured: at 50% load a curve falling from 0.0015 to
+    #: 0.00047, which does not fix a cliff position (D14-2).
+    LEVELS = {"plateau_by_load": {50: 0.0015, 75: 0.10, 88: 0.20},
+              "floor_by_load": {50: 0.00047, 75: 0.01, 88: 0.01}}
+
+    def test_a_load_under_p4s_bar_is_out_of_reach_and_the_rest_are_compared(self):
+        """Until version 30 every A3 verdict compared 50% load with 88% (D30-1)."""
+        runs = lw.campaign(slices=(3.0,), rounds=16, loads=(50, 75, 88), seed=5, spread=0.05,
+                           **self.LEVELS)
+        found = lp.cliff_stays_under_load(runs, **QUICK)
+        assert found["loads_compared"] == [75, 88] and list(found["loads_out_of_reach"]) == [50]
+        assert found["loads_out_of_reach"][50] < lp.PLATEAU_WORTH_CUTTING
+        assert found["tested"] is True and found["confirmed"] is True
+        assert "whose plateau is at least 2%" in found["rule"]
+        assert "loads out of reach: {50: " in "\n".join(lp.lines("P3a", found))
+
+    def test_one_load_in_reach_is_out_of_reach_and_not_a_miss(self):
+        runs = lw.campaign(slices=(3.0,), rounds=4, loads=(50, 88), seed=5, spread=0.05,
+                           plateau_by_load={50: 0.0015, 88: 0.20},
+                           floor_by_load={50: 0.00047, 88: 0.01})
+        found = lp.cliff_stays_under_load(runs, **QUICK)
+        assert found["tested"] is False and lp.verdict(found) == "out of reach"
+
+    def test_a_load_whose_curve_cannot_be_read_is_out_of_reach_with_no_rate(self):
+        runs = lw.campaign(slices=(3.0,), rounds=4, loads=(75, 88), seed=5, spread=0.05)
+        one = [run for run in runs if run["load_pct"] == 88][:1]
+        reach, out = lp.loads_in_reach([run for run in runs if run["load_pct"] == 75] + one)
+        assert list(reach) == [75] and out == {88: None}
+
 
 class TestP3bLoadRaisesThePlateau:
     """Judged on its own. Together with P3a it confirmed neither: an intersection of two claims
@@ -252,6 +281,14 @@ class TestP3bLoadRaisesThePlateau:
         found = lp.load_raises_the_plateau(runs, **QUICK)
         assert "halfway" not in found["rule"]
         assert "halfway_move_ms" not in found["by_summary"]["free"]
+
+    def test_it_compares_the_same_loads_p3a_does(self):
+        """The rise is read from 75 to 88%, not from a plateau of 0.15% at 50% (D30-1)."""
+        runs = lw.campaign(slices=(3.0,), rounds=16, loads=(50, 75, 88), seed=5, spread=0.05,
+                           **TestP3aLoadLeavesTheCliffWhereItIs.LEVELS)
+        found = lp.load_raises_the_plateau(runs, **QUICK)
+        assert found["loads_compared"] == [75, 88] and found["confirmed"] is True
+        assert 0.05 < found["by_summary"]["free"]["value"] < 0.15
 
 
 class TestP4GoFirstRemovesThePlateau:
@@ -291,10 +328,44 @@ class TestP7DefaultSlicesFollowTheCoreCount:
 
     READ_BACK = {2: 1.4, 4: 2.1, 8: 2.8}
 
+    @staticmethod
+    def band(found):
+        """Whether P1's band holds at every core count in reach, on both summaries."""
+        return all(all(found["by_summary"][name]["in_band"].values()) for name in lp.SUMMARIES)
+
     def test_the_machine_reports_what_was_computed_and_the_cliff_follows(self):
         found = lp.default_slices(self.campaign(), self.READ_BACK, 1.0, **QUICK)
         assert found["confirmed"] is True and all(found["read_back"].values())
-        assert found["band"]["confirmed"] is True
+        assert self.band(found) and found["tested"] is True and found["out_of_reach"] == []
+
+    def test_the_band_is_all_p7_asks_and_not_p9s_slope(self, monkeypatch):
+        """Inside the band at every core count, with a slope of 0.43 across them: P7 as the plan
+        writes it holds. Until version 30 the slope P9 asks refused it (D30-2)."""
+        where = {1.4: 2.3, 2.1: 2.4, 2.8: 2.9}
+
+        def curves(part, key, grid=None, step_ms=None, **levels):
+            return dict((s, {"halfway_ms": where[s], "fitted_halfway_ms": where[s]})
+                        for s in set(run[key] for run in part))
+        monkeypatch.setattr(lp, "curves_by", curves)
+        found = lp.default_slices(self.campaign(), self.READ_BACK, 1.0, **QUICK)
+        assert found["confirmed"] is True and self.band(found)
+        slope = lp.straight_line(sorted(where), [where[s] for s in sorted(where)])[0]
+        assert not lp.inside(slope, *lp.SLOPE_BAND)
+
+    def test_a_core_count_out_of_reach_is_reported_and_the_rest_judged(self):
+        """A slice under the client's own zero-delay trip has no plateau (D8-1)."""
+        runs = [run for run in self.campaign()
+                if not (run["cpus"] == 2 and run["point"] == lp.PLATEAU_POINT)]
+        found = lp.default_slices(runs, self.READ_BACK, 1.0, **QUICK)
+        assert found["out_of_reach"] == ["2"] and found["tested"] is True
+        assert found["confirmed"] is True
+        assert sorted(found["by_summary"]["free"]["in_band"]) == ["4", "8"]
+
+    def test_no_core_count_in_reach_is_out_of_reach_not_a_miss(self):
+        runs = [run for run in self.campaign() if run["point"] != lp.PLATEAU_POINT]
+        found = lp.default_slices(runs, self.READ_BACK, 1.0, **QUICK)
+        assert found["confirmed"] is False and found["tested"] is False
+        assert lp.verdict(found) == "out of reach"
 
     def as_a5_really_runs(self, runs):
         """The shape a real A5 campaign has, which is not the shape the made-up world builds.
@@ -315,7 +386,7 @@ class TestP7DefaultSlicesFollowTheCoreCount:
         found = lp.default_slices(self.as_a5_really_runs(self.campaign()), self.READ_BACK, 1.0,
                                   **QUICK)
         assert found["confirmed"] is True and all(found["read_back"].values())
-        assert found["band"]["confirmed"] is True, "the band is read against the predicted slice"
+        assert self.band(found), "the band is read against the predicted slice"
 
     def test_a_campaign_with_neither_slice_reports_no_match_rather_than_falling_over(self):
         bare = [dict(run, slice_ms=None, predicted_slice_ms=None) for run in self.campaign()]
@@ -329,7 +400,8 @@ class TestP7DefaultSlicesFollowTheCoreCount:
     def test_a_cliff_that_stays_put_as_cpus_go_is_caught(self):
         found = lp.default_slices(self.campaign(world="cliff_fixed_by_cores"), self.READ_BACK,
                                   1.0, **QUICK)
-        assert found["confirmed"] is False and found["band"]["confirmed"] is False
+        assert found["confirmed"] is False and not self.band(found)
+        assert lp.verdict(found) == "not confirmed"
 
 
 class TestP8Language:
@@ -478,6 +550,34 @@ class TestTheSlicesAPairCanReach:
                          draws=40, seed=1, grid=24)
         assert found["confirmed"] is False
 
+    def test_too_few_reachable_slices_are_out_of_reach_and_not_a_miss(self):
+        """Until version 30 a campaign that could not test P1 read as one that found against it
+        (D30-3). Kafka reached three slices of A1 at the sessions' own zero-delay trip."""
+        found = lp.judge(self.campaign(slices=(1.5, 2.25, 3.0, 4.5, 6.0), floor=2.3), "P1", 1.0,
+                         draws=40, seed=1, grid=24)
+        assert found["tested"] is False and lp.verdict(found) == "out of reach"
+        assert found["in_reach"] == "3 slices, where the rule needs 4"
+        assert lp.lines("P1", found)[0] == "P1: out of reach"
+
+    def test_a_split_answer_is_out_of_reach_only_where_no_part_went_against_it(self):
+        held = {"confirmed": True, "tested": True}
+        missed = {"confirmed": False, "tested": True}
+        unreached = {"confirmed": False, "tested": False}
+        assert lp.verdict({"confirmed": False, "by_part": {"kafka": held,
+                                                           "redis": unreached}}) == "out of reach"
+        assert lp.verdict({"confirmed": False, "by_part": {"kafka": missed,
+                                                           "redis": unreached}}) == "not confirmed"
+        assert lp.verdict({"confirmed": True, "by_part": {"kafka": held}}) == "confirmed"
+        assert lp.verdict({"confirmed": False}) == "not confirmed", "an answer that says nothing " \
+            "of its reach tested the prediction"
+
+    def test_a_split_answer_says_whether_every_part_was_tested(self):
+        runs = []
+        for backend, slices in (("kafka", (2.25, 3.0, 4.5)), ("redis", SIX)):
+            runs += [dict(run, backend=backend) for run in self.campaign(slices, floor=0.0)]
+        found = lp.judge(runs, "P1", 1.0, draws=40, seed=1, grid=24)
+        assert found["tested"] is False and found["by_part"]["redis"]["tested"] is True
+
     def test_the_arm_pair_needs_two_and_every_one_of_them(self):
         runs = self.campaign(slices=(1.5, 3.0, 4.5), floor=2.0)
         found = lp.judge(runs, "P9", 1.0, draws=40, seed=1, grid=24)
@@ -534,6 +634,18 @@ class TestTheAnchorTheCampaignsShare:
             if run["slice_ms"] == 6.0:
                 run["negative_rate"] = 0.01
         assert 6.0 not in lp.through_the_anchor(runs, 3.0, grid=24)
+
+    def test_but_p1_counts_that_slice_as_a_miss_and_not_as_out_of_reach(self):
+        """Its runs reach the plateau, the floor and the cliff, so it is a test, and its curve
+        failed it. Through the anchor it used to drop out of the count (D30-3)."""
+        runs = self.campaigns()
+        for run in runs:
+            if run["slice_ms"] == 6.0:
+                run["negative_rate"] = 0.01
+        found = lp.judge(runs, "P1", 1.0, draws=40, seed=1, grid=24, anchor_ms=3.0)
+        said = found["by_summary"]["free"]
+        assert said["in_band"][6.0] is False and said["halfway_ms"][6.0] is None
+        assert "at least 5 of the 6 slices" in found["rule"] and found["tested"] is True
 
     def test_the_correction_recovers_the_slope_the_shifts_hid(self):
         runs = self.campaigns(shifts=[((3.0, 0.75, 1.5), 0.0), ((3.0, 2.25, 4.5), 0.9),
@@ -707,6 +819,16 @@ class TestTheCommand:
         code = lp.main(["judge", "--runs", folder, "--prediction", "P7", "--draws", "40",
                         "--read-back", "2=1.4,4=2.1"], out=out)
         assert code == 0 and "P7: confirmed" in out.getvalue()
+
+    def test_a_campaign_that_could_not_test_it_leaves_with_three(self, tmp_path):
+        """Out of reach is not a verdict against the law, and a caller must not read it as one."""
+        folder = self.write(tmp_path / "runs", lw.campaign(slices=(2.25, 3.0, 4.5), rounds=4,
+                                                           seed=1))
+        out = io.StringIO()
+        code = lp.main(["judge", "--runs", folder, "--prediction", "P1", "--draws", "40"],
+                       out=out)
+        assert code == 3 and "P1: out of reach" in out.getvalue()
+        assert "in reach: 3 slices, where the rule needs 4" in out.getvalue()
 
     def test_a_folder_with_nothing_in_it_is_an_error_line(self, tmp_path):
         out = io.StringIO()

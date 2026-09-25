@@ -557,9 +557,21 @@ def verdict(run_dir, checks, recorded):
             "checks": checks, "recorded": recorded}
 
 
+#: What the got-it brake does with a run it would stop. "stop" is the rule; "record" is asked for
+#: by name, for one campaign's remaining runs, and says so beside every run it applies to (D26-1).
+#: A5's session at 2 CPUs stopped twice on its got-it -- a move of 0.505 ms with 0.98 ms added,
+#: then 0.660 ms with 0.046 ms added, where the delay cannot be what moved it -- and its last
+#: thirteen runs were run with the brake recording, a change made after both stops and frozen
+#: before those runs began. The allowance, what a run is held against and what the brake would
+#: have said are all unchanged and all kept.
+GOTIT_BRAKE_MODES = ("stop", "record")
+
+
 def evaluate(run_dir, rate, duration, warmup_s, calibration=None,
-             summarise=pilot_checks.summarise):
+             summarise=pilot_checks.summarise, gotit_brake="stop"):
     """Every check on one run, and the verdict they give."""
+    if gotit_brake not in GOTIT_BRAKE_MODES:
+        raise ValueError("the got-it brake either stops or records, not %r" % (gotit_brake,))
     if rate <= 0 or duration <= warmup_s:
         raise ValueError("a run needs a positive rate and a duration longer than its warm-up")
     checks, recorded = {}, {"steal_pct": steal_pct(run_dir),
@@ -598,7 +610,13 @@ def evaluate(run_dir, rate, duration, warmup_s, calibration=None,
     recorded["clock_offset_max_s"] = checks["clock"]["value"]
     earlier = earlier_same_setup(run_dir)
     spread, freedom = campaign_spread(run_dir)
-    checks.update(gotit_checks(summary, params, added, earlier, spread))
+    got = gotit_checks(summary, params, added, earlier, spread)
+    if gotit_brake == "record":
+        #: D26-1: what the brake would have said travels with the run and stops nothing.
+        recorded["gotit_brake"] = "records and does not stop (D26-1)"
+        if "gotit_steady" in got:
+            recorded["gotit_steady"] = got.pop("gotit_steady")
+    checks.update(got)
     recorded["gotit_earlier_same_setup"] = len(earlier)
     # What the allowance was built from, so a brake that stops a campaign can be argued with
     # afterwards from the campaign's own files (D18-3).
@@ -651,6 +669,10 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise):
     p.add_argument("--duration", type=float, required=True, help="seconds, as planned")
     p.add_argument("--warmup-s", type=float, default=30.0)
     p.add_argument("--calibration", default="", help="the session's delay_calibration.py fit")
+    p.add_argument("--gotit-brake", choices=GOTIT_BRAKE_MODES, default="stop",
+                   help="what the got-it brake does with a run it would stop: the rule stops the "
+                        "campaign; 'record' keeps the verdict it would have given beside the run "
+                        "and stops nothing (D26-1)")
     p = sub.add_parser("show")
     p.add_argument("run_dir")
     p = sub.add_parser("guard")
@@ -666,7 +688,7 @@ def main(argv=None, out=None, summarise=pilot_checks.summarise):
             return 0
         calibration = read_json(args.calibration) if args.calibration else None
         result = evaluate(args.run_dir, args.rate, args.duration, args.warmup_s, calibration,
-                          summarise)
+                          summarise, gotit_brake=args.gotit_brake)
         with open(os.path.join(args.run_dir, "integrity.json"), "w", encoding="utf-8") as fh:
             fh.write(json.dumps(result, indent=2, sort_keys=True) + "\n")
         line = ("%s: %s" % (result["verdict"], "; ".join(result["reasons"]))

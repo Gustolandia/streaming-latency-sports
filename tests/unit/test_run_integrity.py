@@ -213,6 +213,38 @@ class TestStop:
                          calibration=CAL)
         assert found["verdict"] == "stop"
 
+    def test_asked_to_record_the_brake_keeps_what_it_would_have_said_and_stops_nothing(
+            self, tmp_path):
+        """D26-1: A5's 2-CPU session was finished this way after its brake stopped it twice. The
+        run that stops under the rule counts, and the brake's own verdict travels with it."""
+        pooled_spread(tmp_path, spread=0.01)
+        earlier_runs(tmp_path, [1.772, 1.775])
+        run = later_run(tmp_path, 1.497, delay_ms=0.081, measured_added=0.081)
+        assert evaluate(run, calibration=CAL)["verdict"] == "stop", "the rule is unchanged"
+        found = evaluate(run, calibration=CAL, gotit_brake="record")
+        assert found["verdict"] == "count" and "gotit_steady" not in found["checks"]
+        kept = found["recorded"]["gotit_steady"]
+        assert kept["ok"] is False and "moves between runs" in kept["why"]
+        assert found["recorded"]["gotit_brake"] == "records and does not stop (D26-1)"
+
+    def test_a_run_the_brake_would_have_passed_is_recorded_as_passing(self, tmp_path):
+        pooled_spread(tmp_path, spread=0.133)
+        earlier_runs(tmp_path, [1.772, 1.775])
+        found = evaluate(later_run(tmp_path, 1.497, delay_ms=0.081, measured_added=0.081),
+                         calibration=CAL, gotit_brake="record")
+        assert found["verdict"] == "count" and found["recorded"]["gotit_steady"]["ok"] is True
+
+    def test_a_run_the_brake_cannot_judge_yet_carries_the_mode_and_no_verdict(self, tmp_path):
+        """The first runs of a setup have nothing to be held against, in either mode."""
+        found = evaluate(later_run(tmp_path, 1.497, delay_ms=0.081, measured_added=0.081),
+                         calibration=CAL, gotit_brake="record")
+        assert found["verdict"] == "count" and "gotit_steady" not in found["recorded"]
+        assert found["recorded"]["gotit_brake"] == "records and does not stop (D26-1)"
+
+    def test_a_brake_that_neither_stops_nor_records_is_refused(self, tmp_path):
+        with pytest.raises(ValueError, match="either stops or records"):
+            evaluate(later_run(tmp_path, 1.0), calibration=CAL, gotit_brake="ignore")
+
     def test_the_brake_waits_until_the_pool_has_enough_behind_it(self, tmp_path):
         """A pool of two or three runs is the same fault one level up (D18-2)."""
         # One short: the judged setup's own two earlier runs are in the pool as well, so the
@@ -758,6 +790,17 @@ class TestMain:
         earlier_runs(tmp_path, [0.2, 0.21])
         code, text = self.check(later_run(tmp_path, 0.9))
         assert code == 3 and "got-it median moved" in text
+
+    def test_the_command_can_be_asked_to_record_rather_than_stop(self, tmp_path):
+        """D26-1, as campaign.sh passes it when GOTIT_BRAKE is set."""
+        pooled_spread(tmp_path)
+        earlier_runs(tmp_path, [0.2, 0.21])
+        run = later_run(tmp_path, 0.9)
+        code, text = self.check(run, "--gotit-brake", "record")
+        assert code == 0 and text == "count\n"
+        with open(os.path.join(run, "integrity.json"), encoding="utf-8") as fh:
+            recorded = json.load(fh)["recorded"]
+        assert recorded["gotit_steady"]["ok"] is False and "D26-1" in recorded["gotit_brake"]
 
     @pytest.mark.parametrize("extra", [["--calibration", "no-such-file.json"]])
     def test_errors_are_one_line(self, tmp_path, extra):

@@ -218,30 +218,39 @@ class TestMain:
         assert (temp_dir / "prod.csv").exists()
 
     def test_main_with_sleep(self, temp_dir, monkeypatch):
-        """Test line 163: time.sleep when sleep_s > 0."""
+        """The pacing sleep, taken when the next event is still ahead of the clock.
+
+        This used to give the event 0.1 s at a speedup of 1000 -- a hundred microseconds -- and
+        count on the loop reaching the check inside them. On a loaded machine it did not, the
+        sleep was skipped, and the full suite fell short of 100% on this one line (25 September).
+        Five seconds at a speedup of one cannot be missed, and the sleep itself is stood in for.
+        """
         plan_data = {
             "event_id": ["e1"],
             "match_id": [1],
             "t_sim_seconds": [0],
-            "t_emit_offset_s": [0.1],
+            "t_emit_offset_s": [5.0],
             "row_idx": [0]
         }
         pd.DataFrame(plan_data).to_csv(temp_dir / "plan.csv", index=False)
-        
+
         mock_redis = MagicMock()
         mock_redis.xadd = MagicMock(return_value="rid1")
-        
-        with patch('redis.Redis', return_value=mock_redis):
+        slept = []
+
+        with patch('redis.Redis', return_value=mock_redis), \
+                patch('time.sleep', side_effect=slept.append):
             old_argv, old_cwd = sys.argv, os.getcwd()
             try:
                 os.chdir(temp_dir)
-                sys.argv = ["rp", "--run-id", "tr", "--plan-csv", "plan.csv", "--out", "prod.csv", "--speedup", "1000.0"]
+                sys.argv = ["rp", "--run-id", "tr", "--plan-csv", "plan.csv", "--out", "prod.csv", "--speedup", "1.0"]
                 rp_main()
             finally:
                 os.chdir(old_cwd)
                 sys.argv = old_argv
-        
+
         assert (temp_dir / "prod.csv").exists()
+        assert any(4.0 < s <= 5.0 for s in slept), "it waited for the event, about five seconds"
 
     def test_main_as_script(self, temp_dir):
         """Test line 267: if __name__ == '__main__' block by running as subprocess with coverage."""

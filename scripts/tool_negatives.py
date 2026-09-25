@@ -216,7 +216,10 @@ def judged_by_noise(verdict, reading, trips_ms, sent, step_ms, control, noise):
        offset measured at the clock; and one clock, which predicts none.
     5. A hypothesis survives when every judged figure's change is within the allowance of its
        prediction. A count short of what was sent rules out the behaviours that could not have
-       given it, as before.
+       given it. What was sent is what the tool was asked to send, and what could not have
+       given a short count is a behaviour that keeps every value at this offset: how many a
+       dropping behaviour keeps depends on the tool's own trips, and ours are another run of
+       another client, so its count is not predicted as a number.
     6. The verdict is the one hypothesis left standing; otherwise it is undecided, with the
        numbers beside it.
     """
@@ -257,9 +260,16 @@ def judged_by_noise(verdict, reading, trips_ms, sent, step_ms, control, noise):
                            "than the %.4f ms its own noise allows"
                            % (figure, changes[figure], wants[figure], gap, allowed[figure]))
                     break
+        #: Until 25 September this held the tool's count against the number of our trips, and a
+        #: dropping behaviour's count against the number of ours it keeps. Neither is the tool's:
+        #: wrk2 counted all 3,001 it sent in its 60 s, our reference had timed 5,000 in 100, and
+        #: its two dropping behaviours were ruled out on "3001 where this would count 50" -- which
+        #: decided the run. A count now answers one question only: whether the tool left anything
+        #: out of what it was asked to send.
         if why is None and name != ONE_CLOCK and kept is not None and sent is not None \
-                and kept < sent and kept != expected[name]["count"]:
-            why = "it counted %d where this would count %d" % (kept, expected[name]["count"])
+                and kept < sent and expected[name]["count"] == len(trips_ms):
+            why = ("it counted %d of the %d it was asked to send, and this keeps every value"
+                   % (kept, sent))
         if why is None:
             verdict["still_standing"].append(name)
         else:
@@ -300,9 +310,12 @@ def what_it_did(reading, trips_ms, offset_ms, sent=None, exit_code=0, plain=None
     """Which behaviour this run rules out, and whether one alone is left standing.
 
     `reading` is one of tool_readings' readings, taken from the tool's output under the offset.
-    `trips_ms` are our own program's true trips for the same messages. `plain` is the tool's
-    reading of the same traffic with no offset, from T1's zero step; given it, the comparison is
-    made on how far each figure moved, which cancels the tool's own clock bias.
+    `trips_ms` are our own client's trips on the same path, from the reference T1 takes at its
+    zero step: a run of our own, not a record of the tool's messages, so they say what each
+    behaviour does to the figures and not how many values the tool would keep. `sent` is how many
+    the tool was asked to send in this run. `plain` is the tool's reading of the same traffic
+    with no offset, from T1's zero step; given it, the comparison is made on how far each figure
+    moved, which cancels the tool's own clock bias.
 
     The verdict is what survives, not what is nearest. Something is always nearest, and on a tool
     whose clock is coarser than the difference between two behaviours the nearest is decided by
@@ -313,13 +326,18 @@ def what_it_did(reading, trips_ms, offset_ms, sent=None, exit_code=0, plain=None
     is what T2 is judged by from that freeze on. Without it, it is the judgement as D23-1 was
     implemented, kept so that what it said of each run can be reported beside the new verdict.
     """
-    sent = len(trips_ms) if sent is None else sent
+    if sent is None and noise is None:
+        #: D23-1 as it was implemented, kept so that what it said is reported as it said it: it
+        #: took the number of our reference's trips for what was sent. Freeze 21's judgement is
+        #: told how many the tool was asked to send, and without that holds its count to nothing.
+        sent = len(trips_ms)
     asked = offset_ms
     if noise is not None and shift_ms:
         offset_ms = shift_ms
     expected = predictions(trips_ms, offset_ms, step_ms)
     base = predictions(trips_ms, 0.0, step_ms)["keeps every value"]
     verdict = {"offset_ms": offset_ms, "asked_ms": asked, "sent": sent, "exit_code": exit_code,
+               "reference_trips": len(trips_ms),
                "step_ms": step_ms, "shift_ms": shift_ms, "moved_from_control_ms": {},
                "negatives_made": negatives_made(trips_ms, offset_ms, step_ms),
                "expected": expected, "behaviour": None, "decided": False,
@@ -328,8 +346,11 @@ def what_it_did(reading, trips_ms, offset_ms, sent=None, exit_code=0, plain=None
                "count_reported": reading.get("kept"), "count_matches_sent": None,
                "count_agrees_with": [], "why": ""}
 
-    if reading.get("kept") is not None:
+    if reading.get("kept") is not None and sent is not None:
         verdict["count_matches_sent"] = reading["kept"] == sent
+    if reading.get("kept") is not None and noise is None:
+        #: Which behaviours' counts of our trips equal the tool's count of its own: a comparison
+        #: of two runs, kept for D23-1 as it was implemented and not made under freeze 21.
         verdict["count_agrees_with"] = sorted(
             name for name, said in expected.items() if said["count"] == reading["kept"])
 
@@ -401,7 +422,7 @@ def what_it_did(reading, trips_ms, offset_ms, sent=None, exit_code=0, plain=None
 def lines(verdict):
     """The verdict as a person reads it."""
     out = ["T2 at an offset of %.3f ms: %d of %d trips go below zero"
-           % (verdict["offset_ms"], verdict["negatives_made"], verdict["sent"])]
+           % (verdict["offset_ms"], verdict["negatives_made"], verdict["reference_trips"])]
     for name, said in verdict["expected"].items():
         shown = "nothing survives" if said["avg_ms"] is None else "%.4f ms" % said["avg_ms"]
         out.append("   %-34s would average %s over %d values%s"
@@ -414,6 +435,9 @@ def lines(verdict):
         out.append("   the tool reported %.4f ms" % verdict["reported_avg_ms"])
     if verdict["count_reported"] is None:
         out.append("   it reports no count, so nothing can be checked against what was sent")
+    elif verdict["sent"] is None:
+        out.append("   it counted %d; how many it was asked to send was not given, so its count "
+                   "is held against nothing" % verdict["count_reported"])
     else:
         out.append("   it counted %d of %d sent%s" % (
             verdict["count_reported"], verdict["sent"],
@@ -477,9 +501,13 @@ def main(argv=None, out=None):
     sub = ap.add_subparsers(dest="command", required=True)
     p = sub.add_parser("judge")
     p.add_argument("--reading", required=True, help="the tool's reading under the offset")
-    p.add_argument("--reference", required=True, help="our own trips for the same messages")
+    p.add_argument("--reference", required=True,
+                   help="our own client's trips on the same path: the reference T1 takes")
     p.add_argument("--offset-ms", type=float, required=True)
-    p.add_argument("--sent", type=int, default=None)
+    p.add_argument("--sent", type=int, default=None,
+                   help="how many the tool was asked to send in this run, which tools_run.sh "
+                        "writes beside it as asked_to_send.txt; the tool's count is held "
+                        "against this and nothing else")
     p.add_argument("--exit-code", type=int, default=0)
     p.add_argument("--plain", default="", help="the same tool's reading with no offset (T1's "
                                                "zero step), which cancels its own clock bias")

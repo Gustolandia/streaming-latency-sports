@@ -302,13 +302,55 @@ class TestTheJudgementOfFreeze21:
         assert tn.ONE_CLOCK in got["ruled_out"] and len(got["still_standing"]) == 4
         assert "spans two clocks" in got["why"]
 
-    def test_a_count_short_of_what_was_sent_still_rules_behaviours_out(self):
-        got = tn.what_it_did(reading(avg=1.0, low=1.0, kept=10), TRIPS_ON_ZERO, 2.0,
+    def test_a_count_short_of_what_was_sent_rules_out_what_keeps_every_value(self):
+        """Ten of the twenty it was asked to send: it left values out, which a behaviour that
+        keeps every value cannot have done. What it cannot rule out is dropping: how many a
+        tool drops depends on its own trips, and ours are another run of another client."""
+        got = tn.what_it_did(reading(avg=1.0, low=1.0, kept=10), TRIPS_ON_ZERO, 2.0, sent=20,
                              control=reading(avg=1.725, low=0.5), shift_ms=2.0,
                              noise={"avg": 0.5, "min": 0.5})
-        assert "it counted 10" in got["ruled_out"]["drops the negatives"]
+        assert "it counted 10 of the 20 it was asked to send" in \
+            got["ruled_out"]["replaces the negatives with zero"]
+        assert "drops the negatives" in got["still_standing"], \
+            "11 of our 20 trips survive it, and that is not a count of the tool's own"
         assert tn.ONE_CLOCK not in got["ruled_out"] or "counted" not in \
             got["ruled_out"][tn.ONE_CLOCK], "the count is a question for the four, as before"
+
+    #: wrk2's T2 on 25 September: our reference timed 5,000 trips; wrk2 was asked for 3,000
+    #: over its own 60 s and counted 3,001. At 2 ms, 50 of ours survive.
+    OURS = [0.8] * 4950 + [2.8] * 50
+
+    def test_a_count_is_held_against_what_the_tool_was_asked_to_send_not_against_our_trips(self):
+        """Held against our 5,000, wrk2's 3,001 read as short, and its two dropping behaviours
+        were ruled out on "it counted 3001 where this would count 50" -- which decided the
+        run. The count said nothing of the kind: wrk2 kept all it sent."""
+        run, control = reading(avg=1.33, low=1.2, kept=3001), reading(avg=1.43, low=1.2)
+        noise = {"avg": 0.0597, "min": 0.0597}
+        for sent in (3000, None, 5000):
+            got = tn.what_it_did(run, self.OURS, 2.0, sent=sent, control=control, shift_ms=2.0,
+                                 noise=noise)
+            assert not got["decided"], "told %s, it decided on a count" % sent
+            assert {"drops the negatives", "drops zero and below", tn.ONE_CLOCK} \
+                == set(got["still_standing"])
+            assert not any("counted" in why for why in got["ruled_out"].values())
+
+    def test_not_told_how_many_it_was_asked_to_send_its_count_is_held_against_nothing(self):
+        got = tn.what_it_did(reading(avg=1.33, low=1.2, kept=3001), self.OURS, 2.0,
+                             control=reading(avg=1.43, low=1.2), shift_ms=2.0,
+                             noise={"avg": 0.0597, "min": 0.0597})
+        assert got["sent"] is None and got["count_matches_sent"] is None
+        assert got["count_agrees_with"] == [], "two runs' counts are not compared"
+        page = "\n".join(tn.lines(got))
+        assert "it counted 3001; how many it was asked to send was not given" in page
+        assert "of 5000 trips go below zero" in page, "those are ours, whatever it was sent"
+
+    def test_told_it_the_page_says_what_was_asked_beside_what_was_counted(self):
+        got = tn.what_it_did(reading(avg=1.33, low=1.2, kept=3001), self.OURS, 2.0, sent=3000,
+                             control=reading(avg=1.43, low=1.2), shift_ms=2.0,
+                             noise={"avg": 0.0597, "min": 0.0597})
+        page = "\n".join(tn.lines(got))
+        assert "it counted 3001 of 3000 sent" in page and "of 5000 trips go below zero" in page
+        assert got["reference_trips"] == 5000 and got["sent"] == 3000
 
     def test_a_behaviour_that_would_leave_nothing_is_ruled_out_by_a_printed_figure(self):
         got = tn.what_it_did(reading(avg=-2.5, low=-2.5), [0.5] * 20, 3.0,

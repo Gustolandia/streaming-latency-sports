@@ -366,7 +366,11 @@ PY
 brokers () {
   if [ -n "${BROKER_PRIV:-}" ] && ! ip -o -4 addr show 2>/dev/null | grep -q " ${BROKER_PRIV}/"; then
     log "== this is not the broker: setting the servers up on $BROKER_PRIV, where the tools reach them"
-    remote_broker "cd sbl && bash cloud/azure/tools.sh brokers" \
+    #: The broker has a checkout but no hosts.env -- session.sh leaves that on the driver only --
+    #: so its own address is handed over, or common.sh refuses to load there. And its checkout is
+    #: brought up to date first: on 25 September it was eight commits behind this one, older than
+    #: the setup it was being asked to run.
+    remote_broker "cd sbl && { git pull -q --ff-only origin main || echo 'the broker could not pull; running the setup it has'; } && BROKER_PRIV=$BROKER_PRIV bash cloud/azure/tools.sh brokers" \
       || stop "setting the servers up on the broker failed; see above"
     local bad=0 tool why
     for tool in wrk2 valkey-benchmark rdkafka_performance rabbitmq-perftest nats-latency; do

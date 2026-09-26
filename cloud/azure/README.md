@@ -359,6 +359,7 @@ python scripts/spend.py billed --since 2026-09-01
 | `cloud/azure/pilot.sh` | the pilot checks, with a verdict for each: settings, the delay the broker holds (its own capture, which decides), the two paths by ping, TCP and UDP (recorded), the harness, go-first; `PARTS=network` for a later session |
 | `scripts/pilot_checks.py` | reads run files: never-negative trips, the receiver-only check, the go-first cut, and whether a pilot passed a new pair's shakedown |
 | `cloud/azure/replicate_oracle.sh` | runs the Oracle mechanism campaigns unchanged, in shuffled order |
+| `cloud/azure/resume.sh` | finishes a campaign that stopped before its runs were all done: from its own queue, under the calibration its first runs had, on the kernel they ran on, with the got-it brake recording (plan version 32, D32-2). Run by the pair's queue as a command job, `boot=none cmd=bash cloud/azure/resume.sh runs/azure/stage1/<folder>`; it refuses another kernel, and leaves a finished campaign alone |
 | `scripts/run_queue.py` | the randomised run queue and its ledger (every run recorded, failures included) |
 | `scripts/testbed_watch.py` | watches every machine pair from your computer and flags idle, stuck, failed or impossible runs, repeated and stopping verdicts, low load, full disks and clock drift; can deallocate idle pairs |
 | `scripts/law_design.py` | builds each law block's run list from the machine's tick and slice constant, the session's delay calibration (or the baseline trips) and the number of rounds it is given |

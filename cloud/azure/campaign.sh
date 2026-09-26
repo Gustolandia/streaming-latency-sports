@@ -57,9 +57,11 @@ DURATION="${DURATION:-130}"
 WARMUP_S="${WARMUP_S:-30}"
 STOP_FILE="${STOP_FILE:-runs/azure/STOP}"
 CALIBRATION="${CALIBRATION:-}"
-#: Empty is the rule: the got-it brake stops the campaign. "record" is asked for by name for one
-#: campaign's remaining runs, after a stop, and is frozen before those runs begin (D26-1).
-GOTIT_BRAKE="${GOTIT_BRAKE:-}"
+#: Until version 32 empty was the rule, and the got-it brake stopped the campaign; "record" was
+#: asked for by name for one campaign's remaining runs (D26-1). From version 32 every campaign
+#: records (D32-1), and a pair is told so by the one word in runs/azure/gotit_brake, so that a
+#: campaign its queue starts after a reboot records as well. Asked for by name, it still wins.
+GOTIT_BRAKE="${GOTIT_BRAKE:-$(cat runs/azure/gotit_brake 2>/dev/null)}"
 LANE="${LANE:-${AZ_PROFILE:-unknown}}"
 SYN_PLAN="data/synthetic/constant_r${RATE}_d${DURATION}/replay_plan.csv"
 TRACE_BT="runs/azure/runqlat.bt"
@@ -380,7 +382,13 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
     > "$RUN_DIR/broker_log.txt" 2>&1
 
   if [ -n "$receiver_capture" ]; then
-    sudo kill -INT "$receiver_capture" 2>/dev/null; wait "$receiver_capture" 2>/dev/null
+    # Stopped by its own command line, not through the sudo that started it: sudo does not relay
+    # a signal sent from its own process group, so `sudo kill -INT <that sudo>` never reached
+    # tcpdump, and the wait held M0's first recorded run for six hours on 26 September.
+    sudo pkill -INT -f "tcpdump -i any -s 200 -w $RUN_DIR/receiver.pcap" 2>/dev/null
+    for _ in $(seq 1 20); do ps -p "$receiver_capture" > /dev/null || break; sleep 0.5; done
+    sudo pkill -KILL -f "tcpdump -i any -s 200 -w $RUN_DIR/receiver.pcap" 2>/dev/null
+    wait "$receiver_capture" 2>/dev/null
     remote_broker "sudo kill -INT \$(cat /tmp/sbl_m0.pid) 2>/dev/null; sleep 1; sudo cat /tmp/sbl_m0.pcap; sudo rm -f /tmp/sbl_m0.pcap /tmp/sbl_m0.pid /tmp/sbl_m0.err" \
       > "$RUN_DIR/broker.pcap" 2>/dev/null
   fi
@@ -416,7 +424,11 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
 }
 
 # --- the queue -------------------------------------------------------------------------------
-log "campaign: $QUEUE on lane $LANE; plan $SYN_PLAN at speedup $SPEEDUP; warm-up ${WARMUP_S} s; $ALL_CPUS CPUs${CALIBRATION:+; calibration $CALIBRATION}${GOTIT_BRAKE:+; the got-it brake: $GOTIT_BRAKE (D26-1)}"
+case "$GOTIT_BRAKE" in
+  ""|stop|record) ;;
+  *) log "FATAL: the got-it brake either stops or records, not \"$GOTIT_BRAKE\""; exit 1 ;;
+esac
+log "campaign: $QUEUE on lane $LANE; plan $SYN_PLAN at speedup $SPEEDUP; warm-up ${WARMUP_S} s; $ALL_CPUS CPUs${CALIBRATION:+; calibration $CALIBRATION}${GOTIT_BRAKE:+; the got-it brake: $GOTIT_BRAKE (D26-1, D32-1)}"
 RECOVER="--recover"
 while true; do
   if [ -f "$STOP_FILE" ]; then

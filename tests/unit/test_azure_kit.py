@@ -26,7 +26,7 @@ def test_the_kit_has_the_scripts_the_guide_describes():
     assert [p.name for p in SHELL] == ["a2_session.sh", "campaign.sh", "chain.sh", "cpus.sh",
                                        "kernels.sh",
                                        "machine_facts.sh", "pilot.sh", "queue.sh", "replicate_oracle.sh",
-                                       "session.sh", "stage0.sh", "stage1.sh",
+                                       "resume.sh", "session.sh", "stage0.sh", "stage1.sh",
                                        "stop_self.sh", "stop_when_idle.sh", "tools.sh",
                                        "tools_run.sh"]
 
@@ -965,15 +965,21 @@ class TestT2ForcedNegatives:
         assert 'spelling="${said%% *}"; moved="${said##* }"' in t2
         assert 'measured $moved ms' in t2
 
-    def test_the_got_it_brake_records_only_when_a_campaign_is_told_to(self):
-        """D26-1. The rule is the default: nothing is passed unless GOTIT_BRAKE is set, and a
-        campaign run that way says so at the head of its own log."""
-        code = (KIT / "campaign.sh").read_text(encoding="utf-8")
-        assert 'GOTIT_BRAKE="${GOTIT_BRAKE:-}"' in code
+    def test_the_got_it_brake_records_when_the_campaign_or_its_pair_is_told_to(self):
+        """D26-1 and D32-1. Asked for by name it wins; otherwise the pair's own word in
+        runs/azure/gotit_brake decides, so that a campaign its queue starts after a reboot records
+        too; with neither, the rule is the default and nothing is passed. A word that is neither
+        stops the campaign before its first run, and a campaign that records says so at the head
+        of its own log."""
+        code = (KIT / "campaign.sh").read_text(encoding="utf-8").replace("\r\n", "\n")
+        assert 'GOTIT_BRAKE="${GOTIT_BRAKE:-$(cat runs/azure/gotit_brake 2>/dev/null)}"' in code
         assert '[ -n "$GOTIT_BRAKE" ] && gotit_args=(--gotit-brake "$GOTIT_BRAKE")' in code
         check = code.split("scripts/run_integrity.py check", 1)[1].split("\n  case $?", 1)[0]
         assert '"${gotit_args[@]}"' in check
-        assert "${GOTIT_BRAKE:+; the got-it brake: $GOTIT_BRAKE (D26-1)}" in code
+        guard = code.split('case "$GOTIT_BRAKE" in', 1)[1].split("esac", 1)[0]
+        assert '""|stop|record) ;;' in guard and "exit 1" in guard
+        assert code.index('case "$GOTIT_BRAKE" in') < code.index("\nwhile true; do")
+        assert "${GOTIT_BRAKE:+; the got-it brake: $GOTIT_BRAKE (D26-1, D32-1)}" in code
 
     def test_each_round_of_the_block_has_a_folder_of_its_own(self):
         """D4-2: tool campaigns run four rounds. The block ran once, into folders named for the
@@ -1129,6 +1135,80 @@ def test_a_list_is_added_to_and_counted_from_the_disk(tmp_path):
                            capture_output=True, text=True).stdout
     assert "jobs: 3, on job 1, phase prep" in shown
     assert "boot=cpu2 block=A5" in shown
+
+
+def test_a_job_still_at_work_after_twelve_hours_is_waited_on_not_left():
+    """26 September: the 16-round A3 with its calibration ran past twelve hours; the queue went
+    on while its last runs were going, cut it at 191 of 192, and the A9 it started beside it
+    stopped within a minute. The guard is for a job that died without saying so."""
+    code = QUEUE.read_text(encoding="utf-8").replace("\r\n", "\n")
+    guard = code.split('if [ "$waited" -ge 720 ]; then', 1)[1].split("\n          fi\n", 1)[0]
+    assert guard.index("if work_running; then") < guard.index("requeue_once")
+    assert "still at work after" in guard and "waiting on it" in guard
+    assert "nothing of it running; going on to the next" in guard
+
+
+RESUME = KIT / "resume.sh"
+
+
+def _resumable(tmp_path, release, statuses=("done", "queued"), stop=False):
+    """A scratch checkout holding one stopped campaign: its queue, log, calibration and the
+    settings that name the kernel it ran on."""
+    root = _scratch_checkout(tmp_path)
+    shutil.copy(RESUME, root / "cloud" / "azure" / "resume.sh")
+    shutil.copy(KIT / "campaign.sh", root / "cloud" / "azure" / "campaign.sh")
+    folder = root / "runs" / "azure" / "stage1" / "scratch_20260926T000000Z"
+    folder.mkdir(parents=True)
+    (folder / "a1_20260926T000000Z.csv").write_text(
+        "key,status\n" + "".join("r%03d,%s\n" % (i, s) for i, s in enumerate(statuses)),
+        encoding="utf-8")
+    (folder / "campaign_a1_20260926T000000Z.log").write_text("STOP_RULE: the brake\n",
+                                                            encoding="utf-8")
+    (folder / "calibration.json").write_text("{}", encoding="utf-8")
+    (folder / "settings.json").write_text(json.dumps({"release": release} if release else {}),
+                                          encoding="utf-8")
+    if stop:
+        (root / "runs" / "azure" / "STOP").write_text("", encoding="utf-8")
+    return root, "runs/azure/stage1/scratch_20260926T000000Z"
+
+
+def _resume(root, folder):
+    return subprocess.run(["bash", "cloud/azure/resume.sh", folder], cwd=root,
+                          capture_output=True, text=True,
+                          env=dict(os.environ, HOME=str(root.parent)))
+
+
+@needs_bash
+def test_a_campaign_is_finished_only_on_the_kernel_it_ran_on(tmp_path):
+    """D32-2: a campaign's remaining runs are its runs only on the kernel its first ones had."""
+    root, folder = _resumable(tmp_path, "6.8.0-not-this-one")
+    said = _resume(root, folder)
+    assert said.returncode == 2 and "a campaign is finished on its own kernel" in said.stdout
+
+
+@needs_bash
+def test_a_campaign_with_nothing_left_is_left_alone_and_one_without_a_kernel_is_not_resumed(
+        tmp_path):
+    here = subprocess.run(["uname", "-r"], capture_output=True, text=True).stdout.strip()
+    root, folder = _resumable(tmp_path / "done", here, statuses=("done", "done", "failed"))
+    said = _resume(root, folder)
+    assert said.returncode == 0 and "nothing left to run" in said.stdout
+    root, folder = _resumable(tmp_path / "blind", None)
+    said = _resume(root, folder)
+    assert said.returncode == 2 and "does not say which kernel it ran on" in said.stdout
+    root, folder = _resumable(tmp_path / "stop", here, stop=True)
+    said = _resume(root, folder)
+    assert said.returncode == 2 and "STOP is present" in said.stdout
+
+
+def test_a_resumed_campaign_runs_on_its_own_queue_and_calibration_with_the_brake_recording():
+    code = RESUME.read_text(encoding="utf-8").replace("\r\n", "\n")
+    assert 'GOTIT_BRAKE=record CALIBRATION="$DIR/calibration.json" bash cloud/azure/campaign.sh' \
+        ' "$QUEUE_CSV"' in code
+    assert '| tee "${MAIN_LOG%.log}.resumed.log" >> "$MAIN_LOG"' in code, \
+        "the resumed part is in the campaign's own log, where the queue reads it"
+    assert code.index("broker-clear --apply") < code.index("bash cloud/azure/campaign.sh")
+    assert 'grep -qw sblrecv' in code
 
 
 def test_the_queue_goes_on_when_one_job_stops_itself():
@@ -2085,7 +2165,17 @@ def test_m0_replays_its_own_plan_and_records_what_its_hypotheses_are_judged_by()
     assert 'read_args="--read-trace"' in run
     assert 'sudo ip netns exec sblrecv tcpdump -i any -s 200 -w "$RUN_DIR/receiver.pcap"' in run
     assert "tcpdump -i eth0 -s 200 -w /tmp/sbl_m0.pcap host $RECEIVER_IP" in run
-    assert 'sudo kill -INT "$receiver_capture"' in run, "stopped by its own id"
+    # The receiver's capture is stopped by its own command line. Signalled through the sudo that
+    # started it, it was never stopped at all: sudo does not relay a signal sent from its own
+    # process group, and M0's first recorded run waited six hours on it (26 September). This
+    # test used to assert that very line.
+    stop = run.split('if [ -n "$receiver_capture" ]; then', 1)[1].split("\n  fi", 1)[0]
+    assert 'sudo kill -INT "$receiver_capture"' not in stop
+    assert 'sudo pkill -INT -f "tcpdump -i any -s 200 -w $RUN_DIR/receiver.pcap"' in stop
+    assert 'for _ in $(seq 1 20); do ps -p "$receiver_capture" > /dev/null || break' in stop, \
+        "the wait is bounded"
+    assert stop.index("pkill -KILL") > stop.index("pkill -INT") and \
+        stop.index('wait "$receiver_capture"') > stop.index("pkill -KILL")
     assert '> "$RUN_DIR/broker.pcap"' in run
     assert run.index("tcpdump -i eth0 -s 200") > run.index("tcpdump -i eth0 -nn"), \
         "M0's capture starts after the delay's own capture has been read"

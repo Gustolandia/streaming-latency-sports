@@ -625,7 +625,7 @@ def evaluate(run_dir, rate, duration, warmup_s, calibration=None,
     got = gotit_checks(summary, params, added, earlier, spread)
     if gotit_brake == "record":
         #: D26-1: what the brake would have said travels with the run and stops nothing.
-        recorded["gotit_brake"] = "records and does not stop (D26-1)"
+        recorded["gotit_brake"] = "records and does not stop (D26-1, D32-1)"
         if "gotit_steady" in got:
             recorded["gotit_steady"] = got.pop("gotit_steady")
     checks.update(got)

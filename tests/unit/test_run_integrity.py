@@ -225,7 +225,7 @@ class TestStop:
         assert found["verdict"] == "count" and "gotit_steady" not in found["checks"]
         kept = found["recorded"]["gotit_steady"]
         assert kept["ok"] is False and "moves between runs" in kept["why"]
-        assert found["recorded"]["gotit_brake"] == "records and does not stop (D26-1)"
+        assert found["recorded"]["gotit_brake"] == "records and does not stop (D26-1, D32-1)"
 
     def test_a_run_the_brake_would_have_passed_is_recorded_as_passing(self, tmp_path):
         pooled_spread(tmp_path, spread=0.133)
@@ -239,7 +239,7 @@ class TestStop:
         found = evaluate(later_run(tmp_path, 1.497, delay_ms=0.081, measured_added=0.081),
                          calibration=CAL, gotit_brake="record")
         assert found["verdict"] == "count" and "gotit_steady" not in found["recorded"]
-        assert found["recorded"]["gotit_brake"] == "records and does not stop (D26-1)"
+        assert found["recorded"]["gotit_brake"] == "records and does not stop (D26-1, D32-1)"
 
     def test_a_brake_that_neither_stops_nor_records_is_refused(self, tmp_path):
         with pytest.raises(ValueError, match="either stops or records"):

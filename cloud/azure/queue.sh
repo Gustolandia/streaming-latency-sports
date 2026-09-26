@@ -432,11 +432,19 @@ run_loop () {
           esac
           sleep 60
           waited=$(( waited + 1 ))
-          # Twelve hours. The longest job on any list here is about five, and a job that has not
-          # said either word in twelve is not going to.
+          # Twelve hours, and then only if nothing of it is running. A job that has said neither
+          # word in twelve hours and has no process left has died without saying so; one that is
+          # still at work is a long job. On 26 September the 16-round A3, with its calibration,
+          # ran past twelve hours: the queue went on while its last runs were going, cut it at
+          # 191 of 192, and the A9 it started beside it stopped within a minute.
           if [ "$waited" -ge 720 ]; then
-            log "  nothing from it in 12 hours; going on to the next"
-            requeue_once "$line"; advance; break
+            if work_running; then
+              [ $(( waited % 60 )) -eq 0 ] \
+                && log "  still at work after $(( waited / 60 )) hours; waiting on it"
+            else
+              log "  nothing from it in 12 hours and nothing of it running; going on to the next"
+              requeue_once "$line"; advance; break
+            fi
           fi
         done
         ;;

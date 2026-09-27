@@ -134,9 +134,12 @@ class TestMain:
         assert capsys.readouterr().out == ""
 
 
+@pytest.mark.author_machine
 def test_the_real_corpus_holds_only_papers():
-    """The corpus is gitignored, so this skips where it is absent and bites where it is not."""
-    if not Path(crc.CORPUS).is_dir():
-        pytest.skip("no local reference corpus")
+    """The corpus is other people's papers, which cannot be published with this one, so git
+    ignores it and only the author's machine holds it. This runs there, by name, before a
+    submission (`python -m pytest -m author_machine`); the default suite leaves it out rather
+    than skipping it (tests/conftest.py). Asked for where there is no corpus, it fails."""
+    assert Path(crc.CORPUS).is_dir(), "the reference corpus is not on this machine"
     bad = crc.survey()
     assert not bad, "files in docs/reference_tc that are not papers: %s" % bad

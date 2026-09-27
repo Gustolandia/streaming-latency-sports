@@ -45,6 +45,25 @@ jobs:
           "$RUNNER_TEMP/xpdf-tools-linux-4.06/bin64/pdftotext" -v || true
           echo "$RUNNER_TEMP/xpdf-tools-linux-4.06/bin64" >> "$GITHUB_PATH"
 
+      - name: Install TeX Live, for the paper the suite builds
+        # The suite builds the paper and the supplement at the start of every session
+        # (tests/paper_build.py): a dozen gates read what a build leaves -- the .aux, .bbl, .blg
+        # and .log -- and until 27 September they skipped here, never having one. MiKTeX builds
+        # it on the author's machine; TeX Live builds it here, so the sources are held to both.
+        uses: TeX-Live/setup-texlive-action@v4
+        with:
+          packages: >-
+            scheme-basic
+            collection-latexrecommended
+            collection-fontsrecommended
+            ieeetran
+            multirow
+            booktabs
+            cite
+            amsfonts
+            url
+            psnfss
+
       - name: Run tests with branch coverage
         # Project standard: 100% branch coverage across scripts/ (see README S10).
         # What may be excluded from that number, and why, is itself enforced -- see
@@ -101,6 +120,25 @@ jobs:
         uses: Vampire/setup-wsl@v7
         with:
           distribution: Ubuntu-22.04
+
+      - name: Install TeX Live, for the paper the suite builds
+        # The suite builds the paper and the supplement at the start of every session
+        # (tests/paper_build.py): a dozen gates read what a build leaves -- the .aux, .bbl, .blg
+        # and .log -- and until 27 September they skipped here, never having one. MiKTeX builds
+        # it on the author's machine; TeX Live builds it here, so the sources are held to both.
+        uses: TeX-Live/setup-texlive-action@v4
+        with:
+          packages: >-
+            scheme-basic
+            collection-latexrecommended
+            collection-fontsrecommended
+            ieeetran
+            multirow
+            booktabs
+            cite
+            amsfonts
+            url
+            psnfss
 
       - name: Run tests with branch coverage
         shell: pwsh

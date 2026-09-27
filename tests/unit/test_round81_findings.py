@@ -38,8 +38,10 @@ sys.path.insert(0, str(REPO / "tests" / "unit"))
 
 RUNS_CSV = REPO / "docs" / "results" / "model" / "ec3_stamping_runs.csv"
 SUMMARY_CSV = REPO / "docs" / "results" / "model" / "ec3_stamping.csv"
-REPLICATION_CSV = (REPO / "cloud_archive" / "extracted" / "docs" / "results" / "depth_rep2"
-                   / "model" / "ec3_stamping.csv")
+#: The replication's summary as committed. It was read from a local extraction of the cloud
+#: archive, which no other checkout has, so the check ran only on the author's machine; the
+#: committed file is byte-identical to that extraction (SHA-256 15e62873...afca, 27 September).
+REPLICATION_CSV = REPO / "docs" / "results" / "depth_rep2" / "model" / "ec3_stamping.csv"
 
 
 @pytest.fixture(scope="module")
@@ -184,8 +186,6 @@ class TestW1TableS26CarriesItsReplicationAndItsIntervals:
 
     @pytest.mark.parametrize("campaign,summary", [("E-C3", SUMMARY_CSV), ("E-C4", REPLICATION_CSV)])
     def test_the_per_run_file_reproduces_the_committed_summaries(self, campaign, summary):
-        if not summary.exists():
-            pytest.skip("archived replication summary not extracted")
         med, _ = _cell_medians(_runs(), campaign)
         for r in csv.DictReader(open(summary, encoding="utf-8")):
             for backend in ("kafka", "redis"):

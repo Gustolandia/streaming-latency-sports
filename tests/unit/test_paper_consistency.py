@@ -261,17 +261,29 @@ class TestThresholdSensitivity:
         for threshold, expected in self.THRESHOLDS:
             assert condemned_at(by_run, threshold) == expected, threshold
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; threshold-sensitivity endpoints now supplement-only")
+    def test_the_quoted_endpoints_are_correct(self, by_run, supp, main_tex):
+        """The curve's zero-threshold end is quoted in Supplement S18, as the runs it spares.
 
-    def test_the_quoted_endpoints_are_correct(self, by_run, tex):
-        """The paper quotes the extremes of the curve rather than the whole table."""
+        The main text states only the range of the sweep and sends the reader to S18. There the
+        audit figure's caption gives the zero-threshold end as the count of runs with no
+        negative span at all, beside the share the one-per-cent rule condemns. The 20% end is
+        drawn in panel (b) and quoted nowhere, so no number is pinned for it; the range the
+        main text states is pinned to the thresholds the curve is drawn over.
+        """
         import sys
         sys.path.insert(0, str(REPO / "scripts"))
-        from make_paper_figures import condemned_at
+        from make_paper_figures import condemned_at, SENSITIVITY_THRESHOLDS
         n = len(by_run)
-        for threshold in (0.0, 0.20):
-            pct = 100 * condemned_at(by_run, threshold) / n
-            assert _contains_number(tex, pct, 1), f"{threshold:.0%} endpoint"
+        lbl = supp.index(r"\label{fig:audit}")
+        caption = " ".join(supp[supp.rindex(r"\begin{figure}", 0, lbl):lbl].split())
+        spared = n - condemned_at(by_run, 0.0)
+        assert f"{spared} runs carry no negative span at all" in caption, "0% endpoint"
+        assert _contains_number(_resolved(caption), 100 * condemned_at(by_run, 0.01) / n, 1), \
+            "the chosen point"
+        assert (min(SENSITIVITY_THRESHOLDS), max(SENSITIVITY_THRESHOLDS)) == (0.0, 0.20)
+        gate = " ".join(_section(main_tex, "sec:gate").split())
+        assert "sweeps it from $0$ to $20\\%$" in gate, "the stated range must be the drawn one"
+        assert "(Supplement~S18)" in gate
 
     def test_the_chosen_threshold_matches_the_audit_table(self, by_run):
         import sys
@@ -356,14 +368,28 @@ class TestRetentionBound:
             assert _contains_number(tex, float(r["hl_shift_ms"]), 3)
             assert _contains_number(tex, float(r["hl_shift_worst_case_ms"]), 3)
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; the retention-bound breakdown point is supplement-only")
+    def test_the_breakdown_limit_is_stated(self, supp, main_tex):
+        """The bound holds only above one half retention; Supplement S19 says so, with the margin.
 
-    def test_the_breakdown_limit_is_stated(self, tex):
-        """The bound holds only above 1/2 retention, and the paper must say so."""
+        The main text no longer mentions E1. The supplement's internal-validity threat states
+        the limit and how far the tightest cell clears it, and tab:power quotes the tightest
+        retention in E1's row. Both are recomputed here, because a bare digit search
+        for 52.8 also matches the payload table's 52.88.
+        """
         rows = _rows("e1", "e1_retention_bias.csv")
-        tightest = min(float(r["redis_retention"]) for r in rows)
-        assert _contains_number(tex, 100 * tightest, 1), "tightest retention not quoted"
-        assert "breakdown point" in tex
+        retention = [float(r["redis_retention"]) for r in rows]
+        tightest = min(retention)
+        assert all(r["above_breakdown"] == "True" for r in rows), "a cell is below one half"
+        start = supp.index(r"\paragraph{Internal validity: the audit selects}")
+        threat = " ".join(supp[start:supp.index(r"\paragraph", start + 1)].split())
+        assert "That bound holds only while retention exceeds one half" in threat
+        assert f"our tightest cell sits ${100 * tightest - 50:.1f}$ points above that line" in threat
+        lbl = supp.index(r"\label{tab:power}")
+        power = supp[supp.rindex(r"\begin{table}", 0, lbl):supp.index(r"\end{table}", lbl)]
+        assert f"{100 * tightest:.1f}--{100 * max(retention):.0f}\\% retained" in power, \
+            "tightest retention not quoted"
+        prose = re.sub(r"(?<!\\)%.*", "", main_tex)
+        assert "exceeds one half" not in " ".join(prose.split()), "the bound is supplement-only"
 
 
 class TestAckBatching:
@@ -410,14 +436,21 @@ class TestSecondWithdrawalIsStated:
     catch, so the text must state it plainly rather than hedge it.
     """
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; the second withdrawal is one sentence in Sec. V-C plus supplement S1")
+    def test_the_withdrawal_is_explicit(self, supp, main_tex):
+        """Supplement S3 withdraws the gap outright; S1.2, which carries this label, summarises it.
 
-    def test_the_withdrawal_is_explicit(self, tex):
-        section = _section(tex, "sec:attribution")
-        low = section.lower()
-        assert "withdraw" in low, "the end-to-end gap must be explicitly withdrawn"
-        assert "start-up" in low or "startup" in low, "the real mechanism must be named"
-        assert "seven events" in low, "the events-per-run cause must be stated"
+        The main text keeps only the lesson, as a rule for benchmark authors. S3 withdraws the
+        twentyfold figure and names both the start-up cost and the seven events it was read from.
+        """
+        s3 = " ".join(supp[supp.index(r"\section{S3."):supp.index(r"\section{S4.")].split())
+        low = s3.lower()
+        assert "the twentyfold figure is withdrawn" in low, "the end-to-end gap must be withdrawn"
+        assert "a start-up cost, not a per-event constant" in low, "the mechanism must be named"
+        assert "a median of seven events per run" in low, "the events-per-run cause must be stated"
+        summary = " ".join(_section(supp, "sec:attribution").split())
+        assert "per-run start-up cost read as a per-event constant" in summary
+        rule = " ".join(_section(main_tex, "sec:authors").split())
+        assert "A median over as few as seven events per run is not a property of the system" in rule
 
     def test_the_events_per_run_figure_matches_the_data(self, tex):
         """The median events-per-run behind E1 is what makes the withdrawal argument."""
@@ -513,14 +546,13 @@ class TestSecondWithdrawalIsStated:
         assert table.count("& 0 & 0") >= 3, "each Redis window row must show measured 0 late, 0 blocking"
         assert "both configurations" in table.lower() or "same tracer" in table.lower()
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; instrumentation history is supplement S1")
-
-    def test_the_one_armed_instrumentation_is_recorded_as_fixed(self, tex):
-        """The failure is worth keeping in the text, but as something we corrected."""
-        section = _section(tex, "sec:attribution")
-        low = section.lower()
-        assert "no trace" in low or "carried no trace" in low
-        assert "re-ran both arms" in low or "re-ran both" in low
+    def test_the_one_armed_instrumentation_is_recorded_as_fixed(self, supp):
+        """Supplement S3 keeps the failure beside the window sweep, as something corrected."""
+        s3 = " ".join(supp[supp.index(r"\section{S3."):supp.index(r"\section{S4.")].split())
+        low = s3.lower()
+        assert "its producer in fact carried no trace" in low, "the untraced arm must be admitted"
+        assert "re-ran both configurations together" in low, "the correction must be recorded"
+        assert low.index("carried no trace") < low.index("re-ran both configurations")
 
     def test_limitations_do_not_still_call_the_offset_unattributed(self, tex):
         """The pre-withdrawal text said the offset was 'attributed, not proven' and that a
@@ -558,14 +590,25 @@ class TestH3IsMeasuredAndSupported:
         assert float(cb["kafka_ms"]) - float(inl["kafka_ms"]) > 0.03
         assert abs(float(cb["redis_ms"]) - float(inl["redis_ms"])) < 0.01
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; the H1-H4 scorecard is supplement-only")
+    def test_the_paper_reports_h3_supported_not_untested(self, supp):
+        """H3's verdict is now a sentence in Supplement S19's limitations, and the ledger backs it.
 
-    def test_the_paper_reports_h3_supported_not_untested(self, tex):
-        rules = _section(tex, "sec:rules")
-        h3 = rules[rules.index("H3, the asymmetry rule"):]
-        h3 = h3[:h3.index(r"\paragraph") if r"\paragraph" in h3[20:] else len(h3)]
-        assert r"\textbf{Supported.}" in h3, "H3 must now be reported as supported"
-        assert "untested" not in h3.split("Two earlier attempts")[0].lower()
+        The \\textbf{Supported.} under H3 left with the rules section. The supplement says the
+        same in words -- measured at one operating point, with the direction and one-sidedness
+        the model predicts, both kept by the replication -- and that sentence holds only while
+        both campaigns shrink the gap through Kafka's change with Redis's interval on zero.
+        """
+        macros = dict(_emitted_macros())
+        for p in ("hThree", "hThreeRep"):
+            diff, kafka, redis = ([float(x) for x in macros[p + side + "ChangeCI"].split("$, $")]
+                                  for side in ("Diff", "Kafka", "Redis"))
+            assert max(diff) < 0 and max(kafka) < 0, f"{p}: the gap no longer shrinks from Kafka"
+            assert min(redis) < 0 < max(redis), f"{p}: Redis moved, so it is not one-sided"
+        start = supp.index(r"\emph{H3 is measured at one operating point.}")
+        h3 = " ".join(supp[start:supp.index("\n\n", start)].split())
+        assert "The direction and the one-sidedness of the effect are what the model predicts" in h3
+        assert "the replication at $\\hThreeRepRuns$ runs per cell keeps both" in h3
+        assert "untested" not in h3.lower()
 
     def test_the_25_percent_reduction_is_stated(self, tex):
         rows = {r["stamp"]: r for r in _rows("model", "ec3_stamping.csv")}
@@ -574,24 +617,31 @@ class TestH3IsMeasuredAndSupported:
         assert 0.20 < reduction < 0.30, f"reduction is {reduction:.0%}, paper says ~25%"
         assert "25" in tex
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; scorecard is supplement-only, and the M/G/1 withdrawal is stated in Sec. V-F")
+    def test_the_scorecard_does_not_still_claim_the_withdrawn_form(self, tex, main_tex, supp):
+        """No text claims all four rules hold, and the M/G/1 form is withdrawn where it was adopted.
 
-    def test_the_scorecard_does_not_still_claim_the_withdrawn_form(self, tex):
-        """This test used to assert "All four hold", and by doing so enforced a refuted claim.
-
-        One of the four was that inversion probability follows M/G/1 waiting time in utilisation.
-        The paper refutes it: extended to the utilisation range where the candidate forms
-        diverge, M/G/1 fits worse than the mean. The contribution item said all four held, and
-        this test kept it that way -- a test pinned to prose rather than to a result will defend
-        the prose after the result has moved.
+        The contributions item that said "All four hold" left with the TC contributions list,
+        which makes no claim about the rules. Supplement S1.5 withdraws the form with the fit
+        that refutes it, recomputed here from the knee sweep, and the main text's manipulations
+        paragraph states the refutation of the queueing form it had adopted.
         """
-        item = tex[tex.index(r"\textbf{Falsifiable rules and two further withdrawals}"):]  # v2 title
-        item = item[:item.index(r"\item")]
-        assert "All four hold" not in item, "the contributions list still claims all four rules"
-        assert "M/G/1" in item and "withdraw" in item, \
-            "the contributions list must state the M/G/1 withdrawal where it made the claim"
-        # And the refutation must be the one the artefact supports, not merely a hedge.
-        assert "worse than the mean" in item
+        import sys
+        sys.path.insert(0, str(REPO / "scripts"))
+        import analyze_knee
+        points = [dict(r, rho=float(r["rho"]), inversion_rate=float(r["inversion_rate"]))
+                  for r in _rows("model", "knee_resolution.csv")]
+        verdict = analyze_knee.verdict(points)
+        assert verdict.get("refuted"), "the knee sweep no longer refutes M/G/1; S1.5 must change"
+        prose = re.sub(r"(?<!\\)%.*", "", tex)
+        assert "All four hold" not in prose, "the package still claims all four rules"
+        s15 = " ".join(supp[supp.index(r"\subsection{S1.5."):
+                            supp.index(r"\subsection{S1.6.")].split())
+        fit = verdict["fit"]
+        assert "The M/G/1 form, withdrawn" in s15
+        assert (f"fitted \\emph{{worse than the mean}}: $R^2 = {fit['r2_mg1']:.2f}$, against a "
+                f"fitted exponential's ${fit['r2_exponential']:.2f}$") in s15
+        twostate = " ".join(_section(main_tex, "sec:twostate").split())
+        assert "including the queueing form we ourselves adopted" in twostate
 
     def test_the_argument_holds_at_every_candidate_replay_rate(self, tex):
         """The withdrawal must not depend on the rate the artefacts cannot supply.
@@ -617,45 +667,74 @@ class TestH3IsMeasuredAndSupported:
         for rate in expected:
             assert str(rate) in tex
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; superseded by Sec. V-C, which states the blind spot directly")
+    def test_the_check_is_not_claimed_to_catch_it(self, main_tex, supp):
+        """The main text names the blind spot at sec:blindspot; Supplement S3 names this case of it."""
+        blind = " ".join(_section(main_tex, "sec:blindspot").split())
+        assert "the check does not catch everything" in blind
+        assert "Causal consistency is necessary, not sufficient." in blind
+        s3 = " ".join(supp[supp.index(r"\section{S3."):supp.index(r"\section{S4.")].split())
+        assert (r"\paragraph{The general lesson} The consistency check of Section~\mainGate{} "
+                r"does not catch this.") in s3
 
-    def test_the_check_is_not_claimed_to_catch_it(self, tex):
-        """Honesty about the limit of our own instrument is the point of this section."""
-        section = _section(tex, "sec:attribution")
-        assert "does not catch" in section.lower()
+    def test_no_product_recommendation_rests_on_it(self, main_tex):
+        """sec:brokers says the brokers sit within a millisecond, and that no purchase follows.
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; Sec. VI now states plainly that no purchasing argument rests on the comparison")
-
-    def test_no_product_recommendation_rests_on_it(self, tex):
-        """We must not tell practitioners to choose a product on a withdrawn measurement."""
-        discussion = tex[tex.index(r"\subsection{For practitioners}"):]
-        head = discussion[:discussion.index(r"\subsection{Threats to validity}")]
-        assert "equivalent within a millisecond" in head
-        assert "twentyfold" not in head.lower(), "withdrawn claim must not drive guidance"
+        The practitioners' subsection is gone. The broker result and what it means for a reader
+        choosing a broker are in "What the brokers actually do", the margin is the TOST
+        artefact's, and the withdrawn twentyfold gap appears nowhere in the main text.
+        """
+        tost = _rows("transport_rt", "transport_realtime_gated_tost.csv")
+        assert {float(r["margin"]) for r in tost} == {1.0}, "the margin is no longer a millisecond"
+        assert all(r["equivalent"] == "True" for r in tost)
+        brokers = " ".join(_section(main_tex, "sec:brokers").split())
+        assert "the two sit within a millisecond on the transport proxy" in brokers
+        assert "So it is not a purchasing argument." in brokers
+        prose = re.sub(r"(?<!\\)%.*", "", main_tex)
+        assert "twentyfold" not in prose.lower(), "withdrawn claim must not drive guidance"
 
 
 class TestMeasuredRules:
     """Section 7.3 must report the model's rules with the values actually measured."""
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; the per-rule value table is supplement-only")
+    def test_h2_h4_values_appear(self, tex, supp):
+        """Only H2's fit survives, in the caption of tab:h2load; both rank correlations are dropped.
 
-    def test_h2_h4_values_appear(self, tex):
-        """H1 no longer quotes a rank correlation: its sweep was withdrawn, not merely doubted."""
-        section = _section(tex, "sec:rules")
-        for token in ("0.98", "+0.80"):                 # H2, H4 rank correlations
-            assert token in section, f"missing rank correlation {token}"
-        for token in ("0.945", "0.640"):                # H2 model-vs-linear fit
-            assert token in section, f"missing R^2 {token}"
-        assert "-0.80" not in section, \
-            "the withdrawn netem rank correlation must not reappear"
+        The per-rule values left with the rules section. H2's model-against-line fit is kept in
+        the caption of the load sweep it was fitted to, marked withdrawn, and is refitted here
+        from the rows that table prints, to the rounding of those rows. H2's and H4's rank
+        correlations are quoted nowhere. The withdrawn netem correlation must not come back.
+        """
+        import sys
+        sys.path.insert(0, str(REPO / "scripts"))
+        import measurement_model
+        lbl = supp.index(r"\label{tab:h2load}")
+        table = supp[supp.rindex(r"\begin{table}", 0, lbl):supp.index(r"\end{table}", lbl)]
+        caption = " ".join(table[:table.index(r"\label")].split())
+        assert "The withdrawn queueing form fits at $R^2 = 0.945$ against $0.640$" in caption
+        body = table[table.index(r"\midrule"):table.index(r"\bottomrule")]
+        points = [[float(c) for c in line.replace("\\\\", "").split("&")]
+                  for line in body.splitlines() if "&" in line]
+        fit = measurement_model.fit_mg1([p[0] for p in points], [p[1] for p in points])
+        assert fit["r2_mg1"] == pytest.approx(0.945, abs=0.002)
+        assert fit["r2_linear"] == pytest.approx(0.640, abs=0.002)
+        prose = re.sub(r"(?<!\\)%.*", "", tex)
+        assert "-0.80" not in prose, "the withdrawn netem rank correlation must not reappear"
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; the rule scorecard is supplement-only")
+    def test_all_four_rules_are_reported_supported(self, tex, supp):
+        """Dropped: no rule carries a verdict now, and tab:power still names each rule's campaign.
 
-    def test_all_four_rules_are_reported_supported(self, tex):
-        section = _section(tex, "sec:rules")
-        # One \textbf{Supported.} per rule, H1 through H4.
-        assert section.count(r"\textbf{Supported.}") == 4
-        assert "NOT SUPPORTED" not in section.upper().replace("NOT SUPPORTED IF", "")
+        The four \\textbf{Supported.} lines left the paper with the rules section in the TC
+        referee round and were not carried into the supplement, so no text reports a verdict
+        per rule. What remains is the map of what each claim rests on. The check is that the
+        verdict line has not come back unreviewed -- one of the four was the M/G/1 form -- and
+        that the map still accounts for all four rules, H2 as a shape.
+        """
+        prose = re.sub(r"(?<!\\)%.*", "", tex)
+        assert r"\textbf{Supported.}" not in prose, "a per-rule verdict has returned"
+        lbl = supp.index(r"\label{tab:power}")
+        table = supp[supp.rindex(r"\begin{table}", 0, lbl):supp.index(r"\end{table}", lbl)]
+        assert sorted(re.findall(r"^(H[1-4]) ", table, re.M)) == ["H1", "H2", "H3", "H4"]
+        assert "H2 utilization shape &" in table, "H2 is kept as a shape; its form is withdrawn"
 
 
 class TestQuantisationTable:
@@ -971,21 +1050,44 @@ class TestPoweredTransportReplication:
         assert all(s > 0 for s in tost.values()), "Kafka must be the slower system at every N"
         assert max(tost.values()) - min(tost.values()) < 0.05, "the shift must be flat in N"
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; powered-transport replication detail is supplement-only")
+    def test_the_paper_states_both_halves(self, supp, main_tex):
+        """Supplement S2 states both halves over the powered sample; the main text keeps one.
 
-    def test_the_paper_states_both_halves(self, tex):
-        e1 = _section(tex, "sec:e1")
-        low = e1.lower()
-        assert "not" in low and "indistinguishable" in low, "the 'not a tie' half must be stated"
-        assert "equivalent within" in low, "the within-margin half must be stated"
-        assert "125 events" in e1 or "125$ events" in e1, "the powered sample size must be given"
-        assert "seven events" in low, "the contrast with E1's seven events must be drawn"
+        The not-a-tie half, the within-margin half, the powered sample size and the contrast
+        with E1's seven events are in S2's powered-measurement paragraph, and the artefact
+        supports each half: every level is equivalent at 1 ms by all three estimators, and
+        every Hodges-Lehmann interval excludes zero. The main text states the equivalence
+        alone and points to the supplement.
+        """
+        tost = _rows("transport_rt", "transport_realtime_gated_tost.csv")
+        assert all(r["equivalent"] == r["boot_equivalent"] == r["hl_equivalent"] == "True"
+                   for r in tost)
+        assert all(float(r["hl_ci90_lo"]) > 0 for r in tost), "a level is now a tie"
+        events = st.median(int(r["n_matched"])
+                           for r in _rows("transport_rt", "transport_realtime_by_run_gated.csv"))
+        s2 = " ".join(supp[supp.index(r"\section{S2."):supp.index(r"\section{S3.")].split())
+        assert "The two systems are \\emph{not} statistically indistinguishable" in s2
+        assert "\\emph{equivalent within one millisecond} at every $N$" in s2
+        assert f"over a median of ${events:.0f}$ events per run rather than seven" in s2
+        brokers = " ".join(_section(main_tex, "sec:brokers").split())
+        assert "within a millisecond" in brokers and "(Supplement~S13)" in brokers
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; same")
+    def test_the_measurement_supersedes_not_contradicts_e1(self, main_tex, supp):
+        """The powered run refines E1 rather than contradicting it, and says so beside both.
 
-    def test_the_measurement_supersedes_not_contradicts_e1(self, tex):
-        e1 = _section(tex, "sec:e1")
-        assert "refines" in e1.lower(), "the powered run refines rather than contradicts E1"
+        Under the tier rule E1 left the main text entirely: the broker comparison there is one
+        paragraph that sends the reader to the supplement. The E1 corpus (Table tab:e1) and the
+        powered replication that refines it (Table tab:transport) are supplement S2, and the
+        sentence relating the two is there.
+        """
+        start = supp.index("What the broker comparison rests on, and what it does not}")
+        s2 = supp[start:supp.index("\n\\section", start)]
+        for label in (r"\label{tab:e1}", r"\label{tab:transport}"):
+            assert label in s2, f"{label} must sit in the section that relates the two"
+        assert "this refines e1 rather than contradicting it" in " ".join(s2.lower().split()), \
+            "the powered run refines rather than contradicts E1"
+        prose = re.sub(r"(?<!\\)%.*", "", main_tex)
+        assert not re.search(r"\bE1\b", prose), "E1 is supplement-only in the TC version"
 
 
 class TestExternalHarnessEvidence:
@@ -1013,25 +1115,32 @@ class TestExternalHarnessEvidence:
         assert "endtoendlatencymicros > 0" in section, "the positive-only filter must be quoted"
         assert "no counter" in section or "not merely unpublished" in section
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; external-harness run detail is supplement-only")
+    def test_the_claim_is_scoped_to_what_the_run_shows(self, main_tex, supp):
+        """The positive result is still scoped to what it shows, in three places now.
 
-    def test_the_claim_is_scoped_to_what_the_run_shows(self, tex):
-        """The result is now positive, so the scoping requirement moves rather than lapses.
-
-        This assertion has changed twice. It began as "we have not run it", became "a null must
-        not be read as support", and is now "a positive result must not be read as more than it
-        is". The constant is that the section states exactly what was established and stops:
-        the discard happens, it is large, it is unreported -- and whether any PUBLISHED result
-        is affected remains unclaimed, because we audited no deployment but our own.
+        The withdrawn reading -- discards read as causality violations -- is supplement S1.3,
+        stated over the whole Kafka-driver corpus; the single loaded run's 6,000 samples and its
+        88% load are no longer quoted anywhere. The sign result that replaced the reading stays
+        in the main text, across every load. The scope stays unclaimed in S22: the deletion
+        happens, it is large, it is unreported, and whether it touched any published result is
+        not claimed, because we audited none.
         """
-        section = " ".join(tex.lower().split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
-        assert "6{,}000" in section or "6,000" in section, (
-            "the withdrawn count must still be stated, as what is being withdrawn")
-        assert "withdraw" in section, "the section must say the earlier reading is withdrawn"
-        assert "not one negative" in section, (
-            "the sign result that replaces it must be stated")
-        assert "do not claim" in section, "the unaudited scope must stay unclaimed"
-        assert "88" in section, "the load must be stated; an idle run would not have found it"
+        withdrawn = " ".join(_section(supp, "sec:firstanswer").split())
+        assert ("An earlier version of this work read the OpenMessaging Benchmark's discards as "
+                "causality violations. They are not.") in withdrawn, \
+            "the section must say the earlier reading is withdrawn"
+        assert r"$\ombKafkaDiscarded$ discarded samples contain not one negative" in withdrawn, \
+            "the withdrawn count must still be stated, as what is being withdrawn"
+        sign = " ".join(_section(main_tex, "sec:generality").split())
+        assert r"\textbf{not one negative}" in sign, "the sign result that replaces it must be stated"
+        assert "at any load, size or rate" in sign, \
+            "the result must span load; an idle run would not have found it"
+        scope = supp[supp.index(r"\paragraph{What we do not claim}"):]
+        scope = " ".join(scope[:scope.index("\n\\section")].split())
+        assert "That any published result obtained with this benchmark is wrong." in scope
+        for fact in ("the deletion happens", "that it is large", "that it is unreported"):
+            assert fact in scope, f"the section must state what was established: {fact!r}"
+        assert "we have audited none" in scope, "the unaudited scope must stay unclaimed"
 
     def test_the_vacuous_zero_is_disclosed(self, tex):
         """The first attempt reported zero because the benchmark never ran, and that number
@@ -1062,20 +1171,23 @@ class TestExternalHarnessEvidence:
         section = tex  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
         assert "5b1fa70" in section, "the audited commit must be named for checkability"
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; superseded: Sec. IV-A now states the guard's documented origin and calls it defensive rather than evasive")
-
-    def test_the_criticism_is_fair_to_the_software(self, tex):
+    def test_the_criticism_is_fair_to_the_software(self, main_tex):
         """We criticise a widely used project by name, so the charitable reading must be given.
 
-        The filter guards an HdrHistogram Recorder, which rejects negatives -- almost certainly
-        defensive rather than evasive. Saying so is both fairer and a stronger point: the failure
-        is a reasonable local fix with a non-local consequence.
+        It is in the main text, Section VI-A, and stronger than the version it replaced: the
+        guard's documented origin is cited (PR #56), the HdrHistogram Recorder's rejection of
+        negatives is given as its reason, and the fix is called defensive rather than evasive.
+        "Not describing carelessness" left in the TC round; "its reasoning is sound" says it.
         """
-        # LaTeX hard-wraps prose, so collapse whitespace before matching phrases.
-        section = " ".join(tex.lower().split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
-        assert "defensive rather than evasive" in section
-        assert "hdrhistogram" in section, "the reason for the guard must be given"
-        assert "not describing carelessness" in section
+        section = " ".join(_section(main_tex, "sec:extmethod").split())
+        low = section.lower()
+        assert "defensive rather than evasive" in low
+        assert (r"\texttt{HdrHistogram} \texttt{Recorder}, which rejects negative values"
+                in section), "the reason for the guard must be given"
+        assert r"\cite{openmessaging_pr56}" in section, "the guard's documented origin must be cited"
+        assert "origin is documented and its reasoning is sound" in low
+        assert "non-local consequences" in low, \
+            "the point is a reasonable local fix with a non-local consequence"
 
     def test_the_conclusion_carries_the_external_evidence(self, tex):
         conclusion = tex[tex.index(r"\section{Conclusion}"):]
@@ -1111,14 +1223,36 @@ class TestH2FormIsWithdrawn:
         assert not fit["mg1_better"], "if this passes, the withdrawal must be revisited"
         assert fit["best_alternative"] == "exponential"
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; the M/G/1 withdrawal is in Sec. V-F, the shape discussion in supplement S1.4")
+    def test_the_paper_withdraws_the_form_and_keeps_the_mechanism(self, main_tex, supp):
+        """The M/G/1 withdrawal is supplement S1.5, restated on the knee sweep's fits.
 
-    def test_the_paper_withdraws_the_form_and_keeps_the_shape(self, tex):
-        rules = _section(tex, "sec:rules")
-        low = rules.lower()
-        assert "withdraw" in low, "the functional-form claim must be withdrawn in the text"
-        assert "superlinear" in low, "the surviving claim is the shape"
-        assert "0.961" in rules, "the exponential's fit must be reported"
+        The TC main text keeps one sentence (Section V-C): both load laws failed because both
+        were parameterized in rho, which is not the variable, and Supplement S5 has the detail.
+        S1.5 withdraws the form with the knee sweep's numbers -- M/G/1 worse than the mean, the
+        exponential at 0.93 where the nine-point table gave 0.961 -- and keeps no superlinear
+        shape: what survives is the mechanism, established by manipulation.
+        """
+        sys.path.insert(0, str(REPO / "scripts"))
+        from measurement_model import fit_mg1
+        pts = [r for r in _rows("model", "knee_resolution.csv") if 0 < float(r["rho"]) < 1]
+        fit = fit_mg1([float(r["rho"]) for r in pts], [float(r["inversion_rate"]) for r in pts])
+        assert fit["best_alternative"] == "exponential" and fit["r2_mg1"] < 0, \
+            "if M/G/1 stops losing to the mean, the withdrawal must be revisited"
+        head = "The M/G/1 form, withdrawn}"
+        assert head in supp, "the functional-form claim must be withdrawn in the text"
+        start = supp.index(head)
+        s15 = " ".join(supp[start:supp.index("\n\\subsection", start)].split())
+        assert "worse than the mean" in s15
+        assert "$R^2 = %.2f$" % fit["r2_mg1"] in s15, "M/G/1's fit must be the artefact's"
+        assert "exponential's $%.2f$" % fit["r2_exponential"] in s15, \
+            "the exponential's fit must be reported"
+        assert "is not the variable" in s15, "what replaced the shape claim must be stated"
+        k = supp.index("Both load-axis predictions failed")
+        home = re.match(r"\\section\{(S\d+)\.", supp[supp.rindex("\\section{", 0, k):]).group(1)
+        twostate = " ".join(_section(main_tex, "sec:twostate").split())
+        assert (r"both failed, because both were parameterized in $\rho$ and $\rho$ is not the "
+                r"variable (Supplement~%s)" % home) in twostate, \
+            "the main text keeps the conclusion and points to where the post-mortem lives"
 
     def test_abstract_and_conclusion_do_not_assert_the_mg1_form(self, tex):
         for name, part in (("abstract", tex[tex.index(r"\begin{abstract}"):
@@ -1235,33 +1369,52 @@ class TestNarrativeArc:
     rather than left to proofreading, which has already missed this class of drift three times.
     """
 
-    @pytest.mark.skip(reason="the TC rewrite deliberately changed this structure (docs/tc_plan.md sec.3); the test encoded the previous paper's shape; the TC abstract's four beats are ratio / Mode A / Mode B / remedy, and it no longer narrates withdrawals")
+    def test_the_abstract_follows_the_stated_shape(self, main_tex):
+        """Four beats, in order: ratio, Mode A, Mode B, remedy (docs/tc_plan.md sec. 3).
 
-    def test_the_abstract_follows_the_stated_shape(self, tex):
-        abstract = tex[tex.index(r"\begin{abstract}"):tex.index(r"\end{abstract}")]
-        for beat in ("First, the measurement", "Second, the measurement", "The audit"):
-            assert beat in abstract, f"abstract is missing the '{beat}' beat"
-        # The refocus is enforced here: secondary results stay out of the abstract by design.
-        assert "0.41" not in abstract, "the broker shift is a secondary result; not in the abstract"
-        assert "M/G/1" not in abstract, "withdrawn-model detail is not abstract material"
-        # At least one plain-language register survives the TPDS compression.
-        assert abstract.count("In practice:") >= 1
-        # TPDS budget: 250 words after stripping commands and math delimiters.
-        body = re.sub(r"\\(begin|end)\{abstract\}", " ", abstract)
-        body = re.sub(r"\\[a-zA-Z]+\*?(\[[^\]]*\])?", " ", body)
-        words = [w for w in re.split(r"[\s{}$]+", body) if w]
-        assert len(words) <= 250, f"abstract is {len(words)} words; the TPDS budget is 250"
+        The context sentence states the ratio -- a delivery shorter than the timestamps' own
+        delays and resolution. "First" is the reference-timestamp failure, with its one-clock
+        count and its manipulation; "Second" is the silent deletion, with its retention range;
+        the last sentence gives the checks. The TC abstract narrates no withdrawal: that is
+        supplement S1's job. The tier-4/5 exclusions and the word range are pinned elsewhere.
+        """
+        abstract = main_tex[main_tex.index(r"\begin{abstract}"):main_tex.index(r"\end{abstract}")]
+        flat = " ".join(abstract.split())
+        beats = ("First, ", "Second, ", "checks benchmark authors can apply")
+        for beat in beats:
+            assert beat in flat, f"abstract is missing the '{beat.strip()}' beat"
+        first, second, remedy = (flat.index(b) for b in beats)
+        assert first < second < remedy, "the beats must run ratio, Mode A, Mode B, remedy"
+        ratio, mode_a, mode_b = flat[:first], flat[first:second], flat[second:remedy]
+        assert "shorter than the delays and resolution of the timestamps" in ratio, \
+            "the ratio beat must set the delivery against both of the instrument's timescales"
+        for token in ("on one clock", r"\spanEvents", r"\rtFactorLow", r"\rtFactorHigh"):
+            assert token in mode_a, f"the Mode A beat is missing {token!r}"
+        for token in ("millisecond-resolution", "strictly positive",
+                      r"\ombGridRetentionMin", r"\ombGridRetentionMax"):
+            assert token in mode_b, f"the Mode B beat is missing {token!r}"
+        assert "withdr" not in flat.lower(), "the TC abstract no longer narrates withdrawals"
 
-    @pytest.mark.skip(reason="the TC rewrite deliberately changed this structure (docs/tc_plan.md sec.3); the test encoded the previous paper's shape; the ordering is now enforced by the section skeleton itself")
+    def test_results_are_ordered_by_consequence_not_chronology(self, main_tex, supp):
+        """The failure modes lead, the broker answer follows, and the chronology left the paper.
 
-    def test_results_are_ordered_by_consequence_not_chronology(self, tex):
-        """The transferable science leads; the two-broker answer follows."""
-        order = [tex.index("\\label{" + lbl + "}")
-                 for lbl in ("sec:rules", "sec:mixture", "sec:e1", "sec:attribution")]
-        assert order == sorted(order), \
-            "Section 7 must run rules -> mixture -> brokers -> withdrawal"
-        intro = _section(tex, "sec:results")
-        assert "consequence rather than by chronology" in intro, \
+        The TC skeleton enforces the order (docs/tc_plan.md sec. 3): each failure mode is a
+        section, the tool audit follows, and the two-broker answer is one subsection of the
+        Discussion. The order in which the work happened -- the withdrawn first answer,
+        sec:attribution, among it -- is supplement S1, which says why it is there.
+        """
+        pos = {lbl: main_tex.index("\\label{" + lbl + "}")
+               for lbl in ("sec:mechanism", "sec:mixture", "sec:external", "sec:tools",
+                           "sec:brokers")}
+        modes = max(pos["sec:mechanism"], pos["sec:mixture"], pos["sec:external"])
+        assert modes < pos["sec:tools"] < pos["sec:brokers"], \
+            "the failure modes and the tool audit must precede the broker answer"
+        assert "\\label{sec:brokers}" in _section(main_tex, "sec:discussion"), \
+            "the broker answer is a subsection of the Discussion, not a result of its own"
+        assert "\\label{sec:attribution}" not in main_tex, "the chronology is not main-text material"
+        i = supp.index("\\label{sec:attribution}")
+        s1 = " ".join(supp[supp.rindex("\\section{", 0, i):i].split())
+        assert "The main text is organized around what the evidence supports." in s1, \
             "the ordering must be declared, not left implicit"
 
     def test_the_conclusion_carries_every_headline(self, tex):
@@ -1272,24 +1425,53 @@ class TestNarrativeArc:
                              ("the broker answer", "0.41")):
             assert token.lower() in low, f"conclusion omits {claim}"
 
-    @pytest.mark.skip(reason="the TC rewrite deliberately changed this structure (docs/tc_plan.md sec.3); the test encoded the previous paper's shape; the conclusion no longer restates the chronology, which moved to supplement S1")
+    def test_the_story_returns_to_the_original_question(self, main_tex, supp):
+        """The chronology left the conclusion for supplement Part I, and the candour went with it.
 
-    def test_the_story_returns_to_the_original_question(self, tex):
-        conclusion = tex[tex.index(r"\section{Conclusion}"):]
-        low = conclusion.lower()
-        assert "began by asking" in low or "we set out" in low
-        assert "barely matters" in low or "least interesting" in low, \
-            "the ending must be honest about what the original question was worth"
+        The TC conclusion states the lesson and the checks and restates no chronology
+        (docs/tc_plan.md sec. 3). Part I of the supplement retells the work in the order it
+        happened, S1.2 opening on the question the study began with, and S20 says what that
+        question turned out to be worth rather than leave a reader to find it out. The old pin
+        passed only because its slice ran from the conclusion to the end of the supplement.
+        """
+        i = main_tex.index(r"\section{Conclusion}")
+        conclusion = re.sub(r"(?<!\\)%.*", "", main_tex[i:main_tex.index(r"\bibliographystyle", i)])
+        conclusion = " ".join(conclusion.split())
+        for chronology in ("began by asking", "we set out", "began as a broker comparison"):
+            assert chronology not in conclusion.lower(), "the conclusion restates the chronology"
+        assert "count what your tool throws away" in conclusion, "it ends on the checks"
+        flat = " ".join(supp.split())
+        assert (r"Part~I --- \emph{what we set out to measure, and what broke} --- retells the "
+                r"work in the order it happened") in flat
+        assert " ".join(_section(supp, "sec:attribution").split()).startswith(
+            r"\label{sec:attribution} The study began as a broker comparison on a live sports feed.")
+        start = supp.index(r"\section{S20.")
+        s20 = " ".join(supp[start:supp.index(r"\section{", start + 1)].split())
+        assert ("the broker question turned out to be the least interesting thing we could have "
+                "asked, and we would rather say so here than let a reader discover it") in s20
 
-    @pytest.mark.skip(reason="the TC rewrite deliberately changed this structure (docs/tc_plan.md sec.3); the test encoded the previous paper's shape; the experiment map and configuration table moved to the supplement")
+    def test_method_gives_the_reader_the_map_and_the_settings(self, main_tex, supp):
+        """Two things a referee needs to check the work rather than trust it, now in Part III.
 
-    def test_method_gives_the_reader_the_map_and_the_settings(self, tex):
-        """Two things a referee needs to check the work rather than trust it."""
-        assert r"\label{fig:expmap}" in tex, "the experiment map must exist"
-        assert r"\label{tab:config}" in tex, "the configuration table must exist"
-        config = _section(tex, "sec:config_table")
-        assert "learned" in config.lower(), \
-            "settings discovered through a defect must be marked as such"
+        The TC page budget moved both to the supplement (docs/tc_plan.md sec. 3): the experiment
+        map to S18, beside the table of what each claim rests on, and the configuration table to
+        S21. Settings discovered through a defect are still marked as learned.
+        """
+        for label in (r"\label{fig:expmap}", r"\label{tab:config}"):
+            assert label in supp, f"{label} must exist in the supplement"
+            assert label not in main_tex, f"{label} is supplement material in the TC version"
+        i = supp.index(r"\label{fig:expmap}")
+        figure = supp[supp.rindex(r"\begin{figure}", 0, i):i]
+        path = re.search(r"\\includegraphics(?:\[[^\]]*\])?\{([^}]*)\}", figure).group(1)
+        assert (REPO / path).is_file(), f"the experiment map {path} must be committed"
+        j = supp.index(r"\label{tab:config}")
+        table = supp[supp.rindex(r"\begin{table}", 0, j):supp.index(r"\end{table}", j)]
+        assert "discovered by a defect they caused" in " ".join(table.split()), \
+            "the table must say what the mark means"
+        learned = [line for line in table.splitlines() if r"\emph{Learned.}" in line]
+        for setting in ("max-inflight", "ack-batch"):
+            assert any(setting in line for line in learned), \
+                f"{setting} was discovered through a defect and must be marked as such"
 
 
 class TestIndependentReplications:
@@ -1307,18 +1489,28 @@ class TestIndependentReplications:
         for token in ("0.397", "0.412", "0.413"):   # the replication shifts, as printed
             assert token in tex
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; independent-campaign detail is supplement-only")
+    def test_h3_reproduces_in_an_independent_campaign(self, supp):
+        """E-C4 repeats the timestamping comparison, and supplement Table tab:h3 prints it.
 
-    def test_h3_reproduces_in_an_independent_campaign(self, tex):
+        TC keeps no timestamping-mode result in the main text. The replication is the E-C4
+        block of the table in S26.2, printed through the ledger, so the values are read after
+        macro resolution rather than searched as digit strings.
+        """
         rows = {r["stamp"]: r for r in _rows("depth_rep2/model", "ec3_stamping.csv")}
         assert set(rows) == {"callback", "inline"}
-        cb, inl = abs(float(rows["callback"]["difference_ms"])), abs(float(rows["inline"]["difference_ms"]))
+        cb = abs(float(rows["callback"]["difference_ms"]))
+        inl = abs(float(rows["inline"]["difference_ms"]))
         assert inl < cb, "the symmetric stamp must again shrink the gap"
         # Kafka moves, Redis does not, as in the first campaign.
         assert float(rows["callback"]["kafka_ms"]) - float(rows["inline"]["kafka_ms"]) > 0.02
         assert abs(float(rows["callback"]["redis_ms"]) - float(rows["inline"]["redis_ms"])) < 0.01
-        for token in ("0.276", "0.237"):
-            assert token in tex
+        i = supp.index(r"\label{tab:h3}")
+        table = _resolved(supp[supp.rindex(r"\begin{table}", 0, i):supp.index(r"\end{table}", i)])
+        replication = table[table.index(r"\emph{E-C4"):].splitlines()
+        for stamp in ("callback", "inline"):
+            row = next(line for line in replication if line.startswith(r"\texttt{%s}" % stamp))
+            assert "%.3f" % float(rows[stamp]["difference_ms"]) in row, \
+                f"the replication's {stamp} gap must be the artefact's"
 
 
 class TestMixtureStructure:
@@ -1354,25 +1546,52 @@ class TestMixtureStructure:
         assert emitted["coreGrowth"] == "%.0f" % core_growth
         assert emitted["invGrowth"] == "%.0f" % tail_growth
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; mixture-structure detail is supplement-only")
+    def test_the_collapse_is_reported_falsified(self, main_tex, supp):
+        """The failed scale-family collapse is supplement S9 now; the main text keeps the upshot.
 
-    def test_the_collapse_is_reported_falsified(self, tex):
-        section = _section(tex, "sec:mixture")
-        low = section.lower()
-        assert "falsified" in low, "the scale-family collapse must be reported falsified"
-        assert "pre-register" in low, "and pre-registered as expected"
-        assert "mixture" in low
+        TC cut the campaign's detail to S9 and to Table tab:mixture in S26.1. S9 says the scale
+        family "fails" and sizes the failure at the worst within-band ratio h9_verdict computes
+        from the committed points; the table caption marks the nine-level campaign
+        pre-registered. The main text keeps the conclusion in plain words -- load changes how
+        often the thread is off-CPU, not how wide the jitter is -- and points to S9.
+        """
+        sys.path.insert(0, str(REPO / "scripts"))
+        from analyze_collapse import h9_verdict
+        pts = [dict(r, z=float(r["z"]), tail_mass=float(r["tail_mass"]))
+               for r in _rows("model", "collapse_points.csv")]
+        h9 = h9_verdict(pts)
+        assert h9["testable"] and not h9["supported"], "the collapse must fail on the artefact"
+        s9 = " ".join(_section(supp, "sec:twostatesupp").split())
+        assert "The scale family fails" in s9, "the scale-family collapse must be reported failed"
+        assert r"$%.0f\times$ failure of the scale-family collapse" % h9["worst_ratio"] in s9
+        i = supp.index(r"\label{tab:mixture}")
+        caption = " ".join(supp[supp.rindex(r"\begin{table}", 0, i):i].split())
+        assert "Mixture, measured across nine load levels" in caption
+        assert "pre-registered" in caption, "and the campaign that tested it pre-registered"
+        mixture = " ".join(_section(main_tex, "sec:mixture").split())
+        assert "not how wide the ordinary jitter is" in mixture
+        home = re.match(r"\\section\{(S\d+)\.",
+                        supp[supp.rindex("\\section{", 0, supp.index(r"\label{sec:twostatesupp}")):]
+                        ).group(1)
+        assert re.search(r"Supplement~%s\b" % home, mixture), \
+            "the main text must point to where it lives"
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; same")
+    def test_the_fdelta_reproduction_boundary_is_honest(self, supp):
+        """The reproduction boundary is supplement S8.1 now, beside the tail recovery it tests.
 
-    def test_the_fdelta_reproduction_boundary_is_honest(self, tex):
-        section = _section(tex, "sec:mixture")
+        TC cut the recovered-tail comparison from the main text's mixture subsection. S8.1
+        states it with its count and names the rho = 1 degeneracy that bounds it.
+        """
         rows = _rows("model", "fdelta_reproduction.csv")
         below = [r for r in rows if float(r["rho_new"]) < 0.96]
         overlap = sum(1 for r in below if r["ci_overlap"] == "True")
         assert overlap == 12 and len(below) == 17, "below-saturation reproduction is 12/17"
-        assert "12" in section and "17" in section
-        assert "degenerate" in section.lower(), "the rho=1 degeneracy must be named"
+        assert {float(r["rho_new"]) for r in rows if float(r["rho_new"]) >= 0.96} == {1.0}, \
+            "every row above the boundary sits on the degenerate rho = 1 coordinate"
+        start = supp.index("Tail recovery without a reference clock}")
+        unit = " ".join(supp[start:supp.index("\n\\section", start)].split())
+        assert "$%d$ of $%d$ matched quantiles overlap" % (overlap, len(below)) in unit
+        assert "degenerate" in unit.lower(), "the rho=1 degeneracy must be named"
 
 
 class TestClusteringConstructCheck:
@@ -1408,21 +1627,26 @@ class TestNetemConfoundIsDisclosed:
         assert "9{,}200" in para or "9200" in para, "the variance blow-up must be quantified"
         assert "confound" in para.lower()
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; the netem confound discussion is supplement-only")
-
-    def test_h1_rests_only_on_the_contrast_the_manipulation_cannot_spoil(self, tex):
-        """The netem sweep is withdrawn outright: it does not act on T_true at all.
+    def test_h1_rests_only_on_the_contrast_the_manipulation_cannot_spoil(self, main_tex, supp):
+        """The netem sweep is withdrawn outright, in supplement S3.1; the main text keeps only
+        the contrast no manipulation can spoil.
 
         Delay injected at the broker reaches the acknowledgement and the record equally, so it
-        cancels in their difference. A test that merely checked for hedging would let the old
-        correlation creep back; this one requires the withdrawal and its reason.
+        cancels in their difference. The withdrawal and that reason are S3.1. The main text
+        states the clean contrast as a consequence of the identity (Section II-A) -- tens of
+        seconds pass every run where one millisecond fails wholesale -- and cites no delay
+        sweep, so the old correlation cannot creep back in.
         """
-        rules = tex[tex.index("H1, the effect-size rule"):]
-        h1 = " ".join(rules[:rules.index(r"\paragraph{H2")].lower().split())
-        assert "withdraw the intermediate points" in h1
-        assert "common-mode" in h1, "the reason the manipulation fails must be named"
-        assert "co-located" in h1 and "network arm" in h1, \
-            "H1 must rest on the clean five-order-of-magnitude contrast"
+        start = supp.index("The delay sweep failed its manipulation check}")
+        s31 = " ".join(supp[start:supp.index("\n\\section", start)].lower().split())
+        assert "we withdraw the intermediate points" in s31
+        assert "common-mode" in s31, "the reason the manipulation fails must be named"
+        assert "the injected delay cancels exactly" in s31
+        proxy = " ".join(_section(main_tex, "sec:proxy").split())
+        assert ("transport runs to tens of seconds passes every run while the same hardware "
+                "measuring one millisecond fails wholesale") in proxy, \
+            "H1 must rest on the clean contrast of the same hardware at two scales"
+        assert "netem" not in main_tex.lower(), "the main text must not lean on the delay sweep"
 
     def test_the_common_mode_evidence_matches_the_measurement(self, tex):
         """TTI tracks the injected delay; transport does not. Both halves must be shown."""
@@ -1441,13 +1665,25 @@ class TestRateProvenanceIsDisclosed:
     audits its own data for physical impossibility cannot quietly assert a rate it cannot show.
     """
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; the provenance gap is supplement S1.6")
+    def test_the_section_exists_and_states_the_compression(self, main_tex, supp):
+        """The provenance gap is supplement S4 now, and the compression is stated there.
 
-    def test_the_section_exists_and_states_the_compression(self, tex):
-        assert r"\label{sec:rateprovenance}" in tex
-        section = _section(tex, "sec:rateprovenance")
-        assert "120" in section, "the baked-in compression factor must be given"
-        assert "1200" in section, "all three candidate rates must be named"
+        The tier rule cut it from the main text (docs/tc_plan.md sec.2, R20). S4 carries no
+        label, so it is found by its heading; sec:rateprovenance now marks the chronology entry
+        S1.8, which tells the incident in one paragraph and gives neither number. The main text
+        keeps only the rule the gap produced, which
+        test_the_protocol_gained_the_rule_that_would_have_prevented_it holds.
+        """
+        head = re.search(r"\\section\{S\d+\. Our own replay-rate record did not survive "
+                         r"the audit\}", supp)
+        assert head, "the provenance-gap section must exist in the supplement"
+        section = " ".join(supp[head.start():supp.find("\n\\section", head.end())].split())
+        assert r"baked-in $120\times$ time compression" in section, \
+            "the baked-in compression factor must be given"
+        assert r"$1\times$, $120\times$ or $1200\times$" in section, \
+            "all three candidate rates must be named"
+        assert r"$120\times$" not in main_tex, \
+            "the compression is supplement-only under the tier rule; if it returns, move this pin"
 
     def test_no_surviving_artefact_records_an_achieved_replay_rate(self):
         """The claim in that section, checked against the repo rather than asserted.
@@ -1482,14 +1718,23 @@ class TestRateProvenanceIsDisclosed:
                 header = fh.readline().lower()
             assert "speedup" not in header, f"{path} records a rate; narrow the paper's claim"
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; same")
+    def test_what_the_gap_does_not_touch_is_stated(self, supp):
+        """A disclosure that does not bound its own scope is not useful to a reader.
 
-    def test_what_the_gap_does_not_touch_is_stated(self, tex):
-        """A disclosure that does not bound its own scope is not useful to a reader."""
-        section = _section(tex, "sec:rateprovenance")
-        low = section.lower()
-        assert "audit is unaffected" in low
-        assert "external validity" in low
+        The bound moved with the episode to supplement S4, where a paragraph states it. S4.2
+        repeats it in summary, so the pin reads that paragraph rather than the section: read
+        whole, the section passed with either copy deleted.
+        """
+        head = re.search(r"\\section\{S\d+\. Our own replay-rate record did not survive "
+                         r"the audit\}", supp)
+        assert head, "the provenance-gap section must exist in the supplement"
+        section = supp[head.start():supp.find("\n\\section", head.end())]
+        para = section[section.index(r"\paragraph{What the gap touched}"):]
+        para = para[:min(i for i in (para.find("\n\\paragraph", 1),
+                                     para.find("\n\\subsection")) if i != -1)]
+        low = " ".join(para.split()).lower()
+        assert "the audit is unaffected" in low
+        assert "external validity is restored by the recovery" in low
 
     def test_the_rate_is_recovered_from_the_diagnostic_cell(self, tex):
         """The 52.34 ms cell is what identifies the rate, so it must survive a data change.
@@ -1512,14 +1757,25 @@ class TestRateProvenanceIsDisclosed:
         for token in ("52.34", "51.60", "53.01"):
             assert token in tex, f"{token} must appear in the paper"
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; same")
+    def test_e1_states_the_rate_as_an_inference(self, main_tex, supp):
+        """Recovered, not documented -- and the paper must not blur the two.
 
-    def test_e1_states_the_rate_as_an_inference(self, tex):
-        """Recovered, not documented -- and the paper must not blur the two."""
-        e1 = _section(tex, "sec:e1")
-        assert "true real time" in e1.lower()
-        assert "inference" in e1.lower(), "the rate must be flagged as inferred"
-        assert "rateprovenance" in e1, "E1 must point at the recovery argument"
+        E1 is reported in supplement S2 now, as the historical corpus that cannot carry the
+        broker claim, and the main text no longer names it. S2 must flag the rate as an
+        inference beside the value recovered and point at the section that recovers it. The
+        pointer is checked against where that section is, not against a number.
+        """
+        e1 = re.search(r"\\section\{S\d+\. What the broker comparison rests on, and what "
+                       r"it does not\}", supp)
+        rec = re.search(r"\\section\{(S\d+)\. Our own replay-rate record did not survive "
+                        r"the audit\}", supp)
+        assert e1 and rec, "the E1 section and the recovery argument must both exist"
+        section = " ".join(supp[e1.start():supp.find("\n\\section", e1.end())].split())
+        assert "replay rate is an inference" in section, "the rate must be flagged as inferred"
+        assert f"recovered in {rec.group(1)} as true real time" in section, \
+            "E1 must point at the recovery argument"
+        assert "true real time" not in " ".join(main_tex.split()).lower(), \
+            "the main text states no rate for E1; if it starts to, it must say the rate is inferred"
 
     def test_the_protocol_gained_the_rule_that_would_have_prevented_it(self, tex):
         # The standalone checklist subsection folded into "For benchmark authors" in the
@@ -1748,47 +2004,42 @@ class TestLoadGeometryAndTtrue:
                 assert _contains_number(table, float(r["inversion"]), 4), \
                     f"{phase} pad {r['pad_bytes']} inversion missing from tab:ea10"
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; per-arm traced agreement is supplement-only; Sec. V-E quotes the three ratios")
+    def test_every_traced_arm_agreement_is_recomputed(self, main_tex, supp):
+        """Three ordinary arms, across two campaigns and two load levels, and no consistent sign.
 
-    def test_every_traced_arm_agreement_is_recomputed(self, tex):
-        """Three ordinary arms now, across two campaigns and two load levels.
-
-        The paper used to quote one, at 22% low, and read the sign of that residual as a puzzle.
-        With three the sign is inconsistent -- 0.78, 1.06, 1.32 -- so the claim is agreement to
-        within a third with no resolvable bias, and every ratio must come from its artefact.
+        The per-arm table is supplement tab:ea9; the section that settles the mechanism quotes
+        the three ratios through \\tracedRatios. Each ratio must sit in its own arm's row and
+        in the sentence, and the sentence must still call the scatter scatter.
         """
         # Literal paths, not a loop over tuples: verify_run_provenance discovers quoted
-        # artefacts by matching literal arguments to _rows(), so _rows(*src) would hide these
-        # two files from the provenance check entirely.
+        # artefacts by matching literal arguments to _rows().
         sources = {
-            "E-A9 88%":  _rows("model", "runq_tail.csv"),
-            "E-A9b 75%": _rows("model", "ea9b_l75", "runq_tail.csv"),
-            "E-A9b 88%": _rows("model", "ea9b_l88", "runq_tail.csv"),
+            ("E-A9", "88"): _rows("model", "runq_tail.csv"),
+            ("E-A9b", "75"): _rows("model", "ea9b_l75", "runq_tail.csv"),
+            ("E-A9b", "88"): _rows("model", "ea9b_l88", "runq_tail.csv"),
         }
-        table = tex[tex.index(r"\label{tab:ea9}"):]
+        table = supp[supp.index(r"\label{tab:ea9}"):]
         table = table[:table.index(r"\end{table}")]
         ratios = []
-        for name, rows in sources.items():
+        for (campaign, load), rows in sources.items():
             base = [r for r in rows if r["arm"] == "base"][0]
             rt = [r for r in rows if r["arm"] == "rt"][0]
             ratio = float(base["p_tail"]) / float(base["inversion"])
             ratios.append(ratio)
-            assert f"{ratio:.2f}" in table, f"{name}: ratio {ratio:.2f} missing from tab:ea9"
+            row = [ln for ln in table.splitlines() if ln.startswith(campaign + " ")
+                   and "ordinary" in ln and "& %s\\%%" % load in ln]
+            assert len(row) == 1 and f"{ratio:.2f}" in row[0], \
+                f"{campaign} {load}%: ratio {ratio:.2f} missing from its row of tab:ea9"
             # Every traced real-time arm reads exactly zero; that is the artefact claim.
-            assert float(rt["inversion"]) == 0.0, f"{name}: rt arm is no longer zero"
+            assert float(rt["inversion"]) == 0.0, f"{campaign} {load}%: rt arm is no longer zero"
         assert all(1 / 3 <= r <= 3 for r in ratios), f"ratios {ratios} outside the stated band"
-        # And in the sentence that lists them. Checking only the table let a mutated prose
-        # sentence through, which is where a reader actually meets the claim.
-        listed = " ".join(f"${r:.2f}$" for r in sorted(ratios))
-        flat_sec = " ".join(_section(tex, "sec:twostate").split())
-        for r in ratios:
-            assert f"${r:.2f}$" in flat_sec, f"ratio {r:.2f} missing from the prose"
-        assert listed.split()[0] in flat_sec, "the ratios must be listed together"
-        # The sign is not consistent, so the paper must not claim a direction.
         assert min(ratios) < 1 < max(ratios), \
             "ratios no longer straddle 1; the 'no consistent sign' claim needs revisiting"
-        section = " ".join(tex.split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
-        assert "no consistent sign" in section, "the scatter must be described as scatter"
+        prose = " ".join(_resolved(_section(main_tex, "sec:twostate")).split())
+        listed = ", ".join(f"{r:.2f}" for r in sorted(ratios))
+        assert f"within a third across ${len(ratios)}$ configurations" in prose
+        assert f"${listed}$, no consistent sign" in prose, \
+            "the ratios must be listed together, and the scatter described as scatter"
 
     def test_the_withheld_arm_is_shown_and_marked(self, tex):
         """The replication's 88% arm fails the instrument check. It is reported anyway.
@@ -1857,26 +2108,30 @@ class TestLoadGeometryAndTtrue:
         assert "changes the system it measures" in section, \
             "the perturbation caveat must accompany the recommendation"
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; floor and ceiling are supplement-only")
+    def test_the_measured_floor_and_ceiling_are_reported(self, main_tex):
+        """L1 and L2 are verified in occupancy_law.csv, and both numbers are in the main text.
 
-    def test_the_measured_floor_and_ceiling_are_reported(self, tex):
-        """L1 and L2 are verified in occupancy_law.csv and were reported nowhere in the paper.
-
-        Both are load-bearing for interpretation rather than magnitude: the floor says a
-        real-time thread under load measures like an idle machine, and the ceiling estimates the
-        share of events exposed to a stall, which is what makes P = p*S a measurement rather
-        than a fitted asymptote.
+        The floor is C_0 in the section that settles the mechanism, printed as \\invFloor (the
+        idle rate, three decimals); the ceiling is \\invCeiling in the rare-state section, the
+        highest rate measured near saturation. Both are ledger macros read from this artefact.
+        The L1 ratio and the across-campaign agreement on the ceiling are no longer quoted
+        anywhere. That neither number is a bound is held by test_round70_findings.py.
         """
-        section = " ".join(tex.split())  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
-        detail = {r["law"]: r["detail"] for r in _rows("model", "occupancy_law.csv")}
-        parts = dict(kv.split("=") for kv in detail["L1_floor_is_idle"].split(";"))
-        assert _contains_number(section, float(parts["idle"]), 4), "the idle rate is missing"
-        assert _contains_number(section, float(parts["floor"]), 4), "the real-time floor is missing"
-        assert _contains_number(section, float(parts["ratio"]), 2), "the L1 ratio is missing"
-        c = dict(kv.split("=") for kv in detail["L2_ceiling_below_one"].split(";"))
-        assert _contains_number(section, float(c["ceiling"]), 3), "the ceiling is missing"
-        assert _contains_number(section, float(c["consistency"]), 2), \
-            "the across-campaign agreement on the ceiling is missing"
+        laws = {r["law"]: r for r in _rows("model", "occupancy_law.csv")}
+        l1 = dict(kv.split("=") for kv in laws["L1_floor_is_idle"]["detail"].split(";"))
+        l2 = dict(kv.split("=") for kv in laws["L2_ceiling_below_one"]["detail"].split(";"))
+        assert laws["L1_floor_is_idle"]["holds"] == "True", \
+            "the real-time floor no longer matches the idle rate; C_0 needs revisiting"
+        assert laws["L2_ceiling_below_one"]["holds"] == "True", "the ceiling law no longer holds"
+        macros = dict(_emitted_macros())
+        assert macros["invFloor"] == "%.3f" % float(l1["idle"]), \
+            "the floor the paper prints is not the measured idle rate"
+        assert macros["invCeiling"] == "%.2f" % float(l2["ceiling"]), \
+            "the ceiling the paper prints is not the measured one"
+        assert r"$C_0 \approx \invFloor$" in _section(main_tex, "sec:twostate"), \
+            "the floor must be named where the real-time residuals land on it"
+        assert r"$\invCeiling$" in _section(main_tex, "sec:mixture"), \
+            "the ceiling must be stated where the rate is said not to approach one"
 
     def test_the_colocation_null_is_reported_as_a_failed_manipulation(self, tex):
         """E-A8 appeared in the experiment map and nowhere in the text.
@@ -2006,15 +2261,14 @@ class TestLoadGeometryAndTtrue:
         residue = re.findall(r"(?m)^(?:ef|exttt|extbf|mph|ite|abel)\{[^}]*\}", tex)
         assert not residue, f"macros whose backslash was eaten: {residue[:5]}"
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; per-campaign denominators are supplement-only")
+    def test_the_uniform_denominator_claim_holds_across_every_campaign(self, main_tex, supp):
+        """Every rate artefact is over 2,985 events, and the paper states it table by table.
 
-    def test_the_uniform_denominator_claim_holds_across_every_campaign(self, tex):
-        """Section 6 states every inversion rate is over 2,985 events. Check it against the files.
-
-        The claim earns something specific -- that every rate comparison is at equal n, so a
-        ratio between cells cannot come from one resting on more data. That is only worth stating
-        if it is true everywhere, so this test reads every rate artefact rather than a sample. A
-        campaign added later with a different run count must either match or move the sentence.
+        The Statistics section no longer names a shared denominator; it says every proportion
+        is a count over a stated denominator. The mechanism table's caption states it through
+        \\mechEventsPerCell, which the emitter writes only when every cell agrees, and the
+        supplement's geometry and traced-tail tables state it per cell. The sweep reads every
+        rate artefact, so a campaign added later with a different run count fails here.
         """
         import csv as _csv
         import glob as _glob
@@ -2029,31 +2283,44 @@ class TestLoadGeometryAndTtrue:
                 for c in cols:
                     v = (r.get(c) or "").strip()
                     if v and v != "2985":
-                        offenders.append(f"{Path(path).name}:{c}={v}")
-        # traced_tail_slope counts kernel-traced wakeups, not inversion-rate cells, so the
-        # uniform-2,985 sentence does not cover it either (added TPDS round 1, M4b).
-        offenders = [o for o in offenders if not o.startswith("traced_tail_slope")]
-        # variance_law is the one artefact on a different footing: it is not an inversion rate,
-        # so the sentence does not cover it and it must not be silently folded in.
-        offenders = [o for o in offenders if not o.startswith("variance_law")]
-        assert not offenders, f"the uniform-n sentence is false for: {offenders}"
-        # And the sentence must quote the number the artefacts actually carry. Checking only the
-        # CSVs left the manuscript free to state any denominator it liked.
-        stats = " ".join(_section(tex, "sec:stats").split())
-        assert "2{,}985" in stats or "2\\,985" in stats, \
-            "Section 6 must state the shared denominator the artefacts show"
+                        rel = Path(path).relative_to(RESULTS / "model").as_posix()
+                        offenders.append(f"{rel}:{c}={v}")
+        # traced_tail_slope counts kernel-traced wakeups and variance_law is not an inversion
+        # rate, so neither is a cell the per-cell statements cover. Nor is the pooled knee
+        # sweep, model/knee_resolution.csv -- by its path, since ea6/ and ea6b/ hold files of the
+        # same name that tab:ea6 does state at 2,985 a cell. It pools campaigns of 15 and 25
+        # runs, 1,791 to 2,985 events a cell, and the paper quotes it only through the fits of
+        # S1.5, never as a rate per cell; its counts were recorded on 27 September so that a
+        # reader can see this rather than take it on trust.
+        offenders = [o for o in offenders
+                     if not Path(o.split(":")[0]).name.startswith(("traced_tail_slope",
+                                                                   "variance_law"))
+                     and not o.startswith("knee_resolution.csv:")]
+        assert not offenders, f"the per-cell denominator is false for: {offenders}"
+        stats = " ".join(_section(main_tex, "sec:stats").split())
+        assert "count over a stated denominator" in stats
+        assert dict(_emitted_macros()).get("mechEventsPerCell") == "2{,}985", \
+            "the mechanism table's cells no longer share the denominator the artefacts show"
+        head = main_tex[:main_tex.index(r"\label{tab:mechanism}")]
+        caption = " ".join(head[head.rindex(r"\caption{"):].split())
+        assert r"($\mechEventsPerCell$ matched events per cell)" in caption
+        for label in ("tab:ea6", "tab:ea9"):
+            i = supp.index("\\label{%s}" % label)
+            assert "Every cell is 2\\,985" in " ".join(
+                supp[supp.rindex(r"\begin{table}", 0, i):i].split()), \
+                f"{label} must state the denominator its cells share"
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; the power table is supplement-only")
+    def test_the_mechanism_campaigns_appear_in_the_power_table(self, supp):
+        """tab:power says what each claim rests on, and must reach the mechanism.
 
-    def test_the_mechanism_campaigns_appear_in_the_power_table(self, tex):
-        """tab:power says what each claim rests on, and had stopped before the mechanism.
-
-        The four campaigns that decided the mechanism were carrying results in the text with no
-        row here, which is the same gap an earlier audit found in the experiment map.
+        The table is supplement S18 now. It is read from its label to its end, so a campaign
+        named only in the caption does not count.
         """
-        section = " ".join(_section(tex, "sec:stats").split())
+        table = supp[supp.index(r"\label{tab:power}"):]
+        table = table[:table.index(r"\end{table}")]
+        named = set(re.findall(r"E-[A-Z]\d+[a-z]?", table))
         for campaign in ("E-A5", "E-A6", "E-A9", "E-A10"):
-            assert campaign in section, f"{campaign} missing from the power table"
+            assert campaign in named, f"{campaign} missing from the power table"
 
     def test_the_geometry_z_scores_are_recomputed_from_the_counts(self, tex):
         """The z values in tab:ea6 must follow from the recorded counts, not from memory.
@@ -2077,8 +2344,6 @@ class TestLoadGeometryAndTtrue:
                     f"{phase}/{k}: z recomputes to {z:.2f}, paper prints {expected}"
                 assert f"{expected}" in section, \
                     f"{phase}/{k}: z={expected} missing from the paper"
-
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; the k=7 null is supplement-only")
 
     def test_the_k7_null_is_withdrawn_because_the_replication_refutes_it(self, tex):
         """An earlier draft read k=7 as convergence to a null. E-A6b does not support that.
@@ -2285,20 +2550,26 @@ class TestRecoveredProvenance:
         assert stamp.replace("_", "") in log.replace("_", "").replace(":", ""), \
             f"the E1 artefact's first run {first} is not in the recovered log"
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; recovered-provenance detail is supplement S1.6")
-
-    def test_the_paper_keeps_the_inference_ahead_of_the_confirmation(self, tex, supp):
+    def test_the_paper_keeps_the_inference_ahead_of_the_confirmation(self, main_tex, supp):
         """Reporting only the flag would hide that the rate was determined without it.
 
-        The full episode moved to supplement S6; the ordering obligation moved with it, and the
-        main-text summary must still tell the reader the episode exists."""
-        assert "supplementary material" in _section(tex, "sec:rateprovenance").lower()
-        section = " ".join(supp.split())
+        The episode is supplement S4 and the ordering obligation holds there. The main-text
+        summary that pointed to it was cut under the tier rule, and no main-text sentence points
+        to the supplement for it now; what the main text keeps is one sentence in the rule the
+        episode produced.
+        """
+        head = re.search(r"\\section\{S\d+\. Our own replay-rate record did not survive "
+                         r"the audit\}", supp)
+        assert head, "the provenance-gap section must exist in the supplement"
+        section = " ".join(supp[head.start():supp.find("\n\\section", head.end())].split())
         infer = section.find("recoverable from the measurements")
         confirm = section.find("checked against the original script")
         assert -1 < infer < confirm, \
             "the inference must be presented before the script that confirms it"
-        assert "by luck" in section, "the confirmation's provenance must stay honest"
+        assert "by luck" in section[confirm:], "the confirmation's provenance must stay honest"
+        rule = " ".join(_section(main_tex, "sec:authors").split())
+        assert "We found runs where configured and achieved rates disagreed" in rule, \
+            "the main text must still tell its reader that the rates disagreed"
 
 
 class TestRefereeRoundOne:
@@ -2375,31 +2646,53 @@ class TestRefereeRoundOne:
         assert _contains_number(tex, est["exc_lo"], 2) or "$--$" in tex, \
             "the exceedance interval must be printed, not just the point estimate"
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; gate-sensitivity counts are supplement-only")
+    def test_the_powered_retention_counts_match_the_gate_artefact(self, supp):
+        """The gate-sensitivity numbers are supplement tab:gatesens now, bound row by row.
 
-    def test_the_powered_retention_counts_match_the_gate_artefact(self, tex):
-        cells = {r["n"]: r for r in _rows("transport_rt", "gate_sensitivity.csv")}
-        for n in ("1", "9", "12"):
-            c = cells[n]
-            frag = f"${c['redis_usable']}/{c['redis_total']}$"
-            assert frag in tex, f"Redis retention {frag} must be stated for N={n}"
-            assert abs(float(c["hl_gate_delta_ms"])) <= 0.003, \
-                "the paper claims the gate moves the shift by at most 0.003 ms"
-            if c["flip_v_ms"]:
-                assert float(c["flip_v_ms"]) >= 0.55, \
-                    "the paper claims the flip point is at least 0.55 ms"
-        assert "below one half" in " ".join(tex.split()), \
-            "the two below-breakdown cells must be acknowledged"
+        The table gives Redis retention as a percentage, the shift before and after the gate
+        and the imputation flip point, for both powered campaigns; S2 claims the gate moves the
+        first campaign's shift by at most 0.003 ms. The fractions and the sentence acknowledging
+        the cells below one half were cut in the TC referee round.
+        """
+        table = supp[supp.index(r"\label{tab:gatesens}"):]
+        table = table[:table.index(r"\end{table}")]
+        powered = _rows("transport_rt", "gate_sensitivity.csv")
+        replication = _rows("transport_rt2", "gate_sensitivity.csv")
+        for campaign, cells in (("powered", powered), ("replication", replication)):
+            for c in cells:
+                row = re.search(r"^%s\s*&\s*%s\s*&(.*?)\\\\" % (campaign, c["n"]), table, re.M)
+                assert row, f"{campaign} N={c['n']} is missing from tab:gatesens"
+                shown = [x.strip().strip("$") for x in row.group(1).split("&")]
+                want = ["%.1f" % (100 * int(c["redis_usable"]) / int(c["redis_total"])),
+                        "%.4f" % float(c["hl_all_ms"]), "%.4f" % float(c["hl_gated_ms"]),
+                        "%+.4f" % float(c["hl_gate_delta_ms"]),
+                        "%.2f" % float(c["flip_v_ms"]) if c["flip_v_ms"] else "---"]
+                assert shown == want, f"{campaign} N={c['n']}: table {shown}, artefact {want}"
+        assert max(abs(float(c["hl_gate_delta_ms"])) for c in powered) <= 0.003, \
+            "the paper claims the gate moves the shift by at most 0.003 ms"
+        assert "at most $0.003$~ms on the shift" in " ".join(supp.split())
 
-    @pytest.mark.skip(reason="the TC version cuts this to the supplement under the tier rule (docs/tc_plan.md sec.2): TC allows 10-12 pages including references, and T4/T5 evidence gets one sentence or the supplement. The claim is no longer made in the main text, so the pin no longer has a target; the threshold sweep is supplement-only")
+    def test_the_threshold_sentence_matches_the_sweep(self, main_tex, supp):
+        """The main text states the sweep's verdict; the supplement gives its endpoint.
 
-    def test_the_threshold_sentence_matches_the_sweep(self, tex):
+        The consistency-check subsection says no rejected condition becomes usable from 0 to
+        20% and points to the supplement section that names the sweep artefact, found here
+        by where the artefact is named rather than by a number. The best cell moved there.
+        """
         rows = _rows("integrity_windows", "first_result_threshold_sweep.csv")
         assert all(r["usable"] == "False" for r in rows), \
-            "a first-result cell became usable; Section 6.2's sentence is now false"
-        best = max((r for r in rows if r["threshold"] == "0.2"),
+            "a first-result cell became usable; the consistency check's sentence is now false"
+        top = max(float(r["threshold"]) for r in rows)
+        gate = " ".join(_section(main_tex, "sec:gate").split())
+        assert f"from $0$ to ${round(top * 100)}\\%$ and no rejected condition becomes " \
+               f"usable" in gate
+        where = supp.index(r"first\_result\_threshold\_sweep.csv")
+        sec = re.findall(r"\\section\{S(\d+)\.", supp[:where])[-1]
+        assert f"(Supplement~S{sec})" in gate, \
+            f"the sentence must point at S{sec}, where the sweep is"
+        best = max((r for r in rows if float(r["threshold"]) == top),
                    key=lambda r: int(r["n_pass"]))
-        assert f"${best['n_pass']}$ of ${best['n_runs']}$" in tex, \
+        assert f"best cell ${best['n_pass']}/{best['n_runs']}$" in " ".join(supp.split()), \
             "the quoted best-cell endpoint must match the artefact"
 
     def test_the_embedded_mode_scoping_is_present(self, main_tex):
@@ -2438,11 +2731,18 @@ class TestRefereeRoundOne:
         assert "6.8.0-1057-oracle" in main_tex, "the kernel version must be stated"
         assert "EEVDF" in main_tex, "the scheduler must be named"
 
-    @pytest.mark.skip(reason="the TC rewrite deliberately changed this structure (docs/tc_plan.md sec.3); the test encoded the previous paper's shape; the TPDS remit paragraph is deleted for TC, whose scope covers operating systems and performance evaluation without argument")
+    def test_the_remit_paragraph_is_gone(self, main_tex):
+        """The TPDS remit paragraph is deleted for TC and must not come back.
 
-    def test_the_remit_paragraph_exists(self, main_tex):
-        low = " ".join(main_tex.split()).lower()
-        assert "measurement substrate" in low, "the TPDS-remit paragraph must be present"
+        docs/tc_plan.md sections 0, 3 and 6: TC's scope names operating systems, runtime
+        systems and performance evaluation, so the introduction argues no journal's remit.
+        The paragraph opened "The subject sits in this journal's remit although no new system
+        is built" and called timestamping the "measurement substrate" of every latency claim.
+        Comments are stripped, so a note recording the deletion does not count against it.
+        """
+        body = " ".join(re.sub(r"(?<!\\)%.*", "", main_tex).split()).lower()
+        assert "measurement substrate" not in body, "the TPDS remit paragraph has come back"
+        assert "remit" not in body, "the introduction argues a journal fit TC does not need"
 
     def test_the_register_is_thinned_to_two(self, main_tex):
         # v2.5 thins this further, from the referee's two to one. The rewrite's governing

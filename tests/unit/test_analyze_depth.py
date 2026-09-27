@@ -213,6 +213,19 @@ class TestCollect:
         assert ea and ea[0]["rho"] == pytest.approx(0.5)
         assert ea2 and ea2[0]["n_feeds"] == 3
 
+    def test_utilisation_rows_pool_both_brokers_and_carry_their_counts(self, temp_dir):
+        """The H2 load table pools Kafka's and Redis's runs of a condition (27 September 2026).
+
+        Its rates are above the Kafka-only knee and mixture tables at the same utilisation for
+        exactly that reason, so the counts behind each rate are written beside it.
+        """
+        _condition(temp_dir, "ea_sat", "bg4", "n5_20260101_000005",
+                   {"kafka": [1.0, -1.0, 1.0], "redis": [-1.0, -1.0, 1.0, 1.0]}, rho=0.5)
+        _, ea, _ = collect(str(temp_dir / "depth"), str(temp_dir / "runs"))
+        (row,) = ea
+        assert (row["n_inversions"], row["n_events"], row["n_runs"]) == (3, 7, 2)
+        assert row["inversion_rate"] == pytest.approx(3 / 7)
+
     def test_ea_sat_supersedes_ea(self, temp_dir):
         """The pinned original ea phase is diluted by core pinning; ea_sat must win."""
         _condition(temp_dir, "ea", "c1_b0", "n5_20260101_000010", {"kafka": [1.0]}, rho=0.1)

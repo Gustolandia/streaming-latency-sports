@@ -19,7 +19,10 @@ clustered (H8) at every load.
 F-Delta reproduction. Recovering the left tail of Delta from inversion rates is circular against
 the same events; the non-circular test is agreement between INDEPENDENT campaigns at matched
 utilisation. Old corpus (ea_sat + ea_knee) against new (ea3), conditions matched on rho within
-+/-0.05, tail masses compared with Wilson intervals.
++/-0.05, tail masses compared with Wilson intervals -- and, since 27 September 2026, with
+intervals that resample whole runs, because negative spans cluster within a run (H8) and an
+interval over events treats them as independent draws. A run-level interval of the difference
+is the direct test beside the overlap of the two.
 
 CLI:
     python scripts/analyze_collapse.py --depth-dir docs/results/depth --runs-dir runs \
@@ -30,15 +33,23 @@ import csv
 import glob
 import math
 import os
+import random
 import re
 import statistics as st
 import sys
+import zlib
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from measurement_model import runs_test_z  # noqa: E402
 
 THRESHOLDS_MS = [0.0, 0.5, 1.0, 2.0, 5.0]
+
+#: Resamples behind every run-level interval, and the seed they start from. Each condition, and
+#: each compared pair, draws from its own stream (the seed plus a checksum of its name), so adding
+#: a condition moves no other interval.
+BOOT_DRAWS = 20000
+BOOT_SEED = 20260927
 
 
 # ---------------------------------------------------------------- raw data access
@@ -116,6 +127,10 @@ def condition_stats(cond_dir, runs_dir, backend="kafka"):
         "sigma_core": sigma_core,
         "tails": {c: sum(1 for t in pooled if t < -c) / len(pooled) for c in THRESHOLDS_MS},
         "runs_z_median": st.median(zs) if zs else None,
+        # Per run: its events, and how many fall past each threshold. The run-level intervals
+        # resample these pairs, so a run's clustered negatives travel together.
+        "run_counts": [(len(s), {c: sum(1 for t in s if t < -c) for c in THRESHOLDS_MS})
+                       for s in series],
     }
 
 
@@ -140,6 +155,50 @@ def wilson_interval(k, n, z=1.6449):
     centre = (p + z * z / (2 * n)) / denom
     half = (z / denom) * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))
     return (max(0.0, centre - half), min(1.0, centre + half))
+
+
+def _stream(name):
+    return random.Random(BOOT_SEED + zlib.crc32(name.encode("utf-8")))
+
+
+def _percentiles(values, level):
+    values.sort()
+    tail = (1 - level) / 2
+    return values[int(tail * len(values))], values[int((1 - tail) * len(values)) - 1]
+
+
+def run_intervals(run_counts, name, draws=BOOT_DRAWS, level=0.90):
+    """Percentile intervals for a condition's pooled tail masses, resampling whole runs.
+
+    Negative spans cluster within a run (the runs test), so a run's events are not independent
+    draws and an interval over events is too narrow. This resamples the runs themselves. A
+    threshold that no run reaches gets None rather than an interval: every resample of zeros is
+    zero, and a zero-width interval would claim a certainty the runs do not give. The caller
+    keeps Wilson's there, which does bound a zero.
+    """
+    rng, m = _stream(name), len(run_counts)
+    samples = {c: [] for c in THRESHOLDS_MS}
+    for _ in range(draws):
+        pick = [run_counts[rng.randrange(m)] for _ in range(m)]
+        n = sum(p[0] for p in pick)
+        for c in THRESHOLDS_MS:
+            samples[c].append(sum(p[1][c] for p in pick) / n)
+    return {c: (_percentiles(v, level) if any(k[c] for _, k in run_counts) else None)
+            for c, v in samples.items()}
+
+
+def run_difference(new_counts, old_counts, c, name, draws=BOOT_DRAWS, level=0.90):
+    """Percentile interval of new minus old tail mass at threshold `c`, resampling the runs of
+    each campaign independently: the direct test of a difference, beside the overlap of the two
+    intervals, which is the more lenient of the two."""
+    rng, mn, mo = _stream(name), len(new_counts), len(old_counts)
+    diffs = []
+    for _ in range(draws):
+        a = [new_counts[rng.randrange(mn)] for _ in range(mn)]
+        b = [old_counts[rng.randrange(mo)] for _ in range(mo)]
+        diffs.append(sum(p[1][c] for p in a) / sum(p[0] for p in a)
+                     - sum(p[1][c] for p in b) / sum(p[0] for p in b))
+    return _percentiles(diffs, level)
 
 
 def collapse_points(stats_by_cond):
@@ -200,9 +259,21 @@ def h10_verdict(stats_by_cond, knee_rho=(0.6, 0.95), growth_factor=3.0):
             "supported": bool(ratio > growth_factor and clustered)}
 
 
-def reproduction_rows(old_stats, new_stats, tol_rho=0.05):
-    """Matched-rho tail comparison between campaigns, one row per (pair, threshold)."""
+def reproduction_rows(old_stats, new_stats, tol_rho=0.05, draws=BOOT_DRAWS):
+    """Matched-rho tail comparison between campaigns, one row per (pair, threshold).
+
+    Each row carries two tests: the overlap of the two campaigns' Wilson intervals over events,
+    as first registered, and the same overlap with intervals that resample whole runs, beside a
+    run-level interval of the difference.
+    """
     rows = []
+    cache = {}
+
+    def intervals(name, stats):
+        if name not in cache:
+            cache[name] = run_intervals(stats["run_counts"], name, draws)
+        return cache[name]
+
     for new_name, ns in new_stats.items():
         if ns["rho"] is None:
             continue
@@ -223,12 +294,22 @@ def reproduction_rows(old_stats, new_stats, tol_rho=0.05):
                 continue
             lo_n, hi_n = wilson_interval(k_new, ns["n_events"])
             lo_o, hi_o = wilson_interval(k_old, os_["n_events"])
+            rn = intervals(new_name, ns)[c] or (lo_n, hi_n)
+            ro = intervals(old_name, os_)[c] or (lo_o, hi_o)
+            d_lo, d_hi = run_difference(ns["run_counts"], os_["run_counts"], c,
+                                        f"{new_name}|{old_name}|{c}", draws)
             rows.append({
                 "new_condition": new_name, "old_condition": old_name,
                 "rho_new": round(ns["rho"], 3), "rho_old": round(os_["rho"], 3),
                 "threshold_ms": c,
                 "tail_new": round(ns["tails"][c], 5), "tail_old": round(os_["tails"][c], 5),
                 "ci_overlap": bool(max(lo_n, lo_o) <= min(hi_n, hi_o)),
+                "runs_new": ns["n_runs"], "runs_old": os_["n_runs"],
+                "run_lo_new": round(rn[0], 5), "run_hi_new": round(rn[1], 5),
+                "run_lo_old": round(ro[0], 5), "run_hi_old": round(ro[1], 5),
+                "ci_overlap_runs": bool(max(rn[0], ro[0]) <= min(rn[1], ro[1])),
+                "diff_lo_runs": round(d_lo, 5), "diff_hi_runs": round(d_hi, 5),
+                "differs_runs": bool(d_lo > 0 or d_hi < 0),
             })
     return rows
 
@@ -300,12 +381,19 @@ def main(argv=None):
         with (out / "fdelta_reproduction.csv").open("w", newline="", encoding="utf-8") as fh:
             w = csv.DictWriter(fh, fieldnames=["new_condition", "old_condition", "rho_new",
                                                "rho_old", "threshold_ms", "tail_new",
-                                               "tail_old", "ci_overlap"])
+                                               "tail_old", "ci_overlap", "runs_new", "runs_old",
+                                               "run_lo_new", "run_hi_new", "run_lo_old",
+                                               "run_hi_old", "ci_overlap_runs", "diff_lo_runs",
+                                               "diff_hi_runs", "differs_runs"])
             w.writeheader()
             w.writerows(rows)
         agree = sum(1 for r in rows if r["ci_overlap"])
         print(f"F-Delta reproduction: {agree}/{len(rows)} matched tail masses overlap "
               f"(90% Wilson)  -> {'SUPPORTED' if agree == len(rows) else 'PARTIAL' if agree else 'FALSIFIED'}")
+        agree_runs = sum(1 for r in rows if r["ci_overlap_runs"])
+        differ = sum(1 for r in rows if r["differs_runs"])
+        print(f"  resampling whole runs: {agree_runs}/{len(rows)} overlap; the run-level interval "
+              f"of the difference excludes zero for {differ}")
     else:
         print("F-Delta reproduction: no rho-matched condition pairs between campaigns")
     return 0

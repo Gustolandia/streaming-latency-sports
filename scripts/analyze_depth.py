@@ -143,18 +143,30 @@ def condition_timestamp(cond_dir):
     return None
 
 
-def condition_inversion(cond_dir, runs_dir):
-    """Pooled inversion rate across every run belonging to a condition."""
+def condition_counts(cond_dir, runs_dir):
+    """(inversions, events, runs that yielded events) pooled over a condition, or None.
+
+    Every run folder carrying the condition's timestamp is pooled, whichever broker it ran:
+    Kafka and Redis alike. That is the population of the H2 load table, and why its rates sit
+    above the Kafka-only knee and mixture tables at the same utilisation (27 September 2026).
+    """
     ts = condition_timestamp(cond_dir)
     if not ts:
         return None
-    neg = tot = 0
+    neg = tot = runs = 0
     for run in glob.glob(os.path.join(runs_dir, f"concurrency_{ts}_*")):
         if os.path.isdir(run):
             n, t = run_inversion(run)
             neg += n
             tot += t
-    return (neg / tot) if tot else None
+            runs += 1 if t else 0
+    return (neg, tot, runs) if tot else None
+
+
+def condition_inversion(cond_dir, runs_dir):
+    """Pooled inversion rate across every run belonging to a condition."""
+    counts = condition_counts(cond_dir, runs_dir)
+    return counts[0] / counts[1] if counts else None
 
 
 def median_rho(cond_dir):
@@ -206,10 +218,14 @@ def collect(depth_dir, runs_dir):
     for phase in ea_phases:
         for cond in sorted(glob.glob(os.path.join(depth_dir, phase, "*"))):
             if os.path.isdir(cond):
-                inv = condition_inversion(cond, runs_dir)
+                counts = condition_counts(cond, runs_dir)
                 rho = median_rho(cond)
-                if inv is not None and rho is not None:
-                    ea.append({"rho": rho, "inversion_rate": inv})
+                if counts is not None and rho is not None:
+                    # The counts travel with the rate, so the table can be audited, not only
+                    # read: a rate alone does not say how many events or runs are behind it.
+                    neg, tot, runs = counts
+                    ea.append({"rho": rho, "inversion_rate": neg / tot, "n_inversions": neg,
+                               "n_events": tot, "n_runs": runs})
 
     for cond in sorted(glob.glob(os.path.join(depth_dir, "ea2", "n*"))):
         inv = condition_inversion(cond, runs_dir)
@@ -294,7 +310,8 @@ def main(argv=None):
         _write(eb, out / "eb_effect_size.csv", ["t_true_ms", "inversion_rate"])
         verdicts["H1"] = check_h1(pd.DataFrame(eb))
     if len(ea) >= 3:
-        _write(ea, out / "ea_utilisation.csv", ["rho", "inversion_rate"])
+        _write(ea, out / "ea_utilisation.csv",
+               ["rho", "inversion_rate", "n_inversions", "n_events", "n_runs"])
         verdicts["H2"] = check_h2(pd.DataFrame(ea))
     if len(ea2) >= 3:
         _write(ea2, out / "ea2_process_count.csv", ["n_feeds", "inversion_rate"])

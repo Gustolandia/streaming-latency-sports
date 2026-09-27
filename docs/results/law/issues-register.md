@@ -53,6 +53,10 @@ runs or hours, and each is corrected.
 | 21 Sep | Arm | A8's `arm_20260921T025558Z` was started 30 seconds before `arm_20260921T025629Z` and ran beside it for five and a half minutes: its first trial ended (exit 143) a second after the other campaign began, and every later run of both measured a load of 99.7 to 99.8% against 75% | three failed attempts, no run; the twin's two failed attempts were run again | A false start: its twin went on alone; not rerun (D32-2) |
 | 21 Sep | first x86 | A3's campaign `matched_20260921T030021Z` failed its load check three times at the start: 95.7% measured against 88% | a false start, no run kept | Replaced 27 minutes later by a campaign that ran whole; not rerun (D32-2) |
 | 21 Sep | second x86 | A2's HZ=1000 session `matched-b_20260921T140723Z` was stopped by hand after 2 runs | a false start | A complete session on the same kernel followed that afternoon; not rerun (D32-2) |
+| 21 Sep | first x86 | Two client calibrations stopped at their start, unjudged: Python's of 18:57 UTC after one run, and Java's of 21:51 UTC after three (Python's in that sitting ran whole) | four runs, none kept | Both clients were calibrated whole that night, Python at 21:51 and both at 23:23 UTC; not rerun |
+| 21 Sep | second x86 | The calibration of 03:30 UTC stopped after three runs, none judged and none with a kernel reading | three runs, none kept | A calibration ran whole at 13:00 UTC; not rerun |
+| 22 Sep | Arm | The calibration of 01:50 UTC stopped after two runs: one put back, one unjudged | two runs, none kept | Replaced five minutes later by a calibration that ran whole |
+| 22 Sep | second x86 | One run of the calibration of 09:42 UTC (Redis, no delay, its second round) ended unjudged and was not put back | one run of 23 | The calibration's other 22 runs were judged and counted |
 | 23 Sep | first x86 | `matched_20260923T093827Z`, A2 on HZ=1000: the receiver's network namespace lost its address, and three attempts failed | 25 of 44 runs | The day ran again whole that night; the 19 left are finished under version 32, after booting HZ=1000 |
 | 23 Sep | second x86 | `matched-b_20260923T015244Z`, A2 on HZ=250: `stress-ng` did not stop for a polite signal on the load-correction branch, so runs that took that branch stalled for up to an hour each (62.7 minutes on the first x86 pair that day), and the stalls took four of the twelve hours the job was given | 35 of 60 runs | Stopped with `-9` since; a complete HZ=250 day followed; the 25 left are finished under version 32 |
 | 24 Sep | Arm | A3's first two sessions could not make a design: `arm_20260924T094711Z` found no Kafka entry at 50% load in its calibration, and `arm_20260924T095143Z` was pointed at a stage 0 that held no calibration | two sessions stopped before any run; A3 began about seven hours later, after a stage 0 that covered 50% load | A3 ran whole from 16:37 that day, 432 of 432 (`arm_20260924T163652Z`), at the loads D25-6 reads it at; nothing to finish |
@@ -60,6 +64,27 @@ runs or hours, and each is corrected.
 | 26 Sep | first x86 | M0's receiver capture was stopped through the `sudo` that started it, which does not relay a signal from its own process group, so it never stopped; the second run waited six hours, 13:41 to 19:59 UTC | six hours of the pair | A watcher stopped each capture once its run's results were written; fixed in freeze 28 (D32-3). The run that waited is complete and counts |
 | 26 Sep | second x86 | The queue's twelve-hour guard went on while the 16-round A3 `matched-b_20260926T033945Z` was on its last runs, and started A9 beside it | A3 cut at 191 of 192; the A9 stopped within a minute | Fixed in freeze 28 (D32-3): a job still at work is waited on. Both were retried whole; A3's 1 left is finished under version 32 |
 | 26–27 Sep | both x86 | At 20:01 UTC both queue loops were stopped by hand and started again, to restart the twelve-hour guard's count while M0 and A3 ran, and neither new loop ran: each running campaign still held the loop's lock, which `flock` hands to the command it starts and so to every process of the campaign, and the start's check that a loop was running was satisfied by the text of the command that had called it. Found at 00:28 UTC | the first x86 pair idle for 14 minutes after its M0 ended at 00:17 UTC; no run | The first x86 pair started again at 00:31 on version 32's code; the second given at 00:34 a loop that waits for the lock and takes over when its A3 ends. The kit fix (the lock held by `flock` alone, the check made on the process it started) waits until the lists are done, so that no pair runs new queue code mid-list |
+| 27 Sep | Arm | The final copy's check stopped on `stage0.log`, a link: the driver fingerprinted the file it points to, and the archive kept the link | nothing: the file it points to came home with the listed fingerprint | The check now follows a link to its file inside the archive: 30,439 of 30,439, and the two x86 archives pass again whole |
+
+## How the programme ended, 27 September
+
+*Plain words:* every campaign the brake or a fault had stopped was finished on its own queue,
+calibration and kernel; each pair then wrote its registry, came home file by file, and switched
+itself off.
+
+- Every campaign that is not a false start is complete: 55 of 61 across the three pairs (first
+  x86 23 of 24, second x86 21 of 22, Arm 11 of 15). The six false starts are in the table above,
+  each replaced at once by a campaign that ran whole.
+- The last runs ended at 17:28 UTC on the first x86 pair, 18:18 on the second and 20:53 on Arm.
+- Brought home since the 25 September copies, each file checked against the driver's own
+  fingerprint: 32,710 files (4.20 GB) from the first x86 pair, 41,798 (5.05 GB) from the second
+  and 30,439 (4.67 GB) from Arm. The one file on each pair gone since 25 September is the queue's
+  `stop` flag, which the loop removes when it starts again.
+- Once its copy was checked, each pair's hold was released and the pair stopped itself
+  (`cloud/azure/stop_self.sh`): the first x86 pair at 17:36 UTC, the second at 18:24 and Arm at
+  21:03, when its driver stopped answering. The account's own view of the machines could not be
+  read that evening; its login had expired.
+- The registry of all 8,108 runs and 61 campaigns is in [`../registry/`](../registry/README.md).
 
 ## The Arm pair, read on 26 September
 

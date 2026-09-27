@@ -37,6 +37,27 @@ traced.
 | `ended` | how its log ends: complete, stopped on a named rule, stopped by hand, or not ended |
 | `first_started_utc`, `last_finished_utc` | its first and last runs |
 
+## The three pairs, as collected on 27 September
+
+Each pair's files were written by its last job, after every campaign on its list had run, and came
+home with its runs, each checked against the driver's own fingerprint.
+
+| Pair | Files | Driver, broker | Processor | Kernel: runs | Runs | Campaigns, complete |
+|---|---|---|---|---|---|---|
+| first x86 | `runs_matched.csv`, `campaigns_matched.csv` | Standard_D8as_v6, Standard_D2as_v6 | AMD EPYC 9V74 | 6.8.0-1065-azure: 2,529; HZ=1000: 206; HZ=250: 162; HZ=100: 233; 6.8.0-1064-azure: 65; not read: 3 | 3,198 | 24, 23 |
+| second x86 | `runs_matched-b.csv`, `campaigns_matched-b.csv` | Standard_D8as_v6, Standard_D2as_v6 | AMD EPYC 9V74 | 6.8.0-1064-azure: 1,380; HZ=1000: 434; HZ=250: 378; HZ=100: 556; not read: 3 | 2,751 | 22, 21 |
+| Arm | `runs_arm.csv`, `campaigns_arm.csv` | Standard_D8ps_v6, Standard_D2ps_v6 | Arm Neoverse N2 (implementer 0x41, part 0xd49) | 6.8.0-1064-azure: 2,159 | 2,159 | 15, 11 |
+
+Every campaign that is not complete is a false start in the
+[issues register](../law/issues-register.md), replaced at once by a campaign that ran whole.
+
+A blank `verdict` is a run that ended before the integrity rule could judge it. Of the seventeen,
+seven were put back and counted on their next attempt; one is the first run of a false start;
+eight are the runs of calibrations that stopped and were run again whole; and one ended a round
+of a calibration that kept its other 22 runs. The issues register names each. The six runs with
+no kernel reading are among them: three of the seven put back, and the three of one stopped
+calibration.
+
 ## Pocket dictionary
 
 - **Broker**: the machine running Kafka or Redis; the *driver* runs the clients and the load.

@@ -1,0 +1,16 @@
+campaign,folder,block,kernel,cpu_model,online_cpus,designed_runs,done,left,failed_attempts,abandoned,complete,ended,first_started_utc,last_finished_utc
+a4_20260918T211544Z,arm_20260918T211544Z,A4,6.8.0-1064-azure,"CPU implementer 0x41, part 0xd49",8,60,1,59,3,0,False,stopped: the last 3 attempts all failed; the latest because: integrity: the measured load was 99.8% against 75%,2026-09-18T21:15:45Z,2026-09-18T21:26:34Z
+a4_20260918T211825Z,arm_20260918T211825Z,A4,6.8.0-1064-azure,"CPU implementer 0x41, part 0xd49",8,64,0,64,3,0,False,stopped: the last 3 attempts all failed; the latest because: integrity: the measured load was 99.8% against 75%; the settings changed during the run: the base slice is 3,2026-09-18T21:18:26Z,2026-09-18T21:26:33Z
+a4_20260918T213410Z,arm_20260918T213410Z,A4,6.8.0-1064-azure,"CPU implementer 0x41, part 0xd49",8,60,60,0,0,0,True,complete,2026-09-18T21:34:10Z,2026-09-19T00:16:33Z
+a4_20260919T001708Z,arm_20260919T001708Z,A4,6.8.0-1064-azure,"CPU implementer 0x41, part 0xd49",8,64,64,0,0,0,True,complete,2026-09-19T00:17:09Z,2026-09-19T03:09:42Z
+a4_20260919T031017Z,arm_20260919T031017Z,A4,6.8.0-1064-azure,"CPU implementer 0x41, part 0xd49",8,64,64,0,0,0,True,complete,2026-09-19T03:10:17Z,2026-09-19T06:02:58Z
+a8_20260920T222915Z,arm_20260920T222915Z,A8,6.8.0-1064-azure,"CPU implementer 0x41, part 0xd49",8,144,0,144,3,0,False,stopped: the last 3 attempts all failed; the latest because: integrity: the calibration has no zero-delay got-it median for kafka at 75%,2026-09-20T22:29:15Z,2026-09-20T22:37:22Z
+a8_20260920T224009Z,arm_20260920T224009Z,A8,6.8.0-1064-azure,"CPU implementer 0x41, part 0xd49",8,144,144,0,2,0,True,complete,2026-09-20T22:40:10Z,2026-09-27T14:12:10Z
+a8_20260921T004923Z,arm_20260921T004923Z,A8,6.8.0-1064-azure,"CPU implementer 0x41, part 0xd49",8,144,144,0,1,0,True,complete,2026-09-21T00:49:24Z,2026-09-27T20:53:41Z
+a8_20260921T025558Z,arm_20260921T025558Z,A8,6.8.0-1064-azure,"CPU implementer 0x41, part 0xd49",8,144,0,144,3,0,False,stopped: the last 3 attempts all failed; the latest because: integrity: the measured load was 99.8% against 75%,2026-09-21T02:55:59Z,2026-09-21T03:01:55Z
+a8_20260921T025629Z,arm_20260921T025629Z,A8,6.8.0-1064-azure,"CPU implementer 0x41, part 0xd49",8,144,144,0,3,0,True,complete,2026-09-21T02:56:29Z,2026-09-27T08:04:41Z
+a8_20260921T182140Z,arm_20260921T182140Z,A8,6.8.0-1064-azure,"CPU implementer 0x41, part 0xd49",8,144,144,0,0,0,True,complete,2026-09-21T18:21:41Z,2026-09-22T00:51:28Z
+a4_20260922T031458Z,arm_20260922T031458Z,A4,6.8.0-1064-azure,"CPU implementer 0x41, part 0xd49",8,44,44,0,1,0,True,complete,2026-09-22T03:14:58Z,2026-09-22T05:16:34Z
+a3_20260924T163652Z,arm_20260924T163652Z,A3,6.8.0-1064-azure,"CPU implementer 0x41, part 0xd49",8,432,432,0,8,0,True,complete,2026-09-24T16:37:02Z,2026-09-25T13:50:26Z
+a9_20260925T231103Z,arm_20260925T231103Z,A9,6.8.0-1064-azure,"CPU implementer 0x41, part 0xd49",8,128,128,0,1,0,True,complete,2026-09-25T23:11:22Z,2026-09-27T02:36:40Z
+a9_20260926T050604Z,arm_20260926T050604Z,A9,6.8.0-1064-azure,"CPU implementer 0x41, part 0xd49",8,128,128,0,0,0,True,complete,2026-09-26T05:06:23Z,2026-09-26T11:15:51Z

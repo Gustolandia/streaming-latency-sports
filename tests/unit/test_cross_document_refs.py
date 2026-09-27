@@ -185,9 +185,14 @@ class TestTheSupplementNamesSectionsRatherThanNumberingThem:
                                  supp))
         assert values, "the macro block must resolve through \\ref"
         for name, label in sorted(values.items()):
-            number = aux.get(label)
-            if number is None:                          # pragma: no cover - stale aux
-                pytest.skip("paper.aux predates %s; rebuild paper.tex first" % label)
+            #: The supplement reads paper.aux through \externaldocument[P-]{paper}, so its
+            #: references carry the P- prefix and paper.aux's own labels do not. Looked up with
+            #: the prefix, no label was ever found: this skipped on every run, as "a stale aux",
+            #: until nothing in the suite was allowed to skip (27 September).
+            target = label[len("P-"):] if label.startswith("P-") else label
+            number = aux.get(target)
+            assert number is not None, "%s points at %r, which paper.aux does not define" % (
+                name, target)
             # v4 split Experimental Setup six ways (IV-A..IV-F), so the letter runs to F.
             assert re.match(r"^[IVX]+(?:-[A-F])?$", number), \
                 "%s resolves to %r, which is not a section number" % (name, number)

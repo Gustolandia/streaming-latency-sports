@@ -13,7 +13,6 @@ import pandas as pd
 import numpy as np
 import json
 import tempfile
-import shutil
 
 # Set COVERAGE_PROCESS_START for subprocess coverage
 os.environ['COVERAGE_PROCESS_START'] = str(Path(__file__).parent.parent / '.coveragerc')
@@ -60,6 +59,13 @@ SCRIPTS_DIR = Path(__file__).parent.parent / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
+# The helpers the tests share -- posix_shell, paper_build, no_skips -- are imported by name.
+if str(Path(__file__).parent) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).parent))
+
+# Nothing in this suite may skip (tests/no_skips.py): its two hooks, taken in here by name.
+from no_skips import pytest_make_collect_report, pytest_runtest_makereport  # noqa: E402,F401
+
 # ============================================================
 # PATH CONFIGURATION
 # ============================================================
@@ -82,14 +88,34 @@ def pytest_configure(config):
     """Configure pytest options."""
     config.addinivalue_line("markers", 'slow: marks tests as slow (deselect with \'-m not slow\')')
     config.addinivalue_line("markers", "integration: marks integration tests")
-    config.addinivalue_line("markers", "requires_docker: marks tests requiring Docker services")
-    config.addinivalue_line("markers", "requires_kafka: marks tests requiring Kafka")
-    config.addinivalue_line("markers", "requires_redis: marks tests requiring Redis")
     config.addinivalue_line("markers", "shell: runs a kit shell script, in Git's bash on Windows")
+    config.addinivalue_line(
+        "markers", "author_machine: checks what only the author's machine holds; run by name")
+
+
+def pytest_sessionstart(session):
+    """Build the paper for the gates that read what a build leaves, when that is missing or
+    stale (tests/paper_build.py). Once, in the process running the session: a pytest-xdist
+    worker reads what its controller built."""
+    if hasattr(session.config, "workerinput"):
+        return
+    import paper_build
+    paper_build.ensure_built()
 
 
 def pytest_collection_modifyitems(config, items):
-    """Modify test collection to add markers based on names."""
+    """Modify test collection to add markers based on names.
+
+    And leave out the checks of what only the author's machine holds -- the reference corpus,
+    other people's papers, which git ignores -- unless they are asked for by name with
+    `-m author_machine`. Left out, not skipped: the default suite is what runs everywhere, and
+    nothing in it may skip (tests/no_skips.py).
+    """
+    if "author_machine" not in (config.option.markexpr or ""):
+        held = [item for item in items if item.get_closest_marker("author_machine")]
+        if held:
+            config.hook.pytest_deselected(items=held)
+            items[:] = [item for item in items if item not in held]
     for item in items:
         if "slow" in item.nodeid.lower():
             item.add_marker(pytest.mark.slow)
@@ -395,26 +421,6 @@ def create_sample_run_dir(run_id, temp_dir):
     pd.DataFrame(consumer_data).to_csv(run_dir / "consumer_events.csv", index=False)
     
     return run_dir
-
-
-# ============================================================
-# MARKERS FOR CONDITIONAL TEST EXECUTION
-# ============================================================
-
-requires_docker = pytest.mark.skipif(
-    not shutil.which("docker"),
-    reason="Docker not available"
-)
-
-requires_kafka = pytest.mark.skipif(
-    not shutil.which("kafka-topics"),
-    reason="Kafka not available"
-)
-
-requires_redis = pytest.mark.skipif(
-    not shutil.which("redis-cli"),
-    reason="Redis not available"
-)
 
 
 @pytest.fixture(autouse=True)

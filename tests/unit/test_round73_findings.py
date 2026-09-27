@@ -204,7 +204,13 @@ class TestW0TheNoveltySweepIsWrittenDownAndRerunnable:
         import novelty_sweep
         path = REPO / "docs" / "results" / "external" / "novelty_sweep.csv"
         if not path.is_file():
-            pytest.skip("no successful sweep committed yet")
+            #: No run has succeeded, and the supplement tells the reader so. That sentence is
+            #: what holds while the ledger is absent, and it is checked rather than skipped.
+            supplement = " ".join((REPO / "supplement.tex").read_text(encoding="utf-8").split())
+            assert "is absent from the artifact until one succeeds" in supplement, (
+                "no sweep is committed; the supplement must say the ledger is absent until one "
+                "succeeds")
+            return
         rows = list(csv.DictReader(path.open(encoding="utf-8")))
         assert [r["query"] for r in rows] == [q for _, _, q, _ in novelty_sweep.TERMS]
         assert all(r["hits"] for r in rows), "a sweep with an unread term is not a sweep"
@@ -362,11 +368,12 @@ class TestRecommendedItems:
 
     def test_w5_the_table_two_non_request_is_recorded(self):
         """Round 73 looked at the factor column's bracket ownership and was content. Recorded
-        so the next round does not re-raise a settled thing."""
-        path = REPO / "docs" / "reference_tc" / "README.md"
-        if not path.exists():
-            pytest.skip("docs/reference_tc/ is a local working folder that git ignores")
-        assert "bracket ownership" in path.read_text(encoding="utf-8")
+        so the next round does not re-raise a settled thing -- in the record of every review,
+        where it moved on 27 September from the reference folder's notes, which git ignores and
+        so no other checkout could read."""
+        text = (REPO / "docs" / "reviews_and_responses.md").read_text(encoding="utf-8")
+        record = text[text.index("## Settled non-requests"):]
+        assert "bracket ownership" in record and "Round 73" in record
 
 
 class TestTheNoveltyClaimIsMadeFromItsTermList:

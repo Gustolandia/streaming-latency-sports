@@ -132,10 +132,10 @@ class TestMain:
         assert "cannot read" in capsys.readouterr().out
 
 
+@pytest.mark.author_machine
 def test_the_committed_record_still_agrees_with_the_corpus():
-    """Bites on the author's machine, skips everywhere else -- like the corpus check."""
-    if not Path(lc.CORPUS).is_dir():
-        pytest.skip("no local reference corpus")
-    if not (Path(lc.CORPUS) / lc.SOURCES[0][0]).exists():
-        pytest.skip("the censused papers are not held locally")
+    """Runs on the author's machine, by name, like the corpus check: the censused papers are
+    held there and nowhere else. Asked for where they are not, it fails."""
+    assert Path(lc.CORPUS).is_dir(), "the reference corpus is not on this machine"
+    assert (Path(lc.CORPUS) / lc.SOURCES[0][0]).exists(), "the censused papers are not held here"
     assert lc.main(["--check"]) == 0

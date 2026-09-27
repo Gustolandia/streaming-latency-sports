@@ -13,6 +13,7 @@ asked and what changed because of it.
 - [Response to internal review — TPDS standard, round 1](#response-to-internal-review-tpds-standard-round-1) — was `docs/response_to_referee_tpds.md`, last changed 2026-09-15
 - [Response to internal review — IEEE Transactions on Computers standard, round 1](#response-to-internal-review-ieee-transactions-on-computers-standard-round-1) — was `docs/response_to_referee_tc.md`, last changed 2026-09-15
 - [Response to internal review — IEEE Transactions on Computers standard, round 2](#response-to-internal-review-ieee-transactions-on-computers-standard-round-2) — was `docs/response_to_referee_tc_r2.md`, last changed 2026-09-15
+- [Settled non-requests](#settled-non-requests) — decisions a round examined and left alone, added 2026-09-27
 
 ## Referee response plan
 
@@ -2458,3 +2459,14 @@ failed the first time it was estimated or recomputed with its denominator named.
 that in supplement S35 because it is the paper's own argument turned on its author: a
 statistic that carries no uncertainty, and a number that reaches the page without passing
 through a script, are not yet measurements. Every correction from this round is gated.
+
+## Settled non-requests
+
+Recorded so that a later round does not raise them again.
+
+- **Table II's bracket ownership, looked at and left alone.** Round 72 moved each factor's Katz
+  interval onto its pair's second row, so a reader scanning the column meets `39x (19.8)`,
+  `[21-74]`, `54x (31.9)`, `[33-86]`, and ownership is inferred from position with the caption
+  resolving it. Round 73 examined this and was content: the alternative widened the table by
+  47pt and made it overfull. Moved here on 27 September 2026 from the notes in
+  `docs/reference_tc/`, which git ignores, so that the test holding it runs in every checkout.

@@ -104,6 +104,10 @@ ALLOWED = {
         "the upper end of the powered transport medians in the gate-sensitivity table, in "
         "milliseconds, which happens to equal the Kolmogorov-Smirnov permutation p emitted in "
         "round 76; a latency and a probability sharing two digits",
+    ("supplement.tex", "recoveryKsP", r"five times the $0.10$--$0.12$~ms at which"):
+        "the same condemned-run medians, quoted in S19's internal-validity threat since 27 "
+        "September to say how far below the flip point they sit; the coincidence the entry "
+        "above records",
     ("supplement.tex", "tracedModeRatio", r"station changes} in $4.5\%$"):
         "a percentage quoted from Li's 2026 process-mining preprint in S33.4 -- how often "
         "one-minute rounding changes the top-ranked station -- which is another paper's "

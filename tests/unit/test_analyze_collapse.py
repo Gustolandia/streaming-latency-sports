@@ -25,6 +25,8 @@ from analyze_collapse import (  # noqa: E402
     h9_verdict,
     h10_verdict,
     reproduction_rows,
+    run_intervals,
+    run_difference,
     main,
 )
 
@@ -342,3 +344,94 @@ class TestTheRowsAndRunsThatMustBeSteppedOver:
         _condition(temp_dir, "ea3", "thin", "n6_20260101_000000", [1.0, 2.0], rho=0.1)
         out = collect_phase(str(temp_dir / "depth"), str(temp_dir / "runs"), ["ea3"])
         assert list(out) == ["ea3/good"]
+
+
+def _campaign(tmp, phase, name, ts, runs, rho):
+    """One condition of several kafka runs, each a list of transports in milliseconds."""
+    cond = tmp / "depth" / phase / name
+    (cond / f"concurrency_concurrency_{ts}").mkdir(parents=True, exist_ok=True)
+    for i, transports in enumerate(runs, start=1):
+        _run(tmp / "runs", f"concurrency_{ts}_kafka_feed1_rep{i}", transports)
+    with (cond / "utilisation.csv").open("w", newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=["t_wall", "rho", "loadavg"])
+        w.writeheader()
+        w.writerow({"t_wall": 1, "rho": rho, "loadavg": 1.0})
+    return cond
+
+
+class TestIntervalsThatResampleRuns:
+    """Negative spans cluster within a run, so the run, not the event, is the unit resampled.
+
+    Added 27 September 2026, when S8.1's reproduction test was recomputed this way: the Wilson
+    intervals over events had failed five of seventeen matched quantiles below saturation, and
+    intervals over runs fail two. The tests pin the three properties that argument rests on.
+    """
+
+    CLEAN = [2.0] * 100
+
+    def test_clustered_negatives_widen_the_interval_beyond_wilsons(self):
+        """Forty negatives in two runs of twenty are far less certain than forty scattered."""
+        clustered = [(100, {c: (20 if i < 2 and c < 1 else 0) for c in (0.0, 0.5, 1.0, 2.0, 5.0)})
+                     for i in range(20)]
+        lo, hi = run_intervals(clustered, "clustered", draws=2000)[0.0]
+        w_lo, w_hi = wilson_interval(40, 2000)
+        assert lo <= 40 / 2000 <= hi
+        assert (hi - lo) > 2 * (w_hi - w_lo), "the clustering must show in the interval"
+
+    def test_a_threshold_no_run_reaches_has_no_run_interval(self):
+        runs = [(100, {0.0: 3, 0.5: 1, 1.0: 0, 2.0: 0, 5.0: 0}) for _ in range(5)]
+        out = run_intervals(runs, "some", draws=500)
+        assert out[0.0] is not None and out[1.0] is None and out[5.0] is None
+
+    def test_the_same_name_draws_the_same_interval(self):
+        runs = [(100, {c: i % 3 for c in (0.0, 0.5, 1.0, 2.0, 5.0)}) for i in range(9)]
+        assert run_intervals(runs, "a", draws=800) == run_intervals(runs, "a", draws=800)
+
+    def test_the_difference_holds_zero_for_one_campaign_and_not_for_two(self):
+        same = [(100, {c: (4 if c == 0.0 else 0) for c in (0.0, 0.5, 1.0, 2.0, 5.0)})
+                for _ in range(12)]
+        more = [(100, {c: (15 if c == 0.0 else 0) for c in (0.0, 0.5, 1.0, 2.0, 5.0)})
+                for _ in range(12)]
+        lo, hi = run_difference(same, same, 0.0, "same", draws=1000)
+        assert lo <= 0 <= hi
+        lo, hi = run_difference(more, same, 0.0, "more", draws=1000)
+        assert lo > 0
+
+    def test_rows_carry_both_tests_and_fall_back_to_wilson_on_a_zero(self, temp_dir):
+        """A side with no event past a threshold keeps Wilson's interval for that side."""
+        neg = [-1.0] * 6 + self.CLEAN
+        _campaign(temp_dir, "ea_sat", "bg2", "n5_20260101_000040",
+                  [neg, self.CLEAN, neg, self.CLEAN], rho=0.25)
+        _campaign(temp_dir, "ea3", "bg2", "n5_20260101_000041",
+                  [neg, neg, self.CLEAN, self.CLEAN, neg], rho=0.25)
+        old = collect_phase(str(temp_dir / "depth"), str(temp_dir / "runs"), ["ea_sat"])
+        new = collect_phase(str(temp_dir / "depth"), str(temp_dir / "runs"), ["ea3"])
+        rows = {r["threshold_ms"]: r for r in reproduction_rows(old, new, draws=600)}
+        at_zero = rows[0.0]
+        assert (at_zero["runs_new"], at_zero["runs_old"]) == (5, 4)
+        assert at_zero["run_lo_new"] <= at_zero["tail_new"] <= at_zero["run_hi_new"]
+        assert at_zero["ci_overlap_runs"] and not at_zero["differs_runs"]
+        assert at_zero["diff_lo_runs"] <= 0 <= at_zero["diff_hi_runs"]
+        assert 1.0 not in rows, "no run reaches 1 ms on either side, so there is no row"
+
+    def test_a_zero_on_one_side_keeps_wilsons_interval_there(self, temp_dir):
+        deep = [-3.0] * 8 + self.CLEAN
+        _campaign(temp_dir, "ea_sat", "bg5", "n5_20260101_000042",
+                  [self.CLEAN, self.CLEAN, self.CLEAN], rho=0.6)
+        _campaign(temp_dir, "ea3", "bg5", "n5_20260101_000043", [deep, deep, self.CLEAN], rho=0.6)
+        old = collect_phase(str(temp_dir / "depth"), str(temp_dir / "runs"), ["ea_sat"])
+        new = collect_phase(str(temp_dir / "depth"), str(temp_dir / "runs"), ["ea3"])
+        row = [r for r in reproduction_rows(old, new, draws=600) if r["threshold_ms"] == 2.0][0]
+        w_lo, w_hi = wilson_interval(0, 300)
+        assert (row["run_lo_old"], row["run_hi_old"]) == (round(w_lo, 5), round(w_hi, 5))
+        assert row["differs_runs"], "sixteen deep negatives against none is a difference"
+
+    def test_main_reports_the_run_level_count(self, temp_dir, capsys):
+        neg = [-1.0] * 6 + self.CLEAN
+        _campaign(temp_dir, "ea_sat", "bg2", "n5_20260101_000044", [neg, self.CLEAN], rho=0.25)
+        _campaign(temp_dir, "ea3", "bg2", "n5_20260101_000045", [neg, self.CLEAN, neg], rho=0.25)
+        assert main(["--depth-dir", str(temp_dir / "depth"), "--runs-dir", str(temp_dir / "runs"),
+                     "--out", str(temp_dir / "model")]) == 0
+        assert "resampling whole runs:" in capsys.readouterr().out
+        rows = list(csv.DictReader(open(temp_dir / "model" / "fdelta_reproduction.csv")))
+        assert rows and {"ci_overlap_runs", "differs_runs", "run_lo_old"} <= set(rows[0])

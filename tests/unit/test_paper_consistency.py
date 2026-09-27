@@ -1664,48 +1664,84 @@ class TestMixtureStructure:
         """The reproduction boundary is supplement S8.1 now, beside the tail recovery it tests.
 
         TC cut the recovered-tail comparison from the main text's mixture subsection. S8.1
-        states it with its count and names the rho = 1 degeneracy. Until 27 September it also
-        said every failure was at rho = 1, while five of the seventeen below saturation fail.
-        Each load level's count is now read from the artefact, with the knee's ratio range and
-        the one failure that runs the other way, so the paragraph cannot put the boundary where
-        the rows do not. The utilizations are named as Table tab:mixture prints them.
+        states it with its count and names the rho = 1 degeneracy. Until 27 September it said
+        every failure was at rho = 1, while five of the seventeen below saturation failed; the
+        same day its intervals changed unit. Negative spans cluster within a run, so S8.1
+        resamples whole runs, adds the direct test of each difference, and keeps the per-event
+        count as what the events alone would say. Every count, level and ratio is read from the
+        artefact, and the utilizations are named as Table tab:mixture prints them.
         """
         rows = _rows("model", "fdelta_reproduction.csv")
         below = [r for r in rows if float(r["rho_new"]) < 0.96]
-        overlap = sum(1 for r in below if r["ci_overlap"] == "True")
-        assert overlap == 12 and len(below) == 17, "below-saturation reproduction is 12/17"
-        assert {float(r["rho_new"]) for r in rows if float(r["rho_new"]) >= 0.96} == {1.0}, \
+        top = [r for r in rows if float(r["rho_new"]) >= 0.96]
+        assert len(below) == 17 and {float(r["rho_new"]) for r in top} == {1.0}, \
             "every row above the boundary sits on the degenerate rho = 1 coordinate"
         start = supp.index("Tail recovery without a reference clock}")
         unit = " ".join(supp[start:supp.index("\n\\section", start)].split())
-        assert "$%d$ of $%d$ matched quantiles overlap" % (overlap, len(below)) in unit
         assert "degenerate" in unit.lower(), "the rho=1 degeneracy must be named"
-        assert "failures are all at" not in unit, "five of the failures sit below saturation"
+        assert "failures are all at" not in unit, "failures sit below saturation too"
+        assert "The intervals resample whole runs" in unit
+        agree = [r for r in below if r["ci_overlap_runs"] == "True"]
+        assert "$%d$ of $%d$ matched quantiles overlap" % (len(agree), len(below)) in unit
         lbl = supp.index(r"\label{tab:mixture}")
         body = supp[supp.index(r"\midrule", lbl):supp.index(r"\bottomrule", lbl)]
         printed = [line.split("&")[0].strip() for line in body.splitlines() if "&" in line]
+
+        def shown(r):
+            return min(printed, key=lambda p: abs(float(p) - float(r["rho_new"])))
         levels = {}
         for r in below:
-            shown = min(printed, key=lambda p: abs(float(p) - float(r["rho_new"])))
-            levels.setdefault(shown, []).append(r)
+            levels.setdefault(shown(r), []).append(r)
         clean = sorted((p for p, cell in levels.items()
-                        if all(r["ci_overlap"] == "True" for r in cell)), key=float)
-        assert "every one of them at $\\rho = %s$, $%s$ and $%s$" % tuple(clean) in unit
-        words = {1: "one", 3: "three", 4: "four"}
-        for p in sorted(set(levels) - set(clean), key=float):
-            failed = sum(1 for r in levels[p] if r["ci_overlap"] == "False")
-            assert "%s of %s at $\\rho = %s$" % (words[failed], words[len(levels[p])], p) in unit
-        knee = [r for r in levels["0.628"] if r["ci_overlap"] == "False"]
-        ratios = [float(r["tail_new"]) / float(r["tail_old"]) for r in knee]
-        assert max(float(r["threshold_ms"]) for r in knee) == 1.0
-        assert "$%.1f$ to $%.1f$ times the earlier one's up to $1$~ms" % (
-            min(ratios), max(ratios)) in unit
-        (odd,) = [r for r in levels["0.753"] if r["ci_overlap"] == "False"]
-        assert float(odd["tail_new"]) / float(odd["tail_old"]) == pytest.approx(0.2, abs=0.005)
-        assert "a fifth of the earlier one's at $%g$~ms" % float(odd["threshold_ms"]) in unit
-        top = [r for r in rows if float(r["rho_new"]) >= 0.96]
+                        if all(r["ci_overlap_runs"] == "True" for r in cell)), key=float)
+        listed = "$\\rho = %s$, %s and $%s$" % (
+            clean[0], ", ".join("$%s$" % p for p in clean[1:-1]), clean[-1])
+        assert "every one of them at " + listed in unit
+        first, second = sorted((r for r in below if r["ci_overlap_runs"] == "False"),
+                               key=lambda r: float(r["rho_new"]))
+        assert "The two that do not" in unit
+        assert ("at $\\rho = %s$, where the later campaign's tail is $%.1f$ times the earlier "
+                "one's at $%g$~ms" % (shown(first), float(first["tail_new"])
+                                      / float(first["tail_old"]),
+                                      float(first["threshold_ms"]))) in unit
+        assert float(second["tail_new"]) / float(second["tail_old"]) == \
+            pytest.approx(0.2, abs=0.005)
+        assert ("at $\\rho = %s$, where it is a fifth of the earlier one's at $%g$~ms"
+                % (shown(second), float(second["threshold_ms"]))) in unit
+        flagged = sorted((shown(r) for r in below if r["differs_runs"] == "True"), key=float)
+        assert "flags $%d$ of the $%d$, all between $\\rho = %s$ and $%s$" % (
+            len(flagged), len(below), flagged[0], flagged[-1]) in unit
+        assert round(0.10 * len(below)) == 2 and "about two would be flagged by chance" in unit
+        assert "intervals over events fail $%d$" % sum(
+            1 for r in below if r["ci_overlap"] == "False") in unit
         assert "where $%d$ of $%d$ fail" % (
-            sum(1 for r in top if r["ci_overlap"] == "False"), len(top)) in unit
+            sum(1 for r in top if r["ci_overlap_runs"] == "False"), len(top)) in unit
+
+    def test_the_load_sweep_table_is_its_artefact(self, supp):
+        """tab:h2load's nine rows came from no committed file until 27 September.
+
+        analyze_depth.py wrote them to depth/model/ea_utilisation.csv on the cloud driver, and the
+        file stayed in the archive. It is committed now, regenerated from the archived runs with
+        its rates unchanged and its counts beside them, and every row is read from it. The rates
+        pool both brokers' runs of a condition, which the caption says and the counts show: the
+        Kafka-only knee sweep has half the runs of each condition.
+        """
+        rows = _rows("depth", "model", "ea_utilisation.csv")
+        lbl = supp.index(r"\label{tab:h2load}")
+        table = supp[supp.rindex(r"\begin{table}", 0, lbl):supp.index(r"\end{table}", lbl)]
+        body = table[table.index(r"\midrule"):table.index(r"\bottomrule")]
+        printed = [tuple(c.strip() for c in line.replace("\\\\", "").split("&"))
+                   for line in body.splitlines() if "&" in line]
+        assert sorted(printed) == sorted(
+            ("%.3f" % float(r["rho"]), "%.3f" % float(r["inversion_rate"])) for r in rows)
+        (n_runs,), (n_events,) = {r["n_runs"] for r in rows}, {r["n_events"] for r in rows}
+        caption = " ".join(table[:table.index(r"\label")].split())
+        assert ("pools a condition's \\kafka{} and \\redis{} runs ($%s$ runs, $%s$ events)"
+                % (n_runs, "{:,}".format(int(n_events)).replace(",", "{,}"))) in caption
+        knee = [r for r in _rows("model", "knee_resolution.csv")
+                if r["phase"] in ("ea_sat", "ea_knee")]
+        assert {2 * int(r["n_runs"]) for r in knee} == {int(n_runs)}, \
+            "the Kafka-only sweep holds half of each condition's runs"
 
 
 class TestClusteringConstructCheck:

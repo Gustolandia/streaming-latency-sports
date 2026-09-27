@@ -1341,12 +1341,15 @@ $k=7$, one free core in eight being nearly as useless as none.
 negative-span rate at a threshold \emph{is} a quantile of $\Delta$'s tail, the tail can be read off
 negative span counts alone --- a measurement-quality estimate needing no reference clock. The honest
 test of it is not internal consistency but reproduction: do the recovered tail quantiles agree
-between two independent campaigns at matched utilization? Below saturation, mostly: $12$ of
-$17$ matched quantiles overlap at $90\%$, every one of them at $\rho = 0.003$, $0.253$ and
-$0.878$. The five that do not are one of three at $\rho = 0.504$, three of four at
-$\rho = 0.628$, where the later campaign's tail is $1.9$ to $4.4$ times the earlier one's up to
-$1$~ms, and one of four at $\rho = 0.753$, where it is a fifth of the earlier one's at $2$~ms. At
-$\rho = 1$, where $8$ of $15$ fail, the campaigns are not at matched load at all: the coordinate
+between two independent campaigns at matched utilization? The intervals resample whole runs,
+because negative spans cluster within a run (S19) and an interval over events would treat them
+as independent draws. Below saturation, mostly: $15$ of $17$ matched quantiles overlap at
+$90\%$, every one of them at $\rho = 0.003$, $0.253$, $0.504$ and $0.878$. The two that do not
+are at $\rho = 0.628$, where the later campaign's tail is $4.4$ times the earlier one's at
+$0.5$~ms, and at $\rho = 0.753$, where it is a fifth of the earlier one's at $2$~ms. A direct
+test of each difference at the same level flags $4$ of the $17$, all between $\rho = 0.504$
+and $0.753$, where about two would be flagged by chance; intervals over events fail $5$. At
+$\rho = 1$, where $4$ of $15$ fail, the campaigns are not at matched load at all: the coordinate
 is degenerate --- eight, ten and twelve background workers all read as full utilization while
 representing different degrees of overload --- so matching on it pairs different loads. The
 recovered curve therefore reproduces at most load levels below saturation, not at all of them:
@@ -3563,7 +3566,9 @@ signal-to-noise ratio near $20$ and carry the result.}
 
 \begin{table}[t]
 \caption{H2: negative-span rate against achieved CPU utilization, no core pinning, background load
-swept from idle to oversubscription. The withdrawn queueing form fits at $R^2 = 0.945$ against $0.640$ for a
+swept from idle to oversubscription. Each row pools a condition's \kafka{} and \redis{} runs
+($30$ runs, $3{,}582$ events); the mixture of Table~\ref{tab:mixture} and the knee sweep count
+\kafka{}'s alone. The withdrawn queueing form fits at $R^2 = 0.945$ against $0.640$ for a
 straight line.}
 \label{tab:h2load}
 \begin{tabular}{rr}

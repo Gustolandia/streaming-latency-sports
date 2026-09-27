@@ -57,5 +57,52 @@ jobs:
         run: |
           floor=100
           if [ "${{ matrix.python-version }}" = "3.9" ]; then floor=0; fi
-          python -m pytest -q --cov=scripts --cov-branch \
+          python -m pytest -q -rs --cov=scripts --cov-branch \
             --cov-report=term-missing --cov-fail-under=$floor
+
+  test-windows:
+    # The same suite on Windows, the author's own machine's platform. Until 27 September nothing
+    # ran it there but that machine, and it skipped every test of a shell script: what those tests
+    # caught on Linux went unseen on Windows, and what Windows alone gets wrong went unseen here.
+    # The shell tests run in Git's bash, and the two that test what the Linux kernel does with the
+    # queue's lock run in WSL's Ubuntu 22.04, the drivers' own release (tests/posix_shell.py).
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: '**/requirements*.txt'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Install the PDF text extractor the gates read with
+        # xpdf's pdftotext and pdffonts 4.06, as on Linux; Arial is already on Windows.
+        shell: pwsh
+        run: |
+          Invoke-WebRequest https://dl.xpdfreader.com/xpdf-tools-win-4.06.zip -OutFile "$env:RUNNER_TEMP\xpdf.zip"
+          Expand-Archive "$env:RUNNER_TEMP\xpdf.zip" -DestinationPath "$env:RUNNER_TEMP"
+          $bin = "$env:RUNNER_TEMP\xpdf-tools-win-4.06\bin64"
+          if (-not (Test-Path "$bin\pdftotext.exe")) { throw "pdftotext is not at $bin" }
+          Add-Content -Path $env:GITHUB_PATH -Value $bin
+
+      - name: Install Ubuntu 22.04 in WSL, for the tests of what the Linux kernel does
+        uses: Vampire/setup-wsl@v7
+        with:
+          distribution: Ubuntu-22.04
+
+      - name: Run tests with branch coverage
+        shell: pwsh
+        run: |
+          python -m pytest -q -rs --cov=scripts --cov-branch --cov-report=term-missing --cov-fail-under=100

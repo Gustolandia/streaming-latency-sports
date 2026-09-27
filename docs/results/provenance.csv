@@ -19,6 +19,7 @@ football/feed/feed_summary.csv,VERIFIED,"n_events<=3,507"
 integrity_windows/clock_integrity_by_condition.csv,VERIFIED,n_runs<=60
 integrity_windows/first_result_threshold_sweep.csv,VERIFIED,n<=10; n_runs<=30
 model/collapse_conditions.csv,VERIFIED,"n_events<=2,985; n_runs<=25"
+model/collapse_points.csv,VERIFIED,"n_events<=2,985"
 model/colocation.csv,VERIFIED,"n_colocated<=2,985; n_remote<=2,985"
 model/ea6/knee_resolution.csv,VERIFIED,"n_events<=2,985; n_runs<=25"
 model/ea6b/knee_resolution.csv,VERIFIED,"n_events<=2,985; n_runs<=25"
@@ -27,12 +28,15 @@ model/ea9b_l75/runq_tail.csv,VERIFIED,"n_events<=2,985; traced_events<=709,819"
 model/ea9b_l88/runq_tail.csv,VERIFIED,"n_events<=2,985; traced_events<=687,986"
 model/ec3_stamping.csv,VERIFIED,n_runs_kafka<=10; n_runs_redis<=10
 model/inversion_clustering.csv,VERIFIED,n_runs<=15
+model/knee_resolution.csv,VERIFIED,"n_events<=2,985; n_runs<=25"
 model/runq_tail.csv,VERIFIED,"n_events<=2,985; traced_events<=570,591"
 model/stamping_priority.csv,VERIFIED,"n_base<=2,985; n_rt<=2,985"
 model/traced_tail_slope.csv,VERIFIED,"n_events<=551,956"
 model/ttrue_sweep.csv,VERIFIED,"n_events<=2,985"
 transport_rt/gate_sensitivity.csv,VERIFIED,n<=12
+transport_rt/transport_realtime_by_run_gated.csv,VERIFIED,n<=12; n_matched<=148
 transport_rt/transport_realtime_gated_tost.csv,VERIFIED,n<=12
 transport_rt/transport_realtime_summary_gated.csv,VERIFIED,n<=12
+transport_rt2/gate_sensitivity.csv,VERIFIED,n<=12
 transport_rt2/transport_realtime_gated_tost.csv,VERIFIED,n<=12
 window/window_sweep.csv,VERIFIED,events_per_run<=465; runs<=3; trace_events<=507

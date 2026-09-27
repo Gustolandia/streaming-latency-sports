@@ -2302,7 +2302,9 @@ class TestLoadGeometryAndTtrue:
         assert dict(_emitted_macros()).get("mechEventsPerCell") == "2{,}985", \
             "the mechanism table's cells no longer share the denominator the artefacts show"
         head = main_tex[:main_tex.index(r"\label{tab:mechanism}")]
-        caption = " ".join(head[head.rindex(r"\caption{"):].split())
+        #: Either form of \caption, short title or none (test_round61_findings.py).
+        opened = list(re.finditer(r"\\caption(?:\[[^\]]*\])?\{", head))[-1]
+        caption = " ".join(head[opened.start():].split())
         assert r"($\mechEventsPerCell$ matched events per cell)" in caption
         for label in ("tab:ea6", "tab:ea9"):
             i = supp.index("\\label{%s}" % label)

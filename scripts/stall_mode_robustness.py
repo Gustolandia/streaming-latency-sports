@@ -29,6 +29,16 @@ import re
 import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _shown(path, start):
+    """PATH relative to START, with forward slashes. A path on another Windows drive has no
+    relative form -- os.path.relpath raises -- and is shown whole: Windows CI checks the
+    repository out on D: and hands out temporary folders on C:."""
+    try:
+        return os.path.relpath(path, start).replace("\\", "/")
+    except ValueError:
+        return os.path.abspath(path).replace("\\", "/")
 TRACE = os.path.join(REPO, "docs", "results", "depth", "ea9", "l88_base", "runqlat.txt")
 OUT = os.path.join(REPO, "docs", "results", "external", "stall_mode_robustness.json")
 
@@ -83,7 +93,7 @@ def report(path=TRACE):
     counts = [c for _, c in bins]
     base = local_maxima(counts)
     out = {
-        "source": os.path.relpath(path, REPO).replace("\\", "/"),
+        "source": _shown(path, REPO),
         "events": sum(counts),
         "buckets": len(bins),
         "base_modes": len(base),

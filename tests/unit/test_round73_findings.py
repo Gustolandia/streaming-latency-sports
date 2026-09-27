@@ -294,6 +294,17 @@ class TestW0TheNoveltySweepIsWrittenDownAndRerunnable:
         assert len(rows) == len(ns.TERMS)
         assert ns.main([], fetcher=lambda q: 3) == 0, "without --write it only prints"
 
+    def test_a_ledger_on_another_drive_is_named_whole(self, monkeypatch):
+        """Windows CI checks the repository out on D: and gives tests temporary folders on C:;
+        os.path.relpath raises between drives, and the sweep names the ledger whole instead."""
+        import novelty_sweep as ns
+
+        def no_relative_form(path, start):
+            raise ValueError("path is on mount 'C:', start on mount 'D:'")
+        monkeypatch.setattr(ns.os.path, "relpath", no_relative_form)
+        shown = ns._shown("C:/elsewhere/novelty_sweep.csv", ns.ROOT)
+        assert shown.endswith("/elsewhere/novelty_sweep.csv") and "\\" not in shown
+
     def test_it_is_not_wired_into_the_suite(self):
         """It talks to OpenAlex. A red build caused by an indexing change is news about them."""
         src = (REPO / "scripts" / "novelty_sweep.py").read_text(encoding="utf-8")

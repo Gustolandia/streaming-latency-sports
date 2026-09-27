@@ -24,6 +24,16 @@ sys.path.insert(0, str(REPO / "scripts"))
 import stall_mode_robustness as smr  # noqa: E402
 
 
+def test_a_trace_on_another_drive_is_named_whole(monkeypatch):
+    """Windows CI checks the repository out on D: and gives tests temporary folders on C:,
+    and os.path.relpath raises between drives. The report then names the trace whole."""
+    def no_relative_form(path, start):
+        raise ValueError("path is on mount 'C:', start on mount 'D:'")
+    monkeypatch.setattr(smr.os.path, "relpath", no_relative_form)
+    assert smr._shown("C:/elsewhere/runqlat.txt", smr.REPO).endswith("/elsewhere/runqlat.txt")
+    assert "\\" not in smr._shown("C:/elsewhere/runqlat.txt", smr.REPO)
+
+
 def write_trace(tmp_path, rows):
     """A bpftrace-shaped log2 histogram: [(label, count)]."""
     lines = ["Attaching 3 probes...", "", "@usecs: "]

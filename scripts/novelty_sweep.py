@@ -52,6 +52,16 @@ import urllib.parse
 import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _shown(path, start):
+    """PATH relative to START, with forward slashes. A path on another Windows drive has no
+    relative form -- os.path.relpath raises -- and is shown whole: Windows CI checks the
+    repository out on D: and hands out temporary folders on C:."""
+    try:
+        return os.path.relpath(path, start).replace("\\", "/")
+    except ValueError:
+        return os.path.abspath(path).replace("\\", "/")
 LEDGER = os.path.join(ROOT, "docs", "results", "external", "novelty_sweep.csv")
 
 #: (mechanism, community, query, what a hit would have to be to threaten the claim).
@@ -222,7 +232,7 @@ def main(argv=None, fetcher=None):
     unread = [r for r in rows if r["verdict"] in ("unread", "unstable: ask again")]
     if args.write and not unread:
         write(rows)
-        print("\nwrote %s" % os.path.relpath(LEDGER, ROOT))
+        print("\nwrote %s" % _shown(LEDGER, ROOT))
     if unread:
         print("\n%d term(s) could not be read; the ledger is unchanged." % len(unread))
         return 1

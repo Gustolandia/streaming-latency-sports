@@ -29,7 +29,7 @@ them visible rather than assumed.
 
 CLI:
     python scripts/trace_table_numbers.py
-    python scripts/trace_table_numbers.py --paper paper.tex --results docs/results
+    python scripts/trace_table_numbers.py --paper paper.tex supplement.tex --results docs/results
 """
 import argparse
 import csv
@@ -47,7 +47,7 @@ SOURCES = {
     "tab:ea10":     ["model/ttrue_sweep.csv"],
     "tab:mixture":  ["model/collapse_points.csv", "model/collapse_conditions.csv",
                      "model/separability.csv", "model/two_state_fit.csv"],
-    "tab:h2":       ["model/knee_resolution.csv", "model/knee_points.csv"],
+    "tab:h2load":   ["model/knee_resolution.csv", "model/knee_points.csv"],
     "tab:h3":       ["model/ec3_stamping.csv", "depth_rep2/model/ec3_stamping.csv"],
     "tab:window":   ["window/window_sweep.csv"],
     "tab:e1":       ["e1/e1_transport_kafka_vs_redis_by_n.csv", "e1/e1_by_run_gated.csv",
@@ -57,7 +57,7 @@ SOURCES = {
                      "transport_rt2/transport_realtime_gated_tost.csv"],
     "tab:transport": ["transport_rt/transport_realtime_summary_gated.csv",
                       "transport_rt/transport_realtime_gated_tost.csv"],
-    "tab:retention": ["e1/e1_retention_bias.csv"],
+    "tab:selection": ["e1/e1_retention_bias.csv"],
     "tab:audit":    ["integrity_windows/clock_integrity_by_condition.csv",
                      "e1/e1_clock_integrity.csv"],
     "tab:workload": ["football/feed/feed_summary.csv",
@@ -144,11 +144,12 @@ def trace(tex, results_dir, sources=None):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Trace manuscript table numbers to their artefacts")
-    ap.add_argument("--paper", default="paper.tex")
+    # Most tables live in the supplement now, so reading the main text alone traced none.
+    ap.add_argument("--paper", nargs="+", default=["paper.tex", "supplement.tex"])
     ap.add_argument("--results", default="docs/results")
     args = ap.parse_args(argv)
 
-    tex = open(args.paper, encoding="utf-8").read()
+    tex = "\n".join(open(path, encoding="utf-8").read() for path in args.paper)
     report = trace(tex, args.results)
 
     mapped = [r for r in report if r["mapped"]]

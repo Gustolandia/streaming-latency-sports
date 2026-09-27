@@ -123,7 +123,9 @@ class TestR1TheFullThreatsSayWhatTheMainTextSays:
 
     def test_the_old_pointers_now_name_supplement_sections(self, supplement):
         s = _between(supplement, "Threats to validity (full)", "Limitations (full)")
-        assert "S18.1 addresses it" in s and "threshold sweep of S18" in s
+        # "S18.1 addresses it with a worst-case bound" until 27 September: the worst case is
+        # E1's Table tab:selection, and S18.1 recomputes the powered campaigns' selection.
+        assert "S18.1 computes the selection" in s and "threshold sweep of S18" in s
         assert "reported in S1.5" in s and "S3.1 withdraws that sweep" in s
 
     def test_the_pointer_gate_passes(self, supplement):

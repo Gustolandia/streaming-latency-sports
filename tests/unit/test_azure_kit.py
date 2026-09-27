@@ -1400,7 +1400,7 @@ def test_what_makes_it_survive_the_reboot_is_on_the_machine_itself():
     assert "@reboot" in code and "crontab -" in code
     assert "queue.sh run" in code.split("@reboot", 1)[1]
     started = code.split("  start)", 1)[1].split(";;", 1)[0]
-    assert started.index("crontab -") < started.index("setsid nohup"), \
+    assert started.index("crontab -") < started.index("setsid -w nohup"), \
         "the line is in before the loop starts, so a reboot in between is still caught"
     stopped = code.split("  stop)", 1)[1].split(";;", 1)[0]
     assert "crontab -l" in stopped and "grep -v" in stopped, "stopping takes the line out again"
@@ -1410,6 +1410,103 @@ def test_only_one_loop_runs_at_a_time():
     """Two loops on one pair would boot two kernels and place two campaigns on whichever won."""
     code = QUEUE.read_text(encoding="utf-8")
     assert code.count("flock -n") == 2, "the @reboot line and the loop it starts"
+
+
+def test_the_lock_stays_with_flock_and_is_never_handed_to_a_campaign():
+    """On 26 September both x86 loops were stopped and started again while M0 and A3 ran, and
+    neither new loop ran: each campaign still held the lock its loop had handed it, since flock
+    passes its lock to the command it runs and so to everything that command starts."""
+    code = QUEUE.read_text(encoding="utf-8")
+    started = code.split("  start)", 1)[1].split(";;", 1)[0]
+    assert started.count("flock -n -o") == 2, "the @reboot line and the loop it starts"
+
+
+def test_start_looks_at_the_process_it_started_not_at_command_lines():
+    """A search for a command line that read like a loop's found the text of the command that had
+    called start, and said "running" over two pairs that had no loop."""
+    code = QUEUE.read_text(encoding="utf-8")
+    started = code.split("  start)", 1)[1].split(";;", 1)[0]
+    assert "started=$!" in started and 'kill -0 "$started"' in started
+    assert "ps -eo" not in started
+    assert "setsid -w" in started, "so the process it looks at lives as long as the loop does"
+
+
+def _start_the_queue(root, tmp_path, caller=""):
+    """`queue.sh start` in a scratch checkout, with crontab stood in for so that nothing is
+    installed on the machine running the tests."""
+    stubs = tmp_path / "bin"
+    stubs.mkdir(exist_ok=True)
+    crontab = stubs / "crontab"
+    #: `crontab -l` has no table to print here; only `crontab -` reads what it is given.
+    crontab.write_text('#!/bin/sh\n[ "$1" = -l ] && exit 1\ncat > /dev/null\n', encoding="utf-8")
+    crontab.chmod(0o755)
+    env = dict(os.environ, PATH="%s:%s" % (stubs, os.environ["PATH"]))
+    #: Not the last command, or bash would become it and the caller's text would be gone: the
+    #: command of 26 September went on to read the log after it.
+    return subprocess.run(["bash", "-c", "%s bash cloud/azure/queue.sh start; exit $?" % caller],
+                          cwd=root, env=env, stdin=subprocess.DEVNULL, capture_output=True,
+                          text=True, timeout=60)
+
+
+@needs_bash
+def test_a_loop_refused_by_a_held_lock_is_reported_whatever_its_caller_says(tmp_path):
+    """26 September again: the lock is held by something the old loop started, and the command
+    that calls start names the loop in its own text, as the one that night did."""
+    root = _scratch_checkout(tmp_path)
+    lock = root / "runs" / "azure" / "queue" / "lock"
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    lock.touch()
+    holder = subprocess.Popen(["flock", str(lock), "sleep", "30"])
+    try:
+        done = _start_the_queue(root, tmp_path,
+                                caller=': "pgrep -f [.]queue.running.sh run";')
+    finally:
+        holder.kill()
+        holder.wait()
+    assert done.returncode == 1, done.stdout + done.stderr
+    assert "FAILED to start" in done.stderr and "running" not in done.stdout
+    assert "fuser -v" in done.stderr
+
+
+def _lock_holders(lock):
+    """Every process with the lock file open, read from /proc rather than from a tool that may
+    not be installed."""
+    target, found = os.path.realpath(lock), []
+    for pid in (p for p in os.listdir("/proc") if p.isdigit()):
+        try:
+            links = [os.readlink("/proc/%s/fd/%s" % (pid, fd))
+                     for fd in os.listdir("/proc/%s/fd" % pid)]
+        except OSError:
+            continue
+        if target in links:
+            found.append(int(pid))
+    return found
+
+
+@needs_bash
+def test_a_loop_that_starts_is_reported_by_its_process_and_holds_the_lock_alone(tmp_path):
+    """The other way round, with a job that waits on work already on the pair, so the loop lives
+    past the check. Whatever the loop starts must not come to hold the lock."""
+    root = _scratch_checkout(tmp_path)
+    queue = root / "runs" / "azure" / "queue"
+    queue.mkdir(parents=True, exist_ok=True)
+    (queue / "jobs.txt").write_text("boot=none note=wait\n", encoding="utf-8")
+    work = subprocess.Popen(["bash", "-c", 'exec -a "bash cloud/azure/campaign.sh x" sleep 60'])
+    holders = []
+    try:
+        done = _start_the_queue(root, tmp_path)
+        assert done.returncode == 0, done.stdout + done.stderr
+        loop = int(re.search(r"running \(process (\d+)\)", done.stdout).group(1))
+        holders = _lock_holders(queue / "lock")
+        assert len(holders) == 1, "the loop and what it starts hold nothing: %s" % holders
+        with open("/proc/%d/comm" % holders[0], encoding="utf-8") as fh:
+            assert fh.read().strip() == "flock"
+        os.kill(loop, 0)
+    finally:
+        for pid in holders:
+            os.killpg(pid, 15)
+        work.kill()
+        work.wait()
 
 
 def test_a_job_that_needs_no_reboot_does_not_take_one():

@@ -463,22 +463,31 @@ case "$CMD" in
     rm -f "$STOPFILE"
     [ -s "$AT" ] || echo 1 > "$AT"
     [ -s "$PHASE" ] || echo prep > "$PHASE"
-    line="@reboot sleep 60 && cd $PWD && flock -n $PWD/$LOCK bash cloud/azure/queue.sh run >> $PWD/$LOG 2>&1"
+    #: -o: the lock stays with flock and is not handed on to the loop, so nothing the loop starts
+    #: holds it. Handed on, it outlived the loop. On 26 September both x86 loops were stopped and
+    #: started again while M0 and A3 ran, to restart the twelve-hour count, and the new loops were
+    #: refused by the campaigns' own processes, which held the lock their loop had passed them.
+    #: Both pairs went on without a list until one finished its campaign and stood idle.
+    line="@reboot sleep 60 && cd $PWD && flock -n -o $PWD/$LOCK bash cloud/azure/queue.sh run >> $PWD/$LOG 2>&1"
     ( crontab -l 2>/dev/null | grep -v "queue.sh run"; echo "$line" ) | crontab -
     log "the @reboot line is in; starting the loop" | tee -a "$LOG"
-    setsid nohup flock -n "$LOCK" bash cloud/azure/queue.sh run >> "$LOG" 2>&1 < /dev/null &
+    setsid -w nohup flock -n -o "$LOCK" bash cloud/azure/queue.sh run >> "$LOG" 2>&1 < /dev/null &
+    started=$!
     sleep 4
-    # Asked for, then checked. A lock left behind by a loop that was killed is held by nothing and
-    # still refuses the next one, and flock says so by exiting quietly -- so this said "running"
-    # over a queue that was not, and a pair sat idle through its whole tools block on 22 September
-    # before the watch stopped it. Whether it is running is a thing to look at, not to assume.
-    # The loop runs from a copy of this file, so what to look for is the copy's name too.
-    if ps -eo args --no-headers | awk '/queue[^ ]*\.sh run/ && !/awk/ { found = 1 } END { exit !found }'
-    then
-      echo "running; watch it with: tail -f $LOG"
+    # Asked for, then checked. A lock that is held refuses the next loop, and flock says so by
+    # exiting quietly -- so this once said "running" over a queue that was not, and a pair sat
+    # idle through its whole tools block on 22 September before the watch stopped it. Whether it
+    # is running is a thing to look at, not to assume.
+    #
+    # And it is looked at on the process this started, not by searching for a command line that
+    # reads like a loop's. On 26 September that search found the text of the command that had
+    # called start, which named the loop, and said "running" over two pairs that had none.
+    if kill -0 "$started" 2>/dev/null; then
+      echo "running (process $started); watch it with: tail -f $LOG"
     else
       echo "FAILED to start: nothing is running the list." >&2
-      echo "  Most likely $LOCK is held by a loop that has since died; remove it and try again." >&2
+      echo "  $LOCK is held, by a loop still running or by something it started;" >&2
+      echo "  see which with: fuser -v $LOCK" >&2
       exit 1
     fi
     ;;

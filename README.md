@@ -793,6 +793,36 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing   # with coverag
 python -m pytest tests/ --cov=scripts --cov-report=html  # HTML report → htmlcov/
 ```
 
+### On Windows and on Linux, with nothing skipped
+
+Since 27 September 2026 every test runs on both platforms, in CI on every push (Ubuntu with
+Python 3.9 and 3.11, Windows with 3.11), and **nothing in the suite may skip**: a skip fails,
+with its own reason (`tests/no_skips.py`). Until then the tests of the kit's shell scripts
+skipped on Windows and a dozen paper gates skipped wherever the paper had not been built by
+hand, so a failure could live on one platform unseen from the other.
+
+What a machine needs for the whole suite to run there:
+
+- **A TeX distribution** with `pdflatex` and `bibtex` (MiKTeX or TeX Live). The session builds
+  the paper and the supplement itself when what a build leaves (`.aux`, `.bbl`, `.blg`, `.log`)
+  is missing or older than its sources, in a scratch folder, and never touches the committed
+  PDFs (`tests/paper_build.py`).
+- **xpdf's `pdftotext` and `pdffonts` 4.06**, which the rendered-page gates read with.
+- **On Windows, Git for Windows**, whose bash runs the kit's shell scripts, and **WSL with
+  `Ubuntu-22.04`**, the drivers' own release, for the two tests of what the Linux kernel does
+  with the queue's lock (`tests/posix_shell.py`).
+
+Two checks read what only the author's machine holds -- the reference corpus, other people's
+papers, which git ignores -- and are left out of the default run rather than skipped. Run
+them there before a submission:
+
+```bash
+python -m pytest tests/ -m author_machine
+```
+
+*Plain words:* a *skip* is a test that reports neither pass nor fail; *WSL* is Windows' own
+Linux; *Git Bash* is the Linux-style shell that comes with Git for Windows.
+
 ### Per-script coverage (June 2026 snapshot; later scripts meet the same gate)
 
 | Script | Coverage | Script | Coverage |

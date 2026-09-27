@@ -391,6 +391,84 @@ class TestRetentionBound:
         prose = re.sub(r"(?<!\\)%.*", "", main_tex)
         assert "exceeds one half" not in " ".join(prose.split()), "the bound is supplement-only"
 
+    def test_the_powered_campaigns_retention_is_stated_beside_the_bound(self, supp):
+        """The one-half bound is E1's, and the equivalence the main text reports is not E1's.
+
+        Until 27 September S19 defended the equivalence with E1's worst case alone, tab:power
+        said the campaigns after E1 retain every run, and S26 offered E1's table as the bound
+        on the main text's equivalence. The gate keeps 25.0-53.3% of the powered campaigns'
+        Redis runs, under one half in five of six cells; what bounds them is S18.1's
+        recomputation with the condemned runs restored. Every number here is read from the two
+        gate-sensitivity files.
+        """
+        cells = (_rows("transport_rt", "gate_sensitivity.csv")
+                 + _rows("transport_rt2", "gate_sensitivity.csv"))
+        retention = [float(c["redis_retention_pct"]) for c in cells]
+        span = "$%.1f$--$%.1f\\%%$" % (min(retention), max(retention))
+        words = {1: "one", 5: "five", 6: "six"}
+        under = sum(1 for v in retention if v < 50)
+        flippable = [c for c in cells if c["flip_v_ms"]]
+        (fixed,) = [c for c in cells if not c["flip_v_ms"]]
+        assert float(fixed["redis_retention_pct"]) > 50, \
+            "only a cell that keeps more than half its Redis runs is beyond any flip"
+        flips = [float(c["flip_v_ms"]) for c in flippable]
+        medians = [float(c["condemned_redis_median_ms"]) for c in flippable]
+        assert all(4.5 < f / m < 6 for f, m in zip(flips, medians)), "about five times"
+        moved = max(abs(float(c["hl_gate_delta_ms"])) for c in cells)
+        start = supp.index(r"\paragraph{Internal validity: the audit selects}")
+        threat = " ".join(supp[start:supp.index(r"\paragraph", start + 1)].split())
+        assert "keeps %s of their \\redis{} runs" % span in threat
+        assert "under one half in %s of the %s cells" % (words[under], words[len(cells)]) \
+            in threat
+        assert "by at most $%.3f$~ms" % moved in threat
+        assert "every one of them at $%.2f$--$%.2f$~ms" % (min(flips), max(flips)) in threat
+        assert "the $%.2f$--$%.2f$~ms at which their own medians center" % (
+            min(medians), max(medians)) in threat
+        assert "In the %s cell no value reverses it." % {6: "sixth"}[len(cells)] in threat
+        lbl = supp.index(r"\label{tab:power}")
+        caption = " ".join(supp[supp.rindex(r"\begin{table}", 0, lbl):lbl].split())
+        assert "retain every run" not in caption, "the powered campaigns do not"
+        assert "keep %s of their \\redis{} runs" % span in caption
+        assert r"Table~\ref{tab:selection}" in caption and r"Table~\ref{tab:gatesens}" in caption
+        tables = " ".join(supp[supp.index(r"\section{S26."):].split())
+        assert "into E1's broker equivalence" in tables
+        assert "rests on the powered campaigns instead, and S18.1 bounds the selection there" \
+            in tables
+
+    def test_the_power_table_says_which_claims_left_the_main_text(self, main_tex, supp):
+        """tab:power said every claim it names is made in the main text; four are not now.
+
+        H1's effect-size rule, H3's stamping asymmetry, H4's process count and the start-up
+        withdrawal left the main text over the TC and later rounds, and E1 with them. The
+        caption names them, each is checked absent by words only it uses, and the claims the
+        caption leaves in the main text are checked present the same way.
+        """
+        lbl = supp.index(r"\label{tab:power}")
+        caption = " ".join(supp[supp.rindex(r"\begin{table}", 0, lbl):lbl].split())
+        assert "Every claim named here is made in the main text" not in caption
+        assert ("H1, H3, H4 and the start-up withdrawal are claimed only in this supplement "
+                "now, and E1 is historical") in caption
+        prose = " ".join(re.sub(r"(?<!\\)%.*", "", main_tex).split()).lower()
+        for gone in ("effect size", "netem", "inline", "process count", "start-up", "e1 "):
+            assert gone not in prose, f"{gone!r} is in the main text again; revisit tab:power"
+        for kept in ("the audit rejected", "knee sweep", "real-time priority", "geometr",
+                     "payload padding", "kernel trace", "tost"):
+            assert kept in prose, f"{kept!r} left the main text; revisit tab:power"
+
+    def test_the_h3_row_counts_both_campaigns_alike(self, supp):
+        """tab:power's H3 row read "10, then 15 per configuration": E-C3's ten runs per cell
+        beside E-C4's fifteen replicates, which are thirty runs per cell. It prints the two
+        macros Table tab:h3 prints now, so the row and the table cannot count differently."""
+        lbl = supp.index(r"\label{tab:power}")
+        power = supp[lbl:supp.index(r"\end{table}", lbl)]
+        (row,) = [line for line in power.splitlines() if line.startswith("H3 asymmetry")]
+        assert r"& $\hThreeRuns$, then $\hThreeRepRuns$ per cell" in row
+        h3 = supp[supp.index(r"\label{tab:h3}"):]
+        assert r"\emph{E-C3, $\hThreeRuns$ runs per cell}" in h3
+        assert r"\emph{E-C4, replication, $\hThreeRepRuns$ runs per cell}" in h3
+        macros = dict(_emitted_macros())
+        assert (macros["hThreeRuns"], macros["hThreeRepRuns"]) == ("10", "30")
+
 
 class TestAckBatching:
     """Section 7.3's intervention must match the read-loop CSV."""
@@ -1151,21 +1229,22 @@ class TestExternalHarnessEvidence:
             "the paper must own the zero that reached a draft from a run that never happened")
         assert "reached a draft" in low or "artifact of the tracer" in low
 
-    def test_the_result_matches_its_artefact(self, tex):
-        """Guards the count AND the evidence that the run happened.
+    def test_the_single_loaded_run_is_the_record_and_is_not_quoted(self, tex):
+        """The loaded run stays as the record of a run that did execute; its count is not quoted.
 
-        The earlier version of this test asserted the count was ZERO, which was true of a run
-        that never executed. Asserting a number is not enough when the number can be produced
-        by the instrument failing, so valid and pub_lines are checked too: a benchmark that
-        emitted no latency output must never have its count quoted.
+        This pinned the run's 6,000 discards at 88% load, with the evidence that the run
+        happened, while the paper quoted them. The withdrawn reading is stated over the whole
+        Kafka-driver corpus now (S1.3), so the count appears nowhere, and a pin on it guarded
+        nothing (27 September). What stays true is that the run happened, and that its count
+        may come back only with a test that reads it.
         """
-        rows = _rows("external", "omb_loaded_result.csv")
-        assert rows, "the OMB run artefact must exist"
-        r = rows[0]
-        assert r["valid"] == "1", "a run that produced no output must not be quoted"
+        (r,) = _rows("external", "omb_loaded_result.csv")
+        assert r["valid"] == "1", "the record must be of a run that produced output"
         assert int(r["pub_lines"]) > 0, "the benchmark must have produced latency output"
-        assert int(r["discarded_nonpositive"]) == 6000
-        assert r["load_pct"] == "88", "an idle run would not have found this"
+        count = int(r["discarded_nonpositive"])
+        prose = " ".join(re.sub(r"(?<!\\)%.*", "", tex).split())
+        for shown in ("%d" % count, "{:,}".format(count), "{:,}".format(count).replace(",", "{,}")):
+            assert shown not in prose, f"the single run's count ({shown}) is quoted again; pin it"
 
     def test_the_commit_is_named(self, tex):
         section = tex  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
@@ -1469,9 +1548,14 @@ class TestNarrativeArc:
         assert "discovered by a defect they caused" in " ".join(table.split()), \
             "the table must say what the mark means"
         learned = [line for line in table.splitlines() if r"\emph{Learned.}" in line]
-        for setting in ("max-inflight", "ack-batch"):
+        for setting in ("max-inflight", "ack-batch", "speed-up"):
             assert any(setting in line for line in learned), \
                 f"{setting} was discovered through a defect and must be marked as such"
+        # The prose said "Two of these" beside three marked rows until 27 September.
+        prose = " ".join(supp[supp.rindex(r"\section", 0, j):j].split())
+        count = {2: "Two", 3: "Three", 4: "Four"}[len(learned)]
+        assert "%s of these were not chosen but \\emph{learned}" % count in prose, \
+            "the prose must count the rows the table marks as learned"
 
 
 class TestIndependentReplications:
@@ -1580,7 +1664,11 @@ class TestMixtureStructure:
         """The reproduction boundary is supplement S8.1 now, beside the tail recovery it tests.
 
         TC cut the recovered-tail comparison from the main text's mixture subsection. S8.1
-        states it with its count and names the rho = 1 degeneracy that bounds it.
+        states it with its count and names the rho = 1 degeneracy. Until 27 September it also
+        said every failure was at rho = 1, while five of the seventeen below saturation fail.
+        Each load level's count is now read from the artefact, with the knee's ratio range and
+        the one failure that runs the other way, so the paragraph cannot put the boundary where
+        the rows do not. The utilizations are named as Table tab:mixture prints them.
         """
         rows = _rows("model", "fdelta_reproduction.csv")
         below = [r for r in rows if float(r["rho_new"]) < 0.96]
@@ -1592,6 +1680,32 @@ class TestMixtureStructure:
         unit = " ".join(supp[start:supp.index("\n\\section", start)].split())
         assert "$%d$ of $%d$ matched quantiles overlap" % (overlap, len(below)) in unit
         assert "degenerate" in unit.lower(), "the rho=1 degeneracy must be named"
+        assert "failures are all at" not in unit, "five of the failures sit below saturation"
+        lbl = supp.index(r"\label{tab:mixture}")
+        body = supp[supp.index(r"\midrule", lbl):supp.index(r"\bottomrule", lbl)]
+        printed = [line.split("&")[0].strip() for line in body.splitlines() if "&" in line]
+        levels = {}
+        for r in below:
+            shown = min(printed, key=lambda p: abs(float(p) - float(r["rho_new"])))
+            levels.setdefault(shown, []).append(r)
+        clean = sorted((p for p, cell in levels.items()
+                        if all(r["ci_overlap"] == "True" for r in cell)), key=float)
+        assert "every one of them at $\\rho = %s$, $%s$ and $%s$" % tuple(clean) in unit
+        words = {1: "one", 3: "three", 4: "four"}
+        for p in sorted(set(levels) - set(clean), key=float):
+            failed = sum(1 for r in levels[p] if r["ci_overlap"] == "False")
+            assert "%s of %s at $\\rho = %s$" % (words[failed], words[len(levels[p])], p) in unit
+        knee = [r for r in levels["0.628"] if r["ci_overlap"] == "False"]
+        ratios = [float(r["tail_new"]) / float(r["tail_old"]) for r in knee]
+        assert max(float(r["threshold_ms"]) for r in knee) == 1.0
+        assert "$%.1f$ to $%.1f$ times the earlier one's up to $1$~ms" % (
+            min(ratios), max(ratios)) in unit
+        (odd,) = [r for r in levels["0.753"] if r["ci_overlap"] == "False"]
+        assert float(odd["tail_new"]) / float(odd["tail_old"]) == pytest.approx(0.2, abs=0.005)
+        assert "a fifth of the earlier one's at $%g$~ms" % float(odd["threshold_ms"]) in unit
+        top = [r for r in rows if float(r["rho_new"]) >= 0.96]
+        assert "where $%d$ of $%d$ fail" % (
+            sum(1 for r in top if r["ci_overlap"] == "False"), len(top)) in unit
 
 
 class TestClusteringConstructCheck:
@@ -1722,8 +1836,8 @@ class TestRateProvenanceIsDisclosed:
         """A disclosure that does not bound its own scope is not useful to a reader.
 
         The bound moved with the episode to supplement S4, where a paragraph states it. S4.2
-        repeats it in summary, so the pin reads that paragraph rather than the section: read
-        whole, the section passed with either copy deleted.
+        repeated it in summary until 27 September, so the pin reads that paragraph rather than
+        the section: read whole, the section passed with either copy deleted.
         """
         head = re.search(r"\\section\{S\d+\. Our own replay-rate record did not survive "
                          r"the audit\}", supp)
@@ -1735,6 +1849,23 @@ class TestRateProvenanceIsDisclosed:
         low = " ".join(para.split()).lower()
         assert "the audit is unaffected" in low
         assert "external validity is restored by the recovery" in low
+
+    def test_the_episode_points_where_its_claims_live_now(self, main_tex, supp):
+        """S4 called E1 the corpus of the main text's broker section and put a withdrawal in the
+        main text's audit section. The main text names neither now: its broker comparison rests
+        on the powered campaigns, run at a verified rate, and the withdrawal is S3's. S4.2 had
+        the second pointer right and pointed at S4 from inside S4 (27 September)."""
+        prose = " ".join(re.sub(r"(?<!\\)%.*", "", main_tex).split())
+        assert "E1" not in prose and "withdr" not in prose.lower()
+        head = re.search(r"\\section\{S\d+\. Our own replay-rate record did not survive "
+                         r"the audit\}", supp)
+        section = " ".join(supp[head.start():supp.index("\n\\section", head.end())].split())
+        assert r"E1 corpus of Section~\mainBrokers{}" not in section
+        assert r"withdrawal in Section~\mainAudit{}" not in section
+        assert "The withdrawal of S3 is unaffected by construction" in section
+        assert (r"broker comparison of Section~\mainBrokers{}, which rests on the powered "
+                "campaigns and not on E1") in section
+        assert "E1's own external validity is restored by the recovery above" in section
 
     def test_the_rate_is_recovered_from_the_diagnostic_cell(self, tex):
         """The 52.34 ms cell is what identifies the rate, so it must survive a data change.

@@ -36,6 +36,10 @@ points at a subsection titled ``A framework that does not have the problem'', an
 knows they are about the same thing. Where a genuine pointer shares no vocabulary with its
 target, `LOOSE` records it with a reason rather than the rule being softened --- the same
 bargain the ledger sweep makes.
+
+Two more came from summaries that moved into the section they summarized (27 September): no
+heading may be followed directly by another, and no section's prose may name the section it
+is in.
 """
 import re
 from collections import defaultdict
@@ -144,6 +148,31 @@ def _body(supp, pos):
     nxt = re.search(r"\\(?:sub)?section\{", supp[pos + 10:])
     end = pos + 10 + nxt.start() if nxt else len(supp)
     return supp[pos:end]
+
+
+def _empty_headings(tex):
+    """Titles of headings followed by another heading, with no prose between them."""
+    prose = re.sub(r"(?<!\\)%.*", "", tex)
+    return re.findall(r"\\(?:sub)*section\*?\{([^}]*)\}\s*(?:\\label\{[^}]*\}\s*)?"
+                      r"(?=\\(?:sub)*section)", prose)
+
+
+def _self_pointers(tex):
+    """[(section, context)] wherever a section's prose names the section it is in.
+
+    Headings are removed first, and a subsection's number (S4.1 inside S4) points somewhere
+    else, so neither counts.
+    """
+    prose = re.sub(r"(?<!\\)%.*", "", tex)
+    heads = list(re.finditer(r"\\section\{(S\d+)\.", prose))
+    out = []
+    for i, m in enumerate(heads):
+        end = heads[i + 1].start() if i + 1 < len(heads) else len(prose)
+        body = re.sub(r"\\(?:sub)*section\*?\{[^}]*\}", "", prose[m.end():end])
+        for hit in re.finditer(r"(?<![\w.])%s(?!\d)(?!\.\d)" % m.group(1), body):
+            out.append((m.group(1),
+                        " ".join(body[max(0, hit.start() - 60):hit.end()].split())))
+    return out
 
 
 class TestEverySubsectionIsNumbered:
@@ -260,8 +289,43 @@ class TestAPointerLandsOnItsSubject:
         assert _words(claim) & _words(right), "the right target must share something"
 
 
+class TestNoUnitIsEmptyOrPointsAtItself:
+    """Two defects a summary leaves behind when it moves into the section it summarized.
+
+    The main text's fourteen-line account of the replay-rate episode moved into S4 as S4.2,
+    under an S4.1 heading with nothing beneath it, and still ended by sending the reader to
+    "supplementary material S4" -- from inside S4. The same pointer closed paragraphs in S10,
+    S22, S23, S24 and S27 (found 27 September); in four of them it ended a second copy of what
+    the section already said in full. Neither defect stops LaTeX, and the first printed in the
+    contents list as a heading with nothing under it.
+    """
+
+    def test_no_heading_is_empty(self, supp):
+        assert not _empty_headings(supp), _empty_headings(supp)
+
+    def test_no_section_points_at_itself(self, supp):
+        assert not _self_pointers(supp), _self_pointers(supp)
+
+
 class TestTheseChecksCanFail:
     """Every rule above is asserted to notice its own defect, on a fixture built to carry it."""
+
+    #: One of each defect the two rules of 27 September look for, and what they must allow:
+    #: a pointer to a subsection of the same section, and one to a different section.
+    MOVED = "\n".join([
+        r"\section{S4. An episode}", "The full record, then the co-location note in S4.1.",
+        r"\subsection{S4.1. Empty}",
+        r"\subsection{S4.2. A summary}", "The full episode is supplementary material S4.",
+        r"\section{S40. Another}", r"\label{sec:x}", "As S4 says, and as S40 says too.",
+    ])
+
+    def test_the_empty_heading_rule_fires(self):
+        assert _empty_headings(self.MOVED) == ["S4.1. Empty"]
+
+    def test_the_self_pointer_rule_fires(self):
+        found = _self_pointers(self.MOVED)
+        assert [section for section, _ in found] == ["S4", "S40"]
+        assert found[0][1].endswith("is supplementary material S4")
 
     # Synthetic numbers: this fixture is a broken document of its own, not the supplement,
     # so its S9/S7 have nothing to do with any real section (the v4 renumbering sweep once

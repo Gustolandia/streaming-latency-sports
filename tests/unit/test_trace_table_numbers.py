@@ -101,6 +101,26 @@ class TestUnmapped:
             assert label.startswith("tab:"), f"{label} is not a table label"
             assert paths and all(p.endswith(".csv") for p in paths), f"{label}: bad sources"
 
+    def test_every_declared_label_is_a_table_the_documents_print(self):
+        """Two keys named tables that had been relabelled -- tab:h2 is tab:h2load, and
+        tab:retention is tab:selection -- so both tables went untraced and neither was reported
+        UNMAPPED (27 September). A key that matches no table is a check that never runs."""
+        repo = SCRIPTS_DIR.parent
+        labels = {lab for path in ("paper.tex", "supplement.tex")
+                  for lab, _ in table_blocks((repo / path).read_text(encoding="utf-8"))}
+        assert sorted(set(SOURCES) - labels) == []
+        for label, paths in SOURCES.items():
+            for rel in paths:
+                assert (repo / "docs" / "results" / rel).is_file(), f"{label}: {rel} is gone"
+
+    def test_it_reads_every_document_it_is_given(self, tmp_path, capsys):
+        """Most tables are in the supplement, so the default reads it beside the main text."""
+        main_text, supplement = tmp_path / "p.tex", tmp_path / "s.tex"
+        main_text.write_text("no tables here", encoding="utf-8")
+        supplement.write_text(TABLE, encoding="utf-8")
+        main(["--paper", str(main_text), str(supplement), "--results", str(tmp_path)])
+        assert "UNMAPPED (not checked, not passing): tab:demo" in capsys.readouterr().out
+
 
 class TestCLI:
     def test_it_never_gates_the_build(self, tmp_path, capsys):

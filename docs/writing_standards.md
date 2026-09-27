@@ -987,6 +987,36 @@ typo for a name ("open Compute Project", "dTrace"). A note that opens with a nam
 `note = {{DTrace} breakdown ...}`. Gated on the rendered `.bbl` in
 `tests/unit/test_bibliography_note_case.py`.
 
+### B24. A summary that moves stops pointing where it went — GATED
+
+The main text's account of the replay-rate episode moved into S4 as S4.2, under an S4.1 heading
+with nothing beneath it, and still ended "is supplementary material S4". Five more sections
+carried the same pointer to themselves (S10, S22, S23, S24, S27); four of them had closed a
+second, shorter copy of what the section already said in full (27 September).
+
+- **A summary that lands beside its full version is deleted,** after checking it holds nothing
+  the full version lacks. What it held is moved, not lost.
+- **A pointer that lands in its own section is rewritten** to "above", to a subsection, or out.
+- **No heading stands directly on another.** An empty heading prints in the contents list.
+
+Gated in `tests/unit/test_supplement_subsections.py`.
+
+### B25. A claim about where something fails is counted from every row — GATED
+
+S8.1 said the tail recovery's failures were all at $\rho = 1$; five of the seventeen below
+saturation failed, three of them at the knee. S21 said "two" settings were learned beside a table
+marking three. tab:power said the campaigns after E1 retain every run, and the powered campaigns
+keep a quarter to a half of their Redis runs. Each sentence was true of the version it was
+written against (27 September).
+
+- **Count the rows, then write the sentence.** A location ("all at", "only where") and a count
+  ("two of these") are claims about a table and are pinned to it.
+- **A retention statement names its corpus.** A bound that holds for one corpus is not quoted for
+  another; the powered campaigns are bounded by recomputation (S18.1), E1 by its worst case.
+
+Gated in `tests/unit/test_paper_consistency.py` (the reproduction boundary, the learned count, the
+powered retention).
+
 ### B13. The index terms are content, and get read like content
 
 They are the paper's retrieval surface, not a subject declaration. Three rounds recorded

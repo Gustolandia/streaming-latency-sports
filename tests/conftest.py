@@ -85,6 +85,7 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "requires_docker: marks tests requiring Docker services")
     config.addinivalue_line("markers", "requires_kafka: marks tests requiring Kafka")
     config.addinivalue_line("markers", "requires_redis: marks tests requiring Redis")
+    config.addinivalue_line("markers", "shell: runs a kit shell script, in Git's bash on Windows")
 
 
 def pytest_collection_modifyitems(config, items):

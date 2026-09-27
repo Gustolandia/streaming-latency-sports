@@ -19,7 +19,9 @@ KIT = REPO / "cloud" / "azure"
 SHELL = sorted(KIT.glob("*.sh"))
 
 sys.path.insert(0, str(REPO / "scripts"))
+sys.path.insert(0, str(REPO / "tests"))
 import testbed_watch  # noqa: E402
+from posix_shell import bash, linux_bash, tool  # noqa: E402
 
 
 def test_the_kit_has_the_scripts_the_guide_describes():
@@ -55,11 +57,9 @@ def test_every_script_stops_on_errors_or_says_why_it_does_not(path):
     assert "set -euo pipefail" in text or ("campaigns/common.sh" in text and "set +e" in text)
 
 
-@pytest.mark.skipif(sys.platform == "win32" or not shutil.which("bash"),
-                    reason="bash -n needs a POSIX bash")
 @pytest.mark.parametrize("path", SHELL, ids=lambda p: p.name)
 def test_bash_parses_it(path):
-    assert subprocess.run(["bash", "-n", str(path)]).returncode == 0
+    assert bash(["-n", str(path)]).returncode == 0
 
 
 def test_the_pilot_uses_the_hook_the_trial_runners_read():
@@ -1046,7 +1046,7 @@ def _queue_call(tmp_path, call):
     """
     root = _scratch_checkout(tmp_path)
     script = "cd '%s' && . cloud/azure/queue.sh >/dev/null 2>&1; %s" % (root.as_posix(), call)
-    done = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+    done = bash(["-c", script], capture_output=True, text=True)
     return done.stdout.strip()
 
 
@@ -1074,8 +1074,9 @@ def _scratch_checkout(tmp_path):
     return root
 
 
-needs_bash = pytest.mark.skipif(sys.platform == "win32" or not shutil.which("bash"),
-                                reason="these run the script itself")
+#: These run the scripts themselves, in Git's bash on Windows (tests/posix_shell.py). They were
+#: skipped there until 27 September; nothing is skipped now.
+needs_bash = pytest.mark.shell
 
 
 @needs_bash
@@ -1117,9 +1118,8 @@ def test_the_queue_reaches_as_far_as_a_session_driven_from_outside_does(tmp_path
     outside = outside.split("reach_ms () {", 1)[1].split("\n}", 1)[0]
     for boot, hz in (("hz1000", "1000"), ("hz250", "250"), ("hz100", "100")):
         mine = _queue_call(tmp_path, "reach_ms %s" % boot)
-        theirs = subprocess.run(
-            ["bash", "-c", "reach_ms () {%s\n}\nreach_ms %s" % (outside, hz)],
-            capture_output=True, text=True).stdout.strip()
+        theirs = bash(["-c", "reach_ms () {%s\n}\nreach_ms %s" % (outside, hz)],
+                      capture_output=True, text=True).stdout.strip()
         assert mine == theirs, boot
     assert _queue_call(tmp_path, "reach_ms hz1000") == "8"
     assert _queue_call(tmp_path, "reach_ms hz100") == "32"
@@ -1129,10 +1129,9 @@ def test_the_queue_reaches_as_far_as_a_session_driven_from_outside_does(tmp_path
 def test_a_list_is_added_to_and_counted_from_the_disk(tmp_path):
     root = _scratch_checkout(tmp_path)
     for spec in ("boot=hz100 block=A2", "boot=cpu2 block=A5", "boot=none block=A4"):
-        subprocess.run(["bash", "cloud/azure/queue.sh", "add", spec], cwd=root, check=True,
-                       capture_output=True)
-    shown = subprocess.run(["bash", "cloud/azure/queue.sh", "show"], cwd=root,
-                           capture_output=True, text=True).stdout
+        bash(["cloud/azure/queue.sh", "add", spec], cwd=root, check=True, capture_output=True)
+    shown = bash(["cloud/azure/queue.sh", "show"], cwd=root, capture_output=True,
+                 text=True).stdout
     assert "jobs: 3, on job 1, phase prep" in shown
     assert "boot=cpu2 block=A5" in shown
 
@@ -1173,9 +1172,8 @@ def _resumable(tmp_path, release, statuses=("done", "queued"), stop=False):
 
 
 def _resume(root, folder):
-    return subprocess.run(["bash", "cloud/azure/resume.sh", folder], cwd=root,
-                          capture_output=True, text=True,
-                          env=dict(os.environ, HOME=str(root.parent)))
+    return bash(["cloud/azure/resume.sh", folder], cwd=root, capture_output=True, text=True,
+                extra_env={"HOME": str(root.parent)})
 
 
 @needs_bash
@@ -1254,19 +1252,15 @@ def test_the_loop_runs_from_a_copy_so_a_pull_cannot_rewrite_it_underneath():
     assert code.index("RUNNING_NAME=") < code.index("  run)"), "set before it is used"
 
 
-@needs_bash
-def test_the_check_that_the_loop_is_alive_knows_the_copy_by_name(tmp_path):
+def test_the_check_that_the_loop_is_alive_needs_no_name_for_it():
     """The check exists because a lock left by a killed loop made `start` say "running" over a
-    queue that was not. Renaming what it runs from must not blind it again."""
+    queue that was not. It once found the loop by the name of the copy the loop runs from, where a
+    renamed copy would have blinded it -- and on 26 September the text of a caller naming that copy
+    fooled it. It now follows the process it started, which has no name to get wrong."""
     code = QUEUE.read_text(encoding="utf-8")
-    pattern = code.split("if ps -eo args --no-headers | awk '", 1)[1].split("'", 1)[0]
-    for line in ("bash cloud/azure/queue.sh run", "bash cloud/azure/.queue.running.sh run"):
-        done = subprocess.run(["bash", "-c", "echo '%s' | awk '%s'" % (line, pattern)],
-                              capture_output=True, text=True)
-        assert done.returncode == 0, "%r is the loop and the check missed it" % line
-    done = subprocess.run(["bash", "-c", "echo 'bash cloud/azure/queue.sh show' | awk '%s'"
-                           % pattern], capture_output=True, text=True)
-    assert done.returncode != 0, "only the loop counts, not every call of the script"
+    check = code.split("  start)", 1)[1].split(";;", 1)[0].split("sleep 4", 1)[1]
+    assert 'kill -0 "$started"' in check
+    assert "awk" not in check and "RUNNING_NAME" not in check and ".queue.running" not in check
 
 
 @needs_bash
@@ -1279,9 +1273,8 @@ def test_a_round_finds_its_own_folder_and_will_not_write_over_runs_already_in_it
     head = "log () { echo \"$*\"; }\nstop () { log \"STOP_RULE: $*\"; exit 1; }\n"
 
     def ask(round_, then):
-        env = dict(os.environ, SBL_TOOLS_ROUND=round_)
-        return subprocess.run(["bash", "-c", head + rounds + guard + then], cwd=tmp_path,
-                              capture_output=True, text=True, env=env)
+        return bash(["-c", head + rounds + guard + then], cwd=tmp_path, capture_output=True,
+                    text=True, extra_env={"SBL_TOOLS_ROUND": round_})
 
     assert ask("1", 'echo "$DIR"').stdout.strip() == "runs/azure/tools"
     assert ask("3", 'echo "$DIR"').stdout.strip() == "runs/azure/tools_round3"
@@ -1329,7 +1322,7 @@ def test_a_clock_stepped_for_a_run_is_stepped_back_after_it(tmp_path):
         "echo \"moved=$moved\"",
         "unstep_clock",
     ])
-    done = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+    done = bash(["-c", script], capture_output=True, text=True)
     assert done.returncode == 0, done.stdout + done.stderr
     assert "moved=1.4987" in done.stdout, "how far it moved reaches the run"
     asked = (tmp_path / "calls").read_text(encoding="utf-8").splitlines()
@@ -1431,82 +1424,76 @@ def test_start_looks_at_the_process_it_started_not_at_command_lines():
     assert "setsid -w" in started, "so the process it looks at lives as long as the loop does"
 
 
-def _start_the_queue(root, tmp_path, caller=""):
-    """`queue.sh start` in a scratch checkout, with crontab stood in for so that nothing is
-    installed on the machine running the tests."""
-    stubs = tmp_path / "bin"
-    stubs.mkdir(exist_ok=True)
-    crontab = stubs / "crontab"
-    #: `crontab -l` has no table to print here; only `crontab -` reads what it is given.
-    crontab.write_text('#!/bin/sh\n[ "$1" = -l ] && exit 1\ncat > /dev/null\n', encoding="utf-8")
-    crontab.chmod(0o755)
-    env = dict(os.environ, PATH="%s:%s" % (stubs, os.environ["PATH"]))
-    #: Not the last command, or bash would become it and the caller's text would be gone: the
-    #: command of 26 September went on to read the log after it.
-    return subprocess.run(["bash", "-c", "%s bash cloud/azure/queue.sh start; exit $?" % caller],
-                          cwd=root, env=env, stdin=subprocess.DEVNULL, capture_output=True,
-                          text=True, timeout=60)
+#: A scratch checkout made inside Linux, for the two tests of what the Linux kernel does with the
+#: queue's lock. They run in WSL on Windows: Git's bash has no flock, no setsid and no /proc of
+#: Linux's kind, and the drivers these scripts run on are Linux.
+_LINUX_SCRATCH = r"""
+set -u
+root=$(mktemp -d)/sbl
+mkdir -p "$root/cloud/azure" "$root/cloud/campaigns" "$root/data/plans/scratch" \
+  "$root/runs/azure/queue" "$root/bin"
+cp "$REPO/cloud/azure/queue.sh" "$root/cloud/azure/"
+cp "$REPO/cloud/campaigns/common.sh" "$root/cloud/campaigns/"
+printf 'event_id\n' > "$root/data/plans/scratch/replay_plan.csv"
+printf 'BROKER_PRIV=10.9.9.9\nRECEIVER_IP=10.9.9.8\nSUBNET_PREFIX=24\nSUBNET_GATEWAY=10.9.9.1\nAZ_PROFILE=scratch\nREPO_ROOT=%s\n' \
+  "$root" > "$root/cloud/hosts.env"
+# crontab -l has no table to print here; only crontab - reads what it is given. So nothing is
+# installed on the machine running the tests.
+printf '#!/bin/sh\n[ "$1" = -l ] && exit 1\ncat > /dev/null\n' > "$root/bin/crontab"
+chmod +x "$root/bin/crontab"
+export PATH="$root/bin:$PATH"
+cd "$root"
+"""
 
 
-@needs_bash
-def test_a_loop_refused_by_a_held_lock_is_reported_whatever_its_caller_says(tmp_path):
+def test_a_loop_refused_by_a_held_lock_is_reported_whatever_its_caller_says():
     """26 September again: the lock is held by something the old loop started, and the command
-    that calls start names the loop in its own text, as the one that night did."""
-    root = _scratch_checkout(tmp_path)
-    lock = root / "runs" / "azure" / "queue" / "lock"
-    lock.parent.mkdir(parents=True, exist_ok=True)
-    lock.touch()
-    holder = subprocess.Popen(["flock", str(lock), "sleep", "30"])
-    try:
-        done = _start_the_queue(root, tmp_path,
-                                caller=': "pgrep -f [.]queue.running.sh run";')
-    finally:
-        holder.kill()
-        holder.wait()
-    assert done.returncode == 1, done.stdout + done.stderr
-    assert "FAILED to start" in done.stderr and "running" not in done.stdout
-    assert "fuser -v" in done.stderr
+    that calls start names the loop in its own text, as the one that night did. Start is not the
+    caller's last command, or bash would become it and the caller's text would be gone: the
+    command of 26 September went on to read the log after it."""
+    done = linux_bash(_LINUX_SCRATCH + r"""
+flock runs/azure/queue/lock sleep 30 &
+holder=$!
+sleep 1
+bash -c ': "pgrep -f [.]queue.running.sh run"; bash cloud/azure/queue.sh start; echo "exit=$?"' \
+  > out 2> err < /dev/null
+kill "$holder"
+cat out; echo "--- err"; cat err
+""")
+    out, _, err = done.stdout.partition("--- err")
+    assert "exit=1" in out, done.stdout + done.stderr
+    assert "FAILED to start" in err and "running" not in out
+    assert "fuser -v" in err
 
 
-def _lock_holders(lock):
-    """Every process with the lock file open, read from /proc rather than from a tool that may
-    not be installed."""
-    target, found = os.path.realpath(lock), []
-    for pid in (p for p in os.listdir("/proc") if p.isdigit()):
-        try:
-            links = [os.readlink("/proc/%s/fd/%s" % (pid, fd))
-                     for fd in os.listdir("/proc/%s/fd" % pid)]
-        except OSError:
-            continue
-        if target in links:
-            found.append(int(pid))
-    return found
-
-
-@needs_bash
-def test_a_loop_that_starts_is_reported_by_its_process_and_holds_the_lock_alone(tmp_path):
+def test_a_loop_that_starts_is_reported_by_its_process_and_holds_the_lock_alone():
     """The other way round, with a job that waits on work already on the pair, so the loop lives
-    past the check. Whatever the loop starts must not come to hold the lock."""
-    root = _scratch_checkout(tmp_path)
-    queue = root / "runs" / "azure" / "queue"
-    queue.mkdir(parents=True, exist_ok=True)
-    (queue / "jobs.txt").write_text("boot=none note=wait\n", encoding="utf-8")
-    work = subprocess.Popen(["bash", "-c", 'exec -a "bash cloud/azure/campaign.sh x" sleep 60'])
-    holders = []
-    try:
-        done = _start_the_queue(root, tmp_path)
-        assert done.returncode == 0, done.stdout + done.stderr
-        loop = int(re.search(r"running \(process (\d+)\)", done.stdout).group(1))
-        holders = _lock_holders(queue / "lock")
-        assert len(holders) == 1, "the loop and what it starts hold nothing: %s" % holders
-        with open("/proc/%d/comm" % holders[0], encoding="utf-8") as fh:
-            assert fh.read().strip() == "flock"
-        os.kill(loop, 0)
-    finally:
-        for pid in holders:
-            os.killpg(pid, 15)
-        work.kill()
-        work.wait()
+    past the check. Whatever the loop starts must not come to hold the lock: the holders are read
+    from /proc, and there must be one, and it must be flock."""
+    done = linux_bash(_LINUX_SCRATCH + r"""
+printf 'boot=none note=wait\n' > runs/azure/queue/jobs.txt
+bash -c 'exec -a "bash cloud/azure/campaign.sh x" sleep 60' &
+work=$!
+bash cloud/azure/queue.sh start > out 2> err < /dev/null
+echo "exit=$?"
+loop=$(sed -n 's/.*running (process \([0-9]*\)).*/\1/p' out)
+target=$(readlink -f runs/azure/queue/lock)
+holders=""
+for fd in /proc/[0-9]*/fd/*; do
+  [ "$(readlink "$fd" 2>/dev/null)" = "$target" ] && holders="$holders $(echo "$fd" | cut -d/ -f3)"
+done
+echo "holders=$holders"
+for h in $holders; do echo "comm=$(cat "/proc/$h/comm")"; done
+kill -0 "$loop" 2>/dev/null && echo "alive=yes"
+for h in $holders; do kill -- "-$h" 2>/dev/null; done
+kill "$work" 2>/dev/null
+cat out err
+""")
+    text = done.stdout
+    assert "exit=0" in text, text + done.stderr
+    holders = re.search(r"holders=(.*)", text).group(1).split()
+    assert len(holders) == 1, "the loop and what it starts hold nothing: %s" % holders
+    assert "comm=flock" in text and "alive=yes" in text
 
 
 def test_a_job_that_needs_no_reboot_does_not_take_one():
@@ -1610,7 +1597,8 @@ def test_what_the_queue_counts_as_the_pair_being_at_work(tmp_path, line, busy):
     code = QUEUE.read_text(encoding="utf-8")
     body = code.split("work_running () {", 1)[1].split("\n}", 1)[0]
     program = body.split("awk '", 1)[1].rsplit("'", 1)[0]
-    found = subprocess.run(["awk", program], input=line + "\n", capture_output=True, text=True)
+    found = subprocess.run([tool("awk"), program], input=line + "\n", capture_output=True,
+                           text=True)
     assert (found.returncode == 0) is busy, \
         "%r should read as %s" % (line, "work" if busy else "not work")
 
@@ -1656,7 +1644,7 @@ class TestAPairStopsWhenItsWorkEnds:
         """Such a pattern counts any command line carrying it as work, and the pair never stops."""
         code = self.code()
         guard = code.split("if printf '%s\\n' \"$WORK\" | awk '", 1)[1].split("'", 1)[0]
-        found = subprocess.run(["awk", guard], input=pattern + "\n", capture_output=True,
+        found = subprocess.run([tool("awk"), guard], input=pattern + "\n", capture_output=True,
                                text=True, env=dict(os.environ, WORK=pattern))
         assert (found.returncode == 0) is refused, pattern
 
@@ -1667,7 +1655,7 @@ class TestAPairStopsWhenItsWorkEnds:
 
     @needs_bash
     def test_it_parses(self):
-        assert subprocess.run(["bash", "-n", str(KIT / "stop_when_idle.sh")]).returncode == 0
+        assert bash(["-n", str(KIT / "stop_when_idle.sh")]).returncode == 0
 
 
 @needs_bash

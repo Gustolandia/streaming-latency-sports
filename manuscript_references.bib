@@ -308,7 +308,7 @@
   author={{Apache Kafka}},
   year={2015},
   howpublished={Apache Software Foundation, Kafka Improvement Proposal},
-  note={Defines the default producer-set CreateTime}
+  annote={Defines the default producer-set CreateTime}
 }
 
 @misc{kafka2020kip526,
@@ -316,7 +316,7 @@
   author={{Apache Kafka}},
   year={2020},
   howpublished={Apache Software Foundation, Kafka Improvement Proposal},
-  note={Documents the metadata fetch a producer performs before its first send to an
+  annote={Documents the metadata fetch a producer performs before its first send to an
         uncached topic}
 }
 
@@ -348,14 +348,16 @@
   title={How {NOT} to Measure Latency},
   author={Tene, Gil},
   year={2015},
-  note={Talk, Strange Loop / QCon; coined ``coordinated omission''.}
+  note={Talk, Strange Loop / QCon},
+  annote={Talk, Strange Loop / QCon; coined ``coordinated omission''.}
 }
 
 @misc{tene2015hdrhistogram,
   title={{HdrHistogram}: A High Dynamic Range Histogram},
   author={Tene, Gil},
   year={2015},
-  note={Used by the OpenMessaging Benchmark; available at hdrhistogram.org.}
+  note={Available at hdrhistogram.org},
+  annote={Used by the OpenMessaging Benchmark; available at hdrhistogram.org.}
 }
 
 @inproceedings{mytkowicz2009wrong,
@@ -610,7 +612,7 @@
   booktitle = {Proc. USENIX Annual Technical Conf. (ATC)},
   pages     = {881--896},
   year      = {2019},
-  note      = {\S4.3: terminates and reports the results with an inconclusive verdict}
+  annote    = {\S4.3: terminates and reports the results with an inconclusive verdict}
 }
 
 @incollection{kundel2024p4sta,
@@ -688,7 +690,8 @@
   howpublished = {Yahoo! Cloud Serving Benchmark},
   month        = oct,
   year         = {2011},
-  note         = {\url{https://github.com/brianfrankcooper/YCSB/issues/41}; fixed by pull request \#42 and released in 0.1.4}
+  note         = {\url{https://github.com/brianfrankcooper/YCSB/issues/41}},
+  annote       = {\url{https://github.com/brianfrankcooper/YCSB/issues/41}; fixed by pull request \#42 and released in 0.1.4}
 }
 
 % ---------------------------------------------------------------------------
@@ -704,7 +707,7 @@
                Measurement, Control and Communication (ISPCS)},
   year      = {2012},
   pages     = {1--6},
-  note      = {{DTrace} breakdown against a DAG hardware reference}
+  annote    = {{DTrace} breakdown against a DAG hardware reference}
 }
 
 @inproceedings{hoefler2015benchmarking,
@@ -725,7 +728,7 @@
   type        = {NIST Special Publication},
   number      = {960-12},
   year        = {2009},
-  note        = {Uncertainty budget carrying both operator reaction time and
+  annote      = {Uncertainty budget carrying both operator reaction time and
                  display resolution}
 }
 
@@ -735,7 +738,7 @@
                Observability},
   publisher = {Addison-Wesley},
   year      = {2019},
-  note      = {\texttt{runqlat}, the run-queue latency histogram used here}
+  annote    = {\texttt{runqlat}, the run-queue latency histogram used here}
 }
 
 @techreport{rfc3432,
@@ -766,7 +769,8 @@
   number      = {7679},
   year        = {2016},
   month       = jan,
-  note        = {Obsoletes RFC 2679. Section 3.5 keeps negative values as
+  note        = {Obsoletes RFC 2679},
+  annote      = {Obsoletes RFC 2679. Section 3.5 keeps negative values as
                  distribution data rather than discarding them}
 }
 
@@ -776,7 +780,8 @@
   howpublished = {OpenMessaging Benchmark, commit 4eb2327c},
   year         = {2023},
   month        = dec,
-  note         = {Fixes issue \#369: truncated histogram serialisation silently
+  note         = {\url{https://github.com/openmessaging/benchmark/pull/398}. Accessed: Aug. 19, 2026},
+  annote       = {Fixes issue \#369: truncated histogram serialisation silently
                  discarded most latency samples. \url{https://github.com/openmessaging/benchmark/pull/398}. Accessed: Aug. 19, 2026}
 }
 
@@ -785,7 +790,8 @@
   title        = {\texttt{RedisBenchmarkConsumer.java}, line 72},
   howpublished = {OpenMessaging Benchmark, \texttt{driver-redis}},
   year         = {2026},
-  note         = {Takes the publish timestamp from
+  note         = {\url{https://github.com/openmessaging/benchmark}. Accessed: Aug. 19, 2026},
+  annote       = {Takes the publish timestamp from
                   \texttt{entry.getID().getTime()}, the Redis server's
                   stream-entry clock, not the producer's.
                   \url{https://github.com/openmessaging/benchmark}. Accessed: Aug. 19, 2026}
@@ -847,7 +853,7 @@
   year      = {2022},
   pages     = {119--134},
   doi       = {10.1007/978-3-030-94437-7_8},
-  note      = {Year corrected 2026-09-22 from 2021, the conference, to 2022, which is what this
+  annote    = {Year corrected 2026-09-22 from 2021, the conference, to 2022, which is what this
                entry's own DOI resolves to and what a reader following it will see.}
 }
 
@@ -869,7 +875,8 @@
   type        = {Application Note},
   number      = {162-1},
   year        = {1970},
-  note        = {Part no.\ 02-5952-0766; undated; the year is its \emph{HP Journal} citation}
+  note        = {Part no.\ 02-5952-0766; undated, year from its \emph{HP Journal} citation},
+  annote      = {Part no.\ 02-5952-0766; undated; the year is its \emph{HP Journal} citation}
 }
 
 % BibTeX scans for an at-sign even outside an entry, so a comment naming an entry type
@@ -889,7 +896,8 @@
   monthfiled  = aug,
   year        = {1976},
   month       = feb,
-  note        = {Assigned to the Hewlett-Packard Company, the publisher of Application
+  note        = {Assigned to the Hewlett-Packard Company. Accessed: Sep. 11, 2026},
+  annote      = {Assigned to the Hewlett-Packard Company, the publisher of Application
                  Note 162-1. States the mechanism behind that note's cure --- ``the
                  fundamental problem is the relative coherence between the gating and the
                  gated signal'' --- and the symptom: a counter that ``appears to hang up on
@@ -902,7 +910,8 @@
   title        = {{fio}: Flexible {I/O} Tester --- \texttt{gettime.c}},
   howpublished = {Source repository},
   year         = {2026},
-  note         = {\url{https://github.com/axboe/fio}; the guard is in three timing functions. Accessed: Aug. 20, 2026}
+  note         = {\url{https://github.com/axboe/fio}. Accessed: Aug. 20, 2026},
+  annote       = {\url{https://github.com/axboe/fio}; the guard is in three timing functions. Accessed: Aug. 20, 2026}
 }
 
 @misc{emqtt_bench,
@@ -910,7 +919,8 @@
   title        = {\texttt{emqtt-bench}: {MQTT} benchmark tool --- \texttt{src/emqtt\_bench.erl}},
   howpublished = {Source repository},
   year         = {2026},
-  note         = {\url{https://github.com/emqx/emqtt-bench}; the guard is on the counter, not the
+  note         = {\url{https://github.com/emqx/emqtt-bench}. Accessed: Aug. 21, 2026},
+  annote       = {\url{https://github.com/emqx/emqtt-bench}; the guard is on the counter, not the
                   sample. Accessed: Aug. 21, 2026}
 }
 
@@ -919,7 +929,8 @@
   title        = {Rezolus: systems performance telemetry --- \texttt{scheduler\_discarded\_samples}},
   howpublished = {Source repository},
   year         = {2026},
-  note         = {\url{https://github.com/iopsystems/rezolus}; counts samples discarded for out-of-order timestamps. Accessed: Aug. 20, 2026}
+  note         = {\url{https://github.com/iopsystems/rezolus}. Accessed: Aug. 20, 2026},
+  annote       = {\url{https://github.com/iopsystems/rezolus}; counts samples discarded for out-of-order timestamps. Accessed: Aug. 20, 2026}
 }
 
 @misc{btt_inlines,
@@ -927,7 +938,8 @@
   title        = {\texttt{blktrace}/\texttt{btt} --- \texttt{btt/inlines.h}},
   howpublished = {Source repository},
   year         = {2026},
-  note         = {\texttt{tdelta()} returns one nanosecond when the stage timestamps are out
+  note         = {Accessed: Aug. 20, 2026},
+  annote       = {\texttt{tdelta()} returns one nanosecond when the stage timestamps are out
                   of order: \texttt{return (from < to) ? (to - from) : 1;}. Accessed: Aug. 20, 2026}
 }
 
@@ -938,7 +950,7 @@
   address   = {Sebastopol, CA},
   year      = {2003},
   isbn      = {059600527X},
-  note      = {Section 7.7, ``Quantization Error''}
+  annote    = {Section 7.7, ``Quantization Error''}
 }
 
 @techreport{etsi102250,
@@ -951,7 +963,7 @@
   number      = {TS 102 250-4 V2.3.1},
   year        = {2019},
   month       = nov,
-  note        = {Clause 5.1, General requirement for data logging}
+  annote      = {Clause 5.1, General requirement for data logging}
 }
 
 @article{hunold2016reproducible,
@@ -970,7 +982,8 @@
   title        = {{OSU} Micro-Benchmarks 7.5 --- \texttt{osu\_latency}},
   howpublished = {\url{https://mvapich.cse.ohio-state.edu/benchmarks/}},
   year         = {2025},
-  note         = {\texttt{c/mpi/pt2pt/standard/osu\_latency.c} divides the round trip by two;
+  note         = {Accessed: Aug. 20, 2026},
+  annote       = {\texttt{c/mpi/pt2pt/standard/osu\_latency.c} divides the round trip by two;
                   the documentation reports ``average one-way latency''. Accessed: Aug. 20, 2026}
 }
 
@@ -979,7 +992,8 @@
   title        = {{NetPIPE}: A Network Protocol Independent Performance Evaluator},
   howpublished = {\url{https://netpipe.cs.ksu.edu/}},
   year         = {2025},
-  note         = {``Latencies are calculated by dividing the round trip time in half for
+  note         = {Accessed: Aug. 20, 2026},
+  annote       = {``Latencies are calculated by dividing the round trip time in half for
                   small messages''. Accessed: Aug. 20, 2026}
 }
 
@@ -988,7 +1002,8 @@
   title        = {Intel {MPI} Benchmarks --- \texttt{PingPong}},
   howpublished = {Intel MPI Library User Guide},
   year         = {2021},
-  note         = {``Reported timings --- time${}=\Delta t/2$''; the companion
+  note         = {Accessed: Aug. 20, 2026},
+  annote       = {``Reported timings --- time${}=\Delta t/2$''; the companion
                   \texttt{PingPing} reports the unhalved time. Accessed: Aug. 20, 2026}
 }
 
@@ -997,7 +1012,8 @@
   title        = {\texttt{sockperf}: network benchmarking utility},
   howpublished = {\url{https://github.com/Mellanox/sockperf}},
   year         = {2026},
-  note         = {The run summary prints \texttt{SentMessages}, \texttt{ReceivedMessages}
+  note         = {Accessed: Aug. 20, 2026},
+  annote       = {The run summary prints \texttt{SentMessages}, \texttt{ReceivedMessages}
                   and \texttt{SkippedMessages} beside the latency percentiles, and a
                   dropped/duplicated/out-of-order line derived from sequence numbers.
                   Accessed: Aug. 20, 2026}
@@ -1009,7 +1025,8 @@
                   and Zero Threshold},
   howpublished = {\url{https://opentelemetry.io/docs/specs/otel/metrics/data-model/}},
   year         = {2026},
-  note         = {\texttt{zero\_count} holds values at or below a zero threshold, including
+  note         = {Accessed: Aug. 20, 2026},
+  annote       = {\texttt{zero\_count} holds values at or below a zero threshold, including
                   ``values that have been rounded to zero''; \texttt{count} is defined to
                   include it. Accessed: Aug. 20, 2026}
 }
@@ -1019,7 +1036,8 @@
   title        = {\texttt{fio} {HOWTO} --- interpreting the output},
   howpublished = {\url{https://fio.readthedocs.io/}},
   year         = {2026},
-  note         = {For asynchronous ioengines completion latency runs ``to when the I/O's
+  note         = {Accessed: Aug. 20, 2026},
+  annote       = {For asynchronous ioengines completion latency runs ``to when the I/O's
                   completion was reaped by fio''. Accessed: Aug. 20, 2026}
 }
 
@@ -1028,7 +1046,8 @@
   title        = {{HIP} Runtime {API}: Event Management},
   howpublished = {\url{https://rocm.docs.amd.com/projects/HIP/en/latest/}},
   year         = {2026},
-  note         = {Under \texttt{hipEventElapsedTime()}: ``the time that the event recorded
+  note         = {Accessed: Aug. 20, 2026},
+  annote       = {Under \texttt{hipEventElapsedTime()}: ``the time that the event recorded
                   may be significantly after the host calls hipEventRecord()''.
                   Accessed: Aug. 20, 2026}
 }
@@ -1038,7 +1057,8 @@
   title        = {{CUDA} {C++} Best Practices Guide, Using {CUDA} {GPU} Timers},
   howpublished = {\url{https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/}},
   year         = {2026},
-  note         = {Section 9.1.2: ``The device will record a timestamp for the event when it
+  note         = {Accessed: Aug. 20, 2026},
+  annote       = {Section 9.1.2: ``The device will record a timestamp for the event when it
                   reaches that event in the stream.'' Accessed: Aug. 20, 2026}
 }
 
@@ -1047,7 +1067,8 @@
   title        = {\texttt{librdkafka} introduction --- delivery reports},
   howpublished = {\url{https://github.com/confluentinc/librdkafka}},
   year         = {2026},
-  note         = {The delivery-report callback \texttt{dr\_msg\_cb} is served by
+  note         = {Accessed: Aug. 20, 2026},
+  annote       = {The delivery-report callback \texttt{dr\_msg\_cb} is served by
                   \texttt{rd\_kafka\_poll()} and other queue-serving calls, so it runs on
                   the application's thread rather than asynchronously. Accessed: Aug. 20, 2026}
 }
@@ -1057,7 +1078,8 @@
   title        = {{SPECjms2007} Run and Reporting Rules, Version 1.0},
   howpublished = {\url{https://www.spec.org/jms2007/docs/RunRules.html}},
   year         = {2014},
-  note         = {Clause 3.6.2 records delivery time as a histogram of default granularity
+  note         = {Accessed: Aug. 20, 2026},
+  annote       = {Clause 3.6.2 records delivery time as a histogram of default granularity
                   $100$~ms; the only timing-quality requirement is clause 3.2's $100$~ms
                   bound on inter-node clock agreement. Accessed: Aug. 20, 2026}
 }
@@ -1079,7 +1101,8 @@
   title        = {{SPEC} Power and Performance Benchmark Methodology, Version 2.3},
   howpublished = {\url{https://www.spec.org/power/docs/SPEC-Power_and_Performance_Methodology.pdf}},
   year         = {2025},
-  note         = {Clause 8.2.2, Power Reporting: the benchmark ``should report the number of
+  note         = {Accessed: Aug. 20, 2026},
+  annote       = {Clause 8.2.2, Power Reporting: the benchmark ``should report the number of
                   samples that may have a return value `Unknown''' and those exceeding the
                   maximum allowed uncertainty. Accessed: Aug. 20, 2026}
 }
@@ -1089,7 +1112,8 @@
   title        = {{CoreMark-PRO} run rules},
   howpublished = {\url{https://github.com/eembc/coremark-pro}},
   year         = {2026},
-  note         = {``Each workload must run for at least 1000 times the minimum timer
+  note         = {Accessed: Aug. 20, 2026},
+  annote       = {``Each workload must run for at least 1000 times the minimum timer
                   resolution.'' Plain CoreMark instead sets an absolute ten-second floor.
                   Accessed: Aug. 20, 2026}
 }
@@ -1111,7 +1135,8 @@
                   in Measurement ({JCGM} 100:2008)},
   howpublished = {\url{https://www.bipm.org/documents/20126/2071204/JCGM_100_2008_E.pdf}},
   year         = {2008},
-  note         = {Clause F.2.2.1, ``The resolution of a digital indication''. Accessed: Aug. 20, 2026}
+  note         = {Accessed: Aug. 20, 2026},
+  annote       = {Clause F.2.2.1, ``The resolution of a digital indication''. Accessed: Aug. 20, 2026}
 }
 
 @misc{gregg2016runqlat,
@@ -1120,7 +1145,8 @@
   howpublished = {\url{https://www.brendangregg.com/blog/2016-10-08/linux-bcc-runqlat.html}},
   month        = oct,
   year         = {2016},
-  note         = {Introduces \texttt{runqlat}; reports the distribution as bimodal
+  note         = {Accessed: Sep. 13, 2026},
+  annote       = {Introduces \texttt{runqlat}; reports the distribution as bimodal
                   without attributing a mechanism. Accessed: Sep. 13, 2026}
 }
 
@@ -1129,7 +1155,8 @@
   title        = {Negative \texttt{http\_req\_receiving} values (issue \#1872)},
   howpublished = {\url{https://github.com/grafana/k6/issues/1872}},
   year         = {2022},
-  note         = {Negative intervals in a single process, attributed to thread migration
+  note         = {Accessed: Aug. 21, 2026},
+  annote       = {Negative intervals in a single process, attributed to thread migration
                   between CPUs with unsynchronised clocks. Accessed: Aug. 21, 2026}
 }
 
@@ -1138,7 +1165,8 @@
   title        = {Kafka Consumer Lag Is Lying to You -- How to Measure and Fix It Properly},
   howpublished = {Blog post, \url{https://chiraghasija.cc/posts/kafka-consumer-group-lag-monitoring-production-2026/}},
   year         = {2026},
-  note         = {``If your p50 latency is negative you have a skew problem, not a fast
+  note         = {Accessed: Sep. 14, 2026},
+  annote       = {``If your p50 latency is negative you have a skew problem, not a fast
                   consumer''; recommends treating sub-zero readings as a monitoring bug.
                   Accessed: Sep. 14, 2026}
 }
@@ -1149,7 +1177,7 @@
                   (issue \#216)},
   howpublished = {\url{https://github.com/openmessaging/benchmark/issues/216}},
   year         = {2021},
-  note         = {The anomaly attributed to inter-node skew, on a same-node report}
+  annote       = {The anomaly attributed to inter-node skew, on a same-node report}
 }
 
 @misc{vanlightly2023,
@@ -1158,7 +1186,7 @@
   howpublished = {\url{https://jack-vanlightly.com/blog/2023/5/15/kafka-vs-redpanda-performance-do-the-claims-add-up}},
   month        = may,
   year         = {2023},
-  note         = {A second, independent silent-loss defect in the same harness}
+  annote       = {A second, independent silent-loss defect in the same harness}
 }
 
 @inproceedings{cerqueira2013comparison,
@@ -1169,7 +1197,7 @@
                Real-Time Applications (OSPERT)},
   pages     = {19--29},
   year      = {2013},
-  note      = {Footnote 7 bounds worst-case scheduling latency below by the quantum length
+  annote    = {Footnote 7 bounds worst-case scheduling latency below by the quantum length
                under a quantum-driven scheduler}
 }
 
@@ -1178,7 +1206,8 @@
   title        = {{KVM}-Specific {MSRs}: \texttt{MSR\_KVM\_SYSTEM\_TIME\_NEW}},
   howpublished = {\url{https://docs.kernel.org/virt/kvm/x86/msr.html}},
   year         = {2026},
-  note         = {Flag bit~0, {CPUID} \texttt{0x40000001} bit~24. Accessed: Aug. 21, 2026}
+  note         = {Accessed: Aug. 21, 2026},
+  annote       = {Flag bit~0, {CPUID} \texttt{0x40000001} bit~24. Accessed: Aug. 21, 2026}
 }
 
 @misc{guittot2025slice,
@@ -1187,7 +1216,7 @@
   howpublished = {Linux kernel mailing list},
   month        = jul,
   year         = {2025},
-  note         = {States the base-slice protection and the slice-plus-tick lag bound}
+  annote       = {States the base-slice protection and the slice-plus-tick lag bound}
 }
 
 @misc{jaeger_clockskew,
@@ -1195,7 +1224,8 @@
   title        = {\texttt{model/adjuster/clockskew.go}},
   howpublished = {\url{https://github.com/jaegertracing/jaeger}},
   year         = {2026},
-  note         = {At v1.57.0; adjusters run in the query service, and the default
+  note         = {Version 1.57.0. Accessed: Aug. 21, 2026},
+  annote       = {At v1.57.0; adjusters run in the query service, and the default
                   has been off since v1.20.0. Accessed: Aug. 21, 2026}
 }
 
@@ -1204,7 +1234,8 @@
   title        = {\texttt{zrk}: a {Zig} rewrite of \texttt{wrk2}},
   howpublished = {\url{https://github.com/zoxy-io/zrk}},
   year         = {2026},
-  note         = {``At the sub-millisecond latencies a fast service actually produces, that's
+  note         = {Accessed: Aug. 21, 2026},
+  annote       = {``At the sub-millisecond latencies a fast service actually produces, that's
                   not a rounding error --- it's frequently larger than the number being
                   measured''; the overshoot is recorded rather than discarded.
                   Accessed: Aug. 21, 2026}
@@ -1215,7 +1246,8 @@
   title        = {\texttt{wrk2}: a constant-throughput, correct-latency variant of \texttt{wrk}},
   howpublished = {\url{https://github.com/giltene/wrk2}},
   year         = {2019},
-  note         = {``measured latencies are only accurate to a $+/-$ \textasciitilde 1 msec
+  note         = {Accessed: Aug. 21, 2026},
+  annote       = {``measured latencies are only accurate to a $+/-$ \textasciitilde 1 msec
                   granularity, due to OS sleep time behavior'' --- disclosed, not discarded.
                   Accessed: Aug. 21, 2026}
 }
@@ -1225,7 +1257,8 @@
   title        = {Clock Skew Adjuster considered harmful (issue \#1459)},
   howpublished = {Issue tracker},
   year         = {2019},
-  note         = {\url{https://github.com/jaegertracing/jaeger/issues/1459}; the adjustment
+  note         = {\url{https://github.com/jaegertracing/jaeger/issues/1459}. Accessed: Aug. 21, 2026},
+  annote       = {\url{https://github.com/jaegertracing/jaeger/issues/1459}; the adjustment
                   has shipped disabled since v1.20.0 (2020), which set
                   \texttt{--query.max-clock-skew-adjustment} to \texttt{0s}. Accessed: Aug. 21, 2026}
 }
@@ -1243,7 +1276,8 @@
   title        = {\texttt{wrk2} --- \texttt{src/wrk.c}},
   howpublished = {Source repository},
   year         = {2026},
-  note         = {\url{https://github.com/giltene/wrk2}; the negative is detected, printed,
+  note         = {\url{https://github.com/giltene/wrk2}. Accessed: Aug. 21, 2026},
+  annote       = {\url{https://github.com/giltene/wrk2}; the negative is detected, printed,
                   and recorded unguarded; the vendored \texttt{hdr\_histogram.c}
                   bounds-checks the derived index behind live assertions.
                   Accessed: Aug. 21, 2026}
@@ -1254,7 +1288,8 @@
   title        = {\texttt{HdrHistogram\_c} --- \texttt{src/hdr\_histogram.c}},
   howpublished = {Source repository},
   year         = {2026},
-  note         = {\url{https://github.com/HdrHistogram/HdrHistogram_c}; upstream's
+  note         = {\url{https://github.com/HdrHistogram/HdrHistogram_c}. Accessed: Aug. 21, 2026},
+  annote       = {\url{https://github.com/HdrHistogram/HdrHistogram_c}; upstream's
                   \texttt{hdr\_record\_values} refuses a negative value outright ---
                   the guard wrk2's vendored copy lacks. Accessed: Aug. 21, 2026}
 }
@@ -1264,7 +1299,7 @@
   title        = {sched: Reduce the default slice to avoid tasks getting an extra tick},
   howpublished = {Linux kernel mailing list, commit 2ae891b82695},
   year         = {2025},
-  note         = {Reviewed-by V. Guittot; reduces the constant to \texttt{0.70} in v6.15}
+  annote       = {Reviewed-by V. Guittot; reduces the constant to \texttt{0.70} in v6.15}
 }
 
 @inproceedings{paxson2004sound,
@@ -1274,14 +1309,14 @@
   publisher = {ACM},
   year      = {2004},
   pages     = {263--271},
-  note      = {Physical impossibility as grounds for discarding a trace}
+  annote    = {Physical impossibility as grounds for discarding a trace}
 }
 
 @misc{specjbb2015,
   author       = {{Standard Performance Evaluation Corporation}},
   title        = {{SPECjbb2015} run and reporting rules, v1.02},
   year         = {2018},
-  note         = {\S3.4.5; an initial clock offset beyond ten minutes voids the run}
+  annote       = {\S3.4.5; an initial clock offset beyond ten minutes voids the run}
 }
 
 @misc{kafka19888,
@@ -1289,7 +1324,8 @@
   title        = {{KAFKA-19888}: Clamp negative values in coordinator histograms},
   howpublished = {Issue tracker and pull request \#20986},
   year         = {2025},
-  note         = {\url{https://issues.apache.org/jira/browse/KAFKA-19888}; merged
+  note         = {\url{https://issues.apache.org/jira/browse/KAFKA-19888}. Accessed: Aug. 21, 2026},
+  annote       = {\url{https://issues.apache.org/jira/browse/KAFKA-19888}; merged
                   2025-11-26, shipped in 4.2.0, backported to 4.0.2/4.1.2. Accessed: Aug. 21, 2026}
 }
 
@@ -1298,7 +1334,8 @@
   title        = {{Kafka Streams} \texttt{StreamTask.java}: end-to-end latency recording ({KIP-613})},
   howpublished = {Source repository},
   year         = {2026},
-  note         = {\url{https://github.com/apache/kafka/blob/trunk/streams/src/main/java/org/apache/kafka/streams/processor/internals/StreamTask.java};
+  note         = {\url{https://github.com/apache/kafka/blob/trunk/streams/src/main/java/org/apache/kafka/streams/processor/internals/StreamTask.java}. Accessed: Sep. 13, 2026},
+  annote       = {\url{https://github.com/apache/kafka/blob/trunk/streams/src/main/java/org/apache/kafka/streams/processor/internals/StreamTask.java};
                   \texttt{maybeRecordE2ELatency} records \texttt{now - recordTimestamp} with no filter. Accessed: Sep. 13, 2026}
 }
 
@@ -1308,7 +1345,8 @@
              analysis},
   journal = {Acta Cybernetica},
   year    = {2022},
-  note    = {arXiv:2112.11270; negative derived durations in a Hyperledger Fabric benchmark,
+  note    = {arXiv:2112.11270},
+  annote  = {arXiv:2112.11270; negative derived durations in a Hyperledger Fabric benchmark,
              traced to peer clock drift}
 }
 
@@ -1318,7 +1356,7 @@
                   Converters},
   howpublished = {IEEE Std 1241-2010},
   year         = {2011},
-  note         = {\S6.4.1, Eq.~(28): the histogram test's relatively-prime record
+  annote       = {\S6.4.1, Eq.~(28): the histogram test's relatively-prime record
                   condition; \S5.4.1, Eq.~(18): $f_i = (J/M) f_s$, named coherent sampling}
 }
 
@@ -1328,7 +1366,8 @@
             workloads},
   school = {University of Illinois Urbana-Champaign},
   year   = {2025},
-  note   = {\url{https://hdl.handle.net/2142/129222}; behavioural evaluation of six
+  note   = {\url{https://hdl.handle.net/2142/129222}. Accessed: Aug. 21, 2026},
+  annote = {\url{https://hdl.handle.net/2142/129222}; behavioural evaluation of six
             open-loop generators. Accessed: Aug. 21, 2026}
 }
 
@@ -1339,7 +1378,7 @@
   booktitle = {Proc.\ 6th ACM/SPEC Int. Conf. on Performance Engineering (ICPE)},
   year      = {2015},
   pages     = {333--336},
-  note      = {Section~3, the five quality criteria of a standardized benchmark}
+  annote    = {Section~3, the five quality criteria of a standardized benchmark}
 }
 
 @misc{rfc1242,
@@ -1347,7 +1386,7 @@
   title        = {Benchmarking Terminology for Network Interconnection Devices},
   howpublished = {Internet Engineering Task Force, RFC 1242},
   year         = {1991},
-  note         = {Section 3.9 defines latency for cut-through devices, where the value can be
+  annote       = {Section 3.9 defines latency for cut-through devices, where the value can be
                   negative because forwarding begins before reception completes}
 }
 
@@ -1357,7 +1396,8 @@
                   Optimization of {Apache Pulsar} at Enterprise Scale},
   howpublished = {arXiv preprint arXiv:2603.29113},
   year         = {2026},
-  note         = {reports 1,499,947~msg/s at a 3.88~ms median publish latency on three
+  note         = {Accessed: Sep. 10, 2026},
+  annote       = {reports 1,499,947~msg/s at a 3.88~ms median publish latency on three
                   bare-metal nodes. The median sits above the quantum, so the deletion
                   arithmetic does not bind there and this is a comparison FOR the main
                   text's concession rather than an exception to it. Over four pages it
@@ -1372,7 +1412,8 @@
                   Performance Study},
   howpublished = {arXiv preprint arXiv:2603.21600},
   year         = {2026},
-  note         = {Introduces mq-bench: nanosecond send timestamps, one host, no positivity
+  note         = {Accessed: Aug. 25, 2026},
+  annote       = {Introduces mq-bench: nanosecond send timestamps, one host, no positivity
                   filter. Accessed: Aug. 25, 2026}
 }
 
@@ -1381,7 +1422,8 @@
   title        = {{Apache Kafka} tools --- \texttt{EndToEndLatency.java} and \texttt{ProducerPerformance.java}},
   howpublished = {Source repository},
   year         = {2026},
-  note         = {\url{https://github.com/apache/kafka}; percentiles from integer-divided milliseconds. Accessed: Aug. 31, 2026}
+  note         = {\url{https://github.com/apache/kafka}. Accessed: Aug. 31, 2026},
+  annote       = {\url{https://github.com/apache/kafka}; percentiles from integer-divided milliseconds. Accessed: Aug. 31, 2026}
 }
 
 @misc{rabbitmq_perftest,
@@ -1389,7 +1431,8 @@
   title        = {{RabbitMQ PerfTest} --- \texttt{Consumer.java}},
   howpublished = {Source repository},
   year         = {2026},
-  note         = {\url{https://github.com/rabbitmq/rabbitmq-perf-test}; passes the difference unfiltered. Accessed: Aug. 31, 2026}
+  note         = {\url{https://github.com/rabbitmq/rabbitmq-perf-test}. Accessed: Aug. 31, 2026},
+  annote       = {\url{https://github.com/rabbitmq/rabbitmq-perf-test}; passes the difference unfiltered. Accessed: Aug. 31, 2026}
 }
 
 @misc{nats_cli,
@@ -1397,7 +1440,8 @@
   title        = {{NATS} CLI --- \texttt{cli/latency\_command.go}},
   howpublished = {Source repository},
   year         = {2026},
-  note         = {\url{https://github.com/nats-io/natscli}; appends the difference unconditionally. Accessed: Aug. 31, 2026}
+  note         = {\url{https://github.com/nats-io/natscli}. Accessed: Aug. 31, 2026},
+  annote       = {\url{https://github.com/nats-io/natscli}; appends the difference unconditionally. Accessed: Aug. 31, 2026}
 }
 
 @misc{openbenchmarks2026voice,
@@ -1405,7 +1449,8 @@
   title        = {How voice agent latency is measured},
   howpublished = {Methodology page},
   year         = {2026},
-  note         = {\url{https://openbenchmarks.com/voice-agent-latency/how-voice-agent-latency-is-measured}; both endpoints on one clock, discard counts published per platform and per reason, and differences below the detector's resolution not claimed. Accessed: Aug. 31, 2026}
+  note         = {\url{https://openbenchmarks.com/voice-agent-latency/how-voice-agent-latency-is-measured}. Accessed: Aug. 31, 2026},
+  annote       = {\url{https://openbenchmarks.com/voice-agent-latency/how-voice-agent-latency-is-measured}; both endpoints on one clock, discard counts published per platform and per reason, and differences below the detector's resolution not claimed. Accessed: Aug. 31, 2026}
 }
 
 @inproceedings{klenik2021tpcc,
@@ -1414,7 +1459,8 @@
                   {TPC-C} on {Hyperledger} {Fabric}},
   booktitle    = {arXiv preprint arXiv:2112.11277},
   year         = {2021},
-  note         = {Instruments the load generator itself: the ``scheduling precision reserve'' is the gap between when a transaction is picked and when it must be submitted, published as boxplots against terminal count. It ``can drop below zero in the case of hundreds of terminals'', and the authors weigh that against the workload's own timescale --- the violation ``never exceeds half a second'' where TPC-C's constraints ``are in the order of magnitude of seconds''. The invalidated fraction is published too. Accessed: Sep. 4, 2026}
+  note         = {Accessed: Sep. 4, 2026},
+  annote       = {Instruments the load generator itself: the ``scheduling precision reserve'' is the gap between when a transaction is picked and when it must be submitted, published as boxplots against terminal count. It ``can drop below zero in the case of hundreds of terminals'', and the authors weigh that against the workload's own timescale --- the violation ``never exceeds half a second'' where TPC-C's constraints ``are in the order of magnitude of seconds''. The invalidated fraction is published too. Accessed: Sep. 4, 2026}
 }
 
 @misc{meshiq2026activemq,
@@ -1422,7 +1468,8 @@
   title        = {{ActiveMQ} performance benchmarking: the complete methodology guide},
   howpublished = {Practitioner guide},
   year         = {2026},
-  note         = {\url{https://www.meshiq.com/blog/activemq-performance-benchmarking-methodology/}, 21 July 2026. ``The Seven Performance Benchmarking Errors'' are co-locating the load generator with the broker, skipping JVM warmup, measuring only throughput, not running long enough, non-representative message sizes, triggering producer flow control, and not matching production configuration. Verified on two independent reads that \emph{clock}, \emph{timestamp}, \emph{resolution} and \emph{negative} do not occur on the page. Accessed: Sep. 4, 2026}
+  note         = {\url{https://www.meshiq.com/blog/activemq-performance-benchmarking-methodology/}, 21 July 2026. Accessed: Sep. 4, 2026},
+  annote       = {\url{https://www.meshiq.com/blog/activemq-performance-benchmarking-methodology/}, 21 July 2026. ``The Seven Performance Benchmarking Errors'' are co-locating the load generator with the broker, skipping JVM warmup, measuring only throughput, not running long enough, non-representative message sizes, triggering producer flow control, and not matching production configuration. Verified on two independent reads that \emph{clock}, \emph{timestamp}, \emph{resolution} and \emph{negative} do not occur on the page. Accessed: Sep. 4, 2026}
 }
 
 @misc{bostanci2026ramulator,
@@ -1434,7 +1481,8 @@
   howpublished = {arXiv preprint arXiv:2510.15744v4},
   year         = {2026},
   month        = may,
-  note         = {Shows a MICRO best-paper runner-up with all three artifact badges,
+  note         = {Accessed: Sep. 3, 2026},
+  annote       = {Shows a MICRO best-paper runner-up with all three artifact badges,
                   including Reproducible, reported incorrect simulator results through
                   configuration errors and could not rebuild its own key results; argues for
                   mechanisms to correct results and artifacts after publication.
@@ -1447,7 +1495,8 @@
   howpublished = {Vendor methodology guide},
   year         = {2026},
   month        = may,
-  note         = {\url{https://www.automq.com/blog/kafka-benchmark-methodology-run-fair-comparisons}; covers workload profile, hardware normalization, durability contract and failure scenarios. Its whole treatment of what the instrument discards is the phrase ``with outlier handling described''. Accessed: Sep. 3, 2026}
+  note         = {\url{https://www.automq.com/blog/kafka-benchmark-methodology-run-fair-comparisons}. Accessed: Sep. 3, 2026},
+  annote       = {\url{https://www.automq.com/blog/kafka-benchmark-methodology-run-fair-comparisons}; covers workload profile, hardware normalization, durability contract and failure scenarios. Its whole treatment of what the instrument discards is the phrase ``with outlier handling described''. Accessed: Sep. 3, 2026}
 }
 
 @misc{indexdev2026brokers,
@@ -1455,7 +1504,8 @@
   title        = {{NATS} vs {Redis} vs {Kafka}: message broker comparison},
   howpublished = {Practitioner comparison},
   year         = {2026},
-  note         = {\url{https://www.index.dev/skill-vs-skill/nats-vs-redis-vs-kafka}; no retained fraction, rejection count, timestamp resolution or send rate. S1.9 records what we first read here and why it was wrong. Accessed: Sep. 3, 2026.}
+  note         = {\url{https://www.index.dev/skill-vs-skill/nats-vs-redis-vs-kafka}. Accessed: Sep. 3, 2026},
+  annote       = {\url{https://www.index.dev/skill-vs-skill/nats-vs-redis-vs-kafka}; no retained fraction, rejection count, timestamp resolution or send rate. S1.9 records what we first read here and why it was wrong. Accessed: Sep. 3, 2026.}
 }
 
 @misc{devto2026streaming,
@@ -1463,7 +1513,8 @@
   title        = {Real-time event streaming: {Kafka} vs {Redis} {Streams} vs {NATS} in 2026},
   howpublished = {Practitioner comparison},
   year         = {2026},
-  note         = {\url{https://dev.to/young_gao/real-time-event-streaming-kafka-vs-redis-streams-vs-nats-in-2026-34o1}; ranks the three on ``End-to-end latency (p99)'' and gives {Redis} Streams $0.8$~ms, NATS JetStream $3.2$~ms and {Kafka} $12.5$~ms, with a summary table reading ``$<$1ms / 1-5ms / 5-20ms''. Method given in full as ``Tested on 3-node cluster, 8 vCPU, 32GB RAM each'' and ``benchmarks based on production deployments''; no tool, timestamp source, synchronization statement, resolution or discard count. Accessed: Sep. 4, 2026, and the source of the figures withdrawn from \texttt{indexdev2026brokers} above}
+  note         = {\url{https://dev.to/young_gao/real-time-event-streaming-kafka-vs-redis-streams-vs-nats-in-2026-34o1}. Accessed: Sep. 4, 2026},
+  annote       = {\url{https://dev.to/young_gao/real-time-event-streaming-kafka-vs-redis-streams-vs-nats-in-2026-34o1}; ranks the three on ``End-to-end latency (p99)'' and gives {Redis} Streams $0.8$~ms, NATS JetStream $3.2$~ms and {Kafka} $12.5$~ms, with a summary table reading ``$<$1ms / 1-5ms / 5-20ms''. Method given in full as ``Tested on 3-node cluster, 8 vCPU, 32GB RAM each'' and ``benchmarks based on production deployments''; no tool, timestamp source, synchronization statement, resolution or discard count. Accessed: Sep. 4, 2026, and the source of the figures withdrawn from \texttt{indexdev2026brokers} above}
 }
 
 @misc{javacodegeeks2026brokers,
@@ -1472,7 +1523,8 @@
   howpublished = {Practitioner comparison},
   month        = mar,
   year         = {2026},
-  note         = {\url{https://www.javacodegeeks.com/2026/03/nats-vs-kafka-vs-redis-streams-for-java-microservices-when-simpler-actually-wins.html}; ``NATS delivers sub-millisecond latency up to roughly the 99.7th percentile for small payloads'', \redis{} ``similarly'', \kafka{} to ``around the 94th percentile''. Its latency chart is captioned ``Approximate values drawn from published benchmarks --- Brave New Geek \& Synadia (2024)''. \emph{Timestamp}, \emph{clock}, \emph{resolution} and \emph{discard} do not occur in the article. Accessed: Sep. 12, 2026}
+  note         = {\url{https://www.javacodegeeks.com/2026/03/nats-vs-kafka-vs-redis-streams-for-java-microservices-when-simpler-actually-wins.html}. Accessed: Sep. 12, 2026},
+  annote       = {\url{https://www.javacodegeeks.com/2026/03/nats-vs-kafka-vs-redis-streams-for-java-microservices-when-simpler-actually-wins.html}; ``NATS delivers sub-millisecond latency up to roughly the 99.7th percentile for small payloads'', \redis{} ``similarly'', \kafka{} to ``around the 94th percentile''. Its latency chart is captioned ``Approximate values drawn from published benchmarks --- Brave New Geek \& Synadia (2024)''. \emph{Timestamp}, \emph{clock}, \emph{resolution} and \emph{discard} do not occur in the article. Accessed: Sep. 12, 2026}
 }
 
 @inproceedings{combench2021,
@@ -1494,7 +1546,7 @@
   pages     = {185--193},
   year      = {2018},
   doi       = {10.1109/ITC30.2018.00036},
-  note      = {retains samples that earlier methods discarded, including negative
+  annote    = {retains samples that earlier methods discarded, including negative
                latencies, by assigning them to lower accuracy tiers}
 }
 
@@ -1514,7 +1566,8 @@
                   A Practical Playbook for Defensible Results},
   howpublished = {arXiv preprint arXiv:2605.00428},
   year         = {2026},
-  note         = {section 14, ``Latency-Specific Pitfalls'', names three: the mean as a
+  note         = {Accessed: Sep. 3, 2026},
+  annote       = {section 14, ``Latency-Specific Pitfalls'', names three: the mean as a
                   summary, coordinated omission, and warmup effects; section 18, ``Outliers,
                   failed runs, and exclusion rules'', is the nearest it comes to a discard
                   rule. Over 31 pages the words
@@ -1531,7 +1584,7 @@
   pages        = {24--43},
   doi          = {10.1007/978-3-031-93858-0_2},
   organization = {Hasso Plattner Institut},
-  note         = {reviews 27 benchmark efforts across five dimensions, one of them
+  annote       = {reviews 27 benchmark efforts across five dimensions, one of them
                   ``tracked metrics'', and closes on the aspects that have been overlooked.
                   Over 21 pages it says benchmark 169 times and latency 33; timestamp, clock,
                   resolution and ``measurement error'' do not occur. Counts recomputed by
@@ -1545,7 +1598,7 @@
                   Host Network Stack},
   booktitle    = {Proc. ACM Internet Measurement Conference (IMC)},
   year         = {2026},
-  note         = {an eBPF monitor timestamping at kernel hook points, deployed in a CDN. Its
+  annote       = {an eBPF monitor timestamping at kernel hook points, deployed in a CDN. Its
                   abstract names the sub-millisecond domain and application scheduling as
                   host latency sources. It states its histogram resolution error --- $\pm
                   33.3\%$ from the bin midpoint on base-2 buckets, with $2^{1/8}$ costed at
@@ -1560,7 +1613,8 @@
   title        = {On the Limits of Causal Observation in Shared-Memory Systems},
   howpublished = {arXiv preprint arXiv:2606.14093},
   year         = {2026},
-  note         = {formalizes the Causal Observability Problem and proves no solution at the
+  note         = {Accessed: Sep. 10, 2026},
+  annote       = {formalizes the Causal Observability Problem and proves no solution at the
                   observable boundary is both complete and sound; the placement of
                   instrumentation relative to operation boundaries decides which of the two a
                   monitor gets, ``independently of the underlying timestamp mechanism''.
@@ -1573,7 +1627,8 @@
   title        = {The load generation need to fix Coordinated Omission (issue \#247)},
   howpublished = {OpenMessaging Benchmark issue tracker},
   year         = {2022},
-  note         = {opened 2022-03-01, closed with pull request~\#248. Argues that a load
+  note         = {Issue \#247, opened 2022-03-01. \url{https://github.com/openmessaging/benchmark/issues/247}. Accessed: Sep. 10, 2026},
+  annote       = {opened 2022-03-01, closed with pull request~\#248. Argues that a load
                   generator failing to keep up ``will pass unnoticed in the percentiles
                   ocean'' unless the publish delay is recorded against the scheduled send
                   instant. Accepted; the admission condition was untouched by the repair.
@@ -1586,7 +1641,8 @@
                   testing of results (issue \#452)},
   howpublished = {OpenMessaging Benchmark issue tracker},
   year         = {2026},
-  note         = {opened 2026-03-26. Observes that the harness ``already maintains HDR
+  note         = {Issue \#452, opened 2026-03-26. \url{https://github.com/openmessaging/benchmark/issues/452}. Accessed: Sep. 10, 2026},
+  annote       = {opened 2026-03-26. Observes that the harness ``already maintains HDR
                   Histograms internally throughout each run and discards them after
                   extracting the summary scalars'', and that summary scalars cannot say
                   whether a difference is significant ``or within the noise floor of the
@@ -1599,7 +1655,8 @@
   title        = {{Recorder} --- {HdrHistogram} {API} documentation},
   howpublished = {Project documentation},
   year         = {2026},
-  note         = {\texttt{recordValue} documents its exception as thrown ``if value is
+  note         = {\url{https://hdrhistogram.github.io/HdrHistogram/JavaDoc/org/HdrHistogram/Recorder.html}. Accessed: Sep. 10, 2026},
+  annote       = {\texttt{recordValue} documents its exception as thrown ``if value is
                   exceeds highestTrackableValue'' and does not mention negative values;
                   the README describes the configurable range and the significant digits
                   and is likewise silent on them. \url{https://hdrhistogram.github.io/HdrHistogram/JavaDoc/org/HdrHistogram/Recorder.html}. Accessed: Sep. 10, 2026}
@@ -1614,7 +1671,7 @@
   pages={1610--1622},
   year={2023},
   doi={10.1109/TC.2022.3215907},
-  note={Volume, issue, pages, year and DOI corrected 2026-09-22 against Crossref; the entry
+  annote={Volume, issue, pages, year and DOI corrected 2026-09-22 against Crossref; the entry
         previously read 71(9):1975--1988, 2022, doi 10.1109/TC.2021.3131240, which resolves to
         nothing. Title and authors were right. The key is left as it is because the supplement
         cites it.}
@@ -1625,7 +1682,8 @@
   title        = {Child span start time precedes parent span start time (issue \#2568)},
   howpublished = {Issue tracker},
   year         = {2026},
-  note         = {\url{https://github.com/open-telemetry/opentelemetry-ebpf-instrumentation/issues/2568}; reported on same-node as well as distributed resources, with clock skew checked and excluded by the reporter; deltas of seconds to minutes, far beyond a run-queue stall. Open and untriaged. Accessed: Sep. 13, 2026}
+  note         = {\url{https://github.com/open-telemetry/opentelemetry-ebpf-instrumentation/issues/2568}. Accessed: Sep. 13, 2026},
+  annote       = {\url{https://github.com/open-telemetry/opentelemetry-ebpf-instrumentation/issues/2568}; reported on same-node as well as distributed resources, with clock skew checked and excluded by the reporter; deltas of seconds to minutes, far beyond a run-queue stall. Open and untriaged. Accessed: Sep. 13, 2026}
 }
 
 @misc{li2026rounding,
@@ -1634,7 +1692,8 @@
   howpublished = {SSRN preprint},
   year         = {2026},
   doi          = {10.2139/ssrn.7209798},
-  note         = {Manufacturing process mining on a synthetic five-station flow line: 1-, 5- and 10-minute rounding of activity starts and completions changes the top-ranked station in 4.5\%, 19.0\% and 30.25\% of paired logs. Rounds rather than deletes, so it carries the arithmetic of the deletion failure without its sign. Accessed: Sep. 13, 2026}
+  note         = {Accessed: Sep. 13, 2026},
+  annote       = {Manufacturing process mining on a synthetic five-station flow line: 1-, 5- and 10-minute rounding of activity starts and completions changes the top-ranked station in 4.5\%, 19.0\% and 30.25\% of paired logs. Rounds rather than deletes, so it carries the arithmetic of the deletion failure without its sign. Accessed: Sep. 13, 2026}
 }
 
 @article{chen2015statcomparisons,
@@ -1646,7 +1705,7 @@
   pages   = {1442--1455},
   year    = {2015},
   doi     = {10.1109/TC.2014.2315614},
-  note    = {Prepared, not cited. Round 77's referee (W5) named it the natural swap for Georges et al. if an editor asks for a venue citation on statistical reporting, and advised against making the swap unprompted}
+  annote  = {Prepared, not cited. Round 77's referee (W5) named it the natural swap for Georges et al. if an editor asks for a venue citation on statistical reporting, and advised against making the swap unprompted}
 }
 
 @misc{hdrhistogram_go,
@@ -1654,7 +1713,8 @@
   title        = {hdrhistogram-go: package documentation},
   howpublished = {Go package documentation},
   year         = {2026},
-  note         = {\url{https://pkg.go.dev/github.com/HdrHistogram/hdrhistogram-go}; RecordValue ``records the given value, returning an error if the value is out of range''. Accessed: Sep. 13, 2026}
+  note         = {\url{https://pkg.go.dev/github.com/HdrHistogram/hdrhistogram-go}. Accessed: Sep. 13, 2026},
+  annote       = {\url{https://pkg.go.dev/github.com/HdrHistogram/hdrhistogram-go}; RecordValue ``records the given value, returning an error if the value is out of range''. Accessed: Sep. 13, 2026}
 }
 
 @misc{hdrhistogram_rust,
@@ -1662,7 +1722,8 @@
   title        = {hdrhistogram: crate documentation},
   howpublished = {Rust crate documentation},
   year         = {2026},
-  note         = {\url{https://docs.rs/hdrhistogram/}; samples recorded with \texttt{record} ``will error if the value is too small or large''. Accessed: Sep. 13, 2026}
+  note         = {\url{https://docs.rs/hdrhistogram/}. Accessed: Sep. 13, 2026},
+  annote       = {\url{https://docs.rs/hdrhistogram/}; samples recorded with \texttt{record} ``will error if the value is too small or large''. Accessed: Sep. 13, 2026}
 }
 
 @inproceedings{henning2025variability,
@@ -1670,7 +1731,8 @@
   author    = {Henning, S{\"o}ren and Vogel, Adriano and Perez-Wohlfeil, Esteban and Ertl, Otmar and Rabiser, Rick},
   booktitle = {Proc. 33rd ACM Int. Conf. Foundations of Software Engineering (FSE), Industry Track},
   year      = {2025},
-  note      = {arXiv:2504.11826. 2366 benchmarks on AWS over more than three months: coefficient of variation below 3.7\%, substantial differences (e.g. above 5\%) detectable}
+  note      = {arXiv:2504.11826},
+  annote    = {arXiv:2504.11826. 2366 benchmarks on AWS over more than three months: coefficient of variation below 3.7\%, substantial differences (e.g. above 5\%) detectable}
 }
 
 @misc{flink_latencystats,
@@ -1678,7 +1740,8 @@
   title        = {\texttt{LatencyStats.java}},
   howpublished = {Source repository},
   year         = {2026},
-  note         = {\url{https://github.com/apache/flink/blob/master/flink-runtime/src/main/java/org/apache/flink/streaming/util/LatencyStats.java};
+  note         = {\url{https://github.com/apache/flink/blob/master/flink-runtime/src/main/java/org/apache/flink/streaming/util/LatencyStats.java}. Accessed: Sep. 14, 2026},
+  annote       = {\url{https://github.com/apache/flink/blob/master/flink-runtime/src/main/java/org/apache/flink/streaming/util/LatencyStats.java};
                   records \texttt{System.currentTimeMillis() - marker.getMarkedTime()} with no filter. Accessed: Sep. 14, 2026}
 }
 
@@ -1687,5 +1750,6 @@
   title        = {Metrics: latency tracking},
   howpublished = {Apache Flink documentation},
   year         = {2026},
-  note         = {\url{https://nightlies.apache.org/flink/flink-docs-master/docs/ops/metrics/}; ``Flink assumes that the clocks of all machines in the cluster are in sync''; the feature ``is disabled by default'' and is recommended ``only \ldots{} for debugging purposes''. Accessed: Sep. 14, 2026}
+  note         = {\url{https://nightlies.apache.org/flink/flink-docs-master/docs/ops/metrics/}. Accessed: Sep. 14, 2026},
+  annote       = {\url{https://nightlies.apache.org/flink/flink-docs-master/docs/ops/metrics/}; ``Flink assumes that the clocks of all machines in the cluster are in sync''; the feature ``is disabled by default'' and is recommended ``only \ldots{} for debugging purposes''. Accessed: Sep. 14, 2026}
 }

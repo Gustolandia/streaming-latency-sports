@@ -298,9 +298,9 @@ S &\equiv t_{\mathrm{recv}} - t_{\mathrm{ack}} \;=\; D - A .
 \end{equation}
 $D$ is the \emph{delivery}, from the send call to the consumer holding the record. $A$ is
 the \emph{acknowledgment lag}, from the send call to the producer observing the broker's
-acknowledgment. $S$ is the span the benchmark literature reports as broker latency. We
-call it the \emph{transport proxy}, for the reason given in
-Section~\ref{sec:proxy}.
+acknowledgment. $S$ is what a harness reports when it times a message from the acknowledgment
+rather than from the send, as our own first harness did; we call it the \emph{transport
+proxy}, for the reason given in Section~\ref{sec:proxy}.
 
 Two more quantities belong to the model rather than to either failure. Write $\tau$ for
 the \emph{timestamp resolution} --- the \emph{quantum}, one millisecond in the benchmark of
@@ -363,8 +363,10 @@ impossible having occurred.
 What a negative $S$ establishes is precise and limited. It does not show that either
 timestamp is wrong: $t_{\mathrm{ack}}$ may record exactly when the producer observed the
 acknowledgment. It shows that the acknowledgment cannot serve as the origin of a
-non-negative delivery latency for that event. That is the use the benchmark literature
-puts it to. The negative-span rate is therefore a property of the quantity being measured,
+non-negative delivery latency for that event, which is the use an acknowledgment-referenced
+harness puts it to. The same holds wherever the origin timestamp is written by a thread that
+must first be woken, such as a delivery-report poll or a completion reaper (Supplement~S30).
+The negative-span rate is therefore a property of the quantity being measured,
 not only of the machine. A fixed distribution of $A$ overlaps a small $D$ almost entirely
 and a large one hardly at all. That is why a configuration whose transport runs to tens of
 seconds passes every run while the same hardware measuring one millisecond fails
@@ -439,7 +441,7 @@ grows. The manipulations that establish it separate scheduling from its rival
 explanations (Section~\ref{sec:twostate}). The audit half has its own ancestor.
 Paxson~\cite{paxson1998calibrating} treated physically impossible transit times as
 measurement failure and published the proportion of traces affected.
-Lancet~\cite{kogias2019lancet}, a latency-measurement tool that timestamps in the network
+Lancet~\cite[Sec.~4.3]{kogias2019lancet}, a latency-measurement tool that timestamps in the network
 interface, is the nearest existing gate: it tests each run's samples for statistical
 stability and reports an inconclusive verdict when they fail, where we decline to publish
 at all. Neither reports the fraction of runs a campaign lost.
@@ -478,7 +480,7 @@ of it is also old: it is the IPPM framework~\cite{rfc2330}, and RFC~3432 makes a
 streams~\cite{rfc3432}. Coordinated omission~\cite{tene2015latency} is the mirror image ---
 there the measurement fails to record samples that would have been slow, here it deletes
 samples that were fast. Millsap and Holt draw the opposite conclusion from the same
-arithmetic~\cite{millsap2003oracle}: coarse timing survives in aggregate \emph{because} the
+arithmetic~\cite[Sec.~7.7]{millsap2003oracle}: coarse timing survives in aggregate \emph{because} the
 two signed errors cancel. A filter admitting only positive samples removes one sign, and
 with it the cancellation that defence depends on.
 
@@ -510,20 +512,20 @@ span, and the sign channel that makes the displacement legible.
 % statistics, each its own subsection. The measurement model that used to open this section
 % is Section II now; what remains here is what was built and how it was run.
 Everything below is measured on the system of Section~\ref{sec:sysmodel}, on one clock
-unless the text says otherwise. The rule that decides which runs count was fixed before
-any result was read.
+unless the text says otherwise.
 
 \subsection{Testbeds}
 \label{sec:testbeds}
-Every measured finding comes from four Oracle Cloud \brk{VM.Standard.E5.Flex} instances, three
-brokers and one driver. They run Ubuntu 22.04 on kernel \brk{6.8.0-1057-oracle} (EEVDF
+The measured findings of Sections~\ref{sec:mechanism} and~\ref{sec:external} come from four
+Oracle Cloud \brk{VM.Standard.E5.Flex} instances, three brokers and one driver. They run Ubuntu 22.04 on kernel \brk{6.8.0-1057-oracle} (EEVDF
 scheduler) and CPython 3.10, on a private network. Client libraries are pinned identically,
 and \texttt{chrony}-disciplined clocks are logged every minute. The producer and the consumer
 run as separate \emph{processes on one host}. One early phase perturbed the measurement
 enough to be unusable and is excluded from every result here. The campaigns that remain
 measure utilization with no core pinning (Supplement~S1). A second testbed, a workstation
 running the brokers under containers, enters only through the audit, whose rejection count
-spans both (Section~\ref{sec:audit}).
+spans both (Section~\ref{sec:audit}). A later registered campaign ran on three pairs of
+Microsoft Azure machines, two x86 and one Neoverse~N2 (Supplement Part~V).
 
 \subsection{Terms}
 \label{def:vocabulary}
@@ -578,8 +580,8 @@ other's (Supplement~S16.1); Section~\ref{sec:brokers} says what that is worth.
 
 \subsection{The consistency check}
 \label{sec:gate}
-We fixed the rule before the final campaign and apply it to every run, including those
-whose results looked reasonable. \textbf{A run is rejected if more than $1\%$ of its events
+We fixed the rule before the final campaign, after earlier campaigns had run, and apply it to
+every run, including those whose results looked reasonable. \textbf{A run is rejected if more than $1\%$ of its events
 carry a negative value in any latency component, or if the median of any component is
 negative.} A condition is usable only if all of its runs survive. Where a condition is
 partly rejected we report the fraction of its runs that survived. The one-per-cent figure
@@ -1122,7 +1124,7 @@ and \tti{} is free of it (Supplement~S16.1).
 \subsection{For benchmark authors}
 \label{sec:authors}
 
-SPEC and TPC judge a benchmark on five criteria~\cite{kistowski2015build}. The tool we
+SPEC and TPC judge a benchmark on five criteria~\cite[Sec.~3]{kistowski2015build}. The tool we
 audit passes the half of \emph{reproducibility} a reader checks ---
 run-to-run consistency at a fixed configuration --- \emph{because} it fails
 \emph{verifiability}. A median from $\ombGridRetentionMin\%$ of the samples is the more

@@ -149,10 +149,10 @@ def test_the_history_of_the_plan(part_v):
          "P3 became P3a and P3b in version~9, before any load run was read",
          "Version~14 judges P3a only where the plateau reaches $2\\%$",
          "corrected or widened in versions 8, 16, 17, 18 and~20",
-         "for A5's last runs in version~26 and for every campaign in version~32",
+         "for L5's last runs in version~26 and for every campaign in version~32",
          "versions 19, 21 and~30 corrected faults in programs that had already judged",
-         "the Arm pair's load campaign (version~24); a 3.75~ms slice for A1, second bridge days "
-         "and a third x86 load campaign (version~27); A9 (version~28); and M0's recording "
+         "the Arm pair's load campaign (version~24); a 3.75~ms slice for L1, second bridge days "
+         "and a third x86 load campaign (version~27); L9 (version~28); and M0's recording "
          "(version~29)",
          "P6 was given its program in version~30, at a margin no run had been read against")
 
@@ -182,7 +182,7 @@ def test_the_rounds_each_campaign_ran(part_v):
     for (block, _, _), n in rounds.items():
         by_block[block].add(n)
     assert by_block["A2"] == by_block["A9"] == {4} and by_block["M0"] == {10}
-    _has(part_v, "A2 and A9 ran at the floor of four", "M0 ran at a fixed ten")
+    _has(part_v, "L2 and L9 ran at the floor of four", "M0 ran at a fixed ten")
 
 
 def test_the_machines_and_their_kernels(part_v):
@@ -272,6 +272,9 @@ def test_what_ran(part_v):
 def test_the_table_of_blocks(part_v):
     rows = collections.OrderedDict()
     merge = {"C0B": "C0", "B0": "B0, P0", "P0": "B0, P0", "SMOKE": "smoke test"}
+    # The records name the law blocks A1 to A9; the supplement prints them L1 to L9 so that
+    # none shares a name with Parts I to IV's E-labeled campaigns.
+    merge.update(("A%d" % i, "L%d" % i) for i in range(1, 10))
     for row in _quality():
         block = merge.get(row["block"], row["block"])
         cells = rows.setdefault(block, collections.Counter())
@@ -357,7 +360,7 @@ def test_the_verdict_column_is_the_frozen_answer(part_v):
         assert cells[row] == "not confirmed", row
     a9 = _answer("a9")
     assert not a9["a9_1_holds"] and not a9["confirmed"] and not a9["a9_2b_confirmed"]
-    assert cells["A9-1"] == cells["A9-2"] == cells["A9-2b"] == "not confirmed"
+    assert cells["L9-1"] == cells["L9-2"] == cells["L9-2b"] == "not confirmed"
     assert cells["M0"] == "--" and "confirmed" not in _answer("m0")
     held_everywhere = [row for row, cell in cells.items() if cell.startswith("confirmed on all")]
     held_once = [row for row, cell in cells.items() if cell.endswith("only")]
@@ -597,11 +600,11 @@ def test_each_false_start_and_its_cause(part_v, runs):
                  "was started 30 seconds before", "no zero-delay got-it median for Kafka at 75%",
                  "was stopped by hand after 2 runs"):
         assert said in register, said
-    _has(part_v, "two A4s started three minutes apart on 18~September, and an A8 started 30~s "
+    _has(part_v, "two L4s started three minutes apart on 18~September, and an L8 started 30~s "
          "before its twin on 21~September",
          "Every run of theirs judged while both ran measured a load of $99.7$ to $99.8\\%$ against "
          "$75\\%$", "its two runs from those minutes were repeated",
-         "an A8 on the Arm pair was placed from a calibration with no zero-delay got-it median",
+         "an L8 on the Arm pair was placed from a calibration with no zero-delay got-it median",
          "measured its load $%s$ to $%s$ points above target in each of its three runs"
          % (_f(min(over), 1), _f(max(over), 1)),
          "stopped by hand after two counted runs and followed five minutes later by a session on "
@@ -728,3 +731,28 @@ def test_nothing_here_is_a_verdict_and_the_vocabulary_holds(part_v):
     _has(part_v, "none of it changes one", "is the one reported")
     for word in (r"\bstamps?\b", r"\bstamper", r"\binstrument\b", r"\bflight\b"):
         assert not re.search(word, part_v), word
+
+
+def test_no_law_block_shares_a_name_with_an_earlier_campaign():
+    """An outside editor's reading, 28 Sep: E-A5 in Part II was a priority manipulation and A5
+    in Part V a core-count block; E-A9 the run-queue trace and A9 the per-acknowledgment wait
+    recording. The law campaign's blocks print as L1 to L9 wherever the supplement reports
+    them, and the plan's own names appear only where the two are mapped."""
+    import make_law_figures
+    text = (REPO / "supplement.tex").read_text(encoding="utf-8")
+    spans = [(text.index(r"\subsection{S16.10."),
+              text.index(r"\section{", text.index(r"\subsection{S16.11."))),
+             (text.index(r"\section*{Part V."), text.index(r"\bibliographystyle"))]
+    prose = "\n".join(l for s, e in spans for l in text[s:e].split("\n")
+                      if not l.lstrip().startswith("%"))
+    prose = _flat(prose)
+    mapping = ("The plan names its blocks A1 to~A9 and the three wait predictions A9-1, A9-2 "
+               "and A9-2b; they are written L1 to~L9 and L9-1, L9-2 and L9-2b here")
+    assert mapping in prose and "(Part~V; A9 in its plan)" in prose
+    rest = prose.replace(mapping, "").replace("(Part~V; A9 in its plan)", "")
+    assert not re.findall(r"(?<![-\w\\])A[1-9](?:-\d|s)?b?(?!\w)", rest)
+    earlier = text[:spans[0][0]] + text[spans[0][1]:spans[1][0]]
+    assert not re.findall(r"(?<![-\w\\])L[1-9](?:-\d)?b?(?!\w)", _flat(earlier)), (
+        "an L-label outside the law campaign's sections")
+    titles = [p["title"] for spec in make_law_figures.FIGURES.values() for p in spec["panels"]]
+    assert titles and all(re.match(r"\([a-g]\) L[1-9], ", t) for t in titles)

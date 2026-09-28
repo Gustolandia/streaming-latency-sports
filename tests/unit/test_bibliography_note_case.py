@@ -79,8 +79,11 @@ def test_no_cited_note_lets_the_style_lowercase_a_name(doc, bib_notes):
     assert not offenders, "brace-protect the leading name: %s" % offenders
 
 
+#: The DTrace note of villain2012probing was commentary rather than citation data, and since the
+#: 28 September split (test_reference_notes.py) it is kept unprinted in `annote`; the rule it
+#: taught still holds for every note that prints.
 @pytest.mark.parametrize("doc,present,absent", [
-    ("paper", ("Open Compute Project", "DTrace breakdown"), ("open Compute", "dTrace")),
+    ("paper", ("Open Compute Project",), ("open Compute", "dTrace")),
     ("supplement", ("Open Compute Project",), ("open Compute",)),
 ])
 def test_the_rendered_references_keep_the_two_names(doc, present, absent):
@@ -130,4 +133,8 @@ class TestTheRule:
 
     def test_the_bibliography_protects_both_entries(self, bib_notes):
         assert bib_notes["sharma2026causality"].startswith("{Open Compute Project}")
-        assert bib_notes["villain2012probing"].startswith("{DTrace}")
+        bib = BIB.read_text(encoding="utf-8")
+        entry = bib[bib.index("{villain2012probing,"):]
+        entry = entry[:entry.index("\n}")]
+        assert "villain2012probing" not in bib_notes, "the DTrace note no longer prints"
+        assert "annote    = {{DTrace} breakdown" in entry, "and it stays brace-protected"

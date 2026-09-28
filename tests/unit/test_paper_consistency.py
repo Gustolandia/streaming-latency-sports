@@ -3690,8 +3690,24 @@ class TestReferenceHouseStyle:
                              bib.read_text(encoding="utf-8"), re.S):
             key = m.group(2).strip()
             if key in cited:
-                out[key] = m.group(3)
+                out[key] = TestReferenceHouseStyle._printed(m.group(3))
         return out
+
+    @staticmethod
+    def _printed(body):
+        """The entry without its `annote` field, which IEEEtran.bst does not print.
+
+        Since 28 Sep the commentary a note used to print lives there (test_reference_notes.py),
+        and house style is about what the reader sees.
+        """
+        m = re.search(r"\n\s*annote\s*=\s*\{", body)
+        if not m:
+            return body
+        depth, j = 1, m.end()
+        while j < len(body) and depth:
+            depth += {"{": 1, "}": -1}.get(body[j], 0)
+            j += 1
+        return body[:m.start()] + body[j:].lstrip(",")
 
     def test_no_entry_prints_the_same_literal_twice(self):
         """An entry must not print the same URL or filename twice, in whichever fields.

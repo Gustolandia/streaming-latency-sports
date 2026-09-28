@@ -123,6 +123,20 @@ explanations accounts for it. The quality report finds pauses of seconds on both
 none that long on Arm.
 → [`law/judged-with-and-without-the-brake.md`](law/judged-with-and-without-the-brake.md)
 
+**The strange results, each read to its cause as far as the data go.** Read after the fact, with
+no verdict changed. Under bursts, 46% of messages arrive right behind another, and Redis makes each
+of those wait out one more delayed round trip. Kafka's trip grows one for one; Redis's median sits
+where the two kinds of message meet, and that is the M0 departure. The frozen replay could not keep
+that explanation, because it gives every leader one trip. The x86 pauses are the driver's disk
+writes stalling, with the consumer and an unrelated process stopping together, and Kafka's broker
+stalling; they are not the network. The rate has no flat plateau before the slice, which is every
+"fitted shape fails, free reading holds". The judges of P2, P2b and P2c read A2's two slices as one
+curve and could not have confirmed P2 had the law held exactly; read slice by slice, the width
+follows the tick at 1.5 ms. A9-2 counts time where A9-2b counts acknowledgements, and A9's own
+recording raised the rate it recorded. Each expected result is set beside the formula it fell
+under.
+→ [`law/the-strange-results-read-28-sep.md`](law/the-strange-results-read-28-sep.md)
+
 **Two ABI builds of one kernel version give two different default slices, and the version number
 predicts only one of them.** The first x86 pair now runs `6.8.0-1065-azure` and the second
 `6.8.0-1064-azure` — same VM size, same eight CPUs, same log scaling, same 1000 Hz tick — and

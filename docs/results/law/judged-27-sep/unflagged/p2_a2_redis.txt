@@ -1,0 +1,17 @@
+campaigns/matched-b/a2_20260922T120958Z/runs: 60 runs counted, 0 left out
+campaigns/matched-b/a2_20260923T015244Z/runs: 60 runs counted, 0 left out
+campaigns/matched-b/a2_20260924T185524Z/runs: 60 runs counted, 0 left out
+campaigns/matched-b/a2_20260922T190106Z/runs: 60 runs counted, 1 left out
+campaigns/matched-b/a2_20260923T214236Z/runs: 60 runs counted, 0 left out
+campaigns/matched-b/a2_20260924T144527Z/runs: 60 runs counted, 0 left out
+campaigns/matched-b/a2_20260923T115348Z/runs: 60 runs counted, 0 left out
+campaigns/matched-b/a2_20260924T100850Z/runs: 58 runs counted, 2 left out
+campaigns/matched-b/a2_20260925T180818Z/runs: 60 runs counted, 0 left out
+left out 3 runs the integrity rule did not pass: law_a2_20260922T190106Z_r003-A2-redis-l75-s3000-p05s-a1 (stop), law_a2_20260924T100850Z_r002-A2-redis-l75-s3000-c06h-a1 (repeat), law_a2_20260924T100850Z_r003-A2-redis-l75-s1500-c02h-a1 (stop)
+P2: not confirmed
+  rule: the width ratio's interval overlaps 2.5-5.5 and excludes 1.0
+  judged on: free, fitted
+  free shape: does not hold, measured 1.064, 95% interval 0.5971 to 1.4294, from 2000 resamplings
+  fitted shape: does not hold, measured 1.1262, 95% interval 0.1705 to 2.4506, from 2000 resamplings
+  hz: 250
+exit 0

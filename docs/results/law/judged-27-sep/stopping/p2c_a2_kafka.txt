@@ -1,0 +1,16 @@
+campaigns/matched/a2_20260923T005640Z/runs: 52 runs counted, 1 left out
+campaigns/matched/a2_20260923T174252Z/runs: 52 runs counted, 0 left out
+campaigns/matched/a2_20260923T135508Z/runs: 52 runs counted, 0 left out
+campaigns/matched/a2_20260924T023016Z/runs: 52 runs counted, 0 left out
+campaigns/matched/a2_20260923T211938Z/runs: 44 runs counted, 1 left out
+campaigns/matched/a2_20260924T093518Z/runs: 44 runs counted, 0 left out
+campaigns/matched/a2_20260923T093827Z/runs: 25 runs counted, 0 left out
+left out 2 runs the integrity rule did not pass: law_a2_20260923T005640Z_r003-A2-kafka-l75-s3000-c08h-a1 (repeat), law_a2_20260923T211938Z_r004-A2-kafka-l75-s3000-f15h-a1 (repeat)
+P2c: not confirmed
+  rule: the fitted width's slope against the tick has an interval overlapping 0.8-1.2 and excluding 0.5, and the intercept's includes 0
+  judged on: fitted
+  free shape: does not hold, measured 0.7767, 95% interval 0.5879 to 0.8793, from 2000 resamplings
+    intercept: [0.40376719855926524, 1.1465479771440275]
+  fitted shape: does not hold, measured 0.9917, 95% interval 0.2768 to 1.1437, from 2000 resamplings
+    intercept: [-0.4107497978921222, 1.8825523752034368]
+exit 0

@@ -1,0 +1,10 @@
+campaigns/matched/a3_20260919T171733Z/runs: 286 runs counted, 1 left out
+left out 1 run the integrity rule did not pass: law_a3_20260919T171733Z_r016-A3-kafka-l75-s3000-p09s-a1 (stop)
+P3a: not confirmed
+  rule: the halfway point's move between the lowest and the highest load whose plateau is at least 2% has its whole interval inside 0.25 ms either way
+  judged on: free, fitted
+  free shape: holds, measured -0.0086, 95% interval -0.126 to 0.1779, from 2000 resamplings
+  fitted shape: does not hold, measured -0.0403, 95% interval -0.2526 to 0.2341, from 2000 resamplings
+  loads compared: [75, 88]
+  loads out of reach: {50: 0.0014969259556268377}
+exit 0

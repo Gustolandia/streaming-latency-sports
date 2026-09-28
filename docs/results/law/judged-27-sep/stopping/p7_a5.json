@@ -1,0 +1,111 @@
+{
+  "by_part": {
+    "kafka": {
+      "by_summary": {
+        "fitted": {
+          "confirmed": true,
+          "halfway_ms": {
+            "8": {
+              "2.8": 3.1727952204399634
+            }
+          },
+          "in_band": {
+            "8": true
+          }
+        },
+        "free": {
+          "confirmed": true,
+          "halfway_ms": {
+            "8": {
+              "2.8": 3.0827239645776565
+            }
+          },
+          "in_band": {
+            "8": true
+          }
+        }
+      },
+      "confirmed": true,
+      "judged_on": [
+        "free",
+        "fitted"
+      ],
+      "out_of_reach": [
+        "2",
+        "4"
+      ],
+      "read_back": {
+        "2": true,
+        "4": true,
+        "8": true
+      },
+      "rule": "the read-back slice matches at every core count, and the halfway point is inside [s, s+h] at every core count whose slice the runs reach",
+      "tested": true
+    },
+    "redis": {
+      "by_summary": {
+        "fitted": {
+          "confirmed": false,
+          "halfway_ms": {
+            "2": {
+              "1.4": 2.6931416994876045
+            },
+            "4": {
+              "2.1": 0.92930440875
+            },
+            "8": {
+              "2.8": 2.6026349086063827
+            }
+          },
+          "in_band": {
+            "2": false,
+            "4": false,
+            "8": false
+          }
+        },
+        "free": {
+          "confirmed": true,
+          "halfway_ms": {
+            "2": {
+              "1.4": 2.390531340909091
+            },
+            "4": {
+              "2.1": 2.9591530555555554
+            },
+            "8": {
+              "2.8": 3.0658095282258064
+            }
+          },
+          "in_band": {
+            "2": true,
+            "4": true,
+            "8": true
+          }
+        }
+      },
+      "confirmed": false,
+      "judged_on": [
+        "free",
+        "fitted"
+      ],
+      "out_of_reach": [],
+      "read_back": {
+        "2": true,
+        "4": true,
+        "8": true
+      },
+      "rule": "the read-back slice matches at every core count, and the halfway point is inside [s, s+h] at every core count whose slice the runs reach",
+      "tested": true
+    }
+  },
+  "confirmed": false,
+  "judged_on": [
+    "free",
+    "fitted"
+  ],
+  "rule": "the read-back slice matches at every core count, and the halfway point is inside [s, s+h] at every core count whose slice the runs reach",
+  "split_by": [
+    "backend"
+  ],
+  "tested": true
+}

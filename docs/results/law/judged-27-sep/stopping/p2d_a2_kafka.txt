@@ -1,0 +1,15 @@
+campaigns/matched/a2_20260923T005640Z/runs: 52 runs counted, 1 left out
+campaigns/matched/a2_20260923T174252Z/runs: 52 runs counted, 0 left out
+campaigns/matched/a2_20260923T135508Z/runs: 52 runs counted, 0 left out
+campaigns/matched/a2_20260924T023016Z/runs: 52 runs counted, 0 left out
+campaigns/matched/a2_20260923T211938Z/runs: 44 runs counted, 1 left out
+campaigns/matched/a2_20260924T093518Z/runs: 44 runs counted, 0 left out
+campaigns/matched/a2_20260923T093827Z/runs: 25 runs counted, 0 left out
+left out 2 runs the integrity rule did not pass: law_a2_20260923T005640Z_r003-A2-kafka-l75-s3000-c08h-a1 (repeat), law_a2_20260923T211938Z_r004-A2-kafka-l75-s3000-f15h-a1 (repeat)
+P2d: not confirmed
+  rule: the fitted start is within 0.25 ms of the slice in every kernel and slice
+  judged on: fitted
+  free shape: does not hold
+  fitted shape: does not hold
+    within: {'[4.0, 1.5]': False, '[4.0, 3.0]': False, '[10.0, 1.5]': False, '[10.0, 3.0]': False, '[1.0, 1.5]': False, '[1.0, 3.0]': False}
+exit 0

@@ -1,0 +1,37 @@
+{
+  "by_summary": {
+    "fitted": {
+      "confirmed": true,
+      "draws": 2000,
+      "intercept": [
+        -0.16140681756836894,
+        1.7603630313659897
+      ],
+      "interval": [
+        0.8086107931484204,
+        1.0365041716339198
+      ],
+      "p_value": 0.0005,
+      "value": 0.8742843241448467
+    },
+    "free": {
+      "confirmed": false,
+      "draws": 2000,
+      "intercept": [
+        0.5431586732306632,
+        1.4305453032920732
+      ],
+      "interval": [
+        0.5283788065373053,
+        0.6447393192094653
+      ],
+      "p_value": 0.0005,
+      "value": 0.5520696474088087
+    }
+  },
+  "confirmed": true,
+  "judged_on": [
+    "fitted"
+  ],
+  "rule": "the fitted width's slope against the tick has an interval overlapping 0.8-1.2 and excluding 0.5, and the intercept's includes 0"
+}

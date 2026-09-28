@@ -1,0 +1,80 @@
+{
+ "view": "unflagged",
+ "keeps": [
+  "stopping",
+  "recorded"
+ ],
+ "from": "runs/azure/final_campaigns (the checked trees, laid out one folder per campaign)",
+ "campaigns": [
+  {
+   "pair": "arm",
+   "campaign": "a9_20260925T231103Z",
+   "kept": 128,
+   "left_out": [
+    "law_a9_20260925T231103Z_r003-A9-kafka-l88-s3000-p09s-a1"
+   ]
+  },
+  {
+   "pair": "matched",
+   "campaign": "a1_20260927T015829Z",
+   "kept": 58,
+   "left_out": [
+    "law_a1_20260927T015829Z_r003-A1-kafka-l75-s3000-c02h-a1"
+   ]
+  },
+  {
+   "pair": "matched",
+   "campaign": "a9_20260926T091512Z",
+   "kept": 121,
+   "left_out": [
+    "law_a9_20260926T091512Z_r003-A9-kafka-l75-s3000-c02h-a1",
+    "law_a9_20260926T091512Z_r004-A9-kafka-l88-s3000-p09s-a1"
+   ]
+  },
+  {
+   "pair": "matched",
+   "campaign": "a9_20260927T073032Z",
+   "kept": 117,
+   "left_out": [
+    "law_a9_20260927T073032Z_r003-A9-kafka-l75-s3000-c02h-a1",
+    "law_a9_20260927T073032Z_r004-A9-kafka-l88-s3000-c02h-a1",
+    "law_a9_20260927T073032Z_r004-A9-kafka-l88-s3000-c08h-a1"
+   ]
+  },
+  {
+   "pair": "matched-b",
+   "campaign": "a2_20260921T141744Z",
+   "kept": 39,
+   "left_out": [
+    "law_a2_20260921T141744Z_r003-A2-kafka-l75-s1500-c08h-a2",
+    "law_a2_20260921T141744Z_r004-A2-kafka-l75-s1500-c08h-a1"
+   ]
+  },
+  {
+   "pair": "matched-b",
+   "campaign": "a2_20260924T100850Z",
+   "kept": 60,
+   "left_out": [
+    "law_a2_20260924T100850Z_r003-A2-redis-l75-s1500-c04h-a1",
+    "law_a2_20260924T100850Z_r004-A2-redis-l75-s1500-c02h-a1"
+   ]
+  },
+  {
+   "pair": "matched-b",
+   "campaign": "a5_20260924T225453Z",
+   "kept": 41,
+   "left_out": [
+    "law_a5_20260924T225453Z_r004-A5-kafka-l75-c2-c08h-a1"
+   ]
+  },
+  {
+   "pair": "matched-b",
+   "campaign": "a9_20260927T065042Z",
+   "kept": 118,
+   "left_out": [
+    "law_a9_20260927T065042Z_r003-A9-kafka-l75-s3000-c02h-a1",
+    "law_a9_20260927T065042Z_r004-A9-kafka-l88-s3000-c08h-a1"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,194 @@
+{
+  "at_ms": 8.0,
+  "parts": {
+    "kafka": {
+      "M-H1": {
+        "arrival_shift_ms": {
+          "2": null,
+          "8": null
+        },
+        "kept": false
+      },
+      "M-H2": {
+        "kept": false,
+        "loop_costs_ns": {
+          "onward": null,
+          "within": 35168.0
+        },
+        "replayed_slope": null,
+        "tested": false
+      },
+      "M-H3": {
+        "contribution_ms": -0.006427374999999999,
+        "kept": false
+      },
+      "M-H4": {
+        "contribution_ms": null,
+        "held_requests": 0,
+        "kept": false,
+        "tested": false
+      },
+      "departure": {
+        "departure_ms": -0.04293769210394505,
+        "interval": [
+          0.9744695773678791,
+          1.021920051961599
+        ],
+        "runs": 12,
+        "slope": 0.9946327884870069
+      },
+      "recording_effect": {
+        "by_setup": {
+          "M0-kafka-l75-d0": {
+            "gotit_ms": 0.29611949999999965,
+            "trip_ms": 0.4338620000000004
+          },
+          "M0-kafka-l75-d2000": {
+            "gotit_ms": 0.22112299999999996,
+            "trip_ms": 0.40333299999999994
+          },
+          "M0-kafka-l75-d8000": {
+            "gotit_ms": 0.2156150000000001,
+            "trip_ms": 0.3520669999999999
+          }
+        },
+        "log_stays_on": false
+      },
+      "unrecorded_departure": {
+        "departure_ms": -0.022885491112492495,
+        "interval": [
+          0.9883325227683218,
+          1.0064176413136305
+        ],
+        "runs": 18,
+        "slope": 0.9971393136109384
+      }
+    },
+    "redis ack 1": {
+      "M-H1": {
+        "arrival_shift_ms": {
+          "2": 2.027845458984375,
+          "8": 8.041576118469239
+        },
+        "kept": false
+      },
+      "M-H2": {
+        "kept": false,
+        "loop_costs_ns": {
+          "onward": 736420.25,
+          "within": 651231.75
+        },
+        "replayed_slope": 1.0015737330546128,
+        "tested": true
+      },
+      "M-H3": {
+        "contribution_ms": 0.00800933333333333,
+        "kept": false
+      },
+      "M-H4": {
+        "contribution_ms": 0.0,
+        "held_requests": 0,
+        "kept": false,
+        "tested": true
+      },
+      "departure": {
+        "departure_ms": 1.4440339600326624,
+        "interval": [
+          1.1209366723233276,
+          1.28486465064681
+        ],
+        "runs": 12,
+        "slope": 1.1805042450040828
+      },
+      "recording_effect": {
+        "by_setup": {
+          "M0-redis-l75-ack1-d0": {
+            "gotit_ms": -0.015244000000000035,
+            "trip_ms": 0.08672550000000001
+          },
+          "M0-redis-l75-ack1-d2000": {
+            "gotit_ms": 0.0024530000000000385,
+            "trip_ms": 0.09002900000000036
+          },
+          "M0-redis-l75-ack1-d8000": {
+            "gotit_ms": -0.0009660000000000224,
+            "trip_ms": 0.6462620000000001
+          }
+        },
+        "log_stays_on": false
+      },
+      "unrecorded_departure": {
+        "departure_ms": 0.999609817286272,
+        "interval": [
+          1.0934859218019017,
+          1.1523135077569522
+        ],
+        "runs": 18,
+        "slope": 1.124951227160784
+      }
+    },
+    "redis ack 200": {
+      "M-H1": {
+        "arrival_shift_ms": {
+          "2": 1.9656499710083009,
+          "8": 7.97176481628418
+        },
+        "kept": false
+      },
+      "M-H2": {
+        "kept": false,
+        "loop_costs_ns": {
+          "onward": 60340.25,
+          "within": 33820.5
+        },
+        "replayed_slope": 0.9960740128694096,
+        "tested": true
+      },
+      "M-H3": {
+        "contribution_ms": 0.0042383333333333335,
+        "kept": false
+      },
+      "M-H4": {
+        "contribution_ms": 0.0,
+        "held_requests": 0,
+        "kept": false,
+        "tested": true
+      },
+      "departure": {
+        "departure_ms": 2.4592248363938456,
+        "interval": [
+          1.2724361095339969,
+          1.537410137628218
+        ],
+        "runs": 13,
+        "slope": 1.3074031045492307
+      },
+      "recording_effect": {
+        "by_setup": {
+          "M0-redis-l75-ack200-d0": {
+            "gotit_ms": 0.022233500000000017,
+            "trip_ms": 0.11203249999999998
+          },
+          "M0-redis-l75-ack200-d2000": {
+            "gotit_ms": 0.028860499999999956,
+            "trip_ms": -0.07707399999999964
+          },
+          "M0-redis-l75-ack200-d8000": {
+            "gotit_ms": -0.007436999999999916,
+            "trip_ms": 0.5326909999999998
+          }
+        },
+        "log_stays_on": false
+      },
+      "unrecorded_departure": {
+        "departure_ms": 1.5434329416054897,
+        "interval": [
+          1.13811082628705,
+          1.227423947085594
+        ],
+        "runs": 17,
+        "slope": 1.1929291177006862
+      }
+    }
+  }
+}

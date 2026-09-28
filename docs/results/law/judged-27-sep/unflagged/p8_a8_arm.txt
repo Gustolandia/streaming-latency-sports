@@ -1,0 +1,13 @@
+campaigns/arm/a8_20260921T182140Z/runs: 144 runs counted, 0 left out
+campaigns/arm/a8_20260920T224009Z/runs: 144 runs counted, 2 left out
+campaigns/arm/a8_20260921T004923Z/runs: 144 runs counted, 1 left out
+campaigns/arm/a8_20260921T025629Z/runs: 144 runs counted, 3 left out
+left out 6 runs the integrity rule did not pass: law_a8_20260920T224009Z_r001-A8-kafka-l75-s3000-p09s-python-inline-a1 (stop), law_a8_20260920T224009Z_r001-A8-kafka-l75-s3000-p09s-python-inline-a2 (repeat), law_a8_20260921T004923Z_r001-A8-kafka-l75-s3000-p09s-python-callback-a1 (stop), law_a8_20260921T025629Z_r001-A8-kafka-l75-s3000-f15h-python-inline-a1 (repeat), law_a8_20260921T025629Z_r001-A8-kafka-l75-s3000-p09s-java-callback-a1 (repeat), law_a8_20260921T025629Z_r002-A8-kafka-l75-s3000-p09s-python-callback-a1 (stop)
+P8: not confirmed
+  rule: Java's rate in the middle of the cliff lies between its plateau and its floor, go-first cuts Java's plateau at least 5.0 times, and Python's plateau is at most 1.5 times Java's
+  judged on: free, fitted
+  free shape: does not hold, measured 4.2532, 95% interval 4.0126 to 4.5603, from 2000 resamplings
+    java cliff: 1.0
+  fitted shape: does not hold, measured 4.2532, 95% interval 4.0126 to 4.5603, from 2000 resamplings
+    java cliff: 1.0
+exit 0

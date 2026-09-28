@@ -1,0 +1,35 @@
+campaigns/matched/a1_20260918T194622Z/runs: 92 runs counted, 0 left out
+campaigns/matched/a1_20260919T000416Z/runs: 64 runs counted, 0 left out
+campaigns/matched/a1_20260919T030256Z/runs: 64 runs counted, 0 left out
+campaigns/matched/a1_20260919T055945Z/runs: 60 runs counted, 0 left out
+campaigns/matched/a1_20260919T084809Z/runs: 60 runs counted, 0 left out
+campaigns/matched/a1_20260926T035408Z/runs: 56 runs counted, 2 left out
+campaigns/matched/a1_20260927T015829Z/runs: 56 runs counted, 3 left out
+left out 5 runs the integrity rule did not pass: law_a1_20260926T035408Z_r002-A1-kafka-l75-s3000-f2sh-a1 (repeat), law_a1_20260926T035408Z_r004-A1-kafka-l75-s3000-c04h-a1 (stop), law_a1_20260927T015829Z_r002-A1-kafka-l75-s3750-f15h-a1 (repeat), law_a1_20260927T015829Z_r002-A1-kafka-l75-s3750-f15h-a2 (repeat), law_a1_20260927T015829Z_r003-A1-kafka-l75-s3000-c06h-a1 (repeat)
+P1: not confirmed
+  rule: halfway inside [s, s+h] in at least 3 of the 4 slices this pair can reach; slope in (0.8, 1.2) with an interval excluding 0.5 and 1.5; each of the 4 campaigns moved by its own offset through the 3 ms anchor
+  judged on: free, fitted
+  nothing pooled across: backend
+  kafka: not confirmed
+    rule: halfway inside [s, s+h] in at least 3 of the 4 slices this pair can reach; slope in (0.8, 1.2) with an interval excluding 0.5 and 1.5; each of the 4 campaigns moved by its own offset through the 3 ms anchor
+    judged on: free, fitted
+    free shape: does not hold, measured 0.7579, 95% interval 0.5956 to 1.0228, from 2000 resamplings
+      in band: {3.0: True, 3.75: True, 4.5: True, 6.0: True}
+      out of reach: []
+    fitted shape: does not hold, measured 0.2297, 95% interval 0.149 to 0.278, from 2000 resamplings
+      in band: {3.0: True, 3.75: True, 4.5: False, 6.0: False}
+      out of reach: []
+    anchor ms: 3.0
+    in reach: 4 slices, where the rule needs 4
+  redis: not confirmed
+    rule: halfway inside [s, s+h] in at least 4 of the 5 slices this pair can reach; slope in (0.8, 1.2) with an interval excluding 0.5 and 1.5; each of the 3 campaigns moved by its own offset through the 3 ms anchor
+    judged on: free, fitted
+    free shape: holds, measured 1.0068, 95% interval 0.844 to 1.1694, from 2000 resamplings
+      in band: {1.5: True, 2.25: True, 3.0: True, 4.5: True, 6.0: True}
+      out of reach: []
+    fitted shape: does not hold, measured 0.6615, 95% interval 0.4805 to 0.7744, from 2000 resamplings
+      in band: {1.5: True, 2.25: True, 3.0: False, 4.5: False, 6.0: False}
+      out of reach: []
+    anchor ms: 3.0
+    in reach: 5 slices, where the rule needs 4
+exit 0

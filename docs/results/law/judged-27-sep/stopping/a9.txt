@@ -1,0 +1,18 @@
+P6 on A9's recording: not confirmed
+  rule: at least two thirds of setups predict their measured rate within 0.67-1.5, and the median ratio is at least 0.8
+  predicted as: the sum of max(0, W - (T - g)) over the stamping thread's waits, over the window's length (A9-2)
+  A9-2b, the share of acknowledgements whose own wait outlasted T - g (A9-2b): not confirmed
+  A9-1: does not hold (at a backend and load, at least 90% of negative readings spent more than half of the time from arrival to stamp waiting for a CPU)
+  arm, kafka: not confirmed; 0 of 28 setups within the band, median ratio 0.1066
+    load 75: A9-1 does not hold, 3718 of 4458 negative readings mostly waiting; waits {'longest': 7.706, 'p50': 0.0146, 'p90': 0.0209, 'p99': 2.8411} ms
+    load 88: A9-1 does not hold, 6345 of 7970 negative readings mostly waiting; waits {'longest': 7.4011, 'p50': 0.0147, 'p90': 0.0196, 'p99': 3.1084} ms
+  arm, redis: not confirmed; 0 of 22 setups within the band, median ratio 0.1062
+    load 75: A9-1 does not hold, 1372 of 1607 negative readings mostly waiting; waits {'longest': 6.3117, 'p50': 0.0141, 'p90': 0.0195, 'p99': 2.8977} ms
+    load 88: A9-1 does not hold, 2216 of 2569 negative readings mostly waiting; waits {'longest': 4.2306, 'p50': 0.0146, 'p90': 0.0186, 'p99': 2.7112} ms
+  matched, kafka: not confirmed; 0 of 12 setups within the band, median ratio 0.1196
+    load 75: A9-1 does not hold, 1269 of 1543 negative readings mostly waiting; waits {'longest': 6.6005, 'p50': 0.0185, 'p90': 0.1305, 'p99': 3.1756} ms
+    load 88: A9-1 does not hold, 2168 of 2638 negative readings mostly waiting; waits {'longest': 10.8693, 'p50': 0.0187, 'p90': 0.0352, 'p99': 3.2142} ms
+  matched, redis: not confirmed; 0 of 9 setups within the band, median ratio 0.1621
+    load 75: A9-1 holds, 597 of 644 negative readings mostly waiting; waits {'longest': 5.9159, 'p50': 0.0184, 'p90': 0.043, 'p99': 3.0409} ms
+    load 88: A9-1 holds, 1448 of 1579 negative readings mostly waiting; waits {'longest': 7.1358, 'p50': 0.0187, 'p90': 0.0279, 'p99': 2.8867} ms
+exit 1

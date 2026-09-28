@@ -1,0 +1,36 @@
+{
+  "by_summary": {
+    "fitted": {
+      "confirmed": false,
+      "draws": 2000,
+      "interval": [
+        -0.25256391604120454,
+        0.23407113451892947
+      ],
+      "value": -0.04026403217634922
+    },
+    "free": {
+      "confirmed": true,
+      "draws": 2000,
+      "interval": [
+        -0.12595675432636133,
+        0.17789086570731794
+      ],
+      "value": -0.008602718005334964
+    }
+  },
+  "confirmed": false,
+  "judged_on": [
+    "free",
+    "fitted"
+  ],
+  "loads_compared": [
+    75,
+    88
+  ],
+  "loads_out_of_reach": {
+    "50": 0.0014969259556268377
+  },
+  "rule": "the halfway point's move between the lowest and the highest load whose plateau is at least 2% has its whole interval inside 0.25 ms either way",
+  "tested": true
+}

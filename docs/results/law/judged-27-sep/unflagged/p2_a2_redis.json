@@ -1,0 +1,31 @@
+{
+  "by_summary": {
+    "fitted": {
+      "confirmed": false,
+      "draws": 2000,
+      "interval": [
+        0.17054288385774102,
+        2.4505710982714106
+      ],
+      "p_value": 0.345,
+      "value": 1.1262270974389188
+    },
+    "free": {
+      "confirmed": false,
+      "draws": 2000,
+      "interval": [
+        0.5971413630513078,
+        1.4294104888081176
+      ],
+      "p_value": 0.696,
+      "value": 1.0640083088622532
+    }
+  },
+  "confirmed": false,
+  "hz": 250,
+  "judged_on": [
+    "free",
+    "fitted"
+  ],
+  "rule": "the width ratio's interval overlaps 2.5-5.5 and excludes 1.0"
+}

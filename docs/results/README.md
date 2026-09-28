@@ -110,6 +110,19 @@ the same parameter and leaves the machine back at eight CPUs within a second.
 **Judged again under version 30, with the old reading beside it.** The five corrections version 27 recorded, made in the programs, change three answers and no prediction. P1 on Kafka was never a result against the law: at A1's own zero-delay trip it reaches three slices where the rule needs four, and it now reads out of reach. P7 on Kafka is confirmed at the one core count its slice lets it test. P3a and P3b now compare 75 with 88% load, since 50% has no plateau to locate a cliff in: P3b is confirmed on all three pairs, P3a on none. P6, read for the first time, over-predicts two and a half to thirteen times, the recording mixing every thread's waits, which is why A9 reads the one that stamps.
 → [`law/judged-again-under-version-30.md`](law/judged-again-under-version-30.md)
 
+**Judged on all the data, with and without what the brake only recorded.** Every prediction was
+judged on every run the three pairs made, rebuilt at home file by file, then again without the 14
+runs the recording brake flagged and without all 1,110 runs taken while it recorded (D32-1): no
+verdict changes. The finished campaigns put P1 on Kafka in reach, and it is not confirmed, its
+slope 0.76 where 0.8 to 1.2 is asked; P3b is confirmed on a third x86 A3 campaign and its retry,
+P3a again on none. A9 and M0 are read for the first time. The stamping thread was waiting for a
+processor in 79 to 92% of negative readings, and the share of acknowledgements whose own wait
+outlasted the margin predicts the negative rate inside the plan's band on four of six parts. Under
+bursts Redis's trip grows 18 to 31% faster than the delay added, and none of the four frozen
+explanations accounts for it. The quality report finds pauses of seconds on both x86 pairs and
+none that long on Arm.
+→ [`law/judged-with-and-without-the-brake.md`](law/judged-with-and-without-the-brake.md)
+
 **Two ABI builds of one kernel version give two different default slices, and the version number
 predicts only one of them.** The first x86 pair now runs `6.8.0-1065-azure` and the second
 `6.8.0-1064-azure` — same VM size, same eight CPUs, same log scaling, same 1000 Hz tick — and

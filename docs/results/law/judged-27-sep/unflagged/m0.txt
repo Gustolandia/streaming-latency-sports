@@ -1,0 +1,20 @@
+M0: why the trip does not grow one-for-one
+  kafka: slope 0.9946 (95% 0.9745 to 1.0219), departure -0.0429 ms at 8 ms
+    M-H1: dropped  {'arrival_shift_ms': {'2': None, '8': None}}
+    M-H2: not tested  {'loop_costs_ns': {'within': 35168.0, 'onward': None}, 'replayed_slope': None}
+    M-H3: dropped  {'contribution_ms': -0.006427374999999999}
+    M-H4: not tested  {'contribution_ms': None, 'held_requests': 0}
+    the request-timing log goes off
+  redis ack 1: slope 1.1805 (95% 1.1209 to 1.2849), departure 1.444 ms at 8 ms
+    M-H1: dropped  {'arrival_shift_ms': {'2': 2.027845458984375, '8': 8.041576118469239}}
+    M-H2: dropped  {'loop_costs_ns': {'within': 651231.75, 'onward': 736420.25}, 'replayed_slope': 1.0015737330546128}
+    M-H3: dropped  {'contribution_ms': 0.00800933333333333}
+    M-H4: dropped  {'contribution_ms': 0.0, 'held_requests': 0}
+    the request-timing log goes off
+  redis ack 200: slope 1.3074 (95% 1.2724 to 1.5374), departure 2.4592 ms at 8 ms
+    M-H1: dropped  {'arrival_shift_ms': {'2': 1.9656499710083009, '8': 7.97176481628418}}
+    M-H2: dropped  {'loop_costs_ns': {'within': 33820.5, 'onward': 60340.25}, 'replayed_slope': 0.9960740128694096}
+    M-H3: dropped  {'contribution_ms': 0.0042383333333333335}
+    M-H4: dropped  {'contribution_ms': 0.0, 'held_requests': 0}
+    the request-timing log goes off
+exit 0

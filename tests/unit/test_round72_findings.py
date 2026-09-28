@@ -133,7 +133,11 @@ class TestR2TheSliceIsMeasuredAgainstTheDelivery:
             "one to four, and that is the number the mechanism turns on")
 
     def test_the_sentence_carries_the_macros_and_no_typed_pair(self, paper):
-        i = paper.index("descheduled at the wrong instant")
+        # Anchored on the sentence as rewritten on 28 September 2026, when the law campaign timed
+        # the wait (Supplement S16.10): "descheduled at the wrong instant ... about a slice late"
+        # became "woken while another task holds the CPU ... what is left of that task's slice".
+        # What this pins is unchanged: the slice against the delivery, read from the ledger.
+        i = paper.index("waits out what is left of that task's slice")
         passage = " ".join(paper[i:i + 420].split())
         for macro in ("sliceOverDeliveryLo", "sliceOverDeliveryHi",
                       "condDeliveryLoMs", "condDeliveryHiMs"):

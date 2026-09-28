@@ -1253,8 +1253,8 @@ conditions' own $k/\rho$ rather than from a shape description -- the EEVDF base 
 $0.75\,\mathrm{ms} \times (1 + \lfloor\log_2 8\rfloor) = 3$~ms; run-to-parity holds a woken
 thread off the CPU until the incumbent has exhausted that slice unless it wins the
 wakeup-preemption check, and with the high-resolution tick disabled the expiry is observed
-at the ordinary tick. A timestamping thread descheduled at the wrong moment therefore reads its
-clock roughly a slice late. That is the second state of the two-state model of Section~\mainRareState{},
+at the ordinary tick. A timestamping thread woken at the wrong moment therefore reads its clock
+late by what is left of that slice, anything up to a whole one (S16.10). That is the second state of the two-state model of Section~\mainRareState{},
 observed directly, at the constant the scheduler is configured with --- which is a stronger
 statement than any tail index would have been, and it is what replaced the withdrawn one.
 The constants should be read off the image under test (\texttt{base\_slice\_ns} and
@@ -1370,10 +1370,12 @@ This moved out of the main text, and the reason is worth stating rather than
 hiding. \emph{Nothing in the paper computes with it.} Every reference Section~\mainRareState{} makes to it names the two-state picture --- the preempted state, the state a pinned thread
 removes --- and the three consequences we test are attributable without it: the direction
 under payload is what the identity predicts, the floor $C_0$ is the $p \to 0$ limit of the
-picture, and the traced check compares two probabilities. The form has also never been
-tested as a form: we have no measurement of $p$ independent of the rate it is meant to
-explain, so what has been confirmed is the mechanism and its consequences, not the
-factorization. It was wrong once for exactly this kind of reason --- written $p(\rho)\,G$
+picture, and the traced check compares two probabilities. The campaigns reported here never
+tested the form as a form: they have no measurement of $p$ independent of the rate it is meant
+to explain, so what they confirm is the mechanism and its consequences, not the factorization.
+A later campaign timed the second state's wait for every acknowledgment and predicted runs'
+rates from it with nothing fitted, on four of six pair and broker parts within its registered
+band, and found $G$'s shape (S16.10). It was wrong once for exactly this kind of reason --- written $p(\rho)\,G$
 until Table~\ref{P-tab:mechanism} of the main text showed the rate is not a function of
 $\rho$ --- and was repaired by weakening it. A model that cannot be falsified as a model
 belongs where a reader can weigh it, not where the argument appears to rest on it.
@@ -1386,11 +1388,13 @@ belongs where a reader can weigh it, not where the argument appears to rest on i
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/delta_schematic.pdf}
 \caption[Two-state model, drawn]{\textbf{Two-state model, drawn.} The timestamping asymmetry $\Delta$ has a narrow
-core when the timestamping thread is running and a lobe at $-\baseSliceMs$~ms, the scheduler's
-base slice, when it is not, so a small $T_{\mathrm{true}}$ is inverted by the whole lobe and
-a large one only by what lies beyond it --- which is why the check bites hardest on small
-effects. The shape is schematic, two components placed at the measured mode's location rather
-than a fit; the measured distribution is the traced stall spectrum of Section~\mainSpectrum{}.}
+core when the timestamping thread is running and, when it is kept waiting, a shelf reaching
+from the core to $-\baseSliceMs$~ms, the scheduler's base slice, and a tick beyond it: the thread
+waits out what is left of another task's slice (S16.10). A small $T_{\mathrm{true}}$ is inverted
+by nearly the whole shelf and one longer than the slice and a tick by none of it --- which is why
+the check bites hardest on small effects. The shape is schematic, two components drawn with the
+measured slice and tick rather than fitted; the measured distributions are the traced stall
+spectrum of Section~\mainSpectrum{} and Figure~\ref{fig:waitshape}.}
 \label{fig:deltaschematic}
 \end{figure}
 
@@ -2381,9 +2385,11 @@ above''~\cite{zhou2025slice}. It is specific to this kernel: the constant became
 v6.15, after our 6.8. The build sets \texttt{CONFIG\_HZ}${=}\kernelHz$, a $\tickMs$~ms tick.
 
 With run-to-parity a woken thread that loses the wakeup-preemption check waits for the
-incumbent to exhaust that slice, and the expiry is noticed at the tick. That tick is also why
-the mode is a band and not a spike: the same posting notes a task ``can only wait until the
-next tick to consider that it has reached its deadline, and will run 1ms longer''.
+incumbent to exhaust that slice --- what is left of it, since the wake-up falls at no particular
+moment of the incumbent's slice (S16.10) --- and the expiry is noticed at the tick. That tick is
+also why the waits end in a band a tick wide and not at the slice itself: the same posting notes
+a task ``can only wait until the next tick to consider that it has reached its deadline, and will
+run 1ms longer''.
 
 No scheduler tunable is written anywhere in the archived campaign, which is why the derived
 value is the one that applied. It is strong evidence rather than proof.
@@ -2507,6 +2513,186 @@ The median is still not a bound, which is the older lesson this table also serve
 who reads $\recoveryErrPass\%$ as a guarantee is wrong for a quarter of the accepted
 conditions, where the error reaches $\recoveryErrPassHi\%$, and for one of them it reaches
 $\recoveryPassMax\%$.
+
+% Drafted 28 September 2026 from the pre-registered law campaign's records
+% (docs/results/law/the-strange-results-read-28-sep.md and judged-without-the-paused-runs.md);
+% every number below is pinned by tests/unit/test_supplement_law_campaign.py.
+\subsection{S16.10. How late: the rest of a slice, timed acknowledgment by acknowledgment}
+\label{sec:restofslice}
+
+S16.8 derives where the scheduler's waits end, a slice and a tick after they begin at most. How
+long they last is a separate question, and it decides the shape of the negative-span rate against
+the delivery: a thread that waits out a whole slice keeps the rate level until the delivery passes
+the slice, and one that waits out what is left of a slice lets it fall from the start. A later
+campaign asked the question in advance, and the answer is the second: the wait that decides a
+negative span is what is left of another task's slice, anything up to a slice, and not a whole
+one.
+
+\paragraph{The law, as registered} After the campaigns this paper reports, we wrote down a law
+for the negative-span rate and froze it, with the programs that would judge it, before its runs;
+the plan and every program are in the repository (\texttt{freezes/28-experiment-plan}). It ran
+on three pairs of cloud machines, two with x86 processors and one with Arm, in 8,102 runs over
+156 campaigns in September 2026. Each run held the delivery near a set value $T$ by delaying the
+receiver's traffic, set the scheduler's base slice $s$, and ran on a kernel whose tick $h$ was 1,
+4 or 10~ms. The acknowledgment's reply reaches the producer a time $g$ after the send and wakes
+the thread that records its timestamp, which then waits a time $W$ for a CPU, so a reading is
+negative when $W > T - g$. The law took the slice as a whole: a thread kept waiting waits out a
+slice and then up to a tick, so the rate stays at its plateau $c + p$ while the delivery is
+shorter than the slice, falls across one tick, and rests on its floor $c$ beyond it,
+\begin{equation}
+\label{eq:planlaw}
+r(T) = c + p \cdot \begin{cases} 1, & T \le s,\\ (s + h - T)/h, & s < T < s + h,\\ 0, & T \ge s + h. \end{cases}
+\end{equation}
+
+\paragraph{The rate does not hold its plateau} At half the slice the negative-span rate is
+$1.45$ to $3.94$ times its value at 0.9 of the slice, in each of the ten slice and broker
+combinations whose runs reach half the slice, six on the first x86 pair and four on the Arm
+pair. Equation~\ref{eq:planlaw} puts the two at one level.
+
+\paragraph{The wait, timed} The campaign A9 ran on all three pairs at a 3~ms slice and a 1~ms
+tick, at $75\%$ and $88\%$ load, on both brokers. In a random half of its runs it recorded every
+scheduling event of every \texttt{python3} thread, and the clients named the thread that records
+each acknowledgment's timestamp. From those records the thread's wait for a CPU before each
+acknowledgment's timestamp, counted from the later of its last wake-up and its previous
+timestamp, is read for every acknowledgment: 1,516,342 of them in 304 runs. Of the acknowledgments
+whose thread waited more than 1~ms, $58.4$ to $65.1\%$ were still waiting at 2~ms, $24.3$ to
+$35.8\%$ at 3~ms and $3.3$ to $6.8\%$ past 4~ms, the ranges running over the twelve pair, broker
+and load parts (Figure~\ref{fig:waitshape}a). A whole-slice wait keeps every one of them waiting
+to 3~ms. A wait for the rest of the slice keeps $60\%$ to 2~ms, $20\%$ to 3~ms and none past
+4~ms: the thread waits out what is left of the running task's slice, $R$, uniform on $[0, s]$
+because its wake-up falls at no particular moment of that slice, and then up to a tick, $U$,
+uniform on $[0, h]$, so that for $h \le s$
+\begin{equation}
+\label{eq:restofslice}
+G(x) = \Pr[R + U > x] = \begin{cases} 1 - x^2/(2sh), & 0 \le x \le h,\\ 1 - (x - h/2)/s, & h \le x \le s,\\ (s + h - x)^2/(2sh), & s \le x \le s + h,\\ 0, & x \ge s + h. \end{cases}
+\end{equation}
+Given one free scale each, Equation~\ref{eq:restofslice} leaves a root mean square of $0.029$ to
+$0.059$ of that scale over the twelve parts, and the whole-slice shape $0.316$ to $0.392$.
+Read against each run's own margin $T - g$, the share of its acknowledgments whose wait
+outlasted the margin predicts its negative-span rate with nothing fitted, and the registered
+check of that prediction met its rule on four of six pair and broker parts, with medians of
+prediction over measurement of $1.11$ to $1.30$. The recording itself raised the rate it
+recorded, $1.36$ to $1.49$ times for \kafka{} and $3.69$ to $4.33$ times for \redis{}, so these
+figures describe the machines with the recording on; the prediction and the rate it is held
+against come from the same runs.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{docs/results/figures/wait_shape.pdf}
+\caption[Each acknowledgment waits out the rest of a slice, not a whole one]{\textbf{Each
+acknowledgment waits out the rest of a slice, not a whole one.} (a)~For every acknowledgment in
+A9's recorded runs on the three pairs, the share whose timestamping thread was still
+waiting for a CPU at each wait $x$, over the share still waiting at 1~ms, for each pair, broker and
+load (open marks $75\%$ load, filled $88\%$; Arm64 is the Arm pair; each pair's marks are set a
+little to one side of the wait they are read at);
+lines, the rest-of-a-slice shape of Equation~\ref{eq:restofslice} (solid) and the whole-slice
+shape of Equation~\ref{eq:planlaw} (dashed), at the 3~ms slice and 1~ms tick. (b)~Every
+\texttt{python3} thread's waits over 0.25~ms, as a share per millisecond in each bin, by what
+began them, each pair and broker thin and the six pooled bold; shaded, the slice to a tick past
+it.}
+\label{fig:waitshape}
+\end{figure}
+
+\paragraph{Why a preemption and a wake-up differ} Waits that begin with a preemption do gather at
+the slice. Over every \texttt{python3} thread's waits longer than 0.25~ms in the same records, the
+density per millisecond between the slice and a tick past it, over the density between 1~ms and
+the slice, is $1.57$ to $1.94$ for waits begun by a preemption, on all three pairs, and $0.68$ to
+$0.73$ for waits begun by a wake-up on the two x86 pairs, $1.13$ and $1.21$ on the Arm pair
+(Figure~\ref{fig:waitshape}b). A thread taken off its CPU for a task starting its slice waits out
+the whole of it; a thread woken while another task holds the CPU waits out what is left. The
+thread that timestamps an acknowledgment sleeps until the acknowledgment's reply wakes it
+(S16.3), so its wait is the second kind. S16.8's derivation holds for where the waits end, a slice
+and a tick after they begin at most, and not for how long they usually last.
+
+\paragraph{What it did to the law's verdicts} Every prediction about where the fall sits was
+judged by frozen programs on two readings: a free one, a curve required only never to rise, whose
+halfway point lies between the level at 0.9 of the slice and the floor; and the law's own shape, a
+plateau, a straight fall and a floor fitted to all eight deliveries. A rate that falls from the
+start pulls a fitted plateau's fall below the slice and moves it less than the slice moves, which
+is the split Table~\ref{tab:lawshape} shows. Put in place of every run's rate at its own delivery,
+slice and tick, and judged by the same programs, Equation~\ref{eq:planlaw} gives the two readings
+nearly the same slope, near one, and Equation~\ref{eq:restofslice} gives the split. This was read
+after the verdicts and changes none of them: the registered predictions that the halfway point
+follows the slice, on the first x86 pair and on the Arm pair, are reported as the frozen programs
+judged them, not confirmed.
+
+\begin{table}[tb]
+\caption{\textbf{Only the rest-of-a-slice shape splits the two readings as the data do.} The
+slope of the fall's halfway point on the slice, which the registered law put between 0.8 and 1.2,
+on the free reading and on the fitted shape, as the frozen programs return it from the measured
+rates, from Equation~\ref{eq:planlaw} put in place of every run's rate, and from
+Equation~\ref{eq:restofslice} put in the same place.}
+\label{tab:lawshape}
+\centering
+\footnotesize
+\begin{tabular}{@{}llrrrrrr@{}}
+\toprule
+ & & \multicolumn{2}{c}{Measured} & \multicolumn{2}{c}{Eq.~\ref{eq:planlaw}} & \multicolumn{2}{c}{Eq.~\ref{eq:restofslice}}\\
+Pair & Broker & free & fitted & free & fitted & free & fitted\\
+\midrule
+first x86 & \kafka{} & 0.758 & 0.230 & 0.997 & 0.998 & 0.922 & 0.519\\
+first x86 & \redis{} & 1.007 & 0.662 & 1.000 & 0.999 & 0.930 & 0.680\\
+Arm & \kafka{} & 0.830 & 0.285 & 0.889 & 0.908 & 0.802 & 0.525\\
+Arm & \redis{} & 1.153 & 0.798 & 1.000 & 1.005 & 0.954 & 0.723\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{What it changes in this paper} Section~\mainSpectrum{} states which wait the
+timestamping thread meets, and Figure~\ref{fig:deltaschematic} draws the second state with the
+shape of Equation~\ref{eq:restofslice}. The traced mode of Section~\mainSpectrum{} is consistent
+with that shape: a wait spread as Equation~\ref{eq:restofslice} spreads it at a 3~ms slice and a
+1~ms tick puts half its mass in the octave from $\tracedModeLo$ to $\tracedModeHi$~ms, the octave that holds the mode, and
+waits begun by a preemption add their gathering at the slice to the same octave. For the thread
+that timestamps an acknowledgment, the delivery factor $G$ of Equation~\ref{eq:twostate} now has a
+measured form with no parameter the kernel does not set, at a margin $T - g$ rather than
+$T_{\mathrm{true}}$; the occupancy $p$ in front of it is still not predicted.
+
+\subsection{S16.11. Two faults in the law campaign's judges, and the runs a stalled disk held}
+\label{sec:lawjudges}
+
+Reading the law campaign's results after its verdicts found two places where a frozen program
+departs from the plan it was written for, and one fault of the machines. Each is recorded beside
+the verdicts it touches, and no verdict is changed.
+
+\paragraph{P2, P2b and P2c read two slices as one curve} The campaign on the tick built three
+kernels differing only in the tick, 1, 4 and 10~ms, and ran two slices, 1.5 and 3~ms, on each.
+Equation~\ref{eq:planlaw} makes the fall from $90\%$ to $10\%$ of the plateau as wide as a tick,
+so P2 predicted it $2.5$ to $5.5$ times wider at the 4~ms tick than at 1~ms, P2b $6$ to $14$ times
+wider at 10~ms, and P2c a width proportional to the tick, a straight line through zero with a
+slope of $0.8$ to $1.2$. Their programs group the runs by tick alone, so each width they read
+runs from one slice's fall to the other's. With Equation~\ref{eq:planlaw} in place of every run's
+rate, the P2 program returns $1.98$ on the free reading and $1.57$ on the fitted shape for
+\redis{}, below its band; read one curve per slice, the same formula gives $4.0$ to $5.2$ for P2
+and $9.8$ to $12.0$ for P2b, inside both bands. P2's and P2b's verdicts, not confirmed on either
+broker, therefore carry no evidence about the law either way; P2c reads the same pooled widths,
+and its verdicts, not confirmed on \kafka{} and confirmed on \redis{}, rest on them too. Read one
+slice at a time after the fact, the width is
+proportional to the tick at the 1.5~ms slice, $0.92h - 0.25$~ms on the free reading and
+$1.15h - 0.61$~ms on the fitted shape for \redis{} and $1.04h + 0.04$~ms fitted for \kafka{}, and
+grows less than in proportion at 3~ms, where the rest of the slice spreads the fall as the tick
+does: Equation~\ref{eq:restofslice} gives $0.87h + 1.62$~ms for \redis{} there, against the
+measured $0.81h + 1.48$~ms.
+
+\paragraph{P4 makes no claim on \redis{}} P4 predicted that real-time priority on the
+timestamping threads cuts the plateau at least five times wherever the ordinary plateau is at
+least $2\%$. \redis{}'s ordinary plateau in that campaign was $0.69\%$, so P4 makes no claim
+there, and the plan's rule reports such a part out of reach; the program words it ``not
+confirmed'', and the prediction as a whole with it. On \kafka{}, whose plateau was $4.05\%$,
+priority took the rate to zero and P4 is confirmed. Read by the plan's rule, P4 is confirmed on
+the one broker it makes a claim on; the frozen answer, ``not confirmed'', is the one reported.
+
+\paragraph{The runs a stalled disk held} In 222 of the 8,102 runs a message arrived more than
+150~ms late after the warm-up, 112 and 109 of them on the two x86 pairs and one on the Arm pair,
+and the longest pause lasted $20.6$~s. On the receiving side the consumer and an unrelated
+process on the same machine stopped writing together while the processors waited on the disk;
+at the broker, \kafka{}'s only, the broker failed to reach its own controller. The long
+receiving-side pauses keep the clock's hour, 35 of 68 in its first quarter, and not the hour
+counted from each machine's boot, and no long pause on one x86 machine began within 5~s of one on
+the other; what held the disks is not identified. Judged again without those runs, after the
+fact, every verdict stands but one: P3a on the first x86 pair, whose fitted interval ends
+$0.0026$~ms outside its $\pm 0.25$~ms bar with them and $0.0037$~ms inside it without them. The
+verdicts on all the runs are the ones reported.
 
 
 \section{S17. The 1970 counter note, line by line, and the grid geometry it explains}
@@ -2800,7 +2986,9 @@ growth by predicting $2.45$--$3.07\times$. Both failed for the same reason --- b
 parameterized in $\rho$, and $\rho$ is not the variable. The delivery factor
 $G(T_{\mathrm{true}})$ of Equation~\ref{eq:twostate} is the nearest thing we have to a
 quantitative law, and it carries no load term at all: it predicts how the rate scales with
-$T_{\mathrm{true}}$, not what the rate is. So the practical guidance this paper supports is a check to run, not a number to look up. A
+$T_{\mathrm{true}}$, not what the rate is. For the thread that timestamps the acknowledgment
+its shape is now measured, the rest of a slice and up to a tick (S16.10), and the level in front
+of it is still not predicted. So the practical guidance this paper supports is a check to run, not a number to look up. A
 reader wanting to know whether their own measurement is exposed must measure it, which is
 precisely why we argue the check should be routine rather than the model be trusted.
 

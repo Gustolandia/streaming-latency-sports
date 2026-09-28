@@ -306,7 +306,8 @@ appearing in this table.
 |---|---|
 | `pipeline_schematic` | main text, Fig. 1 only (promoted round 51: Gregg's requirement that a general reader meet the system, drawn, inside the first two pages). The S24 copy was dropped round 48: it included the same file, under prose claiming the main text's version carried "more detail", which it could not, being the same drawing. S24 keeps the stamp-to-metric mapping as prose |
 | `measurement_model` | main text, Fig. 2 (panel (b) split off round 52) |
-| `delta_schematic` | supplement, S9 (was Fig. 2(b); the one main-text drawing that was not a measurement, and the measured version is Fig. 9) |
+| `delta_schematic` | supplement, S9 (was Fig. 2(b); the one main-text drawing that was not a measurement, and the measured version is Fig. 9). Redrawn 28 Sep 2026: the waiting state is a shelf to the slice and a tick, the rest of a slice, where it had been a lobe at the slice (S16.10) |
+| `wait_shape` | supplement, S16.10 (added 28 Sep 2026: each acknowledgment's wait against the whole-slice and rest-of-a-slice shapes, and every thread's waits by what began them; `scripts/make_wait_shape_figure.py`) |
 | `deletion` | main text, Fig. 4 (was Fig. 3 until round 61 put failure mode 1 before failure mode 2, at the second author's request) |
 | `quantum_geometry` | supplement, S17 (moved round 40: a constructed illustration of the retention law, not a measurement, placed beside the 1970 counter note that carries the same identity) (added round 28: the geometry behind the deletion law) |
 | `grid_membership` | supplement, S11 (moved round 59: the second author asked for the grid refinement to become the explanation of the deletion rather than a contribution, so the figure went beside the per-configuration table it summarizes) |

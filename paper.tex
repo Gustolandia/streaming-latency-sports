@@ -896,12 +896,12 @@ on the $\testbedCpus$ cores the campaign's own load geometry recovers, over a $\
 scheduler tick, and no scheduler tunable is written anywhere in the archived campaign
 (Supplement~S16). That tick is the kernel's timer period, not the timestamp resolution $\tau$ of
 Section~\ref{sec:metrics}; both are $1$~ms here by coincidence of configuration. A thread
-descheduled at the wrong instant therefore reads its clock about a slice late ---
-$\sliceOverDeliveryLo$--$\sliceOverDeliveryHi$ times the per-condition deliveries this
-corpus measures, $\condDeliveryLoMs$--$\condDeliveryHiMs$~ms --- and the tick is why the
-mode is a band rather than a spike. The scheduler's slice lands on the scale of the
-interval being measured, which is why the check fires on a substantial minority of events
-rather than on almost none or on most. A mean over this distribution is dominated by a mode the operator never
+woken while another task holds the CPU waits out what is left of that task's slice, up to a
+whole one --- $\sliceOverDeliveryLo$--$\sliceOverDeliveryHi$ times the per-condition
+deliveries this corpus measures, $\condDeliveryLoMs$--$\condDeliveryHiMs$~ms --- as the thread
+that timestamps an acknowledgment does (Supplement~S16.10).
+The scheduler's slice lands on the scale of the interval being measured, which is why the check
+fires on a substantial minority of events rather than on almost none or on most. A mean over this distribution is dominated by a mode the operator never
 sees, so a mean-based counter cannot flag this failure.
 
 \section{Failure Mode 2: Quantization and Silent Deletion}

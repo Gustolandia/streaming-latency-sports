@@ -1,0 +1,136 @@
+{
+  "by_part": {
+    "kafka": {
+      "anchor_ms": 3.0,
+      "by_summary": {
+        "fitted": {
+          "confirmed": false,
+          "draws": 2000,
+          "halfway_ms": {
+            "3.0": 3.8841707991007626,
+            "3.75": 4.605387682941697,
+            "4.5": 3.3234932792644303,
+            "6.0": 4.833943386796316
+          },
+          "in_band": {
+            "3.0": true,
+            "3.75": true,
+            "4.5": false,
+            "6.0": false
+          },
+          "interval": [
+            0.11495008848351654,
+            0.298998703485808
+          ],
+          "out_of_reach": [],
+          "p_value": 0.0005,
+          "value": 0.22185238544384187
+        },
+        "free": {
+          "confirmed": false,
+          "draws": 2000,
+          "halfway_ms": {
+            "3.0": 3.8648170364619707,
+            "3.75": 4.472043533370161,
+            "4.5": 5.122123449240666,
+            "6.0": 6.110956109019442
+          },
+          "in_band": {
+            "3.0": true,
+            "3.75": true,
+            "4.5": true,
+            "6.0": true
+          },
+          "interval": [
+            0.5812723062799697,
+            1.029961153957198
+          ],
+          "out_of_reach": [],
+          "p_value": 0.144,
+          "value": 0.7486048980979569
+        }
+      },
+      "confirmed": false,
+      "in_reach": "4 slices, where the rule needs 4",
+      "judged_on": [
+        "free",
+        "fitted"
+      ],
+      "rule": "halfway inside [s, s+h] in at least 3 of the 4 slices this pair can reach; slope in (0.8, 1.2) with an interval excluding 0.5 and 1.5; each of the 4 campaigns moved by its own offset through the 3 ms anchor",
+      "tested": true
+    },
+    "redis": {
+      "anchor_ms": 3.0,
+      "by_summary": {
+        "fitted": {
+          "confirmed": false,
+          "draws": 2000,
+          "halfway_ms": {
+            "1.5": 2.138840739371506,
+            "2.25": 2.4340766756987873,
+            "3.0": 2.8227331041207773,
+            "4.5": 4.037056677140085,
+            "6.0": 5.029587162246456
+          },
+          "in_band": {
+            "1.5": true,
+            "2.25": true,
+            "3.0": false,
+            "4.5": false,
+            "6.0": false
+          },
+          "interval": [
+            0.4853520083354448,
+            0.7914782035420395
+          ],
+          "out_of_reach": [],
+          "p_value": 0.0005,
+          "value": 0.666857886992967
+        },
+        "free": {
+          "confirmed": true,
+          "draws": 2000,
+          "halfway_ms": {
+            "1.5": 2.159684863486842,
+            "2.25": 2.7480219808479527,
+            "3.0": 3.7726789086257306,
+            "4.5": 5.338251857410453,
+            "6.0": 6.559033099415204
+          },
+          "in_band": {
+            "1.5": true,
+            "2.25": true,
+            "3.0": true,
+            "4.5": true,
+            "6.0": true
+          },
+          "interval": [
+            0.8340325849023926,
+            1.1670278299076025
+          ],
+          "out_of_reach": [],
+          "p_value": 0.78,
+          "value": 1.0056690792407113
+        }
+      },
+      "confirmed": false,
+      "in_reach": "5 slices, where the rule needs 4",
+      "judged_on": [
+        "free",
+        "fitted"
+      ],
+      "rule": "halfway inside [s, s+h] in at least 4 of the 5 slices this pair can reach; slope in (0.8, 1.2) with an interval excluding 0.5 and 1.5; each of the 3 campaigns moved by its own offset through the 3 ms anchor",
+      "tested": true
+    }
+  },
+  "confirmed": false,
+  "judged_on": [
+    "free",
+    "fitted"
+  ],
+  "rule": "halfway inside [s, s+h] in at least 3 of the 4 slices this pair can reach; slope in (0.8, 1.2) with an interval excluding 0.5 and 1.5; each of the 4 campaigns moved by its own offset through the 3 ms anchor",
+  "split_by": [
+    "backend"
+  ],
+  "tested": true
+}

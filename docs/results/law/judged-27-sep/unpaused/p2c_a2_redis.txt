@@ -1,0 +1,18 @@
+campaigns/matched-b/a2_20260922T120958Z/runs: 57 runs counted, 0 left out
+campaigns/matched-b/a2_20260923T015244Z/runs: 58 runs counted, 0 left out
+campaigns/matched-b/a2_20260924T185524Z/runs: 57 runs counted, 0 left out
+campaigns/matched-b/a2_20260922T190106Z/runs: 60 runs counted, 1 left out
+campaigns/matched-b/a2_20260923T214236Z/runs: 53 runs counted, 0 left out
+campaigns/matched-b/a2_20260924T144527Z/runs: 58 runs counted, 0 left out
+campaigns/matched-b/a2_20260923T115348Z/runs: 59 runs counted, 0 left out
+campaigns/matched-b/a2_20260924T100850Z/runs: 60 runs counted, 2 left out
+campaigns/matched-b/a2_20260925T180818Z/runs: 60 runs counted, 0 left out
+left out 3 runs the integrity rule did not pass: law_a2_20260922T190106Z_r003-A2-redis-l75-s3000-p05s-a1 (stop), law_a2_20260924T100850Z_r002-A2-redis-l75-s3000-c06h-a1 (repeat), law_a2_20260924T100850Z_r003-A2-redis-l75-s1500-c02h-a1 (stop)
+P2c: confirmed
+  rule: the fitted width's slope against the tick has an interval overlapping 0.8-1.2 and excluding 0.5, and the intercept's includes 0
+  judged on: fitted
+  free shape: does not hold, measured 0.5517, 95% interval 0.5269 to 0.6465, from 2000 resamplings
+    intercept: [0.5382534265637529, 1.5227247353108315]
+  fitted shape: holds, measured 0.8725, 95% interval 0.8205 to 1.0696, from 2000 resamplings
+    intercept: [-0.24339357678750506, 1.7580232954423458]
+exit 0

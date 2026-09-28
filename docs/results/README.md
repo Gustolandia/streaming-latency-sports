@@ -134,8 +134,17 @@ stalling; they are not the network. The rate has no flat plateau before the slic
 curve and could not have confirmed P2 had the law held exactly; read slice by slice, the width
 follows the tick at 1.5 ms. A9-2 counts time where A9-2b counts acknowledgements, and A9's own
 recording raised the rate it recorded. Each expected result is set beside the formula it fell
-under.
+under. Timed acknowledgement by acknowledgement, the stamping thread's wait is the rest of another
+task's slice: of the waits past 1 ms, 24 to 36% last to 3 ms, where a whole slice would keep them
+all. The pauses keep the clock's hour, not each machine's boot, and never came on both x86
+machines at once.
 → [`law/the-strange-results-read-28-sep.md`](law/the-strange-results-read-28-sep.md)
+
+**Judged again without the runs a pause held.** A check made after the verdicts: every prediction
+on the 7,880 runs left when the 222 a pause held are taken out. One verdict changes, P3a on the
+first x86 pair, where an interval's end moves from 0.0026 ms past its bar to 0.0037 ms inside it;
+every other verdict stands, and the verdicts on all the runs stand as judged.
+→ [`law/judged-without-the-paused-runs.md`](law/judged-without-the-paused-runs.md)
 
 **Two ABI builds of one kernel version give two different default slices, and the version number
 predicts only one of them.** The first x86 pair now runs `6.8.0-1065-azure` and the second

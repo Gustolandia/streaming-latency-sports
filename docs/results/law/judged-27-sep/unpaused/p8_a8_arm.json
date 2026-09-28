@@ -1,0 +1,38 @@
+{
+  "by_summary": {
+    "fitted": {
+      "confirmed": false,
+      "draws": 2000,
+      "interval": [
+        4.012562292656529,
+        4.560335688023306
+      ],
+      "java_cliff": 1.0,
+      "java_priority_cut": 184.05602919397276,
+      "p_value": 0.0005,
+      "value": 4.253173875063363
+    },
+    "free": {
+      "confirmed": false,
+      "draws": 2000,
+      "interval": [
+        4.012562292656529,
+        4.560335688023306
+      ],
+      "java_cliff": 1.0,
+      "java_priority_cut": 184.05602919397276,
+      "p_value": 0.0005,
+      "value": 4.253173875063363
+    }
+  },
+  "confirmed": false,
+  "judged_on": [
+    "free",
+    "fitted"
+  ],
+  "matched_on": [
+    "p09s"
+  ],
+  "rule": "Java's rate in the middle of the cliff lies between its plateau and its floor, go-first cuts Java's plateau at least 5.0 times, and Python's plateau is at most 1.5 times Java's",
+  "tested": true
+}

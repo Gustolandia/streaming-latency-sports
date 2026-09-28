@@ -34,6 +34,17 @@
     "rayleigh_p": 0.0020315748712422233,
     "runs": 68
   },
+  "hour_since_boot": {
+    "by_quarter": [
+      16,
+      14,
+      27,
+      11
+    ],
+    "mean_minute": 36.29303565367734,
+    "rayleigh_p": 0.06460731856215235,
+    "runs": 68
+  },
   "iowait": {
     "arm": {
       "paused_median_s": null,
@@ -113,5 +124,15 @@
   "steal": {
     "most_s": 0.0,
     "runs_read": 8092
+  },
+  "together": {
+    "long": {
+      "matched": 58,
+      "matched-b": 48
+    },
+    "window_s": 5.0,
+    "within": {
+      "matched & matched-b": 0
+    }
   }
 }

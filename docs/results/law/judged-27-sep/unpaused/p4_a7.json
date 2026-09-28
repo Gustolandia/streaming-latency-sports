@@ -1,0 +1,74 @@
+{
+  "by_part": {
+    "kafka": {
+      "by_summary": {
+        "fitted": {
+          "confirmed": true,
+          "draws": 2000,
+          "interval": [
+            37452723.60466729,
+            43183393.25160916
+          ],
+          "p_value": 0.0005,
+          "value": 40523955.17614236
+        },
+        "free": {
+          "confirmed": true,
+          "draws": 2000,
+          "interval": [
+            37339615.07618284,
+            43203688.85324779
+          ],
+          "p_value": 0.0005,
+          "value": 40547313.552526064
+        }
+      },
+      "confirmed": true,
+      "judged_on": [
+        "free",
+        "fitted"
+      ],
+      "rule": "the plateau is cut at least 5.0 times, with an interval above 2.0"
+    },
+    "redis": {
+      "by_summary": {
+        "fitted": {
+          "confirmed": false,
+          "draws": 0,
+          "interval": [
+            null,
+            null
+          ],
+          "p_value": null,
+          "value": null
+        },
+        "free": {
+          "confirmed": false,
+          "draws": 0,
+          "interval": [
+            null,
+            null
+          ],
+          "p_value": null,
+          "value": null
+        }
+      },
+      "confirmed": false,
+      "judged_on": [
+        "free",
+        "fitted"
+      ],
+      "rule": "the plateau is cut at least 5.0 times, with an interval above 2.0"
+    }
+  },
+  "confirmed": false,
+  "judged_on": [
+    "free",
+    "fitted"
+  ],
+  "rule": "the plateau is cut at least 5.0 times, with an interval above 2.0",
+  "split_by": [
+    "backend"
+  ],
+  "tested": true
+}

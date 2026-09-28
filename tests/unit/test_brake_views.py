@@ -18,7 +18,7 @@ SCRIPTS_DIR = Path(__file__).parent.parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 from brake_views import (  # noqa: E402
-    brake_state, build, campaigns_under, census, main, run_folders,
+    brake_state, build, build_without, campaigns_under, census, listed_runs, main, run_folders,
 )
 
 RECORDING = "records and does not stop (D26-1, D32-1)"
@@ -174,3 +174,48 @@ class TestTheCommandLine:
     def test_an_error_is_a_sentence_and_a_code(self, tmp_path, capsys):
         assert main(["count", "--campaigns", str(tmp_path / "absent")]) == 2
         assert capsys.readouterr().out.startswith("ERROR:")
+
+
+class TestAViewWithoutListedRuns:
+    """After the fact, a view without the runs a pause held, as pause_census.py lists them."""
+
+    def _csv(self, tmp_path, rows):
+        path = tmp_path / "pause_runs.csv"
+        path.write_text("pair,campaign,run,iowait_s,steal_s,paused,receiver_paused_s\n" + "".join(
+            "%s,c,%s,0.1,0.0,%s,0.0\n" % row for row in rows), encoding="utf-8")
+        return path
+
+    def test_only_the_rows_marked_true_are_listed(self, tmp_path):
+        path = self._csv(tmp_path, [("arm", "law_a9_r001-a1", "True"),
+                                    ("arm", "law_a9_r002-a1", "False"),
+                                    ("matched", "law_a9_r003-a1", "True")])
+        assert listed_runs(str(path)) == {("arm", "law_a9_r001-a1"),
+                                          ("matched", "law_a9_r003-a1")}
+
+    def test_the_listed_run_is_left_out_on_its_own_pair_only(self, tmp_path):
+        _three(tmp_path)
+        rows = build_without(str(tmp_path / "campaigns"), str(tmp_path / "views"), "unpaused",
+                             {("arm", "law_a9_r002-a1"), ("matched", "law_a9_r003-a1")},
+                             "the runs a pause held")
+        assert rows[0]["kept"] == 3 and rows[0]["left_out"] == ["law_a9_r002-a1"]
+        note = json.loads((tmp_path / "views" / "unpaused" / "VIEW.json").read_text(
+            encoding="utf-8"))
+        assert note["without"] == "the runs a pause held" and note["view"] == "unpaused"
+        assert (tmp_path / "views" / "unpaused" / "arm" / "a9_20260925T231103Z" / "runs" /
+                "law_a9_r003-a1" / "trial.log").exists()
+
+    def test_the_command_lays_out_the_view_and_says_why(self, tmp_path, capsys):
+        _three(tmp_path)
+        path = self._csv(tmp_path, [("arm", "law_a9_r004-a1", "True")])
+        assert main(["without", "--campaigns", str(tmp_path / "campaigns"), "--out",
+                     str(tmp_path / "views"), "--view", "unpaused", "--runs-csv",
+                     str(path)]) == 0
+        assert "unpaused: 1 campaigns, 3 runs kept, 1 left out" in capsys.readouterr().out
+        note = json.loads((tmp_path / "views" / "unpaused" / "VIEW.json").read_text(
+            encoding="utf-8"))
+        assert note["without"].endswith("marks paused")
+        assert main(["without", "--campaigns", str(tmp_path / "campaigns"), "--out",
+                     str(tmp_path / "views2"), "--view", "v", "--runs-csv", str(path),
+                     "--why", "told"]) == 0
+        assert json.loads((tmp_path / "views2" / "v" / "VIEW.json").read_text(
+            encoding="utf-8"))["without"] == "told"

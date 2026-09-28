@@ -1,0 +1,31 @@
+{
+  "by_summary": {
+    "fitted": {
+      "confirmed": false,
+      "start_ms": {
+        "[1.0, 1.5]": 2.166537595238095,
+        "[1.0, 3.0]": 2.6365675,
+        "[10.0, 1.5]": 3.462151,
+        "[10.0, 3.0]": 4.103309026455026,
+        "[4.0, 1.5]": 2.2490735338983048,
+        "[4.0, 3.0]": 2.553369
+      },
+      "within": {
+        "[1.0, 1.5]": false,
+        "[1.0, 3.0]": false,
+        "[10.0, 1.5]": false,
+        "[10.0, 3.0]": false,
+        "[4.0, 1.5]": false,
+        "[4.0, 3.0]": false
+      }
+    },
+    "free": {
+      "confirmed": false
+    }
+  },
+  "confirmed": false,
+  "judged_on": [
+    "fitted"
+  ],
+  "rule": "the fitted start is within 0.25 ms of the slice in every kernel and slice"
+}

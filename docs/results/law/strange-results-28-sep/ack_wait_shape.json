@@ -1,0 +1,186 @@
+{
+  "parts": {
+    "arm, kafka, 75": {
+      "acks": 169592,
+      "over_2_of_over_1": 0.6381446642880308,
+      "over_3_of_over_1": 0.3327278624716179,
+      "past_4_of_over_1": 0.04268569575089223,
+      "rest of a slice": {
+        "rms_of_scale": 0.04882799965300361,
+        "scale": 0.11748727033211993
+      },
+      "runs": 34,
+      "whole slice": {
+        "rms_of_scale": 0.3491433306422711,
+        "scale": 0.07005150453607219
+      }
+    },
+    "arm, kafka, 88": {
+      "acks": 169592,
+      "over_2_of_over_1": 0.6456777316735822,
+      "over_3_of_over_1": 0.331258644536653,
+      "past_4_of_over_1": 0.04937759336099564,
+      "rest of a slice": {
+        "rms_of_scale": 0.045484093254100015,
+        "scale": 0.216806367236174
+      },
+      "runs": 34,
+      "whole slice": {
+        "rms_of_scale": 0.340070602104982,
+        "scale": 0.12972619151755188
+      }
+    },
+    "arm, redis, 75": {
+      "acks": 139664,
+      "over_2_of_over_1": 0.651015801354401,
+      "over_3_of_over_1": 0.35756207674943546,
+      "past_4_of_over_1": 0.06832204665161806,
+      "rest of a slice": {
+        "rms_of_scale": 0.05886383835610114,
+        "scale": 0.05911348017031272
+      },
+      "runs": 28,
+      "whole slice": {
+        "rms_of_scale": 0.3158480084151332,
+        "scale": 0.035838161379265855
+      }
+    },
+    "arm, redis, 88": {
+      "acks": 149640,
+      "over_2_of_over_1": 0.6333013172338098,
+      "over_3_of_over_1": 0.33548298572996704,
+      "past_4_of_over_1": 0.06620472008781542,
+      "rest of a slice": {
+        "rms_of_scale": 0.05169884317288513,
+        "scale": 0.12067004081733744
+      },
+      "runs": 30,
+      "whole slice": {
+        "rms_of_scale": 0.330723529220494,
+        "scale": 0.07258339107709635
+      }
+    },
+    "matched, kafka, 75": {
+      "acks": 149640,
+      "over_2_of_over_1": 0.6027102602710257,
+      "over_3_of_over_1": 0.2541765254176527,
+      "past_4_of_over_1": 0.04029540402954073,
+      "rest of a slice": {
+        "rms_of_scale": 0.03448666018006227,
+        "scale": 0.11616155133617231
+      },
+      "runs": 30,
+      "whole slice": {
+        "rms_of_scale": 0.3767971921860957,
+        "scale": 0.06822029829519649
+      }
+    },
+    "matched, kafka, 88": {
+      "acks": 154628,
+      "over_2_of_over_1": 0.6095624621738048,
+      "over_3_of_over_1": 0.26198867884225174,
+      "past_4_of_over_1": 0.046637473744170085,
+      "rest of a slice": {
+        "rms_of_scale": 0.03355979252206197,
+        "scale": 0.22443792844554852
+      },
+      "runs": 31,
+      "whole slice": {
+        "rms_of_scale": 0.3682878512887995,
+        "scale": 0.13232936623844613
+      }
+    },
+    "matched, redis, 75": {
+      "acks": 139664,
+      "over_2_of_over_1": 0.629841360583106,
+      "over_3_of_over_1": 0.28769472631127585,
+      "past_4_of_over_1": 0.05473774474774923,
+      "rest of a slice": {
+        "rms_of_scale": 0.04291868398687183,
+        "scale": 0.06345124542769776
+      },
+      "runs": 28,
+      "whole slice": {
+        "rms_of_scale": 0.35153201816099094,
+        "scale": 0.037753715713829704
+      }
+    },
+    "matched, redis, 88": {
+      "acks": 149630,
+      "over_2_of_over_1": 0.6213336599105997,
+      "over_3_of_over_1": 0.25277080399240726,
+      "past_4_of_over_1": 0.055722246035148165,
+      "rest of a slice": {
+        "rms_of_scale": 0.032996844651940666,
+        "scale": 0.1364506875881659
+      },
+      "runs": 30,
+      "whole slice": {
+        "rms_of_scale": 0.37308374953465717,
+        "scale": 0.08026335511089167
+      }
+    },
+    "matched-b, kafka, 75": {
+      "acks": 74820,
+      "over_2_of_over_1": 0.584017345516494,
+      "over_3_of_over_1": 0.24577977388880287,
+      "past_4_of_over_1": 0.03252284342573893,
+      "rest of a slice": {
+        "rms_of_scale": 0.034787524158812845,
+        "scale": 0.10810624981980402
+      },
+      "runs": 15,
+      "whole slice": {
+        "rms_of_scale": 0.3920716650271014,
+        "scale": 0.06302271081663956
+      }
+    },
+    "matched-b, kafka, 88": {
+      "acks": 74820,
+      "over_2_of_over_1": 0.5958708882212466,
+      "over_3_of_over_1": 0.24335567367691252,
+      "past_4_of_over_1": 0.038440798089515504,
+      "rest of a slice": {
+        "rms_of_scale": 0.028785259665792564,
+        "scale": 0.2133298537901726
+      },
+      "runs": 15,
+      "whole slice": {
+        "rms_of_scale": 0.3817561921289105,
+        "scale": 0.1249040415443667
+      }
+    },
+    "matched-b, redis, 75": {
+      "acks": 69832,
+      "over_2_of_over_1": 0.6357615894039725,
+      "over_3_of_over_1": 0.28627332931968585,
+      "past_4_of_over_1": 0.05388320288982525,
+      "rest of a slice": {
+        "rms_of_scale": 0.042824075475481144,
+        "scale": 0.06006716794779785
+      },
+      "runs": 14,
+      "whole slice": {
+        "rms_of_scale": 0.349204761177045,
+        "scale": 0.03577768336100955
+      }
+    },
+    "matched-b, redis, 88": {
+      "acks": 74820,
+      "over_2_of_over_1": 0.6143113159242196,
+      "over_3_of_over_1": 0.262544802867383,
+      "past_4_of_over_1": 0.0560675883256525,
+      "rest of a slice": {
+        "rms_of_scale": 0.035333054211515814,
+        "scale": 0.13043046898174537
+      },
+      "runs": 15,
+      "whole slice": {
+        "rms_of_scale": 0.36821535856995047,
+        "scale": 0.07692221850239929
+      }
+    }
+  },
+  "slice_ms": 3.0,
+  "tick_ms": 1.0
+}

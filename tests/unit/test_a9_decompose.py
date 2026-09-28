@@ -115,6 +115,9 @@ class TestTheCampaigns:
         assert part["runs"] == 3 and part["decomposed"] == 2 and part["identity_holds"] is True
         assert part["recorded_over_unrecorded"] == pytest.approx(2.5)
         assert part["wake_waits"] == 2000 and part["preempt_waits"] == 0, "the whole recording"
+        assert part["wake_bins"][2] == 400 and sum(part["wake_bins"]) == 400, "the 1.5 ms waits"
+        assert part["wake_band_ratio"] == 0.0, "none of them reaches the slice"
+        assert part["preempt_bins"] == [0] * 10 and part["preempt_band_ratio"] is None
         assert found["a6"]["matched, kafka"] == {"runs": 1, "waits": 100,
                                                  "over_1ms": pytest.approx(0.1),
                                                  "recorded_over_unrecorded": pytest.approx(1.0)}
@@ -131,6 +134,108 @@ class TestTheCampaigns:
                              "wake_over_1ms": None, "preempt_over_1ms": None}], {}, [])
         assert found["a9"]["p, b"]["a9_2_over_a9_2b"] is None
         assert found["a9"]["p, b"]["recorded_over_unrecorded"] is None
+        assert found["a9"]["p, b"]["wake_bins"] is None
+        assert found["a9"]["p, b"]["preempt_band_ratio"] is None
+
+
+class TestWhereTheWaitsPileUp:
+
+    def test_a_wait_falls_in_the_bin_whose_top_it_does_not_pass(self):
+        assert ad.binned([0.25, 0.3, 1.0, 3.2, 3.9, 9.0]) == [1, 1, 0, 0, 0, 0, 1, 1, 0, 0]
+
+    def test_an_even_spread_has_a_band_ratio_of_one_and_a_lobe_at_the_slice_more(self):
+        even = [0, 0, 10, 10, 10, 10, 10, 10, 0, 0]
+        lobe = [0, 0, 10, 10, 10, 10, 30, 30, 0, 0]
+        assert ad.band_ratio(even) == pytest.approx(1.0)
+        assert ad.band_ratio(lobe) == pytest.approx(3.0)
+        assert ad.band_ratio([0] * 10) is None
+
+
+class TestEachAcknowledgementsOwnWait:
+    """A9-3 read in full: every acknowledgement's own wait, as A9-2b reads it."""
+
+    def run(self, tmp_path, name="one", **shape):
+        runs = world.campaign(tmp_path, name=name)
+        recorded(runs, "r001-x", "A9-kafka-l75-s3000-p09s", **shape)
+        return ad.helper_waits.counted_runs([str(runs)], ("A9",))[0]
+
+    def test_they_are_the_waits_a9_2b_counts(self, tmp_path):
+        """One in ten of the 500 measured acknowledgements waited 1.5 ms, the rest 0.05 ms; the
+        share past the margin is A9-2b's own prediction."""
+        run = self.run(tmp_path)
+        waits = ad.own_waits(run)
+        assert len(waits) == 500
+        assert sorted(set(round(w, 6) for w in waits)) == [0.05, 1.5]
+        margin = run["trip_ms"] - run["gotit_ms"]
+        found, _ = ad.helper_waits.a9_run(run)
+        assert sum(1 for w in waits if w > margin) / 500.0 == pytest.approx(
+            found["predicted_own"])
+
+    def test_an_acknowledgement_whose_stamper_is_not_known_is_left_out(self, tmp_path):
+        """With a second stamper on a CPU at every twentieth stamp, those 25 are not read."""
+        run = self.run(tmp_path, stampers=(201, 202), crowd_every=20)
+        assert len(ad.own_waits(run)) == 475
+
+    def test_a_first_stamp_with_no_wake_before_it_has_no_own_wait(self, tmp_path):
+        """A stamper never seen asleep: its first stamp has nothing to count from, and each later
+        one counts from the stamp before, while it ran and did not wait."""
+        run = self.run(tmp_path)
+        path = os.path.join(run["run_dir"], "waits.txt")
+        with open(path, encoding="utf-8") as fh:
+            kept = [line for line in fh if not line.startswith(("W ", "S "))]
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.writelines(kept)
+        waits = ad.own_waits(run)
+        assert len(waits) == 499 and set(waits) == {0.0}
+
+    def test_a_run_a9_does_not_read_has_none(self, tmp_path):
+        runs = world.campaign(tmp_path)
+        plain(runs, "r001-b", "A9-kafka-l75-s3000-p09s", rate=0.04)
+        assert ad.own_waits(ad.helper_waits.counted_runs([str(runs)], ("A9",))[0]) is None
+
+
+class TestTheTwoShapes:
+
+    def test_the_share_longer_than_each_x(self):
+        assert ad.survival([0.5, 1.5, 2.5, 3.5], at=(0.25, 1.0, 1.5, 3.0, 4.0)) == [
+            1.0, 0.75, 0.5, 0.25, 0.0]
+
+    def test_a_whole_slice_keeps_every_wait_past_the_slice_and_the_rest_of_one_a_fifth(self):
+        whole, rest = ad.WAIT_SHAPES["whole slice"], ad.WAIT_SHAPES["rest of a slice"]
+        assert whole(3.0, 3.0, 1.0) / whole(1.0, 3.0, 1.0) == 1.0
+        assert rest(3.0, 3.0, 1.0) / rest(1.0, 3.0, 1.0) == pytest.approx(0.2)
+        assert rest(2.0, 3.0, 1.0) / rest(1.0, 3.0, 1.0) == pytest.approx(0.6)
+
+    def test_a_shape_the_shares_follow_is_fitted_with_nothing_left_over(self):
+        rest = ad.WAIT_SHAPES["rest of a slice"]
+        shares = [0.2 * rest(x, 3.0, 1.0) for x in ad.AT_MS]
+        found = ad.fitted(shares, rest)
+        assert found["scale"] == pytest.approx(0.2) and found["rms_of_scale"] == pytest.approx(0)
+        other = ad.fitted(shares, ad.WAIT_SHAPES["whole slice"])
+        assert other["rms_of_scale"] > 0.2, "the whole slice does not pass through them"
+
+    def test_no_wait_to_fit_has_a_scale_of_nothing(self):
+        found = ad.fitted([0.0] * len(ad.AT_MS), ad.WAIT_SHAPES["whole slice"])
+        assert found == {"scale": 0.0, "rms_of_scale": None}
+
+    def test_the_waits_are_pooled_by_pair_backend_and_load(self, tmp_path):
+        runs = world.campaign(tmp_path)
+        recorded(runs, "r001-a", "A9-kafka-l75-s3000-p09s")
+        recorded(runs, "r002-a", "A9-kafka-l75-s3000-c04h")
+        plain(runs, "r001-b", "A9-kafka-l75-s3000-p09s", rate=0.04)
+        found = ad.wait_shape([str(runs)])
+        assert list(found) == ["matched, kafka, 75"]
+        part = found["matched, kafka, 75"]
+        assert (part["runs"], part["acks"]) == (2, 1000)
+        assert dict(zip(ad.AT_MS, part["shares"]))[1.0] == pytest.approx(0.1)
+        assert part["over_2_of_over_1"] == 0.0 and part["past_4_of_over_1"] == 0.0
+        assert set(part) >= {"whole slice", "rest of a slice", "over_3_of_over_1"}
+
+    def test_a_part_with_no_wait_over_a_millisecond_has_no_ratio(self, tmp_path):
+        runs = world.campaign(tmp_path)
+        recorded(runs, "r001-a", "A9-kafka-l75-s3000-p09s", slow_every=0)
+        part = ad.wait_shape([str(runs)])["matched, kafka, 75"]
+        assert part["over_3_of_over_1"] is None and part["over_2_of_over_1"] is None
 
 
 class TestTheCommand:
@@ -141,11 +246,18 @@ class TestTheCommand:
         assert ad.main(["--a9", str(runs), "--a6", str(a3), "--out", str(out)]) == 0
         said = capsys.readouterr().out
         assert "matched, kafka: A9-2/A9-2b" in said and "A6 matched, kafka: 100 waits" in said
+        assert "matched, kafka, 75: 1500 acks, S(3)/S(1) 0.0" in said
         rows = list(csv.DictReader(open(out / "a9_runs.csv", encoding="utf-8")))
         assert len(rows) == 3
         hist = list(csv.DictReader(open(out / "a6_histograms.csv", encoding="utf-8")))
         assert hist[0]["waits"] == "100"
         assert "a9" in json.loads((out / "a9_summary.json").read_text(encoding="utf-8"))
+        waits = list(csv.DictReader(open(out / "ack_waits.csv", encoding="utf-8")))
+        assert len(waits) == 20 and waits[3]["x_ms"] == "1.0" and waits[3]["share"] == "0.066667"
+        assert waits[0]["pair"] == "matched" and waits[0]["load_pct"] == "75"
+        assert float(waits[3]["whole slice"]) > 0 and "rest of a slice" in waits[3]
+        shape = json.loads((out / "ack_wait_shape.json").read_text(encoding="utf-8"))
+        assert shape["slice_ms"] == 3.0 and "shares" not in shape["parts"]["matched, kafka, 75"]
 
     def test_it_prints_without_writing_and_without_a6(self, tmp_path, capsys):
         runs, _ = TestTheCampaigns().world(tmp_path)

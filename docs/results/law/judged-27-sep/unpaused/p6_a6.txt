@@ -1,0 +1,8 @@
+P6 on A6's recording: not confirmed
+  rule: at least two thirds of setups predict their measured rate within 0.67-1.5, and the median ratio is at least 0.8
+  predicted as: the share of recorded waits longer than T - g
+  arm, kafka: not confirmed; 0 of 18 setups within the band, median ratio 2.4914
+  matched, kafka: not confirmed; 0 of 82 setups within the band, median ratio 3.2421
+  matched, redis: not confirmed; 0 of 42 setups within the band, median ratio 12.9797
+  matched-b, kafka: not confirmed; 0 of 24 setups within the band, median ratio 2.6468
+exit 1

@@ -1,0 +1,16 @@
+campaigns/matched/a7_20260919T114044Z/runs: 47 runs counted, 0 left out
+P4: not confirmed
+  rule: the plateau is cut at least 5.0 times, with an interval above 2.0
+  judged on: free, fitted
+  nothing pooled across: backend
+  kafka: confirmed
+    rule: the plateau is cut at least 5.0 times, with an interval above 2.0
+    judged on: free, fitted
+    free shape: holds, measured 40547313.5525, 95% interval 37339615.0762 to 43203688.8532, from 2000 resamplings
+    fitted shape: holds, measured 40523955.1761, 95% interval 37452723.6047 to 43183393.2516, from 2000 resamplings
+  redis: not confirmed
+    rule: the plateau is cut at least 5.0 times, with an interval above 2.0
+    judged on: free, fitted
+    free shape: does not hold, measured None, 95% interval None to None, from 0 resamplings
+    fitted shape: does not hold, measured None, 95% interval None to None, from 0 resamplings
+exit 0

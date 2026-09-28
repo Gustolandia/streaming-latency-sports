@@ -1,0 +1,31 @@
+campaigns/arm/a4_20260918T213410Z/runs: 60 runs counted, 0 left out
+campaigns/arm/a4_20260919T001708Z/runs: 64 runs counted, 0 left out
+campaigns/arm/a4_20260919T031017Z/runs: 63 runs counted, 0 left out
+campaigns/arm/a4_20260922T031458Z/runs: 44 runs counted, 0 left out
+P9: not confirmed
+  rule: halfway inside [s, s+h] in at least 2 of the 2 slices this pair can reach; slope in (0.8, 1.2); each of the 2 campaigns moved by its own offset through the 3 ms anchor
+  judged on: free, fitted
+  nothing pooled across: backend
+  kafka: not confirmed
+    rule: halfway inside [s, s+h] in at least 2 of the 2 slices this pair can reach; slope in (0.8, 1.2); each of the 2 campaigns moved by its own offset through the 3 ms anchor
+    judged on: free, fitted
+    free shape: holds, measured 0.8296, 95% interval 0.6273 to 1.1716, from 2000 resamplings
+      in band: {3.0: True, 4.5: True}
+      out of reach: [1.5]
+    fitted shape: does not hold, measured 0.2851, 95% interval -0.2138 to 0.3962, from 2000 resamplings
+      in band: {3.0: True, 4.5: False}
+      out of reach: [1.5]
+    anchor ms: 3.0
+    in reach: 2 slices, where the rule needs 2
+  redis: not confirmed
+    rule: halfway inside [s, s+h] in at least 3 of the 3 slices this pair can reach; slope in (0.8, 1.2); each of the 2 campaigns moved by its own offset through the 3 ms anchor
+    judged on: free, fitted
+    free shape: holds, measured 1.1533, 95% interval 0.753 to 1.3254, from 2000 resamplings
+      in band: {1.5: True, 3.0: True, 4.5: True}
+      out of reach: []
+    fitted shape: does not hold, measured 0.7975, 95% interval 0.2043 to 0.8303, from 2000 resamplings
+      in band: {1.5: True, 3.0: False, 4.5: False}
+      out of reach: []
+    anchor ms: 3.0
+    in reach: 3 slices, where the rule needs 2
+exit 0

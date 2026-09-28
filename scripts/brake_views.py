@@ -24,12 +24,18 @@ The views:
 A campaign folder is laid out as collect_runs.py lays one out:
   <campaign>/COLLECTED.json, <campaign>/runs/<run folders>, <campaign>/runs/azure/<stage>/<folder>.
 
+And, read after the fact, a view without any runs a CSV lists -- the runs a pause held, as
+pause_census.py lists them in pause_runs.csv -- laid out the same way (`without`).
+
 CLI:
     python scripts/brake_views.py count --campaigns runs/azure/final_campaigns
     python scripts/brake_views.py build --campaigns runs/azure/final_campaigns \\
         --out runs/azure/brake_views
+    python scripts/brake_views.py without --campaigns runs/azure/final_campaigns \\
+        --out runs/azure/brake_views --view unpaused --runs-csv pause_runs.csv
 """
 import argparse
+import csv
 import json
 import os
 import sys
@@ -103,11 +109,10 @@ def link_tree(src, dst):
     return count
 
 
-def build(root, out, view):
-    """Lay out one view of every campaign under root into out/<view>; what it kept and left."""
-    if view not in VIEWS:
-        raise ValueError("the views are %s, not %r" % (", ".join(sorted(VIEWS)), view))
-    keep = VIEWS[view]
+def lay_out(root, out, view, keeps, about):
+    """Lay out every campaign under root into out/<view>, keeping the runs `keeps(pair,
+    run_dir)` says to; what it kept and left, also written to out/<view>/VIEW.json with
+    `about` beside it."""
     rows = []
     for pair, campaign, folder in campaigns_under(root):
         dest = os.path.join(out, view, pair, campaign)
@@ -115,7 +120,7 @@ def build(root, out, view):
             raise ValueError("%s already exists; a view is laid out once" % dest)
         kept, left = [], []
         for name in run_folders(folder):
-            (kept if brake_state(os.path.join(folder, "runs", name)) in keep else left).append(name)
+            (kept if keeps(pair, os.path.join(folder, "runs", name)) else left).append(name)
         for name in kept:
             link_tree(os.path.join(folder, "runs", name), os.path.join(dest, "runs", name))
         stages = os.path.join(folder, "runs", "azure")
@@ -125,10 +130,35 @@ def build(root, out, view):
         os.link(os.path.join(folder, "COLLECTED.json"), os.path.join(dest, "COLLECTED.json"))
         rows.append({"pair": pair, "campaign": campaign, "kept": len(kept), "left_out": left})
     with open(os.path.join(out, view, "VIEW.json"), "w", encoding="utf-8", newline="\n") as fh:
-        json.dump({"view": view, "keeps": list(keep), "from": os.path.abspath(root),
-                   "campaigns": rows}, fh, indent=1)
+        json.dump(dict(about, view=view, campaigns=rows, **{"from": os.path.abspath(root)}), fh,
+                  indent=1)
         fh.write("\n")
     return rows
+
+
+def build(root, out, view):
+    """Lay out one view of every campaign under root into out/<view>; what it kept and left."""
+    if view not in VIEWS:
+        raise ValueError("the views are %s, not %r" % (", ".join(sorted(VIEWS)), view))
+    keep = VIEWS[view]
+    return lay_out(root, out, view, lambda pair, run_dir: brake_state(run_dir) in keep,
+                   {"keeps": list(keep)})
+
+
+def listed_runs(path, column="paused"):
+    """{(pair, run)} for the rows of a CSV whose `column` says True, as pause_census.py writes
+    pause_runs.csv: the runs a view without them leaves out."""
+    with open(path, newline="", encoding="utf-8") as fh:
+        return set((row["pair"], row["run"]) for row in csv.DictReader(fh)
+                   if row.get(column) == "True")
+
+
+def build_without(root, out, view, leave_out, why):
+    """Lay out every campaign under root into out/<view>, without the (pair, run) pairs in
+    `leave_out`; `why` says in VIEW.json what they are."""
+    return lay_out(root, out, view,
+                   lambda pair, run_dir: (pair, os.path.basename(run_dir)) not in leave_out,
+                   {"without": why})
 
 
 def main(argv=None, out=None):
@@ -141,8 +171,24 @@ def main(argv=None, out=None):
     b = sub.add_parser("build")
     b.add_argument("--campaigns", required=True)
     b.add_argument("--out", required=True)
+    w = sub.add_parser("without", help="a view without the runs a CSV lists (post hoc)")
+    w.add_argument("--campaigns", required=True)
+    w.add_argument("--out", required=True)
+    w.add_argument("--view", required=True, help="the view's name, its folder under --out")
+    w.add_argument("--runs-csv", required=True, help="pair,run,...,<column> rows")
+    w.add_argument("--column", default="paused", help="the column whose True leaves a run out")
+    w.add_argument("--why", default="", help="what the runs left out are, for VIEW.json")
     args = ap.parse_args(argv)
     try:
+        if args.command == "without":
+            leave_out = listed_runs(args.runs_csv, args.column)
+            rows = build_without(args.campaigns, args.out, args.view, leave_out,
+                                 args.why or "the runs %s marks %s" % (args.runs_csv,
+                                                                       args.column))
+            print("%s: %d campaigns, %d runs kept, %d left out" % (
+                args.view, len(rows), sum(r["kept"] for r in rows),
+                sum(len(r["left_out"]) for r in rows)), file=out)
+            return 0
         if args.command == "count":
             for row in census(args.campaigns):
                 if row["recorded"] or row["flagged"]:

@@ -201,7 +201,12 @@ class TestTheCensus:
         assert r1["inside_reads"] == pytest.approx(0.0)
         quiet = next(r for r in runs if r["run"] == "law_k3")
         assert quiet == {"pair": "x86", "campaign": "a1_k", "run": "law_k3", "iowait_s": 0.1,
-                         "steal_s": 0.0, "paused": False, "receiver_paused_s": 0.0}
+                         "steal_s": 0.0, "paused": False, "receiver_paused_s": 0.0,
+                         "booted": None}, "a run with no pause is not timed against its boot"
+        k2_run = next(r for r in runs if r["run"] == "law_k2")
+        booted = BASE - 0.23 / 8 * 1e9
+        assert k2_run["booted"] == pytest.approx(booted, abs=1e3), "23 hundredths over 8 CPUs"
+        assert next(r for r in runs if r["run"] == "law_r1")["booted"] is None, "no sampler"
 
     def test_what_they_add_up_to(self, tmp_path):
         eps, runs = pc.census(str(world(tmp_path)))
@@ -220,6 +225,10 @@ class TestTheCensus:
         assert found["iowait"]["arm"]["paused_median_s"] is None
         assert "iowait_on_pause" not in found, "two paused runs draw no line"
         assert found["hour"]["runs"] == 2 and found["hour"]["by_quarter"] == [2, 0, 0, 0]
+        since = found["hour_since_boot"]
+        assert since["runs"] == 1, "the Redis run has no sampler to time its boot by"
+        assert since["mean_minute"] == pytest.approx((40 + 0.23 / 8) / 60.0, abs=1e-3)
+        assert found["together"] == {"long": {"x86": 3}, "within": {}, "window_s": 5.0}
 
     def test_the_line_of_disk_wait_on_pause(self):
         runs = [{"pair": "x", "iowait_s": 1.0 * s + 0.1, "paused": True,
@@ -240,6 +249,27 @@ class TestTheCensus:
                                   "receiver_paused_s": 5.7}])
         assert found["hour"]["by_quarter"] == [0, 0, 0, 1]
         assert found["hour"]["mean_minute"] == pytest.approx(50.0)
+
+
+class TestWhenTheyCame:
+
+    def test_the_boot_is_the_first_sampler_time_less_the_processor_time_counted(self, tmp_path):
+        run = tmp_path / "r"
+        run.mkdir()
+        (run / "stat_before.txt").write_text("cpu  4000 0 2000 1600 400 0 0 0 0 0\n",
+                                             encoding="utf-8")
+        (run / "utilisation.csv").write_text("t_wall,rho,loadavg\n%.3f,0.7,4\n" % (
+            BASE / 1e9 + 100.0), encoding="utf-8")
+        assert pc.booted_ns(str(run)) == BASE + 90 * S, "8,000 hundredths over 8 CPUs"
+        (run / "utilisation.csv").write_text("t_wall,rho,loadavg\n", encoding="utf-8")
+        assert pc.booted_ns(str(run)) is None
+
+    def test_two_machines_stalling_together_are_counted_once_a_side(self):
+        def ep(pair, at_s, worst=1500):
+            return {"pair": pair, "start": BASE + int(at_s * S), "worst_ms": worst}
+        found = pc.together([ep("a", 0), ep("a", 100), ep("b", 3), ep("b", 111),
+                             ep("c", 0, worst=900)])
+        assert found == {"long": {"a": 2, "b": 2}, "within": {"a & b": 1}, "window_s": 5.0}
 
 
 class TestTheHour:

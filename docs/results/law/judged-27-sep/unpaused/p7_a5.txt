@@ -1,0 +1,27 @@
+campaigns/matched-b/a5_20260920T210430Z/runs: 60 runs counted, 0 left out
+campaigns/matched-b/a5_20260924T013956Z/runs: 54 runs counted, 0 left out
+campaigns/matched-b/a5_20260924T225453Z/runs: 36 runs counted, 2 left out
+left out 2 runs the integrity rule did not pass: law_a5_20260924T225453Z_r003-A5-kafka-l75-c2-c08h-a1 (stop), law_a5_20260924T225453Z_r003-A5-redis-l75-c2-c04h-a1 (stop)
+P7: not confirmed
+  rule: the read-back slice matches at every core count, and the halfway point is inside [s, s+h] at every core count whose slice the runs reach
+  judged on: free, fitted
+  nothing pooled across: backend
+  kafka: confirmed
+    rule: the read-back slice matches at every core count, and the halfway point is inside [s, s+h] at every core count whose slice the runs reach
+    judged on: free, fitted
+    free shape: holds
+      in band: {'8': True}
+    fitted shape: holds
+      in band: {'8': True}
+    read back: {'2': True, '4': True, '8': True}
+    out of reach: ['2', '4']
+  redis: not confirmed
+    rule: the read-back slice matches at every core count, and the halfway point is inside [s, s+h] at every core count whose slice the runs reach
+    judged on: free, fitted
+    free shape: holds
+      in band: {'2': True, '4': True, '8': True}
+    fitted shape: does not hold
+      in band: {'2': False, '4': False, '8': False}
+    read back: {'2': True, '4': True, '8': True}
+    out of reach: []
+exit 0

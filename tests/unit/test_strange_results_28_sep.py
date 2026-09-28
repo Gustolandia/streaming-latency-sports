@@ -218,6 +218,36 @@ def test_the_hour():
                          _f(hour["mean_minute"], 1)))
 
 
+def test_the_hour_counted_from_the_boot_and_the_two_machines_together():
+    found = _json("pause_summary.json")
+    since = found["hour_since_boot"]
+    assert since["runs"] == found["hour"]["runs"], "the same pauses, timed from the boot"
+    _has("the same %d pauses spread over the hour: **%s** in its quarters (Rayleigh test p = %s, "
+         "mean minute %s)" % (since["runs"], ", ".join(str(n) for n in since["by_quarter"][:3])
+                              + " and " + str(since["by_quarter"][3]),
+                              _f(since["rayleigh_p"], 3), _f(since["mean_minute"], 1)))
+    together = found["together"]
+    assert together["window_s"] == 5.0 and set(together["long"]) == {"matched", "matched-b"}
+    assert together["within"] == {"matched & matched-b": 0}
+    _has("of the **%d** long pauses on the first pair and **%d** on the second, **none** began "
+         "within 5 s of one on the other" % (together["long"]["matched"],
+                                             together["long"]["matched-b"]))
+
+
+def test_what_the_pauses_cost_the_verdicts():
+    """The P3a numbers the record quotes from the judging without the paused runs."""
+    def fitted(view):
+        text = (LAW / "judged-27-sep" / view / "p3a_x86_1.txt").read_text(encoding="utf-8")
+        line = next(l for l in text.splitlines() if "fitted shape" in l)
+        low = float(line.split("interval ")[1].split(" to ")[0])
+        return low, line
+    low_all, line_all = fitted("all")
+    low_unpaused, line_unpaused = fitted("unpaused")
+    assert "does not hold" in line_all and "does not hold" not in line_unpaused
+    _has("ended %s ms past its bar and without the six paused runs ends %s ms inside it"
+         % (_f(-0.25 - low_all, 4), _f(low_unpaused + 0.25, 4)))
+
+
 # --- the cliff -------------------------------------------------------------------------------------
 
 def _levels(view, point):
@@ -248,6 +278,60 @@ def test_the_rate_at_half_the_slice():
     assert max(kafka("plan")) == 0.0
     _has("Kafka keeps %s to %s of its plateau, where the shape keeps %s to %s"
          % (_span(kafka("data"), 2) + _span(kafka("residual"), 2)))
+
+
+PAIR_NAMES = {"arm": "Arm", "matched": "first x86", "matched-b": "second x86"}
+
+
+def test_each_acknowledgements_own_wait():
+    parts = _json("ack_wait_shape.json")["parts"]
+    assert len(parts) == 12
+    _has("**%s acknowledgements in %d recorded runs**" % (
+        format(sum(p["acks"] for p in parts.values()), ","),
+        sum(p["runs"] for p in parts.values())))
+    pct = lambda key: [100 * p[key] for p in parts.values()]
+    _has("Measured, in the twelve parts, **%s to %s%%**, **%s to %s%%** and **%s to %s%%**"
+         % (_span(pct("over_2_of_over_1"), 1) + _span(pct("over_3_of_over_1"), 1)
+            + _span(pct("past_4_of_over_1"), 1)))
+    left = lambda shape: [p[shape]["rms_of_scale"] for p in parts.values()]
+    _has("the rest-of-a-slice shape leaves a root mean square of **%s to %s** of that scale, the "
+         "whole slice **%s to %s**" % (_span(left("rest of a slice"), 3)
+                                       + _span(left("whole slice"), 3)))
+    for key, p in parts.items():
+        pair, backend, load = key.split(", ")
+        _has("| %s, %s, %s%% | %d | %s | %s%% | %s%% | %s%% | %s | %s |" % (
+            PAIR_NAMES[pair], backend.capitalize(), load, p["runs"], format(p["acks"], ","),
+            _f(100 * p["over_2_of_over_1"], 1), _f(100 * p["over_3_of_over_1"], 1),
+            _f(100 * p["past_4_of_over_1"], 1), _f(p["rest of a slice"]["rms_of_scale"], 3),
+            _f(p["whole slice"]["rms_of_scale"], 3)))
+    arm = [100 * p["over_3_of_over_1"] for k, p in parts.items() if k.startswith("arm")]
+    x86 = [100 * p["over_3_of_over_1"] for k, p in parts.items() if not k.startswith("arm")]
+    _has("(%s to %s%% at 3 ms, against %s to %s%%)" % (_span(arm, 1) + _span(x86, 1)))
+
+
+def test_the_shapes_the_waits_are_set_against():
+    """The 100/60/20 the record quotes are the two shapes' own, at A9's slice and tick."""
+    import importlib
+    import sys
+    sys.path.insert(0, str(REPO / "scripts"))
+    ad = importlib.import_module("a9_decompose")
+    rest, whole = ad.WAIT_SHAPES["rest of a slice"], ad.WAIT_SHAPES["whole slice"]
+    assert (whole(2.0, 3.0, 1.0), whole(3.0, 3.0, 1.0), whole(4.0, 3.0, 1.0)) == (1.0, 1.0, 0.0)
+    assert rest(2.0, 3.0, 1.0) / rest(1.0, 3.0, 1.0) == pytest.approx(0.6)
+    assert rest(3.0, 3.0, 1.0) / rest(1.0, 3.0, 1.0) == pytest.approx(0.2)
+    _has("a whole slice keeps **100%** waiting at 2 ms and at 3 ms and none past 4 ms; the rest of "
+         "a slice keeps **60%**, **20%** and none")
+
+
+def test_a_wake_up_and_a_preemption():
+    parts = _json("a9_summary.json")["a9"]
+    wake_x86 = [p["wake_band_ratio"] for k, p in parts.items() if not k.startswith("arm")]
+    wake_arm = [parts[k]["wake_band_ratio"] for k in ("arm, kafka", "arm, redis")]
+    preempt = [p["preempt_band_ratio"] for p in parts.values()]
+    _has("**%s to %s** for waits begun by a wake-up on the two x86 pairs and **%s and %s** on the "
+         "Arm pair, against **%s to %s** for waits begun by a preemption, on all three"
+         % (_span(wake_x86, 2) + tuple(_f(v, 2) for v in wake_arm) + _span(preempt, 2)))
+    assert max(wake_x86) < 1 < min(preempt), "a lobe at the slice for preemptions alone on x86"
 
 
 def test_the_shapes_through_the_frozen_judges():

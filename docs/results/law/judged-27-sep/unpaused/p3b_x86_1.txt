@@ -1,0 +1,10 @@
+campaigns/matched/a3_20260919T171733Z/runs: 282 runs counted, 1 left out
+left out 1 run the integrity rule did not pass: law_a3_20260919T171733Z_r016-A3-kafka-l75-s3000-p09s-a1 (stop)
+P3b: confirmed
+  rule: the plateau's increase between the lowest and the highest load whose plateau is at least 2% has a 95% interval above zero
+  judged on: free, fitted
+  free shape: holds, measured 0.0481, 95% interval 0.0438 to 0.0521, from 2000 resamplings
+  fitted shape: holds, measured 0.0459, 95% interval 0.042 to 0.0502, from 2000 resamplings
+  loads compared: [75, 88]
+  loads out of reach: {50: 0.0014534883720930232}
+exit 0

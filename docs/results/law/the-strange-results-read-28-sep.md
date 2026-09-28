@@ -30,7 +30,7 @@ judges read the data, one is a new finding about the instrument, and five stay o
 | M0: Redis's trip grows 1.18 and 1.31 times the delay | Burst followers wait one or more extra delayed round trips; the median straddles two kinds of message | [M0](#m0-the-median-straddles-two-kinds-of-message) |
 | M0: the recording moved Redis's trip most at 8 ms | At 8 ms the median is the leaders' upper tail, and the recording moves the tail | [M0](#m0-the-median-straddles-two-kinds-of-message) |
 | Pauses of seconds on both x86 pairs | Two kinds: the driver's disk writes stalling, and Kafka's broker stalling | [Pauses](#the-pauses-are-two-faults-and-neither-is-the-network) |
-| The fitted shape fails where the free reading holds (P1, P7 and P9; P2d) | There is no flat plateau: the rate falls from the shortest trips, much as a helper waiting out the rest of a slice would make it | [The cliff](#the-cliff-has-no-flat-plateau) |
+| The fitted shape fails where the free reading holds (P1, P7 and P9; P2d) | There is no flat plateau: the rate falls from the shortest trips, much as a helper waiting out the rest of a slice would make it; timed acknowledgement by acknowledgement, that is the wait | [The cliff](#the-cliff-has-no-flat-plateau), [the waits](#each-acknowledgements-own-wait-is-the-rest-of-a-slice) |
 | P2 and P2b never confirmed | The judges read both of A2's slices as one curve; they could not confirm P2 in a world where the law holds exactly | [The tick](#p2-p2b-and-p2c-read-two-slices-as-one-curve) |
 | A9-2 predicts six to ten times too few | A9-2 counts time and A9-2b counts acknowledgements; the ratio of the two is a product that comes to about a tenth | [A9](#a9-2-counts-time-a9-2b-counts-acknowledgements) |
 | A9's recording, new here | It raised the negative rate it recorded, by about half for Kafka and four times for Redis | [A9](#a9s-recording-raised-the-rate-it-recorded) |
@@ -171,9 +171,23 @@ of the clock hour in **35 of 68 runs**, against the 17 an even spread gives (Ray
 package timers, its only scheduled line starts the queue at boot, and the watch polled every five
 minutes from home. What woke at those minutes is not recorded.
 
-**What they cost.** The final judging counted these runs and nothing is judged again without them.
-A late message is not a negative one, so a pause can only thin a run's negative rate, by at most
-the share of messages it held.
+**The clock's hour, not the machine's, and one machine at a time** (read later on 28 September).
+Two readings narrow what it could be. Counted from when each driver last booted instead of from
+the clock -- the run's first sampler time less the processor time the driver had counted by then,
+over its eight processors -- the same 68 pauses spread over the hour: **16, 14, 27 and 11** in its
+quarters (Rayleigh test p = 0.065, mean minute 36.3). A job each machine runs every hour from its
+boot, such as a guest agent's periodic work, would keep that hour, and they do not. And the two x86
+drivers never stalled together: of the **58** long pauses on the first pair and **48** on the
+second, **none** began within 5 s of one on the other. Something shared by both machines, the
+storage behind their disks or the hosts they ran on, would stall them together. What is left is
+something each machine runs by the clock, on its own. The machines' own system logs were not
+collected, so it is not named.
+
+**What they cost.** The final judging counted these runs. Judged again without them, after the
+fact ([judged without the paused runs](judged-without-the-paused-runs.md)), every verdict stands
+but one: P3a on the first x86 pair, where the fitted reading's interval had ended 0.0026 ms past its
+bar and without the six paused runs ends 0.0037 ms inside it. A late message is not a negative one,
+so a pause can only thin a run's negative rate, by at most the share of messages it held.
 
 ## The cliff has no flat plateau
 
@@ -230,6 +244,60 @@ its level at 0.9 of the slice, where the rest-of-a-slice shape gives 1.61 to 2.3
 curve falls faster still before the slice. Past the cliff, at s + 1.5h, Kafka keeps 0.24 to 0.42
 of its plateau, where the shape keeps 0.22 to 0.26 and the plan's formula none. And Kafka's free
 slope, 0.758, stays below what either shape gives the same design.
+
+## Each acknowledgement's own wait is the rest of a slice
+
+*Plain words:* A9 timed, for every acknowledgement, how long the thread that stamps it waited for a
+processor after the reply woke it. Of those that waited more than 1 ms, about three in five were
+still waiting at 2 ms and one in four to one in three at 3 ms, where a whole slice would have kept
+every one of them waiting to 3 ms. That is the rest of a slice, timed directly rather than read off
+the rate (read later on 28 September).
+
+A9-3 asked where the stamping thread's waits end, with no rule. Read in full here: every
+acknowledgement's own wait for a CPU as A9-2b reads it -- from the later of its stamper's last wake
+from sleep and that thread's previous stamp -- pooled by pair, backend and load, **1,516,342
+acknowledgements in 304 recorded runs**. The share still waiting at each wait x, every quarter of
+a millisecond to 5 ms, is in `ack_waits.csv`. A9 ran at the 3 ms slice and a 1 ms tick, so the two
+shapes are
+
+  whole slice       W = s + U: every wait lasts the slice and then up to a tick, the plan's
+                    plateau and cliff read as a wait;
+  rest of a slice   W = R + U: P(W > x) = P(R + U > x), the formula of the section above.
+
+Of the acknowledgements whose wait passed 1 ms, a whole slice keeps **100%** waiting at 2 ms and at
+3 ms and none past 4 ms; the rest of a slice keeps **60%**, **20%** and none. Measured, in the
+twelve parts, **58.4 to 65.1%**, **24.3 to 35.8%** and **3.3 to 6.8%**. Given one scale each,
+fitted by least squares over the twenty waits read, the rest-of-a-slice shape leaves a root mean
+square of **0.029 to 0.059** of that scale, the whole slice **0.316 to 0.392**:
+
+| Pair, backend, load | Runs | Acknowledgements | At 2 ms | At 3 ms | Past 4 ms | Left over: rest of a slice | Left over: whole slice |
+|---|---|---|---|---|---|---|---|
+| first x86, Kafka, 75% | 30 | 149,640 | 60.3% | 25.4% | 4.0% | 0.034 | 0.377 |
+| first x86, Kafka, 88% | 31 | 154,628 | 61.0% | 26.2% | 4.7% | 0.034 | 0.368 |
+| first x86, Redis, 75% | 28 | 139,664 | 63.0% | 28.8% | 5.5% | 0.043 | 0.352 |
+| first x86, Redis, 88% | 30 | 149,630 | 62.1% | 25.3% | 5.6% | 0.033 | 0.373 |
+| second x86, Kafka, 75% | 15 | 74,820 | 58.4% | 24.6% | 3.3% | 0.035 | 0.392 |
+| second x86, Kafka, 88% | 15 | 74,820 | 59.6% | 24.3% | 3.8% | 0.029 | 0.382 |
+| second x86, Redis, 75% | 14 | 69,832 | 63.6% | 28.6% | 5.4% | 0.043 | 0.349 |
+| second x86, Redis, 88% | 15 | 74,820 | 61.4% | 26.3% | 5.6% | 0.035 | 0.368 |
+| Arm, Kafka, 75% | 34 | 169,592 | 63.8% | 33.3% | 4.3% | 0.049 | 0.349 |
+| Arm, Kafka, 88% | 34 | 169,592 | 64.6% | 33.1% | 4.9% | 0.045 | 0.340 |
+| Arm, Redis, 75% | 28 | 139,664 | 65.1% | 35.8% | 6.8% | 0.059 | 0.316 |
+| Arm, Redis, 88% | 30 | 149,640 | 63.3% | 33.5% | 6.6% | 0.052 | 0.331 |
+
+The Arm pair's waits run longer toward the slice than the x86 pairs' (33.1 to 35.8% at 3 ms, against
+24.3 to 28.8%), and a few in twenty in every part outlast the slice and the tick; neither is near a
+whole slice.
+
+**A wake-up and a preemption end differently.** A9's recordings split every python3 thread's waits
+by what began them (`a9_summary.json`). Over a quarter of a millisecond, the density of waits a
+millisecond between the slice and a tick past it, over their density between 1 ms and the slice, is
+**0.68 to 0.73** for waits begun by a wake-up on the two x86 pairs and **1.13 and 1.21** on the Arm
+pair, against **1.57 to 1.94** for waits begun by a preemption, on all three. A thread taken off its
+processor for a task starting its slice waits out the whole of it; a thread woken while another
+task holds the processor waits out what is left. The stamping thread sleeps until its
+acknowledgement's reply wakes it, so its wait is of the second kind, and the plateau the plan wrote
+down is the first kind's.
 
 ## P2, P2b and P2c read two slices as one curve
 
@@ -407,9 +475,16 @@ python scripts/a9_decompose.py --a9 <the five A9 campaigns> --a6 <A1's seven and
 
 ## Pocket dictionary
 
+- **Band ratio**: the density of waits between the slice and a tick past it, over their density
+  between 1 ms and the slice; about 1 when waits spread evenly up to the slice, more when they
+  gather at it.
+- **Boot, hour counted from**: the minutes since the machine last started, taken round the hour,
+  as a job the machine runs every hour from its start would keep them.
 - **Burst, leader, follower**: the events of one match second, sent at one instant; the first the
   broker took, and the ones behind it.
 - **Episode**: the late messages of one pause, released together.
+- **Own wait**: how long the stamping thread waited for a processor before one acknowledgement's
+  stamp, counted from when it last woke or last stamped.
 - **Free reading / fitted shape**: a curve required only never to rise, and a plateau, a straight
   fall and a floor; a prediction passes only where both agree.
 - **iowait**: time a processor sat idle while a task waited on the disk.
@@ -419,3 +494,5 @@ python scripts/a9_decompose.py --a9 <the five A9 campaigns> --a6 <A1's seven and
 - **Post hoc**: read after the data were seen; it can explain, not test.
 - **Rest of a slice**: what is left of another task's protected run time when the helper wakes.
 - **Step**: a rise that happens once and then stops, which a straight line reads as a slope.
+- **Whole slice**: a wait as long as another task's full protected run time, which is what a
+  thread taken off its processor for a task just starting meets.

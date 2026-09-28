@@ -26,6 +26,13 @@ Kinds of episode:
 For Redis, whether the receiving program was inside a read of the broker while it lay paused, from
 its own trace of each read, is recorded too: a program waiting on the network sits inside a read.
 
+When they came. The longest receiving-side pause of each run, as a minute of the clock hour and as
+a minute of the hour counted from when the driver last booted -- the run's first sampler time less
+the processor time /proc/stat had counted by its start, over the driver's eight processors -- each
+with the Rayleigh test of an even spread round the hour. A job a machine runs every hour from its
+boot keeps the second; one run by the clock keeps the first. And whether the two machines ever
+stalled together: the long pauses of each pair begun within a few seconds of one on another pair.
+
 CLI:
     python scripts/pause_census.py --root runs/azure/final_campaigns --out <folder>
 """
@@ -52,6 +59,10 @@ SAME_EPISODE_S = 1.0
 LONG_S = 1.0
 #: /proc/stat counts in USER_HZ, 100 a second on every Linux the pairs ran.
 USER_HZ = 100.0
+#: Every driver has eight processors, and all of them are online outside A5's runs with fewer.
+DRIVER_CPUS = 8
+#: Two long pauses on two machines begun this close together would be one event seen twice.
+TOGETHER_S = 5.0
 HEARTBEAT = re.compile(r"Unable to send a heartbeat|BROKER_HEARTBEAT|due to request timeout")
 STAMP = re.compile(r"^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(?:\.(\d+))?Z")
 
@@ -152,6 +163,19 @@ def iowait_s(run_dir):
     return cpu_seconds(run_dir, 4)
 
 
+def booted_ns(run_dir, cpus=DRIVER_CPUS):
+    """When the driver last booted, in ns: the run's first sampler time less the processor time
+    /proc/stat had counted by the run's start, over its processors; or None. Exact while every
+    processor has been online since the boot, and later than the boot where some were not."""
+    try:
+        counted = sum(_cpu(os.path.join(run_dir, "stat_before.txt"))[:8]) / USER_HZ
+        with open(os.path.join(run_dir, "utilisation.csv"), encoding="utf-8") as fh:
+            first = float(fh.read().splitlines()[1].split(",")[0])
+        return int((first - counted / cpus) * 1e9)
+    except (OSError, ValueError, IndexError):
+        return None
+
+
 def _ns(match):
     when = datetime.datetime.strptime(match.group(1), "%Y-%m-%dT%H:%M:%S").replace(
         tzinfo=datetime.timezone.utc)
@@ -221,7 +245,8 @@ def census(root):
                          "iowait_s": iowait_s(run_dir), "steal_s": cpu_seconds(run_dir, 7),
                          "paused": bool(found),
                          "receiver_paused_s": sum(ep["worst_ms"] for ep in found
-                                                  if ep["kind"] == "receiver") / 1000.0})
+                                                  if ep["kind"] == "receiver") / 1000.0,
+                         "booted": booted_ns(run_dir) if found else None})
     return eps, runs
 
 
@@ -242,6 +267,30 @@ def rayleigh_p(minutes):
 def _minute(ns):
     when = datetime.datetime.fromtimestamp(ns / 1e9, datetime.timezone.utc)
     return when.minute + when.second / 60.0
+
+
+def _hour(minutes):
+    p, mean = rayleigh_p(minutes)
+    return {"runs": len(minutes),
+            "by_quarter": [sum(1 for m in minutes if 15 * q <= m < 15 * (q + 1)) for q in range(4)],
+            "rayleigh_p": p, "mean_minute": mean}
+
+
+def together(eps, window_s=TOGETHER_S):
+    """{"long": {pair: n}, "within": {"a & b": k}, "window_s"}: how many of one pair's long pauses
+    began within window_s of one on another pair, for every two pairs that had any."""
+    starts = {}
+    for ep in eps:
+        if ep["worst_ms"] >= LONG_S * 1000:
+            starts.setdefault(ep["pair"], []).append(ep["start"])
+    within = {}
+    names = sorted(starts)
+    for i, a in enumerate(names):
+        for b in names[i + 1:]:
+            within["%s & %s" % (a, b)] = sum(
+                1 for x in starts[a] if any(abs(x - y) <= window_s * 1e9 for y in starts[b]))
+    return {"long": dict((pair, len(v)) for pair, v in starts.items()), "within": within,
+            "window_s": window_s}
 
 
 def _line(xs, ys):
@@ -314,11 +363,13 @@ def summary(eps, runs):
                 longest[key] = ep
     minutes = [_minute(ep["start"]) for ep in longest.values()]
     if minutes:
-        p, mean = rayleigh_p(minutes)
-        out["hour"] = {"runs": len(minutes),
-                       "by_quarter": [sum(1 for m in minutes if 15 * q <= m < 15 * (q + 1))
-                                      for q in range(4)],
-                       "rayleigh_p": p, "mean_minute": mean}
+        out["hour"] = _hour(minutes)
+        booted = dict(((r["pair"], r.get("run")), r.get("booted")) for r in runs)
+        since = [((ep["start"] - booted[key]) % (3600 * 10 ** 9)) / 6e10
+                 for key, ep in longest.items() if booted.get(key) is not None]
+        if since:
+            out["hour_since_boot"] = _hour(since)
+    out["together"] = together(eps)
     return out
 
 
@@ -351,7 +402,7 @@ def write(eps, runs, found, out_dir):
                                            "paused", "receiver_paused_s"], lineterminator="\n")
         w.writeheader()
         for run in runs:
-            w.writerow(dict((k, _r(v)) for k, v in run.items()))
+            w.writerow(dict((k, _r(v)) for k, v in run.items() if k != "booted"))
     with open(os.path.join(out_dir, "pause_summary.json"), "w", encoding="utf-8",
               newline="\n") as fh:
         fh.write(json.dumps(found, indent=2, sort_keys=True) + "\n")

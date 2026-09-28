@@ -1,0 +1,9 @@
+campaigns/matched-b/a3_20260926T185701Z/runs: 180 runs counted, 0 left out
+P3b: confirmed
+  rule: the plateau's increase between the lowest and the highest load whose plateau is at least 2% has a 95% interval above zero
+  judged on: free, fitted
+  free shape: holds, measured 0.0404, 95% interval 0.0355 to 0.045, from 2000 resamplings
+  fitted shape: holds, measured 0.0475, 95% interval 0.0364 to 0.0527, from 2000 resamplings
+  loads compared: [75, 88]
+  loads out of reach: {}
+exit 0

@@ -1,0 +1,24 @@
+P6 on A9's recording: not confirmed
+  rule: at least two thirds of setups predict their measured rate within 0.67-1.5, and the median ratio is at least 0.8
+  predicted as: the sum of max(0, W - (T - g)) over the stamping thread's waits, over the window's length (A9-2)
+  A9-2b, the share of acknowledgements whose own wait outlasted T - g (A9-2b): not confirmed
+  A9-1: does not hold (at a backend and load, at least 90% of negative readings spent more than half of the time from arrival to stamp waiting for a CPU)
+  arm, kafka: not confirmed; 0 of 29 setups within the band, median ratio 0.105
+    load 75: A9-1 does not hold, 4931 of 5833 negative readings mostly waiting; waits {'longest': 7.706, 'p50': 0.0144, 'p90': 0.0207, 'p99': 2.8431} ms
+    load 88: A9-1 does not hold, 7469 of 9405 negative readings mostly waiting; waits {'longest': 10.2866, 'p50': 0.0145, 'p90': 0.0193, 'p99': 3.1008} ms
+  arm, redis: not confirmed; 0 of 28 setups within the band, median ratio 0.1042
+    load 75: A9-1 does not hold, 1817 of 2122 negative readings mostly waiting; waits {'longest': 6.3117, 'p50': 0.0137, 'p90': 0.0191, 'p99': 2.8931} ms
+    load 88: A9-1 does not hold, 2886 of 3417 negative readings mostly waiting; waits {'longest': 6.0488, 'p50': 0.0144, 'p90': 0.0185, 'p99': 2.6848} ms
+  matched, kafka: not confirmed; 0 of 27 setups within the band, median ratio 0.1087
+    load 75: A9-1 does not hold, 3647 of 4552 negative readings mostly waiting; waits {'longest': 6.6195, 'p50': 0.0184, 'p90': 0.1467, 'p99': 3.2145} ms
+    load 88: A9-1 does not hold, 7717 of 9681 negative readings mostly waiting; waits {'longest': 10.8693, 'p50': 0.0186, 'p90': 0.0434, 'p99': 3.2845} ms
+  matched, redis: not confirmed; 0 of 29 setups within the band, median ratio 0.1621
+    load 75: A9-1 holds, 2410 of 2629 negative readings mostly waiting; waits {'longest': 6.1458, 'p50': 0.0183, 'p90': 0.0458, 'p99': 3.1494} ms
+    load 88: A9-1 holds, 4911 of 5391 negative readings mostly waiting; waits {'longest': 7.2753, 'p50': 0.0185, 'p90': 0.028, 'p99': 2.9015} ms
+  matched-b, kafka: not confirmed; 0 of 14 setups within the band, median ratio 0.1149
+    load 75: A9-1 does not hold, 1521 of 1823 negative readings mostly waiting; waits {'longest': 7.8518, 'p50': 0.0184, 'p90': 0.144, 'p99': 3.2412} ms
+    load 88: A9-1 does not hold, 3193 of 3946 negative readings mostly waiting; waits {'longest': 7.5373, 'p50': 0.0186, 'p90': 0.0422, 'p99': 3.272} ms
+  matched-b, redis: not confirmed; 0 of 15 setups within the band, median ratio 0.1654
+    load 75: A9-1 holds, 1122 of 1219 negative readings mostly waiting; waits {'longest': 6.5294, 'p50': 0.0182, 'p90': 0.0461, 'p99': 3.1873} ms
+    load 88: A9-1 holds, 2638 of 2880 negative readings mostly waiting; waits {'longest': 13.2909, 'p50': 0.0185, 'p90': 0.0276, 'p99': 2.9277} ms
+exit 1

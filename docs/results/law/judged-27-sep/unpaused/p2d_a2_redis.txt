@@ -1,0 +1,17 @@
+campaigns/matched-b/a2_20260922T120958Z/runs: 57 runs counted, 0 left out
+campaigns/matched-b/a2_20260923T015244Z/runs: 58 runs counted, 0 left out
+campaigns/matched-b/a2_20260924T185524Z/runs: 57 runs counted, 0 left out
+campaigns/matched-b/a2_20260922T190106Z/runs: 60 runs counted, 1 left out
+campaigns/matched-b/a2_20260923T214236Z/runs: 53 runs counted, 0 left out
+campaigns/matched-b/a2_20260924T144527Z/runs: 58 runs counted, 0 left out
+campaigns/matched-b/a2_20260923T115348Z/runs: 59 runs counted, 0 left out
+campaigns/matched-b/a2_20260924T100850Z/runs: 60 runs counted, 2 left out
+campaigns/matched-b/a2_20260925T180818Z/runs: 60 runs counted, 0 left out
+left out 3 runs the integrity rule did not pass: law_a2_20260922T190106Z_r003-A2-redis-l75-s3000-p05s-a1 (stop), law_a2_20260924T100850Z_r002-A2-redis-l75-s3000-c06h-a1 (repeat), law_a2_20260924T100850Z_r003-A2-redis-l75-s1500-c02h-a1 (stop)
+P2d: not confirmed
+  rule: the fitted start is within 0.25 ms of the slice in every kernel and slice
+  judged on: fitted
+  free shape: does not hold
+  fitted shape: does not hold
+    within: {'[4.0, 1.5]': False, '[4.0, 3.0]': False, '[10.0, 1.5]': False, '[10.0, 3.0]': False, '[1.0, 1.5]': True, '[1.0, 3.0]': False}
+exit 0

@@ -238,6 +238,33 @@ def _base_slice_ms():
         return DEFAULT_BASE_SLICE_MS
 
 
+DEFAULT_TICK_MS = 1.0
+
+
+def _tick_ms():
+    """The scheduler tick, read as the base slice is; the literal is the same fallback."""
+    try:
+        import kernel_constants
+        return float(kernel_constants.constants()["tick_ms"])
+    except (ImportError, OSError, KeyError, ValueError):
+        return DEFAULT_TICK_MS
+
+
+def rest_of_a_slice_density(wait, s, h):
+    """The density of R + U, R uniform on [0, s] and U on [0, h], at `wait` (ms): what a thread
+    woken while another holds the CPU waits, the rest of that one's slice and then up to a
+    tick (Supplement S16.10). A trapezoid: rising across the shorter of the two, level between,
+    falling to zero at s + h."""
+    low, high = min(s, h), max(s, h)
+    if wait <= 0 or wait >= s + h:
+        return 0.0
+    if wait < low:
+        return wait / (s * h)
+    if wait <= high:
+        return 1.0 / high
+    return (s + h - wait) / (s * h)
+
+
 def plot_model(axes):
     """The measurement-failure model, drawn rather than only stated.
 
@@ -419,14 +446,22 @@ def plot_delta(h1_ax):
     # kernel config and the campaign's own CPU count. Taking it from there rather than
     # typing it means the figure, the caption macro and Section V-G cannot drift apart --
     # the same rule the rest of the manuscript's numbers already live under.
-    slice_ms = _base_slice_ms()
+    #
+    # v5 (28 September 2026): the lobe AT the slice was wrong for the thread that matters, and
+    # a measurement says so. A9 timed the wait of the thread that timestamps each
+    # acknowledgment: it waits out the REST of another task's slice, spread from nothing to
+    # the slice and ending a tick past it (Supplement S16.10). A lobe at the slice is what a
+    # thread PREEMPTED meets, and it is what the pre-registered law's plateau assumed; the
+    # campaign found no plateau. So the second state is now that wait's own shape, a shelf,
+    # with the slice and the tick the kernel sets and nothing else chosen.
+    slice_ms, tick_ms = _base_slice_ms(), _tick_ms()
     x = np.linspace(-6, 6, 1200)
     core = 0.70 * np.exp(-0.5 * (x / 0.22) ** 2)            # RUNNING: narrow jitter core
-    lobe = 0.30 * np.exp(-0.5 * ((x + slice_ms) / 0.60) ** 2)  # PREEMPTED: at the slice
+    shelf = 0.30 * np.array([rest_of_a_slice_density(-v, slice_ms, tick_ms) for v in x])
     # A flat-ish background so the density stays on the axis across the whole range: both
     # threads can stall, so there is mass on the positive side too, and a curve that falls
     # off the bottom of the plot would claim otherwise.
-    delta = core + lobe + 2.0e-3 * (1.0 + np.abs(x) / 1.0) ** (-1.4)
+    delta = core + shelf + 2.0e-3 * (1.0 + np.abs(x) / 1.0) ** (-1.4)
     h1_ax.semilogy(x, delta, color=GREY, linewidth=1.8)
     h1_ax.fill_between(x, 1e-4, delta, where=(x < -0.5), color="#b22222", alpha=0.28)
     h1_ax.fill_between(x, 1e-4, delta, where=(x < -4.0), color=REDIS, alpha=0.55)
@@ -437,9 +472,9 @@ def plot_delta(h1_ax):
     # extra decade is free.
     h1_ax.set_ylim(1e-4, 60.0)
     h1_ax.set_xlim(-6, 6)
-    h1_ax.text(-5.85, 22.0, r"large $T_{\mathrm{true}}$:" "\npast the lobe,\nlittle left",
+    h1_ax.text(-5.85, 22.0, r"large $T_{\mathrm{true}}$:" "\npast the shelf,\nlittle left",
                fontsize=8, color=REDIS, linespacing=1.05, va="top")
-    h1_ax.text(1.15, 0.60, r"small $T_{\mathrm{true}}$:" "\nthe whole lobe\ninverts it",
+    h1_ax.text(1.15, 0.60, r"small $T_{\mathrm{true}}$:" "\nnearly the whole\nshelf inverts it",
                fontsize=8, color=KAFKA, linespacing=1.05, va="top")
     # relpos pins the arrow to the edge of the label it belongs to. Left at its default it
     # starts from the centre of the text, and the leader shows through the gaps in the words.
@@ -449,8 +484,9 @@ def plot_delta(h1_ax):
     # Labelled where the lobe is rather than from across the panel. The wide format halved the
     # vertical room, and a leader drawn the width of the axes crossed the other annotation on
     # its way; the space directly above the hump is empty and a short one crosses nothing.
-    h1_ax.annotate("preempted lobe\nat the scheduler slice", xy=(-slice_ms, 0.52),
-                   xytext=(-2.9, 12.0), fontsize=8, color=GREY, ha="center", va="center",
+    h1_ax.annotate("kept waiting:\nthe rest of a slice",
+                   xy=(-slice_ms / 2.0, 0.30 / slice_ms), xytext=(-2.9, 12.0), fontsize=8,
+                   color=GREY, ha="center", va="center",
                    arrowprops=dict(arrowstyle="->", color=GREY, lw=0.8, relpos=(0.5, 0.0)))
     h1_ax.set_xlabel(r"timestamping asymmetry $\Delta$ (ms)")
     h1_ax.set_ylabel("density (log)")

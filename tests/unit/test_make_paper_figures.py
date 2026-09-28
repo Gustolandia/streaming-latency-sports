@@ -263,3 +263,32 @@ class TestTheSliceFallback:
         monkeypatch.setattr(kernel_constants, "constants",
                             lambda *a, **kw: {"base_slice_ms": 7.5})
         assert self._mpf()._base_slice_ms() == 7.5
+
+    def test_the_tick_is_read_as_the_slice_is_with_the_same_fallback(self, monkeypatch):
+        import kernel_constants
+        mpf = self._mpf()
+        monkeypatch.setattr(kernel_constants, "constants", lambda *a, **kw: {"tick_ms": 4.0})
+        assert mpf._tick_ms() == 4.0
+        monkeypatch.setattr(kernel_constants, "constants", lambda *a, **kw: {})
+        assert mpf._tick_ms() == mpf.DEFAULT_TICK_MS
+
+
+class TestTheWaitOfAThreadKeptWaiting:
+    """The schematic's second state: the rest of another task's slice, then up to a tick."""
+
+    def _density(self):
+        import make_paper_figures
+        return make_paper_figures.rest_of_a_slice_density
+
+    def test_it_is_a_trapezoid_rising_across_the_tick_level_to_the_slice_and_falling(self):
+        f = self._density()
+        assert f(-0.5, 3.0, 1.0) == 0.0 and f(4.0, 3.0, 1.0) == 0.0
+        assert f(0.5, 3.0, 1.0) == pytest.approx(0.5 / 3.0)
+        assert f(2.0, 3.0, 1.0) == pytest.approx(1.0 / 3.0)
+        assert f(3.5, 3.0, 1.0) == pytest.approx(0.5 / 3.0)
+
+    def test_it_integrates_to_one(self):
+        f = self._density()
+        step = 0.001
+        assert sum(f(step * (k + 0.5), 3.0, 1.0) for k in range(4000)) * step == \
+            pytest.approx(1.0, abs=1e-6)

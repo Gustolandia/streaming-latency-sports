@@ -113,6 +113,19 @@ ALLOWED = {
         "one-minute rounding changes the top-ranked station -- which is another paper's "
         "measurement and cannot be emitted from this artifact; it coincides with the traced "
         "slice-mode ratio",
+    ("supplement.tex", "hThreeKafkaCallback", r"whole-slice shape $0.316$ to $0.392$"):
+        "the upper end of the whole-slice shape's misfit over the law campaign's twelve parts "
+        "(S16.10), a share of a fitted scale read from ack_wait_shape.json and pinned by "
+        "test_supplement_law_campaign.py; it equals the timestamping campaign's (E-C3, Table "
+        "S26) median Kafka transport under callback timestamping in milliseconds, a misfit and "
+        "a latency sharing digits",
+    ("supplement.tex", "recoveryShift", r"registered law put between 0.8 and 1.2"):
+        "the upper end of the band the pre-registered law campaign put the halfway point's "
+        "slope in (S16.10), a constant of that plan and not a measurement; it equals the "
+        "recovery shift's value in points",
+    ("supplement.tex", "recoveryShift", r"with a slope of $0.8$ to $1.2$"):
+        "the same registered band, for P2c's slope of width on tick (S16.11); the coincidence "
+        "the entry above records",
 }
 
 

@@ -1,0 +1,14 @@
+Reports built on the OpenMessaging Benchmark (or on its repository) that this project had read
+before this audit was registered, for other purposes. They are listed so that the registration
+does not claim ignorance of them; each is coded by the audit's rule like any other report.
+
+- J. Vanlightly, "Kafka versus Redpanda Performance -- Do the Claims Add Up?", 15 May 2023,
+  https://jack-vanlightly.com/blog/2023/5/15/kafka-vs-redpanda-performance-do-the-claims-add-up
+  (read for a silent-loss defect in the harness; bibliography key vanlightly2023)
+- M. R. Cheriya Mukkolakkal, Pulsar throughput report (bibliography key mukkolakkal2026pulsar;
+  read for its publish-latency median)
+- AutoMQ, "Kafka benchmark methodology: run fair comparisons" (bibliography key
+  automq2026methodology; a methodology page, read for its treatment of discards)
+- The OpenMessaging Benchmark repository's own issues and pull requests #56, #216, #247, #398
+  and #452 (read for the positivity filter's origin, the publish/end-to-end anomaly, coordinated
+  omission, histogram serialization and histogram export)

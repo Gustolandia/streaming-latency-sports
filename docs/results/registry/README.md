@@ -53,10 +53,15 @@ Every campaign that is not complete is a false start in the
 
 A blank `verdict` is a run that ended before the integrity rule could judge it. Of the seventeen,
 seven were put back and counted on their next attempt; one is the first run of a false start;
-eight are the runs of calibrations that stopped and were run again whole; and one ended a round
-of a calibration that kept its other 22 runs. The issues register names each. The six runs with
-no kernel reading are among them: three of the seven put back, and the three of one stopped
+one is the only run of a calibration opened by mistake on top of a running one, void and set
+aside; seven are the runs of calibrations that stopped and were run again whole; and one ended a
+round of a calibration that kept its other 22 runs. The issues register names each. The six runs
+with no kernel reading are among them: three of the seven put back, and the three of one stopped
 calibration.
+
+The registries also list the run folders set aside as void, in `runs/azure/quarantine` on each
+driver: five on the second x86 pair (16 September, when two calibrations wrote into one folder)
+and that one run on the first (21 September). They belong to no campaign and enter no analysis.
 
 ## Pocket dictionary
 

@@ -21,6 +21,10 @@ NAMES = {"6.8.12-sbl1000": "HZ=1000", "6.8.12-sbl250": "HZ=250", "6.8.12-sbl100"
 #: The false starts the register names, by the timestamp their runs carry.
 FALSE_STARTS = {"20260921T030021Z", "20260921T140723Z", "20260918T211544Z", "20260918T211825Z",
                 "20260920T222915Z", "20260921T025558Z"}
+#: The calibration opened by mistake on top of a running one (21 September), set aside as void.
+VOID = {"20260921T185741Z"}
+#: The run folders set aside on 16 September, when two calibrations wrote into one: no campaign.
+COLLIDED = re.compile(r"^law_r001-C0-")
 
 
 def _csv(name):
@@ -82,6 +86,8 @@ def _blank_kinds():
                 kind = "put back"
             elif stamp in FALSE_STARTS:
                 kind = "false start"
+            elif stamp in VOID:
+                kind = "void"
             elif any(x["run"].startswith("%s_%s_" % (prefix, stamp)) and x["verdict"] == "count"
                      for x in rows):
                 kind = "kept the rest"
@@ -99,12 +105,25 @@ def test_the_blank_verdicts_are_accounted_for():
     assert "Of the seventeen," in text and sum(kinds.values()) == 17
     assert "seven were put back and counted on their next attempt" in text
     assert "one is the first run of a false start" in text
-    assert "eight are the runs of calibrations that stopped and were run again whole" in text
+    assert ("one is the only run of a calibration opened by mistake on top of a running one, "
+            "void and set aside") in text
+    assert "seven are the runs of calibrations that stopped and were run again whole" in text
     assert "one ended a round of a calibration that kept its other 22 runs" in text
-    assert dict(kinds) == {"put back": 7, "false start": 1, "calibration again": 8,
+    assert dict(kinds) == {"put back": 7, "false start": 1, "void": 1, "calibration again": 7,
                            "kept the rest": 1}
     assert "The six runs with no kernel reading are among them" in text
     assert dict(no_kernel) == {"put back": 3, "calibration again": 3}
+
+
+def test_the_void_folders_are_the_ones_named():
+    """Five collided on the second x86 pair and one duplicate on the first; none has a campaign."""
+    collided = [r for r in _csv("runs_matched-b.csv") if COLLIDED.match(r["run"])]
+    assert len(collided) == 5 and all(not r["campaign"] for r in collided)
+    void = [r for r in _csv("runs_matched.csv") if any(s in r["run"] for s in VOID)]
+    assert len(void) == 1 and not void[0]["verdict"]
+    text = " ".join(_readme().split())
+    assert ("five on the second x86 pair (16 September, when two calibrations wrote into one "
+            "folder) and that one run on the first (21 September)") in text
 
 
 def test_the_register_counts_what_the_registry_holds():

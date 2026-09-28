@@ -1,0 +1,10 @@
+campaigns/arm/a3_20260924T163652Z/runs: 432 runs counted, 5 left out
+left out 5 runs the integrity rule did not pass: law_a3_20260924T163652Z_r002-A3-kafka-l50-s3000-c06h-a1 (repeat), law_a3_20260924T163652Z_r003-A3-kafka-l50-s3000-c02h-a1 (repeat), law_a3_20260924T163652Z_r004-A3-kafka-l50-s3000-p09s-a1 (repeat), law_a3_20260924T163652Z_r010-A3-kafka-l50-s3000-c06h-a1 (repeat), law_a3_20260924T163652Z_r023-A3-kafka-l50-s3000-p09s-a1 (repeat)
+P3b: confirmed
+  rule: the plateau's increase between the lowest and the highest load whose plateau is at least 2% has a 95% interval above zero
+  judged on: free, fitted
+  free shape: holds, measured 0.0503, 95% interval 0.0478 to 0.0529, from 2000 resamplings
+  fitted shape: holds, measured 0.0515, 95% interval 0.0479 to 0.054, from 2000 resamplings
+  loads compared: [75, 88]
+  loads out of reach: {50: 0.0015871424752739909}
+exit 0

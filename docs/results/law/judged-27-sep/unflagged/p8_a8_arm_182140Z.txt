@@ -1,0 +1,9 @@
+campaigns/arm/a8_20260921T182140Z/runs: 144 runs counted, 0 left out
+P8: not confirmed
+  rule: Java's rate in the middle of the cliff lies between its plateau and its floor, go-first cuts Java's plateau at least 5.0 times, and Python's plateau is at most 1.5 times Java's
+  judged on: free, fitted
+  free shape: does not hold, measured 4.3342, 95% interval 4.0738 to 4.6638, from 2000 resamplings
+    java cliff: 1.0
+  fitted shape: does not hold, measured 4.3342, 95% interval 4.0738 to 4.6638, from 2000 resamplings
+    java cliff: 1.0
+exit 0

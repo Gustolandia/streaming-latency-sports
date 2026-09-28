@@ -1,0 +1,36 @@
+{
+  "by_summary": {
+    "fitted": {
+      "confirmed": true,
+      "draws": 2000,
+      "interval": [
+        0.03631282560019242,
+        0.05199558718147896
+      ],
+      "p_value": 0.0005,
+      "value": 0.04669472959800466
+    },
+    "free": {
+      "confirmed": true,
+      "draws": 2000,
+      "interval": [
+        0.03588612670408982,
+        0.045283680834001604
+      ],
+      "p_value": 0.0005,
+      "value": 0.040697674418604654
+    }
+  },
+  "confirmed": true,
+  "judged_on": [
+    "free",
+    "fitted"
+  ],
+  "loads_compared": [
+    75,
+    88
+  ],
+  "loads_out_of_reach": {},
+  "rule": "the plateau's increase between the lowest and the highest load whose plateau is at least 2% has a 95% interval above zero",
+  "tested": true
+}

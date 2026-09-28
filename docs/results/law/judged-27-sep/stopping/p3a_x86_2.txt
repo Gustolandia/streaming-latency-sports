@@ -1,0 +1,9 @@
+campaigns/matched/a3_20260921T032730Z/runs: 216 runs counted, 0 left out
+P3a: not confirmed
+  rule: the halfway point's move between the lowest and the highest load whose plateau is at least 2% has its whole interval inside 0.25 ms either way
+  judged on: free, fitted
+  free shape: does not hold, measured -0.188, 95% interval -0.3841 to 0.0563, from 2000 resamplings
+  fitted shape: does not hold, measured -0.1647, 95% interval -0.2646 to 0.0991, from 2000 resamplings
+  loads compared: [75, 88]
+  loads out of reach: {50: 0.0012363004544239508}
+exit 0

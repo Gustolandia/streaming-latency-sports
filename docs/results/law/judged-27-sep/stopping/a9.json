@@ -1,0 +1,1849 @@
+{
+  "a9_1_holds": false,
+  "a9_1_rule": "at a backend and load, at least 90% of negative readings spent more than half of the time from arrival to stamp waiting for a CPU",
+  "a9_2b_confirmed": false,
+  "a9_2b_predicted_as": "the share of acknowledgements whose own wait outlasted T - g (A9-2b)",
+  "by_part": {
+    "arm, kafka": {
+      "a9_1_holds": false,
+      "a9_2b": {
+        "confirmed": false,
+        "median_ratio": 1.074212846347607,
+        "setups": {
+          "a9_20260925T231103Z/A9-kafka-l75-s3000-c02h": {
+            "measured": 0.029971932638331998,
+            "not_read": [],
+            "predicted": 0.04701283079390538,
+            "ratio": 1.568561872909699,
+            "recorded_runs": 2,
+            "unrecorded_rate": null
+          },
+          "a9_20260925T231103Z/A9-kafka-l75-s3000-c04h": {
+            "measured": 0.02987169206094627,
+            "not_read": [],
+            "predicted": 0.047514033680834004,
+            "ratio": 1.5906040268456376,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.0202485966319166
+          },
+          "a9_20260925T231103Z/A9-kafka-l75-s3000-c06h": {
+            "measured": 0.024859663191659984,
+            "not_read": [],
+            "predicted": 0.04109863672814756,
+            "ratio": 1.653225806451613,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.022654370489174017
+          },
+          "a9_20260925T231103Z/A9-kafka-l75-s3000-c08h": {
+            "measured": 0.019647153167602245,
+            "not_read": [],
+            "predicted": 0.03408179631114675,
+            "ratio": 1.7346938775510203,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.019446672012830794
+          },
+          "a9_20260925T231103Z/A9-kafka-l75-s3000-f15h": {
+            "measured": null,
+            "not_read": [],
+            "predicted": null,
+            "ratio": null,
+            "recorded_runs": 0,
+            "unrecorded_rate": 0.00400962309542903
+          },
+          "a9_20260925T231103Z/A9-kafka-l75-s3000-f2sh": {
+            "measured": 0.0,
+            "not_read": [],
+            "predicted": 0.0,
+            "ratio": null,
+            "recorded_runs": 2,
+            "unrecorded_rate": null
+          },
+          "a9_20260925T231103Z/A9-kafka-l75-s3000-p05s": {
+            "measured": 0.10104250200481155,
+            "not_read": [],
+            "predicted": 0.1281074578989575,
+            "ratio": 1.2678571428571428,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.14434643143544507
+          },
+          "a9_20260925T231103Z/A9-kafka-l75-s3000-p09s": {
+            "measured": 0.04621090617481957,
+            "not_read": [],
+            "predicted": 0.06926623897353648,
+            "ratio": 1.4989154013015182,
+            "recorded_runs": 2,
+            "unrecorded_rate": null
+          },
+          "a9_20260925T231103Z/A9-kafka-l88-s3000-c02h": {
+            "measured": 0.05573376102646352,
+            "not_read": [],
+            "predicted": 0.04821571772253408,
+            "ratio": 0.8651079136690646,
+            "recorded_runs": 2,
+            "unrecorded_rate": null
+          },
+          "a9_20260925T231103Z/A9-kafka-l88-s3000-c04h": {
+            "measured": 0.05693664795509222,
+            "not_read": [],
+            "predicted": 0.053327987169206094,
+            "ratio": 0.9366197183098591,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.035685645549318364
+          },
+          "a9_20260925T231103Z/A9-kafka-l88-s3000-c06h": {
+            "measured": 0.050320769847634325,
+            "not_read": [],
+            "predicted": 0.02044907778668805,
+            "ratio": 0.40637450199203184,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.037289494787489975
+          },
+          "a9_20260925T231103Z/A9-kafka-l88-s3000-c08h": {
+            "measured": 0.0404971932638332,
+            "not_read": [],
+            "predicted": 0.020048115477145148,
+            "ratio": 0.49504950495049505,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.029069767441860465
+          },
+          "a9_20260925T231103Z/A9-kafka-l88-s3000-f15h": {
+            "measured": 0.015637530072173216,
+            "not_read": [],
+            "predicted": 0.003809141940657578,
+            "ratio": 0.24358974358974358,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.007818765036086608
+          },
+          "a9_20260925T231103Z/A9-kafka-l88-s3000-f2sh": {
+            "measured": null,
+            "not_read": [],
+            "predicted": null,
+            "ratio": null,
+            "recorded_runs": 0,
+            "unrecorded_rate": 0.0
+          },
+          "a9_20260925T231103Z/A9-kafka-l88-s3000-p05s": {
+            "measured": 0.1584803528468324,
+            "not_read": [],
+            "predicted": 0.14735364875701684,
+            "ratio": 0.9297912713472486,
+            "recorded_runs": 2,
+            "unrecorded_rate": null
+          },
+          "a9_20260925T231103Z/A9-kafka-l88-s3000-p09s": {
+            "measured": 0.09242181234963913,
+            "not_read": [],
+            "predicted": 0.08340016038492382,
+            "ratio": 0.9023861171366595,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.049117882919005616
+          },
+          "a9_20260926T050604Z/A9-kafka-l75-s3000-c02h": {
+            "measured": 0.02972133119486768,
+            "not_read": [],
+            "predicted": 0.04460705693664796,
+            "ratio": 1.500843170320405,
+            "recorded_runs": 4,
+            "unrecorded_rate": null
+          },
+          "a9_20260926T050604Z/A9-kafka-l75-s3000-c04h": {
+            "measured": 0.03338011226944668,
+            "not_read": [],
+            "predicted": 0.04570970328789094,
+            "ratio": 1.3693693693693691,
+            "recorded_runs": 2,
+            "unrecorded_rate": 0.014234161988773055
+          },
+          "a9_20260926T050604Z/A9-kafka-l75-s3000-c06h": {
+            "measured": 0.021551724137931036,
+            "not_read": [],
+            "predicted": 0.04310344827586207,
+            "ratio": 2.0,
+            "recorded_runs": 2,
+            "unrecorded_rate": 0.018945469125902163
+          },
+          "a9_20260926T050604Z/A9-kafka-l75-s3000-c08h": {
+            "measured": 0.022955092221331193,
+            "not_read": [],
+            "predicted": 0.03869286287089014,
+            "ratio": 1.6855895196506554,
+            "recorded_runs": 2,
+            "unrecorded_rate": 0.016339214113873297
+          },
+          "a9_20260926T050604Z/A9-kafka-l75-s3000-f15h": {
+            "measured": 0.00801924619085806,
+            "not_read": [],
+            "predicted": 0.011427425821972734,
+            "ratio": 1.425,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.006148088746324512
+          },
+          "a9_20260926T050604Z/A9-kafka-l75-s3000-f2sh": {
+            "measured": 0.0,
+            "not_read": [],
+            "predicted": 0.0,
+            "ratio": null,
+            "recorded_runs": 2,
+            "unrecorded_rate": 0.0
+          },
+          "a9_20260926T050604Z/A9-kafka-l75-s3000-p05s": {
+            "measured": 0.09633119486768243,
+            "not_read": [],
+            "predicted": 0.12389735364875701,
+            "ratio": 1.2861602497398543,
+            "recorded_runs": 2,
+            "unrecorded_rate": 0.06665998396150762
+          },
+          "a9_20260926T050604Z/A9-kafka-l75-s3000-p09s": {
+            "measured": 0.045308740978348035,
+            "not_read": [],
+            "predicted": 0.065056134723336,
+            "ratio": 1.4358407079646018,
+            "recorded_runs": 2,
+            "unrecorded_rate": 0.03718925421010425
+          },
+          "a9_20260926T050604Z/A9-kafka-l88-s3000-c02h": {
+            "measured": 0.056134723336006415,
+            "not_read": [],
+            "predicted": 0.05753809141940658,
+            "ratio": 1.0250000000000001,
+            "recorded_runs": 3,
+            "unrecorded_rate": 0.04611066559743384
+          },
+          "a9_20260926T050604Z/A9-kafka-l88-s3000-c04h": {
+            "measured": 0.039795509222133124,
+            "not_read": [],
+            "predicted": 0.044707297514033684,
+            "ratio": 1.123425692695214,
+            "recorded_runs": 2,
+            "unrecorded_rate": 0.03688853247794707
+          },
+          "a9_20260926T050604Z/A9-kafka-l88-s3000-c06h": {
+            "measured": 0.04604383854584335,
+            "not_read": [],
+            "predicted": 0.036153434910451754,
+            "ratio": 0.7851959361393325,
+            "recorded_runs": 3,
+            "unrecorded_rate": 0.0330793905372895
+          },
+          "a9_20260926T050604Z/A9-kafka-l88-s3000-c08h": {
+            "measured": 0.04420609462710505,
+            "not_read": [],
+            "predicted": 0.027866880513231756,
+            "ratio": 0.6303854875283447,
+            "recorded_runs": 2,
+            "unrecorded_rate": 0.02656375300721732
+          },
+          "a9_20260926T050604Z/A9-kafka-l88-s3000-f15h": {
+            "measured": 0.01643945469125902,
+            "not_read": [],
+            "predicted": 0.0111601176156108,
+            "ratio": 0.6788617886178863,
+            "recorded_runs": 3,
+            "unrecorded_rate": 0.012028869286287089
+          },
+          "a9_20260926T050604Z/A9-kafka-l88-s3000-f2sh": {
+            "measured": 0.00020048115477145148,
+            "not_read": [],
+            "predicted": 0.0,
+            "ratio": 0.0,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.0
+          },
+          "a9_20260926T050604Z/A9-kafka-l88-s3000-p05s": {
+            "measured": 0.15557337610264635,
+            "not_read": [],
+            "predicted": 0.14354450681635927,
+            "ratio": 0.9226804123711341,
+            "recorded_runs": 2,
+            "unrecorded_rate": 0.09603047313552526
+          },
+          "a9_20260926T050604Z/A9-kafka-l88-s3000-p09s": {
+            "measured": 0.07838813151563753,
+            "not_read": [],
+            "predicted": 0.07858861267040898,
+            "ratio": 1.0025575447570332,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.0446404704624432
+          }
+        },
+        "setups_with_a_ratio": 28,
+        "setups_without_a_rate": [
+          "a9_20260925T231103Z/A9-kafka-l75-s3000-f2sh",
+          "a9_20260926T050604Z/A9-kafka-l75-s3000-f2sh"
+        ],
+        "tested": true,
+        "within_band": 16
+      },
+      "confirmed": false,
+      "loads": {
+        "75": {
+          "a9_1": {
+            "holds": false,
+            "mean_shares": {
+              "asleep": 0.0,
+              "running": 0.3175927573302133,
+              "unknown": 0.0,
+              "waiting": 0.6824072426697867
+            },
+            "mostly_waiting": 3718,
+            "negative_readings": 4458,
+            "not_shown": 5
+          },
+          "a9_3": {
+            "slices_ms": [
+              3.0
+            ],
+            "ticks_ms": [
+              1.0
+            ],
+            "waits_ms": {
+              "longest": 7.705977,
+              "p50": 0.014585,
+              "p90": 0.020929000000000003,
+              "p99": 2.8410976400000005
+            }
+          }
+        },
+        "88": {
+          "a9_1": {
+            "holds": false,
+            "mean_shares": {
+              "asleep": 0.0,
+              "running": 0.32217009032700866,
+              "unknown": 0.0,
+              "waiting": 0.6778299096729913
+            },
+            "mostly_waiting": 6345,
+            "negative_readings": 7970,
+            "not_shown": 183
+          },
+          "a9_3": {
+            "slices_ms": [
+              3.0
+            ],
+            "ticks_ms": [
+              1.0
+            ],
+            "waits_ms": {
+              "longest": 7.401093,
+              "p50": 0.014711999999999998,
+              "p90": 0.01964,
+              "p99": 3.10836425
+            }
+          }
+        }
+      },
+      "median_ratio": 0.10655297973838865,
+      "setups": {
+        "a9_20260925T231103Z/A9-kafka-l75-s3000-c02h": {
+          "measured": 0.029971932638331998,
+          "not_read": [],
+          "predicted": 0.005426957397868946,
+          "ratio": 0.1810679832814067,
+          "recorded_runs": 2,
+          "unrecorded_rate": null
+        },
+        "a9_20260925T231103Z/A9-kafka-l75-s3000-c04h": {
+          "measured": 0.02987169206094627,
+          "not_read": [],
+          "predicted": 0.004182027131070282,
+          "ratio": 0.13999967335421856,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.0202485966319166
+        },
+        "a9_20260925T231103Z/A9-kafka-l75-s3000-c06h": {
+          "measured": 0.024859663191659984,
+          "not_read": [],
+          "predicted": 0.0035087153775211983,
+          "ratio": 0.14114090566996562,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.022654370489174017
+        },
+        "a9_20260925T231103Z/A9-kafka-l75-s3000-c08h": {
+          "measured": 0.019647153167602245,
+          "not_read": [],
+          "predicted": 0.0024697323211381006,
+          "ratio": 0.12570433487588617,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.019446672012830794
+        },
+        "a9_20260925T231103Z/A9-kafka-l75-s3000-f15h": {
+          "measured": null,
+          "not_read": [],
+          "predicted": null,
+          "ratio": null,
+          "recorded_runs": 0,
+          "unrecorded_rate": 0.00400962309542903
+        },
+        "a9_20260925T231103Z/A9-kafka-l75-s3000-f2sh": {
+          "measured": 0.0,
+          "not_read": [],
+          "predicted": 0.0,
+          "ratio": null,
+          "recorded_runs": 2,
+          "unrecorded_rate": null
+        },
+        "a9_20260925T231103Z/A9-kafka-l75-s3000-p05s": {
+          "measured": 0.10104250200481155,
+          "not_read": [],
+          "predicted": 0.022590112708455273,
+          "ratio": 0.2235704011701883,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.14434643143544507
+        },
+        "a9_20260925T231103Z/A9-kafka-l75-s3000-p09s": {
+          "measured": 0.04621090617481957,
+          "not_read": [],
+          "predicted": 0.009008773580768799,
+          "ratio": 0.19494907861550873,
+          "recorded_runs": 2,
+          "unrecorded_rate": null
+        },
+        "a9_20260925T231103Z/A9-kafka-l88-s3000-c02h": {
+          "measured": 0.05573376102646352,
+          "not_read": [],
+          "predicted": 0.003296297648309403,
+          "ratio": 0.05914364269700467,
+          "recorded_runs": 2,
+          "unrecorded_rate": null
+        },
+        "a9_20260925T231103Z/A9-kafka-l88-s3000-c04h": {
+          "measured": 0.05693664795509222,
+          "not_read": [],
+          "predicted": 0.003421419306255731,
+          "ratio": 0.06009168837888587,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.035685645549318364
+        },
+        "a9_20260925T231103Z/A9-kafka-l88-s3000-c06h": {
+          "measured": 0.050320769847634325,
+          "not_read": [],
+          "predicted": 0.0004925248663920009,
+          "ratio": 0.009787705313001197,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.037289494787489975
+        },
+        "a9_20260925T231103Z/A9-kafka-l88-s3000-c08h": {
+          "measured": 0.0404971932638332,
+          "not_read": [],
+          "predicted": 0.0005596463432070948,
+          "ratio": 0.013819385940183114,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.029069767441860465
+        },
+        "a9_20260925T231103Z/A9-kafka-l88-s3000-f15h": {
+          "measured": 0.015637530072173216,
+          "not_read": [],
+          "predicted": 3.367620724185193e-06,
+          "ratio": 0.0002153550278491762,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.007818765036086608
+        },
+        "a9_20260925T231103Z/A9-kafka-l88-s3000-f2sh": {
+          "measured": null,
+          "not_read": [],
+          "predicted": null,
+          "ratio": null,
+          "recorded_runs": 0,
+          "unrecorded_rate": 0.0
+        },
+        "a9_20260925T231103Z/A9-kafka-l88-s3000-p05s": {
+          "measured": 0.1584803528468324,
+          "not_read": [],
+          "predicted": 0.024717427641891665,
+          "ratio": 0.1559652486752127,
+          "recorded_runs": 2,
+          "unrecorded_rate": null
+        },
+        "a9_20260925T231103Z/A9-kafka-l88-s3000-p09s": {
+          "measured": 0.09242181234963913,
+          "not_read": [],
+          "predicted": 0.0072598477938625155,
+          "ratio": 0.07855123816873369,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.049117882919005616
+        },
+        "a9_20260926T050604Z/A9-kafka-l75-s3000-c02h": {
+          "measured": 0.02972133119486768,
+          "not_read": [],
+          "predicted": 0.0054244643120990215,
+          "ratio": 0.182510812740303,
+          "recorded_runs": 4,
+          "unrecorded_rate": null
+        },
+        "a9_20260926T050604Z/A9-kafka-l75-s3000-c04h": {
+          "measured": 0.03338011226944668,
+          "not_read": [],
+          "predicted": 0.004902509420322798,
+          "ratio": 0.14686917110252318,
+          "recorded_runs": 2,
+          "unrecorded_rate": 0.014234161988773055
+        },
+        "a9_20260926T050604Z/A9-kafka-l75-s3000-c06h": {
+          "measured": 0.021551724137931036,
+          "not_read": [],
+          "predicted": 0.003770451530084254,
+          "ratio": 0.17494895099590937,
+          "recorded_runs": 2,
+          "unrecorded_rate": 0.018945469125902163
+        },
+        "a9_20260926T050604Z/A9-kafka-l75-s3000-c08h": {
+          "measured": 0.022955092221331193,
+          "not_read": [],
+          "predicted": 0.0027487174000211823,
+          "ratio": 0.1197432523258136,
+          "recorded_runs": 2,
+          "unrecorded_rate": 0.016339214113873297
+        },
+        "a9_20260926T050604Z/A9-kafka-l75-s3000-f15h": {
+          "measured": 0.00801924619085806,
+          "not_read": [],
+          "predicted": 0.000551511564805525,
+          "ratio": 0.06877349213124898,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.006148088746324512
+        },
+        "a9_20260926T050604Z/A9-kafka-l75-s3000-f2sh": {
+          "measured": 0.0,
+          "not_read": [],
+          "predicted": 0.0,
+          "ratio": null,
+          "recorded_runs": 2,
+          "unrecorded_rate": 0.0
+        },
+        "a9_20260926T050604Z/A9-kafka-l75-s3000-p05s": {
+          "measured": 0.09633119486768243,
+          "not_read": [],
+          "predicted": 0.021385289742878455,
+          "ratio": 0.22199755512482358,
+          "recorded_runs": 2,
+          "unrecorded_rate": 0.06665998396150762
+        },
+        "a9_20260926T050604Z/A9-kafka-l75-s3000-p09s": {
+          "measured": 0.045308740978348035,
+          "not_read": [],
+          "predicted": 0.008855659687437744,
+          "ratio": 0.19545146248203304,
+          "recorded_runs": 2,
+          "unrecorded_rate": 0.03718925421010425
+        },
+        "a9_20260926T050604Z/A9-kafka-l88-s3000-c02h": {
+          "measured": 0.056134723336006415,
+          "not_read": [],
+          "predicted": 0.0038282544033496862,
+          "ratio": 0.0681976177282437,
+          "recorded_runs": 3,
+          "unrecorded_rate": 0.04611066559743384
+        },
+        "a9_20260926T050604Z/A9-kafka-l88-s3000-c04h": {
+          "measured": 0.039795509222133124,
+          "not_read": [],
+          "predicted": 0.002991042971756031,
+          "ratio": 0.07516031407112887,
+          "recorded_runs": 2,
+          "unrecorded_rate": 0.03688853247794707
+        },
+        "a9_20260926T050604Z/A9-kafka-l88-s3000-c06h": {
+          "measured": 0.04604383854584335,
+          "not_read": [],
+          "predicted": 0.0020105715941930195,
+          "ratio": 0.04366646347678425,
+          "recorded_runs": 3,
+          "unrecorded_rate": 0.0330793905372895
+        },
+        "a9_20260926T050604Z/A9-kafka-l88-s3000-c08h": {
+          "measured": 0.04420609462710505,
+          "not_read": [],
+          "predicted": 0.0011953969613615063,
+          "ratio": 0.027041451443406774,
+          "recorded_runs": 2,
+          "unrecorded_rate": 0.02656375300721732
+        },
+        "a9_20260926T050604Z/A9-kafka-l88-s3000-f15h": {
+          "measured": 0.01643945469125902,
+          "not_read": [],
+          "predicted": 0.00021380126112114221,
+          "ratio": 0.013005374274051918,
+          "recorded_runs": 3,
+          "unrecorded_rate": 0.012028869286287089
+        },
+        "a9_20260926T050604Z/A9-kafka-l88-s3000-f2sh": {
+          "measured": 0.00020048115477145148,
+          "not_read": [],
+          "predicted": 0.0,
+          "ratio": 0.0,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.0
+        },
+        "a9_20260926T050604Z/A9-kafka-l88-s3000-p05s": {
+          "measured": 0.15557337610264635,
+          "not_read": [],
+          "predicted": 0.024702933312751613,
+          "ratio": 0.15878638062371783,
+          "recorded_runs": 2,
+          "unrecorded_rate": 0.09603047313552526
+        },
+        "a9_20260926T050604Z/A9-kafka-l88-s3000-p09s": {
+          "measured": 0.07838813151563753,
+          "not_read": [],
+          "predicted": 0.007318528166805693,
+          "ratio": 0.09336270715096368,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.0446404704624432
+        }
+      },
+      "setups_with_a_ratio": 28,
+      "setups_without_a_rate": [
+        "a9_20260925T231103Z/A9-kafka-l75-s3000-f2sh",
+        "a9_20260926T050604Z/A9-kafka-l75-s3000-f2sh"
+      ],
+      "tested": true,
+      "within_band": 0
+    },
+    "arm, redis": {
+      "a9_1_holds": false,
+      "a9_2b": {
+        "confirmed": true,
+        "median_ratio": 1.1185770750988142,
+        "setups": {
+          "a9_20260925T231103Z/A9-redis-l75-s3000-c02h": {
+            "measured": null,
+            "not_read": [],
+            "predicted": null,
+            "ratio": null,
+            "recorded_runs": 0,
+            "unrecorded_rate": 0.005914194065757819
+          },
+          "a9_20260925T231103Z/A9-redis-l75-s3000-c04h": {
+            "measured": 0.008821170809943865,
+            "not_read": [],
+            "predicted": 0.012429831595829992,
+            "ratio": 1.4090909090909092,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.003408179631114675
+          },
+          "a9_20260925T231103Z/A9-redis-l75-s3000-c06h": {
+            "measured": 0.009823576583801123,
+            "not_read": [],
+            "predicted": 0.011427425821972734,
+            "ratio": 1.163265306122449,
+            "recorded_runs": 2,
+            "unrecorded_rate": null
+          },
+          "a9_20260925T231103Z/A9-redis-l75-s3000-c08h": {
+            "measured": null,
+            "not_read": [],
+            "predicted": null,
+            "ratio": null,
+            "recorded_runs": 0,
+            "unrecorded_rate": 0.001503608660785886
+          },
+          "a9_20260925T231103Z/A9-redis-l75-s3000-f15h": {
+            "measured": null,
+            "not_read": [],
+            "predicted": null,
+            "ratio": null,
+            "recorded_runs": 0,
+            "unrecorded_rate": 0.0
+          },
+          "a9_20260925T231103Z/A9-redis-l75-s3000-f2sh": {
+            "measured": null,
+            "not_read": [],
+            "predicted": null,
+            "ratio": null,
+            "recorded_runs": 0,
+            "unrecorded_rate": 0.0
+          },
+          "a9_20260925T231103Z/A9-redis-l75-s3000-p05s": {
+            "measured": 0.03418203688853248,
+            "not_read": [],
+            "predicted": 0.03799117882919006,
+            "ratio": 1.1114369501466275,
+            "recorded_runs": 2,
+            "unrecorded_rate": null
+          },
+          "a9_20260925T231103Z/A9-redis-l75-s3000-p09s": {
+            "measured": null,
+            "not_read": [],
+            "predicted": null,
+            "ratio": null,
+            "recorded_runs": 0,
+            "unrecorded_rate": 0.006716118684843625
+          },
+          "a9_20260925T231103Z/A9-redis-l88-s3000-c02h": {
+            "measured": 0.026263031275060144,
+            "not_read": [],
+            "predicted": 0.026263031275060144,
+            "ratio": 1.0,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.0016038492381716118
+          },
+          "a9_20260925T231103Z/A9-redis-l88-s3000-c04h": {
+            "measured": 0.023857257417802726,
+            "not_read": [],
+            "predicted": 0.02536086607858861,
+            "ratio": 1.0630252100840336,
+            "recorded_runs": 2,
+            "unrecorded_rate": null
+          },
+          "a9_20260925T231103Z/A9-redis-l88-s3000-c06h": {
+            "measured": null,
+            "not_read": [],
+            "predicted": null,
+            "ratio": null,
+            "recorded_runs": 0,
+            "unrecorded_rate": 0.0025060144346431435
+          },
+          "a9_20260925T231103Z/A9-redis-l88-s3000-c08h": {
+            "measured": null,
+            "not_read": [],
+            "predicted": null,
+            "ratio": null,
+            "recorded_runs": 0,
+            "unrecorded_rate": 0.0032076984763432237
+          },
+          "a9_20260925T231103Z/A9-redis-l88-s3000-f15h": {
+            "measured": 0.006014434643143544,
+            "not_read": [],
+            "predicted": 0.004410585404971933,
+            "ratio": 0.7333333333333333,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.0
+          },
+          "a9_20260925T231103Z/A9-redis-l88-s3000-f2sh": {
+            "measured": 0.0,
+            "not_read": [],
+            "predicted": 0.0,
+            "ratio": null,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.0
+          },
+          "a9_20260925T231103Z/A9-redis-l88-s3000-p05s": {
+            "measured": 0.061146752205292705,
+            "not_read": [],
+            "predicted": 0.07197273456295109,
+            "ratio": 1.1770491803278689,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.01643945469125902
+          },
+          "a9_20260925T231103Z/A9-redis-l88-s3000-p09s": {
+            "measured": 0.0334803528468324,
+            "not_read": [],
+            "predicted": 0.03368083400160385,
+            "ratio": 1.0059880239520957,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.009021651964715317
+          },
+          "a9_20260926T050604Z/A9-redis-l75-s3000-c02h": {
+            "measured": 0.015437048917401764,
+            "not_read": [],
+            "predicted": 0.018444266238973536,
+            "ratio": 1.1948051948051948,
+            "recorded_runs": 2,
+            "unrecorded_rate": 0.005012028869286287
+          },
+          "a9_20260926T050604Z/A9-redis-l75-s3000-c04h": {
+            "measured": 0.013833199679230152,
+            "not_read": [],
+            "predicted": 0.015437048917401764,
+            "ratio": 1.1159420289855073,
+            "recorded_runs": 2,
+            "unrecorded_rate": 0.0028067361668003207
+          },
+          "a9_20260926T050604Z/A9-redis-l75-s3000-c06h": {
+            "measured": 0.008754343758353381,
+            "not_read": [],
+            "predicted": 0.009689922480620155,
+            "ratio": 1.1068702290076335,
+            "recorded_runs": 3,
+            "unrecorded_rate": 0.003007217321571772
+          },
+          "a9_20260926T050604Z/A9-redis-l75-s3000-c08h": {
+            "measured": 0.008420208500400962,
+            "not_read": [],
+            "predicted": 0.010425020048115477,
+            "ratio": 1.2380952380952381,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.0012028869286287089
+          },
+          "a9_20260926T050604Z/A9-redis-l75-s3000-f15h": {
+            "measured": 0.0026062550120288693,
+            "not_read": [],
+            "predicted": 0.0024057738572574178,
+            "ratio": 0.9230769230769231,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.0
+          },
+          "a9_20260926T050604Z/A9-redis-l75-s3000-f2sh": {
+            "measured": 0.0,
+            "not_read": [],
+            "predicted": 0.0,
+            "ratio": null,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.0
+          },
+          "a9_20260926T050604Z/A9-redis-l75-s3000-p05s": {
+            "measured": 0.03642074311681369,
+            "not_read": [],
+            "predicted": 0.0404971932638332,
+            "ratio": 1.111926605504587,
+            "recorded_runs": 3,
+            "unrecorded_rate": 0.01343223736968725
+          },
+          "a9_20260926T050604Z/A9-redis-l75-s3000-p09s": {
+            "measured": 0.0202485966319166,
+            "not_read": [],
+            "predicted": 0.02145148356054531,
+            "ratio": 1.0594059405940595,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.0052125100240577385
+          },
+          "a9_20260926T050604Z/A9-redis-l88-s3000-c02h": {
+            "measured": 0.027465918203688853,
+            "not_read": [],
+            "predicted": 0.03217722534081796,
+            "ratio": 1.1715328467153283,
+            "recorded_runs": 2,
+            "unrecorded_rate": 0.00801924619085806
+          },
+          "a9_20260926T050604Z/A9-redis-l88-s3000-c04h": {
+            "measured": 0.019847634322373697,
+            "not_read": [],
+            "predicted": 0.022253408179631114,
+            "ratio": 1.121212121212121,
+            "recorded_runs": 3,
+            "unrecorded_rate": 0.0024057738572574178
+          },
+          "a9_20260926T050604Z/A9-redis-l88-s3000-c06h": {
+            "measured": 0.011327185244587009,
+            "not_read": [],
+            "predicted": 0.016138732959101842,
+            "ratio": 1.4247787610619467,
+            "recorded_runs": 2,
+            "unrecorded_rate": 0.0029069767441860465
+          },
+          "a9_20260926T050604Z/A9-redis-l88-s3000-c08h": {
+            "measured": 0.006214915797914996,
+            "not_read": [],
+            "predicted": 0.011627906976744186,
+            "ratio": 1.8709677419354838,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.0013365410318096765
+          },
+          "a9_20260926T050604Z/A9-redis-l88-s3000-f15h": {
+            "measured": 0.00400962309542903,
+            "not_read": [],
+            "predicted": 0.004310344827586207,
+            "ratio": 1.075,
+            "recorded_runs": 2,
+            "unrecorded_rate": 0.0
+          },
+          "a9_20260926T050604Z/A9-redis-l88-s3000-f2sh": {
+            "measured": 0.0,
+            "not_read": [],
+            "predicted": 0.0,
+            "ratio": null,
+            "recorded_runs": 2,
+            "unrecorded_rate": 0.0
+          },
+          "a9_20260926T050604Z/A9-redis-l88-s3000-p05s": {
+            "measured": 0.07538091419406576,
+            "not_read": [],
+            "predicted": 0.0884121892542101,
+            "ratio": 1.172872340425532,
+            "recorded_runs": 2,
+            "unrecorded_rate": 0.019947874899759424
+          },
+          "a9_20260926T050604Z/A9-redis-l88-s3000-p09s": {
+            "measured": 0.038291900561347236,
+            "not_read": [],
+            "predicted": 0.043504410585404975,
+            "ratio": 1.1361256544502618,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.00801924619085806
+          }
+        },
+        "setups_with_a_ratio": 22,
+        "setups_without_a_rate": [
+          "a9_20260925T231103Z/A9-redis-l88-s3000-f2sh",
+          "a9_20260926T050604Z/A9-redis-l75-s3000-f2sh",
+          "a9_20260926T050604Z/A9-redis-l88-s3000-f2sh"
+        ],
+        "tested": true,
+        "within_band": 21
+      },
+      "confirmed": false,
+      "loads": {
+        "75": {
+          "a9_1": {
+            "holds": false,
+            "mean_shares": {
+              "asleep": 0.0,
+              "running": 0.2595202244586023,
+              "unknown": 0.0,
+              "waiting": 0.7404797755413978
+            },
+            "mostly_waiting": 1372,
+            "negative_readings": 1607,
+            "not_shown": 10
+          },
+          "a9_3": {
+            "slices_ms": [
+              3.0
+            ],
+            "ticks_ms": [
+              1.0
+            ],
+            "waits_ms": {
+              "longest": 6.311743,
+              "p50": 0.014113,
+              "p90": 0.019536,
+              "p99": 2.89768868
+            }
+          }
+        },
+        "88": {
+          "a9_1": {
+            "holds": false,
+            "mean_shares": {
+              "asleep": 0.0,
+              "running": 0.2700291575863274,
+              "unknown": 0.0,
+              "waiting": 0.7299708424136726
+            },
+            "mostly_waiting": 2216,
+            "negative_readings": 2569,
+            "not_shown": 29
+          },
+          "a9_3": {
+            "slices_ms": [
+              3.0
+            ],
+            "ticks_ms": [
+              1.0
+            ],
+            "waits_ms": {
+              "longest": 4.230582,
+              "p50": 0.014624,
+              "p90": 0.018585,
+              "p99": 2.71121236
+            }
+          }
+        }
+      },
+      "median_ratio": 0.10616835941851302,
+      "setups": {
+        "a9_20260925T231103Z/A9-redis-l75-s3000-c02h": {
+          "measured": null,
+          "not_read": [],
+          "predicted": null,
+          "ratio": null,
+          "recorded_runs": 0,
+          "unrecorded_rate": 0.005914194065757819
+        },
+        "a9_20260925T231103Z/A9-redis-l75-s3000-c04h": {
+          "measured": 0.008821170809943865,
+          "not_read": [],
+          "predicted": 0.001283539740777311,
+          "ratio": 0.14550673243175516,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.003408179631114675
+        },
+        "a9_20260925T231103Z/A9-redis-l75-s3000-c06h": {
+          "measured": 0.009823576583801123,
+          "not_read": [],
+          "predicted": 0.0007663176176323876,
+          "ratio": 0.07800800564796631,
+          "recorded_runs": 2,
+          "unrecorded_rate": null
+        },
+        "a9_20260925T231103Z/A9-redis-l75-s3000-c08h": {
+          "measured": null,
+          "not_read": [],
+          "predicted": null,
+          "ratio": null,
+          "recorded_runs": 0,
+          "unrecorded_rate": 0.001503608660785886
+        },
+        "a9_20260925T231103Z/A9-redis-l75-s3000-f15h": {
+          "measured": null,
+          "not_read": [],
+          "predicted": null,
+          "ratio": null,
+          "recorded_runs": 0,
+          "unrecorded_rate": 0.0
+        },
+        "a9_20260925T231103Z/A9-redis-l75-s3000-f2sh": {
+          "measured": null,
+          "not_read": [],
+          "predicted": null,
+          "ratio": null,
+          "recorded_runs": 0,
+          "unrecorded_rate": 0.0
+        },
+        "a9_20260925T231103Z/A9-redis-l75-s3000-p05s": {
+          "measured": 0.03418203688853248,
+          "not_read": [],
+          "predicted": 0.01162325067065562,
+          "ratio": 0.34003973223008926,
+          "recorded_runs": 2,
+          "unrecorded_rate": null
+        },
+        "a9_20260925T231103Z/A9-redis-l75-s3000-p09s": {
+          "measured": null,
+          "not_read": [],
+          "predicted": null,
+          "ratio": null,
+          "recorded_runs": 0,
+          "unrecorded_rate": 0.006716118684843625
+        },
+        "a9_20260925T231103Z/A9-redis-l88-s3000-c02h": {
+          "measured": 0.026263031275060144,
+          "not_read": [],
+          "predicted": 0.002870715083407728,
+          "ratio": 0.10930631172547899,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.0016038492381716118
+        },
+        "a9_20260925T231103Z/A9-redis-l88-s3000-c04h": {
+          "measured": 0.023857257417802726,
+          "not_read": [],
+          "predicted": 0.001989203332955988,
+          "ratio": 0.08337938004020562,
+          "recorded_runs": 2,
+          "unrecorded_rate": null
+        },
+        "a9_20260925T231103Z/A9-redis-l88-s3000-c06h": {
+          "measured": null,
+          "not_read": [],
+          "predicted": null,
+          "ratio": null,
+          "recorded_runs": 0,
+          "unrecorded_rate": 0.0025060144346431435
+        },
+        "a9_20260925T231103Z/A9-redis-l88-s3000-c08h": {
+          "measured": null,
+          "not_read": [],
+          "predicted": null,
+          "ratio": null,
+          "recorded_runs": 0,
+          "unrecorded_rate": 0.0032076984763432237
+        },
+        "a9_20260925T231103Z/A9-redis-l88-s3000-f15h": {
+          "measured": 0.006014434643143544,
+          "not_read": [],
+          "predicted": 0.0,
+          "ratio": 0.0,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.0
+        },
+        "a9_20260925T231103Z/A9-redis-l88-s3000-f2sh": {
+          "measured": 0.0,
+          "not_read": [],
+          "predicted": 0.0,
+          "ratio": null,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.0
+        },
+        "a9_20260925T231103Z/A9-redis-l88-s3000-p05s": {
+          "measured": 0.061146752205292705,
+          "not_read": [],
+          "predicted": 0.01718624815825555,
+          "ratio": 0.2810655928307497,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.01643945469125902
+        },
+        "a9_20260925T231103Z/A9-redis-l88-s3000-p09s": {
+          "measured": 0.0334803528468324,
+          "not_read": [],
+          "predicted": 0.005602397118124181,
+          "ratio": 0.16733387320481086,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.009021651964715317
+        },
+        "a9_20260926T050604Z/A9-redis-l75-s3000-c02h": {
+          "measured": 0.015437048917401764,
+          "not_read": [],
+          "predicted": 0.002054895375546793,
+          "ratio": 0.13311452121074552,
+          "recorded_runs": 2,
+          "unrecorded_rate": 0.005012028869286287
+        },
+        "a9_20260926T050604Z/A9-redis-l75-s3000-c04h": {
+          "measured": 0.013833199679230152,
+          "not_read": [],
+          "predicted": 0.0012899581638160344,
+          "ratio": 0.09325088871180261,
+          "recorded_runs": 2,
+          "unrecorded_rate": 0.0028067361668003207
+        },
+        "a9_20260926T050604Z/A9-redis-l75-s3000-c06h": {
+          "measured": 0.008754343758353381,
+          "not_read": [],
+          "predicted": 0.0007995203033876485,
+          "ratio": 0.09132841083887612,
+          "recorded_runs": 3,
+          "unrecorded_rate": 0.003007217321571772
+        },
+        "a9_20260926T050604Z/A9-redis-l75-s3000-c08h": {
+          "measured": 0.008420208500400962,
+          "not_read": [],
+          "predicted": 0.000451336256387935,
+          "ratio": 0.05360155349673857,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.0012028869286287089
+        },
+        "a9_20260926T050604Z/A9-redis-l75-s3000-f15h": {
+          "measured": 0.0026062550120288693,
+          "not_read": [],
+          "predicted": 0.0,
+          "ratio": 0.0,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.0
+        },
+        "a9_20260926T050604Z/A9-redis-l75-s3000-f2sh": {
+          "measured": 0.0,
+          "not_read": [],
+          "predicted": 0.0,
+          "ratio": null,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.0
+        },
+        "a9_20260926T050604Z/A9-redis-l75-s3000-p05s": {
+          "measured": 0.03642074311681369,
+          "not_read": [],
+          "predicted": 0.011709933407184356,
+          "ratio": 0.3215182449634985,
+          "recorded_runs": 3,
+          "unrecorded_rate": 0.01343223736968725
+        },
+        "a9_20260926T050604Z/A9-redis-l75-s3000-p09s": {
+          "measured": 0.0202485966319166,
+          "not_read": [],
+          "predicted": 0.004130890630615489,
+          "ratio": 0.20400873728227784,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.0052125100240577385
+        },
+        "a9_20260926T050604Z/A9-redis-l88-s3000-c02h": {
+          "measured": 0.027465918203688853,
+          "not_read": [],
+          "predicted": 0.0029428569777976603,
+          "ratio": 0.1071457708412754,
+          "recorded_runs": 2,
+          "unrecorded_rate": 0.00801924619085806
+        },
+        "a9_20260926T050604Z/A9-redis-l88-s3000-c04h": {
+          "measured": 0.019847634322373697,
+          "not_read": [],
+          "predicted": 0.0018893995170677009,
+          "ratio": 0.09519519991044133,
+          "recorded_runs": 3,
+          "unrecorded_rate": 0.0024057738572574178
+        },
+        "a9_20260926T050604Z/A9-redis-l88-s3000-c06h": {
+          "measured": 0.011327185244587009,
+          "not_read": [],
+          "predicted": 0.0011915173540015859,
+          "ratio": 0.10519094799575063,
+          "recorded_runs": 2,
+          "unrecorded_rate": 0.0029069767441860465
+        },
+        "a9_20260926T050604Z/A9-redis-l88-s3000-c08h": {
+          "measured": 0.006214915797914996,
+          "not_read": [],
+          "predicted": 0.0006188281999537327,
+          "ratio": 0.09957145359255544,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.0013365410318096765
+        },
+        "a9_20260926T050604Z/A9-redis-l88-s3000-f15h": {
+          "measured": 0.00400962309542903,
+          "not_read": [],
+          "predicted": 0.0,
+          "ratio": 0.0,
+          "recorded_runs": 2,
+          "unrecorded_rate": 0.0
+        },
+        "a9_20260926T050604Z/A9-redis-l88-s3000-f2sh": {
+          "measured": 0.0,
+          "not_read": [],
+          "predicted": 0.0,
+          "ratio": null,
+          "recorded_runs": 2,
+          "unrecorded_rate": 0.0
+        },
+        "a9_20260926T050604Z/A9-redis-l88-s3000-p05s": {
+          "measured": 0.07538091419406576,
+          "not_read": [],
+          "predicted": 0.016825062525205988,
+          "ratio": 0.2232005634992752,
+          "recorded_runs": 2,
+          "unrecorded_rate": 0.019947874899759424
+        },
+        "a9_20260926T050604Z/A9-redis-l88-s3000-p09s": {
+          "measured": 0.038291900561347236,
+          "not_read": [],
+          "predicted": 0.006406923189629533,
+          "ratio": 0.16731797314069166,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.00801924619085806
+        }
+      },
+      "setups_with_a_ratio": 22,
+      "setups_without_a_rate": [
+        "a9_20260925T231103Z/A9-redis-l88-s3000-f2sh",
+        "a9_20260926T050604Z/A9-redis-l75-s3000-f2sh",
+        "a9_20260926T050604Z/A9-redis-l88-s3000-f2sh"
+      ],
+      "tested": true,
+      "within_band": 0
+    },
+    "matched, kafka": {
+      "a9_1_holds": false,
+      "a9_2b": {
+        "confirmed": true,
+        "median_ratio": 1.1025923264925144,
+        "setups": {
+          "a9_20260926T091512Z/A9-kafka-l75-s3000-c02h": {
+            "measured": 0.04520850040096231,
+            "not_read": [],
+            "predicted": 0.05934242181234964,
+            "ratio": 1.3126385809312637,
+            "recorded_runs": 2,
+            "unrecorded_rate": null
+          },
+          "a9_20260926T091512Z/A9-kafka-l75-s3000-c04h": {
+            "measured": 0.036688051323175624,
+            "not_read": [],
+            "predicted": 0.05232558139534884,
+            "ratio": 1.4262295081967213,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.023857257417802726
+          },
+          "a9_20260926T091512Z/A9-kafka-l75-s3000-c06h": {
+            "measured": 0.0330793905372895,
+            "not_read": [],
+            "predicted": 0.04951884522854852,
+            "ratio": 1.4969696969696968,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.02586206896551724
+          },
+          "a9_20260926T091512Z/A9-kafka-l75-s3000-c08h": {
+            "measured": 0.031676022453889334,
+            "not_read": [],
+            "predicted": 0.0467121090617482,
+            "ratio": 1.4746835443037976,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.01904570970328789
+          },
+          "a9_20260926T091512Z/A9-kafka-l75-s3000-f15h": {
+            "measured": null,
+            "not_read": [],
+            "predicted": null,
+            "ratio": null,
+            "recorded_runs": 0,
+            "unrecorded_rate": 0.0075180433039294305
+          },
+          "a9_20260926T091512Z/A9-kafka-l75-s3000-f2sh": {
+            "measured": 0.0006014434643143544,
+            "not_read": [],
+            "predicted": 0.00010024057738572574,
+            "ratio": 0.16666666666666666,
+            "recorded_runs": 2,
+            "unrecorded_rate": null
+          },
+          "a9_20260926T091512Z/A9-kafka-l75-s3000-p09s": {
+            "measured": 0.058139534883720936,
+            "not_read": [],
+            "predicted": 0.07959101844426625,
+            "ratio": 1.3689655172413793,
+            "recorded_runs": 2,
+            "unrecorded_rate": null
+          },
+          "a9_20260926T091512Z/A9-kafka-l88-s3000-c02h": {
+            "measured": 0.07487971130713714,
+            "not_read": [],
+            "predicted": 0.0880112269446672,
+            "ratio": 1.1753681392235609,
+            "recorded_runs": 2,
+            "unrecorded_rate": null
+          },
+          "a9_20260926T091512Z/A9-kafka-l88-s3000-c04h": {
+            "measured": 0.08740978348035285,
+            "not_read": [],
+            "predicted": 0.09001603849238171,
+            "ratio": 1.0298165137614679,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.05513231756214916
+          },
+          "a9_20260926T091512Z/A9-kafka-l88-s3000-c06h": {
+            "measured": 0.07117080994386528,
+            "not_read": [],
+            "predicted": 0.07076984763432237,
+            "ratio": 0.9943661971830985,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.050922213311948676
+          },
+          "a9_20260926T091512Z/A9-kafka-l88-s3000-c08h": {
+            "measured": 0.06435445068163592,
+            "not_read": [],
+            "predicted": 0.06575781876503609,
+            "ratio": 1.0218068535825546,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.04190056134723336
+          },
+          "a9_20260926T091512Z/A9-kafka-l88-s3000-f15h": {
+            "measured": 0.03909382518043304,
+            "not_read": [],
+            "predicted": 0.02425821972734563,
+            "ratio": 0.6205128205128204,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.035485164394546916
+          },
+          "a9_20260926T091512Z/A9-kafka-l88-s3000-f2sh": {
+            "measured": null,
+            "not_read": [],
+            "predicted": null,
+            "ratio": null,
+            "recorded_runs": 0,
+            "unrecorded_rate": 0.00010024057738572574
+          },
+          "a9_20260926T091512Z/A9-kafka-l88-s3000-p09s": {
+            "measured": 0.11708099438652766,
+            "not_read": [],
+            "predicted": 0.11407377706495589,
+            "ratio": 0.9743150684931506,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.05813953488372093
+          }
+        },
+        "setups_with_a_ratio": 12,
+        "setups_without_a_rate": [],
+        "tested": true,
+        "within_band": 10
+      },
+      "confirmed": false,
+      "loads": {
+        "75": {
+          "a9_1": {
+            "holds": false,
+            "mean_shares": {
+              "asleep": 0.0005341364096567911,
+              "running": 0.3230565671436082,
+              "unknown": 0.0,
+              "waiting": 0.676409296446735
+            },
+            "mostly_waiting": 1269,
+            "negative_readings": 1543,
+            "not_shown": 2
+          },
+          "a9_3": {
+            "slices_ms": [
+              3.0
+            ],
+            "ticks_ms": [
+              1.0
+            ],
+            "waits_ms": {
+              "longest": 6.600527,
+              "p50": 0.018528,
+              "p90": 0.130466,
+              "p99": 3.1755657999999998
+            }
+          }
+        },
+        "88": {
+          "a9_1": {
+            "holds": false,
+            "mean_shares": {
+              "asleep": 0.0,
+              "running": 0.3248116156913481,
+              "unknown": 0.0,
+              "waiting": 0.6751883843086519
+            },
+            "mostly_waiting": 2168,
+            "negative_readings": 2638,
+            "not_shown": 4
+          },
+          "a9_3": {
+            "slices_ms": [
+              3.0
+            ],
+            "ticks_ms": [
+              1.0
+            ],
+            "waits_ms": {
+              "longest": 10.869345,
+              "p50": 0.018718,
+              "p90": 0.035173,
+              "p99": 3.2141865999999997
+            }
+          }
+        }
+      },
+      "median_ratio": 0.1196321996014454,
+      "setups": {
+        "a9_20260926T091512Z/A9-kafka-l75-s3000-c02h": {
+          "measured": 0.04520850040096231,
+          "not_read": [],
+          "predicted": 0.010392554475458105,
+          "ratio": 0.22988053979416864,
+          "recorded_runs": 2,
+          "unrecorded_rate": null
+        },
+        "a9_20260926T091512Z/A9-kafka-l75-s3000-c04h": {
+          "measured": 0.036688051323175624,
+          "not_read": [],
+          "predicted": 0.008653444252500964,
+          "ratio": 0.2358654641064197,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.023857257417802726
+        },
+        "a9_20260926T091512Z/A9-kafka-l75-s3000-c06h": {
+          "measured": 0.0330793905372895,
+          "not_read": [],
+          "predicted": 0.006130250790647477,
+          "ratio": 0.18531933905302794,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.02586206896551724
+        },
+        "a9_20260926T091512Z/A9-kafka-l75-s3000-c08h": {
+          "measured": 0.031676022453889334,
+          "not_read": [],
+          "predicted": 0.005426963376340127,
+          "ratio": 0.1713271729188896,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.01904570970328789
+        },
+        "a9_20260926T091512Z/A9-kafka-l75-s3000-f15h": {
+          "measured": null,
+          "not_read": [],
+          "predicted": null,
+          "ratio": null,
+          "recorded_runs": 0,
+          "unrecorded_rate": 0.0075180433039294305
+        },
+        "a9_20260926T091512Z/A9-kafka-l75-s3000-f2sh": {
+          "measured": 0.0006014434643143544,
+          "not_read": [],
+          "predicted": 0.0,
+          "ratio": 0.0,
+          "recorded_runs": 2,
+          "unrecorded_rate": null
+        },
+        "a9_20260926T091512Z/A9-kafka-l75-s3000-p09s": {
+          "measured": 0.058139534883720936,
+          "not_read": [],
+          "predicted": 0.014931179271035013,
+          "ratio": 0.2568162834618022,
+          "recorded_runs": 2,
+          "unrecorded_rate": null
+        },
+        "a9_20260926T091512Z/A9-kafka-l88-s3000-c02h": {
+          "measured": 0.07487971130713714,
+          "not_read": [],
+          "predicted": 0.008713975510507491,
+          "ratio": 0.1163729848632165,
+          "recorded_runs": 2,
+          "unrecorded_rate": null
+        },
+        "a9_20260926T091512Z/A9-kafka-l88-s3000-c04h": {
+          "measured": 0.08740978348035285,
+          "not_read": [],
+          "predicted": 0.00773027358105405,
+          "ratio": 0.08843716656490275,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.05513231756214916
+        },
+        "a9_20260926T091512Z/A9-kafka-l88-s3000-c06h": {
+          "measured": 0.07117080994386528,
+          "not_read": [],
+          "predicted": 0.006052709061639641,
+          "ratio": 0.08504482478720712,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.050922213311948676
+        },
+        "a9_20260926T091512Z/A9-kafka-l88-s3000-c08h": {
+          "measured": 0.06435445068163592,
+          "not_read": [],
+          "predicted": 0.00527669726364699,
+          "ratio": 0.08199428645193517,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.04190056134723336
+        },
+        "a9_20260926T091512Z/A9-kafka-l88-s3000-f15h": {
+          "measured": 0.03909382518043304,
+          "not_read": [],
+          "predicted": 0.0007567343506041356,
+          "ratio": 0.01935687661955604,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.035485164394546916
+        },
+        "a9_20260926T091512Z/A9-kafka-l88-s3000-f2sh": {
+          "measured": null,
+          "not_read": [],
+          "predicted": null,
+          "ratio": null,
+          "recorded_runs": 0,
+          "unrecorded_rate": 0.00010024057738572574
+        },
+        "a9_20260926T091512Z/A9-kafka-l88-s3000-p09s": {
+          "measured": 0.11708099438652766,
+          "not_read": [],
+          "predicted": 0.014388248992455853,
+          "ratio": 0.12289141433967431,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.05813953488372093
+        }
+      },
+      "setups_with_a_ratio": 12,
+      "setups_without_a_rate": [],
+      "tested": true,
+      "within_band": 0
+    },
+    "matched, redis": {
+      "a9_1_holds": true,
+      "a9_2b": {
+        "confirmed": true,
+        "median_ratio": 1.1258907363420427,
+        "setups": {
+          "a9_20260926T091512Z/A9-redis-l75-s3000-c02h": {
+            "measured": null,
+            "not_read": [],
+            "predicted": null,
+            "ratio": null,
+            "recorded_runs": 0,
+            "unrecorded_rate": 0.005914194065757819
+          },
+          "a9_20260926T091512Z/A9-redis-l75-s3000-c04h": {
+            "measured": 0.015838011226944667,
+            "not_read": [],
+            "predicted": 0.022654370489174017,
+            "ratio": 1.4303797468354431,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.006214915797914996
+          },
+          "a9_20260926T091512Z/A9-redis-l75-s3000-c06h": {
+            "measured": 0.01343223736968725,
+            "not_read": [],
+            "predicted": 0.021251002405773857,
+            "ratio": 1.5820895522388059,
+            "recorded_runs": 2,
+            "unrecorded_rate": null
+          },
+          "a9_20260926T091512Z/A9-redis-l75-s3000-c08h": {
+            "measured": null,
+            "not_read": [],
+            "predicted": null,
+            "ratio": null,
+            "recorded_runs": 0,
+            "unrecorded_rate": 0.002305533279871692
+          },
+          "a9_20260926T091512Z/A9-redis-l75-s3000-f15h": {
+            "measured": null,
+            "not_read": [],
+            "predicted": null,
+            "ratio": null,
+            "recorded_runs": 0,
+            "unrecorded_rate": 0.00040096230954290296
+          },
+          "a9_20260926T091512Z/A9-redis-l75-s3000-f2sh": {
+            "measured": null,
+            "not_read": [],
+            "predicted": null,
+            "ratio": null,
+            "recorded_runs": 0,
+            "unrecorded_rate": 0.0
+          },
+          "a9_20260926T091512Z/A9-redis-l75-s3000-p05s": {
+            "measured": 0.043203688853247796,
+            "not_read": [],
+            "predicted": 0.057337610264635124,
+            "ratio": 1.3271461716937354,
+            "recorded_runs": 2,
+            "unrecorded_rate": null
+          },
+          "a9_20260926T091512Z/A9-redis-l75-s3000-p09s": {
+            "measured": null,
+            "not_read": [],
+            "predicted": null,
+            "ratio": null,
+            "recorded_runs": 0,
+            "unrecorded_rate": 0.006916599839615076
+          },
+          "a9_20260926T091512Z/A9-redis-l88-s3000-c02h": {
+            "measured": 0.048115477145148355,
+            "not_read": [],
+            "predicted": 0.05012028869286287,
+            "ratio": 1.0416666666666667,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.004611066559743384
+          },
+          "a9_20260926T091512Z/A9-redis-l88-s3000-c04h": {
+            "measured": 0.04220128307939054,
+            "not_read": [],
+            "predicted": 0.047514033680834004,
+            "ratio": 1.1258907363420427,
+            "recorded_runs": 2,
+            "unrecorded_rate": null
+          },
+          "a9_20260926T091512Z/A9-redis-l88-s3000-c06h": {
+            "measured": null,
+            "not_read": [],
+            "predicted": null,
+            "ratio": null,
+            "recorded_runs": 0,
+            "unrecorded_rate": 0.010625501202886928
+          },
+          "a9_20260926T091512Z/A9-redis-l88-s3000-c08h": {
+            "measured": null,
+            "not_read": [],
+            "predicted": null,
+            "ratio": null,
+            "recorded_runs": 0,
+            "unrecorded_rate": 0.008620689655172414
+          },
+          "a9_20260926T091512Z/A9-redis-l88-s3000-f15h": {
+            "measured": 0.011427425821972734,
+            "not_read": [],
+            "predicted": 0.009623095429029671,
+            "ratio": 0.8421052631578947,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.0014033680834001604
+          },
+          "a9_20260926T091512Z/A9-redis-l88-s3000-f2sh": {
+            "measured": 0.00020048115477145148,
+            "not_read": [],
+            "predicted": 0.00040096230954290296,
+            "ratio": 2.0,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.0
+          },
+          "a9_20260926T091512Z/A9-redis-l88-s3000-p05s": {
+            "measured": 0.11046511627906977,
+            "not_read": [],
+            "predicted": 0.1214915797914996,
+            "ratio": 1.0998185117967332,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.027465918203688853
+          },
+          "a9_20260926T091512Z/A9-redis-l88-s3000-p09s": {
+            "measured": 0.06194867682437851,
+            "not_read": [],
+            "predicted": 0.06575781876503609,
+            "ratio": 1.0614886731391586,
+            "recorded_runs": 1,
+            "unrecorded_rate": 0.016639935846030473
+          }
+        },
+        "setups_with_a_ratio": 9,
+        "setups_without_a_rate": [],
+        "tested": true,
+        "within_band": 7
+      },
+      "confirmed": false,
+      "loads": {
+        "75": {
+          "a9_1": {
+            "holds": true,
+            "mean_shares": {
+              "asleep": 0.0,
+              "running": 0.20918740674666703,
+              "unknown": 0.0,
+              "waiting": 0.790812593253333
+            },
+            "mostly_waiting": 597,
+            "negative_readings": 644,
+            "not_shown": 0
+          },
+          "a9_3": {
+            "slices_ms": [
+              3.0
+            ],
+            "ticks_ms": [
+              1.0
+            ],
+            "waits_ms": {
+              "longest": 5.915856,
+              "p50": 0.018378,
+              "p90": 0.04302400000000001,
+              "p99": 3.04093905
+            }
+          }
+        },
+        "88": {
+          "a9_1": {
+            "holds": true,
+            "mean_shares": {
+              "asleep": 0.0,
+              "running": 0.21541599811671358,
+              "unknown": 0.0,
+              "waiting": 0.7845840018832865
+            },
+            "mostly_waiting": 1448,
+            "negative_readings": 1579,
+            "not_shown": 3
+          },
+          "a9_3": {
+            "slices_ms": [
+              3.0
+            ],
+            "ticks_ms": [
+              1.0
+            ],
+            "waits_ms": {
+              "longest": 7.135836,
+              "p50": 0.018728,
+              "p90": 0.027901,
+              "p99": 2.8866652
+            }
+          }
+        }
+      },
+      "median_ratio": 0.16212920455932675,
+      "setups": {
+        "a9_20260926T091512Z/A9-redis-l75-s3000-c02h": {
+          "measured": null,
+          "not_read": [],
+          "predicted": null,
+          "ratio": null,
+          "recorded_runs": 0,
+          "unrecorded_rate": 0.005914194065757819
+        },
+        "a9_20260926T091512Z/A9-redis-l75-s3000-c04h": {
+          "measured": 0.015838011226944667,
+          "not_read": [],
+          "predicted": 0.003439393857849346,
+          "ratio": 0.217160715986741,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.006214915797914996
+        },
+        "a9_20260926T091512Z/A9-redis-l75-s3000-c06h": {
+          "measured": 0.01343223736968725,
+          "not_read": [],
+          "predicted": 0.003015339353591659,
+          "ratio": 0.22448526411515218,
+          "recorded_runs": 2,
+          "unrecorded_rate": null
+        },
+        "a9_20260926T091512Z/A9-redis-l75-s3000-c08h": {
+          "measured": null,
+          "not_read": [],
+          "predicted": null,
+          "ratio": null,
+          "recorded_runs": 0,
+          "unrecorded_rate": 0.002305533279871692
+        },
+        "a9_20260926T091512Z/A9-redis-l75-s3000-f15h": {
+          "measured": null,
+          "not_read": [],
+          "predicted": null,
+          "ratio": null,
+          "recorded_runs": 0,
+          "unrecorded_rate": 0.00040096230954290296
+        },
+        "a9_20260926T091512Z/A9-redis-l75-s3000-f2sh": {
+          "measured": null,
+          "not_read": [],
+          "predicted": null,
+          "ratio": null,
+          "recorded_runs": 0,
+          "unrecorded_rate": 0.0
+        },
+        "a9_20260926T091512Z/A9-redis-l75-s3000-p05s": {
+          "measured": 0.043203688853247796,
+          "not_read": [],
+          "predicted": 0.02159507560287402,
+          "ratio": 0.4998433276433207,
+          "recorded_runs": 2,
+          "unrecorded_rate": null
+        },
+        "a9_20260926T091512Z/A9-redis-l75-s3000-p09s": {
+          "measured": null,
+          "not_read": [],
+          "predicted": null,
+          "ratio": null,
+          "recorded_runs": 0,
+          "unrecorded_rate": 0.006916599839615076
+        },
+        "a9_20260926T091512Z/A9-redis-l88-s3000-c02h": {
+          "measured": 0.048115477145148355,
+          "not_read": [],
+          "predicted": 0.005387979545745382,
+          "ratio": 0.11198017489240819,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.004611066559743384
+        },
+        "a9_20260926T091512Z/A9-redis-l88-s3000-c04h": {
+          "measured": 0.04220128307939054,
+          "not_read": [],
+          "predicted": 0.0047608075520365915,
+          "ratio": 0.11281191481975542,
+          "recorded_runs": 2,
+          "unrecorded_rate": null
+        },
+        "a9_20260926T091512Z/A9-redis-l88-s3000-c06h": {
+          "measured": null,
+          "not_read": [],
+          "predicted": null,
+          "ratio": null,
+          "recorded_runs": 0,
+          "unrecorded_rate": 0.010625501202886928
+        },
+        "a9_20260926T091512Z/A9-redis-l88-s3000-c08h": {
+          "measured": null,
+          "not_read": [],
+          "predicted": null,
+          "ratio": null,
+          "recorded_runs": 0,
+          "unrecorded_rate": 0.008620689655172414
+        },
+        "a9_20260926T091512Z/A9-redis-l88-s3000-f15h": {
+          "measured": 0.011427425821972734,
+          "not_read": [],
+          "predicted": 0.00014971608665473462,
+          "ratio": 0.013101470881295022,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.0014033680834001604
+        },
+        "a9_20260926T091512Z/A9-redis-l88-s3000-f2sh": {
+          "measured": 0.00020048115477145148,
+          "not_read": [],
+          "predicted": 0.0,
+          "ratio": 0.0,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.0
+        },
+        "a9_20260926T091512Z/A9-redis-l88-s3000-p05s": {
+          "measured": 0.11046511627906977,
+          "not_read": [],
+          "predicted": 0.02329218420280371,
+          "ratio": 0.2108555622569599,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.027465918203688853
+        },
+        "a9_20260926T091512Z/A9-redis-l88-s3000-p09s": {
+          "measured": 0.06194867682437851,
+          "not_read": [],
+          "predicted": 0.010043689697039287,
+          "ratio": 0.16212920455932675,
+          "recorded_runs": 1,
+          "unrecorded_rate": 0.016639935846030473
+        }
+      },
+      "setups_with_a_ratio": 9,
+      "setups_without_a_rate": [],
+      "tested": true,
+      "within_band": 0
+    }
+  },
+  "confirmed": false,
+  "not_read": [],
+  "predicted_as": "the sum of max(0, W - (T - g)) over the stamping thread's waits, over the window's length (A9-2)",
+  "prediction": "P6",
+  "recording": "A9",
+  "rule": "at least two thirds of setups predict their measured rate within 0.67-1.5, and the median ratio is at least 0.8",
+  "tested": true
+}

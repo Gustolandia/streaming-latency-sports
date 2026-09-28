@@ -126,6 +126,10 @@ ALLOWED = {
     ("supplement.tex", "recoveryShift", r"with a slope of $0.8$ to $1.2$"):
         "the same registered band, for P2c's slope of width on tick (S16.11); the coincidence "
         "the entry above records",
+    ("supplement.tex", "tailRsq", r"against the measured $0.990$"):
+        "M0's measured slope of Kafka's median delivery on the added delay (S37), read from "
+        "m0_bursts.json and pinned by test_supplement_part_v.py; a slope and the tail fit's "
+        "R-squared sharing three digits",
 }
 
 

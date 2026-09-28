@@ -1,0 +1,117 @@
+{
+  "episodes": {
+    "arm, redis, receiver": 1,
+    "matched, kafka, broker": 57,
+    "matched, kafka, receiver": 51,
+    "matched, redis, receiver": 31,
+    "matched-b, kafka, both": 1,
+    "matched-b, kafka, broker": 59,
+    "matched-b, kafka, receiver": 28,
+    "matched-b, redis, receiver": 41
+  },
+  "heartbeat_lost": {
+    "1 to 3 s": [
+      4,
+      14
+    ],
+    "3 s or more": [
+      12,
+      15
+    ],
+    "under 1 s": [
+      2,
+      87
+    ]
+  },
+  "hour": {
+    "by_quarter": [
+      35,
+      12,
+      15,
+      6
+    ],
+    "mean_minute": 12.461566718726282,
+    "rayleigh_p": 0.0020315748712422233,
+    "runs": 68
+  },
+  "iowait": {
+    "arm": {
+      "paused_median_s": null,
+      "paused_runs": 0,
+      "quiet_median_s": 0.11,
+      "quiet_runs": 2157
+    },
+    "matched": {
+      "paused_median_s": 2.97,
+      "paused_runs": 41,
+      "quiet_median_s": 0.09,
+      "quiet_runs": 3082
+    },
+    "matched-b": {
+      "paused_median_s": 2.96,
+      "paused_runs": 28,
+      "quiet_median_s": 0.09,
+      "quiet_runs": 2632
+    }
+  },
+  "iowait_on_pause": {
+    "correlation": 0.6411417858897035,
+    "quiet_median_s": 0.09,
+    "runs": 69,
+    "slope": 1.0805254589319444
+  },
+  "kinds": {
+    "both": {
+      "backends": [
+        "kafka"
+      ],
+      "episodes": 1,
+      "long": 1,
+      "long_with_the_sampler_stopped": 1,
+      "long_with_the_sampler_timed": 1,
+      "longest_ms": 20563.616898,
+      "median_ms": 20563.616898
+    },
+    "broker": {
+      "backends": [
+        "kafka"
+      ],
+      "episodes": 116,
+      "long": 29,
+      "long_with_the_sampler_stopped": 0,
+      "long_with_the_sampler_timed": 29,
+      "longest_ms": 11377.225898,
+      "median_ms": 410.85996850000004
+    },
+    "receiver": {
+      "backends": [
+        "kafka",
+        "redis"
+      ],
+      "episodes": 152,
+      "long": 76,
+      "long_with_the_sampler_stopped": 74,
+      "long_with_the_sampler_timed": 76,
+      "longest_ms": 15821.627339,
+      "median_ms": 1007.294896
+    }
+  },
+  "redis_receiver_inside_reads": {
+    "episodes": 48,
+    "most_inside": 0.04007774155777845
+  },
+  "runs": {
+    "arm": 2159,
+    "matched": 3197,
+    "matched-b": 2746
+  },
+  "runs_with_a_pause": {
+    "arm": 1,
+    "matched": 112,
+    "matched-b": 109
+  },
+  "steal": {
+    "most_s": 0.0,
+    "runs_read": 8092
+  }
+}

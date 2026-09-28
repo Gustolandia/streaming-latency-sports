@@ -1,0 +1,31 @@
+prediction,block,part,view,free,fitted
+P1,A1,kafka,data,0.757901,0.229655
+P1,A1,redis,data,1.006806,0.66153
+P9,A4,kafka,data,0.829567,0.285063
+P9,A4,redis,data,1.153266,0.797546
+P2,A2 kafka,,data,1.783824,1.818432
+P2,A2 redis,,data,1.0638,1.126227
+P2b,A2 kafka,,data,4.785535,5.358102
+P2b,A2 redis,,data,3.044638,3.338972
+P2c,A2 kafka,,data,0.78414,0.968385
+P2c,A2 redis,,data,0.552027,0.874284
+P1,A1,kafka,plan,0.997367,0.998169
+P1,A1,redis,plan,1.0,0.999083
+P9,A4,kafka,plan,0.888686,0.908118
+P9,A4,redis,plan,1.0,1.005342
+P2,A2 kafka,,plan,,9.69032
+P2,A2 redis,,plan,1.983253,1.573817
+P2b,A2 kafka,,plan,,20.432607
+P2b,A2 redis,,plan,4.19457,2.986552
+P2c,A2 kafka,,plan,0.886798,1.013169
+P2c,A2 redis,,plan,0.816413,0.790752
+P1,A1,kafka,residual,0.921568,0.519469
+P1,A1,redis,residual,0.930417,0.680021
+P9,A4,kafka,residual,0.80161,0.524821
+P9,A4,redis,residual,0.954205,0.723352
+P2,A2 kafka,,residual,2.072398,1.626501
+P2,A2 redis,,residual,1.80591,1.759531
+P2b,A2 kafka,,residual,4.730901,3.243535
+P2b,A2 redis,,residual,4.313327,3.530483
+P2c,A2 kafka,,residual,0.803659,0.76405
+P2c,A2 redis,,residual,0.800233,0.803924

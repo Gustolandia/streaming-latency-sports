@@ -104,6 +104,20 @@ A3 and A9's retry. Eight have runs left:
 The other two folders are A3's sessions of 24 September that stopped before a design existed, in
 the table above; they hold no runs, so there is nothing to finish.
 
+## Faults found after the programme ended, 28 September
+
+*Plain words:* reading the strange results turned up two places where the programs that judge
+depart from the plan's text, one frozen test that could not keep the explanation it named, and
+what stopped in the pauses. None of them changes a verdict. Each is read in full in
+[the record of 28 September](the-strange-results-read-28-sep.md).
+
+| Where | What happened | What it cost | What was done |
+|---|---|---|---|
+| P2, P2b and P2c (`law_predictions.width_follows_tick`, `width_against_tick`) | They read A2's two slices, 1.5 and 3 ms, as one curve per kernel; P2d's judge reads one curve per slice and kernel, as A2's design has them | P2 and P2b could not be confirmed even where the plan's formula holds exactly: fed that formula, the P2 judge returns 1.98 on Redis against a band of 2.5 to 5.5 | Recorded, and A2 read slice by slice beside the frozen answers |
+| P4 (`priority_removes_the_plateau`) | A backend whose plateau is under the 2% P4 makes its claim on is worded "not confirmed" rather than out of reach | P4 reads "not confirmed", where Kafka, the one backend it makes a claim on, confirms it | Recorded; the frozen answer stands |
+| M-H2's replay (`m0_read.py`, D31-2) | It gives every burst leader the same replayed trip, so with the leaders over half the messages its median grows one for one whatever the followers do | M-H2 could not be kept in any M0 run: in all 25 recorded Redis runs its median was the replay's smallest trip | Recorded; the mechanism is read message by message instead |
+| Both x86 pairs, 16 to 27 Sep | Pauses of up to 20.6 s: 152 episodes of the drivers' disk writes stalling and 116 of Kafka's broker stalling; one of 0.2 s on the Arm pair | The late messages of 221 runs, every one of them counted | Recorded; what held the disks is not |
+
 ## Pocket dictionary
 
 - **Calibration**: the session's own measure of how far each added delay moves the trip, from which

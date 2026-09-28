@@ -1,0 +1,120 @@
+{
+  "a6": {
+    "arm, kafka": {
+      "over_1ms": 0.11119347195196783,
+      "recorded_over_unrecorded": 0.9702888927089162,
+      "runs": 202,
+      "waits": 36548.5
+    },
+    "matched, kafka": {
+      "over_1ms": 0.13125033785610032,
+      "recorded_over_unrecorded": 1.011264473344089,
+      "runs": 381,
+      "waits": 36870
+    },
+    "matched, redis": {
+      "over_1ms": 0.1353349289544642,
+      "recorded_over_unrecorded": 0.8942307692307693,
+      "runs": 97,
+      "waits": 33122
+    },
+    "matched-b, kafka": {
+      "over_1ms": 0.13623013130615066,
+      "recorded_over_unrecorded": 1.0596605226764708,
+      "runs": 197,
+      "waits": 36747
+    }
+  },
+  "a9": {
+    "arm, kafka": {
+      "a9_2_over_a9_2b": 0.07642760391420755,
+      "decomposed": 62,
+      "identity_holds": true,
+      "mean_excess_ms": 0.6090681120250576,
+      "preempt_over_1ms": 0.004224070038206253,
+      "preempt_waits": 143186.5,
+      "rate_times_excess": 0.31133572771237494,
+      "recorded_over_unrecorded": 1.357371794871795,
+      "runs": 68,
+      "share_over_by_acks": 0.24243297448669113,
+      "waits_per_s": 531.5202049177467,
+      "wake_over_1ms": 0.14475310309938605,
+      "wake_waits": 32424.0
+    },
+    "arm, redis": {
+      "a9_2_over_a9_2b": 0.09488029403470445,
+      "decomposed": 47,
+      "identity_holds": true,
+      "mean_excess_ms": 0.48869362692307694,
+      "preempt_over_1ms": 0.004148459020657047,
+      "preempt_waits": 163240.5,
+      "rate_times_excess": 0.26368359332543306,
+      "recorded_over_unrecorded": 4.331254619364376,
+      "runs": 58,
+      "share_over_by_acks": 0.43017822212562484,
+      "waits_per_s": 404.2514123224379,
+      "wake_over_1ms": 0.11277010218299212,
+      "wake_waits": 31415.5
+    },
+    "matched, kafka": {
+      "a9_2_over_a9_2b": 0.11550909958719291,
+      "decomposed": 55,
+      "identity_holds": true,
+      "mean_excess_ms": 0.8735016900000002,
+      "preempt_over_1ms": 0.008931441040648205,
+      "preempt_waits": 96345,
+      "rate_times_excess": 0.3172570602244987,
+      "recorded_over_unrecorded": 1.485927073617567,
+      "runs": 61,
+      "share_over_by_acks": 0.3506960486932766,
+      "waits_per_s": 383.0303636248498,
+      "wake_over_1ms": 0.17521092192053997,
+      "wake_waits": 32450
+    },
+    "matched, redis": {
+      "a9_2_over_a9_2b": 0.14520219004882975,
+      "decomposed": 50,
+      "identity_holds": true,
+      "mean_excess_ms": 0.6868669109778185,
+      "preempt_over_1ms": 0.00828119366150315,
+      "preempt_waits": 111393.0,
+      "rate_times_excess": 0.26583000636915,
+      "recorded_over_unrecorded": 3.688767123287671,
+      "runs": 58,
+      "share_over_by_acks": 0.6546884056467539,
+      "waits_per_s": 363.62231984260904,
+      "wake_over_1ms": 0.1392307013474154,
+      "wake_waits": 31159.0
+    },
+    "matched-b, kafka": {
+      "a9_2_over_a9_2b": 0.09677130309700774,
+      "decomposed": 28,
+      "identity_holds": true,
+      "mean_excess_ms": 0.7742627321990394,
+      "preempt_over_1ms": 0.009146548242294113,
+      "preempt_waits": 84146.5,
+      "rate_times_excess": 0.2885817207236644,
+      "recorded_over_unrecorded": 1.3935860058309038,
+      "runs": 30,
+      "share_over_by_acks": 0.38701616093726104,
+      "waits_per_s": 354.16803185622194,
+      "wake_over_1ms": 0.1662918983205444,
+      "wake_waits": 32500.0
+    },
+    "matched-b, redis": {
+      "a9_2_over_a9_2b": 0.1607743143702244,
+      "decomposed": 26,
+      "identity_holds": true,
+      "mean_excess_ms": 0.7088617137179009,
+      "preempt_over_1ms": 0.008316041757145844,
+      "preempt_waits": 121747,
+      "rate_times_excess": 0.2798140692821809,
+      "recorded_over_unrecorded": 3.750587172538392,
+      "runs": 29,
+      "share_over_by_acks": 0.5537814921046678,
+      "waits_per_s": 392.20785640700694,
+      "wake_over_1ms": 0.1286898310487727,
+      "wake_waits": 31308
+    }
+  }
+}

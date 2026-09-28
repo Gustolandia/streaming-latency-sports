@@ -21,6 +21,8 @@ S14 and S30 had been withdrawn earlier.
 
 S1->S1; S2->S1; S3->S2; S4->S3; S5->S1; S6->S4; S7->S4; S8->S3; S9->S5; S10->S1; S11->S22; S12->S6; S13->S5; S14->S7; S15->S8; S16->S9; S17->S8; S18->S18; S19->S26; S20->S26; S21->S26; S22->S10; S23->S11; S24->S12; S25->S13; S26->S7; S27->S18; S28->S19; S29->S20; S30->S21; S31->S22; S32->S23; S33->S24; S34->S24; S35->S24; S36->S24; S37->S25; S38->S14; S39->S15; S40->S16; S41->S16; S42->S17; S43->S14; S44->S14; S45->S27; S46->S28; S47->S29; S48->S30; S49->S31; S50->S32; S51->S33; S52->S33.
 
+**Part V added on 2026-09-28.** Sections S34 to S37 report the pre-registered law campaign run on three Azure pairs (plan version 32, `freezes/28-experiment-plan`): what was registered and run, every verdict, every aberrant run marked with its reason, and what was read after the verdicts. It was appended after Part IV so that no existing section number moved; S16.10 and S16.11 carry two of its findings in depth. Its numbers are pinned by `tests/unit/test_supplement_part_v.py`.
+
 It was built by matching section titles between the two documents rather than by composing the two rewriting passes. Composing is what corrupted the paragraph above the first time: a remapper was run over this file and rewrote *both sides* of the 2026-09-08 concordance, so S1 came to map to three different sections at once. A concordance is a record of the past and no rewriting pass may touch it.
 
 | Supp. section | Content | Moved from | Source revision |
@@ -308,6 +310,10 @@ appearing in this table.
 | `measurement_model` | main text, Fig. 2 (panel (b) split off round 52) |
 | `delta_schematic` | supplement, S9 (was Fig. 2(b); the one main-text drawing that was not a measurement, and the measured version is Fig. 9). Redrawn 28 Sep 2026: the waiting state is a shelf to the slice and a tick, the rest of a slice, where it had been a lobe at the slice (S16.10) |
 | `wait_shape` | supplement, S16.10 (added 28 Sep 2026: each acknowledgment's wait against the whole-slice and rest-of-a-slice shapes, and every thread's waits by what began them; `scripts/make_wait_shape_figure.py`) |
+| `law_slice` | supplement, S36 (added 28 Sep 2026, Part V: every run of A1 and A4 with every aberrant run marked; `scripts/make_law_figures.py`, marks by `scripts/law_runs.py`) |
+| `law_tick` | supplement, S36 (added 28 Sep 2026, Part V: A2, A5 and A7, marked the same way) |
+| `law_load` | supplement, S36 (added 28 Sep 2026, Part V: A3 and A8, marked the same way) |
+| `law_a9` | supplement, S36 (added 28 Sep 2026, Part V: A9, with its traced half ringed) |
 | `deletion` | main text, Fig. 4 (was Fig. 3 until round 61 put failure mode 1 before failure mode 2, at the second author's request) |
 | `quantum_geometry` | supplement, S17 (moved round 40: a constructed illustration of the retention law, not a measurement, placed beside the 1970 counter note that carries the same identity) (added round 28: the geometry behind the deletion law) |
 | `grid_membership` | supplement, S11 (moved round 59: the second author asked for the grid refinement to become the explanation of the deletion rather than a contribution, so the figure went beside the per-configuration table it summarizes) |

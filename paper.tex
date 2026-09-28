@@ -898,8 +898,9 @@ scheduler tick, and no scheduler tunable is written anywhere in the archived cam
 Section~\ref{sec:metrics}; both are $1$~ms here by coincidence of configuration. A thread
 woken while another task holds the CPU waits out what is left of that task's slice, up to a
 whole one --- $\sliceOverDeliveryLo$--$\sliceOverDeliveryHi$ times the per-condition
-deliveries this corpus measures, $\condDeliveryLoMs$--$\condDeliveryHiMs$~ms --- as the thread
-that timestamps an acknowledgment does (Supplement~S16.10).
+deliveries this corpus measures, $\condDeliveryLoMs$--$\condDeliveryHiMs$~ms. A pre-registered
+campaign measured that wait for the thread that timestamps each acknowledgment (Supplement~S16.10
+and Part~V).
 The scheduler's slice lands on the scale of the interval being measured, which is why the check
 fires on a substantial minority of events rather than on almost none or on most. A mean over this distribution is dominated by a mode the operator never
 sees, so a mean-based counter cannot flag this failure.

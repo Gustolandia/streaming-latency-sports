@@ -147,7 +147,9 @@ order it happened, with everything withdrawn along the way. Part~II --- \emph{th
 mechanism, and the law it produces} --- is the argument. Part~III --- \emph{apparatus,
 data and tables} --- is reference material, meant to be looked things up in rather than
 read through. Part~IV --- \emph{the literature, and what it already requires} --- places
-the result. Main-text references
+the result. Part~V --- \emph{the pre-registered law campaign} --- reports the campaign that
+tested the scheduling failure's law in advance, with every run it made drawn and every aberrant
+one marked. Main-text references
 of the form ``Supplement~S$n$'' resolve to the correspondingly numbered section here, and
 the artifact's \texttt{docs/supplement\_index.md} records where each section came from.
 
@@ -4807,6 +4809,443 @@ Tail behavior under load~\cite{li2014tales} is the phenomenon our stall distribu
 That work also shows real-time priority collapsing a tail that renicing leaves alone, applied
 to the system under test; we apply the same lever to the harness, which is the manipulation
 of Section~\mainModeA{}.
+
+% Part V, written 28 September 2026 at the author's request ("write up the whole law campaign,
+% and mark points that are experimental aberrations and why they were marked"). Every number is
+% pinned by tests/unit/test_supplement_part_v.py to the committed records of the campaign; the
+% figures are drawn by scripts/make_law_figures.py from the run registry, every aberrant run
+% marked by scripts/law_runs.py.
+\section*{Part V. The pre-registered law campaign}
+\addcontentsline{toc}{section}{Part V. The pre-registered law campaign}
+
+This part reports in full the campaign that tested the scheduling failure's law in advance, on
+machines the earlier campaigns never ran on. Section~S34 states what was registered and how it
+was run, Section~S35 what every prediction returned, Section~S36 every run that was aberrant and
+why it was marked, and Section~S37 what the runs showed once the verdicts were in.
+Sections~S16.10 and~S16.11 carry two of its findings in depth: the shape of the wait, and two
+faults in the programs that judged it.
+
+\section{S34. The campaign as registered, and as it ran}
+\label{sec:lawcampaign}
+
+\paragraph{What was registered} The plan was first frozen as version~5 on 16~September 2026,
+before its first run. It fixed the law's predictions, the rule that confirms each, the campaigns,
+the rule that sets how many runs each takes, and how the runs are checked and read; the
+repository's \texttt{freezes} folder holds it. Every later change is a new, numbered freeze, public
+before the runs it covers, whose first section lists what changed, why, and whether a result
+already seen prompted it; the version in force at the end is the thirty-second, freeze~28.
+Versions 6 to~8 corrected what stage~0's first runs found in the machines, the code and the plan's
+own checks, before any campaign that tests a prediction began, and version~8 has P1 and P9 judged only on the slices a pair can reach,
+since no message arrives sooner than the client's own delivery with nothing added. One prediction
+changed form: P3 became P3a and P3b in version~9, before any load run was read. Three kinds of
+change followed results of the campaigns themselves. Version~14 judges P3a only where the plateau
+reaches $2\%$, after the first load campaign showed that a shallower curve places no fall. The
+got-it brake was corrected or widened in versions 8, 16, 17, 18 and~20, each time after it had
+stopped a campaign, and set to record rather than stop, for A5's last runs in version~26 and for
+every campaign in version~32. And versions 19, 21 and~30 corrected faults in programs that had
+already judged, each stating what the verdicts it touches had been. Blocks were added as the
+campaign ran, each read by a program fixed before its runs were: the Arm pair's load campaign
+(version~24); a 3.75~ms slice for A1, second bridge days and a third x86 load campaign
+(version~27); A9 (version~28); and M0's recording (version~29). P6 was given its program in
+version~30, at a margin no run had been read against. The law under test is
+Equation~\ref{eq:planlaw}: a negative-span rate at a plateau $c + p$ while the delivery is shorter
+than the base slice $s$, a fall across one tick $h$, and a floor $c$ beyond. The settings alone
+predict where the fall starts and how wide it is; the plateau's height and the floor are measured.
+The plan's second half, how benchmark tools report the same deliveries, is reported in the
+repository's tool records and not here.
+
+\paragraph{The machines} Three pairs of cloud machines ran it, each a driver with eight virtual
+CPUs and a broker with two, all in one region: two pairs with AMD EPYC~9V74 processors and one
+with Arm Neoverse~N2 processors. The drivers ran their provider's stock kernels, 6.8.0-1065 on the
+first x86 pair after its first 65 runs on 6.8.0-1064, and 6.8.0-1064 on the second and on the Arm
+pair; for the tick campaign both x86 drivers also ran three kernels built from one source tree
+that differ in the tick alone, 1, 4 and 10~ms. Each run read back the slice, tick, kernel,
+processor and online CPUs before it started; six that ended before the integrity rule could judge
+them have no reading.
+
+\paragraph{How a run is made} Each run replays messages at a steady 50 a second (M0 replays a
+football match's bursts instead) and measures,
+after a 30~s warm-up, its delivery (the send-to-receive time on one clock), its got-it delay (the
+time to the acknowledgment's timestamp, the paper's acknowledgment lag), and its negative-span
+rate: the share of messages whose acknowledgment timestamp is later than their receive
+timestamp. The delivery is set by delaying only the traffic to the receiver's own network
+address, so the acknowledgment's path is left alone, and each session first calibrates how far
+each added delay moves the delivery. The slice, tick, core-count and A9 blocks place eight
+deliveries around the predicted fall at each slice: $0.5s$ and $0.9s$ on the plateau, $s + 0.2h$
+to $s + 0.8h$ across the fall, and $s + 1.5h$ and $2(s + h)$ beyond it; the load block places six,
+and the priority and client blocks three, at $0.9s$, $s + 0.5h$ and $s + 1.5h$. A delivery
+shorter than the client's own with nothing added cannot be set, and was not run.
+
+\paragraph{How many runs, in what order} Each campaign that tests a prediction took its number of
+rounds from simulating its own decision rule on data made to follow the law at the pair's
+measured spread, at least four and at most forty. A2 and A9 ran at the floor of four, A2 because
+the simulation takes one tick at a time where its predictions compare two, and A9 because it has
+no rule to simulate; M0 ran at a fixed ten. A round holds every setup once, in an order shuffled with a recorded seed. Every
+prediction about where the fall sits is read twice, on a free reading, a curve required only
+never to rise, and on the law's own fitted shape, and it passes only where both agree. Intervals
+come from resampling whole rounds, each campaign's from its own.
+
+\paragraph{Which runs count} The integrity rule judges every run the moment it ends. A run counts
+when every condition it was meant to have took: the load within 3 points of its target, the
+send rate within $2\%$, at least $99\%$ of its messages sent and delivered, the added delay
+captured and within $50\,\mu$s of its setting, and the slice and tick as set before and after it. A
+run whose condition did not take is repeated, up to three attempts. A run whose got-it median
+moved too far stopped its campaign: the \emph{got-it brake}, which from version~20 holds a run
+against its setup's earlier runs in the campaign and allows the largest of a quarter of the added
+delay, three times the scatter pooled over the campaign's setups, and 0.25~ms. From version~32
+the brake records rather than stops, and every campaign it had stopped was finished on its own
+queue, calibration and kernel. Every prediction a recorded run bears on is judged with and
+without the runs the brake would have stopped.
+
+\paragraph{What ran} Table~\ref{tab:lawblocks} counts it block by block. The registry holds 8,108
+runs, taken from 16 to 27 September 2026; 8,102 lie in the 156 campaigns the judging read, 60 of
+them in the blocks that test predictions and 96 calibrations, baselines, spread pilots and a smoke test, and the
+other six were set aside before any campaign read them (S36). Of the 8,102, 7,996 counted, 74 were repeated, 16 stopped a campaign and 16 ended before
+the rule could judge them.
+
+\begin{table}[htbp]
+\caption{\textbf{Every block of the campaign, and how many of its runs counted.} The campaigns and
+runs the judging read, by block (C0, the calibration, includes the eight calibrations of A2's
+bridge days). Repeated: a condition did not take. Stopped: the got-it brake. Unjudged: the run
+ended before the integrity rule read it. Paused: a message in the run arrived more than 150~ms
+late (S36); every paused run counted.}
+\label{tab:lawblocks}
+\centering
+\footnotesize
+\begin{tabular}{@{}llrrrrrrr@{}}
+\toprule
+Block & What it moves & Campaigns & Runs & Counted & Repeated & Stopped & Unjudged & Paused\\
+\midrule
+C0 & the added delay (calibration) & 86 & 2,879 & 2,844 & 25 & 0 & 10 & 91\\
+B0, P0 & baseline, spread pilot & 9 & 290 & 289 & 0 & 1 & 0 & 6\\
+A1 & the slice, first x86 & 7 & 457 & 452 & 4 & 1 & 0 & 21\\
+A2 & the tick & 24 & 1,242 & 1,226 & 7 & 5 & 4 & 42\\
+A3 & the load & 6 & 1,339 & 1,320 & 17 & 1 & 1 & 39\\
+A4 & the slice, Arm & 6 & 240 & 233 & 7 & 0 & 0 & 1\\
+A5 & the core count & 3 & 159 & 156 & 1 & 2 & 0 & 6\\
+A7 & real-time priority & 1 & 48 & 48 & 0 & 0 & 0 & 1\\
+A8 & the client's language & 7 & 733 & 720 & 8 & 4 & 1 & 5\\
+A9 & the waits, one by one & 5 & 620 & 616 & 2 & 2 & 0 & 10\\
+M0 & the delivery under bursts & 1 & 93 & 90 & 3 & 0 & 0 & 0\\
+smoke test & -- & 1 & 2 & 2 & 0 & 0 & 0 & 0\\
+\midrule
+All & & 156 & 8,102 & 7,996 & 74 & 16 & 16 & 222\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{S35. Every prediction, as its frozen judge returned it}
+\label{sec:lawverdicts}
+
+Table~\ref{tab:lawverdicts} gives every verdict. Each is the frozen program's answer on every run
+it counts, and each was read three more ways: without the 14 runs the brake would have stopped,
+without all 1,110 taken while it only recorded, and without the 222 a pause held. One verdict
+moves under any of them, P3a on the first x86 pair, and only on its rule's edge (S36).
+
+\begin{table*}[htbp]
+\caption{\textbf{One prediction confirmed on every campaign, three on one broker, and the rest
+not.} Every pre-registered prediction of the law campaign, the number it was judged on (all runs;
+a slope, ratio or move with its $95\%$ interval, from resampling whole rounds), and its verdict,
+broker by broker where the two differ; a prediction judged broker by broker is confirmed only
+where it holds on both. The last column is the one verdict that moves when the flagged, recorded
+or paused runs are left out.}
+\label{tab:lawverdicts}
+\centering
+\footnotesize
+\begin{tabular}{@{}p{0.9cm}p{1.7cm}p{4.0cm}p{6.0cm}p{1.6cm}p{1.5cm}@{}}
+\toprule
+& Block, pair & The prediction & On all runs & Verdict & Moves\\
+\midrule
+P1 & \raggedright A1, first x86 & \raggedright the fall's halfway point inside $[s, s + h]$ at four
+or more slices, its slope on $s$ in $0.8$--$1.2$ & \raggedright slope, free and fitted: \kafka{}
+$0.758$ ($0.596$--$1.023$) and $0.230$; \redis{} $1.007$ ($0.844$--$1.169$) and $0.662$ &
+\raggedright not confirmed & --\\
+P9 & \raggedright A4, Arm & \raggedright the same, on the Arm pair, at two or more slices &
+\raggedright \kafka{} $0.830$ ($0.627$--$1.172$) and $0.285$; \redis{} $1.153$
+($0.753$--$1.325$) and $0.798$ & \raggedright not confirmed & --\\
+P2 & \raggedright A2 & \raggedright the fall $2.5$ to $5.5$ times wider at a 4~ms tick than at
+1~ms & \raggedright ratio, free and fitted: \kafka{} $1.784$ and $1.818$; \redis{} $1.064$ and
+$1.126$ (S16.11) & \raggedright not confirmed & --\\
+P2b & \raggedright A2 & \raggedright $6$ to $14$ times wider at a 10~ms tick & \raggedright
+\kafka{} $4.786$ and $5.358$; \redis{} $3.045$ and $3.339$ (S16.11) & \raggedright not confirmed
+& --\\
+P2c & \raggedright A2 & \raggedright the width on the tick a line through zero, slope
+$0.8$--$1.2$ & \raggedright fitted slope: \kafka{} $0.968$ ($0.271$--$1.125$); \redis{} $0.874$
+($0.807$--$1.034$) & \raggedright confirmed on \redis{} only & --\\
+P2d & \raggedright A2 & \raggedright the fitted start within 0.25~ms of the slice at every tick
+& \raggedright within it at one of twelve slice and tick pairs & \raggedright not confirmed &
+--\\
+P3a & \raggedright A3, five campaigns & \raggedright the halfway point moves less than 0.25~ms
+from $75\%$ to $88\%$ load & \raggedright free move: $-0.009$, $-0.188$, $-0.086$, $-0.011$ and
+$-0.309$~ms & \raggedright not confirmed on any & \raggedright first x86, 19
+Sep\tabularnewline
+P3b & \raggedright A3, five campaigns & \raggedright load raises the plateau & \raggedright rise,
+free: $0.048$ ($0.044$--$0.052$), $0.047$, $0.048$, $0.041$ and $0.050$ & \raggedright confirmed
+on all five & --\\
+P4 & \raggedright A7, first x86 & \raggedright real-time priority cuts the plateau at least five
+times wherever it is at least $2\%$ & \raggedright \kafka{} $0.0405$ to zero; \redis{}'s plateau
+$0.0069$ (S16.11) & \raggedright confirmed on \kafka{} only & --\\
+P6 & \raggedright A6 & \raggedright a recording of every thread's waits predicts the rate within
+$0.67$--$1.5$ & \raggedright median ratio $2.49$ to $13.08$ over four pair and broker parts; no
+setup inside & \raggedright not confirmed & --\\
+P7 & \raggedright A5, second x86 & \raggedright the default slice follows the core count, and the
+fall follows it & \raggedright slices read back at 2, 4 and 8 CPUs as the rule gives; the fall on
+\kafka{} at 8 CPUs, \redis{}'s fitted shape missing at all three & \raggedright confirmed on
+\kafka{} only & --\\
+P8 & \raggedright A8, first x86 and Arm & \raggedright Java has the same fall and priority effect,
+and Python's plateau is at most $1.5$ times Java's & \raggedright Python over Java: $3.251$
+($2.795$--$3.907$), and $4.253$ ($4.013$--$4.560$) on Arm & \raggedright not confirmed & --\\
+A9-1 & \raggedright A9, three pairs & \raggedright at least $90\%$ of negative readings mostly
+spent waiting for a CPU & \raggedright $79.4$ to $92.0\%$ & \raggedright not confirmed & --\\
+A9-2 & \raggedright A9 & \raggedright the time-weighted waits predict the rate within
+$0.67$--$1.5$ & \raggedright median ratio $0.104$ to $0.165$ & \raggedright not confirmed & --\\
+A9-2b & \raggedright A9 & \raggedright the share of acknowledgments whose own wait outlasted
+$T - g$ predicts it & \raggedright inside the rule on four of six parts; median ratio $1.11$ to
+$1.30$ & \raggedright not confirmed & --\\
+M0 & \raggedright M0, first x86 & \raggedright four named causes of the delivery's slope under
+bursts & \raggedright slope on the added delay, traced half: \kafka{} $0.995$; \redis{} $1.181$ and $1.307$;
+every cause dropped & -- & --\\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\paragraph{The slice (P1, P9)} On the first x86 pair, on the free reading, the fall's halfway
+point lay inside its band at every slice both brokers reach, four for \kafka{} and five for
+\redis{}; on the fitted shape it did at two of the four and two of the five. The free slope on
+the slice was $1.007$ for \redis{}, inside the rule, and $0.758$ for \kafka{}, below it; on the
+fitted shape both slopes fell short, $0.662$ and $0.230$. On the Arm pair the free reading held
+on both brokers and the fitted shape failed on both. The free reading follows
+the slice where the fitted shape does not because the rate has no plateau to fit: it falls from
+the shortest deliveries on (S16.10). P1 and P9 are not confirmed, since each needs both readings.
+Figure~\ref{fig:lawslice} draws every run of both blocks.
+
+\paragraph{The tick (P2 to P2d)} None of the tick predictions was confirmed but P2c on
+\redis{} (Figure~\ref{fig:lawtick} draws the runs). The programs judging P2, P2b and P2c read the campaign's two slices as one curve, and
+in a world where the law holds exactly they could not have confirmed P2 or P2b (S16.11); read one
+slice at a time after the fact, the width is proportional to the tick at the 1.5~ms slice and
+less than proportional at 3~ms, where the rest of the slice spreads the fall as the tick does.
+P2d, a fitted start within 0.25~ms of the slice at every tick, held at one of the twelve slice
+and tick pairs. At the 3~ms slice \redis{}'s fitted starts sit $1.1$ to $1.6$~ms before the
+slice at every tick, where a fall that begins at once places them; at the 1.5~ms slice
+\kafka{}'s sit after it, because that slice's fall lies below the shortest delivery \kafka{} can
+make.
+
+\paragraph{Load (P3a, P3b)} Five campaigns on the three pairs compared $75\%$ with $88\%$ load
+(Figure~\ref{fig:lawload}); at
+$50\%$ the plateau, $0.12$ to $0.16\%$, was below the $2\%$ at which the fall can be placed, and
+that load is reported as out of reach. Load raised the plateau in all five, by $0.041$ to $0.050$,
+every interval above zero: P3b is confirmed. That the fall stays where it is, P3a, was confirmed
+in none: every move was toward shorter deliveries, $-0.009$ to $-0.309$~ms on the free reading,
+and in every campaign at least one reading's $95\%$ interval reached past $\pm 0.25$~ms; in the
+first x86 campaign only the fitted one did, by $0.0026$~ms.
+
+\paragraph{Priority (P4)} On \kafka{} real-time priority on the timestamping threads took the
+plateau from $0.0405$ to zero in every run, and P4 holds there. \redis{}'s plateau was $0.0069$,
+under the $2\%$ at which P4 makes its claim, and its program words that part ``not confirmed''
+rather than out of reach (S16.11). That frozen answer is the one reported, so P4 is confirmed on
+\kafka{} only.
+
+\paragraph{The core count (P7)} At 2, 4 and 8 online CPUs the kernel's default slice read back as
+the rule computes it from the per-CPU constant the machine reports, $1.4$, $2.1$ and $2.8$~ms. The
+fall followed it on \kafka{} at 8 CPUs, the one core count whose slice \kafka{}'s shortest
+delivery reaches, and P7 holds there; on \redis{} the free reading placed the fall inside its band
+at all three core counts and the fitted shape at none, so P7 is confirmed on \kafka{} only. At 2 CPUs the brake stopped
+the session twice, and its last thirteen runs were taken with it recording.
+
+\paragraph{The client's language (P8)} Kafka's own Java client shows the same fall and the same
+effect of priority: its rate in the middle of the fall lay between its plateau and its floor in
+all 2,000 resampled rounds on both pairs, and priority cut its plateau 1,227 times on the x86 pair
+and 184 times on Arm. But the Python client's plateau was $3.25$ times Java's on the x86 pair and
+$4.25$ times on Arm, where P8 allows $1.5$.
+
+\paragraph{Predicting the rate from recorded waits (P6, A9)} A6's recording counts every
+\texttt{python3} thread's waits in one histogram, and read against each run's margin it
+over-predicted the rate $2.49$ to $13.08$ times. A9 recorded every scheduling event and named the
+thread that records each acknowledgment's timestamp. That thread was mostly waiting for a CPU in
+$79.4$ to $92.0\%$ of negative readings, where A9-1 asks $90\%$. Its waits summed over time
+under-predicted the rate six to ten times (A9-2). The share of acknowledgments whose own wait
+outlasted the margin came closest (A9-2b), inside the rule on four of the six pair and broker
+parts, and S16.10 draws those waits.
+
+\paragraph{Bursts (M0)} Replaying a football match's bursts, \kafka{}'s delivery grew with the
+added delay, on the traced half of the runs as M0's reading asks, at a slope of $0.995$; \redis{}'s grew at $1.181$ with one acknowledgment per
+message and at $1.307$ in batches of 200. Each of the four registered causes was dropped for
+\redis{}: the added delay reached the receiver as set, a replay of the receive loop's own rules
+gave a slope of one, and the receiving thread's wake-ups and held acknowledgments added less than
+0.01~ms. What does account for it was found afterwards (S37).
+
+\section{S36. Every aberrant run, marked, and why}
+\label{sec:lawaberrations}
+
+The plan's rule for the unexpected is that a run whose conditions held is a result, never a
+re-run, and that a run which fails is logged with its reasons and kept. So nothing is taken
+out of Figures~\ref{fig:lawslice} to~\ref{fig:lawa9}: every run of the law's blocks that measured
+a delivery and a rate, 4,823 of their 4,838, is drawn at the delivery it had and the rate it
+measured, and every aberrant run carries a mark saying why. The
+marks are read from the repository's records by a program, not assigned by eye, and
+Table~\ref{tab:lawmarks} counts them. A run may carry more than one.
+
+\begin{table*}[htbp]
+\caption{\textbf{Nine reasons a run is marked, and what each did to the verdicts.} Runs of the whole
+campaign carrying each mark, pair by pair, of the registry's 8,108. The first five keep a run out
+of every judge; the last four leave it counted. The verdicts were read again without the flagged
+and the paused runs, and without every run taken while the brake only recorded (S35).}
+\label{tab:lawmarks}
+\centering
+\footnotesize
+\begin{tabular}{@{}p{1.7cm}p{8.6cm}rrrp{2.9cm}@{}}
+\toprule
+Mark & Why a run carries it & first x86 & second x86 & Arm & In the verdicts\tabularnewline
+\midrule
+void & \raggedright set aside before any campaign read it: two calibrations wrote into one folder
+on 16 September, and one was opened on top of a running one on 21 September & 1 & 5 & 0 &
+\raggedright never read\tabularnewline
+false start & \raggedright its campaign stopped before measuring anything worth keeping and was
+replaced at once by one that ran whole; the text below gives each of the six its cause & 3 & 2 &
+13 &
+\raggedright never read\tabularnewline
+repeated & \raggedright a condition did not take: the load off its target in 55, the run's files
+unreadable in 15, and another check in six: the send rate once, the calibration in three and, in
+two void runs, a ping reading version~7 stopped judging & 28 & 20 & 28 & \raggedright not
+counted\tabularnewline
+stopped & \raggedright its got-it median moved more than the brake allows; never a message that
+arrived before it was sent & 4 & 8 & 4 & \raggedright not counted\tabularnewline
+unjudged & \raggedright it ended before the integrity rule read it & 9 & 6 & 2 & \raggedright not
+counted\tabularnewline
+flagged & \raggedright taken while the brake only recorded, and the brake would have stopped on
+it & 6 & 7 & 1 & \raggedright counted; read again without\tabularnewline
+paused & \raggedright a message in it arrived more than 150~ms late: the driver's disk stalled the
+receiving side, or \kafka{}'s broker stalled & 112 & 109 & 1 & \raggedright counted; read again
+without\tabularnewline
+far & \raggedright its delivery, got-it or held delay lies more than five robust deviations from
+its setup's other repeats, and past that quantity's floor & 27 & 70 & 23 & \raggedright
+counted\tabularnewline
+traced & \raggedright in A9's or M0's traced half, whose scheduling events were recorded: A9's
+tracer raised the rate it recorded, M0's recording moved the delivery & 159 & 59 & 126 &
+\raggedright counted; A9 is read on them\tabularnewline
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\paragraph{Out of every judge} Six runs are void: the queue once named a run's folder by its key
+alone and two calibrations wrote into one folder, and once a waiter opened a second calibration
+on top of a running one; the folders were set aside before anything read them. Eighteen runs
+belong to six false starts, each replaced at once by a campaign of the same design that ran whole.
+Three come from two campaigns running at once on the Arm pair, twice: two A4s started three
+minutes apart on 18~September, and an A8 started 30~s before its twin on 21~September. Every run
+of theirs judged while both ran measured a load of $99.7$ to $99.8\%$ against $75\%$, which is why
+the Arm false starts sit well above their blocks' other runs in Figure~\ref{fig:lawslice}; the
+twin went on alone, and its two runs from those minutes were repeated. The other three failed
+alone: an A8 on the Arm pair was placed from a calibration with no zero-delay got-it median, so
+every run failed its check; the first x86 pair's A3 of 21~September measured its load $7.7$ to
+$12.0$ points above target in each of its three runs; and an A2 session on the second x86
+pair was stopped by hand after two counted runs and followed five minutes later by a session on
+the same kernel that ran whole. The integrity rule repeated 76 runs
+whose conditions did not take, most often a load more than 3 points off its target, and 16 runs
+stopped their campaigns on the brake, every one of them on a got-it move. No run in the whole
+campaign had a message arrive before it was sent.
+
+\paragraph{Counted, with a warning} Fourteen runs taken while the brake only recorded would have
+stopped it; left out, they move no verdict. In 222 runs, 112 and 109 of them on the two x86
+pairs and one on Arm, a message arrived more than 150~ms late. On the receiving side the consumer
+and an unrelated process on the same machine stopped writing together while the processors
+waited on the disk; at \kafka{}'s broker, the broker could not reach its own controller. The
+receiving-side stalls keep the clock's hour and not each machine's boot, and never came on both
+x86 machines within 5~s of each other; their cause is not identified. Judged without those runs,
+every verdict stands but P3a on the first x86 pair, whose fitted interval ends $0.0026$~ms
+outside its bar with them and $0.0037$~ms inside without them: a verdict on its rule's edge, and
+the one on all the runs is the one reported. A further 120 runs lie far from their setup's
+other repeats in delivery, got-it or held delay, by the quality report's own rule, and they are
+kept, as the plan says. In A9's traced half the event tracer raised the rate it recorded,
+$1.36$ to $1.49$ times for \kafka{} and $3.69$ to $4.33$ times for \redis{}, and the gray rings
+of Figure~\ref{fig:lawa9} sit above the unringed runs for that reason; A9-2b's prediction and the
+rate it is held against come from the same recorded runs.
+
+\paragraph{Extremes that are not aberrations} Some unmarked points lie far from their neighbors
+because the law puts them there. The highest in Figure~\ref{fig:lawtick}, an A5 run at 4 CPUs on
+\redis{} with a rate of $0.640$, had a delivery of $0.916$~ms and a got-it delay of $0.941$~ms: its
+margin $T - g$ was below zero, so any wait at all turned a reading negative. Nothing in it went
+wrong, and it is counted and unmarked.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{docs/results/figures/law_slice.pdf}
+\caption[Every slice run, aberrant runs marked]{\textbf{Every slice run, aberrant runs marked.}
+Each run of A1 (first x86 pair) and A4 (Arm pair, Arm64 in the panels) at its median delivery and
+its negative-span rate, colored by the slice it ran at. Crosses: runs the integrity rule did not
+count. Plusses: runs of A4's two false starts. Rings: counted runs with a warning, each reason its
+own shape (Table~\ref{tab:lawmarks}).}
+\label{fig:lawslice}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{docs/results/figures/law_tick.pdf}
+\caption[Every tick, core-count and priority run, aberrant runs marked]{\textbf{Every tick,
+core-count and priority run, aberrant runs marked.} A2 on the first x86 pair (\kafka{}) and the
+second (\redis{}), colored by the tick, the bridge days on the stock kernel with the 1~ms builds;
+in~(c), the \kafka{} sessions the second pair ran on the 1~ms build before A2's \kafka{} half
+moved to the first pair, a replicate that no judgment pools with the first pair's runs; A5 on
+the second x86 pair, colored by the online CPUs; A7 on the first, ordinary against real-time
+priority. Marks as in Figure~\ref{fig:lawslice}.}
+\label{fig:lawtick}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{docs/results/figures/law_load.pdf}
+\caption[Every load and language run, aberrant runs marked]{\textbf{Every load and language run,
+aberrant runs marked.} A3's five campaigns, colored by load, and A8's two, colored by client and
+priority. Marks as in Figure~\ref{fig:lawslice}.}
+\label{fig:lawload}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{docs/results/figures/law_a9.pdf}
+\caption[Every A9 run, aberrant runs marked]{\textbf{Every A9 run, aberrant runs marked.} Both
+brokers on all three pairs, colored by load; gray rings mark the traced half, whose event
+tracer raised the rate it recorded. Other marks as in Figure~\ref{fig:lawslice}.}
+\label{fig:lawa9}
+\end{figure}
+
+\section{S37. What the runs showed after the verdicts}
+\label{sec:lawafter}
+
+Everything in this section was read after the verdicts were known, and none of it changes one.
+
+\paragraph{Why the delivery grows faster than the delay under bursts} In the replayed football
+match $46\%$ of messages arrive right behind another message of the same burst. \redis{} serves
+a waiting read only the first of them, so each follower waits out one or more further delayed
+round trips: its delivery grows by $k$ times the added delay, with $k = 2$ in batches of 200 and
+$k = r + 2$ for the $r$-th follower when each message is acknowledged on its own. Measured, the
+followers grew $2.02$ times in batches and $3.07$, $4.14$, $5.20$ and $6.27$ times one at a time.
+Moving each message of the zero-delay runs by its own $k$ predicts the median's slope with
+nothing fitted, for \kafka{} and for \redis{} one at a time and in batches: $1.000$, $1.148$ and
+$1.229$ against the measured $0.990$, $1.137$ and $1.233$ over all 30 runs of each. The slopes of
+S35 are the traced half's, the runs M0's reading is held to, and the recording raised \redis{}'s
+(Table~\ref{tab:lawmarks}). The median is a step, not a slope, and the replay M-H2 froze gives every burst's first message
+the same delivery, so it could not keep this cause.
+
+\paragraph{Why P6 over-predicts, in part} A6's histogram, which P6 reads, holds $33{,}122$ to
+$36{,}870$ waits a run over every \texttt{python3} thread, about as many as A9's records show
+begun by a wake-up alone, $31{,}159$ to $32{,}500$, over the same four pair and broker parts; the
+waits A9's records show begun by a preemption are not in it. P6 holds every thread's waits
+against each run's margin, where the rate follows the one thread that records the
+acknowledgment's timestamp, and why the other threads' waits outlast the margin more often than
+that thread's own is not read here.
+
+\paragraph{What the waits and the judges showed} The shape of the wait, the rest of another task's
+slice, is S16.10, and the two faults in the judges are S16.11. A9-2 and A9-2b differ by an exact
+product, the waits per millisecond times their mean excess over the margin times the ratio of the
+share of waits over it to the share of acknowledgments over it; each factor is below one, and
+their product is the six- to tenfold under-prediction.
+
+\paragraph{What stays open} P3a's small shift of the fall toward shorter deliveries at $88\%$ load,
+in every campaign; the size of P8's gap between the clients; \kafka{}'s free slope on the slice,
+$0.758$, below what either shape gives the same design; A9-1's share of time spent running; A9-2b
+on \kafka{} on the Arm and second x86 pairs, over-predicting at $75\%$ load; and what stalled the
+x86 disks on the hour.
 
 \bibliographystyle{IEEEtran}
 \bibliography{manuscript_references}

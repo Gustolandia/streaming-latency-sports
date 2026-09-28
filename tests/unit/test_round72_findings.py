@@ -255,6 +255,9 @@ class TestRecommendedItems:
         # satisfiable, so neither had to be overridden: the pointer stays and the sentence
         # that restated Section III-A goes. A requirement from an earlier report outranks a
         # later report's style preference (standard A1w), and here it did not have to.
+        # Since 28 Sep the pointer lives in the entry's unprinted `annote`: an outside
+        # editor's reading ruled that a printed reference carries a citation, not the
+        # bibliography's own history (test_reference_notes.py).
         assert "S1.9 records" in entry
         assert "Section~III-A" not in entry, (
             "the note restated the body; Section III-A already says which broker gets the "

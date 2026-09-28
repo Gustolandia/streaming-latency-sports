@@ -1,7 +1,7 @@
 """Tests for scripts/clocksource_bound.py - target >=95% branch coverage.
 
 The script turns "we never recorded the clocksource" into "here is the set it can have been,
-and every member of that set carries the guarantee the reviewer asked about". That is a
+and every member of that set carries the guarantee that question asked about". That is a
 load-bearing inference, so the tests pin both the arithmetic and the direction of each
 exclusion: an exclusion that fires for the wrong reason would reach the same conclusion by
 luck, and luck does not survive a re-run on different hardware.

@@ -487,7 +487,9 @@ class TestTheRenderedPagesCarryIt:
     def test_the_article(self):
         text = re.sub(r"(\w)- (\w)", r"\1\2", _rendered("paper"))
         assert re.search(r"treating\s*the\s*two\s*as\s*independent", text)
-        assert "Open Compute Project" in text and "DTrace breakdown" in text
+        # "DTrace breakdown" was villain2012probing's note, commentary rather than citation data;
+        # since 28 Sep it is kept unprinted (test_reference_notes.py).
+        assert "Open Compute Project" in text and "DTrace breakdown" not in text
 
     def test_the_supplement(self):
         text = re.sub(r"(\w)- (\w)", r"\1\2", _rendered("supplement"))

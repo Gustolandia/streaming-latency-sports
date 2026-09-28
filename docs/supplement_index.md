@@ -310,10 +310,10 @@ appearing in this table.
 | `measurement_model` | main text, Fig. 2 (panel (b) split off round 52) |
 | `delta_schematic` | supplement, S9 (was Fig. 2(b); the one main-text drawing that was not a measurement, and the measured version is Fig. 9). Redrawn 28 Sep 2026: the waiting state is a shelf to the slice and a tick, the rest of a slice, where it had been a lobe at the slice (S16.10) |
 | `wait_shape` | supplement, S16.10 (added 28 Sep 2026: each acknowledgment's wait against the whole-slice and rest-of-a-slice shapes, and every thread's waits by what began them; `scripts/make_wait_shape_figure.py`) |
-| `law_slice` | supplement, S36 (added 28 Sep 2026, Part V: every run of A1 and A4 with every aberrant run marked; `scripts/make_law_figures.py`, marks by `scripts/law_runs.py`) |
-| `law_tick` | supplement, S36 (added 28 Sep 2026, Part V: A2, A5 and A7, marked the same way) |
-| `law_load` | supplement, S36 (added 28 Sep 2026, Part V: A3 and A8, marked the same way) |
-| `law_a9` | supplement, S36 (added 28 Sep 2026, Part V: A9, with its traced half ringed) |
+| `law_slice` | supplement, S36 (added 28 Sep 2026, Part V: every run of L1 and L4 (the plan's A1 and A4) with every aberrant run marked; `scripts/make_law_figures.py`, marks by `scripts/law_runs.py`) |
+| `law_tick` | supplement, S36 (added 28 Sep 2026, Part V: L2, L5 and L7, marked the same way) |
+| `law_load` | supplement, S36 (added 28 Sep 2026, Part V: L3 and L8, marked the same way) |
+| `law_a9` | supplement, S36 (added 28 Sep 2026, Part V: L9, with its traced half ringed) |
 | `deletion` | main text, Fig. 4 (was Fig. 3 until round 61 put failure mode 1 before failure mode 2, at the second author's request) |
 | `quantum_geometry` | supplement, S17 (moved round 40: a constructed illustration of the retention law, not a measurement, placed beside the 1970 counter note that carries the same identity) (added round 28: the geometry behind the deletion law) |
 | `grid_membership` | supplement, S11 (moved round 59: the second author asked for the grid refinement to become the explanation of the deletion rather than a contribution, so the figure went beside the per-configuration table it summarizes) |

@@ -118,9 +118,11 @@ class TestR2EveryPathNamedInProseResolves:
     def test_the_distributed_record_names_what_the_artefact_holds(self, supplement):
         i = supplement.index("S24.1. OpenMessaging distributed mode")
         section = " ".join(supplement[i:i + 1400].split())
+        # Since 28 Sep the three long paths are set with \brk{} so they can break across a
+        # line, which takes the path unescaped; either spelling names the file.
         for path in ("omb\\_distributed\\_result.csv", "dist\\_load0/", "dist\\_load50/",
                      "omb\\_worker\\_client.log", "omb\\_worker\\_driver.log"):
-            assert path in section, path
+            assert path in section or path.replace("\\_", "_") in section, path
         for p in ("docs/results/external/omb_distributed_result.csv",
                   "docs/results/external/dist_load0",
                   "docs/results/external/dist_load50",

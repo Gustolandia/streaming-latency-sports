@@ -14,10 +14,13 @@ from its fellows', or its recording disturbed it -- is ringed, one shape per rea
 are read by law_runs.py from the repository's own files, never by eye.
 
 Figures (stems):
-  law_slice     A1 on the first x86 pair and A4 on the Arm pair: the slice, both backends
-  law_tick      A2 (the tick), A5 (the core count) and A7 (go-first priority)
-  law_load      A3 (load), five campaigns, and A8 (the client's language), two pairs
-  law_a9        A9, three pairs, both backends, 75 and 88% load
+  law_slice     L1 on the first x86 pair and L4 on the Arm pair: the slice, both backends
+  law_tick      L2 (the tick), L5 (the core count) and L7 (go-first priority)
+  law_load      L3 (load), five campaigns, and L8 (the client's language), two pairs
+  law_a9        L9, three pairs, both backends, 75 and 88% load
+
+Panel titles use the supplement's L-labels. The registry, the judged records and the plan name
+the same blocks A1 to A9, which is what each panel's `block` matches on.
 
 CLI:
     python scripts/make_law_figures.py --out docs/results/figures
@@ -50,7 +53,7 @@ RINGS = {"paused": ("o", 90, "#d62728"), "flagged": ("D", 80, "#000000"),
 RING_LABELS = {"paused": "ringed red: a pause held a message over 150 ms",
                "flagged": "diamond: the got-it brake would have stopped on it",
                "far": "square: delivery, got-it or held delay far from its fellows'",
-               "traced": "ringed gray: A9's traced half"}
+               "traced": "ringed gray: L9's traced half"}
 
 
 def variable(run, by):
@@ -143,54 +146,54 @@ FIGURES = {
     "law_slice": {"rows": 2, "cols": 2, "height": 6.4, "rings": ("paused", "flagged", "far"),
                   "panels": [
                       {"block": "A1", "pair": "matched", "backend": "kafka", "by": "slice",
-                       "title": "(a) A1, first x86, Kafka"},
+                       "title": "(a) L1, first x86, Kafka"},
                       {"block": "A1", "pair": "matched", "backend": "redis", "by": "slice",
-                       "title": "(b) A1, first x86, Redis"},
+                       "title": "(b) L1, first x86, Redis"},
                       {"block": "A4", "pair": "arm", "backend": "kafka", "by": "slice",
-                       "title": "(c) A4, Arm64, Kafka"},
+                       "title": "(c) L4, Arm64, Kafka"},
                       {"block": "A4", "pair": "arm", "backend": "redis", "by": "slice",
-                       "title": "(d) A4, Arm64, Redis"}]},
+                       "title": "(d) L4, Arm64, Redis"}]},
     "law_tick": {"rows": 4, "cols": 2, "height": 8.6, "rings": ("paused", "flagged", "far"),
                  "panels": [
                      {"block": "A2", "pair": "matched", "backend": "kafka", "by": "tick",
-                      "title": "(a) A2, first x86, Kafka"},
+                      "title": "(a) L2, first x86, Kafka"},
                      {"block": "A2", "pair": "matched-b", "backend": "redis", "by": "tick",
-                      "title": "(b) A2, second x86, Redis"},
+                      "title": "(b) L2, second x86, Redis"},
                      {"block": "A2", "pair": "matched-b", "backend": "kafka", "by": "tick",
-                      "title": "(c) A2, second x86, Kafka, a replicate"},
+                      "title": "(c) L2, second x86, Kafka, a replicate"},
                      {"block": "A5", "pair": "matched-b", "backend": "kafka", "by": "cpus",
-                      "title": "(d) A5, second x86, Kafka"},
+                      "title": "(d) L5, second x86, Kafka"},
                      {"block": "A5", "pair": "matched-b", "backend": "redis", "by": "cpus",
-                      "title": "(e) A5, second x86, Redis"},
+                      "title": "(e) L5, second x86, Redis"},
                      {"block": "A7", "pair": "matched", "backend": "kafka", "by": "priority",
-                      "title": "(f) A7, first x86, Kafka"},
+                      "title": "(f) L7, first x86, Kafka"},
                      {"block": "A7", "pair": "matched", "backend": "redis", "by": "priority",
-                      "title": "(g) A7, first x86, Redis"}]},
+                      "title": "(g) L7, first x86, Redis"}]},
     "law_load": {"rows": 4, "cols": 2, "height": 8.6, "rings": ("paused", "flagged", "far"),
                  "panels": [
                      {"block": "A3", "pair": "matched", "backend": "kafka", "by": "load",
                       "folders": ("a3_20260919T171733Z",),
-                      "title": "(a) A3, first x86, Kafka, 19 Sep"},
+                      "title": "(a) L3, first x86, Kafka, 19 Sep"},
                      {"block": "A3", "pair": "matched", "backend": "kafka", "by": "load",
                       "folders": ("a3_20260921T030021Z", "a3_20260921T032730Z"),
-                      "title": "(b) A3, first x86, Kafka, 21 Sep"},
+                      "title": "(b) L3, first x86, Kafka, 21 Sep"},
                      {"block": "A3", "pair": "matched-b", "backend": "kafka", "by": "load",
                       "folders": ("a3_20260926T033945Z",),
-                      "title": "(c) A3, second x86, Kafka, 26 Sep"},
+                      "title": "(c) L3, second x86, Kafka, 26 Sep"},
                      {"block": "A3", "pair": "matched-b", "backend": "kafka", "by": "load",
                       "folders": ("a3_20260926T185701Z",),
-                      "title": "(d) A3, second x86, Kafka, its retry"},
+                      "title": "(d) L3, second x86, Kafka, its retry"},
                      {"block": "A3", "pair": "arm", "backend": "kafka", "by": "load",
-                      "title": "(e) A3, Arm64, Kafka"},
+                      "title": "(e) L3, Arm64, Kafka"},
                      {"block": "A8", "pair": "matched", "backend": "kafka", "by": "client",
-                      "title": "(f) A8, first x86, Kafka"},
+                      "title": "(f) L8, first x86, Kafka"},
                      {"block": "A8", "pair": "arm", "backend": "kafka", "by": "client",
-                      "title": "(g) A8, Arm64, Kafka"}]},
+                      "title": "(g) L8, Arm64, Kafka"}]},
     "law_a9": {"rows": 3, "cols": 2, "height": 8.6,
                "rings": ("paused", "flagged", "far", "traced"),
                "panels": [
                    {"block": "A9", "pair": pair, "backend": backend, "by": "load",
-                    "title": "(%s) A9, %s, %s" % (letter, PAIR_LABELS[pair], backend.capitalize())}
+                    "title": "(%s) L9, %s, %s" % (letter, PAIR_LABELS[pair], backend.capitalize())}
                    for letter, (pair, backend) in zip("abcdef", [
                        ("matched", "kafka"), ("matched", "redis"), ("matched-b", "kafka"),
                        ("matched-b", "redis"), ("arm", "kafka"), ("arm", "redis")])]},

@@ -1,4 +1,5 @@
-"""The paper and its supplement, built for the gates that read what a build leaves behind.
+"""The paper, its supplement and the postmortem, built for the gates that read what a build
+leaves behind.
 
 A build leaves .aux, .bbl, .blg and .log files beside each PDF, and git ignores them. A dozen
 gates read them: whether every citation resolved, what BibTeX warned about, whether the
@@ -8,8 +9,8 @@ ran only on the author's machine, after a build by hand, against whatever build 
 
 So the test session builds the paper itself whenever those files are missing or older than
 anything they are built from. It builds in a scratch folder, from the sources as they stand, by
-the README's own sequence: pdflatex, bibtex, pdflatex twice, the paper before the supplement,
-whose references into the main text are read from paper.aux. Only the files a build leaves
+the README's own sequence: pdflatex, bibtex, pdflatex twice, the paper before the supplement
+and the postmortem, whose references into the main text are read from paper.aux. Only the files a build leaves
 beside a PDF are brought back. The committed PDFs are never touched: they are what a reader
 gets, and what the rendered-page gates read.
 
@@ -22,12 +23,12 @@ import tempfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-DOCUMENTS = ("paper", "supplement")
+DOCUMENTS = ("paper", "supplement", "postmortem")
 #: What a build leaves beside a PDF. The first four must exist; the rest a document may lack.
 NEEDED = (".aux", ".bbl", ".blg", ".log")
 LEFT = NEEDED + (".out", ".toc", ".lof", ".lot")
 #: What the two documents are built from.
-SOURCES = ("paper.tex", "supplement.tex", "manuscript_references.bib")
+SOURCES = ("paper.tex", "supplement.tex", "postmortem.tex", "manuscript_references.bib")
 SOURCE_FOLDERS = (("docs/generated", "*.tex"), ("docs/results/figures", "*.pdf"))
 
 #: Why the build failed, if it did; the gates that need it say so when they fail.
@@ -102,8 +103,8 @@ def ensure_built():
     global FAILURE
     try:
         if not is_current():
-            sys.stderr.write("building the paper and the supplement for the gates that read "
-                             "the build (tests/paper_build.py)\n")
+            sys.stderr.write("building the paper, the supplement and the postmortem for the "
+                             "gates that read the build (tests/paper_build.py)\n")
             build()
     except (PaperBuildError, OSError, subprocess.TimeoutExpired) as exc:
         FAILURE = str(exc)

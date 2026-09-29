@@ -37,7 +37,7 @@ def paper():
 
 @pytest.fixture(scope="module")
 def supplement():
-    return (REPO / "supplement.tex").read_text(encoding="utf-8")
+    return (REPO / "postmortem.tex").read_text(encoding="utf-8")
 
 
 def _rendered(name):
@@ -199,7 +199,7 @@ class TestW1TheWordIsOnTheReviewList:
     def test_it_leaves_the_separate_route_sense_alone(self, paper, supplement):
         """"Arrived at independently" is a fact about provenance, not about correlation."""
         import apply_vocabulary as av
-        for name, text in (("paper.tex", paper), ("supplement.tex", supplement)):
+        for name, text in (("paper.tex", paper), ("postmortem.tex", supplement)):
             _, _, review = av.rewrite(text, name, True, av.load_adjudications(), set())
             assert not review, "%s: %s" % (name, review)
 
@@ -215,8 +215,10 @@ class TestW1TheWordIsOnTheReviewList:
         raw = json.loads((REPO / "docs" / "vocabulary_adjudications.json")
                          .read_text(encoding="utf-8"))
         ours = [j for j in raw["judgments"] if j["key"] == "independence"]
-        assert len(ours) == 1
-        assert [j["file"] for j in ours] == ["supplement.tex"]
+        # 29 Sep: the journal supplement's S3.4 contrasts clustered corruption with events
+        # corrupted "independently", and carries its own judgment for it.
+        assert len(ours) == 2
+        assert sorted(j["file"] for j in ours) == ["postmortem.tex", "supplement.tex"]
         flat = " ".join(paper.split())
         for gone in ("our one-clock rule, arrived at", "with one cause are not independent",
                      "not independent kernel granularity"):
@@ -226,7 +228,7 @@ class TestW1TheWordIsOnTheReviewList:
 
     def test_the_check_still_passes_as_a_whole(self):
         import apply_vocabulary as av
-        assert av.main(["--check", "paper.tex", "supplement.tex"]) == 0
+        assert av.main(["--check", "paper.tex", "supplement.tex", "postmortem.tex"]) == 0
 
 
 class TestW3TheAuditedLinesAreChecked:

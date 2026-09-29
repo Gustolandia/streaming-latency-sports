@@ -27,7 +27,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).parent.parent.parent
-DOCS = ("paper.tex", "supplement.tex")
+DOCS = ("paper.tex", "supplement.tex", "postmortem.tex")
 
 #: Words too common to make a shingle meaningful on their own.
 _STOP = frozenset(("the", "a", "an", "of", "to", "in", "is", "it", "and", "that", "this",

@@ -16,25 +16,53 @@
   ],
   "judgments": [
     {
-      "file": "supplement.tex",
+      "file": "postmortem.tex",
       "key": "guard",
       "scope": "file",
       "requires": "the audit registry (Section~S25) uses \\emph{guard} for a tool's",
       "reason": "The supplement defines the word in its 'On the vocabulary' block, as the audit registry's term for a tool's own conditional of the admission-condition kind, 'where the word names a code path rather than the benchmark's'. That is exactly what the co-author's pass asked for -- define once, then use -- and the fifteen uses are all the registry sense. The paper, which gives no such definition, uses 'admission condition' throughout and contains no 'guard' at all."
     },
     {
-      "file": "supplement.tex",
+      "file": "postmortem.tex",
       "key": "instrument",
       "scope": "line",
       "anchor": "and the instrument is not among them",
       "reason": "The sentence closes a survey of twenty-seven benchmark efforts by naming what the survey judged overlooked. The measuring instrument as a category is precisely the subject -- no substitution of 'timestamp resolution' or 'the benchmark tool' preserves it, because the point is that the survey names no part of the instrument at all."
     },
     {
-      "file": "supplement.tex",
+      "file": "postmortem.tex",
       "key": "independence",
       "scope": "line",
       "anchor": "not of independent quantization",
       "reason": "The supplement's statement of the same negated claim, distinguishing a shared scheduling delay from per-event quantization. The contrast is the point of the sentence and the word carries it."
+    },
+    {
+      "file": "supplement.tex",
+      "key": "guard",
+      "scope": "file",
+      "requires": "We call a tool's own conditional on the sign of an interval its \\emph{guard}",
+      "reason": "The journal supplement defines the word in S5 exactly as the postmortem does, as the tool registry's term for a tool's own conditional on the sign of an interval, and every use is in the registry's paragraphs. The positivity filter keeps its own name for the benchmark's rule."
+    },
+    {
+      "file": "supplement.tex",
+      "key": "flight",
+      "scope": "line",
+      "anchor": "At one request in flight",
+      "reason": "Kafka's in-flight request count, the name of the client setting the sentence explains; not the retired timing sense of 'flight'."
+    },
+    {
+      "file": "supplement.tex",
+      "key": "flight",
+      "scope": "line",
+      "anchor": "and requires one request in flight",
+      "reason": "The same client setting: inline timestamping needs one request in flight."
+    },
+    {
+      "file": "supplement.tex",
+      "key": "independence",
+      "scope": "line",
+      "anchor": "timestamps would corrupt events independently",
+      "reason": "The contrast is the point: coarse kernel timestamps would corrupt each event on its own, which the runs test rules out because corruption clusters."
     }
   ]
 }

@@ -1,9 +1,8 @@
-"""Pointers between the two documents, which LaTeX cannot check and nobody re-reads.
+"""Pointers between the documents, which LaTeX cannot check and nobody re-reads.
 
-The manuscript and the supplement are separate compilations, so `\\ref` cannot reach across
-them. Every pointer in one document at the other is therefore a *hand-typed number*, outside
-every mechanism this project uses to stop numbers drifting. There are more than thirty of
-them.
+The manuscript, the supplement and the postmortem are separate compilations, so `\\ref` cannot
+reach across them unless `xr` carries it. Every pointer in one document at another is otherwise
+a *hand-typed number*, outside every mechanism this project uses to stop numbers drifting.
 
 Round 5 asked for twelve descriptive pointers ("the main text's attribution section") to be
 replaced by numbers, and for five unresolvable `\\ref` calls to go. That fix ran a
@@ -20,6 +19,11 @@ These are all one defect class: a cross-document pointer that no longer denotes 
 The checks below read `paper.aux`, which holds the real numbers LaTeX assigned, and hold
 every pointer against it. A pointer that resolves to nothing now fails here rather than in
 a referee's browser tab.
+
+On 29 September 2026 the supplement became two documents: the journal supplement
+(`supplement.tex`, organized by the paper's sections, what the paper points at) and the
+postmortem (`postmortem.tex`, the old supplement whole, archived and not submitted). Both reach
+into the paper through `xr`, so every rule here that held for the one now holds for both.
 """
 from pathlib import Path
 import re
@@ -29,19 +33,34 @@ import pytest
 REPO = Path(__file__).parent.parent.parent
 PAPER = REPO / "paper.tex"
 SUPP = REPO / "supplement.tex"
+POST = REPO / "postmortem.tex"
 AUX = REPO / "paper.aux"
+COMPANIONS = ("supplement", "postmortem")
+
+
+def _read(path):
+    assert path.exists(), "%s is not present" % path.name
+    return path.read_text(encoding="utf-8")
 
 
 @pytest.fixture(scope="module")
 def paper():
-    return PAPER.read_text(encoding="utf-8")
+    return _read(PAPER)
 
 
 @pytest.fixture(scope="module")
 def supp():
-    if not SUPP.exists():
-        pytest.skip("supplement not present")
-    return SUPP.read_text(encoding="utf-8")
+    return _read(SUPP)
+
+
+@pytest.fixture(scope="module")
+def post():
+    return _read(POST)
+
+
+@pytest.fixture(scope="module")
+def docs(paper, supp, post):
+    return {"paper": paper, "supplement": supp, "postmortem": post}
 
 
 @pytest.fixture(scope="module")
@@ -51,8 +70,7 @@ def aux():
     `\\newlabel{sec:gate}{{\\mbox {III-B}}{3}{...}}` -- the number is the first group, with
     the \\mbox wrapper IEEEtran adds to subsection numbers stripped off.
     """
-    if not AUX.exists():
-        pytest.skip("paper.aux not present; build the paper first")
+    assert AUX.exists(), "paper.aux not present; tests/paper_build.py builds it"
     out = {}
     for m in re.finditer(r"\\newlabel\{([^}]*)\}\{\{(.*?)\}\{\d+\}", AUX.read_text(encoding="utf-8")):
         label, printed = m.group(1), m.group(2)
@@ -70,9 +88,9 @@ class TestNoStrandedPointer:
     STRANDED = re.compile(
         r"(Equation|Section|Table|Figure|Fig\.|Supplement)~(?!\\ref|\\[a-zA-Z]|[0-9IVXS])")
 
-    @pytest.mark.parametrize("name", ["paper", "supplement"])
-    def test_no_pointer_word_lacks_its_number(self, name, paper, supp):
-        text = paper if name == "paper" else supp
+    @pytest.mark.parametrize("name", ("paper",) + COMPANIONS)
+    def test_no_pointer_word_lacks_its_number(self, name, docs):
+        text = docs[name]
         hits = []
         for m in self.STRANDED.finditer(text):
             line = text.count("\n", 0, m.start()) + 1
@@ -80,41 +98,46 @@ class TestNoStrandedPointer:
         assert not hits, "pointer word with nothing to point at:\n  " + "\n  ".join(hits)
 
 
-class TestTheSupplementNamesSectionsRatherThanNumberingThem:
-    """Main-text section numbers live in one macro block, never inline in the prose.
+class TestTheCompanionsNameSectionsRatherThanNumberingThem:
+    """Main-text section numbers are never written inline in the prose.
 
     The check below this one asks whether a pointer resolves. That catches the pointer that
     breaks loudly and misses the one that stays valid while changing meaning: folding the
     broker results into the Discussion left four `Section~VI` pointers resolving perfectly to
     a section that was no longer the one they meant. No gate can see that, so the numbers stop
-    being written by hand.
+    being written by hand. The postmortem does it through one macro block in its preamble; the
+    journal supplement, written after xr was in place, through `\\ref{P-sec:...}` directly.
     """
 
-    MACRO_PREFIX = "main"
-
-    def test_no_section_number_is_written_inline(self):
-        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
-        body = supp.split(r"\begin{document}")[-1]
+    @pytest.mark.parametrize("name", COMPANIONS)
+    def test_no_section_number_is_written_inline(self, name, docs):
+        body = docs[name].split(r"\begin{document}")[-1]
         bad = re.findall(r"Section~[IVX]+(?:-[A-D])?(?![a-zA-Z])", body)
         assert not bad, (
-            "these point at the main text by number; use the macro block in the preamble so a "
-            "renumbering is one edit: %s" % sorted(set(bad)))
+            "these point at the main text by number; use \\ref{P-sec:...} or the macro block "
+            "so a renumbering is no edit at all: %s" % sorted(set(bad)))
 
-    def test_every_macro_the_prose_uses_is_defined(self):
-        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
-        defined = set(re.findall(r"\\newcommand\{\\(main[A-Za-z]+)\}", supp))
-        used = set(re.findall(r"Section~\\(main[A-Za-z]+)", supp))
-        assert used, "the supplement must point at the main text somewhere"
+    def test_the_supplement_reaches_the_papers_sections_by_reference(self, supp):
+        body = supp.split(r"\begin{document}")[-1]
+        assert re.findall(r"\\ref\{P-sec:[^}]+\}", body), \
+            "the supplement must point at the main text's sections somewhere"
+        assert not re.search(r"\\newcommand\{\\main[A-Za-z]+\}", supp), (
+            "the supplement carries a macro block of main-text sections; it reaches them with "
+            "\\ref{P-sec:...}, so a block would only licence names nothing uses")
+
+    def test_every_macro_the_prose_uses_is_defined(self, post):
+        defined = set(re.findall(r"\\newcommand\{\\(main[A-Za-z]+)\}", post))
+        used = set(re.findall(r"Section~\\(main[A-Za-z]+)", post))
+        assert used, "the postmortem must point at the main text somewhere"
         assert used <= defined, "undefined section macros: %s" % sorted(used - defined)
 
-    def test_every_macro_defined_is_used(self):
+    def test_every_macro_defined_is_used(self, post):
         """A stale entry would quietly licence a number nothing checks."""
-        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
-        defined = set(re.findall(r"\\newcommand\{\\(main[A-Za-z]+)\}", supp))
-        used = set(re.findall(r"Section~\\(main[A-Za-z]+)", supp))
+        defined = set(re.findall(r"\\newcommand\{\\(main[A-Za-z]+)\}", post))
+        used = set(re.findall(r"Section~\\(main[A-Za-z]+)", post))
         assert defined <= used, "defined but never used: %s" % sorted(defined - used)
 
-    def test_no_two_macros_point_at_the_same_section(self):
+    def test_no_two_macros_point_at_the_same_section(self, post):
         """Two names for one section is one name too many.
 
         Round 59 deleted Section V-C and repointed `\\mainGridInference` at `sec:extphase`,
@@ -122,8 +145,7 @@ class TestTheSupplementNamesSectionsRatherThanNumberingThem:
         check passed -- while a reader following the two names had no way to know they were
         being sent to the same place. Round 58's referee found it by reading the preamble.
         """
-        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
-        pairs = re.findall(r"\\newcommand\{\\(main[A-Za-z]+)\}\{\\ref\{([^}]+)\}\}", supp)
+        pairs = re.findall(r"\\newcommand\{\\(main[A-Za-z]+)\}\{\\ref\{([^}]+)\}\}", post)
         seen = {}
         clashes = []
         for name, label in pairs:
@@ -132,30 +154,18 @@ class TestTheSupplementNamesSectionsRatherThanNumberingThem:
             seen[label] = name
         assert not clashes, "; ".join(clashes)
 
-    def test_the_macros_read_the_paper_instead_of_repeating_it(self):
+    def test_the_macros_read_the_paper_instead_of_repeating_it(self, post, paper):
         """Round 57: the values are `\\ref`s now, and that is strictly better than numbers.
 
-        This test used to assert the opposite -- that each macro held a literal like "IV-E" --
-        with the reason "the values are still numbers, so the resolve-check below still means
-        something". The resolve-check means more now, not less: the supplement loads `xr` and
-        pulls `paper.aux`, so a macro no longer *repeats* the paper's numbering, it *reads*
-        it, and a renumbering carries without an edit.
-
-        The class docstring above says why that matters, and it was already half the argument:
-        a pointer that stays valid while changing meaning is invisible to every gate. Twenty
-        typed constants were the remaining half. They were all correct when round 57 checked
-        them, which is the point -- nothing would have said otherwise, and round 56 had just
-        rewritten one section and compressed another.
-
-        What is pinned instead: every macro is a reference, and every label it names is a
-        label the paper actually defines.
+        The postmortem loads `xr` and pulls `paper.aux`, so a macro no longer *repeats* the
+        paper's numbering, it *reads* it, and a renumbering carries without an edit. What is
+        pinned: every macro is a reference, and every label it names is a label the paper
+        actually defines.
         """
-        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
-        paper = (REPO / "paper.tex").read_text(encoding="utf-8")
         # The body is `\ref{...}`, so it carries a nested brace pair: matching to the first
         # `}` would capture `\ref{sec:audit` and report every macro as malformed.
         values = dict(re.findall(r"\\newcommand\{\\(main[A-Za-z]+)\}\{((?:[^{}]|\{[^{}]*\})*)\}",
-                                 supp))
+                                 post))
         assert values, "the macro block must exist"
         labels = set(re.findall(r"\\label\{([^}]+)\}", paper))
         for name, body in sorted(values.items()):
@@ -163,8 +173,7 @@ class TestTheSupplementNamesSectionsRatherThanNumberingThem:
             assert m, ("%s holds %r; main-text pointers resolve through xr rather than "
                        "repeating a number by hand" % (name, body))
             # Round 68, W4: xr imports under a `P-` prefix so the 26 citation keys the two
-            # documents share stop being reported as multiply defined on every build. The
-            # prefix is how the label travels; the label is what has to exist.
+            # documents share stop being reported as multiply defined on every build.
             assert m.group(1).startswith("P-"), (
                 "%s points at %r without the xr prefix, so it will resolve to nothing"
                 % (name, m.group(1)))
@@ -172,61 +181,54 @@ class TestTheSupplementNamesSectionsRatherThanNumberingThem:
             assert target in labels, \
                 "%s points at %r, which paper.tex does not define" % (name, target)
 
-    def test_the_resolved_pointers_are_still_section_numbers(self, aux):
-        """What the literals used to guarantee, now checked where the reader meets it.
-
-        `paper.aux` is the source the `\\ref`s read, so the values the supplement prints are
-        exactly the ones this asserts. If a label ever moves onto a `\\paragraph` the number
-        stops looking like a section number and this fails, which is the failure the old
-        literal check could not have seen at all.
-        """
-        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+    def test_the_resolved_pointers_are_still_section_numbers(self, post, aux):
+        """What the literals used to guarantee, now checked where the reader meets it."""
         values = dict(re.findall(r"\\newcommand\{\\(main[A-Za-z]+)\}\{\\ref\{([^}]+)\}\}",
-                                 supp))
+                                 post))
         assert values, "the macro block must resolve through \\ref"
         for name, label in sorted(values.items()):
-            #: The supplement reads paper.aux through \externaldocument[P-]{paper}, so its
-            #: references carry the P- prefix and paper.aux's own labels do not. Looked up with
-            #: the prefix, no label was ever found: this skipped on every run, as "a stale aux",
-            #: until nothing in the suite was allowed to skip (27 September).
+            #: The postmortem reads paper.aux through \externaldocument[P-]{paper}, so its
+            #: references carry the P- prefix and paper.aux's own labels do not.
             target = label[len("P-"):] if label.startswith("P-") else label
             number = aux.get(target)
             assert number is not None, "%s points at %r, which paper.aux does not define" % (
                 name, target)
-            # v4 split Experimental Setup six ways (IV-A..IV-F), so the letter runs to F.
             assert re.match(r"^[IVX]+(?:-[A-F])?$", number), \
                 "%s resolves to %r, which is not a section number" % (name, number)
 
 
-class TestSupplementPointsAtRealSections:
+class TestCompanionsPointAtRealSections:
     """Every "Section~X of the main text" must be a section the main text has."""
 
     POINTER = re.compile(
         r"(?:main text's Section~|Section~)([IVX]+(?:-[A-D])?|[0-9]+(?:\.[0-9]+)?)"
         r"(?=[^a-zA-Z]|$)")
 
-    def test_every_pointer_resolves(self, supp, aux):
+    @pytest.mark.parametrize("name", COMPANIONS)
+    def test_every_pointer_resolves(self, name, docs, aux):
+        text = docs[name]
         real = set(aux.values())
         bad = []
-        for m in self.POINTER.finditer(supp):
+        for m in self.POINTER.finditer(text):
             num = m.group(1)
             if num not in real:
-                line = supp.count("\n", 0, m.start()) + 1
-                bad.append("supplement:%d  Section~%s (the paper has no such number)"
-                           % (line, num))
+                line = text.count("\n", 0, m.start()) + 1
+                bad.append("%s:%d  Section~%s (the paper has no such number)" % (name, line, num))
         assert not bad, "\n  " + "\n  ".join(bad)
 
-    def test_pointers_use_roman_numerals(self, supp):
+    @pytest.mark.parametrize("name", COMPANIONS)
+    def test_pointers_use_roman_numerals(self, name, docs):
         """The paper numbers sections in Roman. An arabic pointer is a stale one.
 
         "the main text's Section~6.2" survived the round-5 sweep because the sweep looked for
         descriptive names, and this one was already a number -- just a number from a
         structure two restructures old.
         """
+        text = docs[name]
         arabic = []
-        for m in re.finditer(r"(?:main text's )?Section~([0-9]+(?:\.[0-9]+)?)", supp):
-            line = supp.count("\n", 0, m.start()) + 1
-            arabic.append("supplement:%d  Section~%s" % (line, m.group(1)))
+        for m in re.finditer(r"(?:main text's )?Section~([0-9]+(?:\.[0-9]+)?)", text):
+            line = text.count("\n", 0, m.start()) + 1
+            arabic.append("%s:%d  Section~%s" % (name, line, m.group(1)))
         assert not arabic, "arabic section pointers:\n  " + "\n  ".join(arabic)
 
 
@@ -234,7 +236,8 @@ class TestPaperPointsAtRealSupplementSections:
     """Every "Supplement~SNN" must be a section the supplement has.
 
     The reverse direction of the same defect. Round 3 raised it for the main text and it was
-    fixed by hand; nothing has held it since.
+    fixed by hand; nothing has held it since. The paper points at the journal supplement only;
+    tests/unit/test_journal_supplement.py holds the subsection numbers and the budget.
     """
 
     def _supplement_sections(self, supp):
@@ -249,122 +252,107 @@ class TestPaperPointsAtRealSupplementSections:
 
 
 class TestEveryTargetedRelocationIsReachable:
-    """A section created by moving text out of the paper must be pointed at by the paper.
+    """A section created by moving text out of the paper must be reachable from the paper.
 
     Round 20 moved three passages into S53, S54 and S55 and left two of the three pointers on
-    the sections the content had left: Section IV-C went on citing S46 for a construction that
-    is now in S54, and Section IV-D went on citing S43 for a driver explanation that is now in
-    S53. Both pointers resolved, because both targets exist, so the resolve-check below saw
-    nothing wrong. What no check asked was whether the *new* sections could be reached at all.
+    the sections the content had left, so the new sections could not be reached at all. The
+    targeted relocations were eight postmortem sections, each a passage lifted out of a
+    paragraph that stayed behind:
 
-    The rule is deliberately not "every section labelled *moved from the main text* must be
-    pointed at". Twenty of those are bulk moves from the TPDS-era restructure, when a
-    fifty-eight-page draft became sixteen pages and the supplement absorbed whole sections at
-    once; the supplement index documents them and the paper was never expected to name each.
-    Everything from S45 onward is different in kind: each is a single passage lifted out of a
-    paragraph that stayed behind, and the paragraph that stayed behind is the only route to
-    it.
+      S7, S11, S12, S13, S14, S17, S24, S33 (postmortem numbering, v5 of 10 Sep)
+
+    Until 29 September the paper pointed at each directly. Now it points at the journal
+    supplement, which carries each one's content in a section the paper points at, and says
+    where the full passage is. So the route is: the paper, a journal-supplement section, and
+    either a "postmortem, S<n>" pointer or the concordance row in docs/supplement_index.md
+    that names the postmortem section as that journal-supplement section's source.
     """
 
-    #: The targeted relocations. Until v4 these were "everything from S45 onward"; the v4
-    #: recast (2026-09-08) renumbered them once, and the v5 reorganization (2026-09-10)
-    #: renumbered them again while merging sixteen stubs into their neighbours -- so the
-    #: eleven v4 numbers land on eight sections now. Mapped through the v5 concordance in
-    #: docs/supplement_index.md rather than by hand:
-    #:
-    #:   S23->S11  S24->S12  S25->S13  S26->S7   S35->S24  S36->S24
-    #:   S42->S17  S43->S14  S44->S14  S51->S33  S52->S33
-    #:
-    #: This list went stale at v5 and stayed stale for three commits, because every test
-    #: run in that window was a `-k` filter that did not match this file. That is the
-    #: lesson recorded as 1bo: a targeted run is a sample, not a check.
     TARGETED = frozenset({7, 11, 12, 13, 14, 17, 24, 33})
 
-    def _sections(self, supp):
-        return sorted({int(n) for n in re.findall(r"\\section\{S(\d+)\.", supp)})
+    def _post_sections(self, post):
+        return sorted({int(n) for n in re.findall(r"\\section\{S(\d+)\.", post)})
 
-    def _pointed_at(self, paper):
-        out = set()
-        for m in re.finditer(r"S(\d+)(?:\.\d+)?", paper):
-            out.add(int(m.group(1)))
-        return out
+    def _reached(self, supp):
+        reached = {int(n) for n in re.findall(r"postmortem, S(\d+)", " ".join(supp.split()))}
+        index = (REPO / "docs" / "supplement_index.md").read_text(encoding="utf-8")
+        start = index.index("## Journal supplement and postmortem")
+        end = index.find("\n## ", start + 5)
+        table = index[start:end if end != -1 else len(index)]
+        #: | S3 | Failure 1: the full evidence | postmortem S7, S8, S9, S12, ... |
+        for row in re.findall(r"^\|\s*S\d+\s*\|.*$", table, re.M):
+            reached |= {int(n) for n in re.findall(r"\bS(\d+)(?:\.\d+)?\b", row.split("|", 3)[3])}
+        return reached
 
-    def test_every_targeted_section_is_pointed_at(self, paper, supp):
-        pointed = self._pointed_at(paper)
-        missing = [n for n in self._sections(supp)
-                   if n in self.TARGETED and n not in pointed]
+    def test_every_targeted_section_is_reached(self, supp, post):
+        reached = self._reached(supp)
+        missing = [n for n in self._post_sections(post) if n in self.TARGETED and n not in reached]
         assert not missing, (
-            "supplement section(s) the paper never sends anyone to: %s -- a passage moved out "
+            "postmortem section(s) no route from the paper reaches: %s -- a passage moved out "
             "of a paragraph is reachable only through that paragraph, so a relocation without "
-            "a pointer is a deletion with extra steps" % ["S%d" % n for n in missing])
+            "a route is a deletion with extra steps" % ["S%d" % n for n in missing])
 
-    def test_the_targeted_sections_exist(self, supp):
+    def test_the_targeted_sections_exist(self, post):
         """A renumbering that loses one of them would make the rule above vacuous for it."""
-        sections = set(self._sections(supp))
+        sections = set(self._post_sections(post))
         gone = sorted(self.TARGETED - sections)
         assert not gone, "targeted section(s) no longer exist: %s" % ["S%d" % n for n in gone]
 
-    def test_the_check_can_fail(self, paper, supp):
+    def test_the_check_can_fail(self, supp, post):
         """A reachability test that cannot notice an unreachable section is decoration."""
-        pointed = self._pointed_at(paper)
-        absent = max(self._sections(supp)) + 7
-        assert absent not in pointed
+        absent = max(self._post_sections(post)) + 7
+        assert absent not in self._reached(supp)
 
 
 class TestSupplementNumbering:
     """The contents list is read as a list. Two defects in it are visible at a glance."""
 
-    def _order(self, supp):
-        return [int(n) for n in re.findall(r"^\\section\{S(\d+)[.:]", supp, re.M)]
+    def _order(self, text):
+        return [int(n) for n in re.findall(r"^\\section\{S(\d+)[.:]", text, re.M)]
 
-    def test_sections_appear_in_increasing_order(self, supp):
-        order = self._order(supp)
+    @pytest.mark.parametrize("name", COMPANIONS)
+    def test_sections_appear_in_increasing_order(self, name, docs):
+        order = self._order(docs[name])
         swaps = [(a, b) for a, b in zip(order, order[1:]) if a > b]
-        assert not swaps, "sections out of order in the contents list: %s" % (
-            ["S%d before S%d" % (a, b) for a, b in swaps],)
+        assert not swaps, "%s: sections out of order in the contents list: %s" % (
+            name, ["S%d before S%d" % (a, b) for a, b in swaps])
 
-    def test_any_gap_is_explained(self, supp):
+    @pytest.mark.parametrize("name", COMPANIONS)
+    def test_any_gap_is_explained(self, name, docs):
         """Gaps are allowed -- S14 and S30 were withdrawn and their numbers are cited in
         correspondence -- but only where the document says so, so a reader is not left
         counting."""
-        order = self._order(supp)
+        text = docs[name]
+        order = self._order(text)
         gaps = sorted(set(range(min(order), max(order) + 1)) - set(order))
         if not gaps:
             return
-        note = re.search(r"\\emph\{On the numbering\.\}(.*)", supp)
-        assert note, "the contents list has gaps (%s) and no note explaining them" % (
-            ["S%d" % g for g in gaps],)
+        note = re.search(r"\\emph\{On the numbering\.\}(.*)", text)
+        assert note, "%s: the contents list has gaps (%s) and no note explaining them" % (
+            name, ["S%d" % g for g in gaps])
         for g in gaps:
             assert "S%d" % g in note.group(1), \
                 "S%d is missing from the contents list and unexplained in the note" % g
 
-    def test_headings_punctuate_consistently(self, supp):
+    @pytest.mark.parametrize("name", COMPANIONS)
+    def test_headings_punctuate_consistently(self, name, docs):
         """S1--S5 used a colon where S6--S42 used a period, in the one list a reader scans
         top to bottom."""
-        marks = {m.group(1) for m in re.finditer(r"^\\section\{S\d+([.:])", supp, re.M)}
-        assert len(marks) == 1, "S-headings mix separators: %s" % sorted(marks)
+        marks = {m.group(1) for m in re.finditer(r"^\\section\{S\d+([.:])", docs[name], re.M)}
+        assert len(marks) == 1, "%s: S-headings mix separators: %s" % (name, sorted(marks))
 
 
 class TestNoFloatOrEquationIsPointedAtByNumber:
     """Cross-document pointers must go through `\\ref`, never through a typed number.
 
-    The supplement loads `xr` (`\\externaldocument{paper}`), so `\\ref{tab:spans}` resolves
-    across the document boundary and renders "Table I". Two captions twenty lines apart in
-    S51 already do exactly that and are correct.
+    The companions load `xr` (`\\externaldocument[P-]{paper}`), so `\\ref{P-tab:spans}`
+    resolves across the document boundary and renders "Table I".
 
-    Six other sentences typed the number instead, and round 48 resolved every one against
+    Six sentences once typed the number instead, and round 48 resolved every one against
     `paper.aux`. **Five were wrong.** Both "Table~II" pointers meant Table I: one inside a
     table caption whose entire job is distinguishing two corpora, and one inside the
     asymmetry disclosure rounds 43 and 44 asked for so a reader could check the direction of
-    a bias -- it sent them to the only table in the paper with no per-broker columns. A third
-    cited "Figure~1(a)", a panel of a figure that has no panels.
-
-    The previous version of this check is why they survived. It asked whether a pointer
-    *resolved* -- whether the paper had a Table II at all -- and it did, so the check passed
-    while the pointer denoted the wrong table. It then listed the pointers it had seen in an
-    `expected` set as a tripwire, which had the effect of blessing them. A pointer that
-    resolves to the wrong float is invisible to any check that only asks whether the number
-    exists.
+    a bias. A third cited "Figure~1(a)", a panel of a figure that has no panels.
 
     So the rule is not "resolve the number" but "do not write the number". `\\ref` cannot
     point at a float that is not there, and cannot be left behind by a renumbering.
@@ -375,10 +363,9 @@ class TestNoFloatOrEquationIsPointedAtByNumber:
         r"\b(Table|Figure|Fig\.|Equation|Equations)~?\s*"
         r"(?:[IVXL]+|[0-9]+)(?![-\w])")
 
-    @pytest.mark.parametrize("name", ["paper", "supplement"])
-    def test_no_pointer_names_a_number(self, name, paper, supp):
-        text = paper if name == "paper" else supp
-        text = re.sub(r"(?<!\\)%.*", "", text)
+    @pytest.mark.parametrize("name", ("paper",) + COMPANIONS)
+    def test_no_pointer_names_a_number(self, name, docs):
+        text = re.sub(r"(?<!\\)%.*", "", docs[name])
         # `\ref{...}` and `\cite{...}` carry digits and Roman numerals of their own.
         masked = re.sub(r"\\(?:eq)?ref\{[^}]*\}", "@@", text)
         masked = re.sub(r"\\cite\w*\{[^}]*\}", "@@", masked)
@@ -391,26 +378,31 @@ class TestNoFloatOrEquationIsPointedAtByNumber:
             "cross-reference written as a literal number; use \\ref so it cannot rot:\n  "
             + "\n  ".join(bad))
 
-    def test_the_supplement_can_reach_the_paper(self, supp):
+    @pytest.mark.parametrize("name", COMPANIONS)
+    def test_each_companion_can_reach_the_paper(self, name, docs):
         """The rule above is only safe because `xr` is loaded. If it ever is not, every
         `\\ref` into the paper renders as `??` and this check would still pass."""
-        assert re.search(r"\\externaldocument\[P-\]\{paper\}", supp), (
-            "the supplement must load xr and \\externaldocument[P-]{paper}, or the "
-            "cross-document \\ref calls this rule forces everyone to use will render as ??")
+        assert re.search(r"\\externaldocument\[P-\]\{paper\}", docs[name]), (
+            "%s must load xr and \\externaldocument[P-]{paper}, or the cross-document \\ref "
+            "calls this rule forces everyone to use will render as ??" % name)
 
-    def test_the_cross_document_refs_resolve(self, supp, aux):
-        """Every label the supplement reaches for must be one the paper actually assigned."""
-        if not aux:
-            pytest.skip("paper.aux carries no labels; build the paper first")
-        body = supp.split(r"\begin{document}")[-1]
+    @pytest.mark.parametrize("name", COMPANIONS)
+    def test_the_cross_document_refs_resolve(self, name, docs, aux):
+        """Every label a companion reaches for must be one it or the paper actually assigned.
+
+        Until 29 September this matched only unprefixed labels (`tab:...`), so every
+        `\\ref{P-tab:...}` -- all of them, since the prefix was introduced -- went unchecked
+        here; a missing one surfaced only as "??" in the built PDF."""
+        assert aux, "paper.aux carries no labels; build the paper first"
+        body = docs[name].split(r"\begin{document}")[-1]
         own = set(re.findall(r"\\label\{([^}]*)\}", body))
         bad = []
-        for m in re.finditer(r"\\(?:eq)?ref\{((?:tab|fig|eq|sec):[^}]*)\}", body):
-            label = m.group(1)
-            if label in own or label in aux:
+        for m in re.finditer(r"\\(?:eq)?ref\{(P-)?([a-z]+:[^}]*)\}", body):
+            prefixed, label = m.group(1), m.group(2)
+            if (prefixed and label in aux) or (not prefixed and (label in own or label in aux)):
                 continue
             line = body.count("\n", 0, m.start()) + 1
-            bad.append("supplement:~%d  \\ref{%s} resolves in neither document" % (line, label))
+            bad.append("%s:~%d  \\ref{%s%s} resolves nowhere" % (name, line, prefixed or "", label))
         assert not bad, "\n  " + "\n  ".join(bad)
 
     def test_the_check_can_fail(self):
@@ -425,7 +417,7 @@ class TestNoFloatOrEquationIsPointedAtByNumber:
 class TestNoReferenceResolvesToNothing:
     """A `\\ref` whose target prints no number --- the pointer that vanishes silently.
 
-    The supplement sets `secnumdepth` to 0 on purpose: its S-numbers are written into the
+    The postmortem sets `secnumdepth` to 0 on purpose: its S-numbers are written into the
     heading text, and a second counter beside them would make the contents page read
     "I S36.". The side effect nobody had traced is that `\\section` then steps no *printed*
     counter, so a `\\label` on one stores the empty string, and
@@ -433,14 +425,8 @@ class TestNoReferenceResolvesToNothing:
         Section~\\ref{sec:registry}
 
     typesets as `Section  found in shipping software` --- the pointer simply gone from the
-    page. Two of them had been rendering as holes since round 43, in the prose and the
-    caption of the figure a co-author asked for.
-
-    Every existing gate passed. The label is defined, so LaTeX emits no warning and no `??`
-    reaches the page; the undefined-reference count stays zero; `TestNoStrandedPointer` sees
-    a `\\ref` after the tilde and is satisfied; and `test_the_cross_document_refs_resolve`
-    above asks whether the label can be *found*, which it can. None of them asked whether it
-    printed anything.
+    page. Two of them had been rendering as holes since round 43. The journal supplement sets
+    its headings' label text to their S-numbers instead, so its internal `\\ref`s print them.
 
     So this one reads the `.aux` each document actually produced and requires every `\\ref`
     to come back with a number. It is the rendered value that is inspected, which is the
@@ -458,11 +444,10 @@ class TestNoReferenceResolvesToNothing:
         return {m.group(1) for m in self.NEWLABEL.finditer(aux_text)
                 if not m.group(2).replace(r"\mbox", "").strip().strip("{}").strip()}
 
-    @pytest.mark.parametrize("name", ["paper", "supplement"])
+    @pytest.mark.parametrize("name", ("paper",) + COMPANIONS)
     def test_every_reference_prints_a_number(self, name):
         tex, aux = REPO / (name + ".tex"), REPO / (name + ".aux")
-        if not tex.exists() or not aux.exists():
-            pytest.skip("%s not built" % name)
+        assert tex.exists() and aux.exists(), "%s not built" % name
         blank = self._blank_labels(aux.read_text(encoding="utf-8", errors="replace"))
         body = tex.read_text(encoding="utf-8").split(r"\begin{document}")[-1]
         holes = []
@@ -475,19 +460,18 @@ class TestNoReferenceResolvesToNothing:
         assert not holes, (
             "these references typeset as a hole in the sentence:\n  " + "\n  ".join(holes))
 
-    def test_the_supplement_still_has_labels_that_would_trip_this(self):
+    def test_the_postmortem_still_has_labels_that_would_trip_this(self):
         """The rule is only live while such labels exist.
 
-        If the supplement ever numbered its sections, every label would print something and
+        If the postmortem ever numbered its sections, every label would print something and
         this class would pass vacuously for the rest of time. Then it should be deleted
         rather than kept as decoration, and this assertion is what would say so.
         """
-        aux = REPO / "supplement.aux"
-        if not aux.exists():
-            pytest.skip("supplement.aux not present; build the supplement first")
+        aux = REPO / "postmortem.aux"
+        assert aux.exists(), "postmortem.aux not present; tests/paper_build.py builds it"
         blank = self._blank_labels(aux.read_text(encoding="utf-8", errors="replace"))
         assert blank, (
-            "no label in the supplement prints an empty number any more; if section "
+            "no label in the postmortem prints an empty number any more; if section "
             "numbering was turned on, delete this class instead of leaving it passing")
 
     def test_the_check_can_fail(self):

@@ -232,7 +232,7 @@ class TestTheMapReadsItsResultCells:
         # The distinction the cell now relies on has to keep existing in the section that
         # owns the result. If S15 ever stops demoting and starts withdrawing, or vice versa,
         # this pin and the cell must both be revisited.
-        supp = (SCRIPTS_DIR.parent / "supplement.tex").read_text(encoding="utf-8")
+        supp = (SCRIPTS_DIR.parent / "postmortem.tex").read_text(encoding="utf-8")
         assert "demoted here from the main text" in supp.lower(), \
             "S15 no longer demotes the fit; the map's wording depends on that heading"
         assert "we withdraw" in supp.lower(), \

@@ -50,6 +50,8 @@ import pytest
 REPO = Path(__file__).parent.parent.parent
 PAPER = REPO / "paper.tex"
 SUPP = REPO / "supplement.tex"
+#: The structure rules hold for both companions; the paper points only at the first.
+COMPANIONS = ("supplement.tex", "postmortem.tex")
 
 #: Pointers whose sentence shares no content word with the subsection it names, with the
 #: reason each is nonetheless correct. Keyed by (target, a fragment of the citing sentence).
@@ -71,15 +73,27 @@ def paper():
 
 @pytest.fixture(scope="module")
 def supp():
-    if not SUPP.exists():                               # pragma: no cover - always present
-        pytest.skip("supplement not present")
+    assert SUPP.exists(), "supplement.tex is not present"
     return SUPP.read_text(encoding="utf-8")
 
 
+@pytest.fixture(scope="module", params=COMPANIONS)
+def anydoc(request):
+    """Each companion in turn, for the rules about headings that hold for both."""
+    path = REPO / request.param
+    assert path.exists(), "%s is not present" % request.param
+    return path.read_text(encoding="utf-8")
+
+
 def _subsections(supp):
-    """[(char position, raw title)] for every subsection, numbered or not."""
+    """[(char position, raw title)] for every subsection, numbered or not.
+
+    Only the body is read: the journal supplement's preamble redefines \\subsection so a
+    heading's label text is its S-number, and that definition is not a heading."""
+    start = supp.find("\\begin{document}")
     return [(m.start(), m.group(1))
-            for m in re.finditer(r"\\subsection\{([^}]*)\}", supp)]
+            for m in re.finditer(r"\\subsection\{([^}]*)\}", supp)
+            if m.start() > start]
 
 
 def _numbered(supp):
@@ -169,6 +183,12 @@ def _self_pointers(tex):
     for i, m in enumerate(heads):
         end = heads[i + 1].start() if i + 1 < len(heads) else len(prose)
         body = re.sub(r"\\(?:sub)*section\*?\{[^}]*\}", "", prose[m.end():end])
+        # A pointer into the other document names its sections, not this one's: the journal
+        # supplement's "(postmortem, S9)" inside its own S9, and the postmortem column of the
+        # withdrawn-results table inside S8.
+        body = re.sub(r"postmortem,\s+(?:S[\d.]+(?:,\s*|\s+and\s+)?)+", "", body)
+        body = re.sub(r"\\begin\{table\}.*?\\end\{table\}", "", body, flags=re.S) \
+            if "Postmortem" in body else body
         for hit in re.finditer(r"(?<![\w.])%s(?!\d)(?!\.\d)" % m.group(1), body):
             out.append((m.group(1),
                         " ".join(body[max(0, hit.start() - 60):hit.end()].split())))
@@ -183,7 +203,8 @@ class TestEverySubsectionIsNumbered:
     subsections under S5 and S7 printed as bare titles beside twenty-seven numbered ones.
     """
 
-    def test_no_subsection_lacks_its_number(self, supp):
+    def test_no_subsection_lacks_its_number(self, anydoc):
+        supp = anydoc
         bare = [t for _, t in _subsections(supp) if not re.match(r"S\d+\.\d+\.", t)]
         assert not bare, (
             "subsection(s) with no SNN.M number, which print as bare titles in a contents "
@@ -196,14 +217,16 @@ class TestEverySubsectionIsNumbered:
 
 class TestSubsectionNumbersAreWellFormed:
 
-    def test_each_number_agrees_with_its_section(self, supp):
+    def test_each_number_agrees_with_its_section(self, anydoc):
+        supp = anydoc
         wrong = [("S%d.%d" % (sec, sub), title[:40], "inside S%d" % _owning_section(supp, pos))
                  for sec, sub, title, pos in _numbered(supp)
                  if _owning_section(supp, pos) != sec]
         assert not wrong, "subsection number(s) disagreeing with the section they sit in: %s" % (
             wrong,)
 
-    def test_no_number_is_used_twice(self, supp):
+    def test_no_number_is_used_twice(self, anydoc):
+        supp = anydoc
         seen = defaultdict(list)
         for sec, sub, title, _ in _numbered(supp):
             seen[(sec, sub)].append(title)
@@ -212,7 +235,8 @@ class TestSubsectionNumbersAreWellFormed:
             "subsection number(s) used more than once -- both print in the contents list and "
             "a citation of the number cannot be resolved by a reader: %s" % dup)
 
-    def test_numbers_run_without_a_gap(self, supp):
+    def test_numbers_run_without_a_gap(self, anydoc):
+        supp = anydoc
         """S1 starts at .0 and the rest at .1, so the rule is contiguity, not a fixed start."""
         by = defaultdict(list)
         for sec, sub, _, _ in _numbered(supp):
@@ -224,7 +248,8 @@ class TestSubsectionNumbersAreWellFormed:
                 broken["S%d" % sec] = sorted(subs)
         assert not broken, "subsection numbering with a gap or a repeat: %s" % broken
 
-    def test_numbers_appear_in_increasing_order(self, supp):
+    def test_numbers_appear_in_increasing_order(self, anydoc):
+        supp = anydoc
         by = defaultdict(list)
         for sec, sub, _, _ in _numbered(supp):
             by[sec].append(sub)
@@ -300,10 +325,12 @@ class TestNoUnitIsEmptyOrPointsAtItself:
     contents list as a heading with nothing under it.
     """
 
-    def test_no_heading_is_empty(self, supp):
+    def test_no_heading_is_empty(self, anydoc):
+        supp = anydoc
         assert not _empty_headings(supp), _empty_headings(supp)
 
-    def test_no_section_points_at_itself(self, supp):
+    def test_no_section_points_at_itself(self, anydoc):
+        supp = anydoc
         assert not _self_pointers(supp), _self_pointers(supp)
 
 

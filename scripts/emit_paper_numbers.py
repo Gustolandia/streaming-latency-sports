@@ -1326,6 +1326,60 @@ def tti_tost_macros(path=os.path.join("docs", "results", "transport_rt",
     ]
 
 
+def first_result_macros(path=os.path.join("docs", "results", "integrity_windows",
+                                          "first_result_threshold_sweep.csv"),
+                        threshold=0.01):
+    """What the sign check does to the runs behind our first result, at the rule's own line.
+
+    The abstract said the check rejected "every run behind our first result". It rejects 109 of
+    the 126; 17 pass on their own. What fails is every one of the six conditions, because a
+    condition is usable only if all of its runs survive. The threshold sweep's row at the
+    one-per-cent line is the count, so the sentence reads it rather than a hand-typed "every".
+    """
+    if not os.path.exists(path):
+        return []
+    import csv
+    with open(path, encoding="utf-8") as fh:
+        rows = [r for r in csv.DictReader(fh) if abs(float(r["threshold"]) - threshold) < 1e-9]
+    if not rows:
+        return []
+    runs = sum(int(r["n_runs"]) for r in rows)
+    passed = sum(int(r["n_pass"]) for r in rows)
+    usable = sum(1 for r in rows if r["usable"] == "True")
+    return [
+        ("firstResultRuns", str(runs)),
+        ("firstResultRejected", str(runs - passed)),
+        ("firstResultCells", str(len(rows))),
+        ("firstResultCellsWord", _spell(len(rows))),
+        ("firstResultUsableCells", str(usable)),
+    ]
+
+
+def occupancy_fall_macros(path=os.path.join("docs", "results", "model", "stall_duration.csv")):
+    """E-A7's registered test: real-time priority was to cut occupancy at least tenfold.
+
+    It fell 1.7- and 2.2-fold, and the aggregate stall 3- to 5-fold, against a 35- to 47-fold
+    fall in the rate (analyze_stall_duration.py). The postmortem said the campaigns had "no
+    measurement of p independent of the rate"; E-A7 is that measurement, and its registered
+    prediction failed. The folds are read here so the sentence reporting the miss cannot drift.
+    """
+    if not os.path.exists(path):
+        return []
+    import csv
+    with open(path, encoding="utf-8") as fh:
+        rows = {r["level"]: r for r in csv.DictReader(fh)}
+    if not {"l75", "l88"} <= set(rows):
+        return []
+    occ = sorted(float(rows[k]["occ_fall"]) for k in ("l75", "l88"))
+    agg = sorted(float(rows[k]["agg_fall"]) for k in ("l75", "l88"))
+    return [
+        ("eaSevenOccFallLo", "%.1f" % occ[0]),
+        ("eaSevenOccFallHi", "%.1f" % occ[1]),
+        ("eaSevenStallFallLo", "%.0f" % agg[0]),
+        ("eaSevenStallFallHi", "%.0f" % agg[1]),
+    ]
+
+
 def mechanism_macros():
     """Quantities the manuscript stated in words that the artefacts state as numbers.
 
@@ -3047,6 +3101,7 @@ def cliff_macros(root=CLIFF_DIR):
 def all_pairs(m):
     return (list(macros(m)) + span_macros() + stat_macros() + grid_macros()
             + retention_macros() + traced_macros() + tost_macros() + tti_tost_macros()
+            + first_result_macros() + occupancy_fall_macros()
             + stall_robustness_macros()
             + mechanism_macros() + kernel_macros() + registry_macros()
       + novelty_macros()

@@ -401,7 +401,7 @@ def test_the_campaign_clients_use_the_papers_own_settings():
     common = (REPO / "cloud" / "campaigns" / "common.sh").read_text(encoding="utf-8")
     assert 'KAFKA_PRODUCER_EXTRA="${KAFKA_PRODUCER_EXTRA:---max-inflight 64}"' in common
     assert 'REDIS_CONSUMER_EXTRA="${REDIS_CONSUMER_EXTRA:---ack-batch 200}"' in common
-    supplement = (REPO / "supplement.tex").read_text(encoding="utf-8")
+    supplement = (REPO / "postmortem.tex").read_text(encoding="utf-8")
     assert "\\texttt{ack-batch} & $200$ & \\emph{Learned.}" in supplement
 
 

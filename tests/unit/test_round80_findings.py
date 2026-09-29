@@ -36,7 +36,7 @@ def paper():
 
 @pytest.fixture(scope="module")
 def supplement():
-    return (REPO / "supplement.tex").read_text(encoding="utf-8")
+    return (REPO / "postmortem.tex").read_text(encoding="utf-8")
 
 
 @pytest.fixture(scope="module")
@@ -331,5 +331,6 @@ class TestTheRenderedPagesCarryIt:
         assert re.search(r"at p90\s*(?:across its|over)\s*\d+\s*runs", text)
 
     def test_the_supplement(self):
-        text = _rendered("supplement")
+        """29 Sep: S24.2 and S30 are the postmortem's, so their pages are postmortem.pdf."""
+        text = _rendered("postmortem")
         assert "interquartile range" in text and "latency metric sits in this regime" in text

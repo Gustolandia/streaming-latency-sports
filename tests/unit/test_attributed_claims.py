@@ -176,7 +176,7 @@ class TestTheLiteratureRegistryAndTheProseAgree:
 
     def _surface(self):
         return "\n".join((REPO / n).read_text(encoding="utf-8")
-                         for n in ("paper.tex", "supplement.tex"))
+                         for n in ("paper.tex", "supplement.tex", "postmortem.tex"))
 
     def test_every_row_is_a_document_the_submission_cites(self):
         surface = self._surface()
@@ -209,7 +209,7 @@ class TestTheLiteratureRegistryAndTheProseAgree:
         follows it across the submission rather than pinning it to one document.
         """
         surface = "\n".join((REPO / n).read_text(encoding="utf-8")
-                            for n in ("paper.tex", "supplement.tex"))
+                            for n in ("paper.tex", "supplement.tex", "postmortem.tex"))
         for macro in (r"\litComparisonsWord", r"\litInsideRegimeWord"):
             assert macro in surface, (
                 "%s is emitted but quoted nowhere; a count of the registry should either be "

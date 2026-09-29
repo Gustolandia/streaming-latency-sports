@@ -51,7 +51,7 @@ def paper():
 
 @pytest.fixture(scope="module")
 def supplement():
-    return (REPO / "supplement.tex").read_text(encoding="utf-8")
+    return (REPO / "postmortem.tex").read_text(encoding="utf-8")
 
 
 @pytest.fixture(scope="module")
@@ -507,6 +507,7 @@ class TestTheRenderedPagesCarryIt:
         assert "Open Compute Project" in text and "DTrace breakdown" not in text
 
     def test_the_supplement(self):
-        text = re.sub(r"(\w)- (\w)", r"\1\2", _rendered("supplement"))
+        """29 Sep: Table S26, the review note, S30 and S12 are the postmortem's; postmortem.pdf."""
+        text = re.sub(r"(\w)- (\w)", r"\1\2", _rendered("postmortem"))
         assert "rounded independently" in text and "Before this submission" in text
         assert "opt-in metric" in text and re.search(r"nearly\s*agree", text)

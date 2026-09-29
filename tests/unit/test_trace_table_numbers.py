@@ -106,7 +106,7 @@ class TestUnmapped:
         tab:retention is tab:selection -- so both tables went untraced and neither was reported
         UNMAPPED (27 September). A key that matches no table is a check that never runs."""
         repo = SCRIPTS_DIR.parent
-        labels = {lab for path in ("paper.tex", "supplement.tex")
+        labels = {lab for path in ("paper.tex", "supplement.tex", "postmortem.tex")
                   for lab, _ in table_blocks((repo / path).read_text(encoding="utf-8"))}
         assert sorted(set(SOURCES) - labels) == []
         for label, paths in SOURCES.items():

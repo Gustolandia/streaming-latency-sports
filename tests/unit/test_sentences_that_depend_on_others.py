@@ -34,7 +34,7 @@ import re
 import pytest
 
 REPO = Path(__file__).parent.parent.parent
-DOCS = ("paper.tex", "supplement.tex")
+DOCS = ("paper.tex", "supplement.tex", "postmortem.tex")
 
 #: Words that make a preceding clause negative enough for "Nor"/"Neither" to attach to.
 #: "rather than Y" is included because it negates Y as plainly as "not Y" does: the Threats
@@ -119,12 +119,12 @@ class TestNoDocumentAssertsTheOtherOnesSilence:
         r"(raises?|mentions?|says?|discusses|discuss|treats?|names?|reports?|makes?)\b", re.I)
 
     def test_the_supplement_does_not_assert_the_main_text_is_silent(self):
-        text = _prose("supplement.tex")
+        text = _prose("postmortem.tex")
         bad = []
         for m in self.SILENCE.finditer(text):
             line = text.count("\n", 0, m.start()) + 1
             ctx = re.sub(r"\s+", " ", text[max(0, m.start() - 80):m.start() + 90])
-            bad.append("supplement.tex:%d  %r\n        ...%s..."
+            bad.append("postmortem.tex:%d  %r\n        ...%s..."
                        % (line, m.group(0), ctx.strip()))
         assert not bad, (
             "the supplement asserts the main text is silent about something; an edit to the "

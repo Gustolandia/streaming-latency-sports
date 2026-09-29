@@ -69,7 +69,7 @@ def branches():
     exist.
     """
     out = []
-    for name, anchor in (("paper.tex", MAIN_ANCHOR), ("supplement.tex", SUPP_ANCHOR)):
+    for name, anchor in (("paper.tex", MAIN_ANCHOR), ("postmortem.tex", SUPP_ANCHOR)):
         tex = _tex(name)
         if anchor in tex:
             out.append(_normalise(_cases_body(tex, anchor)))
@@ -93,7 +93,7 @@ def documents():
     "contain\\n\\textbf{not one negative}" is the same sentence as "contain \\textbf{not one
     negative}", and a test that can tell them apart fails on a reflow rather than on a defect.
     """
-    return re.sub(r"\s+", " ", _tex("paper.tex") + "\n" + _tex("supplement.tex"))
+    return re.sub(r"\s+", " ", _tex("paper.tex") + "\n" + _tex("postmortem.tex"))
 
 
 class TestTheSpreadLawIsStatedOnce:
@@ -122,7 +122,7 @@ class TestTheSpreadLawIsStatedOnce:
                 "a branch of the spread law reads as an inequality (%s). The collapse branch "
                 "is a limit of 0; the noise floor that keeps a real arm off it is prose." % text)
 
-    @pytest.mark.parametrize("name,anchor", [("supplement.tex", SUPP_ANCHOR)])
+    @pytest.mark.parametrize("name,anchor", [("postmortem.tex", SUPP_ANCHOR)])
     def test_the_relation_is_a_limit(self, name, anchor):
         r"""`\longrightarrow`, not `=`.
 

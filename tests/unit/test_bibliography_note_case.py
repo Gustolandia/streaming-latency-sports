@@ -68,7 +68,7 @@ def bib_notes():
     return notes(BIB.read_text(encoding="utf-8"))
 
 
-@pytest.mark.parametrize("doc", ["paper", "supplement"])
+@pytest.mark.parametrize("doc", ["paper", "supplement", "postmortem"])
 def test_no_cited_note_lets_the_style_lowercase_a_name(doc, bib_notes):
     bbl = REPO / (doc + ".bbl")
     if not bbl.exists():

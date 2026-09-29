@@ -1,8 +1,42 @@
 # Supplement index
 
 What moved out of the main manuscript, where it lives now, and where it came from. Nothing is
-deleted: every block is either in `supplement.tex` (compiled separately; NOT part of the main
-journal submission) or recoverable at the named commit.
+deleted: every block is either in the journal supplement `supplement.tex`, in the postmortem
+`postmortem.tex` (both compiled separately; only the first is submitted with the paper), or
+recoverable at the named commit.
+
+## Journal supplement and postmortem
+
+**Split on 2026-09-29.** An outside editor read the 75-page single-author supplement as an
+undecided paper and asked for 25--30 pages organized by the paper's sections, under its byline,
+with at most fifteen pointers from the paper. The old supplement was renamed `postmortem.tex`,
+unchanged in content: the complete record, archived with the data, single-author as the second
+author asked on 2026-09-08, and not part of the submission. Its sections keep their numbers, and
+**every S-number below this section is a postmortem number**. Its thirteen self-references that
+read "supplementary material S<n>" now read "Section~S<n>", because that phrase names the other
+document now.
+
+The journal supplement `supplement.tex` is new. It has nine sections in the paper's order, and
+points into the postmortem as "postmortem, S<n>". Each row gives the postmortem sections it
+draws on; `tests/unit/test_cross_document_refs.py` reads this table to check that every passage
+once moved out of the paper is still reachable from it.
+
+| Supp. section | Title | Draws on (postmortem sections) |
+|---|---|---|
+| S1 | The setup in full | S9, S16.1, S16.2, S16.8, S18, S19, S20, S21, S24.3, S34 |
+| S2 | The sign check, and what it selects | S18, S18.1, S19, S26.2 |
+| S3 | Failure 1: the full evidence | S7, S8, S9, S12, S15, S16.3, S16.4, S16.6, S16.8, S16.9, S19, S26.1 |
+| S4 | Failure 2: the full evidence | S10, S11, S14, S16.7, S17, S22, S22.1, S24.1, S25 |
+| S5 | The tool registry | S25, S25.1, S30 |
+| S6 | The registered law campaign | S16.10, S16.11, S34, S35, S36, S37 |
+| S7 | The broker comparison, gated | S2, S13, S18.1 |
+| S8 | Results we withdrew | S1, S3, S4, S5, S6 |
+| S9 | Related work in full | S27, S28, S29, S31, S32, S33 |
+
+The paper's pointers were remapped with it: 21 into the old numbering became 15 into the new,
+and every journal-supplement section is pointed at (`tests/unit/test_journal_supplement.py`).
+
+## The postmortem (the supplement until 2026-09-29)
 
 **Renumbered on 2026-09-08 (v4).** At the second author's request the supplement became a
 single-author postmortem in four parts — I. the chronology, II. the experiments in full,

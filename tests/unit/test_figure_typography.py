@@ -25,7 +25,7 @@ FIGURES = REPO / "docs" / "results" / "figures"
 
 #: Every figure either document includes, read off the sources rather than listed by hand.
 INCLUDED = sorted({
-    m for tex in ("paper.tex", "supplement.tex")
+    m for tex in ("paper.tex", "supplement.tex", "postmortem.tex")
     for m in re.findall(r"figures/([A-Za-z0-9_]+)\.pdf",
                         (REPO / tex).read_text(encoding="utf-8"))
 })

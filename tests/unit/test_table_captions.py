@@ -32,7 +32,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).parent.parent.parent
-DOCS = ("paper.tex", "supplement.tex")
+DOCS = ("paper.tex", "supplement.tex", "postmortem.tex")
 
 #: promise in a caption -> a pattern that must appear in the table body if the promise holds.
 #: The body patterns are deliberately loose: the question is whether the mark is used at all,

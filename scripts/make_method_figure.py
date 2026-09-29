@@ -134,7 +134,7 @@ ROWS = [
     ("E1\nconcurrency", "feeds $N$:\n1, 9, 10, 12", "rate, host,\nplan set",
      "the original question:\ndoes broker choice matter?"),
     ("E-B\ndelay sweep", "injected delay\n0-50 ms", "load, feeds",
-     "H1 effect size\n(direction only; confounded)"),
+     "H1 effect size\n(confounded; negative only)"),
     ("E-A / E-A3\nload sweep", "background load\n0-12", "rate, feeds,\nplan",
      "H2 utilization, H10 mixture,\n$F_\\Delta$ recovery"),
     ("E-A2\nprocess count", "processes at\nfixed rate", "aggregate\nevent rate",
@@ -220,7 +220,7 @@ def draw(ax):
 
     # Two lines: at the larger point size this note no longer fits the narrower canvas on one.
     ax.text(5.0, -0.42,
-            "Every claim in the discussion traces to one row. No row both generates and tests\n"
+            "Every claim of these campaigns traces to one row. No row both generates and tests\n"
             "the same hypothesis, and a row that settled nothing says so.",
             ha="center", va="center", fontsize=9.5, style="italic", color="#444444")
 

@@ -81,7 +81,7 @@ def bib():
 
 class TestAPrintedNoteIsACitation:
 
-    @pytest.mark.parametrize("doc", ["paper", "supplement"])
+    @pytest.mark.parametrize("doc", ["paper", "supplement", "postmortem"])
     def test_every_cited_note_is_citation_data_only(self, doc, bib):
         bad = {}
         for key in sorted(cited(doc)):
@@ -129,7 +129,7 @@ class TestAStandardsClauseIsNotRenumbered:
     def test_ieee_1241_is_cited_by_its_own_clause_numbers(self, bib):
         record = field(bib["ieee1241"], "annote")
         assert r"\S6.4.1, Eq.~(28)" in record and r"\S5.4.1, Eq.~(18)" in record
-        supplement = " ".join((REPO / "supplement.tex").read_text(encoding="utf-8").split())
+        supplement = " ".join((REPO / "postmortem.tex").read_text(encoding="utf-8").split())
         assert r"(\S6.4.1, Eq.~(28))" in supplement
         assert r"(\S5.4.1, Eq.~(18))" in supplement
         assert r"\S3.4.1" not in supplement and r"\S1.4.1" not in supplement

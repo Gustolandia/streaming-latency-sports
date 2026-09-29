@@ -29,7 +29,7 @@ def tex():
     moves material into the supplement; a content pin holds wherever the sentence lives,
     so these checks scan the package rather than one file. Placement-sensitive checks
     (abstract shape, format, tier policy) use main_tex instead."""
-    supp_path = REPO / "supplement.tex"
+    supp_path = REPO / "postmortem.tex"
     supp = supp_path.read_text(encoding="utf-8") if supp_path.exists() else ""
     return PAPER.read_text(encoding="utf-8") + "\n" + supp
 
@@ -44,8 +44,23 @@ def main_tex():
 def supp():
     """The supplementary document. Content moved out of the main text lives here; the submission
     package is main + supplement, so artefact-tied pins may satisfy in either."""
-    path = REPO / "supplement.tex"
+    path = REPO / "postmortem.tex"
     return path.read_text(encoding="utf-8") if path.exists() else ""
+
+
+@pytest.fixture(scope="module")
+def journal():
+    """The journal supplement (supplement.tex since 29 Sep), where the paper's "Supplement~S<n>"
+    pointers land. The old supplement's content is the postmortem, which `tex` and `supp` read."""
+    return (REPO / "supplement.tex").read_text(encoding="utf-8")
+
+
+def _heading_before(tex, at, level=r"(?:sub)?section"):
+    """The S-number of the last heading of `level` before position `at`: 'S4.3', or 'S4'.
+
+    For pointers pinned by where their content is rather than by a number. The journal
+    supplement numbers its subsections, and a pointer can land on either level."""
+    return re.findall(r"\\%s\{(S\d+(?:\.\d+)?)\." % level, tex[:at])[-1]
 
 
 def _two_prop_z(row_a, row_b):
@@ -261,7 +276,7 @@ class TestThresholdSensitivity:
         for threshold, expected in self.THRESHOLDS:
             assert condemned_at(by_run, threshold) == expected, threshold
 
-    def test_the_quoted_endpoints_are_correct(self, by_run, supp, main_tex):
+    def test_the_quoted_endpoints_are_correct(self, by_run, supp, main_tex, journal):
         """The curve's zero-threshold end is quoted in Supplement S18, as the runs it spares.
 
         The main text states only the range of the sweep and sends the reader to S18. There the
@@ -269,6 +284,9 @@ class TestThresholdSensitivity:
         negative span at all, beside the share the one-per-cent rule condemns. The 20% end is
         drawn in panel (b) and quoted nowhere, so no number is pinned for it; the range the
         main text states is pinned to the thresholds the curve is drawn over.
+
+        29 Sep: the pointer lands on the journal supplement's S2.1, which draws the same sweep
+        and quotes the same endpoint; it is found by the figure, and both documents are held.
         """
         import sys
         sys.path.insert(0, str(REPO / "scripts"))
@@ -284,7 +302,13 @@ class TestThresholdSensitivity:
         gate = " ".join(_section(main_tex, "sec:gate").split())
         # v5 (28 Sep): "sweeps it from" became "swept from"; the range is the same.
         assert "swept from $0$ to $20\\%$" in gate, "the stated range must be the drawn one"
-        assert "(Supplement~S18)" in gate
+        fig = journal.index(r"\label{sfig:threshold-sweep}")
+        home = " ".join(_section(journal, "s:signcheck-sweep").split())
+        assert r"\label{sfig:threshold-sweep}" in home, "the sweep's subsection draws it"
+        assert f"${spared}$ runs carry no" in home, "0% endpoint, where the paper points"
+        assert _contains_number(_resolved(home), 100 * condemned_at(by_run, 0.01) / n, 1), \
+            "the chosen point, where the paper points"
+        assert "(Supplement~%s)" % _heading_before(journal, fig) in gate
 
     def test_the_chosen_threshold_matches_the_audit_table(self, by_run):
         import sys
@@ -447,7 +471,9 @@ class TestRetentionBound:
         lbl = supp.index(r"\label{tab:power}")
         caption = " ".join(supp[supp.rindex(r"\begin{table}", 0, lbl):lbl].split())
         assert "Every claim named here is made in the main text" not in caption
-        assert ("H1, H3, H4 and the start-up withdrawal are claimed only in this supplement "
+        # Reworded 29 Sep: the table is the postmortem's now, and "this supplement" would name
+        # the journal supplement, so the caption says "this document".
+        assert ("H1, H3, H4 and the start-up withdrawal are claimed only in this document "
                 "now, and E1 is historical") in caption
         prose = " ".join(re.sub(r"(?<!\\)%.*", "", main_tex).split()).lower()
         # v5 (28 Sep) brought S1.14's closing sentence into Section III-A at an outside editor's
@@ -888,7 +914,7 @@ class TestQuantisationTable:
     def _table(self, tex):
         """The quantisation table's body.
 
-        Was: isolated inside `supplement.tex` by its own label, because scoping to the section
+        Was: isolated inside `postmortem.tex` by its own label, because scoping to the section
         was not enough -- another table in the same section also has a `$500$/s` row, and a
         section-wide search silently matched that one instead. A test that reads the wrong
         table is worse than no test, because it still passes for the wrong reason.
@@ -1144,7 +1170,7 @@ class TestPoweredTransportReplication:
         assert all(s > 0 for s in tost.values()), "Kafka must be the slower system at every N"
         assert max(tost.values()) - min(tost.values()) < 0.05, "the shift must be flat in N"
 
-    def test_the_paper_states_both_halves(self, supp, main_tex):
+    def test_the_paper_states_both_halves(self, supp, main_tex, journal):
         """Supplement S2 states both halves over the powered sample; the main text keeps one.
 
         The not-a-tie half, the within-margin half, the powered sample size and the contrast
@@ -1152,6 +1178,9 @@ class TestPoweredTransportReplication:
         supports each half: every level is equivalent at 1 ms by all three estimators, and
         every Hodges-Lehmann interval excludes zero. The main text states the equivalence
         alone and points to the supplement.
+
+        29 Sep: S2 is the postmortem's; the paper's pointer is to the journal supplement's S7
+        (was S13), which also says the brokers are within a millisecond and still distinguishable.
         """
         tost = _rows("transport_rt", "transport_realtime_gated_tost.csv")
         assert all(r["equivalent"] == r["boot_equivalent"] == r["hl_equivalent"] == "True"
@@ -1164,7 +1193,10 @@ class TestPoweredTransportReplication:
         assert "\\emph{equivalent within one millisecond} at every $N$" in s2
         assert f"over a median of ${events:.0f}$ events per run rather than seven" in s2
         brokers = " ".join(_section(main_tex, "sec:brokers").split())
-        assert "within a millisecond" in brokers and "(Supplement~S13)" in brokers
+        assert "within a millisecond" in brokers and "(Supplement~S7)" in brokers
+        assert _heading_before(journal, journal.index(r"\label{s:brokers}")) == "S7"
+        s7 = " ".join(_section(journal, "s:brokers").split())
+        assert "the two sit within a millisecond" in s7 and "still distinguishable" in s7
 
     def test_the_measurement_supersedes_not_contradicts_e1(self, main_tex, supp):
         """The powered run refines E1 rather than contradicting it, and says so beside both.
@@ -1319,7 +1351,7 @@ class TestH2FormIsWithdrawn:
         assert not fit["mg1_better"], "if this passes, the withdrawal must be revisited"
         assert fit["best_alternative"] == "exponential"
 
-    def test_the_paper_withdraws_the_form_and_keeps_the_mechanism(self, main_tex, supp):
+    def test_the_paper_withdraws_the_form_and_keeps_the_mechanism(self, main_tex, supp, journal):
         """The M/G/1 withdrawal is supplement S1.5, restated on the knee sweep's fits.
 
         The TC main text keeps one sentence (Section V-C): both load laws failed because both
@@ -1349,10 +1381,20 @@ class TestH2FormIsWithdrawn:
         # manipulations give: the refutation of any utilization-only account, which names the
         # queueing form we had adopted and points to the supplement section holding the
         # priority and geometry evidence. The sweep's own verdict stays in `home`.
-        twostate = " ".join(_section(main_tex, "sec:twostate").split())
+        # 29 Sep: the sentence's own pointer went under the editor's budget of fifteen, and its
+        # paragraph's pointer lands on the journal supplement's S3.1, which holds the pairs and
+        # names the M/G/1 form as such an account; that subsection is found by the naming.
+        paras = [" ".join(p.split()) for p in re.split(r"\n[ \t]*\n",
+                                                        _section(main_tex, "sec:twostate"))
+                 if "had ourselves adopted" in p]
+        assert len(paras) == 1, "the refutation's paragraph has moved; retarget this pin"
         assert ("refutes any account in which utilization alone sets the rate, including the "
-                "queueing form we had ourselves adopted (Supplement~S") in twostate, \
-            "the main text keeps the conclusion and points to where the evidence lives"
+                "queueing form we had ourselves adopted.") in paras[0], \
+            "the main text keeps the conclusion"
+        named = re.search(r"waiting-time\s+form\s+we\s+had\s+adopted", journal)
+        assert named, "the journal supplement must name the form as an account the pairs refute"
+        assert "(Supplement~%s)" % _heading_before(journal, named.start()) in paras[0], \
+            "and points to where the evidence lives"
         s5 = " ".join(supp[supp.index("\\section{%s." % home):].split())
         assert "Both load-axis predictions failed" in s5[:6000]
 
@@ -1684,7 +1726,7 @@ class TestMixtureStructure:
         assert emitted["coreGrowth"] == "%.0f" % core_growth
         assert emitted["invGrowth"] == "%.0f" % tail_growth
 
-    def test_the_collapse_is_reported_falsified(self, main_tex, supp):
+    def test_the_collapse_is_reported_falsified(self, main_tex, supp, journal):
         """The failed scale-family collapse is supplement S9 now; the main text keeps the upshot.
 
         TC cut the campaign's detail to S9 and to Table tab:mixture in S26.1. S9 says the scale
@@ -1708,11 +1750,15 @@ class TestMixtureStructure:
         assert "pre-registered" in caption, "and the campaign that tested it pre-registered"
         mixture = " ".join(_section(main_tex, "sec:mixture").split())
         assert "not how wide the ordinary jitter is" in mixture
-        home = re.match(r"\\section\{(S\d+)\.",
-                        supp[supp.rindex("\\section{", 0, supp.index(r"\label{sec:twostatesupp}")):]
-                        ).group(1)
-        assert re.search(r"Supplement~%s\b" % home, mixture), \
-            "the main text must point to where it lives"
+        # 29 Sep: S9 is the postmortem's, and the paper's pointer to it went with the ceiling
+        # sentence it sat on. The journal supplement reports the collapse failed in S3.4, and
+        # the subsection points into S3 (at S3.1): one pointer per section, under the editor's
+        # budget of fifteen, so the pin is on the section that holds it.
+        failed = re.search(r"collapse\s+fails\s+by\s+\$%.0f\\times\$" % h9["worst_ratio"], journal)
+        assert failed, "the journal supplement must report the collapse failed, by the artefact"
+        home = _heading_before(journal, failed.start(), level="section")
+        assert re.search(r"Supplement~%s(?:\.\d+)?\b" % home, mixture), \
+            "the main text must point into the section where it lives"
 
     def test_the_fdelta_reproduction_boundary_is_honest(self, supp):
         """The reproduction boundary is supplement S8.1 now, beside the tail recovery it tests.
@@ -2152,8 +2198,8 @@ class TestLoadGeometryAndTtrue:
         characterisation and to nothing else.
         """
         for name, text in (("paper.tex", tex),
-                           ("supplement.tex",
-                            (REPO / "supplement.tex").read_text(encoding="utf-8"))):
+                           ("postmortem.tex",
+                            (REPO / "postmortem.tex").read_text(encoding="utf-8"))):
             prose = re.sub(r"(?m)^%[^\n]*", "", text)
             flat = " ".join(prose.split())
             for m in re.finditer(r"3\{,\}315|3,315", flat):
@@ -2736,7 +2782,7 @@ class TestConcurrentWork:
         # is that a withdrawn claim stays withdrawn, so it now asks the stronger question:
         # the withdrawal is stated where the post-mortem lives, and the slope is not in the
         # main text at all, which is a place it cannot come back to unnoticed.
-        supp = " ".join((REPO / "supplement.tex").read_text(encoding="utf-8").lower().split())
+        supp = " ".join((REPO / "postmortem.tex").read_text(encoding="utf-8").lower().split())
         assert "we withdraw" in supp, \
             "the supplement must still record the payload-sweep withdrawal"
         assert "we withdraw the claim" not in section, \
@@ -2817,7 +2863,7 @@ class TestRefereeRoundOne:
     scoping and marker phrases exist where promised in the response letter.
     """
 
-    def test_the_three_exhibits_are_in_the_main_text(self, main_tex, supp):
+    def test_the_three_exhibits_are_in_the_main_text(self, main_tex, supp, journal):
         """The flip figure moved to the supplement in round 43, and the pin moved with it.
 
         It was promoted to the main text on a referee's request, so it may not simply
@@ -2826,16 +2872,19 @@ class TestRefereeRoundOne:
         panels carry is in the main text's confirmation paragraph, and the paragraph now
         names the supplement section that draws them. What the move bought was the twelfth
         page, against four biographies the journal counts.
+
+        29 Sep: the section that draws it is looked for in the journal supplement, where the
+        paper's pointers land (S4.3 now); the postmortem keeps its copy in S10.
         """
         assert "measurement_model.pdf" in main_tex, "the model figure must be in the paper"
         assert "payload_flip.pdf" in supp, "the flip figure must still exist somewhere"
+        assert "payload_flip.pdf" in journal, "and where the paper's pointers land"
         assert "payload_flip.pdf" not in main_tex, \
             "if it returns to the main text, this pin should return with it"
         assert r"\label{tab:mechanism}" in main_tex, "the mechanism table must be in the paper"
         confirmation = " ".join(_section(main_tex, "sec:extcomp").split())
-        draws = re.findall(r"\\section\{S(\d+)\.",
-                           supp[:supp.index("payload_flip.pdf")])[-1]
-        assert "S%s" % draws in confirmation, (
+        draws = _heading_before(journal, journal.index("payload_flip.pdf"))[1:]
+        assert re.search(r"Supplement~S%s\b" % re.escape(draws), confirmation), (
             "the confirmation paragraph must point at S%s, the section that draws the "
             "figure. Pinned by where the figure actually is rather than by a number, "
             "because the number moved in the v5 reorganization and this assertion did "
@@ -2907,12 +2956,15 @@ class TestRefereeRoundOne:
             "the paper claims the gate moves the shift by at most 0.003 ms"
         assert "at most $0.003$~ms on the shift" in " ".join(supp.split())
 
-    def test_the_threshold_sentence_matches_the_sweep(self, main_tex, supp):
+    def test_the_threshold_sentence_matches_the_sweep(self, main_tex, supp, journal):
         """The main text states the sweep's verdict; the supplement gives its endpoint.
 
         The consistency-check subsection says no rejected condition becomes usable from 0 to
         20% and points to the supplement section that names the sweep artefact, found here
         by where the artefact is named rather than by a number. The best cell moved there.
+
+        29 Sep: the pointer lands on the journal supplement's S2.1, found by the best-cell
+        endpoint it quotes; the postmortem's S18.1 still names the artefact beside the same one.
         """
         rows = _rows("integrity_windows", "first_result_threshold_sweep.csv")
         assert all(r["usable"] == "False" for r in rows), \
@@ -2924,12 +2976,15 @@ class TestRefereeRoundOne:
         # it had said "no rejected condition", which claimed a sweep of every corpus.
         assert f"swept from $0$ to ${round(top * 100)}\\%$, it makes none of our first " \
                f"result's rejected conditions usable" in gate
-        where = supp.index(r"first\_result\_threshold\_sweep.csv")
-        sec = re.findall(r"\\section\{S(\d+)\.", supp[:where])[-1]
-        assert f"(Supplement~S{sec})" in gate, \
-            f"the sentence must point at S{sec}, where the sweep is"
         best = max((r for r in rows if float(r["threshold"]) == top),
                    key=lambda r: int(r["n_pass"]))
+        quoted = re.search(r"best\s+of\s+them\s+keeps\s+\$%s\$\s+of\s+its\s+\$%s\$\s+runs"
+                           % (best["n_pass"], best["n_runs"]), journal)
+        assert quoted, "the best-cell endpoint quoted where the paper points must match"
+        sec = _heading_before(journal, quoted.start())
+        assert f"(Supplement~{sec})" in gate, \
+            f"the sentence must point at {sec}, where the sweep is"
+        assert r"first\_result\_threshold\_sweep.csv" in supp
         assert f"best cell ${best['n_pass']}/{best['n_runs']}$" in " ".join(supp.split()), \
             "the quoted best-cell endpoint must match the artefact"
 
@@ -3349,7 +3404,7 @@ class TestRefereeRoundTwo:
         assert "1.5$ million" not in main_tex and "1.5 million" not in main_tex
         assert r"\harnessOneClockSamples" in main_tex
         # v5 (28 Sep): the cross-host harness detail went to S22.1 (editor 5), with its total.
-        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        supp = (REPO / "postmortem.tex").read_text(encoding="utf-8")
         assert r"\harnessCrossHostSamples" in supp
 
     def test_the_saturation_claim_is_about_the_rate_not_about_occupancy(self, main_tex):
@@ -3430,7 +3485,7 @@ class TestRefereeRoundTwo:
             assert macro in main_tex, f"{macro} must carry the new reading"
         assert r"\tracedTailAlpha" not in main_tex, \
             "the rejected fit belongs in the supplement's postmortem, not in the main text"
-        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        supp = (REPO / "postmortem.tex").read_text(encoding="utf-8")
         assert r"\tracedGofP" in supp, \
             "the bootstrap's verdict must be reported where the fit it judges is stated"
         assert "scheduler" in low and "slice" in low
@@ -3442,7 +3497,7 @@ class TestRefereeRoundTwo:
         stated. The rule is unchanged and the pin follows the material: wherever a
         disagreement between estimators is offered, the test that settles it is offered too.
         """
-        supp = " ".join((REPO / "supplement.tex").read_text(encoding="utf-8").split())
+        supp = " ".join((REPO / "postmortem.tex").read_text(encoding="utf-8").split())
         assert r"\tracedGofP" in supp and r"\tracedGofBoot" in supp
         assert "disagree" in supp.lower(), \
             "the disagreement and its test belong in the same account"
@@ -3454,7 +3509,7 @@ class TestRefereeRoundTwo:
         went to the supplement at an outside editor's request), so the credit is held where the
         estimator is stated."""
         assert "tail index" not in main_tex.lower() and "grouped maximum" not in main_tex.lower()
-        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        supp = (REPO / "postmortem.tex").read_text(encoding="utf-8")
         assert "virkar2014power" in supp
 
     def test_the_tracer_discloses_its_filter_and_its_own_effect(self, main_tex):
@@ -3503,12 +3558,12 @@ class TestRefereeRoundTwo:
         assert "derived" in section, "the main text must still call the constants derived"
         # The working itself moved to Supplement S41 when the figures were redrawn at
         # printable size; the claim stayed here and the arithmetic went there.
-        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        supp = (REPO / "postmortem.tex").read_text(encoding="utf-8")
         derivation = " ".join(supp[supp.index("The scheduler constants, derived"):].split())
         assert "rather than measured" in derivation
         # Wherever a constant is printed it must be a macro, never typed. Two of these now
         # appear only in S41, which is where the derivation went.
-        package = main_tex + "\n" + (REPO / "supplement.tex").read_text(encoding="utf-8")
+        package = main_tex + "\n" + (REPO / "postmortem.tex").read_text(encoding="utf-8")
         for macro in (r"\testbedCpus", r"\sliceFactor", r"\baseSliceMs", r"\kernelHz",
                       r"\tickMs"):
             assert macro in package, f"{macro} must come from the pipeline"
@@ -3556,7 +3611,7 @@ class TestRefereeRoundTwo:
             "the main text must still say the phase was excluded"
         # Whitespace-normalised: the sentence wraps in the source, and a literal search
         # across a line break is how this repository has produced false negatives before.
-        supp_src = " ".join((REPO / "supplement.tex").read_text(encoding="utf-8").split())
+        supp_src = " ".join((REPO / "postmortem.tex").read_text(encoding="utf-8").split())
         assert "pinned the load generator" in supp_src, \
             "the disclosure must be somewhere the pointer leads"
         assert "excluded from every result" in section
@@ -3731,7 +3786,7 @@ class TestRoundTwelveRegressions:
         # editor's line edit 18); the disclaimer, which is the trace of the correction, is
         # kept beside the argument in S15.
         assert "too high to hide the deepest negative" in " ".join(main_tex.split())
-        supp = " ".join((REPO / "supplement.tex").read_text(encoding="utf-8").split())
+        supp = " ".join((REPO / "postmortem.tex").read_text(encoding="utf-8").split())
         i = supp.find("closes the channel a second time on headroom")
         assert i > 0, "the headroom argument must be present"
         assert "not on shared endpoints" in supp[i:i + 120], \
@@ -3867,7 +3922,7 @@ class TestReferenceHouseStyle:
                                          "more than a dozen public forks"),
         }
         found = {}
-        for name in ("paper.tex", "supplement.tex"):
+        for name in ("paper.tex", "supplement.tex", "postmortem.tex"):
             src = (REPO / name).read_text(encoding="utf-8")
             for label, needles in typed.items():
                 hits = [s for s in needles if s.replace("\\\\", "\\") in src]
@@ -3880,7 +3935,7 @@ class TestReferenceHouseStyle:
                       "auditRejectedCloud", "rtFactorLow", "rtFactorHigh", "rtPairs"):
             assert "\\%s" % macro in paper, "%s is emitted but unused" % macro
         # v5 (28 Sep): the fork count moved to S25 with the rest of the tool registry.
-        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        supp = (REPO / "postmortem.tex").read_text(encoding="utf-8")
         for macro in ("forkChecked", "forkUnchanged"):
             assert "\\%s" % macro in supp, "%s is emitted but unused" % macro
 
@@ -4004,7 +4059,7 @@ class TestClaimsWithdrawnForWantOfEvidenceStayWithdrawn:
             "unevidenced universal: Supplement S48 bounds the reading at three runtimes"),
     }
 
-    @pytest.mark.parametrize("doc", ["paper", "supplement"])
+    @pytest.mark.parametrize("doc", ["paper", "supplement", "postmortem"])
     def test_no_withdrawn_over_claim_reappears(self, doc):
         src = (REPO / ("%s.tex" % doc)).read_text(encoding="utf-8")
         # Normalised first: the whole point is that a line break must not hide a phrase.
@@ -4355,7 +4410,7 @@ class TestTheExposureCurveIsGeneratedNotTyped:
         return main_tex[start:start + 2600]
 
     def test_the_identical_systems_gap_is_in_s12(self):
-        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        supp = (REPO / "postmortem.tex").read_text(encoding="utf-8")
         assert r"\exposureGapTen" in supp
 
     def test_every_exposure_number_is_a_macro(self, main_tex):
@@ -4409,7 +4464,7 @@ class TestNoCrossReferenceDangles:
     build passes while the committed PDF still says "??".
     """
 
-    @pytest.mark.parametrize("name", ["paper", "supplement"])
+    @pytest.mark.parametrize("name", ["paper", "supplement", "postmortem"])
     def test_no_double_question_mark_reaches_the_pdf(self, name):
         from pypdf import PdfReader
         pdf = REPO / (name + ".pdf")
@@ -4424,7 +4479,7 @@ class TestNoCrossReferenceDangles:
 
     def test_the_supplement_imports_the_main_texts_labels(self):
         """The mechanism, not just the symptom: without xr the '??' come straight back."""
-        src = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        src = (REPO / "postmortem.tex").read_text(encoding="utf-8")
         assert "\\usepackage{xr}" in src and "\\externaldocument[P-]{paper}" in src, (
             "the supplement stopped importing paper.aux; its references to the main text's "
             "sections and tables will silently degrade to '??'")
@@ -4517,7 +4572,7 @@ class TestEveryPlannedFigureIsPlacedOrExcusedInWriting:
 
     def test_each_planned_figure_is_placed_or_written_off(self):
         docs = "".join((REPO / n).read_text(encoding="utf-8")
-                       for n in ("paper.tex", "supplement.tex"))
+                       for n in ("paper.tex", "supplement.tex", "postmortem.tex"))
         missing = [f for f in self._planned()
                    if f not in docs and f not in self.UNPLACED]
         assert not missing, (
@@ -4527,7 +4582,7 @@ class TestEveryPlannedFigureIsPlacedOrExcusedInWriting:
 
     def test_the_co_authors_deletion_histogram_is_placed(self):
         """Pinned by name: it was asked for, drawn, and lost once already."""
-        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        supp = (REPO / "postmortem.tex").read_text(encoding="utf-8")
         assert "deletion_histogram.pdf" in supp, (
             "the deletion histogram is no longer in the supplement; it answers a co-author's "
             "request of 2026-08-26 and went missing for a week the first time")

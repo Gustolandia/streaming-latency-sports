@@ -172,7 +172,7 @@ class TestTheRepositorysOwnAdjudicationsAreExact:
     """The shipped list must clear the shipped documents with nothing left over."""
 
     def test_the_check_is_clean_on_both_documents(self, capsys):
-        assert av.main(["--check", "paper.tex", "supplement.tex"]) == 0
+        assert av.main(["--check", "paper.tex", "supplement.tex", "postmortem.tex"]) == 0
         out = capsys.readouterr().out
         assert "REVIEW" not in out and "STALE" not in out
 

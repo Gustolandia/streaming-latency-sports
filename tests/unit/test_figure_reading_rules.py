@@ -56,7 +56,7 @@ def submission():
     The reading rules below are about the figure, not about which file it lives in, so they
     read the submission rather than the article.
     """
-    supp = REPO / "supplement.tex"
+    supp = REPO / "postmortem.tex"
     text = (REPO / "paper.tex").read_text(encoding="utf-8")
     if supp.exists():
         text += "\n" + supp.read_text(encoding="utf-8")

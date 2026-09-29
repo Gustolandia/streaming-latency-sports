@@ -30,7 +30,7 @@ def paper():
 
 @pytest.fixture(scope="module")
 def supplement():
-    return (REPO / "supplement.tex").read_text(encoding="utf-8")
+    return (REPO / "postmortem.tex").read_text(encoding="utf-8")
 
 
 def _rendered(name):
@@ -228,9 +228,15 @@ class TestW1TheGeometryFigureStaysInTheSupplement:
 
     def test_the_figure_is_in_the_supplement_and_the_main_text_points_at_it(
             self, paper, supplement):
-        assert "quantum_geometry" in supplement
+        """29 Sep: the journal supplement draws it in S4.2 and the postmortem keeps it in S17.
+        The pointer to S17 went under the editor's budget of fifteen (the HP citation carries
+        its sentence), so the main text reaches the figure through the section holding it."""
+        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        assert "quantum_geometry" in supplement and "quantum_geometry" in journal
         assert "quantum_geometry" not in paper
-        assert "S17" in paper, "the main text reaches it by pointer"
+        home = re.findall(r"\\section\{(S\d+)\.", journal[:journal.index("quantum_geometry")])[-1]
+        assert re.search(r"Supplement~%s(?:\.\d+)?\b" % home, paper), \
+            "the main text reaches it by pointer"
 
     def test_the_main_text_still_carries_the_claim_the_figure_draws(self, paper):
         """v5 (28 Sep): the sentence reads "What moves retention is not the path but where the
@@ -278,10 +284,10 @@ class TestTheBibliographyLogIsRead:
     Round 69 put a comment naming an entry type into `manuscript_references.bib`, BibTeX
     found the at-sign, parsed prose as an entry and skipped the real one below it. The LaTeX
     build reported zero undefined citations, because a `.bbl` from an earlier run was still
-    on disk, so the only evidence anywhere was one line in `supplement.blg`.
+    on disk, so the only evidence anywhere was one line in `postmortem.blg`.
     """
 
-    @pytest.mark.parametrize("stem", ["paper", "supplement"])
+    @pytest.mark.parametrize("stem", ["paper", "supplement", "postmortem"])
     def test_no_bibtex_error_or_skipped_entry(self, stem):
         log = REPO / ("%s.blg" % stem)
         if not log.is_file():
@@ -293,7 +299,7 @@ class TestTheBibliographyLogIsRead:
                 "%s.blg reports %r; a skipped entry can still resolve against a stale .bbl, "
                 "so this log is the only place it shows" % (stem, phrase))
 
-    @pytest.mark.parametrize("stem", ["paper", "supplement"])
+    @pytest.mark.parametrize("stem", ["paper", "supplement", "postmortem"])
     def test_every_cited_key_reached_the_printed_list(self, stem):
         """The failure mode the log line above produces, checked from the other side."""
         aux = REPO / ("%s.aux" % stem)
@@ -344,7 +350,7 @@ class TestNoWordIsDoubled:
                 if not l.lstrip().startswith("%") and "&" not in l]
         return " ".join(" ".join(keep).split())
 
-    @pytest.mark.parametrize("name", ["paper", "supplement"])
+    @pytest.mark.parametrize("name", ["paper", "supplement", "postmortem"])
     def test_no_word_is_immediately_repeated(self, name):
         flat = self._prose(name)
         doubled = []

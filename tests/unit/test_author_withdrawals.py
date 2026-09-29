@@ -25,7 +25,7 @@ from pathlib import Path
 
 REPO = Path(__file__).parent.parent.parent
 PAPER = REPO / "paper.tex"
-SUPPLEMENT = REPO / "supplement.tex"
+SUPPLEMENT = REPO / "postmortem.tex"
 
 #: The two authors who remain. Named positively, which is the whole design of this file.
 AUTHORS = ("Ricou", "Duvignau")

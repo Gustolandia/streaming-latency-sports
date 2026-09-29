@@ -28,7 +28,7 @@ import re
 import pytest
 
 REPO = Path(__file__).parent.parent.parent
-DOCS = ("paper.tex", "supplement.tex")
+DOCS = ("paper.tex", "supplement.tex", "postmortem.tex")
 
 FLOAT = re.compile(r"\\begin\{(figure|table)(\*?)\}(.*?)\\end\{\1\2\}", re.S)
 
@@ -74,7 +74,7 @@ class TestEveryFloatCanBeNamed:
         """A float nothing points at is a float the reader arrives at without a reason."""
         name, text = doc
         refs = set(re.findall(r"\\(?:eq)?ref\{([^}]*)\}", text))
-        if name == "supplement.tex":
+        if name == "postmortem.tex":
             refs |= set(re.findall(r"\\(?:eq)?ref\{([^}]*)\}",
                                    _source("paper.tex")))
         orphans = []

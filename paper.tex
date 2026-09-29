@@ -92,7 +92,7 @@ is scheduled late by more than the delivery. Timed on one clock, $\spanNegAck$ o
 $\spanEvents$ messages were negative this way and none from the send, so the cause is
 not clock synchronization; real-time priority for the timestamping threads, at unchanged utilization,
 cut the rate $\rtFactorLow$--$\rtFactorHigh\times$. A zero-cost sign check rejected
-$\auditRejected$ of our $\auditRuns$ runs, including every run behind our first result.
+$\auditRejected$ of our $\auditRuns$ runs, leaving nothing of our first result usable.
 Second, the OpenMessaging Benchmark timestamps in whole milliseconds and silently discards
 every latency that is not positive: $\ombGridMedianCells$ of $\ombMedianCells$
 embedded-mode settings whose summary we captured printed a median of exactly
@@ -214,8 +214,8 @@ samples without counting them, and a registered audit of $\reachReports$ publish
 found the signature in \reachPrimaryConfigsWord{} configurations and a stated retention in none
 (Section~\ref{sec:tools}).
 \item \textbf{Checks that cost nothing} (Section~\ref{sec:authors}). A per-run sign check
-rejected $\auditRejected$ of our $\auditRuns$ runs, every run behind our own first result
-among them. All had passed every conventional check we knew. Publishing the retained fraction
+rejected $\auditRejected$ of our $\auditRuns$ runs, enough to leave nothing of our own first
+result usable. Every rejected run had passed every conventional check we knew. Publishing the retained fraction
 beside every latency exposes the second failure the same way.
 \end{enumerate}
 Both processes read one clock unless the text says otherwise, so nothing here depends on clock
@@ -245,13 +245,15 @@ the \emph{acknowledgment lag}, from the send call to the producer observing the 
 acknowledgment. $S$ is what a harness reports when it times a message from the acknowledgment
 rather than from the send, as our own first harness did. We call it the \emph{transport
 proxy}, for the reason given below. The end-to-end latency runs from the event falling due to
-the consumer holding it:
+the consumer having handled it, at $t_{\mathrm{out}}$:
 \begin{equation}
-E = t_{\mathrm{recv}} - t_{\mathrm{sched}}
-  = \underbrace{(t_{\mathrm{send}}-t_{\mathrm{sched}})}_{\text{send lag}} + A + S .
+E = t_{\mathrm{out}} - t_{\mathrm{sched}}
+  = \underbrace{(t_{\mathrm{send}}-t_{\mathrm{sched}})}_{\text{send lag}} + A + S
+  + \underbrace{(t_{\mathrm{out}}-t_{\mathrm{recv}})}_{\text{handling}} .
 \label{eq:tti}
 \end{equation}
-The \emph{send lag} is how late the send call ran after the event was due. A \emph{span} is
+The \emph{send lag} is how late the send call ran after the event was due, and the
+\emph{handling span} is the consumer's own work on the record after $t_{\mathrm{recv}}$. A \emph{span} is
 any difference of two of these timestamps, and a \emph{negative span} is one whose difference
 is below zero. Write $\tau$ for the \emph{timestamp resolution}, one millisecond in the
 benchmark of Section~\ref{sec:external}. Write $T_{\mathrm{true}}$\label{def:ttrue} for the
@@ -279,7 +281,7 @@ A negative $S$ therefore does not show that either timestamp is wrong. It shows 
 acknowledgment cannot serve as the origin of a delivery latency for that event, which is the
 use an acknowledgment-referenced harness puts it to. The same holds wherever the origin
 timestamp is written by a thread that must first be woken, such as a delivery-report poll or
-a completion reaper (Supplement~S30). A fixed distribution of $A$ overlaps a small $D$ almost
+a completion reaper (Supplement~S5). A fixed distribution of $A$ overlaps a small $D$ almost
 entirely and a large one hardly at all. That is why a path whose transport runs to tens of
 seconds passes every run, while the same hardware measuring one millisecond fails wholesale.
 
@@ -300,7 +302,7 @@ of Microsoft Azure machines, two x86 and one Neoverse~N2. The workload is
 StatsBomb's open football event data~\cite{statsbomb2023}: \replayedMatchesWord{} of its
 $\corpusMatches$ matches, replayed in order at a chosen send rate. It stands for small,
 frequent, ordered messages, and nothing below depends on its content beyond message size and
-rate. The achieved send rate is recorded per run against elapsed wall time,
+rate (Supplement~S1). The achieved send rate is recorded per run against elapsed wall time,
 and pacer jitter is $\pacerJitterLo$--$\pacerJitterHi\,\mu$s at p90 over $\pacerJitterRuns$
 runs.
 
@@ -325,7 +327,7 @@ component, or if the median of any component is negative. A condition is usable 
 its runs survive. We fixed the rule before the final campaign, after earlier campaigns had run,
 and apply it to every run, including those whose results looked reasonable. The one-per-cent
 line is a convention, and it decides nothing we report: swept from $0$ to $20\%$, it makes none
-of our first result's rejected conditions usable (Supplement~S18). The reason is not that a negative is impossible, since
+of our first result's rejected conditions usable (Supplement~S2.1). The reason is not that a negative is impossible, since
 for the transport proxy it is not: a run whose reference timestamp fails on more than one event
 in a hundred cannot report a latency, whatever the cause. A run that passes has cleared the
 cheapest available bar and nothing more. Every proportion below is a count over a stated
@@ -344,12 +346,13 @@ while holding everything else fixed.
 \label{sec:audit}
 The check rejects $\auditRejectedWorkstation$ of $\auditRunsWorkstation$ runs on the
 workstation testbed ($\auditPctWorkstation\%$) and $\auditRejectedCloud$ of $\auditRunsCloud$
-on the cloud testbed ($\auditPctCloud\%$). Every run behind our first result is among them: on
-that first testbed $\auditUsableConditionsWorkstation$ of $\auditConditionsWorkstation$
-conditions survive. Every rejected run had passed every conventional check we knew. Our first
-corpus had survived six corrections, a fairness audit, and a full battery of rank tests, effect
-sizes and multiplicity correction. It was still entirely invalid, and nothing in its output
-said so (Supplement~S1.14).
+on the cloud testbed ($\auditPctCloud\%$). Our first result is among them: the check rejects
+$\firstResultRejected$ of the $\firstResultRuns$ runs behind it and leaves none of its
+\firstResultCellsWord{} conditions usable, and on that first testbed
+$\auditUsableConditionsWorkstation$ of $\auditConditionsWorkstation$ conditions survive. Every
+rejected run had passed every conventional check we knew (Supplement~S8.1). Our first corpus had
+survived six corrections, a fairness audit, and a full battery of rank tests, effect sizes and
+multiplicity correction. None of its conditions was usable, and nothing in its output said so.
 
 Table~\ref{tab:spans} separates the spans over a wider population: every cloud run that
 produced matched events, $\spanRuns$ of them, since a condemned run answers which span inverts
@@ -405,7 +408,7 @@ the occupancy times the chance that a residual stall outlasts the delivery. Load
 often the thread that records the time is off the processor, not how wide the ordinary jitter
 is. From idle to the knee the rate grows $\invGrowth\times$ and the jitter's width only
 $\coreGrowth\times$; the highest rate near saturation, $\invCeiling$, is a maximum over those
-conditions and not a bound (Supplement~S9). Load moves $p$ but does not fix it, as the
+conditions and not a bound. Load moves $p$ but does not fix it, as the
 geometry rows below show,
 so we write $p$ and not $p(\rho)$. The model predicts how the rate falls as the path lengthens, not how it rises with
 load.
@@ -443,13 +446,13 @@ Real-time priority on the timestamping threads moves the occupancy while utiliza
 fixed. The rate falls by factors of $\rtLowFactor$ and $\rtHighFactor$
 (Table~\ref{tab:mechanism}, top). Across $\rtPairs$ matched pairs from $\rtRhoLow$ to
 $\rtRhoHigh\%$ utilization the factor ranges from $\rtFactorLow$ to $\rtFactorHigh$, every pair
-with disjoint intervals (Supplement~S12). The residual rates settle near the floor the model
+with disjoint intervals (Supplement~S3.1). The residual rates settle near the floor the model
 names in advance, the rate when the thread is never preempted:
 $C_0 \approx \invFloor$\label{def:czero}. Over all $\rtResidualPairs$ pairs they run from
 $\rtResidualMin$ to $\rtResidualMax$, so $C_0$ is where the rate settles
 and not a bound it respects. Utilization did not change, and the rate changed fiftyfold. That
 refutes any account in which utilization alone sets the rate, including the queueing form we
-had ourselves adopted (Supplement~S7).
+had ourselves adopted.
 
 At $k=6$ loaded cores, two placements of the same load reach $\rho = \mechGeomRho$, identical
 to four decimals. Their negative-span rates differ by $\GeomOrigFactor\times$, reproduced at
@@ -467,7 +470,7 @@ own rate.
 
 The mechanism belongs neither to our Python clients nor to one processor family. A later
 registered campaign on three further pairs of machines found the same fall with the delivery
-in \kafka{}'s own Java client, and the same removal by real-time priority (Supplement Part~V).
+in \kafka{}'s own Java client, and the same removal by real-time priority (Section~\ref{sec:threats}).
 The Java client's rate was a third to a quarter of the Python client's. The same
 negative spans appeared on Neoverse~N2 processors as on x86. Our timestamp is a CPython call and
 also waits on the interpreter lock; the Java client, which has none, shows the same failure at a
@@ -510,7 +513,7 @@ slice, up to a whole one. That is $\sliceOverDeliveryLo$--$\sliceOverDeliveryHi$
 per-condition deliveries this corpus measures, $\condDeliveryLoMs$--$\condDeliveryHiMs$~ms.
 The registered campaign timed that wait afterwards, acknowledgment by acknowledgment, and found
 the rest of a slice rather than a whole one. That reading was made after its verdicts
-(Supplement~S16.10). The slice lands on the scale of the interval being measured, which is why
+(Supplement~S6.5). The slice lands on the scale of the interval being measured, which is why
 the check fires on a substantial minority of events. The
 scheduler's tick is also $\tickMs$~ms here, by coincidence of configuration; it is not the
 timestamp resolution $\tau$.
@@ -551,7 +554,7 @@ and $A$ is producer-side on one clock. A harness that records its own acknowledg
 therefore recovers the delivery it failed to measure. Its median error is $\recoveryErrPass\%$
 on the $\recoveryPassN$ conditions the check passes and $\recoveryErrFail\%$ on the
 $\recoveryFailN$ it rejects, with upper quartiles of $\recoveryErrPassHi\%$ and
-$\recoveryErrFailHi\%$: two populations the data cannot tell apart (Supplement~S16.9).
+$\recoveryErrFailHi\%$: two populations the data cannot tell apart (Supplement~S3.8).
 This does not reopen the check of Section~\ref{sec:gate}: the check declines to publish the
 proxy as a latency, and this reports the delivery instead.
 
@@ -634,16 +637,16 @@ All \spreadIncommensurateWord{} configurations whose send interval is incommensu
 sit near $50\%$, with medians from $\spreadIncommensurateLo$ to $\spreadIncommensurateHi$. That
 implies $T_{\mathrm{true}} = \spreadIncommensurateTrueMs$~ms at $\tau = 1$~ms. Where the send
 interval is commensurate with the tick, the retained fraction is confined to a few values, so
-moving $T_{\mathrm{true}}$ moves a configuration between them (Supplement~S11 tests every
+moving $T_{\mathrm{true}}$ moves a configuration between them (Supplement~S4.3 tests every
 configuration). That prediction was registered before its runs, and it came true. Replicate
 spread collapses to $\flipSpreadThirtyTwo$ points at $32$~KB and re-opens to
 $\flipSpreadSixtyFour$ at $64$~KB, a boundary crossed in both directions by one manipulated
-variable (Supplement~S10). One registered detail failed: the $32$~KB configuration pins at
+variable. One registered detail failed: the $32$~KB configuration pins at
 $\flipPinThirtyTwo\%$ retention, not on the predicted vertex at $\flipVertexTwoThirds\%$.
 
 The arithmetic is not ours. Hewlett-Packard's Application Note 162-1~\cite{hp1970tia} carries
 the retention identity, the reduced fraction the grid turns on, the ceiling on resolution gain,
-the symptom and the cure (Supplement~S17 sets them side by side). What is new is the sign of the
+the symptom and the cure. What is new is the sign of the
 operation. The counter keeps both readings, and the retained fraction is its estimator. A harness
 released in 2018 throws away the quantity a 1970 counter measured with.
 
@@ -663,7 +666,7 @@ one-millisecond timestamp can express, and it is no coincidence. The \redis{} dr
 difference between two millisecond-floored clocks on two hosts. A sub-tick offset between two
 floored clocks can produce exactly one negative value, $-1000\,\mu$s, and no other. Clock
 discipline was clean at every logged minute: this failure needs no misbehaving clock, only two of
-them and a floor (Supplement~S14).
+them and a floor (Supplement~S4.5).
 
 \section{How Widespread}
 \label{sec:tools}
@@ -685,7 +688,7 @@ zero~\cite{kafka_tools}.
 \caption{\textbf{Ten tools, read at source.} The span each measures, the clock it reads, what
 happens to a value at or below zero, and whether the tool counts what it discards; one row per
 span where a tool measures two. The source line behind every row is in the artifact's
-registry, which Supplement~S25 describes.}
+registry.}
 \label{tab:tools}
 \centering
 \footnotesize
@@ -695,7 +698,7 @@ registry, which Supplement~S25 describes.}
 In November 2025 \kafka{}'s coordinator metrics adopted the same disposal, clamping negative
 durations to zero with no counter~\cite{kafka19888}. \kafka{}'s record timestamp is itself a
 millisecond field on the wire, so patching one benchmark does not reach the broker's own
-metadata (Supplement~S16.7). The failure is not universal. Two tools pass negatives on
+metadata (Supplement~S4.7). The failure is not universal. Two tools pass negatives on
 unfiltered, as RFC~7679 asks~\cite{rabbitmq_perftest,nats_cli}, and \harnessCountingWord{} counts
 its discards in a metric that names the cause~\cite{rezolus}. What survives is the narrower
 claim: the tools that quantize or filter do so without counting.
@@ -705,7 +708,7 @@ claim: the tools that quantize or filter do so without counting.
 % counts are emitted from the committed coding by reach_macros(); the fork observation is not a
 % registered outcome and is worded as an observation.
 Whether published results sit in this regime is a question we registered before reading any
-report (Supplement~S25.1). The signature fixed in advance is an end-to-end median of exactly
+report (Supplement~S5.1). The signature fixed in advance is an end-to-end median of exactly
 1~ms, the smallest value the benchmark can print and the value every retained sample takes on a
 sub-millisecond path. Of $\reachReports$ published reports that print the benchmark's end-to-end
 percentiles, over $\reachConfigs$ configurations, \reachPrimaryConfigsWord{} configurations in
@@ -786,7 +789,7 @@ discarded, dither the send instant, and only then does synchronization quality m
 \label{sec:brokers}
 Once the failed runs are removed, the broker comparison that motivated the work is small. On the
 end-to-end latency, which is a causal chain, the two brokers are equivalent against a wider
-margin (Supplement~S13); on the transport proxy they sit within a millisecond (TOST against a
+margin (Supplement~S7); on the transport proxy they sit within a millisecond (TOST against a
 $\tostMargin$~ms margin, $p < 0.001$, across $\tostLevels$ levels). So it is not a purchasing
 argument. One consumption pattern, which a co-located testbed hides, reverses their order. Our own
 measurement is not symmetric across that comparison. \kafka{}'s client deserializes the payload
@@ -881,25 +884,26 @@ estimator, which cannot see the lock, already brackets the observed rate, and
 \kafka{}'s Java client shows the same failure (Section~\ref{sec:twostate}). Clock incoherence
 across virtual CPUs~\cite{kvmclock} is closed twice as well. The probe's $\clockIncrementNs$~ns
 increment admits only \clockAdmitted{}, both of which the kernel uses solely where cross-CPU
-coherence is asserted, and the send-referenced span's floor is $\spanOffsetMargin\times$ too high to hide the deepest negative
-(Supplement~S15). Across hosts \texttt{chrony} bounds its own error at
+coherence is asserted, and the send-referenced span's floor is $\spanOffsetMargin\times$ too high to hide the deepest negative.
+Across hosts \texttt{chrony} bounds its own error at
 $\chronyHostBoundLo$--$\chronyHostBoundHi$~ms per host, so we claim no cross-host bound in
 general, and the skew threshold of Section~\ref{sec:related_time} does not transfer to a loaded
-machine (Supplement~S33).
+machine (Supplement~S3.6 and~S9.4).
 
 The mechanism requires a timestamping path that can be preempted. Designs that pin a thread to a
 dedicated core and busy-poll, or that timestamp in hardware, remove the preempted state, and we
 make no claim about them. The mechanism's constants are those of one EEVDF-era kernel (6.8), and
 CFS-era schedulers may shift them. A registered campaign tested the mechanism's law on three
-further pairs of machines. One prediction held on every campaign: load raises the negative-span
-rate. On \kafka{} real-time priority removed the negatives, and the number of online CPUs moved
-the fall through the slice it sets. Its predictions of where the fall sits and how wide it is failed, and Python's rate
-exceeded Java's by more than the registered factor of $1.5$ (Supplement Part~V). The deletion
+further pairs of machines. One prediction held on every campaign that tested it, all five on
+\kafka{}: load raises the negative-span rate. On \kafka{} real-time priority removed the
+negatives, and the fall followed the slice the core count sets at the one count whose slice
+\kafka{}'s deliveries reach. Its predictions of where the fall sits and how wide it is failed, and Python's rate
+exceeded Java's by more than the registered factor of $1.5$ (Supplement~S6). The deletion
 arithmetic is demonstrated on one benchmark and reproduced in one independent harness, and the
 registered audit of Section~\ref{sec:tools} found its signature in few published results, so we
 claim the regime for those and for our own runs, not for the literature at large. The \harnessAuditedWord{} tools of Section~\ref{sec:tools} were read at source, not
 deployed. The benchmark's distributed mode failed on every attempt, so its cross-host exposure
-rests on source reading and our own two-host harness (Supplement~S24). Exposure depends on a deployment's path latency and producer rate, which is why
+rests on source reading and our own two-host harness (Supplement~S4.6). Exposure depends on a deployment's path latency and producer rate, which is why
 we recommend publishing a retention rate rather than calling any published number wrong.
 
 \section{Conclusion}

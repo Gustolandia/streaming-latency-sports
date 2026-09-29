@@ -12,7 +12,8 @@ itself is about, so it gets the same treatment as any other: the question "is th
 becomes something a machine answers over the whole surface, rather than something a person
 answers over the files they happened to think of.
 
-The surface is `paper.tex` + `supplement.tex` + every `.tex` under `docs/generated/`. There is
+The surface is `paper.tex` + `supplement.tex` + `postmortem.tex` + every `.tex` under
+`docs/generated/`. There is
 no rule here against an uncited bibliography entry -- the `.bib` is a working file and holds
 more than any one version cites -- but every citation must resolve, every audited harness must
 be cited somewhere on the surface, and the reference list the paper actually prints must fit
@@ -74,7 +75,7 @@ def _bib_keys():
 
 def _surface():
     """Every file a citation may be written in, generated ones included."""
-    out = [REPO / "paper.tex", REPO / "supplement.tex"]
+    out = [REPO / "paper.tex", REPO / "supplement.tex", REPO / "postmortem.tex"]
     out += sorted(GENERATED.glob("*.tex"))
     return [p for p in out if p.exists()]
 
@@ -93,7 +94,7 @@ class TestTheSurfaceIsWhatWeThinkItIs:
 
     def test_the_generated_directory_is_part_of_it(self):
         names = {p.name for p in _surface()}
-        assert "paper.tex" in names and "supplement.tex" in names
+        assert {"paper.tex", "supplement.tex", "postmortem.tex"} <= names
         assert any(p.parent == GENERATED for p in _surface()), \
             "the generated includes carry citations and must be scanned"
 
@@ -104,7 +105,7 @@ class TestTheSurfaceIsWhatWeThinkItIs:
         above stops being load-bearing -- at which point delete both rather than let them
         pass vacuously.
         """
-        hand = _cited([REPO / "paper.tex", REPO / "supplement.tex"])
+        hand = _cited([REPO / "paper.tex", REPO / "supplement.tex", REPO / "postmortem.tex"])
         everywhere = _cited(_surface())
         assert everywhere - hand, (
             "no citation is emitted rather than typed; if that is now true on purpose, this "
@@ -214,6 +215,10 @@ class TestTheBuiltPaperFitsTheJournal:
     def test_the_supplement_is_built_too(self):
         """It carries everything the page limit pushed out, so an unbuilt one is a lost half."""
         assert self._pdf_pages("supplement.pdf") > TC_PAGE_LIMIT
+
+    def test_the_postmortem_is_built_too(self):
+        """The complete record, archived beside the data; the longest of the three."""
+        assert self._pdf_pages("postmortem.pdf") > self._pdf_pages("supplement.pdf")
 
 
 def _macro_reaches_paper(key):

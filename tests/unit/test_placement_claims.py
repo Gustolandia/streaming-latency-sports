@@ -33,7 +33,7 @@ import pytest
 
 REPO = Path(__file__).parent.parent.parent
 PAPER = REPO / "paper.tex"
-SUPP = REPO / "supplement.tex"
+SUPP = REPO / "postmortem.tex"
 
 #: Sentence patterns that assert the material is *not* in the other document.
 EXCLUSIVE = (
@@ -114,7 +114,7 @@ class TestTheSupplementIsRightAboutWhatThePaperContains:
         for line, sentence, keys in exclusive_claims(supp):
             for key in keys:
                 if key in in_paper and key not in ALLOWED:
-                    bad.append("supplement.tex:%d  cites %s, which the main text also cites\n"
+                    bad.append("postmortem.tex:%d  cites %s, which the main text also cites\n"
                                "      %s" % (line, key, sentence[:180]))
         assert not bad, (
             "the supplement says material is here rather than in the main text, and the main "

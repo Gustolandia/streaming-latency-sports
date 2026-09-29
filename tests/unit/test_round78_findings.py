@@ -42,7 +42,7 @@ def paper():
 
 @pytest.fixture(scope="module")
 def supplement():
-    return (REPO / "supplement.tex").read_text(encoding="utf-8")
+    return (REPO / "postmortem.tex").read_text(encoding="utf-8")
 
 
 @pytest.fixture(scope="module")
@@ -317,7 +317,8 @@ class TestW4TheFigureFollowsItsHeading:
         assert "t" not in opt, "a top float lands above the heading of the page it shares"
 
     def test_on_the_rendered_page_the_heading_comes_first(self):
-        pages = _rendered_pages("supplement")
+        """29 Sep: S16.9 and Fig. S11 are the postmortem's; its pages are postmortem.pdf."""
+        pages = _rendered_pages("postmortem")
         heading = "S16.9. The displacement recovery, distribution by distribution"
         caption = "Two populations with no detectable shift between them."
         h = max(i for i, t in enumerate(pages) if heading in t)
@@ -384,17 +385,19 @@ class TestTheRenderedPagesCarryIt:
     def test_the_main_text(self):
         """v5 (28 Sep): the article prints Section III-D's "cannot tell apart"; the undetectable
         shift and both labeled brackets print on S16.9's pages (editorial review, Section 5),
-        matched with spaces removed because the extractor drops them around inline math."""
+        matched with spaces removed because the extractor drops them around inline math.
+        29 Sep: S16.9 is the postmortem's, so its pages are read from postmortem.pdf."""
         flat = " ".join(_rendered_pages("paper"))
         assert re.search(NOT_TOLD_APART, flat)
-        supp = " ".join(_rendered_pages("supplement"))
+        supp = " ".join(_rendered_pages("postmortem"))
         tight = "".join(supp[supp.rindex("S16.9. The displacement recovery"):
                              supp.rindex("S16.10. How late")].split())
         assert "noshiftcanbedetected" in tight
         assert tight.count("(95%percentilebootstrap:") + tight.count("(95%bootstrap:") >= 2
 
     def test_the_supplement(self):
-        flat = " ".join(_rendered_pages("supplement"))
+        """29 Sep: these are S16.9's words, which the postmortem keeps; postmortem.pdf."""
+        flat = " ".join(_rendered_pages("postmortem"))
         assert "Nothing in these data separates them." in flat
         assert "no detectable shift between them" in flat
         assert "claims no equivalence" in flat

@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).parent.parent.parent
-DOCS = ("paper.tex", "supplement.tex")
+DOCS = ("paper.tex", "supplement.tex", "postmortem.tex")
 
 #: The main text's exhibits carry the convention. The supplement is a reference document with
 #: forty-odd floats and a different job, so it is surveyed but not required to comply.
@@ -105,7 +105,7 @@ class TestEveryExhibitOpensOnAClaim:
         change that if a later round decides otherwise.
         """
         figures = [(lab, cap) for env, lab, cap in
-                   captions((REPO / "supplement.tex").read_text(encoding="utf-8"))
+                   captions((REPO / "postmortem.tex").read_text(encoding="utf-8"))
                    if env == "figure"]
         assert len(figures) >= 13, "the supplement's figures stopped parsing"
         bad = []
@@ -132,7 +132,7 @@ class TestEveryExhibitOpensOnAClaim:
         opens with. Figures only, for the reason the supplement's tables are surveyed rather
         than required above.
         """
-        text = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        text = (REPO / "postmortem.tex").read_text(encoding="utf-8")
         bad = []
         for block in re.findall(r"\\begin\{figure\*?\}(.*?)\\end\{figure\*?\}", text, re.S):
             short = re.search(r"\\caption\[([^\]]*)\]\{", block)

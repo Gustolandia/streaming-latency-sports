@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: "Faster-than-Light: code and analysis for latency measurement artifacts in streaming benchmarks"
+title: "Faster than Light: code and analysis for latency measurement errors in message-broker benchmarks"
 # Order matches the manuscript byline and is not alphabetical: lead author first. The list
 # held four names until 2026-09-10, when the last author's withdrawal of 8 September was
 # actioned and a third author asked to be removed from the work. Neither is named here.
@@ -16,7 +16,7 @@ authors:
     given-names: "Romaric"
     email: "duvignau@chalmers.se"
     affiliation: "Department of Computer Science and Engineering, Chalmers University of Technology"
-abstract: "Two failure modes of sub-millisecond latency benchmarking: causality-violating inversions from scheduling stalls, and silent sample deletion governed by a grid law in the send-interval-to-timestamp-quantum ratio. Code, campaigns, and a suite that recomputes every figure from committed data."
+abstract: "Two ways a message-broker benchmark misreports on sub-millisecond paths: a latency timed from the acknowledgment turns negative when the thread recording it is scheduled late, and a millisecond clock with a positivity filter deletes sub-millisecond samples without counting them. Code, campaigns, and a suite that recomputes every number from committed data."
 version: "3.0.0"
 url: "https://github.com/Gustolandia/streaming-latency-sports"
 doi: "10.5281/zenodo.21650031"   # concept DOI: always the latest version
@@ -39,7 +39,7 @@ date-released: "2026-09-04"
 # was discarded at parse time and "Cite this repository" emitted a scaffolding version instead.
 preferred-citation:
   type: article
-  title: "Faster-than-Light: Latency Measurement Artifacts in Streaming Benchmarks"
+  title: "Faster than Light: Latency Measurement Errors in Message-Broker Benchmarks"
   authors:
     - family-names: "Ricou"
       given-names: "Gustavo Pedro"

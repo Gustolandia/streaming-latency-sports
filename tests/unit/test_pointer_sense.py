@@ -62,7 +62,7 @@ def _macro_targets():
     build. `\\ref{P-sec:audit}` is satisfied by the paper's `\\label{sec:audit}`, so the
     prefix is transport and the label is what this file is about.
     """
-    supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+    supp = (REPO / "postmortem.tex").read_text(encoding="utf-8")
     pairs = re.findall(r"\\newcommand\{\\(main[A-Za-z]+)\}\{\\ref\{([^}]+)\}\}", supp)
     return {name: re.sub(r"^P-", "", label) for name, label in pairs}
 
@@ -96,7 +96,7 @@ class TestWhatTheSupplementAttributesToTheArticleIsInTheArticle:
     @pytest.mark.parametrize("phrase", sorted(ATTRIBUTED))
     def test_the_supplement_actually_uses_it(self, phrase):
         """A row for a phrase nobody attributes is a row that tests nothing."""
-        assert phrase in _flat("supplement.tex").lower(), \
+        assert phrase in _flat("postmortem.tex").lower(), \
             "%r is inventoried but the supplement does not use it" % phrase
 
     def test_round_59s_four_phrases_are_no_longer_attributed_to_the_article(self):
@@ -106,7 +106,7 @@ class TestWhatTheSupplementAttributesToTheArticleIsInTheArticle:
         auto-creation reason is S9's own. None of them may go back to naming a main-text
         section, because the article has not carried them since round 60.
         """
-        supp = _flat("supplement.tex")
+        supp = _flat("postmortem.tex")
         for macro, sentence in _sentences_with_pointers(supp):
             low = sentence.lower()
             for phrase in ("start-up cost", "opening burst", "auto-creation",
@@ -125,7 +125,7 @@ class TestThePointersStillResolve:
         assert not missing, "macros naming labels the article lacks: %s" % missing
 
     def test_the_supplement_points_at_the_article_somewhere(self):
-        found = _sentences_with_pointers(_flat("supplement.tex"))
+        found = _sentences_with_pointers(_flat("postmortem.tex"))
         assert len(found) > 40, \
             "only %d pointers found; the extractor is broken rather than the document clean" \
             % len(found)

@@ -141,6 +141,22 @@ class TestPrintWidths:
     def test_a_missing_source_is_not_an_error(self, tmp_path):
         assert fl.print_widths((str(tmp_path / "absent.tex"),)) == {}
 
+    def test_the_narrowest_print_of_a_shared_figure_governs(self, tmp_path):
+        """A figure in two documents is read where it prints smallest. Until 29 Sep the last
+        document read won, whatever order the tuple gave, so the one-column width masked the
+        paper's column."""
+        column = tmp_path / "col.tex"
+        column.write_text("\\begin{document}\n\\begin{figure}[t]\n"
+                          "\\includegraphics[width=\\columnwidth]{a/shared.pdf}\n"
+                          "\\end{figure}\n", encoding="utf-8")
+        wide = tmp_path / "wide.tex"
+        wide.write_text("\\documentclass[10pt,journal,onecolumn]{IEEEtran}\n"
+                        "\\begin{document}\n\\begin{figure}[t]\n"
+                        "\\includegraphics[width=\\columnwidth]{a/shared.pdf}\n"
+                        "\\end{figure}\n", encoding="utf-8")
+        for order in ((str(column), str(wide)), (str(wide), str(column))):
+            assert fl.print_widths(order)["shared"] == pytest.approx(3.5)
+
 
 class TestPrintedSizes:
 

@@ -77,7 +77,7 @@ class TestRedisStampsBeforeItParses:
 
 class TestTheAsymmetryIsDisclosedWhereItIsDescribed:
     def test_the_supplement_names_both_placements(self):
-        supp = (SCRIPTS.parent / "supplement.tex").read_text(encoding="utf-8")
+        supp = (SCRIPTS.parent / "postmortem.tex").read_text(encoding="utf-8")
         # LaTeX escapes the underscores, so compare on the text a reader sees.
         body = " ".join(supp.replace("\\_", "_").split())
         assert "value_deserializer" in body, \

@@ -50,7 +50,7 @@ def paper():
 
 @pytest.fixture(scope="module")
 def supplement():
-    return (REPO / "supplement.tex").read_text(encoding="utf-8")
+    return (REPO / "postmortem.tex").read_text(encoding="utf-8")
 
 
 @pytest.fixture(scope="module")
@@ -323,13 +323,15 @@ class TestTheRenderedPagesCarryIt:
     def test_the_main_text(self):
         """v5 (28 Sep): the undetectable shift and its bracket print on S16.9's pages now
         (editorial review, Section 5). The extractor drops the spaces around inline math, so
-        they are matched with all spaces removed; the article still prints no crossing."""
-        tight = "".join(_rendered_s169(_rendered("supplement")).split())
+        they are matched with all spaces removed; the article still prints no crossing.
+        29 Sep: S16.9 is the postmortem's, so its pages are read from postmortem.pdf."""
+        tight = "".join(_rendered_s169(_rendered("postmortem")).split())
         assert "noshiftcanbedetected" in tight
         assert "(95%bootstrap:" in tight
         assert "crosses it" not in " ".join(_rendered("paper").split())
 
     def test_the_supplement(self):
-        flat = " ".join(_rendered("supplement").split())
+        """29 Sep: these are S16.9's words, which the postmortem keeps; postmortem.pdf."""
+        flat = " ".join(_rendered("postmortem").split())
         assert "Two populations with no detectable shift between them" in flat
         assert "happen to cross" in flat

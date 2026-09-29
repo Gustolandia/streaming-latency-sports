@@ -163,7 +163,7 @@ carrying its claim; nothing lost a number or a citation.
 
 | Supp. section | Content | Moved from |
 |---|---|---|
-| S24 | The statistical inventory: pooled-variance z, Hodges–Lehmann, TOST, the permutation null, the bootstrap, and the interval-censored tail estimators | main text III-D, which keeps only the three choices a reader might contest |
+| S24 | The statistical inventory: pooled-variance z, Hodges–Lehmann, TOST, the continuum null, the bootstrap, and the interval-censored tail estimators | main text III-D, which keeps only the three choices a reader might contest |
 | S33 | The dispute with the concurrent negative-span report in full --- which queue each account means, and why a millisecond skew threshold does not transfer to a loaded machine | main text II-B (about 140 words) |
 | S17 | The 1970 counter note mapped line by line: retention identity, class, the ceiling on averaging, the symptom, the cure | main text II-C (about 100 words) |
 | S33 | Two literatures the paper stands against: production tracing's skew adjusters, and where scheduling delay comes from | main text II-B and II-C (about 250 words) |
@@ -187,7 +187,7 @@ main text gave up is below; nothing lost a number or a citation.
 | Supp. section | Content | Moved from |
 |---|---|---|
 | S14 | Why the two drivers differ, and how a difference of two floored clocks admits exactly one negative value | main text IV-D (about 130 words) |
-| S14 | The permutation null, constructed: exchangeability under the continuum, 10^4 permutations, and why it has no power where the predictions coincide | main text IV-C |
+| S14 | The continuum null, constructed: replicates drawn Normal around the rate-local value with the incommensurate configurations' pooled SD, 4,000 Monte Carlo draws per test (`MC_ARMS`), one-sided p, and why it has no power where the predictions coincide (described as a permutation null with 10^4 permutations until 29 Sep 2026, which the script never did) | main text IV-C |
 | S7 | The overnight campaign prediction by prediction --- the duration-invariance counts that killed the drift account, and the linear extrapolation that failed | main text IV-B |
 
 **The reference cap decided two placements.** Round 20 added five citations to a list of
@@ -298,29 +298,32 @@ with no gate, and the only one that costs $220 a page.
 
 ## Figure inventory
 
-`docs/results/figures/` holds fifteen PDFs. Twelve are included by a document; three are not,
-and are kept deliberately rather than by oversight. Referee round 13 asked which was which, so
+`docs/results/figures/` holds thirty-one PDFs. Twenty-five are included by a document (five
+by the main text, twenty by the supplement); six are not, and are kept deliberately rather than
+by oversight. Referee round 13 asked which was which, so
 the answer lives here instead of in anyone's memory. A test
 (`test_every_figure_is_used_or_declared`) fails if a figure appears in the directory without
 appearing in this table.
 
 | Figure | Where it appears |
 |---|---|
-| `pipeline_schematic` | main text, Fig. 1 only (promoted round 51: Gregg's requirement that a general reader meet the system, drawn, inside the first two pages). The S24 copy was dropped round 48: it included the same file, under prose claiming the main text's version carried "more detail", which it could not, being the same drawing. S24 keeps the stamp-to-metric mapping as prose |
+| `two_ways` | main text, Fig. 1 (added 28 Sep 2026, the editorial revision: panels (a) and (b) of `deletion_histogram` side by side, so page 1 shows both failures on one population; `scripts/make_deletion_histogram.py --two`) |
 | `measurement_model` | main text, Fig. 2 (panel (b) split off round 52) |
+| `pipeline_schematic` | supplement, S24.3 (returned 28 Sep 2026: the v5 main text defines the four timestamps in prose and gives its drawing to the inversion itself, Fig. 2; the pipeline drawing went back beside the metric map that needs it. It had been main text, Fig. 1, from round 51, when Gregg asked that a general reader meet the system, drawn, inside the first two pages; one copy only, as round 48 required) |
 | `delta_schematic` | supplement, S9 (was Fig. 2(b); the one main-text drawing that was not a measurement, and the measured version is Fig. 9). Redrawn 28 Sep 2026: the waiting state is a shelf to the slice and a tick, the rest of a slice, where it had been a lobe at the slice (S16.10) |
 | `wait_shape` | supplement, S16.10 (added 28 Sep 2026: each acknowledgment's wait against the whole-slice and rest-of-a-slice shapes, and every thread's waits by what began them; `scripts/make_wait_shape_figure.py`) |
 | `law_slice` | supplement, S36 (added 28 Sep 2026, Part V: every run of L1 and L4 (the plan's A1 and A4) with every aberrant run marked; `scripts/make_law_figures.py`, marks by `scripts/law_runs.py`) |
 | `law_tick` | supplement, S36 (added 28 Sep 2026, Part V: L2, L5 and L7, marked the same way) |
 | `law_load` | supplement, S36 (added 28 Sep 2026, Part V: L3 and L8, marked the same way) |
 | `law_a9` | supplement, S36 (added 28 Sep 2026, Part V: L9, with its traced half ringed) |
-| `deletion` | main text, Fig. 4 (was Fig. 3 until round 61 put failure mode 1 before failure mode 2, at the second author's request) |
 | `quantum_geometry` | supplement, S17 (moved round 40: a constructed illustration of the retention law, not a measurement, placed beside the 1970 counter note that carries the same identity) (added round 28: the geometry behind the deletion law) |
 | `grid_membership` | supplement, S11 (moved round 59: the second author asked for the grid refinement to become the explanation of the deletion rather than a contribution, so the figure went beside the per-configuration table it summarizes) |
 | `payload_flip` | supplement, S10 (moved round 43: every number its panels carry is in the sentence that used to sit above it, and four biographies would not otherwise fit inside twelve pages) (single-column from round 28; was full-width) |
 | `mechanism_forest` | supplement, S12 (moved round 57: it plots the four matched pairs of the main text's Table II and the two brokers of its Table I, so it restated tables the reader already has) |
 | `ttrue_law` | supplement, S8 |
 | `stall_spectrum` | main text, Fig. 3 (was Fig. 4 until round 61 reordered the two failure modes, Fig. 5 until `grid_membership` left in round 59, and Fig. 6 until `payload_flip` left in round 43) |
+| `exposure_curve_column` | main text, Fig. 4 (added 28 Sep 2026: the S12 curve redrawn at column width, because the main text's advice to authors turns on where their path sits on it) |
+| `deletion_phases` | main text, Fig. 5 (added 28 Sep 2026: the four-phase drawing of one tick beside the retention of every captured setting, mechanism beside consequence. Its panel (b) is the former `deletion` figure, main text Fig. 4 from round 61, whose single-panel file and builder were retired with it) |
 | `priority_ladder` | supplement, S12 |
 | _(no figure)_ | supplement, S13 --- the broker results, moved from the main text in round 18 |
 | `experiment_map` | supplement |

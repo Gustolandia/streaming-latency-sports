@@ -93,26 +93,53 @@ class TestASectionOpensOnItsOwnClaim:
             "The negatives in our own corpus are produced by scheduling.")
 
     def test_the_tools_section_still_makes_the_hinge_do_its_work(self, paper):
-        """The hinge was not deleted, it was moved back against the case it introduces."""
-        i = paper.find("Deletion is not the only way")
+        """The hinge was not deleted, it was moved back against the case it introduces.
+
+        v5 (28 Sep): the line edit folded "Deletion is not the only way coarse resolution
+        wins" into the case itself: Kafka's tool "keeps every sample and loses it anyway". The
+        contrast with deletion is that clause now, and it must still sit against the integer
+        division it introduces.
+        """
+        i = paper.find("keeps every sample and loses it anyway")
         assert i > 0, "the hinge sentence has gone; it introduces the integer-division case"
         assert "integer division" in paper[i:i + 400], (
-            "'Deletion is not the only way coarse resolution wins' has drifted away from the "
-            "case it introduces, which is the tool that keeps every sample and divides")
+            "'keeps every sample and loses it anyway' has drifted away from the case it "
+            "introduces, which is the tool that keeps every sample and divides")
+        j = paper.find("Deletion is not the only way")
+        if j >= 0:
+            assert "integer division" in paper[j:j + 400], (
+                "'Deletion is not the only way coarse resolution wins' is back and has drifted "
+                "away from the case it introduces")
 
 
 class TestAMedianTravelsWithItsSpread:
     """W2: the spread belongs to the quantity, not to the sample it was taken over."""
 
-    def test_the_interquartile_range_is_not_a_property_of_the_conditions(self, paper):
+    def test_the_interquartile_range_is_not_a_property_of_the_conditions(self, paper,
+                                                                         supplement):
+        """v5 (28 Sep): the paper keeps the denominator and the interquartile range; the worst
+        condition left Section III-D with the other numbers the editor counted there (sections
+        5 and 7.3, "twelve numbers in eight lines") and is in S12's "What the comparison costs,
+        in full". The worst-case half of the pin follows it there, and it may not come back to
+        the paper without saying which thing reaches it."""
         i = paper.find(r"\spanRatioConditions")
         assert i > 0, "the denominator has gone"
         window = paper[i:i + 320]
         assert "conditions whose interquartile" not in window, (
             "the interquartile range is hung off 'conditions' again; the range belongs to "
             "the understatement, and the worst case belongs to a condition")
+        j = supplement.find(r"\understateWorst")
+        assert j > 0, "the worst condition has gone from both documents"
+        window = supplement[max(0, j - 200):j]
+        assert "conditions whose interquartile" not in window, (
+            "the supplement hangs the interquartile range off 'conditions'; the range belongs "
+            "to the understatement, and the worst case belongs to a condition")
         assert "the worst condition reaches" in window, \
             "the worst case no longer says which thing reaches it"
+        k = paper.find(r"\understateWorst")
+        if k >= 0:
+            assert "the worst condition reaches" in paper[max(0, k - 200):k], \
+                "the worst case is back in the paper without saying which thing reaches it"
 
 
 class TestTheLiteratureCensusIsDerivedNotRemembered:
@@ -167,13 +194,19 @@ class TestThePromiseNamesWhoKeepsIt:
     """W3b: Section IV-F promised a corrected value that its own two tables do not display."""
 
     def test_the_holm_promise_says_which_tables(self, paper):
-        i = paper.find("Holm correction is applied")
-        assert i > 0, "the Holm sentence has gone"
-        window = paper[i:i + 220]
-        assert "supplement's tables" in window, (
-            "Section IV-F promises that 'the tables' display the corrected value, in a "
-            "document whose own two tables display counts, rates and z. The p_Holm column "
-            "is in the supplement.")
+        """v5 (28 Sep): the statistics paragraph is Section II-D and now reads "every ratio a
+        Katz interval, Holm-corrected within a named family", with no Katz interval left in the
+        paper to keep that promise (Table II's brackets went to the supplement). The anchor
+        takes either wording; the requirement that the promise name the supplement's tables is
+        unchanged, and every Holm promise in the paper has to meet it."""
+        hits = [m.start() for m in re.finditer(r"Holm(?:-corrected| correction)", paper)]
+        assert hits, "the Holm sentence has gone"
+        for i in hits:
+            window = paper[i:i + 220]
+            assert "supplement's tables" in window, (
+                "Section II-D promises a Holm-corrected interval on every ratio, in a document "
+                "whose own tables display counts, rates and Wilson intervals. The Katz brackets "
+                "and the p_Holm column are in the supplement, and the sentence has to say so.")
 
 
 class TestEveryCaptionParserReadsBothForms:

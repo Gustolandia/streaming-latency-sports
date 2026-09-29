@@ -724,8 +724,8 @@ def spread_macros():
 #: prose narrates needs its rate spelled before it can have a macro of its own.
 _RATE_WORDS = {
     250: "TwoFifty", 300: "ThreeHundred", 400: "FourHundred", 500: "FiveHundred",
-    600: "SixHundred", 625: "SixTwentyFive", 700: "SevenHundred", 900: "NineHundred",
-    1250: "TwelveFifty",
+    600: "SixHundred", 625: "SixTwentyFive", 700: "SevenHundred", 889: "EightEightyNine",
+    900: "NineHundred", 1250: "TwelveFifty",
 }
 
 
@@ -753,6 +753,11 @@ NARRATED_ARMS = (
     (400, None, None, ("Spread", "Hi", "WithoutHiSpan")),
     (300, None, None, ("Spread",)),
     (250, None, None, ("Rate", "NWord", "Spread", "Cell")),
+    # The editorial revision (28 Sep): S23's "stable to 1.7" was the one spread in its
+    # sentence still typed, beside two emitted ones. It surfaced when the supplement began
+    # quoting \gapDistortionPaired, whose value is also 1.7, and the ledger gate read the
+    # typed copy as a transcription of it.
+    (889, None, None, ("Spread",)),
 )
 
 
@@ -973,9 +978,11 @@ REGISTRY_LABELS = {
     "library_refusal": "refused by own library",
     # Not a disposal -- nothing vanishes -- which is why it is absent from DISPOSAL_KINDS and
     # does not move the "silent" count. It belongs in this column all the same: the column
-    # answers what happens to the value, and being truncated to the quantum is what happens
-    # to it in Apache Kafka's own bundled end-to-end tool.
-    "quantized_retention": "truncate to the quantum",
+    # answers what happens to the value, and being truncated to the resolution is what happens
+    # to it in Apache Kafka's own bundled end-to-end tool. "Resolution" since v5 (28 Sep): the
+    # manuscript retired "quantum" for one name per thing, and this generated cell, which no
+    # prose gate reads, had kept it in Table III.
+    "quantized_retention": "truncate to the resolution",
 }
 
 #: Harness -> bibliography key for the caption's source list, in the rows' own order.
@@ -1283,6 +1290,39 @@ def tost_macros(path=os.path.join("docs", "results", "transport_rt",
                                        float(first["hl_ci90_hi"]))),
         ("tostHLRange", "%.3f$--$%.3f" % (min(shifts), max(shifts))),
         ("tostLevels", str(len(rows))),
+    ]
+
+
+def tti_tost_macros(path=os.path.join("docs", "results", "transport_rt",
+                                      "tti_realtime_gated_tost.csv")):
+    """The end-to-end equivalence the text asserted beside the transport one, over the same runs.
+
+    The supplement said the end-to-end latency "is equivalent over the same levels against a
+    wider margin" and pointed at a section that tests nothing of the kind; the only files on
+    disk were July campaigns at other levels. This file is equivalence_tests.py over the same
+    audit-gated by-run as `tost_macros`, on the end-to-end column, at the one-frame margin that
+    script fixed on 21 Jul, three days before the campaign ran:
+
+        python scripts/equivalence_tests.py \\
+            --by-run docs/results/transport_rt/transport_realtime_by_run_gated.csv \\
+            --value-col tti_p50 --margin 40 --label tti_realtime_gated \\
+            --out docs/results/transport_rt
+
+    `ttiTostCIHigh` is the highest upper bound any of the three estimators reaches at any level.
+    """
+    if not os.path.exists(path):
+        return []
+    import csv
+    with open(path, encoding="utf-8") as fh:
+        rows = list(csv.DictReader(fh))
+    if not rows:
+        return []
+    shifts = [float(r["hl_shift"]) for r in rows]
+    high = max(float(r[k]) for r in rows for k in ("ci90_hi", "boot_ci90_hi", "hl_ci90_hi"))
+    return [
+        ("ttiTostMargin", "%.0f" % float(rows[0]["margin"])),
+        ("ttiTostHLRange", "%.3f$--$%.3f" % (min(shifts), max(shifts))),
+        ("ttiTostCIHigh", "%.3f" % high),
     ]
 
 
@@ -1810,12 +1850,18 @@ def manipulation_macros():
     # of the priority pairs the table prints. Emitted as the measured worst case rather than
     # the round bound the caption used: the bound was true, but a bound nobody recomputes is
     # the same object as a transcribed number.
+    # Each shown configuration's own achieved utilisation is emitted beside the gap, so Table II
+    # can print it in a column (v5, 28 Sep): "utilization unchanged" is the crux of the priority
+    # manipulation, and an outside editor's reading found it living only in the caption.
     try:
         gaps = []
         for pair in priority_pairs.pairs(
                 campaigns=(("E-A5", "stamping_priority.csv"),)):
             if pair["level"] in ("l75", "l88"):
                 gaps.append(abs(pair["rho"] - pair["rho_rt"]))
+                name = "rtLow" if pair["level"] == "l75" else "rtHigh"
+                out.append((name + "Rho", "%.4f" % pair["rho"]))
+                out.append((name + "RhoRt", "%.4f" % pair["rho_rt"]))
         if gaps:
             out.append(("mechRhoMatch", "%.4f" % max(gaps)))
     except (OSError, KeyError, ValueError):
@@ -2886,9 +2932,121 @@ def handling_share_macros(recount=SPAN_CSV,
     ]
 
 
+REACH_CSV = os.path.join("docs", "results", "external", "published_results_audit",
+                         "configurations.csv")
+
+
+def _printed_ms(value):
+    """A percentile as a report printed it, or None where it printed none or no single number.
+
+    The registration counts printed numbers only; "~650", a range, or a cell cut off at an
+    image's edge is coded as printed but is not a value a median can equal.
+    """
+    try:
+        return float((value or "").strip())
+    except ValueError:
+        return None
+
+
+def reach_macros(path=REACH_CSV):
+    """The registered audit of published OMB results (freezes/29), counted from its coding.
+
+    The four outcomes were fixed before any report was read: how many reports and
+    configurations are included; how many configurations, in how many reports, print an
+    end-to-end median of exactly 1 ms (the primary signature); how many of those also print a
+    p99 of exactly 1 ms (the strong one); and whether any report states a retained fraction or
+    a discard count. The first three are counted here from the committed coding rather than
+    copied from the audit's summary. The fourth is a reading of each report as a whole, which
+    the coding has no column for; the summary records it (none does), and the prose says so
+    in words.
+
+    One further count is not a registered outcome and the prose says so: how many included
+    reports print a median below a whole millisecond, which is how often a copy of the
+    benchmark had already been changed to time the span more finely.
+    """
+    import csv as _csv
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8") as fh:
+        rows = [r for r in _csv.DictReader(fh) if r["included"].strip() == "yes"]
+    reports = {r["report_url"] for r in rows}
+    printed = [r for r in rows if (r["e2e_p50_ms"] or "").strip()]
+    primary = [r for r in rows if _printed_ms(r["e2e_p50_ms"]) == 1.0]
+    strong = [r for r in primary if _printed_ms(r["e2e_p99_ms"]) == 1.0]
+    finer = {r["report_url"] for r in rows
+             if _printed_ms(r["e2e_p50_ms"]) is not None
+             and _printed_ms(r["e2e_p50_ms"]) != round(_printed_ms(r["e2e_p50_ms"]))}
+    return [
+        ("reachReports", "%d" % len(reports)),
+        ("reachConfigs", latex_thousands(len(rows))),
+        ("reachMedianConfigs", "%d" % len(printed)),
+        ("reachPrimaryConfigs", "%d" % len(primary)),
+        ("reachPrimaryConfigsWord", _spell(len(primary))),
+        ("reachPrimaryReports", "%d" % len({r["report_url"] for r in primary})),
+        ("reachPrimaryReportsWord", _spell(len({r["report_url"] for r in primary}))),
+        ("reachStrongConfigs", "%d" % len(strong)),
+        ("reachFinerReports", "%d" % len(finer)),
+    ]
+
+
+CLIFF_DIR = os.path.join("docs", "results", "law", "strange-results-28-sep")
+
+
+def _width_line(fit):
+    """A fitted width on the tick, w(h) = a + b h, as the supplement prints it: b h, then a.
+
+    The value carries its own math, like an interval does, so the prose sets the macro in text
+    mode: a value with a letter in it is text to test_generated_macro_typesetting otherwise."""
+    a, b = fit["intercept"], fit["slope"]
+    return "$%.2fh %s %.2f$" % (b, "-" if a < 0 else "+", abs(a))
+
+
+def cliff_macros(root=CLIFF_DIR):
+    """S16.11's reading of the tick campaign through its own frozen judges.
+
+    `scripts/cliff_shape.py` feeds the judges runs whose rates follow a stated shape exactly,
+    and records what they return; its output is committed beside the other readings of 28
+    September. The supplement quoted that output by hand until the editorial revision, when
+    one of its ranges turned out to have dropped, without saying so, the one slice it does not
+    cover: Kafka's 1.5 ms slice, most of whose fall lies below the client's own trip with
+    nothing added, where no trip can go. Emitted here, the range is taken over the slices the
+    sentence names and no other, and the exception is a line of code with its reason.
+
+    Both files or nothing: a range from half its inputs would be a different range.
+    """
+    import csv as _csv
+    import json as _json
+    judged = os.path.join(root, "cliff_judged.csv")
+    summary = os.path.join(root, "cliff_summary.json")
+    if not (os.path.exists(judged) and os.path.exists(summary)):
+        return []
+    with open(judged, encoding="utf-8") as fh:
+        rows = {(r["prediction"], r["block"], r["view"]): r for r in _csv.DictReader(fh)}
+    with open(summary, encoding="utf-8") as fh:
+        lines = _json.load(fh)["width_lines"]
+    pooled = rows[("P2", "A2 redis", "plan")]
+    # Out of reach, as the 2.25 ms slice was in L1: see the docstring.
+    reach = [k for k in lines["plan"] if k != "kafka, 1.5"]
+    four = [lines["plan"][k][v]["ratio_250"] for k in reach for v in ("free", "fitted")]
+    ten = [lines["plan"][k][v]["ratio_100"] for k in reach for v in ("free", "fitted")]
+    return [
+        ("cliffPooledRedisFree", "%.2f" % float(pooled["free"])),
+        ("cliffPooledRedisFitted", "%.2f" % float(pooled["fitted"])),
+        ("cliffPerSliceFourLo", "%.1f" % min(four)),
+        ("cliffPerSliceFourHi", "%.1f" % max(four)),
+        ("cliffPerSliceTenLo", "%.1f" % min(ten)),
+        ("cliffPerSliceTenHi", "%.1f" % max(ten)),
+        ("cliffLineRedisShortFree", _width_line(lines["data"]["redis, 1.5"]["free"])),
+        ("cliffLineRedisShortFitted", _width_line(lines["data"]["redis, 1.5"]["fitted"])),
+        ("cliffLineKafkaShortFitted", _width_line(lines["data"]["kafka, 1.5"]["fitted"])),
+        ("cliffLineRedisLongRest", _width_line(lines["residual"]["redis, 3"]["fitted"])),
+        ("cliffLineRedisLongFitted", _width_line(lines["data"]["redis, 3"]["fitted"])),
+    ]
+
+
 def all_pairs(m):
     return (list(macros(m)) + span_macros() + stat_macros() + grid_macros()
-            + retention_macros() + traced_macros() + tost_macros()
+            + retention_macros() + traced_macros() + tost_macros() + tti_tost_macros()
             + stall_robustness_macros()
             + mechanism_macros() + kernel_macros() + registry_macros()
       + novelty_macros()
@@ -2901,7 +3059,7 @@ def all_pairs(m):
             + paired_gap_macros() + handling_share_macros() + inter_host_offset_macros()
             + spread_macros() + payload_flip_macros() + literature_census_macros()
             + arm_macros() + manipulation_macros()
-            + deletion_macros() + literature_macros())
+            + deletion_macros() + literature_macros() + cliff_macros() + reach_macros())
 
 
 def render(m):

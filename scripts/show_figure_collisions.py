@@ -96,7 +96,7 @@ def main(argv=None):
     saved = [(mrf, mrf._save), (mpf, mpf._save)]
     try:
         mrf._save = lambda fig, out_dir, stem, **kw: (inspect(fig, stem), out / stem)[1]
-        for build in (mrf.build_deletion, mrf.build_spectrum, mrf.build_grid,
+        for build in (mrf.build_deletion_phases, mrf.build_spectrum, mrf.build_grid,
                       mrf.build_mechanism, mrf.build_ttrue, mrf.build_payload):
             build(out)
 

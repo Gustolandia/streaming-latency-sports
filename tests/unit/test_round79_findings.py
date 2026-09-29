@@ -112,8 +112,18 @@ class TestR1TheFullThreatsSayWhatTheMainTextSays:
         assert "The workstation testbed enters only through the audit" in s
 
     def test_the_main_text_says_the_same_two_things(self, paper):
+        """v5 (28 Sep): Section VIII's list of eliminated alternatives became one paragraph at an
+        outside editor's request (editorial review, Section 5), and "one clock by construction
+        on the rejecting configurations" became "One clock excludes clock skew", the
+        construction itself stated in Section II-B, where producer and consumer read one clock.
+        Each half is pinned where it now is."""
+        i = paper.index(BS + "label{sec:threats}")
+        threats = flat(paper[i:paper.index(BS + "section{", i)])
+        assert "One clock excludes clock skew" in threats
+        j = paper.index(BS + "label{sec:testbeds}")
+        testbeds = flat(paper[j:paper.index(BS + "subsection{", j)])
+        assert "read one clock" in testbeds
         text = flat(paper)
-        assert "one clock by construction on the rejecting configurations" in text
         assert "enters only through the audit" in text
 
     def test_the_limitations_count_the_surviving_workstation_conditions(self, supplement):
@@ -150,9 +160,13 @@ class TestR2TheCorrelationIsComputedInTheUnitItIsQuotedIn:
         assert 0.7 < within < 0.9, "near the pool, so 'within a run' stands"
 
     def test_the_article_quotes_the_within_run_median(self, paper):
+        """v5 (28 Sep): Section III-A reads "correlated within a run (median correlation ...)".
+        The Discussion rule that quoted the median a second time went when the twelve rules
+        became Table IV's six checks (editorial review, Section 9), so the one sentence left
+        carries both pins, and the pooled median is still refused anywhere in the article."""
         text = flat(paper)
-        assert "correlated within a run (median $" + BS + "spanRhoWithinMedian$" in text
-        assert "median correlation $" + BS + "spanRhoWithinMedian$" in text
+        assert ("correlated within a run (median correlation $" + BS
+                + "spanRhoWithinMedian$") in text
         assert BS + "spanRhoMedian$" not in text
 
     def test_the_supplement_reports_both(self, supplement):
@@ -191,20 +205,30 @@ class TestR2TheCorrelationIsComputedInTheUnitItIsQuotedIn:
 
 class TestW1EveryBracketNamesItsMethod:
 
-    def test_katz_and_fisher_are_named_with_their_level(self, paper):
-        text = flat(paper)
-        assert "[Katz 95" + BS + "%: $" + BS + "payloadRateFallCI$]" in text
-        assert ("(Spearman $" + BS + "ombRetentionRho$; Fisher 95" + BS + "%: $" + BS
+    def test_katz_and_fisher_are_named_with_their_level(self, paper, supplement):
+        """v5 (28 Sep): both intervals left the article's prose for the supplement at an outside
+        editor's request ("the Katz brackets can go to the supplement"; editorial review,
+        Section 9), the payload fall's to S7 and the retention correlation's to S10, and each is
+        pinned there with its method and level. Neither may return to the article unlabeled."""
+        text = flat(supplement)
+        assert "[Katz $95" + BS + "%$: $" + BS + "payloadRateFallCI$]" in text
+        assert ("(Spearman $" + BS + "ombRetentionRho$; Fisher $95" + BS + "%$: $" + BS
                 + "ombRetentionRhoCI$;") in text
+        import test_bracket_labels as tbl
+        bare = [n for n, _ in tbl.unlabeled(paper)
+                if n in ("payloadRateFallCI", "ombRetentionRhoCI")]
+        assert not bare, bare
 
     def test_the_signed_interval_reads_as_a_range(self, ledger):
         assert ledger["ombRetentionRhoCI"] == "+0.08$ to $+0.51"
 
-    def test_the_gate_passes_and_would_have_failed(self, paper):
+    def test_the_gate_passes_and_would_have_failed(self, paper, supplement):
+        """v5 (28 Sep): the two brackets are in the supplement now, and the gate reads both
+        documents, so it must pass on both and the mutation strips the labels where they are."""
         import test_bracket_labels as tbl
-        assert tbl.unlabeled(paper) == []
-        old = paper.replace("[Katz 95" + BS + "%: $", "[$").replace(
-            "(Spearman $" + BS + "ombRetentionRho$; Fisher 95" + BS + "%: $",
+        assert tbl.unlabeled(paper) == [] and tbl.unlabeled(supplement) == []
+        old = supplement.replace("[Katz $95" + BS + "%$: $", "[$").replace(
+            "(Spearman $" + BS + "ombRetentionRho$; Fisher $95" + BS + "%$: $",
             "($" + BS + "ombRetentionRho$, Fisher $")
         assert sorted(n for n, _ in tbl.unlabeled(old)) == ["ombRetentionRhoCI",
                                                             "payloadRateFallCI"]
@@ -213,24 +237,40 @@ class TestW1EveryBracketNamesItsMethod:
 class TestW2TheShiftSaysWhichWayItPoints:
 
     def test_both_documents_name_the_direction(self, paper, supplement):
-        i = paper.index("The displacement can be recovered rather than discarded")
-        assert "rejected minus accepted" in flat(paper[i:i + 1700])
+        """v5 (28 Sep): the shift is printed only in S16.9 now; Section V-D's sentences carrying
+        it went to the supplement at an outside editor's request (editorial review, Section 5).
+        The direction is required wherever the shift is printed: in S16.9, and in the article
+        should it print the shift again."""
         j = supplement.index("S16.9.")
         assert "rejected minus accepted" in flat(supplement[j:j + 6000])
+        for doc in (paper, supplement):
+            text = flat(doc)
+            for m in re.finditer(re.escape(BS) + r"recoveryShift(?![A-Za-z])", text):
+                assert "rejected minus accepted" in text[max(0, m.start() - 200):m.start()], (
+                    text[max(0, m.start() - 200):m.end()])
 
     def test_the_direction_is_the_one_the_pipeline_computes(self, ledger, pops):
         diffs = [y - x for x in pops["Pass"] for y in pops["Fail"]]
         assert "%.1f" % statistics.median(diffs) == ledger["recoveryShift"]
         assert float(ledger["recoveryShift"]) > 0, "positive: the rejected sit higher"
 
-    def test_both_worst_conditions_really_are_equal(self, paper, ledger):
-        assert "Both worst conditions are $" + BS + "recoveryPassMax" in flat(paper)
+    def test_both_worst_conditions_really_are_equal(self, supplement, ledger):
+        """v5 (28 Sep): "Both worst conditions are ..." left Section V-D with the rest of its
+        statistics (editorial review, Section 5). S16.9 says it as "the worst condition is the
+        same on both sides", beside a table printing both maxima, and the ledger must still bear
+        it out, as it must for any sentence in the article that says it again."""
+        s = _between(supplement, "S16.9.", "S17. The 1970 counter note")
+        assert "the worst condition is the same on both sides" in s
+        assert BS + "recoveryPassMax" in s and BS + "recoveryFailMax" in s
         assert ledger["recoveryPassMax"] == ledger["recoveryFailMax"]
 
 
 class TestW3Figure4ShowsTheCountItsLegendPrints:
 
     def test_each_grid_column_prints_its_own_count(self):
+        """v5 (28 Sep): each count now says what it counts, "67 printed 1.0 ms", because an
+        outside editor could not decode a bare "67" without the caption (editorial review,
+        Section 9); the label is matched whole, count and grid value both from the data."""
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
@@ -245,7 +285,7 @@ class TestW3Figure4ShowsTheCountItsLegendPrints:
             for p in at_grid:
                 by_value[p[1]] = by_value.get(p[1], 0) + 1
             for value, count in by_value.items():
-                assert str(count) in texts, (value, count, texts)
+                assert "%d printed %.1f ms" % (count, value) in texts, (value, count, texts)
             assert sum(by_value.values()) == len(at_grid) == 71
             grid_markers = ax.collections[0]
             assert grid_markers.get_alpha() is not None and grid_markers.get_alpha() < 1.0
@@ -322,11 +362,17 @@ class TestW6OneFormForAccessDates:
 class TestTheRenderedPagesCarryIt:
 
     def test_the_article(self):
+        """v5 (28 Sep): the shift's direction and the Katz and Fisher labels print with their
+        intervals in the supplement now (editorial review, Sections 5 and 9), where the
+        extractor drops the space before "95%"; the acknowledgment and the access-date form are
+        still the article's."""
         text = _rendered("paper")
-        for phrase in ("rejected minus accepted", "Katz 95%", "Fisher 95%",
-                       "pointing us to the timer study"):
-            assert phrase in text, phrase
+        assert "pointing us to the timer study" in text
         assert "Read 2026-" not in text
+        supp = _rendered("supplement")
+        assert "rejected minus accepted" in supp
+        assert re.search(r"\[Katz\s*95\s*%\s*:", supp), "the payload fall's bracket"
+        assert re.search(r"Fisher\s*95\s*%\s*:", supp), "the retention correlation's"
 
     def test_the_supplement(self):
         text = _rendered("supplement")

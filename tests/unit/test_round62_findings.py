@@ -54,6 +54,11 @@ COUNTS = {
     "harnessSilentWord": {
         "counts": "the tools that dispose of a sample without counting it",
         "require": ("dispos", "counting", "silent"),
+        # v5 (28 Sep): the abstract's "find uncounted disposal in five of ten tools" names the
+        # population immediately to the count's LEFT, with only the denominator to its right,
+        # so the pairing is right and the rule's direction cannot see it. The exact phrase is
+        # inventoried here by hand; any phrase not listed still has to pass on the right.
+        "named_before": ("uncounted disposal in",),
     },
     "harnessSilentIndependentWord": {
         "counts": "the silent tools other than the audited subject itself",
@@ -79,17 +84,38 @@ def _uses(text, macro):
     return out
 
 
+def _heads(text, macro):
+    """What stands immediately to the left of each use of `macro`, in the order `_uses` uses."""
+    return [text[max(0, m.start() - 80):m.start()].rstrip()
+            for m in re.finditer(r"\\" + macro + r"\{\}", text)]
+
+
 class TestACountMacroMatchesTheSentenceItStandsIn:
     """The inventory above, checked on every build."""
 
     @pytest.mark.parametrize("macro", sorted(COUNTS))
     def test_every_use_names_the_population_it_counts(self, macro, paper):
+        """v5 (28 Sep): a use passes on its right, as before, or on one of the phrases the
+        inventory lists by hand under `named_before`, standing directly against the macro."""
         rule = COUNTS[macro]
-        bad = [tail[:130] for tail in _uses(paper, macro)
-               if not any(w in tail.lower() for w in rule["require"])]
+        before = rule.get("named_before", ())
+        bad = [tail[:130] for head, tail in zip(_heads(paper, macro), _uses(paper, macro))
+               if not any(w in tail.lower() for w in rule["require"])
+               and not (before and head.endswith(before))]
         assert not bad, (
             "\\%s counts %s, and stands before text naming something else. Expected one of "
             "%s to its right: %s" % (macro, rule["counts"], rule["require"], bad))
+
+    def test_a_listed_left_phrase_is_the_only_way_past_the_right(self):
+        """v5 (28 Sep): added with `named_before`, to show the exemption is a phrase and not a
+        direction: round 62's own defect still fails."""
+        rule = COUNTS["harnessSilentWord"]
+        defect = r"conceding that the \harnessSilentWord{} tools of Section VII are readings"
+        head, tail = _heads(defect, "harnessSilentWord")[0], _uses(defect, "harnessSilentWord")[0]
+        assert not any(w in tail.lower() for w in rule["require"])
+        assert not head.endswith(rule["named_before"])
+        fine = r"find uncounted disposal in \harnessSilentWord{} of ten tools"
+        assert _heads(fine, "harnessSilentWord")[0].endswith(rule["named_before"])
 
     @pytest.mark.parametrize("macro", sorted(COUNTS))
     def test_the_macro_is_actually_used(self, macro, paper):
@@ -98,8 +124,13 @@ class TestACountMacroMatchesTheSentenceItStandsIn:
             "\\%s is inventoried but the article does not use it" % macro
 
     def test_round_62s_own_defect_is_pinned(self, paper):
-        """The Threats concession covers every tool that was read, not the subset."""
-        i = paper.find("are readings of source rather than measured deployments")
+        """The Threats concession covers every tool that was read, not the subset.
+
+        v5 (28 Sep): Section VIII words the concession "were read at source, not deployed"
+        where v4 said "are readings of source rather than measured deployments"; the anchor
+        follows the wording, and the population rule is unchanged.
+        """
+        i = paper.find("were read at source, not deployed")
         assert i > 0, "the source-reading concession has gone from Threats"
         window = paper[max(0, i - 200):i]
         assert r"\harnessAuditedWord" in window, (
@@ -118,8 +149,14 @@ class TestEveryResultSectionBelongsToAContribution:
     """
 
     #: Sections whose job is to set up rather than to establish.
+    #:
+    #: v5 (28 Sep): `sec:threats` joined when Threats and Limitations went from a Discussion
+    #: subsection to a section of its own, Section VIII (the editor's plan, section 5). It
+    #: bounds what the other sections establish; the registered campaign's verdicts it reports
+    #: are limits, and the one generality result from that campaign is claimed through
+    #: Section III, where the paper states it.
     STRUCTURAL = {"sec:intro", "sec:sysmodel", "sec:related", "sec:method",
-                  "sec:discussion", "sec:conclusion"}
+                  "sec:discussion", "sec:conclusion", "sec:threats"}
 
     def test_each_result_section_is_named_by_a_contribution(self, paper):
         block = paper[paper.index("Contributions"):]
@@ -225,30 +262,46 @@ class TestTheFramingClaimArguesFromLimitsAndNotFromSlopes:
         that section to S9 --- and stayed red unnoticed, because nothing ran it. A gate
         pinned to a section number cannot survive the one event most likely to happen
         to a section. The proof is found by what it says instead.
+
+        v5 (28 Sep): the introduction's paragraph that made the claim went with the rewrite
+        of page 1 (editor, section 4, where a reader "gets lost" at "on the one axis they
+        share"; section 6.6, "decide: two failures, one regime"), so the paper no longer says
+        the two failures act differently. The test now pins that cut, keeps the proof
+        findable under a supplement section of its own, and still refuses the claim anywhere
+        in the paper without a pointer that resolves to that proof.
         """
-        i = paper.find("act differently")
-        assert i > 0, "Section I no longer says the two failures act differently"
-        window = paper[i:i + 260]
-        pointed = re.findall(r"Supplement~?S(\d+)", window)
-        assert pointed, (
-            "the framing claim has lost its pointer. It denies a framing a co-author "
-            "removed, so it may not stand on assertion.")
         supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
-        target = "\\section{S%s." % pointed[0]
-        assert target in supp, (
-            "Section I points at Supplement S%s, which does not exist" % pointed[0])
-        body = supp[supp.index(target):]
-        body = body[:body.find("\\section{S", 10)]
-        assert "not one failure seen twice" in body, (
-            "Supplement S%s is not the section that proves the two failures act "
-            "differently; the pointer resolves, but to the wrong place." % pointed[0])
+        sections = re.split(r"(?=\\section\{S\d+\.)", supp)
+        assert [s for s in sections
+                if s.startswith("\\section{S") and "not one failure seen twice" in s], (
+            "no supplement section proves the two failures act differently any more")
+        assert "on the one axis they share" not in paper.lower(), (
+            "the introduction's old framing sentence is back; it went with the rewrite of "
+            "page 1, where an outside reader lost the thread")
+        for m in re.finditer("act differently", paper):
+            window = paper[m.start():m.start() + 260]
+            pointed = re.findall(r"Supplement~?S(\d+)", window)
+            assert pointed, (
+                "the framing claim has lost its pointer. It denies a framing a co-author "
+                "removed, so it may not stand on assertion.")
+            target = "\\section{S%s." % pointed[0]
+            assert target in supp, (
+                "Section I points at Supplement S%s, which does not exist" % pointed[0])
+            body = supp[supp.index(target):]
+            body = body[:body.find("\\section{S", 10)]
+            assert "not one failure seen twice" in body, (
+                "Supplement S%s is not the section that proves the two failures act "
+                "differently; the pointer resolves, but to the wrong place." % pointed[0])
 
     def test_the_claim_does_not_quote_a_ratio(self, paper):
-        """Section I carried the 19x with the paragraph, and goes with it."""
-        i = paper.find("act differently")
-        window = paper[i:i + 260]
-        assert r"\payloadAsymmetry" not in window, \
-            "Section I quotes the asymmetry ratio again; it is S15's fit from two points"
+        """Section I carried the 19x with the paragraph, and goes with it.
+
+        v5 (28 Sep): with the claim cut, a window after "act differently" is empty and this
+        passed on nothing. It now checks the whole paper, which is what the unemitted macro
+        implies anyway.
+        """
+        assert r"\payloadAsymmetry" not in paper, \
+            "the paper quotes the asymmetry ratio again; it is S15's fit from two points"
 
     def test_the_ratio_is_not_emitted_at_all(self):
         """Not merely unread: removed, so it cannot be quoted by a later edit."""

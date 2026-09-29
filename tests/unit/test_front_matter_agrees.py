@@ -166,7 +166,11 @@ class TestTheSupplementSaysWhichPaperItBelongsTo:
         for name in ("paper.tex", "supplement.tex"):
             left, recto = self._markboth(name)
             assert left.strip() and recto.strip(), "%s has an empty running head" % name
-        assert "Faster-than-Light" in self._markboth("supplement.tex")[1], \
+        # The paper's short title, read from the paper rather than typed here: the pin said
+        # "Faster-than-Light" until v5 (28 Sep) changed the title, and a typed title is the
+        # stale-copy failure this whole file exists to catch.
+        short = _field("paper.tex", "title").split(":")[0].strip()
+        assert short in self._markboth("supplement.tex")[1], \
             "the supplement's recto head should name the paper"
 
     def test_the_supplement_head_says_it_is_supplementary(self):
@@ -197,7 +201,8 @@ class TestTheBuiltSupplementIdentifiesItself:
 
     def test_page_one_names_the_paper_and_every_author(self, pages):
         first = pages(1)
-        assert "Faster-than-Light" in first, \
+        short = _field("paper.tex", "title").split(":")[0].strip()
+        assert short in first, \
             "the built supplement's first page does not name the paper"
         for surname in ("Ricou", "Duvignau"):
             assert surname in first, \

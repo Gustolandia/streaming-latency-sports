@@ -23,60 +23,11 @@
       "reason": "The supplement defines the word in its 'On the vocabulary' block, as the audit registry's term for a tool's own conditional of the admission-condition kind, 'where the word names a code path rather than the benchmark's'. That is exactly what the co-author's pass asked for -- define once, then use -- and the fifteen uses are all the registry sense. The paper, which gives no such definition, uses 'admission condition' throughout and contains no 'guard' at all."
     },
     {
-      "file": "paper.tex",
-      "key": "quantum",
-      "scope": "line",
-      "anchor": "the \\emph{timestamp resolution} --- the \\emph{quantum}, one millisecond",
-      "reason": "This is the sentence that defines the term: it introduces 'timestamp resolution' and gives 'quantum' as its name in the same breath. Retiring the word here would remove the definition rather than the jargon."
-    },
-    {
-      "file": "supplement.tex",
-      "key": "quantum",
-      "scope": "line",
-      "anchor": "the millisecond quantum of Section~\\mainModeB{} came from the benchmark",
-      "reason": "Use after definition, and the sentence is about where the millisecond quantum came from -- the benchmark's own timestamp, not a choice of ours. 'The millisecond timestamp resolution of Section VI came from the benchmark' says the same thing more heavily in a sentence answering an objection, where brevity is the argument."
-    },
-    {
       "file": "supplement.tex",
       "key": "instrument",
       "scope": "line",
       "anchor": "and the instrument is not among them",
       "reason": "The sentence closes a survey of twenty-seven benchmark efforts by naming what the survey judged overlooked. The measuring instrument as a category is precisely the subject -- no substitution of 'timestamp resolution' or 'the benchmark tool' preserves it, because the point is that the survey names no part of the instrument at all."
-    },
-    {
-      "file": "paper.tex",
-      "key": "quantum",
-      "scope": "line",
-      "anchor": "pile up on the quantum",
-      "reason": "Use after the definition three sections earlier, and the substitution does not survive it: samples pile up ON a discrete value, and 'pile up on the timestamp resolution' names a property rather than the grid the values land on. The sentence is about what an operator SEES in Pulsar's output, which is a spike at one millisecond."
-    },
-    {
-      "file": "supplement.tex",
-      "key": "quantum",
-      "scope": "line",
-      "anchor": "on a sub-quantum path is most of them",
-      "reason": "A compound adjective in a table caption, where the alternative is 'a path shorter than the timestamp resolution' and the caption is already six lines. The supplement's vocabulary block says it uses the paper's terms, and the paper defines the quantum as the timestamp resolution."
-    },
-    {
-      "file": "paper.tex",
-      "key": "independence",
-      "scope": "line",
-      "anchor": "our one-clock rule, arrived at",
-      "reason": "The other sense of the word: two research groups reaching the same rule by separate routes, which is a fact about provenance and says nothing about whether any two delays are correlated. It is flagged only because the neighbouring clause names timestamps, and the pattern reaches back across a clause on purpose. Cleared as written."
-    },
-    {
-      "file": "paper.tex",
-      "key": "independence",
-      "scope": "line",
-      "anchor": "with one cause are not independent",
-      "reason": "This is the claim itself, and it is negated: the reporting rule that says two delays sharing a scheduler are not independent, carrying the measured correlation and the mispricing factor in the next line. The entry exists to protect this sentence, not to question it."
-    },
-    {
-      "file": "paper.tex",
-      "key": "independence",
-      "scope": "line",
-      "anchor": "not independent kernel granularity",
-      "reason": "The same claim applied to the clocksource threat, and negated again: the spread we see is one shared scheduling delay rather than two granularities landing separately. Saying it the other way round would contradict the measurement, which is what this entry watches for."
     },
     {
       "file": "supplement.tex",

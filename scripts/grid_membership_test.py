@@ -12,7 +12,7 @@ the arm's theta-to-vertex distance means the grid is invisible.
 
 NULL. The continuum: replicates are Normal(theta_local, sigma), with theta_local the arm's
 rate-local continuous value and sigma the pooled replicate SD of the incommensurate arms --
-both measured, neither fitted to the arm under test. Monte Carlo (default 20,000 arms of the
+both measured, neither fitted to the arm under test. Monte Carlo (MC_ARMS, 4,000 arms of the
 observed n) gives the null distribution of D; the p-value is one-sided,
 P(D_null <= D_observed), because grid membership makes distances small.
 

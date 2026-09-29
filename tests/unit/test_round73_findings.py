@@ -89,17 +89,35 @@ class TestR1ARateIsQuotedWithTheLoadItWasMeasuredAt:
                     == pytest.approx(100.0 * float(rows[level]["rho_base"]), abs=0.6)), level
 
     def test_the_typed_rate_is_gone_from_both_documents(self, paper, supplement):
+        """v5 (28 Sep): the Introduction's "at some send rates nearly all" matched the bare
+        substring "rates near"; it is a share, not a rate quoted near a typed number, so the
+        pattern now ends at a word boundary and "rates near 23" still fails it."""
         for name, text in (("paper.tex", paper), ("supplement.tex", supplement)):
             prose = re.sub(r"(?m)^%[^\n]*", "", text)
             assert "near $23" not in prose, name
-            assert "rates near" not in prose, (
+            assert not re.search(r"rates\s+near\b", prose), (
                 "%s: a rate quoted as 'near' a typed number is the shape this item is about"
                 % name)
 
-    def test_the_concurrent_paper_is_disputed_with_the_measured_rate(self, paper):
-        i = paper.index("A \\emph{second} queue decides ours")
-        passage = " ".join(paper[i:i + 380].split())
-        assert chr(92) + "rtHighBasePct" in passage and chr(92) + "rtHighLoadPct" in passage
+    def test_the_concurrent_paper_is_disputed_with_the_measured_rate(self, paper, supplement):
+        """v5 (28 Sep): the dispute kept one sentence in Section VII-B (editor section 5),
+        without its italics (7.5), and the measured rate with its load went to S33, which
+        Section VIII points at for the loaded machine; the paper's dispute may quote a rate
+        only with its load and never a corpus-wide one, and S33 must quote both."""
+        m = re.search(r"A (?:" + RE_BS + r"emph\{second\}|second) queue decides ours", paper)
+        assert m, "the one sentence of the dispute the main text keeps"
+        end = paper.find("\n\n", m.start())
+        dispute = " ".join(paper[m.start():end if end > 0 else None].split())
+        for macro in ("diseaseOverWhole", "diseaseOverHalf", "diseaseOverTenth", "spanNegAckPct"):
+            assert chr(92) + macro not in dispute, "a corpus-wide rate in the dispute: %s" % macro
+        if chr(92) + "%" in dispute:
+            assert chr(92) + "rtHighBasePct" in dispute and chr(92) + "rtHighLoadPct" in dispute
+        flat = " ".join(paper.split())
+        assert re.search(r"does not transfer to a loaded machine \(Supplement~S33\)", flat)
+        s = supplement.index("section{S33.")
+        s33 = " ".join(supplement[s:supplement.index("section{S34.", s)].split())
+        j = s33.index("On a loaded machine it is not")
+        assert chr(92) + "rtHighBasePct" in s33[j:j + 300] and chr(92) + "rtHighLoadPct" in s33[j:j + 300]
 
     def test_the_supplement_disputes_it_with_the_same_number(self, supplement):
         i = supplement.index("On a loaded machine it is not")
@@ -118,22 +136,36 @@ class TestR1ARateIsQuotedWithTheLoadItWasMeasuredAt:
     def test_the_reporting_rule_names_both_loads(self, paper):
         """The rule is 'exercise the path at the load you will report from', so it quotes
         the load and the rate together -- and points at Table II for the ladder rather than
-        revealing a second pair of numbers in the Discussion."""
-        i = paper.index("Exercise the timestamping path at the load")
-        passage = " ".join(paper[i:i + 460].split())
-        for macro in ("rtHighLoadPct", "rtHighBasePct"):
-            assert chr(92) + macro in passage, macro
-        assert chr(92) + "diseaseOverWhole" not in passage
-        assert "tab:mechanism" in passage, (
-            "the other load is in the table; a Discussion re-quotes Results rather than "
-            "introducing a number, which is what `test_discussion_numbers_are_results_numbers` "
-            "caught when both loads were printed here")
+        revealing a second pair of numbers in the Discussion.
+
+        v5 (28 Sep): the rules became Table IV (editor 6.7 and 9), where this one is the first
+        check, "Sign-check every run under the load it is quoted at", and quotes no number;
+        pinned: the check is there, Table IV carries no rate a load could be misattached to,
+        and Table II keeps each load in the row with its rate."""
+        i = paper.index("label{tab:checks}")
+        table = paper[i:paper.index("end{table}", i)]
+        assert "Sign-check every run under the load it is quoted at" in " ".join(table.split())
+        for macro in ("diseaseOverWhole", "diseaseOverHalf", "diseaseOverTenth", "spanNegAckPct",
+                      "rtHighBasePct", "rtLowBasePct", "rtHighBase", "rtLowBase"):
+            assert chr(92) + macro not in table, macro
+        j = paper.index("label{tab:mechanism}")
+        rows = paper[j:paper.index("end{table}", j)].splitlines()
+        for load, macro in (("75", "rtLowBase"), ("88", "rtHighBase")):
+            assert any("Priority, $%s%s%%$" % (load, chr(92)) in r
+                       and "$%s%s$" % (chr(92), macro) in r for r in rows), (
+                "Table II has lost the %s%% row's load or rate" % load)
 
     def test_the_rendered_pages_agree_with_table_two(self):
+        """v5 (28 Sep): the prose format went to S33 with the dispute, so the table's format
+        is read from the paper and the prose's from the supplement, and any rate the paper's
+        prose quotes at 88% must still be the table's."""
         flat = " ".join(_rendered("paper").split())
-        assert "30.5" in flat and "0.3049" in flat, (
+        supp = "".join(_rendered("supplement").split())
+        assert "0.3049" in flat and "30.5%at88%utilization" in supp, (
             "the same rate in both formats: the table's and the prose's")
-        assert "rates near 23" not in flat
+        quoted = re.findall(r"(\d+(?:\.\d+)?)\s*%\s*at\s*88\s*%\s*utilization", flat)
+        assert set(quoted) <= {"30.5"}, quoted
+        assert "rates near 23" not in flat and "ratesnear23" not in supp
 
 
 class TestR2TheMainTextDoesNotComputeWithTheModelS9Disclaims:
@@ -143,7 +175,9 @@ class TestR2TheMainTextDoesNotComputeWithTheModelS9Disclaims:
         assert "a hundredth of that or at half" not in paper
 
     def test_the_qualitative_claim_survives(self, paper):
-        i = paper.index("The scheduler's slice lands on the scale")
+        """v5 (28 Sep): the sentence opens "The slice lands on the scale", the slice having
+        been named in the sentence before it, so the anchor takes either opening."""
+        i = re.search(r"The (?:scheduler's )?slice lands on the\s+scale", paper).start()
         passage = " ".join(paper[i:i + 240].split())
         assert "substantial minority" in passage, (
             "the observation is worth keeping; it is the magnitude that was not established")
@@ -156,8 +190,10 @@ class TestR2TheMainTextDoesNotComputeWithTheModelS9Disclaims:
 
     def test_the_two_populations_are_not_silently_equated(self, paper):
         """10.5% is a share of traced wakeups; 8.43% is a rate over corpus events. The
-        sentence that put them in one clause is the one that went."""
-        i = paper.index("The scheduler's slice lands on the scale")
+        sentence that put them in one clause is the one that went.
+
+        v5 (28 Sep): same anchor change as above."""
+        i = re.search(r"The (?:scheduler's )?slice lands on the\s+scale", paper).start()
         passage = paper[i:i + 260]
         assert chr(92) + "spanNegAckPct" not in passage
 
@@ -330,27 +366,45 @@ class TestRecommendedItems:
         assert 'body = re.sub(r"\\\\[A-Za-z@]+", " ", prose)' not in body, (
             "stripping before matching is what let `$23\\%$` through")
 
-    def test_w1_the_inventory_grew_to_cover_what_was_hiding(self):
+    def test_w1_the_inventory_grew_to_cover_what_was_hiding(self, paper):
+        """v5 (28 Sep): "6.9" left the inventory with its sentence, the clustering z, which went
+        with the alternatives list (editor 6.11) and which S19 keeps; it is pinned absent from
+        the paper's math, so it cannot come back without an entry."""
         sys.path.insert(0, str(REPO / "tests" / "unit"))
         import test_round72_findings as t72
-        allowed = t72.TestEveryTypedNumeralInTheMainTextIsADecision.ALLOWED
-        for v in ("95", "88", "75", "1000", "0.001", "6.9", "2", "0.75", "6", "20", "50"):
+        sweep = t72.TestEveryTypedNumeralInTheMainTextIsADecision
+        allowed = sweep.ALLOWED
+        for v in ("95", "88", "75", "1000", "0.001", "2", "0.75", "6", "20", "50"):
             assert v in allowed, "%s was hiding behind a control word and is unaccounted" % v
+        assert "6.9" not in sweep()._typed(paper) and "6.9" not in allowed
+
+    @staticmethod
+    def _better_clock(paper):
+        """The paragraph Section VI's label sec:betterclock marks, comments and all."""
+        i = paper.index(RE_BS[:1] + "label{sec:betterclock}")
+        return paper[i:paper.index(RE_BS[:1] + "label{sec:brokers}", i)]
 
     def test_w2_the_better_clock_section_ends_on_the_residue(self, paper):
-        i = paper.index("subsection{The limits of a better clock}")
-        j = paper.index("subsection{Threats and limitations}", i)
-        section = " ".join(re.sub(r"(?m)^%[^\n]*", "", paper[i:j]).split())
-        assert section.rstrip().rstrip(chr(92)).rstrip().endswith(
-            "(Supplements~S29 and~S16.5)."), section[-140:]
+        """v5 (28 Sep): the subsection is now the paragraph labelled sec:betterclock, rewritten
+        to say which clock it means (editor 6.6); it gives the residue and then, once, the
+        ordering drawn from it, and its supplement pointer went in the pointer cut (7.2).
+        Pinned: the residue is stated, the ordering is stated once and after it, and the
+        back-reference round 73 removed does not return."""
+        section = " ".join(re.sub(r"(?m)^%[^\n]*", "", self._better_clock(paper)).split())
+        assert "leaves the filter and every genuine negative in place" in section
+        assert section.count("The remedies are therefore ordered") == 1
+        assert section.index("every genuine negative") < section.index(
+            "The remedies are therefore ordered"), "the ordering follows from the residue"
         assert "why the ordering above puts synchronization quality last" not in section
+        assert "ordering above" not in section
 
     def test_w2_the_stale_comment_was_corrected_not_left(self, paper):
-        i = paper.index("subsection{The limits of a better clock}")
-        j = paper.index("subsection{Threats and limitations}", i)
-        comments = "\n".join(re.findall(r"(?m)^%[^\n]*", paper[i:j]))
+        """v5 (28 Sep): the rewrite removed the paragraph's comments, whose history (claim moved
+        first, residue moved last) described a paragraph no longer there, v5's ending on the
+        ordering; pinned: no comment in the paragraph claims an ending it does not have."""
+        comments = "\n".join(re.findall(r"(?m)^%[^\n]*", self._better_clock(paper)))
         assert "which is the last sentence of this paragraph" not in comments
-        assert "round 73 found what that left behind" in comments
+        assert "It ends on the residue instead" not in comments
 
     def test_w3_the_archived_fork_is_a_ledger_row_not_a_typed_date(self):
         import emit_paper_numbers as epn
@@ -371,11 +425,19 @@ class TestRecommendedItems:
             "the survey bounds one and the archival bounds the other; a reader who conflated "
             "them would think the survey had counted something it had not")
 
-    def test_w4_the_limitations_name_the_workload_they_rest_on(self, paper):
-        i = paper.index("The mechanism's constants are those of one EEVDF-era kernel")
+    def test_w4_the_limitations_name_the_workload_they_rest_on(self, paper, supplement):
+        """v5 (28 Sep): the workload moved from the limitations to the setup it qualifies
+        (Section II-B), which names the eleven matches and makes the content-independence
+        claim, and the pointer to S20 went in the pointer cut (editor 7.2); the second check is
+        therefore that S20 still holds the workload's description."""
+        i = paper.index("The workload is")
         passage = " ".join(paper[i:i + 480].split())
         assert chr(92) + "replayedMatchesWord" in passage
-        assert "S20" in passage, "the independence argument is where a reader can weigh it"
+        assert ("nothing below depends on its content beyond message size and rate"
+                in passage), "the scope claim the workload sentence carries"
+        assert re.search(r"section\{S20\. The workload is a live football feed, described as "
+                         r"far as the results require\}", supplement), (
+            "the independence argument is where a reader can weigh it")
 
     def test_w5_the_table_two_non_request_is_recorded(self):
         """Round 73 looked at the factor column's bracket ownership and was content. Recorded

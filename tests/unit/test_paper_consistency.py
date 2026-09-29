@@ -282,7 +282,8 @@ class TestThresholdSensitivity:
             "the chosen point"
         assert (min(SENSITIVITY_THRESHOLDS), max(SENSITIVITY_THRESHOLDS)) == (0.0, 0.20)
         gate = " ".join(_section(main_tex, "sec:gate").split())
-        assert "sweeps it from $0$ to $20\\%$" in gate, "the stated range must be the drawn one"
+        # v5 (28 Sep): "sweeps it from" became "swept from"; the range is the same.
+        assert "swept from $0$ to $20\\%$" in gate, "the stated range must be the drawn one"
         assert "(Supplement~S18)" in gate
 
     def test_the_chosen_threshold_matches_the_audit_table(self, by_run):
@@ -449,10 +450,16 @@ class TestRetentionBound:
         assert ("H1, H3, H4 and the start-up withdrawal are claimed only in this supplement "
                 "now, and E1 is historical") in caption
         prose = " ".join(re.sub(r"(?<!\\)%.*", "", main_tex).split()).lower()
+        # v5 (28 Sep) brought S1.14's closing sentence into Section III-A at an outside editor's
+        # request, and it lists "effect sizes" among the statistics the invalid first corpus
+        # survived. That describes the corpus; it is not H1's effect-size rule.
+        prose = prose.replace("rank tests, effect sizes and multiplicity correction", "")
         for gone in ("effect size", "netem", "inline", "process count", "start-up", "e1 "):
             assert gone not in prose, f"{gone!r} is in the main text again; revisit tab:power"
-        for kept in ("the audit rejected", "knee sweep", "real-time priority", "geometr",
-                     "payload padding", "kernel trace", "tost"):
+        # v5 (28 Sep) says the same claims in its own words: "the check rejects" (III-A),
+        # "from idle to the knee" (III-B), "padding the payload" (III-B).
+        for kept in ("the check rejects", "the knee", "real-time priority", "geometr",
+                     "padding the payload", "kernel trace", "tost"):
             assert kept in prose, f"{kept!r} left the main text; revisit tab:power"
 
     def test_the_h3_row_counts_both_campaigns_alike(self, supp):
@@ -527,8 +534,11 @@ class TestSecondWithdrawalIsStated:
         assert "a median of seven events per run" in low, "the events-per-run cause must be stated"
         summary = " ".join(_section(supp, "sec:attribution").split())
         assert "per-run start-up cost read as a per-event constant" in summary
+        # v5 (28 Sep): an outside editor found the "count your events" rule unearned in the main
+        # text, whose evidence (the kickoff) lives only here, and it was cut from the list of
+        # checks. The lesson stays where its evidence is; the main text no longer states it.
         rule = " ".join(_section(main_tex, "sec:authors").split())
-        assert "A median over as few as seven events per run is not a property of the system" in rule
+        assert "seven events per run" not in rule
 
     def test_the_events_per_run_figure_matches_the_data(self, tex):
         """The median events-per-run behind E1 is what makes the withdrawal argument."""
@@ -719,7 +729,7 @@ class TestH3IsMeasuredAndSupported:
         assert (f"fitted \\emph{{worse than the mean}}: $R^2 = {fit['r2_mg1']:.2f}$, against a "
                 f"fitted exponential's ${fit['r2_exponential']:.2f}$") in s15
         twostate = " ".join(_section(main_tex, "sec:twostate").split())
-        assert "including the queueing form we ourselves adopted" in twostate
+        assert "including the queueing form we had ourselves adopted" in twostate
 
     def test_the_argument_holds_at_every_candidate_replay_rate(self, tex):
         """The withdrawal must not depend on the rate the artefacts cannot supply.
@@ -748,8 +758,10 @@ class TestH3IsMeasuredAndSupported:
     def test_the_check_is_not_claimed_to_catch_it(self, main_tex, supp):
         """The main text names the blind spot at sec:blindspot; Supplement S3 names this case of it."""
         blind = " ".join(_section(main_tex, "sec:blindspot").split())
-        assert "the check does not catch everything" in blind
-        assert "Causal consistency is necessary, not sufficient." in blind
+        # v5 (28 Sep): "the check does not catch everything ... Causal consistency is necessary,
+        # not sufficient" became the case it misses, stated: inflation that stays positive.
+        assert "passes the check by construction" in blind
+        assert "the check is necessary, not sufficient." in blind
         s3 = " ".join(supp[supp.index(r"\section{S3."):supp.index(r"\section{S4.")].split())
         assert (r"\paragraph{The general lesson} The consistency check of Section~\mainGate{} "
                 r"does not catch this.") in s3
@@ -765,7 +777,11 @@ class TestH3IsMeasuredAndSupported:
         assert {float(r["margin"]) for r in tost} == {1.0}, "the margin is no longer a millisecond"
         assert all(r["equivalent"] == "True" for r in tost)
         brokers = " ".join(_section(main_tex, "sec:brokers").split())
-        assert "the two sit within a millisecond on the transport proxy" in brokers
+        # v5 (28 Sep) leads with the causal chain, as an outside editor asked, and briefly
+        # moved the 1 ms equivalence onto it; the TOST artifact is on the proxy, and v5.1 put
+        # it back there. Both halves are held.
+        assert "on the transport proxy they sit within a millisecond" in brokers
+        assert "which is a causal chain, the two brokers are equivalent against a wider" in brokers
         assert "So it is not a purchasing argument." in brokers
         prose = re.sub(r"(?<!\\)%.*", "", main_tex)
         assert "twentyfold" not in prose.lower(), "withdrawn claim must not drive guidance"
@@ -1210,7 +1226,8 @@ class TestExternalHarnessEvidence:
         assert r"$\ombKafkaDiscarded$ discarded samples contain not one negative" in withdrawn, \
             "the withdrawn count must still be stated, as what is being withdrawn"
         sign = " ".join(_section(main_tex, "sec:generality").split())
-        assert r"\textbf{not one negative}" in sign, "the sign result that replaces it must be stated"
+        # Unbolded in v5 (28 Sep): bold in running prose reads as a raised voice.
+        assert "contain not one negative" in sign, "the sign result that replaces it must be stated"
         assert "at any load, size or rate" in sign, \
             "the result must span load; an idle run would not have found it"
         scope = supp[supp.index(r"\paragraph{What we do not claim}"):]
@@ -1328,10 +1345,16 @@ class TestH2FormIsWithdrawn:
         assert "is not the variable" in s15, "what replaced the shape claim must be stated"
         k = supp.index("Both load-axis predictions failed")
         home = re.match(r"\\section\{(S\d+)\.", supp[supp.rindex("\\section{", 0, k):]).group(1)
+        # v5 (28 Sep) replaced the knee-sweep sentence with the stronger evidence the
+        # manipulations give: the refutation of any utilization-only account, which names the
+        # queueing form we had adopted and points to the supplement section holding the
+        # priority and geometry evidence. The sweep's own verdict stays in `home`.
         twostate = " ".join(_section(main_tex, "sec:twostate").split())
-        assert (r"both failed, because both were parameterized in $\rho$ and $\rho$ is not the "
-                r"variable (Supplement~%s)" % home) in twostate, \
-            "the main text keeps the conclusion and points to where the post-mortem lives"
+        assert ("refutes any account in which utilization alone sets the rate, including the "
+                "queueing form we had ourselves adopted (Supplement~S") in twostate, \
+            "the main text keeps the conclusion and points to where the evidence lives"
+        s5 = " ".join(supp[supp.index("\\section{%s." % home):].split())
+        assert "Both load-axis predictions failed" in s5[:6000]
 
     def test_abstract_and_conclusion_do_not_assert_the_mg1_form(self, tex):
         for name, part in (("abstract", tex[tex.index(r"\begin{abstract}"):
@@ -1459,18 +1482,21 @@ class TestNarrativeArc:
         """
         abstract = main_tex[main_tex.index(r"\begin{abstract}"):main_tex.index(r"\end{abstract}")]
         flat = " ".join(abstract.split())
-        beats = ("First, ", "Second, ", "checks benchmark authors can apply")
+        # v5 (28 Sep): the abstract was rewritten to an outside editor's draft. The four beats
+        # and their order are unchanged; the words that carry them are the new ones, and the
+        # retention range became its lower end, "as little as".
+        beats = ("First, ", "Second, ", "give benchmark authors checks")
         for beat in beats:
             assert beat in flat, f"abstract is missing the '{beat.strip()}' beat"
         first, second, remedy = (flat.index(b) for b in beats)
         assert first < second < remedy, "the beats must run ratio, Mode A, Mode B, remedy"
         ratio, mode_a, mode_b = flat[:first], flat[first:second], flat[second:remedy]
-        assert "shorter than the delays and resolution of the timestamps" in ratio, \
+        assert ("shorter than the clock's resolution and than a busy thread's wait for a "
+                "processor") in ratio, \
             "the ratio beat must set the delivery against both of the instrument's timescales"
         for token in ("on one clock", r"\spanEvents", r"\rtFactorLow", r"\rtFactorHigh"):
             assert token in mode_a, f"the Mode A beat is missing {token!r}"
-        for token in ("millisecond-resolution", "strictly positive",
-                      r"\ombGridRetentionMin", r"\ombGridRetentionMax"):
+        for token in ("whole milliseconds", "not positive", r"\ombGridRetentionMin"):
             assert token in mode_b, f"the Mode B beat is missing {token!r}"
         assert "withdr" not in flat.lower(), "the TC abstract no longer narrates withdrawals"
 
@@ -1559,19 +1585,47 @@ class TestNarrativeArc:
 
 
 class TestIndependentReplications:
-    """Each headline result has a second, independent campaign confirming it."""
+    """Each headline result has a second, independent campaign, and the text reports what it
+    showed against what was registered for it."""
 
-    def test_transport_shift_reproduces_within_the_first_campaigns_ci(self, tex):
+    def test_transport_replication_is_reported_against_its_registered_criterion(self, tex):
+        """docs/preregistration_depth.md: the replication's shift must fall inside the first
+        campaign's 90% interval at every N. Until 29 Sep the text said it did; it does not, in
+        either reading, and this test pinned only the digits and the overlap. Now every
+        verdict the text states is recomputed: which levels fall inside, gated and not, by how
+        much the gated N = 1 misses, and how often identical shifts would pass at all."""
+        from scipy.stats import norm
+        text = " ".join(tex.split())
+        verdicts, chance = {}, {}
+        for tag, name in (("gated", "transport_realtime_gated_tost.csv"),
+                          ("all", "transport_realtime_tost.csv")):
+            orig = {int(r["n"]): r for r in _rows("transport_rt", name)}
+            rep = {int(r["n"]): r for r in _rows("transport_rt2", name)}
+            assert set(rep) == set(orig) == {1, 9, 12}
+            inside, p_all = {}, 1.0
+            for n in (1, 9, 12):
+                o_lo, o_hi = float(orig[n]["hl_ci90_lo"]), float(orig[n]["hl_ci90_hi"])
+                r_lo, r_hi = float(rep[n]["hl_ci90_lo"]), float(rep[n]["hl_ci90_hi"])
+                shift = float(rep[n]["hl_shift"])
+                assert max(o_lo, r_lo) <= min(o_hi, r_hi), f"N={n}: the intervals overlap"
+                inside[n] = o_lo <= shift <= o_hi
+                assert "$%.3f$" % shift in text or "%.3f$" % shift in text, (tag, n)
+                if not inside[n]:
+                    assert o_lo - shift < 0.01, "missed by less than a hundredth of a ms"
+                s_o, s_r = (o_hi - o_lo) / 2 / 1.645, (r_hi - r_lo) / 2 / 1.645
+                p_all *= 2 * norm.cdf(1.645 * s_o / (s_o ** 2 + s_r ** 2) ** 0.5) - 1
+            verdicts[tag], chance[tag] = inside, p_all
+        assert verdicts["gated"] == {1: False, 9: True, 12: True}
+        assert verdicts["all"] == {1: True, 9: False, 12: False}
         orig = {int(r["n"]): r for r in _rows("transport_rt", "transport_realtime_gated_tost.csv")}
         rep = {int(r["n"]): r for r in _rows("transport_rt2", "transport_realtime_gated_tost.csv")}
-        assert set(rep) == {1, 9, 12}
-        for n in (1, 9, 12):
-            o_lo, o_hi = float(orig[n]["hl_ci90_lo"]), float(orig[n]["hl_ci90_hi"])
-            r_lo, r_hi = float(rep[n]["hl_ci90_lo"]), float(rep[n]["hl_ci90_hi"])
-            assert max(o_lo, r_lo) <= min(o_hi, r_hi), f"N={n} campaign CIs must overlap"
-            assert rep[n]["hl_equivalent"] == "True"
-        for token in ("0.397", "0.412", "0.413"):   # the replication shifts, as printed
-            assert token in tex
+        miss = float(orig[1]["hl_ci90_lo"]) - float(rep[1]["hl_shift"])
+        assert "falls $%.3f$~ms below its interval" % miss in text
+        assert rep[1]["n_redis"] == "2" and "the two \\redis{} runs the check kept" in text
+        assert "only $%.0f\\%%$ of the time over the kept runs and $%.0f\\%%$ over all" % (
+            100 * chance["gated"], 100 * chance["all"]) in text
+        assert "fails the criterion registered for it" in text
+        assert "inside the $90\\%$ interval of the first campaign at every level" not in text
 
     def test_h3_reproduces_in_an_independent_campaign(self, supp):
         """E-C4 repeats the timestamping comparison, and supplement Table tab:h3 prints it.
@@ -1793,8 +1847,8 @@ class TestNetemConfoundIsDisclosed:
         assert "common-mode" in s31, "the reason the manipulation fails must be named"
         assert "the injected delay cancels exactly" in s31
         proxy = " ".join(_section(main_tex, "sec:proxy").split())
-        assert ("transport runs to tens of seconds passes every run while the same hardware "
-                "measuring one millisecond fails wholesale") in proxy, \
+        assert re.search(r"transport runs to tens of seconds passes every run,? while the same "
+                         r"hardware measuring one millisecond fails wholesale", proxy), \
             "H1 must rest on the clean contrast of the same hardware at two scales"
         assert "netem" not in main_tex.lower(), "the main text must not lean on the delay sweep"
 
@@ -1950,7 +2004,11 @@ class TestRateProvenanceIsDisclosed:
         protocol = _section(tex, "sec:authors")
         low = protocol.lower()
         assert "achieved rate" in low
-        assert "elapsed wall time" in low
+        # v5 (28 Sep): the rule became a row of Table IV ("record the achieved rate"), and the
+        # protocol's own practice -- per run, against elapsed wall time -- is stated where the
+        # setup is, in Section II-B.
+        setup = " ".join(_section(tex, "sec:testbeds").lower().split())
+        assert "elapsed wall time" in setup
 
 
 class TestNoMangledMacros:
@@ -2599,7 +2657,8 @@ class TestConcurrentWork:
         assert "sharma2026causality" in tex, "concurrent work on the same failure must be cited"
 
     def test_their_threshold_is_stated_accurately(self, tex):
-        section = " ".join(_section(tex, "sec:related_time").split())
+        # v5 (28 Sep): the dispute beyond one sentence moved to S33, where these pins follow it.
+        section = " ".join(_section(tex, "sec:rival_reading").split())
         assert "$5$~ms" in section or "5~ms" in section, "their onset must be given"
         assert "$3$~ms" in section or "3~ms" in section
 
@@ -2612,7 +2671,8 @@ class TestConcurrentWork:
         microseconds two lines away that is a different quantity entirely. The pin follows
         the macro; requiring the digits would now be requiring the defect.
         """
-        section = " ".join(_section(tex, "sec:related_time").split())
+        # v5 (28 Sep): the comparison moved to S33 with the rest of the dispute.
+        section = " ".join(_section(tex, "sec:rival_reading").split())
         assert r"\interHostOffsetMs" in section, \
             "our measured inter-host offset must be quoted, and read from the ledger"
         assert "load" in section.lower(), "the difference between the settings must be named"
@@ -2626,13 +2686,15 @@ class TestConcurrentWork:
         section = " ".join(_section(tex, "sec:related_time").lower().split())
         assert "cannot produce negative timing spans" in section, \
             "the premise we contradict must be quoted, not paraphrased"
-        assert "rather than their measurements" in section, \
+        # v5 (28 Sep) scopes it in fewer words: we agree for the queue they model, and a
+        # second queue, the run queue, decides ours.
+        assert "for the queue they model, we agree" in section, \
             "the disagreement must stay scoped to the premise"
 
     def test_their_skew_result_is_reported_as_they_reported_it(self, tex):
         """Referee item M1. The paper said they "see violations from 3 ms". They do not:
         they see none up to 3 ms and clear violations by 5 ms."""
-        section = " ".join(_section(tex, "sec:related_time").lower().split())
+        section = " ".join(_section(tex, "sec:rival_reading").lower().split())
         assert "no violations up to $3$~ms" in section, \
             "their null result at 3 ms must be reported as a null result"
         assert "violations from $3$" not in section
@@ -2648,7 +2710,7 @@ class TestConcurrentWork:
         assert "lozi2016wastedcores" in tex
         section = " ".join(_section(tex, "sec:related_tail").split())
         assert "work-conservation violations are documented" in section.lower()
-        assert "single-parameter law" in section, \
+        assert "refutes that single-parameter form, not queueing itself" in section, \
             "the geometry contrast must be scoped to what it actually refutes"
 
     def test_related_work_no_longer_asserts_an_exponent(self, tex):
@@ -2736,9 +2798,13 @@ class TestRecoveredProvenance:
         assert -1 < infer < confirm, \
             "the inference must be presented before the script that confirms it"
         assert "by luck" in section[confirm:], "the confirmation's provenance must stay honest"
+        # v5 (28 Sep): the rule is Table IV's "record the achieved rate", and the sentence
+        # saying why ("we found runs where configured and achieved rates disagreed") was cut
+        # with the rest of the unearned rules (editor 6.7). The reason is told where its
+        # evidence is: S4 says what the protocol now checks.
         rule = " ".join(_section(main_tex, "sec:authors").split())
-        assert "We found runs where configured and achieved rates disagreed" in rule, \
-            "the main text must still tell its reader that the rates disagreed"
+        assert "record the achieved rate" in rule
+        assert "checks the achieved rate against elapsed wall time" in section
 
 
 class TestRefereeRoundOne:
@@ -2853,8 +2919,11 @@ class TestRefereeRoundOne:
             "a first-result cell became usable; the consistency check's sentence is now false"
         top = max(float(r["threshold"]) for r in rows)
         gate = " ".join(_section(main_tex, "sec:gate").split())
-        assert f"from $0$ to ${round(top * 100)}\\%$ and no rejected condition becomes " \
-               f"usable" in gate
+        # v5.1 (29 Sep): scoped to what the sweep covers. The artefact is the first result's
+        # cells, so the sentence says "none of our first result's rejected conditions" where
+        # it had said "no rejected condition", which claimed a sweep of every corpus.
+        assert f"swept from $0$ to ${round(top * 100)}\\%$, it makes none of our first " \
+               f"result's rejected conditions usable" in gate
         where = supp.index(r"first\_result\_threshold\_sweep.csv")
         sec = re.findall(r"\\section\{S(\d+)\.", supp[:where])[-1]
         assert f"(Supplement~S{sec})" in gate, \
@@ -3229,14 +3298,14 @@ class TestPriorArtCredits:
     def test_the_guards_documented_origin_is_cited(self, main_tex):
         assert "openmessaging_pr56" in main_tex, \
             "the pull request that introduced the positivity guard must be cited"
-        section = _section(main_tex, "sec:extmethod")
+        section = " ".join(_section(main_tex, "sec:extmethod").split())
         assert "can be negative" in section, \
             "quote the guard author's own rationale, so the contribution is the consequence"
 
     def test_paxson_is_credited_for_the_practice_not_only_the_estimator(self, main_tex):
-        related = _section(main_tex, "sec:related_time")
+        related = " ".join(_section(main_tex, "sec:related_time").split())
         assert "paxson1998calibrating" in related
-        assert "proportion" in related.lower(), \
+        assert "proportion" in related.lower() or "share of traces" in related.lower(), \
             "Paxson reported the fraction of traces he flagged; the paper must say so"
 
     def test_the_textbook_half_of_the_ratio_is_conceded(self, main_tex):
@@ -3279,7 +3348,9 @@ class TestRefereeRoundTwo:
         """R2. Two hand-typed "1.5 million" figures matched no artefact."""
         assert "1.5$ million" not in main_tex and "1.5 million" not in main_tex
         assert r"\harnessOneClockSamples" in main_tex
-        assert r"\harnessCrossHostSamples" in main_tex
+        # v5 (28 Sep): the cross-host harness detail went to S22.1 (editor 5), with its total.
+        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        assert r"\harnessCrossHostSamples" in supp
 
     def test_the_saturation_claim_is_about_the_rate_not_about_occupancy(self, main_tex):
         """R3. A ceiling on the inversion rate is not a count of unpreempted threads."""
@@ -3302,7 +3373,9 @@ class TestRefereeRoundTwo:
         # a copy editor. It now resolves from one macro pair, so "one number" is a property
         # of the pipeline rather than of anyone's vigilance.
         assert "$0.067$~ms" not in body, "the offset must be read, not typed"
-        assert body.count(r"\interHostOffsetMs") + body.count(r"\interHostOffsetUs") >= 3
+        # v5 (28 Sep) quotes the offset once, in Section VI; the other two sites moved to the
+        # supplement with the Sharma comparison and the chrony limits, and read the same macro.
+        assert body.count(r"\interHostOffsetMs") + body.count(r"\interHostOffsetUs") >= 1
 
     def test_the_nist_paraphrase_matches_what_nist_says(self, main_tex):
         """R8. NIST's own budget has reaction time dominating resolution by two orders of
@@ -3316,7 +3389,7 @@ class TestRefereeRoundTwo:
         scheduling is named as a general host-latency source, not as its cause."""
         section = " ".join(_section(main_tex, "sec:related_time").split())
         assert "outgoing socket" in section
-        assert "under every stress pattern including none" in section
+        assert re.search(r"under every stress pattern,? including none", section)
         assert "named process scheduling as the cause" not in section
 
     def test_the_traced_histogram_is_reported_as_multimodal(self, main_tex):
@@ -3375,8 +3448,14 @@ class TestRefereeRoundTwo:
             "the disagreement and its test belong in the same account"
 
     def test_the_binned_estimator_credits_its_source(self, main_tex):
-        """R15(a). The grouped MLE on log2 bins is Virkar and Clauset's."""
-        assert "virkar2014power" in main_tex
+        """R15(a). The grouped MLE on log2 bins is Virkar and Clauset's.
+
+        v5 (28 Sep): the main text no longer states a binned estimate (the tail-index detail
+        went to the supplement at an outside editor's request), so the credit is held where the
+        estimator is stated."""
+        assert "tail index" not in main_tex.lower() and "grouped maximum" not in main_tex.lower()
+        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        assert "virkar2014power" in supp
 
     def test_the_tracer_discloses_its_filter_and_its_own_effect(self, main_tex):
         """R16. Both were in the artefact tree and neither was in the paper.
@@ -3598,7 +3677,8 @@ class TestInterpreterLockRival:
     """
 
     def test_the_eliminations_name_the_interpreter_lock(self, main_tex):
-        i = main_tex.index("the alternatives are each eliminated")
+        # v5 (28 Sep): the list became the opening paragraph of Threats and Limitations.
+        i = main_tex.index("separated from its rivals by")
         para = main_tex[i:i + 2000]
         assert "interpreter lock" in para, \
             "Section V-E lists the rivals; the interpreter lock is one and must be named"
@@ -3647,9 +3727,14 @@ class TestRoundTwelveRegressions:
         producer-to-consumer differences and both carry the offset. What discriminates is
         headroom. Dropping the contrast loses the only visible trace of that correction.
         """
-        i = main_tex.find("closes the channel again on headroom")
+        # v5 (28 Sep): the main text states the headroom result in one clause (an outside
+        # editor's line edit 18); the disclaimer, which is the trace of the correction, is
+        # kept beside the argument in S15.
+        assert "too high to hide the deepest negative" in " ".join(main_tex.split())
+        supp = " ".join((REPO / "supplement.tex").read_text(encoding="utf-8").split())
+        i = supp.find("closes the channel a second time on headroom")
         assert i > 0, "the headroom argument must be present"
-        assert "not on shared endpoints" in main_tex[i:i + 120], \
+        assert "not on shared endpoints" in supp[i:i + 120], \
             "the headroom argument must keep disowning the shared-endpoint reasoning"
 
     def test_the_interpreter_rival_does_not_appeal_to_the_traced_figure(self, supp):
@@ -3792,9 +3877,12 @@ class TestReferenceHouseStyle:
 
         paper = (REPO / "paper.tex").read_text(encoding="utf-8")
         for macro in ("auditRuns", "auditRejected", "auditRejectedWorkstation",
-                      "auditRejectedCloud", "rtFactorLow", "rtFactorHigh", "rtPairs",
-                      "forkChecked", "forkUnchanged"):
+                      "auditRejectedCloud", "rtFactorLow", "rtFactorHigh", "rtPairs"):
             assert "\\%s" % macro in paper, "%s is emitted but unused" % macro
+        # v5 (28 Sep): the fork count moved to S25 with the rest of the tool registry.
+        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        for macro in ("forkChecked", "forkUnchanged"):
+            assert "\\%s" % macro in supp, "%s is emitted but unused" % macro
 
     def test_venues_are_abbreviated(self):
         """IEEE abbreviates venue names; two of forty-five did not, which reads as carelessness."""
@@ -4021,9 +4109,13 @@ class TestTheAbstractPromisesWhatItDelivers:
         abstract = main_tex[main_tex.index(r"\begin{abstract}"):
                             main_tex.index(r"\end{abstract}")]
         flat = " ".join(abstract.split())
-        for word in ("characterize", "identity", "manipulation", "audit", "checks"):
+        # v5 (28 Sep): the identity left the abstract (an outside editor: it advertised the
+        # weakest element) and the evidence now attaches to its own verbs -- derive, confirm,
+        # find -- before the checks, which is the property this pin exists for.
+        for word in ("derive", "registered prediction", "tools", "checks"):
             assert word in flat, "the abstract no longer says %r; revisit this pin" % word
-        assert flat.index("characterize") < flat.index("identity") < flat.index("checks"), (
+        assert flat.index("derive") < flat.index("registered prediction") < \
+            flat.index("tools") < flat.index("checks"), (
             "the abstract lists its evidence after the word 'checks'. An identity, a "
             "manipulation and an audit are not checks; they are what characterizes the "
             "failure modes, and the sentence should attach them there")
@@ -4032,7 +4124,7 @@ class TestTheAbstractPromisesWhatItDelivers:
         abstract = main_tex[main_tex.index(r"\begin{abstract}"):
                             main_tex.index(r"\end{abstract}")]
         flat = " ".join(abstract.split())
-        assert "checks benchmark authors can apply" in flat, (
+        assert "give benchmark authors checks" in flat, (
             "the abstract must say whose checks these are. It said 'their authors', and the "
             "nearest plural noun was the two failure modes, which have none")
 
@@ -4101,16 +4193,20 @@ class TestTheReportingRulesAreInternallyConsistent:
     weight in this project, so it is gated rather than tracked in a plan file.
     """
 
-    def _rule(self, tex, opening):
-        """The reporting-rule paragraph that begins with `opening`, in Section VII-B."""
-        section = _section(tex, "sec:authors")
+    def _rule(self, tex, opening, label="sec:authors"):
+        """The paragraph that begins with `opening`, in the section holding `label`.
+
+        v5 (28 Sep): the bold rules became Table IV's checks. The recovery rule's bridge back
+        to the check now sits with the recovery itself (Section III-D, sec:cost), and the
+        mitigation's caveats in the paragraph under Table IV."""
+        section = _section(tex, label)
         i = section.find(opening)
         assert i != -1, "the rule beginning %r is no longer in Section VII-B" % opening
         end = section.find("\n\n\\textbf{", i + 1)
         return " ".join(section[i:end if end != -1 else len(section)].split())
 
     def test_the_recovery_rule_says_how_it_sits_beside_the_gate(self, tex):
-        rule = self._rule(tex, r"\textbf{Where the span cannot be re-timestamped")
+        rule = self._rule(tex, "The acknowledgment lag can be added back.", "sec:cost")
         assert r"\ref{sec:gate}" in rule, (
             "the recovery rule must point back at the consistency check; without it the "
             "reader meets 'recover it' seven pages after 'decline to publish it' and has to "
@@ -4122,7 +4218,7 @@ class TestTheReportingRulesAreInternallyConsistent:
     def test_the_unpreemptable_rule_carries_the_busy_poll_mitigation(self, tex):
         # Case-folded: the mitigation may open a sentence, and a gate that turned on
         # capitalisation would fire on a rewrite that changed nothing.
-        rule = self._rule(tex, r"\textbf{Make the timestamping path unpreemptable").lower()
+        rule = self._rule(tex, "The last check is the one mitigation").lower()
         assert "busy-poll" in rule or "busy poll" in rule, (
             "the rule must keep the busy-polling alternative a co-author asked for beside "
             "real-time priority")
@@ -4178,8 +4274,11 @@ class TestTheReadersRequirementsAreMet:
         # Round 57 dropped the article from every caption lead, so this looks for the phrase
         # that identifies the figure rather than the one that opened it: "The system measured"
         # became "System measured". The requirement is about *placement* and is untouched.
+        # v5 (28 Sep): the pipeline schematic went to Supplement S24.3 at an outside editor's
+        # request, and the paper's drawing of the system is Fig. 2, the two threads that take
+        # the timestamps. The co-author's requirement is on that drawing's placement.
         for i, page in enumerate(pages[:6], start=1):
-            if "measured, and where its clocks are read" in (page.extract_text() or ""):
+            if "Late timestamp, not an early record" in (page.extract_text() or ""):
                 found = i
                 break
         assert found is not None, "the system figure's caption is not in the first six pages"
@@ -4214,8 +4313,10 @@ class TestTheReadersRequirementsAreMet:
         flat = " ".join(re.sub(r"(?m)^%.*$", "", body).split())
         assert re.search(r"(?<!in-)\bflights?\b", flat) is None, (
             "the coinage 'flight' is back; the field's word is delivery")
-        model = body[body.index(r"\section{System and Measurement Model}"):]
-        definition = model.index(r"\emph{delivery}")
+        # v5 (28 Sep): "System and Measurement Model" became "How a Benchmark Times a Message",
+        # and the defined term is "delivery time".
+        model = body[body.index(r"\section{How a Benchmark Times a Message}"):]
+        definition = model.index(r"\emph{delivery")
         first_s_use = model.index(r"$S$")
         assert definition < first_s_use, (
             "the delivery D must be defined, in words, before S = D - A is used")
@@ -4238,8 +4339,10 @@ class TestTheExposureCurveIsGeneratedNotTyped:
     #: computed from the median lag alone while the lag itself runs 500 to 1,900 us across
     #: the conditions. A curve quoted by its middle is this paper's own subject one level up,
     #: so the spread is gated exactly as tightly as the point.
+    #: v5 (28 Sep): exposureGapTen, the gap two identical systems report, went to S12 with
+    #: the rest of what the comparison costs; test_the_identical_systems_gap_is_in_s12 holds it.
     EXPOSURE_MACROS = ("exposureErrTen", "exposureErrHundred", "exposureErrOne",
-                       "exposureGapTen", "exposureCrossover",
+                       "exposureCrossover",
                        "ackLagMedianUs", "exposureLagLo", "exposureLagHi",
                        "exposureCrossoverHi", "exposureErrTenHi")
 
@@ -4248,8 +4351,12 @@ class TestTheExposureCurveIsGeneratedNotTyped:
         # results subsection of the scheduling section, where a co-author said a headline
         # result belongs -- with its experiment, denominator and uncertainty. The pins
         # follow the numbers; the rule now points at this subsection rather than quoting it.
-        start = main_tex.index(r"\subsection{What the proxy costs a comparison}")
+        start = main_tex.index(r"\subsection{What it costs, and the repair}")
         return main_tex[start:start + 2600]
+
+    def test_the_identical_systems_gap_is_in_s12(self):
+        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        assert r"\exposureGapTen" in supp
 
     def test_every_exposure_number_is_a_macro(self, main_tex):
         para = self._paragraph(main_tex)
@@ -4263,8 +4370,10 @@ class TestTheExposureCurveIsGeneratedNotTyped:
         """A literal percentage here is the defect itself, whatever its value."""
         para = self._paragraph(main_tex)
         # 95 is the nominal confidence level, a design constant of the analysis rather than
-        # a measured quantity, so it is the one literal that belongs in the prose.
-        bare = [v for v in re.findall(r"\$(\d+(?:\.\d+)?)\\%\$", para) if v != "95"]
+        # a measured quantity, so it is one literal that belongs in the prose. v5 (28 Sep) adds
+        # the other: 80, the width of Fig. 4's band, the tenth to ninetieth percentiles of the
+        # lag, which is a choice of what to draw and not a number the data returned.
+        bare = [v for v in re.findall(r"\$(\d+(?:\.\d+)?)\\%\$", para) if v not in ("95", "80")]
         assert not bare, (
             "typed percentages %r reappeared in the exposure paragraph; they must come "
             "from scripts/emit_paper_numbers.py:exposure_macros()" % bare)

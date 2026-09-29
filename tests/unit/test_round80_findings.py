@@ -102,14 +102,25 @@ class TestR1TheIndependenceFactorStatesItsUnitFloorAndDenominator:
         assert ledger["indepWithinOvershootConditions"] == ledger["indepWithinConditions"] \
             == ledger["indepOvershootConditions"] == "70"
 
-    def test_the_rule_quotes_within_run_numbers_beside_the_within_run_correlation(self, paper):
-        i = paper.index("Two delays with one cause are not independent")
-        rule = flat(paper[i:i + 700])
-        assert "within a run overpredicts" in rule
-        for macro in ("spanRhoWithinMedian", "indepWithinConditions", "indepWithinFloored",
-                      "indepWithinFlooredN", "indepFloorPct"):
-            assert BS + macro in rule, macro
-        assert BS + "indepOvershoot$" not in rule, "the pooled factor beside a within-run correlation"
+    def test_the_rule_quotes_within_run_numbers_beside_the_within_run_correlation(self, paper,
+                                                                                 supplement):
+        """v5 (28 Sep): the rule "Two delays with one cause are not independent" went when the
+        twelve rules became Table IV's six checks (editorial review, Section 9), so the pin
+        moves to the one article sentence that still quotes the factor, Section III-A's, where
+        v4 printed it with its count and its floor ("the median of the ... conditions above
+        ..."). The rule's "in all N conditions" went with the rule and is stated in S24.2."""
+        text = flat(paper)
+        i = text.index("correlated within a run")
+        passage = text[i:i + 450]
+        assert "independent within a run would overpredict" in passage
+        for macro in ("spanRhoWithinMedian", "indepWithinFloored", "indepWithinFlooredN",
+                      "indepFloorPct"):
+            assert re.search(re.escape(BS + macro) + r"(?![A-Za-z])", passage), macro
+        assert BS + "indepOvershoot$" not in passage, (
+            "the pooled factor beside a within-run correlation")
+        s = _between(supplement, "S24.2. The statistical inventory", "S24.3. The metric map")
+        assert ("independence overpredicts in $" + BS + "indepWithinOvershootConditions$ of the $"
+                + BS + "indepWithinConditions$ conditions") in s
 
     def test_the_supplement_prints_every_version(self, supplement):
         s = _between(supplement, "S24.2. The statistical inventory", "S24.3. The metric map")
@@ -297,19 +308,27 @@ class TestW5ThePacerRangeSaysWhatItSpans:
         assert si.harness_pacer_jitter_runs() == 1
 
     def test_the_sentence_says_across_how_many_runs(self, paper):
-        assert ("at p90 across its $" + BS + "pacerJitterRuns$ runs") in flat(paper)
+        """v5 (28 Sep): Section II-B says "at p90 over N runs", which names what the range spans
+        as "across its N runs" did; either wording passes, a bare range does not."""
+        assert re.search(r"at p90 (?:across its|over) \$" + re.escape(BS)
+                         + r"pacerJitterRuns\$ runs", flat(paper))
 
 
 class TestTheRenderedPagesCarryIt:
 
     def test_the_article(self):
+        """v5 (28 Sep): the factor is quoted in Section III-A only, "treating the two as
+        independent within a run would overpredict them", and its floor must print beside it
+        there; the pacer range reads "at p90 over N runs"."""
         # Hyphenation and glyph spacing differ between extractors, and one of them drops the
         # space on either side of inline math, so the phrase is matched on its words rather
         # than on one exact string.
         text = re.sub(r"(\w)- (\w)", r"\1\2", _rendered("paper"))
-        assert re.search(r"within a run\s*overpredicts", text)
-        assert re.search(r"rate above\s*0\.1\s*%", text)
-        assert re.search(r"at p90 across its\s*\d+\s*runs", text)
+        m = re.search(r"independent\s*within\s*a\s*run\s*would\s*overpredict", text)
+        assert m
+        assert re.search(r"above\s*0\.1\s*%", text[m.end():m.end() + 200]), (
+            "the floor prints beside the factor")
+        assert re.search(r"at p90\s*(?:across its|over)\s*\d+\s*runs", text)
 
     def test_the_supplement(self):
         text = _rendered("supplement")

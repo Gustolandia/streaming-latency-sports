@@ -139,23 +139,33 @@ class TestR1TheSupplementDescribesTheNumberTheArticlePrints:
         assert "indepWithinFlooredRatioOfMedians" not in got
 
     def test_s12_sets_both_estimators_in_both_populations(self, supplement):
+        """v5 (28 Sep): S12 now names Section III-A alone as quoting the median of ratios at the
+        floor, because the Discussion rule that also quoted it went into Table IV, and it states
+        the count and the floor in a sentence of its own. The pin follows that wording and
+        refuses the old pointer to Section VI, which no longer prints the figure."""
         s = _s12(supplement)
         for macro in ("indepOvershoot", "indepRatioOfMedians", "indepWithinFloored",
                       "indepWithinFlooredRatioOfMedians", "indepFloorPct", "indepWithinFlooredN"):
             assert BS + macro in s, macro
         assert "independence overshoot of Section~" not in s
-        assert "Sections~" + BS + "mainAudit{} and~" + BS + "mainAuthors{} quote the median of " \
-               "ratios at that floor" in s
+        assert "Section~" + BS + "mainAudit{} quotes the median of ratios at that floor" in s
+        assert "and~" + BS + "mainAuthors{} quote the median of ratios" not in s
 
     def test_s24_2_names_both_sections(self, supplement):
+        """v5 (28 Sep): Section VI's rules became Table IV, and the within-run factor with its
+        floor and count is quoted in the article once, in III-A. S24.2 names that section alone;
+        naming Section VI would send a reader to a table that does not print the figure."""
         s = _between(supplement, "S24.2. The statistical inventory", "S24.3. The metric map")
-        assert ("Sections~" + BS + "mainAudit{} and~" + BS + "mainAuthors{} quote the within-run "
-                "figure at the floor") in s
-        assert "Section~" + BS + "mainAuthors{} quotes the within-run figure" not in s
+        assert ("Section~" + BS + "mainAudit{}\nquotes the within-run figure at the floor"
+                in s) or ("Section~" + BS + "mainAudit{} quotes the within-run figure at the floor"
+                          in " ".join(s.split()))
+        assert BS + "mainAuthors{} quote" not in " ".join(s.split())
 
     def test_both_article_sections_print_the_within_run_figure(self, paper):
+        """v5 (28 Sep): one article section now, III-A (sec:audit); Section VI's rule that
+        quoted it again became a row of Table IV, which carries no numbers."""
         import test_supplement_pointers as tsp
-        for label in ("sec:audit", "sec:authors"):
+        for label in ("sec:audit",):
             text = tsp.section_source(paper, label)
             for macro in ("indepWithinFloored", "indepWithinFlooredN", "indepFloorPct"):
                 assert re.search(re.escape(BS + macro) + r"(?![A-Za-z])", text), (label, macro)
@@ -479,14 +489,19 @@ class TestW4TheSkewReadingIn2026:
 class TestW5SectionVANamesWhatIsIndependent:
 
     def test_the_sentence(self, paper):
-        assert "treating the two as independent within a run would overpredict them" in flat(paper)
+        """v5 (28 Sep): the clause now opens a sentence of its own, after "The two delays are
+        correlated within a run", which names the two; its first letter may be either case."""
+        assert re.search(r"[Tt]reating the two as independent within a run would overpredict them",
+                         flat(paper))
 
 
 class TestTheRenderedPagesCarryIt:
 
     def test_the_article(self):
+        """v5 (28 Sep): "Treating the two as independent" opens its sentence now, so its first
+        letter may be either case."""
         text = re.sub(r"(\w)- (\w)", r"\1\2", _rendered("paper"))
-        assert re.search(r"treating\s*the\s*two\s*as\s*independent", text)
+        assert re.search(r"[Tt]reating\s*the\s*two\s*as\s*independent", text)
         # "DTrace breakdown" was villain2012probing's note, commentary rather than citation data;
         # since 28 Sep it is kept unprinted (test_reference_notes.py).
         assert "Open Compute Project" in text and "DTrace breakdown" not in text

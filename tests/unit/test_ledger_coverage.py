@@ -130,6 +130,16 @@ ALLOWED = {
         "M0's measured slope of Kafka's median delivery on the added delay (S37), read from "
         "m0_bursts.json and pinned by test_supplement_part_v.py; a slope and the tail fit's "
         "R-squared sharing three digits",
+    # The editorial revision (28 Sep) emitted S16.11's judge readings (cliff_macros), and two
+    # of their values print as other quantities already typed in Part V and S16.10.
+    ("supplement.tex", "cliffPerSliceTenHi", r"measured its load $7.7$ to"):
+        "a law campaign's load overshoot in points above its target (S36's exclusions), which "
+        "prints as 12.0 as the plan formula's per-slice width ratio at the 10 ms tick does; a "
+        "load and a ratio sharing three digits",
+    ("supplement.tex", "cliffPooledRedisFitted", r"slice, is $1.57$ to $1.94$ for waits begun"):
+        "the density ratio of preemption-begun waits between the slice and a tick past it "
+        "(S16.10, wait_shape), equal to the pooled P2 judge's fitted reading on Redis; two "
+        "ratios of different things sharing three digits",
 }
 
 
@@ -160,6 +170,10 @@ def _masked(text):
     # elsewhere is still a number somebody typed.
     out = re.sub(r"CC~?BY[-A-Z~]*~?\d+\.\d+", blank, out)
     out = re.sub(r"(?:RFC|IEEE~?Std|v)~?\d+\.\d+", blank, out)
+    # A length is typesetting, not a measurement. v5 (28 Sep) set Table II's \tabcolsep to
+    # 2.4pt, and 2.4 is also the consumer-handling share Section VI quotes: the collision the
+    # licence identifier had, fixed in the same place for the same reason.
+    out = re.sub(r"\d+(?:\.\d+)?(?:pt|em|ex|mm|cm|bp|pc|sp)\b", blank, out)
     return out
 
 

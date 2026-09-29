@@ -303,7 +303,7 @@ def plot_mechanism(mech_ax):
     # Two lanes now, the drawn path is named as the Kafka one, and Redis's contrasting stamp
     # is marked on the thread that actually takes it.
     mech_ax.set_xlim(0, 10.4)
-    mech_ax.set_ylim(0, 5.25)
+    mech_ax.set_ylim(0.55, 5.25)
     mech_ax.axis("off")
 
     y_app, y_io, y_brk, y_con = 4.30, 3.30, 2.25, 1.15
@@ -410,10 +410,10 @@ def plot_mechanism(mech_ax):
     # So this note may not say "and E-C3 moves the stamp there too", which invites the
     # reading that moving it fixes the sign. It does not. The hand-off is an increment on
     # top of the wakeup, worth tens of microseconds of median, not the thing itself.
-    mech_ax.text(2.45, 0.14,
-                 r"Kafka path drawn. Redis timestamps $t_{\mathrm{ack}}$ on the app thread and"
-                 "\ninverts anyway: the wait for a core is charged either way.",
-                 fontsize=8, color=GREY, ha="left", va="center", linespacing=1.15)
+    # v5 (28 Sep): the note that used to sit here -- "Kafka path drawn. Redis timestamps t_ack
+    # on the app thread and inverts anyway" -- moved to the caption, which says it in one
+    # clause. An outside editor's reading found the drawing too busy to read at a glance, and
+    # the note was the one element carrying no part of the mechanism itself.
 
 
 def plot_delta(h1_ax):
@@ -538,12 +538,21 @@ def plot_quantum_geometry(axes, tau=TAU_MS, t_true=T_TRUE_MS, q=GRID_Q):
     dithering it.
     """
     top, bot = axes
-    keep, drop = "#1f77b4", "#c44e52"
+    plot_phases(top, tau, t_true, q)
+    _plot_schedule(bot, tau, t_true, q)
+
+
+KEEP_BLUE, DROP_RED = "#1f77b4", "#c44e52"
+
+
+def plot_phases(top, tau=TAU_MS, t_true=T_TRUE_MS, q=GRID_Q):
+    """Panel (a) of the quantum geometry: one delivery at four phases of one tick. Since v5
+    (28 Sep) the paper's Fig. 5 draws this panel beside the deletion scatter, so it is its own
+    function; the supplement's two-panel figure calls it unchanged."""
+    keep, drop = KEEP_BLUE, DROP_RED
     phases = [i * tau / q for i in range(q)]
-    crossing = tau - t_true                     # a delivery from here on reaches the next tick
 
     # --- (a) one tick, four phases ---------------------------------------------------------
-    span = 1.45 * tau
     # Drawn with an explicit top rather than axvline: a full-height rule runs through the
     # labels that name it, which is what the collision gate said the first time this was
     # rendered. The rule stops below the text and the text sits clear of it.
@@ -575,6 +584,13 @@ def plot_quantum_geometry(axes, tau=TAU_MS, t_true=T_TRUE_MS, q=GRID_Q):
     # `~` in a mathtext string -- matplotlib is not LaTeX and prints the tilde.
     top.set_title("(a) One delivery of $T_{\\mathrm{true}} = %.2f$ ms, at four phases"
                   % t_true, fontsize=8, loc="left")
+
+
+def _plot_schedule(bot, tau, t_true, q):
+    """Panel (b) of the quantum geometry: which phases a send schedule visits."""
+    keep, drop = KEEP_BLUE, DROP_RED
+    phases = [i * tau / q for i in range(q)]
+    crossing = tau - t_true                     # a delivery from here on reaches the next tick
 
     # --- (b) which phases exist ------------------------------------------------------------
     #
@@ -801,7 +817,7 @@ def main(argv=None):
         return _save(fig, out, "pipeline_schematic", check_layout=layout_is_shipped)
 
     def _model():
-        fig, ax = plt.subplots(figsize=(7.16, 2.12))
+        fig, ax = plt.subplots(figsize=(7.16, 1.90))
         plot_mechanism(ax)
         fig.tight_layout()
         return _save(fig, out, "measurement_model", check_layout=layout_is_shipped)

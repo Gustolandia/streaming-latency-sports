@@ -226,10 +226,12 @@ class TestTheRealFiguresPassTheirOwnGate:
     green. These are the tests that fail.
     """
 
-    RESULT_BUILDERS = ("build_deletion", "build_spectrum", "build_grid", "build_mechanism",
+    RESULT_BUILDERS = ("build_deletion_phases", "build_spectrum", "build_grid", "build_mechanism",
                        "build_ttrue", "build_payload", "build_priority_ladder",
                        # Round 54: the exposure table drawn as a curve, for the supplement.
-                       "build_exposure", "build_recovery")
+                       "build_exposure", "build_recovery",
+                       # v5 (28 Sep): the same curve at column width, for the main text.
+                       "build_exposure_column")
 
     @pytest.mark.parametrize("builder", RESULT_BUILDERS)
     def test_a_result_figure_builds_without_a_retired_term(self, builder, tmp_path):
@@ -252,7 +254,7 @@ class TestMain:
     def test_it_reports_a_clean_set(self, tmp_path, capsys, monkeypatch):
         import make_paper_figures as mpf
         import make_result_figures as mrf
-        for name in ("build_deletion", "build_spectrum", "build_grid", "build_mechanism",
+        for name in ("build_deletion_phases", "build_spectrum", "build_grid", "build_mechanism",
                      "build_ttrue", "build_payload", "build_priority_ladder"):
             monkeypatch.setattr(mrf, name,
                                 lambda out_dir: mrf._save(_fig("negative-span rate"),
@@ -265,7 +267,7 @@ class TestMain:
     def test_it_reports_and_fails_on_a_dirty_one(self, tmp_path, capsys, monkeypatch):
         import make_paper_figures as mpf
         import make_result_figures as mrf
-        for name in ("build_deletion", "build_spectrum", "build_grid", "build_mechanism",
+        for name in ("build_deletion_phases", "build_spectrum", "build_grid", "build_mechanism",
                      "build_ttrue", "build_payload", "build_priority_ladder"):
             monkeypatch.setattr(mrf, name,
                                 lambda out_dir: _fig("negative-span rate"))
@@ -291,7 +293,7 @@ class TestMain:
         import make_paper_figures as mpf
         import make_result_figures as mrf
         before = (mrf._save, mpf._save)
-        for name in ("build_deletion", "build_spectrum", "build_grid", "build_mechanism",
+        for name in ("build_deletion_phases", "build_spectrum", "build_grid", "build_mechanism",
                      "build_ttrue", "build_payload", "build_priority_ladder"):
             monkeypatch.setattr(mrf, name, lambda out_dir: None)
         monkeypatch.setattr(mpf, "main", lambda argv: None)
@@ -302,7 +304,7 @@ class TestMain:
         import make_paper_figures as mpf
         import make_result_figures as mrf
         before = (mrf._save, mpf._save)
-        monkeypatch.setattr(mrf, "build_deletion", lambda out_dir: 1 / 0)
+        monkeypatch.setattr(mrf, "build_deletion_phases", lambda out_dir: 1 / 0)
         with pytest.raises(ZeroDivisionError):
             fv.main(["--out", str(tmp_path / "v")])
         assert (mrf._save, mpf._save) == before

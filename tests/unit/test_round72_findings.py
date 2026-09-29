@@ -67,10 +67,17 @@ class TestR1TheCorpusAndTheCampaignAreDifferentNumbers:
         assert m["replayedMatchesWord"] == epn._spell(len(plans)) == "eleven"
 
     def test_the_sentence_names_each_number_with_its_own_verb(self, paper):
-        i = paper.index("The workload is StatsBomb")
+        """v5 (28 Sep): the setup became one paragraph (Section II-B) and the sentence is now
+        "eleven of its 3,315 matches, replayed in order". The characterisation went to S20 with
+        the rest of the workload's description; what stays pinned is that the replay verb
+        governs the eleven and the corpus size is only the whole they were taken from."""
+        i = paper.index("The workload is")
         passage = " ".join(paper[i:i + 460].split())
-        assert "characterize the full $" + chr(92) + "corpusMatches$-match corpus" in passage
-        assert "replay " + chr(92) + "replayedMatchesWord{} of its matches" in passage
+        assert ("StatsBomb's open football event data~" + chr(92) + "cite{statsbomb2023}: "
+                + chr(92) + "replayedMatchesWord{} of its $" + chr(92)
+                + "corpusMatches$ matches, replayed in order") in passage
+        assert not re.search(r"replay\w*\s+(?:the\s+)?\$" + RE_BS + "corpusMatches", passage), (
+            "the corpus size is the object of a replay verb again")
 
     def test_no_typed_corpus_size_survives_in_either_document(self, paper, supplement):
         """The characterisation number may be named; it may not be typed beside a replay."""
@@ -82,9 +89,12 @@ class TestR1TheCorpusAndTheCampaignAreDifferentNumbers:
 
     def test_the_rendered_page_says_characterize_and_eleven(self):
         """Spaces stripped: pypdf drops the space either side of a macro expansion, and a
-        gate that fails on the extractor's habits stops being about the page."""
+        gate that fails on the extractor's habits stops being about the page.
+
+        v5 (28 Sep): retargeted with the source pin above; the page reads "eleven of its
+        3,315 matches, replayed in order", and the word "characterize" is S20's now."""
         tight = "".join(_rendered("paper").split())
-        assert "characterizethefull3,315-matchcorpusandreplayelevenofitsmatches" in tight
+        assert "elevenofits3,315matches,replayedinorder" in tight
 
     def test_the_gate_that_missed_it_now_reads_both_documents(self):
         """The fix is the gate, not the sentence. Mutation, not inspection."""
@@ -133,11 +143,13 @@ class TestR2TheSliceIsMeasuredAgainstTheDelivery:
             "one to four, and that is the number the mechanism turns on")
 
     def test_the_sentence_carries_the_macros_and_no_typed_pair(self, paper):
+        """v5 (28 Sep): the same sentence, now in Section III-C, wraps after "task's", so the
+        anchor matches across the line break."""
         # Anchored on the sentence as rewritten on 28 September 2026, when the law campaign timed
         # the wait (Supplement S16.10): "descheduled at the wrong instant ... about a slice late"
         # became "woken while another task holds the CPU ... what is left of that task's slice".
         # What this pins is unchanged: the slice against the delivery, read from the ledger.
-        i = paper.index("waits out what is left of that task's slice")
+        i = re.search(r"waits out what is left of that task's\s+slice", paper).start()
         passage = " ".join(paper[i:i + 420].split())
         for macro in ("sliceOverDeliveryLo", "sliceOverDeliveryHi",
                       "condDeliveryLoMs", "condDeliveryHiMs"):
@@ -149,14 +161,23 @@ class TestR2TheSliceIsMeasuredAgainstTheDelivery:
 
         It has the benchmark's own answer one subsection later: retention inverts Equation 4,
         so the incommensurate rates' median retention names T_true directly.
+
+        v5 (28 Sep): Section IV-A now says only that every delivery shorter than a millisecond
+        computes to zero, and the size is Section IV-C's (the incommensurate settings sit near
+        50%, which gives T_true), so the pin moves there; IV-A may still size the deletion only
+        beside the benchmark's own delivery.
         """
-        i = paper.index("has millisecond resolution")
-        passage = " ".join(paper[i:i + 380].split())
-        assert chr(92) + "spreadIncommensurateTrueMs" in passage
-        assert "our own transport measures" not in paper
-        assert "about half of what a co-located run takes" in passage, (
+        flat = " ".join(paper.split())
+        law = flat[flat.index("label{sec:extcomp}"):flat.index("label{sec:generality}")]
+        i = law.index("sit near $50" + chr(92) + "%$")
+        assert chr(92) + "spreadIncommensurateTrueMs" in law[i:i + 260], (
             "the claim is quantitative now: retention names the fraction, where the old "
             "wording left 'most of them' resting on a range that was the wrong span")
+        assert "our own transport measures" not in paper
+        filt = flat[flat.index("label{sec:extmethod}"):flat.index("label{sec:extphase}")]
+        if re.search(r"\b(?:half|most|nearly all)\b", filt):
+            assert chr(92) + "spreadIncommensurateTrueMs" in filt, (
+                "Section IV-A sizes the deletion without the benchmark's own delivery")
 
     def test_the_derived_true_delivery_is_emitted_not_typed(self, paper):
         import emit_paper_numbers as epn
@@ -173,28 +194,63 @@ class TestR2TheSliceIsMeasuredAgainstTheDelivery:
 class TestRecommendedItems:
 
     def test_w1_the_equivalence_is_stated_on_the_chain_too(self, paper):
-        i = paper.index("TOST against a")
-        passage = " ".join(paper[i:i + 300].split())
+        """v5 (28 Sep): the heading went and the paragraph (label sec:brokers) now leads with
+        the causal chain (editor 6.6), so the window is the paragraph, not the text after
+        "TOST".
+
+        Left failing on purpose: v5 moved the proxy's test onto the chain ("On the end-to-end
+        latency ... the two brokers sit within a millisecond (TOST against a 1 ms margin,
+        p < 0.001 ...)"), but that TOST is the transport proxy's (S13.1), and the chain is
+        equivalent only "against a wider margin", as v4 and S13.1 say.
+        """
+        i = paper.index("label{sec:brokers}")
+        passage = " ".join(paper[i:paper.index(chr(92) + "section{", i)].split())
+        assert "TOST" in passage
         assert "causal chain" in passage and "wider margin" in passage
 
     def test_w2_the_omission_clause_excludes_the_table_that_shows_them(self, paper):
-        i = paper.index("Wilson intervals are under")
-        passage = " ".join(paper[i:i + 200].split())
-        assert "omitted hereafter" not in passage
-        assert "tab:mechanism" in passage
+        """v5 (28 Sep): the clause ("Wilson intervals are under 0.1 points on corpus-wide
+        rates and are omitted where they are that narrow, not in Table II") went with the
+        pre-emptive defences (editor 6.11), so the check is now two-sided: a clause, if present,
+        must exclude the table that shows the intervals, and without one the paper may not say
+        that every proportion carries an interval.
 
-    def test_w3_every_factor_in_table_two_carries_its_interval(self, paper):
+        Left failing on purpose: Section II-D says "Every proportion below carries a Wilson
+        score 95% interval", and Section III-A prints its corpus-wide rates (spanNegAckPct,
+        the diseaseOver trio, the two rejection rates) with none.
+        """
+        flat = " ".join(re.sub(r"(?m)^%[^\n]*", "", paper).split())
+        assert "omitted hereafter" not in flat
+        i = flat.find("Wilson intervals are under")
+        if i >= 0:
+            assert "tab:mechanism" in flat[i:i + 200]
+        universal = re.search(r"Every proportion below (?:carries|is a count over a stated "
+                              r"denominator with) a Wilson", flat)
+        assert i >= 0 or not universal, (
+            "Section II-D says every proportion below carries a Wilson interval, the clause "
+            "saying where they are omitted is gone, and Section III-A prints corpus-wide rates "
+            "without one")
+
+    def test_w3_every_factor_in_table_two_carries_its_interval(self, paper, supplement):
+        """v5 (28 Sep): the Katz brackets and the z column left Table II (editor section 9)
+        for S12's paragraph "The mechanism table's factors, with their intervals", so they are
+        pinned there, and Table II is pinned to print each factor once with no bracket, which
+        keeps the intervals in one place."""
         i = paper.index("label{tab:mechanism}")
         table = paper[i:paper.index("end{table}", i)]
         for stem in ("rtLow", "rtHigh", "GeomOrig", "GeomRepl"):
-            assert chr(92) + stem + "FactorCI" in table, stem
-        # The interval sits on the pair's second row rather than beside the factor: the
-        # multirow cell already spans both, so it costs no column width. Widening the cell
-        # instead overfull-ed the table by 47pt, which is how this arrangement was found.
-        i = paper.index("label{tab:mechanism}")
-        caption = " ".join(paper[max(0, i - 900):i].split())
-        assert "Katz $95" in caption, "the caption names what the bracket is"
-        assert "Factor ($z$)" in table, "the header stays at its original width"
+            assert chr(92) + stem + "Factor" + chr(92) + "times" in table, stem
+            assert chr(92) + stem + "FactorCI" not in paper, stem
+        # The interval sat on the pair's second row rather than beside the factor: the
+        # multirow cell already spanned both, so it cost no column width. Widening the cell
+        # instead overfull-ed the table by 47pt, which is how that arrangement was found.
+        s = supplement.index("The mechanism table's factors, with their intervals")
+        para = " ".join(supplement[s:supplement.index("\n\n", s)].split())
+        assert "Katz $95" in para, "the paragraph names what the bracket is"
+        assert "P-tab:mechanism" in para, "and which table's factors it is bracketing"
+        for stem in ("rtLow", "rtHigh", "GeomOrig", "GeomRepl"):
+            assert chr(92) + stem + "FactorCI" in para, stem
+            assert chr(92) + stem + "Z$" in para, "%s: the z left the header with the bracket" % stem
 
     def test_w3_did_not_leave_the_intervals_in_two_places(self, paper):
         """The prose kept them only to have said them; the table is where they belong."""
@@ -203,11 +259,23 @@ class TestRecommendedItems:
         j = paper.index("negative-span rates differ by")
         assert chr(92) + "GeomOrigFactorCI" not in paper[j:j + 260]
 
-    def test_w4_the_two_worst_clock_bounds_are_printed_not_only_summed(self, paper):
+    def test_w4_the_two_worst_clock_bounds_are_printed_not_only_summed(self, paper, supplement):
+        """v5 (28 Sep): Section VIII keeps the per-host bound and "so we claim no cross-host
+        bound in general", and the sum with its two addends is S19's alone, so it is pinned
+        there and the paper is pinned to print no sum without them."""
         import emit_paper_numbers as epn
         m = dict(epn.clock_macros()) if hasattr(epn, "clock_macros") else {}
         i = paper.index("bounds its own error at")
-        passage = " ".join(paper[i:i + 260].split())
+        here = " ".join(paper[i:i + 260].split())
+        assert chr(92) + "chronyHostBoundLo" in here and chr(92) + "chronyHostBoundHi" in here
+        assert "we claim no cross-host bound in general" in here
+        if chr(92) + "chronyPairBound" in paper:
+            for macro in ("chronyWorstBound", "chronySecondWorstBound", "chronyPairBound"):
+                assert chr(92) + macro in here, macro
+        s = supplement.index("section{S19.")
+        s19 = supplement[s:supplement.index("section{S20.", s)]
+        j = s19.index("the bound it places on its own error")
+        passage = " ".join(s19[j:j + 360].split())
         for macro in ("chronyWorstBound", "chronySecondWorstBound", "chronyPairBound"):
             assert chr(92) + macro in passage, macro
         gen = (REPO / "docs" / "generated" / "paper_numbers.tex").read_text(encoding="utf-8")
@@ -217,17 +285,31 @@ class TestRecommendedItems:
         assert m is not None
 
     def test_w5_the_repeated_sample_count_says_it_is_deliberate(self, paper):
+        """v5 (28 Sep): the remark went with the pre-emptive defences (editor 6.11) and with
+        the alternatives list that printed the two-clock count, so the main text prints the
+        count once, in Section IV-D; the two-clock count may come back only with the remark."""
         gen = (REPO / "docs" / "generated" / "paper_numbers.tex").read_text(encoding="utf-8")
         vals = dict(re.findall(RE_BS + r"newcommand\{" + RE_BS + r"(\w+)\}\{([^}]*)\}", gen))
         assert vals["harnessOneClockSamples"] == vals["harnessCrossHostSamples"], (
             "if these ever part, the sentence below has to go")
-        i = paper.index(chr(92) + "harnessCrossHostSamples$ two-clock samples")
-        assert "matched run for run" in paper[i:i + 260]
+        assert chr(92) + "harnessOneClockSamples" in paper
+        i = paper.find(chr(92) + "harnessCrossHostSamples")
+        if i >= 0:
+            assert "matched run for run" in paper[i:i + 260], (
+                "the two-clock count is back in the main text without the remark that says "
+                "why it equals the one-clock count")
 
     def test_w6_the_better_clock_section_opens_on_its_claim(self, paper):
-        i = paper.index("subsection{The limits of a better clock}")
-        opening = " ".join(paper[i:i + 420].split())
-        assert opening.index("converts an uncounted") < opening.index("PTP"), (
+        """v5 (28 Sep): the subsection became the paragraph labelled sec:betterclock, whose
+        claim now names the clock it means (editor 6.6), "A better-synchronized clock fixes
+        neither failure"; the rule is unchanged, the claim first and the PTP arithmetic after."""
+        paras = [p for p in re.split(r"\n[ \t]*\n", paper) if "PTP~" in p]
+        assert len(paras) == 1, "one paragraph carries the PTP arithmetic"
+        opening = " ".join(re.sub(r"(?m)^\s*" + RE_BS + r"label\{[^}]*\}\s*$", "",
+                                  paras[0]).split())
+        assert opening.startswith("A better-synchronized clock fixes neither failure."), (
+            opening[:120])
+        assert opening.index("fixes neither failure") < opening.index("PTP"), (
             "the Feynman rule: the claim first, the arithmetic that supports it after")
 
     def test_w7_the_grey_literature_ledger_gained_its_fourth_row(self):
@@ -268,6 +350,10 @@ class TestTheMutationCheckGuardsWhatItSaysItGuards:
     """The round's own lesson, and the one with the widest blast radius."""
 
     def test_every_anchor_is_present_in_the_manuscript(self):
+        """v5 (28 Sep): left failing on purpose. Seven of the ten anchors in
+        `scripts/mutation_check.py` went stale with the rewrite, and the anchors live in that
+        script rather than here; a stale anchor guards nothing, so this fails until each is
+        re-anchored to the sentence that carries its claim now, or retired with a reason."""
         import mutation_check
         src = (REPO / "paper.tex").read_text(encoding="utf-8")
         stale = [name for name, old, _ in mutation_check.MUTATIONS if old not in src]
@@ -319,6 +405,11 @@ class TestEveryTypedNumeralInTheMainTextIsADecision:
     A new literal fails this test until somebody adds it below with a reason. That is the
     point of the file -- typing a number into this manuscript is a decision that gets written
     down rather than a habit that accumulates.
+
+    v5 (28 Sep): 3, 5, 70, 0.1 and 6.9 left with their sentences (Sharma et al.'s skew
+    figures and the clustering z to the supplement, editor sections 5 and 6.11; PTP's 70 ns with
+    the old better-clock arithmetic; the Wilson precision with the omission clause, 6.11), and
+    0.35, 1.5 and 80 came in with new sentences, each with its reason below.
     """
 
     #: The span of math, and the numerals inside it that a person wrote. `(?<![A-Za-z0-9.,{}\\])`
@@ -330,11 +421,11 @@ class TestEveryTypedNumeralInTheMainTextIsADecision:
     #: value -> why it is a literal rather than a macro.
     ALLOWED = {
         # quoted from somebody else's paper or standard
-        "3": "Sharma et al.'s injected-skew threshold, quoted from their paper",
-        "5": "Sharma et al.'s upper skew figure, quoted from their paper",
-        "70": "PTP's specified accuracy, quoted from the standard",
         "0.75": "the kernel's published per-core slice constant, quoted from the commit that "
                 "set it; the product beside it is emitted",
+        "1.5": "the law campaign's registered bound on Python's plateau over Java's "
+               "(prediction P8), a threshold fixed in the plan before its runs and quoted "
+               "from it; what the runs measured, 3.25 and 4.25, is Part V's",
         # settings this campaign chose
         "0": "the bottom of the audit-threshold sweep",
         "20": "the top of the audit-threshold sweep",
@@ -343,11 +434,15 @@ class TestEveryTypedNumeralInTheMainTextIsADecision:
         "500": "the send rate of the named cell",
         "32": "a payload size the sweep set",
         "64": "a payload size the sweep set",
+        # illustrations and presentation choices, not measurements
+        "0.35": "the delivery Figure 5(a) draws at four phases of one tick, set by "
+                "make_paper_figures.T_TRUE_MS to fall between grid values and to equal no "
+                "quantity the ledger emits",
+        "80": "the width of the band Figure 4 draws, the tenth to the ninetieth percentile of "
+              "the lag across conditions, which is a choice of what to show",
         # statistical conventions, not measurements
         "95": "the confidence level, which is a convention and not a result",
-        "0.1": "the precision at which the corpus-wide Wilson intervals are described",
         "0.001": "the p-value ceiling the TOST clears, reported as an inequality",
-        "6.9": "a z-statistic quoted to one decimal beside the effect it belongs to",
         # configuration constants and values that are multiples of the resolution
         "1": "an evaluation point on the exposure curve, and the millisecond tick and "
              "timestamp resolution, both configuration constants",
@@ -435,9 +530,6 @@ class TestEveryWordSpelledQuantityIsADecisionToo:
 
     #: Spelled quantities that are typed on purpose, with the reason. Short by design.
     ALLOWED_WORDS = {
-        "seven": "the withdrawn E1 corpus's median events per run, stated identically in S3 "
-                 "about a corpus that is fixed and cannot move; emitting it would attach a "
-                 "live macro to a dead campaign",
         "four": "'about four samples in ninety thousand' is a gloss on an emitted "
                 "percentage, marked as approximate so it cannot be read as a second reading",
         "ninety": "the other half of that gloss, and an approximation of the same emitted "
@@ -449,7 +541,7 @@ class TestEveryWordSpelledQuantityIsADecisionToo:
         "two": "the log base of the histogram's buckets, and ordinary English throughout",
         "hundred": "'more than one event in a hundred' is the audit threshold written as a "
                    "proportion in words; the threshold itself is a rule we chose, not a "
-                   "measurement, and Section IV-E gives it as a percentage two lines above",
+                   "measurement, and Section II-D gives it as a percentage a few lines above",
         "thousand": "the other half of the 'about four samples in ninety thousand' gloss",
     }
 
@@ -526,6 +618,10 @@ class TestEveryWordSpelledQuantityIsADecisionToo:
             % (unknown, [found[u] for u in unknown]))
 
     def test_the_word_inventory_has_not_gone_stale(self, paper):
+        """v5 (28 Sep): "seven" left the inventory with the rule it sat in, "Count your events
+        before you quote a percentile", which the outside editor found unearned in the main
+        text (6.7); S3 still states the withdrawn corpus's seven events per run. The reason for
+        "hundred" names the sign check's new place, Section II-D."""
         import re as _re
         prose = _re.sub(r"(?m)^%[^\n]*", "", paper)
         stale = sorted(w for w in self.ALLOWED_WORDS
@@ -533,14 +629,14 @@ class TestEveryWordSpelledQuantityIsADecisionToo:
         assert not stale, "these words are no longer in the paper: %s" % stale
 
     def test_the_defect_that_prompted_this_is_caught(self, paper):
-        """Mutation, not inspection: put the typed word back and the gate must fire."""
+        """Mutation, not inspection: put the typed word back and the gate must fire.
+
+        v5 (28 Sep): the sentence is Section IV-B's now and wraps between "that" and
+        "escape", so the mutation matches across the line break instead of at one wrap.
+        """
         import re as _re
-        bad = paper.replace(
-            "the only cells that escape are the " + chr(92) + "ombEscapeCellsWord{}",
-            "the only cells that escape are the four",
-        ).replace(
-            "The only cells that escape are the " + chr(92) + "ombEscapeCellsWord{}",
-            "The only cells that escape are the four")
-        assert bad != paper, "Section VI-A has been reworded; retarget this mutation"
+        bad = _re.sub(r"([Tt]he only cells that\s+escape are the )" + RE_BS
+                      + r"ombEscapeCellsWord\{\}", r"\g<1>four", paper)
+        assert bad != paper, "Section IV-B has been reworded; retarget this mutation"
         with pytest.raises(AssertionError):
             self.test_no_sentence_types_a_word_the_ledger_emits_for_that_quantity(bad)

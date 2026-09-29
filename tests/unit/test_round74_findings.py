@@ -54,20 +54,32 @@ def _rendered(name):
 class TestR1SpelledQuantitiesUseTheirMacro:
 
     def test_the_escaping_cells_come_from_the_ledger(self, paper, supplement):
-        """The instance the referee found: emitted in one document, typed in the other."""
-        i = paper.index("The only cells that escape")
-        passage = " ".join(paper[i:i + 200].split())
+        """The instance the referee found: emitted in one document, typed in the other.
+
+        v5 (28 Sep): the sentence survives in Section IV-B word for word, but its line now breaks
+        inside the anchor, so the anchor is matched across the break."""
+        m = re.search(r"The only cells that\s+escape", paper)
+        assert m, "Section IV-B's escaping-cells sentence has been reworded; retarget this pin"
+        passage = " ".join(paper[m.start():m.start() + 200].split())
         assert chr(92) + "ombEscapeCellsWord" in passage
         assert "escape are the four" not in passage
         assert chr(92) + "ombEscapeCellsWord" in supplement, (
             "the supplement used it first; both documents now agree")
 
     def test_the_disposal_classes_come_from_the_ledger(self, paper):
-        """The instance the gate found, six lines below a use of the same macro."""
+        """The instance the gate found, six lines below a use of the same macro.
+
+        v5 (28 Sep): Section V now names the classes in the sentence that counts them ("in
+        `harnessDisposalClassesWord` classes: filtering, truncation to the resolution, and
+        substitution") and "Substitution is the worst" follows it directly, without a count of
+        its own. The pin reads the passage that holds both, so the count must still come from
+        the macro and a typed "three" is still refused beside the superlative."""
         i = paper.index("Substitution is the worst")
-        passage = " ".join(paper[i:i + 200].split())
-        assert chr(92) + "harnessDisposalClassesWord" in passage
+        passage = " ".join(paper[max(0, i - 300):i + 200].split())
+        assert re.search(re.escape(chr(92) + "harnessDisposalClassesWord") + r"\{\} classes",
+                         passage)
         assert "worst of the three" not in passage
+        assert "three classes" not in passage
 
     def test_both_macros_still_say_what_the_sentences_need(self):
         import emit_paper_numbers as epn
@@ -86,12 +98,23 @@ class TestR1SpelledQuantitiesUseTheirMacro:
         assert "about four samples in ninety" in passage
         assert "four samples kept of ninety thousand" not in paper
 
-    def test_the_word_gate_exists_and_enumerates_its_residue(self):
+    def test_the_word_gate_exists_and_enumerates_its_residue(self, paper, supplement):
+        """v5 (28 Sep): the allowance the referee endorsed, "seven", was the withdrawn E1
+        corpus's median events per run, typed in the rule "Count your events before you quote a
+        percentile". An outside editor found that rule unearned in the main text (editorial
+        review, 6.7) and it was cut, so the word left the article and round 72's inventory with
+        it. The pin is now the cut itself: the article's prose no longer types the seven-event
+        median, S3 still states it, and every allowance left still carries a reason."""
         sys.path.insert(0, str(REPO / "tests" / "unit"))
         import test_round72_findings as t72
         cls = t72.TestEveryWordSpelledQuantityIsADecisionToo
-        assert "seven" in cls.ALLOWED_WORDS, (
-            "the withdrawn E1 corpus's median: typed on purpose, and the referee said so")
+        prose = re.sub(r"(?m)(?<!\\)%.*$", "", paper)
+        assert not re.search(r"\bseven\s+events", prose), (
+            "the withdrawn E1 corpus's median is back in the article; round 72's inventory must "
+            "allow it again, with the referee's reason")
+        i = supplement.index("S3. The twentyfold end-to-end gap")
+        s3 = " ".join(supplement[i:supplement.index("S3.1.", i)].split())
+        assert "median of seven" in s3, "the supplement still states it, where the corpus is"
         for word, reason in cls.ALLOWED_WORDS.items():
             assert len(reason.split()) >= 8, "%s has no real reason recorded" % word
 
@@ -210,10 +233,37 @@ class TestTheRefereesOwnItemWasAlreadyDone:
 class TestTheRenderedPageCarriesIt:
 
     def test_the_escaping_cells_and_the_classes_print(self):
+        """v5 (28 Sep): the class count prints in the sentence that lists the classes, and the
+        superlative follows it (see `test_the_disposal_classes_come_from_the_ledger`)."""
         flat = "".join(_rendered("paper").split())
         assert "escapearethefourwhosepayload" in flat
-        assert "worstofthethreeclasses" in flat
+        assert "inthreeclasses:filtering" in flat
+        assert "substitution.Substitutionistheworst" in flat
 
     def test_the_gloss_prints_as_an_approximation(self):
         flat = " ".join(_rendered("paper").split())
         assert "about four samples in ninety thousand" in flat
+
+
+class TestTheClassesAreTheClassifiers:
+    """v5.1 (29 Sep): Section V names the disposal classes the classifier has, and no other.
+
+    From v4 until this revision the sentence read "filtering, truncation to the quantum, and
+    substitution", counted by a macro that counts the classifier's responses, which are
+    filter, substitute and refuse. Truncation is what Apache Kafka's bundled tool does to a
+    percentile, and it is not a disposal: that tool keeps every sample. Refusal, wrk2's, was
+    the class the sentence left out. The count came from the ledger; the names did not, and
+    nothing checked them. Found while drafting the supplement's registry section.
+    """
+
+    NAMES = {"filter": "filtering", "substitute": "substitution", "refuse": "refusal"}
+
+    def test_each_response_is_named_and_truncation_is_not_a_class(self, paper):
+        import audit_external_harness as aeh
+        m = re.search(re.escape(chr(92) + "harnessDisposalClassesWord") + r"\{\} classes:([^.]*)\.",
+                      paper)
+        assert m, "Section V no longer names its disposal classes after the count"
+        listed = " ".join(m.group(1).split())
+        for response in set(aeh.DISPOSAL_RESPONSES.values()):
+            assert self.NAMES[response] in listed, (response, listed)
+        assert "truncation" not in listed, "truncation keeps the sample; it is not a disposal"

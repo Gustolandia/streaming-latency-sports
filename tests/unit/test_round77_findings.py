@@ -69,8 +69,19 @@ def pops():
 
 
 def _vd(paper):
-    i = paper.index("The displacement can be recovered rather than discarded")
-    return " ".join(paper[i:i + 1600].split())
+    """Section III-D, v4's Section V-D, flattened.
+
+    v5 (28 Sep): the paragraph this read from ("The displacement can be recovered rather than
+    discarded") is III-D's last, reworded, so the whole subsection is read."""
+    i = paper.index(BS + "label{sec:cost}")
+    return " ".join(paper[i:paper.index(BS + "section{", i)].split())
+
+
+def _rendered_s169(supplement_text):
+    """S16.9's pages of the rendered supplement: from its heading to S16.10's, the last
+    occurrence of each so the table of contents is skipped."""
+    return supplement_text[supplement_text.rindex("S16.9. The displacement recovery"):
+                           supplement_text.rindex("S16.10. How late")]
 
 
 def _s169(supplement):
@@ -108,12 +119,17 @@ class TestR1NoShiftRemains:
         assert si.hodges_lehmann(a, b) == pytest.approx(0.0, abs=0.05)
         assert si.hl_bootstrap_ci(a, b) == pytest.approx((-8.0, 7.14), abs=0.05)
 
-    def test_the_main_text_states_the_shift_not_a_crossing(self, paper):
-        vd = _vd(paper)
+    def test_the_main_text_states_the_shift_not_a_crossing(self, paper, supplement):
+        """v5 (28 Sep): the shift and its labeled bracket moved from Section V-D to S16.9 with
+        V-D's other statistics (editorial review, Section 5) and are pinned there, worded "no
+        shift can be detected"; Section III-D, which kept one sentence of result, is still held
+        to no crossing and no non-zero medians."""
+        s = _s169(supplement)
         # Round 78 (R1, W1): undetectable rather than absent, and the second bracket labeled.
-        assert "no shift is detectable" in vd
-        assert (BS + "recoveryNonzeroShift$ points [95" + BS + "% bootstrap: $" + BS
-                + "recoveryNonzeroShiftCI$]") in vd
+        assert "no shift can be detected" in s
+        assert (BS + "recoveryNonzeroShift$ points ($95" + BS + "%$ bootstrap: $" + BS
+                + "recoveryNonzeroShiftCI$)") in s
+        vd = _vd(paper)
         assert "crosses it" not in vd
         assert BS + "recoveryErrPassNonzero" not in vd, (
             "the medians belong in S16.9 as description; in the main text they read as a finding")
@@ -125,12 +141,20 @@ class TestR1NoShiftRemains:
         assert BS + "recoveryNonzeroShift" in s and BS + "recoveryNonzeroShiftCI" in s
         assert "if anything the worse of the two" not in s
 
-    def test_the_defect_that_prompted_this_is_caught(self, paper):
-        bad, n = re.subn(r"and without it\s+no shift is\s+detectable,[^(]*",
-                         "and setting the exact recoveries aside crosses it ", paper)
-        assert n == 1, "Section V-D has been reworded; retarget this mutation"
+    def test_the_defect_that_prompted_this_is_caught(self, paper, supplement):
+        """v5 (28 Sep): the statement of the shift is in S16.9, so the crossing is put in its
+        place there; a crossing added to the sentence Section III-D kept is caught as well."""
+        bad, n = re.subn(r"no\s+shift\s+can\s+be\s+detected\s+in\s+what\s+is\s+left",
+                         "setting the exact recoveries aside crosses it", supplement)
+        assert n == 1, "S16.9 has been reworded; retarget this mutation"
         with pytest.raises(AssertionError):
-            self.test_the_main_text_states_the_shift_not_a_crossing(bad)
+            self.test_the_main_text_states_the_shift_not_a_crossing(paper, bad)
+        bad, n = re.subn(r"cannot\s+(?:be\s+told|tell)\s+apart",
+                         lambda m: m.group(0) + ", and setting the exact recoveries aside "
+                         "crosses it", paper)
+        assert n == 1, "Section III-D has been reworded; retarget this mutation"
+        with pytest.raises(AssertionError):
+            self.test_the_main_text_states_the_shift_not_a_crossing(bad, supplement)
 
 
 class TestR2TheDescriptionsMatchTheData:
@@ -219,8 +243,21 @@ class TestW1TheTwoPopulationsAreDrawn:
 
 class TestW2TheBracketSaysWhatItIs:
 
-    def test_the_main_text_names_method_and_level(self, paper):
-        assert "[95" + BS + "% bootstrap:" in _vd(paper)
+    def test_the_main_text_names_method_and_level(self, paper, supplement):
+        """v5 (28 Sep): both shift brackets are printed in S16.9 now, not in Section V-D
+        (editorial review, Section 5). Each still names its method and level where it is
+        printed, and neither may come back to the article without its label."""
+        s = _s169(supplement)
+        for macro in ("recoveryShiftCI", "recoveryNonzeroShiftCI"):
+            j = s.index("$" + BS + macro + "$)")
+            label = s[s.rindex("(", 0, j):j]
+            assert re.fullmatch(r"\(\$95" + re.escape(BS) + r"%\$ (?:percentile )?bootstrap: ",
+                                label), (macro, label)
+        text = " ".join(paper.split())
+        label = re.compile(r"95" + re.escape(BS) + r"%\$? (?:percentile )?bootstrap: $")
+        for macro in ("recoveryShiftCI", "recoveryNonzeroShiftCI"):
+            for m in re.finditer(re.escape("$" + BS + macro + "$"), text):
+                assert label.search(text[max(0, m.start() - 40):m.start()]), macro
 
     def test_same_way_is_corrected_with_both_levels(self, supplement):
         s = _s169(supplement)
@@ -284,9 +321,13 @@ class TestW5ThePreparedSwap:
 class TestTheRenderedPagesCarryIt:
 
     def test_the_main_text(self):
-        flat = " ".join(_rendered("paper").split())
-        assert "no shift is detectable" in flat
-        assert "95% bootstrap" in flat
+        """v5 (28 Sep): the undetectable shift and its bracket print on S16.9's pages now
+        (editorial review, Section 5). The extractor drops the spaces around inline math, so
+        they are matched with all spaces removed; the article still prints no crossing."""
+        tight = "".join(_rendered_s169(_rendered("supplement")).split())
+        assert "noshiftcanbedetected" in tight
+        assert "(95%bootstrap:" in tight
+        assert "crosses it" not in " ".join(_rendered("paper").split())
 
     def test_the_supplement(self):
         flat = " ".join(_rendered("supplement").split())

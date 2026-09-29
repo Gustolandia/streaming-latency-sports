@@ -32,24 +32,37 @@ class TestR1TheSectionOpensOnItsEvidence:
     """A fork is a copy, so the count bounds divergence rather than adoption."""
 
     def test_the_tools_section_opens_on_the_audit(self, paper):
-        body = paper.split(r"\section{Evidence Across Tools}", 1)[1]
+        """v5 (28 Sep): the section is Section V, "How Widespread", and its second sentence says
+        "We read ten tools at source" where v4 said "We audited", so the pin is on that clause
+        (macro and all) rather than on the verb."""
+        body = paper.split(r"\section{How Widespread}", 1)[1]
         body = body.split(r"\section{", 1)[0]
         opening = body[:400]
         assert "forks" not in opening, (
-            "Section VII opens on the fork count again. A fork is a copy: the number bounds "
+            "Section V opens on the fork count again. A fork is a copy: the number bounds "
             "how few have diverged, not how many adopted, and it is the weakest evidence in "
             "the section. The ten-tool audit is the claim.")
-        assert "audited" in opening, \
-            "Section VII no longer opens on the tool audit; say what replaced it"
+        assert r"\harnessAuditedWord{} tools at source" in opening, \
+            "Section V no longer opens on the tool audit; say what replaced it"
 
-    def test_the_fork_count_says_what_it_bounds(self, paper):
-        """Kept, but not allowed back without its qualification."""
-        i = paper.find(r"\forkUnchanged")
+    def test_the_fork_count_says_what_it_bounds(self, paper, supplement):
+        """Kept, but not allowed back without its qualification.
+
+        v5 (28 Sep): the fork count left the paper with the editor's cuts (section 5, "the fork
+        count") and now opens Supplement S25's paragraph on forks, qualification included. It
+        is pinned there, and it may not come back to the paper without the clause either.
+        """
+        i = supplement.find(r"\forkUnchanged")
         assert i > 0, "the fork count has gone entirely; it is evidence, just not the opening"
-        window = paper[i:i + 420]
+        window = supplement[i:i + 420]
         assert "diverged" in window, (
             "the fork count no longer says that it bounds divergence rather than adoption; "
             "without that clause it reads as a survey of independent uptake")
+        j = paper.find(r"\forkUnchanged")
+        if j >= 0:
+            assert "diverged" in paper[j:j + 420], (
+                "the fork count is back in the paper without the clause saying it bounds "
+                "divergence rather than adoption")
 
 
 class TestR2AMedianTravelsWithItsSpread:

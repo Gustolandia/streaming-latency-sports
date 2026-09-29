@@ -172,7 +172,7 @@ class TestMain:
             fig = made["figs"].pop(0) if made["figs"] else _clean_figure()
             return mrf._save(fig, out_dir, "stem%d" % made.setdefault("n", 0))
 
-        for name in ("build_deletion", "build_spectrum", "build_grid",
+        for name in ("build_deletion_phases", "build_spectrum", "build_grid",
                      "build_mechanism", "build_ttrue", "build_payload"):
             monkeypatch.setattr(mrf, name, build)
         monkeypatch.setattr(mpf, "main", lambda argv: mpf._save(_clean_figure(), None, "paper"))

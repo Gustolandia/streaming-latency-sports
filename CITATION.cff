@@ -17,22 +17,22 @@ authors:
     email: "duvignau@chalmers.se"
     affiliation: "Department of Computer Science and Engineering, Chalmers University of Technology"
 abstract: "Two ways a message-broker benchmark misreports on sub-millisecond paths: a latency timed from the acknowledgment turns negative when the thread recording it is scheduled late, and a millisecond clock with a positivity filter deletes sub-millisecond samples without counting them. Code, campaigns, and a suite that recomputes every number from committed data."
-version: "3.0.0"
+version: "4.0.0"
 url: "https://github.com/Gustolandia/streaming-latency-sports"
 doi: "10.5281/zenodo.21650031"   # concept DOI: always the latest version
 license: "MIT"
 keywords:
-  - streaming systems
-  - real-time analytics
-  - sports data
+  - benchmarking
+  - latency measurement
+  - measurement errors
+  - message brokers
+  - timestamp resolution
+  - scheduling
   - apache kafka
   - redis streams
-  - latency benchmarking
-  - time-to-insight
-  - actionability windows
-  - football analytics
+  - openmessaging benchmark
   - reproducible research
-date-released: "2026-09-04"
+date-released: "2026-09-29"
 # The paper. Under CFF the top-level block above already describes the software, so this key
 # describes the work a reader should cite instead -- and there must be exactly one of it. There
 # were two, and because CFF is YAML the second silently overwrote the first: the paper citation

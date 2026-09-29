@@ -1,7 +1,7 @@
 {
-  "title": "Faster Than Light, According to the Arithmetic: measurement dataset (campaign ledgers, per-cell counters, harness results, clock-discipline log)",
+  "title": "Faster than Light: measurement dataset (campaign ledgers, per-cell counters, harness results, clock-discipline log)",
   "upload_type": "dataset",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "license": "CC-BY-4.0",
   "creators": [
     {
@@ -31,11 +31,11 @@
       "scheme": "doi"
     },
     {
-      "identifier": "10.5281/zenodo.22215330",
+      "identifier": "10.5281/zenodo.22307882",
       "relation": "isNewVersionOf",
       "scheme": "doi"
     }
   ],
-  "publication_date": "2026-09-04",
+  "publication_date": "2026-09-29",
   "access_right": "restricted"
 }

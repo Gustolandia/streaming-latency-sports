@@ -26,7 +26,7 @@ import pytest
 
 REPO = Path(__file__).parent.parent.parent
 GENERATED = REPO / "docs" / "generated" / "paper_numbers.tex"
-SOURCES = ("paper.tex", "supplement.tex")
+SOURCES = ("paper.tex", "supplement.tex", "postmortem.tex")
 
 #: What math mode does to a value that is not a number. A letter is set italic with
 #: inter-symbol spacing; a hyphen between two digits is set as a minus. Those are the two

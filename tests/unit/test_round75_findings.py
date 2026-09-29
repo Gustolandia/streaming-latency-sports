@@ -54,7 +54,7 @@ def paper():
 
 @pytest.fixture(scope="module")
 def supplement():
-    return (REPO / "supplement.tex").read_text(encoding="utf-8")
+    return (REPO / "postmortem.tex").read_text(encoding="utf-8")
 
 
 @pytest.fixture(scope="module")
@@ -252,12 +252,21 @@ class TestR2TheRecoveryPopulationsDoNotSeparate:
         errors, a statement of what the data cannot separate, and the pointer to S16.9. The
         rule is Table IV's add-back row, which cites III-D and restates nothing III-D could
         contradict. III-D's own pointer forward to the rule went with the list of rules and is
-        not asked for."""
+        not asked for.
+
+        29 Sep: the pointer lands on the journal supplement's S3.8, which states the shift and
+        its non-zero form too; it is found there by the shift. S16.9 is the postmortem's."""
         vd = _recovery(paper)
         for macro in ("recoveryErrPass", "recoveryErrFail", "recoveryPassN", "recoveryFailN"):
             assert re.search(re.escape(BS + macro) + r"(?![A-Za-z])", vd), macro
         assert re.search(r"cannot\s+(?:be\s+told|tell)\s+apart", vd)
-        assert "S16.9" in vd, "the kept sentence points at where the shift went"
+        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        at = journal.index(BS + "recoveryShift$")
+        home = re.findall(r"\\(?:sub)?section\{(S\d+(?:\.\d+)?)\.", journal[:at])[-1]
+        tail = journal[at:journal.index(BS + "subsection{", at)]
+        assert BS + "recoveryNonzeroShift$" in tail, "both shifts are stated where it points"
+        assert re.search(r"Supplement~%s\b" % re.escape(home), vd), \
+            "the kept sentence points at where the shift went"
         s169 = _s169(supplement)
         assert BS + "recoveryShift$" in s169
         # Round 76 replaced the one-sided quote of `recoveryPassExact` here. It read "33% of
@@ -418,14 +427,22 @@ class TestTheRenderedPageCarriesIt:
     def test_the_shift_prints_in_section_v_d(self):
         """v5 (28 Sep): the shift went to S16.9 with the rest of V-D's statistics (editorial
         review, Section 5), so it is looked for on S16.9's pages; the separation claim is
-        refused in both documents."""
+        refused in both documents.
+
+        29 Sep: S16.9's pages are the postmortem's, and the paper points at the journal
+        supplement's S3.8, so the shift is looked for on both; the claim is refused in all three."""
         flat = " ".join(_rendered("paper").split())
-        supp = _rendered("supplement")
-        s169 = " ".join(supp[supp.rindex("S16.9. The displacement recovery"):
-                             supp.rindex("S16.10. How late")].split())
+        post = _rendered("postmortem")
+        s169 = " ".join(post[post.rindex("S16.9. The displacement recovery"):
+                             post.rindex("S16.10. How late")].split())
         assert "Hodges" in s169
+        journal = _rendered("supplement")
+        s38 = " ".join(journal[journal.rindex("S3.8. The proxy"):
+                               journal.rindex("S3.9. Five objections")].split())
+        assert "Hodges" in s38
         assert "separate at the median" not in flat
-        assert "separate at the median" not in " ".join(supp.split())
+        for supp in (post, journal):
+            assert "separate at the median" not in " ".join(supp.split())
 
     def test_the_supplement_table_prints(self):
         flat = " ".join(_rendered("supplement").split())

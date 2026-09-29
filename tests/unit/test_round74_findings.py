@@ -40,7 +40,7 @@ def paper():
 
 @pytest.fixture(scope="module")
 def supplement():
-    return (REPO / "supplement.tex").read_text(encoding="utf-8")
+    return (REPO / "postmortem.tex").read_text(encoding="utf-8")
 
 
 def _rendered(name):

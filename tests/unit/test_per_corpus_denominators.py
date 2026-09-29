@@ -32,7 +32,7 @@ import pytest
 
 REPO = Path(__file__).parent.parent.parent
 GENERATED = REPO / "docs" / "generated" / "paper_numbers.tex"
-DOCS = ("paper.tex", "supplement.tex")
+DOCS = ("paper.tex", "supplement.tex", "postmortem.tex")
 
 #: (numerator macro, its own denominator, the whole-population denominator it must not sit
 #: beside). Each entry is a family where a sentence naming a subset's count could reach for

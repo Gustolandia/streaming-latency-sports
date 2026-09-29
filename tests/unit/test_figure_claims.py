@@ -24,7 +24,7 @@ import stat_intervals as si          # noqa: E402
 import tail_index_traced as tit      # noqa: E402
 
 TEX = ((ROOT / "paper.tex").read_text(encoding="utf-8") + "\n"
-       + (ROOT / "supplement.tex").read_text(encoding="utf-8"))
+       + (ROOT / "postmortem.tex").read_text(encoding="utf-8"))
 # The submission is both documents. The pipeline schematic moved to the supplement in
 # round 16, when the figures were redrawn at printable type size and the paper had to
 # give a full-width float back; "included" has to mean included in the package.

@@ -38,7 +38,7 @@ import re
 import pytest
 
 REPO = Path(__file__).parent.parent.parent
-DOCS = ("paper.tex", "supplement.tex")
+DOCS = ("paper.tex", "supplement.tex", "postmortem.tex")
 
 
 def _source(name):

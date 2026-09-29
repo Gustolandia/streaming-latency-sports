@@ -29,7 +29,7 @@ REPO = Path(__file__).parent.parent.parent
 #: third-party captures are excluded: a benchmark's own log may legitimately carry anything,
 #: and rewriting one to please a linter would be falsifying evidence.
 AUTHORED = ("scripts", "tests", "docs/generated")
-AUTHORED_FILES = ("paper.tex", "supplement.tex", "manuscript_references.bib",
+AUTHORED_FILES = ("paper.tex", "supplement.tex", "postmortem.tex", "manuscript_references.bib",
                   "docs/infrastructure.md", "docs/writing_standards.md", "README.md")
 
 SUFFIXES = {".py", ".tex", ".bib", ".md", ".cfg", ".toml", ".yml", ".yaml"}
@@ -81,7 +81,8 @@ class TestNoSourceFileCarriesAControlCharacter:
         """A gate that silently covered nothing would be worse than no gate."""
         covered = {p.name for p in _authored_files()}
         for name in ("test_pdf_compliance.py", "emit_paper_numbers.py", "paper.tex",
-                     "supplement.tex", "stat_intervals.py"):
+                     "supplement.tex",
+                     "postmortem.tex", "stat_intervals.py"):
             assert name in covered, "%s is outside the sweep" % name
 
     def test_it_would_have_caught_both_of_round_76_s(self):
@@ -107,7 +108,7 @@ class TestTheLessonIsRecordedWhereItWillBeRead:
         text = (REPO / "docs" / "infrastructure.md").read_text(encoding="utf-8")
         assert "heredoc" in text.lower()
 
-    @pytest.mark.parametrize("name", ["paper.tex", "supplement.tex"])
+    @pytest.mark.parametrize("name", ["paper.tex", "supplement.tex", "postmortem.tex"])
     def test_neither_document_carries_one(self, name):
         """The documents are the deliverable, and a control character in a .tex file can
         change what TeX typesets rather than only what a reader of the source sees."""

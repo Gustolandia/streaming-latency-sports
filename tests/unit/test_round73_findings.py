@@ -50,7 +50,7 @@ def paper():
 
 @pytest.fixture(scope="module")
 def supplement():
-    return (REPO / "supplement.tex").read_text(encoding="utf-8")
+    return (REPO / "postmortem.tex").read_text(encoding="utf-8")
 
 
 def _rendered(name):
@@ -92,7 +92,7 @@ class TestR1ARateIsQuotedWithTheLoadItWasMeasuredAt:
         """v5 (28 Sep): the Introduction's "at some send rates nearly all" matched the bare
         substring "rates near"; it is a share, not a rate quoted near a typed number, so the
         pattern now ends at a word boundary and "rates near 23" still fails it."""
-        for name, text in (("paper.tex", paper), ("supplement.tex", supplement)):
+        for name, text in (("paper.tex", paper), ("postmortem.tex", supplement)):
             prose = re.sub(r"(?m)^%[^\n]*", "", text)
             assert "near $23" not in prose, name
             assert not re.search(r"rates\s+near\b", prose), (
@@ -103,7 +103,10 @@ class TestR1ARateIsQuotedWithTheLoadItWasMeasuredAt:
         """v5 (28 Sep): the dispute kept one sentence in Section VII-B (editor section 5),
         without its italics (7.5), and the measured rate with its load went to S33, which
         Section VIII points at for the loaded machine; the paper's dispute may quote a rate
-        only with its load and never a corpus-wide one, and S33 must quote both."""
+        only with its load and never a corpus-wide one, and S33 must quote both.
+
+        29 Sep: Section VIII points at the journal supplement's S3.6 and S9.4 now, and S9.4,
+        which carries the dispute, must quote both; the postmortem's S33 is held below."""
         m = re.search(r"A (?:" + RE_BS + r"emph\{second\}|second) queue decides ours", paper)
         assert m, "the one sentence of the dispute the main text keeps"
         end = paper.find("\n\n", m.start())
@@ -113,11 +116,13 @@ class TestR1ARateIsQuotedWithTheLoadItWasMeasuredAt:
         if chr(92) + "%" in dispute:
             assert chr(92) + "rtHighBasePct" in dispute and chr(92) + "rtHighLoadPct" in dispute
         flat = " ".join(paper.split())
-        assert re.search(r"does not transfer to a loaded machine \(Supplement~S33\)", flat)
-        s = supplement.index("section{S33.")
-        s33 = " ".join(supplement[s:supplement.index("section{S34.", s)].split())
-        j = s33.index("On a loaded machine it is not")
-        assert chr(92) + "rtHighBasePct" in s33[j:j + 300] and chr(92) + "rtHighLoadPct" in s33[j:j + 300]
+        assert re.search(r"does not transfer to a loaded machine \(Supplement~S3\.6 and~S9\.4\)",
+                         flat)
+        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        s = journal.index("subsection{S9.4.")
+        s94 = " ".join(journal[s:journal.index("section{S9.5.", s)].split())
+        j = s94.index("On a loaded machine it is not")
+        assert chr(92) + "rtHighBasePct" in s94[j:j + 300] and chr(92) + "rtHighLoadPct" in s94[j:j + 300]
 
     def test_the_supplement_disputes_it_with_the_same_number(self, supplement):
         i = supplement.index("On a loaded machine it is not")
@@ -184,9 +189,16 @@ class TestR2TheMainTextDoesNotComputeWithTheModelS9Disclaims:
 
     def test_the_supplement_still_says_nothing_computes_with_it(self, supplement):
         """The sentence the main text must not contradict. If S9 ever changes its mind, this
-        fails and somebody has to decide which document is right."""
+        fails and somebody has to decide which document is right.
+
+        Reworded 29 Sep: the fidelity audit found that E-A7's scheduler counters do measure p,
+        as a time average, and that its registered tenfold fall in occupancy did not happen;
+        S9 says so in place of "no measurement of p independent of the rate". The main text
+        still computes nothing with the form (the class's other tests)."""
         assert "Nothing in the paper computes with it" in supplement
-        assert "no measurement of $p$ independent of the rate" in supplement
+        flat = " ".join(supplement.split())
+        assert "They measure $p$ only as a time average" in flat
+        assert "so that registered prediction failed" in flat
 
     def test_the_two_populations_are_not_silently_equated(self, paper):
         """10.5% is a share of traced wakeups; 8.43% is a rate over corpus events. The
@@ -242,7 +254,7 @@ class TestW0TheNoveltySweepIsWrittenDownAndRerunnable:
         if not path.is_file():
             #: No run has succeeded, and the supplement tells the reader so. That sentence is
             #: what holds while the ledger is absent, and it is checked rather than skipped.
-            supplement = " ".join((REPO / "supplement.tex").read_text(encoding="utf-8").split())
+            supplement = " ".join((REPO / "postmortem.tex").read_text(encoding="utf-8").split())
             assert "is absent from the artifact until one succeeds" in supplement, (
                 "no sweep is committed; the supplement must say the ledger is absent until one "
                 "succeeds")

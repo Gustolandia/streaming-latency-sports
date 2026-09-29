@@ -37,7 +37,7 @@ def paper():
 
 @pytest.fixture(scope="module")
 def supplement():
-    return _flat("supplement.tex")
+    return _flat("postmortem.tex")
 
 
 #: macro -> what it counts, and the words that must follow it inside its own sentence.
@@ -270,7 +270,7 @@ class TestTheFramingClaimArguesFromLimitsAndNotFromSlopes:
         findable under a supplement section of its own, and still refuses the claim anywhere
         in the paper without a pointer that resolves to that proof.
         """
-        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        supp = (REPO / "postmortem.tex").read_text(encoding="utf-8")
         sections = re.split(r"(?=\\section\{S\d+\.)", supp)
         assert [s for s in sections
                 if s.startswith("\\section{S") and "not one failure seen twice" in s], (

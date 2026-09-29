@@ -105,6 +105,15 @@ class TestDeletionHistogram:
         assert rc == 0
         assert "wrote" in capsys.readouterr().out
 
+    def test_the_two_panel_build_is_the_papers_first_figure(self, hist_env, tmp_path, capsys):
+        """Panels (a) and (b) alone, as the paper's Fig. 1 since v5: both formats, one stem."""
+        made = mdh.build_two_ways(str(tmp_path / "two"))
+        assert sorted(os.path.basename(p) for p in made) == ["two_ways.pdf", "two_ways.png"]
+        assert all(os.path.getsize(p) > 0 for p in made)
+        rc = mdh.main(["--two", "--out-dir", str(tmp_path / "cli")])
+        assert rc == 0
+        assert "two_ways.pdf" in capsys.readouterr().out
+
 
 class TestThreadFigure:
     def test_the_diagram_names_every_lane_and_the_inequality(self):

@@ -117,7 +117,7 @@ class TestTheEntryThatCausedThis:
         text = BIB.read_text(encoding="utf-8")
         assert "feng2026pulsar" not in text, \
             "the key naming an unrelated person is back"
-        for doc in ("supplement.tex", "paper.tex",
+        for doc in ("supplement.tex", "paper.tex", "postmortem.tex",
                     "docs/results/external/literature_regime.csv"):
             body = (REPO / doc).read_text(encoding="utf-8")
             assert "feng2026pulsar" not in body, "%s still cites the retired key" % doc
@@ -143,7 +143,7 @@ class TestTheNewCitationWasReadFromItsTitlePage:
             assert surname in entry, "the entry does not name all three authors"
 
     def test_the_supplement_says_what_it_does_not_show(self, ):
-        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        supp = (REPO / "postmortem.tex").read_text(encoding="utf-8")
         i = supp.find("rodriguez2026causal")
         assert i > 0, "the theorem is cited nowhere"
         window = supp[max(0, i - 1500):i + 1500]

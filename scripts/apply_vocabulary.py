@@ -179,7 +179,7 @@ def _prose_pass(chunk, whole, offset, ctx, changes, review, check):
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("files", nargs="*", default=["paper.tex", "supplement.tex"])
+    ap.add_argument("files", nargs="*", default=["paper.tex", "supplement.tex", "postmortem.tex"])
     ap.add_argument("--check", action="store_true", help="report only; change nothing")
     args = ap.parse_args(argv)
     judgments = load_adjudications()

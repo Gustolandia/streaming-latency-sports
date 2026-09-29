@@ -25,7 +25,7 @@ import pytest
 
 REPO = Path(__file__).parent.parent.parent
 PAPER = REPO / "paper.tex"
-SUPPLEMENT = REPO / "supplement.tex"
+SUPPLEMENT = REPO / "postmortem.tex"
 BIB = REPO / "manuscript_references.bib"
 
 
@@ -53,7 +53,9 @@ class TestTheDocumentDescribesItself:
 
     @staticmethod
     def _orientation(tex):
-        i = tex.index("This document is the supplementary material")
+        # Reworded 29 Sep: the supplement split made this file the postmortem, and the paragraph
+        # now opens on what it is, the complete record, not "the supplementary material".
+        i = tex.index("This document is the complete record behind the paper")
         return " ".join(tex[i:tex.index("\\tableofcontents", i)].split())
 
     def test_the_opening_paragraph_names_every_part_by_its_real_title(self, supp):

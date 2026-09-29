@@ -145,7 +145,7 @@ def trace(tex, results_dir, sources=None):
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Trace manuscript table numbers to their artefacts")
     # Most tables live in the supplement now, so reading the main text alone traced none.
-    ap.add_argument("--paper", nargs="+", default=["paper.tex", "supplement.tex"])
+    ap.add_argument("--paper", nargs="+", default=["paper.tex", "supplement.tex", "postmortem.tex"])
     ap.add_argument("--results", default="docs/results")
     args = ap.parse_args(argv)
 

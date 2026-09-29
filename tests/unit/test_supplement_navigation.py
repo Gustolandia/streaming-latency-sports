@@ -33,7 +33,7 @@ import pytest
 
 REPO = Path(__file__).parent.parent.parent
 PAPER = REPO / "paper.tex"
-SUPPLEMENT = REPO / "supplement.tex"
+SUPPLEMENT = REPO / "postmortem.tex"
 
 #: Below this a heading promises a topic and does not repay the lookup. Set from the v5
 #: audit, where sixteen sections sat under 350 words and one held seventy-six.

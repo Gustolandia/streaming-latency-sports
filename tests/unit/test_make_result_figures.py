@@ -404,7 +404,7 @@ def _figure_caption(label):
     """
     tex = (ROOT / "paper.tex").read_text(encoding="utf-8")
     if label not in tex:
-        tex = (ROOT / "supplement.tex").read_text(encoding="utf-8")
+        tex = (ROOT / "postmortem.tex").read_text(encoding="utf-8")
     at = tex.index(label)
     plain = tex.rindex(r"\caption{", 0, at) if r"\caption{" in tex[:at] else -1
     short = tex.rindex(r"\caption[", 0, at) if r"\caption[" in tex[:at] else -1
@@ -519,7 +519,7 @@ def test_figures_the_manuscript_includes_are_the_ones_this_script_writes():
     for, so both are searched and the figure has to land in one of them.
     """
     tex = ((ROOT / "paper.tex").read_text(encoding="utf-8")
-           + (ROOT / "supplement.tex").read_text(encoding="utf-8"))
+           + (ROOT / "postmortem.tex").read_text(encoding="utf-8"))
     for stem in ("deletion_phases", "stall_spectrum", "grid_membership",
                  "mechanism_forest", "ttrue_law"):
         assert "figures/%s.pdf" % stem in tex, "%s is built but included nowhere" % stem

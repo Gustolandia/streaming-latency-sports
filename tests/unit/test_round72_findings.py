@@ -43,7 +43,7 @@ def paper():
 
 @pytest.fixture(scope="module")
 def supplement():
-    return (REPO / "supplement.tex").read_text(encoding="utf-8")
+    return (REPO / "postmortem.tex").read_text(encoding="utf-8")
 
 
 def _rendered(name):
@@ -81,7 +81,7 @@ class TestR1TheCorpusAndTheCampaignAreDifferentNumbers:
 
     def test_no_typed_corpus_size_survives_in_either_document(self, paper, supplement):
         """The characterisation number may be named; it may not be typed beside a replay."""
-        for name, text in (("paper.tex", paper), ("supplement.tex", supplement)):
+        for name, text in (("paper.tex", paper), ("postmortem.tex", supplement)):
             prose = re.sub(r"(?m)^%[^\n]*", "", text)
             for m in re.finditer(r"3\{,\}315", prose):
                 window = " ".join(prose[max(0, m.start() - 90):m.start() + 90].split()).lower()
@@ -102,7 +102,7 @@ class TestR1TheCorpusAndTheCampaignAreDifferentNumbers:
             encoding="utf-8")
         i = src.index("def test_the_two_corpora_are_not_conflated")
         body = src[i:src.index("def test_both_corpus_counts_are_emitted", i)]
-        assert "supplement.tex" in body, "a gate on the abstract alone is how this got in"
+        assert "postmortem.tex" in body, "a gate on the abstract alone is how this got in"
         assert "REPLAY_VERBS" in body
 
 

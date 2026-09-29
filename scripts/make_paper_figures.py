@@ -3,7 +3,7 @@
 make_paper_figures.py
 The figures the manuscript needs beyond the E1 comparison (see make_e1_figure.py).
 
-  1. pipeline_schematic  -- where the four timestamps are taken, and which interval each
+  1. pipeline_schematic  -- where the five timestamps are taken, and which interval each
      metric spans. This is the figure that makes the clock-integrity argument legible: it
      shows that transport subtracts a timestamp taken in the producer process from one taken
      in the consumer process, which is exactly why it can come out negative.
@@ -91,7 +91,7 @@ def _glyph_queue(ax, x, y):
 
 
 def plot_pipeline(ax):
-    """Draw the replay pipeline, its four timestamps, and the spans they define."""
+    """Draw the replay pipeline, its five timestamps, and the spans they define."""
     # Each stage carries the icon a reader of message-broker diagrams expects -- an
     # application window for the producer and the consumer, a queue of records for the
     # broker -- beside its name (a co-author's suggestion, 2026-09-08). The icons sit in the
@@ -108,8 +108,12 @@ def plot_pipeline(ax):
         ax.annotate("", xy=(x1, 2.05), xytext=(x0, 2.05),
                     arrowprops=dict(arrowstyle="->", color=GREY, linewidth=1.2))
 
+    # t_out since 29 Sep: every end-to-end latency the paper reports is computed to it
+    # (compute_tti.py), and the paper's definition of it now says so; drawn to t_recv, the long arrow was the
+    # picture of a quantity nobody measured. It carries no process label: it is the consumer's.
     stamps = [(0.6, r"$t_{\rm sched}$", "planned"), (2.4, r"$t_{\rm send}$", "producer"),
-              (4.4, r"$t_{\rm ack}$", "producer"), (7.6, r"$t_{\rm recv}$", "consumer")]
+              (4.4, r"$t_{\rm ack}$", "producer"), (7.6, r"$t_{\rm recv}$", "consumer"),
+              (9.4, r"$t_{\rm out}$", "")]
     for x, sym, proc in stamps:
         ax.plot([x, x], [1.47, 1.6], color=GREY, linewidth=1.0)
         ax.text(x, 1.42, sym, ha="center", va="top", fontsize=9)
@@ -149,7 +153,8 @@ def plot_pipeline(ax):
     spans = [(0.6, 2.4, 0.46, 1.5, "send lag"),
              (2.4, 4.4, 0.46, 3.4, "acknowledgment lag"),
              (4.4, 7.6, 0.46, 6.0, "transport proxy"),
-             (0.6, 7.6, 0.05, 3.1, "end-to-end TTI")]
+             (7.6, 9.4, 0.46, 8.5, "handling"),
+             (0.6, 9.4, 0.05, 3.1, "end-to-end latency")]
     for x0, x1, y, label_x, label in spans:
         ax.annotate("", xy=(x1, y), xytext=(x0, y),
                     arrowprops=dict(arrowstyle="<->", color="black", linewidth=1.0))

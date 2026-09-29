@@ -91,7 +91,7 @@ class TestNoDocumentTypesTheseByHand:
                r"4.1": "payloadRateFall", r"76.8": "payloadReplTransportFactor",
                r"4.09": "payloadRateFallExact", r"4.26": "payloadReplRateFall"}
 
-    @pytest.mark.parametrize("doc", ("paper.tex", "supplement.tex"))
+    @pytest.mark.parametrize("doc", ("paper.tex", "supplement.tex", "postmortem.tex"))
     def test_the_payload_span_is_never_typed(self, doc):
         text = (REPO / doc).read_text(encoding="utf-8")
         bad = []
@@ -108,7 +108,7 @@ class TestNoDocumentTypesTheseByHand:
     def test_the_macros_are_actually_used(self):
         """A macro nobody reads is not a fix, it is a second place for the number to live."""
         both = "".join((REPO / d).read_text(encoding="utf-8")
-                       for d in ("paper.tex", "supplement.tex"))
+                       for d in ("paper.tex", "supplement.tex", "postmortem.tex"))
         for macro in set(self.RETIRED.values()) | {"payloadRhoSpread"}:
             assert re.search(r"\\" + macro + r"\b", both), "%s is emitted but unused" % macro
 

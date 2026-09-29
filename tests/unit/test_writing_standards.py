@@ -216,7 +216,7 @@ class TestOneNameForTheSendLag:
 
     def test_neither_document_calls_the_send_lag_a_scheduling_lag(self):
         bad = []
-        for name in ("paper.tex", "supplement.tex"):
+        for name in ("paper.tex", "supplement.tex", "postmortem.tex"):
             text = (REPO / name).read_text(encoding="utf-8")
             for line_no, line in enumerate(text.splitlines(), 1):
                 if line.lstrip().startswith("%"):
@@ -230,7 +230,7 @@ class TestOneNameForTheSendLag:
     def test_the_send_lag_is_what_the_documents_do_say(self):
         """The rename has to have landed, not merely have been deleted."""
         paper = (REPO / "paper.tex").read_text(encoding="utf-8")
-        supp = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        supp = (REPO / "postmortem.tex").read_text(encoding="utf-8")
         assert "send lag" in paper and "send lag" in supp
         assert r"\label{def:scheddelay}" in paper, "and the other term stays defined"
 
@@ -261,7 +261,7 @@ class TestTheFiguresObeyTheVocabularyToo:
     def _included(self):
         """Every figure either document includes, as a path."""
         tex = "\n".join((REPO / n).read_text(encoding="utf-8")
-                        for n in ("paper.tex", "supplement.tex"))
+                        for n in ("paper.tex", "supplement.tex", "postmortem.tex"))
         stems = re.findall(r"\\includegraphics\[[^\]]*\]\{([^}]*)\}", tex)
         return sorted({REPO / s for s in stems if s.endswith(".pdf")})
 

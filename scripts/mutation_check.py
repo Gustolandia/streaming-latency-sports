@@ -93,10 +93,11 @@ MUTATIONS = [
      "$0.78$, $1.06$ and $3.32$, no consistent sign"),
     # The equivalence is stated on the chain as well as on the proxy (round 72, W1), because
     # the proxy is the quantity Section II-A spends a subsection discrediting. v5 leads with
-    # the chain; the mutation drops it and leaves the proxy alone.
+    # the chain; the mutation drops it and leaves the proxy alone. Re-anchored 29 Sep: the
+    # chain's pointer is the journal supplement's S7, where the postmortem's S13 was.
     ("state the broker equivalence on the proxy alone",
      "which is a causal chain, the two brokers are equivalent against a wider" + "\n"
-     + "margin (Supplement~S13); on the transport proxy they sit within a millisecond",
+     + "margin (Supplement~S7); on the transport proxy they sit within a millisecond",
      "which is a causal chain, the transport proxy puts the two brokers within a millisecond"),
 ]
 

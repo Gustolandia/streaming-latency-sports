@@ -25,7 +25,7 @@ def paper():
 
 @pytest.fixture(scope="module")
 def supplement():
-    return (REPO / "supplement.tex").read_text(encoding="utf-8")
+    return (REPO / "postmortem.tex").read_text(encoding="utf-8")
 
 
 @pytest.fixture(scope="module")
@@ -35,7 +35,7 @@ def rendered_paper():
 
 @pytest.fixture(scope="module")
 def rendered_supplement():
-    return _text(REPO / "supplement.pdf")
+    return _text(REPO / "postmortem.pdf")
 
 
 def _text(pdf):
@@ -162,7 +162,7 @@ class TestR2TheConcession:
 
 class TestR3TheCollapseAboveTheMode:
 
-    @pytest.mark.parametrize("doc", ["paper.tex", "supplement.tex"])
+    @pytest.mark.parametrize("doc", ["paper.tex", "supplement.tex", "postmortem.tex"])
     def test_the_sentence_prints_the_three_falls_above_the_mode(self, doc):
         """v5 (28 Sep): Section III-C was cut to a few sentences and, in the paper, the falls
         went with it; they are restored there as "they fall ... over the next three octaves
@@ -177,7 +177,7 @@ class TestR3TheCollapseAboveTheMode:
                       "tracedModeFallOctaves", "tracedLastBucketFall"):
             assert chr(92) + macro in passage, "%s is missing from %s" % (macro, doc)
 
-    @pytest.mark.parametrize("doc", ["paper.tex", "supplement.tex"])
+    @pytest.mark.parametrize("doc", ["paper.tex", "supplement.tex", "postmortem.tex"])
     def test_the_retired_fit_anchored_names_are_gone(self, doc):
         text = (REPO / doc).read_text(encoding="utf-8")
         for macro in ("tracedTailFallA", "tracedTailFallB", "tracedTailFallLast",
@@ -224,7 +224,7 @@ class TestRecommendedItems:
 
     def test_w1_the_vocabulary_check_is_clean_and_gates(self):
         import apply_vocabulary as av
-        assert av.main(["--check", "paper.tex", "supplement.tex"]) == 0
+        assert av.main(["--check", "paper.tex", "supplement.tex", "postmortem.tex"]) == 0
 
     def test_w3_table_one_prints_its_measured_zeros(self, paper, rendered_paper):
         i = paper.index("label{tab:spans}")
@@ -264,9 +264,9 @@ class TestRecommendedItems:
             "no prefixed pointer resolves into the paper at all"
 
     def test_w4_the_build_is_free_of_multiply_defined_labels(self):
-        log = REPO / "supplement.log"
+        log = REPO / "postmortem.log"
         if not log.is_file():
-            pytest.skip("supplement.log not present")
+            pytest.skip("postmortem.log not present")
         assert "multiply defined" not in log.read_text(encoding="utf-8", errors="replace")
 
     def test_w5_the_supplement_does_not_date_itself_by_this_projects_rounds(

@@ -23,7 +23,7 @@ import pytest
 
 REPO = Path(__file__).parent.parent.parent
 PAPER = REPO / "paper.tex"
-SUPP = REPO / "supplement.tex"
+SUPP = REPO / "postmortem.tex"
 LEDGER = REPO / "docs" / "generated" / "paper_numbers.tex"
 
 

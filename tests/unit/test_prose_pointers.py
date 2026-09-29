@@ -94,6 +94,8 @@ def _pointers():
     pat = re.compile(
         r"(?:Supplements?~?\s*|supplementary material~?\s*)S(\d+)(?:\.\d+)?", re.I)
     found = []
+    # The postmortem is not searched: its pointers at itself read "Section~S<n>" since the
+    # split, and TestThePostmortemPointsAtItself holds them against its own sections.
     for name in ("paper.tex", "supplement.tex"):
         tex = _read(name)
         for m in pat.finditer(tex):
@@ -120,10 +122,12 @@ class TestEveryProsePointerHasADestination:
         """If this drops to zero the rest of the file is vacuous and should be deleted.
 
         The floor was 40 until v5 (28 Sep), when an outside editor's count of 46 main-text
-        pointers ("one pointer per subsection is enough") took the paper to about twenty. The
-        floor guards the regex, not the count, and fifteen is still far above what a broken
-        pattern finds."""
-        assert len(pointers) >= 15, (
+        pointers ("cut the 46 pointers to 15 or fewer") took the paper to about twenty, and 15
+        until the split of 29 Sep, after which the paper's are the only pointers of this form
+        and at most fifteen by budget (tests/unit/test_journal_supplement.py). The floor
+        guards the regex, not the count: nine, one per section of the journal supplement, is
+        still far above what a broken pattern finds."""
+        assert len(pointers) >= 9, (
             "only %d prose pointers found; the regex has stopped matching the house form"
             % len(pointers))
 
@@ -168,6 +172,32 @@ class TestEveryProsePointerHasADestination:
         assert not bad, (
             "these point at a section that says its content is somewhere else: %s"
             % "; ".join(bad))
+
+
+class TestThePostmortemPointsAtItself:
+    """The postmortem's pointers at its own sections, which the split renamed.
+
+    Thirteen of them read "supplementary material S<n>" while the postmortem was the
+    supplement, most moved there from the main text. After the split that phrase names the
+    journal supplement, whose S5 is the tool registry where the postmortem's S5 is the E1
+    reconciliation, so they became "Section~S<n>" and left the pattern above. They are held
+    here against the postmortem's own headings instead.
+    """
+
+    def test_every_self_pointer_lands_on_a_section_it_has(self):
+        tex = _read("postmortem.tex")
+        have = {int(n) for n in re.findall(r"\\section\{S(\d+)\.", tex)}
+        pointed = [int(n) for n in re.findall(r"Section~S(\d+)", tex)]
+        assert len(pointed) >= 13, "the pattern has stopped matching: %d" % len(pointed)
+        missing = sorted(set(pointed) - have)
+        assert not missing, "the postmortem points at sections it does not have: %s" % (
+            ["S%d" % n for n in missing])
+
+    def test_no_self_pointer_names_the_other_document(self):
+        tex = _read("postmortem.tex")
+        assert not re.search(r"[Ss]upplementary material~?\s*S\d", tex), (
+            "a pointer in the postmortem names the supplementary material, which is now the "
+            "other document")
 
 
 class TestTheRuleWouldHaveCaughtTheDefect:
@@ -227,7 +257,7 @@ def _path_pointers():
     """
     pat = re.compile(re.escape(chr(92) + "texttt{") + r"([^}]*)}")
     out = []
-    for name in ("paper.tex", "supplement.tex"):
+    for name in ("paper.tex", "supplement.tex", "postmortem.tex"):
         tex = re.sub(r"(?m)^%[^\n]*", "", _read(name))
         for m in pat.finditer(tex):
             raw = m.group(1)

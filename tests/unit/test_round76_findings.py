@@ -56,7 +56,7 @@ def paper():
 
 @pytest.fixture(scope="module")
 def supplement():
-    return (REPO / "supplement.tex").read_text(encoding="utf-8")
+    return (REPO / "postmortem.tex").read_text(encoding="utf-8")
 
 
 @pytest.fixture(scope="module")
@@ -417,16 +417,17 @@ class TestTheRenderedPageCarriesIt:
     def test_the_bracket_prints_in_section_v_d(self):
         """v5 (28 Sep): the shift, its bracket and the undetectable non-zero shift print in
         S16.9 now (editorial review, Section 5); the article prints no crossing. The extractor
-        drops the spaces around inline math, so S16.9 is matched with all spaces removed."""
+        drops the spaces around inline math, so S16.9 is matched with all spaces removed.
+        29 Sep: S16.9 is the postmortem's, so its pages are read from postmortem.pdf."""
         flat = " ".join(_rendered("paper").split())
         assert "crosses it" not in flat
-        tight = "".join(_rendered_s169(_rendered("supplement")).split())
+        tight = "".join(_rendered_s169(_rendered("postmortem")).split())
         assert "points(95%percentilebootstrap:" in tight
         assert "noshiftcanbedetected" in tight and "crossesit" not in tight
 
     def test_the_supplement_table_prints_its_intervals(self):
         """v5 (28 Sep): the column head names its method as well as its level, as round 79's
-        bracket rule asks of every interval."""
-        flat = " ".join(_rendered("supplement").split())
+        bracket rule asks of every interval. 29 Sep: the table is the postmortem's (S16.9)."""
+        flat = " ".join(_rendered("postmortem").split())
         assert "Exact (Wilson 95% CI)" in flat
         assert "Kolmogorov" in flat

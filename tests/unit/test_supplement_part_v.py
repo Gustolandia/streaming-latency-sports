@@ -35,7 +35,7 @@ def _flat(text):
 
 @pytest.fixture(scope="module")
 def part_v():
-    text = (REPO / "supplement.tex").read_text(encoding="utf-8")
+    text = (REPO / "postmortem.tex").read_text(encoding="utf-8")
     start = text.index(r"\section*{Part V. The pre-registered law campaign}")
     return _flat(text[start:text.index(r"\bibliographystyle", start)])
 
@@ -739,7 +739,7 @@ def test_no_law_block_shares_a_name_with_an_earlier_campaign():
     recording. The law campaign's blocks print as L1 to L9 wherever the supplement reports
     them, and the plan's own names appear only where the two are mapped."""
     import make_law_figures
-    text = (REPO / "supplement.tex").read_text(encoding="utf-8")
+    text = (REPO / "postmortem.tex").read_text(encoding="utf-8")
     spans = [(text.index(r"\subsection{S16.10."),
               text.index(r"\section{", text.index(r"\subsection{S16.11."))),
              (text.index(r"\section*{Part V."), text.index(r"\bibliographystyle"))]

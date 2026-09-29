@@ -59,7 +59,7 @@ def ranges_in(text):
     return RANGE.findall(COMMENT.sub("", text))
 
 
-@pytest.mark.parametrize("doc", ["paper.tex", "supplement.tex"])
+@pytest.mark.parametrize("doc", ["paper.tex", "supplement.tex", "postmortem.tex"])
 def test_both_ends_of_a_printed_range_are_the_same_statistic(doc):
     found = ranges_in((REPO / doc).read_text(encoding="utf-8"))
     assert found, "%s printed no two-macro ranges; the pattern has stopped matching" % doc

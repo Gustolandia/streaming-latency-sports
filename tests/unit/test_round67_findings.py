@@ -32,7 +32,7 @@ import pytest
 
 REPO = Path(__file__).parent.parent.parent
 PAPER = REPO / "paper.tex"
-SUPPLEMENT = REPO / "supplement.tex"
+SUPPLEMENT = REPO / "postmortem.tex"
 RECORD = REPO / "docs" / "results" / "external" / "stall_mode_robustness.json"
 
 sys.path.insert(0, str(REPO / "scripts"))

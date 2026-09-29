@@ -31,7 +31,7 @@ import pytest
 
 REPO = Path(__file__).parent.parent.parent
 GENERATED = REPO / "docs" / "generated" / "paper_numbers.tex"
-DOCS = ("paper.tex", "supplement.tex")
+DOCS = ("paper.tex", "supplement.tex", "postmortem.tex")
 
 #: Words that assert a quantity is first in some order.
 SUPERLATIVES = ("largest", "biggest", "greatest", "dominant", "most common", "principal",

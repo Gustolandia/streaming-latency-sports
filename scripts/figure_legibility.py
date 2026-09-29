@@ -56,7 +56,7 @@ def _width_of(expr, onecolumn):
     return factor * base
 
 
-def print_widths(tex_paths=("paper.tex", "supplement.tex")):
+def print_widths(tex_paths=("paper.tex", "supplement.tex", "postmortem.tex")):
     """{figure stem: printed width in inches}, read from the manuscript sources.
 
     ``\\columnwidth`` is a column everywhere. LaTeX does *not* redefine it inside a starred
@@ -86,7 +86,10 @@ def print_widths(tex_paths=("paper.tex", "supplement.tex")):
                     expr = expr.replace("linewidth", "textwidth")
                 width = _width_of(expr, onecolumn)
                 if width is not None:
-                    out[stem] = width
+                    # The narrowest print governs. Until 29 Sep the last document read won,
+                    # so a figure the paper prints at a column was checked at the width the
+                    # one-column supplement gives it, twice as wide, and passed.
+                    out[stem] = min(width, out.get(stem, width))
     return out
 
 

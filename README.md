@@ -1,6 +1,6 @@
-# Faster-than-Light: Latency Measurement Artifacts in Streaming Benchmarks
+# Faster than Light: Latency Measurement Errors in Message-Broker Benchmarks
 
-*Two ways a streaming benchmark fails on sub-millisecond paths, and what they left of a Kafka-versus-Redis comparison.*
+*Two ways a message-broker benchmark misreports on sub-millisecond paths, and what they left of a Kafka-versus-Redis comparison.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
@@ -36,9 +36,11 @@
 
 > ## 🎯 Current target — the contribution
 >
-> **Paper:** [`paper.tex`](paper.tex) — *Faster-than-Light: Latency Measurement Artifacts
-> in Streaming Benchmarks*. IEEE format
-> (`IEEEtran`, journal), targeting **IEEE Transactions on Computers**, with a companion `supplement.tex`. This is a
+> **Paper:** [`paper.tex`](paper.tex) — *Faster than Light: Latency Measurement Errors in
+> Message-Broker Benchmarks*. IEEE format
+> (`IEEEtran`, journal), targeting **IEEE Transactions on Computers**, with its supplementary
+> material in `supplement.tex` and the complete record of how the results were obtained in
+> `postmortem.tex`, which is archived with the data and not submitted. This is a
 > **systems paper**; the football workload is the setting that produced the finding, not the
 > contribution.
 >
@@ -367,30 +369,34 @@ From 3,315 StatsBomb matches across 52 competition-seasons (2003–2023), via
 
 ## 2. Abstract
 
-> **Title:** *Faster-than-Light: Latency Measurement Artifacts in Streaming Benchmarks*
+> **Title:** *Faster than Light: Latency Measurement Errors in Message-Broker Benchmarks*
 > **Target:** IEEE Transactions on Computers (`IEEEtran`, journal, `paper.tex`)
 > **Keywords:** streaming systems, latency benchmarking, measurement validity, Apache Kafka,
 > Redis Streams, reproducibility
 
-We set out to answer an ordinary question: for a real-time sports data feed, does the choice
-between Apache Kafka and Redis Streams affect end-to-end delay, and how does that change with
-the number of concurrent feeds? We built the benchmark, drove it with 3,315 real football
-matches on their recorded event schedule, and obtained a clean answer — Redis broker delay rising
-monotonically with concurrency while Kafka stayed flat, *p*=9.0×10⁻¹¹, no overlap between the
-two systems' run distributions, exactly as a single-threaded server should behave.
+Message-broker benchmarks now compare systems on sub-millisecond paths, where the time being
+measured is shorter than the clock's resolution and than a busy thread's wait for a processor.
+There a benchmark can misreport in two ways its output does not announce.
 
-It was an artefact. Broker delay subtracts a timestamp taken in the producer process from one
-taken in the consumer process, so it admits a check no statistic supplies: the result cannot be
-negative. Applying that check to every run rejected **1,321 of 2,266 runs**, including every run
-behind the finding above. The rejected data is invisible to conventional inspection: medians
-stay positive, intervals stay narrow, effect sizes stay large, and the direction agrees with
-theory.
+First, a latency timed from the broker's acknowledgment turns negative whenever the thread
+recording it is scheduled late by more than the delivery. Timed on one clock, 62,264 of our
+738,730 messages were negative this way and none from the send, so the cause is not clock
+synchronization; real-time priority for the timestamping threads, at unchanged utilization, cut
+the rate 7-80x. A zero-cost sign check rejected **1,321 of our 2,266 runs**, leaving nothing of
+our first result usable (it rejects 109 of the 126 runs behind it and every one of its six
+conditions).
 
-What survives is narrower than what we set out to find, and one more claim fell after the audit.
-The two brokers are statistically equivalent within 1 ms on broker transport and neither degrades
-across the concurrency range, robustly to the unequal retention the check itself introduces. Each
-system has exactly one client setting worth one to two orders of magnitude in delay, both free on
-a co-located testbed.
+Second, the OpenMessaging Benchmark timestamps in whole milliseconds and silently discards every
+latency that is not positive: 71 of 75 embedded-mode settings whose summary we captured printed
+a median of exactly 1.0 or 2.0 ms, computed from as little as 0.36% of the samples. We derive the
+retained fraction from the ratio of delivery to resolution, confirm a registered prediction of
+it, find uncounted disposal in five of ten tools, and give benchmark authors checks that cost
+nothing. A registered audit of 43 published reports found the deletion's signature in eight
+configurations of two of them, and a stated retention in none.
+
+What survives of the broker comparison that started the work is small: over the runs the check
+keeps, Kafka and Redis sit within a millisecond on the transport proxy and are equivalent on the
+end-to-end latency, and one consumer setting that a co-located testbed hides decides their order.
 
 **Withdrawn.** An earlier version reported a twentyfold end-to-end gap, attributed it to client
 code, and built a recommendation on it. It does not reproduce. The runs behind it matched a
@@ -649,7 +655,7 @@ streaming-latency-sports/
 ├── requirements.txt                # Python dependencies
 ├── .env                            # local environment (SB_COMMIT, etc.) — not committed
 │
-├── paper.tex                       # IEEE paper (Trans. Computers target, IEEEtran) + supplement.tex
+├── paper.tex                       # IEEE paper (Trans. Computers target, IEEEtran) + supplement.tex + postmortem.tex
 ├── manuscript_references.bib       # bibliography (123 entries; 45 cited in the paper, at TC's cap)
 │
 ├── docker-compose.yml              # single-broker Kafka + Redis
@@ -901,8 +907,9 @@ compiled from the same commit.
 
 | Asset | Purpose |
 |-------|---------|
-| `paper.tex` | The paper (`IEEEtran`, journal; Introduction, System and Measurement Model, Background and Related Work, Experimental Setup, Failure Mode 1: Timestamp-Reference Bias, Failure Mode 2: Quantization and Silent Deletion, Evidence Across Tools, Discussion, Conclusion) |
-| `supplement.tex` | Companion supplement, a single-author postmortem in four parts, S1–S52 (`docs/supplement_index.md` maps what moved where and carries the old→new concordance) |
+| `paper.tex` | The paper (`IEEEtran`, journal; Introduction, How a Benchmark Times a Message, Failure 1: Late Timestamps Invert the Acknowledgment-Referenced Span, Failure 2: A Millisecond Clock and a Positivity Filter, How Widespread, What Benchmark Authors Should Do, Related Work, Threats and Limitations, Conclusion) |
+| `supplement.tex` | The supplementary material, S1–S9 in the paper's order, under the paper's byline (`docs/supplement_index.md` maps each section to the postmortem sections it draws on) |
+| `postmortem.tex` | The complete record, a single-author postmortem in five parts, S1–S37: the chronology, every withdrawn result and the law campaign run by run. Archived with the data; not part of the submission |
 | `manuscript_references.bib` | Bibliography |
 | `IEEEtran.cls` | IEEE article class (from TeX Live/MiKTeX) |
 
@@ -916,13 +923,17 @@ pdflatex -interaction=nonstopmode paper.tex
 python scripts/check_rendered_pdf.py paper.pdf
 ```
 
-Then the supplement, **in that order and not before**:
+Then the supplement and the postmortem, **in that order and not before**:
 
 ```bash
 pdflatex -interaction=nonstopmode supplement.tex
 bibtex supplement
 pdflatex -interaction=nonstopmode supplement.tex
 pdflatex -interaction=nonstopmode supplement.tex
+pdflatex -interaction=nonstopmode postmortem.tex
+bibtex postmortem
+pdflatex -interaction=nonstopmode postmortem.tex
+pdflatex -interaction=nonstopmode postmortem.tex
 ```
 
 The order is a real constraint, not a convention. The supplement refers to the main text's
@@ -1078,7 +1089,7 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 ```bibtex
 @article{ricou2026interval,
   author  = {Ricou, Gustavo Pedro and Duvignau, Romaric},
-  title   = {Faster-than-Light: Latency Measurement Artifacts in Streaming Benchmarks},
+  title   = {Faster than Light: Latency Measurement Errors in Message-Broker Benchmarks},
   year    = {2026},
   note    = {Manuscript targeting IEEE Transactions on Computers;
              code and data archived at \url{https://doi.org/10.5281/zenodo.21650031}}
@@ -1105,7 +1116,7 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 | Component | License |
 |-----------|---------|
 | Custom code, docs, results | MIT |
-| Manuscript files (`paper.tex`/`.pdf`, `supplement.tex`/`.pdf`) | © the author, **not** MIT — pending journal publication |
+| Manuscript files (`paper.tex`/`.pdf`, `supplement.tex`/`.pdf`, `postmortem.tex`/`.pdf`) | © the author, **not** MIT — pending journal publication |
 | Replay plans (`data/processed/replay_plans/`, StatsBomb-derived) | CC BY-NC 4.0 |
 | StatsBomb data | CC BY-NC-4.0 |
 | Third-party libraries | Various (see `requirements.txt`) |

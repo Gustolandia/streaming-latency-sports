@@ -108,7 +108,7 @@ class TestPrepare:
 class TestTheRealSourcesStrip:
     """The script is only worth anything if it works on this repository's actual documents."""
 
-    @pytest.mark.parametrize("name", ("paper", "supplement"))
+    @pytest.mark.parametrize("name", ("paper", "supplement", "postmortem"))
     def test_the_committed_source_loses_every_author_name(self, name, temp_dir):
         target, _ = bwa.prepare(name, out_dir=str(temp_dir))
         text = Path(target).read_text(encoding="utf-8")
@@ -179,15 +179,15 @@ class _Result:
 
 
 class TestMain:
-    def test_check_reports_clean_when_both_are_clean(self, monkeypatch, temp_dir, capsys):
-        for name in ("paper", "supplement"):
+    def test_check_reports_clean_when_all_three_are_clean(self, monkeypatch, temp_dir, capsys):
+        for name in ("paper", "supplement", "postmortem"):
             (temp_dir / (name + ".pdf")).write_bytes(b"%PDF-1.4")
         monkeypatch.setattr(bwa, "offending_names", lambda p: [])
         assert bwa.main(["--check", "--out", str(temp_dir)]) == 0
-        assert capsys.readouterr().out.count("clean") == 2
+        assert capsys.readouterr().out.count("clean") == 3
 
     def test_check_fails_when_a_name_survives(self, monkeypatch, temp_dir, capsys):
-        for name in ("paper", "supplement"):
+        for name in ("paper", "supplement", "postmortem"):
             (temp_dir / (name + ".pdf")).write_bytes(b"%PDF-1.4")
         monkeypatch.setattr(bwa, "offending_names", lambda p: ["Ricou"])
         assert bwa.main(["--check", "--out", str(temp_dir)]) == 1
@@ -201,7 +201,7 @@ class TestMain:
                                                           capsys):
         """No `pdftotext` means the promise is unchecked, and the output must say so rather
         than print "clean" on the strength of not having looked."""
-        for name in ("paper", "supplement"):
+        for name in ("paper", "supplement", "postmortem"):
             (temp_dir / (name + ".pdf")).write_bytes(b"%PDF-1.4")
         monkeypatch.setattr(bwa, "offending_names", lambda p: None)
         assert bwa.main(["--check", "--out", str(temp_dir)]) == 0
@@ -214,7 +214,7 @@ class TestMain:
         def fake_build(out_dir):
             built.append(out_dir)
             paths = []
-            for name in ("paper", "supplement"):
+            for name in ("paper", "supplement", "postmortem"):
                 p = temp_dir / (name + ".pdf")
                 p.write_bytes(b"%PDF-1.4")
                 paths.append(str(p))
@@ -229,7 +229,7 @@ class TestMain:
 class TestBuildOrchestration:
     """`build` shells out four times per document; the orchestration is what is checked."""
 
-    def test_it_prepares_both_and_moves_both_pdfs(self, monkeypatch, temp_dir):
+    def test_it_prepares_all_three_and_moves_every_pdf(self, monkeypatch, temp_dir):
         calls = []
 
         def fake_run(cmd, cwd):
@@ -242,9 +242,9 @@ class TestBuildOrchestration:
 
         monkeypatch.setattr(bwa, "_run", fake_run)
         out = bwa.build(str(temp_dir))
-        assert [Path(p).name for p in out] == ["paper.pdf", "supplement.pdf"]
+        assert [Path(p).name for p in out] == ["paper.pdf", "supplement.pdf", "postmortem.pdf"]
         assert all(Path(p).exists() for p in out)
-        assert calls.count("pdflatex") == 8 and calls.count("bibtex") == 2
+        assert calls.count("pdflatex") == 12 and calls.count("bibtex") == 3
         # Nothing staged is left behind in the repository root.
         assert not list(REPO.glob("_noauth_*")), "the staged build files were not cleaned up"
 

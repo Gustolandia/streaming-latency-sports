@@ -32,7 +32,7 @@ def _section(start, end):
     pins below were written against the printed numbers and recompute them from the artifacts,
     so the macros are expanded first and the pins keep checking the numbers, not the markup.
     """
-    text = (REPO / "supplement.tex").read_text(encoding="utf-8")
+    text = (REPO / "postmortem.tex").read_text(encoding="utf-8")
     body = text[text.index(start):text.index(end, text.index(start))]
     ledger = _ledger()
     body = re.sub(r"\\(cliff[A-Za-z]+)(?![A-Za-z])",

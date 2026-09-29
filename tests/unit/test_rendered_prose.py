@@ -27,7 +27,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).parent.parent.parent
-PDFS = ("paper.pdf", "supplement.pdf")
+PDFS = ("paper.pdf", "supplement.pdf", "postmortem.pdf")
 
 #: Lowercase words that may legitimately open a fragment after a full stop.
 CONTINUATIONS = ("e.g", "i.e", "vs", "cf", "pp", "vol")
@@ -115,7 +115,8 @@ class TestNoSentenceOpensOnALowercaseWord:
             out.append("%s %s" % (word, m.group(3)))
         return out
 
-    @pytest.mark.parametrize("name,expected", [("paper.pdf", 0), ("supplement.pdf", 0)])
+    @pytest.mark.parametrize("name,expected", [("paper.pdf", 0), ("supplement.pdf", 0),
+                                               ("postmortem.pdf", 0)])
     def test_the_known_offenders_are_gone(self, name, expected):
         """Not a general grammar check: a two-column reflow puts a continued sentence at the
         head of a line and this sweep cannot tell that from a real one. So it pins the three
@@ -144,7 +145,8 @@ class TestTheGeneratedLedgerIsRead:
             pytest.skip("paper_numbers.tex absent; run emit_paper_numbers.py")
         names = re.findall(r"\\newcommand\{\\(\w+)\}", gen.read_text(encoding="utf-8"))
         docs = ((REPO / "paper.tex").read_text(encoding="utf-8")
-                + (REPO / "supplement.tex").read_text(encoding="utf-8"))
+                + (REPO / "supplement.tex").read_text(encoding="utf-8")
+                + (REPO / "postmortem.tex").read_text(encoding="utf-8"))
         return sorted(n for n in names
                       if not re.search(re.escape("\\" + n) + r"(?![A-Za-z])", docs))
 
@@ -198,7 +200,7 @@ class TestNoControlWordLostItsBackslash:
     @staticmethod
     def source_offenders():
         out = []
-        for name in ("paper.tex", "supplement.tex"):
+        for name in ("paper.tex", "supplement.tex", "postmortem.tex"):
             path = REPO / name
             if not path.exists():                       # pragma: no cover - both are tracked
                 continue
@@ -269,7 +271,7 @@ class TestAWrappedMathSpanDoesNotResumeOnBareLetters:
     @classmethod
     def offenders(cls):
         out = []
-        for name in ("paper.tex", "supplement.tex"):
+        for name in ("paper.tex", "supplement.tex", "postmortem.tex"):
             path = REPO / name
             if not path.exists():                       # pragma: no cover - both are tracked
                 continue
@@ -309,7 +311,7 @@ class TestARunInHeadingDoesNotDoublePunctuate:
     @staticmethod
     def source_offenders():
         out = []
-        for name in ("paper.tex", "supplement.tex"):
+        for name in ("paper.tex", "supplement.tex", "postmortem.tex"):
             path = REPO / name
             if not path.exists():                       # pragma: no cover - both are tracked
                 continue
@@ -350,28 +352,29 @@ class TestTheTwoDocumentsDoNotShareANumberingSpace:
     def _labels(name, pattern):
         return set(re.findall(pattern, rendered(name)))
 
-    def test_the_supplement_prefixes_every_figure(self):
-        assert not self._labels("supplement.pdf", r"Fig\. (\d+)\."), \
-            "a supplement figure is numbered in the paper's space"
-        assert self._labels("supplement.pdf", r"Fig\. S(\d+)\."), \
-            "the supplement has no S-numbered figures; did the preamble stop applying?"
+    @pytest.mark.parametrize("name", ("supplement.pdf", "postmortem.pdf"))
+    def test_the_companions_prefix_every_figure(self, name):
+        assert not self._labels(name, r"Fig\. (\d+)\."), \
+            "a %s figure is numbered in the paper's space" % name
+        assert self._labels(name, r"Fig\. S(\d+)\."), \
+            "%s has no S-numbered figures; did the preamble stop applying?" % name
 
-    def test_the_supplement_prefixes_every_table(self):
-        romans = self._labels("supplement.pdf", r"TABLE ([IVXLC]+)\b")
-        # One reference to the main text's Table I survives by design, in a caption that says
-        # so: "this corpus is not the span recount of the main text's Table I". With the
-        # supplement's own tables prefixed, that phrase is now unambiguous rather than a
+    @pytest.mark.parametrize("name", ("supplement.pdf", "postmortem.pdf"))
+    def test_the_companions_prefix_every_table(self, name):
+        romans = self._labels(name, r"TABLE ([IVXLC]+)\b")
+        # One reference to the main text's Table I survives by design in the postmortem, in a
+        # caption that says so: "this corpus is not the span recount of the main text's Table
+        # I". With the document's own tables prefixed, that phrase is unambiguous rather than a
         # collision, which is the whole point of the prefix.
         assert romans <= {"I"}, \
-            "a supplement table is numbered in the paper's space: %s" % sorted(romans)
-        assert self._labels("supplement.pdf", r"TABLE S(\d+)"), \
-            "the supplement has no S-numbered tables"
+            "a %s table is numbered in the paper's space: %s" % (name, sorted(romans))
+        assert self._labels(name, r"TABLE S(\d+)"), "%s has no S-numbered tables" % name
 
-    def test_the_supplement_prefixes_every_citation(self):
-        assert not self._labels("supplement.pdf", r"\[(\d+)\]"), \
-            "a supplement citation is numbered in the paper's space"
-        assert self._labels("supplement.pdf", r"\[S(\d+)\]"), \
-            "the supplement has no S-numbered citations"
+    @pytest.mark.parametrize("name", ("supplement.pdf", "postmortem.pdf"))
+    def test_the_companions_prefix_every_citation(self, name):
+        assert not self._labels(name, r"\[(\d+)\]"), \
+            "a %s citation is numbered in the paper's space" % name
+        assert self._labels(name, r"\[S(\d+)\]"), "%s has no S-numbered citations" % name
 
     def test_the_paper_keeps_the_plain_numbering(self):
         """The prefix belongs to the supplement alone; the article is the article."""
@@ -416,7 +419,7 @@ class TestACaptionDoesNotOpenOnAnArticle:
             out.append(" ".join(re.sub(r"\\[a-zA-Z]+\{?|[{}$~\\]", " ", raw).split()))
         return out
 
-    @pytest.mark.parametrize("path", ("paper.tex", "supplement.tex"))
+    @pytest.mark.parametrize("path", ("paper.tex", "supplement.tex", "postmortem.tex"))
     def test_no_caption_opens_on_an_article(self, path):
         bad = [c for c in self._leads(path) if self.ARTICLE.match(c)]
         assert not bad, ("%d captions in %s open on an article: %s"

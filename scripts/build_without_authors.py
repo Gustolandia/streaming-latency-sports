@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Build author-free copies of the paper and the supplement.
+"""Build author-free copies of the paper, the supplement and the postmortem.
 
 Why this exists. From 2026-09-09 every PDF that leaves the repository -- the Zenodo record's
 files and anything sent as an attachment -- carries no author list. The author list is not
 settled -- two authors withdrew, on 2026-09-08 and 2026-09-10 -- and a
 circulated PDF is a durable public statement of authorship that a later correction does not
 catch up with. The submission build is unchanged: `paper.pdf` and `supplement.pdf` keep their
-byline, because a journal submission must name its authors.
+byline, because a journal submission must name its authors, and `postmortem.pdf`, which is not
+submitted, keeps the lead author's.
 
 What "without authors" means here, precisely, and why each part:
 
@@ -38,6 +39,8 @@ import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, "build", "no_authors")
+#: In the order xr needs: the paper first, whose aux file the other two read.
+DOCUMENTS = ("paper", "supplement", "postmortem")
 
 #: Every name that must not survive into a circulated PDF's front matter or back matter.
 AUTHOR_NAMES = ("Ricou", "Duvignau")
@@ -93,19 +96,19 @@ def _run(cmd, cwd):
 
 
 def build(out_dir=OUT):
-    """Both documents, in the order `xr` needs: paper first, then supplement."""
+    """All three documents, in the order `xr` needs: the paper first, then the other two."""
     os.makedirs(out_dir, exist_ok=True)
     # The build reads figures, the bibliography and paper.aux by relative path, so it runs in
     # the repository root with the stripped sources placed there under a distinct name.
-    for name in ("paper", "supplement"):
+    for name in DOCUMENTS:
         prepare(name, out_dir=out_dir)
-    for name in ("paper", "supplement"):
+    for name in DOCUMENTS:
         staged = os.path.join(REPO, "_noauth_" + name + ".tex")
         shutil.copyfile(os.path.join(out_dir, name + ".tex"), staged)
-    # `\externaldocument{paper}` in the supplement points at the submission build's aux file,
-    # which is correct: the section numbers are the same in both, and the submission build is
-    # the one whose numbering a reader of either PDF will meet.
-    for name in ("paper", "supplement"):
+    # `\externaldocument{paper}` in the supplement and the postmortem points at the submission
+    # build's aux file, which is correct: the section numbers are the same in both builds, and
+    # the submission build is the one whose numbering a reader of any of the PDFs will meet.
+    for name in DOCUMENTS:
         stem = "_noauth_" + name
         for _ in range(2):
             _run(["pdflatex", "-interaction=nonstopmode", stem + ".tex"], REPO)
@@ -122,7 +125,7 @@ def build(out_dir=OUT):
         # that cleans up by enumerating what it expects will always miss the one it did not.
         for leftover in glob.glob(os.path.join(REPO, stem + ".*")):
             os.remove(leftover)
-    return [os.path.join(out_dir, n + ".pdf") for n in ("paper", "supplement")]
+    return [os.path.join(out_dir, n + ".pdf") for n in DOCUMENTS]
 
 
 def offending_names(pdf_path):
@@ -142,7 +145,7 @@ def main(argv=None):
     ap.add_argument("--out", default=OUT)
     args = ap.parse_args(argv)
 
-    pdfs = ([os.path.join(args.out, n + ".pdf") for n in ("paper", "supplement")]
+    pdfs = ([os.path.join(args.out, n + ".pdf") for n in DOCUMENTS]
             if args.check else build(args.out))
     bad = False
     for pdf in pdfs:

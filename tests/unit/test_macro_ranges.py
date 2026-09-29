@@ -25,7 +25,7 @@ import pytest
 
 REPO = Path(__file__).parent.parent.parent
 GENERATED = REPO / "docs" / "generated" / "paper_numbers.tex"
-DOCS = ("paper.tex", "supplement.tex")
+DOCS = ("paper.tex", "supplement.tex", "postmortem.tex")
 
 #: How a range gets written when it is typed rather than read. Order matters: the longest
 #: joiner first, so "--" is not reported twice as two "-" matches.

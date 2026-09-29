@@ -23,7 +23,7 @@ import pytest
 
 ROOT = Path(__file__).parent.parent.parent
 FIGDIR = ROOT / "docs" / "results" / "figures"
-DOCS = ("paper.pdf", "supplement.pdf")
+DOCS = ("paper.pdf", "supplement.pdf", "postmortem.pdf")
 
 pytestmark = pytest.mark.skipif(shutil.which("pdffonts") is None,
                                 reason="poppler-utils not installed")
@@ -186,7 +186,7 @@ def british_forms(text):
     return found
 
 
-@pytest.mark.parametrize("name", ("paper.tex", "supplement.tex"))
+@pytest.mark.parametrize("name", ("paper.tex", "supplement.tex", "postmortem.tex"))
 def test_american_spelling(name):
     """IEEE: "Change all British spellings to American spellings." Both documents go to the
     same copy editor, so both are checked."""
@@ -272,8 +272,10 @@ def test_every_paper_figure_has_a_generator():
 
 # --- structure of the submission package -----------------------------------------------------
 
-def test_supplement_section_labels_sit_on_their_headings():
-    """A \\label{sec:...} must directly follow a sectioning command.
+@pytest.mark.parametrize("name", ("supplement.tex", "postmortem.tex"))
+def test_supplement_section_labels_sit_on_their_headings(name):
+    """A \\label{sec:...} (\\label{s:...} in the journal supplement) must directly follow a
+    sectioning command.
 
     Round 7 inserted two paragraphs immediately after their section headings, which pushed
     each section's existing lead below the newcomer and stranded the \\label mid-section.
@@ -281,13 +283,12 @@ def test_supplement_section_labels_sit_on_their_headings():
     frame, twice, and the round-8 review had to find it by eye. A stranded label is the
     mechanical signature of that insertion pattern, so it is the thing pinned.
     """
-    src = (ROOT / "supplement.tex")
-    if not src.exists():
-        pytest.skip("supplement not present")
+    src = (ROOT / name)
+    assert src.exists(), "%s not present" % name
     lines = src.read_text(encoding="utf-8").split("\n")
     stranded = []
     for i, line in enumerate(lines):
-        if not re.match(r"\\label\\{sec:", line.strip()):
+        if not re.match(r"\\label\{(?:sec|s):", line.strip()):
             continue
         j = i - 1
         while j >= 0 and (not lines[j].strip() or lines[j].strip().startswith("%")):
@@ -299,7 +300,17 @@ def test_supplement_section_labels_sit_on_their_headings():
     assert not stranded, "labels stranded below inserted content:\n  " + "\n  ".join(stranded)
 
 
-@pytest.mark.parametrize("name", ("paper", "supplement"))
+def test_the_heading_label_rule_can_see_a_label():
+    """Until 29 Sep the rule above matched `\\label\\{sec:` -- a backslash before the brace --
+    so it found no label in either document and passed on everything. A rule that cannot see
+    its subject is decoration; this pins that it sees one, in each document it reads."""
+    for name in ("supplement.tex", "postmortem.tex"):
+        lines = (ROOT / name).read_text(encoding="utf-8").split("\n")
+        seen = [ln for ln in lines if re.match(r"\\label\{(?:sec|s):", ln.strip())]
+        assert len(seen) >= 5, "%s: the heading-label rule sees %d labels" % (name, len(seen))
+
+
+@pytest.mark.parametrize("name", ("paper", "supplement", "postmortem"))
 def test_bibtex_ran_clean(name):
     """The build's BibTeX logs must carry no warnings.
 
@@ -316,7 +327,7 @@ def test_bibtex_ran_clean(name):
     assert not warnings, "%s.blg: %s" % (name, warnings)
 
 
-@pytest.mark.parametrize("name", ["paper", "supplement"])
+@pytest.mark.parametrize("name", ["paper", "supplement", "postmortem"])
 def test_no_font_shape_is_substituted(name):
     """The LaTeX log must record no font substitution.
 
@@ -400,7 +411,7 @@ def test_every_figure_is_used_or_declared():
         pytest.skip("artifact index absent")
     declared = index.read_text(encoding="utf-8")
     used = set()
-    for doc in ("paper.tex", "supplement.tex"):
+    for doc in ("paper.tex", "supplement.tex", "postmortem.tex"):
         text = (ROOT / doc).read_text(encoding="utf-8")
         used |= {Path(m).stem for m in
                  re.findall(r"\\includegraphics\[[^\]]*\]\{([^}]*)\}", text)}
@@ -512,7 +523,7 @@ class TestTheBibliographyIsFoundWhereverTheLogWrapsIt:
         assert _before_the_bibliography(text) == text
 
     def test_the_real_logs_lose_their_bibliographies(self):
-        for name in ("paper", "supplement"):
+        for name in ("paper", "supplement", "postmortem"):
             log = ROOT / ("%s.log" % name)
             if not log.exists():
                 pytest.skip("no LaTeX log for %s" % name)
@@ -523,7 +534,7 @@ class TestTheBibliographyIsFoundWhereverTheLogWrapsIt:
                 "counted against the body" % name)
 
 
-@pytest.mark.parametrize("name", ["paper", "supplement"])
+@pytest.mark.parametrize("name", ["paper", "supplement", "postmortem"])
 def test_no_line_is_stretched_to_the_limit(name):
     r"""The LaTeX log must record no underfull box at maximum badness.
 
@@ -577,7 +588,7 @@ def test_no_line_is_stretched_to_the_limit(name):
         % (name, len(offenders), UNDERFULL_BADNESS_CEILING, ", ".join(offenders)))
 
 
-@pytest.mark.parametrize("name", ["paper", "supplement"])
+@pytest.mark.parametrize("name", ["paper", "supplement", "postmortem"])
 def test_breakable_spans_carry_no_spaces(name):
     r"""`\brk` is a url-style command, and those SILENTLY DROP SPACES.
 

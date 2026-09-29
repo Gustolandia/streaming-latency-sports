@@ -303,6 +303,50 @@ class TestTheRefereeDrivenMacroGroups:
         assert got["ttiTostCIHigh"] == "0.950"
         assert got["ttiTostHLRange"] == "0.400$--$0.500"
 
+    def test_first_result_macros_count_runs_and_conditions_at_the_rules_line(self):
+        """The abstract said the check rejected every run behind the first result. It rejects
+        109 of 126, and every one of the six conditions; the ledger now carries both."""
+        got = dict(epn.first_result_macros())
+        assert got["firstResultRuns"] == "126"
+        assert got["firstResultRejected"] == "109"
+        assert got["firstResultCells"] == "6" and got["firstResultCellsWord"] == "six"
+        assert got["firstResultUsableCells"] == "0"
+
+    def test_first_result_macros_read_only_the_one_per_cent_rows(self, tmp_path):
+        p = tmp_path / "sweep.csv"
+        p.write_text("threshold,backend,n,n_pass,n_runs,usable\n"
+                     "0.0,kafka,1,0,18,False\n"
+                     "0.01,kafka,1,2,18,False\n"
+                     "0.01,redis,1,18,18,True\n"
+                     "0.2,kafka,1,17,18,False\n", encoding="utf-8")
+        got = dict(epn.first_result_macros(str(p)))
+        assert got == {"firstResultRuns": "36", "firstResultRejected": "16",
+                       "firstResultCells": "2", "firstResultCellsWord": "two",
+                       "firstResultUsableCells": "1"}
+
+    def test_occupancy_fall_macros_report_e_a7s_registered_miss(self):
+        """E-A7 registered at least a tenfold fall in occupancy under real-time priority."""
+        got = dict(epn.occupancy_fall_macros())
+        assert (got["eaSevenOccFallLo"], got["eaSevenOccFallHi"]) == ("1.7", "2.2")
+        assert (got["eaSevenStallFallLo"], got["eaSevenStallFallHi"]) == ("3", "5")
+        assert float(got["eaSevenOccFallHi"]) < 10, "the registered tenfold fall did not happen"
+
+    def test_occupancy_fall_macros_need_both_loads(self, tmp_path):
+        assert epn.occupancy_fall_macros(str(tmp_path / "nope.csv")) == []
+        p = tmp_path / "stall.csv"
+        p.write_text("level,occ_fall,agg_fall\nl75,1.7,3.2\n", encoding="utf-8")
+        assert epn.occupancy_fall_macros(str(p)) == []
+        p.write_text("level,occ_fall,agg_fall\nl88,2.15,5.13\nl75,1.74,3.25\n", encoding="utf-8")
+        got = dict(epn.occupancy_fall_macros(str(p)))
+        assert got["eaSevenOccFallLo"] == "1.7" and got["eaSevenStallFallHi"] == "5"
+
+    def test_first_result_macros_are_absent_without_the_sweep(self, tmp_path):
+        assert epn.first_result_macros(str(tmp_path / "nope.csv")) == []
+        p = tmp_path / "sweep.csv"
+        p.write_text("threshold,backend,n,n_pass,n_runs,usable\n0.05,kafka,1,0,18,False\n",
+                     encoding="utf-8")
+        assert epn.first_result_macros(str(p)) == []
+
     def test_tti_tost_macros_are_absent_when_the_artefact_is(self, tmp_path):
         assert epn.tti_tost_macros(str(tmp_path / "nope.csv")) == []
         p = tmp_path / "t.csv"
@@ -767,7 +811,7 @@ class TestRegistryTableVocabulary:
     def test_the_supplement_caption_uses_the_generated_list(self):
         r"""A hand-written \cite list beside "generated at build time" is the round-7 bug."""
         from pathlib import Path
-        supp = (Path(__file__).parent.parent.parent / "supplement.tex").read_text(
+        supp = (Path(__file__).parent.parent.parent / "postmortem.tex").read_text(
             encoding="utf-8")
         i = supp.index(r"\label{tab:registry}")
         # `\caption[short]{long}` is standard LaTeX and the supplement uses it, so the
@@ -1553,7 +1597,7 @@ class TestTheFourPointRsquaredCannotBeQuotedAlone:
 
     def _quoting_files(self):
         out = []
-        for name in ("paper.tex", "supplement.tex"):
+        for name in ("paper.tex", "supplement.tex", "postmortem.tex"):
             p = self.REPO / name
             if not p.exists():
                 continue

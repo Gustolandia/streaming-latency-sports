@@ -26,7 +26,7 @@ def paper():
 
 @pytest.fixture(scope="module")
 def supplement():
-    return _flat("supplement.tex")
+    return _flat("postmortem.tex")
 
 
 class TestASectionOpensOnItsOwnClaim:
@@ -295,7 +295,7 @@ class TestACapitalisedMacroOpensASentence:
     #: negative example caught immediately. Start of text is handled as start of text.
     OPENER = (".", "!", "?", ":", "---", "{", "}", r"\item", r"\par")
 
-    @pytest.mark.parametrize("doc", ["paper.tex", "supplement.tex"])
+    @pytest.mark.parametrize("doc", ["paper.tex", "supplement.tex", "postmortem.tex"])
     def test_no_capitalised_macro_sits_mid_sentence(self, doc):
         text = re.sub(r"(?m)(?<!\\)%.*$", " ", (REPO / doc).read_text(encoding="utf-8"))
         bad = []

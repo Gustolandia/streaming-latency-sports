@@ -28,7 +28,7 @@ import pytest
 
 REPO = Path(__file__).parent.parent.parent
 BS = chr(92)
-DOCS = ("paper.tex", "supplement.tex")
+DOCS = ("paper.tex", "supplement.tex", "postmortem.tex")
 
 METHOD = re.compile(r"bootstrap|Katz|Wilson|Fisher|Newcombe|Clopper|Student|profile likelihood",
                     re.I)
@@ -73,7 +73,7 @@ def paper():
 
 @pytest.fixture(scope="module")
 def supplement():
-    return (REPO / "supplement.tex").read_text(encoding="utf-8")
+    return (REPO / "postmortem.tex").read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize("doc", DOCS)

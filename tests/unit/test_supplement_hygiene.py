@@ -48,7 +48,7 @@ def emitted():
 
 @pytest.fixture(scope="module")
 def documents():
-    return _tex("paper.tex") + "\n" + _tex("supplement.tex")
+    return _tex("paper.tex") + "\n" + _tex("postmortem.tex")
 
 
 class TestArmNarrativesReadTheLedger:
@@ -141,7 +141,7 @@ class TestEveryFigureQuotingCitationCanBeFound:
 
     @staticmethod
     def cited_keys():
-        surface = _tex("paper.tex") + _tex("supplement.tex")
+        surface = _tex("paper.tex") + _tex("postmortem.tex")
         for path in (REPO / "docs" / "generated").glob("*.tex"):
             surface += path.read_text(encoding="utf-8")
         keys = set()
@@ -211,7 +211,7 @@ class TestEveryFigureQuotingCitationCanBeFound:
 class TestTheReferenceListIsWhereAReaderExpectsIt:
     """The supplement's bibliography rendered on page 32 of 53, with 22 sections after it."""
 
-    @pytest.mark.parametrize("name", ["paper.tex", "supplement.tex"])
+    @pytest.mark.parametrize("name", ["paper.tex", "supplement.tex", "postmortem.tex"])
     def test_nothing_of_substance_follows_the_bibliography(self, name):
         tex = _tex(name)
         at = tex.index("\\bibliography{")
@@ -224,7 +224,7 @@ class TestTheReferenceListIsWhereAReaderExpectsIt:
         assert not floats, (
             "%s has %d float(s) after its reference list" % (name, len(floats)))
 
-    @pytest.mark.parametrize("name", ["paper.tex", "supplement.tex"])
+    @pytest.mark.parametrize("name", ["paper.tex", "supplement.tex", "postmortem.tex"])
     def test_the_bibliography_is_near_the_end_of_the_source(self, name):
         tex = _tex(name)
         at = tex.index("\\bibliography{")

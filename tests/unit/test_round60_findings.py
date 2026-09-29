@@ -25,7 +25,7 @@ def paper():
 
 @pytest.fixture(scope="module")
 def supplement():
-    return _flat("supplement.tex")
+    return _flat("postmortem.tex")
 
 
 class TestR1TheSectionOpensOnItsEvidence:
@@ -129,7 +129,7 @@ class TestW2NumbersComeFromTheLedgerAndCarryTheirUnits:
 
     QUARTET = ("13.6", "26.7", "69.2", "66.67")
 
-    @pytest.mark.parametrize("doc", ["paper.tex", "supplement.tex"])
+    @pytest.mark.parametrize("doc", ["paper.tex", "supplement.tex", "postmortem.tex"])
     @pytest.mark.parametrize("literal", QUARTET)
     def test_the_flip_quartet_is_not_typed(self, doc, literal):
         text = _flat(doc)
@@ -162,7 +162,7 @@ class TestNoSourceCarriesAControlCharacter:
 
     A shell heredoc interprets backslash escapes in the string it is passed, so a patch
     carrying `\flipVertexTwoThirds` arrives as a formfeed followed by `lipVertexTwoThirds`.
-    Round 60 shipped exactly that into `supplement.tex`, and what caught it was
+    Round 60 shipped exactly that into `postmortem.tex`, and what caught it was
     `test_no_line_is_stretched_to_the_limit` -- a *typesetting* gate noticing that the
     paragraph would not set, several steps downstream of the cause. `docs/infrastructure.md`
     has recorded this failure mode since round 40 as item 1aa, "a backslash the shell ate
@@ -173,7 +173,7 @@ class TestNoSourceCarriesAControlCharacter:
 
     ALLOWED = {"\t", "\n", "\r"}
 
-    @pytest.mark.parametrize("doc", ["paper.tex", "supplement.tex"])
+    @pytest.mark.parametrize("doc", ["paper.tex", "supplement.tex", "postmortem.tex"])
     def test_the_document_holds_no_control_characters(self, doc):
         text = (REPO / doc).read_text(encoding="utf-8")
         bad = []

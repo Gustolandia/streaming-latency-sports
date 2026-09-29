@@ -74,10 +74,11 @@ paper.blg
 # run_metadata*.jsonl.gz; this is the raw evidence behind it, ~800 MB.
 cloud_archive/
 
-# Deposit bundles built by scripts/zenodo_deposit.py, and the supplement's build log
-# (paper.log is above; campaign .log files under reproducibility/ stay tracked)
+# Deposit bundles built by scripts/zenodo_deposit.py, and the supplement's and the postmortem's
+# build logs (paper.log is above; campaign .log files under reproducibility/ stay tracked)
 dist/
 supplement.log
+postmortem.log
 
 # Third-party PDFs fetched for vocabulary statistics; never committed (public repository).
 docs/reference_corpus/

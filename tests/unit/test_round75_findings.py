@@ -81,6 +81,38 @@ def _rendered(name):
     return "\n".join((p.extract_text() or "") for p in pypdf.PdfReader(str(pdf)).pages)
 
 
+def _section_iii_d(paper):
+    """Section III-D, "What it costs, and the repair": v4's Section V-D, as source."""
+    i = paper.index(BS + "label{sec:cost}")
+    return paper[i:paper.index(BS + "section{", i)]
+
+
+def _recovery(paper):
+    """The recovery paragraph of Section III-D, flattened.
+
+    v5 (28 Sep): v4's "The displacement can be recovered rather than discarded" paragraph is
+    the last of Section III-D. Its opening sentence did not survive the rewrite, so it is found
+    by what it prints, both populations' median errors, rather than by how it begins."""
+    paras = [p for p in re.split(r"\n\s*\n", _section_iii_d(paper))
+             if BS + "recoveryErrPass" in p and BS + "recoveryErrFail" in p]
+    assert len(paras) == 1, "Section III-D's recovery paragraph has moved; retarget this pin"
+    return " ".join(paras[0].split())
+
+
+def _s169(supplement):
+    i = supplement.index("S16.9.")
+    return " ".join(supplement[i:supplement.index("S17. The 1970 counter note")].split())
+
+
+def _checks_row(paper, words):
+    """The row of Table IV (the checks that cost nothing) whose text contains `words`."""
+    i = paper.index(BS + "label{tab:checks}")
+    table = paper[i:paper.index(BS + "end{tabular}", i)]
+    rows = [" ".join(r.split()) for r in table.split(BS + BS) if words in " ".join(r.split())]
+    assert len(rows) == 1, "Table IV has been reworded; retarget this pin"
+    return rows[0]
+
+
 class TestR1TheIndexTermsNameTheirOwnSubject:
     r"""The retrieval surface, read rather than sorted."""
 
@@ -208,12 +240,26 @@ class TestR2TheRecoveryPopulationsDoNotSeparate:
             flat = " ".join(doc.split())
             assert "never exact" not in flat
 
-    def test_section_v_d_and_section_viii_b_now_agree(self, paper):
+    def test_section_v_d_and_section_viii_b_now_agree(self, paper, supplement):
         """The reason this mattered beyond one clause: the Discussion's fourth rule cited a
-        Results subsection that contradicted it."""
-        i = paper.index("The displacement can be recovered rather than discarded")
-        vd = " ".join(paper[i:i + 1400].split())
-        assert BS + "recoveryShift" in vd
+        Results subsection that contradicted it.
+
+        v5 (28 Sep): V-D is Section III-D and the Discussion's rules are Table IV. An outside
+        editor asked for V-D's Hodges--Lehmann and bootstrap sentences to go to the supplement,
+        one sentence of result kept (editorial review, Section 5 and Section 7, row 12), so the
+        shift, the non-zero shift and the statement that no shift is detectable are pinned in
+        S16.9, where they now are, and III-D is held to the sentence it kept: both populations'
+        errors, a statement of what the data cannot separate, and the pointer to S16.9. The
+        rule is Table IV's add-back row, which cites III-D and restates nothing III-D could
+        contradict. III-D's own pointer forward to the rule went with the list of rules and is
+        not asked for."""
+        vd = _recovery(paper)
+        for macro in ("recoveryErrPass", "recoveryErrFail", "recoveryPassN", "recoveryFailN"):
+            assert re.search(re.escape(BS + macro) + r"(?![A-Za-z])", vd), macro
+        assert re.search(r"cannot\s+(?:be\s+told|tell)\s+apart", vd)
+        assert "S16.9" in vd, "the kept sentence points at where the shift went"
+        s169 = _s169(supplement)
+        assert BS + "recoveryShift$" in s169
         # Round 76 replaced the one-sided quote of `recoveryPassExact` here. It read "33% of
         # the passing conditions recover the delivery exactly", which invites the inference
         # that the rejected ones never do -- the error round 75's own report made in prose.
@@ -223,20 +269,20 @@ class TestR2TheRecoveryPopulationsDoNotSeparate:
         # which is 0.0: the medians still cross, but a crossing of medians is the same artifact
         # as the gap round 75 corrected, so the main text states the shift and S16.9 keeps the
         # medians as description. Round 78 (R1) reworded "no shift remains", a claim of
-        # equivalence, to "no shift is detectable", which is what the interval supports.
-        assert BS + "recoveryNonzeroShift" in vd and "no shift is detectable" in vd
-        assert "holds where the check rejects as well as where it passes" in vd
-        j = paper.index("Where the span cannot be re-timestamped")
-        viiib = " ".join(paper[j:j + 500].split())
-        assert "on the runs the check rejects as well as on those it passes" in viiib
-        assert (BS + "ref{sec:cost}") in viiib, "the rule still cites Section V-D"
-        assert (BS + "ref{sec:authors}") in vd, "and Section V-D now points back"
+        # equivalence, to "no shift is detectable", which is what the interval supports; S16.9
+        # words it "no shift can be detected".
+        assert BS + "recoveryNonzeroShift$" in s169 and "no shift can be detected" in s169
+        assert "the recovery holds where the check rejects as well as where it passes" in s169
+        row = _checks_row(paper, "add it back")
+        assert (BS + "ref{sec:cost}") in row, "the rule still cites Section III-D"
 
     def test_no_p_value_was_reached_for(self, paper, supplement):
         """Explicitly asked for. The manuscript's register is intervals and shifts, and a
-        rank test between distributions that cross would have said nothing either way."""
-        i = paper.index("The displacement can be recovered rather than discarded")
-        vd = " ".join(paper[i:i + 1400].split())
+        rank test between distributions that cross would have said nothing either way.
+
+        v5 (28 Sep): V-D is Section III-D, and the whole subsection is read, which covers the
+        recovery paragraph wherever its sentences now begin."""
+        vd = " ".join(_section_iii_d(paper).split())
         assert "Mann" not in vd and "$p$" not in vd and "p =" not in vd
         k = supplement.index("S16.9.")
         s169 = " ".join(supplement[k:supplement.index("S17. The 1970 counter note")].split())
@@ -259,9 +305,12 @@ class TestR2TheRecoveryPopulationsDoNotSeparate:
         72."""
         # Round 78 (R1) changed "the populations do not" to "cannot be told apart"; the
         # anchor followed it, and still spans the line break by construction.
-        bad, n = re.subn(r"Those\s+medians\s+differ;\s+the\s+populations\s+cannot\s+be\s+told\s+apart\.",
-                         "they separate\nat the median, not in the upper tail.", paper)
-        assert n == 1, "Section V-D has been reworded; retarget this mutation"
+        # v5 (28 Sep): Section III-D's kept sentence says "two populations the data cannot tell
+        # apart"; the anchor is that clause, in either of the two wordings round 78 allows, and
+        # the separation claim is put in its place.
+        bad, n = re.subn(r"cannot\s+(?:be\s+told|tell)\s+apart",
+                         "separate\nat the median, not in the upper tail", paper)
+        assert n == 1, "Section III-D has been reworded; retarget this mutation"
         with pytest.raises(AssertionError):
             self.test_the_separation_claim_is_gone(bad)
 
@@ -281,9 +330,13 @@ class TestW1TheMonotonicClockIsNamedWhereItBelongs:
     def test_the_main_text_did_not_pay_for_it(self, paper):
         """Eight rounds of declining to spend main-text space on the redesign question, and
         the referee asked for the supplement specifically: Section VIII-C is about BETTER
-        clocks -- synchronization and resolution -- and a monotonic clock is neither."""
-        i = paper.index("The limits of a better clock")
-        section = paper[i:paper.index("Threats and limitations")]
+        clocks -- synchronization and resolution -- and a monotonic clock is neither.
+
+        v5 (28 Sep): Section VIII-C is now the paragraph of Section VI labeled `sec:betterclock`,
+        which runs to the broker paragraph labeled `sec:brokers`."""
+        i = paper.index(BS + "label{sec:betterclock}")
+        section = paper[i:paper.index(BS + "label{sec:brokers}", i)]
+        assert "better-synchronized clock" in section, "the paragraph has moved; retarget this pin"
         assert "MONOTONIC" not in section
 
     def test_the_exhibit_it_points_at_exists(self, supplement):
@@ -324,23 +377,34 @@ class TestW2TheRecoveryNumbersHaveASupplementHome:
 
 
 class TestW3TheRepeatedCountIsDeliberate:
-    """No change asked for. Recorded so a later round does not delete one of the two."""
+    """No change asked for. Recorded so a later round does not delete one of the two.
+
+    v5 (28 Sep): the rewrite said it once. Section VII is Section V, rebuilt around Table III
+    at an outside editor's request (editorial review, Sections 5 and 9), and its paragraph now
+    lists the classes by name in the sentence that counts them, with "Substitution is the
+    worst" directly after, so the superlative no longer needs a count of its own. What the two
+    tests below pin is that single use: from the macro, with no typed "three" in the place of
+    the second, and in view of the sentence that ranks the classes."""
 
     def test_both_threes_come_from_one_macro(self, paper):
-        assert paper.count(BS + "harnessDisposalClassesWord") == 2
-        i = paper.index("Evidence Across Tools")
-        section = paper[i:paper.index("Discussion")]
+        """v5 (28 Sep): one use, not two; the count dropped because the second use was
+        rewritten out with the superlative's clause, not because a typed word replaced it."""
+        assert paper.count(BS + "harnessDisposalClassesWord") == 1
+        i = paper.index(BS + "label{sec:tools}")
+        section = paper[i:paper.index(BS + "section{", i)]
+        assert BS + "harnessDisposalClassesWord" in section
         assert "of the three classes" not in section
         assert "three classes" not in section.replace(
             BS + "harnessDisposalClassesWord{} classes", "")
 
     def test_they_are_close_enough_that_the_repetition_is_visible(self, paper):
+        """v5 (28 Sep): with the count said once, what must stay in view of it is the sentence
+        that ranks within it, so the distance is now from the count to the superlative."""
         a = paper.index(BS + "harnessDisposalClassesWord")
-        b = paper.index(BS + "harnessDisposalClassesWord", a + 1)
+        b = paper.index("Substitution is the worst", a)
         assert b - a < 1200, (
-            "the two uses have drifted out of one passage; the repetition was deliberate "
-            "because they are the same quantity said twice from one source, and that reads "
-            "as deliberate only while both are in view")
+            "the count and the superlative that ranks within it have drifted out of one "
+            "passage; 'the worst' reads against the count only while both are in view")
 
 
 class TestTheRenderedPageCarriesIt:
@@ -352,9 +416,16 @@ class TestTheRenderedPageCarriesIt:
             assert word in flat, word
 
     def test_the_shift_prints_in_section_v_d(self):
+        """v5 (28 Sep): the shift went to S16.9 with the rest of V-D's statistics (editorial
+        review, Section 5), so it is looked for on S16.9's pages; the separation claim is
+        refused in both documents."""
         flat = " ".join(_rendered("paper").split())
-        assert "Hodges" in flat
+        supp = _rendered("supplement")
+        s169 = " ".join(supp[supp.rindex("S16.9. The displacement recovery"):
+                             supp.rindex("S16.10. How late")].split())
+        assert "Hodges" in s169
         assert "separate at the median" not in flat
+        assert "separate at the median" not in " ".join(supp.split())
 
     def test_the_supplement_table_prints(self):
         flat = " ".join(_rendered("supplement").split())

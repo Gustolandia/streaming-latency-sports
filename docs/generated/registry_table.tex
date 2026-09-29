@@ -4,11 +4,11 @@
 \toprule
 Tool & Span measured & Clock & What happens to the value & Counts \\
 \midrule
-Apache Kafka (bundled) & end-to-end & nanosecond & truncate to the quantum & no \\
-Apache Kafka (bundled) & publish & millisecond & truncate to the quantum & no \\
+Apache Kafka (bundled) & end-to-end & nanosecond & truncate to the resolution & no \\
+Apache Kafka (bundled) & publish & millisecond & truncate to the resolution & no \\
 Apache Pulsar perf & end-to-end & millisecond & filter, $\geq 0$ & no \\
 NATS CLI & end-to-end & nanosecond & --- & no \\
-OpenMessaging Bench. & end-to-end & millisecond & filter, $>0$, truncate to the quantum & no \\
+OpenMessaging Bench. & end-to-end & millisecond & filter, $>0$, truncate to the resolution & no \\
 OpenMessaging Bench. & publish & nanosecond & --- & no \\
 RabbitMQ PerfTest & end-to-end & nanosecond & --- & no \\
 Rezolus & scheduler wakeup & nanosecond & --- & yes \\

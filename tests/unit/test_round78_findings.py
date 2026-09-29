@@ -66,8 +66,18 @@ def pops():
 
 
 def _vd(paper):
-    i = paper.index("The displacement can be recovered rather than discarded")
-    return " ".join(paper[i:i + 1600].split())
+    """Section III-D, v4's Section V-D, flattened.
+
+    v5 (28 Sep): the paragraph this read from ("The displacement can be recovered rather than
+    discarded") is III-D's last, reworded, so the whole subsection is read."""
+    i = paper.index(BS + "label{sec:cost}")
+    return " ".join(paper[i:paper.index(BS + "section{", i)].split())
+
+
+#: What Section III-D may say about the two recovery populations: what the data cannot do, in
+#: B18's wording ("cannot be told apart", round 78's) or its active form ("the data cannot tell
+#: apart", v5's).
+NOT_TOLD_APART = r"cannot\s+(?:be\s+told|tell)\s+apart"
 
 
 def _s169(supplement):
@@ -112,12 +122,17 @@ class TestR1TheWordsSayWhatTheIntervalsSay:
             for med in medians:
                 assert 0.33 <= float(ledger[macro]) / med <= 0.67, (macro, med)
 
-    def test_the_main_text_asserts_no_sameness(self, paper):
+    def test_the_main_text_asserts_no_sameness(self, paper, supplement):
+        """v5 (28 Sep): Section III-D kept one sentence of result, "two populations the data
+        cannot tell apart", and the shift clause went to S16.9 with V-D's other statistics
+        (editorial review, Section 5), where it reads "no shift can be detected". The refused
+        phrases gain "indistinguishable": the editor's suggested wording for this sentence, and
+        the word B18 names as where the drift to sameness began."""
         vd = _vd(paper)
-        for gone in ("the populations do not.", "no shift remains"):
+        for gone in ("the populations do not.", "no shift remains", "indistinguishable"):
             assert gone not in vd, gone
-        assert "the populations cannot be told apart" in vd
-        assert "no shift is detectable" in vd
+        assert re.search(NOT_TOLD_APART, vd)
+        assert "no shift can be detected" in _s169(supplement)
 
     def test_the_supplement_asserts_no_sameness(self, supplement):
         s = _s169(supplement)
@@ -137,12 +152,13 @@ class TestR1TheWordsSayWhatTheIntervalsSay:
         assert lead == "Two populations with no detectable shift between them."
         assert short == lead[:-1]
 
-    def test_the_defect_that_prompted_this_is_caught(self, paper):
-        bad, n = re.subn(r"the populations cannot\s+be told apart\.",
-                         "the populations do not.", paper)
-        assert n == 1, "Section V-D has been reworded; retarget this mutation"
+    def test_the_defect_that_prompted_this_is_caught(self, paper, supplement):
+        """v5 (28 Sep): the anchor is Section III-D's "cannot tell apart", replaced by the
+        sameness claim round 78 removed."""
+        bad, n = re.subn(NOT_TOLD_APART, "agree; the populations do not.", paper)
+        assert n == 1, "Section III-D has been reworded; retarget this mutation"
         with pytest.raises(AssertionError):
-            self.test_the_main_text_asserts_no_sameness(bad)
+            self.test_the_main_text_asserts_no_sameness(bad, supplement)
 
     def test_the_supplement_defect_is_caught_too(self, supplement):
         bad, n = re.subn(r"Nothing in these data separates them\.", "They do not.", supplement)
@@ -153,19 +169,31 @@ class TestR1TheWordsSayWhatTheIntervalsSay:
 
 class TestW1EveryBracketInSectionVDSaysWhatItIs:
 
-    def test_both_brackets_are_labeled(self, paper):
-        vd = _vd(paper)
-        for macro in ("recoveryShiftCI", "recoveryNonzeroShiftCI"):
-            j = vd.index("$" + BS + macro + "$]")
-            k = vd.rindex("[", 0, j)
-            assert vd[k:j] == "[95" + BS + "% bootstrap: ", (macro, vd[k:j])
+    #: Each bracket's label as S16.9 prints it: the method and the level, inside the bracket.
+    LABELS = {"recoveryShiftCI": "($95" + BS + "%$ percentile bootstrap: ",
+              "recoveryNonzeroShiftCI": "($95" + BS + "%$ bootstrap: "}
 
-    def test_a_bare_bracket_is_caught(self, paper):
-        bad, n = re.subn(r"\[95" + re.escape(BS) + r"%\s+bootstrap:\s+(\$" + re.escape(BS)
-                         + r"recoveryNonzeroShiftCI\$\])", r"[\1", paper)
-        assert n == 1, "Section V-D has been reworded; retarget this mutation"
+    def test_both_brackets_are_labeled(self, paper, supplement):
+        """v5 (28 Sep): both brackets left Section V-D for S16.9 with the shifts they qualify
+        (editorial review, Section 5), and S16.9 prints them in parentheses. Each is held to its
+        label there, and neither may return to the article without one."""
+        s = _s169(supplement)
+        for macro, label in self.LABELS.items():
+            j = s.index("$" + BS + macro + "$)")
+            k = s.rindex("(", 0, j)
+            assert s[k:j] == label, (macro, s[k:j])
+        sys.path.insert(0, str(REPO / "tests" / "unit"))
+        import test_bracket_labels as tbl
+        bare = [n for n, _ in tbl.unlabeled(paper) if n in self.LABELS]
+        assert not bare, bare
+
+    def test_a_bare_bracket_is_caught(self, paper, supplement):
+        """v5 (28 Sep): the label is stripped from S16.9's second bracket, where it now is."""
+        bad, n = re.subn(r"\(\$95" + re.escape(BS) + r"%\$\s+bootstrap:\s+(\$" + re.escape(BS)
+                         + r"recoveryNonzeroShiftCI\$\))", r"(\1", supplement)
+        assert n == 1, "S16.9 has been reworded; retarget this mutation"
         with pytest.raises(AssertionError):
-            self.test_both_brackets_are_labeled(bad)
+            self.test_both_brackets_are_labeled(paper, bad)
 
 
 class TestW2TheBandEdgeIsTheQuartile:
@@ -354,9 +382,16 @@ class TestW6ThePortsThatDocumentIt:
 class TestTheRenderedPagesCarryIt:
 
     def test_the_main_text(self):
+        """v5 (28 Sep): the article prints Section III-D's "cannot tell apart"; the undetectable
+        shift and both labeled brackets print on S16.9's pages (editorial review, Section 5),
+        matched with spaces removed because the extractor drops them around inline math."""
         flat = " ".join(_rendered_pages("paper"))
-        assert "cannot be told apart" in flat and "no shift is detectable" in flat
-        assert flat.count("95% bootstrap") >= 2
+        assert re.search(NOT_TOLD_APART, flat)
+        supp = " ".join(_rendered_pages("supplement"))
+        tight = "".join(supp[supp.rindex("S16.9. The displacement recovery"):
+                             supp.rindex("S16.10. How late")].split())
+        assert "noshiftcanbedetected" in tight
+        assert tight.count("(95%percentilebootstrap:") + tight.count("(95%bootstrap:") >= 2
 
     def test_the_supplement(self):
         flat = " ".join(_rendered_pages("supplement"))

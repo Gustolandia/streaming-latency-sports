@@ -19,9 +19,24 @@ STRANGE = LAW / "strange-results-28-sep"
 JUDGED = LAW / "judged-27-sep"
 
 
+def _ledger():
+    gen = (REPO / "docs" / "generated" / "paper_numbers.tex").read_text(encoding="utf-8")
+    return dict(re.findall(r"\\newcommand\{\\(\w+)\}\{(.*)\}\s*$", gen, re.M))
+
+
 def _section(start, end):
+    """One section's source, flattened, with S16.11's emitted readings printed as numbers.
+
+    v5.1 (29 Sep): S16.11's judge readings are emitted (`cliff_macros`) where they were typed,
+    after one of its ranges was found to leave out, silently, the slice it does not cover. The
+    pins below were written against the printed numbers and recompute them from the artifacts,
+    so the macros are expanded first and the pins keep checking the numbers, not the markup.
+    """
     text = (REPO / "supplement.tex").read_text(encoding="utf-8")
     body = text[text.index(start):text.index(end, text.index(start))]
+    ledger = _ledger()
+    body = re.sub(r"\\(cliff[A-Za-z]+)(?![A-Za-z])",
+                  lambda m: ledger.get(m.group(1), m.group(0)), body)
     return " ".join(body.split())
 
 

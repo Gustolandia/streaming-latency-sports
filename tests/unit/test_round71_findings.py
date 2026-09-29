@@ -51,27 +51,61 @@ def _rendered(name):
 class TestR1TheConclusionAgreesWithTheReportingRule:
 
     def test_the_conclusion_does_not_call_the_two_waits_independent(self, paper):
+        """v5 (28 Sep): the Conclusion now says the two threads "each wait for a core", with no
+        qualifier, which claims nothing about correlation; the pin follows the new wording and
+        the forbidden word stays forbidden."""
         i = paper.index(RE_BS[:1] + "section{Conclusion}")
         conclusion = " ".join(paper[i:].split())
         assert "wait for a core independently" not in conclusion
-        assert "each wait for a core on their own account" in conclusion
+        assert ("Two timestamps written by threads that each wait for a core invert the "
+                "delivery between them") in conclusion
 
     def test_it_uses_the_introductions_own_phrase(self, paper):
-        """Same words in both places, so a reader meets one idea and not two."""
-        assert "waits for that core on its own account" in paper
+        """Same words in both places, so a reader meets one idea and not two.
 
-    def test_the_rule_it_was_contradicting_is_still_there_and_still_measured(self, paper):
-        i = paper.index("Two delays with one cause are not independent")
+        v5 (28 Sep): "on its own account" went with the old second paragraph, and the
+        Introduction now says the arithmetic "subtracted two timestamps written by two different
+        threads", so the shared words are "two timestamps written by" and both ends are pinned
+        to them.
+        """
+        flat = " ".join(paper.split())
+        intro = flat[flat.index(RE_BS[:1] + "section{Introduction}"):
+                     flat.index(RE_BS[:1] + "subsection{Contributions}")]
+        conclusion = flat[flat.index(RE_BS[:1] + "section{Conclusion}"):]
+        assert ("subtracted two timestamps written by two different threads, and a thread "
+                "must wait for a processor before it can read the clock") in intro
+        assert "Two timestamps written by threads that each wait for a core" in conclusion
+
+    def test_the_rule_it_was_contradicting_is_still_there_and_still_measured(self, paper,
+                                                                          supplement):
+        """v5 (28 Sep): the rules became Table IV (editor 6.7 and 9) and this one is not among
+        its checks, so the pin moves to its measured statement in Section III-A, with the same
+        macros; the rule's own "in all N conditions" clause is checked in S24.2, which prints it.
+
+        Left failing on purpose: III-A prints the factor without the denominator and floor
+        round 80 (R1) put beside it (v4: "the median of the \\indepWithinFlooredN conditions
+        above \\indepFloorPct%"), so 7.4 reads as a median over the 70 conditions named just
+        before it when it is over 54, at a floor that halves it.
+        """
+        s = supplement.index("S24.2. The statistical inventory")
+        inventory = " ".join(supplement[s:supplement.index("S24.3. The metric map", s)].split())
+        assert (RE_BS[:1] + "indepWithinOvershootConditions$ of the $" + RE_BS[:1]
+                + "indepWithinConditions$ conditions") in inventory
+        i = re.search(r"The two delays are correlated\s+within a run", paper).start()
         rule = " ".join(paper[i:i + 600].split())
         # Round 79 (R2): the rule quotes the within-run correlation, the unit its sentence names.
-        assert RE_BS[:1] + "spanRhoWithinMedian" in rule
         # Round 80 (R1): and the within-run factor beside it, with its denominator and floor.
-        assert RE_BS[:1] + "indepWithinFloored" in rule and RE_BS[:1] + "indepWithinConditions" in rule
-        assert RE_BS[:1] + "indepWithinFlooredN" in rule and RE_BS[:1] + "indepFloorPct" in rule
+        missing = [m for m in ("spanRhoWithinMedian", "indepWithinFloored",
+                               "indepWithinFlooredN", "indepFloorPct")
+                   if RE_BS[:1] + m not in rule]
+        assert not missing, (
+            "Section III-A quotes the independence factor without %s: its size depends on "
+            "where the denominator is floored, so it is not a number without them" % missing)
 
     def test_the_rendered_conclusion_carries_the_fix(self):
+        """v5 (28 Sep): retargeted with the source pin above to the Conclusion's new wording."""
         flat = " ".join(_rendered("paper").split())
-        assert "each wait for a core on their own account" in flat
+        assert "each wait for a core invert the delivery between them" in flat
         assert "independently invert" not in flat
 
 
@@ -99,7 +133,9 @@ class TestR2ThePacerJitterIsEmitted:
         assert not outside, "runs outside the printed range: %s" % outside
 
     def test_the_sentence_no_longer_types_its_number(self, paper):
-        i = paper.index("Pacer jitter is")
+        """v5 (28 Sep): the setup was cut to one paragraph (Section II-B) and the jitter is now
+        the second half of a sentence, "and pacer jitter is ...", so the anchor ignores case."""
+        i = re.search(r"(?i)pacer jitter is", paper).start()
         sentence = paper[i:i + 160]
         assert RE_BS[:1] + "pacerJitterLo" in sentence
         assert RE_BS[:1] + "pacerJitterHi" in sentence
@@ -131,8 +167,9 @@ class TestR2ThePacerJitterIsEmitted:
         assert stat_intervals.harness_pacer_jitter() == (66.3, 69.2)
 
     def test_the_rendered_sentence_prints_the_measured_ends(self):
+        """v5 (28 Sep): lower case on the page too, for the reason given above."""
         flat = " ".join(_rendered("paper").split())
-        i = flat.index("Pacer jitter is")
+        i = re.search(r"(?i)pacer jitter is", flat).start()
         assert "66.3" in flat[i:i + 90] and "69.2" in flat[i:i + 90]
 
 
@@ -147,10 +184,14 @@ class TestW1TheWordIsOnTheReviewList:
             "would file eleven judgments about prose that needs none")
 
     def test_it_catches_the_sentence_r1_fixed(self, paper):
-        """Mutation, not inspection: put the defect back and the gate must fire on it."""
+        """Mutation, not inspection: put the defect back and the gate must fire on it.
+
+        v5 (28 Sep): retargeted to the Conclusion's new wording, "threads that each wait for a
+        core invert", matched across its line break rather than at one wrap.
+        """
         import apply_vocabulary as av
-        bad = paper.replace("threads that each wait for a core on their own\naccount invert",
-                            "threads that wait for a core independently invert")
+        bad = re.sub(r"threads that each\s+wait for a core\s+invert",
+                     "threads that wait for a core independently invert", paper, count=1)
         assert bad != paper, "the Conclusion has been reworded; retarget this mutation"
         _, _, review = av.rewrite(bad, "paper.tex", True, av.load_adjudications(), set())
         assert any("independently" in r for r in review)
@@ -162,12 +203,24 @@ class TestW1TheWordIsOnTheReviewList:
             _, _, review = av.rewrite(text, name, True, av.load_adjudications(), set())
             assert not review, "%s: %s" % (name, review)
 
-    def test_every_flagged_sentence_carries_a_reason(self):
+    def test_every_flagged_sentence_carries_a_reason(self, paper):
+        """v5 (28 Sep): four judgments became one because the three on paper.tex went with the
+        sentences they cleared: the independence rule (the rules became Table IV, editor 6.7),
+        "not independent kernel granularity" (the alternatives list, 6.11; S19 keeps the claim
+        and its judgment) and "arrived at independently", now "reached earlier and by another
+        route". The count stays exact, and the three anchors are pinned absent so that none can
+        come back without its judgment.
+        """
         import json
         raw = json.loads((REPO / "docs" / "vocabulary_adjudications.json")
                          .read_text(encoding="utf-8"))
         ours = [j for j in raw["judgments"] if j["key"] == "independence"]
-        assert len(ours) == 4
+        assert len(ours) == 1
+        assert [j["file"] for j in ours] == ["supplement.tex"]
+        flat = " ".join(paper.split())
+        for gone in ("our one-clock rule, arrived at", "with one cause are not independent",
+                     "not independent kernel granularity"):
+            assert gone not in flat, "%r is back; its judgment has to come back too" % gone
         for j in ours:
             assert len(j["reason"].split()) >= 20, "a judgment is a sentence, not a tick"
 

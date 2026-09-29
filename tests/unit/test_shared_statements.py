@@ -156,8 +156,14 @@ class TestTheSpreadLawIsStatedOnce:
 #: emitted macro each one is really asserting. A sentence saying "not one negative" is a
 #: statement about `ombKafkaNegatives`, whether or not it prints it.
 ZERO_CLAIMS = [
-    (r"contain \textbf{not one negative}", "ombKafkaNegatives"),
-    (r"\textbf{zero} negative differences", "harnessOneClockNegatives"),
+    # Bold until v5 (28 Sep), when an outside editor read bold in running prose as a raised
+    # voice. The words are unchanged, and they are still the claim this table holds.
+    (r"contain not one negative", "ombKafkaNegatives"),
+    (r"recorded zero negative differences", "harnessOneClockNegatives"),
+    # The registered audit of published results (freezes/29, 28 Sep): the strong signature,
+    # a p99 of exactly 1 ms beside the 1 ms median, occurs nowhere. Same rule: the words stay
+    # and the count behind them is held to the coding.
+    (r"None of them also prints a p99 of exactly 1~ms", "reachStrongConfigs"),
 ]
 
 

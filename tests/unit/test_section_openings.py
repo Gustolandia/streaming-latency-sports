@@ -89,9 +89,12 @@ class TestTheRuleItself:
         assert not [p for p in NAVIGATIONAL if first.startswith(p)]
 
     def test_the_parser_strips_the_drop_cap(self):
-        """The introduction opens inside \\IEEEPARstart and must not read as markup."""
+        """The introduction opens inside \\IEEEPARstart and must not read as markup.
+
+        v5 (28 Sep) opens on the paper's own first harness, the hook an outside editor asked
+        for, where v4 opened on context."""
         got = dict(openings())
-        assert got["Introduction"].startswith("Message-broker benchmarks")
+        assert got["Introduction"].startswith("Our first harness timed")
 
     def test_a_pointer_later_in_the_sentence_is_allowed(self):
         """Only the opening is policed; a claim that cites a figure is still a claim."""

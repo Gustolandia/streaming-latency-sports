@@ -417,12 +417,13 @@ class TestNoForwardPointerStandsInForADefinition:
 
 
 class TestRelatedWorkIsSelfContained:
-    """B4. No supplement pointer inside Background and Related Work. First failure:
-    "Supplement~S52.3 sizes that literature"."""
+    """B4. No supplement pointer inside Related Work. First failure:
+    "Supplement~S52.3 sizes that literature". The section was "Background and Related Work"
+    until v5 (28 Sep), when it moved after the results under its plain name."""
 
     def test_no_supplement_pointer_in_related_work(self, paper):
         body = _body(paper)
-        start = body.index(r"\section{Background and Related Work}")
+        start = body.index(r"\section{Related Work}")
         end = body.index(r"\section{", start + 10)
         section = re.sub(r"(?m)^%.*$", "", body[start:end])
         hits = _lines_with(r"Supplement~?S\d", section)
@@ -438,11 +439,14 @@ class TestHeadlineNumbersAppearInResultsFirst:
     #: time; that subsection is the one held. "What the brokers actually do" reports a
     #: measurement in its own right, and Threats quantifies threats -- neither is a rule
     #: smuggling a result, and both keep their numbers.
+    #: v5 (28 Sep): the rules became Section VI, "What Benchmark Authors Should Do", with its
+    #: checks in Table IV. The held span is that section up to the paragraph on a better
+    #: clock, which is where the rules end and the measured asides begin, as before.
     def test_discussion_numbers_are_results_numbers(self, paper):
         body = re.sub(r"(?m)^%.*$", "", _body(paper))
-        disc = body.index(r"\section{Discussion}")
-        rules = body.index(r"\subsection{For benchmark authors}")
-        after = body.index(r"\subsection{", rules + 10)
+        disc = body.index(r"\section{What Benchmark Authors Should Do}")
+        rules = disc
+        after = body.index(r"\label{sec:betterclock}", rules + 10)
         results = body[:disc]
         discussion = body[rules:after]
         macros = set(re.findall(r"\\([a-zA-Z]+(?:Lo|Hi|Pct|Factor|Fraction|Paired|Median|Err\w*|Crossover\w*|Gap\w*))\b",

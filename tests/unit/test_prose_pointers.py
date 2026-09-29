@@ -117,8 +117,13 @@ def pointers():
 class TestEveryProsePointerHasADestination:
 
     def test_the_documents_still_point_at_supplement_sections_in_prose(self, pointers):
-        """If this drops to zero the rest of the file is vacuous and should be deleted."""
-        assert len(pointers) >= 40, (
+        """If this drops to zero the rest of the file is vacuous and should be deleted.
+
+        The floor was 40 until v5 (28 Sep), when an outside editor's count of 46 main-text
+        pointers ("one pointer per subsection is enough") took the paper to about twenty. The
+        floor guards the regex, not the count, and fifteen is still far above what a broken
+        pattern finds."""
+        assert len(pointers) >= 15, (
             "only %d prose pointers found; the regex has stopped matching the house form"
             % len(pointers))
 

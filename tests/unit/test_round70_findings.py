@@ -93,25 +93,56 @@ class TestR1TheAcknowledgmentLagIsCounted:
         assert "spanAckLagFloorUs" in caption
 
     def test_the_biconditional_no_longer_rests_on_a_premise_it_never_used(self, paper):
+        """v5 (28 Sep): Section II-A says "Since Equation 1 holds per event, whatever the
+        signs"; v4 said "is an identity holding per event, and whatever the signs". The anchor
+        follows the wording, flattened because the source wraps it."""
         assert "with $D$ and $A$ both non-negative" not in paper, (
             "S = D - A is an identity, so S < 0 iff A > D holds whatever the signs are")
-        i = paper.index("is an identity holding per event")
-        assert "whatever the signs" in paper[i:i + 120]
+        flat = " ".join(paper.split())
+        i = flat.index("holds per event")
+        assert "whatever the signs" in flat[i:i + 120]
 
     def test_the_reading_names_where_its_premise_is_measured(self, paper):
-        """Non-negativity licenses the reading, not the algebra -- and it is measured."""
-        i = paper.index("Reading it as a")
-        passage = " ".join(paper[i:i + 400].split())
-        assert "measured rather" in passage and "assumed" in passage
-        assert "tab:spans" in passage, "and it points at the table that measures it"
+        """Non-negativity licenses the reading, not the algebra -- and it is measured.
+
+        v5 (28 Sep): Section II-A keeps the identity in two lines (editor, section 5), and v4's
+        "Reading it as a lag outrunning a delivery does need both to be non-negative, and both
+        are measured rather than assumed" went with the rest, so the premise is now stated only
+        where it is measured: the Section III-A paragraph that introduces Table I. The pin
+        moved there, and Section II may not call a span non-negative again without saying there
+        that it is measured rather than assumed.
+        """
+        prose = " ".join(re.sub(r"(?m)(?<!\\)%.*$", " ", paper).split())
+        model = prose[prose.index(r"\label{sec:sysmodel}"):prose.index(r"\label{sec:mechanism}")]
+        if "non-negative" in model:
+            assert "measured rather than assumed" in model, (
+                "Section II calls a span non-negative again; if that is the reading's premise, "
+                "say it is measured rather than assumed, and where")
+        flat = " ".join(paper.split())
+        i = flat.index(r"Table~\ref{tab:spans} separates the spans")
+        passage = flat[i:i + 700]
+        assert "The send-referenced span, the acknowledgment lag $A$" in passage
+        assert "negative on no event at all" in passage, \
+            "the premise is no longer stated as a measurement beside the table that measures it"
 
     def test_the_prose_enumerates_every_chain(self, paper):
-        """Flattened: the clause wraps in the source, and a line break is not a defect."""
+        """Flattened: the clause wraps in the source, and a line break is not a defect.
+
+        v5 (28 Sep): the sentence no longer follows "Of the runs," and lost its "--- every
+        causal chain the corpus contains ---" in the cut of em-dash parentheticals (editor,
+        section 7.6). It still names A, and the completeness claim is pinned in Table I's
+        caption, which says only the acknowledgment-origin span inverts.
+        """
         flat = " ".join(paper.split())
-        i = flat.index("Of the runs,")
+        i = flat.index("The send-referenced span, the acknowledgment lag $A$")
         passage = flat[i:i + 320]
         assert "acknowledgment lag $A$" in passage
-        assert "every causal chain the corpus contains" in passage
+        assert "negative on no event at all" in passage
+        j = paper.index("Negatives by span and broker")
+        caption = " ".join(paper[j:paper.index("label{tab:spans}", j)].split())
+        assert "Only the acknowledgment-origin span inverts" in caption, \
+            "the chain inventory no longer says it is complete"
+        assert "the causal chains are clean" in caption
 
     def test_the_rendered_table_shows_four_clean_chains(self):
         flat = " ".join(_rendered("paper").split())
@@ -149,12 +180,19 @@ class TestR2TheFloorIsAScaleNotALimit:
 
         A pair of symmetric claims wants a pair of symmetric gates, or the unguarded half is
         where the wording comes back.
+
+        v5 (28 Sep): the ceiling left the paper with v4's Section V-B and returns to Section
+        III-B as "a maximum over those conditions and not a bound"; that phrase is accepted
+        beside "highest we measure" as saying the same thing, and "not a bound" is still
+        required.
         """
         i = paper.index(chr(92) + "invCeiling")
         clause = " ".join(paper[max(0, i - 320):i + 200].split())
         assert "ceiling below one" not in clause, (
             "a measured maximum near saturation is not a ceiling the rate reaches")
-        assert "highest we measure" in clause and "not a bound" in clause
+        assert "highest we measure" in clause or "a maximum over those conditions" in clause, \
+            "the clause no longer says the number is a measured maximum"
+        assert "not a bound" in clause
         assert "Neither number is a bound" in supplement, (
             "S9's repair from round 70 is what the main text now agrees with")
 
@@ -208,8 +246,20 @@ class TestRecommendedItems:
         """W3 asked for Section VIII-D's grain sentence to shrink now that the inventory is
         whole. It is answered in Section V-A instead, where the claim belongs: the sentence
         that enumerates the chains now says it enumerates all of them. Section VIII-D's
-        sentence is about the ten-tool source audit, which round 70 did not touch."""
+        sentence is about the ten-tool source audit, which round 70 did not touch.
+
+        v5 (28 Sep): both halves moved in the line edit (editor, sections 7.1 and 7.6). The
+        inventory's completeness is Table I's caption, "Only the acknowledgment-origin span
+        inverts", since the prose lost its "every causal chain the corpus contains"; and round
+        69's grain is Table III's caption, beside Section VIII's "were read at source, not
+        deployed" (see round 69's W2 test)."""
         flat = " ".join(paper.split())
-        assert "every causal chain the corpus contains" in flat
-        i = flat.index("are readings of source rather than measured deployments")
-        assert "exact to the threshold" in flat[i:i + 260], "round 69's clause is untouched"
+        j = paper.index("Negatives by span and broker")
+        caption = " ".join(paper[j:paper.index("label{tab:spans}", j)].split())
+        assert "Only the acknowledgment-origin span inverts" in caption, \
+            "the span inventory no longer says it is complete"
+        assert "were read at source, not deployed" in flat, "the source-reading concession has gone"
+        k = paper.index("label{tab:tools}")
+        tools = " ".join(paper[paper.rindex("caption{", 0, k):k].split())
+        assert "what happens to a value at or below zero" in tools, \
+            "round 69's grain has gone from Table III's caption"

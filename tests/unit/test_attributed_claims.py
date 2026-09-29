@@ -136,8 +136,8 @@ class TestRelatedWorkCitesRatherThanPoints:
 
     def _related_work(self):
         body = _prose()
-        start = body.index(r"\section{Background and Related Work}")
-        end = body.index(r"\section{Experimental Setup}")
+        start = body.index(r"\section{Related Work}")
+        end = body.index(r"\section{", start + 10)
         return body[start:end]
 
     def test_related_work_has_no_supplement_pointers(self):

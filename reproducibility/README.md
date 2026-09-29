@@ -83,12 +83,13 @@ median transport reads **−6.4 ms**); and the three-node cluster arm (0/15 runs
   burst as the withdrawn scheduling lag — underpowered and drawn from the least representative part
   of the match: its HL shifts wander (0.021 / 0.116 / 0.053 ms) and its N=1 estimators disagree, so
   it cannot resolve a sub-millisecond difference and the paper does not rest the claim on it.
-  A **powered replication** at a verified true-real-time rate, over a **median of 127 events/run**
-  (not seven), N ∈ {1, 9, 12} with 15 replicates each (`docs/results/transport_rt/`), resolves what
-  E1 could not: Kafka ≈ **0.54 ms** vs Redis ≈ **0.11 ms** — a Hodges–Lehmann shift of **0.41 ms**
-  (0.409 / 0.418 / 0.420 at N = 1 / 9 / 12; 90 % CI width ±0.006 ms; *p* < 10⁻²⁶). The two systems
-  are **equivalent within 1 ms** at every N under all three estimators (Welch, bootstrap, HL) **yet
-  cleanly distinguishable** — Redis's in-memory `XADD` is reproducibly ~0.41 ms faster per
+  A **powered replication** at a verified true-real-time rate, over a **median of 125 events/run**
+  (not seven) among the runs the audit keeps, N ∈ {1, 9, 12} with 15 replicates each
+  (`docs/results/transport_rt/`), resolves what E1 could not: Kafka ≈ **0.54 ms** vs Redis ≈
+  **0.11 ms** — a Hodges–Lehmann shift of **0.41 ms** (0.408 / 0.416 / 0.417 at N = 1 / 9 / 12,
+  audit-gated; 90 % percentile-bootstrap interval 0.389–0.419 ms at N = 1). The two systems
+  are **equivalent within 1 ms** at every N under all three estimators (Welch, bootstrap, HL;
+  Welch TOST *p* < 10⁻²⁶ at each) **yet cleanly distinguishable** — Redis's in-memory `XADD` is reproducibly ~0.41 ms faster per
   operation, and the shift is flat across concurrency, so neither degrades. About **0.07 ms** of
   that gap is the H3 asymmetric acknowledgement stamp (the instrument, not the broker), leaving a
   true broker-transport difference near **0.34 ms**. This refines E1 rather than contradicting it,
@@ -234,7 +235,22 @@ python scripts/clock_integrity.py --runs-dir runs --run-glob 'concurrency_n*' \
 The **powered transport replication** (Table `tab:transport` in the paper) is the same harness at
 the same verified rate, run at N ∈ {1, 9, 12} with 15 replicates and matched over the full match
 window (a median of 127 events per run, not the seven-event opening burst the 600 s E1 join kept);
-its aggregated output is committed under `docs/results/transport_rt/`.
+its aggregated output is committed under `docs/results/transport_rt/`. The audit-gated
+equivalence tests are `equivalence_tests.py` over the gated by-run, on the transport proxy at a
+1 ms margin and on the end-to-end latency at the 40 ms (one-frame) margin fixed on 21 July:
+
+```bash
+python scripts/powered_gate_sensitivity.py --corpus docs/results/transport_rt \
+    --index reproducibility/runs_index_cloud.csv
+python scripts/equivalence_tests.py \
+    --by-run docs/results/transport_rt/transport_realtime_by_run_gated.csv \
+    --value-col transport_p50 --margin 1 --label transport_realtime_gated \
+    --out docs/results/transport_rt
+python scripts/equivalence_tests.py \
+    --by-run docs/results/transport_rt/transport_realtime_by_run_gated.csv \
+    --value-col tti_p50 --margin 40 --label tti_realtime_gated \
+    --out docs/results/transport_rt
+```
 
 ### 5. Recompute the paper's tables and figures (no broker needed)
 

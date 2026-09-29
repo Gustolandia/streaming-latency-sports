@@ -715,7 +715,7 @@ class TestTheShippedFiguresProbeSomething:
     #: it. A count of zero against one of these means the check cannot see a rule that is on
     #: the page. Keep this list honest: it is checked against the figures, not against itself.
     RULES = {
-        "deletion": "the 100% retention ceiling",
+        "deletion_phases": "the 100% retention ceiling of panel (b)",
         "spectrum": "the 1 ms tick rule",
         "grid": "the y = x continuum diagonal",
         "mechanism": "the manipulated/observed rule",
@@ -726,7 +726,7 @@ class TestTheShippedFiguresProbeSomething:
 
     def _built(self, name, out):
         import make_result_figures as mrf
-        return {"deletion": mrf.build_deletion, "spectrum": mrf.build_spectrum,
+        return {"deletion_phases": mrf.build_deletion_phases, "spectrum": mrf.build_spectrum,
                 "grid": mrf.build_grid, "mechanism": mrf.build_mechanism,
                 "ttrue": mrf.build_ttrue}[name](out)
 
@@ -749,9 +749,9 @@ class TestTheShippedFiguresProbeSomething:
     #: scatter marker to clip and a figure with no opaque label patch has no spine to erase,
     #: so a zero on those is the check correctly finding nothing to look at.
     WITNESS = {
-        "struck": ("deletion", "every figure carries tick labels and a legend"),
-        "overlapping": ("deletion", "eighteen labels give a hundred and twenty pairs"),
-        "clipped": ("deletion", "seventy-five scatter markers"),
+        "struck": ("deletion_phases", "every figure carries tick labels and a legend"),
+        "overlapping": ("deletion_phases", "two panels of labels give hundreds of pairs"),
+        "clipped": ("deletion_phases", "seventy-five scatter markers in panel (b)"),
         "erased": ("mechanism", "the factor column sits on white patches"),
     }
 
@@ -770,7 +770,7 @@ class TestEveryShippedFigure:
 
     def test_result_figures_build_without_a_collision(self, tmp_path):
         import make_result_figures as mrf
-        for build in (mrf.build_deletion, mrf.build_spectrum, mrf.build_grid,
+        for build in (mrf.build_deletion_phases, mrf.build_spectrum, mrf.build_grid,
                       mrf.build_mechanism, mrf.build_ttrue, mrf.build_payload):
             build(tmp_path)
 

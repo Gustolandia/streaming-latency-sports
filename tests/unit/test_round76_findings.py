@@ -73,6 +73,19 @@ def _s169(supplement):
     return " ".join(supplement[i:supplement.index("S17. The 1970 counter note")].split())
 
 
+def _section_iii_d(paper):
+    """Section III-D, "What it costs, and the repair": v4's Section V-D, flattened."""
+    i = paper.index(BS + "label{sec:cost}")
+    return " ".join(paper[i:paper.index(BS + "section{", i)].split())
+
+
+def _rendered_s169(supplement_text):
+    """S16.9's pages of the rendered supplement: from its heading to S16.10's, the last
+    occurrence of each so the table of contents is skipped."""
+    return supplement_text[supplement_text.rindex("S16.9. The displacement recovery"):
+                           supplement_text.rindex("S16.10. How late")]
+
+
 def _rendered(name):
     pdf = REPO / ("%s.pdf" % name)
     if not pdf.is_file():
@@ -108,15 +121,24 @@ class TestR1EveryStatedQuantityCarriesItsUncertainty:
         flo, fhi = (float(v) for v in ledger["recoveryFailExactCI"].split("$--$"))
         assert max(plo, flo) < min(phi, fhi), "the intervals no longer overlap"
 
-    def test_the_main_text_prints_the_bracket(self, paper):
-        i = paper.index("The displacement can be recovered rather than discarded")
-        vd = " ".join(paper[i:i + 1400].split())
+    def test_the_main_text_prints_the_bracket(self, paper, supplement):
+        """v5 (28 Sep): the shift left the article for S16.9 with the rest of V-D's statistics,
+        one sentence of result kept in Section III-D (editorial review, Section 5), so the
+        bracket is pinned where the shift is printed now. The rule is held in both documents:
+        wherever the shift is printed, its interval sits beside it and names its method and
+        level, so the shift cannot come back to the article bare."""
         # Round 77 (W2) added the method and level inside the bracket, because every other
         # bracket in the main text is a Wilson or a Katz interval and a reader would assume one.
-        assert (BS + "recoveryShift$ points [95" + BS + "% bootstrap: $" + BS
-                + "recoveryShiftCI$]") in vd, (
+        assert (BS + "recoveryShift$ points ($95" + BS + "%$ percentile bootstrap: $" + BS
+                + "recoveryShiftCI$)") in _s169(supplement), (
             "the shift's interval must sit beside the shift, as Section VIII-A's does, and say "
             "what kind of interval it is")
+        for doc in (paper, supplement):
+            text = " ".join(doc.split())
+            for m in re.finditer(re.escape(BS) + r"recoveryShift(?![A-Za-z])", text):
+                after = text[m.end():m.end() + 80]
+                assert ("bootstrap: $" + BS + "recoveryShiftCI$" in after
+                        and "95" + BS + "%" in after), text[max(0, m.start() - 60):m.end() + 80]
 
     def test_the_supplement_table_carries_the_intervals(self, supplement):
         section = _s169(supplement)
@@ -165,15 +187,18 @@ class TestW1TheMediansCross:
             exact = round(float(ledger["recovery%sExact" % side]) / 100.0 * total)
             assert n == total - exact, "%s: %d != %d - %d" % (side, n, total, exact)
 
-    def test_the_main_text_states_it(self, paper):
-        i = paper.index("The displacement can be recovered rather than discarded")
-        vd = " ".join(paper[i:i + 1400].split())
+    def test_the_main_text_states_it(self, paper, supplement):
+        """v5 (28 Sep): the non-zero shift left Section V-D with the rest of its statistics
+        (editorial review, Section 5) and is stated in S16.9, as "no shift can be detected";
+        the article keeps neither the shift nor a crossing."""
         # Round 77 (R1) withdrew the crossing this test pinned: the shift between the two
         # non-zero populations is 0.0, so "crosses it" read a reversal into no shift at
         # all. The main text now states the shift; the medians stay in S16.9 as description.
         # Round 78 (R1): and states it as undetectable, not as absent.
-        assert "no shift is detectable" in vd and "crosses it" not in vd
-        assert BS + "recoveryNonzeroShift" in vd
+        s = _s169(supplement)
+        assert "no shift can be detected" in s and "crosses it" not in s
+        assert BS + "recoveryNonzeroShift$" in s
+        assert "crosses it" not in _section_iii_d(paper)
 
     def test_the_supplement_states_it_with_both_denominators(self, supplement):
         section = _s169(supplement)
@@ -186,8 +211,8 @@ class TestW1TheMediansCross:
 class TestW2NeitherDocumentImpliesTheRejectedNeverRecoverExactly:
 
     def test_the_main_text_no_longer_quotes_one_side_alone(self, paper):
-        i = paper.index("The displacement can be recovered rather than discarded")
-        vd = " ".join(paper[i:i + 1400].split())
+        """v5 (28 Sep): V-D is Section III-D, and the whole subsection is read."""
+        vd = _section_iii_d(paper)
         assert (BS + "recoveryPassExact\\%$ of the passing conditions") not in vd
         assert "recover the delivery exactly" not in vd, (
             "the one-sided clause is what invited the wrong reading")
@@ -198,12 +223,15 @@ class TestW2NeitherDocumentImpliesTheRejectedNeverRecoverExactly:
         assert "The rejected conditions recover exactly as well" in section
 
     def test_the_defect_that_prompted_this_is_caught(self, paper):
-        """Mutation: put the one-sided clause back and the gate must fire."""
+        """Mutation: put the one-sided clause back and the gate must fire.
+
+        v5 (28 Sep): the clause it replaced is gone from the article, so the one-sided clause
+        is put back beside the sentence Section III-D kept, at "cannot tell apart"."""
         bad, n = re.subn(
-            r"and without it\s+no shift is\s+detectable,[^(]*",
-            "where " + BS + "recoveryPassExact" + r"\\% of the passing conditions "
-            "recover the delivery exactly", paper)
-        assert n == 1, "Section V-D has been reworded; retarget this mutation"
+            r"cannot\s+(?:be\s+told|tell)\s+apart",
+            lambda m: m.group(0) + ", and $" + BS + "recoveryPassExact" + BS + "%$ of the "
+            "passing conditions recover the delivery exactly", paper)
+        assert n == 1, "Section III-D has been reworded; retarget this mutation"
         with pytest.raises(AssertionError):
             self.test_the_main_text_no_longer_quotes_one_side_alone(bad)
 
@@ -262,11 +290,18 @@ class TestW3AndW4TheTwoLiteratureItems:
             assert ("@misc{%s," % key) in bib, key
 
     def test_the_main_text_reference_count_did_not_move(self):
+        """v5 (28 Sep): the rewrite took the article from 45 references to 42, each of the three
+        leaving with text an outside editor asked to be cut or moved (editorial review,
+        Sections 4 and 5): SPECjbb with the contributions' list of precedents, Swami and
+        Chougule with the related-work disputes, and Virkar and Clauset with the statistics
+        subsection, whose estimators S24.2 now carries. The pin moves to 42, so the list still
+        cannot grow or shrink unnoticed, and the cap is asserted beside it."""
         bbl = REPO / "paper.bbl"
         if not bbl.is_file():                           # pragma: no cover - built by CI
             pytest.skip("paper.bbl absent")
         n = bbl.read_text(encoding="utf-8", errors="replace").count("\\bibitem")
-        assert n == 45, "TC caps the article at 45 references; this is %d" % n
+        assert n <= 45, "TC caps the article at 45 references; this is %d" % n
+        assert n == 42, "the article's reference count moved from v5's 42 to %d" % n
 
 
 class TestW5TheFigureLetsTheReaderCheckItsCaption:
@@ -285,17 +320,39 @@ class TestW5TheFigureLetsTheReaderCheckItsCaption:
         i = src.index("which=\"minor\"")
         assert "labelsize=8" in src[i:i + 120]
 
-    def test_the_caption_reads_the_grid_values_the_axis_draws(self, paper):
+    def test_the_caption_reads_the_grid_values_the_axis_draws(self, paper, ledger):
         """The caption used to type $1.0$ or $2.0$ while the axis showed neither. Both now
-        come from the same rows of the same file."""
-        i = paper.index("What the benchmark prints against what it kept")
-        caption = " ".join(paper[i:i + 700].split())
+        come from the same rows of the same file.
+
+        v5 (28 Sep): the scatter is panel (b) of Fig. 5, "Why a sample is deleted, and what the
+        deletion did", found by its label. Its caption no longer says "the two labeled ticks":
+        at an outside editor's request (editorial review, Section 9) the plot now prints each
+        grid column's count and value in words beside it ("67 printed 1.0 ms"), so the reader
+        checks the caption against the picture without being sent to the axis. The pin on the
+        pointer becomes a pin on those words, drawn from the data, and on the caption's two
+        values being the grid values they print."""
+        i = paper.index(BS + "label{fig:deletion}")
+        caption = " ".join(paper[paper.rindex(BS + "caption{", 0, i):i].split())
         assert BS + "ombGridMedianCells" in caption
         assert BS + "ombGridPrintedLo" in caption and BS + "ombGridPrintedHi" in caption
         assert "$1.0$ or $2.0$" not in caption
-        # "labeled", American: the first draft wrote the British form and `test_american_spelling`
-        # caught it on the full run.
-        assert "the two labeled ticks" in caption
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import make_result_figures as mrf
+        pts = mrf.retention_points()
+        fig, ax = plt.subplots()
+        try:
+            mrf.plot_deletion(ax, pts)
+            texts = [t.get_text() for t in ax.texts]
+        finally:
+            plt.close(fig)
+        grid = sorted({p[1] for p in pts if p[1] <= mrf.AT_GRID_MAX_MS})
+        assert (ledger["ombGridPrintedLo"], ledger["ombGridPrintedHi"]) == (
+            "%.1f" % grid[0], "%.1f" % grid[-1]), "the caption names values the plot does not print"
+        for g in grid:
+            words = "%d printed %.1f ms" % (sum(1 for p in pts if p[1] == g), g)
+            assert words in texts, (words, texts)
 
     def test_the_emitter_and_the_figure_share_one_definition_of_at_grid(self):
         """They did not. The emitter tested membership of the literal pair (1.0, 2.0) and the
@@ -358,11 +415,18 @@ class TestTheImageReviewFindings:
 class TestTheRenderedPageCarriesIt:
 
     def test_the_bracket_prints_in_section_v_d(self):
+        """v5 (28 Sep): the shift, its bracket and the undetectable non-zero shift print in
+        S16.9 now (editorial review, Section 5); the article prints no crossing. The extractor
+        drops the spaces around inline math, so S16.9 is matched with all spaces removed."""
         flat = " ".join(_rendered("paper").split())
-        assert "1.2 points [-1.8 to 8.3]" in flat or "points [" in flat
-        assert "no shift is detectable" in flat and "crosses it" not in flat
+        assert "crosses it" not in flat
+        tight = "".join(_rendered_s169(_rendered("supplement")).split())
+        assert "points(95%percentilebootstrap:" in tight
+        assert "noshiftcanbedetected" in tight and "crossesit" not in tight
 
     def test_the_supplement_table_prints_its_intervals(self):
+        """v5 (28 Sep): the column head names its method as well as its level, as round 79's
+        bracket rule asks of every interval."""
         flat = " ".join(_rendered("supplement").split())
-        assert "Exact (95% CI)" in flat
+        assert "Exact (Wilson 95% CI)" in flat
         assert "Kolmogorov" in flat

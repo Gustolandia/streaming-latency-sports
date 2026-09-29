@@ -280,6 +280,35 @@ class TestTheRefereeDrivenMacroGroups:
         p.write_text("n,margin,hl_shift,hl_ci90_lo,hl_ci90_hi\n", encoding="utf-8")
         assert epn.tost_macros(str(p)) == []
 
+    def test_tti_tost_macros_test_the_end_to_end_claim_over_the_same_runs(self):
+        """S13.1 states the end-to-end equivalence 'over the same runs and levels' as the
+        transport one; both files must carry the same concurrency levels for that to hold."""
+        base = SCRIPTS_DIR.parent / "docs" / "results" / "transport_rt"
+        levels = []
+        for name in ("transport_realtime_gated_tost.csv", "tti_realtime_gated_tost.csv"):
+            with open(base / name, encoding="utf-8") as fh:
+                levels.append([r["n"] for r in csv.DictReader(fh)])
+        assert levels[0] == levels[1] == ["1", "9", "12"]
+        got = dict(epn.tti_tost_macros(str(base / "tti_realtime_gated_tost.csv")))
+        assert got["ttiTostMargin"] == "40"
+        assert got["ttiTostHLRange"] == "0.682$--$0.859"
+        assert got["ttiTostCIHigh"] == "0.906"
+
+    def test_tti_tost_high_is_the_widest_estimator_anywhere(self, tmp_path):
+        p = tmp_path / "t.csv"
+        p.write_text("n,margin,hl_shift,ci90_hi,boot_ci90_hi,hl_ci90_hi\n"
+                     "1,40.0,0.5,0.6,0.7,0.65\n"
+                     "9,40.0,0.4,0.95,0.5,0.45\n", encoding="utf-8")
+        got = dict(epn.tti_tost_macros(str(p)))
+        assert got["ttiTostCIHigh"] == "0.950"
+        assert got["ttiTostHLRange"] == "0.400$--$0.500"
+
+    def test_tti_tost_macros_are_absent_when_the_artefact_is(self, tmp_path):
+        assert epn.tti_tost_macros(str(tmp_path / "nope.csv")) == []
+        p = tmp_path / "t.csv"
+        p.write_text("n,margin,hl_shift,ci90_hi,boot_ci90_hi,hl_ci90_hi\n", encoding="utf-8")
+        assert epn.tti_tost_macros(str(p)) == []
+
     @pytest.mark.parametrize("group", ["grid_macros", "retention_macros", "traced_macros"])
     def test_each_group_degrades_to_empty_when_its_artefact_is_unreadable(self, group,
                                                                           monkeypatch):
@@ -515,6 +544,20 @@ class TestTheManipulationCaptionAndItsThreshold:
                     campaigns=(("E-A5", "stamping_priority.csv"),))
                 if p["level"] in ("l75", "l88")]
         assert got["mechRhoMatch"] == "%.4f" % max(gaps)
+
+    def test_each_shown_configuration_prints_its_own_utilization(self):
+        """v5: Table II prints the achieved utilization of every priority configuration it
+        shows, read from the same pair records as the gap, so the column and the caption's
+        agreement cannot part."""
+        import priority_pairs
+        got = dict(epn.manipulation_macros())
+        for p in priority_pairs.pairs(campaigns=(("E-A5", "stamping_priority.csv"),)):
+            name = {"l75": "rtLow", "l88": "rtHigh"}[p["level"]]
+            assert got[name + "Rho"] == "%.4f" % p["rho"]
+            assert got[name + "RhoRt"] == "%.4f" % p["rho_rt"]
+        gap = max(abs(float(got[n + "Rho"]) - float(got[n + "RhoRt"]))
+                  for n in ("rtLow", "rtHigh"))
+        assert abs(gap - float(got["mechRhoMatch"])) < 1e-4
 
     def test_the_caption_claim_is_no_weaker_than_the_bound_it_replaced(self):
         """The typed caption promised 0.001. The derived value must still honour it."""
@@ -2260,3 +2303,96 @@ class TestRoundSixtyEightMacros:
     def test_the_shipped_corpus_satisfies_that_guard(self):
         m = dict(epn.retention_macros())
         assert m["ombRetentionFold"] == "279"
+
+
+class TestTheCliffReadingIsEmitted:
+    """S16.11's numbers, read from `cliff_shape.py`'s committed output instead of typed.
+
+    The editorial revision (28 Sep) found one of that paragraph's typed ranges silently
+    narrower than its sentence: "read one curve per slice, the same formula gives 4.0 to 5.2
+    for P2 and 9.8 to 12.0 for P2b" held at both of Redis's slices and Kafka's 3 ms, and not
+    at Kafka's 1.5 ms slice, which the notes of 28 Sep set aside and the paragraph did not.
+    """
+
+    def test_the_committed_reading_gives_the_printed_numbers(self):
+        m = dict(epn.cliff_macros())
+        assert (m["cliffPooledRedisFree"], m["cliffPooledRedisFitted"]) == ("1.98", "1.57")
+        assert (m["cliffPerSliceFourLo"], m["cliffPerSliceFourHi"]) == ("4.0", "5.2")
+        assert (m["cliffPerSliceTenLo"], m["cliffPerSliceTenHi"]) == ("9.8", "12.0")
+        assert m["cliffLineRedisShortFitted"] == "$1.15h - 0.61$"
+        assert m["cliffLineKafkaShortFitted"] == "$1.04h + 0.04$"
+
+    def test_the_exception_is_load_bearing(self):
+        """With Kafka's 1.5 ms slice left in, the range leaves P2's band; the sentence says so
+        because the range would otherwise be a claim about a slice it does not cover."""
+        import json
+        with open(Path(epn.CLIFF_DIR) / "cliff_summary.json", encoding="utf-8") as fh:
+            plan = json.load(fh)["width_lines"]["plan"]
+        short = [plan["kafka, 1.5"][v]["ratio_250"] for v in ("free", "fitted")]
+        assert min(short) > 5.5, "Kafka's 1.5 ms slice would sit outside P2's 2.5-5.5 band"
+        assert float(dict(epn.cliff_macros())["cliffPerSliceFourHi"]) <= 5.5
+
+    def test_a_missing_reading_emits_nothing(self, tmp_path):
+        assert epn.cliff_macros(str(tmp_path)) == []
+        (tmp_path / "cliff_judged.csv").write_text("prediction,block,part,view,free,fitted\n",
+                                                   encoding="utf-8")
+        assert epn.cliff_macros(str(tmp_path)) == [], "both files or nothing"
+
+    def test_a_width_line_prints_its_sign(self):
+        assert epn._width_line({"intercept": -0.2534, "slope": 0.9189}) == "$0.92h - 0.25$"
+        assert epn._width_line({"intercept": 1.6171, "slope": 0.8748}) == "$0.87h + 1.62$"
+
+    def test_the_889_arm_spread_is_emitted_not_typed(self):
+        assert dict(epn.arm_macros())["armEightEightyNineSpread"] == "1.70"
+
+
+class TestTheReachAuditIsCounted:
+    """The registered audit of published results (freezes/29), counted from its coding.
+
+    The registration fixed the signature before any report was read: a printed end-to-end
+    median of exactly 1 ms is the primary outcome, a p99 of exactly 1 ms beside it the strong
+    one. What is tested here is the rule, on a coding small enough to count by hand, and then
+    that the committed coding gives the counts the paper prints.
+    """
+
+    FIELDS = ("row_id", "registered_source", "report_url", "report_date", "retrieved", "tool",
+              "broker", "configuration", "e2e_p50_ms", "e2e_p99_ms", "other_e2e_percentiles",
+              "quote", "included", "reason", "notes")
+
+    def write(self, tmp_path, rows):
+        path = tmp_path / "configurations.csv"
+        with open(path, "w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=self.FIELDS)
+            w.writeheader()
+            for r in rows:
+                w.writerow(dict({k: "" for k in self.FIELDS}, **r))
+        return str(path)
+
+    def test_the_rule_on_a_coding_counted_by_hand(self, tmp_path):
+        path = self.write(tmp_path, [
+            # report a: one primary (1.0), one strong (1 and 1), one finer (0.48)
+            dict(report_url="a", included="yes", e2e_p50_ms="1.0", e2e_p99_ms="2.0"),
+            dict(report_url="a", included="yes", e2e_p50_ms="1", e2e_p99_ms="1.00"),
+            dict(report_url="a", included="yes", e2e_p50_ms="0.48", e2e_p99_ms="1.006"),
+            # report b: printed but not a single number, and no median at all
+            dict(report_url="b", included="yes", e2e_p50_ms="~650", e2e_p99_ms="900"),
+            dict(report_url="b", included="yes", e2e_p50_ms="", e2e_p99_ms="5"),
+            # excluded rows never count, whatever they print
+            dict(report_url="c", included="no", e2e_p50_ms="1.0", e2e_p99_ms="1.0"),
+        ])
+        m = dict(epn.reach_macros(path))
+        assert (m["reachReports"], m["reachConfigs"], m["reachMedianConfigs"]) == ("2", "5", "4")
+        assert (m["reachPrimaryConfigs"], m["reachPrimaryReports"]) == ("2", "1")
+        assert m["reachStrongConfigs"] == "1"
+        assert m["reachFinerReports"] == "1"
+
+    def test_a_missing_coding_emits_nothing(self, tmp_path):
+        assert epn.reach_macros(str(tmp_path / "absent.csv")) == []
+
+    def test_the_committed_coding_gives_the_printed_counts(self):
+        m = dict(epn.reach_macros())
+        assert (m["reachReports"], m["reachConfigs"]) == ("43", "1{,}100")
+        assert m["reachMedianConfigs"] == "868"
+        assert (m["reachPrimaryConfigs"], m["reachPrimaryReports"]) == ("8", "2")
+        assert m["reachStrongConfigs"] == "0"
+        assert m["reachFinerReports"] == "14"

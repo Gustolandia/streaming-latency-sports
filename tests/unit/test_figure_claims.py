@@ -32,11 +32,16 @@ MACROS = dict(re.findall(
     r"\\newcommand\{\\(\w+)\}\{(.*?)\}\s*$",
     (ROOT / "docs" / "generated" / "paper_numbers.tex").read_text(encoding="utf-8"), re.M))
 
-FIGURE_STEMS = ("pipeline_schematic", "measurement_model", "deletion", "payload_flip",
+FIGURE_STEMS = ("pipeline_schematic", "measurement_model", "deletion_phases", "payload_flip",
                 "grid_membership", "mechanism_forest", "stall_spectrum", "ttrue_law",
                 # Round 54: the exposure table drawn as a curve, in the supplement beside
                 # the table, because the main text is at the journal's page limit.
-                "exposure_curve")
+                "exposure_curve",
+                # v5 (28 Sep), the editorial revision: the paper opens on the two failures
+                # drawn side by side, carries the exposure curve at column width, and draws
+                # the deletion's mechanism beside its consequence. The single-panel deletion
+                # scatter is panel (b) of the last and was retired with its builder.
+                "two_ways", "exposure_curve_column")
 
 
 def caption_of(label):

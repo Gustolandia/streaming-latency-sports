@@ -241,6 +241,44 @@ def plot_strategies(ax, stats):
         loc="lower left", frameon=False, ncol=1)
 
 
+def build_two_ways(out_dir=OUT_DIR):
+    """Panels (a) and (b) alone, side by side: the paper's first figure since v5.
+
+    An outside editor's reading (28 Sep) asked for one exhibit on page 1 that shows both
+    failures on one population, and pointed at this figure's first two panels: the red bars
+    below zero are the first failure and the shaded cut is the second. Panel (c), the five
+    dispositions, stays in the supplement's three-panel version. The titles are shorter here
+    because each panel has half the width.
+    """
+    figure_style.apply()
+    series, extra = read_hist()
+    stats = read_stats()
+    fig = plt.figure(figsize=(7.16, 2.35))
+    gs = fig.add_gridspec(1, 2, width_ratios=[1.3, 1.0], wspace=0.28)
+    left = fig.add_subplot(gs[0, 0])
+    right = fig.add_subplot(gs[0, 1])
+    plot_measured(left, series, extra)
+    plot_grid(right, stats)
+    # Headroom above the data for the notes each panel carries: at half the width they would
+    # otherwise sit on the orange curve in (a) and on the 0 ms bar in (b).
+    left.set_ylim(1, 3e6)
+    right.set_ylim(0, 1.65 * max(p.get_height() for p in right.patches))
+    left.set_title("(a) Nanosecond timestamps, one clock", fontsize=8, loc="left")
+    right.set_title("(b) The same spans, millisecond timestamps", fontsize=8, loc="left")
+    Path(out_dir).mkdir(parents=True, exist_ok=True)
+    # The stem is written out whole: the compliance gate finds a figure's generator by its
+    # quoted name, and a name assembled from parts is a figure no script visibly builds.
+    stem = "two_ways"
+    made = []
+    for ext in ("pdf", "png"):
+        path = os.path.join(out_dir, "%s.%s" % (stem, ext))
+        fig.savefig(path, bbox_inches="tight", pad_inches=0.02,
+                    dpi=200 if ext == "png" else None)
+        made.append(path)
+    plt.close(fig)
+    return made
+
+
 def build(out_dir=OUT_DIR, talk=False):
     figure_style.apply()
     series, extra = read_hist()
@@ -284,9 +322,12 @@ def build(out_dir=OUT_DIR, talk=False):
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Draw the deletion histogram")
     ap.add_argument("--talk", action="store_true", help="slide proportions, PNG only")
+    ap.add_argument("--two", action="store_true",
+                    help="panels (a) and (b) only, as the paper's Fig. 1 (two_ways)")
     ap.add_argument("--out-dir", default=OUT_DIR)
     args = ap.parse_args(argv)
-    for path in build(args.out_dir, talk=args.talk):
+    made = build_two_ways(args.out_dir) if args.two else build(args.out_dir, talk=args.talk)
+    for path in made:
         print("wrote %s" % path)
     return 0
 

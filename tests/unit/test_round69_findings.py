@@ -50,16 +50,32 @@ class TestR1TheDitherRuleDoesNotClaimTheWhy:
             "cycle' -- which is the why. The rule may not claim it back.")
 
     def test_the_rule_says_what_the_paper_actually_adds(self, paper):
-        i = paper.index("Dither the send instant")
-        rule = " ".join(paper[i:i + 900].split())
-        assert "already names the coherence it breaks" in rule
-        assert "deleted rather than averaged" in rule, (
-            "the contribution is the consequence under deletion, which is III-C's own wording")
+        """v5 (28 Sep): the bold rule is a row of Table IV now, and its prose split: Section VI
+        concedes the dither as standing advice under the IPPM citations and claims only the
+        conjunction, and Section IV-C states what the paper adds to the 1970 note, the sign of
+        the operation. The two v4 phrases give way to those, one pin for each."""
+        flat = " ".join(paper.split())
+        assert "Dither the send instant" in flat, "the dither check has left Table IV"
+        i = flat.index("Randomizing probe times against periodic phenomena is standing advice")
+        passage = flat[i:i + 400]
+        assert "rfc2330" in passage and "rfc3432" in passage, \
+            "the dither's precedents are no longer cited where it is conceded"
+        assert "What we add is the conjunction" in passage, (
+            "Section VI claims something other than the conjunction beside the dither's "
+            "precedents; the why is Hewlett-Packard's")
+        j = flat.index("What is new is the sign of the operation")
+        assert "throws away the quantity a 1970 counter measured with" in flat[j:j + 250], (
+            "the contribution is the consequence under deletion, which is IV-C's own wording")
 
     def test_the_concession_it_defers_to_is_still_there(self, paper):
-        """If III-C ever stops conceding, this rule's new wording would be the overclaim."""
+        """If III-C ever stops conceding, this rule's new wording would be the overclaim.
+
+        v5 (28 Sep): the concession is in Section IV-C and opens "The arithmetic is not
+        ours", which concedes at least as much as v4's "we derived it, then found it in a
+        counter manual"; the order of discovery is kept in S17 ("We arrived at it
+        independently")."""
         assert "the symptom and the cure" in paper
-        assert "we derived it, then found it in a counter manual" in paper
+        assert "The arithmetic is not ours" in paper
 
     def test_the_supplement_carries_the_patent_beside_the_note(self, supplement):
         i = supplement.index("S17. The 1970 counter note")
@@ -145,29 +161,54 @@ class TestR2TheTwoThresholdsAreDifferentThings:
             not in csv_text
 
     def test_the_main_text_claims_the_class_and_not_the_design(self, paper):
+        """v5 (28 Sep): Section V says "We read" where v4 said "We audited", and "one of them
+        reaches that class at the other threshold" became the editor's plainer statement
+        (section 7, example 14): Pulsar admits zero, drops negatives and keeps the samples the
+        benchmark deletes. The pins follow those words and Table III, which prints both
+        comparisons in one class."""
         assert "reaching the same design" not in paper
-        i = paper.index("We audited")
+        i = paper.index("We read")
         passage = " ".join(paper[i:i + 1100].split())
-        assert "the other" in passage and "threshold" in passage
+        assert r"\ref{tab:tools}" in passage, "the class is shown in the table the audit fills"
+        assert "drops negatives" in passage and \
+            "keeps the samples the benchmark deletes" in passage, \
+            "say that the other threshold keeps what the benchmark deletes"
         assert "admits zero" in passage, "say what the threshold does"
 
     def test_pulsar_is_used_as_the_contrast_the_sign_channel_predicts(self, paper):
-        i = paper.index("We audited")
+        """v5 (28 Sep): "quantum" is "timestamp resolution" throughout v5 (editor, section 7),
+        and the pile-up is now "visibly at zero"."""
+        i = paper.index("We read")
         passage = " ".join(paper[i:i + 1100].split())
-        assert "pile up on the quantum" in passage, (
-            "a visible pile-up is what VI-C predicts when only the inversions are dropped")
+        assert "pile up visibly at zero" in passage, (
+            "a visible pile-up is what IV-D predicts when only the inversions are dropped")
 
     def test_the_rendered_section_reads_the_same(self):
+        """v5 (28 Sep): the pile-up phrase follows the source, as above."""
         flat = " ".join(_rendered("paper").split())
         assert "reaching the same design" not in flat
-        assert "admits zero" in flat and "pile up on the quantum" in flat
+        assert "admits zero" in flat and "pile up visibly at zero" in flat
 
 
 class TestW2TheAuditSaysWhatGrainItIsExactTo:
 
     def test_threats_names_the_threshold_grain(self, paper):
-        i = paper.index("are readings of source rather than measured deployments")
-        assert "exact to the threshold" in paper[i:i + 260]
+        """v5 (28 Sep): Section VIII says the tools "were read at source, not deployed", and
+        "exact to the threshold rather than to the behavior a deployment would show" went in
+        the cut of antitheses (editor, section 7.1). Both halves are pinned where they now are:
+        the concession in Section VIII, and the grain in Table III, whose caption records what
+        each tool does to a value at or below zero and whose cells print the comparison."""
+        flat = " ".join(paper.split())
+        assert "were read at source, not deployed" in flat, \
+            "Threats no longer concedes that the audit read source and deployed nothing"
+        j = paper.index("label{tab:tools}")
+        caption = " ".join(paper[paper.rindex("caption{", 0, j):j].split())
+        assert "what happens to a value at or below zero" in caption, (
+            "Table III's caption no longer says the audit is exact to what a tool does at the "
+            "threshold")
+        table = paper[j:paper.index("end{table", j)]
+        assert "docs/generated/registry_table" in table, \
+            "Table III no longer prints the generated registry, with its comparisons"
 
 
 class TestW1TheGeometryFigureStaysInTheSupplement:
@@ -192,8 +233,14 @@ class TestW1TheGeometryFigureStaysInTheSupplement:
         assert "S17" in paper, "the main text reaches it by pointer"
 
     def test_the_main_text_still_carries_the_claim_the_figure_draws(self, paper):
-        i = paper.index("What moves retention is where the producer")
-        passage = " ".join(paper[i:i + 420].split())
+        """v5 (28 Sep): the sentence reads "What moves retention is not the path but where the
+        producer's send instants fall against the grid"; the anchor follows it and the checks
+        are unchanged. v5 also took the editor's advice (section 9) on half of this class's
+        decision: panel (a), the four phases of one tick, is redrawn as Fig. 5(a) from the same
+        plotting function, while the two-panel `quantum_geometry` figure stays in S17."""
+        flat = " ".join(paper.split())
+        i = flat.index("What moves retention is not the path but where the producer")
+        passage = flat[i:i + 420]
         assert "crosses a grid instant" in passage
         assert "T_{" in passage or "tau" in passage
 
@@ -214,10 +261,13 @@ class TestW3RecordedNotRequested:
     Kept, and pinned here so a copy editor's query has an answer and round 70 does not
     rediscover it as a defect."""
 
-    def test_the_fork_clause_is_deliberate(self, paper):
+    def test_the_fork_clause_is_deliberate(self, supplement):
+        """v5 (28 Sep): the fork sentence left the paper with the fork count (editor, section
+        5) and opens Supplement S25's paragraph on forks, clause intact; it is pinned there."""
         # Round 80 bought a line back as "readable public forks"; the clause itself is untouched.
-        i = paper.index("readable public forks")
-        clause = " ".join(paper[i:i + 220].split())
+        flat = " ".join(supplement.split())
+        i = flat.index("readable public forks")
+        clause = flat[i:i + 220]
         assert "rather than how many chose it" in clause, (
             "the contrast is the point: the survey measures inheritance, not adoption")
 

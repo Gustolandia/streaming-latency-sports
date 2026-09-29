@@ -220,14 +220,19 @@ class TestTheModelDoesNotAssertWhatTheTableRefutes:
             "at a single rho; write p and name what moves it")
 
     def test_the_refutation_claim_is_still_made(self, paper):
-        """If Section V-C ever stops making it, this guard should be retired knowingly."""
-        assert re.search(r"refutes every account in which the\s+negative-span rate is a "
-                         r"function of utilization", paper), (
+        """If Section V-C ever stops making it, this guard should be retired knowingly.
+
+        v5 (28 Sep) narrowed "every account in which the negative-span rate is a function of
+        utilization" to "any account in which utilization alone sets the rate": an outside
+        editor read "every account" as a dare, and the narrower form is the one the geometry
+        rows prove. The refutation is the same one; so is the guard's reason to exist."""
+        assert re.search(r"refutes any account in which utilization alone\s+sets the rate",
+                         paper), (
             "Section V-C no longer refutes utilization-only accounts; re-examine whether "
             "Equation 6 may carry p(rho) again")
 
     def test_the_main_text_says_why_p_is_not_a_function_of_rho(self, paper):
         """The clause that keeps a reader from thinking the paper contradicts itself."""
-        assert re.search(r"\$p\$ and not \$p\(\\rho\)\$|not \$p\(\\rho\)\$", paper), (
+        assert re.search(r"\$p\$ and not\s+\$p\(\\rho\)\$|not\s+\$p\(\\rho\)\$", paper), (
             "Section V-B must say why p is written bare, or a reader who takes Equation 6 "
             "literally reads Table II as refuting it")

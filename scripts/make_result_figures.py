@@ -193,10 +193,17 @@ def plot_deletion(ax, pts, quantum_ms=AT_GRID_MAX_MS):
     # dozen. The caption's count could not be checked from the picture, which is the defect
     # B15 exists to prevent. The markers go translucent, so overlap shows as depth, and each
     # grid column prints its own count from the data (below), totalling the legend's.
+    # v5 (28 Sep): the legend says what the grid values are, so "67" and "4" above the two
+    # columns decode without the caption -- an outside editor's reading could not tell what they
+    # counted. Derived per grid value, like the ticks and the counts.
+    # The per-value counts moved onto the plot itself (below), where the editor asked for them;
+    # the legend keeps the marker's meaning and the total.
+    grid_label = "%s ms (%d)" % (" or ".join("%g" % g for g in sorted(set(med[at_grid].tolist()))),
+                                 int(at_grid.sum()))
     ax.scatter(med[at_grid], ret[at_grid], s=16, color=KEPT, edgecolors="none", alpha=0.45,
-               zorder=3, label="printed at the grid (%d)" % at_grid.sum())
+               zorder=3, label="printed %s" % grid_label)
     ax.scatter(above_x, ret[~at_grid], s=18, facecolors="none", edgecolors=GREY,
-               linewidths=0.9, zorder=3, label="printed above it (%d)" % (~at_grid).sum())
+               linewidths=0.9, zorder=3, label="printed above %g ms, by payload (%d)" % (quantum_ms, (~at_grid).sum()))
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.set_xlabel("median latency the benchmark printed (ms)", fontsize=8)
@@ -233,10 +240,13 @@ def plot_deletion(ax, pts, quantum_ms=AT_GRID_MAX_MS):
 
     # Each grid column's count, just above its topmost marker, from the same data the legend
     # totals. Derived per grid value, like the ticks, so a third value would get a third count.
+    # v5 (28 Sep): the count says what it counts, "67 printed 1.0 ms", because an outside
+    # editor could not decode a bare "67" without the caption. Set off to the right of its
+    # column so the two labels cannot sit on each other.
     for g in grid_values:
         column = ret[at_grid][med[at_grid] == g]
-        ax.text(g, column.max() * 1.22, "%d" % len(column), fontsize=8, color=KEPT,
-                ha="center", va="bottom")
+        ax.text(g * 1.1, column.max() * 1.22, "%d printed %.1f ms" % (len(column), g),
+                fontsize=8, color=KEPT, ha="left", va="bottom")
 
     lo, hi = ret[at_grid].min(), ret[at_grid].max()
     xs = med[at_grid].min()
@@ -578,12 +588,27 @@ def _save(fig, out_dir, stem):
     return path
 
 
-def build_deletion(out_dir):
-    figure_style.apply()   # in force when the artists are made, not merely at import
-    fig, ax = plt.subplots(figsize=(3.50, 2.15))
-    plot_deletion(ax, retention_points())
+def build_deletion_phases(out_dir):
+    """The paper's deletion figure since v5: why a sample is deleted, beside what it did.
+
+    An outside editor's reading (28 Sep) found the paper's deletion scatter unable to show the
+    mechanism and the supplement's four-phase drawing unable to show the consequence, and asked
+    for the two side by side: (a) one delivery at four phases of one tick, three of them
+    deleted; (b) every captured setting's retention against the median it printed. Panel (b)
+    is the old single-panel scatter, whose own builder was retired with it: a figure built and
+    included nowhere is the dangling case the manuscript gates fail on.
+    """
+    import make_paper_figures
+    figure_style.apply()
+    fig = plt.figure(figsize=(7.16, 2.25))
+    gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 1.15], wspace=0.25)
+    left = fig.add_subplot(gs[0, 0])
+    right = fig.add_subplot(gs[0, 1])
+    make_paper_figures.plot_phases(left)
+    plot_deletion(right, retention_points())
+    right.set_title("(b) What the benchmark printed, and what it kept", fontsize=8, loc="left")
     fig.tight_layout()
-    return _save(fig, out_dir, "deletion")
+    return _save(fig, out_dir, "deletion_phases")
 
 
 # --- the exposure curve -------------------------------------------------------------------
@@ -667,6 +692,24 @@ def build_exposure(out_dir):
     plot_exposure(ax, lags)
     fig.tight_layout()
     return _save(fig, out_dir, "exposure_curve")
+
+
+def build_exposure_column(out_dir):
+    """The exposure curve at the paper's column width (v5, 28 Sep).
+
+    An outside editor's reading asked for it in the main text: it is the one exhibit a
+    practitioner uses to locate their own path, and Section III-D had described it in words.
+    Drawn at the width it prints at, like every figure here, never scaled on inclusion.
+    """
+    figure_style.apply()
+    import emit_paper_numbers
+    lags = emit_paper_numbers._exposure_lags()
+    if lags is None:                      # pragma: no cover - the corpus ships with the repo
+        raise SystemExit("span_symmetry.csv is missing; the exposure curve has no source")
+    fig, ax = plt.subplots(figsize=(3.50, 2.30))
+    plot_exposure(ax, lags)
+    fig.tight_layout()
+    return _save(fig, out_dir, "exposure_curve_column")
 
 
 def build_spectrum(out_dir, slice_ms=None):
@@ -1162,14 +1205,16 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Build the result figures")
     ap.add_argument("--out", default=os.path.join("docs", "results", "figures"))
     ap.add_argument("--only",
-                    choices=("deletion", "spectrum", "grid", "mechanism", "ttrue", "payload",
-                             "exposure", "recovery"),
+                    choices=("deletion_phases", "spectrum", "grid", "mechanism", "ttrue",
+                             "payload", "exposure", "exposure_column", "recovery"),
                     default=None)
     args = ap.parse_args(argv)
 
-    builders = {"deletion": build_deletion, "spectrum": build_spectrum, "grid": build_grid,
+    builders = {"deletion_phases": build_deletion_phases,
+                "spectrum": build_spectrum, "grid": build_grid,
                 "mechanism": build_mechanism, "ttrue": build_ttrue,
                 "payload": build_payload, "exposure": build_exposure,
+                "exposure_column": build_exposure_column,
                 "priority": build_priority_ladder, "recovery": build_recovery}
     todo = [args.only] if args.only else list(builders)
     for name in todo:

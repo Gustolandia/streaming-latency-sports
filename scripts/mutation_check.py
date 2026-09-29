@@ -50,10 +50,15 @@ import sys
 #      was installed to catch. Mutating \GeomOrigFactor to \GeomReplFactor is a better test
 #      anyway: it is the swap a careless edit actually makes, and it survives recomputation.
 MUTATIONS = [
-    # Round 72's required item, and the one anchor that was still live when the list was
-    # rebuilt -- because it had just been re-anchored to fix the defect it failed to catch.
+    # v5 (28 Sep 2026): the paper was rewritten from an outside editor's review and seven of the
+    # ten anchors below died with the sentences they sat in. Each claim is re-anchored on the
+    # sentence that now carries it; the claims themselves are the same ten.
+    #
+    # Round 72's required item: the replayed matches are not the corpus. v5 names the replayed
+    # count beside the corpus in II-B, so the conflation is a count typed where the macro pair was.
     ("re-conflate the two corpora",
-     r"We characterize the full $\corpusMatches$-match corpus", "We replay $3{,}315$ matches"),
+     r"\replayedMatchesWord{} of its" + "\n" + r"$\corpusMatches$ matches, replayed in order",
+     "$3{,}315$ matches, replayed in order"),
     # Round 72's other required item: the delivery and the transport proxy are four hundred
     # microseconds apart and Section II-A exists to keep them apart.
     ("print the proxy's range where the delivery's belongs",
@@ -63,33 +68,36 @@ MUTATIONS = [
     # the schedule was measured.
     ("type the pacer jitter instead of emitting it",
      r"$\pacerJitterLo$--$\pacerJitterHi\,\mu$s", r"$67$--$69\,\mu$s"),
-    # The two geometry factors are the same shape and one line apart, which is exactly the
-    # swap a hurried edit makes and exactly the swap a reader cannot see.
+    # The two geometry factors are the same shape and one row apart, which is exactly the
+    # swap a hurried edit makes and exactly the swap a reader cannot see. v5's Table II prints
+    # the factor alone; the z values went to S12 with the Katz intervals.
     ("swap the two geometry factors in the table",
-     r"$\GeomOrigFactor\times$ ($\GeomOrigZ$)",
-     r"$\GeomReplFactor\times$ ($\GeomReplZ$)"),
+     r"\multirow{2}{*}{$\GeomOrigFactor\times$}",
+     r"\multirow{2}{*}{$\GeomReplFactor\times$}"),
     # Table I's margin: "zero negatives" is a fact about a threshold and the floor is the
     # fact about distance from it. Round 70 bought that clause; this keeps it bought.
     ("drop Table I's margin and leave only the zero",
      r"smallest run minimum $\spanAckLagFloorUs\,\mu$s clear of zero",
      "smallest run minimum clear of zero"),
     ("understate the priority range",
-     r"the negative rate $\rtFactorLow$--$\rtFactorHigh\times$ at unchanged utilization",
-     r"the negative rate $\rtFactorLow\times$ at unchanged utilization"),
+     r"the rate $\rtFactorLow$--$\rtFactorHigh\times$ at unchanged utilization",
+     r"the rate $\rtFactorLow\times$ at unchanged utilization"),
     ("drop the mitigation's floor caveat",
-     "the floor is not zero, so the check stays", "the floor is zero, so the check stays"),
+     "The floor is not zero, so the check stays", "The floor is zero, so the check stays"),
     ("break a cross-reference",
-     r"Figure~\ref{fig:spectrum} is the histogram", r"Figure~\ref{fig:nosuch} is the histogram"),
+     r"(Fig.~\ref{fig:spectrum})", r"(Fig.~\ref{fig:nosuch})"),
     # The tracer's three ratios bracket the observed rate rather than under-predicting it,
     # which is what makes the interpreter-lock rival bounded rather than waved away.
     ("type the traced ratios instead of emitting them",
-     r"$\tracedRatios$, no consistent sign", "$0.78$, $1.06$ and $3.32$, no consistent sign"),
+     r"$\tracedRatios$, no" + "\n" + "consistent sign",
+     "$0.78$, $1.06$ and $3.32$, no consistent sign"),
     # The equivalence is stated on the chain as well as on the proxy (round 72, W1), because
-    # the proxy is the quantity Section II-A spends a subsection discrediting.
+    # the proxy is the quantity Section II-A spends a subsection discrediting. v5 leads with
+    # the chain; the mutation drops it and leaves the proxy alone.
     ("state the broker equivalence on the proxy alone",
-     r"and on \tti{}, which is a causal chain, against a wider margin over" + "\n"
-     + r"the same levels (Supplement~S13). So it is not a purchasing argument.",
-     "so it is not a purchasing argument."),
+     "which is a causal chain, the two brokers are equivalent against a wider" + "\n"
+     + "margin (Supplement~S13); on the transport proxy they sit within a millisecond",
+     "which is a causal chain, the transport proxy puts the two brokers within a millisecond"),
 ]
 
 

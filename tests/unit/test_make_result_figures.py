@@ -86,14 +86,23 @@ def test_plot_exposure_draws_the_band_around_the_line_and_marks_the_crossover():
 
 
 def test_plot_deletion_draws_every_cell_and_splits_at_the_quantum():
+    """The plot says what each grid column printed, since the editorial revision.
+
+    "printed at the grid (71)" asked the reader to know what the grid was, and the bare "67"
+    and "4" above the two columns could not be decoded without the caption; an outside editor
+    (28 Sep) asked for "67 cells printed 1.0 ms" on the plot itself. The split at the quantum
+    is the same: 67 and 4 are the 71, and the four above it are still four.
+    """
     fig, ax = plt.subplots()
     pts = mrf.retention_points()
     mrf.plot_deletion(ax, pts)
     drawn = sum(c.get_offsets().shape[0] for c in ax.collections)
     assert drawn == len(pts)
     labels = [t.get_text() for t in ax.get_legend().get_texts()]
-    assert "printed at the grid (71)" in labels
-    assert "printed above it (4)" in labels
+    assert "printed 1 or 2 ms (71)" in labels
+    assert "printed above 2 ms, by payload (4)" in labels
+    on_plot = [t.get_text() for t in ax.texts]
+    assert "67 printed 1.0 ms" in on_plot and "4 printed 2.0 ms" in on_plot
 
 
 def test_plot_deletion_uses_log_axes():
@@ -456,7 +465,7 @@ def test_plot_grid_draws_one_marker_per_arm_and_labels_every_class():
 
 # --- builders ----------------------------------------------------------------------------
 
-@pytest.mark.parametrize("name,stem", [("deletion", "deletion"),
+@pytest.mark.parametrize("name,stem", [("deletion_phases", "deletion_phases"),
                                        ("spectrum", "stall_spectrum"),
                                        ("grid", "grid_membership"),
                                        ("mechanism", "mechanism_forest"),
@@ -470,7 +479,10 @@ def test_each_builder_writes_a_pdf(tmp_path, name, stem):
 
 
 def test_main_builds_every_figure_by_default(tmp_path, capsys):
-    """Nine since round 77, when the recovery populations joined them.
+    """Ten since the editorial revision of 28 Sep; nine from round 77 until then.
+
+    The revision added two (the two-panel deletion figure and the column-width exposure
+    curve) and retired one (the single-panel deletion scatter, now the second panel).
 
     The count is pinned rather than loosened: a builder that stops running is the failure
     this catches, and it only catches it if the number is exact. It was seven from round 17,
@@ -479,8 +491,8 @@ def test_main_builds_every_figure_by_default(tmp_path, capsys):
     paragraphs about the shape of two distributions and no picture of either.
     """
     assert mrf.main(["--out", str(tmp_path)]) == 0
-    assert len(list(tmp_path.glob("*.pdf"))) == 9
-    assert capsys.readouterr().out.count("wrote") == 9
+    assert len(list(tmp_path.glob("*.pdf"))) == 10
+    assert capsys.readouterr().out.count("wrote") == 10
 
 
 def test_the_spectrum_builder_takes_the_slice_from_the_derived_constants(tmp_path):
@@ -508,7 +520,7 @@ def test_figures_the_manuscript_includes_are_the_ones_this_script_writes():
     """
     tex = ((ROOT / "paper.tex").read_text(encoding="utf-8")
            + (ROOT / "supplement.tex").read_text(encoding="utf-8"))
-    for stem in ("deletion", "stall_spectrum", "grid_membership",
+    for stem in ("deletion_phases", "stall_spectrum", "grid_membership",
                  "mechanism_forest", "ttrue_law"):
         assert "figures/%s.pdf" % stem in tex, "%s is built but included nowhere" % stem
 

@@ -234,7 +234,7 @@ class TestEveryShippedFigure:
             mpf._save = lambda fig, out_dir, stem, **kw: (look(fig, stem), [out_dir])[1]
             import tempfile
             with tempfile.TemporaryDirectory() as tmp:
-                for build in (mrf.build_deletion, mrf.build_spectrum, mrf.build_grid,
+                for build in (mrf.build_deletion_phases, mrf.build_spectrum, mrf.build_grid,
                               mrf.build_mechanism, mrf.build_ttrue, mrf.build_payload):
                     build(Path(tmp))
                 mpf.main(["--out", tmp])

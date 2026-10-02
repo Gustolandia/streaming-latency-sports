@@ -45,7 +45,11 @@
 > material in `supplement.tex` and the complete record of how the results were obtained in
 > `postmortem.tex`, which is archived with the data and not submitted. This is a
 > **systems paper**; the football workload is the setting that produced the finding, not the
-> contribution.
+> contribution. It has three parts: **the finding** (latencies that come out negative on one
+> clock), **the mechanism** (a timestamp taken late, and the small laws that govern it) and
+> **the industry** (what the tools do with a latency at or below zero, which on a millisecond
+> clock is the second failure), and a fourth, **practical implications**, which the abstract and
+> the introduction lead with.
 >
 > **The original question** was: *compare end-to-end lag between Redis Streams and Apache Kafka
 > for real-time sports data feeds, under varying concurrency, using the StatsBomb open dataset
@@ -107,7 +111,7 @@
 >    middle one from a configuration the tracer check withholds), unfitted. The same failure appears in
 >    Kafka's own Java client and on Neoverse N2 processors. The traced stalls are not a single
 >    heavy tail: their counts have three local maxima, the last in the 2–4 ms bucket that holds
->    the scheduler's derived 3 ms base slice, and above it they collapse (paper Section III-C).
+>    the scheduler's derived 3 ms base slice, and above it they collapse (paper Section IV-C).
 >    *Withdrawn:* the effective exponent (0.332 over 0.25–2 ms) once read off the traced
 >    survival, the infinite-moment ("no finite mean or variance") reading, and the M/G/1
 >    functional form. Once the sweep reached ρ where the candidate forms diverge, M/G/1 fit
@@ -161,7 +165,7 @@
 > The transport proxy *S* is computed as *consumer receipt − acknowledgment*, two timestamps
 > written by two threads in two processes that read one clock. A negative value is not noise:
 > it shows that the acknowledgment cannot serve as the origin of that message's latency (paper
-> Section II-A). We applied the sign check to **every** run rather than only to the ones whose
+> Section IV-A). We applied the sign check to **every** run rather than only to the ones whose
 > results looked wrong, and the result reshaped the paper:
 >
 > | Corpus | Runs | Rejected | Conditions | Usable |
@@ -173,7 +177,7 @@
 > The rule is in [`scripts/clock_integrity.py`](scripts/clock_integrity.py): a run is rejected
 > if more than 1% of its events carry a negative value in any latency component, or if the
 > median of any component is negative, and a condition is usable only if all of its runs
-> survive (paper Section II-D). It exits non-zero so campaigns can gate on it.
+> survive (paper Section II-C). It exits non-zero so campaigns can gate on it.
 >
 > **What this cost us.** Our headline result had been *"Redis transport rises 34% with
 > concurrency (p=9.0×10⁻¹¹, complete rank separation) while Kafka stays flat"*, measured on the
@@ -432,25 +436,40 @@ From 3,315 StatsBomb matches across 52 competition-seasons (2003–2023), via
 > **Target:** IEEE Transactions on Computers (`IEEEtran`, journal, `paper.tex`)
 > **Keywords:** Apache Kafka; benchmarking; clock synchronization; latency measurement; measurement errors; message brokers; scheduling; timestamp resolution.
 
-Message-broker benchmarks now compare systems on sub-millisecond paths, where the time being
-measured is shorter than the clock's resolution and than a busy thread's wait for a processor.
-There a benchmark can misreport in two ways its output does not announce.
+Benchmarks guide the choice of a message broker, and now report sub-millisecond latencies,
+shorter than the clock's resolution and than a busy thread's wait for a processor. There a
+latency can be negative. The paper has three parts and draws their practical consequences in a
+fourth.
 
-First, a latency timed from the broker's acknowledgment turns negative whenever the thread
-recording it is scheduled late by more than the delivery. Timed on one clock, 62,264 of our
-738,730 messages were negative this way and none from the send, so the cause is not clock
-synchronization; real-time priority for the timestamping threads, at unchanged utilization, cut
-the rate 7–80×. A zero-cost sign check rejected **1,321 of our 2,266 runs**, leaving nothing of
-our first result usable (it rejects 109 of the 126 runs behind it and every one of its six
-conditions).
+**The finding.** Timed on one clock from the broker's acknowledgment, 62,264 of our 738,730
+messages were negative and none from the send, so the cause is not clock synchronization. A
+zero-cost sign check rejected **1,321 of our 2,266 runs**, leaving nothing of our first result
+usable (it rejects 109 of the 126 runs behind it and every one of its six conditions).
 
-Second, the OpenMessaging Benchmark timestamps in whole milliseconds and silently discards every
-latency that is not positive: 71 of 75 embedded-mode settings whose summary we captured printed
-a median of exactly 1.0 or 2.0 ms, computed from as little as 0.36% of the samples. We derive the
-retained fraction from the ratio of delivery to resolution, confirm a registered prediction of
-it, find uncounted disposal in five of ten tools, and give benchmark authors checks that cost
-nothing. A registered audit of 43 published reports found the deletion's signature in eight
-configurations of two of them, and a stated retention in none.
+**The mechanism.** The thread recording the acknowledgment had waited for a core longer than
+the message took. The span is negative exactly when the acknowledgment lag exceeds the delivery
+time; to leading order its rate is the timestamping thread's occupancy times the chance that a
+stall outlasts the delivery time; and the traced stalls have a mode in the bucket that holds the
+scheduler's derived 3 ms slice. Real-time priority for the timestamping threads, at unchanged
+utilization, cut the rate 7–80×.
+
+**The industry.** The OpenMessaging Benchmark, expecting such values from clock skew, deletes
+every non-positive latency without a count, including the zeros its millisecond clock gives
+sub-millisecond messages: 71 of 75 embedded-mode settings whose summary we captured printed a
+median of exactly 1.0 or 2.0 ms, computed from as little as 0.36% of the samples. We derive the
+retained fraction from the ratio of delivery time to resolution, confirm a registered prediction
+of it, and find uncounted disposal in five of ten tools. A registered audit of 43 published
+reports found the deletion's signature in eight configurations of two of them, and a stated
+retention in none.
+
+**Practical implications.** On a sub-millisecond path the benchmark prints the same median
+whatever the broker, and what differs between brokers, the share of samples kept, it does not
+print; where fast and slow messages mix it printed medians of 235 and 519 ms for two 64 KB
+settings on which most messages had arrived within a millisecond. A latency timed from the
+acknowledgment understates the delivery time it stands for (a median factor of 4.2 over 70
+conditions) and inflates the gap between two brokers. A better-synchronized clock fixes neither
+failure; a per-run sign check and the retained fraction published beside every latency expose
+both, and both cost nothing.
 
 What survives of the broker comparison that started the work is small: over the runs the check
 keeps, Kafka and Redis sit within a millisecond on the transport proxy and are equivalent on the
@@ -985,7 +1004,7 @@ supplement and the complete record in the postmortem, both compiled from the sam
 
 | Asset | Purpose |
 |-------|---------|
-| `paper.tex` | The paper (`IEEEtran`, journal; Introduction, How a Benchmark Times a Message, Failure 1: Late Timestamps Invert the Acknowledgment-Referenced Span, Failure 2: A Millisecond Clock and a Positivity Filter, How Widespread, What Benchmark Authors Should Do, Related Work, Threats and Limitations, Conclusion) |
+| `paper.tex` | The paper (`IEEEtran`, journal; Introduction, How a Benchmark Times a Message, The Finding: Negative Latencies, The Mechanism: A Timestamp Taken Late, The Industry's Remedy: Deletion, Practical Implications, Related Work, Threats and Limitations, Conclusion) |
 | `supplement.tex` | The supplementary material, S1–S9 in the paper's order, under the paper's byline (`docs/supplement_index.md` maps each section to the postmortem sections it draws on) |
 | `postmortem.tex` | The complete record, a single-author postmortem in five parts, S1–S37: the chronology, every withdrawn result and the law campaign run by run. Archived with the data; not part of the submission |
 | `manuscript_references.bib` | Bibliography |
@@ -1028,12 +1047,12 @@ reports no error, the source still looks plausible, and the defect appears only 
 That failure reached the manuscript three times here, twice past a full source-level check, which
 is why the check now runs on the artefact a reader actually receives.
 
-**Status (the PDFs built on 1 Oct 2026):** compiles clean, with 0 errors, 0 undefined
-references or citations and 0 overfull boxes; 10 pages against TC's 10–12 budget, 42
-references against TC's cap of 45, a 198-word abstract against TC's 100–200 range, and two
-author biographies (G. P. Ricou and R. Duvignau) inside TC's 145-word cap. Five figures and
-four tables. Title: *Faster than Light: Latency Measurement Errors in Message-Broker
-Benchmarks*. The journal supplement, S1–S9 under the paper's byline, is 30 pages with 58
+**Status (the PDFs built on 2 Oct 2026):** compiles clean, with 0 errors, 0 undefined
+references or citations and 0 overfull boxes; 11 pages against TC's 10–12 budget, 42
+references against TC's cap of 45, a 196-word abstract against TC's 100–200 range, and two
+author biographies (G. P. Ricou and R. Duvignau) inside TC's 145-word cap. Five figures, four
+tables and six numbered equations. Title: *Faster than Light: Latency Measurement Errors in
+Message-Broker Benchmarks*. The journal supplement, S1–S9 under the paper's byline, is 30 pages with 58
 references, inside the 25–30 an outside editor asked for; the postmortem, the complete
 single-author record that is not submitted, is 75 pages.
 Formatted with `IEEEtran` (journal, 10pt) for IEEE Transactions on Computers.
@@ -1206,9 +1225,12 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 
 ### 4.0.0 — prepared 29 Sep 2026, not yet deposited — the editorial revision
 An outside editor's review of v3, taken whole. **Paper v5** is retitled *Faster than Light: Latency
-Measurement Errors in Message-Broker Benchmarks* and gives both failures equal space: how a benchmark
-times a message, Failure 1, Failure 2, how widespread, what benchmark authors should do; 10 pages, 42
-references. **The supplement is now two documents:** the journal supplement S1–S9, in the paper's
+Measurement Errors in Message-Broker Benchmarks* and gives both failures equal space. **Paper v6**
+(2 Oct) organizes it around its three parts, the finding (latencies that come out negative on one
+clock), the mechanism (a timestamp taken late, with its small laws as Equations 3 to 5) and the
+industry (what the tools do with a latency at or below zero, which on a millisecond clock is the
+second failure), and adds Practical Implications, which the abstract and the introduction now lead
+with; 11 pages, 42 references. **The supplement is now two documents:** the journal supplement S1–S9, in the paper's
 order under both authors' names, and the single-author postmortem S1–S37, the complete record, not
 submitted. **A registered audit of 43 published reports** found the signature in eight configurations
 of two and a stated retention in none. **The fidelity audit corrected:** 109 of the 126 runs behind

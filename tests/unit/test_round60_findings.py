@@ -34,8 +34,11 @@ class TestR1TheSectionOpensOnItsEvidence:
     def test_the_tools_section_opens_on_the_audit(self, paper):
         """v5 (28 Sep): the section is Section V, "How Widespread", and its second sentence says
         "We read ten tools at source" where v4 said "We audited", so the pin is on that clause
-        (macro and all) rather than on the verb."""
-        body = paper.split(r"\section{How Widespread}", 1)[1]
+        (macro and all) rather than on the verb.
+
+        v6 (2 Oct): the section became Section V-E, "Ten tools, read at source", inside the
+        industry's section; its opening is unchanged and so is the pin."""
+        body = paper.split(r"\subsection{Ten tools, read at source}", 1)[1]
         body = body.split(r"\section{", 1)[0]
         opening = body[:400]
         assert "forks" not in opening, (

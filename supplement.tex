@@ -98,24 +98,25 @@ Paper section & Here & What it adds \\
 \ref{P-sec:intro}. Introduction & \ref{s:signcheck}, \ref{s:failure1}, \ref{s:failure2} &
 The sign check's rejections, and both failures in full. \\
 \addlinespace[2pt]
-\ref{P-sec:sysmodel}. How a benchmark times a message & \ref{s:setup}, \ref{s:signcheck},
-\ref{s:tools} & Testbeds, workload, settings, campaigns and where each timestamp is taken; the
-threshold sweep and what the check selects; origin timestamps written late in other
-runtimes. \\
+\ref{P-sec:sysmodel}. How a benchmark times a message & \ref{s:setup}, \ref{s:signcheck} &
+Testbeds, workload, settings, campaigns and where each timestamp is taken; the threshold sweep
+and what the check selects. \\
 \addlinespace[2pt]
-\ref{P-sec:mechanism}. Failure~1 & \ref{s:signcheck}, \ref{s:failure1}, \ref{s:law},
-\ref{s:withdrawn} & The rejection counts; every manipulation, trace and rival explanation, the
-exposure and the repair; the registered law campaign; the first result the check rejected. \\
+\ref{P-sec:finding}. The finding & \ref{s:signcheck}, \ref{s:withdrawn}, \ref{s:law} & The
+rejection counts; the first result the check rejected; the negatives in \kafka{}'s Java client
+and on a second processor family. \\
 \addlinespace[2pt]
-\ref{P-sec:external}. Failure~2 & \ref{s:failure2} & The source lines, the grid tests, the
-registered payload manipulation, the sign channel and our own harness. \\
+\ref{P-sec:mechanism}. The mechanism & \ref{s:failure1}, \ref{s:tools}, \ref{s:law} & Every
+manipulation, trace and rival explanation; origin timestamps written late in other runtimes; the
+registered law campaign. \\
 \addlinespace[2pt]
-\ref{P-sec:tools}. How widespread & \ref{s:tools}, \ref{s:failure2} & The source line behind
-each audited tool; the registered audit of published reports; the millisecond record timestamp on
-\kafka{}'s wire. \\
+\ref{P-sec:external}. The industry's remedy & \ref{s:failure2}, \ref{s:tools} & The source
+lines, the grid tests, the registered payload manipulation, the sign channel and our own
+harness; the source line behind each audited tool; the registered audit of published reports;
+the millisecond record timestamp on \kafka{}'s wire. \\
 \addlinespace[2pt]
-\ref{P-sec:authors}. What benchmark authors should do & \ref{s:brokers} & The broker comparison
-over the runs the check keeps. \\
+\ref{P-sec:practice}. Practical implications & \ref{s:failure1}, \ref{s:brokers} & The exposure
+and the repair; the broker comparison over the runs the check keeps. \\
 \addlinespace[2pt]
 \ref{P-sec:related}. Related work & \ref{s:related} & The literature in full. \\
 \addlinespace[2pt]
@@ -142,7 +143,8 @@ says otherwise.}
 Term & Meaning \\
 \midrule
 Failure~1 & A latency timed from the acknowledgment turns negative when the thread recording
-the acknowledgment is scheduled late by more than the delivery time (Section~\ref{P-sec:mechanism}). \\
+the acknowledgment is scheduled late by more than the delivery time (Sections~\ref{P-sec:finding}
+and~\ref{P-sec:mechanism}). \\
 Failure~2 & A millisecond timestamp and a positivity filter delete, without counting them,
 the sub-millisecond samples that cross no millisecond boundary (Section~\ref{P-sec:external}). \\
 condition & One point of the experimental design: a broker, a send rate, a message size, a
@@ -225,7 +227,7 @@ Testbed & Machines & Kernel and software & What rests on it \\
 private network: three brokers and one driver. & \raggedright Ubuntu 22.04, kernel
 \brk{6.8.0-1057-oracle} (EEVDF scheduler), a $\tickMs$~ms tick; CPython 3.10;
 \texttt{chrony}-disciplined clocks, logged every minute. & \raggedright The findings of
-Sections~\ref{P-sec:mechanism} and~\ref{P-sec:external}, except the law
+Sections~\ref{P-sec:finding} to~\ref{P-sec:external}, except the law
 campaign's.\tabularnewline
 \addlinespace[2pt]
 \raggedright Workstation & \multicolumn{2}{p{0.63\columnwidth}}{\raggedright One Windows
@@ -533,7 +535,8 @@ $0.10$--$0.12$~ms.}
 A run that passes has cleared the cheapest available bar and nothing more. Load-induced
 inflation that stays positive passes the check by construction (Section~\ref{P-sec:audit}).
 
-% S3. Failure 1: the full evidence. Supports Section III of the paper (P-sec:mechanism).
+% S3. Failure 1: the full evidence. Supports Sections III and IV of the paper (P-sec:finding,
+% P-sec:mechanism) and the cost and repair of Section VI-B (P-sec:cost).
 % Drawn from postmortem S7, S8, S9, S12, S15, S16.3, S16.4, S16.8, S16.9, S19 and the
 % mechanism tables of S26.1; the objections table from the pre-rewrite paper's defences
 % (editorial review 6.11) and their postmortem passages.
@@ -545,7 +548,8 @@ Failure~1 comes from the scheduler. Every manipulation of the timestamping threa
 core, or of the delivery time that wait must outlast, moved the negative-span rate the way the
 mechanism predicts. A kernel trace that times the wait predicts the rate to within a third,
 unfitted. The evidence follows the order of Section~\ref{P-sec:mechanism}: three manipulations,
-the model they support, the trace, the rivals, the timescale and the cost.
+the model they support, the trace, the rivals and the timescale. The cost, which the paper sets
+out among its practical implications (Section~\ref{P-sec:cost}), comes last.
 
 \subsection{S3.1. Real-time priority cuts the rate in every matched pair}
 \label{s:priority}

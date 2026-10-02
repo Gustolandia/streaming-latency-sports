@@ -1532,18 +1532,28 @@ class TestNarrativeArc:
         # v5 (28 Sep): the abstract was rewritten to an outside editor's draft. The four beats
         # and their order are unchanged; the words that carry them are the new ones, and the
         # retention range became its lower end, "as little as".
-        beats = ("First, ", "Second, ", "give benchmark authors checks")
+        # v6 (2 Oct): the authors asked for the paper's three parts -- the finding, its
+        # mechanism, and how the industry handles it -- and for the practical implications to
+        # lead. The beats are the same evidence in that frame: the ratio, then the negative
+        # value with its one-clock count and its manipulation (Mode A), then the industry's
+        # deletion with its retention range (Mode B), then the practical consequence, then the
+        # checks. "First"/"Second" went with the frame; the order and the content are pinned.
+        beats = ("There a latency can be negative", "The OpenMessaging Benchmark",
+                 "In practice", "give benchmark authors checks")
         for beat in beats:
             assert beat in flat, f"abstract is missing the '{beat.strip()}' beat"
-        first, second, remedy = (flat.index(b) for b in beats)
-        assert first < second < remedy, "the beats must run ratio, Mode A, Mode B, remedy"
-        ratio, mode_a, mode_b = flat[:first], flat[first:second], flat[second:remedy]
+        first, second, practice, remedy = (flat.index(b) for b in beats)
+        assert first < second < practice < remedy, \
+            "the beats must run ratio, Mode A, Mode B, practice, remedy"
+        ratio, mode_a, mode_b = flat[:first], flat[first:second], flat[second:practice]
         assert ("shorter than the clock's resolution and than a busy thread's wait for a "
                 "processor") in ratio, \
             "the ratio beat must set the delivery against both of the instrument's timescales"
+        assert "choice of a message broker" in ratio, \
+            "the abstract must say first why the numbers matter: they choose brokers"
         for token in ("on one clock", r"\spanEvents", r"\rtFactorLow", r"\rtFactorHigh"):
             assert token in mode_a, f"the Mode A beat is missing {token!r}"
-        for token in ("whole milliseconds", "non-positive", r"\ombGridRetentionMin"):
+        for token in ("millisecond clock", "non-positive", r"\ombGridRetentionMin"):
             assert token in mode_b, f"the Mode B beat is missing {token!r}"
         assert "withdr" not in flat.lower(), "the TC abstract no longer narrates withdrawals"
 
@@ -4421,7 +4431,10 @@ class TestTheExposureCurveIsGeneratedNotTyped:
         # results subsection of the scheduling section, where a co-author said a headline
         # result belongs -- with its experiment, denominator and uncertainty. The pins
         # follow the numbers; the rule now points at this subsection rather than quoting it.
-        start = main_tex.index(r"\subsection{What it costs, and the repair}")
+        # v6 (2 Oct): the subsection moved, numbers and all, into Practical Implications and
+        # says in its title whose cost it is.
+        start = main_tex.index(
+            r"\subsection{The cost of timing from the acknowledgment, and the repair}")
         return main_tex[start:start + 2600]
 
     def test_the_identical_systems_gap_is_in_s12(self):

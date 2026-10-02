@@ -214,11 +214,13 @@ class TestR2TheFloorIsAScaleNotALimit:
 class TestRecommendedItems:
 
     def test_w1_the_abstract_carries_the_bodys_denominator(self, paper):
-        i = paper.index("begin{abstract}")
-        abstract = " ".join(paper[i:paper.index("end{abstract}")].split())
-        assert "whose summary we captured" in abstract, (
-            "the body and Fig. 4's caption both hedge this population; the abstract was the "
-            "last surface that did not")
+        """v6 (2 Oct 2026): the abstract quotes no population at all now, so the hedge travels
+        with the first sentence that does, in the introduction."""
+        i = paper.index("label{sec:intro}")
+        intro = " ".join(paper[i:paper.index("section{How a Benchmark", i)].split())
+        assert "whose summary we captured" in intro, (
+            "the body and Fig. 4's caption both hedge this population; the introduction must "
+            "too")
 
     def test_w1_it_did_not_cost_the_word_budget(self):
         """Two words were bought back so the hedge does not seat the abstract on the cap."""

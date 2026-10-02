@@ -178,7 +178,7 @@ class TestR2TheTwoThresholdsAreDifferentThings:
         passage = " ".join(paper[i:i + 1100].split())
         assert r"\ref{tab:tools}" in passage, "the class is shown in the table the audit fills"
         assert "drops negatives" in passage and \
-            "keeps the samples the benchmark deletes" in passage, \
+            "a strict positivity filter deletes" in passage, \
             "say that the other threshold keeps what the benchmark deletes"
         assert "admits zero" in passage, "say what the threshold does"
 

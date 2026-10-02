@@ -436,10 +436,24 @@ From 3,315 StatsBomb matches across 52 competition-seasons (2003–2023), via
 > **Target:** IEEE Transactions on Computers (`IEEEtran`, journal, `paper.tex`)
 > **Keywords:** Apache Kafka; benchmarking; clock synchronization; latency measurement; measurement errors; message brokers; scheduling; timestamp resolution.
 
-Benchmarks guide the choice of a message broker, and now report sub-millisecond latencies,
-shorter than the clock's resolution and than a busy thread's wait for a processor. There a
-latency can be negative. The paper has three parts and draws their practical consequences in a
-fourth.
+The paper's abstract, which by the authors' rule carries no numbers and names no tool:
+
+> Benchmarks guide the choice of a message broker, and now report latencies below a
+> millisecond, finer than some of their clocks resolve and shorter than a thread's wait for a
+> processor on a busy host. Timed on one clock from the broker's acknowledgment, many of our
+> messages came out negative, as if delivered before they were sent; timed from the send, none
+> did, so the cause is not clock synchronization. It is scheduling: the thread recording the
+> acknowledgment waits for a core longer than the message takes, and giving it priority at
+> unchanged load removes most negatives. Most tools we read at source discard such values
+> without counting them, and where the rule is a positivity filter on a millisecond clock, it
+> deletes the fastest messages too. We derive the fraction kept and confirm a registered
+> prediction of it. Of the tools we ran, most never meet the value, because they time on one
+> clock and so cannot measure a one-way delivery. In practice a sub-millisecond median can
+> describe the clock, not the broker, and a void result looks sound: a sign check rejected most
+> of our runs. We give benchmark authors checks that cost nothing.
+
+The paper has three parts and draws their practical consequences in a fourth. The numbers behind
+the abstract, part by part:
 
 **The finding.** Timed on one clock from the broker's acknowledgment, 62,264 of our 738,730
 messages were negative and none from the send, so the cause is not clock synchronization. A
@@ -453,18 +467,19 @@ stall outlasts the delivery time; and the traced stalls have a mode in the bucke
 scheduler's derived 3 ms slice. Real-time priority for the timestamping threads, at unchanged
 utilization, cut the rate 7–80×.
 
-**The industry.** The OpenMessaging Benchmark, expecting such values from clock skew, deletes
-every non-positive latency without a count, including the zeros its millisecond clock gives
-sub-millisecond messages: 71 of 75 embedded-mode settings whose summary we captured printed a
-median of exactly 1.0 or 2.0 ms, computed from as little as 0.36% of the samples. We derive the
-retained fraction from the ratio of delivery time to resolution, confirm a registered prediction
-of it, and find uncounted disposal in seven of ten tools read at source. Of eleven benchmarking
-tools run under registered predictions, four rounds each, ten time on one clock: they never meet
-a negative value and cannot measure a one-way delivery; the eleventh keeps negatives in its
-average. A registered audit of 43 published reports found the deletion's signature in eight
+**The industry.** Seven of the ten tools read at source dispose of a latency at or below zero
+without counting it, by filtering it, letting a library refuse it or substituting another value.
+Of eleven benchmarking tools run under registered predictions, four rounds each, ten time on one
+clock: they never meet a negative value and cannot measure a one-way delivery; the eleventh keeps
+negatives in its average. Where the rule is a positivity filter on a millisecond clock it also
+deletes every sub-millisecond message that does not cross a clock tick. On the one such tool
+measured in depth, 71 of 75 embedded-mode settings whose summary we captured printed a median of
+exactly 1.0 or 2.0 ms, computed from as little as 0.36% of the samples; the retained fraction
+follows from the ratio of delivery time to resolution, and a registered prediction of it was
+confirmed. A registered audit of 43 published reports found the deletion's signature in eight
 configurations of two of them, and a stated retention in none.
 
-**Practical implications.** On a sub-millisecond path the benchmark prints the same median
+**Practical implications.** On a sub-millisecond path such a filter prints the same median
 whatever the broker, and what differs between brokers, the share of samples kept, it does not
 print; where fast and slow messages mix it printed medians of 235 and 519 ms for two 64 KB
 settings on which most messages had arrived within a millisecond. A latency timed from the

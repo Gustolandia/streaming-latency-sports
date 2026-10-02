@@ -245,10 +245,16 @@ class TestAudit:
         assert total["runs"] == 2266 and total["rejected"] == 1321
 
     def test_the_audit_is_the_headline_in_both_abstract_and_conclusion(self, tex):
-        """The paper's claim is the audit, so both ends must carry its numbers."""
-        abstract = tex[tex.index(r"\begin{abstract}"):tex.index(r"\end{abstract}")]
+        """The paper's claim is the audit, so both ends must carry it.
+
+        v6 (2 Oct 2026): the abstract carries no numbers, at the authors' instruction, so it
+        states the audit's outcome in words; the counts stay where the numbers are."""
+        abstract = " ".join(tex[tex.index(r"\begin{abstract}"):tex.index(r"\end{abstract}")].split())
+        assert "a sign check rejected most of our runs" in abstract, \
+            "the audit's outcome is missing from the abstract"
         conclusion = tex[tex.index(r"\section{Conclusion}"):]
-        for section, name in ((abstract, "abstract"), (conclusion, "conclusion")):
+        intro = tex[tex.index(r"\label{sec:intro}"):tex.index(r"\section{How a Benchmark")]
+        for section, name in ((intro, "introduction"), (conclusion, "conclusion")):
             assert "auditRejected" in section, f"rejected count missing from {name}"
             assert "auditRuns" in section, f"total count missing from {name}"
 
@@ -1233,7 +1239,11 @@ class TestExternalHarnessEvidence:
         return _rows("external", "harness_audit.csv")
 
     def test_the_cited_files_and_lines_match_the_audit(self, tex):
-        section = tex  # v2/TPDS: full paragraph lives in the supplement; pin holds on the package
+        # v6 (2 Oct 2026): the file-and-line detail left the paper's body, which now treats the
+        # filter as an industry-wide mechanism and names the measured tool once; the detail is
+        # in the journal supplement, S4.1, which this fixture did not read. It does now.
+        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        section = tex + "\n" + journal
         for r in self._rows():
             fname = r["file"].split("/")[-1]
             assert fname in section, f"{fname} is in the audit but not cited in the paper"
@@ -1538,24 +1548,41 @@ class TestNarrativeArc:
         # value with its one-clock count and its manipulation (Mode A), then the industry's
         # deletion with its retention range (Mode B), then the practical consequence, then the
         # checks. "First"/"Second" went with the frame; the order and the content are pinned.
-        beats = ("There a latency can be negative", "The OpenMessaging Benchmark",
-                 "In practice", "give benchmark authors checks")
+        # Later on 2 Oct, at the authors' instruction and on a reviewer's advice, the abstract
+        # lost its numbers and its one named tool: it says in words what was found, and the
+        # industry beat is the industry's, not one benchmark's. The beats are the same.
+        beats = ("Timed on one clock", "Most tools we read", "In practice",
+                 "give benchmark authors checks")
         for beat in beats:
             assert beat in flat, f"abstract is missing the '{beat.strip()}' beat"
         first, second, practice, remedy = (flat.index(b) for b in beats)
         assert first < second < practice < remedy, \
             "the beats must run ratio, Mode A, Mode B, practice, remedy"
         ratio, mode_a, mode_b = flat[:first], flat[first:second], flat[second:practice]
-        assert ("shorter than the clock's resolution and than a busy thread's wait for a "
-                "processor") in ratio, \
-            "the ratio beat must set the delivery against both of the instrument's timescales"
         assert "choice of a message broker" in ratio, \
             "the abstract must say first why the numbers matter: they choose brokers"
-        for token in ("on one clock", r"\spanEvents", r"\rtFactorLow", r"\rtFactorHigh"):
+        assert "wait for a processor" in ratio and "clocks resolve" in ratio, \
+            "the ratio beat must set the delivery against both of the instrument's timescales"
+        for token in ("on one clock", "not clock synchronization", "priority"):
             assert token in mode_a, f"the Mode A beat is missing {token!r}"
-        for token in ("millisecond clock", "non-positive", r"\ombGridRetentionMin"):
+        for token in ("millisecond clock", "positivity filter", "registered prediction",
+                      "one-way delivery"):
             assert token in mode_b, f"the Mode B beat is missing {token!r}"
         assert "withdr" not in flat.lower(), "the TC abstract no longer narrates withdrawals"
+
+    def test_the_abstract_quotes_no_number_and_names_no_tool(self, main_tex):
+        """The authors' rule since 2 Oct 2026, after every reader called the benchmark-specific
+        part a bug report about a tool a referee may not know: the abstract says what was found,
+        in words, about the industry. A digit or a ledger macro brings a number back; a tool's
+        name brings the bug report back."""
+        abstract = main_tex[main_tex.index(r"\begin{abstract}"):main_tex.index(r"\end{abstract}")]
+        gen = (REPO / "docs" / "generated" / "paper_numbers.tex").read_text(encoding="utf-8")
+        ledger = set(re.findall(r"\\newcommand\{\\(\w+)\}", gen))
+        used = set(re.findall(r"\\(\w+)", abstract)) & ledger
+        assert not re.search(r"\d", abstract), "a number is back in the abstract"
+        assert not used, "ledger macros in the abstract: %s" % sorted(used)
+        for name in ("OpenMessaging", "LocalWorker", "WorkerStats", "OMB"):
+            assert name not in abstract, "the abstract names a tool again: %s" % name
 
     def test_results_are_ordered_by_consequence_not_chronology(self, main_tex, supp):
         """The failure modes lead, the broker answer follows, and the chronology left the paper.
@@ -2524,10 +2551,11 @@ class TestLoadGeometryAndTtrue:
                 f"artefacts give {lo:.1f}x-{hi:.1f}x over {len(ratios)} pairs; "
                 f"{macro} does not carry it")
 
-        abstract = " ".join(re.search(r"\\begin\{abstract\}(.*?)\\end\{abstract\}",
-                                      main_tex, re.S).group(1).split())
-        assert "rtFactorLow" in abstract and "rtFactorHigh" in abstract, \
-            "the abstract must quote the range through the macros that carry it"
+        # v6 (2 Oct 2026): the abstract quotes no numbers, at the authors' instruction; the
+        # range is quoted in the introduction, through the macros that carry it.
+        intro = _section(main_tex, "sec:intro")
+        assert "rtFactorLow" in intro and "rtFactorHigh" in intro, \
+            "the introduction must quote the range through the macros that carry it"
 
     def test_every_float_is_referenced_from_the_text(self, tex):
         """A figure, table or equation no sentence points to is a float the reader never meets.
@@ -3010,13 +3038,16 @@ class TestRefereeRoundOne:
             "the quoted best-cell endpoint must match the artefact"
 
     def test_the_embedded_mode_scoping_is_present(self, main_tex):
-        abstract = main_tex[main_tex.index(r"\begin{abstract}"):
-                            main_tex.index(r"\end{abstract}")]
-        assert "embedded-mode" in abstract, "the abstract must scope the deletion claims"
+        # v6 (2 Oct 2026): the abstract quotes no settings and names no benchmark, so the
+        # scoping travels with the first sentence that quotes the settings, in the introduction.
+        intro = " ".join(_section(main_tex, "sec:intro").split())
+        assert "embedded-mode settings" in intro, "the introduction must scope the deletion claims"
         # v2.5 renamed this section ("Mode B: A Benchmark That Deletes Its Own Samples").
         # The pin is on the scoping, not on the old title, so it follows the label.
-        audit = main_tex[main_tex.index(r"\label{sec:external}"):]
-        assert "embedded mode" in audit[:2500], "Section 7's opening must scope the audit"
+        # v6 (2 Oct 2026): the section opens on the whole industry; the scoping travels with the
+        # one tool measured in depth, in the subsection that introduces it.
+        case = " ".join(_section(main_tex, "sec:extmethod").split())
+        assert "embedded mode" in case, "the measured tool's subsection must scope the audit"
 
     def test_the_preprints_are_marked(self, main_tex):
         """The preprint status is carried by the reference list, not by the prose.
@@ -3296,8 +3327,13 @@ class TestCausalityFramingIsWithdrawn:
             "three expert readers reached for clock skew; the abstract must forestall it"
         assert "not clock synchronization" in abstract, \
             "the abstract must name the rival it is excluding, not merely gesture at it"
-        assert r"\spanEvents" in abstract, \
-            "the exclusion is empirical, so the abstract must carry the count behind it"
+        # v6 (2 Oct 2026): the abstract carries no numbers, at the authors' instruction. The
+        # exclusion is still stated as the empirical one it is -- none timed from the send came
+        # out negative -- and the count behind it opens the introduction.
+        assert "none did" in " ".join(abstract.split()), \
+            "the exclusion is empirical, so the abstract must say what the data showed"
+        assert r"\spanEvents" in _section(main_tex, "sec:intro"), \
+            "the count behind the exclusion must be quoted where the numbers now are"
         assert "by construction" not in abstract, \
             ("Section IV-C forgoes the monotonic-clock guarantee, so the abstract may not "
              "claim the readings cannot invert by construction")
@@ -3414,12 +3450,13 @@ class TestRefereeRoundTwo:
     def test_the_abstract_pairs_its_range_with_the_population_it_came_from(self, main_tex):
         """R1. 0.36% is the minimum over the cells whose summary we captured, not over the
         whole ledger, whose minimum is two orders of magnitude smaller."""
-        abstract = main_tex[main_tex.index(r"\begin{abstract}"):
-                            main_tex.index(r"\end{abstract}")]
-        assert r"\ombGridRetentionMin" in abstract
-        assert r"\ombGridMedianCells" in abstract, \
+        # v6 (2 Oct 2026): the range left the abstract with every other number; it is quoted
+        # first in the introduction, and the pairing is pinned there.
+        intro = _section(main_tex, "sec:intro")
+        assert r"\ombGridRetentionMin" in intro
+        assert r"\ombGridMedianCells" in intro, \
             "the range must be quoted against the population it was computed on"
-        assert r"\ombRuns" not in abstract.split(r"\ombGridRetentionMin")[0][-400:], \
+        assert r"\ombRuns" not in intro.split(r"\ombGridRetentionMin")[0][-400:], \
             "the ledger-wide run count must not stand as the denominator for that range"
 
     def test_every_harness_total_comes_from_the_ledger(self, main_tex):
@@ -4192,13 +4229,18 @@ class TestTheAbstractPromisesWhatItDelivers:
         # v5 (28 Sep): the identity left the abstract (an outside editor: it advertised the
         # weakest element) and the evidence now attaches to its own verbs -- derive, confirm,
         # find -- before the checks, which is the property this pin exists for.
+        # 2 Oct 2026: the tools now lead the industry beat, before the law is derived, so the
+        # order pinned is the law's evidence before the checks, and the checks' sentence last
+        # with nothing listed after it -- which is the property this pin exists for.
         for word in ("derive", "registered prediction", "tools", "checks"):
             assert word in flat, "the abstract no longer says %r; revisit this pin" % word
         assert flat.index("derive") < flat.index("registered prediction") < \
-            flat.index("tools") < flat.index("checks"), (
+            flat.rindex("tools") < flat.index("checks"), (
             "the abstract lists its evidence after the word 'checks'. An identity, a "
             "manipulation and an audit are not checks; they are what characterizes the "
             "failure modes, and the sentence should attach them there")
+        assert flat.rstrip().endswith("checks that cost nothing."), \
+            "nothing may follow the checks as if it were one of them"
 
     def test_the_checks_name_the_audience_they_are_for(self, main_tex):
         abstract = main_tex[main_tex.index(r"\begin{abstract}"):

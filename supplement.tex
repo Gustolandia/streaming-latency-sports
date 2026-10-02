@@ -112,8 +112,9 @@ registered law campaign. \\
 \addlinespace[2pt]
 \ref{P-sec:external}. The industry's remedy & \ref{s:failure2}, \ref{s:tools} & The source
 lines, the grid tests, the registered payload manipulation, the sign channel and our own
-harness; the source line behind each audited tool; the registered audit of published reports;
-the millisecond record timestamp on \kafka{}'s wire. \\
+harness; the source line behind each audited tool; where the eleven tools run are recorded;
+the registered audit of published reports; the millisecond record timestamp on \kafka{}'s
+wire. \\
 \addlinespace[2pt]
 \ref{P-sec:practice}. Practical implications & \ref{s:failure1}, \ref{s:brokers} & The exposure
 and the repair; the broker comparison over the runs the check keeps. \\
@@ -1529,8 +1530,16 @@ shipped build. Either the assertion aborts the run or the refusal drops the samp
 counts the loss.
 \item In \texttt{emqtt-bench} the \texttt{> 0} guard protects a counter and leaves the histogram
 alone, so nothing is deleted from the sample.
-\item RabbitMQ PerfTest and the NATS CLI pass a negative span into their metrics with no sign
-test at all, as RFC~7679 asks of a measurement. Both are exposed to clock skew between hosts.
+\item RabbitMQ PerfTest hands its difference on with no sign test, but the method that computes
+it, \texttt{getDifference}, returns its absolute value, so a negative span enters its metrics as
+a positive one of the same size, uncounted. Our first reading stopped at the call site and filed
+PerfTest with the tools that pass a negative on; the documentation audit read the method, and
+the registry now carries both lines.
+\item The NATS CLI appends every difference to the slice its minimum, median and maximum are
+read from, negatives included, and is exposed to clock skew between hosts. Its percentile table
+is recorded into \texttt{hdrhistogram-go}, whose bound check refuses the index a negative value
+maps to; the CLI ignores the error, so the two outputs disagree and nothing counts the
+difference. Our first reading stopped at the append; the documentation audit read the histogram.
 \item Rezolus counts its discards in a metric that names the cause.
 \item Two further tools do not make the measurement. SPECjms2007 defines Delivery Time and never
 reports it, and Redpanda's \texttt{rpk} ships no latency benchmark.
@@ -1570,6 +1579,18 @@ definition of the metric. Neither frames this as a hazard. The property is publi
 consequence for a subtraction across two processes is drawn nowhere we could find. An origin
 timestamp written by a thread that must first be woken is late by that wait, and the span it
 opens inverts whenever the wait outlasts the delivery time.
+
+Reading a tool tells what it does with a negative value; running it tells whether it ever meets
+one. The registered law campaign ran \toolsRunWord{} benchmarking tools on the first x86 pair,
+\toolsRoundsWord{} rounds each, under predictions fixed from their source before any run (its
+tools block, frozen with the plan; the amendments that touched
+it are in Table~\ref{stab:amendments}). Section~\ref{P-sec:toolsrun} of the paper reports them
+in a table. Every staircase slope lies in the band fixed in advance, \toolsOneClockWord{} tools
+were judged to time on one clock in every run that decided, and the one tool spanning two clocks
+kept every value, negatives included, in each round that decided it. The per-run verdicts are in
+\texttt{docs/results/tools/tools\_t1.csv} and \texttt{tools\_t2.csv}, folded by
+\texttt{scripts/tools\_block.py} from the runs, and the write-up with its five recorded faults is
+\texttt{docs/results/tools/t1-t4-eleven-tools.md}.
 
 % S5.1 is the registered audit of published results (freezes/29); the postmortem's S25.1 holds
 % its table and the artifact its coding and search log.

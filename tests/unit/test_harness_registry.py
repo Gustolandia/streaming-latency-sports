@@ -181,8 +181,13 @@ EXPECTED = {
     # The two harnesses that compute a cross-process span and do NOT dispose of it. They are
     # pinned for the same reason Rezolus is: a survey that could only find confirmations
     # would be an advertisement, and these are what stop the paper saying "the field deletes".
-    "RabbitMQ PerfTest": ({"cross_process_latency"}, False),
-    "NATS CLI": ({"cross_process_latency"}, False),
+    # 2 Oct 2026: a substitution, not a counterexample. getDifference returns the absolute
+    # value of the difference Consumer.java hands on, so a negative span is recorded as a
+    # positive one of the same size. The first reading stopped at the call site.
+    "RabbitMQ PerfTest": ({"cross_process_latency", "silent_suppression"}, False),
+    # 2 Oct 2026: the slice keeps a negative, the percentile table does not. The NATS CLI
+    # records into hdrhistogram-go and ignores the error a negative value returns.
+    "NATS CLI": ({"cross_process_latency", "library_refusal"}, False),
     # Keeps every sample, filters nothing, and reports zero for every sub-millisecond
     # percentile because the array is filled by integer division.
     "Apache Kafka (bundled)": ({"quantized_retention"}, False),
@@ -288,13 +293,27 @@ def test_the_round6_reaudit_headline_counts():
     Pinning both numbers together is deliberate. If a later edit widens a pattern so that a
     non-disposing harness starts counting as silent, `harnesses` will hold still while
     `n_silent` moves, and this is where that shows up.
+
+    And it showed up, the other way round, on 2 Oct 2026: `n_silent` moved from 5 to 6 with
+    `harnesses` held at 10, because RabbitMQ PerfTest does dispose of its negatives. Its
+    `getDifference` returns `Math.abs(ts1 - ts2)`, which round 56 never read; the law
+    campaign's documentation audit (T5) did, and recorded the prediction as failed. The
+    classifier learned the pattern and the registry gained the line, so PerfTest is a
+    substitution, beside fio and btt.
+
+    The same audit found the NATS CLI's percentile table refusing a negative: the CLI records
+    into hdrhistogram-go, whose bound check rejects the index a negative value maps to, and
+    ignores the error. Its minimum, median and maximum keep the value; its percentiles do not.
+    That is wrk2's class, and `n_silent` is 7. emqtt-bench's histogram is the one that keeps
+    every sample, and Rezolus the one that counts.
     """
     s = summary()
     assert s["harnesses"] == 10
-    assert s["n_silent"] == 5
+    assert s["n_silent"] == 7
+    assert s["suppressors"] == ["RabbitMQ PerfTest", "blktrace btt", "fio"]
     assert s["counts_discards"] == ["Rezolus"]
     assert "emqtt-bench" not in s["silent"]
     assert s["filters"] == ["OpenMessaging Benchmark"], "the strict guard, `> 0`"
     assert s["nonnegative_filters"] == ["Apache Pulsar perf"], "the weaker one, `>= 0`"
     assert "Apache Pulsar perf" in s["silent"], "a weaker guard is still a silent one"
-    assert s["library_refusals"] == ["wrk2"]
+    assert s["library_refusals"] == ["NATS CLI", "wrk2"]

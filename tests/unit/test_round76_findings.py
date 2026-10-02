@@ -295,13 +295,16 @@ class TestW3AndW4TheTwoLiteratureItems:
         Sections 4 and 5): SPECjbb with the contributions' list of precedents, Swami and
         Chougule with the related-work disputes, and Virkar and Clauset with the statistics
         subsection, whose estimators S24.2 now carries. The pin moves to 42, so the list still
-        cannot grow or shrink unnoticed, and the cap is asserted beside it."""
+        cannot grow or shrink unnoticed, and the cap is asserted beside it.
+
+        43 since 2 Oct 2026: emqtt-bench is cited in Section V-E as one of the two tools that
+        keep a negative, after RabbitMQ PerfTest was found to fold it into its magnitude."""
         bbl = REPO / "paper.bbl"
         if not bbl.is_file():                           # pragma: no cover - built by CI
             pytest.skip("paper.bbl absent")
         n = bbl.read_text(encoding="utf-8", errors="replace").count("\\bibitem")
         assert n <= 45, "TC caps the article at 45 references; this is %d" % n
-        assert n == 42, "the article's reference count moved from v5's 42 to %d" % n
+        assert n == 43, "the article's reference count moved from v6's 43 to %d" % n
 
 
 class TestW5TheFigureLetsTheReaderCheckItsCaption:

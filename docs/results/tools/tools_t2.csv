@@ -1,0 +1,89 @@
+round,tool,offset_ms,verdict,standing
+1,hey,1.8141,times against one clock,times against one clock
+1,hey,3.8124,times against one clock,times against one clock
+1,k6,1.8280,times against one clock,times against one clock
+1,k6,3.8309,times against one clock,times against one clock
+1,kafka-end-to-end,3.3979,undecided,drops zero and below; times against one clock
+1,kafka-end-to-end,5.4233,times against one clock,times against one clock
+1,kafka-producer-perf,3.2614,times against one clock,times against one clock
+1,kafka-producer-perf,5.2324,times against one clock,times against one clock
+1,memtier_benchmark,1.8189,times against one clock,times against one clock
+1,memtier_benchmark,3.8111,times against one clock,times against one clock
+1,nats-latency,1.7524,times against one clock,times against one clock
+1,nats-latency,3.7544,times against one clock,times against one clock
+1,rabbitmq-perftest,1.8848,undecided,drops the negatives; drops zero and below; times against one clock
+1,rabbitmq-perftest,3.8872,times against one clock,times against one clock
+1,rdkafka_performance,3.4343,undecided,drops the negatives; drops zero and below; keeps every value; replaces the negatives with zero; times against one clock
+1,rdkafka_performance,5.4759,undecided,keeps every value; replaces the negatives with zero
+1,valkey-benchmark,1.7839,times against one clock,times against one clock
+1,valkey-benchmark,3.8090,times against one clock,times against one clock
+1,vegeta,1.8233,times against one clock,times against one clock
+1,vegeta,3.8217,times against one clock,times against one clock
+1,wrk2,1.8340,undecided,drops the negatives; drops zero and below; times against one clock
+1,wrk2,3.8194,times against one clock,times against one clock
+2,hey,1.8354,times against one clock,times against one clock
+2,hey,3.8346,times against one clock,times against one clock
+2,k6,1.8249,times against one clock,times against one clock
+2,k6,3.8251,times against one clock,times against one clock
+2,kafka-end-to-end,2.6832,times against one clock,times against one clock
+2,kafka-end-to-end,4.6524,times against one clock,times against one clock
+2,kafka-producer-perf,3.3352,times against one clock,times against one clock
+2,kafka-producer-perf,5.3380,times against one clock,times against one clock
+2,memtier_benchmark,1.8268,times against one clock,times against one clock
+2,memtier_benchmark,3.8022,times against one clock,times against one clock
+2,nats-latency,1.6805,undecided,
+2,nats-latency,3.6812,times against one clock,times against one clock
+2,rabbitmq-perftest,1.8830,times against one clock,times against one clock
+2,rabbitmq-perftest,3.8607,times against one clock,times against one clock
+2,rdkafka_performance,2.5935,keeps every value,keeps every value
+2,rdkafka_performance,4.5867,keeps every value,keeps every value
+2,valkey-benchmark,1.8947,times against one clock,times against one clock
+2,valkey-benchmark,3.8576,times against one clock,times against one clock
+2,vegeta,1.8249,times against one clock,times against one clock
+2,vegeta,3.8262,times against one clock,times against one clock
+2,wrk2,1.8293,undecided,drops the negatives; drops zero and below; times against one clock
+2,wrk2,3.8414,times against one clock,times against one clock
+3,hey,1.8655,times against one clock,times against one clock
+3,hey,3.8653,times against one clock,times against one clock
+3,k6,1.8077,times against one clock,times against one clock
+3,k6,3.8077,times against one clock,times against one clock
+3,kafka-end-to-end,2.6687,times against one clock,times against one clock
+3,kafka-end-to-end,4.6761,times against one clock,times against one clock
+3,kafka-producer-perf,2.7237,times against one clock,times against one clock
+3,kafka-producer-perf,4.6954,times against one clock,times against one clock
+3,memtier_benchmark,1.8723,times against one clock,times against one clock
+3,memtier_benchmark,3.8520,undecided,drops the negatives; drops zero and below; times against one clock
+3,nats-latency,1.7256,times against one clock,times against one clock
+3,nats-latency,3.7282,times against one clock,times against one clock
+3,rabbitmq-perftest,1.8772,times against one clock,times against one clock
+3,rabbitmq-perftest,3.8986,undecided,
+3,rdkafka_performance,2.6603,keeps every value,keeps every value
+3,rdkafka_performance,4.6786,keeps every value,keeps every value
+3,valkey-benchmark,1.8438,times against one clock,times against one clock
+3,valkey-benchmark,3.8641,times against one clock,times against one clock
+3,vegeta,1.8192,times against one clock,times against one clock
+3,vegeta,3.8174,times against one clock,times against one clock
+3,wrk2,1.7870,undecided,drops the negatives; drops zero and below; times against one clock
+3,wrk2,3.7870,times against one clock,times against one clock
+4,hey,1.8397,times against one clock,times against one clock
+4,hey,3.8375,times against one clock,times against one clock
+4,k6,1.9154,times against one clock,times against one clock
+4,k6,3.9130,times against one clock,times against one clock
+4,kafka-end-to-end,2.7256,undecided,drops zero and below; times against one clock
+4,kafka-end-to-end,4.7474,times against one clock,times against one clock
+4,kafka-producer-perf,2.9472,times against one clock,times against one clock
+4,kafka-producer-perf,4.9186,times against one clock,times against one clock
+4,memtier_benchmark,1.9548,times against one clock,times against one clock
+4,memtier_benchmark,3.9724,times against one clock,times against one clock
+4,nats-latency,1.9187,times against one clock,times against one clock
+4,nats-latency,3.9222,times against one clock,times against one clock
+4,rabbitmq-perftest,2.0942,times against one clock,times against one clock
+4,rabbitmq-perftest,4.0679,times against one clock,times against one clock
+4,rdkafka_performance,2.7649,keeps every value,keeps every value
+4,rdkafka_performance,4.7816,keeps every value,keeps every value
+4,valkey-benchmark,1.9196,times against one clock,times against one clock
+4,valkey-benchmark,3.9294,times against one clock,times against one clock
+4,vegeta,1.9337,times against one clock,times against one clock
+4,vegeta,3.9342,times against one clock,times against one clock
+4,wrk2,1.9042,undecided,drops the negatives; drops zero and below; times against one clock
+4,wrk2,3.9228,times against one clock,times against one clock

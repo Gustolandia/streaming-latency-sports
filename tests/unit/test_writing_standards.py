@@ -382,7 +382,10 @@ class TestAcronymsAreExpandedOnFirstUse:
              "DAG", "NIST", "RFC", "TTI", "TOST", "CI", "IQR", "IPPM", "OWAMP", "YCSB", "HP",
              "CFS", "EEVDF", "KVM", "VM", "API", "OS", "IO", "GNU", "MIT", "DOI", "URL",
              "PDF", "CSV", "JSON", "SHA", "GB", "MB", "KB", "MSC", "CC", "BY", "NC", "SA",
-             "E-A", "E-B", "E-C", "FIFO", "USA"}
+             "E-A", "E-B", "E-C", "FIFO", "USA",
+             # 2 Oct 2026: the NATS messaging system's name, used as a name. Its project gives
+             # no expansion, so there is none to write on first use.
+             "NATS"}
 
     def test_every_acronym_is_expanded_once(self, prose):
         seen = {}

@@ -458,9 +458,11 @@ every non-positive latency without a count, including the zeros its millisecond 
 sub-millisecond messages: 71 of 75 embedded-mode settings whose summary we captured printed a
 median of exactly 1.0 or 2.0 ms, computed from as little as 0.36% of the samples. We derive the
 retained fraction from the ratio of delivery time to resolution, confirm a registered prediction
-of it, and find uncounted disposal in five of ten tools. A registered audit of 43 published
-reports found the deletion's signature in eight configurations of two of them, and a stated
-retention in none.
+of it, and find uncounted disposal in seven of ten tools read at source. Of eleven benchmarking
+tools run under registered predictions, four rounds each, ten time on one clock: they never meet
+a negative value and cannot measure a one-way delivery; the eleventh keeps negatives in its
+average. A registered audit of 43 published reports found the deletion's signature in eight
+configurations of two of them, and a stated retention in none.
 
 **Practical implications.** On a sub-millisecond path the benchmark prints the same median
 whatever the broker, and what differs between brokers, the share of samples kept, it does not

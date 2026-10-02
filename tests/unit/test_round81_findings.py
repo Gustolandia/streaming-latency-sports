@@ -491,8 +491,8 @@ class TestW5SectionVANamesWhatIsIndependent:
     def test_the_sentence(self, paper):
         """v5 (28 Sep): the clause now opens a sentence of its own, after "The two delays are
         correlated within a run", which names the two; its first letter may be either case."""
-        assert re.search(r"[Tt]reating the two as independent within a run would overpredict them",
-                         flat(paper))
+        assert re.search(r"[Tt]reating the two as independent within a run would overpredict (?:them|"
+                         r"the negative-span rate)", flat(paper))
 
 
 class TestTheRenderedPagesCarryIt:

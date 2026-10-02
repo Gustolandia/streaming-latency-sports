@@ -127,6 +127,38 @@ class TestAFigure:
         plt.close(fig)
 
 
+class TestTheMarkLegend:
+    """The legend speaks the manuscript's names, and the panels stand clear of it."""
+
+    def test_it_uses_the_manuscripts_names(self):
+        """1 Oct: the plan's "got-it" is the acknowledgment lag, and a duration is the delivery
+        time, never the bare "delivery"."""
+        fig, _ = mlf.figure(_world(), "test", dict(TestAFigure.SPEC, rings=tuple(mlf.RINGS)))
+        said = [" ".join(t.get_text().split()) for t in fig.legends[0].get_texts()]
+        said += [ax.get_xlabel() for ax in fig.get_axes() if ax.get_visible()]
+        plt.close(fig)
+        assert "diamond: the lag brake would have stopped it" in said
+        assert ("square: delivery time, acknowledgment lag or held delay far from its "
+                "fellows'") in said
+        assert "Delivery time, the run's median (ms)" in said
+        assert not [s for s in said if "got-it" in s or s.startswith("Delivery,")]
+
+    @pytest.mark.parametrize("rings", [("paused", "flagged", "far"), tuple(mlf.RINGS)],
+                             ids=["three lines", "four lines"])
+    def test_the_panels_stand_clear_of_the_legend_however_tall_it_is(self, rings):
+        """Three lines fit the fixed floor the panels had. L9's six marks, with the square's
+        entry on two lines, make four, and on that floor the bottom panels' axis labels came
+        down to 3 pt above the legend."""
+        fig, _ = mlf.figure(_world(), "test", dict(TestAFigure.SPEC, rings=rings))
+        fig.canvas.draw()      # an axis label takes its place from the layout only when drawn
+        renderer = fig.canvas.get_renderer()
+        top = fig.legends[0].get_window_extent(renderer).y1
+        lowest = min(ax.xaxis.label.get_window_extent(renderer).y0 for ax in fig.get_axes()
+                     if ax.get_visible())
+        plt.close(fig)
+        assert (lowest - top) / fig.dpi > 0.1, "an axis label sits on the legend"
+
+
 class TestMain:
 
     def test_it_writes_each_figure_or_only_the_one_asked_for(self, temp_dir, capsys,

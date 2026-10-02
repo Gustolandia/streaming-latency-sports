@@ -1,7 +1,7 @@
 % The postmortem: the complete record behind "Faster than Light: Latency Measurement Errors
 % in Message-Broker Benchmarks", archived with the data. NOT part of the submission. Until
 % 29 Sep 2026 this file was supplement.tex, the paper's supplementary material; an outside
-% editor read its 75 pages as an undecided paper, so the journal supplement is now a separate,
+% editor read its 74 pages as an undecided paper, so the journal supplement is now a separate,
 % shorter document organized by the paper's sections (supplement.tex), and this one keeps the
 % single-author postmortem form the second author asked for on 8 Sep. Each section is indexed in
 % docs/supplement_index.md, which records what moved here from which revision of the main text
@@ -356,8 +356,9 @@ paper now uses. The figures we had attached to it belong to a different 2026
 comparison~\cite{devto2026streaming}, which a search had returned in the same result set.
 
 We record it here rather than in the reference note because it is the same class of error
-this paper is about, one level up: a number carried from one source to another because both
-arrived together, and nothing in the citation would have shown it. Both documents are now
+this paper is about, made in a citation rather than in a measurement: a number carried from
+one source to another because both arrived together, and nothing in the citation would have
+shown it. Both documents are now
 placed separately in S33.4, and the registry S33.4 counts from
 (\texttt{docs/results/external/literature\_regime.csv}) holds one row each.
 
@@ -616,9 +617,9 @@ $0.84$ and $0.80$~ms. An earlier version of this paper reported that twentyfold 
 as a finding, attributed it to the client's sender thread waking from idle, and built a
 practitioner recommendation on it.
 
-That gap does not survive re-measurement, and the reason is a second instance of this paper's
-own thesis. We report it at length for the same reason we reported the first, and we retain the
-figure that once carried it (Figure~\ref{fig:e1}) rather than deleting the evidence.
+That gap does not survive re-measurement: it was a start-up cost paid once per run, read as a
+cost paid by every event. We report it at length, as we did the first result set, and we retain
+the figure that once carried it (Figure~\ref{fig:e1}) rather than deleting the evidence.
 
 \paragraph{The offset is a start-up cost, not a per-event constant} Re-measuring at $N{=}1$ on
 the same driver and the same broker, at a replay rate derived from the plan and verified against
@@ -627,7 +628,7 @@ $103$~ms --- with a \emph{maximum} of $103.5$~ms. Two independent instrumentatio
 the per-event loop trace and the per-run summary. The $103$~ms is real, but it is paid once per
 run, not once per event.
 
-We cannot call this a repetition of E1's condition, because no record of E1's replay rate survives (S4). That is why the argument below does not rest on the
+We cannot call this a repetition of E1's condition, because no record of E1's achieved replay rate survives (S4). That is why the argument below does not rest on the
 comparison between the two campaigns at all. It rests on a sweep that is internally controlled
 --- one campaign, one rate, one match, only the window varying --- and on an arithmetic
 relation that holds at every rate E1 could have used.
@@ -701,19 +702,17 @@ which at least four are $103$~ms \emph{is} $103$~ms. The published figure is the
 its own prologue.
 
 \paragraph{Why the original corpus could not see that, and how we know} The E1 runs behind
-Table~\ref{tab:e1} replayed the first $600$~s of match time, which in this plan holds
-\textbf{507 events}. They matched a \textbf{median of seven} --- $745$ events across $100$
-\kafka{} runs, a match rate near one percent. The window was not the problem; the join was. And
-the seven that survived it are not a random seven.
+Table~\ref{tab:e1} matched a \textbf{median of seven} events per run, $745$ events across $100$
+\kafka{} runs. Their campaign script, recovered later (S4), replayed two seconds of match time
+per run, so the seven are the opening of the match and not a random seven.
 
-That last claim is arithmetic rather than inference. Those runs report a median producer
-send lag of $102.93$~ms over seven values, and a median of seven values at $102.93$~ms
-requires \emph{at least four of the seven} to be $102.93$~ms or greater. The loop trace says
-exactly how many events per run are ever that late: four (Table~\ref{tab:window}), and always the
-same four --- those due while the first send blocks. The matched set must therefore consist
-almost entirely of the prologue. The plan's first five events are all timestamped at
-$t_{\mathrm{sim}}{=}0$, so they are the first candidates a consumer sees and the first a lossy
-join keeps.
+The measurements show the same thing without the script, by arithmetic. Those runs report a
+median producer send lag of $102.93$~ms over seven values, and a median of seven values at
+$102.93$~ms requires \emph{at least four of the seven} to be $102.93$~ms or greater. The loop
+trace says exactly how many events per run are ever that late: four (Table~\ref{tab:window}),
+and always the same four --- those due while the first send blocks. The matched set must
+therefore consist almost entirely of the prologue. The plan's first five events are all
+timestamped at $t_{\mathrm{sim}}{=}0$, so any window that starts at kick-off opens with them.
 
 The failure thus compounds: a sample of seven is small, but a sample of seven \emph{selected
 towards the contaminated events} is worse than small. \redis{} reports $1.75$~ms on the same
@@ -833,8 +832,8 @@ The cause is that the delay is \textbf{common-mode}. It delays the acknowledgmen
 broker-to-producer and the record travelling broker-to-consumer by the same amount, and transport
 is the \emph{difference} of timestamps taken at those two arrivals, so the injected delay cancels
 exactly. A manipulation can be applied correctly, verified present at the interface, and still not
-touch the quantity under study --- which is the same lesson as the rest of this paper, arriving
-this time in our own experimental design rather than in our harness. The original sweep's
+touch the quantity under study, and this time the failure was in our own experimental design
+rather than in our harness. The original sweep's
 correlation was therefore never an effect-size relationship, and we report the sweep only as the
 negative result it is.
 
@@ -1014,7 +1013,7 @@ topic auto-creation, connection setup, and the first blocking \texttt{produce()}
 shared start-up cost swamps a $0.41$~ms difference. As the run lengthens the cost dilutes, and
 the brokers' steady-state separation emerges. The seven-event corpus answered a question about
 start-up while appearing to answer one about brokers, which is the same failure of window
-selection as the end-to-end withdrawal of Section~S3, one level up.
+selection as the end-to-end withdrawal of Section~S3.
 
 
 
@@ -1091,7 +1090,7 @@ configuration should show. We report the spread over all five rather than the fo
 The one that resolved is worth recording, because it is an argument for one of our own rules.
 The $q=1$ configuration at $\armTwoFiftyRate$~msg/s was listed here as a departure from the account when
 it had three replicates and spread little more than half its cell. At \armTwoFiftyNWord{} it
-spreads $\armTwoFiftySpread$ of $\armTwoFiftyCell$, which is the full cell width the model
+spreads $\armTwoFiftySpread$ of $\armTwoFiftyCell$, which is the full step width the model
 predicts, and the anomaly is gone. It was never a departure; it was an configuration reported before it
 had enough replicates to show what it was doing --- which is exactly what
 Section~\mainAuthors{} asks benchmark authors to count before they quote.
@@ -1263,9 +1262,9 @@ The interesting part is why it survived. \texttt{estimate()} in
 \texttt{tail\_index\_traced.py} ran \texttt{gof\_pvalue} on the $256$--$2048\,\mu$s window
 and on nothing else, so the test that condemned one index was never pointed at the other.
 Every gate we own passed the sentence, because none of them asks whether a published fit was
-judged by the test the same file already contains. That is this paper's own thesis arriving
-uninvited, and the repair is the one the paper recommends to others: run the check on
-everything it can judge, and publish what it says. The estimator now returns the tail's
+judged by the test the same file already contains. A check applied to one result and not to
+another says nothing about the other, and the repair is the one the paper recommends to
+others: run the check on everything it can judge, and publish what it says. The estimator now returns the tail's
 verdict whatever it is, the emitter carries it into the ledger beside the index it judges,
 and \texttt{test\_the\_paper\_meets\_its\_own\_rules.py} refuses a moment claim whose interval
 crosses the boundary it depends on.
@@ -1289,7 +1288,7 @@ explanation the mode's location supports rather than as an independently measure
 $T_{\mathrm{true}}$, so it moves $\theta$'s grid position, and the phase account of Section~\mainPhase{} dictates the configuration's class with nothing else changed: measured $\theta(32\,\text{KB}) =
 0.685$ and $\theta(64\,\text{KB}) = 0.853$ give, at $q=3$,
 $\operatorname{frac}(q\theta) = 0.055$ (on the $2/3$ point: flat, pinned there) and $0.56$
-(mid-cell: full width back). The registered prediction was that one manipulation would move
+(mid-step: full width back). The registered prediction was that one manipulation would move
 the configuration onto a grid point and off it.
 It did (Figure~\ref{fig:payloadflip}): at $32$~KB the
 \flipReplicatesThirtyTwoWord{} replicates spanned
@@ -1297,7 +1296,7 @@ $\flipLoThirtyTwo$--$\flipHiThirtyTwo\%$ --- spread
 $\flipSpreadThirtyTwo$ points, three replicates agreeing to $0.06$ --- and at $64$~KB they
 spanned $\flipLoSixtyFour$--$\flipHiSixtyFour\%$ --- spread
 $\flipSpreadSixtyFour$, the upper vertex hit to a quarter point. The flat-full
-boundary at half the cell width ($16.7$ points) is crossed in the predicted direction by both
+boundary at half the step width ($16.7$ points) is crossed in the predicted direction by both
 halves. One registered detail failed: the $32$~KB configuration pins at $\flipPinThirtyTwo\%$, not on
 the vertex at $\flipVertexTwoThirds\%$ --- a
 displacement toward $\theta$ that the next paragraph makes systematic.
@@ -1463,10 +1462,14 @@ is the exponent of Equation~\ref{eq:tailindex} recomputed from fewer points, and
 copy of a result cannot corroborate it --- but that only one of them can be escaped.
 
 \emph{Their limits differ in kind.} Retention saturates: $\min(1, T_{\mathrm{true}}/
-\tau)$ reaches one and stops, and the failure switches off --- of the
-$\ombMedianCells$ instrumented cells, the
-\ombEscapeCellsWord{} whose payload is large enough report above the grid and lose
-nothing. The negative-span rate has no such exit. At saturation it reaches
+\tau)$ reaches one and stops, and the failure switches off. Of the
+$\ombMedianCells$ instrumented cells, \ombEscapeCellsWord{} report above the grid, and of
+those only the \ombAboveGridWholeWord{} at $\ombAboveGridWholeKB$~KB lose nothing. The
+\ombAboveGridPartialWord{} at $\ombAboveGridPartialKB$~KB print medians of
+$\ombAboveGridPartialMedLo$ and $\ombAboveGridPartialMedHi$~ms and still keep only
+$\ombAboveGridPartialRetLo$--$\ombAboveGridPartialRetHi\%$ of their samples, every sample
+they delete having computed to exactly zero, so a median above the grid is not by itself
+the exit. The negative-span rate has no such exit. At saturation it reaches
 $\invCeiling$, and the scale real-time priority settles on, $\invFloor$, is a scale and
 not a limit: across all $\rtPairs$ pairs the manipulated configuration runs
 $\rtResidualMin$--$\rtResidualMax$, on both sides of it. Neither number is a bound, and
@@ -1563,11 +1566,11 @@ is not a free observer.
 \includegraphics[width=\columnwidth]{docs/results/figures/payload_flip.pdf}
 \caption[Campaign's confirmed prediction]{\textbf{Campaign's confirmed prediction.} (a)~Retention replicates at $300$~msg/s
 ($q=3$) by payload, against the thirds grid: $200$~B straddles both branches, $32$~KB pins
-near the $2/3$ vertex, $64$~KB re-opens to the upper cell. Horizontal position within an
+near the $2/3$ vertex, $64$~KB re-opens to the upper step. Horizontal position within an
 configuration separates replicates that would overprint and carries no variable. (b)~Replicate
 spread against $\operatorname{frac}(q\theta)$, with $\theta$ each configuration's own mean
 retention in this campaign; the registered prediction placed $32$ and $64$~KB at $0.055$ and
-$0.56$ from the payload sweep's $\theta$ (S8). The flat--full boundary at half the cell width is
+$0.56$ from the payload sweep's $\theta$ (S8). The flat--full boundary at half the step width is
 crossed in both directions by the one manipulated variable. The spread is a range,
 so each stick shows the replicates it is made of --- $32$~KB clears the boundary with three
 of five pinned together, $64$~KB is broad.}
@@ -1587,7 +1590,7 @@ schedule against the grid, which is what the rest of this section tests.
 
 \paragraph{What the replicate spread does, and does not, predict} It is tempting to write
 the prediction as ``spread $\approx 100/q$'', and we did; that is wrong in a way that matters,
-because $100/q$ is the \emph{cell width} --- an upper bound, reached only when
+because $100/q$ is the \emph{step width} --- an upper bound, reached only when
 $T_{\mathrm{true}}/\tau$ sits midway between two grid points and replicates realize both.
 On a grid point, one point takes nearly every run and the spread collapses. One statement
 covers both:
@@ -1595,19 +1598,18 @@ covers both:
 \label{eq:quantsupp}
 \text{spread} \;\longrightarrow\;
 \begin{cases}
-100/q & \text{when } T_{\mathrm{true}}/\tau \text{ sits mid-cell,}\\[2pt]
+100/q & \text{when } T_{\mathrm{true}}/\tau \text{ sits mid-step,}\\[2pt]
 0 & \text{when } T_{\mathrm{true}}/\tau \text{ sits on a grid point.}
 \end{cases}
 \end{equation}
 The measured continuous value is $T_{\mathrm{true}}/\tau = 0.495$, a half to within replicate noise.
 A half lies on every even grid ($1/2$, $2/4$, $4/8$) and never on an odd one, so at this operating
-point the odd denominators are predicted to show their full cell width and the even ones to show
+point the odd denominators are predicted to show their full step width and the even ones to show
 almost none. That is a prediction about specific configurations before they are run, not a description after.
 
 \paragraph{Most configurations behave as their position predicts, and the two that do not are the
-reason this statistic was replaced} Table~\ref{tab:quantization} states each rate's cell
-width, cell position, prediction and measured spread against Equation~\ref{eq:quantsupp}; the
-test needs no tolerance, since a spread above half the cell width separates full from flat.
+reason this statistic was replaced} Table~\ref{tab:quantization} states each rate's step width, cell position, prediction and measured spread against Equation~\ref{eq:quantsupp}; the
+test needs no tolerance, since a spread above half the step width separates full from flat.
 Of the $\spreadArms$ commensurate configurations, $\spreadAgree$ match. The predictions are
 \spreadPredFullWord{} full against \spreadPredFlatWord{} flat, so both classes are realized
 and the agreement is with a prediction that varies, not with a constant. The table's last two
@@ -1617,7 +1619,7 @@ The \spreadMissWord{} that miss are \spreadMissRates{}~msg/s. Both are predicted
 measure flat, and we report them as failures of \emph{this} statistic rather than of the
 model, for a reason that was stated before either was run and does not depend on how they came
 out. Spread is a range over replicates of a quantity with two-point support: an configuration realizes
-the full cell width only if its replicates land on \emph{both} bracketing vertices, and five
+the full step width only if its replicates land on \emph{both} bracketing vertices, and five
 replicates that happen to fall on one of them produce a flat configuration however exactly right the
 grid is. At $q=5$ and $q=7$ the upper branch carries a minority of the probability, so this is
 the outcome to expect some of the time, and the estimator cannot tell it from a refutation.
@@ -1646,7 +1648,7 @@ denominator.
 A quantity with two-point support breaks the replicate median, so the replacement
 (\brk{grid_membership_test.py}, written after the campaign and committed with its first
 results) tests each
-configuration's mean distance to its nearest grid vertex, normalized by cell width, against a
+configuration's mean distance to its nearest grid vertex, normalized by step width, against a
 continuum null of Normal$(\theta_{\mathrm{local}}, \sigma{=}1.2)$ replicates --- both
 parameters measured, neither fitted to the configuration under test; the p-value is one-sided by
 Monte Carlo.
@@ -1849,10 +1851,10 @@ sign check of Section~\mainGate{} fires on none of it.}
 \includegraphics[width=\columnwidth]{docs/results/figures/exposure_curve.pdf}
 \caption[Where a path sits on the exposure curve]{\textbf{Where a path sits on the exposure curve.} Table~\ref{tab:exposure} as a
 curve: the relative error of the acknowledgment-referenced proxy, $A/T_{\mathrm{true}}$,
-against the delivery being measured. The line is this corpus's median acknowledgment lag
+against the delivery time measured. The line is this corpus's median acknowledgment lag
 and the band its tenth to ninetieth percentile across conditions, so a reader can bracket
 their own path rather than take the middle. The bar on the dashed line is the crossover,
-where the displacement equals the delivery it is a correction to: $\exposureCrossover$~ms at
+where the acknowledgment lag equals the delivery time it is a correction to: $\exposureCrossover$~ms at
 the median lag and $\exposureCrossoverHi$~ms at the ninetieth percentile, marked as an
 interval because it is one. To its left the correction is larger than the quantity corrected. The shaded column is
 where published broker medians sit (Section~S33.4), which is the reason the curve matters.}
@@ -2075,7 +2077,7 @@ built, which matters because the null is the whole content of the claim: a conti
 hypothesis has to be turned into a distribution before anything can reject it.
 
 For each configuration, let $D$ be the mean distance from its replicates to the nearest vertex of the
-$q$-grid, divided by the cell width $100/q$ points. Under the continuum null, retention is a
+$q$-grid, divided by the step width $100/q$ points. Under the continuum null, retention is a
 continuous function of rate, so a replicate carries no memory of the grid: it is drawn from a
 normal distribution centered on the configuration's rate-local continuous value, with the pooled
 replicate standard deviation of the incommensurate configurations. Both are measured, and
@@ -2306,7 +2308,7 @@ containers inside a WSL2 virtual machine on Microsoft's hypervisor. An earlier v
 paragraph said the workstation had no hypervisor beneath it, and drew from that a conclusion
 the machine cannot support. Two observations disagree with a
 steal-time account: real-time priority is a guest-side control and collapses the rate
-$\rtLowFactor$--$\rtHighFactor\times$ (these two matched pairs; all $\rtPairs$ are in S12, and Section~\mainSettle{} of the main
+$\rtLowFactor$--$\rtHighFactor\times$ (these two matched pairs; all \rtPairsWord{} are in S12, and Section~\mainSettle{} of the main
 text gives $\rtFactorLow$--$\rtFactorHigh\times$ across the load sweep), which stolen vCPU time would not
 yield to; and the
 $\tracedModeLo$--$\tracedModeHi$~ms mode of Section~\mainSpectrum{} sits on the guest kernel's own base-slice arithmetic
@@ -2517,8 +2519,7 @@ that contains zero; the worst condition is the same on both sides; and the upper
 quartiles are within a point and a half of each other. What moves the medians apart is the
 last column: $\recoveryPassExact\%$ of the accepted conditions recover the delivery exactly,
 and a concentration at zero drags a median down without moving the population it came from.
-A quantile can shift while the distribution does not, which is this paper's own subject one
-level up.
+A quantile can shift while the distribution does not.
 
 Two further checks make that concrete. First, the concentration at zero is not itself a
 population difference. The two exact-recovery shares are $\recoveryPassExact\%$ and
@@ -2790,9 +2791,9 @@ verdicts on all the runs are the ones reported.
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/quantum_geometry.pdf}
 \caption[Why a sample disappears, and why the survivors are not a sample]{\textbf{Why a sample disappears, and why the survivors are not a sample.}
-(a) One delivery of $T_{\mathrm{true}} = 0.35$~ms at four phases of one tick. Three finish
+(a) One delivery time of $T_{\mathrm{true}} = 0.35$~ms at four phases of one millisecond. Three finish
 inside it, so both timestamps round alike, the difference is exactly zero, and the admission condition removes
-them; the fourth crosses the boundary and is recorded as one whole tick --- which is why the
+them; the fourth crosses the boundary and is recorded as one whole millisecond --- which is why the
 corpus prints $1.0$ and $2.0$~ms and nothing between. (b) A delivery survives from phase
 $\tau - T_{\mathrm{true}}$ onward --- the shaded band --- so uniform phases retain
 $T_{\mathrm{true}}/\tau$
@@ -3350,7 +3351,7 @@ This is not bookkeeping for its own sake: it recovered a valid cell whose script
 finishing the benchmark and writing its result row --- a cell that is the median of its load level
 --- and it exposed a fabricated negative sample that our own indexer had produced by mapping an
 older result schema positionally. A campaign that silently drops its failures is a selection of the
-runs that worked, which is the failure this paper is about, one level up.
+runs that worked, the same uncounted selection this paper finds in a benchmark's samples.
 
 \paragraph{The full record, stated once} The external campaign totals $\ombRuns$ instrumented
 runs in twelve named sub-campaigns: four load sweeps, a resolution sweep, a payload sweep at an
@@ -3883,7 +3884,7 @@ to the nearest grid point, against the cell half-width: $0$ sits on a grid point
 midway between two. Position is scale-free, so every call is unchanged whether the
 continuous value is estimated pooled or per rate. \textnormal{\textit{Predicts}} is
 \textnormal{\textit{full}} where the position exceeds a half; \textnormal{\textit{shows}} is
-\textnormal{\textit{full}} where the measured spread exceeds half the cell width. Both are
+\textnormal{\textit{full}} where the measured spread exceeds half the step width. Both are
 recomputed from the geometry at build time, so the last two columns can be read against each
 other: $\spreadAgree$ of the $\spreadArms$ commensurate rows agree, and the
 \spreadMissWord{} that do not are \spreadMissRates{}~msg/s, daggered and set in bold here and
@@ -4363,7 +4364,7 @@ walk is falsified; what stands is per-send jitter, applied at each send, not acc
 \paragraph{The continuous value plateaus, and one miss stands} Incommensurate configurations at
 $1053$ and $1219$~msg/s measured $\theta = 47.2\%$ and $48.2\%$ --- the downward trend below
 $889$~msg/s does not continue, refuting the linear extrapolation one registered prediction
-relied on --- and the $1250$~msg/s configuration, predicted mid-cell and full, instead pinned on the $2/5$ vertex
+relied on --- and the $1250$~msg/s configuration, predicted mid-step and full, instead pinned on the $2/5$ vertex
 ($40.66$--$42.00$, one at $48.26$): probability $\approx 0.08$ under the branch law,
 recorded as a miss --- yet that configuration sits six to seven points below the continuous value
 beside it, which no continuous account produces: the grid is present even where the
@@ -4916,8 +4917,7 @@ The industrial half of that exhibit is a vendor's own fairness guide. A May 2026
 fair, covers workload profile, hardware normalization, the durability contract and failure
 scenarios, and says nothing about discarded samples, negative values, timestamp resolution or
 the send rate's relation to the clock tick~\cite{automq2026methodology}. Its entire treatment
-of the subject is the phrase ``with outlier handling described'' --- the unfalsifiable gesture
-the rules of Section~\mainAuthors{} exist to replace with a number. A tutorial and a vendor
+of the subject is the phrase ``with outlier handling described''. A tutorial and a vendor
 guide, four months apart, omitting the same thing is a stronger statement about the field than
 either alone.
 
@@ -4929,7 +4929,7 @@ the load generator with the broker, skipping JVM warmup, measuring only throughp
 long enough, unrepresentative message sizes, triggering producer flow control, and not matching
 production configuration. Every one is about experimental design; none reaches the measurement tool.
 The words \emph{clock}, \emph{timestamp}, \emph{resolution} and \emph{negative} do not occur on
-the page. We note without irony that its first error is co-locating the load generator, while
+the page. Its first error is co-locating the load generator, while
 Section~\mainBrokers{} finds that a co-located testbed \emph{hides} the condition deciding the
 outcome: the two are different concerns, resource contention against exposure, and the guide is
 right about its own.
@@ -5358,7 +5358,7 @@ wrong, and it is counted and unmarked.
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/law_slice.pdf}
 \caption[Every slice run, aberrant runs marked]{\textbf{Every slice run, aberrant runs marked.}
-Each run of L1 (first x86 pair) and L4 (Arm pair, Arm64 in the panels) at its median delivery and
+Each run of L1 (first x86 pair) and L4 (Arm pair, Arm64 in the panels) at its median delivery time and
 its negative-span rate, colored by the slice it ran at. Crosses: runs the integrity rule did not
 count. Plusses: runs of L4's two false starts. Rings: counted runs with a warning, each reason its
 own shape (Table~\ref{tab:lawmarks}).}

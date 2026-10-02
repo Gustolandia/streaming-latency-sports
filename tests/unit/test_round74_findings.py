@@ -58,11 +58,12 @@ class TestR1SpelledQuantitiesUseTheirMacro:
 
         v5 (28 Sep): the sentence survives in Section IV-B word for word, but its line now breaks
         inside the anchor, so the anchor is matched across the break."""
-        m = re.search(r"The only cells that\s+escape", paper)
-        assert m, "Section IV-B's escaping-cells sentence has been reworded; retarget this pin"
+        m = re.search(r"The\s+" + RE_BS + r"ombEscapeCellsWord\{\}\s+settings that print",
+                      paper)
+        assert m, "Section IV-B's above-grid sentence has been reworded; retarget this pin"
         passage = " ".join(paper[m.start():m.start() + 200].split())
         assert chr(92) + "ombEscapeCellsWord" in passage
-        assert "escape are the four" not in passage
+        assert "The four settings" not in passage
         assert chr(92) + "ombEscapeCellsWord" in supplement, (
             "the supplement used it first; both documents now agree")
 
@@ -236,7 +237,7 @@ class TestTheRenderedPageCarriesIt:
         """v5 (28 Sep): the class count prints in the sentence that lists the classes, and the
         superlative follows it (see `test_the_disposal_classes_come_from_the_ledger`)."""
         flat = "".join(_rendered("paper").split())
-        assert "escapearethefourwhosepayload" in flat
+        assert "foursettingsthatprintabovethegrid" in flat
         assert "inthreeclasses:filtering" in flat
         assert "substitution.Substitutionistheworst" in flat
 

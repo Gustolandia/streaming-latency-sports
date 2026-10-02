@@ -7,11 +7,12 @@ recoverable at the named commit.
 
 ## Journal supplement and postmortem
 
-**Split on 2026-09-29.** An outside editor read the 75-page single-author supplement as an
+**Split on 2026-09-29.** An outside editor read the 74-page single-author supplement as an
 undecided paper and asked for 25--30 pages organized by the paper's sections, under its byline,
-with at most fifteen pointers from the paper. The old supplement was renamed `postmortem.tex`,
-unchanged in content: the complete record, archived with the data, single-author as the second
-author asked on 2026-09-08, and not part of the submission. Its sections keep their numbers, and
+with at most fifteen pointers from the paper. The old supplement was renamed `postmortem.tex`
+and corrected where the fidelity audit of 29 Sep, and a later editorial audit, found errors.
+It is the complete record, archived with the data, single-author as the second author asked
+on 2026-09-08, and not part of the submission. Its sections keep their numbers, and
 **every S-number below this section is a postmortem number**. Its thirteen self-references that
 read "supplementary material S<n>" now read "Section~S<n>", because that phrase names the other
 document now.
@@ -63,8 +64,8 @@ It was built by matching section titles between the two documents rather than by
 |---|---|---|---|
 | S4 | Replay-rate provenance gap, full episode (recovery arithmetic, per-claim exposure, disagreeing records) | main text `sec:rateprovenance` (92 lines -> 14-line summary) | pre-move text at commit 8480957 |
 | S5 | Load-axis post-mortem: the failed M/G/1 + registered-bracket detail | main text mixture development (`sec:twostate` area) | pre-move text at commit 8480957 |
-| S24 | Campaign ledger schema (column dictionary) | new (referee minor 12) | n/a |
-| S24 | OMB distributed-mode failure diagnostics (per-attempt version, logs, signature) | new (referee M2); data in `docs/results/external/dist_diag/` | n/a |
+| S24 | Campaign ledger schema (column dictionary) | new (internal review, minor item 12) | n/a |
+| S24 | OMB distributed-mode failure diagnostics (per-attempt version, logs, signature) | new (internal review, item M2); outcomes in `docs/results/external/omb_distributed_result.csv`, `dist_load0/` and `dist_load50/`; the coordinator logs were not retained (postmortem S24.1) | n/a |
 | S5 | The E1 reconciliation in full (windowed re-analysis, tab:e1rep) | main text `sec:e1` (95 lines -> 8-line summary) | pre-move text at commit 6251050 |
 
 Sections S2 onward were added in the v2 IEEEtran/TPDS restructure (2026-08), which compressed
@@ -107,29 +108,29 @@ preceding the "v2: TPDS restructure" commit.
 (S7 and S21 were never assigned; the numbering gaps are deliberate, not losses. The supplement
 carries its own IEEEtran bibliography for the citations that travelled with the moved text.)
 
-The compiled supplement states on its first page that it is not part of the main submission.
-The internal review that drove this split is not public.
+The compiled postmortem states on its first page that it is archived with the data and is not
+part of the submission. The internal review that drove this split is not public.
 
-## TPDS round-1 revision (2026-08-07)
+## Internal review, TPDS standard, round 1 (2026-08-07)
 
-Three exhibits moved **out of** the supplement into the main text at the referee's request
-(M1): the two-panel model figure and the payload flip figure (formerly S1) and a compact
+Three exhibits moved **out of** the supplement into the main text at that internal review's
+request (item M1): the two-panel model figure and the payload flip figure (formerly S1) and a compact
 mechanism table digesting the S26 occupancy/geometry tables (`tab:mechanism`, new). In the
 other direction, compact stubs in the main text now point at full paragraphs appended to
 S24 (distributed-mode body), S3 (benchmark-output corroboration), S22 (gate/warmup/ledger
 detail), S23 (transfer-procedure rules), S27 (Lozi/Li literature engagement), S26
-(reversal account + falsification), S10 (grid-membership inference), each marked
-"Moved from the main text (TPDS round 1)". **S18** (new) holds the referee-round
-sensitivity artefacts: the audit gate applied to the powered transport campaigns
+(reversal account + falsification), S10 (grid-membership inference), each marked at the
+time as moved from the main text in this round. **S18** (new) holds the sensitivity
+artefacts this review asked for: the audit gate applied to the powered transport campaigns
 (`gate_sensitivity.csv`, `transport_realtime_*_gated.csv`), the condition-level threshold
 sweep (`first_result_threshold_sweep.csv`), and the traced survival slopes
 (`traced_tail_slope.csv`). The powered-transport S5/S2 tables now carry the **gated**
 numbers; the ungated originals remain in the artefact tree as the historical record.
 
-## TC referee round (2026-08-19)
+## Internal review, IEEE TC standard, round 1 (2026-08-19)
 
-The submission was retargeted to IEEE Transactions on Computers and then reviewed against
-that journal's standards. Ten items were raised; the ones that moved material are recorded
+The manuscript was retargeted to IEEE Transactions on Computers and then reviewed internally
+against that journal's standards. Ten items were raised; the ones that moved material are recorded
 here so the provenance chain stays unbroken.
 
 **Into the supplement.**
@@ -162,7 +163,7 @@ here so the provenance chain stays unbroken.
   main text's ...") were repaired.
 
 **Format.** The document class gained `nonacm`. The supplement had been carrying
-"Manuscript submitted to ACM" on all forty pages while being submitted to an IEEE journal,
+"Manuscript submitted to ACM" on all forty pages while being prepared for an IEEE journal,
 which is not a rule violation but is exactly what a Computer Society prescreener looks for.
 
 ## Internal review round 2 (2026-08-19)
@@ -207,13 +208,14 @@ Three citations moved with S33 and so left the paper's reference list, which is 
 supplement, which carries its own bibliography.
 
 **Not moved, and worth recording why.** The mechanism table (Table II) stayed in the main text
-even though the enlarged Figure 5 now does most of its work, because a TPDS round-1 referee
-asked for it there (item M1) and a gate holds it. Float packing was tried first --- two pages
-were three hundred words short each --- and adjusting `\topfraction` and its neighbours
+even though the enlarged Figure 5 now does most of its work, because the first internal
+review, held to TPDS's standards, asked for it there (item M1) and a gate holds it. Float
+packing was tried first --- two pages were three hundred words short each --- and adjusting
+`\topfraction` and its neighbours
 changed the layout by nothing at all: those pages were not float-starved, the floats were the
 content.
 
-## Round 20 (2026-08-24): the referee's three substantive items
+## Round 20 (2026-08-24): the internal reviewer's three substantive items
 
 Three defects, three minors and three recommendations, plus the reference cap. Everything the
 main text gave up is below; nothing lost a number or a citation.
@@ -332,43 +334,46 @@ with no gate, and the only one that costs $220 a page.
 
 ## Figure inventory
 
-`docs/results/figures/` holds thirty-one PDFs. Twenty-five are included by a document (five
-by the main text, twenty by the supplement); six are not, and are kept deliberately rather than
-by oversight. Referee round 13 asked which was which, so
-the answer lives here instead of in anyone's memory. A test
+`docs/results/figures/` holds thirty-one PDFs. Twenty-five are included by at least one
+document: five by the main text, nine by the journal supplement and twenty by the postmortem.
+Six are included by none and are kept deliberately rather than by oversight: three are listed
+below as retained, and three are the candidates of the next section. An internal review round
+(13) asked which was which, so the answer lives here instead of in anyone's memory. A test
 (`test_every_figure_is_used_or_declared`) fails if a figure appears in the directory without
-appearing in this table.
+appearing in this table, and another holds every "main text, Fig. N" below to the number the
+paper prints. Supplement and postmortem numbers are those of the 1 October 2026 build, with the
+section that carries the figure; both documents number their figures S1, S2, and so on.
 
 | Figure | Where it appears |
 |---|---|
 | `two_ways` | main text, Fig. 1 (added 28 Sep 2026, the editorial revision: panels (a) and (b) of `deletion_histogram` side by side, so page 1 shows both failures on one population; `scripts/make_deletion_histogram.py --two`) |
 | `measurement_model` | main text, Fig. 2 (panel (b) split off round 52) |
-| `pipeline_schematic` | supplement, S24.3 (returned 28 Sep 2026: the v5 main text defines the four timestamps in prose and gives its drawing to the inversion itself, Fig. 2; the pipeline drawing went back beside the metric map that needs it. It had been main text, Fig. 1, from round 51, when Gregg asked that a general reader meet the system, drawn, inside the first two pages; one copy only, as round 48 required) |
-| `delta_schematic` | supplement, S9 (was Fig. 2(b); the one main-text drawing that was not a measurement, and the measured version is Fig. 9). Redrawn 28 Sep 2026: the waiting state is a shelf to the slice and a tick, the rest of a slice, where it had been a lobe at the slice (S16.10) |
-| `wait_shape` | supplement, S16.10 (added 28 Sep 2026: each acknowledgment's wait against the whole-slice and rest-of-a-slice shapes, and every thread's waits by what began them; `scripts/make_wait_shape_figure.py`) |
-| `law_slice` | supplement, S36 (added 28 Sep 2026, Part V: every run of L1 and L4 (the plan's A1 and A4) with every aberrant run marked; `scripts/make_law_figures.py`, marks by `scripts/law_runs.py`) |
-| `law_tick` | supplement, S36 (added 28 Sep 2026, Part V: L2, L5 and L7, marked the same way) |
-| `law_load` | supplement, S36 (added 28 Sep 2026, Part V: L3 and L8, marked the same way) |
-| `law_a9` | supplement, S36 (added 28 Sep 2026, Part V: L9, with its traced half ringed) |
-| `quantum_geometry` | supplement, S17 (moved round 40: a constructed illustration of the retention law, not a measurement, placed beside the 1970 counter note that carries the same identity) (added round 28: the geometry behind the deletion law) |
-| `grid_membership` | supplement, S11 (moved round 59: the second author asked for the grid refinement to become the explanation of the deletion rather than a contribution, so the figure went beside the per-configuration table it summarizes) |
-| `payload_flip` | supplement, S10 (moved round 43: every number its panels carry is in the sentence that used to sit above it, and four biographies would not otherwise fit inside twelve pages) (single-column from round 28; was full-width) |
-| `mechanism_forest` | supplement, S12 (moved round 57: it plots the four matched pairs of the main text's Table II and the two brokers of its Table I, so it restated tables the reader already has) |
-| `ttrue_law` | supplement, S8 |
-| `stall_spectrum` | main text, Fig. 3 (was Fig. 4 until round 61 reordered the two failure modes, Fig. 5 until `grid_membership` left in round 59, and Fig. 6 until `payload_flip` left in round 43) |
-| `exposure_curve_column` | main text, Fig. 4 (added 28 Sep 2026: the S12 curve redrawn at column width, because the main text's advice to authors turns on where their path sits on it) |
-| `deletion_phases` | main text, Fig. 5 (added 28 Sep 2026: the four-phase drawing of one tick beside the retention of every captured setting, mechanism beside consequence. Its panel (b) is the former `deletion` figure, main text Fig. 4 from round 61, whose single-panel file and builder were retired with it) |
-| `priority_ladder` | supplement, S12 |
-| _(no figure)_ | supplement, S13 --- the broker results, moved from the main text in round 18 |
-| `experiment_map` | supplement |
-| `integrity_audit` | supplement |
-| `window_sweep` | supplement |
-| `e1_end_to_end_lag` | supplement, S3 (panel (b) stopped being grouped bars on a log axis in round 59: a bar states its value as a length from zero and a log axis has no zero) |
-| `exposure_curve` | supplement, S12 (three main-text pointers send a reader to S12 for this curve, which is why round 60 put it in that section's title) |
-| `deletion_histogram` | supplement, S14 (named in that section's title from round 60) |
+| `stall_spectrum` | main text, Fig. 3 |
+| `exposure_curve_column` | main text, Fig. 4 (added 28 Sep 2026: the exposure curve redrawn at column width, because the main text's advice to authors turns on where a path sits on it) |
+| `deletion_phases` | main text, Fig. 5 (added 28 Sep 2026: the four-phase drawing of one millisecond beside the retention of every captured setting, mechanism beside consequence; its panel (b) is the former single-panel `deletion` figure, whose file and builder were retired with it) |
+| `pipeline_schematic` | supplement, Fig. S1 (S1.5); postmortem, Fig. S16 (S24). The v5 main text defines the timestamps in prose and gives its drawing to the inversion itself, Fig. 2 |
+| `integrity_audit` | supplement, Fig. S2 (S2.1); postmortem, Fig. S15 (S18) |
+| `delta_schematic` | supplement, Fig. S3 (S3.4); postmortem, Fig. S4 (S9). Redrawn 28 Sep 2026: the waiting state is a shelf to the slice and a tick, the rest of a slice, read after the law campaign's verdicts |
+| `recovery_populations` | supplement, Fig. S4 (S3.8); postmortem, Fig. S11 (S16) |
+| `quantum_geometry` | supplement, Fig. S5 (S4.2); postmortem, Fig. S13 (S17): a constructed illustration of the retention law, beside the 1970 counter note that carries the same identity |
+| `grid_membership` | supplement, Fig. S6 (S4.3); postmortem, Fig. S6 (S11) |
+| `payload_flip` | supplement, Fig. S7 (S4.3); postmortem, Fig. S5 (S10) |
+| `deletion_histogram` | supplement, Fig. S8 (S4.4); postmortem, Fig. S10 (S14). Asked for by a co-author on 26 Aug 2026; its panels (a) and (b) are also the main text's Fig. 1 |
+| `law_slice` | supplement, Fig. S9 (S6.3); postmortem, Fig. S17 (S36): every run of L1 and L4 with every aberrant run marked (`scripts/make_law_figures.py`, marks by `scripts/law_runs.py`) |
+| `law_tick` | postmortem, Fig. S18 (S36): L2, L5 and L7, marked the same way |
+| `law_load` | postmortem, Fig. S19 (S36): L3 and L8, marked the same way |
+| `law_a9` | postmortem, Fig. S20 (S36): L9, with its traced half ringed |
+| `wait_shape` | postmortem, Fig. S12 (S16): each acknowledgment's wait against the whole-slice and rest-of-a-slice shapes (`scripts/make_wait_shape_figure.py`) |
+| `window_sweep` | postmortem, Fig. S1 (S3). Left the journal supplement on 1 Oct 2026: it re-plotted the table beside it |
+| `e1_end_to_end_lag` | postmortem, Fig. S2 (S3) |
+| `ttrue_law` | postmortem, Fig. S3 (S8). Left the journal supplement on 1 Oct 2026: Table S10 and Equation S1 carry the same four points and fit |
+| `priority_ladder` | postmortem, Fig. S7 (S12). Left the journal supplement on 1 Oct 2026: it re-plotted the priority table beside it |
+| `mechanism_forest` | postmortem, Fig. S8 (S12): it plots the matched pairs of the main text's Table II, so it left the main text in round 57 |
+| `exposure_curve` | postmortem, Fig. S9 (S12) |
+| `experiment_map` | postmortem, Fig. S14 (S18). Left the journal supplement on 1 Oct 2026: its table of claims, campaigns and runs carries the same map |
 | `kickoff_concurrency` | **retained, unused.** The kickoff-window concurrency view from the withdrawn first result set. Kept because the campaign it draws is still in the archive and the withdrawal is part of the record; no current claim rests on it. |
-| `network_delay` | **retained, unused.** The injected-delay view superseded by the netem table in Section VI, which reports the same runs numerically. |
-| `workload_profile` | **retained, unused.** The StatsBomb replay profile from the 16-page version; the workload is now described in prose in Section III. |
+| `network_delay` | **retained, unused.** The injected-delay view superseded by the netem table, which reports the same runs numerically. |
+| `workload_profile` | **retained, unused.** The StatsBomb replay profile from the 16-page version; the workload is now described in prose. |
 
 ## Figures awaiting placement (v3 candidates, 2026-08-30)
 

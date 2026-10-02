@@ -168,8 +168,9 @@ class TestEveryClaimAboutAnEquationMatchesTheEquation:
         is a claim Villain et al. could have made.
         """
         flat = " ".join(paper.split())
-        assert re.search(r"negative-span rate falls as the delivery being measured grows",
-                         flat), (
+        # "delivery time" since 1 Oct 2026: D has one name, never bare "delivery" (editor 7).
+        assert re.search(r"negative-span rate falls as the delivery(?: time)? being measured "
+                         r"grows", flat), (
             "Related Work no longer claims the rate's dependence on the delivery; if that is "
             "deliberate, say what replaced the delta over Villain et al.")
         assert re.search(r"manipulations that establish it separate scheduling", flat), (

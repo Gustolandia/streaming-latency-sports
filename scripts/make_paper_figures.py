@@ -397,10 +397,11 @@ def plot_mechanism(mech_ax):
     mech_ax.annotate("", xy=(6.45, 1.72), xytext=(7.10, 1.72),
                      arrowprops=dict(arrowstyle="->", color="#b22222", linewidth=1.3))
     # Labelled in the paper's own model (Section II): S is the acknowledgment-referenced
-    # span and D the delivery, so the inversion reads S < 0 although D > 0 -- not a
-    # T_meas/T_true pair the text never defines (co-author comment 16, 2026-09-08).
+    # span and D the delivery time, so the inversion reads S < 0 although D > 0 -- not a
+    # T_meas/T_true pair the text never defines (co-author comment 16, 2026-09-08). "The
+    # delivery time", not "the delivery": the manuscript never uses the bare word for D (1 Oct).
     mech_ax.text(7.30, 1.72, r"$S=t_{\mathrm{recv}}-t_{\mathrm{ack}}<0$" "\n"
-                 r"although the delivery $D>0$",
+                 r"although the delivery time $D>0$",
                  fontsize=8, color="#b22222", ha="left", va="center")
 
     # The other broker's path, named rather than implied -- and named CAREFULLY.
@@ -563,8 +564,10 @@ def plot_phases(top, tau=TAU_MS, t_true=T_TRUE_MS, q=GRID_Q):
     # rendered. The rule stops below the text and the text sits clear of it.
     for x in (0.0, tau):
         top.plot([x, x], [0.42, q + 0.34], color=GREY, lw=0.9, ls=(0, (3, 2)), zorder=1)
-    top.text(0.0, q + 0.52, "tick", fontsize=8, color=GREY, ha="center", va="bottom")
-    top.text(tau, q + 0.52, "next tick", fontsize=8, color=GREY, ha="center", va="bottom")
+    # Boundaries of the timestamp's millisecond step, not "ticks": the manuscript keeps "tick"
+    # for the scheduler's (1 Oct), and these rules are where the clock's reading changes.
+    top.text(0.0, q + 0.52, "ms boundary", fontsize=8, color=GREY, ha="center", va="bottom")
+    top.text(tau, q + 0.52, "next boundary", fontsize=8, color=GREY, ha="center", va="bottom")
 
     for i, phi in enumerate(phases):
         y = q - i
@@ -587,7 +590,7 @@ def plot_phases(top, tau=TAU_MS, t_true=T_TRUE_MS, q=GRID_Q):
     # The duration belongs in the title, not in the panel: as an annotation it had to sit
     # between the two tick rules, where it was legible on screen and cramped in print. No
     # `~` in a mathtext string -- matplotlib is not LaTeX and prints the tilde.
-    top.set_title("(a) One delivery of $T_{\\mathrm{true}} = %.2f$ ms, at four phases"
+    top.set_title("(a) One delivery time of $T_{\\mathrm{true}} = %.2f$ ms, at four phases"
                   % t_true, fontsize=8, loc="left")
 
 
@@ -651,7 +654,7 @@ def _plot_schedule(bot, tau, t_true, q):
         bot.spines[side].set_visible(False)
     bot.spines["bottom"].set_bounds(0, tau)   # the phase axis ends at the tick
     bot.tick_params(axis="x", labelsize=8, length=3)
-    bot.set_xlabel("phase of the send instant within one tick", fontsize=8)
+    bot.set_xlabel("phase of the send instant within one millisecond", fontsize=8)
     bot.set_title("(b) The send schedule decides how many survive", fontsize=8, loc="left")
 
 

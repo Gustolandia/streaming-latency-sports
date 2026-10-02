@@ -1285,11 +1285,21 @@ class TestTheExposureCurve:
         """A band that does not contain the number it qualifies is worse than no band."""
         p = write_symmetry(tmp_path / "s.csv", self.BALANCED + [("kafka_n9", 900)])
         table = epn.render_exposure_table(str(p))
-        rx = re.compile(r"\$([\d.]+)\$~ms & \$(\d+)\$\\% & \$(\d+)\$--\$(\d+)\$")
+        # Decimals below one per cent since 1 Oct 2026 (`_exposure_pct`), so the pattern reads
+        # them and the comparison is numeric.
+        rx = re.compile(r"\$([\d.]+)\$~ms & \$([\d.]+)\$\\% & \$([\d.]+)\$--\$([\d.]+)\$")
         rows = rx.findall(table)
         assert len(rows) == 9
         for _, point, lo, hi in rows:
-            assert int(lo) <= int(point) <= int(hi), (point, lo, hi)
+            assert float(lo) <= float(point) <= float(hi), (point, lo, hi)
+
+    def test_a_percentage_under_one_keeps_its_decimal_in_the_table_too(self, tmp_path):
+        """The table printed 1% at 100 ms beside the paper's 0.7% for the same quantity."""
+        p = write_symmetry(tmp_path / "s.csv", self.BALANCED + [("kafka_n9", 900)])
+        table = epn.render_exposure_table(str(p))
+        row = [r for r in table.splitlines() if r.startswith("$100$~ms")][0]
+        assert "$0." in row
+        assert epn._exposure_pct(0.725) == "0.7" and epn._exposure_pct(7.25) == "7"
 
 
 
@@ -2440,3 +2450,82 @@ class TestTheReachAuditIsCounted:
         assert (m["reachPrimaryConfigs"], m["reachPrimaryReports"]) == ("8", "2")
         assert m["reachStrongConfigs"] == "0"
         assert m["reachFinerReports"] == "14"
+
+
+
+def _cell(name, ret, p50, neg=0):
+    return {"cell": name, "retention_pct": ret, "p50_ms": p50, "pub_p50_ms": 0.5, "kept": 100,
+            "discarded_zero": 0, "discarded_negative": neg}
+
+
+class TestTheCellsAboveTheGrid:
+    """Section IV-B's corrected sentence (1 Oct 2026): the 256 KB settings keep every sample,
+    the 64 KB settings delete most of theirs. Each claim the sentence makes is a guard here."""
+
+    def test_the_shipped_corpus_says_which_is_which(self):
+        m = dict(epn.retention_macros())
+        assert (m["ombAboveGridWholeWord"], m["ombAboveGridWholeKB"]) == ("two", "256")
+        assert (m["ombAboveGridPartialWord"], m["ombAboveGridPartialKB"]) == ("two", "64")
+        assert (m["ombAboveGridPartialRetLo"], m["ombAboveGridPartialRetHi"]) == ("34.4", "35.9")
+        assert (m["ombAboveGridPartialMedLo"], m["ombAboveGridPartialMedHi"]) == ("235", "519")
+        assert m["ombEscapeCellsWord"] == "four"
+
+    def test_the_payload_comes_from_the_cell_name(self):
+        assert epn._payload_kb("s65536_rep1") == 64
+        assert epn._payload_kb("r500_rep1") is None
+
+    def test_nothing_above_the_grid_emits_nothing(self):
+        assert epn._above_grid_macros([]) == []
+        assert epn._above_grid_macros([_cell("s262144_rep1", 100.0, 42000.0)]) == []
+
+    def test_two_payloads_on_one_side_stop_the_build(self):
+        cells = [_cell("s262144_rep1", 100.0, 42000.0), _cell("s131072_rep1", 100.0, 900.0),
+                 _cell("s65536_rep1", 35.0, 500.0)]
+        with pytest.raises(ValueError, match="one payload"):
+            epn._above_grid_macros(cells)
+
+    def test_a_cell_with_no_payload_in_its_name_stops_the_build(self):
+        cells = [_cell("r500_rep1", 100.0, 42000.0), _cell("s65536_rep1", 35.0, 500.0)]
+        with pytest.raises(ValueError, match="one payload"):
+            epn._above_grid_macros(cells)
+
+    def test_a_negative_among_the_deleted_stops_the_build(self):
+        cells = [_cell("s262144_rep1", 100.0, 42000.0), _cell("s65536_rep1", 35.0, 500.0, neg=1)]
+        with pytest.raises(ValueError, match="computes to zero"):
+            epn._above_grid_macros(cells)
+
+    def test_a_deleting_cell_that_keeps_half_stops_the_build(self):
+        cells = [_cell("s262144_rep1", 100.0, 42000.0), _cell("s65536_rep1", 50.0, 500.0)]
+        with pytest.raises(ValueError, match="half or more"):
+            epn._above_grid_macros(cells)
+
+
+class TestSpelledTwins:
+
+    def test_each_listed_count_gets_its_word(self):
+        assert epn.spelled_twins([("rtPairs", "8"), ("tostLevels", "3"), ("other", "4")]) == [
+            ("tostLevelsWord", "three"), ("rtPairsWord", "eight")]
+
+    def test_the_generated_file_carries_them(self):
+        gen = (Path(__file__).parent.parent.parent / "docs" / "generated"
+               / "paper_numbers.tex").read_text(encoding="utf-8")
+        for name in epn.SPELLED_TWINS:
+            assert "newcommand{" + chr(92) + name + "Word}" in gen, name
+
+
+class TestTheRegistryCells:
+    """Table III's last two columns (1 Oct 2026): a dash where nothing is discarded."""
+
+    def test_a_disposal_that_is_not_counted(self):
+        assert epn._registry_cells({"kinds": {"positive_only_filter"},
+                                    "counts_discards": False}) == ("filter, $>0$", "no")
+
+    def test_a_disposal_that_is_counted(self):
+        assert epn._registry_cells({"kinds": {"silent_suppression"},
+                                    "counts_discards": True})[1] == "yes"
+
+    def test_a_counted_discard_with_no_other_class_is_shown_discarding(self):
+        assert epn._registry_cells({"kinds": set(), "counts_discards": True}) == ("discard", "yes")
+
+    def test_nothing_discarded_has_nothing_to_count(self):
+        assert epn._registry_cells({"kinds": set(), "counts_discards": False}) == ("---", "---")

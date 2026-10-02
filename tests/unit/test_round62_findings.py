@@ -126,11 +126,13 @@ class TestACountMacroMatchesTheSentenceItStandsIn:
     def test_round_62s_own_defect_is_pinned(self, paper):
         """The Threats concession covers every tool that was read, not the subset.
 
-        v5 (28 Sep): Section VIII words the concession "were read at source, not deployed"
+        v5 (28 Sep): Section VIII words the concession "were read at source, not deployed"; on
+        1 Oct 2026 the antithesis went: "We read the ... tools ... at source and did not run
+        them"
         where v4 said "are readings of source rather than measured deployments"; the anchor
         follows the wording, and the population rule is unchanged.
         """
-        i = paper.find("were read at source, not deployed")
+        i = paper.find("at source and did not run them")
         assert i > 0, "the source-reading concession has gone from Threats"
         window = paper[max(0, i - 200):i]
         assert r"\harnessAuditedWord" in window, (

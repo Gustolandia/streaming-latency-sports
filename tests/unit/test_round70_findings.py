@@ -140,7 +140,7 @@ class TestR1TheAcknowledgmentLagIsCounted:
         assert "negative on no event at all" in passage
         j = paper.index("Negatives by span and broker")
         caption = " ".join(paper[j:paper.index("label{tab:spans}", j)].split())
-        assert "Only the acknowledgment-origin span inverts" in caption, \
+        assert "Only the transport proxy $S$ inverts" in caption, \
             "the chain inventory no longer says it is complete"
         assert "the causal chains are clean" in caption
 
@@ -166,7 +166,10 @@ class TestR2TheFloorIsAScaleNotALimit:
 
     def test_the_main_text_and_the_supplement_now_agree(self, paper, supplement):
         """Both say the floor is where the rate settles, not a bound it respects."""
-        assert "not a bound it respects" in paper
+        # 1 Oct 2026: "so C_0 is where the rate settles and not a bound it respects" became
+        # "they run from ... to ..., on both sides of C_0", the same claim without the
+        # antithesis (editor 7.1).
+        assert "on both sides of $C_0$" in paper
         assert "is a scale and" in supplement
 
     def test_the_ceiling_gets_the_same_treatment_as_the_floor(self, paper, supplement):
@@ -190,9 +193,10 @@ class TestR2TheFloorIsAScaleNotALimit:
         clause = " ".join(paper[max(0, i - 320):i + 200].split())
         assert "ceiling below one" not in clause, (
             "a measured maximum near saturation is not a ceiling the rate reaches")
-        assert "highest we measure" in clause or "a maximum over those conditions" in clause, \
+        assert ("highest we measure" in clause or "a maximum over those conditions" in clause
+                or "the largest observed" in clause), \
             "the clause no longer says the number is a measured maximum"
-        assert "not a bound" in clause
+        assert "not a bound" in clause or "rather than a bound" in clause
         assert "Neither number is a bound" in supplement, (
             "S9's repair from round 70 is what the main text now agrees with")
 
@@ -256,9 +260,9 @@ class TestRecommendedItems:
         flat = " ".join(paper.split())
         j = paper.index("Negatives by span and broker")
         caption = " ".join(paper[j:paper.index("label{tab:spans}", j)].split())
-        assert "Only the acknowledgment-origin span inverts" in caption, \
+        assert "Only the transport proxy $S$ inverts" in caption, \
             "the span inventory no longer says it is complete"
-        assert "were read at source, not deployed" in flat, "the source-reading concession has gone"
+        assert "at source and did not run them" in flat, "the source-reading concession has gone"
         k = paper.index("label{tab:tools}")
         tools = " ".join(paper[paper.rindex("caption{", 0, k):k].split())
         assert "what happens to a value at or below zero" in tools, \

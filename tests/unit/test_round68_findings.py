@@ -103,7 +103,9 @@ class TestR1TheExposureBand:
         """
         flat = " ".join(rendered_paper.split())
         i = flat.index("Across conditions")
-        band = flat[i:flat.index("(Fig.", i)]
+        # 1 Oct 2026: the band moved into Fig. 4's caption, so it ends at its own sentence.
+        j = flat.index("crossover at", i)
+        band = flat[i:flat.index("ms", j) + 2]
         assert "500" in band and "1900" in band, "the band names the two percentiles"
         assert "19%" in band and "1.90" in band, "and keeps its ninetieth-percentile ends"
         assert "0.50" in band, "the crossover floor is the tenth percentile, 0.50 ms"
@@ -121,7 +123,7 @@ class TestR2TheConcession:
     def test_the_exception_keeps_its_exhibit(self, paper):
         i = paper.index("Where a comparison reports a median above the")
         passage = paper[i:i + 700]
-        assert "Not every comparison does" in passage
+        assert "Some give no number to place" in passage
         assert "indexdev2026brokers" in passage
 
     def test_related_work_still_does_not_point_at_the_supplement(self, paper):

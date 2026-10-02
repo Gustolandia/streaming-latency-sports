@@ -660,7 +660,9 @@ def plot_exposure(ax, lags):
     ax.plot([crossover, hi_cross], [100, 100], color=DELETED, lw=3.0, alpha=0.30,
             solid_capstyle="butt", zorder=3)
     ax.plot([crossover], [100], marker="o", ms=4.5, color=DELETED, zorder=4)
-    ax.text(150, 125, "displacement = delivery", fontsize=8, color=GREY,
+    # The manuscript's names (1 Oct): A is the acknowledgment lag and D the delivery time, and
+    # bare "delivery" is never a duration. "displacement = delivery" used both retired names.
+    ax.text(150, 125, "lag = delivery time", fontsize=8, color=GREY,
             ha="right", va="bottom")
 
     # Where published broker medians sit, which is the whole reason the curve matters.
@@ -670,7 +672,7 @@ def plot_exposure(ax, lags):
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel("delivery being measured (ms)", fontsize=8)
+    ax.set_xlabel("delivery time measured (ms)", fontsize=8)
     ax.set_ylabel("relative error of the proxy (%)", fontsize=8)
     ax.set_xlim(0.1, 200)
     ax.set_ylim(0.2, 4000)
@@ -1073,7 +1075,7 @@ def plot_payload_flip(ax, pos, q=PAYLOAD_Q):
     # arms were three bare markers and stopped being clear the moment each arm grew a stick:
     # the 200 B stick rises through the boundary at frac 0.40 and printed itself across the
     # last word.
-    ax.annotate("half cell width", xy=(0.0, half), xytext=(0, 3),
+    ax.annotate("half step width", xy=(0.0, half), xytext=(0, 3),
                 textcoords="offset points", fontsize=8, color=GREY, va="bottom", ha="left")
     top = max(s for _, _, s, _, _ in pos) * 1.22
     # A label set four points above its marker occupies roughly this much of the data range.
@@ -1174,7 +1176,7 @@ def plot_recovery(ax_cdf, ax_strip, pops, band):
     for ax in (ax_cdf, ax_strip):
         ax.axvline(band, color=GREY, lw=0.8, ls=":", zorder=0)
         ax.set_xlim(-1.5, top + 2.0)
-        ax.set_xlabel("recovery error (% of median delivery)", fontsize=8)
+        ax.set_xlabel("recovery error (% of median delivery time)", fontsize=8)
         ax.tick_params(labelsize=8)
         ax.grid(alpha=0.25, lw=0.5)
     ax_cdf.set_ylim(0.0, 1.03)

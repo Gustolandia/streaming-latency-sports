@@ -129,10 +129,17 @@ class TestR2TheTwoThresholdsAreDifferentThings:
         assert "Apache Pulsar perf" in s["silent"], "a weaker guard is still an uncounted one"
 
     def test_no_headline_count_moved(self):
-        """The referee said none would; this is where that is checked rather than trusted."""
+        """The referee said none would; this is where that is checked rather than trusted.
+
+        2 Oct 2026: one did, for a reason that has nothing to do with the thresholds. RabbitMQ
+        PerfTest's getDifference returns the absolute value of the difference, so PerfTest
+        substitutes a value and joins the silent tools; so does the NATS CLI, whose percentile
+        table is recorded into a library that refuses a negative, with the error ignored. Seven,
+        not five. The other three counts hold, and test_harness_registry records why the two
+        were missed."""
         import harness_registry
         s = harness_registry.summary()
-        assert (s["harnesses"], s["n_silent"], s["vendors"], s["languages"]) == (10, 5, 9, 5)
+        assert (s["harnesses"], s["n_silent"], s["vendors"], s["languages"]) == (10, 7, 9, 5)
 
     def test_a_threshold_is_not_a_new_response(self):
         from audit_external_harness import DISPOSAL_KINDS, DISPOSAL_RESPONSES

@@ -1428,11 +1428,14 @@
 
 @misc{rabbitmq_perftest,
   author       = {{Broadcom}},
-  title        = {{RabbitMQ PerfTest} --- \texttt{Consumer.java}},
+  title        = {{RabbitMQ PerfTest} --- \texttt{TimestampProvider.java}},
   howpublished = {Source repository},
   year         = {2026},
-  note         = {\url{https://github.com/rabbitmq/rabbitmq-perf-test}. Accessed: Aug. 31, 2026},
-  annote       = {\url{https://github.com/rabbitmq/rabbitmq-perf-test}; passes the difference unfiltered. Accessed: Aug. 31, 2026}
+  note         = {\url{https://github.com/rabbitmq/rabbitmq-perf-test}. Accessed: Oct. 2, 2026},
+  annote       = {\url{https://github.com/rabbitmq/rabbitmq-perf-test}; getDifference returns
+                  Math.abs(ts1 - ts2), so a negative difference is recorded as its magnitude.
+                  Read on Aug. 31, 2026 at the call site in Consumer.java only, and filed as
+                  passing the difference unfiltered; corrected Oct. 2, 2026. Accessed: Oct. 2, 2026}
 }
 
 @misc{nats_cli,
@@ -1440,8 +1443,12 @@
   title        = {{NATS} CLI --- \texttt{cli/latency\_command.go}},
   howpublished = {Source repository},
   year         = {2026},
-  note         = {\url{https://github.com/nats-io/natscli}. Accessed: Aug. 31, 2026},
-  annote       = {\url{https://github.com/nats-io/natscli}; appends the difference unconditionally. Accessed: Aug. 31, 2026}
+  note         = {\url{https://github.com/nats-io/natscli}. Accessed: Oct. 2, 2026},
+  annote       = {\url{https://github.com/nats-io/natscli}; appends the difference unconditionally to
+                  the slice its minimum, median and maximum come from, and records the
+                  percentile table with h.RecordValue, ignoring the error hdrhistogram-go returns
+                  for a negative value. Read on Aug. 31, 2026 at the append only; corrected
+                  Oct. 2, 2026. Accessed: Oct. 2, 2026}
 }
 
 @misc{openbenchmarks2026voice,

@@ -1,0 +1,45 @@
+round,tool,trip,figure,crossings,slope
+1,hey,round trip,p50,1,1.0377
+1,k6,round trip,p50,1,1.0111
+1,kafka-end-to-end,in one process,p50,2,2.0283
+1,kafka-producer-perf,send to acknowledgment,p50,1,1.1411
+1,memtier_benchmark,round trip,p50,1,1.0017
+1,nats-latency,in one process,p50,1,0.9911
+1,rabbitmq-perftest,in one process,p50,1,0.9946
+1,rdkafka_performance,across two processes,avg,2,1.9583
+1,valkey-benchmark,round trip,p50,1,0.9793
+1,vegeta,round trip,p50,1,1.0027
+1,wrk2,round trip,p50,1,1.0084
+2,hey,round trip,p50,1,1.0000
+2,k6,round trip,p50,1,1.0097
+2,kafka-end-to-end,in one process,p50,2,2.0361
+2,kafka-producer-perf,send to acknowledgment,p50,1,1.0285
+2,memtier_benchmark,round trip,p50,1,0.9819
+2,nats-latency,in one process,p50,1,1.0224
+2,rabbitmq-perftest,in one process,p50,1,0.9850
+2,rdkafka_performance,across two processes,avg,2,1.9220
+2,valkey-benchmark,round trip,p50,1,0.9958
+2,vegeta,round trip,p50,1,1.0037
+2,wrk2,round trip,p50,1,1.0448
+3,hey,round trip,p50,1,1.0356
+3,k6,round trip,p50,1,1.0026
+3,kafka-end-to-end,in one process,p50,2,2.0361
+3,kafka-producer-perf,send to acknowledgment,p50,1,0.9997
+3,memtier_benchmark,round trip,p50,1,0.9769
+3,nats-latency,in one process,p50,1,1.0593
+3,rabbitmq-perftest,in one process,p50,1,1.0023
+3,rdkafka_performance,across two processes,avg,2,2.0962
+3,valkey-benchmark,round trip,p50,1,1.0048
+3,vegeta,round trip,p50,1,1.0006
+3,wrk2,round trip,p50,1,0.9232
+4,hey,round trip,p50,1,1.0000
+4,k6,round trip,p50,1,1.0245
+4,kafka-end-to-end,in one process,p50,2,2.0361
+4,kafka-producer-perf,send to acknowledgment,p50,1,1.1411
+4,memtier_benchmark,round trip,p50,1,0.9556
+4,nats-latency,in one process,p50,1,0.9906
+4,rabbitmq-perftest,in one process,p50,1,0.9708
+4,rdkafka_performance,across two processes,avg,2,2.0498
+4,valkey-benchmark,round trip,p50,1,1.0509
+4,vegeta,round trip,p50,1,0.9881
+4,wrk2,round trip,p50,1,0.9786

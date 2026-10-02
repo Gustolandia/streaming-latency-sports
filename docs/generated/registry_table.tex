@@ -7,14 +7,14 @@ Tool & Span measured & Clock & What happens to the value & Counts \\
 Apache Kafka (bundled) & end-to-end & nanosecond & truncate to the resolution & no \\
 Apache Kafka (bundled) & publish & millisecond & truncate to the resolution & no \\
 Apache Pulsar perf & end-to-end & millisecond & filter, $\geq 0$ & no \\
-NATS CLI & end-to-end & nanosecond & --- & --- \\
+NATS CLI & end-to-end & nanosecond & refused by own library & no \\
 OpenMessaging Bench. & end-to-end & millisecond & filter, $>0$, truncate to the resolution & no \\
 OpenMessaging Bench. & publish & nanosecond & --- & --- \\
-RabbitMQ PerfTest & end-to-end & nanosecond & --- & --- \\
+RabbitMQ PerfTest & end-to-end & nanosecond & substitute a value & no \\
 Rezolus & scheduler wakeup & nanosecond & discard & yes \\
-\texttt{blktrace/btt} & block stage & nanosecond & substitute a constant & no \\
+\texttt{blktrace/btt} & block stage & nanosecond & substitute a value & no \\
 \texttt{emqtt-bench} & end-to-end & millisecond & --- & --- \\
-\texttt{fio} & I/O completion & nanosecond & substitute a constant & no \\
+\texttt{fio} & I/O completion & nanosecond & substitute a value & no \\
 wrk2 & end-to-end & microsecond & refused by own library & no \\
 \bottomrule
 \end{tabular}

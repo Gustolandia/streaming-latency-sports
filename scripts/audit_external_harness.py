@@ -130,6 +130,14 @@ LIBRARY_REFUSAL = [
     # `if (value < 0 || h->highest_trackable_value < value)` -- refuse the value...
     # `if (counts_index < 0 || h->counts_len <= counts_index)` -- ...or the index it maps to.
     re.compile(r"if\s*\(\s*(\w+)\s*<\s*0\s*\|\|\s*[\w>.\[\]-]+(->|\.)\w+\s*<=?\s*\1\b"),
+    # `if uint(idx) >= uint(len(h.counts)) {` -- the Go library's one unsigned comparison, in
+    # which a negative index wraps to a huge one and is refused with the out-of-range values.
+    # hdrhistogram-go maps a negative latency to such an index; the NATS CLI records into it
+    # and ignores the error, so its percentile table leaves the negative out. Our first
+    # reading of the NATS CLI stopped at the append into its slice and missed this; the
+    # documentation audit (T5) read the histogram, and the finding reached this list on
+    # 2 Oct 2026.
+    re.compile(r"if\s+uint\(\s*\w+\s*\)\s*>=\s*uint\(\s*len\("),
 ]
 
 # A third response, and the one that hides the failure most completely: detect the inversion and
@@ -148,6 +156,13 @@ SUPPRESSION = [
     re.compile(r"(Math\.)?max\s*\(\s*0[LlFfDd]?\s*,\s*[^)]*-\s*\w*(time|stamp|latency)\w*", re.I),
     # `latency = Double.NaN;` -- replaced by a non-number.
     re.compile(r"\w*latency\w*\s*=\s*[\w.]*NaN\b", re.I),
+    # `return Math.abs(ts1 - ts2);` -- the sign thrown away, so a negative span enters the
+    # distribution as a positive one of the same size. RabbitMQ PerfTest's getDifference does
+    # this. Our first reading of PerfTest stopped at the call site in Consumer.java, saw the
+    # difference handed on with no sign test, and filed the tool as one that passes negatives
+    # on; the documentation audit (T5) read the method itself and recorded the prediction as
+    # failed, and that finding did not reach this classifier until 2 Oct 2026.
+    re.compile(r"\b(Math\.)?abs\s*\(\s*\w+\s*-\s*\w+\s*\)"),
 ]
 
 # Evidence that violations are counted rather than dropped -- what we argue should exist. The

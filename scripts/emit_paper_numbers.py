@@ -994,7 +994,10 @@ REGISTRY_LABELS = {
     # inversions. Printing both as "filter" made Apache Pulsar and the OpenMessaging
     # Benchmark look like one design when they are this paper's two failure modes.
     "nonnegative_filter": "filter, $" + chr(92) + "geq 0$",
-    "silent_suppression": "substitute a constant",
+    # "a constant" until 2 Oct 2026, when RabbitMQ PerfTest joined the class: fio and btt put
+    # a constant in place of a negative span, PerfTest puts its magnitude. All three put in a
+    # value that was never measured, which is what the cell has to say.
+    "silent_suppression": "substitute a value",
     "library_refusal": "refused by own library",
     # Not a disposal -- nothing vanishes -- which is why it is absent from DISPOSAL_KINDS and
     # does not move the "silent" count. It belongs in this column all the same: the column
@@ -3123,6 +3126,138 @@ def reach_macros(path=REACH_CSV):
     ]
 
 
+TOOLS_T1 = os.path.join("docs", "results", "tools", "tools_t1.csv")
+TOOLS_T2 = os.path.join("docs", "results", "tools", "tools_t2.csv")
+DEFAULT_TOOLS_TABLE = os.path.join("docs", "generated", "tools_run_table.tex")
+ONE_CLOCK = "times against one clock"
+KEEPS_EVERY_VALUE = "keeps every value"
+
+#: The band freeze 21 fixed before any tool ran (D25-5): a figure that follows the path moves
+#: half to one and a half milliseconds per millisecond added, for each time the interval the
+#: tool times crosses the delayed direction.
+SLOPE_BAND = (0.5, 1.5)
+
+#: The tools by the names a reader knows them by, short enough for a column-wide table.
+TOOL_NAMES = {
+    "valkey-benchmark": "Valkey benchmark",
+    "memtier_benchmark": "memtier",
+    "wrk2": "wrk2",
+    "vegeta": "Vegeta",
+    "hey": "hey",
+    "k6": "k6",
+    "kafka-producer-perf": "\\kafka{} producer",
+    "kafka-end-to-end": "\\kafka{} end-to-end",
+    "rabbitmq-perftest": "RabbitMQ PerfTest",
+    "nats-latency": "NATS latency",
+    "rdkafka_performance": "librdkafka perf.",
+}
+
+#: The table's row order: by the interval timed, one-clock intervals first; and how each is set
+#: in a column-wide table.
+TRIP_ORDER = ("round trip", "send to acknowledgment", "in one process", "across two processes")
+TRIP_CELLS = {"round trip": "round trip", "send to acknowledgment": "to ack.",
+              "in one process": "one process", "across two processes": "two processes"}
+
+
+def _tools_rows(t1_path, t2_path):
+    import csv as _csv
+    with open(t1_path, encoding="utf-8") as fh:
+        t1 = list(_csv.DictReader(fh))
+    with open(t2_path, encoding="utf-8") as fh:
+        t2 = list(_csv.DictReader(fh))
+    if {r["tool"] for r in t1} != {r["tool"] for r in t2}:
+        raise ValueError("the T1 and T2 tables of the tools block name different tools")
+    return t1, t2
+
+
+def _tools_judged(t1, t2):
+    """What Section V-F's sentences rest on, checked before any of it is printed.
+
+    Three sentences depend on the judged runs and would be wrong if a re-run moved them: that
+    every tool measured the path (every staircase slope inside the band fixed in advance), that
+    the one-clock tools were never judged to do anything else, and that exactly one tool spans
+    two clocks and keeps every value. Each is a guard here, so a change in the data stops the
+    build instead of leaving the prose behind.
+    """
+    per_crossing = [float(r["slope"]) / int(r["crossings"]) for r in t1 if r["slope"]]
+    if not per_crossing or not all(SLOPE_BAND[0] <= s <= SLOPE_BAND[1] for s in per_crossing):
+        raise ValueError("a staircase slope lies outside the band frozen for it, so 'every "
+                         "tool measures the path' no longer holds")
+    decided = {}
+    for r in t2:
+        if r["verdict"] != "undecided":
+            decided.setdefault(r["tool"], set()).add(r["verdict"])
+    one = sorted(t for t, v in decided.items() if v == {ONE_CLOCK})
+    other = sorted(t for t, v in decided.items() if v != {ONE_CLOCK})
+    if len(other) != 1 or decided[other[0]] != {KEEPS_EVERY_VALUE}:
+        raise ValueError("the prose names one tool on two clocks, which keeps every value; the "
+                         "judged runs say %s" % {t: sorted(decided[t]) for t in other})
+    return per_crossing, one, other[0]
+
+
+def tools_block_macros(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
+    """Section V-F's counts: the tools block, run under predictions registered in advance.
+
+    Folded from the two tables scripts/tools_block.py writes from the judged runs. The words are
+    emitted beside the numbers they spell, because each opens or sits inside a sentence, and only
+    the forms the documents quote are emitted, since a macro nobody reads is a number nobody
+    checks.
+    """
+    if not (os.path.exists(t1_path) and os.path.exists(t2_path)):
+        print("note: tools block tables absent")
+        return []
+    t1, t2 = _tools_rows(t1_path, t2_path)
+    per_crossing, one, two = _tools_judged(t1, t2)
+    rounds = sorted({r["round"] for r in t1})
+    one_runs = [r for r in t2 if r["tool"] in one]
+    keeps = []
+    for rnd in rounds:
+        runs = [r for r in t2 if r["tool"] == two and r["round"] == rnd]
+        if runs and all(r["verdict"] == KEEPS_EVERY_VALUE for r in runs):
+            keeps.append(rnd)
+    return [
+        ("toolsRunWord", _spell(len({r["tool"] for r in t1}))),
+        ("toolsRoundsWord", _spell(len(rounds))),
+        ("toolsSlopeLo", "%.2f" % min(per_crossing)),
+        ("toolsSlopeHi", "%.2f" % max(per_crossing)),
+        ("toolsOneClockWord", _spell(len(one))),
+        ("toolsOneClockWordCap", _spell(len(one)).capitalize()),
+        ("toolsOneClockRuns", str(sum(r["verdict"] == ONE_CLOCK for r in one_runs))),
+        ("toolsOneClockOf", str(len(one_runs))),
+        ("toolsKeepsRoundsWord", _spell(len(keeps))),
+    ]
+
+
+def render_tools_table(t1_path=TOOLS_T1, t2_path=TOOLS_T2):
+    """The table of Section V-F: each tool, what it times, how it followed the path, and T2.
+
+    The slope column is per crossing, the minimum and maximum over the rounds; the last column
+    counts the T2 runs judged to show the behaviour named, out of all of that tool's T2 runs, the
+    rest being undecided (`_tools_judged` has already refused anything else).
+    """
+    t1, t2 = _tools_rows(t1_path, t2_path)
+    _, one, _two = _tools_judged(t1, t2)
+    trip = {r["tool"]: r["trip"] for r in t1}
+    lines = [
+        "% Generated by scripts/emit_paper_numbers.py from docs/results/tools/tools_t1.csv and",
+        "% tools_t2.csv. Do not edit by hand.",
+        "\\begin{tabular}{@{}llllr@{}}",
+        "\\toprule",
+        "Tool & Interval & Slope & Clocks & Runs \\\\",
+        "\\midrule",
+    ]
+    for tool in sorted(trip, key=lambda t: (TRIP_ORDER.index(trip[t]), t)):
+        slopes = [float(r["slope"]) / int(r["crossings"])
+                  for r in t1 if r["tool"] == tool and r["slope"]]
+        runs = [r for r in t2 if r["tool"] == tool]
+        verdict, label = (ONE_CLOCK, "one") if tool in one else (KEEPS_EVERY_VALUE, "two")
+        lines.append("%s & %s & %.2f--%.2f & %s & %d/%d \\\\" % (
+            TOOL_NAMES[tool], TRIP_CELLS[trip[tool]], min(slopes), max(slopes), label,
+            sum(r["verdict"] == verdict for r in runs), len(runs)))
+    lines += ["\\bottomrule", "\\end{tabular}"]
+    return "\n".join(lines) + "\n"
+
+
 CLIFF_DIR = os.path.join("docs", "results", "law", "strange-results-28-sep")
 
 
@@ -3212,7 +3347,8 @@ def _all_pairs(m):
             + paired_gap_macros() + handling_share_macros() + inter_host_offset_macros()
             + spread_macros() + payload_flip_macros() + literature_census_macros()
             + arm_macros() + manipulation_macros()
-            + deletion_macros() + literature_macros() + cliff_macros() + reach_macros())
+            + deletion_macros() + literature_macros() + cliff_macros() + reach_macros()
+            + tools_block_macros())
 
 
 def render(m):
@@ -3231,6 +3367,7 @@ def main(argv=None):
     ap.add_argument("--exposure-table", default=DEFAULT_EXPOSURE_TABLE)
     ap.add_argument("--spread-table", default=DEFAULT_SPREAD_TABLE)
     ap.add_argument("--interval-table", default=DEFAULT_INTERVAL_TABLE)
+    ap.add_argument("--tools-table", default=DEFAULT_TOOLS_TABLE)
     ap.add_argument("--check", action="store_true",
                     help="fail if the committed file disagrees with the ledger; write nothing")
     args = ap.parse_args(argv)
@@ -3262,6 +3399,11 @@ def main(argv=None):
         targets.append((args.interval_table, render_interval_table()))
     except (ImportError, OSError, KeyError, ValueError) as exc:
         print("note: priority table not generated (%s)" % exc)
+    # The tools block's table is not caught like the four above: its guards are the reason it
+    # exists, and a guard that tripped into a "note:" would leave the committed table standing
+    # beside data that no longer supports it. Only its absence is tolerated.
+    if os.path.exists(TOOLS_T1) and os.path.exists(TOOLS_T2):
+        targets.append((args.tools_table, render_tools_table()))
 
     if args.check:
         stale = False

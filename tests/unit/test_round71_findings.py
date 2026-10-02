@@ -382,7 +382,9 @@ class TestW3FoundTheRegistryWasSpillingARow:
     def test_the_committed_registry_is_the_shape_of_its_header(self):
         import harness_registry as hr
         rows = hr.load()
-        assert len(rows) == 18
+        # 20 since 2 Oct 2026: RabbitMQ PerfTest's getDifference and the NATS CLI's histogram
+        # bound check, the two lines our first readings never reached.
+        assert len(rows) == 20
         assert all(set(r) == set(hr.FIELDS) for r in rows)
 
     def test_the_pulsar_evidence_points_at_the_file_that_holds_it(self):
@@ -404,8 +406,10 @@ class TestW3FoundTheRegistryWasSpillingARow:
         s = hr.summary()
         assert s["nonnegative_filters"] == ["Apache Pulsar perf"]
         assert s["filters"] == ["OpenMessaging Benchmark"]
-        assert s["evidence_lines"] == 18 and s["harnesses"] == 10
-        assert s["n_silent"] == 5 and "Apache Pulsar perf" in s["silent"]
+        # The relocation moved nothing. What moved later, on 2 Oct 2026, were PerfTest and the
+        # NATS CLI: one evidence line and one silent tool each (test_harness_registry).
+        assert s["evidence_lines"] == 20 and s["harnesses"] == 10
+        assert s["n_silent"] == 7 and "Apache Pulsar perf" in s["silent"]
 
 
 class TestW3TheScriptIsCoveredWithoutTouchingTheNetwork:

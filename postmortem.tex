@@ -3717,13 +3717,23 @@ measured in, and applying it retroactively labels the OpenMessaging end-to-end l
 on a millisecond subtraction. The deletion failure is therefore not a claim about a filter. It is a claim
 about a timestamp resolution, and deletion is one of the ways it collects.
 
-The other two additions are counterexamples, and they are in the table for the reason Rezolus
-is. RabbitMQ PerfTest differences a timestamp carried in the message against a local clock and
-passes the result to \brk{performanceMetrics.received(diff_time)} with no sign test at
-all; the NATS CLI appends \brk{time.Duration(time.Now().UnixNano()-sendTime)}
-unconditionally. Both would let a negative through into their metrics, which is what
-RFC~7679 asks of a measurement, and both are exposed to skew rather than to quantization.
-\emph{The field does not uniformly delete}, and the paper must not be read as saying so.
+The other two additions were filed as counterexamples, and they are in the table for the
+reason Rezolus is. The NATS CLI appends \brk{time.Duration(time.Now().UnixNano()-sendTime)}
+unconditionally, so a negative goes through into its metrics, which is what RFC~7679 asks of a
+measurement, and it is exposed to skew rather than to quantization. RabbitMQ PerfTest was read
+the same way: it differences a timestamp carried in the message against a local clock and passes
+the result to \brk{performanceMetrics.received(diff_time)} with no sign test at the call
+site. \emph{Corrected on 2 October 2026, both of them.} PerfTest's difference comes from
+\brk{TimestampProvider.getDifference}, which returns \texttt{Math.abs(ts1 - ts2)}, so a
+negative span enters its metrics as a positive one of the same size, uncounted: a substitution.
+The NATS CLI's slice keeps the negative, so its minimum, median and maximum do; but its
+percentile table is recorded into \texttt{hdrhistogram-go}, whose bound check refuses the index a
+negative value maps to, and the CLI ignores the error: a library refusal, wrk2's class. Both
+readings above stopped at the call site; the law campaign's documentation audit (block T5,
+\texttt{data/tools\_audit/}) read the methods, recorded the PerfTest prediction as failed and the
+NATS one as holding only in part, and the registry now carries the lines it found. \emph{The
+field still does not uniformly delete}: \texttt{emqtt-bench}'s histogram keeps the negative and
+Rezolus counts it, and the paper must not be read as saying otherwise.
 
 Two tools were looked at and found not to make the measurement at all. SPECjms2007, the only
 messaging benchmark from a standards body, reports throughput

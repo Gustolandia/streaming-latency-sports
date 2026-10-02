@@ -272,6 +272,28 @@ class TestSuppressionClass:
     def test_a_nan_substitution_is_suppression(self):
         assert classify("latencyMs = Double.NaN;") == ["silent_suppression"]
 
+    def test_an_absolute_value_is_suppression(self):
+        """RabbitMQ PerfTest's getDifference: a negative span becomes a positive one.
+
+        Missed by our first reading of the tool, which stopped at the call site; found by the
+        documentation audit (T5), which read the method. The sign is the evidence, and a
+        substitution that keeps the magnitude destroys exactly that."""
+        assert classify("return Math.abs(ts1 - ts2);") == ["silent_suppression"]
+        assert classify("d = abs(now - sent)") == ["silent_suppression"]
+
+    def test_a_go_librarys_unsigned_bound_check_is_a_refusal(self):
+        """hdrhistogram-go: a negative value maps to an index that wraps past the counts array
+        and is refused; the NATS CLI ignores the error, so its percentile table drops it."""
+        assert classify("if uint(idx) >= uint(len(h.counts)) {") == ["library_refusal"]
+        assert classify("if (counts_index < 0 || h->counts_len <= counts_index)") == [
+            "library_refusal"]
+        assert "library_refusal" not in classify("if idx >= len(h.counts) {")
+
+    def test_an_absolute_value_of_one_quantity_is_not_suppression(self):
+        """Only the magnitude of a difference hides a sign; abs() of a single value does not."""
+        assert "silent_suppression" not in classify("n = Math.abs(offset);")
+        assert "silent_suppression" not in classify("y = fabs(a - b);")
+
     def test_an_ordinary_subtraction_is_not_suppression(self):
         assert "silent_suppression" not in classify("total = end - start;")
 

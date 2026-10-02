@@ -442,9 +442,12 @@ class TestHeadlineNumbersAppearInResultsFirst:
     #: v5 (28 Sep): the rules became Section VI, "What Benchmark Authors Should Do", with its
     #: checks in Table IV. The held span is that section up to the paragraph on a better
     #: clock, which is where the rules end and the measured asides begin, as before.
+    #: v6 (2 Oct): the rules are Section VI-C, "Checks that cost nothing", inside Practical
+    #: Implications. VI-B before it is a results subsection (the proxy's cost, measured, and
+    #: its repair) and is held as results, as it was when it closed the scheduling section.
     def test_discussion_numbers_are_results_numbers(self, paper):
         body = re.sub(r"(?m)^%.*$", "", _body(paper))
-        disc = body.index(r"\section{What Benchmark Authors Should Do}")
+        disc = body.index(r"\subsection{Checks that cost nothing}")
         rules = disc
         after = body.index(r"\label{sec:betterclock}", rules + 10)
         results = body[:disc]

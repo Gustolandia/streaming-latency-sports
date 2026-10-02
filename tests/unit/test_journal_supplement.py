@@ -70,8 +70,9 @@ def _headings(tex):
 def _paper_sections(paper):
     """The paper's numbered sections as (title, labels), in order.
 
-    A section can carry several labels, one per name it has had (`sec:discussion` and
-    `sec:authors` both land on "What Benchmark Authors Should Do"); any of them will do."""
+    A section can carry several labels, one per name it has had (`sec:practice`,
+    `sec:discussion` and `sec:authors` all land on "Practical Implications"); any of them will
+    do."""
     out = []
     for m in re.finditer(r"\\section\{([^}]*)\}((?:\s*\\label\{[^}]*\})+)", _prose(paper)):
         out.append((m.group(1), re.findall(r"\\label\{([^}]*)\}", m.group(2))))

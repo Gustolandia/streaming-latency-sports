@@ -37,6 +37,15 @@ once moved out of the paper is still reachable from it.
 The paper's pointers were remapped with it: 21 into the old numbering became 15 into the new,
 and every journal-supplement section is pointed at (`tests/unit/test_journal_supplement.py`).
 
+**Paper v6, 2026-10-02.** The paper's body was reorganized around its three parts: the finding
+(Section III, latencies that come out negative on one clock), the mechanism (Section IV, a
+timestamp taken late, with its laws as Equations 3 to 5) and the industry (Section V, what the
+tools do with a latency at or below zero; v5's "How Widespread" is now its last two
+subsections), followed by Practical Implications (Section VI: v5's "What Benchmark Authors
+Should Do" is VI-C, and the transport proxy's cost and repair, v5's III-D, is VI-B). No
+supplement section moved or was renumbered and every pointer lands where it did; the
+supplement's table mapping paper sections to its own was rewritten for the new sections.
+
 ## The postmortem (the supplement until 2026-09-29)
 
 **Renumbered on 2026-09-08 (v4).** At the second author's request the supplement became a
@@ -349,8 +358,8 @@ section that carries the figure; both documents number their figures S1, S2, and
 | `two_ways` | main text, Fig. 1 (added 28 Sep 2026, the editorial revision: panels (a) and (b) of `deletion_histogram` side by side, so page 1 shows both failures on one population; `scripts/make_deletion_histogram.py --two`) |
 | `measurement_model` | main text, Fig. 2 (panel (b) split off round 52) |
 | `stall_spectrum` | main text, Fig. 3 |
-| `exposure_curve_column` | main text, Fig. 4 (added 28 Sep 2026: the exposure curve redrawn at column width, because the main text's advice to authors turns on where a path sits on it) |
-| `deletion_phases` | main text, Fig. 5 (added 28 Sep 2026: the four-phase drawing of one millisecond beside the retention of every captured setting, mechanism beside consequence; its panel (b) is the former single-panel `deletion` figure, whose file and builder were retired with it) |
+| `deletion_phases` | main text, Fig. 4 (added 28 Sep 2026: the four-phase drawing of one millisecond beside the retention of every captured setting, mechanism beside consequence; its panel (b) is the former single-panel `deletion` figure, whose file and builder were retired with it; Fig. 5 until v6 put the industry's section before the practical implications) |
+| `exposure_curve_column` | main text, Fig. 5 (added 28 Sep 2026: the exposure curve redrawn at column width, because the main text's advice to authors turns on where a path sits on it; Fig. 4 until v6 moved the proxy's cost into Practical Implications) |
 | `pipeline_schematic` | supplement, Fig. S1 (S1.5); postmortem, Fig. S16 (S24). The v5 main text defines the timestamps in prose and gives its drawing to the inversion itself, Fig. 2 |
 | `integrity_audit` | supplement, Fig. S2 (S2.1); postmortem, Fig. S15 (S18) |
 | `delta_schematic` | supplement, Fig. S3 (S3.4); postmortem, Fig. S4 (S9). Redrawn 28 Sep 2026: the waiting state is a shelf to the slice and a tick, the rest of a slice, read after the law campaign's verdicts |

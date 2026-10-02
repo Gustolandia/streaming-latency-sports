@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Target: TC](https://img.shields.io/badge/Target-IEEE%20Transactions%20on%20Computers-orange.svg)]()
-[![Tests](https://img.shields.io/badge/tests-3650_passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-8073_passing-brightgreen.svg)]()
 [![Coverage](https://img.shields.io/badge/branch_coverage-100%25-brightgreen.svg)]()
 [![StatsBomb Data](https://img.shields.io/badge/StatsBomb_Data-CC_BY--NC_4.0-blue.svg)](https://github.com/statsbomb/open-data)
 [![DOI (code)](https://img.shields.io/badge/DOI_code-10.5281%2Fzenodo.21650031-blue.svg)](https://doi.org/10.5281/zenodo.21650031)
@@ -27,12 +27,15 @@
 > v1.0.0 was the arXiv-submission state: code
 > [10.5281/zenodo.21650032](https://doi.org/10.5281/zenodo.21650032), data
 > [10.5281/zenodo.21650065](https://doi.org/10.5281/zenodo.21650065).
+> Version 4.0.0, the one this README and the paper's Artifact Availability section describe,
+> was prepared on 29 Sep 2026 and is not yet deposited (§16).
 
-> **Frozen vs. living.** The Zenodo records above are the immutable version of record: built
-> from git tag `v3.0.0`, with SHA256 manifests of every file. This repository
-> is the living copy and moves ahead of them. To verify the paper's claims against the exact
-> data behind them, use the Zenodo zips or `git checkout v3.0.0`; the concept DOIs always
-> resolve to the newest archived version.
+> **Frozen vs. living.** The Zenodo records above are the immutable version of record: the
+> current ones were built from git tag `v3.0.0`, with SHA256 manifests of every file. This
+> repository is the living copy and moves ahead of them. To verify the paper's claims against
+> the exact data behind them, use the Zenodo zips or check out the tag of the version the paper
+> names (`v4.0.0` for the current paper, cut when that version is deposited); the concept DOIs
+> always resolve to the newest archived version.
 
 > ## 🎯 Current target — the contribution
 >
@@ -48,51 +51,68 @@
 > for real-time sports data feeds, under varying concurrency, using the StatsBomb open dataset
 > (2003–2023).* We answered it, and then had to withdraw the answer.
 >
-> Broker delay subtracts a timestamp taken in the producer process from one taken in the
-> consumer process, so it admits a check no statistic supplies: **the sign**. A negative value
-> is not physically impossible here — the acknowledgment stamp is a late, producer-side
-> observation of a broker-side event, so that component is a proxy, not a causal chain. What a
-> negative does prove is that the reference stamp cannot serve as the origin of that event's
-> interval, and a run whose reference is unusable on more than one event in a hundred cannot
-> report a latency, whatever the cause.
-> Applying that check to every run — not just the ones that looked wrong — rejected **1,321 of
-> 2,266 runs (58%)**, including every run behind a large, significant, theory-confirming result
-> we were about to publish.
+> **Failure 1: late timestamps invert the acknowledgment-referenced span.** The transport proxy
+> *S* = *t*_recv − *t*_ack subtracts the timestamp the producer takes when it learns the broker
+> accepted a message from the one the consumer takes when it holds the record, so it admits a
+> check no statistic supplies: **the sign**. A negative value is not physically impossible
+> here. The broker's append precedes both timestamps and neither precedes the other, so *S* is
+> a proxy, not a causal chain, and the thread that writes the acknowledgment timestamp must
+> first wait for a processor. What a negative does show is that the acknowledgment cannot serve
+> as the origin of that message's latency, and a run whose origin timestamp fails on more than
+> one event in a hundred cannot report a latency, whatever the cause. Timed on one clock, 62,264
+> of 738,730 messages were negative this way and none from the send. Applying that sign check to
+> every run, not just the ones that looked wrong, rejected **1,321 of 2,266 runs (58.3%)**.
+> Among them are **109 of the 126 runs** behind a large, significant, theory-confirming result
+> we were about to publish; a condition is usable only if all of its runs survive, so none of
+> that result's six conditions is usable.
 >
 > **Then a second headline failed too, and we withdrew it.** A twentyfold end-to-end gap we had
 > reported turned out to be a per-run **start-up cost** read as a per-event constant: the runs
-> behind it matched a *median of seven events each*. The integrity check does **not** catch that
-> one — those runs are all causally consistent. Causal consistency is necessary, not sufficient.
+> behind it matched a *median of seven events each*. The sign check does **not** catch that
+> one: every one of those runs passes it. The check is necessary, not sufficient.
 >
-> **The title's second failure mode is not that withdrawal — it lives in software we did not
-> write: silent sample deletion.** The OpenMessaging Benchmark admits a sample only if a
-> millisecond-quantised difference is positive, and counts nothing it drops. Across **223
-> instrumented runs** it computed its distribution from **0.36% to 100%** of the samples it
-> took, with the same reported median either way; retention follows the grid arithmetic of the
-> send-interval-to-quantum ratio, not chance. The audit deciding whether the discards are benign
-> is a sign bit: the Kafka-driver corpus's discards contain not one negative, while the
-> Redis-driver replication caught **41,403 genuine one-tick negatives**, absorbed without trace.
+> **Failure 2: a millisecond clock and a positivity filter.** It is not that withdrawal: it
+> lives in software we did not write. The OpenMessaging Benchmark timestamps its end-to-end
+> latency in whole milliseconds, admits a sample only if that difference is positive, and
+> counts nothing it drops. In **71 of the 75** embedded-mode settings whose own summary we
+> captured it printed a median of exactly 1.0 or 2.0 ms, computed from between **0.36% and
+> 100%** of the samples it took, with nothing in the output to tell them apart; over the full
+> ledger of **223 instrumented runs** the retained fraction falls as low as 0.0044%. The share
+> kept is set by the ratio of the delivery to the timestamp resolution and by the phase of the
+> send schedule against the millisecond grid, not by chance, and a registered manipulation of
+> message size moved a setting across the boundary this predicts. Separating the discards by
+> sign names the clock that failed: the Kafka-driver corpus's discards contain not one
+> negative, while the Redis-driver replication caught **41,403 negatives**, every one exactly
+> −1000 µs, absorbed without trace. A registered audit of 43 published reports found the
+> signature in eight configurations of two of them, and a stated retention in none.
 > Artifacts: [`external/omb/`](external/omb/) and the measurement data record
 > [10.5281/zenodo.21650064](https://doi.org/10.5281/zenodo.21650064).
 >
 > **What survives:**
-> 1. The brokers are **equivalent within 1 ms** and neither degrades with concurrency — robust
->    to the audit's own unequal retention (bounded in [`retention_bias.py`](scripts/retention_bias.py)).
-> 2. The mechanism is **established by manipulation, on both sides of the inequality**:
->    `P(inversion) = P(scheduling stall > T_true)`. Raising the stamping threads to `SCHED_FIFO`
->    at *fixed* utilisation collapses the rate 7–80× across eight matched pairs; two load geometries
->    at **identical ρ to four decimals** differ 2.07× (z=10.3), so utilisation cannot be the
->    variable; lengthening true transport 77× *lowers* the rate 4.1×, which no stress-based
->    account predicts; and a `sched_switch` trace predicts the measured rate to within 30%,
->    unfitted. The stall distribution's **effective span exponent is ≈0.33–0.34** over the
->    measured 0.25–2 ms span, steepening beyond ~4 ms; across that span the sample mean is
->    dominated by the largest stalls observed, which is why mean-based counters are structurally
->    blind to this failure. An earlier draft's unconditional infinite-moment ("no finite mean or
->    variance") reading is withdrawn.
->    *Withdrawn:* the M/G/1 functional form. Once the sweep reached ρ where the candidate forms
->    diverge, M/G/1 fit **worse than the mean** (R² −0.05 vs a fitted exponential's 0.93). An
->    earlier revision of this README advertised it as a surviving rule; it is refuted, not merely
->    unsupported.
+> 1. On the transport proxy the brokers sit **within 1 ms** of each other (TOST against a 1 ms
+>    margin, p < 0.001, at all three concurrency levels), on the end-to-end latency they are
+>    **equivalent against a 40 ms margin**, and neither degrades with concurrency. The selection
+>    the sign check makes is bounded in supplement S2.2: for E1, whose rejected values are lost,
+>    the worst case stays inside the 1 ms margin ([`retention_bias.py`](scripts/retention_bias.py));
+>    for the powered campaigns, restoring the rejected runs moves the shift by at most 0.016 ms
+>    ([`powered_gate_sensitivity.py`](scripts/powered_gate_sensitivity.py)).
+> 2. Failure 1's mechanism is **established by manipulation, on both sides of the inequality**
+>    *A* > *D* that makes *S* negative (paper Equation 3: the acknowledgment lag outlasts the
+>    delivery). Raising the timestamping threads to `SCHED_FIFO` at *unchanged* utilization
+>    cuts the rate 7–80× across eight matched pairs; two load geometries at **identical ρ to
+>    four decimals** differ 2.07× (z=10.3), and 2.05× in a full replication, so utilization
+>    alone does not set the rate; padding the payload lengthened transport 77× and *lowered* the
+>    rate 4.1×, which no stress-based account predicts; and a kernel trace of `sched_wakeup` and
+>    `sched_switch` predicts the measured rate to within a third (ratios 0.78, 1.06 and 1.32, the
+>    middle one from a configuration the tracer check withholds), unfitted. The same failure appears in
+>    Kafka's own Java client and on Neoverse N2 processors. The traced stalls are not a single
+>    heavy tail: their counts have three local maxima, the last in the 2–4 ms bucket that holds
+>    the scheduler's derived 3 ms base slice, and above it they collapse (paper Section III-C).
+>    *Withdrawn:* the effective exponent (0.332 over 0.25–2 ms) once read off the traced
+>    survival, the infinite-moment ("no finite mean or variance") reading, and the M/G/1
+>    functional form. Once the sweep reached ρ where the candidate forms diverge, M/G/1 fit
+>    **worse than the mean** (R² −0.05 vs a fitted exponential's 0.93). An earlier revision of
+>    this README advertised it as a surviving rule; it is refuted, not merely unsupported.
 > 3. Each system has **one client setting worth 1–2 orders of magnitude**, both free on a
 >    co-located testbed and therefore invisible to how such settings are normally evaluated.
 >
@@ -132,77 +152,96 @@
 
 ## 1. Current State & Objectives
 
-**Last updated:** August 26, 2026 · **Branch:** `main` · **Target:** *IEEE Transactions on Computers* (systems venue; the JSA, TOMPECS and TPDS framings were retired — see the header)
+**Last updated:** October 1, 2026 · **Branch:** `main` · **Target:** *IEEE Transactions on Computers* (systems venue; the JSA, TOMPECS and TPDS framings were retired — see the header)
 
 ### 1.1 Where things stand
 
 > ## ⚠️ Read this first: two headline results were withdrawn
 >
-> Broker transport is computed as *consumer receipt − broker acknowledgement*, two timestamps
-> taken in two processes. A negative value is not noise — it is proof that the instrument
-> failed. We audited **every** run against that constraint rather than only the ones whose
+> The transport proxy *S* is computed as *consumer receipt − acknowledgment*, two timestamps
+> written by two threads in two processes that read one clock. A negative value is not noise:
+> it shows that the acknowledgment cannot serve as the origin of that message's latency (paper
+> Section II-A). We applied the sign check to **every** run rather than only to the ones whose
 > results looked wrong, and the result reshaped the paper:
 >
-> | Corpus | Runs | Condemned | Conditions | Usable |
+> | Corpus | Runs | Rejected | Conditions | Usable |
 > |---|---:|---:|---:|---:|
-> | Testbed A (single host, Windows) | 1,382 | **862** (62.4%) | 76 | 8 |
-> | Testbed B (multi-host, Oracle Cloud) | 884 | **459** (51.9%) | 40 | 13 |
+> | Workstation (Testbed A: one Windows host, brokers in Docker under WSL2) | 1,382 | **862** (62.4%) | 76 | 8 |
+> | Cloud (Testbed B: four Oracle Cloud VMs) | 884 | **459** (51.9%) | 40 | 13 |
 > | **Total** | **2,266** | **1,321** (58.3%) | 116 | 21 |
 >
-> The rule is in [`scripts/clock_integrity.py`](scripts/clock_integrity.py): a run is condemned
-> if >1% of its events carry negative transport, or if any component median is negative. It
-> exits non-zero so campaigns can gate on it.
+> The rule is in [`scripts/clock_integrity.py`](scripts/clock_integrity.py): a run is rejected
+> if more than 1% of its events carry a negative value in any latency component, or if the
+> median of any component is negative, and a condition is usable only if all of its runs
+> survive (paper Section II-D). It exits non-zero so campaigns can gate on it.
 >
 > **What this cost us.** Our headline result had been *"Redis transport rises 34% with
-> concurrency (p=9.0×10⁻¹¹, complete rank separation) while Kafka stays flat"* — internally
-> consistent across 1,382 runs, matching the textbook prediction that a single-threaded server
-> serialises concurrent streams, and surviving six prior rounds of correction. **Every condition
-> behind it fails the gate.** The inversions are invisible in aggregate: only 5–14% of individual
-> events invert, enough to bias a 0.34 ms effect and far too little to disturb any median or
-> interval a reader would inspect.
+> concurrency (p=9.0×10⁻¹¹, complete rank separation) while Kafka stays flat"*, measured on the
+> workstation testbed at ten times real speed, matching the textbook prediction that a
+> single-threaded server serialises concurrent streams, and surviving six prior corrections, a
+> fairness audit and a full battery of rank tests, effect sizes and multiplicity correction.
+> **The sign check rejects 109 of the 126 runs behind it, and none of its six conditions is
+> usable.** The negative spans are invisible in aggregate: only 5–14% of individual events
+> invert, enough to bias a 0.34 ms effect and far too little to disturb any median or interval
+> a reader would inspect.
 >
-> **Why it generalises.** The gate is a test against zero, so it condemns a measurement in
+> **Why it generalises.** The sign check is a test against zero, so it rejects a measurement in
 > proportion to how close that measurement sits to zero. Our network-delay arm, where the effect
 > is *tens of seconds*, passes 15/15 on the same hardware minutes apart from conditions that fail
-> outright. **The gate binds hardest exactly where the scientific question is most delicate** —
+> outright. **The sign check binds hardest exactly where the scientific question is most delicate** —
 > which inverts the intuition that large, clean, highly significant effects are the trustworthy
 > ones.
 
 ### 1.2 The answer, inside the gate
 
-All numbers below are from **Testbed B** (four Oracle Cloud VMs, real inter-VM network), true
-real-time replay, after gating. Concurrency levels are **derived from real kick-off schedules**
+All numbers below are from **Testbed B**, the cloud testbed (four Oracle Cloud VMs, real
+inter-VM network; producer and consumer on one host, reading one clock), true real-time
+replay, after the sign check. Concurrency levels are **derived from real kick-off schedules**
 (§1.4), not chosen by hand.
 
-**Claim 1 — The brokers are equivalent within 1 ms, but *not* indistinguishable — Redis is
-reproducibly ~0.41 ms faster on transport.** The original E1 corpus reported them near-equal, but
-its transport medians rest on the same **median of seven events per run** as the withdrawn
-scheduling lag (the opening burst), so it is under-powered. A **powered replication** at a
-verified real-time rate over a median of **127 events per run** (N∈{1,9,12}, 15 reps) resolves
-what E1 could not:
+**Claim 1 — On the transport proxy the brokers sit within 1 ms, but they are *not*
+indistinguishable: Redis is about 0.41 ms faster.** The original E1 corpus reported them
+near-equal, but its transport medians rest on the same **median of seven events per run** as
+the withdrawn send lag (the opening burst), so it is under-powered. A **powered campaign** at a
+replay rate derived from the plan and verified against wall time, over a median of **125
+events per run** (N∈{1,9,12}, 15 replicates each), resolves what E1 could not. Over the runs
+the sign check keeps (postmortem S2):
 
-| N | Kafka transport | Redis transport | HL shift [90% CI] |
-|---:|---:|---:|---:|
-| 1  | 0.512 ms | 0.099 ms | +0.409 [0.394, 0.421] |
-| 9  | 0.539 ms | 0.115 ms | +0.418 [0.412, 0.424] |
-| 12 | 0.540 ms | 0.114 ms | +0.420 [0.414, 0.425] |
+| N | Events/run | Kafka *S* | Redis *S* | HL shift [90% CI] |
+|---:|---:|---:|---:|---:|
+| 1  | 148 | 0.512 ms | 0.102 ms | +0.408 [0.389, 0.419] |
+| 9  | 112 | 0.542 ms | 0.120 ms | +0.416 [0.408, 0.423] |
+| 12 | 121 | 0.540 ms | 0.114 ms | +0.417 [0.408, 0.424] |
 
 TOST at a 1 ms margin passes at every N by all three estimators (Welch, bootstrap,
-Hodges–Lehmann), so the brokers are **equivalent within the margin**; yet the HL shift is a
-tight, reproducible **+0.41 ms** (Kafka slower, *p*<10⁻²⁶), flat across concurrency, so they are
-**not a statistical tie**. Against a seconds-scale annotation budget, 0.41 ms is parts in 100,000
-— noise for choosing a broker — but Redis's in-memory `XADD` really is several times faster per
-operation than Kafka's replicated-log append (the grey-lit direction), and ~0.07 ms of the gap is
-the callback instrument (H3), leaving a true broker difference near 0.34 ms. This *refines* E1 and
-sharpens the reversal of the withdrawn accelerated result, which had had Redis **degrading** with N.
+Hodges–Lehmann; Welch TOST *p*<10⁻²⁶ at each N), so the brokers are **equivalent within the
+margin**; yet the shift's 90% interval lies far from zero at every N, Kafka slower, and the
+shift is flat across concurrency, so they are **not a statistical tie**. On the end-to-end
+latency *E*, which is a causal chain, they are equivalent against a 40 ms margin (one broadcast
+frame, fixed three days before the campaign): Hodges–Lehmann shifts of 0.682–0.859 ms, Kafka
+slower, with no 90% upper bound above 0.906 ms (supplement S7).
+
+A second powered campaign, run about ten hours later with the same protocol and eight
+replicates per level, reproduces the shift (0.381, 0.414 and 0.416 ms over the runs the check
+keeps) but **fails the criterion registered for it**, that its shift fall inside the first
+campaign's 90% interval at every level: at one feed it falls 0.008 ms below. We saw only after
+the result that the criterion was a poor test, since even identical shifts would satisfy it at
+all three levels only about 38% of the time. Against a seconds-scale annotation budget, 0.41 ms
+is parts in 100,000, noise for choosing a broker, but it runs in the direction the
+gray-literature comparisons report. Part of it is our harness: timestamping Kafka's
+acknowledgment on the sending thread, as Redis's already is, shrinks the gap by 0.071 ms
+(0.039 ms in a replication; H3), leaving a broker difference of 0.34–0.37 ms. This *refines* E1
+and sharpens the reversal of the withdrawn accelerated result, which had had Redis
+**degrading** with N.
 
 > ### ⚠️ Claim 2 — WITHDRAWN: the 20× end-to-end gap was a start-up cost
 >
-> We previously reported Kafka TTI 105.5 ms vs Redis 5.2 ms, with 102.9 ms of it producer
-> scheduling lag, described as *constant — every event pays it*. **That does not reproduce.**
+> We previously reported a median end-to-end latency (*E*, the harness's TTI) of 105.5 ms for
+> Kafka against about 5 ms for Redis, with 102.9 ms of Kafka's being send lag, described as
+> *constant — every event pays it*. **That does not reproduce.**
 >
 > A controlled re-run (N=1, verified true real time, same driver and broker) gives Kafka a median
-> scheduling lag of **1.59 ms** with a **103.5 ms maximum**. Two independent instrumentation
+> send lag of **1.59 ms** with a **103.5 ms maximum**. Two independent instrumentation
 > paths agree (per-event loop trace and per-run summary).
 >
 > **The discriminator is a count, not an average.** A median cannot separate a per-run cost from
@@ -210,51 +249,60 @@ sharpens the reversal of the withdrawn accelerated result, which had had Redis *
 > holds — which is precisely what misled us. Sweeping the observation window at a verified
 > real-time rate:
 >
-> | Window | Events emitted | Sched. lag p50 | max | Events >50 ms late | Blocking sends |
+> | Window | Events emitted | Send lag p50 | max | Events >50 ms late | Blocking sends |
 > |---|---|---|---|---|---|
-> | 60 s | 57 | 1.57 ms | 103.5 ms | **4** | **1** |
-> | 180 s | 148 | 1.60 ms | 103.4 ms | **4** | **1** |
-> | 600 s | 507 | 1.59 ms | 103.5 ms | **4** | **1** |
+> | 60 s | 57 | 1.56 ms | 103.4 ms | **4** | **1** |
+> | 180 s | 148 | 1.61 ms | 103.5 ms | **4** | **1** |
+> | 600 s | 507 | 1.58 ms | 103.5 ms | **4** | **1** |
 >
-> Events grow **8.9×**; the count does not move. The share of events paying the cost falls from
-> 7.0% to 0.8%. A per-event constant would have grown the count and held the median at 103 ms.
+> These are the Kafka rows of the window-sweep table in supplement S8.2 (counts are medians over
+> three replicates from the per-event trace; the send-lag percentiles come from the per-run
+> summary). Redis, run in the same sweep with the same loop trace, has no event more than 50 ms
+> late and no blocking send at any window. Events grow **8.9×**; the count does not move. The
+> share of events paying the cost falls from 7.0% to 0.8%. A per-event constant would have grown
+> the count and held the median at 103 ms.
 >
-> **The cause is in our own data, and the argument is arithmetic.** E1 replayed the first 600 s
-> of match time, which in that plan holds **507 events**. It matched a **median of seven** — a
-> match rate near one percent, so the window was never the problem, the join was. And a median of
-> seven values at 102.93 ms requires **at least four of the seven** to be that high. The loop
-> trace says exactly how many events per run are ever that late: four, always the same four,
-> those due while the first send blocks. So the matched set is almost entirely the prologue.
+> **The cause is in our own data, and the argument is arithmetic.** E1 matched a **median of
+> seven** events per run; its campaign script, recovered later, replayed two seconds of match
+> time per run (postmortem S4). A median of seven values at 102.93 ms requires **at least four
+> of the seven** to be that high. The loop trace says exactly how many events per run are ever
+> that late: four, always the same four, those due while the first send blocks. So the matched
+> set is almost entirely the prologue, and the argument holds at every replay rate E1 could have
+> used.
 >
 > The mechanism, straight off the trace and identical in every run: event 0's first `produce()`
-> blocks **102.6 ms** on metadata fetch and topic creation; the replay loop is single-threaded, so
-> the four events due meanwhile wake ~103 ms late and then send in tens of microseconds; from
-> event 5 it is steady state at ~1 ms. That the burst is exactly five is the sport, not the
-> harness — every one of the eleven plans opens with at least five events at `t_sim=0`, because a
-> kickoff is a pass, a ball receipt and a carry inside one second. A football feed delivers its
-> densest burst precisely when the producer is coldest. Redis's `XADD` creates the stream in the
-> same round trip and shows no prologue.
+> blocks **102.6 ms**; the replay loop is single-threaded, so the four events due meanwhile wake
+> about 103 ms late and then send in tens of microseconds; from event 5 it is steady state at
+> about 1 ms. A Kafka producer fetches metadata before its first send to a topic it has not yet
+> cached, and the shape matches, but we did not isolate the call: the sweep fixes the cost's
+> shape, not its origin (supplement S8.2, postmortem S3). That the burst is five is the data,
+> not the harness. Every one of the eleven replayed plans opens with at least five events at
+> `t_sim=0`, all at second zero: two lineup records, two half-start markers and the kick-off
+> pass (supplement S1.2 and S8.2). A football feed delivers its densest burst precisely when the
+> producer is coldest. Redis's `XADD` creates the stream in the same round trip and shows no
+> prologue.
 >
 > It also retro-explains the three properties we offered as evidence, each of which a per-run
 > cost predicts equally well: *constant* within a run, *concurrency-invariant* (one per run
 > regardless of N), and *rate-dependent* (acceleration packs in more events and dilutes it).
 >
-> **The integrity gate does not catch this.** Every one of those runs is causally consistent,
-> nothing is negative, and the medians are stable to three significant figures across a hundred
-> runs — the artefact is deterministic, so it reproduces beautifully. Causal consistency is
-> necessary and not sufficient. A percentile over single-digit samples describes the harness,
-> not the system.
+> **The sign check does not catch this.** Every one of those runs passes it, nothing is
+> negative, and the four cells' medians agree within half a millisecond, 105.3 to 105.7 ms,
+> across a hundred runs: the artefact is deterministic, so it reproduces beautifully. Passing the
+> sign check is necessary and not sufficient. A percentile over single-digit samples describes
+> the harness, not the system.
 
 **Claim 3 — The measurement-failure model's rules, measured.** Four rules were derived from the
 model (`docs/measurement_model.md`) and pre-registered with falsification criteria before the
-data existed:
+data existed. The journal supplement labels H1, H2 and H3; H4 is claimed only in the
+postmortem (S18):
 
 | | Rule | Result |
 |---|---|---|
-| **H1** | inversions fall as the measured quantity grows | ✅ ρ = **−0.80** |
-| **H2** | inversions follow M/G/1 waiting in utilisation | ❌ **refuted.** The early ladder stopped at ρ=0.878 and could not separate the forms. Extending it to ρ=0.990, where they diverge, M/G/1 fits *worse than the mean* (R² −0.05 vs a fitted exponential's 0.93) |
-| **H4** | inversions rise with concurrent process count | ✅ ρ = **+0.80** |
-| **H3** | asymmetric stamping biases the comparison | ✅ **replicated** (E-C3, then E-C4). Gap **+0.286 → +0.215 ms** (−25%), moving entirely on the asymmetric side: Kafka 0.392 → 0.322, Redis holds ≈0.106 |
+| **H1** | negative spans fall as the measured delivery grows | ❌ **Withdrawn as evidence.** The injected-delay sweep behind the ρ = −0.80 we reported failed its manipulation check: the delay is common-mode and cancels in the transport proxy *S* (re-run at one feed, the end-to-end latency tracked it, 3.72 to 23.61 ms over 0–20 ms, while *S* stayed flat), so the sweep is a negative result only (supplement S8, postmortem S3.1). The direction is shown instead by the payload sweep, which lengthened transport 77× and lowered the rate 4.1× (paper Section III-B) |
+| **H2** | negative spans follow M/G/1 waiting in utilisation | ❌ **refuted.** The early ladder stopped at ρ=0.878 and could not separate the forms. Extending it to ρ=0.990, where they diverge, M/G/1 fits *worse than the mean* (R² −0.05 vs a fitted exponential's 0.93), and the bracket we registered before that sweep also missed (2.45–3.07× growth predicted, 1.44× measured; supplement S8) |
+| **H4** | negative spans rise with concurrent process count | ✅ ρ = **+0.80** (E-A2, 15 runs per level); claimed only in the postmortem, not in the paper or the journal supplement |
+| **H3** | asymmetric stamping biases the comparison | ✅ **replicated in direction** (E-C3, then E-C4). Gap **+0.286 → +0.215 ms** (−25%), moving entirely on the asymmetric side: Kafka 0.392 → 0.322, Redis holds ≈0.106. The shrinkage is 0.071 ms [95% bootstrap 0.039–0.113] in E-C3 and 0.039 ms [0.008–0.059] in the 30-runs-per-cell replication E-C4, leaving a broker difference of 0.34–0.37 ms (supplement S7) |
 
 The *monotone* dependence on utilisation is measured and survives the refutation above — it is
 only the M/G/1 functional form that fails. The rate is flat (0.007–0.022) to ρ=0.5, then climbs
@@ -268,18 +316,20 @@ input. See [`docs/laws.md`](docs/laws.md).
 > it is the condition under which the effect exists at all.
 
 **Claim 4 — A network hop reverses the ordering.** Injecting one-way delay identically at both
-brokers (`tc netem`), N=5. The Redis arm passes the gate 15/15 at every delay, precisely because
-the effect dwarfs the instrument's floor.
+brokers (`tc netem`), N=5. The Redis arm passes the sign check 15/15 at every non-zero delay,
+precisely because the effect dwarfs the instrument's floor. The zero-delay row is rejected
+under both brokers, so there is no usable baseline (supplement S7).
 
-| Injected delay | Kafka TTI | Kafka transport | Redis TTI | Redis transport | Gate (K / R) |
+| Injected delay | Kafka *E* | Kafka *S* | Redis *E* | Redis *S* | Runs passing (K / R) |
 |---:|---:|---:|---:|---:|:--|
-| 0 ms | *condemned* | — | *condemned* | — | 0/15 · 0/15 |
+| 0 ms | *rejected* | — | *rejected* | — | 0/15 · 0/15 |
 | 5 ms | 12.4 ms | 5.6 ms | 4,651 ms | 4,645 ms | 14/15 · 15/15 |
 | 20 ms | 77.8 ms | 20.8 ms | **31,401 ms** | 31,268 ms | 12/15 · 15/15 |
 | 50 ms | 336.6 ms | 44.9 ms | **103,143 ms** | 102,460 ms | 15/15 · 15/15 |
 
-Kafka *tracks* the delay; Redis *amplifies* it ~900–2,050×. No run was truncated, so this is
-amplification, not loss.
+*E* is the median end-to-end latency and *S* the median transport proxy. Kafka's *S* *tracks*
+the delay almost additively; Redis's grows about 930 to 2,050 times the delay applied. No run
+was truncated, so this is amplification, not loss.
 
 **Claim 5 — The mechanism is round-trip-bound acknowledgement, demonstrated by intervention at
 realistic load and unexplained at 5× that load.**
@@ -291,9 +341,10 @@ realistic load and unexplained at 5× that load.**
 | N=5, 10×, 50 ms delay | 87,624 ms | 92,386 ms | none (0.95×) |
 
 At N=1 read-loop instrumentation shows the mechanism directly, and corrects it: each
-`XREADGROUP` returns a *full* batch (median 106 messages) in ~32 ms, so the consumer is **not**
-read-bound. The ceiling is entirely in the ack path — 200 × 20 ms = 4 s per batch, during which
-it issues no reads at all (13 reads per run, 4 non-empty; batched: 37 reads, 25 non-empty).
+`XREADGROUP` returns every waiting entry (a median of 106 messages) in ~32 ms, so the consumer
+is **not** read-bound. The ceiling is entirely in the ack path — 200 × 20 ms = 4 s per batch,
+during which it issues no reads at all (13 reads per run, 4 non-empty; batched: 37 reads, 25
+non-empty).
 
 > **⚠️ Open question we do not resolve.** The N=5 null is *not* explained by a gate failure — an
 > earlier version of this README said it was, and that was wrong. The Redis arm passes 15/15; the
@@ -318,12 +369,14 @@ that differ by two orders of magnitude in deployment.
 
 | Arm | Status |
 |---|---|
-| Entire Testbed A (single host) — concurrency, throughput sweep, synthetic netem, ack batching, decision-staleness aggregates | ❌ **Withdrawn** (0/76 reported conditions pass) |
+| Entire Testbed A (single host) — concurrency, throughput sweep, synthetic netem, ack batching, decision-staleness aggregates | ❌ **Withdrawn** (8 of its 76 conditions survive the sign check, none of the first result's six; the workstation enters the paper only through the audit) |
 | Testbed B 10× concurrency sweep | ❌ Withdrawn (0–2 of 15–30 runs pass) |
-| Connection sweep above N=10 | ❌ Withdrawn (at N=100 Kafka's median transport is **−6.4 ms**) |
+| Connection sweep above N=10 | ❌ Withdrawn (at N=100 Kafka's median transport proxy is **−6.4 ms**) |
 | 3-node cluster arm | ❌ Withdrawn (0/15 runs, both backends) |
 | Durability H31/H32 quantification | ⚠️ Direction only; magnitudes were Testbed A |
-| E1 concurrency (real-time, gated) | ✅ **Reported** |
+| Injected-delay sweep (H1) | ❌ Withdrawn: the delay cancels in the transport proxy, so it is a negative result only (Claim 3) |
+| E1 concurrency (real-time, gated) | ⚠️ **Historical.** Its concurrency result stands (neither broker degrades with N); its end-to-end and send-lag columns are withdrawn (Claim 2), and its transport medians rest on seven events per run |
+| Powered transport campaign and its replication | ✅ **Reported** (Claim 1; supplement S7) |
 | Network delay arm (Redis 15/15) | ✅ **Reported** |
 | E5 ack batching at N=1 (4 replications) | ✅ **Reported** |
 | Workload characterisation (3,315 matches) | ✅ **Reported** (derived from event data, not from our instrument) |
@@ -345,23 +398,29 @@ From 3,315 StatsBomb matches across 52 competition-seasons (2003–2023), via
 
 ### 1.5 Primary objective
 
-> **Benchmark Redis Streams against Apache Kafka for real-time football feeds on open StatsBomb
-> data, at concurrency derived from the sport — and report honestly what survives a
-> physical-consistency audit of our own instrument.** The gate is the paper's principal
-> contribution; the benchmark is what it was applied to.
+> **The current objective, in the paper's own terms:** show two ways a message-broker benchmark
+> misreports on sub-millisecond paths, where the time being measured is shorter than the
+> clock's resolution and than a busy thread's wait for a processor (Failure 1, late timestamps
+> invert the acknowledgment-referenced span; Failure 2, a millisecond clock and a positivity
+> filter delete samples without counting them), establish each by manipulation, test how widely
+> published results reach the second, and give benchmark authors checks that cost nothing.
+>
+> **The original question**, kept as the setting that produced the finding: benchmark Redis
+> Streams against Apache Kafka for real-time football feeds on open StatsBomb data, at
+> concurrency derived from the sport. What survives of that comparison is small (§1.2, Claim 1).
 
 **Experimental strategy.** Each design choice closes a specific way the measurement could lie:
 
 | Design choice | What it rules out |
 |---|---|
-| **Clock-integrity gate** (`clock_integrity.py`) | timestamps that violate causality under load |
+| **Sign check** (`clock_integrity.py`) | an origin timestamp written late under load (Failure 1) |
 | `time.time_ns()` shared epoch | cross-process clock offset |
 | **True real-time replay** | a saturated driver being measured instead of the broker |
 | Both producers pipelined (`--max-inflight`) | asymmetric client configuration |
 | **Distinct match per feed** (`--plans-dir`) | concurrency secretly being throughput |
 | **Concurrency derived from kick-off times** | an invented independent variable |
 | Hodges–Lehmann + bootstrap | a heavy producer tail contaminating mean-based tests |
-| Margins proportionate to the metric (1 ms transport, 40 ms TTI) | a margin so wide it cannot fail |
+| Margins proportionate to the metric (1 ms on the transport proxy, 40 ms on the end-to-end latency) | a margin so wide it cannot fail |
 | **Manipulation check per intervention** | a null produced by a treatment that never applied |
 | Multi-host testbed with real network + `tc netem` | a loopback path pricing round trips at zero |
 
@@ -371,8 +430,7 @@ From 3,315 StatsBomb matches across 52 competition-seasons (2003–2023), via
 
 > **Title:** *Faster than Light: Latency Measurement Errors in Message-Broker Benchmarks*
 > **Target:** IEEE Transactions on Computers (`IEEEtran`, journal, `paper.tex`)
-> **Keywords:** streaming systems, latency benchmarking, measurement validity, Apache Kafka,
-> Redis Streams, reproducibility
+> **Keywords:** Apache Kafka; benchmarking; clock synchronization; latency measurement; measurement errors; message brokers; scheduling; timestamp resolution.
 
 Message-broker benchmarks now compare systems on sub-millisecond paths, where the time being
 measured is shorter than the clock's resolution and than a busy thread's wait for a processor.
@@ -382,7 +440,7 @@ First, a latency timed from the broker's acknowledgment turns negative whenever 
 recording it is scheduled late by more than the delivery. Timed on one clock, 62,264 of our
 738,730 messages were negative this way and none from the send, so the cause is not clock
 synchronization; real-time priority for the timestamping threads, at unchanged utilization, cut
-the rate 7-80x. A zero-cost sign check rejected **1,321 of our 2,266 runs**, leaving nothing of
+the rate 7–80×. A zero-cost sign check rejected **1,321 of our 2,266 runs**, leaving nothing of
 our first result usable (it rejects 109 of the 126 runs behind it and every one of its six
 conditions).
 
@@ -401,16 +459,19 @@ end-to-end latency, and one consumer setting that a co-located testbed hides dec
 **Withdrawn.** An earlier version reported a twentyfold end-to-end gap, attributed it to client
 code, and built a recommendation on it. It does not reproduce. The runs behind it matched a
 median of seven events each, and a one-off producer start-up cost was being read as a per-event
-constant — Kafka's first `produce()` blocks ~103 ms on metadata fetch and topic creation, and the
-four kickoff events due while it blocks inherit that wait. A window sweep settles it by counting
-rather than averaging: emitted events per run grow 8.9× while the number waking more than 50 ms
-late stays at exactly four. The integrity check does **not** catch this one, which is the point.
+constant: Kafka's first `produce()` blocks about 103 ms, and the four kickoff events due while
+it blocks inherit that wait. A Kafka producer fetches metadata before its first send to a topic
+it has not yet cached, and the shape matches, but we did not isolate the call. A window sweep
+settles the withdrawal by counting rather than averaging: emitted events per run grow 8.9×
+while the number waking more than 50 ms late stays at exactly four. The sign check does **not**
+catch this one, which is the point.
 
-**Also disclosed:** we cannot state the replay rate of the earliest cloud corpus. Plans carry a
-baked-in 120× compression, so `--speedup 1` means 120×, not real time; the flag's semantics were
-corrected 21 hours after those runs were made, and no surviving artefact records an achieved
-rate. Both arms met the same rate, so the comparison is internally valid, but "at football's true
-event rate" is not a claim the artefacts support. See §6.5 of the paper.
+**Also disclosed:** no surviving artefact records the achieved replay rate of the earliest
+corpora, E1 among them. Plans carry a built-in 120× compression, so the speed-up flag is not
+the rate (`--speedup 1` means 120×, not real time), and the flag's meaning was corrected 21
+hours after the E1 runs were made. For E1 the start-up cost reads the rate back as true real
+time, and the original campaign script, found later, agrees. See the table of withdrawn results
+in supplement S8 and postmortem S4.
 
 ---
 
@@ -529,24 +590,42 @@ streams) — the intended comparison.
 
 ## 6. Methodology & Metrics
 
-### 6.1 Primary metric — Time-to-Insight (TTI)
+### 6.1 Primary metric — end-to-end latency E (TTI in the harness)
 
 ```
-TTI = t_consume_ns − t_prod_sched_ns
+E = t_out − t_sched = (t_send − t_sched) + A + S + (t_out − t_recv)     (paper, Equation 2)
 ```
 
-- `t_prod_sched_ns` — when the producer schedules the event (`perf_counter_ns`)
-- `t_consume_ns` — when the consumer receives it (`perf_counter_ns`)
+In the harness's own columns:
+
+```
+TTI = t_output_ns − t_prod_sched_ns
+```
+
+- `t_prod_sched_ns` (*t*_sched): when the event fell due, the run's wall-clock start plus the
+  plan's emission offset scaled by the speed-up flag
+- `t_output_ns` (*t*_out): when the consumer has handled the record
+
+The paper calls this quantity the **end-to-end latency E**; the harness's columns,
+`compute_tti.py` and `tti_summary.json` call it TTI (Time-to-Insight) for historical reasons.
+Every timestamp is read from one wall clock, `CLOCK_REALTIME`, through `time.time_ns()`, by
+producer and consumer processes on one host, so a difference of a producer timestamp and a
+consumer timestamp is a valid span (the Java client of the law campaign reads the same clock
+through `Instant.now()`, `harness/java/src/LawClock.java`). A process-relative clock (`perf_counter_ns`, whose origin
+is per process) carried each run's consumer start-up offset into every measurement; replacing
+it was one of the early corrections (supplement S8.1).
 
 ### 6.2 Metric definitions
 
-| Metric | Formula | Meaning |
+| Metric | Formula (harness columns) | Meaning |
 |--------|---------|---------|
-| TTI | `t_consume_ns − t_prod_sched_ns` | End-to-end time-to-insight |
-| Transport latency | `t_cons_recv_ns − t_broker_ack_ns` | Network + broker overhead |
-| Producer scheduling lag | `t_prod_send_ns − t_prod_sched_ns` | Producer-side delay |
-| Consumer handling span | `t_output_ns − t_cons_recv_ns` | The consumer's own work. Added round 43, and the reason it is listed here is that the two clients do not take these two stamps in the same place: Kafka's parses the payload inside `poll()`, before `t_cons_recv_ns`; Redis's parses it between the two stamps. Median 281 ns and 19,480 ns respectively, so every span referenced to `t_cons_recv_ns` carries one client's parse and not the other's. Disclosed and bounded in supplement S43.1; pinned by `tests/unit/test_consumer_stamp_placement.py` |
-| TTI p50 / p95 / p99 | percentiles of TTI | Median, 95th, 99th |
+| End-to-end latency *E* (TTI in the harness) | `t_output_ns − t_prod_sched_ns` | *t*_out − *t*_sched: from the event falling due to the consumer having handled it; a causal chain (paper Equation 2) |
+| Transport proxy *S* ("transport" in the harness) | `t_cons_recv_ns − t_broker_ack_ns` | *t*_recv − *t*_ack = *D* − *A*: a message timed from the acknowledgment. Not a causal chain, and the only span that turns negative (paper Section II-A and Table I). `compute_tti.py` falls back to `t_prod_send_ns` for a run with no acknowledgment timestamp |
+| Acknowledgment lag *A* | `t_broker_ack_ns − t_prod_send_ns` | *t*_ack − *t*_send: from the send call to the producer observing the broker's acknowledgment (`acklag` in `recount_spans.py`) |
+| Delivery time *D* | `t_cons_recv_ns − t_prod_send_ns` | *t*_recv − *t*_send: from the send call to the consumer holding the record; a causal chain |
+| Send lag ("producer scheduling lag" in the harness) | `t_prod_send_ns − t_prod_sched_ns` | *t*_send − *t*_sched: how late the send call ran after the event was due |
+| Handling span | `t_output_ns − t_cons_recv_ns` | *t*_out − *t*_recv: the consumer's own work on the record. Added round 43, and the reason it is listed here is that the two clients do not take these two stamps in the same place: Kafka's parses the payload inside `poll()`, before `t_cons_recv_ns`; Redis's parses it between the two stamps. Median 281 ns and 19,480 ns respectively, so every span referenced to `t_cons_recv_ns` carries one client's parse and not the other's, while *E*, which runs to `t_output_ns`, contains both. Disclosed and bounded in supplement S1.5; pinned by `tests/unit/test_consumer_stamp_placement.py` |
+| E (TTI) p50 / p95 / p99 | percentiles of E | Median, 95th, 99th |
 | Missed-window rate | `count(TTI > W) / count(TTI)` | Fraction exceeding window *W* |
 | **S3** Correction propagation | `t_correction_consume − t_base_consume` | Time for a correction to land |
 | **S3** Inconsistency duration | same as above | How long state is stale |
@@ -656,7 +735,7 @@ streaming-latency-sports/
 ├── .env                            # local environment (SB_COMMIT, etc.) — not committed
 │
 ├── paper.tex                       # IEEE paper (Trans. Computers target, IEEEtran) + supplement.tex + postmortem.tex
-├── manuscript_references.bib       # bibliography (123 entries; 45 cited in the paper, at TC's cap)
+├── manuscript_references.bib       # bibliography (170 entries; cited: 42 in the paper, 58 in the supplement, 112 in the postmortem)
 │
 ├── docker-compose.yml              # single-broker Kafka + Redis
 ├── docker-compose-multibroker.yml  # 3 Kafka brokers (KRaft)        — Issue 2
@@ -891,8 +970,7 @@ Each run directory contains full provenance:
 Python 3.9.13 (development now also runs on 3.12), dependencies pinned in
 `requirements.txt`. The full hardware/software specification is in
 [`docs/infrastructure.md`](docs/infrastructure.md), and the Zenodo archive exists
-(v2.0.0, 2026-08-07: code [10.5281/zenodo.21836305](https://doi.org/10.5281/zenodo.21836305),
-data [10.5281/zenodo.21836326](https://doi.org/10.5281/zenodo.21836326)).
+(latest version: see the header).
 
 ---
 
@@ -902,8 +980,8 @@ The paper targets **IEEE Transactions on Computers** using the IEEE `IEEEtran` c
 (`journal`, 10pt). The earlier SAGE / Journal of Sports Analytics, ACM TOMPECS and IEEE TPDS
 framings were retired; see the header for why. TC allows regular papers 10-12 double-column
 pages *including references and biography*, and caps references at 45, so the manuscript is
-held inside that budget by test gates and the overflow lives in a companion supplement
-compiled from the same commit.
+held inside that budget by test gates. The evidence behind each section lives in the journal
+supplement and the complete record in the postmortem, both compiled from the same commit.
 
 | Asset | Purpose |
 |-------|---------|
@@ -950,12 +1028,15 @@ reports no error, the source still looks plausible, and the defect appears only 
 That failure reached the manuscript three times here, twice past a full source-level check, which
 is why the check now runs on the artefact a reader actually receives.
 
-**Status:** compiles clean — 0 errors, 0 undefined references or citations, 0 overfull boxes,
-12 pages against TC's 10–12 budget, exactly 45 references against TC's cap of 45, a 200-word
-abstract against TC's 100–200 range, and four author biographies inside TC's 145-word cap,
-with a 52-page supplement. Five figures and two tables, the bottom of the 6-10 range TC's 12-page papers show; the payload-flip figure went to the supplement in round 43 for the page budget. Title: *Faster-than-Light: Latency
-Measurement Artifacts in Streaming Benchmarks*. Formatted
-with `IEEEtran` (journal, 10pt) for IEEE Transactions on Computers.
+**Status (the PDFs built on 1 Oct 2026):** compiles clean, with 0 errors, 0 undefined
+references or citations and 0 overfull boxes; 10 pages against TC's 10–12 budget, 42
+references against TC's cap of 45, a 198-word abstract against TC's 100–200 range, and two
+author biographies (G. P. Ricou and R. Duvignau) inside TC's 145-word cap. Five figures and
+four tables. Title: *Faster than Light: Latency Measurement Errors in Message-Broker
+Benchmarks*. The journal supplement, S1–S9 under the paper's byline, is 30 pages with 58
+references, inside the 25–30 an outside editor asked for; the postmortem, the complete
+single-author record that is not submitted, is 75 pages.
+Formatted with `IEEEtran` (journal, 10pt) for IEEE Transactions on Computers.
 
 Sentence length is gated too, since round 43. A co-author reported that average sentence
 length ran higher than he would have set it, and asked for the claim to be measured rather
@@ -1054,9 +1135,7 @@ final click was the author's.
 
 **Internal review.** Before submission, the manuscript went through internal review rounds held
 to journal standards
-([`docs/reviews_and_responses.md`](docs/reviews_and_responses.md),
-[`docs/reviews_and_responses.md`](docs/reviews_and_responses.md),
-[`docs/reviews_and_responses.md`](docs/reviews_and_responses.md)). The paper has not yet
+([`docs/reviews_and_responses.md`](docs/reviews_and_responses.md)). The paper has not yet
 been submitted to a journal, and no document in this repository contains journal
 correspondence.
 
@@ -1125,6 +1204,18 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 
 ## 16. Changelog
 
+### 4.0.0 — prepared 29 Sep 2026, not yet deposited — the editorial revision
+An outside editor's review of v3, taken whole. **Paper v5** is retitled *Faster than Light: Latency
+Measurement Errors in Message-Broker Benchmarks* and gives both failures equal space: how a benchmark
+times a message, Failure 1, Failure 2, how widespread, what benchmark authors should do; 10 pages, 42
+references. **The supplement is now two documents:** the journal supplement S1–S9, in the paper's
+order under both authors' names, and the single-author postmortem S1–S37, the complete record, not
+submitted. **A registered audit of 43 published reports** found the signature in eight configurations
+of two and a stated retention in none. **The fidelity audit corrected:** 109 of the 126 runs behind
+our first result fail the sign check, not every run; *E* is defined to *t*_out, as computed; the
+transport replication fails its registered criterion; E-A7's occupancy fall, when the grid test was
+built, the workstation's hypervisor, the kickoff burst. 8,073 tests; the unreleased entries below ship too.
+
 ### Unreleased — 2026-09-10 — the byline goes from four names to two
 **Two authors withdrew and the named acknowledgements were cut.** The last author had
 asked on 8 September to be removed, on his own standard for taking public responsibility
@@ -1147,9 +1238,12 @@ The paper is now bylined **G. P. Ricou and R. Duvignau**, with two affiliation f
 two biographies and a running head that names both rather than `et al.`, which IEEEtran
 reserves for three or more. `tests/unit/test_author_withdrawals.py` pins the byline at two
 positively rather than by forbidding the departed names, since a gate that spelled out a
-name someone asked to have removed would defeat its own purpose. **Still outstanding:** the
-deposited Zenodo records and the arXiv submission carry the four-author byline until the
-next version of each is cut.
+name someone asked to have removed would defeat its own purpose. **Still outstanding** when
+this entry was written: the deposited Zenodo records and the arXiv submission carried the
+four-author byline. Since then the published v3.0.0 records' metadata has been edited to list
+only the lead author; the manuscript PDFs archived with v3.0.0 still carry four names, because a
+published record's files cannot be replaced, only superseded by a new version; and arXiv removed
+the submission on 14 Sep 2026, before it was announced.
 
 ### Unreleased — round 44 — the exposure curve has a width
 **No measured result changes.** One published curve gains the dispersion it always had.
@@ -1355,4 +1449,4 @@ storage · `.py` scripts · `.ps1` PowerShell runners · `.sh` bash scripts · `
 
 ---
 
-*Single-source README · last updated August 26, 2026 · target: IEEE Transactions on Computers.*
+*Single-source README · last updated October 1, 2026 · target: IEEE Transactions on Computers.*

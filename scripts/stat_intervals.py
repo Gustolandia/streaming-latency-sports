@@ -586,7 +586,10 @@ def retention_cells(path=os.path.join("external", "omb_retention.csv")):
              "retention_pct": float(r["retention_pct"]),
              "p50_ms": float(r["omb_p50_ms"]),
              "pub_p50_ms": float(r["pub_lat_p50_ms"]),
-             "kept": int(r["kept"])} for r in rows]
+             "kept": int(r["kept"]),
+             # By sign, because Section IV-B says the 64 KB cells' deletions were all zeros.
+             "discarded_zero": int(r["discarded_zero"]),
+             "discarded_negative": int(r["discarded_negative"])} for r in rows]
 
 
 def harness_cells(path=os.path.join("external", "harness_results.csv")):

@@ -63,7 +63,7 @@ class TestR1TheDitherRuleDoesNotClaimTheWhy:
         assert "What we add is the conjunction" in passage, (
             "Section VI claims something other than the conjunction beside the dither's "
             "precedents; the why is Hewlett-Packard's")
-        j = flat.index("What is new is the sign of the operation")
+        j = flat.index("What is new is what the harness does with it")
         assert "throws away the quantity a 1970 counter measured with" in flat[j:j + 250], (
             "the contribution is the consequence under deletion, which is IV-C's own wording")
 
@@ -199,7 +199,7 @@ class TestW2TheAuditSaysWhatGrainItIsExactTo:
         the concession in Section VIII, and the grain in Table III, whose caption records what
         each tool does to a value at or below zero and whose cells print the comparison."""
         flat = " ".join(paper.split())
-        assert "were read at source, not deployed" in flat, \
+        assert "at source and did not run them" in flat, \
             "Threats no longer concedes that the audit read source and deployed nothing"
         j = paper.index("label{tab:tools}")
         caption = " ".join(paper[paper.rindex("caption{", 0, j):j].split())
@@ -245,7 +245,7 @@ class TestW1TheGeometryFigureStaysInTheSupplement:
         decision: panel (a), the four phases of one tick, is redrawn as Fig. 5(a) from the same
         plotting function, while the two-panel `quantum_geometry` figure stays in S17."""
         flat = " ".join(paper.split())
-        i = flat.index("What moves retention is not the path but where the producer")
+        i = flat.index("Retention moves with where the producer")
         passage = flat[i:i + 420]
         assert "crosses a grid instant" in passage
         assert "T_{" in passage or "tau" in passage

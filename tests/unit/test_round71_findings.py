@@ -57,8 +57,8 @@ class TestR1TheConclusionAgreesWithTheReportingRule:
         i = paper.index(RE_BS[:1] + "section{Conclusion}")
         conclusion = " ".join(paper[i:].split())
         assert "wait for a core independently" not in conclusion
-        assert ("Two timestamps written by threads that each wait for a core invert the "
-                "delivery between them") in conclusion
+        assert ("Two timestamps written by threads that each wait for a core come out in "
+                "the wrong order") in conclusion
 
     def test_it_uses_the_introductions_own_phrase(self, paper):
         """Same words in both places, so a reader meets one idea and not two.
@@ -105,7 +105,7 @@ class TestR1TheConclusionAgreesWithTheReportingRule:
     def test_the_rendered_conclusion_carries_the_fix(self):
         """v5 (28 Sep): retargeted with the source pin above to the Conclusion's new wording."""
         flat = " ".join(_rendered("paper").split())
-        assert "each wait for a core invert the delivery between them" in flat
+        assert "each wait for a core come out in the wrong order" in flat
         assert "independently invert" not in flat
 
 
@@ -190,8 +190,8 @@ class TestW1TheWordIsOnTheReviewList:
         core invert", matched across its line break rather than at one wrap.
         """
         import apply_vocabulary as av
-        bad = re.sub(r"threads that each\s+wait for a core\s+invert",
-                     "threads that wait for a core independently invert", paper, count=1)
+        bad = re.sub(r"threads that each\s+wait for a core\s+come out",
+                     "threads that wait for a core independently come out", paper, count=1)
         assert bad != paper, "the Conclusion has been reworded; retarget this mutation"
         _, _, review = av.rewrite(bad, "paper.tex", True, av.load_adjudications(), set())
         assert any("independently" in r for r in review)

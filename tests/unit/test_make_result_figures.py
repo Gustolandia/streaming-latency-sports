@@ -85,6 +85,24 @@ def test_plot_exposure_draws_the_band_around_the_line_and_marks_the_crossover():
     plt.close(fig)
 
 
+def test_the_figures_use_the_manuscripts_names():
+    """1 Oct: A is the acknowledgment lag and D the delivery time, never the bare "delivery",
+    and the grid's interval is a step, never a cell."""
+    import emit_paper_numbers as epn
+    import stat_intervals as si
+    fig, (exposure, flip, cdf, strip) = plt.subplots(1, 4)
+    mrf.plot_exposure(exposure, epn._exposure_lags())
+    mrf.plot_payload_flip(flip, mrf.payload_positions())
+    pops = si.recovery_populations()
+    mrf.plot_recovery(cdf, strip, pops, si.recovery_band_edge(pops))
+    said = [t.get_text() for a in (exposure, flip, cdf, strip) for t in a.texts]
+    assert "lag = delivery time" in said
+    assert exposure.get_xlabel() == "delivery time measured (ms)"
+    assert "half step width" in said
+    assert cdf.get_xlabel() == strip.get_xlabel() == "recovery error (% of median delivery time)"
+    assert not [s for s in said if "displacement" in s or "cell" in s]
+
+
 def test_plot_deletion_draws_every_cell_and_splits_at_the_quantum():
     """The plot says what each grid column printed, since the editorial revision.
 

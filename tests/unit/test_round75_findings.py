@@ -127,7 +127,9 @@ class TestR1TheIndexTermsNameTheirOwnSubject:
         "clock": "Section IV-C, and the failure the paper says is NOT the cause",
         "timestamp": "Sections III and IV-C: what a timestamp marks is the paper's subject",
         "scheduling": "Section III's mechanism, and Section V-E's slice",
-        "stream": "the title's own adjective, and the whole population under audit",
+        # "stream" until 1 Oct 2026: the v5 title says "message-broker", and an outside editor
+        # noted that "streaming" points this journal's readers at stream-processing engines.
+        "broker": "the title's own noun, and the whole population under audit",
     }
 
     def test_the_terms_carry_the_paper_s_own_subject_words(self, paper):

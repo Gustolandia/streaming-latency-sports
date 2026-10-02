@@ -29,7 +29,9 @@ ALLOWED = [
     r"Wayback snapshot [\d-]+ \(id \d+\)",
     r"Available at [\w./-]+/?",
     r"arXiv:\s*\d{4}\.\d{4,5}(v\d+)?",
-    r"Part no\.\\ [\d-]+; undated, year from its \\emph\{HP Journal\} citation",
+    # The HP note's "undated, year from its HP Journal citation" left the printed note on
+    # 1 Oct 2026 (an outside editor: references are citations, not notes); it lives in annote.
+    r"Part no\.\\ [\d-]+",
     r"Revision of IEEE Std [\d-]+",
     r"Obsoletes RFC \d+",
     r"Talk, Strange Loop / QCon",

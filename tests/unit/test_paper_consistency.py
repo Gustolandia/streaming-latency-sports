@@ -575,11 +575,14 @@ class TestSecondWithdrawalIsStated:
         assert "seven events" in tex.lower()
 
     def test_the_507_emitted_events_match_the_replay_plan(self, tex):
-        """The window was not the cause: the plan holds 507 events in the span E1 replayed.
+        """The window sweep's 600 s row: the plan holds 507 events in its first 600 s.
 
-        E1 ran --max-t-sim 600 against a 120x-compressed plan. If that span really did contain
-        only seven events the withdrawal argument would be about window choice; it contains 507,
-        so the seven are a join failure, and the paper must state a number that can be checked.
+        This docstring once said E1 ran --max-t-sim 600 and that its seven matched events were a
+        join failure. The recovered script (postmortem S4,
+        reproducibility/campaign_logs/early_adhoc/e1.sh) ran --max-t-sim 2, two seconds of match
+        time per run, which holds the 5 to 11 events E1 matched; the postmortem's S3 was
+        reconciled with S4 on 1 Oct 2026. The 507 remains the sweep's own count, checked here
+        against the plan.
         """
         t_sim = _replayed_plan_t_sim()
         assert sum(1 for t in t_sim if t <= 600) == 507
@@ -787,7 +790,6 @@ class TestH3IsMeasuredAndSupported:
         # v5 (28 Sep): "the check does not catch everything ... Causal consistency is necessary,
         # not sufficient" became the case it misses, stated: inflation that stays positive.
         assert "passes the check by construction" in blind
-        assert "the check is necessary, not sufficient." in blind
         s3 = " ".join(supp[supp.index(r"\section{S3."):supp.index(r"\section{S4.")].split())
         assert (r"\paragraph{The general lesson} The consistency check of Section~\mainGate{} "
                 r"does not catch this.") in s3
@@ -807,7 +809,9 @@ class TestH3IsMeasuredAndSupported:
         # moved the 1 ms equivalence onto it; the TOST artifact is on the proxy, and v5.1 put
         # it back there. Both halves are held.
         assert "on the transport proxy they sit within a millisecond" in brokers
-        assert "which is a causal chain, the two brokers are equivalent against a wider" in brokers
+        # 1 Oct 2026: "against a wider margin" states its margin, \ttiTostMargin ms.
+        assert "a causal chain, the two brokers are equivalent against a" in brokers
+        assert chr(92) + "ttiTostMargin" in brokers
         assert "So it is not a purchasing argument." in brokers
         prose = re.sub(r"(?<!\\)%.*", "", main_tex)
         assert "twentyfold" not in prose.lower(), "withdrawn claim must not drive guidance"
@@ -1393,7 +1397,8 @@ class TestH2FormIsWithdrawn:
             "the main text keeps the conclusion"
         named = re.search(r"waiting-time\s+form\s+we\s+had\s+adopted", journal)
         assert named, "the journal supplement must name the form as an account the pairs refute"
-        assert "(Supplement~%s)" % _heading_before(journal, named.start()) in paras[0], \
+        assert re.search(r"\(Supplement~%s(?:\)| and~)"
+                         % re.escape(_heading_before(journal, named.start())), paras[0]), \
             "and points to where the evidence lives"
         s5 = " ".join(supp[supp.index("\\section{%s." % home):].split())
         assert "Both load-axis predictions failed" in s5[:6000]
@@ -1538,7 +1543,7 @@ class TestNarrativeArc:
             "the ratio beat must set the delivery against both of the instrument's timescales"
         for token in ("on one clock", r"\spanEvents", r"\rtFactorLow", r"\rtFactorHigh"):
             assert token in mode_a, f"the Mode A beat is missing {token!r}"
-        for token in ("whole milliseconds", "not positive", r"\ombGridRetentionMin"):
+        for token in ("whole milliseconds", "non-positive", r"\ombGridRetentionMin"):
             assert token in mode_b, f"the Mode B beat is missing {token!r}"
         assert "withdr" not in flat.lower(), "the TC abstract no longer narrates withdrawals"
 
@@ -1749,7 +1754,8 @@ class TestMixtureStructure:
         assert "Mixture, measured across nine load levels" in caption
         assert "pre-registered" in caption, "and the campaign that tested it pre-registered"
         mixture = " ".join(_section(main_tex, "sec:mixture").split())
-        assert "not how wide the ordinary jitter is" in mixture
+        # 1 Oct 2026: the antithesis gave way to the numbers that carry it.
+        assert "the jitter's width only" in mixture
         # 29 Sep: S9 is the postmortem's, and the paper's pointer to it went with the ceiling
         # sentence it sat on. The journal supplement reports the collapse failed in S3.4, and
         # the subsection points into S3 (at S3.1): one pointer per section, under the editor's
@@ -1893,8 +1899,9 @@ class TestNetemConfoundIsDisclosed:
         assert "common-mode" in s31, "the reason the manipulation fails must be named"
         assert "the injected delay cancels exactly" in s31
         proxy = " ".join(_section(main_tex, "sec:proxy").split())
-        assert re.search(r"transport runs to tens of seconds passes every run,? while the same "
-                         r"hardware measuring one millisecond fails wholesale", proxy), \
+        assert re.search(r"(?:transport|delivery time) runs to tens of seconds passes every "
+                         r"run,? while the same hardware measuring one millisecond fails "
+                         r"wholesale", proxy), \
             "H1 must rest on the clean contrast of the same hardware at two scales"
         assert "netem" not in main_tex.lower(), "the main text must not lean on the delay sweep"
 
@@ -2308,7 +2315,10 @@ class TestLoadGeometryAndTtrue:
             "ratios no longer straddle 1; the 'no consistent sign' claim needs revisiting"
         prose = " ".join(_resolved(_section(main_tex, "sec:twostate")).split())
         listed = ", ".join(f"{r:.2f}" for r in sorted(ratios))
-        assert f"within a third across ${len(ratios)}$ configurations" in prose
+        spelled = {2: "two", 3: "three", 4: "four", 5: "five"}.get(len(ratios), "")
+        bare = prose.replace("{}", "")
+        assert (f"within a third across ${len(ratios)}$ configurations" in bare
+                or f"within a third across {spelled} configurations" in bare)
         assert f"${listed}$, no consistent sign" in prose, \
             "the ratios must be listed together, and the scatter described as scatter"
 
@@ -2756,7 +2766,8 @@ class TestConcurrentWork:
         assert "lozi2016wastedcores" in tex
         section = " ".join(_section(tex, "sec:related_tail").split())
         assert "work-conservation violations are documented" in section.lower()
-        assert "refutes that single-parameter form, not queueing itself" in section, \
+        assert ("refutes that single-parameter form, not queueing itself" in section
+                or "refutes only that single-parameter form" in section), \
             "the geometry contrast must be scoped to what it actually refutes"
 
     def test_related_work_no_longer_asserts_an_exponent(self, tex):
@@ -3338,7 +3349,9 @@ class TestCausalityFramingIsWithdrawn:
 
     def test_the_gate_justification_no_longer_rests_on_impossibility(self, main_tex):
         gate = _section(main_tex, "sec:gate")
-        assert "is not that a negative is impossible" in gate, \
+        assert ("is not that a negative is impossible" in gate
+                or "does not assume\na negative is impossible" in gate
+                or "does not assume a negative is impossible" in " ".join(gate.split())), \
             "the gate's justification must be the unusable reference, not impossibility"
 
 
@@ -3733,7 +3746,7 @@ class TestInterpreterLockRival:
 
     def test_the_eliminations_name_the_interpreter_lock(self, main_tex):
         # v5 (28 Sep): the list became the opening paragraph of Threats and Limitations.
-        i = main_tex.index("separated from its rivals by")
+        i = main_tex.index("Attributing the negatives to scheduling is an inference")
         para = main_tex[i:i + 2000]
         assert "interpreter lock" in para, \
             "Section V-E lists the rivals; the interpreter lock is one and must be named"
@@ -3785,7 +3798,9 @@ class TestRoundTwelveRegressions:
         # v5 (28 Sep): the main text states the headroom result in one clause (an outside
         # editor's line edit 18); the disclaimer, which is the trace of the correction, is
         # kept beside the argument in S15.
-        assert "too high to hide the deepest negative" in " ".join(main_tex.split())
+        flat_main = " ".join(main_tex.split())
+        assert ("too high to hide the deepest negative" in flat_main
+                or "floor bounds any offset" in flat_main)
         supp = " ".join((REPO / "postmortem.tex").read_text(encoding="utf-8").split())
         i = supp.find("closes the channel a second time on headroom")
         assert i > 0, "the headroom argument must be present"
@@ -4273,7 +4288,7 @@ class TestTheReportingRulesAreInternallyConsistent:
     def test_the_unpreemptable_rule_carries_the_busy_poll_mitigation(self, tex):
         # Case-folded: the mitigation may open a sentence, and a gate that turned on
         # capitalisation would fire on a rewrite that changed nothing.
-        rule = self._rule(tex, "The last check is the one mitigation").lower()
+        rule = self._rule(tex, "One mitigation our measurements support directly").lower()
         assert "busy-poll" in rule or "busy poll" in rule, (
             "the rule must keep the busy-polling alternative a co-author asked for beside "
             "real-time priority")

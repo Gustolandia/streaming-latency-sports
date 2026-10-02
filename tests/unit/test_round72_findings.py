@@ -206,7 +206,8 @@ class TestRecommendedItems:
         i = paper.index("label{sec:brokers}")
         passage = " ".join(paper[i:paper.index(chr(92) + "section{", i)].split())
         assert "TOST" in passage
-        assert "causal chain" in passage and "wider margin" in passage
+        # 1 Oct 2026: "against a wider margin" names its margin, \ttiTostMargin ms.
+        assert "causal chain" in passage and (chr(92) + "ttiTostMargin") in passage
 
     def test_w2_the_omission_clause_excludes_the_table_that_shows_them(self, paper):
         """v5 (28 Sep): the clause ("Wilson intervals are under 0.1 points on corpus-wide
@@ -254,7 +255,7 @@ class TestRecommendedItems:
 
     def test_w3_did_not_leave_the_intervals_in_two_places(self, paper):
         """The prose kept them only to have said them; the table is where they belong."""
-        i = paper.index("The rate falls by factors of")
+        i = paper.index("the rate falls by factors of")
         assert chr(92) + "rtLowFactorCI" not in paper[i:i + 320]
         j = paper.index("negative-span rates differ by")
         assert chr(92) + "GeomOrigFactorCI" not in paper[j:j + 260]
@@ -438,8 +439,6 @@ class TestEveryTypedNumeralInTheMainTextIsADecision:
         "0.35": "the delivery Figure 5(a) draws at four phases of one tick, set by "
                 "make_paper_figures.T_TRUE_MS to fall between grid values and to equal no "
                 "quantity the ledger emits",
-        "80": "the width of the band Figure 4 draws, the tenth to the ninetieth percentile of "
-              "the lag across conditions, which is a choice of what to show",
         # statistical conventions, not measurements
         "95": "the confidence level, which is a convention and not a result",
         "0.001": "the p-value ceiling the TOST clears, reported as an inequality",
@@ -567,7 +566,7 @@ class TestEveryWordSpelledQuantityIsADecisionToo:
         """
         import re as _re
         subjects = {
-            "ombEscapeCellsWord": ("cells that escape", "escape are the", "whose payload"),
+            "ombEscapeCellsWord": ("settings that print above the grid",),
             "harnessAuditedWord": ("tools at source", "tools of Section"),
             "harnessSilentWord": ("dispose of", "disposing of"),
             "harnessSilentIndependentWord": ("independent tools",),
@@ -633,10 +632,12 @@ class TestEveryWordSpelledQuantityIsADecisionToo:
 
         v5 (28 Sep): the sentence is Section IV-B's now and wraps between "that" and
         "escape", so the mutation matches across the line break instead of at one wrap.
+        1 Oct 2026: the sentence was corrected (the 64 KB settings delete most of their
+        samples; only the 256 KB pair keeps everything), and its count now opens it.
         """
         import re as _re
-        bad = _re.sub(r"([Tt]he only cells that\s+escape are the )" + RE_BS
-                      + r"ombEscapeCellsWord\{\}", r"\g<1>four", paper)
+        bad = _re.sub(r"(The\s+)" + RE_BS + r"ombEscapeCellsWord\{\}(\s+settings that print)",
+                      r"\g<1>four\g<2>", paper)
         assert bad != paper, "Section IV-B has been reworded; retarget this mutation"
         with pytest.raises(AssertionError):
             self.test_no_sentence_types_a_word_the_ledger_emits_for_that_quantity(bad)

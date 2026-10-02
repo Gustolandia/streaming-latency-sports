@@ -50,9 +50,19 @@ PALETTE = ("#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e", "#e6ab02", "#a
 #: How each counted run's warning is ringed: marker, size, edge colour.
 RINGS = {"paused": ("o", 90, "#d62728"), "flagged": ("D", 80, "#000000"),
          "far": ("s", 80, "#ff7f0e"), "traced": ("o", 45, "#7f7f7f")}
+#: In the manuscript's names (1 Oct): the plan's "got-it" is the acknowledgment lag, and a
+#: duration is the delivery time, never the bare "delivery". The square's entry is set on two
+#: lines, broken where the saved file stays the width it was. The legend overhangs the 6.5 in
+#: canvas and the tight crop keeps what overhangs, so the legend's width is the file's: on one
+#: line the file grew from 7.16 to 8.17 in and printed in the supplement's 7.16 in column at
+#: 88% of its authored type; broken after "lag" it shrank to 6.69 in and the 8.6 in figures
+#: printed 43 pt taller, more than law_tick's float page has room for. Neither gate can see
+#: either, since both measure the canvas. Broken here the file is 7.23 in, as near the old
+#: width as a break gets.
 RING_LABELS = {"paused": "ringed red: a pause held a message over 150 ms",
-               "flagged": "diamond: the got-it brake would have stopped on it",
-               "far": "square: delivery, got-it or held delay far from its fellows'",
+               "flagged": "diamond: the lag brake would have stopped it",
+               "far": "square: delivery time, acknowledgment lag or held delay\nfar from its "
+                      "fellows'",
                "traced": "ringed gray: L9's traced half"}
 
 
@@ -119,7 +129,7 @@ def panel(ax, runs, spec, palette=None):
                 ax.scatter([run["trip_median_ms"]], [run["rate"]], marker=symbol, s=size,
                            facecolors="none", edgecolors=edge, linewidths=0.9, zorder=3)
     ax.set_title(spec["title"], fontsize=9)
-    ax.set_xlabel("Delivery, the run's median (ms)", fontsize=8)
+    ax.set_xlabel("Delivery time, the run's median (ms)", fontsize=8)
     ax.set_ylabel("Negative rate", fontsize=8)
     ax.tick_params(labelsize=8)
     ax.grid(True, alpha=0.3)
@@ -128,8 +138,14 @@ def panel(ax, runs, spec, palette=None):
     return drawn
 
 
+#: The panels' floor, in inches: room for a three-line mark legend, as it always was.
+LEGEND_RESERVE_IN = 0.07 * 8.6
+#: What that floor leaves between a three-line legend's top and the panels above it.
+LEGEND_CLEARANCE_IN = 2.4 / 72
+
+
 def mark_legend(fig, rings, y=0.0):
-    """The marks, once for the figure, below its panels."""
+    """The marks, once for the figure, below its panels; returns the legend."""
     handles = [Line2D([], [], marker="x", linestyle="none", color="#333333",
                       label="cross: not counted (a condition did not take, or the brake stopped it)"),
                Line2D([], [], marker="+", linestyle="none", color="#333333",
@@ -138,8 +154,8 @@ def mark_legend(fig, rings, y=0.0):
         symbol, _, edge = RINGS[mark]
         handles.append(Line2D([], [], marker=symbol, linestyle="none", markerfacecolor="none",
                               markeredgecolor=edge, label=RING_LABELS[mark]))
-    fig.legend(handles=handles, loc="lower center", ncol=2, fontsize=8, frameon=False,
-               bbox_to_anchor=(0.5, y))
+    return fig.legend(handles=handles, loc="lower center", ncol=2, fontsize=8, frameon=False,
+                      bbox_to_anchor=(0.5, y))
 
 
 FIGURES = {
@@ -211,8 +227,13 @@ def figure(runs, stem, spec):
     drawn = [panel(ax, runs, p, palettes[p["by"]]) for ax, p in zip(flat, spec["panels"])]
     for ax in flat[len(spec["panels"]):]:
         ax.set_visible(False)
-    fig.tight_layout(rect=(0, 0.07 * 8.6 / spec["height"], 1, 1))
-    mark_legend(fig, spec["rings"])
+    # The panels stand on the legend, however tall it is. The floor was fixed, and fitted three
+    # lines; L9's six marks with the square's entry on two lines make four, and the bottom
+    # panels' axis labels came down to 3 pt above the legend, which read as a row of it.
+    legend = mark_legend(fig, spec["rings"])
+    top = legend.get_window_extent(fig.canvas.get_renderer()).y1 / fig.dpi
+    floor = max(LEGEND_RESERVE_IN, top + LEGEND_CLEARANCE_IN)
+    fig.tight_layout(rect=(0, floor / spec["height"], 1, 1))
     return fig, drawn
 
 

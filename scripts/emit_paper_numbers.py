@@ -496,7 +496,9 @@ def render_grid_table():
         "% docs/results/external/grid_membership.csv. Do not edit by hand.",
         "\\begin{tabular}{@{}rlrrrrl@{}}",
         "\\toprule",
-        "rate & $p/q$ & $n$ & $D$ & null & $p_{\\mathrm{Holm}}$ & verdict \\\\",
+        # $a/q$ and $\bar{d}$ since 1 Oct 2026: $p$ is the occupancy and $D$ the delivery time
+        # everywhere else in both documents, and the glossary promises one meaning per symbol.
+        "rate & $a/q$ & $n$ & $\\bar{d}$ & null & $p_{\\mathrm{Holm}}$ & verdict \\\\",
         "\\midrule",
     ]
     for c in cells:
@@ -530,7 +532,8 @@ def render_spread_table():
         "% docs/results/external/phase_quantisation.csv. Do not edit by hand.",
         "\\begin{tabular}{@{}rlrrrrlrl@{}}",
         "\\toprule",
-        "rate & $\\Delta/\\tau$ & $q$ & $n$ & width & pos. & predicts & spread & shows \\\\",
+        # $T_{\mathrm{send}}$ since 1 Oct 2026: $\Delta$ is the timestamping asymmetry of S3.4.
+        "rate & $T_{\\mathrm{send}}/\\tau$ & $q$ & $n$ & width & pos. & predicts & spread & shows \\\\",
         "\\midrule",
     ]
     seen_incommensurate = False
@@ -873,7 +876,8 @@ def render_interval_table():
         "% docs/results/external/phase_quantisation.csv. Do not edit by hand.",
         "\\begin{tabular}{@{}rlcl r@{}}",
         "\\toprule",
-        "Rate & Interval & Multiple of tick? & Retention per replicate & Spread \\\\",
+        # "Multiple of 1 ms?" since 1 Oct 2026: "tick" is the scheduler's word in both documents.
+        "Rate & Interval & Multiple of 1 ms? & Retention per replicate & Spread \\\\",
         "\\midrule",
     ]
     for rate in (500, 457, 383):
@@ -937,15 +941,31 @@ def render_registry_table():
     ]
     source_keys = []
     for (harness, path), v in sorted(folded.items()):
-        kinds = sorted(v["kinds"] & set(REGISTRY_LABELS))
-        disposal = ", ".join(REGISTRY_LABELS[k] for k in kinds) if kinds else "---"
+        disposal, counts = _registry_cells(v)
         lines.append("%s & %s & %s & %s & %s \\\\" % (
-            _tt(harness), path, v["clock"], disposal,
-            "yes" if v["counts_discards"] else "no"))
+            _tt(harness), path, v["clock"], disposal, counts))
         source_keys.append(REGISTRY_CITES[harness])
     lines += ["\\bottomrule", "\\end{tabular}"]
     _ = source_keys  # the caption's source list is emitted by registry_sources_macro()
     return "\n".join(lines) + "\n"
+
+
+def _registry_cells(v):
+    """The "What happens" and "Counts" cells of one (tool, span) row.
+
+    Until 1 Oct 2026 "Counts" read "no" for every tool that discards nothing, beside a "---"
+    saying nothing happens to the value, and Rezolus read "---" beside "yes": an outside reading
+    could not tell a tool that hides its discards from one with nothing to hide. A row with
+    nothing to count now says so in both cells, and a tool whose only recorded behavior is a
+    counted discard is shown discarding.
+    """
+    kinds = sorted(v["kinds"] & set(REGISTRY_LABELS))
+    if kinds:
+        return (", ".join(REGISTRY_LABELS[k] for k in kinds),
+                "yes" if v["counts_discards"] else "no")
+    if v["counts_discards"]:
+        return "discard", "yes"
+    return "---", "---"
 
 
 def registry_sources_macro():
@@ -1099,10 +1119,11 @@ def retention_macros():
     return _tracker_macros() + [
         ("ombMedianCells", str(len(cells))),
         ("ombGridMedianCells", str(len(grid))),
-        # The cells the resolution stops binding on: they report above the grid and
-        # lose nothing. S16 needs the count in words, because it is the half of the
-        # asymmetry that shows retention has an exit and the negative-span rate has
-        # none -- one failure can be lengthened out of existence, the other cannot.
+        # The cells that print above the grid, all of them at the largest payloads. Until
+        # 1 Oct 2026 this comment, Section IV-B and the postmortem called them the cells "the
+        # resolution stops binding on", which "lose nothing": true of the two at 256 KB and
+        # false of the two at 64 KB, which deleted most of their samples. _above_grid_macros
+        # says which is which.
         ("ombEscapeCellsWord", _spell(len(cells) - len(grid))),
         # The printed medians the grid cells actually take, from the data rather than typed.
         # Round 76 gave Figure 4 a labelled tick at each of these, because the caption claimed
@@ -1124,6 +1145,57 @@ def retention_macros():
         ("ombRetentionRhoCI", "%+.2f$ to $%+.2f"
          % stat_intervals.fisher_ci(rho, len(grid))),
         ("ombRetentionRhoN", str(len(grid))),
+    ] + _above_grid_macros([c for c in cells if c["p50_ms"] > AT_GRID_MAX_MS])
+
+
+def _payload_kb(cell):
+    """The payload a resolution-sweep cell name encodes (`s65536_rep1`), in KB, or None."""
+    m = re.match(r"^s(\d+)_", cell)
+    return int(m.group(1)) // 1024 if m else None
+
+
+def _above_grid_macros(above):
+    """What the cells printing above the millisecond grid did, which is two different things.
+
+    An outside reading of the ledger (1 Oct 2026) found Section IV-B calling all four the cells
+    "the resolution stops binding on" and Figure 5's caption saying that away from the grid
+    "the harness behaves". The two at 256 KB keep every sample. The two at 64 KB keep about a
+    third: every sample they delete computes to exactly zero, so most of their deliveries took
+    under a millisecond, and the medians they print, hundreds of milliseconds, describe only
+    the slow remainder. They are the strongest cells of Failure 2, not exceptions to it.
+
+    The sentence names one payload for each kind and says the deleted samples were zeros and
+    the majority; each of those is checked here rather than assumed, so a new campaign that
+    breaks one stops the build instead of leaving the sentence false.
+    """
+    whole = [c for c in above if c["retention_pct"] >= 100.0]
+    partial = [c for c in above if c["retention_pct"] < 100.0]
+    if not whole or not partial:
+        return []
+    whole_kb = {_payload_kb(c["cell"]) for c in whole}
+    partial_kb = {_payload_kb(c["cell"]) for c in partial}
+    if len(whole_kb) != 1 or len(partial_kb) != 1 or None in whole_kb | partial_kb:
+        raise ValueError(
+            "Section IV-B names one payload for the above-grid cells that keep everything and "
+            "one for those that delete; they are now %s and %s" % (sorted(map(str, whole_kb)),
+                                                                     sorted(map(str, partial_kb))))
+    if any(c.get("discarded_negative", 0) for c in partial):
+        raise ValueError("Section IV-B says every sample the 64 KB cells delete computes to "
+                         "zero; one of them now deletes a negative")
+    if any(c["retention_pct"] >= 50.0 for c in partial):
+        raise ValueError("Section IV-B says most deliveries in the deleting above-grid cells "
+                         "took under a millisecond; one of them now keeps half or more")
+    rets = [c["retention_pct"] for c in partial]
+    meds = [c["p50_ms"] for c in partial]
+    return [
+        ("ombAboveGridWholeWord", _spell(len(whole))),
+        ("ombAboveGridWholeKB", str(whole_kb.pop())),
+        ("ombAboveGridPartialWord", _spell(len(partial))),
+        ("ombAboveGridPartialKB", str(partial_kb.pop())),
+        ("ombAboveGridPartialRetLo", "%.1f" % min(rets)),
+        ("ombAboveGridPartialRetHi", "%.1f" % max(rets)),
+        ("ombAboveGridPartialMedLo", "%.0f" % min(meds)),
+        ("ombAboveGridPartialMedHi", "%.0f" % max(meds)),
     ]
 
 
@@ -2096,6 +2168,18 @@ def _exposure_lags(path=os.path.join("docs", "results", "span_symmetry.csv")):
     return typical, hi, lo, pct(0.10), pct(0.90)
 
 
+def _exposure_pct(pct):
+    """A percentage of the exposure arithmetic, as the prose and the table both print it.
+
+    Round 56. "%.0f" everywhere printed 0.725% as "1" -- 38% high, and the only significant
+    figure the number had. Two-figure values keep the integer they had; anything under one is
+    given the decimal that carries it. The table used "%.0f" until 1 Oct 2026, when an outside
+    reading found its 100 ms row printing 1% beside the paper's 0.7% for the same quantity: one
+    rule, written once, so the two cannot part again.
+    """
+    return ("%.1f" if pct < 1.0 else "%.0f") % pct
+
+
 def exposure_macros():
     """The prose numbers of Section VI-B, from the same arithmetic as Table S48.
 
@@ -2109,11 +2193,7 @@ def exposure_macros():
     typical, hi, lo, p10, p90 = lags
 
     def err(ms, lag=None):
-        # Round 56. "%.0f" everywhere printed 0.725% as "1" -- 38% high, and the only
-        # significant figure the number had. Two-figure values keep the integer they had;
-        # anything under one is given the decimal that carries it.
-        pct = 100.0 * (typical if lag is None else lag) / (ms * 1000.0)
-        return ("%.1f" if pct < 1.0 else "%.0f") % pct
+        return _exposure_pct(100.0 * (typical if lag is None else lag) / (ms * 1000.0))
 
     def gap(ms):
         t = ms * 1000.0
@@ -2178,12 +2258,12 @@ def render_exposure_table(path=os.path.join("docs", "results", "span_symmetry.cs
            chr(92) + "midrule"]
     for ms in (0.25, 0.5, 1, 2, 5, 10, 25, 50, 100):
         t = ms * 1000.0
-        err = "$%.0f$" % (100.0 * typical / t) + pc
-        band = "$%.0f$--$%.0f$" % (100.0 * p10 / t, 100.0 * p90 / t) + pc
+        err = "$%s$" % _exposure_pct(100.0 * typical / t) + pc
+        band = "$%s$--$%s$" % (_exposure_pct(100.0 * p10 / t), _exposure_pct(100.0 * p90 / t)) + pc
         if t <= hi:
             gap = "inverts"
         else:
-            gap = "$%.0f$" % (100.0 * (1.0 - (t - hi) / (t - lo))) + pc
+            gap = "$%s$" % _exposure_pct(100.0 * (1.0 - (t - hi) / (t - lo))) + pc
         out.append("$%g$~ms & %s & %s & %s %s" % (ms, err, band, gap, rule))
     out += [chr(92) + "bottomrule", chr(92) + "end{tabular}"]
     return nl.join(out) + nl
@@ -3098,7 +3178,25 @@ def cliff_macros(root=CLIFF_DIR):
     ]
 
 
+#: Counts the prose sets as words. The ledger printed them as digits ("3 local maxima",
+#: "across 3 levels", "8 matched pairs") in a manuscript that spells small counts out
+#: everywhere else; an outside reading (1 Oct 2026) found the two styles side by side. Each
+#: twin is the same count, spelled by _spell, so the word cannot drift from the number.
+SPELLED_TWINS = ("tracedModes", "tracedRatioArms", "tostLevels", "rtPairs", "rtResidualPairs",
+                 "testbedCpus")
+
+
+def spelled_twins(pairs):
+    have = dict(pairs)
+    return [(name + "Word", _spell(int(have[name]))) for name in SPELLED_TWINS if name in have]
+
+
 def all_pairs(m):
+    out = _all_pairs(m)
+    return out + spelled_twins(out)
+
+
+def _all_pairs(m):
     return (list(macros(m)) + span_macros() + stat_macros() + grid_macros()
             + retention_macros() + traced_macros() + tost_macros() + tti_tost_macros()
             + first_result_macros() + occupancy_fall_macros()

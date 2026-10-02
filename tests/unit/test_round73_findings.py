@@ -182,7 +182,7 @@ class TestR2TheMainTextDoesNotComputeWithTheModelS9Disclaims:
     def test_the_qualitative_claim_survives(self, paper):
         """v5 (28 Sep): the sentence opens "The slice lands on the scale", the slice having
         been named in the sentence before it, so the anchor takes either opening."""
-        i = re.search(r"The (?:scheduler's )?slice lands on the\s+scale", paper).start()
+        i = re.search(r"The (?:scheduler's )?slice lands\s+on\s+the\s+scale", paper).start()
         passage = " ".join(paper[i:i + 240].split())
         assert "substantial minority" in passage, (
             "the observation is worth keeping; it is the magnitude that was not established")
@@ -205,7 +205,7 @@ class TestR2TheMainTextDoesNotComputeWithTheModelS9Disclaims:
         sentence that put them in one clause is the one that went.
 
         v5 (28 Sep): same anchor change as above."""
-        i = re.search(r"The (?:scheduler's )?slice lands on the\s+scale", paper).start()
+        i = re.search(r"The (?:scheduler's )?slice lands\s+on\s+the\s+scale", paper).start()
         passage = paper[i:i + 260]
         assert chr(92) + "spanNegAckPct" not in passage
 

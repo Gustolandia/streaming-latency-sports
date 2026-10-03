@@ -295,6 +295,20 @@ class TestOneRun:
         assert row["kernel_minus_wait_median"] == pytest.approx(120)
         assert row["kernel_negative"] == 0
         assert row["D_mean"] == pytest.approx(500 + 20 + sum(expected) / 12 + 100)
+        assert row["D_max"] == pytest.approx(500 + 20 + 2000 + 100) and row["D_held"] == 0
+        assert row["iowait_s"] is None, "no reading of /proc/stat around the run"
+
+    def test_a_run_that_holds_messages_past_the_pause_limit_says_how_many_and_how_long(
+            self, tmp_path):
+        run, _ = r1_run(tmp_path, "r001-p", slow_ms=400.0)
+        (run / "stat_before.txt").write_text("cpu 10 0 5 1000 200 0 0 0\n", encoding="utf-8")
+        (run / "stat_after.txt").write_text("cpu 20 0 9 2000 1134 0 0 0\n", encoding="utf-8")
+        row = rw.read_run(str(run), BROKER, RECEIVER, warmup_s=0)
+        assert row["D_held"] == 3, "messages 0, 4 and 8"
+        assert row["D_max"] == pytest.approx(500 + 20 + 400000 + 100)
+        assert row["iowait_s"] == pytest.approx(9.34), "the disk wait the census reads"
+        nothing = rw.read_run(str(run), BROKER, RECEIVER, warmup_s=60)
+        assert nothing["messages"] == 0 and nothing["D_max"] is None and nothing["D_held"] == 0
 
     def test_an_untraced_run_without_a_capture_keeps_only_d(self, tmp_path):
         run, _ = r1_run(tmp_path, "r002-a", traced=False, capture=False, priority=True)
@@ -361,13 +375,23 @@ class TestOneRun:
 
 class TestTheCampaign:
 
-    def test_only_runs_the_integrity_rule_passed_are_read(self, tmp_path):
+    def test_only_r1_runs_the_integrity_rule_passed_are_read(self, tmp_path):
+        """By the setup a run's queue row names, not by its folder: campaign.sh names folders
+        after their queue, and amendment R1-1's runs came from a second one, r1_more. Reading by
+        folder left them out on the first try."""
         r1_run(tmp_path, "r001-R1-kafka-l75-ord-a1")
         r1_run(tmp_path, "r001-R1-kafka-l75-ord-a2", verdict="repeat")
         r1_run(tmp_path, "r002-R1-kafka-l75-ord-a1", verdict=None)
-        r1_run(tmp_path, "smoke_r001-R1-kafka-l75-ord-a1")
+        r1_run(tmp_path, "more_r007-R1-kafka-l75-ord-a1")
+        other, _ = r1_run(tmp_path, "a9_r001-A9-kafka-l75-s3000-c02h-a1")
+        row = json.loads((other / "queue_row.json").read_text(encoding="utf-8"))
+        (other / "queue_row.json").write_text(json.dumps(dict(row, setup="A9-kafka")),
+                                              encoding="utf-8")
+        bare, _ = r1_run(tmp_path, "r003-R1-kafka-l75-ord-a1")
+        os.remove(bare / "queue_row.json")
         rows, skipped = rw.read_campaign([str(tmp_path)], BROKER, RECEIVER, warmup_s=0)
-        assert [r["run"] for r in rows] == ["law_r1_r001-R1-kafka-l75-ord-a1"]
+        assert [r["run"] for r in rows] == ["law_r1_more_r007-R1-kafka-l75-ord-a1",
+                                            "law_r1_r001-R1-kafka-l75-ord-a1"]
         assert skipped == [("law_r1_r001-R1-kafka-l75-ord-a2", "repeat"),
                            ("law_r1_r002-R1-kafka-l75-ord-a1", "not judged")]
 
@@ -375,10 +399,12 @@ class TestTheCampaign:
 # --- the comparison ------------------------------------------------------------------------------
 
 def table_row(priority, traced, d, wait, kernel, share=1.0, diff=120.0, backend="kafka",
-              load=75, unmatched=0):
+              load=75, unmatched=0, run="law_r1_r001", held=0, longest=None):
     """A row as r1_runs.csv holds it: every value a string, as csv.DictReader returns it."""
-    row = {"backend": backend, "load_pct": str(load), "consumer_priority": str(priority),
-           "traced": str(traced), "kernel_unmatched": str(unmatched),
+    row = {"run": run, "backend": backend, "load_pct": str(load),
+           "consumer_priority": str(priority), "traced": str(traced),
+           "kernel_unmatched": str(unmatched), "D_held": str(held),
+           "D_max": "" if longest is None else str(longest),
            "kernel_ge_wait_share": str(share) if traced else "",
            "kernel_minus_wait_median": str(diff) if traced else ""}
     for prefix, stats in (("D", d), ("wait", wait if traced else None), ("kernel", kernel)):
@@ -402,9 +428,53 @@ class TestTheComparison:
         assert found["estimates"] == (700.0, 688.0, 680.0)
         assert all(found[p] for p in ("R1-a", "R1-b", "R1-c", "R1-d"))
         text = rw.lines({("kafka", "75"): found})
-        assert "method 1 0.70 ms, method 2 0.69 ms, method 3 0.68 ms" in text[4]
-        assert "100.0% of messages" in text[5] and "R1-d holds" in text[6]
+        assert ("method 1 0.70 ms, method 2 0.69 ms, method 3 0.68 ms; largest over smallest "
+                "1.03") in text[8]
+        assert "for 100.0% of messages (median over traced runs; lowest run 100.0%)" in text[9]
+        assert text[10].endswith("pause limit: none") and "R1-d holds" in text[11]
         assert text[-1] == "R1-d holds in 1 of 1 broker-and-load parts"
+
+    def test_the_runs_a_pause_carries_are_named(self):
+        """A pause releases every message it held at once and can carry a run's mean, and a cell
+        of two runs has no median to hide it in. So the runs that hold one are named."""
+        rows = [table_row(False, False, **ORDINARY),
+                table_row(True, False, run="law_r1_r006", held=297, longest=6036716.5,
+                          **GO_FIRST),
+                table_row(True, True, run="law_r1_r003", held=80, longest=1731000.0,
+                          **GO_FIRST)]
+        found = rw.compare(rows)[("kafka", "75")]
+        assert found["held"] == [("law_r1_r003", 80, 1731000.0), ("law_r1_r006", 297, 6036716.5)]
+        text = rw.lines({("kafka", "75"): found})
+        assert text[10] == ("  runs holding a message over the quality report's 150 ms pause "
+                            "limit: law_r1_r003, 80 messages, longest 1731.00 ms; law_r1_r006, "
+                            "297 messages, longest 6036.72 ms")
+
+    def test_traced_and_untraced_runs_are_also_shown_apart(self):
+        """The plan reports them apart wherever D is compared, since the tracer is not a free
+        observer. The plan's own reading, a setup's median over all its runs, is unchanged."""
+        heavier = dict(ORDINARY, d=(1000, 1900, 3600, 5000), kernel=(160, 900, 2800, 4200))
+        rows = [table_row(False, True, share=0.98, **heavier),
+                table_row(False, False, **ORDINARY), table_row(False, False, **ORDINARY),
+                table_row(True, True, **GO_FIRST), table_row(True, False, **GO_FIRST)]
+        found = rw.compare(rows)[("kafka", "75")]
+        apart = found["apart"]
+        assert apart["untraced"]["runs"] == (2, 1) and apart["traced"]["runs"] == (1, 1)
+        assert apart["untraced"]["D"]["mean"] == (1600.0, 900.0)
+        assert apart["traced"]["D"]["mean"] == (1900.0, 900.0)
+        assert apart["traced"]["kernel"]["median"] == (160.0, 130.0)
+        assert found["D"]["mean"] == (1600.0, 900.0), "every run, as the plan reads a setup"
+        assert found["share"] == 0.99 and found["lowest_share"] == 0.98
+        text = rw.lines({("kafka", "75"): found})
+        assert text[1].startswith("  method 1, D: median 0.90 ms -> 0.85 ms; mean 1.60 ms")
+        assert text[2] == ("    untraced runs only, 2 -> 1: median 0.90 ms -> 0.85 ms; mean 1.60 ms"
+                           " -> 0.90 ms; p90 3.20 ms -> 1.00 ms; p99 4.50 ms -> 1.10 ms")
+        assert text[3].startswith("    traced runs only, 1 -> 1: median 1.00 ms -> 0.85 ms; "
+                                  "mean 1.90 ms -> 0.90 ms")
+        assert text[4].startswith("  method 2, traced own wait: "), "the tracer's own, never apart"
+        assert text[5].startswith("  method 3, kernel receipt to stamp: ")
+        assert text[6].startswith("    untraced runs only, 2 -> 1: median 0.15 ms -> 0.13 ms")
+        assert text[7].startswith("    traced runs only, 1 -> 1: median 0.16 ms -> 0.13 ms")
+        assert "for 99.0% of messages (median over traced runs; lowest run 98.0%)" in text[9]
 
     def test_each_prediction_can_fail(self):
         small = dict(d=(900, 950, 1500, 2000), wait=(20, 100, 900, 1500),
@@ -418,9 +488,63 @@ class TestTheComparison:
         rows = [table_row(False, False, backend="redis", load=88, **ORDINARY)]
         found = rw.compare(rows)[("redis", "88")]
         assert found["estimates"] == (None, None, None) and found["share"] is None
+        assert found["ratio"] is None and found["lowest_share"] is None
         assert not any(found[p] for p in ("R1-a", "R1-b", "R1-c", "R1-d"))
         text = rw.lines({("redis", "88"): found})
-        assert "method 1 -, method 2 -, method 3 -" in text[4] and "for - of messages" in text[5]
+        assert text[3] == "    traced runs only, 0 -> 0: " + "; ".join(
+            "%s - -> -" % stat for stat in ("median", "mean", "p90", "p99"))
+        assert "method 1 -, method 2 -, method 3 -; largest over smallest -" in text[8]
+        assert "for - of messages (median over traced runs; lowest run -)" in text[9]
+
+    def test_two_estimates_that_agree_are_not_three(self):
+        """R1-d asks the three estimates to agree. Two that agree, with the traced one missing,
+        or with priority lengthening the wait instead, are not that, and give no ratio."""
+        untraced = [table_row(False, False, **ORDINARY), table_row(True, False, **GO_FIRST)]
+        found = rw.compare(untraced)[("kafka", "75")]
+        assert found["estimates"] == (700.0, None, 680.0)
+        assert found["ratio"] is None and not found["R1-d"]
+        worse = dict(GO_FIRST, wait=(10, 900, 15, 20))
+        found = rw.compare([table_row(False, True, **ORDINARY),
+                            table_row(True, True, **worse)])[("kafka", "75")]
+        assert found["estimates"] == (700.0, -200.0, 680.0)
+        assert found["ratio"] is None and not found["R1-d"]
+
+
+# --- the pauses -----------------------------------------------------------------------------------
+
+class TestThePauses:
+
+    def test_each_pause_in_a_counted_run_is_read_with_the_census_functions(self, tmp_path):
+        """Messages 32 and 36 wait 400 ms for their thread: two pauses past the warm-up, each of
+        one message, whose confirmations came back as usual. The driver's sampler skipped two
+        seconds across the first; the run's processors waited 9.34 s on the disk."""
+        runs = tmp_path / "runs"
+        run, _ = r1_run(runs, "r001-R1-redis-l75-rtc-a1", backend="redis", priority=True,
+                        count=40, slow_ms=400.0)
+        start = T0 / 1e9
+        (run / "utilisation.csv").write_text("t_wall,cpu_pct\n" + "".join(
+            "%.3f,50\n" % (start + k * 0.5) for k in range(90) if not 63 <= k <= 66),
+            encoding="utf-8")
+        (run / "stat_before.txt").write_text("cpu 10 0 5 1000 200 0 0 0\n", encoding="utf-8")
+        (run / "stat_after.txt").write_text("cpu 20 0 9 2000 1134 0 0 0\n", encoding="utf-8")
+        r1_run(runs, "r002-R1-redis-l75-rtc-a1", backend="redis", priority=True, count=40,
+               slow_ms=400.0, verdict="repeat")
+        r1_run(runs, "r001-R1-redis-l75-ord-a1", backend="redis", count=40)
+        rows = rw.pause_rows([str(runs)])
+        assert [r["run"] for r in rows] == ["law_r1_r001-R1-redis-l75-rtc-a1"] * 2, \
+            "nothing from the run sent back, nor from the run that never paused"
+        first, second = rows
+        assert first["setup"] == "R1-redis-l75-rtc" and first["late"] == 1
+        assert first["worst_ms"] == pytest.approx(400.62) and first["kind"] == "receiver"
+        assert first["max_gotit_ms"] == pytest.approx(0.8)
+        assert first["sampler_gap_s"] == pytest.approx(2.5)
+        assert second["sampler_gap_s"] == pytest.approx(0.5), "the sampler kept going"
+        assert first["inside_reads"] is None and first["iowait_s"] == pytest.approx(9.34)
+        table, out = tmp_path / "pauses.csv", io.StringIO()
+        assert rw.main(["pauses", "--runs", str(runs), "--out", str(table)], out=out) == 0
+        assert out.getvalue() == "2 pauses in 1 runs\n"
+        with open(table, newline="", encoding="utf-8") as fh:
+            assert [r["kind"] for r in csv.DictReader(fh)] == ["receiver", "receiver"]
 
 
 # --- the earlier campaigns ------------------------------------------------------------------------

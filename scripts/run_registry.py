@@ -32,15 +32,19 @@ SPEC = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
 RUN_FIELDS = (
     "run", "campaign", "pair", "driver", "driver_size", "broker_size", "image", "commit",
     "block", "setup", "round", "attempt", "backend", "load_pct", "slice_set_ns", "point",
-    "delay_set_ms", "delay_held_ms", "ack_batch", "cpus", "language", "priority", "plan",
-    "recorded_half", "kernel", "config_hz", "tick_ms", "cpu_model", "online_cpus",
-    "slice_in_force_ns", "clocksource", "verdict", "trip_median_ms", "gotit_median_ms",
-    "measured_negative_rate", "messages", "gotit_brake", "reasons")
+    "delay_set_ms", "delay_held_ms", "ack_batch", "cpus", "language", "priority",
+    "consumer_priority", "recv_capture", "plan", "recorded_half", "kernel", "config_hz",
+    "tick_ms", "cpu_model", "online_cpus", "slice_in_force_ns", "clocksource", "verdict",
+    "trip_median_ms", "gotit_median_ms", "measured_negative_rate", "messages", "gotit_brake",
+    "reasons")
 CAMPAIGN_FIELDS = (
     "campaign", "folder", "block", "kernel", "cpu_model", "online_cpus", "designed_runs", "done",
     "left", "failed_attempts", "abandoned", "complete", "ended", "first_started_utc",
     "last_finished_utc")
-PLAN_KEYS = ("backend", "load_pct", "point", "ack_batch", "cpus", "language", "priority", "plan")
+#: The settings a queue row's params carry. R1 (3 Oct 2026) added go-first for the consumer
+#: alone and the receiver's full capture; no earlier block sets either.
+PLAN_KEYS = ("backend", "load_pct", "point", "ack_batch", "cpus", "language", "priority",
+             "consumer_priority", "recv_capture", "plan")
 
 
 def _json(path):
@@ -65,10 +69,17 @@ def machines(spec_path=SPEC):
     return found
 
 
-def campaign_of(run_name):
-    """The campaign label a run folder's name carries: law_<block>_<stamp>_<key>."""
+def campaign_of(run_name, key=None):
+    """The campaign label a run folder's name carries: law_<block>_<stamp>_<key>. A queue named
+    without a stamp, as R1's r1 was (3 October), leaves law_<queue>_<key>, and then the run's own
+    key says where the queue's name ends."""
     parts = run_name.split("_")
-    return "_".join(parts[1:3]) if len(parts) > 3 and parts[0] == "law" else ""
+    if len(parts) > 3 and parts[0] == "law":
+        return "_".join(parts[1:3])
+    if key and run_name.startswith("law_") and run_name.endswith("_" + key) \
+            and len(run_name) > len(key) + 5:
+        return run_name[4:-len(key) - 1]
+    return ""
 
 
 def run_row(run_dir, sizes):
@@ -86,7 +97,7 @@ def run_row(run_dir, sizes):
     driver = lane.get("driver") or ""
     size = sizes.get(driver, (None, None, None))
     name = os.path.basename(run_dir.rstrip("/\\"))
-    found = {"run": name, "campaign": campaign_of(name),
+    found = {"run": name, "campaign": campaign_of(name, row.get("key")),
              "pair": lane.get("lane") or lane.get("profile") or "", "driver": driver,
              "driver_size": size[0], "broker_size": size[1], "image": size[2],
              "commit": (lane.get("commit") or "")[:12],

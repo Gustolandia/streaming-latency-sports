@@ -7,6 +7,7 @@ setup file that is not cloud-config, and a guide that names a file that does not
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -2256,7 +2257,8 @@ def test_m0_replays_its_own_plan_and_records_what_its_hypotheses_are_judged_by()
     # test used to assert that very line.
     stop = run.split('if [ -n "$receiver_capture" ]; then', 1)[1].split("\n  fi", 1)[0]
     assert 'sudo kill -INT "$receiver_capture"' not in stop
-    assert 'sudo pkill -INT -f "tcpdump -i any -s 200 -w $RUN_DIR/receiver.pcap"' in stop
+    assert 'sudo pkill -INT -f "[t]cpdump -i any -s 200 -w $RUN_DIR/receiver.pcap"' in stop
+    assert 'sudo pkill -KILL -f "[t]cpdump -i any -s 200 -w $RUN_DIR/receiver.pcap"' in stop
     assert 'for _ in $(seq 1 20); do ps -p "$receiver_capture" > /dev/null || break' in stop, \
         "the wait is bounded"
     assert stop.index("pkill -KILL") > stop.index("pkill -INT") and \
@@ -2264,3 +2266,100 @@ def test_m0_replays_its_own_plan_and_records_what_its_hypotheses_are_judged_by()
     assert '> "$RUN_DIR/broker.pcap"' in run
     assert run.index("tcpdump -i eth0 -s 200") > run.index("tcpdump -i eth0 -nn"), \
         "M0's capture starts after the delay's own capture has been read"
+
+
+def _row_reader_says(params, key="r001-R1-redis-l75-ord-a1"):
+    """What campaign.sh's own row reader sets for a queue row: its Python, run as the runner runs
+    it, on a row with the parameters every block gives and `params` over them."""
+    code = (KIT / "campaign.sh").read_text(encoding="utf-8").replace("\r\n", "\n")
+    program = code.split("eval \"$(python3 - \"$ROW\" <<'PY'\n", 1)[1].split("\nPY\n", 1)[0]
+    row = {"key": key, "params": dict({"backend": "redis", "load_pct": 75, "delay_ms": 0},
+                                      **params)}
+    said = subprocess.run([sys.executable, "-", json.dumps(row)], input=program, text=True,
+                          capture_output=True, check=True).stdout
+    return dict(shlex.split(line)[0].split("=", 1) for line in said.splitlines())
+
+
+def test_r1s_switches_reach_the_runner_and_raise_nothing_else():
+    """R1 (3 Oct 2026): a row's consumer_priority and recv_capture become CONSUMER_PRIORITY and
+    RECV_CAPTURE. Go-first for the consumer alone must not raise the producer as well, or what it
+    removes from D is no longer the receiving thread's own wait; and a row of any other block
+    sets neither, so every earlier block runs as it did."""
+    r1 = _row_reader_says({"consumer_priority": True, "recv_capture": True,
+                           "trace_half": True, "trace_events": True})
+    assert (r1["CONSUMER_PRIORITY"], r1["RECV_CAPTURE"], r1["PRIORITY"]) == ("1", "1", "")
+    a7 = _row_reader_says({"priority": True})
+    assert (a7["CONSUMER_PRIORITY"], a7["RECV_CAPTURE"], a7["PRIORITY"]) == ("", "", "1")
+
+
+def _r1_runner(tmp_path, name, **switches):
+    """A run's R1 lines, from the wraps it hands the trial runner to the stop of its capture, in
+    bash, with every command that needs a machine stood in for by one that writes down how it
+    was called. (The wraps handed over, the calls.)"""
+    code = (KIT / "campaign.sh").read_text(encoding="utf-8").replace("\r\n", "\n")
+    run = code.split("run_one () {", 1)[1]
+    first = '  [ -n "$PRIORITY" ] && wrap_sched='
+    start = first + run.split(first, 1)[1].split("  chronyc -c tracking", 1)[0]
+    head = '  if [ -n "$recv_full" ]; then'
+    stop = head + run.split(head, 1)[1].split("\n  fi\n", 1)[0] + "\n  fi\n"
+    run_dir, calls = tmp_path / name, tmp_path / (name + "_calls.txt")
+    run_dir.mkdir()
+    script = "\n".join([
+        'sudo () { echo "sudo $*" >> "$CALLS"; }', "sleep () { :; }", "ps () { return 1; }",
+        "r1 () {", '  local wrap_sched=""', start,
+        '  echo "consumer=$consumer_wrap"', '  echo "producer=$wrap_sched"', stop, "}", "r1", ""])
+    env = {"CALLS": calls.as_posix(), "RUN_DIR": run_dir.as_posix(), "BROKER_PRIV": "10.9.9.9",
+           "ME": "tester", "PRIORITY": "", "CONSUMER_PRIORITY": "", "RECV_CAPTURE": ""}
+    env.update(switches)
+    said = bash(["-c", script], extra_env=env, capture_output=True, text=True, check=True).stdout
+    handed = dict(line.split("=", 1) for line in said.splitlines())
+    return handed, (calls.read_text(encoding="utf-8").splitlines() if calls.exists() else [])
+
+
+@needs_bash
+def test_r1_raises_the_consumer_alone_and_only_when_asked(tmp_path):
+    """R1's first method reads what go-first for the consumer removes from D, so the consumer and
+    nothing else runs under SCHED_FIFO 80, and the producer's wrap stays empty. Without the
+    switch the consumer starts exactly as before, and A7's go-first for both is left as it was."""
+    plain, calls = _r1_runner(tmp_path, "plain")
+    assert plain == {"consumer": "sudo ip netns exec sblrecv sudo -u tester", "producer": ""}
+    assert calls == [], "no capture is started, and none is stopped"
+    raised, _ = _r1_runner(tmp_path, "raised", CONSUMER_PRIORITY="1")
+    assert raised == {"consumer": "sudo chrt -f 80 sudo ip netns exec sblrecv sudo -u tester",
+                      "producer": ""}
+    both, _ = _r1_runner(tmp_path, "both", PRIORITY="1")
+    assert both == {"consumer": "sudo ip netns exec sblrecv sudo -u tester",
+                    "producer": "sudo chrt -f 80"}
+
+
+@needs_bash
+def test_r1s_capture_is_full_length_in_nanoseconds_and_stopped_by_its_own_command_line(tmp_path):
+    """R1's third method times each receipt from the kernel's own timestamp, so the receiver's
+    packets are captured inside its namespace at full length, stamped to the nanosecond. The
+    capture is stopped by the command line that started it: a signal sent through the sudo that
+    started M0's capture never reached it, and held a run six hours (26 September)."""
+    _, calls = _r1_runner(tmp_path, "captured", RECV_CAPTURE="1")
+    started = [c for c in calls if "pkill" not in c]
+    assert started == ["sudo ip netns exec sblrecv tcpdump -i any -s 0 --time-stamp-precision="
+                       "nano -w %s/receiver_full.pcap host 10.9.9.9"
+                       % (tmp_path / "captured").as_posix()]
+    stops = [c.split(" -f ", 1) for c in calls if "pkill" in c]
+    assert [how for how, _ in stops] == ["sudo pkill -INT", "sudo pkill -KILL"]
+    for how, pattern in stops:
+        assert re.search(pattern, started[0]), "pkill -f finds the capture by its command line"
+        assert not re.search(pattern, "%s -f %s" % (how, pattern)), \
+            "and not the sudo that runs pkill, whose command line holds the pattern itself"
+
+
+def test_no_stop_run_through_sudo_finds_its_own_sudo():
+    """pkill leaves itself out but not the sudo that runs it, and that sudo's command line holds
+    the pattern. Written plainly, the forced stop of R1's capture killed its own sudo in every
+    one of R1's 53 runs, and each run's log said so (3 October)."""
+    code = (KIT / "campaign.sh").read_text(encoding="utf-8").replace("\r\n", "\n")
+    stops = re.findall(r'(sudo pkill -[A-Z]+) -f "([^"]+)"', code)
+    assert len(stops) == 4, "R1's capture and M0's, each asked politely and then forced"
+    for how, pattern in stops:
+        pattern = pattern.replace("$RUN_DIR", "runs/law_r1_r001-R1-redis-l75-rtc-a1")
+        started = "sudo ip netns exec sblrecv " + pattern.replace("[t]", "t") + " host 10.1.1.21"
+        assert re.search(pattern, started), pattern
+        assert not re.search(pattern, "%s -f %s" % (how, pattern)), pattern

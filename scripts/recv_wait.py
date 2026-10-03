@@ -25,11 +25,15 @@ Three measurements, made in the same runs:
 And what the earlier campaigns already said, recomputed from their runs: method 2 on the law
 campaign's traced runs (A9), and D with and without go-first for both processes that read the
 clock (A7). Only runs the integrity rule passed are read, and only messages sent after the
-warm-up, as everywhere.
+warm-up, as everywhere. Beside each comparison stand the runs that hold a message past the
+quality report's pause limit: a pause releases every message it held at once, and one pause can
+carry a run's mean. Each pause is then read with the 28 September census's own functions, for
+what else stopped with it.
 
 CLI:
     python scripts/recv_wait.py read --runs FOLDER [--runs ...] --broker IP --receiver IP --out CSV
     python scripts/recv_wait.py compare --table CSV [--out TXT]
+    python scripts/recv_wait.py pauses --runs FOLDER [--runs ...] --out CSV
     python scripts/recv_wait.py traced --runs CAMPAIGN [--runs ...] --out CSV
     python scripts/recv_wait.py priority --runs CAMPAIGN [--runs ...] --out CSV
 """
@@ -47,6 +51,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import helper_waits as hw  # noqa: E402
+import pause_census as pc  # noqa: E402
+import quality_report  # noqa: E402
 
 #: The warm-up every reading leaves out.
 WARMUP_S = 30.0
@@ -57,8 +63,9 @@ EVENT_ID = re.compile(rb"constant-\d{6}")
 SAME_RECORD = 2048
 #: The verdict of a run the integrity rule passed.
 PASSING = "count"
-#: R1's runs, by the folder name campaign.sh gives them.
-R1_PREFIX = "law_r1_r"
+#: R1's runs, by the setup their queue row names. Not by folder: campaign.sh names a run's folder
+#: after its queue, and amendment R1-1's runs came from a second queue, r1_more.
+R1_SETUP = "R1-"
 #: The plan's rules (r1_plan.md), in microseconds.
 R1A_MEAN_US = (300.0, 1200.0)
 R1A_P90_US = 1500.0
@@ -281,7 +288,13 @@ def read_run(run_dir, broker, receiver, warmup_s=WARMUP_S):
            "backend": params.get("backend"), "load_pct": params.get("load_pct"),
            "consumer_priority": bool(params.get("consumer_priority")),
            "traced": os.path.exists(os.path.join(run_dir, "waits.txt")), "messages": len(msgs)}
-    out.update(summarize("D", [(receipt - send) / 1e3 for _, send, receipt in msgs]))
+    delays = [(receipt - send) / 1e3 for _, send, receipt in msgs]
+    out.update(summarize("D", delays))
+    # A pause holds every message sent while it lasts and releases them together, so one pause
+    # can carry a run's mean; the quality report's limit says which runs hold one.
+    out["D_max"] = max(delays) if delays else None
+    out["D_held"] = sum(1 for delay in delays if delay > quality_report.STALL_MS * 1e3)
+    out["iowait_s"] = pc.iowait_s(run_dir)
     waits, why = receive_waits(run_dir, msgs) if msgs else (None, "no message measured")
     out["wait_note"] = why or ""
     out.update(summarize("wait", [] if waits is None else [
@@ -307,17 +320,44 @@ def read_run(run_dir, broker, receiver, warmup_s=WARMUP_S):
     return out
 
 
-def read_campaign(folders, broker, receiver, prefix=R1_PREFIX, warmup_s=WARMUP_S):
-    """(rows for the runs the integrity rule passed, [(run, verdict)] for the others)."""
-    rows, skipped = [], []
+def r1_runs(folders, setup=R1_SETUP):
+    """(run folder, the setup its queue row names, its integrity verdict) for every R1 run."""
     for folder in folders:
-        for run_dir in sorted(glob.glob(os.path.join(folder, prefix + "*"))):
-            verdict = read_json(os.path.join(run_dir, "integrity.json")).get("verdict")
-            if verdict != PASSING:
-                skipped.append((os.path.basename(run_dir), verdict or "not judged"))
-                continue
-            rows.append(read_run(run_dir, broker, receiver, warmup_s))
+        for run_dir in sorted(glob.glob(os.path.join(folder, "law_*"))):
+            named = read_json(os.path.join(run_dir, "queue_row.json")).get("setup") or ""
+            if named.startswith(setup):
+                yield (run_dir, named,
+                       read_json(os.path.join(run_dir, "integrity.json")).get("verdict"))
+
+
+def read_campaign(folders, broker, receiver, setup=R1_SETUP, warmup_s=WARMUP_S):
+    """(rows for the R1 runs the integrity rule passed, [(run, verdict)] for the others)."""
+    rows, skipped = [], []
+    for run_dir, _named, verdict in r1_runs(folders, setup):
+        if verdict != PASSING:
+            skipped.append((os.path.basename(run_dir), verdict or "not judged"))
+            continue
+        rows.append(read_run(run_dir, broker, receiver, warmup_s))
     return rows, skipped
+
+
+def pause_rows(folders, setup=R1_SETUP):
+    """Every pause in the R1 runs the integrity rule passed, read with the 28 September census's
+    own functions (scripts/pause_census.py): how long and how many it held, its kind by how long
+    the broker's confirmations were held, the longest gap of the driver's sampler across it, the
+    share of it the consumer spent inside a read, and the run's disk wait (iowait)."""
+    rows = []
+    for run_dir, named, verdict in r1_runs(folders, setup):
+        if verdict != PASSING:
+            continue
+        for ep in pc.episodes(pc.messages(run_dir)):
+            rows.append({"run": os.path.basename(run_dir), "setup": named,
+                         "worst_ms": ep["worst_ms"], "late": ep["late"], "kind": pc.kind(ep),
+                         "max_gotit_ms": ep["max_gotit_ms"],
+                         "sampler_gap_s": pc.sampler_gap_s(run_dir, ep["start"], ep["end"]),
+                         "inside_reads": pc.inside_reads(run_dir, ep["start"], ep["end"]),
+                         "iowait_s": pc.iowait_s(run_dir)})
+    return rows
 
 
 # --- the comparison and the plan's predictions ----------------------------------------------------
@@ -341,6 +381,12 @@ def _fall(before, after):
     return None if before is None or after is None else before - after
 
 
+def _before_after(before, after, prefix):
+    """{statistic: (its median over the `before` runs, its median over the `after` runs)}."""
+    return dict((stat, (setup_median(before, "%s_%s" % (prefix, stat)),
+                        setup_median(after, "%s_%s" % (prefix, stat)))) for stat in STATS[1:])
+
+
 def compare(rows):
     """{(broker, load): what the three methods say, and each prediction's verdict}."""
     parts = {}
@@ -352,25 +398,36 @@ def compare(rows):
         go_first = [r for r in part if _flag(r, "consumer_priority")]
         o_traced = [r for r in ordinary if _flag(r, "traced")]
         g_traced = [r for r in go_first if _flag(r, "traced")]
-        d = dict((stat, (setup_median(ordinary, "D_" + stat), setup_median(go_first, "D_" + stat)))
-                 for stat in STATS[1:])
-        wait = dict((stat, (setup_median(o_traced, "wait_" + stat),
-                            setup_median(g_traced, "wait_" + stat))) for stat in STATS[1:])
-        kernel = dict((stat, (setup_median(ordinary, "kernel_" + stat),
-                              setup_median(go_first, "kernel_" + stat))) for stat in STATS[1:])
+        d = _before_after(ordinary, go_first, "D")
+        wait = _before_after(o_traced, g_traced, "wait")
+        kernel = _before_after(ordinary, go_first, "kernel")
+        # The plan reports traced and untraced runs apart wherever D is compared, since the
+        # tracer is not a free observer; and the kernel's delay, which holds the traced wait.
+        apart = {}
+        for subset, o_runs, g_runs in (
+                ("untraced", [r for r in ordinary if not _flag(r, "traced")],
+                 [r for r in go_first if not _flag(r, "traced")]),
+                ("traced", o_traced, g_traced)):
+            apart[subset] = {"runs": (len(o_runs), len(g_runs)),
+                             "D": _before_after(o_runs, g_runs, "D"),
+                             "kernel": _before_after(o_runs, g_runs, "kernel")}
         estimates = (_fall(*d["mean"]), _fall(*wait["mean"]), _fall(*kernel["mean"]))
         traced = o_traced + g_traced
-        share = setup_median(traced, "kernel_ge_wait_share")
+        shares = [v for v in (_value(r, "kernel_ge_wait_share") for r in traced) if v is not None]
+        share, lowest = (statistics.median(shares), min(shares)) if shares else (None, None)
         difference = setup_median(traced, "kernel_minus_wait_median")
         p90_fall, median_move = _fall(*d["p90"]), _fall(*d["median"])
         o_mean, o_p90, g_mean = wait["mean"][0], wait["p90"][0], wait["mean"][1]
         positive = [e for e in estimates if e is not None and e > 0]
+        ratio = max(positive) / min(positive) if len(positive) == 3 else None
         found[key] = {
             "runs": (len(ordinary), len(go_first)), "traced": (len(o_traced), len(g_traced)),
-            "D": d, "wait": wait, "kernel": kernel, "estimates": estimates,
-            "share": share, "difference": difference, "p90_fall": p90_fall,
-            "median_move": median_move,
+            "D": d, "wait": wait, "kernel": kernel, "apart": apart, "estimates": estimates,
+            "ratio": ratio, "share": share, "lowest_share": lowest, "difference": difference,
+            "p90_fall": p90_fall, "median_move": median_move,
             "unmatched": sum(int(_value(r, "kernel_unmatched") or 0) for r in part),
+            "held": sorted((r.get("run"), int(_value(r, "D_held")), _value(r, "D_max"))
+                           for r in part if (_value(r, "D_held") or 0) > 0),
             "R1-a": (o_mean is not None and R1A_MEAN_US[0] <= o_mean <= R1A_MEAN_US[1]
                      and o_p90 is not None and o_p90 > R1A_P90_US
                      and g_mean is not None and g_mean < R1A_PRIORITY_MEAN_US),
@@ -378,12 +435,21 @@ def compare(rows):
                      and abs(median_move) < R1B_MEDIAN_MOVE_US),
             "R1-c": (share is not None and share >= R1C_SHARE and difference is not None
                      and difference < R1C_DIFFERENCE_US),
-            "R1-d": len(positive) == 3 and max(positive) / min(positive) <= R1D_FACTOR}
+            "R1-d": ratio is not None and ratio <= R1D_FACTOR}
     return found
 
 
 def _ms(us):
     return "-" if us is None else "%.2f ms" % (us / 1000.0)
+
+
+def _changes(pairs):
+    return "; ".join("%s %s -> %s" % (stat, _ms(pairs[stat][0]), _ms(pairs[stat][1]))
+                     for stat in STATS[1:])
+
+
+def _share(share):
+    return "-" if share is None else "%.1f%%" % (100 * share)
 
 
 def lines(found):
@@ -395,15 +461,24 @@ def lines(found):
                                     f["traced"][1]))
         for name, label in (("D", "method 1, D"), ("wait", "method 2, traced own wait"),
                             ("kernel", "method 3, kernel receipt to stamp")):
-            out.append("  %s: %s" % (label, "; ".join(
-                "%s %s -> %s" % (stat, _ms(f[name][stat][0]), _ms(f[name][stat][1]))
-                for stat in STATS[1:])))
-        out.append("  estimates of the mean inflation: method 1 %s, method 2 %s, method 3 %s"
-                   % tuple(_ms(e) for e in f["estimates"]))
-        out.append("  kernel delay at least the traced wait for %s of messages; median difference "
-                   "%s; messages not found in the capture: %d" % (
-                       "-" if f["share"] is None else "%.1f%%" % (100 * f["share"]),
-                       _ms(f["difference"]), f["unmatched"]))
+            out.append("  %s: %s" % (label, _changes(f[name])))
+            if name == "wait":
+                continue
+            for subset in ("untraced", "traced"):
+                runs = f["apart"][subset]["runs"]
+                out.append("    %s runs only, %d -> %d: %s" % (
+                    subset, runs[0], runs[1], _changes(f["apart"][subset][name])))
+        out.append("  estimates of the mean inflation: method 1 %s, method 2 %s, method 3 %s; "
+                   "largest over smallest %s" % (tuple(_ms(e) for e in f["estimates"]) + (
+                       "-" if f["ratio"] is None else "%.2f" % f["ratio"],)))
+        out.append("  kernel delay at least the traced wait for %s of messages (median over "
+                   "traced runs; lowest run %s); median difference %s; messages not found in the "
+                   "capture: %d" % (_share(f["share"]), _share(f["lowest_share"]),
+                                    _ms(f["difference"]), f["unmatched"]))
+        out.append("  runs holding a message over the quality report's %.0f ms pause limit: %s"
+                   % (quality_report.STALL_MS, "; ".join(
+                       "%s, %d messages, longest %s" % (run, n, _ms(longest))
+                       for run, n, longest in f["held"]) or "none"))
         out.append("  " + ", ".join("%s %s" % (p, "holds" if f[p] else "fails")
                                     for p in ("R1-a", "R1-b", "R1-c", "R1-d")))
     for p in ("R1-a", "R1-b", "R1-c", "R1-d"):
@@ -475,7 +550,7 @@ def main(argv=None, out=None):
     p = sub.add_parser("compare")
     p.add_argument("--table", required=True)
     p.add_argument("--out")
-    for name in ("traced", "priority"):
+    for name in ("pauses", "traced", "priority"):
         p = sub.add_parser(name)
         p.add_argument("--runs", action="append", required=True)
         p.add_argument("--out", required=True)
@@ -492,6 +567,10 @@ def main(argv=None, out=None):
         if args.out:
             with open(args.out, "w", encoding="utf-8") as fh:
                 fh.write(text)
+    elif args.command == "pauses":
+        rows = pause_rows(args.runs)
+        write_csv(args.out, rows)
+        out.write("%d pauses in %d runs\n" % (len(rows), len(set(r["run"] for r in rows))))
     elif args.command == "traced":
         rows, skipped = traced_runs(args.runs)
         write_csv(args.out, rows)

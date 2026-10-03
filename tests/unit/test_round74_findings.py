@@ -113,7 +113,7 @@ class TestR1SpelledQuantitiesUseTheirMacro:
         assert not re.search(r"\bseven\s+events", prose), (
             "the withdrawn E1 corpus's median is back in the article; round 72's inventory must "
             "allow it again, with the referee's reason")
-        i = supplement.index("S3. The twentyfold end-to-end gap")
+        i = supplement.index("S3. The twentyfold gap in event-time latency")
         s3 = " ".join(supplement[i:supplement.index("S3.1.", i)].split())
         assert "median of seven" in s3, "the supplement still states it, where the corpus is"
         for word, reason in cls.ALLOWED_WORDS.items():

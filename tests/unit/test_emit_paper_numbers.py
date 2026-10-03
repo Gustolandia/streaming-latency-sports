@@ -426,7 +426,7 @@ class TestTheRefereeDrivenMacroGroups:
         """R1: the control the manipulation rests on was published nowhere."""
         import priority_pairs
         body = epn.render_priority_table()
-        assert "$\\rho$ ordinary & $\\rho$ real-time" in body
+        assert "$\\rho$ normal & $\\rho$ real-time" in body
         for pair in priority_pairs.usable():
             assert "$%.4f$ & $%.4f$" % (pair["rho"], pair["rho_rt"]) in body, \
                 "the %s %s row does not print both arms' rho" % (pair["campaign"],

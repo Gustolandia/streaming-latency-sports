@@ -533,7 +533,8 @@ def render_spread_table():
         "\\begin{tabular}{@{}rlrrrrlrl@{}}",
         "\\toprule",
         # $T_{\mathrm{send}}$ since 1 Oct 2026: $\Delta$ is the timestamping asymmetry of S3.4.
-        "rate & $T_{\\mathrm{send}}/\\tau$ & $q$ & $n$ & width & pos. & predicts & spread & shows \\\\",
+        # $T_{\mathrm{pub}}$ since 3 Oct: the producer publishes (writing standard A10).
+        "rate & $T_{\\mathrm{pub}}/\\tau$ & $q$ & $n$ & width & pos. & predicts & spread & shows \\\\",
         "\\midrule",
     ]
     seen_incommensurate = False
@@ -2290,7 +2291,7 @@ def render_priority_table():
         "% docs/results/model/stamping_priority*.csv. Do not edit by hand.",
         "\\begin{tabular}{@{}llrrrrr@{}}",
         "\\toprule",
-        "campaign & load & $\\rho$ ordinary & $\\rho$ real-time & ordinary & real-time "
+        "campaign & load & $\\rho$ normal & $\\rho$ real-time & normal & real-time "
         "& factor \\\\",
         "\\midrule",
     ]
@@ -3344,8 +3345,8 @@ def recv_wait_macros(root=RECV_WAIT_DIR):
     Read through scripts/recv_wait.py's own comparison of the committed run table, so no figure
     here can part from the reading its record gives (docs/results/recv_wait/README.md). Ranges
     run over the four broker-and-load points. A wait is a setup's median, over its traced runs,
-    of each run's statistic, as the plan defines a setup's value; its ordinary arm is the
-    first of the pair, go-first the second.
+    of each run's statistic, as the plan defines a setup's value; the consumer at normal
+    priority is the first of the pair, at real-time priority the second.
     """
     read = _recv_wait_reading(root)
     if read is None:
@@ -3399,9 +3400,9 @@ def recv_wait_macros(root=RECV_WAIT_DIR):
 
 def render_recv_wait_table(root=RECV_WAIT_DIR):
     """R1's four broker-and-load points, one row each: the three estimates of what the
-    receiving thread's wait adds to the mean of D and how far apart they lie, what go-first for
-    the consumer alone did to D's median and ninetieth percentile, and the client's own work
-    after its thread runs. Empty where the reading is missing."""
+    receiving thread's wait adds to the mean of D and how far apart they lie, what real-time
+    priority for the consumer alone did to D's median and ninetieth percentile, and the
+    client's own work after its thread runs. Empty where the reading is missing."""
     read = _recv_wait_reading(root)
     if read is None:
         return ""
@@ -3411,7 +3412,7 @@ def render_recv_wait_table(root=RECV_WAIT_DIR):
         "\\begin{tabular}{@{}lrrrrrrr@{}}",
         "\\toprule",
         "& \\multicolumn{3}{c}{Added to the mean of $D$ (ms)} & Largest over & "
-        "\\multicolumn{2}{c}{$D$, ordinary $\\to$ go-first (ms)} & Client's \\\\",
+        "\\multicolumn{2}{c}{$D$, normal $\\to$ real-time priority (ms)} & Client's \\\\",
         "\\cmidrule(lr){2-4}\\cmidrule(lr){6-7}",
         "Broker, load & Method 1 & Method 2 & Method 3 & smallest & Median "
         "& Ninetieth percentile & work (ms) \\\\",

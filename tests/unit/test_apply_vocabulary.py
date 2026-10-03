@@ -49,7 +49,7 @@ class TestRewrite:
 
     def test_check_mode_changes_nothing_and_still_reports(self):
         new, changes, review = av.rewrite(TEXT, "t.tex", check=True)
-        assert new == TEXT and changes == [] and len(review) == 6
+        assert new == TEXT and len(changes) == 8 and len(review) == 6
 
 
 class TestMain:
@@ -82,7 +82,7 @@ class TestMain:
         (tmp_path / "a.tex").write_text(TEXT, encoding="utf-8")
         assert av.main(["--check", "a.tex"]) == 1
         assert (tmp_path / "a.tex").read_text(encoding="utf-8") == TEXT
-        assert "== a.tex: 0 mechanical change(s), 6 sentence(s) for review" \
+        assert "== a.tex: 8 mechanical change(s), 6 sentence(s) for review" \
             in capsys.readouterr().out
 
 
@@ -182,3 +182,49 @@ class TestTheRepositorysOwnAdjudicationsAreExact:
             assert j["scope"] in ("file", "line"), j
             assert ("requires" in j) == (j["scope"] == "file"), j
             assert ("anchor" in j) == (j["scope"] == "line"), j
+
+
+class TestCheckFailsOnAMechanicalChange:
+    """3 Oct 2026: --check used to return before the substitutions, so a bare "stamp" passed
+    every check. Four of them reached Supplement S3.10 that way, and four more had sat in the
+    supplement and the postmortem since they were written."""
+
+    def test_a_file_with_only_a_bare_stamp_fails_the_check(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setattr(av, "ROOT", tmp_path)
+        monkeypatch.setattr(av, "ADJUDICATIONS", tmp_path / "absent.json")
+        (tmp_path / "a.tex").write_text("before each stamp\n", encoding="utf-8")
+        assert av.main(["--check", "a.tex"]) == 1
+        assert (tmp_path / "a.tex").read_text(encoding="utf-8") == "before each stamp\n"
+        assert "a.tex:1  stamp -> timestamp" in capsys.readouterr().out
+
+
+class TestTheIndustrysNames:
+    """A10 (3 Oct 2026): the OpenMessaging Benchmark's names for the three quantities, the
+    producer's act called publish, Karimov et al.'s processing-time latency, and Linux's
+    scheduling policies."""
+
+    def test_the_compounds_are_renamed_with_their_articles(self):
+        text = ("A send lag, an acknowledgment lag and a delivery time; the send call, the send\n"
+                "rate and two delivery times; Acknowledgment\nlag, a handling span and the\n"
+                "send-referenced span.\n")
+        new, changes, review = av.rewrite(text, "t.tex", check=False)
+        assert new == ("A publish delay, a publish latency and an end-to-end latency; the publish "
+                       "call, the publish rate and two end-to-end latencies; Publish latency, a "
+                       "processing-time latency and the\npublish-referenced span.\n")
+        assert review == []
+
+    def test_the_words_that_need_a_reading_are_reported(self):
+        text = ("The producer sends; the go-first consumer at ordinary priority; the brake;\n"
+                "the emission loop; ordinary least squares stays.\n")
+        _new, _changes, review = av.rewrite(text, "t.tex", check=True)
+        assert [r.split("  ")[1].strip() for r in review] == [
+            "sends", "go-first", "ordinary", "brake", "emission"]
+
+    def test_a_quotation_keeps_its_source_s_words(self):
+        """A vendor's "send timestamp" is the vendor's: renaming it falsifies the quotation."""
+        text = ("``a 64-bit send timestamp in UNIX nanoseconds.'' Our send lag.\n"
+                "\\begin{quote}the send call\\end{quote}\n")
+        new, changes, review = av.rewrite(text, "t.tex", check=False)
+        assert new == ("``a 64-bit send timestamp in UNIX nanoseconds.'' Our publish delay.\n"
+                       "\\begin{quote}the send call\\end{quote}\n")
+        assert changes == ["t.tex:1  send lag -> publish delay"] and review == []

@@ -141,7 +141,7 @@ class TestPlots:
         assert len(ax.texts) == 1, "the annotation"
 
     def test_the_figures_use_the_manuscripts_names(self):
-        """1 Oct: D is "the delivery time", never the bare "delivery", and "tick" is the
+        """3 Oct (A10): D is the end-to-end latency, never the bare "delivery", and "tick" is the
         scheduler's alone, so the timestamp's step is a millisecond and its edges boundaries."""
         import make_paper_figures as mpf
         fig, axes = plt.subplots(3, 1)
@@ -152,10 +152,10 @@ class TestPlots:
             said += [a.get_title(loc="left") for a in axes] + [a.get_xlabel() for a in axes]
         finally:
             plt.close(fig)
-        assert any(s.endswith("although the delivery time $D>0$") for s in said)
+        assert any(s.endswith("although the end-to-end latency $D>0$") for s in said)
         assert "ms boundary" in said and "next boundary" in said
-        assert any(s.startswith("(a) One delivery time of") for s in said)
-        assert "phase of the send instant within one millisecond" in said
+        assert any(s.startswith("(a) One end-to-end latency of") for s in said)
+        assert "phase of the publish instant within one millisecond" in said
         assert not [s for s in said if "tick" in s]
 
 

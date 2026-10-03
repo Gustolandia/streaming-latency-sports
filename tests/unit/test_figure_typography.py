@@ -126,10 +126,10 @@ class TestTheArmsKeepOneColourAcrossFigures:
         assert forest, "the forest's colour rule has moved; re-derive this check from it"
         accent, kept = forest.groups()
         ladder = re.search(r"\"o\", color=(\w+), mec=\"none\", ms=4\.0, ls=\"none\", "
-                           r"label=\"ordinary\"", src)
+                           r"label=\"normal\"", src)
         assert ladder, "the ladder's legend has moved"
         assert ladder.group(1) == kept, (
-            "the ladder paints `ordinary` %s while the forest paints it %s; a reader carrying "
+            "the ladder paints `normal` %s while the forest paints it %s; a reader carrying "
             "one key to the other figure reads every arm backwards"
             % (ladder.group(1), kept))
         rt = re.search(r"\"s\", color=(\w+), mec=\"none\", ms=4\.0, ls=\"none\", "

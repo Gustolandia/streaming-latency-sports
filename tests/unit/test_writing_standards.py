@@ -224,14 +224,14 @@ class TestOneNameForTheSendLag:
                 if "scheduling lag" in line:
                     bad.append("%s:%d" % (name, line_no))
         assert not bad, (
-            "'scheduling lag' survives at %s; the term is the send lag, and 'scheduling "
+            "'scheduling lag' survives at %s; the term is the publish delay, and 'scheduling "
             "delay' is the thread's wait for a core" % ", ".join(bad))
 
     def test_the_send_lag_is_what_the_documents_do_say(self):
         """The rename has to have landed, not merely have been deleted."""
         paper = (REPO / "paper.tex").read_text(encoding="utf-8")
         supp = (REPO / "postmortem.tex").read_text(encoding="utf-8")
-        assert "send lag" in paper and "send lag" in supp
+        assert "publish delay" in paper and "publish delay" in supp
         assert r"\label{def:scheddelay}" in paper, "and the other term stays defined"
 
 
@@ -401,7 +401,45 @@ class TestAcronymsAreExpandedOnFirstUse:
         assert not bad, "acronyms never expanded: %s" % sorted(bad)
 
 
-# ---------------------------------------------------------------- B. structure
+class TestTheIndustrysNames:
+    """A10 (3 Oct 2026). The measured quantities carry the industry's names: the OpenMessaging
+    Benchmark's publish latency, publish delay and end-to-end latency, Karimov et al.'s
+    event-time and processing-time latency, and Linux's real-time and normal priority. First
+    failure: Section VI-B said "timing from the send", and the author asked what a send was."""
+
+    RETIRED = ("acknowledgment lag", "send lag", "send call", "send rate", "send-referenced",
+               "send instant", "send schedule", "handling span", "go-first", "lag brake",
+               "got-it brake", "timed from the send", "timing from the send")
+    DOCS = ("paper.tex", "supplement.tex", "postmortem.tex")
+
+    @pytest.mark.parametrize("doc", DOCS)
+    def test_no_document_uses_a_retired_name(self, doc):
+        flat = " ".join(_prose((REPO / doc).read_text(encoding="utf-8")).split()).lower()
+        hits = [t for t in self.RETIRED if re.search(r"(?<![\w-])%s\b" % re.escape(t), flat)]
+        assert not hits, "%s still says %s" % (doc, hits)
+
+    @pytest.mark.parametrize("doc", DOCS)
+    def test_delivery_time_survives_only_as_specjms_own_metric(self, doc):
+        """SPECjms2007 calls its metric Delivery Time, a proper name the documents quote; the
+        quantity the paper measures is the end-to-end latency."""
+        flat = " ".join(_prose((REPO / doc).read_text(encoding="utf-8")).split())
+        hits = [m.start() for m in re.finditer(r"(?i)\bdelivery\s+times?\b", flat)
+                if not flat[max(0, m.start() - 8):m.start()].endswith("defines ")]
+        assert not hits, "%s: 'delivery time' at %s" % (doc, hits)
+
+    @pytest.mark.parametrize("doc", DOCS)
+    def test_the_symbols_follow_the_words(self, doc):
+        body = "\n".join(line for line in (REPO / doc).read_text(encoding="utf-8").splitlines()
+                         if not line.lstrip().startswith("%"))
+        assert "mathrm{send}" not in body and r"\rm send" not in body
+
+    def test_the_paper_defines_each_name_where_its_model_begins(self, paper):
+        flat = " ".join(paper.split())
+        for term in ("end-to-end latency", "publish latency", "publish delay",
+                     "processing-time latency"):
+            assert "\\emph{%s}" % term in flat, term
+        assert "The event-time latency runs from the event falling due" in flat
+        assert "$t_{\\mathrm{pub}}$ is taken immediately before the publish call" in flat
 
 
 class TestNoForwardPointerStandsInForADefinition:

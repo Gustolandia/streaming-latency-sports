@@ -28,9 +28,10 @@ appears or a judgment stops matching anything -- because an allowance that no lo
 is a claim about prose that has since moved.
 
 CLI:
-    python scripts/apply_vocabulary.py [--check] [paper.tex supplement.tex]
+    python scripts/apply_vocabulary.py [--check] [paper.tex supplement.tex postmortem.tex]
 
-Exit status: 1 if --check found an unjudged occurrence or a stale judgment, else 0.
+Exit status: 1 if --check found a mechanical change still to make, an unjudged occurrence or a
+stale judgment, else 0.
 """
 import argparse
 import json
@@ -51,6 +52,55 @@ MECHANICAL = [
     (r"\bStamping\b", "Timestamping"),
     (r"\bStamps\b", "Timestamps"),
     (r"\bStamp\b", "Timestamp"),
+    # A10 (3 Oct 2026): the industry's names for the quantities, from the OpenMessaging
+    # Benchmark's own result fields -- publishLatency (acknowledgment less send),
+    # publishDelayLatency (send less the intended send) and endToEndLatency (receipt less
+    # send). The producer's act is to publish. Compounds only: bare "send" has other senses
+    # (a TCP segment sent again, a broker sending a fetch response) and is in REVIEW.
+    # Words of a compound may sit either side of a line break in the source, hence \s+.
+    (r"\bsend-referenced\b", "publish-referenced"),
+    (r"\bSend-referenced\b", "Publish-referenced"),
+    (r"\bsend-lag\b", "publish-delay"),
+    (r"\bsend\s+lags\b", "publish delays"),
+    (r"\bsend\s+lag\b", "publish delay"),
+    (r"\bSend\s+lag\b", "Publish delay"),
+    (r"\bsend\s+calls\b", "publish calls"),
+    (r"\bsend\s+call\b", "publish call"),
+    (r"\bsend\s+rates\b", "publish rates"),
+    (r"\bsend\s+rate\b", "publish rate"),
+    (r"\bSend\s+rate\b", "Publish rate"),
+    (r"\bsend\s+schedule\b", "publish schedule"),
+    (r"\bsend\s+instants\b", "publish instants"),
+    (r"\bsend\s+instant\b", "publish instant"),
+    (r"\bsend\s+phases\b", "publish phases"),
+    (r"\bsend\s+phase\b", "publish phase"),
+    (r"\bsend\s+intervals\b", "publish intervals"),
+    (r"\bsend\s+interval\b", "publish interval"),
+    (r"\bsend\s+timestamps\b", "publish timestamps"),
+    (r"\bsend\s+timestamp\b", "publish timestamp"),
+    (r"\bsend\s+workers\b", "publish workers"),
+    (r"\bsend\s+future\b", "publish future"),
+    (r"\bsending\s+thread\b", "publishing thread"),
+    (r"\ban\s+acknowledgment\s+lag\b", "a publish latency"),
+    (r"\bAn\s+acknowledgment\s+lag\b", "A publish latency"),
+    (r"\backnowledgment\s+lags\b", "publish latencies"),
+    (r"\backnowledgment\s+lag\b", "publish latency"),
+    (r"\bAcknowledgment\s+lag\b", "Publish latency"),
+    (r"\btrue\s+delivery\s+times\b", "true end-to-end latencies"),
+    (r"\btrue\s+delivery\s+time\b", "true end-to-end latency"),
+    (r"\ba\s+delivery\s+time\b", "an end-to-end latency"),
+    (r"\bA\s+delivery\s+time\b", "An end-to-end latency"),
+    (r"\bdelivery-time\b", "end-to-end latency"),
+    (r"\bdelivery\s+times\b", "end-to-end latencies"),
+    (r"\bdelivery\s+time\b", "end-to-end latency"),
+    (r"\bDelivery\s+times\b", "End-to-end latencies"),
+    (r"\bDelivery\s+time\b", "End-to-end latency"),
+    # Karimov et al.'s processing-time latency: from the record reaching the consumer to its
+    # output. Its companion, event-time latency, is the paper's E, renamed by hand because the
+    # old name it had, end-to-end latency, is now D's and only a reading can tell them apart.
+    (r"\ba\s+handling\s+span\b", "a processing-time latency"),
+    (r"\bhandling\s+spans\b", "processing-time latencies"),
+    (r"\bhandling\s+span\b", "processing-time latency"),
 ]
 
 #: (key, pattern, advice). Words that need a human sentence, not a substitution: reported,
@@ -90,6 +140,19 @@ REVIEW = [
      r"\b(?:wait|waits|waiting|waited|delay|delays|delaying|stall|stalls|thread"
      r"|threads|timestamp|timestamps)\b[^.]{0,110}?\bindependent(?:ly|ce)?\b",
      "independent(ly) of two waits -> on their own account (they are measured correlated)"),
+    # A10 (3 Oct 2026). The producer publishes; "send" survives only where something else
+    # sends -- TCP, a broker answering a fetch, a request on the wire -- and each such line is
+    # adjudicated. The scheduling policies are Linux's: real-time and normal (sched(7)).
+    # Not the compounds MECHANICAL renames, which would otherwise be reported and then fixed.
+    ("send", r"(?<![-\w])(?:[Ss]end|[Ss]ends|[Ss]ent|[Ss]ending)(?![-\w])"
+             r"(?!\s+(?:lags?|calls?|rates?|schedule|instants?|phases?|intervals?|timestamps?"
+             r"|workers|future|thread)\b)",
+     "send -> publish where the producer acts; otherwise adjudicate"),
+    ("go-first", r"\b[Gg]o-first\b", "go-first -> real-time priority"),
+    ("ordinary", r"\b[Oo]rdinary\b(?!\s+least\s+squares)",
+     "ordinary -> normal where it names the scheduling policy (sched(7))"),
+    ("brake", r"\bbrakes?\b", "brake -> stopping rule"),
+    ("emission", r"\bemission\b", "emission -> event time / publish (the replay's schedule)"),
 ]
 
 #: Regions that are not prose. Each is matched non-greedily and protected verbatim.
@@ -99,6 +162,10 @@ ISLANDS = re.compile(
                                                    # from the first comment to end of file
     r"|\\begin\{equation\*?\}.*?\\end\{equation\*?\}"
     r"|\\begin\{(?:verbatim|lstlisting)\}.*?\\end\{(?:verbatim|lstlisting)\}"
+    # A quotation is its source's prose, not ours: a vendor's "send timestamp" stays as the
+    # vendor wrote it (3 Oct 2026, when the publish renaming reached one).
+    r"|``.*?''"
+    r"|\\begin\{quote\}.*?\\end\{quote\}"
     r"|\$[^$\n]*\$"                                # inline math
     r"|\\(?:texttt|brk|cite|ref|eqref|label|href|url|includegraphics|input|bibliography"
     r"|bibliographystyle|newcommand|renewcommand|externaldocument)\*?\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}"
@@ -163,8 +230,6 @@ def _prose_pass(chunk, whole, offset, ctx, changes, review, check):
                 used.add(id(j))
                 continue
             review.append("%s:%d  %-14s  %s" % (name, line, m.group(0), note))
-    if check:
-        return chunk
 
     def sub_all(c):
         for rx, rep in MECHANICAL:
@@ -174,7 +239,10 @@ def _prose_pass(chunk, whole, offset, ctx, changes, review, check):
                 return rep
             c = re.sub(rx, repl, c)
         return c
-    return sub_all(chunk)
+    # --check runs the substitutions too, and keeps the text. It used to return before them,
+    # so a bare "stamp" passed every check: four of them reached Supplement S3.10 on 3 Oct.
+    done = sub_all(chunk)
+    return chunk if check else done
 
 
 def main(argv=None):
@@ -184,7 +252,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
     judgments = load_adjudications()
     used = set()
-    unjudged = 0
+    unjudged = mechanical = 0
     for f in args.files:
         p = ROOT / f
         text = p.read_text(encoding="utf-8")
@@ -198,6 +266,7 @@ def main(argv=None):
         for r in review:
             print("   REVIEW " + r)
         unjudged += len(review)
+        mechanical += len(changes)
     # A judgment that matched nothing is not harmless: it says a sentence was read and
     # cleared, and that sentence is no longer there. Reported as loudly as an unjudged
     # occurrence, and for the same reason -- the list is only worth having if it is exact.
@@ -206,7 +275,7 @@ def main(argv=None):
     for j in stale:
         print("   STALE  %s  %s  matched nothing: %s"
               % (j["file"], j["key"], j.get("anchor") or j.get("requires")))
-    return 1 if (args.check and (unjudged or stale)) else 0
+    return 1 if (args.check and (unjudged or stale or mechanical)) else 0
 
 
 if __name__ == "__main__":  # pragma: no cover

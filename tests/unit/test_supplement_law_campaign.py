@@ -199,7 +199,7 @@ def test_the_judge_of_the_tick_and_its_lawful_world(s1611):
 
 def test_p4(s1611):
     plateaus = _json(STRANGE / "cliff_summary.json")["plateaus"]["A7"]
-    _has(s1611, "\\redis{}'s ordinary plateau in that campaign was $%.2f\\%%$"
+    _has(s1611, "\\redis{}'s normal-priority plateau in that campaign was $%.2f\\%%$"
          % (100 * plateaus["redis"]["ordinary"]),
          "On \\kafka{}, whose plateau was $%.2f\\%%$, priority took the rate to zero"
          % (100 * plateaus["kafka"]["ordinary"]))

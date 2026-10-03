@@ -41,14 +41,14 @@ REPO = Path(__file__).parent.parent.parent
 ATTRIBUTED = {
     "transport proxy":
         "the supplement calls S the transport proxy throughout, on the article's authority",
-    "acknowledgment lag":
+    "publish latency":
         "S40 and S24 both reason about A by the article's name for it",
     "negative-span rate":
         "the quantity most of the supplement's tables are of; the article defines it",
     "retention":
         "S22, S42 and S46 all turn on the article's definition of the retained fraction",
-    "send lag":
-        "renamed from 'scheduling lag' in v4.1; the supplement follows the article's word",
+    "publish delay":
+        "the send lag until 3 Oct 2026 (A10); the supplement follows the article's word",
     # American spelling in both documents since 3 Oct 2026; the phrase is the same rule.
     "one-percent":
         "the audit threshold S27 sweeps; the article is where it is fixed",

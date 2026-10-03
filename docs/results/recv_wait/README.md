@@ -1,31 +1,31 @@
 # R1: the receiving thread's own wait, measured three ways
 
-A latency timed from the send, D = t_recv - t_send, cancels the wait of the thread that stamps the
+A latency timed from the publish call, D = t_recv - t_pub, cancels the wait of the thread that timestamps the
 broker's confirmation, because that wait lengthens one part of D exactly as much as it shortens
-the other. It does not cancel the wait of the thread that stamps the receipt. The consumer reads
+the other. It does not cancel the wait of the thread that timestamps the receipt. The consumer reads
 its clock only after its thread has been woken and given a CPU, so every D carries that wait,
 always positive, where no check of the sign can see it. R1 measured that wait three ways in the
 same runs on 3 October 2026, by a plan written before any run ([`r1_plan.md`](r1_plan.md)). R1 is
 exploratory: it is not part of the registered law campaign, and what it found is a measurement
 made after that campaign's verdicts.
 
-*Words in this part.* **D**: a message's latency, timed from its send to its receipt on one clock.
-**Stamp**: the moment a program reads the clock to record an event. **CPU**: one of the machine's
+*Words in this part.* **D**: the end-to-end latency, from the publish call to the receipt on one clock.
+**Timestamp**: the moment a program reads the clock to record an event. **CPU**: one of the machine's
 processors; a thread that is ready to run waits for one while all are busy.
 
 ## The three methods
 
-1. **Go-first for the consumer alone.** The consumer, and nothing else, runs in the scheduler's
+1. **Real-time priority for the consumer alone.** The consumer, and nothing else, runs in the scheduler's
    real-time class, so its thread runs the moment it is woken. The fall in D at unchanged load is
    what that priority removes.
 2. **The traced wait.** In a random half of the runs the scheduler's events were recorded, and the
-   receiving thread's wait for a CPU before each stamp is read from them.
+   receiving thread's wait for a CPU before each timestamp is read from them.
 3. **The kernel's receive time.** In every run the receiver's packets were captured with the
-   kernel's own timestamps. A message's delay from the packet that carries it to its stamp holds
+   kernel's own timestamps. A message's delay from the packet that carries it to its timestamp holds
    the wake-up, the wait for a CPU and the client's own work.
 
 *Words in this part.* **Real-time class** (SCHED_FIFO, priority 80 here): its threads run before
-every ordinary thread. **Traced run**: one whose scheduling events were recorded; the recording
+every normal thread. **Traced run**: one whose scheduling events were recorded; the recording
 costs time of its own. **Kernel**: the part of the operating system that takes packets off the
 network and wakes the program waiting for them.
 
@@ -40,7 +40,7 @@ network and wakes the program waiting for them.
 | [`r1_comparison.txt`](r1_comparison.txt) | the methods compared on each broker at each load, traced and untraced runs also shown apart, the runs that hold a pause named, and each prediction's verdict | `recv_wait.py compare` |
 | [`r1_pauses.csv`](r1_pauses.csv) | every pause, read with the 28 September pause census's own functions | `recv_wait.py pauses` |
 | [`a9_traced_receive_waits.csv`](a9_traced_receive_waits.csv) | method 2 on the law campaign's traced runs (A9), which the plan cites | `recv_wait.py traced` |
-| [`a7_priority_delivery.csv`](a7_priority_delivery.csv) | D with and without go-first for both processes that read the clock (A7), which the plan cites | `recv_wait.py priority` |
+| [`a7_priority_delivery.csv`](a7_priority_delivery.csv) | D with and without real-time priority for both processes that read the clock (A7), which the plan cites | `recv_wait.py priority` |
 
 From the repository's root, with the runs at home:
 
@@ -77,9 +77,9 @@ of every reading. **Slice**: how long the scheduler lets a thread run before it 
 ## What the reading found
 
 Each method's estimate of how much the receiving thread's wait adds to the mean of D, in
-milliseconds: method 1 is the fall in mean D when the consumer alone goes first, and methods 2 and
-3 the fall, between the same two arms, in the mean traced wait and in the mean delay from the
-kernel's receive time to the stamp.
+milliseconds: method 1 is the fall in mean D when the consumer alone runs at real-time priority, and methods
+2 and 3 the fall, from normal to real-time priority, in the mean traced wait and in the mean delay
+from the kernel's receive time to the timestamp.
 
 | Broker, load | Method 1 | Method 2 | Method 3 | Largest over smallest |
 |---|---|---|---|---|
@@ -91,9 +91,9 @@ kernel's receive time to the stamp.
 Each prediction was stated for both brokers at both loads. Read that way, R1-a holds and R1-b,
 R1-c and R1-d do not.
 
-- **R1-a holds.** In ordinary runs the traced wait's mean lies between 0.3 and 1.2 ms and its 90th
-  percentile above 1.5 ms, on both brokers at both loads; under go-first its mean is below 0.1 ms.
-- **R1-b fails on Kafka.** Go-first for the consumer lowers the 90th percentile of D on Redis by
+- **R1-a holds.** At normal priority the traced wait's mean lies between 0.3 and 1.2 ms and its 90th
+  percentile above 1.5 ms, on both brokers at both loads; at real-time priority its mean is below 0.1 ms.
+- **R1-b fails on Kafka.** Real-time priority for the consumer lowers the 90th percentile of D on Redis by
   2.14 ms at 75% load and 1.96 ms at 88%, and moves its median by 0.05 ms at both. On Kafka the
   90th percentile falls 0.95 ms at 75%, short of the plan's 1 ms, and at 88% the median moves
   0.60 ms, past the plan's 0.3 ms.
@@ -104,7 +104,7 @@ R1-c and R1-d do not.
 - **R1-d fails at one point.** At 75% load on Kafka method 1 gives 0.43 ms against method 2's
   0.70.
 
-*Words in this part.* **Arm**: one side of the comparison, ordinary or go-first. **90th
+*Words in this part.* **Normal priority**: the scheduler's default policy, below every real-time thread. **90th
 percentile**: the value nine messages in ten stay under. **Median over runs**: a setup's value is
 the median of its runs' values, so one odd run does not move it.
 
@@ -112,16 +112,16 @@ the median of its runs' values, so one odd run does not move it.
 
 **Pauses.** Five of the 51 runs hold a message past the pause limit. A pause releases every
 message it held at once, so one pause can carry a run's mean. The three on Redis, all in
-go-first runs, last 0.79, 1.73 and 6.04 s, and they look like the driver's own stalls read on 28
+runs at real-time priority, last 0.79, 1.73 and 6.04 s, and they look like the driver's own stalls read on 28
 September ([`../law/the-strange-results-read-28-sep.md`](../law/the-strange-results-read-28-sep.md)):
 the broker's confirmations stayed under 4 ms, the separate sampler on the driver stopped as well
 (for 1.45, 2.15 and 7.10 s), and the consumer spent under 0.2% of each pause inside a read. Their
 runs waited 2.42, 11.56 and 9.34 s on the disk, in the same order, against a median of 0.08 s over
-all 51 runs; but an ordinary Redis run waited 41.18 s on the disk and held nothing, so a disk wait
-alone does not make a pause. The other two are on Kafka: a receiving-side pause of 3.71 s in an ordinary run at
-88%, during which the sampler kept going, and a broker-side one of 0.17 s. A setup's value, a
+all 51 runs; but a Redis run at normal priority waited 41.18 s on the disk and held nothing, so a disk wait
+alone does not make a pause. The other two are on Kafka: a receiving-side pause of 3.71 s in a run at normal
+priority at 88%, during which the sampler kept going, and a broker-side one of 0.17 s. A setup's value, a
 median over its runs, sets the pauses aside. A cell of two runs cannot, which is why the two
-untraced go-first Redis runs at 75% show a mean D of 93.22 ms. The comparison names the runs that
+untraced Redis runs at real-time priority at 75% show a mean D of 93.22 ms. The comparison names the runs that
 hold a pause beside each part.
 
 **A stop that killed its own sudo.** `pkill -f` matches whole command lines and leaves out only
@@ -138,16 +138,17 @@ only the deliveries were. **sudo**: the command that runs another as the adminis
 
 ## Pocket dictionary
 
-- **Arm**: one side of the comparison, ordinary or go-first.
 - **Broker**: the server that carries messages between programs; here Kafka or Redis.
 - **CPU**: one of the machine's processors.
-- **D**: a message's latency, timed from its send to its receipt on one clock.
+- **D**: the end-to-end latency, from the publish call to the receipt on one clock.
 - **Disk wait** (iowait): processor time spent idle while a task waited on the disk.
-- **Go-first**: the scheduler's real-time class, SCHED_FIFO at priority 80.
 - **Integrity rule**: the check that decides, as each run ends, whether it counts.
 - **Kernel**: the part of the operating system that takes packets off the network.
 - **Median over runs**: a setup's value, which one odd run does not move.
+- **Normal priority**: the scheduler's default policy, below every real-time thread.
 - **Pause**: a message held past the quality report's 150 ms limit.
+- **Publish**: the producer's act of handing a message to the broker; D starts at the publish call.
+- **Real-time priority**: the scheduler's real-time class, SCHED_FIFO at priority 80.
 - **Sampler**: a separate process on the driver that writes a line every half second.
-- **Stamp**: the moment a program reads the clock to record an event.
+- **Timestamp**: the moment a program reads the clock to record an event.
 - **Traced run**: a run whose scheduling events were recorded.

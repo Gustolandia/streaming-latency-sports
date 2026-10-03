@@ -28,6 +28,12 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 #: (retired term, what replaced it). Inert until the manuscript stops using the term.
 RETIRED = (
     ("inversion", "negative span"),
+    # Writing standard A10 (3 Oct 2026): the industry's names for the measured quantities.
+    ("delivery time", "end-to-end latency"),
+    ("acknowledgment lag", "publish latency"),
+    ("send lag", "publish delay"),
+    ("handling span", "processing-time latency"),
+    ("go-first", "real-time priority"),
 )
 
 #: The manuscript sources whose vocabulary the figures must match.

@@ -49,6 +49,41 @@
       "scope": "line",
       "anchor": "timestamps would corrupt events independently",
       "reason": "The contrast is the point: coarse kernel timestamps would corrupt each event on its own, which the runs test rules out because corruption clusters."
+    },
+    {
+      "file": "supplement.tex",
+      "key": "ordinary",
+      "scope": "line",
+      "anchor": "the floor that ordinary short delays leave",
+      "reason": "Plain English for the usual short delays of the two-state model, not the scheduling policy that A10 renames normal; no run at real-time priority is meant."
+    },
+    {
+      "file": "postmortem.tex",
+      "key": "ordinary",
+      "scope": "line",
+      "anchor": "at the ordinary tick",
+      "reason": "The regular scheduler tick, against the high-resolution timer the sentence has just disabled; a property of the kernel's timer, not a scheduling policy."
+    },
+    {
+      "file": "postmortem.tex",
+      "key": "send",
+      "scope": "line",
+      "anchor": "sends the reader here",
+      "reason": "The main text directs the reader to this section; nothing is published by a producer."
+    },
+    {
+      "file": "postmortem.tex",
+      "key": "send",
+      "scope": "line",
+      "anchor": "messages it sent, received and skipped",
+      "reason": "sockperf's own counters, named as that socket benchmark prints them; it sends datagrams over a socket and has no publish step."
+    },
+    {
+      "file": "postmortem.tex",
+      "key": "send",
+      "scope": "line",
+      "anchor": "where the field's default sends it",
+      "reason": "Figurative: the field's default directs the blame to the clock. No message is sent."
     }
   ]
 }

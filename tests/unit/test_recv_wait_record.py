@@ -119,17 +119,17 @@ def test_the_pauses_as_the_record_tells_them():
     assert "against a median of %.2f s over all 51 runs" % statistics.median(disk) in text
     most = max(runs, key=lambda r: float(r["iowait_s"]))
     assert most["setup"] == "R1-redis-l75-ord" and most["D_held"] == "0"
-    assert "an ordinary Redis run waited %.2f s on the disk and held nothing" % float(
+    assert "a Redis run at normal priority waited %.2f s on the disk and held nothing" % float(
         most["iowait_s"]) in text
     kafka = dict((p["kind"], p) for p in pauses if p["setup"].startswith("R1-kafka"))
     assert kafka["receiver"]["setup"] == "R1-kafka-l88-ord"
     assert float(kafka["receiver"]["sampler_gap_s"]) < pc_long()
-    assert "a receiving-side pause of %.2f s in an ordinary run at 88%%" % (
+    assert "a receiving-side pause of %.2f s in a run at normal priority at 88%%" % (
         float(kafka["receiver"]["worst_ms"]) / 1000) in text
     assert "a broker-side one of %.2f s" % (float(kafka["broker"]["worst_ms"]) / 1000) in text
     cell = FOUND[("redis", "75")]["apart"]["untraced"]
     assert cell["runs"][1] == 2
-    assert "the two untraced go-first Redis runs at 75%% show a mean D of %s ms" % ms(
+    assert "the two untraced Redis runs at real-time priority at 75%% show a mean D of %s ms" % ms(
         cell["D"]["mean"][1]) in text
 
 
@@ -214,6 +214,6 @@ class TestTheSupplementSays:
         assert "more than $150$~ms late" in text
         thin = [f for f in FOUND.values() if f["apart"]["untraced"]["runs"][1] == 2]
         assert len(thin) == 3 and len(FOUND) == 4
-        assert "three of the four go-first setups hold only two untraced runs" in text
+        assert "three of the four setups at real-time priority hold only two untraced runs" in text
         assert all(f["apart"]["traced"]["D"]["mean"][0] > f["apart"]["untraced"]["D"]["mean"][0]
                    for f in FOUND.values()), "the traced runs ran above the untraced everywhere"

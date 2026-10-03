@@ -81,14 +81,15 @@ class TestR1TheExposureBand:
 
     def test_the_median_is_still_named_as_the_median(self, paper):
         """The clause before the band gives the median and must keep saying so."""
-        i = paper.index("At our\nmedian acknowledgment lag") if "At our\nmedian" in paper \
-            else paper.index("median acknowledgment lag")
+        i = paper.index("At our\nmedian publish latency") if "At our\nmedian" in paper \
+            else paper.index("median publish latency")
         assert chr(92) + "exposureCrossover$" in paper[i:i + 480]
 
     def test_the_supplements_labelling_is_unchanged(self, supplement):
         """S12 was right all along, and is the wording the main text was reconciled to."""
-        assert "the same error at the tenth and ninetieth percentiles of that lag" in supplement
-        assert "the median lag and $" + chr(92) + "exposureCrossoverHi$~ms at the " \
+        assert ("the same error at the tenth and ninetieth percentiles of that publish "
+                "latency") in supplement
+        assert "the median publish latency and $" + chr(92) + "exposureCrossoverHi$~ms at the " \
                "ninetieth percentile" in supplement
 
     def test_the_rendered_numbers_are_the_percentile_ones(self, rendered_paper):
@@ -235,10 +236,10 @@ class TestRecommendedItems:
         assert "dashed" not in paper[:i][-900:], \
             "the caption stopped needing to explain the glyph"
         flat = " ".join(rendered_paper.split())
-        assert flat.count("send (chain)0 0 0") == 3, \
-            "all three send-referenced chain rows print three measured zeros -- the "\
-            "acknowledgment lag joined them in round 70"
-        assert "emission0 0 0" in flat, "and so does TTI"
+        assert flat.count("publish (chain)0 0 0") == 3, \
+            "all three publish-referenced chain rows print three measured zeros -- the "\
+            "publish latency joined them in round 70"
+        assert "event time0 0 0" in flat, "and so does E"
 
     def test_w4_the_supplement_imports_the_papers_labels_under_a_prefix(self, supplement):
         """v5 (28 Sep): the paper's new exposure figure took `fig:exposure`, the label the

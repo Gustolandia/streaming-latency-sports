@@ -100,7 +100,7 @@ CLAIMS = (
     #  (r"T_\{\\mathrm\{true\}\}",),
     #  "a law relating a rate to the delivery must contain the true delivery"),
     # v4.1 (2026-09-08): "flight" retired in the supplement too; the claim is the same.
-    (r"stall distribution\s+overlaps a short delivery",
+    (r"stall distribution\s+overlaps a short end-to-end\s+latency",
      (r"T_\{\\mathrm\{true\}\}",),
      "an equation about how a distribution overlaps the delivery must contain the delivery"),
     (r"lengthening what is being\s+measured lowers the rate",
@@ -168,8 +168,8 @@ class TestEveryClaimAboutAnEquationMatchesTheEquation:
         is a claim Villain et al. could have made.
         """
         flat = " ".join(paper.split())
-        # "delivery time" since 1 Oct 2026: D has one name, never bare "delivery" (editor 7).
-        assert re.search(r"negative-span rate falls as the delivery(?: time)? being measured "
+        # D has one name, never bare "delivery" (editor 7): the end-to-end latency since 3 Oct (A10).
+        assert re.search(r"negative-span rate falls as the end-to-end latency being measured "
                          r"grows", flat), (
             "Related Work no longer claims the rate's dependence on the delivery; if that is "
             "deliberate, say what replaced the delta over Villain et al.")

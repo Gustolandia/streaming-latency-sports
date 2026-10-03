@@ -16,7 +16,7 @@ the 800 MB archive.
 What the three panels say, in order:
 
   (a) At nanosecond resolution the acknowledgment-referenced span really does go below zero,
-      62,264 times in 738,730. The send-referenced span, on the same events and the same clock,
+      62,264 times in 738,730. The publish-referenced span, on the same events and the same clock,
       never does. That contrast is the control: the negatives are a property of which stamp is
       used as the origin, not of the delivery being timed.
 
@@ -152,7 +152,7 @@ def plot_measured(ax, series, extra):
 
     ax.text(0.03, 0.95, "62,264 below zero\n(8.43% of 738,730)",
             transform=ax.transAxes, fontsize=7, color=CUT, va="top", ha="left")
-    ax.text(0.97, 0.95, "send-referenced span\non the same events:\nnever below zero",
+    ax.text(0.97, 0.95, "publish-referenced span\non the same events:\nnever below zero",
             transform=ax.transAxes, fontsize=7, color=REDIS, va="top", ha="right")
 
 

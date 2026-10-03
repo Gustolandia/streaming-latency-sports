@@ -96,7 +96,7 @@ def test_the_plan_as_registered(part_v):
                  "Ceiling:} 40 rounds"):
         assert rule in plan, rule
     _has(part_v, "after a 30~s warm-up", "the load within 3 points of its target",
-         "send rate within $2\\%$", "within $50\\,\\mu$s of its setting",
+         "publish rate within $2\\%$", "within $50\\,\\mu$s of its setting",
          "at least four and at most forty")
 
 
@@ -236,7 +236,8 @@ def test_the_deliveries_no_delay_can_reach_were_not_run(part_v):
         assert missing == list(eight[:len(missing)]), (cell, missing)
         short += bool(missing)
     assert short > 0
-    _has(part_v, "A delivery shorter than the client's own with nothing added cannot be set, and "
+    _has(part_v, "An end-to-end latency shorter than the client's own with nothing added "
+         "cannot be set, and "
          "was not run")
 
 
@@ -308,7 +309,8 @@ def test_the_three_views_and_the_one_verdict_that_moves(part_v):
     unpaused = _json(JUDGED / "views" / "unpaused.json")
     count = lambda view: sum(len(c["left_out"]) for c in view["campaigns"])
     assert (count(flagged), count(stopping), count(unpaused)) == (14, 1110, 222)
-    _has(part_v, "without the 14 runs the brake would have stopped, without all %s taken while "
+    _has(part_v, "without the 14 runs the stopping rule would have stopped, without all %s "
+         "taken while "
          "it only recorded, and without the 222 a pause held" % _comma(1110))
     names = sorted(p.stem for p in (JUDGED / "all").glob("*.txt"))
     moved = [(view, n) for view in ("unflagged", "stopping", "unpaused") for n in names
@@ -533,7 +535,8 @@ def test_why_runs_were_out_of_every_judge(part_v, runs):
     starts = set((r["pair"], r["folder"]) for r in runs if "false start" in r["marks"])
     assert len(starts) == 6
     _has(part_v, "Six runs are void", "Eighteen runs belong to six false starts",
-         "The integrity rule repeated 76 runs", "16 runs stopped their campaigns on the brake")
+         "The integrity rule repeated 76 runs",
+         "16 runs stopped their campaigns on the stopping rule")
     reasons = collections.Counter()
     for run in runs:
         if "repeated" in run["marks"]:
@@ -549,7 +552,7 @@ def test_why_runs_were_out_of_every_judge(part_v, runs):
     assert "Version 7 corrects the instrument that judges the delay" in \
         PLAN.read_text(encoding="utf-8")
     _has(part_v, "the load off its target in %d, the run's files unreadable in %d, and another "
-         "check in six: the send rate once, the calibration in three and, in two void runs, a ping "
+         "check in six: the publish rate once, the calibration in three and, in two void runs, a ping "
          "reading version~7 stopped judging" % (reasons["load"], reasons["files"]))
     stops = [r for r in runs if "stopped" in r["marks"]]
     assert all("got-it median moved" in r["reasons"] for r in stops)
@@ -604,7 +607,8 @@ def test_each_false_start_and_its_cause(part_v, runs):
          "before its twin on 21~September",
          "Every run of theirs judged while both ran measured a load of $99.7$ to $99.8\\%$ against "
          "$75\\%$", "its two runs from those minutes were repeated",
-         "an L8 on the Arm pair was placed from a calibration with no zero-delay got-it median",
+         "an L8 on the Arm pair was placed from a calibration with no zero-delay median "
+         "publish latency",
          "measured its load $%s$ to $%s$ points above target in each of its three runs"
          % (_f(min(over), 1), _f(max(over), 1)),
          "stopped by hand after two counted runs and followed five minutes later by a session on "
@@ -625,7 +629,7 @@ def test_what_was_counted_with_a_warning(part_v, runs):
     assert counts["paused"] == {"matched": 112, "matched-b": 109, "arm": 1}
     _has(part_v, "In 222 runs, 112 and 109 of them on the two x86 pairs and one on Arm",
          "A further %d runs lie far from their setup's other repeats" % sum(counts["far"].values()),
-         "Fourteen runs taken while the brake only recorded would have stopped it")
+         "Fourteen runs taken while the stopping rule only recorded would have stopped it")
     effect = _json(STRANGE / "a9_summary.json")["a9"]
     kafka = [p["recorded_over_unrecorded"] for k, p in effect.items() if k.endswith("kafka")]
     redis = [p["recorded_over_unrecorded"] for k, p in effect.items() if k.endswith("redis")]
@@ -646,7 +650,8 @@ def test_the_extreme_that_is_not_an_aberration(part_v, runs):
                and not r["marks"]), key=lambda r: r["rate"])
     assert run["backend"] == "redis" and run["cpus"] == 4.0
     assert run["trip_median_ms"] < run["gotit_median_ms"]
-    _has(part_v, "with a rate of $%s$, had a delivery of $%s$~ms and a got-it delay of $%s$~ms"
+    _has(part_v, "with a rate of $%s$, had an end-to-end latency of $%s$~ms and a publish "
+         "latency of $%s$~ms"
          % (_f(run["rate"], 3), _f(run["trip_median_ms"], 3), _f(run["gotit_median_ms"], 3)))
 
 
@@ -662,7 +667,8 @@ def test_the_figures_are_there_and_drawn_from_every_run(part_v, runs):
     law = [r for r in runs if r["block"] in law_runs.LAW_BLOCKS]
     drawable = [r for r in law if r["trip_median_ms"] is not None and r["rate"] is not None]
     assert drawn == set((r["pair"], r["run"]) for r in drawable), "a run left out of every panel"
-    _has(part_v, "every run of the law's blocks that measured a delivery and a rate, %s of their "
+    _has(part_v, "every run of the law's blocks that measured an end-to-end latency and a "
+         "rate, %s of their "
          "%s, is drawn" % (_comma(len(drawable)), _comma(len(law))))
     replicate = [r for r in runs if r["block"] == "A2" and r["pair"] == "matched-b"
                  and r["backend"] == "kafka"]

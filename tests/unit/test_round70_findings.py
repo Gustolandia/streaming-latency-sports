@@ -83,8 +83,8 @@ class TestR1TheAcknowledgmentLagIsCounted:
         i = paper.index("label{tab:spans}")
         table = paper[i:paper.index("end{table}", i)]
         assert "spanNegAckLag" in table, "the row exists"
-        assert table.count("send (chain)") == 3, (
-            "three spans now take the send timestamp as their origin, and all three are rows")
+        assert table.count("publish (chain)") == 3, (
+            "three spans now take the publish timestamp as their origin, and all three are rows")
         assert "---" not in table, "round 68's measured zeros stay measured zeros"
 
     def test_the_caption_gives_the_margin_rather_than_only_the_zero(self, paper):
@@ -121,7 +121,7 @@ class TestR1TheAcknowledgmentLagIsCounted:
         flat = " ".join(paper.split())
         i = flat.index(r"Table~\ref{tab:spans} separates the spans")
         passage = flat[i:i + 700]
-        assert "The send-referenced span, the acknowledgment lag $A$" in passage
+        assert "The publish-referenced span, the publish latency $A$" in passage
         assert "negative on no event at all" in passage, \
             "the premise is no longer stated as a measurement beside the table that measures it"
 
@@ -134,9 +134,9 @@ class TestR1TheAcknowledgmentLagIsCounted:
         caption, which says only the acknowledgment-origin span inverts.
         """
         flat = " ".join(paper.split())
-        i = flat.index("The send-referenced span, the acknowledgment lag $A$")
+        i = flat.index("The publish-referenced span, the publish latency $A$")
         passage = flat[i:i + 320]
-        assert "acknowledgment lag $A$" in passage
+        assert "publish latency $A$" in passage
         assert "negative on no event at all" in passage
         j = paper.index("Negatives by span and broker")
         caption = " ".join(paper[j:paper.index("label{tab:spans}", j)].split())
@@ -146,8 +146,8 @@ class TestR1TheAcknowledgmentLagIsCounted:
 
     def test_the_rendered_table_shows_four_clean_chains(self):
         flat = " ".join(_rendered("paper").split())
-        assert flat.count("send (chain)0 0 0") == 3
-        assert "emission0 0 0" in flat
+        assert flat.count("publish (chain)0 0 0") == 3
+        assert "event time0 0 0" in flat
 
 
 class TestR2TheFloorIsAScaleNotALimit:

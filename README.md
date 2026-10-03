@@ -64,7 +64,7 @@
 > first wait for a processor. What a negative does show is that the acknowledgment cannot serve
 > as the origin of that message's latency, and a run whose origin timestamp fails on more than
 > one event in a hundred cannot report a latency, whatever the cause. Timed on one clock, 62,264
-> of 738,730 messages were negative this way and none from the send. Applying that sign check to
+> of 738,730 messages were negative this way and none from the publish call. Applying that sign check to
 > every run, not just the ones that looked wrong, rejected **1,321 of 2,266 runs (58.3%)**.
 > Among them are **109 of the 126 runs** behind a large, significant, theory-confirming result
 > we were about to publish; a condition is usable only if all of its runs survive, so none of
@@ -101,7 +101,7 @@
 >    for the powered campaigns, restoring the rejected runs moves the shift by at most 0.016 ms
 >    ([`powered_gate_sensitivity.py`](scripts/powered_gate_sensitivity.py)).
 > 2. Failure 1's mechanism is **established by manipulation, on both sides of the inequality**
->    *A* > *D* that makes *S* negative (paper Equation 3: the acknowledgment lag outlasts the
+>    *A* > *D* that makes *S* negative (paper Equation 3: the publish latency outlasts the
 >    delivery). Raising the timestamping threads to `SCHED_FIFO` at *unchanged* utilization
 >    cuts the rate 7–80× across eight matched pairs; two load geometries at **identical ρ to
 >    four decimals** differ 2.07× (z=10.3), and 2.05× in a full replication, so utilization
@@ -206,7 +206,7 @@ replay, after the sign check. Concurrency levels are **derived from real kick-of
 **Claim 1 — On the transport proxy the brokers sit within 1 ms, but they are *not*
 indistinguishable: Redis is about 0.41 ms faster.** The original E1 corpus reported them
 near-equal, but its transport medians rest on the same **median of seven events per run** as
-the withdrawn send lag (the opening burst), so it is under-powered. A **powered campaign** at a
+the withdrawn publish delay (the opening burst), so it is under-powered. A **powered campaign** at a
 replay rate derived from the plan and verified against wall time, over a median of **125
 events per run** (N∈{1,9,12}, 15 replicates each), resolves what E1 could not. Over the runs
 the sign check keeps (postmortem S2):
@@ -241,11 +241,11 @@ and sharpens the reversal of the withdrawn accelerated result, which had had Red
 > ### ⚠️ Claim 2 — WITHDRAWN: the 20× end-to-end gap was a start-up cost
 >
 > We previously reported a median end-to-end latency (*E*, the harness's TTI) of 105.5 ms for
-> Kafka against about 5 ms for Redis, with 102.9 ms of Kafka's being send lag, described as
+> Kafka against about 5 ms for Redis, with 102.9 ms of Kafka's being publish delay, described as
 > *constant — every event pays it*. **That does not reproduce.**
 >
 > A controlled re-run (N=1, verified true real time, same driver and broker) gives Kafka a median
-> send lag of **1.59 ms** with a **103.5 ms maximum**. Two independent instrumentation
+> publish delay of **1.59 ms** with a **103.5 ms maximum**. Two independent instrumentation
 > paths agree (per-event loop trace and per-run summary).
 >
 > **The discriminator is a count, not an average.** A median cannot separate a per-run cost from
@@ -253,14 +253,14 @@ and sharpens the reversal of the withdrawn accelerated result, which had had Red
 > holds — which is precisely what misled us. Sweeping the observation window at a verified
 > real-time rate:
 >
-> | Window | Events emitted | Send lag p50 | max | Events >50 ms late | Blocking sends |
+> | Window | Events emitted | Publish delay p50 | max | Events >50 ms late | Blocking publishes |
 > |---|---|---|---|---|---|
 > | 60 s | 57 | 1.56 ms | 103.4 ms | **4** | **1** |
 > | 180 s | 148 | 1.61 ms | 103.5 ms | **4** | **1** |
 > | 600 s | 507 | 1.58 ms | 103.5 ms | **4** | **1** |
 >
 > These are the Kafka rows of the window-sweep table in supplement S8.2 (counts are medians over
-> three replicates from the per-event trace; the send-lag percentiles come from the per-run
+> three replicates from the per-event trace; the publish-delay percentiles come from the per-run
 > summary). Redis, run in the same sweep with the same loop trace, has no event more than 50 ms
 > late and no blocking send at any window. Events grow **8.9×**; the count does not move. The
 > share of events paying the cost falls from 7.0% to 0.8%. A per-event constant would have grown
@@ -442,7 +442,7 @@ The paper's abstract, which by the authors' rule carries no numbers and names no
 > guide the choice of a message broker. They now report sub-millisecond latencies, finer than some
 > of their clocks resolve and shorter than a thread's wait for a core on a busy host. We timed
 > widely used brokers on one clock. Timed from the broker's confirmation of receipt, many messages
-> came out negative, as if delivered before being sent. The cause is not clock synchronization but
+> came out negative, as if delivered before being published. The cause is not clock synchronization but
 > scheduling. The thread that records the confirmation waits for a core longer than the message
 > takes. Giving it priority at unchanged load removes most negatives. We did a wide audit of the
 > most used tools across the industry: most of them discard such values uncounted or never measure
@@ -455,14 +455,14 @@ The paper has three parts and draws their practical consequences in a fourth. Th
 the abstract, part by part:
 
 **The finding.** Timed on one clock from the broker's acknowledgment, 62,264 of our 738,730
-messages were negative and none from the send, so the cause is not clock synchronization. A
+messages were negative and none from the publish call, so the cause is not clock synchronization. A
 zero-cost sign check rejected **1,321 of our 2,266 runs**, leaving nothing of our first result
 usable (it rejects 109 of the 126 runs behind it and every one of its six conditions).
 
 **The mechanism.** The thread recording the acknowledgment had waited for a core longer than
-the message took. The span is negative exactly when the acknowledgment lag exceeds the delivery
-time; to leading order its rate is the timestamping thread's occupancy times the chance that a
-stall outlasts the delivery time; and the traced stalls have a mode in the bucket that holds the
+the message took. The span is negative exactly when the publish latency exceeds the end-to-end
+latency; to leading order its rate is the timestamping thread's occupancy times the chance that a
+stall outlasts the end-to-end latency; and the traced stalls have a mode in the bucket that holds the
 scheduler's derived 3 ms slice. Real-time priority for the timestamping threads, at unchanged
 utilization, cut the rate 7–80×.
 
@@ -474,7 +474,7 @@ negatives in its average. Where the rule is a positivity filter on a millisecond
 deletes every sub-millisecond message that does not cross a clock tick. On the one such tool
 measured in depth, 71 of 75 embedded-mode settings whose summary we captured printed a median of
 exactly 1.0 or 2.0 ms, computed from as little as 0.36% of the samples; the retained fraction
-follows from the ratio of delivery time to resolution, and a registered prediction of it was
+follows from the ratio of end-to-end latency to resolution, and a registered prediction of it was
 confirmed. A registered audit of 43 published reports found the deletion's signature in eight
 configurations of two of them, and a stated retention in none.
 
@@ -482,7 +482,7 @@ configurations of two of them, and a stated retention in none.
 whatever the broker, and what differs between brokers, the share of samples kept, it does not
 print; where fast and slow messages mix it printed medians of 235 and 519 ms for two 64 KB
 settings on which most messages had arrived within a millisecond. A latency timed from the
-acknowledgment understates the delivery time it stands for (a median factor of 4.2 over 70
+acknowledgment understates the end-to-end latency it stands for (a median factor of 4.2 over 70
 conditions) and inflates the gap between two brokers. A better-synchronized clock fixes neither
 failure; a per-run sign check and the retained fraction published beside every latency expose
 both, and both cost nothing.
@@ -628,7 +628,7 @@ streams) — the intended comparison.
 ### 6.1 Primary metric — end-to-end latency E (TTI in the harness)
 
 ```
-E = t_out − t_sched = (t_send − t_sched) + A + S + (t_out − t_recv)     (paper, Equation 2)
+E = t_out − t_sched = (t_pub − t_sched) + A + S + (t_out − t_recv)     (paper, Equation 2)
 ```
 
 In the harness's own columns:
@@ -654,12 +654,12 @@ it was one of the early corrections (supplement S8.1).
 
 | Metric | Formula (harness columns) | Meaning |
 |--------|---------|---------|
-| End-to-end latency *E* (TTI in the harness) | `t_output_ns − t_prod_sched_ns` | *t*_out − *t*_sched: from the event falling due to the consumer having handled it; a causal chain (paper Equation 2) |
+| Event-time latency *E* (TTI in the harness) | `t_output_ns − t_prod_sched_ns` | *t*_out − *t*_sched: from the event falling due to the consumer having handled it; a causal chain (paper Equation 2) |
 | Transport proxy *S* ("transport" in the harness) | `t_cons_recv_ns − t_broker_ack_ns` | *t*_recv − *t*_ack = *D* − *A*: a message timed from the acknowledgment. Not a causal chain, and the only span that turns negative (paper Section II-A and Table I). `compute_tti.py` falls back to `t_prod_send_ns` for a run with no acknowledgment timestamp |
-| Acknowledgment lag *A* | `t_broker_ack_ns − t_prod_send_ns` | *t*_ack − *t*_send: from the send call to the producer observing the broker's acknowledgment (`acklag` in `recount_spans.py`) |
-| Delivery time *D* | `t_cons_recv_ns − t_prod_send_ns` | *t*_recv − *t*_send: from the send call to the consumer holding the record; a causal chain |
-| Send lag ("producer scheduling lag" in the harness) | `t_prod_send_ns − t_prod_sched_ns` | *t*_send − *t*_sched: how late the send call ran after the event was due |
-| Handling span | `t_output_ns − t_cons_recv_ns` | *t*_out − *t*_recv: the consumer's own work on the record. Added round 43, and the reason it is listed here is that the two clients do not take these two stamps in the same place: Kafka's parses the payload inside `poll()`, before `t_cons_recv_ns`; Redis's parses it between the two stamps. Median 281 ns and 19,480 ns respectively, so every span referenced to `t_cons_recv_ns` carries one client's parse and not the other's, while *E*, which runs to `t_output_ns`, contains both. Disclosed and bounded in supplement S1.5; pinned by `tests/unit/test_consumer_stamp_placement.py` |
+| Publish latency *A* | `t_broker_ack_ns − t_prod_send_ns` | *t*_ack − *t*_pub: from the publish call to the producer observing the broker's acknowledgment (`acklag` in `recount_spans.py`) |
+| End-to-end latency *D* | `t_cons_recv_ns − t_prod_send_ns` | *t*_recv − *t*_pub: from the publish call to the consumer holding the record; a causal chain |
+| Publish delay ("producer scheduling lag" in the harness) | `t_prod_send_ns − t_prod_sched_ns` | *t*_pub − *t*_sched: how late the publish call ran after the event was due |
+| Processing-time latency | `t_output_ns − t_cons_recv_ns` | *t*_out − *t*_recv: the consumer's own work on the record. Added round 43, and the reason it is listed here is that the two clients do not take these two stamps in the same place: Kafka's parses the payload inside `poll()`, before `t_cons_recv_ns`; Redis's parses it between the two stamps. Median 281 ns and 19,480 ns respectively, so every span referenced to `t_cons_recv_ns` carries one client's parse and not the other's, while *E*, which runs to `t_output_ns`, contains both. Disclosed and bounded in supplement S1.5; pinned by `tests/unit/test_consumer_stamp_placement.py` |
 | E (TTI) p50 / p95 / p99 | percentiles of E | Median, 95th, 99th |
 | Missed-window rate | `count(TTI > W) / count(TTI)` | Fraction exceeding window *W* |
 | **S3** Correction propagation | `t_correction_consume − t_base_consume` | Time for a correction to land |
@@ -1251,10 +1251,16 @@ journal supplement to one idea per sentence, the way Tipler and Mosca's *Physics
 and Engineers* writes: each term is defined where it first appears, colons and semicolons that
 joined two ideas became full stops, long paragraphs were split, and the supplement's second sense
 of "grid" is now the *q*-lattice; no claim and no number changed. **Section VI-B now sizes the
-receiving thread's own wait** that a latency timed from the send keeps: measured three ways in 51
+receiving thread's own wait** that a latency timed from the publish call keeps: measured three ways in 51
 runs after the registered campaign (R1), it added 0.41–0.94 ms to the mean latency, while the median
 message waited 18–46 µs; Supplement S3.10 gives the design, the four predictions and what each
-found ([`docs/results/recv_wait`](docs/results/recv_wait/README.md)). **The supplement is now two documents:** the journal supplement S1–S9, in the paper's
+found ([`docs/results/recv_wait`](docs/results/recv_wait/README.md)). **The vocabulary is the
+industry's** (writing standard A10, in all three documents and the figures): the producer
+*publishes*; *A* is the publish latency, the old send lag the publish delay and *D* the end-to-end
+latency, the names the OpenMessaging Benchmark reports them under; *E* is the event-time latency
+and the consumer's own span the processing-time latency, after Karimov et al.; Linux's real-time
+and normal priority replace go-first and ordinary; and the campaign's brake is its stopping rule.
+**The supplement is now two documents:** the journal supplement S1–S9, in the paper's
 order under both authors' names, and the single-author postmortem S1–S37, the complete record, not
 submitted. **A registered audit of 43 published reports** found the signature in eight configurations
 of two and a stated retention in none. **The fidelity audit corrected:** 109 of the 126 runs behind

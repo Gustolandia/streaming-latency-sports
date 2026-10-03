@@ -166,12 +166,12 @@ def test_one_name_per_thing(supp):
 
 
 def test_got_it_appears_only_as_the_plans_own_word(supp):
-    """The frozen plans call the acknowledgment lag 'got-it'; a reader of the freezes needs the
+    """The frozen plans call the publish latency 'got-it'; a reader of the freezes needs the
     gloss once, and nothing else here may use the word."""
     prose = " ".join(_prose(supp).split())
     hits = [m.start() for m in re.finditer("got-it", prose)]
     assert len(hits) == 1, "'got-it' should appear once, as the plan's own name: %d" % len(hits)
-    assert "The plan's own name for the lag" in prose[max(0, hits[0] - 200):hits[0]]
+    assert "The plan's own name for the publish latency" in prose[max(0, hits[0] - 200):hits[0]]
 
 
 def test_withdrawals_are_told_in_one_place(supp):

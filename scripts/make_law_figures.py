@@ -9,13 +9,13 @@ A pre-registered campaign is judged on the runs its rules count, and a reader sh
 see the others too: where they sat, and why each was set apart or kept with a warning beside it.
 So nothing is dropped from these panels. A run the integrity rule did not count is drawn as a
 cross in its own colour; a run of a false start as a plus; and a counted run that carries a
-warning -- a pause held a message, the brake would have stopped on it, its conditions sat far
+warning -- a pause held a message, the stopping rule would have stopped on it, its conditions sat far
 from its fellows', or its recording disturbed it -- is ringed, one shape per reason. The marks
 are read by law_runs.py from the repository's own files, never by eye.
 
 Figures (stems):
   law_slice     L1 on the first x86 pair and L4 on the Arm pair: the slice, both backends
-  law_tick      L2 (the tick), L5 (the core count) and L7 (go-first priority)
+  law_tick      L2 (the tick), L5 (the core count) and L7 (real-time priority)
   law_load      L3 (load), five campaigns, and L8 (the client's language), two pairs
   law_a9        L9, three pairs, both backends, 75 and 88% load
 
@@ -50,8 +50,9 @@ PALETTE = ("#1b9e77", "#d95f02", "#7570b3", "#e7298a", "#66a61e", "#e6ab02", "#a
 #: How each counted run's warning is ringed: marker, size, edge colour.
 RINGS = {"paused": ("o", 90, "#d62728"), "flagged": ("D", 80, "#000000"),
          "far": ("s", 80, "#ff7f0e"), "traced": ("o", 45, "#7f7f7f")}
-#: In the manuscript's names (1 Oct): the plan's "got-it" is the acknowledgment lag, and a
-#: duration is the delivery time, never the bare "delivery". The square's entry is set on two
+#: In the manuscript's names (3 Oct, writing standard A10, the industry's): the plan's "got-it"
+#: is the publish latency, a duration is the end-to-end latency, never the bare "delivery", and
+#: the plan's brake is the stopping rule. The square's entry is set on two
 #: lines, broken where the saved file stays the width it was. The legend overhangs the 6.5 in
 #: canvas and the tight crop keeps what overhangs, so the legend's width is the file's: on one
 #: line the file grew from 7.16 to 8.17 in and printed in the supplement's 7.16 in column at
@@ -60,8 +61,8 @@ RINGS = {"paused": ("o", 90, "#d62728"), "flagged": ("D", 80, "#000000"),
 #: either, since both measure the canvas. Broken here the file is 7.23 in, as near the old
 #: width as a break gets.
 RING_LABELS = {"paused": "ringed red: a pause held a message over 150 ms",
-               "flagged": "diamond: the lag brake would have stopped it",
-               "far": "square: delivery time, acknowledgment lag or held delay\nfar from its "
+               "flagged": "diamond: the stopping rule would have stopped it",
+               "far": "square: end-to-end latency, publish latency or held delay\nfar from its "
                       "fellows'",
                "traced": "ringed gray: L9's traced half"}
 
@@ -69,9 +70,9 @@ RING_LABELS = {"paused": "ringed red: a pause held a message over 150 ms",
 def variable(run, by):
     """The value a panel colours a run by."""
     if by == "client":
-        return "%s%s" % (run["language"].capitalize(), ", go-first" if run["priority"] else "")
+        return "%s%s" % (run["language"].capitalize(), ", real-time" if run["priority"] else "")
     if by == "priority":
-        return "go-first" if run["priority"] else "ordinary"
+        return "real-time" if run["priority"] else "normal"
     value = run[{"slice": "slice_ms", "tick": "tick_ms", "load": "load_pct",
                  "cpus": "cpus"}[by]]
     return value
@@ -129,7 +130,7 @@ def panel(ax, runs, spec, palette=None):
                 ax.scatter([run["trip_median_ms"]], [run["rate"]], marker=symbol, s=size,
                            facecolors="none", edgecolors=edge, linewidths=0.9, zorder=3)
     ax.set_title(spec["title"], fontsize=9)
-    ax.set_xlabel("Delivery time, the run's median (ms)", fontsize=8)
+    ax.set_xlabel("End-to-end latency, the run's median (ms)", fontsize=8)
     ax.set_ylabel("Negative rate", fontsize=8)
     ax.tick_params(labelsize=8)
     ax.grid(True, alpha=0.3)
@@ -147,7 +148,7 @@ LEGEND_CLEARANCE_IN = 2.4 / 72
 def mark_legend(fig, rings, y=0.0):
     """The marks, once for the figure, below its panels; returns the legend."""
     handles = [Line2D([], [], marker="x", linestyle="none", color="#333333",
-                      label="cross: not counted (a condition did not take, or the brake stopped it)"),
+                      label="cross: not counted (a condition did not take, or the stopping rule stopped it)"),
                Line2D([], [], marker="+", linestyle="none", color="#333333",
                       label="plus: a run of a false start")]
     for mark in rings:

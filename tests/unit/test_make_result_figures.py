@@ -74,7 +74,7 @@ def test_plot_exposure_draws_the_band_around_the_line_and_marks_the_crossover():
     assert ax.get_xscale() == "log" and ax.get_yscale() == "log"
     assert ax.collections, "the p10-p90 band must be drawn"
     labels = [t.get_text() for t in ax.get_legend().get_texts()]
-    assert "median lag" in labels
+    assert "median publish latency" in labels
 
     # The marked point sits at the crossover, on the 100% line.
     marks = [ln for ln in ax.lines
@@ -86,7 +86,7 @@ def test_plot_exposure_draws_the_band_around_the_line_and_marks_the_crossover():
 
 
 def test_the_figures_use_the_manuscripts_names():
-    """1 Oct: A is the acknowledgment lag and D the delivery time, never the bare "delivery",
+    """3 Oct (A10): A is the publish latency and D the end-to-end latency, never bare "delivery",
     and the grid's interval is a step, never a cell."""
     import emit_paper_numbers as epn
     import stat_intervals as si
@@ -96,10 +96,11 @@ def test_the_figures_use_the_manuscripts_names():
     pops = si.recovery_populations()
     mrf.plot_recovery(cdf, strip, pops, si.recovery_band_edge(pops))
     said = [t.get_text() for a in (exposure, flip, cdf, strip) for t in a.texts]
-    assert "lag = delivery time" in said
-    assert exposure.get_xlabel() == "delivery time measured (ms)"
+    assert "publish latency = end-to-end latency" in said
+    assert exposure.get_xlabel() == "end-to-end latency measured (ms)"
     assert "half step width" in said
-    assert cdf.get_xlabel() == strip.get_xlabel() == "recovery error (% of median delivery time)"
+    assert cdf.get_xlabel() == strip.get_xlabel() == (
+        "recovery error (% of median end-to-end latency)")
     assert not [s for s in said if "displacement" in s or "cell" in s]
 
 

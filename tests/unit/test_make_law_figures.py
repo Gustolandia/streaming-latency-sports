@@ -51,9 +51,9 @@ class TestWhatAPanelColoursBy:
     def test_each_variable_is_read_off_the_run(self):
         run = _run("r", 1.0, 0.1, cpus=4.0, language="java", priority=True)
         assert mlf.variable(run, "slice") == 3.0 and mlf.variable(run, "cpus") == 4.0
-        assert mlf.variable(run, "client") == "Java, go-first"
-        assert mlf.variable(run, "priority") == "go-first"
-        assert mlf.variable(_run("r", 1.0, 0.1), "priority") == "ordinary"
+        assert mlf.variable(run, "client") == "Java, real-time"
+        assert mlf.variable(run, "priority") == "real-time"
+        assert mlf.variable(_run("r", 1.0, 0.1), "priority") == "normal"
         assert mlf.variable(_run("r", 1.0, 0.1), "client") == "Python"
 
     def test_the_labels_carry_their_units(self):
@@ -131,16 +131,16 @@ class TestTheMarkLegend:
     """The legend speaks the manuscript's names, and the panels stand clear of it."""
 
     def test_it_uses_the_manuscripts_names(self):
-        """1 Oct: the plan's "got-it" is the acknowledgment lag, and a duration is the delivery
-        time, never the bare "delivery"."""
+        """3 Oct (A10): the plan's "got-it" is the publish latency, a duration is the end-to-end
+        latency, never the bare "delivery", and the brake is the stopping rule."""
         fig, _ = mlf.figure(_world(), "test", dict(TestAFigure.SPEC, rings=tuple(mlf.RINGS)))
         said = [" ".join(t.get_text().split()) for t in fig.legends[0].get_texts()]
         said += [ax.get_xlabel() for ax in fig.get_axes() if ax.get_visible()]
         plt.close(fig)
-        assert "diamond: the lag brake would have stopped it" in said
-        assert ("square: delivery time, acknowledgment lag or held delay far from its "
+        assert "diamond: the stopping rule would have stopped it" in said
+        assert ("square: end-to-end latency, publish latency or held delay far from its "
                 "fellows'") in said
-        assert "Delivery time, the run's median (ms)" in said
+        assert "End-to-end latency, the run's median (ms)" in said
         assert not [s for s in said if "got-it" in s or s.startswith("Delivery,")]
 
     @pytest.mark.parametrize("rings", [("paused", "flagged", "far"), tuple(mlf.RINGS)],

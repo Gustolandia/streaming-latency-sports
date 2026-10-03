@@ -1945,7 +1945,7 @@ class TestNetemConfoundIsDisclosed:
         assert "common-mode" in s31, "the reason the manipulation fails must be named"
         assert "the injected delay cancels exactly" in s31
         proxy = " ".join(_section(main_tex, "sec:proxy").split())
-        assert re.search(r"(?:transport|delivery time) runs to tens of seconds passes every "
+        assert re.search(r"(?:transport|end-to-end latency) runs to tens of seconds passes every "
                          r"run,? while the same hardware measuring one millisecond fails "
                          r"wholesale", proxy), \
             "H1 must rest on the clean contrast of the same hardware at two scales"
@@ -2351,7 +2351,7 @@ class TestLoadGeometryAndTtrue:
             ratio = float(base["p_tail"]) / float(base["inversion"])
             ratios.append(ratio)
             row = [ln for ln in table.splitlines() if ln.startswith(campaign + " ")
-                   and "ordinary" in ln and "& %s\\%%" % load in ln]
+                   and "normal" in ln and "& %s\\%%" % load in ln]
             assert len(row) == 1 and f"{ratio:.2f}" in row[0], \
                 f"{campaign} {load}%: ratio {ratio:.2f} missing from its row of tab:ea9"
             # Every traced real-time arm reads exactly zero; that is the artefact claim.
@@ -3376,7 +3376,7 @@ class TestCausalityFramingIsWithdrawn:
         # the symbol is pinned by its name rather than by one spelling of it. What this checks
         # is that the producer's own timestamps are drawn on the timeline, which is the point;
         # how they are typeset is A1n's business and is gated there.
-        for sym in ("sched", "send"):
+        for sym in ("sched", "pub"):
             assert "t_{\\mathrm{%s}}" % sym in body, \
                 f"plot_mechanism() must draw t_{sym} on the producer timeline"
 
@@ -3384,14 +3384,15 @@ class TestCausalityFramingIsWithdrawn:
         rendered = PdfReader(str(REPO / "docs" / "results" / "figures" /
                                  "measurement_model.pdf")).pages[0].extract_text()
         flat = "".join(rendered.split())  # subscripts and line breaks collapse on extraction
-        # v4.1: the span between them is the "send lag" (it was "scheduling lag", which
-        # collided with the scheduling delay of the timestamping threads).
-        for token in ("tsched", "tsend", "sendlag"):
+        # 3 Oct 2026 (A10): the span between them is the "publish delay". From v4.1 it was the
+        # "send lag", and before that the "scheduling lag", which collided with the
+        # scheduling delay of the timestamping threads.
+        for token in ("tsched", "tpub", "publishdelay"):
             assert token in flat, f"the committed figure file must render {token!r}"
 
         fig = main_tex[main_tex.index(r"\label{fig:model}") - 1500:
                        main_tex.index(r"\label{fig:model}")]
-        assert r"t_{\mathrm{sched}}" in fig and r"t_{\mathrm{send}}" in fig, \
+        assert r"t_{\mathrm{sched}}" in fig and r"t_{\mathrm{pub}}" in fig, \
             "the caption must name the two stamps the panel now shows"
 
     def test_the_send_referenced_span_result_is_stated(self, main_tex):
@@ -4342,13 +4343,13 @@ class TestTheReportingRulesAreInternallyConsistent:
         return " ".join(section[i:end if end != -1 else len(section)].split())
 
     def test_the_recovery_rule_says_how_it_sits_beside_the_gate(self, tex):
-        rule = self._rule(tex, "The acknowledgment lag can be added back.", "sec:cost")
+        rule = self._rule(tex, "The publish latency can be added back.", "sec:cost")
         assert r"\ref{sec:gate}" in rule, (
             "the recovery rule must point back at the consistency check; without it the "
             "reader meets 'recover it' seven pages after 'decline to publish it' and has to "
             "reconcile the two unaided")
-        assert "delivery" in rule, (
-            "the bridge is that recovery reports the delivery rather than the proxy, so the "
+        assert "end-to-end latency" in rule, (
+            "the bridge is that recovery reports the end-to-end latency rather than the proxy, so the "
             "rule has to name what is reported instead")
 
     def test_the_unpreemptable_rule_carries_the_busy_poll_mitigation(self, tex):
@@ -4452,12 +4453,12 @@ class TestTheReadersRequirementsAreMet:
         # v5 (28 Sep): "System and Measurement Model" became "How a Benchmark Times a Message",
         # and the defined term is "delivery time".
         model = body[body.index(r"\section{How a Benchmark Times a Message}"):]
-        definition = model.index(r"\emph{delivery")
+        definition = model.index(r"\emph{end-to-end latency")
         first_s_use = model.index(r"$S$")
         assert definition < first_s_use, (
             "the delivery D must be defined, in words, before S = D - A is used")
         window = " ".join(model[definition - 80:definition + 200].split())
-        assert "from the send call to the consumer holding the record" in window, (
+        assert "from the publish call to the consumer holding the record" in window, (
             "the definition must say what the delivery is, end to end, in words")
 
 

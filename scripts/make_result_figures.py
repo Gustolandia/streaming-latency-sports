@@ -523,7 +523,7 @@ def plot_priority_ladder(ax, rows):
     """Eight matched pairs against load: both arms, and the collapse between them.
 
     A forest plot rather than a factor-against-load scatter, because the factor alone hides
-    which arm moved. Reading down the rows, the real-time arm barely moves while the ordinary
+    which arm moved. Reading down the rows, the real-time arm barely moves while the normal-priority
     arm climbs with load, and the gap between them -- the factor -- widens from sevenfold to
     eightyfold. That is the pattern the range in the main text summarises.
     """
@@ -560,9 +560,9 @@ def plot_priority_ladder(ax, rows):
     # events in 2,985 and its interval runs below 1e-3, where a tighter limit clips it.
     ax.set_xlim(4e-4, 0.60)
     ax.set_ylim(-0.7, len(rows) - 0.3)
-    ax.plot([], [], "o", color=KEPT, mec="none", ms=4.0, ls="none", label="ordinary")
+    ax.plot([], [], "o", color=KEPT, mec="none", ms=4.0, ls="none", label="normal")
     ax.plot([], [], "s", color=ACCENT, mec="none", ms=4.0, ls="none", label="real-time")
-    # Upper right: the bottom row is the 95% arm, whose ordinary interval runs to the right
+    # Upper right: the bottom row is the 95% arm, whose normal-priority interval runs to the right
     # edge, and a legend there sits on it.
     ax.legend(fontsize=8, frameon=False, loc="upper right")
 
@@ -627,7 +627,7 @@ def plot_exposure(ax, lags):
     figure cannot drift from the table beside it -- the failure this project gates against
     everywhere else, and the reason the arithmetic is not repeated here.
 
-    The band is the tenth to ninetieth percentile of the measured acknowledgment lag across
+    The band is the tenth to ninetieth percentile of the measured publish latency across
     conditions. Drawing only the median would repeat, one level up, the mistake Section VI-E
     reports: a central summary offered as guidance for a distribution that is not central.
     """
@@ -642,7 +642,7 @@ def plot_exposure(ax, lags):
     # round since the curve was drawn.
     ax.fill_between(t_ms, err(p10), err(p90), color=DELETED, alpha=0.16, linewidth=0,
                     label="p10\u2013p90 across conditions")
-    ax.plot(t_ms, err(typical), color=DELETED, lw=1.4, label="median lag")
+    ax.plot(t_ms, err(typical), color=DELETED, lw=1.4, label="median publish latency")
 
     # 100% is the line the paper's headline turns on: below it the correction is smaller
     # than the quantity corrected, above it the correction is larger.
@@ -662,9 +662,9 @@ def plot_exposure(ax, lags):
     ax.plot([crossover, hi_cross], [100, 100], color=DELETED, lw=3.0, alpha=0.30,
             solid_capstyle="butt", zorder=3)
     ax.plot([crossover], [100], marker="o", ms=4.5, color=DELETED, zorder=4)
-    # The manuscript's names (1 Oct): A is the acknowledgment lag and D the delivery time, and
+    # The manuscript's names (3 Oct, A10): A is the publish latency and D the end-to-end latency, and
     # bare "delivery" is never a duration. "displacement = delivery" used both retired names.
-    ax.text(150, 125, "lag = delivery time", fontsize=8, color=GREY,
+    ax.text(150, 125, "publish latency = end-to-end latency", fontsize=8, color=GREY,
             ha="right", va="bottom")
 
     # Where published broker medians sit, which is the whole reason the curve matters.
@@ -674,7 +674,7 @@ def plot_exposure(ax, lags):
 
     ax.set_xscale("log")
     ax.set_yscale("log")
-    ax.set_xlabel("delivery time measured (ms)", fontsize=8)
+    ax.set_xlabel("end-to-end latency measured (ms)", fontsize=8)
     ax.set_ylabel("relative error of the proxy (%)", fontsize=8)
     ax.set_xlim(0.1, 200)
     ax.set_ylim(0.2, 4000)
@@ -750,7 +750,7 @@ def mechanism_arms():
     arms = []
     for level, kb, nb, kr, nr in stat_intervals.priority_cells():
         pretty = {"l75": "Priority, 75%", "l88": "Priority, 88%"}.get(level, level)
-        arms.append((pretty, "ordinary", kb, nb))
+        arms.append((pretty, "normal", kb, nb))
         arms.append((pretty, "real-time", kr, nr))
     for phase, pretty in (("ea6", "Geometry, original"), ("ea6b", "Geometry, replication")):
         try:
@@ -1178,7 +1178,7 @@ def plot_recovery(ax_cdf, ax_strip, pops, band):
     for ax in (ax_cdf, ax_strip):
         ax.axvline(band, color=GREY, lw=0.8, ls=":", zorder=0)
         ax.set_xlim(-1.5, top + 2.0)
-        ax.set_xlabel("recovery error (% of median delivery time)", fontsize=8)
+        ax.set_xlabel("recovery error (% of median end-to-end latency)", fontsize=8)
         ax.tick_params(labelsize=8)
         ax.grid(alpha=0.25, lw=0.5)
     ax_cdf.set_ylim(0.0, 1.03)

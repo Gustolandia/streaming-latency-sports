@@ -111,7 +111,7 @@ def plot_pipeline(ax):
     # t_out since 29 Sep: every end-to-end latency the paper reports is computed to it
     # (compute_tti.py), and the paper's definition of it now says so; drawn to t_recv, the long arrow was the
     # picture of a quantity nobody measured. It carries no process label: it is the consumer's.
-    stamps = [(0.6, r"$t_{\rm sched}$", "planned"), (2.4, r"$t_{\rm send}$", "producer"),
+    stamps = [(0.6, r"$t_{\rm sched}$", "planned"), (2.4, r"$t_{\rm pub}$", "producer"),
               (4.4, r"$t_{\rm ack}$", "producer"), (7.6, r"$t_{\rm recv}$", "consumer"),
               (9.4, r"$t_{\rm out}$", "")]
     for x, sym, proc in stamps:
@@ -133,8 +133,11 @@ def plot_pipeline(ax):
     # be negative without anything impossible happening. Labelling it "broker transport" on
     # the first figure plants the causal-chain reading the paper then spends a section
     # retracting -- a co-author's finding, and the paper's own Section III-A.
-    # "send lag", the paper's name for t_send - t_sched since v4.1 (it was "scheduling lag",
-    # which collided with the scheduling delay of the timestamping threads).
+    # "publish delay", the paper's name for t_pub - t_sched since 3 Oct 2026 and the
+    # OpenMessaging Benchmark's (publishDelayLatency); before it, "send lag", and before that
+    # "scheduling lag", which collided with the scheduling delay of the timestamping threads.
+    # Likewise "publish latency" for A, "event-time latency" for the long arrow (Karimov et
+    # al.'s name; "end-to-end latency" is D's now) and "processing" for the consumer's span.
     # The fourth field is where the label sits, which is the span's midpoint except for the
     # TTI. Centred, "end-to-end TTI" runs to x = 5.0 and its top meets the transport proxy's
     # left arrowhead at x = 4.4: on the printed page the arrowhead sat on the first T. The
@@ -150,11 +153,11 @@ def plot_pipeline(ax):
     # label is the widest of the three on the narrowest arrow -- 2.0 units against send
     # lag's 1.8 -- which is the shape of the collision item 1 of docs/infrastructure.md
     # records, so figure_collisions.py is what clears it rather than the eye.
-    spans = [(0.6, 2.4, 0.46, 1.5, "send lag"),
-             (2.4, 4.4, 0.46, 3.4, "acknowledgment lag"),
+    spans = [(0.6, 2.4, 0.46, 1.5, "publish delay"),
+             (2.4, 4.4, 0.46, 3.4, "publish latency"),
              (4.4, 7.6, 0.46, 6.0, "transport proxy"),
-             (7.6, 9.4, 0.46, 8.5, "handling"),
-             (0.6, 9.4, 0.05, 3.1, "end-to-end latency")]
+             (7.6, 9.4, 0.46, 8.5, "processing"),
+             (0.6, 9.4, 0.05, 3.1, "event-time latency")]
     for x0, x1, y, label_x, label in spans:
         ax.annotate("", xy=(x1, y), xytext=(x0, y),
                     arrowprops=dict(arrowstyle="<->", color="black", linewidth=1.0))
@@ -333,7 +336,7 @@ def plot_mechanism(mech_ax):
                  ha="right", va="center")
 
     # the producer's own two stamps, taken on the app thread before the acknowledgment exists
-    for x, sym in ((2.95, r"$t_{\mathrm{sched}}$"), (3.65, r"$t_{\mathrm{send}}$")):
+    for x, sym in ((2.95, r"$t_{\mathrm{sched}}$"), (3.65, r"$t_{\mathrm{pub}}$")):
         mech_ax.plot([x], [y_app], marker="o", markersize=5, color=KAFKA,
                      markerfacecolor="white", markeredgewidth=1.2)
         # 0.24 above the lane, midway between the marker and the box's top edge at 4.85. At
@@ -341,7 +344,7 @@ def plot_mechanism(mech_ax):
         mech_ax.text(x, y_app + 0.24, sym, fontsize=8, ha="center", color=KAFKA)
     mech_ax.annotate("", xy=(3.65, y_app), xytext=(2.95, y_app),
                      arrowprops=dict(arrowstyle="<->", color=GREY, linewidth=0.9))
-    mech_ax.text(3.55, y_app - 0.20, "send lag", fontsize=8, color=GREY, ha="right",
+    mech_ax.text(3.55, y_app - 0.20, "publish delay", fontsize=8, color=GREY, ha="right",
                  va="top")
 
     # The broker's append, and the two branches descending from it.
@@ -401,7 +404,7 @@ def plot_mechanism(mech_ax):
     # T_meas/T_true pair the text never defines (co-author comment 16, 2026-09-08). "The
     # delivery time", not "the delivery": the manuscript never uses the bare word for D (1 Oct).
     mech_ax.text(7.30, 1.72, r"$S=t_{\mathrm{recv}}-t_{\mathrm{ack}}<0$" "\n"
-                 r"although the delivery time $D>0$",
+                 r"although the end-to-end latency $D>0$",
                  fontsize=8, color="#b22222", ha="left", va="center")
 
     # The other broker's path, named rather than implied -- and named CAREFULLY.
@@ -590,12 +593,12 @@ def plot_phases(top, tau=TAU_MS, t_true=T_TRUE_MS, q=GRID_Q):
     # The duration belongs in the title, not in the panel: as an annotation it had to sit
     # between the two tick rules, where it was legible on screen and cramped in print. No
     # `~` in a mathtext string -- matplotlib is not LaTeX and prints the tilde.
-    top.set_title("(a) One delivery time of $T_{\\mathrm{true}} = %.2f$ ms, at four phases"
+    top.set_title("(a) One end-to-end latency of $T_{\\mathrm{true}} = %.2f$ ms, at four phases"
                   % t_true, fontsize=8, loc="left")
 
 
 def _plot_schedule(bot, tau, t_true, q):
-    """Panel (b) of the quantum geometry: which phases a send schedule visits."""
+    """Panel (b) of the quantum geometry: which phases a publish schedule visits."""
     keep, drop = KEEP_BLUE, DROP_RED
     phases = [i * tau / q for i in range(q)]
     crossing = tau - t_true                     # a delivery from here on reaches the next tick
@@ -654,8 +657,8 @@ def _plot_schedule(bot, tau, t_true, q):
         bot.spines[side].set_visible(False)
     bot.spines["bottom"].set_bounds(0, tau)   # the phase axis ends at the tick
     bot.tick_params(axis="x", labelsize=8, length=3)
-    bot.set_xlabel("phase of the send instant within one millisecond", fontsize=8)
-    bot.set_title("(b) The send schedule decides how many survive", fontsize=8, loc="left")
+    bot.set_xlabel("phase of the publish instant within one millisecond", fontsize=8)
+    bot.set_title("(b) The publish schedule decides how many survive", fontsize=8, loc="left")
 
 
 def condemned_at(by_run, threshold):

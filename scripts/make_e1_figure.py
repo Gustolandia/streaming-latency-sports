@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
 make_e1_figure.py
-Publication figure for E1: end-to-end lag at the concurrency levels football actually
+Publication figure for E1: event-time latency at the concurrency levels football actually
 produces, measured on the multi-host testbed at true real-time replay, after clock-integrity
 gating.
 
 Two panels, because the headline number and its explanation are different quantities:
 
-  (a) End-to-end TTI (p50) vs concurrency N, one series per backend, log-y. This is the
+  (a) Event-time latency (p50) vs concurrency N, one series per backend, log-y. This is the
       quantity a consumer experiences and the one the study set out to compare.
   (b) The same measurement decomposed into producer scheduling lag and broker transport.
       Panel (a)'s ~20x gap lives entirely in the client send path; the brokers themselves
@@ -53,7 +53,7 @@ def condition_medians(df):
 
 
 def plot_tti(ax, med):
-    """Panel (a): end-to-end TTI against concurrency, one line per backend."""
+    """Panel (a): event-time latency against concurrency, one line per backend."""
     for backend in ("kafka", "redis"):
         sub = med[med["backend"] == backend]
         if sub.empty:
@@ -62,8 +62,8 @@ def plot_tti(ax, med):
                 linewidth=2, markersize=7, label=LABELS[backend])
     ax.set_yscale("log")
     ax.set_xlabel("Concurrent matches ($N$)")
-    ax.set_ylabel("End-to-end TTI, p50 (ms)")
-    ax.set_title("(a) End-to-end lag")
+    ax.set_ylabel("Event-time latency, p50 (ms)")
+    ax.set_title("(a) Event-time latency")
     ax.grid(True, which="both", alpha=0.3)
     ax.legend(framealpha=1.0)
 
@@ -74,11 +74,11 @@ def plot_decomposition(ax, med):
     Not bars. A bar states its value as a length measured from zero, and a log axis has no
     zero: eight grouped bars ran from whatever the bottom of the axis happened to be, so
     their lengths were log(v) - log(floor) and would all have changed if the limit moved.
-    Kafka's send lag drew about eight times the ink of its transport for a ratio near 120.
+    Kafka's publish delay drew about eight times the ink of its transport for a ratio near 120.
 
     What a log axis does measure honestly is a ratio, as a distance --- and the ratio is
     what this panel claims. Each backend gets a segment joining its two components at each
-    concurrency, filled marker at the send lag and hollow at the transport, so the gap a
+    concurrency, filled marker at the publish delay and hollow at the transport, so the gap a
     reader measures is the gap the caption asserts.
     """
     ns = sorted(med["n"].unique())
@@ -95,7 +95,7 @@ def plot_decomposition(ax, med):
                     alpha=0.55, zorder=1, solid_capstyle="butt")
         ax.plot(xs, lag, linestyle="none", marker=MARKERS[backend], markersize=6,
                 color=COLORS[backend], zorder=2,
-                label=f"{LABELS[backend]} send lag")
+                label=f"{LABELS[backend]} publish delay")
         ax.plot(xs, transport, linestyle="none", marker=MARKERS[backend], markersize=6,
                 markerfacecolor="white", markeredgecolor=COLORS[backend],
                 markeredgewidth=1.3, zorder=2,
@@ -105,7 +105,7 @@ def plot_decomposition(ax, med):
     ax.set_xticklabels([str(n) for n in ns])
     ax.set_xlabel("Concurrent matches ($N$)")
     ax.set_ylabel("Component, p50 (ms)")
-    ax.set_title("(b) Where the lag is")
+    ax.set_title("(b) Where the delay is")
     ax.grid(True, axis="y", which="both", alpha=0.3)
     ax.legend(fontsize="small", framealpha=1.0)
 
@@ -121,7 +121,7 @@ def _save(fig, out_dir, stem):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="E1 figure: end-to-end lag and its decomposition")
+    ap = argparse.ArgumentParser(description="E1 figure: event-time latency and its decomposition")
     ap.add_argument("--by-run-csv", default="docs/results/e1/e1_by_run_gated.csv")
     ap.add_argument("--out", default="docs/results/figures")
     ap.add_argument("--stem", default="e1_end_to_end_lag")

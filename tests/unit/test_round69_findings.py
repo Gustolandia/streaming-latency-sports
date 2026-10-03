@@ -55,7 +55,7 @@ class TestR1TheDitherRuleDoesNotClaimTheWhy:
         conjunction, and Section IV-C states what the paper adds to the 1970 note, the sign of
         the operation. The two v4 phrases give way to those, one pin for each."""
         flat = " ".join(paper.split())
-        assert "Dither the send instant" in flat, "the dither check has left Table IV"
+        assert "Dither the publish instant" in flat, "the dither check has left Table IV"
         i = flat.index("Randomizing probe times against periodic phenomena is standing advice")
         passage = flat[i:i + 400]
         assert "rfc2330" in passage and "rfc3432" in passage, \

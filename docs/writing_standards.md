@@ -752,6 +752,55 @@ dropped.
 *TSC* → *Time Stamp Counter (TSC)*. The gate fails on any all-caps token of three or more
 letters whose expansion does not appear earlier.
 
+### A10. The industry's names for what is measured — GATED
+
+Adopted 3 October 2026, when the author asked what "send" meant in "timing from the send" and
+whether the industry had a clearer word, then asked for "publish" throughout all three documents
+and for the rest of the vocabulary to be checked for industry-wide use. A1 to A9 hold the paper to
+the academic corpus; this rule holds the names of the measured quantities to the industry whose
+benchmarks the paper reads, because those readers act on the numbers.
+
+The evidence is the industry's most-used benchmark, read at source on 3 October. The
+OpenMessaging Benchmark's result fields are `publishRate`, `publishLatency`, `publishDelayLatency`
+and `endToEndLatency` (`TestResult.java`). Its worker records the publish latency as the
+acknowledgment time less the send time, and the publish delay as the send time less the intended
+send time (`WorkerStats.recordProducerSuccess`); it computes the end-to-end latency as the receipt
+time less the publish timestamp (`LocalWorker`). Confluent defines end-to-end latency the same way,
+from `KafkaProducer.send()` to `KafkaConsumer.poll()`. The paper's three quantities are those
+three, one to one. Karimov et al. (ICDE 2018, which the paper already cites) name the two
+stream-processing spans the paper's wider model needs: event-time latency, from an event's own time
+to its output, and processing-time latency, from ingestion to output. Linux names the two
+scheduling policies: real-time (SCHED_FIFO, SCHED_RR) and normal (SCHED_OTHER, SCHED_IDLE,
+SCHED_BATCH), in `sched(7)`, where "real-time threads always have higher priority than normal
+threads".
+
+| Was | Now | Source |
+|---|---|---|
+| send, the send call, $t_{\mathrm{send}}$, $T_{\mathrm{send}}$ | publish, the publish call, $t_{\mathrm{pub}}$, $T_{\mathrm{pub}}$ | publish/subscribe usage; OMB `publishRate` |
+| acknowledgment lag ($A$) | publish latency | OMB `publishLatency` |
+| send lag | publish delay | OMB `publishDelayLatency` |
+| delivery time ($D$), true delivery time ($T_{\mathrm{true}}$) | end-to-end latency, true end-to-end latency | OMB `endToEndLatency`; Confluent |
+| end-to-end latency ($E$), TTI | event-time latency | Karimov et al. |
+| handling span | processing-time latency | Karimov et al. |
+| emission (where $E$ starts) | event time | Karimov et al. |
+| go-first, ordinary (priority) | real-time priority, normal priority | `sched(7)` |
+| the lag brake, the got-it brake | the stopping rule | sequential experimentation |
+| publish (make a figure public) | report | frees *publish* for the producer's act |
+
+Kept, because the industry has no name for them or its name means something else: *span*,
+*negative span*, *transport proxy* ($S$, which no benchmark names because none means to report
+it), *sign check*, *positivity filter*, *timestamp resolution*, *retention* (Kafka's log
+retention is a different thing, and Supplement S3.9 says so), *slice*, *occupancy*. *Scheduling
+delay* stays as A6 decided; Linux's delay accounting uses the word too. A quotation keeps its
+source's words: a vendor's "send timestamp" stays inside its quotation marks, and SPECjms2007's
+metric is still called Delivery Time.
+
+Rule: the names above, everywhere in the three documents and in the figures. Gated by
+`scripts/apply_vocabulary.py`: the compounds are mechanical substitutions, and bare *send*,
+*go-first*, *ordinary*, *brake* and *emission* are review items, each surviving use adjudicated
+with its reason in `docs/vocabulary_adjudications.json`. `scripts/figure_vocabulary.py` retires
+the terms from the figures once the manuscript no longer uses them.
+
 ---
 
 ## B. Structure: the order a new reader needs

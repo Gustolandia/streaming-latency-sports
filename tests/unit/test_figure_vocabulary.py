@@ -90,15 +90,26 @@ class TestRetiredTerms:
     def test_a_term_the_prose_still_uses_is_not_retired(self, manuscript):
         """The check must be inert before the rename lands, or it blocks the rename itself."""
         root = manuscript(paper="the inversion rate")
-        assert fv.retired_terms(root=root) == ()
+        assert ("inversion", "negative span") not in fv.retired_terms(root=root)
 
     def test_a_term_the_prose_has_dropped_is_retired(self, manuscript):
         root = manuscript(paper="the negative-span rate")
-        assert fv.retired_terms(root=root) == (("inversion", "negative span"),)
+        assert ("inversion", "negative span") in fv.retired_terms(root=root)
 
     def test_the_committed_manuscript_has_retired_the_term(self):
         """The rename landed, so the gate is armed on the real sources."""
         assert ("inversion", "negative span") in fv.retired_terms()
+
+    def test_the_industrys_names_arm_the_gate_as_the_old_ones_leave(self):
+        """Writing standard A10 (3 Oct 2026). Four of its old names are gone from the paper and
+        the supplement, so a figure may not print them. "delivery time" stays inert: the
+        supplement quotes SPECjms2007's metric, Delivery Time, by its own name."""
+        retired = dict(fv.retired_terms())
+        for old, new in (("acknowledgment lag", "publish latency"), ("send lag", "publish delay"),
+                         ("handling span", "processing-time latency"),
+                         ("go-first", "real-time priority")):
+            assert retired.get(old) == new, old
+        assert "delivery time" not in retired and fv.manuscript_uses("delivery time") == 1
 
 
 class TestFigureTexts:

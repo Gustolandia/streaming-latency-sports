@@ -93,19 +93,20 @@ University of Technology, Gothenburg, Sweden. E-mail: duvignau@chalmers.se.}}
 % was found, in the order the paper argues it; the numbers are in the introduction and the body,
 % and the benchmark studied in depth is one tool among the many of Section V.
 \begin{abstract}
-Benchmarks guide the choice of a message broker. They now report latencies below a
-millisecond, finer than some of their clocks resolve and shorter than a thread's wait for a core
-on a busy host. Timed on one clock from the broker's acknowledgment, many of our messages came
-out negative, as if delivered before they were sent. Timed from the send, none did, so the cause
-is not clock synchronization. It is scheduling. The thread recording the acknowledgment waits
-for a core longer than the message takes. Giving it priority at unchanged load removes most
-negatives. Most tools we read at source discard such values without counting them. Where the
-rule is a positivity filter on a millisecond clock, it deletes the fastest messages too. We
-derive the fraction kept and confirm a registered prediction of it. Of the tools we ran, most
-take both timestamps from one clock, so they never meet a negative and cannot measure a one-way
-delivery. In practice a sub-millisecond median can describe the clock, not the broker. A void
-result also looks sound: a sign check rejected most of our runs. We give benchmark authors
-checks that cost nothing.
+A message broker carries messages between distributed services.
+Published latency benchmarks, which time each message's delivery, guide the choice of a message
+broker. They now report latencies below a millisecond, finer than some of their clocks resolve
+and shorter than a thread's wait for a core on a busy host. Timed on one clock from the
+broker's acknowledgment, many of our messages came out negative, as if delivered before being
+sent. Timed from the send, none did, so the cause is not clock synchronization but scheduling.
+The thread recording the acknowledgment waits for a core longer than the message takes. Giving
+it priority at unchanged load removes most negatives. Most tools we read at source discard such
+values uncounted. A positivity filter on a millisecond clock also deletes the fastest messages.
+We derive the fraction kept and confirm its registered prediction. Most tools we ran take both
+timestamps from one clock, so they never meet a negative and cannot measure a one-way delivery.
+In practice a sub-millisecond median can describe the clock, not the broker. A void result can
+look sound: a sign check rejected most of our runs. We give benchmark authors checks that cost
+nothing.
 \end{abstract}
 
 % Alphabetical, gated. Every noun of five letters or more in the title has a term here
@@ -141,8 +142,9 @@ happens often cannot report a latency at all. A per-run sign check rejected $\au
 our $\auditRuns$ runs and left nothing of our own first result usable, although that result had
 passed every conventional check we knew (Section~\ref{sec:finding}).
 
-It matters because benchmarks are how message brokers are compared and chosen, and the
-comparisons now publish latencies below a millisecond~\cite{indexdev2026brokers}. On such a
+It matters because engineers choose a message broker, the service that carries an application's
+messages, by its published latency benchmarks, which time each message from producer to
+consumer. Those benchmarks now report latencies below a millisecond~\cite{indexdev2026brokers}. On such a
 path both the clock and the scheduler are slower than the message. Several of the tools that
 produce such comparisons time a delivery in whole milliseconds (Section~\ref{sec:tools}), and
 on a busy host the thread that reads a clock can wait milliseconds for a core

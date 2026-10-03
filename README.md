@@ -1068,7 +1068,7 @@ references or citations and 0 overfull boxes; 12 pages against TC's 10–12 budg
 references against TC's cap of 45, a 186-word abstract against TC's 100–200 range, and two
 author biographies (G. P. Ricou and R. Duvignau) inside TC's 145-word cap. Five figures, five
 tables and six numbered equations. Title: *Faster than Light: Latency Measurement Errors in
-Message-Broker Benchmarks*. The journal supplement, S1–S9 under the paper's byline, is 31 pages with 58
+Message-Broker Benchmarks*. The journal supplement, S1–S9 under the paper's byline, is 32 pages with 58
 references, one page of references past the 25–30 an outside editor asked for; the postmortem,
 the complete single-author record that is not submitted, is 76 pages.
 Formatted with `IEEEtran` (journal, 10pt) for IEEE Transactions on Computers.
@@ -1250,7 +1250,11 @@ with; 12 pages, 43 references. **Paper v6.1** (3 Oct) rewrites the prose of the 
 journal supplement to one idea per sentence, the way Tipler and Mosca's *Physics for Scientists
 and Engineers* writes: each term is defined where it first appears, colons and semicolons that
 joined two ideas became full stops, long paragraphs were split, and the supplement's second sense
-of "grid" is now the *q*-lattice; no claim and no number changed. **The supplement is now two documents:** the journal supplement S1–S9, in the paper's
+of "grid" is now the *q*-lattice; no claim and no number changed. **Section VI-B now sizes the
+receiving thread's own wait** that a latency timed from the send keeps: measured three ways in 51
+runs after the registered campaign (R1), it added 0.41–0.94 ms to the mean latency, while the median
+message waited 18–46 µs; Supplement S3.10 gives the design, the four predictions and what each
+found ([`docs/results/recv_wait`](docs/results/recv_wait/README.md)). **The supplement is now two documents:** the journal supplement S1–S9, in the paper's
 order under both authors' names, and the single-author postmortem S1–S37, the complete record, not
 submitted. **A registered audit of 43 published reports** found the signature in eight configurations
 of two and a stated retention in none. **The fidelity audit corrected:** 109 of the 126 runs behind

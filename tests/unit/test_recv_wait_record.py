@@ -136,3 +136,84 @@ def test_the_pauses_as_the_record_tells_them():
 def pc_long():
     """The census's own bound: a sampler gap this long means the sampler stopped too."""
     return rw.pc.LONG_S
+
+
+def test_the_changelog_quotes_the_figures_the_paper_prints():
+    """The repository's README says what Section VI-B now sizes, in figures typed by hand; they
+    are held here to the macros the paper prints."""
+    sys.path.insert(0, str(REPO / "scripts"))
+    import emit_paper_numbers as epn
+    m = dict(epn.recv_wait_macros(str(HERE)))
+    readme = " ".join((REPO / "README.md").read_text(encoding="utf-8").split())
+    assert "measured three ways in %s runs" % m["recvWaitRuns"] in readme
+    assert "it added %s–%s ms to the mean latency" % (m["recvWaitAddedLo"],
+                                                      m["recvWaitAddedHi"]) in readme
+    assert "the median message waited %s–%s µs" % (m["recvWaitMedianLoUs"],
+                                                   m["recvWaitMedianHiUs"]) in readme
+
+
+def supplement_section():
+    """Supplement S3.10, R1's account there, with its line breaks folded."""
+    text = (REPO / "supplement.tex").read_text(encoding="utf-8")
+    body = text.split("\\subsection{S3.10.", 1)[1].split("\\section{S4.", 1)[0]
+    return " ".join(body.split())
+
+
+class TestTheSupplementSays:
+    """S3.10 states in words what its macros cannot carry: the design it ran, and which
+    prediction failed where. Each is held here to the design file, the runner and the reading."""
+
+    def test_the_design_it_describes_is_the_one_that_ran(self):
+        import json
+        text = supplement_section()
+        design = json.loads((HERE / "r1_design.json").read_text(encoding="utf-8"))
+        assert set(s["slice_ns"] for s in design["setups"]) == {3000000}
+        assert "the base slice at $3$~ms" in text
+        assert set(s["delay_ms"] for s in design["setups"]) == {0}
+        assert "with no delay added" in text
+        assert len(design["setups"]) == 8 and "Eight setups" in text
+        assert design["rounds"] == 6 and "in six shuffled rounds" in text
+        added = [r for r in table("r1_registry_runs.csv") if r["campaign"] == "r1_more"]
+        assert len(added) == 3 and "Three runs added before anything was read" in text
+        assert min(f["traced"][i] for f in FOUND.values() for i in (0, 1)) >= 3
+        assert "at least three traced runs" in text
+        runner = (REPO / "cloud" / "azure" / "campaign.sh").read_text(encoding="utf-8")
+        assert 'consumer_wrap="sudo chrt -f 80 $consumer_wrap"' in runner
+        assert "the real-time class at priority $80$" in text
+
+    def test_what_it_says_happened_is_what_the_reading_found(self):
+        text = supplement_section()
+        kafka75, kafka88 = FOUND[("kafka", "75")], FOUND[("kafka", "88")]
+        redis = [FOUND[("redis", "75")], FOUND[("redis", "88")]]
+        assert all(f["D"]["p90"][1] < 1000 for f in redis)
+        assert "it cut the ninetieth percentile of $D$ to under $1$~ms" in text
+        assert all(abs(f["median_move"]) < 100 for f in redis)
+        assert "left the median almost where it was" in text
+        assert all(f["R1-a"] for f in FOUND.values()) and "The first prediction held" in text
+        failed = sorted((p, key) for key, f in FOUND.items() for p in ("R1-b", "R1-c", "R1-d")
+                        if not f[p])
+        assert set(broker for _, (broker, _) in failed) == {"kafka"}
+        assert set(p for p, _ in failed) == {"R1-b", "R1-c", "R1-d"}
+        assert "The other three failed, each on \\kafka{}" in text
+        assert kafka75["p90_fall"] < rw.R1B_P90_FALL_US
+        assert kafka88["median_move"] > rw.R1B_MEDIAN_MOVE_US
+        assert ("by less than the $\\recvPredFallMs$~ms predicted at $\\recvLowLoadPct\\%$ load, "
+                "and moved the median by more than the $\\recvPredMoveMs$~ms allowed at "
+                "$\\recvHighLoadPct\\%$") in text
+        assert all(FOUND[(b, l)]["difference"] > rw.R1C_DIFFERENCE_US for b, l in FOUND
+                   if b == "kafka")
+        assert all(f["difference"] < rw.R1C_DIFFERENCE_US for f in redis)
+        assert "where \\redis{}'s stayed under it" in text
+        one, two, _ = kafka75["estimates"]
+        assert two / one > rw.R1D_FACTOR
+        assert "\\kafka{}'s first two estimates lie further apart" in text
+
+    def test_its_qualifications_hold(self):
+        text = supplement_section()
+        assert rw.quality_report.STALL_MS == 150.0
+        assert "more than $150$~ms late" in text
+        thin = [f for f in FOUND.values() if f["apart"]["untraced"]["runs"][1] == 2]
+        assert len(thin) == 3 and len(FOUND) == 4
+        assert "three of the four go-first setups hold only two untraced runs" in text
+        assert all(f["apart"]["traced"]["D"]["mean"][0] > f["apart"]["untraced"]["D"]["mean"][0]
+                   for f in FOUND.values()), "the traced runs ran above the untraced everywhere"

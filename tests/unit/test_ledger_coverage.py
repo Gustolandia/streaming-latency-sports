@@ -156,6 +156,22 @@ ALLOWED = {
         "the density ratio of preemption-begun waits between the slice and a tick past it "
         "(S16.10, wait_shape), equal to the pooled P2 judge's fitted reading on Redis; two "
         "ratios of different things sharing three digits",
+    # R1 (3 Oct 2026) emitted the receiving thread's wait for S3.10 (recv_wait_macros), and
+    # three of its values print as other quantities the supplement already types.
+    ("supplement.tex", "recvPredMeanHiMs", r"published read cost near $1.2\,\mu$s"):
+        "the hpet clocksource's published read cost in microseconds (S3.6), equal to the upper "
+        "end of R1-a's registered band for the wait's mean in milliseconds; a cost and a "
+        "plan's bar sharing two digits",
+    ("supplement.tex", "recvPredNinetyMs", r"slices, 1.5 and 3~ms"):
+        "the law campaign's shorter slice in milliseconds (S6.5), equal to R1-a's registered "
+        "bar for the wait's ninetieth percentile; a slice and a plan's bar sharing two digits",
+    ("supplement.tex", "recvWaitFactor", r"slices, 1.5 and 3~ms"):
+        "the same slice, equal to the factor within which R1-d asked the three estimates to "
+        "agree; a slice and a ratio sharing two digits",
+    ("supplement.tex", "recvWaitAddedLo", r"the $0.41$~ms shift, \kafka{} slower"):
+        "the broker comparison's shift between the two brokers on S, in milliseconds (S7), "
+        "equal to the smallest of R1's twelve estimates of the receiving thread's wait; two "
+        "latencies of different things sharing three digits",
 }
 
 

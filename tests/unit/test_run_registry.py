@@ -106,6 +106,27 @@ class TestTheRuns:
         assert rr.run_row(str(tmp_path / "nothing"), {}) is None
         assert rr.campaign_of("stage1") == "" and rr.campaign_of("law_x") == ""
 
+    def test_an_r1_run_names_its_stampless_queue_and_both_of_its_settings(self, tmp_path):
+        """R1 (3 Oct 2026) named its first queue r1, with no stamp, raised the consumer alone and
+        captured the receiver's packets in every run. The registry says all three."""
+        where = run(tmp_path, "law_r1_r001-R1-kafka-l75-rtc-a1",
+                    {"backend": "kafka", "load_pct": 75, "delay_ms": 0, "slice_ns": 3000000,
+                     "consumer_priority": True, "recv_capture": True, "trace_half": True,
+                     "trace_events": True}, files=("waits.txt",))
+        row = rr.run_row(str(where), {})
+        assert row["campaign"] == "r1" and row["block"] == "R1" and row["recorded_half"]
+        assert row["consumer_priority"] is True and row["recv_capture"] is True
+        assert row["priority"] is None, "the producer was never raised"
+        more = rr.run_row(str(run(tmp_path, "law_r1_more_r007-R1-redis-l88-ord-a1",
+                                  {"backend": "redis", "load_pct": 88, "delay_ms": 0,
+                                   "recv_capture": True})), {})
+        assert more["campaign"] == "r1_more" and more["consumer_priority"] is None
+        assert rr.campaign_of("law_r1_r001-R1-kafka-l75-ord-a1", "r001-R1-kafka-l75-ord-a1") \
+            == "r1"
+        assert rr.campaign_of("law_r1_r001", "r002") == "", "a key the name does not end with"
+        assert rr.campaign_of("law_x", "x") == "", "nothing left to be the queue's name"
+        assert rr.campaign_of("run_r1_r001", "r001") == "", "not a campaign's run"
+
 
 class TestTheCampaigns:
 

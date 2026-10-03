@@ -394,19 +394,22 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
     > "$RUN_DIR/broker_log.txt" 2>&1
 
   if [ -n "$recv_full" ]; then
-    # Stopped by its own command line, as M0's capture below is, for the reason given there.
-    sudo pkill -INT -f "tcpdump -i any -s 0 --time-stamp-precision=nano -w $RUN_DIR/receiver_full.pcap" 2>/dev/null
+    # Stopped by its own command line, as M0's capture below is, for the reasons given there.
+    sudo pkill -INT -f "[t]cpdump -i any -s 0 --time-stamp-precision=nano -w $RUN_DIR/receiver_full.pcap" 2>/dev/null
     for _ in $(seq 1 20); do ps -p "$recv_full" > /dev/null || break; sleep 0.5; done
-    sudo pkill -KILL -f "tcpdump -i any -s 0 --time-stamp-precision=nano -w $RUN_DIR/receiver_full.pcap" 2>/dev/null
+    sudo pkill -KILL -f "[t]cpdump -i any -s 0 --time-stamp-precision=nano -w $RUN_DIR/receiver_full.pcap" 2>/dev/null
     wait "$recv_full" 2>/dev/null
   fi
   if [ -n "$receiver_capture" ]; then
     # Stopped by its own command line, not through the sudo that started it: sudo does not relay
     # a signal sent from its own process group, so `sudo kill -INT <that sudo>` never reached
-    # tcpdump, and the wait held M0's first recorded run for six hours on 26 September.
-    sudo pkill -INT -f "tcpdump -i any -s 200 -w $RUN_DIR/receiver.pcap" 2>/dev/null
+    # tcpdump, and the wait held M0's first recorded run for six hours on 26 September. The [t]
+    # keeps the pattern from matching the command line of the sudo that runs pkill, which holds
+    # the pattern itself: written plainly, the forced stop killed that sudo, and every one of R1's
+    # 53 runs logged it (3 October).
+    sudo pkill -INT -f "[t]cpdump -i any -s 200 -w $RUN_DIR/receiver.pcap" 2>/dev/null
     for _ in $(seq 1 20); do ps -p "$receiver_capture" > /dev/null || break; sleep 0.5; done
-    sudo pkill -KILL -f "tcpdump -i any -s 200 -w $RUN_DIR/receiver.pcap" 2>/dev/null
+    sudo pkill -KILL -f "[t]cpdump -i any -s 200 -w $RUN_DIR/receiver.pcap" 2>/dev/null
     wait "$receiver_capture" 2>/dev/null
     remote_broker "sudo kill -INT \$(cat /tmp/sbl_m0.pid) 2>/dev/null; sleep 1; sudo cat /tmp/sbl_m0.pcap; sudo rm -f /tmp/sbl_m0.pcap /tmp/sbl_m0.pid /tmp/sbl_m0.err" \
       > "$RUN_DIR/broker.pcap" 2>/dev/null

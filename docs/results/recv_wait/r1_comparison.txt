@@ -1,0 +1,52 @@
+kafka at 75% load: 7 ordinary runs (3 traced), 6 go-first-consumer runs (4 traced)
+  method 1, D: median 2.03 ms -> 1.82 ms; mean 2.84 ms -> 2.41 ms; p90 5.21 ms -> 4.27 ms; p99 8.38 ms -> 5.78 ms
+    untraced runs only, 4 -> 2: median 1.99 ms -> 1.73 ms; mean 2.77 ms -> 2.11 ms; p90 5.00 ms -> 3.43 ms; p99 8.23 ms -> 5.52 ms
+    traced runs only, 3 -> 4: median 2.19 ms -> 1.90 ms; mean 3.04 ms -> 2.49 ms; p90 5.45 ms -> 4.30 ms; p99 8.59 ms -> 5.83 ms
+  method 2, traced own wait: median 0.03 ms -> 0.01 ms; mean 0.71 ms -> 0.01 ms; p90 2.67 ms -> 0.01 ms; p99 3.95 ms -> 0.02 ms
+  method 3, kernel receipt to stamp: median 0.44 ms -> 0.38 ms; mean 1.04 ms -> 0.40 ms; p90 3.04 ms -> 0.57 ms; p99 4.33 ms -> 0.65 ms
+    untraced runs only, 4 -> 2: median 0.44 ms -> 0.37 ms; mean 1.03 ms -> 0.39 ms; p90 3.01 ms -> 0.55 ms; p99 4.27 ms -> 0.64 ms
+    traced runs only, 3 -> 4: median 0.47 ms -> 0.38 ms; mean 1.13 ms -> 0.41 ms; p90 3.12 ms -> 0.58 ms; p99 4.46 ms -> 0.68 ms
+  estimates of the mean inflation: method 1 0.43 ms, method 2 0.70 ms, method 3 0.64 ms; largest over smallest 1.64
+  kernel delay at least the traced wait for 100.0% of messages (median over traced runs; lowest run 99.9%); median difference 0.37 ms; messages not found in the capture: 0
+  runs holding a message over the quality report's 150 ms pause limit: law_r1_r003-R1-kafka-l75-rtc-a1, 2 messages, longest 167.19 ms
+  R1-a holds, R1-b fails, R1-c fails, R1-d fails
+kafka at 88% load: 6 ordinary runs (3 traced), 6 go-first-consumer runs (4 traced)
+  method 1, D: median 2.52 ms -> 1.92 ms; mean 3.43 ms -> 2.49 ms; p90 5.66 ms -> 4.53 ms; p99 8.81 ms -> 5.99 ms
+    untraced runs only, 3 -> 2: median 2.13 ms -> 1.82 ms; mean 3.05 ms -> 2.25 ms; p90 5.37 ms -> 3.74 ms; p99 8.39 ms -> 5.64 ms
+    traced runs only, 3 -> 4: median 2.96 ms -> 1.93 ms; mean 3.44 ms -> 2.52 ms; p90 5.88 ms -> 4.59 ms; p99 8.84 ms -> 6.08 ms
+  method 2, traced own wait: median 0.05 ms -> 0.01 ms; mean 0.92 ms -> 0.01 ms; p90 2.92 ms -> 0.01 ms; p99 4.27 ms -> 0.02 ms
+  method 3, kernel receipt to stamp: median 0.55 ms -> 0.40 ms; mean 1.34 ms -> 0.42 ms; p90 3.33 ms -> 0.52 ms; p99 4.80 ms -> 0.64 ms
+    untraced runs only, 3 -> 2: median 0.49 ms -> 0.37 ms; mean 1.13 ms -> 0.40 ms; p90 3.15 ms -> 0.53 ms; p99 4.35 ms -> 0.62 ms
+    traced runs only, 3 -> 4: median 0.60 ms -> 0.40 ms; mean 1.35 ms -> 0.42 ms; p90 3.34 ms -> 0.52 ms; p99 4.95 ms -> 0.65 ms
+  estimates of the mean inflation: method 1 0.94 ms, method 2 0.91 ms, method 3 0.92 ms; largest over smallest 1.04
+  kernel delay at least the traced wait for 100.0% of messages (median over traced runs; lowest run 99.8%); median difference 0.39 ms; messages not found in the capture: 0
+  runs holding a message over the quality report's 150 ms pause limit: law_r1_r001-R1-kafka-l88-ord-a1, 180 messages, longest 3711.62 ms
+  R1-a holds, R1-b fails, R1-c fails, R1-d holds
+redis at 75% load: 6 ordinary runs (3 traced), 6 go-first-consumer runs (4 traced)
+  method 1, D: median 0.89 ms -> 0.84 ms; mean 1.34 ms -> 0.87 ms; p90 3.06 ms -> 0.93 ms; p99 4.56 ms -> 1.03 ms
+    untraced runs only, 3 -> 2: median 0.85 ms -> 0.82 ms; mean 1.33 ms -> 93.22 ms; p90 3.08 ms -> 0.91 ms; p99 4.40 ms -> 2523.97 ms
+    traced runs only, 3 -> 4: median 0.93 ms -> 0.86 ms; mean 1.40 ms -> 0.87 ms; p90 3.04 ms -> 0.93 ms; p99 4.78 ms -> 1.03 ms
+  method 2, traced own wait: median 0.02 ms -> 0.01 ms; mean 0.51 ms -> 0.01 ms; p90 2.13 ms -> 0.02 ms; p99 3.82 ms -> 0.02 ms
+  method 3, kernel receipt to stamp: median 0.13 ms -> 0.13 ms; mean 0.61 ms -> 0.14 ms; p90 2.30 ms -> 0.18 ms; p99 3.81 ms -> 0.23 ms
+    untraced runs only, 3 -> 2: median 0.12 ms -> 0.12 ms; mean 0.61 ms -> 0.22 ms; p90 2.30 ms -> 0.17 ms; p99 3.67 ms -> 2.56 ms
+    traced runs only, 3 -> 4: median 0.16 ms -> 0.13 ms; mean 0.64 ms -> 0.14 ms; p90 2.27 ms -> 0.18 ms; p99 4.01 ms -> 0.23 ms
+  estimates of the mean inflation: method 1 0.47 ms, method 2 0.50 ms, method 3 0.47 ms; largest over smallest 1.07
+  kernel delay at least the traced wait for 100.0% of messages (median over traced runs; lowest run 100.0%); median difference 0.11 ms; messages not found in the capture: 0
+  runs holding a message over the quality report's 150 ms pause limit: law_r1_r003-R1-redis-l75-rtc-a1, 80 messages, longest 1730.98 ms; law_r1_r006-R1-redis-l75-rtc-a1, 297 messages, longest 6036.74 ms
+  R1-a holds, R1-b holds, R1-c holds, R1-d holds
+redis at 88% load: 8 ordinary runs (3 traced), 6 go-first-consumer runs (3 traced)
+  method 1, D: median 0.87 ms -> 0.83 ms; mean 1.27 ms -> 0.84 ms; p90 2.86 ms -> 0.89 ms; p99 4.47 ms -> 0.99 ms
+    untraced runs only, 5 -> 3: median 0.85 ms -> 0.83 ms; mean 1.22 ms -> 0.83 ms; p90 2.76 ms -> 0.89 ms; p99 4.45 ms -> 0.98 ms
+    traced runs only, 3 -> 3: median 0.87 ms -> 0.82 ms; mean 1.48 ms -> 0.86 ms; p90 3.47 ms -> 0.90 ms; p99 5.12 ms -> 1.00 ms
+  method 2, traced own wait: median 0.02 ms -> 0.01 ms; mean 0.63 ms -> 0.01 ms; p90 2.52 ms -> 0.01 ms; p99 4.06 ms -> 0.02 ms
+  method 3, kernel receipt to stamp: median 0.12 ms -> 0.11 ms; mean 0.53 ms -> 0.12 ms; p90 2.14 ms -> 0.16 ms; p99 3.75 ms -> 0.19 ms
+    untraced runs only, 5 -> 3: median 0.11 ms -> 0.10 ms; mean 0.51 ms -> 0.11 ms; p90 2.07 ms -> 0.15 ms; p99 3.71 ms -> 0.18 ms
+    traced runs only, 3 -> 3: median 0.17 ms -> 0.13 ms; mean 0.79 ms -> 0.14 ms; p90 2.79 ms -> 0.17 ms; p99 4.40 ms -> 0.23 ms
+  estimates of the mean inflation: method 1 0.43 ms, method 2 0.62 ms, method 3 0.41 ms; largest over smallest 1.49
+  kernel delay at least the traced wait for 100.0% of messages (median over traced runs; lowest run 100.0%); median difference 0.12 ms; messages not found in the capture: 0
+  runs holding a message over the quality report's 150 ms pause limit: law_r1_r001-R1-redis-l88-rtc-a1, 33 messages, longest 789.37 ms
+  R1-a holds, R1-b holds, R1-c holds, R1-d holds
+R1-a holds in 4 of 4 broker-and-load parts
+R1-b holds in 2 of 4 broker-and-load parts
+R1-c holds in 2 of 4 broker-and-load parts
+R1-d holds in 3 of 4 broker-and-load parts

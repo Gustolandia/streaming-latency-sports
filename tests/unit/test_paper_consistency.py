@@ -1553,7 +1553,14 @@ class TestNarrativeArc:
         # industry beat is the industry's, not one benchmark's. The beats are the same.
         # v6.1 (3 Oct): one idea per sentence, and the thread waits "for a core" everywhere,
         # the word the figure and the conclusion use.
-        beats = ("Timed on one clock", "Most tools we read", "In practice",
+        # Later on 3 Oct, at the authors' instruction, the abstract states why the work matters,
+        # what was measured and what was found, and no longer argues: the send-timed control
+        # ("timed from the send, none did") left it, with the word "send" it never defined. Mode
+        # A now opens on what was measured, "We timed ... on one clock", and the prediction is
+        # "registered in advance", which says what registered means.
+        # The industry beat opens, in the authors' words, on "a wide audit of the most used tools
+        # across the industry".
+        beats = ("We timed", "We did a wide audit", "In practice",
                  "give benchmark authors checks")
         for beat in beats:
             assert beat in flat, f"abstract is missing the '{beat.strip()}' beat"
@@ -1567,7 +1574,7 @@ class TestNarrativeArc:
             "the ratio beat must set the delivery against both of the instrument's timescales"
         for token in ("on one clock", "not clock synchronization", "priority"):
             assert token in mode_a, f"the Mode A beat is missing {token!r}"
-        for token in ("millisecond clock", "positivity filter", "registered prediction",
+        for token in ("millisecond clock", "positivity filter", "registered in advance",
                       "one-way delivery"):
             assert token in mode_b, f"the Mode B beat is missing {token!r}"
         assert "withdr" not in flat.lower(), "the TC abstract no longer narrates withdrawals"
@@ -3332,8 +3339,11 @@ class TestCausalityFramingIsWithdrawn:
         # v6 (2 Oct 2026): the abstract carries no numbers, at the authors' instruction. The
         # exclusion is still stated as the empirical one it is -- none timed from the send came
         # out negative -- and the count behind it opens the introduction.
-        assert "none did" in " ".join(abstract.split()), \
-            "the exclusion is empirical, so the abstract must say what the data showed"
+        # 3 Oct 2026: at the authors' instruction the abstract states what was measured and found
+        # and does not argue, so the send-timed control left it with the word "send"; what keeps
+        # the exclusion empirical there is the measurement it names, timed on one clock.
+        assert "timed widely used brokers on one clock" in " ".join(abstract.split()), \
+            "the exclusion is empirical, so the abstract must say what was measured, and how"
         assert r"\spanEvents" in _section(main_tex, "sec:intro"), \
             "the count behind the exclusion must be quoted where the numbers now are"
         assert "by construction" not in abstract, \
@@ -4234,10 +4244,12 @@ class TestTheAbstractPromisesWhatItDelivers:
         # 2 Oct 2026: the tools now lead the industry beat, before the law is derived, so the
         # order pinned is the law's evidence before the checks, and the checks' sentence last
         # with nothing listed after it -- which is the property this pin exists for.
-        for word in ("derive", "registered prediction", "tools", "checks"):
+        # 3 Oct 2026: the industry beat opens on the audit of the tools, in the authors' words,
+        # and the law and its registered test follow it; the checks still come last.
+        for word in ("derive", "registered in advance", "tools", "checks"):
             assert word in flat, "the abstract no longer says %r; revisit this pin" % word
-        assert flat.index("derive") < flat.index("registered prediction") < \
-            flat.rindex("tools") < flat.index("checks"), (
+        assert flat.index("tools") < flat.index("derive") < \
+            flat.index("registered in advance") < flat.index("checks"), (
             "the abstract lists its evidence after the word 'checks'. An identity, a "
             "manipulation and an audit are not checks; they are what characterizes the "
             "failure modes, and the sentence should attach them there")

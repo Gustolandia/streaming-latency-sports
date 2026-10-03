@@ -438,19 +438,19 @@ From 3,315 StatsBomb matches across 52 competition-seasons (2003–2023), via
 
 The paper's abstract, which by the authors' rule carries no numbers and names no tool:
 
-> Benchmarks guide the choice of a message broker. They now report latencies below a
-> millisecond, finer than some of their clocks resolve and shorter than a thread's wait for a
-> core on a busy host. Timed on one clock from the broker's acknowledgment, many of our messages
-> came out negative, as if delivered before they were sent. Timed from the send, none did, so the
-> cause is not clock synchronization. It is scheduling. The thread recording the acknowledgment
-> waits for a core longer than the message takes. Giving it priority at unchanged load removes
-> most negatives. Most tools we read at source discard such values without counting them. Where
-> the rule is a positivity filter on a millisecond clock, it deletes the fastest messages too. We
-> derive the fraction kept and confirm a registered prediction of it. Of the tools we ran, most
-> take both timestamps from one clock, so they never meet a negative and cannot measure a one-way
-> delivery. In practice a sub-millisecond median can describe the clock, not the broker. A void
-> result also looks sound: a sign check rejected most of our runs. We give benchmark authors
-> checks that cost nothing.
+> A message broker carries messages between distributed services. Published latency
+> benchmarks, which time each message's delivery, guide the choice of a message broker. They now
+> report latencies below a millisecond, finer than some of their clocks resolve and shorter than a
+> thread's wait for a core on a busy host. Timed on one clock from the broker's acknowledgment,
+> many of our messages came out negative, as if delivered before being sent. Timed from the send,
+> none did, so the cause is not clock synchronization but scheduling. The thread recording the
+> acknowledgment waits for a core longer than the message takes. Giving it priority at unchanged
+> load removes most negatives. Most tools we read at source discard such values uncounted. A
+> positivity filter on a millisecond clock also deletes the fastest messages. We derive the
+> fraction kept and confirm its registered prediction. Most tools we ran take both timestamps from
+> one clock, so they never meet a negative and cannot measure a one-way delivery. In practice a
+> sub-millisecond median can describe the clock, not the broker. A void result can look sound: a
+> sign check rejected most of our runs. We give benchmark authors checks that cost nothing.
 
 The paper has three parts and draws their practical consequences in a fourth. The numbers behind
 the abstract, part by part:
@@ -1066,7 +1066,7 @@ is why the check now runs on the artefact a reader actually receives.
 
 **Status (the PDFs built on 3 Oct 2026):** compiles clean, with 0 errors, 0 undefined
 references or citations and 0 overfull boxes; 12 pages against TC's 10–12 budget, 43
-references against TC's cap of 45, a 195-word abstract against TC's 100–200 range, and two
+references against TC's cap of 45, a 197-word abstract against TC's 100–200 range, and two
 author biographies (G. P. Ricou and R. Duvignau) inside TC's 145-word cap. Five figures, five
 tables and six numbered equations. Title: *Faster than Light: Latency Measurement Errors in
 Message-Broker Benchmarks*. The journal supplement, S1–S9 under the paper's byline, is 31 pages with 58

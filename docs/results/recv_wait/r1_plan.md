@@ -64,3 +64,13 @@ only runs it passes are read.
 Means over messages are taken within a run; a setup's value is the median over its runs. Traced
 and untraced runs are reported apart wherever D is compared, since the tracer is not a free
 observer.
+
+## Amendment R1-1, 3 October 2026, before any R1 result was read
+
+The runner traces a run when its key's hash is even, so the 48 runs gave the eight setups
+between one and four traced runs each, and method 2 would rest on a single run for Redis at 88%
+in ordinary priority. Three more runs, chosen by key so that the runner traces them, bring every
+setup to at least three traced runs: r007 and r008 of R1-redis-l88-ord and r010 of
+R1-kafka-l75-ord (queue r1_more.csv). They are read with the others; nothing else changes. At the
+time of this amendment only the runs' counts and verdicts had been looked at, and no R1
+measurement had been computed.

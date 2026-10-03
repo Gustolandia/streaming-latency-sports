@@ -46,6 +46,12 @@ Should Do" is VI-C, and the transport proxy's cost and repair, v5's III-D, is VI
 supplement section moved or was renumbered and every pointer lands where it did; the
 supplement's table mapping paper sections to its own was rewritten for the new sections.
 
+**Paper and supplement v6.1, 2026-10-03.** A prose revision of both documents: one idea per
+sentence, each term defined where it first appears, long paragraphs split. No section moved or
+was renumbered, and no pointer changed. In the supplement the retentions $0, 1/q, \ldots, 1$ are
+now the *q*-lattice (S4.2, and a row of the glossary), so that "grid" keeps one meaning, the
+instants at which a timestamp changes value; Figure S6's label says "lattice" to match.
+
 ## The postmortem (the supplement until 2026-09-29)
 
 **Renumbered on 2026-09-08 (v4).** At the second author's request the supplement became a

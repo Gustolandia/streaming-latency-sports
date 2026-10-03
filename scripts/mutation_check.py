@@ -96,10 +96,11 @@ MUTATIONS = [
     # the chain; the mutation drops it and leaves the proxy alone. Re-anchored 29 Sep: the
     # chain's pointer is the journal supplement's S7, where the postmortem's S13 was.
     # Re-anchored 1 Oct: the chain's margin is stated, $\ttiTostMargin$~ms, not "wider".
+    # Re-anchored 3 Oct: the semicolon became ", and" when the prose lost its semicolons.
     ("state the broker equivalence on the proxy alone",
      "a causal chain, the two brokers are equivalent against a" + "\n"
-     + r"$\ttiTostMargin$~ms margin (Supplement~S7); on the transport proxy they sit within a"
-     + " millisecond",
+     + r"$\ttiTostMargin$~ms margin (Supplement~S7), and on the transport proxy they sit within"
+     + " a millisecond",
      "a causal chain, the transport proxy puts the two brokers within a millisecond"),
 ]
 

@@ -49,7 +49,8 @@ ATTRIBUTED = {
         "S22, S42 and S46 all turn on the article's definition of the retained fraction",
     "send lag":
         "renamed from 'scheduling lag' in v4.1; the supplement follows the article's word",
-    "one-per-cent":
+    # American spelling in both documents since 3 Oct 2026; the phrase is the same rule.
+    "one-percent":
         "the audit threshold S27 sweeps; the article is where it is fixed",
 }
 

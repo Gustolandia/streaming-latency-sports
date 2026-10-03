@@ -1551,6 +1551,8 @@ class TestNarrativeArc:
         # Later on 2 Oct, at the authors' instruction and on a reviewer's advice, the abstract
         # lost its numbers and its one named tool: it says in words what was found, and the
         # industry beat is the industry's, not one benchmark's. The beats are the same.
+        # v6.1 (3 Oct): one idea per sentence, and the thread waits "for a core" everywhere,
+        # the word the figure and the conclusion use.
         beats = ("Timed on one clock", "Most tools we read", "In practice",
                  "give benchmark authors checks")
         for beat in beats:
@@ -1561,7 +1563,7 @@ class TestNarrativeArc:
         ratio, mode_a, mode_b = flat[:first], flat[first:second], flat[second:practice]
         assert "choice of a message broker" in ratio, \
             "the abstract must say first why the numbers matter: they choose brokers"
-        assert "wait for a processor" in ratio and "clocks resolve" in ratio, \
+        assert "wait for a core" in ratio and "clocks resolve" in ratio, \
             "the ratio beat must set the delivery against both of the instrument's timescales"
         for token in ("on one clock", "not clock synchronization", "priority"):
             assert token in mode_a, f"the Mode A beat is missing {token!r}"

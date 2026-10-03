@@ -468,7 +468,9 @@ def plot_grid(ax, cells):
     # the null. Once both are drawn, a label naming the weaker of the two costs a legend row
     # it now collides with and tells the reader less than the thing beside it. The caption
     # names the diagonal instead.
-    ax.text(lim * 0.72, lim * 0.11, "closer to the grid", fontsize=8,
+    # "lattice", not "grid": the supplement keeps "grid" for the instants a timestamp changes
+    # value and names the retentions 0, 1/q, ..., 1 a configuration can reach its q-lattice.
+    ax.text(lim * 0.72, lim * 0.11, "closer to the lattice", fontsize=8,
             color=KEPT, ha="center", style="italic")
 
     # ls="none" on every entry. The arms are a scatter; nothing joins them. Only the filled

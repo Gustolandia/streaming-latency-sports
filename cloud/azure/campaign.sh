@@ -348,6 +348,18 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
   fi
 
   [ -n "$PRIORITY" ] && wrap_sched="sudo chrt -f 80"
+  # R1 (3 Oct 2026, exploratory): go-first priority for the consumer alone, so that what it
+  # removes from the send-timed latency is the receiving thread's own wait and nothing on the
+  # producer's side; and, in every run, the packets as the receiver's kernel took them in, at
+  # full length, so that each message's receipt can be timed from the kernel's own timestamp.
+  local consumer_wrap="sudo ip netns exec sblrecv sudo -u $ME" recv_full=""
+  [ -n "$CONSUMER_PRIORITY" ] && consumer_wrap="sudo chrt -f 80 $consumer_wrap"
+  if [ -n "$RECV_CAPTURE" ]; then
+    sudo ip netns exec sblrecv tcpdump -i any -s 0 --time-stamp-precision=nano \
+      -w "$RUN_DIR/receiver_full.pcap" host "$BROKER_PRIV" > "$RUN_DIR/receiver_full.err" 2>&1 &
+    recv_full=$!
+    sleep 2
+  fi
   chronyc -c tracking > "$RUN_DIR/clock_before.txt" 2>/dev/null
   head -n 1 /proc/stat > "$RUN_DIR/stat_before.txt"
   tcp_counters before
@@ -356,7 +368,7 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
     client_args=()
     [ -n "${CLIENT:-}" ] && client_args+=(-CLIENT "$CLIENT")
     [ -n "${ACK_STAMP:-}" ] && client_args+=(-ACK_STAMP "$ACK_STAMP")
-    SBL_CONSUMER_WRAP="sudo ip netns exec sblrecv sudo -u $ME" SBL_SCHED_WRAP="$wrap_sched" \
+    SBL_CONSUMER_WRAP="$consumer_wrap" SBL_SCHED_WRAP="$wrap_sched" \
       timeout -k 30 $(( DURATION + 300 )) bash scripts/run_kafka_trial.sh "$RUN_ID" "$run_plan" \
       "$run_speedup" "$run_maxt" -BOOTSTRAP "$KAFKA_BOOTSTRAP" \
       -PRODUCER_EXTRA "$KAFKA_PRODUCER_EXTRA $record_args" \
@@ -364,7 +376,7 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
       -IDLE_SECONDS 15 "${client_args[@]}" > "$RUN_DIR/trial.log" 2>&1
     rc=$?
   else
-    SBL_CONSUMER_WRAP="sudo ip netns exec sblrecv sudo -u $ME" SBL_SCHED_WRAP="$wrap_sched" \
+    SBL_CONSUMER_WRAP="$consumer_wrap" SBL_SCHED_WRAP="$wrap_sched" \
       timeout -k 30 $(( DURATION + 300 )) bash scripts/run_redis_trial.sh "$RUN_ID" "$run_plan" \
       "$run_speedup" "$run_maxt" -RedisHost "$REDIS_HOST" -PORT "$REDIS_PORT" \
       -PRODUCER_EXTRA "$record_args" \
@@ -381,6 +393,13 @@ print("%d" % round(min(100.0, max(1.0, out))))' "$LOAD" "$shown" "$LOAD")
   remote_broker "docker logs --timestamps --since $began --until $(( ended + 1 )) $container" \
     > "$RUN_DIR/broker_log.txt" 2>&1
 
+  if [ -n "$recv_full" ]; then
+    # Stopped by its own command line, as M0's capture below is, for the reason given there.
+    sudo pkill -INT -f "tcpdump -i any -s 0 --time-stamp-precision=nano -w $RUN_DIR/receiver_full.pcap" 2>/dev/null
+    for _ in $(seq 1 20); do ps -p "$recv_full" > /dev/null || break; sleep 0.5; done
+    sudo pkill -KILL -f "tcpdump -i any -s 0 --time-stamp-precision=nano -w $RUN_DIR/receiver_full.pcap" 2>/dev/null
+    wait "$recv_full" 2>/dev/null
+  fi
   if [ -n "$receiver_capture" ]; then
     # Stopped by its own command line, not through the sudo that started it: sudo does not relay
     # a signal sent from its own process group, so `sudo kill -INT <that sudo>` never reached
@@ -459,6 +478,9 @@ values = {
     # half captures packets. Every other block leaves all three unset.
     "PLAN_KIND": p.get("plan") or "", "ACK_BATCH": p.get("ack_batch") or "",
     "CAPTURE": "1" if p.get("capture") else "",
+    # R1 (3 Oct 2026): go-first for the consumer alone, and the receiver's packets in every run.
+    "CONSUMER_PRIORITY": "1" if p.get("consumer_priority") else "",
+    "RECV_CAPTURE": "1" if p.get("recv_capture") else "",
     "TRACE": 1 if int(hashlib.sha256(row["key"].encode()).hexdigest(), 16) % 2 == 0 else 0,
     "HZ": round(1000 / tick) if tick else "",
 }
@@ -477,7 +499,7 @@ PY
   echo "$ROW" > "$RUN_DIR/queue_row.json"
   printf '{"lane": "%s", "profile": "%s", "driver": "%s", "commit": "%s"}\n' "$LANE" \
     "${AZ_PROFILE:-unknown}" "$(hostname)" "$(git rev-parse HEAD 2>/dev/null)" > "$RUN_DIR/lane.json"
-  log "run $KEY: $BACKEND, load $LOAD%, slice ${SLICE_NS:-kernel default}, delay $DELAY_MS ms${PRIORITY:+, go-first}${CPUS:+, $CPUS CPUs online}"
+  log "run $KEY: $BACKEND, load $LOAD%, slice ${SLICE_NS:-kernel default}, delay $DELAY_MS ms${PRIORITY:+, go-first}${CONSUMER_PRIORITY:+, go-first consumer}${RECV_CAPTURE:+, receiver capture}${CPUS:+, $CPUS CPUs online}"
   REASON=""
   STOP_REASON=""
   run_one

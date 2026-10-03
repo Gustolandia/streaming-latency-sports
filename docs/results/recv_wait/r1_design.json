@@ -1,0 +1,15 @@
+{
+  "about": "R1, exploratory, 3 Oct 2026: how much the consumer's own wait for a core lengthens the send-timed latency D, measured three ways in the same runs (docs/results/recv_wait/r1_plan.md). Queue: python3 scripts/run_queue.py make --design docs/results/recv_wait/r1_design.json --out runs/azure/queues/r1.csv",
+  "rounds": 6,
+  "seed": 20261003,
+  "setups": [
+    {"id": "R1-kafka-l75-ord", "backend": "kafka", "load_pct": 75, "slice_ns": 3000000, "delay_ms": 0, "trace_half": true, "trace_events": true, "recv_capture": true},
+    {"id": "R1-kafka-l75-rtc", "backend": "kafka", "load_pct": 75, "slice_ns": 3000000, "delay_ms": 0, "trace_half": true, "trace_events": true, "recv_capture": true, "consumer_priority": true},
+    {"id": "R1-kafka-l88-ord", "backend": "kafka", "load_pct": 88, "slice_ns": 3000000, "delay_ms": 0, "trace_half": true, "trace_events": true, "recv_capture": true},
+    {"id": "R1-kafka-l88-rtc", "backend": "kafka", "load_pct": 88, "slice_ns": 3000000, "delay_ms": 0, "trace_half": true, "trace_events": true, "recv_capture": true, "consumer_priority": true},
+    {"id": "R1-redis-l75-ord", "backend": "redis", "load_pct": 75, "slice_ns": 3000000, "delay_ms": 0, "trace_half": true, "trace_events": true, "recv_capture": true},
+    {"id": "R1-redis-l75-rtc", "backend": "redis", "load_pct": 75, "slice_ns": 3000000, "delay_ms": 0, "trace_half": true, "trace_events": true, "recv_capture": true, "consumer_priority": true},
+    {"id": "R1-redis-l88-ord", "backend": "redis", "load_pct": 88, "slice_ns": 3000000, "delay_ms": 0, "trace_half": true, "trace_events": true, "recv_capture": true},
+    {"id": "R1-redis-l88-rtc", "backend": "redis", "load_pct": 88, "slice_ns": 3000000, "delay_ms": 0, "trace_half": true, "trace_events": true, "recv_capture": true, "consumer_priority": true}
+  ]
+}

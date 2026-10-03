@@ -945,11 +945,15 @@ and $A$ is producer-side on one clock. A harness that records its own acknowledg
 therefore recovers the delivery time it failed to measure. Its median error is
 $\recoveryErrPass\%$ on the $\recoveryPassN$ conditions the check passes and
 $\recoveryErrFail\%$ on the $\recoveryFailN$ it rejects, with upper quartiles of
-$\recoveryErrPassHi\%$ and $\recoveryErrFailHi\%$, two populations that the data cannot tell apart
-(Supplement~S3.8). The repair sits beside the check of Section~\ref{sec:gate}. The check
+$\recoveryErrPassHi\%$ and $\recoveryErrFailHi\%$, two populations that the data cannot tell
+apart. The repair sits beside the check of Section~\ref{sec:gate}. The check
 declines to publish the proxy as a latency, and the repair reports the delivery time in its
 place. Timing from the send removes the negative values but not the receipt's own wait for a
-core, which inflates every latency where no check can see it.
+core, which inflates every latency where no check can see it. Measured three ways in
+$\recvWaitRuns$ later runs, that wait added $\recvWaitAddedLo$--$\recvWaitAddedHi$~ms to the mean
+latency on both brokers at $\recvLowLoadPct$ and $\recvHighLoadPct\%$ load, while the median
+message waited $\recvWaitMedianLoUs$--$\recvWaitMedianHiUs\,\mu$s (Supplement~S3.8
+and~S3.10).
 
 \subsection{Checks that cost nothing}
 \label{sec:checks}

@@ -1127,6 +1127,72 @@ S3.5 \\
 \end{tabular}
 \end{table}
 
+\subsection{S3.10. Timing from the send keeps the receiving thread's wait for a core, which three measurements put under a millisecond on the mean}
+\label{s:recvwait}
+
+A latency timed from the send carries the receiving thread's wait for a core. By
+Equation~\ref{P-eq:model}, $D = S + A$ for every message, so the acknowledging thread's wait
+cancels: it lengthens $A$ by as much as it shortens $S$. The receiving thread's wait does not
+cancel. The consumer reads its clock only after its thread has been woken and given a core, so
+every $D$ holds that wait, which is never negative and which the sign check of
+Section~\ref{P-sec:gate} cannot see. After the registered campaign we measured it three ways in the
+same runs, by a plan and four predictions written before any run.
+
+The runs used the first x86 pair, both brokers, $\recvLowLoadPct$ and $\recvHighLoadPct\%$ load
+and the base slice at $3$~ms, with no delay added. Eight setups, each broker at each load with an
+ordinary or a go-first consumer, ran in six shuffled rounds. Three runs added before anything was
+read gave every setup at least three traced runs, and all $\recvWaitRuns$ runs passed the
+integrity rule. Method~1 runs the consumer alone in the real-time class at priority $80$ and reads
+what that removes from $D$ at unchanged load. Method~2 traces the scheduler in a random half of the
+runs and reads the receiving thread's own wait for a core before each stamp, the measure S3.5 makes
+of the acknowledging thread's. Method~3 captures the receiver's packets in every run with the
+kernel's nanosecond timestamps, and times each message from the packet that carries it to its
+stamp, a delay that holds the wake-up, the wait and the client's own work.
+
+\begin{table}[tb]
+\caption{\textbf{Three measurements put the receiving thread's wait at
+$\recvWaitAddedLo$--$\recvWaitAddedHi$~ms of the mean latency.} One row for each broker and load.
+Method~1 is the fall in mean $D$ when the consumer alone goes first. Methods~2 and~3 are the falls,
+from ordinary to go-first runs, in the mean traced wait and in the mean delay from the kernel's
+receive timestamp to the stamp. Each figure is a setup's median over its runs. The client's work is the
+median, over traced runs, of the delay beyond the traced wait.}
+\label{stab:recvwait}
+\centering
+\footnotesize
+\input{docs/generated/recv_wait_table}
+\end{table}
+
+The three estimates run from $\recvWaitAddedLo$ to $\recvWaitAddedHi$~ms
+(Table~\ref{stab:recvwait}) and lie within a factor of $\recvWaitFactor$ of each other at
+\recvWaitAgreePartsWord{} of the four points. The wait lives in the tail. In ordinary runs the
+median message waited $\recvWaitMedianLoUs$--$\recvWaitMedianHiUs\,\mu$s and the mean
+$\recvWaitMeanLo$--$\recvWaitMeanHi$~ms, while the ninetieth percentile reached
+$\recvWaitNinetyLo$--$\recvWaitNinetyHi$~ms. Go-first brought the mean wait down to
+$\recvWaitGoFirstLoUs$--$\recvWaitGoFirstHiUs\,\mu$s. On \redis{} it cut the ninetieth percentile
+of $D$ to under $1$~ms and left the median almost where it was.
+
+The first prediction held. On both brokers at both loads the ordinary wait's mean lay between
+$\recvPredMeanLoMs$ and $\recvPredMeanHiMs$~ms and its ninetieth percentile above
+$\recvPredNinetyMs$~ms, and go-first took the mean below $\recvPredGoFirstMs$~ms. The other three
+failed, each on \kafka{}. There go-first lowered the ninetieth percentile of $D$ by less than the
+$\recvPredFallMs$~ms predicted at $\recvLowLoadPct\%$ load, and moved the median by more than the
+$\recvPredMoveMs$~ms allowed at $\recvHighLoadPct\%$. The kernel's delay covered the traced wait for
+$\recvKernelShareFloor\%$ or more of every traced run's messages, against the $\recvPredSharePct\%$
+predicted, but \kafka{}'s client then worked longer than the $\recvPredWorkMs$~ms predicted before
+its stamp, where \redis{}'s stayed under it. At $\recvLowLoadPct\%$ load \kafka{}'s first two
+estimates lie further apart than the factor of $\recvWaitFactor$ allows. We have not tested why
+\kafka{} differs.
+
+Three things qualify the figures. The tracer is not a free observer, as S3.5 found: in ordinary
+setups the traced runs' mean $D$ ran $\recvTracerLoPct$--$\recvTracerHiPct\%$ above the untraced
+runs', so the second method may read the wait somewhat high. In \recvPausedRunsWord{} runs a
+message arrived more than $150$~ms late, \recvStallRunsWord{} of them while the whole driver
+stalled, of the kind S6.4 traces to the receiving side's disk. A setup's value is a median over
+its runs, which sets them aside. And three of the four go-first setups hold only two untraced runs,
+too few to judge the tracer there. The plan, the register of every run, the reading and its
+record are in the repository under \brk{docs/results/recv_wait}, read by
+\brk{scripts/recv_wait.py}.
+
 \section{S4. Failure 2: the full evidence}
 \label{s:failure2}
 

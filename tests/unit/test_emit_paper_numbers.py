@@ -2637,3 +2637,69 @@ class TestTheToolsBlock:
         assert main(["--ledger", str(led), "--out", str(out), "--table",
                      str(tmp_path / "t.tex"), "--tools-table", str(tools)]) == 0
         assert not tools.exists()
+
+
+class TestTheReceiverWaitIsEmitted:
+    """R1's numbers, for the sentence of Section VI-B and Supplement S3.10, read through
+    scripts/recv_wait.py's own comparison of the committed run table rather than typed."""
+
+    def test_the_committed_reading_gives_the_printed_numbers(self):
+        m = dict(epn.recv_wait_macros())
+        assert m["recvWaitRuns"] == "51"
+        assert (m["recvLowLoadPct"], m["recvHighLoadPct"]) == ("75", "88")
+        assert (m["recvWaitAddedLo"], m["recvWaitAddedHi"]) == ("0.41", "0.94")
+        assert (m["recvWaitAgreeParts"], m["recvWaitFactor"]) == ("3", "1.5")
+        assert (m["recvWaitMedianLoUs"], m["recvWaitMedianHiUs"]) == ("18", "46")
+        assert (m["recvWaitMeanLo"], m["recvWaitMeanHi"]) == ("0.51", "0.92")
+        assert (m["recvWaitNinetyLo"], m["recvWaitNinetyHi"]) == ("2.13", "2.92")
+        assert (m["recvWaitGoFirstLoUs"], m["recvWaitGoFirstHiUs"]) == ("10", "11")
+        assert m["recvKernelShareFloor"] == "99.7"
+        assert (m["recvTracerLoPct"], m["recvTracerHiPct"]) == ("5", "22")
+        assert (m["recvPausedRuns"], m["recvStallRuns"]) == ("5", "3")
+
+    def test_the_bars_are_the_plans_own(self):
+        """The predictions' bars come from the constants the reading applies, so a sentence
+        that quotes a bar quotes the one the verdict was read against."""
+        m = dict(epn.recv_wait_macros())
+        bars = ("recvPredMeanLoMs", "recvPredMeanHiMs", "recvPredNinetyMs", "recvPredGoFirstMs",
+                "recvPredFallMs", "recvPredMoveMs", "recvPredSharePct", "recvPredWorkMs")
+        assert [m[b] for b in bars] == ["0.3", "1.2", "1.5", "0.1", "1", "0.3", "95", "0.3"]
+
+    def test_the_share_floor_never_rounds_up_past_the_lowest_run(self):
+        """99.7995% of one run's messages is "99.7% or more", never "99.8% or more"."""
+        import recv_wait
+        with open(Path(epn.RECV_WAIT_DIR) / "r1_runs.csv", newline="", encoding="utf-8") as fh:
+            rows = list(csv.DictReader(fh))
+        lowest = min(float(r["kernel_ge_wait_share"]) for r in rows if r["kernel_ge_wait_share"])
+        floor = float(dict(epn.recv_wait_macros())["recvKernelShareFloor"])
+        assert floor / 100 <= lowest < floor / 100 + 0.001
+        assert recv_wait.R1C_SHARE < lowest
+
+    def test_the_counts_the_prose_spells_are_spelled(self):
+        twins = dict(epn.spelled_twins(epn.recv_wait_macros()))
+        assert twins == {"recvWaitAgreePartsWord": "three", "recvPausedRunsWord": "five",
+                         "recvStallRunsWord": "three"}
+
+    def test_the_committed_table_is_the_one_the_data_give(self):
+        repo = Path(__file__).resolve().parents[2]
+        have = (repo / "docs" / "generated" / "recv_wait_table.tex").read_text(encoding="utf-8")
+        assert have.replace("\r\n", "\n") == epn.render_recv_wait_table()
+        rows = [line for line in have.splitlines() if line.startswith(("\\kafka", "\\redis"))]
+        assert rows[0] == ("\\kafka{}, $75\\%$ & $0.43$ & $0.70$ & $0.64$ & $1.64$ & "
+                           "$2.03 \\to 1.82$ & $5.21 \\to 4.27$ & $0.37$ \\\\")
+        assert len(rows) == 4
+
+    def test_a_missing_reading_emits_nothing(self, tmp_path):
+        assert epn.recv_wait_macros(str(tmp_path)) == []
+        assert epn.render_recv_wait_table(str(tmp_path)) == ""
+        (tmp_path / "r1_runs.csv").write_text("run\n", encoding="utf-8")
+        assert epn.recv_wait_macros(str(tmp_path)) == [], "both files or nothing"
+
+    def test_main_skips_the_table_where_the_reading_is_absent(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(epn, "render_recv_wait_table", lambda *a, **kw: "")
+        led, out = tmp_path / "l.csv", tmp_path / "n.tex"
+        write_ledger(led, [("load_sweep", 10, 90, 0)])
+        recv = tmp_path / "recv.tex"
+        assert main(["--ledger", str(led), "--out", str(out), "--table",
+                     str(tmp_path / "t.tex"), "--recv-wait-table", str(recv)]) == 0
+        assert not recv.exists()

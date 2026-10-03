@@ -3313,12 +3313,128 @@ def cliff_macros(root=CLIFF_DIR):
     ]
 
 
+RECV_WAIT_DIR = os.path.join("docs", "results", "recv_wait")
+DEFAULT_RECV_WAIT_TABLE = os.path.join("docs", "generated", "recv_wait_table.tex")
+
+
+def _recv_wait_reading(root=RECV_WAIT_DIR):
+    """(R1's comparison, its run rows, its pauses), the comparison computed by
+    scripts/recv_wait.py's own code from the committed run table; None unless both files are
+    there, since a range from half its inputs would be a different range."""
+    import csv as _csv
+    import recv_wait
+    runs, pauses = os.path.join(root, "r1_runs.csv"), os.path.join(root, "r1_pauses.csv")
+    if not (os.path.exists(runs) and os.path.exists(pauses)):
+        return None
+    with open(runs, newline="", encoding="utf-8") as fh:
+        rows = list(_csv.DictReader(fh))
+    with open(pauses, newline="", encoding="utf-8") as fh:
+        held = list(_csv.DictReader(fh))
+    return recv_wait.compare(rows), rows, held
+
+
+def _ms2(us):
+    return "%.2f" % (us / 1000.0)
+
+
+def recv_wait_macros(root=RECV_WAIT_DIR):
+    """R1, the receiving thread's own wait for a CPU, measured three ways after the law
+    campaign: the sentence of Section VI-B that sizes it, and Supplement S3.10.
+
+    Read through scripts/recv_wait.py's own comparison of the committed run table, so no figure
+    here can part from the reading its record gives (docs/results/recv_wait/README.md). Ranges
+    run over the four broker-and-load points. A wait is a setup's median, over its traced runs,
+    of each run's statistic, as the plan defines a setup's value; its ordinary arm is the
+    first of the pair, go-first the second.
+    """
+    read = _recv_wait_reading(root)
+    if read is None:
+        return []
+    import pause_census
+    import recv_wait
+    found, rows, pauses = read
+    parts = list(found.values())
+    added = [e for f in parts for e in f["estimates"]]
+    wait = [f["wait"] for f in parts]
+    tracer = [f["apart"]["traced"]["D"]["mean"][0] / f["apart"]["untraced"]["D"]["mean"][0] - 1
+              for f in parts]
+    shares = [float(r["kernel_ge_wait_share"]) for r in rows if r["kernel_ge_wait_share"]]
+    # A pause in which the driver's own sampler stopped too is the whole machine stalling, the
+    # census's reading of 28 September, not the receiving program alone.
+    stalls = [p for p in pauses if p["kind"] == "receiver" and p["sampler_gap_s"]
+              and float(p["sampler_gap_s"]) >= pause_census.LONG_S]
+    loads = sorted(set(int(load) for _, load in found))
+    return [
+        ("recvWaitRuns", str(len(rows))),
+        ("recvLowLoadPct", str(loads[0])),
+        ("recvHighLoadPct", str(loads[-1])),
+        ("recvWaitAddedLo", _ms2(min(added))),
+        ("recvWaitAddedHi", _ms2(max(added))),
+        ("recvWaitAgreeParts", str(sum(1 for f in parts if f["R1-d"]))),
+        ("recvWaitFactor", "%.1f" % recv_wait.R1D_FACTOR),
+        ("recvWaitMedianLoUs", "%.0f" % min(w["median"][0] for w in wait)),
+        ("recvWaitMedianHiUs", "%.0f" % max(w["median"][0] for w in wait)),
+        ("recvWaitMeanLo", _ms2(min(w["mean"][0] for w in wait))),
+        ("recvWaitMeanHi", _ms2(max(w["mean"][0] for w in wait))),
+        ("recvWaitNinetyLo", _ms2(min(w["p90"][0] for w in wait))),
+        ("recvWaitNinetyHi", _ms2(max(w["p90"][0] for w in wait))),
+        ("recvWaitGoFirstLoUs", "%.0f" % min(w["mean"][1] for w in wait)),
+        ("recvWaitGoFirstHiUs", "%.0f" % max(w["mean"][1] for w in wait)),
+        ("recvKernelShareFloor", "%.1f" % (math.floor(min(shares) * 1000) / 10.0)),
+        ("recvTracerLoPct", "%.0f" % (100 * min(tracer))),
+        ("recvTracerHiPct", "%.0f" % (100 * max(tracer))),
+        # The plan's own bars, from the constants the reading applies.
+        ("recvPredMeanLoMs", "%.1f" % (recv_wait.R1A_MEAN_US[0] / 1000)),
+        ("recvPredMeanHiMs", "%.1f" % (recv_wait.R1A_MEAN_US[1] / 1000)),
+        ("recvPredNinetyMs", "%.1f" % (recv_wait.R1A_P90_US / 1000)),
+        ("recvPredGoFirstMs", "%.1f" % (recv_wait.R1A_PRIORITY_MEAN_US / 1000)),
+        ("recvPredFallMs", "%.0f" % (recv_wait.R1B_P90_FALL_US / 1000)),
+        ("recvPredMoveMs", "%.1f" % (recv_wait.R1B_MEDIAN_MOVE_US / 1000)),
+        ("recvPredSharePct", "%.0f" % (100 * recv_wait.R1C_SHARE)),
+        ("recvPredWorkMs", "%.1f" % (recv_wait.R1C_DIFFERENCE_US / 1000)),
+        ("recvPausedRuns", str(len(set(p["run"] for p in pauses)))),
+        ("recvStallRuns", str(len(stalls))),
+    ]
+
+
+def render_recv_wait_table(root=RECV_WAIT_DIR):
+    """R1's four broker-and-load points, one row each: the three estimates of what the
+    receiving thread's wait adds to the mean of D and how far apart they lie, what go-first for
+    the consumer alone did to D's median and ninetieth percentile, and the client's own work
+    after its thread runs. Empty where the reading is missing."""
+    read = _recv_wait_reading(root)
+    if read is None:
+        return ""
+    lines = [
+        "% Generated by scripts/emit_paper_numbers.py from",
+        "% docs/results/recv_wait/r1_runs.csv. Do not edit by hand.",
+        "\\begin{tabular}{@{}lrrrrrrr@{}}",
+        "\\toprule",
+        "& \\multicolumn{3}{c}{Added to the mean of $D$ (ms)} & Largest over & "
+        "\\multicolumn{2}{c}{$D$, ordinary $\\to$ go-first (ms)} & Client's \\\\",
+        "\\cmidrule(lr){2-4}\\cmidrule(lr){6-7}",
+        "Broker, load & Method 1 & Method 2 & Method 3 & smallest & Median "
+        "& Ninetieth percentile & work (ms) \\\\",
+        "\\midrule",
+    ]
+    for (broker, load), f in sorted(read[0].items()):
+        d = f["D"]
+        lines.append("\\%s{}, $%s\\%%$ & $%s$ & $%s$ & $%s$ & $%.2f$ & $%s \\to %s$ & "
+                     "$%s \\to %s$ & $%s$ \\\\" % (
+                         broker, load, _ms2(f["estimates"][0]), _ms2(f["estimates"][1]),
+                         _ms2(f["estimates"][2]), f["ratio"], _ms2(d["median"][0]),
+                         _ms2(d["median"][1]), _ms2(d["p90"][0]), _ms2(d["p90"][1]),
+                         _ms2(f["difference"])))
+    lines += ["\\bottomrule", "\\end{tabular}", ""]
+    return "\n".join(lines)
+
+
 #: Counts the prose sets as words. The ledger printed them as digits ("3 local maxima",
 #: "across 3 levels", "8 matched pairs") in a manuscript that spells small counts out
 #: everywhere else; an outside reading (1 Oct 2026) found the two styles side by side. Each
 #: twin is the same count, spelled by _spell, so the word cannot drift from the number.
 SPELLED_TWINS = ("tracedModes", "tracedRatioArms", "tostLevels", "rtPairs", "rtResidualPairs",
-                 "testbedCpus")
+                 "testbedCpus", "recvWaitAgreeParts", "recvPausedRuns", "recvStallRuns")
 
 
 def spelled_twins(pairs):
@@ -3348,7 +3464,7 @@ def _all_pairs(m):
             + spread_macros() + payload_flip_macros() + literature_census_macros()
             + arm_macros() + manipulation_macros()
             + deletion_macros() + literature_macros() + cliff_macros() + reach_macros()
-            + tools_block_macros())
+            + tools_block_macros() + recv_wait_macros())
 
 
 def render(m):
@@ -3368,6 +3484,7 @@ def main(argv=None):
     ap.add_argument("--spread-table", default=DEFAULT_SPREAD_TABLE)
     ap.add_argument("--interval-table", default=DEFAULT_INTERVAL_TABLE)
     ap.add_argument("--tools-table", default=DEFAULT_TOOLS_TABLE)
+    ap.add_argument("--recv-wait-table", default=DEFAULT_RECV_WAIT_TABLE)
     ap.add_argument("--check", action="store_true",
                     help="fail if the committed file disagrees with the ledger; write nothing")
     args = ap.parse_args(argv)
@@ -3404,6 +3521,9 @@ def main(argv=None):
     # beside data that no longer supports it. Only its absence is tolerated.
     if os.path.exists(TOOLS_T1) and os.path.exists(TOOLS_T2):
         targets.append((args.tools_table, render_tools_table()))
+    recv = render_recv_wait_table()
+    if recv:
+        targets.append((args.recv_wait_table, recv))
 
     if args.check:
         stale = False

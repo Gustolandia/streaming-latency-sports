@@ -438,19 +438,19 @@ From 3,315 StatsBomb matches across 52 competition-seasons (2003–2023), via
 
 The paper's abstract, which by the authors' rule carries no numbers and names no tool:
 
-> Benchmarks guide the choice of a message broker, and now report latencies below a
+> Benchmarks guide the choice of a message broker. They now report latencies below a
 > millisecond, finer than some of their clocks resolve and shorter than a thread's wait for a
-> processor on a busy host. Timed on one clock from the broker's acknowledgment, many of our
-> messages came out negative, as if delivered before they were sent; timed from the send, none
-> did, so the cause is not clock synchronization. It is scheduling: the thread recording the
-> acknowledgment waits for a core longer than the message takes, and giving it priority at
-> unchanged load removes most negatives. Most tools we read at source discard such values
-> without counting them, and where the rule is a positivity filter on a millisecond clock, it
-> deletes the fastest messages too. We derive the fraction kept and confirm a registered
-> prediction of it. Of the tools we ran, most never meet the value, because they time on one
-> clock and so cannot measure a one-way delivery. In practice a sub-millisecond median can
-> describe the clock, not the broker, and a void result looks sound: a sign check rejected most
-> of our runs. We give benchmark authors checks that cost nothing.
+> core on a busy host. Timed on one clock from the broker's acknowledgment, many of our messages
+> came out negative, as if delivered before they were sent. Timed from the send, none did, so the
+> cause is not clock synchronization. It is scheduling. The thread recording the acknowledgment
+> waits for a core longer than the message takes. Giving it priority at unchanged load removes
+> most negatives. Most tools we read at source discard such values without counting them. Where
+> the rule is a positivity filter on a millisecond clock, it deletes the fastest messages too. We
+> derive the fraction kept and confirm a registered prediction of it. Of the tools we ran, most
+> take both timestamps from one clock, so they never meet a negative and cannot measure a one-way
+> delivery. In practice a sub-millisecond median can describe the clock, not the broker. A void
+> result also looks sound: a sign check rejected most of our runs. We give benchmark authors
+> checks that cost nothing.
 
 The paper has three parts and draws their practical consequences in a fourth. The numbers behind
 the abstract, part by part:
@@ -1064,14 +1064,14 @@ reports no error, the source still looks plausible, and the defect appears only 
 That failure reached the manuscript three times here, twice past a full source-level check, which
 is why the check now runs on the artefact a reader actually receives.
 
-**Status (the PDFs built on 2 Oct 2026):** compiles clean, with 0 errors, 0 undefined
-references or citations and 0 overfull boxes; 11 pages against TC's 10–12 budget, 42
-references against TC's cap of 45, a 196-word abstract against TC's 100–200 range, and two
-author biographies (G. P. Ricou and R. Duvignau) inside TC's 145-word cap. Five figures, four
+**Status (the PDFs built on 3 Oct 2026):** compiles clean, with 0 errors, 0 undefined
+references or citations and 0 overfull boxes; 12 pages against TC's 10–12 budget, 43
+references against TC's cap of 45, a 195-word abstract against TC's 100–200 range, and two
+author biographies (G. P. Ricou and R. Duvignau) inside TC's 145-word cap. Five figures, five
 tables and six numbered equations. Title: *Faster than Light: Latency Measurement Errors in
-Message-Broker Benchmarks*. The journal supplement, S1–S9 under the paper's byline, is 30 pages with 58
-references, inside the 25–30 an outside editor asked for; the postmortem, the complete
-single-author record that is not submitted, is 75 pages.
+Message-Broker Benchmarks*. The journal supplement, S1–S9 under the paper's byline, is 31 pages with 58
+references, one page of references past the 25–30 an outside editor asked for; the postmortem,
+the complete single-author record that is not submitted, is 76 pages.
 Formatted with `IEEEtran` (journal, 10pt) for IEEE Transactions on Computers.
 
 Sentence length is gated too, since round 43. A co-author reported that average sentence
@@ -1247,7 +1247,11 @@ Measurement Errors in Message-Broker Benchmarks* and gives both failures equal s
 clock), the mechanism (a timestamp taken late, with its small laws as Equations 3 to 5) and the
 industry (what the tools do with a latency at or below zero, which on a millisecond clock is the
 second failure), and adds Practical Implications, which the abstract and the introduction now lead
-with; 11 pages, 42 references. **The supplement is now two documents:** the journal supplement S1–S9, in the paper's
+with; 12 pages, 43 references. **Paper v6.1** (3 Oct) rewrites the prose of the paper and the
+journal supplement to one idea per sentence, the way Tipler and Mosca's *Physics for Scientists
+and Engineers* writes: each term is defined where it first appears, colons and semicolons that
+joined two ideas became full stops, long paragraphs were split, and the supplement's second sense
+of "grid" is now the *q*-lattice; no claim and no number changed. **The supplement is now two documents:** the journal supplement S1–S9, in the paper's
 order under both authors' names, and the single-author postmortem S1–S37, the complete record, not
 submitted. **A registered audit of 43 published reports** found the signature in eight configurations
 of two and a stated retention in none. **The fidelity audit corrected:** 109 of the 126 runs behind

@@ -67,13 +67,16 @@ class TestR1TheConclusionAgreesWithTheReportingRule:
         Introduction now says the arithmetic "subtracted two timestamps written by two different
         threads", so the shared words are "two timestamps written by" and both ends are pinned
         to them.
+
+        v6.1 (3 Oct): the Introduction's thread now waits "for a core", the Conclusion's word,
+        so the two ends share the resource's name as well as the phrase.
         """
         flat = " ".join(paper.split())
         intro = flat[flat.index(RE_BS[:1] + "section{Introduction}"):
                      flat.index(RE_BS[:1] + "subsection{Contributions}")]
         conclusion = flat[flat.index(RE_BS[:1] + "section{Conclusion}"):]
         assert ("subtracted two timestamps written by two different threads, and a thread "
-                "must wait for a processor before it can read the clock") in intro
+                "must wait for a core before it can read the clock") in intro
         assert "Two timestamps written by threads that each wait for a core" in conclusion
 
     def test_the_rule_it_was_contradicting_is_still_there_and_still_measured(self, paper,

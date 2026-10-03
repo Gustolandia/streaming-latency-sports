@@ -45,20 +45,6 @@
     },
     {
       "file": "supplement.tex",
-      "key": "flight",
-      "scope": "line",
-      "anchor": "At one request in flight",
-      "reason": "Kafka's in-flight request count, the name of the client setting the sentence explains; not the retired timing sense of 'flight'."
-    },
-    {
-      "file": "supplement.tex",
-      "key": "flight",
-      "scope": "line",
-      "anchor": "and requires one request in flight",
-      "reason": "The same client setting: inline timestamping needs one request in flight."
-    },
-    {
-      "file": "supplement.tex",
       "key": "independence",
       "scope": "line",
       "anchor": "timestamps would corrupt events independently",

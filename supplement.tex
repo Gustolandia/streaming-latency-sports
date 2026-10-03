@@ -158,8 +158,8 @@ utilization $\rho$ & The fraction of processor time busy on the host, measured o
 core count $k$ & The number of cores the background load occupies. \\
 load geometry & How a utilization is reached: the load concentrated on few cores or spread over
 many. \\
-occupancy $p$ & The probability that a timestamping thread is preempted and off the
-processor. \\
+occupancy $p$ & The probability that a timestamping thread is preempted and waiting for a
+core. \\
 scheduling delay & The time a thread that is ready to run spends queued before a core runs
 it. \\
 delivery time $D$ & $t_{\mathrm{recv}} - t_{\mathrm{send}}$: from the send call to the consumer
@@ -179,11 +179,14 @@ arbitrarily fine. A difference of two timestamps below zero is a negative span. 
 timestamp resolution $\tau$ & The smallest difference a timestamp can express: one millisecond
 in the OpenMessaging Benchmark. \\
 grid & The instants, $\tau$ apart, at which a timestamp changes value. \\
+$q$-lattice & The retentions $0, 1/q, \ldots, 1$ a paced producer can reach when its send
+interval over $\tau$ is $a/q$ in lowest terms (S4.2). \\
 retention & The fraction of the samples a tool takes that survive into what it reports. \\
-positivity filter & The OpenMessaging Benchmark's rule, at \brk{WorkerStats.java}:95, that
-admits a sample to its histogram only when its end-to-end latency is strictly positive. \\
+positivity filter & A rule that admits a sample to a histogram only when its latency is
+strictly positive, as at \brk{WorkerStats.java}:95 in the OpenMessaging Benchmark. \\
+registered & Committed in public before the data that test it. \\
 sign check & A run is rejected if more than $1\%$ of its events carry a negative value in any
-latency component, or if the median of any component is negative; a condition is usable only
+latency component, or if the median of any component is negative. A condition is usable only
 if all of its runs survive (Section~\ref{P-sec:gate}). \\
 \bottomrule
 \end{tabular}
@@ -208,8 +211,8 @@ processes on one host with $\testbedCpus$ online CPUs, and read one wall clock,
 \textsc{clock\_realtime}, through \brk{time.time_ns()}. No scheduler tunable is written
 anywhere in the archived campaign, which is strong evidence, short of proof, that the kernel's
 defaults applied, among them the derived base slice of $\baseSliceMs$~ms
-(Section~\ref{P-sec:tail}). The clocksource was not recorded;
-\ref{s:failure1} bounds it from a measured read cost. Across hosts, \texttt{chrony} reports an
+(Section~\ref{P-sec:tail}). The clocksource was not recorded, but a
+measured read cost bounds it (\ref{s:failure1}). Across hosts, \texttt{chrony} reports an
 inter-host offset of $\interHostOffsetMs$~ms but bounds its own error at
 $\chronyHostBoundLo$--$\chronyHostBoundHi$~ms per host over the $\chronyHosts$ hosts captured,
 so we claim no cross-host bound.
@@ -253,7 +256,7 @@ bursty with one burst at a known instant, and its concurrency is bounded. The fe
 StatsBomb's open event data~\cite{statsbomb2023}. Our characterization covers $\corpusMatches$
 of its matches, and the campaigns replay \replayedMatchesWord{} of them in order at a chosen
 send rate. A match produces a median of $3{,}507$ events over about $8{,}412$~s, a mean of
-$0.415$ events per second; a match's busiest ten-second window holds $2.70$ events per second
+$0.415$ events per second. A match's busiest ten-second window holds $2.70$ events per second
 at the median. Each of the eleven replayed plans opens with at least five events at one instant:
 two lineup records, two half-start markers and the kick-off pass. Across all $\corpusMatches$
 matches, $575$ open with four. That burst meets the producer when it
@@ -261,10 +264,11 @@ is coldest, which turns a one-off client start-up cost into the median of a shor
 (\ref{s:withdrawn}).
 
 Kick-off times are recorded, so concurrency is observed: across $2{,}346$ kick-off instants at
-most $12$ matches kick off together, and at most $21$ are in play at once. E1's levels,
-$N \in \{1, 9, 10, 12\}$ feeds, are the median kick-off slot, which is also its upper quartile,
-the final matchdays of an 18-team and a 20-team league, and the observed maximum; the powered
-campaigns kept $1$, $9$ and $12$ (\ref{s:brokers}). The law campaign replays a steady 50
+most $12$ matches kick off together, and at most $21$ are in play at once. The historical
+broker comparison, E1, ran at $N \in \{1, 9, 10, 12\}$ feeds. The first is the median kick-off
+slot, which is also its upper quartile. The middle two are the final matchdays of an 18-team and
+a 20-team league, and the last is the observed maximum. The powered campaigns, sized in advance
+for statistical power, kept $1$, $9$ and $12$ (\ref{s:brokers}). The law campaign replays a steady 50
 messages a second instead, except M0, which replays a match's bursts.
 
 \subsection{S1.3. Every setting that can move a latency number}
@@ -272,10 +276,10 @@ messages a second instead, except M0, which replays a match's bursts.
 
 Two clients are comparable only when matched on what they do, because \kafka{} and \redis{}
 expose different settings and matching them by name builds in an asymmetry. Published \kafka{}
-comparisons are frequently not comparable for this reason: client configuration and
+comparisons are frequently not comparable for this reason. Client configuration and
 acknowledgment semantics differ silently between the systems compared~\cite{mohammad2025kafka}.
 \kafka{}'s producer buffers and pipelines by default, while our \redis{} producer dispatches to
-a worker pool. At one request in flight, the \kafka{} client would wait a broker round trip per
+a worker pool. With one request outstanding, the \kafka{} client would wait a broker round trip per
 event and the \redis{} client would not, a difference in the harness that a reader would
 attribute to the broker. Table~\ref{stab:settings} states every client setting that can move a
 latency number, and why it holds its value.
@@ -292,16 +296,16 @@ through a defect it caused, not chosen in advance.}
 Setting & Value & Why \\
 \midrule
 \multicolumn{3}{@{}l}{\emph{\kafka{} producer}} \\
-\texttt{acks} & \texttt{all} & Durability matched to \redis{}'s synchronous \texttt{XADD}; a
+\texttt{acks} & \texttt{all} & Durability matched to \redis{}'s synchronous \texttt{XADD}. A
 weaker acknowledgment would compare different guarantees. \\
 \texttt{linger.ms} & $0$ & No artificial batching delay: on a sparse workload any linger would
 dominate the quantity measured. \\
 \texttt{max-inflight} & $64$ & Learned. At our producer's default of $1$ the client blocks on a round trip
 per event, which makes the comparison one of harnesses (\ref{s:withdrawn}). \\
-\texttt{compression} & none & Football events are small JSON; compression would add CPU work to
+\texttt{compression} & none & Football events are small JSON. Compression would add CPU work to
 the timed path for no representative benefit. \\
-\texttt{ack-stamp} & \texttt{callback} & The default, deliberately asymmetric with \redis{};
-the \texttt{inline} mode measures what the asymmetry costs (\ref{s:brokers}). \\
+\texttt{ack-stamp} & \texttt{callback} & The default, deliberately asymmetric with \redis{}.
+The \texttt{inline} mode measures what the asymmetry costs (\ref{s:brokers}). \\
 \midrule
 \multicolumn{3}{@{}l}{\emph{\redis{} producer}} \\
 send workers & pool & Non-blocking dispatch keeps the emission loop on schedule; send and
@@ -313,14 +317,14 @@ message: at $20$~ms of delay, median end-to-end latency $4{,}138$~ms against $10
 (\ref{s:brokers}). \\
 \redis{} \texttt{count} & $200$ & Read batch, matched to the acknowledgment batch so neither
 dominates. \\
-\kafka{} \texttt{poll-timeout} & $1000$~ms & The client already amortizes fetches; no
+\kafka{} \texttt{poll-timeout} & $1000$~ms & The client already amortizes fetches. No
 per-record round trip exists to remove. \\
 \midrule
 \multicolumn{3}{@{}l}{\emph{Replay}} \\
 speed-up & derived & Learned. Plans carry a built-in $120\times$ compression, so the flag is
-not the rate: it is derived from the plan and checked against wall time before every campaign
+not the rate. The rate is derived from the plan and checked against wall time before every campaign
 (\ref{s:withdrawn}). \\
-window & $60$--$600$~s & Swept on purpose: the number of events a run contains is itself a
+window & $60$--$600$~s & Swept on purpose, because the number of events a run contains is itself a
 variable (\ref{s:withdrawn}). \\
 \bottomrule
 \end{tabular}
@@ -333,7 +337,9 @@ Each campaign manipulates one variable and holds the others fixed, so each settl
 and no claim rests on a single cell. Table~\ref{stab:claims} maps each claim to the campaign
 behind it, the runs per cell and the section here that reports it. H1, H2 and H3 label
 hypotheses the campaigns tested, and E1 is the historical broker comparison on the cloud
-testbed. The injected delay cancels in the transport proxy, so the delay sweep is a negative
+testbed. Codes beginning E-A name the campaigns behind the mechanism of S3, and E-C3 and E-C4
+those behind acknowledgment timestamping. A code ending in b names a second campaign of the same
+manipulation. The injected delay cancels in the transport proxy, so the delay sweep is a negative
 result only (\ref{s:withdrawn}).
 
 \begin{table}[tb]
@@ -394,11 +400,11 @@ timestamp is read on the calling thread immediately before the client is invoked
 \texttt{xadd} returns, with no second thread involved. Under \kafka{} it is read, by default, in
 the client's I/O thread when the delivery callback fires. Our \kafka{} producer's
 \texttt{inline} mode instead timestamps on the calling thread once the send future resolves,
-and requires one request in flight.
+and requires one request outstanding.
 
 The consumer reads $t_{\mathrm{recv}}$ when it holds the record, and an output timestamp
 $t_{\mathrm{out}}$ once the record is in hand. Our \kafka{} consumer parses the payload inside
-\texttt{poll()}, before $t_{\mathrm{recv}}$; our \redis{} consumer parses it between the two.
+\texttt{poll()}, before $t_{\mathrm{recv}}$. Our \redis{} consumer parses it between the two.
 The handling span $t_{\mathrm{out}} - t_{\mathrm{recv}}$ is therefore $\spanKafkaHandlingNs$~ns
 under \kafka{} and $\spanRedisHandlingNs$~ns under \redis{}, medians of run medians over
 $\spanRuns$ runs, and negative on none of the $\spanEvents$ events. The parse thus falls inside
@@ -414,17 +420,17 @@ $t_{\mathrm{out}}$, not $t_{\mathrm{recv}}$, so it contains both parses and is u
 % audit selects; conclusion validity: when the threshold was fixed), S26.2 (the audit table)
 % and S26's E1 selection table.
 
-Where the one-per-cent line sits changes how many runs the sign check rejects, and no
+Where the one-percent line sits changes how many runs the sign check rejects, and no
 conclusion the paper draws. The rule is that of Section~\ref{P-sec:gate}. A run is rejected if
 more than $1\%$ of its events carry a negative value in any latency component, or if the median
-of any component is negative; a condition is usable only if all of its runs survive. We fixed
+of any component is negative. A condition is usable only if all of its runs survive. We fixed
 the rule before the final campaign but after earlier campaigns had run, which is weaker than
 pre-registration, and the threshold sweep below exists partly to compensate. On each testbed
 the rule rejected more than half of the runs (Table~\ref{stab:audit-counts}).
 
 \begin{table}[tb]
 \caption{\textbf{More than half of the runs on each testbed fail the sign check.} Runs behind a
-reported result, by testbed; a condition is usable only if all of its runs survive. This corpus
+reported result, by testbed. A condition is usable only if all of its runs survive. This corpus
 differs from the span recount of Table~\ref{P-tab:spans}, which covers every cloud run that
 produced matched events.}
 \label{stab:audit-counts}
@@ -451,7 +457,7 @@ Both & \auditRuns{} & \auditRejected{} (\auditPct\%) & \auditConditions{} &
 Per-run rates offer no natural threshold, so the line had to be chosen. On the workstation
 testbed $104$ runs carry no negative span at all, and the rest spread over more than four decades of
 rate (Fig.~\ref{sfig:threshold-sweep}a). Raising the threshold lowers the share of runs
-rejected (Fig.~\ref{sfig:threshold-sweep}b), and at one per cent the rule rejects
+rejected (Fig.~\ref{sfig:threshold-sweep}b), and at one percent the rule rejects
 $\auditPctWorkstation\%$ of the $\auditRunsWorkstation$. The verdict on our first result does not
 move with it. Swept from $0$ to $20\%$, the threshold makes none of that result's cells usable,
 and the best of them keeps $23$ of its $30$ runs (\ref{s:withdrawn}).
@@ -461,7 +467,7 @@ and the best of them keeps $23$ of its $30$ runs (\ref{s:withdrawn}).
 \includegraphics[width=\columnwidth]{docs/results/figures/integrity_audit.pdf}
 \caption{\textbf{No natural threshold, and the choice moves no conclusion.} The sign check on
 the workstation testbed. (a)~Per-run negative-span rates in the worst latency component:
-$104$ runs carry none at all, and the rest spread over more than four decades. The one-per-cent rule
+$104$ runs carry none at all, and the rest spread over more than four decades. The one-percent rule
 passes more runs than those $104$, and rejects $\auditPctWorkstation\%$ of the
 $\auditRunsWorkstation$. (b)~Share of runs rejected against the threshold, swept from $0$ to
 $20\%$ of events.}
@@ -477,8 +483,7 @@ from the survivors, and we bound it in the way each corpus allows (Table~\ref{st
 E1, the historical broker comparison on the cloud testbed, lost its rejected values. Panel~(a)
 therefore imputes every rejected \redis{} run at the largest value observed in its own cell, and
 the worst-case Hodges--Lehmann shift stays inside the $1$~ms margin in every cell. That bound
-holds only while
-retention exceeds one half, and the tightest cell sits $2.8$ points above that line.
+holds only while the check keeps more than half of a cell's \redis{} runs, and the tightest cell sits $2.8$ points above that line.
 
 The powered transport campaigns, on which the broker equivalence of
 Section~\ref{P-sec:brokers} rests, fall below that line. The check keeps $25.0$--$53.3\%$ of
@@ -564,7 +569,7 @@ the rate predicts no change, and the M/G/1 waiting-time form we had adopted and 
 such an account (S8).
 
 The pairs come from three campaigns (Table~\ref{stab:priority}). E-A5 is the original
-manipulation, E-A5b widened the load ladder to $\rtRhoLow$ and $\rtRhoHigh\%$, and E-A7
+manipulation, E-A5b widened the range of loads to $\rtRhoLow$ and $\rtRhoHigh\%$, and E-A7
 replicated E-A5. A rule fixed in advance withholds a pair whose two achieved utilizations differ
 by more than $\manipTol$. It withheld $\rtConfounded$ pairs, and the widest disagreement in the
 table is $\manipWorst$, $\manipMargin$ times inside the tolerance.
@@ -580,7 +585,8 @@ checked pair by pair. Generated at build time from the campaign files.}
 \input{docs/generated/priority_table}
 \end{table}
 
-Table~\ref{stab:priority} shows which configuration moves. The real-time configuration stays
+Only the ordinary configuration moves with load (Table~\ref{stab:priority}). The real-time
+configuration stays
 between $\rtResidualMin$ and $\rtResidualMax$ over the whole ladder, while the ordinary one climbs
 with load from $0.046$ to $0.30$. That is Equation~\ref{seq:twostate} with $p$ moved directly. The
 factor grows with load as a trend and not as a law, since $60\%$ gives $27\times$ and $70\%$
@@ -647,7 +653,8 @@ $\payloadLevels$ levels
 while the negative-span rate fell $\payloadRateFall$-fold [Katz $95\%$: $\payloadRateFallCI$],
 monotonically, and a repeat on another day agrees (Table~\ref{stab:payload}). Serialization pushes
 utilization slightly up, against the observed fall, so the effect is measured against its own
-confound. A stress account predicts the opposite direction.
+confound. An account in which stress on the host causes the negatives predicts the opposite
+direction.
 
 \begin{table}[tb]
 \caption{\textbf{Slower path, more reliable measurement, in two campaigns.} Payload padding in
@@ -672,7 +679,7 @@ $262{,}144$ & $53.898$ & $0.0637$ & $58.482$ & $0.0549$ & $0.893$--$0.895$ \\
 \end{tabular}
 \end{table}
 
-The fall is shallow: a $\payloadTransportFactorRound$-fold longer threshold bought only a
+The fall is shallow. A $\payloadTransportFactorRound$-fold longer threshold bought only a
 $\payloadRateFall$-fold lower rate. Least squares of the log rate on the log median of $S$,
 which stands in for $T_{\mathrm{true}}$, gives
 \begin{equation}
@@ -692,16 +699,20 @@ no change.
 \label{s:twostate}
 
 Two states are the smallest model consistent with these data. A timestamping thread is either
-running, and timestamps late by a narrow jitter, or waiting off the processor. Condition the
+running, and timestamps late by a narrow jitter, or waiting for a core. Condition the
 identity of Equation~\ref{P-eq:negspan} on the delivery time. Write $p$ for the thread's occupancy of
-the waiting state and $G$ for the survival function of its residual delay there. To leading
+the waiting state and $G$ for the survival function of its residual stall there, the part of the wait still to
+come. To leading
 order,
 \begin{equation}
 \Pr[S<0 \mid T_{\mathrm{true}}] = p\, G(T_{\mathrm{true}}) .
 \label{seq:twostate}
 \end{equation}
 Load moves $p$ without fixing it (S3.2), so the form is written without a load term.
-Figure~\ref{sfig:twostate} draws it.
+Figure~\ref{sfig:twostate} draws it as the distribution of the timestamping asymmetry
+$\Delta = \delta_{\mathrm{recv}} - \delta_{\mathrm{ack}}$, the delay of the receipt's timestamp
+less that of the acknowledgment's, which turns negative while the acknowledgment's thread waits
+for a core.
 
 \begin{figure}[tb]
 \centering
@@ -722,9 +733,10 @@ Clustering follows by construction. Being preempted is an interval, so the event
 corrupted together. A Wald--Wolfowitz runs test on each run's sequence of span signs finds strong
 clustering at every load of E-A3, even with no background load (Table~\ref{stab:mixture}). Coarse
 kernel timestamps would corrupt events independently and give $z\approx0$. From idle to the knee
-of the load ladder, E-A3's negative-span rate grows $\invGrowth$-fold while the jitter width grows
-only $\coreGrowth$-fold. Two parameters move at very different rates: the jitter width $\sigma_c$
-belongs to the running state and $p$ to the scheduler. A scale family has one parameter, which is
+of the load sweep, E-A3's negative-span rate grows $\invGrowth$-fold while the jitter width grows
+only $\coreGrowth$-fold. Two parameters move at very different rates. The jitter width
+$\sigma_{\mathrm{core}}$ belongs to the running state, and $p$ to the scheduler. A scale family,
+in which load only stretches one distribution by changing its width, has one parameter, which is
 why it fails here. The highest rate, $\invCeiling$ at $\rho = 1$, is the
 largest over the conditions measured and not a bound, as the floor $C_0$ of S3.1 is a scale and
 not a bound.
@@ -757,11 +769,12 @@ $1.000$ & $1.710$ & $0.261$ & $-4.4$ \\
 
 The model also predicts a shape. A scale family changes $\sigma$, so its tail curves rescale
 horizontally. The two-state model changes $p$, so its curves shift vertically and stay parallel on
-a log scale, and the log ratio of two conditions' tail masses should not depend on the threshold.
+a log scale. The log ratio of two conditions' tail masses should then not depend on the
+threshold.
 Over tail estimates backed by at least $20$ events, that log ratio's spread over thresholds has a
 median of $0.29$ across conditions, a factor of $1.34$, and a worst case of $0.91$. The
-scale-family collapse fails by $23\times$. Separability therefore holds to first order, with the
-two largest spreads at intermediate load. The test was exploratory, and a confirmatory version
+scale-family collapse fails by $23\times$. The rate therefore separates into $p$ and $G$ to first order, with
+the two largest spreads at intermediate load. The test was exploratory, and a confirmatory version
 was registered and run, the decisive campaign being the priority manipulation of S3.1.
 
 On the load axis alone the model has no content, since with $p$ unconstrained any monotone curve
@@ -773,7 +786,7 @@ The campaigns measure $p$ only as a time average. E-A7 registered that real-time
 cut the thread's occupancy at least tenfold. Its scheduler counters show the occupancy falling
 $\eaSevenOccFallLo$- and $\eaSevenOccFallHi$-fold at the two loads, and the mean stall
 $\eaSevenStallFallLo$- to $\eaSevenStallFallHi$-fold, against a $35$- to $47$-fold fall in the
-rate: the registered prediction failed. Counters that report means cannot
+rate. The registered prediction failed. Counters that report means cannot
 see a tail event, which is why the direct trace of S3.5 was needed. The campaigns therefore
 confirm the mechanism and its consequences and leave the factorization untested. Those
 consequences stand without it.
@@ -796,8 +809,8 @@ three. The residual has no consistent sign, so no bias is resolvable inside a th
 
 The tracer is not a free observer, and its cost was measured. An untraced twin, a first attempt
 whose probe failed to attach, ran two hours apart with the same design and measured
-$\untracedRate$ against the traced $\tracedRate$ ($z=\observerZ$), $14.8\%$ lower. That gap
-lies inside the drift between campaigns: the ordinary $88\%$ configuration spans $0.221$ to
+$\untracedRate$ against the traced $\tracedRate$ ($z=\observerZ$), the traced rate $14.8\%$
+lower. That gap lies inside the drift between campaigns. The ordinary $88\%$ configuration spans $0.221$ to
 $0.305$ over its four untraced measurements, and the replication's traced run reads $0.196$. It limits the level, on which no
 claim rests. The agreement above compares two quantities from one run, which a common
 perturbation moves together, and each prediction is held against the traced run's own rate.
@@ -860,10 +873,12 @@ kernel timestamps fall to the runs test of S3.4. The other five need an argument
 \paragraph{The second thread} \kafka{}'s client timestamps the acknowledgment on its I/O thread
 when the delivery callback fires, and \redis{}'s on the calling thread the moment \texttt{XADD}
 returns (Figure~\ref{P-fig:model}; S1.5). The harness was built expecting that hand-off to cause the
-negatives. The hand-off is real: timestamping \kafka{} on the calling thread shrinks the gap
+negatives. The hand-off is real. Timestamping \kafka{} on the calling thread shrinks the gap
 between the brokers' medians by $\hThreeShrinkage$~ms [$95\%$ bootstrap over runs:
 $\hThreeShrinkageCI$], about a quarter, and
-by $\hThreeRepShrinkage$~ms in a replication. It is not the mechanism. \redis{}, which has no
+by $\hThreeRepShrinkage$~ms in a replication.
+
+It is not the mechanism. \redis{}, which has no
 second thread, inverts on $\spanRedisNegAckPct\%$ of its events against \kafka{}'s
 $\spanKafkaNegAckPct\%$, and on more of its runs ($\spanRedisRunsAckInvertsPct\%$ against
 $\spanKafkaRunsAckInvertsPct\%$). A thread returning from a blocking socket read must also be
@@ -878,7 +893,7 @@ real-time priority, a preemption-free build, or a pinned busy-polling core. The 
 audited uses it.
 
 \paragraph{The hypervisor} The hypervisor is bounded, not excluded, because both testbeds are
-virtualized: the cloud instances are virtual machines, and the workstation runs its brokers in
+virtualized. The cloud instances are virtual machines, and the workstation runs its brokers in
 Docker Desktop containers inside a WSL2 virtual machine on Microsoft's hypervisor. Two
 observations disagree with an account in which stolen processor time causes the negatives.
 Real-time priority is a guest-side control, which stolen virtual-CPU time would not yield to,
@@ -892,7 +907,9 @@ retakes it on return, and the clock read is a Python call. A timestamp therefore
 and then for the lock. The kernel trace cannot see the second wait, which happens after the
 switch, in user space. Priority does not separate the two, since a \texttt{SCHED\_FIFO} thread
 also reaches the lock sooner, and nor does magnitude, since the default switch interval and the
-base slice are both of millisecond order. The direction of the disagreement settles it. A second
+base slice are both of millisecond order.
+
+The direction of the disagreement settles it. A second
 wait in series with the run queue would leave an estimator built from the run queue alone short
 of the observed rate, and its ratios, $\tracedRatios$, straddle unity instead. The registered
 campaign found the same failure in \kafka{}'s own Java client, which has no interpreter lock, at
@@ -903,15 +920,18 @@ First, a measurement bounds the clocksource. The platform probe's smallest obser
 \texttt{clock\_gettime(CLOCK\_MONOTONIC)} was $\clockIncrementNs$~ns, an upper bound on the cost of
 one read. That excludes \texttt{acpi\_pm} by arithmetic, since its tick is $\clockPmTickNs$~ns,
 and \texttt{hpet} by its published read cost near $1.2\,\mu$s. What remains, \clockAdmitted{},
-fits the bound, and each carries the coherence guarantee. A \texttt{kvm-clock} that fast is on
+fits the bound, and each carries the coherence guarantee.
+
+A \texttt{kvm-clock} that fast is on
 the vDSO path, which \texttt{kvmclock.c} enables only when the hypervisor sets
 \texttt{PVCLOCK\_TSC\_STABLE\_BIT}, the flag that guarantees monotonic time across CPUs. A KVM
 guest selects \texttt{tsc} only when the kernel finds it constant, non-stop and stable, and
 re-rates it away if it later warps. Which clocksource ran is unrecorded, and the published read
-costs vary about twofold, against an order-of-magnitude margin. Second, the corpus leaves no
-headroom. An offset between clocks large enough to produce the deepest negative span,
-$\spanDeepestInversionMs$~ms, would have driven the send-referenced span far below zero. That
-span's floor, $\spanSendFloorUs\,\mu$s, bounds any such offset $\spanOffsetMargin$-fold below what
+costs vary about twofold, against an order-of-magnitude margin.
+
+Second, the corpus leaves no headroom. An offset between clocks large enough to produce the
+deepest negative span, $\spanDeepestInversionMs$~ms, would have driven the delivery time $D$ far
+below zero. Its floor, $\spanSendFloorUs\,\mu$s, bounds any such offset $\spanOffsetMargin$-fold below what
 the deepest negative span needs.
 
 \subsection{S3.7. The upper stall mode survives coarsening, and its bucket holds the derived slice}
@@ -930,7 +950,7 @@ $\stallCoarsenFactor$ in bin width.
 
 Above the upper mode the counts collapse. They fall $\tracedModeFallA$-, $\tracedModeFallB$- and
 $\tracedModeFallC$-fold over the next \tracedModeFallOctaves{} octaves and then
-$\tracedLastBucketFall$-fold, where a power law would fall by one factor every time. Power laws
+$\tracedLastBucketFall$-fold, each octave a doubling of the wait, where a power law would fall by one factor every time. Power laws
 fitted below the mode and above it both fail a bootstrap goodness-of-fit ($p\tracedGofP$ and
 $p\tracedTailGofP$, over $\tracedGofBoot$ replicates each).
 
@@ -940,14 +960,16 @@ $\testbedCpus$ cores six times over, with a spread of $\cpuEstimateSpread$. The 
 scales a $0.75$~ms constant by one plus the integer base-two logarithm of the CPU count, up to
 eight CPUs, giving $\sliceFactor\times0.75\,\mathrm{ms}=\baseSliceMs$~ms~\cite{zhou2025slice}.
 The constant is specific to this kernel and became $0.70$~ms in v6.15, after our 6.8. The build
-sets \texttt{CONFIG\_HZ}${}=\kernelHz$, a $\tickMs$~ms tick. With run-to-parity, a woken thread
+sets \texttt{CONFIG\_HZ}${}=\kernelHz$, a $\tickMs$~ms tick.
+
+With run-to-parity, a woken thread
 that loses the wakeup-preemption check waits for the incumbent to finish its slice. The same
 posting notes that a task notices its deadline only at the next tick, so waits end in a band a
 tick wide. No scheduler tunable is written anywhere in the archived campaign, so the derived value
 is the one that applied. That is strong evidence, short of proof, and a future campaign should
 read \texttt{base\_slice\_ns} and \texttt{CONFIG\_HZ} off the image under test. How long a woken
-thread actually waits was timed later by the registered campaign: what is left of a slice, up to
-a whole one, in a reading made after its verdicts (S6.5).
+thread actually waits was timed later by the registered campaign, which found that it waits out what
+is left of a slice, up to a whole one, in a reading made after its verdicts (S6.5).
 
 \subsection{S3.8. The proxy's error falls as one over the delivery time, and adding the lag back repairs it}
 \label{s:cost}
@@ -978,7 +1000,7 @@ below those nothing is negative, and the sign check fires on none of it.}
 The two headline ratios of Section~\ref{P-sec:cost} are medians over conditions of the median of
 $S$ over the median of $D$, and the estimator decides them. A reader who differences the
 per-condition medians gets an understatement of $3.5\times$, and one who divides the pooled
-medians gets $2.6\times$: three defensible readings, a factor of $1.6$ apart. The independence
+medians gets $2.6\times$. These are three defensible readings, a factor of $1.6$ apart. The independence
 overshoot of Section~\ref{P-sec:audit} is a median of ratios too, taken within runs above a
 $\indepFloorPct\%$ floor, where the ratio of medians nearly agrees with it
 ($\indepWithinFlooredRatioOfMedians\times$ against $\indepWithinFloored\times$).
@@ -1019,7 +1041,7 @@ $\recoveryShiftPairs$ pairwise differences, rejected minus accepted, is $\recove
 [$95\%$ percentile bootstrap: $\recoveryShiftCI$]. The worst condition is the same on both sides,
 and the upper quartiles are within a point and a half. The medians differ because
 $\recoveryPassExact\%$ of the accepted conditions recover the delivery time exactly, and a pile at zero
-drags a median down without moving the population. The pile is not itself a difference: the exact
+drags a median down without moving the population. The pile is not itself a difference. The exact
 shares differ by $\recoveryExactDiff$ points, with a Newcombe $95\%$ interval of
 $\recoveryExactDiffCI$. Without the exact recoveries the medians are $\recoveryErrPassNonzero\%$
 over $\recoveryPassNonzeroN$ accepted conditions and $\recoveryErrFailNonzero\%$ over
@@ -1032,7 +1054,7 @@ $\recoveryPassExactN$, $\recoveryPassBelowBandN$ and $\recoveryPassFromBandN$. T
 divide $\recoveryFailExactN$, $\recoveryFailBelowBandN$ and $\recoveryFailFromBandN$, a smaller pile
 at zero with most of the rest below the edge. The edge is the accepted population's upper
 quartile, and the thirds hold for any edge above $\recoveryThirdsEdgeLo\%$ up to it. The
-distributional test does not separate them either: a tie-corrected two-sample
+distributional test does not separate them either. A tie-corrected two-sample
 Kolmogorov--Smirnov statistic of $\recoveryKsD$ has $p=\recoveryKsP$ over $\recoveryKsPerms$
 permutations.
 
@@ -1052,8 +1074,8 @@ single condition left above. (b)~Every condition, one mark each.}
 The data support no equivalence either. The $90\%$ bootstrap intervals on the two shifts would
 support it only against margins of $\recoveryEquivMargin$ points over all conditions and
 $\recoveryNonzeroEquivMargin$ over the non-zero ones, about half the non-zero median errors. The
-claim is therefore the weaker one: the repair holds where the check rejects as well as where it
-passes. The median is also no bound. For a quarter of the accepted conditions the error reaches
+claim is therefore the weaker one, that the repair holds where the check rejects as well as where
+it passes. The median is also no bound. For a quarter of the accepted conditions the error reaches
 $\recoveryErrPassHi\%$, and for one it reaches $\recoveryPassMax\%$.
 
 \subsection{S3.9. Five objections, each answered in one line}
@@ -1110,7 +1132,7 @@ S3.5 \\
 
 The benchmark's printed latency describes only the samples its send schedule lets through, and
 each link in that claim can be checked against a source line, a counter or a registered
-prediction. Every benchmark run below is in embedded mode, with driver and workers in one JVM.
+prediction. Every benchmark run below is in embedded mode, with the whole benchmark in one JVM.
 
 \subsection{S4.1. Two source lines make the filter, and counting what they drop changes no printed number}
 \label{s:filterpatch}
@@ -1135,10 +1157,10 @@ the retention behind it. The four counters, for zero, negative, most negative an
 separate sign. A negative span and a sub-millisecond delivery time both fail a \texttt{> 0} test, and
 one unsigned total cannot tell them apart (\ref{s:minus1000}).
 
-The counts are exact: the counters are shared across the JVM and their totals printed once at
+The counts are exact. The counters are shared across the JVM and their totals printed once at
 shutdown. A run that fails discards nothing, so its zero would look measured, and it is written
 as invalid, with its reason and no count. A matched sweep with the benchmark's one-minute warmup
-disabled leaves the retained fraction unchanged. The campaign totals $\ombRuns$ instrumented
+disabled leaves retention unchanged. The campaign totals $\ombRuns$ instrumented
 runs, swept one axis at a time with background load, message size, producer rate and warmup
 otherwise fixed.
 
@@ -1155,20 +1177,20 @@ Equation~\ref{P-eq:retention} of the paper.
 \centering
 \includegraphics[width=0.55\columnwidth]{docs/results/figures/quantum_geometry.pdf}
 \caption{\textbf{Where a send falls within a millisecond decides whether its sample survives.}
-(a)~One delivery time of $T_{\mathrm{true}} = 0.35$~ms at four phases of one millisecond: three
-finish inside it, compute to zero and are removed; the fourth crosses the boundary and is
+(a)~One delivery time of $T_{\mathrm{true}} = 0.35$~ms at four phases of one millisecond. Three
+finish inside it, compute to zero and are removed. The fourth crosses the boundary and is
 recorded as one whole millisecond. (b)~A sample survives from phase $\tau - T_{\mathrm{true}}$
-onward, the shaded band, so uniform phases retain $T_{\mathrm{true}}/\tau$; a commensurate
+onward, the shaded band, so uniform phases retain $T_{\mathrm{true}}/\tau$. A commensurate
 producer visits only $q$ phases and retains a count out of $q$. The delivery time drawn is
-off-vertex by choice: at $0.5$~ms the two answers coincide.}
+off-vertex by choice, since at $0.5$~ms the two answers coincide.}
 \label{sfig:geometry}
 \end{figure}
 
 A paced producer does not draw its phases uniformly. If its send interval $T_{\mathrm{send}}$
 satisfies $T_{\mathrm{send}}/\tau = a/q$ in lowest terms, it visits only $q$ distinct phases, so
 its retention is a whole count out of $q$ (Fig.~\ref{sfig:geometry}b). Call the retentions
-$0, 1/q, \ldots, 1$ the vertices of the configuration's $q$-grid, and the interval between
-neighboring vertices, $100/q$ percentage points wide, a grid step. Replicates of
+$0, 1/q, \ldots, 1$ the vertices of the configuration's $q$-lattice, and the interval between
+neighboring vertices, $100/q$ percentage points wide, a lattice step. Replicates of
 one configuration land on the vertices that bracket $\theta$, and their spread obeys
 \begin{equation}
 \label{seq:spread}
@@ -1181,14 +1203,14 @@ one configuration land on the vertices that bracket $\theta$, and their spread o
 The step width is thus an upper bound on the spread, reached only when replicates realize both
 bracketing vertices. The incommensurate rates put $T_{\mathrm{true}}$ at
 $\spreadIncommensurateTrueMs$~ms, half a millisecond to within replicate noise
-(Section~\ref{P-sec:extcomp}). A half lies on every $q$-grid with even $q$ and on none with odd
+(Section~\ref{P-sec:extcomp}). A half lies on every $q$-lattice with even $q$ and on none with odd
 $q$, so the rule predicts full step width for odd denominators and almost none for even ones.
 
 None of this arithmetic is new. Hewlett-Packard's Application Note 162-1~\cite{hp1970tia}
 carries it for a counter timing an interval, point by point.
 \begin{itemize}
 \item The retention identity. For an interval of $Q + F$ clock periods the note gives
-$\Pr[R = Q{+}1] = F$: the share of readings on the upper of the two straddling counts is the
+$\Pr[R = Q{+}1] = F$. The share of readings on the upper of the two straddling counts is the
 fractional part. That is Equation~\ref{P-eq:retention}.
 \item The class of a repetition rate. The class is the denominator of the ratio of repetition
 rate to clock rate in lowest terms, our $q$, and it fixes how many distinct readings the counter
@@ -1200,7 +1222,7 @@ at all, and a paced producer on a round interval walks straight into it
 \item The symptom. A reading appears to hang on a round number while the input is known to
 vary.
 \item The cure. Phase jitter on the repetition rate, so the samples stop landing on the same
-points of the clock's cycle. Hewlett-Packard patented it: US~3,938,042, filed in 1974 and
+points of the clock's cycle. Hewlett-Packard patented it. US~3,938,042, filed in 1974 and
 granted in 1976, varies the phase of the counter's own time base ``to destroy coherence between
 the clock signal and an unknown signal''~\cite{hp1976dither}. A benchmark's time base belongs to
 the operating system, so the benchmark must dither the send instant instead.
@@ -1215,7 +1237,7 @@ estimator.
 \label{s:gridtests}
 
 The phase account predicts each configuration's behavior from its denominator alone, and every
-configuration a test can judge falls on the side of its $q$-grid. Publish latency cannot be what
+configuration a test can judge falls on the side of its $q$-lattice. Publish latency cannot be what
 moves retention. It takes two values, $\ombPubLatLo$ and $\ombPubLatHi$~ms, across settings whose
 retention varies $\ombRetentionFold$-fold. The correlation it does have (Spearman
 $\ombRetentionRho$; Fisher $95\%$: $\ombRetentionRhoCI$; $\ombRetentionRhoN$ settings) carries the
@@ -1228,7 +1250,7 @@ position is the distance from the measured continuous value to the nearest verte
 the step width. A configuration is predicted full where its position exceeds a half, and shows
 full where its spread exceeds half the step width. The daggered rows are the
 \spreadMissWord{} misses, resolved in Table~\ref{stab:grid}. Incommensurate configurations have
-no grid step; their spreads of about three points are the noise floor.}
+no lattice step. Their spreads of about three points are the noise floor.}
 \label{stab:spread}
 \footnotesize
 \centering
@@ -1236,20 +1258,24 @@ no grid step; their spreads of about three points are the noise floor.}
 \input{docs/generated/spread_table}
 \end{table}
 
-Table~\ref{stab:spread} tests the spread rule configuration by configuration. A spread above
-half the step width counts as full, so the test needs no tolerance. Of the $\spreadArms$
-commensurate configurations, $\spreadAgree$ match, and the predictions split
-\spreadPredFullWord{} full against \spreadPredFlatWord{} flat. The \spreadMissWord{} misses,
-\spreadMissRates{}~msg/s, are predicted full and measured flat. Spread is a range over
+The spread rule holds in $\spreadAgree$ of the $\spreadArms$ commensurate configurations
+(Table~\ref{stab:spread}). A spread above half the step width counts as full, so the test needs
+no tolerance. The predictions split \spreadPredFullWord{} full against \spreadPredFlatWord{}
+flat. The \spreadMissWord{} misses,
+\spreadMissRates{}~msg/s, are predicted full and measured flat.
+
+Spread is a range over
 replicates of a quantity with two-point support, so a configuration shows its full width only if
 its replicates land on both bracketing vertices. At $q = 5$ and $q = 7$ the upper vertex carries
 a minority of the probability, and five replicates can all fall on the lower one however exact
-the grid is. Spread cannot tell that outcome from a refutation.
+the lattice is. Spread cannot tell that outcome from a refutation.
 
-We built a replacement statistic for that reason after the campaign had run; it was not
-registered, and its first results were committed with it. For each configuration, $\bar{d}$
-is the mean distance of its replicates to the nearest vertex of its $q$-grid, divided by the
-step width. The null is a continuum: replicates drawn from a Normal distribution centered on the
+We built a replacement statistic for that reason after the campaign had run. It was not
+registered, and its first results were committed in the same change as its code.
+
+For each configuration, $\bar{d}$
+is the mean distance of its replicates to the nearest vertex of its $q$-lattice, divided by the
+step width. The null is a continuum. Its replicates are drawn from a Normal distribution centered on the
 configuration's rate-local continuous value, with a measured standard deviation. Neither
 parameter is fitted to the configuration under test. The one-sided $p$-value comes from
 $\gridDraws$ Monte Carlo draws, which puts its floor at $2.5\times10^{-4}$ before correction.
@@ -1257,7 +1283,7 @@ It simulates the null at the observed number of replicates rather than leaning o
 asymptotic distribution, which matters at five.
 
 \begin{table}[tb]
-\caption{\textbf{Retention sits on the $q$-grid in \gridRejectWord{} of the \gridPoweredWord{} powered
+\caption{\textbf{Retention sits on the $q$-lattice in \gridRejectWord{} of the \gridPoweredWord{} powered
 configurations, tested against a continuum null.} Here $\bar{d}$ is the mean normalized distance to
 the nearest vertex, and the null column is its mean under the simulated null. The column
 $p_{\mathrm{Holm}}$ is a Monte Carlo $p$-value ($\gridDraws$ draws), Holm-corrected within all
@@ -1270,20 +1296,20 @@ the two hypotheses predict alike and the test has no power.}
 \input{docs/generated/grid_table}
 \end{table}
 
-Of the $\gridArms$ configurations, \gridPoweredWord{} are powered, meaning the null and the grid
+Of the $\gridArms$ configurations, \gridPoweredWord{} are powered, meaning the null and the lattice
 predict separably. Of these, \gridRejectWord{} reject the continuum null at $\alpha = 0.05$
 after Holm correction, eight of them at the Monte Carlo floor (Table~\ref{stab:grid},
 Fig.~\ref{sfig:gridmembership}). The tenth, $\gridUnresolvedRate$~msg/s, rejects before
 correction ($p = \gridUnresolvedRaw$) and not after ($p = \gridUnresolvedHolm$), so we report it
-as unresolved. The \gridFlatWord{} unpowered configurations, \gridFlatRates~msg/s, have grids
-that pass through $\theta$, where the two hypotheses coincide; the test reports them as
+as unresolved. The \gridFlatWord{} unpowered configurations, \gridFlatRates~msg/s, have lattices
+that pass through $\theta$, where the two hypotheses coincide. The test reports them as
 undecidable. Both configurations the spread rule missed reject the continuum: $700$~msg/s at
 \pgridSevenHundred{} and $1250$~msg/s at \pgridTwelveFifty{}.
 
 \begin{figure}[tb]
 \centering
 \includegraphics[width=0.55\columnwidth]{docs/results/figures/grid_membership.pdf}
-\caption{\textbf{All \gridPoweredWord{} powered configurations fall on the grid side of a
+\caption{\textbf{All \gridPoweredWord{} powered configurations fall on the lattice side of a
 continuum, and \gridRejectWord{} survive correction.} Observed mean distance to the nearest
 vertex against the distance a continuum would give, the diagonal. Each gray bar is that
 configuration's simulated null, uncorrected, and a marker below its bar rejects it. Filled
@@ -1299,7 +1325,7 @@ $\armSixHundredRate$~msg/s, an interval of $5/3$~ms and so the same $q = 3$ as $
 registered in advance to land near $33\%$. Its replicates were \armSixHundredReplicates{}:
 \armSixHundredLowerWord{} on the $1/3$ vertex and \armSixHundredUpperWord{} on the $2/3$ vertex,
 with nothing between. Their median, $35.5\%$, is near the $33\%$ registered, and none left the
-thirds grid, the registered falsifier. The upper two sit on the $2/3$ vertex that $300$~msg/s
+thirds lattice, the registered falsifier. The upper two sit on the $2/3$ vertex that $300$~msg/s
 also reaches, an octave away. Table~\ref{stab:interval} shows the $q = 1$ corner replicate by replicate.
 
 \begin{table}[tb]
@@ -1337,29 +1363,31 @@ $64$~KB & $84.21$, $85.36$, $86.82$ & $85.36\%$ & $0.854$~ms \\
 \end{table}
 
 The registered test that manipulates the physics is the payload flip. Payload moves
-$T_{\mathrm{true}}$, and so moves $\theta$ within its grid step, with nothing else changed.
+$T_{\mathrm{true}}$, and so moves $\theta$ within its lattice step, with nothing else changed.
 Measured at an incommensurate rate (Table~\ref{stab:payloadret}), $32$~KB puts $\theta$ almost on
-the $2/3$ vertex of the $q = 3$ grid and $64$~KB puts it mid-step. The prediction was that this
-one manipulation would move a $300$~msg/s configuration onto a vertex and off it again. The
-flat--full flip came true in both directions (Fig.~\ref{sfig:flip}). At $32$~KB the \flipReplicatesThirtyTwoWord{} replicates spanned
+the $2/3$ vertex of the $q = 3$ lattice and $64$~KB puts it mid-step. The prediction was that this
+one manipulation would move a $300$~msg/s configuration onto a vertex and off it again.
+
+The flat--full flip came true in both directions (Fig.~\ref{sfig:flip}). At $32$~KB the \flipReplicatesThirtyTwoWord{} replicates spanned
 $\flipLoThirtyTwo$--$\flipHiThirtyTwo\%$, a spread of $\flipSpreadThirtyTwo$ points, with three
 agreeing to $0.06$. At $64$~KB they spanned $\flipLoSixtyFour$--$\flipHiSixtyFour\%$, a spread
 of $\flipSpreadSixtyFour$ points. Both cross the flat--full boundary at half the step width,
-$16.7$ points, in the predicted direction. One registered detail failed: the $32$~KB
-configuration pins at $\flipPinThirtyTwo\%$, not on the vertex at $\flipVertexTwoThirds\%$. The
-flip was one of six predictions registered with falsifiers before its campaign. It was
+$16.7$ points, in the predicted direction. One registered detail failed. The $32$~KB
+configuration pins at $\flipPinThirtyTwo\%$, not on the vertex at $\flipVertexTwoThirds\%$.
+
+The flip was one of six predictions registered with falsifiers before its campaign. It was
 confirmed, three falsifiers fired, one prediction could not be evaluated, and one split
 (postmortem, S1.7).
 
 \begin{figure}[tb]
 \centering
 \includegraphics[width=0.55\columnwidth]{docs/results/figures/payload_flip.pdf}
-\caption{\textbf{One manipulated variable moves a configuration onto its grid and off it.}
-(a)~Replicates at $300$~msg/s ($q = 3$) by payload, against the thirds grid: $200$~B straddles
+\caption{\textbf{One manipulated variable moves a configuration onto its lattice and off it.}
+(a)~Replicates at $300$~msg/s ($q = 3$) by payload, against the thirds lattice: $200$~B straddles
 both branches, $32$~KB pins near the $2/3$ vertex, and $64$~KB re-opens to the upper step.
 (b)~Replicate spread against $\operatorname{frac}(q\theta)$, each stick showing the replicates
-its spread is made of, with $\theta$ each configuration's own mean retention in this campaign;
-the registered prediction placed $32$ and $64$~KB at $0.055$ and $0.56$ from the payload sweep's
+its spread is made of, with $\theta$ each configuration's own mean retention in this campaign.
+The registered prediction placed $32$ and $64$~KB at $0.055$ and $0.56$ from the payload sweep's
 $\theta$. The flat--full boundary at half the step width is crossed in both directions.}
 \label{sfig:flip}
 \end{figure}
@@ -1375,11 +1403,11 @@ $X + \delta x/2$'' (Clause F.2.2.1)~\cite{jcgm100}. That rectangular model, with
 $(\delta x)^2/12$, holds for retained readings. The positivity filter removes one side of the
 interval, and neither the shape nor the variance survives the asymmetry it adds.
 
-Pratt showed that discarding zero differences before ranking breaks a natural monotonicity: a
+Pratt showed that discarding zero differences before ranking breaks a natural monotonicity. A
 sample not judged significantly positive can become so when every observation is
 decreased~\cite{pratt1959zeros}. His procedure ranks all observations, zeros included, drops
 only the zeros' ranks, and refers the statistic to its null distribution conditional on the
-number of zeros. Our claim is weaker and more practical: the zero count must be published, so a
+number of zeros. Our claim is weaker and more practical, that the zero count must be published so a
 reader can see what the distribution is conditioned on. The exact
 parallel is a reading Pratt reports from Meier, that a zero arises because ``with only our crude
 measurement, we do not know'' the sign a finer measurement would resolve. That is the
@@ -1397,14 +1425,14 @@ below zero. (c)~Five dispositions applied to the same population.}
 \label{sfig:deletionhist}
 \end{figure}
 
-Figure~\ref{sfig:deletionhist} applies the rule to the population of
-Table~\ref{P-tab:spans}. With millisecond timestamps a positivity filter removes
+Applied to the population of Table~\ref{P-tab:spans} (Figure~\ref{sfig:deletionhist}), a
+positivity filter on millisecond timestamps removes
 $\msGuardDropped$ of the $\spanEvents$ events, $\msGuardDeletedPct\%$ ($95\%$ bootstrap
 interval, resampling runs: $\msGuardDeletedCI$). Of those, $\msGuardAtZero$ computed to exactly
 zero and $\msGuardBelowZero$ to less, and a harness that filters this way counts none of them.
 Of the five dispositions in panel~(c), two shrink the sample and publish no count of what left,
 two hold the count fixed by reporting a value never measured, and one keeps the data. This is
-the rule applied to our spans; what the benchmark's own instrumented runs retained is the other
+the rule applied to our spans. What the benchmark's own instrumented runs retained is the other
 measurement, in Section~\ref{P-sec:extphase} of the paper.
 
 \subsection{S4.5. Two floored clocks disagree by exactly one millisecond, so the sign of a discard names the failed clock}
@@ -1446,10 +1474,9 @@ recorded $\harnessOneClockNegatives$ negative differences across $\harnessOneClo
 samples in $\harnessOneClockRuns$ runs, as a causal chain requires, and the grid reappeared
 intact. Across two hosts with disciplined clocks, $\harnessCrossHostRuns$ runs again recorded
 $\harnessCrossHostNegatives$ negatives in $\harnessCrossHostSamples$ samples and an intact grid,
-but the deleted fraction followed the drift of the clock offset. At $\harnessXHostRate$~msg/s,
-the \harnessXHostArmClass{} configuration and the only one of the three whose own grid spread
-does not swamp the comparison, cross-host retention wandered from $\harnessXHostRetLo$ to
-$\harnessXHostRetHi\%$ over four replicates. On one clock the same configuration held to
+but the deleted fraction followed the drift of the clock offset. Cross-host retention wandered from $\harnessXHostRetLo$ to $\harnessXHostRetHi\%$ over four
+replicates at $\harnessXHostRate$~msg/s, the \harnessXHostArmClass{} configuration and the only
+one of the three whose own lattice spread does not swamp the comparison. On one clock the same configuration held to
 $\harnessOneClockSpread$ points. Nothing records either the synchronization state or the
 fraction it deletes.
 
@@ -1459,7 +1486,7 @@ including none, and three more run with full diagnostics. The unloaded attempts 
 loaded ones, which refutes our own hypothesis that processor starvation was the cause. The three
 diagnosed attempts failed identically, in the coordinator-to-worker path before any workload
 started. The first attempt, made before the validity gate of \ref{s:filterpatch} existed, wrote a
-vacuous zero that the artifact keeps marked invalid; the gate refused every later attempt, each
+vacuous zero that the artifact keeps marked invalid. The gate refused every later attempt, each
 with its reason. The
 exposure of the distributed binary therefore rests on reading its source: the timestamp is
 written on the producer's host and read on the consumer's, and the positivity filter drops
@@ -1486,31 +1513,36 @@ client clock without saying so.
 \harnessSilentWordCap{} of the \harnessAuditedWord{} tools we read at source dispose of a
 non-positive or sub-resolution sample without counting it, and every verdict traces to a line of
 source a reader can check. Each row of the registry file carries one source line, the file and
-symbol it came from, the upstream URL and the date it was read. The class labels are not stored.
+symbol it came from, the upstream URL and the date it was read.
+
+The class labels are not stored.
 They are recomputed on every build and every test run by the classifier that read the
 OpenMessaging Benchmark a month before the other tools were audited. A reader who disagrees
 with a verdict can therefore check the line against the pattern that matched it. The classifier
 sees only what its patterns recognize. They were written against JVM sources and had to be
 extended before they could read an Erlang guard or clock call, so the registry bounds the field
-from below. We call a tool's own conditional on the sign of an interval its \emph{guard}. A
+from below.
+
+We call a tool's own conditional on the sign of an interval its \emph{guard}. A
 guard is a deletion only if what it guards is the sample. Table~\ref{P-tab:tools} of the paper
 is the registry, one row per span because one tool can treat two spans differently, generated
-from the registry file at build time; its sources, in row order, are \registryTableSources.
+from the registry file at build time. Its sources, in row order, are \registryTableSources.
 
 The \harnessSilentWord{} silent disposals take \harnessDisposalClassesWord{} forms. A filter
-drops what its comparison excludes: $>0$ deletes every sample that computes to exactly zero,
-while $\geq 0$ keeps those and drops only negative spans. A filter shrinks the sample the statistic is computed from and
+drops what its comparison excludes. The test $>0$ deletes every sample that computes to exactly
+zero, while $\geq 0$ keeps those and drops only negative spans. A filter shrinks the sample the statistic is computed from and
 publishes no count of what left. The benchmark filters at $>0$. Apache Pulsar's performance
 client guards at $\geq 0$, so it drops negative spans and keeps the zeros the benchmark deletes,
-which then pile up visibly at zero. A substitution keeps the sample count, so any retention rate
-computed downstream reads $100\%$, which makes it harder to detect than a filter. A library
+which then pile up visibly at zero.
+
+A substitution keeps the sample count, so any retention computed downstream reads $100\%$, which makes it harder to detect than a filter. A library
 refusal leaves the sample unrecorded because nobody checks the library's answer. Truncation is a
 separate loss that keeps every sample. The benchmark truncates before it filters, and
 \kafka{}'s bundled tools only truncate. The notes below carry what the table cannot.
 \begin{itemize}
 \item The OpenMessaging Benchmark appears twice because it treats its two spans differently
 (Section~\ref{P-sec:extmethod}).
-\item The \texttt{EndToEndLatency} tool bundled with \kafka{} cannot invert: it uses one thread,
+\item The \texttt{EndToEndLatency} tool bundled with \kafka{} cannot invert, because it uses one thread,
 one monotonic clock and a synchronous send. It loses the measurement anyway. Each sample prints
 in floating point, but the \texttt{long[]} its percentiles come from is filled by the integer
 division \texttt{elapsed / 1000 / 1000}. On a sub-millisecond path its p50, p99 and p999
@@ -1519,7 +1551,7 @@ send-to-acknowledgment difference on \texttt{System.currentTimeMillis()} and cas
 \texttt{int}.
 \item In \texttt{fio} the guard appears in three timing functions, each returning zero for a
 negative interval under the comment ``time warp bug on some kernels?''. The behavior is
-defensive and reasonable in isolation; what is missing is any record that it fired.
+defensive and reasonable in isolation. What is missing is any record that it fired.
 \item In \texttt{btt}, \texttt{tdelta()} returns one nanosecond whenever the stage timestamps
 are out of order, with no comment, no counter and no mention in the manual page.
 \item The \texttt{wrk2} load generator detects the negative interval, prints a block that begins
@@ -1533,13 +1565,13 @@ alone, so nothing is deleted from the sample.
 \item RabbitMQ PerfTest hands its difference on with no sign test, but the method that computes
 it, \texttt{getDifference}, returns its absolute value, so a negative span enters its metrics as
 a positive one of the same size, uncounted. Our first reading stopped at the call site and filed
-PerfTest with the tools that pass a negative on; the documentation audit read the method, and
+PerfTest with the tools that pass a negative on. The documentation audit read the method, and
 the registry now carries both lines.
 \item The NATS CLI appends every difference to the slice its minimum, median and maximum are
 read from, negatives included, and is exposed to clock skew between hosts. Its percentile table
 is recorded into \texttt{hdrhistogram-go}, whose bound check refuses the index a negative value
-maps to; the CLI ignores the error, so the two outputs disagree and nothing counts the
-difference. Our first reading stopped at the append; the documentation audit read the histogram.
+maps to. The CLI ignores the error, so the two outputs disagree and nothing counts the
+difference. Our first reading stopped at the append. The documentation audit read the histogram.
 \item Rezolus counts its discards in a metric that names the cause.
 \item Two further tools do not make the measurement. SPECjms2007 defines Delivery Time and never
 reports it, and Redpanda's \texttt{rpk} ships no latency benchmark.
@@ -1560,7 +1592,7 @@ forks of the benchmark surveyed on \forkCheckedOn{}, $\forkUnchanged$ carry the 
 expression unchanged. That bounds how few have diverged and says nothing about why. Confluent's
 fork, one of the vendor distributions practitioners run, was archived by its owner on
 \forkArchivedOn{} and is read-only, with $\forkArchivedForks$ forks of its own (read \forkArchivedRead{}). A live fork
-may drop the filter tomorrow; an archived one cannot, and neither can anything downstream of it.
+may drop the filter tomorrow. An archived one cannot, and neither can anything downstream of it.
 Upstream, a search of the benchmark's issue tracker for the variable the filter tests, run on
 \ombTrackerChecked{}, returns \ombTrackerItems{} item: pull request \#\ombTrackerFirstItem{},
 which introduced the filter~\cite{openmessaging_pr56}. No issue or pull request has named it in
@@ -1600,7 +1632,9 @@ kept every value, negatives included, in each round that decided it. The per-run
 Published results rarely carry the deletion's signature, and no report we found says how many
 samples it kept. The audit behind that sentence was registered, committed and public before any
 report was read. It fixed the signature, the places to search, the rule for inclusion, the
-coding and the outcomes, and nothing in it changed afterwards. The primary signature is a
+coding and the outcomes, and nothing in it changed afterwards.
+
+The primary signature is a
 printed end-to-end median of exactly 1~ms, the smallest value the benchmark can print and the
 value every retained sample takes when the true delivery time is shorter than the resolution. The
 strong signature adds a p99 of exactly 1~ms. Neither says a published number is wrong. Each
@@ -1610,13 +1644,15 @@ The search covered Google Scholar, Semantic Scholar, the web, the engineering bl
 vendors whose brokers the benchmark has drivers for, and the benchmark's repository and its
 public copies, for reports dated up to 28 September 2026. A report was included if it named the
 benchmark or a fork of it as its tool and printed at least one numeric end-to-end percentile.
+
 The audit included $\reachReports$ reports, printing $\reachConfigs$ configurations, of which
 $\reachMedianConfigs$ print a median. The primary signature occurs in \reachPrimaryConfigsWord{}
 configurations in \reachPrimaryReportsWord{} reports, both public repository text. Five are
 \redis{} rates in a notebook behind a 2023 journal paper that shows its medians only in a chart,
 and three are maximum-rate runs in three result files of a 2021 fork. The strong signature
-occurs nowhere, and no included report states a retained fraction or a discard count. The rules
-did not foresee several patterns. $\reachFinerReports$ of the included reports print medians
+occurs nowhere, and no included report states its retention or a discard count.
+
+The rules did not foresee several patterns. $\reachFinerReports$ of the included reports print medians
 below a millisecond, which the upstream clock cannot produce, among them vendors' copies whose
 maintainers changed how the span is timed. One 2024 fork prints p95, p99 and p999 all at exactly
 1~ms beside an average just above it and no median column, so by the registered rule it does not
@@ -1637,18 +1673,20 @@ record.
 \label{s:law-design}
 
 The registered law says that the scheduler's settings alone fix where the negative-span rate falls
-as the delivery time lengthens, and how wide the fall is. It takes the wait whole: a timestamping
-thread kept waiting waits out a slice $s$ of another task and then up to one tick $h$. The rate then
+as the delivery time lengthens, and how wide the fall is. It assumes that a timestamping thread kept
+waiting waits out a whole slice $s$ of another task, and then up to one tick $h$. The rate then
 sits on a plateau $c + p$ while the delivery time $D$ is shorter than the slice, falls across one
 tick, and rests on a floor $c$ beyond it:
 \begin{equation}
 \label{seq:law}
 r(D) = c + p \cdot \begin{cases} 1, & D \le s,\\ (s + h - D)/h, & s < D < s + h,\\ 0, & D \ge s + h. \end{cases}
 \end{equation}
-The slice and the tick predict where the fall starts and how wide it is; the plateau's height and
-the floor are measured. In the plan, a reading is negative when the wait of the thread that
+Here $p$, how often the timestamping thread is kept waiting, is the occupancy of
+Equation~\ref{seq:twostate}, and $c$ is the floor that ordinary short delays leave. The slice
+and the tick predict where the fall starts and how wide it is. The plateau's height and the floor
+are measured. In the plan, a reading is negative when the wait of the thread that
 timestamps the acknowledgment outlasts the margin $D - g$, a run's median delivery time less its
-median acknowledgment lag $g$.
+median acknowledgment lag $g$, the plan's letter for $A$.
 
 Three pairs of Microsoft Azure machines in one region ran the campaign, each a driver with eight
 virtual CPUs and a broker with two; two pairs have AMD EPYC 9V74 processors and one has Arm Neoverse
@@ -1660,6 +1698,13 @@ Python one. L6 records every \texttt{python3} thread's waits in half of L1's and
 records each of those threads' scheduling events in half its own runs. M0 asks why, when
 messages come in bursts, the delivery time does not grow one-for-one with the added delay.
 
+Each block carries numbered predictions, judged in Table~\ref{stab:lawverdicts}. P1 and P9
+place the fall at the slice, on the first x86 pair and on the Arm pair. P2, P2b and P2c tie its
+width to the tick, and P2d keeps its start at the slice at every tick. P3a and P3b ask what load
+does to the fall and to the plateau, P4 what real-time priority does, P7 whether the slice and the
+fall follow the core count, and P8 whether \kafka{}'s Java client behaves like our Python one. P6
+and L9's three predictions ask whether recorded waits predict the rate.
+
 Each run replays messages at a steady 50 a second, or a football match's bursts in M0, and measures
 its delivery time, acknowledgment lag and negative-span rate after a 30~s warm-up. The delivery time
 is set by delaying only the traffic to the receiver's own network address, so the acknowledgment's
@@ -1668,10 +1713,12 @@ time shorter than the client's own with nothing added cannot be set, and was not
 
 The integrity rule judges every run as it ends. A run counts when every condition it was meant to
 have took, from the load within 3 points of its target to the added delay within $50\,\mu$s of its
-setting; otherwise it is repeated, up to three attempts. A run whose median acknowledgment lag moved
-too far stopped its campaign. In its final form, from version~20, this lag brake held a run
+setting. Otherwise it is repeated, up to three attempts. A run whose median acknowledgment lag
+moved too far stopped its campaign, a rule called the lag brake. In its final form, from version~20, the lag brake held a run
 against its setup's earlier runs in the campaign. The plan's own name for the lag, and for the
-brake on it, is ``got-it''. Each campaign that tests a prediction took its rounds, at least four
+brake on it, is ``got-it''.
+
+Each campaign that tests a prediction took its rounds, at least four
 and at most forty, from simulating its own decision rule on data that follow the law. L2 and L9,
 which have no rule the simulation can take, ran at the floor of four, M0 ran a fixed ten, and no
 campaign ran more than 24. A prediction about where the fall sits
@@ -1686,13 +1733,17 @@ The plan changed after results, and every change says whether one prompted it. I
 as version~5 on 16~September 2026, before its first run, and the version in force at the end is the
 thirty-second, freeze~28. A change is never an edit. It is a new, numbered freeze, public before the
 runs it covers, whose first section lists what changed, why, and whether a result already seen
-prompted it. Table~\ref{stab:amendments} gives every freeze with that answer. Versions 6 to~8
+prompted it. Table~\ref{stab:amendments} gives every freeze with that answer.
+
+Versions 6 to~8
 corrected what stage~0's first runs found in the machines, the code and the plan's own checks,
 before any campaign that tests a prediction began. P3 became P3a and P3b in version~9, before any
 load run was read. Three kinds of change followed the campaigns' own results. Version~14 judged P3a
 only where the plateau reaches $2\%$. The lag brake was corrected five times, each time after it had
 stopped a campaign. And three versions corrected programs that had already judged, each stating what
-the verdicts it touches had been. Blocks added as the campaign ran, in versions 24 and 27 to~29,
+the verdicts it touches had been.
+
+Blocks added as the campaign ran, in versions 24 and 27 to~29,
 were each read by a program fixed before their runs. The last three of those versions followed a
 check of all the data on 25~September. P6 was given its program in version~30, at a margin no run
 had been read against.
@@ -1802,7 +1853,9 @@ Load raised the plateau in all five load campaigns, all on \kafka{}, every inter
 real-time priority took the plateau to zero in every run, and the fall followed the core count at
 the one count whose slice \kafka{}'s shortest delivery time reaches. \kafka{}'s own Java client
 shows the same fall and the same effect of priority, at a plateau a third to a quarter of the Python
-client's. On the first x86 pair the fall's halfway point lay inside its band at every slice each
+client's.
+
+On the first x86 pair the fall's halfway point lay inside its band at every slice each
 broker reaches on the free reading, four for \kafka{} and five for \redis{}, but on the fitted shape at two of four slices for \kafka{} and
 two of five for \redis{}. On the Arm pair the free reading held on both brokers and the fitted shape
 failed on both (Figure~\ref{sfig:lawslice}). P1 and P9 need both readings. Load moved the fall
@@ -1895,39 +1948,47 @@ the verdicts (\ref{s:law-after}).}
 
 The plan keeps every run, and re-runs none whose conditions held. A program reads a mark for each
 aberration from the records, and an aberrant run carries its mark wherever it is drawn. Five marks
-keep a run out of every judge. They cover void runs, set aside before anything read them; the 18
-runs of six false starts, each replaced at once by a campaign of the same design; and runs repeated,
-stopped by the lag brake, or ended before the integrity rule read them. Four marks leave a run
+keep a run out of every judge. One marks void runs, set aside before anything read them. One marks
+the 18 runs of six false starts, each replaced at once by a campaign of the same design. Three
+mark runs repeated, stopped by the lag brake, or ended before the integrity rule read them.
+
+Four marks leave a run
 counted: flagged, paused, far from its setup's other repeats, and traced by L9's or M0's recording.
 The brake would have stopped the 14 flagged runs, taken while it only recorded. In the 222 paused
 runs a message arrived more than 150~ms late, when the receiving side's disk stalled, for a cause
 not identified, or \kafka{}'s broker could not reach its own controller. No run had a message arrive
-before it was sent. Without the flagged runs, or without all 1,110 taken while the brake only
+before it was sent.
+
+Without the flagged runs, or without all 1,110 taken while the brake only
 recorded, no verdict moves. Without the paused runs every verdict stands but P3a on the first x86
-pair, whose fitted interval sits on the edge of its $\pm 0.25$~ms bar: just outside it with them,
-just inside without them. The verdict on all the runs is the one reported. The postmortem, S36,
+pair, whose fitted interval sits on the edge of its $\pm 0.25$~ms bar. It is just outside the bar
+with them and just inside without them. The verdict on all the runs is the one reported. The postmortem, S36,
 counts every mark pair by pair, says why each was given, and draws, in four figures, all 4,823 runs of the law's blocks that measured a
 delivery time and a rate, of their 4,838.
 
 \subsection{S6.5. Read after the verdicts: the wait is the rest of a slice, and two judges departed from the plan}
 \label{s:law-after}
 
-Everything here is post hoc: it was read after the verdicts, and none of it changes one. The rate
+Everything here is post hoc. It was read after the verdicts, and none of it changes one. The rate
 holds no plateau. At half the slice it is 1.45 to 3.94 times its value at 0.9 of the slice, in each
-of the ten slice and broker combinations whose runs reach half the slice. L9's recordings, at a 3~ms
+of the ten slice and broker combinations whose runs reach half the slice.
+
+L9's recordings, at a 3~ms
 slice and a 1~ms tick, time the wait of the thread that timestamps each acknowledgment, for
 1,516,342 acknowledgments in 304 runs. Of those whose thread waited more than 1~ms, 24.3 to 35.8\%
 were still waiting at 3~ms and 3.3 to 6.8\% past 4~ms, over twelve pair, broker and load parts. A
-whole-slice wait would keep all of them to 3~ms. A wait for the rest of the slice keeps $20\%$ to
-3~ms and none past 4~ms. The thread waits out what is left of the running task's slice, $R$, uniform
+thread preempted for a task starting its slice waits out all of it, but a thread woken while
+another task holds the core waits out what is left. The acknowledgment's reply wakes the thread
+that timestamps it, so its wait is the second kind. A whole-slice wait would keep all of them to
+3~ms. A wait for the rest of the slice keeps $20\%$ to 3~ms and none past 4~ms. That thread waits
+out what is left of the running task's slice, $R$, uniform
 on $[0, s]$, and then up to a tick, $U$, uniform on $[0, h]$, so that for $h \le s$
 \begin{equation}
 \label{seq:restofslice}
 G(x) = \Pr[R + U > x] = \begin{cases} 1 - x^2/(2sh), & 0 \le x \le h,\\ 1 - (x - h/2)/s, & h \le x \le s,\\ (s + h - x)^2/(2sh), & s \le x \le s + h,\\ 0, & x \ge s + h. \end{cases}
 \end{equation}
-A thread preempted for a task starting its slice waits out all of it, but a thread woken while
-another task holds the processor waits out what is left. The acknowledgment's reply wakes the thread
-that timestamps it, so its wait is the second kind. A rate that falls from the start pulls a fitted
+
+A rate that falls from the start pulls a fitted
 plateau's fall below the slice and moves it less than the slice moves. That is the split between the
 free and fitted readings of P1 and P9 (postmortem, S16.10). The recording raised the rate it
 recorded, 1.36 to 1.49 times for \kafka{} and 3.69 to 4.33 times for \redis{}, so these waits
@@ -1939,7 +2000,7 @@ read spans the falls of both its slices, 1.5 and 3~ms. Fed Equation~\ref{seq:law
 returns $\cliffPooledRedisFree$ free and $\cliffPooledRedisFitted$ fitted for \redis{}, below its
 band, while one slice at a time the same formula gives $\cliffPerSliceFourLo$ to
 $\cliffPerSliceFourHi$ for P2 and $\cliffPerSliceTenLo$ to $\cliffPerSliceTenHi$ for P2b, inside
-both bands: those three verdicts carry no evidence about the law either way. P4's program words
+both bands. Those three verdicts therefore carry no evidence about the law either way. P4's program words
 \redis{} ``not confirmed'' although its plateau, $0.69\%$, lies below the $2\%$ at which P4 makes a
 claim, which the plan's rule reports as out of reach. What explains M0's slope on \redis{} was
 also found afterwards (postmortem, S37).
@@ -1957,24 +2018,25 @@ $\ttiTostMargin$~ms margin, one broadcast frame at $25$ frames per second, fixed
 the campaign ran. The Hodges--Lehmann shifts are $\ttiTostHLRange$~ms, \kafka{} slower, and the
 highest upper bound of any $90\%$ interval of the three estimators is $\ttiTostCIHigh$~ms. $E$ runs to $t_{\mathrm{out}}$, so it also contains both clients' payload parse, which $S$
 and $D$ carry for \kafka{} alone (Section~\ref{P-sec:brokers}). On $S$ the two sit within a
-millisecond: a Hodges--Lehmann shift at one feed of $\tostHL$~ms ($90\%$ bootstrap interval
-$\tostHLCI$), with two one-sided tests (TOST)
-rejecting both nulls against a $\tostMargin$~ms margin at $p < 0.001$. The shift holds between
+millisecond. At one feed the Hodges--Lehmann shift is $\tostHL$~ms ($90\%$ bootstrap interval
+$\tostHLCI$), and two one-sided tests (TOST) reject both nulls against a $\tostMargin$~ms margin at $p < 0.001$. The shift holds between
 $\tostHLRange$~ms across \tostLevelsWord{} concurrency levels, and Welch's test, a percentile bootstrap
 and the Hodges--Lehmann estimator agree on equivalence at every level.
 
-The two brokers are still distinguishable. The numbers on $S$ come from a powered campaign that
-replays at a rate derived from the plan and verified against wall time, with 15 replicates at each
-of the three concurrency levels and a median of 125 events per run. It timestamps in microseconds on
-one clock, so Failure~2 cannot touch its numbers; Failure~1 can, and the sign check removed the
-runs it condemned (\ref{s:signcheck-selection}). On $S$, \kafka{} sits near $0.54$~ms and
+The two brokers are still distinguishable. The numbers on $S$ come from a powered campaign with
+15 replicates at each of the three concurrency levels and a median of 125 events per run. It
+replays at a rate derived from the plan and verified against wall time. It timestamps in
+microseconds on one clock, so Failure~2 cannot touch its numbers. Failure~1 can, and the sign
+check removed the runs it condemned (\ref{s:signcheck-selection}). On $S$, \kafka{} sits near $0.54$~ms and
 \redis{} near $0.11$~ms, and the $0.41$~ms shift, \kafka{} slower, sits far from zero at every
-level, in the direction the gray-literature comparisons report. A second powered campaign, run ten hours later with the same
+level, in the direction the gray-literature comparisons report.
+
+A second powered campaign, run ten hours later with the same
 protocol, reproduces the shift and fails the criterion registered for it, that its shift fall
 inside the first campaign's $90\%$ interval at every level. Over the runs the check keeps it gives
-$0.381$, $0.414$ and $0.416$~ms; the first, from the two \redis{} runs kept at one feed, falls
-$0.008$~ms below the interval. We saw only after the result that the criterion was a poor test:
-a second estimate carries its own sampling error, so even identical shifts would satisfy it at all
+$0.381$, $0.414$ and $0.416$~ms. The first, from the two \redis{} runs kept at one feed, falls
+$0.008$~ms below the interval. We saw only after the result that the criterion was a poor test.
+A second estimate carries its own sampling error, so even identical shifts would satisfy it at all
 three levels only about $38\%$ of the time. Restoring the runs the sign check condemned moves the shift by at most
 $0.016$~ms (\ref{s:signcheck-selection}).
 
@@ -1984,10 +2046,11 @@ gap by $\hThreeShrinkage$~ms ($95\%$ bootstrap over runs: $\hThreeShrinkageCI$),
 $\hThreeRepShrinkage$~ms ($95\%$ bootstrap over runs: $\hThreeRepShrinkageCI$) in a replication at $\hThreeRepRuns$ runs per
 cell. What remains is a broker difference of $\hThreeResidualRange$~ms. The bias never turns a
 value negative, so the sign check, which rejects $40$ of the $160$ runs behind these numbers,
-cannot see it: sizing a bias of a few hundredths of a millisecond took a controlled experiment
+cannot see it. Sizing a bias of a few hundredths of a millisecond took a controlled experiment
 and a replication.
 
-A consumption pattern reverses the order, and injected delay exposes it (Table~\ref{stab:netem}).
+A consumer that acknowledges each message and waits for the reply reverses the order, and
+injected delay exposes it (Table~\ref{stab:netem}).
 With one-way delay injected identically at both brokers, \redis{}'s median end-to-end latency
 reaches $4{,}651$~ms at 5~ms of delay and $103{,}143$~ms at 50~ms, against \kafka{}'s $12.4$ and
 $336.6$~ms. \redis{}'s transport proxy grows about $930$ to $2{,}050$ times the delay applied, while
@@ -2050,8 +2113,8 @@ separated the brokers cleanly: every comparison was significant after correction
 $N \geq 5$ the run distributions did not overlap (Table~\ref{stab:withdrawn-first}). The sign
 check of Section~\ref{P-sec:gate} rejects $\auditRejectedWorkstation$ of the testbed's
 $\auditRunsWorkstation$ runs, $\firstResultRejected$ of the $\firstResultRuns$ behind the table
-among them, so none of the table's $\firstResultCells$ conditions is usable; $\auditUsableConditionsWorkstation$
-of the testbed's $\auditConditionsWorkstation$ conditions survive. The
+among them, so none of the table's $\firstResultCells$ conditions is usable. Of the testbed's $\auditConditionsWorkstation$ conditions,
+$\auditUsableConditionsWorkstation$ survive. The
 table reports $S$, which our first harness timed from the acknowledgment, and $S$ is negative
 whenever the acknowledgment lag exceeds the delivery time (Equation~\ref{P-eq:negspan}).
 
@@ -2251,8 +2314,9 @@ without confidence intervals routinely mislead~\cite{georges2007rigorous}. Barre
 that virtual machines frequently never reach the steady state their benchmarks assume, so the
 distribution being sampled is itself non-stationary~\cite{barrett2017warmup}. That is the closest
 published analogue of the mobility we see between identical runs. Maricq et al.\ found hundreds of
-trials necessary for stable comparisons~\cite{maricq2018taming}. Against this stands only common
-practice: the surveyed norm of a handful of repetitions presumes a stable
+trials necessary for stable comparisons~\cite{maricq2018taming}.
+
+Against this stands only common practice. The surveyed norm of a handful of repetitions presumes a stable
 distribution~\cite{vanderkouwe2019sok,hoefler2015benchmarking}. What we add is the mechanism.
 Where the send interval is commensurate with the timestamp resolution, the instability is not
 variance around a value. It is a two-point support whose weights move between runs, so no
@@ -2275,7 +2339,7 @@ The problem behind Failure~2 is older than every tool Section~\ref{P-sec:tools} 
 Melvin built microsecond timers for workstations in 1990 because the available clock was too
 coarse for the interval being timed~\cite{danzig1990highres}. The arithmetic is older still.
 Hewlett-Packard's Application Note 162-1 carries the retention identity, the reduced fraction the
-grid turns on, the ceiling on resolution gain, the symptom and the cure~\cite{hp1970tia}. The one
+lattice turns on, the ceiling on resolution gain, the symptom and the cure~\cite{hp1970tia}. The one
 thing it does not contain is the failure this paper reports, because its counter keeps both
 readings and uses the retained fraction as its estimator. Deleting the population that carries
 the fractional part turns a solved metrology problem back into an open one.
@@ -2376,8 +2440,8 @@ negative timing spans''.
 
 Under the queue they model, a backlog at a service stage, the sentence is true, and
 Section~\ref{P-sec:mechanism} refutes that account of our own corpus as well. As written it is
-false, because two queues are in play. A message waits in a service backlog; the thread that
-reads the clock waits in the kernel's run queue for a processor. The second wait delays a
+false, because two queues are in play. A message waits in a service backlog. The thread that
+reads the clock waits in the kernel's run queue for a core. The second wait delays a
 timestamp whether or not any backlog exists, and our rates are highest at high utilization with
 no backlog at all.
 

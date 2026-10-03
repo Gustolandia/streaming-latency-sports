@@ -60,6 +60,8 @@ MECHANICAL = [
     # Words of a compound may sit either side of a line break in the source, hence \s+.
     (r"\bsend-referenced\b", "publish-referenced"),
     (r"\bSend-referenced\b", "Publish-referenced"),
+    (r"\bper-send\b", "per-publish"),
+    (r"\bsend-to-", "publish-to-"),
     (r"\bsend-lag\b", "publish-delay"),
     (r"\bsend\s+lags\b", "publish delays"),
     (r"\bsend\s+lag\b", "publish delay"),
@@ -148,6 +150,10 @@ REVIEW = [
              r"(?!\s+(?:lags?|calls?|rates?|schedule|instants?|phases?|intervals?|timestamps?"
              r"|workers|future|thread)\b)",
      "send -> publish where the producer acts; otherwise adjudicate"),
+    # The hyphenated compounds the pattern above steps over, other than those MECHANICAL
+    # renames; "per-send" and "send-to-acknowledgment" survived the first pass that way.
+    ("send-compound", r"(?<![\w-])[Ss]end-(?!referenced\b|lag\b|to-)\w+|\b(?!per-send\b)\w+-send\b",
+     "a compound of send -> its publish form where the producer acts"),
     ("go-first", r"\b[Gg]o-first\b", "go-first -> real-time priority"),
     ("ordinary", r"\b[Oo]rdinary\b(?!\s+least\s+squares)",
      "ordinary -> normal where it names the scheduling policy (sched(7))"),
@@ -163,9 +169,10 @@ ISLANDS = re.compile(
     r"|\\begin\{equation\*?\}.*?\\end\{equation\*?\}"
     r"|\\begin\{(?:verbatim|lstlisting)\}.*?\\end\{(?:verbatim|lstlisting)\}"
     # A quotation is its source's prose, not ours: a vendor's "send timestamp" stays as the
-    # vendor wrote it (3 Oct 2026, when the publish renaming reached one).
+    # vendor wrote it (3 Oct 2026, when the publish renaming reached one). Not the quote
+    # environment: the documents use it to indent code and their own tables, and an island
+    # there hid a table header ("send blocked") from the renaming.
     r"|``.*?''"
-    r"|\\begin\{quote\}.*?\\end\{quote\}"
     r"|\$[^$\n]*\$"                                # inline math
     r"|\\(?:texttt|brk|cite|ref|eqref|label|href|url|includegraphics|input|bibliography"
     r"|bibliographystyle|newcommand|renewcommand|externaldocument)\*?\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}"

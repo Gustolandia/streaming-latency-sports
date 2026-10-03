@@ -1608,7 +1608,7 @@ one monotonic clock and a synchronous publish call. It loses the measurement any
 in floating point, but the \texttt{long[]} its percentiles come from is filled by the integer
 division \texttt{elapsed / 1000 / 1000}. On a sub-millisecond path its p50, p99 and p999
 therefore all read zero. The companion \texttt{ProducerPerformance} takes its
-send-to-acknowledgment difference on \texttt{System.currentTimeMillis()} and casts it to
+publish-to-acknowledgment difference on \texttt{System.currentTimeMillis()} and casts it to
 \texttt{int}.
 \item In \texttt{fio} the guard appears in three timing functions, each returning zero for a
 negative interval under the comment ``time warp bug on some kernels?''. The behavior is

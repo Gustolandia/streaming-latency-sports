@@ -222,9 +222,22 @@ class TestTheIndustrysNames:
 
     def test_a_quotation_keeps_its_source_s_words(self):
         """A vendor's "send timestamp" is the vendor's: renaming it falsifies the quotation."""
-        text = ("``a 64-bit send timestamp in UNIX nanoseconds.'' Our send lag.\n"
-                "\\begin{quote}the send call\\end{quote}\n")
+        text = "``a 64-bit send timestamp in UNIX nanoseconds.'' Our send lag.\n"
         new, changes, review = av.rewrite(text, "t.tex", check=False)
-        assert new == ("``a 64-bit send timestamp in UNIX nanoseconds.'' Our publish delay.\n"
-                       "\\begin{quote}the send call\\end{quote}\n")
+        assert new == "``a 64-bit send timestamp in UNIX nanoseconds.'' Our publish delay.\n"
         assert changes == ["t.tex:1  send lag -> publish delay"] and review == []
+
+    def test_a_quote_environment_is_layout_and_is_read(self):
+        """The documents indent their own tables and code with it; treated as a quotation, it
+        hid a table header, "send blocked", from the renaming (3 Oct 2026)."""
+        text = "\\begin{quote}event & send blocked (ms)\\end{quote}\n"
+        _new, _changes, review = av.rewrite(text, "t.tex", check=True)
+        assert [r.split("  ")[1].strip() for r in review] == ["send"]
+
+    def test_the_hyphenated_compounds_are_caught(self):
+        """per-send and send-to-acknowledgment stepped over the bare-word pattern once."""
+        text = "a per-send jitter; its send-to-acknowledgment difference; a send-side cost.\n"
+        new, changes, review = av.rewrite(text, "t.tex", check=False)
+        assert new == ("a per-publish jitter; its publish-to-acknowledgment difference; a "
+                       "send-side cost.\n")
+        assert [r.split("  ")[1].strip() for r in review] == ["send-side"]

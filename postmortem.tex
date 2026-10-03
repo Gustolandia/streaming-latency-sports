@@ -447,7 +447,7 @@ left none of its conditions usable, and nothing in its output said so.
 
 
 \subsection{S1.15. Open questions from the comprehensive campaign}
-Three observations from the campaign are consistent with a single conjecture --- a per-send
+Three observations from the campaign are consistent with a single conjecture --- a per-publish
 jitter kernel whose width in cell units grows with the numerator $p$ of $\Delta/\tau$ --- and
 none of them is established. We separate them from the results above deliberately: they are
 post-hoc, the pacer they implicate is measured only in the non-JVM replication of Section~\mainGenerality{}, and one of our own follow-up tests cuts against the conjecture.
@@ -675,7 +675,7 @@ five-event signature in every \kafka{} run, at every window:
 \small
 \begin{tabular}{rrr}
 \toprule
-event & wake late (ms) & send blocked (ms) \\
+event & wake late (ms) & publish blocked (ms) \\
 \midrule
 0 & 0.17 & \textbf{102.60} \\
 1 & \textbf{102.96} & 0.07 \\
@@ -1160,7 +1160,7 @@ one was not evaluable and one split.
 \paragraph{Duration invariance, which killed the drift account}
 If retention were set by an accumulating drift, longer runs would sit further from the grid
 than shorter ones. Intermediate counts over one, three and ten minutes are $1$, $1$ and $0$,
-with the vertices pinned throughout. Nothing accumulates. What remains is per-send jitter,
+with the vertices pinned throughout. Nothing accumulates. What remains is per-publish jitter,
 which is the mechanism the retention law of Section~\mainModeB{} assumes and not one we
 chose after seeing the data.
 
@@ -3707,7 +3707,7 @@ no negative span is possible --- and it loses the measurement anyway:
 The printed line is floating point and correct; the \texttt{long[]} the percentiles are read
 from is filled by integer division. Every sample is kept, nothing is filtered, and on a
 sub-millisecond path \texttt{p50}, \texttt{p99} and \texttt{p999} all report zero. The
-companion \texttt{ProducerPerformance} takes its send-to-acknowledgment difference on
+companion \texttt{ProducerPerformance} takes its publish-to-acknowledgment difference on
 \texttt{System.currentTimeMillis()} and casts it to \texttt{int}.
 
 This is what forced a new class into the classifier. Until then its categories were three

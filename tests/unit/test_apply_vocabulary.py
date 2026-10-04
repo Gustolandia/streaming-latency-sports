@@ -213,6 +213,12 @@ class TestTheIndustrysNames:
                        "processing-time latency and the\npublish-referenced span.\n")
         assert review == []
 
+    def test_stolen_time_takes_linuxs_name(self):
+        """4 Oct 2026: /proc/stat's steal, top's st, mpstat's %steal, KVM's steal time."""
+        text = "stolen processor time, stolen virtual-CPU time, stolen vCPU time, stolen time\n"
+        new, changes, review = av.rewrite(text, "t.tex", check=False)
+        assert new == "steal time, steal time, steal time, steal time\n"
+
     def test_the_words_that_need_a_reading_are_reported(self):
         text = ("The producer sends; the go-first consumer at ordinary priority; the brake;\n"
                 "the emission loop; ordinary least squares stays.\n")

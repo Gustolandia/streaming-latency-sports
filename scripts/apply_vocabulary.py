@@ -103,6 +103,9 @@ MECHANICAL = [
     # 4 Oct 2026: the latency a one-clock tool cannot measure, and the model's factor in it.
     (r"\bone-way\s+delivery\b", "one-way latency"),
     (r"\bdelivery\s+factor\b", "latency factor"),
+    # 4 Oct 2026: Linux's name. /proc/stat's field is steal, top prints st, mpstat %steal, and
+    # KVM's interface is MSR_KVM_STEAL_TIME; the quantity is steal time.
+    (r"\bstolen\s+(?:processor\s+|virtual-CPU\s+|vCPU\s+)?time\b", "steal time"),
     (r"\ba\s+handling\s+span\b", "a processing-time latency"),
     (r"\bhandling\s+spans\b", "processing-time latencies"),
     (r"\bhandling\s+span\b", "processing-time latency"),

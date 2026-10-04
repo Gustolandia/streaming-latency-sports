@@ -472,8 +472,8 @@ seconds passes every run, while the same hardware measuring one millisecond fail
 \label{sec:mixture}
 \label{sec:twostate}
 Each timestamping thread is either running, in which case its timestamp is late by a narrow
-jitter, or preempted and waiting for a core. From idle to the \emph{knee} of the load sweep, its heaviest
-load before the processors saturate, the rate grows $\invGrowth\times$ but the jitter's width only $\coreGrowth\times$, so load mostly changes
+jitter, or preempted and waiting for a core. From an idle host to the heaviest load before its processors
+are fully busy, the rate grows $\invGrowth\times$ but the jitter's width only $\coreGrowth\times$, so load mostly changes
 how often the thread is waiting for a core. Write $p$ for the probability of the second state,
 the thread's \emph{occupancy}\label{def:occupancy}. Call the part of that wait still to come the
 \emph{residual stall}, and write $G$ for its survival function, the chance that it outlasts a
@@ -1107,8 +1107,8 @@ Attributing the negatives to scheduling is an inference. One clock excludes cloc
 manipulations of Section~\ref{sec:twostate} exclude utilization, timer noise and stress, and
 the kernel trace observes the wait directly. The interpreter lock is bounded twice. The kernel
 trace, which cannot see the lock, already brackets the observed rate, and \kafka{}'s Java
-client shows the same failure. Both testbeds are virtual, so \emph{stolen time}, when one of
-our virtual processors is ready but the hypervisor runs another machine, is bounded, not excluded. Real-time priority, a control inside our virtual machine, still cut the rate.
+client shows the same failure. Both testbeds are virtual, so \emph{steal time}, the time one
+of our virtual processors is ready to run but waits while the hypervisor runs another machine, is bounded, not excluded. Real-time priority, a control inside our virtual machine, still cut the rate.
 
 Disagreeing
 clocks on different virtual CPUs~\cite{kvmclock} cannot explain the negatives either. A clock

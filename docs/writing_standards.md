@@ -781,6 +781,7 @@ threads".
 | send lag | publish delay | OMB `publishDelayLatency` |
 | delivery time ($D$), true delivery time ($T_{\mathrm{true}}$) | end-to-end latency, true end-to-end latency | OMB `endToEndLatency`; Confluent |
 | one-way delivery, delivery factor ($G$) | one-way latency, latency factor | network measurement's one-way latency (IETF RFC 7679's one-way delay); 4 October |
+| stolen (processor, virtual-CPU, vCPU) time | steal time | Linux: `/proc/stat`'s `steal` field ("Stolen time"), `top`'s `st`, `mpstat`'s `%steal`; KVM's `MSR_KVM_STEAL_TIME`; 4 October |
 | end-to-end latency ($E$), TTI | event-time latency | Karimov et al. |
 | handling span | processing-time latency | Karimov et al. |
 | emission (where $E$ starts) | event time | Karimov et al. |
@@ -820,9 +821,14 @@ one process; the paper had said "one clock", which our own two-process harness a
 Also defined where first used: a span's origin, the harness, the event-time latency (with
 Karimov et al.), the timestamp resolution, the background load, the consumer pattern,
 manipulation, mode and the negative-span rate, and, at the author's request the same day, the
-tick, stolen time, busy-polling and the knee of the load sweep, paid for by cutting passages
-that repeated what the paper says elsewhere; EEVDF, CFS, JVM, PTP, IPPM and OWAMP are spelled
-out. One name per thing: the positivity filter is no longer also "the rule", a thread no longer
+tick, busy-polling and steal time, paid for by cutting passages that repeated what the paper
+says elsewhere; EEVDF, CFS, JVM, PTP, IPPM and OWAMP are spelled out. Steal time is Linux's
+name (the table above), and the paper and the journal supplement call the machine a virtual
+machine rather than a guest, except where a KVM document's own term is followed. The knee of
+the load sweep, used once in the paper, is said in plain words there and in the journal
+supplement, "the heaviest load before its processors are fully busy"; the postmortem keeps
+the word, which names a registered campaign (the knee sweep) and is the wording of
+pre-registered H2 and H10, and defines it where it first appears. One name per thing: the positivity filter is no longer also "the rule", a thread no longer
 a "task", a message no longer a "record", a publish-timed span no longer
 "publish-referenced", and the sign check names the three spans it checks, as
 `scripts/clock_integrity.py` does. The adjective *published* in the sense of made public is gone

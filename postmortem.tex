@@ -1027,8 +1027,8 @@ selection as the withdrawal of Section~S3.
 \subsection{S5.1. Where the knee sweep placed the load conditions}
 Moved from Section~\mainRareState{}: the load-axis post-mortem in full. Section~\mainModeA{} keeps the admissions and the numbers.
 
-\paragraph{Both load-axis predictions failed, including ours} The knee sweep placed conditions
-at achieved $\rho$ of $0.881$, $0.920$, $0.950$, $0.970$ and $0.990$, where the candidate forms
+\paragraph{Both load-axis predictions failed, including ours} The knee sweep, named for
+the \emph{knee}, the load near saturation beyond which the negative-span rate climbs steeply, placed conditions at achieved $\rho$ of $0.881$, $0.920$, $0.950$, $0.970$ and $0.990$, where the candidate forms
 diverge most; the earlier ladder stopped at $0.878$ and everything above it collapsed onto a
 degenerate $\rho = 1.000$, which is why Section~\mainAuthors{} of the main text could not settle the question.
 With those points in hand, M/G/1 fits \emph{worse than the mean} ($R^2 = -0.05$ against a fitted
@@ -2310,12 +2310,12 @@ cloud instances are virtual machines, and the workstation runs its brokers in Do
 containers inside a WSL2 virtual machine on Microsoft's hypervisor. An earlier version of this
 paragraph said the workstation had no hypervisor beneath it, and drew from that a conclusion
 the machine cannot support. Two observations disagree with a
-steal-time account: real-time priority is a guest-side control and collapses the rate
+steal-time account, \emph{steal time} being the time a virtual processor is ready to run but waits while the hypervisor runs another machine: real-time priority is a control inside the virtual machine and collapses the rate
 $\rtLowFactor$--$\rtHighFactor\times$ (these two matched pairs; all \rtPairsWord{} are in S12, and Section~\mainSettle{} of the main
-text gives $\rtFactorLow$--$\rtFactorHigh\times$ across the load sweep), which stolen vCPU time would not
-yield to; and the
-$\tracedModeLo$--$\tracedModeHi$~ms mode of Section~\mainSpectrum{} sits on the guest kernel's own base-slice arithmetic
-rather than on any quantity the hypervisor exposes. Steal time may still contribute on either
+text gives $\rtFactorLow$--$\rtFactorHigh\times$ across the load sweep), which steal time would not yield
+to; and the
+$\tracedModeLo$--$\tracedModeHi$~ms mode of Section~\mainSpectrum{} sits on the base-slice arithmetic of the virtual
+machine's own kernel rather than on any quantity the hypervisor exposes. Steal time may still contribute on either
 testbed, and no machine here runs without a hypervisor, so none can show how much.
 
 \paragraph{A third rival, inside the interpreter}

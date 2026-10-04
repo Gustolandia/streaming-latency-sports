@@ -493,7 +493,10 @@ class TestRetentionBound:
             assert gone not in prose, f"{gone!r} is in the main text again; revisit tab:power"
         # v5 (28 Sep) says the same claims in its own words: "the check rejects" (III-A),
         # "from idle to the knee" (III-B), "padding the payload" (III-B).
-        for kept in ("the check rejects", "the knee", "real-time priority", "geometr",
+        # 4 Oct 2026: the knee, used once, is said in plain words, "the heaviest load before its
+        # processors are fully busy".
+        for kept in ("the check rejects", "heaviest load before its processors are fully busy",
+                     "real-time priority", "geometr",
                      "padding the payload", "kernel trace", "tost"):
             assert kept in prose, f"{kept!r} left the main text; revisit tab:power"
 

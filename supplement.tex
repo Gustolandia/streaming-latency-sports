@@ -730,8 +730,8 @@ per-acknowledgment waits of S6.5.}
 Clustering follows by construction. Being preempted is an interval, so the events inside it are
 corrupted together. A Wald--Wolfowitz runs test on each run's sequence of span signs finds strong
 clustering at every load of E-A3, even with no background load (Table~\ref{stab:mixture}). Coarse
-kernel timestamps would corrupt events independently and give $z\approx0$. From idle to the knee
-of the load sweep, E-A3's negative-span rate grows $\invGrowth$-fold while the jitter width grows
+kernel timestamps would corrupt events independently and give $z\approx0$. From an idle host to
+the heaviest load before its processors are fully busy, E-A3's negative-span rate grows $\invGrowth$-fold while the jitter width grows
 only $\coreGrowth$-fold. Two parameters move at very different rates. The jitter width
 $\sigma_{\mathrm{core}}$ belongs to the running state, and $p$ to the scheduler. A scale family,
 in which load only stretches one distribution by changing its width, has one parameter, which is
@@ -740,8 +740,7 @@ largest over the conditions measured and not a bound, as the floor $C_0$ of S3.1
 not a bound.
 
 \begin{table}[tb]
-\caption{\textbf{From idle to the knee the rate grows $\invGrowth$-fold and the jitter only
-$\coreGrowth$-fold.} E-A3, nine load levels, $25$ runs each, pre-registered. The jitter width is
+\caption{\textbf{Short of full utilization the rate grows $\invGrowth$-fold and the jitter only $\coreGrowth$-fold.} E-A3, nine load levels, $25$ runs each, pre-registered. The jitter width is
 $\sigma_{\mathrm{core}} = \mathrm{IQR}/1.349$. Negative spans cluster at every load (runs-test
 $z$). The three $\rho=1$ rows are distinct oversubscription levels that the utilization
 coordinate cannot separate.}
@@ -893,10 +892,10 @@ audited uses it.
 \paragraph{The hypervisor} The hypervisor is bounded, not excluded, because both testbeds are
 virtualized. The cloud instances are virtual machines, and the workstation runs its brokers in
 Docker Desktop containers inside a WSL2 virtual machine on Microsoft's hypervisor. Two
-observations disagree with an account in which stolen processor time causes the negatives.
-Real-time priority is a guest-side control, which stolen virtual-CPU time would not yield to,
+observations disagree with an account in which \emph{steal time}, the time a virtual processor is ready to run but waits while the hypervisor runs another machine, causes the negatives.
+Real-time priority is a control inside the virtual machine, which steal time would not yield to,
 and it cuts the rate $\rtFactorLow$- to $\rtFactorHigh$-fold. The upper mode of the stall
-spectrum sits on the guest kernel's own slice arithmetic (S3.7), on no quantity the hypervisor
+spectrum sits on the slice arithmetic of the virtual machine's own kernel (S3.7), on no quantity the hypervisor
 exposes. Steal time may still contribute, and no testbed here can show how much.
 
 \paragraph{The interpreter lock} The interpreter lock is present in principle and bounded in
@@ -2385,8 +2384,8 @@ al.\ decompose the tail latency of three Linux servers and find measured tails s
 than a queueing model alone predicts~\cite{li2014tales}. The excess comes from background
 processes, request re-ordering, interrupt routing, power management and NUMA effects. We add that
 the stall distribution propagates into the measurement of an unrelated quantity, and that load
-moves its tail far faster than its core. From idle to the knee of the load sweep the
-negative-span rate grows $\invGrowth\times$ and the jitter's width $\coreGrowth\times$ (S3.4). A
+moves its tail far faster than its core. From an idle host to the heaviest load before its
+processors are fully busy, the negative-span rate grows $\invGrowth\times$ and the jitter's width $\coreGrowth\times$ (S3.4). A
 benchmark can therefore sit at a utilization where its measurements look tight, because the
 jitter is narrow, while the tail that corrupts them is already growing.
 

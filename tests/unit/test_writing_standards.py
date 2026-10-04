@@ -410,7 +410,8 @@ class TestTheIndustrysNames:
     RETIRED = ("acknowledgment lag", "send lag", "send call", "send rate", "send-referenced",
                "send instant", "send schedule", "handling span", "go-first", "lag brake",
                "got-it brake", "timed from the send", "timing from the send",
-               "one-way delivery", "delivery factor")
+               "one-way delivery", "delivery factor", "stolen time", "stolen processor time",
+               "stolen virtual-cpu time", "stolen vcpu time")
     DOCS = ("paper.tex", "supplement.tex", "postmortem.tex")
 
     @pytest.mark.parametrize("doc", DOCS)
@@ -456,8 +457,9 @@ class TestEachNameIsBuiltWhereAReaderFirstMeetsIt:
                "retention", "origin", "transport proxy", "event-time latency",
                "publish delay", "processing-time latency", "background load",
                "consumer pattern", "negative-span rate",
-               # 4 Oct 2026, the author: "yes gloss those four too, cut elsewhere to fit."
-               "knee", "tick", "busy-polling", "stolen time")
+               # 4 Oct 2026, the author: "yes gloss those four too, cut elsewhere to fit." The
+               # knee, used once, is said in plain words instead; stolen time is Linux's steal time.
+               "tick", "busy-polling", "steal time")
     # The opening paragraph says what happened before it names anything, and the mutation tests
     # anchor on its first words; the producer and the consumer it mentions are defined in the
     # paragraph after it, so the rule for these two starts there.

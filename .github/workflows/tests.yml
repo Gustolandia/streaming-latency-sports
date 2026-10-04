@@ -10,7 +10,9 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Pinned, not ubuntu-latest: that label moves to Ubuntu 26.04 from 2026-10-19, and
+    # actions/python-versions has no Python 3.9 build for 26.04 (3.9 stops at 24.04).
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:

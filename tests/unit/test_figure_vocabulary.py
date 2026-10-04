@@ -163,6 +163,15 @@ class TestOffending:
         root = manuscript(paper="the inversion rate")
         assert fv.offending(_fig("inversion rate"), root=root) == []
 
+    def test_nothing_is_armed_while_the_prose_uses_every_retired_term(self, manuscript):
+        """No term retired, so no figure is read: the early return. The mid-rename test above
+        reached it while "inversion" was the only retired term; writing standard A10 (3 Oct
+        2026) added five, which that one-line manuscript does not use, so it retired them and
+        the early return went untested until CI's coverage gate said so."""
+        root = manuscript(paper=" ".join(term for term, _ in fv.RETIRED))
+        assert fv.retired_terms(root=root) == ()
+        assert fv.offending(_fig("inversion rate", "delivery time"), root=root) == []
+
     def test_it_finds_the_term_wherever_it_sits(self, manuscript):
         root = manuscript(paper="negative span")
         found = fv.offending(_fig("x", "Inversion rate per run", "t"), root=root)

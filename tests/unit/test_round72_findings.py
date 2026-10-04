@@ -149,7 +149,10 @@ class TestR2TheSliceIsMeasuredAgainstTheDelivery:
         # the wait (Supplement S16.10): "descheduled at the wrong instant ... about a slice late"
         # became "woken while another task holds the CPU ... what is left of that task's slice".
         # What this pins is unchanged: the slice against the delivery, read from the ledger.
-        i = re.search(r"waits out what is left of that task's\s+slice", paper).start()
+        # 4 Oct 2026: "thread" for "task", the paper's one name for what the scheduler runs, so
+        # the slice is "the running thread's".
+        i = re.search(r"waits out what is left of the\s+running\s+thread's\s+slice",
+                      paper).start()
         passage = " ".join(paper[i:i + 420].split())
         for macro in ("sliceOverDeliveryLo", "sliceOverDeliveryHi",
                       "condDeliveryLoMs", "condDeliveryHiMs"):
@@ -304,13 +307,15 @@ class TestRecommendedItems:
         """v5 (28 Sep): the subsection became the paragraph labelled sec:betterclock, whose
         claim now names the clock it means (editor 6.6), "A better-synchronized clock fixes
         neither failure"; the rule is unchanged, the claim first and the PTP arithmetic after."""
-        paras = [p for p in re.split(r"\n[ \t]*\n", paper) if "PTP~" in p]
+        # 4 Oct 2026: the protocol is named in full where the paper uses it, its one use.
+        paras = [p for p in re.split(r"\n[ \t]*\n", paper) if "Precision Time Protocol~" in p]
         assert len(paras) == 1, "one paragraph carries the PTP arithmetic"
         opening = " ".join(re.sub(r"(?m)^\s*" + RE_BS + r"label\{[^}]*\}\s*$", "",
                                   paras[0]).split())
         assert opening.startswith("A better-synchronized clock fixes neither failure."), (
             opening[:120])
-        assert opening.index("fixes neither failure") < opening.index("PTP"), (
+        assert (opening.index("fixes neither failure")
+                < opening.index("Precision Time Protocol")), (
             "the Feynman rule: the claim first, the arithmetic that supports it after")
 
     def test_w7_the_grey_literature_ledger_gained_its_fourth_row(self):

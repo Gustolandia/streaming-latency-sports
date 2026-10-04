@@ -625,7 +625,7 @@ streams) — the intended comparison.
 
 ## 6. Methodology & Metrics
 
-### 6.1 Primary metric — end-to-end latency E (TTI in the harness)
+### 6.1 Primary metric — event-time latency E (TTI in the harness)
 
 ```
 E = t_out − t_sched = (t_pub − t_sched) + A + S + (t_out − t_recv)     (paper, Equation 2)
@@ -641,7 +641,7 @@ TTI = t_output_ns − t_prod_sched_ns
   plan's emission offset scaled by the speed-up flag
 - `t_output_ns` (*t*_out): when the consumer has handled the record
 
-The paper calls this quantity the **end-to-end latency E**; the harness's columns,
+The paper calls this quantity the **event-time latency E**, Karimov et al.'s name for it; the harness's columns,
 `compute_tti.py` and `tti_summary.json` call it TTI (Time-to-Insight) for historical reasons.
 Every timestamp is read from one wall clock, `CLOCK_REALTIME`, through `time.time_ns()`, by
 producer and consumer processes on one host, so a difference of a producer timestamp and a
@@ -1259,7 +1259,12 @@ industry's** (writing standard A10, in all three documents and the figures): the
 *publishes*; *A* is the publish latency, the old send lag the publish delay and *D* the end-to-end
 latency, the names the OpenMessaging Benchmark reports them under; *E* is the event-time latency
 and the consumer's own span the processing-time latency, after Karimov et al.; Linux's real-time
-and normal priority replace go-first and ordinary; and the campaign's brake is its stopping rule.
+and normal priority replace go-first and ordinary; and the campaign's brake is its stopping rule. **Every term in the paper is defined where a reader first meets it** (4 Oct), the way Tipler
+and Mosca build a quantity: the producer and the consumer by what they do, the publish call as
+the moment the producer hands the message over, real-time priority as running ahead of every
+thread at the default normal priority, and the one-way latency, the industry's name for what
+was the one-way delivery, as the time from one process to another, which ten of the eleven
+tools run cannot measure because each takes both timestamps in one process.
 **The supplement is now two documents:** the journal supplement S1–S9, in the paper's
 order under both authors' names, and the single-author postmortem S1–S37, the complete record, not
 submitted. **A registered audit of 43 published reports** found the signature in eight configurations

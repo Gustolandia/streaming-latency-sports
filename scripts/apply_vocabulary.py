@@ -100,6 +100,9 @@ MECHANICAL = [
     # Karimov et al.'s processing-time latency: from the record reaching the consumer to its
     # output. Its companion, event-time latency, is the paper's E, renamed by hand because the
     # old name it had, end-to-end latency, is now D's and only a reading can tell them apart.
+    # 4 Oct 2026: the latency a one-clock tool cannot measure, and the model's factor in it.
+    (r"\bone-way\s+delivery\b", "one-way latency"),
+    (r"\bdelivery\s+factor\b", "latency factor"),
     (r"\ba\s+handling\s+span\b", "a processing-time latency"),
     (r"\bhandling\s+spans\b", "processing-time latencies"),
     (r"\bhandling\s+span\b", "processing-time latency"),

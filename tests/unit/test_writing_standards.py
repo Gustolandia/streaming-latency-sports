@@ -409,7 +409,8 @@ class TestTheIndustrysNames:
 
     RETIRED = ("acknowledgment lag", "send lag", "send call", "send rate", "send-referenced",
                "send instant", "send schedule", "handling span", "go-first", "lag brake",
-               "got-it brake", "timed from the send", "timing from the send")
+               "got-it brake", "timed from the send", "timing from the send",
+               "one-way delivery", "delivery factor")
     DOCS = ("paper.tex", "supplement.tex", "postmortem.tex")
 
     @pytest.mark.parametrize("doc", DOCS)
@@ -436,10 +437,84 @@ class TestTheIndustrysNames:
     def test_the_paper_defines_each_name_where_its_model_begins(self, paper):
         flat = " ".join(paper.split())
         for term in ("end-to-end latency", "publish latency", "publish delay",
-                     "processing-time latency"):
+                     "processing-time latency", "event-time latency"):
             assert "\\emph{%s}" % term in flat, term
-        assert "The event-time latency runs from the event falling due" in flat
+        assert "runs from the event falling due" in flat
         assert "$t_{\\mathrm{pub}}$ is taken immediately before the publish call" in flat
+
+
+class TestEachNameIsBuiltWhereAReaderFirstMeetsIt:
+    """A10, 4 Oct 2026: the author asked that the industry's names be "clear in a way tipler and
+    mosca would build them", and that everything in the paper be explained. A name is defined,
+    in plain words and in italics, where a reader first meets it in the body; the abstract is a
+    summary and may use it first. First failure: "one-way latency" was used in the introduction
+    and in the contributions and glossed only in Section V, and "real-time priority" and
+    "normal priority", the paper's main manipulation, were defined nowhere."""
+
+    DEFINED = ("scheduling delay", "end-to-end latency", "publish latency", "real-time priority",
+               "normal priority", "one-way latency", "positivity filter", "manipulation",
+               "retention", "origin", "transport proxy", "event-time latency",
+               "publish delay", "processing-time latency", "background load",
+               "consumer pattern", "negative-span rate")
+    # The opening paragraph says what happened before it names anything, and the mutation tests
+    # anchor on its first words; the producer and the consumer it mentions are defined in the
+    # paragraph after it, so the rule for these two starts there.
+    AFTER_THE_OPENING = ("producer", "consumer")
+
+    @staticmethod
+    def _reader_text(paper):
+        body = paper.split(r"\section{Introduction}", 1)[1]
+        body = body.split(r"\section*{Acknowledgment}", 1)[0]
+        body = re.sub(r"(?m)(?<!\\)%.*$", " ", body)
+        body = re.sub(r"\\begin\{equation\*?\}.*?\\end\{equation\*?\}", " ", body, flags=re.S)
+        body = re.sub(r"\$[^$]*\$", " ", body)
+        return " ".join(body.split())
+
+    @staticmethod
+    def _first(term, text):
+        words = r"\s+".join(re.escape(w) for w in term.split())
+        return re.search(r"(?i)(?<![\w-])%s(?![\w-])" % words, text)
+
+    def _assert_defined_first(self, term, text):
+        first = self._first(term, text)
+        assert first, "%r is no longer used; take it off the list" % term
+        assert text[max(0, first.start() - 6):first.start()] == "\\emph{", (
+            "%r is first used before its definition: ...%s..."
+            % (term, text[max(0, first.start() - 90):first.end() + 30]))
+
+    @pytest.mark.parametrize("term", DEFINED)
+    def test_the_first_use_is_the_definition(self, paper, term):
+        self._assert_defined_first(term, self._reader_text(paper))
+
+    @pytest.mark.parametrize("term", AFTER_THE_OPENING)
+    def test_the_opening_names_it_and_the_next_paragraph_defines_it(self, paper, term):
+        text = self._reader_text(paper)
+        opening_ends = text.index("It matters because")
+        self._assert_defined_first(term, text[opening_ends:])
+
+    def test_the_harness_is_defined_with_the_model(self, paper):
+        """The opening's first words name the harness, and the mutation tests anchor on them, so
+        its definition comes with the model, in Section II before its first subsection."""
+        text = self._reader_text(paper)
+        model = text[text.index("A producer process publishes"):
+                     text.index("Testbeds, clocks and workload")]
+        assert "\\emph{harness}, the program that times the messages" in model
+
+    def test_the_publish_call_is_said_where_it_first_appears(self, paper):
+        text = self._reader_text(paper)
+        first = self._first("publish call", text)
+        after = text[first.end():first.end() + 60]
+        assert after.startswith(", the moment the producer hands the message over"), after
+
+    def test_published_means_the_producers_act_only(self, paper):
+        """A10 freed "publish" for the producer's act; until 4 Oct the paper still said
+        "published reports", "published practice" and "the kernel's published rule"."""
+        text = " ".join(_prose(_body(paper)).split())
+        uses = [text[max(0, m.start() - 50):m.end() + 10]
+                for m in re.finditer(r"(?i)\bpublished\b", text)]
+        made_public = [u for u in uses if not re.search(r"before (?:they were|being) published"
+                                                        r"|due to be published", u)]
+        assert not made_public, made_public
 
 
 class TestNoForwardPointerStandsInForADefinition:

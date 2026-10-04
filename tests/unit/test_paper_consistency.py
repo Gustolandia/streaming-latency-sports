@@ -1574,8 +1574,9 @@ class TestNarrativeArc:
             "the ratio beat must set the delivery against both of the instrument's timescales"
         for token in ("on one clock", "not clock synchronization", "priority"):
             assert token in mode_a, f"the Mode A beat is missing {token!r}"
+        # "one-way latency" since 4 Oct 2026, the industry's term (writing standard A10).
         for token in ("millisecond clock", "positivity filter", "registered in advance",
-                      "one-way delivery"):
+                      "one-way latency"):
             assert token in mode_b, f"the Mode B beat is missing {token!r}"
         assert "withdr" not in flat.lower(), "the TC abstract no longer narrates withdrawals"
 
@@ -4414,8 +4415,10 @@ class TestTheReadersRequirementsAreMet:
         # v5 (28 Sep): the pipeline schematic went to Supplement S24.3 at an outside editor's
         # request, and the paper's drawing of the system is Fig. 2, the two threads that take
         # the timestamps. The co-author's requirement is on that drawing's placement.
+        # 4 Oct 2026: the title says what did not happen, "not an early arrival" for "not an
+        # early record", since the paper calls a message a message throughout.
         for i, page in enumerate(pages[:6], start=1):
-            if "Late timestamp, not an early record" in (page.extract_text() or ""):
+            if "Late timestamp, not an early arrival" in (page.extract_text() or ""):
                 found = i
                 break
         assert found is not None, "the system figure's caption is not in the first six pages"
@@ -4458,7 +4461,8 @@ class TestTheReadersRequirementsAreMet:
         assert definition < first_s_use, (
             "the delivery D must be defined, in words, before S = D - A is used")
         window = " ".join(model[definition - 80:definition + 200].split())
-        assert "from the publish call to the consumer holding the record" in window, (
+        # 4 Oct 2026: "the message" for "the record", one name for one thing (writing standard A10).
+        assert "from the publish call to the consumer holding the message" in window, (
             "the definition must say what the delivery is, end to end, in words")
 
 

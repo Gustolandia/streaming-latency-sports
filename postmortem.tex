@@ -1196,7 +1196,7 @@ main text, which is why this one is here, and Fig.~\ref{fig:ttrue} plots them.
 \includegraphics[width=\columnwidth]{docs/results/figures/ttrue_law.pdf}
 \caption[Longer end-to-end latencies invert less often]{\textbf{Longer end-to-end latencies invert less often.} Negative span rate against true
 transport over the payload sweep, Wilson $95\%$ intervals. The same stall distribution
-overlaps a short end-to-end latency almost entirely and a long one hardly at all, which is the delivery
+overlaps a short end-to-end latency almost entirely and a long one hardly at all, which is the latency
 factor $G(T_{\mathrm{true}})$ of Equation~\ref{eq:twostate} as an experiment: lengthening what is being
 measured lowers the rate, where a load-driven account predicts no change. The figure sits
 here rather than in the main text for the same reason Equation~\ref{eq:tailindex} above
@@ -2726,7 +2726,7 @@ shape of Equation~\ref{eq:restofslice}. The traced mode of Section~\mainSpectrum
 with that shape: a wait spread as Equation~\ref{eq:restofslice} spreads it at a 3~ms slice and a
 1~ms tick puts half its mass in the octave from $\tracedModeLo$ to $\tracedModeHi$~ms, the octave that holds the mode, and
 waits begun by a preemption add their gathering at the slice to the same octave. For the thread
-that timestamps an acknowledgment, the delivery factor $G$ of Equation~\ref{eq:twostate} now has a
+that timestamps an acknowledgment, the latency factor $G$ of Equation~\ref{eq:twostate} now has a
 measured form with no parameter the kernel does not set, at a margin $T - g$ rather than
 $T_{\mathrm{true}}$; the occupancy $p$ in front of it is still not predicted.
 
@@ -3071,7 +3071,7 @@ directly. We cannot write down the rate a benchmark will suffer at a given load 
 machine. Two attempts failed and are reported in S1.5: the queueing form fits worse than the mean once the
 sweep reaches the range where forms diverge, and our own registered bracket missed a $1.44\times$
 growth by predicting $2.45$--$3.07\times$. Both failed for the same reason --- both were
-parameterized in $\rho$, and $\rho$ is not the variable. The delivery factor
+parameterized in $\rho$, and $\rho$ is not the variable. The latency factor
 $G(T_{\mathrm{true}})$ of Equation~\ref{eq:twostate} is the nearest thing we have to a
 quantitative law, and it carries no load term at all: it predicts how the rate scales with
 $T_{\mathrm{true}}$, not what the rate is. For the thread that timestamps the acknowledgment

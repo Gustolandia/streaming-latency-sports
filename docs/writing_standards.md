@@ -780,12 +780,13 @@ threads".
 | acknowledgment lag ($A$) | publish latency | OMB `publishLatency` |
 | send lag | publish delay | OMB `publishDelayLatency` |
 | delivery time ($D$), true delivery time ($T_{\mathrm{true}}$) | end-to-end latency, true end-to-end latency | OMB `endToEndLatency`; Confluent |
+| one-way delivery, delivery factor ($G$) | one-way latency, latency factor | network measurement's one-way latency (IETF RFC 7679's one-way delay); 4 October |
 | end-to-end latency ($E$), TTI | event-time latency | Karimov et al. |
 | handling span | processing-time latency | Karimov et al. |
 | emission (where $E$ starts) | event time | Karimov et al. |
 | go-first, ordinary (priority) | real-time priority, normal priority | `sched(7)` |
 | the lag brake, the got-it brake | the stopping rule | sequential experimentation |
-| publish (make a figure public) | report | frees *publish* for the producer's act |
+| publish (make a figure public); published (made public) | report; public, documented, reported | frees *publish* for the producer's act (the adjective, in the paper, 4 October) |
 
 Kept, because the industry has no name for them or its name means something else: *span*,
 *negative span*, *transport proxy* ($S$, which no benchmark names because none means to report
@@ -800,6 +801,31 @@ Rule: the names above, everywhere in the three documents and in the figures. Gat
 *go-first*, *ordinary*, *brake* and *emission* are review items, each surviving use adjudicated
 with its reason in `docs/vocabulary_adjudications.json`. `scripts/figure_vocabulary.py` retires
 the terms from the figures once the manuscript no longer uses them.
+
+**Each name is built where a reader first meets it (4 October).** The author approved
+*one-way latency* and *latency factor* and asked that these names be "clear in a way Tipler and
+Mosca would build them", with everything in the paper explained. A reviewer listed every term
+the paper uses, where it is first used and where it is first defined; each proposed repair was
+checked against the code and the data before it was made, and two were dropped as wrong (a
+background-load level is not a utilization, and "peak" would have misdescribed a histogram
+with three modes). The paper's main manipulation, real-time and normal priority, had been
+defined nowhere; the one-way latency was glossed only in Section V, after three uses; the
+publish call was never described. Now each name is defined in plain words, in italics, where
+the body first uses it: the producer and the consumer by what they do; the publish call as the
+moment the producer hands the message over; the end-to-end and publish latency as the names
+broker benchmarks give them, with the citation; real-time priority as running ahead of every
+thread at the default normal priority; the one-way latency as the time from one process to
+another. Ten of the eleven tools run cannot measure one because each takes both timestamps in
+one process; the paper had said "one clock", which our own two-process harness also reads.
+Also defined where first used: a span's origin, the harness, the event-time latency (with
+Karimov et al.), the timestamp resolution, the background load, the consumer pattern,
+manipulation, mode and the negative-span rate; EEVDF, CFS, JVM, PTP, IPPM and OWAMP are spelled
+out. One name per thing: the positivity filter is no longer also "the rule", a thread no longer
+a "task", a message no longer a "record", a publish-timed span no longer
+"publish-referenced", and the sign check names the three spans it checks, as
+`scripts/clock_integrity.py` does. The adjective *published* in the sense of made public is gone
+from the paper, so there *publish* means the producer's act. Gated by
+`TestEachNameIsBuiltWhereAReaderFirstMeetsIt` in `tests/unit/test_writing_standards.py`.
 
 ---
 

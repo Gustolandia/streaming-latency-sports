@@ -121,7 +121,9 @@ class TestR1TheAcknowledgmentLagIsCounted:
         flat = " ".join(paper.split())
         i = flat.index(r"Table~\ref{tab:spans} separates the spans")
         passage = flat[i:i + 700]
-        assert "The publish-referenced span, the publish latency $A$" in passage
+        # 4 Oct 2026: "publish-timed" for "publish-referenced", the paper's one word for a span
+        # timed from the publish call, and the spans named in the plural, as Table I lists them.
+        assert "The publish-timed spans, which include the publish latency $A$" in passage
         assert "negative on no event at all" in passage, \
             "the premise is no longer stated as a measurement beside the table that measures it"
 
@@ -134,7 +136,7 @@ class TestR1TheAcknowledgmentLagIsCounted:
         caption, which says only the acknowledgment-origin span inverts.
         """
         flat = " ".join(paper.split())
-        i = flat.index("The publish-referenced span, the publish latency $A$")
+        i = flat.index("The publish-timed spans, which include the publish latency $A$")
         passage = flat[i:i + 320]
         assert "publish latency $A$" in passage
         assert "negative on no event at all" in passage

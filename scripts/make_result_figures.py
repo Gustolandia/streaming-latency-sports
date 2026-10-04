@@ -298,7 +298,7 @@ def plot_spectrum(ax, bins, slice_ms=None):
     ax.bar(range(len(los)), share, color=colors, width=0.82, linewidth=0)
     ax.set_xticks(range(len(los)))
     ax.set_xticklabels([_us_label(v) for v in los], fontsize=8, rotation=90)
-    ax.set_xlabel("run-queue stall (µs, log2 buckets)", fontsize=8)
+    ax.set_xlabel("scheduling delay (µs, log2 buckets)", fontsize=8)
     ax.set_ylabel("share of wakeups (%)", fontsize=8)
     ax.tick_params(labelsize=8)
     ax.grid(axis="y", alpha=0.25, lw=0.5)

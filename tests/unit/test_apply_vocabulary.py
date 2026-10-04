@@ -210,7 +210,7 @@ class TestTheIndustrysNames:
         new, changes, review = av.rewrite(text, "t.tex", check=False)
         assert new == ("A publish delay, a publish latency and an end-to-end latency; the publish "
                        "call, the publish rate and two end-to-end latencies; Publish latency, a "
-                       "processing-time latency and the\npublish-referenced span.\n")
+                       "processing-time latency and the\npublish-timed span.\n")
         assert review == []
 
     def test_stolen_time_takes_linuxs_name(self):

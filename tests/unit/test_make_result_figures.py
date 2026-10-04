@@ -490,7 +490,8 @@ def test_plot_grid_draws_one_marker_per_arm_and_labels_every_class():
                                        ("mechanism", "mechanism_forest"),
                                        ("ttrue", "ttrue_law"),
                                        ("exposure", "exposure_curve"),
-                                       ("recovery", "recovery_populations")])
+                                       ("recovery", "recovery_populations"),
+                                       ("remedies", "remedies")])
 def test_each_builder_writes_a_pdf(tmp_path, name, stem):
     assert mrf.main(["--out", str(tmp_path), "--only", name]) == 0
     out = tmp_path / ("%s.pdf" % stem)
@@ -537,11 +538,72 @@ def test_figures_the_manuscript_includes_are_the_ones_this_script_writes():
     this script builds appearing in NEITHER file, which is the dangling case the test is
     for, so both are searched and the figure has to land in one of them.
     """
+    # 4 Oct 2026: three documents, since the traced stall spectrum went to the journal
+    # supplement and the paper gained what the remedies buy.
     tex = ((ROOT / "paper.tex").read_text(encoding="utf-8")
-           + (ROOT / "postmortem.tex").read_text(encoding="utf-8"))
+           + (ROOT / "postmortem.tex").read_text(encoding="utf-8")
+           + (ROOT / "supplement.tex").read_text(encoding="utf-8"))
     for stem in ("deletion_phases", "stall_spectrum", "grid_membership",
-                 "mechanism_forest", "ttrue_law"):
+                 "mechanism_forest", "ttrue_law", "remedies"):
         assert "figures/%s.pdf" % stem in tex, "%s is built but included nowhere" % stem
+
+
+# --- what the remedies buy (Fig. 4 since 4 Oct 2026) ------------------------------------------
+
+def test_repair_rows_skip_a_condition_with_no_delivery_and_sort_the_rest(tmp_path):
+    p = tmp_path / "span.csv"
+    p.write_text("condition,median_S_us,median_D_us,recovery_err_us\n"
+                 "b#pass,500,2000,-100\n"
+                 "z#pass,100,0,0\n"
+                 "a#fail,300,1000,50\n", encoding="utf-8")
+    rows = mrf.repair_rows(p)
+    assert rows == [(1.0, 70.0, 5.0), (2.0, 75.0, 5.0)]
+
+
+def test_repair_rows_refuse_a_file_with_no_conditions(tmp_path):
+    p = tmp_path / "span.csv"
+    p.write_text("condition,median_S_us,median_D_us,recovery_err_us\n", encoding="utf-8")
+    with pytest.raises(ValueError):
+        mrf.repair_rows(p)
+
+
+def test_the_committed_repair_rows_improve_every_condition():
+    """The panel's claim, checked on the data: adding A back never makes a condition worse."""
+    rows = mrf.repair_rows()
+    assert len(rows) == 70
+    assert all(repaired < proxy for _, proxy, repaired in rows)
+
+
+def test_plot_repair_draws_the_curve_its_band_and_both_populations():
+    fig, ax = plt.subplots()
+    try:
+        mrf.plot_repair(ax, [(0.8, 80.0, 3.0), (2.0, 70.0, 0.0)], (725.0, 1900.0, 500.0,
+                                                                     500.0, 1900.0))
+        assert len(ax.collections) == 3, "the band and the two scatters"
+        assert ax.get_xscale() == "log"
+        labels = [t.get_text() for t in ax.get_legend().get_texts()]
+        assert labels == ["expected error, $A/D$", "timed from the acknowledgment",
+                          "with $A$ added back"]
+    finally:
+        plt.close(fig)
+
+
+def test_plot_priority_pairs_sets_pairs_at_one_load_apart():
+    rows = [{"rho": 0.881, "campaign": "E-A5", "rate_base": 0.3, "rate_rt": 0.005},
+            {"rho": 0.882, "campaign": "E-A7", "rate_base": 0.25, "rate_rt": 0.004},
+            {"rho": 0.606, "campaign": "E-A5b", "rate_base": 0.05, "rate_rt": 0.002}]
+    fig, ax = plt.subplots()
+    try:
+        mrf.plot_priority_pairs(ax, rows)
+        drops = [ln for ln in ax.get_lines() if len(ln.get_xdata()) == 2]
+        xs = sorted(ln.get_xdata()[0] for ln in drops)
+        assert len(drops) == 3
+        assert xs[1] != xs[2], "two pairs at one load are drawn apart"
+        assert ax.get_yscale() == "log"
+        said = [t.get_text() for t in ax.texts]
+        assert said == ["normal priority", "real-time priority"]
+    finally:
+        plt.close(fig)
 
 
 # --- the mechanism forest and the T_true law ---------------------------------------------

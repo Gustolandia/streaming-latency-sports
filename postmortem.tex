@@ -130,8 +130,8 @@
 % the lead author's; the paper's two authors are named in the footnote, so a loose page
 % still says which paper it belongs to. tests/unit/test_front_matter_agrees.py holds this.
 \title{A Postmortem of a Withdrawn Result\\
-\large The Complete Record behind ``Faster than Light:\\
-Latency Measurement Errors in Message-Broker Benchmarks''}
+\large The Complete Record behind ``Faster than Light: Silent Errors in the\\
+Latency Benchmarks Used to Choose Message Brokers''}
 \author{Gustavo~Pedro~Ricou%
 \thanks{G.~P.~Ricou is with the School of Computer Science and Statistics, Trinity College
 Dublin, Dublin~2, Ireland. E-mail: pedrorig@tcd.ie. This document accompanies the paper by
@@ -290,7 +290,7 @@ We settled the question on the corpus rather than by argument. Every archived ru
 producer and consumer events was recounted, span by span
 (\texttt{scripts/recount\_spans.py}, output committed as
 \texttt{docs/results/span\_recount.csv}). Over $\spanEvents$ events in $\spanRuns$ runs, the
-acknowledgment-referenced span is negative $\spanNegAck$ times and the publish-referenced span
+acknowledgment-timed span is negative $\spanNegAck$ times and the publish-timed span
 is negative $\spanNegSend$ times. Nothing in the corpus arrived before it was published.
 
 What changed as a result: the framing, the justification of the gate, and the claim that the
@@ -1853,7 +1853,7 @@ sign check of Section~\mainGate{} fires on none of it.}
 \centering
 \includegraphics[width=\columnwidth]{docs/results/figures/exposure_curve.pdf}
 \caption[Where a path sits on the exposure curve]{\textbf{Where a path sits on the exposure curve.} Table~\ref{tab:exposure} as a
-curve: the relative error of the acknowledgment-referenced proxy, $A/T_{\mathrm{true}}$,
+curve: the relative error of the acknowledgment-timed proxy, $A/T_{\mathrm{true}}$,
 against the end-to-end latency measured. The line is this corpus's median publish latency
 and the band its tenth to ninetieth percentile across conditions, so a reader can bracket
 their own path rather than take the middle. The bar on the dashed line is the crossover,
@@ -1864,7 +1864,7 @@ where published broker medians sit (Section~S33.4), which is the reason the curv
 \label{fig:exposurefull}
 \end{figure}
 
-The rows added below one millisecond are the regime broker benchmarks actually report in (Section~S33), and they are where an acknowledgment-referenced harness stops measuring the path at all. A publish-referenced one is unaffected: it reports the end-to-end latency itself, which is why the framework audited in S33.3 needs no correction from this table.
+The rows added below one millisecond are the regime broker benchmarks actually report in (Section~S33), and they are where an acknowledgment-timed harness stops measuring the path at all. A publish-timed one is unaffected: it reports the end-to-end latency itself, which is why the framework audited in S33.3 needs no correction from this table.
 
 \paragraph{Which estimator produced the two headline ratios, stated because it decides them}
 Section~\mainCost{} says the reported span is $\reportedFraction\%$ of the end-to-end latency it stands for,
@@ -2000,8 +2000,8 @@ counter literature, we claim the consequence under deletion, not the lemma.
 \paragraph{What the admission condition deletes here, measured} The three arguments above are about what
 deletion does in principle. Figure~\ref{fig:deletionhist} is what it does to this corpus, in
 three panels. Panel~(a) is the control Table~\ref{P-tab:spans} counts: over the same
-$\spanEvents$ joined events on the same clock, the acknowledgment-referenced span falls below
-zero $\spanNegAck$ times and the publish-referenced span never does, so the negatives are a
+$\spanEvents$ joined events on the same clock, the acknowledgment-timed span falls below
+zero $\spanNegAck$ times and the publish-timed span never does, so the negatives are a
 property of which timestamp serves as the origin and not of the latency being timed. Panel~(b)
 puts a millisecond timestamp in front of that population. The difference of two truncated
 timestamps lands on $0$ or on $1$ according only to where the tick boundaries fall, and a guard
@@ -2028,8 +2028,8 @@ instrumented runs did report --- and the two answer different questions.
 \centering
 \includegraphics[width=\textwidth]{docs/results/figures/deletion_histogram.pdf}
 \caption[What the benchmark deletes, beside what it then reports]{\textbf{What the benchmark deletes, beside what it then reports.}
-(a)~At nanosecond resolution the acknowledgment-referenced span goes below zero
-$\spanNegAck$ times in $\spanEvents$; the publish-referenced span, same events and same clock,
+(a)~At nanosecond resolution the acknowledgment-timed span goes below zero
+$\spanNegAck$ times in $\spanEvents$; the publish-timed span, same events and same clock,
 never does. (b)~A millisecond timestamp cannot see (a): it differences two truncated timestamps,
 so a sub-millisecond end-to-end latency lands on $0$ or $1$ by tick alignment alone, and an admission condition then deletes $\msGuardDeletedPct\%$ of the population uncounted. (c)~Five
 dispositions of a non-positive sample, three of them from the registry of Section~S25,
@@ -2105,7 +2105,7 @@ something other than what it claims.
 \emph{Section~\mainThreats{} states the verdict in one sentence: a read-cost bound admits only
 two clocksources, and the corpus closes the channel a second time on headroom, not on shared
 endpoints. Both halves are derived here --- the increment the probe saw, what it excludes, and
-why the publish-referenced span's floor settles the question independently of which clocksource was
+why the publish-timed span's floor settles the question independently of which clocksource was
 in use. An earlier draft argued from the endpoints instead: the two spans end at the same
 consumer read, so an artifact of that read would move both. That does not discriminate, because
 both spans are producer-to-consumer differences and both carry any offset; headroom does.}
@@ -2248,7 +2248,7 @@ $t_{\mathrm{pub}} \rightarrow \text{emit} \rightarrow \text{deliver} \rightarrow
 t_{\mathrm{recv}}$ is a chain and its ordering holds by construction, however late the
 timestamping thread was: a late thread makes the span longer, never shorter. That is not an
 empirical claim about our scheduler, it is a property of the order in which the two
-operations are written, and it is why the publish-referenced span is negative on
+operations are written, and it is why the publish-timed span is negative on
 $\spanNegSend$ of $\spanEvents$ events under either broker.
 
 The acknowledgment timestamp has no such guarantee. The broker's append precedes both the
@@ -2349,7 +2349,7 @@ wait alone would fall systematically \emph{short} of the observed negative-span 
 $\tracedRatioArms$ configurations it does not: the ratios are $\tracedRatios$, straddling unity, with
 the largest above it. A term big enough to matter would have to hide inside a spread that
 already brackets the answer. The interpreter lock is therefore present in principle, bounded
-in practice, and not the mechanism --- and the publish-referenced span is immune to it entirely,
+in practice, and not the mechanism --- and the publish-timed span is immune to it entirely,
 since a timestamp taken before the action bounds its event whatever the interpreter is doing.
 
 \subsection{S16.5. Why averaging does not repair either mode}
@@ -4777,7 +4777,7 @@ argues for none of them:
 64-bit send timestamp in UNIX nanoseconds.'' There is no millisecond resolution, so the deletion
 law of Section~\mainModeB{} has nothing to bind on.
 \item \textbf{A span that is a causal chain.} It computes $t_{\mathrm{recv}} -
-t_{\mathrm{pub}}$, which is the span Table~\ref{P-tab:spans} shows never inverts, rather than the acknowledgment-referenced proxy that does.
+t_{\mathrm{pub}}$, which is the span Table~\ref{P-tab:spans} shows never inverts, rather than the acknowledgment-timed proxy that does.
 \item \textbf{One clock.} ``Clock synchronization between publisher and subscriber processes
 is ensured by running both on the same workload generator machine.''
 \item \textbf{No guard.} We looked for a positivity filter, a clamp or a discard rule and
@@ -4800,7 +4800,7 @@ experiment is what tells a reader how much. That is the shape the rule asks for,
 independently.
 
 One thing it does not do is say why its span is safe. A reader cannot tell from the paper
-whether the publish-referenced difference was chosen because it is a causal chain or because it
+whether the publish-timed difference was chosen because it is a causal chain or because it
 was the convenient one to instrument, and that is exactly what the rule ``name the span you
 are subtracting'' asks an author to make explicit. The choice is right either way; the record
 of why is what would let the next framework inherit it.

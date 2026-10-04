@@ -152,7 +152,8 @@ class TestR1TheIndexTermsNameTheirOwnSubject:
         title = re.search(r"\\title\{(.*?)\}", paper, re.S)
         assert title, "no title"
         nouns = [w for w in re.findall(r"[A-Za-z]{5,}", title.group(1).lower())
-                 if w not in ("faster", "light", "artifacts")]
+                 # 4 Oct 2026: "silent" and "choose", the v7 title's adjective and verb.
+                 if w not in ("faster", "light", "artifacts", "silent", "choose")]
         assert len(nouns) >= 4, "the title has changed shape; re-derive this list"
         terms = " ".join(_index_terms(paper)).lower()
         missing = [n for n in nouns if n[:6] not in terms]

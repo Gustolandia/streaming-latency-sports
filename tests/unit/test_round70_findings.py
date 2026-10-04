@@ -250,7 +250,7 @@ class TestRecommendedItems:
         src = (REPO / "scripts" / "make_result_figures.py").read_text(encoding="utf-8")
         assert "> 0" in src, "the deletion figure names the guard's comparison"
 
-    def test_w3_the_span_inventory_says_it_is_complete(self, paper):
+    def test_w3_the_span_inventory_says_it_is_complete(self, paper, supplement):
         """W3 asked for Section VIII-D's grain sentence to shrink now that the inventory is
         whole. It is answered in Section V-A instead, where the claim belongs: the sentence
         that enumerates the chains now says it enumerates all of them. Section VIII-D's
@@ -267,7 +267,9 @@ class TestRecommendedItems:
         assert "Only the transport proxy $S$ inverts" in caption, \
             "the span inventory no longer says it is complete"
         assert "at source and did not run them" in flat, "the source-reading concession has gone"
-        k = paper.index("label{tab:tools}")
-        tools = " ".join(paper[paper.rindex("caption{", 0, k):k].split())
+        # 4 Oct 2026: Table III is the supplement's now (stab:tools), caption unchanged.
+        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        k = journal.index("label{stab:tools}")
+        tools = " ".join(journal[journal.rindex("caption{", 0, k):k].split())
         assert "what happens to a value at or below zero" in tools, \
             "round 69's grain has gone from Table III's caption"

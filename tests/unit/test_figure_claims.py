@@ -24,10 +24,17 @@ import stat_intervals as si          # noqa: E402
 import tail_index_traced as tit      # noqa: E402
 
 TEX = ((ROOT / "paper.tex").read_text(encoding="utf-8") + "\n"
-       + (ROOT / "postmortem.tex").read_text(encoding="utf-8"))
+       + (ROOT / "postmortem.tex").read_text(encoding="utf-8") + "\n"
+       # 4 Oct 2026: the journal supplement carries the traced stall spectrum now.
+       + (ROOT / "supplement.tex").read_text(encoding="utf-8"))
 # The submission is both documents. The pipeline schematic moved to the supplement in
 # round 16, when the figures were redrawn at printable type size and the paper had to
 # give a full-width float back; "included" has to mean included in the package.
+# The width gate reads the two documents it was written for. The journal supplement is set
+# in one column, where a fraction of the column enlarges a figure drawn for a 3.5-inch
+# column rather than shrinking its type.
+SUBMISSION_TEX = ((ROOT / "paper.tex").read_text(encoding="utf-8") + "\n"
+                  + (ROOT / "postmortem.tex").read_text(encoding="utf-8"))
 MACROS = dict(re.findall(
     r"\\newcommand\{\\(\w+)\}\{(.*?)\}\s*$",
     (ROOT / "docs" / "generated" / "paper_numbers.tex").read_text(encoding="utf-8"), re.M))
@@ -41,7 +48,10 @@ FIGURE_STEMS = ("pipeline_schematic", "measurement_model", "deletion_phases", "p
                 # drawn side by side, carries the exposure curve at column width, and draws
                 # the deletion's mechanism beside its consequence. The single-panel deletion
                 # scatter is panel (b) of the last and was retired with its builder.
-                "two_ways", "exposure_curve_column")
+                "two_ways",
+                # 4 Oct 2026: what the remedies buy, whose panel (a) carries the exposure curve
+                # the column figure drew; the column figure was retired with its builder.
+                "remedies")
 
 
 def caption_of(label):
@@ -121,7 +131,8 @@ def test_spectrum_draws_the_derived_slice_not_a_literal():
 
 
 def test_spectrum_caption_reaches_the_slice_through_the_ledger():
-    assert "baseSliceMs" in caption_of("fig:spectrum")
+    # 4 Oct 2026: the traced stall spectrum is the journal supplement's now (sfig:spectrum).
+    assert "baseSliceMs" in caption_of("sfig:spectrum")
 
 
 # --- fig:grid -----------------------------------------------------------------------------
@@ -203,7 +214,7 @@ def test_no_figure_is_scaled_on_inclusion():
     a fraction of its drawn width has its type reduced by that fraction, which is how the
     paper came to print labels at 2.7 pt against 9.5 pt body text.
     """
-    widths = set(re.findall(r"\\includegraphics\[width=([^\]]*)\]", TEX))
+    widths = set(re.findall(r"\\includegraphics\[width=([^\]]*)\]", SUBMISSION_TEX))
     scaled = [w for w in widths if re.match(r"[\d.]+\\", w)]
     assert not scaled, ("figures included at a fraction of their drawn width: %s -- draw them "
                         "at the printed width instead" % sorted(scaled))

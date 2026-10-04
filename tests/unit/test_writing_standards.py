@@ -459,11 +459,10 @@ class TestEachNameIsBuiltWhereAReaderFirstMeetsIt:
                "consumer pattern", "negative-span rate",
                # 4 Oct 2026, the author: "yes gloss those four too, cut elsewhere to fit." The
                # knee, used once, is said in plain words instead; stolen time is Linux's steal time.
-               "tick", "busy-polling", "steal time")
-    # The opening paragraph says what happened before it names anything, and the mutation tests
-    # anchor on its first words; the producer and the consumer it mentions are defined in the
-    # paragraph after it, so the rule for these two starts there.
-    AFTER_THE_OPENING = ("producer", "consumer")
+               "tick", "busy-polling", "steal time",
+               # 4 Oct 2026: the introduction opens on the stakes, and its first paragraph
+               # defines the two programs a broker joins.
+               "producer", "consumer")
 
     @staticmethod
     def _reader_text(paper):
@@ -490,15 +489,9 @@ class TestEachNameIsBuiltWhereAReaderFirstMeetsIt:
     def test_the_first_use_is_the_definition(self, paper, term):
         self._assert_defined_first(term, self._reader_text(paper))
 
-    @pytest.mark.parametrize("term", AFTER_THE_OPENING)
-    def test_the_opening_names_it_and_the_next_paragraph_defines_it(self, paper, term):
-        text = self._reader_text(paper)
-        opening_ends = text.index("It matters because")
-        self._assert_defined_first(term, text[opening_ends:])
-
     def test_the_harness_is_defined_with_the_model(self, paper):
-        """The opening's first words name the harness, and the mutation tests anchor on them, so
-        its definition comes with the model, in Section II before its first subsection."""
+        """The second paragraph's first words name the harness, and the mutation tests anchor on
+        them, so its definition comes with the model, in Section II before its first subsection."""
         text = self._reader_text(paper)
         model = text[text.index("A producer process publishes"):
                      text.index("Testbeds, clocks and workload")]
@@ -519,6 +512,54 @@ class TestEachNameIsBuiltWhereAReaderFirstMeetsIt:
         made_public = [u for u in uses if not re.search(r"before (?:they were|being) published"
                                                         r"|due to be published", u)]
         assert not made_public, made_public
+
+
+class TestThePracticeListStaysWithItsHeading:
+    """B27, 4 Oct 2026: the introduction's list of what the work means in practice is bound to its
+    heading. First failure: Fig. 1 grew by one row and the heading was left alone at the foot of a
+    column, with its list at the top of the next."""
+
+    HEAD = r"\textbf{What this means in practice.}"
+    BIND = r"\par\nobreak\csname @nobreaktrue\endcsname"
+
+    def test_no_break_is_allowed_between_the_heading_and_its_list(self, paper):
+        i = paper.index(self.HEAD) + len(self.HEAD)
+        assert paper[i:].startswith(self.BIND), paper[i:i + 80]
+        assert paper[i + len(self.BIND):].lstrip().startswith(r"\begin{itemize}")
+
+
+class TestTheFirstHalfStatesWhatHolds:
+    """B26, 4 Oct 2026. The author: "everything must look perfect in the 1st half of the paper,
+    any pull back to reality must happen only in the second half, this should not mean an
+    exageration or omission", and "you cannot make a generalization that is not true". So the
+    first half, Sections I to IV, states each result for exactly the cases it holds in, and each
+    limit it used to carry is stated, whole, in Section VIII. First failure: Section IV-B said
+    a registered prediction "failed" and that "the probe is not free" in the middle of the
+    mechanism, and Section II-A that "one early stage ... is excluded" before any result."""
+
+    #: Each limit the first half used to carry, by a phrase only that limit uses.
+    MOVED = ("tenfold failed", "is not free", "not measured on our hosts",
+             "fixed before the final campaign")
+
+    @staticmethod
+    def _halves(paper):
+        body = re.sub(r"(?m)(?<!\\)%.*$", " ", paper)
+        body = " ".join(body.split())
+        first = body[body.index(r"\section{Introduction}"):
+                     body.index(r"\section{The Industry's Remedy")]
+        threats = body[body.index(r"\section{Threats and Limitations}"):
+                       body.index(r"\section{Conclusion}")]
+        return first, threats
+
+    @pytest.mark.parametrize("phrase", MOVED)
+    def test_the_limit_is_not_in_the_first_half(self, paper, phrase):
+        first, _ = self._halves(paper)
+        assert phrase not in first, "%r is back in Sections I to IV" % phrase
+
+    @pytest.mark.parametrize("phrase", MOVED)
+    def test_the_limit_is_stated_whole_in_section_viii(self, paper, phrase):
+        _, threats = self._halves(paper)
+        assert phrase in threats, "%r has left the paper, not just the first half" % phrase
 
 
 class TestNoForwardPointerStandsInForADefinition:

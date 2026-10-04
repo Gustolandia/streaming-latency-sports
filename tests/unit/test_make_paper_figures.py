@@ -159,6 +159,46 @@ class TestPlots:
         assert not [s for s in said if "tick" in s]
 
 
+class TestTheSystemPanel:
+    """Fig. 1 (a) since 4 Oct 2026: where everything runs, the two legs, and the quantities."""
+
+    def test_it_names_the_machines_the_legs_and_what_each_latency_covers(self):
+        import make_paper_figures as mpf
+        fig, ax = plt.subplots()
+        try:
+            mpf.plot_system(ax)
+            said = [" ".join(t.get_text().split()) for t in ax.texts]
+        finally:
+            plt.close(fig)
+        for want in ("Client machine (the driver)", "Broker machine", "Producer process",
+                     "Consumer process", "leg 1: publish", "acknowledgment", "leg 2: deliver",
+                     "$A$: leg 1, out and back", "$D$: leg 1, then leg 2", "Failure 1",
+                     "Failure 2", "both processes read one clock",
+                     r"reports $D$ in steps of $\tau$"):
+            assert want in said, want
+        assert not ax.axison, "a schematic, not a plot"
+
+    def test_the_timeline_draws_every_quantity_of_the_model(self):
+        """Panel (b) draws every timestamp and span of Section II-B, E and its parts included:
+        the author asked for "the diagram for the whole system where all fundamental
+        quantities are very clear" (4 Oct 2026). Before that day t_out and E were named in the
+        text and drawn nowhere."""
+        import make_paper_figures as mpf
+        fig, ax = plt.subplots()
+        try:
+            mpf.plot_mechanism(ax)
+            said = " | ".join(" ".join(t.get_text().split()) for t in ax.texts)
+        finally:
+            plt.close(fig)
+        for want in (r"$t_{\mathrm{sched}}$", r"$t_{\mathrm{pub}}$", "publish delay",
+                     r"t_{\mathrm{ack}}", r"t_{\mathrm{recv}}", r"t_{\mathrm{out}}",
+                     r"$\delta_{\mathrm{ack}}$", r"$\delta_{\mathrm{recv}}$",
+                     r"$D$: end-to-end latency", r"$A$: publish latency",
+                     r"$E$: event-time latency", "processing-time latency",
+                     r"$S=t_{\mathrm{recv}}-t_{\mathrm{ack}}<0$"):
+            assert want in said, want
+
+
 class TestHelpers:
     def test_read_returns_none_for_a_missing_file(self, temp_dir):
         assert _read(temp_dir / "nope.csv") is None

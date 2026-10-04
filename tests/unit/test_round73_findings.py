@@ -381,14 +381,18 @@ class TestRecommendedItems:
     def test_w1_the_inventory_grew_to_cover_what_was_hiding(self, paper):
         """v5 (28 Sep): "6.9" left the inventory with its sentence, the clustering z, which went
         with the alternatives list (editor 6.11) and which S19 keeps; it is pinned absent from
-        the paper's math, so it cannot come back without an entry."""
+        the paper's math, so it cannot come back without an entry. v7 (4 Oct): "2", the log base
+        of the stall histogram's buckets, left with the traced stall spectrum for the journal
+        supplement, and is pinned absent the same way."""
         sys.path.insert(0, str(REPO / "tests" / "unit"))
         import test_round72_findings as t72
         sweep = t72.TestEveryTypedNumeralInTheMainTextIsADecision
         allowed = sweep.ALLOWED
-        for v in ("95", "88", "75", "1000", "0.001", "2", "0.75", "6", "20", "50"):
+        for v in ("95", "88", "75", "1000", "0.001", "0.75", "6", "20", "50"):
             assert v in allowed, "%s was hiding behind a control word and is unaccounted" % v
-        assert "6.9" not in sweep()._typed(paper) and "6.9" not in allowed
+        typed = sweep()._typed(paper)
+        for gone in ("6.9", "2"):
+            assert gone not in typed and gone not in allowed, gone
 
     @staticmethod
     def _better_clock(paper):

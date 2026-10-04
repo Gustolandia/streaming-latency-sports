@@ -304,7 +304,9 @@ class TestW3AndW4TheTwoLiteratureItems:
             pytest.skip("paper.bbl absent")
         n = bbl.read_text(encoding="utf-8", errors="replace").count("\\bibitem")
         assert n <= 45, "TC caps the article at 45 references; this is %d" % n
-        assert n == 43, "the article's reference count moved from v6's 43 to %d" % n
+        # 45 since 4 Oct 2026, the cap: Nosek et al. (PNAS) for "registered" and Leek and Peng
+        # (Nature) for the void result, both checked against Crossref.
+        assert n == 45, "the article's reference count moved from v7's 45 to %d" % n
 
 
 class TestW5TheFigureLetsTheReaderCheckItsCaption:

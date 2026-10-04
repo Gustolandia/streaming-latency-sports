@@ -457,7 +457,6 @@ class TestEveryTypedNumeralInTheMainTextIsADecision:
         # from, so neither is typed anywhere in the main text any longer.
         "1000": "the timestamp resolution in microseconds, negated: the only negative value a "
                 "millisecond-floored difference can take, which is the sentence's whole point",
-        "2": "the log base of the histogram's buckets",
         "50": "the retention a half-millisecond delivery implies at a millisecond grid, the "
               "prediction the measured medians are compared against",
         # loads, which are named beside the rates measured at them

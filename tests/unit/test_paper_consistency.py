@@ -4424,7 +4424,8 @@ class TestTheReadersRequirementsAreMet:
         # 4 Oct 2026: the title says what did not happen, "not an early arrival" for "not an
         # early record", since the paper calls a message a message throughout.
         for i, page in enumerate(pages[:6], start=1):
-            if "Late timestamp, not an early arrival" in (page.extract_text() or ""):
+            # 4 Oct 2026: the whole system, Fig. 1, whose caption opens "One message, two legs".
+            if "One message, two legs" in (page.extract_text() or ""):
                 found = i
                 break
         assert found is not None, "the system figure's caption is not in the first six pages"

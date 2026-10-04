@@ -250,8 +250,9 @@ class TestTheRealFiguresPassTheirOwnGate:
                        "build_ttrue", "build_payload", "build_priority_ladder",
                        # Round 54: the exposure table drawn as a curve, for the supplement.
                        "build_exposure", "build_recovery",
-                       # v5 (28 Sep): the same curve at column width, for the main text.
-                       "build_exposure_column")
+                       # 4 Oct 2026: what the remedies buy, the main text's Fig. 4, whose
+                       # panel (a) carries the curve the retired column figure drew.
+                       "build_remedies")
 
     @pytest.mark.parametrize("builder", RESULT_BUILDERS)
     def test_a_result_figure_builds_without_a_retired_term(self, builder, tmp_path):

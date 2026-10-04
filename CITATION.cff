@@ -39,7 +39,7 @@ date-released: "2026-09-29"
 # was discarded at parse time and "Cite this repository" emitted a scaffolding version instead.
 preferred-citation:
   type: article
-  title: "Faster than Light: Latency Measurement Errors in Message-Broker Benchmarks"
+  title: "Faster than Light: Silent Errors in the Latency Benchmarks Used to Choose Message Brokers"
   authors:
     - family-names: "Ricou"
       given-names: "Gustavo Pedro"

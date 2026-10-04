@@ -33,6 +33,9 @@ import pytest
 REPO = Path(__file__).parent.parent.parent
 PAPER = REPO / "paper.tex"
 SUPPLEMENT = REPO / "postmortem.tex"
+# 4 Oct 2026: the traced stall spectrum (the paper's Fig. 3 until then) is the journal
+# supplement's, so its caption is read there.
+JOURNAL = REPO / "supplement.tex"
 RECORD = REPO / "docs" / "results" / "external" / "stall_mode_robustness.json"
 
 sys.path.insert(0, str(REPO / "scripts"))
@@ -80,8 +83,10 @@ class TestTheModeCountIsCheckedAgainstItsBinning:
             "than the manuscript claims; say so rather than leaving the weaker sentence.")
 
     def test_the_paper_states_which_inference_is_binning_free(self, paper):
-        i = paper.index("stall_spectrum.pdf")
-        section = paper[max(0, i - 4000):i + 4000]
+        # 4 Oct 2026: the figure is the journal supplement's; the paper's Section IV-C says in
+        # its own text that the mode count survives the widening, beside the monotonicity.
+        i = paper.index(r"\label{sec:tail}")
+        section = paper[i:paper.index(r"\section{", i)]
         assert "monoton" in section, \
             "the power-law refutation rests on monotonicity, which no rebinning rescues"
         assert "\\stallCoarsenFactor" in section or "bin width" in section, (
@@ -96,8 +101,9 @@ class TestTheModeCountIsCheckedAgainstItsBinning:
             "so a reader cannot tell that rebinning is unavailable rather than unattempted.")
 
     def test_no_share_or_count_is_typed(self, paper):
-        i = paper.index("stall_spectrum.pdf")
-        caption = paper[i:paper.index("\\end{figure}", i)]
+        journal = JOURNAL.read_text(encoding="utf-8")
+        i = journal.index("stall_spectrum.pdf")
+        caption = journal[i:journal.index("\\end{figure}", i)]
         for literal in ("20.0", "13.5", "10.5", "three local maxima"):
             assert literal not in caption, "%s is typed rather than emitted" % literal
 
@@ -150,8 +156,9 @@ class TestTheStallCaptionSaysEachThingOnce:
     """
 
     def test_the_caption_does_not_say_of_all_wakeups_twice(self, paper):
-        i = paper.index("stall_spectrum.pdf")
-        caption = " ".join(paper[i:paper.index("\\end{figure}", i)].split())
+        journal = JOURNAL.read_text(encoding="utf-8")
+        i = journal.index("stall_spectrum.pdf")
+        caption = " ".join(journal[i:journal.index("\\end{figure}", i)].split())
         assert caption.lower().count("of all wakeups") <= 1, (
             "Figure 3's caption says `of all wakeups` more than once in sixty words. The "
             "masses belong there; saying the denominator three times does not.")

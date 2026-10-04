@@ -176,7 +176,10 @@ class TestR2TheTwoThresholdsAreDifferentThings:
         assert "reaching the same design" not in paper
         i = paper.index("We read")
         passage = " ".join(paper[i:i + 1100].split())
-        assert r"\ref{tab:tools}" in passage, "the class is shown in the table the audit fills"
+        # 4 Oct 2026: the table the audit fills moved to the supplement's tool registry, when
+        # the paper's system and remedies figures needed its room; the passage points to it.
+        assert "the supplement's tool registry" in passage, \
+            "the class is shown in the table the audit fills"
         assert "drops negatives" in passage and \
             "a strict positivity filter deletes" in passage, \
             "say that the other threshold keeps what the benchmark deletes"
@@ -199,7 +202,7 @@ class TestR2TheTwoThresholdsAreDifferentThings:
 
 class TestW2TheAuditSaysWhatGrainItIsExactTo:
 
-    def test_threats_names_the_threshold_grain(self, paper):
+    def test_threats_names_the_threshold_grain(self, paper, supplement):
         """v5 (28 Sep): Section VIII says the tools "were read at source, not deployed", and
         "exact to the threshold rather than to the behavior a deployment would show" went in
         the cut of antitheses (editor, section 7.1). Both halves are pinned where they now are:
@@ -208,12 +211,14 @@ class TestW2TheAuditSaysWhatGrainItIsExactTo:
         flat = " ".join(paper.split())
         assert "at source and did not run them" in flat, \
             "Threats no longer concedes that the audit read source and deployed nothing"
-        j = paper.index("label{tab:tools}")
-        caption = " ".join(paper[paper.rindex("caption{", 0, j):j].split())
+        # 4 Oct 2026: Table III is the supplement's now (stab:tools), caption and cells unchanged.
+        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        j = journal.index("label{stab:tools}")
+        caption = " ".join(journal[journal.rindex("caption{", 0, j):j].split())
         assert "what happens to a value at or below zero" in caption, (
             "Table III's caption no longer says the audit is exact to what a tool does at the "
             "threshold")
-        table = paper[j:paper.index("end{table", j)]
+        table = journal[j:journal.index("end{table", j)]
         assert "docs/generated/registry_table" in table, \
             "Table III no longer prints the generated registry, with its comparisons"
 

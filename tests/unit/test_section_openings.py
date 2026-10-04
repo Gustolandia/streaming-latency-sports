@@ -92,9 +92,10 @@ class TestTheRuleItself:
         """The introduction opens inside \\IEEEPARstart and must not read as markup.
 
         v5 (28 Sep) opens on the paper's own first harness, the hook an outside editor asked
-        for, where v4 opened on context."""
+        for, where v4 opened on context. 4 Oct 2026: the author asked the opening to show the
+        issue and its practical stakes first, so the hook is the second paragraph."""
         got = dict(openings())
-        assert got["Introduction"].startswith("Our first harness timed")
+        assert got["Introduction"].startswith("Many online services move their data")
 
     def test_a_pointer_later_in_the_sentence_is_allowed(self):
         """Only the opening is policed; a claim that cites a figure is still a claim."""

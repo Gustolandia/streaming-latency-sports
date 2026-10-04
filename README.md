@@ -1,4 +1,4 @@
-# Faster than Light: Latency Measurement Errors in Message-Broker Benchmarks
+# Faster than Light: Silent Errors in the Latency Benchmarks Used to Choose Message Brokers
 
 *Two ways a message-broker benchmark misreports on sub-millisecond paths, and what they left of a Kafka-versus-Redis comparison.*
 
@@ -39,8 +39,8 @@
 
 > ## 🎯 Current target — the contribution
 >
-> **Paper:** [`paper.tex`](paper.tex) — *Faster than Light: Latency Measurement Errors in
-> Message-Broker Benchmarks*. IEEE format
+> **Paper:** [`paper.tex`](paper.tex) — *Faster than Light: Silent Errors in the Latency
+> Benchmarks Used to Choose Message Brokers*. IEEE format
 > (`IEEEtran`, journal), targeting **IEEE Transactions on Computers**, with its supplementary
 > material in `supplement.tex` and the complete record of how the results were obtained in
 > `postmortem.tex`, which is archived with the data and not submitted. This is a
@@ -55,7 +55,7 @@
 > for real-time sports data feeds, under varying concurrency, using the StatsBomb open dataset
 > (2003–2023).* We answered it, and then had to withdraw the answer.
 >
-> **Failure 1: late timestamps invert the acknowledgment-referenced span.** The transport proxy
+> **Failure 1: late timestamps invert the acknowledgment-timed span.** The transport proxy
 > *S* = *t*_recv − *t*_ack subtracts the timestamp the producer takes when it learns the broker
 > accepted a message from the one the consumer takes when it holds the record, so it admits a
 > check no statistic supplies: **the sign**. A negative value is not physically impossible
@@ -405,7 +405,7 @@ From 3,315 StatsBomb matches across 52 competition-seasons (2003–2023), via
 > **The current objective, in the paper's own terms:** show two ways a message-broker benchmark
 > misreports on sub-millisecond paths, where the time being measured is shorter than the
 > clock's resolution and than a busy thread's wait for a processor (Failure 1, late timestamps
-> invert the acknowledgment-referenced span; Failure 2, a millisecond clock and a positivity
+> invert the acknowledgment-timed span; Failure 2, a millisecond clock and a positivity
 > filter delete samples without counting them), establish each by manipulation, test how widely
 > published results reach the second, and give benchmark authors checks that cost nothing.
 >
@@ -432,7 +432,7 @@ From 3,315 StatsBomb matches across 52 competition-seasons (2003–2023), via
 
 ## 2. Abstract
 
-> **Title:** *Faster than Light: Latency Measurement Errors in Message-Broker Benchmarks*
+> **Title:** *Faster than Light: Silent Errors in the Latency Benchmarks Used to Choose Message Brokers*
 > **Target:** IEEE Transactions on Computers (`IEEEtran`, journal, `paper.tex`)
 > **Keywords:** Apache Kafka; benchmarking; clock synchronization; latency measurement; measurement errors; message brokers; scheduling; timestamp resolution.
 
@@ -1063,12 +1063,12 @@ reports no error, the source still looks plausible, and the defect appears only 
 That failure reached the manuscript three times here, twice past a full source-level check, which
 is why the check now runs on the artefact a reader actually receives.
 
-**Status (the PDFs built on 3 Oct 2026):** compiles clean, with 0 errors, 0 undefined
-references or citations and 0 overfull boxes; 12 pages against TC's 10–12 budget, 43
-references against TC's cap of 45, a 186-word abstract against TC's 100–200 range, and two
-author biographies (G. P. Ricou and R. Duvignau) inside TC's 145-word cap. Five figures, five
-tables and six numbered equations. Title: *Faster than Light: Latency Measurement Errors in
-Message-Broker Benchmarks*. The journal supplement, S1–S9 under the paper's byline, is 32 pages with 58
+**Status (the PDFs built on 4 Oct 2026):** compiles clean, with 0 errors, 0 undefined
+references or citations and 0 overfull boxes; 12 pages against TC's 10–12 budget, 45
+references against TC's cap of 45, an abstract inside TC's 100–200 words, and two
+author biographies (G. P. Ricou and R. Duvignau) inside TC's 145-word cap. Four figures, three
+tables and six numbered equations. Title: *Faster than Light: Silent Errors in the Latency Benchmarks Used to Choose Message Brokers*. The journal supplement, S1–S9 under the
+paper's byline, is 33 pages with 58
 references, one page of references past the 25–30 an outside editor asked for; the postmortem,
 the complete single-author record that is not submitted, is 76 pages.
 Formatted with `IEEEtran` (journal, 10pt) for IEEE Transactions on Computers.
@@ -1203,7 +1203,7 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 ```bibtex
 @article{ricou2026interval,
   author  = {Ricou, Gustavo Pedro and Duvignau, Romaric},
-  title   = {Faster than Light: Latency Measurement Errors in Message-Broker Benchmarks},
+  title   = {Faster than Light: Silent Errors in the Latency Benchmarks Used to Choose Message Brokers},
   year    = {2026},
   note    = {Manuscript targeting IEEE Transactions on Computers;
              code and data archived at \url{https://doi.org/10.5281/zenodo.21650031}}
@@ -1264,7 +1264,7 @@ and Mosca build a quantity: the producer and the consumer by what they do, the p
 the moment the producer hands the message over, real-time priority as running ahead of every
 thread at the default normal priority, and the one-way latency, the industry's name for what
 was the one-way delivery, as the time from one process to another, which ten of the eleven
-tools run cannot measure because each takes both timestamps in one process.
+tools run cannot measure because each takes both timestamps in one process. **Paper v7** (4 Oct) answers the author's seventeen points on reach and clarity: the title names the stakes (*Faster than Light: Silent Errors in the Latency Benchmarks Used to Choose Message Brokers*); the abstract and the introduction open on what a team choosing a broker risks, and a list says what the work means in practice; Fig. 1 draws the whole system, which machine runs what, the two legs a message travels, where each failure enters, and every timestamp and latency of the model, the event-time latency and the clock's step included; Fig. 4 shows what the remedies buy, measured; Section VI says what decides whether a printed latency can be trusted; the first half states each result for exactly the cases it holds in, and Section VIII states every limit whole (writing standards B26 and B27); two references from PNAS and Nature, checked against Crossref, ground the registration and the void result. The traced stall spectrum and the two tool tables moved to the journal supplement; the paper stays at 12 pages with 45 references.
 **The supplement is now two documents:** the journal supplement S1–S9, in the paper's
 order under both authors' names, and the single-author postmortem S1–S37, the complete record, not
 submitted. **A registered audit of 43 published reports** found the signature in eight configurations
@@ -1433,7 +1433,7 @@ newest version. Zenodo v2.6.0 archived from tag `v2.6.0`: code
 ### 2.5.0 — 2026-08-21 — retarget to IEEE Transactions on Computers
 Manuscript rebuilt for **TC** (10–12 pp, 45-reference cap) and reorganised around what the
 evidence supports rather than the chronology of finding mistakes. The central correction of
-this release: the acknowledgment-referenced span is a **proxy, not a causal chain**, so a
+this release: the acknowledgment-timed span is a **proxy, not a causal chain**, so a
 negative value is a late reference stamp rather than impossible physics — the sign check is
 justified by the reference stamp being unusable as an origin. Mode B's arithmetic conceded to
 its prior art in counter metrology (HP Application Note 162-1, 1970). Zenodo v2.5.0: code

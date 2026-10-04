@@ -1114,6 +1114,39 @@ the reference corpus's own distribution (median five terms, median two words per
 
 ---
 
+### B26. The first half states what holds; every limit is stated whole in Section VIII — GATED
+
+Adopted 4 October 2026. The author: "everything must look perfect in the 1st half of the paper,
+any pull back to reality must happen only in the second half, this should not mean an
+exageration or omission, just avoiding overly talking about the negative details", and "you
+cannot make a generalization that is not true. So ideally it would be, for these and these
+subgroups this is always true". So Sections I to IV state each result for exactly the cases it
+holds in ("across eight matched pairs ... every pair with disjoint intervals"; "every tool that
+quantizes, filters, refuses or substitutes does so without counting"), and every limit they used
+to carry moved, whole, to Section VIII: the registered occupancy prediction that failed, the
+tracer's cost and its check, the derived base slice, the sign check's history and the excluded
+early stage. Two qualifications stay beside their numbers because an honesty gate needs them
+there: the measured maximum is "the largest observed rather than a bound" (A2f), and the
+refuted queueing form is the one "we had ourselves adopted". Gated by
+`TestTheFirstHalfStatesWhatHolds` in `tests/unit/test_writing_standards.py`: each moved limit
+is absent from Sections I to IV and present in Section VIII, so nothing leaves the paper.
+
+### B27. The paper opens on the practical stakes and the whole system — GATED
+
+Adopted 4 October 2026, with B26. The title names who is affected (*Faster than Light: Silent
+Errors in the Latency Benchmarks Used to Choose Message Brokers*); the abstract opens on the
+choice the benchmarks guide; the introduction's first paragraph says what a broker is, what the
+benchmarks report, how they fail and what a team acting on them risks, before the story of our
+first harness; a list says what the work means in practice, and its heading is bound to it so no
+column break separates them. Fig. 1 draws the whole system for an engineer or scientist from
+outside the field: which machine runs the broker and which the producer and the consumer, the
+two legs a message travels, the broker's three jobs, where each failure enters, and every
+quantity of Section II-B: the five timestamps, the two waits for a core, $A$, $D$, $S$, the
+publish delay, the processing-time latency, $E$, and the step $\tau$ in which a tool reports
+$D$. Fig. 4 shows what the remedies buy, measured. Gated by `tests/unit/test_section_openings.py`
+(the opening), `TestTheSystemPanel` in `tests/unit/test_make_paper_figures.py` (the figure) and
+the first-use gate of A10, which now holds the producer and the consumer to the first paragraph.
+
 ## C. Register: a journal paper, not a blog post
 
 ### C1. No jokes — GATED

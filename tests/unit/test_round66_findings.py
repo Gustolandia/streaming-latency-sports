@@ -26,6 +26,9 @@ import pytest
 REPO = Path(__file__).parent.parent.parent
 PAPER = REPO / "paper.tex"
 SUPPLEMENT = REPO / "postmortem.tex"
+# 4 Oct 2026: the traced stall spectrum (the paper's Fig. 3 until then) is the journal
+# supplement's, so its caption is read there.
+JOURNAL = REPO / "supplement.tex"
 BIB = REPO / "manuscript_references.bib"
 
 
@@ -178,8 +181,9 @@ class TestTheCaptionGivesTheMassOfEveryModeItNames:
     """The figure's argument rests on where a mode sits; its size decides whether that matters."""
 
     def test_all_three_shares_are_emitted_rather_than_typed(self, paper):
-        i = paper.index("stall_spectrum.pdf")
-        caption = paper[i:paper.index("\\end{figure}", i)]
+        journal = _strip(JOURNAL.read_text(encoding="utf-8"))
+        i = journal.index("stall_spectrum.pdf")
+        caption = journal[i:journal.index("\\end{figure}", i)]
         for macro in ("\\tracedModeShareA", "\\tracedModeShareB", "\\tracedModeShare"):
             assert macro in caption, (
                 "%s is not in Figure 3's caption. The caption names three modes; a reader "
@@ -187,8 +191,9 @@ class TestTheCaptionGivesTheMassOfEveryModeItNames:
                 "in the emitter before this round without two of them being emitted." % macro)
 
     def test_no_share_is_typed_as_a_literal(self, paper):
-        i = paper.index("stall_spectrum.pdf")
-        caption = paper[i:paper.index("\\end{figure}", i)]
+        journal = _strip(JOURNAL.read_text(encoding="utf-8"))
+        i = journal.index("stall_spectrum.pdf")
+        caption = journal[i:journal.index("\\end{figure}", i)]
         for literal in ("20.0", "13.5", "10.5"):
             assert literal not in caption, \
                 "%s is typed into the caption; every number is emitted" % literal

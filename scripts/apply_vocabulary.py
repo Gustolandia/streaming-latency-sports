@@ -58,7 +58,11 @@ MECHANICAL = [
     # send). The producer's act is to publish. Compounds only: bare "send" has other senses
     # (a TCP segment sent again, a broker sending a fetch response) and is in REVIEW.
     # Words of a compound may sit either side of a line break in the source, hence \s+.
-    (r"\bsend-referenced\b", "publish-referenced"),
+    (r"\bsend-referenced\b", "publish-timed"),
+    # 4 Oct 2026: a span is named by the timestamp it is timed from, "-timed", as the paper's
+    # term pass decided; "-referenced" was its second name.
+    (r"\bpublish-referenced\b", "publish-timed"),
+    (r"\backnowledgment-referenced\b", "acknowledgment-timed"),
     (r"\bSend-referenced\b", "Publish-referenced"),
     (r"\bper-send\b", "per-publish"),
     (r"\bsend-to-", "publish-to-"),

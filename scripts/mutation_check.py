@@ -85,7 +85,7 @@ MUTATIONS = [
     ("drop the mitigation's floor caveat",
      "The floor is not zero, so the check stays", "The floor is zero, so the check stays"),
     ("break a cross-reference",
-     r"(Fig.~\ref{fig:spectrum})", r"(Fig.~\ref{fig:nosuch})"),
+     r"(Fig.~\ref{fig:twoways}a)", r"(Fig.~\ref{fig:nosuch}a)"),
     # The tracer's three ratios bracket the observed rate rather than under-predicting it,
     # which is what makes the interpreter-lock rival bounded rather than waved away.
     ("type the traced ratios instead of emitting them",

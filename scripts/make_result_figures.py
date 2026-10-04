@@ -602,7 +602,7 @@ def build_deletion_phases(out_dir):
     """
     import make_paper_figures
     figure_style.apply()
-    fig = plt.figure(figsize=(7.16, 2.25))
+    fig = plt.figure(figsize=(7.16, 2.10))
     gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 1.15], wspace=0.25)
     left = fig.add_subplot(gs[0, 0])
     right = fig.add_subplot(gs[0, 1])
@@ -698,22 +698,126 @@ def build_exposure(out_dir):
     return _save(fig, out_dir, "exposure_curve")
 
 
-def build_exposure_column(out_dir):
-    """The exposure curve at the paper's column width (v5, 28 Sep).
+# --- what the remedies buy (Fig. 4 since 4 Oct 2026) -------------------------------------
 
-    An outside editor's reading asked for it in the main text: it is the one exhibit a
-    practitioner uses to locate their own path, and Section III-D had described it in words.
-    Drawn at the width it prints at, like every figure here, never scaled on inclusion.
+SPAN_CSV = RESULTS / "span_symmetry.csv"
+
+
+def repair_rows(path=SPAN_CSV):
+    """Per condition: (median D in ms, the proxy's error and the repaired error, in % of D).
+
+    The proxy is the latency timed from the acknowledgment, S; the repair adds the publish
+    latency back, S + A, as Section VI-B does. Both errors are against the condition's own
+    median D, which is how `stat_intervals.recovery_populations` and the ledger count them.
+    """
+    import csv
+    out = []
+    with open(path, encoding="utf-8", newline="") as fh:
+        for r in csv.DictReader(fh):
+            d = float(r["median_D_us"])
+            if not d:
+                continue
+            out.append((d / 1000.0, 100.0 * (d - float(r["median_S_us"])) / d,
+                        100.0 * abs(float(r["recovery_err_us"])) / d))
+    if not out:
+        raise ValueError("no conditions in %s" % path)
+    return sorted(out)
+
+
+def plot_repair(ax, rows, lags):
+    """Panel (a) of Fig. 4: the proxy's error on every condition, and the error once repaired.
+
+    4 Oct 2026, the author: "show how things could be improved". The curve says how large the
+    proxy's error is for a path of a given length; the points are the measured conditions,
+    timed from the acknowledgment and then with the publish latency added back, on the same
+    axes. The curve and its band are the ones `plot_exposure` draws, from `_exposure_lags()`.
+    """
+    typical, _hi, _lo, p10, p90 = lags
+    t_ms = np.logspace(np.log10(0.1), np.log10(200.0), 400)
+    ax.fill_between(t_ms, 100.0 * p10 / (t_ms * 1000.0), 100.0 * p90 / (t_ms * 1000.0),
+                    color=DELETED, alpha=0.14, linewidth=0)
+    ax.plot(t_ms, 100.0 * typical / (t_ms * 1000.0), color=DELETED, lw=1.2,
+            label="expected error, $A/D$")
+    ax.axhline(100, color=GREY, lw=0.8, ls="--", zorder=1)
+    ax.axvspan(0.1, 1.0, color=GREY, alpha=0.10, zorder=0)
+    ax.text(0.12, 3, "sub-millisecond", fontsize=8, color=GREY, ha="left", va="bottom")
+    xs = [r[0] for r in rows]
+    ax.scatter(xs, [r[1] for r in rows], s=10, marker="x", color=DELETED, linewidths=0.8,
+               label="timed from the acknowledgment", zorder=3)
+    ax.scatter(xs, [r[2] for r in rows], s=10, color=KEPT, edgecolors="none",
+               label="with $A$ added back", zorder=3)
+    ax.set_xscale("log")
+    ax.set_xlim(0.1, 200)
+    ax.set_ylim(-4, 125)
+    ax.set_xlabel("end-to-end latency (ms)", fontsize=8)
+    ax.set_ylabel("error (% of the end-to-end latency)", fontsize=8)
+    ax.tick_params(labelsize=8)
+    ax.grid(alpha=0.25, lw=0.5)
+    ax.legend(fontsize=8, frameon=False, loc="center right", handletextpad=0.3,
+              borderaxespad=0.3)
+
+
+def plot_priority_pairs(ax, rows):
+    """Panel (b) of Fig. 4: every matched pair, at normal and at real-time priority.
+
+    The supplement's ladder reads one pair per row with its campaign; this panel is for the
+    reader who wants the effect at a glance: each pair is a vertical drop at its own load, red
+    at normal priority, blue at real-time priority. Pairs measured at the same load are set a
+    little apart so that none hides another.
+    """
+    from matplotlib.ticker import FuncFormatter
+    groups = {}
+    for r in sorted(rows, key=lambda r: (r["rho"], r["campaign"])):
+        groups.setdefault(round(r["rho"], 2), []).append(r)
+    for level, members in groups.items():
+        for i, r in enumerate(members):
+            x = 100.0 * level + (i - (len(members) - 1) / 2.0) * 1.6
+            ax.plot([x, x], [r["rate_rt"], r["rate_base"]], color=GREY, lw=0.8, zorder=1)
+            ax.plot([x], [r["rate_base"]], "o", ms=4.5, color=DELETED, mec="none", zorder=3)
+            ax.plot([x], [r["rate_rt"]], "s", ms=4.0, color=KEPT, mec="none", zorder=3)
+    ax.set_yscale("log")
+    ax.set_ylim(8e-4, 0.9)
+    ax.set_xlim(55, 100)
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _pos: "%g" % v))
+    ax.text(57, 0.42, "normal priority", fontsize=8, color=DELETED, ha="left", va="center")
+    ax.text(99, 0.00105, "real-time priority", fontsize=8, color=KEPT, ha="right",
+            va="center")
+    ax.set_xlabel("host utilization (%)", fontsize=8)
+    ax.set_ylabel("negative-span rate", fontsize=8)
+    ax.tick_params(labelsize=8)
+    ax.grid(alpha=0.25, lw=0.5)
+
+
+def build_remedies(out_dir):
+    """Fig. 4 since 4 Oct 2026: what the paper's remedies buy, measured.
+
+    The author asked for graphs that show the formulas' benefits and how things improve. (a)
+    is the identity S = D - A at work: every condition's error timed from the acknowledgment,
+    on the exposure curve it follows, and the error once the publish latency is added back.
+    (b) is the occupancy law at work: real-time priority lowers the occupancy and the rate
+    falls, in every
+    matched pair. The column-width exposure curve that was the paper's Fig. 5 is panel (a)'s
+    curve, and its own builder went with it.
     """
     figure_style.apply()
     import emit_paper_numbers
+    import priority_pairs
     lags = emit_paper_numbers._exposure_lags()
     if lags is None:                      # pragma: no cover - the corpus ships with the repo
-        raise SystemExit("span_symmetry.csv is missing; the exposure curve has no source")
-    fig, ax = plt.subplots(figsize=(3.50, 2.30))
-    plot_exposure(ax, lags)
-    fig.tight_layout()
-    return _save(fig, out_dir, "exposure_curve_column")
+        raise SystemExit("span_symmetry.csv is missing; the repair panel has no source")
+    pairs = priority_pairs.usable()
+    fig = plt.figure(figsize=(7.16, 2.08))
+    gs = fig.add_gridspec(1, 2, width_ratios=[1.25, 1.0], wspace=0.24, left=0.07,
+                          right=0.99, top=0.90, bottom=0.17)
+    a, b = fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1])
+    plot_repair(a, repair_rows(), lags)
+    plot_priority_pairs(b, pairs)
+    factors = [r["factor"] for r in pairs]
+    a.set_title("(a) Adding the publish latency back repairs the latency", fontsize=8,
+                loc="left")
+    b.set_title("(b) Real-time priority: %.0f–%.0f× fewer negatives"
+                % (min(factors), max(factors)), fontsize=8, loc="left")
+    return _save(fig, out_dir, "remedies")
 
 
 def build_spectrum(out_dir, slice_ms=None):
@@ -1210,7 +1314,7 @@ def main(argv=None):
     ap.add_argument("--out", default=os.path.join("docs", "results", "figures"))
     ap.add_argument("--only",
                     choices=("deletion_phases", "spectrum", "grid", "mechanism", "ttrue",
-                             "payload", "exposure", "exposure_column", "recovery"),
+                             "payload", "exposure", "recovery", "priority", "remedies"),
                     default=None)
     args = ap.parse_args(argv)
 
@@ -1218,8 +1322,8 @@ def main(argv=None):
                 "spectrum": build_spectrum, "grid": build_grid,
                 "mechanism": build_mechanism, "ttrue": build_ttrue,
                 "payload": build_payload, "exposure": build_exposure,
-                "exposure_column": build_exposure_column,
-                "priority": build_priority_ladder, "recovery": build_recovery}
+                "priority": build_priority_ladder, "recovery": build_recovery,
+                "remedies": build_remedies}
     todo = [args.only] if args.only else list(builders)
     for name in todo:
         path = builders[name](args.out)

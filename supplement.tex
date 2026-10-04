@@ -1,4 +1,4 @@
-% Supplementary material for "Faster than Light: Latency Measurement Errors in Message-Broker
+% Supplementary material for "Faster than Light: Silent Errors in the Latency Benchmarks Used to
 % Benchmarks" (IEEE Transactions on Computers submission). This is the journal supplement: the
 % evidence behind each section of the paper, organized by the paper's sections. The complete
 % record of how the results were obtained -- the chronology, every withdrawn result, the law
@@ -59,8 +59,8 @@
 \begin{document}
 % Title, byline and running head name the paper and are checked against paper.tex by
 % tests/unit/test_front_matter_agrees.py.
-\title{Supplementary Material for ``Faster than Light:\\
-Latency Measurement Errors in Message-Broker Benchmarks''}
+\title{Supplementary Material for ``Faster than Light: Silent Errors in the\\
+Latency Benchmarks Used to Choose Message Brokers''}
 \author{Gustavo~Pedro~Ricou~and~Romaric~Duvignau%
 \thanks{G.~P.~Ricou is with the School of Computer Science and Statistics, Trinity College
 Dublin, Dublin~2, Ireland. E-mail: pedrorig@tcd.ie.}%
@@ -722,9 +722,24 @@ $\Delta$ has a narrow core while the timestamping thread runs. While it waits, a
 from the core to $-\baseSliceMs$~ms, the scheduler's base slice, and a tick beyond. The shape is
 schematic: two components drawn with the derived slice and tick, not fitted. The shelf, a wait
 for the rest of a slice, was read from the law campaign's recordings after its verdicts (S6.5).
-The measured distributions are the stall spectrum of Figure~\ref{P-fig:spectrum} and the
+The measured distributions are the stall spectrum of Figure~\ref{sfig:spectrum} and the
 per-acknowledgment waits of S6.5.}
 \label{sfig:twostate}
+\end{figure}
+
+% 4 Oct 2026: the paper's Fig. 3, moved here when the paper's new system and remedies figures
+% needed its room. Section IV-C of the paper gives every number it draws.
+\begin{figure}[tb]
+\centering
+\includegraphics[width=0.62\columnwidth]{docs/results/figures/stall_spectrum.pdf}
+\caption{\textbf{Traced scheduling delays are trimodal.} $\tracedEvents$
+wakeups, \texttt{bpftrace} log$_2$ buckets, modes shaded. The jitter peaks in the
+$\tracedModeLoA$--$\tracedModeHiA\,\mu$s bucket, which alone holds $\tracedModeShareA\%$ of all
+wakeups. A second mode at $\tracedModeLoB$--$\tracedModeHiB\,\mu$s holds $\tracedModeShareB\%$.
+The third, at $\tracedModeShare\%$, sits in the bucket holding the scheduler's derived base slice
+of $\baseSliceMs$~ms. The count of modes survives a $\stallCoarsenFactor\times$ widening of the
+buckets in both phasings.}
+\label{sfig:spectrum}
 \end{figure}
 
 Clustering follows by construction. Being preempted is an interval, so the events inside it are
@@ -974,10 +989,10 @@ is left of a slice, up to a whole one, in a reading made after its verdicts (S6.
 The publish latency does not grow with the path, so the transport proxy's relative error is
 $A/D$ and a short path inherits it whole. Table~\ref{stab:exposure} tabulates the curve of
 Figure~\ref{P-fig:exposure} at nine path lengths, from the measured publish latencies. At the median publish
-latency the error passes $100\%$ below $\exposureCrossover$~ms, and there an acknowledgment-referenced harness
+latency the error passes $100\%$ below $\exposureCrossover$~ms, and there an acknowledgment-timed harness
 stops measuring the path at all. The band column is the one to read, because a publish latency is not
 a constant. A $10$~ms path sits at $\exposureErrTen\%$ at the median publish latency, but a tenth of our
-conditions sit at $\exposureErrTenHi\%$ or more. A publish-referenced harness reports the end-to-end latency itself
+conditions sit at $\exposureErrTenHi\%$ or more. A publish-timed harness reports the end-to-end latency itself
 and needs no correction from the table.
 
 \begin{table}[tb]
@@ -1478,8 +1493,8 @@ sub-resolution sample of Failure~2, stated in 1959.
 \includegraphics[width=\columnwidth]{docs/results/figures/deletion_histogram.pdf}
 \caption{\textbf{Positivity filter on millisecond timestamps would delete
 $\msGuardDeletedPct\%$ of our corpus, uncounted.} (a)~At nanosecond resolution the
-acknowledgment-referenced span goes below zero $\spanNegAck$ times in $\spanEvents$; the
-publish-referenced span, on the same events and clock, never does. (b)~Differenced millisecond
+acknowledgment-timed span goes below zero $\spanNegAck$ times in $\spanEvents$; the
+publish-timed span, on the same events and clock, never does. (b)~Differenced millisecond
 timestamps land on $0$ or $1$ by where they fall against the millisecond boundaries alone, and the filter deletes every value at or
 below zero. (c)~Five dispositions applied to the same population.}
 \label{sfig:deletionhist}
@@ -1584,9 +1599,22 @@ extended before they could read an Erlang guard or clock call, so the registry b
 from below.
 
 We call a tool's own conditional on the sign of an interval its \emph{guard}. A
-guard is a deletion only if what it guards is the sample. Table~\ref{P-tab:tools} of the paper
-is the registry, one row per span because one tool can treat two spans differently, generated
-from the registry file at build time. Its sources, in row order, are \registryTableSources.
+guard is a deletion only if what it guards is the sample. Table~\ref{stab:tools} is the
+registry, one row per span because one tool can treat two spans differently, generated from the
+registry file at build time. Its sources, in row order, are \registryTableSources.
+
+% 4 Oct 2026: the paper's Table III, moved here when the paper's new system and remedies figures
+% needed its room; Section V-A of the paper names every tool and what it does in words.
+\begin{table}[tb]
+\caption{\textbf{Ten tools, read at source.} The span each measures, the clock it reads, what
+happens to a value at or below zero, and whether the tool counts what it discards; one row per
+span where a tool measures two, and a dash where nothing is discarded. The source line behind
+every row is in the artifact's registry.}
+\label{stab:tools}
+\centering
+\footnotesize
+\input{docs/generated/registry_table}
+\end{table}
 
 The \harnessSilentWord{} silent disposals take \harnessDisposalClassesWord{} forms. A filter
 drops what its comparison excludes. The test $>0$ deletes every sample that computes to exactly
@@ -1676,13 +1704,30 @@ Reading a tool tells what it does with a negative value; running it tells whethe
 one. The registered law campaign ran \toolsRunWord{} benchmarking tools on the first x86 pair,
 \toolsRoundsWord{} rounds each, under predictions fixed from their source before any run (its
 tools block, frozen with the plan; the amendments that touched
-it are in Table~\ref{stab:amendments}). Section~\ref{P-sec:toolsrun} of the paper reports them
-in a table. Every staircase slope lies in the band fixed in advance, \toolsOneClockWord{} tools
+it are in Table~\ref{stab:amendments}). Table~\ref{stab:toolsrun} lists them. Every staircase
+slope lies in the band fixed in advance, \toolsOneClockWord{} tools
 were judged to time on one clock in every run that decided, and the one tool spanning two clocks
 kept every value, negatives included, in each round that decided it. The per-run verdicts are in
 \texttt{docs/results/tools/tools\_t1.csv} and \texttt{tools\_t2.csv}, folded by
 \texttt{scripts/tools\_block.py} from the runs, and the write-up with its five recorded faults is
 \texttt{docs/results/tools/t1-t4-eleven-tools.md}.
+
+% 4 Oct 2026: the paper's Table IV, moved here when the paper's new system and remedies figures
+% needed its room. The paper's Section V-B keeps the result in words.
+\begin{table}[tb]
+\caption{\textbf{Eleven tools, run.} The registered campaign's tools block,
+\toolsRoundsWord{} rounds per tool on one pair of machines. Interval: what the tool times, as its
+invocation was read before any run. Slope: how far its figure moved per millisecond of delay,
+divided by the number of times the interval crosses the delay, in its lowest and highest round.
+Clocks: how many clocks its two timestamps come from, as moving the tool's clock back by more
+than the interval it times showed. Runs: the offset runs that decided this, of all of that
+tool's. The rest were undecided.}
+\label{stab:toolsrun}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\input{docs/generated/tools_run_table}
+\end{table}
 
 % S5.1 is the registered audit of published results (freezes/29); the postmortem's S25.1 holds
 % its table and the artifact its coding and search log.
@@ -2296,7 +2341,7 @@ $-1000\,\mu$s is the only negative value expressible. & S1.3 \\
 \addlinespace[2pt]
 Failure~1 was a causality violation. & The acknowledgment and the receipt are two branches of one
 cause. Recounted, $S$ is negative on $\spanNegAck$ of $\spanEvents$ events and the
-publish-referenced span on $\spanNegSend$. & S1.4 \\
+publish-timed span on $\spanNegSend$. & S1.4 \\
 \addlinespace[2pt]
 An M/G/1 waiting time, then our own registered bracket, described how the rate grows with
 utilization. & Over $\rho = 0.881$--$0.990$ M/G/1 fitted worse than the mean ($R^2 = -0.05$), and

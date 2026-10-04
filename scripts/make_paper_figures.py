@@ -301,13 +301,19 @@ def plot_system(ax):
     labels mark where the paper's two failures enter.
     """
     ax.set_xlim(0, 10.4)
-    ax.set_ylim(0.0, 2.80)
+    # Stacked labels are spaced for CI's matplotlib 3.9, which sets an 8 pt label with maths in
+    # a box about 10-11 pt tall, against 8-8.7 pt on the author's machine: at 0.25 apart (9.7 pt)
+    # it reported two lines of the producer's box printed over each other (4 Oct 2026). The
+    # lines in a box are now 0.33 apart (12.8 pt), a title and its first line 0.30 (11.6 pt),
+    # the network column's two labels 0.27 (10.5 pt). The boxes are 0.98 tall to hold that,
+    # and the panel starts at -0.10 to hold the boxes.
+    ax.set_ylim(-0.10, 2.80)
     ax.axis("off")
 
     # The two machines, and the network between them.
     for x0, x1, label in ((0.05, 4.05, "Client machine (the driver)"),
                           (6.55, 10.35, "Broker machine")):
-        ax.add_patch(plt.Rectangle((x0, 0.06), x1 - x0, 2.64, fill=False, edgecolor=GREY,
+        ax.add_patch(plt.Rectangle((x0, -0.04), x1 - x0, 2.74, fill=False, edgecolor=GREY,
                                    linewidth=1.0))
         ax.text(x0 + 0.12, 2.54, label, fontsize=8, fontweight="bold", color=GREY,
                 ha="left", va="center")
@@ -318,23 +324,23 @@ def plot_system(ax):
     # synchronization out of every result in the paper. The consumer reports D in steps of the
     # timestamp resolution tau, which is where Failure 2 enters; the boxes are 3.35 wide so that
     # line clears its red label.
-    procs = ((1.46, 2.34, "Producer process", KAFKA,
+    procs = ((1.38, 2.36, "Producer process", KAFKA,
               (r"app thread: $t_{\mathrm{sched}}$, $t_{\mathrm{pub}}$",
                r"I/O thread: $t_{\mathrm{ack}}$"), "Failure 1"),
-             (0.16, 1.04, "Consumer process", REDIS,
+             (0.02, 1.00, "Consumer process", REDIS,
               (r"app thread: $t_{\mathrm{recv}}$, $t_{\mathrm{out}}$",
                r"reports $D$ in steps of $\tau$"), "Failure 2"))
     for y0, y1, title, colour, lines, failure in procs:
         ax.add_patch(plt.Rectangle((0.20, y0), 3.35, y1 - y0, fill=False, edgecolor=colour,
                                    linewidth=1.1))
-        ax.text(0.32, y1 - 0.16, title, fontsize=8, fontweight="bold", color=colour,
+        ax.text(0.32, y1 - 0.15, title, fontsize=8, fontweight="bold", color=colour,
                 ha="left", va="center")
         for k, line in enumerate(lines):
-            ax.text(0.32, y1 - 0.43 - 0.25 * k, line, fontsize=8, ha="left", va="center")
+            ax.text(0.32, y1 - 0.45 - 0.33 * k, line, fontsize=8, ha="left", va="center")
         # Where each failure enters: the late read of t_ack, and the tool's own report.
-        ax.text(3.45, y1 - 0.68, failure, fontsize=8, fontweight="bold", color=FAILURE_RED,
+        ax.text(3.45, y1 - 0.78, failure, fontsize=8, fontweight="bold", color=FAILURE_RED,
                 ha="right", va="center")
-    ax.text(1.875, 1.25, "both processes read one clock", fontsize=8, color=GREY,
+    ax.text(1.875, 1.19, "both processes read one clock", fontsize=8, color=GREY,
             ha="center", va="center")
 
     # The broker and its three jobs, each beside the arrow that carries it out.
@@ -361,7 +367,7 @@ def plot_system(ax):
     ax.text(5.30, 0.58, "leg 2: deliver", fontsize=8, ha="center", va="bottom")
 
     # What the two latencies cover, said between the legs.
-    ax.text(5.30, 1.22, r"$A$: leg 1, out and back", fontsize=8, color=KAFKA, ha="center",
+    ax.text(5.30, 1.25, r"$A$: leg 1, out and back", fontsize=8, color=KAFKA, ha="center",
             va="center")
     ax.text(5.30, 0.98, r"$D$: leg 1, then leg 2", fontsize=8, color=END_TO_END,
             ha="center", va="center")
@@ -392,8 +398,9 @@ def plot_mechanism(mech_ax):
     # Two lanes now, the drawn path is named as the Kafka one, and Redis's contrasting stamp
     # is marked on the thread that actually takes it.
     mech_ax.set_xlim(0, 10.4)
-    # Down to -0.42 since 4 Oct 2026, for the D, A and E brackets under the consumer lane.
-    mech_ax.set_ylim(-0.42, 5.25)
+    # Down to -0.75 since 4 Oct 2026, for the D, A and E brackets under the consumer lane, whose
+    # labels stack 0.50 apart: 11.7 pt, against the 10.1 pt box CI's matplotlib 3.9 gives each.
+    mech_ax.set_ylim(-0.75, 5.25)
     mech_ax.axis("off")
 
     y_app, y_io, y_brk, y_con = 4.30, 3.30, 2.25, 1.15
@@ -509,7 +516,7 @@ def plot_mechanism(mech_ax):
     # of Section II-B is drawn (4 Oct 2026, the author: "the diagram for the whole system where
     # all fundamental quantities are very clear"). The labels sit left of the brackets, clear
     # of the guide that carries t_sched down.
-    y_d, y_a, y_e = 0.52, 0.16, -0.20
+    y_d, y_a, y_e = 0.52, 0.02, -0.48
     for x, y0, y1 in ((2.95, y_app - 0.12, y_e), (3.65, y_app - 0.12, y_a - 0.04),
                       (6.45, y_con, y_d), (x_out, y_con, y_e)):
         mech_ax.plot([x, x], [y0, y1], color=GREY, linewidth=0.7, linestyle=(0, (1, 2)),
@@ -951,10 +958,10 @@ def main(argv=None):
         # Two panels since 4 Oct 2026: where everything runs above, when each timestamp is
         # read below. Margins set by hand: tight_layout refuses a gridspec of axis-free
         # panels with a warning and lays them out no better.
-        # 3.71 in tall and panel (b) at 1.985 since E's row was added below it, which keeps
-        # panel (a) and the scale of panel (b) as they were.
-        fig = plt.figure(figsize=(7.16, 3.71))
-        gs = fig.add_gridspec(2, 1, height_ratios=[1.62, 1.985], hspace=0.10, left=0.005,
+        # 3.89 in tall since E's row was added and the stacked labels were spaced for CI's
+        # matplotlib 3.9 (4 Oct 2026); the ratios keep both panels' scales as they were.
+        fig = plt.figure(figsize=(7.16, 3.89))
+        gs = fig.add_gridspec(2, 1, height_ratios=[1.62, 2.028], hspace=0.10, left=0.005,
                               right=0.995, top=0.955, bottom=0.005)
         ax_sys, ax_time = fig.add_subplot(gs[0]), fig.add_subplot(gs[1])
         plot_system(ax_sys)

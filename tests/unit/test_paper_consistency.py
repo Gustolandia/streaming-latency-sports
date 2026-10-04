@@ -486,6 +486,9 @@ class TestRetentionBound:
         # request, and it lists "effect sizes" among the statistics the invalid first corpus
         # survived. That describes the corpus; it is not H1's effect-size rule.
         prose = prose.replace("rank tests, effect sizes and multiplicity correction", "")
+        # 4 Oct 2026: "the \emph{knee}" since the knee is defined where it is used; a word in
+        # italics is still in the text.
+        prose = re.sub(r"\\emph\{([^}]*)\}", r"\1", prose)
         for gone in ("effect size", "netem", "inline", "process count", "start-up", "e1 "):
             assert gone not in prose, f"{gone!r} is in the main text again; revisit tab:power"
         # v5 (28 Sep) says the same claims in its own words: "the check rejects" (III-A),

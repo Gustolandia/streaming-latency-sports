@@ -361,8 +361,7 @@ whose origin timestamp fails on more than one event in a hundred cannot report a
 whatever the cause.
 
 Every proportion below is a count over a stated denominator. Rates carry Wilson score $95\%$
-intervals and ratios Katz intervals, Holm-corrected within a named family. The supplement's
-tables print the corrected values. Every table is generated from the committed
+intervals and ratios Katz intervals, Holm-corrected within a named family. The supplement's tables print the corrected values. Every table is generated from the committed
 data at build time.
 
 % v6 (2 Oct 2026): the finding, on its own. What v5 called Failure 1 was one section holding the
@@ -381,8 +380,8 @@ The check rejects $\auditRejectedWorkstation$ of $\auditRunsWorkstation$ runs on
 workstation testbed ($\auditPctWorkstation\%$) and $\auditRejectedCloud$ of $\auditRunsCloud$
 on the cloud testbed ($\auditPctCloud\%$). Our first result is among them. The check rejects
 $\firstResultRejected$ of the $\firstResultRuns$ runs behind it, and on that first testbed
-$\auditUsableConditionsWorkstation$ of $\auditConditionsWorkstation$ conditions survive. That
-result had passed every conventional check we knew. Its corpus had survived six corrections, a
+$\auditUsableConditionsWorkstation$ of $\auditConditionsWorkstation$ conditions survive. Its
+corpus had survived six corrections, a
 fairness audit, and a full battery of rank tests, effect sizes and multiplicity correction
 (Supplement~S8.1). None of its \firstResultCellsWord{} conditions was usable, and nothing in its
 output said so.
@@ -441,8 +440,7 @@ interpreter lock. The Java client, which has none, shows the same failure.
 \section{The Mechanism: A Timestamp Taken Late}
 \label{sec:mechanism}
 
-The negatives in our corpus are produced by scheduling. We establish this by moving scheduling
-while holding everything else fixed. Three small laws carry the argument: an identity that says
+The negatives in our corpus are produced by scheduling. Three small laws carry the argument: an identity that says
 when the span inverts, a two-state model that says how often, and the scheduler's rule for its
 slice, which sets the timescale.
 
@@ -474,8 +472,8 @@ seconds passes every run, while the same hardware measuring one millisecond fail
 \label{sec:mixture}
 \label{sec:twostate}
 Each timestamping thread is either running, in which case its timestamp is late by a narrow
-jitter, or preempted and waiting for a core. From idle to the knee of the load sweep the rate
-grows $\invGrowth\times$ but the jitter's width only $\coreGrowth\times$, so load mostly changes
+jitter, or preempted and waiting for a core. From idle to the \emph{knee} of the load sweep, its heaviest
+load before the processors saturate, the rate grows $\invGrowth\times$ but the jitter's width only $\coreGrowth\times$, so load mostly changes
 how often the thread is waiting for a core. Write $p$ for the probability of the second state,
 the thread's \emph{occupancy}\label{def:occupancy}. Call the part of that wait still to come the
 \emph{residual stall}, and write $G$ for its survival function, the chance that it outlasts a
@@ -580,7 +578,7 @@ s \;=\; 0.75\,\mathrm{ms}\times\bigl(1+\lfloor\log_2\min(n,8)\rfloor\bigr),
 \label{eq:slice}
 \end{equation}
 which gives $\sliceFactor \times 0.75\,\mathrm{ms} = \baseSliceMs$~ms on the host's
-\testbedCpusWord{} CPUs. That slice is derived rather than measured. With run-to-parity, which lets
+\testbedCpusWord{} CPUs. That slice is derived rather than measured. The kernel's timer interrupts a busy core once every \emph{tick}, a millisecond on our hosts. With run-to-parity, which lets
 a running thread finish its slice before a woken thread preempts it, a thread stays within one slice
 plus one tick of its fair share~\cite{guittot2025slice}.
 
@@ -867,7 +865,7 @@ span is timed.
 Both failures change numbers that people act on, and neither changes how those numbers look.
 This section says what a printed latency can and cannot tell its reader, what timing from the
 acknowledgment costs, what a benchmark author can do about both at no cost, and what is left of
-the broker comparison that started the work.
+the broker comparison.
 
 \subsection{What a printed latency can and cannot say}
 \label{sec:reading}
@@ -890,8 +888,7 @@ that sets them beside one-way latencies compares different intervals
 (Section~\ref{sec:toolsrun}).
 
 Timed from the acknowledgment, a latency understates the end-to-end latency, the more so the
-shorter it is. A run of such latencies can be void outright. Our own first result had survived six corrections and a battery of rank tests before the sign check
-left none of its conditions usable (Section~\ref{sec:audit}). Section~\ref{sec:cost} sizes the
+shorter it is. A run of such latencies can be void outright, as our own first result was (Section~\ref{sec:audit}). Section~\ref{sec:cost} sizes the
 error and repairs it.
 
 The exposure is not confined to benchmarks. \kafka{}'s coordinator metrics
@@ -993,8 +990,8 @@ phase (Section~\ref{sec:extcomp}). \\
 
 One mitigation our measurements support directly costs something. Giving the timestamping
 threads real-time priority cut the negative-span rate $\rtFactorLow$--$\rtFactorHigh\times$ at
-unchanged background load. Busy-polling a dedicated core should buy the same for the price of
-that core, though we did not measure it. The floor is not zero, so the check stays, and a
+unchanged background load. A thread that spins on a core of its own instead of
+sleeping is \emph{busy-polling}, and never waits to be woken. Busy-polling a dedicated core should buy the same for the price of that core, though we did not measure it. The floor is not zero, so the check stays, and a
 real-time or polling timestamping thread changes the system it measures. Where that is
 unacceptable, report retention instead.
 
@@ -1110,8 +1107,8 @@ Attributing the negatives to scheduling is an inference. One clock excludes cloc
 manipulations of Section~\ref{sec:twostate} exclude utilization, timer noise and stress, and
 the kernel trace observes the wait directly. The interpreter lock is bounded twice. The kernel
 trace, which cannot see the lock, already brackets the observed rate, and \kafka{}'s Java
-client shows the same failure. Both testbeds are virtual, so stolen processor time is bounded,
-not excluded. Real-time priority, a control inside the guest, still cut the rate.
+client shows the same failure. Both testbeds are virtual, so \emph{stolen time}, when one of
+our virtual processors is ready but the hypervisor runs another machine, is bounded, not excluded. Real-time priority, a control inside our virtual machine, still cut the rate.
 
 Disagreeing
 clocks on different virtual CPUs~\cite{kvmclock} cannot explain the negatives either. A clock

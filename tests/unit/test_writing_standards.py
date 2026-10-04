@@ -455,7 +455,9 @@ class TestEachNameIsBuiltWhereAReaderFirstMeetsIt:
                "normal priority", "one-way latency", "positivity filter", "manipulation",
                "retention", "origin", "transport proxy", "event-time latency",
                "publish delay", "processing-time latency", "background load",
-               "consumer pattern", "negative-span rate")
+               "consumer pattern", "negative-span rate",
+               # 4 Oct 2026, the author: "yes gloss those four too, cut elsewhere to fit."
+               "knee", "tick", "busy-polling", "stolen time")
     # The opening paragraph says what happened before it names anything, and the mutation tests
     # anchor on its first words; the producer and the consumer it mentions are defined in the
     # paragraph after it, so the rule for these two starts there.

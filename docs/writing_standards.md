@@ -819,7 +819,9 @@ another. Ten of the eleven tools run cannot measure one because each takes both 
 one process; the paper had said "one clock", which our own two-process harness also reads.
 Also defined where first used: a span's origin, the harness, the event-time latency (with
 Karimov et al.), the timestamp resolution, the background load, the consumer pattern,
-manipulation, mode and the negative-span rate; EEVDF, CFS, JVM, PTP, IPPM and OWAMP are spelled
+manipulation, mode and the negative-span rate, and, at the author's request the same day, the
+tick, stolen time, busy-polling and the knee of the load sweep, paid for by cutting passages
+that repeated what the paper says elsewhere; EEVDF, CFS, JVM, PTP, IPPM and OWAMP are spelled
 out. One name per thing: the positivity filter is no longer also "the rule", a thread no longer
 a "task", a message no longer a "record", a publish-timed span no longer
 "publish-referenced", and the sign check names the three spans it checks, as

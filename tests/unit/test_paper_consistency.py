@@ -248,9 +248,11 @@ class TestAudit:
         """The paper's claim is the audit, so both ends must carry it.
 
         v6 (2 Oct 2026): the abstract carries no numbers, at the authors' instruction, so it
-        states the audit's outcome in words; the counts stay where the numbers are."""
+        states the audit's outcome in words; the counts stay where the numbers are. v7 (5 Oct
+        2026): the author asked the sentence to explain itself, so the sign check is said by
+        what it looks for, and the result it caught is said to have passed every usual check."""
         abstract = " ".join(tex[tex.index(r"\begin{abstract}"):tex.index(r"\end{abstract}")].split())
-        assert "a sign check rejected most of our runs" in abstract, \
+        assert "a check for negatives rejected most of our runs" in abstract, \
             "the audit's outcome is missing from the abstract"
         conclusion = tex[tex.index(r"\section{Conclusion}"):]
         intro = tex[tex.index(r"\label{sec:intro}"):tex.index(r"\section{How a Benchmark")]

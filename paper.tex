@@ -94,19 +94,20 @@ University of Technology, Gothenburg, Sweden. E-mail: duvignau@chalmers.se.}}
 % was found, in the order the paper argues it; the numbers are in the introduction and the body,
 % and the benchmark studied in depth is one tool among the many of Section V.
 \begin{abstract}
-Latency benchmarks guide the choice of a message broker, the service that carries application
+Latency benchmarks guide the choice of a message broker, the service carrying application
 data. They now report sub-millisecond latencies, finer than some of their clocks resolve and
-shorter than a thread's wait for a core on a busy host, so the printed latency can describe the
-clock, not the broker. We timed widely used
+shorter than a thread can wait for a core, so the printed latency can describe the clock, not
+the broker. We timed widely used
 brokers on one clock and found two silent failures. Timed from the broker's acknowledgment of
 receipt, many messages came out negative, as if delivered before being published.
-The cause is not clock synchronization but scheduling. The thread that records the acknowledgment
-waits for a core longer than the message takes, and giving it real-time priority at unchanged
-load removes most negatives. We did a wide audit of the most used tools across the industry:
+The cause is not clock synchronization but scheduling. The thread recording the acknowledgment
+waits for a core longer than the message takes; giving it real-time priority at unchanged load
+removes most negatives. We did a wide audit of the most used tools across the industry:
 most of them discard such values uncounted or never measure a one-way latency. A positivity
-filter on a millisecond clock also deletes the fastest messages. We derive the fraction kept, and a test registered in advance confirms it. In practice a sub-millisecond
-ranking can rank the clock, and a void result looks sound: a sign check rejected most of our
-runs. We give benchmark authors checks that cost nothing.
+filter on a millisecond clock also deletes the fastest messages. We derive the fraction kept; a test registered in advance confirms it. In practice, brokers
+faster than the clock can tie, and a wrong result can pass every usual check: ours did, until a
+check for negatives rejected most of our runs. We give benchmark authors checks that cost
+nothing.
 \end{abstract}
 
 % Alphabetical, gated. Every noun of five letters or more in the title has a term here

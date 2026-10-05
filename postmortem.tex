@@ -1,5 +1,5 @@
-% The postmortem: the complete record behind "Faster than Light: Latency Measurement Errors
-% in Message-Broker Benchmarks", archived with the data. NOT part of the submission. Until
+% The postmortem: the complete record behind "Super-Precise Latency: How CPU Threading
+% Affects High-Precision Latency, and an Industry-Wide Audit", archived with the data. NOT part of the submission. Until
 % 29 Sep 2026 this file was supplement.tex, the paper's supplementary material; an outside
 % editor read its 74 pages as an undecided paper, so the journal supplement is now a separate,
 % shorter document organized by the paper's sections (supplement.tex), and this one keeps the
@@ -130,8 +130,8 @@
 % the lead author's; the paper's two authors are named in the footnote, so a loose page
 % still says which paper it belongs to. tests/unit/test_front_matter_agrees.py holds this.
 \title{A Postmortem of a Withdrawn Result\\
-\large The Complete Record behind ``Faster than Light: Silent Errors in the\\
-Latency Benchmarks Used to Choose Message Brokers''}
+\large The Complete Record behind ``Super-Precise Latency: How CPU Threading Affects\\
+High-Precision Latency, and an Industry-Wide Audit''}
 \author{Gustavo~Pedro~Ricou%
 \thanks{G.~P.~Ricou is with the School of Computer Science and Statistics, Trinity College
 Dublin, Dublin~2, Ireland. E-mail: pedrorig@tcd.ie. This document accompanies the paper by
@@ -1042,7 +1042,7 @@ our own extrapolation allowed, and a prediction that misses low is still a predi
 missed. We report it as a failure rather than as the nearer of two misses.
 
 The two failures have one cause, and E-A5 names it. Our bracket was still parameterized in
-$\rho$, through $p = \rho^C$; E-A5 shows $\rho$ does not determine occupancy. What survives is
+$\rho$, through $p = \rho^C$; E-A5 shows $\rho$ does not determine waiting probability. What survives is
 the mechanism --- established by manipulation --- and not any curve in $\rho$, ours included.
 
 
@@ -1108,9 +1108,9 @@ This part is the argument. Sections~S7 to~S9 establish the scheduling failure by
 
 \paragraph{The experiment that settles it} Move one of the two and hold the other fixed:
 raising the timestamping processes to real-time priority makes them preempt the background load
-rather than queue behind it, so occupancy falls sharply while utilization does not move ---
+rather than queue behind it, so waiting probability falls sharply while utilization does not move ---
 and unlike our delay injection, which canceled in the subtraction (S3.1), priority acts on the timestamping threads themselves, where the model
-locates the failure. An occupancy mechanism predicts collapse toward the running-state floor;
+locates the failure. An waiting probability mechanism predicts collapse toward the running-state floor;
 any account in which the rate is a function of $\rho$ predicts no change, because $\rho$ is
 unchanged by construction. The result is unambiguous (Section S26): utilization held
 to $0.001$ (the pre-registered manipulation check passes), and the negative-span rate fell from
@@ -1346,7 +1346,7 @@ move together on this ladder and neither can be credited over the other; the com
 full is Section~S9.
 
 \paragraph{The experiment that settles it} Raise the timestamping processes to real-time
-priority: occupancy falls sharply while utilization does not move, and priority acts on the
+priority: waiting probability falls sharply while utilization does not move, and priority acts on the
 timestamping threads themselves --- where the model locates the failure --- rather than
 canceling in the subtraction as our delay injection did. The result is unambiguous
 (Section~S26): utilization held to $0.001$, and the negative-span rate fell by
@@ -1387,7 +1387,7 @@ one campaign's recovered quantile is an estimate to replicate, not a measurement
 
 \paragraph{The form, and why it is stated here}
 Conditioning the identity $S < 0 \iff A > D$ on the end-to-end latency, and writing $p$ for the
-timestamping thread's off-CPU occupancy and $G$ for the survival function of the residual
+timestamping thread's off-CPU waiting probability and $G$ for the survival function of the residual
 delay in that state, gives to leading order
 \begin{equation}
 \label{eq:twostate}
@@ -1399,7 +1399,7 @@ removes --- and the three consequences we test are attributable without it: the 
 under payload is what the identity predicts, the floor $C_0$ is the $p \to 0$ limit of the
 picture, and the traced check compares two probabilities. The campaigns reported here never
 tested the form as a form. They measure $p$ only as a time average: E-A7 registered that
-real-time priority would cut the thread's occupancy at least tenfold, and its scheduler counters
+real-time priority would cut the thread's waiting probability at least tenfold, and its scheduler counters
 show a fall of $\eaSevenOccFallLo$- and $\eaSevenOccFallHi$-fold at the two loads, against a $35$-
 to $47$-fold fall in the rate, so that registered prediction failed. What the campaigns confirm is the mechanism and its
 consequences, not the factorization.
@@ -1487,8 +1487,8 @@ share an axis, and a benchmark on a sub-millisecond path meets both. They are no
 same function of it, and the difference that establishes it is a difference of limits
 rather than of slopes.
 
-\paragraph{What this is worth, and what it is not} It is mechanistic --- occupancy names the
-moving part --- and actionable: if the failure is occupancy, the mitigation is a timestamping thread
+\paragraph{What this is worth, and what it is not} It is mechanistic --- waiting probability names the
+moving part --- and actionable: if the failure is waiting probability, the mitigation is a timestamping thread
 the workload cannot preempt, not a better clock. But we found this by looking at the data; the separability test above is exploratory, so we pre-registered a confirmatory version and ran it: the campaigns below, the decisive
 one being real-time priority at fixed utilization. Two states is the smallest model consistent with the data, not a kernel claim.
 
@@ -1755,7 +1755,7 @@ tolerance, so the zero above is a clean manipulation rather than a loose test.
 \begin{table}[htbp]
 \caption[Every matched pair]{\textbf{Every matched pair.} Normal-priority and real-time negative-span rates at the same
 achieved utilization, and the factor between them. Both configurations' achieved $\rho$ is printed, so
-the claim that the manipulation moved occupancy and not load can be checked pair by pair
+the claim that the manipulation moved waiting probability and not load can be checked pair by pair
 rather than taken from a caption: the widest disagreement anywhere in the table is
 $\manipWorst$, against the $\manipTol$ that would have withheld the pair. Generated at build
 time from the three campaign files.}
@@ -2445,8 +2445,8 @@ millisecond-floored time. One documented sentence saying it is not comparable wi
 clock would have prevented the driver defect of Section~\mainBrokers{} outright.
 \item \textbf{Benchmark authors:} timestamp before the action; count discards sign-separated;
 report retention, timestamp resolution and synchronization state; never difference a
-server-assigned timestamp against a client clock without saying so; dither the publish instant; and
-record the achieved rate.
+server-assigned timestamp against a client clock without saying so; randomize the publish instants
+(Poisson sampling); and record the achieved rate.
 \end{itemize}
 
 
@@ -2728,7 +2728,7 @@ with that shape: a wait spread as Equation~\ref{eq:restofslice} spreads it at a 
 waits begun by a preemption add their gathering at the slice to the same octave. For the thread
 that timestamps an acknowledgment, the latency factor $G$ of Equation~\ref{eq:twostate} now has a
 measured form with no parameter the kernel does not set, at a margin $T - g$ rather than
-$T_{\mathrm{true}}$; the occupancy $p$ in front of it is still not predicted.
+$T_{\mathrm{true}}$; the waiting probability $p$ in front of it is still not predicted.
 
 \subsection{S16.11. Two faults in the law campaign's judges, and the runs a stalled disk held}
 \label{sec:lawjudges}
@@ -2840,8 +2840,8 @@ place''~\cite{hp1976dither}, and states the failure it repairs in terms this pap
 used: a counter that ``appears to hang up on some value \ldots{} a reading that is an integral
 multiple of the clock period''. That is the corpus of Section~\mainModeB{}, described in 1976.
 The one substitution we make to a fifty-year-old remedy is forced: the time base belongs to
-the operating system, so a benchmark cannot dither it and must dither the publish instant
-instead.
+the operating system, so a benchmark cannot randomize its phase and must randomize the publish
+instants instead.
 \end{itemize}
 
 The one thing the note does not contain is the failure this paper reports, because its
@@ -2850,8 +2850,8 @@ that carries the fractional part is what converts a solved metrology problem bac
 open one.
 
 \paragraph{When dither works, which is a question with an answer}
-Our remedy is to dither the publish instant, and a reader from signal processing will ask under
-what conditions dither actually recovers the underlying quantity. It is a fair question and
+Our remedy is to randomize the publish instants, a form of dither, and a reader from signal
+processing will ask under what conditions dither actually recovers the underlying quantity. It is a fair question and
 the literature has answered it. For quantized Gaussian measurements subtractive dither helps
 when the ratio of the noise's standard deviation to the quantization interval is roughly
 \emph{below} one third; above that it costs more than it buys~\cite{rapp2019dither}. The
@@ -3114,7 +3114,7 @@ first \texttt{produce()} is visible in the loop trace of every run (S3), so for 
 inferred. Whether a different client, or a pre-created topic, or a broker configured against
 auto-creation would pay the same cost, we did not test. The practitioner advice of Section~\mainAuthors{} is written to be safe either way.
 
-\emph{The occupancy result is a mechanism, not a load model.} Section~\mainModeA{} shows by manipulation that the negative-span rate follows timestamping-thread occupancy rather than utilization,
+\emph{The waiting probability result is a mechanism, not a load model.} Section~\mainModeA{} shows by manipulation that the negative-span rate follows timestamping-thread waiting probability rather than utilization,
 and that is the strongest causal claim in this paper. It is not a formula. We can say the rate
 falls fifty-fold when the timestamping thread stops being preempted; we cannot say what the rate will
 be at a given load, and both attempts to write one --- the queueing form and our own bounded bracket ---
@@ -3504,8 +3504,8 @@ arithmetic on two numbers you already know, but it is the reduced denominator $q
 whether the interval looks round: $500$~msg/s gives $q=1$ and spread $\armFiveHundredSpread$ points, and
 $300$~msg/s gives $q=3$ and spread $\armThreeHundredSpread$, while $889$~msg/s --- which sits $0.00014$ away from
 $9/8$ --- gives a denominator in the hundreds and is stable to $\armEightEightyNineSpread$. A small $q$ is the hazard;
-proximity to a simple fraction is not. The remedy is to dither the publish instant, which works
-without having to get the arithmetic right.
+proximity to a simple fraction is not. The remedy is to randomize the publish instants, which
+works without having to get the arithmetic right.
 \item \textbf{Before attributing an offset to every event, vary the run length and count.}
 Lengthen the observation window by a known factor and count how many events exceed the offset,
 rather than re-computing the average. A per-run cost holds that count fixed while the run grows;
@@ -3997,7 +3997,7 @@ $N$ & \redis{} retained & Shift (ms) & Worst case & Equivalent \\
 
 
 \subsection{S26.1. The mechanism campaigns' tables}
-Table~\ref{tab:mixture} is the mixture across nine load levels; Table~\ref{tab:ea5} the occupancy manipulation; Table~\ref{tab:ea6} the load-geometry comparison with its replication; Table~\ref{tab:ea10} the payload sweep; and Table~\ref{tab:ea9} the kernel-trace comparison, including the withheld configuration.
+Table~\ref{tab:mixture} is the mixture across nine load levels; Table~\ref{tab:ea5} the waiting probability manipulation; Table~\ref{tab:ea6} the load-geometry comparison with its replication; Table~\ref{tab:ea10} the payload sweep; and Table~\ref{tab:ea9} the kernel-trace comparison, including the withheld configuration.
 
 \begin{table}[t]
 \caption[Mixture, measured across nine load levels ($25$ runs each, pre-registered)]{Mixture, measured across nine load levels ($25$ runs each, pre-registered). The
@@ -4025,9 +4025,9 @@ Utilization $\rho$ & Core $\sigma_{\mathrm{core}}$ (ms) & Negative span rate & C
 
 
 \begin{table}[t]
-\caption[Occupancy, not utilization]{\textbf{Occupancy, not utilization.} Timestamping processes at normal priority versus
+\caption[Waiting probability, not utilization]{\textbf{Waiting probability, not utilization.} Timestamping processes at normal priority versus
 \texttt{SCHED\_FIFO}, with the background load unchanged. Utilization is measured in both configurations,
-not assumed: it matches to $0.001$, so the manipulation moved occupancy alone. The negative-span rate
+not assumed: it matches to $0.001$, so the manipulation moved waiting probability alone. The negative-span rate
 falls by a factor of $\rtLowFactor$--$\rtHighFactor$ to the running-state floor. Utilization-only models predict no
 change.}
 \label{tab:ea5}
@@ -4336,7 +4336,8 @@ conditions for another.
 Weyl's equidistribution theorem~\cite{weyl1916gleichverteilung} governs the irrational regime of
 $\Delta/\tau$ in the long run, and the three-distance theorem~\cite{sos1958distribution} the
 phases a finite run of publishes visits; Schuchman's condition~\cite{schuchman1964dither}, generalized by Wannamaker
-et al.~\cite{wannamaker2000dither}, is the remedy that Section~\mainAuthors{} states as dithering. The timing literature treats a coarse tick as staleness, not deletion. What we claim
+et al.~\cite{wannamaker2000dither}, is the condition behind the remedy that Section~\mainAuthors{} states as randomizing the publish
+instants. The timing literature treats a coarse tick as staleness, not deletion. What we claim
 as new, narrowly: not quantization --- elementary, and
 Cloudprofiler~\cite{yang2022cloudprofiler} exists because milliseconds are known to be
 too coarse --- but the \emph{interaction} of quantized timestamp, few-phase producer and

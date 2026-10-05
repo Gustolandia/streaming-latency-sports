@@ -47,14 +47,14 @@
       "file": "supplement.tex",
       "key": "independence",
       "scope": "line",
-      "anchor": "timestamps would corrupt events independently",
+      "anchor": "timestamps would corrupt messages independently",
       "reason": "The contrast is the point: coarse kernel timestamps would corrupt each event on its own, which the runs test rules out because corruption clusters."
     },
     {
       "file": "supplement.tex",
       "key": "ordinary",
       "scope": "line",
-      "anchor": "the floor that ordinary short delays leave",
+      "anchor": "$c$ is the floor that ordinary",
       "reason": "Plain English for the usual short delays of the two-state model, not the scheduling policy that A10 renames normal; no run at real-time priority is meant."
     },
     {
@@ -84,6 +84,13 @@
       "scope": "line",
       "anchor": "where the field's default sends it",
       "reason": "Figurative: the field's default directs the blame to the clock. No message is sent."
+    },
+    {
+      "file": "postmortem.tex",
+      "key": "dither",
+      "scope": "file",
+      "requires": "When dither works, which is a question with an answer",
+      "reason": "The postmortem states the remedy as randomizing the publish instants, and keeps the word dither only where it discusses the signal-processing literature on dither by that literature's name: subtractive dither, Schuchman's condition and the 1976 patent that varied a counter's time base."
     }
   ]
 }

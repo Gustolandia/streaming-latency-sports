@@ -113,6 +113,14 @@ MECHANICAL = [
     (r"\ba\s+handling\s+span\b", "a processing-time latency"),
     (r"\bhandling\s+spans\b", "processing-time latencies"),
     (r"\bhandling\s+span\b", "processing-time latency"),
+    # 5 Oct 2026, the literature review (docs/literature_review_2026-10-05.md): in queueing,
+    # occupancy means utilization, which the paper shows p is not; p is the probability that the
+    # thread is waiting for a core. The rest of that wait is a wait, as everywhere else in the
+    # paper, not a stall.
+    (r"\boccupancy\b", "waiting probability"),
+    (r"\bOccupancy\b", "Waiting probability"),
+    (r"\bresidual\s+stalls\b", "residual waits"),
+    (r"\bresidual\s+stall\b", "residual wait"),
 ]
 
 #: (key, pattern, advice). Words that need a human sentence, not a substitution: reported,
@@ -135,6 +143,12 @@ REVIEW = [
     ("arm", r"\barms?\b", "arm -> configuration / treatment (or define)"),
     ("quantum", r"\bquantum\b", "quantum -> timestamp resolution where the sentence allows"),
     ("mode-label", r"\bMode~?[AB]\b", "Mode A/B -> descriptive section title"),
+    # 5 Oct 2026: network measurement's name for the cure is Poisson (randomized) sampling, and
+    # for the hazard phase-locking (RFC 2330). "Dither" stays only where it names the 1970
+    # counter note's own technique.
+    ("dither", r"\bdither\w*\b", "dither -> randomize the publish instants (Poisson sampling)"),
+    # 5 Oct 2026: the paper no longer frames its findings as two numbered failures.
+    ("failure-label", r"\bFailure~?[12]\b", "Failure 1/2 -> the late reading / the deletion"),
     # Not `\bindependent\b`, for the reason `flight` is not `\bflights?\b`.
     # Two senses share the spelling. One is structural -- two waits being probabilistically
     # independent -- and this paper has a measured position on it, in bold, at a median

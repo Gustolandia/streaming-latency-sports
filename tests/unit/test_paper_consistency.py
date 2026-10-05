@@ -1336,8 +1336,9 @@ class TestExternalHarnessEvidence:
                 in section), "the reason for the guard must be given"
         assert r"\cite{openmessaging_pr56}" in section, "the guard's documented origin must be cited"
         assert "origin is documented and its reasoning is sound" in low
-        assert "non-local consequences" in low, \
-            "the point is a reasonable local fix with a non-local consequence"
+        # 5 Oct 2026, the clarity pass: "two non-local consequences" is said in plain words.
+        assert "sound locally, but it has two side effects" in low, \
+            "the point is a reasonable local fix with side effects beyond it"
 
     def test_the_conclusion_carries_the_external_evidence(self, tex):
         conclusion = tex[tex.index(r"\section{Conclusion}"):]

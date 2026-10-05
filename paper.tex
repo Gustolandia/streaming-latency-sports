@@ -137,11 +137,10 @@ timestamp resolution.
 that takes each message from the program that publishes it, the \emph{producer}, and delivers it
 to the program that receives it, the \emph{consumer} (Fig.~\ref{fig:model}a). Engineers choose
 among brokers partly by their latency benchmarks, which time each message from producer to
-consumer and now report latencies below a millisecond~\cite{indexdev2026brokers}. At that scale
-both the clock and the scheduler can be slower than the message, and a benchmark can fail
-without any sign of failure. We show two ways it does. Latencies come out
-negative, and a common remedy deletes the fastest messages and prints a median of whatever is
-left. A team that ranks brokers, sizes a system or promises a response time on such a number may
+consumer and now report latencies below a millisecond~\cite{indexdev2026brokers}. At that scale a clock's step
+or a thread's wait for a core can exceed the latency itself, and a benchmark can fail without any
+sign of failure. We show two ways it does. Latencies come out negative, and a common
+remedy for them also deletes the fastest messages and prints a median of whatever is left. A team that ranks brokers, sizes a system or promises a response time on such a number may
 be acting on how the number was measured, not on the broker.
 
 Our first harness timed each message from the moment the producer learned that the broker had
@@ -149,9 +148,9 @@ accepted it. By its arithmetic, $\spanNegAck$ of the $\spanEvents$ messages we t
 before they were published. By the clock, none did. Timed on the same clock from the publish
 call, the moment the producer hands the message over, not one of them is negative
 (Fig.~\ref{fig:twoways}a). A latency timed from the broker's acknowledgment can come out
-negative on a single clock, with no disagreement between clocks to blame. A per-run sign check
-exposed how often. It rejected $\auditRejected$ of our $\auditRuns$ runs, and with them a
-first result that had passed every conventional check we knew (Section~\ref{sec:finding}).
+negative on a single clock, with no disagreement between clocks to blame. A per-run sign check for
+negatives rejected $\auditRejected$ of our $\auditRuns$ runs, and with them a first result that had
+passed every conventional check we knew (Section~\ref{sec:finding}).
 
 The arithmetic had subtracted two timestamps written by two different threads, and a thread
 must wait for a core before it can read the clock. That wait is the \emph{scheduling
@@ -160,9 +159,9 @@ core runs it. When the thread that records the acknowledgment waits longer than 
 takes to arrive, the difference comes out negative (Fig.~\ref{fig:model}b). Nothing arrived
 early. One reading was taken late.
 
-Three small laws govern it (Section~\ref{sec:mechanism}). Broker benchmarks call the time a message takes
-to reach the consumer its \emph{end-to-end latency}, and the time the producer waits to hear that the
-broker has it its \emph{publish latency}~\cite{openmessaging2018}. The difference is
+Three small laws govern it (Section~\ref{sec:mechanism}). Broker benchmarks name two latencies: the
+\emph{end-to-end latency}, the time a message takes to reach the consumer, and the \emph{publish
+latency}, the producer's wait to hear that the broker has it~\cite{openmessaging2018}. The difference is
 negative exactly when the publish latency exceeds the end-to-end latency. To leading order, its
 rate is the chance that the timestamping thread is waiting for a core times the chance that this
 wait exceeds the end-to-end latency. These waits have a peak in the histogram bucket that holds the
@@ -190,13 +189,13 @@ $D$. Its clock moves in steps of $\tau$, so a message faster than one step can r
 a filter that keeps only values above zero deletes it uncounted. (b)~When each timestamp is
 read, on one clock. The producer's application thread takes $t_{\mathrm{sched}}$, when the message is due, and $t_{\mathrm{pub}}$,
 at the publish call. Its client library's I/O thread takes $t_{\mathrm{ack}}$ only after
-waiting $\delta_{\mathrm{ack}}$ for a core. The consumer takes $t_{\mathrm{recv}}$ after its
-own wait $\delta_{\mathrm{recv}}$, and $t_{\mathrm{out}}$ once it has handled the message, so
-$E$, from $t_{\mathrm{sched}}$ to $t_{\mathrm{out}}$, adds to $D$ the wait before the publish
-call and the consumer's own work. Here
+waiting $\delta_{\mathrm{ack}}$ for a core. The consumer takes $t_{\mathrm{recv}}$ after its own
+wait $\delta_{\mathrm{recv}}$, and $t_{\mathrm{out}}$ once it has handled the message. Running from
+$t_{\mathrm{sched}}$ to $t_{\mathrm{out}}$, $E$ is $D$ plus the wait before the publish call and the
+consumer's own work. Here
 $A$ runs past $D$, so $S = t_{\mathrm{recv}} - t_{\mathrm{ack}} = D - A$ is negative although
-nothing arrived early. The path drawn is \kafka{}'s. \redis{} timestamps the acknowledgment on
-the application thread and inverts anyway, because that thread also waits for a core.}
+nothing arrived early. The path drawn is \kafka{}'s. \redis{} timestamps the acknowledgment on the
+application thread and goes negative anyway, because that thread also waits for a core.}
 \label{fig:model}
 \end{figure*}
 
@@ -212,21 +211,22 @@ or $1$~ms. A filter that keeps only positive values, a rule several tools apply
 \label{fig:twoways}
 \end{figure*}
 
-The industry meets such values and mostly discards them. \harnessSilentWordCap{} of the
+The industry meets negative latencies and mostly discards them. \harnessSilentWordCap{} of the
 \harnessAuditedWord{} measurement tools we read at source dispose of a latency at or below zero
-without counting it. Of \toolsRunWord{} benchmarking tools we ran, \toolsOneClockWord{} never meet
-a negative, because each takes both timestamps in one process, on one clock, so none measures
-a \emph{one-way latency}, from one process to another. Apache \kafka{}'s own end-to-end tool reports zero at every percentile on a
-sub-millisecond path~\cite{kafka_tools}, and none of the $\reachReports$ reports we audited
-states how many samples it kept (Section~\ref{sec:external}).
+without counting it. Of \toolsRunWord{} benchmarking tools we ran, \toolsOneClockWord{} never meet a
+negative, because each takes both timestamps in one process, on one clock. None therefore measures a
+\emph{one-way latency}, from one process to another. Apache \kafka{}'s own end-to-end tool reports
+zero at every percentile on a sub-millisecond path~\cite{kafka_tools}. None of the $\reachReports$
+reports we audited states how many samples it kept (Section~\ref{sec:external}).
 
 What discarding costs is clearest in one of these tools, a broker benchmark whose users were
 told that negative latencies were clock skew between nodes~\cite{omb_issue216}. It discards
 every latency that is not positive~\cite{openmessaging_pr56}, a rule we call a \emph{positivity
 filter}. For clocks that disagree, the filter is sensible. But its
 end-to-end clock counts whole milliseconds, and to that clock a message that arrives before the
-digit changes took no time at all, which is faster than light too. The filter therefore discards every such message, about half of them on the path we measured and nearly all at some
-publish rates (Section~\ref{sec:extcomp}). In $\ombGridMedianCells$ of the $\ombMedianCells$
+digit changes took no time at all, which is faster than light too. The filter therefore discards
+every such message, about half the messages on the path we measured and nearly all at some publish
+rates (Section~\ref{sec:extcomp}). In $\ombGridMedianCells$ of the $\ombMedianCells$
 embedded-mode settings whose summary we captured, with the whole benchmark in one process, it
 printed a median of exactly $\ombGridPrintedLo$ or $\ombGridPrintedHi$~ms. Those medians were
 computed from as little as $\ombGridRetentionMin\%$ of the samples taken, and nothing in the
@@ -235,28 +235,28 @@ remove $\msGuardDeletedPct\%$ of them uncounted, negatives and zeros alike
 (Fig.~\ref{fig:twoways}b).
 
 Timestamp resolution and scheduling delay are each well understood. What was not known is what they do to the sub-millisecond comparisons that
-broker benchmarks now report, because the tools that produce those comparisons discard the
+broker benchmarks now report, because most of the tools that produce those comparisons discard the
 evidence that would show it. We call the negative latency Failure~1 and the deletion Failure~2.
 
 Neither failure announces itself, and that is the practical problem. On a path faster than a
 millisecond every sample such a filter keeps reads exactly one millisecond, so the tool prints
 the same median whatever the broker. It does not print what differs between two brokers, the
 share of samples kept. A median computed from $\ombGridRetentionMin\%$ of the samples is
-typographically identical to one computed from all of them, and more stable from run to run for
-having its variation deleted. The tool passes the reproducibility a reader checks, the same
-median run after run, because it fails the verifiability nobody does.
+typographically identical to one computed from all of them, and more stable from run to run, because
+the filter deleted its variation. The tool passes the check a reader makes, the same median run after
+run, because of a deletion nobody checks.
 
 \textbf{What this means in practice.}\par\nobreak\csname @nobreaktrue\endcsname
 \begin{itemize}
-\item A sub-millisecond ranking read from a tool that times in whole milliseconds and deletes
-whatever is not positive ranks the clock, not the brokers. Where fast and slow messages mix, the filter inflates the
+\item Measured by a tool that times in whole milliseconds and deletes whatever is not positive,
+brokers faster than a millisecond tie. Where fast and slow messages mix, the filter inflates the
 median instead. At $\ombAboveGridPartialKB$~KB, \ombAboveGridPartialWord{} settings printed
 $\ombAboveGridPartialMedLo$ and $\ombAboveGridPartialMedHi$~ms, yet most of their messages had
 arrived within a millisecond (Section~\ref{sec:reading}).
-\item A latency timed from the acknowledgment understates the end-to-end latency and inflates
-the gap between two brokers, a property of their clients that a reader would credit to the
-brokers (Section~\ref{sec:cost}).
-\item A result can pass every conventional check and still be void, as our own first result was
+\item A latency timed from the acknowledgment understates the end-to-end latency and inflates the
+gap between two brokers. Their clients cause the excess, which a reader would credit to the brokers
+(Section~\ref{sec:cost}).
+\item A result can pass every conventional check and still be wrong, as our own first result was
 (Section~\ref{sec:audit}).
 \item A better-synchronized clock repairs none of this. Checks that cost nothing do. Time from
 the publish call or add the publish latency back, sign-check every run, and print the share of
@@ -270,22 +270,21 @@ established by \emph{manipulation}, moving one variable with the rest held fixed
 audit \emph{registered} when it was committed in public before the data that test
 it~\cite{nosek2018preregistration}.
 \begin{enumerate}
-\item \textbf{The finding} (Section~\ref{sec:finding}). A latency timed from an acknowledgment
-timestamp comes out negative on one clock under both brokers we measured, in \kafka{}'s own Java
-client and on a second processor family, while none timed from the publish call ever does. The
-check that finds them removes the majority of our runs.
+\item \textbf{The finding} (Section~\ref{sec:finding}). On one clock, a latency timed from an
+acknowledgment timestamp comes out negative under both brokers we measured, in \kafka{}'s own Java
+client and on a second processor family. None timed from the publish call does. The check that finds
+the negatives removes the majority of our runs.
 \item \textbf{The mechanism} (Section~\ref{sec:mechanism}). Such a latency comes out negative when
 the thread that writes the acknowledgment timestamp is scheduled late by more than the
 end-to-end latency. Real-time priority for the timestamping threads cut
 the rate $\rtFactorLow$--$\rtFactorHigh\times$ at unchanged utilization, and a kernel trace
 predicts the rate with nothing fitted.
-\item \textbf{The industry} (Section~\ref{sec:external}). With a millisecond clock and a
-positivity filter, the share of samples a benchmark keeps, its \emph{retention}, is set by the
-ratio of the end-to-end latency to the timestamp resolution and by where its publish instants
-fall within each millisecond, as a registered manipulation of message size confirmed. In the
-tools read at source (Section~\ref{sec:tools}), the tools run under registered predictions
-(Section~\ref{sec:toolsrun}) and the public reports audited (Section~\ref{sec:reports}), what is
-discarded is almost never counted.
+\item \textbf{The industry} (Section~\ref{sec:external}). The share of samples a benchmark keeps is
+its \emph{retention}. With a millisecond clock and a positivity filter, two things set it: the ratio
+of the end-to-end latency to the timestamp resolution, and where the publish instants fall within
+each millisecond. A registered manipulation of message size confirmed this. Discarded samples are almost
+never counted in the tools read at source (Section~\ref{sec:tools}), the tools run under registered
+predictions (Section~\ref{sec:toolsrun}) and the public reports audited (Section~\ref{sec:reports}).
 \item \textbf{Practical implications} (Section~\ref{sec:practice}). What a printed latency can
 and cannot tell its reader and what decides it, what timing from the acknowledgment costs and
 how to add it back, and checks that cost nothing: a per-run sign check, and retention reported
@@ -342,7 +341,7 @@ that survive into what it reports.
 \label{sec:workload}
 Apart from the registered campaign below, the measured findings of
 Sections~\ref{sec:finding} to~\ref{sec:external} come from four Oracle Cloud
-\brk{VM.Standard.E5.Flex} instances, three brokers and one driver, the host that runs the clients. They run
+\brk{VM.Standard.E5.Flex} instances: three run the brokers and one, the driver, runs the clients. They run
 Ubuntu 22.04 on kernel \brk{6.8.0-1057-oracle} (EEVDF, the Earliest Eligible Virtual Deadline First scheduler) and CPython 3.10 on a
 private network, with \texttt{chrony}-disciplined clocks logged every minute. The producer and
 the consumer run as separate processes on one host and, unless the text says otherwise, read
@@ -365,7 +364,8 @@ runs.
 \subsection{Terms}
 \label{def:vocabulary}
 A \emph{condition} is one point of the experimental design: a broker, a publish rate, a message
-size, a \emph{background load}, processor work run beside the clients, and a \emph{consumer pattern}, how often the consumer confirms what it has read. A \emph{cell} is a condition together with a
+size, a \emph{background load} (processor work run beside the clients) and a \emph{consumer pattern}
+(how often the consumer confirms what it has read). A \emph{cell} is a condition together with a
 workload. Where the workload is fixed, the two coincide. A \emph{run} is one execution of a
 cell, and a \emph{replicate} is a further run of it. Each setting a manipulation
 compares is a \emph{configuration}. Utilization\label{def:rho} $\rho$ is the fraction of processor time busy on the
@@ -374,16 +374,15 @@ host, as measured over the run.
 \subsection{The sign check}
 \label{sec:gate}
 \label{sec:stats}
-A run is rejected if more than $1\%$ of its events carry a negative value in $S$, the
+The sign check rejects a run if more than $1\%$ of its events carry a negative value in $S$, the
 publish delay or the processing-time latency, or if any of their medians is negative. A condition is usable only if all of
 its runs survive. The rule applies to every run, including those whose results looked
 reasonable.
 
 The one-percent line is a convention, and it decides nothing we report. Even swept from $0$ to
 $20\%$, it makes none of our first result's rejected conditions usable (Supplement~S2.1). The
-rule does not assume a negative is impossible, and for $S$ it is not. A run
-whose origin timestamp fails on more than one event in a hundred cannot report a latency,
-whatever the cause.
+rule does not assume a negative is impossible, and for $S$ it is not. A run whose span is negative
+on more than one event in a hundred cannot report a latency, whatever the cause.
 
 Every proportion below is a count over a stated denominator. Rates carry Wilson score $95\%$
 intervals and ratios Katz intervals, Holm-corrected within a named family. The supplement's tables print the corrected values. Every table is generated from the committed
@@ -403,20 +402,20 @@ of our runs.
 \label{sec:audit}
 The check rejects $\auditRejectedWorkstation$ of $\auditRunsWorkstation$ runs on the
 workstation testbed ($\auditPctWorkstation\%$) and $\auditRejectedCloud$ of $\auditRunsCloud$
-on the cloud testbed ($\auditPctCloud\%$). Our first result is among them. The check rejects
-$\firstResultRejected$ of the $\firstResultRuns$ runs behind it, and on that first testbed
+on the cloud testbed ($\auditPctCloud\%$). Among them are $\firstResultRejected$ of the
+$\firstResultRuns$ runs behind our first result, and on its testbed, the workstation,
 $\auditUsableConditionsWorkstation$ of $\auditConditionsWorkstation$ conditions survive. Its
 corpus had survived six corrections, a
 fairness audit, and a full battery of rank tests, effect sizes and multiplicity correction
-(Supplement~S8.1). None of its \firstResultCellsWord{} conditions was usable, and nothing in its
+(Supplement~S8.1). Yet none of its \firstResultCellsWord{} conditions was usable, and nothing in its
 output said so. Scrutiny of the last step of an analysis does not certify the steps before
 it~\cite{leek2015tip}.
 
 Over a wider population, only one span inverts. Table~\ref{tab:spans} separates the spans over
-every cloud run that produced matched events, $\spanRuns$ of them, because a condemned run
-answers which span inverts as well as a clean one does. The transport proxy $S$ is negative on $\spanNegAck$
-of $\spanEvents$ events ($\spanNegAckPct\%$, its \emph{negative-span rate}), and $\spanRunsOverOnePct$ runs exceed the
-threshold on it. The publish-timed spans, which include the publish latency $A$, and
+every cloud run that produced matched events, $\spanRuns$ of them, because a rejected run shows
+which span inverts as well as a clean one does. The transport proxy $S$ is negative on $\spanNegAck$
+of $\spanEvents$ events ($\spanNegAckPct\%$, its \emph{negative-span rate}), and $\spanRunsOverOnePct$ runs exceed the one-percent
+line on it. The publish-timed spans, which include the publish latency $A$, and
 the event-time latency $E$ of Equation~\ref{eq:tti} are negative on no event at all.
 
 \begin{table}[tb]
@@ -447,26 +446,26 @@ $E$, event-time & event time & $\spanKafkaNegTti$ & $\spanRedisNegTti$ & $\spanN
 \label{sec:blindspot}
 The sign check sees only the worst cases. The publish latency exceeds half the end-to-end latency on
 $\diseaseOverHalf\%$ of events and a tenth of it on $\diseaseOverTenth\%$, but the check fires
-only on the $\diseaseOverWhole\%$ where it exceeds the whole. The two delays are correlated
+only on the $\diseaseOverWhole\%$ where it exceeds the whole. The two latencies are correlated
 within a run (median correlation $\spanRhoWithinMedian$ over $\spanRhoConditions$ conditions),
-one scheduler causing both. Treating
+because one scheduler lengthens both. Treating
 the two as independent within a run would overpredict the negative-span rate
 $\indepWithinFloored$-fold, the median of the $\indepWithinFlooredN$ conditions above
-$\indepFloorPct\%$. An end-to-end latency longer than the publish latency is therefore not clean,
-only quiet. Load-induced inflation that stays positive passes the check by construction.
+$\indepFloorPct\%$. An end-to-end latency longer than the publish latency can therefore still hide a
+late timestamp. Load-induced inflation that stays positive passes the check by construction.
 
 \subsection{Beyond our clients and our processors}
 \label{sec:beyond}
 The negatives are not peculiar to our Python clients or to one processor family. A later
 registered campaign on three further pairs of machines found them in \kafka{}'s own Java
 client, at a third to a quarter of the Python client's rate, and on Neoverse~N2 processors as on
-x86 (Section~\ref{sec:threats}). Our timestamp is a CPython call and also waits on the
-interpreter lock. The Java client, which has none, shows the same failure.
+x86 (Section~\ref{sec:threats}). Our CPython timestamp also waits on the interpreter lock, but the
+Java client, which has none, shows the same failure.
 
 \section{The Mechanism: A Timestamp Taken Late}
 \label{sec:mechanism}
 
-The negatives in our corpus are produced by scheduling. Three small laws carry the argument: an identity that says
+The negatives in our corpus are produced by scheduling. Three small laws explain them: an identity that says
 when the span inverts, a two-state model that says how often, and the scheduler's rule for its
 slice, which sets the timescale.
 
@@ -484,8 +483,8 @@ S < 0 \quad\text{if and only if}\quad A > D .
 
 Every timestamp is written some time after the moment it marks, because the thread that reads
 the clock must first be scheduled (Fig.~\ref{fig:model}). A negative $S$ therefore shows only that the acknowledgment cannot
-serve as the origin of the end-to-end latency for that event, which is the use an
-acknowledgment-timed harness puts it to. The same holds wherever the origin
+serve as the origin of the end-to-end latency for that event, and an acknowledgment-timed harness
+uses it as that origin. The same holds wherever the origin
 timestamp is written by a thread that must first be woken, such as a delivery-report poll or
 a completion reaper (Supplement~S5). The identity is checked on every build. Both sides count
 $\spanNegAck$ negatives over our $\diseaseEvents$ events, and the build fails if they part.
@@ -517,11 +516,12 @@ configurations that reach the same utilization with the load on different number
 \emph{load geometry}\label{def:geometry}: \emph{concentrated} on few cores or \emph{spread} over
 many. Load changes $p$ but
 does not determine it (Table~\ref{tab:mechanism}, bottom), so we write $p$, not $p(\rho)$, and
-the model predicts how the rate falls as the path lengthens, not how it rises with load.
+the model predicts how the rate falls as the end-to-end latency grows, not how it rises with load.
 
 \begin{table}[tb]
 \caption{\textbf{Mechanism, by manipulation} ($\mechEventsPerCell$ matched events per cell).
-Top: timestamping threads moved to \texttt{SCHED\_FIFO} with the background load unchanged;
+Top: timestamping threads moved to real-time priority (\texttt{SCHED\_FIFO}) with the background
+load unchanged;
 the achieved utilization $\rho$ of the two configurations agrees to within $\mechRhoMatch$.
 Bottom: one utilization reached by two load geometries at $k{=}6$ loaded cores, in an original
 campaign and a full replication.}
@@ -556,15 +556,15 @@ with disjoint intervals. Utilization did not change, and the rate fell in every 
 (Supplement~S3.1 and~S3.4). That refutes any account in which utilization alone sets the rate,
 including the queueing form we had ourselves adopted.
 
-The residual rates settle near the floor the model names in advance, the rate when the thread
+The rates at real-time priority settle near the floor the model predicts, the rate when the thread
 is never preempted, $C_0 \approx \invFloor$\label{def:czero}. Over all \rtResidualPairsWord{}
 pairs they run from $\rtResidualMin$ to $\rtResidualMax$, on both sides of $C_0$.
 
 At $k=6$ loaded cores, two placements of the same load reach $\rho = \mechGeomRho$, identical
 to four decimals. Their negative-span rates differ by $\GeomOrigFactor\times$, reproduced at
 $\GeomReplFactor\times$ by a full replication (Table~\ref{tab:mechanism}, bottom). Padding the
-payload lengthened the transport proxy $\payloadTransportFactorRound\times$ at a
-$\payloadRhoSpread$ utilization spread, and the rate fell $\payloadRateFall\times$. That is the direction
+payload lengthened the transport proxy $\payloadTransportFactorRound\times$ while utilization varied by
+$\payloadRhoSpread$, and the rate fell $\payloadRateFall\times$. That is the direction
 Equation~\ref{eq:negspan} predicts, and the opposite of what we would see if stress on the host
 caused the negatives.
 
@@ -579,8 +579,8 @@ The scheduling delay behind these negatives is not a single heavy tail. Over the
 $\tracedEvents$ traced wakeups the counts have \tracedModesWord{} local maxima, or \emph{modes},
 which survive a $\stallCoarsenFactor\times$ widening of the buckets and which a power law,
 descending monotonically, cannot have. The last, in the
-$\tracedModeLo$--$\tracedModeHi$~ms bucket, holds $\tracedModeShare\%$ of all wakeups and
-stands $\tracedModeRatio\times$ its lower neighbor. Above it the counts collapse. They fall
+$\tracedModeLo$--$\tracedModeHi$~ms bucket, holds $\tracedModeShare\%$ of all wakeups,
+$\tracedModeRatio\times$ the bucket below it. Above it the counts collapse. They fall
 $\tracedModeFallA\times$, $\tracedModeFallB\times$ and $\tracedModeFallC\times$ over the next
 \tracedModeFallOctaves{} octaves and then $\tracedLastBucketFall\times$, each octave a doubling of the wait, whereas a power law
 would fall by the same factor in every octave.
@@ -603,16 +603,16 @@ plus one tick of its fair share~\cite{guittot2025slice}.
 A thread woken while another thread holds the core waits out what is left of the running
 thread's slice, up to a whole one. A whole slice is $\sliceOverDeliveryLo$--$\sliceOverDeliveryHi$ times
 the per-condition end-to-end latencies this corpus measures, $\condDeliveryLoMs$--$\condDeliveryHiMs$~ms.
-The registered campaign timed that wait afterwards, acknowledgment by acknowledgment, and found
-the rest of a slice, in a reading made after its verdicts (Supplement~S6.5). The slice lands on
+The registered campaign timed that wait acknowledgment by acknowledgment, and a reading after its
+verdicts found it to be the rest of a slice (Supplement~S6.5). The slice lands on
 the scale of the end-to-end latency, which is why the check fires on a substantial
 minority of events.
 
 Read together, Equations~\ref{eq:negspan}, \ref{eq:occupancy} and~\ref{eq:slice} say what the
 rate depends on. It rises with the occupancy $p$, which load raises and real-time priority
 lowers. It falls as the end-to-end latency outgrows the residual stall, whose scale the slice sets.
-On our kernel, any host with at least as many CPUs as ours has a slice of $\baseSliceMs$~ms, so
-every path faster than that is within reach of a single stall. And it owes nothing to how well
+On our kernel, any host with at least as many CPUs as ours has a slice of $\baseSliceMs$~ms, so a single stall can outlast
+any end-to-end latency shorter than that. And it owes nothing to how well
 two clocks agree, because one clock reads both timestamps.
 
 % v6 (2 Oct 2026): the industry's part, in the order the authors asked for. The section opens
@@ -629,8 +629,8 @@ The value is deleted, replaced or never measured, and almost never counted. Of t
 \harnessAuditedWord{} measurement tools we read at source, \harnessSilentWord{} dispose of such a
 value without a count, by filtering it, letting a library refuse it or substituting another
 (Section~\ref{sec:tools}). We ran \toolsRunWord{} benchmarking tools, \toolsRoundsWord{} rounds each, under
-predictions registered before any run. \toolsOneClockWordCap{} never meet a negative, because
-each times in one process, on one clock, which also rules out a one-way latency. The one that times across two clocks keeps negatives in its average
+predictions registered before any run. \toolsOneClockWordCap{} read both timestamps in one process,
+on one clock, so they never meet a negative and cannot time a one-way latency. The one that times across two clocks keeps negatives in its average
 (Section~\ref{sec:toolsrun}). We also measured one tool read at source in depth, a broker
 benchmark whose positivity filter shows what discarding costs on a millisecond clock
 (Sections~\ref{sec:extmethod} to~\ref{sec:generality}). Of the $\reachReports$ reports
@@ -643,7 +643,7 @@ retention (Section~\ref{sec:reports}).
 \centering
 \includegraphics[width=\textwidth]{docs/results/figures/deletion_phases.pdf}
 \caption{\textbf{Why a sample is deleted, and what the deletion did.} (a)~One end-to-end latency of
-$0.35$~ms at four phases of one millisecond. Three finish inside it, compute to $0$~ms and are
+$0.35$~ms, starting at four phases within one millisecond. Three finish inside it, compute to $0$~ms and are
 deleted. The fourth crosses a millisecond boundary, one of the \emph{grid} instants at which
 the clock's digit changes, and is kept, as exactly $1$~ms. (b)~Each of the $\ombMedianCells$
 settings with a captured summary, at the median the benchmark printed and its retention.
@@ -655,30 +655,29 @@ $\ombAboveGridWholeKB$~KB.}
 
 \subsection{Ten tools, read at source}
 \label{sec:tools}
-The disposal is a pattern across the tooling. We read
-\harnessAuditedWord{} tools at source, across \harnessLanguagesWord{} languages and
-\harnessVendorsWord{} vendors, and classified each with one program, the same for every tool,
-whose rows the supplement's tool registry prints. \harnessSilentWordCap{} dispose of the sample
+Such disposal is common across tools. We read \harnessAuditedWord{} tools at source, across
+\harnessLanguagesWord{} languages and \harnessVendorsWord{} vendors, and classified all of them with
+one program, whose verdicts are printed in the supplement's tool registry. \harnessSilentWordCap{} dispose of the sample
 without counting it, in
 \harnessDisposalClassesWord{} classes: filtering, refusal by the tool's own library, and substitution.
 
-Substitution is the worst, because it leaves nothing missing. The tools \texttt{fio} and
-\texttt{btt} substitute zero and one nanosecond, and RabbitMQ PerfTest takes the absolute value, so a
-negative latency enters its distribution as a positive one of the same
-size~\cite{rabbitmq_perftest}. In each, a value never measured enters the distribution. Apache
+Substitution is the worst, because a value never measured enters the distribution and nothing looks
+missing. The tools \texttt{fio} and \texttt{btt} substitute zero and one nanosecond, and RabbitMQ
+PerfTest takes the absolute value, so a negative latency enters its distribution as a positive one
+of the same size~\cite{rabbitmq_perftest}. Apache
 Pulsar's performance client admits zero~\cite{pulsar_perf}. It drops negatives and keeps the
 zero samples a strict positivity filter deletes, which then pile up visibly at zero. Apache \kafka{}'s own
-end-to-end tool keeps every sample and loses it anyway. It fills the array its percentiles come
-from by integer division, so on a sub-millisecond path every percentile it reports is
+end-to-end tool keeps every sample and loses it anyway. It rounds each latency down to whole
+milliseconds by integer division, so on a sub-millisecond path every percentile it reports is
 zero~\cite{kafka_tools}.
 
 In November 2025 \kafka{}'s coordinator metrics adopted the same disposal, clamping negative
 durations to zero with no counter~\cite{kafka19888}. \kafka{}'s record timestamp is itself a
-millisecond field on the wire, so patching one benchmark does not reach the broker's own
-metadata (Supplement~S4.7). Every tool that quantizes, filters, refuses or substitutes does so
-without counting. The NATS command-line tool keeps a negative in the minimum, median and maximum
-it prints, while its percentile table, recorded into a library that refuses one, leaves it out
-with nothing to say so~\cite{nats_cli}. Two tools keep the evidence.
+millisecond field on the wire, so a patched benchmark that reads it still gets millisecond
+resolution (Supplement~S4.7). Every tool that quantizes, filters, refuses or substitutes does so
+without counting. The NATS command-line tool keeps a negative in the minimum, median and maximum it
+prints, but its percentile table leaves it out silently, because the table is recorded into a
+library that refuses negatives~\cite{nats_cli}. Two tools keep the evidence.
 \texttt{emqtt-bench}'s histogram keeps every sample, as RFC~7679 asks~\cite{emqtt_bench}, and
 \harnessCountingWord{} tool, Rezolus, counts its discards in a metric that names the
 cause~\cite{rezolus}.
@@ -697,27 +696,25 @@ added to the path in steps showed that
 every one of them measures it. Each figure moved $\toolsSlopeLo$--$\toolsSlopeHi$~ms per
 millisecond added, for each time the interval it times crosses the delay. Moving back the clock
 a tool reads, by more than the interval it times, separated the tools that read one clock from
-those that read two. The figures of \toolsOneClockWord{} tools
-did not move, in $\toolsOneClockRuns$ of their $\toolsOneClockOf$ runs and undecided in the
-rest, because they take both timestamps from one clock, timing a round trip or a message they publish and
-receive themselves. Such a tool cannot report a negative latency, and for the same reason it
+those that read two. The figures of \toolsOneClockWord{} tools did not move in $\toolsOneClockRuns$
+of their $\toolsOneClockOf$ runs, with the rest undecided, because they take both timestamps from
+one clock, timing a round trip or a message they publish and receive themselves. Such a tool cannot report a negative latency, and for the same reason it
 cannot measure the one-way latency of the delivery a broker exists to provide.
 
 The eleventh, librdkafka's
 \texttt{rdkafka\_performance}, timestamps in the producer and subtracts in the consumer. Its
 figures
 moved with the clock, and in \toolsKeepsRoundsWord{} of the \toolsRoundsWord{} rounds it was
-judged to keep every value, negatives included, in its average, so its figure carries the
-clocks' offset along with the path.
+judged to keep every value, negatives included, in its average, so its figure adds the clocks'
+offset to the path's latency.
 
 % v6 (2 Oct 2026): the mechanism, not the tool. Every reader of v5 called the benchmark-specific
 % version of this part a bug report about a tool a referee may not know; the file-and-line
 % detail is in Supplement S4.1, and the benchmark is named once here, as the instance measured.
 \subsection{A positivity filter on a millisecond clock}
 \label{sec:extmethod}
-A filter that admits only positive latencies is one of the ways the tools of
-Section~\ref{sec:tools} dispose of an impossible value, and the one whose cost reaches beyond the
-negatives. Its origin is documented and its reasoning is sound. In the broker benchmark we
+A filter that admits only positive latencies is one of the ways the tools of Section~\ref{sec:tools}
+dispose of an impossible value, and the one that deletes more than the negatives. Its origin is documented and its reasoning is sound. In the broker benchmark we
 measured in depth, the OpenMessaging Benchmark~\cite{openmessaging2018}, which many public
 comparisons run, the filter was added in 2018 because end-to-end latency ``is calculated based
 on time difference of \texttt{System.currentTimeMillis()} on two different machines'' and ``can
@@ -726,19 +723,19 @@ be negative''~\cite{openmessaging_pr56}. Its recorder is an \texttt{HdrHistogram
 reasonable local fix, defensive rather than evasive. A tool that times a message faster than
 light has two choices: announce the discovery, or delete the message. This one deletes it.
 
-The fix is sound locally, and it has two non-local consequences. First, \texttt{> 0} also
+The fix is sound locally, but it has two side effects. First, \texttt{> 0} also
 deletes every sample that computes to exactly zero. With a millisecond clock, an end-to-end latency
 shorter than a millisecond computes to zero unless it crosses the \emph{grid}, the instants, one
 millisecond apart, at which the timestamp changes value. Second, the one observation that would
 show the measurement had failed is the exact observation the filter removes, and nothing counts
-it. Over our campaign that silence covers $\ombDiscarded$ samples, and Section~\ref{sec:tools}
-found the same uncounted disposal in \harnessSilentIndependentWord{} independent tools.
+it. Over our campaign the filter silently discarded $\ombDiscarded$ samples, and
+Section~\ref{sec:tools} found the same uncounted disposal in \harnessSilentIndependentWord{}
+independent tools.
 
-The coarse clock and the filter sit together on
-the \ombGuardedPath{} latency, timed in \ombGuardedClock{}s, while the same harness times its
-\ombUnguardedPath{} latency in \ombUnguardedClock{}s and records every sample. It computes its
-reported latency distribution from a subset of the samples it collects, does not record how
-large that subset was, and lets the publish rate decide. We \emph{instrumented} it with counters that
+The harness filters its \ombGuardedPath{} latency, which it times in \ombGuardedClock{}s, while it
+times its \ombUnguardedPath{} latency in \ombUnguardedClock{}s and records every sample. It computes its reported
+latency distribution from a subset of the samples it collects. The publish rate sets that subset's
+size, and the harness does not record it. We \emph{instrumented} it with counters that
 record, by sign, every sample its filter discards. Everything measured on it here is in embedded
 mode, where the whole benchmark runs in one Java virtual machine (JVM). Its distributed mode failed on every attempt
 (Section~\ref{sec:threats}).
@@ -761,10 +758,9 @@ $\ombRetentionMinExact\%$, about four samples in ninety thousand.
 The \ombEscapeCellsWord{} settings that print above the grid carry the largest payloads. The
 \ombAboveGridWholeWord{} at $\ombAboveGridWholeKB$~KB keep every sample. The
 \ombAboveGridPartialWord{} at $\ombAboveGridPartialKB$~KB keep only
-$\ombAboveGridPartialRetLo$--$\ombAboveGridPartialRetHi\%$. Every sample they delete computes
-to zero, so most of their messages arrived within a millisecond, and the medians they print,
-$\ombAboveGridPartialMedLo$ and $\ombAboveGridPartialMedHi$~ms, describe only the slow
-remainder.
+$\ombAboveGridPartialRetLo$--$\ombAboveGridPartialRetHi\%$. Every sample they delete computes to
+zero, so most of their messages arrived within a millisecond. The medians they print,
+$\ombAboveGridPartialMedLo$ and $\ombAboveGridPartialMedHi$~ms, describe only the slow remainder.
 
 \subsection{The retention law, and a registered confirmation}
 \label{sec:extcomp}
@@ -783,15 +779,15 @@ All \spreadIncommensurateWord{} configurations whose publish interval is incomme
 $\tau$, with no ratio of small whole numbers between the two, sit near $50\%$, with medians from $\spreadIncommensurateLo$ to $\spreadIncommensurateHi$. That
 implies $T_{\mathrm{true}} = \spreadIncommensurateTrueMs$~ms at $\tau = 1$~ms. Where the publish interval is commensurate with $\tau$, retention is confined to a few values, so
 moving $T_{\mathrm{true}}$ moves a configuration between them (Supplement~S4.3 tests every
-configuration). That prediction was registered, and it came true. Replicate
-spread collapses to $\flipSpreadThirtyTwo$ points at $32$~KB and re-opens to
-$\flipSpreadSixtyFour$ at $64$~KB, a boundary crossed in both directions by one manipulated
-variable. One registered detail failed. The $32$~KB configuration pins at
+configuration). That prediction was registered, and it came true. Replicate spread collapses to
+$\flipSpreadThirtyTwo$ points at $32$~KB and re-opens to $\flipSpreadSixtyFour$ at $64$~KB, so one
+manipulated variable moved the configuration onto one of those values and off it. One registered detail failed. The $32$~KB configuration pins at
 $\flipPinThirtyTwo\%$ retention, not at the predicted $\flipVertexTwoThirds\%$.
 
 The arithmetic is not ours. Hewlett-Packard's Application Note 162-1~\cite{hp1970tia} carries
 the retention identity, the ceiling on resolution gain, the symptom and the cure. What is new is
-what the harness does with it. The counter keeps both readings, and retention is its estimator. A harness released in 2018 throws away the quantity a 1970 counter measured with.
+what the harness does with it. The note's counter keeps its zero readings and estimates the interval
+from retention. A harness released in 2018 throws away the quantity a 1970 counter measured with.
 
 \subsection{Our own harness, and the sign channel}
 \label{sec:generality}
@@ -799,13 +795,13 @@ To show the deletion is not peculiar to one JVM, we reproduced the filter in an 
 Python harness sharing no code with the benchmark. On one clock it
 recorded zero negative differences across $\harnessOneClockSamples$ samples, as a causal chain
 requires, and the grid behavior reappeared intact. Counting the discards separately by sign, which
-we call the \emph{sign channel}, is what makes the filter's cost legible. Across the
+we call the \emph{sign channel}, shows what the filter removes and why. Across the
 $\ombKafkaRuns$ runs of the benchmark on \kafka{}, its $\ombKafkaDiscarded$ discarded samples
 contain not one negative. The most negative value at any load, size or rate is $0\,\mu$s. Those discards come from
 the timestamp resolution, not from disagreeing clocks, a distinction an unsigned counter cannot make.
 
-The same channel caught the real thing in the $\ombRedisRuns$ runs of the replication on
-\redis{}, which logged $\ombRedisNegatives$ negatives, every one exactly $-1000\,\mu$s. That is the smallest value a
+The same channel caught genuine negatives in the $\ombRedisRuns$ runs of the replication on
+\redis{}, which logged $\ombRedisNegatives$ of them, every one exactly $-1000\,\mu$s. That is the smallest value a
 one-millisecond timestamp can express, and it is no coincidence. On \redis{} the benchmark's span
 is a difference between two millisecond-floored clocks on two hosts. A sub-millisecond offset between two
 floored clocks can produce exactly one negative value, $-1000\,\mu$s, and no other. Clock
@@ -818,17 +814,17 @@ them and a floor (Supplement~S4.5).
 % three counted outcomes (primary, strong, stated retention) and saying which it rests on. The
 % counts are emitted from the committed coding by reach_macros(); the fork observation is not a
 % registered outcome and is worded as an observation.
-Failure~2 reaches public reports. We registered the audit before
+Failure~2, the deletion, reaches public reports. We registered the audit before
 reading any report (Supplement~S5.1). The signature fixed in advance is an end-to-end median of exactly
 1~ms, the smallest value the benchmark can print and the value every retained sample takes on a
 sub-millisecond path. Of $\reachReports$ public reports that print the benchmark's end-to-end
 percentiles, across $\reachConfigs$ configurations, \reachPrimaryConfigsWord{} of the
-$\reachMedianConfigs$ medians they print carry it, in \reachPrimaryReportsWord{} reports: the
-notebook behind a 2023 journal paper, which shows those medians only in a chart, and the result
-files of a 2021 fork. None of them also prints a p99 of exactly 1~ms, and no report states how
-many samples it kept. One reason it is rare is visible in the same reports: $\reachFinerReports$ of them print medians below a millisecond, which the
-upstream clock cannot produce, from copies of the benchmark whose maintainers changed how the
-span is timed.
+$\reachMedianConfigs$ medians they print match it. They come from \reachPrimaryReportsWord{}
+reports: the notebook behind a 2023 journal paper, which shows those medians only in a chart, and
+the result files of a 2021 fork. None of them also prints a p99 of exactly 1~ms, and no report states how
+many samples it kept. The signature is rare partly because $\reachFinerReports$ of the same reports
+come from copies of the benchmark whose maintainers changed how the span is timed. They print
+medians below a millisecond, which the original benchmark's clock cannot produce.
 
 % v6 (2 Oct 2026): the practical implications, gathered. v5's "What Benchmark Authors Should
 % Do" is subsection C; the cost of the transport proxy and its repair (v5's Section III-D) is
@@ -848,8 +844,8 @@ output says how it was timed and what was kept. For two brokers whose messages a
 within a millisecond, a tool with a positivity filter on a millisecond clock prints
 identical output (Section~\ref{sec:extcomp}). By
 Equation~\ref{eq:retention} the two differ only in retention, $T_{\mathrm{true}}/\tau$ for
-uniform publish phases, and retention is never printed. A
-sub-millisecond ranking read from that output ranks the clock. The error also reaches
+uniform publish phases, and retention is never printed. On that output the two brokers tie, whatever
+their true latencies. The error also reaches
 large messages, where it inflates the median. At $\ombAboveGridPartialKB$~KB the printed median
 described only the slow remainder of a path whose median message took under a millisecond
 (Section~\ref{sec:extphase}).
@@ -862,7 +858,8 @@ that sets them beside one-way latencies compares different intervals
 (Section~\ref{sec:toolsrun}).
 
 Timed from the acknowledgment, a latency understates the end-to-end latency, the more so the
-shorter it is. A run of such latencies can be void outright, as our own first result was (Section~\ref{sec:audit}). Section~\ref{sec:cost} sizes the
+shorter it is. A run timed this way can fail the sign check outright, as our own first result did
+(Section~\ref{sec:audit}). Section~\ref{sec:cost} sizes the
 error and repairs it.
 
 The exposure is not confined to benchmarks. \kafka{}'s coordinator metrics
@@ -885,7 +882,7 @@ latency at all (Section~\ref{sec:toolsrun}).
 \subsection{The cost of timing from the acknowledgment, and the repair}
 \label{sec:cost}
 The publish latency $A$ is a scheduling quantity. It does not grow because a message traveled
-further, so the relative error of the transport proxy is $A/D$ and falls as $1/D$. At our
+further, so the relative error of the transport proxy, $A/D$, falls as $1/D$. At our
 median publish latency, $A = \ackLagMedianUs\,\mu$s, the error is $\exposureErrOne\%$ at an end-to-end latency of $1$~ms, $\exposureErrTen\%$ at $10$~ms and $\exposureErrHundred\%$ at
 $100$~ms. Below $\exposureCrossover$~ms the median publish latency exceeds the end-to-end latency itself
 (Fig.~\ref{fig:exposure}).
@@ -900,12 +897,12 @@ $100$~ms. Below $\exposureCrossover$~ms the median publish latency exceeds the e
 \caption{\textbf{What the remedies buy, measured.} (a)~The error of a latency timed from the
 acknowledgment on each of our $\spanRatioConditions$ conditions (crosses), and the error once
 the publish latency is added back (dots), against the condition's end-to-end latency. The curve
-is the error $A/D$ at the median publish latency. Across conditions $A$ runs
-$\exposureLagLo$--$\exposureLagHi\,\mu$s between its tenth and ninetieth percentiles, the band,
-which puts the error at $10$~ms at $\exposureErrTenLo$--$\exposureErrTenHi\%$ and the crossover
-at $\exposureCrossoverLo$--$\exposureCrossoverHi$~ms. On the dashed line, which the median
-crosses at $\exposureCrossover$~ms, the publish latency is as long as the end-to-end latency
-itself, and the shaded decade holds the sub-millisecond medians now reported for brokers.
+is the error $A/D$ at the median publish latency. On the dashed line the publish latency equals the
+end-to-end latency, and the curve meets it at $\exposureCrossover$~ms. Across conditions $A$ runs
+$\exposureLagLo$--$\exposureLagHi\,\mu$s between its tenth and ninetieth percentiles, shown as the
+band, which puts the error at $10$~ms at $\exposureErrTenLo$--$\exposureErrTenHi\%$ and the
+crossover at $\exposureCrossoverLo$--$\exposureCrossoverHi$~ms. The shaded decade holds the
+sub-millisecond medians now reported for brokers.
 (b)~The negative-span rate of each matched pair at normal priority (circles) and at real-time
 priority (squares), at its own host utilization. Every pair falls, with disjoint intervals.}
 \label{fig:exposure}
@@ -926,10 +923,9 @@ therefore recovers the end-to-end latency it failed to measure. Its median error
 $\recoveryErrPass\%$ on the $\recoveryPassN$ conditions the check passes and
 $\recoveryErrFail\%$ on the $\recoveryFailN$ it rejects, with upper quartiles of
 $\recoveryErrPassHi\%$ and $\recoveryErrFailHi\%$, two populations that the data cannot tell
-apart. The repair sits beside the check of Section~\ref{sec:gate}. The check
-declines to report the proxy as a latency, and the repair reports the end-to-end latency in its
-place. Timing from the publish call removes the negative values but not the receipt's own wait for a
-core, which inflates every latency where no check can see it. Measured three ways in
+apart. The repair complements the sign check of Section~\ref{sec:gate}. The check rejects the proxy
+as a latency, and the repair reports the end-to-end latency in its place. Timing from the publish call removes the negative values but not the consumer's own wait for
+a core, which inflates every latency, and no check can see it. Measured three ways in
 $\recvWaitRuns$ later runs, that wait added $\recvWaitAddedLo$--$\recvWaitAddedHi$~ms to the mean
 latency on both brokers at $\recvLowLoadPct$ and $\recvHighLoadPct\%$ background load, while the median
 message waited $\recvWaitMedianLoUs$--$\recvWaitMedianHiUs\,\mu$s (Supplement~S3.8
@@ -950,8 +946,8 @@ precedent. Network measurement has reported the share of
 traces it rejected for nearly thirty years~\cite{paxson1998calibrating,paxson2004sound}. The
 One-Way Active Measurement Protocol (OWAMP) records a packet timestamped in the future unaltered rather than discarding it~\cite{rfc4656}.
 Randomizing probe times against periodic phenomena is standing advice~\cite{rfc2330,rfc3432}.
-What we add is the conjunction, applied where a benchmark reports a latency, with the rejection
-rate reported as a headline quantity.
+What we add is the conjunction of these checks, applied where a benchmark reports a latency, with
+the rejection rate reported as a headline quantity.
 
 \begin{table}[tb]
 \caption{\textbf{Checks that cost nothing, and what each catches.}}
@@ -991,21 +987,22 @@ unacceptable, report retention instead.
 \label{sec:betterclock}
 A better-synchronized clock fixes neither failure. Hardware-timestamped Precision Time Protocol~\cite{ieee1588} would
 take two hosts from the $\interHostOffsetUs\,\mu$s offset \texttt{chrony} reported between ours to
-under a microsecond. Behind a one-millisecond timestamp the two produce byte-identical records. The filter
+under a microsecond. With a one-millisecond timestamp, the two offsets give byte-identical records. The filter
 deletes the same samples, and the retention arithmetic is unchanged. A finer clock does fix the
-second failure on these paths. It retires Equation~\ref{eq:retention}'s deletions and moves the
-grid to faster paths, but it leaves the filter and every genuine negative in place. The
+second failure on these paths. It confines Equation~\ref{eq:retention}'s deletions to faster paths,
+but it leaves the filter and every genuine negative in place. The
 remedies are therefore ordered: record at native resolution, count what is
 discarded, dither the publish instant, and only then does synchronization quality matter.
 
 \subsection{What is left of the broker comparison}
 \label{sec:brokers}
-Once the failed runs are removed, the broker comparison that motivated the work is small. On the
+Once the failed runs are removed, the broker comparison that motivated the work shows little
+difference. On the
 event-time latency $E$, a causal chain, the two brokers are equivalent against a
 $\ttiTostMargin$~ms margin (Supplement~S7), and on the transport proxy they sit within a millisecond
 (TOST, two one-sided tests against a $\tostMargin$~ms margin, $p < 0.001$, across \tostLevelsWord{} levels). So it is
-not a purchasing argument. A consumer that confirms each message to the broker and waits for the reply
-reverses their order, and a co-located testbed hides the effect. Our own measurement treats the
+not a purchasing argument. A consumer that confirms each message to the broker and waits for the
+reply reverses which broker is faster, and a co-located testbed hides the effect. Our own measurement treats the
 two brokers differently. \kafka{}'s client
 deserializes the payload before $t_{\mathrm{recv}}$ and \redis{}'s after it, which is worth
 $\spanHandlingWorstUs\,\mu$s or $\spanHandlingSharePct\%$ of \redis{}'s median end-to-end latency.
@@ -1013,16 +1010,14 @@ $E$ contains both parses and is free of the asymmetry.
 
 \section{Related Work}
 \label{sec:related}
-That measurement error can dominate a benchmark is established. What prior work does not supply
-is a check applied to every run, and a count of what the check removes.
+Prior work does not supply a check applied to every run, and a count of what the check removes.
 
 \subsection{Broker benchmarks}
 \label{sec:related_bench}
 Broker comparisons appear continuously in peer-reviewed venues and in the gray literature, most
 often of Apache \kafka{} and \redis{} Streams, and many run the OpenMessaging
-Benchmark~\cite{openmessaging2018}. That experimental setup can dominate a
-result is established~\cite{mytkowicz2009wrong}, and how to report one is a settled
-literature~\cite{georges2007rigorous,hoefler2015benchmarking}. What that literature does not do is
+Benchmark~\cite{openmessaging2018}. Experimental setup can dominate a result~\cite{mytkowicz2009wrong}, and the literature on
+how to report one is settled~\cite{georges2007rigorous,hoefler2015benchmarking}. That literature does not
 % Round 77 (W5): Chen et al., "Statistical performance comparisons of computers", IEEE TC
 % 64(5), 2015 -- bib key chen2015statcomparisons -- is prepared as the swap for
 % georges2007rigorous if an editor asks for a venue citation on statistical reporting. The
@@ -1031,8 +1026,8 @@ literature~\cite{georges2007rigorous,hoefler2015benchmarking}. What that literat
 check what its tool discards.
 
 Karimov et al.~\cite{karimov2018benchmarking} separate event-time
-from processing-time latency. Van~Dongen and Van~den~Poel~\cite{vandongen2020evaluation} use
-single-broker append timestamps ``to ensure correct latency measurements,'' which is our one-clock
+from processing-time latency. Van~Dongen and Van~den~Poel~\cite{vandongen2020evaluation} take
+both timestamps from one broker ``to ensure correct latency measurements,'' which is our one-clock
 rule, reached earlier and by another route. Neither asks what a millisecond timestamp does to a sub-millisecond
 path, nor which samples the tool keeps. Where a comparison reports a median above the tool's
 one-millisecond timestamp resolution, the deletion arithmetic of Section~\ref{sec:external} does
@@ -1043,7 +1038,7 @@ placed against the resolution at all.
 \subsection{Cross-process time}
 \label{sec:related_time}
 Lamport~\cite{lamport1978time} established that a distributed system has no single physical time,
-only a causal partial order, and that order decides this paper's central span. Measurement
+only a causal partial order. In that order, neither endpoint of the transport proxy comes first. Measurement
 systems defeat clock disagreement~\cite{ieee1588} by calibrating cross-node
 counters~\cite{yang2022cloudprofiler}, timestamping in the network
 interface~\cite{kogias2019lancet} or the switch dataplane~\cite{kundel2024p4sta}, and measuring
@@ -1071,19 +1066,19 @@ timestamping thread waits in.
 \subsection{Resolution and discarded samples}
 \label{sec:related_resolution}
 That a timer coarser than the interval it measures invalidates the measurement is
-textbook~\cite{kuperberg2011timers}. Metrology carries both failures in one uncertainty budget.
+textbook~\cite{kuperberg2011timers}. Metrology puts a late reading and a coarse one in one
+uncertainty budget.
 The NIST stopwatch guide budgets reaction time beside display resolution, and notes that at short
 intervals the resolution becomes significant against the stopwatch's rated
-accuracy~\cite{nist2009stopwatch}. That periodic sampling
-commensurate with a periodic phenomenon sees only part of it is the IP Performance Metrics framework~\cite{rfc2330},
+accuracy~\cite{nist2009stopwatch}. The IP Performance Metrics framework observes that periodic sampling commensurate with a
+periodic phenomenon sees only part of it~\cite{rfc2330},
 and RFC~3432 makes a randomized start mandatory for periodic streams~\cite{rfc3432}.
 
 Coordinated
 omission~\cite{tene2015latency} is the mirror image. There the measurement fails to record samples
-that would have been slow. Here it deletes samples that were fast. Millsap and Holt argue that
-coarse timing survives in aggregate because the two signed errors
-cancel~\cite[Sec.~7.7]{millsap2003oracle}. A filter admitting only positive samples removes one
-sign, and with it the cancellation that defense depends on.
+that would have been slow. Here it deletes samples that were fast. Millsap and Holt defend coarse timing because, in aggregate, its errors of opposite sign
+cancel~\cite[Sec.~7.7]{millsap2003oracle}. A filter admitting only positive samples removes the
+errors of one sign, and with them the cancellation that defense depends on.
 
 \paragraph{Sources of scheduling delay}
 \label{sec:related_tail}
@@ -1099,18 +1094,19 @@ load-geometry contrast of Section~\ref{sec:twostate} refutes only that single-pa
 Attributing the negatives to scheduling is an inference. One clock excludes clock skew, the
 manipulations of Section~\ref{sec:twostate} exclude utilization, timer noise and stress, and
 the kernel trace observes the wait directly. The interpreter lock is bounded twice. The kernel
-trace, which cannot see the lock, already brackets the observed rate, and \kafka{}'s Java
-client shows the same failure. Both testbeds are virtual, so \emph{steal time}, the time one
-of our virtual processors is ready to run but waits while the hypervisor runs another machine, is bounded, not excluded. Real-time priority, a control inside our virtual machine, still cut the rate.
+trace cannot see the lock yet brackets the observed rate, and \kafka{}'s Java
+client, which has none, shows the same failure. Both testbeds are virtual, so \emph{steal time}, the time one
+of our virtual processors is ready to run but waits while the hypervisor runs another machine, is bounded, not excluded. Real-time priority, a setting
+inside our virtual machine, cannot shorten steal time, yet it cut the rate.
 
-Some limits of our own measurements belong here. A registered prediction that priority would cut
+A registered prediction that priority would cut
 the occupancy at least tenfold failed. Scheduler counters, which report means, saw it fall
-$\eaSevenOccFallLo$- to $\eaSevenOccFallHi$-fold, so the priority results rest on the rate and
-leave the factorization of Equation~\ref{eq:occupancy} untested.
+$\eaSevenOccFallLo$- to $\eaSevenOccFallHi$-fold. The priority results therefore concern the
+rate alone and leave the factorization of Equation~\ref{eq:occupancy} untested.
 The tracer is not free. The rate was $\untracedRate$ untraced against $\tracedRate$ traced
 ($z = \observerZ$ for their ratio), so each prediction is compared with the traced run's own
-rate, and our tracer check, fixed in advance, sets aside the configuration with the middle
-ratio, while the other two lie on either side of one. The base slice is derived from the
+rate. A check fixed in advance sets aside the configuration with the middle ratio, whose rate
+drifted too far from the untraced one. The other two still bracket the observed rate. The base slice is derived from the
 kernel's rule, not measured on our hosts. The sign check was fixed before the final campaign,
 after earlier campaigns had run.
 
@@ -1121,7 +1117,7 @@ the kernel uses only where the CPUs' clocks are guaranteed to agree. An offset l
 the deepest negative span would also have driven the end-to-end latency $D$ below zero. Its floor bounds
 any offset $\spanOffsetMargin$-fold below that. Across hosts
 \texttt{chrony} bounds its own error at $\chronyHostBoundLo$--$\chronyHostBoundHi$~ms per host, so
-we claim no cross-host bound in general, and a skew threshold such as Sharma et
+we claim no cross-host bound in general. A skew threshold such as Sharma et
 al.'s~\cite{sharma2026causality} does not transfer to a loaded machine (Supplement~S3.6
 and~S9.4).
 
@@ -1131,15 +1127,15 @@ make no claim about them. The mechanism's constants are those of one EEVDF-era k
 CFS-era schedulers may shift them.
 
 A registered campaign tested the mechanism's law on three
-further pairs of machines. One prediction held on every campaign that tested it, all five on
-\kafka{}, that load raises the negative-span rate. On \kafka{}, real-time priority removed the
-negatives in every run, and at the one core count whose slice \kafka{}'s shortest end-to-end latency
-reaches, the rate's fall with the end-to-end latency moved with that slice. Its predictions of where the fall sits and how wide it
-is failed, and Python's rate exceeded Java's by more than the registered factor of $1.5$
+further pairs of machines. One prediction, that load raises the negative-span rate, held on every campaign that tested
+it, all five on \kafka{}. On \kafka{}, real-time priority removed the
+negatives in every run. At the one core count whose slice \kafka{}'s shortest end-to-end latency
+reaches, the end-to-end latency at which the rate falls moved with that slice. The law's predictions of where the fall sits and how wide it
+is failed, and Python's rate exceeded the registered limit of $1.5$ times Java's
 (Supplement~S6).
 
 The deletion arithmetic is demonstrated on one benchmark and reproduced in one
-independent harness. The registered audit of Section~\ref{sec:reports} found its signature in few
+independent harness. The registered audit of Section~\ref{sec:reports} found Failure~2's signature in few
 public results, so we claim Failure~2 for those and for our own runs only. We read the
 \harnessAuditedWord{} tools of Section~\ref{sec:tools} at source and did not run them to
 classify them. The \toolsRunWord{} of Section~\ref{sec:toolsrun} ran on one pair of machines,
@@ -1155,10 +1151,10 @@ A latency benchmark measures the system only while its timestamps are taken fast
 end-to-end latency it measures. Once the message is the faster of the two, the arithmetic reports it
 faster than light, and the tool deletes it. Two timestamps written by threads that each
 wait for a core come out in the wrong order whenever one thread's wait exceeds the other's by
-more than the time between the moments they mark. A timestamp quantized to a millisecond and
-filtered for positivity deletes every message that arrives before the millisecond digit
-changes, about half on the path we measured and nearly all at some publish rates. It reports the
-survivors as exactly one millisecond, by arithmetic the operator never sees.
+more than the time between the moments they mark. A positivity filter on a millisecond clock deletes every message that arrives before the
+millisecond digit changes, about half on the path we measured and nearly all at some publish
+rates. The tool reports the survivors as exactly one millisecond, by arithmetic the operator
+never sees.
 
 Neither failure announces itself. A finer clock cures only the second, and neither is expensive
 to detect. Most of the tools we ran sidestep the first failure without curing it. Timing in one
@@ -1166,7 +1162,7 @@ process, on one clock, they never produce a negative, and they never measure a o
 
 The practical rule is short. Before acting on a broker latency below a few milliseconds, ask
 which timestamp it was timed from, how many samples the tool kept, and how many it discarded,
-by sign. None of the $\reachReports$ reports we audited answers the second. Check the
+by sign. None of the $\reachReports$ reports we audited gives its retention. Check for negatives in the
 spans whose endpoints are timestamped in different places, count what your tool throws away,
 and report retention beside the number.
 

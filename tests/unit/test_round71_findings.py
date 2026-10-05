@@ -94,7 +94,9 @@ class TestR1TheConclusionAgreesWithTheReportingRule:
         inventory = " ".join(supplement[s:supplement.index("S24.3. The metric map", s)].split())
         assert (RE_BS[:1] + "indepWithinOvershootConditions$ of the $" + RE_BS[:1]
                 + "indepWithinConditions$ conditions") in inventory
-        i = re.search(r"The two delays are correlated\s+within a run", paper).start()
+        # 5 Oct 2026, the clarity pass: the two are the latencies of the sentence before, and
+        # "delay" is the paper's word for the publish delay and the scheduling delay.
+        i = re.search(r"The two latencies are correlated\s+within a run", paper).start()
         rule = " ".join(paper[i:i + 600].split())
         # Round 79 (R2): the rule quotes the within-run correlation, the unit its sentence names.
         # Round 80 (R1): and the within-run factor beside it, with its denominator and floor.

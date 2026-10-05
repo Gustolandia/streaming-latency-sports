@@ -1,6 +1,6 @@
-# Faster than Light: Silent Errors in the Latency Benchmarks Used to Choose Message Brokers
+# Super-Precise Latency: How CPU Threading Affects High-Precision Latency, and an Industry-Wide Audit
 
-*Two ways a message-broker benchmark misreports on sub-millisecond paths, and what they left of a Kafka-versus-Redis comparison.*
+*How a thread's wait for a processor core distorts sub-millisecond broker latencies, the laws that govern it, what the industry's benchmark tools do with the result, and how to fix it.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
@@ -39,91 +39,44 @@
 
 > ## 🎯 Current target — the contribution
 >
-> **Paper:** [`paper.tex`](paper.tex) — *Faster than Light: Silent Errors in the Latency
-> Benchmarks Used to Choose Message Brokers*. IEEE format
-> (`IEEEtran`, journal), targeting **IEEE Transactions on Computers**, with its supplementary
-> material in `supplement.tex` and the complete record of how the results were obtained in
-> `postmortem.tex`, which is archived with the data and not submitted. This is a
-> **systems paper**; the football workload is the setting that produced the finding, not the
-> contribution. It has three parts: **the finding** (latencies that come out negative on one
-> clock), **the mechanism** (a timestamp taken late, and the small laws that govern it) and
-> **the industry** (what the tools do with a latency at or below zero, which on a millisecond
-> clock is the second failure), and a fourth, **practical implications**, which the abstract and
-> the introduction lead with.
+> **Paper:** [`paper.tex`](paper.tex) — *Super-Precise Latency: How CPU Threading Affects
+> High-Precision Latency, and an Industry-Wide Audit*. IEEE format (`IEEEtran`, journal),
+> targeting **IEEE Transactions on Computers**, with its supplementary material in
+> [`supplement.tex`](supplement.tex) and the complete record of how the results were obtained in
+> [`postmortem.tex`](postmortem.tex), which is archived with the data and not submitted. Since
+> 5 October 2026 it is built around four bottom lines:
+>
+> 1. **The distribution.** After a broker writes a message it acknowledges it to the producer
+>    and delivers it to the consumer; on one machine and one clock the two readings should
+>    coincide. Their difference *S* = *t*_recv − *t*_ack spreads over milliseconds and falls
+>    below zero for 62,264 of 738,730 messages (8.43%), while no latency timed from the publish
+>    call ever does.
+> 2. **The mechanism and its laws.** A thread waits for a core before it reads the clock, its
+>    scheduling delay. *S* < 0 exactly when the publish latency exceeds the end-to-end latency;
+>    to leading order the rate is the timestamping thread's waiting probability times the chance
+>    that its residual wait outlasts the end-to-end latency; and the scheduler's base slice, 3 ms
+>    on our eight-CPU hosts, sets the timescale. Real-time priority cut the rate 7–80× at
+>    unchanged utilization, two placements of one load at the same utilization differ 2.07×, a
+>    longer path lowers the rate 4.1×, and a kernel trace predicts the rate with nothing fitted.
+> 3. **The industry-wide audit.** Sixteen tools: seven of the ten read at source dispose of a
+>    latency at or below zero without counting it, and ten of the eleven run take both
+>    timestamps in one process, so they cannot measure a one-way latency. A positivity filter on
+>    a millisecond clock printed a median of exactly 1.0 or 2.0 ms in 71 of 75 settings, computed
+>    from as little as 0.36% of the samples. None of 43 public reports states how many samples it
+>    kept.
+> 4. **What to do.** Time from the publish call or add the publish latency back, sign-check
+>    every run, give the threads that read the clock a core, print the retention and the
+>    discards by sign, and randomize the publish instants. A better-synchronized clock fixes
+>    neither problem.
 >
 > **The original question** was: *compare end-to-end lag between Redis Streams and Apache Kafka
 > for real-time sports data feeds, under varying concurrency, using the StatsBomb open dataset
-> (2003–2023).* We answered it, and then had to withdraw the answer.
->
-> **Failure 1: late timestamps invert the acknowledgment-timed span.** The transport proxy
-> *S* = *t*_recv − *t*_ack subtracts the timestamp the producer takes when it learns the broker
-> accepted a message from the one the consumer takes when it holds the record, so it admits a
-> check no statistic supplies: **the sign**. A negative value is not physically impossible
-> here. The broker's append precedes both timestamps and neither precedes the other, so *S* is
-> a proxy, not a causal chain, and the thread that writes the acknowledgment timestamp must
-> first wait for a processor. What a negative does show is that the acknowledgment cannot serve
-> as the origin of that message's latency, and a run whose origin timestamp fails on more than
-> one event in a hundred cannot report a latency, whatever the cause. Timed on one clock, 62,264
-> of 738,730 messages were negative this way and none from the publish call. Applying that sign check to
-> every run, not just the ones that looked wrong, rejected **1,321 of 2,266 runs (58.3%)**.
-> Among them are **109 of the 126 runs** behind a large, significant, theory-confirming result
-> we were about to publish; a condition is usable only if all of its runs survive, so none of
-> that result's six conditions is usable.
->
-> **Then a second headline failed too, and we withdrew it.** A twentyfold end-to-end gap we had
-> reported turned out to be a per-run **start-up cost** read as a per-event constant: the runs
-> behind it matched a *median of seven events each*. The sign check does **not** catch that
-> one: every one of those runs passes it. The check is necessary, not sufficient.
->
-> **Failure 2: a millisecond clock and a positivity filter.** It is not that withdrawal: it
-> lives in software we did not write. The OpenMessaging Benchmark timestamps its end-to-end
-> latency in whole milliseconds, admits a sample only if that difference is positive, and
-> counts nothing it drops. In **71 of the 75** embedded-mode settings whose own summary we
-> captured it printed a median of exactly 1.0 or 2.0 ms, computed from between **0.36% and
-> 100%** of the samples it took, with nothing in the output to tell them apart; over the full
-> ledger of **223 instrumented runs** the retained fraction falls as low as 0.0044%. The share
-> kept is set by the ratio of the delivery to the timestamp resolution and by the phase of the
-> send schedule against the millisecond grid, not by chance, and a registered manipulation of
-> message size moved a setting across the boundary this predicts. Separating the discards by
-> sign names the clock that failed: the Kafka-driver corpus's discards contain not one
-> negative, while the Redis-driver replication caught **41,403 negatives**, every one exactly
-> −1000 µs, absorbed without trace. A registered audit of 43 published reports found the
-> signature in eight configurations of two of them, and a stated retention in none.
-> Artifacts: [`external/omb/`](external/omb/) and the measurement data record
-> [10.5281/zenodo.21650064](https://doi.org/10.5281/zenodo.21650064).
->
-> **What survives:**
-> 1. On the transport proxy the brokers sit **within 1 ms** of each other (TOST against a 1 ms
->    margin, p < 0.001, at all three concurrency levels), on the end-to-end latency they are
->    **equivalent against a 40 ms margin**, and neither degrades with concurrency. The selection
->    the sign check makes is bounded in supplement S2.2: for E1, whose rejected values are lost,
->    the worst case stays inside the 1 ms margin ([`retention_bias.py`](scripts/retention_bias.py));
->    for the powered campaigns, restoring the rejected runs moves the shift by at most 0.016 ms
->    ([`powered_gate_sensitivity.py`](scripts/powered_gate_sensitivity.py)).
-> 2. Failure 1's mechanism is **established by manipulation, on both sides of the inequality**
->    *A* > *D* that makes *S* negative (paper Equation 3: the publish latency outlasts the
->    delivery). Raising the timestamping threads to `SCHED_FIFO` at *unchanged* utilization
->    cuts the rate 7–80× across eight matched pairs; two load geometries at **identical ρ to
->    four decimals** differ 2.07× (z=10.3), and 2.05× in a full replication, so utilization
->    alone does not set the rate; padding the payload lengthened transport 77× and *lowered* the
->    rate 4.1×, which no stress-based account predicts; and a kernel trace of `sched_wakeup` and
->    `sched_switch` predicts the measured rate to within a third (ratios 0.78, 1.06 and 1.32, the
->    middle one from a configuration the tracer check withholds), unfitted. The same failure appears in
->    Kafka's own Java client and on Neoverse N2 processors. The traced stalls are not a single
->    heavy tail: their counts have three local maxima, the last in the 2–4 ms bucket that holds
->    the scheduler's derived 3 ms base slice, and above it they collapse (paper Section IV-C).
->    *Withdrawn:* the effective exponent (0.332 over 0.25–2 ms) once read off the traced
->    survival, the infinite-moment ("no finite mean or variance") reading, and the M/G/1
->    functional form. Once the sweep reached ρ where the candidate forms diverge, M/G/1 fit
->    **worse than the mean** (R² −0.05 vs a fitted exponential's 0.93). An earlier revision of
->    this README advertised it as a surviving rule; it is refuted, not merely unsupported.
-> 3. Each system has **one client setting worth 1–2 orders of magnitude**, both free on a
->    co-located testbed and therefore invisible to how such settings are normally evaluated.
->
-> **Why the JSA framing was retired.** Football is sparse (0.415 ev/s, ≤12 concurrent matches) —
-> four orders of magnitude below where either broker strains. Every latency question aimed at
-> this domain returns "doesn't matter", and it is right to. The work is a systems contribution;
-> a sports-analytics paper would need a football question, not a latency one.
+> (2003–2023).* We answered it, found that the measurement could not carry the answer, and the
+> paper became about the measurement. The paper and supplement as they stood before the rebuild,
+> with the withdrawn results and the broker comparison, are kept in
+> [`docs/archive/2026-10-05-before-cleanup/`](docs/archive/2026-10-05-before-cleanup/README.md),
+> and what is known in the literature about each bottom line is in
+> [`docs/literature_review_2026-10-05.md`](docs/literature_review_2026-10-05.md).
 
 > **This README is the single source of truth for the project.** It consolidates what
 > were previously ~18 separate planning, methodology, and status documents. Section 1
@@ -432,81 +385,28 @@ From 3,315 StatsBomb matches across 52 competition-seasons (2003–2023), via
 
 ## 2. Abstract
 
-> **Title:** *Faster than Light: Silent Errors in the Latency Benchmarks Used to Choose Message Brokers*
+> **Title:** *Super-Precise Latency: How CPU Threading Affects High-Precision Latency, and an Industry-Wide Audit*
 > **Target:** IEEE Transactions on Computers (`IEEEtran`, journal, `paper.tex`)
-> **Keywords:** Apache Kafka; clock synchronization; latency benchmarking; measurement errors; message brokers; Redis Streams; scheduling; timestamp resolution.
+> **Keywords:** Apache Kafka; CPU scheduling; latency benchmarking; message brokers; multithreading; Redis Streams; timestamp resolution.
 
 The paper's abstract, which by the authors' rule carries no numbers and names no tool:
 
-> A message broker carries messages between distributed services. Published latency benchmarks
-> guide the choice of a message broker. They now report sub-millisecond latencies, finer than some
-> of their clocks resolve and shorter than a thread's wait for a core on a busy host. We timed
-> widely used brokers on one clock. Timed from the broker's confirmation of receipt, many messages
-> came out negative, as if delivered before being published. The cause is not clock synchronization but
-> scheduling. The thread that records the confirmation waits for a core longer than the message
-> takes. Giving it priority at unchanged load removes most negatives. We did a wide audit of the
-> most used tools across the industry: most of them discard such values uncounted or never measure
-> a one-way delivery. A positivity filter on a millisecond clock also deletes the fastest messages.
-> We derive the fraction kept, and a test registered in advance confirms it. In practice a
-> sub-millisecond median can describe the clock, not the broker. A void result also looks sound: a
-> sign check rejected most of our runs. We give benchmark authors checks that cost nothing.
+> Engineers choose message brokers, which carry data between programs, partly by latency
+> benchmarks that now report latencies below a millisecond. At that scale, when a program reads the
+> clock matters. After a broker writes a message, it acknowledges it to the producer and delivers it
+> to the consumer. On one machine and one clock, the two readings should coincide. Measured, their
+> difference spreads over milliseconds, and part of it falls below zero. The cause is scheduling. A
+> thread must wait for a processor core before it can read the clock, and the thread that reads the
+> acknowledgment can wait longer than the message takes to reach the consumer. How often this
+> happens obeys laws we derive and test by manipulation. It rises with load and with how the load
+> is placed, and falls when the clock-reading threads run at real-time priority and as the timed
+> path outgrows the scheduler's slice, which the processor count sets. An industry-wide audit finds
+> such values discarded uncounted or never measured, and a filter on millisecond clocks that
+> deletes the fastest messages too. We give checks, and measure what each buys.
 
-The paper has three parts and draws their practical consequences in a fourth. The numbers behind
-the abstract, part by part:
-
-**The finding.** Timed on one clock from the broker's acknowledgment, 62,264 of our 738,730
-messages were negative and none from the publish call, so the cause is not clock synchronization. A
-zero-cost sign check rejected **1,321 of our 2,266 runs**, leaving nothing of our first result
-usable (it rejects 109 of the 126 runs behind it and every one of its six conditions).
-
-**The mechanism.** The thread recording the acknowledgment had waited for a core longer than
-the message took. The span is negative exactly when the publish latency exceeds the end-to-end
-latency; to leading order its rate is the timestamping thread's occupancy times the chance that a
-stall outlasts the end-to-end latency; and the traced stalls have a mode in the bucket that holds the
-scheduler's derived 3 ms slice. Real-time priority for the timestamping threads, at unchanged
-utilization, cut the rate 7–80×.
-
-**The industry.** Seven of the ten tools read at source dispose of a latency at or below zero
-without counting it, by filtering it, letting a library refuse it or substituting another value.
-Of eleven benchmarking tools run under registered predictions, four rounds each, ten time on one
-clock: they never meet a negative value and cannot measure a one-way delivery; the eleventh keeps
-negatives in its average. Where the rule is a positivity filter on a millisecond clock it also
-deletes every sub-millisecond message that does not cross a clock tick. On the one such tool
-measured in depth, 71 of 75 embedded-mode settings whose summary we captured printed a median of
-exactly 1.0 or 2.0 ms, computed from as little as 0.36% of the samples; the retained fraction
-follows from the ratio of end-to-end latency to resolution, and a registered prediction of it was
-confirmed. A registered audit of 43 published reports found the deletion's signature in eight
-configurations of two of them, and a stated retention in none.
-
-**Practical implications.** On a sub-millisecond path such a filter prints the same median
-whatever the broker, and what differs between brokers, the share of samples kept, it does not
-print; where fast and slow messages mix it printed medians of 235 and 519 ms for two 64 KB
-settings on which most messages had arrived within a millisecond. A latency timed from the
-acknowledgment understates the end-to-end latency it stands for (a median factor of 4.2 over 70
-conditions) and inflates the gap between two brokers. A better-synchronized clock fixes neither
-failure; a per-run sign check and the retained fraction published beside every latency expose
-both, and both cost nothing.
-
-What survives of the broker comparison that started the work is small: over the runs the check
-keeps, Kafka and Redis sit within a millisecond on the transport proxy and are equivalent on the
-end-to-end latency, and one consumer setting that a co-located testbed hides decides their order.
-
-**Withdrawn.** An earlier version reported a twentyfold end-to-end gap, attributed it to client
-code, and built a recommendation on it. It does not reproduce. The runs behind it matched a
-median of seven events each, and a one-off producer start-up cost was being read as a per-event
-constant: Kafka's first `produce()` blocks about 103 ms, and the four kickoff events due while
-it blocks inherit that wait. A Kafka producer fetches metadata before its first send to a topic
-it has not yet cached, and the shape matches, but we did not isolate the call. A window sweep
-settles the withdrawal by counting rather than averaging: emitted events per run grow 8.9×
-while the number waking more than 50 ms late stays at exactly four. The sign check does **not**
-catch this one, which is the point.
-
-**Also disclosed:** no surviving artefact records the achieved replay rate of the earliest
-corpora, E1 among them. Plans carry a built-in 120× compression, so the speed-up flag is not
-the rate (`--speedup 1` means 120×, not real time), and the flag's meaning was corrected 21
-hours after the E1 runs were made. For E1 the start-up cost reads the rate back as true real
-time, and the original campaign script, found later, agrees. See the table of withdrawn results
-in supplement S8 and postmortem S4.
+The numbers behind it are in the summary at the top of this README and in the paper's
+introduction, one contribution per bottom line; the evidence in full is in the supplement, S1 to
+S6.
 
 ---
 
@@ -1063,14 +963,11 @@ reports no error, the source still looks plausible, and the defect appears only 
 That failure reached the manuscript three times here, twice past a full source-level check, which
 is why the check now runs on the artefact a reader actually receives.
 
-**Status (the PDFs built on 4 Oct 2026):** compiles clean, with 0 errors, 0 undefined
-references or citations and 0 overfull boxes; 12 pages against TC's 10–12 budget, 45
-references against TC's cap of 45, an abstract inside TC's 100–200 words, and two
-author biographies (G. P. Ricou and R. Duvignau) inside TC's 145-word cap. Four figures, three
-tables and six numbered equations. Title: *Faster than Light: Silent Errors in the Latency Benchmarks Used to Choose Message Brokers*. The journal supplement, S1–S9 under the
-paper's byline, is 33 pages with 58
-references, one page of references past the 25–30 an outside editor asked for; the postmortem,
-the complete single-author record that is not submitted, is 76 pages.
+**Status (the PDFs built on 5 Oct 2026):** compiles clean, with 0 errors and 0 undefined
+references or citations. The paper is 8 pages, its text ending on page 7 and the last page
+holding two references and the two biographies, with 37 references, three figures, one table
+and five numbered equations. The journal supplement, S1–S6 under the paper's byline, is 16
+pages; the postmortem, the complete single-author record that is not submitted, is 76 pages.
 Formatted with `IEEEtran` (journal, 10pt) for IEEE Transactions on Computers.
 
 Sentence length is gated too, since round 43. A co-author reported that average sentence
@@ -1203,7 +1100,7 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 ```bibtex
 @article{ricou2026interval,
   author  = {Ricou, Gustavo Pedro and Duvignau, Romaric},
-  title   = {Faster than Light: Silent Errors in the Latency Benchmarks Used to Choose Message Brokers},
+  title   = {{Super-Precise Latency}: How CPU Threading Affects High-Precision Latency, and an Industry-Wide Audit},
   year    = {2026},
   note    = {Manuscript targeting IEEE Transactions on Computers;
              code and data archived at \url{https://doi.org/10.5281/zenodo.21650031}}
@@ -1238,6 +1135,23 @@ python -m pytest tests/ --cov=scripts --cov-report=term-missing
 ---
 
 ## 16. Changelog
+
+### 5 Oct 2026 — the paper rebuilt around four bottom lines (not yet deposited)
+**Paper v8** is titled *Super-Precise Latency: How CPU Threading Affects High-Precision Latency, and an Industry-Wide Audit* and has one section per bottom line: the distribution of
+*S* = *t*_recv − *t*_ack, which would be zero in the ideal case; the mechanism of a thread's wait for
+a core and the laws that govern it; the industry-wide audit; and what to do. The 12-page paper was
+cut twice, independently, and the shorter version of every part was kept: 7 pages of text.
+Everything cut moved to the supplement, which was then cut from 33 pages to 16 (S1–S6), keeping
+the tables, figures and experimental detail a referee needs for the machines whose results the
+paper presents. Both documents as they stood before are in
+[`docs/archive/2026-10-05-before-cleanup/`](docs/archive/2026-10-05-before-cleanup/README.md). A
+literature and grey-literature review ([`docs/literature_review_2026-10-05.md`](docs/literature_review_2026-10-05.md))
+checked what is new and brought the vocabulary into line with the field's: *waiting probability*
+for occupancy, *residual wait* for residual stall, *randomize the publish instants (Poisson
+sampling)* for dither, and the positivity filter named for what it does statistically, a
+truncation at zero. Treadmill, Skyloft, timerlat, ShuffleBench and SPEC's methodological
+principles are now cited. Fig. 2 is the distribution of *S* alone, drawn at column width, and
+Fig. 1's red notes say what they mark instead of numbering failures.
 
 ### 4.0.0 — prepared 29 Sep 2026, not yet deposited — the editorial revision
 An outside editor's review of v3, taken whole. **Paper v5** is retitled *Faster than Light: Latency

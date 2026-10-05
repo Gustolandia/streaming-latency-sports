@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: "Faster than Light: code and analysis for latency measurement errors in message-broker benchmarks"
+title: "Super-Precise Latency: code and analysis for the effect of CPU threading on high-precision latency, and an industry-wide audit"
 # Order matches the manuscript byline and is not alphabetical: lead author first. The list
 # held four names until 2026-09-10, when the last author's withdrawal of 8 September was
 # actioned and a third author asked to be removed from the work. Neither is named here.
@@ -39,7 +39,7 @@ date-released: "2026-09-29"
 # was discarded at parse time and "Cite this repository" emitted a scaffolding version instead.
 preferred-citation:
   type: article
-  title: "Faster than Light: Silent Errors in the Latency Benchmarks Used to Choose Message Brokers"
+  title: "Super-Precise Latency: How CPU Threading Affects High-Precision Latency, and an Industry-Wide Audit"
   authors:
     - family-names: "Ricou"
       given-names: "Gustavo Pedro"

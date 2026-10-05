@@ -434,7 +434,7 @@ From 3,315 StatsBomb matches across 52 competition-seasons (2003–2023), via
 
 > **Title:** *Faster than Light: Silent Errors in the Latency Benchmarks Used to Choose Message Brokers*
 > **Target:** IEEE Transactions on Computers (`IEEEtran`, journal, `paper.tex`)
-> **Keywords:** Apache Kafka; benchmarking; clock synchronization; latency measurement; measurement errors; message brokers; scheduling; timestamp resolution.
+> **Keywords:** Apache Kafka; clock synchronization; latency benchmarking; measurement errors; message brokers; Redis Streams; scheduling; timestamp resolution.
 
 The paper's abstract, which by the authors' rule carries no numbers and names no tool:
 

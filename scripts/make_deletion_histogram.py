@@ -279,6 +279,40 @@ def build_two_ways(out_dir=OUT_DIR):
     return made
 
 
+def build_s_distribution(out_dir=OUT_DIR):
+    """Panel (a) alone, at column width: the distribution of S, the paper's Fig. 2 since 5 Oct 2026.
+
+    The paper opens its results on the distribution of S = t_recv - t_ack, which would be zero in
+    the ideal case, so its figure shows that distribution and the end-to-end latency of the same
+    messages, and nothing else. The millisecond panel stays in the three-panel version.
+    """
+    figure_style.apply()
+    series, extra = read_hist()
+    fig, ax = plt.subplots(figsize=(3.5, 2.3))
+    plot_measured(ax, series, extra)
+    ax.set_ylim(1, 3e6)
+    # plot_measured titles the panel on the left; at column width that title runs off the
+    # figure, so only the window caveat stays, on the right.
+    ax.set_title("", loc="left")
+    ax.set_title("+%s above the window" % "{:,}".format(extra["ack"]["over"]),
+                 fontsize=7, loc="right")
+    ax.set_xlabel("$S = t_{\\mathrm{recv}} - t_{\\mathrm{ack}}$ (µs)")
+    for text in ax.texts:
+        if text.get_text().startswith("publish-timed span"):
+            text.set_text("$D$, same messages:\nnever below zero")
+    Path(out_dir).mkdir(parents=True, exist_ok=True)
+    # The stem is written out whole, as for two_ways, so the compliance gate can find it.
+    stem = "s_distribution"
+    made = []
+    for ext in ("pdf", "png"):
+        path = os.path.join(out_dir, "%s.%s" % (stem, ext))
+        fig.savefig(path, bbox_inches="tight", pad_inches=0.02,
+                    dpi=200 if ext == "png" else None)
+        made.append(path)
+    plt.close(fig)
+    return made
+
+
 def build(out_dir=OUT_DIR, talk=False):
     figure_style.apply()
     series, extra = read_hist()
@@ -323,10 +357,17 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Draw the deletion histogram")
     ap.add_argument("--talk", action="store_true", help="slide proportions, PNG only")
     ap.add_argument("--two", action="store_true",
-                    help="panels (a) and (b) only, as the paper's Fig. 1 (two_ways)")
+                    help="panels (a) and (b) only, side by side (two_ways)")
+    ap.add_argument("--s-distribution", action="store_true",
+                    help="panel (a) alone at column width, as the paper's Fig. 2 (s_distribution)")
     ap.add_argument("--out-dir", default=OUT_DIR)
     args = ap.parse_args(argv)
-    made = build_two_ways(args.out_dir) if args.two else build(args.out_dir, talk=args.talk)
+    if args.s_distribution:
+        made = build_s_distribution(args.out_dir)
+    elif args.two:
+        made = build_two_ways(args.out_dir)
+    else:
+        made = build(args.out_dir, talk=args.talk)
     for path in made:
         print("wrote %s" % path)
     return 0

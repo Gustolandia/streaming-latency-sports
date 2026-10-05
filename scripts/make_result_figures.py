@@ -815,7 +815,7 @@ def build_remedies(out_dir):
     factors = [r["factor"] for r in pairs]
     a.set_title("(a) Adding the publish latency back repairs the latency", fontsize=8,
                 loc="left")
-    b.set_title("(b) Real-time priority: %.0f–%.0f× fewer negatives"
+    b.set_title("(b) Real-time priority: %.0f–%.0f× lower rate"
                 % (min(factors), max(factors)), fontsize=8, loc="left")
     return _save(fig, out_dir, "remedies")
 

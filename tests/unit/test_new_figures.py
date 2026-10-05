@@ -114,6 +114,17 @@ class TestDeletionHistogram:
         assert rc == 0
         assert "two_ways.pdf" in capsys.readouterr().out
 
+    def test_the_column_build_is_the_distribution_of_s(self, hist_env, tmp_path, capsys):
+        """Panel (a) alone at column width, as the paper's Fig. 2: the axis names S, the orange
+        line names D, and the panel's long title gives way to the window caveat."""
+        made = mdh.build_s_distribution(str(tmp_path / "s"))
+        assert sorted(os.path.basename(p) for p in made) == ["s_distribution.pdf",
+                                                             "s_distribution.png"]
+        assert all(os.path.getsize(p) > 0 for p in made)
+        rc = mdh.main(["--s-distribution", "--out-dir", str(tmp_path / "cli")])
+        assert rc == 0
+        assert "s_distribution.pdf" in capsys.readouterr().out
+
 
 class TestThreadFigure:
     def test_the_diagram_names_every_lane_and_the_inequality(self):

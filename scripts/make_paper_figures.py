@@ -298,7 +298,7 @@ def plot_system(ax):
     other two, what the broker does, what one leg and two legs are -- "where all fundamental
     quantities are very clear". Panel (b) below says when each timestamp is read; this panel
     says where. A covers leg 1 out and back, D covers leg 1 and then leg 2, and the two red
-    labels mark where the paper's two failures enter.
+    labels mark the late reading of t_ack and a tool that drops every value at or below zero.
     """
     ax.set_xlim(0, 10.4)
     # Stacked labels are spaced for CI's matplotlib 3.9, which sets an 8 pt label with maths in
@@ -322,14 +322,14 @@ def plot_system(ax):
 
     # The two client processes, which read one clock: the fact that keeps clock
     # synchronization out of every result in the paper. The consumer reports D in steps of the
-    # timestamp resolution tau, which is where Failure 2 enters; the boxes are 3.35 wide so that
+    # timestamp resolution tau and drops what is not above zero; the boxes are 3.35 wide so that
     # line clears its red label.
     procs = ((1.38, 2.36, "Producer process", KAFKA,
               (r"app thread: $t_{\mathrm{sched}}$, $t_{\mathrm{pub}}$",
-               r"I/O thread: $t_{\mathrm{ack}}$"), "Failure 1"),
+               r"I/O thread: $t_{\mathrm{ack}}$"), "read late"),
              (0.02, 1.00, "Consumer process", REDIS,
               (r"app thread: $t_{\mathrm{recv}}$, $t_{\mathrm{out}}$",
-               r"reports $D$ in steps of $\tau$"), "Failure 2"))
+               r"reports $D$ in steps of $\tau$"), r"drops $\leq 0$"))
     for y0, y1, title, colour, lines, failure in procs:
         ax.add_patch(plt.Rectangle((0.20, y0), 3.35, y1 - y0, fill=False, edgecolor=colour,
                                    linewidth=1.1))
@@ -337,7 +337,7 @@ def plot_system(ax):
                 ha="left", va="center")
         for k, line in enumerate(lines):
             ax.text(0.32, y1 - 0.45 - 0.33 * k, line, fontsize=8, ha="left", va="center")
-        # Where each failure enters: the late read of t_ack, and the tool's own report.
+        # The late read of t_ack, and the tool that drops every value at or below zero.
         ax.text(3.45, y1 - 0.78, failure, fontsize=8, fontweight="bold", color=FAILURE_RED,
                 ha="right", va="center")
     ax.text(1.875, 1.19, "both processes read one clock", fontsize=8, color=GREY,

@@ -172,8 +172,8 @@ class TestTheSystemPanel:
             plt.close(fig)
         for want in ("Client machine (the driver)", "Broker machine", "Producer process",
                      "Consumer process", "leg 1: publish", "acknowledgment", "leg 2: deliver",
-                     "$A$: leg 1, out and back", "$D$: leg 1, then leg 2", "Failure 1",
-                     "Failure 2", "both processes read one clock",
+                     "$A$: leg 1, out and back", "$D$: leg 1, then leg 2", "read late",
+                     r"drops $\leq 0$", "both processes read one clock",
                      r"reports $D$ in steps of $\tau$"):
             assert want in said, want
         assert not ax.axison, "a schematic, not a plot"

@@ -304,10 +304,12 @@ class TestW4FlinkIsRecordedBesideTheRuntimes:
 
 class TestW5ThePacerRangeSaysWhatItSpans:
 
-    def test_the_run_count_is_emitted_from_the_rows_that_give_the_range(self, ledger):
+    def test_the_run_count_comes_from_the_rows_that_give_the_range(self, ledger):
+        """5 Oct 2026: the count left the ledger with the pacer jitter, which no document
+        prints; what it is computed from is still held, for a document that quotes it again."""
         import stat_intervals as si
-        assert ledger["pacerJitterRuns"] == str(si.harness_pacer_jitter_runs())
-        assert int(ledger["pacerJitterRuns"]) > 1
+        assert si.harness_pacer_jitter_runs() == 24
+        assert "pacerJitterRuns" not in ledger
 
     def test_rows_without_the_column_are_not_counted(self, monkeypatch):
         import stat_intervals as si
@@ -316,8 +318,8 @@ class TestW5ThePacerRangeSaysWhatItSpans:
         assert si.harness_pacer_jitter_runs() == 1
 
     # 5 Oct 2026: the sentence pin ("at p90 over N runs") retired with the sentence; neither the
-    # rebuilt paper nor its supplement prints the pacer jitter. The run count is still emitted
-    # and held above.
+    # rebuilt paper nor its supplement prints the pacer jitter, and its macros left the ledger
+    # the same day.
 
 
 class TestTheRenderedPagesCarryIt:

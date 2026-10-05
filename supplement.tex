@@ -963,8 +963,9 @@ benchmark truncates before it filters, and \kafka{}'s bundled tools only truncat
 carry what the table cannot.
 \begin{itemize}
 \item The OpenMessaging Benchmark appears twice because it treats its two spans differently. It
-times its end-to-end latency on a millisecond clock and filters it, and times its publish latency
-in nanoseconds and records every sample (Section~\ref{P-sec:extmethod}).
+times its \ombGuardedPath{} latency on a \ombGuardedClock{} clock and filters it, and times its
+\ombUnguardedPath{} latency in \ombUnguardedClock{}s and records every sample
+(Section~\ref{P-sec:extmethod}).
 \item The \texttt{EndToEndLatency} tool bundled with \kafka{} cannot produce a value below zero,
 because it uses one thread, one monotonic clock and a synchronous publish call. It loses the
 measurement anyway. Each sample prints in floating point, but the \texttt{long[]} its percentiles

@@ -633,7 +633,7 @@ class TestEveryWordSpelledQuantityIsADecisionToo:
             "harnessAuditedWord": ("tools at source", "tools of Section",
                                    "tools by reading them"),
             "harnessSilentWord": ("dispose of", "disposing of"),
-            "harnessSilentIndependentWord": ("independent tools",),
+            # harnessSilentIndependentWord ("independent tools") left the ledger on 5 Oct 2026.
             "harnessDisposalClassesWord": ("classes", "ways: a filter drops it"),
             "replayedMatchesWord": ("of its matches", "matches of one sport"),
             "spreadIncommensurateWord": ("configurations whose send interval",

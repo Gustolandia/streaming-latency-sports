@@ -164,8 +164,8 @@ def main():
     add("ombGridRetentionMin/Max (0.36-100%)", "0.36-100", "population", "",
         "", "complete enumeration of the 71 grid cells; each cell's retention is a fact of "
             "that run, not a sample estimate")
-    add("ombRetentionMinExact (0.0044%)", macros.get("ombRetentionMinExact", ""),
-        "population", "", "", "one run's exact retention")
+    # The ledger-wide minimum at four decimals (0.0044%) had a row here until 5 Oct 2026, when
+    # the sentence that printed it left with the rebuild and its macro stopped being emitted.
 
     # ---- 5. counts and definitions ----
     for m in ("spanRuns", "spanEvents", "spanNegAck", "spanNegSend", "auditRuns",
@@ -185,7 +185,7 @@ def main():
         "spanRunsAckOnlyPct", "spanKafkaRunsAckInvertsPct", "spanRedisRunsAckInvertsPct",
         "spanDeepestInversionMs", "spanSendFloorUs", "spanSendFloorOtherUs",
         "spanOffsetMargin", "rtResidualMin", "rtResidualMax", "invCeiling",
-        "ombKeptLo", "ombKeptHi", "ombPubLatLo", "ombPubLatHi", "ombRetentionFold",
+        "ombKeptLo", "ombKeptHi", "ombRetentionFold",
         "ombMedianCells", "gridFlatRates",
     }
     # Not estimates, so not candidates for an interval. Kept as an explicit class rather

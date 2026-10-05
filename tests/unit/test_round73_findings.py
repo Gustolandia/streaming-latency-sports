@@ -119,14 +119,14 @@ class TestR1ARateIsQuotedWithTheLoadItWasMeasuredAt:
         end = paper.find("\n\n", m.start())
         dispute = " ".join(paper[start:end if end > 0 else None].split())
         assert "sharma2026causality" in dispute, "the dispute no longer names whom it disputes"
-        for macro in ("diseaseOverWhole", "diseaseOverHalf", "diseaseOverTenth", "spanNegAckPct"):
+        for macro in ("diseaseOverWhole", "diseaseOverHalf", "spanNegAckPct"):
             assert chr(92) + macro not in dispute, "a corpus-wide rate in the dispute: %s" % macro
         if chr(92) + "%" in dispute:
             assert chr(92) + "rtHighBasePct" in dispute and chr(92) + "rtHighLoadPct" in dispute
         journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
         for j in [k.start() for k in re.finditer("sharma2026causality", journal)]:
             near = " ".join(journal[max(0, j - 400):j + 400].split())
-            for macro in ("diseaseOverWhole", "diseaseOverHalf", "diseaseOverTenth"):
+            for macro in ("diseaseOverWhole", "diseaseOverHalf"):
                 assert chr(92) + macro not in near, "a corpus-wide rate in the dispute: %s" % macro
 
     def test_the_supplement_disputes_it_with_the_same_number(self, supplement):
@@ -137,7 +137,8 @@ class TestR1ARateIsQuotedWithTheLoadItWasMeasuredAt:
     def test_the_corpus_wide_rate_no_longer_wears_a_load(self, paper):
         """`diseaseOverWhole` is over 738,730 events at every load. It may say so and nothing
         else."""
-        for m in re.finditer(chr(92) + "diseaseOver(Whole|Half|Tenth)", paper):
+        # The tenth rung left the ledger on 5 Oct 2026 with the sentence that quoted it.
+        for m in re.finditer(chr(92) + "diseaseOver(Whole|Half)", paper):
             window = " ".join(paper[max(0, m.start() - 260):m.start() + 120].split())
             assert "utilization" not in window, (
                 "a corpus-wide rate inside a sentence about a load: %r" % window)
@@ -160,7 +161,7 @@ class TestR1ARateIsQuotedWithTheLoadItWasMeasuredAt:
         i = paper.index("label{tab:checks}")
         table = paper[i:paper.index("end{table}", i)]
         assert "Sign-check every run under the load it is quoted at" in " ".join(table.split())
-        for macro in ("diseaseOverWhole", "diseaseOverHalf", "diseaseOverTenth", "spanNegAckPct",
+        for macro in ("diseaseOverWhole", "diseaseOverHalf", "spanNegAckPct",
                       "rtHighBasePct", "rtLowBasePct", "rtHighBase", "rtLowBase"):
             assert chr(92) + macro not in table, macro
         journal = (REPO / "supplement.tex").read_text(encoding="utf-8")

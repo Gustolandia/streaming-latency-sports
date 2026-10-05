@@ -161,29 +161,16 @@ class TestR2ThePacerJitterIsEmitted:
         assert (lo, hi) == (min(vals), max(vals))
         assert len(vals) == 24, "every run, not the ones that fit the sentence"
 
-    def test_the_printed_range_contains_every_measured_run(self):
-        """The defect, stated as the property that failed: 67--69 excluded eleven of these."""
-        import emit_paper_numbers as epn
-        m = dict(epn.mechanism_macros())
-        lo, hi = float(m["pacerJitterLo"]), float(m["pacerJitterHi"])
-        rows = list(csv.DictReader(
-            (REPO / "docs" / "results" / "external" / "harness_results.csv")
-            .open(encoding="utf-8")))
-        outside = [r["cell"] for r in rows if not lo <= float(r["jitter_p90_us"]) <= hi]
-        assert not outside, "runs outside the printed range: %s" % outside
-
     # 5 Oct 2026: the two sentence pins, source and page, retired with the sentence. Neither the
-    # rebuilt paper nor its supplement prints the pacer jitter; the emitter's range and its
-    # decimal form are still held below, for the documents that quote it again.
+    # rebuilt paper nor its supplement prints the pacer jitter, and when the unread macros were
+    # pruned the same day its three macros left the ledger, so the two pins on the printed range
+    # and its decimals retired with them. What the range is read from, stat_intervals, is still
+    # held here, for a document that quotes it again.
 
-    def test_the_macros_stay_decimal_so_the_ledger_sweep_sees_them(self):
-        """Integers would print a bare 67 beside interHostOffsetUs, which is also 67 and is a
-        different quantity; the decimal keeps them apart and keeps these two inside the
-        sweep, which only checks decimal-valued macros."""
+    def test_the_jitter_is_no_longer_emitted(self):
         import emit_paper_numbers as epn
         m = dict(epn.mechanism_macros())
-        for k in ("pacerJitterLo", "pacerJitterHi"):
-            assert "." in m[k], "%s lost its decimal" % k
+        assert not {"pacerJitterLo", "pacerJitterHi", "pacerJitterRuns"} & set(m)
 
     def test_a_column_that_is_not_there_is_nothing_rather_than_a_guess(self):
         """The other percentiles are reachable by name, so a name that is not a column has

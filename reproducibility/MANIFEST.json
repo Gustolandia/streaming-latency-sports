@@ -1,5 +1,5 @@
 {
-  "git_commit": "ade7a5bee0801cd6662365b0ac8df3f0209189c6",
+  "git_commit": "8d5290d3c2b61feac208a15a13414a714794a29a",
   "generated": "2026-10-05",
   "environment": "see docs/infrastructure.md",
   "protocol": {
@@ -91,7 +91,7 @@
     "scripts/compute_tti.py": "2f24d51cc48afa3d4815ff0259a2b92e9138abd96380d19de974dcb8e49434e6",
     "scripts/delay_calibration.py": "34607af90b55fc81ae255fd5f38dfaae9d627fc79389a27a0f8aadba5bf3c891",
     "scripts/diagnose_tail.py": "dd9ce72c70a448ce580e4f6370a89714ba6351b1ef57dc35518db6be1c8cbcd7",
-    "scripts/emit_paper_numbers.py": "e1b4ee4ed1f6f6b9df65736a9f06b04191b308fae5950554a81827c328c5b6e3",
+    "scripts/emit_paper_numbers.py": "f674be8bc81cc273989836da2b79e4a92bbee6af91339a1d4b9c4c44365cd605",
     "scripts/equivalence_tests.py": "aac8d7f08fc7eeb55ec458e8a3c72c9b3d3a60793bedc6600291c3da40b7e763",
     "scripts/fair_statistics.py": "0b9d803d316f893530de8e4f4c976657cd0e428bf56aeb69d1aa9f374a1e099e",
     "scripts/fetch_statsbomb_corpus.py": "f120a88ab04c59753ac371f2124ba518a08a6dbfc8faa525a6925e19d771b3b1",
@@ -178,7 +178,7 @@
     "scripts/span_histogram.py": "afc954747275ea01a497a43cf7c6ed822483bf98273a174c0781d2de3f7f78ff",
     "scripts/spend.py": "fa4a1051cb0067a1922f8ac47322178ddc8271028f3528e6d71f744d61d71219",
     "scripts/stall_mode_robustness.py": "1a6f3c31ab8439aeeacb3dab7303e923876324f900f0708a502d094f79ce0ff9",
-    "scripts/stat_intervals.py": "4832517f3016bf0f845a89ac5a59aa0fa1eb6e806c0af9b57c1160bf7853f930",
+    "scripts/stat_intervals.py": "36fc1570fffde111496e2c5898b2503490f11c716ad7c6607e08f2272e7760dd",
     "scripts/statistical_analysis.py": "795abac70ad7132437904c5a483ba4dc3b51ca36c3fcc06e95d3d463b4a357e2",
     "scripts/tail_index_traced.py": "de420cd2a512478372416d49a17cf618eeb88df9e11fd0f44dac017976ea6bc1",
     "scripts/testbed_watch.py": "481846cf92ae6b3a271dfa4dadf52d1dfccf35ac3dc6deb189f5f430dc8b7b79",
@@ -190,7 +190,7 @@
     "scripts/tools_block.py": "1810d11995e3b271f0f344adb9c39dff22b84a3b32f336caa45ac72ae44cad15",
     "scripts/trace_table_numbers.py": "bb155f6cdfe223296ab15a4483b6a83c407079066b7dd2bf3b24526554da1f76",
     "scripts/traced_tail_slope.py": "1a870712d70a8b3371c97e8b2b7ab06b5507636f6e532e328ba9e807c82b3fe7",
-    "scripts/uncertainty_audit.py": "a3db0fecdd396d80e9337b1a07dcaab507ecb77298dd8e01e92f6e7bbc610a52",
+    "scripts/uncertainty_audit.py": "43706d4751d37e67fb56357566a093445384800c0f8bd948b353d2bbe1b6fea2",
     "scripts/util_sampler.py": "f25e1287f5bfc7feca14ff9c1720d5a67931af42bb142564c48acd9e56b18021",
     "scripts/verify_reproducibility.py": "9908edff53f13d664a092cc0b35d269628121519ff1849b28e271f54b5e26c32",
     "scripts/verify_run_provenance.py": "3037f0ac5190ad79c33e6f3f14eb53f4b4f495e25764540f612a996ca45454f4",

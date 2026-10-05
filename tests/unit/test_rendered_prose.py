@@ -75,7 +75,23 @@ ABBREVIATIONS = frozenset((
 #: count, two audit counts and the TOST levels. One went the other way: ombKafkaNegatives is
 #: now printed. None was deleted from the ledger; pruning them from
 #: scripts/emit_paper_numbers.py is what would bring this ceiling back down.
-UNUSED_MACRO_CEILING = 104
+#: 71 since the pruning of the same day. Each of the thirty-nine was judged on its own:
+#: twenty-four were deleted with the passage that had read them, and with them four already idle
+#: twins of two counts no document uses in any form (the tools that count their discards, and
+#: the silent tools other than the benchmark). Four came back into use: supplement S5 states
+#: which span the benchmark filters and on which clock, typed by hand, and now reads
+#: ombGuardedPath, ombGuardedClock, ombUnguardedPath and ombUnguardedClock. Eleven stay unread,
+#: each for a reason a document cannot give. rtLowBase and rtHighBase hold the supplement's
+#: generated priority table and the postmortem's mechanism figure to the ledger. Six intervals,
+#: GeomOrigConcCI, GeomOrigSpreadCI, GeomReplConcCI, GeomReplSpreadCI, rtLowBaseCI and
+#: rtHighBaseCI, are the intervals uncertainty_audit.py pairs with rates still emitted (every
+#: <name>CI is <name>'s interval there); without them it would call those rates, four printed in
+#: the supplement's placement table, exact values. diseaseEvents is the denominator of Section
+#: VI's shares and is now checked equal to the count the paper prints. ombDiscarded is the macro
+#: check_paper_omb_numbers.py tells an author to use if a discard total is ever typed.
+#: spanRhoConditions is the number of conditions behind correlation medians the postmortem
+#: prints, a denominator to print, not to delete.
+UNUSED_MACRO_CEILING = 71
 
 
 def rendered(name):

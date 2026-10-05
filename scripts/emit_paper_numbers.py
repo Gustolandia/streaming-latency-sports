@@ -96,7 +96,6 @@ def macros(m):
         ]
     if m["retention_min"] is not None:
         out.append(("ombRetentionMin", "%.2f" % m["retention_min"]))
-        out.append(("ombRetentionMinExact", "%.4f" % m["retention_min"]))
     if m["retention_max"] is not None:
         out.append(("ombRetentionMax", "%.2f" % m["retention_max"]))
     return out
@@ -259,13 +258,15 @@ def stat_macros():
             continue
         kb, nb, kr, nr = cells[level]
         blo, bhi = stat_intervals.wilson(kb, nb)
-        rlo, rhi = stat_intervals.wilson(kr, nr)
         z, ratio = stat_intervals.ratio_z(kb, nb, kr, nr)
+        # 5 Oct 2026: the real-time rate and its interval left with the paper's Table II; the
+        # journal supplement's priority table prints every pair from its generated file. The
+        # normal-priority rate stays, because two tests hold that table and the postmortem's
+        # mechanism figure to it, and so does its interval, which uncertainty_audit.py reads as
+        # the rate's own (every <name>CI is <name>'s interval there).
         out += [
             ("rt%sBase" % name, "%.4f" % (kb / nb)),
             ("rt%sBaseCI" % name, "%.4f$--$%.4f" % (blo, bhi)),
-            ("rt%sRt" % name, "%.4f" % (kr / nr)),
-            ("rt%sRtCI" % name, "%.4f$--$%.4f" % (rlo, rhi)),
             ("rt%sFactor" % name, "%.0f" % round(ratio)),
             # The factor is what the discussion quotes, and until round 54 it was quoted
             # bare. The collapsed arms hold ten and seventeen events, so the interval is
@@ -1141,8 +1142,6 @@ def retention_macros():
         ("ombRetentionFold", "%.0f" % (hi["retention_pct"] / lo["retention_pct"])),
         ("ombKeptLo", latex_thousands(lo["kept"])),
         ("ombKeptHi", latex_thousands(hi["kept"])),
-        ("ombPubLatLo", "%.1f" % min(pub)),
-        ("ombPubLatHi", "%.1f" % max(pub)),
         ("ombRetentionRho", "%+.2f" % rho),
         # "to", not a dash (round 79, W1): "+0.08--+0.51" did not read as a range, and a signed
         # interval elsewhere in the article already prints as "-1.8 to 8.3".
@@ -1425,7 +1424,6 @@ def first_result_macros(path=os.path.join("docs", "results", "integrity_windows"
     return [
         ("firstResultRuns", str(runs)),
         ("firstResultRejected", str(runs - passed)),
-        ("firstResultCells", str(len(rows))),
         ("firstResultCellsWord", _spell(len(rows))),
         ("firstResultUsableCells", str(usable)),
     ]
@@ -1527,19 +1525,10 @@ def mechanism_macros():
                     ("harnessOneClockSpread", "%.2f" % (ohi - olo))]
     except (OSError, KeyError, ValueError):
         pass
-    # The send pacer's own jitter, which Section IV-D asserts is measured and then typed.
-    # The typed pair, 67--69, is narrower than the ledger at both ends: the runs span
-    # 66.3 to 69.2. A sentence whose subject is that the schedule was measured cannot be
-    # the one sentence in it carrying a number that was not.
-    try:
-        band = stat_intervals.harness_pacer_jitter()
-        if band:
-            out += [("pacerJitterLo", "%.1f" % band[0]),
-                    ("pacerJitterHi", "%.1f" % band[1]),
-                    # Round 80 (W5): the range is across runs, and the sentence says how many.
-                    ("pacerJitterRuns", str(stat_intervals.harness_pacer_jitter_runs()))]
-    except (OSError, KeyError, ValueError):
-        pass
+    # The send pacer's own jitter was emitted here while a sentence quoted it (rounds 71 and
+    # 80). That sentence left with the rebuild of 5 Oct 2026 and no document quotes the jitter,
+    # so it is no longer emitted; stat_intervals.harness_pacer_jitter() and
+    # harness_pacer_jitter_runs() still compute it, for a document that quotes it again.
     # Round 72, R2. Section V-E divided the scheduler's base slice by "a 0.1--0.5 ms
     # delivery" and Section VI-A said "our own transport measures 0.1--0.5 ms" -- the same
     # pair of numerals, typed into the source twice, naming the delivery in one sentence and
@@ -1734,11 +1723,9 @@ def registry_macros():
         ("harnessLanguages", str(s["languages"])),
         ("harnessEvidenceLines", str(s["evidence_lines"])),
         ("harnessSilent", str(s["n_silent"])),
-        # Silent harnesses other than the audited subject itself: the count the text
-        # uses for "independent tools", which round 6 caught as prose that only
-        # happened to be right after the re-audit.
-        ("harnessSilentIndependent",
-         str(len([h for h in s["silent"] if h != "OpenMessaging Benchmark"]))),
+        # 5 Oct 2026: the count of silent tools other than the benchmark itself, which the
+        # text once used for "independent tools", left with that sentence; the rebuilt paper
+        # counts every silent tool, and no document used the count in any of its three forms.
         ("harnessFilters", str(len(s["filters"]))),
         # Round 69 emitted the weaker guard's count here and took it straight back out:
         # neither document quotes it, the unread-macro gate said so within the minute,
@@ -1747,7 +1734,8 @@ def registry_macros():
         # it from, and the manuscript says "the same class at the other threshold"
         # without needing a number for it.
         ("harnessSuppressors", str(len(s["suppressors"]))),
-        ("harnessCounting", str(len(s["counts_discards"]))),
+        # 5 Oct 2026: no count of the tools that count their discards; the rebuilt paper names
+        # the one such tool, Rezolus, and no document used the count in any form.
         ("harnessRefusals", str(len(s["library_refusals"]))),
         # How many disposal classes there are, which the paragraph in IV-D was asserting from
         # prose and asserting wrongly: it said four while the taxonomy has three and the
@@ -1976,26 +1964,10 @@ def manipulation_macros():
     except (OSError, KeyError, ValueError):
         pass
 
-    # "Achieved utilisation matches to ..." -- the widest disagreement between the two arms
-    # of the priority pairs the table prints. Emitted as the measured worst case rather than
-    # the round bound the caption used: the bound was true, but a bound nobody recomputes is
-    # the same object as a transcribed number.
-    # Each shown configuration's own achieved utilisation is emitted beside the gap, so Table II
-    # can print it in a column (v5, 28 Sep): "utilization unchanged" is the crux of the priority
-    # manipulation, and an outside editor's reading found it living only in the caption.
-    try:
-        gaps = []
-        for pair in priority_pairs.pairs(
-                campaigns=(("E-A5", "stamping_priority.csv"),)):
-            if pair["level"] in ("l75", "l88"):
-                gaps.append(abs(pair["rho"] - pair["rho_rt"]))
-                name = "rtLow" if pair["level"] == "l75" else "rtHigh"
-                out.append((name + "Rho", "%.4f" % pair["rho"]))
-                out.append((name + "RhoRt", "%.4f" % pair["rho_rt"]))
-        if gaps:
-            out.append(("mechRhoMatch", "%.4f" % max(gaps)))
-    except (OSError, KeyError, ValueError):
-        pass
+    # Until 5 Oct 2026 the two pairs Table II printed had their arms' achieved utilisation and
+    # the larger gap between them (mechRhoMatch) emitted here. Table II left with the rebuild;
+    # the supplement's priority table prints both arms of every pair from its generated file,
+    # and the paper's "matched to within" quotes manipWorst below, the gap over every pair.
 
     # The utilisation both k=6 arms reached. geometry_rho() raises when the arms disagree,
     # which is the right failure: a pair that did not reach one utilisation is not the
@@ -2203,8 +2175,9 @@ def exposure_macros():
         t = ms * 1000.0
         return "%.0f" % (100.0 * (1.0 - (t - hi) / (t - lo)))
 
+    # No error at 100 ms since 5 Oct 2026: the sentence that printed it left with the rebuild,
+    # and the paper quotes 1 ms and 10 ms.
     return [("exposureErrTen", err(10)),
-            ("exposureErrHundred", err(100)),
             ("exposureErrOne", err(1)),
             ("exposureGapTen", gap(10)),
             ("exposureCrossover", "%.2f" % (typical / 1000.0)),
@@ -2220,8 +2193,10 @@ def exposure_macros():
             # dividing 500 by 10,000 gets 5%, which appeared nowhere. The percentile ends
             # are emitted here so that a printed range has one estimator at both ends, and
             # the median keeps its own two macros for the sentence that names it.
+            # 5 Oct 2026: the crossover is printed at the median and at the ninetieth
+            # percentile, as two named points rather than a range, so its tenth-percentile end
+            # is no longer emitted.
             ("exposureErrTenLo", err(10, p10)),
-            ("exposureCrossoverLo", "%.2f" % (p10 / 1000.0)),
             ("exposureCrossoverHi", "%.2f" % (p90 / 1000.0)),
             ("exposureErrTenHi", err(10, p90))]
 
@@ -2329,7 +2304,10 @@ def disease_macros(path=os.path.join("docs", "results", "span_run_level.csv")):
     neg = sum(int(r["neg_ack"]) for r in rows)
     out = [("diseaseEvents", latex_thousands(total)),
            ("diseaseRuns", latex_thousands(len(rows)))]
-    for col, name in (("over_0.1", "Tenth"), ("over_0.5", "Half"), ("over_1", "Whole")):
+    # The tenth rung left with the blind-spot sentence on 5 Oct 2026; the paper quotes the half
+    # and the whole. diseaseEvents stays: it is the denominator of both, and a test holds it
+    # equal to the message count the paper prints.
+    for col, name in (("over_0.5", "Half"), ("over_1", "Whole")):
         if col in rows[0]:
             k = sum(int(r[col]) for r in rows)
             out.append(("diseaseOver" + name, "%.1f" % (100.0 * k / total)))
@@ -3023,10 +3001,9 @@ def inter_host_offset_macros(path=os.path.join("docs", "results", "depth",
     if len(signed) < 2:
         return []
     spread_s = max(signed.values()) - min(signed.values())
-    return [
-        ("interHostOffsetMs", "%.3f" % (spread_s * 1e3)),
-        ("interHostOffsetUs", "%.0f" % (spread_s * 1e6)),
-    ]
+    # Milliseconds only since 5 Oct 2026: the microsecond form was printed by the "better
+    # clock" paragraph that left with the rebuild.
+    return [("interHostOffsetMs", "%.3f" % (spread_s * 1e3))]
 
 
 def handling_share_macros(recount=SPAN_CSV,
@@ -3434,8 +3411,10 @@ def render_recv_wait_table(root=RECV_WAIT_DIR):
 #: "across 3 levels", "8 matched pairs") in a manuscript that spells small counts out
 #: everywhere else; an outside reading (1 Oct 2026) found the two styles side by side. Each
 #: twin is the same count, spelled by _spell, so the word cannot drift from the number.
-SPELLED_TWINS = ("tracedModes", "tracedRatioArms", "tostLevels", "rtPairs", "rtResidualPairs",
-                 "testbedCpus", "recvWaitAgreeParts", "recvPausedRuns", "recvStallRuns")
+#: 5 Oct 2026: tostLevels and rtResidualPairs left the list; the sentences that spelled them
+#: left with the rebuild, and their numerals are still emitted and read.
+SPELLED_TWINS = ("tracedModes", "tracedRatioArms", "rtPairs", "testbedCpus",
+                 "recvWaitAgreeParts", "recvPausedRuns", "recvStallRuns")
 
 
 def spelled_twins(pairs):

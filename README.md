@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Target: TC](https://img.shields.io/badge/Target-IEEE%20Transactions%20on%20Computers-orange.svg)]()
-[![Tests](https://img.shields.io/badge/tests-8217_passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-8214_passing-brightgreen.svg)]()
 [![Coverage](https://img.shields.io/badge/branch_coverage-100%25-brightgreen.svg)]()
 [![StatsBomb Data](https://img.shields.io/badge/StatsBomb_Data-CC_BY--NC_4.0-blue.svg)](https://github.com/statsbomb/open-data)
 [![DOI (code)](https://img.shields.io/badge/DOI_code-10.5281%2Fzenodo.21650031-blue.svg)](https://doi.org/10.5281/zenodo.21650031)
@@ -1156,8 +1156,10 @@ principles are now cited. Fig. 2 is the distribution of *S* alone, drawn at colu
 Fig. 1's red notes say what they mark instead of numbering failures. Every term is defined where
 a reader first meets it, the experimental vocabulary included. The postmortem was written against
 the paper as it stood before, so its pointers now read that version's labels, kept beside it in
-the archive. The tests follow the rebuilt documents: 8,217 pass, none skip, every script's
-branches are covered, and the mutation check catches all six of the claims it breaks.
+the archive. The tests follow the rebuilt documents: 8,214 pass, none skip, every script's
+branches are covered, and the mutation check catches all six of the claims it breaks. Of the
+39 generated numbers the rebuild left unread, 28 left the ledger, 4 are read again and 11 stay
+with a reason each, written beside the ceiling in `tests/unit/test_rendered_prose.py`.
 
 ### 4.0.0 — prepared 29 Sep 2026, not yet deposited — the editorial revision
 An outside editor's review of v3, taken whole. **Paper v5** is retitled *Faster than Light: Latency

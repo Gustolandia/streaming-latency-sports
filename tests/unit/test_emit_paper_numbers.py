@@ -317,7 +317,8 @@ class TestTheRefereeDrivenMacroGroups:
         got = dict(epn.first_result_macros())
         assert got["firstResultRuns"] == "126"
         assert got["firstResultRejected"] == "109"
-        assert got["firstResultCells"] == "6" and got["firstResultCellsWord"] == "six"
+        # 5 Oct 2026: the numeral left the ledger; the postmortem prints the count as a word.
+        assert got["firstResultCellsWord"] == "six" and "firstResultCells" not in got
         assert got["firstResultUsableCells"] == "0"
 
     def test_first_result_macros_read_only_the_one_per_cent_rows(self, tmp_path):
@@ -329,8 +330,7 @@ class TestTheRefereeDrivenMacroGroups:
                      "0.2,kafka,1,17,18,False\n", encoding="utf-8")
         got = dict(epn.first_result_macros(str(p)))
         assert got == {"firstResultRuns": "36", "firstResultRejected": "16",
-                       "firstResultCells": "2", "firstResultCellsWord": "two",
-                       "firstResultUsableCells": "1"}
+                       "firstResultCellsWord": "two", "firstResultUsableCells": "1"}
 
     def test_occupancy_fall_macros_report_e_a7s_registered_miss(self):
         """E-A7 registered at least a tenfold fall in occupancy under real-time priority."""
@@ -493,8 +493,13 @@ class TestRegistryMacros:
             "three responses: drop it, replace it, let the library refuse it")
 
     def test_at_least_one_harness_counts_its_discards(self):
-        """Without a counterexample the survey would be an advertisement."""
-        assert int(dict(epn.registry_macros())["harnessCounting"]) >= 1
+        """Without a counterexample the survey would be an advertisement.
+
+        5 Oct 2026: read from the registry itself, since the count is no longer emitted: the
+        rebuilt paper names the one tool that counts (Rezolus) instead of counting it."""
+        import harness_registry
+        assert len(harness_registry.summary()["counts_discards"]) >= 1
+        assert "harnessCounting" not in dict(epn.registry_macros())
 
     def test_silent_never_exceeds_the_harnesses_audited(self):
         got = dict(epn.registry_macros())
@@ -588,33 +593,13 @@ class TestTheManipulationCaptionAndItsThreshold:
         assert len(cells) == 1, "the caption says 'per cell'; the artifacts must agree"
         assert got["mechEventsPerCell"] == epn.latex_thousands(cells.pop())
 
-    def test_the_utilization_match_is_the_widest_gap_the_shown_pairs_have(self):
-        import priority_pairs
-        got = dict(epn.manipulation_macros())
-        gaps = [abs(p["rho"] - p["rho_rt"])
-                for p in priority_pairs.pairs(
-                    campaigns=(("E-A5", "stamping_priority.csv"),))
-                if p["level"] in ("l75", "l88")]
-        assert got["mechRhoMatch"] == "%.4f" % max(gaps)
+    # 5 Oct 2026: three tests of the two shown pairs' utilization match and their per-arm
+    # utilizations retired with Table II, which printed them; the paper's "matched to within"
+    # quotes manipWorst, the gap over every pair, which the tests below hold.
 
-    def test_each_shown_configuration_prints_its_own_utilization(self):
-        """v5: Table II prints the achieved utilization of every priority configuration it
-        shows, read from the same pair records as the gap, so the column and the caption's
-        agreement cannot part."""
-        import priority_pairs
+    def test_the_shown_pairs_no_longer_carry_their_own_utilization_macros(self):
         got = dict(epn.manipulation_macros())
-        for p in priority_pairs.pairs(campaigns=(("E-A5", "stamping_priority.csv"),)):
-            name = {"l75": "rtLow", "l88": "rtHigh"}[p["level"]]
-            assert got[name + "Rho"] == "%.4f" % p["rho"]
-            assert got[name + "RhoRt"] == "%.4f" % p["rho_rt"]
-        gap = max(abs(float(got[n + "Rho"]) - float(got[n + "RhoRt"]))
-                  for n in ("rtLow", "rtHigh"))
-        assert abs(gap - float(got["mechRhoMatch"])) < 1e-4
-
-    def test_the_caption_claim_is_no_weaker_than_the_bound_it_replaced(self):
-        """The typed caption promised 0.001. The derived value must still honour it."""
-        got = dict(epn.manipulation_macros())
-        assert float(got["mechRhoMatch"]) <= 0.001
+        assert not {"mechRhoMatch", "rtLowRho", "rtLowRhoRt", "rtHighRho", "rtHighRhoRt"} & set(got)
 
     def test_the_geometry_rho_is_the_one_both_replications_reached(self):
         got = dict(epn.manipulation_macros())
@@ -652,23 +637,13 @@ class TestTheManipulationCaptionAndItsThreshold:
         assert got["mechEventsPerCell"] == epn.latex_thousands(2985), \
             "the l60 cell's 999 events must not reach a caption about l75 and l88"
 
-    def test_a_pair_outside_the_table_does_not_reach_the_match(self, monkeypatch):
-        import priority_pairs
-        shown = {"level": "l75", "rho": 0.75312, "rho_rt": 0.7525}
-        other = {"level": "l60", "rho": 0.60, "rho_rt": 0.90}
-        monkeypatch.setattr(priority_pairs, "pairs", lambda *a, **k: [other, shown])
-        got = dict(epn.manipulation_macros())
-        assert got["mechRhoMatch"] == "%.4f" % abs(shown["rho"] - shown["rho_rt"]), \
-            "a level the table does not print must not widen the caption's claim"
-
-    def test_no_shown_pair_yields_no_match_rather_than_an_empty_maximum(self, monkeypatch):
-        """max() of nothing raises; skipping says so without a traceback."""
+    def test_the_worst_gap_reads_every_pair_whatever_its_level(self, monkeypatch):
+        """The paper's "matched to within" is over every pair, so no level filter applies."""
         import priority_pairs
         monkeypatch.setattr(priority_pairs, "pairs",
-                            lambda *a, **k: [{"level": "l60", "rho": 0.6, "rho_rt": 0.6}])
+                            lambda *a, **k: [{"level": "l60", "rho": 0.6, "rho_rt": 0.61}])
         got = dict(epn.manipulation_macros())
-        assert "mechRhoMatch" not in got
-        assert "manipWorst" in got, "the campaign-wide worst gap does not use that filter"
+        assert got["manipWorst"] == "0.010"
 
     def test_cells_that_disagree_yield_no_count_rather_than_an_average(self, monkeypatch):
         monkeypatch.setattr(stat_intervals, "priority_cells",
@@ -687,7 +662,6 @@ class TestTheManipulationCaptionAndItsThreshold:
         monkeypatch.setattr(priority_pairs, "pairs",
                             lambda *a, **k: (_ for _ in ()).throw(OSError("gone")))
         got = dict(epn.manipulation_macros())
-        assert "mechRhoMatch" not in got
         assert "manipWorst" not in got
         assert "manipMargin" not in got
 
@@ -713,7 +687,7 @@ class TestTheManipulationCaptionAndItsThreshold:
         names = {n for n, _ in epn.all_pairs(measured(load_cells(
             Path(__file__).parent.parent.parent / "docs" / "results"
             / "external_campaigns_index.csv")))}
-        assert {"mechEventsPerCell", "mechRhoMatch", "mechGeomRho",
+        assert {"mechEventsPerCell", "mechGeomRho",
                 "manipTol", "manipWorst", "manipMargin"} <= names
 
 
@@ -1245,11 +1219,13 @@ class TestTheExposureCurve:
         # ninetieth span of the lag, and both floors were the median: one macro serving as
         # two statistics eight words apart. On this fixture the floors are 5% and 0.50 ms,
         # which is what the stated span implies and what the median is not.
-        assert got == {"exposureErrTen": "10", "exposureErrHundred": "1",
+        # 5 Oct 2026: the error at 100 ms and the crossover's tenth-percentile end left the
+        # ledger with the sentences that printed them.
+        assert got == {"exposureErrTen": "10",
                        "exposureErrOne": "100", "exposureGapTen": "11",
                        "exposureCrossover": "1.00",
                        "exposureLagLo": "500", "exposureLagHi": "1500",
-                       "exposureErrTenLo": "5", "exposureCrossoverLo": "0.50",
+                       "exposureErrTenLo": "5",
                        "exposureCrossoverHi": "1.50", "exposureErrTenHi": "15"}
 
     def test_the_macros_are_absent_rather_than_wrong_when_the_data_is(self, tmp_path,
@@ -1487,6 +1463,19 @@ class TestTheRecoveryMacrosDeclineRatherThanInvent:
         got = dict(epn.disease_macros(str(p)))
         assert got["diseaseEvents"] == "100"
         assert not [k for k in got if k.startswith("diseaseOver")]
+
+    def test_the_ladder_is_over_the_messages_the_paper_counts(self):
+        """Section VI quotes the shares of messages whose publish latency exceeds half and all
+        of the end-to-end latency, and Section III prints how many messages there are,
+        \\spanEvents. The shares are computed over span_run_level.csv and the count over the
+        recount, two files, so the denominator the reader is given is only right while the two
+        agree. Kept on 5 Oct 2026 when the unread macros were pruned, for this check."""
+        gen = (Path(__file__).parent.parent.parent / "docs" / "generated"
+               / "paper_numbers.tex").read_text(encoding="utf-8")
+        vals = dict(re.findall(r"\\newcommand\{\\(\w+)\}\{(.*)\}", gen))
+        assert vals["diseaseEvents"] == vals["spanEvents"], (
+            "the shares of Section VI are over %s messages, the paper says %s"
+            % (vals["diseaseEvents"], vals["spanEvents"]))
 
 
 class TestTheDepositedVersionIsRead:
@@ -1931,14 +1920,15 @@ class TestTheInterHostOffsetIsRead(object):
                           [("driver", "0.000021354 seconds fast of NTP time"),
                            ("broker", "0.000045595 seconds slow of NTP time")])
         m = dict(epn.inter_host_offset_macros(path=p))
-        assert m["interHostOffsetUs"] == "67"
-        assert m["interHostOffsetMs"] == "0.067"
+        # Milliseconds only since 5 Oct 2026; the microsecond form was printed by a cut
+        # paragraph.
+        assert m == {"interHostOffsetMs": "0.067"}
 
     def test_the_same_side_subtracts(self, tmp_path):
         p = self._capture(tmp_path / "c.csv",
                           [("driver", "0.000050000 seconds fast of NTP time"),
                            ("broker", "0.000020000 seconds fast of NTP time")])
-        assert dict(epn.inter_host_offset_macros(path=p))["interHostOffsetUs"] == "30"
+        assert dict(epn.inter_host_offset_macros(path=p))["interHostOffsetMs"] == "0.030"
 
     def test_one_host_is_not_an_offset(self, tmp_path):
         p = self._capture(tmp_path / "c.csv",
@@ -2321,7 +2311,9 @@ class TestRoundSixtyEightMacros:
         # Each end of each derived band must be that end of the lag, divided through.
         assert float(m["exposureErrTenLo"]) == pytest.approx(100.0 * lag_lo / 10_000.0, abs=0.5)
         assert float(m["exposureErrTenHi"]) == pytest.approx(100.0 * lag_hi / 10_000.0, abs=0.5)
-        assert float(m["exposureCrossoverLo"]) == pytest.approx(lag_lo / 1000.0, abs=0.005)
+        # The crossover is printed at the median and at the ninetieth percentile only, as two
+        # named points, so its tenth-percentile end left the ledger on 5 Oct 2026.
+        assert "exposureCrossoverLo" not in m
         assert float(m["exposureCrossoverHi"]) == pytest.approx(lag_hi / 1000.0, abs=0.005)
 
     def test_the_median_keeps_its_own_macros_and_is_not_an_endpoint(self):
@@ -2329,7 +2321,7 @@ class TestRoundSixtyEightMacros:
         m = dict(epn.exposure_macros())
         assert float(m["exposureErrTen"]) > float(m["exposureErrTenLo"]), \
             "the median sits inside the band, which is why it cannot be its floor"
-        assert float(m["exposureCrossover"]) > float(m["exposureCrossoverLo"])
+        assert float(m["exposureCrossover"]) < float(m["exposureCrossoverHi"])
 
     def test_the_collapse_ratios_are_anchored_on_the_mode(self):
         """R3. Four printed ratios, the first being the fall immediately above the mode."""
@@ -2511,8 +2503,10 @@ class TestTheCellsAboveTheGrid:
 class TestSpelledTwins:
 
     def test_each_listed_count_gets_its_word(self):
-        assert epn.spelled_twins([("rtPairs", "8"), ("tostLevels", "3"), ("other", "4")]) == [
-            ("tostLevelsWord", "three"), ("rtPairsWord", "eight")]
+        # tostLevels left the list on 5 Oct 2026, so it is passed here and not spelled.
+        assert epn.spelled_twins([("rtPairs", "8"), ("tracedModes", "3"), ("tostLevels", "3"),
+                                  ("other", "4")]) == [
+            ("tracedModesWord", "three"), ("rtPairsWord", "eight")]
 
     def test_the_generated_file_carries_them(self):
         gen = (Path(__file__).parent.parent.parent / "docs" / "generated"

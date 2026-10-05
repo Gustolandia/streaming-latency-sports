@@ -676,6 +676,10 @@ def harness_pacer_jitter(path=os.path.join("external", "harness_results.csv"),
     than a range takes it from the artefact instead of re-measuring, and so that this note
     does not have to be believed on its word.
 
+    5 Oct 2026: the sentence left with the rebuilt paper and the jitter's macros left the
+    ledger, interHostOffsetUs with them; this function stays, tested, for a document that
+    quotes the jitter again.
+
     Returns (lo, hi) over all runs, or None when the column is absent.
     """
     rows = _rows(*path.split(os.sep))

@@ -522,6 +522,12 @@ different quantity --- and decimal-valued, which is what puts a macro inside the
 sweep. `test_round71_findings.py` checks the printed range contains every measured run, which
 is the property that failed, rather than checking the two digits.
 
+*5 Oct 2026:* the sentence left with the rebuilt paper, and no document prints the pacer
+jitter or the offset in microseconds, so `pacerJitterLo`, `pacerJitterHi`, `pacerJitterRuns`
+and `interHostOffsetUs` left the ledger, and the range check with them. The rule stands; the
+jitter is still computed by `stat_intervals.harness_pacer_jitter()` for a sentence that
+quotes it again.
+
 ### A2e. A number is evidence for the claim it was measured on, and for no other --- GATED
 
 Two sentences in one round, both of the same shape. Section IV-D said *"We replay 3,315

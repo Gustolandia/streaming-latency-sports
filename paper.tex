@@ -254,9 +254,9 @@ run, because of a deletion nobody checks.
 \begin{itemize}
 \item Measured by a tool that times in whole milliseconds and deletes whatever is not positive,
 brokers faster than a millisecond tie. Where fast and slow messages mix, the filter inflates the
-median instead. At $\ombAboveGridPartialKB$~KB, \ombAboveGridPartialWord{} settings printed
-$\ombAboveGridPartialMedLo$ and $\ombAboveGridPartialMedHi$~ms, yet most of their messages had
-arrived within a millisecond (Section~\ref{sec:reading}).
+median instead. At $\ombAboveGridPartialKB$~KB most messages arrived within a millisecond and
+were deleted, so \ombAboveGridPartialWord{} settings printed medians of $\ombAboveGridPartialMedLo$
+and $\ombAboveGridPartialMedHi$~ms, those of the slow remainder (Section~\ref{sec:reading}).
 \item A latency timed from the acknowledgment understates the end-to-end latency and inflates the
 gap between two brokers. Their clients cause the excess, which a reader would credit to the brokers
 (Section~\ref{sec:cost}).

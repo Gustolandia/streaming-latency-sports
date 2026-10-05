@@ -106,8 +106,11 @@ def normalised(text):
 
 
 def manuscript_words(tex):
-    """Prose words of the manuscript: comments, math, commands and their arguments removed."""
-    t = re.sub(r"(?m)^%.*$", "", tex)
+    """Prose words of the manuscript: comments, math, commands and their arguments removed,
+    and the Acknowledgment, which is thanks and a statement of process, not the paper's prose."""
+    t = re.sub(r"\\section\*\{Acknowledgment\}.*?(?=\\section\*\{|\\bibliographystyle|\Z)",
+               " ", tex, flags=re.S)
+    t = re.sub(r"(?m)^%.*$", "", t)
     t = re.sub(r"\$[^$]*\$", " ", t)
     t = re.sub(r"\\begin\{equation\*?\}.*?\\end\{equation\*?\}", " ", t, flags=re.S)
     t = re.sub(r"\\(?:cite|ref|label|eqref|href|url|includegraphics|input|bibliography)\{[^}]*\}", " ", t)

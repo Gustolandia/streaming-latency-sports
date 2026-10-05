@@ -55,6 +55,12 @@ class TestManuscriptWords:
                "\\begin{equation}eqword\\end{equation} ready-made {braces}.")
         assert bvt.manuscript_words(tex) == ["timestamp", "late", "ready-made", "braces"]
 
+    def test_the_acknowledgment_is_not_the_paper_s_prose(self):
+        tex = ("Prose here.\n\\section*{Acknowledgment}\nThanks and process.\n"
+               "\\section*{Artifact Availability}\nArchived code.")
+        assert bvt.manuscript_words(tex) == ["prose", "here", "artifact", "availability",
+                                             "archived", "code"]
+
 
 class TestMain:
 

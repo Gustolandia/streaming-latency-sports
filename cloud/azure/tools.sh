@@ -88,7 +88,7 @@ not_run_yet () {  # stage, tool, a pattern for the runs that stage writes
 #: and so for memtier, librdkafka and Kafka: transcriptions whose tails were regenerated rather
 #: than copied. Three more -- wrk2, rabbitmq-perftest and nats-latency -- sat here as "resolve"
 #: although the audit had a real commit for each. Nothing could contradict any of it, because
-#: nothing read this table: it was written in e6870e38 on 20 September, the commit that created
+#: nothing read this table: it was written in 4f54adca on 20 September, the commit that created
 #: this file, and the step that would have fetched these commits fetched nothing.
 #:
 #: The table is now the audit's, which is what this plan means by "the versions the audit read",

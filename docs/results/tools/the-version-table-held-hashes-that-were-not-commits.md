@@ -30,7 +30,7 @@ commits recorded against the wrong project. They are not commits.
 ## Where they came from
 
 Not from outside. This repository has one author across all 648 of its commits, and the only
-other committer is GitHub's web interface on three merges. They entered in `e6870e38` on 20
+other committer is GitHub's web interface on three merges. They entered in `4f54adca` on 20
 September, the commit that created `cloud/azure/tools.sh`.
 
 The real versions were in the repository the whole time. `data/tools_audit/batch_*.json` — T5's

@@ -1,6 +1,6 @@
 # Registered audit of published OpenMessaging Benchmark results
 
-The audit registered in `freezes/29-published-results-audit/` (committed 8865e0a1, before any
+The audit registered in `freezes/29-published-results-audit/` (committed 3b82667b, before any
 report was read) asked whether published OMB end-to-end results sit in the deletion regime of
 the paper's Section IV. It ran on 28 September 2026 under that registration, unchanged.
 

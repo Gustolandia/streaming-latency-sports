@@ -1,6 +1,6 @@
 # Summary: published OMB end-to-end results with a 1 ms median
 
-Registration: `freezes/29-published-results-audit/` at 8865e0a1 (fingerprints checked before any
+Registration: `freezes/29-published-results-audit/` at 3b82667b (fingerprints checked before any
 report was read). Coding is in `configurations.csv` (1,251 rows: one per configuration, one per
 excluded report). Sources and queries are in `search_log.md`. Row ids (R0001...) refer to
 `configurations.csv`. The counts below were recomputed from the CSV by

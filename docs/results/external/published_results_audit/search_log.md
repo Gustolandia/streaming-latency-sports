@@ -1,6 +1,6 @@
 # Search log: registered audit of published OMB end-to-end results
 
-Registration: `freezes/29-published-results-audit/audit_plan.md` and `already_read.txt`, commit 8865e0a1
+Registration: `freezes/29-published-results-audit/audit_plan.md` and `already_read.txt`, commit 3b82667b
 (branch fix/editorial-revision). Both files were checked against the folder's `SHA256SUMS` before any search
 (audit_plan.md 8449a0ad…67b9, already_read.txt 30eb215c…deb; both match). Nothing in the repository was modified.
 

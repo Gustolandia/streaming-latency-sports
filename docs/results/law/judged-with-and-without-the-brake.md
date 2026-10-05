@@ -2,7 +2,7 @@
 
 **27 and 28 September 2026, on every run the three pairs made.** Each pair's disk was rebuilt at
 home from the copies of 25 and 27 September and checked file by file against the list its driver
-wrote at the last collection. Every judge is the frozen one of plan version 32 (as at `f9df7105`),
+wrote at the last collection. Every judge is the frozen one of plan version 32 (as at `b7bfa091`),
 run through `scripts/judge_campaigns.py`; the views are laid out by `scripts/brake_views.py`. The
 answers, all three ways, are in [`judged-27-sep/`](judged-27-sep/), with the quality of every
 campaign in [`judged-27-sep/quality_by_campaign.csv`](judged-27-sep/quality_by_campaign.csv).

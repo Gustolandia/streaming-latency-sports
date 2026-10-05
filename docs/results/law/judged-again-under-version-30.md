@@ -1,6 +1,6 @@
 # Judged again under version 30: what the corrected programs say, beside what they said before
 
-**25 September 2026, judged by `ce153e74` (plan versions 30 and 31) on exactly the runs each
+**25 September 2026, judged by `ecf0a901` (plan versions 30 and 31) on exactly the runs each
 earlier answer read.** No new run went into anything here. Version 27 found five places where the
 programs that judge the predictions departed from the plan's own text (D27-5). Version 30 corrected
 them (D30-1 to D30-5) and asked for every verdict they touch to be judged again, with the reading as

@@ -241,7 +241,7 @@ index's table of faults.
   runs it in a subshell, so the record of the step never reached `unstep_clock`. Each second offset
   landed on top of the first, 5.3 to 5.7 ms from the PTP clock where 3.8 was planned. The only sign
   was the job's last line: "the clock now: −4.978339 ms". Those twelve runs are kept, with the
-  reason, in `tools_go_clock_not_restored_20260925`. After the fix (f6859319) the four tools were
+  reason, in `tools_go_clock_not_restored_20260925`. After the fix (1e951325) the four tools were
   run again. Every step started within 0.025 ms of the PTP clock and was back within 0.047 ms, and
   T2 now checks that and refuses to go on otherwise. A test runs T2's own lines with stand-ins for
   the clock, and it fails on the old call.

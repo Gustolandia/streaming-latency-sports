@@ -89,16 +89,11 @@ as ``postmortem, S37'' refer to its sections.
 \toprule
 Term & Meaning \\
 \midrule
-condition & One point of the experimental design: a broker, a publish rate, a message size, a
-background load and a consumer pattern, which is how often the consumer confirms what it has
-read. \\
 cell & A condition together with a workload; where the workload is fixed, the two coincide. A
 run executes a cell once, and a replicate is a further run of it. \\
 configuration & One setting of a manipulation that compares settings differing in one
 variable. \\
 core count $k$ & The number of cores the background load occupies. \\
-load geometry & How a utilization is reached: the load concentrated on few cores or spread over
-many. \\
 grid & The instants, $\tau$ apart, at which a timestamp changes value. \\
 $q$-lattice & The retentions $0, 1/q, \ldots, 1$ a paced producer can reach when its publish
 interval over $\tau$ is $a/q$ in lowest terms. \\
@@ -108,6 +103,9 @@ interval over $\tau$ is $a/q$ in lowest terms. \\
 
 \section{S1. The setup in full}
 \label{s:setup}
+
+What a reader needs to repeat a run is here: the testbeds and their clocks, every setting that
+can move a latency number, and where each timestamp is taken.
 
 \subsection{S1.1. Testbeds, clocks and workload}
 \label{s:setup-testbeds}
@@ -220,9 +218,9 @@ runs, and negative on none of the $\spanEvents$ messages. The parse thus falls i
 end-to-end latency of $\spanHandlingDeliveryUs\,\mu$s leaves out a parse $\spanHandlingSharePct\%$
 as long. A longer $D$ puts fewer values of $S$ below zero, and \kafka{} already has the higher
 rate, so including that parse would widen the gap between the brokers in
-Table~\ref{moved-tab:spans}.
+Table~\ref{stab:spans}.
 
-Table~\ref{moved-tab:spans} counts the values below zero in each span over every cloud run that
+Table~\ref{stab:spans} counts the values below zero in each span over every cloud run that
 produced matched records, rejected runs included, because a rejected run shows which span falls
 below zero as well as a clean one does. Only $S$, the one span whose two timestamps have no causal
 order (Section~\ref{P-sec:proxy}), ever does.
@@ -231,7 +229,7 @@ order (Section~\ref{P-sec:proxy}), ever does.
 \caption{\textbf{Only $S$ falls below zero, and under both brokers.} Values below zero by span
 and broker, over the $\spanRuns$ cloud runs that produced matched records, on one clock. The
 smallest run minimum of the publish latency $A$ is $\spanAckLagFloorUs\,\mu$s, clear of zero.}
-\label{moved-tab:spans}
+\label{stab:spans}
 \centering
 \footnotesize
 \setlength{\tabcolsep}{5pt}
@@ -264,7 +262,7 @@ run, which is weaker than registration.
 
 Over the $\auditRunsCloud$ cloud runs behind our results, the check rejects $\auditRejectedCloud$
 ($\auditPctCloud\%$), and $\auditUsableConditionsCloud$ of their $\auditConditionsCloud$
-conditions keep every run. That corpus is not the one of Table~\ref{moved-tab:spans}, which counts
+conditions keep every run. That corpus is not the one of Table~\ref{stab:spans}, which counts
 every cloud run that produced matched records, rejected or not, $\spanRuns$ of them. Of those,
 $\spanRunsOverOnePct$ exceed the one-percent line on $S$.
 
@@ -300,7 +298,8 @@ times smaller than the tolerance.
 \begin{table}[htbp]
 \caption{\textbf{Factor of $\rtFactorLow$ to $\rtFactorHigh$, with utilization matched in
 every pair.} Normal-priority and real-time negative-span rates at the same achieved utilization,
-and the factor between them, from three campaigns. Both configurations' achieved $\rho$ is printed
+and the factor between them, from three campaigns. Every cell is $\mechEventsPerCell$ matched
+events. Both configurations' achieved $\rho$ is printed
 so that the manipulation can be checked pair by pair. Generated at build time from the campaign
 files.}
 \label{stab:priority}
@@ -507,7 +506,7 @@ in advance: shown, not used.}
 \label{s:rivals}
 
 Five rivals fall to the design and the manipulations. One clock excludes clock skew between
-hosts. One utilization at rates twofold apart excludes utilization (\ref{s:geometry}). Real-time priority
+hosts, the cause a concurrent study assigns to such values (postmortem, S33). One utilization at rates twofold apart excludes utilization (\ref{s:geometry}). Real-time priority
 excludes timer noise, which would delay a thread whatever its scheduling class (\ref{s:priority}), and a
 longer path that lowers the rate excludes stress on the host (\ref{s:payload}). Coarse kernel timestamps
 fall to the runs test of \ref{s:twostate}. Four more need an argument each.
@@ -692,7 +691,7 @@ received, but nothing counts what the condition drops.
 We add counters in an \texttt{else} branch of that condition and change nothing else: not the
 latency computation, not the filter, not any reported statistic. The benchmark's output is
 therefore exactly what it would have been unpatched, and its printed summary can be set beside
-the retention behind it (Fig.~\ref{moved-fig:deletion}b). The four counters, for zero, negative,
+the retention behind it (Fig.~\ref{sfig:deletion}b). The four counters, for zero, negative,
 most negative and kept samples, separate sign. A value below zero and an end-to-end latency
 shorter than a millisecond both fail a \texttt{> 0} test, and one unsigned total cannot tell them
 apart (\ref{s:minus1000}). The patch is \brk{external/omb/workerstats_discard_counter.patch} in the
@@ -716,7 +715,7 @@ settings with a captured summary, at the median the benchmark printed and its re
 $\ombGridMedianCells$ settings print $\ombGridPrintedLo$ or $\ombGridPrintedHi$~ms while
 retention spans $\ombRetentionFold\times$. Above the grid, nothing is lost only at
 $\ombAboveGridWholeKB$~KB.}
-\label{moved-fig:deletion}
+\label{sfig:deletion}
 \end{figure}
 
 \subsection{S4.2. The phase of the publish schedule sets retention, as a 1970 counter note already showed}
@@ -725,7 +724,7 @@ $\ombAboveGridWholeKB$~KB.}
 Where each publish instant falls within a step of the clock decides whether its sample survives. An
 end-to-end latency shorter than the step $\tau$ survives only if it crosses a grid instant, where
 the timestamp changes value. Otherwise both timestamps round down, or floor, to the same value, and
-the positivity filter deletes the zero difference (Fig.~\ref{moved-fig:deletion}a). When phases are
+the positivity filter deletes the zero difference (Fig.~\ref{sfig:deletion}a). When phases are
 uniform, retention is $\theta = T_{\mathrm{true}}/\tau$, which is Equation~\ref{P-eq:retention} of
 the paper.
 

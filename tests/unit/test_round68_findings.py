@@ -38,6 +38,23 @@ def rendered_supplement():
     return _text(REPO / "postmortem.pdf")
 
 
+@pytest.fixture(scope="module")
+def journal():
+    """The journal supplement, which holds Table I and the stall spectrum since 5 Oct 2026."""
+    return (REPO / "supplement.tex").read_text(encoding="utf-8")
+
+
+@pytest.fixture(scope="module")
+def rendered_journal():
+    return _text(REPO / "supplement.pdf")
+
+
+@pytest.fixture(scope="module")
+def ledger():
+    gen = (REPO / "docs" / "generated" / "paper_numbers.tex").read_text(encoding="utf-8")
+    return dict(re.findall(RE_BS + r"newcommand\{" + RE_BS + r"(\w+)\}\{([^}]*)\}", gen))
+
+
 def _text(pdf):
     if not pdf.is_file():
         pytest.skip("%s not built" % pdf.name)
@@ -45,16 +62,24 @@ def _text(pdf):
     return "\n".join((p.extract_text() or "") for p in pypdf.PdfReader(str(pdf)).pages)
 
 
-def _band_start(paper):
-    """Where Section III-D introduces the band of acknowledgment lags.
+def _band_clause(paper):
+    """The sentence that introduces the band of publish latencies, flattened.
 
     v5 (28 Sep): the clause no longer opens "$A$ is not a constant"; it reads "Across
     conditions $A$ runs ... between its tenth and ninetieth percentiles", and the source wraps
     inside both phrases, so they are matched whitespace-tolerantly.
+
+    5 Oct 2026: the rebuilt paper introduces the band once, in Fig. 3's caption: "The curve
+    is A/D at the median publish latency, and its band spans the tenth to ninetieth
+    percentiles of A across conditions, 500--1900 us." The sentence that prints the band's
+    two ends is that clause.
     """
-    m = re.search(r"Across\s+conditions\s+\$A\$\s+runs", paper)
-    assert m, "the exposure band's clause has gone from Section III-D"
-    return m.start()
+    i = paper.index(chr(92) + "label{fig:exposure}")
+    caption = " ".join(paper[paper.rindex(chr(92) + "caption{", 0, i):i].split())
+    sentences = [s for s in re.split(r"(?<=\.) ", caption)
+                 if chr(92) + "exposureLagLo" in s]
+    assert len(sentences) == 1, "the exposure band's clause has moved; retarget this pin"
+    return sentences[0]
 
 
 class TestR1TheExposureBand:
@@ -63,27 +88,31 @@ class TestR1TheExposureBand:
         """"Spans" was the second half of the defect: 500-1900 us is the middle eighty per
         cent of the acknowledgment lag, not its range.
 
-        v5 (28 Sep): anchored on the v5 clause (see `_band_start`); the checks are unchanged.
-        """
-        i = _band_start(paper)
-        clause = paper[i:i + 320]
-        assert re.search(r"tenth\s+and\s+ninetieth\s+percentiles", clause)
-        assert "spans" not in clause, "a p10-p90 interval is not a span"
+        v5 (28 Sep): anchored on the v5 clause; the checks are unchanged.
 
-    def test_both_derived_bands_take_their_floor_from_the_tenth_percentile(self, paper):
-        """v5 (28 Sep): the band's paragraph is now followed by Fig. 4 rather than by the
-        paragraph that opened "Two consequences follow", so the clause runs to the end of its
-        own paragraph."""
-        i = _band_start(paper)
-        clause = paper[i:paper.index("\n\n", i)]
-        assert chr(92) + "exposureErrTenLo" in clause
-        assert chr(92) + "exposureCrossoverLo" in clause
+        5 Oct 2026: the clause is Fig. 3's caption (see `_band_clause`). It names the two
+        percentiles, and the verb "spans" now has the drawn band as its subject, which does
+        run from the tenth percentile to the ninetieth; what stays refused is the defect
+        itself, the publish latency A said to span or range over the pair, and the median's
+        own numbers inside the band."""
+        clause = _band_clause(paper)
+        assert re.search(r"tenth\s+(?:and|to)\s+ninetieth\s+percentiles", clause)
+        assert chr(92) + "exposureLagLo" in clause and chr(92) + "exposureLagHi" in clause
+        assert not re.search(r"(?:\$A\$|lag|latency|latencies)\s+(?:spans?|ranges?|runs)\b",
+                             clause), "a p10-p90 interval is not a span of the publish latency"
+        for median in ("ackLagMedianUs", "exposureCrossover$", "exposureErrTen$"):
+            assert chr(92) + median not in clause, (
+                "the median's own number sits inside the band again; that is round 68's defect")
 
     def test_the_median_is_still_named_as_the_median(self, paper):
-        """The clause before the band gives the median and must keep saying so."""
-        i = paper.index("At our\nmedian publish latency") if "At our\nmedian" in paper \
-            else paper.index("median publish latency")
-        assert chr(92) + "exposureCrossover$" in paper[i:i + 480]
+        """The clause before the band gives the median and must keep saying so.
+
+        5 Oct 2026: it is Section VI-B's sentence "At our median publish latency, A = 725 us,
+        the error is ... and below 0.72 ms the median publish latency exceeds the end-to-end
+        latency itself", matched across its line breaks."""
+        m = re.search(r"At\s+our\s+median\s+publish\s+latency", paper)
+        assert m, "the sentence that names the median has gone"
+        assert chr(92) + "exposureCrossover$" in paper[m.start():m.start() + 480]
 
     def test_the_supplements_labelling_is_unchanged(self, supplement):
         """S12 was right all along, and is the wording the main text was reconciled to."""
@@ -92,7 +121,7 @@ class TestR1TheExposureBand:
         assert "the median publish latency and $" + chr(92) + "exposureCrossoverHi$~ms at the " \
                "ninetieth percentile" in supplement
 
-    def test_the_rendered_numbers_are_the_percentile_ones(self, rendered_paper):
+    def test_the_rendered_numbers_are_the_percentile_ones(self, rendered_paper, ledger):
         """On the page, not in the source: the ledger can be right and the sentence wrong.
 
         The median's own numbers, 7% and 0.72 ms, sit in the clause *before* this one and
@@ -101,31 +130,37 @@ class TestR1TheExposureBand:
         v5 (28 Sep): the band opens "Across conditions" and ends at its pointer to Fig. 4,
         whose caption quotes the median crossover; bounding the band by its own "(Fig." keeps
         a float that lands mid-paragraph from putting 0.72 inside it.
+
+        5 Oct 2026: the rebuilt paper prints the band of publish latencies alone, in Fig. 3's
+        caption, from "tenth to ninetieth percentiles" to its microseconds; the error and
+        crossover bands derived from it went with the old Section III-D. The numbers are read
+        from the ledger rather than typed, and the median's are refused inside the band.
         """
         flat = " ".join(rendered_paper.split())
-        i = flat.index("Across conditions")
-        # 1 Oct 2026: the band moved into Fig. 4's caption, so it ends at its own sentence.
-        j = flat.index("crossover at", i)
-        band = flat[i:flat.index("ms", j) + 2]
-        assert "500" in band and "1900" in band, "the band names the two percentiles"
-        assert "19%" in band and "1.90" in band, "and keeps its ninetieth-percentile ends"
-        assert "0.50" in band, "the crossover floor is the tenth percentile, 0.50 ms"
-        assert "0.72" not in band, \
+        i = flat.index("tenth to ninetieth percentiles")
+        band = flat[i:flat.index("s.", i) + 2]
+        assert len(band) < 160, "the band clause no longer ends nearby: %r" % band[:200]
+        assert ledger["exposureLagLo"] in band and ledger["exposureLagHi"] in band, \
+            "the band names the two percentiles"
+        assert ledger["ackLagMedianUs"] not in band, \
+            "the median publish latency is inside the band; that is round 68's defect"
+        assert ledger["exposureCrossover"] not in band, \
             "the median crossover is back inside the band; that is round 68's defect"
 
 
 class TestR2TheConcession:
 
     def test_the_concession_is_a_condition_and_not_a_frequency(self, paper):
-        assert "Where a comparison reports a median above the" in paper
-        assert "Most published comparisons" not in paper, \
-            "a quantitative claim about a literature needs a denominator; this one had none"
-
-    def test_the_exception_keeps_its_exhibit(self, paper):
-        i = paper.index("Where a comparison reports a median above the")
-        passage = paper[i:i + 700]
-        assert "Some give no number to place" in passage
-        assert "indexdev2026brokers" in passage
+        """5 Oct 2026: the rebuilt paper drops the concession and its exception (the deletion
+        is claimed for the audited reports and our own runs only, Section VIII); what stays
+        refused is the frequency claim over a literature with no denominator, in the paper
+        and in the journal supplement."""
+        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        for name, text in (("paper.tex", paper), ("supplement.tex", journal)):
+            flat = " ".join(text.split())
+            assert "Most published comparisons" not in flat, (
+                "%s: a quantitative claim about a literature needs a denominator; this one had "
+                "none" % name)
 
     def test_related_work_still_does_not_point_at_the_supplement(self, paper):
         """The referee's suggested wording ended "(Supplement S33.4 gives the record we
@@ -165,20 +200,45 @@ class TestR2TheConcession:
 
 class TestR3TheCollapseAboveTheMode:
 
-    @pytest.mark.parametrize("doc", ["paper.tex", "supplement.tex", "postmortem.tex"])
+    FALLS = ("tracedModeFallA", "tracedModeFallB", "tracedModeFallC",
+             "tracedModeFallOctaves", "tracedLastBucketFall")
+
+    @pytest.mark.parametrize("doc", ["supplement.tex", "postmortem.tex"])
     def test_the_sentence_prints_the_three_falls_above_the_mode(self, doc):
         """v5 (28 Sep): Section III-C was cut to a few sentences and, in the paper, the falls
         went with it; they are restored there as "they fall ... over the next three octaves
         and then ...". The check is unchanged; only the anchor now tolerates a line break
-        between its two words, since that sentence is being rewrapped."""
+        between its two words, since that sentence is being rewrapped.
+
+        5 Oct 2026: the rebuilt paper says only that "above it the counts collapse" and points
+        to S3.7, which prints the falls; the paper is held to that pointer below."""
         text = (REPO / doc).read_text(encoding="utf-8")
         m = re.search(r"counts\s+collapse", text)
         assert m, "the collapse sentence has gone from %s" % doc
         i = m.start()
         passage = text[i:i + 400]
-        for macro in ("tracedModeFallA", "tracedModeFallB", "tracedModeFallC",
-                      "tracedModeFallOctaves", "tracedLastBucketFall"):
+        for macro in self.FALLS:
             assert chr(92) + macro in passage, "%s is missing from %s" % (macro, doc)
+
+    def test_the_paper_sends_its_collapse_to_the_section_that_prints_the_falls(self, paper,
+                                                                               journal):
+        """5 Oct 2026: the paper's sentence is anchored on the mode ("The last sits in the
+        bucket that contains the slice ... and above it the counts collapse"), and whatever it
+        does not print itself it must send the reader to: its pointer resolves to the
+        supplement section whose own collapse sentence prints all four falls."""
+        flat = " ".join(paper.split())
+        m = re.search(r"above it the counts collapse \(Supplement~(S\d+\.\d+)\)", flat)
+        assert m, "the paper's collapse sentence lost its pointer to the falls"
+        printed = [macro for macro in self.FALLS if chr(92) + macro in flat]
+        if len(printed) < len(self.FALLS):
+            head = re.search(r"subsection\{%s\. " % re.escape(m.group(1)), journal)
+            assert head, "Supplement %s does not exist" % m.group(1)
+            section = journal[head.start():journal.index(chr(92) + "subsection{", head.end())]
+            c = re.search(r"counts\s+collapse", section)
+            assert c, "Supplement %s does not carry the collapse" % m.group(1)
+            for macro in self.FALLS:
+                assert chr(92) + macro in section[c.start():c.start() + 400], (
+                    "%s is missing where the paper points, Supplement %s" % (macro, m.group(1)))
 
     @pytest.mark.parametrize("doc", ["paper.tex", "supplement.tex", "postmortem.tex"])
     def test_the_retired_fit_anchored_names_are_gone(self, doc):
@@ -199,12 +259,16 @@ class TestR3TheCollapseAboveTheMode:
         assert est["mode_falls"][0][1] == pytest.approx(
             bins[mode] / float(bins[mode * 2]), rel=1e-9)
 
-    def test_the_rendered_sentence_carries_four_ratios(self, rendered_paper):
+    def test_the_rendered_sentence_carries_four_ratios(self, rendered_journal, ledger):
         """v5 (28 Sep): the restored sentence need not say "rather than trail" or "falls by
         one factor", so it is bounded by what the restored clause does carry: from "counts
         collapse" to "octaves and then", plus the last factor that follows. Same sentence,
-        same four ratios, same octave count."""
-        flat = " ".join(rendered_paper.split())
+        same four ratios, same octave count.
+
+        5 Oct 2026: the four ratios print in the journal supplement's S3.7, where the paper
+        points, so its pages are read; the ratios come from the ledger rather than being
+        typed here."""
+        flat = " ".join(rendered_journal.split())
         i = flat.index("counts collapse")
         # Bounded by the sentence, not by a character count: round 80 moved a column break
         # into it, and the extractor reads Figure 3 -- tick labels and a caption that says
@@ -212,9 +276,10 @@ class TestR3TheCollapseAboveTheMode:
         j = flat.index("octaves and then", i)
         assert j - i < 900, "the collapse sentence no longer reaches its own end nearby"
         passage = flat[i:j + len("octaves and then") + 12]
-        for n in ("5.0", "3.4", "4.7", "357"):
-            assert n in passage, "%s missing from the collapse sentence" % n
-        assert "three octaves" in passage
+        for macro in ("tracedModeFallA", "tracedModeFallB", "tracedModeFallC",
+                      "tracedLastBucketFall"):
+            assert ledger[macro] in passage, "%s missing from the collapse sentence" % macro
+        assert ledger["tracedModeFallOctaves"] + " octaves" in passage
 
 
 class TestRecommendedItems:
@@ -229,13 +294,15 @@ class TestRecommendedItems:
         import apply_vocabulary as av
         assert av.main(["--check", "paper.tex", "supplement.tex", "postmortem.tex"]) == 0
 
-    def test_w3_table_one_prints_its_measured_zeros(self, paper, rendered_paper):
-        i = paper.index("label{tab:spans}")
-        table = paper[i:paper.index("end{table}", i)]
+    def test_w3_table_one_prints_its_measured_zeros(self, journal, rendered_journal):
+        """5 Oct 2026: Table I, the values below zero by span, is the journal supplement's
+        now (S1.3, label stab:spans); its source and its pages are read there."""
+        i = journal.index("label{stab:spans}")
+        table = journal[i:journal.index("end{table}", i)]
         assert "---" not in table, "an em-dash in an IEEE table reads 'not measured'"
-        assert "dashed" not in paper[:i][-900:], \
+        assert "dashed" not in journal[:i][-900:], \
             "the caption stopped needing to explain the glyph"
-        flat = " ".join(rendered_paper.split())
+        flat = " ".join(rendered_journal.split())
         assert flat.count("publish (chain)0 0 0") == 3, \
             "all three publish-referenced chain rows print three measured zeros -- the "\
             "publish latency joined them in round 70"
@@ -245,16 +312,21 @@ class TestRecommendedItems:
         """v5 (28 Sep): the paper's new exposure figure took `fig:exposure`, the label the
         supplement's own exposure curve has always carried, and under the P- prefix the two
         cannot collide. A label the supplement defines itself therefore resolves to its own
-        float and is not a leak; every other unprefixed reference to a paper label still fails."""
-        assert chr(92) + "externaldocument[P-]{paper}" in supplement
-        assert chr(92) + "externaldocument{paper}" not in supplement
+        float and is not a leak; every other unprefixed reference to a paper label still fails.
+
+        5 Oct 2026: the postmortem was written against the paper as it stood before the
+        rebuild, and its pointers read that version's labels, kept with it in
+        docs/archive/2026-10-05-before-cleanup/. The prefix rule is unchanged, and the archived
+        label map is committed, so its absence fails instead of skipping."""
+        archived = "docs/archive/2026-10-05-before-cleanup/paper"
+        assert chr(92) + "externaldocument[P-]{%s}" % archived in supplement
+        assert chr(92) + "externaldocument{" not in supplement
         # The supplement refers to its own floats as well, and those must NOT be prefixed.
         # What must be is every label that actually lives in the paper, so the check runs
         # against the paper's own label set rather than against a naming pattern -- a
         # pattern would either miss `eq:` or condemn the supplement's own tables.
-        aux = REPO / "paper.aux"
-        if not aux.is_file():
-            pytest.skip("paper.aux not built")
+        aux = REPO / (archived + ".aux")
+        assert aux.is_file(), "the archived paper's label map is committed beside it"
         theirs = set(re.findall(RE_BS + r"newlabel\{([^}]*)\}",
                                 aux.read_text(encoding="utf-8", errors="replace")))
         referenced = set(re.findall(RE_BS + r"ref\{([^}]*)\}", supplement))

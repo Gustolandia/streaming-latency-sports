@@ -9,10 +9,17 @@ the paper. The record itself was worth keeping and is kept, whole, as `postmorte
 with the data and not submitted. What reviewers receive is `supplement.tex`: under the paper's
 byline, one section per part of the paper's argument, the evidence in the paper's order.
 
-These tests hold the shape that answer depends on: the outline, the map from every paper section,
-that every pointer from the paper lands on a section or subsection that exists and that every
-section is pointed at, the pointer budget, the pointers into the postmortem, the vocabulary, the
-reference budget and the page budget. Content pins live beside the content they pin.
+On 5 October 2026 the paper was rebuilt around four bottom lines and the supplement was cut to
+what they need: six sections, S1 to S6, with their subsections merged or deleted and the rest
+renumbered. The broker comparison, the withdrawn results and the related work in full (S7 to S9)
+went, and with them the front matter's map from every paper section, whose job the paper's own
+pointers now do.
+
+These tests hold the shape that answer depends on: the outline, that every pointer from the
+paper lands on a section or subsection that exists and that every section is pointed at, the
+pointer floor (the author lifted the editor's ceiling on 5 October), the pointers into the
+postmortem, the vocabulary, the reference budget and the page budget. Content pins live beside
+the content they pin.
 """
 from pathlib import Path
 import re
@@ -22,7 +29,8 @@ import pytest
 REPO = Path(__file__).parent.parent.parent
 BS = chr(92)
 
-#: The sections in order, and their labels.
+#: The sections in order, and their labels. Six since 5 Oct 2026: S7 (s:brokers), S8
+#: (s:withdrawn) and S9 (s:related) were cut, and the postmortem holds their material whole.
 OUTLINE = (
     ("S1", "s:setup"),
     ("S2", "s:signcheck"),
@@ -30,12 +38,10 @@ OUTLINE = (
     ("S4", "s:failure2"),
     ("S5", "s:tools"),
     ("S6", "s:law"),
-    ("S7", "s:brokers"),
-    ("S8", "s:withdrawn"),
-    ("S9", "s:related"),
 )
-#: The editor's budget for pointers from the paper into this document (review, section 9).
-POINTER_BUDGET = 15
+#: The editor's budget for pointers from the paper into this document (review, section 9) was
+#: fifteen. The author lifted it on 5 Oct 2026 when the paper was rebuilt: "No limits on
+#: referencing the supplement." Only the floor below is held now.
 POINTER = re.compile(r"Supplement~S(\d+)(?:\.(\d+))?(?:\s+and~S(\d+)(?:\.(\d+))?)?")
 
 
@@ -67,18 +73,6 @@ def _headings(tex):
     return set(re.findall(r"\\(?:sub)?section\{(S\d+(?:\.\d+)?)\.", tex))
 
 
-def _paper_sections(paper):
-    """The paper's numbered sections as (title, labels), in order.
-
-    A section can carry several labels, one per name it has had (`sec:practice`,
-    `sec:discussion` and `sec:authors` all land on "Practical Implications"); any of them will
-    do."""
-    out = []
-    for m in re.finditer(r"\\section\{([^}]*)\}((?:\s*\\label\{[^}]*\})+)", _prose(paper)):
-        out.append((m.group(1), re.findall(r"\\label\{([^}]*)\}", m.group(2))))
-    return out
-
-
 def _pointers(paper):
     found = []
     for m in POINTER.finditer(_prose(paper)):
@@ -97,25 +91,6 @@ def test_the_sections_are_in_the_papers_order(supp):
         assert BS + "label{%s}" % label in head, "%s must carry \\label{%s}" % (name, label)
 
 
-def test_the_map_has_a_row_for_every_section_of_the_paper(supp, paper):
-    """The front matter's table maps each section of the paper to where its evidence is. A
-    section added to the paper and not to the map is a reader with nowhere to go."""
-    front = supp[supp.index(BS + "maketitle"):_sections(supp)[0][1]]
-    sections = _paper_sections(paper)
-    assert len(sections) >= 8, "the paper's sections were not found: %s" % sections
-    for title, labels in sections:
-        assert any(BS + "ref{P-%s}" % lab in front for lab in labels), \
-            "the map omits the paper's %s (%s)" % (title, ", ".join(labels))
-
-
-def test_the_map_names_only_sections_that_exist(supp):
-    front = supp[supp.index(BS + "maketitle"):_sections(supp)[0][1]]
-    labels = set(re.findall(r"\\label\{(s:[^}]*)\}", supp))
-    used = set(re.findall(r"\\ref\{(s:[^}]*)\}", front))
-    assert used, "the map refers to no section here"
-    assert used <= labels, "the map refers to labels that do not exist: %s" % (used - labels)
-
-
 def test_every_pointer_from_the_paper_lands_on_a_heading(supp, paper):
     heads = _headings(supp)
     bad = [p for p in _pointers(paper) if p not in heads]
@@ -129,11 +104,15 @@ def test_the_paper_points_at_every_section(supp, paper):
     assert not missing, "the paper never points at %s" % missing
 
 
-def test_the_paper_keeps_to_the_pointer_budget(paper):
+def test_the_paper_points_at_least_once_per_section(paper):
+    """The floor is one pointer per section here, so it moved from nine to six with the cut of
+    5 Oct 2026. The editor's ceiling of fifteen went the same day, at the author's word ("No
+    limits on referencing the supplement"), so a pointer that helps a referee is never cut to
+    fit a count."""
     n = len(POINTER.findall(_prose(paper)))
-    assert 9 <= n <= POINTER_BUDGET, (
-        "%d pointers from the paper; the budget is %d, and fewer than one per section here "
-        "means the pattern stopped matching" % (n, POINTER_BUDGET))
+    assert n >= len(OUTLINE), (
+        "%d pointers from the paper, fewer than one per section here, which means the pattern "
+        "stopped matching" % n)
 
 
 def test_no_pointer_uses_the_old_numbering(paper):
@@ -175,14 +154,14 @@ def test_got_it_appears_only_as_the_plans_own_word(supp):
 
 
 def test_withdrawals_are_told_in_one_place(supp):
-    """The postmortem narrates withdrawals everywhere; this document does so in S8 alone."""
-    prose = _prose(supp)
-    s8 = prose.index(BS + "section{S8.")
-    s9 = prose.index(BS + "section{S9.")
-    # A pointer to S8 names its label, s:withdrawn; that is a signpost, not a narration.
-    outside = re.sub(r"\\(?:ref|label)\{[^}]*\}", "", prose[:s8] + prose[s9:])
-    hit = re.search(r".{0,60}withdr.{0,60}", outside, re.I | re.S)
-    assert not hit, "withdrawal narrated outside S8: %r" % (hit.group(0) if hit else "")
+    """The postmortem narrates withdrawals everywhere. This document told them in S8 alone
+    until 5 Oct 2026, when S8 was cut, so now the postmortem is the one place and this document
+    tells none."""
+    # A label or a reference is a signpost, not a narration.
+    prose = re.sub(r"\\(?:ref|label)\{[^}]*\}", "", _prose(supp))
+    hit = re.search(r".{0,60}withdr.{0,60}", prose, re.I | re.S)
+    assert not hit, "withdrawal narrated in the journal supplement: %r" % (
+        hit.group(0) if hit else "")
 
 
 def test_no_reviewer_talk(supp):
@@ -200,11 +179,16 @@ def test_labels_do_not_collide_with_the_papers(supp):
 def test_the_reference_list_stays_under_sixty():
     """Counted in the built bibliography, not in the source: the tool registry's table and
     other generated inputs cite through macros, and a count of the typed \\cite commands
-    read 56 while the printed list held 63 (29 Sep)."""
+    read 56 while the printed list held 63 (29 Sep).
+
+    The floor only says the bibliography was built and read. It was 20 against a list of 56
+    to 63; the cut of 5 Oct 2026 left 14 references, so it is 10 now."""
     import paper_build
     bbl = paper_build.need("supplement.bbl").read_text(encoding="utf-8", errors="replace")
     n = len(re.findall(r"\\bibitem", bbl))
-    assert 20 <= n < 60, "%d references; the editor's budget is under sixty" % n
+    assert 10 <= n < 60, (
+        "%d references; the editor's budget is under sixty, and fewer than ten means the "
+        "bibliography was not built or not read" % n)
 
 
 def test_the_postmortem_is_named_where_a_reader_starts(supp):
@@ -213,11 +197,16 @@ def test_the_postmortem_is_named_where_a_reader_starts(supp):
 
 
 def test_the_built_supplement_is_within_budget():
+    """The editor's ceiling, 25-30 pages with a little room, still holds. The floor only
+    catches a build that lost its content: it was 20 against 30 pages, and the cut of 5 Oct
+    2026 left 16, so it is 12 now."""
     import paper_build
     from pypdf import PdfReader
     pdf = paper_build.need("supplement.pdf")
     pages = len(PdfReader(str(pdf)).pages)
-    assert 20 <= pages <= 34, "%d pages; the budget is 25-30, with a little room" % pages
+    assert 12 <= pages <= 34, (
+        "%d pages; the budget is at most 30, with a little room, and under 12 the build lost "
+        "content" % pages)
 
 
 def test_the_postmortem_says_what_it_is():

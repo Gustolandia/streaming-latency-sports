@@ -219,10 +219,23 @@ class TestADefinedSymbolKeepsItsOneMeaning:
         assert not offenders, \
             "rho is the utilization; it is used for a correlation in: " + " | ".join(offenders)
 
+    #: The emitted medians of the D-A correlation, pooled and run-centred.
+    CORRELATION = re.compile(r"\\spanRho(?:Within)?Median(?![A-Za-z])")
+
     def test_the_correlation_keeps_a_name_that_is_not_a_symbol(self, package):
-        # Round 79 (R2): now the run-centred median, `spanRhoWithinMedian`, still named in words.
-        assert "median correlation $\\spanRhoWithinMedian$" in package, \
-            "the D-A correlation must be named rather than given a symbol already in use"
+        """Wherever the D-A correlation is quoted, its sentence names it in words.
+
+        Round 79 (R2) pinned the paper's "median correlation $\\spanRhoWithinMedian$". The
+        5 Oct 2026 rebuild cut that sentence from the paper, and the correlation is now quoted
+        only in the postmortem's statistics paragraph, so the rule is held wherever the medians
+        are printed rather than at the one sentence that used to print them.
+        """
+        quoting = [s for s in _sentences(package) if self.CORRELATION.search(s)]
+        assert quoting, "the D-A correlation is quoted nowhere; this guard has nothing to hold"
+        bad = [s[:150] for s in quoting
+               if not re.search(r"\bcorrelation\b", s, re.I) or "\\rho" in s]
+        assert not bad, ("the D-A correlation must be named rather than given a symbol already "
+                         "in use: " + " | ".join(bad))
 
 
 # --- Rule: count your events before you quote a percentile ---------------------------------
@@ -241,7 +254,11 @@ class TestThePapersOwnPercentilesCarryTheirDenominators:
     def test_the_exposure_curve_is_quoted_with_its_spread(self, paper):
         """Section VII-B tells the reader to know "how wide it is"; round 51 found the paper
         quoting the curve by its middle, which it calls "this paper's own mistake one level
-        up"."""
+        up".
+
+        The 5 Oct 2026 rebuild cut Section VII-B, and with it the rule in the paper's own
+        words, but not the curve: Section VI still quotes the error at 10 ms at the median
+        publish latency, and rule A1e of the writing standards still asks for its spread."""
         assert "\\exposureErrTenHi" in paper, \
             "the exposure error is quoted without the upper quartile that gives its width"
         assert "\\exposureCrossoverHi" in paper or "\\exposureLagHi" in paper, \

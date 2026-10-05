@@ -46,6 +46,13 @@ def supplement():
     return (REPO / "postmortem.tex").read_text(encoding="utf-8")
 
 
+@pytest.fixture(scope="module")
+def journal():
+    """The journal supplement: since 5 Oct 2026 it holds the workload's replay sentence and
+    the clock bounds (S1.1) and the priority factors' intervals (S3.1)."""
+    return (REPO / "supplement.tex").read_text(encoding="utf-8")
+
+
 def _rendered(name):
     pdf = REPO / ("%s.pdf" % name)
     if not pdf.is_file():
@@ -66,18 +73,24 @@ class TestR1TheCorpusAndTheCampaignAreDifferentNumbers:
         plans = sorted((REPO / "data" / "processed" / "replay_plans").glob("*/match_*"))
         assert m["replayedMatchesWord"] == epn._spell(len(plans)) == "eleven"
 
-    def test_the_sentence_names_each_number_with_its_own_verb(self, paper):
+    def test_the_sentence_names_each_number_with_its_own_verb(self, paper, journal):
         """v5 (28 Sep): the setup became one paragraph (Section II-B) and the sentence is now
         "eleven of its 3,315 matches, replayed in order". The characterisation went to S20 with
         the rest of the workload's description; what stays pinned is that the replay verb
-        governs the eleven and the corpus size is only the whole they were taken from."""
-        i = paper.index("The workload is")
-        passage = " ".join(paper[i:i + 460].split())
-        assert ("StatsBomb's open football event data~" + chr(92) + "cite{statsbomb2023}: "
-                + chr(92) + "replayedMatchesWord{} of its $" + chr(92)
-                + "corpusMatches$ matches, replayed in order") in passage
-        assert not re.search(r"replay\w*\s+(?:the\s+)?\$" + RE_BS + "corpusMatches", passage), (
-            "the corpus size is the object of a replay verb again")
+        governs the eleven and the corpus size is only the whole they were taken from.
+
+        5 Oct 2026: the rebuilt paper says only that the producer replays StatsBomb's data at
+        a chosen rate, and the counts went to the journal supplement's S1.1: "On the cloud
+        testbed it replays eleven of its 3,315 matches, in order". The replay verb governs the
+        eleven there; in neither document may it govern the corpus size."""
+        i = journal.index("The producer replays StatsBomb's open football event data")
+        passage = " ".join(journal[i:i + 460].split())
+        assert ("it replays " + chr(92) + "replayedMatchesWord{} of its $" + chr(92)
+                + "corpusMatches$ matches, in order") in passage
+        for name, text in (("paper.tex", paper), ("supplement.tex", journal)):
+            flat = " ".join(text.split())
+            assert not re.search(r"replay\w*\s+(?:the\s+)?\$" + RE_BS + "corpusMatches", flat), (
+                "%s: the corpus size is the object of a replay verb again" % name)
 
     def test_no_typed_corpus_size_survives_in_either_document(self, paper, supplement):
         """The characterisation number may be named; it may not be typed beside a replay."""
@@ -92,9 +105,12 @@ class TestR1TheCorpusAndTheCampaignAreDifferentNumbers:
         gate that fails on the extractor's habits stops being about the page.
 
         v5 (28 Sep): retargeted with the source pin above; the page reads "eleven of its
-        3,315 matches, replayed in order", and the word "characterize" is S20's now."""
-        tight = "".join(_rendered("paper").split())
-        assert "elevenofits3,315matches,replayedinorder" in tight
+        3,315 matches, replayed in order", and the word "characterize" is S20's now.
+
+        5 Oct 2026: on the journal supplement's page, "it replays eleven of its 3,315
+        matches, in order"."""
+        tight = "".join(_rendered("supplement").split())
+        assert "itreplayselevenofits3,315matches,inorder" in tight
 
     def test_the_gate_that_missed_it_now_reads_both_documents(self):
         """The fix is the gate, not the sentence. Mutation, not inspection."""
@@ -151,8 +167,12 @@ class TestR2TheSliceIsMeasuredAgainstTheDelivery:
         # What this pins is unchanged: the slice against the delivery, read from the ledger.
         # 4 Oct 2026: "thread" for "task", the paper's one name for what the scheduler runs, so
         # the slice is "the running thread's".
-        i = re.search(r"waits out what is left of the\s+running\s+thread's\s+slice",
-                      paper).start()
+        # 5 Oct 2026: the rebuilt Section IV-C defines the slice in its first sentence and
+        # sets it against the delivery in its third paragraph, "A whole slice is ... times the
+        # per-condition median end-to-end latencies we measured"; the anchor is that sentence.
+        assert re.search(r"waits\s+out\s+what\s+is\s+left\s+of\s+that\s+thread's", paper), \
+            "the slice is no longer the rest of the running thread's"
+        i = re.search(r"A\s+whole\s+slice\s+is\s+\$" + RE_BS + r"sliceOverDeliveryLo", paper).start()
         passage = " ".join(paper[i:i + 420].split())
         for macro in ("sliceOverDeliveryLo", "sliceOverDeliveryHi",
                       "condDeliveryLoMs", "condDeliveryHiMs"):
@@ -169,18 +189,29 @@ class TestR2TheSliceIsMeasuredAgainstTheDelivery:
         computes to zero, and the size is Section IV-C's (the incommensurate settings sit near
         50%, which gives T_true), so the pin moves there; IV-A may still size the deletion only
         beside the benchmark's own delivery.
+
+        5 Oct 2026: the filter, the deletion and the law are one subsection of the rebuilt
+        paper, V-C, which carries all three labels. Its law paragraph reads "All seven
+        configurations whose publish interval bears no ratio of small whole numbers to tau
+        keep ..., which puts T_true at 0.49 ms"; the pin is that sentence, and the subsection
+        may size the deletion only beside that delivery or the benchmark's own retention.
         """
         flat = " ".join(paper.split())
-        law = flat[flat.index("label{sec:extcomp}"):flat.index("label{sec:generality}")]
-        i = law.index("sit near $50" + chr(92) + "%$")
-        assert chr(92) + "spreadIncommensurateTrueMs" in law[i:i + 260], (
+        start = flat.index("label{sec:extcomp}")
+        sub = flat[start:flat.index(chr(92) + "subsection{", start)]
+        i = sub.index("holds where it can be tested")
+        assert chr(92) + "spreadIncommensurateTrueMs" in sub[i:i + 420], (
             "the claim is quantitative now: retention names the fraction, where the old "
             "wording left 'most of them' resting on a range that was the wrong span")
+        assert "which puts $T_{" + chr(92) + "mathrm{true}}$ at $" + chr(92) \
+            + "spreadIncommensurateTrueMs$" in sub[i:i + 420]
         assert "our own transport measures" not in paper
-        filt = flat[flat.index("label{sec:extmethod}"):flat.index("label{sec:extphase}")]
-        if re.search(r"\b(?:half|most|nearly all)\b", filt):
-            assert chr(92) + "spreadIncommensurateTrueMs" in filt, (
-                "Section IV-A sizes the deletion without the benchmark's own delivery")
+        for m in re.finditer(r"\b(?:half|most|nearly all)\b", sub, re.I):
+            sentence = sub[sub.rfind(". ", 0, m.start()) + 2:sub.find(". ", m.start())]
+            assert (chr(92) + "spreadIncommensurateTrueMs" in sentence
+                    or re.search(re.escape(chr(92)) + r"omb\w*Ret\w*", sentence)), (
+                "Section V-C sizes the deletion without the benchmark's own delivery or "
+                "retention: %r" % sentence[:200])
 
     def test_the_derived_true_delivery_is_emitted_not_typed(self, paper):
         import emit_paper_numbers as epn
@@ -196,21 +227,10 @@ class TestR2TheSliceIsMeasuredAgainstTheDelivery:
 
 class TestRecommendedItems:
 
-    def test_w1_the_equivalence_is_stated_on_the_chain_too(self, paper):
-        """v5 (28 Sep): the heading went and the paragraph (label sec:brokers) now leads with
-        the causal chain (editor 6.6), so the window is the paragraph, not the text after
-        "TOST".
-
-        Left failing on purpose: v5 moved the proxy's test onto the chain ("On the end-to-end
-        latency ... the two brokers sit within a millisecond (TOST against a 1 ms margin,
-        p < 0.001 ...)"), but that TOST is the transport proxy's (S13.1), and the chain is
-        equivalent only "against a wider margin", as v4 and S13.1 say.
-        """
-        i = paper.index("label{sec:brokers}")
-        passage = " ".join(paper[i:paper.index(chr(92) + "section{", i)].split())
-        assert "TOST" in passage
-        # 1 Oct 2026: "against a wider margin" names its margin, \ttiTostMargin ms.
-        assert "causal chain" in passage and (chr(92) + "ttiTostMargin") in passage
+    # 5 Oct 2026: W1's pin, that the broker equivalence is stated on the causal chain and not
+    # on the transport proxy alone, retired with the broker comparison, which the rebuilt paper
+    # and its supplement no longer make (no TOST, no sec:brokers). It had been left failing on
+    # purpose since 28 Sep, for the reason its docstring gave; the defect went with the text.
 
     def test_w2_the_omission_clause_excludes_the_table_that_shows_them(self, paper):
         """v5 (28 Sep): the clause ("Wilson intervals are under 0.1 points on corpus-wide
@@ -235,47 +255,70 @@ class TestRecommendedItems:
             "saying where they are omitted is gone, and Section III-A prints corpus-wide rates "
             "without one")
 
-    def test_w3_every_factor_in_table_two_carries_its_interval(self, paper, supplement):
+    def test_w3_every_factor_in_table_two_carries_its_interval(self, paper, supplement, journal):
         """v5 (28 Sep): the Katz brackets and the z column left Table II (editor section 9)
         for S12's paragraph "The mechanism table's factors, with their intervals", so they are
         pinned there, and Table II is pinned to print each factor once with no bracket, which
-        keeps the intervals in one place."""
-        i = paper.index("label{tab:mechanism}")
-        table = paper[i:paper.index("end{table}", i)]
-        for stem in ("rtLow", "rtHigh", "GeomOrig", "GeomRepl"):
-            assert chr(92) + stem + "Factor" + chr(92) + "times" in table, stem
-            assert chr(92) + stem + "FactorCI" not in paper, stem
+        keeps the intervals in one place.
+
+        5 Oct 2026: the rebuilt paper has no Table II. It prints the two geometry factors in
+        Section IV-B's prose, each with its labeled Katz bracket beside it, and the priority
+        effect as the range over the matched pairs, whose two per-pair Katz brackets and z
+        are the journal supplement's S3.1. The postmortem's S12 paragraph still prints all
+        four. Every factor still carries its interval wherever it is printed."""
+        flat = " ".join(paper.split())
+        for stem in ("GeomOrig", "GeomRepl"):
+            assert ("$" + chr(92) + stem + "Factor$-fold [Katz $95" + chr(92) + "%$: $"
+                    + chr(92) + stem + "FactorCI$]") in flat, stem
+        for stem in ("rtLow", "rtHigh"):
+            assert not re.search(re.escape(chr(92) + stem) + r"Factor(?![A-Za-z])", flat), (
+                "%s's factor is back in the paper; its bracket is S3.1's" % stem)
+        s31 = " ".join(journal[journal.index("subsection{S3.1."):
+                               journal.index("subsection{S3.2.")].split())
+        assert "Katz $95" in s31, "S3.1 names what the brackets are"
+        for stem in ("rtLow", "rtHigh"):
+            assert ("$[" + chr(92) + stem + "FactorCI]$") in s31, stem
+            assert ("$z=" + chr(92) + stem + "Z$") in s31, stem
         # The interval sat on the pair's second row rather than beside the factor: the
         # multirow cell already spanned both, so it cost no column width. Widening the cell
         # instead overfull-ed the table by 47pt, which is how that arrangement was found.
         s = supplement.index("The mechanism table's factors, with their intervals")
         para = " ".join(supplement[s:supplement.index("\n\n", s)].split())
         assert "Katz $95" in para, "the paragraph names what the bracket is"
-        assert "P-tab:mechanism" in para, "and which table's factors it is bracketing"
         for stem in ("rtLow", "rtHigh", "GeomOrig", "GeomRepl"):
             assert chr(92) + stem + "FactorCI" in para, stem
             assert chr(92) + stem + "Z$" in para, "%s: the z left the header with the bracket" % stem
 
     def test_w3_did_not_leave_the_intervals_in_two_places(self, paper):
-        """The prose kept them only to have said them; the table is where they belong."""
-        i = paper.index("the rate falls by factors of")
-        assert chr(92) + "rtLowFactorCI" not in paper[i:i + 320]
-        j = paper.index("negative-span rates differ by")
-        assert chr(92) + "GeomOrigFactorCI" not in paper[j:j + 260]
+        """The prose kept them only to have said them; the table is where they belong.
 
-    def test_w4_the_two_worst_clock_bounds_are_printed_not_only_summed(self, paper, supplement):
+        5 Oct 2026: with no table in the rebuilt paper, the one place is the sentence that
+        prints the factor, and no interval is printed twice."""
+        for stem in ("rtLow", "rtHigh", "GeomOrig", "GeomRepl"):
+            n = len(re.findall(re.escape(chr(92) + stem + "FactorCI") + r"(?![A-Za-z])", paper))
+            assert n <= 1, "%sFactorCI is printed %d times in the paper" % (stem, n)
+
+    def test_w4_the_two_worst_clock_bounds_are_printed_not_only_summed(self, paper, supplement,
+                                                                      journal):
         """v5 (28 Sep): Section VIII keeps the per-host bound and "so we claim no cross-host
         bound in general", and the sum with its two addends is S19's alone, so it is pinned
-        there and the paper is pinned to print no sum without them."""
+        there and the paper is pinned to print no sum without them.
+
+        5 Oct 2026: the rebuilt paper names no clock bound, since nothing in it depends on
+        synchronizing clocks; the per-host bound and the refusal of a cross-host one are the
+        journal supplement's S1.1 ("so we claim no cross-host bound"). Neither the paper nor
+        the journal supplement may print the sum without its two addends."""
         import emit_paper_numbers as epn
         m = dict(epn.clock_macros()) if hasattr(epn, "clock_macros") else {}
-        i = paper.index("bounds its own error at")
-        here = " ".join(paper[i:i + 260].split())
+        i = journal.index("bounds its own error at")
+        here = " ".join(journal[i:i + 260].split())
         assert chr(92) + "chronyHostBoundLo" in here and chr(92) + "chronyHostBoundHi" in here
-        assert "we claim no cross-host bound in general" in here
-        if chr(92) + "chronyPairBound" in paper:
-            for macro in ("chronyWorstBound", "chronySecondWorstBound", "chronyPairBound"):
-                assert chr(92) + macro in here, macro
+        assert "we claim no cross-host bound" in here
+        for name, text in (("paper.tex", paper), ("supplement.tex", journal)):
+            for p in re.finditer(re.escape(chr(92) + "chronyPairBound") + r"(?![A-Za-z])", text):
+                near = text[max(0, p.start() - 260):p.start() + 260]
+                for macro in ("chronyWorstBound", "chronySecondWorstBound"):
+                    assert chr(92) + macro in near, (name, macro)
         s = supplement.index("section{S19.")
         s19 = supplement[s:supplement.index("section{S20.", s)]
         j = s19.index("the bound it places on its own error")
@@ -291,12 +334,15 @@ class TestRecommendedItems:
     def test_w5_the_repeated_sample_count_says_it_is_deliberate(self, paper):
         """v5 (28 Sep): the remark went with the pre-emptive defences (editor 6.11) and with
         the alternatives list that printed the two-clock count, so the main text prints the
-        count once, in Section IV-D; the two-clock count may come back only with the remark."""
+        count once, in Section IV-D; the two-clock count may come back only with the remark.
+
+        5 Oct 2026: the rebuilt paper prints neither count (the independent harness is "one
+        independent program of our own", Section VIII); both are the journal supplement's
+        S4.5. The main-text rule stands for the day either returns."""
         gen = (REPO / "docs" / "generated" / "paper_numbers.tex").read_text(encoding="utf-8")
         vals = dict(re.findall(RE_BS + r"newcommand\{" + RE_BS + r"(\w+)\}\{([^}]*)\}", gen))
         assert vals["harnessOneClockSamples"] == vals["harnessCrossHostSamples"], (
             "if these ever part, the sentence below has to go")
-        assert chr(92) + "harnessOneClockSamples" in paper
         i = paper.find(chr(92) + "harnessCrossHostSamples")
         if i >= 0:
             assert "matched run for run" in paper[i:i + 260], (
@@ -306,17 +352,27 @@ class TestRecommendedItems:
     def test_w6_the_better_clock_section_opens_on_its_claim(self, paper):
         """v5 (28 Sep): the subsection became the paragraph labelled sec:betterclock, whose
         claim now names the clock it means (editor 6.6), "A better-synchronized clock fixes
-        neither failure"; the rule is unchanged, the claim first and the PTP arithmetic after."""
-        # 4 Oct 2026: the protocol is named in full where the paper uses it, its one use.
-        paras = [p for p in re.split(r"\n[ \t]*\n", paper) if "Precision Time Protocol~" in p]
-        assert len(paras) == 1, "one paragraph carries the PTP arithmetic"
+        neither failure"; the rule is unchanged, the claim first and the PTP arithmetic after.
+
+        5 Oct 2026: the rebuilt Section VI's last paragraph opens "A better-synchronized clock
+        repairs neither the late reading nor the deletion", and the PTP arithmetic is gone;
+        what follows the claim is its reason, on one clock and from the clock's step. The rule
+        is unchanged: one paragraph of Section VI makes the claim, and it opens on it. (The
+        Introduction's fourth contribution states the same claim in one sentence, without
+        the argument.)"""
+        i = paper.index(chr(92) + "label{sec:practice}")
+        practice = paper[i:paper.index(chr(92) + "section{", i)]
+        paras = [p for p in re.split(r"\n[ \t]*\n", practice)
+                 if "better-synchronized clock" in " ".join(p.split())]
+        assert len(paras) == 1, "one paragraph argues what a better clock buys"
         opening = " ".join(re.sub(r"(?m)^\s*" + RE_BS + r"label\{[^}]*\}\s*$", "",
                                   paras[0]).split())
-        assert opening.startswith("A better-synchronized clock fixes neither failure."), (
-            opening[:120])
-        assert (opening.index("fixes neither failure")
-                < opening.index("Precision Time Protocol")), (
-            "the Feynman rule: the claim first, the arithmetic that supports it after")
+        assert opening.startswith("A better-synchronized clock repairs neither the late "
+                                  "reading nor the deletion"), opening[:120]
+        assert (opening.index("repairs neither")
+                < opening.index("arise on one clock")
+                < opening.index("from the clock's step")), (
+            "the Feynman rule: the claim first, the reasons that support it after")
 
     def test_w7_the_grey_literature_ledger_gained_its_fourth_row(self):
         rows = list(csv.DictReader(
@@ -416,6 +472,16 @@ class TestEveryTypedNumeralInTheMainTextIsADecision:
     figures and the clustering z to the supplement, editor sections 5 and 6.11; PTP's 70 ns with
     the old better-clock arithmetic; the Wilson precision with the omission clause, 6.11), and
     0.35, 1.5 and 80 came in with new sentences, each with its reason below.
+
+    5 Oct 2026: the rebuilt paper types six numerals, every one already here. Thirteen left
+    with their sentences, and their entries with them, so the inventory stays a list of what
+    the paper types: 0 and 20 (the audit-threshold sweep), 200, 500 and 64 (the named cell and
+    the payload flip's second size, now the supplement's S4), 0.35 (the deletion figure's
+    drawn delivery, the figure now the supplement's), 6 (k is spelled "six" in the placement
+    paragraph),
+    0.001 (the broker TOST), 100 (the exposure curve's third evaluation point), 1000 (the
+    floored-clock negative, written as minus tau in Section V-C), 50 (the retention near a
+    half), and 75 and 88 (Table II's stub, now the supplement's priority table).
     """
 
     #: The span of math, and the numerals inside it that a person wrote. `(?<![A-Za-z0-9.,{}\\])`
@@ -429,39 +495,22 @@ class TestEveryTypedNumeralInTheMainTextIsADecision:
         # quoted from somebody else's paper or standard
         "0.75": "the kernel's published per-core slice constant, quoted from the commit that "
                 "set it; the product beside it is emitted",
-        "1.5": "the law campaign's registered bound on Python's plateau over Java's "
+        "1.5": "the law campaign's registered bound on Python's rate over Java's "
                "(prediction P8), a threshold fixed in the plan before its runs and quoted "
-               "from it; what the runs measured, 3.25 and 4.25, is Part V's",
+               "from it; what the runs measured, 3.25 and 4.25, is the supplement's S6.2",
         # settings this campaign chose
-        "0": "the bottom of the audit-threshold sweep",
-        "20": "the top of the audit-threshold sweep",
-        "6": "the loaded-core count k of the geometry manipulation",
-        "200": "the payload of the named cell",
-        "500": "the send rate of the named cell",
-        "32": "a payload size the sweep set",
-        "64": "a payload size the sweep set",
-        # illustrations and presentation choices, not measurements
-        "0.35": "the delivery Figure 5(a) draws at four phases of one tick, set by "
-                "make_paper_figures.T_TRUE_MS to fall between grid values and to equal no "
-                "quantity the ledger emits",
+        "32": "a payload size the sweep set, naming the configuration whose registered pin "
+              "failed in Section VIII",
         # statistical conventions, not measurements
-        "95": "the confidence level, which is a convention and not a result",
-        "0.001": "the p-value ceiling the TOST clears, reported as an inequality",
-        # configuration constants and values that are multiples of the resolution
-        "1": "an evaluation point on the exposure curve, and the millisecond tick and "
-             "timestamp resolution, both configuration constants",
+        "95": "the confidence level of the two Katz brackets, which is a convention and not a "
+              "result",
+        # evaluation points and the form of a law, not measurements
+        "1": "an evaluation point on the exposure curve, and the numerator of the 1/D by "
+             "which the publish latency's relative error falls",
         "10": "an evaluation point on the exposure curve",
-        "100": "an evaluation point on the exposure curve",
         # "1.0" and "2.0" left this inventory in round 76: the grid values are now emitted
         # (`ombGridPrintedLo`, `ombGridPrintedHi`) from the same rows Figure 4's ticks are drawn
         # from, so neither is typed anywhere in the main text any longer.
-        "1000": "the timestamp resolution in microseconds, negated: the only negative value a "
-                "millisecond-floored difference can take, which is the sentence's whole point",
-        "50": "the retention a half-millisecond delivery implies at a millisecond grid, the "
-              "prediction the measured medians are compared against",
-        # loads, which are named beside the rates measured at them
-        "75": "a load level of the priority manipulation, named in Table II's stub",
-        "88": "the other load level, named in Table II's stub",
     }
 
     def _typed(self, paper):
@@ -532,20 +581,22 @@ class TestEveryWordSpelledQuantityIsADecisionToo:
     """
 
     #: Spelled quantities that are typed on purpose, with the reason. Short by design.
+    #:
+    #: 5 Oct 2026: "ninety", "thousand", "thirty" and "hundred" left with their sentences (the
+    #: four-in-ninety-thousand gloss, Paxson's "nearly thirty years" and the one-in-a-hundred
+    #: threshold, which the rebuilt paper states as "one percent"), and the four reasons that
+    #: stay name the rebuilt paper's uses.
     ALLOWED_WORDS = {
-        "four": "'about four samples in ninety thousand' is a gloss on an emitted "
-                "percentage, marked as approximate so it cannot be read as a second reading",
-        "ninety": "the other half of that gloss, and an approximation of the same emitted "
-                  "percentage rather than a reading of its own",
-        "thirty": "'nearly thirty years' since Paxson 1998, an approximation flagged as one",
-        "three": "the instance count of the testbed and the decimal places of a printed "
-                 "figure, both design facts rather than measurements",
-        "five": "SPEC and TPC's criteria count, quoted from their paper",
-        "two": "the log base of the histogram's buckets, and ordinary English throughout",
-        "hundred": "'more than one event in a hundred' is the audit threshold written as a "
-                   "proportion in words; the threshold itself is a rule we chose, not a "
-                   "measurement, and Section II-D gives it as a percentage a few lines above",
-        "thousand": "the other half of the 'about four samples in ninety thousand' gloss",
+        "four": "the paper's four contributions and the four studies of its audit, which are "
+                "its structure, and the four virtual machines of the cloud testbed, a design "
+                "fact rather than a measurement",
+        "three": "the three pairs of machines of the registered campaign and the three methods "
+                 "that measure the receiving thread's wait, both design facts rather than "
+                 "measurements",
+        "five": "the five Kafka load campaigns of the registered plan's block L3, a design "
+                "fact of the plan that Supplement S6.2's verdict table lists one by one",
+        "two": "ordinary English throughout: two readings, two brokers, two clocks, and the "
+               "two machines of a pair",
     }
 
     def _word_macros(self):
@@ -567,22 +618,32 @@ class TestEveryWordSpelledQuantityIsADecisionToo:
         "one clock" and "two threads" are English and must stay English. The subjects come
         from the macro names themselves, so a new `...Word` macro is covered the day it is
         added.
+
+        5 Oct 2026: the subjects follow the rebuilt paper's words: "publish" for "send" in the
+        incommensurate configurations, "ways" beside "classes" for the disposals, the
+        concession's "tools by reading them", and the above-grid settings' sentence, which
+        counts them with `ombAboveGridPartialWord` where it used `ombEscapeCellsWord`. The prose
+        is read with its line breaks flattened: the source wraps inside two of these subjects,
+        and a subject found only when it sits on one line is a gate the next rewrap disables.
         """
         import re as _re
         subjects = {
             "ombEscapeCellsWord": ("settings that print above the grid",),
-            "harnessAuditedWord": ("tools at source", "tools of Section"),
+            "ombAboveGridPartialWord": ("settings kept only",),
+            "harnessAuditedWord": ("tools at source", "tools of Section",
+                                   "tools by reading them"),
             "harnessSilentWord": ("dispose of", "disposing of"),
             "harnessSilentIndependentWord": ("independent tools",),
-            "harnessDisposalClassesWord": ("classes",),
+            "harnessDisposalClassesWord": ("classes", "ways: a filter drops it"),
             "replayedMatchesWord": ("of its matches", "matches of one sport"),
-            "spreadIncommensurateWord": ("configurations whose send interval",),
+            "spreadIncommensurateWord": ("configurations whose send interval",
+                                         "configurations whose publish interval"),
             "litComparisonsWord": ("comparisons we placed",),
             "litInsideRegimeWord": ("report figures at or below",),
             "ombEscapeCellsWordCap": (),
         }
         emitted = self._word_macros()
-        prose = _re.sub(r"(?m)^%[^\n]*", "", paper)
+        prose = " ".join(_re.sub(r"(?m)^%[^\n]*", "", paper).split())
         bad = []
         for value, names in emitted.items():
             for name in names:
@@ -624,7 +685,8 @@ class TestEveryWordSpelledQuantityIsADecisionToo:
         """v5 (28 Sep): "seven" left the inventory with the rule it sat in, "Count your events
         before you quote a percentile", which the outside editor found unearned in the main
         text (6.7); S3 still states the withdrawn corpus's seven events per run. The reason for
-        "hundred" names the sign check's new place, Section II-D."""
+        "hundred" names the sign check's new place, Section II-D. (5 Oct 2026: four entries
+        left with the rebuilt paper's cuts; see `ALLOWED_WORDS`.)"""
         import re as _re
         prose = _re.sub(r"(?m)^%[^\n]*", "", paper)
         stale = sorted(w for w in self.ALLOWED_WORDS
@@ -638,10 +700,18 @@ class TestEveryWordSpelledQuantityIsADecisionToo:
         "escape", so the mutation matches across the line break instead of at one wrap.
         1 Oct 2026: the sentence was corrected (the 64 KB settings delete most of their
         samples; only the 256 KB pair keeps everything), and its count now opens it.
+        5 Oct 2026: the rebuilt Section V-C counts the above-grid settings it describes with
+        `ombAboveGridPartialWord` ("the two settings kept only ..."); the count is typed back
+        there, and in the incommensurate configurations' count a few lines below, and each
+        mutation must fire the gate.
         """
         import re as _re
-        bad = _re.sub(r"(The\s+)" + RE_BS + r"ombEscapeCellsWord\{\}(\s+settings that print)",
-                      r"\g<1>four\g<2>", paper)
-        assert bad != paper, "Section IV-B has been reworded; retarget this mutation"
-        with pytest.raises(AssertionError):
-            self.test_no_sentence_types_a_word_the_ledger_emits_for_that_quantity(bad)
+        for pattern, word in (
+                (r"(the\s+)" + RE_BS + r"ombAboveGridPartialWord\{\}(\s+settings\s+kept only)",
+                 "two"),
+                (r"(All\s+)" + RE_BS + r"spreadIncommensurateWord\{\}(\s+configurations whose)",
+                 "seven")):
+            bad = _re.sub(pattern, r"\g<1>" + word + r"\g<2>", paper)
+            assert bad != paper, "Section V-C has been reworded; retarget this mutation"
+            with pytest.raises(AssertionError):
+                self.test_no_sentence_types_a_word_the_ledger_emits_for_that_quantity(bad)

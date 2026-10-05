@@ -124,9 +124,21 @@ class TestTheRealSourcesStrip:
             "the acknowledgment carries the disclosure IEEE requires and must survive"
 
     def test_the_paper_keeps_its_title_and_abstract(self, temp_dir):
+        """The title is read from the source rather than typed here: a typed title went stale
+        when the paper was retitled on 5 Oct 2026, which is the failure this guards against
+        in the stripped copy."""
+        source = (REPO / "paper.tex").read_text(encoding="utf-8")
+        start = source.index("\\title{")
+        title, depth = None, 0
+        for i in range(start + len("\\title"), len(source)):
+            depth += {"{": 1, "}": -1}.get(source[i], 0)
+            if depth == 0:
+                title = source[start:i + 1]
+                break
+        assert title and len(title.split()) > 3, "paper.tex has no readable \\title"
         target, _ = bwa.prepare("paper", out_dir=str(temp_dir))
         text = Path(target).read_text(encoding="utf-8")
-        assert "Faster-than-Light" in text
+        assert title in text, "the stripped copy lost the paper's title"
         assert "\\begin{abstract}" in text
 
 

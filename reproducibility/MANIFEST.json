@@ -1,5 +1,5 @@
 {
-  "git_commit": "5c69edcf3e4acc13f7e6210c8399aa9dd886d561",
+  "git_commit": "ade7a5bee0801cd6662365b0ac8df3f0209189c6",
   "generated": "2026-10-05",
   "environment": "see docs/infrastructure.md",
   "protocol": {
@@ -135,14 +135,14 @@
     "scripts/make_multimatch_plan.py": "adfdd5146de644b54b0f9ef873b0a738576927f4ad46b7480314add804c4c480",
     "scripts/make_paper_figures.py": "cab84c55da2e58cbe25b0a8082b12417a76f6b4caf204591b9daacfcf0d00b30",
     "scripts/make_replay_plan.py": "89598d6d272af340220e215a49f3f0180fb13797c336cf4935831f1adfedd06a",
-    "scripts/make_result_figures.py": "4e1bab800fa7390f399ec2653644be9a67dbfa0d109e87a2636acc72545e78d5",
+    "scripts/make_result_figures.py": "66626a7c3361fb0d642b64bfd4054bd26dff1856b69c7a0276b525eb39ad8c25",
     "scripts/make_synthetic_plan.py": "6411978c2158763b917f6b239c3b4a3f4882034c058fc0bd7bb5b96e94d4b3cc",
     "scripts/make_thread_figure.py": "1ae10e73a0e39806e8ce9cf84c502ab263f3cdd557a6c1026735d56743968309",
     "scripts/make_wait_shape_figure.py": "82eb39ddfd8ec1cc6d3480988fb4f5439286e09dc96d260ec5aefc5bd9370306",
     "scripts/make_window_figure.py": "4e163e1edb2b1812bb764a92d2c0ed62c7528b1090be1cb3361e32ff599eddc0",
     "scripts/mark_load_bearing.py": "3f9250c0f928c8c07a4a7cba90ece05b8e6f6151641cb8e483813089adda67f8",
     "scripts/measurement_model.py": "d9743758d62da07798773c9063f805209437476f2d5de6ef1feaa6c3e6d67c78",
-    "scripts/mutation_check.py": "1723faca943592716c8d8298d9f8e0292c851ca7ac51fcf8c57ac685616994c4",
+    "scripts/mutation_check.py": "980c7068f7020d268c6a5051af50b7782dbb62bc935e814159d1a1c87d50bd2c",
     "scripts/nats_reference.py": "9173c38914516ce2ab56b0294fa26e4b14641b4106afb8f356d5486b19cc41a3",
     "scripts/normalize_access_dates.py": "063b8b41317e8921ab687516e52b22dbd5ebf9e08b2ef5c3c29022303a009cae",
     "scripts/novelty_sweep.py": "39fd9c4d8c36211dab6270640540128fd00c051932c8979e3a6dc949936e5d6d",

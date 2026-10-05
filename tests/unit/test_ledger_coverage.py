@@ -55,9 +55,6 @@ ALLOWED = {
     ("postmortem.tex", "indepFloorPct", r"within $0.1$~ms of each other"):
         "two brokers' historical medians agreeing to a tenth of a millisecond (S5), the same "
         "coincidence with the round-80 floor as the entry above",
-    ("postmortem.tex", "indepFloorPct", r"offsets near $0.1$~ms"):
-        "the inter-host clock offset chrony reports in S19's limitations, in milliseconds; the "
-        "same coincidence with the 0.1% floor",
     ("postmortem.tex", "spanRhoMedian", r"broker transport is $0.84$ and $0.80$~ms"):
         "E1's historical broker transport medians in milliseconds (S3, Table S2), which happen "
         "to equal the pooled D-A correlation S24.2 began reading in round 79; a latency and a "
@@ -73,21 +70,14 @@ ALLOWED = {
         "the same utilization again, in the round-2 restatement",
     ("postmortem.tex", "tracedMleAlpha", r"($1.19\times$, $z=3.46$)"):
         "a between-arm factor that happens to equal the grouped tail index",
-    # The journal supplement (29 Sep) restates five of the postmortem's coincidences in its
-    # own words, and adds a significance level.
-    ("supplement.tex", "tracedMleAlpha", r"($1.19\times$, $z=3.46$)"):
-        "the same between-arm factor as the postmortem's, in S3.2",
-    ("supplement.tex", "indepWithinFlooredRatioOfMedians", r"falls from $7.0\%$ to $0.8\%$"):
-        "the window sweep's share of events paying the start-up cost, as in the postmortem",
-    ("supplement.tex", "recoveryKsP", r"$0.10$--$0.12$~ms at which their own medians"):
-        "the condemned runs' transport medians in milliseconds, equal to a KS p-value",
-    ("supplement.tex", "recoveryKsP", r"medians center on $0.10$--$0.12$~ms"):
-        "the same medians, in the selection table's note",
-    ("supplement.tex", "recoveryShift", r"published read cost near $1.2\,\mu$s"):
-        "HPET's published read cost in microseconds, equal to the recovery shift in points",
-    ("supplement.tex", "cpuEstimateSpread", r"reject the continuum null at $\alpha = 0.05$"):
+    # The journal supplement (29 Sep) restated five of the postmortem's coincidences in its
+    # own words, and added a significance level. The rebuild of 5 Oct 2026 cut the five with
+    # the passages that carried them; the significance level stays, reworded.
+    ("supplement.tex", "cpuEstimateSpread",
+     r"reject the continuum at $\alpha = 0.05$ after correction"):
         "the grid test's significance level, equal to the spread of the CPU-count estimate",
-    ("supplement.tex", "manipTol", r"reject the continuum null at $\alpha = 0.05$"):
+    ("supplement.tex", "manipTol",
+     r"reject the continuum at $\alpha = 0.05$ after correction"):
         "the same significance level, equal to the manipulation check's tolerance",
     ("postmortem.tex", "tracedMleAlpha", r"a small $k=7$ difference ($1.19\times$"):
         "the same factor, in the round-2 restatement",
@@ -156,22 +146,19 @@ ALLOWED = {
         "the density ratio of preemption-begun waits between the slice and a tick past it "
         "(S16.10, wait_shape), equal to the pooled P2 judge's fitted reading on Redis; two "
         "ratios of different things sharing three digits",
-    # R1 (3 Oct 2026) emitted the receiving thread's wait for S3.10 (recv_wait_macros), and
-    # three of its values print as other quantities the supplement already types.
+    # R1 (3 Oct 2026) emitted the receiving thread's wait for S3.10, S3.8 since 5 Oct 2026
+    # (recv_wait_macros), and two of its values print as other quantities the supplement
+    # types. A third, the broker comparison's 0.41 ms shift, left with that comparison.
     ("supplement.tex", "recvPredMeanHiMs", r"published read cost near $1.2\,\mu$s"):
         "the hpet clocksource's published read cost in microseconds (S3.6), equal to the upper "
         "end of R1-a's registered band for the wait's mean in milliseconds; a cost and a "
         "plan's bar sharing two digits",
     ("supplement.tex", "recvPredNinetyMs", r"slices, 1.5 and 3~ms"):
-        "the law campaign's shorter slice in milliseconds (S6.5), equal to R1-a's registered "
+        "the law campaign's shorter slice in milliseconds (S6.3), equal to R1-a's registered "
         "bar for the wait's ninetieth percentile; a slice and a plan's bar sharing two digits",
     ("supplement.tex", "recvWaitFactor", r"slices, 1.5 and 3~ms"):
         "the same slice, equal to the factor within which R1-d asked the three estimates to "
         "agree; a slice and a ratio sharing two digits",
-    ("supplement.tex", "recvWaitAddedLo", r"the $0.41$~ms shift, \kafka{} slower"):
-        "the broker comparison's shift between the two brokers on S, in milliseconds (S7), "
-        "equal to the smallest of R1's twelve estimates of the receiving thread's wait; two "
-        "latencies of different things sharing three digits",
 }
 
 
@@ -291,9 +278,16 @@ class TestTheSweepItself:
         assert "generated" not in _masked(r"\input{docs/generated/grid_table}")
 
     def test_every_exemption_still_matches_something(self):
-        """A stale entry would quietly licence a copy nobody is looking at any more."""
-        live = {(h["doc"], h["macro"]) for doc in DOCS for h in transcribed(doc)}
-        stale = [k for k in ALLOWED if (k[0], k[1]) not in live]
+        """A stale entry would quietly licence a copy nobody is looking at any more.
+
+        Entry by entry, fragment included. Matched on the document and the macro alone, an
+        entry whose sentence had gone stayed alive on its neighbours' hits: "offsets near
+        $0.1$~ms" excused nothing for at least a revision before 5 Oct 2026, while two other
+        entries kept its document and macro live."""
+        hits = [h for doc in DOCS for h in transcribed(doc)]
+        stale = [k for k in ALLOWED
+                 if not any(h["doc"] == k[0] and h["macro"] == k[1]
+                            and " ".join(k[2].split()) in h["context"] for h in hits)]
         assert not stale, "exemption(s) matching nothing: %s" % stale
 
     def test_every_exemption_carries_a_reason(self):

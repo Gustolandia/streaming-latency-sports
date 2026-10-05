@@ -87,13 +87,25 @@ class TestTheAsymmetryIsDisclosedWhereItIsDescribed:
                       r"\spanHandlingRatio", r"\spanHandlingSharePct"):
             assert macro in body, "%s must be read from the ledger, not typed" % macro
 
-    def test_the_main_text_bounds_it_where_it_could_matter(self):
-        """The comparison it could touch is the broker equivalence, so the bound belongs
-        beside that claim rather than only in a supplement a reader may not reach."""
-        paper = (SCRIPTS.parent / "paper.tex").read_text(encoding="utf-8")
-        i = paper.find(r"\label{sec:brokers}")
-        assert i > 0, "the broker section must exist"
-        section = " ".join(paper[i:i + 2500].split())
+    def test_the_bound_sits_beside_the_broker_comparison(self):
+        """The bound belongs beside the comparison the asymmetry could move.
+
+        Until 5 Oct 2026 that was the main text's broker equivalence, in the section labelled
+        sec:brokers. The rebuild cut the broker comparison from the paper; what is left of it
+        is the per-broker count of values below zero by span, the table of Supplement S1.3, and
+        that subsection now says where each consumer parses, bounds the parse against Redis's
+        end-to-end latency, and says which way it would move the gap between the brokers.
+        """
+        supp = (SCRIPTS.parent / "supplement.tex").read_text(encoding="utf-8")
+        i = supp.find(r"\label{s:setup-timestamps}")
+        assert i > 0, "the supplement's subsection on where each timestamp is taken must exist"
+        end = supp.find(r"\section{", i)
+        section = " ".join(supp[i:end if end != -1 else len(supp)].split())
+        assert r"\ref{stab:spans}" in section, \
+            "the per-broker comparison must sit in the subsection that bounds the asymmetry"
         assert r"\spanHandlingSharePct" in section, \
             "the asymmetry must be bounded where the comparison it could move is made"
-        assert "deserializ" in section, "and the reader must be told what causes it"
+        assert r"parses the payload inside \texttt{poll()}" in section, \
+            "and the reader must be told what causes it"
+        assert "gap between the brokers" in section, \
+            "and which way it would move the comparison"

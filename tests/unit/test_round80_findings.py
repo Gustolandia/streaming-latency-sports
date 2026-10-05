@@ -108,19 +108,27 @@ class TestR1TheIndependenceFactorStatesItsUnitFloorAndDenominator:
         twelve rules became Table IV's six checks (editorial review, Section 9), so the pin
         moves to the one article sentence that still quotes the factor, Section III-A's, where
         v4 printed it with its count and its floor ("the median of the ... conditions above
-        ..."). The rule's "in all N conditions" went with the rule and is stated in S24.2."""
-        text = flat(paper)
-        i = text.index("correlated within a run")
-        passage = text[i:i + 450]
-        assert "independent within a run would overpredict" in passage
-        for macro in ("spanRhoWithinMedian", "indepWithinFloored", "indepWithinFlooredN",
-                      "indepFloorPct"):
-            assert re.search(re.escape(BS + macro) + r"(?![A-Za-z])", passage), macro
-        assert BS + "indepOvershoot$" not in passage, (
-            "the pooled factor beside a within-run correlation")
+        ..."). The rule's "in all N conditions" went with the rule and is stated in S24.2.
+
+        5 Oct 2026: the rebuilt paper and its journal supplement quote neither the correlation
+        nor the factor; S24.2 of the postmortem prints both units, every floor and every
+        count. The rule is held where it is printed, and in either journal document should
+        the factor return: within-run numbers beside a within-run correlation, with the count
+        and the floor, and never the pooled factor there."""
         s = _between(supplement, "S24.2. The statistical inventory", "S24.3. The metric map")
         assert ("independence overpredicts in $" + BS + "indepWithinOvershootConditions$ of the $"
                 + BS + "indepWithinConditions$ conditions") in s
+        assert ("$" + BS + "indepWithinFloored$ over $" + BS + "indepWithinFlooredN$") in s
+        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        for name, doc in (("paper.tex", paper), ("supplement.tex", journal)):
+            text = flat(doc)
+            for m in re.finditer(re.escape(BS) + r"indepWithinFloored(?![A-Za-z])", text):
+                passage = text[max(0, m.start() - 300):m.start() + 300]
+                for macro in ("spanRhoWithinMedian", "indepWithinFlooredN", "indepFloorPct"):
+                    assert re.search(re.escape(BS + macro) + r"(?![A-Za-z])", passage), (
+                        name, macro)
+                assert BS + "indepOvershoot$" not in passage, (
+                    "%s: the pooled factor beside a within-run correlation" % name)
 
     def test_the_supplement_prints_every_version(self, supplement):
         s = _between(supplement, "S24.2. The statistical inventory", "S24.3. The metric map")
@@ -307,28 +315,16 @@ class TestW5ThePacerRangeSaysWhatItSpans:
                                                          {"jitter_p90_us": "x"}, {}])
         assert si.harness_pacer_jitter_runs() == 1
 
-    def test_the_sentence_says_across_how_many_runs(self, paper):
-        """v5 (28 Sep): Section II-B says "at p90 over N runs", which names what the range spans
-        as "across its N runs" did; either wording passes, a bare range does not."""
-        assert re.search(r"at p90 (?:across its|over) \$" + re.escape(BS)
-                         + r"pacerJitterRuns\$ runs", flat(paper))
+    # 5 Oct 2026: the sentence pin ("at p90 over N runs") retired with the sentence; neither the
+    # rebuilt paper nor its supplement prints the pacer jitter. The run count is still emitted
+    # and held above.
 
 
 class TestTheRenderedPagesCarryIt:
 
-    def test_the_article(self):
-        """v5 (28 Sep): the factor is quoted in Section III-A only, "treating the two as
-        independent within a run would overpredict them", and its floor must print beside it
-        there; the pacer range reads "at p90 over N runs"."""
-        # Hyphenation and glyph spacing differ between extractors, and one of them drops the
-        # space on either side of inline math, so the phrase is matched on its words rather
-        # than on one exact string.
-        text = re.sub(r"(\w)- (\w)", r"\1\2", _rendered("paper"))
-        m = re.search(r"independent\s*within\s*a\s*run\s*would\s*overpredict", text)
-        assert m
-        assert re.search(r"above\s*0\.1\s*%", text[m.end():m.end() + 200]), (
-            "the floor prints beside the factor")
-        assert re.search(r"at p90\s*(?:across its|over)\s*\d+\s*runs", text)
+    # 5 Oct 2026: the article's page pin retired. Its three checks were the independence
+    # factor's sentence, its floor and the pacer range, all cut from the rebuilt paper; the
+    # postmortem's pages are still read below.
 
     def test_the_supplement(self):
         """29 Sep: S24.2 and S30 are the postmortem's, so their pages are postmortem.pdf."""

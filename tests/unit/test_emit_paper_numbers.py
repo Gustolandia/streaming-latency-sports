@@ -219,14 +219,22 @@ class TestAgainstTheRealLedger:
         assert have == want, "run python scripts/emit_paper_numbers.py and commit the result"
 
     def test_the_manuscript_uses_the_macros_it_is_given(self):
-        paper = self.ROOT / "paper.tex"
+        """The campaign's counts reach both submitted documents through the ledger.
+
+        Since 5 Oct 2026 the paper counts the campaign by broker (the Kafka-driver runs and
+        what they discarded) and the supplement gives its whole size; the campaign-wide
+        discard total, \\ombDiscarded, left with the old paper's sentence that printed it."""
         gen = self.ROOT / "docs" / "generated" / "paper_numbers.tex"
-        if not paper.exists() or not gen.exists():
-            pytest.skip("paper or generated file not present")
-        src = paper.read_text(encoding="utf-8", errors="replace")
-        assert "\\input{docs/generated/paper_numbers}" in src
-        for name in ("ombRuns", "ombDiscarded"):
-            assert ("\\" + name) in src, "%s is emitted but the manuscript ignores it" % name
+        uses = {"paper.tex": ("ombKafkaRuns", "ombKafkaDiscarded"),
+                "supplement.tex": ("ombRuns",)}
+        for doc, names in uses.items():
+            path = self.ROOT / doc
+            if not path.exists() or not gen.exists():
+                pytest.skip("%s or the generated file not present" % doc)
+            src = path.read_text(encoding="utf-8", errors="replace")
+            assert "\\input{docs/generated/paper_numbers}" in src
+            for name in names:
+                assert ("\\" + name) in src, "%s is emitted but %s ignores it" % (name, doc)
 
 
 class TestTheRefereeDrivenMacroGroups:

@@ -31,6 +31,11 @@
 % points a reader to more than thirty times. xr reads paper.aux, so the numbers shown here
 % are the numbers the reader sees there. Build order therefore matters: paper first, then
 % this. tests/unit/test_pdf_compliance.py pins that the "??" never come back.
+% 5 Oct 2026: the paper was rebuilt around its four bottom lines, and thirteen of the labels
+% this record points at left it with the passages they named. The record was written against
+% the paper as it stood before the rebuild, so its pointers read that version's labels, frozen
+% with it in docs/archive/2026-10-05-before-cleanup/ (paper.aux beside paper.tex and
+% paper.pdf). A frozen paper is never renumbered, so the build order no longer binds here.
 \usepackage{xr}
 % Round 57. Four numbering spaces collided with the paper's, in a document the paper sends a
 % reader into thirty-two times: Fig. 1--12 against its Fig. 1--5, Table I--XXVII against its
@@ -58,7 +63,7 @@
 % two label sets do not collide) and that bury the 27th, which would not be. The
 % \\main* macros above are the only route into the paper's labels, so the prefix is
 % declared once here and applied there.
-\externaldocument[P-]{paper}
+\externaldocument[P-]{docs/archive/2026-10-05-before-cleanup/paper}
 % Kept identical to the main text's declaration on purpose: the two documents are read as
 % one submission, and a long identifier that breaks in the paper and not in the supplement
 % is a difference a reader would notice and no gate would explain. \brk takes identifiers
@@ -91,6 +96,7 @@
 % broker results into the Discussion renumbered everything after it: seven pointers
 % broke loudly, and four more kept resolving to a number whose meaning had changed,
 % which no gate can see. Named here, a renumbering is one edit instead of thirty-six.
+% Since 5 Oct 2026 they name the sections of the paper as it stood before its rebuild.
 % -------------------------------------------------------------------------------
 \newcommand{\mainMethod}{\ref{P-sec:method}}            % Experimental Setup
 \newcommand{\mainTestbeds}{\ref{P-sec:testbeds}}        % Testbeds
@@ -147,7 +153,10 @@ retelling and its judgments are the lead author's.}}
 This document is the complete record behind the paper named above. It is archived with the
 data and is not part of the submission: the paper's supplementary material is a separate,
 shorter document organized by the paper's sections, which draws on this one and points into it
-as ``postmortem, S$n$''. It is written as a postmortem by the lead author.
+as ``postmortem, S$n$''. It is written as a postmortem by the lead author. It was written
+against the paper as it stood before 5~October 2026, when the paper was rebuilt around its
+four bottom lines. Its pointers to the paper's sections, tables and equations refer to that
+version, archived with this record in \brk{docs/archive/2026-10-05-before-cleanup/}.
 Part~I --- \emph{what we set out to measure, and what broke} --- retells the work in the
 order it happened, with everything withdrawn along the way. Part~II --- \emph{the
 mechanism, and the law it produces} --- is the argument. Part~III --- \emph{apparatus,
@@ -757,8 +766,11 @@ mechanism explains at least as well.
 cells' medians agree within half a millisecond, $105.3$ to $105.7$~ms, across a hundred runs. What went wrong is that a median over
 seven events was reported as a property of the system rather than of the window, and the tight
 agreement across runs made it look robust precisely because the artifact is deterministic. A
-benchmark can be internally consistent, gate-clean, and still measure its own start-up. Section~\mainAuthors{} therefore carries the requirement to report events per run alongside any latency percentile, since a percentile over single-digit samples is a statement about the
-harness.
+benchmark can be internally consistent, gate-clean, and still measure its own start-up, and a
+percentile over single-digit samples is a statement about the harness. The rule this episode
+produced, to count the events before quoting a percentile, stood in the paper until
+29~September; Section~\mainAuthors{} keeps its substance as the request to print the retention
+and the discards, counted by sign, beside every latency.
 
 \paragraph{What we claim instead} On broker transport --- the quantity that survived the audit and is measured over the same events for both systems --- \kafka{} and
 \redis{} remain equivalent within one millisecond (Section~\mainBrokers{}). From E1 we make no
@@ -1110,7 +1122,7 @@ This part is the argument. Sections~S7 to~S9 establish the scheduling failure by
 raising the timestamping processes to real-time priority makes them preempt the background load
 rather than queue behind it, so waiting probability falls sharply while utilization does not move ---
 and unlike our delay injection, which canceled in the subtraction (S3.1), priority acts on the timestamping threads themselves, where the model
-locates the failure. An waiting probability mechanism predicts collapse toward the running-state floor;
+locates the failure. A waiting-probability mechanism predicts collapse toward the running-state floor;
 any account in which the rate is a function of $\rho$ predicts no change, because $\rho$ is
 unchanged by construction. The result is unambiguous (Section S26): utilization held
 to $0.001$ (the pre-registered manipulation check passes), and the negative-span rate fell from
@@ -2890,8 +2902,8 @@ the transport proxy (S3.1), so it is reported as a negative result only.}
 
 
 \begin{table}[t]
-\caption[What each claim rests on]{What each claim rests on. H1, H3, H4 and the start-up
-withdrawal are claimed only in this document now, and E1 is historical; they stay here with
+\caption[What each claim rests on]{What each claim rests on. H1, H3, H4, the broker transport
+comparison and the start-up withdrawal are claimed only in this document now, and E1 is historical; they stay here with
 the campaigns that tested them. Where the audit gate discards runs, the selection is bounded: in E1
 by the worst case of Table~\ref{tab:selection}, which holds only while retention exceeds one
 half, and in the broker-transport campaigns, which keep $25.0$--$53.3\%$ of their \redis{} runs,

@@ -24,6 +24,12 @@ inventory below names the phrases the supplement attributes to the article, and 
 article to still contain them. It is short and it is maintained by hand, like the allow-list in
 `test_ledger_coverage`, and for the same reason: the judgement of what a sentence leans on is
 not one a regular expression makes well. When material leaves the article, this fires.
+
+**Which article.** The supplement of these rounds is the postmortem, and on 5 October 2026 the
+paper was rebuilt around four bottom lines. The postmortem was written against the paper as it
+stood before, and it says so; its `xr` reads that version, archived beside its own `paper.aux`
+in docs/archive/2026-10-05-before-cleanup/. Its attributions are claims about that version, so
+"the article" here is whatever document the postmortem's `\\externaldocument` names.
 """
 import re
 from pathlib import Path
@@ -31,6 +37,15 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).parent.parent.parent
+
+
+def _article():
+    """The main text the postmortem points into: the .tex of the document its xr reads."""
+    post = (REPO / "postmortem.tex").read_text(encoding="utf-8")
+    m = re.search(r"\\externaldocument\[P-\]\{([^}]+)\}", post)
+    assert m, "the postmortem no longer reads a main text through xr"
+    return m.group(1) + ".tex"
+
 
 #: Phrases the supplement attributes to the main text, and must therefore find there.
 #:
@@ -89,7 +104,7 @@ class TestWhatTheSupplementAttributesToTheArticleIsInTheArticle:
 
     @pytest.mark.parametrize("phrase", sorted(ATTRIBUTED))
     def test_the_article_still_carries_it(self, phrase):
-        assert phrase in _flat("paper.tex").lower(), (
+        assert phrase in _flat(_article()).lower(), (
             "the supplement attributes %r to the article and the article no longer contains "
             "it (%s). Either restore it or repoint the supplement at whatever carries it now."
             % (phrase, ATTRIBUTED[phrase]))
@@ -121,7 +136,7 @@ class TestThePointersStillResolve:
     """Sense is the new half; resolution is the half that already worked, kept beside it."""
 
     def test_every_macro_names_a_label_the_article_defines(self):
-        labels = set(re.findall(r"\\label\{([^}]+)\}", _flat("paper.tex")))
+        labels = set(re.findall(r"\\label\{([^}]+)\}", _flat(_article())))
         missing = [(m, l) for m, l in _macro_targets().items() if l not in labels]
         assert not missing, "macros naming labels the article lacks: %s" % missing
 

@@ -66,6 +66,7 @@ deletes the fastest messages too. We give checks, and measure what each buys.
 
 \begin{IEEEkeywords}
 Apache Kafka;
+benchmark auditing;
 CPU scheduling;
 latency benchmarking;
 message brokers;
@@ -109,12 +110,12 @@ it $\rtFactorLow$--$\rtFactorHigh\times$ at unchanged load.
 \item \textbf{The industry-wide audit} (Section~\ref{sec:external}). \harnessSilentWordCap{} of
 the \harnessAuditedWord{} tools we read at source dispose of such values without counting them.
 \toolsOneClockWordCap{} of the \toolsRunWord{} we ran take both timestamps in one process, so
-they never measure a \emph{one-way latency}, the time from one process to another. A filter that
-keeps only latencies above zero, on a millisecond clock, also deletes the fastest messages, and
-no public report we audited says how many samples it kept.
+they never measure a \emph{one-way latency}, the time from one process to another. On a
+millisecond clock, a filter that keeps only latencies above zero, a \emph{positivity filter}, also
+deletes the fastest messages, and no public report we audited says how many samples it kept.
 \item \textbf{What to do} (Section~\ref{sec:practice}). Checks for benchmark authors and
-readers, each with what it buys where we measured it. A better-synchronized clock repairs neither
-the late reading nor the deletion.
+readers, each with what it buys where we measured it. Better clock synchronization cures neither
+problem.
 \end{enumerate}
 
 % Set here so that the figure the opening cites first is numbered first.
@@ -133,7 +134,8 @@ $\delta_{\mathrm{recv}}$. Here $A$ runs past $D$, so $S = D - A$ is below zero a
 arrived early. The red notes mark this late reading, and a tool that reports $D$ in steps of
 $\tau$ and drops every value at or below zero (Section~\ref{sec:external}). $t_{\mathrm{sched}}$
 and $t_{\mathrm{out}}$ mark when the message was due and when the consumer had handled it, and
-the event-time latency $E$ spans them. The path drawn is \kafka{}'s. \redis{} reads the
+the \emph{event-time latency} $E$ spans them: $D$, with the \emph{publish delay} before it and
+the consumer's \emph{processing-time latency} after it. The path drawn is \kafka{}'s. \redis{} reads the
 acknowledgment on the application thread, which also waits for a core.}
 \label{fig:model}
 \end{figure*}
@@ -172,7 +174,10 @@ Eligible Virtual Deadline First). The producer replays StatsBomb's open football
 data~\cite{statsbomb2023} at a chosen publish rate, and nothing below depends on its content
 beyond message size and rate. \emph{Utilization}\label{def:rho} $\rho$ is the fraction of
 processor time busy on the host over a run, and a \emph{background load}, processor work run
-beside the clients, sets it. A later campaign ran on three pairs of Microsoft Azure machines, two
+beside the clients, sets it.\label{def:vocabulary} A \emph{condition} is one point of the
+experimental design: a broker, a publish rate, a message size, a background load and how often
+the consumer confirms what it has read. A \emph{run} executes a condition once, and a
+\emph{replicate} is a further run of it. A later campaign ran on three pairs of Microsoft Azure machines, two
 x86 and one Neoverse~N2. It was \emph{registered}: its predictions were committed in public
 before the runs that test them~\cite{nosek2018preregistration}.
 
@@ -202,7 +207,7 @@ never below zero.}
 \end{figure}
 
 Nothing arrived early. On the same messages and the same clock, neither $D$ nor $A$ falls below
-zero once. One reading was taken late. Users of a widely run broker benchmark were told that
+zero once (Supplement~S1.3). One reading was taken late. Users of a widely run broker benchmark were told that
 latencies below zero were clock skew between nodes~\cite{omb_issue216}. On one clock there is
 no skew to blame.
 
@@ -239,7 +244,7 @@ message's trip along leg~2 and the consumer's own wait, $\delta_{\mathrm{recv}}$
 \caption{\textbf{Adding the publish latency back repairs the latency, and real-time priority cuts
 the rate in every pair.} (a)~The error of $S$ as a latency on each of our $\spanRatioConditions$
 conditions (crosses), and once the publish latency is added back (dots), against the condition's
-end-to-end latency. The curve is $A/D$ at the median publish latency, and its band spans the
+end-to-end latency. The curve is $A/D$ at the median publish latency, and its band covers the
 tenth to ninetieth percentiles of $A$ across conditions, $\exposureLagLo$--$\exposureLagHi\,\mu$s.
 On the dashed line $A$ equals $D$. The shaded decade holds the sub-millisecond medians now
 reported for brokers. (b)~The negative-span rate of each matched pair at normal priority
@@ -289,8 +294,8 @@ predicts, and the opposite of what stress on the host would cause (Supplement~S3
 
 \textbf{An independent check.} A kernel trace of the scheduler's wakeup and switch
 events~\cite{gregg2016runqlat} times the wait directly and shares no probe or data with the
-application's timestamps. With nothing fitted, the chance it gives that a wait outlasts the
-end-to-end latency stands to the measured rate at ratios of $\tracedRatios$ in
+application's timestamps. With nothing fitted, the share of traced wakeups that waited longer
+than the end-to-end latency stands to the measured rate at ratios of $\tracedRatios$ in
 \tracedRatioArmsWord{} configurations (Supplement~S3.5).
 
 \subsection{The timescale the slice sets}
@@ -372,8 +377,8 @@ included, in its average, so its figure adds the clocks' offset to the path's la
 \label{sec:extmethod}
 \label{sec:extphase}
 \label{sec:extcomp}
-A filter that keeps only latencies above zero, a \emph{positivity filter}, is one of the
-dispositions above, and the one that deletes more than the values below zero. In statistical
+The positivity filter is one of the dispositions above, and the one that deletes more than the
+values below zero. In statistical
 terms it truncates the distribution at zero: what it removes is not counted, as it would be if
 censored. We measured it in
 depth in a broker benchmark that many public comparisons run, the OpenMessaging
@@ -465,9 +470,11 @@ $\auditPctCloud\%$ of our cloud runs. Sees only the messages whose $A$ exceeds $
 \addlinespace[2pt]
 Time from the publish call, or record the publish latency and add it back. & Recovers $D$ to a
 median error of $\recoveryErrPass\%$ where the sign check passes and $\recoveryErrFail\%$ where it
-fails. $S$ alone understates $D$ $\understateFactor\times$ (Fig.~\ref{fig:exposure}a). \\
+fails. $S$ alone understates $D$ $\understateFactor\times$ at the median
+(Fig.~\ref{fig:exposure}a). \\
 \addlinespace[2pt]
-Give the threads that read the clock real-time priority, or busy-poll a dedicated core. &
+Give the threads that read the clock real-time priority, or have them spin on a dedicated core
+(\emph{busy-polling}). &
 $\rtFactorLow$--$\rtFactorHigh\times$ fewer values of $S$ below zero, in each of \rtPairsWord{}
 matched pairs (Fig.~\ref{fig:exposure}b). Busy-polling: not measured. \\
 \addlinespace[2pt]
@@ -479,7 +486,8 @@ Read your own percentiles: on a fast path, a median of exactly one or two clock 
 the clock. & Flags $\ombGridMedianCells$ of the $\ombMedianCells$ settings we captured
 (Section~\ref{sec:extmethod}). \\
 \addlinespace[2pt]
-Randomize the publish instants (Poisson sampling), and record the achieved rate. & Keeps the
+\raggedright Randomize the publish instants (Poisson sampling), and record the achieved rate. &
+Keeps the
 schedule from phase-locking with the clock. Not measured. \\
 \bottomrule
 \end{tabular}
@@ -489,7 +497,7 @@ schedule from phase-locking with the clock. Not measured. \\
 run when more than one percent of its messages carry a value below zero in any latency component
 it records, $S$ among them, or when the median of any component is below zero. It rejected
 $\auditRejectedCloud$ of the $\auditRunsCloud$ cloud runs behind our results
-($\auditPctCloud\%$). It sees only the worst cases. The publish latency exceeds half the
+($\auditPctCloud\%$; Supplement~S2). It sees only the worst cases. The publish latency exceeds half the
 end-to-end latency on $\diseaseOverHalf\%$ of messages, but the check sees only the
 $\diseaseOverWhole\%$ on which it exceeds the whole, and a latency that load inflates but leaves
 positive passes by construction. The check therefore needs the repair that follows.
@@ -499,7 +507,8 @@ latency does not grow because a message travels further, so the relative error o
 latency, $A/D$, falls as $1/D$. At our median publish latency, $A = \ackLagMedianUs\,\mu$s, the
 error is $\exposureErrOne\%$ at an end-to-end latency of $1$~ms and $\exposureErrTen\%$ at
 $10$~ms, and below $\exposureCrossover$~ms the median publish latency exceeds the end-to-end
-latency itself (Fig.~\ref{fig:exposure}a). Over our $\spanRatioConditions$ conditions, $S$
+latency itself (Fig.~\ref{fig:exposure}a). Across the band of $A$ in the figure, the error at
+$10$~ms runs from $\exposureErrTenLo$ to $\exposureErrTenHi\%$. Over our $\spanRatioConditions$ conditions, $S$
 understates the end-to-end latency $\understateFactor\times$ at the median, with an interquartile
 range of $\understateIQRLo$--$\understateIQRHi\times$. Because the two brokers' clients read the
 acknowledgment differently, $S$ also inflates the gap between them $\gapDistortionPaired\times$
@@ -520,8 +529,8 @@ $\recvWaitMedianLoUs$--$\recvWaitMedianHiUs\,\mu$s (Supplement~S3.8).
 
 \textbf{Give the threads that read the clock a core.} Real-time priority cut the negative-span
 rate $\rtFactorLow$--$\rtFactorHigh\times$ at unchanged background load
-(Fig.~\ref{fig:exposure}b). A thread that spins on a core of its own instead of sleeping is
-\emph{busy-polling}, and never waits to be woken. Busy-polling a dedicated core should buy the
+(Fig.~\ref{fig:exposure}b). A busy-polling thread spins on a core of its own instead of
+sleeping, and never waits to be woken. Busy-polling a dedicated core should buy the
 same for the price of that core, though we did not measure it. At real-time priority the rate
 settles at $\rtResidualMin$--$\rtResidualMax$, not at zero, so the check stays, and a real-time or
 polling thread changes the system it measures.
@@ -544,7 +553,7 @@ known too~\cite{kuperberg2011timers}. Load testers of microsecond-scale services
 report~\cite{zhang2016treadmill,kogias2019lancet}, Lancet by busy-polling. Chandrasekar and
 Kramberger model that bias with a single-parameter queueing law~\cite{chandrasekar2026bias} that
 our placement contrast refutes. Villain et al.\ found that an outgoing socket timestamp ``does
-not respect causality'' under every stress pattern, and traced host latency to interrupts,
+not respect causality'' under every stress pattern, including none, and traced host latency to interrupts,
 scheduling and context switching~\cite{villain2012probing}. None gives the consequence for a
 difference read by two processes: that it falls below zero at a rate set by the waiting
 probability and the path's length, on the timescale of the slice.
@@ -583,7 +592,7 @@ these checks, applied where a benchmark reports a latency.
 Attributing the values of $S$ below zero to scheduling is an inference. One clock excludes clock
 skew, the manipulations exclude utilization, timer noise and stress, and the kernel trace observes
 the wait. Clocks that disagree across virtual CPUs~\cite{kvmclock} are excluded too. A clock read
-in $\clockIncrementNs$~ns can only be \clockAdmitted{}, which the kernel uses only where the CPUs'
+in $\clockIncrementNs$~ns can only be \clockAdmitted{}, both of which the kernel uses only where the CPUs'
 clocks agree, and an offset large enough for the deepest value of $S$ would have driven $D$ below
 zero, while the smallest $D$ observed caps any offset $\spanOffsetMargin$-fold lower. Both testbeds
 are virtual, so \emph{steal time}, the time a virtual processor is ready but waits while the
@@ -597,7 +606,7 @@ probability at least tenfold failed, scheduler counters seeing it fall $\eaSeven
 $\eaSevenOccFallHi$-fold, so the factorization of Equation~\ref{eq:occupancy} is untested. The
 tracer is not free: the rate was $\untracedRate$ untraced against $\tracedRate$ traced
 ($z = \observerZ$), so each prediction is held against the traced run's own rate, and a check
-fixed in advance set aside one of the three configurations; the other two bracket the observed
+fixed in advance set aside one of the \tracedRatioArmsWord{} configurations; the other two bracket the observed
 rate. The base slice on the cloud hosts is derived, not read off them. In the registered
 campaign, the predictions of where the rate falls with the end-to-end latency, and of how wide
 the fall is, were not confirmed, and Python's rate exceeded the registered limit of $1.5$ times

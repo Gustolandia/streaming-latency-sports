@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![Target: TC](https://img.shields.io/badge/Target-IEEE%20Transactions%20on%20Computers-orange.svg)]()
-[![Tests](https://img.shields.io/badge/tests-8073_passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-8217_passing-brightgreen.svg)]()
 [![Coverage](https://img.shields.io/badge/branch_coverage-100%25-brightgreen.svg)]()
 [![StatsBomb Data](https://img.shields.io/badge/StatsBomb_Data-CC_BY--NC_4.0-blue.svg)](https://github.com/statsbomb/open-data)
 [![DOI (code)](https://img.shields.io/badge/DOI_code-10.5281%2Fzenodo.21650031-blue.svg)](https://doi.org/10.5281/zenodo.21650031)
@@ -387,7 +387,7 @@ From 3,315 StatsBomb matches across 52 competition-seasons (2003–2023), via
 
 > **Title:** *Super-Precise Latency: How CPU Threading Affects High-Precision Latency, and an Industry-Wide Audit*
 > **Target:** IEEE Transactions on Computers (`IEEEtran`, journal, `paper.tex`)
-> **Keywords:** Apache Kafka; CPU scheduling; latency benchmarking; message brokers; multithreading; Redis Streams; timestamp resolution.
+> **Keywords:** Apache Kafka; benchmark auditing; CPU scheduling; latency benchmarking; message brokers; multithreading; Redis Streams; timestamp resolution.
 
 The paper's abstract, which by the authors' rule carries no numbers and names no tool:
 
@@ -920,9 +920,9 @@ supplement and the complete record in the postmortem, both compiled from the sam
 
 | Asset | Purpose |
 |-------|---------|
-| `paper.tex` | The paper (`IEEEtran`, journal; Introduction, How a Benchmark Times a Message, The Finding: Negative Latencies, The Mechanism: A Timestamp Taken Late, The Industry's Remedy: Deletion, Practical Implications, Related Work, Threats and Limitations, Conclusion) |
-| `supplement.tex` | The supplementary material, S1–S9 in the paper's order, under the paper's byline (`docs/supplement_index.md` maps each section to the postmortem sections it draws on) |
-| `postmortem.tex` | The complete record, a single-author postmortem in five parts, S1–S37: the chronology, every withdrawn result and the law campaign run by run. Archived with the data; not part of the submission |
+| `paper.tex` | The paper (`IEEEtran`, journal; Introduction, How a Message Is Timed, The Distribution of S, The Mechanism and Its Laws, An Industry-Wide Audit, What to Do, Related Work, Limitations, Conclusion) |
+| `supplement.tex` | The supplementary material, S1–S6 in the paper's order, under the paper's byline (`docs/supplement_index.md` maps each section to the postmortem sections it draws on) |
+| `postmortem.tex` | The complete record, a single-author postmortem in five parts, S1–S37: the chronology, every withdrawn result and the law campaign run by run. Archived with the data; not part of the submission. Written against the paper as it stood before 5 Oct 2026, whose labels it reads from `docs/archive/2026-10-05-before-cleanup/paper.aux` |
 | `manuscript_references.bib` | Bibliography |
 | `IEEEtran.cls` | IEEE article class (from TeX Live/MiKTeX) |
 
@@ -953,7 +953,9 @@ The order is a real constraint, not a convention. The supplement refers to the m
 sections, tables and equations by label, and `\usepackage{xr}` resolves them by reading
 `paper.aux` — so a supplement built before the paper silently renders those references as the
 literal `??`. Six of them reached the built PDF before round 42, in the one document the main
-text sends a reader to when they want the evidence. `TestNoCrossReferenceDangles` fails on any
+text sends a reader to when they want the evidence. The postmortem reads the frozen labels of
+the paper it was written against, in `docs/archive/2026-10-05-before-cleanup/paper.aux`, so it
+does not depend on the order. `TestNoCrossReferenceDangles` fails on any
 `??` in either rendered PDF, so a build in the wrong order is caught on the artefact rather
 than trusted to the procedure.
 
@@ -965,7 +967,7 @@ is why the check now runs on the artefact a reader actually receives.
 
 **Status (the PDFs built on 5 Oct 2026):** compiles clean, with 0 errors and 0 undefined
 references or citations. The paper is 8 pages, its text ending on page 7 and the last page
-holding two references and the two biographies, with 37 references, three figures, one table
+holding five references and the two biographies, with 37 references, three figures, one table
 and five numbered equations. The journal supplement, S1–S6 under the paper's byline, is 16
 pages; the postmortem, the complete single-author record that is not submitted, is 76 pages.
 Formatted with `IEEEtran` (journal, 10pt) for IEEE Transactions on Computers.
@@ -1151,7 +1153,11 @@ for occupancy, *residual wait* for residual stall, *randomize the publish instan
 sampling)* for dither, and the positivity filter named for what it does statistically, a
 truncation at zero. Treadmill, Skyloft, timerlat, ShuffleBench and SPEC's methodological
 principles are now cited. Fig. 2 is the distribution of *S* alone, drawn at column width, and
-Fig. 1's red notes say what they mark instead of numbering failures.
+Fig. 1's red notes say what they mark instead of numbering failures. Every term is defined where
+a reader first meets it, the experimental vocabulary included. The postmortem was written against
+the paper as it stood before, so its pointers now read that version's labels, kept beside it in
+the archive. The tests follow the rebuilt documents: 8,217 pass, none skip, every script's
+branches are covered, and the mutation check catches all six of the claims it breaks.
 
 ### 4.0.0 — prepared 29 Sep 2026, not yet deposited — the editorial revision
 An outside editor's review of v3, taken whole. **Paper v5** is retitled *Faster than Light: Latency

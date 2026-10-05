@@ -46,6 +46,12 @@ def supplement():
 #: legitimately uses both harness counts --- "reads ten tools at source and finds five
 #: disposing" --- so a whole-sentence rule cannot separate them, and the first draft of this
 #: gate failed on exactly that. What a count quantifies is named immediately to its right.
+#:
+#: 5 Oct 2026: `harnessSilentIndependentWord` and `harnessCountingWord` left the inventory. The
+#: rebuilt paper, its supplement and the postmortem use neither (Rezolus, the one tool that
+#: counts its discards, is named rather than counted), and an inventory row for a macro nobody
+#: uses tests nothing. A use of a count may open its sentence through the capitalised twin, as
+#: `\harnessSilentWordCap{}` does twice in the rebuilt paper, so the twin is read as the count.
 COUNTS = {
     "harnessAuditedWord": {
         "counts": "every tool the audit read at source",
@@ -60,15 +66,12 @@ COUNTS = {
         # inventoried here by hand; any phrase not listed still has to pass on the right.
         "named_before": ("uncounted disposal in",),
     },
-    "harnessSilentIndependentWord": {
-        "counts": "the silent tools other than the audited subject itself",
-        "require": ("independent",),
-    },
-    "harnessCountingWord": {
-        "counts": "the tool that exposes its discards",
-        "require": ("counts", "discard"),
-    },
 }
+
+
+def _use_pattern(macro):
+    """A use of `macro`, or of its capitalised twin, which is the same count opening a sentence."""
+    return r"\\" + macro + r"(?:Cap)?\{\}"
 
 
 def _uses(text, macro):
@@ -78,7 +81,7 @@ def _uses(text, macro):
     its left is the sentence's subject, which is why the whole sentence cannot decide this.
     """
     out = []
-    for m in re.finditer(r"\\" + macro + r"\{\}", text):
+    for m in re.finditer(_use_pattern(macro), text):
         end = text.find(". ", m.end())
         out.append(text[m.end():end if end > 0 else len(text)])
     return out
@@ -87,24 +90,35 @@ def _uses(text, macro):
 def _heads(text, macro):
     """What stands immediately to the left of each use of `macro`, in the order `_uses` uses."""
     return [text[max(0, m.start() - 80):m.start()].rstrip()
-            for m in re.finditer(r"\\" + macro + r"\{\}", text)]
+            for m in re.finditer(_use_pattern(macro), text)]
 
 
 class TestACountMacroMatchesTheSentenceItStandsIn:
     """The inventory above, checked on every build."""
 
+    @pytest.mark.parametrize("doc", ["paper.tex", "supplement.tex"])
     @pytest.mark.parametrize("macro", sorted(COUNTS))
-    def test_every_use_names_the_population_it_counts(self, macro, paper):
+    def test_every_use_names_the_population_it_counts(self, macro, doc):
         """v5 (28 Sep): a use passes on its right, as before, or on one of the phrases the
-        inventory lists by hand under `named_before`, standing directly against the macro."""
+        inventory lists by hand under `named_before`, standing directly against the macro.
+
+        5 Oct 2026: the journal supplement's S5 counts the same tools, so it is read too."""
+        text = _flat(doc)
         rule = COUNTS[macro]
         before = rule.get("named_before", ())
-        bad = [tail[:130] for head, tail in zip(_heads(paper, macro), _uses(paper, macro))
+        bad = [tail[:130] for head, tail in zip(_heads(text, macro), _uses(text, macro))
                if not any(w in tail.lower() for w in rule["require"])
                and not (before and head.endswith(before))]
         assert not bad, (
-            "\\%s counts %s, and stands before text naming something else. Expected one of "
-            "%s to its right: %s" % (macro, rule["counts"], rule["require"], bad))
+            "%s: \\%s counts %s, and stands before text naming something else. Expected one "
+            "of %s to its right: %s" % (doc, macro, rule["counts"], rule["require"], bad))
+
+    def test_the_capitalised_twin_is_held_to_the_same_rule(self):
+        """5 Oct 2026: round 62's defect, opening its sentence through the twin, still fails."""
+        defect = r"\harnessSilentWordCap{} tools of Section VII are readings of source"
+        rule = COUNTS["harnessSilentWord"]
+        tail = _uses(defect, "harnessSilentWord")[0]
+        assert not any(w in tail.lower() for w in rule["require"])
 
     def test_a_listed_left_phrase_is_the_only_way_past_the_right(self):
         """v5 (28 Sep): added with `named_before`, to show the exemption is a phrase and not a
@@ -131,8 +145,11 @@ class TestACountMacroMatchesTheSentenceItStandsIn:
         them"
         where v4 said "are readings of source rather than measured deployments"; the anchor
         follows the wording, and the population rule is unchanged.
+
+        5 Oct 2026: the rebuilt Limitations say "We classified the ten tools by reading them",
+        beside the eleven the registered campaign ran; the anchor follows it.
         """
-        i = paper.find("at source and did not run them")
+        i = paper.find("tools by reading them")
         assert i > 0, "the source-reading concession has gone from Threats"
         window = paper[max(0, i - 200):i]
         assert r"\harnessAuditedWord" in window, (
@@ -160,9 +177,17 @@ class TestEveryResultSectionBelongsToAContribution:
     STRUCTURAL = {"sec:intro", "sec:sysmodel", "sec:related", "sec:method",
                   "sec:discussion", "sec:conclusion", "sec:threats"}
 
+    @staticmethod
+    def _contributions(paper):
+        """The contribution list. 5 Oct 2026: the rebuilt introduction has no "Contributions"
+        heading; it says "We make four contributions" and enumerates them, so the list is the
+        enumeration that sentence opens."""
+        m = re.search(r"contributions\.\s*\\begin\{enumerate\}(.*?)\\end\{enumerate\}", paper)
+        assert m, "the introduction no longer lists its contributions"
+        return m.group(1)
+
     def test_each_result_section_is_named_by_a_contribution(self, paper):
-        block = paper[paper.index("Contributions"):]
-        block = block[:block.index(r"\section{")]
+        block = self._contributions(paper)
         claimed = set(re.findall(r"\\ref\{(sec:[a-zA-Z_]+)\}", block))
         labels = set(re.findall(r"\\label\{(sec:[a-zA-Z_]+)\}", paper))
         results = labels - self.STRUCTURAL
@@ -177,11 +202,22 @@ class TestEveryResultSectionBelongsToAContribution:
             "either unclaimed work or a section that should not be a section." % unclaimed)
 
     def test_the_tools_section_is_claimed(self, paper):
-        """Pinned by name, because it is the one round 62 found unclaimed."""
-        block = paper[paper.index("Contributions"):]
-        block = block[:block.index(r"\section{")]
-        assert "sec:tools" in block, \
-            "Section VII is unclaimed again; Contribution 2 is where its generality belongs"
+        """Pinned by name, because it is the one round 62 found unclaimed.
+
+        5 Oct 2026: the tool audit is subsection V-A of the rebuilt paper's industry-wide
+        audit, and the third contribution claims that whole section and names the tools read
+        at source. So the claim reaches sec:tools through the section that owns it, and the
+        item that claims it must say what the tools do."""
+        block = self._contributions(paper)
+        items = [i for i in block.split(r"\item")[1:] if r"\ref{sec:tools}" in i
+                 or r"\ref{sec:external}" in i]
+        assert items, "Section V-A is unclaimed again; a contribution has to claim the audit"
+        start = paper.index(r"\label{sec:external}")
+        owner = paper[start:paper.index(r"\section{", start)]
+        assert r"\label{sec:tools}" in owner, \
+            "the tool audit has left the section the contribution claims"
+        assert any(re.search(r"\\harnessAuditedWord\{\} tools we read at source", i)
+                   for i in items), "the claiming contribution no longer names the tools it read"
 
 
 class TestAReferenceNoteSaysWhatOnlyItCanSay:

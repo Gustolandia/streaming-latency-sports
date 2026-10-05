@@ -9,8 +9,9 @@ ran only on the author's machine, after a build by hand, against whatever build 
 
 So the test session builds the paper itself whenever those files are missing or older than
 anything they are built from. It builds in a scratch folder, from the sources as they stand, by
-the README's own sequence: pdflatex, bibtex, pdflatex twice, the paper before the supplement
-and the postmortem, whose references into the main text are read from paper.aux. Only the files a build leaves
+the README's own sequence: pdflatex, bibtex, pdflatex twice, the paper before the supplement,
+whose references into the main text are read from paper.aux, and then the postmortem, whose
+references read the archived paper's. Only the files a build leaves
 beside a PDF are brought back. The committed PDFs are never touched: they are what a reader
 gets, and what the rendered-page gates read.
 
@@ -29,7 +30,11 @@ NEEDED = (".aux", ".bbl", ".blg", ".log")
 LEFT = NEEDED + (".out", ".toc", ".lof", ".lot")
 #: What the two documents are built from.
 SOURCES = ("paper.tex", "supplement.tex", "postmortem.tex", "manuscript_references.bib")
-SOURCE_FOLDERS = (("docs/generated", "*.tex"), ("docs/results/figures", "*.pdf"))
+#: 5 Oct 2026: the postmortem reads the labels of the paper it was written against, the version
+#: before the rebuild, from the label map kept with that paper in the archive; without it a
+#: scratch build leaves every one of the postmortem's main-text pointers undefined.
+SOURCE_FOLDERS = (("docs/generated", "*.tex"), ("docs/results/figures", "*.pdf"),
+                  ("docs/archive/2026-10-05-before-cleanup", "paper.aux"))
 
 #: Why the build failed, if it did; the gates that need it say so when they fail.
 FAILURE = None

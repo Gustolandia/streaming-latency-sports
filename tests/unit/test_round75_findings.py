@@ -120,16 +120,24 @@ class TestR1TheIndexTermsNameTheirOwnSubject:
     #: where it comes from. A term list that contains none of these describes another paper.
     #: Matched as a prefix so *benchmark* covers *benchmarking* and *clock* covers
     #: *clock synchronization*.
+    #:
+    #: 5 Oct 2026: re-derived for the rebuilt paper, whose title is "Super-Precise Latency:
+    #: How CPU Threading Affects High-Precision Latency, and an Industry-Wide Audit".
+    #: "measurement" was the old title's noun and left with it and with the term "measurement
+    #: errors"; "clock" was the old Section IV-C's and left with the term "clock
+    #: synchronization", both dropped from the index terms in the rebuild. "thread" and
+    #: "audit" are the new title's nouns.
     SUBJECT_WORDS = {
         "latency": "the title's own noun",
-        "benchmark": "the title's own noun, and the population Section VII audits",
-        "measurement": "the title's own noun",
-        "clock": "Section IV-C, and the failure the paper says is NOT the cause",
-        "timestamp": "Sections III and IV-C: what a timestamp marks is the paper's subject",
-        "scheduling": "Section III's mechanism, and Section V-E's slice",
+        "thread": "the title's own noun, CPU threading, which the mechanism is about",
+        "audit": "the title's own noun, the industry-wide audit of Section V",
+        "benchmark": "the population Section V audits, and the abstract's latency benchmarks",
+        "timestamp": "Section II, how a message is timed, and Section V-C's millisecond clock: "
+                     "what a timestamp marks is the paper's subject",
+        "scheduling": "Section IV's mechanism, a thread's wait for a core, and its slice",
         # "stream" until 1 Oct 2026: the v5 title says "message-broker", and an outside editor
         # noted that "streaming" points this journal's readers at stream-processing engines.
-        "broker": "the title's own noun, and the whole population under audit",
+        "broker": "the abstract's own noun, and the whole population under audit",
     }
 
     def test_the_terms_carry_the_paper_s_own_subject_words(self, paper):
@@ -153,7 +161,12 @@ class TestR1TheIndexTermsNameTheirOwnSubject:
         assert title, "no title"
         nouns = [w for w in re.findall(r"[A-Za-z]{5,}", title.group(1).lower())
                  # 4 Oct 2026: "silent" and "choose", the v7 title's adjective and verb.
-                 if w not in ("faster", "light", "artifacts", "silent", "choose")]
+                 # 5 Oct 2026: the rebuilt title's adjectives and verb, "super-precise" and
+                 # "affects", and the first halves of its compound adjectives,
+                 # "high-precision" and "industry-wide"; its nouns are latency, threading and
+                 # audit.
+                 if w not in ("faster", "light", "artifacts", "silent", "choose",
+                              "super", "precise", "affects", "precision", "industry")]
         assert len(nouns) >= 4, "the title has changed shape; re-derive this list"
         terms = " ".join(_index_terms(paper)).lower()
         missing = [n for n in nouns if n[:6] not in terms]
@@ -199,6 +212,13 @@ class TestR1TheIndexTermsNameTheirOwnSubject:
             self.test_the_terms_carry_the_paper_s_own_subject_words(bad)
         with pytest.raises(AssertionError):
             self.test_no_term_contains_the_separator_of_another_list(bad)
+
+
+#: 5 Oct 2026: the rebuilt paper's recovery paragraph (Section VI-B, label sec:cost) prints
+#: both populations' median errors over their counts and both upper quartiles, and claims
+#: neither a separation nor a sameness; the mutations below put each claim back after the
+#: last of its numbers.
+RECOVERY_END = r"\$" + re.escape(BS) + r"recoveryErrFailHi" + re.escape(BS) + r"%\$"
 
 
 class TestR2TheRecoveryPopulationsDoNotSeparate:
@@ -258,18 +278,23 @@ class TestR2TheRecoveryPopulationsDoNotSeparate:
         not asked for.
 
         29 Sep: the pointer lands on the journal supplement's S3.8, which states the shift and
-        its non-zero form too; it is found there by the shift. S16.9 is the postmortem's."""
+        its non-zero form too; it is found there by the shift. S16.9 is the postmortem's.
+
+        5 Oct 2026: the rebuilt paper keeps the recovery as Section VI-B's paragraph, which
+        prints both median errors over their counts and both upper quartiles, 20% and 19%,
+        the numbers that show the tails agree, and draws no inference over them. The kept
+        sentence "the data cannot tell apart" and its pointer to the shift were cut, and the
+        journal supplement no longer carries the shift; S16.9 of the postmortem does. Held:
+        both populations described alike, no separation or sameness claimed, S16.9 as before,
+        and the table of checks quoting only numbers the paragraph prints, so the two cannot
+        disagree."""
         vd = _recovery(paper)
-        for macro in ("recoveryErrPass", "recoveryErrFail", "recoveryPassN", "recoveryFailN"):
+        for macro in ("recoveryErrPass", "recoveryErrFail", "recoveryPassN", "recoveryFailN",
+                      "recoveryErrPassHi", "recoveryErrFailHi"):
             assert re.search(re.escape(BS + macro) + r"(?![A-Za-z])", vd), macro
-        assert re.search(r"cannot\s+(?:be\s+told|tell)\s+apart", vd)
-        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
-        at = journal.index(BS + "recoveryShift$")
-        home = re.findall(r"\\(?:sub)?section\{(S\d+(?:\.\d+)?)\.", journal[:at])[-1]
-        tail = journal[at:journal.index(BS + "subsection{", at)]
-        assert BS + "recoveryNonzeroShift$" in tail, "both shifts are stated where it points"
-        assert re.search(r"Supplement~%s\b" % re.escape(home), vd), \
-            "the kept sentence points at where the shift went"
+        for claim in ("separate", "do not differ", "indistinguishable", "no shift remains",
+                      "the populations do not"):
+            assert claim not in vd, claim
         s169 = _s169(supplement)
         assert BS + "recoveryShift$" in s169
         # Round 76 replaced the one-sided quote of `recoveryPassExact` here. It read "33% of
@@ -286,7 +311,13 @@ class TestR2TheRecoveryPopulationsDoNotSeparate:
         assert BS + "recoveryNonzeroShift$" in s169 and "no shift can be detected" in s169
         assert "the recovery holds where the check rejects as well as where it passes" in s169
         row = _checks_row(paper, "add it back")
-        assert (BS + "ref{sec:cost}") in row, "the rule still cites Section III-D"
+        quoted = set(re.findall(re.escape(BS) + r"(recovery\w+)", row))
+        assert quoted, "the add-back row no longer says what the recovery buys"
+        assert quoted <= set(re.findall(re.escape(BS) + r"(recovery\w+)", vd)), (
+            "the add-back row quotes a recovery number the paragraph does not print: %s"
+            % sorted(quoted - set(re.findall(re.escape(BS) + r"(recovery\w+)", vd))))
+        for claim in ("separate", "do not differ", "indistinguishable"):
+            assert claim not in row, claim
 
     def test_no_p_value_was_reached_for(self, paper, supplement):
         """Explicitly asked for. The manuscript's register is intervals and shifts, and a
@@ -320,11 +351,17 @@ class TestR2TheRecoveryPopulationsDoNotSeparate:
         # v5 (28 Sep): Section III-D's kept sentence says "two populations the data cannot tell
         # apart"; the anchor is that clause, in either of the two wordings round 78 allows, and
         # the separation claim is put in its place.
-        bad, n = re.subn(r"cannot\s+(?:be\s+told|tell)\s+apart",
-                         "separate\nat the median, not in the upper tail", paper)
-        assert n == 1, "Section III-D has been reworded; retarget this mutation"
+        # 5 Oct 2026: that sentence was cut; the claim is put back after the last of the
+        # rebuilt paragraph's numbers (`RECOVERY_END`), and both gates must fire on it.
+        bad, n = re.subn(RECOVERY_END,
+                         lambda m: m.group(0) + ", so they separate\nat the median, not in the "
+                         "upper tail", paper)
+        assert n == 1, "Section VI-B has been reworded; retarget this mutation"
         with pytest.raises(AssertionError):
             self.test_the_separation_claim_is_gone(bad)
+        with pytest.raises(AssertionError):
+            self.test_section_v_d_and_section_viii_b_now_agree(bad, (REPO / "postmortem.tex")
+                                                              .read_text(encoding="utf-8"))
 
 
 class TestW1TheMonotonicClockIsNamedWhereItBelongs:
@@ -345,11 +382,17 @@ class TestW1TheMonotonicClockIsNamedWhereItBelongs:
         clocks -- synchronization and resolution -- and a monotonic clock is neither.
 
         v5 (28 Sep): Section VIII-C is now the paragraph of Section VI labeled `sec:betterclock`,
-        which runs to the broker paragraph labeled `sec:brokers`."""
-        i = paper.index(BS + "label{sec:betterclock}")
-        section = paper[i:paper.index(BS + "label{sec:brokers}", i)]
+        which runs to the broker paragraph labeled `sec:brokers`.
+
+        5 Oct 2026: the rebuilt paper has neither label; the paragraph is Section VI's last,
+        "A better-synchronized clock repairs neither ...", and runs to Related Work. The whole
+        paper is held too, since it names no clock source at all."""
+        i = paper.index(BS + "label{sec:practice}")
+        j = paper.index("A better-synchronized clock repairs neither", i)
+        section = paper[j:paper.index(BS + "section{", j)]
         assert "better-synchronized clock" in section, "the paragraph has moved; retarget this pin"
         assert "MONOTONIC" not in section
+        assert "MONOTONIC" not in re.sub(r"(?m)^%[^\n]*", "", paper)
 
     def test_the_exhibit_it_points_at_exists(self, supplement):
         assert "S25. The evidence behind the count of tools that dispose silently" \
@@ -400,32 +443,42 @@ class TestW3TheRepeatedCountIsDeliberate:
 
     def test_both_threes_come_from_one_macro(self, paper):
         """v5 (28 Sep): one use, not two; the count dropped because the second use was
-        rewritten out with the superlative's clause, not because a typed word replaced it."""
+        rewritten out with the superlative's clause, not because a typed word replaced it.
+
+        5 Oct 2026: the rebuilt sentence counts "ways" where v5 counted "classes", and the
+        typed count is refused under either noun."""
         assert paper.count(BS + "harnessDisposalClassesWord") == 1
         i = paper.index(BS + "label{sec:tools}")
         section = paper[i:paper.index(BS + "section{", i)]
         assert BS + "harnessDisposalClassesWord" in section
-        assert "of the three classes" not in section
-        assert "three classes" not in section.replace(
-            BS + "harnessDisposalClassesWord{} classes", "")
+        assert "of the three classes" not in section and "of the three ways" not in section
+        rest = section.replace(BS + "harnessDisposalClassesWord{} classes", "").replace(
+            BS + "harnessDisposalClassesWord{} ways", "")
+        assert "three classes" not in rest and "three ways" not in rest
 
     def test_they_are_close_enough_that_the_repetition_is_visible(self, paper):
         """v5 (28 Sep): with the count said once, what must stay in view of it is the sentence
-        that ranks within it, so the distance is now from the count to the superlative."""
+        that ranks within it, so the distance is now from the count to the superlative.
+
+        5 Oct 2026: the superlative reads "Replacement hides best" in the rebuilt Section V-A."""
         a = paper.index(BS + "harnessDisposalClassesWord")
-        b = paper.index("Substitution is the worst", a)
+        b = paper.index("Replacement hides best", a)
         assert b - a < 1200, (
             "the count and the superlative that ranks within it have drifted out of one "
-            "passage; 'the worst' reads against the count only while both are in view")
+            "passage; 'hides best' reads against the count only while both are in view")
 
 
 class TestTheRenderedPageCarriesIt:
 
-    def test_the_index_terms_print_the_subject_words(self):
-        flat = " ".join(_rendered("paper").split()).lower()
-        for word in ("latency measurement", "timestamp resolution", "clock synchronization",
-                     "benchmarking"):
-            assert word in flat, word
+    def test_the_index_terms_print_the_subject_words(self, paper):
+        """5 Oct 2026: read on the Index Terms line itself, de-hyphenated, rather than anywhere
+        on the pages, where the references alone printed "clock synchronization" once the
+        index terms no longer did; every term the source lists prints there."""
+        flat = " ".join(_rendered("paper").split())
+        i = flat.index("Index Terms")
+        line = re.sub(r"(\w)- (\w)", r"\1\2", flat[i:flat.index("INTRODUCTION", i)]).lower()
+        for term in _index_terms(paper):
+            assert term.lower() in line, term
 
     def test_the_shift_prints_in_section_v_d(self):
         """v5 (28 Sep): the shift went to S16.9 with the rest of V-D's statistics (editorial
@@ -433,21 +486,24 @@ class TestTheRenderedPageCarriesIt:
         refused in both documents.
 
         29 Sep: S16.9's pages are the postmortem's, and the paper points at the journal
-        supplement's S3.8, so the shift is looked for on both; the claim is refused in all three."""
+        supplement's S3.8, so the shift is looked for on both; the claim is refused in all three.
+
+        5 Oct 2026: the journal supplement no longer carries the recovery (its S3.8 is the
+        receiving thread's wait), so the shift is looked for on S16.9's pages alone; the claim
+        is still refused in all three documents."""
         flat = " ".join(_rendered("paper").split())
         post = _rendered("postmortem")
         s169 = " ".join(post[post.rindex("S16.9. The displacement recovery"):
                              post.rindex("S16.10. How late")].split())
         assert "Hodges" in s169
         journal = _rendered("supplement")
-        s38 = " ".join(journal[journal.rindex("S3.8. The proxy"):
-                               journal.rindex("S3.9. Five objections")].split())
-        assert "Hodges" in s38
         assert "separate at the median" not in flat
         for supp in (post, journal):
             assert "separate at the median" not in " ".join(supp.split())
 
     def test_the_supplement_table_prints(self):
-        flat = " ".join(_rendered("supplement").split())
+        """5 Oct 2026: the recovery table and the monotonic-clock remedy are the postmortem's
+        (S16.9 and S16.6), so their pages are read from postmortem.pdf."""
+        flat = " ".join(_rendered("postmortem").split())
         assert "Check accepts" in flat and "Check rejects" in flat
-        assert "CLOCK_MONOTONIC" in flat.replace(" ", "") or "MONOTONIC" in flat
+        assert "CLOCK_MONOTONIC" in flat.replace(" ", "")

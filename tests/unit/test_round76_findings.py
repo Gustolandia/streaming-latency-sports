@@ -226,12 +226,16 @@ class TestW2NeitherDocumentImpliesTheRejectedNeverRecoverExactly:
         """Mutation: put the one-sided clause back and the gate must fire.
 
         v5 (28 Sep): the clause it replaced is gone from the article, so the one-sided clause
-        is put back beside the sentence Section III-D kept, at "cannot tell apart"."""
+        is put back beside the sentence Section III-D kept, at "cannot tell apart".
+
+        5 Oct 2026: that sentence was cut too; the clause is put back after the last number
+        of the rebuilt recovery paragraph (Section VI-B), its rejected population's upper
+        quartile."""
         bad, n = re.subn(
-            r"cannot\s+(?:be\s+told|tell)\s+apart",
+            r"\$" + re.escape(BS) + r"recoveryErrFailHi" + re.escape(BS) + r"%\$",
             lambda m: m.group(0) + ", and $" + BS + "recoveryPassExact" + BS + "%$ of the "
             "passing conditions recover the delivery exactly", paper)
-        assert n == 1, "Section III-D has been reworded; retarget this mutation"
+        assert n == 1, "Section VI-B has been reworded; retarget this mutation"
         with pytest.raises(AssertionError):
             self.test_the_main_text_no_longer_quotes_one_side_alone(bad)
 
@@ -298,15 +302,20 @@ class TestW3AndW4TheTwoLiteratureItems:
         cannot grow or shrink unnoticed, and the cap is asserted beside it.
 
         43 since 2 Oct 2026: emqtt-bench is cited in Section V-E as one of the two tools that
-        keep a negative, after RabbitMQ PerfTest was found to fold it into its magnitude."""
+        keep a negative, after RabbitMQ PerfTest was found to fold it into its magnitude.
+
+        37 since 5 Oct 2026: the rebuilt paper cites what its seven pages of text need. The
+        pin follows the article's own count, so the list still cannot grow or shrink
+        unnoticed, and the cap stands beside it."""
         bbl = REPO / "paper.bbl"
         if not bbl.is_file():                           # pragma: no cover - built by CI
             pytest.skip("paper.bbl absent")
         n = bbl.read_text(encoding="utf-8", errors="replace").count("\\bibitem")
         assert n <= 45, "TC caps the article at 45 references; this is %d" % n
-        # 45 since 4 Oct 2026, the cap: Nosek et al. (PNAS) for "registered" and Leek and Peng
-        # (Nature) for the void result, both checked against Crossref.
-        assert n == 45, "the article's reference count moved from v7's 45 to %d" % n
+        # 45 from 4 Oct 2026, the cap: Nosek et al. (PNAS) for "registered" and Leek and Peng
+        # (Nature) for the void result, both checked against Crossref. 37 from the rebuild of
+        # 5 Oct, which kept Nosek et al. and cut the void result with Leek and Peng.
+        assert n == 37, "the article's reference count moved from the rebuilt paper's 37 to %d" % n
 
 
 class TestW5TheFigureLetsTheReaderCheckItsCaption:
@@ -335,9 +344,13 @@ class TestW5TheFigureLetsTheReaderCheckItsCaption:
         grid column's count and value in words beside it ("67 printed 1.0 ms"), so the reader
         checks the caption against the picture without being sent to the axis. The pin on the
         pointer becomes a pin on those words, drawn from the data, and on the caption's two
-        values being the grid values they print."""
-        i = paper.index(BS + "label{fig:deletion}")
-        caption = " ".join(paper[paper.rindex(BS + "caption{", 0, i):i].split())
+        values being the grid values they print.
+
+        5 Oct 2026: the figure is the journal supplement's (S4.1, label sfig:deletion),
+        caption unchanged, so the caption is read there."""
+        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        i = journal.index(BS + "label{sfig:deletion}")
+        caption = " ".join(journal[journal.rindex(BS + "caption{", 0, i):i].split())
         assert BS + "ombGridMedianCells" in caption
         assert BS + "ombGridPrintedLo" in caption and BS + "ombGridPrintedHi" in caption
         assert "$1.0$ or $2.0$" not in caption

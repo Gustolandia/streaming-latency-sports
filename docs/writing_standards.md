@@ -691,6 +691,11 @@ made explicit: **condition** (a point in the design), **cell** (a condition × w
 (one execution of a cell), **replicate** (a repeated run of the same cell). The gate fails if
 any of the five appears in the paper before the paragraph that defines it.
 
+5 October 2026: the rebuilt paper has no Experimental Setup section and no Terms subsection;
+its setup is the second paragraph of Section II. The paragraph marked `\label{def:vocabulary}`
+must now define the words of the five that the paper uses (*condition*, *run* and *replicate*;
+*cell* and *arm* no longer occur), and none may be used before it.
+
 ### A5b. A defined symbol means one thing, and A5's rule extends to it — GATED
 
 A5 forbids one word for two things. Round 56 found the manuscript doing it with a symbol,
@@ -834,6 +839,11 @@ a "task", a message no longer a "record", a publish-timed span no longer
 `scripts/clock_integrity.py` does. The adjective *published* in the sense of made public is gone
 from the paper, so there *publish* means the producer's act. Gated by
 `TestEachNameIsBuiltWhereAReaderFirstMeetsIt` in `tests/unit/test_writing_standards.py`.
+
+5 October 2026: the rebuilt paper no longer uses a span's origin, the harness, the transport
+proxy, the publish delay, the processing-time latency, the consumer pattern or the tick, so the
+gate's list dropped them; the supplement and the postmortem keep the publish delay under that
+name, which `TestOneNameForTheSendLag` holds.
 
 ---
 
@@ -1131,6 +1141,13 @@ refuted queueing form is the one "we had ourselves adopted". Gated by
 `TestTheFirstHalfStatesWhatHolds` in `tests/unit/test_writing_standards.py`: each moved limit
 is absent from Sections I to IV and present in Section VIII, so nothing leaves the paper.
 
+5 October 2026: in the rebuilt paper Sections I to IV run from the introduction to the mechanism
+and Section VIII is "Limitations"; the gate finds both by their labels. Section VIII states the
+failed tenfold prediction, the tracer's cost and the derived slice ("derived, not read off
+them"). The sign check's history went, with the rest of the sign check's detail, to Supplement
+S2 ("we fixed the rule after earlier campaigns had run"), and the gate holds it there and out of
+the first half; whether it should also return to Section VIII is the author's call.
+
 ### B27. The paper opens on the practical stakes and the whole system — GATED
 
 Adopted 4 October 2026, with B26. The title names who is affected (*Faster than Light: Silent
@@ -1146,6 +1163,13 @@ publish delay, the processing-time latency, $E$, and the step $\tau$ in which a 
 $D$. Fig. 4 shows what the remedies buy, measured. Gated by `tests/unit/test_section_openings.py`
 (the opening), `TestTheSystemPanel` in `tests/unit/test_make_paper_figures.py` (the figure) and
 the first-use gate of A10, which now holds the producer and the consumer to the first paragraph.
+
+5 October 2026: the paper was retitled *Super-Precise Latency: How CPU Threading Affects
+High-Precision Latency, and an Industry-Wide Audit* and rebuilt around four bottom lines. Its
+introduction now ends on a numbered list of four contributions, and the bold "What this means in
+practice" heading and the list bound to it are gone, so their binding gate
+(`TestThePracticeListStaysWithItsHeading`) was retired; what the work means in practice is
+Section VI and its table of checks.
 
 ## C. Register: a journal paper, not a blog post
 

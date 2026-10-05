@@ -57,13 +57,20 @@ class TestR1SpelledQuantitiesUseTheirMacro:
         """The instance the referee found: emitted in one document, typed in the other.
 
         v5 (28 Sep): the sentence survives in Section IV-B word for word, but its line now breaks
-        inside the anchor, so the anchor is matched across the break."""
-        m = re.search(r"The\s+" + RE_BS + r"ombEscapeCellsWord\{\}\s+settings that print",
+        inside the anchor, so the anchor is matched across the break.
+
+        5 Oct 2026: the rebuilt Section V-C describes the above-grid settings it means, the
+        ones at one payload that kept only part of their samples, and counts them with
+        `ombAboveGridPartialWord`: "the two settings kept only ...". The pin follows the
+        sentence: the count of settings comes from the ledger and is not typed, and the
+        postmortem's sentence keeps `ombEscapeCellsWord`."""
+        m = re.search(r"the\s+" + RE_BS + r"ombAboveGridPartialWord\{\}\s+settings\s+kept\s+only",
                       paper)
-        assert m, "Section IV-B's above-grid sentence has been reworded; retarget this pin"
-        passage = " ".join(paper[m.start():m.start() + 200].split())
-        assert chr(92) + "ombEscapeCellsWord" in passage
-        assert "The four settings" not in passage
+        assert m, "Section V-C's above-grid sentence has been reworded; retarget this pin"
+        passage = " ".join(paper[max(0, m.start() - 120):m.start() + 200].split())
+        assert chr(92) + "ombAboveGridPartialKB" in passage, "the settings are named by payload"
+        assert not re.search(r"\b(?:the|The) (?:two|four) settings", passage), \
+            "the count is typed again"
         assert chr(92) + "ombEscapeCellsWord" in supplement, (
             "the supplement used it first; both documents now agree")
 
@@ -74,13 +81,17 @@ class TestR1SpelledQuantitiesUseTheirMacro:
         `harnessDisposalClassesWord` classes: filtering, truncation to the resolution, and
         substitution") and "Substitution is the worst" follows it directly, without a count of
         its own. The pin reads the passage that holds both, so the count must still come from
-        the macro and a typed "three" is still refused beside the superlative."""
-        i = paper.index("Substitution is the worst")
+        the macro and a typed "three" is still refused beside the superlative.
+
+        5 Oct 2026: the rebuilt Section V-A counts the ways ("in three ways: a filter drops
+        it, the tool's own library refuses it, or another value replaces it") and the
+        superlative follows as "Replacement hides best"; the anchor follows the words."""
+        i = paper.index("Replacement hides best")
         passage = " ".join(paper[max(0, i - 300):i + 200].split())
-        assert re.search(re.escape(chr(92) + "harnessDisposalClassesWord") + r"\{\} classes",
+        assert re.search(re.escape(chr(92) + "harnessDisposalClassesWord") + r"\{\} ways",
                          passage)
-        assert "worst of the three" not in passage
-        assert "three classes" not in passage
+        for typed in ("best of the three", "worst of the three", "three ways", "three classes"):
+            assert typed not in passage, typed
 
     def test_both_macros_still_say_what_the_sentences_need(self):
         import emit_paper_numbers as epn
@@ -91,13 +102,10 @@ class TestR1SpelledQuantitiesUseTheirMacro:
         assert vals["harnessDisposalClassesWord"] == "three"
         assert m is not None
 
-    def test_the_gloss_is_visibly_a_gloss(self, paper):
-        """W2. `ombRetentionMinExact` is emitted; the four-in-ninety-thousand reading of it is
-        an approximation and now says so, so it cannot be mistaken for a second measurement."""
-        i = paper.index(chr(92) + "ombRetentionMinExact")
-        passage = " ".join(paper[i:i + 160].split())
-        assert "about four samples in ninety" in passage
-        assert "four samples kept of ninety thousand" not in paper
+    # 5 Oct 2026: W2's gloss pin ("about four samples in ninety thousand", beside
+    # `ombRetentionMinExact`) and W3's Paxson pin ("for nearly thirty years") retired with
+    # their sentences: the rebuilt paper, its supplement and the postmortem print neither, and
+    # round 72's word inventory dropped "ninety", "thousand" and "thirty" with them.
 
     def test_the_word_gate_exists_and_enumerates_its_residue(self, paper, supplement):
         """v5 (28 Sep): the allowance the referee endorsed, "seven", was the withdrawn E1
@@ -118,11 +126,6 @@ class TestR1SpelledQuantitiesUseTheirMacro:
         assert "median of seven" in s3, "the supplement still states it, where the corpus is"
         for word, reason in cls.ALLOWED_WORDS.items():
             assert len(reason.split()) >= 8, "%s has no real reason recorded" % word
-
-    def test_paxson_is_not_yet_thirty_years_ago(self, paper):
-        """W3. 2026 - 1998 = 28. The approximation is flagged as one."""
-        assert "for nearly thirty years" in paper
-        assert "have for thirty years" not in paper
 
 
 class TestR2EveryPathNamedInProseResolves:
@@ -235,15 +238,17 @@ class TestTheRenderedPageCarriesIt:
 
     def test_the_escaping_cells_and_the_classes_print(self):
         """v5 (28 Sep): the class count prints in the sentence that lists the classes, and the
-        superlative follows it (see `test_the_disposal_classes_come_from_the_ledger`)."""
-        flat = "".join(_rendered("paper").split())
-        assert "foursettingsthatprintabovethegrid" in flat
-        assert "inthreeclasses:filtering" in flat
-        assert "substitution.Substitutionistheworst" in flat
+        superlative follows it (see `test_the_disposal_classes_come_from_the_ledger`).
 
-    def test_the_gloss_prints_as_an_approximation(self):
-        flat = " ".join(_rendered("paper").split())
-        assert "about four samples in ninety thousand" in flat
+        5 Oct 2026: the rebuilt sentences, with the counts read from the ledger."""
+        gen = (REPO / "docs" / "generated" / "paper_numbers.tex").read_text(encoding="utf-8")
+        vals = dict(re.findall(RE_BS + r"newcommand\{" + RE_BS + r"(\w+)\}\{([^}]*)\}", gen))
+        flat = "".join(_rendered("paper").split())
+        assert "the%ssettingskeptonly" % vals["ombAboveGridPartialWord"] in flat
+        assert "in%sways:afilterdropsit" % vals["harnessDisposalClassesWord"] in flat
+        assert "replacesit.Replacementhidesbest" in flat
+
+    # 5 Oct 2026: the rendered gloss pin retired with the gloss (see R1 above).
 
 
 class TestTheClassesAreTheClassifiers:
@@ -257,14 +262,20 @@ class TestTheClassesAreTheClassifiers:
     nothing checked them. Found while drafting the supplement's registry section.
     """
 
-    NAMES = {"filter": "filtering", "substitute": "substitution", "refuse": "refusal"}
+    #: 5 Oct 2026: the rebuilt Section V-A names each class by what it does to the value, "a
+    #: filter drops it, the tool's own library refuses it, or another value replaces it", so
+    #: each response is matched by its verb or its noun.
+    NAMES = {"filter": ("filtering", "a filter drops it"),
+             "substitute": ("substitution", "replaces it"),
+             "refuse": ("refusal", "refuses it")}
 
     def test_each_response_is_named_and_truncation_is_not_a_class(self, paper):
         import audit_external_harness as aeh
-        m = re.search(re.escape(chr(92) + "harnessDisposalClassesWord") + r"\{\} classes:([^.]*)\.",
-                      paper)
+        m = re.search(re.escape(chr(92) + "harnessDisposalClassesWord")
+                      + r"\{\} (?:classes|ways):([^.]*)\.", paper)
         assert m, "Section V no longer names its disposal classes after the count"
         listed = " ".join(m.group(1).split())
         for response in set(aeh.DISPOSAL_RESPONSES.values()):
-            assert self.NAMES[response] in listed, (response, listed)
-        assert "truncation" not in listed, "truncation keeps the sample; it is not a disposal"
+            assert any(n in listed for n in self.NAMES[response]), (response, listed)
+        assert "truncat" not in listed, "truncation keeps the sample; it is not a disposal"
+        assert "round" not in listed, "rounding keeps the sample; it is not a disposal"

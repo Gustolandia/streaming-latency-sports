@@ -1,0 +1,223 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{indexdev2026brokers}
+\citation{openmessaging2018}
+\citation{kafka_tools}
+\citation{omb_issue216}
+\citation{openmessaging_pr56}
+\@writefile{toc}{\contentsline {section}{\numberline {I}Introduction}{1}{section.1}\protected@file@percent }
+\newlabel{sec:intro}{{I}{1}{Introduction}{section.1}{}}
+\newlabel{def:scheddelay}{{I}{1}{Introduction}{section.1}{}}
+\citation{nosek2018preregistration}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces \textbf  {One message, two legs, and the two places a latency fails.} (a)~Where everything runs. The producer and consumer processes share a client machine and its one clock, and the broker runs on a second machine. Leg~1 carries a message from the producer to the broker, which writes it to its log and returns an acknowledgment along leg~1. Leg~2 carries the message on to the consumer. The publish latency $A$ covers leg~1 out and back, and the end-to-end latency $D$ covers leg~1 and then leg~2. Failure~1, a late read of $t_{\mathrm  {ack}}$, enters at the producer's I/O thread. Failure~2 enters where a tool reports $D$. Its clock moves in steps of $\tau $, so a message faster than one step can read as zero, and a filter that keeps only values above zero deletes it uncounted. (b)~When each timestamp is read, on one clock. The producer's application thread takes $t_{\mathrm  {sched}}$, when the message is due, and $t_{\mathrm  {pub}}$, at the publish call. Its client library's I/O thread takes $t_{\mathrm  {ack}}$ only after waiting $\delta _{\mathrm  {ack}}$ for a core. The consumer takes $t_{\mathrm  {recv}}$ after its own wait $\delta _{\mathrm  {recv}}$, and $t_{\mathrm  {out}}$ once it has handled the message. Running from $t_{\mathrm  {sched}}$ to $t_{\mathrm  {out}}$, $E$ is $D$ plus the wait before the publish call and the consumer's own work. Here $A$ runs past $D$, so $S = t_{\mathrm  {recv}} - t_{\mathrm  {ack}} = D - A$ is negative although nothing arrived early. The path drawn is Kafka{}'s. Redis{} timestamps the acknowledgment on the application thread and goes negative anyway, because that thread also waits for a core.}}{2}{figure.1}\protected@file@percent }
+\newlabel{fig:model}{{1}{2}{\textbf {One message, two legs, and the two places a latency fails.} (a)~Where everything runs. The producer and consumer processes share a client machine and its one clock, and the broker runs on a second machine. Leg~1 carries a message from the producer to the broker, which writes it to its log and returns an acknowledgment along leg~1. Leg~2 carries the message on to the consumer. The publish latency $A$ covers leg~1 out and back, and the end-to-end latency $D$ covers leg~1 and then leg~2. Failure~1, a late read of $t_{\mathrm {ack}}$, enters at the producer's I/O thread. Failure~2 enters where a tool reports $D$. Its clock moves in steps of $\tau $, so a message faster than one step can read as zero, and a filter that keeps only values above zero deletes it uncounted. (b)~When each timestamp is read, on one clock. The producer's application thread takes $t_{\mathrm {sched}}$, when the message is due, and $t_{\mathrm {pub}}$, at the publish call. Its client library's I/O thread takes $t_{\mathrm {ack}}$ only after waiting $\delta _{\mathrm {ack}}$ for a core. The consumer takes $t_{\mathrm {recv}}$ after its own wait $\delta _{\mathrm {recv}}$, and $t_{\mathrm {out}}$ once it has handled the message. Running from $t_{\mathrm {sched}}$ to $t_{\mathrm {out}}$, $E$ is $D$ plus the wait before the publish call and the consumer's own work. Here $A$ runs past $D$, so $S = t_{\mathrm {recv}} - t_{\mathrm {ack}} = D - A$ is negative although nothing arrived early. The path drawn is \kafka {}'s. \redis {} timestamps the acknowledgment on the application thread and goes negative anyway, because that thread also waits for a core}{figure.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {I-A}}Contributions}{2}{subsection.1.1}\protected@file@percent }
+\newlabel{sec:contributions}{{\mbox  {I-A}}{2}{Contributions}{subsection.1.1}{}}
+\citation{karimov2018benchmarking}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces \textbf  {Both failures on one population.} The $738{,}730$ messages of our corpus, timed on one clock. (a)~Timed from the broker's acknowledgment, $62{,}264$ of them come out negative (red). Timed from the publish call, none does. (b)~The acknowledgment-timed spans of (a) as a millisecond timestamp would record them. A span shorter than a millisecond computes to $0$ or $1$~ms. A filter that keeps only positive values, a rule several tools apply (Section~\ref {sec:external}), would delete $45.8\%$ of them without a count.}}{3}{figure.2}\protected@file@percent }
+\newlabel{fig:twoways}{{2}{3}{\textbf {Both failures on one population.} The $\spanEvents $ messages of our corpus, timed on one clock. (a)~Timed from the broker's acknowledgment, $\spanNegAck $ of them come out negative (red). Timed from the publish call, none does. (b)~The acknowledgment-timed spans of (a) as a millisecond timestamp would record them. A span shorter than a millisecond computes to $0$ or $1$~ms. A filter that keeps only positive values, a rule several tools apply (Section~\ref {sec:external}), would delete $\msGuardDeletedPct \%$ of them without a count}{figure.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {II}How a Benchmark Times a Message}{3}{section.2}\protected@file@percent }
+\newlabel{sec:sysmodel}{{II}{3}{How a Benchmark Times a Message}{section.2}{}}
+\newlabel{sec:metrics}{{II}{3}{How a Benchmark Times a Message}{section.2}{}}
+\newlabel{sec:method}{{II}{3}{How a Benchmark Times a Message}{section.2}{}}
+\newlabel{eq:model}{{1}{3}{How a Benchmark Times a Message}{equation.1}{}}
+\newlabel{eq:tti}{{2}{3}{How a Benchmark Times a Message}{equation.2}{}}
+\newlabel{def:ttrue}{{II}{3}{How a Benchmark Times a Message}{equation.2}{}}
+\citation{statsbomb2023}
+\citation{leek2015tip}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-A}}Testbeds, clocks and workload}{4}{subsection.2.1}\protected@file@percent }
+\newlabel{sec:testbeds}{{\mbox  {II-A}}{4}{Testbeds, clocks and workload}{subsection.2.1}{}}
+\newlabel{sec:clocks}{{\mbox  {II-A}}{4}{Testbeds, clocks and workload}{subsection.2.1}{}}
+\newlabel{sec:workload}{{\mbox  {II-A}}{4}{Testbeds, clocks and workload}{subsection.2.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-B}}Terms}{4}{subsection.2.2}\protected@file@percent }
+\newlabel{def:vocabulary}{{\mbox  {II-B}}{4}{Terms}{subsection.2.2}{}}
+\newlabel{def:rho}{{\mbox  {II-B}}{4}{Terms}{subsection.2.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-C}}The sign check}{4}{subsection.2.3}\protected@file@percent }
+\newlabel{sec:gate}{{\mbox  {II-C}}{4}{The sign check}{subsection.2.3}{}}
+\newlabel{sec:stats}{{\mbox  {II-C}}{4}{The sign check}{subsection.2.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces \textbf  {Negatives by span and broker} ($5{,}913$ runs, $738{,}730$ events, one clock). Only the transport proxy $S$ inverts, and it does so under both brokers: Kafka{} on $8.67\%$ of its $367{,}894$ events, Redis{} on $8.19\%$ of its $370{,}836$, and the causal chains are clean under both. The publish latency $A$ is among them, its smallest run minimum $112\,\mu $s clear of zero.}}{4}{table.1}\protected@file@percent }
+\newlabel{tab:spans}{{I}{4}{\textbf {Negatives by span and broker} ($\spanRuns $ runs, $\spanEvents $ events, one clock). Only the transport proxy $S$ inverts, and it does so under both brokers: \kafka {} on $\spanKafkaNegAckPct \%$ of its $\spanKafkaEvents $ events, \redis {} on $\spanRedisNegAckPct \%$ of its $\spanRedisEvents $, and the causal chains are clean under both. The publish latency $A$ is among them, its smallest run minimum $\spanAckLagFloorUs \,\mu $s clear of zero}{table.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {III}The Finding: Negative Latencies}{4}{section.3}\protected@file@percent }
+\newlabel{sec:finding}{{III}{4}{The Finding: Negative Latencies}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-A}}What the sign check finds}{4}{subsection.3.1}\protected@file@percent }
+\newlabel{sec:audit}{{\mbox  {III-A}}{4}{What the sign check finds}{subsection.3.1}{}}
+\newlabel{sec:blindspot}{{\mbox  {III-A}}{4}{What the sign check finds}{table.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-B}}Beyond our clients and our processors}{4}{subsection.3.2}\protected@file@percent }
+\newlabel{sec:beyond}{{\mbox  {III-B}}{4}{Beyond our clients and our processors}{subsection.3.2}{}}
+\citation{gregg2016runqlat}
+\citation{gregg2016runqlat}
+\citation{bristot2025timerlat}
+\citation{zhou2025slice}
+\@writefile{toc}{\contentsline {section}{\numberline {IV}The Mechanism: A Timestamp Taken Late}{5}{section.4}\protected@file@percent }
+\newlabel{sec:mechanism}{{IV}{5}{The Mechanism: A Timestamp Taken Late}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}The transport proxy is not a causal chain}{5}{subsection.4.1}\protected@file@percent }
+\newlabel{sec:proxy}{{\mbox  {IV-A}}{5}{The transport proxy is not a causal chain}{subsection.4.1}{}}
+\newlabel{sec:model}{{\mbox  {IV-A}}{5}{The transport proxy is not a causal chain}{subsection.4.1}{}}
+\newlabel{eq:negspan}{{3}{5}{The transport proxy is not a causal chain}{equation.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}The cause, by manipulation}{5}{subsection.4.2}\protected@file@percent }
+\newlabel{sec:mixture}{{\mbox  {IV-B}}{5}{The cause, by manipulation}{subsection.4.2}{}}
+\newlabel{sec:twostate}{{\mbox  {IV-B}}{5}{The cause, by manipulation}{subsection.4.2}{}}
+\newlabel{def:occupancy}{{\mbox  {IV-B}}{5}{The cause, by manipulation}{subsection.4.2}{}}
+\newlabel{eq:occupancy}{{4}{5}{The cause, by manipulation}{equation.4}{}}
+\newlabel{def:kcores}{{\mbox  {IV-B}}{5}{The cause, by manipulation}{equation.4}{}}
+\newlabel{def:geometry}{{\mbox  {IV-B}}{5}{The cause, by manipulation}{equation.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces \textbf  {Mechanism, by manipulation} ($2{,}985$ matched events per cell). Top: timestamping threads moved to real-time priority (\texttt  {SCHED\_FIFO}) with the background load unchanged; the achieved utilization $\rho $ of the two configurations agrees to within $0.0006$. Bottom: one utilization reached by two load geometries at $k{=}6$ loaded cores, in an original campaign and a full replication.}}{5}{table.2}\protected@file@percent }
+\newlabel{tab:mechanism}{{II}{5}{\textbf {Mechanism, by manipulation} ($\mechEventsPerCell $ matched events per cell). Top: timestamping threads moved to real-time priority (\texttt {SCHED\_FIFO}) with the background load unchanged; the achieved utilization $\rho $ of the two configurations agrees to within $\mechRhoMatch $. Bottom: one utilization reached by two load geometries at $k{=}6$ loaded cores, in an original campaign and a full replication}{table.2}{}}
+\newlabel{def:czero}{{\mbox  {IV-B}}{5}{The cause, by manipulation}{table.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Where the timescale comes from}{5}{subsection.4.3}\protected@file@percent }
+\newlabel{sec:tail}{{\mbox  {IV-C}}{5}{Where the timescale comes from}{subsection.4.3}{}}
+\citation{guittot2025slice}
+\citation{rabbitmq_perftest}
+\citation{pulsar_perf}
+\citation{kafka_tools}
+\citation{kafka19888}
+\citation{nats_cli}
+\citation{emqtt_bench}
+\citation{rezolus}
+\citation{openmessaging2018}
+\citation{openmessaging_pr56}
+\newlabel{eq:slice}{{5}{6}{Where the timescale comes from}{equation.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {V}The Industry's Remedy: Deletion}{6}{section.5}\protected@file@percent }
+\newlabel{sec:external}{{V}{6}{The Industry's Remedy: Deletion}{section.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-A}}Ten tools, read at source}{6}{subsection.5.1}\protected@file@percent }
+\newlabel{sec:tools}{{\mbox  {V-A}}{6}{Ten tools, read at source}{subsection.5.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-B}}Eleven tools, run}{6}{subsection.5.2}\protected@file@percent }
+\newlabel{sec:toolsrun}{{\mbox  {V-B}}{6}{Eleven tools, run}{subsection.5.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-C}}A positivity filter on a millisecond clock}{6}{subsection.5.3}\protected@file@percent }
+\newlabel{sec:extmethod}{{\mbox  {V-C}}{6}{A positivity filter on a millisecond clock}{subsection.5.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces \textbf  {Why a sample is deleted, and what the deletion did.} (a)~One end-to-end latency of $0.35$~ms, starting at four phases within one millisecond. Three finish inside it, compute to $0$~ms and are deleted. The fourth crosses a millisecond boundary, one of the \emph  {grid} instants at which the clock's digit changes, and is kept, as exactly $1$~ms. (b)~Each of the $75$ settings with a captured summary, at the median the benchmark printed and its retention. $71$ settings print $1.0$ or $2.0$~ms while retention spans $279\times $. Above the grid, nothing is lost only at $256$~KB.}}{7}{figure.3}\protected@file@percent }
+\newlabel{fig:deletion}{{3}{7}{\textbf {Why a sample is deleted, and what the deletion did.} (a)~One end-to-end latency of $0.35$~ms, starting at four phases within one millisecond. Three finish inside it, compute to $0$~ms and are deleted. The fourth crosses a millisecond boundary, one of the \emph {grid} instants at which the clock's digit changes, and is kept, as exactly $1$~ms. (b)~Each of the $\ombMedianCells $ settings with a captured summary, at the median the benchmark printed and its retention. $\ombGridMedianCells $ settings print $\ombGridPrintedLo $ or $\ombGridPrintedHi $~ms while retention spans $\ombRetentionFold \times $. Above the grid, nothing is lost only at $\ombAboveGridWholeKB $~KB}{figure.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-D}}What the filter did}{7}{subsection.5.4}\protected@file@percent }
+\newlabel{sec:extphase}{{\mbox  {V-D}}{7}{What the filter did}{subsection.5.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-E}}The retention law, and a registered confirmation}{7}{subsection.5.5}\protected@file@percent }
+\newlabel{sec:extcomp}{{\mbox  {V-E}}{7}{The retention law, and a registered confirmation}{subsection.5.5}{}}
+\newlabel{eq:retention}{{6}{7}{The retention law, and a registered confirmation}{equation.6}{}}
+\citation{hp1970tia}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-F}}Our own harness, and the sign channel}{8}{subsection.5.6}\protected@file@percent }
+\newlabel{sec:generality}{{\mbox  {V-F}}{8}{Our own harness, and the sign channel}{subsection.5.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-G}}Public reports}{8}{subsection.5.7}\protected@file@percent }
+\newlabel{sec:reports}{{\mbox  {V-G}}{8}{Public reports}{subsection.5.7}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {VI}Practical Implications}{8}{section.6}\protected@file@percent }
+\newlabel{sec:practice}{{VI}{8}{Practical Implications}{section.6}{}}
+\newlabel{sec:discussion}{{VI}{8}{Practical Implications}{section.6}{}}
+\newlabel{sec:authors}{{VI}{8}{Practical Implications}{section.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-A}}What a printed latency can and cannot say}{8}{subsection.6.1}\protected@file@percent }
+\newlabel{sec:reading}{{\mbox  {VI-A}}{8}{What a printed latency can and cannot say}{subsection.6.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-B}}The cost of timing from the acknowledgment, and the repair}{8}{subsection.6.2}\protected@file@percent }
+\newlabel{sec:cost}{{\mbox  {VI-B}}{8}{The cost of timing from the acknowledgment, and the repair}{subsection.6.2}{}}
+\citation{kistowski2015build}
+\citation{yang2022cloudprofiler}
+\citation{kogias2019lancet}
+\citation{kundel2024p4sta}
+\citation{paxson1998calibrating}
+\citation{paxson2004sound}
+\citation{rfc4656}
+\citation{rfc2330}
+\citation{rfc3432}
+\citation{ieee1588}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces \textbf  {What the remedies buy, measured.} (a)~The error of a latency timed from the acknowledgment on each of our $70$ conditions (crosses), and the error once the publish latency is added back (dots), against the condition's end-to-end latency. The curve is the error $A/D$ at the median publish latency. On the dashed line the publish latency equals the end-to-end latency, and the curve meets it at $0.72$~ms. Across conditions $A$ runs $500$--$1900\,\mu $s between its tenth and ninetieth percentiles, shown as the band, which puts the error at $10$~ms at $5$--$19\%$ and the crossover at $0.50$--$1.90$~ms. The shaded decade holds the sub-millisecond medians now reported for brokers. (b)~The negative-span rate of each matched pair at normal priority (circles) and at real-time priority (squares), at its own host utilization. Every pair falls, with disjoint intervals.}}{9}{figure.4}\protected@file@percent }
+\newlabel{fig:exposure}{{4}{9}{\textbf {What the remedies buy, measured.} (a)~The error of a latency timed from the acknowledgment on each of our $\spanRatioConditions $ conditions (crosses), and the error once the publish latency is added back (dots), against the condition's end-to-end latency. The curve is the error $A/D$ at the median publish latency. On the dashed line the publish latency equals the end-to-end latency, and the curve meets it at $\exposureCrossover $~ms. Across conditions $A$ runs $\exposureLagLo $--$\exposureLagHi \,\mu $s between its tenth and ninetieth percentiles, shown as the band, which puts the error at $10$~ms at $\exposureErrTenLo $--$\exposureErrTenHi \%$ and the crossover at $\exposureCrossoverLo $--$\exposureCrossoverHi $~ms. The shaded decade holds the sub-millisecond medians now reported for brokers. (b)~The negative-span rate of each matched pair at normal priority (circles) and at real-time priority (squares), at its own host utilization. Every pair falls, with disjoint intervals}{figure.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-C}}Checks that cost nothing}{9}{subsection.6.3}\protected@file@percent }
+\newlabel{sec:checks}{{\mbox  {VI-C}}{9}{Checks that cost nothing}{subsection.6.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces \textbf  {Checks that cost nothing, and what each catches.}}}{9}{table.3}\protected@file@percent }
+\newlabel{tab:checks}{{III}{9}{\textbf {Checks that cost nothing, and what each catches.}}{table.3}{}}
+\newlabel{sec:betterclock}{{\mbox  {VI-C}}{9}{Checks that cost nothing}{table.3}{}}
+\citation{openmessaging2018}
+\citation{mytkowicz2009wrong}
+\citation{georges2007rigorous}
+\citation{hoefler2015benchmarking}
+\citation{karimov2018benchmarking}
+\citation{vandongen2020evaluation}
+\citation{indexdev2026brokers}
+\citation{lamport1978time}
+\citation{ieee1588}
+\citation{yang2022cloudprofiler}
+\citation{kogias2019lancet}
+\citation{kundel2024p4sta}
+\citation{kuperberg2011timers}
+\citation{villain2012probing}
+\citation{paxson1998calibrating}
+\citation{kogias2019lancet}
+\citation{jaeger_harmful}
+\citation{sharma2026causality}
+\citation{kuperberg2011timers}
+\citation{nist2009stopwatch}
+\citation{rfc2330}
+\citation{rfc3432}
+\citation{tene2015latency}
+\citation{millsap2003oracle}
+\citation{lozi2016wastedcores}
+\citation{chandrasekar2026bias}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-D}}What is left of the broker comparison}{10}{subsection.6.4}\protected@file@percent }
+\newlabel{sec:brokers}{{\mbox  {VI-D}}{10}{What is left of the broker comparison}{subsection.6.4}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {VII}Related Work}{10}{section.7}\protected@file@percent }
+\newlabel{sec:related}{{VII}{10}{Related Work}{section.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VII-A}}Broker benchmarks}{10}{subsection.7.1}\protected@file@percent }
+\newlabel{sec:related_bench}{{\mbox  {VII-A}}{10}{Broker benchmarks}{subsection.7.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VII-B}}Cross-process time}{10}{subsection.7.2}\protected@file@percent }
+\newlabel{sec:related_time}{{\mbox  {VII-B}}{10}{Cross-process time}{subsection.7.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VII-C}}Resolution and discarded samples}{10}{subsection.7.3}\protected@file@percent }
+\newlabel{sec:related_resolution}{{\mbox  {VII-C}}{10}{Resolution and discarded samples}{subsection.7.3}{}}
+\newlabel{sec:related_tail}{{\mbox  {VII-C}0a}{10}{Sources of scheduling delay}{paragraph.7.3.0.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {VII-C}0a}Sources of scheduling delay}{10}{paragraph.7.3.0.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {VIII}Threats and Limitations}{10}{section.8}\protected@file@percent }
+\newlabel{sec:threats}{{VIII}{10}{Threats and Limitations}{section.8}{}}
+\newlabel{sec:limitations}{{VIII}{10}{Threats and Limitations}{section.8}{}}
+\citation{kvmclock}
+\citation{sharma2026causality}
+\bibstyle{IEEEtran}
+\bibdata{manuscript_references}
+\bibcite{indexdev2026brokers}{1}
+\bibcite{openmessaging2018}{2}
+\bibcite{kafka_tools}{3}
+\bibcite{omb_issue216}{4}
+\bibcite{openmessaging_pr56}{5}
+\bibcite{nosek2018preregistration}{6}
+\bibcite{karimov2018benchmarking}{7}
+\@writefile{toc}{\contentsline {section}{\numberline {IX}Conclusion}{11}{section.9}\protected@file@percent }
+\newlabel{sec:conclusion}{{IX}{11}{Conclusion}{section.9}{}}
+\@writefile{toc}{\contentsline {section}{References}{11}{section*.3}\protected@file@percent }
+\bibcite{statsbomb2023}{8}
+\bibcite{leek2015tip}{9}
+\bibcite{gregg2016runqlat}{10}
+\bibcite{bristot2025timerlat}{11}
+\bibcite{zhou2025slice}{12}
+\bibcite{guittot2025slice}{13}
+\bibcite{rabbitmq_perftest}{14}
+\bibcite{pulsar_perf}{15}
+\bibcite{kafka19888}{16}
+\bibcite{nats_cli}{17}
+\bibcite{emqtt_bench}{18}
+\bibcite{rezolus}{19}
+\bibcite{hp1970tia}{20}
+\bibcite{kistowski2015build}{21}
+\bibcite{yang2022cloudprofiler}{22}
+\bibcite{kogias2019lancet}{23}
+\bibcite{kundel2024p4sta}{24}
+\bibcite{paxson1998calibrating}{25}
+\bibcite{paxson2004sound}{26}
+\bibcite{rfc4656}{27}
+\bibcite{rfc2330}{28}
+\bibcite{rfc3432}{29}
+\bibcite{ieee1588}{30}
+\bibcite{mytkowicz2009wrong}{31}
+\bibcite{georges2007rigorous}{32}
+\bibcite{hoefler2015benchmarking}{33}
+\bibcite{vandongen2020evaluation}{34}
+\bibcite{lamport1978time}{35}
+\bibcite{kuperberg2011timers}{36}
+\bibcite{villain2012probing}{37}
+\bibcite{jaeger_harmful}{38}
+\bibcite{sharma2026causality}{39}
+\bibcite{nist2009stopwatch}{40}
+\bibcite{tene2015latency}{41}
+\bibcite{millsap2003oracle}{42}
+\bibcite{lozi2016wastedcores}{43}
+\bibcite{chandrasekar2026bias}{44}
+\bibcite{kvmclock}{45}
+\@writefile{toc}{\contentsline {section}{Biographies}{12}{IEEEbiography.0}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{Gustavo Pedro Ricou}{12}{IEEEbiography.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{Romaric Duvignau}{12}{IEEEbiography.2}\protected@file@percent }
+\gdef \@abspage@last{12}

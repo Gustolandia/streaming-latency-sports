@@ -63,7 +63,19 @@ ABBREVIATIONS = frozenset((
 #: asymmetry that let a corpus-wide rate pick up a load-specific label and stand for two
 #: rounds (round 73, R1). The prose quotes the 88% pair and points at Table II for the other,
 #: which is a Discussion re-quoting Results rather than introducing a number.
-UNUSED_MACRO_CEILING = 69
+#: 104 since the rebuild of 5 Oct 2026, and the reason is written down here as the rule asks.
+#: The inventory stood at 65 the commit before. The paper went from twelve pages to eight and
+#: the supplement from thirty-three to sixteen, and forty macros lost the only passages that
+#: read them: the intervals on the placement rates (GeomOrig/GeomRepl ...CI), the priority
+#: ladder's per-level rates, loads and intervals (rtLow..., rtHigh..., rtResidualPairsWord),
+#: the exposure curve's lower ends and its 100 ms point, the sign check's blind-spot counts
+#: (diseaseEvents, diseaseOverTenth), the pacer jitter, the withdrawn first result's cell
+#: count, the benchmark's guarded and unguarded paths and publish-latency range, the
+#: inter-host offset, the mechanism table's utilization match, the correlation's condition
+#: count, two audit counts and the TOST levels. One went the other way: ombKafkaNegatives is
+#: now printed. None was deleted from the ledger; pruning them from
+#: scripts/emit_paper_numbers.py is what would bring this ceiling back down.
+UNUSED_MACRO_CEILING = 104
 
 
 def rendered(name):
@@ -214,15 +226,25 @@ class TestNoControlWordLostItsBackslash:
                         break
         return out
 
-    @staticmethod
-    def rendered_offenders():
-        out = []
-        for name in PDFS:
-            text = rendered(name)
-            for tail in GREEK_TAILS:
-                if re.search(r"(?<![A-Za-z])" + re.escape(tail) + r"(?![A-Za-z])", text):
-                    out.append("%s prints %r as a word" % (name, tail))
-        return out
+    #: A radical sign set between two letters of one word. pdftotext places the tall glyph of
+    #: `\sqrt` by its top edge, so it can land inside a word on the line above: the
+    #: supplement's "fixes how many distinct readings", over "not $1/\sqrt{N}$", extracts as
+    #: "fixes ho", U+221A, "w many". The page prints "how"; only the text layer's reading order
+    #: splits it.
+    RADICAL = chr(0x221A)
+    INTRUDER = re.compile(r"(?<=[A-Za-z])%s(?=[A-Za-z])" % RADICAL)
+
+    @classmethod
+    def orphans(cls, text):
+        """The Greek tails `text` prints as words, once a radical inside a word is set aside."""
+        text = cls.INTRUDER.sub("", text)
+        return [tail for tail in GREEK_TAILS
+                if re.search(r"(?<![A-Za-z])" + re.escape(tail) + r"(?![A-Za-z])", text)]
+
+    @classmethod
+    def rendered_offenders(cls):
+        return ["%s prints %r as a word" % (name, tail)
+                for name in PDFS for tail in cls.orphans(rendered(name))]
 
     def test_the_source_carries_no_orphaned_control_word(self):
         offenders = self.source_offenders()
@@ -238,6 +260,14 @@ class TestNoControlWordLostItsBackslash:
         assert any(re.match(re.escape(t) + r"[$\s}]", broken) for t in GREEK_TAILS)
         fixed = r"\rho$ rather than from a shape description"
         assert not any(re.match(re.escape(t) + r"[$\s}]", fixed) for t in GREEK_TAILS)
+
+    def test_a_radical_inside_a_word_is_not_an_orphan(self):
+        """Mutation: the extraction artefact passes, and the defect beside it still fails."""
+        artefact = "our q, fixes ho%sw many distinct readings" % self.RADICAL
+        assert self.orphans(artefact) == []
+        assert "ho" in self.orphans("so that k/ho and a function of ho remain, not 1/%sN"
+                                    % self.RADICAL)
+        assert "ho" in self.orphans("a function of ho %s rather than" % self.RADICAL)
 
 
 class TestAWrappedMathSpanDoesNotResumeOnBareLetters:

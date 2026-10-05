@@ -121,6 +121,11 @@ class TestExperimentalVocabularyIsDefinedBeforeUse:
 
     First failure: "cell" at "75 instrumented cells" in Section IV, with no definition
     anywhere; "arm" in the Contributions; "condition" in the consistency check.
+
+    5 Oct 2026: the rebuilt paper has no Terms subsection, and the supplement's glossary
+    defines its words for the supplement alone. The paper still says *condition*, *run* and
+    *replicate*, so the paragraph is still owed; it must define the words the paper uses, and
+    *cell* and *arm* are no longer among them.
     """
 
     #: "run" is defined in the same paragraph but not held to the before-use rule: it is
@@ -129,17 +134,32 @@ class TestExperimentalVocabularyIsDefinedBeforeUse:
     TERMS = ("replicate", "cell", "arm", "condition")
     DEFINED = TERMS + ("run",)
 
+    @staticmethod
+    def _used(paper, term):
+        """Whether the body, from the introduction on, uses the word at all."""
+        reader = _prose(_body(paper)).split(r"\section{Introduction}", 1)[-1]
+        return bool(re.search(r"\b%ss?\b" % term, reader, re.I))
+
+    @staticmethod
+    def _paragraph_at(body, at):
+        """The paragraph, blank line to blank line, that holds offset `at`."""
+        start = body.rfind("\n\n", 0, at)
+        end = body.find("\n\n", at)
+        return body[start + 2 if start != -1 else 0:end if end != -1 else len(body)]
+
     def test_the_definition_paragraph_exists(self, paper):
         assert r"\label{def:vocabulary}" in paper, "no paragraph defines the experimental vocabulary"
         body = _body(paper)
-        start = body.index(r"\label{def:vocabulary}")
-        paragraph = body[start:start + 1500]
-        missing = [t for t in self.DEFINED if not re.search(r"\\emph\{%ss?\}" % t, paragraph)
-                   and t != "arm"]
+        paragraph = self._paragraph_at(body, body.index(r"\label{def:vocabulary}"))
+        missing = [t for t in self.DEFINED if t != "arm" and self._used(paper, t)
+                   and not re.search(r"\\emph\{%ss?\}" % t, paragraph)]
         assert not missing, "the terms paragraph does not define: %s" % missing
 
     def test_no_term_precedes_its_definition(self, paper):
         body = _body(paper)
+        assert r"\label{def:vocabulary}" in body, (
+            "no paragraph defines the experimental vocabulary, so every use of %s is a use "
+            "before definition" % (self.TERMS,))
         anchor = body.index(r"\label{def:vocabulary}")
         before = _prose(body[:anchor])
         # The abstract is allowed to use the words a reader can parse unaided; the rule
@@ -228,10 +248,17 @@ class TestOneNameForTheSendLag:
             "delay' is the thread's wait for a core" % ", ".join(bad))
 
     def test_the_send_lag_is_what_the_documents_do_say(self):
-        """The rename has to have landed, not merely have been deleted."""
+        """The rename has to have landed, not merely have been deleted.
+
+        Since the 5 Oct 2026 rebuild the paper no longer names the publish delay at all: its
+        model is t_pub, t_ack and t_recv, and the sign check's three spans, the publish delay
+        among them, are listed in Supplement S2. So the rename is held in the two documents
+        that still name the quantity, and the paper keeps the other term defined.
+        """
         paper = (REPO / "paper.tex").read_text(encoding="utf-8")
-        supp = (REPO / "postmortem.tex").read_text(encoding="utf-8")
-        assert "publish delay" in paper and "publish delay" in supp
+        for name in ("supplement.tex", "postmortem.tex"):
+            text = (REPO / name).read_text(encoding="utf-8")
+            assert "publish delay" in text, "%s no longer names the publish delay" % name
         assert r"\label{def:scheddelay}" in paper, "and the other term stays defined"
 
 
@@ -344,23 +371,25 @@ class TestSymbolsAreDefinedBeforeUse:
     first use. First failure: T_true in the introduction, defined nowhere; C_0 at "C_0 ~
     \\invFloor" with no definition; k=6 in a table caption before any text says what k is."""
 
+    #: 5 Oct 2026: C_0, the core count k and the load geometry left the paper with the
+    #: rebuild (the supplement's glossary defines k and the load geometry for its own tables),
+    #: so their entries went too; a symbol that is no longer used fails below rather than
+    #: being skipped, so the list cannot rot silently.
     SYMBOLS = {
         "ttrue": r"T_\{?\\mathrm\{true\}|T_\{true\}",
-        "czero": r"C_0\b",
         "rho": r"\\rho\b",
-        "kcores": r"\bk\s*\{?=\}?\s*6\b|\$k\$",
         # v4.1 (2026-09-08): the co-author's confusion point -- "scheduling delay" (the
         # timestamping thread's wait for a core) beside the TTI term once called "scheduling
         # lag" (the send call's lateness). The term is defined where it first appears and
-        # the TTI term is now the "send lag".
-        "scheddelay": r"[Ss]cheduling delay",
-        # Annotation 40: "k, rho and the load geometry need definition before the table".
-        "geometry": r"load geometr|core geometr|\bgeometries\b",
+        # the TTI term is now the "send lag". The source may break the line inside the term.
+        "scheddelay": r"[Ss]cheduling\s+delay",
         # Round 54 (M3): Table II's caption says "so occupancy alone moved" and Section VI-C
         # says the manipulation "moves occupancy while utilization stays fixed", but the
         # quantity was introduced only as "the probability of the second state". A reader
-        # met the word twice before anything told them it was p.
-        "occupancy": r"\boccupanc(?:y|ies)\b",
+        # met the word twice before anything told them it was p. On 5 Oct 2026 the word
+        # became the field's, "waiting probability"; the label kept its name, and the pattern
+        # follows the word (the old one had come to match only the label itself).
+        "occupancy": r"\b[Ww]aiting probabilit(?:y|ies)\b",
     }
 
     @pytest.mark.parametrize("name", sorted(SYMBOLS))
@@ -368,8 +397,7 @@ class TestSymbolsAreDefinedBeforeUse:
         body = _body(paper)
         anchor = body.find(r"\label{def:%s}" % name)
         first = re.search(self.SYMBOLS[name], body)
-        if first is None:
-            pytest.skip("%s no longer used" % name)
+        assert first is not None, "%s is no longer used; take it off the list" % name
         assert anchor != -1, "no \\label{def:%s} marks where %s is defined" % (name, name)
         assert anchor <= first.start() + 400, (
             "%s is used at offset %d before its definition at %d" % (name, first.start(), anchor))
@@ -435,13 +463,26 @@ class TestTheIndustrysNames:
                          if not line.lstrip().startswith("%"))
         assert "mathrm{send}" not in body and r"\rm send" not in body
 
+    #: The industry's names for the quantities of the paper's model. The 5 Oct 2026 rebuild kept
+    #: D, A and E in the paper and left the publish delay and the processing-time latency to the
+    #: supplement, so a name is held to its definition wherever the paper uses it, and the two
+    #: names the model cannot lose are held unconditionally.
+    INDUSTRY = ("end-to-end latency", "publish latency", "publish delay",
+                "processing-time latency", "event-time latency")
+    CORE = ("end-to-end latency", "publish latency")
+
     def test_the_paper_defines_each_name_where_its_model_begins(self, paper):
         flat = " ".join(paper.split())
-        for term in ("end-to-end latency", "publish latency", "publish delay",
-                     "processing-time latency", "event-time latency"):
+        reader = TestEachNameIsBuiltWhereAReaderFirstMeetsIt._reader_text(paper)
+        used = [t for t in self.INDUSTRY
+                if TestEachNameIsBuiltWhereAReaderFirstMeetsIt._first(t, reader)]
+        assert set(self.CORE) <= set(used), "the model no longer names D and A: %s" % used
+        for term in used:
             assert "\\emph{%s}" % term in flat, term
-        assert "runs from the event falling due" in flat
-        assert "$t_{\\mathrm{pub}}$ is taken immediately before the publish call" in flat
+        # Where the model says each span starts: t_pub at the publish call, and E at the
+        # moment the message fell due.
+        assert "$t_{\\mathrm{pub}}$, read immediately before the publish call" in flat
+        assert "mark when the message was due" in flat
 
 
 class TestEachNameIsBuiltWhereAReaderFirstMeetsIt:
@@ -452,14 +493,14 @@ class TestEachNameIsBuiltWhereAReaderFirstMeetsIt:
     and in the contributions and glossed only in Section V, and "real-time priority" and
     "normal priority", the paper's main manipulation, were defined nowhere."""
 
+    #: 5 Oct 2026: origin, transport proxy, publish delay, processing-time latency, consumer
+    #: pattern and tick left the paper with the passages that used them, and so left this list.
     DEFINED = ("scheduling delay", "end-to-end latency", "publish latency", "real-time priority",
                "normal priority", "one-way latency", "positivity filter", "manipulation",
-               "retention", "origin", "transport proxy", "event-time latency",
-               "publish delay", "processing-time latency", "background load",
-               "consumer pattern", "negative-span rate",
+               "retention", "event-time latency", "background load", "negative-span rate",
                # 4 Oct 2026, the author: "yes gloss those four too, cut elsewhere to fit." The
                # knee, used once, is said in plain words instead; stolen time is Linux's steal time.
-               "tick", "busy-polling", "steal time",
+               "busy-polling", "steal time",
                # 4 Oct 2026: the introduction opens on the stakes, and its first paragraph
                # defines the two programs a broker joins.
                "producer", "consumer")
@@ -489,19 +530,13 @@ class TestEachNameIsBuiltWhereAReaderFirstMeetsIt:
     def test_the_first_use_is_the_definition(self, paper, term):
         self._assert_defined_first(term, self._reader_text(paper))
 
-    def test_the_harness_is_defined_with_the_model(self, paper):
-        """The second paragraph's first words name the harness, and the mutation tests anchor on
-        them, so its definition comes with the model, in Section II before its first subsection."""
-        text = self._reader_text(paper)
-        model = text[text.index("A producer process publishes"):
-                     text.index("Testbeds, clocks and workload")]
-        assert "\\emph{harness}, the program that times the messages" in model
-
     def test_the_publish_call_is_said_where_it_first_appears(self, paper):
+        """Since 5 Oct 2026 the gloss is also in italics, so a closing brace may come first."""
         text = self._reader_text(paper)
         first = self._first("publish call", text)
+        assert first, "the paper no longer says 'publish call'"
         after = text[first.end():first.end() + 60]
-        assert after.startswith(", the moment the producer hands the message over"), after
+        assert re.match(r"\}?, the moment the producer hands the message over", after), after
 
     def test_published_means_the_producers_act_only(self, paper):
         """A10 freed "publish" for the producer's act; until 4 Oct the paper still said
@@ -514,20 +549,6 @@ class TestEachNameIsBuiltWhereAReaderFirstMeetsIt:
         assert not made_public, made_public
 
 
-class TestThePracticeListStaysWithItsHeading:
-    """B27, 4 Oct 2026: the introduction's list of what the work means in practice is bound to its
-    heading. First failure: Fig. 1 grew by one row and the heading was left alone at the foot of a
-    column, with its list at the top of the next."""
-
-    HEAD = r"\textbf{What this means in practice.}"
-    BIND = r"\par\nobreak\csname @nobreaktrue\endcsname"
-
-    def test_no_break_is_allowed_between_the_heading_and_its_list(self, paper):
-        i = paper.index(self.HEAD) + len(self.HEAD)
-        assert paper[i:].startswith(self.BIND), paper[i:i + 80]
-        assert paper[i + len(self.BIND):].lstrip().startswith(r"\begin{itemize}")
-
-
 class TestTheFirstHalfStatesWhatHolds:
     """B26, 4 Oct 2026. The author: "everything must look perfect in the 1st half of the paper,
     any pull back to reality must happen only in the second half, this should not mean an
@@ -535,23 +556,38 @@ class TestTheFirstHalfStatesWhatHolds:
     first half, Sections I to IV, states each result for exactly the cases it holds in, and each
     limit it used to carry is stated, whole, in Section VIII. First failure: Section IV-B said
     a registered prediction "failed" and that "the probe is not free" in the middle of the
-    mechanism, and Section II-A that "one early stage ... is excluded" before any result."""
+    mechanism, and Section II-A that "one early stage ... is excluded" before any result.
+
+    5 Oct 2026: the rebuilt paper's first half is still Sections I to IV, from the introduction
+    to the mechanism, and Section VIII is now "Limitations"; the halves are found by their
+    labels rather than their headings. Section VIII rewords the slice's limit ("derived, not
+    read off them"), and the sign check's history went, with the rest of the sign check's
+    detail, to Supplement S2, where it is held whole."""
 
     #: Each limit the first half used to carry, by a phrase only that limit uses.
-    MOVED = ("tenfold failed", "is not free", "not measured on our hosts",
-             "fixed before the final campaign")
+    MOVED = ("tenfold failed", "is not free", "derived, not read off them")
+    #: A limit the rebuild handed to the supplement, and the supplement section that states it.
+    HANDED_ON = (("fixed the rule after earlier campaigns had run", "s:signcheck"),)
 
     @staticmethod
-    def _halves(paper):
-        body = re.sub(r"(?m)(?<!\\)%.*$", " ", paper)
-        body = " ".join(body.split())
+    def _flat(text):
+        return " ".join(re.sub(r"(?m)(?<!\\)%.*$", " ", text).split())
+
+    @staticmethod
+    def _section_holding(body, label):
+        """Where the \\section that carries `label` begins."""
+        return body.rindex(r"\section{", 0, body.index(r"\label{%s}" % label))
+
+    @classmethod
+    def _halves(cls, paper):
+        body = cls._flat(paper)
         first = body[body.index(r"\section{Introduction}"):
-                     body.index(r"\section{The Industry's Remedy")]
-        threats = body[body.index(r"\section{Threats and Limitations}"):
+                     cls._section_holding(body, "sec:external")]
+        threats = body[cls._section_holding(body, "sec:limitations"):
                        body.index(r"\section{Conclusion}")]
         return first, threats
 
-    @pytest.mark.parametrize("phrase", MOVED)
+    @pytest.mark.parametrize("phrase", MOVED + tuple(p for p, _ in HANDED_ON))
     def test_the_limit_is_not_in_the_first_half(self, paper, phrase):
         first, _ = self._halves(paper)
         assert phrase not in first, "%r is back in Sections I to IV" % phrase
@@ -560,6 +596,14 @@ class TestTheFirstHalfStatesWhatHolds:
     def test_the_limit_is_stated_whole_in_section_viii(self, paper, phrase):
         _, threats = self._halves(paper)
         assert phrase in threats, "%r has left the paper, not just the first half" % phrase
+
+    @pytest.mark.parametrize("phrase,label", HANDED_ON)
+    def test_a_limit_handed_to_the_supplement_is_stated_whole_there(self, phrase, label):
+        supp = self._flat((REPO / "supplement.tex").read_text(encoding="utf-8"))
+        at = supp.index(r"\label{%s}" % label)
+        end = supp.find(r"\section{", at)
+        assert phrase in supp[at:end if end != -1 else len(supp)], (
+            "%r has left the submission, not just the paper" % phrase)
 
 
 class TestNoForwardPointerStandsInForADefinition:
@@ -606,15 +650,22 @@ class TestHeadlineNumbersAppearInResultsFirst:
     #: v6 (2 Oct): the rules are Section VI-C, "Checks that cost nothing", inside Practical
     #: Implications. VI-B before it is a results subsection (the proxy's cost, measured, and
     #: its repair) and is held as results, as it was when it closed the scheduling section.
+    #: 5 Oct 2026: Section VI, "What to Do", sets the rules out as Table I (tab:checks), each
+    #: row with what it buys, and its paragraphs report those measurements in full, as VI-B
+    #: did. The table is the span held; every number it prints must be reported in the paper's
+    #: text before Related Work.
+    CHECKS = re.compile(r"\\begin\{table\*?\}(?:(?!\\end\{table).)*?\\label\{tab:checks\}"
+                        r".*?\\end\{table\*?\}", re.S)
+
     def test_discussion_numbers_are_results_numbers(self, paper):
         body = re.sub(r"(?m)^%.*$", "", _body(paper))
-        disc = body.index(r"\subsection{Checks that cost nothing}")
-        rules = disc
-        after = body.index(r"\label{sec:betterclock}", rules + 10)
-        results = body[:disc]
-        discussion = body[rules:after]
+        table = self.CHECKS.search(body)
+        assert table, "the table of checks (tab:checks) is gone; re-read B8 before moving this"
+        discussion = table.group(0)
+        results = body[:table.start()] + body[table.end():body.index(r"\section{Related Work}")]
         macros = set(re.findall(r"\\([a-zA-Z]+(?:Lo|Hi|Pct|Factor|Fraction|Paired|Median|Err\w*|Crossover\w*|Gap\w*))\b",
                                 discussion))
+        assert macros, "the table of checks quotes no measured number; the rule has gone vacuous"
         missing = sorted(m for m in macros if ("\\" + m) not in results)
         assert not missing, "first revealed in Discussion: %s" % missing
 

@@ -10,6 +10,13 @@ This folder keeps both documents as they stood before, so nothing that was cut i
 |---|---|
 | `paper.tex`, `paper.pdf` | the 12-page paper, "Faster than Light: Silent Errors in the Latency Benchmarks Used to Choose Message Brokers" (commit 5c69edcf) |
 | `supplement.tex`, `supplement.pdf` | its 33-page supplement, sections S1 to S9 |
+| `paper.aux` | the paper's labels, from a build of commit 5c69edcf |
 
 The sources are kept as a record and are not built: they read the generated numbers and figures
 of the repository as it was at that commit, which `git show 5c69edcf:<path>` recovers.
+
+The postmortem was written against this paper, and its pointers into the main text
+("Section VI-D of the main text") read `paper.aux` here through `xr`, so they name this
+version's sections, tables and equations. Thirteen of the labels they use left the paper with
+the rebuild. The file was made by building `paper.tex` at commit 5c69edcf (0 errors, 0
+undefined references, 12 pages).

@@ -168,12 +168,20 @@ class TestEveryClaimAboutAnEquationMatchesTheEquation:
         is a claim Villain et al. could have made.
         """
         flat = " ".join(paper.split())
-        # D has one name, never bare "delivery" (editor 7): the end-to-end latency since 3 Oct (A10).
-        assert re.search(r"negative-span rate falls as the end-to-end latency being measured "
-                         r"grows", flat), (
+        # The 5 Oct 2026 rebuild restated the delta as the laws: Related Work says what Villain
+        # et al. do not give, "the consequence for a difference read by two processes: that it
+        # falls below zero at a rate set by the waiting probability and the path's length, on
+        # the timescale of the slice", and Section IV opens on the manipulations that establish
+        # it. Both halves are still required, each where the paper now makes it.
+        related = flat[flat.index(r"\section{Related Work}"):]
+        related = related[:related.index(r"\section{", 10)]
+        assert re.search(r"consequence for a difference read by two processes", related) and \
+            re.search(r"at a rate set by the waiting probability and the path's length",
+                      related), (
             "Related Work no longer claims the rate's dependence on the delivery; if that is "
             "deliberate, say what replaced the delta over Villain et al.")
-        assert re.search(r"manipulations that establish it separate scheduling", flat), (
+        mechanism = flat[flat.index(r"\label{sec:mechanism}"):flat.index(r"\label{sec:external}")]
+        assert re.search(r"We show by \\emph\{manipulation\}", mechanism), (
             "the delta over Villain et al. is the dependence *and* the manipulations; the "
             "dependence alone is what they already had")
 
@@ -233,7 +241,15 @@ class TestTheModelDoesNotAssertWhatTheTableRefutes:
             "Equation 6 may carry p(rho) again")
 
     def test_the_main_text_says_why_p_is_not_a_function_of_rho(self, paper):
-        """The clause that keeps a reader from thinking the paper contradicts itself."""
-        assert re.search(r"\$p\$ and not\s+\$p\(\\rho\)\$|not\s+\$p\(\\rho\)\$", paper), (
-            "Section V-B must say why p is written bare, or a reader who takes Equation 6 "
-            "literally reads Table II as refuting it")
+        """The clause that keeps a reader from thinking the paper contradicts itself.
+
+        Until 5 Oct 2026 it read "we write $p$, not $p(\\rho)$". The rebuilt Section IV-B says
+        instead what moves $p$ -- "Load, its placement and priority move $p$" -- which names
+        the placement that moves it at a fixed utilization; either form keeps a reader of
+        Equation 3 from reading the placement contrast as refuting it.
+        """
+        flat = " ".join(paper.split())
+        assert re.search(r"\$p\$ and not\s+\$p\(\\rho\)\$|not\s+\$p\(\\rho\)\$", flat) or \
+            re.search(r"placement[^.]*\bmove \$p\$", flat), (
+                "Section IV-B must say why p is written bare, or a reader who takes Equation 3 "
+                "literally reads the placement contrast as refuting it")

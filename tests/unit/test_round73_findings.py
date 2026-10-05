@@ -106,23 +106,28 @@ class TestR1ARateIsQuotedWithTheLoadItWasMeasuredAt:
         only with its load and never a corpus-wide one, and S33 must quote both.
 
         29 Sep: Section VIII points at the journal supplement's S3.6 and S9.4 now, and S9.4,
-        which carries the dispute, must quote both; the postmortem's S33 is held below."""
-        m = re.search(r"A (?:" + RE_BS + r"emph\{second\}|second) queue decides ours", paper)
+        which carries the dispute, must quote both; the postmortem's S33 is held below.
+
+        5 Oct 2026: the rebuilt Related Work disputes the paper in one clause, "a timestamping
+        thread waits in a second queue, the kernel's run queue", with no rate and no pointer,
+        and the journal supplement has no S9; the measured rate with its load is the
+        postmortem's (the next test). The dispute's paragraph is held to the rule: no
+        corpus-wide rate, and any rate only with the load it was measured at."""
+        m = re.search(r"waits\s+in\s+a\s+(?:" + RE_BS + r"emph\{second\}|second)\s+queue", paper)
         assert m, "the one sentence of the dispute the main text keeps"
+        start = paper.rfind("\n\n", 0, m.start())
         end = paper.find("\n\n", m.start())
-        dispute = " ".join(paper[m.start():end if end > 0 else None].split())
+        dispute = " ".join(paper[start:end if end > 0 else None].split())
+        assert "sharma2026causality" in dispute, "the dispute no longer names whom it disputes"
         for macro in ("diseaseOverWhole", "diseaseOverHalf", "diseaseOverTenth", "spanNegAckPct"):
             assert chr(92) + macro not in dispute, "a corpus-wide rate in the dispute: %s" % macro
         if chr(92) + "%" in dispute:
             assert chr(92) + "rtHighBasePct" in dispute and chr(92) + "rtHighLoadPct" in dispute
-        flat = " ".join(paper.split())
-        assert re.search(r"does not transfer to a loaded machine \(Supplement~S3\.6 and~S9\.4\)",
-                         flat)
         journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
-        s = journal.index("subsection{S9.4.")
-        s94 = " ".join(journal[s:journal.index("section{S9.5.", s)].split())
-        j = s94.index("On a loaded machine it is not")
-        assert chr(92) + "rtHighBasePct" in s94[j:j + 300] and chr(92) + "rtHighLoadPct" in s94[j:j + 300]
+        for j in [k.start() for k in re.finditer("sharma2026causality", journal)]:
+            near = " ".join(journal[max(0, j - 400):j + 400].split())
+            for macro in ("diseaseOverWhole", "diseaseOverHalf", "diseaseOverTenth"):
+                assert chr(92) + macro not in near, "a corpus-wide rate in the dispute: %s" % macro
 
     def test_the_supplement_disputes_it_with_the_same_number(self, supplement):
         i = supplement.index("On a loaded machine it is not")
@@ -146,31 +151,50 @@ class TestR1ARateIsQuotedWithTheLoadItWasMeasuredAt:
         v5 (28 Sep): the rules became Table IV (editor 6.7 and 9), where this one is the first
         check, "Sign-check every run under the load it is quoted at", and quotes no number;
         pinned: the check is there, Table IV carries no rate a load could be misattached to,
-        and Table II keeps each load in the row with its rate."""
+        and Table II keeps each load in the row with its rate.
+
+        5 Oct 2026: the rebuilt paper has no Table II. The per-load rates are the journal
+        supplement's priority table (S3.1), generated from the campaign files with each load
+        in the row with its rates and achieved utilizations; the rows the two macros name are
+        held there, read from the generated file the table inputs."""
         i = paper.index("label{tab:checks}")
         table = paper[i:paper.index("end{table}", i)]
         assert "Sign-check every run under the load it is quoted at" in " ".join(table.split())
         for macro in ("diseaseOverWhole", "diseaseOverHalf", "diseaseOverTenth", "spanNegAckPct",
                       "rtHighBasePct", "rtLowBasePct", "rtHighBase", "rtLowBase"):
             assert chr(92) + macro not in table, macro
-        j = paper.index("label{tab:mechanism}")
-        rows = paper[j:paper.index("end{table}", j)].splitlines()
-        for load, macro in (("75", "rtLowBase"), ("88", "rtHighBase")):
-            assert any("Priority, $%s%s%%$" % (load, chr(92)) in r
-                       and "$%s%s$" % (chr(92), macro) in r for r in rows), (
-                "Table II has lost the %s%% row's load or rate" % load)
+        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        j = journal.index("label{stab:priority}")
+        assert "docs/generated/priority_table" in journal[j:journal.index("end{table}", j)], \
+            "the supplement's priority table no longer prints the generated rows"
+        gen = (REPO / "docs" / "generated" / "paper_numbers.tex").read_text(encoding="utf-8")
+        vals = dict(re.findall(RE_BS + r"newcommand\{" + RE_BS + r"(\w+)\}\{([^}]*)\}", gen))
+        rows = (REPO / "docs" / "generated" / "priority_table.tex").read_text(
+            encoding="utf-8").splitlines()
+        for load, macro in (("rtLowLoadPct", "rtLowBase"), ("rtHighLoadPct", "rtHighBase")):
+            assert any(r.startswith("E-A5 &") and "$%s%s%%$" % (vals[load], chr(92)) in r
+                       and "$%s$" % vals[macro] in r for r in rows), (
+                "the priority table has lost the %s%% row's load or rate" % vals[load])
 
     def test_the_rendered_pages_agree_with_table_two(self):
         """v5 (28 Sep): the prose format went to S33 with the dispute, so the table's format
         is read from the paper and the prose's from the supplement, and any rate the paper's
-        prose quotes at 88% must still be the table's."""
+        prose quotes at 88% must still be the table's.
+
+        5 Oct 2026: the table is the journal supplement's priority table and the prose is the
+        postmortem's S33, so the table's format is read from supplement.pdf and the prose's
+        from postmortem.pdf; any rate either the paper or the journal supplement quotes at 88%
+        must still be the table's."""
         flat = " ".join(_rendered("paper").split())
-        supp = "".join(_rendered("supplement").split())
-        assert "0.3049" in flat and "30.5%at88%utilization" in supp, (
+        journal = " ".join(_rendered("supplement").split())
+        post = "".join(_rendered("postmortem").split())
+        assert "0.3049" in journal and "30.5%at88%utilization" in post, (
             "the same rate in both formats: the table's and the prose's")
-        quoted = re.findall(r"(\d+(?:\.\d+)?)\s*%\s*at\s*88\s*%\s*utilization", flat)
-        assert set(quoted) <= {"30.5"}, quoted
-        assert "rates near 23" not in flat and "ratesnear23" not in supp
+        for text in (flat, journal):
+            quoted = re.findall(r"(\d+(?:\.\d+)?)\s*%\s*at\s*88\s*%\s*utilization", text)
+            assert set(quoted) <= {"30.5"}, quoted
+        assert "rates near 23" not in flat and "rates near 23" not in journal
+        assert "ratesnear23" not in post
 
 
 class TestR2TheMainTextDoesNotComputeWithTheModelS9Disclaims:
@@ -179,13 +203,26 @@ class TestR2TheMainTextDoesNotComputeWithTheModelS9Disclaims:
         assert "which is what puts the negative-span rate at" not in paper
         assert "a hundredth of that or at half" not in paper
 
+    #: Where the slice is set against the paths it lands on. 5 Oct 2026: the rebuilt Section
+    #: IV-C closes its sentence on it, "so the slice lands on the scale of the paths now
+    #: benchmarked", lower case, inside the sentence that prints the ratio.
+    LANDS = r"(?:The|the) (?:scheduler's )?slice\s+lands\s+on\s+the\s+scale"
+
     def test_the_qualitative_claim_survives(self, paper):
         """v5 (28 Sep): the sentence opens "The slice lands on the scale", the slice having
-        been named in the sentence before it, so the anchor takes either opening."""
-        i = re.search(r"The (?:scheduler's )?slice lands\s+on\s+the\s+scale", paper).start()
-        passage = " ".join(paper[i:i + 240].split())
-        assert "substantial minority" in passage, (
+        been named in the sentence before it, so the anchor takes either opening.
+
+        5 Oct 2026: the rebuilt sentence keeps the observation, the slice on the scale of the
+        benchmarked paths, and drops "which is why the check fires on a substantial minority
+        of events". The magnitude was what had not been established; what is pinned now is
+        that the observation stays qualitative: no rate is computed from it."""
+        m = re.search(self.LANDS, paper)
+        assert m, "the observation that the slice lands on the scale of the paths has gone"
+        passage = " ".join(paper[m.start():m.start() + 240].split())
+        assert "of the paths now benchmarked" in passage or "substantial minority" in passage, (
             "the observation is worth keeping; it is the magnitude that was not established")
+        assert not re.search(r"which is (?:what|why) puts|puts the negative-span rate at",
+                             passage)
 
     def test_the_supplement_still_says_nothing_computes_with_it(self, supplement):
         """The sentence the main text must not contradict. If S9 ever changes its mind, this
@@ -204,8 +241,8 @@ class TestR2TheMainTextDoesNotComputeWithTheModelS9Disclaims:
         """10.5% is a share of traced wakeups; 8.43% is a rate over corpus events. The
         sentence that put them in one clause is the one that went.
 
-        v5 (28 Sep): same anchor change as above."""
-        i = re.search(r"The (?:scheduler's )?slice lands\s+on\s+the\s+scale", paper).start()
+        v5 (28 Sep): same anchor change as above. 5 Oct 2026: and again (see `LANDS`)."""
+        i = re.search(self.LANDS, paper).start()
         passage = paper[i:i + 260]
         assert chr(92) + "spanNegAckPct" not in passage
 
@@ -388,28 +425,43 @@ class TestRecommendedItems:
         import test_round72_findings as t72
         sweep = t72.TestEveryTypedNumeralInTheMainTextIsADecision
         allowed = sweep.ALLOWED
-        for v in ("95", "88", "75", "1000", "0.001", "0.75", "6", "20", "50"):
-            assert v in allowed, "%s was hiding behind a control word and is unaccounted" % v
         typed = sweep()._typed(paper)
-        for gone in ("6.9", "2"):
+        # 5 Oct 2026: the rebuilt paper still types two of the nine that were hiding, 95 and
+        # 0.75, and each is accounted for; the other seven left with their sentences and are
+        # pinned absent the same way, so none can come back without an entry.
+        hiding = ("95", "88", "75", "1000", "0.001", "0.75", "6", "20", "50")
+        for v in hiding:
+            if v in typed:
+                assert v in allowed, "%s was hiding behind a control word and is unaccounted" % v
+        assert {"95", "0.75"} <= set(typed), "the two that are still typed have gone"
+        for gone in ("6.9", "2") + tuple(v for v in hiding if v not in ("95", "0.75")):
             assert gone not in typed and gone not in allowed, gone
 
     @staticmethod
     def _better_clock(paper):
-        """The paragraph Section VI's label sec:betterclock marks, comments and all."""
-        i = paper.index(RE_BS[:1] + "label{sec:betterclock}")
-        return paper[i:paper.index(RE_BS[:1] + "label{sec:brokers}", i)]
+        """The paragraph about a better clock, comments and all.
+
+        5 Oct 2026: the rebuilt paper has neither sec:betterclock nor sec:brokers; the
+        paragraph is Section VI's last, the one that opens "A better-synchronized clock
+        repairs neither", and it runs to the next section."""
+        i = paper.index(RE_BS[:1] + "label{sec:practice}")
+        j = paper.index("A better-synchronized clock repairs neither", i)
+        start = paper.rfind("\n\n", i, j)
+        return paper[start:paper.index(RE_BS[:1] + "section{", j)]
 
     def test_w2_the_better_clock_section_ends_on_the_residue(self, paper):
         """v5 (28 Sep): the subsection is now the paragraph labelled sec:betterclock, rewritten
         to say which clock it means (editor 6.6); it gives the residue and then, once, the
         ordering drawn from it, and its supplement pointer went in the pointer cut (7.2).
         Pinned: the residue is stated, the ordering is stated once and after it, and the
-        back-reference round 73 removed does not return."""
+        back-reference round 73 removed does not return.
+
+        5 Oct 2026: the residue reads "leaves the filter and every value of S below zero in
+        place", the rebuilt paper's words for a genuine negative."""
         section = " ".join(re.sub(r"(?m)^%[^\n]*", "", self._better_clock(paper)).split())
-        assert "leaves the filter and every genuine negative in place" in section
+        assert "leaves the filter and every value of $S$ below zero in place" in section
         assert section.count("The remedies are therefore ordered") == 1
-        assert section.index("every genuine negative") < section.index(
+        assert section.index("every value of $S$ below zero in place") < section.index(
             "The remedies are therefore ordered"), "the ordering follows from the residue"
         assert "why the ordering above puts synchronization quality last" not in section
         assert "ordering above" not in section
@@ -445,12 +497,19 @@ class TestRecommendedItems:
         """v5 (28 Sep): the workload moved from the limitations to the setup it qualifies
         (Section II-B), which names the eleven matches and makes the content-independence
         claim, and the pointer to S20 went in the pointer cut (editor 7.2); the second check is
-        therefore that S20 still holds the workload's description."""
-        i = paper.index("The workload is")
+        therefore that S20 still holds the workload's description.
+
+        5 Oct 2026: the rebuilt Section II names the workload, StatsBomb's open data replayed
+        at a chosen rate, and keeps the content-independence claim; the eleven matches are
+        named in the journal supplement's S1.1, where the setup is in full."""
+        i = paper.index("The producer replays StatsBomb's open football event")
         passage = " ".join(paper[i:i + 480].split())
-        assert chr(92) + "replayedMatchesWord" in passage
         assert ("nothing below depends on its content beyond message size and rate"
                 in passage), "the scope claim the workload sentence carries"
+        journal = " ".join((REPO / "supplement.tex").read_text(encoding="utf-8").split())
+        j = journal.index("The producer replays StatsBomb's open football event")
+        assert chr(92) + "replayedMatchesWord" in journal[j:j + 480], \
+            "the supplement's setup no longer names the matches replayed"
         assert re.search(r"section\{S20\. The workload is a live football feed, described as "
                          r"far as the results require\}", supplement), (
             "the independence argument is where a reader can weigh it")

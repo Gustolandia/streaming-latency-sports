@@ -161,14 +161,9 @@ class TestR1TheSupplementDescribesTheNumberTheArticlePrints:
                           in " ".join(s.split()))
         assert BS + "mainAuthors{} quote" not in " ".join(s.split())
 
-    def test_both_article_sections_print_the_within_run_figure(self, paper):
-        """v5 (28 Sep): one article section now, III-A (sec:audit); Section VI's rule that
-        quoted it again became a row of Table IV, which carries no numbers."""
-        import test_supplement_pointers as tsp
-        for label in ("sec:audit",):
-            text = tsp.section_source(paper, label)
-            for macro in ("indepWithinFloored", "indepWithinFlooredN", "indepFloorPct"):
-                assert re.search(re.escape(BS + macro) + r"(?![A-Za-z])", text), (label, macro)
+    # 5 Oct 2026: the pin that the article's Section III-A (sec:audit) prints the within-run
+    # figure with its count and floor retired: the rebuilt paper prints neither the factor nor
+    # the correlation, in any section.
 
     def test_the_two_misattributed_numbers_now_point_where_they_are_printed(self, supplement):
         text = flat(supplement)
@@ -486,22 +481,19 @@ class TestW4TheSkewReadingIn2026:
         assert "If your p50 latency is negative you have a skew problem, not a fast consumer" in e
 
 
-class TestW5SectionVANamesWhatIsIndependent:
-
-    def test_the_sentence(self, paper):
-        """v5 (28 Sep): the clause now opens a sentence of its own, after "The two delays are
-        correlated within a run", which names the two; its first letter may be either case."""
-        assert re.search(r"[Tt]reating the two as independent within a run would overpredict (?:them|"
-                         r"the negative-span rate)", flat(paper))
+# 5 Oct 2026: W5's class retired with its sentence. "Treating the two as independent within a run
+# would overpredict them" named the two quantities it called independent; the rebuilt paper and
+# its supplement make no claim of independence about the two latencies, and the vocabulary
+# review's "independence" entry flags such a claim wherever it returns.
 
 
 class TestTheRenderedPagesCarryIt:
 
     def test_the_article(self):
         """v5 (28 Sep): "Treating the two as independent" opens its sentence now, so its first
-        letter may be either case."""
+        letter may be either case. 5 Oct 2026: that sentence is cut (W5 above); R2's note case
+        is still the article's."""
         text = re.sub(r"(\w)- (\w)", r"\1\2", _rendered("paper"))
-        assert re.search(r"[Tt]reating\s*the\s*two\s*as\s*independent", text)
         # "DTrace breakdown" was villain2012probing's note, commentary rather than citation data;
         # since 28 Sep it is kept unprinted (test_reference_notes.py).
         assert "Open Compute Project" in text and "DTrace breakdown" not in text

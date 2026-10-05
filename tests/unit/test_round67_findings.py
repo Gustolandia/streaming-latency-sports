@@ -85,14 +85,20 @@ class TestTheModeCountIsCheckedAgainstItsBinning:
     def test_the_paper_states_which_inference_is_binning_free(self, paper):
         # 4 Oct 2026: the figure is the journal supplement's; the paper's Section IV-C says in
         # its own text that the mode count survives the widening, beside the monotonicity.
+        # 5 Oct 2026: the rebuilt Section IV-C keeps the count of local maxima and that it
+        # survives the widening, and no longer refutes a power law in its own text; that
+        # argument is the journal supplement's S3.7. Should the refutation come back to the
+        # paper, it must rest on monotonicity, which no rebinning rescues.
         i = paper.index(r"\label{sec:tail}")
         section = paper[i:paper.index(r"\section{", i)]
-        assert "monoton" in section, \
-            "the power-law refutation rests on monotonicity, which no rebinning rescues"
-        assert "\\stallCoarsenFactor" in section or "bin width" in section, (
-            "Section V-E does not say that the mode count was checked against the binning. "
+        if re.search(r"power[- ]law", section, re.I):
+            assert "monoton" in section, \
+                "the power-law refutation rests on monotonicity, which no rebinning rescues"
+        assert re.search(r"local\s+maxima,\s+which\s+survive\s+a\s+\$\\stallCoarsenFactor\\times"
+                         r"\$\s+widening\s+of\s+the\s+buckets", section), (
+            "Section IV-C does not say that the mode count was checked against the binning. "
             "This paper argues that instruments impose structure that gets reported as a "
-            "property of the system; Figure 3 reports local maxima of a bucketed histogram.")
+            "property of the system; the count is of local maxima of a bucketed histogram.")
 
     def test_the_paper_says_the_per_event_data_was_not_retained(self, paper, supp):
         both = paper + supp
@@ -172,8 +178,18 @@ class TestTheStallCaptionSaysEachThingOnce:
 
         The parallelism is `Kafka on X% of its N events, Redis on Y% of its M`, which a
         three-word repeated-phrase rule flags and which is the clearest way to write it.
+
+        5 Oct 2026: that caption left with Table I, which is the journal supplement's now and
+        captioned without the parallelism, and none of the rebuilt paper's four captions repeats
+        a three-word phrase. The supplement's captions still do, deliberately: the replicate-
+        spread table (stab:spread) defines "predicted full" and "shows full" against "half the
+        step width" twice, and the law campaign's verdict table (stab:lawverdicts) says "broker
+        by broker" twice. So the counter-example is looked for in both documents the journal
+        receives.
         """
-        caps = re.findall(r"\\caption(?:\[[^\]]*\])?\{(.{20,1600}?)\}\s*\n", paper, re.S)
+        journal = JOURNAL.read_text(encoding="utf-8")
+        caps = re.findall(r"\\caption(?:\[[^\]]*\])?\{(.{20,1600}?)\}\s*\n", paper + journal,
+                          re.S)
         hits = 0
         for cap in caps:
             # Macros go first, exactly as the rejected rule did it: the repeat is `on ... of

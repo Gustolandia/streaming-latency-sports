@@ -37,16 +37,23 @@ class TestR1TheSectionOpensOnItsEvidence:
         (macro and all) rather than on the verb.
 
         v6 (2 Oct): the section became Section V-E, "Ten tools, read at source", inside the
-        industry's section; its opening is unchanged and so is the pin."""
-        body = paper.split(r"\subsection{Ten tools, read at source}", 1)[1]
-        body = body.split(r"\section{", 1)[0]
-        opening = body[:400]
-        assert "forks" not in opening, (
-            "Section V opens on the fork count again. A fork is a copy: the number bounds "
-            "how few have diverged, not how many adopted, and it is the weakest evidence in "
-            "the section. The ten-tool audit is the claim.")
-        assert r"\harnessAuditedWord{} tools at source" in opening, \
-            "Section V no longer opens on the tool audit; say what replaced it"
+        industry's section; its opening is unchanged and so is the pin.
+
+        5 Oct 2026: the rebuilt paper's Section V, "An Industry-Wide Audit", opens on the four
+        studies, the tools read at source first, and its subsection V-A, "Tools read at
+        source", opens "We read ten measurement tools at source". Both openings are held: no
+        fork count, and the tool audit stated with its macro."""
+        section = paper.split(r"\section{An Industry-Wide Audit}", 1)[1]
+        section = section.split(r"\section{", 1)[0]
+        body = section.split(r"\subsection{Tools read at source}", 1)[1]
+        for name, opening in (("Section V", section[:400]), ("Section V-A", body[:400])):
+            assert "forks" not in opening, (
+                "%s opens on the fork count again. A fork is a copy: the number bounds how few "
+                "have diverged, not how many adopted, and it is the weakest evidence in the "
+                "section. The ten-tool audit is the claim." % name)
+            assert re.search(r"\\harnessAuditedWord\{\} (?:measurement )?tools at source",
+                             opening), \
+                "%s no longer opens on the tool audit; say what replaced it" % name
 
     def test_the_fork_count_says_what_it_bounds(self, paper, supplement):
         """Kept, but not allowed back without its qualification.
@@ -72,16 +79,26 @@ class TestR2AMedianTravelsWithItsSpread:
     """Commit ff36e86: a remedy quoted by its median is a bound. So is a distortion."""
 
     def test_the_understatement_carries_denominator_and_interquartile_range(self, paper):
-        i = paper.find(r"\understateFactor")
-        assert i > 0, "the understatement factor has gone"
-        window = paper[i:i + 460]
-        for macro, why in ((r"\spanRatioConditions", "the denominator"),
-                           (r"\understateIQRLo", "the lower interquartile bound"),
-                           (r"\understateIQRHi", "the upper interquartile bound")):
-            assert macro in window, (
-                "the understatement is quoted without %s. The second author's annotation #42 "
-                "requires experiment, denominator and uncertainty, and the median sits at the "
-                "bottom of its own interquartile range." % why)
+        """5 Oct 2026: the rebuilt paper quotes the factor twice, in a cell of the table of
+        checks, which points at the figure, and in Section VI-B's sentence, which now names
+        its denominator before the factor ("Over our N conditions, S understates ...") and its
+        interquartile range after it. So the window is the sentence, on both sides of the
+        factor, and every quote in running text is held to it. The table's cell, a summary
+        that sends the reader to the figure and sits a column from this sentence, is not."""
+        prose = re.sub(r"\\begin\{(figure|table)\*?\}.*?\\end\{\1\*?\}", " ", paper)
+        hits = [m.start() for m in re.finditer(r"\\understateFactor(?![A-Za-z])", prose)]
+        assert hits, "the understatement factor has gone from the running text"
+        for i in hits:
+            start = prose.rfind(". ", 0, i) + 2
+            end = prose.find(". ", i)
+            sentence = prose[start:end if end > 0 else len(prose)]
+            for macro, why in ((r"\spanRatioConditions", "the denominator"),
+                               (r"\understateIQRLo", "the lower interquartile bound"),
+                               (r"\understateIQRHi", "the upper interquartile bound")):
+                assert macro in sentence, (
+                    "the understatement is quoted without %s. The second author's annotation "
+                    "#42 requires experiment, denominator and uncertainty, and the median sits "
+                    "at the bottom of its own interquartile range: %r" % (why, sentence[:200]))
 
     def test_the_median_really_does_sit_low_in_its_range(self):
         """The reason the sentence needs the spread, checked against the ledger.
@@ -143,13 +160,22 @@ class TestW2NumbersComeFromTheLedgerAndCarryTheirUnits:
             "literal that collides with a macro it already knows." % (doc, literal))
 
     def test_the_spread_says_points_and_the_pin_says_percent(self, paper):
-        i = paper.find(r"\flipSpreadThirtyTwo")
+        """5 Oct 2026: the payload flip's spread is the journal supplement's now (S4.3), and
+        the paper keeps only the failed detail, the 32 KB pin, in Section VIII. The spread is
+        held where it is printed, and the pin in both documents."""
+        journal = _flat("supplement.tex")
+        i = journal.find(r"\flipSpreadThirtyTwo")
         assert i > 0, "the payload flip no longer quotes its spread"
-        window = paper[i:i + 420]
+        window = journal[i:i + 420]
         assert "points" in window, \
             "the replicate spread is a range in percentage points and no longer says so"
         assert re.search(r"\\flipPinThirtyTwo\\%", window), \
             "the pin is a retention level in percent and no longer says so"
+        pins = [m.end() for m in re.finditer(r"\\flipPinThirtyTwo(?![A-Za-z])", paper)]
+        assert pins, "the paper no longer states the failed detail of the flip"
+        for j in pins:
+            assert paper[j:j + 2] == "\\%", \
+                "the paper prints the pin without saying it is a retention level in percent"
 
     def test_the_figure_and_the_prose_read_one_function(self):
         src = (REPO / "scripts" / "make_result_figures.py").read_text(encoding="utf-8")

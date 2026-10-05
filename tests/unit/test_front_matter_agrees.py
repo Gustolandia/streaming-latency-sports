@@ -230,8 +230,21 @@ class TestTheBuiltDocumentsIdentifyThemselves:
         assert "Complete Record" in first
         assert "Ricou" in first
 
-    @pytest.mark.parametrize("page_no", [2, 3, 20])
+    @staticmethod
+    def _last_page(name):
+        import subprocess
+        out = subprocess.run(["pdfinfo", str(REPO / name)], capture_output=True,
+                             text=True).stdout
+        m = re.search(r"^Pages:\s+(\d+)", out, re.M)
+        assert m, "pdfinfo reported no page count for %s" % name
+        return int(m.group(1))
+
+    #: Page 20 was a page of the 33-page supplement; the rebuilt one of 5 Oct 2026 has sixteen,
+    #: so the sample's third page is the last, whatever the length.
+    @pytest.mark.parametrize("page_no", [2, 3, "last"])
     def test_every_supplement_page_carries_the_running_head(self, page_no):
+        if page_no == "last":
+            page_no = self._last_page("supplement.pdf")
         assert re.search(r"supplementary material", self._page("supplement.pdf", page_no),
                          re.I), (
             "page %d of the built supplement carries nothing marking it as supplementary; a "

@@ -149,10 +149,12 @@ class TestR1NoShiftRemains:
         assert n == 1, "S16.9 has been reworded; retarget this mutation"
         with pytest.raises(AssertionError):
             self.test_the_main_text_states_the_shift_not_a_crossing(paper, bad)
-        bad, n = re.subn(r"cannot\s+(?:be\s+told|tell)\s+apart",
+        # 5 Oct 2026: Section III-D's kept sentence was cut; the crossing is added after the
+        # last number of the rebuilt recovery paragraph (Section VI-B) instead.
+        bad, n = re.subn(r"\$" + re.escape(BS) + r"recoveryErrFailHi" + re.escape(BS) + r"%\$",
                          lambda m: m.group(0) + ", and setting the exact recoveries aside "
                          "crosses it", paper)
-        assert n == 1, "Section III-D has been reworded; retarget this mutation"
+        assert n == 1, "Section VI-B has been reworded; retarget this mutation"
         with pytest.raises(AssertionError):
             self.test_the_main_text_states_the_shift_not_a_crossing(bad, supplement)
 
@@ -308,14 +310,29 @@ class TestW4TheTrackerIsALedgerRow:
 class TestW5ThePreparedSwap:
 
     def test_the_entry_is_prepared_and_not_cited(self, paper):
+        """5 Oct 2026: the rebuilt Related Work cites Georges et al. inside a group,
+        "\\cite{mytkowicz2009wrong,georges2007rigorous,hoefler2015benchmarking}", so the pin
+        reads every citation's keys rather than the opening of one."""
         bib = (REPO / "manuscript_references.bib").read_text(encoding="utf-8")
         assert "@article{chen2015statcomparisons," in bib
-        assert "chen2015statcomparisons}" not in paper.replace("% ", "")
-        assert BS + "cite{georges2007rigorous" in paper, "reference [9] stays, as advised"
+        prose = re.sub(r"(?m)(?<!\\)%.*$", "", paper)
+        cited = {k.strip() for group in re.findall(re.escape(BS) + r"cite\{([^}]*)\}", prose)
+                 for k in group.split(",")}
+        assert "chen2015statcomparisons" not in cited
+        assert "georges2007rigorous" in cited, "the reference stays, as advised"
 
     def test_the_decision_is_recorded_beside_the_citation(self, paper):
-        i = paper.index(BS + "cite{georges2007rigorous")
-        assert "chen2015statcomparisons" in paper[i:i + 700]
+        """5 Oct 2026: the comment that recorded the decision beside the citation went with
+        the rebuilt paper's comments, and the record is the prepared entry's own note, which
+        names the work it would replace and says it was not made unprompted. A comment beside
+        the citation, should one come back, must name the entry."""
+        bib = (REPO / "manuscript_references.bib").read_text(encoding="utf-8")
+        i = bib.index("@article{chen2015statcomparisons,")
+        entry = " ".join(bib[i:bib.index("\n}", i)].split())
+        assert "Prepared, not cited" in entry
+        assert "Georges et al." in entry and "advised against making the swap" in entry
+        for m in re.finditer(r"(?m)^%.*georges2007rigorous.*$", paper):
+            assert "chen2015statcomparisons" in paper[m.start():m.start() + 700]
 
 
 class TestTheRenderedPagesCarryIt:

@@ -24,6 +24,12 @@ On 29 September 2026 the supplement became two documents: the journal supplement
 (`supplement.tex`, organized by the paper's sections, what the paper points at) and the
 postmortem (`postmortem.tex`, the old supplement whole, archived and not submitted). Both reach
 into the paper through `xr`, so every rule here that held for the one now holds for both.
+
+On 5 October 2026 the paper was rebuilt around four bottom lines, and thirteen of the labels
+the postmortem points at left it. The postmortem was written against the paper as it stood
+before, and since then its `xr` reads that version, archived with its own `paper.aux` in
+docs/archive/2026-10-05-before-cleanup/. So each companion is held to the main text it reads:
+the journal supplement to the paper, the postmortem to the archived paper.
 """
 from pathlib import Path
 import re
@@ -34,13 +40,33 @@ REPO = Path(__file__).parent.parent.parent
 PAPER = REPO / "paper.tex"
 SUPP = REPO / "supplement.tex"
 POST = REPO / "postmortem.tex"
-AUX = REPO / "paper.aux"
 COMPANIONS = ("supplement", "postmortem")
+#: The main text each companion's `\externaldocument[P-]{...}` reads, from the repository root.
+MAIN_TEXT = {"supplement": "paper",
+             "postmortem": "docs/archive/2026-10-05-before-cleanup/paper"}
 
 
 def _read(path):
     assert path.exists(), "%s is not present" % path.name
     return path.read_text(encoding="utf-8")
+
+
+def _printed_numbers(path):
+    """label -> printed number, as LaTeX actually assigned them in the .aux at `path`.
+
+    `\\newlabel{sec:gate}{{\\mbox {III-B}}{3}{...}}` -- the number is the first group, with
+    the \\mbox wrapper IEEEtran adds to subsection numbers stripped off.
+    """
+    assert path.exists(), (
+        "%s not present; tests/paper_build.py builds the paper's, and the archived paper's is "
+        "kept beside its source" % path.relative_to(REPO))
+    out = {}
+    for m in re.finditer(r"\\newlabel\{([^}]*)\}\{\{(.*?)\}\{\d+\}", path.read_text(encoding="utf-8")):
+        label, printed = m.group(1), m.group(2)
+        printed = printed.replace(r"\mbox", "").strip().strip("{}").strip()
+        if printed:
+            out[label] = printed
+    return out
 
 
 @pytest.fixture(scope="module")
@@ -64,20 +90,15 @@ def docs(paper, supp, post):
 
 
 @pytest.fixture(scope="module")
-def aux():
-    """label -> printed number, as LaTeX actually assigned them.
+def main_aux():
+    """For each companion, the labels of the main text it reads -> printed numbers."""
+    return {name: _printed_numbers(REPO / (MAIN_TEXT[name] + ".aux")) for name in COMPANIONS}
 
-    `\\newlabel{sec:gate}{{\\mbox {III-B}}{3}{...}}` -- the number is the first group, with
-    the \\mbox wrapper IEEEtran adds to subsection numbers stripped off.
-    """
-    assert AUX.exists(), "paper.aux not present; tests/paper_build.py builds it"
-    out = {}
-    for m in re.finditer(r"\\newlabel\{([^}]*)\}\{\{(.*?)\}\{\d+\}", AUX.read_text(encoding="utf-8")):
-        label, printed = m.group(1), m.group(2)
-        printed = printed.replace(r"\mbox", "").strip().strip("{}").strip()
-        if printed:
-            out[label] = printed
-    return out
+
+@pytest.fixture(scope="module")
+def main_tex():
+    """For each companion, the source of the main text it reads."""
+    return {name: _read(REPO / (MAIN_TEXT[name] + ".tex")) for name in COMPANIONS}
 
 
 class TestNoStrandedPointer:
@@ -154,20 +175,21 @@ class TestTheCompanionsNameSectionsRatherThanNumberingThem:
             seen[label] = name
         assert not clashes, "; ".join(clashes)
 
-    def test_the_macros_read_the_paper_instead_of_repeating_it(self, post, paper):
+    def test_the_macros_read_the_paper_instead_of_repeating_it(self, post, main_tex):
         """Round 57: the values are `\\ref`s now, and that is strictly better than numbers.
 
-        The postmortem loads `xr` and pulls `paper.aux`, so a macro no longer *repeats* the
-        paper's numbering, it *reads* it, and a renumbering carries without an edit. What is
-        pinned: every macro is a reference, and every label it names is a label the paper
-        actually defines.
+        The postmortem loads `xr` and pulls the main text's `.aux`, so a macro no longer
+        *repeats* the paper's numbering, it *reads* it, and a renumbering carries without an
+        edit. What is pinned: every macro is a reference, and every label it names is a label
+        that main text actually defines -- since 5 Oct 2026 the archived paper the postmortem
+        was written against.
         """
         # The body is `\ref{...}`, so it carries a nested brace pair: matching to the first
         # `}` would capture `\ref{sec:audit` and report every macro as malformed.
         values = dict(re.findall(r"\\newcommand\{\\(main[A-Za-z]+)\}\{((?:[^{}]|\{[^{}]*\})*)\}",
                                  post))
         assert values, "the macro block must exist"
-        labels = set(re.findall(r"\\label\{([^}]+)\}", paper))
+        labels = set(re.findall(r"\\label\{([^}]+)\}", main_tex["postmortem"]))
         for name, body in sorted(values.items()):
             m = re.match(r"^\\ref\{([^}]+)\}$", body)
             assert m, ("%s holds %r; main-text pointers resolve through xr rather than "
@@ -178,36 +200,36 @@ class TestTheCompanionsNameSectionsRatherThanNumberingThem:
                 "%s points at %r without the xr prefix, so it will resolve to nothing"
                 % (name, m.group(1)))
             target = m.group(1)[len("P-"):]
-            assert target in labels, \
-                "%s points at %r, which paper.tex does not define" % (name, target)
+            assert target in labels, "%s points at %r, which %s.tex does not define" % (
+                name, target, MAIN_TEXT["postmortem"])
 
-    def test_the_resolved_pointers_are_still_section_numbers(self, post, aux):
+    def test_the_resolved_pointers_are_still_section_numbers(self, post, main_aux):
         """What the literals used to guarantee, now checked where the reader meets it."""
         values = dict(re.findall(r"\\newcommand\{\\(main[A-Za-z]+)\}\{\\ref\{([^}]+)\}\}",
                                  post))
         assert values, "the macro block must resolve through \\ref"
         for name, label in sorted(values.items()):
-            #: The postmortem reads paper.aux through \externaldocument[P-]{paper}, so its
-            #: references carry the P- prefix and paper.aux's own labels do not.
+            #: The postmortem reads its main text's .aux through \externaldocument[P-]{...},
+            #: so its references carry the P- prefix and that .aux's own labels do not.
             target = label[len("P-"):] if label.startswith("P-") else label
-            number = aux.get(target)
-            assert number is not None, "%s points at %r, which paper.aux does not define" % (
-                name, target)
+            number = main_aux["postmortem"].get(target)
+            assert number is not None, "%s points at %r, which %s.aux does not define" % (
+                name, target, MAIN_TEXT["postmortem"])
             assert re.match(r"^[IVX]+(?:-[A-F])?$", number), \
                 "%s resolves to %r, which is not a section number" % (name, number)
 
 
 class TestCompanionsPointAtRealSections:
-    """Every "Section~X of the main text" must be a section the main text has."""
+    """Every "Section~X of the main text" must be a section the main text it reads has."""
 
     POINTER = re.compile(
         r"(?:main text's Section~|Section~)([IVX]+(?:-[A-D])?|[0-9]+(?:\.[0-9]+)?)"
         r"(?=[^a-zA-Z]|$)")
 
     @pytest.mark.parametrize("name", COMPANIONS)
-    def test_every_pointer_resolves(self, name, docs, aux):
+    def test_every_pointer_resolves(self, name, docs, main_aux):
         text = docs[name]
-        real = set(aux.values())
+        real = set(main_aux[name].values())
         bad = []
         for m in self.POINTER.finditer(text):
             num = m.group(1)
@@ -266,9 +288,14 @@ class TestEveryTargetedRelocationIsReachable:
     where the full passage is. So the route is: the paper, a journal-supplement section, and
     either a "postmortem, S<n>" pointer or the concordance row in docs/supplement_index.md
     that names the postmortem section as that journal-supplement section's source.
+
+    S13 left the set on 5 October 2026. It was lifted out of the paper's broker comparison,
+    and the rebuilt paper has no broker comparison for a reader to start from, so there is no
+    paragraph behind it left to route from. The other seven still expand a paragraph the
+    paper keeps.
     """
 
-    TARGETED = frozenset({7, 11, 12, 13, 14, 17, 24, 33})
+    TARGETED = frozenset({7, 11, 12, 14, 17, 24, 33})
 
     def _post_sections(self, post):
         return sorted({int(n) for n in re.findall(r"\\section\{S(\d+)\.", post)})
@@ -279,7 +306,7 @@ class TestEveryTargetedRelocationIsReachable:
         start = index.index("## Journal supplement and postmortem")
         end = index.find("\n## ", start + 5)
         table = index[start:end if end != -1 else len(index)]
-        #: | S3 | Failure 1: the full evidence | postmortem S7, S8, S9, S12, ... |
+        #: | S3 | The mechanism and its laws in full | S7, S8, S9, S12, ... |
         for row in re.findall(r"^\|\s*S\d+\s*\|.*$", table, re.M):
             reached |= {int(n) for n in re.findall(r"\bS(\d+)(?:\.\d+)?\b", row.split("|", 3)[3])}
         return reached
@@ -345,8 +372,8 @@ class TestSupplementNumbering:
 class TestNoFloatOrEquationIsPointedAtByNumber:
     """Cross-document pointers must go through `\\ref`, never through a typed number.
 
-    The companions load `xr` (`\\externaldocument[P-]{paper}`), so `\\ref{P-tab:spans}`
-    resolves across the document boundary and renders "Table I".
+    The companions load `xr` (`\\externaldocument[P-]{...}`, naming the main text each reads),
+    so `\\ref{P-tab:spans}` resolves across the document boundary and renders "Table I".
 
     Six sentences once typed the number instead, and round 48 resolved every one against
     `paper.aux`. **Five were wrong.** Both "Table~II" pointers meant Table I: one inside a
@@ -381,19 +408,24 @@ class TestNoFloatOrEquationIsPointedAtByNumber:
     @pytest.mark.parametrize("name", COMPANIONS)
     def test_each_companion_can_reach_the_paper(self, name, docs):
         """The rule above is only safe because `xr` is loaded. If it ever is not, every
-        `\\ref` into the paper renders as `??` and this check would still pass."""
-        assert re.search(r"\\externaldocument\[P-\]\{paper\}", docs[name]), (
-            "%s must load xr and \\externaldocument[P-]{paper}, or the cross-document \\ref "
-            "calls this rule forces everyone to use will render as ??" % name)
+        `\\ref` into the paper renders as `??` and this check would still pass.
+
+        Each companion reads its own main text: the journal supplement the paper, and since
+        5 Oct 2026 the postmortem the archived paper it was written against."""
+        want = MAIN_TEXT[name]
+        assert re.search(r"\\externaldocument\[P-\]\{%s\}" % re.escape(want), docs[name]), (
+            "%s must load xr and \\externaldocument[P-]{%s}, or the cross-document \\ref "
+            "calls this rule forces everyone to use will render as ??" % (name, want))
 
     @pytest.mark.parametrize("name", COMPANIONS)
-    def test_the_cross_document_refs_resolve(self, name, docs, aux):
-        """Every label a companion reaches for must be one it or the paper actually assigned.
+    def test_the_cross_document_refs_resolve(self, name, docs, main_aux):
+        """Every label a companion reaches for must be one it or its main text assigned.
 
         Until 29 September this matched only unprefixed labels (`tab:...`), so every
         `\\ref{P-tab:...}` -- all of them, since the prefix was introduced -- went unchecked
         here; a missing one surfaced only as "??" in the built PDF."""
-        assert aux, "paper.aux carries no labels; build the paper first"
+        aux = main_aux[name]
+        assert aux, "%s.aux carries no labels; build the paper first" % MAIN_TEXT[name]
         body = docs[name].split(r"\begin{document}")[-1]
         own = set(re.findall(r"\\label\{([^}]*)\}", body))
         bad = []

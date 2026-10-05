@@ -50,15 +50,27 @@ def _rendered(name):
 
 class TestR1TheConclusionAgreesWithTheReportingRule:
 
+    @staticmethod
+    def _conclusion(paper):
+        i = paper.index(RE_BS[:1] + "section{Conclusion}")
+        return " ".join(paper[i:paper.index(RE_BS[:1] + "section*{", i)].split())
+
     def test_the_conclusion_does_not_call_the_two_waits_independent(self, paper):
         """v5 (28 Sep): the Conclusion now says the two threads "each wait for a core", with no
         qualifier, which claims nothing about correlation; the pin follows the new wording and
-        the forbidden word stays forbidden."""
-        i = paper.index(RE_BS[:1] + "section{Conclusion}")
-        conclusion = " ".join(paper[i:].split())
+        the forbidden word stays forbidden.
+
+        5 Oct 2026: the rebuilt Conclusion says the two readings differ "because a thread
+        waits for a core, for up to a scheduler's slice, before it reads the clock", one
+        thread's wait, which claims nothing about two waits' correlation either. The pin
+        follows it, and no form of the word may describe the waits."""
+        conclusion = self._conclusion(paper)
         assert "wait for a core independently" not in conclusion
-        assert ("Two timestamps written by threads that each wait for a core come out in "
-                "the wrong order") in conclusion
+        assert not re.search(r"\bindependen", conclusion), (
+            "the Conclusion calls something independent again; the two waits are measured "
+            "correlated")
+        assert ("because a thread waits for a core, for up to a scheduler's slice, before it "
+                "reads the clock") in conclusion
 
     def test_it_uses_the_introductions_own_phrase(self, paper):
         """Same words in both places, so a reader meets one idea and not two.
@@ -70,14 +82,20 @@ class TestR1TheConclusionAgreesWithTheReportingRule:
 
         v6.1 (3 Oct): the Introduction's thread now waits "for a core", the Conclusion's word,
         so the two ends share the resource's name as well as the phrase.
+
+        5 Oct 2026: the rebuilt Introduction has no Contributions heading; its second
+        contribution says "A thread must wait for a core before it can read the clock", and
+        the Conclusion that "a thread waits for a core ... before it reads the clock". The
+        shared words are the thread's wait for a core before its reading, at both ends.
         """
         flat = " ".join(paper.split())
         intro = flat[flat.index(RE_BS[:1] + "section{Introduction}"):
-                     flat.index(RE_BS[:1] + "subsection{Contributions}")]
-        conclusion = flat[flat.index(RE_BS[:1] + "section{Conclusion}"):]
-        assert ("subtracted two timestamps written by two different threads, and a thread "
-                "must wait for a core before it can read the clock") in intro
-        assert "Two timestamps written by threads that each wait for a core" in conclusion
+                     flat.index(RE_BS[:1] + "section{", flat.index(RE_BS[:1]
+                                                                  + "section{Introduction}") + 9)]
+        conclusion = self._conclusion(paper)
+        assert "A thread must wait for a core before it can read the clock" in intro
+        assert re.search(r"a thread waits for a core,[^.]{0,40} before it reads the clock",
+                         conclusion)
 
     def test_the_rule_it_was_contradicting_is_still_there_and_still_measured(self, paper,
                                                                           supplement):
@@ -85,33 +103,50 @@ class TestR1TheConclusionAgreesWithTheReportingRule:
         its checks, so the pin moves to its measured statement in Section III-A, with the same
         macros; the rule's own "in all N conditions" clause is checked in S24.2, which prints it.
 
-        Left failing on purpose: III-A prints the factor without the denominator and floor
-        round 80 (R1) put beside it (v4: "the median of the \\indepWithinFlooredN conditions
-        above \\indepFloorPct%"), so 7.4 reads as a median over the 70 conditions named just
-        before it when it is over 54, at a floor that halves it.
+        Until 5 Oct this was left failing on purpose: III-A printed the factor without the
+        denominator and floor round 80 (R1) put beside it (v4: "the median of the
+        \\indepWithinFlooredN conditions above \\indepFloorPct%"), so 7.4 read as a median over
+        the 70 conditions named just before it when it is over 54, at a floor that halves it.
+        The rebuilt paper cut that sentence, and with it the defect.
         """
         s = supplement.index("S24.2. The statistical inventory")
         inventory = " ".join(supplement[s:supplement.index("S24.3. The metric map", s)].split())
         assert (RE_BS[:1] + "indepWithinOvershootConditions$ of the $" + RE_BS[:1]
                 + "indepWithinConditions$ conditions") in inventory
-        # 5 Oct 2026, the clarity pass: the two are the latencies of the sentence before, and
-        # "delay" is the paper's word for the publish delay and the scheduling delay.
-        i = re.search(r"The two latencies are correlated\s+within a run", paper).start()
-        rule = " ".join(paper[i:i + 600].split())
-        # Round 79 (R2): the rule quotes the within-run correlation, the unit its sentence names.
-        # Round 80 (R1): and the within-run factor beside it, with its denominator and floor.
+        # 5 Oct 2026: the rebuilt paper and its journal supplement no longer state the rule or
+        # its measurement (the sentence "The two latencies are correlated within a run" went
+        # with the old Section III-A), so the measured statement is held where it is printed,
+        # in S24.2: the within-run correlation, and the within-run factor with its denominator
+        # and floor. Should the article quote the factor again, the same four must stand
+        # beside it.
         missing = [m for m in ("spanRhoWithinMedian", "indepWithinFloored",
                                "indepWithinFlooredN", "indepFloorPct")
-                   if RE_BS[:1] + m not in rule]
-        assert not missing, (
-            "Section III-A quotes the independence factor without %s: its size depends on "
-            "where the denominator is floored, so it is not a number without them" % missing)
+                   if RE_BS[:1] + m not in inventory]
+        assert not missing, "S24.2 no longer prints %s" % missing
+        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        for name, text in (("paper.tex", paper), ("supplement.tex", journal)):
+            flat = " ".join(text.split())
+            for m in re.finditer(re.escape(RE_BS[:1]) + r"indepWithin(?:Floored|All)(?![A-Za-z])",
+                                 flat):
+                rule = flat[max(0, m.start() - 300):m.start() + 300]
+                missing = [k for k in ("spanRhoWithinMedian", "indepWithinFlooredN",
+                                       "indepFloorPct") if RE_BS[:1] + k not in rule]
+                assert not missing, (
+                    "%s quotes the independence factor without %s: its size depends on where "
+                    "the denominator is floored, so it is not a number without them"
+                    % (name, missing))
 
     def test_the_rendered_conclusion_carries_the_fix(self):
-        """v5 (28 Sep): retargeted with the source pin above to the Conclusion's new wording."""
+        """v5 (28 Sep): retargeted with the source pin above to the Conclusion's new wording.
+        5 Oct 2026: and again, to the rebuilt Conclusion's."""
         flat = " ".join(_rendered("paper").split())
-        assert "each wait for a core come out in the wrong order" in flat
-        assert "independently invert" not in flat
+        # The running head can fall inside the sentence, as it does on the rebuilt page 7.
+        flat = re.sub(r"IEEE TRANSACTIONS ON COMPUTERS \d+ ", "", flat)
+        i = flat.rindex("CONCLUSION")
+        conclusion = flat[i:flat.index("ACKNOWLEDGMENT", i)]
+        assert re.search(r"because a thread waits for a core, for up to a scheduler.s slice",
+                         conclusion), conclusion[:400]
+        assert "independent" not in conclusion
 
 
 class TestR2ThePacerJitterIsEmitted:
@@ -137,14 +172,9 @@ class TestR2ThePacerJitterIsEmitted:
         outside = [r["cell"] for r in rows if not lo <= float(r["jitter_p90_us"]) <= hi]
         assert not outside, "runs outside the printed range: %s" % outside
 
-    def test_the_sentence_no_longer_types_its_number(self, paper):
-        """v5 (28 Sep): the setup was cut to one paragraph (Section II-B) and the jitter is now
-        the second half of a sentence, "and pacer jitter is ...", so the anchor ignores case."""
-        i = re.search(r"(?i)pacer jitter is", paper).start()
-        sentence = paper[i:i + 160]
-        assert RE_BS[:1] + "pacerJitterLo" in sentence
-        assert RE_BS[:1] + "pacerJitterHi" in sentence
-        assert not re.search(r"\$6\d\$", sentence), "a typed endpoint is back"
+    # 5 Oct 2026: the two sentence pins, source and page, retired with the sentence. Neither the
+    # rebuilt paper nor its supplement prints the pacer jitter; the emitter's range and its
+    # decimal form are still held below, for the documents that quote it again.
 
     def test_the_macros_stay_decimal_so_the_ledger_sweep_sees_them(self):
         """Integers would print a bare 67 beside interHostOffsetUs, which is also 67 and is a
@@ -171,13 +201,6 @@ class TestR2ThePacerJitterIsEmitted:
             {"jitter_p90_us": None}, {"jitter_p90_us": "69.2"}])
         assert stat_intervals.harness_pacer_jitter() == (66.3, 69.2)
 
-    def test_the_rendered_sentence_prints_the_measured_ends(self):
-        """v5 (28 Sep): lower case on the page too, for the reason given above."""
-        flat = " ".join(_rendered("paper").split())
-        i = re.search(r"(?i)pacer jitter is", flat).start()
-        assert "66.3" in flat[i:i + 90] and "69.2" in flat[i:i + 90]
-
-
 class TestW1TheWordIsOnTheReviewList:
 
     def test_the_entry_exists_and_is_the_structural_sense(self):
@@ -193,10 +216,13 @@ class TestW1TheWordIsOnTheReviewList:
 
         v5 (28 Sep): retargeted to the Conclusion's new wording, "threads that each wait for a
         core invert", matched across its line break rather than at one wrap.
+
+        5 Oct 2026: retargeted to the rebuilt Conclusion, "because a thread waits for a core",
+        which the mutation turns back into two threads waiting independently.
         """
         import apply_vocabulary as av
-        bad = re.sub(r"threads that each\s+wait for a core\s+come out",
-                     "threads that wait for a core independently come out", paper, count=1)
+        bad = re.sub(r"because\s+a\s+thread\s+waits\s+for\s+a\s+core",
+                     "because the two threads wait for a core independently", paper, count=1)
         assert bad != paper, "the Conclusion has been reworded; retarget this mutation"
         _, _, review = av.rewrite(bad, "paper.tex", True, av.load_adjudications(), set())
         assert any("independently" in r for r in review)

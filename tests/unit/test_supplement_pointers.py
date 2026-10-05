@@ -13,6 +13,11 @@ that uses one resolves through xr to a label, and a label that disappears breaks
 every sentence that mentions the main text carries a `\main...` macro or a `\ref{P-...}`, unless
 it is one of a short, capped list of phrasings that point at nothing (where an exhibit came
 from; statements about the document as a whole).
+
+The supplement of these rounds is the postmortem. Since the paper was rebuilt on 5 October 2026,
+the postmortem's main text is the paper as it stood before, which it was written against: its
+`xr` reads that version, archived with its `paper.aux` in docs/archive/2026-10-05-before-cleanup/,
+and "the paper" below is whichever document its `\externaldocument` names.
 """
 from pathlib import Path
 import re
@@ -72,8 +77,11 @@ def supplement():
 
 
 @pytest.fixture(scope="module")
-def paper():
-    return (REPO / "paper.tex").read_text(encoding="utf-8")
+def paper(supplement):
+    """The main text the postmortem points into: the source of the document its xr reads."""
+    m = re.search(re.escape(BS) + r"externaldocument\[P-\]\{([^}]+)\}", supplement)
+    assert m, "the postmortem no longer reads a main text through xr"
+    return (REPO / (m.group(1) + ".tex")).read_text(encoding="utf-8")
 
 
 def test_no_supplement_pointer_to_the_main_text_is_bare(supplement):

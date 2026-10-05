@@ -103,3 +103,8 @@ harness/java/out/
 
 # The copy the queue loop runs from, so a pull cannot rewrite the script bash is reading
 cloud/azure/.queue.running.sh
+
+# Not a build byproduct: the label map of the paper as it stood before the rebuild of
+# 5 Oct 2026, which the postmortem's pointers into the main text read. That paper is frozen,
+# so its labels are kept beside it rather than regenerated.
+!docs/archive/2026-10-05-before-cleanup/paper.aux

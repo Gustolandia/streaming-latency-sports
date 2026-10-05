@@ -82,9 +82,13 @@ def test_no_cited_note_lets_the_style_lowercase_a_name(doc, bib_notes):
 #: The DTrace note of villain2012probing was commentary rather than citation data, and since the
 #: 28 September split (test_reference_notes.py) it is kept unprinted in `annote`; the rule it
 #: taught still holds for every note that prints.
+#:
+#: Since 5 Oct 2026 the rebuilt supplement no longer cites sharma2026causality, so its list
+#: has no copy of the reference to read; the postmortem, the other companion that prints it,
+#: is read in its place.
 @pytest.mark.parametrize("doc,present,absent", [
     ("paper", ("Open Compute Project",), ("open Compute", "dTrace")),
-    ("supplement", ("Open Compute Project",), ("open Compute",)),
+    ("postmortem", ("Open Compute Project",), ("open Compute",)),
 ])
 def test_the_rendered_references_keep_the_two_names(doc, present, absent):
     bbl = REPO / (doc + ".bbl")

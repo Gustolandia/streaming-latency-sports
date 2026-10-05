@@ -165,9 +165,14 @@ class TestEveryExhibitOpensOnAClaim:
         the grid refinement to become the explanation of the deletion rather than a
         contribution in its own right, so the grid-membership figure went to Supplement S23,
         beside the per-configuration table it summarises. Four figures and two tables remain.
+
+        Four since the rebuild of 5 Oct 2026, and the floats genuinely left: the paper went
+        from twelve pages to eight around its four bottom lines, and kept three figures (the
+        measurement model, the distribution of S, the remedies) and one table (the checks).
+        The rest went to the supplement or were cut with the passages that cited them.
         """
         found = captions((REPO / "paper.tex").read_text(encoding="utf-8"))
-        assert len(found) >= 6, "expected the paper's figures and tables; found %d" % len(found)
+        assert len(found) >= 4, "expected the paper's figures and tables; found %d" % len(found)
 
 
 class TestTheCheckCanFail:

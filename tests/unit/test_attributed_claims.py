@@ -44,8 +44,16 @@ PAPER = REPO / "paper.tex"
 
 #: An allusion to a dated external document. The genre words are the ones a systems paper
 #: actually uses for other people's work; the year is what makes it a specific artifact.
+#:
+#: Up to two words may stand between the year and the genre. The docstring's own example, "a
+#: 1970 application note", has one, and the pattern used to require the genre straight after
+#: the year, so it could not match that example. The 5 Oct 2026 rebuild found the gap: the
+#: paper's only remaining allusion of this shape, Related Work's "a 1970 counter note", went
+#: unseen, the parametrized check below collected nothing, and the suite (which forbids
+#: skips) reported the empty set as an error. The allusion is cited; what changed is that
+#: the rule can see it.
 DATED = re.compile(
-    r"\b(?:a|an|another|the)\s+(?:19|20)\d\d\s+"
+    r"\b(?:a|an|another|the)\s+(?:19|20)\d\d\s+(?:[\w-]+\s+){0,2}?"
     r"(?:comparison|framework|preprint|tutorial|guide|methodology|study|survey|report|"
     r"benchmark|paper|note|standard|specification|manual|harness|tool)\b", re.I)
 
@@ -245,6 +253,16 @@ class TestTheRuleWouldHaveCaughtTheDefect:
         s = (r"None of this is hypothetical: \brk{mq-bench}, a 2026 framework for the same "
              r"comparisons, already timestamps in nanoseconds (Supplement~S52.2).")
         assert DATED.search(s) and _sourced(s) and not _cited(s)
+
+    def test_a_year_and_a_modified_genre_is_still_a_dated_document(self):
+        """The docstring's example and the rebuilt paper's sentence, uncited and cited."""
+        assert DATED.search("a 1970 application note")
+        s = ("The retention arithmetic and its cure, phase jitter, are in a 1970 counter "
+             "note, and IP measurement advises randomizing probe times.")
+        assert DATED.search(s) and not _sourced(s)
+        cited = s.replace("counter note,", r"counter note~\cite{hp1970tia},")
+        assert DATED.search(cited) and _cited(cited)
+        assert not DATED.search("Its filter was added in 2018 because its latency can be negative")
 
     def test_a_numbered_standard_locates_itself(self):
         """Why round 54 could drop `rfc1242` from the list without stranding the sentence."""

@@ -591,7 +591,7 @@ def _save(fig, out_dir, stem):
 
 
 def build_deletion_phases(out_dir):
-    """The paper's deletion figure since v5: why a sample is deleted, beside what it did.
+    """The deletion figure: why a sample is deleted, beside what it did.
 
     An outside editor's reading (28 Sep) found the paper's deletion scatter unable to show the
     mechanism and the supplement's four-phase drawing unable to show the consequence, and asked
@@ -599,17 +599,27 @@ def build_deletion_phases(out_dir):
     deleted; (b) every captured setting's retention against the median it printed. Panel (b)
     is the old single-panel scatter, whose own builder was retired with it: a figure built and
     included nowhere is the dangling case the manuscript gates fail on.
+
+    The paper carried it from v5 until 5 Oct 2026, when it moved to the journal supplement
+    (S4.1), whose one-column text block is 6.5 in. It is drawn at that width. Drawn at the
+    paper's 7.16 in it printed its 8 pt labels at 7.3 pt, under the legibility floor.
     """
     import make_paper_figures
     figure_style.apply()
-    fig = plt.figure(figsize=(7.16, 2.10))
-    gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 1.15], wspace=0.25)
+    # The margins are explicit because the panels have to use the whole 6.5 in: at the
+    # default ones the two panel titles ran together with under 2 pt between them. The bottom
+    # margin keeps panel (b)'s x label on the canvas, where the collision gate can read it;
+    # at 7.16 in by 2.10 in it hung below the edge and was never checked. No tight_layout:
+    # a gridspec with its own spacing is one it leaves alone, with a warning, so the call
+    # changed nothing.
+    fig = plt.figure(figsize=(6.50, 2.30))
+    gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 1.15], wspace=0.25,
+                          left=0.02, right=0.985, bottom=0.18)
     left = fig.add_subplot(gs[0, 0])
     right = fig.add_subplot(gs[0, 1])
     make_paper_figures.plot_phases(left)
     plot_deletion(right, retention_points())
     right.set_title("(b) What the benchmark printed, and what it kept", fontsize=8, loc="left")
-    fig.tight_layout()
     return _save(fig, out_dir, "deletion_phases")
 
 

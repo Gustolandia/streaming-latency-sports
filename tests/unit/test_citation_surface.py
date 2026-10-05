@@ -68,6 +68,12 @@ TC_REFERENCE_CAP = 45
 #:
 TC_PAGE_LIMIT = 12
 
+#: The floor under the page count, which exists to catch a build that silently lost part of the
+#: document. It was 10, the bottom of TC's 10-12 page band, while the paper ran to twelve. The
+#: rebuild of 5 Oct 2026 made the paper eight pages, by the author's decision, so the floor is
+#: what the paper now is: losing a page still fails.
+PAPER_PAGE_FLOOR = 8
+
 
 def _bib_keys():
     return set(re.findall(r"@\w+\{([^,]+),", BIB.read_text(encoding="utf-8")))
@@ -210,7 +216,10 @@ class TestTheBuiltPaperFitsTheJournal:
 
     def test_the_paper_is_not_suspiciously_short(self):
         """A build that silently lost half the document would also be "within the limit"."""
-        assert self._pdf_pages("paper.pdf") >= 10,             "TC regular papers are 10-12 pages; this looks like a broken build"
+        n = self._pdf_pages("paper.pdf")
+        assert n >= PAPER_PAGE_FLOOR, (
+            "%d pages against the paper's %d; this looks like a broken build" % (
+                n, PAPER_PAGE_FLOOR))
 
     def test_the_supplement_is_built_too(self):
         """It carries everything the page limit pushed out, so an unbuilt one is a lost half."""

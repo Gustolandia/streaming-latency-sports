@@ -17,22 +17,19 @@ on 2026-09-08, and not part of the submission. Its sections keep their numbers, 
 read "supplementary material S<n>" now read "Section~S<n>", because that phrase names the other
 document now.
 
-The journal supplement `supplement.tex` is new. It has nine sections in the paper's order, and
-points into the postmortem as "postmortem, S<n>". Each row gives the postmortem sections it
-draws on; `tests/unit/test_cross_document_refs.py` reads this table to check that every passage
-once moved out of the paper is still reachable from it.
+The journal supplement `supplement.tex` is new. It had nine sections in the paper's order (six
+since 2026-10-05, see below), and points into the postmortem as "postmortem, S<n>". Each row
+gives the postmortem sections it draws on; `tests/unit/test_cross_document_refs.py` reads this
+table to check that every passage once moved out of the paper is still reachable from it.
 
 | Supp. section | Title | Draws on (postmortem sections) |
 |---|---|---|
 | S1 | The setup in full | S9, S16.1, S16.2, S16.8, S18, S19, S20, S21, S24.3, S34 |
-| S2 | The sign check, and what it selects | S18, S18.1, S19, S26.2 |
-| S3 | Failure 1: the full evidence | S7, S8, S9, S12, S15, S16.3, S16.4, S16.6, S16.8, S16.9, S19, S26.1 |
-| S4 | Failure 2: the full evidence | S10, S11, S14, S16.7, S17, S22, S22.1, S24.1, S25 |
-| S5 | The tool registry | S25, S25.1, S30 |
+| S2 | The sign check, and the runs it covers | S18, S18.1, S19, S26.2 |
+| S3 | The mechanism and its laws in full | S7, S8, S9, S12, S15, S16.3, S16.4, S16.6, S16.8, S16.9, S19, S26.1 |
+| S4 | The positivity filter and the retention law in full | S10, S11, S14, S16.7, S17, S22, S22.1, S24.1, S25 |
+| S5 | Tools read at source, tools run, and public reports | S25, S25.1, S30 |
 | S6 | The registered law campaign | S16.10, S16.11, S34, S35, S36, S37 |
-| S7 | The broker comparison, gated | S2, S13, S18.1 |
-| S8 | Results we withdrew | S1, S3, S4, S5, S6 |
-| S9 | Related work in full | S27, S28, S29, S31, S32, S33 |
 
 The paper's pointers were remapped with it: 21 into the old numbering became 15 into the new,
 and every journal-supplement section is pointed at (`tests/unit/test_journal_supplement.py`).
@@ -51,6 +48,16 @@ sentence, each term defined where it first appears, long paragraphs split. No se
 was renumbered, and no pointer changed. In the supplement the retentions $0, 1/q, \ldots, 1$ are
 now the *q*-lattice (S4.2, and a row of the glossary), so that "grid" keeps one meaning, the
 instants at which a timestamp changes value; Figure S6's label says "lattice" to match.
+
+**Paper and supplement rebuilt, 2026-10-05.** The paper was rebuilt around four bottom lines: the
+distribution of $S$, the mechanism and its laws, an industry-wide audit, and what to do. The
+journal supplement was cut to what they need. S1 to S6 kept their numbers, S2 to S5 under new
+titles; their subsections were merged or deleted and the rest renumbered. S7 (the broker
+comparison, gated), S8 (results we withdrew) and S9 (related work in full) were deleted, and
+their rows left the table above. Each remaining row still names the postmortem sections its
+section was drawn from: the shortened section carries less of them, and the postmortem holds
+them whole. The section map in the supplement's front matter went with the cut; the paper's
+pointers are the routes in.
 
 ## The postmortem (the supplement until 2026-09-29)
 
@@ -349,33 +356,37 @@ with no gate, and the only one that costs $220 a page.
 
 ## Figure inventory
 
-`docs/results/figures/` holds thirty-one PDFs. Twenty-five are included by at least one
-document: five by the main text, nine by the journal supplement and twenty by the postmortem.
-Six are included by none and are kept deliberately rather than by oversight: three are listed
+`docs/results/figures/` holds thirty-two PDFs. Twenty-five are included by at least one
+document: three by the main text, four by the journal supplement and twenty by the postmortem.
+Seven are included by none and are kept deliberately rather than by oversight: four are listed
 below as retained, and three are the candidates of the next section. An internal review round
 (13) asked which was which, so the answer lives here instead of in anyone's memory. A test
 (`test_every_figure_is_used_or_declared`) fails if a figure appears in the directory without
 appearing in this table, and another holds every "main text, Fig. N" below to the number the
-paper prints. Supplement and postmortem numbers are those of the 1 October 2026 build, with the
-section that carries the figure; both documents number their figures S1, S2, and so on.
+paper prints. Supplement numbers are those of the 5 October 2026 build and postmortem numbers
+those of the 1 October 2026 build, with the section that carries the figure; both documents
+number their figures S1, S2, and so on. The rebuild of 5 October 2026 left the main text three
+figures and the journal supplement four; every figure that left them is in the postmortem or
+listed here as retained.
 
 | Figure | Where it appears |
 |---|---|
-| `two_ways` | main text, Fig. 2 since 4 Oct 2026, Fig. 1 before (added 28 Sep 2026, the editorial revision: panels (a) and (b) of `deletion_histogram` side by side, so page 1 shows both failures on one population; `scripts/make_deletion_histogram.py --two`) |
 | `measurement_model` | main text, Fig. 1 since 4 Oct 2026: (a) the whole system, which machine runs what, the two legs, where each timestamp is read, and where each failure enters; (b) the thread timeline, with $A$ and $D$ drawn from $t_{\mathrm{pub}}$ (panel (b) split off round 52) |
-| `stall_spectrum` | supplement, S3, since 4 Oct 2026 (main text Fig. 3 until then; Section IV-C gives every number it draws) |
-| `remedies` | main text, Fig. 4 since 4 Oct 2026: (a) every condition's error timed from the acknowledgment, on the exposure curve, and once the publish latency is added back; (b) every matched pair at normal and real-time priority |
-| `deletion_phases` | main text, Fig. 3 since 4 Oct 2026, Fig. 4 before (added 28 Sep 2026: the four-phase drawing of one millisecond beside the retention of every captured setting, mechanism beside consequence; its panel (b) is the former single-panel `deletion` figure, whose file and builder were retired with it; Fig. 5 until v6 put the industry's section before the practical implications) |
+| `s_distribution` | main text, Fig. 2 since 5 Oct 2026: the distribution of $S = t_{\mathrm{recv}} - t_{\mathrm{ack}}$ on one clock at nanosecond resolution, its values below zero in red, beside $D$ on the same messages; panel (a) of `deletion_histogram` alone at column width (`scripts/make_deletion_histogram.py --s-distribution`) |
+| `remedies` | main text, Fig. 3 since 5 Oct 2026, Fig. 4 from 4 Oct: (a) every condition's error timed from the acknowledgment, on the exposure curve, and once the publish latency is added back; (b) every matched pair at normal and real-time priority |
+| `stall_spectrum` | supplement, Fig. S1 (S3.7), since 4 Oct 2026 (main text Fig. 3 until then; Section IV-C gives every number it draws) |
+| `deletion_phases` | supplement, Fig. S2 (S4.1), since 5 Oct 2026, drawn at the supplement's 6.5 in width since then; main text Fig. 3 from 4 Oct, Fig. 4 before (added 28 Sep 2026: the four-phase drawing of one millisecond beside the retention of every captured setting, mechanism beside consequence; its panel (b) is the former single-panel `deletion` figure, whose file and builder were retired with it; Fig. 5 until v6 put the industry's section before the practical implications) |
+| `payload_flip` | supplement, Fig. S3 (S4.3); postmortem, Fig. S5 (S10) |
+| `law_slice` | supplement, Fig. S4 (S6.2); postmortem, Fig. S17 (S36): every run of L1 and L4 with every aberrant run marked (`scripts/make_law_figures.py`, marks by `scripts/law_runs.py`) |
+| `two_ways` | **retained, unused** since 5 Oct 2026, when the rebuilt paper opened its results on `s_distribution` instead. Panels (a) and (b) of `deletion_histogram` side by side, so that one page showed both failures on one population: the main text's Fig. 2 from 4 Oct, Fig. 1 from 28 Sep 2026 (`scripts/make_deletion_histogram.py --two`) |
 | `exposure_curve_column` | retired 4 Oct 2026, with its builder: its curve is panel (a) of `remedies` (added 28 Sep 2026: the exposure curve redrawn at column width, because the main text's advice to authors turns on where a path sits on it; Fig. 4 until v6 moved the proxy's cost into Practical Implications) |
-| `pipeline_schematic` | supplement, Fig. S1 (S1.5); postmortem, Fig. S16 (S24). The v5 main text defines the timestamps in prose and gives its drawing to the inversion itself, Fig. 2 |
-| `integrity_audit` | supplement, Fig. S2 (S2.1); postmortem, Fig. S15 (S18) |
-| `delta_schematic` | supplement, Fig. S3 (S3.4); postmortem, Fig. S4 (S9). Redrawn 28 Sep 2026: the waiting state is a shelf to the slice and a tick, the rest of a slice, read after the law campaign's verdicts |
-| `recovery_populations` | supplement, Fig. S4 (S3.8); postmortem, Fig. S11 (S16) |
-| `quantum_geometry` | supplement, Fig. S5 (S4.2); postmortem, Fig. S13 (S17): a constructed illustration of the retention law, beside the 1970 counter note that carries the same identity |
-| `grid_membership` | supplement, Fig. S6 (S4.3); postmortem, Fig. S6 (S11) |
-| `payload_flip` | supplement, Fig. S7 (S4.3); postmortem, Fig. S5 (S10) |
-| `deletion_histogram` | supplement, Fig. S8 (S4.4); postmortem, Fig. S10 (S14). Asked for by a co-author on 26 Aug 2026; its panels (a) and (b) are also the main text's Fig. 1 |
-| `law_slice` | supplement, Fig. S9 (S6.3); postmortem, Fig. S17 (S36): every run of L1 and L4 with every aberrant run marked (`scripts/make_law_figures.py`, marks by `scripts/law_runs.py`) |
+| `pipeline_schematic` | postmortem, Fig. S16 (S24); the journal supplement's Fig. S1 (S1.5) until 5 Oct 2026. The v5 main text defines the timestamps in prose and gives its drawing to the inversion itself, Fig. 2 |
+| `integrity_audit` | postmortem, Fig. S15 (S18); the journal supplement's Fig. S2 (S2.1) until 5 Oct 2026 |
+| `delta_schematic` | postmortem, Fig. S4 (S9); the journal supplement's Fig. S3 (S3.4) until 5 Oct 2026. Redrawn 28 Sep 2026: the waiting state is a shelf to the slice and a tick, the rest of a slice, read after the law campaign's verdicts |
+| `recovery_populations` | postmortem, Fig. S11 (S16); the journal supplement's Fig. S4 (S3.8) until 5 Oct 2026 |
+| `quantum_geometry` | postmortem, Fig. S13 (S17): a constructed illustration of the retention law, beside the 1970 counter note that carries the same identity; the journal supplement's Fig. S5 (S4.2) until 5 Oct 2026 |
+| `grid_membership` | postmortem, Fig. S6 (S11); the journal supplement's Fig. S6 (S4.3) until 5 Oct 2026 |
+| `deletion_histogram` | postmortem, Fig. S10 (S14); the journal supplement's Fig. S8 (S4.4) until 5 Oct 2026. Asked for by a co-author on 26 Aug 2026; its panel (a) alone is the main text's Fig. 2, `s_distribution` |
 | `law_tick` | postmortem, Fig. S18 (S36): L2, L5 and L7, marked the same way |
 | `law_load` | postmortem, Fig. S19 (S36): L3 and L8, marked the same way |
 | `law_a9` | postmortem, Fig. S20 (S36): L9, with its traced half ringed |

@@ -40,7 +40,8 @@ class TestASectionOpensOnItsOwnClaim:
     Section II is exempt and the exemption is deliberate: it opens on a description because
     it holds the definitions, which a co-author required, and a definitions section that
     opened on a claim would be worse. That is a decision, so it is named here rather than
-    silently accommodated by a looser rule.
+    silently accommodated by a looser rule. (5 Oct 2026: the definitions section of the
+    rebuilt paper is "How a Message Is Timed", and the exemption follows the name.)
     """
 
     #: Openers that describe what came before instead of what follows.
@@ -53,7 +54,7 @@ class TestASectionOpensOnItsOwnClaim:
         r"Having\b"
         r")", re.I)
 
-    EXEMPT = {"System and Measurement Model"}
+    EXEMPT = {"How a Message Is Timed"}
 
     def _sections(self, paper):
         out = []
@@ -99,17 +100,30 @@ class TestASectionOpensOnItsOwnClaim:
         wins" into the case itself: Kafka's tool "keeps every sample and loses it anyway". The
         contrast with deletion is that clause now, and it must still sit against the integer
         division it introduces.
+
+        5 Oct 2026: the rebuilt paper states the case in one plain sentence, that Kafka's tool
+        "rounds each latency down to whole milliseconds", with no hinge, and the hinge lives
+        in the journal supplement's tool notes (S5): the tool "cannot produce a value below
+        zero ... It loses the measurement anyway", against the integer division. It is held
+        there, and either hinge that comes back to the paper must sit against its case too.
         """
-        i = paper.find("keeps every sample and loses it anyway")
+        journal = _flat("supplement.tex")
+        i = journal.find("It loses the measurement anyway")
         assert i > 0, "the hinge sentence has gone; it introduces the integer-division case"
-        assert "integer division" in paper[i:i + 400], (
-            "'keeps every sample and loses it anyway' has drifted away from the case it "
-            "introduces, which is the tool that keeps every sample and divides")
-        j = paper.find("Deletion is not the only way")
-        if j >= 0:
-            assert "integer division" in paper[j:j + 400], (
-                "'Deletion is not the only way coarse resolution wins' is back and has drifted "
-                "away from the case it introduces")
+        assert "integer division" in journal[i:i + 400], (
+            "'It loses the measurement anyway' has drifted away from the case it introduces, "
+            "which is the tool that keeps every sample and divides")
+        assert "cannot produce a value below zero" in journal[max(0, i - 300):i], (
+            "the hinge no longer follows the contrast with deletion it exists to make")
+        assert re.search(r"rounds each latency down to whole milliseconds, so on a path faster "
+                         r"than a millisecond every percentile it reports is zero", paper), (
+            "the paper no longer states the case the hinge introduces in the supplement")
+        for hinge in ("keeps every sample and loses it anyway", "Deletion is not the only way"):
+            j = paper.find(hinge)
+            if j >= 0:
+                assert "integer division" in paper[j:j + 400], (
+                    "%r is back in the paper and has drifted away from the case it "
+                    "introduces" % hinge)
 
 
 class TestAMedianTravelsWithItsSpread:
@@ -188,25 +202,6 @@ class TestTheSupplementIndexesItsExhibits:
                 "the supplement dropped %s. It carries 14 figures and 27 tables over sixty pages "
                 "with no page limit, and a reader who remembers an exhibit but not its "
                 "section has only the section titles to go on." % macro)
-
-
-class TestThePromiseNamesWhoKeepsIt:
-    """W3b: Section IV-F promised a corrected value that its own two tables do not display."""
-
-    def test_the_holm_promise_says_which_tables(self, paper):
-        """v5 (28 Sep): the statistics paragraph is Section II-D and now reads "every ratio a
-        Katz interval, Holm-corrected within a named family", with no Katz interval left in the
-        paper to keep that promise (Table II's brackets went to the supplement). The anchor
-        takes either wording; the requirement that the promise name the supplement's tables is
-        unchanged, and every Holm promise in the paper has to meet it."""
-        hits = [m.start() for m in re.finditer(r"Holm(?:-corrected| correction)", paper)]
-        assert hits, "the Holm sentence has gone"
-        for i in hits:
-            window = paper[i:i + 220]
-            assert "supplement's tables" in window, (
-                "Section II-D promises a Holm-corrected interval on every ratio, in a document "
-                "whose own tables display counts, rates and Wilson intervals. The Katz brackets "
-                "and the p_Holm column are in the supplement, and the sentence has to say so.")
 
 
 class TestEveryCaptionParserReadsBothForms:

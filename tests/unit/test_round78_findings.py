@@ -79,6 +79,11 @@ def _vd(paper):
 #: apart", v5's).
 NOT_TOLD_APART = r"cannot\s+(?:be\s+told|tell)\s+apart"
 
+#: 5 Oct 2026: the rebuilt paper's recovery paragraph (Section VI-B) cut that sentence. It
+#: prints both populations' medians over their counts and both upper quartiles and says
+#: nothing about them, sameness included; its last number is where a claim would be added.
+RECOVERY_END = r"\$" + re.escape(BS) + r"recoveryErrFailHi" + re.escape(BS) + r"%\$"
+
 
 def _s169(supplement):
     i = supplement.index("S16.9.")
@@ -127,11 +132,19 @@ class TestR1TheWordsSayWhatTheIntervalsSay:
         cannot tell apart", and the shift clause went to S16.9 with V-D's other statistics
         (editorial review, Section 5), where it reads "no shift can be detected". The refused
         phrases gain "indistinguishable": the editor's suggested wording for this sentence, and
-        the word B18 names as where the drift to sameness began."""
+        the word B18 names as where the drift to sameness began.
+
+        5 Oct 2026: the rebuilt paper cut the kept sentence and prints the two populations'
+        medians and upper quartiles with no word about them, so "cannot tell apart" is no
+        longer required there; every sameness phrase stays refused, and should the paper
+        describe the two populations again it must say what the data cannot do."""
         vd = _vd(paper)
-        for gone in ("the populations do not.", "no shift remains", "indistinguishable"):
+        for gone in ("the populations do not.", "no shift remains", "indistinguishable",
+                     "the same population", "do not differ"):
             assert gone not in vd, gone
-        assert re.search(NOT_TOLD_APART, vd)
+        if re.search(r"\bpopulations?\b", vd):
+            assert re.search(NOT_TOLD_APART, vd), \
+                "the paper describes the two populations without saying what the data cannot do"
         assert "no shift can be detected" in _s169(supplement)
 
     def test_the_supplement_asserts_no_sameness(self, supplement):
@@ -154,9 +167,13 @@ class TestR1TheWordsSayWhatTheIntervalsSay:
 
     def test_the_defect_that_prompted_this_is_caught(self, paper, supplement):
         """v5 (28 Sep): the anchor is Section III-D's "cannot tell apart", replaced by the
-        sameness claim round 78 removed."""
-        bad, n = re.subn(NOT_TOLD_APART, "agree; the populations do not.", paper)
-        assert n == 1, "Section III-D has been reworded; retarget this mutation"
+        sameness claim round 78 removed.
+
+        5 Oct 2026: the sentence was cut, so the sameness claim round 78 removed is added
+        after the rebuilt recovery paragraph's last number instead (see `RECOVERY_END`)."""
+        bad, n = re.subn(RECOVERY_END, lambda m: m.group(0) + "; the populations do not.",
+                         paper)
+        assert n == 1, "Section VI-B has been reworded; retarget this mutation"
         with pytest.raises(AssertionError):
             self.test_the_main_text_asserts_no_sameness(bad, supplement)
 
@@ -386,9 +403,12 @@ class TestTheRenderedPagesCarryIt:
         """v5 (28 Sep): the article prints Section III-D's "cannot tell apart"; the undetectable
         shift and both labeled brackets print on S16.9's pages (editorial review, Section 5),
         matched with spaces removed because the extractor drops them around inline math.
-        29 Sep: S16.9 is the postmortem's, so its pages are read from postmortem.pdf."""
+        29 Sep: S16.9 is the postmortem's, so its pages are read from postmortem.pdf.
+        5 Oct 2026: the rebuilt article prints no such sentence (see the source pin above)
+        and no sameness claim; it is held to the second on its pages."""
         flat = " ".join(_rendered_pages("paper"))
-        assert re.search(NOT_TOLD_APART, flat)
+        for gone in ("The populations do not.", "no shift remains", "indistinguishable"):
+            assert gone not in flat, gone
         supp = " ".join(_rendered_pages("postmortem"))
         tight = "".join(supp[supp.rindex("S16.9. The displacement recovery"):
                              supp.rindex("S16.10. How late")].split())

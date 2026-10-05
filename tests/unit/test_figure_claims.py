@@ -44,11 +44,10 @@ FIGURE_STEMS = ("pipeline_schematic", "measurement_model", "deletion_phases", "p
                 # Round 54: the exposure table drawn as a curve, in the supplement beside
                 # the table, because the main text is at the journal's page limit.
                 "exposure_curve",
-                # v5 (28 Sep), the editorial revision: the paper opens on the two failures
-                # drawn side by side, carries the exposure curve at column width, and draws
-                # the deletion's mechanism beside its consequence. The single-panel deletion
-                # scatter is panel (b) of the last and was retired with its builder.
-                "two_ways",
+                # 5 Oct 2026: the rebuilt paper opens its results on the distribution of S
+                # alone. It took the place of `two_ways`, the two failures side by side, which
+                # no document includes any more (the artifact index declares it).
+                "s_distribution",
                 # 4 Oct 2026: what the remedies buy, whose panel (a) carries the exposure curve
                 # the column figure drew; the column figure was retired with its builder.
                 "remedies")
@@ -61,11 +60,26 @@ def caption_of(label):
     return TEX[j:i]
 
 
+def caption_of_figure(stem):
+    """The caption of the float that draws `figures/<stem>.pdf`, whatever its label.
+
+    A figure that moves between the documents changes its label with its document (the
+    deletion figure was the paper's fig:deletion until 5 Oct 2026, and the supplement gives
+    it a label of its own), and the claim its caption makes does not move with it."""
+    inc = TEX.index("figures/%s.pdf" % stem)
+    start = TEX.rindex("\\begin{figure", 0, inc)
+    end = TEX.index("\\end{figure", inc)
+    float_ = TEX[start:end]
+    at = max(float_.find("\\caption{"), float_.find("\\caption["))
+    assert at >= 0, "the float drawing %s has no caption" % stem
+    return float_[at:]
+
+
 def _int(macro):
     return int(MACROS[macro].replace("{,}", "").replace(",", ""))
 
 
-# --- fig:deletion -------------------------------------------------------------------------
+# --- the deletion figure (deletion_phases) ------------------------------------------------
 
 def test_deletion_plots_every_committed_cell():
     assert len(mrf.retention_points()) == 75
@@ -82,7 +96,28 @@ def test_deletion_annotates_the_ledgers_fold():
 
 
 def test_deletion_caption_reaches_the_fold_through_the_ledger():
-    assert "ombRetentionFold" in caption_of("fig:deletion")
+    # 5 Oct 2026: the figure is the journal supplement's (S4.1); found by the file it draws.
+    assert "ombRetentionFold" in caption_of_figure("deletion_phases")
+
+
+# --- fig:twoways: the distribution of S ----------------------------------------------------
+
+def test_s_distribution_draws_the_counts_its_caption_states():
+    """The paper's Fig. 2 since 5 Oct 2026. Its caption counts the messages and the values of S
+    below zero, and says D on the same messages never falls below zero. The histogram it draws
+    must hold exactly those counts, and the caption must reach both through the ledger."""
+    import make_deletion_histogram as mdh
+    series, extra = mdh.read_hist()
+
+    def counted(name, below_zero=False):
+        bins = sum(c for lo, _hi, c in series[name] if lo < 0 or not below_zero)
+        return bins + extra[name]["under"] + (0 if below_zero else extra[name]["over"])
+
+    assert counted("ack") == _int("spanEvents")
+    assert counted("ack", below_zero=True) == _int("spanNegAck")
+    assert counted("send", below_zero=True) == _int("spanNegSend") == 0
+    caption = caption_of_figure("s_distribution")
+    assert "\\spanEvents" in caption and "\\spanNegAck" in caption
 
 
 # --- fig:exposure -------------------------------------------------------------------------
@@ -98,12 +133,20 @@ def test_exposure_curve_and_its_table_share_one_source():
     assert lags is not None, "the exposure source is missing"
     typical, _hi, _lo, p10, p90 = lags
     assert p10 <= typical <= p90, "the band must bracket the line drawn inside it"
-    # The crossover the caption marks is where the displacement equals the delivery.
+    # The crossover the text quotes beside panel (a) is where the publish latency equals the
+    # end-to-end latency.
     assert "%.2f" % (typical / 1000.0) == MACROS["exposureCrossover"]
 
 
 def test_exposure_caption_reaches_its_numbers_through_the_ledger():
-    assert "exposureCrossover" in caption_of("fig:exposure")
+    """Since 5 Oct 2026 the caption gives the band's two ends, not the crossover (the text
+    beside it quotes that). They must come through the ledger and be the lags the band is
+    drawn between."""
+    import emit_paper_numbers as epn
+    caption = caption_of("fig:exposure")
+    assert "\\exposureLagLo" in caption and "\\exposureLagHi" in caption
+    _typical, _hi, _lo, p10, p90 = epn._exposure_lags()
+    assert (MACROS["exposureLagLo"], MACROS["exposureLagHi"]) == ("%.0f" % p10, "%.0f" % p90)
 
 
 # --- fig:spectrum -------------------------------------------------------------------------

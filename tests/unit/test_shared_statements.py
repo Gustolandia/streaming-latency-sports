@@ -87,13 +87,17 @@ def emitted():
 
 @pytest.fixture(scope="module")
 def documents():
-    """Both documents with line wrapping normalised away.
+    """The paper, the supplement and the postmortem, with line wrapping normalised away.
 
     A phrase search must not depend on where LaTeX's source happened to break the line:
     "contain\\n\\textbf{not one negative}" is the same sentence as "contain \\textbf{not one
     negative}", and a test that can tell them apart fails on a reflow rather than on a defect.
+
+    The supplement joined on 5 Oct 2026, when the rebuild moved the one-clock harness's
+    sentence there from the paper: a claim the submission makes is held wherever it is made.
     """
-    return re.sub(r"\s+", " ", _tex("paper.tex") + "\n" + _tex("postmortem.tex"))
+    return re.sub(r"\s+", " ", "\n".join(_tex(n) for n in ("paper.tex", "supplement.tex",
+                                                         "postmortem.tex")))
 
 
 class TestTheSpreadLawIsStatedOnce:
@@ -159,7 +163,10 @@ ZERO_CLAIMS = [
     # Bold until v5 (28 Sep), when an outside editor read bold in running prose as a raised
     # voice. The words are unchanged, and they are still the claim this table holds.
     (r"contain not one negative", "ombKafkaNegatives"),
-    (r"recorded zero negative differences", "harnessOneClockNegatives"),
+    # 5 Oct 2026: the sentence moved to Supplement S4.5 and now prints the count, "recorded
+    # $\harnessOneClockNegatives$ negative differences ..., as a causal chain requires". The
+    # clause after the count holds only at zero, so the claim is still the one checked here.
+    (r"recorded $\harnessOneClockNegatives$ negative differences", "harnessOneClockNegatives"),
     # The registered audit of published results (freezes/29, 28 Sep): the strong signature,
     # a p99 of exactly 1 ms beside the 1 ms median, occurs nowhere. Same rule: the words stay
     # and the count behind them is held to the coding.

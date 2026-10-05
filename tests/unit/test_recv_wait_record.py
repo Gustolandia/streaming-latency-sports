@@ -6,6 +6,7 @@ run table. A sentence that drifts from its table fails here, not in a reader's h
 """
 import collections
 import csv
+import re
 import statistics
 import sys
 from pathlib import Path
@@ -153,15 +154,28 @@ def test_the_changelog_quotes_the_figures_the_paper_prints():
 
 
 def supplement_section():
-    """Supplement S3.10, R1's account there, with its line breaks folded."""
+    """R1's account in the supplement, with its line breaks folded.
+
+    Found by its label, s:recvwait, and read to the next heading, so a renumbering cannot send
+    these checks to another subsection: it was S3.10 until 5 Oct 2026 and is S3.8 since."""
     text = (REPO / "supplement.tex").read_text(encoding="utf-8")
-    body = text.split("\\subsection{S3.10.", 1)[1].split("\\section{S4.", 1)[0]
+    at = text.index("\\label{s:recvwait}")
+    start = text.rindex("\\subsection{", 0, at)
+    nxt = re.search(r"\\(?:sub)?section\{", text[at:])
+    body = text[start:at + nxt.start() if nxt else len(text)]
     return " ".join(body.split())
 
 
 class TestTheSupplementSays:
-    """S3.10 states in words what its macros cannot carry: the design it ran, and which
-    prediction failed where. Each is held here to the design file, the runner and the reading."""
+    """The supplement's subsection on the receiving thread's wait states in words what its
+    macros cannot carry: the design it ran, and which prediction failed where. Each is held
+    here to the design file, the runner and the reading."""
+
+    def test_the_section_is_the_one_on_the_receiving_threads_wait(self):
+        """The locator, checked: it lands on R1's heading and stops before the next one."""
+        text = supplement_section()
+        assert text.startswith("\\subsection{S") and "receiving thread's wait" in text[:120]
+        assert "\\subsection{" not in text[12:] and "\\section{" not in text
 
     def test_the_design_it_describes_is_the_one_that_ran(self):
         import json

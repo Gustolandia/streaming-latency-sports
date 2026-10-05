@@ -116,15 +116,23 @@ class TestR1TheFullThreatsSayWhatTheMainTextSays:
         outside editor's request (editorial review, Section 5), and "one clock by construction
         on the rejecting configurations" became "One clock excludes clock skew", the
         construction itself stated in Section II-B, where producer and consumer read one clock.
-        Each half is pinned where it now is."""
+        Each half is pinned where it now is.
+
+        5 Oct 2026: the rebuilt Section II states the construction ("separate CPython processes
+        that read one clock"), and the Limitations keep "One clock excludes clock skew". The
+        workstation testbed is gone from the rebuilt paper altogether: the sign check counts
+        the cloud runs only. So the second half is held in its strongest form, that the paper
+        names no workstation testbed, which S19's "enters only through the audit" still
+        bounds."""
         i = paper.index(BS + "label{sec:threats}")
         threats = flat(paper[i:paper.index(BS + "section{", i)])
         assert "One clock excludes clock skew" in threats
-        j = paper.index(BS + "label{sec:testbeds}")
-        testbeds = flat(paper[j:paper.index(BS + "subsection{", j)])
-        assert "read one clock" in testbeds
-        text = flat(paper)
-        assert "enters only through the audit" in text
+        j = paper.index(BS + "label{sec:sysmodel}")
+        setup = flat(paper[j:paper.index(BS + "section{", j)])
+        assert "read one clock" in setup
+        text = flat(re.sub(r"(?m)^%[^\n]*", "", paper))
+        if "workstation" in text.lower():
+            assert "enters only through the audit" in text
 
     def test_the_limitations_count_the_surviving_workstation_conditions(self, supplement):
         s = _between(supplement, "Limitations (full)", "E1's replay rate is inferred")
@@ -163,11 +171,18 @@ class TestR2TheCorrelationIsComputedInTheUnitItIsQuotedIn:
         """v5 (28 Sep): Section III-A reads "correlated within a run (median correlation ...)".
         The Discussion rule that quoted the median a second time went when the twelve rules
         became Table IV's six checks (editorial review, Section 9), so the one sentence left
-        carries both pins, and the pooled median is still refused anywhere in the article."""
-        text = flat(paper)
-        assert ("correlated within a run (median correlation $" + BS
-                + "spanRhoWithinMedian$") in text
-        assert BS + "spanRhoMedian$" not in text
+        carries both pins, and the pooled median is still refused anywhere in the article.
+
+        5 Oct 2026: the rebuilt paper and its journal supplement quote no correlation of D and
+        A (the sentence went with the old Section III-A; S24.2 of the postmortem reports both,
+        below). The pooled median stays refused in both, and a correlation quoted "within a
+        run" must be the within-run one."""
+        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        for name, doc in (("paper.tex", paper), ("supplement.tex", journal)):
+            text = flat(doc)
+            assert BS + "spanRhoMedian$" not in text, name
+            for m in re.finditer(r"correlated within a run", text):
+                assert BS + "spanRhoWithinMedian" in text[m.start():m.start() + 120], name
 
     def test_the_supplement_reports_both(self, supplement):
         s = _between(supplement, "S24.2. The statistical inventory", "S24.3. The metric map")
@@ -369,10 +384,14 @@ class TestTheRenderedPagesCarryIt:
         text = _rendered("paper")
         assert "pointing us to the timer study" in text
         assert "Read 2026-" not in text
-        supp = _rendered("supplement")
-        assert "rejected minus accepted" in supp
-        assert re.search(r"\[Katz\s*95\s*%\s*:", supp), "the payload fall's bracket"
-        assert re.search(r"Fisher\s*95\s*%\s*:", supp), "the retention correlation's"
+        # 5 Oct 2026: the payload fall's Katz bracket prints in the journal supplement's S3.3;
+        # the shift's direction and the retention correlation's Fisher bracket print in the
+        # postmortem (S16.9 and S10), where the rebuilt documents leave them.
+        journal = _rendered("supplement")
+        assert re.search(r"\[Katz\s*95\s*%\s*:", journal), "the payload fall's bracket"
+        post = _rendered("postmortem")
+        assert "rejected minus accepted" in post
+        assert re.search(r"Fisher\s*95\s*%\s*:", post), "the retention correlation's"
 
     def test_the_supplement(self):
         text = _rendered("supplement")

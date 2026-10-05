@@ -53,19 +53,32 @@ class TestR1TheDitherRuleDoesNotClaimTheWhy:
         """v5 (28 Sep): the bold rule is a row of Table IV now, and its prose split: Section VI
         concedes the dither as standing advice under the IPPM citations and claims only the
         conjunction, and Section IV-C states what the paper adds to the 1970 note, the sign of
-        the operation. The two v4 phrases give way to those, one pin for each."""
+        the operation. The two v4 phrases give way to those, one pin for each.
+
+        5 Oct 2026: the check is the table's "Randomize the publish instants (Poisson
+        sampling)", the field's name for the cure. Related Work concedes the arithmetic and
+        its cure, phase jitter, to the 1970 note and the randomization to the IPPM framework,
+        and claims "these checks" beside them; Section V-C claims the deletion, which the
+        counter does not perform. One pin for each, as before."""
         flat = " ".join(paper.split())
-        assert "Dither the publish instant" in flat, "the dither check has left Table IV"
-        i = flat.index("Randomizing probe times against periodic phenomena is standing advice")
-        passage = flat[i:i + 400]
+        i = flat.index(chr(92) + "label{tab:checks}")
+        table = flat[i:flat.index(chr(92) + "end{table}", i)]
+        assert "Randomize the publish instants (Poisson sampling)" in table, \
+            "the randomization check has left the table of checks"
+        paras = [" ".join(p.split()) for p in re.split(r"\n[ \t]*\n", paper)
+                 if "IP measurement advises randomizing probe" in " ".join(p.split())]
+        assert len(paras) == 1, "the randomization's precedents have moved; retarget this pin"
+        passage = paras[0]
         assert "rfc2330" in passage and "rfc3432" in passage, \
-            "the dither's precedents are no longer cited where it is conceded"
-        assert "What we add is the conjunction" in passage, (
-            "Section VI claims something other than the conjunction beside the dither's "
+            "the randomization's precedents are no longer cited where it is conceded"
+        assert "its cure, phase jitter, are in a 1970 counter note" in passage, \
+            "the cure is no longer conceded to the 1970 note"
+        assert "What we add is these checks" in passage, (
+            "Related Work claims something other than the checks beside the cure's "
             "precedents; the why is Hewlett-Packard's")
-        j = flat.index("What is new is what the harness does with it")
-        assert "throws away the quantity a 1970 counter measured with" in flat[j:j + 250], (
-            "the contribution is the consequence under deletion, which is IV-C's own wording")
+        j = flat.index("The arithmetic is in Hewlett-Packard's 1970 counter note")
+        assert "but the deletion is not" in flat[j:j + 250], (
+            "the contribution is the consequence under deletion, which is V-C's own wording")
 
     def test_the_concession_it_defers_to_is_still_there(self, paper):
         """If III-C ever stops conceding, this rule's new wording would be the overclaim.
@@ -73,9 +86,14 @@ class TestR1TheDitherRuleDoesNotClaimTheWhy:
         v5 (28 Sep): the concession is in Section IV-C and opens "The arithmetic is not
         ours", which concedes at least as much as v4's "we derived it, then found it in a
         counter manual"; the order of discovery is kept in S17 ("We arrived at it
-        independently")."""
-        assert "the symptom and the cure" in paper
-        assert "The arithmetic is not ours" in paper
+        independently").
+
+        5 Oct 2026: Section V-C opens it "The arithmetic is in Hewlett-Packard's 1970 counter
+        note", and Related Work gives the note the cure too; both concede what v5 did."""
+        flat = " ".join(paper.split())
+        assert "The arithmetic is in Hewlett-Packard's 1970 counter note" in flat
+        assert "The retention arithmetic and its cure, phase jitter, are in a 1970 counter note" \
+            in flat
 
     def test_the_supplement_carries_the_patent_beside_the_note(self, supplement):
         i = supplement.index("S17. The 1970 counter note")
@@ -174,30 +192,45 @@ class TestR2TheTwoThresholdsAreDifferentThings:
         benchmark deletes. The pins follow those words and Table III, which prints both
         comparisons in one class."""
         assert "reaching the same design" not in paper
-        i = paper.index("We read")
-        passage = " ".join(paper[i:i + 1100].split())
+        i = paper.index(chr(92) + "label{sec:tools}")
+        passage = " ".join(paper[i:paper.index(chr(92) + "subsection{", i)].split())
         # 4 Oct 2026: the table the audit fills moved to the supplement's tool registry, when
         # the paper's system and remedies figures needed its room; the passage points to it.
         assert "the supplement's tool registry" in passage, \
             "the class is shown in the table the audit fills"
-        assert "drops negatives" in passage and \
-            "a strict positivity filter deletes" in passage, \
-            "say that the other threshold keeps what the benchmark deletes"
-        assert "admits zero" in passage, "say what the threshold does"
+        # 5 Oct 2026: the rebuilt Section V-A names the classes by what each does to the
+        # value, a filter drops it, the library refuses it, another value replaces it, and
+        # leaves Pulsar's threshold to the supplement's S5, which states what each threshold
+        # does (see the next test). Should the paper name Pulsar again, it must say so too.
+        assert "a filter drops it" in passage, "the class is no longer said by what it does"
+        if "Pulsar" in passage:
+            assert "admits zero" in passage or "keeps those" in passage, \
+                "say what the threshold does"
 
     def test_pulsar_is_used_as_the_contrast_the_sign_channel_predicts(self, paper):
         """v5 (28 Sep): "quantum" is "timestamp resolution" throughout v5 (editor, section 7),
-        and the pile-up is now "visibly at zero"."""
-        i = paper.index("We read")
-        passage = " ".join(paper[i:i + 1100].split())
+        and the pile-up is now "visibly at zero".
+
+        5 Oct 2026: the contrast is the journal supplement's S5, which says what each
+        threshold does, and that the zeros the benchmark deletes pile up visibly at zero
+        under Pulsar's; it is held there."""
+        journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
+        i = journal.index("Apache Pulsar's performance client")
+        passage = " ".join(journal[max(0, i - 400):i + 300].split())
         assert "pile up visibly at zero" in passage, (
             "a visible pile-up is what IV-D predicts when only the inversions are dropped")
+        assert "deletes every sample that computes to exactly zero" in passage
+        assert "keeps those and drops only values below zero" in passage, \
+            "say that the other threshold keeps what the benchmark deletes"
 
     def test_the_rendered_section_reads_the_same(self):
-        """v5 (28 Sep): the pile-up phrase follows the source, as above."""
+        """v5 (28 Sep): the pile-up phrase follows the source, as above. 5 Oct 2026: on the
+        journal supplement's pages, where the contrast now is."""
         flat = " ".join(_rendered("paper").split())
         assert "reaching the same design" not in flat
-        assert "admits zero" in flat and "pile up visibly at zero" in flat
+        journal = " ".join(_rendered("supplement").split())
+        assert "pile up visibly at zero" in journal
+        assert "keeps those and drops only values below zero" in journal
 
 
 class TestW2TheAuditSaysWhatGrainItIsExactTo:
@@ -209,7 +242,10 @@ class TestW2TheAuditSaysWhatGrainItIsExactTo:
         the concession in Section VIII, and the grain in Table III, whose caption records what
         each tool does to a value at or below zero and whose cells print the comparison."""
         flat = " ".join(paper.split())
-        assert "at source and did not run them" in flat, \
+        # 5 Oct 2026: the rebuilt Limitations concede it as "We classified the ten tools by
+        # reading them", beside the eleven the registered campaign ran on one pair of machines.
+        assert re.search(r"classified the " + re.escape(chr(92)) + r"harnessAuditedWord\{\} "
+                         r"tools by reading them", flat), \
             "Threats no longer concedes that the audit read source and deployed nothing"
         # 4 Oct 2026: Table III is the supplement's now (stab:tools), caption and cells unchanged.
         journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
@@ -242,11 +278,22 @@ class TestW1TheGeometryFigureStaysInTheSupplement:
             self, paper, supplement):
         """29 Sep: the journal supplement draws it in S4.2 and the postmortem keeps it in S17.
         The pointer to S17 went under the editor's budget of fifteen (the HP citation carries
-        its sentence), so the main text reaches the figure through the section holding it."""
+        its sentence), so the main text reaches the figure through the section holding it.
+
+        5 Oct 2026: the rebuilt paper carries neither geometry figure. The journal supplement
+        draws the four phases of one millisecond as panel (a) of the deletion figure
+        (`deletion_phases`, S4.1), from the plotting function `quantum_geometry`'s panel (a)
+        came from, and the postmortem keeps the two-panel figure in S17. The main text still
+        reaches the journal supplement's figure through the section holding it."""
         journal = (REPO / "supplement.tex").read_text(encoding="utf-8")
-        assert "quantum_geometry" in supplement and "quantum_geometry" in journal
-        assert "quantum_geometry" not in paper
-        home = re.findall(r"\\section\{(S\d+)\.", journal[:journal.index("quantum_geometry")])[-1]
+        assert "quantum_geometry" in supplement
+        for stem in ("quantum_geometry", "deletion_phases"):
+            assert stem not in paper, "%s is back in the main text" % stem
+        at = journal.index("deletion_phases")
+        caption = " ".join(journal[at:journal.index(chr(92) + "end{figure}", at)].split())
+        assert "four phases within one millisecond" in caption, \
+            "the supplement's figure no longer draws the phases of one millisecond"
+        home = re.findall(r"\\section\{(S\d+)\.", journal[:at])[-1]
         assert re.search(r"Supplement~%s(?:\.\d+)?\b" % home, paper), \
             "the main text reaches it by pointer"
 
@@ -255,11 +302,16 @@ class TestW1TheGeometryFigureStaysInTheSupplement:
         producer's send instants fall against the grid"; the anchor follows it and the checks
         are unchanged. v5 also took the editor's advice (section 9) on half of this class's
         decision: panel (a), the four phases of one tick, is redrawn as Fig. 5(a) from the same
-        plotting function, while the two-panel `quantum_geometry` figure stays in S17."""
+        plotting function, while the two-panel `quantum_geometry` figure stays in S17.
+
+        5 Oct 2026: Section V-C says it as "A sample survives only if a millisecond boundary
+        falls between its two timestamps", and gives the probability, T_true over tau; the
+        anchor follows it and the checks are the same."""
         flat = " ".join(paper.split())
-        i = flat.index("Retention moves with where the producer")
+        i = flat.index("A sample survives only if a millisecond boundary falls between its two")
         passage = flat[i:i + 420]
-        assert "crosses a grid instant" in passage
+        assert ("with probability $T_{" + chr(92) + "mathrm{true}}/" + chr(92) + "tau$"
+                in passage), "the claim no longer says what the geometry gives"
         assert "T_{" in passage or "tau" in passage
 
     def test_the_paper_is_still_inside_the_free_page_budget(self):
